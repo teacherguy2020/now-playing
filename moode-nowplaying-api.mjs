@@ -26,7 +26,6 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import http from 'node:http';
 import https from 'node:https';
-import net from 'node:net';
 import crypto from 'node:crypto';
 import { exec, execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -52,8 +51,6 @@ import express from 'express';
 import cors from 'cors';
 import sharp from 'sharp';
 const execFileP = promisify(execFile);
-const FFMPEG = process.env.FFMPEG || "/usr/bin/ffmpeg";
-const CURL = process.env.CURL || "/usr/bin/curl";
 
 
 // ---- MUST BE BEFORE importing undici ----
@@ -65,6 +62,20 @@ if (!globalThis.File && NodeFile) globalThis.File = NodeFile;
 // ----------------------------------------
 
 import { ProxyAgent, setGlobalDispatcher, Agent } from 'undici';
+import {
+  FFMPEG, CURL, MPD_PLAYLIST_DIR, FAVORITES_PATH, MOODE_SSH_USER, MOODE_SSH_HOST, PORT,
+  MOODE_BASE_URL, PUBLIC_BASE_URL, LOCAL_ADDRESS, MPD_HOST, MPD_PORT, MOODE_USB_PREFIX,
+  PI4_MOUNT_BASE, METAFLAC, TRACK_KEY, ENABLE_ALEXA, TRANSCODE_TRACKS, TRACK_CACHE_DIR,
+  FAVORITES_PLAYLIST_NAME, FAVORITES_REFRESH_MS, ITUNES_SEARCH_URL, ITUNES_COUNTRY,
+  ITUNES_TIMEOUT_MS, ITUNES_TTL_HIT_MS, ITUNES_TTL_MISS_MS, ART_CACHE_DIR, ART_CACHE_LIMIT,
+  ART_640_PATH, ART_BG_PATH, PODCAST_DL_LOG, MOODE_SSH, FAVORITES_M3U
+} from './src/config.mjs';
+import { log } from './src/lib/log.mjs';
+import { execFileStrict } from './src/lib/exec.mjs';
+import {
+  mpdEscapeValue, mpdHasACK, parseMpdFirstBlock, parseMpdKeyVals,
+  mpdGetStatus, mpdPlay, mpdPause, mpdStop, mpdQueryRaw
+} from './src/services/mpd.service.mjs';
 
 async function downloadLatestForRss({ rss, count = 10 }) {
   const items = readSubs();
@@ -173,23 +184,6 @@ async function downloadLatestForRss({ rss, count = 10 }) {
 }
 
 
-function execFileStrict(cmd, args, opts = {}) {
-  return new Promise((resolve, reject) => {
-    execFile(cmd, args, { timeout: 120000, ...opts }, (err, stdout, stderr) => {
-      if (err) {
-        const msg = [
-          `cmd=${cmd}`,
-          `args=${JSON.stringify(args)}`,
-          `err=${err.message}`,
-          `stderr=${(stderr || "").trim()}`,
-          `stdout=${(stdout || "").trim()}`,
-        ].filter(Boolean).join("\n");
-        return reject(new Error(msg));
-      }
-      resolve({ stdout, stderr });
-    });
-  });
-}
 
 
 async function buildLocalPlaylistForRss({ rss, newestFirst = true }) {
@@ -223,79 +217,12 @@ async function buildLocalPlaylistForRss({ rss, newestFirst = true }) {
 }
 
 
-// =========================
-// Env / defaults
-// =========================
-const MOODE_SSH = process.env.MOODE_SSH || 'moode@10.0.0.254';
-const FAVORITES_M3U =
-  process.env.FAVORITES_M3U || '/var/lib/mpd/playlists/Favorites.m3u';
-
-
-// =========================
-// Logging
-// =========================
-const LOG_LEVEL = String(process.env.LOG_LEVEL || 'info').toLowerCase();
-// levels: silent < error < warn < info < debug
-const _lvl = { silent: 0, error: 1, warn: 2, info: 3, debug: 4 };
-const _cur = _lvl[LOG_LEVEL] ?? 0;
-
-const log = {
-  error: (...a) => { if (_cur >= 1) console.error(...a); },
-  warn:  (...a) => { if (_cur >= 2) console.warn(...a); },
-  info:  (...a) => { if (_cur >= 3) console.info(...a); },
-  debug: (...a) => { if (_cur >= 4) console.debug(...a); },
-};
-
-/* =========================
- * Config
- * ========================= */
-const MPD_PLAYLIST_DIR = '/var/lib/mpd/playlists';
-const FAVORITES_PATH = `${MPD_PLAYLIST_DIR}/Favorites.m3u`;
-const MOODE_SSH_USER = process.env.MOODE_SSH_USER || 'moode';
-const MOODE_SSH_HOST = process.env.MOODE_SSH_HOST || '10.0.0.254';
-const PORT = Number(process.env.PORT || '3000');
-
-const MOODE_BASE_URL = process.env.MOODE_BASE_URL || 'http://10.0.0.254';
-const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://moode.brianwis.com';
-
-const LOCAL_ADDRESS = process.env.LOCAL_ADDRESS || '10.0.0.233';
-
-const MPD_HOST = process.env.MPD_HOST || '10.0.0.254';
-const MPD_PORT = Number(process.env.MPD_PORT || '6600');
-
-const MOODE_USB_PREFIX = process.env.MOODE_USB_PREFIX || 'USB/SamsungMoode/';
-const PI4_MOUNT_BASE = process.env.PI4_MOUNT_BASE || '/mnt/SamsungMoode';
-
-const METAFLAC = process.env.METAFLAC || '/usr/bin/metaflac';
-
-const TRACK_KEY = process.env.TRACK_KEY || '1029384756';
-const ENABLE_ALEXA = String(process.env.ENABLE_ALEXA || '1').trim() === '1';
-const TRANSCODE_TRACKS = String(process.env.TRANSCODE_TRACKS || '0').trim() === '1';
-const TRACK_CACHE_DIR = process.env.TRACK_CACHE_DIR || '/tmp/moode-track-cache';
-
-const FAVORITES_PLAYLIST_NAME = process.env.FAVORITES_PLAYLIST_NAME || 'Favorites';
-const FAVORITES_REFRESH_MS = Number(process.env.FAVORITES_REFRESH_MS || '3000');
-
-/* iTunes (radio art) */
-const ITUNES_SEARCH_URL = 'https://itunes.apple.com/search';
-const ITUNES_COUNTRY = 'us';
-const ITUNES_TIMEOUT_MS = Number(process.env.ITUNES_TIMEOUT_MS || '2500');
-const ITUNES_TTL_HIT_MS = 1000 * 60 * 60 * 12; // 12h
-const ITUNES_TTL_MISS_MS = 1000 * 60 * 10;     // 10m
-
-/* Art cache (keyed; avoids multi-client overwrite) */
-const ART_CACHE_DIR = process.env.ART_CACHE_DIR || '/home/brianwis/album_art/art';
-const ART_CACHE_LIMIT = Number(process.env.ART_CACHE_LIMIT || '250'); // enforced later
-let lastArtKeyBuilt = '';
-
-const ART_640_PATH = path.join(ART_CACHE_DIR, 'current_640.jpg');
-const ART_BG_PATH  = path.join(ART_CACHE_DIR, 'current_bg_640_blur.jpg');
-const PODCAST_DL_LOG = "/home/brianwis/album_art/podcasts/downloads.ndjson";
-
 const FETCH_HEADERS = {
     'user-agent': 'Mozilla/5.0',
     'accept': '*/*',
 };
+
+let lastArtKeyBuilt = '';
 
 const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
 if (proxyUrl) {
@@ -2599,146 +2526,6 @@ async function updateArtCacheIfNeeded(rawArtUrl) {
 
   lastArtKeyBuilt = key;
   log.debug('[art] rebuilt', { key, p640, pbg });
-}
-
-/* =========================
- * MPD protocol (TCP) resolver
- * ========================= */
-
-function mpdEscapeValue(v) {
-  const s = String(v || '');
-  return `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-}
-
-function mpdHasACK(raw) {
-  return /(?:^|\r?\n)ACK\b/.test(String(raw || ''));
-}
-
-function parseMpdFirstBlock(txt) {
-  const out = {};
-  const lines = String(txt || '').split('\n');
-
-  for (const line of lines) {
-    if (!line) continue;
-    if (line.startsWith('OK MPD ')) continue;
-    if (line === 'OK') break;
-    if (line.startsWith('ACK')) break;
-
-    const i = line.indexOf(':');
-    if (i <= 0) continue;
-
-    const k = line.slice(0, i).trim().toLowerCase();
-    const v = line.slice(i + 1).trim();
-    if (out[k] === undefined) out[k] = v;
-  }
-  return out;
-}
-
-function parseMpdKeyVals(txt) {
-  // MPD returns many "key: value" lines followed by OK
-  const out = {};
-  const lines = String(txt || '').split('\n');
-
-  for (const line0 of lines) {
-    const line = String(line0 || '').trim();
-    if (!line) continue;
-    if (line.startsWith('OK MPD ')) continue;
-    if (line === 'OK') break;
-    if (line.startsWith('ACK')) break;
-
-    const i = line.indexOf(':');
-    if (i <= 0) continue;
-
-    const k = line.slice(0, i).trim().toLowerCase();
-    const v = line.slice(i + 1).trim();
-    if (out[k] === undefined) out[k] = v;
-  }
-  return out;
-}
-
-async function mpdGetStatus() {
-  const raw = await mpdQueryRaw('status');
-  if (!raw || mpdHasACK(raw)) throw new Error('mpd status failed');
-
-  const kv = parseMpdKeyVals(raw);
-
-  const state = String(kv.state || '').trim(); // "play" | "pause" | "stop"
-  const song = (kv.song !== undefined) ? Number.parseInt(String(kv.song).trim(), 10) : null;
-  const playlistlength =
-    (kv.playlistlength !== undefined)
-      ? Number.parseInt(String(kv.playlistlength).trim(), 10)
-      : 0;
-
-  return {
-    state: state || '',
-    song: Number.isFinite(song) ? song : null,
-    playlistlength: Number.isFinite(playlistlength) ? playlistlength : 0,
-  };
-}
-
-async function mpdPlay(pos) {
-  // If you want "prime to always select pos0", call mpdPlay(0)
-  if (pos === 0 || Number.isFinite(Number(pos))) {
-    await mpdQueryRaw(`play ${Number(pos)}`);
-    return true;
-  }
-  await mpdQueryRaw('play');
-  return true;
-}
-
-async function mpdPause(on) {
-  const v = on ? 1 : 0;
-  await mpdQueryRaw(`pause ${v}`);
-  return true;
-}
-
-// Optional alternative if you prefer stop instead of pause after priming
-async function mpdStop() {
-  await mpdQueryRaw('stop');
-  return true;
-}
-
-function mpdQueryRaw(command, timeoutMs = 3000) {
-  return new Promise((resolve, reject) => {
-    const sock = net.createConnection({ host: MPD_HOST, port: MPD_PORT });
-
-    let buf = '';
-    let finished = false;
-    let greetingSeen = false;
-    let commandSent = false;
-
-    const finish = (err) => {
-      if (finished) return;
-      finished = true;
-      try { sock.destroy(); } catch {}
-      err ? reject(err) : resolve(buf);
-    };
-
-    sock.setTimeout(timeoutMs, () => finish(new Error('mpd timeout')));
-    sock.on('error', finish);
-
-    const hasTerminalOK = (s) => /(?:\r?\n)OK\r?\n/.test(s) || /^OK\r?\n/.test(s);
-    const hasACK = (s) => /(?:\r?\n)ACK /.test(s) || /^ACK /.test(s);
-
-    sock.on('data', (d) => {
-      buf += d.toString('utf8');
-
-      if (!greetingSeen) {
-        if (buf.includes('OK MPD ') && buf.includes('\n')) greetingSeen = true;
-        else return;
-      }
-
-      if (!commandSent) {
-        commandSent = true;
-        sock.write(`${command}\nclose\n`);
-        return;
-      }
-
-      if (hasACK(buf) || hasTerminalOK(buf)) finish();
-    });
-
-    sock.on('end', () => finish());
-  });
 }
 
 // =========================
