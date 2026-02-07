@@ -76,6 +76,8 @@ import {
   mpdEscapeValue, mpdHasACK, parseMpdFirstBlock, parseMpdKeyVals,
   mpdGetStatus, mpdPlay, mpdPause, mpdStop, mpdQueryRaw
 } from './src/services/mpd.service.mjs';
+import { registerRatingRoutes } from './src/routes/rating.routes.mjs';
+import { registerQueueRoutes } from './src/routes/queue.routes.mjs';
 
 async function downloadLatestForRss({ rss, count = 10 }) {
   const items = readSubs();
@@ -6053,191 +6055,27 @@ async function getAirplayCoverUrlFromAplmeta(MOODE_BASE_URL) {
   }
 }
 
-app.get('/rating', async (req, res) => {
-  try {
-    const file = String(req.query.file || '').trim();
-    if (!file) return res.status(400).json({ ok: false, error: 'Missing ?file=' });
-
-    if (isStreamPath(file) || isAirplayFile(file)) {
-      return res.json({ ok: true, file, rating: 0, disabled: true });
-    }
-
-    const rating = await getRatingForFile(file);
-    return res.json({ ok: true, file, rating });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e?.message || String(e) });
-  }
+registerRatingRoutes(app, {
+  clampRating,
+  isStreamPath,
+  isAirplayFile,
+  getRatingForFile,
+  setRatingForFile,
+  fetchJson,
+  MOODE_BASE_URL,
+  bumpRatingCache,
 });
 
-app.post('/rating', async (req, res) => {
-  try {
-    const file = String(req?.body?.file || '').trim();
-    if (!file) return res.status(400).json({ ok: false, error: 'Missing JSON body { file, rating }' });
-
-    if (isStreamPath(file) || isAirplayFile(file)) {
-      return res.json({ ok: true, file, rating: 0, disabled: true });
-    }
-
-    const r = clampRating(req?.body?.rating);
-    if (r === null) return res.status(400).json({ ok: false, error: 'rating must be an integer 0..5' });
-
-    const newRating = await setRatingForFile(file, r);
-    return res.json({ ok: true, file, rating: newRating });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e?.message || String(e) });
-  }
-});
-
-app.get('/rating/current', async (req, res) => {
-  try {
-    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-    const file = String(song.file || '').trim();
-
-    if (!file || isStreamPath(file) || isAirplayFile(file)) {
-      return res.json({ ok: true, file: file || '', rating: 0, disabled: true });
-    }
-
-    const rating = await getRatingForFile(file);
-    return res.json({ ok: true, file, rating, disabled: false });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e?.message || String(e) });
-  }
-});
-
-// =========================
-// POST /rating/current  (DROP-IN)
-// - Validates rating 0..5
-// - Refuses streams/AirPlay
-// - Updates sticker
-// - Bumps in-process cache so /now-playing reflects immediately
-// =========================
-app.post('/rating/current', async (req, res) => {
-  try {
-    // 1) Validate input
-    const raw = req?.body?.rating;
-    const r = clampRating(raw); // returns 0..5
-    if (!Number.isFinite(Number(raw))) {
-      return res.status(400).json({ ok: false, error: 'rating must be a number 0..5' });
-    }
-    // If you want to reject non-integers strictly, uncomment:
-    // if (!Number.isInteger(Number(raw))) return res.status(400).json({ ok:false, error:'rating must be an integer 0..5' });
-
-    // 2) Determine current file
-    let song;
-    try {
-      song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-    } catch (e) {
-      return res.status(503).json({
-        ok: false,
-        error: 'get_currentsong unavailable',
-        detail: e?.message || String(e),
-      });
-    }
-
-    const file = String(song?.file || '').trim();
-
-    // 3) Only allow local files (no radio/upnp streams, no AirPlay pseudo-files)
-    const disabled = !file || isStreamPath(file) || isAirplayFile(file);
-    if (disabled) {
-      // Keep cache aligned with "disabled" response
-      try { bumpRatingCache(file || '', 0); } catch {}
-      return res.json({ ok: true, file: file || '', rating: 0, disabled: true });
-    }
-
-    // 4) Persist rating + bump cache immediately
-    const newRating = await setRatingForFile(file, r);
-    try { bumpRatingCache(file, newRating); } catch {}
-
-    return res.json({ ok: true, file, rating: newRating, disabled: false });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e?.message || String(e) });
-  }
-});
-
-
-app.post('/queue/advance', async (req, res) => {
-  try {
-    if (!requireTrackKey(req, res)) return;
-
-    // Accept songid (preferred) from JSON body OR querystring
-    const songidRaw =
-      (req?.body?.songid !== undefined ? req.body.songid : undefined) ??
-      (req?.query?.songid !== undefined ? req.query.songid : undefined);
-
-    const songid = Number.parseInt(String(songidRaw ?? '').trim(), 10);
-
-    // Accept pos0 as optional fallback / diagnostics
-    const pos0raw =
-      (req?.body?.pos0 !== undefined ? req.body.pos0 : undefined) ??
-      (req?.query?.pos0 !== undefined ? req.query.pos0 : undefined);
-
-    const pos0 = Number.parseInt(String(pos0raw ?? '').trim(), 10);
-
-    // Optional: accept file for sanity checking
-    const file = String(req?.body?.file || req?.query?.file || '').trim();
-
-    // Require at least one identifier
-    const haveSongId = Number.isFinite(songid) && songid >= 0;
-    const havePos0   = Number.isFinite(pos0) && pos0 >= 0;
-
-    if (!haveSongId && !havePos0) {
-      return res.status(400).json({ ok: false, error: 'Missing/invalid songid (preferred) or pos0 (fallback)' });
-    }
-
-    // Optional safety: if file was provided and we have songid, confirm it still points to expected file
-    if (file && haveSongId) {
-      try {
-        const info = await mpdPlaylistInfoById(songid);   // you already have this helper
-        const actual = String(info?.file || '').trim();
-
-        if (actual && actual !== file) {
-          log.debug('[queue/advance] id mismatch, priming only', {
-            songid,
-            tokenFile: file,
-            mpdFile: actual,
-          });
-
-          return res.json({
-            ok: true,
-            skippedDelete: true,
-            reason: 'id-mismatch-primed',
-          });
-        }
-      } catch (e) {
-        log.debug('[queue/advance] id check failed, continuing:', e?.message || String(e));
-      }
-    }
-
-    // 1) Delete finished track
-    if (haveSongId) {
-      await mpdDeleteId(songid);
-    } else {
-      // fallback
-      await mpdDeletePos0(pos0);
-    }
-
-    // 3) Return a fresh now-playing snapshot (lightweight)
-    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
-
-    const songposNow = moodeValByKey(statusRaw, 'song');
-    const songidNow  = moodeValByKey(statusRaw, 'songid');
-
-    return res.json({
-      ok: true,
-      nowPlaying: {
-        file: song.file || '',
-        title: decodeHtmlEntities(song.title || ''),
-        artist: decodeHtmlEntities(song.artist || ''),
-        album: decodeHtmlEntities(song.album || ''),
-        songpos: String(songposNow || '').trim(),
-        songid: String(songidNow || '').trim(),
-      },
-    });
-  } catch (e) {
-    console.error('/queue/advance error:', e?.message || String(e));
-    return res.status(500).json({ ok: false, error: e?.message || String(e) });
-  }
+registerQueueRoutes(app, {
+  requireTrackKey,
+  mpdPlaylistInfoById,
+  mpdDeleteId,
+  mpdDeletePos0,
+  fetchJson,
+  MOODE_BASE_URL,
+  moodeValByKey,
+  decodeHtmlEntities,
+  log,
 });
 
 /* =========================
