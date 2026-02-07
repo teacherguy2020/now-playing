@@ -1,0 +1,9 @@
+# Private local integration overrides
+src/private/*.local.mjs
+
+# Keep example templates tracked
+!src/private/*.example.mjs
+
+# Runtime/install artifacts
+node_modules/
+npm-debug.log*

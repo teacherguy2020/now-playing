@@ -250,75 +250,30 @@ function artPathBgForKey(key) {
   return path.join(ART_CACHE_DIR, `${artKeyToSafeId(key)}_bg_640_blur.jpg`);
 }
 
-// --- Mother Earth metadata adapter (side-channel JSON API) ---
+// --- Private stream metadata integration loader (optional/local-only) ---
 
-const MOTHER_EARTH = [
-  {
-    key: 'motherearth_jazz',
-    match: /motherearth[_\.]?jazz/i, // matches motherearth_jazz or motherearth.jazz
-    api: 'https://motherearth.streamserver24.com/api/nowplaying_static/motherearth_jazz.json',
-    sourceLabel: 'Mother Earth Radio — Jazz',
-    hiresLabel: '24/192',
-  },
-];
+const motherEarth = {
+  enabled: false,
+  matchStation: () => null,
+  fetchMeta: async () => null,
+};
 
-const meCache = new Map(); // key -> { ts, trackKey, meta }
-const ME_TTL_MS = 5000;    // poll no more than every 5s per station
-
-async function fetchMotherEarthMeta(entry) {
-  const now = Date.now();
-  const cached = meCache.get(entry.key);
-
-  if (cached && (now - cached.ts) < ME_TTL_MS) return cached.meta;
-
-  const res = await fetch(entry.api, { cache: 'no-store', agent: agentForUrl(entry.api) });
-  if (!res.ok) throw new Error(`MotherEarth meta HTTP ${res.status}`);
-
-  const j = await res.json();
-  const np = j?.now_playing || null;
-  const s  = np?.song || null;
-
-  if (!np || !s) {
-    if (cached) return cached.meta;
-    return null;
-  }
-
-  const artist =
-    (typeof s.artist === 'string' ? s.artist : '') ||
-    (typeof s.artist?.name === 'string' ? s.artist.name : '') ||
-    '';
-
-  const title = String(s.title || '').trim();
-  const album = String(s.album || '').trim();
-  const art   = String(s.art || '').trim();
-  const id    = String(s.id || '').trim();
-
-  const trackKey = id || `${artist}||${title}||${album}`.toLowerCase();
-
-  if (cached && cached.trackKey === trackKey) {
-    cached.ts = now;
-    meCache.set(entry.key, cached);
-    return cached.meta;
-  }
-
-  const meta = {
-    trackKey,
-    artist,
-    title,
-    album,
-    art,
-    elapsed: Number(np.elapsed || 0),
-    duration: Number(np.duration || 0),
-    is_request: !!np.is_request,
-  };
-
-  meCache.set(entry.key, { ts: now, trackKey, meta });
-  return meta;
+try {
+  const mod = await import('./src/private/mother-earth.local.mjs');
+  if (typeof mod.matchStation === 'function') motherEarth.matchStation = mod.matchStation;
+  if (typeof mod.fetchMeta === 'function') motherEarth.fetchMeta = mod.fetchMeta;
+  motherEarth.enabled = true;
+  log.info?.('[private-meta] local integration loaded');
+} catch {
+  // intentionally optional; public builds should run without private integration
 }
 
 function matchMotherEarthStation(currentFile) {
-  if (!currentFile) return null;
-  return MOTHER_EARTH.find(e => e.match.test(currentFile)) || null;
+  return motherEarth.matchStation(currentFile);
+}
+
+async function fetchMotherEarthMeta(entry) {
+  return motherEarth.fetchMeta(entry, { agentForUrl, fetch });
 }
 
 /* =========================
@@ -3875,7 +3830,7 @@ app.get('/now-playing', async (req, res) => {
     }
 
     // =========================
-    // STREAM: Mother Earth side-channel metadata (radio only)
+    // STREAM: optional private side-channel metadata (radio only)
     // =========================
     let meStation = null;
     let meMeta = null;
@@ -3895,7 +3850,7 @@ app.get('/now-playing', async (req, res) => {
             radioAlbum = meMeta.album || radioAlbum || '';
           }
         } catch (e) {
-          dlog('[mother-earth] meta failed:', e?.message || String(e));
+          dlog('[private-meta] fetch failed:', e?.message || String(e));
         }
       }
     }
@@ -4033,7 +3988,7 @@ app.get('/now-playing', async (req, res) => {
 
       if (!album && radioAlbum) album = radioAlbum;
     } else if (isRadio) {
-      debugItunesReason = meStation ? 'skip:mother-earth-or-primary' : 'skip';
+      debugItunesReason = meStation ? 'skip:private-meta-or-primary' : 'skip';
     } else if (stream) {
       debugItunesReason = `skip:${streamKind || 'stream'}`;
     }
@@ -4359,7 +4314,7 @@ async function resolveBestArtForCurrentSong(song, statusRaw) {
       } catch {}
     }
 
-    // 3b) Mother Earth (AzuraCast) => authoritative art
+    // 3b) Private side-channel metadata => authoritative art
     if (!best && streamKind === 'radio') {
       const meStation = matchMotherEarthStation(file);
       if (meStation) {
@@ -4367,7 +4322,7 @@ async function resolveBestArtForCurrentSong(song, statusRaw) {
           const meMeta = await fetchMotherEarthMeta(meStation);
           if (meMeta?.art) best = String(meMeta.art).trim();
         } catch (e) {
-          console.warn('[mother-earth] meta failed:', e?.message || String(e));
+          console.warn('[private-meta] fetch failed:', e?.message || String(e));
         }
       }
     }
