@@ -1,0 +1,909 @@
+/* =========================================================
+ * Base reset + defaults
+ * ========================================================= */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+
+  background: #000;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+
+  position: relative;
+}
+
+/* =========================================================
+ * Desktop/tablet variables (single consolidated root)
+ * - 1080p baseline stays EXACT
+ * ========================================================= */
+:root {
+  /* 1080p baseline */
+  --artSize: 700px;
+  --sidePad: 100px;
+  --colGap: 100px;
+
+  /* Typography ratios (scale off artSize) */
+  --fs-artist: 0.085;
+  --fs-title:  0.072;
+  --fs-album:  0.068;
+  --fs-file:   0.052;
+  --fs-rating: 0.063;
+
+  /* --- modal vars --- */
+  --radius: 14px;
+  --text: rgba(255,255,255,.92);
+  --muted2: rgba(255,255,255,.55);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* Scale down on smaller desktops/tablets */
+@media (max-width: 1600px) {
+  :root {
+    --artSize: min(700px, 45vw, 80vh);
+
+    --sidePad: clamp(12px, calc(var(--artSize) * 0.10), 100px);
+    --colGap:  clamp(20px, calc(var(--artSize) * 0.14), 100px);
+  }
+}
+
+/* =========================================================
+ * Boot gating
+ * ========================================================= */
+body.booting #content {
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+body.booting #background-a,
+body.booting #background-b {
+  opacity: 0;
+}
+body.ready #content {
+  opacity: 1;
+  transition: none;
+}
+body.booting .fade-in,
+body.booting .fade-out {
+  transition: none !important;
+}
+
+/* =========================================================
+ * Background layers (double buffer crossfade)
+ * ========================================================= */
+#background-a,
+#background-b {
+  position: fixed;
+  inset: 0;
+
+  background: #000 center / cover no-repeat;
+
+  filter: blur(18px) brightness(0.3);
+  transform: scale(1.08);
+
+  z-index: -2;
+  opacity: 0;
+  transition: opacity 800ms ease;
+}
+
+/* =========================================================
+ * Main layout (desktop/tablet)
+ * ========================================================= */
+#content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: var(--colGap);
+
+  height: 100%;
+  padding: 0 var(--sidePad);
+
+  z-index: 1;
+}
+
+/* =========================================================
+ * Album art (desktop/tablet)
+ * ========================================================= */
+#album-art-wrapper {
+  flex: 0 0 auto;
+  width: var(--artSize);
+  aspect-ratio: 1 / 1;
+  height: auto;
+
+  position: relative;
+  overflow: hidden;
+
+  border-radius: 32px;
+  background: #111;
+}
+
+/* Foreground art */
+#album-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+
+  position: relative;
+  z-index: 2;
+}
+
+/* Blurred halo */
+#album-art-bg {
+  position: absolute;
+  inset: -30px;
+
+  border-radius: 48px;
+  background: center / cover no-repeat;
+
+  filter: blur(24px) brightness(0.28);
+  transform: scale(1.05);
+
+  z-index: 1;
+}
+
+/* Album link should remain clickable */
+#album-link {
+  position: relative;
+  z-index: 20;
+  pointer-events: auto;
+  font-size: clamp(22px, calc(var(--artSize) * var(--fs-album)), 48px);
+  color: #ccc;
+  text-decoration: none;
+}
+
+/* Album line: text + icon behave like one inline piece */
+#album-text .album-inline {
+  display: inline;
+}
+
+/* Share icon (rendered inside album line) */
+#album-text .share-icon {
+  width: 0.9em;
+  height: 0.9em;
+  display: inline-block;
+  vertical-align: -0.12em;
+
+  margin-left: 0.22em;
+  fill: currentColor;
+  opacity: 0.65;
+
+  pointer-events: none; /* icon never steals taps/clicks */
+}
+
+/* =========================================================
+ * Pause screensaver (CSS-side hide rules)
+ * ========================================================= */
+body.pause #album-art-wrapper {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+body.pause #album-art-bg { display: none !important; }
+
+/* =========================================================
+ * Favorites heart overlay
+ * - Default: visible (desktop + phone)
+ * - Hidden when it does not apply: radio/stream/airplay/upnp/podcast/pause
+ * ========================================================= */
+#fav-heart {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+
+  width: 32px;
+  height: 32px;
+
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+
+  z-index: 9999;
+  pointer-events: auto;
+
+  opacity: 0.92;
+  transition: transform 120ms ease, opacity 120ms ease;
+
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#fav-heart svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+
+  fill: transparent;
+  stroke: rgba(210, 210, 210, 0.92);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+
+  transition: fill 140ms ease, stroke 140ms ease;
+}
+
+#fav-heart.on svg {
+  fill: rgba(210, 210, 210, 0.92);
+  stroke: rgba(210, 210, 210, 0.92);
+}
+
+#fav-heart:active { transform: scale(0.96); }
+#fav-heart.busy { opacity: 0.55; pointer-events: none; }
+
+/* Hide on modes where favorites don't make sense */
+body.is-radio   #fav-heart,
+body.is-stream  #fav-heart,
+body.is-airplay #fav-heart,
+body.is-upnp    #fav-heart,
+body.is-podcast #fav-heart,
+body.pause      #fav-heart {
+  display: none !important;
+}
+
+/* =========================================================
+ * Mode logo (desktop/tablet overlay)
+ * ========================================================= */
+#mode-logo {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+
+  width: 100px;
+  height: 100px;
+
+  display: none;
+}
+
+#mode-logo.radio-logo {
+  width: 75px;
+  height: 75px;
+  opacity: 0.85;
+  border-radius: 8px;
+}
+
+/* =========================================================
+ * Text column (desktop/tablet)
+ * ========================================================= */
+.text-column {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  height: var(--artSize);
+
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 1100px;
+
+  position: relative;
+}
+
+/* =========================================================
+ * Typography (desktop/tablet)
+ * ========================================================= */
+#artist-name {
+  font-weight: 600;
+  text-shadow: 0 4px 14px rgba(0,0,0,0.9);
+  font-size: clamp(28px, calc(var(--artSize) * var(--fs-artist)), 60px);
+}
+
+#titleLine {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+#track-title {
+  font-weight: 600;
+  text-shadow: 0 3px 12px rgba(0,0,0,0.9);
+  font-size: clamp(24px, calc(var(--artSize) * var(--fs-title)), 50px);
+}
+
+.rating-stars {
+  display: inline-flex;
+  cursor: pointer;
+
+  text-shadow: 0 3px 12px rgba(0,0,0,0.9);
+  font-size: clamp(22px, calc(var(--artSize) * var(--fs-rating)), 44px);
+  letter-spacing: clamp(3px, calc(var(--artSize) * 0.011), 8px);
+}
+.rating-stars span.dim { opacity: 0.2; }
+.rating-stars span.filled { color: #d4af37; }
+
+#file-info {
+  font-size: clamp(18px, calc(var(--artSize) * var(--fs-file)), 36px);
+  font-weight: 600;
+  color: #aaa;
+}
+
+.hires-badge {
+  background: gold;
+  color: #000;
+
+  font-size: 0.6em;
+  padding: 1px 4px;
+  margin-left: 8px;
+  margin-bottom: 1px;
+
+  border-radius: 6px;
+  display: none;
+  vertical-align: 0.2em;
+}
+
+#personnel-info {
+  font-size: 18px;
+  color: #ccc;
+  margin-bottom: 12px;
+}
+
+/* =========================================================
+ * Next Up (desktop/tablet)
+ * ========================================================= */
+#next-up {
+  position: absolute;
+  bottom: 28px;
+
+  display: flex;
+  align-items: center;
+
+  gap: clamp(8px, calc(var(--artSize) * 0.02), 14px);
+
+  font-size: clamp(14px, calc(var(--artSize) * 0.037), 26px);
+  font-weight: 600;
+}
+
+#next-up-img {
+  width: clamp(34px, calc(var(--artSize) * 0.1071429), 75px);
+  height: clamp(34px, calc(var(--artSize) * 0.1071429), 75px);
+
+  border-radius: clamp(8px, calc(var(--artSize) * 0.0171429), 12px);
+
+  object-fit: cover;
+  display: none; /* JS decides when it shows */
+}
+
+/* Non-phone views: disable marquee duplication */
+body:not(.phone-ui) #next-up-text .marquee-copy:nth-child(2) {
+  display: none;
+}
+
+/* =========================================================
+ * Progress bar (desktop/tablet)
+ * ========================================================= */
+#progress-bar-wrapper {
+  width: 900px;        /* 1080p baseline */
+  max-width: 100%;
+  height: 8px;
+
+  background: rgba(255,255,255,0.15);
+  border-radius: 4px;
+
+  margin-top: auto;
+  overflow: hidden;
+}
+
+@media (max-width: 1600px) {
+  #progress-bar-wrapper { width: clamp(260px, 52vw, 900px); }
+}
+
+#progress-fill {
+  height: 12px;
+  background: #4fc3f7;
+
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+/* =========================================================
+ * Modal open: hide fixed UI so it can’t bleed through
+ * ========================================================= */
+body.modal-open #progress-bar-wrapper,
+body.modal-open #phone-controls,
+body.modal-open #next-up,
+body.modal-open #mode-logo {
+  display: none !important;
+}
+
+/* =========================================================
+ * Modal shell
+ * ========================================================= */
+#artist-details-container {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(0,0,0,0.75);
+  display: none;
+
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+}
+
+/* =========================================================
+ * Personnel hotspot (default hidden; phone-ui will show)
+ * ========================================================= */
+#art-info-hotspot {
+  display: none;
+
+  position: absolute;
+  top: 10px;
+  left: 10px;
+
+  width: 34px;
+  height: 34px;
+
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(0,0,0,0.35);
+
+  color: #fff;
+
+  align-items: center;
+  justify-content: center;
+
+  z-index: 65;
+  pointer-events: auto;
+}
+
+/* =========================================================
+ * Phone UI (JS-controlled) — use body.phone-ui everywhere
+ * ========================================================= */
+body.phone-ui {
+  --nextUpLift: 6px;
+  --padTop: 30px;
+  --padSide: 16px;
+
+  --gapUnderArt: 18px;
+  --barH: 6px;
+
+  --artRadius: 24px;
+  --artSize: min(92vw, 44vh);
+
+  --nextUpH: 34px;
+  --controlsH: 88px;
+
+  --bottomGap: 45px;
+
+  --ctl: clamp(44px, 12vw, 52px);
+  --ctl-big: clamp(54px, 15vw, 64px);
+  --ctl-icon: clamp(22px, 6vw, 26px);
+  --ctl-icon-big: clamp(26px, 7vw, 30px);
+  --ctlGap: clamp(16px, 5vw, 22px);
+}
+
+/* ===== Phone UI marquee: single-line, no wrap, infinite scroll ===== */
+body.phone-ui #next-up-text{
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+  text-align: left;
+
+  --marqueeGap: 24px;
+  --marqueeDur: 10s;
+}
+
+body.phone-ui #next-up-text .marquee-track{
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  white-space: nowrap;
+
+  width: max-content;
+  will-change: transform;
+  transform: translate3d(0,0,0);
+}
+
+body.phone-ui #next-up-text .marquee-copy{
+  display: inline-block;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  padding-right: var(--marqueeGap);
+}
+
+body.phone-ui #next-up-text:not(.marquee) .marquee-copy:nth-child(2){
+  display: none;
+}
+body.phone-ui #next-up-text:not(.marquee) .marquee-copy{
+  padding-right: 0;
+}
+
+body.phone-ui #next-up-text.marquee .marquee-track{
+  animation: nextup-marquee var(--marqueeDur) linear infinite;
+}
+
+@keyframes nextup-marquee{
+  0%   { transform: translate3d(0,0,0); }
+  100% { transform: translate3d(-50%,0,0); }
+}
+
+/* =========================================================
+ * Phone UI layout
+ * ========================================================= */
+body.phone-ui #content {
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+
+  width: 100% !important;
+  height: 100% !important;
+
+  padding-top: var(--padTop) !important;
+  padding-right: var(--padSide) !important;
+  padding-left: var(--padSide) !important;
+
+  padding-bottom: calc(
+    env(safe-area-inset-bottom, 0px) +
+    var(--controlsH) +
+    var(--bottomGap) +
+    var(--nextUpH) +
+    12px
+  ) !important;
+
+  gap: 14px !important;
+}
+
+body.phone-ui #album-art-wrapper {
+  width: var(--artSize) !important;
+  height: var(--artSize) !important;
+  border-radius: var(--artRadius) !important;
+}
+
+body.phone-ui #personnel-info {
+  display: none !important;
+}
+
+body.phone-ui .text-column {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+
+  align-items: center !important;
+  text-align: center !important;
+  gap: 10px !important;
+
+  padding: 0 !important;
+  margin-top: 18px !important;
+}
+
+/* Phone typography (UNCHANGED from your intent) */
+body.phone-ui #artist-name { font-size: 20px !important; }
+body.phone-ui #track-title { font-size: 18px !important; }
+body.phone-ui .rating-stars { font-size: 24px !important; letter-spacing: 4px !important; }
+body.phone-ui #album-link { font-size: 16px !important; }
+body.phone-ui #file-info { font-size: 14px !important; }
+
+body.phone-ui #titleLine {
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+
+body.phone-ui #ratingStars {
+  display: flex !important;
+  justify-content: center !important;
+}
+
+/* =========================================================
+ * Progress bar (phone)
+ * ========================================================= */
+body.phone-ui #progress-bar-wrapper {
+  position: fixed !important;
+
+  width: calc(var(--artSize) - (var(--artRadius) * 2)) !important;
+  height: var(--barH) !important;
+
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+
+  top: calc(var(--artBottom, 0px) + var(--gapUnderArt)) !important;
+
+  margin: 0 !important;
+  border-radius: 999px !important;
+
+  z-index: 2000 !important;
+  pointer-events: none !important;
+}
+
+body.phone-ui #progress-fill {
+  height: 10px !important;
+  pointer-events: none !important;
+}
+
+/* =========================================================
+ * Next Up footer (phone)
+ * ========================================================= */
+body.phone-ui #next-up {
+  position: fixed !important;
+
+  left: var(--padSide) !important;
+  right: var(--padSide) !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--nextUpLift)) !important;
+
+  height: var(--nextUpH) !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+
+  gap: 10px !important;
+  margin: 0 !important;
+
+  font-size: 14px !important;
+  font-weight: 600 !important;
+
+  background: transparent !important;
+  box-shadow: none !important;
+
+  z-index: 5300 !important;
+  pointer-events: none !important;
+}
+
+body.phone-ui #next-up-img {
+  width: 35px !important;
+  height: 35px !important;
+  border-radius: 8px !important;
+  display: block !important;
+  object-fit: cover !important;
+  flex: 0 0 auto !important;
+}
+
+/* =========================================================
+ * Playback controls (phone-ui only)
+ * ========================================================= */
+#phone-controls { display: none; } /* default hidden */
+
+body.phone-ui {
+  --controlsRowW: calc(100vw - (var(--padSide) * 2));
+  --ctlScaleW: clamp(1, calc(var(--controlsRowW) / 390px), 1.25);
+
+  --ctl:     calc(52px * var(--ctlScaleW));
+  --ctlBig:  calc(64px * var(--ctlScaleW));
+
+  --ctlMax:     calc(var(--controlsH) - 12px);
+  --ctlBigMax:  calc(var(--controlsH) - 4px);
+
+  --ctlFinal:    min(var(--ctl), var(--ctlMax));
+  --ctlBigFinal: min(var(--ctlBig), var(--ctlBigMax));
+
+  --ctlIcon:     calc(var(--ctlFinal) * 0.50);
+  --ctlIconBig:  calc(var(--ctlBigFinal) * 0.47);
+
+  --ctlGap: clamp(18px, calc(var(--controlsRowW) * 0.06), 26px);
+}
+
+body.phone-ui #phone-controls {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+
+  bottom: calc(
+    env(safe-area-inset-bottom, 0px) +
+    var(--nextUpH) +
+    var(--bottomGap) - 25px
+  ) !important;
+
+  height: var(--controlsH) !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: var(--ctlGap) !important;
+
+  padding: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+
+  z-index: 5200 !important;
+  pointer-events: auto !important;
+}
+
+body.phone-ui #phone-controls .ctl {
+  -webkit-appearance: none;
+  appearance: none;
+
+  border: 0;
+  outline: 0;
+
+  width: var(--ctlFinal) !important;
+  height: var(--ctlFinal) !important;
+
+  min-width: 44px;
+  min-height: 44px;
+
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+body.phone-ui #phone-controls .ctl.big {
+  width: var(--ctlBigFinal) !important;
+  height: var(--ctlBigFinal) !important;
+
+  min-width: 56px;
+  min-height: 56px;
+
+  background: rgba(255, 255, 255, 0.18);
+}
+
+body.phone-ui #phone-controls svg {
+  width: var(--ctlIcon) !important;
+  height: var(--ctlIcon) !important;
+
+  display: block;
+  flex: 0 0 auto;
+
+  fill: currentColor;
+  opacity: 0.95;
+}
+
+body.phone-ui #phone-controls .ctl.big svg {
+  width: var(--ctlIconBig) !important;
+  height: var(--ctlIconBig) !important;
+}
+
+body.phone-ui #phone-controls .ctl:active { transform: scale(0.96); }
+
+/* =========================================================
+ * Personnel hotspot visibility (phone only)
+ * ========================================================= */
+body.phone-ui #art-info-hotspot { display: flex; }
+body.is-radio #art-info-hotspot { display: none !important; }
+
+/* =========================================================
+ * Share icon visibility
+ * Global hide cases: AirPlay / Radio / UPnP / Podcasts
+ * - Default: hidden
+ * - Only show on phone-ui when NOT in those modes
+ * ========================================================= */
+#album-text .share-icon { display: none !important; }
+
+body.phone-ui #album-text .share-icon { display: inline-block !important; }
+
+body.is-airplay #album-text .share-icon,
+body.is-radio   #album-text .share-icon,
+body.is-upnp    #album-text .share-icon,
+body.is-podcast #album-text .share-icon {
+  display: none !important;
+}
+
+/* ---------- Modal ---------- */
+.modalOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 2000;
+}
+.modalOverlay.open{ display: flex; }
+
+.modal{
+  width: min(920px, 100%);
+  max-height: min(78vh, 820px);
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(10,16,28,.92);
+  box-shadow: 0 20px 60px rgba(0,0,0,.55);
+  display: flex;
+  flex-direction: column;
+}
+
+.modalHead{
+  display:flex;
+  gap: 12px;
+  align-items:center;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+}
+.modalTitleWrap{ min-width:0; flex: 1 1 auto; }
+.modalTitle{
+  margin:0;
+  font-size: 15px;
+  font-weight: 780;
+  line-height: 1.2;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modalSub{
+  font-size: 12px;
+  color: var(--muted2);
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modalClose{
+  height: 36px;
+  min-width: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 800;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.modalClose:hover{
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.20);
+}
+
+.modalBody{
+  padding: 12px 14px 14px;
+  overflow: auto;
+}
+
+.modalActions{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(255,255,255,.10);
+  background: rgba(0,0,0,.16);
+}
+
+.epList{ display:grid; gap: 10px; }
+
+.epRow{
+  display:grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.18);
+}
+
+.epTitle{
+  font-size: 13px;
+  font-weight: 720;
+  line-height: 1.25;
+  margin: 0 0 4px;
+}
+.epMeta{
+  font-size: 12px;
+  color: var(--muted2);
+}
+.epFile{
+  font-family: var(--mono);
+  font-size: 11px;
+  color: rgba(255,255,255,.70);
+  max-width: 300px;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  justify-self: end;
+}
+
+.tinyMuted{ font-size: 12px; color: var(--muted2); }
