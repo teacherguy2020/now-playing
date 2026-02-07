@@ -40,7 +40,7 @@ function buildArtSources(artUrl) {
 
 function artUrlForFile(file) {
   if (ART_MODE === 'current') {
-    return PUBLIC_TRACK_BASE + '/art/current_320.jpg';
+    return PUBLIC_TRACK_BASE + '/art/current.jpg';
   }
   // default: per-track (recommended)
   return (

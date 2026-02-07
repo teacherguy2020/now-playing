@@ -27,13 +27,13 @@ The display never talks directly to moOde. It talks only to the API node.
 
 3. **Pi #3 — Display/Kiosk (optional)**
    - Chromium kiosk
-   - Loads `http://<PI2_IP>:8000/index1080.html`
+   - Loads `http://<PI2_IP>:8000/index.html` (legacy `/index1080.html` redirects)
    - No metadata logic, no playback logic
 
 ## Primary files
 
 - `moode-nowplaying-api.mjs` — API aggregation + control
-- `index1080.html` — fullscreen display shell
+- `index.html` — fullscreen display shell (`index1080.html` kept as redirect alias)
 - `script1080.js` — UI polling/render/animation logic
 - `lambda.alexa.js` / `alexa/*` — optional Alexa skill runtime
 
@@ -42,7 +42,7 @@ The display never talks directly to moOde. It talks only to the API node.
 ### Public
 - `GET /now-playing`
 - `GET /next-up`
-- `GET /art/current_320.jpg`
+- `GET /art/current.jpg`
 - `GET /art/current_bg_640_blur.jpg`
 
 ### Key-protected (Alexa/control)

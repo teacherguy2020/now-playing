@@ -111,7 +111,7 @@ export function registerArtRoutes(app, deps) {
     }
   });
 
-  app.get('/art/current_320.jpg', async (req, res) => {
+  const handleCurrentArt = async (req, res) => {
     try {
       const v = String(req.query.v || '').trim();
       if (v) {
@@ -138,10 +138,13 @@ export function registerArtRoutes(app, deps) {
 
       return serveCachedOrResizedSquare(res, best, 640, artPath640ForKey, deps);
     } catch (e) {
-      console.warn('[art/current_320] failed:', e?.message || String(e));
+      console.warn('[art/current] failed:', e?.message || String(e));
       return res.status(404).end();
     }
-  });
+  };
+
+  app.get('/art/current.jpg', handleCurrentArt);
+  app.get('/art/current_320.jpg', handleCurrentArt);
 
   app.get('/art/current_640.jpg', async (req, res) => {
     try {

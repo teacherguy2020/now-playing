@@ -3766,7 +3766,7 @@ app.get('/now-playing', async (req, res) => {
     }
    
     
-    const aplArtUrl = `${PUBLIC_BASE_URL}/art/current_320.jpg`;
+    const aplArtUrl = `${PUBLIC_BASE_URL}/art/current.jpg`;
 
     // ✅ ratings allowed only for local files
     const ratingsAllowed = (!stream && !airplay && !!file);
@@ -4274,7 +4274,7 @@ app.get('/next-up', async (req, res) => {
         file: nextFile,
 
         artUrl: nextArtUrl, // ✅ cover art for NEXT track (LAN moOde)
-        currentArtUrl: `${PUBLIC_BASE_URL}/art/current_320.jpg`, // ✅ public, consistent
+        currentArtUrl: `${PUBLIC_BASE_URL}/art/current.jpg`, // ✅ public, consistent
 
         // Keep client logic simple/consistent (even though next-up is local-only)
         stationLogoUrl: '',

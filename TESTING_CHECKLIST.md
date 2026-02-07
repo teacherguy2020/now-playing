@@ -12,7 +12,7 @@ Branch: `jarvis/refactor-api-structure`
 
 - [ ] `GET /now-playing` returns expected JSON shape
 - [ ] `GET /next-up` returns payload
-- [ ] `GET /art/current_320.jpg` returns image
+- [ ] `GET /art/current.jpg` returns image
 - [ ] `GET /art/current_640.jpg` returns image
 - [ ] `GET /art/current_bg_640_blur.jpg` returns image
 
@@ -42,7 +42,7 @@ Branch: `jarvis/refactor-api-structure`
 
 ## 6) UI smoke
 
-- [ ] `index1080.html` loads CSS+JS from `styles/` and `scripts/`
+- [ ] `index.html` loads CSS+JS from `styles/` and `scripts/` (legacy `index1080.html` redirects)
 - [ ] `podcasts.html` loads CSS+JS from `styles/` and `scripts/`
 - [ ] Browser console has no blocking errors
 

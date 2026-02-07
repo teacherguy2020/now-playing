@@ -67,7 +67,7 @@ import urllib.parse
 print(urllib.parse.quote("""$key"""))
 PY
 )"
-        curl -fsS "$API/art/current_320.jpg?v=$v" >/dev/null || true
+        curl -fsS "$API/art/current.jpg?v=$v" >/dev/null || true
       fi
     fi
   done

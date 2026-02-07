@@ -549,7 +549,7 @@ async function bootThenStart() {
 
     const artBgEl = document.getElementById('album-art-bg');
     if (artBgEl) {
-      const firstFgUrl = `${API_BASE}/art/current_320.jpg?v=${encodeURIComponent(firstKey)}`;
+      const firstFgUrl = `${API_BASE}/art/current.jpg?v=${encodeURIComponent(firstKey)}`;
       artBgEl.style.backgroundImage = `url("${firstFgUrl}")`;
       artBgEl.style.backgroundSize = 'cover';
       artBgEl.style.backgroundPosition = 'center';
@@ -1220,7 +1220,7 @@ function updateNextUp({ isAirplay, isStream }) {
       const file   = String(next.file || '').trim();
       const artist = String(next.artist || '').trim();
 
-      // API may return "/art/current_320.jpg" (relative). That must be resolved against API_BASE,
+      // API may return "/art/current.jpg" (relative). That must be resolved against API_BASE,
       // NOT the page origin (STATIC_BASE / port 8000).
       const artUrlRaw = String(next.artUrl || '').trim();
       const artUrl = artUrlRaw.startsWith('/')
@@ -2406,7 +2406,7 @@ if (titleEl) {
 
   const fgUrl = (isAirplay && !IS_PUBLIC && rawArtUrl)
     ? rawArtUrl
-    : (artKey ? `${API_BASE}/art/current_320.jpg?v=${encodeURIComponent(artKey)}` : '');
+    : (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : '');
 
   // =========================
   // Background + glow updates
