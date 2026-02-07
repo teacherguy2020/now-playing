@@ -79,6 +79,7 @@ import {
 import { registerRatingRoutes } from './src/routes/rating.routes.mjs';
 import { registerQueueRoutes } from './src/routes/queue.routes.mjs';
 import { registerTrackRoutes } from './src/routes/track.routes.mjs';
+import { registerArtRoutes } from './src/routes/art.routes.mjs';
 
 async function downloadLatestForRss({ rss, count = 10 }) {
   const items = readSubs();
@@ -3235,60 +3236,6 @@ function parseAplmeta(txt) {
 
 
 
-app.get('/art/track_640.jpg', async (req, res) => {
-  try {
-    // Preferred: build coverart from MPD file path
-    const file = String(req.query.file || '').trim();
-    let src = String(req.query.src || '').trim();
-
-    if (file) {
-      src = `${MOODE_BASE_URL}/coverart.php/${encodeURIComponent(file)}`;
-    }
-
-    if (!src) return res.status(400).send('Missing ?file= or ?src=');
-
-    // Fetch bytes (LAN agent if needed), then resize to 640
-    const buf = await fetchMoodeCoverBytes(src);
-    return sendJpeg(res, buf, 640);
-  } catch (e) {
-    console.warn('[art/track_640] failed:', e?.message || String(e));
-    return res.status(404).end();
-  }
-});
-
-async function fetchMoodeCoverBytes(ref) {
-  const s = String(ref || '').trim();
-  if (!s) throw new Error('empty cover ref');
-
-  if (/^https?:\/\//i.test(s)) {
-    const resp = await fetch(s, { agent: agentForUrl(s), cache: 'no-store' });
-    if (!resp.ok) throw new Error(`cover fetch failed: HTTP ${resp.status}`);
-    return Buffer.from(await resp.arrayBuffer());
-  }
-
-  const url = normalizeCoverUrl(s.startsWith('/') ? s : `/${s}`, MOODE_BASE_URL);
-  const resp = await fetch(url, { dispatcher: dispatcherForUrl(url), cache: 'no-store' });
-  if (!resp.ok) throw new Error(`cover fetch failed: HTTP ${resp.status}`);
-  return Buffer.from(await resp.arrayBuffer());
-}
-
-async function sendJpeg(res, buf, max) {
-  const out = max
-    ? await sharp(buf)
-        .rotate()
-        .resize(max, max, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 82, mozjpeg: true })
-        .toBuffer()
-    : await sharp(buf)
-        .rotate()
-        .jpeg({ quality: 85, mozjpeg: true })
-        .toBuffer();
-
-  res.set('Content-Type', 'image/jpeg');
-  res.set('Cache-Control', 'no-store');
-  res.status(200).send(out);
-}
-
 /* =========================
  * Last-good cache for now-playing
  * ========================= */
@@ -5883,166 +5830,6 @@ async function resolveBestArtForCurrentSong(song, statusRaw) {
   return best;
 }
 
-async function serveCachedOrResizedSquare(res, best, size, cachePathForKey) {
-  const key = normalizeArtKey(best);
-  if (key) {
-    await updateArtCacheIfNeeded(best);
-
-    const p = cachePathForKey(key);
-    if (safeIsFile(p)) {
-      res.set('Content-Type', 'image/jpeg');
-      res.set('Cache-Control', 'no-store');
-      return res.status(200).send(await fs.promises.readFile(p));
-    }
-  }
-
-  const buf = await fetchMoodeCoverBytes(best);
-  return await sendJpeg(res, buf, size);
-}
-
-async function serveCachedOrBlurredBg(res, best, size, cacheBgPathForKey) {
-  const key = normalizeArtKey(best);
-  if (key) {
-    await updateArtCacheIfNeeded(best);
-
-    const p = cacheBgPathForKey(key);
-    if (safeIsFile(p)) {
-      res.set('Content-Type', 'image/jpeg');
-      res.set('Cache-Control', 'no-store');
-      return res.status(200).send(await fs.promises.readFile(p));
-    }
-  }
-
-  const buf = await fetchMoodeCoverBytes(best);
-  const out = await sharp(buf)
-    .rotate()
-    .resize(size, size, { fit: 'cover' })
-    .blur(18)
-    .jpeg({ quality: 70, mozjpeg: true })
-    .toBuffer();
-
-  res.set('Content-Type', 'image/jpeg');
-  res.set('Cache-Control', 'no-store');
-  return res.status(200).send(out);
-}
-
-// ------------------------------
-// /art/current_320.jpg
-// ------------------------------
-app.get('/art/current_320.jpg', async (req, res) => {
-  try {
-    // Deterministic: client-provided key/url
-    const v = String(req.query.v || '').trim();
-    if (v) {
-      const key = normalizeArtKey(v);
-      if (!key) return res.status(404).end();
-
-      await updateArtCacheIfNeeded(v);
-
-      const p640 = artPath640ForKey(key);
-      if (safeIsFile(p640)) {
-        res.set('Content-Type', 'image/jpeg');
-        res.set('Cache-Control', 'no-store');
-        return res.status(200).send(await fs.promises.readFile(p640));
-      }
-
-      const buf = await fetchMoodeCoverBytes(key);
-      return await sendJpeg(res, buf, 640);
-    }
-    // after you decide what bytes you’re going to serve
-    res.set('X-Art-Source', source);   // 'cache' | 'moode' | 'rss' | 'podcast-map' | 'itunes'
-    res.set('X-Art-Key', key.slice(0, 80));
-    // Current song resolution
-    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
-
-    const best = await resolveBestArtForCurrentSong(song, statusRaw);
-    if (!best) return res.status(404).end();
-
-    return await serveCachedOrResizedSquare(res, best, 640, artPath640ForKey);
-  } catch (e) {
-    console.warn('[art/current_320] failed:', e?.message || String(e));
-    return res.status(404).end();
-  }
-});
-
-// ------------------------------
-// /art/current_640.jpg
-// ------------------------------
-app.get('/art/current_640.jpg', async (req, res) => {
-  try {
-    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
-
-    const best = await resolveBestArtForCurrentSong(song, statusRaw);
-    if (!best) return res.status(404).end();
-
-    // Serve cached keyed 640 if present; else fetch + resize(640)
-    const key = normalizeArtKey(best);
-    if (key) {
-      await updateArtCacheIfNeeded(best);
-
-      const p640 = artPath640ForKey(key);
-      if (safeIsFile(p640)) {
-        res.set('Content-Type', 'image/jpeg');
-        res.set('Cache-Control', 'no-store');
-        return res.status(200).send(await fs.promises.readFile(p640));
-      }
-    }
-
-    const buf = await fetchMoodeCoverBytes(best);
-    const out640 = await sharp(buf)
-      .rotate()
-      .resize(640, 640, { fit: 'cover' })
-      .jpeg({ quality: 85, mozjpeg: true })
-      .toBuffer();
-
-    res.set('Content-Type', 'image/jpeg');
-    res.set('Cache-Control', 'no-store');
-    return res.status(200).send(out640);
-  } catch (e) {
-    console.warn('[art/current_640] failed:', e?.message || String(e));
-    return res.status(404).end();
-  }
-});
-
-// ------------------------------
-// /art/current_bg_640_blur.jpg
-// ------------------------------
-app.get('/art/current_bg_640_blur.jpg', async (req, res) => {
-  try {
-    // Deterministic: client-provided key/url
-    const v = String(req.query.v || '').trim();
-    if (v) {
-      const key = normalizeArtKey(v);
-      if (!key) return res.status(404).end();
-
-      await updateArtCacheIfNeeded(v);
-
-      const pbg = artPathBgForKey(key);
-      if (safeIsFile(pbg)) {
-        res.set('Content-Type', 'image/jpeg');
-        res.set('Cache-Control', 'no-store');
-        return res.status(200).send(await fs.promises.readFile(pbg));
-      }
-
-      return await serveCachedOrBlurredBg(res, key, 640, artPathBgForKey);
-    }
-
-    // Current song resolution
-    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
-
-    const best = await resolveBestArtForCurrentSong(song, statusRaw);
-    if (!best) return res.status(404).end();
-
-    return await serveCachedOrBlurredBg(res, best, 640, artPathBgForKey);
-  } catch (e) {
-    console.warn('[art/current_bg] failed:', e?.message || String(e));
-    return res.status(404).end();
-  }
-});
-
 async function getAirplayCoverUrlFromAplmeta(MOODE_BASE_URL) {
   try {
     const p = '/var/local/www/aplmeta.txt';
@@ -6063,6 +5850,20 @@ async function getAirplayCoverUrlFromAplmeta(MOODE_BASE_URL) {
     return '';
   }
 }
+
+registerArtRoutes(app, {
+  MOODE_BASE_URL,
+  fetchJson,
+  resolveBestArtForCurrentSong,
+  normalizeArtKey,
+  updateArtCacheIfNeeded,
+  artPath640ForKey,
+  artPathBgForKey,
+  safeIsFile,
+  normalizeCoverUrl,
+  dispatcherForUrl,
+  agentForUrl,
+});
 
 registerRatingRoutes(app, {
   clampRating,
