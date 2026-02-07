@@ -7,6 +7,9 @@
 const Alexa = require('ask-sdk-core');
 const config = require('./config');
 const { createApiClient } = require('./lib/api');
+const { createIntentHandlers } = require('./handlers/intents');
+const { createAudioHandlers } = require('./handlers/audio');
+const { createMiscHandlers } = require('./handlers/misc');
 const {
   nowMs, safeStr, safeNum, safeNumFloat, decodeHtmlEntities, parseTokenB64, makeToken,
   absolutizeMaybe, getEventType, getAudioPlayerToken, getAudioOffsetMs, speak, sleep,
@@ -256,30 +259,10 @@ function rememberStop(token, offsetMs) {
  * Logging interceptor
  * ========================= */
 
-const LogRequestInterceptor = {
-  process(handlerInput) {
-    try {
-      const req = handlerInput.requestEnvelope && handlerInput.requestEnvelope.request;
-      const t = req && req.type ? req.type : 'unknown';
-
-      console.log('INCOMING request.type:', t);
-      console.log('VERSION:', VERSION);
-
-      if (t === 'IntentRequest') {
-        const intentName = req && req.intent && req.intent.name ? req.intent.name : 'unknown';
-        const slots = req && req.intent && req.intent.slots ? req.intent.slots : null;
-        console.log('INCOMING intent.name:', intentName);
-        if (slots) console.log('INCOMING intent.slots:', JSON.stringify(slots));
-      }
-    } catch (e) {
-      console.log('LogRequestInterceptor failed:', e && e.message ? e.message : String(e));
-    }
-  },
-};
-
 /* =========================
  * Handlers - Intents
  * ========================= */
+
 
 // --- Prime guard (avoid hammering MPD if Amazon fires bursts) ---
 const PRIME_GUARD_MS = 4000;
@@ -345,440 +328,57 @@ async function ensureCurrentTrack() {
   return null;
 }
 
-const LaunchRequestHandler = {
-  canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'LaunchRequest';
-  },
-
-  async handle(handlerInput) {
-    try {
-      const snap = await ensureCurrentTrack();
-
-      if (!snap || !snap.file) {
-        console.log('Launch: still no current track after prime');
-        return speak(handlerInput, 'I cannot find anything to play right now.', true);
-      }
-
-      const directive = buildPlayReplaceAll(snap, 'Starting playback');
-
-      // Remember what we issued for resume
-      try {
-        const issuedToken = directive.audioItem.stream.token;
-        const issuedUrl = directive.audioItem.stream.url;
-        rememberIssuedStream(issuedToken, issuedUrl, 0);
-      } catch (e) {}
-
-      // IMPORTANT: still do NOT advance here.
-      // PlaybackStarted(offset==0) will advance.
-      return handlerInput.responseBuilder
-        .speak('Starting your queue.')
-        .withShouldEndSession(true)
-        .addDirective(directive)
-        .getResponse();
-
-    } catch (e) {
-      console.log('Launch error:', e && e.message ? e.message : String(e));
-      return speak(handlerInput, 'Please check your skill code.', true);
-    }
-  },
-};
-
-const NowPlayingIntentHandler = {
-  canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-      && Alexa.getIntentName(handlerInput.requestEnvelope) === 'NowPlayingIntent';
-  },
-  async handle(handlerInput) {
-    try {
-      const snap = await getStableNowPlayingSnapshot();
-      if (!snap || !snap.title) {
-        return speak(handlerInput, 'I cannot determine what is playing right now.', false);
-      }
-
-      const title = decodeHtmlEntities(snap.title || '');
-      const artist = decodeHtmlEntities(snap.artist || '');
-      const album = decodeHtmlEntities(snap.album || '');
-
-      let speech = 'This is ' + title + '.';
-      if (artist) speech += ' By ' + artist + '.';
-      if (album) speech += ' From ' + album + '.';
-
-      return speak(handlerInput, speech, false);
-    } catch (e) {
-      console.log('NowPlayingIntent error:', e && e.message ? e.message : String(e));
-      return speak(handlerInput, 'Sorry, I could not fetch what is playing.', false);
-    }
-  },
-};
-
-const PauseIntentHandler = {
-  canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-      && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.PauseIntent';
-  },
-  handle(handlerInput) {
-    // We rely on the subsequent AudioPlayer.PlaybackStopped event to capture offset.
-    return handlerInput.responseBuilder
-      .speak('Paused.')
-      .withShouldEndSession(true)
-      .addDirective({ type: 'AudioPlayer.Stop' })
-      .getResponse();
-  },
-};
-
-const ResumeIntentHandler = {
-  canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-      && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.ResumeIntent';
-  },
-  async handle(handlerInput) {
-    try {
-      const tok = safeStr(lastPlayedToken);
-      const url = safeStr(lastPlayedUrl);
-      const off = safeNumFloat(lastStoppedOffsetMs, 0);
-
-      // If we have a saved token+url, do a true resume without touching MPD queue.
-      if (tok && url) {
-        const directive = buildPlayReplaceAllWithOffset(tok, url, off);
-
-        console.log('Resume: using saved token prefix:', tok.slice(0, 160), 'offsetMs=', Math.floor(off || 0));
-
-        rememberIssuedStream(tok, url, off);
-
-        return handlerInput.responseBuilder
-          .speak('Resuming.')
-          .withShouldEndSession(true)
-          .addDirective(directive)
-          .getResponse();
-      }
-
-      // Fallback: no saved resume state => treat like "start playing"
-      const snap = await getStableNowPlayingSnapshot();
-      if (!snap || !snap.file) {
-        return speak(handlerInput, 'I cannot resume right now.', false);
-      }
-
-      const directive2 = buildPlayReplaceAll(snap, 'Resuming playback');
-      rememberIssuedStream(directive2.audioItem.stream.token, directive2.audioItem.stream.url, 0);
-
-      // IMPORTANT: Do NOT advance here; PlaybackStarted(offset==0) will do it.
-      return handlerInput.responseBuilder
-        .speak('Resuming.')
-        .withShouldEndSession(true)
-        .addDirective(directive2)
-        .getResponse();
-    } catch (e) {
-      console.log('ResumeIntent error:', e && e.message ? e.message : String(e));
-      return speak(handlerInput, 'I cannot resume right now.', false);
-    }
-  },
-};
-
-const NextIntentHandler = {
-  canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-      && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.NextIntent';
-  },
-  async handle(handlerInput) {
-    try {
-      const snap = await getStableNowPlayingSnapshot();
-      if (!snap || !snap.file) {
-        return speak(handlerInput, 'I cannot skip right now.', false);
-      }
-
-      const directive = buildPlayReplaceAll(snap, 'Skipping');
-      rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
-
-      // IMPORTANT: Do NOT advance here; PlaybackStarted(offset==0) will do it.
-      return handlerInput.responseBuilder
-        .speak('Skipping.')
-        .withShouldEndSession(true)
-        .addDirective(directive)
-        .getResponse();
-    } catch (e) {
-      console.log('NextIntent error:', e && e.message ? e.message : String(e));
-      return speak(handlerInput, 'I cannot skip right now.', false);
-    }
-  },
-};
-
-const HelpIntentHandler = {
-  canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-      && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.HelpIntent';
-  },
-  handle(handlerInput) {
-    return speak(handlerInput, 'You can say: what’s playing, pause, resume, or next.', false);
-  },
-};
-
-const FallbackIntentHandler = {
-  canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-      && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.FallbackIntent';
-  },
-  handle(handlerInput) {
-    return speak(handlerInput, 'Sorry, I did not understand. Try: what’s playing.', false);
-  },
-};
-
-const StopHandler = {
-  canHandle(handlerInput) {
-    const t = Alexa.getRequestType(handlerInput.requestEnvelope);
-    if (t !== 'IntentRequest') return false;
-    const name = Alexa.getIntentName(handlerInput.requestEnvelope);
-    return name === 'AMAZON.StopIntent' || name === 'AMAZON.CancelIntent';
-  },
-  handle(handlerInput) {
-    return handlerInput.responseBuilder
-      .withShouldEndSession(true)
-      .addDirective({ type: 'AudioPlayer.Stop' })
-      .getResponse();
-  },
-};
-
-const SessionEndedRequestHandler = {
-  canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'SessionEndedRequest';
-  },
-  handle(handlerInput) {
-    console.log('SessionEndedRequest');
-    return handlerInput.responseBuilder.getResponse();
-  },
-};
-
-/* =========================
- * PlaybackController (buttons)
- * ========================= */
-
-const PlaybackControllerEventHandler = {
-  canHandle(handlerInput) {
-    const t = Alexa.getRequestType(handlerInput.requestEnvelope);
-    return t === 'PlaybackController.NextCommandIssued'
-      || t === 'PlaybackController.PreviousCommandIssued'
-      || t === 'PlaybackController.PlayCommandIssued'
-      || t === 'PlaybackController.PauseCommandIssued';
-  },
-  handle(handlerInput) {
-    // Let AudioPlayer events drive queue; voice intents handle pause/resume/next.
-    return handlerInput.responseBuilder.getResponse();
-  },
-};
-
-/* =========================
- * AudioPlayer events
- * ========================= */
-
-const AudioPlayerEventHandler = {
-  canHandle(handlerInput) {
-    const t = Alexa.getRequestType(handlerInput.requestEnvelope);
-    return t && String(t).startsWith('AudioPlayer.');
-  },
-
-  async handle(handlerInput) {
-    const eventType = getEventType(handlerInput);
-    const token = getAudioPlayerToken(handlerInput);
-
-    // Capture offset for resume
-    if (eventType === 'AudioPlayer.PlaybackStopped') {
-      try {
-        const off = getAudioOffsetMs(handlerInput);
-        console.log('AudioPlayer event:', eventType);
-        console.log('PlaybackStopped: token prefix:', safeStr(token).slice(0, 160), 'offsetMs=', off);
-
-        rememberStop(token, off);
-      } catch (e) {
-        console.log('PlaybackStopped handler failed:', e && e.message ? e.message : String(e));
-      }
-      return handlerInput.responseBuilder.getResponse();
-    }
-
-    // 1) PlaybackStarted => advance MPD ONLY for true "start at 0" (not resume)
-    if (eventType === 'AudioPlayer.PlaybackStarted') {
-      try {
-        console.log('AudioPlayer event:', eventType);
-
-        const startOff = getAudioOffsetMs(handlerInput);
-        console.log(
-          'PlaybackStarted: token prefix:',
-          safeStr(token).slice(0, 160),
-          'offsetMs=',
-          startOff
-        );
-
-        if (safeStr(token)) lastPlayedToken = safeStr(token);
-
-        // If offset > 0, this is a resume/seek. Do NOT pop+prime MPD.
-        if (Number.isFinite(startOff) && startOff > 0) {
-          console.log('PlaybackStarted: non-zero offset; skipping advance');
-          return handlerInput.responseBuilder.getResponse();
-        }
-
-        try {
-          const advanced = await advanceFromTokenIfNeeded(token);
-          if (advanced) console.log('PlaybackStarted: advanced queue for this token');
-        } catch (e) {
-          console.log('PlaybackStarted: advance failed:', e && e.message ? e.message : String(e));
-        }
-
-        return handlerInput.responseBuilder.getResponse();
-      } catch (e) {
-        console.log('PlaybackStarted handler failed:', e && e.message ? e.message : String(e));
-        return handlerInput.responseBuilder.getResponse();
-      }
-    }
-
-    // 2) PlaybackNearlyFinished => ENQUEUE next based on /now-playing (after prior advance)
-    if (eventType === 'AudioPlayer.PlaybackNearlyFinished') {
-      try {
-        console.log('AudioPlayer event:', eventType);
-        const finishedToken = safeStr(token);
-
-        if (!finishedToken) {
-          console.log('NearlyFinished: missing finishedToken; cannot ENQUEUE');
-          return handlerInput.responseBuilder.getResponse();
-        }
-
-        console.log('NearlyFinished: token prefix:', finishedToken.slice(0, 160));
-
-        const snap = await ensureNowPlayingForEnqueue('NearlyFinished:');
-        console.log('NearlyFinished: /now-playing snapshot:', snap ? JSON.stringify(snap, null, 2) : null);
-
-        if (!snap || !snap.file) {
-          console.log('NearlyFinished: no next from /now-playing; skipping ENQUEUE');
-          return handlerInput.responseBuilder.getResponse();
-        }
-
-        const nextFile = safeStr(snap.file);
-        const nextPos0 = safeNum(snap.songpos, null);
-        const nextSongId = safeNum(snap.songid, null);
-
-        if (!nextFile || nextPos0 === null) {
-          console.log('NearlyFinished: still no next after prime; skipping ENQUEUE');
-          return handlerInput.responseBuilder.getResponse();
-        }
-
-        const candidateToken = makeToken({ file: nextFile, songid: nextSongId, pos0: nextPos0 });
-
-        // Dedup ENQUEUE
-        if (recentlyEnqueuedToken(candidateToken)) {
-          console.log('NearlyFinished: skip duplicate enqueue token');
-          return handlerInput.responseBuilder.getResponse();
-        }
-
-        const enq = buildPlayEnqueue(
-          {
-            file: nextFile,
-            songpos: String(nextPos0),
-            songid: (nextSongId !== null ? String(nextSongId) : ''),
-            title: decodeHtmlEntities(snap.title || ''),
-            artist: decodeHtmlEntities(snap.artist || ''),
-            album: decodeHtmlEntities(snap.album || ''),
-            albumArtUrl: absolutizeMaybe(snap.albumArtUrl || '', API_BASE),
-            altArtUrl: absolutizeMaybe(snap.altArtUrl || '', API_BASE),
-          },
-          finishedToken
-        );
-
-        if (!enq) {
-          console.log('NearlyFinished: could not build ENQUEUE directive');
-          return handlerInput.responseBuilder.getResponse();
-        }
-
-        // Remember what we are about to enqueue (useful if user pauses quickly during the next track)
-        try {
-          const enqToken = enq.audioItem && enq.audioItem.stream ? enq.audioItem.stream.token : '';
-          const enqUrl = enq.audioItem && enq.audioItem.stream ? enq.audioItem.stream.url : '';
-          if (enqToken && enqUrl) {
-            rememberIssuedStream(enqToken, enqUrl, 0);
-          }
-        } catch (e) {}
-
-        // After ENQUEUE, advance MPD head for that enqueued token so /now-playing becomes the NEXT next.
-        // This is OK because:
-        //  - the ENQUEUED track's artwork is per-track (ART_MODE=track), not "current"
-        //  - advancing here preserves continuous playback planning
-        try {
-          await advanceFromTokenIfNeeded(candidateToken);
-          console.log('NearlyFinished: advanced MPD head for enqueued track pos0=', nextPos0, 'songid=', nextSongId);
-        } catch (e) {
-          console.log('NearlyFinished: advance after enqueue failed:', e && e.message ? e.message : String(e));
-        }
-
-        markEnqueuedToken(candidateToken, finishedToken);
-
-        console.log('NearlyFinished: ENQUEUE next:', nextFile, 'pos0=', nextPos0, 'songid=', nextSongId);
-        console.log('NearlyFinished: enqueue directive:', JSON.stringify(enq, null, 2));
-
-        return handlerInput.responseBuilder
-          .addDirective(enq)
-          .getResponse();
-
-      } catch (e) {
-        console.log('NearlyFinished handler failed:', e && e.message ? e.message : String(e));
-        return handlerInput.responseBuilder.getResponse();
-      }
-    }
-
-    // 3) PlaybackFinished => do nothing if we already enqueued for this finished token
-    if (eventType === 'AudioPlayer.PlaybackFinished') {
-      try {
-        console.log('AudioPlayer event:', eventType);
-
-        if (enqueueAlreadyIssuedForPrevToken(token)) {
-          console.log('PlaybackFinished: enqueue already issued; no action');
-          return handlerInput.responseBuilder.getResponse();
-        }
-
-        console.log('PlaybackFinished: fallback continue (REPLACE_ALL)');
-        const snap = await getStableNowPlayingSnapshot();
-        if (!snap || !snap.file) return handlerInput.responseBuilder.getResponse();
-
-        const directive = buildPlayReplaceAll(snap, 'Continuing playback');
-        rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
-
-        // IMPORTANT: Do NOT advance here; PlaybackStarted(offset==0) will do it.
-
-        return handlerInput.responseBuilder
-          .addDirective(directive)
-          .getResponse();
-
-      } catch (e) {
-        console.log('PlaybackFinished handler failed:', e && e.message ? e.message : String(e));
-        return handlerInput.responseBuilder.getResponse();
-      }
-    }
-
-    // Ignore other AudioPlayer.* events (Paused/Resumed/etc)
-    return handlerInput.responseBuilder.getResponse();
-  },
-};
-
-/* =========================
- * System.ExceptionEncountered
- * ========================= */
-
-const SystemExceptionHandler = {
-  canHandle(handlerInput) {
-    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'System.ExceptionEncountered';
-  },
-  handle(handlerInput) {
-    console.log('System.ExceptionEncountered');
-    return handlerInput.responseBuilder.getResponse();
-  },
-};
-
 /* =========================
  * Skill builder
  * ========================= */
 
-const ErrorHandler = {
-  canHandle() { return true; },
-  handle(handlerInput, error) {
-    console.log('ErrorHandler:', error && error.message ? error.message : String(error));
-    return handlerInput.responseBuilder.getResponse();
-  },
-};
+const {
+  LaunchRequestHandler,
+  NowPlayingIntentHandler,
+  PauseIntentHandler,
+  ResumeIntentHandler,
+  NextIntentHandler,
+  HelpIntentHandler,
+  FallbackIntentHandler,
+  StopHandler,
+  SessionEndedRequestHandler,
+} = createIntentHandlers({
+  safeStr,
+  safeNumFloat,
+  decodeHtmlEntities,
+  speak,
+  getStableNowPlayingSnapshot,
+  ensureCurrentTrack,
+  buildPlayReplaceAll,
+  buildPlayReplaceAllWithOffset,
+  rememberIssuedStream,
+  getLastPlayed: () => ({ token: lastPlayedToken, url: lastPlayedUrl, offsetMs: lastStoppedOffsetMs }),
+});
+
+const { PlaybackControllerEventHandler, AudioPlayerEventHandler } = createAudioHandlers({
+  API_BASE,
+  safeStr,
+  safeNum,
+  decodeHtmlEntities,
+  makeToken,
+  absolutizeMaybe,
+  getEventType,
+  getAudioPlayerToken,
+  getAudioOffsetMs,
+  advanceFromTokenIfNeeded,
+  rememberStop,
+  rememberIssuedStream,
+  setLastPlayedToken: (v) => { lastPlayedToken = v; },
+  recentlyEnqueuedToken,
+  markEnqueuedToken,
+  enqueueAlreadyIssuedForPrevToken,
+  ensureNowPlayingForEnqueue,
+  getStableNowPlayingSnapshot,
+  buildPlayEnqueue,
+  buildPlayReplaceAll,
+});
+
+const { LogRequestInterceptor, SystemExceptionHandler, ErrorHandler } = createMiscHandlers({ VERSION });
 
 exports.handler = Alexa.SkillBuilders.custom()
   .addRequestInterceptors(LogRequestInterceptor)
