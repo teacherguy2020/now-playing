@@ -3412,6 +3412,16 @@ function normUrl(u) {
   return String(u || "").trim();
 }
 
+function makePodcastId(rss) {
+  const norm = String(rss || '').trim().toLowerCase();
+  const hash = crypto
+    .createHash('sha1')
+    .update(norm)
+    .digest('hex')
+    .slice(0, 10);
+  return `pod-${hash}`;
+}
+
 function slugFromUrl(u) {
   // stable-ish slug based on URL hash
   const h = crypto.createHash("sha1").update(u).digest("hex").slice(0, 10);
