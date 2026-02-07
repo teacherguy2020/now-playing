@@ -5,221 +5,19 @@
  * ========================= */
 
 const Alexa = require('ask-sdk-core');
-const http = require('http');
-const https = require('https');
-const { URL } = require('url');
+const config = require('./config');
+const { createApiClient } = require('./lib/api');
+const {
+  nowMs, safeStr, safeNum, safeNumFloat, decodeHtmlEntities, parseTokenB64, makeToken,
+  absolutizeMaybe, getEventType, getAudioPlayerToken, getAudioOffsetMs, speak, sleep,
+} = require('./lib/common');
 
-const VERSION = 2; // bump when you deploy
+const {
+  VERSION, API_BASE, TRACK_KEY, PUBLIC_TRACK_BASE, ART_MODE,
+  ADVANCE_GUARD_MS, ENQUEUE_GUARD_MS, PRIME_START_OFFSET_MS,
+} = config;
 
-// NOTE: your env var is API_BASE (not MOODE_API_BASE)
-const API_BASE = String(process.env.API_BASE || 'https://moode.brianwis.com').replace(/\/+$/, '');
-const TRACK_KEY = String(process.env.TRACK_KEY || '1029384756').trim();
-const PUBLIC_TRACK_BASE = String(process.env.PUBLIC_TRACK_BASE || API_BASE).replace(/\/+$/, ''); // usually same as API_BASE
-
-// Art routing (keep flexible; don't hard-code assumptions)
-const ART_MODE = String(process.env.ART_MODE || 'track').trim().toLowerCase();
-// ART_MODE:
-//   "track"   => /art/track_640.jpg?file=... (recommended; per-track; no race with queue advance)
-//   "current" => /art/current_320.jpg (timing-sensitive; only use if you want "current" behavior)
-
-// Tuneables
-const HTTP_TIMEOUT_MS = 6000;
-
-// Dedupe / idempotency windows
-const ADVANCE_GUARD_MS = 8000;       // avoid double-advancing same token
-const ENQUEUE_GUARD_MS = 5000;       // avoid duplicate ENQUEUE spam
-const PRIME_START_OFFSET_MS = 0;     // no resume yet
-
-/* =========================
- * Small utils
- * ========================= */
-
-function nowMs() { return Date.now(); }
-
-function safeStr(x) {
-  return String(x === undefined || x === null ? '' : x).trim();
-}
-
-function safeNum(x, fallback) {
-  const n = Number.parseInt(String(x === undefined || x === null ? '' : x).trim(), 10);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function safeNumFloat(x, fallback) {
-  const n = Number(String(x === undefined || x === null ? '' : x).trim());
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function decodeHtmlEntities(str) {
-  const s = safeStr(str);
-  return s
-    .replace(/&amp;/gi, '&')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>');
-}
-
-function b64ToJson(b64) {
-  try {
-    const txt = Buffer.from(b64, 'base64').toString('utf8');
-    return JSON.parse(txt);
-  } catch (e) {
-    return null;
-  }
-}
-
-function parseTokenB64(token) {
-  // token format: "moode-track:<base64json>"
-  const s = safeStr(token);
-  const i = s.indexOf(':');
-  if (i < 0) return null;
-  const b64 = s.slice(i + 1);
-  const obj = b64ToJson(b64);
-  return obj && typeof obj === 'object' ? obj : null;
-}
-
-function makeToken(obj) {
-  const payload = JSON.stringify(obj || {});
-  const b64 = Buffer.from(payload, 'utf8').toString('base64');
-  return 'moode-track:' + b64;
-}
-
-function absolutizeMaybe(urlStr) {
-  const s = safeStr(urlStr);
-  if (!s) return '';
-  if (/^https?:\/\//i.test(s)) return s;
-  if (s.startsWith('/')) return API_BASE + s;
-  return API_BASE + '/' + s;
-}
-
-function getEventType(handlerInput) {
-  const req = handlerInput.requestEnvelope && handlerInput.requestEnvelope.request;
-  return req && req.type ? String(req.type) : '';
-}
-
-function getAudioPlayerToken(handlerInput) {
-  const req = handlerInput.requestEnvelope && handlerInput.requestEnvelope.request;
-  // AudioPlayer events usually put token here
-  if (req && req.token) return String(req.token);
-  // Some paths might keep it in context
-  try {
-    const t = handlerInput.requestEnvelope.context.AudioPlayer.token;
-    return t ? String(t) : '';
-  } catch (e) {
-    return '';
-  }
-}
-
-function getAudioOffsetMs(handlerInput) {
-  try {
-    const req = handlerInput.requestEnvelope && handlerInput.requestEnvelope.request;
-    const v = req && req.offsetInMilliseconds;
-    if (v === undefined || v === null) return null;
-    const n = safeNumFloat(v, null);
-    return (n === null || n < 0) ? null : Math.floor(n);
-  } catch (e) {
-    return null;
-  }
-}
-
-function speak(handlerInput, text, shouldEnd) {
-  const end = !!shouldEnd;
-  return handlerInput.responseBuilder
-    .speak(text)
-    .withShouldEndSession(end)
-    .getResponse();
-}
-
-/* =========================
- * HTTPS helper
- * ========================= */
-
-function httpRequestJson(method, urlStr, opts) {
-  opts = opts || {};
-  const headers = opts.headers || {};
-  const bodyObj = opts.bodyObj || null;
-  const timeoutMs = opts.timeoutMs || HTTP_TIMEOUT_MS;
-
-  return new Promise((resolve, reject) => {
-    const u = new URL(urlStr);
-    const lib = u.protocol === 'https:' ? https : http;
-
-    const body = bodyObj ? Buffer.from(JSON.stringify(bodyObj), 'utf8') : null;
-
-    const req = lib.request(
-      {
-        protocol: u.protocol,
-        hostname: u.hostname,
-        port: u.port || (u.protocol === 'https:' ? 443 : 80),
-        path: u.pathname + u.search,
-        method: method,
-        headers: Object.assign(
-          { 'Accept': 'application/json' },
-          body ? { 'Content-Type': 'application/json', 'Content-Length': body.length } : {},
-          headers
-        ),
-        timeout: timeoutMs,
-      },
-      (res) => {
-        let data = '';
-        res.setEncoding('utf8');
-
-        res.on('data', (chunk) => { data += chunk; });
-        res.on('end', () => {
-          const status = res.statusCode || 0;
-          const ok = status >= 200 && status < 300;
-
-          if (!ok) {
-            return reject(new Error(
-              'HTTP ' + status + ' ' + method + ' ' + urlStr + ': ' + String(data).slice(0, 200)
-            ));
-          }
-
-          const t = String(data || '').trim();
-          if (!t) return resolve(null);
-
-          try {
-            resolve(JSON.parse(t));
-          } catch (e) {
-            reject(new Error(
-              'Bad JSON from ' + urlStr + ': ' + e.message + '. Body: ' + t.slice(0, 200)
-            ));
-          }
-        });
-      }
-    );
-
-    req.on('timeout', () => {
-      try { req.destroy(new Error('timeout')); } catch (e) {}
-    });
-
-    req.on('error', (err) => reject(err));
-
-    if (body) req.write(body);
-    req.end();
-  });
-}
-
-/* =========================
- * API calls
- * ========================= */
-
-async function apiNowPlaying() {
-  const url = API_BASE + '/now-playing';
-  return httpRequestJson('GET', url, { timeoutMs: HTTP_TIMEOUT_MS });
-}
-
-// IMPORTANT: server prefers songid now; keep pos0 as fallback.
-async function apiQueueAdvance(songid, pos0, file) {
-  const url = API_BASE + '/queue/advance';
-  const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
-  return httpRequestJson('POST', url, {
-    headers: headers,
-    bodyObj: { songid: songid, pos0: pos0, file: file },
-    timeoutMs: HTTP_TIMEOUT_MS,
-  });
-}
+const { apiNowPlaying, apiQueueAdvance, apiMpdPrime } = createApiClient(config);
 
 /* =========================
  * Alexa helpers
@@ -482,22 +280,6 @@ const LogRequestInterceptor = {
 /* =========================
  * Handlers - Intents
  * ========================= */
-
-// Helper: short sleep
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-// Helper: prime MPD via your API
-async function apiMpdPrime() {
-  const url = API_BASE + '/mpd/prime';
-  const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
-  return httpRequestJson('POST', url, {
-    headers,
-    bodyObj: {},            // keep it explicit
-    timeoutMs: HTTP_TIMEOUT_MS,
-  });
-}
 
 // --- Prime guard (avoid hammering MPD if Amazon fires bursts) ---
 const PRIME_GUARD_MS = 4000;
@@ -892,8 +674,8 @@ const AudioPlayerEventHandler = {
             title: decodeHtmlEntities(snap.title || ''),
             artist: decodeHtmlEntities(snap.artist || ''),
             album: decodeHtmlEntities(snap.album || ''),
-            albumArtUrl: absolutizeMaybe(snap.albumArtUrl || ''),
-            altArtUrl: absolutizeMaybe(snap.altArtUrl || ''),
+            albumArtUrl: absolutizeMaybe(snap.albumArtUrl || '', API_BASE),
+            altArtUrl: absolutizeMaybe(snap.altArtUrl || '', API_BASE),
           },
           finishedToken
         );
