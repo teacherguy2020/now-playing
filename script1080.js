@@ -92,14 +92,17 @@ const HOST = location.hostname.replace(/^www\./, '');
 const IS_PUBLIC = (HOST === 'moode.brianwis.com');
 
 // API (JSON + generated art)
+const LAN_API_PORT = (location.port === '8101') ? '3101' : '3000';
+const LAN_STATIC_PORT = (location.port === '8101') ? '8101' : '8000';
+
 const API_BASE = IS_PUBLIC
   ? 'https://moode.brianwis.com'
-  : 'http://10.0.0.233:3000';
+  : `${location.protocol}//${location.hostname}:${LAN_API_PORT}`;
 
 // Static assets (HTML / JS / CSS / icons)
 const STATIC_BASE = IS_PUBLIC
   ? 'https://moode.brianwis.com'
-  : 'http://10.0.0.233:8000';
+  : `${location.protocol}//${location.hostname}:${LAN_STATIC_PORT}`;
 
 // API endpoints
 const NOW_PLAYING_URL = `${API_BASE}/now-playing`;
