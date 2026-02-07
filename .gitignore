@@ -7,3 +7,8 @@ src/private/*.local.mjs
 # Runtime/install artifacts
 node_modules/
 npm-debug.log*
+
+# Local packaging/deploy artifacts
+/*.zip
+/lambda_upload/
+/index.js
