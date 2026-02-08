@@ -216,6 +216,14 @@ export function registerPodcastDownloadRoutes(app, deps) {
 
         await replaceFileAtomic(toInstall, finalPath);
 
+        let playlistSync = { ok: false };
+        try {
+          await buildLocalPlaylistForRss({ rss: sub.rss });
+          playlistSync = { ok: true };
+        } catch (e) {
+          playlistSync = { ok: false, error: e?.message || String(e) };
+        }
+
         return res.json({
           ok: true,
           rss,
@@ -223,6 +231,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
           filename: finalName,
           mpdPath: `${sub.mpdPrefix}/${finalName}`,
           embeddedArt,
+          playlistSync,
         });
       } finally {
         await safeUnlink(mp3Tmp);

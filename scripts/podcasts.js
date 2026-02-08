@@ -1,4 +1,4 @@
-console.log('PODCASTS_UI_VERSION', '2026-02-04_1');
+console.log('PODCASTS_UI_VERSION', '2026-02-08_3');
   const statusEl   = document.getElementById('status');
   const statusWrap = document.getElementById('statusWrap');
   const listEl     = document.getElementById('list');
@@ -12,7 +12,17 @@ console.log('PODCASTS_UI_VERSION', '2026-02-04_1');
   const btnSub     = document.getElementById('btnSub');
   const btnRefresh = document.getElementById('btnRefresh');
 
-  const API_BASE = 'http://10.0.0.233:3000';
+  const API_BASE = (() => {
+    const q = new URLSearchParams(window.location.search);
+    const override = (q.get('api') || '').trim();
+    if (override) return override.replace(/\/$/, '');
+
+    const host = window.location.hostname || '10.0.0.233';
+    return `http://${host}:3101`;
+  })();
+
+  const apiHintEl = document.getElementById('apiHint');
+  if (apiHintEl) apiHintEl.textContent = API_BASE.replace(/^https?:\/\//, '');
 
   // =========================
   // Modal
