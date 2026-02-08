@@ -773,18 +773,23 @@ body.is-radio #art-info-hotspot { display: none !important; }
 
 /* =========================================================
  * Share icon visibility
- * Global hide cases: AirPlay / Radio / UPnP / Podcasts
  * - Default: hidden
- * - Only show on phone-ui when NOT in those modes
+ * - Show ONLY on phone-ui + radio + valid Apple Music href
  * ========================================================= */
 #album-text .share-icon { display: none !important; }
 
-body.phone-ui #album-text .share-icon { display: inline-block !important; }
+body.phone-ui.is-radio #album-link[href] .share-icon {
+  display: inline-block !important;
+}
 
 body.is-airplay #album-text .share-icon,
-body.is-radio   #album-text .share-icon,
 body.is-upnp    #album-text .share-icon,
 body.is-podcast #album-text .share-icon {
+  display: none !important;
+}
+
+/* Never show share icon unless the Apple Music link is actually present */
+#album-link:not([href]) .share-icon {
   display: none !important;
 }
 
