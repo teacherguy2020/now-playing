@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-import argparse, json, os, re, subprocess, time, random, traceback
+import argparse
+import json
+import os
+import random
+import re
+import subprocess
+import time
+import traceback
 from datetime import datetime
 
 import requests
@@ -16,9 +23,9 @@ PAREN_COPY_RE = re.compile(
 )
 
 TITLE_JUNK = [
-    "album version","single version","radio edit","edit",
-    "remaster","remastered","live","live album version",
-    "mono","stereo","bonus track","deluxe edition","expanded edition",
+    "album version", "single version", "radio edit", "edit",
+    "remaster", "remastered", "live", "live album version",
+    "mono", "stereo", "bonus track", "deluxe edition", "expanded edition",
 ]
 
 # -----------------------------
@@ -33,17 +40,20 @@ XMAS_WORDS = (
     "the christmas song", "christmas waltz",
 )
 
+
 def is_seasonal_text(*parts: str) -> bool:
     hay = " ".join([p for p in parts if p]).casefold()
     return any(w in hay for w in XMAS_WORDS)
 
+
 def log_exc(prefix: str = "TRACEBACK"):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(LOG_PATH, "a", encoding="utf-8") as f:
-        f.write("\n" + "="*72 + "\n")
+        f.write("\n" + "=" * 72 + "\n")
         f.write(f"{ts} {prefix}\n")
         f.write(traceback.format_exc())
     print(f"{prefix}: crashed. See log: {LOG_PATH}", flush=True)
+
 
 def norm(s: str) -> str:
     if not s:
@@ -57,17 +67,21 @@ def norm(s: str) -> str:
     s = re.sub(r"[^a-z0-9]+", " ", s)
     return re.sub(r"\s+", " ", s).strip()
 
+
 def track_key(artist: str, title: str) -> str:
     a = norm(artist)
     t = norm(title)
     return f"{a}|{t}" if a and t else ""
 
+
 def album_key(album: str) -> str:
     return norm(album)
+
 
 def path_score(p: str) -> tuple:
     p_l = (p or "").lower()
     return (1 if PAREN_COPY_RE.search(p_l) else 0, len(p_l))
+
 
 def ensure_mpd_path(p: str) -> str:
     """Convert absolute /media/... or /var/lib/mpd/music/USB/... to MPD-visible USB/..."""
@@ -79,11 +93,13 @@ def ensure_mpd_path(p: str) -> str:
         return "USB/" + p[len("/var/lib/mpd/music/USB/"):]
     return p
 
+
 def mpd_to_abs(mpd_file: str) -> str:
     """Convert MPD-visible USB/... back to filesystem /media/... for Mutagen reads."""
     if mpd_file.startswith("USB/"):
         return "/media/" + mpd_file[len("USB/"):]
     return mpd_file
+
 
 def mpd_connect(host: str, port: int) -> MPDClient:
     c = MPDClient()
@@ -91,6 +107,7 @@ def mpd_connect(host: str, port: int) -> MPDClient:
     c.idletimeout = None
     c.connect(host, port)
     return c
+
 
 def lastfm_get_similar(api_key: str, artist: str, title: str, limit: int):
     params = {
@@ -110,7 +127,7 @@ def lastfm_get_similar(api_key: str, artist: str, title: str, limit: int):
                 LASTFM_ROOT,
                 params=params,
                 timeout=(5, 20),  # (connect timeout, read timeout)
-                headers={"User-Agent": "moode-vibe/chain-1.9"}
+                headers={"User-Agent": "moode-vibe/chain-2.0"}
             )
             data = r.json()
 
@@ -123,6 +140,7 @@ def lastfm_get_similar(api_key: str, artist: str, title: str, limit: int):
             err = int(data.get("error") or 0)
             msg = data.get("message") or "Unknown error"
 
+            # Last.fm transient
             if err == 8:
                 wait = 1.5 * (attempt + 1)
                 print(f"[lastfm] transient error 8 ('{msg}'), retrying in {wait:.1f}s...", flush=True)
@@ -131,10 +149,12 @@ def lastfm_get_similar(api_key: str, artist: str, title: str, limit: int):
 
             raise RuntimeError(f"Last.fm error {err}: {msg}")
 
-        except (requests.exceptions.ReadTimeout,
-                requests.exceptions.ConnectTimeout,
-                requests.exceptions.Timeout,
-                requests.exceptions.ConnectionError) as e:
+        except (
+            requests.exceptions.ReadTimeout,
+            requests.exceptions.ConnectTimeout,
+            requests.exceptions.Timeout,
+            requests.exceptions.ConnectionError,
+        ) as e:
             last_err = e
             wait = 1.5 * (attempt + 1)
             print(f"[lastfm] network timeout/conn issue ({e.__class__.__name__}), retrying in {wait:.1f}s...", flush=True)
@@ -143,12 +163,14 @@ def lastfm_get_similar(api_key: str, artist: str, title: str, limit: int):
 
     raise RuntimeError(f"Last.fm network kept failing after retries: {last_err}")
 
+
 def pick_best(paths, used_files):
     for p in sorted(paths, key=path_score):
         mpd_file = ensure_mpd_path(p)
         if mpd_file not in used_files:
             return mpd_file
     return None
+
 
 def fuzzy_within_artist(text_map: dict, rec_artist: str, rec_title: str):
     a = norm(rec_artist)
@@ -174,6 +196,21 @@ def fuzzy_within_artist(text_map: dict, rec_artist: str, rec_title: str):
 
     return candidates or None
 
+
+def find_seed_file(text_map: dict, artist: str, title: str):
+    """Best-effort local-library lookup for seed track file path."""
+    key = f"{norm(artist)}|{norm(title)}"
+    paths = text_map.get(key)
+    if paths:
+        return sorted(paths, key=path_score)[0]
+
+    paths = fuzzy_within_artist(text_map, artist, title)
+    if paths:
+        return sorted(paths, key=path_score)[0]
+
+    return None
+
+
 def read_tags(mpd_file: str):
     """Return (artist,title,album). Empty strings if unavailable."""
     try:
@@ -182,11 +219,12 @@ def read_tags(mpd_file: str):
         if not mf or not mf.tags:
             return ("", "", "")
         artist = str(mf.tags.get("artist", [""])[0])
-        title  = str(mf.tags.get("title",  [""])[0])
-        album  = str(mf.tags.get("album",  [""])[0])
+        title = str(mf.tags.get("title", [""])[0])
+        album = str(mf.tags.get("album", [""])[0])
         return (artist, title, album)
     except Exception:
         return ("", "", "")
+
 
 def main():
     ap = argparse.ArgumentParser(description="Build a chained Last.fm-based queue in moOde/MPD.")
@@ -212,6 +250,18 @@ def main():
     ap.add_argument("--shuffle-top", type=int, default=10,
                     help="Randomize candidate order within the top N Last.fm similar results (0 disables)")
 
+    # Jarvis Radio / orchestration options
+    ap.add_argument("--seed-artist", default="", help="Seed artist override")
+    ap.add_argument("--seed-title", default="", help="Seed title override")
+    ap.add_argument("--mode", choices=["load", "play"], default="load",
+                    help="load: build queue and stop, play: build queue and start playback")
+    ap.add_argument("--append", action="store_true",
+                    help="Append to existing queue instead of clearing first")
+    ap.add_argument("--max-seconds", type=int, default=0,
+                    help="Time budget for build; 0 disables")
+    ap.add_argument("--json-out", default="",
+                    help="Optional JSON summary output path")
+
     args = ap.parse_args()
 
     if not args.api_key:
@@ -226,6 +276,7 @@ def main():
 
     with open(args.index, "r", encoding="utf-8") as f:
         idx = json.load(f)
+
     mbid_map = idx["mbid_map"]
     text_map = idx["text_map"]
 
@@ -240,20 +291,51 @@ def main():
         except Exception:
             return 0
 
+    # -----------------------------
+    # Seed resolution
+    # -----------------------------
+    seed_artist = (args.seed_artist or "").strip()
+    seed_title = (args.seed_title or "").strip()
+
+    if (seed_artist and not seed_title) or (seed_title and not seed_artist):
+        mpd.disconnect()
+        print("ERROR: Provide both --seed-artist and --seed-title (or neither).")
+        return
+
     cur = mpd.currentsong()
-    if not cur:
-        mpd.disconnect()
-        print("Nothing playing.")
-        return
+    if not seed_artist and not seed_title:
+        if not cur:
+            mpd.disconnect()
+            print("Nothing playing and no explicit seed provided.")
+            return
+        seed_artist = (cur.get("artist") or "").strip()
+        seed_title = (cur.get("title") or "").strip()
+        if not seed_artist or not seed_title:
+            mpd.disconnect()
+            print("Current track missing artist/title.")
+            return
 
-    seed_artist = (cur.get("artist") or "").strip()
-    seed_title  = (cur.get("title") or "").strip()
-    if not seed_artist or not seed_title:
-        mpd.disconnect()
-        print("Current track missing artist/title.")
-        return
+    # last album guard (avoid immediate same-album picks)
+    last_album_k = ""
+    if cur:
+        cur_a = (cur.get("artist") or "").strip()
+        cur_t = (cur.get("title") or "").strip()
+        if norm(cur_a) == norm(seed_artist) and norm(cur_t) == norm(seed_title):
+            last_album_k = album_key((cur.get("album") or "").strip())
 
-    last_album_k = album_key((cur.get("album") or "").strip())
+    # If explicit seed wasn't current song, try local lookup to set album context
+    if not last_album_k:
+        seed_file = find_seed_file(text_map, seed_artist, seed_title)
+        if seed_file:
+            _, _, alb0 = read_tags(seed_file)
+            if alb0:
+                last_album_k = album_key(alb0)
+
+    # -----------------------------
+    # Queue handling
+    # -----------------------------
+    if not args.append:
+        mpd.clear()
 
     used_files = set()
     try:
@@ -276,14 +358,22 @@ def main():
 
     print(f"Seed: {seed_title} — {seed_artist}")
     print(f"Starting queue length: {queue_len()}  (target {args.target_queue})")
+    print(f"Mode: {args.mode}  | Append: {'yes' if args.append else 'no'}")
     print(f"Christmas/holiday: {'ALLOWED' if include_xmas else 'EXCLUDED'}")
     if args.shuffle_top and args.shuffle_top > 0:
         print(f"Candidate shuffle: top {args.shuffle_top} randomized")
+    if args.max_seconds > 0:
+        print(f"Time budget: {args.max_seconds}s")
 
     hops = 0
     misses = 0
+    started = time.time()
 
     while queue_len() < args.target_queue:
+        if args.max_seconds > 0 and (time.time() - started) >= args.max_seconds:
+            print(f"Time budget reached ({args.max_seconds}s), stopping.")
+            break
+
         hops += 1
 
         sim = lastfm_get_similar(args.api_key, seed_artist, seed_title, args.similar_limit)
@@ -314,6 +404,7 @@ def main():
             if not rec_title or not rec_artist:
                 continue
 
+            # Strong seasonal filter at recommendation level
             if not include_xmas and is_seasonal_text(rec_title, rec_artist):
                 continue
 
@@ -324,11 +415,13 @@ def main():
             cand = None
             method = ""
 
+            # 1) MBID map
             if rec_mbid and rec_mbid in mbid_map:
                 cand = pick_best(mbid_map[rec_mbid], used_files)
                 if cand:
                     method = "mbid"
 
+            # 2) exact text map
             if not cand:
                 key = f"{norm(rec_artist)}|{norm(rec_title)}"
                 paths = text_map.get(key)
@@ -337,6 +430,7 @@ def main():
                     if cand:
                         method = "text"
 
+            # 3) fuzzy within artist
             if not cand:
                 paths = fuzzy_within_artist(text_map, rec_artist, rec_title)
                 if paths:
@@ -350,6 +444,7 @@ def main():
             if cand in bad_files:
                 continue
 
+            # Strong seasonal filter at local file/tag level
             if not include_xmas:
                 if is_seasonal_text(cand):
                     continue
@@ -357,6 +452,7 @@ def main():
                 if is_seasonal_text(t_tag, alb_tag, a_tag):
                     continue
 
+            # same-album guard
             if cand not in album_cache:
                 _, _, alb = read_tags(cand)
                 album_cache[cand] = album_key(alb)
@@ -417,10 +513,10 @@ def main():
             raise
 
         used_files.add(chosen_file)
-
         misses = 0
         reseed_cursor = 0
 
+        # Next hop seed from actual local tags when possible
         a2, t2, alb2 = read_tags(chosen_file)
         if a2 and t2:
             seed_artist, seed_title = a2, t2
@@ -445,8 +541,49 @@ def main():
             time.sleep(args.sleep)
 
     final_len = queue_len()
+
+    # Final mode action
+    if args.mode == "play":
+        try:
+            mpd.play()
+        except Exception:
+            pass
+    else:
+        try:
+            mpd.stop()
+        except Exception:
+            pass
+
+    final_state = "unknown"
+    try:
+        final_state = mpd.status().get("state", "unknown")
+    except Exception:
+        pass
+
+    summary = {
+        "seed_artist": seed_artist,
+        "seed_title": seed_title,
+        "target_queue": args.target_queue,
+        "final_queue": final_len,
+        "mode": args.mode,
+        "state": final_state,
+        "append": bool(args.append),
+        "include_christmas": bool(include_xmas),
+        "hops": hops,
+        "max_misses": args.max_misses,
+        "shuffle_top": args.shuffle_top,
+    }
+
+    if args.json_out:
+        try:
+            with open(args.json_out, "w", encoding="utf-8") as f:
+                json.dump(summary, f, indent=2)
+        except Exception:
+            print(f"WARN: failed writing json summary to {args.json_out}")
+
     mpd.disconnect()
-    print(f"Done. Final queue length: {final_len}")
+    print(f"Done. Final queue length: {final_len} | mode={args.mode} | state={final_state}")
+
 
 if __name__ == "__main__":
     try:
