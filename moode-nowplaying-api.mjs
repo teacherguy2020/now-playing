@@ -1494,6 +1494,16 @@ function isAirplayFile(file) {
   return String(file || '').toLowerCase() === 'airplay active';
 }
 
+function isUpnpMediaItemUrl(file) {
+  const f = String(file || '');
+  return f.includes(':8200/MediaItems/');
+}
+
+function getStreamKind(file) {
+  if (!isStreamPath(file)) return '';
+  if (isUpnpMediaItemUrl(file)) return 'upnp';
+  return 'radio';
+}
 
 function moodeValByKey(raw, keyOrIndex) {
   if (!raw) return '';
