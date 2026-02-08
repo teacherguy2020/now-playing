@@ -41,11 +41,6 @@ const DEFAULT_UA =
 
 // Lazy-load podcast ops so API can boot even if podcast module is broken
 let _podOps;
-async function podOps() {
-  if (_podOps) return _podOps;
-  _podOps = await import('./podcasts/podcastOps.js'); // we will create this file next
-  return _podOps;
-}
 
 import express from 'express';
 import cors from 'cors';
@@ -446,158 +441,8 @@ async function enrichPodcastNowPlaying(payload) {
  * UPnP Identify helpers
  * ========================= */
 
-
-async function embedEpisodeArtMp3(inPath, imageUrl, opts = {}) {
-  const logp = opts.logp || (() => {});
-  if (!imageUrl) return { ok: false, skipped: true, reason: "no imageUrl" };
-
-  // Optional: skip if already has embedded art
-  if (opts.skipIfPresent) {
-    try {
-      const j = await execFileP("ffprobe", [
-        "-v", "error",
-        "-show_streams",
-        "-of", "json",
-        inPath
-      ]);
-      const parsed = JSON.parse(j.stdout || j); // depending on your exec wrapper
-      const n = (parsed.streams || []).filter(s => s?.disposition?.attached_pic === 1).length;
-      if (n > 0) return { ok: true, skipped: true, reason: "already has art" };
-    } catch {}
-  }
-
-  const tmpImg = path.join(
-    os.tmpdir(),
-    `podart-${Date.now()}-${Math.random().toString(16).slice(2)}.jpg`
-  );
-  const tmpOut = `${inPath}.arttmp.mp3`;
-
-  try {
-    await downloadWithFetch(imageUrl, tmpImg);
-
-    await execFileP("ffmpeg", [
-      "-hide_banner", "-loglevel", "error",
-      "-y",
-      "-i", inPath,
-      "-i", tmpImg,
-
-      // audio + attached pic
-      "-map", "0:a",
-      "-map", "1:v",
-
-      // preserve existing tags/chapters from the mp3
-      "-map_metadata", "0",
-      "-map_chapters", "0",
-
-      "-c:a", "copy",
-      "-c:v", "mjpeg",
-      "-disposition:v:0", "attached_pic",
-
-      // MP3 tagging compatibility
-      "-id3v2_version", "3",
-
-      "-metadata:s:v:0", "title=Album cover",
-      "-metadata:s:v:0", "comment=Cover (Front)",
-
-      tmpOut
-    ]);
-
-    // replace atomically-ish
-    await fsp.rename(tmpOut, inPath).catch(async () => {
-      await fsp.copyFile(tmpOut, inPath);
-      await fsp.unlink(tmpOut).catch(() => {});
-    });
-
-    logp("embedded art", { inPath, imageUrl });
-    return { ok: true, skipped: false };
-  } finally {
-    await fsp.unlink(tmpImg).catch(() => {});
-    await fsp.unlink(tmpOut).catch(() => {});
-  }
-}
-
-function isUpnpMediaItemUrl(file) {
-  const f = String(file || '');
-  return f.includes(':8200/MediaItems/');
-}
-
-function getStreamKind(file) {
-  if (!isStreamPath(file)) return '';
-  if (isUpnpMediaItemUrl(file)) return 'upnp';
-  return 'radio';
-}
-
-/* =========================
- * Fetch helpers
- * ========================= */
-
-// Robust downloader:
-// - Uses fetch with browser-ish headers
-// - Captures final URL + short body snippet on errors (helps diagnose CDN blocks)
-// - Falls back to curl for 403/AccessDenied cases (Simplecast commonly does this)
-// - Uses atomic temp file -> rename to avoid partial files
-// - Retries with backoff
-
-// Merge/override headers so we always have a decent UA.
-function buildFetchHeaders(extra = {}) {
-  const base = (typeof FETCH_HEADERS === "object" && FETCH_HEADERS) ? FETCH_HEADERS : {};
-  const h = { ...base, ...extra };
-
-  // Ensure some basics exist; CDNs sometimes gate on these.
-  if (!h["User-Agent"] && !h["user-agent"]) h["User-Agent"] = DEFAULT_UA;
-  if (!h["Accept"] && !h["accept"]) h["Accept"] = "*/*";
-  if (!h["Accept-Language"] && !h["accept-language"]) h["Accept-Language"] = "en-US,en;q=0.9";
-  if (!h["Connection"] && !h["connection"]) h["Connection"] = "keep-alive";
-
-  return h;
-}
-
 async function safeUnlink(p) {
   try { await fsp.unlink(p); } catch {}
-}
-
-async function downloadToFileCurl(url, outPath, { timeoutSec = 180, retries = 3 } = {}) {
-  await fsp.mkdir(path.dirname(outPath), { recursive: true });
-  const tmp = `${outPath}.part`;
-
-  await safeUnlink(tmp);
-
-  // -f fail on HTTP errors
-  // -L follow redirects
-  // --retry for transient failures
-  // -A set UA (critical for some CDNs)
-  const args = [
-    "-fLsS",
-    "-L",
-    "--retry", String(retries),
-    "--retry-delay", "1",
-    "--connect-timeout", "10",
-    "--max-time", String(timeoutSec),
-    "-A", DEFAULT_UA,
-    "-o", tmp,
-    url,
-  ];
-
-  try {
-    await execFileP(CURL, args);
-    await fsp.rename(tmp, outPath);
-    return true;
-  } finally {
-    await safeUnlink(tmp);
-  }
-}
-
-function isLikelyCdnBlock(errMsg, status, bodySnippet) {
-  const s = String(errMsg || "");
-  const b = String(bodySnippet || "");
-  return (
-    status === 403 ||
-    /HTTP\s*403/i.test(s) ||
-    /AccessDenied/i.test(s) ||
-    /Access Denied/i.test(s) ||
-    /<Code>AccessDenied<\/Code>/i.test(b) ||
-    /cloudfront/i.test(b)
-  );
 }
 
 async function downloadToFile(url, outPath, {
@@ -745,14 +590,6 @@ async function downloadToFile(url, outPath, {
   throw lastErr || new Error('download failed');
 }
 
-
-async function safeRmDir(p) {
-  try {
-    if (!p) return;
-    await fsp.rm(p, { recursive: true, force: true });
-  } catch {}
-}
-
 async function ensureDir(p) {
   const s = String(p || '').trim();
   if (!s) throw new Error('ensureDir: empty path');
@@ -823,11 +660,6 @@ async function replaceFileAtomic(src, dest) {
   await fsp.copyFile(src, tmp);
   await fsp.rename(tmp, dest);
 }
-
-function sha256Hex(buf) {
-  try { return crypto.createHash('sha256').update(buf).digest('hex'); }
-  catch { return 'sha256_err'; }
-}  
   
   
 // ---- single writer of pod-*.json and pod-*.m3u
@@ -1424,35 +1256,6 @@ function sha1_12(s) {
   return crypto.createHash("sha1").update(String(s || "")).digest("hex").slice(0, 12);
 }
 
-
-function metaByStemFromFeed(feed) {
-  const m = Object.create(null);
-  const items = Array.isArray(feed?.items) ? feed.items : [];
-
-  for (const ep of items) {
-    const guid = String(ep?.guid || "").trim();
-    const rawUrl = String(ep?.enclosure || "").trim();
-
-    // MUST match your download naming: seed = guid || canonUrl
-    // For rebuild we can safely use guid when present (Pivot has guid).
-    const stem = guid ? sha1_12(guid) : (rawUrl ? sha1_12(stripQueryHash(rawUrl)) : "");
-    if (!stem) continue;
-
-    m[stem] = {
-      title: String(ep?.title || "").trim(),
-      date: yyyyMmDd(ep?.isoDate || ep?.pubDate || ep?.published || ""),
-      published: (() => {
-        const d = new Date(ep?.isoDate || ep?.pubDate || ep?.published || "");
-        return Number.isFinite(d.getTime()) ? d.getTime() : null;
-      })(),
-      enclosure: rawUrl,
-      guid
-    };
-  }
-
-  return m;
-}
-
 function safeMeta(s) {
   return String(s ?? "").replace(/\s+/g, " ").trim();
 }
@@ -1790,48 +1593,6 @@ async function getMpdCurrentDateTag() {
   }
 }
 
-async function podcastsListHandler(req, res) {
-  const items = readSubs();
-
-  const enriched = items.map(it => {
-    let n = null;
-    let lastBuilt = "";
-
-    // Prefer mapJson for count + time
-    try {
-      if (it.mapJson && fs.existsSync(it.mapJson)) {
-        const st = fs.statSync(it.mapJson);
-        lastBuilt = st.mtime.toISOString();
-
-        const j = JSON.parse(fs.readFileSync(it.mapJson, "utf8"));
-        const keys = j?.itemsByUrl ? Object.keys(j.itemsByUrl) : [];
-        n = keys.length;
-      }
-    } catch {}
-
-    // Fallback: if we have an M3U, use its mtime (and optionally count URLs)
-    try {
-      if ((!lastBuilt || n === null) && it.outM3u && fs.existsSync(it.outM3u)) {
-        const st = fs.statSync(it.outM3u);
-        if (!lastBuilt) lastBuilt = st.mtime.toISOString();
-
-        if (n === null) {
-          const txt = fs.readFileSync(it.outM3u, "utf8");
-          // count non-empty, non-# lines (URLs)
-          n = txt.split(/\r?\n/).filter(line => {
-            const s = line.trim();
-            return s && !s.startsWith("#");
-          }).length;
-        }
-      }
-    } catch {}
-
-    return { ...it, items: n, lastBuilt };
-  });
-
-  res.json({ ok: true, items: enriched });
-}
-
 // Returns: [{ filename, path, size, mtimeMs, title, date, published }]
 async function getLocalItemsForSub(sub, metaByStem = null) {
   const dir = String(sub?.dir || '').trim();
@@ -2051,36 +1812,6 @@ async function sshMoode(cmd) {
 function mpdEscapeShellArg(s) {
   return `'${String(s).replace(/'/g, `'\\''`)}'`;
 }
-
-async function setFavoriteByEditingPlaylistFile(file, want) {
-  const f = String(file || '').trim();
-  if (!f) return { ok: false, error: 'no-file' };
-
-  // remote script: idempotent add/remove, exact-line match, safe delimiter
-  const script = `
-p=${mpdEscapeShellArg(FAVORITES_PATH)}
-f=${mpdEscapeShellArg(f)}
-sudo touch "$p"
-if ${want ? 'false' : 'true'}; then :; fi
-
-if ${want ? 'true' : 'false'}; then
-  sudo grep -Fxq "$f" "$p" || echo "$f" | sudo tee -a "$p" >/dev/null
-else
-  sudo sed -i "\\|^$(printf %s "$f" | sed 's/[.[\\*^$(){}+?|]/\\\\&/g')$|d" "$p"
-fi
-
-# report truth
-if sudo grep -Fxq "$f" "$p"; then
-  echo "IS_FAV=1"
-else
-  echo "IS_FAV=0"
-fi
-`;
-
-  const out = await sshMoode(script);
-  const isFavorite = /IS_FAV=1/.test(String(out || ''));
-  return { ok: true, isFavorite };
-}
  
 // =========================
 // MPD stickers over TCP (mpdQueryRaw)
@@ -2221,17 +1952,6 @@ async function mpdPrimeIfIdle() {
 /* =========================
  * Ratings (stickers)
  * ========================= */
-
-async function mpdStickerSet(file, key, value) {
-  const f = String(file || '').trim();
-  const k = String(key || '').trim();
-  if (!f || !k || isStreamPath(f) || isAirplayFile(f)) return false;
-
-  const v = String(value ?? '').trim();
-  const raw = await mpdQueryRaw(`sticker set song ${mpdEscapeValue(f)} ${k} ${mpdEscapeValue(v)}`);
-  if (mpdHasACK(raw)) throw new Error(`MPD sticker set failed: ${raw.split('\n').find(l => l.startsWith('ACK')) || 'ACK'}`);
-  return true;
-}
 
 
 // =========================
@@ -2755,49 +2475,6 @@ async function resolveLibraryFileForStream(inputs, debugLog = null) {
   return '';
 }
 
-async function mpdPlaylistAdd(name, mpdFile) {
-  await mpdQueryRaw(`playlistadd ${mpdEscapeValue(name)} ${mpdEscapeValue(mpdFile)}`);
-  return true;
-}
-
-async function mpdPlaylistDeleteByFile(name, mpdFile) {
-  const raw = await mpdQueryRaw(`listplaylist ${mpdEscapeValue(name)}`);
-  if (!raw || mpdHasACK(raw)) return false;
-
-  const target = String(mpdFile || '').trim();
-  if (!target) return false;
-
-  const lines = String(raw).split('\n');
-  const positions = [];
-  let pos = 0;
-
-  for (const line0 of lines) {
-    const line = String(line0 || '').trim();
-    if (!line) continue;
-    if (line === 'OK') break;
-    if (/^ACK\b/.test(line)) break;
-
-    // MPD may return either:
-    //   "file: <path>"
-    // OR just "<path>"
-    let f = '';
-    const m = line.match(/^file:\s*(.+)\s*$/i);
-    if (m && m[1]) f = m[1].trim();
-    else f = line;
-
-    if (f === target) positions.push(pos);
-    pos++;
-  }
-
-  // delete from bottom to top so indices don’t shift
-  positions.sort((a, b) => b - a);
-  for (const p of positions) {
-    await mpdQueryRaw(`playlistdelete ${mpdEscapeValue(name)} ${p}`);
-  }
-
-  return positions.length > 0;
-}
-
 /* =========================
  * iTunes artwork cache (radio)
  * ========================= */
@@ -3103,76 +2780,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     return empty(reason);
   }
 }
-async function pickBestArtUrlForCurrentSong({ preferItunesForRadio = true } = {}) {
-  const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-  const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
 
-  const file = String(song.file || '').trim();
-  const stream = isStreamPath(file);
-  const airplay = isAirplayFile(file) || String(song.encoded || '').toLowerCase() === 'airplay';
-
-  // --- BRAKES: do NOT change AirPlay behavior right now ---
-  if (airplay) {
-    // What you currently do: rely on coverurl if present, else nothing.
-    if (song.coverurl) return normalizeCoverUrl(song.coverurl, MOODE_BASE_URL);
-    return '';
-  }
-
-  // Local file => always correct
-  if (!stream && file) {
-    return `${MOODE_BASE_URL}/coverart.php/${encodeURIComponent(file)}`;
-  }
-
-  // Stream handling (radio vs upnp)
-  if (stream) {
-    const streamKind = String(getStreamKind(file) || '').trim();
-
-    // UPnP: keep your existing resolver behavior (already working)
-    if (streamKind === 'upnp') {
-      const songpos = String(moodeValByKey(statusRaw, 'song') || '').trim();
-      const songid  = String(moodeValByKey(statusRaw, 'songid') || '').trim();
-
-      const realFile = await resolveLibraryFileForStream({
-        songid,
-        songpos,
-        title: song.title || '',
-        artist: song.artist || '',
-        album: song.album || '',
-        track: song.track || '',
-      }, null);
-
-      if (realFile) return `${MOODE_BASE_URL}/coverart.php/${encodeURIComponent(realFile)}`;
-
-      // If resolver fails, fall back to station coverurl if present
-      if (song.coverurl) return normalizeCoverUrl(song.coverurl, MOODE_BASE_URL);
-      return '';
-    }
-
-    // RADIO: iTunes replacement (this is the fix)
-    if (streamKind === 'radio') {
-      if (preferItunesForRadio) {
-        const decodedTitle = decodeHtmlEntities(song.title || '');
-        const parts = decodedTitle.split(' - ').map(s => s.trim()).filter(Boolean);
-
-        // Your existing heuristic: "Artist - Title"
-        if (parts.length >= 2) {
-          const it = await lookupItunesFirst(parts[0], parts.slice(1).join(' - '), false);
-          if (it.url) return it.url;
-        }
-      }
-
-      // If iTunes fails, fall back to station logo
-      if (song.coverurl) return normalizeCoverUrl(song.coverurl, MOODE_BASE_URL);
-      return '';
-    }
-
-    // Unknown stream kind
-    if (song.coverurl) return normalizeCoverUrl(song.coverurl, MOODE_BASE_URL);
-    return '';
-  }
-
-  return '';
-}
 
 /* =========================
  * AirPlay aplmeta.txt
@@ -3224,13 +2832,6 @@ function safeFileName(name, fallback = "episode.mp3") {
   return out;
 }
 
-function mpdPrefixFromDir(dir) {
-  // /mnt/SamsungMoode/...  ->  USB/SamsungMoode/...
-  const d = String(dir || "");
-  if (!d.startsWith("/mnt/")) return "";
-  return d.replace(/^\/mnt\//, "USB/");
-}
-
 async function resolveFinalUrl(url) {
   // Try HEAD first (fast), then fallback to GET (some hosts block HEAD)
   const u = String(url || "").trim();
@@ -3255,26 +2856,6 @@ async function logPodcastDownload(row) {
     await fsp.mkdir(path.dirname(PODCAST_DL_LOG), { recursive: true });
     await fsp.appendFile(PODCAST_DL_LOG, JSON.stringify(row) + "\n", "utf8");
   } catch {}
-}
-
-
-
-async function uniquePath(p) {
-  // If file exists, add -1, -2, ...
-  const ext = path.extname(p);
-  const base = p.slice(0, p.length - ext.length);
-  let i = 1;
-  let cand = p;
-
-  while (true) {
-    try {
-      await fsp.access(cand, fs.constants.F_OK);
-      cand = `${base}-${i}${ext}`;
-      i++;
-    } catch {
-      return cand; // doesn't exist
-    }
-  }
 }
 
 /* =========================
@@ -3375,12 +2956,6 @@ function makePodcastId(rss) {
     .digest('hex')
     .slice(0, 10);
   return `pod-${hash}`;
-}
-
-function slugFromUrl(u) {
-  // stable-ish slug based on URL hash
-  const h = crypto.createHash("sha1").update(u).digest("hex").slice(0, 10);
-  return `pod-${h}`;
 }
 
 registerPodcastSubscriptionRoutes(app, {

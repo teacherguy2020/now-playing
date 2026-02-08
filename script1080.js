@@ -213,32 +213,6 @@ function splitGenres(raw) {
     .filter(Boolean);
 }
 
-function inferIsPodcastFromMetadata(data) {
-  // Trust server flag if true (but not if false — we want fallback)
-  if (data?.isPodcast === true) return true;
-
-  // ✅ Folder-based truth (works with your current /now-playing payload)
-  const filePath = String(data?.file || '').toLowerCase();
-  if (filePath.includes('/podcasts/')) return true;
-
-  // If you later add genre to the API, this will start working too:
-  let genreRaw =
-    data?.genre ??
-    data?.Genre ??
-    data?.tags?.genre ??
-    data?.metadata?.genre ??
-    '';
-
-  if (Array.isArray(genreRaw)) genreRaw = genreRaw.join(';');
-
-  const genres = splitGenres(genreRaw);
-  for (const g of genres) {
-    if (PODCAST_GENRES.has(g) || g.startsWith('podcast')) return true;
-  }
-
-  return false;
-}
-
 function inferIsPodcastFromFilePath(data) {
   const f = String(data?.file || '').trim();
   return f.startsWith('USB/SamsungMoode/Podcasts/') || f.includes('/Podcasts/');
@@ -261,10 +235,6 @@ function getStreamKind(data) {
 function isUpnpMode(data) {
   return (data?.isStream === true) &&
          (data?.isUpnp === true || getStreamKind(data) === 'upnp');
-}
-
-function isRadioMode(data) {
-  return (data?.isStream === true) && !isUpnpMode(data);
 }
 
 function ratingsAllowedNow() {
@@ -324,12 +294,6 @@ let nowPlayingTimer = 0;
 function startNowPlayingPoll() {
   if (nowPlayingTimer) return;
   nowPlayingTimer = setInterval(fetchNowPlaying, NOW_PLAYING_POLL_MS);
-}
-
-function stopNowPlayingPoll() {
-  if (!nowPlayingTimer) return;
-  clearInterval(nowPlayingTimer);
-  nowPlayingTimer = 0;
 }
 
 /* =========================
@@ -1610,24 +1574,6 @@ function looksLikeEnsembleConductor(s) {
   return false;
 }
 
-function shortenRadioTitleIfRedundant(titleLine, radioAlbum, radioLabel) {
-  let s = normalizeDashSpacing(titleLine);
-  const ra = normalizeDashSpacing(radioAlbum);
-  const rl = normalizeDashSpacing(radioLabel);
-
-  if (rl) {
-    const reLabel = new RegExp(`\\s-\\s${escapeRegExp(rl)}\\s*$`, 'i');
-    s = s.replace(reLabel, '').trim();
-  }
-  if (ra) {
-    const reAlbum = new RegExp(`\\s-\\s${escapeRegExp(ra)}\\s*$`, 'i');
-    s = s.replace(reAlbum, '').trim();
-  }
-
-  s = s.replace(/\s-\s*$/g, '').trim();
-  return s;
-}
-
 function removeInlinePersonnelFromTitleLine(titleLine) {
   const s = normalizeDashSpacing(titleLine);
   const idx = s.search(/\s-\s[^-]+,\s*[a-z]{1,4}\s*;/i);
@@ -1867,12 +1813,6 @@ function setNextUpLine(line) {
   });
 }
 
-function setFavoriteHeart(isFav) {
-  const el = document.getElementById('fav-heart');
-  if (!el) return;
-  el.classList.toggle('on', !!isFav);
-}  
-
 // =========================
 // Favorites (heart toggle)
 // =========================
@@ -1933,39 +1873,6 @@ async function onToggleFavorite(ev) {
 /* =========================
  * Star helpers
  * ========================= */
-
-
-
-function setStarsVisible(visible) {
-  const wrap = document.getElementById('stars-wrapper') || document.getElementById('stars');
-  if (!wrap) return;
-  wrap.style.display = visible ? '' : 'none';
-}
-
-function paintStars(rating0to5) {
-  const rating = Math.max(0, Math.min(5, Number(rating0to5) || 0));
-
-  // Supports either:
-  //  - 5 elements with class ".star"
-  //  - 5 buttons with data-star="1..5"
-  const stars =
-    Array.from(document.querySelectorAll('[data-star]')).length
-      ? Array.from(document.querySelectorAll('[data-star]'))
-      : Array.from(document.querySelectorAll('.star'));
-
-  if (!stars.length) return;
-
-  for (let i = 0; i < stars.length; i++) {
-    const n = Number(stars[i].dataset.star || (i + 1));
-    const on = n <= rating;
-
-    stars[i].classList.toggle('on', on);
-    stars[i].classList.toggle('off', !on);
-
-    // If you use SVG/img instead of classes, swap here
-    // e.g. stars[i].src = on ? 'star-on.svg' : 'star-off.svg';
-  }
-}
 
 function applyRatingFromNowPlaying(np) {
   if (np?.isPodcast === true) {
@@ -2604,63 +2511,6 @@ function attachClickEventToAlbumArt() {
 /* =========================
  * Clear UI (optional)
  * ========================= */
-
-function clearUI() {
-  currentTrackKey = '';
-  lastAlbumArtUrl = '';
-  lastPercent = -1;
-  lastNextUpKey = '';
-
-  radioState.key = '';
-  radioState.recentTitles = [];
-
-  stopProgressAnimator();
-
-  const artistEl = document.getElementById('artist-name');
-  const trackEl  = document.getElementById('track-title');
-  const albumEl  = document.getElementById('album-link');
-  const albumTextEl = document.getElementById('album-text');
-  const fileInfoText = document.getElementById('file-info-text');
-  const hiresBadge = document.getElementById('hires-badge');
-  const personnelEl = document.getElementById('personnel-info');
-
-  const nextText = document.getElementById('next-up-text');
-  const nextImg  = document.getElementById('next-up-img');
-
-  const progressFill = document.getElementById('progress-fill');
-  const artBgEl = document.getElementById('album-art-bg');
-  const logoEl = document.getElementById('mode-logo');
-  const artEl = document.getElementById('album-art');
-
-  if (artistEl) artistEl.textContent = '';
-  if (trackEl)  trackEl.textContent  = '';
-  if (albumTextEl) albumTextEl.textContent = '';
-  else if (albumEl) albumEl.textContent = '';
-  if (fileInfoText) fileInfoText.textContent = '';
-  if (hiresBadge) {
-    hiresBadge.textContent = 'Lossless';
-    hiresBadge.style.display = 'none';
-  }
-  if (personnelEl) personnelEl.textContent = '';
-
-  if (nextText) nextText.textContent = '';
-  if (nextImg) {
-    nextImg.style.display = 'none';
-    nextImg.removeAttribute('src');
-  }
-
-  if (progressFill) progressFill.style.transform = 'scaleX(0)';
-
-  if (artEl) artEl.removeAttribute('src');
-  if (artBgEl) artBgEl.style.backgroundImage = 'none';
-  setBackgroundCrossfade('', '');
-  
-  if (logoEl) {
-    logoEl.style.display = 'none';
-    logoEl.removeAttribute('src');
-  }
-  clearStars();
-}
 
 /* =========================
  * Phone controls (LAN moOde commands) + Play/Pause icon

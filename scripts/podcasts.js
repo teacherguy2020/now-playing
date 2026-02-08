@@ -171,11 +171,6 @@ console.log('PODCASTS_UI_VERSION', '2026-02-08_3');
     return j;
   }
 
-  function mapUrlFromPath(mapJsonPath) {
-    const base = String(mapJsonPath || '').split('/').pop();
-    return base ? `/podcasts/${base}` : '';
-  }
-
   function canonicalEpisodeIdFromKeyOrUrl(raw) {
     const s = String(raw || '').trim();
     if (!s) return '';
@@ -193,71 +188,6 @@ console.log('PODCASTS_UI_VERSION', '2026-02-08_3');
     } catch (_) {}
 
     return s;
-  }
-
-  function groupEpisodesByCanonicalId(eps) {
-    const m = new Map();
-
-    for (const ep of (eps || [])) {
-      const key = String(ep.enclosureUrl || ep.link || ep.id || ep.guid || ep.title || '');
-      const cid =
-        canonicalEpisodeIdFromKeyOrUrl(key) ||
-        canonicalEpisodeIdFromKeyOrUrl(ep.enclosure?.url) ||
-        canonicalEpisodeIdFromKeyOrUrl(ep.enclosureUrl) ||
-        '';
-
-      const bucketKey = cid || key;
-      if (!bucketKey) continue;
-
-      const existing = m.get(bucketKey);
-      if (!existing) {
-        m.set(bucketKey, {
-          ...ep,
-          _canonicalId: bucketKey,
-          _variants: [key].filter(Boolean)
-        });
-      } else {
-        const a = (typeof existing.published === 'number') ? existing.published : 0;
-        const b = (typeof ep.published === 'number') ? ep.published : 0;
-        if (b > a) existing.published = b;
-
-        if (!existing.date && ep.date) existing.date = ep.date;
-
-        if (key && !existing._variants.includes(key)) existing._variants.push(key);
-      }
-    }
-
-    return Array.from(m.values());
-  }
-
-  function bestDownloadUrl(ep) {
-    const candidates = [];
-    if (ep.enclosureUrl) candidates.push(String(ep.enclosureUrl));
-    if (Array.isArray(ep._variants)) candidates.push(...ep._variants.map(String));
-
-    return candidates.find(s => /^https?:\/\//i.test(s)) || '';
-  }
-
-  function formatDate(ep) {
-    if (ep.date) return String(ep.date);
-
-    if (typeof ep.published === 'number') {
-      const d = new Date(ep.published);
-      if (!Number.isNaN(d.getTime())) {
-        return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
-      }
-    }
-
-    const raw = ep.pubDate || ep.updated || '';
-    if (raw) {
-      const d = new Date(raw);
-      if (!Number.isNaN(d.getTime())) {
-        return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
-      }
-      return String(raw);
-    }
-
-    return '';
   }
 
 function updateModalActionState() {
