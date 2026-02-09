@@ -5,10 +5,15 @@ A moOde-focused now-playing API + UI stack with podcast management, queue contro
 ## What this project does
 
 - Serves a Now Playing API (`/now-playing`, `/next-up`, artwork routes, queue/rating controls)
-- Hosts UI pages (`index.html`, `podcasts.html`)
+- Hosts adaptive UI pages (`index.html`, `podcasts.html`)
 - Manages podcast subscriptions/downloads/playlists
 - Supports multi-device/home deployments (Pi nodes)
 - Supports optional Alexa endpoint flow when enabled
+- Keeps display behavior as consistent as possible across listening modes:
+  - local library music/podcasts
+  - radio streams
+  - AirPlay
+  - UPnP
 
 ## Project layout
 
@@ -29,6 +34,13 @@ node moode-nowplaying-api.mjs
 ```
 
 API default: `http://<host>:3101`
+
+## UX highlights
+
+- **Clickable stars for ratings**: users can click star ratings in the now-playing UI to update track rating.
+- **Adaptive layout**: `index.html` adapts to screen/environment, including portrait behavior with on-screen playback controls.
+- **iTunes enrichment**: track-specific album-art lookup, album release year augmentation, and Apple Music deep-link support when found.
+- **AirPlay metadata hardening**: AirPlay metadata handling is enhanced/stabilized to improve continuity and display quality.
 
 ## Runtime config
 
