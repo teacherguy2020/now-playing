@@ -293,24 +293,41 @@ body.pause      #fav-heart {
   font-weight: 600;
   text-shadow: 0 4px 14px rgba(0,0,0,0.9);
   font-size: clamp(28px, calc(var(--artSize) * var(--fs-artist)), 60px);
+  line-height: 1.2;
+  padding-bottom: 0.14em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 #titleLine {
-  display: flex;
-  align-items: baseline;
-  gap: 18px;
-  flex-wrap: wrap;
+  display: block;
+  min-width: 0;
 }
 
 #track-title {
+  display: -webkit-box;
   font-weight: 600;
   text-shadow: 0 3px 12px rgba(0,0,0,0.9);
   font-size: clamp(24px, calc(var(--artSize) * var(--fs-title)), 50px);
+  line-height: 1.14;
+  padding-bottom: 0.08em;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .rating-stars {
   display: inline-flex;
   cursor: pointer;
+  margin-top: 4px;
 
   text-shadow: 0 3px 12px rgba(0,0,0,0.9);
   font-size: clamp(22px, calc(var(--artSize) * var(--fs-rating)), 44px);
@@ -342,14 +359,23 @@ body.pause      #fav-heart {
 #personnel-info {
   font-size: 18px;
   color: #ccc;
+  line-height: 1.3;
+  padding-bottom: 0.08em;
   margin-bottom: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  line-clamp: 6;
 }
 
 /* =========================================================
  * Next Up (desktop/tablet)
  * ========================================================= */
 #next-up {
-  position: absolute;
+  position: fixed;
+  right: 24px;
   bottom: 28px;
 
   display: flex;
@@ -359,6 +385,8 @@ body.pause      #fav-heart {
 
   font-size: clamp(14px, calc(var(--artSize) * 0.037), 26px);
   font-weight: 600;
+  z-index: 120;
+  max-width: min(42vw, 760px);
 }
 
 #next-up-img {
@@ -376,10 +404,20 @@ body:not(.phone-ui) #next-up-text .marquee-copy:nth-child(2) {
   display: none;
 }
 
+body:not(.phone-ui) #next-up-text {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* =========================================================
  * Progress bar (desktop/tablet)
  * ========================================================= */
 #progress-bar-wrapper {
+  position: absolute;
+  left: 0;
+  bottom: 0;
   width: 900px;        /* 1080p baseline */
   max-width: 100%;
   height: 8px;
@@ -387,7 +425,7 @@ body:not(.phone-ui) #next-up-text .marquee-copy:nth-child(2) {
   background: rgba(255,255,255,0.15);
   border-radius: 4px;
 
-  margin-top: auto;
+  margin-top: 0;
   overflow: hidden;
 }
 
@@ -539,7 +577,7 @@ body.phone-ui #content {
   height: 100% !important;
 
   padding-top: var(--padTop) !important;
-  padding-right: var(--padSide) !important;
+  padding-right: 0 !important;
   padding-left: var(--padSide) !important;
 
   padding-bottom: calc(
@@ -629,7 +667,7 @@ body.phone-ui #next-up {
   position: fixed !important;
 
   left: var(--padSide) !important;
-  right: var(--padSide) !important;
+  right: 0 !important;
   bottom: calc(env(safe-area-inset-bottom, 0px) + var(--nextUpLift)) !important;
 
   height: var(--nextUpH) !important;
@@ -649,6 +687,7 @@ body.phone-ui #next-up {
 
   z-index: 5300 !important;
   pointer-events: none !important;
+  max-width: none !important;
 }
 
 body.phone-ui #next-up-img {
