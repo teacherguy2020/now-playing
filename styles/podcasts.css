@@ -369,6 +369,20 @@
   .metaLine{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
   .metaKey{ color: var(--muted2); width: 52px; flex: 0 0 auto; }
 
+  .autoDlWrap{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .autoDlWrap input[type="checkbox"]{
+    width:16px;
+    height:16px;
+    accent-color:#4fa3ff;
+    cursor:pointer;
+  }
+
   .empty{
     padding: 14px;
     color: var(--muted);

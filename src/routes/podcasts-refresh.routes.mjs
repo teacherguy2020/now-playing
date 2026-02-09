@@ -61,7 +61,11 @@ export function registerPodcastRefreshRoutes(app, deps) {
           } catch {}
         }
 
-        return { ...s, downloadedCount };
+        const autoDownload = (typeof s?.autoDownload === 'boolean')
+          ? s.autoDownload
+          : (s?.autoLatest === true);
+
+        return { ...s, downloadedCount, autoDownload };
       }));
 
       writeSubs(next);

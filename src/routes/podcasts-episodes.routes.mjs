@@ -238,7 +238,8 @@ export function registerPodcastEpisodeRoutes(app, deps) {
       }
 
       const subs = readSubs();
-      const sub = subs.find(s => s.rss === rss);
+      const rssNorm = normUrl(rss);
+      const sub = subs.find(s => normUrl(s?.rss) === rssNorm);
       if (!sub) return res.status(404).json({ ok: false, error: 'Subscription not found' });
 
       const mapPath = sub.mapJson;
@@ -253,9 +254,54 @@ export function registerPodcastEpisodeRoutes(app, deps) {
       const missing = [];
       const fileErrors = [];
 
+      const localByStem = Object.create(null);
+      try {
+        const names = await fs.promises.readdir(dirPath);
+        for (const name of names) {
+          const stem = String(name || '').replace(/\.[^.]+$/, '').trim().toLowerCase();
+          if (!stem) continue;
+          localByStem[stem] = path.join(dirPath, name);
+        }
+      } catch {}
+
       for (const url of episodeUrls) {
-        const it = itemsByUrl[url];
+        let lookupKey = String(url || '').trim();
+        let it = itemsByUrl[lookupKey];
+
+        // Support deleting by id:<stem> even when map keys are enclosure URLs.
+        if (!it && /^id:[a-f0-9]{12}$/i.test(lookupKey)) {
+          const stem = lookupKey.slice(3).toLowerCase();
+          const foundKey = Object.keys(itemsByUrl).find((k) => {
+            const v = itemsByUrl[k] || {};
+            const fileName = String(v.filename || v.file || '').trim();
+            const base = path.basename(fileName).replace(/\.[^.]+$/, '').toLowerCase();
+            const p = String(v.path || '').trim();
+            const pbase = path.basename(p).replace(/\.[^.]+$/, '').toLowerCase();
+            return base === stem || pbase === stem;
+          });
+          if (foundKey) {
+            lookupKey = foundKey;
+            it = itemsByUrl[lookupKey];
+          }
+        }
+
         if (!it) {
+          // Fallback: delete directly from local folder by id stem.
+          if (/^id:[a-f0-9]{12}$/i.test(lookupKey)) {
+            const stem = lookupKey.slice(3).toLowerCase();
+            const fallbackPath = localByStem[stem] || '';
+            if (fallbackPath) {
+              try {
+                await fs.promises.unlink(fallbackPath);
+                deleted.push(url);
+                continue;
+              } catch (e) {
+                fileErrors.push({ url, lookupKey, filePath: fallbackPath, error: e?.message || String(e) });
+                continue;
+              }
+            }
+          }
+
           missing.push(url);
           continue;
         }
@@ -271,14 +317,14 @@ export function registerPodcastEpisodeRoutes(app, deps) {
           try {
             await fs.promises.unlink(filePath);
           } catch (e) {
-            errp('File delete failed', { url, filePath, error: e?.message || String(e) });
-            fileErrors.push({ url, filePath, error: e?.message || String(e) });
+            errp('File delete failed', { url, lookupKey, filePath, error: e?.message || String(e) });
+            fileErrors.push({ url, lookupKey, filePath, error: e?.message || String(e) });
           }
         } else {
-          fileErrors.push({ url, filePath: '(none)', error: 'No file/path in map item' });
+          fileErrors.push({ url, lookupKey, filePath: '(none)', error: 'No file/path in map item' });
         }
 
-        delete itemsByUrl[url];
+        delete itemsByUrl[lookupKey];
         deleted.push(url);
       }
 
@@ -295,6 +341,13 @@ export function registerPodcastEpisodeRoutes(app, deps) {
       }
 
       await fs.promises.writeFile(m3uPath, lines.join('\n') + (lines.length ? '\n' : ''), 'utf8');
+
+      // Rebuild index from disk so map/m3u stay authoritative even if delete used fallback path.
+      try {
+        await rebuildPodcastLocalIndex(sub, { limit: Math.max(1, Math.min(500, Number(sub?.limit || 200))) });
+      } catch (e) {
+        errp('rebuild after delete failed', e?.message || String(e));
+      }
 
       return res.json({
         ok: true,

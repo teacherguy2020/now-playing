@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API="http://localhost:3000"
-SUBS="/home/brianwis/album_art/podcasts/subscriptions.json"
+API="${API:-http://localhost:3101}"
 LIMIT=50
 
 # Optional: warm/rebuild Pi4 art cache for newly embedded files.
 # Set to 0 if you don't care about index1080 cache freshness.
 WARM_ART_CACHE=1
 
-# For each subscription with autoLatest=true:
+# For each subscription with autoDownload=true (fallback: legacy autoLatest=true):
 #   - fetch episodes/list
 #   - download N newest not-downloaded items
 #   - include imageUrl so download-one can embed episode art
-jq -c '.items[]? | select(.autoLatest == true)' "$SUBS" | while IFS= read -r sub; do
+subs_json="$(curl -fsS "$API/podcasts/refresh")"
+
+jq -c '.items[]? | select((.autoDownload == true) or (.autoLatest == true))' <<<"$subs_json" | while IFS= read -r sub; do
   rss="$(jq -r '.rss' <<<"$sub")"
-  n="$(jq -r '.autoLatestDownloadCount // 1' <<<"$sub")"
+  n="$(jq -r '.autoDownloadCount // .autoLatestDownloadCount // 1' <<<"$sub")"
 
   # Pull merged feed+disk view
   j="$(curl -fsS -X POST "$API/podcasts/episodes/list" \

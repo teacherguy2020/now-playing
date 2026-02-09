@@ -1,4 +1,4 @@
-console.log('PODCASTS_UI_VERSION', '2026-02-08_3');
+console.log('PODCASTS_UI_VERSION', '2026-02-09_1');
   const statusEl   = document.getElementById('status');
   const statusWrap = document.getElementById('statusWrap');
   const listEl     = document.getElementById('list');
@@ -564,7 +564,9 @@ async function loadEpisodes() {
 
     for (const p of items) {
       const title = esc(p.title || '(untitled)');
-      const rss   = esc(p.rss || '');
+      const rssRaw = String(p.rss || '');
+      const rss   = esc(rssRaw);
+      const autoDownload = (p?.autoDownload === true) || (p?.autoLatest === true);
 
       const built = p.lastBuilt ? esc(p.lastBuilt) : '';
       const itemsCount = (typeof p.items === 'number') ? p.items : null;
@@ -589,6 +591,13 @@ async function loadEpisodes() {
           ${built ? `<div class="metaLine"><span class="metaKey">Built</span> <span>${built}</span></div>` : ``}
           ${itemsCount !== null ? `<div class="metaLine"><span class="metaKey">Items</span> <span>${itemsCount}</span></div>` : ``}
           ${downloadedCount !== null ? `<div class="metaLine"><span class="metaKey">Files</span> <span>${downloadedCount}</span></div>` : ``}
+          <div class="metaLine autoDlLine">
+            <span class="metaKey">Auto</span>
+            <label class="autoDlWrap" title="Automatically download new episodes during scheduled runs">
+              <input type="checkbox" data-auto-download="${rss}" ${autoDownload ? 'checked' : ''} />
+              <span>Download new episodes</span>
+            </label>
+          </div>
         </div>
       `;
 
@@ -598,7 +607,7 @@ async function loadEpisodes() {
       }, { once: true });
 
       card.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return;
+        if (e.target.closest('button, input, label.autoDlWrap')) return;
 
         openModal({
           title: p.title || '(untitled)',
@@ -642,6 +651,30 @@ async function loadEpisodes() {
           setStatus(`Error: ${err.message}`, 'err');
         } finally {
           setBusy(false);
+        }
+      });
+    });
+
+    listEl.querySelectorAll('input[data-auto-download]').forEach(chk => {
+      chk.addEventListener('click', (e) => e.stopPropagation());
+      chk.addEventListener('change', async (e) => {
+        e.stopPropagation();
+
+        const rss = chk.getAttribute('data-auto-download');
+        if (!rss) return;
+
+        const autoDownload = !!chk.checked;
+        chk.disabled = true;
+
+        try {
+          setStatus('Saving auto-download preference…');
+          await apiPost('/podcasts/subscription/settings', { rss, autoDownload });
+          setStatus(autoDownload ? 'Auto-download enabled.' : 'Auto-download disabled.', 'ok');
+        } catch (err) {
+          chk.checked = !autoDownload;
+          setStatus(`Error: ${err.message || String(err)}`, 'err');
+        } finally {
+          chk.disabled = false;
         }
       });
     });

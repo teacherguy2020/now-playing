@@ -14,6 +14,15 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
     execFileP,
   } = deps;
 
+  const parseAutoDownload = (value, fallback = false) => {
+    if (value === undefined || value === null) return !!fallback;
+    if (typeof value === 'boolean') return value;
+    const s = String(value).trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(s)) return true;
+    if (['0', 'false', 'no', 'off'].includes(s)) return false;
+    return !!fallback;
+  };
+
   app.get('/podcasts', async (req, res) => {
     const items = readSubs();
 
@@ -83,8 +92,9 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
       const items = readSubs();
       const idx = items.findIndex(it => normUrl(it?.rss) === rss);
       const prev = idx >= 0 ? (items[idx] || {}) : {};
+      const requestedAutoDownload = parseAutoDownload(req.body?.autoDownload, prev?.autoDownload ?? prev?.autoLatest ?? false);
 
-      logp('INPUTS', { rss, limit, downloadCount, id, existed: idx >= 0 });
+      logp('INPUTS', { rss, limit, downloadCount, id, existed: idx >= 0, autoDownload: requestedAutoDownload });
 
       function safeFolderNameKeepSpaces(s, fallback = 'Podcast') {
         let t = String(s || '').trim();
@@ -211,6 +221,7 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
         mapJson,
         limit,
         imageUrl: feedImageUrl || String(prev?.imageUrl || '').trim() || '',
+        autoDownload: requestedAutoDownload,
       };
 
       if (idx >= 0) items[idx] = sub;
@@ -278,6 +289,26 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
       errp('FATAL', { error: e?.message || String(e), stack: e?.stack, ms: Date.now() - t0 });
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
+  });
+
+  app.post('/podcasts/subscription/settings', async (req, res) => {
+    const rss = normUrl(req.body?.rss);
+    if (!rss) return res.status(400).json({ ok: false, error: 'rss required' });
+
+    const items = readSubs();
+    const idx = items.findIndex(x => normUrl(x?.rss) === rss);
+    if (idx < 0) return res.status(404).json({ ok: false, error: 'Subscription not found', rss });
+
+    const prev = items[idx] || {};
+    const autoDownload = parseAutoDownload(req.body?.autoDownload, prev?.autoDownload ?? prev?.autoLatest ?? false);
+
+    items[idx] = {
+      ...prev,
+      autoDownload,
+    };
+
+    writeSubs(items);
+    return res.json({ ok: true, rss, autoDownload, subscription: items[idx] });
   });
 
   app.post('/podcasts/unsubscribe', async (req, res) => {
