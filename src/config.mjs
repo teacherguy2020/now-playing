@@ -27,8 +27,13 @@ export const LOCAL_ADDRESS = process.env.LOCAL_ADDRESS || apiIp || '10.0.0.233';
 export const MPD_HOST = process.env.MPD_HOST || '10.0.0.254';
 export const MPD_PORT = Number(process.env.MPD_PORT || '6600');
 
-export const MOODE_USB_PREFIX = process.env.MOODE_USB_PREFIX || 'USB/SamsungMoode/';
-export const PI4_MOUNT_BASE = process.env.PI4_MOUNT_BASE || '/mnt/SamsungMoode';
+export const MOODE_USB_PREFIX =
+  process.env.MOODE_USB_PREFIX ||
+  (MASTER_CONFIG?.paths?.moodeUsbMount
+    ? `USB/${String(MASTER_CONFIG.paths.moodeUsbMount).split('/').filter(Boolean).slice(-1)[0] || 'SamsungMoode'}/`
+    : 'USB/SamsungMoode/');
+export const PI4_MOUNT_BASE = process.env.PI4_MOUNT_BASE || MASTER_CONFIG?.paths?.piMountBase || '/mnt/SamsungMoode';
+export const MUSIC_LIBRARY_ROOT = process.env.MUSIC_LIBRARY_ROOT || MASTER_CONFIG?.paths?.musicLibraryRoot || '/var/lib/mpd/music';
 
 export const METAFLAC = process.env.METAFLAC || '/usr/bin/metaflac';
 

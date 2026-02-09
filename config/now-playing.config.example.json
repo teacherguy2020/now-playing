@@ -25,6 +25,9 @@
     "webhookPath": "/alexa"
   },
   "paths": {
+    "musicLibraryRoot": "/var/lib/mpd/music",
+    "moodeUsbMount": "/media/SamsungMoode",
+    "piMountBase": "/mnt/SamsungMoode",
     "podcastRoot": "/var/lib/mpd/music/NPR-Podcasts",
     "subscriptionsJson": "./subscriptions.json"
   },
