@@ -3,28 +3,24 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>moOde™ Podcast Add-On</title>
+  <title>moOde Podcasts — Modern Preview</title>
 
-  <link rel="stylesheet" href="styles/podcasts.css" />
-
-
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260209-2" />
+  <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
 </head>
 
 <body>
-  <!-- LOCKED HERO -->
   <div class="heroRail" id="heroRail">
     <div class="heroWrap">
       <header>
         <div class="brand">
-          <h1>moOde™ Podcast Add-On</h1>
-          <div class="sub">
-            Subscribe → download to USB → generate moOde playlists. No podcast apps, no streaming at playback time.
-          </div>
+          <h1>Podcasts</h1>
+          <div class="sub">Modern preview layout • same backend • same actions</div>
         </div>
 
         <div class="pill" title="UI on :8101 → API on :3101">
           <span class="dot" aria-hidden="true"></span>
-          Pi4 API: <span id="apiHint" style="color:rgba(255,255,255,.85)">10.0.0.233:3101</span>
+          API: <span id="apiHint" style="color:rgba(255,255,255,.9)">10.0.0.233:3101</span>
         </div>
       </header>
 
@@ -33,12 +29,7 @@
           <div class="row">
             <div class="field" style="flex:1 1 auto;">
               <label for="rss">RSS URL</label>
-              <input
-                id="rss"
-                type="url"
-                placeholder="Paste RSS URL to subscribe…"
-                autocomplete="off"
-              />
+              <input id="rss" type="url" placeholder="Paste RSS URL to subscribe…" autocomplete="off" />
             </div>
 
             <div class="field">
@@ -47,9 +38,7 @@
             </div>
 
             <div class="field">
-              <label for="limit" title="How many items to scan from the RSS feed (used during subscribe/refresh)">
-                Feed scan
-              </label>
+              <label for="limit">Feed scan</label>
               <input id="limit" type="number" min="1" max="500" step="1" value="50" />
             </div>
 
@@ -69,22 +58,18 @@
     </div>
   </div>
 
-  <!-- SCROLLING SUBS (behind hero) -->
   <div class="subsScroll" id="subsScroll">
     <div class="subsWrap">
       <section class="subsShell">
         <div class="subsHeader">
           <div class="h">Subscriptions</div>
-          <div class="hint">
-            Shows: <span id="subCount">0</span> • Files counted on load (via /podcasts/refresh)
-          </div>
+          <div class="hint">Shows: <span id="subCount">0</span></div>
         </div>
         <div class="grid" id="list"></div>
       </section>
     </div>
   </div>
 
-  <!-- Modal -->
   <div class="modalOverlay" id="modalOverlay" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-label="Podcast details">
       <div class="modalHead">
@@ -106,21 +91,16 @@
 
       <div class="modalActions">
         <div class="tinyMuted" id="modalCount"></div>
-        <div style="display:flex; gap:10px;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <button class="btn" id="modalRefresh" type="button">Refresh</button>
-          <button class="btn" id="modalSelectAll" type="button" title="Select all episodes">Select all</button>
-          <button class="btn btnPrimary" id="modalDownloadSelected" type="button" disabled title="Download selected episodes">
-            Download selected
-          </button>
-          <button class="btn btnDanger" id="modalDeleteSelected" type="button" disabled title="Delete selected episodes">
-            🗑
-          </button>
+          <button class="btn" id="modalSelectAll" type="button">Select all</button>
+          <button class="btn btnPrimary" id="modalDownloadSelected" type="button" disabled>Download selected</button>
+          <button class="btn btnDanger" id="modalDeleteSelected" type="button" disabled>🗑</button>
         </div>
       </div>
     </div>
   </div>
-</body>
+
   <script src="scripts/podcasts.js?v=20260209-1"></script>
-
-
+</body>
 </html>
