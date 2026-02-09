@@ -533,7 +533,7 @@
 
   .epRow{
     display: grid;
-    grid-template-columns: 22px 1fr auto;
+    grid-template-columns: 22px 44px minmax(0,1fr) auto;
     gap: 10px;
     align-items: start;
 
@@ -541,6 +541,16 @@
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,.12);
     background: rgba(0,0,0,.18);
+  }
+
+  .epThumb{
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    display: block;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.03);
   }
 
   .epChk{

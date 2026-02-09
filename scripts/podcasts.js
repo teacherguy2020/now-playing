@@ -246,7 +246,7 @@ function renderEpisodes(eps) {
     const downloaded = !!ep.downloaded;
 
     const imageUrl = String(ep.imageUrl || ep.image || '').trim();
-chk.dataset.imageUrl = imageUrl;
+    chk.dataset.imageUrl = imageUrl;
 
     chk.dataset.epid = id;
     chk.dataset.url = enclosure;
@@ -308,7 +308,18 @@ chk.dataset.imageUrl = imageUrl;
       right.appendChild(btn);
     }
 
+    const rowThumb = document.createElement('img');
+    rowThumb.className = 'epThumb';
+    rowThumb.alt = '';
+    rowThumb.loading = 'lazy';
+    rowThumb.decoding = 'async';
+    rowThumb.src = imageUrl || String(modalCtx?.imageUrl || '').trim() || placeholderSvgDataUri(title || modalTitle.textContent || 'Episode');
+    rowThumb.addEventListener('error', () => {
+      rowThumb.src = String(modalCtx?.imageUrl || '').trim() || placeholderSvgDataUri(title || modalTitle.textContent || 'Episode');
+    }, { once: true });
+
     row.appendChild(chk);
+    row.appendChild(rowThumb);
     row.appendChild(main);
     row.appendChild(right);
 
