@@ -98,7 +98,17 @@ function createApiClient(config) {
     });
   }
 
-  return { httpRequestJson, apiNowPlaying, apiQueueAdvance, apiMpdPrime };
+  async function apiSetCurrentRating(rating) {
+    const url = API_BASE + '/rating/current';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { rating },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  return { httpRequestJson, apiNowPlaying, apiQueueAdvance, apiMpdPrime, apiSetCurrentRating };
 }
 
 module.exports = { createApiClient };

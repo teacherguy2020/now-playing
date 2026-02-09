@@ -20,7 +20,7 @@ const {
   ADVANCE_GUARD_MS, ENQUEUE_GUARD_MS, PRIME_START_OFFSET_MS,
 } = config;
 
-const { apiNowPlaying, apiQueueAdvance, apiMpdPrime } = createApiClient(config);
+const { apiNowPlaying, apiQueueAdvance, apiMpdPrime, apiSetCurrentRating } = createApiClient(config);
 
 /* =========================
  * Alexa helpers
@@ -340,6 +340,11 @@ const {
   NextIntentHandler,
   HelpIntentHandler,
   FallbackIntentHandler,
+  PlayArtistIntentHandler,
+  PlayTrackIntentHandler,
+  ShuffleIntentHandler,
+  RepeatIntentHandler,
+  RateTrackIntentHandler,
   StopHandler,
   SessionEndedRequestHandler,
 } = createIntentHandlers({
@@ -353,6 +358,7 @@ const {
   buildPlayReplaceAllWithOffset,
   rememberIssuedStream,
   getLastPlayed: () => ({ token: lastPlayedToken, url: lastPlayedUrl, offsetMs: lastStoppedOffsetMs }),
+  apiSetCurrentRating,
 });
 
 const { PlaybackControllerEventHandler, AudioPlayerEventHandler } = createAudioHandlers({
@@ -393,6 +399,11 @@ exports.handler = Alexa.SkillBuilders.custom()
     NextIntentHandler,
     HelpIntentHandler,
     FallbackIntentHandler,
+    PlayArtistIntentHandler,
+    PlayTrackIntentHandler,
+    ShuffleIntentHandler,
+    RepeatIntentHandler,
+    RateTrackIntentHandler,
     StopHandler,
     SessionEndedRequestHandler,
 

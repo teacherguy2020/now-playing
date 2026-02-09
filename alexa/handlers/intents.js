@@ -14,6 +14,7 @@ function createIntentHandlers(deps) {
     buildPlayReplaceAllWithOffset,
     rememberIssuedStream,
     getLastPlayed,
+    apiSetCurrentRating,
   } = deps;
 
   const LaunchRequestHandler = {
@@ -172,7 +173,7 @@ function createIntentHandlers(deps) {
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.HelpIntent';
     },
     handle(handlerInput) {
-      return speak(handlerInput, 'You can say: what’s playing, pause, resume, or next.', false);
+      return speak(handlerInput, 'You can say: what is playing, pause, resume, next, or rate this five stars.', false);
     },
   };
 
@@ -183,6 +184,91 @@ function createIntentHandlers(deps) {
     },
     handle(handlerInput) {
       return speak(handlerInput, 'Sorry, I did not understand. Try: what’s playing.', false);
+    },
+  };
+
+  const PlayArtistIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayArtistIntent';
+    },
+    handle(handlerInput) {
+      const artist = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.artist?.value);
+      if (!artist) return speak(handlerInput, 'Tell me which artist to play.', false);
+      return speak(handlerInput, 'Play artist is recognized, but not wired to playback yet.', false);
+    },
+  };
+
+  const PlayTrackIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayTrackIntent';
+    },
+    handle(handlerInput) {
+      const track = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.track?.value);
+      if (!track) return speak(handlerInput, 'Tell me which track to play.', false);
+      return speak(handlerInput, 'Play track is recognized, but not wired to playback yet.', false);
+    },
+  };
+
+  const ShuffleIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ShuffleIntent';
+    },
+    handle(handlerInput) {
+      const state = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.state?.value).toLowerCase();
+      if (!state) return speak(handlerInput, 'Say shuffle on or shuffle off.', false);
+      return speak(handlerInput, 'Shuffle control is recognized, but not wired yet.', false);
+    },
+  };
+
+  const RepeatIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'RepeatIntent';
+    },
+    handle(handlerInput) {
+      const mode = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.mode?.value).toLowerCase();
+      if (!mode) return speak(handlerInput, 'Say repeat off, repeat one, or repeat all.', false);
+      return speak(handlerInput, 'Repeat control is recognized, but not wired yet.', false);
+    },
+  };
+
+  function ratingSlotToNumber(v) {
+    const s = safeStr(v).toLowerCase();
+    if (!s) return null;
+    if (s.includes('five')) return 5;
+    if (s.includes('four')) return 4;
+    if (s.includes('three')) return 3;
+    if (s.includes('two')) return 2;
+    if (s.includes('one')) return 1;
+    if (s === 'up' || s.includes('thumbs up') || s === 'like') return 5;
+    if (s === 'down' || s.includes('thumbs down') || s === 'dislike') return 1;
+    const n = Number(s);
+    if (Number.isFinite(n) && n >= 0 && n <= 5) return Math.round(n);
+    return null;
+  }
+
+  const RateTrackIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'RateTrackIntent';
+    },
+    async handle(handlerInput) {
+      const raw = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.rating?.value);
+      const rating = ratingSlotToNumber(raw);
+      if (rating === null) {
+        return speak(handlerInput, 'Say a rating like one star through five stars.', false);
+      }
+
+      try {
+        const r = await apiSetCurrentRating(rating);
+        if (r && r.disabled) return speak(handlerInput, 'Ratings are not available for this source.', false);
+        return speak(handlerInput, `Set rating to ${rating} stars.`, false);
+      } catch (e) {
+        return speak(handlerInput, 'I could not set the rating right now.', false);
+      }
     },
   };
 
@@ -219,6 +305,11 @@ function createIntentHandlers(deps) {
     NextIntentHandler,
     HelpIntentHandler,
     FallbackIntentHandler,
+    PlayArtistIntentHandler,
+    PlayTrackIntentHandler,
+    ShuffleIntentHandler,
+    RepeatIntentHandler,
+    RateTrackIntentHandler,
     StopHandler,
     SessionEndedRequestHandler,
   };
