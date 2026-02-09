@@ -13,10 +13,11 @@ This project now treats the main project config as the source of truth for Alexa
 ## Prerequisites
 
 1. Amazon Developer account
-2. AWS account (for Lambda)
-3. Alexa custom skill created in the developer console
-4. Public HTTPS domain for your API (valid cert, internet reachable)
-5. Deployed now-playing API endpoint reachable from Alexa/Lambda
+2. Alexa custom skill created in the developer console
+3. Public HTTPS domain for your API (valid cert, internet reachable)
+4. Deployed now-playing API endpoint reachable from Alexa runtime
+
+> Note: A separate AWS account is usually needed only if you manage Lambda directly. If you use Alexa-hosted skill flow, parts of hosting/runtime are provisioned from the Alexa console.
 
 ## Config model
 
