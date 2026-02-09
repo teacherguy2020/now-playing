@@ -2,7 +2,9 @@
 
 To use Alexa with this project, you must create your own Amazon developer setup: create an Amazon Developer account, create/configure an Alexa skill for personal/home use, deploy the Lambda handler, and expose your API through a public HTTPS domain reachable by Echo devices.
 
-This project now treats the main project config as the source of truth for Alexa-related settings, with Lambda env vars used only where needed.
+For Alexa-hosted/Lambda runtime, this code executes in Amazon's environment (not your local repo), so you must provide required values via skill/Lambda environment variables.
+
+The root project config is still the source of truth for your self-hosted API setup, but it is not automatically available inside Alexa runtime unless you explicitly package and load it.
 
 ## Files
 
@@ -21,7 +23,7 @@ This project now treats the main project config as the source of truth for Alexa
 
 ## Config model
 
-Set Alexa options in the root project config:
+Set Alexa options in the root project config for your API deployment context:
 
 ```json
 "alexa": {
@@ -35,6 +37,8 @@ Set Alexa options in the root project config:
 The API can derive `PUBLIC_BASE_URL` from this domain.
 
 ## Lambda environment variables
+
+These are required in Alexa-hosted skill settings / Lambda configuration because local config files are not auto-loaded there.
 
 ### Required
 
