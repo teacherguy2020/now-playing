@@ -53,6 +53,9 @@ These are required in Alexa-hosted skill settings / Lambda configuration because
 
 ## Interaction model (Build tab paste-in)
 
+- Baseline model: see JSON below.
+- Expanded v2 model (artist/track/shuffle/repeat/rating intents): `alexa/interaction-model.v2.json`
+
 In Alexa Developer Console → **Build** → **JSON Editor**, you can paste an interaction model like this as a starting point:
 
 ```json
