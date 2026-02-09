@@ -2103,6 +2103,7 @@ async function metaflacTagMulti(tag, filePath) {
 
 const deepTagCache = new Map();
 const DEEP_TAG_CACHE_MAX = Number(process.env.DEEP_TAG_CACHE_MAX || '2000');
+const DEEP_TAG_CACHE_TTL_MS = Number(process.env.DEEP_TAG_CACHE_TTL_MS || '120000');
 
 function deepTagCacheSet(key, value) {
   // Simple cap to avoid unbounded growth. Oldest eviction is fine here.
@@ -2110,7 +2111,7 @@ function deepTagCacheSet(key, value) {
     const firstKey = deepTagCache.keys().next().value;
     if (firstKey !== undefined) deepTagCache.delete(firstKey);
   }
-  deepTagCache.set(key, value);
+  deepTagCache.set(key, { ts: Date.now(), value });
 }
 
 async function getDeepMetadataCached(mpdFile) {
@@ -2119,7 +2120,11 @@ async function getDeepMetadataCached(mpdFile) {
   if (!f) return empty;
 
   const cached = deepTagCache.get(f);
-  if (cached) return cached;
+  if (cached) {
+    const ageMs = Date.now() - Number(cached.ts || 0);
+    if (ageMs >= 0 && ageMs < DEEP_TAG_CACHE_TTL_MS) return cached.value;
+    deepTagCache.delete(f);
+  }
 
   const p = mpdFileToLocalPath(f);
   if (!p || !safeIsFile(p)) {
