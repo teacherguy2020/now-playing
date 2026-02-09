@@ -273,8 +273,10 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
         errp('SYNC failed', work.sync);
       }
 
+      const elapsedMs = Date.now() - t0;
+
       logp('RESPONDING', {
-        ms: Date.now() - t0,
+        ms: elapsedMs,
         title: sub.title,
         rss: sub.rss,
         syncOk: work?.sync?.ok === true,
@@ -282,6 +284,10 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
         m3uCount: work?.sync?.m3uCount,
         coverOk: coverWork?.ok === true,
       });
+
+      logp(
+        `SUMMARY title="${sub.title}" downloaded=${work?.sync?.downloaded ?? 0} skipped=${work?.sync?.skipped ?? 0} failed=${work?.sync?.failed ?? 0} map=${work?.sync?.mapCount ?? 0} m3u=${work?.sync?.m3uCount ?? 0} cover=${coverWork?.ok === true ? 'ok' : 'no'} ms=${elapsedMs}`
+      );
 
       return res.json({ ok: true, subscription: sub, work, coverWork });
 
