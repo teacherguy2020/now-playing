@@ -82,13 +82,12 @@
         {
           "name": "PlayTrackIntent",
           "slots": [
-            { "name": "track", "type": "AMAZON.SearchQuery" },
-            { "name": "artist", "type": "AMAZON.SearchQuery" }
+            { "name": "track", "type": "AMAZON.SearchQuery" }
           ],
           "samples": [
             "play song {track}",
             "play track {track}",
-            "play {track} by {artist}",
+            "play {track}",
             "queue song {track}",
             "queue track {track}"
           ]
@@ -97,7 +96,7 @@
         {
           "name": "ShuffleIntent",
           "slots": [
-            { "name": "state", "type": "AMAZON.ON_OFF" }
+            { "name": "state", "type": "ShuffleStateType" }
           ],
           "samples": [
             "shuffle {state}",
@@ -144,6 +143,13 @@
         }
       ],
       "types": [
+        {
+          "name": "ShuffleStateType",
+          "values": [
+            { "name": { "value": "on" }, "synonyms": ["enable", "enabled"] },
+            { "name": { "value": "off" }, "synonyms": ["disable", "disabled"] }
+          ]
+        },
         {
           "name": "RepeatModeType",
           "values": [
