@@ -1,4 +1,12 @@
 import path from 'node:path';
+import { loadConfigOrNull } from './config/load-config.mjs';
+
+export const MASTER_CONFIG = loadConfigOrNull();
+
+const apiNode = (MASTER_CONFIG?.nodes || []).find(n => n?.role === 'api' || n?.role === 'both') || null;
+const apiIp = String(apiNode?.ip || '').trim() || null;
+const alexaEnabledFromConfig = MASTER_CONFIG?.alexa?.enabled;
+const publicDomainFromConfig = String(MASTER_CONFIG?.alexa?.publicDomain || '').trim();
 
 export const FFMPEG = process.env.FFMPEG || '/usr/bin/ffmpeg';
 export const CURL = process.env.CURL || '/usr/bin/curl';
@@ -7,12 +15,14 @@ export const MPD_PLAYLIST_DIR = '/var/lib/mpd/playlists';
 export const FAVORITES_PATH = `${MPD_PLAYLIST_DIR}/Favorites.m3u`;
 export const MOODE_SSH_USER = process.env.MOODE_SSH_USER || 'moode';
 export const MOODE_SSH_HOST = process.env.MOODE_SSH_HOST || '10.0.0.254';
-export const PORT = Number(process.env.PORT || '3000');
+export const PORT = Number(process.env.PORT || MASTER_CONFIG?.ports?.api || '3000');
 
 export const MOODE_BASE_URL = process.env.MOODE_BASE_URL || 'http://10.0.0.254';
-export const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://moode.brianwis.com';
+export const PUBLIC_BASE_URL =
+  process.env.PUBLIC_BASE_URL ||
+  (publicDomainFromConfig ? `https://${publicDomainFromConfig}` : 'https://moode.brianwis.com');
 
-export const LOCAL_ADDRESS = process.env.LOCAL_ADDRESS || '10.0.0.233';
+export const LOCAL_ADDRESS = process.env.LOCAL_ADDRESS || apiIp || '10.0.0.233';
 
 export const MPD_HOST = process.env.MPD_HOST || '10.0.0.254';
 export const MPD_PORT = Number(process.env.MPD_PORT || '6600');
@@ -23,7 +33,10 @@ export const PI4_MOUNT_BASE = process.env.PI4_MOUNT_BASE || '/mnt/SamsungMoode';
 export const METAFLAC = process.env.METAFLAC || '/usr/bin/metaflac';
 
 export const TRACK_KEY = process.env.TRACK_KEY || '1029384756';
-export const ENABLE_ALEXA = String(process.env.ENABLE_ALEXA || '1').trim() === '1';
+export const ENABLE_ALEXA =
+  process.env.ENABLE_ALEXA != null
+    ? String(process.env.ENABLE_ALEXA).trim() === '1'
+    : Boolean(alexaEnabledFromConfig ?? true);
 export const TRANSCODE_TRACKS = String(process.env.TRANSCODE_TRACKS || '0').trim() === '1';
 export const TRACK_CACHE_DIR = process.env.TRACK_CACHE_DIR || '/tmp/moode-track-cache';
 
