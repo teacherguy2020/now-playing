@@ -1,0 +1,36 @@
+{
+  "projectName": "now-playing",
+  "environment": "home",
+  "timezone": "America/Chicago",
+  "nodes": [
+    {
+      "name": "pi-main",
+      "ip": "10.0.0.233",
+      "role": "both",
+      "sshUser": "brianwis"
+    }
+  ],
+  "ports": {
+    "api": 3101,
+    "ui": 8101
+  },
+  "deployment": {
+    "sourceOfTruthNode": "pi-main",
+    "syncMethod": "scp"
+  },
+  "alexa": {
+    "enabled": false,
+    "publicDomain": "",
+    "skillId": "",
+    "webhookPath": "/alexa"
+  },
+  "paths": {
+    "podcastRoot": "/var/lib/mpd/music/NPR-Podcasts",
+    "subscriptionsJson": "./subscriptions.json"
+  },
+  "features": {
+    "podcasts": true,
+    "ratings": true,
+    "radio": true
+  }
+}
