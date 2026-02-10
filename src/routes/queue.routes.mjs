@@ -230,6 +230,7 @@ export function registerQueueRoutes(app, deps) {
 
       const seen = new Set();
       const byArtist = {};
+      const debugByArtist = {};
       let added = 0;
 
       for (const artist of artists) {
@@ -238,9 +239,16 @@ export function registerQueueRoutes(app, deps) {
         // Try exact first, then broader search fallback (helps Alexa casing/ASR variants)
         const rawFind = await mpdCmdOk(`find artist ${mpdQuote(artist)}`);
         const rawSearch = await mpdCmdOk(`search artist ${mpdQuote(artist)}`);
+        const rawFindAlbumArtist = await mpdCmdOk(`find albumartist ${mpdQuote(artist)}`);
+        const rawSearchAlbumArtist = await mpdCmdOk(`search albumartist ${mpdQuote(artist)}`);
+
+        const parsedFind = parseMpdSongs(rawFind);
+        const parsedSearch = parseMpdSongs(rawSearch);
+        const parsedFindAlbumArtist = parseMpdSongs(rawFindAlbumArtist);
+        const parsedSearchAlbumArtist = parseMpdSongs(rawSearchAlbumArtist);
 
         const byFile = new Map();
-        for (const s of [...parseMpdSongs(rawFind), ...parseMpdSongs(rawSearch)]) {
+        for (const s of [...parsedFind, ...parsedSearch, ...parsedFindAlbumArtist, ...parsedSearchAlbumArtist]) {
           if (!s?.file) continue;
           if (!byFile.has(s.file)) byFile.set(s.file, { file: s.file, genres: [] });
           const row = byFile.get(s.file);
@@ -249,14 +257,25 @@ export function registerQueueRoutes(app, deps) {
           }
         }
 
+        let excludedChristmas = 0;
+        let skippedAlreadySeen = 0;
+        const candidateCount = byFile.size;
+
         for (const song of byFile.values()) {
           if (added >= maxTracks) break;
           const file = String(song.file || '').trim();
-          if (!file || seen.has(file)) continue;
+          if (!file) continue;
+          if (seen.has(file)) {
+            skippedAlreadySeen += 1;
+            continue;
+          }
 
           if (excludeHoliday) {
             const isChristmas = (song.genres || []).some((g) => CHRISTMAS_GENRE_RE.test(String(g || '')));
-            if (isChristmas) continue;
+            if (isChristmas) {
+              excludedChristmas += 1;
+              continue;
+            }
           }
 
           await mpdCmdOk(`add ${mpdQuote(file)}`);
@@ -264,6 +283,17 @@ export function registerQueueRoutes(app, deps) {
           added += 1;
           byArtist[artist] += 1;
         }
+
+        debugByArtist[artist] = {
+          parsedFind: parsedFind.length,
+          parsedSearch: parsedSearch.length,
+          parsedFindAlbumArtist: parsedFindAlbumArtist.length,
+          parsedSearchAlbumArtist: parsedSearchAlbumArtist.length,
+          uniqueCandidates: candidateCount,
+          excludedChristmas,
+          skippedAlreadySeen,
+          added: byArtist[artist],
+        };
       }
 
       await mpdCmdOk(`random ${randomOn ? 1 : 0}`);
@@ -315,6 +345,7 @@ export function registerQueueRoutes(app, deps) {
         maxTracks,
         added,
         byArtist,
+        debugByArtist,
         nowPlaying,
       });
     } catch (e) {
