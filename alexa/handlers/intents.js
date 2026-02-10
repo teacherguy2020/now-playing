@@ -436,7 +436,8 @@ function createIntentHandlers(deps) {
       .replace(/\bmix of\b/ig, '')
       .replace(/\bplay\b/ig, '')
       .replace(/\bartists?\b/ig, '')
-      .replace(/\b(and|plus|with)\b/ig, ',');
+      // Delimiter policy for mixes: require explicit "plus" between artists.
+      .replace(/\bplus\b/ig, ',');
 
     const parts = normalized
       .split(',')
@@ -503,7 +504,11 @@ function createIntentHandlers(deps) {
       }
 
       if (!artists.length) {
-        return speak(handlerInput, 'Tell me the artists for the mix, for example Frank Sinatra and Diana Krall.', false);
+        return speak(handlerInput, 'Tell me the artists for the mix, for example Frank Sinatra plus Diana Krall.', false);
+      }
+
+      if (parsedArtists.length < 2 && /\b(and|with)\b/i.test(mixQuery || '')) {
+        return speak(handlerInput, 'For mixes, say plus between artists. For example, Frank Sinatra plus Diana Krall.', false);
       }
 
       try {
