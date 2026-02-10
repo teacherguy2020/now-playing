@@ -12,6 +12,29 @@ The root project config is still the source of truth for your self-hosted API se
 - `alexa/skill.js` – core skill logic
 - `config/now-playing.config.json` – primary config source (`alexa.enabled`, `alexa.publicDomain`, etc.)
 
+## Build & upload Lambda package (Dev Console)
+
+Do **not** commit generated Lambda bundles. Build from source when needed.
+
+From repo root:
+
+```bash
+rm -rf /tmp/nowplaying-lambda-staging
+mkdir -p /tmp/nowplaying-lambda-staging/lambda
+cp -R alexa /tmp/nowplaying-lambda-staging/lambda/
+cp lambda_upload/lambda/index.js /tmp/nowplaying-lambda-staging/lambda/index.js
+
+cd /tmp/nowplaying-lambda-staging
+zip -qr "$OLDPWD/alexa-devconsole-upload.zip" lambda
+```
+
+Then in Alexa Developer Console:
+1. Open **Code** tab for your skill
+2. Upload `alexa-devconsole-upload.zip`
+3. Click **Deploy**
+
+Package layout must have `lambda/` at zip root.
+
 ## Prerequisites
 
 1. Amazon Developer account

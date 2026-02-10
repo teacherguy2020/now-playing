@@ -11,4 +11,5 @@ npm-debug.log*
 # Local packaging/deploy artifacts
 /*.zip
 /lambda_upload/
+/lambda_bundle/
 /index.js
