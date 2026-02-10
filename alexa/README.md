@@ -28,7 +28,7 @@ Set Alexa options in the root project config for your API deployment context:
 ```json
 "alexa": {
   "enabled": true,
-  "publicDomain": "your-public-domain.example",
+  "publicDomain": "moode.YOUR-PUBLIC.DOMAIN.com",
   "skillId": "",
   "webhookPath": "/alexa"
 }
