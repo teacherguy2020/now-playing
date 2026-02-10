@@ -78,11 +78,10 @@ function createIntentHandlers(deps) {
           }
           if (!a) a = 'unknown artist';
 
-          const speech = `Currently playing ${t || 'unknown title'} by ${a}. What would you like to hear?`;
+          const speech = `Currently playing ${t || 'unknown title'} by ${a}.`;
 
           return handlerInput.responseBuilder
             .speak(speech)
-            .reprompt('You can say play artist, play album, play track, or play playlist.')
             .withShouldEndSession(false)
             .getResponse();
         }

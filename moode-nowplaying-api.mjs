@@ -3495,7 +3495,7 @@ app.post('/mpd/play-artist', async (req, res) => {
     const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
     const randomOn = String(stPrime.random || '0').trim() === '1';
     await mpdQueryRaw('play 0');
-    await sleep(320);
+    await sleep(170);
     if (randomOn) {
       try { await mpdQueryRaw('next'); } catch (e) {}
       await sleep(220);
@@ -3616,7 +3616,7 @@ app.post('/mpd/play-album', async (req, res) => {
     const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
     const randomOn = String(stPrime.random || '0').trim() === '1';
     await mpdQueryRaw('play 0');
-    await sleep(320);
+    await sleep(170);
     if (randomOn) {
       try { await mpdQueryRaw('next'); } catch (e) {}
       await sleep(220);
@@ -3671,7 +3671,7 @@ app.post('/mpd/play-track', async (req, res) => {
     const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
     const randomOn = String(stPrime.random || '0').trim() === '1';
     await mpdQueryRaw('play 0');
-    await sleep(320);
+    await sleep(170);
     if (randomOn) {
       try { await mpdQueryRaw('next'); } catch (e) {}
       await sleep(220);
@@ -3763,7 +3763,7 @@ app.post('/mpd/play-playlist', async (req, res) => {
     const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
     const randomOn = String(stPrime.random || '0').trim() === '1';
     await mpdQueryRaw('play 0');
-    await sleep(320);
+    await sleep(170);
     if (randomOn) {
       try { await mpdQueryRaw('next'); } catch (e) {}
       await sleep(220);
