@@ -3759,26 +3759,27 @@ app.post('/mpd/play-playlist', async (req, res) => {
     const added = Number(st?.playlistlength || 0);
     if (added <= 0) return res.status(404).json({ ok: false, error: 'Playlist loaded but no tracks', playlist: chosen });
 
-    // Prime queue. With random on, MPD starts at head on first play, so hop once.
+    // If random is enabled, randomize queue head without starting local playback.
+    let randomizedHeadFromPos = null;
     const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
     const randomOn = String(stPrime.random || '0').trim() === '1';
-    await mpdQueryRaw('play 0');
-    await sleep(170);
-    if (randomOn) {
-      try { await mpdQueryRaw('next'); } catch (e) {}
-      await sleep(220);
+    if (randomOn && added > 1) {
+      try {
+        const fromPos = Math.floor(Math.random() * added);
+        if (fromPos > 0) {
+          await mpdQueryRaw(`move ${fromPos} 0`);
+          randomizedHeadFromPos = fromPos;
+        }
+      } catch (e) {
+        log.debug('[play-playlist] random head move failed', { playlist: chosen, msg: e?.message || String(e) });
+      }
     }
-    await mpdPause(true);
 
-    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
     const head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
-    const curPos = Number(String(moodeValByKey(statusRaw, 'song') || '').trim());
-    const curByPos = Number.isFinite(curPos) ? await mpdPlaylistInfoByPos(curPos) : null;
 
-    return res.json({ ok: true, playlist, playlistInput, chosen, added, nowPlaying: {
-      file: (curByPos && curByPos.file) || head.file || song.file || '', title: decodeHtmlEntities((curByPos && curByPos.title) || head.title || song.title || ''), artist: decodeHtmlEntities((curByPos && curByPos.artist) || head.artist || song.artist || ''), album: decodeHtmlEntities((curByPos && curByPos.album) || head.album || song.album || ''),
-      songpos: String((curByPos && curByPos.songpos) || head.pos || moodeValByKey(statusRaw, 'song') || '0').trim(), songid: String((curByPos && curByPos.songid) || head.id || moodeValByKey(statusRaw, 'songid') || '').trim(),
+    return res.json({ ok: true, playlist, playlistInput, chosen, added, randomizedHeadFromPos, nowPlaying: {
+      file: head.file || '', title: decodeHtmlEntities(head.title || ''), artist: decodeHtmlEntities(head.artist || ''), album: decodeHtmlEntities(head.album || ''),
+      songpos: String(head.pos || '0').trim(), songid: String(head.id || '').trim(),
     }});
   } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
