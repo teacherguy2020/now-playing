@@ -464,6 +464,7 @@ function createIntentHandlers(deps) {
           excludeHoliday: true,
           clearFirst: true,
           random: true,
+          startPlayback: true,
           maxTracks: 300,
         });
 
@@ -477,9 +478,12 @@ function createIntentHandlers(deps) {
           return speak(handlerInput, 'I could not build that mix right now.', false);
         }
 
-        const snap = await ensureCurrentTrack();
+        let snap = (resp && resp.nowPlaying && resp.nowPlaying.file) ? resp.nowPlaying : null;
         if (!snap || !snap.file) {
-          console.log('[PlayMixIntent] no playable head after queue/mix', { added });
+          snap = await ensureCurrentTrack();
+        }
+        if (!snap || !snap.file) {
+          console.log('[PlayMixIntent] no playable head after queue/mix', { added, startedPlayback: !!resp?.startedPlayback });
           return speak(handlerInput, `I loaded ${added} tracks, but could not start playback.`, false);
         }
 

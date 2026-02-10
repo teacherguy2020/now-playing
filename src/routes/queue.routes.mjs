@@ -205,6 +205,7 @@ export function registerQueueRoutes(app, deps) {
       const excludeHoliday = req?.body?.excludeHoliday !== false;
       const clearFirst = req?.body?.clearFirst !== false;
       const randomOn = req?.body?.random !== false;
+      const startPlayback = req?.body?.startPlayback === true;
       const maxTracks = Math.max(1, Math.min(5000, Number(req?.body?.maxTracks || 300)));
 
       if (clearFirst) await mpdCmdOk('clear');
@@ -238,9 +239,23 @@ export function registerQueueRoutes(app, deps) {
 
       await mpdCmdOk(`random ${randomOn ? 1 : 0}`);
 
+      let startedPlayback = false;
+      if (startPlayback && added > 0) {
+        try {
+          await mpdCmdOk('play');
+          startedPlayback = true;
+        } catch (_) {}
+      }
+
       const statusRaw = await mpdCmdOk('status');
       const status = parseMpdKeyVals(statusRaw || '');
       const random = String(status.random || '').trim();
+
+      let nowPlaying = null;
+      try {
+        nowPlaying = await resolveHeadFast();
+        if (!nowPlaying) nowPlaying = await resolveHeadFallbackMoode();
+      } catch (_) {}
 
       return res.json({
         ok: true,
@@ -248,9 +263,12 @@ export function registerQueueRoutes(app, deps) {
         excludeHoliday,
         clearFirst,
         random: random === '1',
+        startPlayback,
+        startedPlayback,
         maxTracks,
         added,
         byArtist,
+        nowPlaying,
       });
     } catch (e) {
       console.error('/queue/mix error:', e?.message || String(e));
