@@ -1908,6 +1908,16 @@ function sleep(ms) {
 
 
 
+app.post('/mpd/deprime', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    const r = await mpdDeprimeCurrent();
+    return res.json(Object.assign({ ok: true }, r || {}));
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: (e && e.message) ? e.message : String(e) });
+  }
+});
+
 app.post('/mpd/prime', async (req, res) => {
   try {
     const result = await mpdPrimeIfIdle(); // new safe prime
@@ -1924,6 +1934,44 @@ app.post('/mpd/prime', async (req, res) => {
 // - mpdPlay(): starts playback (or mpdPlay(0) if you prefer)
 // - mpdPause(on): pauses if on===true
 // - mpdStop(): stops (optional alternative to pause)
+
+async function mpdDeprimeCurrent() {
+  // Required sequence: delete current twice, then verify no current.
+  for (let i = 0; i < 2; i++) {
+    const st = await mpdGetStatus();
+    const len = Number(st && st.playlistlength ? st.playlistlength : 0);
+    if (!Number.isFinite(len) || len <= 0) break;
+    try { await mpdDeletePos0(0); } catch (e) { break; }
+    await sleep(110);
+  }
+
+  // Verify current is empty using MPD status song/songid (mpc current equivalent signal).
+  // Retry briefly to allow MPD to settle.
+  for (let i = 0; i < 6; i++) {
+    const st = await mpdGetStatus();
+    const hasCurrent = st && st.song !== null && st.song !== undefined && Number.isFinite(Number(st.song));
+    if (!hasCurrent) {
+      try { await mpdStop(); } catch (e) {}
+      return { ok: true, cleared: true, tries: i + 1 };
+    }
+    await sleep(100);
+  }
+
+  // One extra safety delete if queue still has entries, then final check.
+  try {
+    const st = await mpdGetStatus();
+    const len = Number(st && st.playlistlength ? st.playlistlength : 0);
+    if (Number.isFinite(len) && len > 0) {
+      await mpdDeletePos0(0);
+      await sleep(120);
+    }
+  } catch (e) {}
+
+  const st2 = await mpdGetStatus();
+  const hasCurrent2 = st2 && st2.song !== null && st2.song !== undefined && Number.isFinite(Number(st2.song));
+  try { await mpdStop(); } catch (e) {}
+  return { ok: !hasCurrent2, cleared: !hasCurrent2, tries: 7 };
+}
 
 async function mpdPrimeIfIdle() {
   const st = await mpdGetStatus();
@@ -2877,6 +2925,322 @@ async function logPodcastDownload(row) {
  * Routes
  * ========================= */
  
+
+app.post('/mpd/reset-playback-state', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    try { await mpdStop(); } catch (e) {}
+    try { await mpdQueryRaw('clear'); } catch (e) {}
+    await sleep(120);
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+app.post('/mpd/play-artist', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+
+    const artist = String(req.body?.artist || '').trim();
+    if (!artist) {
+      return res.status(400).json({ ok: false, error: 'Missing artist' });
+    }
+
+    const q = mpdEscapeValue(artist);
+
+    // Build a fresh queue for this artist (do not start playback directly here)
+    await mpdQueryRaw('clear');
+    await mpdQueryRaw(`findadd albumartist ${q}`);
+
+    let st = await mpdGetStatus();
+    let added = Number(st?.playlistlength || 0);
+    let strategy = 'albumartist';
+
+    if (added <= 0) {
+      await mpdQueryRaw('clear');
+      await mpdQueryRaw(`findadd artist ${q}`);
+      st = await mpdGetStatus();
+      added = Number(st?.playlistlength || 0);
+      strategy = 'artist';
+    }
+
+    if (added <= 0) {
+      await mpdQueryRaw('clear');
+      await mpdQueryRaw(`searchadd artist ${q}`);
+      st = await mpdGetStatus();
+      added = Number(st?.playlistlength || 0);
+      strategy = 'searchadd-artist';
+    }
+
+    if (added <= 0) {
+      return res.status(404).json({ ok: false, error: 'No matches for artist', artist });
+    }
+
+    // Artist lists can take longer to settle; wait for head item to be readable.
+    let head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
+    for (let i = 0; i < 6; i++) {
+      if (head && head.file) break;
+      await sleep(120);
+      head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
+    }
+
+    // Prime queue. With random on, MPD starts at head on first play, so hop once.
+    const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
+    const randomOn = String(stPrime.random || '0').trim() === '1';
+    await mpdQueryRaw('play 0');
+    await sleep(320);
+    if (randomOn) {
+      try { await mpdQueryRaw('next'); } catch (e) {}
+      await sleep(220);
+    }
+    await mpdPause(true);
+
+    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
+    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
+    const head2 = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
+    const curPos = Number(String(moodeValByKey(statusRaw, 'song') || '').trim());
+    const curByPos = Number.isFinite(curPos) ? await mpdPlaylistInfoByPos(curPos) : null;
+
+    return res.json({
+      ok: true,
+      artist,
+      strategy,
+      added,
+      nowPlaying: {
+        file: (curByPos && curByPos.file) || head2.file || head.file || song.file || '',
+        title: decodeHtmlEntities((curByPos && curByPos.title) || head2.title || head.title || song.title || ''),
+        artist: decodeHtmlEntities((curByPos && curByPos.artist) || head2.artist || head.artist || song.artist || ''),
+        album: decodeHtmlEntities((curByPos && curByPos.album) || head2.album || head.album || song.album || ''),
+        songpos: String((curByPos && curByPos.songpos) || head2.pos || head.pos || moodeValByKey(statusRaw, 'song') || '0').trim(),
+        songid: String((curByPos && curByPos.songid) || head2.id || head.id || moodeValByKey(statusRaw, 'songid') || '').trim(),
+      },
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+
+app.post('/mpd/play-album', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    const album = String(req.body?.album || '').trim();
+    if (!album) return res.status(400).json({ ok: false, error: 'Missing album' });
+    const q = mpdEscapeValue(album);
+
+    await mpdQueryRaw('clear');
+    await mpdQueryRaw(`findadd album ${q}`);
+    let st = await mpdGetStatus();
+    let added = Number(st?.playlistlength || 0);
+    let strategy = 'findadd-album';
+
+    if (added <= 0) {
+      await mpdQueryRaw('clear');
+      await mpdQueryRaw(`searchadd album ${q}`);
+      st = await mpdGetStatus();
+      added = Number(st?.playlistlength || 0);
+      strategy = 'searchadd-album';
+    }
+
+    if (added <= 0) {
+      await mpdQueryRaw('clear');
+      await mpdQueryRaw(`searchadd any ${q}`);
+      st = await mpdGetStatus();
+      added = Number(st?.playlistlength || 0);
+      strategy = 'searchadd-any';
+    }
+
+    if (added <= 0) return res.status(404).json({ ok: false, error: 'No matches for album', album });
+
+    // Prime queue. With random on, MPD starts at head on first play, so hop once.
+    const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
+    const randomOn = String(stPrime.random || '0').trim() === '1';
+    await mpdQueryRaw('play 0');
+    await sleep(320);
+    if (randomOn) {
+      try { await mpdQueryRaw('next'); } catch (e) {}
+      await sleep(220);
+    }
+    await mpdPause(true);
+
+    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
+    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
+    const head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
+    const curPos = Number(String(moodeValByKey(statusRaw, 'song') || '').trim());
+    const curByPos = Number.isFinite(curPos) ? await mpdPlaylistInfoByPos(curPos) : null;
+
+    return res.json({ ok: true, album, added, strategy, nowPlaying: {
+      file: (curByPos && curByPos.file) || head.file || song.file || '', title: decodeHtmlEntities((curByPos && curByPos.title) || head.title || song.title || ''), artist: decodeHtmlEntities((curByPos && curByPos.artist) || head.artist || song.artist || ''), album: decodeHtmlEntities((curByPos && curByPos.album) || head.album || song.album || ''),
+      songpos: String((curByPos && curByPos.songpos) || head.pos || moodeValByKey(statusRaw, 'song') || '0').trim(), songid: String((curByPos && curByPos.songid) || head.id || moodeValByKey(statusRaw, 'songid') || '').trim(),
+    }});
+  } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+app.post('/mpd/play-track', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    const track = String(req.body?.track || '').trim();
+    if (!track) return res.status(400).json({ ok: false, error: 'Missing track' });
+    const q = mpdEscapeValue(track);
+
+    await mpdQueryRaw('clear');
+    await mpdQueryRaw(`findadd title ${q}`);
+    let st = await mpdGetStatus();
+    let added = Number(st?.playlistlength || 0);
+    let strategy = 'findadd-title';
+
+    if (added <= 0) {
+      await mpdQueryRaw('clear');
+      await mpdQueryRaw(`searchadd title ${q}`);
+      st = await mpdGetStatus();
+      added = Number(st?.playlistlength || 0);
+      strategy = 'searchadd-title';
+    }
+
+    if (added <= 0) {
+      await mpdQueryRaw('clear');
+      await mpdQueryRaw(`searchadd any ${q}`);
+      st = await mpdGetStatus();
+      added = Number(st?.playlistlength || 0);
+      strategy = 'searchadd-any';
+    }
+
+    if (added <= 0) return res.status(404).json({ ok: false, error: 'No matches for track', track });
+
+    // Prime queue. With random on, MPD starts at head on first play, so hop once.
+    const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
+    const randomOn = String(stPrime.random || '0').trim() === '1';
+    await mpdQueryRaw('play 0');
+    await sleep(320);
+    if (randomOn) {
+      try { await mpdQueryRaw('next'); } catch (e) {}
+      await sleep(220);
+    }
+    await mpdPause(true);
+
+    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
+    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
+    const head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
+    const curPos = Number(String(moodeValByKey(statusRaw, 'song') || '').trim());
+    const curByPos = Number.isFinite(curPos) ? await mpdPlaylistInfoByPos(curPos) : null;
+
+    return res.json({ ok: true, track, added, strategy, nowPlaying: {
+      file: (curByPos && curByPos.file) || head.file || song.file || '', title: decodeHtmlEntities((curByPos && curByPos.title) || head.title || song.title || ''), artist: decodeHtmlEntities((curByPos && curByPos.artist) || head.artist || song.artist || ''), album: decodeHtmlEntities((curByPos && curByPos.album) || head.album || song.album || ''),
+      songpos: String((curByPos && curByPos.songpos) || head.pos || moodeValByKey(statusRaw, 'song') || '0').trim(), songid: String((curByPos && curByPos.songid) || head.id || moodeValByKey(statusRaw, 'songid') || '').trim(),
+    }});
+  } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+app.post('/mpd/play-playlist', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    const playlist = String(req.body?.playlist || '').trim();
+    if (!playlist) return res.status(400).json({ ok: false, error: 'Missing playlist' });
+
+    const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+    const raw = await mpdQueryRaw('listplaylists');
+    const names = String(raw || '').split('\n')
+      .filter((ln) => ln.startsWith('playlist: '))
+      .map((ln) => ln.slice('playlist: '.length).trim())
+      .filter(Boolean);
+
+    let chosen = '';
+    const askN = norm(playlist);
+
+    const levenshtein = (a, b) => {
+      const m = a.length, n = b.length;
+      if (!m) return n;
+      if (!n) return m;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(
+            dp[i - 1][j] + 1,
+            dp[i][j - 1] + 1,
+            dp[i - 1][j - 1] + cost
+          );
+        }
+      }
+      return dp[m][n];
+    };
+
+    // 1) exact (case-insensitive)
+    chosen = names.find((n) => n.toLowerCase() === playlist.toLowerCase()) || '';
+    // 2) normalized exact (punctuation-insensitive)
+    if (!chosen) chosen = names.find((n) => norm(n) === askN) || '';
+    // 3) contains fallback
+    if (!chosen) chosen = names.find((n) => norm(n).includes(askN) || askN.includes(norm(n))) || '';
+    // 4) fuzzy typo/ASR fallback
+    if (!chosen && askN) {
+      let best = { name: '', score: 0 };
+      for (const n of names) {
+        const nn = norm(n);
+        if (!nn) continue;
+        const dist = levenshtein(askN, nn);
+        const score = 1 - dist / Math.max(askN.length, nn.length, 1);
+        if (score > best.score) best = { name: n, score };
+      }
+      if (best.score >= 0.62) chosen = best.name;
+    }
+
+    if (!chosen) {
+      return res.status(404).json({ ok: false, error: 'No matches for playlist', playlist, availableCount: names.length });
+    }
+
+    await mpdQueryRaw('clear');
+    await mpdQueryRaw(`load ${mpdEscapeValue(chosen)}`);
+
+    const st = await mpdGetStatus();
+    const added = Number(st?.playlistlength || 0);
+    if (added <= 0) return res.status(404).json({ ok: false, error: 'Playlist loaded but no tracks', playlist: chosen });
+
+    // Prime queue. With random on, MPD starts at head on first play, so hop once.
+    const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
+    const randomOn = String(stPrime.random || '0').trim() === '1';
+    await mpdQueryRaw('play 0');
+    await sleep(320);
+    if (randomOn) {
+      try { await mpdQueryRaw('next'); } catch (e) {}
+      await sleep(220);
+    }
+    await mpdPause(true);
+
+    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
+    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
+    const head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
+    const curPos = Number(String(moodeValByKey(statusRaw, 'song') || '').trim());
+    const curByPos = Number.isFinite(curPos) ? await mpdPlaylistInfoByPos(curPos) : null;
+
+    return res.json({ ok: true, playlist, chosen, added, nowPlaying: {
+      file: (curByPos && curByPos.file) || head.file || song.file || '', title: decodeHtmlEntities((curByPos && curByPos.title) || head.title || song.title || ''), artist: decodeHtmlEntities((curByPos && curByPos.artist) || head.artist || song.artist || ''), album: decodeHtmlEntities((curByPos && curByPos.album) || head.album || song.album || ''),
+      songpos: String((curByPos && curByPos.songpos) || head.pos || moodeValByKey(statusRaw, 'song') || '0').trim(), songid: String((curByPos && curByPos.songid) || head.id || moodeValByKey(statusRaw, 'songid') || '').trim(),
+    }});
+  } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+});
+
+
+app.post('/mpd/shuffle', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    const rawState = String(req.body?.state || req.query?.state || '').trim().toLowerCase();
+    const on = ['on','1','true','enable','enabled'].includes(rawState);
+    const off = ['off','0','false','disable','disabled'].includes(rawState);
+    if (!on && !off) {
+      return res.status(400).json({ ok: false, error: 'state must be on/off' });
+    }
+    await mpdQueryRaw(`random ${on ? 1 : 0}`);
+    const st = await mpdGetStatus();
+    return res.json({ ok: true, shuffle: on, state: st?.state || '' });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
 app.post('/mpd/play-file', async (req, res) => {
   try {
     const file = String(req.body?.file || '').trim();
@@ -4002,6 +4366,10 @@ registerQueueRoutes(app, {
   mpdPlaylistInfoById,
   mpdDeleteId,
   mpdDeletePos0,
+  mpdQueryRaw,
+  parseMpdKeyVals,
+  parseMpdFirstBlock,
+  mpdPrimeIfIdle,
   fetchJson,
   MOODE_BASE_URL,
   moodeValByKey,

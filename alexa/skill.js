@@ -210,23 +210,29 @@ function enqueueAlreadyIssuedForPrevToken(prevToken) {
 
 async function advanceFromTokenIfNeeded(token) {
   const tok = safeStr(token);
-  if (!tok) return false;
+  if (!tok) return { advanced: false, nowPlaying: null, reason: 'missing-token' };
 
-  if (recentlyAdvancedForToken(tok)) return false;
+  if (recentlyAdvancedForToken(tok)) {
+    return { advanced: false, nowPlaying: null, reason: 'recently-advanced' };
+  }
 
   const parsed = parseTokenB64(tok);
-  if (!parsed) return false;
+  if (!parsed) return { advanced: false, nowPlaying: null, reason: 'bad-token' };
 
   const file = safeStr(parsed.file);
   const songid = safeNum(parsed.songid, null);
   const pos0 = safeNum(parsed.pos0, null);
 
-  if (!file) return false;
-  if (songid === null && pos0 === null) return false;
+  if (!file) return { advanced: false, nowPlaying: null, reason: 'missing-file' };
+  if (songid === null && pos0 === null) return { advanced: false, nowPlaying: null, reason: 'missing-songid-pos0' };
 
-  await apiQueueAdvance(songid, pos0, file);
+  const resp = await apiQueueAdvance(songid, pos0, file);
   markAdvancedForToken(tok);
-  return true;
+  return {
+    advanced: true,
+    nowPlaying: resp && resp.nowPlaying ? resp.nowPlaying : null,
+    reason: 'advanced',
+  };
 }
 
 /* =========================
@@ -296,15 +302,33 @@ async function primeIfAllowed(logPrefix) {
  * - If empty: prime + a couple retries
  */
 async function ensureNowPlayingForEnqueue(logPrefix) {
+  function isTransient(s) {
+    if (!s || !s.file) return true;
+    const state = safeStr(s.state).toLowerCase();
+    const duration = safeNum(s.duration, 0);
+    const elapsed = safeNum(s.elapsed, 0);
+    return (state === 'stop' || state === 'pause') && duration <= 0 && elapsed <= 0;
+  }
+
   let snap = await getStableNowPlayingSnapshot();
-  if (snap && snap.file) return snap;
+  if (snap && snap.file && !isTransient(snap)) return snap;
+
+  if (isTransient(snap)) {
+    console.log(logPrefix, 'transient now-playing snapshot; retrying before prime');
+    for (let i = 0; i < 4; i++) {
+      await sleep(120);
+      const retry = await getStableNowPlayingSnapshot();
+      if (retry && retry.file && !isTransient(retry)) return retry;
+      snap = retry;
+    }
+  }
 
   await primeIfAllowed(logPrefix);
 
   for (let i = 0; i < 3; i++) {
-    await sleep(250);
+    await sleep(180);
     snap = await getStableNowPlayingSnapshot();
-    if (snap && snap.file) return snap;
+    if (snap && snap.file && !isTransient(snap)) return snap;
   }
   return null;
 }

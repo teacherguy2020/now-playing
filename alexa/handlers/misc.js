@@ -29,7 +29,16 @@ function createMiscHandlers({ VERSION }) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'System.ExceptionEncountered';
     },
     handle(handlerInput) {
-      console.log('System.ExceptionEncountered');
+      try {
+        const req = handlerInput.requestEnvelope && handlerInput.requestEnvelope.request;
+        const cause = req && req.error && req.error.cause ? req.error.cause : null;
+        const msg = req && req.error && req.error.message ? req.error.message : '';
+        console.log('System.ExceptionEncountered', msg ? ('message=' + msg) : '');
+        if (cause) console.log('System.Exception cause:', JSON.stringify(cause));
+        else console.log('System.Exception payload:', JSON.stringify(req || {}));
+      } catch (e) {
+        console.log('System.ExceptionEncountered (logging failed):', e && e.message ? e.message : String(e));
+      }
       return handlerInput.responseBuilder.getResponse();
     },
   };

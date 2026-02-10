@@ -26,6 +26,102 @@ function createAudioHandlers(deps) {
     buildPlayReplaceAll,
   } = deps;
 
+  async function ensureHeadReady(previousToken, logPrefix, options) {
+    const opts = options || {};
+    const prevToken = safeStr(previousToken);
+
+    if (!prevToken) {
+      console.log(logPrefix, 'missing previous token; cannot ENQUEUE');
+      return null;
+    }
+
+    if (enqueueAlreadyIssuedForPrevToken(prevToken)) {
+      console.log(logPrefix, 'enqueue already issued for previous token; no action');
+      return null;
+    }
+
+    let advancedNowPlaying = null;
+    if (opts.advanceFromPrevious) {
+      try {
+        const adv = await advanceFromTokenIfNeeded(prevToken);
+        if (adv && adv.advanced) {
+          console.log(logPrefix, 'advance-from-previous-token: advanced');
+          if (adv.nowPlaying && adv.nowPlaying.file) {
+            advancedNowPlaying = adv.nowPlaying;
+            console.log(logPrefix, 'using queue/advance nowPlaying candidate');
+          }
+        } else {
+          console.log(logPrefix, 'advance-from-previous-token: no-op', adv && adv.reason ? adv.reason : '');
+        }
+      } catch (e) {
+        console.log(logPrefix, 'advance-from-previous-token failed:', e && e.message ? e.message : String(e));
+      }
+    }
+
+    const snap = advancedNowPlaying || await ensureNowPlayingForEnqueue(logPrefix);
+    console.log(logPrefix, '/now-playing snapshot:', snap ? JSON.stringify(snap, null, 2) : null);
+
+    if (!snap || !snap.file) {
+      console.log(logPrefix, 'no next from /now-playing; skipping ENQUEUE');
+      return null;
+    }
+
+    const nextFile = safeStr(snap.file);
+    const nextPos0 = safeNum(snap.songpos, null);
+    const nextSongId = safeNum(snap.songid, null);
+
+    if (!nextFile || nextPos0 === null) {
+      console.log(logPrefix, 'invalid next candidate; skipping ENQUEUE');
+      return null;
+    }
+
+    const candidateToken = makeToken({ file: nextFile, songid: nextSongId, pos0: nextPos0 });
+
+    if (recentlyEnqueuedToken(candidateToken)) {
+      console.log(logPrefix, 'skip duplicate enqueue token');
+      return null;
+    }
+
+    const enq = buildPlayEnqueue(
+      {
+        file: nextFile,
+        songpos: String(nextPos0),
+        songid: (nextSongId !== null ? String(nextSongId) : ''),
+        title: decodeHtmlEntities(snap.title || ''),
+        artist: decodeHtmlEntities(snap.artist || ''),
+        album: decodeHtmlEntities(snap.album || ''),
+        albumArtUrl: absolutizeMaybe(snap.albumArtUrl || '', API_BASE),
+        altArtUrl: absolutizeMaybe(snap.altArtUrl || '', API_BASE),
+      },
+      prevToken
+    );
+
+    if (!enq) {
+      console.log(logPrefix, 'could not build ENQUEUE directive');
+      return null;
+    }
+
+    try {
+      const enqToken = enq.audioItem && enq.audioItem.stream ? enq.audioItem.stream.token : '';
+      const enqUrl = enq.audioItem && enq.audioItem.stream ? enq.audioItem.stream.url : '';
+      if (enqToken && enqUrl) rememberIssuedStream(enqToken, enqUrl, 0);
+    } catch (e) {}
+
+    try {
+      await advanceFromTokenIfNeeded(candidateToken);
+      console.log(logPrefix, 'advanced MPD head for enqueued track pos0=', nextPos0, 'songid=', nextSongId);
+    } catch (e) {
+      console.log(logPrefix, 'advance after enqueue failed:', e && e.message ? e.message : String(e));
+    }
+
+    markEnqueuedToken(candidateToken, prevToken);
+
+    console.log(logPrefix, 'ENQUEUE next:', nextFile, 'pos0=', nextPos0, 'songid=', nextSongId);
+    console.log(logPrefix, 'enqueue directive:', JSON.stringify(enq, null, 2));
+
+    return enq;
+  }
+
   const PlaybackControllerEventHandler = {
     canHandle(handlerInput) {
       const t = Alexa.getRequestType(handlerInput.requestEnvelope);
@@ -69,18 +165,19 @@ function createAudioHandlers(deps) {
 
           if (safeStr(token)) setLastPlayedToken(safeStr(token));
 
-          if (Number.isFinite(startOff) && startOff > 0) {
-            console.log('PlaybackStarted: non-zero offset; skipping advance');
-            return handlerInput.responseBuilder.getResponse();
+          if (!(Number.isFinite(startOff) && startOff > 0)) {
+            try {
+              const adv = await advanceFromTokenIfNeeded(token);
+              if (adv && adv.advanced) console.log('PlaybackStarted: advanced queue for this token');
+            } catch (e) {
+              console.log('PlaybackStarted: advance failed:', e && e.message ? e.message : String(e));
+            }
+          } else {
+            console.log('PlaybackStarted: non-zero offset; skip advance, still checking head readiness');
           }
 
-          try {
-            const advanced = await advanceFromTokenIfNeeded(token);
-            if (advanced) console.log('PlaybackStarted: advanced queue for this token');
-          } catch (e) {
-            console.log('PlaybackStarted: advance failed:', e && e.message ? e.message : String(e));
-          }
-
+          // Note: ENQUEUE from PlaybackStarted can trigger System.ExceptionEncountered on some Alexa runtimes.
+          // Keep Started as state-repair only; queueing remains anchored to NearlyFinished.
           return handlerInput.responseBuilder.getResponse();
         } catch (e) {
           console.log('PlaybackStarted handler failed:', e && e.message ? e.message : String(e));
@@ -100,68 +197,10 @@ function createAudioHandlers(deps) {
 
           console.log('NearlyFinished: token prefix:', finishedToken.slice(0, 160));
 
-          const snap = await ensureNowPlayingForEnqueue('NearlyFinished:');
-          console.log('NearlyFinished: /now-playing snapshot:', snap ? JSON.stringify(snap, null, 2) : null);
+          const enq = await ensureHeadReady(finishedToken, 'NearlyFinished:', { advanceFromPrevious: true });
+          if (enq) return handlerInput.responseBuilder.addDirective(enq).getResponse();
 
-          if (!snap || !snap.file) {
-            console.log('NearlyFinished: no next from /now-playing; skipping ENQUEUE');
-            return handlerInput.responseBuilder.getResponse();
-          }
-
-          const nextFile = safeStr(snap.file);
-          const nextPos0 = safeNum(snap.songpos, null);
-          const nextSongId = safeNum(snap.songid, null);
-
-          if (!nextFile || nextPos0 === null) {
-            console.log('NearlyFinished: still no next after prime; skipping ENQUEUE');
-            return handlerInput.responseBuilder.getResponse();
-          }
-
-          const candidateToken = makeToken({ file: nextFile, songid: nextSongId, pos0: nextPos0 });
-
-          if (recentlyEnqueuedToken(candidateToken)) {
-            console.log('NearlyFinished: skip duplicate enqueue token');
-            return handlerInput.responseBuilder.getResponse();
-          }
-
-          const enq = buildPlayEnqueue(
-            {
-              file: nextFile,
-              songpos: String(nextPos0),
-              songid: (nextSongId !== null ? String(nextSongId) : ''),
-              title: decodeHtmlEntities(snap.title || ''),
-              artist: decodeHtmlEntities(snap.artist || ''),
-              album: decodeHtmlEntities(snap.album || ''),
-              albumArtUrl: absolutizeMaybe(snap.albumArtUrl || '', API_BASE),
-              altArtUrl: absolutizeMaybe(snap.altArtUrl || '', API_BASE),
-            },
-            finishedToken
-          );
-
-          if (!enq) {
-            console.log('NearlyFinished: could not build ENQUEUE directive');
-            return handlerInput.responseBuilder.getResponse();
-          }
-
-          try {
-            const enqToken = enq.audioItem && enq.audioItem.stream ? enq.audioItem.stream.token : '';
-            const enqUrl = enq.audioItem && enq.audioItem.stream ? enq.audioItem.stream.url : '';
-            if (enqToken && enqUrl) rememberIssuedStream(enqToken, enqUrl, 0);
-          } catch (e) {}
-
-          try {
-            await advanceFromTokenIfNeeded(candidateToken);
-            console.log('NearlyFinished: advanced MPD head for enqueued track pos0=', nextPos0, 'songid=', nextSongId);
-          } catch (e) {
-            console.log('NearlyFinished: advance after enqueue failed:', e && e.message ? e.message : String(e));
-          }
-
-          markEnqueuedToken(candidateToken, finishedToken);
-
-          console.log('NearlyFinished: ENQUEUE next:', nextFile, 'pos0=', nextPos0, 'songid=', nextSongId);
-          console.log('NearlyFinished: enqueue directive:', JSON.stringify(enq, null, 2));
-
-          return handlerInput.responseBuilder.addDirective(enq).getResponse();
+          return handlerInput.responseBuilder.getResponse();
 
         } catch (e) {
           console.log('NearlyFinished handler failed:', e && e.message ? e.message : String(e));
@@ -172,21 +211,10 @@ function createAudioHandlers(deps) {
       if (eventType === 'AudioPlayer.PlaybackFinished') {
         try {
           console.log('AudioPlayer event:', eventType);
-
-          if (enqueueAlreadyIssuedForPrevToken(token)) {
-            console.log('PlaybackFinished: enqueue already issued; no action');
-            return handlerInput.responseBuilder.getResponse();
-          }
-
-          console.log('PlaybackFinished: fallback continue (REPLACE_ALL)');
-          const snap = await getStableNowPlayingSnapshot();
-          if (!snap || !snap.file) return handlerInput.responseBuilder.getResponse();
-
-          const directive = buildPlayReplaceAll(snap, 'Continuing playback');
-          rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
-
-          return handlerInput.responseBuilder.addDirective(directive).getResponse();
-
+          // Alexa does not allow AudioPlayer.Play directives in PlaybackFinished responses.
+          // Keep this handler side-effect free.
+          console.log('PlaybackFinished: no directives allowed; no action');
+          return handlerInput.responseBuilder.getResponse();
         } catch (e) {
           console.log('PlaybackFinished handler failed:', e && e.message ? e.message : String(e));
           return handlerInput.responseBuilder.getResponse();
