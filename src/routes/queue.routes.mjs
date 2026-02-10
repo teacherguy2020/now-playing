@@ -215,8 +215,14 @@ export function registerQueueRoutes(app, deps) {
 
       for (const artist of artists) {
         byArtist[artist] = 0;
-        const raw = await mpdCmdOk(`find artist ${mpdQuote(artist)}`);
-        const files = parseMpdFiles(raw);
+
+        // Try exact first, then broader search fallback (helps Alexa casing/ASR variants)
+        const rawFind = await mpdCmdOk(`find artist ${mpdQuote(artist)}`);
+        const rawSearch = await mpdCmdOk(`search artist ${mpdQuote(artist)}`);
+        const files = Array.from(new Set([
+          ...parseMpdFiles(rawFind),
+          ...parseMpdFiles(rawSearch),
+        ]));
 
         for (const file of files) {
           if (added >= maxTracks) break;
