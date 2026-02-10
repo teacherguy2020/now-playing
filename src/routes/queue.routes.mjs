@@ -17,16 +17,34 @@ export function registerQueueRoutes(app, deps) {
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  const HOLIDAY_RE = /(christmas|xmas|holiday|noel|navidad|santa|jingle|yuletide)/i;
+  const CHRISTMAS_GENRE_RE = /christmas/i;
 
   const mpdQuote = (s) => `"${String(s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 
-  function parseMpdFiles(raw) {
-    return String(raw || '')
-      .split(/\r?\n/)
-      .filter((ln) => ln.startsWith('file: '))
-      .map((ln) => ln.slice(6).trim())
-      .filter(Boolean);
+  function parseMpdSongs(raw) {
+    const lines = String(raw || '').split(/\r?\n/);
+    const songs = [];
+    let cur = null;
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const m = line.match(/^([^:]+):\s*(.*)$/);
+      if (!m) continue;
+      const k = m[1].toLowerCase();
+      const v = m[2];
+
+      if (k === 'file') {
+        if (cur && cur.file) songs.push(cur);
+        cur = { file: v.trim(), genres: [] };
+        continue;
+      }
+
+      if (!cur) continue;
+      if (k === 'genre') cur.genres.push(String(v || '').trim());
+    }
+
+    if (cur && cur.file) songs.push(cur);
+    return songs;
   }
 
   async function mpdCmdOk(cmd) {
@@ -220,15 +238,26 @@ export function registerQueueRoutes(app, deps) {
         // Try exact first, then broader search fallback (helps Alexa casing/ASR variants)
         const rawFind = await mpdCmdOk(`find artist ${mpdQuote(artist)}`);
         const rawSearch = await mpdCmdOk(`search artist ${mpdQuote(artist)}`);
-        const files = Array.from(new Set([
-          ...parseMpdFiles(rawFind),
-          ...parseMpdFiles(rawSearch),
-        ]));
 
-        for (const file of files) {
+        const byFile = new Map();
+        for (const s of [...parseMpdSongs(rawFind), ...parseMpdSongs(rawSearch)]) {
+          if (!s?.file) continue;
+          if (!byFile.has(s.file)) byFile.set(s.file, { file: s.file, genres: [] });
+          const row = byFile.get(s.file);
+          for (const g of (s.genres || [])) {
+            if (g && !row.genres.includes(g)) row.genres.push(g);
+          }
+        }
+
+        for (const song of byFile.values()) {
           if (added >= maxTracks) break;
+          const file = String(song.file || '').trim();
           if (!file || seen.has(file)) continue;
-          if (excludeHoliday && HOLIDAY_RE.test(file)) continue;
+
+          if (excludeHoliday) {
+            const isChristmas = (song.genres || []).some((g) => CHRISTMAS_GENRE_RE.test(String(g || '')));
+            if (isChristmas) continue;
+          }
 
           await mpdCmdOk(`add ${mpdQuote(file)}`);
           seen.add(file);
