@@ -2697,6 +2697,12 @@ function isHolidayLikeGenre(genreStr) {
   return /(christmas|xmas|holiday|noel)/i.test(s);
 }
 
+function isPodcastLikeGenre(genreStr) {
+  const s = String(genreStr || '').toLowerCase();
+  if (!s) return false;
+  return /\bpodcast\b/i.test(s);
+}
+
 function isHolidayLikeTrackMeta(block) {
   const b = block || {};
   const blob = [
@@ -3487,7 +3493,8 @@ app.post('/mpd/play-artist', async (req, res) => {
     let randomizedHeadFromPos = null;
     const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
     const randomOn = String(stPrime.random || '0').trim() === '1';
-    if (randomOn && added > 1) {
+    const hasPodcastGenre = finalFiles.some((r) => isPodcastLikeGenre([r.genre, r.genresort].filter(Boolean).join(' | ')));
+    if (randomOn && added > 1 && !hasPodcastGenre) {
       try {
         const fromPos = Math.floor(Math.random() * added);
         if (fromPos > 0) {
@@ -3522,6 +3529,7 @@ app.post('/mpd/play-artist', async (req, res) => {
       added,
       includeHoliday,
       removedHoliday,
+      hasPodcastGenre,
       randomizedHeadFromPos,
       nowPlaying: {
         file: head.file || '',
@@ -3763,7 +3771,9 @@ app.post('/mpd/play-playlist', async (req, res) => {
     let randomizedHeadFromPos = null;
     const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
     const randomOn = String(stPrime.random || '0').trim() === '1';
-    if (randomOn && added > 1) {
+    const playlistBlocks = parseMpdPlaylistBlocks(await mpdQueryRaw('playlistinfo'));
+    const hasPodcastGenre = playlistBlocks.some((b) => isPodcastLikeGenre([b.genre, b.genresort].filter(Boolean).join(' | ')));
+    if (randomOn && added > 1 && !hasPodcastGenre) {
       try {
         const fromPos = Math.floor(Math.random() * added);
         if (fromPos > 0) {
@@ -3777,7 +3787,7 @@ app.post('/mpd/play-playlist', async (req, res) => {
 
     const head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
 
-    return res.json({ ok: true, playlist, playlistInput, chosen, added, randomizedHeadFromPos, nowPlaying: {
+    return res.json({ ok: true, playlist, playlistInput, chosen, added, hasPodcastGenre, randomizedHeadFromPos, nowPlaying: {
       file: head.file || '', title: decodeHtmlEntities(head.title || ''), artist: decodeHtmlEntities(head.artist || ''), album: decodeHtmlEntities(head.album || ''),
       songpos: String(head.pos || '0').trim(), songid: String(head.id || '').trim(),
     }});
