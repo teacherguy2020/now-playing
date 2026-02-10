@@ -1,5 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileP = promisify(execFile);
 
 function pickPublicConfig(cfg) {
   const c = cfg || {};
@@ -27,6 +31,11 @@ function pickPublicConfig(cfg) {
       },
     },
     paths: c.paths || {},
+    features: {
+      podcasts: Boolean(c.features?.podcasts ?? true),
+      ratings: Boolean(c.features?.ratings ?? true),
+      radio: Boolean(c.features?.radio ?? true),
+    },
   };
 }
 
@@ -67,7 +76,7 @@ export function registerConfigRoutes(app, deps) {
     try {
       const raw = await fs.readFile(configPath, 'utf8');
       const cfg = JSON.parse(raw);
-      return res.json({ ok: true, configPath, config: withEnvOverrides(cfg) });
+      return res.json({ ok: true, configPath, config: withEnvOverrides(cfg), fullConfig: cfg });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
@@ -78,8 +87,9 @@ export function registerConfigRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
 
       const incoming = req.body?.config;
-      if (!incoming || typeof incoming !== 'object') {
-        return res.status(400).json({ ok: false, error: 'Missing JSON body { config: {...} }' });
+      const fullIncoming = req.body?.fullConfig;
+      if ((!incoming || typeof incoming !== 'object') && (!fullIncoming || typeof fullIncoming !== 'object')) {
+        return res.status(400).json({ ok: false, error: 'Missing JSON body { config: {...} } or { fullConfig: {...} }' });
       }
 
       let current = {};
@@ -87,25 +97,27 @@ export function registerConfigRoutes(app, deps) {
         current = JSON.parse(await fs.readFile(configPath, 'utf8'));
       } catch {}
 
-      const next = {
-        ...current,
-        ...incoming,
-        alexa: { ...(current.alexa || {}), ...(incoming.alexa || {}) },
-        ports: { ...(current.ports || {}), ...(incoming.ports || {}) },
-        paths: { ...(current.paths || {}), ...(incoming.paths || {}) },
-        notifications: {
-          ...(current.notifications || {}),
-          ...(incoming.notifications || {}),
-          trackNotify: {
-            ...((current.notifications || {}).trackNotify || {}),
-            ...((incoming.notifications || {}).trackNotify || {}),
-          },
-          pushover: {
-            ...((current.notifications || {}).pushover || {}),
-            ...((incoming.notifications || {}).pushover || {}),
-          },
-        },
-      };
+      const next = (fullIncoming && typeof fullIncoming === 'object')
+        ? fullIncoming
+        : {
+            ...current,
+            ...incoming,
+            alexa: { ...(current.alexa || {}), ...(incoming.alexa || {}) },
+            ports: { ...(current.ports || {}), ...(incoming.ports || {}) },
+            paths: { ...(current.paths || {}), ...(incoming.paths || {}) },
+            notifications: {
+              ...(current.notifications || {}),
+              ...(incoming.notifications || {}),
+              trackNotify: {
+                ...((current.notifications || {}).trackNotify || {}),
+                ...((incoming.notifications || {}).trackNotify || {}),
+              },
+              pushover: {
+                ...((current.notifications || {}).pushover || {}),
+                ...((incoming.notifications || {}).pushover || {}),
+              },
+            },
+          };
 
       const errs = validateConfigShape(next);
       if (errs.length) return res.status(400).json({ ok: false, error: errs.join('; ') });
@@ -113,7 +125,32 @@ export function registerConfigRoutes(app, deps) {
       await fs.writeFile(configPath, JSON.stringify(next, null, 2) + '\n', 'utf8');
       log.debug('[config/runtime] updated', { configPath });
 
-      return res.json({ ok: true, message: 'Config saved. Restart api with --update-env to apply env-overridden values.', config: pickPublicConfig(next) });
+      return res.json({
+        ok: true,
+        message: 'Config saved. Restart api with --update-env to apply env-overridden values.',
+        config: withEnvOverrides(next),
+        fullConfig: next,
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/restart-api', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      try {
+        await execFileP('pm2', ['restart', 'api', '--update-env']);
+        return res.json({ ok: true, restarted: true, method: 'pm2' });
+      } catch (e) {
+        return res.status(501).json({
+          ok: false,
+          restarted: false,
+          error: 'Automatic restart unavailable on this host. Restart your API process manually.',
+          detail: e?.message || String(e),
+        });
+      }
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

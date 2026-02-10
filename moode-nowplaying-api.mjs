@@ -2236,7 +2236,7 @@ async function mpdPrimeIfIdle() {
 
   // 4) Only now do we "manufacture" a current song
   await mpdPlay();          // or mpdPlay(0)
-  await sleep(900);         // IMPORTANT: give moOde time to form currentsong/status JSON
+  await sleep(850);         // IMPORTANT: give moOde time to form currentsong/status JSON
   await mpdPause(true);     // or await mpdStop();
 
   return { primed: true, skipped: false, reason: 'idle_primed', state_before: state };
@@ -2699,9 +2699,17 @@ function isHolidayLikeGenre(genreStr) {
 
 function isHolidayLikeTrackMeta(block) {
   const b = block || {};
-  const blob = [b.genre, b.title, b.album, b.file].filter(Boolean).join(' | ').toLowerCase();
+  const blob = [
+    b.genre,
+    b.title,
+    b.album,
+    b.file,
+    b.artist,
+    b.albumartist,
+  ].filter(Boolean).join(' | ').toLowerCase();
   if (!blob) return false;
-  return /(christmas|xmas|holiday|noel|silent night|jingle|santa|winter wonderland)/i.test(blob);
+
+  return /(christmas|xmas|holiday|noel|yuletide|silent\s+night|jingle|santa|sleigh|winter\s+wonderland|merry\s+christmas|a\s+christmas\s+song)/i.test(blob);
 }
 
 function isLibraryFile(mpdFile) {
@@ -3230,64 +3238,131 @@ app.post('/mpd/play-artist', async (req, res) => {
 
     const q = mpdEscapeValue(artist);
 
-    // Build a fresh queue for this artist (do not start playback directly here)
-    await mpdQueryRaw('clear');
-    await mpdQueryRaw(`findadd albumartist ${q}`);
-
-    let st = await mpdGetStatus();
-    let added = Number(st?.playlistlength || 0);
-    let strategy = 'albumartist';
-
-    if (added <= 0) {
-      await mpdQueryRaw('clear');
-      await mpdQueryRaw(`findadd artist ${q}`);
-      st = await mpdGetStatus();
-      added = Number(st?.playlistlength || 0);
-      strategy = 'artist';
+    // Build candidate list first, then enqueue only approved tracks.
+    async function collectCandidates(cmd) {
+      const raw = await mpdQueryRaw(cmd);
+      const blocks = parseMpdPlaylistBlocks(raw || '');
+      const out = [];
+      const seen = new Set();
+      for (const b of blocks) {
+        const f = String(b?.file || '').trim();
+        if (!f || seen.has(f)) continue;
+        seen.add(f);
+        out.push({
+          file: f,
+          title: String(b?.title || ''),
+          album: String(b?.album || ''),
+          artist: String(b?.artist || ''),
+          albumartist: String(b?.albumartist || ''),
+          genre: String(b?.genre || ''),
+          genresort: String(b?.genresort || ''),
+        });
+      }
+      return out;
     }
 
-    if (added <= 0) {
-      await mpdQueryRaw('clear');
-      await mpdQueryRaw(`searchadd artist ${q}`);
-      st = await mpdGetStatus();
-      added = Number(st?.playlistlength || 0);
-      strategy = 'searchadd-artist';
+    async function collectAlbumsFromList(cmd) {
+      const raw = await mpdQueryRaw(cmd);
+      return String(raw || '')
+        .split('\n')
+        .map((ln) => ln.trim())
+        .filter((ln) => ln.toLowerCase().startsWith('album: '))
+        .map((ln) => ln.slice(7).trim())
+        .filter(Boolean);
     }
 
-    if (added <= 0) {
+    async function resolveCanonicalArtistName(artistName) {
+      const want = String(artistName || '').trim().toLowerCase();
+      if (!want) return String(artistName || '').trim();
+      const raw = await mpdQueryRaw('list artist');
+      const artists = String(raw || '')
+        .split('\n')
+        .map((ln) => ln.trim())
+        .filter((ln) => ln.toLowerCase().startsWith('artist: '))
+        .map((ln) => ln.slice(8).trim())
+        .filter(Boolean);
+      const exactCI = artists.find((a) => a.toLowerCase() === want);
+      return exactCI || String(artistName || '').trim();
+    }
+
+    async function collectByAlbumRollup(artistName) {
+      const canonicalArtist = await resolveCanonicalArtistName(artistName);
+      const qq = mpdEscapeValue(canonicalArtist || artistName);
+      const albumNames = new Set([
+        ...(await collectAlbumsFromList(`list album albumartist ${qq}`)),
+        ...(await collectAlbumsFromList(`list album artist ${qq}`)),
+      ]);
+
+      const merged = [];
+      const seen = new Set();
+      for (const albumName of albumNames) {
+        const aa = await collectCandidates(`find album ${mpdEscapeValue(albumName)}`);
+        for (const row of aa) {
+          if (!row.file || seen.has(row.file)) continue;
+          seen.add(row.file);
+          merged.push(row);
+        }
+      }
+      return merged;
+    }
+
+    const canonicalArtist = await resolveCanonicalArtistName(artist);
+    const qCanonical = mpdEscapeValue(canonicalArtist || artist);
+
+    const bySource = {
+      albumartist: await collectCandidates(`find albumartist ${qCanonical}`),
+      artist: await collectCandidates(`find artist ${qCanonical}`),
+      'search-artist': await collectCandidates(`search artist ${q}`),
+      'album-rollup': await collectByAlbumRollup(canonicalArtist || artist),
+    };
+
+    const merged = [];
+    const seenFiles = new Set();
+    for (const key of ['albumartist', 'artist', 'search-artist', 'album-rollup']) {
+      for (const row of bySource[key]) {
+        if (seenFiles.has(row.file)) continue;
+        seenFiles.add(row.file);
+        merged.push(row);
+      }
+    }
+
+    const strategy = 'union(albumartist,artist,search-artist,album-rollup)';
+    const candidates = merged;
+
+    if (!candidates.length) {
       return res.status(404).json({ ok: false, error: 'No matches for artist', artist });
     }
 
     let removedHoliday = 0;
-    if (!includeHoliday) {
-      try {
-        const rawPl = await mpdQueryRaw('playlistinfo');
-        const blocks = parseMpdPlaylistBlocks(rawPl);
+    const removedSamples = [];
+    let finalFiles = candidates;
 
-        for (let i = blocks.length - 1; i >= 0; i--) {
-          const b = blocks[i] || {};
-          const genreBlob = [b.genre, b.genresort].filter(Boolean).join(' | ');
-          if (isHolidayLikeGenre(genreBlob) || isHolidayLikeTrackMeta(b)) {
-            await mpdDeletePos0(i);
-            removedHoliday += 1;
+    const candidateAlbums = [...new Set(candidates.map((r) => String(r.album || '').trim()).filter(Boolean))];
+
+    if (!includeHoliday) {
+      finalFiles = candidates.filter((b) => {
+        const genreBlob = [b.genre, b.genresort].filter(Boolean).join(' | ');
+        const isHoliday = isHolidayLikeGenre(genreBlob) || isHolidayLikeTrackMeta(b);
+        if (isHoliday) {
+          removedHoliday += 1;
+          if (removedSamples.length < 5) {
+            removedSamples.push({ title: String(b.title || ''), album: String(b.album || ''), file: String(b.file || '') });
           }
         }
+        return !isHoliday;
+      });
 
-        if (removedHoliday > 0) {
-          const stAfter = await mpdGetStatus();
-          added = Number(stAfter?.playlistlength || 0);
-          log.debug('[play-artist] holiday filter removed', {
-            artist,
-            removedHoliday,
-            remaining: added,
-          });
-        }
-      } catch (e) {
-        log.debug('[play-artist] holiday filter failed, continuing unfiltered:', e?.message || String(e));
+      if (removedHoliday > 0) {
+        log.debug('[play-artist] holiday filter removed before enqueue', {
+          artist,
+          removedHoliday,
+          remaining: finalFiles.length,
+          samples: removedSamples,
+        });
       }
     }
 
-    if (added <= 0) {
+    if (!finalFiles.length) {
       await mpdQueryRaw('clear');
       return res.status(404).json({
         ok: false,
@@ -3296,6 +3371,32 @@ app.post('/mpd/play-artist', async (req, res) => {
         removedHoliday,
       });
     }
+
+    await mpdQueryRaw('clear');
+    for (const row of finalFiles) {
+      await mpdQueryRaw(`add ${mpdEscapeValue(row.file)}`);
+    }
+
+    const finalAlbums = [...new Set(finalFiles.map((r) => String(r.album || '').trim()).filter(Boolean))];
+    log.info('[play-artist] built queue', {
+      artist,
+      canonicalArtist,
+      includeHoliday,
+      strategy,
+      sourceCounts: {
+        albumartist: bySource.albumartist.length,
+        artist: bySource.artist.length,
+        searchArtist: bySource['search-artist'].length,
+        albumRollup: bySource['album-rollup'].length,
+        merged: candidates.length,
+      },
+      candidateAlbumCount: candidateAlbums.length,
+      finalAlbumCount: finalAlbums.length,
+      finalTrackCount: finalFiles.length,
+      finalAlbumSamples: finalAlbums.slice(0, 12),
+    });
+
+    let added = finalFiles.length;
 
     // Artist lists can take longer to settle; wait for head item to be readable.
     let head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
@@ -3326,6 +3427,13 @@ app.post('/mpd/play-artist', async (req, res) => {
       ok: true,
       artist,
       strategy,
+      sourceCounts: {
+        albumartist: bySource.albumartist.length,
+        artist: bySource.artist.length,
+        searchArtist: bySource['search-artist'].length,
+        albumRollup: bySource['album-rollup'].length,
+        merged: candidates.length,
+      },
       added,
       includeHoliday,
       removedHoliday,

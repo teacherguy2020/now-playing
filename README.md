@@ -114,6 +114,12 @@ The page reads/writes via:
 - `GET /config/runtime`
 - `POST /config/runtime` (requires `x-track-key`)
 
+It supports both:
+- guided field editing (Alexa/notifications)
+- advanced full JSON editing (entire config object)
+
+After save, the UI prompts to restart API. On PM2 hosts, use the built-in "Restart API now" action.
+
 Notes:
 - Track key field supports masked/unmasked toggle.
 - Track key is preloaded from effective runtime config (and cached in browser localStorage).
