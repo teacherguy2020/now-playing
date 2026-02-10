@@ -17,6 +17,26 @@ export function registerQueueRoutes(app, deps) {
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  const HOLIDAY_RE = /(christmas|xmas|holiday|noel|navidad|santa|jingle|yuletide)/i;
+
+  const mpdQuote = (s) => `"${String(s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
+  function parseMpdFiles(raw) {
+    return String(raw || '')
+      .split(/\r?\n/)
+      .filter((ln) => ln.startsWith('file: '))
+      .map((ln) => ln.slice(6).trim())
+      .filter(Boolean);
+  }
+
+  async function mpdCmdOk(cmd) {
+    const out = await mpdQueryRaw(cmd);
+    if (/^ACK\s/i.test(String(out || '').trim())) {
+      throw new Error(`MPD command failed: ${cmd} :: ${String(out || '').trim()}`);
+    }
+    return out;
+  }
+
   async function resolveHeadFast() {
     for (let i = 0; i < 5; i++) {
       try {
@@ -165,6 +185,69 @@ export function registerQueueRoutes(app, deps) {
       });
     } catch (e) {
       console.error('/queue/advance error:', e?.message || String(e));
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/queue/mix', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const artistsRaw = Array.isArray(req?.body?.artists) ? req.body.artists : [];
+      const artists = artistsRaw
+        .map((x) => String(x || '').trim())
+        .filter(Boolean);
+
+      if (!artists.length) {
+        return res.status(400).json({ ok: false, error: 'artists[] is required' });
+      }
+
+      const excludeHoliday = req?.body?.excludeHoliday !== false;
+      const clearFirst = req?.body?.clearFirst !== false;
+      const randomOn = req?.body?.random !== false;
+      const maxTracks = Math.max(1, Math.min(5000, Number(req?.body?.maxTracks || 300)));
+
+      if (clearFirst) await mpdCmdOk('clear');
+
+      const seen = new Set();
+      const byArtist = {};
+      let added = 0;
+
+      for (const artist of artists) {
+        byArtist[artist] = 0;
+        const raw = await mpdCmdOk(`find artist ${mpdQuote(artist)}`);
+        const files = parseMpdFiles(raw);
+
+        for (const file of files) {
+          if (added >= maxTracks) break;
+          if (!file || seen.has(file)) continue;
+          if (excludeHoliday && HOLIDAY_RE.test(file)) continue;
+
+          await mpdCmdOk(`add ${mpdQuote(file)}`);
+          seen.add(file);
+          added += 1;
+          byArtist[artist] += 1;
+        }
+      }
+
+      await mpdCmdOk(`random ${randomOn ? 1 : 0}`);
+
+      const statusRaw = await mpdCmdOk('status');
+      const status = parseMpdKeyVals(statusRaw || '');
+      const random = String(status.random || '').trim();
+
+      return res.json({
+        ok: true,
+        artists,
+        excludeHoliday,
+        clearFirst,
+        random: random === '1',
+        maxTracks,
+        added,
+        byArtist,
+      });
+    } catch (e) {
+      console.error('/queue/mix error:', e?.message || String(e));
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });
