@@ -72,23 +72,52 @@ Source selection is automatic:
 - If Alexa state is active/fresh (`/alexa/was-playing`) → notify from Alexa track
 - Otherwise (normal playback) → notify from `/now-playing` track
 
-Set these environment variables for PM2 `api`:
+Preferred configuration is in the master JSON (`config/now-playing.config.json`):
 
-- `TRACK_NOTIFY_ENABLED=1`
-- `PUSHOVER_TOKEN=<your app token>`
-- `PUSHOVER_USER_KEY=<your user key>`
+```json
+"notifications": {
+  "trackNotify": {
+    "enabled": true,
+    "pollMs": 3000,
+    "dedupeMs": 15000,
+    "alexaMaxAgeMs": 21600000
+  },
+  "pushover": {
+    "token": "<your app token>",
+    "userKey": "<your user key>"
+  }
+}
+```
 
-Optional tuning:
-- `TRACK_NOTIFY_POLL_MS` (default `3000`)
-- `TRACK_NOTIFY_DEDUPE_MS` (default `15000`)
-- `TRACK_NOTIFY_ALEXA_MAX_AGE_MS` (default `21600000`)
+Environment variables still override config when present:
+- `TRACK_NOTIFY_ENABLED`
+- `TRACK_NOTIFY_POLL_MS`
+- `TRACK_NOTIFY_DEDUPE_MS`
+- `TRACK_NOTIFY_ALEXA_MAX_AGE_MS`
+- `PUSHOVER_TOKEN`
+- `PUSHOVER_USER_KEY`
 
-After changes:
+After config/env changes:
 
 ```bash
 pm2 restart api --update-env
 pm2 save
 ```
+
+### Web config page
+
+You can edit core Alexa/notification settings in-browser at:
+
+- `https://<your-domain>/config.html`
+
+The page reads/writes via:
+- `GET /config/runtime`
+- `POST /config/runtime` (requires `x-track-key`)
+
+Notes:
+- Track key field supports masked/unmasked toggle.
+- Track key is preloaded from effective runtime config (and cached in browser localStorage).
+- Notification values are shown as effective values (config + env overrides).
 
 ## Ratings (MPD stickers)
 

@@ -35,5 +35,17 @@
     "podcasts": true,
     "ratings": true,
     "radio": true
+  },
+  "notifications": {
+    "trackNotify": {
+      "enabled": false,
+      "pollMs": 3000,
+      "dedupeMs": 15000,
+      "alexaMaxAgeMs": 21600000
+    },
+    "pushover": {
+      "token": "",
+      "userKey": ""
+    }
   }
 }

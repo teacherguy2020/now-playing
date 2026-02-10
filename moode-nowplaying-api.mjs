@@ -63,7 +63,9 @@ import {
   PI4_MOUNT_BASE, METAFLAC, TRACK_KEY, ENABLE_ALEXA, TRANSCODE_TRACKS, TRACK_CACHE_DIR,
   FAVORITES_PLAYLIST_NAME, FAVORITES_REFRESH_MS, ITUNES_SEARCH_URL, ITUNES_COUNTRY,
   ITUNES_TIMEOUT_MS, ITUNES_TTL_HIT_MS, ITUNES_TTL_MISS_MS, ART_CACHE_DIR, ART_CACHE_LIMIT,
-  ART_640_PATH, ART_BG_PATH, PODCAST_DL_LOG, MOODE_SSH, FAVORITES_M3U
+  ART_640_PATH, ART_BG_PATH, PODCAST_DL_LOG, MOODE_SSH, FAVORITES_M3U,
+  TRACK_NOTIFY_ENABLED, TRACK_NOTIFY_POLL_MS, TRACK_NOTIFY_DEDUPE_MS, TRACK_NOTIFY_ALEXA_MAX_AGE_MS,
+  PUSHOVER_TOKEN, PUSHOVER_USER_KEY
 } from './src/config.mjs';
 import { log } from './src/lib/log.mjs';
 import { execFileStrict } from './src/lib/exec.mjs';
@@ -75,6 +77,7 @@ import { registerRatingRoutes } from './src/routes/rating.routes.mjs';
 import { registerQueueRoutes } from './src/routes/queue.routes.mjs';
 import { registerTrackRoutes } from './src/routes/track.routes.mjs';
 import { registerArtRoutes } from './src/routes/art.routes.mjs';
+import { registerConfigRoutes } from './src/routes/config.routes.mjs';
 import { registerPodcastSubscriptionRoutes } from './src/routes/podcasts-subscriptions.routes.mjs';
 import { registerPodcastRefreshRoutes } from './src/routes/podcasts-refresh.routes.mjs';
 import { registerPodcastEpisodeRoutes } from './src/routes/podcasts-episodes.routes.mjs';
@@ -2023,12 +2026,9 @@ app.post('/alexa/was-playing', async (req, res) => {
 // =========================
 // Optional iOS push notifications (Pushover)
 // =========================
-const TRACK_NOTIFY_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.TRACK_NOTIFY_ENABLED || '0'));
-const TRACK_NOTIFY_POLL_MS = Math.max(1500, Number(process.env.TRACK_NOTIFY_POLL_MS || 3000));
-const TRACK_NOTIFY_DEDUPE_MS = Math.max(5000, Number(process.env.TRACK_NOTIFY_DEDUPE_MS || 15000));
-const TRACK_NOTIFY_ALEXA_MAX_AGE_MS = Math.max(30000, Number(process.env.TRACK_NOTIFY_ALEXA_MAX_AGE_MS || 21600000));
-const PUSHOVER_TOKEN = String(process.env.PUSHOVER_TOKEN || '').trim();
-const PUSHOVER_USER_KEY = String(process.env.PUSHOVER_USER_KEY || '').trim();
+const TRACK_NOTIFY_POLL_MS_SAFE = Math.max(1500, Number(TRACK_NOTIFY_POLL_MS || 3000));
+const TRACK_NOTIFY_DEDUPE_MS_SAFE = Math.max(5000, Number(TRACK_NOTIFY_DEDUPE_MS || 15000));
+const TRACK_NOTIFY_ALEXA_MAX_AGE_MS_SAFE = Math.max(30000, Number(TRACK_NOTIFY_ALEXA_MAX_AGE_MS || 21600000));
 
 let _lastTrackNotifyKey = '';
 let _lastTrackNotifyAt = 0;
@@ -2042,7 +2042,7 @@ function buildArtUrlForFile(file) {
 async function selectNotificationTrack() {
   const now = Date.now();
   const age = (alexaWasPlaying.updatedAt > 0) ? Math.max(0, now - alexaWasPlaying.updatedAt) : null;
-  const alexaFresh = age !== null && age <= TRACK_NOTIFY_ALEXA_MAX_AGE_MS;
+  const alexaFresh = age !== null && age <= TRACK_NOTIFY_ALEXA_MAX_AGE_MS_SAFE;
 
   if (alexaWasPlaying.active && alexaFresh && alexaWasPlaying.file) {
     return {
@@ -2140,7 +2140,7 @@ async function trackNotificationTick() {
 }
 
 if (TRACK_NOTIFY_ENABLED) {
-  setInterval(() => { trackNotificationTick().catch(() => {}); }, TRACK_NOTIFY_POLL_MS);
+  setInterval(() => { trackNotificationTick().catch(() => {}); }, TRACK_NOTIFY_POLL_MS_SAFE);
 }
 
 app.post('/mpd/deprime', async (req, res) => {
@@ -4696,6 +4696,11 @@ registerQueueRoutes(app, {
   MOODE_BASE_URL,
   moodeValByKey,
   decodeHtmlEntities,
+  log,
+});
+
+registerConfigRoutes(app, {
+  requireTrackKey,
   log,
 });
 

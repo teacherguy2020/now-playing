@@ -7,6 +7,7 @@ const apiNode = (MASTER_CONFIG?.nodes || []).find(n => n?.role === 'api' || n?.r
 const apiIp = String(apiNode?.ip || '').trim() || null;
 const alexaEnabledFromConfig = MASTER_CONFIG?.alexa?.enabled;
 const publicDomainFromConfig = String(MASTER_CONFIG?.alexa?.publicDomain || '').trim();
+const notificationsCfg = MASTER_CONFIG?.notifications || {};
 
 export const FFMPEG = process.env.FFMPEG || '/usr/bin/ffmpeg';
 export const CURL = process.env.CURL || '/usr/bin/curl';
@@ -63,3 +64,29 @@ export const PODCAST_DL_LOG = '/home/brianwis/album_art/podcasts/downloads.ndjso
 
 export const MOODE_SSH = process.env.MOODE_SSH || 'moode@10.0.0.254';
 export const FAVORITES_M3U = process.env.FAVORITES_M3U || '/var/lib/mpd/playlists/Favorites.m3u';
+
+// Optional track-start push notifications (Pushover)
+export const TRACK_NOTIFY_ENABLED =
+  process.env.TRACK_NOTIFY_ENABLED != null
+    ? /^(1|true|yes|on)$/i.test(String(process.env.TRACK_NOTIFY_ENABLED).trim())
+    : Boolean(notificationsCfg?.trackNotify?.enabled ?? false);
+
+export const TRACK_NOTIFY_POLL_MS = Number(
+  process.env.TRACK_NOTIFY_POLL_MS || notificationsCfg?.trackNotify?.pollMs || 3000
+);
+
+export const TRACK_NOTIFY_DEDUPE_MS = Number(
+  process.env.TRACK_NOTIFY_DEDUPE_MS || notificationsCfg?.trackNotify?.dedupeMs || 15000
+);
+
+export const TRACK_NOTIFY_ALEXA_MAX_AGE_MS = Number(
+  process.env.TRACK_NOTIFY_ALEXA_MAX_AGE_MS || notificationsCfg?.trackNotify?.alexaMaxAgeMs || 21600000
+);
+
+export const PUSHOVER_TOKEN = String(
+  process.env.PUSHOVER_TOKEN || notificationsCfg?.pushover?.token || ''
+).trim();
+
+export const PUSHOVER_USER_KEY = String(
+  process.env.PUSHOVER_USER_KEY || notificationsCfg?.pushover?.userKey || ''
+).trim();

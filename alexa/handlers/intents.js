@@ -38,7 +38,7 @@ function createIntentHandlers(deps) {
 
         // 1) Alexa is already playing our queue item: announce and open mic for optional change.
         if (alexaPlayingOurStream) {
-          const parsed = parseTokenB64(currentToken) || {};
+          const parsed = (typeof parseTokenB64 === 'function' ? parseTokenB64(currentToken) : null) || {};
           const tokenFile = safeStr(parsed.file);
 
           let t = '';

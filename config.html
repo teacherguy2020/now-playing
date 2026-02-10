@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>now-playing Config</title>
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260209-2" />
+  <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
+  <style>
+    .cfgWrap { max-width: 1100px; margin: 0 auto; padding: 10px 16px 36px; }
+    .cfgGrid { display:grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
+    .cfgCard { background: rgba(15,20,26,.7); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:14px; }
+    .cfgCard h3 { margin:0 0 10px; font-size:16px; }
+    .cfgField { margin: 10px 0; }
+    .cfgField label { display:block; font-size:12px; opacity:.9; margin-bottom:6px; }
+    .cfgField input[type=text], .cfgField input[type=password], .cfgField input[type=number] { width:100%; }
+    .cfgRow { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .cfgActions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .cfgHint { font-size:12px; opacity:.8; }
+    input[type="checkbox"] { appearance: auto !important; -webkit-appearance: checkbox !important; }
+    pre#out {
+      min-height: 120px;
+      max-height: 260px;
+      overflow:auto;
+      background: #000;
+      color: #39ff14;
+      border: 1px solid rgba(57,255,20,.35);
+      border-radius: 10px;
+      padding: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="heroRail">
+    <div class="heroWrap">
+      <header>
+        <div class="brand">
+          <h1>now-playing Configuration</h1>
+          <div class="sub">Alexa • Notifications • Runtime settings</div>
+        </div>
+
+        <div class="pill" title="UI on :8101 → API on :3101">
+          <span class="dot" aria-hidden="true"></span>
+          API: <span id="apiHint" style="color:rgba(255,255,255,.9)">loading…</span>
+        </div>
+      </header>
+
+      <section class="panel">
+        <div class="controls">
+          <div class="cfgWrap">
+            <div class="cfgGrid">
+              <div class="cfgCard">
+                <h3>Auth</h3>
+                <div class="cfgField">
+                  <label for="trackKey">Track Key (required to save)</label>
+                  <input id="trackKey" type="password" placeholder="x-track-key" autocomplete="off" />
+                  <input id="trackKeyText" type="text" placeholder="x-track-key" autocomplete="off" style="display:none; margin-top:8px;" />
+                </div>
+                <div class="cfgField">
+                  <label><input id="showTrackKey" type="checkbox" /> Show track key</label>
+                </div>
+                <div class="cfgHint">Stored in this browser for convenience. Reminder: this same key must be set in Alexa skill/Lambda env.</div>
+              </div>
+
+              <div class="cfgCard">
+                <h3>Alexa</h3>
+                <div class="cfgField">
+                  <label><input id="alexaEnabled" type="checkbox" /> Enabled</label>
+                </div>
+                <div class="cfgField">
+                  <label for="alexaDomain">Public domain</label>
+                  <input id="alexaDomain" type="text" placeholder="moode.YOUR-PUBLIC.DOMAIN.com" />
+                </div>
+              </div>
+
+              <div class="cfgCard" style="grid-column: 1 / -1;">
+                <h3>Track Notifications (Pushover)</h3>
+                <div class="cfgField">
+                  <label><input id="notifyEnabled" type="checkbox" /> Enabled</label>
+                </div>
+                <div class="cfgRow">
+                  <div class="cfgField">
+                    <label for="pollMs">Poll ms</label>
+                    <input id="pollMs" type="number" min="1500" />
+                  </div>
+                  <div class="cfgField">
+                    <label for="dedupeMs">Dedupe ms</label>
+                    <input id="dedupeMs" type="number" min="5000" />
+                  </div>
+                </div>
+                <div class="cfgField">
+                  <label for="alexaMaxAgeMs">Alexa max age ms</label>
+                  <input id="alexaMaxAgeMs" type="number" min="30000" />
+                </div>
+                <div class="cfgRow">
+                  <div class="cfgField">
+                    <label for="pushoverToken">Pushover token</label>
+                    <input id="pushoverToken" type="text" autocomplete="off" />
+                  </div>
+                  <div class="cfgField">
+                    <label for="pushoverUser">Pushover user key</label>
+                    <input id="pushoverUser" type="text" autocomplete="off" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="cfgActions">
+              <button class="btn" id="reloadBtn" type="button">Reload</button>
+              <button class="btn btnPrimary" id="saveBtn" type="button">Save</button>
+            </div>
+
+            <pre id="out" aria-label="Config response log"></pre>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+const out = document.getElementById('out');
+const HOST = location.hostname.replace(/^www\./, '');
+const IS_PUBLIC = (HOST === 'moode.brianwis.com');
+const LAN_API_PORT = (location.port === '8101') ? '3101' : '3000';
+const API_BASE = IS_PUBLIC ? 'https://moode.brianwis.com' : `${location.protocol}//${location.hostname}:${LAN_API_PORT}`;
+
+document.getElementById('apiHint').textContent = API_BASE.replace(/^https?:\/\//, '');
+
+function log(x){ out.textContent = typeof x === 'string' ? x : JSON.stringify(x, null, 2); }
+
+const TRACK_KEY_STORAGE = 'nowplaying.trackkey';
+const tkEl = document.getElementById('trackKey');
+const tkTextEl = document.getElementById('trackKeyText');
+const showEl = document.getElementById('showTrackKey');
+
+const savedKey = localStorage.getItem(TRACK_KEY_STORAGE) || '';
+if (tkEl) tkEl.value = savedKey;
+if (tkTextEl) tkTextEl.value = savedKey;
+
+function persistTrackKey(v){ localStorage.setItem(TRACK_KEY_STORAGE, v || ''); }
+
+if (tkEl) tkEl.addEventListener('input', () => {
+  if (tkTextEl) tkTextEl.value = tkEl.value || '';
+  persistTrackKey(tkEl.value || '');
+});
+if (tkTextEl) tkTextEl.addEventListener('input', () => {
+  if (tkEl) tkEl.value = tkTextEl.value || '';
+  persistTrackKey(tkTextEl.value || '');
+});
+
+function getTrackKey(){
+  if (showEl && showEl.checked) return (tkTextEl?.value || '').trim();
+  return (tkEl?.value || '').trim();
+}
+
+function applyTrackKeyVisibility(){
+  if (!tkEl || !tkTextEl || !showEl) return;
+  const val = (tkEl.value || tkTextEl.value || '');
+  tkEl.value = val;
+  tkTextEl.value = val;
+  if (showEl.checked) {
+    tkEl.style.display = 'none';
+    tkTextEl.style.display = '';
+  } else {
+    tkTextEl.style.display = 'none';
+    tkEl.style.display = '';
+  }
+}
+
+if (showEl) {
+  showEl.addEventListener('change', applyTrackKeyVisibility);
+  showEl.addEventListener('click', applyTrackKeyVisibility);
+}
+applyTrackKeyVisibility();
+
+async function loadCfg(){
+  const r = await fetch(`${API_BASE}/config/runtime`, { cache:'no-store' });
+  const j = await r.json();
+  if (!j.ok) return log(j);
+
+  const c = j.config || {};
+
+  // Preload track key from local cache; fallback to server-provided effective key.
+  const localKey = localStorage.getItem(TRACK_KEY_STORAGE) || '';
+  const serverKey = String(c.trackKey || '').trim();
+  const effectiveKey = localKey || serverKey;
+  if (effectiveKey) {
+    if (tkEl) tkEl.value = effectiveKey;
+    if (tkTextEl) tkTextEl.value = effectiveKey;
+    if (!localKey) localStorage.setItem(TRACK_KEY_STORAGE, effectiveKey);
+  }
+
+  document.getElementById('alexaEnabled').checked = !!c.alexa?.enabled;
+  document.getElementById('alexaDomain').value = c.alexa?.publicDomain || '';
+
+  document.getElementById('notifyEnabled').checked = !!c.notifications?.trackNotify?.enabled;
+  document.getElementById('pollMs').value = c.notifications?.trackNotify?.pollMs ?? 3000;
+  document.getElementById('dedupeMs').value = c.notifications?.trackNotify?.dedupeMs ?? 15000;
+  document.getElementById('alexaMaxAgeMs').value = c.notifications?.trackNotify?.alexaMaxAgeMs ?? 21600000;
+
+  document.getElementById('pushoverToken').value = c.notifications?.pushover?.token || '';
+  document.getElementById('pushoverUser').value = c.notifications?.pushover?.userKey || '';
+
+  log({ ok:true, configPath:j.configPath, loadedAt:new Date().toISOString() });
+}
+
+async function saveCfg(){
+  const key = getTrackKey();
+  if (!key) return log('Track key is required to save.');
+
+  const payload = {
+    config: {
+      alexa: {
+        enabled: document.getElementById('alexaEnabled').checked,
+        publicDomain: document.getElementById('alexaDomain').value.trim(),
+      },
+      notifications: {
+        trackNotify: {
+          enabled: document.getElementById('notifyEnabled').checked,
+          pollMs: Number(document.getElementById('pollMs').value || 3000),
+          dedupeMs: Number(document.getElementById('dedupeMs').value || 15000),
+          alexaMaxAgeMs: Number(document.getElementById('alexaMaxAgeMs').value || 21600000),
+        },
+        pushover: {
+          token: document.getElementById('pushoverToken').value.trim(),
+          userKey: document.getElementById('pushoverUser').value.trim(),
+        },
+      },
+    },
+  };
+
+  const r = await fetch(`${API_BASE}/config/runtime`, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'x-track-key': key },
+    body: JSON.stringify(payload),
+  });
+
+  const j = await r.json();
+  log(j);
+}
+
+document.getElementById('reloadBtn').onclick = () => loadCfg().catch(e => log(String(e)));
+document.getElementById('saveBtn').onclick = () => saveCfg().catch(e => log(String(e)));
+loadCfg().catch(e => log(String(e)));
+</script>
+</body>
+</html>
