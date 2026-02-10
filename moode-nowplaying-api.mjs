@@ -4935,6 +4935,8 @@ registerQueueRoutes(app, {
   moodeValByKey,
   decodeHtmlEntities,
   log,
+  execFileP,
+  MPD_HOST,
 });
 
 registerConfigRoutes(app, {

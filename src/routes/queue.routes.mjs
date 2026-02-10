@@ -13,6 +13,8 @@ export function registerQueueRoutes(app, deps) {
     moodeValByKey,
     decodeHtmlEntities,
     log,
+    execFileP,
+    MPD_HOST,
   } = deps;
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -45,6 +47,18 @@ export function registerQueueRoutes(app, deps) {
 
     if (cur && cur.file) songs.push(cur);
     return songs;
+  }
+
+  function parseFileLines(raw) {
+    return String(raw || '')
+      .split(/\r?\n/)
+      .map((x) => x.trim())
+      .filter(Boolean);
+  }
+
+  async function mpcList(command, field, value) {
+    const { stdout } = await execFileP('mpc', ['-h', String(MPD_HOST || ''), command, field, String(value || '')]);
+    return parseFileLines(stdout || '');
   }
 
   async function mpdCmdOk(cmd) {
@@ -236,42 +250,40 @@ export function registerQueueRoutes(app, deps) {
       for (const artist of artists) {
         byArtist[artist] = 0;
 
-        // Try exact first, then broader search fallback (helps Alexa casing/ASR variants)
-        const rawFind = await mpdCmdOk(`find artist ${mpdQuote(artist)}`);
-        const rawSearch = await mpdCmdOk(`search artist ${mpdQuote(artist)}`);
-        const rawFindAlbumArtist = await mpdCmdOk(`find albumartist ${mpdQuote(artist)}`);
-        const rawSearchAlbumArtist = await mpdCmdOk(`search albumartist ${mpdQuote(artist)}`);
-
-        // Fallbacks: filename search helps with libraries that encode artist in file path/name
+        // Use mpc CLI queries (matches what user sees in moOde UI much more closely)
         const noSpace = artist.replace(/\s+/g, '');
-        const rawSearchFileSpaced = await mpdCmdOk(`search file ${mpdQuote(artist)}`);
-        const rawSearchFileCompact = noSpace && noSpace !== artist
-          ? await mpdCmdOk(`search file ${mpdQuote(noSpace)}`)
-          : '';
 
-        const parsedFind = parseMpdSongs(rawFind);
-        const parsedSearch = parseMpdSongs(rawSearch);
-        const parsedFindAlbumArtist = parseMpdSongs(rawFindAlbumArtist);
-        const parsedSearchAlbumArtist = parseMpdSongs(rawSearchAlbumArtist);
-        const parsedSearchFileSpaced = parseMpdSongs(rawSearchFileSpaced);
-        const parsedSearchFileCompact = parseMpdSongs(rawSearchFileCompact);
+        const filesFindArtist = await mpcList('find', 'artist', artist);
+        const filesSearchArtist = await mpcList('search', 'artist', artist);
+        const filesFindAlbumArtist = await mpcList('find', 'albumartist', artist);
+        const filesSearchAlbumArtist = await mpcList('search', 'albumartist', artist);
+        const filesSearchAnyPhrase = await mpcList('search', 'any', artist);
+        const filesSearchAnyCompact = (noSpace && noSpace !== artist)
+          ? await mpcList('search', 'any', noSpace)
+          : [];
 
         const byFile = new Map();
-        for (const s of [
-          ...parsedFind,
-          ...parsedSearch,
-          ...parsedFindAlbumArtist,
-          ...parsedSearchAlbumArtist,
-          ...parsedSearchFileSpaced,
-          ...parsedSearchFileCompact,
+        for (const f of [
+          ...filesFindArtist,
+          ...filesSearchArtist,
+          ...filesFindAlbumArtist,
+          ...filesSearchAlbumArtist,
+          ...filesSearchAnyPhrase,
+          ...filesSearchAnyCompact,
         ]) {
-          if (!s?.file) continue;
-          if (!byFile.has(s.file)) byFile.set(s.file, { file: s.file, genres: [] });
-          const row = byFile.get(s.file);
-          for (const g of (s.genres || [])) {
-            if (g && !row.genres.includes(g)) row.genres.push(g);
-          }
+          const file = String(f || '').trim();
+          if (!file) continue;
+          if (!byFile.has(file)) byFile.set(file, { file, genres: [] });
         }
+
+        const parsedFind = filesFindArtist;
+        const parsedSearch = filesSearchArtist;
+        const parsedFindAlbumArtist = filesFindAlbumArtist;
+        const parsedSearchAlbumArtist = filesSearchAlbumArtist;
+        const parsedSearchFileSpaced = [];
+        const parsedSearchFileCompact = [];
+        const parsedSearchAnyPhrase = filesSearchAnyPhrase;
+        const tokenSongsByFile = byFile;
 
         let excludedChristmas = 0;
         let skippedAlreadySeen = 0;
@@ -286,13 +298,14 @@ export function registerQueueRoutes(app, deps) {
             continue;
           }
 
-          if (excludeHoliday) {
-            const isChristmas = (song.genres || []).some((g) => CHRISTMAS_GENRE_RE.test(String(g || '')));
-            if (isChristmas) {
-              excludedChristmas += 1;
-              continue;
-            }
-          }
+          // TEMP DEBUG: holiday exclusion disabled to inspect full artist-match candidate set
+          // if (excludeHoliday) {
+          //   const isChristmas = (song.genres || []).some((g) => CHRISTMAS_GENRE_RE.test(String(g || '')));
+          //   if (isChristmas) {
+          //     excludedChristmas += 1;
+          //     continue;
+          //   }
+          // }
 
           await mpdCmdOk(`add ${mpdQuote(file)}`);
           seen.add(file);
@@ -307,6 +320,8 @@ export function registerQueueRoutes(app, deps) {
           parsedSearchAlbumArtist: parsedSearchAlbumArtist.length,
           parsedSearchFileSpaced: parsedSearchFileSpaced.length,
           parsedSearchFileCompact: parsedSearchFileCompact.length,
+          parsedSearchAnyPhrase: parsedSearchAnyPhrase.length,
+          parsedSearchAnyTokensCommon: tokenSongsByFile.size,
           uniqueCandidates: candidateCount,
           excludedChristmas,
           skippedAlreadySeen,
