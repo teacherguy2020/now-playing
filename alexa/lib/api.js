@@ -108,7 +108,85 @@ function createApiClient(config) {
     });
   }
 
-  return { httpRequestJson, apiNowPlaying, apiQueueAdvance, apiMpdPrime, apiSetCurrentRating };
+  async function apiPlayArtist(artist) {
+    const url = API_BASE + '/mpd/play-artist';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { artist },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  async function apiPlayAlbum(album) {
+    const url = API_BASE + '/mpd/play-album';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { album },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  async function apiPlayTrack(track) {
+    const url = API_BASE + '/mpd/play-track';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { track },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  async function apiPlayPlaylist(playlist) {
+    const url = API_BASE + '/mpd/play-playlist';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { playlist },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  async function apiMpdShuffle() {
+    const url = API_BASE + '/mpd/shuffle';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: {},
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  async function apiGetWasPlaying() {
+    const url = API_BASE + '/alexa/was-playing';
+    return httpRequestJson('GET', url, { timeoutMs: HTTP_TIMEOUT_MS });
+  }
+
+  async function apiSetWasPlaying(payload) {
+    const url = API_BASE + '/alexa/was-playing';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: payload || {},
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  return {
+    httpRequestJson,
+    apiNowPlaying,
+    apiQueueAdvance,
+    apiMpdPrime,
+    apiSetCurrentRating,
+    apiPlayArtist,
+    apiPlayAlbum,
+    apiPlayTrack,
+    apiPlayPlaylist,
+    apiMpdShuffle,
+    apiGetWasPlaying,
+    apiSetWasPlaying,
+  };
 }
 
 module.exports = { createApiClient };

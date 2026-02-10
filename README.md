@@ -4,7 +4,7 @@ A moOde-focused now-playing API + UI stack with podcast management, queue contro
 
 ## What this project does
 
-- Serves a Now Playing API (`/now-playing`, `/next-up`, artwork routes, queue/rating controls)
+- Serves a Now Playing API (`/now-playing`, `/next-up`, `/alexa/was-playing`, artwork routes, queue/rating controls)
 - Hosts adaptive UI pages (`index.html`, `podcasts.html`)
 - Manages podcast subscriptions/downloads/playlists
 - Supports multi-device/home deployments (Pi nodes)
@@ -39,6 +39,7 @@ API default: `http://<host>:3101`
 
 - **Clickable stars for ratings**: users can click star ratings in the now-playing UI to update track rating.
 - **Adaptive layout**: `index.html` adapts to screen/environment, including portrait behavior with on-screen playback controls.
+- **Alexa-aware display mode**: UI can auto-switch to Alexa playback state using `/alexa/was-playing` (with explicit lifecycle active/inactive state).
 - **iTunes enrichment**: track-specific album-art lookup, album release year augmentation, and Apple Music deep-link support when found.
 - **AirPlay metadata hardening**: AirPlay metadata handling is enhanced/stabilized to improve continuity and display quality.
 

@@ -13,6 +13,7 @@ function createAudioHandlers(deps) {
     getEventType,
     getAudioPlayerToken,
     getAudioOffsetMs,
+    parseTokenB64,
     advanceFromTokenIfNeeded,
     rememberStop,
     rememberIssuedStream,
@@ -24,6 +25,7 @@ function createAudioHandlers(deps) {
     getStableNowPlayingSnapshot,
     buildPlayEnqueue,
     buildPlayReplaceAll,
+    apiSetWasPlaying,
   } = deps;
 
   async function ensureHeadReady(previousToken, logPrefix, options) {
@@ -151,6 +153,11 @@ function createAudioHandlers(deps) {
           console.log('AudioPlayer event:', eventType);
           console.log('PlaybackStopped: token prefix:', safeStr(token).slice(0, 160), 'offsetMs=', off);
           rememberStop(token, off);
+          try {
+            await apiSetWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() });
+          } catch (e) {
+            console.log('PlaybackStopped: set was-playing inactive failed:', e && e.message ? e.message : String(e));
+          }
         } catch (e) {
           console.log('PlaybackStopped handler failed:', e && e.message ? e.message : String(e));
         }
@@ -164,6 +171,21 @@ function createAudioHandlers(deps) {
           console.log('PlaybackStarted: token prefix:', safeStr(token).slice(0, 160), 'offsetMs=', startOff);
 
           if (safeStr(token)) setLastPlayedToken(safeStr(token));
+
+          try {
+            const p = parseTokenB64(safeStr(token)) || {};
+            await apiSetWasPlaying({
+              token: safeStr(token),
+              file: safeStr(p.file),
+              title: decodeHtmlEntities(safeStr(p.title || '')),
+              artist: decodeHtmlEntities(safeStr(p.artist || '')),
+              album: decodeHtmlEntities(safeStr(p.album || '')),
+              startedAt: Date.now(),
+              active: true,
+            });
+          } catch (e) {
+            console.log('PlaybackStarted: set was-playing failed:', e && e.message ? e.message : String(e));
+          }
 
           if (!(Number.isFinite(startOff) && startOff > 0)) {
             try {
@@ -181,6 +203,21 @@ function createAudioHandlers(deps) {
           return handlerInput.responseBuilder.getResponse();
         } catch (e) {
           console.log('PlaybackStarted handler failed:', e && e.message ? e.message : String(e));
+          return handlerInput.responseBuilder.getResponse();
+        }
+      }
+
+      if (eventType === 'AudioPlayer.PlaybackFailed') {
+        try {
+          console.log('AudioPlayer event:', eventType);
+          try {
+            await apiSetWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() });
+          } catch (e) {
+            console.log('PlaybackFailed: set was-playing inactive failed:', e && e.message ? e.message : String(e));
+          }
+          return handlerInput.responseBuilder.getResponse();
+        } catch (e) {
+          console.log('PlaybackFailed handler failed:', e && e.message ? e.message : String(e));
           return handlerInput.responseBuilder.getResponse();
         }
       }
@@ -211,8 +248,12 @@ function createAudioHandlers(deps) {
       if (eventType === 'AudioPlayer.PlaybackFinished') {
         try {
           console.log('AudioPlayer event:', eventType);
+          try {
+            await apiSetWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() });
+          } catch (e) {
+            console.log('PlaybackFinished: set was-playing inactive failed:', e && e.message ? e.message : String(e));
+          }
           // Alexa does not allow AudioPlayer.Play directives in PlaybackFinished responses.
-          // Keep this handler side-effect free.
           console.log('PlaybackFinished: no directives allowed; no action');
           return handlerInput.responseBuilder.getResponse();
         } catch (e) {

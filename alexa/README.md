@@ -132,5 +132,6 @@ In Alexa Developer Console → **Build** → **JSON Editor**, you can paste an i
 ## Notes
 
 - Queue advancement uses `/queue/advance` with `songid` preferred and `pos0` fallback.
+- Alexa lifecycle writes `/alexa/was-playing` (`active`/`inactive`) so launch UX and UI overlays can reflect what Alexa is actually playing.
 - Keep `TRACK_KEY` synchronized between Lambda and API.
 - Do not hardcode personal domains or private infrastructure details in committed docs.

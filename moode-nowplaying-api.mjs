@@ -1906,7 +1906,119 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+// Alexa "was-playing" state (used by launch UX + UI overlays)
+let alexaWasPlaying = {
+  token: '',
+  file: '',
+  title: '',
+  artist: '',
+  album: '',
+  startedAt: 0,
+  stoppedAt: 0,
+  active: false,
+  updatedAt: 0,
+};
 
+app.get('/alexa/was-playing', async (req, res) => {
+  try {
+    const now = Date.now();
+    const maxAgeMs = Number.parseInt(String(req.query?.maxAgeMs || '43200000').trim(), 10); // 12h default
+    const ageMs = (alexaWasPlaying.updatedAt > 0) ? Math.max(0, now - alexaWasPlaying.updatedAt) : null;
+    const fresh = ageMs !== null && Number.isFinite(maxAgeMs) ? ageMs <= Math.max(0, maxAgeMs) : true;
+
+    const wp = alexaWasPlaying || {};
+    const file = String(wp.file || '').trim();
+    const title = String(wp.title || '').trim();
+    const artist = String(wp.artist || '').trim();
+    const album = String(wp.album || '').trim();
+
+    // now-playing-compatible payload (safe defaults)
+    const nowPlaying = {
+      artist,
+      title,
+      album,
+      file,
+      playbackUrl: '',
+      songpos: '',
+      songid: '',
+      albumArtUrl: file ? `${PUBLIC_BASE_URL}/art/track_640.jpg?file=${encodeURIComponent(file)}${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}` : '',
+      aplArtUrl: `${PUBLIC_BASE_URL}/art/current.jpg`,
+      altArtUrl: '',
+      stationLogoUrl: '',
+      radioAlbum: '',
+      radioYear: '',
+      radioLabel: '',
+      radioComposer: '',
+      radioWork: '',
+      radioPerformers: '',
+      radioItunesUrl: '',
+      radioTrackUrl: '',
+      radioAlbumUrl: '',
+      radioLookupReason: '',
+      radioLookupTerm: '',
+      state: (fresh && !!wp.active) ? 'play' : 'stop',
+      elapsed: 0,
+      duration: 0,
+      percent: 0,
+      year: '',
+      label: '',
+      producer: '',
+      personnel: [],
+      encoded: '',
+      bitrate: '0 bps',
+      outrate: '',
+      volume: '0',
+      mute: '0',
+      track: '',
+      date: '',
+      isStream: false,
+      isAirplay: false,
+      isPodcast: false,
+      streamKind: '',
+      isUpnp: false,
+      isFavorite: false,
+      rating: 0,
+      ratingDisabled: true,
+      ratingFile: file || '',
+      alexaMode: true,
+      fresh,
+      ageMs,
+      active: !!wp.active,
+      startedAt: Number(wp.startedAt || 0) || 0,
+      stoppedAt: Number(wp.stoppedAt || 0) || 0,
+      updatedAt: Number(wp.updatedAt || 0) || 0,
+    };
+
+    return res.json({ ok: true, fresh, ageMs, wasPlaying: wp, nowPlaying });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+app.post('/alexa/was-playing', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+
+    const active = !!req.body?.active;
+    const nowTs = Date.now();
+
+    alexaWasPlaying = {
+      token: String(req.body?.token || alexaWasPlaying.token || '').trim(),
+      file: String(req.body?.file || alexaWasPlaying.file || '').trim(),
+      title: decodeHtmlEntities(String(req.body?.title || alexaWasPlaying.title || '').trim()),
+      artist: decodeHtmlEntities(String(req.body?.artist || alexaWasPlaying.artist || '').trim()),
+      album: decodeHtmlEntities(String(req.body?.album || alexaWasPlaying.album || '').trim()),
+      startedAt: Number.parseInt(String(req.body?.startedAt || alexaWasPlaying.startedAt || nowTs).trim(), 10) || nowTs,
+      stoppedAt: active ? 0 : (Number.parseInt(String(req.body?.stoppedAt || nowTs).trim(), 10) || nowTs),
+      active,
+      updatedAt: nowTs,
+    };
+
+    return res.json({ ok: true, wasPlaying: alexaWasPlaying });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
 
 app.post('/mpd/deprime', async (req, res) => {
   try {
@@ -2429,6 +2541,46 @@ async function mpdPlaylistInfoByPos(songpos) {
   return { file, title, artist, album, songid: id, songpos: pos };
 }
 
+function parseMpdPlaylistBlocks(raw) {
+  const lines = String(raw || '').split('\n');
+  const blocks = [];
+  let cur = null;
+
+  for (const line0 of lines) {
+    const line = String(line0 || '').trim();
+    if (!line || line === 'OK' || line.startsWith('OK MPD ') || line.startsWith('ACK')) continue;
+    const i = line.indexOf(':');
+    if (i <= 0) continue;
+    const k = line.slice(0, i).trim().toLowerCase();
+    const v = line.slice(i + 1).trim();
+
+    if (k === 'file') {
+      if (cur && cur.file) blocks.push(cur);
+      cur = { file: v };
+      continue;
+    }
+
+    if (!cur) cur = {};
+    cur[k] = v;
+  }
+
+  if (cur && cur.file) blocks.push(cur);
+  return blocks;
+}
+
+function isHolidayLikeGenre(genreStr) {
+  const s = String(genreStr || '').toLowerCase();
+  if (!s) return false;
+  return /(christmas|xmas|holiday|noel)/i.test(s);
+}
+
+function isHolidayLikeTrackMeta(block) {
+  const b = block || {};
+  const blob = [b.genre, b.title, b.album, b.file].filter(Boolean).join(' | ').toLowerCase();
+  if (!blob) return false;
+  return /(christmas|xmas|holiday|noel|silent night|jingle|santa|winter wonderland)/i.test(blob);
+}
+
 function isLibraryFile(mpdFile) {
   const f = String(mpdFile || '').trim();
   return !!f && !isStreamPath(f) && !isAirplayFile(f) && f.startsWith(MOODE_USB_PREFIX);
@@ -2947,6 +3099,12 @@ app.post('/mpd/play-artist', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Missing artist' });
     }
 
+    // Default behavior: EXCLUDE holiday/christmas titles for play-artist.
+    // Override per request with { includeHoliday: true }.
+    const includeHoliday = String(req.body?.includeHoliday ?? '').toLowerCase() === 'true'
+      || req.body?.includeHoliday === true
+      || req.body?.includeHoliday === 1;
+
     const q = mpdEscapeValue(artist);
 
     // Build a fresh queue for this artist (do not start playback directly here)
@@ -2975,6 +3133,45 @@ app.post('/mpd/play-artist', async (req, res) => {
 
     if (added <= 0) {
       return res.status(404).json({ ok: false, error: 'No matches for artist', artist });
+    }
+
+    let removedHoliday = 0;
+    if (!includeHoliday) {
+      try {
+        const rawPl = await mpdQueryRaw('playlistinfo');
+        const blocks = parseMpdPlaylistBlocks(rawPl);
+
+        for (let i = blocks.length - 1; i >= 0; i--) {
+          const b = blocks[i] || {};
+          const genreBlob = [b.genre, b.genresort].filter(Boolean).join(' | ');
+          if (isHolidayLikeGenre(genreBlob) || isHolidayLikeTrackMeta(b)) {
+            await mpdDeletePos0(i);
+            removedHoliday += 1;
+          }
+        }
+
+        if (removedHoliday > 0) {
+          const stAfter = await mpdGetStatus();
+          added = Number(stAfter?.playlistlength || 0);
+          log.debug('[play-artist] holiday filter removed', {
+            artist,
+            removedHoliday,
+            remaining: added,
+          });
+        }
+      } catch (e) {
+        log.debug('[play-artist] holiday filter failed, continuing unfiltered:', e?.message || String(e));
+      }
+    }
+
+    if (added <= 0) {
+      await mpdQueryRaw('clear');
+      return res.status(404).json({
+        ok: false,
+        error: 'Artist matches were filtered out as holiday/christmas',
+        artist,
+        removedHoliday,
+      });
     }
 
     // Artist lists can take longer to settle; wait for head item to be readable.
@@ -3007,6 +3204,8 @@ app.post('/mpd/play-artist', async (req, res) => {
       artist,
       strategy,
       added,
+      includeHoliday,
+      removedHoliday,
       nowPlaying: {
         file: (curByPos && curByPos.file) || head2.file || head.file || song.file || '',
         title: decodeHtmlEntities((curByPos && curByPos.title) || head2.title || head.title || song.title || ''),

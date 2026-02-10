@@ -7,6 +7,7 @@ function createIntentHandlers(deps) {
     safeStr,
     safeNumFloat,
     decodeHtmlEntities,
+    parseTokenB64,
     speak,
     getStableNowPlayingSnapshot,
     ensureCurrentTrack,
@@ -15,6 +16,12 @@ function createIntentHandlers(deps) {
     rememberIssuedStream,
     getLastPlayed,
     apiSetCurrentRating,
+    apiPlayArtist,
+    apiPlayAlbum,
+    apiPlayTrack,
+    apiPlayPlaylist,
+    apiMpdShuffle,
+    apiGetWasPlaying,
   } = deps;
 
   const LaunchRequestHandler = {
@@ -24,25 +31,80 @@ function createIntentHandlers(deps) {
 
     async handle(handlerInput) {
       try {
-        const snap = await ensureCurrentTrack();
+        const ap = handlerInput?.requestEnvelope?.context?.AudioPlayer || {};
+        const playerActivity = safeStr(ap.playerActivity).toUpperCase();
+        const currentToken = safeStr(ap.token);
+        const alexaPlayingOurStream = playerActivity === 'PLAYING' && currentToken.startsWith('moode-track:');
 
-        if (!snap || !snap.file) {
-          console.log('Launch: still no current track after prime');
-          return speak(handlerInput, 'I cannot find anything to play right now.', true);
+        // 1) Alexa is already playing our queue item: announce and open mic for optional change.
+        if (alexaPlayingOurStream) {
+          const parsed = parseTokenB64(currentToken) || {};
+          const tokenFile = safeStr(parsed.file);
+
+          let t = '';
+          let a = '';
+
+          try {
+            const wp = await apiGetWasPlaying();
+            const was = wp && wp.wasPlaying ? wp.wasPlaying : null;
+            const wasToken = safeStr(was?.token);
+            if (was && wasToken && wasToken === currentToken) {
+              t = decodeHtmlEntities(safeStr(was.title));
+              a = decodeHtmlEntities(safeStr(was.artist));
+            }
+          } catch (e) {}
+
+          const snapPlaying = await getStableNowPlayingSnapshot();
+          const snapFile = safeStr(snapPlaying?.file);
+
+          // Only trust /now-playing metadata if it matches the token file currently playing on Alexa.
+          if ((!t || !a) && tokenFile && snapFile && tokenFile === snapFile) {
+            if (!t) t = decodeHtmlEntities(safeStr(snapPlaying?.title));
+            if (!a) a = decodeHtmlEntities(safeStr(snapPlaying?.artist));
+          }
+
+          if (!t) t = decodeHtmlEntities(safeStr(parsed.title || ''));
+          if (!a) a = decodeHtmlEntities(safeStr(parsed.artist || ''));
+
+          if (!t && tokenFile) {
+            const base = tokenFile.split('/').pop() || tokenFile;
+            t = decodeHtmlEntities(base.replace(/\.[a-z0-9]+$/i, '').replace(/[_]+/g, ' '));
+          }
+          if (!a) a = 'unknown artist';
+
+          const speech = `Currently playing ${t || 'unknown title'} by ${a}. What would you like to hear?`;
+
+          return handlerInput.responseBuilder
+            .speak(speech)
+            .reprompt('You can say play artist, play album, play track, or play playlist.')
+            .withShouldEndSession(false)
+            .getResponse();
         }
 
-        const directive = buildPlayReplaceAll(snap, 'Starting playback');
+        const snap = await getStableNowPlayingSnapshot();
 
-        try {
-          const issuedToken = directive.audioItem.stream.token;
-          const issuedUrl = directive.audioItem.stream.url;
-          rememberIssuedStream(issuedToken, issuedUrl, 0);
-        } catch (e) {}
+        // 2) Not currently playing, but head exists: start queue.
+        if (snap && snap.file) {
+          const directive = buildPlayReplaceAll(snap, 'Starting playback');
+          try {
+            const issuedToken = directive.audioItem.stream.token;
+            const issuedUrl = directive.audioItem.stream.url;
+            rememberIssuedStream(issuedToken, issuedUrl, 0);
+          } catch (e) {}
 
+          return handlerInput.responseBuilder
+            .speak('Starting your queue.')
+            .withShouldEndSession(true)
+            .addDirective(directive)
+            .getResponse();
+        }
+
+        // 3) Not playing and no head: ask what to hear.
+        console.log('Launch: no head ready; prompting for invocation');
         return handlerInput.responseBuilder
-          .speak('Starting your queue.')
-          .withShouldEndSession(true)
-          .addDirective(directive)
+          .speak('What would you like to hear?')
+          .reprompt('You can say play artist, play album, play track, or play playlist.')
+          .withShouldEndSession(false)
           .getResponse();
 
       } catch (e) {
@@ -187,15 +249,73 @@ function createIntentHandlers(deps) {
     },
   };
 
+  function extractSnapFromApi(resp) {
+    if (!resp || typeof resp !== 'object') return null;
+    if (resp.nowPlaying && resp.nowPlaying.file) return resp.nowPlaying;
+    if (resp.file) return resp;
+    return null;
+  }
+
+  function buildDirectiveFromApiSnap(snap, spokenTitle) {
+    const file = safeStr(snap && snap.file);
+    if (!file) return null;
+    return buildPlayReplaceAll({
+      file,
+      songpos: safeStr(snap.songpos || '0'),
+      songid: safeStr(snap.songid || ''),
+      title: decodeHtmlEntities(safeStr(snap.title || '')),
+      artist: decodeHtmlEntities(safeStr(snap.artist || '')),
+      album: decodeHtmlEntities(safeStr(snap.album || '')),
+    }, spokenTitle || 'Starting playback');
+  }
+
   const PlayArtistIntentHandler = {
     canHandle(handlerInput) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayArtistIntent';
     },
-    handle(handlerInput) {
+    async handle(handlerInput) {
       const artist = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.artist?.value);
       if (!artist) return speak(handlerInput, 'Tell me which artist to play.', false);
-      return speak(handlerInput, 'Play artist is recognized, but not wired to playback yet.', false);
+      try {
+        const resp = await apiPlayArtist(artist);
+        const snap = extractSnapFromApi(resp);
+        const directive = buildDirectiveFromApiSnap(snap, 'Starting your selection');
+        if (!directive) return speak(handlerInput, `I found ${artist}, but could not start playback.`, false);
+        rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
+        return handlerInput.responseBuilder
+          .withShouldEndSession(true)
+          .addDirective(directive)
+          .getResponse();
+      } catch (e) {
+        console.log('PlayArtistIntent error:', e && e.message ? e.message : String(e));
+        return speak(handlerInput, `I couldn't play ${artist} right now.`, false);
+      }
+    },
+  };
+
+  const PlayAlbumIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayAlbumIntent';
+    },
+    async handle(handlerInput) {
+      const album = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.album?.value);
+      if (!album) return speak(handlerInput, 'Tell me which album to play.', false);
+      try {
+        const resp = await apiPlayAlbum(album);
+        const snap = extractSnapFromApi(resp);
+        const directive = buildDirectiveFromApiSnap(snap, 'Starting your selection');
+        if (!directive) return speak(handlerInput, `I found ${album}, but could not start playback.`, false);
+        rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
+        return handlerInput.responseBuilder
+          .withShouldEndSession(true)
+          .addDirective(directive)
+          .getResponse();
+      } catch (e) {
+        console.log('PlayAlbumIntent error:', e && e.message ? e.message : String(e));
+        return speak(handlerInput, `I couldn't play ${album} right now.`, false);
+      }
     },
   };
 
@@ -204,10 +324,48 @@ function createIntentHandlers(deps) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayTrackIntent';
     },
-    handle(handlerInput) {
+    async handle(handlerInput) {
       const track = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.track?.value);
       if (!track) return speak(handlerInput, 'Tell me which track to play.', false);
-      return speak(handlerInput, 'Play track is recognized, but not wired to playback yet.', false);
+      try {
+        const resp = await apiPlayTrack(track);
+        const snap = extractSnapFromApi(resp);
+        const directive = buildDirectiveFromApiSnap(snap, 'Starting your selection');
+        if (!directive) return speak(handlerInput, `I found ${track}, but could not start playback.`, false);
+        rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
+        return handlerInput.responseBuilder
+          .withShouldEndSession(true)
+          .addDirective(directive)
+          .getResponse();
+      } catch (e) {
+        console.log('PlayTrackIntent error:', e && e.message ? e.message : String(e));
+        return speak(handlerInput, `I couldn't play ${track} right now.`, false);
+      }
+    },
+  };
+
+  const PlayPlaylistIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayPlaylistIntent';
+    },
+    async handle(handlerInput) {
+      const playlist = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.playlist?.value);
+      if (!playlist) return speak(handlerInput, 'Tell me which playlist to play.', false);
+      try {
+        const resp = await apiPlayPlaylist(playlist);
+        const snap = extractSnapFromApi(resp);
+        const directive = buildDirectiveFromApiSnap(snap, 'Starting your selection');
+        if (!directive) return speak(handlerInput, `I found ${playlist}, but could not start playback.`, false);
+        rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
+        return handlerInput.responseBuilder
+          .withShouldEndSession(true)
+          .addDirective(directive)
+          .getResponse();
+      } catch (e) {
+        console.log('PlayPlaylistIntent error:', e && e.message ? e.message : String(e));
+        return speak(handlerInput, `I couldn't play playlist ${playlist} right now.`, false);
+      }
     },
   };
 
@@ -216,10 +374,14 @@ function createIntentHandlers(deps) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ShuffleIntent';
     },
-    handle(handlerInput) {
-      const state = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.state?.value).toLowerCase();
-      if (!state) return speak(handlerInput, 'Say shuffle on or shuffle off.', false);
-      return speak(handlerInput, 'Shuffle control is recognized, but not wired yet.', false);
+    async handle(handlerInput) {
+      try {
+        await apiMpdShuffle();
+        return speak(handlerInput, 'Shuffled.', false);
+      } catch (e) {
+        console.log('ShuffleIntent error:', e && e.message ? e.message : String(e));
+        return speak(handlerInput, 'I could not shuffle right now.', false);
+      }
     },
   };
 
@@ -231,7 +393,7 @@ function createIntentHandlers(deps) {
     handle(handlerInput) {
       const mode = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.mode?.value).toLowerCase();
       if (!mode) return speak(handlerInput, 'Say repeat off, repeat one, or repeat all.', false);
-      return speak(handlerInput, 'Repeat control is recognized, but not wired yet.', false);
+      return speak(handlerInput, 'Repeat control is not wired yet.', false);
     },
   };
 
@@ -306,7 +468,9 @@ function createIntentHandlers(deps) {
     HelpIntentHandler,
     FallbackIntentHandler,
     PlayArtistIntentHandler,
+    PlayAlbumIntentHandler,
     PlayTrackIntentHandler,
+    PlayPlaylistIntentHandler,
     ShuffleIntentHandler,
     RepeatIntentHandler,
     RateTrackIntentHandler,

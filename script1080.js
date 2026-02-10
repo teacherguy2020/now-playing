@@ -106,9 +106,17 @@ const STATIC_BASE = IS_PUBLIC
 
 // API endpoints
 const NOW_PLAYING_URL = `${API_BASE}/now-playing`;
+const ALEXA_WAS_PLAYING_URL = `${API_BASE}/alexa/was-playing`;
 const NEXT_UP_URL     = `${API_BASE}/next-up`;
 const RATING_URL      = `${API_BASE}/rating/current`;
 const FAVORITE_URL    = `${API_BASE}/favorites/toggle`;
+
+const URL_PARAMS = new URLSearchParams(location.search || '');
+const _alexaParam = String(URL_PARAMS.get('alexa') || '').trim();
+const _modeParam = String(URL_PARAMS.get('mode') || '').trim();
+const ALEXA_MODE_FORCED = /^(1|true|yes|on)$/i.test(_alexaParam) || /^alexa$/i.test(_modeParam);
+const ALEXA_MODE_DISABLED = /^(0|false|no|off)$/i.test(_alexaParam) || /^normal$/i.test(_modeParam);
+const ALEXA_MODE_AUTO = !ALEXA_MODE_DISABLED;
 
 // Static icons
 const AIRPLAY_ICON_URL = `${STATIC_BASE}/airplay.png?v=3`;
@@ -163,6 +171,11 @@ let bgLoadingUrl = ''; // URL currently being loaded (race guard)
 let currentTrackKey = '';
 let lastPercent = -1;
 let currentIsFavorite = false;
+
+let _alexaWasCache = null;
+let _alexaWasCacheTs = 0;
+let _alexaModeDecisionMade = false;
+let _alexaSourceLocked = false;
 let pendingFavorite = null; // { file, isFavorite, ts }
 const PENDING_FAVORITE_HOLD_MS = 3500;
 
@@ -464,6 +477,48 @@ async function bootThenStart() {
     data = r.ok ? await r.json() : null;
   } catch {}
 
+  const baseNowPlaying = data ? { ...data } : null;
+
+  // Apply same Alexa-source decision during boot to avoid first-paint flicker.
+  if (data && (ALEXA_MODE_AUTO || ALEXA_MODE_FORCED)) {
+    try {
+      const wr = await fetch(`${ALEXA_WAS_PLAYING_URL}?maxAgeMs=21600000`, { cache: 'no-store' });
+      if (wr.ok) {
+        _alexaWasCache = await wr.json();
+        _alexaWasCacheTs = Date.now();
+      }
+
+      const wj = _alexaWasCache;
+      const fresh = !!(wj && wj.fresh);
+      const np = wj && wj.nowPlaying ? wj.nowPlaying : null;
+      const wp = wj && wj.wasPlaying ? wj.wasPlaying : null;
+      const active = !!((np && np.active) || (wp && wp.active));
+      const hasAlexaPayload = !!((np && np.file) || (wp && wp.file));
+      const useAlexaBoot = (!!ALEXA_MODE_FORCED && hasAlexaPayload) ||
+                           (!!ALEXA_MODE_AUTO && fresh && active && hasAlexaPayload);
+
+      _alexaSourceLocked = !!useAlexaBoot;
+      _alexaModeDecisionMade = true;
+
+      if (useAlexaBoot && np && np.file) {
+        data = { ...data, ...np, alexaMode: true };
+      } else if (useAlexaBoot && wp && wp.file) {
+        data = {
+          ...data,
+          file: wp.file || data.file,
+          title: wp.title || data.title,
+          artist: wp.artist || data.artist,
+          album: wp.album || data.album,
+          alexaMode: true,
+        };
+      }
+    } catch (e) {
+      // If was-playing fetch fails, continue with /now-playing boot data.
+    }
+  }
+
+  if (data && baseNowPlaying) data.__queueHead = baseNowPlaying;
+
   // Always show the UI shell
   markReadyOnce();
 
@@ -481,7 +536,9 @@ async function bootThenStart() {
   const firstKey = normalizeArtKey(firstArtUrl);
   const firstBgUrl =
     (ENABLE_BACKGROUND_ART && firstKey)
-      ? `${API_BASE}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(firstKey)}`
+      ? (data.alexaMode
+          ? firstArtUrl
+          : `${API_BASE}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(firstKey)}`)
       : '';
 
   if (ENABLE_BACKGROUND_ART && firstKey) {
@@ -516,7 +573,9 @@ async function bootThenStart() {
 
     const artBgEl = document.getElementById('album-art-bg');
     if (artBgEl) {
-      const firstFgUrl = `${API_BASE}/art/current.jpg?v=${encodeURIComponent(firstKey)}`;
+      const firstFgUrl = data.alexaMode
+        ? firstArtUrl
+        : `${API_BASE}/art/current.jpg?v=${encodeURIComponent(firstKey)}`;
       artBgEl.style.backgroundImage = `url("${firstFgUrl}")`;
       artBgEl.style.backgroundSize = 'cover';
       artBgEl.style.backgroundPosition = 'center';
@@ -745,9 +804,70 @@ function attachRatingsClickHandler() {
 
 function fetchNowPlaying() {
   fetch(NOW_PLAYING_URL, { cache: 'no-store' })
-    .then(r => {
+    .then(async r => {
       if (!r.ok) throw new Error(`now-playing HTTP ${r.status}`);
-      return r.json();
+      let data = await r.json();
+      if (!data) return data;
+
+      const baseNowPlaying = { ...data };
+
+      // Alexa mode source override:
+      // - forced via ?alexa=1 or ?mode=alexa
+      // - auto-detect by default unless disabled (?alexa=0 or ?mode=normal)
+      if (ALEXA_MODE_AUTO || ALEXA_MODE_FORCED) {
+        try {
+          const now = Date.now();
+          if (!_alexaWasCache || (now - _alexaWasCacheTs) > 4000) {
+            const wr = await fetch(`${ALEXA_WAS_PLAYING_URL}?maxAgeMs=21600000`, { cache: 'no-store' });
+            if (wr.ok) {
+              _alexaWasCache = await wr.json();
+              _alexaWasCacheTs = now;
+            }
+          }
+
+          const wj = _alexaWasCache;
+          const fresh = !!(wj && wj.fresh);
+          const np = wj && wj.nowPlaying ? wj.nowPlaying : null;
+          const wp = wj && wj.wasPlaying ? wj.wasPlaying : null;
+          const active = !!((np && np.active) || (wp && wp.active));
+
+          // Auto mode only adopts Alexa source when it's fresh + active + has a file.
+          // Forced mode always prefers Alexa source when available.
+          const hasAlexaPayload = !!((np && np.file) || (wp && wp.file));
+          const useAlexaNow = (!!ALEXA_MODE_FORCED && hasAlexaPayload) ||
+                              (!!ALEXA_MODE_AUTO && fresh && active && hasAlexaPayload);
+
+          // Latch source on first decision to avoid initial head->alexa flip/flicker.
+          if (!_alexaModeDecisionMade) {
+            _alexaSourceLocked = !!useAlexaNow;
+            _alexaModeDecisionMade = true;
+          }
+
+          const useAlexa = _alexaSourceLocked ? hasAlexaPayload : useAlexaNow;
+
+          if (useAlexa && np && np.file) {
+            data = { ...data, ...np, alexaMode: true };
+          } else if (useAlexa && wp && wp.file) {
+            data = {
+              ...data,
+              file: wp.file || data.file,
+              title: wp.title || data.title,
+              artist: wp.artist || data.artist,
+              album: wp.album || data.album,
+              alexaMode: true,
+            };
+          } else if (_alexaSourceLocked) {
+            // Keep prior Alexa view rather than flashing back to queue head.
+            return null;
+          }
+        } catch (e) {
+          dlog('Alexa was-playing fetch failed:', e && e.message ? e.message : String(e));
+        }
+      }
+
+      // keep original /now-playing snapshot for queue-head use (e.g., Next up row in Alexa mode)
+      data.__queueHead = baseNowPlaying;
+      return data;
     })
     .then(data => {
         if (!data) return;
@@ -998,7 +1118,7 @@ function fetchNowPlaying() {
           const due = (now - (lastNextUpFetchTs || 0)) >= NEXT_UP_REFRESH_MS;
           if (trackChanged || due) {
             lastNextUpFetchTs = now;
-            updateNextUp({ isAirplay, isStream });
+            updateNextUp({ isAirplay, isStream, data });
           }
         }
 
@@ -1143,16 +1263,50 @@ function setProgressVisibility(hide) {
  * Next Up (text + thumbnail)
  * ========================= */
 
-function updateNextUp({ isAirplay, isStream }) {
+function updateNextUp({ isAirplay, isStream, data }) {
   // ✅ If we're reusing Next Up as the RADIO FOOTER, don't let Next Up fetch repaint it
   if (radioFooterActive) return;
   const wrap   = document.getElementById('next-up');
   const textEl = document.getElementById('next-up-text');
   const imgEl  = document.getElementById('next-up-img');
-  dlog('[NEXTUP updateNextUp called]', { pauseMode, isAirplay, isStream });
+  dlog('[NEXTUP updateNextUp called]', { pauseMode, isAirplay, isStream, alexaMode: !!(data && data.alexaMode) });
   
   // allow text even if image element is missing
   if (!wrap || !textEl) return;
+
+  // In Alexa mode, use /now-playing queue head as "Next up" source.
+  if (data && data.alexaMode) {
+    const q = data.__queueHead || {};
+    const title = String(q.title || '').trim();
+    const file = String(q.file || '').trim();
+    const artist = String(q.artist || '').trim();
+    const artUrl = String(q.albumArtUrl || q.altArtUrl || '').trim();
+
+    const showTitle = title || file.split('/').pop() || file || 'Unknown title';
+    const showArtist = artist ? ` • ${artist}` : '';
+    setNextUpLine(`Next up: ${showTitle}${showArtist}`);
+
+    wrap.style.display = 'flex';
+    wrap.style.visibility = 'visible';
+    wrap.style.opacity = '1';
+
+    if (!imgEl || !artUrl) {
+      if (imgEl) {
+        imgEl.style.display = 'none';
+        imgEl.removeAttribute('src');
+        imgEl.dataset.lastUrl = '';
+      }
+      return;
+    }
+
+    const lastUrl = imgEl.dataset.lastUrl || '';
+    if (artUrl !== lastUrl) {
+      imgEl.dataset.lastUrl = artUrl;
+      imgEl.src = artUrl;
+    }
+    imgEl.style.display = 'block';
+    return;
+  }
 
   if (pauseMode || isAirplay || isStream) {
     setNextUpLine('');
@@ -2311,12 +2465,16 @@ if (titleEl) {
   // Build URLs
   const bgArtUrl =
     (ENABLE_BACKGROUND_ART && artKey)
-      ? `${API_BASE}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(artKey)}`
+      ? (data.alexaMode
+          ? rawArtUrl
+          : `${API_BASE}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(artKey)}`)
       : '';
 
   const fgUrl = (isAirplay && !IS_PUBLIC && rawArtUrl)
     ? rawArtUrl
-    : (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : '');
+    : (data.alexaMode
+        ? rawArtUrl
+        : (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : ''));
 
   // =========================
   // Background + glow updates

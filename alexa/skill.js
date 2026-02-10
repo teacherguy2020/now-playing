@@ -20,7 +20,19 @@ const {
   ADVANCE_GUARD_MS, ENQUEUE_GUARD_MS, PRIME_START_OFFSET_MS,
 } = config;
 
-const { apiNowPlaying, apiQueueAdvance, apiMpdPrime, apiSetCurrentRating } = createApiClient(config);
+const {
+  apiNowPlaying,
+  apiQueueAdvance,
+  apiMpdPrime,
+  apiSetCurrentRating,
+  apiPlayArtist,
+  apiPlayAlbum,
+  apiPlayTrack,
+  apiPlayPlaylist,
+  apiMpdShuffle,
+  apiGetWasPlaying,
+  apiSetWasPlaying,
+} = createApiClient(config);
 
 /* =========================
  * Alexa helpers
@@ -63,12 +75,19 @@ function buildPlayReplaceAll(track, spokenTitle) {
   const pos0 = safeNum(track.songpos, 0);
   const songid = safeNum(track.songid, null);
 
-  // Token now carries songid (preferred) + pos0 fallback + file sanity.
-  const token = makeToken({ file: file, songid: songid, pos0: pos0 });
-
   const title = safeStr(track.title);
   const artist = safeStr(track.artist);
   const album = safeStr(track.album);
+
+  // Token carries identity + lightweight metadata for launch announcements.
+  const token = makeToken({
+    file: file,
+    songid: songid,
+    pos0: pos0,
+    title: title,
+    artist: artist,
+    album: album,
+  });
 
   const artUrl = artUrlForFile(file);
   const url = trackStreamUrl(file);
@@ -116,11 +135,18 @@ function buildPlayEnqueue(track, expectedPreviousToken) {
 
   if (!file || pos0 === null) return null;
 
-  const token = makeToken({ file: file, songid: songid, pos0: pos0 });
-
   const title = safeStr(track.title);
   const artist = safeStr(track.artist);
   const album = safeStr(track.album);
+
+  const token = makeToken({
+    file: file,
+    songid: songid,
+    pos0: pos0,
+    title: title,
+    artist: artist,
+    album: album,
+  });
 
   const artUrl = artUrlForFile(file);
   const url = trackStreamUrl(file);
@@ -365,7 +391,9 @@ const {
   HelpIntentHandler,
   FallbackIntentHandler,
   PlayArtistIntentHandler,
+  PlayAlbumIntentHandler,
   PlayTrackIntentHandler,
+  PlayPlaylistIntentHandler,
   ShuffleIntentHandler,
   RepeatIntentHandler,
   RateTrackIntentHandler,
@@ -375,6 +403,7 @@ const {
   safeStr,
   safeNumFloat,
   decodeHtmlEntities,
+  parseTokenB64,
   speak,
   getStableNowPlayingSnapshot,
   ensureCurrentTrack,
@@ -383,6 +412,12 @@ const {
   rememberIssuedStream,
   getLastPlayed: () => ({ token: lastPlayedToken, url: lastPlayedUrl, offsetMs: lastStoppedOffsetMs }),
   apiSetCurrentRating,
+  apiPlayArtist,
+  apiPlayAlbum,
+  apiPlayTrack,
+  apiPlayPlaylist,
+  apiMpdShuffle,
+  apiGetWasPlaying,
 });
 
 const { PlaybackControllerEventHandler, AudioPlayerEventHandler } = createAudioHandlers({
@@ -395,6 +430,7 @@ const { PlaybackControllerEventHandler, AudioPlayerEventHandler } = createAudioH
   getEventType,
   getAudioPlayerToken,
   getAudioOffsetMs,
+  parseTokenB64,
   advanceFromTokenIfNeeded,
   rememberStop,
   rememberIssuedStream,
@@ -406,6 +442,7 @@ const { PlaybackControllerEventHandler, AudioPlayerEventHandler } = createAudioH
   getStableNowPlayingSnapshot,
   buildPlayEnqueue,
   buildPlayReplaceAll,
+  apiSetWasPlaying,
 });
 
 const { LogRequestInterceptor, SystemExceptionHandler, ErrorHandler } = createMiscHandlers({ VERSION });
@@ -424,7 +461,9 @@ exports.handler = Alexa.SkillBuilders.custom()
     HelpIntentHandler,
     FallbackIntentHandler,
     PlayArtistIntentHandler,
+    PlayAlbumIntentHandler,
     PlayTrackIntentHandler,
+    PlayPlaylistIntentHandler,
     ShuffleIntentHandler,
     RepeatIntentHandler,
     RateTrackIntentHandler,
