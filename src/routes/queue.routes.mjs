@@ -242,13 +242,29 @@ export function registerQueueRoutes(app, deps) {
         const rawFindAlbumArtist = await mpdCmdOk(`find albumartist ${mpdQuote(artist)}`);
         const rawSearchAlbumArtist = await mpdCmdOk(`search albumartist ${mpdQuote(artist)}`);
 
+        // Fallbacks: filename search helps with libraries that encode artist in file path/name
+        const noSpace = artist.replace(/\s+/g, '');
+        const rawSearchFileSpaced = await mpdCmdOk(`search file ${mpdQuote(artist)}`);
+        const rawSearchFileCompact = noSpace && noSpace !== artist
+          ? await mpdCmdOk(`search file ${mpdQuote(noSpace)}`)
+          : '';
+
         const parsedFind = parseMpdSongs(rawFind);
         const parsedSearch = parseMpdSongs(rawSearch);
         const parsedFindAlbumArtist = parseMpdSongs(rawFindAlbumArtist);
         const parsedSearchAlbumArtist = parseMpdSongs(rawSearchAlbumArtist);
+        const parsedSearchFileSpaced = parseMpdSongs(rawSearchFileSpaced);
+        const parsedSearchFileCompact = parseMpdSongs(rawSearchFileCompact);
 
         const byFile = new Map();
-        for (const s of [...parsedFind, ...parsedSearch, ...parsedFindAlbumArtist, ...parsedSearchAlbumArtist]) {
+        for (const s of [
+          ...parsedFind,
+          ...parsedSearch,
+          ...parsedFindAlbumArtist,
+          ...parsedSearchAlbumArtist,
+          ...parsedSearchFileSpaced,
+          ...parsedSearchFileCompact,
+        ]) {
           if (!s?.file) continue;
           if (!byFile.has(s.file)) byFile.set(s.file, { file: s.file, genres: [] });
           const row = byFile.get(s.file);
@@ -289,6 +305,8 @@ export function registerQueueRoutes(app, deps) {
           parsedSearch: parsedSearch.length,
           parsedFindAlbumArtist: parsedFindAlbumArtist.length,
           parsedSearchAlbumArtist: parsedSearchAlbumArtist.length,
+          parsedSearchFileSpaced: parsedSearchFileSpaced.length,
+          parsedSearchFileCompact: parsedSearchFileCompact.length,
           uniqueCandidates: candidateCount,
           excludedChristmas,
           skippedAlreadySeen,
