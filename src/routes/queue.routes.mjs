@@ -347,6 +347,19 @@ export function registerQueueRoutes(app, deps) {
 
       await mpdCmdOk(`random ${randomOn ? 1 : 0}`);
 
+      let randomizedHeadFromPos = null;
+      if (randomOn && added > 1) {
+        try {
+          const fromPos = Math.floor(Math.random() * added);
+          if (fromPos > 0) {
+            await mpdCmdOk(`move ${fromPos} 0`);
+            randomizedHeadFromPos = fromPos;
+          }
+        } catch (e) {
+          log.debug('[queue/mix] random head move failed:', e?.message || String(e));
+        }
+      }
+
       let startedPlayback = false;
       if (startPlayback && added > 0) {
         try {
@@ -389,6 +402,7 @@ export function registerQueueRoutes(app, deps) {
         excludeHoliday,
         clearFirst,
         random: random === '1',
+        randomizedHeadFromPos,
         startPlayback,
         startedPlayback,
         maxTracks,
