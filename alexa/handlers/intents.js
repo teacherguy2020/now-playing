@@ -464,7 +464,7 @@ function createIntentHandlers(deps) {
           excludeHoliday: true,
           clearFirst: true,
           random: true,
-          startPlayback: true,
+          startPlayback: false,
           maxTracks: 300,
         });
 

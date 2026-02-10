@@ -255,6 +255,24 @@ export function registerQueueRoutes(app, deps) {
       try {
         nowPlaying = await resolveHeadFast();
         if (!nowPlaying) nowPlaying = await resolveHeadFallbackMoode();
+
+        // If queue is built but MPD isn't actively playing, return queue head (pos 0)
+        if (!nowPlaying && added > 0) {
+          const firstRaw = await mpdCmdOk('playlistinfo 0:1');
+          const first = parseMpdFirstBlock(firstRaw || '');
+          const f = String(first.file || '').trim();
+          if (f) {
+            nowPlaying = {
+              file: f,
+              title: decodeHtmlEntities(String(first.title || '').trim()),
+              artist: decodeHtmlEntities(String(first.artist || '').trim()),
+              album: decodeHtmlEntities(String(first.album || '').trim()),
+              songpos: '0',
+              songid: String(first.id || '').trim(),
+              source: 'mpd-queue-head',
+            };
+          }
+        }
       } catch (_) {}
 
       return res.json({
