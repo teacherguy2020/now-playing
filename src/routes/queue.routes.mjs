@@ -298,14 +298,27 @@ export function registerQueueRoutes(app, deps) {
             continue;
           }
 
-          // TEMP DEBUG: holiday exclusion disabled to inspect full artist-match candidate set
-          // if (excludeHoliday) {
-          //   const isChristmas = (song.genres || []).some((g) => CHRISTMAS_GENRE_RE.test(String(g || '')));
-          //   if (isChristmas) {
-          //     excludedChristmas += 1;
-          //     continue;
-          //   }
-          // }
+          // Holiday exclusion policy: ONLY exclude tracks tagged with Genre containing "Christmas".
+          if (excludeHoliday) {
+            let genres = Array.isArray(song.genres) ? song.genres : [];
+
+            // Populate genres on-demand when the candidate came from file/any lookups
+            // that may not include full metadata in the initial set.
+            if (!genres.length) {
+              try {
+                const rawMeta = await mpdCmdOk(`search file ${mpdQuote(file)}`);
+                const metaSongs = parseMpdSongs(rawMeta);
+                const meta = metaSongs.find((x) => String(x.file || '').trim() === file);
+                genres = Array.isArray(meta?.genres) ? meta.genres : [];
+              } catch (_) {}
+            }
+
+            const isChristmas = genres.some((g) => CHRISTMAS_GENRE_RE.test(String(g || '')));
+            if (isChristmas) {
+              excludedChristmas += 1;
+              continue;
+            }
+          }
 
           await mpdCmdOk(`add ${mpdQuote(file)}`);
           seen.add(file);
