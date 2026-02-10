@@ -66,6 +66,20 @@
         },
 
         {
+          "name": "PlayMixIntent",
+          "slots": [
+            { "name": "mixQuery", "type": "AMAZON.SearchQuery" }
+          ],
+          "samples": [
+            "play a mix of {mixQuery}",
+            "play mix of {mixQuery}",
+            "mix {mixQuery}",
+            "create a mix of {mixQuery}",
+            "queue a mix of {mixQuery}"
+          ]
+        },
+
+        {
           "name": "PlayArtistIntent",
           "slots": [
             { "name": "artist", "type": "AMAZON.SearchQuery" }

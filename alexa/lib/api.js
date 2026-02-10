@@ -98,6 +98,16 @@ function createApiClient(config) {
     });
   }
 
+  async function apiQueueMix(artists, opts) {
+    const url = API_BASE + '/queue/mix';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: Object.assign({ artists }, opts || {}),
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
   async function apiSetCurrentRating(rating) {
     const url = API_BASE + '/rating/current';
     const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
@@ -238,6 +248,7 @@ function createApiClient(config) {
     apiNowPlaying,
     apiQueueAdvance,
     apiMpdPrime,
+    apiQueueMix,
     apiSetCurrentRating,
     apiPlayArtist,
     apiSuggestArtistAlias,

@@ -38,6 +38,7 @@ const {
   apiMpdShuffle,
   apiGetWasPlaying,
   apiSetWasPlaying,
+  apiQueueMix,
 } = createApiClient(config);
 
 /* =========================
@@ -400,6 +401,7 @@ const {
   PlayAlbumIntentHandler,
   PlayTrackIntentHandler,
   PlayPlaylistIntentHandler,
+  PlayMixIntentHandler,
   ShuffleIntentHandler,
   RepeatIntentHandler,
   RateTrackIntentHandler,
@@ -428,6 +430,7 @@ const {
   apiPlayPlaylist,
   apiSuggestPlaylistAlias,
   apiLogHeardPlaylist,
+  apiQueueMix,
   apiMpdShuffle,
   apiGetWasPlaying,
 });
@@ -476,6 +479,7 @@ exports.handler = Alexa.SkillBuilders.custom()
     PlayAlbumIntentHandler,
     PlayTrackIntentHandler,
     PlayPlaylistIntentHandler,
+    PlayMixIntentHandler,
     ShuffleIntentHandler,
     RepeatIntentHandler,
     RateTrackIntentHandler,

@@ -25,6 +25,7 @@ function createIntentHandlers(deps) {
     apiPlayTrack,
     apiPlayPlaylist,
     apiSuggestPlaylistAlias,
+    apiQueueMix,
     apiLogHeardPlaylist,
     apiMpdShuffle,
     apiGetWasPlaying,
@@ -426,6 +427,70 @@ function createIntentHandlers(deps) {
     },
   };
 
+  function parseArtistsFromMixQuery(q) {
+    const raw = safeStr(q);
+    if (!raw) return [];
+
+    const normalized = raw
+      .replace(/\bmix of\b/ig, '')
+      .replace(/\bplay\b/ig, '')
+      .replace(/\bartists?\b/ig, '')
+      .replace(/\b(and|plus|with)\b/ig, ',');
+
+    const parts = normalized
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    return Array.from(new Set(parts)).slice(0, 8);
+  }
+
+  const PlayMixIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayMixIntent';
+    },
+    async handle(handlerInput) {
+      const mixQuery = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.mixQuery?.value);
+      const artists = parseArtistsFromMixQuery(mixQuery);
+
+      if (!artists.length) {
+        return speak(handlerInput, 'Tell me the artists for the mix, for example Frank Sinatra and Diana Krall.', false);
+      }
+
+      try {
+        const resp = await apiQueueMix(artists, {
+          excludeHoliday: true,
+          clearFirst: true,
+          random: true,
+          maxTracks: 300,
+        });
+
+        const added = Number(resp?.added || 0);
+        if (added < 1) {
+          return speak(handlerInput, 'I could not build that mix right now.', false);
+        }
+
+        const snap = await ensureCurrentTrack();
+        if (!snap || !snap.file) {
+          return speak(handlerInput, `I loaded ${added} tracks, but could not start playback.`, false);
+        }
+
+        const directive = buildPlayReplaceAll(snap, 'Starting your mix');
+        rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
+
+        return handlerInput.responseBuilder
+          .speak(`Loaded ${added} tracks. Starting your mix.`)
+          .withShouldEndSession(true)
+          .addDirective(directive)
+          .getResponse();
+      } catch (e) {
+        console.log('PlayMixIntent error:', e && e.message ? e.message : String(e));
+        return speak(handlerInput, 'I could not build that mix right now.', false);
+      }
+    },
+  };
+
   const ShuffleIntentHandler = {
     canHandle(handlerInput) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
@@ -528,6 +593,7 @@ function createIntentHandlers(deps) {
     PlayAlbumIntentHandler,
     PlayTrackIntentHandler,
     PlayPlaylistIntentHandler,
+    PlayMixIntentHandler,
     ShuffleIntentHandler,
     RepeatIntentHandler,
     RateTrackIntentHandler,
