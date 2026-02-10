@@ -17,7 +17,21 @@ function pickPublicConfig(cfg) {
     environment: c.environment || 'home',
     timezone: c.timezone || 'America/Chicago',
     ports: c.ports || { api: 3101, ui: 8101 },
-    alexa: c.alexa || { enabled: true, publicDomain: '', skillId: '', webhookPath: '/alexa' },
+    alexa: {
+      enabled: Boolean(c.alexa?.enabled ?? true),
+      publicDomain: String(c.alexa?.publicDomain || ''),
+      skillId: String(c.alexa?.skillId || ''),
+      webhookPath: String(c.alexa?.webhookPath || '/alexa'),
+      artistAliases: c.alexa?.artistAliases || {},
+      albumAliases: c.alexa?.albumAliases || {},
+      playlistAliases: c.alexa?.playlistAliases || {},
+      unresolvedArtists: Array.isArray(c.alexa?.unresolvedArtists) ? c.alexa.unresolvedArtists : [],
+      heardArtists: Array.isArray(c.alexa?.heardArtists) ? c.alexa.heardArtists : [],
+      unresolvedAlbums: Array.isArray(c.alexa?.unresolvedAlbums) ? c.alexa.unresolvedAlbums : [],
+      heardAlbums: Array.isArray(c.alexa?.heardAlbums) ? c.alexa.heardAlbums : [],
+      unresolvedPlaylists: Array.isArray(c.alexa?.unresolvedPlaylists) ? c.alexa.unresolvedPlaylists : [],
+      heardPlaylists: Array.isArray(c.alexa?.heardPlaylists) ? c.alexa.heardPlaylists : [],
+    },
     notifications: {
       trackNotify: {
         enabled: !!tn.enabled,
@@ -102,7 +116,38 @@ export function registerConfigRoutes(app, deps) {
         : {
             ...current,
             ...incoming,
-            alexa: { ...(current.alexa || {}), ...(incoming.alexa || {}) },
+            alexa: {
+              ...(current.alexa || {}),
+              ...(incoming.alexa || {}),
+              // Replace alias map when provided so deletions persist.
+              artistAliases: (incoming?.alexa && Object.prototype.hasOwnProperty.call(incoming.alexa, 'artistAliases'))
+                ? (incoming.alexa.artistAliases || {})
+                : ((current.alexa || {}).artistAliases || {}),
+              albumAliases: (incoming?.alexa && Object.prototype.hasOwnProperty.call(incoming.alexa, 'albumAliases'))
+                ? (incoming.alexa.albumAliases || {})
+                : ((current.alexa || {}).albumAliases || {}),
+              playlistAliases: (incoming?.alexa && Object.prototype.hasOwnProperty.call(incoming.alexa, 'playlistAliases'))
+                ? (incoming.alexa.playlistAliases || {})
+                : ((current.alexa || {}).playlistAliases || {}),
+              unresolvedArtists: Array.isArray(incoming?.alexa?.unresolvedArtists)
+                ? incoming.alexa.unresolvedArtists
+                : ((current.alexa || {}).unresolvedArtists || []),
+              heardArtists: Array.isArray(incoming?.alexa?.heardArtists)
+                ? incoming.alexa.heardArtists
+                : ((current.alexa || {}).heardArtists || []),
+              unresolvedAlbums: Array.isArray(incoming?.alexa?.unresolvedAlbums)
+                ? incoming.alexa.unresolvedAlbums
+                : ((current.alexa || {}).unresolvedAlbums || []),
+              heardAlbums: Array.isArray(incoming?.alexa?.heardAlbums)
+                ? incoming.alexa.heardAlbums
+                : ((current.alexa || {}).heardAlbums || []),
+              unresolvedPlaylists: Array.isArray(incoming?.alexa?.unresolvedPlaylists)
+                ? incoming.alexa.unresolvedPlaylists
+                : ((current.alexa || {}).unresolvedPlaylists || []),
+              heardPlaylists: Array.isArray(incoming?.alexa?.heardPlaylists)
+                ? incoming.alexa.heardPlaylists
+                : ((current.alexa || {}).heardPlaylists || []),
+            },
             ports: { ...(current.ports || {}), ...(incoming.ports || {}) },
             paths: { ...(current.paths || {}), ...(incoming.paths || {}) },
             notifications: {
@@ -135,6 +180,256 @@ export function registerConfigRoutes(app, deps) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });
+
+  async function handleArtistAliasSuggestion(req, res) {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const artist = String(req.body?.artist || '').trim();
+      if (!artist) return res.status(400).json({ ok: false, error: 'Missing artist' });
+
+      let current = {};
+      try { current = JSON.parse(await fs.readFile(configPath, 'utf8')); } catch {}
+
+      const now = new Date().toISOString();
+      const key = artist.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const source = String(req.body?.source || 'alexa');
+
+      const unresolved = Array.isArray(current?.alexa?.unresolvedArtists) ? current.alexa.unresolvedArtists : [];
+      const idx = unresolved.findIndex((x) => String(x?.key || '').trim() === key);
+
+      if (idx >= 0) {
+        const prev = unresolved[idx] || {};
+        unresolved[idx] = {
+          ...prev,
+          artist,
+          key,
+          count: Number(prev.count || 1) + 1,
+          updatedAt: now,
+          lastSource: source,
+        };
+      } else {
+        unresolved.unshift({
+          artist,
+          key,
+          count: 1,
+          createdAt: now,
+          updatedAt: now,
+          lastSource: source,
+        });
+      }
+
+      const heard = Array.isArray(current?.alexa?.heardArtists) ? current.alexa.heardArtists : [];
+      heard.unshift({ artist, key, source, at: now, status: 'not-found' });
+
+      const next = {
+        ...current,
+        alexa: {
+          ...(current.alexa || {}),
+          unresolvedArtists: unresolved.slice(0, 200),
+          heardArtists: heard.slice(0, 400),
+        },
+      };
+
+      await fs.writeFile(configPath, JSON.stringify(next, null, 2) + '\n', 'utf8');
+      return res.json({ ok: true, queued: artist, total: unresolved.slice(0, 200).length });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  }
+
+  async function handleAlexaHeardArtist(req, res) {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const artist = String(req.body?.artist || '').trim();
+      if (!artist) return res.status(400).json({ ok: false, error: 'Missing artist' });
+
+      let current = {};
+      try { current = JSON.parse(await fs.readFile(configPath, 'utf8')); } catch {}
+
+      const now = new Date().toISOString();
+      const key = artist.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const source = String(req.body?.source || 'alexa');
+      const status = String(req.body?.status || 'attempt');
+
+      const heard = Array.isArray(current?.alexa?.heardArtists) ? current.alexa.heardArtists : [];
+      heard.unshift({ artist, key, source, status, at: now });
+
+      const next = {
+        ...current,
+        alexa: {
+          ...(current.alexa || {}),
+          heardArtists: heard.slice(0, 400),
+        },
+      };
+
+      await fs.writeFile(configPath, JSON.stringify(next, null, 2) + '\n', 'utf8');
+      return res.json({ ok: true, logged: artist, total: heard.slice(0, 400).length });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  }
+
+  async function handleAlbumAliasSuggestion(req, res) {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const album = String(req.body?.album || '').trim();
+      if (!album) return res.status(400).json({ ok: false, error: 'Missing album' });
+
+      let current = {};
+      try { current = JSON.parse(await fs.readFile(configPath, 'utf8')); } catch {}
+
+      const now = new Date().toISOString();
+      const key = album.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const source = String(req.body?.source || 'alexa');
+
+      const unresolved = Array.isArray(current?.alexa?.unresolvedAlbums) ? current.alexa.unresolvedAlbums : [];
+      const idx = unresolved.findIndex((x) => String(x?.key || '').trim() === key);
+      if (idx >= 0) {
+        const prev = unresolved[idx] || {};
+        unresolved[idx] = { ...prev, album, key, count: Number(prev.count || 1) + 1, updatedAt: now, lastSource: source };
+      } else {
+        unresolved.unshift({ album, key, count: 1, createdAt: now, updatedAt: now, lastSource: source });
+      }
+
+      const heard = Array.isArray(current?.alexa?.heardAlbums) ? current.alexa.heardAlbums : [];
+      heard.unshift({ album, key, source, at: now, status: 'not-found' });
+
+      const next = {
+        ...current,
+        alexa: {
+          ...(current.alexa || {}),
+          unresolvedAlbums: unresolved.slice(0, 200),
+          heardAlbums: heard.slice(0, 400),
+        },
+      };
+
+      await fs.writeFile(configPath, JSON.stringify(next, null, 2) + '\n', 'utf8');
+      return res.json({ ok: true, queued: album, total: unresolved.slice(0, 200).length });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  }
+
+  async function handleAlexaHeardAlbum(req, res) {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const album = String(req.body?.album || '').trim();
+      if (!album) return res.status(400).json({ ok: false, error: 'Missing album' });
+
+      let current = {};
+      try { current = JSON.parse(await fs.readFile(configPath, 'utf8')); } catch {}
+
+      const now = new Date().toISOString();
+      const key = album.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const source = String(req.body?.source || 'alexa');
+      const status = String(req.body?.status || 'attempt');
+      const resolvedTo = String(req.body?.resolvedTo || '').trim();
+
+      const heard = Array.isArray(current?.alexa?.heardAlbums) ? current.alexa.heardAlbums : [];
+      heard.unshift({ album, key, source, status, resolvedTo, at: now });
+
+      const next = {
+        ...current,
+        alexa: {
+          ...(current.alexa || {}),
+          heardAlbums: heard.slice(0, 400),
+        },
+      };
+
+      await fs.writeFile(configPath, JSON.stringify(next, null, 2) + '\n', 'utf8');
+      return res.json({ ok: true, logged: album, total: heard.slice(0, 400).length });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  }
+
+  app.post('/config/artist-alias-suggestion', handleArtistAliasSuggestion);
+  app.post('/mpd/artist-alias-suggestion', handleArtistAliasSuggestion);
+  app.post('/config/album-alias-suggestion', handleAlbumAliasSuggestion);
+  app.post('/mpd/album-alias-suggestion', handleAlbumAliasSuggestion);
+
+  async function handlePlaylistAliasSuggestion(req, res) {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const playlist = String(req.body?.playlist || '').trim();
+      if (!playlist) return res.status(400).json({ ok: false, error: 'Missing playlist' });
+
+      let current = {};
+      try { current = JSON.parse(await fs.readFile(configPath, 'utf8')); } catch {}
+
+      const now = new Date().toISOString();
+      const key = playlist.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const source = String(req.body?.source || 'alexa');
+
+      const unresolved = Array.isArray(current?.alexa?.unresolvedPlaylists) ? current.alexa.unresolvedPlaylists : [];
+      const idx = unresolved.findIndex((x) => String(x?.key || '').trim() === key);
+      if (idx >= 0) {
+        const prev = unresolved[idx] || {};
+        unresolved[idx] = { ...prev, playlist, key, count: Number(prev.count || 1) + 1, updatedAt: now, lastSource: source };
+      } else {
+        unresolved.unshift({ playlist, key, count: 1, createdAt: now, updatedAt: now, lastSource: source });
+      }
+
+      const heard = Array.isArray(current?.alexa?.heardPlaylists) ? current.alexa.heardPlaylists : [];
+      heard.unshift({ playlist, key, source, at: now, status: 'not-found' });
+
+      const next = {
+        ...current,
+        alexa: {
+          ...(current.alexa || {}),
+          unresolvedPlaylists: unresolved.slice(0, 200),
+          heardPlaylists: heard.slice(0, 400),
+        },
+      };
+
+      await fs.writeFile(configPath, JSON.stringify(next, null, 2) + '\n', 'utf8');
+      return res.json({ ok: true, queued: playlist, total: unresolved.slice(0, 200).length });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  }
+
+  async function handleAlexaHeardPlaylist(req, res) {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const playlist = String(req.body?.playlist || '').trim();
+      if (!playlist) return res.status(400).json({ ok: false, error: 'Missing playlist' });
+
+      let current = {};
+      try { current = JSON.parse(await fs.readFile(configPath, 'utf8')); } catch {}
+
+      const now = new Date().toISOString();
+      const key = playlist.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const source = String(req.body?.source || 'alexa');
+      const status = String(req.body?.status || 'attempt');
+      const resolvedTo = String(req.body?.resolvedTo || '').trim();
+
+      const heard = Array.isArray(current?.alexa?.heardPlaylists) ? current.alexa.heardPlaylists : [];
+      heard.unshift({ playlist, key, source, status, resolvedTo, at: now });
+
+      const next = {
+        ...current,
+        alexa: {
+          ...(current.alexa || {}),
+          heardPlaylists: heard.slice(0, 400),
+        },
+      };
+
+      await fs.writeFile(configPath, JSON.stringify(next, null, 2) + '\n', 'utf8');
+      return res.json({ ok: true, logged: playlist, total: heard.slice(0, 400).length });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  }
+
+  app.post('/config/alexa-heard-artist', handleAlexaHeardArtist);
+  app.post('/mpd/alexa-heard-artist', handleAlexaHeardArtist);
+  app.post('/config/alexa-heard-album', handleAlexaHeardAlbum);
+  app.post('/mpd/alexa-heard-album', handleAlexaHeardAlbum);
+  app.post('/config/alexa-heard-playlist', handleAlexaHeardPlaylist);
+  app.post('/mpd/alexa-heard-playlist', handleAlexaHeardPlaylist);
+  app.post('/config/playlist-alias-suggestion', handlePlaylistAliasSuggestion);
+  app.post('/mpd/playlist-alias-suggestion', handlePlaylistAliasSuggestion);
 
   app.post('/config/restart-api', async (req, res) => {
     try {

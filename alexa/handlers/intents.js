@@ -17,9 +17,15 @@ function createIntentHandlers(deps) {
     getLastPlayed,
     apiSetCurrentRating,
     apiPlayArtist,
+    apiSuggestArtistAlias,
+    apiLogHeardArtist,
     apiPlayAlbum,
+    apiSuggestAlbumAlias,
+    apiLogHeardAlbum,
     apiPlayTrack,
     apiPlayPlaylist,
+    apiSuggestPlaylistAlias,
+    apiLogHeardPlaylist,
     apiMpdShuffle,
     apiGetWasPlaying,
   } = deps;
@@ -278,8 +284,18 @@ function createIntentHandlers(deps) {
       const artist = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.artist?.value);
       if (!artist) return speak(handlerInput, 'Tell me which artist to play.', false);
       try {
+        console.log('[PlayArtistIntent] request', { artist });
+        try { await apiLogHeardArtist(artist, 'alexa-play-artist', 'attempt'); } catch (_) {}
         const resp = await apiPlayArtist(artist);
         const snap = extractSnapFromApi(resp);
+        console.log('[PlayArtistIntent] api response', {
+          ok: !!resp?.ok,
+          artist: String(resp?.artist || ''),
+          added: Number(resp?.added || 0),
+          removedHoliday: Number(resp?.removedHoliday || 0),
+          hasSnap: !!(snap && snap.file),
+        });
+        try { await apiLogHeardArtist(artist, 'alexa-play-artist', 'ok'); } catch (_) {}
         const directive = buildDirectiveFromApiSnap(snap, 'Starting your selection');
         if (!directive) return speak(handlerInput, `I found ${artist}, but could not start playback.`, false);
         rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
@@ -288,7 +304,23 @@ function createIntentHandlers(deps) {
           .addDirective(directive)
           .getResponse();
       } catch (e) {
-        console.log('PlayArtistIntent error:', e && e.message ? e.message : String(e));
+        const msg = e && e.message ? e.message : String(e);
+        console.log('[PlayArtistIntent] error', { artist, msg });
+        const notFound = /HTTP\s+404\b/.test(msg) || /No matches for artist/i.test(msg);
+        if (notFound) {
+          try { await apiLogHeardArtist(artist, 'alexa-play-artist', 'not-found'); } catch (_) {}
+          try {
+            const s = await apiSuggestArtistAlias(artist, 'alexa-play-artist-not-found');
+            console.log('[PlayArtistIntent] alias suggestion queued', { artist, ok: !!s?.ok });
+          } catch (ee) {
+            console.log('[PlayArtistIntent] alias suggestion failed', {
+              artist,
+              msg: ee && ee.message ? ee.message : String(ee),
+            });
+          }
+          return speak(handlerInput, `I could not find artist ${artist}. Visit your configuration to make an adjustment.`, false);
+        }
+        try { await apiLogHeardArtist(artist, 'alexa-play-artist', 'error'); } catch (_) {}
         return speak(handlerInput, `I couldn't play ${artist} right now.`, false);
       }
     },
@@ -303,8 +335,13 @@ function createIntentHandlers(deps) {
       const album = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.album?.value);
       if (!album) return speak(handlerInput, 'Tell me which album to play.', false);
       try {
+        console.log('[PlayAlbumIntent] request', { album });
+        try { await apiLogHeardAlbum(album, 'alexa-play-album', 'attempt'); } catch (_) {}
         const resp = await apiPlayAlbum(album);
         const snap = extractSnapFromApi(resp);
+        const resolvedAlbum = String(resp?.album || '').trim();
+        console.log('[PlayAlbumIntent] api response', { ok: !!resp?.ok, album: resolvedAlbum, added: Number(resp?.added || 0), hasSnap: !!(snap && snap.file) });
+        try { await apiLogHeardAlbum(album, 'alexa-play-album', 'ok', resolvedAlbum); } catch (_) {}
         const directive = buildDirectiveFromApiSnap(snap, 'Starting your selection');
         if (!directive) return speak(handlerInput, `I found ${album}, but could not start playback.`, false);
         rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
@@ -313,7 +350,15 @@ function createIntentHandlers(deps) {
           .addDirective(directive)
           .getResponse();
       } catch (e) {
-        console.log('PlayAlbumIntent error:', e && e.message ? e.message : String(e));
+        const msg = e && e.message ? e.message : String(e);
+        console.log('[PlayAlbumIntent] error', { album, msg });
+        const notFound = /HTTP\s+404\b/.test(msg) || /No matches for album/i.test(msg);
+        if (notFound) {
+          try { await apiLogHeardAlbum(album, 'alexa-play-album', 'not-found'); } catch (_) {}
+          try { await apiSuggestAlbumAlias(album, 'alexa-play-album-not-found'); } catch (_) {}
+          return speak(handlerInput, `I could not find album ${album}. Visit your configuration to make an adjustment.`, false);
+        }
+        try { await apiLogHeardAlbum(album, 'alexa-play-album', 'error'); } catch (_) {}
         return speak(handlerInput, `I couldn't play ${album} right now.`, false);
       }
     },
@@ -353,8 +398,13 @@ function createIntentHandlers(deps) {
       const playlist = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.playlist?.value);
       if (!playlist) return speak(handlerInput, 'Tell me which playlist to play.', false);
       try {
+        console.log('[PlayPlaylistIntent] request', { playlist });
+        try { await apiLogHeardPlaylist(playlist, 'alexa-play-playlist', 'attempt'); } catch (_) {}
         const resp = await apiPlayPlaylist(playlist);
         const snap = extractSnapFromApi(resp);
+        const resolvedPlaylist = String(resp?.chosen || resp?.playlist || '').trim();
+        console.log('[PlayPlaylistIntent] api response', { ok: !!resp?.ok, playlist: resolvedPlaylist, added: Number(resp?.added || 0), hasSnap: !!(snap && snap.file) });
+        try { await apiLogHeardPlaylist(playlist, 'alexa-play-playlist', 'ok', resolvedPlaylist); } catch (_) {}
         const directive = buildDirectiveFromApiSnap(snap, 'Starting your selection');
         if (!directive) return speak(handlerInput, `I found ${playlist}, but could not start playback.`, false);
         rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
@@ -363,7 +413,15 @@ function createIntentHandlers(deps) {
           .addDirective(directive)
           .getResponse();
       } catch (e) {
-        console.log('PlayPlaylistIntent error:', e && e.message ? e.message : String(e));
+        const msg = e && e.message ? e.message : String(e);
+        console.log('[PlayPlaylistIntent] error:', { playlist, msg });
+        const notFound = /HTTP\s+404\b/.test(msg) || /No matches for playlist/i.test(msg);
+        if (notFound) {
+          try { await apiLogHeardPlaylist(playlist, 'alexa-play-playlist', 'not-found'); } catch (_) {}
+          try { await apiSuggestPlaylistAlias(playlist, 'alexa-play-playlist-not-found'); } catch (_) {}
+          return speak(handlerInput, `I could not find playlist ${playlist}. Visit your configuration to make an adjustment.`, false);
+        }
+        try { await apiLogHeardPlaylist(playlist, 'alexa-play-playlist', 'error'); } catch (_) {}
         return speak(handlerInput, `I couldn't play playlist ${playlist} right now.`, false);
       }
     },

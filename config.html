@@ -28,6 +28,12 @@
       border-radius: 10px;
       padding: 12px;
     }
+    .miniTableWrap { overflow:auto; border:1px solid rgba(255,255,255,.12); border-radius:10px; }
+    table.miniTable { width:100%; border-collapse:collapse; font-size:14px; }
+    table.miniTable th, table.miniTable td { padding:8px 10px; border-bottom:1px solid rgba(255,255,255,.08); text-align:left; vertical-align:middle; }
+    table.miniTable th { background:rgba(255,255,255,.05); }
+    table.miniTable tr:last-child td { border-bottom:none; }
+    tr.needsAttention { background: rgba(255, 60, 60, 0.14); }
     .modalBg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:9999; }
     .modalBg.show { display:flex; }
     .modalCard { width:min(520px,92vw); background:#0f141a; border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:16px; }
@@ -68,21 +74,56 @@
               </div>
 
               <div class="cfgCard">
-                <h3>Alexa</h3>
-                <div class="cfgField">
-                  <label><input id="alexaEnabled" type="checkbox" /> Enabled</label>
-                </div>
-                <div class="cfgField">
-                  <label for="alexaDomain">Public domain</label>
-                  <input id="alexaDomain" type="text" placeholder="moode.YOUR-PUBLIC.DOMAIN.com" />
-                </div>
-              </div>
-
-              <div class="cfgCard">
                 <h3>Features</h3>
                 <div class="cfgField"><label><input id="featurePodcasts" type="checkbox" /> Podcasts</label></div>
                 <div class="cfgField"><label><input id="featureRatings" type="checkbox" /> Ratings</label></div>
                 <div class="cfgField"><label><input id="featureRadio" type="checkbox" /> Radio per-track artwork</label></div>
+              </div>
+
+              <div class="cfgCard" style="grid-column: 1 / -1;">
+                <h3>Alexa</h3>
+                <div class="cfgRow">
+                  <div class="cfgField">
+                    <label><input id="alexaEnabled" type="checkbox" /> Enabled</label>
+                  </div>
+                  <div class="cfgField">
+                    <label for="alexaDomain">Public domain</label>
+                    <input id="alexaDomain" type="text" placeholder="moode.YOUR-PUBLIC.DOMAIN.com" />
+                  </div>
+                </div>
+
+                <h4 style="margin:10px 0 6px;">Artist corrections</h4>
+                <div class="cfgHint">Use <strong>Promote</strong> below to create corrections from failed requests. Existing corrections are listed here.</div>
+                <div id="artistAliasList" class="cfgHint" style="margin-top:8px;"></div>
+
+                <h4 style="margin:12px 0 6px;">Needs correction (auto-captured)</h4>
+                <div id="unresolvedArtistList" class="cfgHint"></div>
+
+                <h4 style="margin:12px 0 6px;">Recent Alexa artist inputs</h4>
+                <div id="heardArtistList" class="cfgHint"></div>
+
+                <h4 style="margin:16px 0 6px;">Album corrections</h4>
+                <div id="albumAliasList" class="cfgHint" style="margin-top:8px;"></div>
+
+                <h4 style="margin:12px 0 6px;">Album needs correction (auto-captured)</h4>
+                <div id="unresolvedAlbumList" class="cfgHint"></div>
+
+                <h4 style="margin:12px 0 6px;">Recent Alexa album inputs</h4>
+                <div id="heardAlbumList" class="cfgHint"></div>
+
+                <h4 style="margin:16px 0 6px;">Playlist corrections</h4>
+                <div id="playlistAliasList" class="cfgHint" style="margin-top:8px;"></div>
+
+                <h4 style="margin:12px 0 6px;">Playlist needs correction (auto-captured)</h4>
+                <div id="unresolvedPlaylistList" class="cfgHint"></div>
+
+                <h4 style="margin:12px 0 6px;">Recent Alexa playlist inputs</h4>
+                <div id="heardPlaylistList" class="cfgHint"></div>
+
+                <details style="margin-top:8px;">
+                  <summary>Advanced JSON view</summary>
+                  <textarea id="artistAliasesJson" rows="5" placeholder='{"harry connick junior":"Harry Connick, Jr."}'></textarea>
+                </details>
               </div>
 
               <div class="cfgCard" style="grid-column: 1 / -1;">
@@ -163,6 +204,200 @@ document.getElementById('apiHint').textContent = API_BASE.replace(/^https?:\/\//
 
 function log(x){ out.textContent = typeof x === 'string' ? x : JSON.stringify(x, null, 2); }
 
+let artistAliasMap = {};
+let albumAliasMap = {};
+let playlistAliasMap = {};
+let unresolvedArtists = [];
+let heardArtists = [];
+let unresolvedAlbums = [];
+let heardAlbums = [];
+let unresolvedPlaylists = [];
+let heardPlaylists = [];
+function normalizeAliasKey(v){
+  return String(v || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+function escapeHtml(s){
+  return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function renderArtistAliasList(){
+  const host = document.getElementById('artistAliasList');
+  if (!host) return;
+  const rows = Object.entries(artistAliasMap || {}).filter(([k,v]) => String(k).trim() && String(v).trim());
+  if (!rows.length) {
+    host.innerHTML = '<em>No corrections yet.</em>';
+  } else {
+    host.innerHTML = `<div class="miniTableWrap"><table class="miniTable"><thead><tr><th>What Alexa heard</th><th>Corrected artist</th><th></th></tr></thead><tbody>${rows
+      .sort((a,b)=>a[0].localeCompare(b[0]))
+      .map(([heard, corrected]) => `<tr><td><code>${escapeHtml(heard)}</code></td><td><strong>${escapeHtml(corrected)}</strong></td><td><button type="button" class="btn" data-edit-heard="${encodeURIComponent(heard)}" style="padding:2px 8px;">Edit</button> <button type="button" class="btn" data-heard="${encodeURIComponent(heard)}" style="padding:2px 8px; margin-left:4px;">Remove</button></td></tr>`)
+      .join('')}</tbody></table></div>`;
+  }
+  const ta = document.getElementById('artistAliasesJson');
+  if (ta) ta.value = JSON.stringify(artistAliasMap || {}, null, 2);
+}
+
+function renderAlbumAliasList(){
+  const host = document.getElementById('albumAliasList');
+  if (!host) return;
+  const rows = Object.entries(albumAliasMap || {}).filter(([k,v]) => String(k).trim() && String(v).trim());
+  if (!rows.length) {
+    host.innerHTML = '<em>No album corrections yet.</em>';
+  } else {
+    host.innerHTML = `<div class="miniTableWrap"><table class="miniTable"><thead><tr><th>What Alexa heard</th><th>Corrected album</th><th></th></tr></thead><tbody>${rows
+      .sort((a,b)=>a[0].localeCompare(b[0]))
+      .map(([heard, corrected]) => `<tr><td><code>${escapeHtml(heard)}</code></td><td><strong>${escapeHtml(corrected)}</strong></td><td><button type="button" class="btn" data-edit-heard-album="${encodeURIComponent(heard)}" style="padding:2px 8px;">Edit</button> <button type="button" class="btn" data-heard-album="${encodeURIComponent(heard)}" style="padding:2px 8px; margin-left:4px;">Remove</button></td></tr>`)
+      .join('')}</tbody></table></div>`;
+  }
+}
+
+function renderUnresolvedArtistList(){
+  const host = document.getElementById('unresolvedArtistList');
+  if (!host) return;
+  const rows = Array.isArray(unresolvedArtists) ? unresolvedArtists : [];
+  if (!rows.length) {
+    host.innerHTML = '<em>No unresolved artist names captured yet.</em>';
+    return;
+  }
+  host.innerHTML = `<div class="miniTableWrap"><table class="miniTable"><thead><tr><th>Needs attention</th><th>Seen</th><th>Last seen</th><th></th></tr></thead><tbody>${rows.map((r, idx) => {
+    const heard = String(r?.artist || '').trim();
+    const count = Number(r?.count || 1);
+    const when = String(r?.updatedAt || r?.createdAt || '');
+    const whenShort = when ? new Date(when).toLocaleString() : '';
+    return `<tr class="needsAttention"><td><code>${escapeHtml(heard)}</code></td><td>${count}x</td><td>${escapeHtml(whenShort)}</td><td><button type="button" class="btn" data-promote="${idx}" style="padding:2px 8px;">Promote</button> <button type="button" class="btn" data-dismiss="${idx}" style="padding:2px 8px; margin-left:4px;">Dismiss</button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+function renderHeardArtistList(){
+  const host = document.getElementById('heardArtistList');
+  if (!host) return;
+  const rows = (Array.isArray(heardArtists) ? heardArtists : []).slice(0, 20);
+  if (!rows.length) {
+    host.innerHTML = '<em>No recent Alexa artist inputs yet.</em>';
+    return;
+  }
+  host.innerHTML = rows.map((r) => {
+    const heard = String(r?.artist || '').trim();
+    const status = String(r?.status || 'attempt');
+    const source = String(r?.source || 'unknown');
+    const when = String(r?.at || r?.updatedAt || r?.createdAt || '');
+    const whenShort = when ? new Date(when).toLocaleString() : '';
+    return `<div style="margin:3px 0;">• <code>${escapeHtml(heard)}</code> <span style="opacity:.8;">[${escapeHtml(status)} · ${escapeHtml(source)}${whenShort ? ' · ' + escapeHtml(whenShort) : ''}]</span></div>`;
+  }).join('');
+}
+
+function renderUnresolvedAlbumList(){
+  const host = document.getElementById('unresolvedAlbumList');
+  if (!host) return;
+  const rows = Array.isArray(unresolvedAlbums) ? unresolvedAlbums : [];
+  if (!rows.length) {
+    host.innerHTML = '<em>No unresolved album names captured yet.</em>';
+    return;
+  }
+  host.innerHTML = `<div class="miniTableWrap"><table class="miniTable"><thead><tr><th>Needs attention</th><th>Seen</th><th>Last seen</th><th></th></tr></thead><tbody>${rows.map((r, idx) => {
+    const heard = String(r?.album || '').trim();
+    const count = Number(r?.count || 1);
+    const when = String(r?.updatedAt || r?.createdAt || '');
+    const whenShort = when ? new Date(when).toLocaleString() : '';
+    return `<tr class="needsAttention"><td><code>${escapeHtml(heard)}</code></td><td>${count}x</td><td>${escapeHtml(whenShort)}</td><td><button type="button" class="btn" data-promote-album="${idx}" style="padding:2px 8px;">Promote</button> <button type="button" class="btn" data-dismiss-album="${idx}" style="padding:2px 8px; margin-left:4px;">Dismiss</button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+function renderHeardAlbumList(){
+  const host = document.getElementById('heardAlbumList');
+  if (!host) return;
+  const rows = (Array.isArray(heardAlbums) ? heardAlbums : []).slice(0, 20);
+  if (!rows.length) {
+    host.innerHTML = '<em>No recent Alexa album inputs yet.</em>';
+    return;
+  }
+  host.innerHTML = rows.map((r) => {
+    const heard = String(r?.album || '').trim();
+    const status = String(r?.status || 'attempt');
+    const source = String(r?.source || 'unknown');
+    const resolvedTo = String(r?.resolvedTo || '').trim();
+    const when = String(r?.at || r?.updatedAt || r?.createdAt || '');
+    const whenShort = when ? new Date(when).toLocaleString() : '';
+    const resolvedFrag = (resolvedTo && resolvedTo.toLowerCase() !== heard.toLowerCase()) ? ` → <strong>${escapeHtml(resolvedTo)}</strong>` : '';
+    return `<div style="margin:3px 0;">• <code>${escapeHtml(heard)}</code>${resolvedFrag} <span style="opacity:.8;">[${escapeHtml(status)} · ${escapeHtml(source)}${whenShort ? ' · ' + escapeHtml(whenShort) : ''}]</span></div>`;
+  }).join('');
+}
+
+function renderPlaylistAliasList(){
+  const host = document.getElementById('playlistAliasList');
+  if (!host) return;
+  const rows = Object.entries(playlistAliasMap || {}).filter(([k,v]) => String(k).trim() && String(v).trim());
+  if (!rows.length) {
+    host.innerHTML = '<em>No playlist corrections yet.</em>';
+  } else {
+    host.innerHTML = `<div class="miniTableWrap"><table class="miniTable"><thead><tr><th>What Alexa heard</th><th>Corrected playlist</th><th></th></tr></thead><tbody>${rows
+      .sort((a,b)=>a[0].localeCompare(b[0]))
+      .map(([heard, corrected]) => `<tr><td><code>${escapeHtml(heard)}</code></td><td><strong>${escapeHtml(corrected)}</strong></td><td><button type="button" class="btn" data-edit-heard-playlist="${encodeURIComponent(heard)}" style="padding:2px 8px;">Edit</button> <button type="button" class="btn" data-heard-playlist="${encodeURIComponent(heard)}" style="padding:2px 8px; margin-left:4px;">Remove</button></td></tr>`)
+      .join('')}</tbody></table></div>`;
+  }
+}
+
+function renderUnresolvedPlaylistList(){
+  const host = document.getElementById('unresolvedPlaylistList');
+  if (!host) return;
+  const rows = Array.isArray(unresolvedPlaylists) ? unresolvedPlaylists : [];
+  if (!rows.length) {
+    host.innerHTML = '<em>No unresolved playlist names captured yet.</em>';
+    return;
+  }
+  host.innerHTML = `<div class="miniTableWrap"><table class="miniTable"><thead><tr><th>Needs attention</th><th>Seen</th><th>Last seen</th><th></th></tr></thead><tbody>${rows.map((r, idx) => {
+    const heard = String(r?.playlist || '').trim();
+    const count = Number(r?.count || 1);
+    const when = String(r?.updatedAt || r?.createdAt || '');
+    const whenShort = when ? new Date(when).toLocaleString() : '';
+    return `<tr class="needsAttention"><td><code>${escapeHtml(heard)}</code></td><td>${count}x</td><td>${escapeHtml(whenShort)}</td><td><button type="button" class="btn" data-promote-playlist="${idx}" style="padding:2px 8px;">Promote</button> <button type="button" class="btn" data-dismiss-playlist="${idx}" style="padding:2px 8px; margin-left:4px;">Dismiss</button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+function renderHeardPlaylistList(){
+  const host = document.getElementById('heardPlaylistList');
+  if (!host) return;
+  const rows = (Array.isArray(heardPlaylists) ? heardPlaylists : []).slice(0, 20);
+  if (!rows.length) {
+    host.innerHTML = '<em>No recent Alexa playlist inputs yet.</em>';
+    return;
+  }
+  host.innerHTML = rows.map((r) => {
+    const heard = String(r?.playlist || '').trim();
+    const status = String(r?.status || 'attempt');
+    const source = String(r?.source || 'unknown');
+    const resolvedTo = String(r?.resolvedTo || '').trim();
+    const when = String(r?.at || r?.updatedAt || r?.createdAt || '');
+    const whenShort = when ? new Date(when).toLocaleString() : '';
+    const resolvedFrag = (resolvedTo && resolvedTo.toLowerCase() !== heard.toLowerCase()) ? ` → <strong>${escapeHtml(resolvedTo)}</strong>` : '';
+    return `<div style="margin:3px 0;">• <code>${escapeHtml(heard)}</code>${resolvedFrag} <span style="opacity:.8;">[${escapeHtml(status)} · ${escapeHtml(source)}${whenShort ? ' · ' + escapeHtml(whenShort) : ''}]</span></div>`;
+  }).join('');
+}
+
+function loadArtistAliasesFromObject(obj){
+  artistAliasMap = (obj && typeof obj === 'object' && !Array.isArray(obj)) ? { ...obj } : {};
+  renderArtistAliasList();
+}
+
+function getArtistAliasesFromUi(){
+  const ta = document.getElementById('artistAliasesJson');
+  if (ta) {
+    try {
+      const parsed = JSON.parse(ta.value || '{}');
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        artistAliasMap = parsed;
+      }
+    } catch {}
+  }
+  const out = {};
+  for (const [k,v] of Object.entries(artistAliasMap || {})) {
+    const kk = normalizeAliasKey(k);
+    const vv = String(v || '').trim();
+    if (kk && vv) out[kk] = vv;
+  }
+  artistAliasMap = out;
+  renderArtistAliasList();
+  return out;
+}
+
 const restartModal = document.getElementById('restartModal');
 function showRestartModal(){ if (restartModal) restartModal.classList.add('show'); }
 function hideRestartModal(){ if (restartModal) restartModal.classList.remove('show'); }
@@ -242,6 +477,24 @@ async function loadCfg(){
   document.getElementById('featureRatings').checked = !!c.features?.ratings;
   document.getElementById('featureRadio').checked = !!c.features?.radio;
 
+  loadArtistAliasesFromObject(c.alexa?.artistAliases || {});
+  albumAliasMap = (c.alexa?.albumAliases && typeof c.alexa.albumAliases === 'object' && !Array.isArray(c.alexa.albumAliases)) ? { ...c.alexa.albumAliases } : {};
+  renderAlbumAliasList();
+  playlistAliasMap = (c.alexa?.playlistAliases && typeof c.alexa.playlistAliases === 'object' && !Array.isArray(c.alexa.playlistAliases)) ? { ...c.alexa.playlistAliases } : {};
+  renderPlaylistAliasList();
+  unresolvedArtists = Array.isArray(c.alexa?.unresolvedArtists) ? c.alexa.unresolvedArtists : [];
+  renderUnresolvedArtistList();
+  heardArtists = Array.isArray(c.alexa?.heardArtists) ? c.alexa.heardArtists : [];
+  renderHeardArtistList();
+  unresolvedAlbums = Array.isArray(c.alexa?.unresolvedAlbums) ? c.alexa.unresolvedAlbums : [];
+  renderUnresolvedAlbumList();
+  heardAlbums = Array.isArray(c.alexa?.heardAlbums) ? c.alexa.heardAlbums : [];
+  renderHeardAlbumList();
+  unresolvedPlaylists = Array.isArray(c.alexa?.unresolvedPlaylists) ? c.alexa.unresolvedPlaylists : [];
+  renderUnresolvedPlaylistList();
+  heardPlaylists = Array.isArray(c.alexa?.heardPlaylists) ? c.alexa.heardPlaylists : [];
+  renderHeardPlaylistList();
+
   document.getElementById('pushoverToken').value = c.notifications?.pushover?.token || '';
   document.getElementById('pushoverUser').value = c.notifications?.pushover?.userKey || '';
   document.getElementById('fullJson').value = JSON.stringify(full, null, 2);
@@ -249,15 +502,69 @@ async function loadCfg(){
   log({ ok:true, configPath:j.configPath, loadedAt:new Date().toISOString() });
 }
 
+async function saveArtistCorrectionsOnly(showModal = false){
+  const key = getTrackKey();
+  if (!key) return log('Track key is required to save.');
+
+  let artistAliases = {};
+  try {
+    artistAliases = getArtistAliasesFromUi();
+  } catch (e) {
+    return log('Invalid artist corrections: ' + String(e.message || e));
+  }
+
+  const payload = {
+    config: {
+      alexa: {
+        artistAliases,
+        albumAliases: albumAliasMap,
+        playlistAliases: playlistAliasMap,
+        unresolvedArtists,
+        heardArtists,
+        unresolvedAlbums,
+        heardAlbums,
+        unresolvedPlaylists,
+        heardPlaylists,
+      },
+    },
+  };
+
+  const r = await fetch(`${API_BASE}/config/runtime`, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'x-track-key': key },
+    body: JSON.stringify(payload),
+  });
+  const j = await r.json();
+  log(j);
+  if (showModal && j && j.ok) showRestartModal();
+  return j;
+}
+
 async function saveCfg(){
   const key = getTrackKey();
   if (!key) return log('Track key is required to save.');
+
+  let artistAliases = {};
+  try {
+    artistAliases = getArtistAliasesFromUi();
+  } catch (e) {
+    return log('Invalid artist corrections: ' + String(e.message || e));
+  }
 
   const payload = {
     config: {
       alexa: {
         enabled: document.getElementById('alexaEnabled').checked,
         publicDomain: document.getElementById('alexaDomain').value.trim(),
+        artistAliases,
+        albumAliases: albumAliasMap,
+        playlistAliases: playlistAliasMap,
+        unresolvedArtists,
+        heardArtists,
+        unresolvedAlbums,
+        heardAlbums,
+        unresolvedPlaylists,
+        heardPlaylists,
       },
       notifications: {
         trackNotify: {
@@ -331,6 +638,183 @@ async function restartApiNow(){
   log(j);
   hideRestartModal();
 }
+
+document.getElementById('artistAliasList').addEventListener('click', async (e) => {
+  const editBtn = e.target.closest('button[data-edit-heard]');
+  if (editBtn) {
+    const k = decodeURIComponent(String(editBtn.getAttribute('data-edit-heard') || ''));
+    if (!k) return;
+    const current = String(artistAliasMap[k] || '').trim();
+    const next = window.prompt(`Edit corrected artist for "${k}"`, current);
+    if (next == null) return;
+    const v = String(next).trim();
+    if (!v) {
+      delete artistAliasMap[k];
+    } else {
+      artistAliasMap[k] = v;
+    }
+    renderArtistAliasList();
+    try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+    return;
+  }
+
+  const btn = e.target.closest('button[data-heard]');
+  if (!btn) return;
+  const k = decodeURIComponent(String(btn.getAttribute('data-heard') || ''));
+  if (!k) return;
+  delete artistAliasMap[k];
+  renderArtistAliasList();
+  try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+});
+
+document.getElementById('unresolvedArtistList').addEventListener('click', async (e) => {
+  const promoteBtn = e.target.closest('button[data-promote]');
+  const dismissBtn = e.target.closest('button[data-dismiss]');
+
+  if (promoteBtn) {
+    const idx = Number(promoteBtn.getAttribute('data-promote'));
+    const row = unresolvedArtists[idx] || {};
+    const heardRaw = String(row.artist || '').trim();
+    if (!heardRaw) return;
+    const suggested = String(artistAliasMap[normalizeAliasKey(heardRaw)] || heardRaw).trim();
+    const corrected = window.prompt(`Corrected library name for "${heardRaw}"`, suggested);
+    if (!corrected || !String(corrected).trim()) return;
+    artistAliasMap[normalizeAliasKey(heardRaw)] = String(corrected).trim();
+    unresolvedArtists.splice(idx, 1);
+    renderArtistAliasList();
+    renderUnresolvedArtistList();
+    try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+    return;
+  }
+
+  if (dismissBtn) {
+    const idx = Number(dismissBtn.getAttribute('data-dismiss'));
+    if (!Number.isFinite(idx)) return;
+    unresolvedArtists.splice(idx, 1);
+    renderUnresolvedArtistList();
+    try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+  }
+});
+
+document.getElementById('albumAliasList').addEventListener('click', async (e) => {
+  const editBtn = e.target.closest('button[data-edit-heard-album]');
+  if (editBtn) {
+    const k = decodeURIComponent(String(editBtn.getAttribute('data-edit-heard-album') || ''));
+    if (!k) return;
+    const current = String(albumAliasMap[k] || '').trim();
+    const next = window.prompt(`Edit corrected album for "${k}"`, current);
+    if (next == null) return;
+    const v = String(next).trim();
+    if (!v) {
+      delete albumAliasMap[k];
+    } else {
+      albumAliasMap[k] = v;
+    }
+    renderAlbumAliasList();
+    try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+    return;
+  }
+
+  const btn = e.target.closest('button[data-heard-album]');
+  if (!btn) return;
+  const k = decodeURIComponent(String(btn.getAttribute('data-heard-album') || ''));
+  if (!k) return;
+  delete albumAliasMap[k];
+  renderAlbumAliasList();
+  try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+});
+
+document.getElementById('unresolvedAlbumList').addEventListener('click', async (e) => {
+  const promoteBtn = e.target.closest('button[data-promote-album]');
+  const dismissBtn = e.target.closest('button[data-dismiss-album]');
+
+  if (promoteBtn) {
+    const idx = Number(promoteBtn.getAttribute('data-promote-album'));
+    const row = unresolvedAlbums[idx] || {};
+    const heardRaw = String(row.album || '').trim();
+    if (!heardRaw) return;
+    const suggested = String(albumAliasMap[normalizeAliasKey(heardRaw)] || heardRaw).trim();
+    const corrected = window.prompt(`Corrected album name for "${heardRaw}"`, suggested);
+    if (!corrected || !String(corrected).trim()) return;
+    albumAliasMap[normalizeAliasKey(heardRaw)] = String(corrected).trim();
+    unresolvedAlbums.splice(idx, 1);
+    renderAlbumAliasList();
+    renderUnresolvedAlbumList();
+    try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+    return;
+  }
+
+  if (dismissBtn) {
+    const idx = Number(dismissBtn.getAttribute('data-dismiss-album'));
+    if (!Number.isFinite(idx)) return;
+    unresolvedAlbums.splice(idx, 1);
+    renderUnresolvedAlbumList();
+    try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+  }
+});
+
+document.getElementById('playlistAliasList').addEventListener('click', async (e) => {
+  const editBtn = e.target.closest('button[data-edit-heard-playlist]');
+  if (editBtn) {
+    const k = decodeURIComponent(String(editBtn.getAttribute('data-edit-heard-playlist') || ''));
+    if (!k) return;
+    const current = String(playlistAliasMap[k] || '').trim();
+    const next = window.prompt(`Edit corrected playlist for "${k}"`, current);
+    if (next == null) return;
+    const v = String(next).trim();
+    if (!v) delete playlistAliasMap[k]; else playlistAliasMap[k] = v;
+    renderPlaylistAliasList();
+    try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+    return;
+  }
+
+  const btn = e.target.closest('button[data-heard-playlist]');
+  if (!btn) return;
+  const k = decodeURIComponent(String(btn.getAttribute('data-heard-playlist') || ''));
+  if (!k) return;
+  delete playlistAliasMap[k];
+  renderPlaylistAliasList();
+  try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+});
+
+document.getElementById('unresolvedPlaylistList').addEventListener('click', async (e) => {
+  const promoteBtn = e.target.closest('button[data-promote-playlist]');
+  const dismissBtn = e.target.closest('button[data-dismiss-playlist]');
+
+  if (promoteBtn) {
+    const idx = Number(promoteBtn.getAttribute('data-promote-playlist'));
+    const row = unresolvedPlaylists[idx] || {};
+    const heardRaw = String(row.playlist || '').trim();
+    if (!heardRaw) return;
+    const suggested = String(playlistAliasMap[normalizeAliasKey(heardRaw)] || heardRaw).trim();
+    const corrected = window.prompt(`Corrected playlist name for "${heardRaw}"`, suggested);
+    if (!corrected || !String(corrected).trim()) return;
+    playlistAliasMap[normalizeAliasKey(heardRaw)] = String(corrected).trim();
+    unresolvedPlaylists.splice(idx, 1);
+    renderPlaylistAliasList();
+    renderUnresolvedPlaylistList();
+    try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+    return;
+  }
+
+  if (dismissBtn) {
+    const idx = Number(dismissBtn.getAttribute('data-dismiss-playlist'));
+    if (!Number.isFinite(idx)) return;
+    unresolvedPlaylists.splice(idx, 1);
+    renderUnresolvedPlaylistList();
+    try { await saveArtistCorrectionsOnly(false); } catch (err) { log(String(err)); }
+  }
+});
+
+document.getElementById('artistAliasesJson').addEventListener('input', () => {
+  try {
+    const parsed = JSON.parse(document.getElementById('artistAliasesJson').value || '{}');
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      artistAliasMap = parsed;
+      renderArtistAliasList();
+    }
+  } catch {}
+});
 
 document.getElementById('reloadBtn').onclick = () => loadCfg().catch(e => log(String(e)));
 document.getElementById('saveBtn').onclick = () => saveCfg().catch(e => log(String(e)));

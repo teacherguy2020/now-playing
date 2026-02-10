@@ -118,12 +118,52 @@ function createApiClient(config) {
     });
   }
 
+  async function apiSuggestArtistAlias(artist, source) {
+    const url = API_BASE + '/mpd/artist-alias-suggestion';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { artist, source: source || 'alexa' },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  async function apiLogHeardArtist(artist, source, status) {
+    const url = API_BASE + '/mpd/alexa-heard-artist';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { artist, source: source || 'alexa', status: status || 'attempt' },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
   async function apiPlayAlbum(album) {
     const url = API_BASE + '/mpd/play-album';
     const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
     return httpRequestJson('POST', url, {
       headers,
       bodyObj: { album },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  async function apiSuggestAlbumAlias(album, source) {
+    const url = API_BASE + '/mpd/album-alias-suggestion';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { album, source: source || 'alexa' },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  async function apiLogHeardAlbum(album, source, status, resolvedTo) {
+    const url = API_BASE + '/mpd/alexa-heard-album';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { album, source: source || 'alexa', status: status || 'attempt', resolvedTo: resolvedTo || '' },
       timeoutMs: HTTP_TIMEOUT_MS,
     });
   }
@@ -144,6 +184,26 @@ function createApiClient(config) {
     return httpRequestJson('POST', url, {
       headers,
       bodyObj: { playlist },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  async function apiSuggestPlaylistAlias(playlist, source) {
+    const url = API_BASE + '/mpd/playlist-alias-suggestion';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { playlist, source: source || 'alexa' },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
+  async function apiLogHeardPlaylist(playlist, source, status, resolvedTo) {
+    const url = API_BASE + '/mpd/alexa-heard-playlist';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { playlist, source: source || 'alexa', status: status || 'attempt', resolvedTo: resolvedTo || '' },
       timeoutMs: HTTP_TIMEOUT_MS,
     });
   }
@@ -180,9 +240,15 @@ function createApiClient(config) {
     apiMpdPrime,
     apiSetCurrentRating,
     apiPlayArtist,
+    apiSuggestArtistAlias,
+    apiLogHeardArtist,
     apiPlayAlbum,
+    apiSuggestAlbumAlias,
+    apiLogHeardAlbum,
     apiPlayTrack,
     apiPlayPlaylist,
+    apiSuggestPlaylistAlias,
+    apiLogHeardPlaylist,
     apiMpdShuffle,
     apiGetWasPlaying,
     apiSetWasPlaying,

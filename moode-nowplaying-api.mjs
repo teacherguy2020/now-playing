@@ -2712,6 +2712,66 @@ function isHolidayLikeTrackMeta(block) {
   return /(christmas|xmas|holiday|noel|yuletide|silent\s+night|jingle|santa|sleigh|winter\s+wonderland|merry\s+christmas|a\s+christmas\s+song)/i.test(blob);
 }
 
+const RUNTIME_CONFIG_PATH = process.env.NOW_PLAYING_CONFIG_PATH || path.resolve(process.cwd(), 'config/now-playing.config.json');
+function normalizeAliasKey(v) {
+  return String(v || '')
+    .toLowerCase()
+    .replace(/\bjunior\b/g, 'jr')
+    .replace(/\bjr\.?\b/g, 'jr')
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function resolveArtistAlias(artistRaw) {
+  const artist = String(artistRaw || '').trim();
+  if (!artist) return '';
+  try {
+    const cfg = JSON.parse(await fsp.readFile(RUNTIME_CONFIG_PATH, 'utf8'));
+    const aliases = cfg?.alexa?.artistAliases || {};
+    const want = normalizeAliasKey(artist);
+    for (const [k, v] of Object.entries(aliases)) {
+      if (normalizeAliasKey(k) === want && String(v || '').trim()) {
+        return String(v).trim();
+      }
+    }
+  } catch {}
+  return artist;
+}
+
+async function resolveAlbumAlias(albumRaw) {
+  const album = String(albumRaw || '').trim();
+  if (!album) return '';
+  try {
+    const cfg = JSON.parse(await fsp.readFile(RUNTIME_CONFIG_PATH, 'utf8'));
+    const aliases = cfg?.alexa?.albumAliases || {};
+    const want = normalizeAliasKey(album);
+    for (const [k, v] of Object.entries(aliases)) {
+      if (normalizeAliasKey(k) === want && String(v || '').trim()) {
+        return String(v).trim();
+      }
+    }
+  } catch {}
+  return album;
+}
+
+async function resolvePlaylistAlias(playlistRaw) {
+  const playlist = String(playlistRaw || '').trim();
+  if (!playlist) return '';
+  try {
+    const cfg = JSON.parse(await fsp.readFile(RUNTIME_CONFIG_PATH, 'utf8'));
+    const aliases = cfg?.alexa?.playlistAliases || {};
+    const want = normalizeAliasKey(playlist);
+    for (const [k, v] of Object.entries(aliases)) {
+      if (normalizeAliasKey(k) === want && String(v || '').trim()) {
+        return String(v).trim();
+      }
+    }
+  } catch {}
+  return playlist;
+}
+
 function isLibraryFile(mpdFile) {
   const f = String(mpdFile || '').trim();
   return !!f && !isStreamPath(f) && !isAirplayFile(f) && f.startsWith(MOODE_USB_PREFIX);
@@ -3225,10 +3285,11 @@ app.post('/mpd/play-artist', async (req, res) => {
   try {
     if (!requireTrackKey(req, res)) return;
 
-    const artist = String(req.body?.artist || '').trim();
-    if (!artist) {
+    const artistInput = String(req.body?.artist || '').trim();
+    if (!artistInput) {
       return res.status(400).json({ ok: false, error: 'Missing artist' });
     }
+    const artist = await resolveArtistAlias(artistInput);
 
     // Default behavior: EXCLUDE holiday/christmas titles for play-artist.
     // Override per request with { includeHoliday: true }.
@@ -3271,9 +3332,23 @@ app.post('/mpd/play-artist', async (req, res) => {
         .filter(Boolean);
     }
 
+    function normalizeArtistKey(v) {
+      return String(v || '')
+        .toLowerCase()
+        .replace(/\bjunior\b/g, 'jr')
+        .replace(/\bjr\.?\b/g, 'jr')
+        .replace(/&/g, 'and')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
     async function resolveCanonicalArtistName(artistName) {
-      const want = String(artistName || '').trim().toLowerCase();
-      if (!want) return String(artistName || '').trim();
+      const wantRaw = String(artistName || '').trim();
+      const want = wantRaw.toLowerCase();
+      const wantNorm = normalizeArtistKey(wantRaw);
+      if (!want) return wantRaw;
+
       const raw = await mpdQueryRaw('list artist');
       const artists = String(raw || '')
         .split('\n')
@@ -3281,8 +3356,18 @@ app.post('/mpd/play-artist', async (req, res) => {
         .filter((ln) => ln.toLowerCase().startsWith('artist: '))
         .map((ln) => ln.slice(8).trim())
         .filter(Boolean);
+
       const exactCI = artists.find((a) => a.toLowerCase() === want);
-      return exactCI || String(artistName || '').trim();
+      if (exactCI) return exactCI;
+
+      const normExact = artists.find((a) => normalizeArtistKey(a) === wantNorm);
+      if (normExact) return normExact;
+
+      const normContains = artists.find((a) => {
+        const k = normalizeArtistKey(a);
+        return k.includes(wantNorm) || wantNorm.includes(k);
+      });
+      return normContains || wantRaw;
     }
 
     async function collectByAlbumRollup(artistName) {
@@ -3426,6 +3511,7 @@ app.post('/mpd/play-artist', async (req, res) => {
     return res.json({
       ok: true,
       artist,
+      artistInput,
       strategy,
       sourceCounts: {
         albumartist: bySource.albumartist.length,
@@ -3455,9 +3541,27 @@ app.post('/mpd/play-artist', async (req, res) => {
 app.post('/mpd/play-album', async (req, res) => {
   try {
     if (!requireTrackKey(req, res)) return;
-    const album = String(req.body?.album || '').trim();
-    if (!album) return res.status(400).json({ ok: false, error: 'Missing album' });
+    const albumInput = String(req.body?.album || '').trim();
+    if (!albumInput) return res.status(400).json({ ok: false, error: 'Missing album' });
+    const album = await resolveAlbumAlias(albumInput);
     const q = mpdEscapeValue(album);
+
+    const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const levenshtein = (a, b) => {
+      const m = a.length, n = b.length;
+      if (!m) return n;
+      if (!n) return m;
+      const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+      for (let i = 0; i <= m; i++) dp[i][0] = i;
+      for (let j = 0; j <= n; j++) dp[0][j] = j;
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+        }
+      }
+      return dp[m][n];
+    };
 
     await mpdQueryRaw('clear');
     await mpdQueryRaw(`findadd album ${q}`);
@@ -3473,12 +3577,37 @@ app.post('/mpd/play-album', async (req, res) => {
       strategy = 'searchadd-album';
     }
 
+    // strict album-name fallback (no "search any" to avoid title/track false positives)
     if (added <= 0) {
-      await mpdQueryRaw('clear');
-      await mpdQueryRaw(`searchadd any ${q}`);
-      st = await mpdGetStatus();
-      added = Number(st?.playlistlength || 0);
-      strategy = 'searchadd-any';
+      const rawAlbums = await mpdQueryRaw('list album');
+      const names = String(rawAlbums || '').split('\n')
+        .filter((ln) => ln.startsWith('Album: '))
+        .map((ln) => ln.slice('Album: '.length).trim())
+        .filter(Boolean);
+
+      const askN = norm(album);
+      let chosen = names.find((n) => n.toLowerCase() === album.toLowerCase()) || '';
+      if (!chosen) chosen = names.find((n) => norm(n) === askN) || '';
+      if (!chosen) chosen = names.find((n) => norm(n).includes(askN) || askN.includes(norm(n))) || '';
+      if (!chosen && askN) {
+        let best = { name: '', score: 0 };
+        for (const n of names) {
+          const nn = norm(n);
+          if (!nn) continue;
+          const dist = levenshtein(askN, nn);
+          const score = 1 - dist / Math.max(askN.length, nn.length, 1);
+          if (score > best.score) best = { name: n, score };
+        }
+        if (best.score >= 0.72) chosen = best.name;
+      }
+
+      if (chosen) {
+        await mpdQueryRaw('clear');
+        await mpdQueryRaw(`findadd album ${mpdEscapeValue(chosen)}`);
+        st = await mpdGetStatus();
+        added = Number(st?.playlistlength || 0);
+        strategy = 'list-album-fuzzy';
+      }
     }
 
     if (added <= 0) return res.status(404).json({ ok: false, error: 'No matches for album', album });
@@ -3500,7 +3629,7 @@ app.post('/mpd/play-album', async (req, res) => {
     const curPos = Number(String(moodeValByKey(statusRaw, 'song') || '').trim());
     const curByPos = Number.isFinite(curPos) ? await mpdPlaylistInfoByPos(curPos) : null;
 
-    return res.json({ ok: true, album, added, strategy, nowPlaying: {
+    return res.json({ ok: true, album, albumInput, added, strategy, nowPlaying: {
       file: (curByPos && curByPos.file) || head.file || song.file || '', title: decodeHtmlEntities((curByPos && curByPos.title) || head.title || song.title || ''), artist: decodeHtmlEntities((curByPos && curByPos.artist) || head.artist || song.artist || ''), album: decodeHtmlEntities((curByPos && curByPos.album) || head.album || song.album || ''),
       songpos: String((curByPos && curByPos.songpos) || head.pos || moodeValByKey(statusRaw, 'song') || '0').trim(), songid: String((curByPos && curByPos.songid) || head.id || moodeValByKey(statusRaw, 'songid') || '').trim(),
     }});
@@ -3565,8 +3694,9 @@ app.post('/mpd/play-track', async (req, res) => {
 app.post('/mpd/play-playlist', async (req, res) => {
   try {
     if (!requireTrackKey(req, res)) return;
-    const playlist = String(req.body?.playlist || '').trim();
-    if (!playlist) return res.status(400).json({ ok: false, error: 'Missing playlist' });
+    const playlistInput = String(req.body?.playlist || '').trim();
+    if (!playlistInput) return res.status(400).json({ ok: false, error: 'Missing playlist' });
+    const playlist = await resolvePlaylistAlias(playlistInput);
 
     const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
@@ -3646,7 +3776,7 @@ app.post('/mpd/play-playlist', async (req, res) => {
     const curPos = Number(String(moodeValByKey(statusRaw, 'song') || '').trim());
     const curByPos = Number.isFinite(curPos) ? await mpdPlaylistInfoByPos(curPos) : null;
 
-    return res.json({ ok: true, playlist, chosen, added, nowPlaying: {
+    return res.json({ ok: true, playlist, playlistInput, chosen, added, nowPlaying: {
       file: (curByPos && curByPos.file) || head.file || song.file || '', title: decodeHtmlEntities((curByPos && curByPos.title) || head.title || song.title || ''), artist: decodeHtmlEntities((curByPos && curByPos.artist) || head.artist || song.artist || ''), album: decodeHtmlEntities((curByPos && curByPos.album) || head.album || song.album || ''),
       songpos: String((curByPos && curByPos.songpos) || head.pos || moodeValByKey(statusRaw, 'song') || '0').trim(), songid: String((curByPos && curByPos.songid) || head.id || moodeValByKey(statusRaw, 'songid') || '').trim(),
     }});
