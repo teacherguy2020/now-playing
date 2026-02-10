@@ -3483,6 +3483,22 @@ app.post('/mpd/play-artist', async (req, res) => {
 
     let added = finalFiles.length;
 
+    // If random is enabled, randomize queue head without starting local playback.
+    let randomizedHeadFromPos = null;
+    const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
+    const randomOn = String(stPrime.random || '0').trim() === '1';
+    if (randomOn && added > 1) {
+      try {
+        const fromPos = Math.floor(Math.random() * added);
+        if (fromPos > 0) {
+          await mpdQueryRaw(`move ${fromPos} 0`);
+          randomizedHeadFromPos = fromPos;
+        }
+      } catch (e) {
+        log.debug('[play-artist] random head move failed', { artist, msg: e?.message || String(e) });
+      }
+    }
+
     // Artist lists can take longer to settle; wait for head item to be readable.
     let head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
     for (let i = 0; i < 6; i++) {
@@ -3490,23 +3506,6 @@ app.post('/mpd/play-artist', async (req, res) => {
       await sleep(120);
       head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
     }
-
-    // Prime queue. With random on, MPD starts at head on first play, so hop once.
-    const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
-    const randomOn = String(stPrime.random || '0').trim() === '1';
-    await mpdQueryRaw('play 0');
-    await sleep(170);
-    if (randomOn) {
-      try { await mpdQueryRaw('next'); } catch (e) {}
-      await sleep(220);
-    }
-    await mpdPause(true);
-
-    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
-    const head2 = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
-    const curPos = Number(String(moodeValByKey(statusRaw, 'song') || '').trim());
-    const curByPos = Number.isFinite(curPos) ? await mpdPlaylistInfoByPos(curPos) : null;
 
     return res.json({
       ok: true,
@@ -3523,13 +3522,14 @@ app.post('/mpd/play-artist', async (req, res) => {
       added,
       includeHoliday,
       removedHoliday,
+      randomizedHeadFromPos,
       nowPlaying: {
-        file: (curByPos && curByPos.file) || head2.file || head.file || song.file || '',
-        title: decodeHtmlEntities((curByPos && curByPos.title) || head2.title || head.title || song.title || ''),
-        artist: decodeHtmlEntities((curByPos && curByPos.artist) || head2.artist || head.artist || song.artist || ''),
-        album: decodeHtmlEntities((curByPos && curByPos.album) || head2.album || head.album || song.album || ''),
-        songpos: String((curByPos && curByPos.songpos) || head2.pos || head.pos || moodeValByKey(statusRaw, 'song') || '0').trim(),
-        songid: String((curByPos && curByPos.songid) || head2.id || head.id || moodeValByKey(statusRaw, 'songid') || '').trim(),
+        file: head.file || '',
+        title: decodeHtmlEntities(head.title || ''),
+        artist: decodeHtmlEntities(head.artist || ''),
+        album: decodeHtmlEntities(head.album || ''),
+        songpos: String(head.pos || '0').trim(),
+        songid: String(head.id || '').trim(),
       },
     });
   } catch (e) {
