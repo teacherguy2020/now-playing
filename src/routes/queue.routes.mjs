@@ -75,6 +75,17 @@ export function registerQueueRoutes(app, deps) {
     return out;
   }
 
+  async function getRatingForFile(file) {
+    const f = String(file || '').trim();
+    if (!f) return 0;
+    const raw = await mpdQueryRaw(`sticker get song ${mpdQuote(f)} rating`);
+    const s = String(raw || '').trim();
+    if (!s || /^ACK\s/i.test(s)) return 0;
+    const m = s.match(/sticker:\s*rating\s*=\s*([0-9]+)/i);
+    const n = m ? Number.parseInt(m[1], 10) : 0;
+    return Number.isFinite(n) ? n : 0;
+  }
+
   async function resolveHeadFast() {
     for (let i = 0; i < 5; i++) {
       try {
@@ -251,6 +262,7 @@ export function registerQueueRoutes(app, deps) {
       const seen = new Set();
       const byArtist = {};
       const debugByArtist = {};
+      const ratingCache = new Map();
       let added = 0;
 
       for (const artist of artists) {
@@ -302,6 +314,7 @@ export function registerQueueRoutes(app, deps) {
         const tokenSongsByFile = byFile;
 
         let excludedChristmas = 0;
+        let excludedRating1 = 0;
         let skippedAlreadySeen = 0;
         const candidateCount = byFile.size;
 
@@ -323,6 +336,16 @@ export function registerQueueRoutes(app, deps) {
             }
           }
 
+          let rating = ratingCache.get(file);
+          if (rating === undefined) {
+            try { rating = await getRatingForFile(file); } catch (_) { rating = 0; }
+            ratingCache.set(file, rating);
+          }
+          if (Number(rating) === 1) {
+            excludedRating1 += 1;
+            continue;
+          }
+
           await mpdCmdOk(`add ${mpdQuote(file)}`);
           seen.add(file);
           added += 1;
@@ -340,6 +363,7 @@ export function registerQueueRoutes(app, deps) {
           parsedSearchAnyTokensCommon: tokenSongsByFile.size,
           uniqueCandidates: candidateCount,
           excludedChristmas,
+          excludedRating1,
           skippedAlreadySeen,
           added: byArtist[artist],
         };

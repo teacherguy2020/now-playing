@@ -3453,6 +3453,33 @@ app.post('/mpd/play-artist', async (req, res) => {
       }
     }
 
+    let removedRating1 = 0;
+    const removedRating1Samples = [];
+    if (finalFiles.length) {
+      const kept = [];
+      for (const row of finalFiles) {
+        let r = 0;
+        try { r = Number(await getRatingForFile(String(row.file || '').trim())) || 0; } catch (_) { r = 0; }
+        if (r === 1) {
+          removedRating1 += 1;
+          if (removedRating1Samples.length < 5) {
+            removedRating1Samples.push({ title: String(row.title || ''), album: String(row.album || ''), file: String(row.file || '') });
+          }
+          continue;
+        }
+        kept.push(row);
+      }
+      finalFiles = kept;
+      if (removedRating1 > 0) {
+        log.debug('[play-artist] rating=1 filter removed before enqueue', {
+          artist,
+          removedRating1,
+          remaining: finalFiles.length,
+          samples: removedRating1Samples,
+        });
+      }
+    }
+
     if (!finalFiles.length) {
       await mpdQueryRaw('clear');
       return res.status(404).json({
@@ -3529,6 +3556,7 @@ app.post('/mpd/play-artist', async (req, res) => {
       added,
       includeHoliday,
       removedHoliday,
+      removedRating1,
       hasPodcastGenre,
       randomizedHeadFromPos,
       nowPlaying: {
