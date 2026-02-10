@@ -61,6 +61,12 @@ export function registerQueueRoutes(app, deps) {
     return parseFileLines(stdout || '');
   }
 
+  async function mpcListMulti(command, pairs) {
+    const args = ['-h', String(MPD_HOST || ''), command, ...pairs.map((x) => String(x || ''))];
+    const { stdout } = await execFileP('mpc', args);
+    return parseFileLines(stdout || '');
+  }
+
   async function mpdCmdOk(cmd) {
     const out = await mpdQueryRaw(cmd);
     if (/^ACK\s/i.test(String(out || '').trim())) {
@@ -276,6 +282,16 @@ export function registerQueueRoutes(app, deps) {
           if (!byFile.has(file)) byFile.set(file, { file, genres: [] });
         }
 
+        // Precompute Christmas-tagged files once per artist (fast), avoid per-file metadata lookups.
+        const christmasFiles = new Set();
+        if (excludeHoliday) {
+          for (const f of await mpcListMulti('find', ['artist', artist, 'genre', 'Christmas'])) christmasFiles.add(f);
+          for (const f of await mpcListMulti('find', ['albumartist', artist, 'genre', 'Christmas'])) christmasFiles.add(f);
+          for (const f of await mpcListMulti('search', ['artist', artist, 'genre', 'Christmas'])) christmasFiles.add(f);
+          for (const f of await mpcListMulti('search', ['albumartist', artist, 'genre', 'Christmas'])) christmasFiles.add(f);
+          for (const f of await mpcListMulti('search', ['any', artist, 'genre', 'Christmas'])) christmasFiles.add(f);
+        }
+
         const parsedFind = filesFindArtist;
         const parsedSearch = filesSearchArtist;
         const parsedFindAlbumArtist = filesFindAlbumArtist;
@@ -300,20 +316,7 @@ export function registerQueueRoutes(app, deps) {
 
           // Holiday exclusion policy: ONLY exclude tracks tagged with Genre containing "Christmas".
           if (excludeHoliday) {
-            let genres = Array.isArray(song.genres) ? song.genres : [];
-
-            // Populate genres on-demand when the candidate came from file/any lookups
-            // that may not include full metadata in the initial set.
-            if (!genres.length) {
-              try {
-                const rawMeta = await mpdCmdOk(`search file ${mpdQuote(file)}`);
-                const metaSongs = parseMpdSongs(rawMeta);
-                const meta = metaSongs.find((x) => String(x.file || '').trim() === file);
-                genres = Array.isArray(meta?.genres) ? meta.genres : [];
-              } catch (_) {}
-            }
-
-            const isChristmas = genres.some((g) => CHRISTMAS_GENRE_RE.test(String(g || '')));
+            const isChristmas = christmasFiles.has(file) || (Array.isArray(song.genres) && song.genres.some((g) => CHRISTMAS_GENRE_RE.test(String(g || ''))));
             if (isChristmas) {
               excludedChristmas += 1;
               continue;
