@@ -465,9 +465,19 @@ function createIntentHandlers(deps) {
       const direct = aliasMap[a];
       const lower = aliasMap[safeStr(a).toLowerCase()];
       const norm = aliasMap[keyNorm];
-      const resolved = safeStr(direct || lower || norm || a);
-      out.push(resolved || a);
-      if (resolved && resolved !== a) aliasHits.push({ from: a, to: resolved });
+      const resolvedRaw = safeStr(direct || lower || norm || a);
+
+      // Allow alias targets to expand into multiple artists:
+      // e.g. "steely dan donald fagen" -> "Steely Dan, Donald Fagen"
+      const expanded = resolvedRaw
+        .split(/[;,]/)
+        .map((x) => safeStr(x))
+        .filter(Boolean);
+
+      if (expanded.length) out.push(...expanded);
+      else out.push(a);
+
+      if (resolvedRaw && resolvedRaw !== a) aliasHits.push({ from: a, to: resolvedRaw, expanded });
     }
 
     return {
