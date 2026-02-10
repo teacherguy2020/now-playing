@@ -73,9 +73,12 @@
           "samples": [
             "play a mix of {mixQuery}",
             "play mix of {mixQuery}",
+            "play a mix with {mixQuery}",
+            "play mix with {mixQuery}",
             "mix {mixQuery}",
             "create a mix of {mixQuery}",
-            "queue a mix of {mixQuery}"
+            "queue a mix of {mixQuery}",
+            "make a mix of {mixQuery}"
           ]
         },
 
@@ -100,8 +103,9 @@
           ],
           "samples": [
             "play song {track}",
+            "play the song {track}",
             "play track {track}",
-            "play {track}",
+            "play the track {track}",
             "queue song {track}",
             "queue track {track}"
           ]
