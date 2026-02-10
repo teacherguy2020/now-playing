@@ -29,6 +29,7 @@ function createIntentHandlers(deps) {
     apiLogHeardPlaylist,
     apiMpdShuffle,
     apiGetWasPlaying,
+    apiGetRuntimeConfig,
   } = deps;
 
   const LaunchRequestHandler = {
@@ -445,6 +446,36 @@ function createIntentHandlers(deps) {
     return Array.from(new Set(parts)).slice(0, 8);
   }
 
+  function normalizeAliasKey(s) {
+    return safeStr(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+
+  async function resolveArtistAliasesForMix(rawArtists) {
+    const out = [];
+    const aliasHits = [];
+
+    let aliasMap = {};
+    try {
+      const cfg = await apiGetRuntimeConfig();
+      aliasMap = (cfg && cfg.config && cfg.config.alexa && cfg.config.alexa.artistAliases) || {};
+    } catch (_) {}
+
+    for (const a of rawArtists) {
+      const keyNorm = normalizeAliasKey(a);
+      const direct = aliasMap[a];
+      const lower = aliasMap[safeStr(a).toLowerCase()];
+      const norm = aliasMap[keyNorm];
+      const resolved = safeStr(direct || lower || norm || a);
+      out.push(resolved || a);
+      if (resolved && resolved !== a) aliasHits.push({ from: a, to: resolved });
+    }
+
+    return {
+      artists: Array.from(new Set(out)).slice(0, 8),
+      aliasHits,
+    };
+  }
+
   const PlayMixIntentHandler = {
     canHandle(handlerInput) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
@@ -452,8 +483,14 @@ function createIntentHandlers(deps) {
     },
     async handle(handlerInput) {
       const mixQuery = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.mixQuery?.value);
-      const artists = parseArtistsFromMixQuery(mixQuery);
-      console.log('[PlayMixIntent] request', { mixQuery, artists });
+      const parsedArtists = parseArtistsFromMixQuery(mixQuery);
+      const resolved = await resolveArtistAliasesForMix(parsedArtists);
+      const artists = resolved.artists;
+      console.log('[PlayMixIntent] request', { mixQuery, parsedArtists, artists, aliasHits: resolved.aliasHits });
+
+      for (const a of parsedArtists) {
+        try { await apiLogHeardArtist(a, 'alexa-play-mix', 'attempt'); } catch (_) {}
+      }
 
       if (!artists.length) {
         return speak(handlerInput, 'Tell me the artists for the mix, for example Frank Sinatra and Diana Krall.', false);
@@ -475,7 +512,15 @@ function createIntentHandlers(deps) {
           byArtist: resp?.byArtist || {},
         });
         if (added < 1) {
+          for (const a of parsedArtists) {
+            try { await apiLogHeardArtist(a, 'alexa-play-mix', 'not-found'); } catch (_) {}
+            try { await apiSuggestArtistAlias(a, 'alexa-play-mix-not-found'); } catch (_) {}
+          }
           return speak(handlerInput, 'I could not build that mix right now.', false);
+        }
+
+        for (const a of parsedArtists) {
+          try { await apiLogHeardArtist(a, 'alexa-play-mix', 'ok'); } catch (_) {}
         }
 
         let snap = (resp && resp.nowPlaying && resp.nowPlaying.file) ? resp.nowPlaying : null;

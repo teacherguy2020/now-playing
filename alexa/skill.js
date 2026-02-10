@@ -37,6 +37,7 @@ const {
   apiLogHeardPlaylist,
   apiMpdShuffle,
   apiGetWasPlaying,
+  apiGetRuntimeConfig,
   apiSetWasPlaying,
   apiQueueMix,
 } = createApiClient(config);
@@ -433,6 +434,7 @@ const {
   apiQueueMix,
   apiMpdShuffle,
   apiGetWasPlaying,
+  apiGetRuntimeConfig,
 });
 
 const { PlaybackControllerEventHandler, AudioPlayerEventHandler } = createAudioHandlers({

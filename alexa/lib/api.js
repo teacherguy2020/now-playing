@@ -233,6 +233,11 @@ function createApiClient(config) {
     return httpRequestJson('GET', url, { timeoutMs: HTTP_TIMEOUT_MS });
   }
 
+  async function apiGetRuntimeConfig() {
+    const url = API_BASE + '/config/runtime';
+    return httpRequestJson('GET', url, { timeoutMs: HTTP_TIMEOUT_MS });
+  }
+
   async function apiSetWasPlaying(payload) {
     const url = API_BASE + '/alexa/was-playing';
     const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
@@ -262,6 +267,7 @@ function createApiClient(config) {
     apiLogHeardPlaylist,
     apiMpdShuffle,
     apiGetWasPlaying,
+    apiGetRuntimeConfig,
     apiSetWasPlaying,
   };
 }
