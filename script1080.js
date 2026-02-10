@@ -1618,6 +1618,8 @@ function pickStationName(data) {
 }
 
 function getDisplayRate(data) {
+  if (data?.alexaMode) return 'Alexa Mode';
+
   const isStream = data?.isStream === true;
 
   const streamKind = String(data?.streamKind || '').trim().toLowerCase();
@@ -2452,7 +2454,8 @@ if (titleEl) {
 
   // Prefer real cover art first; only fall back to alt art (station logo, etc.)
   const rawArtUrl = (primary || alt);
-  const artKey = normalizeArtKey(rawArtUrl);
+  // In Alexa mode, keep full URL (including file query) so art changes per track are detected.
+  const artKey = data.alexaMode ? String(rawArtUrl || '').trim() : normalizeArtKey(rawArtUrl);
 
   // Detect placeholder / missing
   const needsInitialPaint =

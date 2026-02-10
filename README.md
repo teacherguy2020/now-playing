@@ -64,6 +64,32 @@ export NOW_PLAYING_CONFIG_PATH=/path/to/now-playing.config.json
 - `alexa.enabled` + `alexa.publicDomain`
 - `paths.musicLibraryRoot`, `paths.moodeUsbMount`, `paths.piMountBase`, `paths.podcastRoot`
 
+## Optional: iOS track-start push notifications (Pushover)
+
+The API can send push notifications when a new track starts.
+
+Source selection is automatic:
+- If Alexa state is active/fresh (`/alexa/was-playing`) → notify from Alexa track
+- Otherwise (normal playback) → notify from `/now-playing` track
+
+Set these environment variables for PM2 `api`:
+
+- `TRACK_NOTIFY_ENABLED=1`
+- `PUSHOVER_TOKEN=<your app token>`
+- `PUSHOVER_USER_KEY=<your user key>`
+
+Optional tuning:
+- `TRACK_NOTIFY_POLL_MS` (default `3000`)
+- `TRACK_NOTIFY_DEDUPE_MS` (default `15000`)
+- `TRACK_NOTIFY_ALEXA_MAX_AGE_MS` (default `21600000`)
+
+After changes:
+
+```bash
+pm2 restart api --update-env
+pm2 save
+```
+
 ## Ratings (MPD stickers)
 
 If ratings are enabled, ensure MPD has `sticker_file` configured and writable.

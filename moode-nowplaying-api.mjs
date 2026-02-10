@@ -2020,6 +2020,129 @@ app.post('/alexa/was-playing', async (req, res) => {
   }
 });
 
+// =========================
+// Optional iOS push notifications (Pushover)
+// =========================
+const TRACK_NOTIFY_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.TRACK_NOTIFY_ENABLED || '0'));
+const TRACK_NOTIFY_POLL_MS = Math.max(1500, Number(process.env.TRACK_NOTIFY_POLL_MS || 3000));
+const TRACK_NOTIFY_DEDUPE_MS = Math.max(5000, Number(process.env.TRACK_NOTIFY_DEDUPE_MS || 15000));
+const TRACK_NOTIFY_ALEXA_MAX_AGE_MS = Math.max(30000, Number(process.env.TRACK_NOTIFY_ALEXA_MAX_AGE_MS || 21600000));
+const PUSHOVER_TOKEN = String(process.env.PUSHOVER_TOKEN || '').trim();
+const PUSHOVER_USER_KEY = String(process.env.PUSHOVER_USER_KEY || '').trim();
+
+let _lastTrackNotifyKey = '';
+let _lastTrackNotifyAt = 0;
+
+function buildArtUrlForFile(file) {
+  const f = String(file || '').trim();
+  if (!f) return '';
+  return `${PUBLIC_BASE_URL}/art/track_640.jpg?file=${encodeURIComponent(f)}${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}`;
+}
+
+async function selectNotificationTrack() {
+  const now = Date.now();
+  const age = (alexaWasPlaying.updatedAt > 0) ? Math.max(0, now - alexaWasPlaying.updatedAt) : null;
+  const alexaFresh = age !== null && age <= TRACK_NOTIFY_ALEXA_MAX_AGE_MS;
+
+  if (alexaWasPlaying.active && alexaFresh && alexaWasPlaying.file) {
+    return {
+      source: 'alexa',
+      file: String(alexaWasPlaying.file || '').trim(),
+      title: String(alexaWasPlaying.title || '').trim(),
+      artist: String(alexaWasPlaying.artist || '').trim(),
+      album: String(alexaWasPlaying.album || '').trim(),
+      artUrl: buildArtUrlForFile(alexaWasPlaying.file),
+      key: `alexa|${alexaWasPlaying.file}|${alexaWasPlaying.title}|${alexaWasPlaying.artist}`,
+    };
+  }
+
+  try {
+    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
+    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
+    const state = String(moodeValByKey(statusRaw, 'state') || '').trim().toLowerCase();
+    const file = String(song?.file || '').trim();
+    if (state !== 'play' || !file) return null;
+
+    return {
+      source: 'now-playing',
+      file,
+      title: decodeHtmlEntities(String(song?.title || '').trim()),
+      artist: decodeHtmlEntities(String(song?.artist || '').trim()),
+      album: decodeHtmlEntities(String(song?.album || '').trim()),
+      artUrl: buildArtUrlForFile(file),
+      key: `np|${file}|${String(song?.title || '').trim()}|${String(song?.artist || '').trim()}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function sendPushoverTrackNotification(track) {
+  if (!PUSHOVER_TOKEN || !PUSHOVER_USER_KEY) return false;
+  if (!track || !track.file) return false;
+
+  const title = String(track.title || '').trim() || (track.file.split('/').pop() || 'Now Playing');
+  const artist = String(track.artist || '').trim();
+  const album = String(track.album || '').trim();
+
+  const form = new FormData();
+  form.append('token', PUSHOVER_TOKEN);
+  form.append('user', PUSHOVER_USER_KEY);
+  form.append('title', title);
+  const bodyLine = [artist, album].filter(Boolean).join(' — ') || 'Now playing';
+  // Put link in body too (Pushover always auto-linkifies message URLs).
+  form.append('message', `${bodyLine}\nhttp://moode.local`);
+  form.append('url', 'http://moode.local');
+  form.append('url_title', 'Open moOde');
+
+  if (track.artUrl) {
+    try {
+      const r = await fetch(track.artUrl, { cache: 'no-store' });
+      if (r.ok) {
+        const ct = r.headers.get('content-type') || 'image/jpeg';
+        const ext = /png/i.test(ct) ? 'png' : 'jpg';
+        const ab = await r.arrayBuffer();
+        const blob = new Blob([ab], { type: ct });
+        form.append('attachment', blob, `cover.${ext}`);
+      }
+    } catch (e) {}
+  }
+
+  const resp = await fetch('https://api.pushover.net/1/messages.json', {
+    method: 'POST',
+    body: form,
+  });
+
+  return resp.ok;
+}
+
+async function trackNotificationTick() {
+  if (!TRACK_NOTIFY_ENABLED) return;
+  if (!PUSHOVER_TOKEN || !PUSHOVER_USER_KEY) return;
+
+  const track = await selectNotificationTrack();
+  if (!track || !track.key) return;
+
+  const now = Date.now();
+  // Notify once per track key change (no periodic repeats on same track).
+  if (track.key === _lastTrackNotifyKey) return;
+
+  try {
+    const ok = await sendPushoverTrackNotification(track);
+    if (ok) {
+      _lastTrackNotifyKey = track.key;
+      _lastTrackNotifyAt = now;
+      log.debug('[notify] sent', { source: track.source, title: track.title, artist: track.artist });
+    }
+  } catch (e) {
+    log.debug('[notify] failed', e?.message || String(e));
+  }
+}
+
+if (TRACK_NOTIFY_ENABLED) {
+  setInterval(() => { trackNotificationTick().catch(() => {}); }, TRACK_NOTIFY_POLL_MS);
+}
+
 app.post('/mpd/deprime', async (req, res) => {
   try {
     if (!requireTrackKey(req, res)) return;
