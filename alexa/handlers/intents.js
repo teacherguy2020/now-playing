@@ -453,6 +453,7 @@ function createIntentHandlers(deps) {
     async handle(handlerInput) {
       const mixQuery = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.mixQuery?.value);
       const artists = parseArtistsFromMixQuery(mixQuery);
+      console.log('[PlayMixIntent] request', { mixQuery, artists });
 
       if (!artists.length) {
         return speak(handlerInput, 'Tell me the artists for the mix, for example Frank Sinatra and Diana Krall.', false);
@@ -467,14 +468,26 @@ function createIntentHandlers(deps) {
         });
 
         const added = Number(resp?.added || 0);
+        console.log('[PlayMixIntent] queue/mix response', {
+          ok: !!resp?.ok,
+          added,
+          byArtist: resp?.byArtist || {},
+        });
         if (added < 1) {
           return speak(handlerInput, 'I could not build that mix right now.', false);
         }
 
         const snap = await ensureCurrentTrack();
         if (!snap || !snap.file) {
+          console.log('[PlayMixIntent] no playable head after queue/mix', { added });
           return speak(handlerInput, `I loaded ${added} tracks, but could not start playback.`, false);
         }
+
+        console.log('[PlayMixIntent] starting playback from head', {
+          file: snap.file,
+          title: snap.title || '',
+          artist: snap.artist || '',
+        });
 
         const directive = buildPlayReplaceAll(snap, 'Starting your mix');
         rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
@@ -485,7 +498,8 @@ function createIntentHandlers(deps) {
           .addDirective(directive)
           .getResponse();
       } catch (e) {
-        console.log('PlayMixIntent error:', e && e.message ? e.message : String(e));
+        const msg = e && e.message ? e.message : String(e);
+        console.log('[PlayMixIntent] error:', { mixQuery, artists, msg });
         return speak(handlerInput, 'I could not build that mix right now.', false);
       }
     },
