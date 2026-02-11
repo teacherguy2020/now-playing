@@ -43,9 +43,11 @@
           </tr>
         `).join('');
         const albumName = folder === '(root)' ? '(root)' : leafName(folder);
+        const artistSet = new Set(items.map(({ r }) => String(r.artist || '').trim()).filter(Boolean));
+        const artistLabel = artistSet.size === 1 ? Array.from(artistSet)[0] : (artistSet.size > 1 ? 'Various Artists' : 'Unknown Artist');
         return `
           <details style="margin:6px 0;">
-            <summary><input type="checkbox" class="${prefix}FolderChk" data-folder="${token}"> ${esc(albumName)} <span class="muted">(${items.length})</span></summary>
+            <summary><input type="checkbox" class="${prefix}FolderChk" data-folder="${token}"> ${esc(albumName)} — <span class="muted">${esc(artistLabel)}</span> <span class="muted">(${items.length})</span></summary>
             <div class="muted" style="margin:4px 0 6px 22px;">${esc(folder)}</div>
             <table>
               <thead><tr><th></th><th>Artist</th><th>Title</th><th>Album</th><th>Track File</th></tr></thead>
