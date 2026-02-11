@@ -13,7 +13,10 @@
   }
 
   function defaultApiBase(){
-    if (location.protocol === 'http:' || location.protocol === 'https:') return location.origin;
+    if (location.protocol === 'http:' || location.protocol === 'https:') {
+      const host = location.hostname || '10.0.0.233';
+      return `${location.protocol}//${host}:3101`;
+    }
     return 'http://10.0.0.233:3101';
   }
 
