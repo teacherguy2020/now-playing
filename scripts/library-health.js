@@ -12,15 +12,22 @@
     return `<table><thead><tr><th>Artist</th><th>Title</th><th>Album</th><th>File</th></tr></thead><tbody>${body}</tbody></table>`;
   }
 
+  function defaultApiBase(){
+    if (location.protocol === 'http:' || location.protocol === 'https:') return location.origin;
+    return 'http://10.0.0.233:3101';
+  }
+
   async function run(){
     const key = $('key').value.trim();
     const sample = Number($('sample').value || 100);
+    const apiBase = ($('apiBase').value || defaultApiBase()).trim().replace(/\/$/, '');
     status.textContent = 'Scanning…';
     cards.innerHTML = '';
     sections.innerHTML = '';
 
     try {
-      const res = await fetch(`/config/library-health?sampleLimit=${encodeURIComponent(sample)}`, { headers: { 'x-track-key': key } });
+      const url = `${apiBase}/config/library-health?sampleLimit=${encodeURIComponent(sample)}`;
+      const res = await fetch(url, { headers: { 'x-track-key': key } });
       const j = await res.json();
       if(!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`);
 
@@ -56,6 +63,7 @@
     }
   }
 
+  $('apiBase').value = defaultApiBase();
   $('run').addEventListener('click', run);
   run();
 })();
