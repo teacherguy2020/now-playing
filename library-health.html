@@ -20,9 +20,9 @@
     .muted{color:#9fb1d9;font-size:12px}
     .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.28);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
     @keyframes spin{to{transform:rotate(360deg)}}
-    .topTabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-    .topTabs a{text-decoration:none;color:#e7eefc;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);border-radius:10px;padding:6px 10px;font-size:12px;font-weight:650}
-    .topTabs a.active{border-color:rgba(125,211,252,.5);background:linear-gradient(135deg, rgba(125,211,252,.22), rgba(167,139,250,.18));}
+    .topTabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px;padding:0 0 0 2px;border-bottom:1px solid rgba(255,255,255,.18)}
+    .topTabs a{text-decoration:none;color:#e7eefc;border:1px solid rgba(255,255,255,.14);border-bottom:none;background:rgba(255,255,255,.05);border-radius:10px 10px 0 0;padding:7px 12px;font-size:12px;font-weight:650;margin-bottom:-1px}
+    .topTabs a.active{border-color:rgba(125,211,252,.55);background:linear-gradient(180deg, rgba(125,211,252,.25), rgba(125,211,252,.08));box-shadow:inset 0 1px 0 rgba(255,255,255,.14);}
   </style>
 </head>
 <body>
@@ -42,6 +42,6 @@
     <div class="cards" id="cards"></div>
     <div id="sections"></div>
   </div>
-  <script src="scripts/library-health.js?v=20260211-1"></script>
+  <script src="scripts/library-health.js?v=20260211-15"></script>
 </body>
 </html>
