@@ -55,7 +55,8 @@
       cards.innerHTML = items.map(([k,v])=>`<div class="card"><div class="k">${esc(k)}</div><div class="v">${Number(v||0).toLocaleString()}</div></div>`).join('');
 
       const sampleMap = j.samples || {};
-      const missingRows = sampleMap.missingGenre || [];
+      let missingRows = sampleMap.missingGenre || [];
+      let missingRemaining = Number(s.missingGenre || 0);
       const sectionsDef = [
         ['Unrated samples', sampleMap.unrated],
         ['Low-rated=1 samples', sampleMap.lowRated1],
@@ -111,7 +112,39 @@
             const jj = await r.json();
             if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
             if (mgStatus) mgStatus.textContent = `Updated ${jj.updated}/${jj.requested} (skipped ${jj.skipped})`;
-            await run();
+
+            // Fast UI update: remove successful rows without full re-scan.
+            const appliedSet = new Set(files);
+            missingRows = missingRows.filter((row) => !appliedSet.has(row.file));
+            missingRemaining = Math.max(0, missingRemaining - Number(jj.updated || 0));
+
+            // Update Missing Genre metric card value.
+            document.querySelectorAll('.card').forEach((card) => {
+              const k = card.querySelector('.k');
+              const v = card.querySelector('.v');
+              if (k && v && /Missing Genre/i.test(k.textContent || '')) {
+                v.textContent = Number(missingRemaining).toLocaleString();
+              }
+            });
+
+            // Re-render only the missing-genre section.
+            const details = applyBtn.closest('details');
+            if (details) {
+              const summaryEl = details.querySelector('summary');
+              if (summaryEl) summaryEl.textContent = `Missing Genre samples (${missingRows.length})`;
+              const oldTable = details.querySelector('table');
+              if (oldTable) oldTable.remove();
+              const oldEmpty = details.querySelector('.muted');
+              if (oldEmpty) oldEmpty.remove();
+              details.insertAdjacentHTML('beforeend', renderMissingGenreTable(missingRows));
+
+              const newAll = $('mgAll');
+              if (newAll) {
+                newAll.addEventListener('change', () => {
+                  document.querySelectorAll('.mgChk').forEach((el) => { el.checked = newAll.checked; });
+                });
+              }
+            }
           } catch (e) {
             if (mgStatus) mgStatus.textContent = `Error: ${e?.message || e}`;
           }
