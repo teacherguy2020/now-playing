@@ -6,6 +6,11 @@
   --accent2: #a78bfa;
 }
 
+html,
+body {
+  background-color: #0c1526;
+}
+
 body {
   background:
     radial-gradient(1200px 600px at 12% -10%, rgba(125, 211, 252, 0.2), transparent 60%),
@@ -70,6 +75,10 @@ body {
 .pill {
   background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.05));
   border: 1px solid rgba(255,255,255,.2);
+}
+
+.subsScroll {
+  background: rgba(8, 12, 24, 0.62);
 }
 
 .subsShell {

@@ -275,7 +275,9 @@
   .subsWrap{
     max-width: 1080px;
     margin: 0 auto;
-    padding: 14px 18px 28px;
+    padding: 14px 18px 0;
+    min-height: 100%;
+    display: flex;
   }
 
   .subsShell{
@@ -284,6 +286,8 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: 14px;
+    flex: 1 1 auto;
+    margin-bottom: 28px;
   }
 
   .subsHeader{
