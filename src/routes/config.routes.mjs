@@ -243,6 +243,54 @@ export function registerConfigRoutes(app, deps) {
     }
   });
 
+  app.post('/config/library-health/genre-batch', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const files = Array.isArray(req.body?.files) ? req.body.files.map((x) => String(x || '').trim()).filter(Boolean) : [];
+      const genre = String(req.body?.genre || '').trim();
+      if (!files.length) return res.status(400).json({ ok: false, error: 'files[] is required' });
+      if (!genre) return res.status(400).json({ ok: false, error: 'genre is required' });
+
+      const mpdToLocalPath = (f) => {
+        if (f.startsWith('USB/SamsungMoode/')) return '/mnt/SamsungMoode/' + f.slice('USB/SamsungMoode/'.length);
+        if (f.startsWith('OSDISK/')) return '/mnt/OSDISK/' + f.slice('OSDISK/'.length);
+        return '';
+      };
+
+      let updated = 0;
+      let skipped = 0;
+      const errors = [];
+
+      for (const file of files) {
+        const local = mpdToLocalPath(file);
+        if (!local) {
+          skipped += 1;
+          continue;
+        }
+        if (!/\.flac$/i.test(local)) {
+          skipped += 1;
+          continue;
+        }
+        try {
+          await execFileP('metaflac', [`--set-tag=GENRE=${genre}`, local]);
+          updated += 1;
+        } catch (e) {
+          errors.push({ file, error: e?.message || String(e) });
+        }
+      }
+
+      try {
+        const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+        await execFileP('mpc', ['-h', mpdHost, 'update']);
+      } catch (_) {}
+
+      return res.json({ ok: true, genre, requested: files.length, updated, skipped, errors: errors.slice(0, 50) });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/runtime', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
