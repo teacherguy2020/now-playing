@@ -102,7 +102,7 @@
           const files = checked.map((el) => missingRows[Number(el.getAttribute('data-idx'))]).filter(Boolean).map((r) => r.file);
           if (!files.length) { if (mgStatus) mgStatus.textContent = 'No rows checked.'; return; }
 
-          if (mgStatus) mgStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Applying…';
+          if (mgStatus) mgStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Tagging, please wait…';
           try {
             const r = await fetch(`${apiBase}/config/library-health/genre-batch`, {
               method: 'POST',
