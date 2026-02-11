@@ -493,8 +493,10 @@ export function registerConfigRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const folder = String(req.body?.folder || '').trim();
       const base64In = String(req.body?.imageBase64 || '').trim();
+      const mode = String(req.body?.mode || 'both').trim().toLowerCase();
       if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
       if (!base64In) return res.status(400).json({ ok: false, error: 'imageBase64 is required' });
+      if (!['cover', 'embed', 'both'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode must be cover|embed|both' });
 
       const b64 = base64In.includes(',') ? base64In.split(',').pop() : base64In;
       let imgBuf = Buffer.from(String(b64 || ''), 'base64');
@@ -547,50 +549,65 @@ export function registerConfigRoutes(app, deps) {
         return '';
       };
 
+      const doEmbed = mode === 'embed' || mode === 'both';
+      const doCover = mode === 'cover' || mode === 'both';
+
       const isFlac = (f) => /\.flac$/i.test(String(f || ''));
       let updatedTracks = 0;
       let skippedTracks = 0;
       const skipped = [];
-      for (const f of files) {
-        const local = await resolveLocalPath(f);
-        if (!local || !isFlac(local)) {
-          skippedTracks += 1;
-          skipped.push(f);
-          continue;
-        }
-        try {
-          await execFileP('metaflac', ['--remove', '--block-type=PICTURE', local]);
-          await execFileP('metaflac', [`--import-picture-from=${tmpPath}`, local]);
-          updatedTracks += 1;
-        } catch (_) {
-          skippedTracks += 1;
-          skipped.push(f);
+      if (doEmbed) {
+        for (const f of files) {
+          const local = await resolveLocalPath(f);
+          if (!local || !isFlac(local)) {
+            skippedTracks += 1;
+            skipped.push(f);
+            continue;
+          }
+          try {
+            await execFileP('metaflac', ['--remove', '--block-type=PICTURE', local]);
+            await execFileP('metaflac', [`--import-picture-from=${tmpPath}`, local]);
+            updatedTracks += 1;
+          } catch (_) {
+            skippedTracks += 1;
+            skipped.push(f);
+          }
         }
       }
 
-      // Replace cover.jpg if it exists in album folder on API Pi mounts.
+      // cover.jpg handling (update existing or create new) when cover mode enabled.
       let coverUpdated = false;
-      const localFolders = [
-        folder.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + folder.slice('USB/SamsungMoode/'.length) : '',
-        folder.startsWith('OSDISK/') ? '/mnt/OSDISK/' + folder.slice('OSDISK/'.length) : '',
-        '/mnt/SamsungMoode/' + folder,
-        '/mnt/OSDISK/' + folder,
-      ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
-      for (const lf of localFolders) {
-        const cp = path.join(lf, 'cover.jpg');
-        try {
-          await fs.access(cp);
-          await fs.writeFile(cp, imgBuf);
-          coverUpdated = true;
-          break;
-        } catch (_) {}
+      let coverCreated = false;
+      if (doCover) {
+        const localFolders = [
+          folder.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + folder.slice('USB/SamsungMoode/'.length) : '',
+          folder.startsWith('OSDISK/') ? '/mnt/OSDISK/' + folder.slice('OSDISK/'.length) : '',
+          '/mnt/SamsungMoode/' + folder,
+          '/mnt/OSDISK/' + folder,
+        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+        for (const lf of localFolders) {
+          const cp = path.join(lf, 'cover.jpg');
+          try {
+            await fs.access(cp);
+            await fs.writeFile(cp, imgBuf);
+            coverUpdated = true;
+            break;
+          } catch (_) {
+            try {
+              await fs.access(lf);
+              await fs.writeFile(cp, imgBuf);
+              coverCreated = true;
+              break;
+            } catch (_) {}
+          }
+        }
       }
 
       try { await fs.unlink(tmpPath); } catch (_) {}
       try { await fs.unlink(tmpSquarePath); } catch (_) {}
       try { await execFileP('mpc', ['-w', '-h', mpdHost, 'update']); } catch (_) {}
 
-      return res.json({ ok: true, folder, totalFiles: files.length, updatedTracks, skippedTracks, skipped: skipped.slice(0, 200), coverUpdated });
+      return res.json({ ok: true, folder, mode, totalFiles: files.length, updatedTracks, skippedTracks, skipped: skipped.slice(0, 200), coverUpdated, coverCreated });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

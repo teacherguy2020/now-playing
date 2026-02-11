@@ -125,6 +125,38 @@ Notes:
 - Track key is preloaded from effective runtime config (and cached in browser localStorage).
 - Notification values are shown as effective values (config + env overrides).
 
+### Library Health page (`library-health.html`)
+
+`library-health.html` is a maintenance dashboard for library cleanup and tagging workflows.
+
+Main capabilities:
+- Summary cards: total tracks/albums, unrated/low-rated, missing MBID, missing genre
+- Charts: full genre distribution + rating distribution
+- Missing genre batch tagging (folder/track selection)
+- Unrated batch rating assignment
+- Genre retag-by-folder workflow:
+  - pick a source genre
+  - load folders containing that genre
+  - retag selected folders to a new genre
+- Missing artwork workflow (on-demand deep scan):
+  - "Search for missing art" confirms before a full scan
+  - results list opens directly into album-art update module
+- Album-art update module:
+  - select album folder
+  - preview existing `cover.jpg` if present
+  - upload replacement art (normalized to square)
+  - apply mode: **Add cover.jpg**, **Embed image**, or **Both**
+
+Related API routes:
+- `GET /config/library-health`
+- `GET /config/library-health/albums`
+- `GET /config/library-health/album-art`
+- `POST /config/library-health/album-art`
+- `GET /config/library-health/missing-artwork`
+- `GET /config/library-health/genre-folders`
+- `POST /config/library-health/genre-batch`
+- `POST /config/library-health/rating-batch`
+
 ## Ratings (MPD stickers)
 
 If ratings are enabled, ensure MPD has `sticker_file` configured and writable.

@@ -243,6 +243,9 @@
             <label>New image
               <input id="aaFile" type="file" accept="image/*" />
             </label>
+            <label><input type="radio" name="aaMode" value="cover" /> Add cover.jpg</label>
+            <label><input type="radio" name="aaMode" value="embed" /> Embed image</label>
+            <label><input type="radio" name="aaMode" value="both" checked /> Both</label>
             <button id="aaApply">Apply art</button>
             <span class="muted" id="aaStatus"></span>
           </div>
@@ -453,6 +456,9 @@
       async function loadAlbumArt(folder){
         const f = String(folder || '').trim();
         if (!f) { if (aaStatus) aaStatus.textContent = 'Pick an album first.'; return; }
+        if (aaPreview) aaPreview.removeAttribute('src');
+        if (aaFile) aaFile.value = '';
+        if (aaMeta) aaMeta.textContent = 'Loading selected album artwork…';
         if (aaStatus) aaStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Loading art…';
         try {
           const r = await fetch(`${apiBase}/config/library-health/album-art?folder=${encodeURIComponent(f)}`, { headers: { 'x-track-key': key } });
@@ -472,6 +478,13 @@
       }
 
       if (aaLoad) aaLoad.addEventListener('click', async () => { await loadAlbumArt(aaAlbum?.value || ''); });
+      if (aaAlbum) {
+        aaAlbum.addEventListener('change', () => {
+          if (aaPreview) aaPreview.removeAttribute('src');
+          if (aaFile) aaFile.value = '';
+          if (aaMeta) aaMeta.textContent = 'Album changed. Click “Load art”.';
+        });
+      }
 
       if (aaApply) {
         aaApply.addEventListener('click', async () => {
@@ -492,10 +505,12 @@
           if (aaStatus) aaStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Updating album art…';
           try {
             const b64 = await toBase64(file);
+            const modeEl = document.querySelector('input[name="aaMode"]:checked');
+            const mode = String(modeEl?.value || 'both');
             const r = await fetch(`${apiBase}/config/library-health/album-art`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'x-track-key': key },
-              body: JSON.stringify({ folder, imageBase64: b64 }),
+              body: JSON.stringify({ folder, imageBase64: b64, mode }),
             });
             const raw = await r.text();
             let jj = null;
@@ -505,7 +520,10 @@
               throw new Error(jj?.error || `HTTP ${r.status}`);
             }
             if (aaPreview) aaPreview.src = URL.createObjectURL(file);
-            if (aaMeta) aaMeta.textContent = `${folder} · updated tracks: ${jj.updatedTracks}/${jj.totalFiles} · cover.jpg ${jj.coverUpdated ? 'updated' : 'not found'}`;
+            if (aaMeta) {
+              const coverState = jj.coverCreated ? 'created' : (jj.coverUpdated ? 'updated' : 'unchanged');
+              aaMeta.textContent = `${folder} · mode: ${jj.mode || 'both'} · updated tracks: ${jj.updatedTracks}/${jj.totalFiles} · cover.jpg ${coverState}`;
+            }
             if (aaStatus) aaStatus.textContent = 'Album art updated.';
           } catch (e) {
             if (aaStatus) aaStatus.textContent = `Error: ${e?.message || e}`;
