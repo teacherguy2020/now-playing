@@ -24,7 +24,9 @@
     const key = $('key').value.trim();
     const sample = 100;
     const apiBase = ($('apiBase').value || defaultApiBase()).trim().replace(/\/$/, '');
-    status.textContent = 'Scanning…';
+    const runBtn = $('run');
+    runBtn.disabled = true;
+    status.innerHTML = '<span class="spin" aria-hidden="true"></span>Scanning, please wait';
     cards.innerHTML = '';
     sections.innerHTML = '';
 
@@ -63,6 +65,8 @@
       status.textContent = `Done in ${j.elapsedMs} ms · scanned ${j.scannedTracks || s.totalTracks || 0} tracks · ${j.generatedAt}`;
     } catch (e) {
       status.textContent = `Error: ${e?.message || e}`;
+    } finally {
+      $('run').disabled = false;
     }
   }
 
