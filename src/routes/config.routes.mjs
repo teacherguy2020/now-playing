@@ -231,9 +231,12 @@ export function registerConfigRoutes(app, deps) {
         if (/christmas/i.test(genreBlob)) summary.christmasGenre += 1;
         if (/\bpodcast\b/i.test(genreBlob)) summary.podcastGenre += 1;
 
+        const isPodcast = /\bpodcast\b/i.test(genreBlob);
+
         let rating = 0;
         try { rating = Number(await getRatingForFile(file)) || 0; } catch (_) {}
-        if (rating <= 0) {
+        // User policy: do not count Podcast-genre tracks in unrated tally.
+        if (!isPodcast && rating <= 0) {
           summary.unrated += 1;
           pick(samples.unrated, { file, artist, title, album, rating });
         }

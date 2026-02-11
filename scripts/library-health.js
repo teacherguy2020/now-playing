@@ -23,13 +23,14 @@
   async function run(){
     const key = $('key').value.trim();
     const sample = Number($('sample').value || 100);
+    const scan = Number($('scan').value || 20000);
     const apiBase = ($('apiBase').value || defaultApiBase()).trim().replace(/\/$/, '');
     status.textContent = 'Scanning…';
     cards.innerHTML = '';
     sections.innerHTML = '';
 
     try {
-      const url = `${apiBase}/config/library-health?sampleLimit=${encodeURIComponent(sample)}`;
+      const url = `${apiBase}/config/library-health?sampleLimit=${encodeURIComponent(sample)}&scanLimit=${encodeURIComponent(scan)}`;
       const res = await fetch(url, { headers: { 'x-track-key': key } });
       const j = await res.json();
       if(!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`);
@@ -60,7 +61,7 @@
         </details>
       `).join('');
 
-      status.textContent = `Done in ${j.elapsedMs} ms · ${j.generatedAt}`;
+      status.textContent = `Done in ${j.elapsedMs} ms · scanned ${j.scannedTracks || s.totalTracks || 0} tracks · ${j.generatedAt}`;
     } catch (e) {
       status.textContent = `Error: ${e?.message || e}`;
     }
