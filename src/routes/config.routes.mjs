@@ -282,7 +282,8 @@ export function registerConfigRoutes(app, deps) {
 
       try {
         const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
-        await execFileP('mpc', ['-h', mpdHost, 'update']);
+        // Wait for DB update to finish so a follow-up health scan reflects new tags.
+        await execFileP('mpc', ['-w', '-h', mpdHost, 'update']);
       } catch (_) {}
 
       return res.json({ ok: true, genre, requested: files.length, updated, skipped, errors: errors.slice(0, 50) });
