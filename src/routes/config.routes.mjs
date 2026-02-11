@@ -111,6 +111,7 @@ export function registerConfigRoutes(app, deps) {
     log,
     mpdQueryRaw,
     getRatingForFile,
+    setRatingForFile,
     mpdStickerGetSong,
   } = deps;
 
@@ -293,6 +294,39 @@ export function registerConfigRoutes(app, deps) {
       } catch (_) {}
 
       return res.json({ ok: true, genre, requested: files.length, updated, skipped, errors: errors.slice(0, 50) });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/library-health/rating-batch', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      if (typeof setRatingForFile !== 'function') return res.status(501).json({ ok: false, error: 'rating dependency not wired' });
+
+      const files = Array.isArray(req.body?.files) ? req.body.files.map((x) => String(x || '').trim()).filter(Boolean) : [];
+      const ratingNum = Number(req.body?.rating);
+      if (!files.length) return res.status(400).json({ ok: false, error: 'files[] is required' });
+      if (!Number.isFinite(ratingNum) || ratingNum < 0 || ratingNum > 5) {
+        return res.status(400).json({ ok: false, error: 'rating must be 0..5' });
+      }
+      const rating = Math.round(ratingNum);
+
+      let updated = 0;
+      let skipped = 0;
+      const errors = [];
+
+      for (const file of files) {
+        if (!file) { skipped += 1; continue; }
+        try {
+          await setRatingForFile(file, rating);
+          updated += 1;
+        } catch (e) {
+          errors.push({ file, error: e?.message || String(e) });
+        }
+      }
+
+      return res.json({ ok: true, rating, requested: files.length, updated, skipped, errors: errors.slice(0, 50) });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

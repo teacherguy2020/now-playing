@@ -18,7 +18,7 @@
     return i > 0 ? f.slice(0, i) : '(root)';
   }
 
-  function renderMissingGenreTable(rows){
+  function renderFolderSelection(prefix, rows){
     if(!rows?.length) return '<div class="muted">No samples.</div>';
     const groups = new Map();
     rows.forEach((r, i) => {
@@ -27,48 +27,71 @@
       groups.get(folder).push({ r, i });
     });
 
-    const foldersHtml = Array.from(groups.entries()).sort((a,b)=>a[0].localeCompare(b[0], undefined, { sensitivity: 'base' })).map(([folder, items]) => {
-      const token = encodeURIComponent(folder);
-      const body = items.map(({ r, i }) => `
-        <tr>
-          <td><input type="checkbox" class="mgTrackChk" data-idx="${i}" data-folder="${token}"></td>
-          <td>${esc(r.artist)}</td><td>${esc(r.title)}</td><td>${esc(r.album)}</td><td>${esc(r.file)}</td>
-        </tr>
-      `).join('');
-      return `
-        <details class="mgFolder" style="margin:6px 0;">
-          <summary>
-            <input type="checkbox" class="mgFolderChk" data-folder="${token}"> ${esc(folder)} <span class="muted">(${items.length})</span>
-          </summary>
-          <table>
-            <thead><tr><th></th><th>Artist</th><th>Title</th><th>Album</th><th>File</th></tr></thead>
-            <tbody>${body}</tbody>
-          </table>
-        </details>
-      `;
-    }).join('');
+    const foldersHtml = Array.from(groups.entries())
+      .sort((a,b)=>a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }))
+      .map(([folder, items]) => {
+        const token = encodeURIComponent(folder);
+        const body = items.map(({ r, i }) => `
+          <tr>
+            <td><input type="checkbox" class="${prefix}TrackChk" data-idx="${i}" data-folder="${token}"></td>
+            <td>${esc(r.artist)}</td><td>${esc(r.title)}</td><td>${esc(r.album)}</td><td>${esc(r.file)}</td>
+          </tr>
+        `).join('');
+        return `
+          <details style="margin:6px 0;">
+            <summary><input type="checkbox" class="${prefix}FolderChk" data-folder="${token}"> ${esc(folder)} <span class="muted">(${items.length})</span></summary>
+            <table>
+              <thead><tr><th></th><th>Artist</th><th>Title</th><th>Album</th><th>File</th></tr></thead>
+              <tbody>${body}</tbody>
+            </table>
+          </details>
+        `;
+      }).join('');
 
     return `
       <div class="row" style="margin:6px 0 8px;">
-        <label><input type="checkbox" id="mgAll"> Check/uncheck all folders + tracks</label>
+        <label><input type="checkbox" id="${prefix}All"> Check/uncheck all folders + tracks</label>
       </div>
       ${foldersHtml}
     `;
   }
 
-  function initMissingGenreSelectionHandlers(){
-    const allBox = $('mgAll');
+  function initFolderSelectionHandlers(prefix){
+    const allBox = $(`${prefix}All`);
     if (allBox) {
       allBox.addEventListener('change', () => {
-        document.querySelectorAll('.mgFolderChk,.mgTrackChk').forEach((el) => { el.checked = allBox.checked; });
+        document.querySelectorAll(`.${prefix}FolderChk,.${prefix}TrackChk`).forEach((el) => { el.checked = allBox.checked; });
       });
     }
-
-    document.querySelectorAll('.mgFolderChk').forEach((fcb) => {
+    document.querySelectorAll(`.${prefix}FolderChk`).forEach((fcb) => {
       fcb.addEventListener('change', () => {
         const token = fcb.getAttribute('data-folder');
-        document.querySelectorAll(`.mgTrackChk[data-folder="${token}"]`).forEach((t) => { t.checked = fcb.checked; });
+        document.querySelectorAll(`.${prefix}TrackChk[data-folder="${token}"]`).forEach((t) => { t.checked = fcb.checked; });
       });
+    });
+  }
+
+  function collectSelectedFiles(prefix, rows){
+    const fileSet = new Set();
+    Array.from(document.querySelectorAll(`.${prefix}TrackChk:checked`)).forEach((el) => {
+      const row = rows[Number(el.getAttribute('data-idx'))];
+      if (row?.file) fileSet.add(row.file);
+    });
+    Array.from(document.querySelectorAll(`.${prefix}FolderChk:checked`)).forEach((el) => {
+      const token = el.getAttribute('data-folder');
+      Array.from(document.querySelectorAll(`.${prefix}TrackChk[data-folder="${token}"]`)).forEach((trackEl) => {
+        const row = rows[Number(trackEl.getAttribute('data-idx'))];
+        if (row?.file) fileSet.add(row.file);
+      });
+    });
+    return Array.from(fileSet);
+  }
+
+  function setCardValue(labelRe, value){
+    document.querySelectorAll('.card').forEach((card) => {
+      const k = card.querySelector('.k');
+      const v = card.querySelector('.v');
+      if (k && v && labelRe.test(k.textContent || '')) v.textContent = Number(value || 0).toLocaleString();
     });
   }
 
@@ -110,18 +133,38 @@
 
       const sampleMap = j.samples || {};
       let missingRows = sampleMap.missingGenre || [];
+      let unratedRows = sampleMap.unrated || [];
       let missingRemaining = Number(s.missingGenre || 0);
-      const sectionsDef = [
-        ['Unrated samples', sampleMap.unrated],
-        ['Low-rated=1 samples', sampleMap.lowRated1],
-        ['Missing MBID samples', sampleMap.missingMbid],
-      ];
-      sections.innerHTML = sectionsDef.map(([title, rows]) => `
-        <details>
-          <summary>${esc(title)} (${(rows||[]).length})</summary>
-          ${renderTable(rows||[])}
+      let unratedRemaining = Number(s.unrated || 0);
+
+      sections.innerHTML = `
+        <details open>
+          <summary>Unrated samples (${unratedRows.length})</summary>
+          <div class="row" style="margin:8px 0;">
+            <label>Assign rating
+              <select id="urRating" style="padding:6px 8px;border-radius:8px;background:#0a1222;color:#eef;border:1px solid #334;max-width:160px;">
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </label>
+            <button id="urApply">Apply to checked</button>
+            <span class="muted" id="urStatus"></span>
+          </div>
+          ${renderFolderSelection('ur', unratedRows)}
         </details>
-      `).join('') + `
+
+        <details>
+          <summary>Low-rated=1 samples (${(sampleMap.lowRated1||[]).length})</summary>
+          ${renderTable(sampleMap.lowRated1||[])}
+        </details>
+
+        <details>
+          <summary>Missing MBID samples (${(sampleMap.missingMbid||[]).length})</summary>
+          ${renderTable(sampleMap.missingMbid||[])}
+        </details>
+
         <details open>
           <summary>Missing Genre samples (${missingRows.length})</summary>
           <div class="row" style="margin:8px 0;">
@@ -134,35 +177,59 @@
             <button id="mgApply">Apply to checked</button>
             <span class="muted" id="mgStatus"></span>
           </div>
-          ${renderMissingGenreTable(missingRows)}
+          ${renderFolderSelection('mg', missingRows)}
         </details>
       `;
 
-      initMissingGenreSelectionHandlers();
+      initFolderSelectionHandlers('ur');
+      initFolderSelectionHandlers('mg');
 
-      const applyBtn = $('mgApply');
-      if (applyBtn) {
-        applyBtn.addEventListener('click', async () => {
+      const urApplyBtn = $('urApply');
+      if (urApplyBtn) {
+        urApplyBtn.addEventListener('click', async () => {
+          const rating = Number(($('urRating')?.value || '2').trim());
+          const urStatus = $('urStatus');
+          const files = collectSelectedFiles('ur', unratedRows);
+          if (!files.length) { if (urStatus) urStatus.textContent = 'No folders/tracks checked.'; return; }
+
+          if (urStatus) urStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Tagging, please wait…';
+          try {
+            const r = await fetch(`${apiBase}/config/library-health/rating-batch`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+              body: JSON.stringify({ files, rating }),
+            });
+            const jj = await r.json();
+            if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
+            if (urStatus) urStatus.textContent = `Updated ${jj.updated}/${jj.requested} (skipped ${jj.skipped})`;
+
+            const appliedSet = new Set(files);
+            unratedRows = unratedRows.filter((row) => !appliedSet.has(row.file));
+            unratedRemaining = Math.max(0, unratedRemaining - Number(jj.updated || 0));
+            setCardValue(/Unrated/i, unratedRemaining);
+
+            const details = urApplyBtn.closest('details');
+            if (details) {
+              const summaryEl = details.querySelector('summary');
+              if (summaryEl) summaryEl.textContent = `Unrated samples (${unratedRows.length})`;
+              Array.from(details.querySelectorAll('table,.muted,.row')).forEach((el, idx) => { if (idx >= 1) el.remove(); });
+              details.insertAdjacentHTML('beforeend', renderFolderSelection('ur', unratedRows));
+              initFolderSelectionHandlers('ur');
+            }
+          } catch (e) {
+            if (urStatus) urStatus.textContent = `Error: ${e?.message || e}`;
+          }
+        });
+      }
+
+      const mgApplyBtn = $('mgApply');
+      if (mgApplyBtn) {
+        mgApplyBtn.addEventListener('click', async () => {
           const genre = ($('mgGenre')?.value || '').trim();
           const mgStatus = $('mgStatus');
           if (!genre) { if (mgStatus) mgStatus.textContent = 'Pick a genre first.'; return; }
 
-          const fileSet = new Set();
-
-          Array.from(document.querySelectorAll('.mgTrackChk:checked')).forEach((el) => {
-            const row = missingRows[Number(el.getAttribute('data-idx'))];
-            if (row?.file) fileSet.add(row.file);
-          });
-
-          Array.from(document.querySelectorAll('.mgFolderChk:checked')).forEach((el) => {
-            const token = el.getAttribute('data-folder');
-            Array.from(document.querySelectorAll(`.mgTrackChk[data-folder="${token}"]`)).forEach((trackEl) => {
-              const row = missingRows[Number(trackEl.getAttribute('data-idx'))];
-              if (row?.file) fileSet.add(row.file);
-            });
-          });
-
-          const files = Array.from(fileSet);
+          const files = collectSelectedFiles('mg', missingRows);
           if (!files.length) { if (mgStatus) mgStatus.textContent = 'No folders/tracks checked.'; return; }
 
           if (mgStatus) mgStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Tagging, please wait…';
@@ -176,32 +243,18 @@
             if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
             if (mgStatus) mgStatus.textContent = `Updated ${jj.updated}/${jj.requested} (skipped ${jj.skipped})`;
 
-            // Fast UI update: remove successful rows without full re-scan.
             const appliedSet = new Set(files);
             missingRows = missingRows.filter((row) => !appliedSet.has(row.file));
             missingRemaining = Math.max(0, missingRemaining - Number(jj.updated || 0));
+            setCardValue(/Missing Genre/i, missingRemaining);
 
-            // Update Missing Genre metric card value.
-            document.querySelectorAll('.card').forEach((card) => {
-              const k = card.querySelector('.k');
-              const v = card.querySelector('.v');
-              if (k && v && /Missing Genre/i.test(k.textContent || '')) {
-                v.textContent = Number(missingRemaining).toLocaleString();
-              }
-            });
-
-            // Re-render only the missing-genre section.
-            const details = applyBtn.closest('details');
+            const details = mgApplyBtn.closest('details');
             if (details) {
               const summaryEl = details.querySelector('summary');
               if (summaryEl) summaryEl.textContent = `Missing Genre samples (${missingRows.length})`;
-              const oldTable = details.querySelector('table');
-              if (oldTable) oldTable.remove();
-              const oldEmpty = details.querySelector('.muted');
-              if (oldEmpty) oldEmpty.remove();
-              details.insertAdjacentHTML('beforeend', renderMissingGenreTable(missingRows));
-
-              initMissingGenreSelectionHandlers();
+              Array.from(details.querySelectorAll('table,.muted,.row')).forEach((el, idx) => { if (idx >= 1) el.remove(); });
+              details.insertAdjacentHTML('beforeend', renderFolderSelection('mg', missingRows));
+              initFolderSelectionHandlers('mg');
             }
           } catch (e) {
             if (mgStatus) mgStatus.textContent = `Error: ${e?.message || e}`;

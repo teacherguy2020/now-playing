@@ -4983,6 +4983,7 @@ registerConfigRoutes(app, {
   log,
   mpdQueryRaw,
   getRatingForFile,
+  setRatingForFile,
   mpdStickerGetSong,
 });
 
