@@ -139,57 +139,27 @@ export function registerConfigRoutes(app, deps) {
         : Number.MAX_SAFE_INTEGER;
       const started = Date.now();
 
-      const mpdQuote = (s) => '"' + String(s || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
       const isAudio = (f) => /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|dsf|wv|ape)$/i.test(String(f || ''));
       const pick = (arr, row) => { if (arr.length < sampleLimit) arr.push(row); };
 
-      async function walkLsinfo() {
-        const files = [];
-        const dirs = [''];
-        while (dirs.length && files.length < scanLimit) {
-          const dir = dirs.shift();
-          const cmd = dir ? `lsinfo ${mpdQuote(dir)}` : 'lsinfo';
-          const raw = await mpdQueryRaw(cmd);
-          const lines = String(raw || '').split(/\r?\n/);
-
-          let cur = null;
-          const flush = () => {
-            if (cur && cur.file && isAudio(cur.file)) files.push(cur);
-            cur = null;
+      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const fmt = '%file%\t%artist%\t%title%\t%album%\t%genre%\t%MUSICBRAINZ_TRACKID%';
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], { maxBuffer: 64 * 1024 * 1024 });
+      const allFiles = String(stdout || '')
+        .split(/\r?\n/)
+        .map((ln) => {
+          const [file = '', artist = '', title = '', album = '', genre = '', mbid = ''] = ln.split('\t');
+          return {
+            file: String(file || '').trim(),
+            artist: String(artist || '').trim(),
+            title: String(title || '').trim(),
+            album: String(album || '').trim(),
+            genres: String(genre || '').trim() ? [String(genre || '').trim()] : [],
+            musicbrainz_trackid: String(mbid || '').trim(),
           };
-
-          for (const ln0 of lines) {
-            const ln = String(ln0 || '').trim();
-            if (!ln || ln === 'OK' || ln.startsWith('ACK')) continue;
-            const i = ln.indexOf(':');
-            if (i <= 0) continue;
-            const k = ln.slice(0, i).trim().toLowerCase();
-            const v = ln.slice(i + 1).trim();
-
-            if (k === 'directory') {
-              flush();
-              if (v) dirs.push(v);
-              continue;
-            }
-            if (k === 'playlist') {
-              flush();
-              continue;
-            }
-            if (k === 'file') {
-              flush();
-              cur = { file: v, genres: [] };
-              continue;
-            }
-            if (!cur) continue;
-            if (k === 'genre') cur.genres.push(v);
-            cur[k] = v;
-          }
-          flush();
-        }
-        return files.slice(0, scanLimit);
-      }
-
-      const allFiles = await walkLsinfo();
+        })
+        .filter((x) => x.file && isAudio(x.file))
+        .slice(0, Number.isFinite(scanLimit) ? scanLimit : undefined);
 
       const summary = {
         totalTracks: 0,
