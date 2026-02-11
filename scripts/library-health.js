@@ -14,8 +14,8 @@
 
   function renderMissingGenreTable(rows){
     if(!rows?.length) return '<div class="muted">No samples.</div>';
-    const body = rows.map((r, i)=>`<tr><td><input type="checkbox" class="mgChk" data-idx="${i}" checked></td><td>${esc(r.artist)}</td><td>${esc(r.title)}</td><td>${esc(r.album)}</td><td>${esc(r.file)}</td></tr>`).join('');
-    return `<table><thead><tr><th></th><th>Artist</th><th>Title</th><th>Album</th><th>File</th></tr></thead><tbody>${body}</tbody></table>`;
+    const body = rows.map((r, i)=>`<tr><td><input type="checkbox" class="mgChk" data-idx="${i}"></td><td>${esc(r.artist)}</td><td>${esc(r.title)}</td><td>${esc(r.album)}</td><td>${esc(r.file)}</td></tr>`).join('');
+    return `<table><thead><tr><th><input type="checkbox" id="mgAll"></th><th>Artist</th><th>Title</th><th>Album</th><th>File</th></tr></thead><tbody>${body}</tbody></table>`;
   }
 
   function defaultApiBase(){
@@ -84,6 +84,13 @@
           ${renderMissingGenreTable(missingRows)}
         </details>
       `;
+
+      const allBox = $('mgAll');
+      if (allBox) {
+        allBox.addEventListener('change', () => {
+          document.querySelectorAll('.mgChk').forEach((el) => { el.checked = allBox.checked; });
+        });
+      }
 
       const applyBtn = $('mgApply');
       if (applyBtn) {
