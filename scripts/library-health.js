@@ -17,6 +17,11 @@
     const i = f.lastIndexOf('/');
     return i > 0 ? f.slice(0, i) : '(root)';
   }
+  function leafName(p){
+    const s = String(p || '');
+    const i = s.lastIndexOf('/');
+    return i >= 0 ? s.slice(i + 1) : s;
+  }
 
   function renderFolderSelection(prefix, rows){
     if(!rows?.length) return '<div class="muted">No samples.</div>';
@@ -34,14 +39,16 @@
         const body = items.map(({ r, i }) => `
           <tr>
             <td><input type="checkbox" class="${prefix}TrackChk" data-idx="${i}" data-folder="${token}"></td>
-            <td>${esc(r.artist)}</td><td>${esc(r.title)}</td><td>${esc(r.album)}</td><td>${esc(r.file)}</td>
+            <td>${esc(r.artist)}</td><td>${esc(r.title)}</td><td>${esc(r.album)}</td><td>${esc(leafName(r.file))}</td>
           </tr>
         `).join('');
+        const albumName = folder === '(root)' ? '(root)' : leafName(folder);
         return `
           <details style="margin:6px 0;">
-            <summary><input type="checkbox" class="${prefix}FolderChk" data-folder="${token}"> ${esc(folder)} <span class="muted">(${items.length})</span></summary>
+            <summary><input type="checkbox" class="${prefix}FolderChk" data-folder="${token}"> ${esc(albumName)} <span class="muted">(${items.length})</span></summary>
+            <div class="muted" style="margin:4px 0 6px 22px;">${esc(folder)}</div>
             <table>
-              <thead><tr><th></th><th>Artist</th><th>Title</th><th>Album</th><th>File</th></tr></thead>
+              <thead><tr><th></th><th>Artist</th><th>Title</th><th>Album</th><th>Track File</th></tr></thead>
               <tbody>${body}</tbody>
             </table>
           </details>
@@ -152,7 +159,7 @@
             <button id="urApply">Apply to checked</button>
             <span class="muted" id="urStatus"></span>
           </div>
-          ${renderFolderSelection('ur', unratedRows)}
+          <div id="urListHost">${renderFolderSelection('ur', unratedRows)}</div>
         </details>
 
         <details>
@@ -177,7 +184,7 @@
             <button id="mgApply">Apply to checked</button>
             <span class="muted" id="mgStatus"></span>
           </div>
-          ${renderFolderSelection('mg', missingRows)}
+          <div id="mgListHost">${renderFolderSelection('mg', missingRows)}</div>
         </details>
       `;
 
@@ -203,7 +210,7 @@
             if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
             if (urStatus) urStatus.textContent = `Updated ${jj.updated}/${jj.requested} (skipped ${jj.skipped})`;
 
-            const appliedSet = new Set(files);
+            const appliedSet = new Set((jj.updatedFiles && jj.updatedFiles.length) ? jj.updatedFiles : files);
             unratedRows = unratedRows.filter((row) => !appliedSet.has(row.file));
             unratedRemaining = Math.max(0, unratedRemaining - Number(jj.updated || 0));
             setCardValue(/Unrated/i, unratedRemaining);
@@ -212,9 +219,11 @@
             if (details) {
               const summaryEl = details.querySelector('summary');
               if (summaryEl) summaryEl.textContent = `Unrated samples (${unratedRows.length})`;
-              Array.from(details.querySelectorAll('table,.muted,.row')).forEach((el, idx) => { if (idx >= 1) el.remove(); });
-              details.insertAdjacentHTML('beforeend', renderFolderSelection('ur', unratedRows));
-              initFolderSelectionHandlers('ur');
+              const listHost = details.querySelector('#urListHost');
+              if (listHost) {
+                listHost.innerHTML = renderFolderSelection('ur', unratedRows);
+                initFolderSelectionHandlers('ur');
+              }
             }
           } catch (e) {
             if (urStatus) urStatus.textContent = `Error: ${e?.message || e}`;
@@ -243,7 +252,7 @@
             if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
             if (mgStatus) mgStatus.textContent = `Updated ${jj.updated}/${jj.requested} (skipped ${jj.skipped})`;
 
-            const appliedSet = new Set(files);
+            const appliedSet = new Set((jj.updatedFiles && jj.updatedFiles.length) ? jj.updatedFiles : files);
             missingRows = missingRows.filter((row) => !appliedSet.has(row.file));
             missingRemaining = Math.max(0, missingRemaining - Number(jj.updated || 0));
             setCardValue(/Missing Genre/i, missingRemaining);
@@ -252,9 +261,11 @@
             if (details) {
               const summaryEl = details.querySelector('summary');
               if (summaryEl) summaryEl.textContent = `Missing Genre samples (${missingRows.length})`;
-              Array.from(details.querySelectorAll('table,.muted,.row')).forEach((el, idx) => { if (idx >= 1) el.remove(); });
-              details.insertAdjacentHTML('beforeend', renderFolderSelection('mg', missingRows));
-              initFolderSelectionHandlers('mg');
+              const listHost = details.querySelector('#mgListHost');
+              if (listHost) {
+                listHost.innerHTML = renderFolderSelection('mg', missingRows);
+                initFolderSelectionHandlers('mg');
+              }
             }
           } catch (e) {
             if (mgStatus) mgStatus.textContent = `Error: ${e?.message || e}`;

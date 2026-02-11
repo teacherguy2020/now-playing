@@ -267,21 +267,26 @@ export function registerConfigRoutes(app, deps) {
 
       let updated = 0;
       let skipped = 0;
+      const updatedFiles = [];
+      const skippedFiles = [];
       const errors = [];
 
       for (const file of files) {
         const local = mpdToLocalPath(file);
         if (!local) {
           skipped += 1;
+          skippedFiles.push(file);
           continue;
         }
         if (!/\.flac$/i.test(local)) {
           skipped += 1;
+          skippedFiles.push(file);
           continue;
         }
         try {
           await execFileP('metaflac', [`--set-tag=GENRE=${genre}`, local]);
           updated += 1;
+          updatedFiles.push(file);
         } catch (e) {
           errors.push({ file, error: e?.message || String(e) });
         }
@@ -293,7 +298,7 @@ export function registerConfigRoutes(app, deps) {
         await execFileP('mpc', ['-w', '-h', mpdHost, 'update']);
       } catch (_) {}
 
-      return res.json({ ok: true, genre, requested: files.length, updated, skipped, errors: errors.slice(0, 50) });
+      return res.json({ ok: true, genre, requested: files.length, updated, skipped, updatedFiles, skippedFiles: skippedFiles.slice(0, 200), errors: errors.slice(0, 50) });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
@@ -314,19 +319,22 @@ export function registerConfigRoutes(app, deps) {
 
       let updated = 0;
       let skipped = 0;
+      const updatedFiles = [];
+      const skippedFiles = [];
       const errors = [];
 
       for (const file of files) {
-        if (!file) { skipped += 1; continue; }
+        if (!file) { skipped += 1; skippedFiles.push(file); continue; }
         try {
           await setRatingForFile(file, rating);
           updated += 1;
+          updatedFiles.push(file);
         } catch (e) {
           errors.push({ file, error: e?.message || String(e) });
         }
       }
 
-      return res.json({ ok: true, rating, requested: files.length, updated, skipped, errors: errors.slice(0, 50) });
+      return res.json({ ok: true, rating, requested: files.length, updated, skipped, updatedFiles, skippedFiles: skippedFiles.slice(0, 200), errors: errors.slice(0, 50) });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
