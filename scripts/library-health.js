@@ -22,7 +22,7 @@
 
   async function run(){
     const key = $('key').value.trim();
-    const sample = Number($('sample').value || 100);
+    const sample = 100;
     const apiBase = ($('apiBase').value || defaultApiBase()).trim().replace(/\/$/, '');
     status.textContent = 'Scanning…';
     cards.innerHTML = '';
@@ -36,7 +36,7 @@
 
       const s = j.summary || {};
       const items = [
-        ['Total Tracks', s.totalTracks],
+        ['Total Audio Tracks Scanned', s.totalTracks],
         ['Unrated (0/missing)', s.unrated],
         ['Low Rated (=1)', s.lowRated1],
         ['Missing MBID', s.missingMbid],
