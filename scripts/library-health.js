@@ -12,10 +12,64 @@
     return `<table><thead><tr><th>Artist</th><th>Title</th><th>Album</th><th>File</th></tr></thead><tbody>${body}</tbody></table>`;
   }
 
+  function folderOf(file){
+    const f = String(file || '');
+    const i = f.lastIndexOf('/');
+    return i > 0 ? f.slice(0, i) : '(root)';
+  }
+
   function renderMissingGenreTable(rows){
     if(!rows?.length) return '<div class="muted">No samples.</div>';
-    const body = rows.map((r, i)=>`<tr><td><input type="checkbox" class="mgChk" data-idx="${i}"></td><td>${esc(r.artist)}</td><td>${esc(r.title)}</td><td>${esc(r.album)}</td><td>${esc(r.file)}</td></tr>`).join('');
-    return `<table><thead><tr><th><input type="checkbox" id="mgAll"></th><th>Artist</th><th>Title</th><th>Album</th><th>File</th></tr></thead><tbody>${body}</tbody></table>`;
+    const groups = new Map();
+    rows.forEach((r, i) => {
+      const folder = folderOf(r.file);
+      if (!groups.has(folder)) groups.set(folder, []);
+      groups.get(folder).push({ r, i });
+    });
+
+    const foldersHtml = Array.from(groups.entries()).sort((a,b)=>a[0].localeCompare(b[0], undefined, { sensitivity: 'base' })).map(([folder, items]) => {
+      const token = encodeURIComponent(folder);
+      const body = items.map(({ r, i }) => `
+        <tr>
+          <td><input type="checkbox" class="mgTrackChk" data-idx="${i}" data-folder="${token}"></td>
+          <td>${esc(r.artist)}</td><td>${esc(r.title)}</td><td>${esc(r.album)}</td><td>${esc(r.file)}</td>
+        </tr>
+      `).join('');
+      return `
+        <details class="mgFolder" style="margin:6px 0;">
+          <summary>
+            <input type="checkbox" class="mgFolderChk" data-folder="${token}"> ${esc(folder)} <span class="muted">(${items.length})</span>
+          </summary>
+          <table>
+            <thead><tr><th></th><th>Artist</th><th>Title</th><th>Album</th><th>File</th></tr></thead>
+            <tbody>${body}</tbody>
+          </table>
+        </details>
+      `;
+    }).join('');
+
+    return `
+      <div class="row" style="margin:6px 0 8px;">
+        <label><input type="checkbox" id="mgAll"> Check/uncheck all folders + tracks</label>
+      </div>
+      ${foldersHtml}
+    `;
+  }
+
+  function initMissingGenreSelectionHandlers(){
+    const allBox = $('mgAll');
+    if (allBox) {
+      allBox.addEventListener('change', () => {
+        document.querySelectorAll('.mgFolderChk,.mgTrackChk').forEach((el) => { el.checked = allBox.checked; });
+      });
+    }
+
+    document.querySelectorAll('.mgFolderChk').forEach((fcb) => {
+      fcb.addEventListener('change', () => {
+        const token = fcb.getAttribute('data-folder');
+        document.querySelectorAll(`.mgTrackChk[data-folder="${token}"]`).forEach((t) => { t.checked = fcb.checked; });
+      });
+    });
   }
 
   function defaultApiBase(){
@@ -84,12 +138,7 @@
         </details>
       `;
 
-      const allBox = $('mgAll');
-      if (allBox) {
-        allBox.addEventListener('change', () => {
-          document.querySelectorAll('.mgChk').forEach((el) => { el.checked = allBox.checked; });
-        });
-      }
+      initMissingGenreSelectionHandlers();
 
       const applyBtn = $('mgApply');
       if (applyBtn) {
@@ -98,9 +147,23 @@
           const mgStatus = $('mgStatus');
           if (!genre) { if (mgStatus) mgStatus.textContent = 'Pick a genre first.'; return; }
 
-          const checked = Array.from(document.querySelectorAll('.mgChk:checked'));
-          const files = checked.map((el) => missingRows[Number(el.getAttribute('data-idx'))]).filter(Boolean).map((r) => r.file);
-          if (!files.length) { if (mgStatus) mgStatus.textContent = 'No rows checked.'; return; }
+          const fileSet = new Set();
+
+          Array.from(document.querySelectorAll('.mgTrackChk:checked')).forEach((el) => {
+            const row = missingRows[Number(el.getAttribute('data-idx'))];
+            if (row?.file) fileSet.add(row.file);
+          });
+
+          Array.from(document.querySelectorAll('.mgFolderChk:checked')).forEach((el) => {
+            const token = el.getAttribute('data-folder');
+            Array.from(document.querySelectorAll(`.mgTrackChk[data-folder="${token}"]`)).forEach((trackEl) => {
+              const row = missingRows[Number(trackEl.getAttribute('data-idx'))];
+              if (row?.file) fileSet.add(row.file);
+            });
+          });
+
+          const files = Array.from(fileSet);
+          if (!files.length) { if (mgStatus) mgStatus.textContent = 'No folders/tracks checked.'; return; }
 
           if (mgStatus) mgStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Tagging, please wait…';
           try {
@@ -138,12 +201,7 @@
               if (oldEmpty) oldEmpty.remove();
               details.insertAdjacentHTML('beforeend', renderMissingGenreTable(missingRows));
 
-              const newAll = $('mgAll');
-              if (newAll) {
-                newAll.addEventListener('change', () => {
-                  document.querySelectorAll('.mgChk').forEach((el) => { el.checked = newAll.checked; });
-                });
-              }
+              initMissingGenreSelectionHandlers();
             }
           } catch (e) {
             if (mgStatus) mgStatus.textContent = `Error: ${e?.message || e}`;
