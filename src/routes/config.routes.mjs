@@ -134,7 +134,9 @@ export function registerConfigRoutes(app, deps) {
       }
 
       const sampleLimit = Math.max(10, Math.min(500, Number(req.query?.sampleLimit || 100)));
-      const scanLimit = Math.max(100, Math.min(20000, Number(req.query?.scanLimit || 5000)));
+      const scanLimit = req.query?.scanLimit != null
+        ? Math.max(100, Math.min(200000, Number(req.query.scanLimit || 100)))
+        : Number.MAX_SAFE_INTEGER;
       const started = Date.now();
 
       const mpdQuote = (s) => '"' + String(s || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
