@@ -4981,6 +4981,9 @@ registerQueueRoutes(app, {
 registerConfigRoutes(app, {
   requireTrackKey,
   log,
+  mpdQueryRaw,
+  getRatingForFile,
+  mpdStickerGetSong,
 });
 
 /* =========================

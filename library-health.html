@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Library Health</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#0c1526;color:#e7eefc}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    h1{margin:0 0 10px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    input{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
+    button{padding:8px 12px;border-radius:8px;border:1px solid #4b5;cursor:pointer;background:#17324f;color:#fff}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:12px 0 16px}
+    .card{background:#101c33;border:1px solid #2a3a58;border-radius:12px;padding:10px}
+    .k{font-size:12px;color:#9fb1d9}.v{font-size:24px;font-weight:700}
+    details{background:#101c33;border:1px solid #2a3a58;border-radius:12px;padding:8px 10px;margin:10px 0}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th,td{text-align:left;padding:6px;border-bottom:1px solid #22314d;vertical-align:top}
+    .muted{color:#9fb1d9;font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Library Health</h1>
+    <div class="row">
+      <label>Track key <input id="key" value="1029384756"></label>
+      <label>Sample limit <input id="sample" type="number" min="10" max="500" value="100"></label>
+      <button id="run">Scan</button>
+      <span class="muted" id="status"></span>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div id="sections"></div>
+  </div>
+  <script src="scripts/library-health.js?v=20260211-1"></script>
+</body>
+</html>

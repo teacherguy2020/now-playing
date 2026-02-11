@@ -81,8 +81,38 @@ function validateConfigShape(cfg) {
   return errors;
 }
 
+function parseMpdBlocks(raw) {
+  const lines = String(raw || '').split(/\r?\n/);
+  const out = [];
+  let cur = null;
+  for (const line0 of lines) {
+    const line = String(line0 || '').trim();
+    if (!line || line === 'OK' || line.startsWith('ACK')) continue;
+    const i = line.indexOf(':');
+    if (i <= 0) continue;
+    const k = line.slice(0, i).trim().toLowerCase();
+    const v = line.slice(i + 1).trim();
+    if (k === 'file') {
+      if (cur && cur.file) out.push(cur);
+      cur = { file: v, genres: [] };
+      continue;
+    }
+    if (!cur) cur = { genres: [] };
+    if (k === 'genre') cur.genres.push(v);
+    cur[k] = v;
+  }
+  if (cur && cur.file) out.push(cur);
+  return out;
+}
+
 export function registerConfigRoutes(app, deps) {
-  const { requireTrackKey, log } = deps;
+  const {
+    requireTrackKey,
+    log,
+    mpdQueryRaw,
+    getRatingForFile,
+    mpdStickerGetSong,
+  } = deps;
 
   const configPath = process.env.NOW_PLAYING_CONFIG_PATH || path.resolve(process.cwd(), 'config/now-playing.config.json');
 
@@ -91,6 +121,148 @@ export function registerConfigRoutes(app, deps) {
       const raw = await fs.readFile(configPath, 'utf8');
       const cfg = JSON.parse(raw);
       return res.json({ ok: true, configPath, config: withEnvOverrides(cfg), fullConfig: cfg });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/library-health', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      if (typeof mpdQueryRaw !== 'function' || typeof getRatingForFile !== 'function' || typeof mpdStickerGetSong !== 'function') {
+        return res.status(501).json({ ok: false, error: 'library-health dependencies not wired' });
+      }
+
+      const sampleLimit = Math.max(10, Math.min(500, Number(req.query?.sampleLimit || 100)));
+      const scanLimit = Math.max(100, Math.min(20000, Number(req.query?.scanLimit || 5000)));
+      const started = Date.now();
+
+      const mpdQuote = (s) => '"' + String(s || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+      const isAudio = (f) => /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|dsf|wv|ape)$/i.test(String(f || ''));
+      const pick = (arr, row) => { if (arr.length < sampleLimit) arr.push(row); };
+
+      async function walkLsinfo() {
+        const files = [];
+        const dirs = [''];
+        while (dirs.length && files.length < scanLimit) {
+          const dir = dirs.shift();
+          const cmd = dir ? `lsinfo ${mpdQuote(dir)}` : 'lsinfo';
+          const raw = await mpdQueryRaw(cmd);
+          const lines = String(raw || '').split(/\r?\n/);
+
+          let cur = null;
+          const flush = () => {
+            if (cur && cur.file && isAudio(cur.file)) files.push(cur);
+            cur = null;
+          };
+
+          for (const ln0 of lines) {
+            const ln = String(ln0 || '').trim();
+            if (!ln || ln === 'OK' || ln.startsWith('ACK')) continue;
+            const i = ln.indexOf(':');
+            if (i <= 0) continue;
+            const k = ln.slice(0, i).trim().toLowerCase();
+            const v = ln.slice(i + 1).trim();
+
+            if (k === 'directory') {
+              flush();
+              if (v) dirs.push(v);
+              continue;
+            }
+            if (k === 'playlist') {
+              flush();
+              continue;
+            }
+            if (k === 'file') {
+              flush();
+              cur = { file: v, genres: [] };
+              continue;
+            }
+            if (!cur) continue;
+            if (k === 'genre') cur.genres.push(v);
+            cur[k] = v;
+          }
+          flush();
+        }
+        return files.slice(0, scanLimit);
+      }
+
+      const allFiles = await walkLsinfo();
+
+      const summary = {
+        totalTracks: 0,
+        unrated: 0,
+        lowRated1: 0,
+        missingMbid: 0,
+        missingGenre: 0,
+        christmasGenre: 0,
+        podcastGenre: 0,
+      };
+
+      const samples = {
+        unrated: [],
+        lowRated1: [],
+        missingMbid: [],
+        missingGenre: [],
+      };
+
+      let scanned = 0;
+      for (const b0 of allFiles) {
+        const file = String(b0?.file || '').trim();
+        if (!file || !isAudio(file)) continue;
+        if (scanned >= scanLimit) break;
+        scanned += 1;
+
+        summary.totalTracks += 1;
+
+        const b = b0 || { file, genres: [] };
+
+        const artist = String(b.artist || b.albumartist || '').trim();
+        const title = String(b.title || '').trim();
+        const album = String(b.album || '').trim();
+
+        const genreVals = Array.isArray(b.genres) ? b.genres : [];
+        const genreBlob = genreVals.join(' | ').trim();
+
+        if (!genreBlob) {
+          summary.missingGenre += 1;
+          pick(samples.missingGenre, { file, artist, title, album });
+        }
+        if (/christmas/i.test(genreBlob)) summary.christmasGenre += 1;
+        if (/\bpodcast\b/i.test(genreBlob)) summary.podcastGenre += 1;
+
+        let rating = 0;
+        try { rating = Number(await getRatingForFile(file)) || 0; } catch (_) {}
+        if (rating <= 0) {
+          summary.unrated += 1;
+          pick(samples.unrated, { file, artist, title, album, rating });
+        }
+        if (rating === 1) {
+          summary.lowRated1 += 1;
+          pick(samples.lowRated1, { file, artist, title, album, rating });
+        }
+
+        const mbTag = String(b.musicbrainz_trackid || '').trim();
+        let mbSticker = '';
+        if (!mbTag) {
+          try { mbSticker = String(await mpdStickerGetSong(file, 'mb_trackid') || '').trim(); } catch (_) {}
+        }
+        if (!mbTag && !mbSticker) {
+          summary.missingMbid += 1;
+          pick(samples.missingMbid, { file, artist, title, album });
+        }
+      }
+
+      return res.json({
+        ok: true,
+        generatedAt: new Date().toISOString(),
+        elapsedMs: Date.now() - started,
+        summary,
+        samples,
+        sampleLimit,
+        scanLimit,
+        scannedTracks: summary.totalTracks,
+      });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
