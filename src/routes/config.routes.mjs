@@ -170,6 +170,7 @@ export function registerConfigRoutes(app, deps) {
         christmasGenre: 0,
         podcastGenre: 0,
       };
+      const genreSet = new Set();
 
       const samples = {
         unrated: [],
@@ -194,6 +195,10 @@ export function registerConfigRoutes(app, deps) {
         const album = String(b.album || '').trim();
 
         const genreVals = Array.isArray(b.genres) ? b.genres : [];
+        for (const g of genreVals) {
+          const gg = String(g || '').trim();
+          if (gg) genreSet.add(gg);
+        }
         const genreBlob = genreVals.join(' | ').trim();
 
         if (!genreBlob) {
@@ -234,6 +239,7 @@ export function registerConfigRoutes(app, deps) {
         elapsedMs: Date.now() - started,
         summary,
         samples,
+        genreOptions: Array.from(genreSet).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
         sampleLimit,
         scanLimit,
         scannedTracks: summary.totalTracks,

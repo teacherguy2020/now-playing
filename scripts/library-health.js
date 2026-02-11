@@ -71,11 +71,9 @@
           <summary>Missing Genre samples (${missingRows.length})</summary>
           <div class="row" style="margin:8px 0;">
             <label>Assign genre
-              <select id="mgGenre" style="padding:6px 8px;border-radius:8px;background:#0a1222;color:#eef;border:1px solid #334;">
+              <select id="mgGenre" style="padding:6px 8px;border-radius:8px;background:#0a1222;color:#eef;border:1px solid #334;max-width:280px;">
                 <option value="">Select…</option>
-                <option>Jazz</option><option>Rock</option><option>Pop</option><option>Classical</option>
-                <option>Blues</option><option>Soul</option><option>R&B</option><option>Country</option>
-                <option>Yacht Rock</option><option>Podcast</option><option>Christmas</option>
+                ${(j.genreOptions || []).map((g) => `<option>${esc(g)}</option>`).join('')}
               </select>
             </label>
             <button id="mgApply">Apply to checked</button>
