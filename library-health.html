@@ -20,10 +20,18 @@
     .muted{color:#9fb1d9;font-size:12px}
     .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.28);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
     @keyframes spin{to{transform:rotate(360deg)}}
+    .topTabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .topTabs a{text-decoration:none;color:#e7eefc;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);border-radius:10px;padding:6px 10px;font-size:12px;font-weight:650}
+    .topTabs a.active{border-color:rgba(125,211,252,.5);background:linear-gradient(135deg, rgba(125,211,252,.22), rgba(167,139,250,.18));}
   </style>
 </head>
 <body>
   <div class="wrap">
+    <nav class="topTabs" aria-label="Main pages">
+      <a href="config.html">Config</a>
+      <a href="podcasts.html">Podcasts</a>
+      <a href="library-health.html" class="active">Library Health</a>
+    </nav>
     <h1>Library Health</h1>
     <div class="row">
       <label>API base <input id="apiBase" value=""></label>
