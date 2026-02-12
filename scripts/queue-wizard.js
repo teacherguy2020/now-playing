@@ -191,4 +191,29 @@
   updatePlaylistUi();
   renderFiltersSummary();
   loadOptions();
+
+  const vibeBtn = $('vibeNow');
+  if (vibeBtn) vibeBtn.addEventListener('click', doVibeNow);
+
+  async function doVibeNow() {
+    const apiBase = $('apiBase').value.trim().replace(/\/$/, '');
+    const key = $('key').value.trim();
+    const targetQueue = Number($('maxTracks').value || 50);
+    status.innerHTML = '<span class="spin"></span>Vibe previewing…';
+    try {
+      const r = await fetch(`${apiBase}/config/queue-wizard/vibe-nowplaying?targetQueue=${targetQueue}`, {
+        headers: { 'x-track-key': key }
+      });
+      const j = await r.json();
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      const tracks = Array.isArray(j.tracks) ? j.tracks.slice() : [];
+      lastTracks = tracks.map(t => t.file);
+      count.textContent = `Vibe preview: ${tracks.length.toLocaleString()} tracks`;
+      const rows = tracks.slice(0, 500).map(t => `<tr><td>${esc(t.artist)}</td><td>${esc(t.title)}</td><td>${esc(t.album)}</td><td>${esc(t.genre)}</td></tr>`).join('');
+      results.innerHTML = rows ? `<table><thead><tr><th>Artist</th><th>Title</th><th>Album</th><th>Genre</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="muted">No matches.</div>';
+      status.textContent = 'Vibe preview ready.';
+    } catch (e) {
+      status.textContent = `Error: ${e?.message || e}`;
+    }
+  }
 })();

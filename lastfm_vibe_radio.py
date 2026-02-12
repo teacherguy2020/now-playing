@@ -221,9 +221,10 @@ def read_tags(mpd_file: str):
         artist = str(mf.tags.get("artist", [""])[0])
         title = str(mf.tags.get("title", [""])[0])
         album = str(mf.tags.get("album", [""])[0])
-        return (artist, title, album)
+        genre = str(mf.tags.get("genre", [""])[0])
+        return (artist, title, album, genre)
     except Exception:
-        return ("", "", "")
+        return ("", "", "", "")
 
 
 def main():
@@ -261,6 +262,8 @@ def main():
                     help="Time budget for build; 0 disables")
     ap.add_argument("--json-out", default="",
                     help="Optional JSON summary output path")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="Preview tracks without touching MPD")
 
     args = ap.parse_args()
 
@@ -448,13 +451,13 @@ def main():
             if not include_xmas:
                 if is_seasonal_text(cand):
                     continue
-                a_tag, t_tag, alb_tag = read_tags(cand)
-                if is_seasonal_text(t_tag, alb_tag, a_tag):
+                a_tag, t_tag, alb_tag, g_tag = read_tags(cand)
+                if is_seasonal_text(t_tag, alb_tag, a_tag, g_tag):
                     continue
 
             # same-album guard
             if cand not in album_cache:
-                _, _, alb = read_tags(cand)
+                _, _, alb, _ = read_tags(cand)
                 album_cache[cand] = album_key(alb)
             cand_album_k = album_cache.get(cand, "")
 

@@ -262,6 +262,79 @@ export function registerConfigRoutes(app, deps) {
     }
   });
 
+  const vibeHandler = async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const targetQueueRaw = req.query.targetQueue || req.body?.targetQueue;
+      const targetQueue = Math.max(10, Math.min(200, Number(targetQueueRaw) || 50));
+
+      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+
+      let currentRaw;
+      try {
+        const {stdout} = await execFileP('mpc', ['-h', mpdHost, 'current']);
+        currentRaw = String(stdout || '').trim();
+      } catch(e) {
+        return res.status(500).json({ok: false, error: 'mpc current failed: ' + (e?.message || String(e))});
+      }
+
+      if (!currentRaw) return res.status(404).json({ok: false, error: 'No current track'});
+
+      const m = currentRaw.match(/#\\d+\\s+([^—-]+?)\\s*—\\s*(.+?)\\s+\\(([^)]+)\\)/);
+      if (!m) return res.status(400).json({ok: false, error: 'Parse fail: ' + currentRaw.slice(0,100)});
+
+      const artist = m[1].trim();
+      const title = m[2].trim();
+
+      if (!artist || !title) return res.status(400).json({ok: false, error: 'Missing artist/title'});
+
+      const apiKey = process.env.LASTFM_API_KEY;
+      if (!apiKey) return res.status(400).json({ok: false, error: 'LASTFM_API_KEY env var missing'});
+
+      const indexPath = '/home/moode/moode_library_index.json';
+      try {
+        await fs.access(indexPath);
+      } catch {
+        return res.status(500).json({ok: false, error: 'Library index missing: ' + indexPath});
+      }
+
+      const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
+      const jsonTmp = `/tmp/vibe-np-${Date.now()}-${process.pid}.json`;
+
+      const pyArgs = [
+        '--seed-artist', artist,
+        '--seed-title', title,
+        '--target-queue', String(targetQueue),
+        '--json-out', jsonTmp,
+        '--mode', 'load',
+        '--host', mpdHost,
+        '--port', '6600',
+        '--dry-run'
+      ];
+
+      await execFileP('python3', [pyPath, ...pyArgs]);
+
+      let data;
+      try {
+        const jsonOut = await fs.readFile(jsonTmp, 'utf8');
+        data = JSON.parse(jsonOut);
+        await fs.unlink(jsonTmp);
+      } catch(e) {
+        return res.status(500).json({ok: false, error: 'JSON parse/out: ' + (e?.message || String(e))});
+      }
+
+      const tracks = data.tracks || [];
+
+      return res.json({ok: true, tracks, summary: data, targetQueue, seedArtist: artist, seedTitle: title});
+    } catch (e) {
+      return res.status(500).json({ok: false, error: e?.message || String(e)});
+    }
+  };
+
+  app.get('/config/queue-wizard/vibe-nowplaying', vibeHandler);
+  app.post('/config/queue-wizard/vibe-nowplaying', vibeHandler);
+
   app.get('/config/library-health', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
