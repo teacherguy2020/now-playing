@@ -209,7 +209,6 @@
         ['Total Audio Tracks Scanned', s.totalTracks],
         ['Total Albums', s.totalAlbums],
         ['Unrated (0/missing)', s.unrated],
-        ['Low Rated (=1)', s.lowRated1],
         ['Missing MBID', s.missingMbid],
         ['Missing Genre', s.missingGenre],
       ];
@@ -253,6 +252,26 @@
             <img id="aaPreview" alt="Album art preview" style="width:180px;height:180px;object-fit:cover;border:1px solid #334;border-radius:10px;background:#0a1222;" />
             <div class="muted" id="aaMeta">Select an album and click “Load art”.</div>
           </div>
+        </details>
+
+        <details id="agModule">
+          <summary>Update album genre</summary>
+          <div class="row" style="margin:8px 0;align-items:flex-end;">
+            <label>Album
+              <select id="agAlbum" style="padding:6px 8px;border-radius:8px;background:#0a1222;color:#eef;border:1px solid #334;min-width:360px;max-width:520px;">
+                <option value="">Select album…</option>
+              </select>
+            </label>
+            <label>New genre
+              <select id="agGenre" style="padding:6px 8px;border-radius:8px;background:#0a1222;color:#eef;border:1px solid #334;max-width:280px;">
+                <option value="">Select…</option>
+                ${(j.genreOptions || []).map((g) => `<option>${esc(g)}</option>`).join('')}
+              </select>
+            </label>
+            <button id="agApply">Apply genre</button>
+            <span class="muted" id="agStatus"></span>
+          </div>
+          <div class="muted" id="agCurrent">Pick an album to load current genre tags.</div>
         </details>
 
         <details id="gfModule">
@@ -441,13 +460,22 @@
       const aaPreview = $('aaPreview');
       const aaMeta = $('aaMeta');
 
+      const agAlbum = $('agAlbum');
+      const agApply = $('agApply');
+      const agGenre = $('agGenre');
+      const agCurrent = $('agCurrent');
+      const agStatus = $('agStatus');
+
       async function loadAlbumOptions(){
         try {
           const r = await fetch(`${apiBase}/config/library-health/albums`, { headers: { 'x-track-key': key } });
           const jj = await r.json();
           if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
           const rows = Array.isArray(jj.albums) ? jj.albums : [];
-          if (aaAlbum) aaAlbum.innerHTML = `<option value="">Select album…</option>${rows.map((a)=>`<option value="${esc(a.id)}">${esc(a.label)} (${Number(a.trackCount||0).toLocaleString()})</option>`).join('')}`;
+          const opts = `<option value="">Select album…</option>${rows.map((a)=>`<option value="${esc(a.id)}">${esc(a.label)} (${Number(a.trackCount||0).toLocaleString()})</option>`).join('')}`;
+          if (aaAlbum) aaAlbum.innerHTML = opts;
+          const agAlbum = $('agAlbum');
+          if (agAlbum) agAlbum.innerHTML = opts;
         } catch (e) {
           if (aaStatus) aaStatus.textContent = `Albums error: ${e?.message || e}`;
         }
@@ -527,6 +555,45 @@
             if (aaStatus) aaStatus.textContent = 'Album art updated.';
           } catch (e) {
             if (aaStatus) aaStatus.textContent = `Error: ${e?.message || e}`;
+          }
+        });
+      }
+
+      async function loadAlbumGenres(){
+        const folder = String(agAlbum?.value || '').trim();
+        if (!folder) { if (agStatus) agStatus.textContent = 'Pick an album first.'; return; }
+        if (agStatus) agStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Loading genres…';
+        try {
+          const r = await fetch(`${apiBase}/config/library-health/album-genre?folder=${encodeURIComponent(folder)}`, { headers: { 'x-track-key': key } });
+          const jj = await r.json();
+          if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
+          if (agCurrent) agCurrent.textContent = `Current genre tags: ${(jj.genres || []).length ? jj.genres.join(', ') : '(none)'}`;
+          if (agStatus) agStatus.textContent = `Loaded ${Number(jj.trackCount || 0).toLocaleString()} tracks.`;
+        } catch (e) {
+          if (agStatus) agStatus.textContent = `Error: ${e?.message || e}`;
+        }
+      }
+      if (agAlbum) agAlbum.addEventListener('change', loadAlbumGenres);
+
+      if (agApply) {
+        agApply.addEventListener('click', async () => {
+          const folder = String(agAlbum?.value || '').trim();
+          const genre = String(agGenre?.value || '').trim();
+          if (!folder) { if (agStatus) agStatus.textContent = 'Pick an album first.'; return; }
+          if (!genre) { if (agStatus) agStatus.textContent = 'Pick a genre first.'; return; }
+          if (agStatus) agStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Updating album genre…';
+          try {
+            const r = await fetch(`${apiBase}/config/library-health/album-genre`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+              body: JSON.stringify({ folder, genre }),
+            });
+            const jj = await r.json();
+            if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
+            if (agStatus) agStatus.textContent = `Updated ${jj.updated}/${jj.requested} (skipped ${jj.skipped})`;
+            if (agCurrent) agCurrent.textContent = `Current genre tags: ${genre}`;
+          } catch (e) {
+            if (agStatus) agStatus.textContent = `Error: ${e?.message || e}`;
           }
         });
       }

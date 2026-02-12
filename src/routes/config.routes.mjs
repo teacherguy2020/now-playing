@@ -127,6 +127,141 @@ export function registerConfigRoutes(app, deps) {
     }
   });
 
+  app.get('/config/queue-wizard/options', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const fmt = '%artist%\t%albumartist%\t%genre%';
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], { maxBuffer: 64 * 1024 * 1024 });
+      const artists = new Set();
+      const genres = new Set();
+      for (const ln of String(stdout || '').split(/\r?\n/)) {
+        if (!ln) continue;
+        const [artist = '', albumArtist = '', genreRaw = ''] = ln.split('\t');
+        const a = String(artist || albumArtist || '').trim();
+        if (a) artists.add(a);
+        for (const g of String(genreRaw || '').split(/[;,|/]/).map((x) => String(x || '').trim()).filter(Boolean)) genres.add(g);
+      }
+      return res.json({
+        ok: true,
+        moodeHost: String(process.env.MOODE_SSH_HOST || process.env.MPD_HOST || '10.0.0.254'),
+        genres: Array.from(genres).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+        artists: Array.from(artists).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/queue-wizard/preview', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const wantedGenres = Array.isArray(req.body?.genres) ? req.body.genres.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean) : [];
+      const wantedArtists = Array.isArray(req.body?.artists) ? req.body.artists.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean) : [];
+      const excludeGenres = Array.isArray(req.body?.excludeGenres) ? req.body.excludeGenres.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean) : [];
+      const minRating = Math.max(0, Math.min(5, Number(req.body?.minRating || 0)));
+      const maxTracks = Math.max(1, Math.min(5000, Number(req.body?.maxTracks || 250)));
+
+      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const fmt = '%file%\t%artist%\t%title%\t%album%\t%albumartist%\t%genre%';
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], { maxBuffer: 64 * 1024 * 1024 });
+      const tracks = [];
+      for (const ln of String(stdout || '').split(/\r?\n/)) {
+        if (!ln) continue;
+        const [file = '', artist = '', title = '', album = '', albumartist = '', genreRaw = ''] = ln.split('\t');
+        const f = String(file || '').trim();
+        if (!f) continue;
+        const genreTokens = String(genreRaw || '').split(/[;,|/]/).map((x) => String(x || '').trim().toLowerCase()).filter(Boolean);
+        const a = String(artist || '').trim().toLowerCase();
+        const aa = String(albumartist || '').trim().toLowerCase();
+
+        if (wantedGenres.length && !wantedGenres.some((g) => genreTokens.includes(g))) continue;
+        if (wantedArtists.length && !(wantedArtists.includes(a) || wantedArtists.includes(aa))) continue;
+        if (excludeGenres.length && excludeGenres.some((g) => genreTokens.includes(g))) continue;
+
+        if (minRating > 0 && typeof getRatingForFile === 'function') {
+          let rating = 0;
+          try { rating = Number(await getRatingForFile(f)) || 0; } catch (_) {}
+          if (rating < minRating) continue;
+        }
+
+        tracks.push({ file: f, artist: String(artist || ''), title: String(title || ''), album: String(album || ''), albumartist: String(albumartist || ''), genre: String(genreRaw || '') });
+        if (tracks.length >= maxTracks) break;
+      }
+      return res.json({ ok: true, count: tracks.length, tracks });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/queue-wizard/apply', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const mode = String(req.body?.mode || 'replace').trim().toLowerCase();
+      if (!['replace', 'append'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode must be replace|append' });
+      const shuffle = Boolean(req.body?.shuffle);
+      const generateCollage = Boolean(req.body?.generateCollage);
+      const tracks = Array.isArray(req.body?.tracks) ? req.body.tracks.map((x) => String(x || '').trim()).filter(Boolean) : [];
+      const playlistName = String(req.body?.playlistName || '').trim();
+      if (!tracks.length) return res.status(400).json({ ok: false, error: 'tracks[] is required' });
+
+      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      let randomTurnedOff = false;
+      if (mode === 'replace') {
+        await execFileP('mpc', ['-h', mpdHost, 'clear']);
+        if (shuffle) {
+          try { await execFileP('mpc', ['-h', mpdHost, 'random', 'off']); randomTurnedOff = true; } catch (_) {}
+        }
+      }
+      let added = 0;
+      for (const file of tracks) {
+        try {
+          await execFileP('mpc', ['-h', mpdHost, 'add', file]);
+          added += 1;
+        } catch (_) {}
+      }
+      let playStarted = false;
+      if (mode === 'replace' && added > 0) {
+        try { await execFileP('mpc', ['-h', mpdHost, 'play']); playStarted = true; } catch (_) {}
+      }
+
+      let playlistSaved = false;
+      let playlistError = '';
+      if (playlistName) {
+        try {
+          await execFileP('mpc', ['-h', mpdHost, 'rm', playlistName]);
+        } catch (_) {}
+        try {
+          await execFileP('mpc', ['-h', mpdHost, 'save', playlistName]);
+          playlistSaved = true;
+        } catch (e) { playlistError = e?.message || String(e); }
+      }
+
+      let collageGenerated = false;
+      let collageError = '';
+      if (generateCollage && playlistName && playlistSaved) {
+        const localScript = String(process.env.MOODE_PLAYLIST_COVER_SCRIPT || path.resolve(process.cwd(), 'scripts/moode-playlist-cover.sh'));
+        try {
+          await execFileP(localScript, [playlistName], {
+            timeout: 120000,
+            env: {
+              ...process.env,
+              MOODE_SSH_USER: String(process.env.MOODE_SSH_USER || 'moode'),
+              MOODE_SSH_HOST: String(process.env.MOODE_SSH_HOST || process.env.MPD_HOST || '10.0.0.254'),
+            },
+          });
+          collageGenerated = true;
+        } catch (e) {
+          collageError = e?.message || String(e);
+        }
+      }
+
+      return res.json({ ok: true, mode, shuffle, generateCollage, requested: tracks.length, added, playStarted, randomTurnedOff, playlistSaved, playlistError, collageGenerated, collageError });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.get('/config/library-health', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
@@ -608,6 +743,97 @@ export function registerConfigRoutes(app, deps) {
       try { await execFileP('mpc', ['-w', '-h', mpdHost, 'update']); } catch (_) {}
 
       return res.json({ ok: true, folder, mode, totalFiles: files.length, updatedTracks, skippedTracks, skipped: skipped.slice(0, 200), coverUpdated, coverCreated });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/library-health/album-genre', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const folder = String(req.query?.folder || '').trim();
+      if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
+
+      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      let rows = [];
+      try {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%genre%', 'find', 'base', folder], { maxBuffer: 64 * 1024 * 1024 });
+        rows = String(stdout || '').split(/\r?\n/).map((ln) => {
+          const [file = '', genre = ''] = ln.split('\t');
+          return { file: String(file || '').trim(), genre: String(genre || '').trim() };
+        }).filter((r) => r.file);
+      } catch (_) {}
+      if (!rows.length) {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%genre%', 'listall'], { maxBuffer: 64 * 1024 * 1024 });
+        rows = String(stdout || '').split(/\r?\n/).map((ln) => {
+          const [file = '', genre = ''] = ln.split('\t');
+          return { file: String(file || '').trim(), genre: String(genre || '').trim() };
+        }).filter((r) => r.file && r.file.startsWith(folder + '/'));
+      }
+
+      const genres = new Set();
+      for (const r of rows) {
+        for (const g of String(r.genre || '').split(/[;,|/]/).map((x) => String(x || '').trim()).filter(Boolean)) genres.add(g);
+      }
+
+      return res.json({ ok: true, folder, trackCount: rows.length, genres: Array.from(genres).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })) });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/library-health/album-genre', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const folder = String(req.body?.folder || '').trim();
+      const genre = String(req.body?.genre || '').trim();
+      if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
+      if (!genre) return res.status(400).json({ ok: false, error: 'genre is required' });
+
+      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      let files = [];
+      try {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'find', 'base', folder], { maxBuffer: 64 * 1024 * 1024 });
+        files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
+      } catch (_) {}
+      if (!files.length) {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'listall'], { maxBuffer: 64 * 1024 * 1024 });
+        files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter((f) => f && f.startsWith(folder + '/'));
+      }
+
+      const resolveLocalPath = async (f) => {
+        const file = String(f || '').trim().replace(/^\/+/, '');
+        if (!file) return '';
+        const candidates = [
+          file.startsWith('/mnt/') ? file : '',
+          file.startsWith('mnt/') ? '/' + file : '',
+          file.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + file.slice('USB/SamsungMoode/'.length) : '',
+          file.startsWith('OSDISK/') ? '/mnt/OSDISK/' + file.slice('OSDISK/'.length) : '',
+          '/mnt/SamsungMoode/' + file,
+          '/mnt/OSDISK/' + file,
+        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+        for (const c of candidates) { try { await fs.access(c); return c; } catch (_) {} }
+        return '';
+      };
+
+      let updated = 0;
+      let skipped = 0;
+      const updatedFiles = [];
+      const skippedFiles = [];
+      for (const f of files) {
+        const local = await resolveLocalPath(f);
+        if (!local || !/\.flac$/i.test(local)) { skipped += 1; skippedFiles.push(f); continue; }
+        try {
+          await execFileP('metaflac', ['--remove-tag=GENRE', `--set-tag=GENRE=${genre}`, local]);
+          updated += 1;
+          updatedFiles.push(f);
+        } catch (_) {
+          skipped += 1;
+          skippedFiles.push(f);
+        }
+      }
+      try { await execFileP('mpc', ['-w', '-h', mpdHost, 'update']); } catch (_) {}
+      return res.json({ ok: true, folder, genre, requested: files.length, updated, skipped, updatedFiles, skippedFiles: skippedFiles.slice(0, 200) });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

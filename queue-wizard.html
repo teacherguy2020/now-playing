@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Queue Wizard</title>
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260211-3" />
+  <style>
+    body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    .card{background:#101c33;border:1px solid #2a3a58;border-radius:12px;padding:12px;margin:10px 0}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .pickGrid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:10px}
+    .pickGrid label{display:block}
+    .pickGrid select{width:100%;min-width:0}
+    .actionBar{display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:10px;border:1px solid #2a3a58;border-radius:10px;background:#0d182d;margin-top:10px}
+    .choiceLine{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+    .choiceGroup{display:flex;gap:10px;align-items:center}
+    .btnPrimary{background:#1f6feb;border-color:#356fb6;font-weight:600}
+    .hidden{display:none !important}
+    select,input,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
+    button{cursor:pointer;background:#17324f}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th,td{padding:6px;border-bottom:1px solid #22314d;text-align:left}
+    .muted{color:#9fb1d9;font-size:12px}
+    .warn{color:#ffd28a}
+    .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.28);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+    #minRating{color:#fbbf24;font-weight:700}
+    @media (max-width:900px){.pickGrid{grid-template-columns:1fr}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <div class="heroRail">
+    <div class="heroWrap">
+      <nav class="topTabs" aria-label="Main pages">
+        <a href="config.html">Config</a>
+        <a href="podcasts.html">Podcasts</a>
+        <a href="library-health.html">Library Health</a>
+        <a href="queue-wizard.html" class="active">Queue Wizard</a>
+      </nav>
+    </div>
+  </div>
+  <div class="wrap">
+    <h1>Queue Wizard</h1>
+    <div class="card">
+      <div class="row">
+        <label>API base<br><input id="apiBase" style="min-width:220px"></label>
+        <label>Track key<br><input id="key" value="1029384756"></label>
+        <label>Max tracks<br><input id="maxTracks" type="number" min="1" max="5000" value="250" style="width:100px"></label>
+        <label>At least rating<br>
+          <select id="minRating" style="width:140px">
+            <option value="0">Any</option>
+            <option value="1">★☆☆☆☆</option>
+            <option value="2" selected>★★☆☆☆</option>
+            <option value="3">★★★☆☆</option>
+            <option value="4">★★★★☆</option>
+            <option value="5">★★★★★</option>
+          </select>
+        </label>
+      </div>
+      <div class="pickGrid" style="margin-top:10px">
+        <label>Genres<br><select id="genres" multiple size="8"></select></label>
+        <label>Artists<br><select id="artists" multiple size="8"></select></label>
+        <label>Exclude Genres<br><select id="excludeGenres" multiple size="8"></select></label>
+      </div>
+
+      <div class="actionBar">
+        <div class="choiceLine">
+          <label><input type="radio" name="mode" value="replace" checked> Replace queue</label>
+          <label><input type="radio" name="mode" value="append"> Append</label>
+          <label><input id="shuffle" type="checkbox"> Shuffle</label>
+        </div>
+
+        <div class="choiceLine">
+          <div class="choiceGroup">
+            <label><input type="checkbox" id="savePlaylist"> Save as playlist</label>
+          </div>
+
+          <div id="playlistOptions" class="hidden" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <div id="playlistNameWrap">
+              <label>Playlist name<br><input id="playlistName" placeholder="e.g., Chill Evening Mix"></label>
+            </div>
+            <div class="choiceGroup">
+              <label><input id="generateCollage" type="checkbox"> Generate playlist collage cover</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="choiceLine">
+          <button id="apply" class="btnPrimary">Make it so!</button>
+        </div>
+      </div>
+      <div class="muted" id="status" style="margin-top:6px"></div>
+      <div class="muted warn" id="playlistHint" style="margin-top:6px"></div>
+    </div>
+    <div class="card" id="coverCard" style="display:none;">
+      <div class="muted" id="coverStatus">Playlist cover preview</div>
+      <img id="coverPreview" alt="Playlist cover preview" style="width:220px;height:220px;object-fit:cover;border:1px solid #334;border-radius:10px;background:#0a1222;" />
+    </div>
+    <div class="card">
+      <div class="muted" id="count">No preview yet.</div>
+      <div class="muted" id="filtersSummary" style="margin-top:4px"></div>
+      <div id="results"></div>
+    </div>
+  </div>
+  <script src="scripts/queue-wizard.js?v=20260211-13"></script>
+</body>
+</html>
