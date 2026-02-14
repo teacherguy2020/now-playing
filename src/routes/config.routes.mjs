@@ -1,9 +1,14 @@
+// src/routes/config.routes.mjs
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const execFileP = promisify(execFile);
+
+// ----------------------------
+// Config helpers
+// ----------------------------
 
 function pickPublicConfig(cfg) {
   const c = cfg || {};
@@ -59,9 +64,18 @@ function withEnvOverrides(cfg) {
   if (process.env.TRACK_NOTIFY_ENABLED != null) {
     out.notifications.trackNotify.enabled = /^(1|true|yes|on)$/i.test(String(process.env.TRACK_NOTIFY_ENABLED));
   }
-  if (process.env.TRACK_NOTIFY_POLL_MS) out.notifications.trackNotify.pollMs = Number(process.env.TRACK_NOTIFY_POLL_MS) || out.notifications.trackNotify.pollMs;
-  if (process.env.TRACK_NOTIFY_DEDUPE_MS) out.notifications.trackNotify.dedupeMs = Number(process.env.TRACK_NOTIFY_DEDUPE_MS) || out.notifications.trackNotify.dedupeMs;
-  if (process.env.TRACK_NOTIFY_ALEXA_MAX_AGE_MS) out.notifications.trackNotify.alexaMaxAgeMs = Number(process.env.TRACK_NOTIFY_ALEXA_MAX_AGE_MS) || out.notifications.trackNotify.alexaMaxAgeMs;
+  if (process.env.TRACK_NOTIFY_POLL_MS) {
+    out.notifications.trackNotify.pollMs =
+      Number(process.env.TRACK_NOTIFY_POLL_MS) || out.notifications.trackNotify.pollMs;
+  }
+  if (process.env.TRACK_NOTIFY_DEDUPE_MS) {
+    out.notifications.trackNotify.dedupeMs =
+      Number(process.env.TRACK_NOTIFY_DEDUPE_MS) || out.notifications.trackNotify.dedupeMs;
+  }
+  if (process.env.TRACK_NOTIFY_ALEXA_MAX_AGE_MS) {
+    out.notifications.trackNotify.alexaMaxAgeMs =
+      Number(process.env.TRACK_NOTIFY_ALEXA_MAX_AGE_MS) || out.notifications.trackNotify.alexaMaxAgeMs;
+  }
 
   if (process.env.PUSHOVER_TOKEN) out.notifications.pushover.token = String(process.env.PUSHOVER_TOKEN);
   if (process.env.PUSHOVER_USER_KEY) out.notifications.pushover.userKey = String(process.env.PUSHOVER_USER_KEY);
@@ -80,6 +94,10 @@ function validateConfigShape(cfg) {
   }
   return errors;
 }
+
+// ----------------------------
+// MPD parsing helpers (kept for compatibility)
+// ----------------------------
 
 function parseMpdBlocks(raw) {
   const lines = String(raw || '').split(/\r?\n/);
@@ -105,18 +123,63 @@ function parseMpdBlocks(raw) {
   return out;
 }
 
+// ----------------------------
+// SSH helpers (for collage preview temp artifacts)
+// ----------------------------
+
+function sshArgsFor(user, host, extra = []) {
+  return [
+    '-o', 'BatchMode=yes',
+    '-o', 'ConnectTimeout=6',
+    ...extra,
+    `${user}@${host}`,
+  ];
+}
+
+function shQuoteArg(s) {
+  const v = String(s ?? '');
+  return `'${v.replace(/'/g, `'\"'\"'`)}'`;
+}
+
+async function sshBashLc({ user, host, script, timeoutMs = 20000, maxBuffer = 10 * 1024 * 1024 }) {
+  return execFileP('ssh', [...sshArgsFor(user, host), 'bash', '-lc', script], {
+    timeout: timeoutMs,
+    maxBuffer,
+  });
+}
+
+async function sshCatBase64({ user, host, remotePath, timeoutMs = 20000, maxBuffer = 50 * 1024 * 1024 }) {
+  const pQ = shQuoteArg(remotePath);
+
+  // BusyBox base64: avoid "--", strip newlines.
+  const cmd =
+    'set -euo pipefail; ' +
+    `p=${pQ}; ` +
+    'if [ ! -s "$p" ]; then echo "ERROR: preview file missing or empty: $p" >&2; exit 2; fi; ' +
+    'if command -v base64 >/dev/null 2>&1; then base64 "$p" | tr -d "\\n"; exit 0; fi; ' +
+    'if command -v openssl >/dev/null 2>&1; then openssl base64 -A -in "$p"; exit 0; fi; ' +
+    'echo "ERROR: neither base64 nor openssl available on remote host" >&2; exit 127;';
+
+  const { stdout } = await execFileP(
+    'ssh',
+    [...sshArgsFor(user, host), 'bash', '-lc', shQuoteArg(cmd)],
+    { timeout: timeoutMs, maxBuffer }
+  );
+
+  return String(stdout || '').trim();
+}
+
+// ----------------------------
+// Routes
+// ----------------------------
+
 export function registerConfigRoutes(app, deps) {
-  const {
-    requireTrackKey,
-    log,
-    mpdQueryRaw,
-    getRatingForFile,
-    setRatingForFile,
-    mpdStickerGetSong,
-  } = deps;
+  const { requireTrackKey, log, mpdQueryRaw, getRatingForFile, setRatingForFile, mpdStickerGetSong } = deps;
 
-  const configPath = process.env.NOW_PLAYING_CONFIG_PATH || path.resolve(process.cwd(), 'config/now-playing.config.json');
+  const configPath =
+    process.env.NOW_PLAYING_CONFIG_PATH || path.resolve(process.cwd(), 'config/now-playing.config.json');
 
+  // --- runtime config ---
   app.get('/config/runtime', async (req, res) => {
     try {
       const raw = await fs.readFile(configPath, 'utf8');
@@ -127,21 +190,34 @@ export function registerConfigRoutes(app, deps) {
     }
   });
 
+  // --- queue wizard options (artists/genres) ---
   app.get('/config/queue-wizard/options', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
       const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
       const fmt = '%artist%\t%albumartist%\t%genre%';
-      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], { maxBuffer: 64 * 1024 * 1024 });
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
+        maxBuffer: 64 * 1024 * 1024,
+      });
+
       const artists = new Set();
       const genres = new Set();
+
       for (const ln of String(stdout || '').split(/\r?\n/)) {
         if (!ln) continue;
         const [artist = '', albumArtist = '', genreRaw = ''] = ln.split('\t');
+
         const a = String(artist || albumArtist || '').trim();
         if (a) artists.add(a);
-        for (const g of String(genreRaw || '').split(/[;,|/]/).map((x) => String(x || '').trim()).filter(Boolean)) genres.add(g);
+
+        for (const g of String(genreRaw || '')
+          .split(/[;,|/]/)
+          .map((x) => String(x || '').trim())
+          .filter(Boolean)) {
+          genres.add(g);
+        }
       }
+
       return res.json({
         ok: true,
         moodeHost: String(process.env.MOODE_SSH_HOST || process.env.MPD_HOST || '10.0.0.254'),
@@ -153,25 +229,45 @@ export function registerConfigRoutes(app, deps) {
     }
   });
 
+  // --- queue wizard preview track list (filter + sample tracks) ---
   app.post('/config/queue-wizard/preview', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const wantedGenres = Array.isArray(req.body?.genres) ? req.body.genres.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean) : [];
-      const wantedArtists = Array.isArray(req.body?.artists) ? req.body.artists.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean) : [];
-      const excludeGenres = Array.isArray(req.body?.excludeGenres) ? req.body.excludeGenres.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean) : [];
+
+      const wantedGenres = Array.isArray(req.body?.genres)
+        ? req.body.genres.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean)
+        : [];
+      const wantedArtists = Array.isArray(req.body?.artists)
+        ? req.body.artists.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean)
+        : [];
+      const excludeGenres = Array.isArray(req.body?.excludeGenres)
+        ? req.body.excludeGenres.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean)
+        : [];
+
       const minRating = Math.max(0, Math.min(5, Number(req.body?.minRating || 0)));
       const maxTracks = Math.max(1, Math.min(5000, Number(req.body?.maxTracks || 250)));
 
       const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
       const fmt = '%file%\t%artist%\t%title%\t%album%\t%albumartist%\t%genre%';
-      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], { maxBuffer: 64 * 1024 * 1024 });
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
+        maxBuffer: 64 * 1024 * 1024,
+      });
+
       const tracks = [];
+
       for (const ln of String(stdout || '').split(/\r?\n/)) {
         if (!ln) continue;
+
         const [file = '', artist = '', title = '', album = '', albumartist = '', genreRaw = ''] = ln.split('\t');
+
         const f = String(file || '').trim();
         if (!f) continue;
-        const genreTokens = String(genreRaw || '').split(/[;,|/]/).map((x) => String(x || '').trim().toLowerCase()).filter(Boolean);
+
+        const genreTokens = String(genreRaw || '')
+          .split(/[;,|/]/)
+          .map((x) => String(x || '').trim().toLowerCase())
+          .filter(Boolean);
+
         const a = String(artist || '').trim().toLowerCase();
         const aa = String(albumartist || '').trim().toLowerCase();
 
@@ -181,48 +277,322 @@ export function registerConfigRoutes(app, deps) {
 
         if (minRating > 0 && typeof getRatingForFile === 'function') {
           let rating = 0;
-          try { rating = Number(await getRatingForFile(f)) || 0; } catch (_) {}
+          try {
+            rating = Number(await getRatingForFile(f)) || 0;
+          } catch (_) {}
           if (rating < minRating) continue;
         }
 
-        tracks.push({ file: f, artist: String(artist || ''), title: String(title || ''), album: String(album || ''), albumartist: String(albumartist || ''), genre: String(genreRaw || '') });
+        tracks.push({
+          file: f,
+          artist: String(artist || ''),
+          title: String(title || ''),
+          album: String(album || ''),
+          albumartist: String(albumartist || ''),
+          genre: String(genreRaw || ''),
+        });
+
         if (tracks.length >= maxTracks) break;
       }
+
       return res.json({ ok: true, count: tracks.length, tracks });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });
 
+  // --- queue wizard preview track list ---
+app.post('/config/queue-wizard/collage-preview', async (req, res) => {
+    let remoteTracks = '';
+    let remoteOut = '';
+    let remoteRunner = '';
+    let localTracks = '';
+    let localRunner = '';
+
+    const moodeUser = String(process.env.MOODE_SSH_USER || 'moode');
+    const moodeHost = String(process.env.MOODE_SSH_HOST || process.env.MPD_HOST || '10.0.0.254');
+    const remoteScript = String(
+        process.env.MOODE_PLAYLIST_COVER_REMOTE_SCRIPT || '/home/moode/moode-playlist-cover.sh'
+    );
+
+    try {
+        if (!requireTrackKey(req, res)) return;
+
+        const playlistName = String(req.body?.playlistName || '').trim() || null;
+
+        const tracksIn = Array.isArray(req.body?.tracks) ? req.body.tracks : [];
+        const tracks = tracksIn
+            .map((x) => String(x ?? ''))
+            .map((s) => s.replace(/\r/g, '').trim())
+            .map((s) => s.replace(/^"(.*)"$/, '$1'))
+            .filter(Boolean);
+
+        const forceSingle = Boolean(req.body?.forceSingle);
+
+        if (!tracks.length) {
+            return res.status(400).json({
+                ok: false,
+                reason: 'bad_request',
+                error: 'tracks[] is required',
+            });
+        }
+
+        const ts = Date.now();
+        localTracks = path.join('/tmp', `qw-preview-tracks-${process.pid}-${ts}.txt`);
+        localRunner = path.join('/tmp', `qw-preview-run-${process.pid}-${ts}.sh`);
+
+        remoteTracks = `/tmp/qw-preview-tracks-${process.pid}-${ts}.txt`;
+        remoteOut = `/tmp/qw-preview-${process.pid}-${ts}.jpg`;
+        remoteRunner = `/tmp/qw-preview-run-${process.pid}-${ts}.sh`;
+
+        await fs.writeFile(localTracks, tracks.join('\n') + '\n', 'utf8');
+
+        // Build a tiny runner script to execute on moOde.
+        // IMPORTANT: keep stdout = base64 ONLY. Any status goes to stderr.
+        const runner = [
+            '#!/usr/bin/env bash',
+            'set -euo pipefail',
+            'set -o pipefail',
+            `rt=${shQuoteArg(remoteTracks)}`,
+            `ro=${shQuoteArg(remoteOut)}`,
+            `script=${shQuoteArg(remoteScript)}`,
+            '',
+            'chmod 0644 -- "$rt" >/dev/null 2>&1 || true',
+            '',
+            // Capture ALL script output to a variable so it can't pollute stdout
+            'preview_out="$("$script" --preview --tracks-file "$rt" --out "$ro" ' +
+                (forceSingle ? '--single' : '') +
+                ' 2>&1)"',
+            'rc=$?',
+            'if [ "$rc" -ne 0 ]; then printf "%s\\n" "$preview_out" >&2; exit "$rc"; fi',
+            '',
+            'if [ ! -s "$ro" ]; then echo "ERROR: preview file missing/empty: $ro" >&2; exit 2; fi',
+            '',
+            // JPEG magic check (FF D8 FF)
+            'magic="$(dd if="$ro" bs=1 count=3 2>/dev/null | od -An -tx1 | tr -d \' \\n\')"',
+            'if [ "$magic" != "ffd8ff" ]; then echo "ERROR: preview output not JPEG (magic=$magic) $ro" >&2; exit 3; fi',
+            '',
+            // stdout must be base64 only
+            'base64 "$ro" 2>/dev/null | tr -d "\\r\\n"',
+            '',
+        ].join('\n');
+
+        await fs.writeFile(localRunner, runner, 'utf8');
+
+        // scp both files to moOde
+        await execFileP(
+            'scp',
+            [
+                '-q',
+                '-o', 'BatchMode=yes',
+                '-o', 'ConnectTimeout=6',
+                localTracks,
+                `${moodeUser}@${moodeHost}:${remoteTracks}`,
+            ],
+            { timeout: 20000 }
+        );
+
+        await execFileP(
+            'scp',
+            [
+                '-q',
+                '-o', 'BatchMode=yes',
+                '-o', 'ConnectTimeout=6',
+                localRunner,
+                `${moodeUser}@${moodeHost}:${remoteRunner}`,
+            ],
+            { timeout: 20000 }
+        );
+
+        // run the runner on moOde
+        let stdout = '';
+        let stderr = '';
+        let rc = 0;
+
+        try {
+            const r = await execFileP(
+                'ssh',
+                [
+                    ...sshArgsFor(moodeUser, moodeHost),
+                    'bash', '--noprofile', '--norc', '-c',
+                    // run runner as a file; avoid quoting giant scripts
+                    `chmod 0755 -- ${shQuoteArg(remoteRunner)} >/dev/null 2>&1 || true; ` +
+                    `bash --noprofile --norc ${shQuoteArg(remoteRunner)}`,
+                ],
+                { timeout: 180000, maxBuffer: 50 * 1024 * 1024 }
+            );
+
+            stdout = String(r.stdout || '');
+            stderr = String(r.stderr || '');
+            rc = 0;
+        } catch (e) {
+            stdout = String(e?.stdout || '');
+            stderr = String(e?.stderr || e?.message || '');
+            rc = typeof e?.code === 'number' ? e.code : 1;
+
+            return res.status(200).json({
+                ok: false,
+                reason: 'preview_failed',
+                playlistName,
+                message: 'Preview generation / readback failed on moOde.',
+                debug: {
+                    remoteTracks,
+                    remoteOut,
+                    remoteRunner,
+                    remoteScript,
+                    rc,
+                    stdoutHead: stdout.slice(0, 400),
+                    stdoutLen: stdout.length,
+                    stderrHead: stderr.slice(0, 1200),
+                    stderrLen: stderr.length,
+                },
+            });
+        }
+
+        const b64 = stdout.trim();
+
+        if (!b64) {
+            return res.status(200).json({
+                ok: false,
+                reason: 'base64_empty',
+                playlistName,
+                message: 'Remote command succeeded but produced empty base64.',
+                debug: {
+                    remoteTracks,
+                    remoteOut,
+                    remoteRunner,
+                    remoteScript,
+                    stderrHead: (stderr || '').slice(0, 1200),
+                },
+            });
+        }
+
+        if (!b64.startsWith('/9j/')) {
+            return res.status(200).json({
+                ok: false,
+                reason: 'base64_not_jpeg',
+                playlistName,
+                message: 'Remote stdout was not JPEG base64.',
+                debug: {
+                    remoteTracks,
+                    remoteOut,
+                    remoteRunner,
+                    remoteScript,
+                    b64Head: b64.slice(0, 220),
+                    stderrHead: (stderr || '').slice(0, 1200),
+                },
+            });
+        }
+
+        return res.json({
+            ok: true,
+            playlistName,
+            mimeType: 'image/jpeg',
+            dataBase64: b64,
+        });
+    } catch (e) {
+        return res.status(500).json({
+            ok: false,
+            reason: 'server_error',
+            error: e?.message || String(e),
+            remoteTracks,
+            remoteOut,
+            remoteRunner,
+        });
+    } finally {
+        if (localTracks) await fs.unlink(localTracks).catch(() => {});
+        if (localRunner) await fs.unlink(localRunner).catch(() => {});
+
+        // remote cleanup (best effort)
+        if (remoteTracks || remoteOut || remoteRunner) {
+            const rm = [
+                'rm -f --',
+                remoteTracks ? shQuoteArg(remoteTracks) : '',
+                remoteOut ? shQuoteArg(remoteOut) : '',
+                remoteRunner ? shQuoteArg(remoteRunner) : '',
+                '>/dev/null 2>&1 || true',
+            ].join(' ').trim();
+
+            await sshBashLc({ user: moodeUser, host: moodeHost, timeoutMs: 10000, script: rm }).catch(() => {});
+        }
+    }
+});
+
+  // --- apply route ---
   app.post('/config/queue-wizard/apply', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
+
       const mode = String(req.body?.mode || 'replace').trim().toLowerCase();
-      if (!['replace', 'append'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode must be replace|append' });
+      if (!['replace', 'append'].includes(mode)) {
+        return res.status(400).json({ ok: false, error: 'mode must be replace|append' });
+      }
+
       const shuffle = Boolean(req.body?.shuffle);
       const generateCollage = Boolean(req.body?.generateCollage);
-      const tracks = Array.isArray(req.body?.tracks) ? req.body.tracks.map((x) => String(x || '').trim()).filter(Boolean) : [];
+
+      const keepNowPlaying =
+        req.body?.keepNowPlaying === true ||
+        req.body?.crop === true ||
+        String(req.body?.keepNowPlaying || '').toLowerCase() === 'true' ||
+        String(req.body?.crop || '').toLowerCase() === 'true';
+
+      const tracks = Array.isArray(req.body?.tracks)
+        ? req.body.tracks.map((x) => String(x || '').trim()).filter(Boolean)
+        : [];
+
       const playlistName = String(req.body?.playlistName || '').trim();
       if (!tracks.length) return res.status(400).json({ ok: false, error: 'tracks[] is required' });
 
       const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+
+      let didCrop = false;
+      let didClear = false;
       let randomTurnedOff = false;
+
       if (mode === 'replace') {
-        await execFileP('mpc', ['-h', mpdHost, 'clear']);
-        if (shuffle) {
-          try { await execFileP('mpc', ['-h', mpdHost, 'random', 'off']); randomTurnedOff = true; } catch (_) {}
+        if (keepNowPlaying) {
+          await execFileP('mpc', ['-h', mpdHost, 'crop']);
+          didCrop = true;
+        } else {
+          await execFileP('mpc', ['-h', mpdHost, 'clear']);
+          didClear = true;
         }
+
+        // Always disable random before building a deterministic queue.
+        try {
+          await execFileP('mpc', ['-h', mpdHost, 'random', 'off']);
+          randomTurnedOff = true;
+        } catch (_) {}
       }
+
       let added = 0;
+      const failedFiles = [];
+
       for (const file of tracks) {
         try {
           await execFileP('mpc', ['-h', mpdHost, 'add', file]);
           added += 1;
+        } catch (_) {
+          failedFiles.push(file);
+        }
+      }
+
+      let playStarted = false;
+      // Only auto-play when we replaced the queue and did NOT crop (crop keeps playing).
+      if (mode === 'replace' && !didCrop && added > 0) {
+        try {
+          await execFileP('mpc', ['-h', mpdHost, 'play']);
+          playStarted = true;
         } catch (_) {}
       }
-      let playStarted = false;
-      if (mode === 'replace' && added > 0) {
-        try { await execFileP('mpc', ['-h', mpdHost, 'play']); playStarted = true; } catch (_) {}
+
+      let randomEnabled = false;
+      if (shuffle) {
+        try {
+          await execFileP('mpc', ['-h', mpdHost, 'random', 'on']);
+          randomEnabled = true;
+        } catch (_) {}
       }
 
       let playlistSaved = false;
@@ -234,13 +604,18 @@ export function registerConfigRoutes(app, deps) {
         try {
           await execFileP('mpc', ['-h', mpdHost, 'save', playlistName]);
           playlistSaved = true;
-        } catch (e) { playlistError = e?.message || String(e); }
+        } catch (e) {
+          playlistError = e?.message || String(e);
+        }
       }
 
       let collageGenerated = false;
       let collageError = '';
       if (generateCollage && playlistName && playlistSaved) {
-        const localScript = String(process.env.MOODE_PLAYLIST_COVER_SCRIPT || path.resolve(process.cwd(), 'scripts/moode-playlist-cover.sh'));
+        const localScript = String(
+          process.env.MOODE_PLAYLIST_COVER_SCRIPT || path.resolve(process.cwd(), 'scripts/moode-playlist-cover.sh')
+        );
+
         try {
           await execFileP(localScript, [playlistName], {
             timeout: 120000,
@@ -256,12 +631,31 @@ export function registerConfigRoutes(app, deps) {
         }
       }
 
-      return res.json({ ok: true, mode, shuffle, generateCollage, requested: tracks.length, added, playStarted, randomTurnedOff, playlistSaved, playlistError, collageGenerated, collageError });
+      return res.json({
+        ok: true,
+        mode,
+        keepNowPlaying,
+        didCrop,
+        didClear,
+        shuffle,
+        randomTurnedOff,
+        randomEnabled,
+        generateCollage,
+        requested: tracks.length,
+        added,
+        failedFiles: failedFiles.slice(0, 50),
+        playStarted,
+        playlistSaved,
+        playlistError,
+        collageGenerated,
+        collageError,
+      });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });
 
+  // --- Vibe from now playing (Queue Wizard) ---
   const vibeHandler = async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
@@ -271,46 +665,53 @@ export function registerConfigRoutes(app, deps) {
 
       const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
 
-      let currentRaw;
+      // Robust: ask MPD for artist/title directly
+      let artist = '';
+      let title = '';
       try {
-        const {stdout} = await execFileP('mpc', ['-h', mpdHost, 'current']);
-        currentRaw = String(stdout || '').trim();
-      } catch(e) {
-        return res.status(500).json({ok: false, error: 'mpc current failed: ' + (e?.message || String(e))});
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%artist%\t%title%', 'current']);
+        const line = String(stdout || '').trim();
+        if (line) {
+          const [a = '', t = ''] = line.split('\t');
+          artist = String(a || '').trim();
+          title = String(t || '').trim();
+        }
+      } catch (e) {
+        return res.status(500).json({ ok: false, error: 'mpc current failed: ' + (e?.message || String(e)) });
       }
 
-      if (!currentRaw) return res.status(404).json({ok: false, error: 'No current track'});
-
-      const m = currentRaw.match(/#\\d+\\s+([^—-]+?)\\s*—\\s*(.+?)\\s+\\(([^)]+)\\)/);
-      if (!m) return res.status(400).json({ok: false, error: 'Parse fail: ' + currentRaw.slice(0,100)});
-
-      const artist = m[1].trim();
-      const title = m[2].trim();
-
-      if (!artist || !title) return res.status(400).json({ok: false, error: 'Missing artist/title'});
+      if (!artist || !title) return res.status(404).json({ ok: false, error: 'No current track (artist/title empty)' });
 
       const apiKey = process.env.LASTFM_API_KEY;
-      if (!apiKey) return res.status(400).json({ok: false, error: 'LASTFM_API_KEY env var missing'});
+      if (!apiKey) return res.status(400).json({ ok: false, error: 'LASTFM_API_KEY env var missing' });
 
+      // Optional “presence check” (kept from your git)
       const indexPath = '/home/moode/moode_library_index.json';
       try {
         await fs.access(indexPath);
       } catch {
-        return res.status(500).json({ok: false, error: 'Library index missing: ' + indexPath});
+        return res.status(500).json({ ok: false, error: 'Library index missing: ' + indexPath });
       }
 
       const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
       const jsonTmp = `/tmp/vibe-np-${Date.now()}-${process.pid}.json`;
 
       const pyArgs = [
-        '--seed-artist', artist,
-        '--seed-title', title,
-        '--target-queue', String(targetQueue),
-        '--json-out', jsonTmp,
-        '--mode', 'load',
-        '--host', mpdHost,
-        '--port', '6600',
-        '--dry-run'
+        '--seed-artist',
+        artist,
+        '--seed-title',
+        title,
+        '--target-queue',
+        String(targetQueue),
+        '--json-out',
+        jsonTmp,
+        '--mode',
+        'load',
+        '--host',
+        mpdHost,
+        '--port',
+        '6600',
+        '--dry-run',
       ];
 
       await execFileP('python3', [pyPath, ...pyArgs]);
@@ -319,33 +720,38 @@ export function registerConfigRoutes(app, deps) {
       try {
         const jsonOut = await fs.readFile(jsonTmp, 'utf8');
         data = JSON.parse(jsonOut);
-        await fs.unlink(jsonTmp);
-      } catch(e) {
-        return res.status(500).json({ok: false, error: 'JSON parse/out: ' + (e?.message || String(e))});
+        await fs.unlink(jsonTmp).catch(() => {});
+      } catch (e) {
+        return res.status(500).json({ ok: false, error: 'JSON parse/out: ' + (e?.message || String(e)) });
       }
 
-      const tracks = data.tracks || [];
-
-      return res.json({ok: true, tracks, summary: data, targetQueue, seedArtist: artist, seedTitle: title});
+      const tracks = data?.tracks || [];
+      return res.json({ ok: true, tracks, summary: data, targetQueue, seedArtist: artist, seedTitle: title });
     } catch (e) {
-      return res.status(500).json({ok: false, error: e?.message || String(e)});
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   };
 
   app.get('/config/queue-wizard/vibe-nowplaying', vibeHandler);
   app.post('/config/queue-wizard/vibe-nowplaying', vibeHandler);
 
+  // --- library health (unchanged from your git) ---
   app.get('/config/library-health', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      if (typeof mpdQueryRaw !== 'function' || typeof getRatingForFile !== 'function' || typeof mpdStickerGetSong !== 'function') {
+      if (
+        typeof mpdQueryRaw !== 'function' ||
+        typeof getRatingForFile !== 'function' ||
+        typeof mpdStickerGetSong !== 'function'
+      ) {
         return res.status(501).json({ ok: false, error: 'library-health dependencies not wired' });
       }
 
       const sampleLimit = Math.max(10, Math.min(500, Number(req.query?.sampleLimit || 100)));
-      const scanLimit = req.query?.scanLimit != null
-        ? Math.max(100, Math.min(200000, Number(req.query.scanLimit || 100)))
-        : Number.MAX_SAFE_INTEGER;
+      const scanLimit =
+        req.query?.scanLimit != null
+          ? Math.max(100, Math.min(200000, Number(req.query.scanLimit || 100)))
+          : Number.MAX_SAFE_INTEGER;
       const started = Date.now();
 
       const isAudio = (f) => /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|dsf|wv|ape)$/i.test(String(f || ''));
@@ -354,11 +760,15 @@ export function registerConfigRoutes(app, deps) {
         const i = s.lastIndexOf('/');
         return i > 0 ? s.slice(0, i) : '(root)';
       };
-      const pick = (arr, row) => { if (arr.length < sampleLimit) arr.push(row); };
+      const pick = (arr, row) => {
+        if (arr.length < sampleLimit) arr.push(row);
+      };
 
       const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
       const fmt = '%file%\t%artist%\t%title%\t%album%\t%genre%\t%MUSICBRAINZ_TRACKID%';
-      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], { maxBuffer: 64 * 1024 * 1024 });
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
+        maxBuffer: 64 * 1024 * 1024,
+      });
       const allFiles = String(stdout || '')
         .split(/\r?\n/)
         .map((ln) => {
@@ -435,9 +845,12 @@ export function registerConfigRoutes(app, deps) {
         const isPodcast = /\bpodcast\b/i.test(genreBlob);
 
         let rating = 0;
-        try { rating = Number(await getRatingForFile(file)) || 0; } catch (_) {}
+        try {
+          rating = Number(await getRatingForFile(file)) || 0;
+        } catch (_) {}
         const ratingBucket = Number.isFinite(rating) ? Math.max(0, Math.min(5, Math.round(rating))) : 0;
         ratingCounts.set(String(ratingBucket), Number(ratingCounts.get(String(ratingBucket)) || 0) + 1);
+
         // User policy: do not count Podcast-genre tracks in unrated tally.
         if (!isPodcast && rating <= 0) {
           summary.unrated += 1;
@@ -451,7 +864,9 @@ export function registerConfigRoutes(app, deps) {
         const mbTag = String(b.musicbrainz_trackid || '').trim();
         let mbSticker = '';
         if (!mbTag) {
-          try { mbSticker = String(await mpdStickerGetSong(file, 'mb_trackid') || '').trim(); } catch (_) {}
+          try {
+            mbSticker = String(await mpdStickerGetSong(file, 'mb_trackid') || '').trim();
+          } catch (_) {}
         }
         if (!mbTag && !mbSticker) {
           summary.missingMbid += 1;
@@ -470,21 +885,33 @@ export function registerConfigRoutes(app, deps) {
           f.startsWith('OSDISK/') ? '/mnt/OSDISK/' + f.slice('OSDISK/'.length) : '',
           '/mnt/SamsungMoode/' + f,
           '/mnt/OSDISK/' + f,
-        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+        ]
+          .map((x) => String(x || '').replace(/\/+/g, '/'))
+          .filter(Boolean);
         for (const c of candidates) {
-          try { await fs.access(c); return c; } catch (_) {}
+          try {
+            await fs.access(c);
+            return c;
+          } catch (_) {}
         }
         return '';
       };
+
       const folderSet = new Set(allFiles.map((r) => folderOf(r.file)).filter((f) => f && f !== '(root)'));
       summary.totalAlbums = folderSet.size;
-      // Keep summary fast: cover.jpg presence only.
-      // Deep embedded-art validation is done in /config/library-health/missing-artwork drilldown.
+
       for (const folder of folderSet) {
         const localFolder = await resolveLocalFolder(folder);
-        if (!localFolder) { summary.missingArtwork += 1; continue; }
+        if (!localFolder) {
+          summary.missingArtwork += 1;
+          continue;
+        }
         const coverPath = path.join(localFolder, 'cover.jpg');
-        try { await fs.access(coverPath); } catch (_) { summary.missingArtwork += 1; }
+        try {
+          await fs.access(coverPath);
+        } catch (_) {
+          summary.missingArtwork += 1;
+        }
       }
 
       return res.json({
@@ -495,12 +922,506 @@ export function registerConfigRoutes(app, deps) {
         samples,
         genreCounts: Array.from(genreCounts.entries())
           .map(([genre, count]) => ({ genre, count: Number(count || 0) }))
-          .sort((a, b) => (b.count - a.count) || a.genre.localeCompare(b.genre, undefined, { sensitivity: 'base' })),
-        ratingCounts: [0,1,2,3,4,5].map((r) => ({ rating: r, count: Number(ratingCounts.get(String(r)) || 0) })),
+          .sort((a, b) => b.count - a.count || a.genre.localeCompare(b.genre, undefined, { sensitivity: 'base' })),
+        ratingCounts: [0, 1, 2, 3, 4, 5].map((r) => ({ rating: r, count: Number(ratingCounts.get(String(r)) || 0) })),
         genreOptions: Array.from(genreSet).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
         sampleLimit,
         scanLimit,
         scannedTracks: summary.totalTracks,
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+  
+  
+  // --- library health: albums missing BOTH cover.jpg and embedded artwork ---
+  app.get('/config/library-health/missing-artwork', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const isAudio = (f) => /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|dsf|wv|ape)$/i.test(String(f || ''));
+      const folderOf = (file) => {
+        const s = String(file || '');
+        const i = s.lastIndexOf('/');
+        return i > 0 ? s.slice(0, i) : '(root)';
+      };
+      const leafName = (p) => {
+        const s = String(p || '');
+        const i = s.lastIndexOf('/');
+        return i >= 0 ? s.slice(i + 1) : s;
+      };
+
+      const resolveLocalFolder = async (folder) => {
+        const f = String(folder || '').trim().replace(/^\/+/, '');
+        if (!f || f === '(root)') return '';
+        const candidates = [
+          f.startsWith('/mnt/') ? f : '',
+          f.startsWith('mnt/') ? '/' + f : '',
+          f.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + f.slice('USB/SamsungMoode/'.length) : '',
+          f.startsWith('OSDISK/') ? '/mnt/OSDISK/' + f.slice('OSDISK/'.length) : '',
+          '/mnt/SamsungMoode/' + f,
+          '/mnt/OSDISK/' + f,
+        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+
+        for (const c of candidates) {
+          try { await fs.access(c); return c; } catch (_) {}
+        }
+        return '';
+      };
+
+      const resolveLocalPath = async (file) => {
+        const f = String(file || '').trim().replace(/^\/+/, '');
+        if (!f) return '';
+        const candidates = [
+          f.startsWith('/mnt/') ? f : '',
+          f.startsWith('mnt/') ? '/' + f : '',
+          f.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + f.slice('USB/SamsungMoode/'.length) : '',
+          f.startsWith('OSDISK/') ? '/mnt/OSDISK/' + f.slice('OSDISK/'.length) : '',
+          '/mnt/SamsungMoode/' + f,
+          '/mnt/OSDISK/' + f,
+        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+
+        for (const c of candidates) {
+          try { await fs.access(c); return c; } catch (_) {}
+        }
+        return '';
+      };
+
+      const hasEmbeddedArtwork = async (files) => {
+        const sample = (Array.isArray(files) ? files : []).slice(0, 3);
+        for (const f of sample) {
+          const local = await resolveLocalPath(f);
+          if (!local) continue;
+          try {
+            const { stdout } = await execFileP(
+              'ffprobe',
+              [
+                '-v', 'error',
+                '-show_entries', 'stream=codec_type:stream_disposition=attached_pic',
+                '-of', 'json',
+                local,
+              ],
+              { timeout: 1500 }
+            );
+            const txt = String(stdout || '');
+            if (/"attached_pic"\s*:\s*1/.test(txt)) return true;
+          } catch (_) {}
+        }
+        return false;
+      };
+
+      const onlyFolder = String(req.query?.folder || '').trim();
+
+      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const { stdout } = await execFileP(
+        'mpc',
+        ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%', 'listall'],
+        { maxBuffer: 64 * 1024 * 1024 }
+      );
+
+      const byFolder = new Map();
+
+      for (const ln of String(stdout || '').split(/\r?\n/)) {
+        if (!ln) continue;
+        const [file = '', album = '', artist = '', albumArtist = ''] = ln.split('\t');
+        const f = String(file || '').trim();
+        if (!f || !isAudio(f)) continue;
+
+        const folder = folderOf(f);
+        if (!byFolder.has(folder)) byFolder.set(folder, { files: [], album: '', artists: new Set() });
+
+        const row = byFolder.get(folder);
+        row.files.push(f);
+
+        const a = String(albumArtist || artist || '').trim();
+        if (a) row.artists.add(a);
+
+        if (!row.album) row.album = String(album || '').trim();
+      }
+
+      const missing = [];
+
+      for (const [folder, row] of byFolder.entries()) {
+        if (!folder || folder === '(root)') continue;
+        if (onlyFolder && folder !== onlyFolder) continue;
+
+        // cover.jpg check
+        let hasCover = false;
+        const localFolder = await resolveLocalFolder(folder);
+        if (localFolder) {
+          const coverPath = path.join(localFolder, 'cover.jpg');
+          try { await fs.access(coverPath); hasCover = true; } catch (_) {}
+        }
+
+        if (!hasCover) {
+          // embedded artwork check (sample a few tracks)
+          const hasEmbedded = await hasEmbeddedArtwork(row.files);
+          if (!hasEmbedded) {
+            const artists = Array.from(row.artists || []);
+            missing.push({
+              folder,
+              album: row.album || leafName(folder),
+              artist: artists.length === 1 ? artists[0] : (artists.length > 1 ? 'Various Artists' : 'Unknown Artist'),
+              trackCount: row.files.length,
+              files: row.files.slice(0, 200),
+            });
+          }
+        }
+      }
+
+      missing.sort((a, b) =>
+        `${a.artist} — ${a.album}`.localeCompare(`${b.artist} — ${b.album}`, undefined, { sensitivity: 'base' })
+      );
+
+      return res.json({ ok: true, totalMissing: missing.length, filterFolder: onlyFolder || null, albums: missing });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  // --- library health: fetch cover.jpg for a folder (base64) ---
+  app.get('/config/library-health/album-art', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const folder = String(req.query?.folder || '').trim();
+      if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
+
+      const localCandidates = [
+        folder.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + folder.slice('USB/SamsungMoode/'.length) : '',
+        folder.startsWith('OSDISK/') ? '/mnt/OSDISK/' + folder.slice('OSDISK/'.length) : '',
+        '/mnt/SamsungMoode/' + folder,
+        '/mnt/OSDISK/' + folder,
+      ]
+        .map((x) => String(x || '').replace(/\/+/g, '/'))
+        .filter(Boolean);
+
+      let coverPath = '';
+      for (const c of localCandidates) {
+        const p = path.join(c, 'cover.jpg');
+        try {
+          await fs.access(p);
+          coverPath = p;
+          break;
+        } catch (_) {}
+      }
+
+      if (!coverPath) return res.json({ ok: true, folder, hasCover: false });
+
+      const buf = await fs.readFile(coverPath);
+      return res.json({
+        ok: true,
+        folder,
+        hasCover: true,
+        mimeType: 'image/jpeg',
+        dataBase64: buf.toString('base64'),
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  // --- library health: set cover.jpg and/or embed artwork into FLACs for a folder ---
+  app.post('/config/library-health/album-art', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const folder = String(req.body?.folder || '').trim();
+      const base64In = String(req.body?.imageBase64 || '').trim();
+      const mode = String(req.body?.mode || 'both').trim().toLowerCase();
+
+      if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
+      if (!base64In) return res.status(400).json({ ok: false, error: 'imageBase64 is required' });
+      if (!['cover', 'embed', 'both'].includes(mode)) {
+        return res.status(400).json({ ok: false, error: 'mode must be cover|embed|both' });
+      }
+
+      const b64 = base64In.includes(',') ? base64In.split(',').pop() : base64In;
+      let imgBuf = Buffer.from(String(b64 || ''), 'base64');
+      if (!imgBuf.length) return res.status(400).json({ ok: false, error: 'invalid imageBase64' });
+
+      const ts = Date.now();
+      const tmpPath = path.join('/tmp', `library-health-art-${ts}.jpg`);
+      const tmpSquarePath = path.join('/tmp', `library-health-art-square-${ts}.jpg`);
+      await fs.writeFile(tmpPath, imgBuf);
+
+      // Normalize to centered square so embeds/covers are consistent.
+      try {
+        await execFileP('ffmpeg', [
+          '-y',
+          '-i', tmpPath,
+          '-vf', "crop='min(iw,ih)':'min(iw,ih)'",
+          '-q:v', '2',
+          tmpSquarePath,
+        ]);
+        imgBuf = await fs.readFile(tmpSquarePath);
+      } catch (_) {
+        // If ffmpeg fails/unavailable, keep original.
+      }
+
+      // Find files in folder via MPD
+      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      let files = [];
+      try {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'find', 'base', folder]);
+        files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
+      } catch (_) {}
+
+      // fallback: listall filter
+      if (!files.length) {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'listall']);
+        files = String(stdout || '')
+          .split(/\r?\n/)
+          .map((x) => String(x || '').trim())
+          .filter((f) => f && f.startsWith(folder + '/'));
+      }
+
+      const resolveLocalPath = async (f) => {
+        const file = String(f || '').trim().replace(/^\/+/, '');
+        if (!file) return '';
+
+        const candidates = [
+          file.startsWith('/mnt/') ? file : '',
+          file.startsWith('mnt/') ? '/' + file : '',
+          file.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + file.slice('USB/SamsungMoode/'.length) : '',
+          file.startsWith('OSDISK/') ? '/mnt/OSDISK/' + file.slice('OSDISK/'.length) : '',
+          '/mnt/SamsungMoode/' + file,
+          '/mnt/OSDISK/' + file,
+        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+
+        for (const c of candidates) {
+          try { await fs.access(c); return c; } catch (_) {}
+        }
+        return '';
+      };
+
+      const doEmbed = mode === 'embed' || mode === 'both';
+      const doCover = mode === 'cover' || mode === 'both';
+
+      const isFlac = (f) => /\.flac$/i.test(String(f || ''));
+
+      let updatedTracks = 0;
+      let skippedTracks = 0;
+      const skipped = [];
+
+      // Embed into FLACs
+      if (doEmbed) {
+        for (const f of files) {
+          const local = await resolveLocalPath(f);
+          if (!local || !isFlac(local)) {
+            skippedTracks += 1;
+            skipped.push(f);
+            continue;
+          }
+          try {
+            await execFileP('metaflac', ['--remove', '--block-type=PICTURE', local]);
+            await execFileP('metaflac', [`--import-picture-from=${tmpPath}`, local]);
+            updatedTracks += 1;
+          } catch (_) {
+            skippedTracks += 1;
+            skipped.push(f);
+          }
+        }
+      }
+
+      // cover.jpg write/update
+      let coverUpdated = false;
+      let coverCreated = false;
+
+      if (doCover) {
+        const localFolders = [
+          folder.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + folder.slice('USB/SamsungMoode/'.length) : '',
+          folder.startsWith('OSDISK/') ? '/mnt/OSDISK/' + folder.slice('OSDISK/'.length) : '',
+          '/mnt/SamsungMoode/' + folder,
+          '/mnt/OSDISK/' + folder,
+        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+
+        for (const lf of localFolders) {
+          const cp = path.join(lf, 'cover.jpg');
+          try {
+            await fs.access(cp);
+            await fs.writeFile(cp, imgBuf);
+            coverUpdated = true;
+            break;
+          } catch (_) {
+            try {
+              await fs.access(lf);
+              await fs.writeFile(cp, imgBuf);
+              coverCreated = true;
+              break;
+            } catch (_) {}
+          }
+        }
+      }
+
+      // cleanup + refresh mpd db
+      try { await fs.unlink(tmpPath); } catch (_) {}
+      try { await fs.unlink(tmpSquarePath); } catch (_) {}
+      try { await execFileP('mpc', ['-w', '-h', mpdHost, 'update']); } catch (_) {}
+
+      return res.json({
+        ok: true,
+        folder,
+        mode,
+        totalFiles: files.length,
+        updatedTracks,
+        skippedTracks,
+        skipped: skipped.slice(0, 200),
+        coverUpdated,
+        coverCreated,
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  // --- library health: list unique genres present within an album folder ---
+  app.get('/config/library-health/album-genre', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const folder = String(req.query?.folder || '').trim();
+      if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
+
+      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+
+      let rows = [];
+      try {
+        const { stdout } = await execFileP(
+          'mpc',
+          ['-h', mpdHost, '-f', '%file%\t%genre%', 'find', 'base', folder],
+          { maxBuffer: 64 * 1024 * 1024 }
+        );
+        rows = String(stdout || '')
+          .split(/\r?\n/)
+          .map((ln) => {
+            const [file = '', genre = ''] = ln.split('\t');
+            return { file: String(file || '').trim(), genre: String(genre || '').trim() };
+          })
+          .filter((r) => r.file);
+      } catch (_) {}
+
+      // fallback: listall filter
+      if (!rows.length) {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%genre%', 'listall'], {
+          maxBuffer: 64 * 1024 * 1024,
+        });
+        rows = String(stdout || '')
+          .split(/\r?\n/)
+          .map((ln) => {
+            const [file = '', genre = ''] = ln.split('\t');
+            return { file: String(file || '').trim(), genre: String(genre || '').trim() };
+          })
+          .filter((r) => r.file && r.file.startsWith(folder + '/'));
+      }
+
+      const genres = new Set();
+      for (const r of rows) {
+        for (const g of String(r.genre || '')
+          .split(/[;,|/]/)
+          .map((x) => String(x || '').trim())
+          .filter(Boolean)) {
+          genres.add(g);
+        }
+      }
+
+      return res.json({
+        ok: true,
+        folder,
+        trackCount: rows.length,
+        genres: Array.from(genres).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+  // --- library health: set GENRE tag for all FLACs in an album folder ---
+  app.post('/config/library-health/album-genre', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const folder = String(req.body?.folder || '').trim();
+      const genre = String(req.body?.genre || '').trim();
+
+      if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
+      if (!genre) return res.status(400).json({ ok: false, error: 'genre is required' });
+
+      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+
+      let files = [];
+      try {
+        const { stdout } = await execFileP(
+          'mpc',
+          ['-h', mpdHost, '-f', '%file%', 'find', 'base', folder],
+          { maxBuffer: 64 * 1024 * 1024 }
+        );
+        files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
+      } catch (_) {}
+
+      // fallback: listall filter
+      if (!files.length) {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'listall'], {
+          maxBuffer: 64 * 1024 * 1024,
+        });
+        files = String(stdout || '')
+          .split(/\r?\n/)
+          .map((x) => String(x || '').trim())
+          .filter((f) => f && f.startsWith(folder + '/'));
+      }
+
+      const resolveLocalPath = async (f) => {
+        const file = String(f || '').trim().replace(/^\/+/, '');
+        if (!file) return '';
+
+        const candidates = [
+          file.startsWith('/mnt/') ? file : '',
+          file.startsWith('mnt/') ? '/' + file : '',
+          file.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + file.slice('USB/SamsungMoode/'.length) : '',
+          file.startsWith('OSDISK/') ? '/mnt/OSDISK/' + file.slice('OSDISK/'.length) : '',
+          '/mnt/SamsungMoode/' + file,
+          '/mnt/OSDISK/' + file,
+        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+
+        for (const c of candidates) {
+          try { await fs.access(c); return c; } catch (_) {}
+        }
+        return '';
+      };
+
+      let updated = 0;
+      let skipped = 0;
+      const updatedFiles = [];
+      const skippedFiles = [];
+
+      for (const f of files) {
+        const local = await resolveLocalPath(f);
+        if (!local || !/\.flac$/i.test(local)) {
+          skipped += 1;
+          skippedFiles.push(f);
+          continue;
+        }
+        try {
+          await execFileP('metaflac', ['--remove-tag=GENRE', `--set-tag=GENRE=${genre}`, local]);
+          updated += 1;
+          updatedFiles.push(f);
+        } catch (_) {
+          skipped += 1;
+          skippedFiles.push(f);
+        }
+      }
+
+      try { await execFileP('mpc', ['-w', '-h', mpdHost, 'update']); } catch (_) {}
+
+      return res.json({
+        ok: true,
+        folder,
+        genre,
+        requested: files.length,
+        updated,
+        skipped,
+        updatedFiles,
+        skippedFiles: skippedFiles.slice(0, 200),
       });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
@@ -524,7 +1445,11 @@ export function registerConfigRoutes(app, deps) {
       };
 
       const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
-      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%', 'listall'], { maxBuffer: 64 * 1024 * 1024 });
+      const { stdout } = await execFileP(
+        'mpc',
+        ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%', 'listall'],
+        { maxBuffer: 64 * 1024 * 1024 }
+      );
 
       const byFolder = new Map();
       for (const ln of String(stdout || '').split(/\r?\n/)) {
@@ -544,7 +1469,7 @@ export function registerConfigRoutes(app, deps) {
       const albums = Array.from(byFolder.entries())
         .map(([folder, row]) => {
           const artists = Array.from(row.artists || []);
-          const artist = artists.length === 1 ? artists[0] : (artists.length > 1 ? 'Various Artists' : 'Unknown Artist');
+          const artist = artists.length === 1 ? artists[0] : artists.length > 1 ? 'Various Artists' : 'Unknown Artist';
           const album = String(row.album || leafName(folder) || 'Unknown Album').trim();
           const label = `${artist} — ${album}`;
           return { id: folder, folder, album, artist, label, trackCount: row.files.length };
@@ -552,361 +1477,6 @@ export function registerConfigRoutes(app, deps) {
         .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
 
       return res.json({ ok: true, albums });
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: e?.message || String(e) });
-    }
-  });
-
-  app.get('/config/library-health/missing-artwork', async (req, res) => {
-    try {
-      if (!requireTrackKey(req, res)) return;
-
-      const isAudio = (f) => /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|dsf|wv|ape)$/i.test(String(f || ''));
-      const folderOf = (file) => {
-        const s = String(file || '');
-        const i = s.lastIndexOf('/');
-        return i > 0 ? s.slice(0, i) : '(root)';
-      };
-      const leafName = (p) => {
-        const s = String(p || '');
-        const i = s.lastIndexOf('/');
-        return i >= 0 ? s.slice(i + 1) : s;
-      };
-      const resolveLocalFolder = async (folder) => {
-        const f = String(folder || '').trim().replace(/^\/+/, '');
-        if (!f || f === '(root)') return '';
-        const candidates = [
-          f.startsWith('/mnt/') ? f : '',
-          f.startsWith('mnt/') ? '/' + f : '',
-          f.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + f.slice('USB/SamsungMoode/'.length) : '',
-          f.startsWith('OSDISK/') ? '/mnt/OSDISK/' + f.slice('OSDISK/'.length) : '',
-          '/mnt/SamsungMoode/' + f,
-          '/mnt/OSDISK/' + f,
-        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
-        for (const c of candidates) {
-          try { await fs.access(c); return c; } catch (_) {}
-        }
-        return '';
-      };
-      const resolveLocalPath = async (file) => {
-        const f = String(file || '').trim().replace(/^\/+/, '');
-        if (!f) return '';
-        const candidates = [
-          f.startsWith('/mnt/') ? f : '',
-          f.startsWith('mnt/') ? '/' + f : '',
-          f.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + f.slice('USB/SamsungMoode/'.length) : '',
-          f.startsWith('OSDISK/') ? '/mnt/OSDISK/' + f.slice('OSDISK/'.length) : '',
-          '/mnt/SamsungMoode/' + f,
-          '/mnt/OSDISK/' + f,
-        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
-        for (const c of candidates) {
-          try { await fs.access(c); return c; } catch (_) {}
-        }
-        return '';
-      };
-      const hasEmbeddedArtwork = async (files) => {
-        const sample = (Array.isArray(files) ? files : []).slice(0, 3);
-        for (const f of sample) {
-          const local = await resolveLocalPath(f);
-          if (!local) continue;
-          try {
-            const { stdout } = await execFileP('ffprobe', [
-              '-v', 'error',
-              '-show_entries', 'stream=codec_type:stream_disposition=attached_pic',
-              '-of', 'json',
-              local,
-            ], { timeout: 1500 });
-            const txt = String(stdout || '');
-            if (/"attached_pic"\s*:\s*1/.test(txt)) return true;
-          } catch (_) {}
-        }
-        return false;
-      };
-
-      const onlyFolder = String(req.query?.folder || '').trim();
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
-      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%', 'listall'], { maxBuffer: 64 * 1024 * 1024 });
-      const byFolder = new Map();
-      for (const ln of String(stdout || '').split(/\r?\n/)) {
-        if (!ln) continue;
-        const [file = '', album = '', artist = '', albumArtist = ''] = ln.split('\t');
-        const f = String(file || '').trim();
-        if (!f || !isAudio(f)) continue;
-        const folder = folderOf(f);
-        if (!byFolder.has(folder)) byFolder.set(folder, { files: [], album: '', artists: new Set() });
-        const row = byFolder.get(folder);
-        row.files.push(f);
-        const a = String(albumArtist || artist || '').trim();
-        if (a) row.artists.add(a);
-        if (!row.album) row.album = String(album || '').trim();
-      }
-
-      const missing = [];
-      for (const [folder, row] of byFolder.entries()) {
-        if (!folder || folder === '(root)') continue;
-        if (onlyFolder && folder !== onlyFolder) continue;
-
-        let hasCover = false;
-        const localFolder = await resolveLocalFolder(folder);
-        if (localFolder) {
-          const coverPath = path.join(localFolder, 'cover.jpg');
-          try { await fs.access(coverPath); hasCover = true; } catch (_) {}
-        }
-
-        if (!hasCover) {
-          const hasEmbedded = await hasEmbeddedArtwork(row.files);
-          if (!hasEmbedded) {
-            const artists = Array.from(row.artists || []);
-            missing.push({ folder, album: row.album || leafName(folder), artist: artists.length === 1 ? artists[0] : (artists.length > 1 ? 'Various Artists' : 'Unknown Artist'), trackCount: row.files.length, files: row.files.slice(0, 200) });
-          }
-        }
-      }
-
-      missing.sort((a, b) => `${a.artist} — ${a.album}`.localeCompare(`${b.artist} — ${b.album}`, undefined, { sensitivity: 'base' }));
-      return res.json({ ok: true, totalMissing: missing.length, filterFolder: onlyFolder || null, albums: missing });
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: e?.message || String(e) });
-    }
-  });
-
-  app.get('/config/library-health/album-art', async (req, res) => {
-    try {
-      if (!requireTrackKey(req, res)) return;
-      const folder = String(req.query?.folder || '').trim();
-      if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
-
-      const localCandidates = [
-        folder.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + folder.slice('USB/SamsungMoode/'.length) : '',
-        folder.startsWith('OSDISK/') ? '/mnt/OSDISK/' + folder.slice('OSDISK/'.length) : '',
-        '/mnt/SamsungMoode/' + folder,
-        '/mnt/OSDISK/' + folder,
-      ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
-
-      let coverPath = '';
-      for (const c of localCandidates) {
-        const p = path.join(c, 'cover.jpg');
-        try { await fs.access(p); coverPath = p; break; } catch (_) {}
-      }
-
-      if (!coverPath) return res.json({ ok: true, folder, hasCover: false });
-      const buf = await fs.readFile(coverPath);
-      return res.json({ ok: true, folder, hasCover: true, mimeType: 'image/jpeg', dataBase64: buf.toString('base64') });
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: e?.message || String(e) });
-    }
-  });
-
-  app.post('/config/library-health/album-art', async (req, res) => {
-    try {
-      if (!requireTrackKey(req, res)) return;
-      const folder = String(req.body?.folder || '').trim();
-      const base64In = String(req.body?.imageBase64 || '').trim();
-      const mode = String(req.body?.mode || 'both').trim().toLowerCase();
-      if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
-      if (!base64In) return res.status(400).json({ ok: false, error: 'imageBase64 is required' });
-      if (!['cover', 'embed', 'both'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode must be cover|embed|both' });
-
-      const b64 = base64In.includes(',') ? base64In.split(',').pop() : base64In;
-      let imgBuf = Buffer.from(String(b64 || ''), 'base64');
-      if (!imgBuf.length) return res.status(400).json({ ok: false, error: 'invalid imageBase64' });
-
-      const ts = Date.now();
-      const tmpPath = path.join('/tmp', `library-health-art-${ts}.jpg`);
-      const tmpSquarePath = path.join('/tmp', `library-health-art-square-${ts}.jpg`);
-      await fs.writeFile(tmpPath, imgBuf);
-
-      // Normalize uploaded art to a centered square so embeds/covers are consistent.
-      try {
-        await execFileP('ffmpeg', [
-          '-y',
-          '-i', tmpPath,
-          '-vf', "crop='min(iw,ih)':'min(iw,ih)'",
-          '-q:v', '2',
-          tmpSquarePath,
-        ]);
-        imgBuf = await fs.readFile(tmpSquarePath);
-      } catch (_) {
-        // If ffmpeg is unavailable/fails, keep original upload bytes.
-      }
-
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
-      let files = [];
-      try {
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'find', 'base', folder]);
-        files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
-      } catch (_) {}
-      if (!files.length) {
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'listall']);
-        files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter((f) => f && f.startsWith(folder + '/'));
-      }
-
-      const resolveLocalPath = async (f) => {
-        const file = String(f || '').trim().replace(/^\/+/, '');
-        if (!file) return '';
-        const candidates = [
-          file.startsWith('/mnt/') ? file : '',
-          file.startsWith('mnt/') ? '/' + file : '',
-          file.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + file.slice('USB/SamsungMoode/'.length) : '',
-          file.startsWith('OSDISK/') ? '/mnt/OSDISK/' + file.slice('OSDISK/'.length) : '',
-          '/mnt/SamsungMoode/' + file,
-          '/mnt/OSDISK/' + file,
-        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
-        for (const c of candidates) {
-          try { await fs.access(c); return c; } catch (_) {}
-        }
-        return '';
-      };
-
-      const doEmbed = mode === 'embed' || mode === 'both';
-      const doCover = mode === 'cover' || mode === 'both';
-
-      const isFlac = (f) => /\.flac$/i.test(String(f || ''));
-      let updatedTracks = 0;
-      let skippedTracks = 0;
-      const skipped = [];
-      if (doEmbed) {
-        for (const f of files) {
-          const local = await resolveLocalPath(f);
-          if (!local || !isFlac(local)) {
-            skippedTracks += 1;
-            skipped.push(f);
-            continue;
-          }
-          try {
-            await execFileP('metaflac', ['--remove', '--block-type=PICTURE', local]);
-            await execFileP('metaflac', [`--import-picture-from=${tmpPath}`, local]);
-            updatedTracks += 1;
-          } catch (_) {
-            skippedTracks += 1;
-            skipped.push(f);
-          }
-        }
-      }
-
-      // cover.jpg handling (update existing or create new) when cover mode enabled.
-      let coverUpdated = false;
-      let coverCreated = false;
-      if (doCover) {
-        const localFolders = [
-          folder.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + folder.slice('USB/SamsungMoode/'.length) : '',
-          folder.startsWith('OSDISK/') ? '/mnt/OSDISK/' + folder.slice('OSDISK/'.length) : '',
-          '/mnt/SamsungMoode/' + folder,
-          '/mnt/OSDISK/' + folder,
-        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
-        for (const lf of localFolders) {
-          const cp = path.join(lf, 'cover.jpg');
-          try {
-            await fs.access(cp);
-            await fs.writeFile(cp, imgBuf);
-            coverUpdated = true;
-            break;
-          } catch (_) {
-            try {
-              await fs.access(lf);
-              await fs.writeFile(cp, imgBuf);
-              coverCreated = true;
-              break;
-            } catch (_) {}
-          }
-        }
-      }
-
-      try { await fs.unlink(tmpPath); } catch (_) {}
-      try { await fs.unlink(tmpSquarePath); } catch (_) {}
-      try { await execFileP('mpc', ['-w', '-h', mpdHost, 'update']); } catch (_) {}
-
-      return res.json({ ok: true, folder, mode, totalFiles: files.length, updatedTracks, skippedTracks, skipped: skipped.slice(0, 200), coverUpdated, coverCreated });
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: e?.message || String(e) });
-    }
-  });
-
-  app.get('/config/library-health/album-genre', async (req, res) => {
-    try {
-      if (!requireTrackKey(req, res)) return;
-      const folder = String(req.query?.folder || '').trim();
-      if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
-
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
-      let rows = [];
-      try {
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%genre%', 'find', 'base', folder], { maxBuffer: 64 * 1024 * 1024 });
-        rows = String(stdout || '').split(/\r?\n/).map((ln) => {
-          const [file = '', genre = ''] = ln.split('\t');
-          return { file: String(file || '').trim(), genre: String(genre || '').trim() };
-        }).filter((r) => r.file);
-      } catch (_) {}
-      if (!rows.length) {
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%genre%', 'listall'], { maxBuffer: 64 * 1024 * 1024 });
-        rows = String(stdout || '').split(/\r?\n/).map((ln) => {
-          const [file = '', genre = ''] = ln.split('\t');
-          return { file: String(file || '').trim(), genre: String(genre || '').trim() };
-        }).filter((r) => r.file && r.file.startsWith(folder + '/'));
-      }
-
-      const genres = new Set();
-      for (const r of rows) {
-        for (const g of String(r.genre || '').split(/[;,|/]/).map((x) => String(x || '').trim()).filter(Boolean)) genres.add(g);
-      }
-
-      return res.json({ ok: true, folder, trackCount: rows.length, genres: Array.from(genres).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })) });
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: e?.message || String(e) });
-    }
-  });
-
-  app.post('/config/library-health/album-genre', async (req, res) => {
-    try {
-      if (!requireTrackKey(req, res)) return;
-      const folder = String(req.body?.folder || '').trim();
-      const genre = String(req.body?.genre || '').trim();
-      if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
-      if (!genre) return res.status(400).json({ ok: false, error: 'genre is required' });
-
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
-      let files = [];
-      try {
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'find', 'base', folder], { maxBuffer: 64 * 1024 * 1024 });
-        files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
-      } catch (_) {}
-      if (!files.length) {
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'listall'], { maxBuffer: 64 * 1024 * 1024 });
-        files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter((f) => f && f.startsWith(folder + '/'));
-      }
-
-      const resolveLocalPath = async (f) => {
-        const file = String(f || '').trim().replace(/^\/+/, '');
-        if (!file) return '';
-        const candidates = [
-          file.startsWith('/mnt/') ? file : '',
-          file.startsWith('mnt/') ? '/' + file : '',
-          file.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + file.slice('USB/SamsungMoode/'.length) : '',
-          file.startsWith('OSDISK/') ? '/mnt/OSDISK/' + file.slice('OSDISK/'.length) : '',
-          '/mnt/SamsungMoode/' + file,
-          '/mnt/OSDISK/' + file,
-        ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
-        for (const c of candidates) { try { await fs.access(c); return c; } catch (_) {} }
-        return '';
-      };
-
-      let updated = 0;
-      let skipped = 0;
-      const updatedFiles = [];
-      const skippedFiles = [];
-      for (const f of files) {
-        const local = await resolveLocalPath(f);
-        if (!local || !/\.flac$/i.test(local)) { skipped += 1; skippedFiles.push(f); continue; }
-        try {
-          await execFileP('metaflac', ['--remove-tag=GENRE', `--set-tag=GENRE=${genre}`, local]);
-          updated += 1;
-          updatedFiles.push(f);
-        } catch (_) {
-          skipped += 1;
-          skippedFiles.push(f);
-        }
-      }
-      try { await execFileP('mpc', ['-w', '-h', mpdHost, 'update']); } catch (_) {}
-      return res.json({ ok: true, folder, genre, requested: files.length, updated, skipped, updatedFiles, skippedFiles: skippedFiles.slice(0, 200) });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

@@ -664,3 +664,4 @@ input::placeholder {
   height: 24px;
   fill: #bbb
 }
+.btnPrimary { pointer-events: auto !important; z-index: 10; }

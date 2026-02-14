@@ -95,10 +95,41 @@ def ensure_mpd_path(p: str) -> str:
 
 
 def mpd_to_abs(mpd_file: str) -> str:
-    """Convert MPD-visible USB/... back to filesystem /media/... for Mutagen reads."""
-    if mpd_file.startswith("USB/"):
-        return "/media/" + mpd_file[len("USB/"):]
-    return mpd_file
+    """
+    Convert MPD-visible paths to a local filesystem path for Mutagen reads.
+
+    On the API host (10.0.0.233), the library is typically mounted at:
+      - /mnt/SamsungMoode/...
+      - /mnt/OSDISK/...
+
+    We try common mappings and fall back to the input.
+    """
+    f = (mpd_file or "").lstrip("/")
+
+    # Already local
+    if f.startswith("mnt/"):
+        return "/" + f
+    if f.startswith("/mnt/"):
+        return f
+
+    # Explicit roots your system uses elsewhere
+    if f.startswith("USB/SamsungMoode/"):
+        return "/mnt/SamsungMoode/" + f[len("USB/SamsungMoode/"):]
+    if f.startswith("OSDISK/"):
+        return "/mnt/OSDISK/" + f[len("OSDISK/"):]
+
+    # Generic MPD "USB/..." fallback -> assume SamsungMoode mount
+    if f.startswith("USB/"):
+        return "/mnt/SamsungMoode/" + f[len("USB/"):]
+
+    # Legacy moOde-ish /media mapping (only if your API host actually has /media mounted)
+    if f.startswith("media/"):
+        return "/" + f
+    if f.startswith("/media/"):
+        return f
+
+    # As-is (Mutagen will just fail and you’ll get empty tags)
+    return f
 
 
 def mpd_connect(host: str, port: int) -> MPDClient:
@@ -212,19 +243,45 @@ def find_seed_file(text_map: dict, artist: str, title: str):
 
 
 def read_tags(mpd_file: str):
-    """Return (artist,title,album). Empty strings if unavailable."""
-    try:
-        path = mpd_to_abs(mpd_file)
-        mf = MutagenFile(path, easy=True)
-        if not mf or not mf.tags:
-            return ("", "", "")
-        artist = str(mf.tags.get("artist", [""])[0])
-        title = str(mf.tags.get("title", [""])[0])
-        album = str(mf.tags.get("album", [""])[0])
-        genre = str(mf.tags.get("genre", [""])[0])
-        return (artist, title, album, genre)
-    except Exception:
+    """
+    Return (artist, title, album, genre).
+    Empty strings if unavailable or unreadable.
+    """
+    if not mpd_file:
         return ("", "", "", "")
+
+    # Candidate filesystem paths for this MPD file
+    candidates = []
+
+    f = mpd_file.lstrip("/")
+
+    if f.startswith("USB/"):
+        tail = f[len("USB/"):]
+        candidates.extend([
+            f"/mnt/SamsungMoode/{tail}",
+            f"/mnt/OSDISK/{tail}",
+            f"/media/{tail}",
+        ])
+    else:
+        candidates.append(f)
+
+    for path in candidates:
+        try:
+            mf = MutagenFile(path, easy=True)
+            if not mf or not mf.tags:
+                continue
+
+            artist = str(mf.tags.get("artist", [""])[0])
+            title  = str(mf.tags.get("title", [""])[0])
+            album  = str(mf.tags.get("album", [""])[0])
+            genre  = str(mf.tags.get("genre", [""])[0])
+
+            return (artist, title, album, genre)
+        except Exception:
+            continue
+
+    # Nothing worked
+    return ("", "", "", "")
 
 
 def main():
@@ -251,17 +308,17 @@ def main():
     ap.add_argument("--shuffle-top", type=int, default=10,
                     help="Randomize candidate order within the top N Last.fm similar results (0 disables)")
 
-    # Jarvis Radio / orchestration options
+    # Orchestration options
     ap.add_argument("--seed-artist", default="", help="Seed artist override")
     ap.add_argument("--seed-title", default="", help="Seed title override")
     ap.add_argument("--mode", choices=["load", "play"], default="load",
                     help="load: build queue and stop, play: build queue and start playback")
     ap.add_argument("--append", action="store_true",
-                    help="Append to existing queue instead of clearing first")
+                    help="Append to existing queue instead of replacing")
     ap.add_argument("--max-seconds", type=int, default=0,
                     help="Time budget for build; 0 disables")
     ap.add_argument("--json-out", default="",
-                    help="Optional JSON summary output path")
+                    help="Optional JSON output path")
     ap.add_argument("--dry-run", action="store_true",
                     help="Preview tracks without touching MPD")
 
@@ -277,15 +334,20 @@ def main():
     if args.exclude_christmas:
         include_xmas = False
 
-    with open(args.index, "r", encoding="utf-8") as f:
-        idx = json.load(f)
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] load index {args.index}", flush=True)
+    try:
+        with open(args.index, "r", encoding="utf-8") as f:
+            idx = json.load(f)
+        mbid_map = idx.get("mbid_map", {})
+        text_map = idx.get("text_map", {})
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] index OK: {sum(len(paths) for paths in text_map.values())} text tracks")
+    except Exception as e:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] WARNING index load failed ({args.index}): {e}. Empty library.", flush=True)
+        mbid_map = {}
+        text_map = {}
 
-    mbid_map = idx["mbid_map"]
-    text_map = idx["text_map"]
-
-    if args.crop:
-        subprocess.run(["mpc", "crop"], check=False)
-
+    # NOTE: even for preview we still connect to MPD to read current song / playlistinfo.
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] STEP: mpd connect {args.host}:{args.port}", flush=True)
     mpd = mpd_connect(args.host, args.port)
 
     def queue_len() -> int:
@@ -293,6 +355,9 @@ def main():
             return int(mpd.status().get("playlistlength", "0"))
         except Exception:
             return 0
+
+    # Track output for UI/API
+    out_tracks = []
 
     # -----------------------------
     # Seed resolution
@@ -330,15 +395,22 @@ def main():
     if not last_album_k:
         seed_file = find_seed_file(text_map, seed_artist, seed_title)
         if seed_file:
-            _, _, alb0 = read_tags(seed_file)
+            alb0 = read_tags(seed_file)[2]
             if alb0:
                 last_album_k = album_key(alb0)
 
     # -----------------------------
-    # Queue handling
+    # Queue handling (ONLY when not dry-run)
     # -----------------------------
-    if not args.append:
-        mpd.clear()
+    if not args.dry_run and not args.append:
+        # Prefer crop (keep now playing) if requested, else clear.
+        if args.crop:
+            subprocess.run(["mpc", "-h", args.host, "-p", str(args.port), "crop"], check=False)
+        else:
+            try:
+                mpd.clear()
+            except Exception:
+                pass
 
     used_files = set()
     try:
@@ -362,6 +434,7 @@ def main():
     print(f"Seed: {seed_title} — {seed_artist}")
     print(f"Starting queue length: {queue_len()}  (target {args.target_queue})")
     print(f"Mode: {args.mode}  | Append: {'yes' if args.append else 'no'}")
+    print(f"Dry-run: {'YES' if args.dry_run else 'no'}")
     print(f"Christmas/holiday: {'ALLOWED' if include_xmas else 'EXCLUDED'}")
     if args.shuffle_top and args.shuffle_top > 0:
         print(f"Candidate shuffle: top {args.shuffle_top} randomized")
@@ -372,13 +445,21 @@ def main():
     misses = 0
     started = time.time()
 
-    while queue_len() < args.target_queue:
+    # IMPORTANT: in dry-run, we do NOT rely on live MPD queue_len() because we are not modifying it.
+    # We instead build up out_tracks to args.target_queue.
+    def have_enough() -> bool:
+        if args.dry_run:
+            return len(out_tracks) >= args.target_queue
+        return queue_len() >= args.target_queue
+
+    while not have_enough():
         if args.max_seconds > 0 and (time.time() - started) >= args.max_seconds:
             print(f"Time budget reached ({args.max_seconds}s), stopping.")
             break
 
         hops += 1
 
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Last.fm get similar {seed_artist} - {seed_title} limit {args.similar_limit}", flush=True)
         sim = lastfm_get_similar(args.api_key, seed_artist, seed_title, args.similar_limit)
 
         if args.shuffle_top and args.shuffle_top > 0 and sim:
@@ -395,6 +476,7 @@ def main():
         chosen_rec_title = ""
         chosen_album_k = ""
 
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] pick from {len(sim)} similar", flush=True)
         for t in sim:
             rec_title = (t.get("name") or "").strip()
             rec_artist = t.get("artist", {})
@@ -448,17 +530,16 @@ def main():
                 continue
 
             # Strong seasonal filter at local file/tag level
+            a_tag, t_tag, alb_tag, g_tag = read_tags(cand)
             if not include_xmas:
                 if is_seasonal_text(cand):
                     continue
-                a_tag, t_tag, alb_tag, g_tag = read_tags(cand)
                 if is_seasonal_text(t_tag, alb_tag, a_tag, g_tag):
                     continue
 
             # same-album guard
             if cand not in album_cache:
-                _, _, alb, _ = read_tags(cand)
-                album_cache[cand] = album_key(alb)
+                album_cache[cand] = album_key(alb_tag)
             cand_album_k = album_cache.get(cand, "")
 
             if last_album_k and cand_album_k and cand_album_k == last_album_k:
@@ -502,25 +583,41 @@ def main():
                 break
             continue
 
-        try:
-            mpd.add(chosen_file)
-        except CommandError as e:
-            msg = str(e)
-            if "No such directory" in msg or "Not found" in msg:
-                bad_files.add(chosen_file)
-                print(f"[hop {hops}] SKIP (MPD can't add): {chosen_label} -> {chosen_file} ({msg})")
-                misses += 1
-                if misses >= args.max_misses:
-                    break
-                continue
-            raise
+        # Record for UI/API (always)
+        a2, t2, alb2, g2 = read_tags(chosen_file)
+        out_tracks.append({
+            "file": chosen_file,
+            "artist": a2 or chosen_rec_artist,
+            "title": t2 or chosen_rec_title,
+            "album": alb2 or "",
+            "genre": g2 or "",
+            "method": chosen_method,
+            "rec_artist": chosen_rec_artist,
+            "rec_title": chosen_rec_title,
+        })
+
+        # Actually add to MPD only when not dry-run
+        if not args.dry_run:
+            try:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] added {chosen_label} ({chosen_method}) file {chosen_file}", flush=True)
+                mpd.add(chosen_file)
+            except CommandError as e:
+                msg = str(e)
+                if "No such directory" in msg or "Not found" in msg:
+                    bad_files.add(chosen_file)
+                    print(f"[hop {hops}] SKIP (MPD can't add): {chosen_label} -> {chosen_file} ({msg})")
+                    misses += 1
+                    if misses >= args.max_misses:
+                        break
+                    continue
+                raise
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] queue len {queue_len()}", flush=True)
 
         used_files.add(chosen_file)
         misses = 0
         reseed_cursor = 0
 
         # Next hop seed from actual local tags when possible
-        a2, t2, alb2 = read_tags(chosen_file)
         if a2 and t2:
             seed_artist, seed_title = a2, t2
         else:
@@ -538,30 +635,34 @@ def main():
         added_seed_history.append((seed_artist, seed_title))
 
         print(f"[hop {hops}] Added: {chosen_label} ({chosen_method})")
-        print(f"Queue length now: {queue_len()}")
+        if not args.dry_run:
+            print(f"Queue length now: {queue_len()}")
 
         if args.sleep > 0:
             time.sleep(args.sleep)
 
-    final_len = queue_len()
-
-    # Final mode action
-    if args.mode == "play":
-        try:
-            mpd.play()
-        except Exception:
-            pass
-    else:
-        try:
-            mpd.stop()
-        except Exception:
-            pass
-
+    # Final state (do not stop/play in dry-run)
     final_state = "unknown"
     try:
         final_state = mpd.status().get("state", "unknown")
     except Exception:
         pass
+
+    final_len = queue_len()
+    if args.dry_run:
+        final_len = len(out_tracks)
+
+    if not args.dry_run:
+        if args.mode == "play":
+            try:
+                mpd.play()
+            except Exception:
+                pass
+        else:
+            try:
+                mpd.stop()
+            except Exception:
+                pass
 
     summary = {
         "seed_artist": seed_artist,
@@ -575,6 +676,9 @@ def main():
         "hops": hops,
         "max_misses": args.max_misses,
         "shuffle_top": args.shuffle_top,
+        "dry_run": bool(args.dry_run),
+        "crop": bool(args.crop),
+        "tracks": out_tracks,
     }
 
     if args.json_out:
@@ -582,10 +686,11 @@ def main():
             with open(args.json_out, "w", encoding="utf-8") as f:
                 json.dump(summary, f, indent=2)
         except Exception:
-            print(f"WARN: failed writing json summary to {args.json_out}")
+            print(f"WARN: failed writing json output to {args.json_out}")
 
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] final queue {final_len}", flush=True)
     mpd.disconnect()
-    print(f"Done. Final queue length: {final_len} | mode={args.mode} | state={final_state}")
+    print(f"Done. Final queue length: {final_len} | mode={args.mode} | state={final_state} | dry_run={args.dry_run}")
 
 
 if __name__ == "__main__":
