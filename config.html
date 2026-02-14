@@ -10,6 +10,8 @@
     .cfgWrap { max-width: 1100px; margin: 0 auto; padding: 10px 16px 36px; }
     .cfgGrid { display:grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
     .cfgCard { background: rgba(15,20,26,.7); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:14px; }
+.cfgCard.blocked { opacity:.45; filter:grayscale(.35); }
+.cfgCard.blocked * { pointer-events:none !important; }
     .cfgCard h3 { margin:0 0 10px; font-size:16px; }
     .cfgField { margin: 10px 0; }
     .cfgField label { display:block; font-size:12px; opacity:.9; margin-bottom:6px; }
@@ -47,10 +49,10 @@
       <div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;">
         <nav class="topTabs" aria-label="Main pages" style="margin-bottom:0;">
           <a href="config.html" class="active">Config</a>
-          <a href="podcasts.html">Podcasts</a>
+          <a href="diagnostics.html">Diagnostics</a>
           <a href="library-health.html">Library Health</a>
           <a href="queue-wizard.html">Queue Wizard</a>
-          <a href="diagnostics.html">Diagnostics</a>
+          <a href="podcasts.html">Podcasts</a>
         </nav>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -79,18 +81,9 @@
         <div class="controls">
           <div class="cfgWrap">
             <div class="cfgGrid">
-              <div class="cfgCard">
-                <h3>Features</h3>
-                <div class="cfgField"><label><input id="featurePodcasts" type="checkbox" /> Podcasts</label></div>
-                <div class="cfgField"><label><input id="featureRatings" type="checkbox" /> Ratings</label></div>
-                <div class="cfgField"><label><input id="featureRadio" type="checkbox" /> Radio per-track artwork</label></div>
-                <div class="cfgField"><label><input id="featureAlexaSkill" type="checkbox" /> Alexa Skill</label></div>
-                <div class="cfgField"><label><input id="featureLastfm" type="checkbox" /> Last.fm Vibe</label></div>
-                <div class="cfgField"><label><input id="featurePushover" type="checkbox" /> Pushover Notifications</label></div>
-              </div>
-
-              <div class="cfgCard">
+              <div class="cfgCard" id="networkCard">
                 <h3>Network & Runtime</h3>
+                <div class="cfgHint" style="margin-bottom:8px;"><strong>Step 1:</strong> Fill this card, then click <strong>Check SSH + Paths</strong> to unlock the other modules.</div>
                 <div class="cfgRow">
                   <div class="cfgField">
                     <label for="apiPort">API port</label>
@@ -152,6 +145,10 @@
                   <label for="pathMoodeUsbMount">1) Path on moOde (media mount)</label>
                   <input id="pathMoodeUsbMount" type="text" placeholder="ex. /media/NAMEOFYOURDRIVE" />
                 </div>
+                <div class="cfgActions" style="margin-top:6px;">
+                  <button class="btn" id="derivePathsBtn" type="button">Auto-fill (2) and (3) from (1)</button>
+                </div>
+                <div class="cfgHint">Typing in (1) attempts auto-fill. If it doesn’t trigger (paste/autofill/browser behavior), click Auto-fill.</div>
                 <div class="cfgField">
                   <label for="pathPiMountBase">2) Path on API host (mount base)</label>
                   <input id="pathPiMountBase" type="text" placeholder="ex. /mnt/NAMEOFYOURDRIVE" />
@@ -161,30 +158,39 @@
                   <input id="pathPodcastRoot" type="text" placeholder="ex. /mnt/NAMEOFYOURDRIVE/Podcasts" />
                 </div>
                 <div class="cfgActions" style="margin-top:6px;">
-                  <button class="btn" id="derivePathsBtn" type="button">Auto-fill (2) and (3) from (1)</button>
-                </div>
-                <div class="cfgActions" style="margin-top:6px;">
                   <button class="btn" id="checkRuntimeBtn" type="button">Check SSH + Paths</button>
                 </div>
                 <div class="cfgHint" id="runtimeCheckStatus" style="margin-top:6px;"></div>
                 <div id="runtimeCheckDetails" class="cfgHint" style="margin-top:6px;"></div>
-                <div class="cfgHint">Typing in (1) attempts auto-fill. If it doesn’t trigger (paste/autofill/browser behavior), click Auto-fill.</div>
               </div>
 
-              <div class="cfgCard" id="lastfmCard">
+              <div class="cfgCard gateCard">
+                <h3>Podcasts</h3>
+                <div class="cfgField"><label><input id="featurePodcasts" type="checkbox" /> Enabled</label></div>
+                <div class="cfgHint">Enable podcast pages and background download/subscription tools.</div>
+              </div>
+
+              <div class="cfgCard gateCard">
+                <h3>Radio Artwork</h3>
+                <div class="cfgField"><label><input id="featureRadio" type="checkbox" /> Enabled</label></div>
+                <div class="cfgHint">Enable radio per-track artwork behavior in now-playing flows.</div>
+              </div>
+
+              <div class="cfgCard gateCard" id="lastfmCard">
                 <h3>Last.fm (Vibe)</h3>
+                <div class="cfgField"><label><input id="featureLastfm" type="checkbox" /> Enabled</label></div>
                 <div class="cfgField">
                   <label for="lastfmApiKey">Last.fm API key</label>
                   <input id="lastfmApiKey" type="password" placeholder="Enter Last.fm API key" autocomplete="off" />
                 </div>
-                <div class="cfgHint">When configured, Vibe tools are enabled in Queue Wizard.</div>
+                <div class="cfgHint">When enabled/configured, Vibe tools are available in Queue Wizard.</div>
               </div>
 
-              <div class="cfgCard" id="alexaCard" style="grid-column: 1 / -1;">
+              <div class="cfgCard gateCard" id="alexaCard" style="grid-column: 1 / -1;">
                 <h3>Alexa</h3>
                 <div class="cfgRow">
                   <div class="cfgField">
-                    <label><input id="alexaEnabled" type="checkbox" /> Enabled</label>
+                    <label><input id="featureAlexaSkill" type="checkbox" /> Enabled</label>
                   </div>
                   <div class="cfgField">
                     <label for="alexaDomain">Public domain</label>
@@ -230,8 +236,9 @@
                 </details>
               </div>
 
-              <div class="cfgCard" id="ratingsCard" style="grid-column: 1 / -1;">
+              <div class="cfgCard gateCard" id="ratingsCard" style="grid-column: 1 / -1;">
                 <h3>Ratings Setup</h3>
+                <div class="cfgField"><label><input id="featureRatings" type="checkbox" /> Enabled</label></div>
                 <div class="cfgHint">When Ratings is enabled, verify MPD sticker DB and keep backups before updates.</div>
                 <div class="cfgActions" style="margin-top:10px;">
                   <button class="btn" id="checkRatingsDbBtn" type="button">Check Ratings DB</button>
@@ -246,10 +253,11 @@
                 <div class="cfgHint" id="ratingsDbStatus" style="margin-top:8px;"></div>
               </div>
 
-              <div class="cfgCard" id="pushoverCard" style="grid-column: 1 / -1;">
+              <div class="cfgCard gateCard" id="pushoverCard" style="grid-column: 1 / -1;">
                 <h3>Track Notifications (Pushover)</h3>
+                <div class="cfgField"><label><input id="featurePushover" type="checkbox" /> Enabled</label></div>
                 <div class="cfgField">
-                  <label><input id="notifyEnabled" type="checkbox" /> Enabled</label>
+                  <label><input id="notifyEnabled" type="checkbox" /> Track polling active</label>
                 </div>
                 <div class="cfgRow">
                   <div class="cfgField">
@@ -589,19 +597,16 @@ function setPillState(pillId, state){
 
 function syncAlexaCardVisibility(){
   const featureEl = document.getElementById('featureAlexaSkill');
-  const card = document.getElementById('alexaCard');
-  const enabledEl = document.getElementById('alexaEnabled');
   const on = !!featureEl?.checked;
-  if (card) card.style.display = on ? '' : 'none';
-  if (enabledEl) enabledEl.checked = on;
+  const domainEl = document.getElementById('alexaDomain');
+  if (domainEl) domainEl.disabled = !on;
 }
 
 function syncLastfmCardVisibility(){
   const featureEl = document.getElementById('featureLastfm');
-  const card = document.getElementById('lastfmCard');
   const keyEl = document.getElementById('lastfmApiKey');
   const on = !!featureEl?.checked;
-  if (card) card.style.display = on ? '' : 'none';
+  if (keyEl) keyEl.disabled = !on;
   if (on && keyEl && !keyEl.value.trim()) {
     const cached = localStorage.getItem('nowplaying.secret.lastfmApiKey') || '';
     if (cached) keyEl.value = cached;
@@ -610,13 +615,14 @@ function syncLastfmCardVisibility(){
 
 function syncPushoverCardVisibility(){
   const featureEl = document.getElementById('featurePushover');
-  const card = document.getElementById('pushoverCard');
   const notifyEnabledEl = document.getElementById('notifyEnabled');
   const tokenEl = document.getElementById('pushoverToken');
   const userEl = document.getElementById('pushoverUser');
   const on = !!featureEl?.checked;
-  if (card) card.style.display = on ? '' : 'none';
-  if (notifyEnabledEl) notifyEnabledEl.checked = on;
+  if (notifyEnabledEl) notifyEnabledEl.disabled = !on;
+  if (tokenEl) tokenEl.disabled = !on;
+  if (userEl) userEl.disabled = !on;
+  if (notifyEnabledEl && on && !notifyEnabledEl.checked) notifyEnabledEl.checked = true;
   if (on) {
     if (tokenEl && !tokenEl.value.trim()) tokenEl.value = localStorage.getItem('nowplaying.secret.pushoverToken') || '';
     if (userEl && !userEl.value.trim()) userEl.value = localStorage.getItem('nowplaying.secret.pushoverUser') || '';
@@ -624,10 +630,18 @@ function syncPushoverCardVisibility(){
 }
 
 function syncRatingsCardVisibility(){
-  const featureEl = document.getElementById('featureRatings');
-  const card = document.getElementById('ratingsCard');
-  const on = !!featureEl?.checked;
-  if (card) card.style.display = on ? '' : 'none';
+  const on = !!document.getElementById('featureRatings')?.checked;
+  ['checkRatingsDbBtn','backupRatingsDbBtn','ratingsBackupSelect','restoreRatingsDbBtn'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !on;
+  });
+}
+
+let runtimeReady = false;
+function applyRuntimeGate(){
+  document.querySelectorAll('.gateCard').forEach((el) => {
+    el.classList.toggle('blocked', !runtimeReady);
+  });
 }
 
 const TRACK_KEY_STORAGE = 'nowplaying.trackkey';
@@ -735,7 +749,6 @@ async function loadCfg(){
     if (!localKey) localStorage.setItem(TRACK_KEY_STORAGE, effectiveKey);
   }
 
-  document.getElementById('alexaEnabled').checked = !!c.alexa?.enabled;
   document.getElementById('featureAlexaSkill').checked = !!c.alexa?.enabled;
   document.getElementById('alexaDomain').value = c.alexa?.publicDomain || '';
   syncAlexaCardVisibility();
@@ -1132,6 +1145,8 @@ async function checkRuntimeEnv(){
     const ssh = j.sshOk ? 'SSH ✅' : 'SSH ❌';
     const mpd = j.mpdOk ? 'MPD ✅' : 'MPD ❌';
     const bad = (j.pathChecks || []).filter((x) => !x.exists).length;
+    runtimeReady = !!(j.sshOk && j.mpdOk);
+    applyRuntimeGate();
     if (statusEl) statusEl.textContent = `${ssh} · ${mpd} · Paths ${bad ? `⚠️ ${bad} missing` : '✅'}`;
 
     if (detailsEl) {
@@ -1155,6 +1170,8 @@ async function checkRuntimeEnv(){
       if (createBtn) createBtn.addEventListener('click', () => ensurePodcastRoot().catch(e => log(String(e))));
     }
   } catch (e) {
+    runtimeReady = false;
+    applyRuntimeGate();
     if (statusEl) statusEl.textContent = `❌ Runtime check failed: ${String(e?.message || e)}`;
   } finally {
     if (btn) btn.disabled = false;
@@ -1500,6 +1517,7 @@ syncAlexaCardVisibility();
 syncLastfmCardVisibility();
 syncPushoverCardVisibility();
 syncRatingsCardVisibility();
+applyRuntimeGate();
 refreshSshSetupHelp();
 loadCfg().catch(e => log(String(e)));
 </script>

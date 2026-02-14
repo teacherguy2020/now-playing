@@ -35,6 +35,34 @@
     return `${location.protocol}//${host}:3101`;
   }
 
+  function applyLiveZoom(){
+    const BASE_W = 1920;
+    const BASE_H = 1080;
+    const z = Number($('liveZoom')?.value || 55);
+    const scale = Math.max(0.35, Math.min(1, z / 100));
+    const wrap = $('liveFrameScaleWrap');
+    const label = $('liveZoomLabel');
+    const viewport = $('liveFrameViewport');
+    if (wrap) {
+      wrap.style.transform = `scale(${scale})`;
+      wrap.style.width = `${Math.round(BASE_W * scale)}px`;
+      wrap.style.height = `${Math.round(BASE_H * scale)}px`;
+    }
+    if (viewport) viewport.style.minHeight = `${Math.round(BASE_H * scale) + 16}px`;
+    if (label) label.textContent = `${Math.round(scale * 100)}%`;
+  }
+
+  function refreshLiveFrame(uiPort = 8101){
+    const host = location.hostname || '10.0.0.233';
+    const proto = location.protocol || 'http:';
+    const url = `${proto}//${host}:${uiPort}/index.html`;
+    const fr = $('liveFrame');
+    const a = $('openLiveLink');
+    if (fr) fr.src = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+    if (a) a.href = url;
+    applyLiveZoom();
+  }
+
   async function loadRuntime(){
     const host = location.hostname || '10.0.0.233';
     try {
@@ -53,12 +81,14 @@
       const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
       $('alexaHint').textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
       setPillState('apiPill','ok'); setPillState('webPill','ok'); setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
+      refreshLiveFrame(uiPort);
     } catch {
       $('apiBase').value = apiBaseDefault();
       $('apiHint').textContent = $('apiBase').value.replace(/^https?:\/\//,'');
       $('webHint').textContent = `${host}:8101`;
       $('alexaHint').textContent = 'unknown';
       setPillState('apiPill','bad'); setPillState('webPill','warn'); setPillState('alexaPill','warn');
+      refreshLiveFrame(8101);
     }
   }
 
@@ -103,6 +133,7 @@
     st.innerHTML = '<span class="spin"></span>Running…';
     if (imageWrap) imageWrap.style.display = 'none';
     if (imageOut) imageOut.removeAttribute('src');
+    $('meta')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     const t0 = performance.now();
     try {
@@ -133,10 +164,15 @@
   }
 
   $('runBtn').addEventListener('click', () => run());
-  $('copyBtn').addEventListener('click', async () => {
+  $('reloadLiveBtn')?.addEventListener('click', () => loadRuntime());
+  $('liveZoom')?.addEventListener('input', applyLiveZoom);
+  async function copyResponse(){
     try { await navigator.clipboard.writeText($('out').textContent || ''); $('status').textContent = 'Response copied.'; }
     catch { $('status').textContent = 'Copy failed.'; }
-  });
+  }
+
+  $('copyBtn').addEventListener('click', copyResponse);
+  $('copyBtnCard')?.addEventListener('click', copyResponse);
 
   hydrateEndpoints();
   loadRuntime();
