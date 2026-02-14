@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Diagnostics</title>
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260211-1" />
+  <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
+  <style>
+    body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    .card{background:#101c33;border:1px solid #2a3a58;border-radius:12px;padding:12px;margin:10px 0}
+    label{display:block;font-size:12px;color:#9fb1d9;margin-bottom:6px}
+    input,select,textarea,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
+    textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,Consolas,monospace}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .muted{color:#9fb1d9;font-size:12px}
+    pre{white-space:pre-wrap;word-break:break-word;background:#071021;border:1px solid #2a3a58;border-radius:10px;padding:12px;max-height:55vh;overflow:auto}
+    .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.28);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <div class="heroRail">
+    <div class="heroWrap">
+      <div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;">
+        <nav class="topTabs" aria-label="Main pages" style="margin-bottom:0;">
+          <a href="config.html">Config</a>
+          <a href="podcasts.html">Podcasts</a>
+          <a href="library-health.html">Library Health</a>
+          <a href="queue-wizard.html">Queue Wizard</a>
+          <a href="diagnostics.html" class="active">Diagnostics</a>
+        </nav>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="pill" id="apiPill" title="Active API endpoint"><span class="dot"></span>API: <span id="apiHint">loading…</span></div>
+          <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot"></span>Web: <span id="webHint">loading…</span></div>
+          <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot"></span>Alexa: <span id="alexaHint">unknown</span></div>
+        </div>
+      </div>
+      <header>
+        <div class="brand">
+          <h1>Diagnostics</h1>
+          <div class="sub">Call API endpoints and inspect raw JSON responses</div>
+        </div>
+      </header>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <div class="row">
+        <div style="min-width:320px;flex:1 1 420px;">
+          <label for="endpoint">Endpoint</label>
+          <select id="endpoint"></select>
+        </div>
+        <div>
+          <label for="method">Method</label>
+          <select id="method">
+            <option>GET</option>
+            <option>POST</option>
+          </select>
+        </div>
+        <div style="min-width:320px;flex:1 1 420px;">
+          <label for="path">Path</label>
+          <input id="path" type="text" style="width:100%" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <label style="display:flex;align-items:center;gap:8px;"><input id="useTrackKey" type="checkbox" checked /> send x-track-key</label>
+        <button id="runBtn" type="button">Run request</button>
+        <button id="copyBtn" type="button">Copy response</button>
+        <span id="status" class="muted"></span>
+      </div>
+      <div id="bodyWrap" style="margin-top:10px;display:none;">
+        <label for="body">JSON body (for POST)</label>
+        <textarea id="body">{}</textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="muted" id="meta"></div>
+      <div id="imageWrap" style="display:none;margin:8px 0;">
+        <img id="imageOut" alt="Endpoint image preview" style="max-width:100%;max-height:55vh;border:1px solid #2a3a58;border-radius:10px;background:#071021;" />
+      </div>
+      <pre id="out">Run an endpoint to view JSON output…</pre>
+    </div>
+
+    <input id="apiBase" type="hidden" />
+    <input id="key" type="hidden" />
+  </div>
+
+  <script src="scripts/diagnostics.js?v=20260214-1"></script>
+</body>
+</html>
