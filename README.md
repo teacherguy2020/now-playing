@@ -5,7 +5,7 @@ A moOde-focused now-playing API + UI stack with podcast management, queue contro
 ## What this project does
 
 - Serves a Now Playing API (`/now-playing`, `/next-up`, `/alexa/was-playing`, artwork routes, queue/rating controls)
-- Hosts adaptive UI pages (`index.html`, `podcasts.html`)
+- Hosts adaptive UI pages (`index.html`, `podcasts.html`, `library-health.html`, `queue-wizard.html`, `config.html`)
 - Manages podcast subscriptions/downloads/playlists
 - Supports multi-device/home deployments (Pi nodes)
 - Supports optional Alexa endpoint flow when enabled
@@ -60,8 +60,14 @@ export NOW_PLAYING_CONFIG_PATH=/path/to/now-playing.config.json
 ## Key config fields
 
 - `nodes[]` – Pi hosts, IPs, and roles (`api`, `display`, `both`)
+- `trackKey`
 - `ports.api` / `ports.ui`
+- `mpd.host` / `mpd.port`
+- `moode.sshHost` / `moode.sshUser` / `moode.baseUrl`
+- `runtime.publicBaseUrl` (optional advanced override)
 - `alexa.enabled` + `alexa.publicDomain`
+- `lastfmApiKey`
+- `notifications.trackNotify.*` + `notifications.pushover.*`
 - `paths.musicLibraryRoot`, `paths.moodeUsbMount`, `paths.piMountBase`, `paths.podcastRoot`
 
 ## Optional: iOS track-start push notifications (Pushover)
@@ -104,6 +110,20 @@ pm2 restart api --update-env
 pm2 save
 ```
 
+### Queue Wizard (`queue-wizard.html`)
+
+Queue Wizard now supports two explicit build modes:
+- **Filter Queue Builder** (genre/artist/excludes/rating threshold)
+- **Vibe Queue Builder** (seed from now-playing with live progress)
+
+Recent behavior highlights:
+- Real vibe progress via async job endpoints (`vibe-start`, `vibe-status`, `vibe-cancel`)
+- Live per-track feed while vibe builds
+- Separate send actions for filtered vs vibe list
+- Shared playlist-save controls in the lower cover module
+- Collage preview is generated for both filtered and vibe lists
+- Vibe is automatically hidden when Last.fm is not configured
+
 ### Web config page
 
 You can edit core Alexa/notification settings in-browser at:
@@ -115,7 +135,7 @@ The page reads/writes via:
 - `POST /config/runtime` (requires `x-track-key`)
 
 It supports both:
-- guided field editing (Alexa/notifications)
+- guided field editing (feature toggles, network/runtime, Alexa, Last.fm, Pushover)
 - advanced full JSON editing (entire config object)
 
 After save, the UI prompts to restart API. On PM2 hosts, use the built-in "Restart API now" action.

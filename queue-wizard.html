@@ -39,17 +39,41 @@
         <a href="library-health.html">Library Health</a>
         <a href="queue-wizard.html" class="active">Queue Wizard</a>
       </nav>
+      <header>
+        <div class="brand">
+          <h1>Queue Wizard</h1>
+          <div class="sub">Filter queue • Vibe queue • Playlist cover preview</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="pill" title="Active API endpoint">
+            <span class="dot" aria-hidden="true"></span>
+            API: <span id="apiHint" style="color:rgba(255,255,255,.9)">loading…</span>
+          </div>
+          <div class="pill" title="Active web UI endpoint">
+            <span class="dot" aria-hidden="true"></span>
+            Web: <span id="webHint" style="color:rgba(255,255,255,.9)">loading…</span>
+          </div>
+        </div>
+      </header>
     </div>
   </div>
 
   <div class="wrap">
-    <h1>Queue Wizard</h1>
 
-    <!-- Controls (same width as hero via .wrap max-width) -->
     <div class="card">
       <div class="row">
-        <label>API base<br><input id="apiBase" style="min-width:220px"></label>
-        <label>Track key<br><input id="key" value="1029384756"></label>
+        <div><div class="muted">Active API</div><div id="activeApiBase">loading…</div></div>
+        <div><div class="muted">Ports</div><div><span id="activeApiPort">api: ?</span> · <span id="activeUiPort">ui: ?</span></div></div>
+        <div><div class="muted">Track key</div><div id="activeTrackKey">loading…</div></div>
+      </div>
+      <input id="apiBase" type="hidden" />
+      <input id="key" type="hidden" />
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 8px">Filter Queue Builder</h3>
+      <div class="muted" style="margin-top:4px">Pick genres/artists and exclusions, preview matches, then send that filtered list.</div>
+      <div class="row" style="margin-top:10px">
         <label>Max tracks<br><input id="maxTracks" type="number" min="1" max="5000" value="25" style="width:100px"></label>
         <label>At least rating<br>
           <select id="minRating" style="width:140px">
@@ -62,7 +86,6 @@
           </select>
         </label>
       </div>
-
       <div class="pickGrid" style="margin-top:10px">
         <label>Genres<br><select id="genres" multiple size="8"></select></label>
         <label>Artists<br><select id="artists" multiple size="8"></select></label>
@@ -70,28 +93,68 @@
       </div>
 
       <div class="actionBar">
-        <!-- Queue behavior -->
         <div class="choiceLine">
           <label><input type="radio" name="mode" value="replace" checked> Replace queue</label>
           <label><input type="radio" name="mode" value="append"> Append</label>
-
-          <!-- This means "keep current track, delete all others" (your definition of crop) -->
           <label><input id="crop" type="checkbox" checked> Crop (keep current track)</label>
-
           <label><input id="shuffle" type="checkbox"> Shuffle</label>
         </div>
 
-        <!-- Vibe builder -->
         <div class="choiceLine">
-          <button id="vibeBuild" class="btnPrimary">Build vibe list from now playing</button>
+          <button id="sendFilteredToMoode" class="btnPrimary">Send filtered list to moOde</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="vibeSection">
+      <h3 style="margin:0 0 8px">Vibe Queue Builder</h3>
+      <div class="muted">Uses the currently playing track as a seed and discovers similar tracks live.</div>
+
+      <div class="actionBar" style="margin-top:10px">
+        <div class="choiceLine">
+          <label><input type="radio" name="modeVibe" value="replace" checked> Replace queue</label>
+          <label><input type="radio" name="modeVibe" value="append"> Append</label>
+          <label><input id="cropVibe" type="checkbox" checked> Crop (keep current track)</label>
+          <label>At least rating
+            <select id="minRatingVibe" style="width:140px;margin-left:6px">
+              <option value="0">Any</option>
+              <option value="1">★☆☆☆☆</option>
+              <option value="2" selected>★★☆☆☆</option>
+              <option value="3">★★★☆☆</option>
+              <option value="4">★★★★☆</option>
+              <option value="5">★★★★★</option>
+            </select>
+          </label>
         </div>
 
-        <!-- Save playlist options (restored) -->
-        <div class="choiceLine">
-          <div class="choiceGroup">
-            <label><input type="checkbox" id="savePlaylist"> Save as moOde playlist</label>
-          </div>
+        <div class="choiceLine" style="margin-top:4px">
+          <button id="vibeBuild" class="btnPrimary">Build vibe list from now playing</button>
+          <button id="sendVibeToMoode" class="btnPrimary">Send vibe list to moOde</button>
+        </div>
+      </div>
 
+      <div id="vibeProgressWrap" class="hidden" style="margin-top:10px;">
+        <div id="vibeProgressText" style="margin-bottom:6px;"></div>
+        <progress id="vibeProgressBar" value="0" max="100" style="width:100%; height:16px;"></progress>
+        <div id="vibeProgressDetail" style="margin-top:6px; opacity:0.9;"></div>
+        <div id="vibeLiveFeed" style="margin-top:8px;max-height:180px;overflow:auto;border:1px solid #2a3a58;border-radius:8px;padding:8px;background:#0a1222"></div>
+        <button id="vibeCancel" type="button" class="hidden" style="margin-top:10px;">Cancel</button>
+      </div>
+    </div>
+    <div id="vibeDisabledNote" class="card muted warn hidden">Vibe is disabled. Add a Last.fm API key in Config to enable it.</div>
+
+    <div class="muted" id="status" style="margin-top:6px"></div>
+    <div class="muted" id="sendConfirm" style="margin-top:4px;color:#9ef7b2;"></div>
+
+    <div class="card" id="coverCard" style="display:none;">
+      <div class="muted" id="coverStatus">Playlist cover preview</div>
+      <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-top:8px;">
+        <img id="coverPreview" alt="Playlist cover preview"
+             style="width:220px;height:220px;object-fit:cover;border:1px solid #334;border-radius:10px;background:#0a1222;" />
+        <div>
+          <div class="choiceGroup" style="margin-bottom:8px;">
+            <button id="savePlaylistBtn" type="button" class="btnPrimary">Save as moOde Playlist</button>
+          </div>
           <div id="playlistOptions" class="hidden" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
             <div id="playlistNameWrap">
               <label>Playlist name<br><input id="playlistName" placeholder="e.g., Chill Evening Mix"></label>
@@ -100,36 +163,11 @@
               <label><input id="generateCollage" type="checkbox"> Generate playlist collage cover</label>
             </div>
           </div>
-        </div>
-
-        <!-- One consistent send button -->
-        <div class="choiceLine">
-          <button id="sendToMoode" class="btnPrimary">Send list to moOde</button>
+          <div class="muted warn" id="playlistHint" style="margin-top:6px"></div>
         </div>
       </div>
-
-      <div class="muted" id="status" style="margin-top:6px"></div>
-      <div id="vibeProgressWrap" class="hidden" style="margin-top:10px;">
-        <div id="vibeProgressText" style="margin-bottom:6px;"></div>
-
-        <progress id="vibeProgressBar" value="0" max="100" style="width:100%; height:16px;"></progress>
-
-        <div id="vibeProgressDetail" style="margin-top:6px; opacity:0.9;"></div>
-
-        <!-- optional: cancel -->
-        <button id="vibeCancel" type="button" class="hidden" style="margin-top:10px;">Cancel</button>
-      </div>
-      <div class="muted warn" id="playlistHint" style="margin-top:6px"></div>
     </div>
 
-    <!-- Optional cover preview (kept) -->
-    <div class="card" id="coverCard" style="display:none;">
-      <div class="muted" id="coverStatus">Playlist cover preview</div>
-      <img id="coverPreview" alt="Playlist cover preview"
-           style="width:220px;height:220px;object-fit:cover;border:1px solid #334;border-radius:10px;background:#0a1222;" />
-    </div>
-
-    <!-- Results area (empty on load; JS should not auto-preview) -->
     <div class="card">
       <div class="muted" id="count">No list yet.</div>
       <div class="muted" id="filtersSummary" style="margin-top:4px"></div>

@@ -3,6 +3,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
+import { MPD_HOST, MPD_PORT, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
 
 export function registerPodcastDownloadRoutes(app, deps) {
   const {
@@ -101,9 +102,9 @@ export function registerPodcastDownloadRoutes(app, deps) {
       const chosen = entries.slice(0, limit);
       const lines = chosen.map(x => `${mpdPrefix}/${x.name}`).join('\n') + '\n';
 
-      const MOODE_HOST = process.env.MOODE_HOST || '10.0.0.254';
-      const MOODE_USER = process.env.MOODE_USER || 'moode';
-      const MPD_PORT = Number(process.env.MPD_PORT || 6600);
+      const MOODE_HOST = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+      const MOODE_USER = String(MOODE_SSH_USER || 'moode');
+      const MPD_PORT_NUM = Number(MPD_PORT || 6600);
 
       const execFileP = (cmd, args, opts = {}) =>
         new Promise((resolve, reject) => {
@@ -125,7 +126,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
         { input: lines, maxBuffer: 10 * 1024 * 1024 }
       );
 
-      await execFileP('mpc', ['-h', MOODE_HOST, '-p', String(MPD_PORT), 'update', mpdPrefix]);
+      await execFileP('mpc', ['-h', MOODE_HOST, '-p', String(MPD_PORT_NUM), 'update', mpdPrefix]);
 
       return res.json({
         ok: true,

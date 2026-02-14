@@ -39,56 +39,100 @@ set -euo pipefail
 COVERS_DIR="/var/local/www/imagesw/playlist-covers"
 MPD_PL_DIR="/var/lib/mpd/playlists"
 
-PLAYLIST_NAME="${1:-}"
-ARG2="${2:-}"
-
-# -------------------------------------------------
-# Batch mode: no playlist name supplied
-# -------------------------------------------------
-if [[ -z "$PLAYLIST_NAME" ]]; then
-  shopt -s nullglob
-  for pl in "$MPD_PL_DIR"/*.m3u; do
-    name="$(basename "$pl" .m3u)"
-    echo "=== $name ==="
-    "$0" "$name" || true
-    echo
-  done
-  exit 0
-fi
-
+PLAYLIST_NAME=""
 FORCE_SINGLE=0
-if [[ "$ARG2" == "--single" ]]; then
-  FORCE_SINGLE=1
-fi
+PREVIEW_MODE=0
+TRACKS_FILE=""
+OUT_PATH=""
 
-PLAYLIST_FILE="$MPD_PL_DIR/$PLAYLIST_NAME.m3u"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --single)
+      FORCE_SINGLE=1
+      shift
+      ;;
+    --preview)
+      PREVIEW_MODE=1
+      shift
+      ;;
+    --tracks-file)
+      TRACKS_FILE="${2:-}"
+      shift 2
+      ;;
+    --out)
+      OUT_PATH="${2:-}"
+      shift 2
+      ;;
+    --*)
+      echo "ERROR: Unknown flag: $1" >&2
+      exit 2
+      ;;
+    *)
+      if [[ -z "$PLAYLIST_NAME" ]]; then
+        PLAYLIST_NAME="$1"
+      else
+        echo "ERROR: Unexpected extra argument: $1" >&2
+        exit 2
+      fi
+      shift
+      ;;
+  esac
+done
 
-# --- Safety: keep spaces for display name, strip weird chars
-# Allowed: letters, numbers, space, underscore, dot, dash
-safe_name="$(printf '%s' "$PLAYLIST_NAME" | tr -cd 'A-Za-z0-9 _.-')"
-safe_name="$(printf '%s' "$safe_name" | sed 's/^ *//; s/ *$//')"
+if [[ "$PREVIEW_MODE" == "1" ]]; then
+  if [[ -z "$TRACKS_FILE" || -z "$OUT_PATH" ]]; then
+    echo "ERROR: --preview requires --tracks-file and --out" >&2
+    exit 2
+  fi
+  if [[ ! -f "$TRACKS_FILE" ]]; then
+    echo "ERROR: tracks file not found: $TRACKS_FILE" >&2
+    exit 4
+  fi
+  PLAYLIST_FILE="$TRACKS_FILE"
+else
+  # -------------------------------------------------
+  # Batch mode: no playlist name supplied
+  # -------------------------------------------------
+  if [[ -z "$PLAYLIST_NAME" ]]; then
+    shopt -s nullglob
+    for pl in "$MPD_PL_DIR"/*.m3u; do
+      name="$(basename "$pl" .m3u)"
+      echo "=== $name ==="
+      "$0" "$name" || true
+      echo
+    done
+    exit 0
+  fi
 
-if [[ -z "$safe_name" ]]; then
-  echo "ERROR: Playlist name becomes empty after sanitization." >&2
-  exit 3
-fi
+  PLAYLIST_FILE="$MPD_PL_DIR/$PLAYLIST_NAME.m3u"
 
-# Canonical output is underscore name (moOde convention)
-OUT_UNDER="$COVERS_DIR/${safe_name// /_}.jpg"
-# Legacy/compat: some older covers may exist with spaces
-OUT_SPACE="$COVERS_DIR/$safe_name.jpg"
+  # --- Safety: keep spaces for display name, strip weird chars
+  # Allowed: letters, numbers, space, underscore, dot, dash
+  safe_name="$(printf '%s' "$PLAYLIST_NAME" | tr -cd 'A-Za-z0-9 _.-')"
+  safe_name="$(printf '%s' "$safe_name" | sed 's/^ *//; s/ *$//')"
 
-# If either exists, LEAVE IT ALONE.
-if [[ -f "$OUT_UNDER" || -f "$OUT_SPACE" ]]; then
-  echo "OK: cover already exists; leaving it alone."
-  [[ -f "$OUT_UNDER" ]] && echo "  $OUT_UNDER"
-  [[ -f "$OUT_SPACE" ]] && echo "  $OUT_SPACE"
-  exit 0
-fi
+  if [[ -z "$safe_name" ]]; then
+    echo "ERROR: Playlist name becomes empty after sanitization." >&2
+    exit 3
+  fi
 
-if [[ ! -f "$PLAYLIST_FILE" ]]; then
-  echo "ERROR: Playlist not found: $PLAYLIST_FILE" >&2
-  exit 4
+  # Canonical output is underscore name (moOde convention)
+  OUT_UNDER="$COVERS_DIR/${safe_name// /_}.jpg"
+  # Legacy/compat: some older covers may exist with spaces
+  OUT_SPACE="$COVERS_DIR/$safe_name.jpg"
+
+  # If either exists, LEAVE IT ALONE.
+  if [[ -f "$OUT_UNDER" || -f "$OUT_SPACE" ]]; then
+    echo "OK: cover already exists; leaving it alone."
+    [[ -f "$OUT_UNDER" ]] && echo "  $OUT_UNDER"
+    [[ -f "$OUT_SPACE" ]] && echo "  $OUT_SPACE"
+    exit 0
+  fi
+
+  if [[ ! -f "$PLAYLIST_FILE" ]]; then
+    echo "ERROR: Playlist not found: $PLAYLIST_FILE" >&2
+    exit 4
+  fi
 fi
 
 tmpdir="$(mktemp -d /tmp/plcover.XXXXXX)"
@@ -202,7 +246,7 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     [[ -n "$tmpimg" ]] && rm -f "$tmpimg" 2>/dev/null || true
   fi
 
-  [[ "${#covers[@]}" -ge 4 ]] && break
+  # Keep scanning to collect more unique art so collage can be more diverse.
 done < "$PLAYLIST_FILE"
 
 if [[ "${#covers[@]}" -eq 0 ]]; then
@@ -215,8 +259,12 @@ fi
 # -----------------------------
 
 write_out() {
-  # Always write canonical underscore-name
-  sudo install -o root -g root -m 0644 "$1" "$OUT_UNDER"
+  if [[ "$PREVIEW_MODE" == "1" ]]; then
+    install -m 0644 "$1" "$OUT_PATH"
+  else
+    # Always write canonical underscore-name
+    sudo install -o root -g root -m 0644 "$1" "$OUT_UNDER"
+  fi
 }
 
 make_single_cover() {
@@ -230,12 +278,37 @@ make_single_cover() {
 
 make_collage() {
   local TILE=300
-  while [[ "${#covers[@]}" -lt 4 ]]; do
-    covers+=("${covers[-1]}")
-  done
+  local n="${#covers[@]}"
+  local c0 c1 c2 c3
+
+  if [[ "$n" -ge 4 ]]; then
+    # Spread picks across the unique cover list to avoid clustering one album.
+    local i1=$(( (n - 1) / 3 ))
+    local i2=$(( (2 * (n - 1)) / 3 ))
+    c0="${covers[0]}"
+    c1="${covers[$i1]}"
+    c2="${covers[$i2]}"
+    c3="${covers[$((n - 1))]}"
+  elif [[ "$n" -eq 3 ]]; then
+    c0="${covers[0]}"
+    c1="${covers[1]}"
+    c2="${covers[2]}"
+    c3="${covers[1]}"
+  elif [[ "$n" -eq 2 ]]; then
+    # Checkerboard-ish repeat so one cover isn't shown 3x.
+    c0="${covers[0]}"
+    c1="${covers[1]}"
+    c2="${covers[1]}"
+    c3="${covers[0]}"
+  else
+    c0="${covers[0]}"
+    c1="${covers[0]}"
+    c2="${covers[0]}"
+    c3="${covers[0]}"
+  fi
 
   ffmpeg -hide_banner -loglevel error -y \
-    -i "${covers[0]}" -i "${covers[1]}" -i "${covers[2]}" -i "${covers[3]}" \
+    -i "$c0" -i "$c1" -i "$c2" -i "$c3" \
     -filter_complex "\
       [0:v]scale=${TILE}:${TILE}:force_original_aspect_ratio=increase,crop=${TILE}:${TILE}[t0]; \
       [1:v]scale=${TILE}:${TILE}:force_original_aspect_ratio=increase,crop=${TILE}:${TILE}[t1]; \
@@ -254,15 +327,27 @@ make_collage() {
 if [[ "$FORCE_SINGLE" == "1" ]]; then
   echo "NOTE: --single enabled; using a single cover (no collage)."
   make_single_cover "${covers[0]}"
-  echo "OK: generated (single forced) $OUT_UNDER"
+  if [[ "$PREVIEW_MODE" == "1" ]]; then
+    echo "OK: generated (single forced) $OUT_PATH"
+  else
+    echo "OK: generated (single forced) $OUT_UNDER"
+  fi
   exit 0
 fi
 
 if [[ "${#covers[@]}" -eq 1 ]]; then
   make_single_cover "${covers[0]}"
-  echo "OK: generated (single unique) $OUT_UNDER"
+  if [[ "$PREVIEW_MODE" == "1" ]]; then
+    echo "OK: generated (single unique) $OUT_PATH"
+  else
+    echo "OK: generated (single unique) $OUT_UNDER"
+  fi
   exit 0
 fi
 
 make_collage
-echo "OK: generated (collage) $OUT_UNDER"
+if [[ "$PREVIEW_MODE" == "1" ]]; then
+  echo "OK: generated (collage) $OUT_PATH"
+else
+  echo "OK: generated (collage) $OUT_UNDER"
+fi

@@ -1,8 +1,9 @@
 // src/routes/config.routes.mjs
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
+import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -16,12 +17,18 @@ function pickPublicConfig(cfg) {
   const tn = n.trackNotify || {};
   const po = n.pushover || {};
 
+  const cfgLastfm = String(c.lastfmApiKey || '').trim();
+  const envLastfm = String(process.env.LASTFM_API_KEY || '').trim();
+
   return {
     projectName: c.projectName || 'now-playing',
-    trackKey: String(process.env.TRACK_KEY || '1029384756'),
+    trackKey: String(process.env.TRACK_KEY || c.trackKey || '1029384756'),
     environment: c.environment || 'home',
     timezone: c.timezone || 'America/Chicago',
     ports: c.ports || { api: 3101, ui: 8101 },
+    lastfm: {
+      configured: Boolean(envLastfm || cfgLastfm),
+    },
     alexa: {
       enabled: Boolean(c.alexa?.enabled ?? true),
       publicDomain: String(c.alexa?.publicDomain || ''),
@@ -50,6 +57,21 @@ function pickPublicConfig(cfg) {
       },
     },
     paths: c.paths || {},
+    mpd: {
+      host: String(c.mpd?.host || ''),
+      port: Number(c.mpd?.port || 6600),
+    },
+    moode: {
+      sshHost: String(c.moode?.sshHost || ''),
+      sshUser: String(c.moode?.sshUser || ''),
+      baseUrl: String(c.moode?.baseUrl || ''),
+    },
+    runtime: {
+      publicBaseUrl: String(c.runtime?.publicBaseUrl || ''),
+      trackCacheDir: String(c.runtime?.trackCacheDir || ''),
+      artCacheDir: String(c.runtime?.artCacheDir || ''),
+      artCacheLimit: Number(c.runtime?.artCacheLimit || 0),
+    },
     features: {
       podcasts: Boolean(c.features?.podcasts ?? true),
       ratings: Boolean(c.features?.ratings ?? true),
@@ -60,6 +82,8 @@ function pickPublicConfig(cfg) {
 
 function withEnvOverrides(cfg) {
   const out = pickPublicConfig(cfg);
+  const cfgLastfm = String((cfg || {}).lastfmApiKey || '').trim();
+  const envLastfm = String(process.env.LASTFM_API_KEY || '').trim();
 
   if (process.env.TRACK_NOTIFY_ENABLED != null) {
     out.notifications.trackNotify.enabled = /^(1|true|yes|on)$/i.test(String(process.env.TRACK_NOTIFY_ENABLED));
@@ -79,6 +103,15 @@ function withEnvOverrides(cfg) {
 
   if (process.env.PUSHOVER_TOKEN) out.notifications.pushover.token = String(process.env.PUSHOVER_TOKEN);
   if (process.env.PUSHOVER_USER_KEY) out.notifications.pushover.userKey = String(process.env.PUSHOVER_USER_KEY);
+
+  if (process.env.MPD_HOST) out.mpd.host = String(process.env.MPD_HOST);
+  if (process.env.MPD_PORT) out.mpd.port = Number(process.env.MPD_PORT) || out.mpd.port;
+  if (process.env.MOODE_SSH_HOST) out.moode.sshHost = String(process.env.MOODE_SSH_HOST);
+  if (process.env.MOODE_SSH_USER) out.moode.sshUser = String(process.env.MOODE_SSH_USER);
+  if (process.env.MOODE_BASE_URL) out.moode.baseUrl = String(process.env.MOODE_BASE_URL);
+  if (process.env.PUBLIC_BASE_URL) out.runtime.publicBaseUrl = String(process.env.PUBLIC_BASE_URL);
+
+  out.lastfm = { configured: Boolean(envLastfm || cfgLastfm) };
 
   return out;
 }
@@ -169,15 +202,31 @@ async function sshCatBase64({ user, host, remotePath, timeoutMs = 20000, maxBuff
   return String(stdout || '').trim();
 }
 
+function makeVibeJobId() {
+  return `vibe-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 // ----------------------------
 // Routes
 // ----------------------------
 
 export function registerConfigRoutes(app, deps) {
   const { requireTrackKey, log, mpdQueryRaw, getRatingForFile, setRatingForFile, mpdStickerGetSong } = deps;
+  const vibeJobs = new Map();
 
   const configPath =
     process.env.NOW_PLAYING_CONFIG_PATH || path.resolve(process.cwd(), 'config/now-playing.config.json');
+
+  async function resolveLastfmApiKey() {
+    const envKey = String(process.env.LASTFM_API_KEY || '').trim();
+    if (envKey) return envKey;
+    try {
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      return String(cfg?.lastfmApiKey || '').trim();
+    } catch {
+      return '';
+    }
+  }
 
   // --- runtime config ---
   app.get('/config/runtime', async (req, res) => {
@@ -190,11 +239,44 @@ export function registerConfigRoutes(app, deps) {
     }
   });
 
+  app.post('/config/alexa/check-domain', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      let domain = String(req.body?.domain || '').trim();
+      if (!domain) return res.status(400).json({ ok: false, error: 'domain is required' });
+
+      if (!/^https?:\/\//i.test(domain)) domain = `https://${domain}`;
+      let u;
+      try { u = new URL(domain); } catch { return res.status(400).json({ ok: false, error: 'invalid domain/url' }); }
+
+      const target = `${u.origin}/now-playing`;
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 7000);
+
+      let reachable = false;
+      let statusCode = 0;
+      let errMsg = '';
+      try {
+        const r = await fetch(target, { method: 'GET', signal: ctrl.signal });
+        statusCode = Number(r.status || 0);
+        reachable = r.ok || (statusCode >= 200 && statusCode < 500);
+      } catch (e) {
+        errMsg = e?.message || String(e);
+      } finally {
+        clearTimeout(t);
+      }
+
+      return res.json({ ok: true, domain: u.hostname, url: target, reachable, statusCode, error: errMsg || '' });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   // --- queue wizard options (artists/genres) ---
   app.get('/config/queue-wizard/options', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
       const fmt = '%artist%\t%albumartist%\t%genre%';
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
         maxBuffer: 64 * 1024 * 1024,
@@ -220,7 +302,7 @@ export function registerConfigRoutes(app, deps) {
 
       return res.json({
         ok: true,
-        moodeHost: String(process.env.MOODE_SSH_HOST || process.env.MPD_HOST || '10.0.0.254'),
+        moodeHost: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
         genres: Array.from(genres).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
         artists: Array.from(artists).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
       });
@@ -247,7 +329,7 @@ export function registerConfigRoutes(app, deps) {
       const minRating = Math.max(0, Math.min(5, Number(req.body?.minRating || 0)));
       const maxTracks = Math.max(1, Math.min(5000, Number(req.body?.maxTracks || 250)));
 
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
       const fmt = '%file%\t%artist%\t%title%\t%album%\t%albumartist%\t%genre%';
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
         maxBuffer: 64 * 1024 * 1024,
@@ -309,8 +391,8 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
     let localTracks = '';
     let localRunner = '';
 
-    const moodeUser = String(process.env.MOODE_SSH_USER || 'moode');
-    const moodeHost = String(process.env.MOODE_SSH_HOST || process.env.MPD_HOST || '10.0.0.254');
+    const moodeUser = String(MOODE_SSH_USER || 'moode');
+    const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
     const remoteScript = String(
         process.env.MOODE_PLAYLIST_COVER_REMOTE_SCRIPT || '/home/moode/moode-playlist-cover.sh'
     );
@@ -544,7 +626,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
       const playlistName = String(req.body?.playlistName || '').trim();
       if (!tracks.length) return res.status(400).json({ ok: false, error: 'tracks[] is required' });
 
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
 
       let didCrop = false;
       let didClear = false;
@@ -621,8 +703,8 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
             timeout: 120000,
             env: {
               ...process.env,
-              MOODE_SSH_USER: String(process.env.MOODE_SSH_USER || 'moode'),
-              MOODE_SSH_HOST: String(process.env.MOODE_SSH_HOST || process.env.MPD_HOST || '10.0.0.254'),
+              MOODE_SSH_USER: String(MOODE_SSH_USER || 'moode'),
+              MOODE_SSH_HOST: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
             },
           });
           collageGenerated = true;
@@ -656,84 +738,262 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
   });
 
   // --- Vibe from now playing (Queue Wizard) ---
-  const vibeHandler = async (req, res) => {
+  app.post('/config/queue-wizard/vibe-start', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
 
-      const targetQueueRaw = req.query.targetQueue || req.body?.targetQueue;
+      const targetQueueRaw = req.body?.targetQueue;
       const targetQueue = Math.max(10, Math.min(200, Number(targetQueueRaw) || 50));
+      const minRating = Math.max(0, Math.min(5, Number(req.body?.minRating || 0)));
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
 
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
-
-      // Robust: ask MPD for artist/title directly
       let artist = '';
       let title = '';
-      try {
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%artist%\t%title%', 'current']);
-        const line = String(stdout || '').trim();
-        if (line) {
-          const [a = '', t = ''] = line.split('\t');
-          artist = String(a || '').trim();
-          title = String(t || '').trim();
-        }
-      } catch (e) {
-        return res.status(500).json({ ok: false, error: 'mpc current failed: ' + (e?.message || String(e)) });
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%artist%\t%title%', 'current']);
+      const line = String(stdout || '').trim();
+      if (line) {
+        const [a = '', t = ''] = line.split('\t');
+        artist = String(a || '').trim();
+        title = String(t || '').trim();
       }
 
       if (!artist || !title) return res.status(404).json({ ok: false, error: 'No current track (artist/title empty)' });
+      const lastfmApiKey = await resolveLastfmApiKey();
+      if (!lastfmApiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
 
-      const apiKey = process.env.LASTFM_API_KEY;
-      if (!apiKey) return res.status(400).json({ ok: false, error: 'LASTFM_API_KEY env var missing' });
-
-      // Optional “presence check” (kept from your git)
       const indexPath = '/home/moode/moode_library_index.json';
-      try {
-        await fs.access(indexPath);
-      } catch {
-        return res.status(500).json({ ok: false, error: 'Library index missing: ' + indexPath });
-      }
+      await fs.access(indexPath);
 
+      const jobId = makeVibeJobId();
       const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
-      const jsonTmp = `/tmp/vibe-np-${Date.now()}-${process.pid}.json`;
+      const jsonTmp = `/tmp/${jobId}.json`;
 
       const pyArgs = [
-        '--seed-artist',
-        artist,
-        '--seed-title',
-        title,
-        '--target-queue',
-        String(targetQueue),
-        '--json-out',
-        jsonTmp,
-        '--mode',
-        'load',
-        '--host',
-        mpdHost,
-        '--port',
-        '6600',
+        '--api-key', lastfmApiKey,
+        '--seed-artist', artist,
+        '--seed-title', title,
+        '--target-queue', String(targetQueue),
+        '--json-out', jsonTmp,
+        '--mode', 'load',
+        '--host', mpdHost,
+        '--port', '6600',
         '--dry-run',
       ];
 
-      await execFileP('python3', [pyPath, ...pyArgs]);
+      const job = {
+        id: jobId,
+        status: 'running',
+        phase: 'starting',
+        targetQueue,
+        minRating,
+        seedArtist: artist,
+        seedTitle: title,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        builtCount: 0,
+        added: [],
+        tracks: [],
+        logs: [],
+        nextEventId: 1,
+        error: '',
+        done: false,
+        jsonTmp,
+        proc: null,
+      };
 
-      let data;
-      try {
-        const jsonOut = await fs.readFile(jsonTmp, 'utf8');
-        data = JSON.parse(jsonOut);
-        await fs.unlink(jsonTmp).catch(() => {});
-      } catch (e) {
-        return res.status(500).json({ ok: false, error: 'JSON parse/out: ' + (e?.message || String(e)) });
-      }
+      const child = spawn('python3', [pyPath, ...pyArgs], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      job.proc = child;
+      vibeJobs.set(jobId, job);
 
-      const tracks = data?.tracks || [];
-      return res.json({ ok: true, tracks, summary: data, targetQueue, seedArtist: artist, seedTitle: title });
+      const onLine = (lineIn = '') => {
+        const line = String(lineIn || '').trim();
+        if (!line) return;
+        job.updatedAt = Date.now();
+        job.logs.push(line);
+        if (job.logs.length > 100) job.logs.shift();
+
+        if (/Last\.fm get similar/i.test(line)) job.phase = 'querying last.fm';
+        if (/pick from/i.test(line)) job.phase = 'matching local library';
+
+        const m = line.match(/^\[hop\s+\d+\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i);
+        if (m) {
+          const label = String(m[1] || '').trim();
+          const method = String(m[2] || '').trim();
+          const parts = label.split(' — ');
+          const titleX = parts[0] || label;
+          const artistX = parts.length > 1 ? parts.slice(1).join(' — ') : '';
+
+          job.added.push({
+            eventId: job.nextEventId++,
+            artist: artistX,
+            title: titleX,
+            method,
+          });
+          if (job.added.length > 500) job.added = job.added.slice(-500);
+          job.builtCount += 1;
+          job.phase = 'adding tracks';
+        }
+      };
+
+      let outBuf = '';
+      child.stdout.on('data', (buf) => {
+        outBuf += String(buf || '');
+        const lines = outBuf.split(/\r?\n/);
+        outBuf = lines.pop() || '';
+        lines.forEach(onLine);
+      });
+
+      let errBuf = '';
+      child.stderr.on('data', (buf) => {
+        errBuf += String(buf || '');
+        const lines = errBuf.split(/\r?\n/);
+        errBuf = lines.pop() || '';
+        lines.forEach((ln) => onLine(`stderr: ${ln}`));
+      });
+
+      child.on('close', async (code) => {
+        if (outBuf.trim()) onLine(outBuf.trim());
+        if (errBuf.trim()) onLine(`stderr: ${errBuf.trim()}`);
+
+        try {
+          const jsonOut = await fs.readFile(jsonTmp, 'utf8');
+          const data = JSON.parse(jsonOut);
+          const baseTracks = Array.isArray(data?.tracks) ? data.tracks : [];
+
+          if (job.minRating > 0 && typeof getRatingForFile === 'function') {
+            const kept = [];
+            for (const t of baseTracks) {
+              const f = String(t?.file || '').trim();
+              let r = 0;
+              try { r = Number(await getRatingForFile(f)) || 0; } catch {}
+              if (r >= job.minRating) kept.push(t);
+            }
+            job.tracks = kept;
+          } else {
+            job.tracks = baseTracks;
+          }
+
+          job.builtCount = job.tracks.length || 0;
+          await fs.unlink(jsonTmp).catch(() => {});
+        } catch (e) {
+          if (!job.error) job.error = 'JSON parse/out: ' + (e?.message || String(e));
+        }
+
+        if (code !== 0 && !job.error) job.error = `vibe builder exited with code ${code}`;
+        job.done = true;
+        job.status = job.error ? 'error' : 'done';
+        job.phase = job.error ? 'error' : 'complete';
+        job.updatedAt = Date.now();
+      });
+
+      return res.json({ ok: true, jobId, targetQueue, minRating, seedArtist: artist, seedTitle: title });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
-  };
+  });
 
-  app.get('/config/queue-wizard/vibe-nowplaying', vibeHandler);
-  app.post('/config/queue-wizard/vibe-nowplaying', vibeHandler);
+  app.get('/config/queue-wizard/vibe-status/:jobId', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const jobId = String(req.params?.jobId || '');
+      const job = vibeJobs.get(jobId);
+      if (!job) return res.status(404).json({ ok: false, error: 'Unknown vibe job' });
+
+      const since = Math.max(0, Number(req.query?.since || 0));
+      const added = job.added.filter((x) => Number(x.eventId || 0) > since);
+      const nextSince = job.added.length ? Number(job.added[job.added.length - 1].eventId || since) : since;
+
+      return res.json({
+        ok: true,
+        jobId,
+        status: job.status,
+        phase: job.phase,
+        done: !!job.done,
+        error: job.error || '',
+        targetQueue: job.targetQueue,
+        minRating: Number(job.minRating || 0),
+        builtCount: Number(job.builtCount || 0),
+        seedArtist: job.seedArtist,
+        seedTitle: job.seedTitle,
+        added,
+        nextSince,
+        tracks: job.done ? (Array.isArray(job.tracks) ? job.tracks : []) : [],
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/queue-wizard/vibe-cancel/:jobId', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const jobId = String(req.params?.jobId || '');
+      const job = vibeJobs.get(jobId);
+      if (!job) return res.status(404).json({ ok: false, error: 'Unknown vibe job' });
+
+      if (!job.done && job.proc?.pid) {
+        try { process.kill(job.proc.pid, 'SIGTERM'); } catch (_) {}
+      }
+
+      job.done = true;
+      job.status = 'cancelled';
+      job.phase = 'cancelled';
+      job.error = '';
+      job.updatedAt = Date.now();
+
+      return res.json({ ok: true, jobId, cancelled: true });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  // Backward-compatible one-shot endpoint
+  app.get('/config/queue-wizard/vibe-nowplaying', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const targetQueue = Math.max(10, Math.min(200, Number(req.query?.targetQueue) || 50));
+      // Use direct invoke path by spawning inline (kept simple for compatibility)
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%artist%\t%title%', 'current']);
+      const line = String(stdout || '').trim();
+      const [artist = '', title = ''] = line.split('\t');
+      if (!artist || !title) return res.status(404).json({ ok: false, error: 'No current track (artist/title empty)' });
+      const lastfmApiKey = await resolveLastfmApiKey();
+      if (!lastfmApiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
+      const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
+      const jsonTmp = `/tmp/vibe-np-${Date.now()}-${process.pid}.json`;
+      await execFileP('python3', [pyPath, '--api-key', lastfmApiKey, '--seed-artist', artist, '--seed-title', title, '--target-queue', String(targetQueue), '--json-out', jsonTmp, '--mode', 'load', '--host', mpdHost, '--port', '6600', '--dry-run']);
+      const data = JSON.parse(await fs.readFile(jsonTmp, 'utf8'));
+      await fs.unlink(jsonTmp).catch(() => {});
+      return res.json({ ok: true, tracks: data?.tracks || [], summary: data, targetQueue, seedArtist: artist, seedTitle: title });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/queue-wizard/vibe-nowplaying', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const targetQueue = Math.max(10, Math.min(200, Number(req.body?.targetQueue) || 50));
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%artist%\t%title%', 'current']);
+      const line = String(stdout || '').trim();
+      const [artist = '', title = ''] = line.split('\t');
+      if (!artist || !title) return res.status(404).json({ ok: false, error: 'No current track (artist/title empty)' });
+      const lastfmApiKey = await resolveLastfmApiKey();
+      if (!lastfmApiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
+      const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
+      const jsonTmp = `/tmp/vibe-np-${Date.now()}-${process.pid}.json`;
+      await execFileP('python3', [pyPath, '--api-key', lastfmApiKey, '--seed-artist', artist, '--seed-title', title, '--target-queue', String(targetQueue), '--json-out', jsonTmp, '--mode', 'load', '--host', mpdHost, '--port', '6600', '--dry-run']);
+      const data = JSON.parse(await fs.readFile(jsonTmp, 'utf8'));
+      await fs.unlink(jsonTmp).catch(() => {});
+      return res.json({ ok: true, tracks: data?.tracks || [], summary: data, targetQueue, seedArtist: artist, seedTitle: title });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
 
   // --- library health (unchanged from your git) ---
   app.get('/config/library-health', async (req, res) => {
@@ -764,7 +1024,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
         if (arr.length < sampleLimit) arr.push(row);
       };
 
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
       const fmt = '%file%\t%artist%\t%title%\t%album%\t%genre%\t%MUSICBRAINZ_TRACKID%';
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
         maxBuffer: 64 * 1024 * 1024,
@@ -1013,7 +1273,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
 
       const onlyFolder = String(req.query?.folder || '').trim();
 
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
       const { stdout } = await execFileP(
         'mpc',
         ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%', 'listall'],
@@ -1161,7 +1421,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
       }
 
       // Find files in folder via MPD
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
       let files = [];
       try {
         const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'find', 'base', folder]);
@@ -1284,7 +1544,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
       const folder = String(req.query?.folder || '').trim();
       if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
 
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
 
       let rows = [];
       try {
@@ -1347,7 +1607,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
       if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
       if (!genre) return res.status(400).json({ ok: false, error: 'genre is required' });
 
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
 
       let files = [];
       try {
@@ -1444,7 +1704,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
         return i >= 0 ? s.slice(i + 1) : s;
       };
 
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
       const { stdout } = await execFileP(
         'mpc',
         ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%', 'listall'],
@@ -1501,7 +1761,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
         .map((x) => String(x || '').trim())
         .filter(Boolean);
 
-      const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%genre%\t%artist%\t%albumartist%', 'listall'], { maxBuffer: 64 * 1024 * 1024 });
 
       const byFolder = new Map();
@@ -1606,7 +1866,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
       }
 
       try {
-        const mpdHost = String(process.env.MPD_HOST || '10.0.0.254');
+        const mpdHost = String(MPD_HOST || '10.0.0.254');
         // Wait for DB update to finish so a follow-up health scan reflects new tags.
         await execFileP('mpc', ['-w', '-h', mpdHost, 'update']);
       } catch (_) {}
@@ -1726,6 +1986,9 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
 
       await fs.writeFile(configPath, JSON.stringify(next, null, 2) + '\n', 'utf8');
       log.debug('[config/runtime] updated', { configPath });
+
+      const cfgLastfm = String(next?.lastfmApiKey || '').trim();
+      if (cfgLastfm) process.env.LASTFM_API_KEY = cfgLastfm;
 
       return res.json({
         ok: true,

@@ -44,21 +44,33 @@
 <body>
   <div class="heroRail">
     <div class="heroWrap">
-      <nav class="topTabs" aria-label="Main pages">
-        <a href="config.html" class="active">Config</a>
-        <a href="podcasts.html">Podcasts</a>
-        <a href="library-health.html">Library Health</a>
-        <a href="queue-wizard.html">Queue Wizard</a>
-      </nav>
+      <div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;">
+        <nav class="topTabs" aria-label="Main pages" style="margin-bottom:0;">
+          <a href="config.html" class="active">Config</a>
+          <a href="podcasts.html">Podcasts</a>
+          <a href="library-health.html">Library Health</a>
+          <a href="queue-wizard.html">Queue Wizard</a>
+        </nav>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="pill" id="apiPill" title="Active API endpoint">
+            <span class="dot" aria-hidden="true"></span>
+            API: <span id="apiHint" style="color:rgba(255,255,255,.9)">loading…</span>
+          </div>
+          <div class="pill" id="webPill" title="Active web UI endpoint">
+            <span class="dot" aria-hidden="true"></span>
+            Web: <span id="webHint" style="color:rgba(255,255,255,.9)">loading…</span>
+          </div>
+          <div class="pill" id="alexaPill" title="Alexa public domain health">
+            <span class="dot" aria-hidden="true"></span>
+            Alexa: <span id="alexaHint" style="color:rgba(255,255,255,.9)">unknown</span>
+          </div>
+        </div>
+      </div>
       <header>
         <div class="brand">
           <h1>now-playing Configuration</h1>
           <div class="sub">Alexa • Notifications • Runtime settings</div>
-        </div>
-
-        <div class="pill" title="UI on :8101 → API on :3101">
-          <span class="dot" aria-hidden="true"></span>
-          API: <span id="apiHint" style="color:rgba(255,255,255,.9)">loading…</span>
         </div>
       </header>
 
@@ -84,9 +96,68 @@
                 <div class="cfgField"><label><input id="featurePodcasts" type="checkbox" /> Podcasts</label></div>
                 <div class="cfgField"><label><input id="featureRatings" type="checkbox" /> Ratings</label></div>
                 <div class="cfgField"><label><input id="featureRadio" type="checkbox" /> Radio per-track artwork</label></div>
+                <div class="cfgField"><label><input id="featureAlexaSkill" type="checkbox" /> Alexa Skill</label></div>
+                <div class="cfgField"><label><input id="featureLastfm" type="checkbox" /> Last.fm Vibe</label></div>
+                <div class="cfgField"><label><input id="featurePushover" type="checkbox" /> Pushover Notifications</label></div>
               </div>
 
-              <div class="cfgCard" style="grid-column: 1 / -1;">
+              <div class="cfgCard">
+                <h3>Network & Runtime</h3>
+                <div class="cfgRow">
+                  <div class="cfgField">
+                    <label for="apiPort">API port</label>
+                    <input id="apiPort" type="number" min="1" max="65535" />
+                  </div>
+                  <div class="cfgField">
+                    <label for="uiPort">UI port</label>
+                    <input id="uiPort" type="number" min="1" max="65535" />
+                  </div>
+                </div>
+                <div class="cfgField">
+                  <label for="apiNodeIp">API node IP (primary)</label>
+                  <input id="apiNodeIp" type="text" placeholder="e.g., 10.0.0.233" />
+                </div>
+                <div class="cfgRow">
+                  <div class="cfgField">
+                    <label for="mpdHost">MPD host</label>
+                    <input id="mpdHost" type="text" placeholder="e.g., 10.0.0.254" />
+                  </div>
+                  <div class="cfgField">
+                    <label for="mpdPort">MPD port</label>
+                    <input id="mpdPort" type="number" min="1" max="65535" />
+                  </div>
+                </div>
+                <div class="cfgRow">
+                  <div class="cfgField">
+                    <label for="moodeSshHost">moOde SSH host</label>
+                    <input id="moodeSshHost" type="text" placeholder="e.g., 10.0.0.254" />
+                  </div>
+                  <div class="cfgField">
+                    <label for="moodeSshUser">moOde SSH user</label>
+                    <input id="moodeSshUser" type="text" placeholder="moode" />
+                  </div>
+                </div>
+                <div class="cfgField">
+                  <label for="moodeBaseUrl">moOde base URL</label>
+                  <input id="moodeBaseUrl" type="text" placeholder="http://10.0.0.254" />
+                </div>
+                <div class="cfgField">
+                  <label for="configTrackKey">Configured Track Key (runtime fallback)</label>
+                  <input id="configTrackKey" type="text" autocomplete="off" />
+                </div>
+                <div class="cfgHint">These values live in JSON config and are used by runtime as defaults when env vars are not set.</div>
+              </div>
+
+              <div class="cfgCard" id="lastfmCard">
+                <h3>Last.fm (Vibe)</h3>
+                <div class="cfgField">
+                  <label for="lastfmApiKey">Last.fm API key</label>
+                  <input id="lastfmApiKey" type="password" placeholder="Enter Last.fm API key" autocomplete="off" />
+                </div>
+                <div class="cfgHint">When configured, Vibe tools are enabled in Queue Wizard.</div>
+              </div>
+
+              <div class="cfgCard" id="alexaCard" style="grid-column: 1 / -1;">
                 <h3>Alexa</h3>
                 <div class="cfgRow">
                   <div class="cfgField">
@@ -94,7 +165,11 @@
                   </div>
                   <div class="cfgField">
                     <label for="alexaDomain">Public domain</label>
-                    <input id="alexaDomain" type="text" placeholder="moode.YOUR-PUBLIC.DOMAIN.com" />
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                      <input id="alexaDomain" type="text" placeholder="moode.YOUR-PUBLIC.DOMAIN.com" />
+                      <button class="btn" id="checkAlexaDomainBtn" type="button">Check domain</button>
+                    </div>
+                    <div class="cfgHint" id="alexaDomainCheckStatus"></div>
                   </div>
                 </div>
 
@@ -132,7 +207,7 @@
                 </details>
               </div>
 
-              <div class="cfgCard" style="grid-column: 1 / -1;">
+              <div class="cfgCard" id="pushoverCard" style="grid-column: 1 / -1;">
                 <h3>Track Notifications (Pushover)</h3>
                 <div class="cfgField">
                   <label><input id="notifyEnabled" type="checkbox" /> Enabled</label>
@@ -165,20 +240,26 @@
             </div>
 
             <div class="cfgCard" style="grid-column: 1 / -1;">
-              <h3>Advanced JSON (full config)</h3>
-              <div class="cfgHint">Edit full <code>now-playing.config.json</code> directly, then Save Full JSON.</div>
-              <div class="cfgField">
-                <textarea id="fullJson" style="width:100%; min-height:220px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;"></textarea>
-              </div>
-              <div class="cfgActions">
-                <button class="btn" id="formatJsonBtn" type="button">Format JSON</button>
-                <button class="btn btnPrimary" id="saveFullBtn" type="button">Save Full JSON</button>
-              </div>
+              <details id="advancedJsonDetails">
+                <summary><strong>Advanced JSON (full config)</strong></summary>
+                <div class="cfgHint" style="margin-top:8px;">Edit full <code>now-playing.config.json</code> directly, then Save Full JSON.</div>
+                <div class="cfgField">
+                  <textarea id="fullJson" style="width:100%; min-height:220px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;"></textarea>
+                </div>
+                <div class="cfgActions">
+                  <button class="btn" id="formatJsonBtn" type="button">Format JSON</button>
+                  <button class="btn btnPrimary" id="saveFullBtn" type="button">Save Full JSON</button>
+                </div>
+              </details>
             </div>
 
             <div class="cfgActions">
               <button class="btn" id="reloadBtn" type="button">Reload</button>
               <button class="btn btnPrimary" id="saveBtn" type="button">Save</button>
+            </div>
+            <div class="cfgHint" style="margin-top:4px;">
+              <strong>Reload</strong> pulls the latest config from disk and discards unsaved edits on this page. 
+              <strong>Save</strong> writes the form values to config JSON.
             </div>
 
             <pre id="out" aria-label="Config response log"></pre>
@@ -207,6 +288,13 @@ const LAN_API_PORT = (location.port === '8101') ? '3101' : '3000';
 const API_BASE = IS_PUBLIC ? 'https://moode.brianwis.com' : `${location.protocol}//${location.hostname}:${LAN_API_PORT}`;
 
 document.getElementById('apiHint').textContent = API_BASE.replace(/^https?:\/\//, '');
+setPillState('apiPill', 'neutral');
+const webHintEl = document.getElementById('webHint');
+if (webHintEl) webHintEl.textContent = `${location.hostname}:${(location.port === '8101' ? '8101' : (location.port || '8101'))}`;
+setPillState('webPill', 'neutral');
+const alexaHintEl = document.getElementById('alexaHint');
+if (alexaHintEl) alexaHintEl.textContent = 'unknown';
+setPillState('alexaPill', 'neutral');
 
 function log(x){ out.textContent = typeof x === 'string' ? x : JSON.stringify(x, null, 2); }
 
@@ -219,6 +307,7 @@ let unresolvedAlbums = [];
 let heardAlbums = [];
 let unresolvedPlaylists = [];
 let heardPlaylists = [];
+let loadedNodes = [];
 function normalizeAliasKey(v){
   return String(v || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
@@ -268,7 +357,7 @@ function renderUnresolvedArtistList(){
     const count = Number(r?.count || 1);
     const when = String(r?.updatedAt || r?.createdAt || '');
     const whenShort = when ? new Date(when).toLocaleString() : '';
-    return `<tr class="needsAttention"><td><code>${escapeHtml(heard)}</code></td><td>${count}x</td><td>${escapeHtml(whenShort)}</td><td><button type="button" class="btn" data-promote="${idx}" style="padding:2px 8px;">Promote</button> <button type="button" class="btn" data-dismiss="${idx}" style="padding:2px 8px; margin-left:4px;">Dismiss</button></td></tr>`;
+    return `<tr class="needsAttention"><td><code>${escapeHtml(heard)}</code></td><td>${count}x</td><td>${escapeHtml(whenShort)}</td><td><button type="button" class="btn" data-promote="${idx}" style="padding:2px 8px;">Fix</button> <button type="button" class="btn" data-dismiss="${idx}" style="padding:2px 8px; margin-left:4px;">Ignore</button></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
 
@@ -408,6 +497,90 @@ const restartModal = document.getElementById('restartModal');
 function showRestartModal(){ if (restartModal) restartModal.classList.add('show'); }
 function hideRestartModal(){ if (restartModal) restartModal.classList.remove('show'); }
 
+let _savedConfigSnapshot = '';
+let _isDirty = false;
+
+function collectConfigSnapshot(){
+  const host = document.querySelector('.cfgWrap');
+  if (!host) return '';
+  const data = {};
+  host.querySelectorAll('input, textarea, select').forEach((el) => {
+    const id = el.id || el.name;
+    if (!id) return;
+    if (id === 'out') return;
+    if (el.type === 'checkbox' || el.type === 'radio') data[id] = !!el.checked;
+    else data[id] = String(el.value ?? '');
+  });
+  return JSON.stringify(data);
+}
+
+function refreshDirtyState(){
+  _isDirty = collectConfigSnapshot() !== _savedConfigSnapshot;
+}
+
+function markConfigSaved(){
+  _savedConfigSnapshot = collectConfigSnapshot();
+  _isDirty = false;
+}
+
+function confirmIfDirty(){
+  refreshDirtyState();
+  if (!_isDirty) return true;
+  return window.confirm('You have unsaved changes on Config. Leave this page anyway?');
+}
+
+function setPillState(pillId, state){
+  const pill = document.getElementById(pillId);
+  if (!pill) return;
+  const dot = pill.querySelector('.dot');
+  const map = {
+    good: { c: '#22c55e', b: 'rgba(34,197,94,.55)' },
+    warn: { c: '#f59e0b', b: 'rgba(245,158,11,.55)' },
+    bad:  { c: '#ef4444', b: 'rgba(239,68,68,.55)' },
+    off:  { c: '#ef4444', b: 'rgba(239,68,68,.55)' },
+    neutral: { c: '#7dd3fc', b: 'rgba(125,211,252,.55)' },
+  };
+  const s = map[state] || map.neutral;
+  if (dot) {
+    dot.style.background = s.c;
+    dot.style.boxShadow = `0 0 0 6px ${s.b.replace('.55','.20')}`;
+  }
+  pill.style.borderColor = s.b;
+}
+
+function syncAlexaCardVisibility(){
+  const featureEl = document.getElementById('featureAlexaSkill');
+  const card = document.getElementById('alexaCard');
+  const enabledEl = document.getElementById('alexaEnabled');
+  const on = !!featureEl?.checked;
+  if (card) card.style.display = on ? '' : 'none';
+  if (enabledEl) enabledEl.checked = on;
+}
+
+function syncLastfmCardVisibility(){
+  const featureEl = document.getElementById('featureLastfm');
+  const card = document.getElementById('lastfmCard');
+  const keyEl = document.getElementById('lastfmApiKey');
+  const on = !!featureEl?.checked;
+  if (card) card.style.display = on ? '' : 'none';
+  if (!on && keyEl) keyEl.value = '';
+}
+
+function syncPushoverCardVisibility(){
+  const featureEl = document.getElementById('featurePushover');
+  const card = document.getElementById('pushoverCard');
+  const notifyEnabledEl = document.getElementById('notifyEnabled');
+  const tokenEl = document.getElementById('pushoverToken');
+  const userEl = document.getElementById('pushoverUser');
+  const on = !!featureEl?.checked;
+  if (card) card.style.display = on ? '' : 'none';
+  if (notifyEnabledEl) notifyEnabledEl.checked = on;
+  if (!on) {
+    if (tokenEl) tokenEl.value = '';
+    if (userEl) userEl.value = '';
+  }
+}
+
 const TRACK_KEY_STORAGE = 'nowplaying.trackkey';
 const tkEl = document.getElementById('trackKey');
 const tkTextEl = document.getElementById('trackKeyText');
@@ -460,6 +633,29 @@ async function loadCfg(){
 
   const c = j.config || {};
   const full = j.fullConfig || {};
+  const host = location.hostname || '10.0.0.233';
+  const apiPortHint = Number(c.ports?.api || 3101);
+  const uiPortHint = Number(c.ports?.ui || 8101);
+  const apiHint = document.getElementById('apiHint');
+  const webHint = document.getElementById('webHint');
+  if (apiHint) apiHint.textContent = `${host}:${apiPortHint}`;
+  if (webHint) webHint.textContent = `${host}:${uiPortHint}`;
+  setPillState('apiPill', 'good');
+  setPillState('webPill', 'good');
+  const alexaHint = document.getElementById('alexaHint');
+  if (alexaHint) {
+    const domainTxt = String(c.alexa?.publicDomain || '').trim();
+    if (!c.alexa?.enabled) {
+      alexaHint.textContent = 'disabled';
+      setPillState('alexaPill', 'off');
+    } else if (!domainTxt) {
+      alexaHint.textContent = 'missing domain';
+      setPillState('alexaPill', 'warn');
+    } else {
+      alexaHint.textContent = domainTxt;
+      setPillState('alexaPill', 'good');
+    }
+  }
 
   // Preload track key from local cache; fallback to server-provided effective key.
   const localKey = localStorage.getItem(TRACK_KEY_STORAGE) || '';
@@ -472,16 +668,37 @@ async function loadCfg(){
   }
 
   document.getElementById('alexaEnabled').checked = !!c.alexa?.enabled;
+  document.getElementById('featureAlexaSkill').checked = !!c.alexa?.enabled;
   document.getElementById('alexaDomain').value = c.alexa?.publicDomain || '';
+  syncAlexaCardVisibility();
 
+  const hasPushover = !!(String(c.notifications?.pushover?.token || '').trim() || String(c.notifications?.pushover?.userKey || '').trim() || c.notifications?.trackNotify?.enabled);
+  document.getElementById('featurePushover').checked = hasPushover;
   document.getElementById('notifyEnabled').checked = !!c.notifications?.trackNotify?.enabled;
   document.getElementById('pollMs').value = c.notifications?.trackNotify?.pollMs ?? 3000;
   document.getElementById('dedupeMs').value = c.notifications?.trackNotify?.dedupeMs ?? 15000;
   document.getElementById('alexaMaxAgeMs').value = c.notifications?.trackNotify?.alexaMaxAgeMs ?? 21600000;
+  syncPushoverCardVisibility();
 
   document.getElementById('featurePodcasts').checked = !!c.features?.podcasts;
   document.getElementById('featureRatings').checked = !!c.features?.ratings;
   document.getElementById('featureRadio').checked = !!c.features?.radio;
+  const lastfmKey = String(full.lastfmApiKey || '');
+  document.getElementById('featureLastfm').checked = !!lastfmKey;
+  document.getElementById('lastfmApiKey').value = lastfmKey;
+  syncLastfmCardVisibility();
+
+  document.getElementById('apiPort').value = Number(c.ports?.api || full.ports?.api || 3101);
+  document.getElementById('uiPort').value = Number(c.ports?.ui || full.ports?.ui || 8101);
+  loadedNodes = Array.isArray(full.nodes) ? full.nodes.slice() : [];
+  const node0 = loadedNodes.length ? loadedNodes[0] : {};
+  document.getElementById('apiNodeIp').value = String(node0.ip || '');
+  document.getElementById('mpdHost').value = String(full.mpd?.host || c.mpd?.host || '10.0.0.254');
+  document.getElementById('mpdPort').value = Number(full.mpd?.port || c.mpd?.port || 6600);
+  document.getElementById('moodeSshHost').value = String(full.moode?.sshHost || c.moode?.sshHost || full.mpd?.host || '10.0.0.254');
+  document.getElementById('moodeSshUser').value = String(full.moode?.sshUser || c.moode?.sshUser || 'moode');
+  document.getElementById('moodeBaseUrl').value = String(full.moode?.baseUrl || c.moode?.baseUrl || '');
+  document.getElementById('configTrackKey').value = String(full.trackKey || c.trackKey || '');
 
   loadArtistAliasesFromObject(c.alexa?.artistAliases || {});
   albumAliasMap = (c.alexa?.albumAliases && typeof c.alexa.albumAliases === 'object' && !Array.isArray(c.alexa.albumAliases)) ? { ...c.alexa.albumAliases } : {};
@@ -506,6 +723,7 @@ async function loadCfg(){
   document.getElementById('fullJson').value = JSON.stringify(full, null, 2);
 
   log({ ok:true, configPath:j.configPath, loadedAt:new Date().toISOString() });
+  markConfigSaved();
 }
 
 async function saveArtistCorrectionsOnly(showModal = false){
@@ -542,6 +760,7 @@ async function saveArtistCorrectionsOnly(showModal = false){
   });
   const j = await r.json();
   log(j);
+  if (j && j.ok) markConfigSaved();
   if (showModal && j && j.ok) showRestartModal();
   return j;
 }
@@ -557,10 +776,15 @@ async function saveCfg(){
     return log('Invalid artist corrections: ' + String(e.message || e));
   }
 
+  const nodeIp = document.getElementById('apiNodeIp').value.trim();
+  const nodesNext = (Array.isArray(loadedNodes) && loadedNodes.length)
+    ? loadedNodes.map((n, i) => (i === 0 ? { ...n, ip: nodeIp || n.ip || '' } : n))
+    : [{ name: 'pi-main', ip: nodeIp, role: 'both', sshUser: 'brianwis' }];
+
   const payload = {
     config: {
       alexa: {
-        enabled: document.getElementById('alexaEnabled').checked,
+        enabled: document.getElementById('featureAlexaSkill').checked,
         publicDomain: document.getElementById('alexaDomain').value.trim(),
         artistAliases,
         albumAliases: albumAliasMap,
@@ -574,14 +798,14 @@ async function saveCfg(){
       },
       notifications: {
         trackNotify: {
-          enabled: document.getElementById('notifyEnabled').checked,
+          enabled: document.getElementById('featurePushover').checked ? document.getElementById('notifyEnabled').checked : false,
           pollMs: Number(document.getElementById('pollMs').value || 3000),
           dedupeMs: Number(document.getElementById('dedupeMs').value || 15000),
           alexaMaxAgeMs: Number(document.getElementById('alexaMaxAgeMs').value || 21600000),
         },
         pushover: {
-          token: document.getElementById('pushoverToken').value.trim(),
-          userKey: document.getElementById('pushoverUser').value.trim(),
+          token: document.getElementById('featurePushover').checked ? document.getElementById('pushoverToken').value.trim() : '',
+          userKey: document.getElementById('featurePushover').checked ? document.getElementById('pushoverUser').value.trim() : '',
         },
       },
       features: {
@@ -589,6 +813,24 @@ async function saveCfg(){
         ratings: document.getElementById('featureRatings').checked,
         radio: document.getElementById('featureRadio').checked,
       },
+      trackKey: document.getElementById('configTrackKey').value.trim(),
+      ports: {
+        api: Number(document.getElementById('apiPort').value || 3101),
+        ui: Number(document.getElementById('uiPort').value || 8101),
+      },
+      mpd: {
+        host: document.getElementById('mpdHost').value.trim(),
+        port: Number(document.getElementById('mpdPort').value || 6600),
+      },
+      moode: {
+        sshHost: document.getElementById('moodeSshHost').value.trim(),
+        sshUser: document.getElementById('moodeSshUser').value.trim(),
+        baseUrl: document.getElementById('moodeBaseUrl').value.trim(),
+      },
+      runtime: {
+      },
+      nodes: nodesNext,
+      lastfmApiKey: document.getElementById('featureLastfm').checked ? document.getElementById('lastfmApiKey').value.trim() : '',
     },
   };
 
@@ -600,7 +842,10 @@ async function saveCfg(){
 
   const j = await r.json();
   log(j);
-  if (j && j.ok) showRestartModal();
+  if (j && j.ok) {
+    markConfigSaved();
+    showRestartModal();
+  }
 }
 
 async function saveFullCfg(){
@@ -620,7 +865,10 @@ async function saveFullCfg(){
   });
   const j = await r.json();
   log(j);
-  if (j && j.ok) showRestartModal();
+  if (j && j.ok) {
+    markConfigSaved();
+    showRestartModal();
+  }
 }
 
 function formatFullJson(){
@@ -635,14 +883,68 @@ function formatFullJson(){
 async function restartApiNow(){
   const key = getTrackKey();
   if (!key) return log('Track key is required to restart API.');
-  const r = await fetch(`${API_BASE}/config/restart-api`, {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'x-track-key': key },
-    body: JSON.stringify({}),
-  });
-  const j = await r.json();
-  log(j);
+
+  // Hide first because restarting API can interrupt the response.
   hideRestartModal();
+
+  try {
+    const r = await fetch(`${API_BASE}/config/restart-api`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-track-key': key },
+      body: JSON.stringify({}),
+    });
+
+    const txt = await r.text();
+    let j = null;
+    try { j = txt ? JSON.parse(txt) : null; } catch {}
+
+    if (j) log(j);
+    else log(`API restart requested${r.ok ? '.' : ` (HTTP ${r.status})`}`);
+  } catch (e) {
+    // Expected sometimes if API restarts before response finishes.
+    log(`API restart requested. Connection interrupted during restart (${String(e?.message || e)}).`);
+  }
+}
+
+async function checkAlexaDomain(){
+  const key = getTrackKey();
+  const statusEl = document.getElementById('alexaDomainCheckStatus');
+  const btn = document.getElementById('checkAlexaDomainBtn');
+  const domain = String(document.getElementById('alexaDomain')?.value || '').trim();
+
+  if (!key) return log('Track key is required to check domain.');
+  if (!domain) {
+    if (statusEl) statusEl.textContent = 'Enter a public domain first.';
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (statusEl) statusEl.textContent = 'Checking domain…';
+
+  try {
+    const r = await fetch(`${API_BASE}/config/alexa/check-domain`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-track-key': key },
+      body: JSON.stringify({ domain }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+    const ok = !!j.reachable;
+    if (statusEl) statusEl.textContent = ok
+      ? `✅ Reachable: ${j.url} (HTTP ${j.statusCode || 'ok'})`
+      : `⚠️ Not reachable: ${j.url}${j.statusCode ? ` (HTTP ${j.statusCode})` : ''}`;
+    const ah = document.getElementById('alexaHint');
+    if (ah) ah.textContent = domain;
+    setPillState('alexaPill', ok ? 'good' : 'warn');
+  } catch (e) {
+    if (statusEl) statusEl.textContent = `❌ Check failed: ${String(e?.message || e)}`;
+    const ah = document.getElementById('alexaHint');
+    if (ah) ah.textContent = domain;
+    setPillState('alexaPill', 'bad');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 document.getElementById('artistAliasList').addEventListener('click', async (e) => {
@@ -822,12 +1124,40 @@ document.getElementById('artistAliasesJson').addEventListener('input', () => {
   } catch {}
 });
 
+document.getElementById('featureAlexaSkill')?.addEventListener('change', syncAlexaCardVisibility);
+document.getElementById('featureLastfm')?.addEventListener('change', syncLastfmCardVisibility);
+document.getElementById('featurePushover')?.addEventListener('change', syncPushoverCardVisibility);
+document.getElementById('checkAlexaDomainBtn')?.addEventListener('click', () => checkAlexaDomain().catch(e => log(String(e))));
+
+// Unsaved changes guard (tab clicks + page close)
+document.querySelectorAll('.cfgWrap input, .cfgWrap textarea, .cfgWrap select').forEach((el) => {
+  el.addEventListener('input', refreshDirtyState);
+  el.addEventListener('change', refreshDirtyState);
+});
+
+document.querySelectorAll('.topTabs a').forEach((a) => {
+  a.addEventListener('click', (e) => {
+    const href = a.getAttribute('href') || '';
+    if (!href || href.includes('config.html')) return;
+    if (!confirmIfDirty()) e.preventDefault();
+  });
+});
+
+window.addEventListener('beforeunload', (e) => {
+  refreshDirtyState();
+  if (!_isDirty) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
 document.getElementById('reloadBtn').onclick = () => loadCfg().catch(e => log(String(e)));
 document.getElementById('saveBtn').onclick = () => saveCfg().catch(e => log(String(e)));
 document.getElementById('saveFullBtn').onclick = () => saveFullCfg().catch(e => log(String(e)));
 document.getElementById('formatJsonBtn').onclick = () => formatFullJson();
 document.getElementById('modalLaterBtn').onclick = () => hideRestartModal();
 document.getElementById('modalRestartBtn').onclick = () => restartApiNow().catch(e => log(String(e)));
+syncAlexaCardVisibility();
+syncLastfmCardVisibility();
+syncPushoverCardVisibility();
 loadCfg().catch(e => log(String(e)));
 </script>
 </body>

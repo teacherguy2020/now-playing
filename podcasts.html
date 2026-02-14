@@ -24,9 +24,15 @@
           <div class="sub">Subscribe • Download • Playlist</div>
         </div>
 
-        <div class="pill" title="UI on :8101 → API on :3101">
-          <span class="dot" aria-hidden="true"></span>
-          API: <span id="apiHint" style="color:rgba(255,255,255,.9)">10.0.0.233:3101</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="pill" title="Active API endpoint">
+            <span class="dot" aria-hidden="true"></span>
+            API: <span id="apiHint" style="color:rgba(255,255,255,.9)">loading…</span>
+          </div>
+          <div class="pill" title="Active web UI endpoint">
+            <span class="dot" aria-hidden="true"></span>
+            Web: <span id="webHint" style="color:rgba(255,255,255,.9)">loading…</span>
+          </div>
         </div>
       </header>
 

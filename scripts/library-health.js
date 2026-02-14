@@ -245,6 +245,37 @@
     return 'http://10.0.0.233:3101';
   }
 
+  async function loadRuntimeMeta() {
+    const apiHintEl = $('apiHint');
+    const webHintEl = $('webHint');
+    const apiBaseEl = $('apiBase');
+    const keyEl = $('key');
+
+    const host = location.hostname || '10.0.0.233';
+    const guess = defaultApiBase();
+    try {
+      const r = await fetch(`${guess}/config/runtime`, { cache: 'no-store' });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+      const cfg = j.config || {};
+      const apiPort = Number(cfg?.ports?.api || 3101);
+      const uiPort = Number(cfg?.ports?.ui || 8101);
+      const key = String(cfg?.trackKey || '').trim();
+      const resolved = `${location.protocol}//${host}:${apiPort}`;
+
+      if (apiBaseEl) apiBaseEl.value = resolved;
+      if (keyEl) keyEl.value = key;
+      if (apiHintEl) apiHintEl.textContent = `${host}:${apiPort}`;
+      if (webHintEl) webHintEl.textContent = `${host}:${uiPort}`;
+      return;
+    } catch {}
+
+    if (apiBaseEl) apiBaseEl.value = guess;
+    if (apiHintEl) apiHintEl.textContent = `${host}:3101`;
+    if (webHintEl) webHintEl.textContent = `${host}:8101`;
+  }
+
   async function run() {
     const key = ($('key')?.value || '').trim();
     const sample = 100;
@@ -950,11 +981,8 @@
   }
 
   // ---- Init ----
-  const apiBaseEl = $('apiBase');
-  if (apiBaseEl) apiBaseEl.value = defaultApiBase();
-
   const runBtn = $('run');
   if (runBtn) runBtn.addEventListener('click', run);
 
-  run();
+  loadRuntimeMeta().finally(() => run());
 })();

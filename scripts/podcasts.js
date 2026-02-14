@@ -12,7 +12,7 @@ console.log('PODCASTS_UI_VERSION', '2026-02-09_1');
   const btnSub     = document.getElementById('btnSub');
   const btnRefresh = document.getElementById('btnRefresh');
 
-  const API_BASE = (() => {
+  let API_BASE = (() => {
     const q = new URLSearchParams(window.location.search);
     const override = (q.get('api') || '').trim();
     if (override) return override.replace(/\/$/, '');
@@ -21,8 +21,27 @@ console.log('PODCASTS_UI_VERSION', '2026-02-09_1');
     return `http://${host}:3101`;
   })();
 
-  const apiHintEl = document.getElementById('apiHint');
-  if (apiHintEl) apiHintEl.textContent = API_BASE.replace(/^https?:\/\//, '');
+  async function loadRuntimeHints(){
+    const apiHintEl = document.getElementById('apiHint');
+    const webHintEl = document.getElementById('webHint');
+    try {
+      const r = await fetch(`${API_BASE}/config/runtime`, { cache:'no-store' });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j?.ok) {
+        const apiPort = Number(j?.config?.ports?.api || 3101);
+        const uiPort = Number(j?.config?.ports?.ui || 8101);
+        const proto = location.protocol || 'http:';
+        const host = location.hostname || '10.0.0.233';
+        API_BASE = `${proto}//${host}:${apiPort}`;
+        if (apiHintEl) apiHintEl.textContent = `${host}:${apiPort}`;
+        if (webHintEl) webHintEl.textContent = `${host}:${uiPort}`;
+        return;
+      }
+    } catch {}
+    const host = location.hostname || '10.0.0.233';
+    if (apiHintEl) apiHintEl.textContent = API_BASE.replace(/^https?:\/\//, '');
+    if (webHintEl) webHintEl.textContent = `${host}:8101`;
+  }
 
   // =========================
   // Modal
@@ -755,4 +774,4 @@ async function loadEpisodes() {
     }
   });
 
-  boot();
+  loadRuntimeHints().finally(() => boot());

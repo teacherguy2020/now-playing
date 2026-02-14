@@ -12,15 +12,21 @@
   const summaryEl = $('filtersSummary');
 
   const vibeBtn = $('vibeBuild');
-  const sendBtn = $('sendToMoode');
+  const sendFilteredBtn = $('sendFilteredToMoode');
+  const sendVibeBtn = $('sendVibeToMoode');
+  const vibeSectionEl = $('vibeSection');
+  const vibeDisabledNoteEl = $('vibeDisabledNote');
 
   const cropEl = $('crop');
 
-  const savePlaylistEl = $('savePlaylist');
+  const savePlaylistBtn = $('savePlaylistBtn');
   const playlistNameEl = $('playlistName');
   const generateCollageEl = $('generateCollage');
-  const playlistHintEl = $('playlistHint');
 
+  const cropVibeEl = $('cropVibe');
+
+  const playlistHintEl = $('playlistHint');
+  const sendConfirmEl = $('sendConfirm');
   const coverCardEl = $('coverCard');
   const coverImgEl = $('coverPreview');
   const coverStatusEl = $('coverStatus');
@@ -30,10 +36,12 @@
 
   let moodeHost = '10.0.0.254';
   let previewTimer = null;
+  let runtimeLoaded = false;
 
   let busy = false;        // general guard
   let sendBusy = false;    // prevent double saves/sends
   let collageBusy = false; // prevent repeated preview calls
+  let savePlaylistEnabled = false;
 
   // Persist the current list (vibe OR filters)
   let currentListSource = 'none'; // 'none' | 'filters' | 'vibe'
@@ -50,9 +58,13 @@ const vibeProgressBar    = $('vibeProgressBar');
 const vibeProgressText   = $('vibeProgressText');
 const vibeProgressDetail = $('vibeProgressDetail');
 const vibeCancelBtn      = $('vibeCancel');
+const vibeLiveFeedEl     = $('vibeLiveFeed');
 
 let vibeCancelled = false;
 let vibeAbortController = null;
+let vibeJobId = '';
+let vibeSince = 0;
+let vibePollTimer = null;
 let cancelMode = 'none'; // 'none' | 'cancel' | 'send'
 
 function showVibeProgress() {
@@ -133,6 +145,51 @@ function stopFakeVibeProgress() {
   vibeFakeTimer = null;
 }
 
+function resetVibeFeed() {
+  if (!vibeLiveFeedEl) return;
+  vibeLiveFeedEl.innerHTML = '<div class="muted">Waiting for tracks…</div>';
+}
+
+function appendVibeFeedRow(track = {}) {
+  if (!vibeLiveFeedEl) return;
+  const artist = String(track.artist || '').trim();
+  const title = String(track.title || '').trim();
+  const method = String(track.method || '').trim();
+  const row = document.createElement('div');
+  row.style.padding = '4px 0';
+  row.style.borderBottom = '1px dashed #2a3a58';
+  row.innerHTML = `+ ${esc(artist)}${artist && title ? ' — ' : ''}${esc(title)}${method ? ` <span class="muted">(${esc(method)})</span>` : ''}`;
+  if (vibeLiveFeedEl.firstChild?.classList?.contains('muted')) vibeLiveFeedEl.innerHTML = '';
+  vibeLiveFeedEl.prepend(row);
+  while (vibeLiveFeedEl.children.length > 20) vibeLiveFeedEl.removeChild(vibeLiveFeedEl.lastChild);
+}
+
+function stopVibePolling() {
+  if (vibePollTimer) clearTimeout(vibePollTimer);
+  vibePollTimer = null;
+}
+
+async function syncVibeAvailability() {
+  const apiBase = getApiBase();
+  if (!apiBase) return;
+
+  let enabled = false;
+  try {
+    const r = await fetch(`${apiBase}/config/runtime`, { cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    enabled = !!j?.ok && !!j?.config?.lastfm?.configured;
+  } catch {
+    enabled = false;
+  }
+
+  if (vibeSectionEl) vibeSectionEl.classList.toggle('hidden', !enabled);
+  if (vibeDisabledNoteEl) vibeDisabledNoteEl.classList.toggle('hidden', enabled);
+  if (!enabled) {
+    hideVibeProgress();
+    setCancelButtonMode('none');
+  }
+}
+
   // ---- Helpers ----
   
 
@@ -185,6 +242,51 @@ function stopFakeVibeProgress() {
     return ($('key')?.value || '').trim();
   }
 
+  async function loadRuntimeMeta() {
+    const apiBaseGuess = defaultApiBase();
+    const rtUrl = `${apiBaseGuess}/config/runtime`;
+    const activeApiBaseEl = $('activeApiBase');
+    const activeApiPortEl = $('activeApiPort');
+    const activeUiPortEl = $('activeUiPort');
+    const activeTrackKeyEl = $('activeTrackKey');
+    const apiHintEl = $('apiHint');
+    const webHintEl = $('webHint');
+
+    try {
+      const r = await fetch(rtUrl, { cache: 'no-store' });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+      const cfg = j.config || {};
+      const ports = cfg.ports || {};
+      const apiPort = Number(ports.api || 3101);
+      const uiPort = Number(ports.ui || 8101);
+      const host = location.hostname;
+      const proto = location.protocol || 'http:';
+      const resolvedApi = `${proto}//${host}:${apiPort}`;
+      const key = String(cfg.trackKey || '').trim();
+
+      if ($('apiBase')) $('apiBase').value = resolvedApi;
+      if ($('key')) $('key').value = key;
+
+      if (activeApiBaseEl) activeApiBaseEl.textContent = resolvedApi;
+      if (activeApiPortEl) activeApiPortEl.textContent = `api: ${apiPort}`;
+      if (activeUiPortEl) activeUiPortEl.textContent = `ui: ${uiPort}`;
+      if (activeTrackKeyEl) activeTrackKeyEl.textContent = key ? `••••${key.slice(-4)}` : '(missing)';
+      if (apiHintEl) apiHintEl.textContent = `${host}:${apiPort}`;
+      if (webHintEl) webHintEl.textContent = `${host}:${uiPort}`;
+
+      runtimeLoaded = true;
+    } catch (e) {
+      if ($('apiBase') && !$('apiBase').value) $('apiBase').value = apiBaseGuess;
+      if (activeApiBaseEl) activeApiBaseEl.textContent = $('apiBase')?.value || apiBaseGuess;
+      if (activeTrackKeyEl) activeTrackKeyEl.textContent = 'unavailable';
+      const host = location.hostname || '10.0.0.233';
+      if (apiHintEl) apiHintEl.textContent = `${host}:3101`;
+      if (webHintEl) webHintEl.textContent = `${host}:8101`;
+    }
+  }
+
   function getMaxTracks() {
     const n = Number($('maxTracks')?.value || 25);
     return Number.isFinite(n) ? n : 25;
@@ -194,8 +296,16 @@ function stopFakeVibeProgress() {
     return Number($('minRating')?.value || 0);
   }
 
+  function getMinRatingVibe() {
+    return Number($('minRatingVibe')?.value || 0);
+  }
+
   function getMode() {
     return document.querySelector('input[name="mode"]:checked')?.value || 'replace';
+  }
+
+  function getModeVibe() {
+    return document.querySelector('input[name="modeVibe"]:checked')?.value || 'replace';
   }
 
   function getShuffle() {
@@ -210,6 +320,10 @@ function stopFakeVibeProgress() {
     return getMode() === 'replace' && !!cropEl?.checked;
   }
 
+  function getKeepNowPlayingVibe() {
+    return getModeVibe() === 'replace' && !!cropVibeEl?.checked;
+  }
+
   function syncCropUi() {
     const mode = getMode();
     if (!cropEl) return;
@@ -217,23 +331,32 @@ function stopFakeVibeProgress() {
     if (mode !== 'replace') cropEl.checked = false;
   }
 
+  function syncCropVibeUi() {
+    const mode = getModeVibe();
+    if (!cropVibeEl) return;
+    cropVibeEl.disabled = mode !== 'replace';
+    if (mode !== 'replace') cropVibeEl.checked = false;
+  }
+
   function disableUI(disabled) {
     const disable = !!disabled;
 
     if (vibeBtn) vibeBtn.disabled = disable;
-    if (sendBtn) sendBtn.disabled = disable || currentFiles.length === 0;
+    if (sendFilteredBtn) sendFilteredBtn.disabled = disable;
+    if (sendVibeBtn) sendVibeBtn.disabled = disable || currentListSource !== 'vibe' || currentFiles.length === 0;
 
     [
       'apiBase', 'key', 'maxTracks', 'minRating',
       'genres', 'artists', 'excludeGenres',
-      'shuffle', 'crop',
-      'savePlaylist', 'playlistName', 'generateCollage',
+      'shuffle', 'crop', 'cropVibe', 'minRatingVibe',
+      'playlistName', 'generateCollage',
     ].forEach((id) => {
       const el = $(id);
       if (el) el.disabled = disable;
     });
 
     document.querySelectorAll('input[name="mode"]').forEach((el) => { el.disabled = disable; });
+    document.querySelectorAll('input[name="modeVibe"]').forEach((el) => { el.disabled = disable; });
   }
 
   function shuffleInPlace(arr) {
@@ -309,7 +432,7 @@ function stopFakeVibeProgress() {
       : (currentListSource === 'filters' ? 'Filter list' : 'List');
 
     setCount(`${label} ready: ${currentTracks.length.toLocaleString()} track(s).`);
-    if (sendBtn) sendBtn.disabled = currentFiles.length === 0;
+    if (sendVibeBtn) sendVibeBtn.disabled = !(currentListSource === 'vibe' && currentFiles.length > 0);
 
     lastCollageSig = '';
     renderFiltersSummary();
@@ -319,12 +442,14 @@ function stopFakeVibeProgress() {
   function refreshCoverPreview(note = '') {
     if (!coverCardEl || !coverImgEl || !coverStatusEl) return;
 
-    const savePlaylist = !!savePlaylistEl?.checked;
+    const savePlaylist = savePlaylistEnabled;
     const wants = !!generateCollageEl?.checked && savePlaylist;
     const nameRaw = getPlaylistNameRaw();
 
     if (!wants || !nameRaw) {
-      coverCardEl.style.display = 'none';
+      coverCardEl.style.display = '';
+      coverStatusEl.textContent = 'Playlist cover preview';
+      // Keep existing preview image instead of clearing it.
       return;
     }
 
@@ -398,8 +523,8 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     const keep = getKeepNowPlaying();
     const doShuffle = getShuffle();
 
-    const savePlaylist = !!savePlaylistEl?.checked;
-    const playlistName = getPlaylistNameRaw();
+    const savePlaylist = savePlaylistEnabled;
+    const playlistName = savePlaylist ? getPlaylistNameRaw() : '';
     const wantsCollage = !!generateCollageEl?.checked && savePlaylist;
 
     const starsTxt = stars > 0 ? '★'.repeat(stars) + '☆'.repeat(5 - stars) : 'Any';
@@ -506,7 +631,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
       await maybeGenerateCollagePreview('filters-preview');
     } catch (e) {
       setStatus(`Error: ${esc(e?.message || e)}`);
-      if (sendBtn) sendBtn.disabled = true;
+      if (sendVibeBtn) sendVibeBtn.disabled = true;
     } finally {
       busy = false;
     }
@@ -514,86 +639,123 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
 
 // ---- VIBE build (list only; persistent) ----
 async function doVibeBuild() {
+  if (vibeSectionEl?.classList?.contains('hidden')) {
+    setStatus('Vibe is disabled. Add a Last.fm API key in Config to enable it.');
+    return;
+  }
+
   if (busy) return;
   busy = true;
 
   const apiBase = getApiBase();
   const key = getKey();
   const targetQueue = getMaxTracks();
+  const minRatingVibe = getMinRatingVibe();
 
   vibeCancelled = false;
   vibeAbortController = null;
+  vibeJobId = '';
+  vibeSince = 0;
+  stopVibePolling();
 
   disableUI(true);
-
-  // SHOW progress + make button act like Cancel while building
   showVibeProgress();
+  resetVibeFeed();
   setCancelButtonMode('cancel');
-  startFakeVibeProgress({ seconds: 12, label: 'Building vibe list…' });
+  setVibeProgress({ current: 0, total: Math.max(1, targetQueue), label: 'Starting vibe build…', detail: '' });
 
   try {
-    // ... your existing setup code ...
+    if (!apiBase) throw new Error('API base is empty.');
+    if (!key) throw new Error('Track key is empty.');
 
-    const controller = new AbortController();
-    vibeAbortController = controller;
-
-    const timeoutId = setTimeout(() => controller.abort(), 180000);
-
-    let r;
-    try {
-      r = await fetch(
-        `${apiBase}/config/queue-wizard/vibe-nowplaying?targetQueue=${encodeURIComponent(targetQueue)}`,
-        { signal: controller.signal, headers: { 'x-track-key': key } }
-      );
-    } finally {
-      clearTimeout(timeoutId);
-      stopFakeVibeProgress();
+    const startResp = await fetch(`${apiBase}/config/queue-wizard/vibe-start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+      body: JSON.stringify({ targetQueue, minRating: minRatingVibe }),
+    });
+    const startJson = await startResp.json().catch(() => ({}));
+    if (!startResp.ok || !startJson?.ok || !startJson?.jobId) {
+      throw new Error(startJson?.error || `HTTP ${startResp.status}`);
     }
 
-    if (vibeCancelled) {
-      setStatus('Vibe build cancelled.');
-      setCount('Cancelled.');
-      setVibeProgress({ current: 0, total: 1, label: 'Cancelled.', detail: '' });
-      setCancelButtonMode('none');     // hide it on cancel
-      hideVibeProgress();              // optional
-      return;
-    }
+    vibeJobId = String(startJson.jobId);
 
-    // ... parse JSON, build list, etc ...
+    const poll = async () => {
+      const r = await fetch(`${apiBase}/config/queue-wizard/vibe-status/${encodeURIComponent(vibeJobId)}?since=${encodeURIComponent(vibeSince)}`, {
+        headers: { 'x-track-key': key },
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
 
-    // When list is READY, repurpose Cancel -> Send
-    setVibeProgress({ current: 1, total: 1, label: 'Vibe list ready.', detail: '' });
-    setCancelButtonMode('send');
+      const built = Number(j.builtCount || 0);
+      const total = Number(j.targetQueue || targetQueue || 1);
+      const phase = String(j.phase || (j.done ? 'complete' : 'building'));
 
-    // If you also want to keep the progress visible after ready, do nothing.
-    // If you want it to hide, call hideVibeProgress() here.
+      setVibeProgress({
+        current: Math.min(built, total),
+        total: Math.max(1, total),
+        label: j.done ? 'Vibe list ready.' : `Building vibe list… (${built}/${total})`,
+        detail: phase,
+      });
+
+      const added = Array.isArray(j.added) ? j.added : [];
+      for (const row of added) appendVibeFeedRow(row);
+      vibeSince = Number(j.nextSince || vibeSince);
+
+      if (j.done) {
+        const tracks = Array.isArray(j.tracks) ? j.tracks.slice() : [];
+        setCurrentList('vibe', tracks);
+
+        if (tracks.length === 0) {
+          const seedArtist = String(j.seedArtist || '').trim();
+          const seedTitle = String(j.seedTitle || '').trim();
+          setStatus(`Vibe returned 0 tracks for now playing: ${seedArtist}${seedArtist && seedTitle ? ' — ' : ''}${seedTitle}. Try the next/previous track as seed.`);
+          setVibeProgress({ current: 0, total: Math.max(1, Number(j.targetQueue || targetQueue || 1)), label: 'No vibe matches found.', detail: 'Try a different currently playing seed track.' });
+          setCancelButtonMode('none');
+        } else {
+          setStatus(`Vibe list built: ${tracks.length.toLocaleString()} track(s).`);
+          await maybeGenerateCollagePreview('vibe-build');
+          setCancelButtonMode('send');
+        }
+
+        disableUI(false);
+        busy = false;
+        return;
+      }
+
+      if (j.error) throw new Error(j.error);
+
+      vibePollTimer = setTimeout(() => { poll().catch(handleErr); }, 600);
+    };
+
+    const handleErr = (e) => {
+      const msg = e?.message || String(e);
+      setStatus(`Error: ${esc(msg)}`);
+      setCount('Error building vibe list.');
+      setVibeProgress({ current: 0, total: 1, label: 'Error.', detail: msg });
+      setCancelButtonMode('none');
+      hideVibeProgress();
+      disableUI(false);
+      busy = false;
+      stopVibePolling();
+    };
+
+    await poll().catch(handleErr);
 
   } catch (e) {
     const msg = e?.message || String(e);
-
-    if (String(msg).toLowerCase().includes('abort') || vibeCancelled) {
-      setStatus('Vibe build cancelled.');
-      setCount('Cancelled.');
-      setVibeProgress({ current: 0, total: 1, label: 'Cancelled.', detail: '' });
-      setCancelButtonMode('none');
-      hideVibeProgress(); // optional
-      return;
-    }
-
     setStatus(`Error: ${esc(msg)}`);
     setCount('Error building vibe list.');
     setVibeProgress({ current: 0, total: 1, label: 'Error.', detail: msg });
-    setCancelButtonMode('none');       // hide on error (or leave 'send' if you want)
-    hideVibeProgress();                // optional
-  } finally {
+    setCancelButtonMode('none');
+    hideVibeProgress();
     disableUI(false);
     busy = false;
-    vibeAbortController = null;
   }
 }
   // ---- Collage preview generation (server-side) ----
   function collageEnabledAndValid() {
-    const savePlaylist = !!savePlaylistEl?.checked;
+    const savePlaylist = savePlaylistEnabled;
     const wants = !!generateCollageEl?.checked && savePlaylist;
     if (!wants) return { ok: false, msg: '' };
 
@@ -671,53 +833,60 @@ async function maybeGenerateCollagePreview(reason = '') {
     return;
   }
 
-  // ---- NON-VIBE behavior (saved playlist collage) ----
-  const gate = collageEnabledAndValid(); // this requires Save Playlist + valid name
-  if (!gate.ok) {
-    if (gate.msg) showPlaylistHint(gate.msg);
-    // keep your old behavior (hide or message)
-    refreshCoverPreview(gate.msg ? gate.msg : '');
+  // ---- NON-VIBE behavior (always preview from current tracks) ----
+  if (!apiBase) { setStatus('Cover preview error: API base is empty.'); return; }
+  if (!key) { setStatus('Cover preview error: track key is empty.'); return; }
+  if (!currentFiles.length) {
+    refreshCoverPreview('Playlist cover preview');
     return;
   }
 
-  const sig = computeCollageSig();
-  if (sig && sig === lastCollageSig) {
-    refreshCoverPreview(`Collage preview ready for “${getPlaylistNameRaw()}”.`);
-    return;
-  }
+  const playlistName = getPlaylistNameRaw();
+  const sig = `${playlistName || '(preview)'}::${currentFiles.length}::${currentFiles.slice(0, 50).join('|')}`;
+  if (sig && sig === lastCollageSig) return;
 
   if (collageBusy) return;
   collageBusy = true;
 
-  const playlistName = getPlaylistNameRaw();
-
   try {
     showPlaylistHint('');
-    setStatus(`<span class="spin"></span>Generating collage preview for “${esc(playlistName)}”…`);
+    setStatus('<span class="spin"></span>Generating collage preview…');
+
+    const payload = {
+      tracks: currentFiles.slice(),
+      forceSingle: false,
+    };
+    if (savePlaylistEnabled && playlistName) payload.playlistName = playlistName;
 
     const r = await fetch(`${apiBase}${COLLAGE_PREVIEW_PATH}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-track-key': key },
-      body: JSON.stringify({
-        playlistName,
-        tracks: currentFiles.slice(),
-        forceSingle: false,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    if (!r.ok || !j?.ok) {
+      const detail = j?.message || j?.error || j?.reason || `HTTP ${r.status}`;
+      throw new Error(detail);
+    }
 
     lastCollageSig = sig;
 
-    // Saved playlist case: keep your robust moOde URL polling
-    await forceReloadCoverUntilItLoads({
-      name: playlistName,
-      note: `Collage preview generated for “${playlistName}”.`,
-      tries: 10,
-    });
+    if (j?.dataBase64) {
+      showInlineCoverPreview({
+        mimeType: j.mimeType || 'image/jpeg',
+        dataBase64: j.dataBase64,
+        note: 'Collage preview ready.',
+      });
+    } else if (savePlaylistEnabled && playlistName) {
+      await forceReloadCoverUntilItLoads({
+        name: playlistName,
+        note: `Collage preview generated for “${playlistName}”.`,
+        tries: 10,
+      });
+    }
 
-    setStatus(`Collage preview generated for “${esc(playlistName)}”.`);
+    setStatus('Collage preview ready.');
   } catch (e) {
     const msg = e?.message || String(e);
     setStatus(`Cover preview error: ${esc(msg)}`);
@@ -728,7 +897,7 @@ async function maybeGenerateCollagePreview(reason = '') {
 }
 
   function updatePlaylistUi() {
-    const savePlaylist = !!savePlaylistEl?.checked;
+    const savePlaylist = savePlaylistEnabled;
     const opts = $('playlistOptions');
 
     if (opts) opts.classList.toggle('hidden', !savePlaylist);
@@ -748,10 +917,37 @@ async function maybeGenerateCollagePreview(reason = '') {
     maybeGenerateCollagePreview('updatePlaylistUi');
   }
 
+  function showSendConfirmation(msg) {
+    if (!sendConfirmEl) return;
+    sendConfirmEl.textContent = msg || '';
+    if (showSendConfirmation._t) clearTimeout(showSendConfirmation._t);
+    showSendConfirmation._t = setTimeout(() => {
+      if (sendConfirmEl.textContent === msg) sendConfirmEl.textContent = '';
+    }, 5000);
+  }
+
+  function syncSavePlaylistButton() {
+    if (!savePlaylistBtn) return;
+    savePlaylistBtn.textContent = 'Save as moOde Playlist';
+    savePlaylistBtn.style.opacity = savePlaylistEnabled ? '1' : '0.85';
+    savePlaylistBtn.style.outline = savePlaylistEnabled ? '2px solid #7fd3a7' : '';
+    savePlaylistBtn.setAttribute('aria-pressed', savePlaylistEnabled ? 'true' : 'false');
+  }
+
   // ---- Send current list to moOde ----
-  async function doSendToMoode() {
+  async function doSendToMoode(source = 'any') {
     if (sendBusy) return;
     sendBusy = true;
+
+    if (source === 'filters') {
+      await doPreview();
+    }
+
+    if (source === 'vibe' && currentListSource !== 'vibe') {
+      setStatus('Build a vibe list first, then send it.');
+      sendBusy = false;
+      return;
+    }
 
     if (!currentFiles.length) {
       await doPreview();
@@ -765,11 +961,12 @@ async function maybeGenerateCollagePreview(reason = '') {
     const apiBase = getApiBase();
     const key = getKey();
 
-    const mode = getMode();
-    const keepNowPlaying = getKeepNowPlaying();
-    const doShuffleFlag = getShuffle();
+    const isVibeSend = source === 'vibe';
+    const mode = isVibeSend ? getModeVibe() : getMode();
+    const keepNowPlaying = isVibeSend ? getKeepNowPlayingVibe() : getKeepNowPlaying();
+    const doShuffleFlag = isVibeSend ? false : getShuffle();
 
-    const savePlaylist = !!savePlaylistEl?.checked;
+    const savePlaylist = savePlaylistEnabled;
     const playlistName = savePlaylist ? getPlaylistNameRaw() : '';
     const wantsCollage = !!generateCollageEl?.checked && savePlaylist;
 
@@ -814,7 +1011,7 @@ async function maybeGenerateCollagePreview(reason = '') {
 
       const failedN = Array.isArray(j.failedFiles) ? j.failedFiles.length : 0;
 
-      setStatus(
+      const statusMsg =
         `Added to moOde queue: ${j.added}/${j.requested}` +
         (mode === 'replace' ? ` · ${replaceModeMsg}` : ' · appended') +
         (j.randomTurnedOff ? ' · random off' : '') +
@@ -823,8 +1020,10 @@ async function maybeGenerateCollagePreview(reason = '') {
         (j.collageGenerated ? ' · collage generated' : '') +
         (failedN ? ` · failed: ${failedN}` : '') +
         (j.playlistError ? ` · playlist error: ${esc(j.playlistError)}` : '') +
-        (j.collageError ? ` · collage error: ${esc(j.collageError)}` : '')
-      );
+        (j.collageError ? ` · collage error: ${esc(j.collageError)}` : '');
+
+      setStatus(statusMsg);
+      showSendConfirmation(`✅ Sent ${j.added}/${j.requested} track(s) to moOde.`);
 
       if (j.collageGenerated && playlistName) {
         await forceReloadCoverUntilItLoads({
@@ -849,9 +1048,14 @@ function wireEvents() {
     doVibeBuild();
   });
 
-  sendBtn?.addEventListener('click', (e) => {
+  sendFilteredBtn?.addEventListener('click', (e) => {
     e.preventDefault();
-    doSendToMoode();
+    doSendToMoode('filters');
+  });
+
+  sendVibeBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    doSendToMoode('vibe');
   });
 
   // Vibe cancel button becomes "Cancel" while building, then becomes "Send vibe list to moOde"
@@ -861,14 +1065,28 @@ function wireEvents() {
     if (cancelMode === 'cancel') {
       // cancel the build
       vibeCancelled = true;
-      vibeAbortController?.abort?.(); // safe if you added AbortController; no-op otherwise
       vibeCancelBtn.disabled = true;
+      const apiBase = getApiBase();
+      const key = getKey();
+      if (vibeJobId) {
+        fetch(`${apiBase}/config/queue-wizard/vibe-cancel/${encodeURIComponent(vibeJobId)}`, {
+          method: 'POST',
+          headers: { 'x-track-key': key },
+        }).catch(() => {});
+      }
+      stopVibePolling();
+      setStatus('Vibe build cancelled.');
+      setVibeProgress({ current: 0, total: 1, label: 'Cancelled.', detail: '' });
+      setCancelButtonMode('none');
+      hideVibeProgress();
+      disableUI(false);
+      busy = false;
       return;
     }
 
     if (cancelMode === 'send') {
       // reuse as a quick-send button after the list is ready
-      doSendToMoode();
+      doSendToMoode('vibe');
     }
   });
 
@@ -880,12 +1098,23 @@ function wireEvents() {
     });
   });
 
+  document.querySelectorAll('input[name="modeVibe"]').forEach((el) => {
+    el.addEventListener('change', () => {
+      syncCropVibeUi();
+    });
+  });
+
   cropEl?.addEventListener('change', () => {
     renderFiltersSummary();
   });
+  cropVibeEl?.addEventListener('change', () => {});
 
   // Playlist controls should NOT rebuild the list
-  savePlaylistEl?.addEventListener('change', () => updatePlaylistUi());
+  savePlaylistBtn?.addEventListener('click', () => {
+    savePlaylistEnabled = !savePlaylistEnabled;
+    syncSavePlaylistButton();
+    updatePlaylistUi();
+  });
 
   playlistNameEl?.addEventListener('input', () => {
     updatePlaylistUi();
@@ -896,6 +1125,8 @@ function wireEvents() {
     updatePlaylistUi();
     if (generateCollageEl?.checked) maybeGenerateCollagePreview('collage-toggle');
   });
+
+  // shared playlist controls are global (below cover preview)
 
   // Filters auto-preview ONLY if we are not currently showing a vibe list
   const maybePreview = () => {
@@ -908,8 +1139,16 @@ function wireEvents() {
   ['genres', 'artists', 'excludeGenres', 'minRating', 'maxTracks', 'shuffle', 'apiBase', 'key'].forEach((id) => {
     const el = $(id);
     if (!el) return;
-    el.addEventListener('change', maybePreview);
-    if (el.tagName === 'INPUT') el.addEventListener('input', maybePreview);
+    el.addEventListener('change', () => {
+      if (id === 'apiBase') syncVibeAvailability();
+      maybePreview();
+    });
+    if (el.tagName === 'INPUT') {
+      el.addEventListener('input', () => {
+        if (id === 'apiBase') syncVibeAvailability();
+        maybePreview();
+      });
+    }
   });
 }
 
@@ -922,17 +1161,23 @@ try {
   setStatus('');
   showPlaylistHint('');
 
-  if (coverCardEl) coverCardEl.style.display = 'none';
+  if (coverCardEl) coverCardEl.style.display = '';
 
   syncCropUi();
+  syncCropVibeUi();
+  syncSavePlaylistButton();
   updatePlaylistUi();
+  if (sendConfirmEl) sendConfirmEl.textContent = '';
   renderFiltersSummary();
 
   // Ensure the button starts hidden/disabled until a vibe build begins
   setCancelButtonMode('none');
 
   wireEvents();
-  loadOptions();
+  loadRuntimeMeta().finally(() => {
+    loadOptions();
+    syncVibeAvailability();
+  });
 } catch (e) {
   setStatus(`JS init error: ${esc(e?.message || e)}`);
   console.error(e);
