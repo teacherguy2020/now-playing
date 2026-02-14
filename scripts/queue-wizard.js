@@ -21,7 +21,7 @@
 
   const savePlaylistBtn = $('savePlaylistBtn');
   const playlistNameEl = $('playlistName');
-  const generateCollageEl = $('generateCollage');
+  const savePlaylistNowBtn = $('savePlaylistNowBtn');
 
   const cropVibeEl = $('cropVibe');
 
@@ -58,7 +58,6 @@ const vibeProgressBar    = $('vibeProgressBar');
 const vibeProgressText   = $('vibeProgressText');
 const vibeProgressDetail = $('vibeProgressDetail');
 const vibeCancelBtn      = $('vibeCancel');
-const vibeLiveFeedEl     = $('vibeLiveFeed');
 
 let vibeCancelled = false;
 let vibeAbortController = null;
@@ -145,23 +144,12 @@ function stopFakeVibeProgress() {
   vibeFakeTimer = null;
 }
 
-function resetVibeFeed() {
-  if (!vibeLiveFeedEl) return;
-  vibeLiveFeedEl.innerHTML = '<div class="muted">Waiting for tracks…</div>';
-}
-
-function appendVibeFeedRow(track = {}) {
-  if (!vibeLiveFeedEl) return;
+function describeVibePick(track = {}) {
   const artist = String(track.artist || '').trim();
   const title = String(track.title || '').trim();
   const method = String(track.method || '').trim();
-  const row = document.createElement('div');
-  row.style.padding = '4px 0';
-  row.style.borderBottom = '1px dashed #2a3a58';
-  row.innerHTML = `+ ${esc(artist)}${artist && title ? ' — ' : ''}${esc(title)}${method ? ` <span class="muted">(${esc(method)})</span>` : ''}`;
-  if (vibeLiveFeedEl.firstChild?.classList?.contains('muted')) vibeLiveFeedEl.innerHTML = '';
-  vibeLiveFeedEl.prepend(row);
-  while (vibeLiveFeedEl.children.length > 20) vibeLiveFeedEl.removeChild(vibeLiveFeedEl.lastChild);
+  const core = `${artist}${artist && title ? ' — ' : ''}${title}`.trim();
+  return core ? `${core}${method ? ` (${method})` : ''}` : '';
 }
 
 function stopVibePolling() {
@@ -194,6 +182,10 @@ async function syncVibeAvailability() {
   
 
   
+  function moodeDefaultCoverUrl() {
+    return `http://${moodeHost}/images/default-cover.jpg`;
+  }
+
   function showInlineCoverPreview({ mimeType, dataBase64, note = '' }) {
     if (!coverCardEl || !coverImgEl || !coverStatusEl) return;
 
@@ -242,6 +234,21 @@ async function syncVibeAvailability() {
     return ($('key')?.value || '').trim();
   }
 
+  function setPillState(pillId, state){
+    const map = {
+      ok: { c:'#22c55e', b:'rgba(34,197,94,.55)' },
+      warn: { c:'#f59e0b', b:'rgba(245,158,11,.55)' },
+      bad: { c:'#ef4444', b:'rgba(239,68,68,.55)' },
+      off: { c:'#64748b', b:'rgba(100,116,139,.45)' },
+    };
+    const s = map[state] || map.off;
+    const pill = $(pillId);
+    if (!pill) return;
+    const dot = pill.querySelector('.dot');
+    if (dot) { dot.style.background = s.c; dot.style.boxShadow = `0 0 0 6px ${s.b.replace('.55','.20')}`; }
+    pill.style.borderColor = s.b;
+  }
+
   async function loadRuntimeMeta() {
     const apiBaseGuess = defaultApiBase();
     const rtUrl = `${apiBaseGuess}/config/runtime`;
@@ -251,6 +258,7 @@ async function syncVibeAvailability() {
     const activeTrackKeyEl = $('activeTrackKey');
     const apiHintEl = $('apiHint');
     const webHintEl = $('webHint');
+    const alexaHintEl = $('alexaHint');
 
     try {
       const r = await fetch(rtUrl, { cache: 'no-store' });
@@ -275,6 +283,12 @@ async function syncVibeAvailability() {
       if (activeTrackKeyEl) activeTrackKeyEl.textContent = key ? `••••${key.slice(-4)}` : '(missing)';
       if (apiHintEl) apiHintEl.textContent = `${host}:${apiPort}`;
       if (webHintEl) webHintEl.textContent = `${host}:${uiPort}`;
+      const axEnabled = !!cfg?.alexa?.enabled;
+      const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
+      if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
+      setPillState('apiPill','ok');
+      setPillState('webPill','ok');
+      setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
 
       runtimeLoaded = true;
     } catch (e) {
@@ -284,6 +298,10 @@ async function syncVibeAvailability() {
       const host = location.hostname || '10.0.0.233';
       if (apiHintEl) apiHintEl.textContent = `${host}:3101`;
       if (webHintEl) webHintEl.textContent = `${host}:8101`;
+      if (alexaHintEl) alexaHintEl.textContent = 'unknown';
+      setPillState('apiPill','bad');
+      setPillState('webPill','warn');
+      setPillState('alexaPill','warn');
     }
   }
 
@@ -349,7 +367,7 @@ async function syncVibeAvailability() {
       'apiBase', 'key', 'maxTracks', 'minRating',
       'genres', 'artists', 'excludeGenres',
       'shuffle', 'crop', 'cropVibe', 'minRatingVibe',
-      'playlistName', 'generateCollage',
+      'playlistName',
     ].forEach((id) => {
       const el = $(id);
       if (el) el.disabled = disable;
@@ -443,7 +461,7 @@ async function syncVibeAvailability() {
     if (!coverCardEl || !coverImgEl || !coverStatusEl) return;
 
     const savePlaylist = savePlaylistEnabled;
-    const wants = !!generateCollageEl?.checked && savePlaylist;
+    const wants = !!savePlaylist;
     const nameRaw = getPlaylistNameRaw();
 
     if (!wants || !nameRaw) {
@@ -457,7 +475,7 @@ async function syncVibeAvailability() {
     if (!p.ok) {
       coverCardEl.style.display = '';
       coverStatusEl.textContent = p.msg;
-      coverImgEl.src = '';
+      coverImgEl.src = moodeDefaultCoverUrl();
       return;
     }
 
@@ -525,7 +543,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
 
     const savePlaylist = savePlaylistEnabled;
     const playlistName = savePlaylist ? getPlaylistNameRaw() : '';
-    const wantsCollage = !!generateCollageEl?.checked && savePlaylist;
+    const wantsCollage = !!savePlaylist;
 
     const starsTxt = stars > 0 ? '★'.repeat(stars) + '☆'.repeat(5 - stars) : 'Any';
     const fmt = (arr) => arr.length ? arr.map(esc).join(', ') : 'Any';
@@ -660,7 +678,7 @@ async function doVibeBuild() {
 
   disableUI(true);
   showVibeProgress();
-  resetVibeFeed();
+  // live feed removed; showing latest pick in progress detail
   setCancelButtonMode('cancel');
   setVibeProgress({ current: 0, total: Math.max(1, targetQueue), label: 'Starting vibe build…', detail: '' });
 
@@ -699,7 +717,10 @@ async function doVibeBuild() {
       });
 
       const added = Array.isArray(j.added) ? j.added : [];
-      for (const row of added) appendVibeFeedRow(row);
+      if (added.length && vibeProgressDetail) {
+        const latest = describeVibePick(added[added.length - 1]);
+        vibeProgressDetail.textContent = latest ? `${phase} • Latest: ${latest}` : phase;
+      }
       vibeSince = Number(j.nextSince || vibeSince);
 
       if (j.done) {
@@ -756,7 +777,7 @@ async function doVibeBuild() {
   // ---- Collage preview generation (server-side) ----
   function collageEnabledAndValid() {
     const savePlaylist = savePlaylistEnabled;
-    const wants = !!generateCollageEl?.checked && savePlaylist;
+    const wants = !!savePlaylist;
     if (!wants) return { ok: false, msg: '' };
 
     const nameRaw = getPlaylistNameRaw();
@@ -825,7 +846,7 @@ async function maybeGenerateCollagePreview(reason = '') {
       const msg = e?.message || String(e);
       setStatus(`Cover preview error: ${esc(msg)}`);
       coverStatusEl.textContent = `Cover preview error: ${msg}`;
-      coverImgEl.src = '';
+      coverImgEl.src = moodeDefaultCoverUrl();
     } finally {
       collageBusy = false;
     }
@@ -901,7 +922,7 @@ async function maybeGenerateCollagePreview(reason = '') {
     const opts = $('playlistOptions');
 
     if (opts) opts.classList.toggle('hidden', !savePlaylist);
-    if (!savePlaylist && generateCollageEl) generateCollageEl.checked = false;
+    // collage is implicit when Save Playlist is enabled
 
     if (savePlaylist) {
       const p = playlistNameProblems(getPlaylistNameRaw());
@@ -968,7 +989,7 @@ async function maybeGenerateCollagePreview(reason = '') {
 
     const savePlaylist = savePlaylistEnabled;
     const playlistName = savePlaylist ? getPlaylistNameRaw() : '';
-    const wantsCollage = !!generateCollageEl?.checked && savePlaylist;
+    const wantsCollage = !!savePlaylist;
 
     if (savePlaylist) {
       const p = playlistNameProblems(playlistName);
@@ -1118,12 +1139,13 @@ function wireEvents() {
 
   playlistNameEl?.addEventListener('input', () => {
     updatePlaylistUi();
-    if (generateCollageEl?.checked) maybeGenerateCollagePreview('playlist-name-input');
+    if (savePlaylistEnabled) maybeGenerateCollagePreview('playlist-name-input');
   });
 
-  generateCollageEl?.addEventListener('change', () => {
-    updatePlaylistUi();
-    if (generateCollageEl?.checked) maybeGenerateCollagePreview('collage-toggle');
+  savePlaylistNowBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const src = currentListSource === 'vibe' ? 'vibe' : 'filters';
+    doSendToMoode(src);
   });
 
   // shared playlist controls are global (below cover preview)
@@ -1162,6 +1184,13 @@ try {
   showPlaylistHint('');
 
   if (coverCardEl) coverCardEl.style.display = '';
+  if (coverImgEl && !coverImgEl.src) {
+    coverImgEl.src = moodeDefaultCoverUrl();
+    coverImgEl.onerror = () => {
+      coverImgEl.onerror = null;
+      coverImgEl.src = `http://${moodeHost}/images/default-album-cover.png`;
+    };
+  }
 
   syncCropUi();
   syncCropVibeUi();

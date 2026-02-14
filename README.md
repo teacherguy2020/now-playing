@@ -116,6 +116,11 @@ Queue Wizard now supports two explicit build modes:
 - **Filter Queue Builder** (genre/artist/excludes/rating threshold)
 - **Vibe Queue Builder** (seed from now-playing with live progress)
 
+⚠️ **Vibe mode requires a Last.fm API key.**
+- You can create one free at: <https://www.last.fm/api/account/create>
+- Add it in `config.html` under **Last.fm (Vibe)**
+- If not configured, the Vibe module is automatically hidden
+
 Recent behavior highlights:
 - Real vibe progress via async job endpoints (`vibe-start`, `vibe-status`, `vibe-cancel`)
 - Live per-track feed while vibe builds
@@ -191,6 +196,28 @@ sticker_file "/var/lib/mpd/sticker.sql"
 
 Many setups copy files to Pi hosts (`scp`/`rsync`) instead of pulling directly from git.
 If so, deploy to the folder actually served by your web/API processes, then restart service manager (PM2/systemd).
+
+## SSH prerequisite (API host → moOde host)
+
+Several config/runtime features (cover generation, ratings DB backup/restore, environment checks) require SSH from the API host to the moOde host.
+
+Expected model:
+- key-based SSH (no password prompt)
+- `sudo -n` works for required file operations on moOde
+
+Typical setup:
+
+```bash
+# on API host (e.g., 10.0.0.233)
+ssh-keygen -t ed25519 -C "now-playing-api"
+ssh-copy-id moode@<moode-host>
+ssh moode@<moode-host> 'echo ok'
+ssh moode@<moode-host> 'sudo -n true && echo sudo_ok'
+```
+
+If `sudo -n true` fails, configure sudoers on moOde for the `moode` user (or your configured SSH user) to allow the minimum commands needed by this project.
+
+Use **Config → Network & Runtime → Check SSH + Paths** as your verification step after setup.
 
 ## Current branch workflow
 

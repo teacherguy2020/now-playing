@@ -204,9 +204,27 @@ img_hash() {
 
 # -----------------------------
 # Collect unique images (dedupe by IMAGE CONTENT hash)
+# Prefer artist diversity first, then fill extras.
 # -----------------------------
 declare -A SEEN_HASH
+declare -A SEEN_ARTIST
+declare -A COVER_ARTIST
+primary_covers=()
+extra_covers=()
 covers=()
+
+artist_key_from_mpd_path() {
+  local p="$1"
+  local key=""
+  # Typical: USB/<mount>/<Artist>/<Album>/track
+  if [[ "$p" == USB/* ]]; then
+    key="$(awk -F'/' '{ if (NF>=3) print $3; }' <<< "$p")"
+  fi
+  if [[ -z "$key" ]]; then
+    key="$(basename "$(dirname "$p")")"
+  fi
+  printf '%s' "$key"
+}
 
 while IFS= read -r line || [[ -n "$line" ]]; do
   line="${line//$'\r'/}"
@@ -240,7 +258,14 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 
   if [[ -z "${SEEN_HASH[$h]:-}" ]]; then
     SEEN_HASH["$h"]=1
-    covers+=("$candidate")
+    akey="$(artist_key_from_mpd_path "$line")"
+    COVER_ARTIST["$candidate"]="$akey"
+    if [[ -n "$akey" && -z "${SEEN_ARTIST[$akey]:-}" ]]; then
+      SEEN_ARTIST["$akey"]=1
+      primary_covers+=("$candidate")
+    else
+      extra_covers+=("$candidate")
+    fi
   else
     # If embedded temp is a duplicate, discard it
     [[ -n "$tmpimg" ]] && rm -f "$tmpimg" 2>/dev/null || true
@@ -248,6 +273,8 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 
   # Keep scanning to collect more unique art so collage can be more diverse.
 done < "$PLAYLIST_FILE"
+
+covers=("${primary_covers[@]}" "${extra_covers[@]}")
 
 if [[ "${#covers[@]}" -eq 0 ]]; then
   echo "WARN: No art found for playlist '$PLAYLIST_NAME' (streams-only or no embedded/folder art)." >&2
@@ -282,13 +309,33 @@ make_collage() {
   local c0 c1 c2 c3
 
   if [[ "$n" -ge 4 ]]; then
-    # Spread picks across the unique cover list to avoid clustering one album.
-    local i1=$(( (n - 1) / 3 ))
-    local i2=$(( (2 * (n - 1)) / 3 ))
-    c0="${covers[0]}"
-    c1="${covers[$i1]}"
-    c2="${covers[$i2]}"
-    c3="${covers[$((n - 1))]}"
+    # Prefer 4 distinct artists when available; then fill from remaining covers.
+    local selected=()
+    local -A used_artist
+    local c a
+    for c in "${covers[@]}"; do
+      a="${COVER_ARTIST[$c]:-}"
+      [[ -n "$a" ]] || a="__NO_ARTIST__:$c"
+      if [[ -z "${used_artist[$a]:-}" ]]; then
+        selected+=("$c")
+        used_artist["$a"]=1
+        [[ "${#selected[@]}" -ge 4 ]] && break
+      fi
+    done
+    if [[ "${#selected[@]}" -lt 4 ]]; then
+      for c in "${covers[@]}"; do
+        local already=0
+        local s
+        for s in "${selected[@]}"; do [[ "$s" == "$c" ]] && already=1 && break; done
+        [[ "$already" -eq 1 ]] && continue
+        selected+=("$c")
+        [[ "${#selected[@]}" -ge 4 ]] && break
+      done
+    fi
+    c0="${selected[0]}"
+    c1="${selected[1]}"
+    c2="${selected[2]}"
+    c3="${selected[3]}"
   elif [[ "$n" -eq 3 ]]; then
     c0="${covers[0]}"
     c1="${covers[1]}"

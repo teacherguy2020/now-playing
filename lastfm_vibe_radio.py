@@ -430,6 +430,7 @@ def main():
 
     album_cache = {}
     bad_files = set()
+    last_added_artist_n = ""
 
     print(f"Seed: {seed_title} — {seed_artist}")
     print(f"Starting queue length: {queue_len()}  (target {args.target_queue})")
@@ -475,6 +476,7 @@ def main():
         chosen_rec_artist = ""
         chosen_rec_title = ""
         chosen_album_k = ""
+        fallback_repeat = None
 
         print(f"[{datetime.now().strftime('%H:%M:%S')}] pick from {len(sim)} similar", flush=True)
         for t in sim:
@@ -545,6 +547,13 @@ def main():
             if last_album_k and cand_album_k and cand_album_k == last_album_k:
                 continue
 
+            cand_artist_n = norm(a_tag or rec_artist)
+            if last_added_artist_n and cand_artist_n and cand_artist_n == last_added_artist_n:
+                # Soft guard: avoid back-to-back same artist when possible.
+                if fallback_repeat is None:
+                    fallback_repeat = (cand, method, rec_title, rec_artist, cand_album_k)
+                continue
+
             chosen_file = cand
             chosen_method = method
             chosen_label = f"{rec_title} — {rec_artist}"
@@ -552,6 +561,15 @@ def main():
             chosen_rec_title = rec_title
             chosen_album_k = cand_album_k
             break
+
+        if not chosen_file and fallback_repeat is not None:
+            cand, method, rec_title, rec_artist, cand_album_k = fallback_repeat
+            chosen_file = cand
+            chosen_method = method
+            chosen_label = f"{rec_title} — {rec_artist}"
+            chosen_rec_artist = rec_artist
+            chosen_rec_title = rec_title
+            chosen_album_k = cand_album_k
 
         if not chosen_file:
             misses += 1
@@ -627,6 +645,8 @@ def main():
             last_album_k = chosen_album_k
         elif alb2:
             last_album_k = album_key(alb2)
+
+        last_added_artist_n = norm(a2 or chosen_rec_artist)
 
         k2 = track_key(seed_artist, seed_title)
         if k2:

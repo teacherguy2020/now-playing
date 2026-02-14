@@ -21,9 +21,25 @@ console.log('PODCASTS_UI_VERSION', '2026-02-09_1');
     return `http://${host}:3101`;
   })();
 
+  function setPillState(pillId, state){
+    const map = {
+      ok: { c:'#22c55e', b:'rgba(34,197,94,.55)' },
+      warn: { c:'#f59e0b', b:'rgba(245,158,11,.55)' },
+      bad: { c:'#ef4444', b:'rgba(239,68,68,.55)' },
+      off: { c:'#64748b', b:'rgba(100,116,139,.45)' },
+    };
+    const s = map[state] || map.off;
+    const pill = document.getElementById(pillId);
+    if (!pill) return;
+    const dot = pill.querySelector('.dot');
+    if (dot) { dot.style.background = s.c; dot.style.boxShadow = `0 0 0 6px ${s.b.replace('.55','.20')}`; }
+    pill.style.borderColor = s.b;
+  }
+
   async function loadRuntimeHints(){
     const apiHintEl = document.getElementById('apiHint');
     const webHintEl = document.getElementById('webHint');
+    const alexaHintEl = document.getElementById('alexaHint');
     try {
       const r = await fetch(`${API_BASE}/config/runtime`, { cache:'no-store' });
       const j = await r.json().catch(() => ({}));
@@ -35,12 +51,22 @@ console.log('PODCASTS_UI_VERSION', '2026-02-09_1');
         API_BASE = `${proto}//${host}:${apiPort}`;
         if (apiHintEl) apiHintEl.textContent = `${host}:${apiPort}`;
         if (webHintEl) webHintEl.textContent = `${host}:${uiPort}`;
+        const axEnabled = !!j?.config?.alexa?.enabled;
+        const axDomain = String(j?.config?.alexa?.publicDomain || '').trim();
+        if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
+        setPillState('apiPill','ok');
+        setPillState('webPill','ok');
+        setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
         return;
       }
     } catch {}
     const host = location.hostname || '10.0.0.233';
     if (apiHintEl) apiHintEl.textContent = API_BASE.replace(/^https?:\/\//, '');
     if (webHintEl) webHintEl.textContent = `${host}:8101`;
+    if (alexaHintEl) alexaHintEl.textContent = 'unknown';
+    setPillState('apiPill','bad');
+    setPillState('webPill','warn');
+    setPillState('alexaPill','warn');
   }
 
   // =========================

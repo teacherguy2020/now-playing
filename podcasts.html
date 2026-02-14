@@ -25,13 +25,17 @@
         </div>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <div class="pill" title="Active API endpoint">
+          <div class="pill" id="apiPill" title="Active API endpoint">
             <span class="dot" aria-hidden="true"></span>
             API: <span id="apiHint" style="color:rgba(255,255,255,.9)">loading…</span>
           </div>
-          <div class="pill" title="Active web UI endpoint">
+          <div class="pill" id="webPill" title="Active web UI endpoint">
             <span class="dot" aria-hidden="true"></span>
             Web: <span id="webHint" style="color:rgba(255,255,255,.9)">loading…</span>
+          </div>
+          <div class="pill" id="alexaPill" title="Alexa public domain health">
+            <span class="dot" aria-hidden="true"></span>
+            Alexa: <span id="alexaHint" style="color:rgba(255,255,255,.9)">unknown</span>
           </div>
         </div>
       </header>

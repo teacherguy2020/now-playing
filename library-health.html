@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Library Health</title>
   <link rel="stylesheet" href="styles/podcasts.css?v=20260211-1" />
+  <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#0c1526;color:#e7eefc}
     .wrap{max-width:1100px;margin:0 auto;padding:18px}
@@ -38,13 +39,17 @@
           <div class="sub">Scan tags • Fix ratings/genres • Fill album art</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <div class="pill" title="Active API endpoint">
+          <div class="pill" id="apiPill" title="Active API endpoint">
             <span class="dot" aria-hidden="true"></span>
             API: <span id="apiHint" style="color:rgba(255,255,255,.9)">loading…</span>
           </div>
-          <div class="pill" title="Active web UI endpoint">
+          <div class="pill" id="webPill" title="Active web UI endpoint">
             <span class="dot" aria-hidden="true"></span>
             Web: <span id="webHint" style="color:rgba(255,255,255,.9)">loading…</span>
+          </div>
+          <div class="pill" id="alexaPill" title="Alexa public domain health">
+            <span class="dot" aria-hidden="true"></span>
+            Alexa: <span id="alexaHint" style="color:rgba(255,255,255,.9)">unknown</span>
           </div>
         </div>
       </header>
