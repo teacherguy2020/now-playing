@@ -92,9 +92,14 @@ High-level flow:
 
 Queue-first behavior (prepped queue):
 
-- If you prepared a queue (for example from Queue Wizard), Alexa can consume from that queue.
-- On play/next-style flows, the API checks queue state and advances playback by removing/consuming head entries as designed by the queue endpoints.
-- This keeps Alexa, web UI, and MPD in sync on what is currently playing and what is next.
+- If a queue is already active (has a head), opening/starting the skill will typically continue that queue flow.
+- In that case, Alexa responds with behavior like **“starting your queue”** and proceeds with queue-driven playback.
+- The API advances playback by consuming/removing queue head entries via queue endpoints so Alexa/UI/MPD remain in sync.
+
+Empty-queue behavior:
+
+- If the queue is empty, the skill does not have queued content to continue.
+- It will typically prompt you for what to play next (artist/album/playlist/mix request).
 
 Direct request behavior (no prepped queue required):
 
@@ -106,8 +111,12 @@ Direct request behavior (no prepped queue required):
 
 “Plus” / mixed requests:
 
-- Multi-artist phrasing using **plus** (for example, “play a mix of artist Miles Davis plus John Coltrane”) is supported by the interaction model + handler logic.
-- The parsed artist set is sent to API queue-building routes, which produce a combined queue/mix.
+- Multi-artist phrasing using **plus** is supported (for example: “play a mix of artist Miles Davis plus John Coltrane”).
+- Best reliability is usually a two-step flow:
+  1. “Alexa, open Mood Audio.”
+  2. “Play a mix of artist Miles Davis plus John Coltrane.”
+- One-shot phrasing (`ask <skill> to ...`) may sometimes launch the skill without passing the tail request, depending on Alexa parsing.
+- Parsed artist sets are sent to API queue-building routes, which produce the combined queue/mix.
 
 Operational notes:
 
