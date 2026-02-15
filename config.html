@@ -170,7 +170,7 @@
                 <div id="runtimeCheckDetails" class="cfgHint" style="margin-top:6px;"></div>
               </div>
 
-              <div class="cfgCard gateCard" id="podcastsCard" style="grid-column: 1 / -1;">
+              <div class="cfgCard" id="podcastsCard" style="grid-column: 1 / -1;">
                 <h3>Podcasts</h3>
                 <div class="cfgField"><label><input id="featurePodcasts" type="checkbox" /> Enabled</label></div>
                 <div class="cfgField" id="podcastRootFieldWrap">
@@ -820,6 +820,7 @@ async function loadCfg(){
   syncPushoverCardVisibility();
 
   document.getElementById('featurePodcasts').checked = !!c.features?.podcasts;
+  syncPodcastsUi();
   document.getElementById('featureRatings').checked = !!c.features?.ratings;
   document.getElementById('featureRadio').checked = !!c.features?.radio;
   syncRatingsCardVisibility();
@@ -1275,19 +1276,20 @@ async function checkRuntimeEnv(silent = false){
     applyRuntimeGate();
     if (!silent && statusEl) statusEl.textContent = `${ssh} · ${mpd} · Paths ${bad ? `⚠️ ${bad} missing` : '✅'}`;
 
+    const rows = Array.isArray(j.pathChecks) ? j.pathChecks : [];
+    const pathLightMap = {
+      musicLibraryRoot: 'pathMusicLibraryRootLight',
+      moodeUsbMount: 'pathMoodeUsbMountLight',
+      piMountBase: 'pathPiMountBaseLight',
+      podcastRoot: 'pathPodcastRootLight',
+    };
+    Object.entries(pathLightMap).forEach(([name, id]) => {
+      const row = rows.find((x) => x && x.name === name);
+      if (!row) return setLight(id, 'neutral');
+      setLight(id, row.exists ? 'good' : 'bad');
+    });
+
     if (!silent && detailsEl) {
-      const rows = Array.isArray(j.pathChecks) ? j.pathChecks : [];
-      const pathLightMap = {
-        musicLibraryRoot: 'pathMusicLibraryRootLight',
-        moodeUsbMount: 'pathMoodeUsbMountLight',
-        piMountBase: 'pathPiMountBaseLight',
-        podcastRoot: 'pathPodcastRootLight',
-      };
-      Object.entries(pathLightMap).forEach(([name, id]) => {
-        const row = rows.find((x) => x && x.name === name);
-        if (!row) return setLight(id, 'neutral');
-        setLight(id, row.exists ? 'good' : 'bad');
-      });
       const podcastRow = rows.find((x) => x && x.name === 'podcastRoot');
       const needsPodcastCreate = podcastsEnabled && podcastRow && !podcastRow.exists;
       const table = rows.length ? `
