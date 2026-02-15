@@ -36,6 +36,28 @@ Optional:
 
 Use `alexa/interaction-model.v2.json` as the current model source.
 
+## Build upload zip (Alexa Developer Console)
+
+From repo root, build a fresh zip for the **Code** tab upload:
+
+```bash
+rm -rf /tmp/nowplaying-lambda-staging
+mkdir -p /tmp/nowplaying-lambda-staging/lambda
+cp -R alexa /tmp/nowplaying-lambda-staging/lambda/
+cp lambda_upload/lambda/index.js /tmp/nowplaying-lambda-staging/lambda/index.js
+
+cd /tmp/nowplaying-lambda-staging
+zip -qr "$OLDPWD/alexa-devconsole-upload.zip" lambda
+```
+
+Then in Alexa Developer Console:
+
+1. Open your skill → **Code**
+2. Upload `alexa-devconsole-upload.zip`
+3. Click **Deploy**
+
+Important: zip root must contain `lambda/` (not loose files).
+
 ## Notes
 
 - Keep Alexa and API track key values in sync.
