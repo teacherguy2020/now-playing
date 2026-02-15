@@ -9,8 +9,9 @@ NOTE: Developed to run on a separate pi than your moOde pi. It's possible the pr
 - Serves a Now Playing API (`/now-playing`, `/next-up`, artwork routes, queue/rating controls)
 - Hosts adaptive UI pages (`index.html`, `podcasts.html`, `library-health.html`, `queue-wizard.html`, `config.html`, `diagnostics.html`)
 - Manages podcast subscriptions/downloads/playlists
-- Supports multi-device/home deployments (Pi nodes)
+- Provides highly flexible queue creation (especially if you add Lastfm api key)
 - Supports optional Alexa endpoint flow when enabled
+- Allows for considerable library metadata and art maintanence
 - Keeps display behavior as consistent as possible across listening modes:
   - local library music/podcasts
   - radio streams
