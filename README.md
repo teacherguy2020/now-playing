@@ -65,12 +65,6 @@ Purge uninstall (removes install directory too):
 curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/uninstall.sh | bash -s -- --purge -y
 ```
 
-## Install validation before public release
-
-Run the checklist in:
-
-- `docs/INSTALL_VALIDATION.md`
-
 ## UX highlights
 
 - **Clickable stars for ratings**: users can click star ratings in the now-playing UI to update track rating.
