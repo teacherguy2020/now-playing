@@ -5,7 +5,7 @@ Use this before merging major changes to `main`.
 ## 1) Boot / syntax
 
 - [ ] `node --check moode-nowplaying-api.mjs`
-- [ ] `node --check script1080.js`
+- [ ] `node --check scripts/index-ui.js`
 - [ ] `node --check scripts/queue-wizard.js`
 - [ ] API process starts cleanly (pm2/systemd)
 

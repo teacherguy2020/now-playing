@@ -43,7 +43,7 @@ These are configurable via runtime config (`ports.api`, `ports.ui`).
 - `moode-nowplaying-api.mjs` — API entrypoint
 - `src/routes/` — API route modules
 - `src/services/` — MPD/service helpers
-- `index.html`, `script1080.js` — now-playing display UI
+- `index.html`, `scripts/index-ui.js` — now-playing display UI
 - `queue-wizard.html`, `library-health.html`, `diagnostics.html`, `podcasts.html`, `config.html` — admin/ops UIs
 - `alexa/*` — optional Alexa skill runtime/assets
 

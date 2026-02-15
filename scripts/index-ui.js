@@ -1,4 +1,4 @@
-// script1080.js -- DROP-IN (v1.5)
+// scripts/index-ui.js -- now-playing UI runtime
 //
 // Includes:
 // - Double-buffer blurred background crossfade (background-a/background-b)
