@@ -794,7 +794,7 @@ async function loadCfg(){
     } else {
       alexaHint.textContent = domainTxt;
       setPillState('alexaPill', 'good');
-      setLight('alexaDomainLight', 'warn');
+      setLight('alexaDomainLight', 'good');
     }
   }
 
@@ -811,6 +811,7 @@ async function loadCfg(){
   document.getElementById('featureAlexaSkill').checked = !!c.alexa?.enabled;
   document.getElementById('alexaDomain').value = c.alexa?.publicDomain || '';
   syncAlexaCardVisibility();
+  syncAlexaDomainUi();
   syncPodcastsUi();
 
   const hasPushover = !!(String(c.notifications?.pushover?.token || '').trim() || String(c.notifications?.pushover?.userKey || '').trim() || c.notifications?.trackNotify?.enabled);
@@ -1397,6 +1398,13 @@ function derivePathsFromMoode(){
   refreshDirtyState();
 }
 
+function syncAlexaDomainUi(){
+  const enabled = !!document.getElementById('featureAlexaSkill')?.checked;
+  const domain = String(document.getElementById('alexaDomain')?.value || '').trim();
+  const btn = document.getElementById('checkAlexaDomainBtn');
+  if (btn) btn.style.display = (enabled && !domain) ? '' : 'none';
+}
+
 async function checkAlexaDomain(){
   const key = getTrackKey();
   const statusEl = document.getElementById('alexaDomainCheckStatus');
@@ -1437,6 +1445,7 @@ async function checkAlexaDomain(){
     setLight('alexaDomainLight', 'bad');
   } finally {
     if (btn) btn.disabled = false;
+    syncAlexaDomainUi();
   }
 }
 
@@ -1617,7 +1626,7 @@ document.getElementById('artistAliasesJson').addEventListener('input', () => {
   } catch {}
 });
 
-document.getElementById('featureAlexaSkill')?.addEventListener('change', syncAlexaCardVisibility);
+document.getElementById('featureAlexaSkill')?.addEventListener('change', () => { syncAlexaCardVisibility(); syncAlexaDomainUi(); });
 document.getElementById('featureLastfm')?.addEventListener('change', syncLastfmCardVisibility);
 document.getElementById('featurePodcasts')?.addEventListener('change', syncPodcastsUi);
 document.getElementById('featurePushover')?.addEventListener('change', syncPushoverCardVisibility);
@@ -1629,6 +1638,7 @@ document.getElementById('checkAlexaDomainBtn')?.addEventListener('click', () => 
 document.getElementById('alexaDomain')?.addEventListener('input', () => {
   const v = String(document.getElementById('alexaDomain')?.value || '').trim();
   setLight('alexaDomainLight', v ? 'neutral' : 'warn');
+  syncAlexaDomainUi();
 });
 document.getElementById('checkRuntimeBtn')?.addEventListener('click', () => checkRuntimeEnv().catch(e => log(String(e))));
 document.getElementById('pathMoodeUsbMount')?.addEventListener('input', derivePathsFromMoode);
@@ -1677,6 +1687,7 @@ document.getElementById('formatJsonBtn').onclick = () => formatFullJson();
 document.getElementById('modalLaterBtn').onclick = () => hideRestartModal();
 document.getElementById('modalRestartBtn').onclick = () => restartServicesNow().catch(e => log(String(e)));
 syncAlexaCardVisibility();
+syncAlexaDomainUi();
 syncLastfmCardVisibility();
 syncPodcastsUi();
 syncPushoverCardVisibility();
