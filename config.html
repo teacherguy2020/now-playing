@@ -21,6 +21,11 @@
     .cfgRow { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .cfgActions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
     .cfgHint { font-size:12px; opacity:.8; }
+    .splitCards { grid-column: 1 / -1; display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-items:start; }
+    .splitCardsRight { display:grid; gap:14px; align-items:start; }
+    @media (max-width: 980px) {
+      .splitCards { grid-template-columns: 1fr; }
+    }
     input[type="checkbox"] { appearance: auto !important; -webkit-appearance: checkbox !important; }
     pre#out {
       min-height: 120px;
@@ -198,99 +203,103 @@
                 <div class="cfgHint">When enabled/configured, Vibe tools are available in Queue Wizard.</div>
               </div>
 
-              <div class="cfgCard gateCard" id="alexaCard" style="grid-column: 1 / -1;">
-                <h3>Alexa</h3>
-                <div class="cfgField">
-                  <label><input id="featureAlexaSkill" type="checkbox" /> Enabled</label>
-                </div>
-                <div class="cfgField">
-                  <label for="alexaDomain">Public domain <span id="alexaDomainLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
-                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                    <input id="alexaDomain" type="text" placeholder="moode.YOUR-PUBLIC.DOMAIN.com" />
-                    <button class="btn" id="checkAlexaDomainBtn" type="button">Check domain</button>
-                  </div>
-                  <div class="cfgHint" id="alexaDomainCheckStatus"></div>
-                </div>
-
-                <h4 style="margin:10px 0 6px;">Artist corrections</h4>
-                <div class="cfgHint">Use <strong>Promote</strong> below to create corrections from failed requests. Existing corrections are listed here.</div>
-                <div id="artistAliasList" class="cfgHint" style="margin-top:8px;"></div>
-
-                <h4 style="margin:12px 0 6px;">Needs correction (auto-captured)</h4>
-                <div id="unresolvedArtistList" class="cfgHint"></div>
-
-                <h4 style="margin:12px 0 6px;">Recent Alexa artist inputs</h4>
-                <div id="heardArtistList" class="cfgHint"></div>
-
-                <h4 style="margin:16px 0 6px;">Album corrections</h4>
-                <div id="albumAliasList" class="cfgHint" style="margin-top:8px;"></div>
-
-                <h4 style="margin:12px 0 6px;">Album needs correction (auto-captured)</h4>
-                <div id="unresolvedAlbumList" class="cfgHint"></div>
-
-                <h4 style="margin:12px 0 6px;">Recent Alexa album inputs</h4>
-                <div id="heardAlbumList" class="cfgHint"></div>
-
-                <h4 style="margin:16px 0 6px;">Playlist corrections</h4>
-                <div id="playlistAliasList" class="cfgHint" style="margin-top:8px;"></div>
-
-                <h4 style="margin:12px 0 6px;">Playlist needs correction (auto-captured)</h4>
-                <div id="unresolvedPlaylistList" class="cfgHint"></div>
-
-                <h4 style="margin:12px 0 6px;">Recent Alexa playlist inputs</h4>
-                <div id="heardPlaylistList" class="cfgHint"></div>
-
-                <details style="margin-top:8px;">
-                  <summary>Advanced JSON view</summary>
-                  <textarea id="artistAliasesJson" rows="5" placeholder='{"harry connick junior":"Harry Connick, Jr."}'></textarea>
-                </details>
-              </div>
-
-              <div class="cfgCard gateCard" id="ratingsCard" style="grid-column: 1 / -1;">
-                <h3>Ratings Setup</h3>
-                <div class="cfgField"><label><input id="featureRatings" type="checkbox" /> Enabled</label></div>
-                <div class="cfgHint">When Ratings is enabled, verify MPD sticker DB and keep backups before updates.</div>
-                <div class="cfgActions" style="margin-top:10px;">
-                  <button class="btn" id="checkRatingsDbBtn" type="button">Check Ratings DB</button>
-                  <button class="btn" id="backupRatingsDbBtn" type="button">Backup Ratings DB</button>
-                </div>
-                <div class="cfgActions" style="margin-top:8px; align-items:center;">
-                  <label style="display:flex;align-items:center;gap:8px;">Restore backup
-                    <select id="ratingsBackupSelect" style="min-width:280px"></select>
-                  </label>
-                  <button class="btn" id="restoreRatingsDbBtn" type="button">Restore Selected Backup</button>
-                </div>
-                <div class="cfgHint" id="ratingsDbStatus" style="margin-top:8px;"></div>
-              </div>
-
-              <div class="cfgCard gateCard" id="pushoverCard" style="grid-column: 1 / -1;">
-                <h3>Track Notifications (Pushover)</h3>
-                <div class="cfgField"><label><input id="featurePushover" type="checkbox" /> Enabled</label></div>
-                <div class="cfgField">
-                  <label><input id="notifyEnabled" type="checkbox" /> Track polling active</label>
-                </div>
-                <div class="cfgRow">
+              <div class="splitCards">
+                <div class="cfgCard gateCard" id="alexaCard">
+                  <h3>Alexa</h3>
                   <div class="cfgField">
-                    <label for="pollMs">Poll ms</label>
-                    <input id="pollMs" type="number" min="1500" />
+                    <label><input id="featureAlexaSkill" type="checkbox" /> Enabled</label>
                   </div>
                   <div class="cfgField">
-                    <label for="dedupeMs">Dedupe ms</label>
-                    <input id="dedupeMs" type="number" min="5000" />
+                    <label for="alexaDomain">Public domain <span id="alexaDomainLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                      <input id="alexaDomain" type="text" placeholder="moode.YOUR-PUBLIC.DOMAIN.com" />
+                      <button class="btn" id="checkAlexaDomainBtn" type="button">Check domain</button>
+                    </div>
+                    <div class="cfgHint" id="alexaDomainCheckStatus"></div>
                   </div>
+
+                  <h4 style="margin:10px 0 6px;">Artist corrections</h4>
+                  <div class="cfgHint">Use <strong>Promote</strong> below to create corrections from failed requests. Existing corrections are listed here.</div>
+                  <div id="artistAliasList" class="cfgHint" style="margin-top:8px;"></div>
+
+                  <h4 style="margin:12px 0 6px;">Needs correction (auto-captured)</h4>
+                  <div id="unresolvedArtistList" class="cfgHint"></div>
+
+                  <h4 style="margin:12px 0 6px;">Recent Alexa artist inputs</h4>
+                  <div id="heardArtistList" class="cfgHint"></div>
+
+                  <h4 style="margin:16px 0 6px;">Album corrections</h4>
+                  <div id="albumAliasList" class="cfgHint" style="margin-top:8px;"></div>
+
+                  <h4 style="margin:12px 0 6px;">Album needs correction (auto-captured)</h4>
+                  <div id="unresolvedAlbumList" class="cfgHint"></div>
+
+                  <h4 style="margin:12px 0 6px;">Recent Alexa album inputs</h4>
+                  <div id="heardAlbumList" class="cfgHint"></div>
+
+                  <h4 style="margin:16px 0 6px;">Playlist corrections</h4>
+                  <div id="playlistAliasList" class="cfgHint" style="margin-top:8px;"></div>
+
+                  <h4 style="margin:12px 0 6px;">Playlist needs correction (auto-captured)</h4>
+                  <div id="unresolvedPlaylistList" class="cfgHint"></div>
+
+                  <h4 style="margin:12px 0 6px;">Recent Alexa playlist inputs</h4>
+                  <div id="heardPlaylistList" class="cfgHint"></div>
+
+                  <details style="margin-top:8px;">
+                    <summary>Advanced JSON view</summary>
+                    <textarea id="artistAliasesJson" rows="5" placeholder='{"harry connick junior":"Harry Connick, Jr."}'></textarea>
+                  </details>
                 </div>
-                <div class="cfgField">
-                  <label for="alexaMaxAgeMs">Alexa max age ms</label>
-                  <input id="alexaMaxAgeMs" type="number" min="30000" />
-                </div>
-                <div class="cfgRow">
-                  <div class="cfgField">
-                    <label for="pushoverToken">Pushover token</label>
-                    <input id="pushoverToken" type="text" autocomplete="off" />
+
+                <div class="splitCardsRight">
+                  <div class="cfgCard gateCard" id="ratingsCard">
+                    <h3>Ratings Setup</h3>
+                    <div class="cfgField"><label><input id="featureRatings" type="checkbox" /> Enabled</label></div>
+                    <div class="cfgHint">When Ratings is enabled, verify MPD sticker DB and keep backups before updates.</div>
+                    <div class="cfgActions" style="margin-top:10px;">
+                      <button class="btn" id="checkRatingsDbBtn" type="button">Check Ratings DB</button>
+                      <button class="btn" id="backupRatingsDbBtn" type="button">Backup Ratings DB</button>
+                    </div>
+                    <div class="cfgActions" style="margin-top:8px; align-items:center;">
+                      <label style="display:flex;align-items:center;gap:8px;">Restore backup
+                        <select id="ratingsBackupSelect" style="min-width:280px"></select>
+                      </label>
+                      <button class="btn" id="restoreRatingsDbBtn" type="button">Restore Selected Backup</button>
+                    </div>
+                    <div class="cfgHint" id="ratingsDbStatus" style="margin-top:8px;"></div>
                   </div>
-                  <div class="cfgField">
-                    <label for="pushoverUser">Pushover user key</label>
-                    <input id="pushoverUser" type="text" autocomplete="off" />
+
+                  <div class="cfgCard gateCard" id="pushoverCard">
+                    <h3>Track Notifications (Pushover)</h3>
+                    <div class="cfgField"><label><input id="featurePushover" type="checkbox" /> Enabled</label></div>
+                    <div class="cfgField">
+                      <label><input id="notifyEnabled" type="checkbox" /> Track polling active</label>
+                    </div>
+                    <div class="cfgRow">
+                      <div class="cfgField">
+                        <label for="pollMs">Poll ms</label>
+                        <input id="pollMs" type="number" min="1500" />
+                      </div>
+                      <div class="cfgField">
+                        <label for="dedupeMs">Dedupe ms</label>
+                        <input id="dedupeMs" type="number" min="5000" />
+                      </div>
+                    </div>
+                    <div class="cfgField">
+                      <label for="alexaMaxAgeMs">Alexa max age ms</label>
+                      <input id="alexaMaxAgeMs" type="number" min="30000" />
+                    </div>
+                    <div class="cfgRow">
+                      <div class="cfgField">
+                        <label for="pushoverToken">Pushover token</label>
+                        <input id="pushoverToken" type="text" autocomplete="off" />
+                      </div>
+                      <div class="cfgField">
+                        <label for="pushoverUser">Pushover user key</label>
+                        <input id="pushoverUser" type="text" autocomplete="off" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
