@@ -126,6 +126,22 @@ Operational notes:
 - Keep your API and Alexa `TRACK_KEY` values identical.
 - If behavior changes in queue endpoints, re-test Alexa queue advancement and next-track narration.
 
+## Correcting Alexa mis-hears (artist / album / playlist)
+
+When Alexa hears the wrong name, you can teach corrections in `config.html`.
+
+1. Open `http://<your-host>:8101/config.html`
+2. Go to the **Alexa** section.
+3. Find the "needs correction" lists (artist/album/playlist) populated from recent requests.
+4. Enter the correction mapping (what Alexa heard → what your library expects).
+5. Save config, then retry the same voice request.
+
+Tips:
+
+- Keep correction values aligned with your library naming (artist/album/playlist spellings).
+- Start with the smallest correction that works (avoid over-broad aliases).
+- If Alexa repeatedly mis-hears a name, add a direct alias once and reuse it.
+
 ## Notes
 
 - Keep Alexa and API track key values in sync.
