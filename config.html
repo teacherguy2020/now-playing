@@ -94,7 +94,7 @@
                     <input id="uiPort" type="number" min="1" max="65535" placeholder="ex. 8101" />
                   </div>
                 </div>
-                <div class="cfgHint">Defaults are API <code>3101</code>, UI <code>8101</code>, MPD port <code>6600</code>, and music library root <code>/var/lib/mpd/music</code>. Host fields are auto-prefilled from this page host and <code>moode.local</code> when possible.</div>
+                <div class="cfgHint">Defaults are API <code>3101</code>, UI <code>8101</code>, MPD port <code>6600</code>, and music library root <code>/var/lib/mpd/music</code>. Host fields are auto-prefilled conservatively and never overwrite saved values.</div>
                 <div class="cfgField">
                   <label for="apiNodeIp">IP of Webserver and API host</label>
                   <input id="apiNodeIp" type="text" placeholder="ex. 10.0.0.233" />
@@ -103,7 +103,7 @@
                 <div class="cfgRow">
                   <div class="cfgField">
                     <label for="mpdHost">MPD host</label>
-                    <input id="mpdHost" type="text" placeholder="ex. moode.local" />
+                    <input id="mpdHost" type="text" placeholder="ex. 10.0.0.254" />
                     <div class="cfgHint" id="mpdHostHint"></div>
                   </div>
                   <div class="cfgField">
@@ -362,39 +362,16 @@ function applyInitialNetworkPrefills(){
   if (apiPortEl && !String(apiPortEl.value || '').trim()) apiPortEl.value = '3101';
   if (uiPortEl && !String(uiPortEl.value || '').trim()) uiPortEl.value = '8101';
   if (apiNodeIpEl && !String(apiNodeIpEl.value || '').trim()) apiNodeIpEl.value = host;
-  if (mpdHostEl && !String(mpdHostEl.value || '').trim()) mpdHostEl.value = 'moode.local';
+  if (mpdHostEl && !String(mpdHostEl.value || '').trim()) mpdHostEl.value = '';
   if (mpdPortEl && !String(mpdPortEl.value || '').trim()) mpdPortEl.value = '6600';
   if (musicRootEl && !String(musicRootEl.value || '').trim()) musicRootEl.value = '/var/lib/mpd/music';
 
   if (apiNodeIpHint) apiNodeIpHint.textContent = `Auto-defaulted from page host: ${host}`;
-  if (mpdHostHint) mpdHostHint.textContent = 'Auto-defaulted: moode.local (will resolve to IP when possible)';
+  if (mpdHostHint) mpdHostHint.textContent = 'Enter moOde player IP/hostname (example: 10.0.0.254).';
   if (mpdPortHint) mpdPortHint.textContent = 'Default is 6600 (current)';
 }
 
-async function resolveMpdHostIfLocal(){
-  const key = getTrackKey();
-  const mpdHostEl = document.getElementById('mpdHost');
-  const sshHostEl = document.getElementById('moodeSshHost');
-  const hintEl = document.getElementById('mpdHostHint');
-  if (!mpdHostEl) return;
-  const cur = String(mpdHostEl.value || '').trim().toLowerCase();
-  if (cur !== 'moode.local') return;
-  if (!key) return;
-  try {
-    const r = await fetch(`${API_BASE}/config/runtime/resolve-host`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-track-key': key },
-      body: JSON.stringify({ host: 'moode.local' }),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j?.ok || !j?.address) return;
-    const ip = String(j.address || '').trim();
-    if (!ip) return;
-    mpdHostEl.value = ip;
-    if (sshHostEl && !String(sshHostEl.value || '').trim()) sshHostEl.value = ip;
-    if (hintEl) hintEl.textContent = `Resolved moode.local → ${ip}`;
-  } catch (_) {}
-}
+// moode.local auto-resolution removed; user enters explicit MPD host/IP.
 
 let artistAliasMap = {};
 let albumAliasMap = {};
@@ -837,15 +814,14 @@ async function loadCfg(){
 
   const configuredMpdHost = String(full.mpd?.host || c.mpd?.host || '').trim();
   const configuredSshHost = String(full.moode?.sshHost || c.moode?.sshHost || '').trim();
-  const mpdHostAuto = (!configuredMpdHost || configuredMpdHost === '10.0.0.254');
-  const mpdHostPrefill = mpdHostAuto ? 'moode.local' : configuredMpdHost;
-  const sshHostPrefill = configuredSshHost || mpdHostPrefill;
+  const mpdHostPrefill = configuredMpdHost;
+  const sshHostPrefill = configuredSshHost || configuredMpdHost;
   document.getElementById('mpdHost').value = mpdHostPrefill;
   const mpdPortValue = Number(full.mpd?.port || c.mpd?.port || 6600);
   document.getElementById('mpdPort').value = mpdPortValue;
   document.getElementById('moodeSshHost').value = sshHostPrefill;
   const mpdHostHint = document.getElementById('mpdHostHint');
-  if (mpdHostHint) mpdHostHint.textContent = mpdHostAuto ? 'Auto-defaulted: moode.local (edit if needed)' : `Loaded from config: ${mpdHostPrefill}`;
+  if (mpdHostHint) mpdHostHint.textContent = mpdHostPrefill ? `Loaded from config: ${mpdHostPrefill}` : 'Enter moOde player IP/hostname (example: 10.0.0.254).';
   const mpdPortHint = document.getElementById('mpdPortHint');
   if (mpdPortHint) mpdPortHint.textContent = `Default is 6600${mpdPortValue === 6600 ? ' (current)' : ` (current: ${mpdPortValue})`}`;
   document.getElementById('moodeSshUser').value = String(full.moode?.sshUser || c.moode?.sshUser || 'moode');
@@ -887,7 +863,6 @@ async function loadCfg(){
 
   log({ ok:true, configPath:j.configPath, loadedAt:new Date().toISOString() });
   await loadRatingsBackups();
-  await resolveMpdHostIfLocal().catch(() => {});
   await checkRuntimeEnv(true).catch(() => {});
   markConfigSaved();
 }
