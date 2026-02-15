@@ -106,7 +106,7 @@ Direct request behavior (no prepped queue required):
 
 “Plus” / mixed requests:
 
-- Multi-artist phrasing using **plus** (for example, “play Miles Davis plus John Coltrane”) is supported by the interaction model + handler logic.
+- Multi-artist phrasing using **plus** (for example, “play a mix of artist Miles Davis plus John Coltrane”) is supported by the interaction model + handler logic.
 - The parsed artist set is sent to API queue-building routes, which produce a combined queue/mix.
 
 Operational notes:
