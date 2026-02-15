@@ -2,7 +2,7 @@
 
 Alexa support is optional. The API remains the source of truth; Alexa clients call your public API domain.
 
-> Important: enabling Alexa in `config.html` does **not** automatically build/upload/deploy the Alexa zip. You must still package and deploy the skill code in Developer Console.
+> Important: enabling Alexa in `config.html` does **not** automatically build/upload/deploy the Alexa zip. You must still package and import the skill code into the Developer Console.
 
 ## Prerequisites
 
