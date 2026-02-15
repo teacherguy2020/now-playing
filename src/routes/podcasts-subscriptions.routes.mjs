@@ -12,6 +12,7 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
     downloadCoverForSub,
     syncSubscriptionInitial,
     execFileP,
+    musicLibraryRoot,
   } = deps;
 
   const parseAutoDownload = (value, fallback = false) => {
@@ -207,6 +208,7 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
       const fallbackPodcastRoot = path.join(path.dirname(process.env.PODCAST_DL_LOG || '/tmp/now-playing/podcasts/downloads.ndjson'), 'shows');
       const candidateRoots = [
         process.env.PODCAST_SHOWS_DIR,
+        musicLibraryRoot ? path.join(String(musicLibraryRoot), 'Podcasts') : '',
         process.env.MUSIC_LIBRARY_ROOT ? path.join(process.env.MUSIC_LIBRARY_ROOT, 'Podcasts') : '',
         '/var/lib/mpd/music/Podcasts',
         fallbackPodcastRoot,
