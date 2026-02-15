@@ -17,6 +17,7 @@
     .cfgField label { display:block; font-size:12px; opacity:.9; margin-bottom:6px; }
     .cfgField input[type=text], .cfgField input[type=password], .cfgField input[type=number] { width:100%; max-width:520px; font-size:14px; line-height:1.2; }
     .cfgField.narrow input[type=number] { max-width: 180px; }
+    #alexaDomain { max-width: 360px; }
     .cfgRow { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .cfgActions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
     .cfgHint { font-size:12px; opacity:.8; }
@@ -204,7 +205,7 @@
                     <label><input id="featureAlexaSkill" type="checkbox" /> Enabled</label>
                   </div>
                   <div class="cfgField">
-                    <label for="alexaDomain">Public domain</label>
+                    <label for="alexaDomain">Public domain <span id="alexaDomainLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                       <input id="alexaDomain" type="text" placeholder="moode.YOUR-PUBLIC.DOMAIN.com" />
                       <button class="btn" id="checkAlexaDomainBtn" type="button">Check domain</button>
@@ -787,12 +788,15 @@ async function loadCfg(){
     if (!c.alexa?.enabled) {
       alexaHint.textContent = 'disabled';
       setPillState('alexaPill', 'off');
+      setLight('alexaDomainLight', 'neutral');
     } else if (!domainTxt) {
       alexaHint.textContent = 'missing domain';
       setPillState('alexaPill', 'warn');
+      setLight('alexaDomainLight', 'warn');
     } else {
       alexaHint.textContent = domainTxt;
       setPillState('alexaPill', 'good');
+      setLight('alexaDomainLight', 'neutral');
     }
   }
 
@@ -1426,11 +1430,13 @@ async function checkAlexaDomain(){
     const ah = document.getElementById('alexaHint');
     if (ah) ah.textContent = domain;
     setPillState('alexaPill', ok ? 'good' : 'warn');
+    setLight('alexaDomainLight', ok ? 'good' : 'warn');
   } catch (e) {
     if (statusEl) statusEl.textContent = `❌ Check failed: ${String(e?.message || e)}`;
     const ah = document.getElementById('alexaHint');
     if (ah) ah.textContent = domain;
     setPillState('alexaPill', 'bad');
+    setLight('alexaDomainLight', 'bad');
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -1622,6 +1628,10 @@ document.getElementById('featureRatings')?.addEventListener('change', () => {
   if (document.getElementById('featureRatings')?.checked) loadRatingsBackups().catch(() => {});
 });
 document.getElementById('checkAlexaDomainBtn')?.addEventListener('click', () => checkAlexaDomain().catch(e => log(String(e))));
+document.getElementById('alexaDomain')?.addEventListener('input', () => {
+  const v = String(document.getElementById('alexaDomain')?.value || '').trim();
+  setLight('alexaDomainLight', v ? 'neutral' : 'warn');
+});
 document.getElementById('checkRuntimeBtn')?.addEventListener('click', () => checkRuntimeEnv().catch(e => log(String(e))));
 document.getElementById('pathMoodeUsbMount')?.addEventListener('input', derivePathsFromMoode);
 document.getElementById('pathMoodeUsbMount')?.addEventListener('change', derivePathsFromMoode);
