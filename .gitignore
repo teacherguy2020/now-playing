@@ -13,3 +13,7 @@ npm-debug.log*
 /lambda_upload/
 /lambda_bundle/
 /index.js
+
+# Local runtime podcast artifacts
+/subscriptions.json
+/var/podcasts/
