@@ -348,6 +348,26 @@ setPillState('alexaPill', 'neutral');
 
 function log(x){ out.textContent = typeof x === 'string' ? x : JSON.stringify(x, null, 2); }
 
+function applyInitialNetworkPrefills(){
+  const host = location.hostname || '127.0.0.1';
+
+  const apiNodeIpEl = document.getElementById('apiNodeIp');
+  const mpdHostEl = document.getElementById('mpdHost');
+  const mpdPortEl = document.getElementById('mpdPort');
+
+  const apiNodeIpHint = document.getElementById('apiNodeIpHint');
+  const mpdHostHint = document.getElementById('mpdHostHint');
+  const mpdPortHint = document.getElementById('mpdPortHint');
+
+  if (apiNodeIpEl && !String(apiNodeIpEl.value || '').trim()) apiNodeIpEl.value = host;
+  if (mpdHostEl && !String(mpdHostEl.value || '').trim()) mpdHostEl.value = 'moode.local';
+  if (mpdPortEl && !String(mpdPortEl.value || '').trim()) mpdPortEl.value = '6600';
+
+  if (apiNodeIpHint) apiNodeIpHint.textContent = `Auto-defaulted from page host: ${host}`;
+  if (mpdHostHint) mpdHostHint.textContent = 'Auto-defaulted: moode.local (edit if needed)';
+  if (mpdPortHint) mpdPortHint.textContent = 'Default is 6600 (current)';
+}
+
 let artistAliasMap = {};
 let albumAliasMap = {};
 let playlistAliasMap = {};
@@ -1540,6 +1560,7 @@ syncPushoverCardVisibility();
 syncRatingsCardVisibility();
 applyRuntimeGate();
 refreshSshSetupHelp();
+applyInitialNetworkPrefills();
 loadCfg().catch(e => log(String(e)));
 </script>
 </body>
