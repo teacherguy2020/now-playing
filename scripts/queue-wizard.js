@@ -43,6 +43,7 @@
   let sendBusy = false;    // prevent double saves/sends
   let collageBusy = false; // prevent repeated preview calls
   let savePlaylistEnabled = false;
+  let ratingsEnabled = true;
 
   // Persist the current list (vibe OR filters)
   let currentListSource = 'none'; // 'none' | 'filters' | 'vibe' | 'queue'
@@ -286,6 +287,8 @@ async function syncVibeAvailability() {
       if (webHintEl) webHintEl.textContent = `${host}:${uiPort}`;
       const axEnabled = !!cfg?.alexa?.enabled;
       const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
+      ratingsEnabled = Boolean(cfg?.features?.ratings ?? true);
+      syncRatingsUi();
       if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
       setPillState('apiPill','ok');
       setPillState('webPill','ok');
@@ -300,6 +303,8 @@ async function syncVibeAvailability() {
       if (apiHintEl) apiHintEl.textContent = `${host}:3101`;
       if (webHintEl) webHintEl.textContent = `${host}:8101`;
       if (alexaHintEl) alexaHintEl.textContent = 'unknown';
+      ratingsEnabled = true;
+      syncRatingsUi();
       setPillState('apiPill','bad');
       setPillState('webPill','warn');
       setPillState('alexaPill','warn');
@@ -313,11 +318,20 @@ async function syncVibeAvailability() {
   }
 
   function getMinRating() {
-    return Number($('minRating')?.value || 0);
+    return ratingsEnabled ? Number($('minRating')?.value || 0) : 0;
   }
 
   function getMinRatingVibe() {
-    return Number($('minRatingVibe')?.value || 0);
+    return ratingsEnabled ? Number($('minRatingVibe')?.value || 0) : 0;
+  }
+
+  function syncRatingsUi(){
+    const min1 = $('minRating');
+    const min2 = $('minRatingVibe');
+    const l1 = min1 ? min1.closest('label') : null;
+    const l2 = min2 ? min2.closest('label') : null;
+    if (l1) l1.style.display = ratingsEnabled ? '' : 'none';
+    if (l2) l2.style.display = ratingsEnabled ? '' : 'none';
   }
 
   function getMode() {
@@ -444,6 +458,7 @@ async function syncVibeAvailability() {
   }
 
   function starsHtml(file, rating) {
+    if (!ratingsEnabled) return '';
     const f = encodeURIComponent(String(file || ''));
     const r = Math.max(0, Math.min(5, Number(rating) || 0));
     let out = '<div style="display:flex;gap:2px;align-items:center;">';
@@ -475,7 +490,8 @@ async function syncVibeAvailability() {
       const pos = Number(x.position || 0);
       const file = String(x.file || '');
       const stars = starsHtml(file, Number(x.rating || 0));
-      return `<div style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(String(x.artist||''))}</div><div class="muted">${esc(String(x.title||''))} ${x.album?`• ${esc(String(x.album||''))}`:''}</div><div style="margin-top:2px;">${stars}</div></div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
+      const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
+      return `<div style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(String(x.artist||''))}</div><div class="muted">${esc(String(x.title||''))} ${x.album?`• ${esc(String(x.album||''))}`:''}</div>${starsRow}</div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
     }).join('');
   }
 
@@ -605,7 +621,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     const playlistName = savePlaylist ? getPlaylistNameRaw() : '';
     const wantsCollage = !!savePlaylist;
 
-    const starsTxt = stars > 0 ? '★'.repeat(stars) + '☆'.repeat(5 - stars) : 'Any';
+    const starsTxt = !ratingsEnabled ? 'Disabled' : (stars > 0 ? '★'.repeat(stars) + '☆'.repeat(5 - stars) : 'Any');
     const fmt = (arr) => arr.length ? arr.map(esc).join(', ') : 'Any';
 
     const src = currentListSource === 'vibe' ? 'vibe'
@@ -656,6 +672,10 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     const r = await fetch(`${apiBase}/config/diagnostics/queue`, { headers: { 'x-track-key': key } });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    if (typeof j?.ratingsEnabled === 'boolean') {
+      ratingsEnabled = j.ratingsEnabled;
+      syncRatingsUi();
+    }
     const items = Array.isArray(j.items) ? j.items : [];
     const randomOn = typeof j.randomOn === 'boolean' ? j.randomOn : null;
     renderQueueCard(items, randomOn);
@@ -1295,6 +1315,7 @@ function wireEvents() {
 
     const rateBtn = el.closest('button[data-queue-rate-file][data-queue-rate-val]');
     if (rateBtn) {
+      if (!ratingsEnabled) return;
       ev.preventDefault();
       const file = decodeURIComponent(String(rateBtn.getAttribute('data-queue-rate-file') || ''));
       const rating = Number(rateBtn.getAttribute('data-queue-rate-val') || 0);
@@ -1377,6 +1398,7 @@ try {
 
   syncCropUi();
   syncCropVibeUi();
+  syncRatingsUi();
   syncSavePlaylistButton();
   updatePlaylistUi();
   if (sendConfirmEl) sendConfirmEl.textContent = '';

@@ -1,5 +1,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
+  let ratingsEnabled = true;
+
   const ENDPOINTS = [
     // Playback / art
     { name: 'Now Playing', method: 'GET', path: '/now-playing' },
@@ -80,6 +82,7 @@
       $('webHint').textContent = `${host}:${uiPort}`;
       const axEnabled = !!cfg?.alexa?.enabled;
       const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
+      ratingsEnabled = Boolean(cfg?.features?.ratings ?? true);
       $('alexaHint').textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
       setPillState('apiPill','ok'); setPillState('webPill','ok'); setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
       refreshLiveFrame(uiPort);
@@ -126,6 +129,7 @@
   }
 
   function starsHtml(file, rating){
+    if (!ratingsEnabled) return '';
     const f = encodeURIComponent(String(file || ''));
     const r = Math.max(0, Math.min(5, Number(rating) || 0));
     let out = '<div style="display:flex;gap:2px;align-items:center;">';
@@ -148,6 +152,7 @@
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
       if (typeof j?.randomOn === 'boolean') updateShuffleBtn(j.randomOn);
+      if (typeof j?.ratingsEnabled === 'boolean') ratingsEnabled = j.ratingsEnabled;
       const items = Array.isArray(j.items) ? j.items : [];
       if (!items.length) { wrap.innerHTML = '<div class="muted">Queue is empty.</div>'; return; }
       wrap.innerHTML = items.slice(0, 80).map((x) => {
@@ -156,7 +161,8 @@
         const head = !!x.isHead;
         const pos = Number(x.position || 0);
         const stars = starsHtml(x.file, Number(x.rating || 0));
-        return `<div style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${String(x.artist||'')}</div><div class="muted">${String(x.title||'')} ${x.album?`• ${String(x.album)}`:''}</div><div style="margin-top:2px;">${stars}</div></div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
+        const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
+        return `<div style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${String(x.artist||'')}</div><div class="muted">${String(x.title||'')} ${x.album?`• ${String(x.album)}`:''}</div>${starsRow}</div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
       }).join('');
     } catch (e) {
       wrap.innerHTML = `<div class="muted">Queue load failed: ${e?.message || e}</div>`;
@@ -242,6 +248,7 @@
     const el = ev.target instanceof Element ? ev.target : null;
     const rateBtn = el ? el.closest('button[data-rate-file][data-rate-val]') : null;
     if (rateBtn) {
+      if (!ratingsEnabled) return;
       ev.preventDefault();
       ev.stopPropagation();
       const encFile = String(rateBtn.getAttribute('data-rate-file') || '');

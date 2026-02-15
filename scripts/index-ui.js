@@ -111,6 +111,20 @@ const NEXT_UP_URL     = `${API_BASE}/next-up`;
 const RATING_URL      = `${API_BASE}/rating/current`;
 const FAVORITE_URL    = `${API_BASE}/favorites/toggle`;
 
+async function loadRatingsFeatureFlag() {
+  try {
+    const r = await fetch(`${API_BASE}/config/runtime`, { cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j?.ok) {
+      RATINGS_ENABLED = Boolean(j?.config?.features?.ratings ?? true);
+      if (!RATINGS_ENABLED) {
+        ratingDisabled = true;
+        renderStars(0);
+      }
+    }
+  } catch (_) {}
+}
+
 const URL_PARAMS = new URLSearchParams(location.search || '');
 const _alexaParam = String(URL_PARAMS.get('alexa') || '').trim();
 const _modeParam = String(URL_PARAMS.get('mode') || '').trim();
@@ -259,7 +273,7 @@ function ratingsAllowedNow() {
  * Ratings (MPD stickers via server)
  * ========================= */
 
-const RATINGS_ENABLED = true;
+let RATINGS_ENABLED = true;
 const RATINGS_BASE_URL = API_BASE;
 
 let currentRating = 0;
@@ -478,6 +492,8 @@ async function bootThenStart() {
   } catch {}
 
   const baseNowPlaying = data ? { ...data } : null;
+
+  try { await loadRatingsFeatureFlag(); } catch {}
 
   // Apply same Alexa-source decision during boot to avoid first-paint flicker.
   if (data && (ALEXA_MODE_AUTO || ALEXA_MODE_FORCED)) {

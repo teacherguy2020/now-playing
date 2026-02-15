@@ -229,6 +229,16 @@ export function registerConfigRoutes(app, deps) {
     }
   }
 
+  async function isRatingsEnabled() {
+    try {
+      const raw = await fs.readFile(configPath, 'utf8');
+      const cfg = JSON.parse(raw);
+      return Boolean(cfg?.features?.ratings ?? true);
+    } catch {
+      return true;
+    }
+  }
+
   // --- runtime config ---
   app.get('/config/runtime', async (req, res) => {
     try {
@@ -544,7 +554,9 @@ export function registerConfigRoutes(app, deps) {
         ? req.body.excludeGenres.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean)
         : [];
 
-      const minRating = Math.max(0, Math.min(5, Number(req.body?.minRating || 0)));
+      const ratingsEnabled = await isRatingsEnabled();
+      const minRatingRaw = Math.max(0, Math.min(5, Number(req.body?.minRating || 0)));
+      const minRating = ratingsEnabled ? minRatingRaw : 0;
       const maxTracks = Math.max(1, Math.min(5000, Number(req.body?.maxTracks || 250)));
 
       const mpdHost = String(MPD_HOST || '10.0.0.254');
@@ -2077,6 +2089,8 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
       }
 
       if (action === 'rate') {
+        const ratingsEnabled = await isRatingsEnabled();
+        if (!ratingsEnabled) return res.status(403).json({ ok: false, error: 'Ratings feature is disabled' });
         if (typeof setRatingForFile !== 'function') return res.status(501).json({ ok: false, error: 'rating dependency not wired' });
         const file = String(req.body?.file || '').trim();
         const ratingRaw = Number(req.body?.rating);
@@ -2104,6 +2118,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
       const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const ratingsEnabled = await isRatingsEnabled();
       const [{ stdout: qOut }, { stdout: sOut }] = await Promise.all([
         execFileP('mpc', ['-h', mpdHost, '-f', '%position%\t%artist%\t%title%\t%album%\t%file%', 'playlist']),
         execFileP('mpc', ['-h', mpdHost, 'status']),
@@ -2120,7 +2135,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
         const pos = Number(position || 0);
         const f = String(file || '').trim();
         let rating = 0;
-        if (f && typeof getRatingForFile === 'function') {
+        if (ratingsEnabled && f && typeof getRatingForFile === 'function') {
           try { rating = Number(await getRatingForFile(f)) || 0; } catch {}
         }
         items.push({
@@ -2134,7 +2149,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
           thumbUrl: f ? `/art/track_640.jpg?file=${encodeURIComponent(f)}` : '',
         });
       }
-      return res.json({ ok: true, count: items.length, headPos, randomOn, items });
+      return res.json({ ok: true, count: items.length, headPos, randomOn, ratingsEnabled, items });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
