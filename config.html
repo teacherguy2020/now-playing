@@ -52,7 +52,7 @@
           <a href="diagnostics.html">Diagnostics</a>
           <a href="library-health.html">Library Health</a>
           <a href="queue-wizard.html">Queue Wizard</a>
-          <a href="podcasts.html">Podcasts</a>
+          <a href="podcasts.html" id="podcastsNavLink">Podcasts</a>
         </nav>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -1590,6 +1590,21 @@ applyRuntimeGate();
 refreshSshSetupHelp();
 applyInitialNetworkPrefills();
 loadCfg().catch(e => log(String(e)));
+</script>
+
+<script>
+(async function syncPodcastsNavVisibility(){
+  try {
+    const link = document.getElementById('podcastsNavLink');
+    if (!link) return;
+    const apiPort = (location.port === '8101') ? '3101' : '3000';
+    const apiBase = `${location.protocol}//${location.hostname}:${apiPort}`;
+    const r = await fetch(`${apiBase}/config/runtime`, { cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    const enabled = !!(r.ok && j?.ok && j?.config?.features?.podcasts);
+    if (!enabled) link.style.display = 'none';
+  } catch (_) {}
+})();
 </script>
 </body>
 </html>
