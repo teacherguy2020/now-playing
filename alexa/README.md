@@ -82,6 +82,39 @@ Then in Alexa Developer Console:
 
 Important: zip root must contain `lambda/` (not loose files).
 
+## How Alexa playback works with moOde
+
+High-level flow:
+
+- Alexa intent handlers call the now-playing API (`API_BASE`) with your `TRACK_KEY`.
+- The API is the single source of truth and executes playback actions against MPD/moOde.
+- Alexa responses are conversational wrappers around those API outcomes.
+
+Queue-first behavior (prepped queue):
+
+- If you prepared a queue (for example from Queue Wizard), Alexa can consume from that queue.
+- On play/next-style flows, the API checks queue state and advances playback by removing/consuming head entries as designed by the queue endpoints.
+- This keeps Alexa, web UI, and MPD in sync on what is currently playing and what is next.
+
+Direct request behavior (no prepped queue required):
+
+- You can invoke playback directly by voice, such as:
+  - play artist
+  - play album
+  - play playlist
+- The skill forwards these to API routes that build/replace MPD queue context and start playback.
+
+“Plus” / mixed requests:
+
+- Multi-artist phrasing using **plus** (for example, “play Miles Davis plus John Coltrane”) is supported by the interaction model + handler logic.
+- The parsed artist set is sent to API queue-building routes, which produce a combined queue/mix.
+
+Operational notes:
+
+- Alexa lifecycle state is exposed via `/alexa/was-playing` so UI surfaces can reflect Alexa-active playback sessions.
+- Keep your API and Alexa `TRACK_KEY` values identical.
+- If behavior changes in queue endpoints, re-test Alexa queue advancement and next-track narration.
+
 ## Notes
 
 - Keep Alexa and API track key values in sync.
