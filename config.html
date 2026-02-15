@@ -145,16 +145,16 @@
                   <div class="cfgHint">Create a unique key used to protect config and maintenance endpoints (sent as <code>x-track-key</code>).</div>
                 </div>
                 <div class="cfgField">
-                  <label for="pathMusicLibraryRoot">Music library root</label>
+                  <label for="pathMusicLibraryRoot">Music library root <span id="pathMusicLibraryRootLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                   <input id="pathMusicLibraryRoot" type="text" placeholder="ex. /var/lib/mpd/music" />
                 </div>
                 <div class="cfgField">
-                  <label for="pathMoodeUsbMount">1) Path on moOde (media mount)</label>
+                  <label for="pathMoodeUsbMount">1) Path on moOde (media mount) <span id="pathMoodeUsbMountLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                   <input id="pathMoodeUsbMount" type="text" placeholder="ex. /media/NAMEOFYOURDRIVE" />
                 </div>
                 <div class="cfgHint">Typing in (1) auto-fills path (2). Podcast path is in the Podcasts card.</div>
                 <div class="cfgField">
-                  <label for="pathPiMountBase">2) Path on API host (mount base)</label>
+                  <label for="pathPiMountBase">2) Path on API host (mount base) <span id="pathPiMountBaseLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                   <input id="pathPiMountBase" type="text" placeholder="ex. /mnt/NAMEOFYOURDRIVE" />
                 </div>
                 <!-- podcast root moved to Podcasts card -->
@@ -169,7 +169,7 @@
                 <h3>Podcasts</h3>
                 <div class="cfgField"><label><input id="featurePodcasts" type="checkbox" /> Enabled</label></div>
                 <div class="cfgField" id="podcastRootFieldWrap">
-                  <label for="pathPodcastRoot">Podcast root on API host</label>
+                  <label for="pathPodcastRoot">Podcast root on API host <span id="pathPodcastRootLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                   <input id="pathPodcastRoot" type="text" placeholder="ex. /var/lib/mpd/music/Podcasts" />
                   <div class="cfgHint" id="podcastRootHint">Used only when Podcasts feature is enabled.</div>
                 </div>
@@ -1209,7 +1209,7 @@ function resetMoodeVerificationPill(){
   setPillState('moodePill', 'neutral');
   if (moodeHintEl) moodeHintEl.textContent = 'not verified';
   setMpdHostLight('neutral', 'not verified');
-  ['apiPortLight','uiPortLight','apiNodeIpLight','mpdPortLight','sshHostLight','sshUserLight'].forEach((id) => setLight(id, 'neutral'));
+  ['apiPortLight','uiPortLight','apiNodeIpLight','mpdPortLight','sshHostLight','sshUserLight','pathMusicLibraryRootLight','pathMoodeUsbMountLight','pathPiMountBaseLight','pathPodcastRootLight'].forEach((id) => setLight(id, 'neutral'));
 }
 
 async function checkRuntimeEnv(silent = false){
@@ -1270,6 +1270,17 @@ async function checkRuntimeEnv(silent = false){
 
     if (!silent && detailsEl) {
       const rows = Array.isArray(j.pathChecks) ? j.pathChecks : [];
+      const pathLightMap = {
+        musicLibraryRoot: 'pathMusicLibraryRootLight',
+        moodeUsbMount: 'pathMoodeUsbMountLight',
+        piMountBase: 'pathPiMountBaseLight',
+        podcastRoot: 'pathPodcastRootLight',
+      };
+      Object.entries(pathLightMap).forEach(([name, id]) => {
+        const row = rows.find((x) => x && x.name === name);
+        if (!row) return setLight(id, 'neutral');
+        setLight(id, row.exists ? 'good' : 'bad');
+      });
       const podcastRow = rows.find((x) => x && x.name === 'podcastRoot');
       const needsPodcastCreate = podcastsEnabled && podcastRow && !podcastRow.exists;
       const table = rows.length ? `
@@ -1614,6 +1625,10 @@ document.getElementById('apiPort')?.addEventListener('input', () => setLight('ap
 document.getElementById('uiPort')?.addEventListener('input', () => setLight('uiPortLight','neutral'));
 document.getElementById('apiNodeIp')?.addEventListener('input', () => setLight('apiNodeIpLight','neutral'));
 document.getElementById('moodeSshUser')?.addEventListener('input', () => setLight('sshUserLight','neutral'));
+document.getElementById('pathMusicLibraryRoot')?.addEventListener('input', () => setLight('pathMusicLibraryRootLight','neutral'));
+document.getElementById('pathMoodeUsbMount')?.addEventListener('input', () => setLight('pathMoodeUsbMountLight','neutral'));
+document.getElementById('pathPiMountBase')?.addEventListener('input', () => setLight('pathPiMountBaseLight','neutral'));
+document.getElementById('pathPodcastRoot')?.addEventListener('input', () => setLight('pathPodcastRootLight','neutral'));
 document.getElementById('checkRatingsDbBtn')?.addEventListener('click', () => checkRatingsDb().catch(e => log(String(e))));
 document.getElementById('backupRatingsDbBtn')?.addEventListener('click', () => backupRatingsDb().catch(e => log(String(e))));
 document.getElementById('restoreRatingsDbBtn')?.addEventListener('click', () => restoreRatingsDb().catch(e => log(String(e))));
