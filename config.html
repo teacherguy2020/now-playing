@@ -790,11 +790,11 @@ async function loadCfg(){
     } else if (!domainTxt) {
       alexaHint.textContent = 'missing domain';
       setPillState('alexaPill', 'warn');
-      setLight('alexaDomainLight', 'warn');
+      setLight('alexaDomainLight', 'bad');
     } else {
       alexaHint.textContent = domainTxt;
       setPillState('alexaPill', 'good');
-      setLight('alexaDomainLight', 'neutral');
+      setLight('alexaDomainLight', 'warn');
     }
   }
 
