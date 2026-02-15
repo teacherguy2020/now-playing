@@ -106,7 +106,7 @@
                 </div>
                 <div class="cfgRow">
                   <div class="cfgField">
-                    <label for="mpdHost">MPD host</label>
+                    <label for="mpdHost">MPD host <span id="mpdHostLight" title="MPD host verification" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span> <span id="mpdHostVerifyText" class="cfgHint" style="display:inline;color:#9fb3c8;">not verified</span></label>
                     <input id="mpdHost" type="text" placeholder="ex. 10.0.0.254" />
                     <div class="cfgHint" id="mpdHostHint"></div>
                   </div>
@@ -351,6 +351,7 @@ setPillState('alexaPill', 'neutral');
 const moodeHintEl = document.getElementById('moodeHint');
 if (moodeHintEl) moodeHintEl.textContent = 'not verified';
 setPillState('moodePill', 'neutral');
+setMpdHostLight('neutral', 'not verified');
 
 function log(x){ out.textContent = typeof x === 'string' ? x : JSON.stringify(x, null, 2); }
 
@@ -1183,10 +1184,28 @@ async function restoreRatingsDb(){
   }
 }
 
+function setMpdHostLight(state = 'neutral', text = 'not verified'){
+  const dot = document.getElementById('mpdHostLight');
+  const txt = document.getElementById('mpdHostVerifyText');
+  const map = {
+    good: { c: '#22c55e', b: 'rgba(34,197,94,.22)' },
+    warn: { c: '#f59e0b', b: 'rgba(245,158,11,.22)' },
+    bad: { c: '#ef4444', b: 'rgba(239,68,68,.22)' },
+    neutral: { c: '#7dd3fc', b: 'rgba(125,211,252,.2)' },
+  };
+  const s = map[state] || map.neutral;
+  if (dot) {
+    dot.style.background = s.c;
+    dot.style.boxShadow = `0 0 0 3px ${s.b}`;
+  }
+  if (txt) txt.textContent = text;
+}
+
 function resetMoodeVerificationPill(){
   const moodeHintEl = document.getElementById('moodeHint');
   setPillState('moodePill', 'neutral');
   if (moodeHintEl) moodeHintEl.textContent = 'not verified';
+  setMpdHostLight('neutral', 'not verified');
 }
 
 async function checkRuntimeEnv(silent = false){
@@ -1229,9 +1248,11 @@ async function checkRuntimeEnv(silent = false){
     if (runtimeReady) {
       setPillState('moodePill', 'good');
       if (moodeHintEl) moodeHintEl.textContent = `confirmed (${sshHost || mpdHost})`;
+      setMpdHostLight('good', 'verified');
     } else {
       setPillState('moodePill', 'warn');
       if (moodeHintEl) moodeHintEl.textContent = `not confirmed (${sshHost || mpdHost || 'unknown'})`;
+      setMpdHostLight(j.mpdOk ? 'warn' : 'bad', j.mpdOk ? 'host ok, ssh failed' : 'not verified');
     }
     applyRuntimeGate();
     if (!silent && statusEl) statusEl.textContent = `${ssh} · ${mpd} · Paths ${bad ? `⚠️ ${bad} missing` : '✅'}`;
@@ -1260,6 +1281,7 @@ async function checkRuntimeEnv(silent = false){
     const moodeHintEl = document.getElementById('moodeHint');
     setPillState('moodePill', 'bad');
     if (moodeHintEl) moodeHintEl.textContent = 'not confirmed';
+    setMpdHostLight('bad', 'not verified');
     applyRuntimeGate();
     if (!silent && statusEl) statusEl.textContent = `❌ Runtime check failed: ${String(e?.message || e)}`;
   } finally {
