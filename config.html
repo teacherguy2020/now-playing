@@ -147,19 +147,21 @@
                     <div class="cfgHint">Create a unique key used to protect config and maintenance endpoints (sent as <code>x-track-key</code>).</div>
                   </div>
                 </div>
-                <div class="cfgField">
-                  <label for="pathMusicLibraryRoot">Music library root <span id="pathMusicLibraryRootLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
-                  <input id="pathMusicLibraryRoot" type="text" placeholder="ex. /var/lib/mpd/music" />
-                </div>
-                <div class="cfgField">
-                  <label for="pathMoodeUsbMount">1) Path on moOde (media mount) <span id="pathMoodeUsbMountLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
-                  <input id="pathMoodeUsbMount" type="text" placeholder="ex. /media/NAMEOFYOURDRIVE" />
+                <div class="cfgRow" style="grid-template-columns: 1fr 1fr 1fr; align-items:start;">
+                  <div class="cfgField">
+                    <label for="pathMusicLibraryRoot">Music library root <span id="pathMusicLibraryRootLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
+                    <input id="pathMusicLibraryRoot" type="text" placeholder="ex. /var/lib/mpd/music" />
+                  </div>
+                  <div class="cfgField">
+                    <label for="pathMoodeUsbMount">1) Path on moOde (media mount) <span id="pathMoodeUsbMountLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
+                    <input id="pathMoodeUsbMount" type="text" placeholder="ex. /media/NAMEOFYOURDRIVE" />
+                  </div>
+                  <div class="cfgField">
+                    <label for="pathPiMountBase">2) Path on API host (mount base) <span id="pathPiMountBaseLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
+                    <input id="pathPiMountBase" type="text" placeholder="ex. /mnt/NAMEOFYOURDRIVE" />
+                  </div>
                 </div>
                 <div class="cfgHint">Typing in (1) auto-fills path (2). Podcast path is in the Podcasts card.</div>
-                <div class="cfgField">
-                  <label for="pathPiMountBase">2) Path on API host (mount base) <span id="pathPiMountBaseLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
-                  <input id="pathPiMountBase" type="text" placeholder="ex. /mnt/NAMEOFYOURDRIVE" />
-                </div>
                 <!-- podcast root moved to Podcasts card -->
                 <div class="cfgActions" style="margin-top:6px;">
                   <button class="btn" id="checkRuntimeBtn" type="button">Check SSH + Paths</button>
