@@ -1,6 +1,7 @@
 // src/routes/config.routes.mjs
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { lookup as dnsLookup } from 'node:dns/promises';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
@@ -234,6 +235,18 @@ export function registerConfigRoutes(app, deps) {
       const raw = await fs.readFile(configPath, 'utf8');
       const cfg = JSON.parse(raw);
       return res.json({ ok: true, configPath, config: withEnvOverrides(cfg), fullConfig: cfg });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/runtime/resolve-host', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const host = String(req.body?.host || '').trim();
+      if (!host) return res.status(400).json({ ok: false, error: 'host is required' });
+      const r = await dnsLookup(host, { family: 4 });
+      return res.json({ ok: true, host, address: String(r?.address || ''), family: Number(r?.family || 4) });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

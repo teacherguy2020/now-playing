@@ -364,8 +364,33 @@ function applyInitialNetworkPrefills(){
   if (mpdPortEl && !String(mpdPortEl.value || '').trim()) mpdPortEl.value = '6600';
 
   if (apiNodeIpHint) apiNodeIpHint.textContent = `Auto-defaulted from page host: ${host}`;
-  if (mpdHostHint) mpdHostHint.textContent = 'Auto-defaulted: moode.local (edit if needed)';
+  if (mpdHostHint) mpdHostHint.textContent = 'Auto-defaulted: moode.local (will resolve to IP when possible)';
   if (mpdPortHint) mpdPortHint.textContent = 'Default is 6600 (current)';
+}
+
+async function resolveMpdHostIfLocal(){
+  const key = getTrackKey();
+  const mpdHostEl = document.getElementById('mpdHost');
+  const sshHostEl = document.getElementById('moodeSshHost');
+  const hintEl = document.getElementById('mpdHostHint');
+  if (!mpdHostEl) return;
+  const cur = String(mpdHostEl.value || '').trim().toLowerCase();
+  if (cur !== 'moode.local') return;
+  if (!key) return;
+  try {
+    const r = await fetch(`${API_BASE}/config/runtime/resolve-host`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+      body: JSON.stringify({ host: 'moode.local' }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok || !j?.address) return;
+    const ip = String(j.address || '').trim();
+    if (!ip) return;
+    mpdHostEl.value = ip;
+    if (sshHostEl && !String(sshHostEl.value || '').trim()) sshHostEl.value = ip;
+    if (hintEl) hintEl.textContent = `Resolved moode.local → ${ip}`;
+  } catch (_) {}
 }
 
 let artistAliasMap = {};
@@ -859,6 +884,7 @@ async function loadCfg(){
 
   log({ ok:true, configPath:j.configPath, loadedAt:new Date().toISOString() });
   await loadRatingsBackups();
+  await resolveMpdHostIfLocal().catch(() => {});
   await checkRuntimeEnv(true).catch(() => {});
   markConfigSaved();
 }
