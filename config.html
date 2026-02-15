@@ -153,9 +153,10 @@
                   <label for="pathPiMountBase">2) Path on API host (mount base)</label>
                   <input id="pathPiMountBase" type="text" placeholder="ex. /mnt/NAMEOFYOURDRIVE" />
                 </div>
-                <div class="cfgField">
+                <div class="cfgField" id="podcastRootFieldWrap">
                   <label for="pathPodcastRoot">3) Podcast root on API host</label>
-                  <input id="pathPodcastRoot" type="text" placeholder="ex. /mnt/NAMEOFYOURDRIVE/Podcasts" />
+                  <input id="pathPodcastRoot" type="text" placeholder="ex. /var/lib/mpd/music/Podcasts" />
+                  <div class="cfgHint" id="podcastRootHint">Used only when Podcasts feature is enabled.</div>
                 </div>
                 <div class="cfgActions" style="margin-top:6px;">
                   <button class="btn" id="checkRuntimeBtn" type="button">Check SSH + Paths</button>
@@ -641,6 +642,16 @@ function syncLastfmCardVisibility(){
   }
 }
 
+function syncPodcastsUi(){
+  const on = !!document.getElementById('featurePodcasts')?.checked;
+  const wrap = document.getElementById('podcastRootFieldWrap');
+  const hint = document.getElementById('podcastRootHint');
+  if (wrap) wrap.style.display = on ? '' : 'none';
+  if (hint) hint.textContent = on
+    ? 'Used when Podcasts is enabled. Missing folder can be created on demand.'
+    : 'Podcasts disabled: this path is optional and ignored by runtime checks.';
+}
+
 function syncPushoverCardVisibility(){
   const featureEl = document.getElementById('featurePushover');
   const notifyEnabledEl = document.getElementById('notifyEnabled');
@@ -782,6 +793,7 @@ async function loadCfg(){
   document.getElementById('featureAlexaSkill').checked = !!c.alexa?.enabled;
   document.getElementById('alexaDomain').value = c.alexa?.publicDomain || '';
   syncAlexaCardVisibility();
+  syncPodcastsUi();
 
   const hasPushover = !!(String(c.notifications?.pushover?.token || '').trim() || String(c.notifications?.pushover?.userKey || '').trim() || c.notifications?.trackNotify?.enabled);
   document.getElementById('featurePushover').checked = hasPushover;
@@ -833,7 +845,7 @@ async function loadCfg(){
   document.getElementById('pathMusicLibraryRoot').value = String(full.paths?.musicLibraryRoot || c.paths?.musicLibraryRoot || '/var/lib/mpd/music');
   document.getElementById('pathMoodeUsbMount').value = String(full.paths?.moodeUsbMount || c.paths?.moodeUsbMount || '/media/SamsungMoode');
   document.getElementById('pathPiMountBase').value = String(full.paths?.piMountBase || c.paths?.piMountBase || '/mnt/SamsungMoode');
-  document.getElementById('pathPodcastRoot').value = String(full.paths?.podcastRoot || c.paths?.podcastRoot || '/mnt/SamsungMoode/Podcasts');
+  document.getElementById('pathPodcastRoot').value = String(full.paths?.podcastRoot || c.paths?.podcastRoot || '/var/lib/mpd/music/Podcasts');
 
   loadArtistAliasesFromObject(c.alexa?.artistAliases || {});
   albumAliasMap = (c.alexa?.albumAliases && typeof c.alexa.albumAliases === 'object' && !Array.isArray(c.alexa.albumAliases)) ? { ...c.alexa.albumAliases } : {};
@@ -1175,11 +1187,12 @@ async function checkRuntimeEnv(silent = false){
   const sshHostRaw = String(document.getElementById('moodeSshHost')?.value || '').trim();
   const sshHost = sshHostRaw || mpdHost;
   const sshUser = String(document.getElementById('moodeSshUser')?.value || 'moode').trim();
+  const podcastsEnabled = !!document.getElementById('featurePodcasts')?.checked;
   const paths = {
     musicLibraryRoot: String(document.getElementById('pathMusicLibraryRoot')?.value || '').trim(),
     moodeUsbMount: String(document.getElementById('pathMoodeUsbMount')?.value || '').trim(),
     piMountBase: String(document.getElementById('pathPiMountBase')?.value || '').trim(),
-    podcastRoot: String(document.getElementById('pathPodcastRoot')?.value || '').trim(),
+    podcastRoot: podcastsEnabled ? String(document.getElementById('pathPodcastRoot')?.value || '').trim() : '',
   };
 
   if (btn) btn.disabled = true;
@@ -1203,7 +1216,6 @@ async function checkRuntimeEnv(silent = false){
 
     if (!silent && detailsEl) {
       const rows = Array.isArray(j.pathChecks) ? j.pathChecks : [];
-      const podcastsEnabled = !!document.getElementById('featurePodcasts')?.checked;
       const podcastRow = rows.find((x) => x && x.name === 'podcastRoot');
       const needsPodcastCreate = podcastsEnabled && podcastRow && !podcastRow.exists;
       const table = rows.length ? `
@@ -1240,6 +1252,8 @@ async function ensurePodcastRoot(){
   const sshHostRaw = String(document.getElementById('moodeSshHost')?.value || '').trim();
   const sshHost = sshHostRaw || mpdHost;
   const sshUser = String(document.getElementById('moodeSshUser')?.value || 'moode').trim();
+  const podcastsEnabled = !!document.getElementById('featurePodcasts')?.checked;
+  if (!podcastsEnabled) return;
   const podcastRoot = String(document.getElementById('pathPodcastRoot')?.value || '').trim();
   if (!podcastRoot) return;
 
@@ -1522,6 +1536,7 @@ document.getElementById('artistAliasesJson').addEventListener('input', () => {
 
 document.getElementById('featureAlexaSkill')?.addEventListener('change', syncAlexaCardVisibility);
 document.getElementById('featureLastfm')?.addEventListener('change', syncLastfmCardVisibility);
+document.getElementById('featurePodcasts')?.addEventListener('change', syncPodcastsUi);
 document.getElementById('featurePushover')?.addEventListener('change', syncPushoverCardVisibility);
 document.getElementById('featureRatings')?.addEventListener('change', () => {
   syncRatingsCardVisibility();
@@ -1567,6 +1582,7 @@ document.getElementById('modalLaterBtn').onclick = () => hideRestartModal();
 document.getElementById('modalRestartBtn').onclick = () => restartServicesNow().catch(e => log(String(e)));
 syncAlexaCardVisibility();
 syncLastfmCardVisibility();
+syncPodcastsUi();
 syncPushoverCardVisibility();
 syncRatingsCardVisibility();
 applyRuntimeGate();
