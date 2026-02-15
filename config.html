@@ -68,6 +68,10 @@
             <span class="dot" aria-hidden="true"></span>
             Alexa: <span id="alexaHint" style="color:rgba(255,255,255,.9)">unknown</span>
           </div>
+          <div class="pill" id="moodePill" title="moOde host verification">
+            <span class="dot" aria-hidden="true"></span>
+            moOde: <span id="moodeHint" style="color:rgba(255,255,255,.9)">not verified</span>
+          </div>
         </div>
       </div>
       <header>
@@ -344,6 +348,9 @@ setPillState('webPill', 'neutral');
 const alexaHintEl = document.getElementById('alexaHint');
 if (alexaHintEl) alexaHintEl.textContent = 'unknown';
 setPillState('alexaPill', 'neutral');
+const moodeHintEl = document.getElementById('moodeHint');
+if (moodeHintEl) moodeHintEl.textContent = 'not verified';
+setPillState('moodePill', 'neutral');
 
 function log(x){ out.textContent = typeof x === 'string' ? x : JSON.stringify(x, null, 2); }
 
@@ -1176,6 +1183,12 @@ async function restoreRatingsDb(){
   }
 }
 
+function resetMoodeVerificationPill(){
+  const moodeHintEl = document.getElementById('moodeHint');
+  setPillState('moodePill', 'neutral');
+  if (moodeHintEl) moodeHintEl.textContent = 'not verified';
+}
+
 async function checkRuntimeEnv(silent = false){
   const key = getTrackKey();
   const statusEl = document.getElementById('runtimeCheckStatus');
@@ -1212,6 +1225,14 @@ async function checkRuntimeEnv(silent = false){
     const mpd = j.mpdOk ? 'MPD ✅' : 'MPD ❌';
     const bad = (j.pathChecks || []).filter((x) => !x.exists).length;
     runtimeReady = !!(j.sshOk && j.mpdOk);
+    const moodeHintEl = document.getElementById('moodeHint');
+    if (runtimeReady) {
+      setPillState('moodePill', 'good');
+      if (moodeHintEl) moodeHintEl.textContent = `confirmed (${sshHost || mpdHost})`;
+    } else {
+      setPillState('moodePill', 'warn');
+      if (moodeHintEl) moodeHintEl.textContent = `not confirmed (${sshHost || mpdHost || 'unknown'})`;
+    }
     applyRuntimeGate();
     if (!silent && statusEl) statusEl.textContent = `${ssh} · ${mpd} · Paths ${bad ? `⚠️ ${bad} missing` : '✅'}`;
 
@@ -1236,6 +1257,9 @@ async function checkRuntimeEnv(silent = false){
     }
   } catch (e) {
     runtimeReady = false;
+    const moodeHintEl = document.getElementById('moodeHint');
+    setPillState('moodePill', 'bad');
+    if (moodeHintEl) moodeHintEl.textContent = 'not confirmed';
     applyRuntimeGate();
     if (!silent && statusEl) statusEl.textContent = `❌ Runtime check failed: ${String(e?.message || e)}`;
   } finally {
@@ -1548,9 +1572,10 @@ document.getElementById('checkRuntimeBtn')?.addEventListener('click', () => chec
 document.getElementById('pathMoodeUsbMount')?.addEventListener('input', derivePathsFromMoode);
 document.getElementById('pathMoodeUsbMount')?.addEventListener('change', derivePathsFromMoode);
 // derivePathsBtn removed; auto-derive runs on input/change.
-document.getElementById('moodeSshHost')?.addEventListener('input', refreshSshSetupHelp);
+document.getElementById('moodeSshHost')?.addEventListener('input', () => { refreshSshSetupHelp(); resetMoodeVerificationPill(); });
 document.getElementById('moodeSshUser')?.addEventListener('input', refreshSshSetupHelp);
-document.getElementById('mpdHost')?.addEventListener('input', refreshSshSetupHelp);
+document.getElementById('mpdHost')?.addEventListener('input', () => { refreshSshSetupHelp(); resetMoodeVerificationPill(); });
+document.getElementById('mpdPort')?.addEventListener('input', resetMoodeVerificationPill);
 document.getElementById('checkRatingsDbBtn')?.addEventListener('click', () => checkRatingsDb().catch(e => log(String(e))));
 document.getElementById('backupRatingsDbBtn')?.addEventListener('click', () => backupRatingsDb().catch(e => log(String(e))));
 document.getElementById('restoreRatingsDbBtn')?.addEventListener('click', () => restoreRatingsDb().catch(e => log(String(e))));
