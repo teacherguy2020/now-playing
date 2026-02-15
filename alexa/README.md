@@ -5,7 +5,7 @@ Alexa support is optional. The API remains the source of truth; Alexa clients ca
 ## Prerequisites
 
 1. Amazon Developer account
-2. Alexa custom skill
+2. Alexa custom skill (create in Alexa Developer Console)
 3. Public HTTPS endpoint for this API
 4. Valid `TRACK_KEY` shared between Alexa runtime and API
 
