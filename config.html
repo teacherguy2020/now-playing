@@ -90,17 +90,17 @@
                 <div class="cfgHint" style="margin-bottom:8px;"><strong>Step 1:</strong> Fill this card, then click <strong>Check SSH + Paths</strong> to unlock the other modules.</div>
                 <div class="cfgRow">
                   <div class="cfgField">
-                    <label for="apiPort">API port</label>
+                    <label for="apiPort">API port <span id="apiPortLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="apiPort" type="number" min="1" max="65535" placeholder="ex. 3101" />
                   </div>
                   <div class="cfgField">
-                    <label for="uiPort">UI port</label>
+                    <label for="uiPort">UI port <span id="uiPortLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="uiPort" type="number" min="1" max="65535" placeholder="ex. 8101" />
                   </div>
                 </div>
                 <div class="cfgHint">Defaults are API <code>3101</code>, UI <code>8101</code>, MPD port <code>6600</code>, and music library root <code>/var/lib/mpd/music</code>. Host fields are auto-prefilled conservatively and never overwrite saved values.</div>
                 <div class="cfgField">
-                  <label for="apiNodeIp">IP of Webserver and API host</label>
+                  <label for="apiNodeIp">IP of Webserver and API host <span id="apiNodeIpLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                   <input id="apiNodeIp" type="text" placeholder="ex. 10.0.0.233" />
                   <div class="cfgHint" id="apiNodeIpHint"></div>
                 </div>
@@ -111,18 +111,18 @@
                     <div class="cfgHint" id="mpdHostHint"></div>
                   </div>
                   <div class="cfgField">
-                    <label for="mpdPort">MPD port</label>
+                    <label for="mpdPort">MPD port <span id="mpdPortLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="mpdPort" type="number" min="1" max="65535" />
                     <div class="cfgHint" id="mpdPortHint"></div>
                   </div>
                 </div>
                 <div class="cfgRow">
                   <div class="cfgField">
-                    <label for="moodeSshHost">moOde SSH host (optional override)</label>
+                    <label for="moodeSshHost">moOde SSH host (optional override) <span id="sshHostLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="moodeSshHost" type="text" placeholder="defaults to MPD host" />
                   </div>
                   <div class="cfgField">
-                    <label for="moodeSshUser">moOde SSH user</label>
+                    <label for="moodeSshUser">moOde SSH user <span id="sshUserLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="moodeSshUser" type="text" placeholder="moode" />
                   </div>
                 </div>
@@ -1184,9 +1184,9 @@ async function restoreRatingsDb(){
   }
 }
 
-function setMpdHostLight(state = 'neutral', text = 'not verified'){
-  const dot = document.getElementById('mpdHostLight');
-  const txt = document.getElementById('mpdHostVerifyText');
+function setLight(id, state = 'neutral'){
+  const dot = document.getElementById(id);
+  if (!dot) return;
   const map = {
     good: { c: '#22c55e', b: 'rgba(34,197,94,.22)' },
     warn: { c: '#f59e0b', b: 'rgba(245,158,11,.22)' },
@@ -1194,10 +1194,13 @@ function setMpdHostLight(state = 'neutral', text = 'not verified'){
     neutral: { c: '#7dd3fc', b: 'rgba(125,211,252,.2)' },
   };
   const s = map[state] || map.neutral;
-  if (dot) {
-    dot.style.background = s.c;
-    dot.style.boxShadow = `0 0 0 3px ${s.b}`;
-  }
+  dot.style.background = s.c;
+  dot.style.boxShadow = `0 0 0 3px ${s.b}`;
+}
+
+function setMpdHostLight(state = 'neutral', text = 'not verified'){
+  setLight('mpdHostLight', state);
+  const txt = document.getElementById('mpdHostVerifyText');
   if (txt) txt.textContent = text;
 }
 
@@ -1206,6 +1209,7 @@ function resetMoodeVerificationPill(){
   setPillState('moodePill', 'neutral');
   if (moodeHintEl) moodeHintEl.textContent = 'not verified';
   setMpdHostLight('neutral', 'not verified');
+  ['apiPortLight','uiPortLight','apiNodeIpLight','mpdPortLight','sshHostLight','sshUserLight'].forEach((id) => setLight(id, 'neutral'));
 }
 
 async function checkRuntimeEnv(silent = false){
@@ -1249,10 +1253,17 @@ async function checkRuntimeEnv(silent = false){
       setPillState('moodePill', 'good');
       if (moodeHintEl) moodeHintEl.textContent = `confirmed (${sshHost || mpdHost})`;
       setMpdHostLight('good', 'verified');
+      ['apiPortLight','uiPortLight','apiNodeIpLight','mpdPortLight','sshHostLight','sshUserLight'].forEach((id) => setLight(id, 'good'));
     } else {
       setPillState('moodePill', 'warn');
       if (moodeHintEl) moodeHintEl.textContent = `not confirmed (${sshHost || mpdHost || 'unknown'})`;
       setMpdHostLight(j.mpdOk ? 'warn' : 'bad', j.mpdOk ? 'host ok, ssh failed' : 'not verified');
+      setLight('apiPortLight', 'good');
+      setLight('uiPortLight', 'good');
+      setLight('apiNodeIpLight', 'good');
+      setLight('mpdPortLight', j.mpdOk ? 'good' : 'bad');
+      setLight('sshHostLight', j.sshOk ? 'good' : 'bad');
+      setLight('sshUserLight', j.sshOk ? 'good' : 'bad');
     }
     applyRuntimeGate();
     if (!silent && statusEl) statusEl.textContent = `${ssh} · ${mpd} · Paths ${bad ? `⚠️ ${bad} missing` : '✅'}`;
@@ -1282,6 +1293,7 @@ async function checkRuntimeEnv(silent = false){
     setPillState('moodePill', 'bad');
     if (moodeHintEl) moodeHintEl.textContent = 'not confirmed';
     setMpdHostLight('bad', 'not verified');
+    ['mpdPortLight','sshHostLight','sshUserLight'].forEach((id) => setLight(id, 'bad'));
     applyRuntimeGate();
     if (!silent && statusEl) statusEl.textContent = `❌ Runtime check failed: ${String(e?.message || e)}`;
   } finally {
@@ -1598,6 +1610,10 @@ document.getElementById('moodeSshHost')?.addEventListener('input', () => { refre
 document.getElementById('moodeSshUser')?.addEventListener('input', refreshSshSetupHelp);
 document.getElementById('mpdHost')?.addEventListener('input', () => { refreshSshSetupHelp(); resetMoodeVerificationPill(); });
 document.getElementById('mpdPort')?.addEventListener('input', resetMoodeVerificationPill);
+document.getElementById('apiPort')?.addEventListener('input', () => setLight('apiPortLight','neutral'));
+document.getElementById('uiPort')?.addEventListener('input', () => setLight('uiPortLight','neutral'));
+document.getElementById('apiNodeIp')?.addEventListener('input', () => setLight('apiNodeIpLight','neutral'));
+document.getElementById('moodeSshUser')?.addEventListener('input', () => setLight('sshUserLight','neutral'));
 document.getElementById('checkRatingsDbBtn')?.addEventListener('click', () => checkRatingsDb().catch(e => log(String(e))));
 document.getElementById('backupRatingsDbBtn')?.addEventListener('click', () => backupRatingsDb().catch(e => log(String(e))));
 document.getElementById('restoreRatingsDbBtn')?.addEventListener('click', () => restoreRatingsDb().catch(e => log(String(e))));
