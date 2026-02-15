@@ -2910,23 +2910,55 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
 
-      try {
-        await execFileP('pm2', ['restart', 'api', '--update-env']);
-        await execFileP('pm2', ['restart', 'webserver']);
-        return res.json({ ok: true, restarted: true, method: 'pm2', services: ['api', 'webserver'] });
-      } catch (_) {}
+      // Prefer systemd when installed by scripts/install.sh.
+      // Fallback to PM2 for legacy/manual installs.
+      let systemdDetected = false;
+      let pm2Detected = false;
+      let systemdDetail = '';
+      let pm2Detail = '';
 
       try {
-        await execFileP('sudo', ['-n', 'systemctl', 'restart', 'now-playing.service', 'now-playing-web.service']);
-        return res.json({ ok: true, restarted: true, method: 'systemd', services: ['now-playing.service', 'now-playing-web.service'] });
+        await execFileP('systemctl', ['list-unit-files', 'now-playing.service', 'now-playing-web.service', '--no-legend']);
+        systemdDetected = true;
       } catch (e) {
-        return res.status(501).json({
-          ok: false,
-          restarted: false,
-          error: 'Automatic restart unavailable on this host. Restart services manually.',
-          detail: e?.message || String(e),
-        });
+        systemdDetail = e?.message || String(e);
       }
+
+      if (systemdDetected) {
+        try {
+          await execFileP('sudo', ['-n', 'systemctl', 'restart', 'now-playing.service', 'now-playing-web.service']);
+          return res.json({ ok: true, restarted: true, method: 'systemd', services: ['now-playing.service', 'now-playing-web.service'] });
+        } catch (e) {
+          systemdDetail = e?.message || String(e);
+        }
+      }
+
+      try {
+        const { stdout } = await execFileP('pm2', ['jlist']);
+        const list = JSON.parse(String(stdout || '[]'));
+        const names = new Set((Array.isArray(list) ? list : []).map((x) => String(x?.name || '').trim()).filter(Boolean));
+        pm2Detected = names.has('api') || names.has('webserver');
+      } catch (e) {
+        pm2Detail = e?.message || String(e);
+      }
+
+      if (pm2Detected) {
+        try {
+          await execFileP('pm2', ['restart', 'api', '--update-env']);
+        } catch {}
+        try {
+          await execFileP('pm2', ['restart', 'webserver']);
+        } catch {}
+        return res.json({ ok: true, restarted: true, method: 'pm2', services: ['api', 'webserver'] });
+      }
+
+      return res.status(501).json({
+        ok: false,
+        restarted: false,
+        error: 'Automatic restart unavailable on this host. Restart services manually.',
+        detect: { systemdDetected, pm2Detected },
+        detail: { systemd: systemdDetail, pm2: pm2Detail },
+      });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
