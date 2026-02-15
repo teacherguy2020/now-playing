@@ -668,6 +668,8 @@ function getTrackKey(){
   const cfg = document.getElementById('configTrackKey');
   const v = String(cfg?.value || '').trim();
   if (v) return v;
+  const cached = String(localStorage.getItem('nowplaying.secret.trackKey') || '').trim();
+  if (cached) return cached;
   if (showEl && showEl.checked) return (tkTextEl?.value || '').trim();
   return (tkEl?.value || '').trim();
 }

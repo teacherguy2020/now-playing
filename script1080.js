@@ -1027,7 +1027,7 @@ function fetchNowPlaying() {
        * ========================= */
 
       const pauseOrStop = isPauseOrStopState(data);
-      const screensaverEligible = !isAirplay;
+      const screensaverEligible = !isAirplay && !isMobileEnv();
 
       if (pauseOrStop && screensaverEligible) {
         if (!pauseOrStopSinceTs) pauseOrStopSinceTs = Date.now();

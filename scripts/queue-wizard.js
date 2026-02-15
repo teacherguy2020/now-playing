@@ -30,6 +30,7 @@
   const coverCardEl = $('coverCard');
   const coverImgEl = $('coverPreview');
   const coverStatusEl = $('coverStatus');
+  const playlistThumbStripEl = $('playlistThumbStrip');
   // ---- Config ----
   const COLLAGE_PREVIEW_PATH = '/config/queue-wizard/collage-preview'; // change if your route differs
   const MAX_RENDER_ROWS = 1000;
@@ -413,7 +414,7 @@ async function syncVibeAvailability() {
   function ensureResultsTable() {
     if (!resultsEl) return null;
     resultsEl.innerHTML =
-      `<table style="font-size:14px;">
+      `<table style="font-size:16px;line-height:1.35;">
         <thead>
           <tr><th>Art</th><th>Artist</th><th>Title</th><th>Album</th><th>Genre</th></tr>
         </thead>
@@ -442,12 +443,30 @@ async function syncVibeAvailability() {
     for (const t of (tracks || []).slice(0, MAX_RENDER_ROWS)) appendRow(t, tbody);
   }
 
+  function renderPlaylistThumbStrip(tracks) {
+    if (!playlistThumbStripEl) return;
+    const list = Array.isArray(tracks) ? tracks.slice(0, 24) : [];
+    if (!list.length) {
+      playlistThumbStripEl.innerHTML = '';
+      return;
+    }
+    const apiBase = getApiBase();
+    playlistThumbStripEl.innerHTML = list.map((t) => {
+      const file = String(t?.file || '').trim();
+      const artist = esc(String(t?.artist || ''));
+      const title = esc(String(t?.title || ''));
+      const src = file ? `${apiBase}/art/track_640.jpg?file=${encodeURIComponent(file)}` : '';
+      return `<img src="${src}" title="${artist}${artist && title ? ' — ' : ''}${title}" style="width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px solid #334;background:#0a1222;" />`;
+    }).join('');
+  }
+
   function setCurrentList(source, tracks) {
     currentListSource = source || 'none';
     currentTracks = Array.isArray(tracks) ? tracks.slice() : [];
     currentFiles = currentTracks.map((t) => String(t.file || '').trim()).filter(Boolean);
 
     renderTracksToTable(currentTracks);
+    renderPlaylistThumbStrip(currentTracks);
 
     const label = currentListSource === 'vibe'
       ? 'Vibe list'
@@ -1198,6 +1217,7 @@ try {
   if ($('maxTracks') && Number.isFinite(savedMax) && savedMax > 0) $('maxTracks').value = String(savedMax);
 
   clearResults();
+  renderPlaylistThumbStrip([]);
   setCount('No list yet.');
   setStatus('');
   showPlaylistHint('');

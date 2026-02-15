@@ -69,8 +69,14 @@
       <h3 style="margin:0 0 8px;">Album metadata inspector</h3>
       <div class="row">
         <select id="albumPick" style="min-width:360px;max-width:100%;"></select>
-        <button id="loadAlbumMeta" type="button">Load track metadata</button>
+        <button id="suggestPerformersBtn" type="button">Suggest performers</button>
+        <button id="applyPerformersBtn" type="button">Apply performers</button>
         <span class="muted" id="albumMetaStatus"></span>
+      </div>
+      <div class="row" style="margin-top:6px;align-items:flex-start;">
+        <label style="min-width:300px;">Approved performers (one per line, format: PERFORMER=Name (instrument/role))
+          <textarea id="performersInput" style="width:100%;min-height:90px;"></textarea>
+        </label>
       </div>
       <div id="albumMetaOut" style="margin-top:8px;"></div>
     </div>

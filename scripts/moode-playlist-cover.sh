@@ -66,13 +66,25 @@ REMOTE_PL_TMP_CREATED="0"
 
 ssh_run() {
   # Usage: ssh_run arg1 arg2 ... <<'EOF' <bash script> EOF
+  local payload qargs
+  payload="$(cat)"
+  qargs=""
+  for a in "$@"; do
+    qargs+=" $(printf '%q' "$a")"
+  done
   ssh "${SSH_OPTS[@]}" "${MOODE_USER}@${MOODE_HOST}" \
-    bash --noprofile --norc -s -- "$@"
+    "bash --noprofile --norc -s --${qargs}" <<<"$payload"
 }
 
 ssh_run_sudo() {
+  local payload qargs
+  payload="$(cat)"
+  qargs=""
+  for a in "$@"; do
+    qargs+=" $(printf '%q' "$a")"
+  done
   ssh "${SSH_OPTS[@]}" "${MOODE_USER}@${MOODE_HOST}" \
-    sudo -n bash --noprofile --norc -s -- "$@"
+    "sudo -n bash --noprofile --norc -s --${qargs}" <<<"$payload"
 }
 
 cleanup_remote() {

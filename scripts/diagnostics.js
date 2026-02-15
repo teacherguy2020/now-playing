@@ -95,18 +95,46 @@
     }
   }
 
-  async function sendPlayback(action){
+  function updateShuffleBtn(randomOn){
+    const btn = $('shuffleBtn');
+    if (!btn) return;
+    if (typeof randomOn === 'boolean') {
+      btn.textContent = `Shuffle: ${randomOn ? 'On' : 'Off'}`;
+      btn.style.borderColor = randomOn ? '#22c55e' : '';
+    } else {
+      btn.textContent = 'Shuffle: ?';
+      btn.style.borderColor = '';
+    }
+  }
+
+  async function sendPlayback(action, extra = null, opts = null){
     const base = String($('apiBase').value || apiBaseDefault()).replace(/\/$/,'');
     const key = String($('key').value || '').trim();
+    const payload = Object.assign({ action }, extra || {});
+    const refreshQueue = opts?.refreshQueue !== false;
     const r = await fetch(`${base}/config/diagnostics/playback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-track-key': key },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify(payload),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    if (typeof j?.randomOn === 'boolean') updateShuffleBtn(j.randomOn);
     $('status').textContent = `Playback: ${action}`;
-    await loadQueue();
+    if (refreshQueue) await loadQueue();
+    return j;
+  }
+
+  function starsHtml(file, rating){
+    const f = encodeURIComponent(String(file || ''));
+    const r = Math.max(0, Math.min(5, Number(rating) || 0));
+    let out = '<div style="display:flex;gap:2px;align-items:center;">';
+    for (let i = 1; i <= 5; i += 1) {
+      const on = i <= r;
+      out += `<button type="button" data-rate-file="${f}" data-rate-val="${i}" title="Rate ${i} star${i>1?'s':''}" style="padding:0 2px;border:0;background:transparent;font-size:15px;line-height:1;color:${on?'#fbbf24':'#5b6780'};cursor:pointer;">★</button>`;
+    }
+    out += '</div>';
+    return out;
   }
 
   async function loadQueue(){
@@ -119,11 +147,16 @@
       const r = await fetch(`${base}/config/diagnostics/queue`, { headers: { 'x-track-key': key } });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      if (typeof j?.randomOn === 'boolean') updateShuffleBtn(j.randomOn);
       const items = Array.isArray(j.items) ? j.items : [];
       if (!items.length) { wrap.innerHTML = '<div class="muted">Queue is empty.</div>'; return; }
       wrap.innerHTML = items.slice(0, 80).map((x) => {
-        const thumb = x.thumbUrl ? `<img src="${x.thumbUrl}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />` : '<div style="width:36px;height:36px"></div>';
-        return `<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px dashed #233650;">${thumb}<div style="min-width:0"><div><b>${String(x.position||0)}</b>. ${String(x.artist||'')}</div><div class="muted">${String(x.title||'')} ${x.album?`• ${String(x.album)}`:''}</div></div></div>`;
+        const thumbSrc = x.thumbUrl ? (String(x.thumbUrl).startsWith('http') ? String(x.thumbUrl) : `${base}${x.thumbUrl}`) : '';
+        const thumb = thumbSrc ? `<img src="${thumbSrc}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />` : '<div style="width:36px;height:36px"></div>';
+        const head = !!x.isHead;
+        const pos = Number(x.position || 0);
+        const stars = starsHtml(x.file, Number(x.rating || 0));
+        return `<div style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${String(x.artist||'')}</div><div class="muted">${String(x.title||'')} ${x.album?`• ${String(x.album)}`:''}</div><div style="margin-top:2px;">${stars}</div></div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
       }).join('');
     } catch (e) {
       wrap.innerHTML = `<div class="muted">Queue load failed: ${e?.message || e}</div>`;
@@ -205,9 +238,47 @@
   $('reloadLiveBtn')?.addEventListener('click', () => loadRuntime());
   $('liveZoom')?.addEventListener('input', applyLiveZoom);
   $('reloadQueueBtn')?.addEventListener('click', () => loadQueue());
+  $('queueWrap')?.addEventListener('click', (ev) => {
+    const el = ev.target instanceof Element ? ev.target : null;
+    const rateBtn = el ? el.closest('button[data-rate-file][data-rate-val]') : null;
+    if (rateBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const encFile = String(rateBtn.getAttribute('data-rate-file') || '');
+      const file = decodeURIComponent(encFile || '');
+      const rating = Number(rateBtn.getAttribute('data-rate-val') || 0);
+      if (!file || !Number.isFinite(rating) || rating < 0 || rating > 5) return;
+
+      const row = rateBtn.closest('div');
+      if (row) {
+        const stars = row.querySelectorAll('button[data-rate-file][data-rate-val]');
+        stars.forEach((s) => {
+          const v = Number(s.getAttribute('data-rate-val') || 0);
+          s.style.color = v <= rating ? '#fbbf24' : '#5b6780';
+        });
+      }
+
+      rateBtn.disabled = true;
+      sendPlayback('rate', { file, rating }, { refreshQueue: false })
+        .then(() => { $('status').textContent = `Rated: ${rating} star${rating===1?'':'s'}`; })
+        .catch((e) => { $('status').textContent = String(e?.message || e); })
+        .finally(() => { rateBtn.disabled = false; });
+      return;
+    }
+
+    const btn = el ? el.closest('button[data-remove-pos]') : null;
+    if (!btn) return;
+    const pos = Number(btn.getAttribute('data-remove-pos') || 0);
+    if (!Number.isFinite(pos) || pos <= 0) return;
+    btn.disabled = true;
+    sendPlayback('remove', { position: pos })
+      .then(() => { $('status').textContent = `Removed track at position ${pos}`; })
+      .catch((e) => { $('status').textContent = String(e?.message || e); })
+      .finally(() => { btn.disabled = false; });
+  });
   $('playBtn')?.addEventListener('click', () => sendPlayback('play').catch((e)=>$('status').textContent=String(e?.message||e)));
   $('pauseBtn')?.addEventListener('click', () => sendPlayback('pause').catch((e)=>$('status').textContent=String(e?.message||e)));
-  $('toggleBtn')?.addEventListener('click', () => sendPlayback('toggle').catch((e)=>$('status').textContent=String(e?.message||e)));
+  $('shuffleBtn')?.addEventListener('click', () => sendPlayback('shuffle').catch((e)=>$('status').textContent=String(e?.message||e)));
   $('prevBtn')?.addEventListener('click', () => sendPlayback('prev').catch((e)=>$('status').textContent=String(e?.message||e)));
   $('nextBtn')?.addEventListener('click', () => sendPlayback('next').catch((e)=>$('status').textContent=String(e?.message||e)));
   async function copyResponse(){

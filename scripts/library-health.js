@@ -1041,10 +1041,18 @@ async function loadAlbumMetadata(){
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
     const rows = Array.isArray(j.tracks) ? j.tracks : [];
+    const perfSet = new Set();
+    rows.forEach((x) => {
+      const arr = Array.isArray(x.performerCurrent) ? x.performerCurrent : [];
+      arr.forEach((p) => { if (p) perfSet.add(String(p)); });
+    });
+    const inp = $('performersInput');
+    if (inp) inp.value = Array.from(perfSet).join('\n');
+
     out.innerHTML = rows.length ? `
       <table>
-        <thead><tr><th>#</th><th>Title</th><th>Artist</th><th>Album</th><th>Date</th><th>Genre</th><th>Rating</th><th>File</th></tr></thead>
-        <tbody>${rows.map((x)=>`<tr><td>${esc(x.track||'')}</td><td>${esc(x.title||'')}</td><td>${esc(x.artist||'')}</td><td>${esc(x.album||'')}</td><td>${esc(x.date||'')}</td><td>${esc(x.genre||'')}</td><td>${Number(x.rating||0)}</td><td>${esc(x.file||'')}</td></tr>`).join('')}</tbody>
+        <thead><tr><th>#</th><th>Title</th><th>Artist</th><th>Album</th><th>Date</th><th>Genre</th><th>Rating</th><th>File</th><th>Full tags</th></tr></thead>
+        <tbody>${rows.map((x)=>`<tr><td>${esc(x.track||'')}</td><td>${esc(x.title||'')}</td><td>${esc(x.artist||'')}</td><td>${esc(x.album||'')}</td><td>${esc(x.date||'')}</td><td>${esc(x.genre||'')}</td><td>${Number(x.rating||0)}</td><td>${esc(x.file||'')}</td><td>${x.metaflac ? `<details><summary>show tags</summary><pre style="white-space:pre-wrap;max-width:560px;max-height:260px;overflow:auto;">${esc(x.metaflac)}</pre></details>` : '<span class="muted">(not flac/no data)</span>'}</td></tr>`).join('')}</tbody>
       </table>
     ` : '<div class="muted">No tracks in this album folder.</div>';
     if (st) st.textContent = `${rows.length} track(s)`;
@@ -1054,10 +1062,79 @@ async function loadAlbumMetadata(){
   }
 }
 
+async function suggestPerformers(){
+  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+  const key = ($('key')?.value || '').trim();
+  const folder = String($('albumPick')?.value || '').trim();
+  const st = $('albumMetaStatus');
+  const inp = $('performersInput');
+  if (!folder || !inp) return;
+  if (st) st.textContent = 'Suggesting performers…';
+  try {
+    const r = await fetch(`${apiBase}/config/library-health/album-performers-suggest?folder=${encodeURIComponent(folder)}`, { headers: { 'x-track-key': key } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    const p = Array.isArray(j.performers) ? j.performers : [];
+    const existing = String(inp.value || '').split(/\r?\n/).map((x)=>x.trim()).filter(Boolean);
+    const exSet = new Set(existing.map((x)=>x.toLowerCase()));
+    const pSet = new Set(p.map((x)=>String(x||'').toLowerCase()));
+    const added = p.filter((x)=>!exSet.has(String(x||'').toLowerCase()));
+    const existingOnly = existing.filter((x)=>!pSet.has(String(x||'').toLowerCase()));
+
+    const merged = Array.from(new Set([...existing, ...p]));
+    inp.value = merged.join('\n');
+
+    const hint = $('albumMetaOut');
+    if (hint) {
+      hint.innerHTML = `
+        <div class="card" style="margin:8px 0;padding:10px;border:1px dashed #3a4f72;">
+          <div><b>Performer suggestion diff</b></div>
+          <div class="muted" style="margin-top:4px;">Added by suggestion: ${added.length} · Already present: ${merged.length - added.length}</div>
+          ${added.length ? `<div style="margin-top:6px;"><b style="color:#9ef7b2;">New suggested</b><pre style="white-space:pre-wrap;max-height:140px;overflow:auto;">${esc(added.join('\n'))}</pre></div>` : ''}
+          ${existingOnly.length ? `<div style="margin-top:6px;"><b style="color:#ffd28a;">Existing only (not in suggestion)</b><pre style="white-space:pre-wrap;max-height:120px;overflow:auto;">${esc(existingOnly.join('\n'))}</pre></div>` : ''}
+        </div>
+      ` + (hint.innerHTML || '');
+    }
+
+    if (st) st.textContent = `Suggested ${p.length} performer(s). New: ${added.length}.`;
+  } catch (e) {
+    if (st) st.textContent = `Performer suggestion failed: ${e?.message || e}`;
+  }
+}
+
+async function applyPerformers(){
+  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+  const key = ($('key')?.value || '').trim();
+  const folder = String($('albumPick')?.value || '').trim();
+  const inp = $('performersInput');
+  const st = $('albumMetaStatus');
+  const performers = String(inp?.value || '').split(/\r?\n/).map((x)=>x.trim()).filter(Boolean);
+  if (!folder || !performers.length) { if (st) st.textContent = 'Provide at least one performer.'; return; }
+  if (!confirm(`Apply ${performers.length} performer tag(s) to album tracks?`)) return;
+  if (st) st.textContent = 'Applying performers…';
+  try {
+    const r = await fetch(`${apiBase}/config/library-health/album-performers-apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+      body: JSON.stringify({ folder, performers }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    const errN = Array.isArray(j.errors) ? j.errors.length : 0;
+    const firstErr = errN ? ` First error: ${String(j.errors[0]?.error || '')}` : '';
+    if (st) st.textContent = `Performers applied: updated ${j.updated}/${j.total}, skipped ${j.skipped}.${errN ? ` errors: ${errN}.` : ''}${firstErr}`;
+    await loadAlbumMetadata();
+  } catch (e) {
+    if (st) st.textContent = `Apply performers failed: ${e?.message || e}`;
+  }
+}
+
 // ---- Init ----
 const runBtn = $('run');
 if (runBtn) runBtn.addEventListener('click', run);
-$('loadAlbumMeta')?.addEventListener('click', loadAlbumMetadata);
+$('albumPick')?.addEventListener('change', () => loadAlbumMetadata());
+$('suggestPerformersBtn')?.addEventListener('click', suggestPerformers);
+$('applyPerformersBtn')?.addEventListener('click', applyPerformers);
 
-loadRuntimeMeta().finally(() => { run(); loadAlbumOptions(); });
+loadRuntimeMeta().finally(() => { run(); loadAlbumOptions().then(() => loadAlbumMetadata()); });
 })();
