@@ -1073,7 +1073,10 @@ async function restartServicesNow(){
     if (j) log(j);
     else log(`Service restart requested${r.ok ? '.' : ` (HTTP ${r.status})`}`);
   } catch (e) {
-    log(`Service restart requested. Connection interrupted during restart (${String(e?.message || e)}).`);
+    log('Restart requested. The API connection dropped while services were restarting (this is expected). Wait 3–10 seconds, then reload the page.');
+    setTimeout(() => {
+      loadCfg().catch(() => {});
+    }, 5000);
   }
 }
 
