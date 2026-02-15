@@ -21,7 +21,8 @@
     .cfgRow { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .cfgActions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
     .cfgHint { font-size:12px; opacity:.8; }
-    .tripleCards { grid-column: 1 / -1; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px; align-items:start; }
+    .tripleCards { grid-column: 1 / -1; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px; align-items:stretch; }
+    .tripleCards > .cfgCard { height: 100%; }
     .splitCards { grid-column: 1 / -1; display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-items:start; }
     .splitCardsRight { display:grid; gap:14px; align-items:start; }
     @media (max-width: 1100px) {
