@@ -17,6 +17,7 @@
     .cfgField label { display:block; font-size:12px; opacity:.9; margin-bottom:6px; }
     .cfgField input[type=text], .cfgField input[type=password], .cfgField input[type=number] { width:100%; max-width:520px; font-size:14px; line-height:1.2; }
     .cfgField.narrow input[type=number] { max-width: 180px; }
+    .ipField { max-width: 240px !important; }
     #alexaDomain { max-width: 360px; }
     .cfgRow { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .cfgActions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
@@ -103,7 +104,7 @@
                 <div class="cfgRow" style="grid-template-columns: 1fr 180px 180px; align-items:start;">
                   <div class="cfgField">
                     <label for="apiNodeIp">IP of Webserver and API host <span id="apiNodeIpLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
-                    <input id="apiNodeIp" type="text" placeholder="ex. 10.0.0.233" />
+                    <input id="apiNodeIp" class="ipField" type="text" placeholder="ex. 10.0.0.233" />
                     <div class="cfgHint" id="apiNodeIpHint"></div>
                   </div>
                   <div class="cfgField narrow">
@@ -119,7 +120,7 @@
                 <div class="cfgRow" style="grid-template-columns: 1fr 220px; align-items:start;">
                   <div class="cfgField">
                     <label for="mpdHost">MPD host <span id="mpdHostLight" title="MPD host verification" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span> <span id="mpdHostVerifyText" class="cfgHint" style="display:inline;color:#9fb3c8;">not verified</span></label>
-                    <input id="mpdHost" type="text" placeholder="ex. 10.0.0.254" />
+                    <input id="mpdHost" class="ipField" type="text" placeholder="ex. 10.0.0.254" />
                     <div class="cfgHint" id="mpdHostHint"></div>
                   </div>
                   <div class="cfgField narrow">
@@ -131,7 +132,7 @@
                 <div class="cfgRow">
                   <div class="cfgField">
                     <label for="moodeSshHost">moOde SSH host (optional override) <span id="sshHostLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
-                    <input id="moodeSshHost" type="text" placeholder="defaults to MPD host" />
+                    <input id="moodeSshHost" class="ipField" type="text" placeholder="defaults to MPD host" />
                   </div>
                   <div class="cfgField">
                     <label for="moodeSshUser">moOde SSH user <span id="sshUserLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
