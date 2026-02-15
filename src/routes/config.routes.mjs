@@ -1925,6 +1925,105 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
     }
   });
 
+  app.get('/config/library-health/album-tracks', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const folderWanted = String(req.query?.folder || '').trim();
+      if (!folderWanted) return res.status(400).json({ ok: false, error: 'folder is required' });
+
+      const isAudio = (f) => /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|dsf|wv|ape)$/i.test(String(f || ''));
+      const folderOf = (file) => {
+        const s = String(file || '');
+        const i = s.lastIndexOf('/');
+        return i > 0 ? s.slice(0, i) : '(root)';
+      };
+
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const { stdout } = await execFileP(
+        'mpc',
+        ['-h', mpdHost, '-f', '%file%\t%track%\t%title%\t%artist%\t%albumartist%\t%album%\t%date%\t%genre%', 'listall'],
+        { maxBuffer: 64 * 1024 * 1024 }
+      );
+
+      const tracks = [];
+      for (const ln of String(stdout || '').split(/\r?\n/)) {
+        if (!ln) continue;
+        const [file = '', track = '', title = '', artist = '', albumartist = '', album = '', date = '', genre = ''] = ln.split('\t');
+        const f = String(file || '').trim();
+        if (!f || !isAudio(f)) continue;
+        if (folderOf(f) !== folderWanted) continue;
+
+        let rating = 0;
+        try {
+          const raw = await mpdQueryRaw(`sticker get song ${mpdQuote(f)} rating`);
+          const m = String(raw || '').match(/sticker:\s*rating\s*=\s*([0-9]+)/i);
+          rating = m ? (Number(m[1]) || 0) : 0;
+        } catch {}
+
+        tracks.push({
+          file: f,
+          track: String(track || '').trim(),
+          title: String(title || '').trim(),
+          artist: String(artist || albumartist || '').trim(),
+          album: String(album || '').trim(),
+          date: String(date || '').trim(),
+          genre: String(genre || '').trim(),
+          rating,
+        });
+      }
+
+      tracks.sort((a, b) => {
+        const ta = Number.parseInt(String(a.track || '').replace(/[^0-9].*$/, ''), 10);
+        const tb = Number.parseInt(String(b.track || '').replace(/[^0-9].*$/, ''), 10);
+        if (Number.isFinite(ta) && Number.isFinite(tb) && ta !== tb) return ta - tb;
+        return `${a.artist} ${a.title}`.localeCompare(`${b.artist} ${b.title}`, undefined, { sensitivity: 'base' });
+      });
+
+      return res.json({ ok: true, folder: folderWanted, count: tracks.length, tracks });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/diagnostics/playback', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const action = String(req.body?.action || '').trim().toLowerCase();
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const map = { play: 'play', pause: 'pause', toggle: 'toggle', next: 'next', prev: 'prev', stop: 'stop' };
+      const cmd = map[action];
+      if (!cmd) return res.status(400).json({ ok: false, error: 'Invalid action' });
+      await execFileP('mpc', ['-h', mpdHost, cmd]);
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+      return res.json({ ok: true, action, status: String(stdout || '') });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/diagnostics/queue', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%position%\t%artist%\t%title%\t%album%\t%file%', 'playlist']);
+      const items = String(stdout || '').split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean).map((ln) => {
+        const [position = '', artist = '', title = '', album = '', file = ''] = ln.split('\t');
+        const f = String(file || '').trim();
+        return {
+          position: Number(position || 0),
+          artist: String(artist || '').trim(),
+          title: String(title || '').trim(),
+          album: String(album || '').trim(),
+          file: f,
+          thumbUrl: f ? `/art/track_640.jpg?file=${encodeURIComponent(f)}` : '',
+        };
+      });
+      return res.json({ ok: true, count: items.length, items });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.get('/config/library-health/genre-folders', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

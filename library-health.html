@@ -64,6 +64,17 @@
     </div>
     <input id="apiBase" type="hidden" value="" />
     <input id="key" type="hidden" value="" />
+
+    <div class="card">
+      <h3 style="margin:0 0 8px;">Album metadata inspector</h3>
+      <div class="row">
+        <select id="albumPick" style="min-width:360px;max-width:100%;"></select>
+        <button id="loadAlbumMeta" type="button">Load track metadata</button>
+        <span class="muted" id="albumMetaStatus"></span>
+      </div>
+      <div id="albumMetaOut" style="margin-top:8px;"></div>
+    </div>
+
     <div class="cards" id="cards"></div>
     <div id="sections"></div>
   </div>

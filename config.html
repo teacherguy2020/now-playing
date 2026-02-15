@@ -818,6 +818,7 @@ async function loadCfg(){
 
   log({ ok:true, configPath:j.configPath, loadedAt:new Date().toISOString() });
   await loadRatingsBackups();
+  await checkRuntimeEnv(true).catch(() => {});
   markConfigSaved();
 }
 
@@ -1111,7 +1112,7 @@ async function restoreRatingsDb(){
   }
 }
 
-async function checkRuntimeEnv(){
+async function checkRuntimeEnv(silent = false){
   const key = getTrackKey();
   const statusEl = document.getElementById('runtimeCheckStatus');
   const detailsEl = document.getElementById('runtimeCheckDetails');
@@ -1131,8 +1132,8 @@ async function checkRuntimeEnv(){
   };
 
   if (btn) btn.disabled = true;
-  if (statusEl) statusEl.textContent = 'Checking SSH/MPD/paths…';
-  if (detailsEl) detailsEl.innerHTML = '';
+  if (!silent && statusEl) statusEl.textContent = 'Checking SSH/MPD/paths…';
+  if (!silent && detailsEl) detailsEl.innerHTML = '';
   try {
     const r = await fetch(`${API_BASE}/config/runtime/check-env`, {
       method:'POST',
@@ -1147,9 +1148,9 @@ async function checkRuntimeEnv(){
     const bad = (j.pathChecks || []).filter((x) => !x.exists).length;
     runtimeReady = !!(j.sshOk && j.mpdOk);
     applyRuntimeGate();
-    if (statusEl) statusEl.textContent = `${ssh} · ${mpd} · Paths ${bad ? `⚠️ ${bad} missing` : '✅'}`;
+    if (!silent && statusEl) statusEl.textContent = `${ssh} · ${mpd} · Paths ${bad ? `⚠️ ${bad} missing` : '✅'}`;
 
-    if (detailsEl) {
+    if (!silent && detailsEl) {
       const rows = Array.isArray(j.pathChecks) ? j.pathChecks : [];
       const podcastsEnabled = !!document.getElementById('featurePodcasts')?.checked;
       const podcastRow = rows.find((x) => x && x.name === 'podcastRoot');
@@ -1172,7 +1173,7 @@ async function checkRuntimeEnv(){
   } catch (e) {
     runtimeReady = false;
     applyRuntimeGate();
-    if (statusEl) statusEl.textContent = `❌ Runtime check failed: ${String(e?.message || e)}`;
+    if (!silent && statusEl) statusEl.textContent = `❌ Runtime check failed: ${String(e?.message || e)}`;
   } finally {
     if (btn) btn.disabled = false;
   }

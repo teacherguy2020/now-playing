@@ -1006,9 +1006,58 @@
     }
   }
 
-  // ---- Init ----
-  const runBtn = $('run');
-  if (runBtn) runBtn.addEventListener('click', run);
+  async function loadAlbumOptions(){
+  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+  const key = ($('key')?.value || '').trim();
+  const sel = $('albumPick');
+  const st = $('albumMetaStatus');
+  if (!sel) return;
+  sel.innerHTML = '<option>Loading albums…</option>';
+  try {
+    const r = await fetch(`${apiBase}/config/library-health/albums`, { headers: { 'x-track-key': key } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    const albums = Array.isArray(j.albums) ? j.albums : [];
+    sel.innerHTML = albums.length
+      ? albums.map((a) => `<option value="${esc(a.folder)}">${esc(a.label)} (${Number(a.trackCount||0)})</option>`).join('')
+      : '<option value="">(no albums found)</option>';
+    if (st) st.textContent = albums.length ? `${albums.length} album(s)` : 'No albums.';
+  } catch (e) {
+    sel.innerHTML = '<option value="">(failed to load albums)</option>';
+    if (st) st.textContent = `Album load failed: ${e?.message || e}`;
+  }
+}
 
-  loadRuntimeMeta().finally(() => run());
+async function loadAlbumMetadata(){
+  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+  const key = ($('key')?.value || '').trim();
+  const folder = String($('albumPick')?.value || '').trim();
+  const out = $('albumMetaOut');
+  const st = $('albumMetaStatus');
+  if (!folder || !out) return;
+  if (st) st.textContent = 'Loading metadata…';
+  try {
+    const r = await fetch(`${apiBase}/config/library-health/album-tracks?folder=${encodeURIComponent(folder)}`, { headers: { 'x-track-key': key } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    const rows = Array.isArray(j.tracks) ? j.tracks : [];
+    out.innerHTML = rows.length ? `
+      <table>
+        <thead><tr><th>#</th><th>Title</th><th>Artist</th><th>Album</th><th>Date</th><th>Genre</th><th>Rating</th><th>File</th></tr></thead>
+        <tbody>${rows.map((x)=>`<tr><td>${esc(x.track||'')}</td><td>${esc(x.title||'')}</td><td>${esc(x.artist||'')}</td><td>${esc(x.album||'')}</td><td>${esc(x.date||'')}</td><td>${esc(x.genre||'')}</td><td>${Number(x.rating||0)}</td><td>${esc(x.file||'')}</td></tr>`).join('')}</tbody>
+      </table>
+    ` : '<div class="muted">No tracks in this album folder.</div>';
+    if (st) st.textContent = `${rows.length} track(s)`;
+  } catch (e) {
+    out.innerHTML = '';
+    if (st) st.textContent = `Metadata load failed: ${e?.message || e}`;
+  }
+}
+
+// ---- Init ----
+const runBtn = $('run');
+if (runBtn) runBtn.addEventListener('click', run);
+$('loadAlbumMeta')?.addEventListener('click', loadAlbumMetadata);
+
+loadRuntimeMeta().finally(() => { run(); loadAlbumOptions(); });
 })();

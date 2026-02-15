@@ -78,6 +78,19 @@
     </div>
 
     <div class="card">
+      <div class="muted" style="margin-bottom:8px;">Playback controls + current queue</div>
+      <div class="row" style="margin-bottom:8px;align-items:center;">
+        <button id="playBtn" type="button">Play</button>
+        <button id="pauseBtn" type="button">Pause</button>
+        <button id="toggleBtn" type="button">Toggle</button>
+        <button id="prevBtn" type="button">Prev</button>
+        <button id="nextBtn" type="button">Next</button>
+        <button id="reloadQueueBtn" type="button">Reload queue</button>
+      </div>
+      <div id="queueWrap" style="max-height:280px;overflow:auto;border:1px solid #2a3a58;border-radius:10px;padding:8px;background:#071021;"></div>
+    </div>
+
+    <div class="card">
       <div class="muted" style="margin-bottom:8px;">Live now-playing view (index.html)</div>
       <div class="row" style="margin-bottom:8px;align-items:center;">
         <button id="reloadLiveBtn" type="button">Reload live view</button>

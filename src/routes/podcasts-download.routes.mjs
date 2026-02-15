@@ -6,6 +6,17 @@ import { execFile } from 'node:child_process';
 import { MPD_HOST, MPD_PORT, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
 
 export function registerPodcastDownloadRoutes(app, deps) {
+  const NIGHTLY_STATE_PATH = process.env.PODCASTS_NIGHTLY_STATE_PATH || '/tmp/now-playing-podcasts-nightly.json';
+  const readNightlyState = async () => {
+    try { return JSON.parse(await fsp.readFile(NIGHTLY_STATE_PATH, 'utf8')); } catch { return {}; }
+  };
+  const writeNightlyState = async (patch) => {
+    const prev = await readNightlyState();
+    const next = { ...prev, ...patch, updatedAt: new Date().toISOString() };
+    await fsp.writeFile(NIGHTLY_STATE_PATH, JSON.stringify(next, null, 2), 'utf8');
+    return next;
+  };
+
   const {
     normUrl,
     readSubs,
@@ -28,6 +39,67 @@ export function registerPodcastDownloadRoutes(app, deps) {
     buildPodcastMapFromLocalItems,
     buildLocalPlaylistForRss,
   } = deps;
+
+  app.get('/podcasts/nightly-status', async (_req, res) => {
+    try {
+      const state = await readNightlyState();
+      return res.json({ ok: true, state });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/podcasts/nightly-retention', async (req, res) => {
+    try {
+      const enabled = !!req.body?.enabled;
+      const days = Math.max(1, Math.min(3650, Number(req.body?.days || 30)));
+      const state = await writeNightlyState({ retentionEnabled: enabled, retentionDays: days });
+      return res.json({ ok: true, state });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/podcasts/cleanup-older-than', async (req, res) => {
+    try {
+      const days = Math.max(1, Math.min(3650, Number(req.body?.days || 30)));
+      const cutoff = Date.now() - days * 86400000;
+      const subs = readSubs();
+      let scanned = 0;
+      let deleted = 0;
+      const exts = new Set(['.mp3', '.m4a', '.aac', '.ogg', '.flac', '.wav', '.mp4']);
+      for (const sub of subs) {
+        const dir = String(sub?.dir || '').trim();
+        if (!dir) continue;
+        let names = [];
+        try { names = await fsp.readdir(dir); } catch { continue; }
+        for (const name of names) {
+          const ext = path.extname(name).toLowerCase();
+          if (!exts.has(ext)) continue;
+          const full = path.join(dir, name);
+          try {
+            const st = await fsp.stat(full);
+            if (!st.isFile()) continue;
+            scanned += 1;
+            if ((st.mtimeMs || 0) < cutoff) {
+              await fsp.unlink(full).catch(() => {});
+              deleted += 1;
+            }
+          } catch {}
+        }
+      }
+      const state = await writeNightlyState({
+        lastRunAt: new Date().toISOString(),
+        lastRunType: 'cleanup-older-than',
+        retentionDays: days,
+        lastRunScanned: scanned,
+        lastRunDeleted: deleted,
+      });
+      return res.json({ ok: true, days, scanned, deleted, state });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
 
   app.post('/podcasts/build-playlist', async (req, res) => {
     try {

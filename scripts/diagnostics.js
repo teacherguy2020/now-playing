@@ -15,6 +15,7 @@
     { name: 'Ratings sticker status', method: 'GET', path: '/config/ratings/sticker-status' },
     { name: 'Ratings sticker backups', method: 'GET', path: '/config/ratings/sticker-backups' },
     { name: 'Library health (sample)', method: 'GET', path: '/config/library-health?sampleLimit=25' },
+    { name: 'Diagnostics queue', method: 'GET', path: '/config/diagnostics/queue' },
 
     // Helper POST checks
     { name: 'Runtime check env (POST)', method: 'POST', path: '/config/runtime/check-env', body: { mpdHost: '', mpdPort: 6600, sshHost: '', sshUser: 'moode', paths: {} } },
@@ -82,6 +83,7 @@
       $('alexaHint').textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
       setPillState('apiPill','ok'); setPillState('webPill','ok'); setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
       refreshLiveFrame(uiPort);
+      loadQueue();
     } catch {
       $('apiBase').value = apiBaseDefault();
       $('apiHint').textContent = $('apiBase').value.replace(/^https?:\/\//,'');
@@ -89,6 +91,42 @@
       $('alexaHint').textContent = 'unknown';
       setPillState('apiPill','bad'); setPillState('webPill','warn'); setPillState('alexaPill','warn');
       refreshLiveFrame(8101);
+      loadQueue();
+    }
+  }
+
+  async function sendPlayback(action){
+    const base = String($('apiBase').value || apiBaseDefault()).replace(/\/$/,'');
+    const key = String($('key').value || '').trim();
+    const r = await fetch(`${base}/config/diagnostics/playback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+      body: JSON.stringify({ action }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    $('status').textContent = `Playback: ${action}`;
+    await loadQueue();
+  }
+
+  async function loadQueue(){
+    const base = String($('apiBase').value || apiBaseDefault()).replace(/\/$/,'');
+    const key = String($('key').value || '').trim();
+    const wrap = $('queueWrap');
+    if (!wrap) return;
+    wrap.innerHTML = 'Loading queue…';
+    try {
+      const r = await fetch(`${base}/config/diagnostics/queue`, { headers: { 'x-track-key': key } });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      const items = Array.isArray(j.items) ? j.items : [];
+      if (!items.length) { wrap.innerHTML = '<div class="muted">Queue is empty.</div>'; return; }
+      wrap.innerHTML = items.slice(0, 80).map((x) => {
+        const thumb = x.thumbUrl ? `<img src="${x.thumbUrl}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />` : '<div style="width:36px;height:36px"></div>';
+        return `<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px dashed #233650;">${thumb}<div style="min-width:0"><div><b>${String(x.position||0)}</b>. ${String(x.artist||'')}</div><div class="muted">${String(x.title||'')} ${x.album?`• ${String(x.album)}`:''}</div></div></div>`;
+      }).join('');
+    } catch (e) {
+      wrap.innerHTML = `<div class="muted">Queue load failed: ${e?.message || e}</div>`;
     }
   }
 
@@ -166,6 +204,12 @@
   $('runBtn').addEventListener('click', () => run());
   $('reloadLiveBtn')?.addEventListener('click', () => loadRuntime());
   $('liveZoom')?.addEventListener('input', applyLiveZoom);
+  $('reloadQueueBtn')?.addEventListener('click', () => loadQueue());
+  $('playBtn')?.addEventListener('click', () => sendPlayback('play').catch((e)=>$('status').textContent=String(e?.message||e)));
+  $('pauseBtn')?.addEventListener('click', () => sendPlayback('pause').catch((e)=>$('status').textContent=String(e?.message||e)));
+  $('toggleBtn')?.addEventListener('click', () => sendPlayback('toggle').catch((e)=>$('status').textContent=String(e?.message||e)));
+  $('prevBtn')?.addEventListener('click', () => sendPlayback('prev').catch((e)=>$('status').textContent=String(e?.message||e)));
+  $('nextBtn')?.addEventListener('click', () => sendPlayback('next').catch((e)=>$('status').textContent=String(e?.message||e)));
   async function copyResponse(){
     try { await navigator.clipboard.writeText($('out').textContent || ''); $('status').textContent = 'Response copied.'; }
     catch { $('status').textContent = 'Copy failed.'; }

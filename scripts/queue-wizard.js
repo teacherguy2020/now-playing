@@ -305,6 +305,7 @@ async function syncVibeAvailability() {
     }
   }
 
+  const MAX_TRACKS_STORAGE = 'nowplaying.queuewizard.maxTracks';
   function getMaxTracks() {
     const n = Number($('maxTracks')?.value || 25);
     return Number.isFinite(n) ? n : 25;
@@ -412,9 +413,9 @@ async function syncVibeAvailability() {
   function ensureResultsTable() {
     if (!resultsEl) return null;
     resultsEl.innerHTML =
-      `<table>
+      `<table style="font-size:14px;">
         <thead>
-          <tr><th>Artist</th><th>Title</th><th>Album</th><th>Genre</th></tr>
+          <tr><th>Art</th><th>Artist</th><th>Title</th><th>Album</th><th>Genre</th></tr>
         </thead>
         <tbody id="resultsBody"></tbody>
       </table>`;
@@ -424,7 +425,10 @@ async function syncVibeAvailability() {
   function appendRow(t, tbody) {
     if (!tbody) return;
     const tr = document.createElement('tr');
+    const file = String(t.file || '').trim();
+    const art = file ? `${getApiBase()}/art/track_640.jpg?file=${encodeURIComponent(file)}` : '';
     tr.innerHTML =
+      `<td>${art ? `<img src="${art}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #334;background:#0a1222;" />` : ''}</td>` +
       `<td>${esc(t.artist || '')}</td>` +
       `<td>${esc(t.title || '')}</td>` +
       `<td>${esc(t.album || '')}</td>` +
@@ -697,6 +701,9 @@ async function doVibeBuild() {
     }
 
     vibeJobId = String(startJson.jobId);
+    const seedArtist = String(startJson.seedArtist || '').trim();
+    const seedTitle = String(startJson.seedTitle || '').trim();
+    if (vibeProgressDetail) vibeProgressDetail.textContent = `Seed: ${seedArtist}${seedArtist && seedTitle ? ' — ' : ''}${seedTitle}`;
 
     const poll = async () => {
       const r = await fetch(`${apiBase}/config/queue-wizard/vibe-status/${encodeURIComponent(vibeJobId)}?since=${encodeURIComponent(vibeSince)}`, {
@@ -945,6 +952,14 @@ async function maybeGenerateCollagePreview(reason = '') {
     showSendConfirmation._t = setTimeout(() => {
       if (sendConfirmEl.textContent === msg) sendConfirmEl.textContent = '';
     }, 5000);
+
+    try {
+      if (!msg) return;
+      if (!('Notification' in window)) return;
+      const fire = () => new Notification('Queue Wizard', { body: msg });
+      if (Notification.permission === 'granted') fire();
+      else if (Notification.permission === 'default') Notification.requestPermission().then((p) => { if (p === 'granted') fire(); }).catch(() => {});
+    } catch {}
   }
 
   function syncSavePlaylistButton() {
@@ -1163,11 +1178,13 @@ function wireEvents() {
     if (!el) return;
     el.addEventListener('change', () => {
       if (id === 'apiBase') syncVibeAvailability();
+      if (id === 'maxTracks') localStorage.setItem(MAX_TRACKS_STORAGE, String(getMaxTracks()));
       maybePreview();
     });
     if (el.tagName === 'INPUT') {
       el.addEventListener('input', () => {
         if (id === 'apiBase') syncVibeAvailability();
+        if (id === 'maxTracks') localStorage.setItem(MAX_TRACKS_STORAGE, String(getMaxTracks()));
         maybePreview();
       });
     }
@@ -1177,6 +1194,8 @@ function wireEvents() {
 // ---- Init ----
 try {
   if ($('apiBase') && !$('apiBase').value.trim()) $('apiBase').value = defaultApiBase();
+  const savedMax = Number(localStorage.getItem(MAX_TRACKS_STORAGE) || '');
+  if ($('maxTracks') && Number.isFinite(savedMax) && savedMax > 0) $('maxTracks').value = String(savedMax);
 
   clearResults();
   setCount('No list yet.');

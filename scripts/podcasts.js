@@ -11,6 +11,11 @@ console.log('PODCASTS_UI_VERSION', '2026-02-09_1');
 
   const btnSub     = document.getElementById('btnSub');
   const btnRefresh = document.getElementById('btnRefresh');
+  const nightlyStatusEl = document.getElementById('nightlyStatus');
+  const retentionEnabledEl = document.getElementById('retentionEnabled');
+  const retentionDaysEl = document.getElementById('retentionDays');
+  const saveRetentionBtn = document.getElementById('saveRetentionBtn');
+  const runCleanupBtn = document.getElementById('runCleanupBtn');
 
   let API_BASE = (() => {
     const q = new URLSearchParams(window.location.search);
@@ -736,6 +741,35 @@ async function loadEpisodes() {
     });
   }
 
+  async function loadNightlyStatus(){
+    if (!nightlyStatusEl) return;
+    try {
+      const j = await apiGet('/podcasts/nightly-status');
+      const st = j.state || {};
+      if (retentionEnabledEl) retentionEnabledEl.checked = !!st.retentionEnabled;
+      if (retentionDaysEl && Number(st.retentionDays || 0) > 0) retentionDaysEl.value = String(Number(st.retentionDays));
+      const when = st.lastRunAt ? new Date(st.lastRunAt).toLocaleString() : 'never';
+      nightlyStatusEl.textContent = `Nightly cron: last run ${when}${st.lastRunType ? ` • ${st.lastRunType}` : ''}${Number.isFinite(Number(st.lastRunDeleted)) ? ` • deleted ${Number(st.lastRunDeleted)}` : ''}`;
+    } catch (e) {
+      nightlyStatusEl.textContent = `Nightly cron status unavailable: ${e.message || e}`;
+    }
+  }
+
+  async function saveNightlyRetention(){
+    const enabled = !!retentionEnabledEl?.checked;
+    const days = Math.max(1, Number(retentionDaysEl?.value || 30));
+    await apiPost('/podcasts/nightly-retention', { enabled, days });
+    await loadNightlyStatus();
+    setStatus('Nightly retention settings saved.', 'ok');
+  }
+
+  async function runCleanupNow(){
+    const days = Math.max(1, Number(retentionDaysEl?.value || 30));
+    const j = await apiPost('/podcasts/cleanup-older-than', { days });
+    await loadNightlyStatus();
+    setStatus(`Cleanup done: deleted ${Number(j.deleted || 0)} file(s).`, 'ok');
+  }
+
   async function boot() {
     setBusy(true);
     try {
@@ -762,6 +796,8 @@ async function loadEpisodes() {
   // Hero actions
   // =========================
   btnRefresh.addEventListener('click', boot);
+  saveRetentionBtn?.addEventListener('click', () => saveNightlyRetention().catch((e) => setStatus(`Error: ${e.message || e}`, 'err')));
+  runCleanupBtn?.addEventListener('click', () => runCleanupNow().catch((e) => setStatus(`Error: ${e.message || e}`, 'err')));
 
   btnSub.addEventListener('click', async () => {
     const rss = rssEl.value.trim();
@@ -800,4 +836,4 @@ async function loadEpisodes() {
     }
   });
 
-  loadRuntimeHints().finally(() => boot());
+  loadRuntimeHints().finally(() => { boot(); loadNightlyStatus(); });
