@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     .cfgWrap { max-width: 1100px; margin: 0 auto; padding: 10px 16px 36px; }
-    .cfgGrid { display:grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
+    .cfgGrid { display:grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap:14px; align-items:start; }
     .cfgCard { background: rgba(15,20,26,.7); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:14px; }
 .cfgCard.blocked { opacity:.45; filter:grayscale(.35); }
 .cfgCard.blocked * { pointer-events:none !important; }
@@ -148,16 +148,12 @@
                   <label for="pathMoodeUsbMount">1) Path on moOde (media mount)</label>
                   <input id="pathMoodeUsbMount" type="text" placeholder="ex. /media/NAMEOFYOURDRIVE" />
                 </div>
-                <div class="cfgHint">Typing in (1) auto-fills (2) and (3).</div>
+                <div class="cfgHint">Typing in (1) auto-fills path (2). Podcast path is in the Podcasts card.</div>
                 <div class="cfgField">
                   <label for="pathPiMountBase">2) Path on API host (mount base)</label>
                   <input id="pathPiMountBase" type="text" placeholder="ex. /mnt/NAMEOFYOURDRIVE" />
                 </div>
-                <div class="cfgField" id="podcastRootFieldWrap">
-                  <label for="pathPodcastRoot">3) Podcast root on API host</label>
-                  <input id="pathPodcastRoot" type="text" placeholder="ex. /var/lib/mpd/music/Podcasts" />
-                  <div class="cfgHint" id="podcastRootHint">Used only when Podcasts feature is enabled.</div>
-                </div>
+                <!-- podcast root moved to Podcasts card -->
                 <div class="cfgActions" style="margin-top:6px;">
                   <button class="btn" id="checkRuntimeBtn" type="button">Check SSH + Paths</button>
                 </div>
@@ -165,19 +161,24 @@
                 <div id="runtimeCheckDetails" class="cfgHint" style="margin-top:6px;"></div>
               </div>
 
-              <div class="cfgCard gateCard">
+              <div class="cfgCard gateCard" id="podcastsCard" style="grid-column: 1 / -1;">
                 <h3>Podcasts</h3>
                 <div class="cfgField"><label><input id="featurePodcasts" type="checkbox" /> Enabled</label></div>
+                <div class="cfgField" id="podcastRootFieldWrap">
+                  <label for="pathPodcastRoot">Podcast root on API host</label>
+                  <input id="pathPodcastRoot" type="text" placeholder="ex. /var/lib/mpd/music/Podcasts" />
+                  <div class="cfgHint" id="podcastRootHint">Used only when Podcasts feature is enabled.</div>
+                </div>
                 <div class="cfgHint">Enable podcast pages and background download/subscription tools.</div>
               </div>
 
-              <div class="cfgCard gateCard">
+              <div class="cfgCard gateCard" style="grid-column: 1 / -1;">
                 <h3>Radio Artwork</h3>
                 <div class="cfgField"><label><input id="featureRadio" type="checkbox" /> Enabled</label></div>
                 <div class="cfgHint">Enable radio per-track artwork behavior in now-playing flows.</div>
               </div>
 
-              <div class="cfgCard gateCard" id="lastfmCard">
+              <div class="cfgCard gateCard" id="lastfmCard" style="grid-column: 1 / -1;">
                 <h3>Last.fm (Vibe)</h3>
                 <div class="cfgField"><label><input id="featureLastfm" type="checkbox" /> Enabled</label></div>
                 <div class="cfgField">
