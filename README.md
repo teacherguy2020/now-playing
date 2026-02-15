@@ -24,17 +24,6 @@ A moOde-focused now-playing API + UI stack with podcast management, queue contro
 - `CONFIG.md` – config details
 - `INSTALLER_PLAN.md` – installer roadmap
 
-## Quick start
-
-```bash
-npm ci
-cp config/now-playing.config.example.json config/now-playing.config.json
-# edit config/now-playing.config.json
-node moode-nowplaying-api.mjs
-```
-
-API default: `http://<host>:3101`
-
 ## Installer (systemd Linux)
 
 For host installs (intended GitHub invocation path):
