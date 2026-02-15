@@ -89,7 +89,7 @@ High-level flow:
 - Alexa intent handlers call the now-playing API (`API_BASE`) with your `TRACK_KEY`.
 - The API is the single source of truth for selection/queue logic and returns the resolved track/path metadata to Alexa.
 - Alexa playback is file-based from the resolved path/URL; it is **not** a live audio stream from the MPD queue.
-- Starting Alexa playback does not mean moOde is simultaneously outputting the same audio at the same time.
+- Alexa playback is intended for use while in a different room than your moOde pi. Therefore moOde (MPD) does not play when the skill is in use. 
 - Alexa responses are conversational wrappers around those API outcomes.
 
 Queue-first behavior (prepped queue):
