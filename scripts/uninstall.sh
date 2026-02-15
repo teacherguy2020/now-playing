@@ -5,6 +5,8 @@ APP_NAME="now-playing"
 DEFAULT_INSTALL_DIR="/opt/${APP_NAME}"
 SERVICE_NAME="${APP_NAME}.service"
 SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}"
+WEB_SERVICE_NAME="${APP_NAME}-web.service"
+WEB_SERVICE_PATH="/etc/systemd/system/${WEB_SERVICE_NAME}"
 
 INSTALL_DIR="${DEFAULT_INSTALL_DIR}"
 PURGE="false"
@@ -59,7 +61,9 @@ if [[ "$YES" != "true" ]]; then
   echo
   echo "This will uninstall ${APP_NAME}."
   echo "- service: ${SERVICE_NAME}"
+  echo "- service: ${WEB_SERVICE_NAME}"
   echo "- service file: ${SERVICE_PATH}"
+  echo "- service file: ${WEB_SERVICE_PATH}"
   if [[ "$PURGE" == "true" ]]; then
     echo "- install dir will be removed: ${INSTALL_DIR}"
   else
@@ -73,18 +77,22 @@ if [[ "$YES" != "true" ]]; then
   esac
 fi
 
-log "Stopping/disabling service (if present)"
-if ${SUDO} systemctl list-unit-files | grep -q "^${SERVICE_NAME}"; then
-  ${SUDO} systemctl stop "${SERVICE_NAME}" || true
-  ${SUDO} systemctl disable "${SERVICE_NAME}" || true
-else
-  log "Service unit not registered: ${SERVICE_NAME}"
-fi
+log "Stopping/disabling services (if present)"
+for svc in "${SERVICE_NAME}" "${WEB_SERVICE_NAME}"; do
+  if ${SUDO} systemctl list-unit-files | grep -q "^${svc}"; then
+    ${SUDO} systemctl stop "${svc}" || true
+    ${SUDO} systemctl disable "${svc}" || true
+  else
+    log "Service unit not registered: ${svc}"
+  fi
+done
 
-if [[ -f "${SERVICE_PATH}" ]]; then
-  log "Removing service file"
-  ${SUDO} rm -f "${SERVICE_PATH}"
-fi
+for svcPath in "${SERVICE_PATH}" "${WEB_SERVICE_PATH}"; do
+  if [[ -f "${svcPath}" ]]; then
+    log "Removing service file ${svcPath}"
+    ${SUDO} rm -f "${svcPath}"
+  fi
+done
 
 log "Reloading systemd"
 ${SUDO} systemctl daemon-reload
@@ -107,7 +115,9 @@ Uninstall complete.
 
 Removed:
 - ${SERVICE_NAME}
+- ${WEB_SERVICE_NAME}
 - ${SERVICE_PATH}
+- ${WEB_SERVICE_PATH}
 
 Kept:
 - ${INSTALL_DIR} (unless --purge was used)

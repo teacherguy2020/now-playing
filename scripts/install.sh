@@ -39,6 +39,23 @@ require_bin() {
   command -v "$1" >/dev/null 2>&1 || { err "Missing required binary: $1"; exit 1; }
 }
 
+wait_for_url() {
+  local url="$1"
+  local label="$2"
+  local tries="${3:-20}"
+  local sleep_s="${4:-1}"
+  local i
+  for ((i=1; i<=tries; i++)); do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      log "OK ${label}"
+      return 0
+    fi
+    sleep "$sleep_s"
+  done
+  err "FAIL ${label}"
+  return 1
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --mode)
@@ -146,11 +163,20 @@ TRACK_KEY=
 MOODE_BASE_URL=
 PUBLIC_TRACK_BASE=
 ART_MODE=track
+ART_CACHE_DIR=${INSTALL_DIR}/var/art-cache
+TRACK_CACHE_DIR=${INSTALL_DIR}/var/track-cache
+PODCAST_DL_LOG=${INSTALL_DIR}/var/podcasts/downloads.ndjson
 EOF
 fi
 
+log "Ensuring writable runtime cache directories"
+${SUDO} mkdir -p "${INSTALL_DIR}/var/art-cache" "${INSTALL_DIR}/var/track-cache" "${INSTALL_DIR}/var/podcasts"
+${SUDO} chown -R "${INSTALL_USER}":"${INSTALL_USER}" "${INSTALL_DIR}/var"
+
 SERVICE_NAME="${APP_NAME}.service"
 SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}"
+WEB_SERVICE_NAME="${APP_NAME}-web.service"
+WEB_SERVICE_PATH="/etc/systemd/system/${WEB_SERVICE_NAME}"
 
 log "Writing systemd unit: ${SERVICE_PATH}"
 cat <<EOF | ${SUDO} tee "${SERVICE_PATH}" >/dev/null
@@ -171,15 +197,34 @@ User=${INSTALL_USER}
 WantedBy=multi-user.target
 EOF
 
-log "Reloading and starting service"
+log "Writing systemd unit: ${WEB_SERVICE_PATH}"
+cat <<EOF | ${SUDO} tee "${WEB_SERVICE_PATH}" >/dev/null
+[Unit]
+Description=Now Playing Web UI
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=${INSTALL_DIR}
+ExecStart=/usr/bin/env python3 -m http.server ${WEB_PORT}
+Restart=always
+RestartSec=2
+User=${INSTALL_USER}
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+log "Reloading and starting services"
 ${SUDO} systemctl daemon-reload
 ${SUDO} systemctl enable --now "${SERVICE_NAME}"
+${SUDO} systemctl enable --now "${WEB_SERVICE_NAME}"
 
 log "Smoke checks"
 set +e
-curl -fsS "http://127.0.0.1:${PORT}/healthz" >/dev/null && log "OK /healthz" || err "FAIL /healthz"
-curl -fsS "http://127.0.0.1:${PORT}/now-playing" >/dev/null && log "OK /now-playing" || err "FAIL /now-playing"
-curl -fsS "http://127.0.0.1:${PORT}/art/current.jpg" >/dev/null && log "OK /art/current.jpg" || err "FAIL /art/current.jpg"
+wait_for_url "http://127.0.0.1:${PORT}/now-playing" "/now-playing"
+wait_for_url "http://127.0.0.1:${PORT}/art/current.jpg" "/art/current.jpg"
+wait_for_url "http://127.0.0.1:${WEB_PORT}/config.html" "web /config.html"
 set -e
 
 HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
@@ -197,5 +242,9 @@ Next steps:
    - local:  http://127.0.0.1:${WEB_PORT}/config.html
    - LAN:    http://${HOST_IP}:${WEB_PORT}/config.html
 5) In Config, run "Check SSH + Paths" and verify green checks.
+6) If SSH checks fail, create key-based access from this host to moOde:
+   ssh-keygen -t ed25519 -C "now-playing-api"
+   ssh-copy-id moode@<moode-ip>
+   ssh moode@<moode-ip> 'echo SSH_OK'
 
 EOF

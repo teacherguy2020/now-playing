@@ -61,12 +61,12 @@ export const ITUNES_TIMEOUT_MS = Number(process.env.ITUNES_TIMEOUT_MS || '2500')
 export const ITUNES_TTL_HIT_MS = 1000 * 60 * 60 * 12;
 export const ITUNES_TTL_MISS_MS = 1000 * 60 * 10;
 
-export const ART_CACHE_DIR = process.env.ART_CACHE_DIR || runtimeCfg?.artCacheDir || '/home/brianwis/album_art/art';
+export const ART_CACHE_DIR = process.env.ART_CACHE_DIR || runtimeCfg?.artCacheDir || '/tmp/now-playing/art-cache';
 export const ART_CACHE_LIMIT = Number(process.env.ART_CACHE_LIMIT || runtimeCfg?.artCacheLimit || '250');
 
 export const ART_640_PATH = path.join(ART_CACHE_DIR, 'current_640.jpg');
 export const ART_BG_PATH = path.join(ART_CACHE_DIR, 'current_bg_640_blur.jpg');
-export const PODCAST_DL_LOG = '/home/brianwis/album_art/podcasts/downloads.ndjson';
+export const PODCAST_DL_LOG = process.env.PODCAST_DL_LOG || '/tmp/now-playing/podcasts/downloads.ndjson';
 
 export const MOODE_SSH = process.env.MOODE_SSH || `${MOODE_SSH_USER}@${MOODE_SSH_HOST}`;
 export const FAVORITES_M3U = process.env.FAVORITES_M3U || '/var/lib/mpd/playlists/Favorites.m3u';
