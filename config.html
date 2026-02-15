@@ -16,6 +16,7 @@
     .cfgField { margin: 10px 0; }
     .cfgField label { display:block; font-size:12px; opacity:.9; margin-bottom:6px; }
     .cfgField input[type=text], .cfgField input[type=password], .cfgField input[type=number] { width:100%; }
+    .cfgField.narrow input[type=number] { max-width: 180px; }
     .cfgRow { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .cfgActions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
     .cfgHint { font-size:12px; opacity:.8; }
@@ -89,11 +90,11 @@
                 <h3>Network & Runtime</h3>
                 <div class="cfgHint" style="margin-bottom:8px;"><strong>Step 1:</strong> Fill this card, then click <strong>Check SSH + Paths</strong> to unlock the other modules.</div>
                 <div class="cfgRow">
-                  <div class="cfgField">
+                  <div class="cfgField narrow">
                     <label for="apiPort">API port <span id="apiPortLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="apiPort" type="number" min="1" max="65535" placeholder="ex. 3101" />
                   </div>
-                  <div class="cfgField">
+                  <div class="cfgField narrow">
                     <label for="uiPort">UI port <span id="uiPortLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="uiPort" type="number" min="1" max="65535" placeholder="ex. 8101" />
                   </div>
@@ -110,7 +111,7 @@
                     <input id="mpdHost" type="text" placeholder="ex. 10.0.0.254" />
                     <div class="cfgHint" id="mpdHostHint"></div>
                   </div>
-                  <div class="cfgField">
+                  <div class="cfgField narrow">
                     <label for="mpdPort">MPD port <span id="mpdPortLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="mpdPort" type="number" min="1" max="65535" />
                     <div class="cfgHint" id="mpdPortHint"></div>
