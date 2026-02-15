@@ -94,7 +94,7 @@
                     <input id="uiPort" type="number" min="1" max="65535" placeholder="ex. 8101" />
                   </div>
                 </div>
-                <div class="cfgHint">Defaults are API <code>3101</code> and UI <code>8101</code>. Set here only if you want to override for your environment.</div>
+                <div class="cfgHint">Defaults are API <code>3101</code>, UI <code>8101</code>, and MPD port <code>6600</code>. Host fields are auto-prefilled from this page host and <code>moode.local</code> when possible.</div>
                 <div class="cfgField">
                   <label for="apiNodeIp">IP of Webserver and API host</label>
                   <input id="apiNodeIp" type="text" placeholder="ex. 10.0.0.233" />
@@ -102,7 +102,7 @@
                 <div class="cfgRow">
                   <div class="cfgField">
                     <label for="mpdHost">MPD host</label>
-                    <input id="mpdHost" type="text" placeholder="ex. 10.0.0.254" />
+                    <input id="mpdHost" type="text" placeholder="ex. moode.local" />
                   </div>
                   <div class="cfgField">
                     <label for="mpdPort">MPD port</label>
@@ -777,10 +777,17 @@ async function loadCfg(){
   document.getElementById('uiPort').value = Number(c.ports?.ui || full.ports?.ui || 8101);
   loadedNodes = Array.isArray(full.nodes) ? full.nodes.slice() : [];
   const node0 = loadedNodes.length ? loadedNodes[0] : {};
-  document.getElementById('apiNodeIp').value = String(node0.ip || '');
-  document.getElementById('mpdHost').value = String(full.mpd?.host || c.mpd?.host || '10.0.0.254');
+  const configuredApiIp = String(node0.ip || '').trim();
+  const apiNodePrefill = (!configuredApiIp || configuredApiIp === '10.0.0.233') ? host : configuredApiIp;
+  document.getElementById('apiNodeIp').value = apiNodePrefill;
+
+  const configuredMpdHost = String(full.mpd?.host || c.mpd?.host || '').trim();
+  const configuredSshHost = String(full.moode?.sshHost || c.moode?.sshHost || '').trim();
+  const mpdHostPrefill = (!configuredMpdHost || configuredMpdHost === '10.0.0.254') ? 'moode.local' : configuredMpdHost;
+  const sshHostPrefill = configuredSshHost || mpdHostPrefill;
+  document.getElementById('mpdHost').value = mpdHostPrefill;
   document.getElementById('mpdPort').value = Number(full.mpd?.port || c.mpd?.port || 6600);
-  document.getElementById('moodeSshHost').value = String(full.moode?.sshHost || c.moode?.sshHost || '');
+  document.getElementById('moodeSshHost').value = sshHostPrefill;
   document.getElementById('moodeSshUser').value = String(full.moode?.sshUser || c.moode?.sshUser || 'moode');
   refreshSshSetupHelp();
   document.getElementById('moodeBaseUrl').value = String(full.moode?.baseUrl || c.moode?.baseUrl || '');

@@ -235,16 +235,19 @@ cat <<EOF
 Install complete.
 
 Next steps:
-1) Edit ${ENV_FILE} values (especially TRACK_KEY and MOODE_BASE_URL).
-2) Restart service after env edits: sudo systemctl restart ${SERVICE_NAME}
-3) Check logs: sudo journalctl -u ${SERVICE_NAME} -f
-4) Open Config UI in browser:
+1) Open Config UI in browser:
    - local:  http://127.0.0.1:${WEB_PORT}/config.html
    - LAN:    http://${HOST_IP}:${WEB_PORT}/config.html
-5) In Config, run "Check SSH + Paths" and verify green checks.
-6) If SSH checks fail, create key-based access from this host to moOde:
+2) In Config, run "Check SSH + Paths" and verify green checks.
+3) If SSH checks fail, create key-based access from this host to moOde:
    ssh-keygen -t ed25519 -C "now-playing-api"
    ssh-copy-id moode@<moode-ip>
    ssh moode@<moode-ip> 'echo SSH_OK'
+4) Advanced/optional: edit ${ENV_FILE} only if you need manual overrides.
+5) Service logs:
+   sudo journalctl -u ${SERVICE_NAME} -f
+   sudo journalctl -u ${WEB_SERVICE_NAME} -f
+
+(After manual env edits, restart with: sudo systemctl restart ${SERVICE_NAME} ${WEB_SERVICE_NAME})
 
 EOF

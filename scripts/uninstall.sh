@@ -109,6 +109,12 @@ else
   log "Keeping install directory (no --purge): ${INSTALL_DIR}"
 fi
 
+if [[ "$PURGE" == "true" ]]; then
+  KEEP_LINE="Removed install directory: ${INSTALL_DIR}"
+else
+  KEEP_LINE="Kept install directory: ${INSTALL_DIR}"
+fi
+
 cat <<EOF
 
 Uninstall complete.
@@ -119,7 +125,6 @@ Removed:
 - ${SERVICE_PATH}
 - ${WEB_SERVICE_PATH}
 
-Kept:
-- ${INSTALL_DIR} (unless --purge was used)
+${KEEP_LINE}
 
 EOF
