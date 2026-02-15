@@ -645,7 +645,6 @@
       async function loadAlbumArt(folder) {
         const f = String(folder || '').trim();
 
-        console.log('aa folder value:', f);
 
         if (!f) {
           if (aaStatus) aaStatus.textContent = 'Pick an album first.';
@@ -658,15 +657,11 @@
         if (aaStatus) aaStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Loading art…';
 
         const url = `${apiBase}/config/library-health/album-art?folder=${encodeURIComponent(f)}`;
-        console.log('aa fetch url:', url);
 
         try {
           const r = await fetch(url, { headers: { 'x-track-key': key } });
-          console.log('aa status:', r.status, r.statusText);
-          console.log('aa content-type:', r.headers.get('content-type'));
 
           const raw = await r.text();
-          console.log('aa raw head:', raw.slice(0, 200));
 
           let jj = null;
           try {

@@ -17,7 +17,7 @@
  * Debug
  * ========================= */
 
-const DEBUG = true;
+const DEBUG = false;
 const dlog = DEBUG ? console.log.bind(console) : () => {};
 const TEST_RADIO_FOOTER_TEXT = false;
 
@@ -125,10 +125,10 @@ const UPNP_ICON_URL    = `${STATIC_BASE}/upnp.png?v=1`;
 // moOde player (LAN-only; used for pause-cover fallback image)
 const MOODE_BASE_URL = 'http://10.0.0.254';
 
-console.log('[NP] host=', location.host, 'IS_PUBLIC=', IS_PUBLIC);
-console.log('[NP] API_BASE=', API_BASE, 'STATIC_BASE=', STATIC_BASE);
-console.log('[NP] NOW_PLAYING_URL=', NOW_PLAYING_URL);
-console.log('[NP] NEXT_UP_URL=', NEXT_UP_URL);
+dlog('[NP] host=', location.host, 'IS_PUBLIC=', IS_PUBLIC);
+dlog('[NP] API_BASE=', API_BASE, 'STATIC_BASE=', STATIC_BASE);
+dlog('[NP] NOW_PLAYING_URL=', NOW_PLAYING_URL);
+dlog('[NP] NEXT_UP_URL=', NEXT_UP_URL);
 
 /* =========================
  * Feature toggles
@@ -419,9 +419,9 @@ function logPhoneControlSizes(reason = '') {
     ctlIconBig: cs.getPropertyValue('--ctl-icon-big').trim(),
   };
 
-  console.groupCollapsed('[Phone UI] Control sizing');
+  DEBUG && console.groupCollapsed('[Phone UI] Control sizing');
   console.table(data);
-  console.groupEnd();
+  DEBUG && console.groupEnd();
 }
 
 window.addEventListener('load', () => {
@@ -728,7 +728,7 @@ async function setCurrentRating(n) {
     const j = await resp.json();
 
     // DEBUG (temporarily): prove what server answered
-    console.log('[rating POST] ->', { sent: r, got: j });
+    dlog('[rating POST] ->', { sent: r, got: j });
 
     // If server refuses/disabled, revert (prevents “disappear then reappear”)
     const file = String(j?.file || '').trim();
@@ -895,19 +895,19 @@ function fetchNowPlaying() {
       currentIsStream  = isStream;
       currentIsPodcast = inferIsPodcast(data);
       if (DEBUG) {
-        console.groupCollapsed('%c[PODCAST DETECT]', 'color:#ff9800;font-weight:bold');
-        console.log('file:', data.file);
-        console.log('genre raw:', data.genre);
-        console.log('genre parsed:', splitGenres(
+        DEBUG && console.groupCollapsed('%c[PODCAST DETECT]', 'color:#ff9800;font-weight:bold');
+        dlog('file:', data.file);
+        dlog('genre raw:', data.genre);
+        dlog('genre parsed:', splitGenres(
           data?.genre ??
           data?.Genre ??
           data?.tags?.genre ??
           data?.metadata?.genre ??
           ''
         ));
-        console.log('server isPodcast flag:', data.isPodcast === true);
-        console.log('👉 inferred isPodcast:', currentIsPodcast);
-        console.groupEnd();
+        dlog('server isPodcast flag:', data.isPodcast === true);
+        dlog('👉 inferred isPodcast:', currentIsPodcast);
+        DEBUG && console.groupEnd();
       }
 
       // ⭐ Single source of truth for stars:
@@ -1991,7 +1991,7 @@ function setFavoriteUI(isFav, file) {
 }
 
 async function onToggleFavorite(ev) {
-  console.log('[fav] onToggleFavorite start');
+  dlog('[fav] onToggleFavorite start');
   ev.preventDefault();
   ev.stopPropagation();
 
@@ -2271,19 +2271,19 @@ function updateUI(data) {
   currentIsPodcast = inferIsPodcast(data);
 
   if (DEBUG) {
-    console.groupCollapsed('%c[PODCAST DETECT]', 'color:#ff9800;font-weight:bold');
-    console.log('file:', data.file);
-    console.log('genre raw:', data.genre);
-    console.log('genre parsed:', splitGenres(
+    DEBUG && console.groupCollapsed('%c[PODCAST DETECT]', 'color:#ff9800;font-weight:bold');
+    dlog('file:', data.file);
+    dlog('genre raw:', data.genre);
+    dlog('genre parsed:', splitGenres(
       data?.genre ??
       data?.Genre ??
       data?.tags?.genre ??
       data?.metadata?.genre ??
       ''
     ));
-    console.log('server isPodcast flag:', data.isPodcast === true);
-    console.log('👉 inferred isPodcast:', currentIsPodcast);
-    console.groupEnd();
+    dlog('server isPodcast flag:', data.isPodcast === true);
+    dlog('👉 inferred isPodcast:', currentIsPodcast);
+    DEBUG && console.groupEnd();
   }
 
   // Favorites: UI + datasets (single source of truth)

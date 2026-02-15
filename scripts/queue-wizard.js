@@ -3,7 +3,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
 
-  console.log('queue-wizard.js loaded');
+  // debug log removed for production
 
   // ---- Elements (match your HTML IDs) ----
   const statusEl = $('status');

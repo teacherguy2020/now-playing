@@ -1,4 +1,3 @@
-console.log('PODCASTS_UI_VERSION', '2026-02-09_1');
   const statusEl   = document.getElementById('status');
   const statusWrap = document.getElementById('statusWrap');
   const listEl     = document.getElementById('list');
@@ -418,20 +417,6 @@ async function loadEpisodes() {
       limit
     });
 
-    // Helpful debugging (safe to remove later)
-    console.log('[episodes/list] rss=', modalCtx.rss, 'limit=', limit);
-    console.log('[episodes/list] downloadedCount=', j?.downloadedCount);
-    console.log(
-      '[episodes/list] sample:',
-      (j?.episodes || []).slice(0, 10).map(e => ({
-        id: e?.id,
-        downloaded: e?.downloaded,
-        filename: e?.filename,
-        mpdPath: e?.mpdPath,
-        title: e?.title
-      }))
-    );
-
     const raw = Array.isArray(j?.episodes) ? j.episodes : [];
 
     const eps = raw.map(ep => {
@@ -549,7 +534,6 @@ async function loadEpisodes() {
 
     // Make the phase change explicit so "stuck" reports are diagnosable.
     setModalBusy(true, 'Refreshing…');
-    console.log('[modal] downloads complete -> loadEpisodes()', { rss: modalCtx.rss, count: jobs.length });
 
     await loadEpisodes();
     modalHint.textContent = '';
