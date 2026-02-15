@@ -1,11 +1,15 @@
 # URL Policy (Canonical + Compatibility)
 
-This project keeps stable canonical URLs while preserving legacy aliases for compatibility.
+This project keeps stable canonical URLs while preserving compatibility aliases where practical.
 
 ## Canonical UI URLs
 
-- `/index.html` — canonical now-playing display page
-- `/podcasts.html` — podcast management page
+- `/index.html` — now-playing display
+- `/config.html` — runtime/config admin
+- `/diagnostics.html` — diagnostics and queue controls
+- `/library-health.html` — library maintenance tools
+- `/queue-wizard.html` — queue builder + vibe tools
+- `/podcasts.html` — podcast management
 
 ## Legacy UI aliases
 
@@ -13,25 +17,25 @@ This project keeps stable canonical URLs while preserving legacy aliases for com
 
 ## Canonical art URLs
 
-- `/art/current.jpg` — canonical current cover endpoint
-- `/art/current_640.jpg` — explicit 640 variant
-- `/art/current_bg_640_blur.jpg` — blurred background variant
-- `/art/track_640.jpg?file=...` — track-specific art
+- `/art/current.jpg`
+- `/art/current_640.jpg`
+- `/art/current_bg_640_blur.jpg`
+- `/art/track_640.jpg?file=...`
 
 ## Legacy art aliases
 
-- `/art/current_320.jpg` — compatibility alias to canonical current art
+- `/art/current_320.jpg` — compatibility alias
 
-## Rules for future changes
+## API base defaults
 
-1. Add new canonical URL first.
-2. Keep existing endpoint as alias/redirect for at least one release cycle.
-3. Update UI and docs to canonical URL immediately.
-4. Avoid resolution-specific names unless they are truly fixed-size outputs.
-5. Do not remove aliases until all known clients have migrated.
+- API default: `http://<host>:3101`
+- Web default: `http://<host>:8101`
 
-## Current migration status
+Ports are configurable via runtime config (`ports.api`, `ports.ui`).
 
-- `index1080.html` clients are supported via redirect.
-- `current_320.jpg` clients are supported via alias handler.
-- New code should use `index.html` and `/art/current.jpg`.
+## Rules for future URL changes
+
+1. Add/announce canonical URL first.
+2. Keep old endpoint as alias/redirect for at least one release cycle.
+3. Update UI + docs to canonical URL immediately.
+4. Avoid removing aliases until known clients are migrated.

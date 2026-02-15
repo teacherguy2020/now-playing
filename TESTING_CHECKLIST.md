@@ -1,61 +1,57 @@
-# Refactor Testing Checklist
+# Testing Checklist
 
-Branch: `jarvis/refactor-api-structure`
+Use this before merging major changes to `main`.
 
 ## 1) Boot / syntax
 
 - [ ] `node --check moode-nowplaying-api.mjs`
-- [ ] `node --check lambda.alexa.js`
+- [ ] `node --check script1080.js`
+- [ ] `node --check scripts/queue-wizard.js`
 - [ ] API process starts cleanly (pm2/systemd)
 
-## 2) Core API smoke (Pi #2)
+## 2) Core API smoke (default port 3101)
 
-- [ ] `GET /now-playing` returns expected JSON shape
-- [ ] `GET /next-up` returns payload
-- [ ] `GET /art/current.jpg` returns image
-- [ ] `GET /art/current_640.jpg` returns image
-- [ ] `GET /art/current_bg_640_blur.jpg` returns image
+- [ ] `GET /healthz`
+- [ ] `GET /now-playing`
+- [ ] `GET /next-up`
+- [ ] `GET /art/current.jpg`
+- [ ] `GET /art/current_640.jpg`
+- [ ] `GET /art/current_bg_640_blur.jpg`
 
-## 3) Ratings/favorites
+## 3) Protected API smoke (`x-track-key`)
 
-- [ ] `GET /rating/current` works on local track
-- [ ] `POST /rating/current` updates sticker rating
-- [ ] `POST /favorites/toggle` updates favorite state
+- [ ] `GET /config/runtime`
+- [ ] `GET /config/diagnostics/queue`
+- [ ] `POST /config/diagnostics/playback` (`play/pause/prev/next/shuffle/remove/rate`)
+- [ ] `POST /config/queue-wizard/preview`
+- [ ] `POST /config/queue-wizard/apply`
 
-## 4) Alexa-critical routes
+## 4) UI smoke (default web port 8101)
 
-- [ ] `GET /track?file=...&k=...` serves track
-- [ ] `POST /queue/advance` with `songid` works
-- [ ] `POST /queue/advance` with `pos0` fallback works
-- [ ] No response shape regressions for Lambda expectations
+- [ ] `index.html` loads and updates now-playing state
+- [ ] `diagnostics.html` queue controls work (shuffle state, remove, rating)
+- [ ] `queue-wizard.html` filter + vibe + queue card controls work
+- [ ] `library-health.html` scan runs and modules render
+- [ ] `podcasts.html` loads and core actions are responsive
 
-## 5) Podcast flows
+## 5) Alexa flow (optional)
 
-- [ ] `GET /podcasts` and `/podcasts/list`
-- [ ] `POST /podcasts/subscribe`
-- [ ] `POST /podcasts/refresh` and `/refresh-one`
-- [ ] `POST /podcasts/episodes/list`
-- [ ] `POST /podcasts/download-one`
-- [ ] `POST /podcasts/download-latest`
-- [ ] `POST /podcasts/build-playlist`
-- [ ] `POST /podcasts/episodes/delete`
+- [ ] `/alexa/was-playing` lifecycle behaves as expected
+- [ ] Queue advancement semantics still align with skill expectations
+- [ ] `index.html` Alexa mode next-up behavior is correct
 
-## 6) UI smoke
+## 6) Installer flow (systemd Linux)
 
-- [ ] `index.html` loads CSS+JS from `styles/` and `scripts/` (legacy `index1080.html` redirects)
-- [ ] `podcasts.html` loads CSS+JS from `styles/` and `scripts/`
-- [ ] Browser console has no blocking errors
+- [ ] `scripts/install.sh` succeeds on clean host
+- [ ] service starts (`now-playing.service`)
+- [ ] smoke endpoints respond after install
+- [ ] re-run is idempotent
 
-## 7) Alexa Lambda smoke (optional but recommended)
+See: `docs/INSTALL_VALIDATION.md` for full installer validation gate.
 
-- [ ] Launch starts playback
-- [ ] NearlyFinished enqueues next item
-- [ ] PlaybackStarted advances queue at offset 0 only
-- [ ] Pause/Resume keeps offset behavior
+## Regression hotspots
 
-## Regression hotspots to watch
-
-- Token/queue semantics between Lambda and `/queue/advance`
+- Queue/rating side effects and position handling
 - Art fallback behavior for radio/airplay/upnp
-- Podcast filename/id mapping consistency (`sha1(...).slice(0,12)`)
-- Playlist cover push logic over SSH
+- Podcast file/id mapping consistency
+- SSH-based maintenance operations (art/tag/sticker flows)

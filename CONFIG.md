@@ -5,36 +5,45 @@ Use a single config file for user-specific setup.
 ## Files
 
 - `config/now-playing.config.example.json` → template
-- `config/now-playing.config.json` → your real config (create from template)
+- `config/now-playing.config.json` → real local config (create from template)
 
 ## Quick start
 
 ```bash
-cd now-playing
 cp config/now-playing.config.example.json config/now-playing.config.json
 # edit config/now-playing.config.json
 ```
 
+## Current defaults
+
+- API port: `3101`
+- Web/UI port: `8101`
+- Timezone default: `America/Chicago` (override per install)
+
 ## Key sections
 
 1. `nodes`
-   - Number of Pis
-   - IPs and roles (`api`, `display`, `both`)
+   - Host/IP inventory and role hints (`api`, `display`, `both`)
 2. `ports`
-   - API/UI ports
-3. `alexa`
-   - Enable/disable Alexa integration
-   - Public domain (required if enabled)
+   - `ports.api`, `ports.ui`
+3. `mpd` + `moode`
+   - MPD host/port and SSH/base URL values for moOde integration
 4. `paths`
-   - `musicLibraryRoot` (MPD library root, e.g. `/var/lib/mpd/music`)
-   - `moodeUsbMount` (moOde-visible mount, e.g. `/media/SamsungMoode`)
-   - `piMountBase` (local Pi mount base, e.g. `/mnt/SamsungMoode`)
-   - Podcast/storage paths
-5. `features`
-   - Feature toggles per install
+   - `musicLibraryRoot`, `moodeUsbMount`, `piMountBase`, `podcastRoot`
+5. `alexa`
+   - `enabled`, `publicDomain`, `skillId`, `webhookPath`
+6. `features`
+   - per-install feature flags (`podcasts`, `ratings`, `radio`)
+7. `notifications`
+   - track-notify/pushover settings
 
-## Notes
+## Runtime overrides
+
+- `NOW_PLAYING_CONFIG_PATH` can point to a non-default config file.
+- Environment variables still override some settings (used heavily for hosted/Lambda contexts).
+
+## Safety notes
 
 - Do not commit secrets in config.
-- Use env vars for sensitive values.
-- Use `NOW_PLAYING_CONFIG_PATH` to point to a non-default config path.
+- Keep keys/tokens in environment variables or private config files.
+- After config changes, restart API process (`pm2 restart api --update-env` or systemd equivalent).
