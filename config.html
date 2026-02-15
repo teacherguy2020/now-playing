@@ -98,15 +98,18 @@
                 <div class="cfgField">
                   <label for="apiNodeIp">IP of Webserver and API host</label>
                   <input id="apiNodeIp" type="text" placeholder="ex. 10.0.0.233" />
+                  <div class="cfgHint" id="apiNodeIpHint"></div>
                 </div>
                 <div class="cfgRow">
                   <div class="cfgField">
                     <label for="mpdHost">MPD host</label>
                     <input id="mpdHost" type="text" placeholder="ex. moode.local" />
+                    <div class="cfgHint" id="mpdHostHint"></div>
                   </div>
                   <div class="cfgField">
                     <label for="mpdPort">MPD port</label>
                     <input id="mpdPort" type="number" min="1" max="65535" />
+                    <div class="cfgHint" id="mpdPortHint"></div>
                   </div>
                 </div>
                 <div class="cfgRow">
@@ -778,16 +781,25 @@ async function loadCfg(){
   loadedNodes = Array.isArray(full.nodes) ? full.nodes.slice() : [];
   const node0 = loadedNodes.length ? loadedNodes[0] : {};
   const configuredApiIp = String(node0.ip || '').trim();
-  const apiNodePrefill = (!configuredApiIp || configuredApiIp === '10.0.0.233') ? host : configuredApiIp;
+  const apiNodeAuto = (!configuredApiIp || configuredApiIp === '10.0.0.233');
+  const apiNodePrefill = apiNodeAuto ? host : configuredApiIp;
   document.getElementById('apiNodeIp').value = apiNodePrefill;
+  const apiNodeIpHint = document.getElementById('apiNodeIpHint');
+  if (apiNodeIpHint) apiNodeIpHint.textContent = apiNodeAuto ? `Auto-defaulted from page host: ${apiNodePrefill}` : `Loaded from config: ${apiNodePrefill}`;
 
   const configuredMpdHost = String(full.mpd?.host || c.mpd?.host || '').trim();
   const configuredSshHost = String(full.moode?.sshHost || c.moode?.sshHost || '').trim();
-  const mpdHostPrefill = (!configuredMpdHost || configuredMpdHost === '10.0.0.254') ? 'moode.local' : configuredMpdHost;
+  const mpdHostAuto = (!configuredMpdHost || configuredMpdHost === '10.0.0.254');
+  const mpdHostPrefill = mpdHostAuto ? 'moode.local' : configuredMpdHost;
   const sshHostPrefill = configuredSshHost || mpdHostPrefill;
   document.getElementById('mpdHost').value = mpdHostPrefill;
-  document.getElementById('mpdPort').value = Number(full.mpd?.port || c.mpd?.port || 6600);
+  const mpdPortValue = Number(full.mpd?.port || c.mpd?.port || 6600);
+  document.getElementById('mpdPort').value = mpdPortValue;
   document.getElementById('moodeSshHost').value = sshHostPrefill;
+  const mpdHostHint = document.getElementById('mpdHostHint');
+  if (mpdHostHint) mpdHostHint.textContent = mpdHostAuto ? 'Auto-defaulted: moode.local (edit if needed)' : `Loaded from config: ${mpdHostPrefill}`;
+  const mpdPortHint = document.getElementById('mpdPortHint');
+  if (mpdPortHint) mpdPortHint.textContent = `Default is 6600${mpdPortValue === 6600 ? ' (current)' : ` (current: ${mpdPortValue})`}`;
   document.getElementById('moodeSshUser').value = String(full.moode?.sshUser || c.moode?.sshUser || 'moode');
   refreshSshSetupHelp();
   document.getElementById('moodeBaseUrl').value = String(full.moode?.baseUrl || c.moode?.baseUrl || '');
