@@ -161,9 +161,9 @@ Recent behavior highlights:
 
 ### Web config page
 
-You can edit core Alexa/notification settings in-browser at:
+You can edit core settings in-browser at:
 
-- `https://<your-domain>/config.html`
+- `https://<IP of pi running now-playing>/config.html`
 
 The page reads/writes via:
 - `GET /config/runtime`
@@ -173,7 +173,7 @@ It supports both:
 - guided field editing (feature toggles, network/runtime, Alexa, Last.fm, Pushover)
 - advanced full JSON editing (entire config object)
 
-After save, the UI prompts to restart API. On PM2 hosts, use the built-in "Restart API now" action.
+After save, the UI prompts to restart API. On PM2 hosts, uses the built-in "Restart API now" action.
 
 Notes:
 - Track key field supports masked/unmasked toggle.
@@ -248,14 +248,6 @@ ssh moode@<moode-host> 'sudo -n true && echo sudo_ok'
 If `sudo -n true` fails, configure sudoers on moOde for the `moode` user (or your configured SSH user) to allow the minimum commands needed by this project.
 
 Use **Config → Network & Runtime → Check SSH + Paths** as your verification step after setup.
-
-## Current branch workflow
-
-Typical flow used in this project:
-
-1. Make/test changes on live Pi when needed
-2. Sync back to local repo
-3. Commit + push to `jarvis/refactor-api-structure`
 
 ## License
 
