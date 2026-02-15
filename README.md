@@ -59,6 +59,20 @@ curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scr
 
 > Current installer target: **systemd-based Linux**.
 
+## Uninstall (systemd Linux)
+
+Safe uninstall (keeps install directory/config by default):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/uninstall.sh | bash
+```
+
+Purge uninstall (removes install directory too):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/uninstall.sh | bash -s -- --purge -y
+```
+
 ## Install validation before public release
 
 Run the checklist in:

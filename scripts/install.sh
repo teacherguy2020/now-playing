@@ -10,6 +10,7 @@ DEFAULT_REF="main"
 MODE="split"
 INSTALL_DIR="${DEFAULT_INSTALL_DIR}"
 PORT="${DEFAULT_PORT}"
+WEB_PORT="8101"
 REPO_URL="${DEFAULT_REPO_URL}"
 REF="${DEFAULT_REF}"
 ALLOW_ROOT="false"
@@ -140,6 +141,7 @@ else
   log "Creating .env template at ${ENV_FILE}"
   cat > "${ENV_FILE}" <<EOF
 PORT=${PORT}
+WEB_PORT=${WEB_PORT}
 TRACK_KEY=
 MOODE_BASE_URL=
 PUBLIC_TRACK_BASE=
@@ -180,14 +182,20 @@ curl -fsS "http://127.0.0.1:${PORT}/now-playing" >/dev/null && log "OK /now-play
 curl -fsS "http://127.0.0.1:${PORT}/art/current.jpg" >/dev/null && log "OK /art/current.jpg" || err "FAIL /art/current.jpg"
 set -e
 
+HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+if [[ -z "${HOST_IP}" ]]; then HOST_IP="<host-ip>"; fi
+
 cat <<EOF
 
 Install complete.
 
 Next steps:
-1) Edit ${ENV_FILE} values.
+1) Edit ${ENV_FILE} values (especially TRACK_KEY and MOODE_BASE_URL).
 2) Restart service after env edits: sudo systemctl restart ${SERVICE_NAME}
 3) Check logs: sudo journalctl -u ${SERVICE_NAME} -f
-4) For mode=${MODE}, apply mode-specific tuning per docs.
+4) Open Config UI in browser:
+   - local:  http://127.0.0.1:${WEB_PORT}/config.html
+   - LAN:    http://${HOST_IP}:${WEB_PORT}/config.html
+5) In Config, run "Check SSH + Paths" and verify green checks.
 
 EOF
