@@ -90,7 +90,9 @@ High-level flow:
 - The API is the single source of truth for selection/queue logic and returns the resolved track/path metadata to Alexa.
 - Alexa playback is file-based from the resolved path/URL; it is **not** a live audio stream from the MPD queue.
 - Alexa responses are conversational wrappers around those API outcomes.
-- Alexa playback is intended for use while in a different room than your moOde pi. Therefore moOde (MPD) does not play when the skill is in use. 
+- Alexa playback is intended for use while in a different room than your moOde pi. Therefore moOde (MPD) does not play when the skill is in use.
+- You can make changes to the queue while Alexa is playing.
+- Alexa will respect shuffle setting (on or off). It tries to faithfully replicate how moOde would behave.
 
 
 Queue-first behavior (prepped queue):
@@ -98,6 +100,8 @@ Queue-first behavior (prepped queue):
 - If a queue is already active (has a head), opening/starting the skill will typically continue that queue flow.
 - In that case, Alexa responds with behavior like **“starting your queue”** and proceeds with queue-driven playback.
 - The API advances playback by consuming/removing queue head entries via queue endpoints so Alexa/UI/MPD remain in sync.
+- Alexa wants to be in control, so the skill will not be "active" very long. You'll have to say "Alexa open (whatever your invocation name is) to get back to controlling the queue.
+- You can pause, resume, and skip without having the skill open.
 
 Empty-queue behavior:
 
@@ -121,12 +125,6 @@ Direct request behavior (no prepped queue required):
 - One-shot phrasing (`ask <skill> to ...`) may sometimes launch the skill without passing the tail request, depending on Alexa parsing.
 - Parsed artist sets are sent to API queue-building routes, which produce the combined queue/mix.
 
-Operational notes:
-
-- Alexa lifecycle state is exposed via `/alexa/was-playing` so UI surfaces can reflect Alexa-active playback sessions.
-- Keep your API and Alexa `TRACK_KEY` values identical.
-- If behavior changes in queue endpoints, re-test Alexa queue advancement and next-track narration.
-
 ## Correcting Alexa mis-hears (artist / album / playlist)
 
 When Alexa hears the wrong name, you can teach corrections in `config.html`.
@@ -136,15 +134,3 @@ When Alexa hears the wrong name, you can teach corrections in `config.html`.
 3. Find the "needs correction" lists (artist/album/playlist) populated from recent requests.
 4. Enter the correction mapping (what Alexa heard → what your library expects).
 5. Save config, then retry the same voice request.
-
-Tips:
-
-- Keep correction values aligned with your library naming (artist/album/playlist spellings).
-- Start with the smallest correction that works (avoid over-broad aliases).
-- If Alexa repeatedly mis-hears a name, add a direct alias once and reuse it.
-
-## Notes
-
-- Keep Alexa and API track key values in sync.
-- Do not commit private domains/tokens.
-- After API route changes, re-verify queue advancement and now-playing narration flows.
