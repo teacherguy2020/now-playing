@@ -60,6 +60,40 @@ If you are starting from scratch, do this once before uploading code:
    - `TRACK_KEY=<same track key as your API/config.html>`
 9. Test in **Test** tab (development stage) with: “open mood audio” and “what’s playing”.
 
+## Public HTTPS with Caddy (recommended)
+
+Alexa must reach your API over valid public HTTPS. A simple Caddy reverse-proxy setup is usually easiest.
+
+Example Caddyfile:
+
+```caddy
+moode.YOUR-PUBLIC.DOMAIN.com {
+  encode zstd gzip
+
+  # API routes (Node app)
+  reverse_proxy 127.0.0.1:3101
+
+  # Optional: static UI from Python web server
+  # handle_path /* {
+  #   reverse_proxy 127.0.0.1:8101
+  # }
+}
+```
+
+Notes:
+
+- Point DNS `A`/`AAAA` for your domain to your public host.
+- Open ports 80/443 to that host.
+- Caddy auto-manages TLS certificates.
+- Alexa runtime should use `API_BASE=https://moode.YOUR-PUBLIC.DOMAIN.com`.
+
+Quick checks:
+
+```bash
+curl -I https://moode.YOUR-PUBLIC.DOMAIN.com/now-playing
+curl -I https://moode.YOUR-PUBLIC.DOMAIN.com/alexa/was-playing
+```
+
 ## Build upload zip (Alexa Developer Console)
 
 From repo root, build a fresh zip for the **Code** tab upload:
