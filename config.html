@@ -200,18 +200,16 @@
 
               <div class="cfgCard gateCard" id="alexaCard" style="grid-column: 1 / -1;">
                 <h3>Alexa</h3>
-                <div class="cfgRow">
-                  <div class="cfgField">
-                    <label><input id="featureAlexaSkill" type="checkbox" /> Enabled</label>
+                <div class="cfgField">
+                  <label><input id="featureAlexaSkill" type="checkbox" /> Enabled</label>
+                </div>
+                <div class="cfgField">
+                  <label for="alexaDomain">Public domain <span id="alexaDomainLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
+                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <input id="alexaDomain" type="text" placeholder="moode.YOUR-PUBLIC.DOMAIN.com" />
+                    <button class="btn" id="checkAlexaDomainBtn" type="button">Check domain</button>
                   </div>
-                  <div class="cfgField">
-                    <label for="alexaDomain">Public domain <span id="alexaDomainLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                      <input id="alexaDomain" type="text" placeholder="moode.YOUR-PUBLIC.DOMAIN.com" />
-                      <button class="btn" id="checkAlexaDomainBtn" type="button">Check domain</button>
-                    </div>
-                    <div class="cfgHint" id="alexaDomainCheckStatus"></div>
-                  </div>
+                  <div class="cfgHint" id="alexaDomainCheckStatus"></div>
                 </div>
 
                 <h4 style="margin:10px 0 6px;">Artist corrections</h4>
