@@ -1,6 +1,6 @@
 # now-playing
 
-A moOde-focused now-playing API + UI stack with podcast management, queue controls, ratings, and optional Alexa integration. The project began as a way to display enhanced information on a dedicated display (like your TV), and now also adapts to devices and adds playback controls.
+A moOde-focused now-playing API + UI stack with podcast management, queue controls, ratings, and optional Alexa integration. The project began as a way to display enhanced information on a dedicated display (like your TV), and now also adapts to devices and adds playback controls. Heavily vibe-coded with openclaw/chatGPT.
 
 ## What this project does
 
