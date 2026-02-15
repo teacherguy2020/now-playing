@@ -148,10 +148,7 @@
                   <label for="pathMoodeUsbMount">1) Path on moOde (media mount)</label>
                   <input id="pathMoodeUsbMount" type="text" placeholder="ex. /media/NAMEOFYOURDRIVE" />
                 </div>
-                <div class="cfgActions" style="margin-top:6px;">
-                  <button class="btn" id="derivePathsBtn" type="button">Auto-fill (2) and (3) from (1)</button>
-                </div>
-                <div class="cfgHint">Typing in (1) attempts auto-fill. If it doesn’t trigger (paste/autofill/browser behavior), click Auto-fill.</div>
+                <div class="cfgHint">Typing in (1) auto-fills (2) and (3).</div>
                 <div class="cfgField">
                   <label for="pathPiMountBase">2) Path on API host (mount base)</label>
                   <input id="pathPiMountBase" type="text" placeholder="ex. /mnt/NAMEOFYOURDRIVE" />
@@ -1546,7 +1543,7 @@ document.getElementById('checkAlexaDomainBtn')?.addEventListener('click', () => 
 document.getElementById('checkRuntimeBtn')?.addEventListener('click', () => checkRuntimeEnv().catch(e => log(String(e))));
 document.getElementById('pathMoodeUsbMount')?.addEventListener('input', derivePathsFromMoode);
 document.getElementById('pathMoodeUsbMount')?.addEventListener('change', derivePathsFromMoode);
-document.getElementById('derivePathsBtn')?.addEventListener('click', derivePathsFromMoode);
+// derivePathsBtn removed; auto-derive runs on input/change.
 document.getElementById('moodeSshHost')?.addEventListener('input', refreshSshSetupHelp);
 document.getElementById('moodeSshUser')?.addEventListener('input', refreshSshSetupHelp);
 document.getElementById('mpdHost')?.addEventListener('input', refreshSshSetupHelp);
