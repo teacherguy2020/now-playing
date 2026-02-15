@@ -660,10 +660,12 @@ function syncPodcastsUi(){
   const on = !!document.getElementById('featurePodcasts')?.checked;
   const wrap = document.getElementById('podcastRootFieldWrap');
   const hint = document.getElementById('podcastRootHint');
-  if (wrap) wrap.style.display = on ? '' : 'none';
+  const input = document.getElementById('pathPodcastRoot');
+  if (wrap) wrap.style.display = '';
+  if (input) input.disabled = !on;
   if (hint) hint.textContent = on
     ? 'Used when Podcasts is enabled. Missing folder can be created on demand.'
-    : 'Podcasts disabled: this path is optional and ignored by runtime checks.';
+    : 'Podcasts disabled: path is optional (field kept visible for convenience).';
 }
 
 function syncPushoverCardVisibility(){
