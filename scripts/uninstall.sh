@@ -7,6 +7,7 @@ SERVICE_NAME="${APP_NAME}.service"
 SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}"
 WEB_SERVICE_NAME="${APP_NAME}-web.service"
 WEB_SERVICE_PATH="/etc/systemd/system/${WEB_SERVICE_NAME}"
+SUDOERS_PATH="/etc/sudoers.d/${APP_NAME}-restart"
 
 INSTALL_DIR="${DEFAULT_INSTALL_DIR}"
 PURGE="false"
@@ -93,6 +94,11 @@ for svcPath in "${SERVICE_PATH}" "${WEB_SERVICE_PATH}"; do
     ${SUDO} rm -f "${svcPath}"
   fi
 done
+
+if [[ -f "${SUDOERS_PATH}" ]]; then
+  log "Removing sudoers rule ${SUDOERS_PATH}"
+  ${SUDO} rm -f "${SUDOERS_PATH}"
+fi
 
 log "Reloading systemd"
 ${SUDO} systemctl daemon-reload

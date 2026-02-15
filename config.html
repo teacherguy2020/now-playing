@@ -319,10 +319,10 @@
   <div id="restartModal" class="modalBg" aria-hidden="true">
     <div class="modalCard">
       <h4>Config saved</h4>
-      <div class="cfgHint">Restart API now to apply changes?</div>
+      <div class="cfgHint">Restart services now to apply changes?</div>
       <div class="modalActions">
         <button class="btn" id="modalLaterBtn" type="button">Later</button>
-        <button class="btn btnPrimary" id="modalRestartBtn" type="button">Restart API now</button>
+        <button class="btn btnPrimary" id="modalRestartBtn" type="button">Restart services now</button>
       </div>
     </div>
   </div>
@@ -991,15 +991,15 @@ function formatFullJson(){
   }
 }
 
-async function restartApiNow(){
+async function restartServicesNow(){
   const key = getTrackKey();
-  if (!key) return log('Track key is required to restart API.');
+  if (!key) return log('Track key is required to restart services.');
 
-  // Hide first because restarting API can interrupt the response.
+  // Hide first because restarting can interrupt response.
   hideRestartModal();
 
   try {
-    const r = await fetch(`${API_BASE}/config/restart-api`, {
+    const r = await fetch(`${API_BASE}/config/restart-services`, {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'x-track-key': key },
       body: JSON.stringify({}),
@@ -1010,10 +1010,9 @@ async function restartApiNow(){
     try { j = txt ? JSON.parse(txt) : null; } catch {}
 
     if (j) log(j);
-    else log(`API restart requested${r.ok ? '.' : ` (HTTP ${r.status})`}`);
+    else log(`Service restart requested${r.ok ? '.' : ` (HTTP ${r.status})`}`);
   } catch (e) {
-    // Expected sometimes if API restarts before response finishes.
-    log(`API restart requested. Connection interrupted during restart (${String(e?.message || e)}).`);
+    log(`Service restart requested. Connection interrupted during restart (${String(e?.message || e)}).`);
   }
 }
 
@@ -1522,7 +1521,7 @@ document.getElementById('saveBtn').onclick = () => saveCfg().catch(e => log(Stri
 document.getElementById('saveFullBtn').onclick = () => saveFullCfg().catch(e => log(String(e)));
 document.getElementById('formatJsonBtn').onclick = () => formatFullJson();
 document.getElementById('modalLaterBtn').onclick = () => hideRestartModal();
-document.getElementById('modalRestartBtn').onclick = () => restartApiNow().catch(e => log(String(e)));
+document.getElementById('modalRestartBtn').onclick = () => restartServicesNow().catch(e => log(String(e)));
 syncAlexaCardVisibility();
 syncLastfmCardVisibility();
 syncPushoverCardVisibility();

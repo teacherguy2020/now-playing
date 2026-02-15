@@ -215,6 +215,14 @@ User=${INSTALL_USER}
 WantedBy=multi-user.target
 EOF
 
+SYSTEMCTL_BIN="$(command -v systemctl || echo /bin/systemctl)"
+SUDOERS_PATH="/etc/sudoers.d/${APP_NAME}-restart"
+log "Writing sudoers rule for service restarts: ${SUDOERS_PATH}"
+cat <<EOF | ${SUDO} tee "${SUDOERS_PATH}" >/dev/null
+${INSTALL_USER} ALL=(root) NOPASSWD: ${SYSTEMCTL_BIN} restart ${SERVICE_NAME}, ${SYSTEMCTL_BIN} restart ${WEB_SERVICE_NAME}, ${SYSTEMCTL_BIN} restart ${SERVICE_NAME} ${WEB_SERVICE_NAME}
+EOF
+${SUDO} chmod 440 "${SUDOERS_PATH}"
+
 log "Reloading and starting services"
 ${SUDO} systemctl daemon-reload
 ${SUDO} systemctl enable --now "${SERVICE_NAME}"

@@ -2856,14 +2856,46 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
 
+      // Legacy endpoint: restart API only.
       try {
         await execFileP('pm2', ['restart', 'api', '--update-env']);
-        return res.json({ ok: true, restarted: true, method: 'pm2' });
+        return res.json({ ok: true, restarted: true, method: 'pm2', services: ['api'] });
+      } catch (_) {}
+
+      try {
+        await execFileP('sudo', ['-n', 'systemctl', 'restart', 'now-playing.service']);
+        return res.json({ ok: true, restarted: true, method: 'systemd', services: ['now-playing.service'] });
       } catch (e) {
         return res.status(501).json({
           ok: false,
           restarted: false,
-          error: 'Automatic restart unavailable on this host. Restart your API process manually.',
+          error: 'Automatic restart unavailable on this host. Restart your service manually.',
+          detail: e?.message || String(e),
+        });
+      }
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/restart-services', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      try {
+        await execFileP('pm2', ['restart', 'api', '--update-env']);
+        await execFileP('pm2', ['restart', 'webserver']);
+        return res.json({ ok: true, restarted: true, method: 'pm2', services: ['api', 'webserver'] });
+      } catch (_) {}
+
+      try {
+        await execFileP('sudo', ['-n', 'systemctl', 'restart', 'now-playing.service', 'now-playing-web.service']);
+        return res.json({ ok: true, restarted: true, method: 'systemd', services: ['now-playing.service', 'now-playing-web.service'] });
+      } catch (e) {
+        return res.status(501).json({
+          ok: false,
+          restarted: false,
+          error: 'Automatic restart unavailable on this host. Restart services manually.',
           detail: e?.message || String(e),
         });
       }
