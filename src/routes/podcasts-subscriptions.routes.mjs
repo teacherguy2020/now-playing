@@ -204,7 +204,23 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
 
       folder = safeFolderNameKeepSpaces(folder, 'Podcast');
 
-      const defaultPodcastRoot = process.env.PODCAST_SHOWS_DIR || path.join(path.dirname(process.env.PODCAST_DL_LOG || '/tmp/now-playing/podcasts/downloads.ndjson'), 'shows');
+      const fallbackPodcastRoot = path.join(path.dirname(process.env.PODCAST_DL_LOG || '/tmp/now-playing/podcasts/downloads.ndjson'), 'shows');
+      const candidateRoots = [
+        process.env.PODCAST_SHOWS_DIR,
+        process.env.MUSIC_LIBRARY_ROOT ? path.join(process.env.MUSIC_LIBRARY_ROOT, 'Podcasts') : '',
+        '/var/lib/mpd/music/Podcasts',
+        fallbackPodcastRoot,
+      ].filter(Boolean);
+
+      let defaultPodcastRoot = fallbackPodcastRoot;
+      for (const root of candidateRoots) {
+        try {
+          await fsp.mkdir(root, { recursive: true });
+          defaultPodcastRoot = root;
+          break;
+        } catch {}
+      }
+
       const dir = String(prev?.dir || '').trim() || path.join(defaultPodcastRoot, folder);
       const mpdPrefix = String(prev?.mpdPrefix || '').trim() || `USB/SamsungMoode/Podcasts/${folder}`;
 
