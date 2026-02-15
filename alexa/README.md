@@ -23,7 +23,7 @@ Alexa support is optional. The API remains the source of truth; Alexa clients ca
 
 ## Required runtime env vars (Lambda/Alexa hosted)
 
-- `API_BASE` (e.g. `https://your-domain.example`)
+- `API_BASE` (e.g. `https://moode.<yourdomain>.com`)
 - `TRACK_KEY`
 
 Optional:
