@@ -7,7 +7,7 @@ Alexa support is optional. The API remains the source of truth; Alexa clients ca
 ## Prerequisites
 
 1. Amazon Developer account
-2. Alexa custom skill (create in Alexa Developer Console)
+2. Alexa custom skill (create in Alexa Developer Console). Skill does NOT need to be published in order to work.
 3. Public HTTPS endpoint for this API
 4. Valid `TRACK_KEY` shared between Alexa runtime and API
 
@@ -54,9 +54,9 @@ zip -qr "$OLDPWD/alexa-devconsole-upload.zip" lambda
 
 Then in Alexa Developer Console:
 
-1. Open your skill → **Code**
-2. Upload `alexa-devconsole-upload.zip`
-3. Click **Deploy**
+1. Open your skill and press **Code**
+2. Click Upload icon and browse to your zip `alexa-devconsole-upload.zip`
+3. After the zip is uploaded you must still click **Deploy**
 
 Important: zip root must contain `lambda/` (not loose files).
 
