@@ -35,6 +35,36 @@ node moode-nowplaying-api.mjs
 
 API default: `http://<host>:3101`
 
+## Installer (systemd Linux)
+
+For host installs (intended GitHub invocation path):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/install.sh | bash -s -- --ref main
+```
+
+Useful flags:
+
+- `--ref <branch|tag|sha>` (example: `jarvis/refactor-api-structure`)
+- `--repo <url>`
+- `--install-dir <path>`
+- `--port <number>`
+- `--mode <split|single-box>`
+
+Example:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/install.sh | bash -s -- --ref main --install-dir /opt/now-playing --port 3101
+```
+
+> Current installer target: **systemd-based Linux**.
+
+## Install validation before public release
+
+Run the checklist in:
+
+- `docs/INSTALL_VALIDATION.md`
+
 ## UX highlights
 
 - **Clickable stars for ratings**: users can click star ratings in the now-playing UI to update track rating.
