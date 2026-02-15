@@ -4,8 +4,8 @@ A moOde-focused now-playing API + UI stack with podcast management, queue contro
 
 ## What this project does
 
-- Serves a Now Playing API (`/now-playing`, `/next-up`, `/alexa/was-playing`, artwork routes, queue/rating controls)
-- Hosts adaptive UI pages (`index.html`, `podcasts.html`, `library-health.html`, `queue-wizard.html`, `config.html`)
+- Serves a Now Playing API (`/now-playing`, `/next-up`, artwork routes, queue/rating controls)
+- Hosts adaptive UI pages (`index.html`, `podcasts.html`, `library-health.html`, `queue-wizard.html`, `config.html`, `diagnostics.html`)
 - Manages podcast subscriptions/downloads/playlists
 - Supports multi-device/home deployments (Pi nodes)
 - Supports optional Alexa endpoint flow when enabled
