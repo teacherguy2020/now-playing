@@ -117,7 +117,7 @@
                   </div>
                 </div>
                 <div class="cfgHint">Defaults are API <code>3101</code>, UI <code>8101</code>, MPD port <code>6600</code>, and music library root <code>/var/lib/mpd/music</code>. Host fields are auto-prefilled conservatively and never overwrite saved values.</div>
-                <div class="cfgRow" style="grid-template-columns: 240px 180px; align-items:start; justify-content:start;">
+                <div class="cfgRow" style="grid-template-columns: 240px 180px 240px 180px; align-items:start; justify-content:start;">
                   <div class="cfgField">
                     <label for="mpdHost">MPD host <span id="mpdHostLight" title="MPD host verification" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span> <span id="mpdHostVerifyText" class="cfgHint" style="display:inline;color:#9fb3c8;">not verified</span></label>
                     <input id="mpdHost" class="ipField" type="text" placeholder="ex. 10.0.0.254" />
@@ -128,8 +128,6 @@
                     <input id="mpdPort" type="number" min="1" max="65535" />
                     <div class="cfgHint" id="mpdPortHint"></div>
                   </div>
-                </div>
-                <div class="cfgRow" style="grid-template-columns: 240px 180px; align-items:start; justify-content:start;">
                   <div class="cfgField">
                     <label for="moodeSshHost">moOde SSH host (optional override) <span id="sshHostLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="moodeSshHost" class="ipField" type="text" placeholder="defaults to MPD host" />
