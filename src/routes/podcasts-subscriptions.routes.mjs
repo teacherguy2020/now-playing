@@ -86,8 +86,10 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
       const downloadCount = Math.max(0, Math.min(50, Number(req.body?.download ?? 5)));
 
       const id = makePodcastId(rss);
-      const outM3u = `/home/brianwis/album_art/podcasts/${id}.m3u`;
-      const mapJson = `/home/brianwis/album_art/podcasts/${id}.json`;
+      const podcastMapDir = process.env.PODCAST_MAP_DIR || path.join(path.dirname(process.env.PODCAST_DL_LOG || '/tmp/now-playing/podcasts/downloads.ndjson'), 'maps');
+      await fsp.mkdir(podcastMapDir, { recursive: true });
+      const outM3u = path.join(podcastMapDir, `${id}.m3u`);
+      const mapJson = path.join(podcastMapDir, `${id}.json`);
 
       const items = readSubs();
       const idx = items.findIndex(it => normUrl(it?.rss) === rss);

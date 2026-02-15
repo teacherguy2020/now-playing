@@ -310,7 +310,7 @@ function agentForUrl(url) {
 
 
 
-const PODCAST_MAP_DIR = "/home/brianwis/album_art/podcasts";
+const PODCAST_MAP_DIR = process.env.PODCAST_MAP_DIR || path.join(path.dirname(PODCAST_DL_LOG), 'maps');
 
 let _podcastCache = { loadedAt: 0, maps: [] };
 const PODCAST_CACHE_MS = 60_000; // refresh once a minute
@@ -3905,13 +3905,25 @@ registerPodcastDownloadRoutes(app, {
   buildLocalPlaylistForRss,
 });
 
-const SUBS_FILE = "/home/brianwis/album_art/podcasts/subscriptions.json";
+const SUBS_FILE = path.join(PODCAST_MAP_DIR, 'subscriptions.json');
+const LEGACY_SUBS_FILE = '/home/brianwis/album_art/podcasts/subscriptions.json';
 
 function readSubs() {
   try {
-    const raw = fs.readFileSync(SUBS_FILE, "utf8");
+    const src = fs.existsSync(SUBS_FILE) ? SUBS_FILE : LEGACY_SUBS_FILE;
+    const raw = fs.readFileSync(src, "utf8");
     const j = JSON.parse(raw);
-    return Array.isArray(j.items) ? j.items : [];
+    const items = Array.isArray(j.items) ? j.items : [];
+    const legacyPrefix = '/home/brianwis/album_art/podcasts/';
+    return items.map((it) => {
+      const outM3u = String(it?.outM3u || '');
+      const mapJson = String(it?.mapJson || '');
+      return {
+        ...it,
+        outM3u: outM3u.startsWith(legacyPrefix) ? path.join(PODCAST_MAP_DIR, path.basename(outM3u)) : outM3u,
+        mapJson: mapJson.startsWith(legacyPrefix) ? path.join(PODCAST_MAP_DIR, path.basename(mapJson)) : mapJson,
+      };
+    });
   } catch {
     return [];
   }
