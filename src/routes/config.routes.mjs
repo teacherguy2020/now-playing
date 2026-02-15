@@ -460,20 +460,24 @@ export function registerConfigRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
       const mpdHost = String(MPD_HOST || '10.0.0.254');
-      const fmt = '%artist%\t%albumartist%\t%genre%';
+      const fmt = '%artist%\t%albumartist%\t%album%\t%genre%';
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
         maxBuffer: 64 * 1024 * 1024,
       });
 
       const artists = new Set();
+      const albumArtistByName = new Map();
       const genres = new Set();
 
       for (const ln of String(stdout || '').split(/\r?\n/)) {
         if (!ln) continue;
-        const [artist = '', albumArtist = '', genreRaw = ''] = ln.split('\t');
+        const [artist = '', albumArtist = '', album = '', genreRaw = ''] = ln.split('\t');
 
         const a = String(artist || albumArtist || '').trim();
         if (a) artists.add(a);
+
+        const alb = String(album || '').trim();
+        if (alb && !albumArtistByName.has(alb)) albumArtistByName.set(alb, a);
 
         for (const g of String(genreRaw || '')
           .split(/[;,|/]/)
@@ -483,11 +487,26 @@ export function registerConfigRoutes(app, deps) {
         }
       }
 
+      const albums = Array.from(albumArtistByName.entries())
+        .map(([albumName, artistName]) => ({
+          value: String(albumName || ''),
+          label: artistName ? `${String(artistName)} — ${String(albumName)}` : String(albumName || ''),
+          sortArtist: String(artistName || '').toLowerCase(),
+          sortAlbum: String(albumName || '').toLowerCase(),
+        }))
+        .sort((a, b) => {
+          const aa = a.sortArtist.localeCompare(b.sortArtist, undefined, { sensitivity: 'base' });
+          if (aa !== 0) return aa;
+          return a.sortAlbum.localeCompare(b.sortAlbum, undefined, { sensitivity: 'base' });
+        })
+        .map(({ value, label }) => ({ value, label }));
+
       return res.json({
         ok: true,
         moodeHost: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
         genres: Array.from(genres).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
         artists: Array.from(artists).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+        albums,
       });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
@@ -504,6 +523,9 @@ export function registerConfigRoutes(app, deps) {
         : [];
       const wantedArtists = Array.isArray(req.body?.artists)
         ? req.body.artists.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean)
+        : [];
+      const wantedAlbums = Array.isArray(req.body?.albums)
+        ? req.body.albums.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean)
         : [];
       const excludeGenres = Array.isArray(req.body?.excludeGenres)
         ? req.body.excludeGenres.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean)
@@ -535,9 +557,11 @@ export function registerConfigRoutes(app, deps) {
 
         const a = String(artist || '').trim().toLowerCase();
         const aa = String(albumartist || '').trim().toLowerCase();
+        const alb = String(album || '').trim().toLowerCase();
 
         if (wantedGenres.length && !wantedGenres.some((g) => genreTokens.includes(g))) continue;
         if (wantedArtists.length && !(wantedArtists.includes(a) || wantedArtists.includes(aa))) continue;
+        if (wantedAlbums.length && !wantedAlbums.includes(alb)) continue;
         if (excludeGenres.length && excludeGenres.some((g) => genreTokens.includes(g))) continue;
 
         if (minRating > 0 && typeof getRatingForFile === 'function') {

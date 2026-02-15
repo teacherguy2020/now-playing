@@ -45,7 +45,7 @@
   let savePlaylistEnabled = false;
 
   // Persist the current list (vibe OR filters)
-  let currentListSource = 'none'; // 'none' | 'filters' | 'vibe'
+  let currentListSource = 'none'; // 'none' | 'filters' | 'vibe' | 'queue'
   let currentTracks = [];         // array of {artist,title,album,genre,file,...}
   let currentFiles = [];          // array of file paths
 
@@ -367,7 +367,7 @@ async function syncVibeAvailability() {
 
     [
       'apiBase', 'key', 'maxTracks', 'minRating',
-      'genres', 'artists', 'excludeGenres',
+      'genres', 'artists', 'albums', 'excludeGenres',
       'shuffle', 'crop', 'cropVibe', 'minRatingVibe',
       'playlistName',
     ].forEach((id) => {
@@ -441,6 +441,42 @@ async function syncVibeAvailability() {
     clearResults();
     const tbody = ensureResultsTable();
     for (const t of (tracks || []).slice(0, MAX_RENDER_ROWS)) appendRow(t, tbody);
+  }
+
+  function starsHtml(file, rating) {
+    const f = encodeURIComponent(String(file || ''));
+    const r = Math.max(0, Math.min(5, Number(rating) || 0));
+    let out = '<div style="display:flex;gap:2px;align-items:center;">';
+    for (let i = 1; i <= 5; i += 1) {
+      const on = i <= r;
+      out += `<button type="button" data-queue-rate-file="${f}" data-queue-rate-val="${i}" title="Rate ${i} star${i>1?'s':''}" style="padding:0 2px;border:0;background:transparent;font-size:15px;line-height:1;color:${on?'#fbbf24':'#5b6780'};cursor:pointer;">★</button>`;
+    }
+    out += '</div>';
+    return out;
+  }
+
+  function renderQueueCard(items, randomOn = null) {
+    if (!resultsEl) return;
+    const apiBase = getApiBase();
+    const list = Array.isArray(items) ? items.slice(0, 120) : [];
+    const shuffleLabel = typeof randomOn === 'boolean' ? `Shuffle: ${randomOn ? 'On' : 'Off'}` : 'Shuffle';
+    const shuffleStyle = typeof randomOn === 'boolean' && randomOn ? 'border-color:#22c55e;' : '';
+    const controlsHtml = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 10px 0;padding-top:6px;"><button type="button" data-queue-playback="play">Play</button><button type="button" data-queue-playback="pause">Pause</button><button type="button" data-queue-playback="prev">Prev</button><button type="button" data-queue-playback="next">Next</button><button type="button" data-queue-playback="shuffle" style="${shuffleStyle}">${shuffleLabel}</button><button type="button" data-queue-playback="reload">Reload queue</button></div>`;
+    if (!list.length) {
+      resultsEl.innerHTML = `${controlsHtml}<div class="muted">Queue is empty.</div>`;
+      return;
+    }
+    resultsEl.innerHTML = controlsHtml + list.map((x) => {
+      const thumbSrc = x.thumbUrl ? (String(x.thumbUrl).startsWith('http') ? String(x.thumbUrl) : `${apiBase}${x.thumbUrl}`) : '';
+      const thumb = thumbSrc
+        ? `<img src="${thumbSrc}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />`
+        : '<div style="width:36px;height:36px"></div>';
+      const head = !!x.isHead;
+      const pos = Number(x.position || 0);
+      const file = String(x.file || '');
+      const stars = starsHtml(file, Number(x.rating || 0));
+      return `<div style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(String(x.artist||''))}</div><div class="muted">${esc(String(x.title||''))} ${x.album?`• ${esc(String(x.album||''))}`:''}</div><div style="margin-top:2px;">${stars}</div></div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
+    }).join('');
   }
 
   function renderPlaylistThumbStrip(tracks) {
@@ -556,6 +592,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
 
     const genres = selectedValues($('genres'));
     const artists = selectedValues($('artists'));
+    const albums = selectedValues($('albums'));
     const excludes = selectedValues($('excludeGenres'));
     const stars = getMinRating();
     const maxTracks = getMaxTracks();
@@ -572,11 +609,12 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     const fmt = (arr) => arr.length ? arr.map(esc).join(', ') : 'Any';
 
     const src = currentListSource === 'vibe' ? 'vibe'
-      : (currentListSource === 'filters' ? 'filters' : 'none');
+      : (currentListSource === 'filters' ? 'filters'
+      : (currentListSource === 'queue' ? 'queue' : 'none'));
 
     summaryEl.innerHTML =
       `List source: <b>${esc(src)}</b> · ` +
-      `Genres: ${fmt(genres)} · Artists: ${fmt(artists)} · Excluding: ${fmt(excludes)} · ` +
+      `Genres: ${fmt(genres)} · Artists: ${fmt(artists)} · Albums: ${fmt(albums)} · Excluding: ${fmt(excludes)} · ` +
       `Min rating: ${esc(starsTxt)} · Max: ${Number(maxTracks).toLocaleString()} · ` +
       `Mode: ${esc(mode)}${mode === 'replace' ? (keep ? ' (crop)' : ' (clear)') : ''} · ` +
       `Shuffle: ${doShuffle ? 'Yes' : 'No'} · ` +
@@ -587,7 +625,55 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
   // ---- Load options ----
   function setOptions(el, arr) {
     if (!el) return;
-    el.innerHTML = (arr || []).map((v) => `<option>${esc(v)}</option>`).join('');
+    el.innerHTML = (arr || []).map((v) => {
+      if (v && typeof v === 'object') {
+        const value = esc(String(v.value ?? ''));
+        const label = esc(String(v.label ?? v.value ?? ''));
+        return `<option value="${value}">${label}</option>`;
+      }
+      const s = esc(String(v ?? ''));
+      return `<option value="${s}">${s}</option>`;
+    }).join('');
+  }
+
+  async function sendDiagnosticsAction(action, payload = {}) {
+    const apiBase = getApiBase();
+    const key = getKey();
+    const r = await fetch(`${apiBase}/config/diagnostics/playback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+      body: JSON.stringify({ action, ...(payload || {}) }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    return j;
+  }
+
+  async function loadCurrentQueueCard() {
+    const apiBase = getApiBase();
+    const key = getKey();
+    if (!apiBase) return;
+    const r = await fetch(`${apiBase}/config/diagnostics/queue`, { headers: { 'x-track-key': key } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    const items = Array.isArray(j.items) ? j.items : [];
+    const randomOn = typeof j.randomOn === 'boolean' ? j.randomOn : null;
+    renderQueueCard(items, randomOn);
+
+    const tracks = items.map((x) => ({
+      artist: String(x.artist || ''),
+      title: String(x.title || ''),
+      album: String(x.album || ''),
+      file: String(x.file || ''),
+      genre: '',
+    }));
+    currentListSource = 'queue';
+    currentTracks = tracks;
+    currentFiles = tracks.map((t) => String(t.file || '')).filter(Boolean);
+    setCount(`Current queue: ${items.length.toLocaleString()} track(s).`);
+    // For current queue mode, no need to display full thumb strip in cover card.
+    renderPlaylistThumbStrip([]);
+    renderFiltersSummary();
   }
 
   async function loadOptions() {
@@ -610,6 +696,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
       setOptions($('genres'), j.genres || []);
       setOptions($('excludeGenres'), j.genres || []);
       setOptions($('artists'), j.artists || []);
+      setOptions($('albums'), j.albums || []);
 
       // Default exclude "Christmas"
       const ex = $('excludeGenres');
@@ -649,6 +736,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
       const body = {
         genres: selectedValues($('genres')),
         artists: selectedValues($('artists')),
+        albums: selectedValues($('albums')),
         excludeGenres: selectedValues($('excludeGenres')),
         minRating: getMinRating(),
         maxTracks: getMaxTracks(),
@@ -1080,6 +1168,10 @@ async function maybeGenerateCollagePreview(reason = '') {
       setStatus(statusMsg);
       showSendConfirmation(`✅ Sent ${j.added}/${j.requested} track(s) to moOde.`);
 
+      if (mode === 'append') {
+        await loadCurrentQueueCard().catch(() => {});
+      }
+
       if (j.collageGenerated && playlistName) {
         await forceReloadCoverUntilItLoads({
           name: playlistName,
@@ -1182,6 +1274,58 @@ function wireEvents() {
     doSendToMoode(src);
   });
 
+  resultsEl?.addEventListener('click', (ev) => {
+    const el = ev.target instanceof Element ? ev.target : null;
+    if (!el) return;
+
+    const playbackBtn = el.closest('button[data-queue-playback]');
+    if (playbackBtn) {
+      ev.preventDefault();
+      const action = String(playbackBtn.getAttribute('data-queue-playback') || '').trim().toLowerCase();
+      playbackBtn.disabled = true;
+      const op = action === 'reload'
+        ? loadCurrentQueueCard()
+        : sendDiagnosticsAction(action).then(() => loadCurrentQueueCard());
+      op
+        .then(() => setStatus(action === 'reload' ? 'Queue reloaded.' : `Playback: ${action}`))
+        .catch((e) => setStatus(`Error: ${esc(e?.message || e)}`))
+        .finally(() => { playbackBtn.disabled = false; });
+      return;
+    }
+
+    const rateBtn = el.closest('button[data-queue-rate-file][data-queue-rate-val]');
+    if (rateBtn) {
+      ev.preventDefault();
+      const file = decodeURIComponent(String(rateBtn.getAttribute('data-queue-rate-file') || ''));
+      const rating = Number(rateBtn.getAttribute('data-queue-rate-val') || 0);
+      if (!file || !Number.isFinite(rating) || rating < 0 || rating > 5) return;
+      const row = rateBtn.closest('div');
+      if (row) {
+        row.querySelectorAll('button[data-queue-rate-file][data-queue-rate-val]').forEach((s) => {
+          const v = Number(s.getAttribute('data-queue-rate-val') || 0);
+          s.style.color = v <= rating ? '#fbbf24' : '#5b6780';
+        });
+      }
+      sendDiagnosticsAction('rate', { file, rating })
+        .then(() => setStatus(`Rated: ${rating} star${rating===1?'':'s'}`))
+        .catch((e) => setStatus(`Error: ${esc(e?.message || e)}`));
+      return;
+    }
+
+    const removeBtn = el.closest('button[data-queue-remove-pos]');
+    if (removeBtn) {
+      ev.preventDefault();
+      const position = Number(removeBtn.getAttribute('data-queue-remove-pos') || 0);
+      if (!Number.isFinite(position) || position <= 0) return;
+      removeBtn.disabled = true;
+      sendDiagnosticsAction('remove', { position })
+        .then(() => loadCurrentQueueCard())
+        .then(() => setStatus(`Removed track at position ${position}.`))
+        .catch((e) => setStatus(`Error: ${esc(e?.message || e)}`))
+        .finally(() => { removeBtn.disabled = false; });
+    }
+  });
+
   // shared playlist controls are global (below cover preview)
 
   // Filters auto-preview ONLY if we are not currently showing a vibe list
@@ -1192,7 +1336,7 @@ function wireEvents() {
     schedulePreview(300);
   };
 
-  ['genres', 'artists', 'excludeGenres', 'minRating', 'maxTracks', 'shuffle', 'apiBase', 'key'].forEach((id) => {
+  ['genres', 'artists', 'albums', 'excludeGenres', 'minRating', 'maxTracks', 'shuffle', 'apiBase', 'key'].forEach((id) => {
     const el = $(id);
     if (!el) return;
     el.addEventListener('change', () => {
@@ -1245,6 +1389,9 @@ try {
   loadRuntimeMeta().finally(() => {
     loadOptions();
     syncVibeAvailability();
+    loadCurrentQueueCard().catch((e) => {
+      setStatus(`Error loading current queue: ${esc(e?.message || e)}`);
+    });
   });
 } catch (e) {
   setStatus(`JS init error: ${esc(e?.message || e)}`);

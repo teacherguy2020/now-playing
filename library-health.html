@@ -8,7 +8,8 @@
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#0c1526;color:#e7eefc}
-    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px;box-sizing:border-box;width:100%}
+    #cards,#sections,#albumMetaInspector{width:100%;box-sizing:border-box}
     h1{margin:0 0 10px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
     input{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
@@ -65,9 +66,11 @@
     <input id="apiBase" type="hidden" value="" />
     <input id="key" type="hidden" value="" />
 
-    <div class="card">
-      <h3 style="margin:0 0 8px;">Album metadata inspector</h3>
-      <div class="row">
+    <div class="cards" id="cards"></div>
+
+    <details id="albumMetaInspector">
+      <summary>Album metadata inspector</summary>
+      <div class="row" style="margin-top:8px;">
         <select id="albumPick" style="min-width:360px;max-width:100%;"></select>
         <button id="suggestPerformersBtn" type="button">Suggest performers</button>
         <button id="applyPerformersBtn" type="button">Apply performers</button>
@@ -79,11 +82,10 @@
         </label>
       </div>
       <div id="albumMetaOut" style="margin-top:8px;"></div>
-    </div>
+    </details>
 
-    <div class="cards" id="cards"></div>
     <div id="sections"></div>
   </div>
-  <script src="scripts/library-health.js?v=20260211-22"></script>
+  <script src="scripts/library-health.js?v=20260215-2"></script>
 </body>
 </html>

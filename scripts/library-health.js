@@ -998,6 +998,9 @@
         status.textContent =
           `Done in ${j.elapsedMs} ms · scanned ${j.scannedTracks || s.totalTracks || 0} tracks · ${j.generatedAt}`;
       }
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new Event('resize'));
+      });
     } catch (e) {
       if (status) status.textContent = `Error: ${e?.message || e}`;
     } finally {

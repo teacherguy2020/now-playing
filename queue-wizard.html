@@ -11,7 +11,7 @@
     .wrap{max-width:1100px;margin:0 auto;padding:18px}
     .card{background:#101c33;border:1px solid #2a3a58;border-radius:12px;padding:12px;margin:10px 0}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
-    .pickGrid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:10px}
+    .pickGrid{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:10px}
     .pickGrid label{display:block}
     .pickGrid select{width:100%;min-width:0}
     .actionBar{display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:10px;border:1px solid #2a3a58;border-radius:10px;background:#0d182d;margin-top:10px}
@@ -20,6 +20,7 @@
     .btnPrimary{background:#1f6feb;border-color:#356fb6;font-weight:600}
     .hidden{display:none !important}
     select,input,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
+    select.starFilter{color:#fbbf24;font-weight:600}
     button{cursor:pointer;background:#17324f}
     table{width:100%;border-collapse:collapse;font-size:12px}
     th,td{padding:6px;border-bottom:1px solid #22314d;text-align:left}
@@ -74,7 +75,7 @@
       <div class="row" style="margin-top:10px">
         <label>Max tracks<br><input id="maxTracks" type="number" min="1" max="5000" value="25" style="width:100px"></label>
         <label>At least rating<br>
-          <select id="minRating" style="width:140px">
+          <select id="minRating" class="starFilter" style="width:140px">
             <option value="0">Any</option>
             <option value="1">★☆☆☆☆</option>
             <option value="2" selected>★★☆☆☆</option>
@@ -87,6 +88,7 @@
       <div class="pickGrid" style="margin-top:10px">
         <label>Genres<br><select id="genres" multiple size="8"></select></label>
         <label>Artists<br><select id="artists" multiple size="8"></select></label>
+        <label>Albums<br><select id="albums" multiple size="8"></select></label>
         <label>Exclude Genres<br><select id="excludeGenres" multiple size="8"></select></label>
       </div>
 
@@ -114,7 +116,7 @@
           <label><input type="radio" name="modeVibe" value="append"> Append</label>
           <label><input id="cropVibe" type="checkbox" checked> Crop (keep current track)</label>
           <label>At least rating
-            <select id="minRatingVibe" style="width:140px;margin-left:6px">
+            <select id="minRatingVibe" class="starFilter" style="width:140px;margin-left:6px">
               <option value="0">Any</option>
               <option value="1">★☆☆☆☆</option>
               <option value="2" selected>★★☆☆☆</option>
@@ -171,6 +173,6 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260213-1"></script>
+  <script src="scripts/queue-wizard.js?v=20260215-6"></script>
 </body>
 </html>

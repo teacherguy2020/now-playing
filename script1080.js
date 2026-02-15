@@ -1274,37 +1274,45 @@ function updateNextUp({ isAirplay, isStream, data }) {
   // allow text even if image element is missing
   if (!wrap || !textEl) return;
 
-  // In Alexa mode, use /now-playing queue head as "Next up" source.
+  // In Alexa mode, NEVER use /next-up (it is one ahead for Alexa context).
+  // Always derive Next Up from /now-playing (queue head) for correctness.
   if (data && data.alexaMode) {
-    const q = data.__queueHead || {};
-    const title = String(q.title || '').trim();
-    const file = String(q.file || '').trim();
-    const artist = String(q.artist || '').trim();
-    const artUrl = String(q.albumArtUrl || q.altArtUrl || '').trim();
+    const applyAlexaQueueHead = (qIn) => {
+      const q = qIn || {};
+      const title = String(q.title || '').trim();
+      const file = String(q.file || '').trim();
+      const artist = String(q.artist || '').trim();
+      const artUrl = String(q.albumArtUrl || q.altArtUrl || '').trim();
 
-    const showTitle = title || file.split('/').pop() || file || 'Unknown title';
-    const showArtist = artist ? ` • ${artist}` : '';
-    setNextUpLine(`Next up: ${showTitle}${showArtist}`);
+      const showTitle = title || file.split('/').pop() || file || 'Unknown title';
+      const showArtist = artist ? ` • ${artist}` : '';
+      setNextUpLine(`Next up: ${showTitle}${showArtist}`);
 
-    wrap.style.display = 'flex';
-    wrap.style.visibility = 'visible';
-    wrap.style.opacity = '1';
+      wrap.style.display = 'flex';
+      wrap.style.visibility = 'visible';
+      wrap.style.opacity = '1';
 
-    if (!imgEl || !artUrl) {
-      if (imgEl) {
-        imgEl.style.display = 'none';
-        imgEl.removeAttribute('src');
-        imgEl.dataset.lastUrl = '';
+      if (!imgEl || !artUrl) {
+        if (imgEl) {
+          imgEl.style.display = 'none';
+          imgEl.removeAttribute('src');
+          imgEl.dataset.lastUrl = '';
+        }
+        return;
       }
-      return;
-    }
 
-    const lastUrl = imgEl.dataset.lastUrl || '';
-    if (artUrl !== lastUrl) {
-      imgEl.dataset.lastUrl = artUrl;
-      imgEl.src = artUrl;
-    }
-    imgEl.style.display = 'block';
+      const lastUrl = imgEl.dataset.lastUrl || '';
+      if (artUrl !== lastUrl) {
+        imgEl.dataset.lastUrl = artUrl;
+        imgEl.src = artUrl;
+      }
+      imgEl.style.display = 'block';
+    };
+
+    fetch(NOW_PLAYING_URL, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((np) => applyAlexaQueueHead(np || data.__queueHead || {}))
+      .catch(() => applyAlexaQueueHead(data.__queueHead || {}));
     return;
   }
 
