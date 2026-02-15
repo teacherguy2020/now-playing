@@ -94,6 +94,71 @@ curl -I https://moode.YOUR-PUBLIC.DOMAIN.com/now-playing
 curl -I https://moode.YOUR-PUBLIC.DOMAIN.com/alexa/was-playing
 ```
 
+## Advanced Caddyfile (split routes / multi-upstream)
+
+If you split traffic across multiple upstreams (API, web UI, moOde art/stream), use explicit path matchers.
+
+```caddy
+{
+  email you@yourdomain.com
+}
+
+moode.YOUR-PUBLIC.DOMAIN.com {
+  log {
+    output file /var/log/caddy/moode_access.log
+    format json
+  }
+
+  header {
+    X-Site moode.YOUR-PUBLIC.DOMAIN.com
+  }
+
+  # 1) moOde artwork/static images (strip cookies for Echo safety)
+  @moode_art {
+    path /coverart.php* /images/*
+  }
+  handle @moode_art {
+    reverse_proxy 10.0.0.254:80 {
+      header_down -Set-Cookie
+      header_down X-Upstream "moode:80"
+    }
+  }
+
+  # 2) Node API routes
+  @node_api {
+    path /now-playing /next-up /favorites/toggle /queue/advance* /queue/play_item* /queue/mix* /mpd/* /track /track/* /art/* /_debug/* /alexa/* /podcasts* /rating* /config*
+  }
+  handle @node_api {
+    reverse_proxy 127.0.0.1:3101 {
+      header_down X-Upstream "node:3101"
+    }
+  }
+
+  # 3) moOde audio stream passthrough
+  @moode_stream {
+    path /stream*
+  }
+  handle @moode_stream {
+    reverse_proxy 10.0.0.254:8000 {
+      header_down X-Upstream "moode:8000"
+    }
+  }
+
+  # 4) Everything else -> web UI
+  handle {
+    reverse_proxy 127.0.0.1:8101 {
+      header_down X-Upstream "web:8101"
+    }
+  }
+}
+
+:80 {
+  redir https://{host}{uri} permanent
+}
+```
+
+Use this pattern when Alexa + browser + moOde resources must coexist under one public domain.
+
 ## Build upload zip (Alexa Developer Console)
 
 From repo root, build a fresh zip for the **Code** tab upload:
