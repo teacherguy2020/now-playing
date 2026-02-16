@@ -62,6 +62,7 @@
 
   // Prevent repeated collage preview for the same inputs
   let lastCollageSig = '';
+  let dragTrackIdx = -1;
 
 // ---------- Vibe progress + Cancel/Send button (single-source-of-truth) ----------
 
@@ -452,31 +453,36 @@ async function syncVibeAvailability() {
     resultsEl.innerHTML =
       `<table style="font-size:16px;line-height:1.35;">
         <thead>
-          <tr><th>Art</th><th>Artist</th><th>Title</th><th>Album</th><th>Genre</th></tr>
+          <tr><th></th><th>Art</th><th>Artist</th><th>Title</th><th>Album</th><th>Genre</th><th>Order</th></tr>
         </thead>
         <tbody id="resultsBody"></tbody>
       </table>`;
     return $('resultsBody');
   }
 
-  function appendRow(t, tbody) {
+  function appendRow(t, idx, tbody) {
     if (!tbody) return;
     const tr = document.createElement('tr');
+    tr.setAttribute('data-track-idx', String(idx));
+    tr.setAttribute('draggable', 'true');
+
     const file = String(t.file || '').trim();
     const art = file ? `${getApiBase()}/art/track_640.jpg?file=${encodeURIComponent(file)}` : '';
     tr.innerHTML =
+      `<td><input type="checkbox" data-include-track="${idx}" checked title="Keep in queue" /></td>` +
       `<td>${art ? `<img src="${art}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #334;background:#0a1222;" />` : ''}</td>` +
       `<td>${esc(t.artist || '')}</td>` +
       `<td>${esc(t.title || '')}</td>` +
       `<td>${esc(t.album || '')}</td>` +
-      `<td>${esc(t.genre || '')}</td>`;
+      `<td>${esc(t.genre || '')}</td>` +
+      `<td style="white-space:nowrap;"><span title="Drag row to reorder" style="cursor:grab;opacity:.8;">↕</span></td>`;
     tbody.appendChild(tr);
   }
 
   function renderTracksToTable(tracks) {
     clearResults();
     const tbody = ensureResultsTable();
-    for (const t of (tracks || []).slice(0, MAX_RENDER_ROWS)) appendRow(t, tbody);
+    (tracks || []).slice(0, MAX_RENDER_ROWS).forEach((t, idx) => appendRow(t, idx, tbody));
   }
 
   function starsHtml(file, rating) {
@@ -534,14 +540,8 @@ async function syncVibeAvailability() {
     }).join('');
   }
 
-  function setCurrentList(source, tracks) {
-    currentListSource = source || 'none';
-    currentTracks = Array.isArray(tracks) ? tracks.slice() : [];
+  function refreshCurrentListMetaAndUi() {
     currentFiles = currentTracks.map((t) => String(t.file || '').trim()).filter(Boolean);
-
-    renderTracksToTable(currentTracks);
-    renderPlaylistThumbStrip(currentTracks);
-    if (coverCardEl) coverCardEl.style.display = (currentListSource === 'podcast') ? 'none' : '';
 
     const label = currentListSource === 'vibe'
       ? 'Vibe list'
@@ -551,8 +551,39 @@ async function syncVibeAvailability() {
     if (sendVibeBtn) sendVibeBtn.disabled = !(currentListSource === 'vibe' && currentFiles.length > 0);
     if (sendPodcastBtn) sendPodcastBtn.disabled = !(currentListSource === 'podcast' && currentFiles.length > 0);
 
-    lastCollageSig = '';
     renderFiltersSummary();
+  }
+
+  function removeTrackAt(idx) {
+    if (!Number.isInteger(idx) || idx < 0 || idx >= currentTracks.length) return;
+    currentTracks.splice(idx, 1);
+    renderTracksToTable(currentTracks);
+    renderPlaylistThumbStrip(currentTracks);
+    refreshCurrentListMetaAndUi();
+    if (!currentTracks.length) setStatus('No tracks left in current list.');
+  }
+
+  function moveTrack(fromIdx, toIdx) {
+    if (!Number.isInteger(fromIdx) || !Number.isInteger(toIdx)) return;
+    if (fromIdx < 0 || toIdx < 0 || fromIdx >= currentTracks.length || toIdx >= currentTracks.length) return;
+    if (fromIdx === toIdx) return;
+    const [moved] = currentTracks.splice(fromIdx, 1);
+    currentTracks.splice(toIdx, 0, moved);
+    renderTracksToTable(currentTracks);
+    renderPlaylistThumbStrip(currentTracks);
+    refreshCurrentListMetaAndUi();
+  }
+
+  function setCurrentList(source, tracks) {
+    currentListSource = source || 'none';
+    currentTracks = Array.isArray(tracks) ? tracks.slice() : [];
+
+    renderTracksToTable(currentTracks);
+    renderPlaylistThumbStrip(currentTracks);
+    if (coverCardEl) coverCardEl.style.display = (currentListSource === 'podcast') ? 'none' : '';
+
+    lastCollageSig = '';
+    refreshCurrentListMetaAndUi();
   }
 
   // ---- Cover preview display ----
@@ -801,6 +832,10 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     const from = new Date(now.getTime() - (Math.max(1, Number(daysBack) || 1) * 24 * 60 * 60 * 1000));
     if (toEl) toEl.value = toDateInputValue(now);
     if (fromEl) fromEl.value = toDateInputValue(from);
+  }
+
+  function hideCoverForPodcastBuilder() {
+    if (coverCardEl) coverCardEl.style.display = 'none';
   }
 
   async function doPodcastBuild() {
@@ -1395,25 +1430,37 @@ function wireEvents() {
 
   podcastBuildBtn?.addEventListener('click', (e) => {
     e.preventDefault();
+    hideCoverForPodcastBuilder();
     doPodcastBuild();
   });
 
   sendPodcastBtn?.addEventListener('click', (e) => {
     e.preventDefault();
+    hideCoverForPodcastBuilder();
     doSendToMoode('podcast');
   });
 
   podcastPreset24hBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     applyPodcastPresetDays(1);
+    hideCoverForPodcastBuilder();
   });
   podcastPreset48hBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     applyPodcastPresetDays(2);
+    hideCoverForPodcastBuilder();
   });
   podcastPreset7dBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     applyPodcastPresetDays(7);
+    hideCoverForPodcastBuilder();
+  });
+
+  ['podcastShows','podcastDateFrom','podcastDateTo','podcastMaxPerShow','podcastDownloadedOnly','podcastNewestFirst'].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener('change', hideCoverForPodcastBuilder);
+    if (el.tagName === 'INPUT' || el.tagName === 'SELECT') el.addEventListener('input', hideCoverForPodcastBuilder);
   });
 
   // Vibe cancel button becomes "Cancel" while building, then becomes "Send vibe list to moOde"
@@ -1536,6 +1583,46 @@ function wireEvents() {
         .catch((e) => setStatus(`Error: ${esc(e?.message || e)}`))
         .finally(() => { removeBtn.disabled = false; });
     }
+  });
+
+  resultsEl?.addEventListener('change', (ev) => {
+    const el = ev.target instanceof Element ? ev.target : null;
+    if (!el) return;
+    const chk = el.closest('input[type="checkbox"][data-include-track]');
+    if (!chk) return;
+    const idx = Number(chk.getAttribute('data-include-track') || -1);
+    if (!Number.isInteger(idx) || idx < 0) return;
+    if ((chk instanceof HTMLInputElement) && !chk.checked) {
+      removeTrackAt(idx);
+    }
+  });
+
+  resultsEl?.addEventListener('dragstart', (ev) => {
+    const row = ev.target instanceof Element ? ev.target.closest('tr[data-track-idx]') : null;
+    if (!row) return;
+    dragTrackIdx = Number(row.getAttribute('data-track-idx') || -1);
+    if (ev.dataTransfer) {
+      ev.dataTransfer.effectAllowed = 'move';
+      ev.dataTransfer.setData('text/plain', String(dragTrackIdx));
+    }
+  });
+
+  resultsEl?.addEventListener('dragover', (ev) => {
+    const row = ev.target instanceof Element ? ev.target.closest('tr[data-track-idx]') : null;
+    if (!row) return;
+    ev.preventDefault();
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
+  });
+
+  resultsEl?.addEventListener('drop', (ev) => {
+    const row = ev.target instanceof Element ? ev.target.closest('tr[data-track-idx]') : null;
+    if (!row) return;
+    ev.preventDefault();
+    const toIdx = Number(row.getAttribute('data-track-idx') || -1);
+    const fromIdx = dragTrackIdx;
+    dragTrackIdx = -1;
+    if (!Number.isInteger(fromIdx) || !Number.isInteger(toIdx)) return;
+    moveTrack(fromIdx, toIdx);
   });
 
   // shared playlist controls are global (below cover preview)
