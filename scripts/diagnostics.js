@@ -94,6 +94,8 @@
   let endpointList = ENDPOINTS_FALLBACK.slice();
   let visibleEndpoints = [];
   const FAV_KEY = 'diagnostics:favorites:v1';
+  const FILTER_KEY = 'diagnostics:endpointFilter:v1';
+  const LAST_ENDPOINT_KEY = 'diagnostics:lastEndpoint:v1';
 
   function loadFavorites(){
     try {
@@ -109,6 +111,22 @@
 
   function endpointKey(e){
     return `${String(e?.method || 'GET').toUpperCase()} ${String(e?.path || '')}`;
+  }
+
+  function loadLastEndpointKey(){
+    try { return String(localStorage.getItem(LAST_ENDPOINT_KEY) || ''); } catch (_) { return ''; }
+  }
+
+  function saveLastEndpointKey(v){
+    try { localStorage.setItem(LAST_ENDPOINT_KEY, String(v || '')); } catch (_) {}
+  }
+
+  function loadFilterText(){
+    try { return String(localStorage.getItem(FILTER_KEY) || ''); } catch (_) { return ''; }
+  }
+
+  function saveFilterText(v){
+    try { localStorage.setItem(FILTER_KEY, String(v || '')); } catch (_) {}
   }
 
   async function loadEndpointCatalog(){
@@ -292,7 +310,8 @@
 
   function hydrateEndpoints(){
     const sel = $('endpoint');
-    const filterTxt = String($('endpointFilter')?.value || '').trim().toLowerCase();
+    const filterTxtRaw = String($('endpointFilter')?.value || '');
+    const filterTxt = filterTxtRaw.trim().toLowerCase();
     const favs = loadFavorites();
 
     const source = Array.isArray(endpointList) && endpointList.length ? endpointList : ENDPOINTS_FALLBACK;
@@ -336,8 +355,13 @@
     visibleEndpoints = flat;
     sel.innerHTML = html.join('') || '<option value="0">(no matches)</option>';
 
+    const lastKey = loadLastEndpointKey();
+    const hitIdx = visibleEndpoints.findIndex((e) => endpointKey(e) === lastKey);
+    if (hitIdx >= 0) sel.value = String(hitIdx);
+
     const apply = () => {
       const e = visibleEndpoints[Number(sel.value) || 0] || { method: 'GET', path: '/' };
+       saveLastEndpointKey(endpointKey(e));
       $('method').value = String(e.method || 'GET').toUpperCase();
       $('path').value = String(e.path || '/');
       $('body').value = JSON.stringify(e.body || {}, null, 2);
@@ -499,9 +523,14 @@
   $('copyBtnCard')?.addEventListener('click', copyResponse);
   $('copyCurlBtn')?.addEventListener('click', copyAsCurl);
   $('favBtn')?.addEventListener('click', toggleFavorite);
-  $('endpointFilter')?.addEventListener('input', () => hydrateEndpoints());
+  $('endpointFilter')?.addEventListener('input', () => {
+    saveFilterText($('endpointFilter')?.value || '');
+    hydrateEndpoints();
+  });
 
   (async () => {
+    const filterEl = $('endpointFilter');
+    if (filterEl) filterEl.value = loadFilterText();
     await loadRuntime();
     await loadEndpointCatalog();
     hydrateEndpoints();
