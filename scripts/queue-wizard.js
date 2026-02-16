@@ -14,6 +14,7 @@
   const vibeBtn = $('vibeBuild');
   const sendFilteredBtn = $('sendFilteredToMoode');
   const sendVibeBtn = $('sendVibeToMoode');
+  const existingSectionEl = $('existingSection');
   const filterSectionEl = $('filterSection');
   const vibeSectionEl = $('vibeSection');
   const vibeDisabledNoteEl = $('vibeDisabledNote');
@@ -1611,6 +1612,21 @@ async function maybeGenerateCollagePreview(reason = '') {
   }
 }
 
+  function syncBuilderCardVisibility() {
+    const existingSelected = hasExistingPlaylistSelected();
+    if (existingSectionEl) existingSectionEl.classList.remove('hidden');
+
+    if (existingSelected) {
+      if (filterSectionEl) filterSectionEl.classList.add('hidden');
+      if (vibeSectionEl) vibeSectionEl.classList.add('hidden');
+      if (podcastSectionEl) podcastSectionEl.classList.add('hidden');
+      if (vibeDisabledNoteEl) vibeDisabledNoteEl.classList.add('hidden');
+      return;
+    }
+
+    applyBuilderVisibility();
+  }
+
   function updatePlaylistUi() {
     const existingSelected = hasExistingPlaylistSelected();
     if (existingSelected && savePlaylistEnabled) savePlaylistEnabled = false;
@@ -1629,6 +1645,7 @@ async function maybeGenerateCollagePreview(reason = '') {
       showPlaylistHint('');
     }
 
+    syncBuilderCardVisibility();
     renderFiltersSummary();
     refreshCoverPreview('');
   }

@@ -109,24 +109,29 @@
     <input id="apiBase" type="hidden" />
     <input id="key" type="hidden" />
 
+    <div class="card" id="existingSection">
+      <h3 style="margin:0 0 8px">Existing Playlist Builder</h3>
+      <div class="muted" style="margin-top:4px">Pick an existing moOde playlist as your queue source.</div>
+      <div id="existingPlaylistWrap" style="margin-top:10px;min-width:320px;max-width:620px;display:flex;flex-direction:column;align-items:flex-start;">
+        <label for="existingPlaylists" style="display:block;text-align:left;width:100%;max-width:460px;">Existing playlists</label>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-start;width:100%;max-width:460px;position:relative;">
+          <select id="existingPlaylists" style="display:none;"></select>
+          <div id="existingPlaylistPicker" style="flex:1 1 320px;min-width:260px;max-width:390px;position:relative;">
+            <button id="existingPlaylistToggle" type="button" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <span id="existingPlaylistLabel">(select existing playlist)</span>
+              <span aria-hidden="true">▾</span>
+            </button>
+            <div id="existingPlaylistMenu" style="display:none;position:absolute;z-index:30;left:0;right:-48px;top:calc(100% + 6px);background:#0f1a30;border:1px solid #334;border-radius:12px;max-height:320px;overflow:auto;padding:8px;box-shadow:0 10px 24px rgba(0,0,0,.35);"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card" id="filterSection">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
         <div>
           <h3 style="margin:0 0 8px">Filter Queue Builder</h3>
           <div class="muted" style="margin-top:4px">Pick genres/artists and exclusions, preview matches, then send that filtered list.</div>
-        </div>
-        <div id="existingPlaylistWrap" style="min-width:320px;max-width:620px;display:flex;flex-direction:column;align-items:flex-end;">
-          <label for="existingPlaylists" style="display:block;text-align:left;width:100%;max-width:460px;">Existing playlists</label>
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;width:100%;max-width:460px;position:relative;">
-            <select id="existingPlaylists" style="display:none;"></select>
-            <div id="existingPlaylistPicker" style="flex:1 1 320px;min-width:260px;max-width:390px;position:relative;">
-              <button id="existingPlaylistToggle" type="button" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:8px;">
-                <span id="existingPlaylistLabel">(select existing playlist)</span>
-                <span aria-hidden="true">▾</span>
-              </button>
-              <div id="existingPlaylistMenu" style="display:none;position:absolute;z-index:30;left:0;right:-48px;top:calc(100% + 6px);background:#0f1a30;border:1px solid #334;border-radius:12px;max-height:320px;overflow:auto;padding:8px;box-shadow:0 10px 24px rgba(0,0,0,.35);"></div>
-            </div>
-          </div>
         </div>
       </div>
       <div class="row" style="margin-top:10px">
@@ -263,7 +268,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-40"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-41"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){
