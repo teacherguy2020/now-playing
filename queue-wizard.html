@@ -159,6 +159,12 @@
           <label><input id="podcastNewestFirst" type="checkbox" checked /> Newest first</label>
         </div>
         <div class="choiceLine" style="margin-top:4px">
+          <span class="muted">Presets:</span>
+          <button id="podcastPreset24h" type="button">Last 24h</button>
+          <button id="podcastPreset48h" type="button">Last 48h</button>
+          <button id="podcastPreset7d" type="button">Last 7 days</button>
+        </div>
+        <div class="choiceLine" style="margin-top:4px">
           <button id="podcastBuild" class="btnPrimary">Build podcast list</button>
           <button id="sendPodcastToMoode" class="btnPrimary">Send podcast list to moOde</button>
         </div>
@@ -196,7 +202,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-1"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-2"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){

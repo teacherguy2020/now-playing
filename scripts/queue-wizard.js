@@ -17,9 +17,13 @@
   const vibeSectionEl = $('vibeSection');
   const vibeDisabledNoteEl = $('vibeDisabledNote');
 
+  const podcastSectionEl = $('podcastSection');
   const podcastShowsEl = $('podcastShows');
   const podcastBuildBtn = $('podcastBuild');
   const sendPodcastBtn = $('sendPodcastToMoode');
+  const podcastPreset24hBtn = $('podcastPreset24h');
+  const podcastPreset48hBtn = $('podcastPreset48h');
+  const podcastPreset7dBtn = $('podcastPreset7d');
 
   const cropEl = $('crop');
 
@@ -48,6 +52,7 @@
   let collageBusy = false; // prevent repeated preview calls
   let savePlaylistEnabled = false;
   let ratingsEnabled = true;
+  let podcastsEnabled = true;
   let podcastShowByRss = new Map();
 
   // Persist the current list (vibe OR filters)
@@ -162,6 +167,11 @@ function describeVibePick(track = {}) {
 function stopVibePolling() {
   if (vibePollTimer) clearTimeout(vibePollTimer);
   vibePollTimer = null;
+}
+
+function syncPodcastSectionVisibility() {
+  if (!podcastSectionEl) return;
+  podcastSectionEl.classList.toggle('hidden', !podcastsEnabled);
 }
 
 async function syncVibeAvailability() {
@@ -293,7 +303,9 @@ async function syncVibeAvailability() {
       const axEnabled = !!cfg?.alexa?.enabled;
       const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
       ratingsEnabled = Boolean(cfg?.features?.ratings ?? true);
+      podcastsEnabled = Boolean(cfg?.features?.podcasts ?? true);
       syncRatingsUi();
+      syncPodcastSectionVisibility();
       if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
       setPillState('apiPill','ok');
       setPillState('webPill','ok');
@@ -309,7 +321,9 @@ async function syncVibeAvailability() {
       if (webHintEl) webHintEl.textContent = `${host}:8101`;
       if (alexaHintEl) alexaHintEl.textContent = 'unknown';
       ratingsEnabled = true;
+      podcastsEnabled = true;
       syncRatingsUi();
+      syncPodcastSectionVisibility();
       setPillState('apiPill','bad');
       setPillState('webPill','warn');
       setPillState('alexaPill','warn');
@@ -740,7 +754,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
 
       setStatus('');
       renderFiltersSummary();
-      await loadPodcastShows().catch(() => {});
+      if (podcastsEnabled) await loadPodcastShows().catch(() => {});
     } catch (e) {
       setStatus(`Error: ${esc(e?.message || e)}`);
     }
@@ -772,7 +786,27 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     return Number.isFinite(t) ? t : null;
   }
 
+  function toDateInputValue(d) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function applyPodcastPresetDays(daysBack = 2) {
+    const toEl = $('podcastDateTo');
+    const fromEl = $('podcastDateFrom');
+    const now = new Date();
+    const from = new Date(now.getTime() - (Math.max(1, Number(daysBack) || 1) * 24 * 60 * 60 * 1000));
+    if (toEl) toEl.value = toDateInputValue(now);
+    if (fromEl) fromEl.value = toDateInputValue(from);
+  }
+
   async function doPodcastBuild() {
+    if (!podcastsEnabled) {
+      setStatus('Podcasts feature is disabled in Config.');
+      return;
+    }
     if (busy) return;
     busy = true;
 
@@ -1233,6 +1267,14 @@ async function maybeGenerateCollagePreview(reason = '') {
       sendBusy = false;
       return;
     }
+    if (source === 'podcast' && currentListSource !== 'podcast') {
+      await doPodcastBuild();
+      if (currentListSource !== 'podcast' || !currentFiles.length) {
+        setStatus('Build a podcast list first, then send it.');
+        sendBusy = false;
+        return;
+      }
+    }
 
     if (!currentFiles.length) {
       await doPreview();
@@ -1355,6 +1397,19 @@ function wireEvents() {
   sendPodcastBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     doSendToMoode('podcast');
+  });
+
+  podcastPreset24hBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    applyPodcastPresetDays(1);
+  });
+  podcastPreset48hBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    applyPodcastPresetDays(2);
+  });
+  podcastPreset7dBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    applyPodcastPresetDays(7);
   });
 
   // Vibe cancel button becomes "Cancel" while building, then becomes "Send vibe list to moOde"
@@ -1531,6 +1586,7 @@ try {
   syncCropUi();
   syncCropVibeUi();
   syncRatingsUi();
+  syncPodcastSectionVisibility();
   syncSavePlaylistButton();
   updatePlaylistUi();
   if (sendConfirmEl) sendConfirmEl.textContent = '';
