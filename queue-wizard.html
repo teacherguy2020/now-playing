@@ -242,11 +242,11 @@
           <div class="choiceGroup" style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <button id="savePlaylistBtn" type="button" class="btnPrimary">Save Queue to Playlist</button>
           </div>
-          <div id="playlistOptions" class="hidden" style="margin-top:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <div id="playlistOptions" class="hidden" style="margin-top:8px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
             <div id="playlistNameWrap">
               <label>Playlist name<br><input id="playlistName" placeholder="e.g., Chill Evening Mix"></label>
             </div>
-            <button id="savePlaylistNowBtn" type="button" class="btnPrimary">Save Playlist + Cover to moOde</button>
+            <button id="savePlaylistNowBtn" type="button" class="btnPrimary" style="align-self:flex-end;">Save Playlist + Cover to moOde</button>
           </div>
           <div class="muted warn" id="playlistHint" style="margin-top:6px"></div>
         </div>
@@ -256,7 +256,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-30"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-31"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){

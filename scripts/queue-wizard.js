@@ -518,6 +518,17 @@ async function syncVibeAvailability() {
       return Array.from(m.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || '';
     };
 
+    const shortArtist = (name) => {
+      const s = String(name || '').trim();
+      if (!s) return '';
+      const parts = s.split(/\s+/).filter(Boolean);
+      return parts.length > 1 ? parts[parts.length - 1] : s;
+    };
+
+    const selectedArtists = selectedValues($('artists')).map(shortArtist).filter(Boolean);
+    const selectedAlbums = selectedValues($('albums')).map((x) => String(x || '').trim()).filter(Boolean);
+    const selectedGenres = selectedValues($('genres')).map((x) => String(x || '').trim()).filter(Boolean);
+
     const trackArtists = currentTracks.map((t) => String(t?.artist || '').trim()).filter(Boolean);
     const trackGenres = currentTracks
       .map((t) => String(t?.genre || '').split(/[;,|/]/).map((x) => String(x || '').trim()).filter(Boolean))
@@ -540,14 +551,33 @@ async function syncVibeAvailability() {
       return sanitizePlaylistName(`${n} Rebuild`);
     }
 
-    if (topGenre && topArtist) return sanitizePlaylistName(`${topGenre} — ${topArtist} Mix`);
-    if (topGenre) return sanitizePlaylistName(`${topGenre} Mix`);
-    if (topArtist) return sanitizePlaylistName(`${topArtist} Mix`);
+    // Filters/general naming policy:
+    // 1) If artists filter used: up to three artists, hyphen-joined (e.g., Mayer-Sting-Clapton)
+    // 2) Else if albums filter used: first album (+ "and more" when multiple)
+    // 3) Else if genre filter used: genre + "Mix"
+    // 4) Else fallback to dominant track metadata.
+    if (selectedArtists.length) {
+      const names = selectedArtists.slice(0, 3);
+      const base = names.join('-');
+      if (selectedGenres.length || selectedAlbums.length) return sanitizePlaylistName(`${base} Mix`);
+      return sanitizePlaylistName(base);
+    }
 
-    const g = selectedValues($('genres'))[0] || '';
-    const a = selectedValues($('artists'))[0] || '';
-    const lead = String(g || a || 'Queue Wizard').trim();
-    return sanitizePlaylistName(`${lead} Mix`);
+    if (selectedAlbums.length) {
+      const first = selectedAlbums[0];
+      const tail = selectedAlbums.length > 1 ? ' and more' : '';
+      return sanitizePlaylistName(`${first}${tail}`);
+    }
+
+    if (selectedGenres.length) {
+      return sanitizePlaylistName(`${selectedGenres[0]} Mix`);
+    }
+
+    if (topGenre && topArtist) return sanitizePlaylistName(`${topArtist} ${topGenre} Mix`);
+    if (topArtist) return sanitizePlaylistName(`${topArtist} Mix`);
+    if (topGenre) return sanitizePlaylistName(`${topGenre} Mix`);
+
+    return sanitizePlaylistName('Queue Wizard Mix');
   }
 
   function renderPlaylistSuggestion() {
