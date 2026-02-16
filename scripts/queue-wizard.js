@@ -45,7 +45,11 @@
   const playlistThumbStripEl = $('playlistThumbStrip');
 
   // User preference: do not show collage/cover card in Queue Wizard.
-  if (coverCardEl) coverCardEl.remove();
+  let coverPreviewEnabled = true;
+  if (coverCardEl) {
+    coverCardEl.remove();
+    coverPreviewEnabled = false;
+  }
   // ---- Config ----
   const COLLAGE_PREVIEW_PATH = '/config/queue-wizard/collage-preview'; // change if your route differs
   const MAX_RENDER_ROWS = 1000;
@@ -235,6 +239,7 @@ async function syncVibeAvailability() {
   }
 
   function showInlineCoverPreview({ mimeType, dataBase64, note = '' }) {
+    if (!coverPreviewEnabled) return;
     if (!coverCardEl || !coverImgEl || !coverStatusEl) return;
 
     coverCardEl.style.display = '';
@@ -671,6 +676,7 @@ async function syncVibeAvailability() {
 
   // ---- Cover preview display ----
   function refreshCoverPreview(note = '') {
+    if (!coverPreviewEnabled) return;
     if (!coverCardEl || !coverImgEl || !coverStatusEl) return;
 
     const savePlaylist = savePlaylistEnabled;
@@ -697,6 +703,7 @@ async function syncVibeAvailability() {
   }
 
 async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
+  if (!coverPreviewEnabled) return false;
   if (!coverCardEl || !coverImgEl || !coverStatusEl) return false;
 
   const baseUrl = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(name)}.jpg`;
@@ -1323,6 +1330,7 @@ async function doVibeBuild() {
   }
 
 async function maybeGenerateCollagePreview(reason = '') {
+  if (!coverPreviewEnabled) return;
   if (!coverCardEl || !coverImgEl || !coverStatusEl) return;
 
   // If user selected an existing playlist, keep that playlist's cover preview.
