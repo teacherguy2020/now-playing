@@ -775,7 +775,7 @@ async function syncVibeAvailability() {
     if (!wants || !nameRaw) {
       coverCardEl.style.display = '';
       coverStatusEl.textContent = 'Playlist cover preview';
-      // Keep existing preview image instead of clearing it.
+      if (!coverImgEl.src) coverImgEl.src = moodeDefaultCoverUrl();
       return;
     }
 
@@ -2093,6 +2093,13 @@ try {
   setStatus('');
   showPlaylistHint('');
   renderPlaylistSuggestion();
+  if (coverImgEl && !coverImgEl.src) {
+    coverImgEl.src = moodeDefaultCoverUrl();
+    coverImgEl.onerror = () => {
+      coverImgEl.onerror = null;
+      coverImgEl.src = `http://${moodeHost}/images/default-album-cover.png`;
+    };
+  }
 
   // Keep cover/collage card hidden on initial page load.
   // It becomes visible when user invokes preview/build actions.
