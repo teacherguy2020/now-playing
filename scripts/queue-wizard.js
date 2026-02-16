@@ -63,6 +63,9 @@
   // Prevent repeated collage preview for the same inputs
   let lastCollageSig = '';
   let dragTrackIdx = -1;
+  let dragOverTrackIdx = -1;
+  let dragInsertAfter = false;
+  let podcastBuildTimer = null;
 
 // ---------- Vibe progress + Cancel/Send button (single-source-of-truth) ----------
 
@@ -818,6 +821,21 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     return Number.isFinite(t) ? t : null;
   }
 
+  function clearDragIndicators() {
+    if (!resultsEl) return;
+    resultsEl.querySelectorAll('tr.drop-before, tr.drop-after').forEach((row) => {
+      row.classList.remove('drop-before', 'drop-after');
+    });
+  }
+
+  function schedulePodcastBuild(delayMs = 350) {
+    if (!podcastsEnabled) return;
+    if (podcastBuildTimer) clearTimeout(podcastBuildTimer);
+    podcastBuildTimer = setTimeout(() => {
+      doPodcastBuild().catch(() => {});
+    }, delayMs);
+  }
+
   function toDateInputValue(d) {
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1444,23 +1462,34 @@ function wireEvents() {
     e.preventDefault();
     applyPodcastPresetDays(1);
     hideCoverForPodcastBuilder();
+    schedulePodcastBuild(120);
   });
   podcastPreset48hBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     applyPodcastPresetDays(2);
     hideCoverForPodcastBuilder();
+    schedulePodcastBuild(120);
   });
   podcastPreset7dBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     applyPodcastPresetDays(7);
     hideCoverForPodcastBuilder();
+    schedulePodcastBuild(120);
   });
 
   ['podcastShows','podcastDateFrom','podcastDateTo','podcastMaxPerShow','podcastDownloadedOnly','podcastNewestFirst'].forEach((id) => {
     const el = $(id);
     if (!el) return;
-    el.addEventListener('change', hideCoverForPodcastBuilder);
-    if (el.tagName === 'INPUT' || el.tagName === 'SELECT') el.addEventListener('input', hideCoverForPodcastBuilder);
+    el.addEventListener('change', () => {
+      hideCoverForPodcastBuilder();
+      schedulePodcastBuild(250);
+    });
+    if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+      el.addEventListener('input', () => {
+        hideCoverForPodcastBuilder();
+        schedulePodcastBuild(450);
+      });
+    }
   });
 
   // Vibe cancel button becomes "Cancel" while building, then becomes "Send vibe list to moOde"
@@ -1600,9 +1629,26 @@ function wireEvents() {
     const row = ev.target instanceof Element ? ev.target.closest('tr[data-track-idx]') : null;
     if (!row) return;
     dragTrackIdx = Number(row.getAttribute('data-track-idx') || -1);
+    dragOverTrackIdx = -1;
+    dragInsertAfter = false;
+    row.classList.add('dragging');
+
     if (ev.dataTransfer) {
       ev.dataTransfer.effectAllowed = 'move';
       ev.dataTransfer.setData('text/plain', String(dragTrackIdx));
+      // Keep drag ghost stable/full-size instead of tiny default thumbnail.
+      const rect = row.getBoundingClientRect();
+      const ghost = row.cloneNode(true);
+      ghost.style.position = 'fixed';
+      ghost.style.top = '-1000px';
+      ghost.style.left = '-1000px';
+      ghost.style.width = `${Math.max(320, Math.round(rect.width))}px`;
+      ghost.style.background = '#0f1a2e';
+      ghost.style.border = '1px solid #22d3ee';
+      ghost.style.opacity = '1';
+      document.body.appendChild(ghost);
+      ev.dataTransfer.setDragImage(ghost, 16, 16);
+      setTimeout(() => ghost.remove(), 0);
     }
   });
 
@@ -1611,17 +1657,43 @@ function wireEvents() {
     if (!row) return;
     ev.preventDefault();
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'move';
+
+    clearDragIndicators();
+    const toIdx = Number(row.getAttribute('data-track-idx') || -1);
+    if (!Number.isInteger(toIdx)) return;
+
+    const rect = row.getBoundingClientRect();
+    const mid = rect.top + (rect.height / 2);
+    const after = (ev.clientY > mid);
+    dragOverTrackIdx = toIdx;
+    dragInsertAfter = after;
+    row.classList.add(after ? 'drop-after' : 'drop-before');
+  });
+
+  resultsEl?.addEventListener('dragend', () => {
+    clearDragIndicators();
+    resultsEl?.querySelectorAll('tr.dragging').forEach((r) => r.classList.remove('dragging'));
   });
 
   resultsEl?.addEventListener('drop', (ev) => {
     const row = ev.target instanceof Element ? ev.target.closest('tr[data-track-idx]') : null;
     if (!row) return;
     ev.preventDefault();
-    const toIdx = Number(row.getAttribute('data-track-idx') || -1);
+    const baseIdx = Number(row.getAttribute('data-track-idx') || -1);
     const fromIdx = dragTrackIdx;
+    const toIdx = Number.isInteger(dragOverTrackIdx) && dragOverTrackIdx >= 0 ? dragOverTrackIdx : baseIdx;
+    const after = !!dragInsertAfter;
+
     dragTrackIdx = -1;
+    dragOverTrackIdx = -1;
+    dragInsertAfter = false;
+    clearDragIndicators();
+    resultsEl?.querySelectorAll('tr.dragging').forEach((r) => r.classList.remove('dragging'));
+
     if (!Number.isInteger(fromIdx) || !Number.isInteger(toIdx)) return;
-    moveTrack(fromIdx, toIdx);
+    let insertIdx = toIdx + (after ? 1 : 0);
+    if (fromIdx < insertIdx) insertIdx -= 1;
+    moveTrack(fromIdx, Math.max(0, Math.min(currentTracks.length - 1, insertIdx)));
   });
 
   // shared playlist controls are global (below cover preview)
