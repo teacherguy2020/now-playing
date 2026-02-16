@@ -1975,14 +1975,9 @@ try {
   setStatus('');
   showPlaylistHint('');
 
-  if (coverCardEl) coverCardEl.style.display = '';
-  if (coverImgEl && !coverImgEl.src) {
-    coverImgEl.src = moodeDefaultCoverUrl();
-    coverImgEl.onerror = () => {
-      coverImgEl.onerror = null;
-      coverImgEl.src = `http://${moodeHost}/images/default-album-cover.png`;
-    };
-  }
+  // Keep cover/collage card hidden on initial page load.
+  // It becomes visible when user invokes preview/build actions.
+  if (coverCardEl) coverCardEl.style.display = 'none';
 
   syncCropUi();
   syncCropVibeUi();
