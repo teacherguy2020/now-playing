@@ -96,6 +96,7 @@
   const FAV_KEY = 'diagnostics:favorites:v1';
   const FILTER_KEY = 'diagnostics:endpointFilter:v1';
   const LAST_ENDPOINT_KEY = 'diagnostics:lastEndpoint:v1';
+  const STATE_KEY = 'diagnostics:requestState:v1';
 
   function loadFavorites(){
     try {
@@ -127,6 +128,20 @@
 
   function saveFilterText(v){
     try { localStorage.setItem(FILTER_KEY, String(v || '')); } catch (_) {}
+  }
+
+  function loadRequestState(){
+    try {
+      const raw = localStorage.getItem(STATE_KEY);
+      const j = raw ? JSON.parse(raw) : {};
+      return (j && typeof j === 'object') ? j : {};
+    } catch (_) { return {}; }
+  }
+
+  function saveRequestState(patch = {}){
+    const cur = loadRequestState();
+    const next = { ...cur, ...patch };
+    try { localStorage.setItem(STATE_KEY, JSON.stringify(next)); } catch (_) {}
   }
 
   async function loadEndpointCatalog(){
@@ -361,10 +376,12 @@
 
     const apply = () => {
       const e = visibleEndpoints[Number(sel.value) || 0] || { method: 'GET', path: '/' };
-       saveLastEndpointKey(endpointKey(e));
-      $('method').value = String(e.method || 'GET').toUpperCase();
-      $('path').value = String(e.path || '/');
-      $('body').value = JSON.stringify(e.body || {}, null, 2);
+      saveLastEndpointKey(endpointKey(e));
+      const state = loadRequestState();
+      const eKey = endpointKey(e);
+      $('method').value = String(state?.overrides?.[eKey]?.method || e.method || 'GET').toUpperCase();
+      $('path').value = String(state?.overrides?.[eKey]?.path || e.path || '/');
+      $('body').value = JSON.stringify(state?.overrides?.[eKey]?.body ?? e.body ?? {}, null, 2);
       $('bodyWrap').style.display = ($('method').value === 'POST') ? '' : 'none';
       const isFav = favs.has(endpointKey(e));
       const fb = $('favBtn');
@@ -527,10 +544,35 @@
     saveFilterText($('endpointFilter')?.value || '');
     hydrateEndpoints();
   });
+  $('useTrackKey')?.addEventListener('change', () => {
+    saveRequestState({ useTrackKey: !!$('useTrackKey')?.checked });
+  });
+  const saveEndpointOverride = () => {
+    const e = visibleEndpoints[Number($('endpoint')?.value || 0)] || null;
+    if (!e) return;
+    const key = endpointKey(e);
+    let bodyObj = {};
+    try { bodyObj = JSON.parse($('body')?.value || '{}'); } catch { bodyObj = {}; }
+    const state = loadRequestState();
+    const overrides = { ...(state.overrides || {}) };
+    overrides[key] = {
+      method: String($('method')?.value || 'GET').toUpperCase(),
+      path: String($('path')?.value || '').trim(),
+      body: bodyObj,
+    };
+    saveRequestState({ overrides });
+  };
+  $('method')?.addEventListener('change', saveEndpointOverride);
+  $('path')?.addEventListener('change', saveEndpointOverride);
+  $('body')?.addEventListener('change', saveEndpointOverride);
 
   (async () => {
     const filterEl = $('endpointFilter');
     if (filterEl) filterEl.value = loadFilterText();
+    const state = loadRequestState();
+    if (typeof state.useTrackKey === 'boolean' && $('useTrackKey')) {
+      $('useTrackKey').checked = state.useTrackKey;
+    }
     await loadRuntime();
     await loadEndpointCatalog();
     hydrateEndpoints();
