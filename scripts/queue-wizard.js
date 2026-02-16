@@ -31,6 +31,7 @@
   const savePlaylistBtn = $('savePlaylistBtn');
   const playlistNameEl = $('playlistName');
   const existingPlaylistsEl = $('existingPlaylists');
+  const existingPlaylistThumbEl = $('existingPlaylistThumb');
   const loadExistingPlaylistBtn = $('loadExistingPlaylistBtn');
   const savePlaylistNowBtn = $('savePlaylistNowBtn');
 
@@ -232,6 +233,22 @@ async function syncVibeAvailability() {
   
   function moodeDefaultCoverUrl() {
     return `http://${moodeHost}/images/default-cover.jpg`;
+  }
+
+  function updateExistingPlaylistThumb(name = '') {
+    if (!existingPlaylistThumbEl) return;
+    const n = String(name || '').trim();
+    if (!n) {
+      existingPlaylistThumbEl.style.display = 'none';
+      existingPlaylistThumbEl.removeAttribute('src');
+      return;
+    }
+    existingPlaylistThumbEl.style.display = '';
+    existingPlaylistThumbEl.src = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(n)}.jpg?t=${Date.now()}`;
+    existingPlaylistThumbEl.onerror = () => {
+      existingPlaylistThumbEl.onerror = null;
+      existingPlaylistThumbEl.src = moodeDefaultCoverUrl();
+    };
   }
 
   function showInlineCoverPreview({ mimeType, dataBase64, note = '' }) {
@@ -893,6 +910,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     const opts = [{ value: '', label: '(select existing playlist)' }, ...(names || []).map((n) => ({ value: String(n || ''), label: String(n || '') }))];
     existingPlaylistsEl.innerHTML = opts.map((x) => `<option value="${esc(x.value)}">${esc(x.label)}</option>`).join('');
     if (selectedName && (names || []).includes(selectedName)) existingPlaylistsEl.value = selectedName;
+    updateExistingPlaylistThumb(existingPlaylistsEl.value || '');
   }
 
   async function loadExistingPlaylists() {
@@ -1897,6 +1915,7 @@ function wireEvents() {
   });
 
   existingPlaylistsEl?.addEventListener('change', () => {
+    updateExistingPlaylistThumb(existingPlaylistsEl?.value || '');
     updatePlaylistUi();
     previewExistingPlaylistSelection();
   });
