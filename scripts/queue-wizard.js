@@ -13,6 +13,7 @@
 
   const vibeBtn = $('vibeBuild');
   const sendFilteredBtn = $('sendFilteredToMoode');
+  const themeToggleEl = $('themeToggle');
   const sendVibeBtn = $('sendVibeToMoode');
   const existingSectionEl = $('existingSection');
   const filterSectionEl = $('filterSection');
@@ -241,6 +242,19 @@ async function syncVibeAvailability() {
   
   function moodeDefaultCoverUrl() {
     return `http://${moodeHost}/images/default-cover.jpg`;
+  }
+
+  function applyTheme(theme = 'dark') {
+    const t = String(theme || 'dark').toLowerCase() === 'light' ? 'light' : 'dark';
+    document.body.classList.toggle('theme-light', t === 'light');
+    if (themeToggleEl) themeToggleEl.textContent = t === 'light' ? '☀️' : '🌙';
+    try { localStorage.setItem('np-theme', t); } catch {}
+  }
+
+  function initTheme() {
+    let saved = 'dark';
+    try { saved = localStorage.getItem('np-theme') || 'dark'; } catch {}
+    applyTheme(saved);
   }
 
   function updateExistingPlaylistThumb(name = '') {
@@ -1829,6 +1843,12 @@ async function maybeGenerateCollagePreview(reason = '') {
   // ---- Event wiring ----
 function wireEvents() {
   // Primary actions
+  themeToggleEl?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const isLight = document.body.classList.contains('theme-light');
+    applyTheme(isLight ? 'dark' : 'light');
+  });
+
   vibeBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     activateBuilder('vibe');
@@ -2258,6 +2278,7 @@ try {
   // Ensure the button starts hidden/disabled until a vibe build begins
   setCancelButtonMode('none');
 
+  initTheme();
   wireEvents();
   loadRuntimeMeta().finally(() => {
     loadOptions();
