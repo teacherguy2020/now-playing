@@ -72,6 +72,7 @@
   let dragOverTrackIdx = -1;
   let dragInsertAfter = false;
   let podcastBuildTimer = null;
+  let listOrderShuffled = false;
 
 // ---------- Vibe progress + Cancel/Send button (single-source-of-truth) ----------
 
@@ -637,6 +638,7 @@ async function syncVibeAvailability() {
       const j = Math.floor(Math.random() * (i + 1));
       [currentTracks[i], currentTracks[j]] = [currentTracks[j], currentTracks[i]];
     }
+    listOrderShuffled = true;
     renderTracksToTable(currentTracks);
     renderPlaylistThumbStrip(currentTracks);
     refreshCurrentListMetaAndUi();
@@ -648,6 +650,7 @@ async function syncVibeAvailability() {
       activateBuilder(currentListSource);
     }
     currentTracks = Array.isArray(tracks) ? tracks.slice() : [];
+    listOrderShuffled = false;
 
     renderTracksToTable(currentTracks);
     renderPlaylistThumbStrip(currentTracks);
@@ -1525,7 +1528,8 @@ async function maybeGenerateCollagePreview(reason = '') {
     const isPodcastSend = source === 'podcast';
     const mode = isVibeSend ? getModeVibe() : (isPodcastSend ? getModePodcast() : getMode());
     const keepNowPlaying = isVibeSend ? getKeepNowPlayingVibe() : (isPodcastSend ? getKeepNowPlayingPodcast() : getKeepNowPlaying());
-    const doShuffleFlag = (isVibeSend || isPodcastSend) ? false : getShuffle();
+    const doShuffleFlag = false; // UI shuffle reorders list directly; do not enable MPD random mode.
+    const forceRandomOff = listOrderShuffled || getShuffle();
 
     const savePlaylist = (source === 'podcast') ? false : savePlaylistEnabled;
     const playlistName = savePlaylist ? getPlaylistNameRaw() : '';
@@ -1558,6 +1562,7 @@ async function maybeGenerateCollagePreview(reason = '') {
           keepNowPlaying,
           tracks: currentFiles.slice(),
           shuffle: doShuffleFlag,
+          forceRandomOff,
           playlistName,
           generateCollage: wantsCollage,
         }),

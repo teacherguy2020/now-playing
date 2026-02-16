@@ -937,6 +937,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
       }
 
       const shuffle = Boolean(req.body?.shuffle);
+      const forceRandomOff = Boolean(req.body?.forceRandomOff);
       const generateCollage = Boolean(req.body?.generateCollage);
 
       const keepNowPlaying =
@@ -968,6 +969,13 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
         }
 
         // Always disable random before building a deterministic queue.
+        try {
+          await execFileP('mpc', ['-h', mpdHost, 'random', 'off']);
+          randomTurnedOff = true;
+        } catch (_) {}
+      }
+
+      if (forceRandomOff && !randomTurnedOff) {
         try {
           await execFileP('mpc', ['-h', mpdHost, 'random', 'off']);
           randomTurnedOff = true;
@@ -1046,6 +1054,7 @@ app.post('/config/queue-wizard/collage-preview', async (req, res) => {
         didCrop,
         didClear,
         shuffle,
+        forceRandomOff,
         randomTurnedOff,
         randomEnabled,
         generateCollage,
