@@ -1020,6 +1020,11 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     // For current queue mode, no need to display full thumb strip in cover card.
     renderPlaylistThumbStrip([]);
     renderFiltersSummary();
+
+    // On page load/current-queue refresh, generate a collage preview from live queue.
+    if (currentFiles.length) {
+      maybeGenerateCollagePreview('queue-load').catch(() => {});
+    }
   }
 
   async function loadOptions() {
