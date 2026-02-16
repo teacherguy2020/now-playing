@@ -453,7 +453,7 @@ async function syncVibeAvailability() {
     resultsEl.innerHTML =
       `<table style="font-size:16px;line-height:1.35;">
         <thead>
-          <tr><th></th><th>Art</th><th>Artist</th><th>Title</th><th>Album</th><th>Genre</th><th>Order</th></tr>
+          <tr><th>Action</th><th>Art</th><th>Artist</th><th>Title</th><th>Album</th><th>Genre</th><th>Order</th></tr>
         </thead>
         <tbody id="resultsBody"></tbody>
       </table>`;
@@ -469,13 +469,13 @@ async function syncVibeAvailability() {
     const file = String(t.file || '').trim();
     const art = file ? `${getApiBase()}/art/track_640.jpg?file=${encodeURIComponent(file)}` : '';
     tr.innerHTML =
-      `<td><input type="checkbox" data-include-track="${idx}" checked title="Keep in queue" /></td>` +
+      `<td><button type="button" data-remove-track="${idx}" title="Remove track from built list" style="padding:4px 8px;">Remove</button></td>` +
       `<td>${art ? `<img src="${art}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #334;background:#0a1222;" />` : ''}</td>` +
       `<td>${esc(t.artist || '')}</td>` +
       `<td>${esc(t.title || '')}</td>` +
       `<td>${esc(t.album || '')}</td>` +
       `<td>${esc(t.genre || '')}</td>` +
-      `<td style="white-space:nowrap;"><span title="Drag row to reorder" style="cursor:grab;opacity:.8;">↕</span></td>`;
+      `<td style="white-space:nowrap;"><span title="Drag row to reorder" style="cursor:grab;opacity:.8;font-size:16px;letter-spacing:1px;">☰</span></td>`;
     tbody.appendChild(tr);
   }
 
@@ -1536,6 +1536,15 @@ function wireEvents() {
     const el = ev.target instanceof Element ? ev.target : null;
     if (!el) return;
 
+    const removeTrackBtn = el.closest('button[data-remove-track]');
+    if (removeTrackBtn) {
+      ev.preventDefault();
+      const idx = Number(removeTrackBtn.getAttribute('data-remove-track') || -1);
+      if (!Number.isInteger(idx) || idx < 0) return;
+      removeTrackAt(idx);
+      return;
+    }
+
     const playbackBtn = el.closest('button[data-queue-playback]');
     if (playbackBtn) {
       ev.preventDefault();
@@ -1585,17 +1594,7 @@ function wireEvents() {
     }
   });
 
-  resultsEl?.addEventListener('change', (ev) => {
-    const el = ev.target instanceof Element ? ev.target : null;
-    if (!el) return;
-    const chk = el.closest('input[type="checkbox"][data-include-track]');
-    if (!chk) return;
-    const idx = Number(chk.getAttribute('data-include-track') || -1);
-    if (!Number.isInteger(idx) || idx < 0) return;
-    if ((chk instanceof HTMLInputElement) && !chk.checked) {
-      removeTrackAt(idx);
-    }
-  });
+  // remove-by-checkbox removed; using explicit Remove button for consistency.
 
   resultsEl?.addEventListener('dragstart', (ev) => {
     const row = ev.target instanceof Element ? ev.target.closest('tr[data-track-idx]') : null;
