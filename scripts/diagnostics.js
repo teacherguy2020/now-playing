@@ -92,6 +92,24 @@
   ];
 
   let endpointList = ENDPOINTS_FALLBACK.slice();
+  let visibleEndpoints = [];
+  const FAV_KEY = 'diagnostics:favorites:v1';
+
+  function loadFavorites(){
+    try {
+      const raw = localStorage.getItem(FAV_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(arr) ? arr.map((x) => String(x || '')) : []);
+    } catch (_) { return new Set(); }
+  }
+
+  function saveFavorites(set){
+    try { localStorage.setItem(FAV_KEY, JSON.stringify(Array.from(set))); } catch (_) {}
+  }
+
+  function endpointKey(e){
+    return `${String(e?.method || 'GET').toUpperCase()} ${String(e?.path || '')}`;
+  }
 
   async function loadEndpointCatalog(){
     const base = String($('apiBase')?.value || apiBaseDefault()).replace(/\/$/, '');
@@ -274,38 +292,63 @@
 
   function hydrateEndpoints(){
     const sel = $('endpoint');
-    const list = Array.isArray(endpointList) && endpointList.length ? endpointList : ENDPOINTS_FALLBACK;
+    const filterTxt = String($('endpointFilter')?.value || '').trim().toLowerCase();
+    const favs = loadFavorites();
+
+    const source = Array.isArray(endpointList) && endpointList.length ? endpointList : ENDPOINTS_FALLBACK;
+    const list = source.filter((e) => {
+      if (!filterTxt) return true;
+      const blob = `${String(e.group || '')} ${String(e.method || '')} ${String(e.name || '')} ${String(e.path || '')}`.toLowerCase();
+      return blob.includes(filterTxt);
+    });
+
+    const favorites = list.filter((e) => favs.has(endpointKey(e))).sort((a, b) => endpointKey(a).localeCompare(endpointKey(b)));
+    const nonFavs = list.filter((e) => !favs.has(endpointKey(e)));
 
     const byGroup = new Map();
-    for (const e of list) {
+    for (const e of nonFavs) {
       const g = String(e.group || 'Other');
       if (!byGroup.has(g)) byGroup.set(g, []);
       byGroup.get(g).push(e);
     }
 
-    let idx = 0;
+    const flat = [];
     const html = [];
-    for (const [group, arr] of byGroup.entries()) {
-      html.push(`<optgroup label="${group}">`);
-      for (const e of arr) {
-        const label = `${String(e.method || 'GET').toUpperCase()} ${String(e.name || e.path || '')}`;
-        html.push(`<option value="${idx}">${label}</option>`);
-        idx += 1;
+
+    if (favorites.length) {
+      html.push('<optgroup label="⭐ Favorites">');
+      for (const e of favorites) {
+        flat.push(e);
+        html.push(`<option value="${flat.length - 1}">${String(e.method || 'GET').toUpperCase()} ${String(e.name || e.path || '')}</option>`);
       }
       html.push('</optgroup>');
     }
-    sel.innerHTML = html.join('');
 
-    const flat = list.slice();
+    for (const [group, arr] of byGroup.entries()) {
+      html.push(`<optgroup label="${group}">`);
+      for (const e of arr) {
+        flat.push(e);
+        html.push(`<option value="${flat.length - 1}">${String(e.method || 'GET').toUpperCase()} ${String(e.name || e.path || '')}</option>`);
+      }
+      html.push('</optgroup>');
+    }
+
+    visibleEndpoints = flat;
+    sel.innerHTML = html.join('') || '<option value="0">(no matches)</option>';
+
     const apply = () => {
-      const e = flat[Number(sel.value) || 0] || flat[0] || { method: 'GET', path: '/' };
+      const e = visibleEndpoints[Number(sel.value) || 0] || { method: 'GET', path: '/' };
       $('method').value = String(e.method || 'GET').toUpperCase();
       $('path').value = String(e.path || '/');
       $('body').value = JSON.stringify(e.body || {}, null, 2);
       $('bodyWrap').style.display = ($('method').value === 'POST') ? '' : 'none';
+      const isFav = favs.has(endpointKey(e));
+      const fb = $('favBtn');
+      if (fb) fb.textContent = isFav ? '⭐ Favorited' : '⭐ Favorite';
     };
-    sel.addEventListener('change', apply);
-    $('method').addEventListener('change', () => $('bodyWrap').style.display = ($('method').value === 'POST') ? '' : 'none');
+
+    sel.onchange = apply;
+    $('method').onchange = () => $('bodyWrap').style.display = ($('method').value === 'POST') ? '' : 'none';
     apply();
   }
 
@@ -418,8 +461,45 @@
     catch { $('status').textContent = 'Copy failed.'; }
   }
 
+  async function copyAsCurl(){
+    try {
+      const base = String($('apiBase').value || apiBaseDefault()).replace(/\/$/, '');
+      const path = String($('path').value || '').trim();
+      const method = String($('method').value || 'GET').toUpperCase();
+      const useKey = !!$('useTrackKey').checked;
+      const key = String($('key').value || '').trim();
+      const url = `${base}${path.startsWith('/') ? path : '/' + path}`;
+      const parts = [`curl -s -X ${method}`];
+      if (useKey && key) parts.push(`-H 'x-track-key: ${key.replace(/'/g, "'\\''")}'`);
+      if (method === 'POST') {
+        const bodyObj = JSON.parse($('body').value || '{}');
+        const bodyTxt = JSON.stringify(bodyObj);
+        parts.push(`-H 'Content-Type: application/json'`);
+        parts.push(`-d '${bodyTxt.replace(/'/g, "'\\''")}'`);
+      }
+      parts.push(`'${url.replace(/'/g, "'\\''")}'`);
+      await navigator.clipboard.writeText(parts.join(' '));
+      $('status').textContent = 'Copied as curl.';
+    } catch (e) {
+      $('status').textContent = `Copy as curl failed: ${e?.message || e}`;
+    }
+  }
+
+  function toggleFavorite(){
+    const e = visibleEndpoints[Number($('endpoint')?.value || 0)] || null;
+    if (!e) return;
+    const favs = loadFavorites();
+    const k = endpointKey(e);
+    if (favs.has(k)) favs.delete(k); else favs.add(k);
+    saveFavorites(favs);
+    hydrateEndpoints();
+  }
+
   $('copyBtn').addEventListener('click', copyResponse);
   $('copyBtnCard')?.addEventListener('click', copyResponse);
+  $('copyCurlBtn')?.addEventListener('click', copyAsCurl);
+  $('favBtn')?.addEventListener('click', toggleFavorite);
+  $('endpointFilter')?.addEventListener('input', () => hydrateEndpoints());
 
   (async () => {
     await loadRuntime();
