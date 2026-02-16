@@ -35,11 +35,11 @@
     #podcastDateFrom,
     #podcastDateTo,
     #podcastMaxPerShow{
-      height:56px !important;
-      min-height:56px !important;
-      max-height:56px !important;
+      height:44px !important;
+      min-height:44px !important;
+      max-height:44px !important;
       box-sizing:border-box;
-      padding:8px 10px;
+      padding:6px 10px;
       line-height:1.2;
       width:100%;
       border-radius:14px !important;
@@ -93,9 +93,19 @@
     <input id="apiBase" type="hidden" />
     <input id="key" type="hidden" />
 
-    <div class="card">
-      <h3 style="margin:0 0 8px">Filter Queue Builder</h3>
-      <div class="muted" style="margin-top:4px">Pick genres/artists and exclusions, preview matches, then send that filtered list.</div>
+    <div class="card" id="filterSection">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+        <div>
+          <h3 style="margin:0 0 8px">Filter Queue Builder</h3>
+          <div class="muted" style="margin-top:4px">Pick genres/artists and exclusions, preview matches, then send that filtered list.</div>
+        </div>
+        <div id="existingPlaylistWrap" style="min-width:320px;max-width:520px;display:flex;flex-direction:column;align-items:flex-end;">
+          <label for="existingPlaylists" style="display:block;text-align:left;width:100%;max-width:360px;">Existing playlists</label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;width:100%;max-width:360px;">
+            <select id="existingPlaylists" style="width:100%;min-width:260px;max-width:360px;"></select>
+          </div>
+        </div>
+      </div>
       <div class="row" style="margin-top:10px">
         <label>Max tracks<br><input id="maxTracks" type="number" min="1" max="5000" value="25" style="width:100px"></label>
         <label>At least rating<br>
@@ -125,7 +135,7 @@
         </div>
 
         <div class="choiceLine">
-          <button id="sendFilteredToMoode" class="btnPrimary">Send filtered list to moOde</button>
+          <button id="sendFilteredToMoode" class="btnPrimary">Send queue to moOde</button>
         </div>
       </div>
     </div>
@@ -230,7 +240,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-6"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-20"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){

@@ -14,6 +14,7 @@
   const vibeBtn = $('vibeBuild');
   const sendFilteredBtn = $('sendFilteredToMoode');
   const sendVibeBtn = $('sendVibeToMoode');
+  const filterSectionEl = $('filterSection');
   const vibeSectionEl = $('vibeSection');
   const vibeDisabledNoteEl = $('vibeDisabledNote');
 
@@ -29,6 +30,8 @@
 
   const savePlaylistBtn = $('savePlaylistBtn');
   const playlistNameEl = $('playlistName');
+  const existingPlaylistsEl = $('existingPlaylists');
+  const loadExistingPlaylistBtn = $('loadExistingPlaylistBtn');
   const savePlaylistNowBtn = $('savePlaylistNowBtn');
 
   const cropVibeEl = $('cropVibe');
@@ -54,6 +57,8 @@
   let savePlaylistEnabled = false;
   let ratingsEnabled = true;
   let podcastsEnabled = true;
+  let vibeEnabled = true;
+  let activeBuilder = '';
   let podcastShowByRss = new Map();
 
   // Persist the current list (vibe OR filters)
@@ -174,9 +179,26 @@ function stopVibePolling() {
   vibePollTimer = null;
 }
 
+function applyBuilderVisibility() {
+  const showFilter = !activeBuilder || activeBuilder === 'filters';
+  const showVibe = (!activeBuilder || activeBuilder === 'vibe') && vibeEnabled;
+  const showPodcast = (!activeBuilder || activeBuilder === 'podcast') && podcastsEnabled;
+  if (filterSectionEl) filterSectionEl.classList.toggle('hidden', !showFilter);
+  if (vibeSectionEl) vibeSectionEl.classList.toggle('hidden', !showVibe);
+  if (podcastSectionEl) podcastSectionEl.classList.toggle('hidden', !showPodcast);
+  const showVibeDisabledNote = !vibeEnabled && !activeBuilder;
+  if (vibeDisabledNoteEl) vibeDisabledNoteEl.classList.toggle('hidden', !showVibeDisabledNote);
+}
+
+function activateBuilder(name) {
+  const v = String(name || '').trim();
+  if (!v || activeBuilder === v) return;
+  activeBuilder = v;
+  applyBuilderVisibility();
+}
+
 function syncPodcastSectionVisibility() {
-  if (!podcastSectionEl) return;
-  podcastSectionEl.classList.toggle('hidden', !podcastsEnabled);
+  applyBuilderVisibility();
 }
 
 async function syncVibeAvailability() {
@@ -192,8 +214,8 @@ async function syncVibeAvailability() {
     enabled = false;
   }
 
-  if (vibeSectionEl) vibeSectionEl.classList.toggle('hidden', !enabled);
-  if (vibeDisabledNoteEl) vibeDisabledNoteEl.classList.toggle('hidden', enabled);
+  vibeEnabled = enabled;
+  applyBuilderVisibility();
   if (!enabled) {
     hideVibeProgress();
     setCancelButtonMode('none');
@@ -347,6 +369,10 @@ async function syncVibeAvailability() {
 
   function getMinRatingVibe() {
     return ratingsEnabled ? Number($('minRatingVibe')?.value || 0) : 0;
+  }
+
+  function hasExistingPlaylistSelected() {
+    return !!String(existingPlaylistsEl?.value || '').trim();
   }
 
   function syncRatingsUi(){
@@ -574,7 +600,9 @@ async function syncVibeAvailability() {
 
     const label = currentListSource === 'vibe'
       ? 'Vibe list'
-      : (currentListSource === 'filters' ? 'Filter list' : (currentListSource === 'podcast' ? 'Podcast list' : 'List'));
+      : (currentListSource === 'filters' ? 'Filter list'
+      : (currentListSource === 'existing' ? 'Existing playlist'
+      : (currentListSource === 'podcast' ? 'Podcast list' : 'List')));
 
     setCount(`${label} ready: ${currentTracks.length.toLocaleString()} track(s).`);
     if (sendVibeBtn) sendVibeBtn.disabled = !(currentListSource === 'vibe' && currentFiles.length > 0);
@@ -603,8 +631,22 @@ async function syncVibeAvailability() {
     refreshCurrentListMetaAndUi();
   }
 
+  function shuffleCurrentTracksInPlace() {
+    if (!Array.isArray(currentTracks) || currentTracks.length < 2) return;
+    for (let i = currentTracks.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [currentTracks[i], currentTracks[j]] = [currentTracks[j], currentTracks[i]];
+    }
+    renderTracksToTable(currentTracks);
+    renderPlaylistThumbStrip(currentTracks);
+    refreshCurrentListMetaAndUi();
+  }
+
   function setCurrentList(source, tracks) {
     currentListSource = source || 'none';
+    if (currentListSource === 'filters' || currentListSource === 'vibe' || currentListSource === 'podcast') {
+      activateBuilder(currentListSource);
+    }
     currentTracks = Array.isArray(tracks) ? tracks.slice() : [];
 
     renderTracksToTable(currentTracks);
@@ -710,8 +752,9 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
 
     const src = currentListSource === 'vibe' ? 'vibe'
       : (currentListSource === 'filters' ? 'filters'
+      : (currentListSource === 'existing' ? 'existing'
       : (currentListSource === 'podcast' ? 'podcast'
-      : (currentListSource === 'queue' ? 'queue' : 'none')));
+      : (currentListSource === 'queue' ? 'queue' : 'none'))));
 
     summaryEl.innerHTML =
       `List source: <b>${esc(src)}</b> · ` +
@@ -735,6 +778,97 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
       const s = esc(String(v ?? ''));
       return `<option value="${s}">${s}</option>`;
     }).join('');
+  }
+
+  function setExistingPlaylistOptions(names = [], selected = '') {
+    if (!existingPlaylistsEl) return;
+    const selectedName = String(selected || '').trim();
+    const opts = [{ value: '', label: '(select existing playlist)' }, ...(names || []).map((n) => ({ value: String(n || ''), label: String(n || '') }))];
+    existingPlaylistsEl.innerHTML = opts.map((x) => `<option value="${esc(x.value)}">${esc(x.label)}</option>`).join('');
+    if (selectedName && (names || []).includes(selectedName)) existingPlaylistsEl.value = selectedName;
+  }
+
+  async function loadExistingPlaylists() {
+    const apiBase = getApiBase();
+    const key = getKey();
+    if (!apiBase || !existingPlaylistsEl) return;
+    try {
+      setExistingPlaylistOptions(['loading…']);
+      existingPlaylistsEl.disabled = true;
+      const r = await fetch(`${apiBase}/config/queue-wizard/playlists`, { headers: { 'x-track-key': key }, cache: 'no-store' });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      const names = Array.isArray(j?.playlists) ? j.playlists.map((x) => String(x || '').trim()).filter(Boolean) : [];
+      setExistingPlaylistOptions(names, getPlaylistNameRaw());
+      existingPlaylistsEl.disabled = false;
+      updatePlaylistUi();
+    } catch (_) {
+      setExistingPlaylistOptions([]);
+      existingPlaylistsEl.disabled = false;
+      updatePlaylistUi();
+    }
+  }
+
+  async function previewExistingPlaylistSelection() {
+    const apiBase = getApiBase();
+    const key = getKey();
+    const name = String(existingPlaylistsEl?.value || '').trim();
+    if (!apiBase || !name) return;
+
+    try {
+      activateBuilder('filters');
+      if (coverCardEl) coverCardEl.style.display = '';
+      if (coverStatusEl) coverStatusEl.textContent = `Playlist cover: “${name}”.`;
+      if (coverImgEl) {
+        coverImgEl.src = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(name)}.jpg?t=${Date.now()}`;
+        coverImgEl.onerror = () => {
+          coverImgEl.onerror = null;
+          coverImgEl.src = moodeDefaultCoverUrl();
+        };
+      }
+
+      setStatus('<span class="spin"></span>Loading playlist preview…');
+      const r = await fetch(`${apiBase}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(name)}`, {
+        headers: { 'x-track-key': key },
+        cache: 'no-store',
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      const tracks = Array.isArray(j?.tracks) ? j.tracks : [];
+      setCurrentList('existing', tracks);
+      setStatus(`Loaded playlist preview: ${esc(name)} (${tracks.length.toLocaleString()} track(s)).`);
+    } catch (e) {
+      setStatus(`Playlist preview failed: ${esc(e?.message || e)}`);
+    }
+  }
+
+  async function loadPlaylistToQueueNow() {
+    const apiBase = getApiBase();
+    const key = getKey();
+    const name = String(existingPlaylistsEl?.value || '').trim();
+    if (!apiBase) return;
+    if (!name) {
+      setStatus('Pick an existing playlist first.');
+      return;
+    }
+    try {
+      if (loadExistingPlaylistBtn) loadExistingPlaylistBtn.disabled = true;
+      setStatus('<span class="spin"></span>Loading playlist into queue…');
+      const r = await fetch(`${apiBase}/config/queue-wizard/load-playlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+        body: JSON.stringify({ playlist: name, mode: 'replace', play: true }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      setStatus(`Loaded playlist: ${esc(name)} (${Number(j.added || 0)} track(s)).`);
+      showSendConfirmation(`✅ Loaded “${name}” and started playback.`);
+      await loadCurrentQueueCard().catch(() => {});
+    } catch (e) {
+      setStatus(`Load playlist failed: ${esc(e?.message || e)}`);
+    } finally {
+      if (loadExistingPlaylistBtn) loadExistingPlaylistBtn.disabled = false;
+    }
   }
 
   async function sendDiagnosticsAction(action, payload = {}) {
@@ -1179,6 +1313,9 @@ async function doVibeBuild() {
 async function maybeGenerateCollagePreview(reason = '') {
   if (!coverCardEl || !coverImgEl || !coverStatusEl) return;
 
+  // If user selected an existing playlist, keep that playlist's cover preview.
+  if (hasExistingPlaylistSelected()) return;
+
   const apiBase = getApiBase();
   const key = getKey();
 
@@ -1299,10 +1436,14 @@ async function maybeGenerateCollagePreview(reason = '') {
 }
 
   function updatePlaylistUi() {
+    const existingSelected = hasExistingPlaylistSelected();
+    if (existingSelected && savePlaylistEnabled) savePlaylistEnabled = false;
+
     const savePlaylist = savePlaylistEnabled;
     const opts = $('playlistOptions');
 
-    if (opts) opts.classList.toggle('hidden', !savePlaylist);
+    if (savePlaylistBtn) savePlaylistBtn.classList.toggle('hidden', existingSelected);
+    if (opts) opts.classList.toggle('hidden', !savePlaylist || existingSelected);
     // collage is implicit when Save Playlist is enabled
 
     if (savePlaylist) {
@@ -1349,7 +1490,7 @@ async function maybeGenerateCollagePreview(reason = '') {
     if (sendBusy) return;
     sendBusy = true;
 
-    if (source === 'filters') {
+    if (source === 'filters' && currentListSource !== 'existing') {
       await doPreview();
     }
 
@@ -1469,45 +1610,54 @@ function wireEvents() {
   // Primary actions
   vibeBtn?.addEventListener('click', (e) => {
     e.preventDefault();
+    activateBuilder('vibe');
     doVibeBuild();
   });
 
   sendFilteredBtn?.addEventListener('click', (e) => {
     e.preventDefault();
-    doSendToMoode('filters');
+    activateBuilder('filters');
+    const src = (currentListSource === 'existing') ? 'existing' : 'filters';
+    doSendToMoode(src);
   });
 
   sendVibeBtn?.addEventListener('click', (e) => {
     e.preventDefault();
+    activateBuilder('vibe');
     doSendToMoode('vibe');
   });
 
   podcastBuildBtn?.addEventListener('click', (e) => {
     e.preventDefault();
+    activateBuilder('podcast');
     hideCoverForPodcastBuilder();
     doPodcastBuild();
   });
 
   sendPodcastBtn?.addEventListener('click', (e) => {
     e.preventDefault();
+    activateBuilder('podcast');
     hideCoverForPodcastBuilder();
     doSendToMoode('podcast');
   });
 
   podcastPreset24hBtn?.addEventListener('click', (e) => {
     e.preventDefault();
+    activateBuilder('podcast');
     applyPodcastPresetDays(1);
     hideCoverForPodcastBuilder();
     schedulePodcastBuild(120);
   });
   podcastPreset48hBtn?.addEventListener('click', (e) => {
     e.preventDefault();
+    activateBuilder('podcast');
     applyPodcastPresetDays(2);
     hideCoverForPodcastBuilder();
     schedulePodcastBuild(120);
   });
   podcastPreset7dBtn?.addEventListener('click', (e) => {
     e.preventDefault();
+    activateBuilder('podcast');
     applyPodcastPresetDays(7);
     hideCoverForPodcastBuilder();
     schedulePodcastBuild(120);
@@ -1517,11 +1667,13 @@ function wireEvents() {
     const el = $(id);
     if (!el) return;
     el.addEventListener('change', () => {
+      activateBuilder('podcast');
       hideCoverForPodcastBuilder();
       schedulePodcastBuild(250);
     });
     if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
       el.addEventListener('input', () => {
+        activateBuilder('podcast');
         hideCoverForPodcastBuilder();
         schedulePodcastBuild(450);
       });
@@ -1563,6 +1715,7 @@ function wireEvents() {
   // Mode/crop
   document.querySelectorAll('input[name="mode"]').forEach((el) => {
     el.addEventListener('change', () => {
+      activateBuilder('filters');
       syncCropUi();
       renderFiltersSummary();
     });
@@ -1570,21 +1723,31 @@ function wireEvents() {
 
   document.querySelectorAll('input[name="modeVibe"]').forEach((el) => {
     el.addEventListener('change', () => {
+      activateBuilder('vibe');
       syncCropVibeUi();
     });
   });
 
   document.querySelectorAll('input[name="modePodcast"]').forEach((el) => {
     el.addEventListener('change', () => {
+      activateBuilder('podcast');
       syncCropPodcastUi();
     });
   });
 
   cropEl?.addEventListener('change', () => {
+    activateBuilder('filters');
     renderFiltersSummary();
   });
-  cropVibeEl?.addEventListener('change', () => {});
-  cropPodcastEl?.addEventListener('change', () => {});
+  const shuffleEl = $('shuffle');
+  shuffleEl?.addEventListener('change', () => {
+    if (!shuffleEl.checked) return;
+    if (!['filters', 'existing', 'vibe', 'podcast'].includes(currentListSource)) return;
+    shuffleCurrentTracksInPlace();
+    setStatus('List shuffled.');
+  });
+  cropVibeEl?.addEventListener('change', () => { activateBuilder('vibe'); });
+  cropPodcastEl?.addEventListener('change', () => { activateBuilder('podcast'); });
 
   // Playlist controls should NOT rebuild the list
   savePlaylistBtn?.addEventListener('click', () => {
@@ -1595,7 +1758,18 @@ function wireEvents() {
 
   playlistNameEl?.addEventListener('input', () => {
     updatePlaylistUi();
+    if (existingPlaylistsEl) existingPlaylistsEl.value = '';
     if (savePlaylistEnabled) maybeGenerateCollagePreview('playlist-name-input');
+  });
+
+  existingPlaylistsEl?.addEventListener('change', () => {
+    updatePlaylistUi();
+    previewExistingPlaylistSelection();
+  });
+
+  loadExistingPlaylistBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    loadPlaylistToQueueNow();
   });
 
   savePlaylistNowBtn?.addEventListener('click', (e) => {
@@ -1745,7 +1919,7 @@ function wireEvents() {
   const maybePreview = () => {
     syncCropUi();
     renderFiltersSummary();
-    if (currentListSource === 'vibe') return;
+    if (currentListSource === 'vibe' || currentListSource === 'existing') return;
     schedulePreview(300);
   };
 
@@ -1753,14 +1927,25 @@ function wireEvents() {
     const el = $(id);
     if (!el) return;
     el.addEventListener('change', () => {
-      if (id === 'apiBase') syncVibeAvailability();
+      if (id === 'apiBase') {
+        syncVibeAvailability();
+        loadExistingPlaylists();
+      }
+      if (id === 'key') loadExistingPlaylists();
       if (id === 'maxTracks') localStorage.setItem(MAX_TRACKS_STORAGE, String(getMaxTracks()));
+      if (!['apiBase','key'].includes(id)) activateBuilder('filters');
+      if (id === 'shuffle') { renderFiltersSummary(); return; }
       maybePreview();
     });
     if (el.tagName === 'INPUT') {
       el.addEventListener('input', () => {
-        if (id === 'apiBase') syncVibeAvailability();
+        if (id === 'apiBase') {
+          syncVibeAvailability();
+          loadExistingPlaylists();
+        }
+        if (id === 'key') loadExistingPlaylists();
         if (id === 'maxTracks') localStorage.setItem(MAX_TRACKS_STORAGE, String(getMaxTracks()));
+        if (!['apiBase','key'].includes(id)) activateBuilder('filters');
         maybePreview();
       });
     }
@@ -1804,6 +1989,7 @@ try {
   wireEvents();
   loadRuntimeMeta().finally(() => {
     loadOptions();
+    loadExistingPlaylists();
     syncVibeAvailability();
     loadCurrentQueueCard().catch((e) => {
       setStatus(`Error loading current queue: ${esc(e?.message || e)}`);
