@@ -304,6 +304,7 @@ async function syncVibeAvailability() {
     const apiHintEl = $('apiHint');
     const webHintEl = $('webHint');
     const alexaHintEl = $('alexaHint');
+    const moodeHintEl = $('moodeHint');
 
     try {
       const r = await fetch(rtUrl, { cache: 'no-store' });
@@ -335,9 +336,12 @@ async function syncVibeAvailability() {
       syncRatingsUi();
       syncPodcastSectionVisibility();
       if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
+      const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || cfg?.mpdHost || '').trim();
+      if (moodeHintEl) moodeHintEl.textContent = moodeHost ? `confirmed (${moodeHost})` : 'not verified';
       setPillState('apiPill','ok');
       setPillState('webPill','ok');
       setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
+      setPillState('moodePill', moodeHost ? 'ok' : 'warn');
 
       runtimeLoaded = true;
     } catch (e) {
@@ -348,6 +352,7 @@ async function syncVibeAvailability() {
       if (apiHintEl) apiHintEl.textContent = `${host}:3101`;
       if (webHintEl) webHintEl.textContent = `${host}:8101`;
       if (alexaHintEl) alexaHintEl.textContent = 'unknown';
+      if (moodeHintEl) moodeHintEl.textContent = 'not verified';
       ratingsEnabled = true;
       podcastsEnabled = true;
       syncRatingsUi();
@@ -355,6 +360,7 @@ async function syncVibeAvailability() {
       setPillState('apiPill','bad');
       setPillState('webPill','warn');
       setPillState('alexaPill','warn');
+      setPillState('moodePill','warn');
     }
   }
 

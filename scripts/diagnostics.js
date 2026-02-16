@@ -3,25 +3,92 @@
   let ratingsEnabled = true;
 
   const ENDPOINTS = [
-    // Playback / art
-    { name: 'Now Playing', method: 'GET', path: '/now-playing' },
-    { name: 'Next Up', method: 'GET', path: '/next-up' },
-    { name: 'Current art (jpg)', method: 'GET', path: '/art/current.jpg' },
-    { name: 'Current art 640 (jpg)', method: 'GET', path: '/art/current_640.jpg' },
-    { name: 'Blurred bg art 640 (jpg)', method: 'GET', path: '/art/current_bg_640_blur.jpg' },
-
-    // Runtime/config
-    { name: 'Runtime config', method: 'GET', path: '/config/runtime' },
-    { name: 'Runtime meta', method: 'GET', path: '/config/runtime-meta' },
-    { name: 'Queue wizard options', method: 'GET', path: '/config/queue-wizard/options' },
-    { name: 'Ratings sticker status', method: 'GET', path: '/config/ratings/sticker-status' },
-    { name: 'Ratings sticker backups', method: 'GET', path: '/config/ratings/sticker-backups' },
-    { name: 'Library health (sample)', method: 'GET', path: '/config/library-health?sampleLimit=25' },
-    { name: 'Diagnostics queue', method: 'GET', path: '/config/diagnostics/queue' },
-
-    // Helper POST checks
-    { name: 'Runtime check env (POST)', method: 'POST', path: '/config/runtime/check-env', body: { mpdHost: '', mpdPort: 6600, sshHost: '', sshUser: 'moode', paths: {} } },
-    { name: 'Alexa domain check (POST)', method: 'POST', path: '/config/alexa/check-domain', body: { domain: '' } },
+    // Auto-expanded endpoint catalog
+    { name: '/art/current.jpg', method: 'GET', path: '/art/current.jpg' },
+    { name: '/art/current_320.jpg', method: 'GET', path: '/art/current_320.jpg' },
+    { name: '/art/current_640.jpg', method: 'GET', path: '/art/current_640.jpg' },
+    { name: '/art/current_bg_640_blur.jpg', method: 'GET', path: '/art/current_bg_640_blur.jpg' },
+    { name: '/art/track_640.jpg', method: 'GET', path: '/art/track_640.jpg' },
+    { name: '/config/album-alias-suggestion', method: 'POST', path: '/config/album-alias-suggestion', body: {} },
+    { name: '/config/alexa-heard-album', method: 'POST', path: '/config/alexa-heard-album', body: {} },
+    { name: '/config/alexa-heard-artist', method: 'POST', path: '/config/alexa-heard-artist', body: {} },
+    { name: '/config/alexa-heard-playlist', method: 'POST', path: '/config/alexa-heard-playlist', body: {} },
+    { name: '/config/alexa/check-domain', method: 'POST', path: '/config/alexa/check-domain', body: { domain: "" } },
+    { name: '/config/artist-alias-suggestion', method: 'POST', path: '/config/artist-alias-suggestion', body: {} },
+    { name: '/config/diagnostics/playback', method: 'POST', path: '/config/diagnostics/playback', body: { action: "play" } },
+    { name: '/config/diagnostics/queue', method: 'GET', path: '/config/diagnostics/queue' },
+    { name: '/config/library-health', method: 'GET', path: '/config/library-health' },
+    { name: '/config/library-health/album-art', method: 'GET', path: '/config/library-health/album-art' },
+    { name: '/config/library-health/album-art', method: 'POST', path: '/config/library-health/album-art', body: {} },
+    { name: '/config/library-health/album-genre', method: 'GET', path: '/config/library-health/album-genre' },
+    { name: '/config/library-health/album-genre', method: 'POST', path: '/config/library-health/album-genre', body: {} },
+    { name: '/config/library-health/album-performers-apply', method: 'POST', path: '/config/library-health/album-performers-apply', body: {} },
+    { name: '/config/library-health/album-performers-suggest', method: 'GET', path: '/config/library-health/album-performers-suggest' },
+    { name: '/config/library-health/album-tracks', method: 'GET', path: '/config/library-health/album-tracks' },
+    { name: '/config/library-health/albums', method: 'GET', path: '/config/library-health/albums' },
+    { name: '/config/library-health/genre-batch', method: 'POST', path: '/config/library-health/genre-batch', body: {} },
+    { name: '/config/library-health/genre-folders', method: 'GET', path: '/config/library-health/genre-folders' },
+    { name: '/config/library-health/missing-artwork', method: 'GET', path: '/config/library-health/missing-artwork' },
+    { name: '/config/library-health/rating-batch', method: 'POST', path: '/config/library-health/rating-batch', body: {} },
+    { name: '/config/playlist-alias-suggestion', method: 'POST', path: '/config/playlist-alias-suggestion', body: {} },
+    { name: '/config/queue-wizard/apply', method: 'POST', path: '/config/queue-wizard/apply', body: { mode: "append", keepNowPlaying: false, tracks: [""], shuffle: false } },
+    { name: '/config/queue-wizard/collage-preview', method: 'POST', path: '/config/queue-wizard/collage-preview', body: {} },
+    { name: '/config/queue-wizard/load-playlist', method: 'POST', path: '/config/queue-wizard/load-playlist', body: { playlist: "", mode: "replace", play: true } },
+    { name: '/config/queue-wizard/options', method: 'GET', path: '/config/queue-wizard/options' },
+    { name: '/config/queue-wizard/playlist-preview', method: 'GET', path: '/config/queue-wizard/playlist-preview' },
+    { name: '/config/queue-wizard/playlists', method: 'GET', path: '/config/queue-wizard/playlists' },
+    { name: '/config/queue-wizard/preview', method: 'POST', path: '/config/queue-wizard/preview', body: { genres: [], artists: [], albums: [], excludeGenres: [], minRating: 0, maxTracks: 25 } },
+    { name: '/config/queue-wizard/vibe-cancel/<jobId>', method: 'POST', path: '/config/queue-wizard/vibe-cancel/<jobId>', body: {} },
+    { name: '/config/queue-wizard/vibe-nowplaying', method: 'GET', path: '/config/queue-wizard/vibe-nowplaying' },
+    { name: '/config/queue-wizard/vibe-nowplaying', method: 'POST', path: '/config/queue-wizard/vibe-nowplaying', body: { targetQueue: 50, minRating: 0 } },
+    { name: '/config/queue-wizard/vibe-start', method: 'POST', path: '/config/queue-wizard/vibe-start', body: { targetQueue: 50, minRating: 0 } },
+    { name: '/config/queue-wizard/vibe-status/<jobId>', method: 'GET', path: '/config/queue-wizard/vibe-status/<jobId>' },
+    { name: '/config/ratings/sticker-backup', method: 'POST', path: '/config/ratings/sticker-backup', body: {} },
+    { name: '/config/ratings/sticker-backups', method: 'GET', path: '/config/ratings/sticker-backups' },
+    { name: '/config/ratings/sticker-restore', method: 'POST', path: '/config/ratings/sticker-restore', body: {} },
+    { name: '/config/ratings/sticker-status', method: 'GET', path: '/config/ratings/sticker-status' },
+    { name: '/config/restart-api', method: 'POST', path: '/config/restart-api', body: {} },
+    { name: '/config/restart-services', method: 'POST', path: '/config/restart-services', body: {} },
+    { name: '/config/runtime', method: 'GET', path: '/config/runtime' },
+    { name: '/config/runtime', method: 'POST', path: '/config/runtime', body: { mpdHost: "", sshHost: "", trackKey: "" } },
+    { name: '/config/runtime-meta', method: 'GET', path: '/config/runtime-meta' },
+    { name: '/config/runtime/check-env', method: 'POST', path: '/config/runtime/check-env', body: { mpdHost: "", mpdPort: 6600, sshHost: "", sshUser: "moode", paths: {} } },
+    { name: '/config/runtime/ensure-podcast-root', method: 'POST', path: '/config/runtime/ensure-podcast-root', body: {} },
+    { name: '/config/runtime/resolve-host', method: 'POST', path: '/config/runtime/resolve-host', body: {} },
+    { name: '/mpd/album-alias-suggestion', method: 'POST', path: '/mpd/album-alias-suggestion', body: {} },
+    { name: '/mpd/alexa-heard-album', method: 'POST', path: '/mpd/alexa-heard-album', body: {} },
+    { name: '/mpd/alexa-heard-artist', method: 'POST', path: '/mpd/alexa-heard-artist', body: {} },
+    { name: '/mpd/alexa-heard-playlist', method: 'POST', path: '/mpd/alexa-heard-playlist', body: {} },
+    { name: '/mpd/artist-alias-suggestion', method: 'POST', path: '/mpd/artist-alias-suggestion', body: {} },
+    { name: '/mpd/playlist-alias-suggestion', method: 'POST', path: '/mpd/playlist-alias-suggestion', body: {} },
+    { name: '/next-up', method: 'GET', path: '/next-up' },
+    { name: '/now-playing', method: 'GET', path: '/now-playing' },
+    { name: '/podcasts', method: 'GET', path: '/podcasts' },
+    { name: '/podcasts/_debug/rebuild-local', method: 'POST', path: '/podcasts/_debug/rebuild-local', body: {} },
+    { name: '/podcasts/build-playlist', method: 'POST', path: '/podcasts/build-playlist', body: { items: [] } },
+    { name: '/podcasts/cleanup-older-than', method: 'POST', path: '/podcasts/cleanup-older-than', body: { days: 30 } },
+    { name: '/podcasts/download-latest', method: 'POST', path: '/podcasts/download-latest', body: { rss: "", scanLimit: 100, downloadCount: 5 } },
+    { name: '/podcasts/download-one', method: 'POST', path: '/podcasts/download-one', body: { rss: "", guid: "" } },
+    { name: '/podcasts/episodes/delete', method: 'POST', path: '/podcasts/episodes/delete', body: { rss: "", guid: "" } },
+    { name: '/podcasts/episodes/list', method: 'POST', path: '/podcasts/episodes/list', body: { rss: "", scanLimit: 100, downloadedOnly: false } },
+    { name: '/podcasts/episodes/status', method: 'GET', path: '/podcasts/episodes/status' },
+    { name: '/podcasts/list', method: 'GET', path: '/podcasts/list' },
+    { name: '/podcasts/nightly-retention', method: 'POST', path: '/podcasts/nightly-retention', body: { enabled: true, days: 30 } },
+    { name: '/podcasts/nightly-status', method: 'GET', path: '/podcasts/nightly-status' },
+    { name: '/podcasts/refresh', method: 'GET', path: '/podcasts/refresh' },
+    { name: '/podcasts/refresh', method: 'POST', path: '/podcasts/refresh', body: { limit: 50 } },
+    { name: '/podcasts/refresh-one', method: 'GET', path: '/podcasts/refresh-one' },
+    { name: '/podcasts/refresh-one', method: 'POST', path: '/podcasts/refresh-one', body: { rss: "", limit: 50 } },
+    { name: '/podcasts/subscribe', method: 'POST', path: '/podcasts/subscribe', body: { rss: "", downloadCount: 5, scanLimit: 50 } },
+    { name: '/podcasts/subscription/settings', method: 'POST', path: '/podcasts/subscription/settings', body: { rss: "", downloadCount: 5, limit: 50 } },
+    { name: '/podcasts/unsubscribe', method: 'POST', path: '/podcasts/unsubscribe', body: { rss: "" } },
+    { name: '/queue/advance', method: 'POST', path: '/queue/advance', body: { count: 1 } },
+    { name: '/queue/mix', method: 'POST', path: '/queue/mix', body: { target: 50 } },
+    { name: '/rating', method: 'GET', path: '/rating' },
+    { name: '/rating', method: 'POST', path: '/rating', body: { file: "", rating: 3 } },
+    { name: '/rating/current', method: 'GET', path: '/rating/current' },
+    { name: '/rating/current', method: 'POST', path: '/rating/current', body: { rating: 3 } },
+    { name: '/track', method: 'GET', path: '/track' },
   ];
 
   function setPillState(pillId, state){
@@ -82,9 +149,11 @@
       $('webHint').textContent = `${host}:${uiPort}`;
       const axEnabled = !!cfg?.alexa?.enabled;
       const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
+      const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || cfg?.mpdHost || '').trim();
       ratingsEnabled = Boolean(cfg?.features?.ratings ?? true);
       $('alexaHint').textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
-      setPillState('apiPill','ok'); setPillState('webPill','ok'); setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
+      if ($('moodeHint')) $('moodeHint').textContent = moodeHost ? `confirmed (${moodeHost})` : 'not verified';
+      setPillState('apiPill','ok'); setPillState('webPill','ok'); setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn')); setPillState('moodePill', moodeHost ? 'ok' : 'warn');
       refreshLiveFrame(uiPort);
       loadQueue();
     } catch {
@@ -92,7 +161,8 @@
       $('apiHint').textContent = $('apiBase').value.replace(/^https?:\/\//,'');
       $('webHint').textContent = `${host}:8101`;
       $('alexaHint').textContent = 'unknown';
-      setPillState('apiPill','bad'); setPillState('webPill','warn'); setPillState('alexaPill','warn');
+      if ($('moodeHint')) $('moodeHint').textContent = 'not verified';
+      setPillState('apiPill','bad'); setPillState('webPill','warn'); setPillState('alexaPill','warn'); setPillState('moodePill','warn');
       refreshLiveFrame(8101);
       loadQueue();
     }

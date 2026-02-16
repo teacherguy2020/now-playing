@@ -54,28 +54,36 @@
 
   .topTabs{
     display:flex;
-    gap:6px;
+    gap:0;
     flex-wrap:wrap;
     margin:0 0 10px;
     padding:0 0 0 2px;
     border-bottom:1px solid rgba(255,255,255,.18);
   }
   .topTabs a{
+    position:relative;
+    z-index:1;
     text-decoration:none;
     color:var(--text);
-    border:1px solid rgba(255,255,255,.14);
+    border:1px solid rgba(125, 211, 252, .45);
     border-bottom:none;
-    background:rgba(255,255,255,.05);
-    border-radius:10px 10px 0 0;
-    padding:7px 12px;
+    background:linear-gradient(180deg, #2a3650, #212e45);
+    border-radius:12px 12px 0 0;
+    clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 100%, 0 100%);
+    padding:7px 16px;
     font-size:12px;
     font-weight:650;
+    margin-left:-6px;
     margin-bottom:-1px;
+    box-shadow:0 -1px 0 #4a5a78 inset;
   }
+  .topTabs a:first-child{ margin-left:0; }
+  .topTabs a:hover{ background:linear-gradient(180deg, #344564, #293a55); }
   .topTabs a.active{
-    border-color: rgba(125,211,252,.55);
-    background: linear-gradient(180deg, rgba(125,211,252,.25), rgba(125,211,252,.08));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.14);
+    z-index:3;
+    border-color:#5f87d6;
+    background: linear-gradient(180deg, #4a6fd6, #3a5cc0);
+    box-shadow: inset 0 1px 0 #88a7f0;
   }
 
   .heroWrap{

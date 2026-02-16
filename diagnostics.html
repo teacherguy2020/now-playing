@@ -8,8 +8,8 @@
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-    .wrap{max-width:1100px;margin:0 auto;padding:18px}
-    .card{background:#101c33;border:1px solid #2a3a58;border-radius:12px;padding:12px;margin:10px 0}
+    .wrap{max-width:1080px;margin:0 auto;padding:18px}
+    .card{background:#101c33;border:1px solid #2a3a58;border-radius:18px;padding:12px;margin:10px 0}
     label{display:block;font-size:12px;color:#9fb1d9;margin-bottom:6px}
     input,select,textarea,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
     textarea{width:100%;min-height:110px;font-family:ui-monospace,Menlo,Consolas,monospace}
@@ -35,6 +35,7 @@
           <div class="pill" id="apiPill" title="Active API endpoint"><span class="dot"></span>API: <span id="apiHint">loading…</span></div>
           <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot"></span>Web: <span id="webHint">loading…</span></div>
           <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot"></span>Alexa: <span id="alexaHint">unknown</span></div>
+          <div class="pill" id="moodePill" title="moOde host verification"><span class="dot"></span>moOde: <span id="moodeHint">unknown</span></div>
         </div>
       </div>
       <header>
@@ -122,7 +123,7 @@
     <input id="key" type="hidden" />
   </div>
 
-  <script src="scripts/diagnostics.js?v=20260215-4"></script>
+  <script src="scripts/diagnostics.js?v=20260216-6"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){

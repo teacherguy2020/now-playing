@@ -12,18 +12,14 @@
 <body>
   <div class="heroRail" id="heroRail">
     <div class="heroWrap">
-      <nav class="topTabs" aria-label="Main pages">
-        <a href="config.html">Config</a>
-        <a href="diagnostics.html">Diagnostics</a>
-        <a href="library-health.html">Library Health</a>
-        <a href="queue-wizard.html">Queue Wizard</a>
-        <a href="podcasts.html" id="podcastsNavLink" class="active">Podcasts</a>
-      </nav>
-      <header>
-        <div class="brand">
-          <h1>moOde Podcasts Add-On</h1>
-          <div class="sub">Subscribe • Download • Playlist</div>
-        </div>
+      <div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;">
+        <nav class="topTabs" aria-label="Main pages" style="margin-bottom:0;">
+          <a href="config.html">Config</a>
+          <a href="diagnostics.html">Diagnostics</a>
+          <a href="library-health.html">Library Health</a>
+          <a href="queue-wizard.html">Queue Wizard</a>
+          <a href="podcasts.html" id="podcastsNavLink" class="active">Podcasts</a>
+        </nav>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <div class="pill" id="apiPill" title="Active API endpoint">
@@ -38,6 +34,16 @@
             <span class="dot" aria-hidden="true"></span>
             Alexa: <span id="alexaHint" style="color:rgba(255,255,255,.9)">unknown</span>
           </div>
+          <div class="pill" id="moodePill" title="moOde host verification">
+            <span class="dot" aria-hidden="true"></span>
+            moOde: <span id="moodeHint" style="color:rgba(255,255,255,.9)">unknown</span>
+          </div>
+        </div>
+      </div>
+      <header>
+        <div class="brand">
+          <h1>moOde Podcasts Add-On</h1>
+          <div class="sub">Subscribe • Download • Playlist</div>
         </div>
       </header>
 
@@ -129,7 +135,7 @@
     </div>
   </div>
 
-  <script src="scripts/podcasts.js?v=20260209-1"></script>
+  <script src="scripts/podcasts.js?v=20260216-3"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){

@@ -8,14 +8,14 @@
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#0c1526;color:#e7eefc}
-    .wrap{max-width:1100px;margin:0 auto;padding:18px;box-sizing:border-box;width:100%}
+    .wrap{max-width:1080px;margin:0 auto;padding:18px;box-sizing:border-box;width:100%}
     #cards,#sections,#albumMetaInspector{width:100%;box-sizing:border-box}
     h1{margin:0 0 10px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
     input{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
     button{padding:8px 12px;border-radius:8px;border:1px solid #4b5;cursor:pointer;background:#17324f;color:#fff}
     .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:12px 0 16px}
-    .card{background:#101c33;border:1px solid #2a3a58;border-radius:12px;padding:10px}
+    .card{background:#101c33;border:1px solid #2a3a58;border-radius:18px;padding:10px}
     .k{font-size:12px;color:#9fb1d9}.v{font-size:24px;font-weight:700}
     details{background:#101c33;border:1px solid #2a3a58;border-radius:12px;padding:8px 10px;margin:10px 0}
     table{width:100%;border-collapse:collapse;font-size:12px}
@@ -28,18 +28,14 @@
 <body>
   <div class="heroRail">
     <div class="heroWrap">
-      <nav class="topTabs" aria-label="Main pages">
-        <a href="config.html">Config</a>
-        <a href="diagnostics.html">Diagnostics</a>
-        <a href="library-health.html" class="active">Library Health</a>
-        <a href="queue-wizard.html">Queue Wizard</a>
-        <a href="podcasts.html" id="podcastsNavLink">Podcasts</a>
-      </nav>
-      <header>
-        <div class="brand">
-          <h1>Library Health</h1>
-          <div class="sub">Scan tags • Fix ratings/genres • Fill album art</div>
-        </div>
+      <div style="display:flex;gap:10px;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;">
+        <nav class="topTabs" aria-label="Main pages" style="margin-bottom:0;">
+          <a href="config.html">Config</a>
+          <a href="diagnostics.html">Diagnostics</a>
+          <a href="library-health.html" class="active">Library Health</a>
+          <a href="queue-wizard.html">Queue Wizard</a>
+          <a href="podcasts.html" id="podcastsNavLink">Podcasts</a>
+        </nav>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <div class="pill" id="apiPill" title="Active API endpoint">
             <span class="dot" aria-hidden="true"></span>
@@ -53,6 +49,16 @@
             <span class="dot" aria-hidden="true"></span>
             Alexa: <span id="alexaHint" style="color:rgba(255,255,255,.9)">unknown</span>
           </div>
+          <div class="pill" id="moodePill" title="moOde host verification">
+            <span class="dot" aria-hidden="true"></span>
+            moOde: <span id="moodeHint" style="color:rgba(255,255,255,.9)">unknown</span>
+          </div>
+        </div>
+      </div>
+      <header>
+        <div class="brand">
+          <h1>Library Health</h1>
+          <div class="sub">Scan tags • Fix ratings/genres • Fill album art</div>
         </div>
       </header>
     </div>
@@ -86,7 +92,7 @@
 
     <div id="sections"></div>
   </div>
-  <script src="scripts/library-health.js?v=20260215-2"></script>
+  <script src="scripts/library-health.js?v=20260216-4"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){

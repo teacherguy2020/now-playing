@@ -44,6 +44,7 @@
     const apiHintEl = document.getElementById('apiHint');
     const webHintEl = document.getElementById('webHint');
     const alexaHintEl = document.getElementById('alexaHint');
+    const moodeHintEl = document.getElementById('moodeHint');
     try {
       const r = await fetch(`${API_BASE}/config/runtime`, { cache:'no-store' });
       const j = await r.json().catch(() => ({}));
@@ -58,9 +59,12 @@
         const axEnabled = !!j?.config?.alexa?.enabled;
         const axDomain = String(j?.config?.alexa?.publicDomain || '').trim();
         if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
+        const moodeHost = String(j?.config?.moode?.sshHost || j?.config?.mpd?.host || j?.config?.mpdHost || '').trim();
+        if (moodeHintEl) moodeHintEl.textContent = moodeHost ? `confirmed (${moodeHost})` : 'not verified';
         setPillState('apiPill','ok');
         setPillState('webPill','ok');
         setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
+        setPillState('moodePill', moodeHost ? 'ok' : 'warn');
         return;
       }
     } catch {}
@@ -68,9 +72,11 @@
     if (apiHintEl) apiHintEl.textContent = API_BASE.replace(/^https?:\/\//, '');
     if (webHintEl) webHintEl.textContent = `${host}:8101`;
     if (alexaHintEl) alexaHintEl.textContent = 'unknown';
+    if (moodeHintEl) moodeHintEl.textContent = 'not verified';
     setPillState('apiPill','bad');
     setPillState('webPill','warn');
     setPillState('alexaPill','warn');
+    setPillState('moodePill','warn');
   }
 
   // =========================
