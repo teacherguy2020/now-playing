@@ -247,6 +247,7 @@ async function syncVibeAvailability() {
   function applyTheme(theme = 'dark') {
     const t = String(theme || 'dark').toLowerCase() === 'light' ? 'light' : 'dark';
     document.body.classList.toggle('theme-light', t === 'light');
+    document.documentElement.classList.toggle('theme-light', t === 'light');
     if (t === 'light') {
       document.documentElement.style.background = '#ff0000';
     } else {
