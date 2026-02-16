@@ -248,7 +248,7 @@ async function syncVibeAvailability() {
     const t = String(theme || 'dark').toLowerCase() === 'light' ? 'light' : 'dark';
     document.body.classList.toggle('theme-light', t === 'light');
     if (t === 'light') {
-      document.documentElement.style.background = 'linear-gradient(180deg,#edf3fc 0%,#e6eef9 56%,#e1eaf8 100%)';
+      document.documentElement.style.background = '#ff0000';
     } else {
       document.documentElement.style.background = '#0c1526';
     }
