@@ -967,7 +967,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     if (!apiBase || !name) return;
 
     try {
-      activateBuilder('filters');
+      activateBuilder('existing');
       if (coverCardEl) coverCardEl.style.display = '';
       if (coverStatusEl) coverStatusEl.textContent = `Playlist cover: “${name}”.`;
       if (coverImgEl) {
