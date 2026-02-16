@@ -128,6 +128,15 @@
     return j;
   }
 
+  function isPodcastLike(x){
+    if (x?.isPodcast === true) return true;
+    const file = String(x?.file || '').toLowerCase();
+    const album = String(x?.album || '').toLowerCase();
+    const artist = String(x?.artist || '').toLowerCase();
+    const title = String(x?.title || '').toLowerCase();
+    return /\bpodcast\b/.test(`${album} ${artist} ${title}`) || /\/podcasts?\//.test(file);
+  }
+
   function starsHtml(file, rating){
     if (!ratingsEnabled) return '';
     const f = encodeURIComponent(String(file || ''));
@@ -160,7 +169,7 @@
         const thumb = thumbSrc ? `<img src="${thumbSrc}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />` : '<div style="width:36px;height:36px"></div>';
         const head = !!x.isHead;
         const pos = Number(x.position || 0);
-        const stars = starsHtml(x.file, Number(x.rating || 0));
+        const stars = isPodcastLike(x) ? '' : starsHtml(x.file, Number(x.rating || 0));
         const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
         return `<div style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${String(x.artist||'')}</div><div class="muted">${String(x.title||'')} ${x.album?`• ${String(x.album)}`:''}</div>${starsRow}</div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
       }).join('');
