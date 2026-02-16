@@ -1411,10 +1411,25 @@ async function doVibeBuild() {
     return { ok: true, msg: '' };
   }
 
+  function collagePreviewFiles() {
+    const byArtist = new Map();
+    for (const t of currentTracks || []) {
+      const f = String(t?.file || '').trim();
+      if (!f) continue;
+      const a = String(t?.artist || '').trim().toLowerCase();
+      const key = a || `__noartist__:${f}`;
+      if (!byArtist.has(key)) byArtist.set(key, f);
+    }
+    const distinct = Array.from(byArtist.values()).filter(Boolean);
+    if (distinct.length >= 4) return distinct.slice(0, 4);
+    return currentFiles.slice();
+  }
+
   function computeCollageSig() {
     const name = getPlaylistNameRaw();
-    const head = currentFiles.slice(0, 50).join('|');
-    return `${name}::${currentFiles.length}::${head}`;
+    const files = collagePreviewFiles();
+    const head = files.slice(0, 50).join('|');
+    return `${name}::${files.length}::${head}`;
   }
 
 async function maybeGenerateCollagePreview(reason = '') {
@@ -1435,7 +1450,8 @@ async function maybeGenerateCollagePreview(reason = '') {
     if (!currentFiles.length) { setStatus('Cover preview error: no tracks to preview.'); return; }
 
     // Prevent repeated calls for identical list
-    const sig = `vibe::${currentFiles.length}::${currentFiles.slice(0, 50).join('|')}`;
+    const vibePreviewFiles = collagePreviewFiles();
+    const sig = `vibe::${vibePreviewFiles.length}::${vibePreviewFiles.slice(0, 50).join('|')}`;
     if (sig === lastCollageSig) return;
     lastCollageSig = sig;
 
@@ -1452,7 +1468,7 @@ async function maybeGenerateCollagePreview(reason = '') {
         headers: { 'Content-Type': 'application/json', 'x-track-key': key },
         body: JSON.stringify({
           // playlistName omitted on purpose for vibe preview
-          tracks: currentFiles.slice(),
+          tracks: vibePreviewFiles,
           forceSingle: false,
         }),
       });
@@ -1489,7 +1505,8 @@ async function maybeGenerateCollagePreview(reason = '') {
   }
 
   const playlistName = getPlaylistNameRaw();
-  const sig = `${playlistName || '(preview)'}::${currentFiles.length}::${currentFiles.slice(0, 50).join('|')}`;
+  const previewFiles = collagePreviewFiles();
+  const sig = `${playlistName || '(preview)'}::${previewFiles.length}::${previewFiles.slice(0, 50).join('|')}`;
   if (sig && sig === lastCollageSig) return;
 
   if (collageBusy) return;
@@ -1503,7 +1520,7 @@ async function maybeGenerateCollagePreview(reason = '') {
     coverImgEl.src = moodeDefaultCoverUrl();
 
     const payload = {
-      tracks: currentFiles.slice(),
+      tracks: previewFiles,
       forceSingle: false,
     };
     if (savePlaylistEnabled && playlistName) payload.playlistName = playlistName;
