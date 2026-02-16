@@ -508,32 +508,46 @@ async function syncVibeAvailability() {
   }
 
   function suggestedPlaylistName() {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const dateTag = `${yyyy}-${mm}-${dd}`;
+    const topFrom = (arr) => {
+      const m = new Map();
+      for (const v0 of arr || []) {
+        const v = String(v0 || '').trim();
+        if (!v) continue;
+        m.set(v, Number(m.get(v) || 0) + 1);
+      }
+      return Array.from(m.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || '';
+    };
+
+    const trackArtists = currentTracks.map((t) => String(t?.artist || '').trim()).filter(Boolean);
+    const trackGenres = currentTracks
+      .map((t) => String(t?.genre || '').split(/[;,|/]/).map((x) => String(x || '').trim()).filter(Boolean))
+      .flat();
+
+    const topArtist = topFrom(trackArtists);
+    const topGenre = topFrom(trackGenres);
 
     if (currentListSource === 'vibe') {
-      const t = currentTracks[0] || {};
-      const who = String(t.artist || '').trim() || 'Now Playing';
-      return sanitizePlaylistName(`Vibe — ${who} — ${dateTag}`);
+      return sanitizePlaylistName(`Vibe Mix${topArtist ? ` — ${topArtist}` : ''}`);
     }
 
     if (currentListSource === 'podcast') {
-      const show = String((currentTracks[0] || {}).artist || '').trim() || 'Podcast Queue';
-      return sanitizePlaylistName(`${show} — ${dateTag}`);
+      const show = topArtist || String((currentTracks[0] || {}).artist || '').trim();
+      return sanitizePlaylistName(show ? `${show} Picks` : 'Podcast Picks');
     }
 
     if (currentListSource === 'existing') {
       const n = String(existingPlaylistsEl?.value || '').trim() || 'Playlist';
-      return sanitizePlaylistName(`${n} — ${dateTag}`);
+      return sanitizePlaylistName(`${n} Rebuild`);
     }
+
+    if (topGenre && topArtist) return sanitizePlaylistName(`${topGenre} — ${topArtist} Mix`);
+    if (topGenre) return sanitizePlaylistName(`${topGenre} Mix`);
+    if (topArtist) return sanitizePlaylistName(`${topArtist} Mix`);
 
     const g = selectedValues($('genres'))[0] || '';
     const a = selectedValues($('artists'))[0] || '';
     const lead = String(g || a || 'Queue Wizard').trim();
-    return sanitizePlaylistName(`${lead} — ${dateTag}`);
+    return sanitizePlaylistName(`${lead} Mix`);
   }
 
   function renderPlaylistSuggestion() {
@@ -1401,6 +1415,7 @@ async function maybeGenerateCollagePreview(reason = '') {
     try {
       coverCardEl.style.display = '';
       coverStatusEl.textContent = 'Generating vibe collage preview…';
+      coverImgEl.src = moodeDefaultCoverUrl();
 
       const r = await fetch(`${apiBase}${COLLAGE_PREVIEW_PATH}`, {
         method: 'POST',
@@ -1453,6 +1468,9 @@ async function maybeGenerateCollagePreview(reason = '') {
   try {
     showPlaylistHint('');
     setStatus('<span class="spin"></span>Generating collage preview…');
+    coverCardEl.style.display = '';
+    coverStatusEl.textContent = 'Generating collage preview…';
+    coverImgEl.src = moodeDefaultCoverUrl();
 
     const payload = {
       tracks: currentFiles.slice(),
