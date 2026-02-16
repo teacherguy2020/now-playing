@@ -125,6 +125,18 @@
           </div>
         </div>
       </div>
+
+      <div class="actionBar" style="margin-top:10px">
+        <div class="choiceLine">
+          <label><input type="radio" name="modeExisting" value="replace" checked> Replace Queue</label>
+          <label><input type="radio" name="modeExisting" value="append"> Add to Queue</label>
+          <label><input id="cropExisting" type="checkbox" checked> Crop Queue</label>
+          <label><input id="shuffleExisting" type="checkbox"> Shuffle</label>
+        </div>
+        <div class="choiceLine">
+          <button id="sendExistingToMoode" class="btnPrimary">Send queue to moOde</button>
+        </div>
+      </div>
     </div>
 
     <div class="card" id="filterSection">
@@ -268,7 +280,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-42"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-43"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){
