@@ -913,14 +913,14 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     const selected = String(existingPlaylistsEl?.value || '').trim();
     existingPlaylistLabelEl.textContent = selected || '(select existing playlist)';
 
-    const rows = [`<button type="button" data-existing-playlist="" style="width:100%;display:flex;align-items:center;gap:10px;padding:8px;border:0;background:transparent;color:#e7eefc;text-align:left;border-radius:8px;">(select existing playlist)</button>`];
+    const rows = [`<button type="button" data-existing-playlist="" style="width:100%;display:flex;align-items:center;gap:12px;padding:10px 10px;border:0;background:transparent;color:#e7eefc;text-align:left;border-radius:10px;font-size:15px;line-height:1.25;">(select existing playlist)</button>`];
     for (const n0 of names || []) {
       const n = String(n0 || '').trim();
       if (!n) continue;
       const src = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(n)}.jpg`;
       rows.push(
-        `<button type="button" data-existing-playlist="${esc(n)}" style="width:100%;display:flex;align-items:center;gap:10px;padding:8px;border:0;background:${selected===n?'rgba(127,211,167,.18)':'transparent'};color:#e7eefc;text-align:left;border-radius:8px;">` +
-        `<img src="${src}" onerror="this.onerror=null;this.src='${moodeDefaultCoverUrl()}'" style="width:28px;height:28px;object-fit:cover;border-radius:8px;border:1px solid #334;background:#0a1222;" />` +
+        `<button type="button" data-existing-playlist="${esc(n)}" style="width:100%;display:flex;align-items:center;gap:12px;padding:10px 10px;border:0;background:${selected===n?'rgba(127,211,167,.18)':'transparent'};color:#e7eefc;text-align:left;border-radius:10px;font-size:15px;line-height:1.25;">` +
+        `<img src="${src}" onerror="this.onerror=null;this.src='${moodeDefaultCoverUrl()}'" style="width:40px;height:40px;object-fit:cover;border-radius:10px;border:1px solid #334;background:#0a1222;flex:0 0 auto;" />` +
         `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(n)}</span>` +
         `</button>`
       );
