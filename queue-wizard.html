@@ -7,7 +7,8 @@
   <link rel="stylesheet" href="styles/podcasts.css?v=20260213-1" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
-    body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    html,body{min-height:100%}
+    body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
     body.theme-light{background:#eef3fb;color:#13233f}
     body.theme-light .card{background:#ffffff !important;border-color:#c8d6ee !important;color:#13233f !important}
     body.theme-light .actionBar{background:#f4f8ff !important;border-color:#c8d6ee !important}
@@ -15,6 +16,7 @@
     body.theme-light .muted{color:#4a5f86 !important}
     body.theme-light th, body.theme-light td{border-bottom-color:#d8e2f3 !important;color:#13233f}
     body.theme-light .heroRail{background:linear-gradient(180deg, #f7f9ff, #ecf2ff) !important;border-bottom-color:#ccd9f0 !important}
+    body.theme-light .heroRail::before{background:#eef3fb !important}
     body.theme-light .heroWrap{background:rgba(255,255,255,.8) !important;border-color:#cfdbf0 !important;box-shadow:none !important}
     body.theme-light .pill{background:#fff !important;border-color:#c5d4ec !important;color:#173157 !important}
     body.theme-light .topTabs a{background:#f4f7ff !important;border-color:#c5d4ec !important;color:#173157 !important}
@@ -294,7 +296,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-44"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-45"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){

@@ -247,6 +247,7 @@ async function syncVibeAvailability() {
   function applyTheme(theme = 'dark') {
     const t = String(theme || 'dark').toLowerCase() === 'light' ? 'light' : 'dark';
     document.body.classList.toggle('theme-light', t === 'light');
+    document.documentElement.style.backgroundColor = t === 'light' ? '#eef3fb' : '#0c1526';
     if (themeToggleEl) themeToggleEl.textContent = t === 'light' ? '☀️' : '🌙';
     try { localStorage.setItem('np-theme', t); } catch {}
   }
