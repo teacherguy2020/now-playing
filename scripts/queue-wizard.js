@@ -543,21 +543,11 @@ async function syncVibeAvailability() {
     }).join('');
   }
 
-  function renderPlaylistThumbStrip(tracks) {
+  function renderPlaylistThumbStrip() {
+    // Intentionally disabled: user requested no per-track thumbnail strip in cover preview.
     if (!playlistThumbStripEl) return;
-    const list = Array.isArray(tracks) ? tracks.slice(0, 24) : [];
-    if (!list.length) {
-      playlistThumbStripEl.innerHTML = '';
-      return;
-    }
-    const apiBase = getApiBase();
-    playlistThumbStripEl.innerHTML = list.map((t) => {
-      const file = String(t?.file || '').trim();
-      const artist = esc(String(t?.artist || ''));
-      const title = esc(String(t?.title || ''));
-      const src = file ? `${apiBase}/art/track_640.jpg?file=${encodeURIComponent(file)}` : '';
-      return `<img src="${src}" title="${artist}${artist && title ? ' — ' : ''}${title}" style="width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px solid #334;background:#0a1222;" />`;
-    }).join('');
+    playlistThumbStripEl.innerHTML = '';
+    playlistThumbStripEl.style.display = 'none';
   }
 
   function refreshCurrentListMetaAndUi() {
