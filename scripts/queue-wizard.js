@@ -32,6 +32,7 @@
   const savePlaylistNowBtn = $('savePlaylistNowBtn');
 
   const cropVibeEl = $('cropVibe');
+  const cropPodcastEl = $('cropPodcast');
 
   const playlistHintEl = $('playlistHint');
   const sendConfirmEl = $('sendConfirm');
@@ -365,6 +366,10 @@ async function syncVibeAvailability() {
     return document.querySelector('input[name="modeVibe"]:checked')?.value || 'replace';
   }
 
+  function getModePodcast() {
+    return document.querySelector('input[name="modePodcast"]:checked')?.value || 'replace';
+  }
+
   function getShuffle() {
     return !!$('shuffle')?.checked;
   }
@@ -381,6 +386,10 @@ async function syncVibeAvailability() {
     return getModeVibe() === 'replace' && !!cropVibeEl?.checked;
   }
 
+  function getKeepNowPlayingPodcast() {
+    return getModePodcast() === 'replace' && !!cropPodcastEl?.checked;
+  }
+
   function syncCropUi() {
     const mode = getMode();
     if (!cropEl) return;
@@ -395,6 +404,13 @@ async function syncVibeAvailability() {
     if (mode !== 'replace') cropVibeEl.checked = false;
   }
 
+  function syncCropPodcastUi() {
+    const mode = getModePodcast();
+    if (!cropPodcastEl) return;
+    cropPodcastEl.disabled = mode !== 'replace';
+    if (mode !== 'replace') cropPodcastEl.checked = false;
+  }
+
   function disableUI(disabled) {
     const disable = !!disabled;
 
@@ -407,7 +423,7 @@ async function syncVibeAvailability() {
     [
       'apiBase', 'key', 'maxTracks', 'minRating',
       'genres', 'artists', 'albums', 'excludeGenres',
-      'shuffle', 'crop', 'cropVibe', 'minRatingVibe',
+      'shuffle', 'crop', 'cropVibe', 'cropPodcast', 'minRatingVibe',
       'podcastShows', 'podcastDateFrom', 'podcastDateTo', 'podcastMaxPerShow', 'podcastDownloadedOnly', 'podcastNewestFirst',
       'playlistName',
     ].forEach((id) => {
@@ -417,6 +433,7 @@ async function syncVibeAvailability() {
 
     document.querySelectorAll('input[name="mode"]').forEach((el) => { el.disabled = disable; });
     document.querySelectorAll('input[name="modeVibe"]').forEach((el) => { el.disabled = disable; });
+    document.querySelectorAll('input[name="modePodcast"]').forEach((el) => { el.disabled = disable; });
   }
 
   function shuffleInPlace(arr) {
@@ -834,6 +851,14 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     podcastBuildTimer = setTimeout(() => {
       doPodcastBuild().catch(() => {});
     }, delayMs);
+  }
+
+  async function waitUntilNotBusy(maxMs = 8000) {
+    const started = Date.now();
+    while (busy) {
+      if ((Date.now() - started) > maxMs) break;
+      await new Promise((r) => setTimeout(r, 80));
+    }
   }
 
   function toDateInputValue(d) {
@@ -1324,10 +1349,11 @@ async function maybeGenerateCollagePreview(reason = '') {
       sendBusy = false;
       return;
     }
-    if (source === 'podcast' && currentListSource !== 'podcast') {
+    if (source === 'podcast') {
+      await waitUntilNotBusy();
       await doPodcastBuild();
       if (currentListSource !== 'podcast' || !currentFiles.length) {
-        setStatus('Build a podcast list first, then send it.');
+        setStatus('Podcast list is empty (or still building). Adjust filters and try again.');
         sendBusy = false;
         return;
       }
@@ -1346,9 +1372,10 @@ async function maybeGenerateCollagePreview(reason = '') {
     const key = getKey();
 
     const isVibeSend = source === 'vibe';
-    const mode = isVibeSend ? getModeVibe() : getMode();
-    const keepNowPlaying = isVibeSend ? getKeepNowPlayingVibe() : getKeepNowPlaying();
-    const doShuffleFlag = isVibeSend ? false : getShuffle();
+    const isPodcastSend = source === 'podcast';
+    const mode = isVibeSend ? getModeVibe() : (isPodcastSend ? getModePodcast() : getMode());
+    const keepNowPlaying = isVibeSend ? getKeepNowPlayingVibe() : (isPodcastSend ? getKeepNowPlayingPodcast() : getKeepNowPlaying());
+    const doShuffleFlag = (isVibeSend || isPodcastSend) ? false : getShuffle();
 
     const savePlaylist = (source === 'podcast') ? false : savePlaylistEnabled;
     const playlistName = savePlaylist ? getPlaylistNameRaw() : '';
@@ -1538,10 +1565,17 @@ function wireEvents() {
     });
   });
 
+  document.querySelectorAll('input[name="modePodcast"]').forEach((el) => {
+    el.addEventListener('change', () => {
+      syncCropPodcastUi();
+    });
+  });
+
   cropEl?.addEventListener('change', () => {
     renderFiltersSummary();
   });
   cropVibeEl?.addEventListener('change', () => {});
+  cropPodcastEl?.addEventListener('change', () => {});
 
   // Playlist controls should NOT rebuild the list
   savePlaylistBtn?.addEventListener('click', () => {
@@ -1747,6 +1781,7 @@ try {
 
   syncCropUi();
   syncCropVibeUi();
+  syncCropPodcastUi();
   syncRatingsUi();
   syncPodcastSectionVisibility();
   syncSavePlaylistButton();

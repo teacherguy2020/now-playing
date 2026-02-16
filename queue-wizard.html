@@ -158,6 +158,11 @@
 
       <div class="actionBar" style="margin-top:10px">
         <div class="choiceLine">
+          <label><input type="radio" name="modePodcast" value="replace" checked> Replace queue</label>
+          <label><input type="radio" name="modePodcast" value="append"> Append</label>
+          <label><input id="cropPodcast" type="checkbox" checked> Crop (keep current track)</label>
+        </div>
+        <div class="choiceLine" style="margin-top:4px">
           <label><input id="podcastDownloadedOnly" type="checkbox" checked /> Downloaded only</label>
           <label><input id="podcastNewestFirst" type="checkbox" checked /> Newest first</label>
         </div>
@@ -204,7 +209,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-3"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-4"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){
