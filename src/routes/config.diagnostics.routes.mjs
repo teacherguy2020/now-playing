@@ -19,6 +19,51 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     }
   }
 
+  const endpointCatalog = [
+    { group: 'Now Playing', method: 'GET', path: '/now-playing' },
+    { group: 'Now Playing', method: 'GET', path: '/next-up' },
+    { group: 'Now Playing', method: 'GET', path: '/track' },
+
+    { group: 'Diagnostics', method: 'GET', path: '/config/diagnostics/queue' },
+    { group: 'Diagnostics', method: 'POST', path: '/config/diagnostics/playback', body: { action: 'play' } },
+
+    { group: 'Runtime/Admin', method: 'GET', path: '/config/runtime' },
+    { group: 'Runtime/Admin', method: 'POST', path: '/config/runtime/check-env', body: { mpdHost: '', mpdPort: 6600, sshHost: '', sshUser: 'moode', paths: {} } },
+    { group: 'Runtime/Admin', method: 'POST', path: '/config/runtime/resolve-host', body: { host: '' } },
+    { group: 'Runtime/Admin', method: 'POST', path: '/config/restart-api', body: {} },
+    { group: 'Runtime/Admin', method: 'POST', path: '/config/restart-services', body: {} },
+
+    { group: 'Queue Wizard', method: 'GET', path: '/config/queue-wizard/options' },
+    { group: 'Queue Wizard', method: 'GET', path: '/config/queue-wizard/playlists' },
+    { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/preview', body: { genres: [], artists: [], albums: [], excludeGenres: [], minRating: 0, maxTracks: 25 } },
+    { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/apply', body: { mode: 'append', keepNowPlaying: false, tracks: [''], shuffle: false } },
+    { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/vibe-start', body: { targetQueue: 50, minRating: 0 } },
+
+    { group: 'Library Health', method: 'GET', path: '/config/library-health' },
+    { group: 'Library Health', method: 'GET', path: '/config/library-health/missing-artwork' },
+    { group: 'Library Health', method: 'GET', path: '/config/library-health/album-tracks' },
+    { group: 'Library Health', method: 'GET', path: '/config/library-health/album-genre' },
+    { group: 'Library Health', method: 'POST', path: '/config/library-health/album-genre', body: { folder: '', genre: '' } },
+    { group: 'Library Health', method: 'POST', path: '/config/library-health/rating-batch', body: { files: [], rating: 3 } },
+
+    { group: 'Ratings Stickers', method: 'GET', path: '/config/ratings/sticker-status' },
+    { group: 'Ratings Stickers', method: 'GET', path: '/config/ratings/sticker-backups' },
+    { group: 'Ratings Stickers', method: 'POST', path: '/config/ratings/sticker-backup', body: {} },
+
+    { group: 'Art', method: 'GET', path: '/art/current_640.jpg' },
+    { group: 'Art', method: 'GET', path: '/art/current_bg_640_blur.jpg' },
+    { group: 'Art', method: 'GET', path: '/art/track_640.jpg' },
+  ];
+
+  app.get('/config/diagnostics/endpoints', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      return res.json({ ok: true, count: endpointCatalog.length, endpoints: endpointCatalog });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/diagnostics/playback', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

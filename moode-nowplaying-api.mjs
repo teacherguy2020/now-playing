@@ -77,21 +77,7 @@ import { registerRatingRoutes } from './src/routes/rating.routes.mjs';
 import { registerQueueRoutes } from './src/routes/queue.routes.mjs';
 import { registerTrackRoutes } from './src/routes/track.routes.mjs';
 import { registerArtRoutes } from './src/routes/art.routes.mjs';
-import { registerConfigRoutes } from './src/routes/config.routes.mjs';
-import { registerConfigQueueWizardBasicRoutes } from './src/routes/config.queue-wizard-basic.routes.mjs';
-import { registerConfigQueueWizardPreviewRoute } from './src/routes/config.queue-wizard-preview.routes.mjs';
-import { registerConfigQueueWizardCollageRoute } from './src/routes/config.queue-wizard-collage.routes.mjs';
-import { registerConfigQueueWizardApplyRoute } from './src/routes/config.queue-wizard-apply.routes.mjs';
-import { registerConfigQueueWizardVibeRoutes } from './src/routes/config.queue-wizard-vibe.routes.mjs';
-import { registerConfigDiagnosticsRoutes } from './src/routes/config.diagnostics.routes.mjs';
-import { registerConfigRatingsStickerRoutes } from './src/routes/config.ratings-sticker.routes.mjs';
-import { registerConfigRuntimeAdminRoutes } from './src/routes/config.runtime-admin.routes.mjs';
-import { registerConfigAlexaAliasRoutes } from './src/routes/config.alexa-alias.routes.mjs';
-import { registerConfigLibraryHealthArtRoutes } from './src/routes/config.library-health-art.routes.mjs';
-import { registerConfigLibraryHealthGenreRoutes } from './src/routes/config.library-health-genre.routes.mjs';
-import { registerConfigLibraryHealthPerformersRoutes } from './src/routes/config.library-health-performers.routes.mjs';
-import { registerConfigLibraryHealthBatchRoutes } from './src/routes/config.library-health-batch.routes.mjs';
-import { registerConfigLibraryHealthReadRoutes } from './src/routes/config.library-health-read.routes.mjs';
+import { registerAllConfigRoutes } from './src/routes/config.routes.index.mjs';
 import { registerPodcastSubscriptionRoutes } from './src/routes/podcasts-subscriptions.routes.mjs';
 import { registerPodcastRefreshRoutes } from './src/routes/podcasts-refresh.routes.mjs';
 import { registerPodcastEpisodeRoutes } from './src/routes/podcasts-episodes.routes.mjs';
@@ -5005,73 +4991,7 @@ registerQueueRoutes(app, {
   MPD_HOST,
 });
 
-registerConfigQueueWizardBasicRoutes(app, {
-  requireTrackKey,
-});
-
-registerConfigQueueWizardPreviewRoute(app, {
-  requireTrackKey,
-  getRatingForFile,
-});
-
-registerConfigQueueWizardCollageRoute(app, {
-  requireTrackKey,
-});
-
-registerConfigQueueWizardApplyRoute(app, {
-  requireTrackKey,
-});
-
-registerConfigQueueWizardVibeRoutes(app, {
-  requireTrackKey,
-  getRatingForFile,
-});
-
-registerConfigDiagnosticsRoutes(app, {
-  requireTrackKey,
-  getRatingForFile,
-  setRatingForFile,
-});
-
-registerConfigRatingsStickerRoutes(app, {
-  requireTrackKey,
-});
-
-registerConfigRuntimeAdminRoutes(app, {
-  requireTrackKey,
-  log,
-});
-
-registerConfigAlexaAliasRoutes(app, {
-  requireTrackKey,
-});
-
-registerConfigLibraryHealthArtRoutes(app, {
-  requireTrackKey,
-});
-
-registerConfigLibraryHealthGenreRoutes(app, {
-  requireTrackKey,
-});
-
-registerConfigLibraryHealthPerformersRoutes(app, {
-  requireTrackKey,
-  log,
-});
-
-registerConfigLibraryHealthBatchRoutes(app, {
-  requireTrackKey,
-  setRatingForFile,
-});
-
-registerConfigLibraryHealthReadRoutes(app, {
-  requireTrackKey,
-  mpdQueryRaw,
-  getRatingForFile,
-  mpdStickerGetSong,
-});
-
-registerConfigRoutes(app, {
+registerAllConfigRoutes(app, {
   requireTrackKey,
   log,
   mpdQueryRaw,
@@ -5079,6 +4999,7 @@ registerConfigRoutes(app, {
   setRatingForFile,
   mpdStickerGetSong,
 });
+
 
 /* =========================
  * /track (Alexa) - unchanged behavior

@@ -2,7 +2,7 @@
   const $ = (id) => document.getElementById(id);
   let ratingsEnabled = true;
 
-  const ENDPOINTS = [
+  const ENDPOINTS_FALLBACK = [
     // Auto-expanded endpoint catalog
     { name: '/art/current.jpg', method: 'GET', path: '/art/current.jpg' },
     { name: '/art/current_320.jpg', method: 'GET', path: '/art/current_320.jpg' },
@@ -90,6 +90,30 @@
     { name: '/rating/current', method: 'POST', path: '/rating/current', body: { rating: 3 } },
     { name: '/track', method: 'GET', path: '/track' },
   ];
+
+  let endpointList = ENDPOINTS_FALLBACK.slice();
+
+  async function loadEndpointCatalog(){
+    const base = String($('apiBase')?.value || apiBaseDefault()).replace(/\/$/, '');
+    const key = String($('key')?.value || '').trim();
+    try {
+      const r = await fetch(`${base}/config/diagnostics/endpoints`, {
+        headers: key ? { 'x-track-key': key } : {},
+        cache: 'no-store',
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok || !Array.isArray(j.endpoints) || !j.endpoints.length) return;
+      endpointList = j.endpoints.map((e) => ({
+        name: String(e?.name || e?.path || '').trim(),
+        method: String(e?.method || 'GET').toUpperCase(),
+        path: String(e?.path || '').trim(),
+        body: (e && typeof e.body === 'object') ? e.body : undefined,
+        group: String(e?.group || 'Other').trim(),
+      })).filter((e) => e.path);
+    } catch (_) {
+      // fallback stays in place
+    }
+  }
 
   function setPillState(pillId, state){
     const map = { ok:{c:'#22c55e',b:'rgba(34,197,94,.55)'}, warn:{c:'#f59e0b',b:'rgba(245,158,11,.55)'}, bad:{c:'#ef4444',b:'rgba(239,68,68,.55)'}, off:{c:'#64748b',b:'rgba(100,116,139,.45)'} };
@@ -250,13 +274,35 @@
 
   function hydrateEndpoints(){
     const sel = $('endpoint');
-    sel.innerHTML = ENDPOINTS.map((e, i) => `<option value="${i}">${e.name}</option>`).join('');
+    const list = Array.isArray(endpointList) && endpointList.length ? endpointList : ENDPOINTS_FALLBACK;
+
+    const byGroup = new Map();
+    for (const e of list) {
+      const g = String(e.group || 'Other');
+      if (!byGroup.has(g)) byGroup.set(g, []);
+      byGroup.get(g).push(e);
+    }
+
+    let idx = 0;
+    const html = [];
+    for (const [group, arr] of byGroup.entries()) {
+      html.push(`<optgroup label="${group}">`);
+      for (const e of arr) {
+        const label = `${String(e.method || 'GET').toUpperCase()} ${String(e.name || e.path || '')}`;
+        html.push(`<option value="${idx}">${label}</option>`);
+        idx += 1;
+      }
+      html.push('</optgroup>');
+    }
+    sel.innerHTML = html.join('');
+
+    const flat = list.slice();
     const apply = () => {
-      const e = ENDPOINTS[Number(sel.value) || 0];
-      $('method').value = e.method;
-      $('path').value = e.path;
+      const e = flat[Number(sel.value) || 0] || flat[0] || { method: 'GET', path: '/' };
+      $('method').value = String(e.method || 'GET').toUpperCase();
+      $('path').value = String(e.path || '/');
       $('body').value = JSON.stringify(e.body || {}, null, 2);
-      $('bodyWrap').style.display = (e.method === 'POST') ? '' : 'none';
+      $('bodyWrap').style.display = ($('method').value === 'POST') ? '' : 'none';
     };
     sel.addEventListener('change', apply);
     $('method').addEventListener('change', () => $('bodyWrap').style.display = ($('method').value === 'POST') ? '' : 'none');
@@ -375,6 +421,9 @@
   $('copyBtn').addEventListener('click', copyResponse);
   $('copyBtnCard')?.addEventListener('click', copyResponse);
 
-  hydrateEndpoints();
-  loadRuntime();
+  (async () => {
+    await loadRuntime();
+    await loadEndpointCatalog();
+    hydrateEndpoints();
+  })();
 })();
