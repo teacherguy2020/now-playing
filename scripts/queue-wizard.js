@@ -43,6 +43,9 @@
   const coverImgEl = $('coverPreview');
   const coverStatusEl = $('coverStatus');
   const playlistThumbStripEl = $('playlistThumbStrip');
+
+  // User preference: do not show collage/cover card in Queue Wizard.
+  if (coverCardEl) coverCardEl.remove();
   // ---- Config ----
   const COLLAGE_PREVIEW_PATH = '/config/queue-wizard/collage-preview'; // change if your route differs
   const MAX_RENDER_ROWS = 1000;
