@@ -38,6 +38,7 @@
   const cropPodcastEl = $('cropPodcast');
 
   const playlistHintEl = $('playlistHint');
+  const playlistSuggestionEl = $('playlistSuggestion');
   const sendConfirmEl = $('sendConfirm');
   const coverCardEl = $('coverCard');
   const coverImgEl = $('coverPreview');
@@ -498,6 +499,56 @@ async function syncVibeAvailability() {
     return { ok: true, msg: '' };
   }
 
+  function sanitizePlaylistName(raw = '') {
+    return String(raw || '')
+      .replace(/[\/\\\0<>:"|?*]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 80);
+  }
+
+  function suggestedPlaylistName() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const dateTag = `${yyyy}-${mm}-${dd}`;
+
+    if (currentListSource === 'vibe') {
+      const t = currentTracks[0] || {};
+      const who = String(t.artist || '').trim() || 'Now Playing';
+      return sanitizePlaylistName(`Vibe — ${who} — ${dateTag}`);
+    }
+
+    if (currentListSource === 'podcast') {
+      const show = String((currentTracks[0] || {}).artist || '').trim() || 'Podcast Queue';
+      return sanitizePlaylistName(`${show} — ${dateTag}`);
+    }
+
+    if (currentListSource === 'existing') {
+      const n = String(existingPlaylistsEl?.value || '').trim() || 'Playlist';
+      return sanitizePlaylistName(`${n} — ${dateTag}`);
+    }
+
+    const g = selectedValues($('genres'))[0] || '';
+    const a = selectedValues($('artists'))[0] || '';
+    const lead = String(g || a || 'Queue Wizard').trim();
+    return sanitizePlaylistName(`${lead} — ${dateTag}`);
+  }
+
+  function renderPlaylistSuggestion() {
+    if (!playlistSuggestionEl) return;
+    const canSuggest = Array.isArray(currentTracks) && currentTracks.length > 0;
+    if (!canSuggest) {
+      playlistSuggestionEl.style.display = 'none';
+      playlistSuggestionEl.textContent = '';
+      return;
+    }
+    const suggested = suggestedPlaylistName();
+    playlistSuggestionEl.style.display = '';
+    playlistSuggestionEl.innerHTML = `Suggested playlist: <b>${esc(suggested)}</b>`;
+  }
+
   // ---- Results table ----
   function clearResults() {
     if (resultsEl) resultsEl.innerHTML = '';
@@ -618,6 +669,7 @@ async function syncVibeAvailability() {
     if (sendPodcastBtn) sendPodcastBtn.disabled = !(currentListSource === 'podcast' && currentFiles.length > 0);
 
     renderFiltersSummary();
+    renderPlaylistSuggestion();
   }
 
   function removeTrackAt(idx) {
@@ -1490,8 +1542,8 @@ async function maybeGenerateCollagePreview(reason = '') {
 
   function syncSavePlaylistButton() {
     if (!savePlaylistBtn) return;
-    savePlaylistBtn.textContent = 'Save as moOde Playlist';
-    savePlaylistBtn.style.opacity = savePlaylistEnabled ? '1' : '0.85';
+    savePlaylistBtn.textContent = 'Save Queue to Playlist';
+    savePlaylistBtn.style.opacity = savePlaylistEnabled ? '1' : '0.92';
     savePlaylistBtn.style.outline = savePlaylistEnabled ? '2px solid #7fd3a7' : '';
     savePlaylistBtn.setAttribute('aria-pressed', savePlaylistEnabled ? 'true' : 'false');
   }
@@ -1764,7 +1816,9 @@ function wireEvents() {
 
   // Playlist controls should NOT rebuild the list
   savePlaylistBtn?.addEventListener('click', () => {
-    savePlaylistEnabled = !savePlaylistEnabled;
+    savePlaylistEnabled = true;
+    const suggested = suggestedPlaylistName();
+    if (playlistNameEl) playlistNameEl.value = suggested;
     syncSavePlaylistButton();
     updatePlaylistUi();
   });
@@ -1976,6 +2030,7 @@ try {
   setCount('No list yet.');
   setStatus('');
   showPlaylistHint('');
+  renderPlaylistSuggestion();
 
   // Keep cover/collage card hidden on initial page load.
   // It becomes visible when user invokes preview/build actions.
