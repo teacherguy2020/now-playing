@@ -32,6 +32,10 @@
   const playlistNameEl = $('playlistName');
   const existingPlaylistsEl = $('existingPlaylists');
   const existingPlaylistThumbEl = $('existingPlaylistThumb');
+  const existingPlaylistPickerEl = $('existingPlaylistPicker');
+  const existingPlaylistToggleEl = $('existingPlaylistToggle');
+  const existingPlaylistLabelEl = $('existingPlaylistLabel');
+  const existingPlaylistMenuEl = $('existingPlaylistMenu');
   const loadExistingPlaylistBtn = $('loadExistingPlaylistBtn');
   const savePlaylistNowBtn = $('savePlaylistNowBtn');
 
@@ -904,6 +908,26 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     }).join('');
   }
 
+  function renderExistingPlaylistMenu(names = []) {
+    if (!existingPlaylistMenuEl || !existingPlaylistLabelEl) return;
+    const selected = String(existingPlaylistsEl?.value || '').trim();
+    existingPlaylistLabelEl.textContent = selected || '(select existing playlist)';
+
+    const rows = [`<button type="button" data-existing-playlist="" style="width:100%;display:flex;align-items:center;gap:10px;padding:8px;border:0;background:transparent;color:#e7eefc;text-align:left;border-radius:8px;">(select existing playlist)</button>`];
+    for (const n0 of names || []) {
+      const n = String(n0 || '').trim();
+      if (!n) continue;
+      const src = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(n)}.jpg`;
+      rows.push(
+        `<button type="button" data-existing-playlist="${esc(n)}" style="width:100%;display:flex;align-items:center;gap:10px;padding:8px;border:0;background:${selected===n?'rgba(127,211,167,.18)':'transparent'};color:#e7eefc;text-align:left;border-radius:8px;">` +
+        `<img src="${src}" onerror="this.onerror=null;this.src='${moodeDefaultCoverUrl()}'" style="width:28px;height:28px;object-fit:cover;border-radius:8px;border:1px solid #334;background:#0a1222;" />` +
+        `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(n)}</span>` +
+        `</button>`
+      );
+    }
+    existingPlaylistMenuEl.innerHTML = rows.join('');
+  }
+
   function setExistingPlaylistOptions(names = [], selected = '') {
     if (!existingPlaylistsEl) return;
     const selectedName = String(selected || '').trim();
@@ -911,6 +935,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     existingPlaylistsEl.innerHTML = opts.map((x) => `<option value="${esc(x.value)}">${esc(x.label)}</option>`).join('');
     if (selectedName && (names || []).includes(selectedName)) existingPlaylistsEl.value = selectedName;
     updateExistingPlaylistThumb(existingPlaylistsEl.value || '');
+    renderExistingPlaylistMenu(names);
   }
 
   async function loadExistingPlaylists() {
@@ -1916,8 +1941,32 @@ function wireEvents() {
 
   existingPlaylistsEl?.addEventListener('change', () => {
     updateExistingPlaylistThumb(existingPlaylistsEl?.value || '');
+    renderExistingPlaylistMenu(Array.from(existingPlaylistsEl.options).map((o) => String(o.value || '')).filter(Boolean));
     updatePlaylistUi();
     previewExistingPlaylistSelection();
+  });
+
+  existingPlaylistToggleEl?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!existingPlaylistMenuEl) return;
+    const open = existingPlaylistMenuEl.style.display !== 'none';
+    existingPlaylistMenuEl.style.display = open ? 'none' : '';
+  });
+
+  existingPlaylistMenuEl?.addEventListener('click', (e) => {
+    const el = e.target instanceof Element ? e.target.closest('button[data-existing-playlist]') : null;
+    if (!el || !existingPlaylistsEl) return;
+    const val = String(el.getAttribute('data-existing-playlist') || '');
+    existingPlaylistsEl.value = val;
+    existingPlaylistMenuEl.style.display = 'none';
+    existingPlaylistsEl.dispatchEvent(new Event('change'));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!existingPlaylistPickerEl || !existingPlaylistMenuEl) return;
+    const t = e.target;
+    if (t instanceof Node && existingPlaylistPickerEl.contains(t)) return;
+    existingPlaylistMenuEl.style.display = 'none';
   });
 
   loadExistingPlaylistBtn?.addEventListener('click', (e) => {
