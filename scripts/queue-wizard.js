@@ -473,7 +473,7 @@ async function syncVibeAvailability() {
     resultsEl.innerHTML =
       `<table style="font-size:16px;line-height:1.35;">
         <thead>
-          <tr><th>Action</th><th>Art</th><th>Artist</th><th>Title</th><th>Album</th><th>Genre</th><th>Order</th></tr>
+          <tr><th>Action</th><th>Art</th><th>Artist</th><th>Title</th><th>Date</th><th>Album</th><th>Genre</th><th>Order</th></tr>
         </thead>
         <tbody id="resultsBody"></tbody>
       </table>`;
@@ -488,11 +488,13 @@ async function syncVibeAvailability() {
 
     const file = String(t.file || '').trim();
     const art = file ? `${getApiBase()}/art/track_640.jpg?file=${encodeURIComponent(file)}` : '';
+    const shortDate = isPodcastLike(t) ? formatShortDate(t?.date) : '';
     tr.innerHTML =
       `<td><button type="button" data-remove-track="${idx}" title="Remove track from built list" style="padding:4px 8px;">Remove</button></td>` +
       `<td>${art ? `<img src="${art}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #334;background:#0a1222;" />` : ''}</td>` +
       `<td>${esc(t.artist || '')}</td>` +
       `<td>${esc(t.title || '')}</td>` +
+      `<td>${esc(shortDate)}</td>` +
       `<td>${esc(t.album || '')}</td>` +
       `<td>${esc(t.genre || '')}</td>` +
       `<td style="white-space:nowrap;"><span title="Drag row to reorder" style="cursor:grab;opacity:.8;font-size:16px;letter-spacing:1px;">☰</span></td>`;
@@ -503,6 +505,23 @@ async function syncVibeAvailability() {
     clearResults();
     const tbody = ensureResultsTable();
     (tracks || []).slice(0, MAX_RENDER_ROWS).forEach((t, idx) => appendRow(t, idx, tbody));
+  }
+
+  function isPodcastLike(item = {}) {
+    const genre = String(item?.genre || '').toLowerCase();
+    const album = String(item?.album || '').toLowerCase();
+    const file = String(item?.file || '').toLowerCase();
+    return genre.includes('podcast') || album.includes('podcast') || file.includes('/podcast');
+  }
+
+  function formatShortDate(value) {
+    const ts = parseIsoDateSafe(value);
+    if (ts == null) return '';
+    const d = new Date(ts);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${mm}/${dd}/${yy}`;
   }
 
   function starsHtml(file, rating) {
@@ -537,7 +556,7 @@ async function syncVibeAvailability() {
       const head = !!x.isHead;
       const pos = Number(x.position || 0);
       const file = String(x.file || '');
-      const stars = starsHtml(file, Number(x.rating || 0));
+      const stars = isPodcastLike(x) ? '' : starsHtml(file, Number(x.rating || 0));
       const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
       return `<div style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(String(x.artist||''))}</div><div class="muted">${esc(String(x.title||''))} ${x.album?`• ${esc(String(x.album||''))}`:''}</div>${starsRow}</div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
     }).join('');
