@@ -1566,9 +1566,6 @@ async function maybeGenerateCollagePreview(reason = '') {
 
     renderFiltersSummary();
     refreshCoverPreview('');
-
-    // If collage toggled on, try generating right away
-    maybeGenerateCollagePreview('updatePlaylistUi');
   }
 
   function showSendConfirmation(msg) {
