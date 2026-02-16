@@ -30,6 +30,16 @@
     .muted{color:#9fb1d9;font-size:12px}
     #podcastSection .pickGrid input,
     #podcastSection .pickGrid select{min-height:40px;box-sizing:border-box}
+    /* Filter Builder control parity */
+    #maxTracks,
+    #minRating{
+      height:44px;
+      min-height:44px;
+      max-height:44px;
+      border-radius:14px;
+      box-sizing:border-box;
+      padding:6px 10px;
+    }
     /* Safari/native-control parity: force these 4 controls to same rendered size */
     #podcastShows,
     #podcastDateFrom,
@@ -162,8 +172,8 @@
         </div>
 
         <div class="choiceLine" style="margin-top:4px">
-          <button id="vibeBuild" class="btnPrimary">Build vibe list from now playing</button>
-          <button id="sendVibeToMoode" class="btnPrimary">Send vibe list to moOde</button>
+          <button id="vibeBuild" class="btnPrimary">Build vibe queue from now playing</button>
+          <button id="sendVibeToMoode" class="btnPrimary">Send vibe queue to moOde</button>
         </div>
       </div>
 
@@ -204,7 +214,7 @@
           <button id="podcastPreset7d" type="button">Last 7 days</button>
         </div>
         <div class="choiceLine" style="margin-top:4px">
-          <button id="sendPodcastToMoode" class="btnPrimary">Send podcast list to moOde</button>
+          <button id="sendPodcastToMoode" class="btnPrimary">Send podcast queue to moOde</button>
         </div>
       </div>
     </div>
