@@ -17,6 +17,10 @@
   const vibeSectionEl = $('vibeSection');
   const vibeDisabledNoteEl = $('vibeDisabledNote');
 
+  const podcastShowsEl = $('podcastShows');
+  const podcastBuildBtn = $('podcastBuild');
+  const sendPodcastBtn = $('sendPodcastToMoode');
+
   const cropEl = $('crop');
 
   const savePlaylistBtn = $('savePlaylistBtn');
@@ -44,9 +48,10 @@
   let collageBusy = false; // prevent repeated preview calls
   let savePlaylistEnabled = false;
   let ratingsEnabled = true;
+  let podcastShowByRss = new Map();
 
   // Persist the current list (vibe OR filters)
-  let currentListSource = 'none'; // 'none' | 'filters' | 'vibe' | 'queue'
+  let currentListSource = 'none'; // 'none' | 'filters' | 'vibe' | 'podcast' | 'queue'
   let currentTracks = [];         // array of {artist,title,album,genre,file,...}
   let currentFiles = [];          // array of file paths
 
@@ -378,11 +383,14 @@ async function syncVibeAvailability() {
     if (vibeBtn) vibeBtn.disabled = disable;
     if (sendFilteredBtn) sendFilteredBtn.disabled = disable;
     if (sendVibeBtn) sendVibeBtn.disabled = disable || currentListSource !== 'vibe' || currentFiles.length === 0;
+    if (podcastBuildBtn) podcastBuildBtn.disabled = disable;
+    if (sendPodcastBtn) sendPodcastBtn.disabled = disable || currentListSource !== 'podcast' || currentFiles.length === 0;
 
     [
       'apiBase', 'key', 'maxTracks', 'minRating',
       'genres', 'artists', 'albums', 'excludeGenres',
       'shuffle', 'crop', 'cropVibe', 'minRatingVibe',
+      'podcastShows', 'podcastDateFrom', 'podcastDateTo', 'podcastMaxPerShow', 'podcastDownloadedOnly', 'podcastNewestFirst',
       'playlistName',
     ].forEach((id) => {
       const el = $(id);
@@ -522,10 +530,11 @@ async function syncVibeAvailability() {
 
     const label = currentListSource === 'vibe'
       ? 'Vibe list'
-      : (currentListSource === 'filters' ? 'Filter list' : 'List');
+      : (currentListSource === 'filters' ? 'Filter list' : (currentListSource === 'podcast' ? 'Podcast list' : 'List'));
 
     setCount(`${label} ready: ${currentTracks.length.toLocaleString()} track(s).`);
     if (sendVibeBtn) sendVibeBtn.disabled = !(currentListSource === 'vibe' && currentFiles.length > 0);
+    if (sendPodcastBtn) sendPodcastBtn.disabled = !(currentListSource === 'podcast' && currentFiles.length > 0);
 
     lastCollageSig = '';
     renderFiltersSummary();
@@ -626,7 +635,8 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
 
     const src = currentListSource === 'vibe' ? 'vibe'
       : (currentListSource === 'filters' ? 'filters'
-      : (currentListSource === 'queue' ? 'queue' : 'none'));
+      : (currentListSource === 'podcast' ? 'podcast'
+      : (currentListSource === 'queue' ? 'queue' : 'none')));
 
     summaryEl.innerHTML =
       `List source: <b>${esc(src)}</b> · ` +
@@ -730,8 +740,120 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
 
       setStatus('');
       renderFiltersSummary();
+      await loadPodcastShows().catch(() => {});
     } catch (e) {
       setStatus(`Error: ${esc(e?.message || e)}`);
+    }
+  }
+
+  async function loadPodcastShows() {
+    const apiBase = getApiBase();
+    const key = getKey();
+    if (!apiBase || !podcastShowsEl) return;
+    try {
+      const r = await fetch(`${apiBase}/podcasts`, { headers: { 'x-track-key': key } });
+      const j = await r.json().catch(() => ({}));
+      const items = Array.isArray(j?.items) ? j.items : [];
+      podcastShowByRss = new Map(items.map((it) => [String(it?.rss || ''), String(it?.title || it?.rss || '')]));
+      const opts = items
+        .map((it) => ({ value: String(it?.rss || ''), label: String(it?.title || it?.rss || '') }))
+        .filter((x) => x.value)
+        .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+      setOptions(podcastShowsEl, opts);
+    } catch (_) {
+      // non-fatal
+    }
+  }
+
+  function parseIsoDateSafe(v) {
+    const s = String(v || '').trim();
+    if (!s) return null;
+    const t = Date.parse(s);
+    return Number.isFinite(t) ? t : null;
+  }
+
+  async function doPodcastBuild() {
+    if (busy) return;
+    busy = true;
+
+    const apiBase = getApiBase();
+    const key = getKey();
+    const selectedRss = selectedValues(podcastShowsEl);
+    const fromTs = parseIsoDateSafe($('podcastDateFrom')?.value);
+    const toTsRaw = parseIsoDateSafe($('podcastDateTo')?.value);
+    const toTs = toTsRaw == null ? null : (toTsRaw + 86400000 - 1);
+    const downloadedOnly = !!$('podcastDownloadedOnly')?.checked;
+    const newestFirst = !!$('podcastNewestFirst')?.checked;
+    const maxPerShow = Math.max(1, Math.min(100, Number($('podcastMaxPerShow')?.value || 10)));
+
+    if (!selectedRss.length) {
+      setStatus('Select at least one podcast show.');
+      busy = false;
+      return;
+    }
+
+    setStatus('<span class="spin"></span>Building podcast list…');
+    setCount('Building podcast list…');
+
+    try {
+      const perShowLimit = Math.max(maxPerShow * 4, 40);
+      const all = [];
+
+      for (const rss of selectedRss) {
+        const rr = await fetch(`${apiBase}/podcasts/episodes/list`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+          body: JSON.stringify({ rss, limit: perShowLimit }),
+        });
+        const jj = await rr.json().catch(() => ({}));
+        if (!rr.ok || !jj?.ok) continue;
+        let eps = Array.isArray(jj?.episodes) ? jj.episodes.slice() : [];
+
+        eps = eps
+          .map((ep) => {
+            const dateRaw = String(ep?.date || '').trim();
+            const ts = parseIsoDateSafe(dateRaw);
+            const mpdPath = String(ep?.mpdPath || '').trim();
+            return {
+              rss,
+              show: podcastShowByRss.get(rss) || rss,
+              artist: podcastShowByRss.get(rss) || rss,
+              title: String(ep?.title || ep?.id || 'Episode'),
+              album: podcastShowByRss.get(rss) || 'Podcast',
+              genre: 'Podcast',
+              date: dateRaw,
+              ts,
+              downloaded: !!ep?.downloaded,
+              file: mpdPath,
+            };
+          })
+          .filter((x) => x.file)
+          .filter((x) => (downloadedOnly ? x.downloaded : true))
+          .filter((x) => {
+            if (fromTs == null && toTs == null) return true;
+            if (x.ts == null) return false;
+            if (fromTs != null && x.ts < fromTs) return false;
+            if (toTs != null && x.ts > toTs) return false;
+            return true;
+          })
+          .sort((a, b) => (newestFirst ? (Number(b.ts || 0) - Number(a.ts || 0)) : (Number(a.ts || 0) - Number(b.ts || 0))) )
+          .slice(0, maxPerShow);
+
+        all.push(...eps);
+      }
+
+      if (newestFirst) all.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
+      else all.sort((a, b) => Number(a.ts || 0) - Number(b.ts || 0));
+
+      const maxTracks = getMaxTracks();
+      const tracks = all.slice(0, maxTracks);
+      setCurrentList('podcast', tracks);
+      setStatus(tracks.length ? 'Podcast list built. Ready to send.' : 'No podcast episodes matched your filters.');
+      await maybeGenerateCollagePreview('podcast-build');
+    } catch (e) {
+      setStatus(`Error: ${esc(e?.message || e)}`);
+    } finally {
+      busy = false;
     }
   }
 
@@ -1225,6 +1347,16 @@ function wireEvents() {
     doSendToMoode('vibe');
   });
 
+  podcastBuildBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    doPodcastBuild();
+  });
+
+  sendPodcastBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    doSendToMoode('podcast');
+  });
+
   // Vibe cancel button becomes "Cancel" while building, then becomes "Send vibe list to moOde"
   vibeCancelBtn?.addEventListener('click', (e) => {
     e.preventDefault();
@@ -1290,7 +1422,7 @@ function wireEvents() {
 
   savePlaylistNowBtn?.addEventListener('click', (e) => {
     e.preventDefault();
-    const src = currentListSource === 'vibe' ? 'vibe' : 'filters';
+    const src = currentListSource === 'vibe' ? 'vibe' : (currentListSource === 'podcast' ? 'podcast' : 'filters');
     doSendToMoode(src);
   });
 

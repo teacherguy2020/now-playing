@@ -142,6 +142,29 @@
     </div>
     <div id="vibeDisabledNote" class="card muted warn hidden">Vibe is disabled. Add a Last.fm API key in Config to enable it.</div>
 
+    <div class="card" id="podcastSection">
+      <h3 style="margin:0 0 8px">Podcast Queue Builder</h3>
+      <div class="muted">Build a queue from podcast episodes by show/date, then send to moOde.</div>
+
+      <div class="pickGrid" style="margin-top:10px;grid-template-columns: 1.4fr .8fr .8fr .8fr;">
+        <label>Shows<br><select id="podcastShows" multiple size="8"></select></label>
+        <label>From date<br><input id="podcastDateFrom" type="date" /></label>
+        <label>To date<br><input id="podcastDateTo" type="date" /></label>
+        <label>Max eps/show<br><input id="podcastMaxPerShow" type="number" min="1" max="100" value="10" style="width:120px" /></label>
+      </div>
+
+      <div class="actionBar" style="margin-top:10px">
+        <div class="choiceLine">
+          <label><input id="podcastDownloadedOnly" type="checkbox" checked /> Downloaded only</label>
+          <label><input id="podcastNewestFirst" type="checkbox" checked /> Newest first</label>
+        </div>
+        <div class="choiceLine" style="margin-top:4px">
+          <button id="podcastBuild" class="btnPrimary">Build podcast list</button>
+          <button id="sendPodcastToMoode" class="btnPrimary">Send podcast list to moOde</button>
+        </div>
+      </div>
+    </div>
+
     <div class="muted" id="status" style="margin-top:6px"></div>
     <div class="muted" id="sendConfirm" style="margin-top:4px;color:#9ef7b2;"></div>
 
@@ -173,7 +196,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260215-7"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-1"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){
