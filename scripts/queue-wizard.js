@@ -541,6 +541,7 @@ async function syncVibeAvailability() {
 
     renderTracksToTable(currentTracks);
     renderPlaylistThumbStrip(currentTracks);
+    if (coverCardEl) coverCardEl.style.display = (currentListSource === 'podcast') ? 'none' : '';
 
     const label = currentListSource === 'vibe'
       ? 'Vibe list'
@@ -773,7 +774,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
         .map((it) => ({ value: String(it?.rss || ''), label: String(it?.title || it?.rss || '') }))
         .filter((x) => x.value)
         .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
-      setOptions(podcastShowsEl, opts);
+      setOptions(podcastShowsEl, [{ value: '__ALL__', label: 'All Shows' }, ...opts]);
     } catch (_) {
       // non-fatal
     }
@@ -812,7 +813,10 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
 
     const apiBase = getApiBase();
     const key = getKey();
-    const selectedRss = selectedValues(podcastShowsEl);
+    const selectedRaw = selectedValues(podcastShowsEl);
+    const selectedRss = selectedRaw.includes('__ALL__')
+      ? Array.from(podcastShowByRss.keys())
+      : selectedRaw.filter((v) => v && v !== '__ALL__');
     const fromTs = parseIsoDateSafe($('podcastDateFrom')?.value);
     const toTsRaw = parseIsoDateSafe($('podcastDateTo')?.value);
     const toTs = toTsRaw == null ? null : (toTsRaw + 86400000 - 1);
@@ -883,7 +887,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
       const tracks = all.slice(0, maxTracks);
       setCurrentList('podcast', tracks);
       setStatus(tracks.length ? 'Podcast list built. Ready to send.' : 'No podcast episodes matched your filters.');
-      await maybeGenerateCollagePreview('podcast-build');
+      if (coverCardEl) coverCardEl.style.display = 'none';
     } catch (e) {
       setStatus(`Error: ${esc(e?.message || e)}`);
     } finally {
@@ -1293,7 +1297,7 @@ async function maybeGenerateCollagePreview(reason = '') {
     const keepNowPlaying = isVibeSend ? getKeepNowPlayingVibe() : getKeepNowPlaying();
     const doShuffleFlag = isVibeSend ? false : getShuffle();
 
-    const savePlaylist = savePlaylistEnabled;
+    const savePlaylist = (source === 'podcast') ? false : savePlaylistEnabled;
     const playlistName = savePlaylist ? getPlaylistNameRaw() : '';
     const wantsCollage = !!savePlaylist;
 
