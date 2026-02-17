@@ -775,9 +775,23 @@ body.theme-light .btnPrimary{
 /* Keep JSON/log vibe in light mode */
 body.theme-light pre,
 body.theme-light pre#out,
-body.theme-light pre#log{
+body.theme-light pre#log,
+body.theme-light #out,
+body.theme-light #log,
+body.theme-light #queueWrap,
+body.theme-light #liveFrameViewport,
+body.theme-light #liveFrame,
+body.theme-light textarea#body{
   background:#000 !important;
   color:#39ff14 !important;
   border:1px solid rgba(57,255,20,.35) !important;
+}
+body.theme-light #imageWrap{
+  background:#000 !important;
+  border-color:rgba(57,255,20,.35) !important;
+}
+body.theme-light #imageOut{
+  background:#000 !important;
+  border-color:rgba(57,255,20,.35) !important;
 }
 body.theme-light th, body.theme-light td{ border-bottom-color:rgba(63,47,95,.26) !important; color:#16151d; }
