@@ -58,7 +58,7 @@
         if (webHintEl) webHintEl.textContent = `${host}:${uiPort}`;
         const axEnabled = !!j?.config?.alexa?.enabled;
         const axDomain = String(j?.config?.alexa?.publicDomain || '').trim();
-        if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
+        if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain ? 'moode.••••••••.com' : 'missing domain');
         const moodeHost = String(j?.config?.moode?.sshHost || j?.config?.mpd?.host || j?.config?.mpdHost || '').trim();
         if (moodeHintEl) moodeHintEl.textContent = moodeHost ? `confirmed (${moodeHost})` : 'not verified';
         setPillState('apiPill','ok');

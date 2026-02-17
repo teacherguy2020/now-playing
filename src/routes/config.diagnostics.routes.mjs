@@ -103,6 +103,16 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.json({ ok: true, action, removedPosition: pos, randomOn, status: String(afterStatus || '') });
       }
 
+      if (action === 'playpos') {
+        const posRaw = Number(req.body?.position);
+        const pos = Number.isFinite(posRaw) ? Math.max(1, Math.floor(posRaw)) : 0;
+        if (!pos) return res.status(400).json({ ok: false, error: 'position is required for playpos' });
+        await execFileP('mpc', ['-h', mpdHost, 'play', String(pos)]);
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, playedPosition: pos, randomOn, status: String(afterStatus || '') });
+      }
+
       if (action === 'rate') {
         const ratingsEnabled = await isRatingsEnabled();
         if (!ratingsEnabled) return res.status(403).json({ ok: false, error: 'Ratings feature is disabled' });

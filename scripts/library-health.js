@@ -287,7 +287,7 @@
       if (webHintEl) webHintEl.textContent = `${host}:${uiPort}`;
       const axEnabled = !!cfg?.alexa?.enabled;
       const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
-      if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
+      if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain ? 'moode.••••••••.com' : 'missing domain');
       const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || cfg?.mpdHost || '').trim();
       if (moodeHintEl) moodeHintEl.textContent = moodeHost ? `confirmed (${moodeHost})` : 'not verified';
       setPillState('apiPill','ok');
@@ -1010,13 +1010,28 @@
     }
   }
 
+  function setAlbumMetaStatus(msg, busy = false) {
+    const st = $('albumMetaStatus');
+    if (!st) return;
+    st.innerHTML = busy ? `<span class="spin"></span>${esc(msg)}` : esc(msg);
+  }
+
+  function setAlbumMetaBusy(busy = false) {
+    const ids = ['albumPick', 'suggestPerformersBtn', 'applyPerformersBtn'];
+    ids.forEach((id) => {
+      const el = $(id);
+      if (el) el.disabled = !!busy;
+    });
+  }
+
   async function loadAlbumOptions(){
   const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
   const key = ($('key')?.value || '').trim();
   const sel = $('albumPick');
-  const st = $('albumMetaStatus');
   if (!sel) return;
+  setAlbumMetaBusy(true);
   sel.innerHTML = '<option>Loading albums…</option>';
+  setAlbumMetaStatus('Loading albums…', true);
   try {
     const r = await fetch(`${apiBase}/config/library-health/albums`, { headers: { 'x-track-key': key } });
     const j = await r.json().catch(() => ({}));
@@ -1025,10 +1040,12 @@
     sel.innerHTML = albums.length
       ? albums.map((a) => `<option value="${esc(a.folder)}">${esc(a.label)} (${Number(a.trackCount||0)})</option>`).join('')
       : '<option value="">(no albums found)</option>';
-    if (st) st.textContent = albums.length ? `${albums.length} album(s)` : 'No albums.';
+    setAlbumMetaStatus(albums.length ? `${albums.length} album(s)` : 'No albums.');
   } catch (e) {
     sel.innerHTML = '<option value="">(failed to load albums)</option>';
-    if (st) st.textContent = `Album load failed: ${e?.message || e}`;
+    setAlbumMetaStatus(`Album load failed: ${e?.message || e}`);
+  } finally {
+    setAlbumMetaBusy(false);
   }
 }
 
@@ -1037,9 +1054,9 @@ async function loadAlbumMetadata(){
   const key = ($('key')?.value || '').trim();
   const folder = String($('albumPick')?.value || '').trim();
   const out = $('albumMetaOut');
-  const st = $('albumMetaStatus');
   if (!folder || !out) return;
-  if (st) st.textContent = 'Loading metadata…';
+  setAlbumMetaBusy(true);
+  setAlbumMetaStatus('Loading metadata…', true);
   try {
     const r = await fetch(`${apiBase}/config/library-health/album-tracks?folder=${encodeURIComponent(folder)}`, { headers: { 'x-track-key': key } });
     const j = await r.json().catch(() => ({}));
@@ -1059,10 +1076,12 @@ async function loadAlbumMetadata(){
         <tbody>${rows.map((x)=>`<tr><td>${esc(x.track||'')}</td><td>${esc(x.title||'')}</td><td>${esc(x.artist||'')}</td><td>${esc(x.album||'')}</td><td>${esc(x.date||'')}</td><td>${esc(x.genre||'')}</td><td>${Number(x.rating||0)}</td><td>${esc(x.file||'')}</td><td>${x.metaflac ? `<details><summary>show tags</summary><pre style="white-space:pre-wrap;max-width:560px;max-height:260px;overflow:auto;">${esc(x.metaflac)}</pre></details>` : '<span class="muted">(not flac/no data)</span>'}</td></tr>`).join('')}</tbody>
       </table>
     ` : '<div class="muted">No tracks in this album folder.</div>';
-    if (st) st.textContent = `${rows.length} track(s)`;
+    setAlbumMetaStatus(`${rows.length} track(s)`);
   } catch (e) {
     out.innerHTML = '';
-    if (st) st.textContent = `Metadata load failed: ${e?.message || e}`;
+    setAlbumMetaStatus(`Metadata load failed: ${e?.message || e}`);
+  } finally {
+    setAlbumMetaBusy(false);
   }
 }
 
@@ -1070,10 +1089,10 @@ async function suggestPerformers(){
   const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
   const key = ($('key')?.value || '').trim();
   const folder = String($('albumPick')?.value || '').trim();
-  const st = $('albumMetaStatus');
   const inp = $('performersInput');
   if (!folder || !inp) return;
-  if (st) st.textContent = 'Suggesting performers…';
+  setAlbumMetaBusy(true);
+  setAlbumMetaStatus('Suggesting performers…', true);
   try {
     const r = await fetch(`${apiBase}/config/library-health/album-performers-suggest?folder=${encodeURIComponent(folder)}`, { headers: { 'x-track-key': key } });
     const j = await r.json().catch(() => ({}));
@@ -1100,9 +1119,11 @@ async function suggestPerformers(){
       ` + (hint.innerHTML || '');
     }
 
-    if (st) st.textContent = `Suggested ${p.length} performer(s). New: ${added.length}.`;
+    setAlbumMetaStatus(`Suggested ${p.length} performer(s). New: ${added.length}.`);
   } catch (e) {
-    if (st) st.textContent = `Performer suggestion failed: ${e?.message || e}`;
+    setAlbumMetaStatus(`Performer suggestion failed: ${e?.message || e}`);
+  } finally {
+    setAlbumMetaBusy(false);
   }
 }
 
@@ -1111,11 +1132,11 @@ async function applyPerformers(){
   const key = ($('key')?.value || '').trim();
   const folder = String($('albumPick')?.value || '').trim();
   const inp = $('performersInput');
-  const st = $('albumMetaStatus');
   const performers = String(inp?.value || '').split(/\r?\n/).map((x)=>x.trim()).filter(Boolean);
-  if (!folder || !performers.length) { if (st) st.textContent = 'Provide at least one performer.'; return; }
+  if (!folder || !performers.length) { setAlbumMetaStatus('Provide at least one performer.'); return; }
   if (!confirm(`Apply ${performers.length} performer tag(s) to album tracks?`)) return;
-  if (st) st.textContent = 'Applying performers…';
+  setAlbumMetaBusy(true);
+  setAlbumMetaStatus('Applying performers…', true);
   try {
     const r = await fetch(`${apiBase}/config/library-health/album-performers-apply`, {
       method: 'POST',
@@ -1126,10 +1147,12 @@ async function applyPerformers(){
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
     const errN = Array.isArray(j.errors) ? j.errors.length : 0;
     const firstErr = errN ? ` First error: ${String(j.errors[0]?.error || '')}` : '';
-    if (st) st.textContent = `Performers applied: updated ${j.updated}/${j.total}, skipped ${j.skipped}.${errN ? ` errors: ${errN}.` : ''}${firstErr}`;
+    setAlbumMetaStatus(`Performers applied: updated ${j.updated}/${j.total}, skipped ${j.skipped}.${errN ? ` errors: ${errN}.` : ''}${firstErr}`);
     await loadAlbumMetadata();
   } catch (e) {
-    if (st) st.textContent = `Apply performers failed: ${e?.message || e}`;
+    setAlbumMetaStatus(`Apply performers failed: ${e?.message || e}`);
+  } finally {
+    setAlbumMetaBusy(false);
   }
 }
 

@@ -1,9 +1,16 @@
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
 
 const execFileP = promisify(execFile);
+
+function safePlaylistName(name = '') {
+  return String(name || '')
+    .replace(/[^A-Za-z0-9 _.\-]/g, '')
+    .trim();
+}
 
 export function registerConfigQueueWizardApplyRoute(app, deps) {
   const { requireTrackKey } = deps;
@@ -21,6 +28,8 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       const shuffle = Boolean(req.body?.shuffle);
       const forceRandomOff = Boolean(req.body?.forceRandomOff);
       const generateCollage = Boolean(req.body?.generateCollage);
+      const previewCoverBase64 = String(req.body?.previewCoverBase64 || '').trim();
+      const previewCoverMimeType = String(req.body?.previewCoverMimeType || 'image/jpeg').trim().toLowerCase();
 
       const keepNowPlaying =
         req.body?.keepNowPlaying === true ||
@@ -114,18 +123,62 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
           process.env.MOODE_PLAYLIST_COVER_SCRIPT || path.resolve(process.cwd(), 'scripts/moode-playlist-cover.sh')
         );
 
-        try {
-          await execFileP(localScript, [playlistName], {
-            timeout: 120000,
-            env: {
-              ...process.env,
-              MOODE_SSH_USER: String(MOODE_SSH_USER || 'moode'),
-              MOODE_SSH_HOST: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
-            },
-          });
-          collageGenerated = true;
-        } catch (e) {
-          collageError = e?.message || String(e);
+        // Prefer promoting the exact preview image the user saw.
+        const canPromotePreview = previewCoverBase64 && previewCoverMimeType.includes('jpeg');
+        if (canPromotePreview) {
+          const moodeUser = String(MOODE_SSH_USER || 'moode');
+          const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+          const coverDir = String(process.env.MOODE_PLAYLIST_COVER_DIR || '/var/local/www/imagesw/playlist-covers');
+          const safeName = safePlaylistName(playlistName);
+          const localTmp = path.join('/tmp', `qw-preview-cover-${process.pid}-${Date.now()}.jpg`);
+          const remoteTmp = `/tmp/qw-preview-cover-${process.pid}-${Date.now()}.jpg`;
+          const remoteDst = `${coverDir}/${safeName}.jpg`;
+
+          try {
+            const imgBuf = Buffer.from(previewCoverBase64, 'base64');
+            if (!imgBuf.length) throw new Error('preview image empty');
+            await fs.writeFile(localTmp, imgBuf);
+
+            await execFileP('scp', [
+              '-q',
+              '-o', 'BatchMode=yes',
+              '-o', 'ConnectTimeout=6',
+              localTmp,
+              `${moodeUser}@${moodeHost}:${remoteTmp}`,
+            ], { timeout: 20000 });
+
+            const sudoCmd = `sudo -n bash -lc 'set -euo pipefail; mkdir -p -- ${JSON.stringify(coverDir)}; mv -f -- ${JSON.stringify(remoteTmp)} ${JSON.stringify(remoteDst)}; chmod 0644 -- ${JSON.stringify(remoteDst)} 2>/dev/null || true'`;
+            const nonSudoCmd = `bash -lc 'set -euo pipefail; mkdir -p -- ${JSON.stringify(coverDir)}; mv -f -- ${JSON.stringify(remoteTmp)} ${JSON.stringify(remoteDst)}; chmod 0644 -- ${JSON.stringify(remoteDst)} 2>/dev/null || true'`;
+
+            try {
+              await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, sudoCmd], { timeout: 20000 });
+            } catch (_) {
+              await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, nonSudoCmd], { timeout: 20000 });
+            }
+
+            collageGenerated = true;
+          } catch (e) {
+            collageError = e?.message || String(e);
+          } finally {
+            await fs.unlink(localTmp).catch(() => {});
+            await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, `rm -f -- ${JSON.stringify(remoteTmp)} >/dev/null 2>&1 || true`], { timeout: 10000 }).catch(() => {});
+          }
+        }
+
+        if (!collageGenerated) {
+          try {
+            await execFileP(localScript, [playlistName, '--force'], {
+              timeout: 120000,
+              env: {
+                ...process.env,
+                MOODE_SSH_USER: String(MOODE_SSH_USER || 'moode'),
+                MOODE_SSH_HOST: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
+              },
+            });
+            collageGenerated = true;
+          } catch (e) {
+            collageError = e?.message || String(e);
+          }
         }
       }
 

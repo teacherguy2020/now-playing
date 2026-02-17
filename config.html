@@ -802,7 +802,7 @@ async function loadCfg(){
       setPillState('alexaPill', 'warn');
       setLight('alexaDomainLight', 'bad');
     } else {
-      alexaHint.textContent = domainTxt;
+      alexaHint.textContent = 'moode.••••••••.com';
       setPillState('alexaPill', 'good');
       setLight('alexaDomainLight', 'good');
     }
@@ -1444,13 +1444,13 @@ async function checkAlexaDomain(){
       ? `✅ Reachable: ${j.url} (HTTP ${j.statusCode || 'ok'})`
       : `⚠️ Not reachable: ${j.url}${j.statusCode ? ` (HTTP ${j.statusCode})` : ''}`;
     const ah = document.getElementById('alexaHint');
-    if (ah) ah.textContent = domain;
+    if (ah) ah.textContent = domain ? 'moode.••••••••.com' : 'unknown';
     setPillState('alexaPill', ok ? 'good' : 'warn');
     setLight('alexaDomainLight', ok ? 'good' : 'warn');
   } catch (e) {
     if (statusEl) statusEl.textContent = `❌ Check failed: ${String(e?.message || e)}`;
     const ah = document.getElementById('alexaHint');
-    if (ah) ah.textContent = domain;
+    if (ah) ah.textContent = domain ? 'moode.••••••••.com' : 'unknown';
     setPillState('alexaPill', 'bad');
     setLight('alexaDomainLight', 'bad');
   } finally {

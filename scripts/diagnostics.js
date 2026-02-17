@@ -227,7 +227,7 @@
       const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
       const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || cfg?.mpdHost || '').trim();
       ratingsEnabled = Boolean(cfg?.features?.ratings ?? true);
-      $('alexaHint').textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
+      $('alexaHint').textContent = !axEnabled ? 'disabled' : (axDomain ? 'moode.••••••••.com' : 'missing domain');
       if ($('moodeHint')) $('moodeHint').textContent = moodeHost ? `confirmed (${moodeHost})` : 'not verified';
       setPillState('apiPill','ok'); setPillState('webPill','ok'); setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn')); setPillState('moodePill', moodeHost ? 'ok' : 'warn');
       refreshLiveFrame(uiPort);
@@ -328,7 +328,7 @@
         const pos = Number(x.position || 0);
         const stars = isPodcastLike(x) ? '' : starsHtml(x.file, Number(x.rating || 0));
         const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
-        return `<div style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${String(x.artist||'')}</div><div class="muted">${String(x.title||'')} ${x.album?`• ${String(x.album)}`:''}</div>${starsRow}</div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
+        return `<div data-queue-play-pos="${pos}" style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;cursor:pointer;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${String(x.artist||'')}</div><div class="muted">${String(x.title||'')} ${x.album?`• ${String(x.album)}`:''}</div>${starsRow}</div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
       }).join('');
     } catch (e) {
       wrap.innerHTML = `<div class="muted">Queue load failed: ${e?.message || e}</div>`;
@@ -487,6 +487,19 @@
         })
         .catch((e) => { $('status').textContent = String(e?.message || e); })
         .finally(() => { playbackBtn.disabled = false; });
+      return;
+    }
+
+    const rowPlayEl = el ? el.closest('[data-queue-play-pos]') : null;
+    if (rowPlayEl && !el.closest('button')) {
+      ev.preventDefault();
+      const pos = Number(rowPlayEl.getAttribute('data-queue-play-pos') || 0);
+      if (Number.isFinite(pos) && pos > 0) {
+        sendPlayback('playpos', { position: pos })
+          .then(() => loadQueue())
+          .then(() => { $('status').textContent = `Playing queue position ${pos}.`; })
+          .catch((e) => { $('status').textContent = String(e?.message || e); });
+      }
       return;
     }
 

@@ -63,8 +63,25 @@
     const pp = state === 'playing' ? 'pause' : 'play';
     const randomOn = !!q?.randomOn;
     const repeatOn = !!q?.repeatOn;
-    const thumb = head?.thumbUrl ? (String(head.thumbUrl).startsWith('http') ? String(head.thumbUrl) : `${apiBase}${head.thumbUrl}`) : '';
-    const text = head ? `${head.artist || ''} • ${head.title || ''}` : 'Nothing playing';
+
+    const npArt = String(np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || '').trim();
+    const headArt = String(head?.thumbUrl || '').trim();
+    const rawThumb = npArt || headArt;
+    const thumb = rawThumb
+      ? (rawThumb.startsWith('http') ? rawThumb : `${apiBase}${rawThumb}`)
+      : '';
+
+    const displayArtist = String(np?._radioDisplay?.artist || np?.radioArtist || np?.artist || head?.artist || '').trim();
+    const displayTitle = String(np?._radioDisplay?.title || np?.radioTitle || np?.title || head?.title || '').trim();
+    const text = (displayArtist || displayTitle)
+      ? `${displayArtist}${displayArtist && displayTitle ? ' • ' : ''}${displayTitle}`
+      : 'Nothing playing';
+    const appleUrl = String(np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
+    const isLibraryTrack = !np?.isStream && !np?.isRadio && !np?.isPodcast;
+    const rating = Math.max(0, Math.min(5, Number(np?.rating ?? head?.rating ?? 0) || 0));
+    const starsRow = (isLibraryTrack && rating > 0)
+      ? `<div class="heroRating" aria-label="Rating">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</div>`
+      : '';
 
     const elapsed = Number(np?.elapsed ?? q?.elapsed ?? q?.elapsedSec ?? head?.elapsed ?? head?.elapsedSec ?? 0);
     const duration = Number(np?.duration ?? q?.duration ?? q?.durationSec ?? head?.duration ?? head?.durationSec ?? 0);
@@ -81,8 +98,11 @@
           `<button class="tbtn" data-a="next" title="Next">${icon('next')}</button>` +
           `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
         `</div>` +
+        `${starsRow}` +
         `<div class="np">` +
-          `<div class="txt">${text}</div>` +
+          (appleUrl
+            ? `<a class="txt txtLink" href="${appleUrl}" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">${text}</a>`
+            : `<div class="txt">${text}</div>`) +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div></div>` +
         `</div>` +
       `</div>`;

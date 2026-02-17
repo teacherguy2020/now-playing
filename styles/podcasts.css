@@ -815,14 +815,27 @@ body.theme-light .preHeroStatusWrap{margin-top:24px}
 .heroTransport .heroArtPh{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.14))}
 .heroTransport .heroMain{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;gap:12px;min-width:0}
 .heroTransport .heroTransportControls{display:flex;align-items:center;justify-content:center;gap:15px;flex-wrap:wrap;width:100%}
+.heroTransport .heroRating{display:flex;justify-content:center;align-items:center;width:100%;color:#fbbf24;font-size:24px;line-height:1;letter-spacing:2px;font-weight:700}
 .heroTransport .tbtn{width:52px;height:52px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.18);color:#eef;display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
 .heroTransport .tbtn.tbtnBig{width:64px;height:64px}
 .heroTransport .tbtn svg{width:28px;height:28px;fill:currentColor}
 .heroTransport .tbtn.tbtnBig svg{width:34px;height:34px}
 .heroTransport .tbtn.on{color:#22c55e;box-shadow:0 0 0 1px rgba(34,197,94,.35) inset}
+.heroTransport .tbtn:hover{background:rgba(255,255,255,.28);border-color:rgba(255,255,255,.34);box-shadow:0 0 0 1px rgba(125,211,252,.28) inset}
 .heroTransport .tbtn:active{transform:scale(.95)}
+
+/* Clickable queue-row hover affordance */
+#queueWrap [data-queue-play-pos],
+#results [data-queue-play-pos]{transition:background-color .14s ease, box-shadow .14s ease, border-color .14s ease}
+#queueWrap [data-queue-play-pos]:hover,
+#results [data-queue-play-pos]:hover{background:rgba(125,211,252,.14) !important;box-shadow:0 0 0 1px rgba(125,211,252,.32) inset}
+body.theme-light #queueWrap [data-queue-play-pos]:hover,
+body.theme-light #results [data-queue-play-pos]:hover{background:rgba(137,138,196,.18) !important;box-shadow:0 0 0 1px rgba(137,138,196,.36) inset}
+
 .heroTransport .np{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:100%}
 .heroTransport .np .txt{min-width:0;font-size:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#dbe6ff;max-width:none;text-align:center}
+.heroTransport .np .txtLink{text-decoration:none;cursor:pointer}
+.heroTransport .np .txtLink:hover{text-decoration:underline;text-underline-offset:3px}
 .heroTransport .np .progress-bar-wrapper{width:min(720px,96%);height:8px;background:rgba(255,255,255,.18);border-radius:4px;overflow:hidden}
 .heroTransport .np .progress-bar-wrapper.is-hidden{display:none}
 .heroTransport .np .progress-fill{height:12px;background:#4fc3f7;transform:scaleX(0);transform-origin:left}
@@ -830,6 +843,7 @@ body.theme-light .heroTransport{background:rgba(255,255,255,.72);border-color:rg
 body.theme-light .heroTransport .tbtn{background:#c0c9ee !important;color:#2b2341;border-color:rgba(137,138,196,.42) !important}
 body.theme-light .heroTransport .tbtn.on{color:#16a34a !important;border-color:rgba(22,163,74,.75) !important;box-shadow:0 0 0 1px rgba(22,163,74,.26) inset !important}
 body.theme-light .heroTransport .tbtn.on svg{fill:#16a34a !important}
+body.theme-light .heroTransport .tbtn:hover{background:#d7def4 !important;border-color:rgba(137,138,196,.58) !important;box-shadow:0 0 0 1px rgba(137,138,196,.26) inset}
 body.theme-light .heroTransport .np .txt{color:#2a2140}
 body.theme-light .heroTransport .np .progress-bar-wrapper{background:rgba(137,138,196,.30)}
 body.theme-light .heroTransport .np .progress-fill{background:#898ac4}

@@ -82,6 +82,11 @@
 
   // Prevent repeated collage preview for the same inputs
   let lastCollageSig = '';
+  let collageInputTimer = null;
+  let collageSuppressedUntil = 0;
+  let lastPreviewDataBase64 = '';
+  let lastPreviewMimeType = 'image/jpeg';
+  let lastPreviewSig = '';
   let dragTrackIdx = -1;
   let dragOverTrackIdx = -1;
   let dragInsertAfter = false;
@@ -211,6 +216,10 @@ function activateBuilder(name) {
   if (!v || activeBuilder === v) return;
   activeBuilder = v;
   applyBuilderVisibility();
+}
+
+function suppressCollageForUi(ms = 1200) {
+  collageSuppressedUntil = Date.now() + Number(ms || 1200);
 }
 
 function syncPodcastSectionVisibility() {
@@ -385,7 +394,7 @@ async function syncVibeAvailability() {
       podcastsEnabled = Boolean(cfg?.features?.podcasts ?? true);
       syncRatingsUi();
       syncPodcastSectionVisibility();
-      if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain || 'missing domain');
+      if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain ? 'moode.••••••••.com' : 'missing domain');
       const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || cfg?.mpdHost || '').trim();
       if (moodeHintEl) moodeHintEl.textContent = moodeHost ? `confirmed (${moodeHost})` : 'not verified';
       setPillState('apiPill','ok');
@@ -787,7 +796,7 @@ async function syncVibeAvailability() {
       const stars = isPodcastLike(x) ? '' : starsHtml(file, Number(x.rating || 0));
       const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
       const rowClass = `queueRow ${idx % 2 === 0 ? 'queueRowEven' : 'queueRowOdd'} ${head ? 'queueRowHead' : ''}`;
-      return `<div class="${rowClass}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(String(x.artist||''))}</div><div class="muted">${esc(String(x.title||''))} ${x.album?`• ${esc(String(x.album||''))}`:''}</div>${starsRow}</div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
+      return `<div class="${rowClass}" data-queue-play-pos="${pos}" style="cursor:pointer;">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(String(x.artist||''))}</div><div class="muted">${esc(String(x.title||''))} ${x.album?`• ${esc(String(x.album||''))}`:''}</div>${starsRow}</div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
     }).join('');
   }
 
@@ -1541,29 +1550,42 @@ async function doVibeBuild() {
     return { ok: true, msg: '' };
   }
 
-  function collagePreviewFiles() {
-    const byArtist = new Map();
-    for (const t of currentTracks || []) {
-      const f = String(t?.file || '').trim();
-      if (!f) continue;
-      const a = String(t?.artist || '').trim().toLowerCase();
-      const key = a || `__noartist__:${f}`;
-      if (!byArtist.has(key)) byArtist.set(key, f);
+  function collageCandidateFiles() {
+    const seen = new Set();
+    const out = [];
+    for (const f0 of currentFiles || []) {
+      const f = String(f0 || '').trim();
+      if (!f || seen.has(f)) continue;
+      seen.add(f);
+      out.push(f);
+      if (out.length >= 240) break;
     }
-    const distinct = Array.from(byArtist.values()).filter(Boolean);
-    if (distinct.length >= 4) return distinct.slice(0, 4);
-    return currentFiles.slice();
+    return out;
   }
 
-  function computeCollageSig() {
-    const name = getPlaylistNameRaw();
-    const files = collagePreviewFiles();
-    const head = files.slice(0, 50).join('|');
-    return `${name}::${files.length}::${head}`;
+  function computeCollageSig(name = getPlaylistNameRaw(), files = collageCandidateFiles()) {
+    const head = (files || []).slice(0, 50).join('|');
+    return `${String(name || '')}::${(files || []).length}::${head}`;
   }
 
-async function maybeGenerateCollagePreview(reason = '') {
+  function shouldForceSingleCover(tracks = currentTracks) {
+    const arr = Array.isArray(tracks) ? tracks : [];
+    const albumKeys = new Set();
+    for (const t of arr) {
+      const album = String(t?.album || '').trim().toLowerCase();
+      const artist = String(t?.artist || '').trim().toLowerCase();
+      const key = `${artist}::${album}`;
+      if (album || artist) albumKeys.add(key);
+      if (albumKeys.size > 1) return false;
+    }
+    return albumKeys.size <= 1;
+  }
+
+async function maybeGenerateCollagePreview(reason = '', opts = {}) {
   if (!coverCardEl || !coverImgEl || !coverStatusEl) return;
+  if (sendBusy && !opts.force) return;
+  if (!opts.force && Date.now() < collageSuppressedUntil) return;
+  if (reason === 'playlist-name-input' || reason === 'playlist-name-focus' || reason === 'playlist-name-blur') return;
 
   // If user selected an existing playlist, keep that playlist's cover preview.
   if (hasExistingPlaylistSelected()) return;
@@ -1580,8 +1602,8 @@ async function maybeGenerateCollagePreview(reason = '') {
     if (!currentFiles.length) { setStatus('Cover preview error: no tracks to preview.'); return; }
 
     // Prevent repeated calls for identical list
-    const vibePreviewFiles = collagePreviewFiles();
-    const sig = `vibe::${vibePreviewFiles.length}::${vibePreviewFiles.slice(0, 50).join('|')}`;
+    const vibePreviewFiles = collageCandidateFiles();
+    const sig = `vibe::${vibePreviewFiles.length}::${vibePreviewFiles.slice(0, 80).join('|')}`;
     if (sig === lastCollageSig) return;
     lastCollageSig = sig;
 
@@ -1599,7 +1621,7 @@ async function maybeGenerateCollagePreview(reason = '') {
         body: JSON.stringify({
           // playlistName omitted on purpose for vibe preview
           tracks: vibePreviewFiles,
-          forceSingle: false,
+          forceSingle: shouldForceSingleCover(currentTracks),
         }),
       });
 
@@ -1612,6 +1634,9 @@ async function maybeGenerateCollagePreview(reason = '') {
         dataBase64: j.dataBase64 || '',
         note: 'Vibe collage preview ready.',
       });
+      lastPreviewDataBase64 = String(j.dataBase64 || '');
+      lastPreviewMimeType = String(j.mimeType || 'image/jpeg');
+      lastPreviewSig = sig;
 
       setStatus('Vibe list built. (Preview generated.)');
     } catch (e) {
@@ -1635,8 +1660,8 @@ async function maybeGenerateCollagePreview(reason = '') {
   }
 
   const playlistName = getPlaylistNameRaw();
-  const previewFiles = collagePreviewFiles();
-  const sig = `${playlistName || '(preview)'}::${previewFiles.length}::${previewFiles.slice(0, 50).join('|')}`;
+  const previewFiles = collageCandidateFiles();
+  const sig = `${playlistName || '(preview)'}::${previewFiles.length}::${previewFiles.slice(0, 80).join('|')}`;
   if (sig && sig === lastCollageSig) return;
 
   if (collageBusy) return;
@@ -1644,14 +1669,15 @@ async function maybeGenerateCollagePreview(reason = '') {
 
   try {
     showPlaylistHint('');
-    setStatus('<span class="spin"></span>Generating collage preview…');
+    // Keep progress messaging in the cover card only (avoid duplicate top status line).
+    setStatus('');
     coverCardEl.style.display = '';
     coverStatusEl.textContent = 'Generating collage preview…';
     coverImgEl.src = moodeDefaultCoverUrl();
 
     const payload = {
       tracks: previewFiles,
-      forceSingle: false,
+      forceSingle: shouldForceSingleCover(currentTracks),
     };
     if (savePlaylistEnabled && playlistName) payload.playlistName = playlistName;
 
@@ -1675,6 +1701,9 @@ async function maybeGenerateCollagePreview(reason = '') {
         dataBase64: j.dataBase64,
         note: 'Collage preview ready.',
       });
+      lastPreviewDataBase64 = String(j.dataBase64 || '');
+      lastPreviewMimeType = String(j.mimeType || 'image/jpeg');
+      lastPreviewSig = sig;
     } else if (savePlaylistEnabled && playlistName) {
       await forceReloadCoverUntilItLoads({
         name: playlistName,
@@ -1683,7 +1712,7 @@ async function maybeGenerateCollagePreview(reason = '') {
       });
     }
 
-    setStatus('Collage preview ready.');
+    // Status handled in-card via coverStatus; avoid duplicate banner text.
   } catch (e) {
     const msg = e?.message || String(e);
     setStatus(`Cover preview error: ${esc(msg)}`);
@@ -1807,6 +1836,12 @@ async function maybeGenerateCollagePreview(reason = '') {
     const savePlaylist = (source === 'podcast') ? false : savePlaylistEnabled;
     const playlistName = savePlaylist ? getPlaylistNameRaw() : '';
     const wantsCollage = !!savePlaylist;
+    const filesSnapshot = currentFiles.slice();
+    const previewFilesSnapshot = collageCandidateFiles();
+    const previewSigSnapshot = computeCollageSig(playlistName, previewFilesSnapshot);
+    const previewCoverBase64 = (wantsCollage && lastPreviewDataBase64 && lastPreviewSig === previewSigSnapshot)
+      ? lastPreviewDataBase64
+      : '';
 
     if (savePlaylist) {
       const p = playlistNameProblems(playlistName);
@@ -1823,6 +1858,15 @@ async function maybeGenerateCollagePreview(reason = '') {
       if (!ok) { sendBusy = false; return; }
     }
 
+    if (wantsCollage && playlistName && filesSnapshot.length) {
+      setStatus('<span class="spin"></span>Locking collage for save…');
+      try {
+        await maybeGenerateCollagePreview('save-lock', { force: true });
+      } catch (e) {
+        setStatus(`Collage lock warning: ${esc(e?.message || e)} · continuing save…`);
+      }
+    }
+
     disableUI(true);
     try {
       setStatus('<span class="spin"></span>Sending list to moOde…');
@@ -1833,11 +1877,13 @@ async function maybeGenerateCollagePreview(reason = '') {
         body: JSON.stringify({
           mode,
           keepNowPlaying,
-          tracks: currentFiles.slice(),
+          tracks: filesSnapshot,
           shuffle: doShuffleFlag,
           forceRandomOff,
           playlistName,
           generateCollage: wantsCollage,
+          previewCoverBase64: previewCoverBase64 || undefined,
+          previewCoverMimeType: previewCoverBase64 ? (lastPreviewMimeType || 'image/jpeg') : undefined,
         }),
       });
 
@@ -2005,6 +2051,7 @@ function wireEvents() {
   // Mode/crop
   document.querySelectorAll('input[name="mode"]').forEach((el) => {
     el.addEventListener('change', () => {
+      suppressCollageForUi();
       activateBuilder('filters');
       syncCropUi();
       renderFiltersSummary();
@@ -2013,6 +2060,7 @@ function wireEvents() {
 
   document.querySelectorAll('input[name="modeVibe"]').forEach((el) => {
     el.addEventListener('change', () => {
+      suppressCollageForUi();
       activateBuilder('vibe');
       syncCropVibeUi();
     });
@@ -2020,6 +2068,7 @@ function wireEvents() {
 
   document.querySelectorAll('input[name="modePodcast"]').forEach((el) => {
     el.addEventListener('change', () => {
+      suppressCollageForUi();
       activateBuilder('podcast');
       syncCropPodcastUi();
     });
@@ -2027,26 +2076,30 @@ function wireEvents() {
 
   document.querySelectorAll('input[name="modeExisting"]').forEach((el) => {
     el.addEventListener('change', () => {
+      suppressCollageForUi();
       activateBuilder('existing');
       syncCropExistingUi();
     });
   });
 
   cropEl?.addEventListener('change', () => {
+    suppressCollageForUi();
     activateBuilder('filters');
     renderFiltersSummary();
   });
   const shuffleEl = $('shuffle');
   shuffleEl?.addEventListener('change', () => {
+    suppressCollageForUi();
     if (!shuffleEl.checked) return;
     if (!['filters', 'existing', 'vibe', 'podcast'].includes(currentListSource)) return;
     shuffleCurrentTracksInPlace();
     setStatus('List shuffled.');
   });
-  cropVibeEl?.addEventListener('change', () => { activateBuilder('vibe'); });
-  cropPodcastEl?.addEventListener('change', () => { activateBuilder('podcast'); });
-  cropExistingEl?.addEventListener('change', () => { activateBuilder('existing'); });
+  cropVibeEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('vibe'); });
+  cropPodcastEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('podcast'); });
+  cropExistingEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('existing'); });
   shuffleExistingEl?.addEventListener('change', () => {
+    suppressCollageForUi();
     if (!shuffleExistingEl.checked) return;
     if (currentListSource !== 'existing') return;
     shuffleCurrentTracksInPlace();
@@ -2065,7 +2118,8 @@ function wireEvents() {
   playlistNameEl?.addEventListener('input', () => {
     updatePlaylistUi();
     if (existingPlaylistsEl) existingPlaylistsEl.value = '';
-    if (savePlaylistEnabled) maybeGenerateCollagePreview('playlist-name-input');
+    // Intentionally do NOT auto-trigger collage on name edits/focus churn.
+    if (collageInputTimer) clearTimeout(collageInputTimer);
   });
 
   existingPlaylistsEl?.addEventListener('change', () => {
@@ -2142,6 +2196,19 @@ function wireEvents() {
         .then(() => setStatus(action === 'reload' ? 'Queue reloaded.' : `Playback: ${action}`))
         .catch((e) => setStatus(`Error: ${esc(e?.message || e)}`))
         .finally(() => { playbackBtn.disabled = false; });
+      return;
+    }
+
+    const rowPlayEl = el.closest('[data-queue-play-pos]');
+    if (rowPlayEl && !el.closest('button')) {
+      ev.preventDefault();
+      const pos = Number(rowPlayEl.getAttribute('data-queue-play-pos') || 0);
+      if (Number.isFinite(pos) && pos > 0) {
+        sendDiagnosticsAction('playpos', { position: pos })
+          .then(() => loadCurrentQueueCard())
+          .then(() => setStatus(`Playing queue position ${pos}.`))
+          .catch((e) => setStatus(`Error: ${esc(e?.message || e)}`));
+      }
       return;
     }
 
