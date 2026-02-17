@@ -40,6 +40,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       const tracks = Array.isArray(req.body?.tracks)
         ? req.body.tracks.map((x) => String(x || '').trim()).filter(Boolean)
         : [];
+      const trackMeta = Array.isArray(req.body?.trackMeta) ? req.body.trackMeta : [];
 
       const playlistName = String(req.body?.playlistName || '').trim();
       if (!tracks.length) return res.status(400).json({ ok: false, error: 'tracks[] is required' });
@@ -75,15 +76,38 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
 
       let added = 0;
       const failedFiles = [];
+      const addedFiles = [];
 
       for (const file of tracks) {
         try {
           await execFileP('mpc', ['-h', mpdHost, 'add', file]);
           added += 1;
+          addedFiles.push(file);
         } catch (_) {
           failedFiles.push(file);
         }
       }
+
+      // Persist lightweight station hint map for radio queue rows.
+      try {
+        const metaByFile = new Map();
+        for (const m of trackMeta) {
+          const f = String(m?.file || '').trim();
+          const stationName = String(m?.stationName || m?.artist || '').trim();
+          const genre = String(m?.genre || '').trim();
+          if (f && (stationName || genre)) metaByFile.set(f, { stationName, genre });
+        }
+        if (metaByFile.size && addedFiles.length) {
+          const entries = addedFiles
+            .map((f) => ({ file: f, ...(metaByFile.get(f) || {}) }))
+            .filter((x) => x.file && (x.stationName || x.genre));
+          if (entries.length) {
+            const outPath = path.resolve(process.cwd(), 'data', 'radio-queue-map.json');
+            await fs.mkdir(path.dirname(outPath), { recursive: true });
+            await fs.writeFile(outPath, JSON.stringify({ ts: Date.now(), entries }, null, 2), 'utf8');
+          }
+        }
+      } catch {}
 
       let playStarted = false;
       // Only auto-play when we replaced the queue and did NOT crop (crop keeps playing).

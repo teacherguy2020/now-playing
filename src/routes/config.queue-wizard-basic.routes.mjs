@@ -4,6 +4,33 @@ import path from 'node:path';
 import { MPD_HOST, MOODE_SSH_HOST } from '../config.mjs';
 
 const execFileP = promisify(execFile);
+const RADIO_DB_SEP = '__NPSEP__';
+
+function sqlQuoteLike(v = '') {
+  const s = String(v || '').replace(/'/g, "''");
+  return `'%${s}%'`;
+}
+
+function shQuoteArg(s) {
+  const v = String(s ?? '');
+  return `'${v.replace(/'/g, `'"'"'`)}'`;
+}
+
+async function queryMoodeRadioDb(sql) {
+  const host = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+  const dbPath = '/var/local/www/db/moode-sqlite3.db';
+  const remoteCmd = `sqlite3 -separator ${RADIO_DB_SEP} ${dbPath} ${shQuoteArg(String(sql || ''))}`;
+  const { stdout } = await execFileP('ssh', [
+    '-o', 'BatchMode=yes',
+    '-o', 'ConnectTimeout=6',
+    `moode@${host}`,
+    remoteCmd,
+  ], {
+    timeout: 12000,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  return String(stdout || '');
+}
 
 export function registerConfigQueueWizardBasicRoutes(app, deps) {
   const { requireTrackKey } = deps;
@@ -155,6 +182,63 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
         .filter((x) => x.file);
 
       return res.json({ ok: true, playlist, count: tracks.length, tracks });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/queue-wizard/radio-options', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const raw = await queryMoodeRadioDb('select genre from cfg_radio order by genre;');
+      const genres = new Set();
+      for (const ln of String(raw || '').split(/\r?\n/)) {
+        const gRaw = String(ln || '').trim();
+        if (!gRaw) continue;
+        for (const g of gRaw.split(/[;,|/]/).map((x) => String(x || '').trim()).filter(Boolean)) genres.add(g);
+      }
+      return res.json({ ok: true, genres: Array.from(genres).sort((a,b)=>a.localeCompare(b, undefined, { sensitivity:'base'})) });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/queue-wizard/radio-preview', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const genres = Array.isArray(req.body?.genres) ? req.body.genres.map((x)=>String(x||'').trim()).filter(Boolean) : [];
+      const favoritesOnly = !!req.body?.favoritesOnly;
+      const hqOnly = !!req.body?.hqOnly;
+      const maxStations = Math.max(1, Math.min(200, Number(req.body?.maxStations || 25)));
+
+      const where = [];
+      if (favoritesOnly) where.push("type='f'");
+      if (hqOnly) where.push("(type='h' OR cast(replace(bitrate,'kbps','') as integer) >= 256)");
+      if (genres.length) {
+        const likes = genres.map((g) => `genre like ${sqlQuoteLike(g)}`).join(' OR ');
+        where.push(`(${likes})`);
+      }
+      const sql = `select station,name,genre,bitrate,format,type from cfg_radio ${where.length ? 'where ' + where.join(' AND ') : ''} order by name limit ${maxStations};`;
+      const out = await queryMoodeRadioDb(sql);
+      const tracks = String(out || '').split(/\r?\n/).map((ln)=>String(ln||'').trim()).filter(Boolean).map((ln)=>{
+        const [station='', name='', genre='', bitrate='', format='', type=''] = ln.split(RADIO_DB_SEP);
+        const stationName = String(name || '').trim() || 'Radio Station';
+        const file = String(station || '').trim();
+        return {
+          artist: stationName,
+          title: '',
+          album: stationName,
+          stationName,
+          genre: String(genre || '').trim(),
+          bitrate: String(bitrate || '').trim(),
+          format: String(format || '').trim(),
+          radioType: String(type || '').trim(),
+          file,
+          isStream: true,
+        };
+      }).filter((x)=>x.file);
+
+      return res.json({ ok: true, count: tracks.length, tracks });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

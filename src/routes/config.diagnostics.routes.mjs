@@ -1,9 +1,125 @@
 import fs from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { MPD_HOST } from '../config.mjs';
+import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
 
 const execFileP = promisify(execFile);
+
+function cleanIheartQueueMeta(artistRaw, titleRaw) {
+  const artist = String(artistRaw || '').trim();
+  const title = String(titleRaw || '').trim();
+  const combined = `${artist} ${title}`.trim();
+  if (!combined) return { artist, title, artUrl: '' };
+
+  const blobSource = [artist, title].find((s) => /\bTPID="\d+"/i.test(String(s || '')) || /\btitle="[^"]+"/i.test(String(s || '')) || /\btext="[^"]+"/i.test(String(s || ''))) || '';
+  if (!blobSource) return { artist, title, artUrl: '' };
+
+  const s = String(blobSource || '').trim();
+  const t1 = s.match(/(?:^|[\s,])text\s*=\s*"([^"]+)"/i);
+  const t2 = s.match(/(?:^|[\s,])title\s*=\s*"([^"]+)"/i);
+  const a1 = s.match(/(?:^|[\s,])artist\s*=\s*"([^"]+)"/i);
+  const p1 = s.match(/^(.*?)\s*-\s*text\s*=\s*"/i);
+  const art1 = s.match(/\bamgArtworkURL\s*=\s*"([^"]+)"/i);
+
+  const cleanArtist = String((a1 && a1[1]) || (p1 && p1[1]) || '').trim() || artist;
+  const cleanTitle = String((t1 && t1[1]) || (t2 && t2[1]) || '').trim() || title;
+  const artUrl = String((art1 && art1[1]) || '').trim();
+
+  return { artist: cleanArtist, title: cleanTitle, artUrl };
+}
+
+function isStreamUrl(file) {
+  return /:\/\//.test(String(file || ''));
+}
+
+function stationLogoUrlFromAlbum(album) {
+  const a = String(album || '').trim();
+  if (!a) return '';
+  return `/art/radio-logo.jpg?name=${encodeURIComponent(a)}`;
+}
+
+function stationKey(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  try {
+    const u = new URL(s);
+    return `${u.hostname}${u.pathname}`.replace(/\/+$/, '').toLowerCase();
+  } catch {
+    return s.replace(/\?.*$/, '').replace(/\/+$/, '').toLowerCase();
+  }
+}
+
+let radioCatalogCacheTs = 0;
+let radioMetaByStation = new Map();
+
+async function loadRadioQueueMap() {
+  try {
+    const p = new URL('../../data/radio-queue-map.json', import.meta.url);
+    const raw = await fs.readFile(p, 'utf8');
+    const j = JSON.parse(raw || '{}');
+    const map = new Map();
+    for (const e of (Array.isArray(j.entries) ? j.entries : [])) {
+      const f = String(e?.file || '').trim();
+      const stationName = String(e?.stationName || '').trim();
+      const genre = String(e?.genre || '').trim();
+      if (!f) continue;
+      map.set(f, { stationName, genre });
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+function stationHost(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  try { return String(new URL(s).hostname || '').toLowerCase(); } catch { return ''; }
+}
+
+async function loadRadioCatalogMap() {
+  const now = Date.now();
+  if (radioMetaByStation.size && (now - radioCatalogCacheTs) < (5 * 60 * 1000)) return radioMetaByStation;
+  const host = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+  const user = String(MOODE_SSH_USER || 'moode');
+  const sql = "select station,name,genre from cfg_radio;";
+  const { stdout } = await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${user}@${host}`, 'sqlite3', '-separator', '\t', '/var/local/www/db/moode-sqlite3.db', sql], { timeout: 12000, maxBuffer: 4 * 1024 * 1024 });
+  const map = new Map();
+  const hostCounts = new Map();
+  const hostName = new Map();
+  for (const ln of String(stdout || '').split(/\r?\n/)) {
+    if (!ln) continue;
+    const [station = '', name = '', genre = ''] = ln.split('\t');
+    const s = String(station || '').trim();
+    const n = String(name || '').trim();
+    const g = String(genre || '').trim();
+    if (s && n) {
+      const meta = { stationName: n, genre: g };
+      map.set(s, meta);
+      const k = stationKey(s);
+      if (k) map.set(k, meta);
+      const h = stationHost(s);
+      if (h) {
+        hostCounts.set(h, Number(hostCounts.get(h) || 0) + 1);
+        if (!hostName.has(h)) hostName.set(h, meta);
+      }
+    }
+  }
+  for (const [h, c] of hostCounts.entries()) {
+    if (c === 1) map.set(`host:${h}`, hostName.get(h) || { stationName: '', genre: '' });
+  }
+  radioMetaByStation = map;
+  radioCatalogCacheTs = now;
+  return radioMetaByStation;
+}
+
+function splitArtistDashTitle(line) {
+  const s = String(line || '').trim();
+  if (!s) return null;
+  const m = s.match(/^(.+?)\s+[\-–—]\s+(.+)$/);
+  if (!m) return null;
+  return { artist: String(m[1] || '').trim(), title: String(m[2] || '').trim() };
+}
 
 export function registerConfigDiagnosticsRoutes(app, deps) {
   const { requireTrackKey, getRatingForFile, setRatingForFile } = deps;
@@ -139,14 +255,32 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     }
   });
 
+  app.get('/art/radio-logo.jpg', async (req, res) => {
+    try {
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const name = String(req.query?.name || '').trim();
+      if (!name) return res.status(400).end('missing name');
+      const u = `http://${mpdHost}/imagesw/radio-logos/${encodeURIComponent(name)}.jpg`;
+      const r = await fetch(u, { redirect: 'follow' });
+      if (!r.ok) return res.status(404).end('not found');
+      const ab = await r.arrayBuffer();
+      res.setHeader('Content-Type', r.headers.get('content-type') || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=300');
+      return res.end(Buffer.from(ab));
+    } catch {
+      return res.status(404).end('not found');
+    }
+  });
+
   app.get('/config/diagnostics/queue', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
       const mpdHost = String(MPD_HOST || '10.0.0.254');
       const ratingsEnabled = await isRatingsEnabled();
-      const [{ stdout: qOut }, { stdout: sOut }] = await Promise.all([
-        execFileP('mpc', ['-h', mpdHost, '-f', '%position%\t%artist%\t%title%\t%album%\t%file%', 'playlist']),
+      const [{ stdout: qOut }, { stdout: sOut }, { stdout: cOut }] = await Promise.all([
+        execFileP('mpc', ['-h', mpdHost, '-f', '%position%\t%artist%\t%title%\t%album%\t%file%\t%name%', 'playlist']),
         execFileP('mpc', ['-h', mpdHost, 'status']),
+        execFileP('mpc', ['-h', mpdHost, '-f', '%artist%\t%title%', 'current']),
       ]);
       const st = String(sOut || '');
       const m = st.match(/#(\d+)\/(\d+)/);
@@ -157,31 +291,81 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         ? 'playing'
         : (/\[paused\]/i.test(st) ? 'paused' : 'stopped');
 
+      const currentLine = String(cOut || '').split(/\r?\n/).map((ln) => ln.trim()).find(Boolean) || '';
+      const [curArtistRaw = '', curTitleRaw = ''] = currentLine.split('\t');
+      const curClean = cleanIheartQueueMeta(curArtistRaw, curTitleRaw);
+      const curSplit = splitArtistDashTitle(curClean.title);
+      const currentArtist = String(curClean.artist || (curSplit?.artist || '')).trim();
+      const currentTitle = String(curSplit?.title || curClean.title || '').trim();
+
+      let stationMap = new Map();
+      let recentRadioMap = new Map();
+      try { stationMap = await loadRadioCatalogMap(); } catch {}
+      try { recentRadioMap = await loadRadioQueueMap(); } catch {}
+
       const lines = String(qOut || '').split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean);
       const items = [];
       for (const ln of lines) {
-        const [position = '', artist = '', title = '', album = '', file = ''] = ln.split('\t');
+        const [position = '', artist = '', title = '', album = '', file = '', name = ''] = ln.split('\t');
         const pos = Number(position || 0);
         const f = String(file || '').trim();
         let rating = 0;
         if (ratingsEnabled && f && typeof getRatingForFile === 'function') {
           try { rating = Number(await getRatingForFile(f)) || 0; } catch {}
         }
-        const artistTxt = String(artist || '').trim();
-        const titleTxt = String(title || '').trim();
+        const cleaned = cleanIheartQueueMeta(artist, title);
+        let artistTxt = String(cleaned.artist || '').trim();
+        let titleTxt = String(cleaned.title || '').trim();
         const albumTxt = String(album || '').trim();
+        const queueMeta = recentRadioMap.get(f) || {};
+        const catMetaDirect = stationMap.get(f) || {};
+        const catMetaKey = stationMap.get(stationKey(f)) || {};
+        const catMetaHost = stationMap.get(`host:${stationHost(f)}`) || {};
+
+        const stationNameTxt = String(name || '').trim()
+          || String(queueMeta.stationName || '').trim()
+          || String(catMetaDirect.stationName || '').trim()
+          || String(catMetaKey.stationName || '').trim()
+          || String(catMetaHost.stationName || '').trim();
+        const stationGenreTxt = String(queueMeta.genre || '').trim()
+          || String(catMetaDirect.genre || '').trim()
+          || String(catMetaKey.genre || '').trim()
+          || String(catMetaHost.genre || '').trim();
+
+        const isStream = isStreamUrl(f);
+        if (isStream) {
+          const split = splitArtistDashTitle(titleTxt);
+          if (split) {
+            if (!artistTxt) artistTxt = String(split.artist || '').trim();
+            titleTxt = String(split.title || titleTxt).trim();
+          }
+          if (pos === headPos) {
+            if (!artistTxt && currentArtist) artistTxt = currentArtist;
+            if (!titleTxt && currentTitle) titleTxt = currentTitle;
+          }
+        }
         const podcastBlob = `${f}\n${artistTxt}\n${titleTxt}\n${albumTxt}`.toLowerCase();
         const isPodcast = /\bpodcast\b/.test(podcastBlob) || /\/podcasts?\//.test(podcastBlob);
+        const streamLogoName = stationNameTxt || albumTxt;
+        const stationLogo = stationLogoUrlFromAlbum(streamLogoName);
+        const streamArtFallback = String(cleaned.artUrl || '').trim();
+        const isHead = Number.isFinite(pos) && pos === headPos;
+        const thumbUrl = isStream
+          ? (stationLogo || streamArtFallback || '')
+          : (f ? `/art/track_640.jpg?file=${encodeURIComponent(f)}` : '');
         items.push({
           position: pos,
-          isHead: Number.isFinite(pos) && pos === headPos,
+          isHead,
+          isStream,
           artist: artistTxt,
           title: titleTxt,
           album: albumTxt,
+          stationName: stationNameTxt,
+          stationGenre: stationGenreTxt,
           file: f,
           isPodcast,
           rating: Math.max(0, Math.min(5, Math.round(Number(rating) || 0))),
-          thumbUrl: f ? `/art/track_640.jpg?file=${encodeURIComponent(f)}` : '',
+          thumbUrl,
         });
       }
       return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, playbackState, ratingsEnabled, items });

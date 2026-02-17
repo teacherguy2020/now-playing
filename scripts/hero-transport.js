@@ -192,7 +192,7 @@
 
     el.innerHTML =
       `<div class="heroArt">${motionMp4
-        ? `<video class="heroArtVid" src="${motionMp4}" autoplay muted loop playsinline preload="metadata"></video>`
+        ? `${thumb ? `<img class="heroArtFallback" src="${thumb}" alt="">` : '<div class="heroArtPh heroArtFallback"></div>'}<video class="heroArtVid" src="${motionMp4}" data-fallback-src="${thumb}" autoplay muted loop playsinline preload="metadata"></video>`
         : (thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>')}</div>` +
       `<div class="heroMain">` +
         `<div class="np">` +
@@ -210,6 +210,36 @@
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div></div>` +
         `</div>` +
       `</div>`;
+  }
+
+  function armVideoFallback(el) {
+    const vid = el.querySelector('.heroArtVid');
+    if (!(vid instanceof HTMLVideoElement)) return;
+    const fb = el.querySelector('.heroArtFallback');
+
+    vid.style.display = 'none';
+
+    let resolved = false;
+    const showVideo = () => {
+      if (resolved) return;
+      resolved = true;
+      vid.style.display = '';
+      if (fb) fb.style.display = 'none';
+      try {
+        const p = (typeof vid.play === 'function') ? vid.play() : null;
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } catch {}
+    };
+    const keepFallback = () => {
+      if (resolved) return;
+      resolved = true;
+      if (fb) fb.style.display = '';
+      vid.style.display = 'none';
+    };
+
+    vid.addEventListener('loadeddata', showVideo, { once: true });
+    vid.addEventListener('error', keepFallback, { once: true });
+    setTimeout(() => { if (!resolved) keepFallback(); }, 2500);
   }
 
   function renderShell(el, status = 'loading') {
@@ -236,6 +266,7 @@
     if (!el) return;
     let busy = false;
 
+    let refreshSeq = 0;
     const refresh = async () => {
       try {
         await ensureRuntimeKey();
@@ -244,38 +275,45 @@
           loadQueueState(key),
           loadNowPlaying(key),
         ]);
+        const seq = ++refreshSeq;
+
         const appleUrl = String(np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
         const motionEnabled = motionArtEnabled();
         const isRadioOrStream = !!np?.isRadio || !!np?.isStream;
         const artist = String(np?.artist || '').trim();
         const album = String(np?.album || '').trim();
         const motionIdentity = `${isRadioOrStream ? 'r' : 'l'}|${appleUrl || ''}|${artist}|${album}`;
-        const shouldTryRemoteMotion = motionEnabled && !!appleUrl && isRadioOrStream;
 
+        // Render immediately with cached motion if available; do not block on remote lookup.
         let motionMp4 = '';
-        if (motionEnabled && motionIdentity === lastMotionIdentity && lastMotionMp4) {
-          motionMp4 = lastMotionMp4;
-        }
-
-        if (!motionMp4) {
-          if (shouldTryRemoteMotion) {
-            motionMp4 = await resolveMotionMp4(appleUrl).catch(() => '');
-          } else if (motionEnabled && !isRadioOrStream) {
-            motionMp4 = await resolveLocalMotionMp4(artist, album, key).catch(() => '');
-          }
-        }
-
-        if (motionEnabled && motionMp4) {
-          lastMotionIdentity = motionIdentity;
-          lastMotionMp4 = motionMp4;
-        } else if (motionIdentity !== lastMotionIdentity) {
-          lastMotionIdentity = motionIdentity;
-          lastMotionMp4 = '';
-        }
-
+        if (motionEnabled && motionIdentity === lastMotionIdentity && lastMotionMp4) motionMp4 = lastMotionMp4;
         np._motionMp4 = motionMp4;
         render(el, q, np);
+        armVideoFallback(el);
         try { window.dispatchEvent(new CustomEvent('heroTransport:update', { detail: { q, np } })); } catch {}
+
+        // Background motion resolution (non-blocking)
+        if (!motionEnabled) return;
+        const shouldTryRemoteMotion = !!appleUrl && isRadioOrStream;
+        if (motionMp4) return;
+
+        const resolved = shouldTryRemoteMotion
+          ? await resolveMotionMp4(appleUrl).catch(() => '')
+          : await resolveLocalMotionMp4(artist, album, key).catch(() => '');
+
+        if (seq !== refreshSeq) return; // stale refresh result
+        if (!resolved) {
+          if (motionIdentity !== lastMotionIdentity) {
+            lastMotionIdentity = motionIdentity;
+            lastMotionMp4 = '';
+          }
+          return;
+        }
+
+        lastMotionIdentity = motionIdentity;
+        lastMotionMp4 = resolved;
+        render(el, q, { ...np, _motionMp4: resolved });
+        armVideoFallback(el);
       } catch {
         renderShell(el, 'unavailable');
       }

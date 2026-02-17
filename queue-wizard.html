@@ -327,6 +327,30 @@
     </div>
     <div id="vibeDisabledNote" class="card muted warn hidden">Vibe is disabled. Add a Last.fm API key in Config to enable it.</div>
 
+    <div class="card" id="radioSection">
+      <h3 style="margin:0 0 8px">Radio Queue Builder</h3>
+      <div class="muted">Build a queue from moOde radio stations by genre/favorites/quality, then send to moOde.</div>
+
+      <div class="pickGrid" style="margin-top:10px;grid-template-columns: 1.3fr .7fr .7fr .7fr;">
+        <label>Genres<br><select id="radioGenres" multiple size="8"></select></label>
+        <label><input id="radioFavoritesOnly" type="checkbox" /> Favorites only</label>
+        <label><input id="radioHqOnly" type="checkbox" /> High quality only</label>
+        <label>Max stations<br><input id="radioMaxStations" type="number" min="1" max="200" value="25" style="width:120px" /></label>
+      </div>
+
+      <div class="actionBar" style="margin-top:10px">
+        <div class="choiceLine">
+          <label><input type="radio" name="modeRadio" value="replace" checked> Replace Queue</label>
+          <label><input type="radio" name="modeRadio" value="append"> Add to Queue</label>
+          <label><input id="cropRadio" type="checkbox" checked> Crop Queue</label>
+        </div>
+        <div class="choiceLine" style="margin-top:4px">
+          <button id="radioBuild" class="btnPrimary">Build radio queue</button>
+          <button id="sendRadioToMoode" class="btnPrimary">Send radio queue to moOde</button>
+        </div>
+      </div>
+    </div>
+
     <div class="card" id="podcastSection">
       <h3 style="margin:0 0 8px">Podcast Queue Builder</h3>
       <div class="muted">Build a queue from podcast episodes by show/date, then send to moOde.</div>
@@ -396,8 +420,8 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-75"></script>
-  <script src="scripts/hero-transport.js?v=20260217-14"></script>
+  <script src="scripts/queue-wizard.js?v=20260217-83"></script>
+  <script src="scripts/hero-transport.js?v=20260217-16"></script>
 
 <script>
 (function enhanceStarFilters(){

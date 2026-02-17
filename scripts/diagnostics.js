@@ -285,7 +285,9 @@
 
   function starsHtml(file, rating){
     if (!ratingsEnabled) return '';
-    const f = encodeURIComponent(String(file || ''));
+    const raw = String(file || '');
+    if (raw.includes('://')) return '';
+    const f = encodeURIComponent(raw);
     const r = Math.max(0, Math.min(5, Number(rating) || 0));
     let out = '<div style="display:flex;gap:2px;align-items:center;">';
     for (let i = 1; i <= 5; i += 1) {
@@ -325,10 +327,17 @@
         const thumbSrc = x.thumbUrl ? (String(x.thumbUrl).startsWith('http') ? String(x.thumbUrl) : `${base}${x.thumbUrl}`) : '';
         const thumb = thumbSrc ? `<img src="${thumbSrc}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />` : '<div style="width:36px;height:36px"></div>';
         const head = !!x.isHead;
+        const isStream = !!x.isStream || String(x.file || '').includes('://');
         const pos = Number(x.position || 0);
         const stars = isPodcastLike(x) ? '' : starsHtml(x.file, Number(x.rating || 0));
         const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
-        return `<div data-queue-play-pos="${pos}" style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;cursor:pointer;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${String(x.artist||'')}</div><div class="muted">${String(x.title||'')} ${x.album?`• ${String(x.album)}`:''}</div>${starsRow}</div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
+
+        const stationName = String(x.stationName || x.album || '').trim() || 'Radio Stream';
+        const displayArtist = (isStream && !head) ? stationName : String(x.artist || '');
+        const displayTitle = (isStream && !head) ? '' : String(x.title || '');
+        const detailLine = displayTitle ? `${displayTitle} ${x.album ? `• ${String(x.album)}` : ''}` : '';
+
+        return `<div data-queue-play-pos="${pos}" style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;cursor:pointer;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${displayArtist}</div><div class="muted">${detailLine}</div>${starsRow}</div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
       }).join('');
     } catch (e) {
       wrap.innerHTML = `<div class="muted">Queue load failed: ${e?.message || e}</div>`;

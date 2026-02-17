@@ -20,6 +20,10 @@
   const vibeSectionEl = $('vibeSection');
   const vibeDisabledNoteEl = $('vibeDisabledNote');
 
+  const radioSectionEl = $('radioSection');
+  const radioGenresEl = $('radioGenres');
+  const radioBuildBtn = $('radioBuild');
+  const sendRadioBtn = $('sendRadioToMoode');
   const podcastSectionEl = $('podcastSection');
   const podcastShowsEl = $('podcastShows');
   const podcastBuildBtn = $('podcastBuild');
@@ -76,7 +80,7 @@
   let podcastShowByRss = new Map();
 
   // Persist the current list (vibe OR filters)
-  let currentListSource = 'none'; // 'none' | 'filters' | 'vibe' | 'podcast' | 'queue'
+  let currentListSource = 'none'; // 'none' | 'filters' | 'vibe' | 'radio' | 'podcast' | 'queue'
   let currentTracks = [];         // array of {artist,title,album,genre,file,...}
   let currentFiles = [];          // array of file paths
 
@@ -203,9 +207,11 @@ function stopVibePolling() {
 function applyBuilderVisibility() {
   const showFilter = !activeBuilder || activeBuilder === 'filters';
   const showVibe = (!activeBuilder || activeBuilder === 'vibe') && vibeEnabled;
+  const showRadio = !activeBuilder || activeBuilder === 'radio';
   const showPodcast = (!activeBuilder || activeBuilder === 'podcast') && podcastsEnabled;
   if (filterSectionEl) filterSectionEl.classList.toggle('hidden', !showFilter);
   if (vibeSectionEl) vibeSectionEl.classList.toggle('hidden', !showVibe);
+  if (radioSectionEl) radioSectionEl.classList.toggle('hidden', !showRadio);
   if (podcastSectionEl) podcastSectionEl.classList.toggle('hidden', !showPodcast);
   const showVibeDisabledNote = !vibeEnabled && !activeBuilder;
   if (vibeDisabledNoteEl) vibeDisabledNoteEl.classList.toggle('hidden', !showVibeDisabledNote);
@@ -462,6 +468,10 @@ async function syncVibeAvailability() {
     return document.querySelector('input[name="modePodcast"]:checked')?.value || 'replace';
   }
 
+  function getModeRadio() {
+    return document.querySelector('input[name="modeRadio"]:checked')?.value || 'replace';
+  }
+
   function getModeExisting() {
     return document.querySelector('input[name="modeExisting"]:checked')?.value || 'replace';
   }
@@ -515,6 +525,14 @@ async function syncVibeAvailability() {
     if (mode !== 'replace') cropPodcastEl.checked = false;
   }
 
+  function syncCropRadioUi() {
+    const mode = getModeRadio();
+    const cropRadioEl = $('cropRadio');
+    if (!cropRadioEl) return;
+    cropRadioEl.disabled = mode !== 'replace';
+    if (mode !== 'replace') cropRadioEl.checked = false;
+  }
+
   function syncCropExistingUi() {
     const mode = getModeExisting();
     if (!cropExistingEl) return;
@@ -528,6 +546,8 @@ async function syncVibeAvailability() {
     if (vibeBtn) vibeBtn.disabled = disable;
     if (sendFilteredBtn) sendFilteredBtn.disabled = disable;
     if (sendVibeBtn) sendVibeBtn.disabled = disable || currentListSource !== 'vibe' || currentFiles.length === 0;
+    if (radioBuildBtn) radioBuildBtn.disabled = disable;
+    if (sendRadioBtn) sendRadioBtn.disabled = disable || currentListSource !== 'radio' || currentFiles.length === 0;
     if (podcastBuildBtn) podcastBuildBtn.disabled = disable;
     if (sendPodcastBtn) sendPodcastBtn.disabled = disable || currentListSource !== 'podcast' || currentFiles.length === 0;
     if (sendExistingBtn) sendExistingBtn.disabled = disable || currentListSource !== 'existing' || currentFiles.length === 0;
@@ -536,6 +556,7 @@ async function syncVibeAvailability() {
       'apiBase', 'key', 'maxTracks', 'minRating',
       'genres', 'artists', 'albums', 'excludeGenres',
       'shuffle', 'crop', 'cropVibe', 'cropPodcast', 'minRatingVibe',
+      'radioGenres', 'radioFavoritesOnly', 'radioHqOnly', 'radioMaxStations', 'cropRadio',
       'podcastShows', 'podcastDateFrom', 'podcastDateTo', 'podcastMaxPerShow', 'podcastDownloadedOnly', 'podcastNewestFirst',
       'playlistName',
     ].forEach((id) => {
@@ -546,6 +567,7 @@ async function syncVibeAvailability() {
     document.querySelectorAll('input[name="mode"]').forEach((el) => { el.disabled = disable; });
     document.querySelectorAll('input[name="modeVibe"]').forEach((el) => { el.disabled = disable; });
     document.querySelectorAll('input[name="modePodcast"]').forEach((el) => { el.disabled = disable; });
+    document.querySelectorAll('input[name="modeRadio"]').forEach((el) => { el.disabled = disable; });
   }
 
   function shuffleInPlace(arr) {
@@ -752,7 +774,9 @@ async function syncVibeAvailability() {
 
   function starsHtml(file, rating) {
     if (!ratingsEnabled) return '';
-    const f = encodeURIComponent(String(file || ''));
+    const raw = String(file || '');
+    if (raw.includes('://')) return '';
+    const f = encodeURIComponent(raw);
     const r = Math.max(0, Math.min(5, Number(rating) || 0));
     let out = '<div style="display:flex;gap:2px;align-items:center;">';
     for (let i = 1; i <= 5; i += 1) {
@@ -791,12 +815,26 @@ async function syncVibeAvailability() {
         ? `<img src="${thumbSrc}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />`
         : '<div style="width:36px;height:36px"></div>';
       const head = !!x.isHead;
+      const isStream = !!x.isStream || String(x.file || '').includes('://');
       const pos = Number(x.position || 0);
       const file = String(x.file || '');
       const stars = isPodcastLike(x) ? '' : starsHtml(file, Number(x.rating || 0));
       const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
       const rowClass = `queueRow ${idx % 2 === 0 ? 'queueRowEven' : 'queueRowOdd'} ${head ? 'queueRowHead' : ''}`;
-      return `<div class="${rowClass}" data-queue-play-pos="${pos}" style="cursor:pointer;">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(String(x.artist||''))}</div><div class="muted">${esc(String(x.title||''))} ${x.album?`• ${esc(String(x.album||''))}`:''}</div>${starsRow}</div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
+
+      const stationName = String(x.stationName || x.album || '').trim() || 'Radio Stream';
+      const stationGenre = String(x.stationGenre || '').trim();
+      const displayArtist = (isStream && !head)
+        ? stationName
+        : String(x.artist || '');
+      const displayTitle = (isStream && !head)
+        ? ''
+        : String(x.title || '');
+      const detailLine = (isStream && !head)
+        ? (stationGenre ? esc(stationGenre) : '')
+        : (displayTitle ? `${esc(displayTitle)} ${x.album ? `• ${esc(String(x.album || ''))}` : ''}` : '');
+
+      return `<div class="${rowClass}" data-queue-play-pos="${pos}" style="cursor:pointer;">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(displayArtist)}</div><div class="muted">${detailLine}</div>${starsRow}</div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
     }).join('');
   }
 
@@ -814,10 +852,12 @@ async function syncVibeAvailability() {
       ? 'Vibe list'
       : (currentListSource === 'filters' ? 'Filter list'
       : (currentListSource === 'existing' ? 'Existing playlist'
-      : (currentListSource === 'podcast' ? 'Podcast list' : 'List')));
+      : (currentListSource === 'podcast' ? 'Podcast list'
+      : (currentListSource === 'radio' ? 'Radio list' : 'List'))));
 
     setCount(`${label} ready: ${currentTracks.length.toLocaleString()} track(s).`);
     if (sendVibeBtn) sendVibeBtn.disabled = !(currentListSource === 'vibe' && currentFiles.length > 0);
+    if (sendRadioBtn) sendRadioBtn.disabled = !(currentListSource === 'radio' && currentFiles.length > 0);
     if (sendPodcastBtn) sendPodcastBtn.disabled = !(currentListSource === 'podcast' && currentFiles.length > 0);
     if (sendExistingBtn) sendExistingBtn.disabled = !(currentListSource === 'existing' && currentFiles.length > 0);
 
@@ -859,7 +899,7 @@ async function syncVibeAvailability() {
 
   function setCurrentList(source, tracks) {
     currentListSource = source || 'none';
-    if (currentListSource === 'filters' || currentListSource === 'vibe' || currentListSource === 'podcast') {
+    if (currentListSource === 'filters' || currentListSource === 'vibe' || currentListSource === 'podcast' || currentListSource === 'radio') {
       activateBuilder(currentListSource);
     }
     currentTracks = Array.isArray(tracks) ? tracks.slice() : [];
@@ -867,7 +907,7 @@ async function syncVibeAvailability() {
 
     renderTracksToTable(currentTracks);
     renderPlaylistThumbStrip(currentTracks);
-    if (coverCardEl) coverCardEl.style.display = (currentListSource === 'podcast') ? 'none' : '';
+    if (coverCardEl) coverCardEl.style.display = (currentListSource === 'podcast' || currentListSource === 'radio') ? 'none' : '';
 
     lastCollageSig = '';
     refreshCurrentListMetaAndUi();
@@ -1155,8 +1195,10 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     renderPlaylistThumbStrip([]);
     renderFiltersSummary();
 
-    // On page load/current-queue refresh, generate a collage preview from live queue.
-    if (currentFiles.length) {
+    // On page load/current-queue refresh, generate a collage preview from live queue
+    // only when local library files exist (skip radio/stream URLs).
+    const localFiles = currentFiles.filter((f) => !String(f || '').includes('://'));
+    if (localFiles.length) {
       maybeGenerateCollagePreview('queue-load').catch(() => {});
     }
   }
@@ -1195,9 +1237,61 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
 
       setStatus('');
       renderFiltersSummary();
+      await loadRadioOptions().catch(() => {});
       if (podcastsEnabled) await loadPodcastShows().catch(() => {});
     } catch (e) {
       setStatus(`Error: ${esc(e?.message || e)}`);
+    }
+  }
+
+  async function loadRadioOptions() {
+    const apiBase = getApiBase();
+    const key = getKey();
+    if (!apiBase || !radioGenresEl) return;
+    try {
+      const r = await fetch(`${apiBase}/config/queue-wizard/radio-options`, { headers: { 'x-track-key': key } });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      const genres = Array.isArray(j.genres) ? j.genres : [];
+      setOptions(radioGenresEl, genres.map((g) => ({ value: String(g), label: String(g) })));
+    } catch (e) {
+      const fallbackGenres = [
+        'Jazz','Rock','Classical','Blues','Country','Pop','Alternative','Ambient','Talk','News','Eclectic'
+      ];
+      setOptions(radioGenresEl, fallbackGenres.map((g) => ({ value: g, label: g })));
+      setStatus(`Radio options load fallback in use (${esc(e?.message || e)}).`);
+    }
+  }
+
+  async function buildRadioList() {
+    const apiBase = getApiBase();
+    const key = getKey();
+    if (!apiBase) return;
+    const genres = selectedValues(radioGenresEl || $('radioGenres'));
+    const favoritesOnly = !!$('radioFavoritesOnly')?.checked;
+    const hqOnly = !!$('radioHqOnly')?.checked;
+    const maxStations = Math.max(1, Math.min(200, Number($('radioMaxStations')?.value || 25)));
+
+    setStatus('<span class="spin"></span>Building radio list…');
+    setCount('Building radio list…');
+    disableUI(true);
+    try {
+      const r = await fetch(`${apiBase}/config/queue-wizard/radio-preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+        body: JSON.stringify({ genres, favoritesOnly, hqOnly, maxStations }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      const tracks = Array.isArray(j.tracks) ? j.tracks : [];
+      setCurrentList('radio', tracks);
+      setStatus(tracks.length ? 'Radio list built. Ready to send.' : 'No radio stations matched your filters.');
+      setCount(`Radio list: ${tracks.length.toLocaleString()} station(s).`);
+    } catch (e) {
+      setStatus(`Radio build failed: ${esc(e?.message || e)}`);
+      setCount('Error building radio list.');
+    } finally {
+      disableUI(false);
     }
   }
 
@@ -1724,16 +1818,21 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
 
   function syncBuilderCardVisibility() {
     const existingSelected = hasExistingPlaylistSelected();
-    if (existingSectionEl) existingSectionEl.classList.remove('hidden');
 
     if (existingSelected) {
+      if (existingSectionEl) existingSectionEl.classList.remove('hidden');
       if (filterSectionEl) filterSectionEl.classList.add('hidden');
       if (vibeSectionEl) vibeSectionEl.classList.add('hidden');
+      if (radioSectionEl) radioSectionEl.classList.add('hidden');
       if (podcastSectionEl) podcastSectionEl.classList.add('hidden');
       if (vibeDisabledNoteEl) vibeDisabledNoteEl.classList.add('hidden');
       return;
     }
 
+    if (existingSectionEl) {
+      const showExisting = !activeBuilder || activeBuilder === 'existing';
+      existingSectionEl.classList.toggle('hidden', !showExisting);
+    }
     applyBuilderVisibility();
   }
 
@@ -1809,6 +1908,15 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       }
     }
 
+    if (source === 'radio' && currentListSource !== 'radio') {
+      await buildRadioList();
+      if (currentListSource !== 'radio' || !currentFiles.length) {
+        setStatus('Radio list is empty. Adjust filters and try again.');
+        sendBusy = false;
+        return;
+      }
+    }
+
     if (!currentFiles.length) {
       await doPreview();
       if (!currentFiles.length) {
@@ -1823,17 +1931,18 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
 
     const isVibeSend = source === 'vibe';
     const isPodcastSend = source === 'podcast';
+    const isRadioSend = source === 'radio';
     const isExistingSend = source === 'existing';
     const mode = isVibeSend
       ? getModeVibe()
-      : (isPodcastSend ? getModePodcast() : (isExistingSend ? getModeExisting() : getMode()));
+      : (isPodcastSend ? getModePodcast() : (isRadioSend ? getModeRadio() : (isExistingSend ? getModeExisting() : getMode())));
     const keepNowPlaying = isVibeSend
       ? getKeepNowPlayingVibe()
-      : (isPodcastSend ? getKeepNowPlayingPodcast() : (isExistingSend ? getKeepNowPlayingExisting() : getKeepNowPlaying()));
+      : (isPodcastSend ? getKeepNowPlayingPodcast() : (isRadioSend ? (!!$('cropRadio')?.checked) : (isExistingSend ? getKeepNowPlayingExisting() : getKeepNowPlaying())));
     const doShuffleFlag = false; // UI shuffle reorders list directly; do not enable MPD random mode.
     const forceRandomOff = listOrderShuffled || (isExistingSend ? getShuffleExisting() : getShuffle());
 
-    const savePlaylist = (source === 'podcast') ? false : savePlaylistEnabled;
+    const savePlaylist = (source === 'podcast' || source === 'radio') ? false : savePlaylistEnabled;
     const playlistName = savePlaylist ? getPlaylistNameRaw() : '';
     const wantsCollage = !!savePlaylist;
     const filesSnapshot = currentFiles.slice();
@@ -1878,6 +1987,13 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
           mode,
           keepNowPlaying,
           tracks: filesSnapshot,
+          trackMeta: (source === 'radio')
+            ? currentTracks.map((t) => ({
+              file: String(t?.file || ''),
+              stationName: String(t?.stationName || t?.artist || ''),
+              genre: String(t?.genre || t?.stationGenre || ''),
+            }))
+            : undefined,
           shuffle: doShuffleFlag,
           forceRandomOff,
           playlistName,
@@ -1977,6 +2093,20 @@ function wireEvents() {
     doSendToMoode('podcast');
   });
 
+  radioBuildBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    activateBuilder('radio');
+    buildRadioList();
+  });
+
+  sendRadioBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    activateBuilder('radio');
+    doSendToMoode('radio');
+  });
+
+  // Radio filter controls intentionally do not auto-switch/hide cards while selecting.
+
   podcastPreset24hBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     activateBuilder('podcast');
@@ -2074,6 +2204,14 @@ function wireEvents() {
     });
   });
 
+  document.querySelectorAll('input[name="modeRadio"]').forEach((el) => {
+    el.addEventListener('change', () => {
+      suppressCollageForUi();
+      activateBuilder('radio');
+      syncCropRadioUi();
+    });
+  });
+
   document.querySelectorAll('input[name="modeExisting"]').forEach((el) => {
     el.addEventListener('change', () => {
       suppressCollageForUi();
@@ -2091,12 +2229,13 @@ function wireEvents() {
   shuffleEl?.addEventListener('change', () => {
     suppressCollageForUi();
     if (!shuffleEl.checked) return;
-    if (!['filters', 'existing', 'vibe', 'podcast'].includes(currentListSource)) return;
+    if (!['filters', 'existing', 'vibe', 'radio', 'podcast'].includes(currentListSource)) return;
     shuffleCurrentTracksInPlace();
     setStatus('List shuffled.');
   });
   cropVibeEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('vibe'); });
   cropPodcastEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('podcast'); });
+  $('cropRadio')?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('radio'); });
   cropExistingEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('existing'); });
   shuffleExistingEl?.addEventListener('change', () => {
     suppressCollageForUi();
@@ -2159,7 +2298,7 @@ function wireEvents() {
 
   savePlaylistNowBtn?.addEventListener('click', (e) => {
     e.preventDefault();
-    const src = currentListSource === 'vibe' ? 'vibe' : (currentListSource === 'podcast' ? 'podcast' : 'filters');
+    const src = currentListSource === 'vibe' ? 'vibe' : (currentListSource === 'podcast' ? 'podcast' : (currentListSource === 'radio' ? 'radio' : 'filters'));
     doSendToMoode(src);
   });
 
@@ -2389,6 +2528,7 @@ try {
   syncCropUi();
   syncCropVibeUi();
   syncCropPodcastUi();
+  syncCropRadioUi();
   syncCropExistingUi();
   syncRatingsUi();
   syncPodcastSectionVisibility();
