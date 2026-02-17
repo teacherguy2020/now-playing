@@ -40,7 +40,7 @@
     const randomOn = !!q?.randomOn;
     const repeatOn = !!q?.repeatOn;
     const thumb = head?.thumbUrl ? (String(head.thumbUrl).startsWith('http') ? String(head.thumbUrl) : `${apiBase}${head.thumbUrl}`) : '';
-    const text = head ? `${head.artist || ''} • ${head.title || ''}` : 'Nothing playing';
+    const text = head ? `Now Playing · ${head.artist || ''} • ${head.title || ''}` : 'Now Playing · Nothing playing';
 
     el.innerHTML =
       `<button class="tbtn ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` +
