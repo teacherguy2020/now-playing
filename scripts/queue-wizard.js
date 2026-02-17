@@ -752,7 +752,7 @@ async function syncVibeAvailability() {
     const shuffleOn = typeof randomOn === 'boolean' && randomOn;
     const ppLabel = queuePlayPauseMode === 'play' ? 'Play' : 'Pause';
     const ppIcon = queueControlIcon(queuePlayPauseMode === 'play' ? 'play' : 'pause');
-    const headItem = list.find((x) => !!x?.isHead) || null;
+    const headItem = list.find((x) => !!x?.isHead) || list[0] || null;
     let nowPlayingInline = '';
     if (headItem) {
       const hThumbSrc = headItem.thumbUrl ? (String(headItem.thumbUrl).startsWith('http') ? String(headItem.thumbUrl) : `${apiBase}${headItem.thumbUrl}`) : '';
