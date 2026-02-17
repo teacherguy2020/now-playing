@@ -249,7 +249,7 @@ async function syncVibeAvailability() {
     document.body.classList.toggle('theme-light', t === 'light');
     document.documentElement.classList.toggle('theme-light', t === 'light');
     if (t === 'light') {
-      document.documentElement.style.background = '#ff0000';
+      document.documentElement.style.background = 'linear-gradient(180deg, #dbeafe 0%, #93c5fd 100%)';
     } else {
       document.documentElement.style.background = '#0c1526';
     }
