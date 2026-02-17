@@ -808,9 +808,9 @@ body.theme-light th, body.theme-light td{ border-bottom-color:rgba(63,47,95,.26)
 .heroTransport .tbtn.tbtnBig svg{width:34px;height:34px}
 .heroTransport .tbtn.on{color:#22c55e;box-shadow:0 0 0 1px rgba(34,197,94,.35) inset}
 .heroTransport .tbtn:active{transform:scale(.95)}
-.heroTransport .np{min-width:0;display:flex;align-items:center;gap:12px;width:100%}
+.heroTransport .np{min-width:0;display:flex;align-items:center;justify-content:center;gap:12px;width:100%}
 .heroTransport .np img{width:50px;height:50px;border-radius:10px;object-fit:cover;border:1px solid #334;background:#0a1222}
-.heroTransport .np .txt{min-width:0;font-size:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#dbe6ff;max-width:none}
+.heroTransport .np .txt{min-width:0;font-size:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#dbe6ff;max-width:none;text-align:center}
 body.theme-light .heroTransport{background:rgba(255,255,255,.72);border-color:rgba(63,47,95,.34)}
 body.theme-light .heroTransport .tbtn{background:rgba(255,255,255,.78);color:#2b2341;border-color:rgba(63,47,95,.22)}
 body.theme-light .heroTransport .np .txt{color:#2a2140}

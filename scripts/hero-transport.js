@@ -14,8 +14,22 @@
     return '';
   }
 
+  let runtimeTrackKey = '';
+  let runtimeKeyAttempted = false;
+
   function currentKey() {
-    return String($('key')?.value || '').trim();
+    return String($('key')?.value || '').trim() || runtimeTrackKey;
+  }
+
+  async function ensureRuntimeKey() {
+    if (runtimeKeyAttempted || currentKey()) return;
+    runtimeKeyAttempted = true;
+    try {
+      const r = await fetch(`${apiBase}/config/runtime`, { cache: 'no-store' });
+      const j = await r.json().catch(() => ({}));
+      const k = String(j?.config?.trackKey || '').trim();
+      if (k) runtimeTrackKey = k;
+    } catch {}
   }
 
   async function playback(action, key) {
@@ -77,6 +91,7 @@
 
     const refresh = async () => {
       try {
+        await ensureRuntimeKey();
         const q = await loadQueueState(currentKey());
         render(el, q);
       } catch {
