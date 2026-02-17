@@ -729,7 +729,7 @@ async function syncVibeAvailability() {
     let out = '<div style="display:flex;gap:2px;align-items:center;">';
     for (let i = 1; i <= 5; i += 1) {
       const on = i <= r;
-      out += `<button type="button" data-queue-rate-file="${f}" data-queue-rate-val="${i}" title="Rate ${i} star${i>1?'s':''}" style="padding:0 2px;border:0;background:transparent;font-size:15px;line-height:1;color:${on?'#fbbf24':'#5b6780'};cursor:pointer;">★</button>`;
+      out += `<button type="button" class="queueRateStar ${on?'on':'off'}" data-queue-rate-file="${f}" data-queue-rate-val="${i}" title="Rate ${i} star${i>1?'s':''}" style="padding:0 2px;border:0;background:transparent;font-size:15px;line-height:1;cursor:pointer;">★</button>`;
     }
     out += '</div>';
     return out;
@@ -2156,7 +2156,8 @@ function wireEvents() {
       if (row) {
         row.querySelectorAll('button[data-queue-rate-file][data-queue-rate-val]').forEach((s) => {
           const v = Number(s.getAttribute('data-queue-rate-val') || 0);
-          s.style.color = v <= rating ? '#fbbf24' : '#5b6780';
+          s.classList.toggle('on', v <= rating);
+          s.classList.toggle('off', v > rating);
         });
       }
       sendDiagnosticsAction('rate', { file, rating })
