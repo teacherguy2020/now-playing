@@ -130,6 +130,9 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const m = st.match(/#(\d+)\/(\d+)/);
       const headPos = m ? Number(m[1] || 0) : -1;
       const randomOn = /random:\s*on/i.test(st);
+      const playbackState = /\[playing\]/i.test(st)
+        ? 'playing'
+        : (/\[paused\]/i.test(st) ? 'paused' : 'stopped');
 
       const lines = String(qOut || '').split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean);
       const items = [];
@@ -158,7 +161,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           thumbUrl: f ? `/art/track_640.jpg?file=${encodeURIComponent(f)}` : '',
         });
       }
-      return res.json({ ok: true, count: items.length, headPos, randomOn, ratingsEnabled, items });
+      return res.json({ ok: true, count: items.length, headPos, randomOn, playbackState, ratingsEnabled, items });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

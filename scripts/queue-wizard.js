@@ -1113,6 +1113,8 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     }
     const items = Array.isArray(j.items) ? j.items : [];
     const randomOn = typeof j.randomOn === 'boolean' ? j.randomOn : null;
+    const playbackState = String(j.playbackState || '').toLowerCase();
+    queuePlayPauseMode = playbackState === 'playing' ? 'pause' : 'play';
     renderQueueCard(items, randomOn);
 
     const tracks = items.map((x) => ({
