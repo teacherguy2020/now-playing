@@ -10,38 +10,34 @@
     html,body{min-height:100%}
     body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
     html.theme-light{
-      background: #e4d4c0 !important;
-      background-repeat: no-repeat !important;
-      background-attachment: fixed !important;
+      background:#ece7de !important;
+      background-repeat:no-repeat !important;
+      background-attachment:fixed !important;
     }
     body.theme-light{
-      background: transparent !important;
-      color:#2f2a22;
+      background:transparent !important;
+      color:#1d1d1f;
       display:block !important;
+      -webkit-font-smoothing:antialiased;
+      text-rendering:optimizeLegibility;
     }
-    body.theme-light .card{background:#f2ece3 !important;border-color:#d6c7b4 !important;color:#2f2a22 !important}
-    body.theme-light .actionBar{background:#e8dfd3 !important;border-color:#d2c2ae !important}
-    body.theme-light select, body.theme-light input, body.theme-light button{background:#f8f3ea !important;color:#2f2a22 !important;border-color:#cab9a2 !important}
-    body.theme-light .muted{color:#6b5a49 !important}
-    body.theme-light th, body.theme-light td{border-bottom-color:#d8cbb9 !important;color:#2f2a22}
-    body.theme-light .heroRail{background:linear-gradient(180deg, #f9f3e8, #eee4d4) !important;border-bottom-color:#d6c7b4 !important;padding-top:10px !important}
-    body.theme-light .heroRail::before{background:linear-gradient(180deg,#fcf8f0 0%,#efe5d6 100%) !important}
-    body.theme-light .heroWrap{background:rgba(250,245,236,.88) !important;border-color:#d6c7b4 !important;box-shadow:none !important;margin-top:0 !important}
-    body.theme-light .wrap{
-      background: transparent;
-      border: 0;
-      border-radius: 0;
-      margin-top: 8px;
-      margin-bottom: 0;
-      min-height: auto;
-      padding-bottom: 24px;
-    }
-    body.theme-light .pill{background:#f8f1e7 !important;border-color:#cdbba4 !important;color:#4a3f31 !important}
+    body.theme-light .heroRail{background:rgba(247,244,238,.88) !important;border-bottom:1px solid rgba(60,60,67,.12) !important;padding-top:10px !important;backdrop-filter:blur(16px) saturate(120%) !important;-webkit-backdrop-filter:blur(16px) saturate(120%) !important}
+    body.theme-light .heroRail::before{background:rgba(246,242,236,.92) !important}
+    body.theme-light .heroWrap{background:rgba(255,255,255,.72) !important;border:1px solid rgba(60,60,67,.14) !important;box-shadow:0 8px 26px rgba(32,24,16,.10) !important;margin-top:0 !important}
+    body.theme-light .card{background:rgba(255,255,255,.68) !important;border:1px solid rgba(60,60,67,.16) !important;color:#1d1d1f !important;box-shadow:0 4px 16px rgba(32,24,16,.07)}
+    body.theme-light .actionBar{background:rgba(248,245,240,.78) !important;border-color:rgba(60,60,67,.14) !important}
+    body.theme-light select, body.theme-light input, body.theme-light button{background:rgba(255,255,255,.74) !important;color:#1d1d1f !important;border:1px solid rgba(60,60,67,.22) !important}
+    body.theme-light .btnPrimary{background:linear-gradient(180deg,#0a84ff,#0071e3) !important;border-color:#0066d1 !important;color:#fff !important;box-shadow:0 2px 8px rgba(10,132,255,.28)}
+    body.theme-light .muted{color:#515154 !important}
+    body.theme-light th, body.theme-light td{border-bottom-color:rgba(60,60,67,.12) !important;color:#1d1d1f}
+    body.theme-light .wrap{background:transparent;border:0;border-radius:0;margin-top:8px;margin-bottom:0;min-height:auto;padding-bottom:24px}
+    body.theme-light .pill{background:rgba(255,255,255,.72) !important;border:1px solid rgba(60,60,67,.16) !important;color:#2c2c2e !important;box-shadow:0 2px 6px rgba(32,24,16,.06)}
     body.theme-light .pill span{color:inherit !important}
-    body.theme-light .brand .sub{color:#6b5a49 !important}
-    body.theme-light .topTabs a{background:#f4ebde !important;border-color:#cdbba4 !important;color:#4a3f31 !important}
-    body.theme-light .topTabs a.active{background:#e7d8c6 !important;color:#3f3427 !important}
-    body.theme-light #existingPlaylistMenu{background:#f7efe4 !important;border-color:#cdbba4 !important}
+    body.theme-light .brand h1{color:#1d1d1f !important;letter-spacing:-0.01em}
+    body.theme-light .brand .sub{color:#515154 !important}
+    body.theme-light .topTabs a{background:rgba(255,255,255,.64) !important;border:1px solid rgba(60,60,67,.14) !important;color:#2c2c2e !important}
+    body.theme-light .topTabs a.active{background:rgba(0,113,227,.16) !important;border-color:rgba(0,113,227,.36) !important;color:#003f7d !important}
+    body.theme-light #existingPlaylistMenu{background:rgba(255,255,255,.92) !important;border:1px solid rgba(60,60,67,.18) !important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
     #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
     .wrap{max-width:1080px;margin:0 auto;padding:18px}
     .card{background:#101c33;border:1px solid #2a3a58;border-radius:18px;padding:12px;margin:10px 0}
@@ -316,7 +312,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-50"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-51"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){
