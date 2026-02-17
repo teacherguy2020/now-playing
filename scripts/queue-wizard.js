@@ -740,7 +740,7 @@ async function syncVibeAvailability() {
     if (n === 'prev') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3 6 9-6v12z"/></svg>';
     if (n === 'next') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM7 18V6l9 6z"/></svg>';
     if (n === 'shuffle') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3h4v4h-2V6h-2V3zM3 7h4.2l4.1 4.1-1.4 1.4L6.3 9H3V7zm10.7 4.5 1.4 1.4L6.3 22H3v-2h2.3l8.4-8.5zM19 17v-1h2v4h-4v-2h2z"/></svg>';
-    if (n === 'reload') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6V3L8 7l4 4V8c2.76 0 5 2.24 5 5a5 5 0 1 1-8.66-3.46L6.92 8.12A7 7 0 1 0 19 13c0-3.87-3.13-7-7-7z"/></svg>';
+    // reload icon intentionally removed from queue controls.
     return '';
   }
 
@@ -749,15 +749,14 @@ async function syncVibeAvailability() {
     const apiBase = getApiBase();
     const list = Array.isArray(items) ? items.slice(0, 120) : [];
     const shuffleLabel = typeof randomOn === 'boolean' ? `Shuffle: ${randomOn ? 'On' : 'Off'}` : 'Shuffle';
-    const shuffleStyle = typeof randomOn === 'boolean' && randomOn ? 'border-color:#22c55e;' : '';
+    const shuffleOn = typeof randomOn === 'boolean' && randomOn;
     const ppLabel = queuePlayPauseMode === 'play' ? 'Play' : 'Pause';
     const ppIcon = queueControlIcon(queuePlayPauseMode === 'play' ? 'play' : 'pause');
     const controlsHtml = `<div class="queueControls">` +
       `<button type="button" class="iconBtn" data-queue-playback="prev" title="Previous" aria-label="Previous">${queueControlIcon('prev')}</button>` +
       `<button type="button" class="iconBtn" data-queue-playback="togglepp" title="${ppLabel}" aria-label="${ppLabel}">${ppIcon}</button>` +
       `<button type="button" class="iconBtn" data-queue-playback="next" title="Next" aria-label="Next">${queueControlIcon('next')}</button>` +
-      `<button type="button" class="iconBtn" data-queue-playback="shuffle" title="${shuffleLabel}" aria-label="${shuffleLabel}" style="${shuffleStyle}">${queueControlIcon('shuffle')}</button>` +
-      `<button type="button" class="iconBtn" data-queue-playback="reload" title="Reload queue" aria-label="Reload queue">${queueControlIcon('reload')}</button>` +
+      `<button type="button" class="iconBtn ${shuffleOn ? 'on' : ''}" data-queue-playback="shuffle" title="${shuffleLabel}" aria-label="${shuffleLabel}">${queueControlIcon('shuffle')}</button>` +
       `</div>`;
     if (!list.length) {
       resultsEl.innerHTML = `${controlsHtml}<div class="muted">Queue is empty.</div>`;

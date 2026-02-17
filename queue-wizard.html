@@ -69,7 +69,9 @@
     .iconBtn svg{width:18px;height:18px;fill:currentColor}
     .iconBtn:active{transform:scale(.94)}
     .iconBtn.clicked{box-shadow:0 0 0 2px rgba(125,211,252,.45) inset;background:rgba(125,211,252,.16)}
+    .iconBtn.on{background:rgba(34,197,94,.18);border-color:#22c55e;box-shadow:0 0 0 1px rgba(34,197,94,.28) inset}
     body.theme-light .iconBtn.clicked{box-shadow:0 0 0 2px rgba(63,47,95,.35) inset;background:rgba(255,255,255,.35)}
+    body.theme-light .iconBtn.on{background:rgba(34,197,94,.24);border-color:rgba(22,163,74,.85);box-shadow:0 0 0 1px rgba(22,163,74,.32) inset}
     .muted{color:#9fb1d9;font-size:12px}
     #podcastSection .pickGrid input,
     #podcastSection .pickGrid select{min-height:40px;box-sizing:border-box}
@@ -324,7 +326,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-57"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-58"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){
