@@ -818,6 +818,8 @@ body.theme-light .preHeroStatusWrap{margin-top:24px}
 .heroTransport .np .txt{min-width:0;font-size:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#dbe6ff;max-width:none;text-align:center}
 body.theme-light .heroTransport{background:rgba(255,255,255,.72);border-color:rgba(63,47,95,.34)}
 body.theme-light .heroTransport .tbtn{background:rgba(255,255,255,.78);color:#2b2341;border-color:rgba(63,47,95,.22)}
+body.theme-light .heroTransport .tbtn.on{color:#16a34a !important;border-color:rgba(22,163,74,.75) !important;box-shadow:0 0 0 1px rgba(22,163,74,.26) inset !important}
+body.theme-light .heroTransport .tbtn.on svg{fill:#16a34a !important}
 body.theme-light .heroTransport .np .txt{color:#2a2140}
 @media (max-width: 900px){.heroTransport{width:calc(100vw - 96px)}.heroTransport .np .txt{max-width:220px}}
 
