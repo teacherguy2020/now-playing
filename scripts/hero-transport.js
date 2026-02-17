@@ -50,7 +50,7 @@
       `<div class="heroTransportControls">` +
         `<button class="tbtn ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` +
         `<button class="tbtn" data-a="previous" title="Previous">${icon('prev')}</button>` +
-        `<button class="tbtn" data-a="${pp}" title="${pp}">${icon(pp)}</button>` +
+        `<button class="tbtn tbtnBig" data-a="${pp}" title="${pp}">${icon(pp)}</button>` +
         `<button class="tbtn" data-a="next" title="Next">${icon('next')}</button>` +
         `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
       `</div>` +
@@ -63,7 +63,7 @@
       `<div class="heroTransportControls">` +
         `<button class="tbtn" disabled title="Repeat">${icon('repeat')}</button>` +
         `<button class="tbtn" disabled title="Previous">${icon('prev')}</button>` +
-        `<button class="tbtn" disabled title="Play">${icon('play')}</button>` +
+        `<button class="tbtn tbtnBig" disabled title="Play">${icon('play')}</button>` +
         `<button class="tbtn" disabled title="Next">${icon('next')}</button>` +
         `<button class="tbtn" disabled title="Shuffle">${icon('shuffle')}</button>` +
       `</div>` +
