@@ -58,6 +58,12 @@
     tr.dragging{opacity:1 !important}
     tr.drop-before td{border-top:3px solid #22d3ee !important}
     tr.drop-after td{border-bottom:3px solid #22d3ee !important}
+    .queueRow{display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650}
+    .queueRowEven{background:rgba(130,170,230,.08)}
+    .queueRowOdd{background:rgba(120,150,210,.03)}
+    .queueRowHead{background:rgba(34,197,94,.15);border-radius:8px}
+    body.theme-light .queueRowEven{background:rgba(214,197,239,.44)}
+    body.theme-light .queueRowOdd{background:rgba(206,188,234,.26)}
     .muted{color:#9fb1d9;font-size:12px}
     #podcastSection .pickGrid input,
     #podcastSection .pickGrid select{min-height:40px;box-sizing:border-box}
@@ -312,7 +318,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-53"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-54"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){
