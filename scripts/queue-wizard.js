@@ -739,7 +739,7 @@ async function syncVibeAvailability() {
     if (n === 'pause') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
     if (n === 'prev') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3 6 9-6v12z"/></svg>';
     if (n === 'next') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM7 18V6l9 6z"/></svg>';
-    if (n === 'shuffle') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3h4v4h-2V5h-2v2l-3.8 3.8-1.4-1.4L15.6 6H15V4h2V3zM3 7h3.6l4.2 4.2-1.4 1.4L6 9H3V7zm8.8 6.2 1.4 1.4L9 19h8v-2h2v4H9v-2l2.8-2.8z"/></svg>';
+    if (n === 'shuffle') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5h-2V6.41l-3.29 3.3-1.42-1.42L17.59 5H16V3zM4 7h3.17l4.24 4.24-1.41 1.42L6.59 9H4V7zm10.83 4.76 1.41 1.41L14.83 14.6 17.59 17H16v2h5v-5h-2v1.59l-4.17-4.83zM4 17h2.59l8.58-8.59 1.41 1.42L8 19H4v-2z"/></svg>';
     // reload icon intentionally removed from queue controls.
     return '';
   }
