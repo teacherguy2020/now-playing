@@ -87,9 +87,17 @@
   }
 
   .heroWrap{
+    position: relative;
     max-width: 1080px;
     margin: 0 auto;
     padding: 18px 18px 14px;
+  }
+
+  .heroThemeToggle{
+    position:absolute;
+    top:12px;
+    right:16px;
+    z-index:8;
   }
 
   header{
