@@ -14,6 +14,10 @@
     return '';
   }
 
+  function currentKey() {
+    return String($('key')?.value || '').trim();
+  }
+
   async function playback(action, key) {
     const r = await fetch(`${apiBase}/config/diagnostics/playback`, {
       method: 'POST',
@@ -51,30 +55,44 @@
       `<div class="np">${thumb ? `<img src="${thumb}" alt="">` : ''}<div class="txt">${text}</div></div>`;
   }
 
+  function renderShell(el, status = 'loading') {
+    const msg = status === 'unavailable' ? 'Now Playing · unavailable' : 'Now Playing · loading…';
+    el.innerHTML =
+      `<button class="tbtn" disabled title="Repeat">${icon('repeat')}</button>` +
+      `<button class="tbtn" disabled title="Previous">${icon('prev')}</button>` +
+      `<button class="tbtn" disabled title="Play">${icon('play')}</button>` +
+      `<button class="tbtn" disabled title="Next">${icon('next')}</button>` +
+      `<button class="tbtn" disabled title="Shuffle">${icon('shuffle')}</button>` +
+      `<div class="np"><div class="txt">${msg}</div></div>`;
+  }
+
   function init() {
     const el = $('heroTransport');
     if (!el) return;
-    const key = String($('key')?.value || '').trim();
     let busy = false;
 
     const refresh = async () => {
       try {
-        const q = await loadQueueState(key);
+        const q = await loadQueueState(currentKey());
         render(el, q);
-      } catch {}
+      } catch {
+        renderShell(el, 'unavailable');
+      }
     };
+
+    renderShell(el, 'loading');
 
     el.addEventListener('click', async (ev) => {
       const btn = ev.target instanceof Element ? ev.target.closest('button[data-a]') : null;
       if (!btn || busy) return;
       busy = true;
       const action = String(btn.getAttribute('data-a') || '').trim().toLowerCase();
-      try { await playback(action, key); } catch {}
+      try { await playback(action, currentKey()); } catch {}
       await refresh();
       busy = false;
     });
 
-    refresh();
+    setTimeout(refresh, 150);
     setInterval(refresh, 5000);
   }
 
