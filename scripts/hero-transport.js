@@ -47,22 +47,26 @@
     const text = head ? `Now Playing · ${head.artist || ''} • ${head.title || ''}` : 'Now Playing · Nothing playing';
 
     el.innerHTML =
-      `<button class="tbtn ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` +
-      `<button class="tbtn" data-a="previous" title="Previous">${icon('prev')}</button>` +
-      `<button class="tbtn" data-a="${pp}" title="${pp}">${icon(pp)}</button>` +
-      `<button class="tbtn" data-a="next" title="Next">${icon('next')}</button>` +
-      `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
+      `<div class="heroTransportControls">` +
+        `<button class="tbtn ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` +
+        `<button class="tbtn" data-a="previous" title="Previous">${icon('prev')}</button>` +
+        `<button class="tbtn" data-a="${pp}" title="${pp}">${icon(pp)}</button>` +
+        `<button class="tbtn" data-a="next" title="Next">${icon('next')}</button>` +
+        `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
+      `</div>` +
       `<div class="np">${thumb ? `<img src="${thumb}" alt="">` : ''}<div class="txt">${text}</div></div>`;
   }
 
   function renderShell(el, status = 'loading') {
     const msg = status === 'unavailable' ? 'Now Playing · unavailable' : 'Now Playing · loading…';
     el.innerHTML =
-      `<button class="tbtn" disabled title="Repeat">${icon('repeat')}</button>` +
-      `<button class="tbtn" disabled title="Previous">${icon('prev')}</button>` +
-      `<button class="tbtn" disabled title="Play">${icon('play')}</button>` +
-      `<button class="tbtn" disabled title="Next">${icon('next')}</button>` +
-      `<button class="tbtn" disabled title="Shuffle">${icon('shuffle')}</button>` +
+      `<div class="heroTransportControls">` +
+        `<button class="tbtn" disabled title="Repeat">${icon('repeat')}</button>` +
+        `<button class="tbtn" disabled title="Previous">${icon('prev')}</button>` +
+        `<button class="tbtn" disabled title="Play">${icon('play')}</button>` +
+        `<button class="tbtn" disabled title="Next">${icon('next')}</button>` +
+        `<button class="tbtn" disabled title="Shuffle">${icon('shuffle')}</button>` +
+      `</div>` +
       `<div class="np"><div class="txt">${msg}</div></div>`;
   }
 
