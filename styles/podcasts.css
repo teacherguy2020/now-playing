@@ -693,6 +693,9 @@ body.theme-light .heroRail{
   -webkit-backdrop-filter:blur(16px) saturate(120%) !important;
   padding-top:10px !important;
 }
+body.theme-light .heroRail::before{
+  background:rgba(108,84,148,.94) !important;
+}
 body.theme-light .heroWrap{
   background:rgba(214,197,239,.82) !important;
   border:1px solid rgba(63,47,95,.36) !important;
