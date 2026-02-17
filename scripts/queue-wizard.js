@@ -777,8 +777,8 @@ async function syncVibeAvailability() {
       `<button type="button" class="iconBtn big" data-queue-playback="togglepp" title="${ppLabel}" aria-label="${ppLabel}">${ppIcon}</button>` +
       `<button type="button" class="iconBtn" data-queue-playback="next" title="Next" aria-label="Next">${queueControlIcon('next')}</button>` +
       `<button type="button" class="iconBtn ${shuffleOn ? 'on' : ''}" data-queue-playback="shuffle" title="${shuffleLabel}" aria-label="${shuffleLabel}">${queueControlIcon('shuffle')}</button>` +
-      `</div></div>`;
-    if (queuePlaybackAreaEl) queuePlaybackAreaEl.innerHTML = controlsHtml + (nowPlayingInline ? `<div style="margin-top:8px;">${nowPlayingInline}</div>` : '');
+      `</div>${nowPlayingInline ? `<div style="margin-top:8px;">${nowPlayingInline}</div>` : ''}</div>`;
+    if (queuePlaybackAreaEl) queuePlaybackAreaEl.innerHTML = controlsHtml;
     if (!list.length) {
       resultsEl.innerHTML = `<div class="muted">Queue is empty.</div>`;
       return;
