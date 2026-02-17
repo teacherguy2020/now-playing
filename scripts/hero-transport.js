@@ -32,11 +32,11 @@
     } catch {}
   }
 
-  async function playback(action, key) {
+  async function playback(action, key, payload = {}) {
     const r = await fetch(`${apiBase}/config/diagnostics/playback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ action, ...(payload || {}) }),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
@@ -79,9 +79,15 @@
     const appleUrl = String(np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
     const isLibraryTrack = !np?.isStream && !np?.isRadio && !np?.isPodcast;
     const rating = Math.max(0, Math.min(5, Number(np?.rating ?? head?.rating ?? 0) || 0));
-    const starsRow = (isLibraryTrack && rating > 0)
-      ? `<div class="heroRating" aria-label="Rating">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</div>`
+    const ratingFile = String(np?.ratingFile || np?.file || head?.file || '').trim();
+    const starsRow = (isLibraryTrack && ratingFile)
+      ? `<div class="heroRating" aria-label="Rating">${[1,2,3,4,5].map((i)=>`<button type="button" class="heroRateStar ${i<=rating?'on':'off'}" data-hero-rate-file="${encodeURIComponent(ratingFile)}" data-hero-rate-val="${i}" title="Rate ${i} star${i>1?'s':''}">★</button>`).join('')}</div>`
       : '';
+
+    const radioAlbum = String(np?.radioAlbum || np?.album || '').trim();
+    const radioYear = String(np?.radioYear || np?.year || '').trim();
+    const albumYearText = [radioAlbum, radioYear].filter(Boolean).join(' • ');
+    const metaRow = starsRow || (albumYearText ? `<div class="heroSubline">${albumYearText}</div>` : '');
 
     const elapsed = Number(np?.elapsed ?? q?.elapsed ?? q?.elapsedSec ?? head?.elapsed ?? head?.elapsedSec ?? 0);
     const duration = Number(np?.duration ?? q?.duration ?? q?.durationSec ?? head?.duration ?? head?.durationSec ?? 0);
@@ -91,18 +97,18 @@
     el.innerHTML =
       `<div class="heroArt">${thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>'}</div>` +
       `<div class="heroMain">` +
-        `<div class="heroTransportControls">` +
-          `<button class="tbtn ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` +
-          `<button class="tbtn" data-a="previous" title="Previous">${icon('prev')}</button>` +
-          `<button class="tbtn tbtnBig" data-a="${pp}" title="${pp}">${icon(pp)}</button>` +
-          `<button class="tbtn" data-a="next" title="Next">${icon('next')}</button>` +
-          `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
-        `</div>` +
-        `${starsRow}` +
         `<div class="np">` +
           (appleUrl
             ? `<a class="txt txtLink" href="${appleUrl}" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">${text}</a>`
             : `<div class="txt">${text}</div>`) +
+          `${metaRow}` +
+          `<div class="heroTransportControls">` +
+            `<button class="tbtn ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` +
+            `<button class="tbtn" data-a="previous" title="Previous">${icon('prev')}</button>` +
+            `<button class="tbtn tbtnBig" data-a="${pp}" title="${pp}">${icon(pp)}</button>` +
+            `<button class="tbtn" data-a="next" title="Next">${icon('next')}</button>` +
+            `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
+          `</div>` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div></div>` +
         `</div>` +
       `</div>`;
@@ -113,14 +119,17 @@
     el.innerHTML =
       `<div class="heroArt"><div class="heroArtPh"></div></div>` +
       `<div class="heroMain">` +
-        `<div class="heroTransportControls">` +
-          `<button class="tbtn" disabled title="Repeat">${icon('repeat')}</button>` +
-          `<button class="tbtn" disabled title="Previous">${icon('prev')}</button>` +
-          `<button class="tbtn tbtnBig" disabled title="Play">${icon('play')}</button>` +
-          `<button class="tbtn" disabled title="Next">${icon('next')}</button>` +
-          `<button class="tbtn" disabled title="Shuffle">${icon('shuffle')}</button>` +
+        `<div class="np">` +
+          `<div class="txt">${msg}</div>` +
+          `<div class="heroTransportControls">` +
+            `<button class="tbtn" disabled title="Repeat">${icon('repeat')}</button>` +
+            `<button class="tbtn" disabled title="Previous">${icon('prev')}</button>` +
+            `<button class="tbtn tbtnBig" disabled title="Play">${icon('play')}</button>` +
+            `<button class="tbtn" disabled title="Next">${icon('next')}</button>` +
+            `<button class="tbtn" disabled title="Shuffle">${icon('shuffle')}</button>` +
+          `</div>` +
+          `<div class="progress-bar-wrapper is-hidden"><div class="progress-fill" style="transform:scaleX(0)"></div></div>` +
         `</div>` +
-        `<div class="np"><div class="txt">${msg}</div><div class="progress-bar-wrapper is-hidden"><div class="progress-fill" style="transform:scaleX(0)"></div></div></div>` +
       `</div>`;
   }
 
@@ -138,6 +147,7 @@
           loadNowPlaying(key),
         ]);
         render(el, q, np);
+        try { window.dispatchEvent(new CustomEvent('heroTransport:update', { detail: { q, np } })); } catch {}
       } catch {
         renderShell(el, 'unavailable');
       }
@@ -146,6 +156,30 @@
     renderShell(el, 'loading');
 
     el.addEventListener('click', async (ev) => {
+      const rateBtn = ev.target instanceof Element ? ev.target.closest('button[data-hero-rate-file][data-hero-rate-val]') : null;
+      if (rateBtn && !busy) {
+        ev.preventDefault();
+        const file = decodeURIComponent(String(rateBtn.getAttribute('data-hero-rate-file') || ''));
+        const rating = Number(rateBtn.getAttribute('data-hero-rate-val') || 0);
+        if (!file || !Number.isFinite(rating) || rating < 0 || rating > 5) return;
+
+        // Optimistic UI update: fill immediately on click.
+        const row = rateBtn.closest('.heroRating');
+        if (row) {
+          row.querySelectorAll('.heroRateStar[data-hero-rate-val]').forEach((s) => {
+            const v = Number(s.getAttribute('data-hero-rate-val') || 0);
+            s.classList.toggle('on', v <= rating);
+            s.classList.toggle('off', v > rating);
+          });
+        }
+
+        busy = true;
+        try { await playback('rate', currentKey(), { file, rating }); } catch {}
+        await refresh();
+        busy = false;
+        return;
+      }
+
       const btn = ev.target instanceof Element ? ev.target.closest('button[data-a]') : null;
       if (!btn || busy) return;
       busy = true;

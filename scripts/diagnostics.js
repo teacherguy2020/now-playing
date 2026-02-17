@@ -621,5 +621,11 @@
     await loadRuntime();
     await loadEndpointCatalog();
     hydrateEndpoints();
+
   })();
+
+  window.addEventListener('heroTransport:update', () => {
+    if (document.hidden) return;
+    loadQueue().catch(() => {});
+  });
 })();

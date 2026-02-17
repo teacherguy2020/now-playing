@@ -2402,6 +2402,13 @@ try {
 
   initTheme();
   wireEvents();
+
+  window.addEventListener('heroTransport:update', () => {
+    if (document.hidden) return;
+    if (!(currentListSource === 'queue' || currentListSource === 'none')) return;
+    loadCurrentQueueCard().catch(() => {});
+  });
+
   loadRuntimeMeta().finally(() => {
     loadOptions();
     loadExistingPlaylists();
@@ -2409,6 +2416,7 @@ try {
     loadCurrentQueueCard().catch((e) => {
       setStatus(`Error loading current queue: ${esc(e?.message || e)}`);
     });
+
   });
 } catch (e) {
   setStatus(`JS init error: ${esc(e?.message || e)}`);

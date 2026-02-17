@@ -151,7 +151,8 @@
     }
     .warn{color:#ffd28a}
     .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.28);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
-    .miniCals{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:12px;margin-top:10px}
+    .miniCals{display:none;grid-template-columns:repeat(2,minmax(220px,1fr));gap:12px;margin-top:10px}
+    .miniCals.show{display:grid}
     .miniCal{border:1px solid #334;border-radius:12px;background:#0a1222;padding:8px}
     .miniCalHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
     .miniCalHead button{padding:4px 8px;border-radius:8px}
@@ -396,7 +397,7 @@
   </div>
 
   <script src="scripts/queue-wizard.js?v=20260216-75"></script>
-  <script src="scripts/hero-transport.js?v=20260216-7"></script>
+  <script src="scripts/hero-transport.js?v=20260217-10"></script>
 
 <script>
 (function enhanceStarFilters(){
@@ -547,6 +548,15 @@
   const boot = () => {
     mount('miniCalFrom', 'podcastDateFrom', 'From date');
     mount('miniCalTo', 'podcastDateTo', 'To date');
+
+    const wrap = document.querySelector('.miniCals');
+    const from = document.getElementById('podcastDateFrom');
+    const to = document.getElementById('podcastDateTo');
+    const show = () => { if (wrap) wrap.classList.add('show'); };
+    from?.addEventListener('focus', show);
+    from?.addEventListener('click', show);
+    to?.addEventListener('focus', show);
+    to?.addEventListener('click', show);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
