@@ -798,6 +798,11 @@ button.rateStar.off{ color:#5b6780 !important; }
 body.theme-light button.rateStar{ background:transparent !important; border:0 !important; }
 body.theme-light th, body.theme-light td{ border-bottom-color:rgba(63,47,95,.26) !important; color:#16151d; }
 
+/* Status pills above hero */
+.preHeroStatusWrap{max-width:1080px;margin:10px auto 0;padding:0 18px}
+.preHeroStatus{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center}
+body.theme-light .preHeroStatusWrap{margin-top:12px}
+
 /* Hero transport (compact global controls) */
 .heroTransportRow{display:flex;align-items:center;justify-content:flex-start;margin:12px 0 6px}
 .heroTransport{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:12px 15px;border:1px solid rgba(255,255,255,.24);border-radius:18px;background:rgba(8,14,28,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 8px 22px rgba(0,0,0,.30);min-height:72px;width:min(100%,1060px)}

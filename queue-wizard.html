@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Queue Wizard</title>
-  <link rel="stylesheet" href="styles/podcasts.css?v=20260216-69" />
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260216-70" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     html,body{min-height:100%}
@@ -132,6 +132,14 @@
 </head>
 
 <body>
+  <div class="preHeroStatusWrap">
+    <div class="preHeroStatus">
+      <div class="pill" id="apiPill" title="Active API endpoint"><span class="dot" aria-hidden="true"></span>API: <span id="apiHint">loading…</span></div>
+      <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot" aria-hidden="true"></span>Web: <span id="webHint">loading…</span></div>
+      <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot" aria-hidden="true"></span>Alexa: <span id="alexaHint">unknown</span></div>
+      <div class="pill" id="moodePill" title="moOde host verification"><span class="dot" aria-hidden="true"></span>moOde: <span id="moodeHint">unknown</span></div>
+    </div>
+  </div>
   <div class="heroRail">
     <div class="heroWrap">
       <div style="display:flex;gap:10px;justify-content:flex-start;align-items:flex-end;flex-wrap:wrap;">
@@ -142,25 +150,7 @@
           <a href="queue-wizard.html" class="active">Queue Wizard</a>
           <a href="podcasts.html" id="podcastsNavLink">Podcasts</a>
         </nav>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;width:100%;">
-          <div class="pill" id="apiPill" title="Active API endpoint">
-            <span class="dot" aria-hidden="true"></span>
-            API: <span id="apiHint">loading…</span>
-          </div>
-          <div class="pill" id="webPill" title="Active web UI endpoint">
-            <span class="dot" aria-hidden="true"></span>
-            Web: <span id="webHint">loading…</span>
-          </div>
-          <div class="pill" id="alexaPill" title="Alexa public domain health">
-            <span class="dot" aria-hidden="true"></span>
-            Alexa: <span id="alexaHint">unknown</span>
-          </div>
-          <div class="pill" id="moodePill" title="moOde host verification">
-            <span class="dot" aria-hidden="true"></span>
-            moOde: <span id="moodeHint">unknown</span>
-          </div>
-          <button id="themeToggle" class="heroThemeToggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme" style="position:absolute;top:12px;right:16px;z-index:12;">🌙</button>
-        </div>
+                  <button id="themeToggle" class="heroThemeToggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme" style="position:absolute;top:12px;right:16px;z-index:12;">🌙</button>
       </div>
       <header>
         <div class="brand">
