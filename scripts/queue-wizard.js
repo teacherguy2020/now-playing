@@ -701,8 +701,27 @@ async function syncVibeAvailability() {
   function renderTracksToTable(tracks) {
     clearResults();
     if (queuePlaybackAreaEl) queuePlaybackAreaEl.innerHTML = '';
-    const tbody = ensureResultsTable();
-    (tracks || []).slice(0, MAX_RENDER_ROWS).forEach((t, idx) => appendRow(t, idx, tbody));
+    if (!resultsEl) return;
+    const list = Array.isArray(tracks) ? tracks.slice(0, MAX_RENDER_ROWS) : [];
+    if (!list.length) {
+      resultsEl.innerHTML = '<div class="muted">Queue is empty.</div>';
+      return;
+    }
+
+    const apiBase = getApiBase();
+    resultsEl.innerHTML = list.map((x, idx) => {
+      const file = String(x.file || '');
+      const thumbSrc = x.thumbUrl
+        ? (String(x.thumbUrl).startsWith('http') ? String(x.thumbUrl) : `${apiBase}${x.thumbUrl}`)
+        : (file ? `${apiBase}/art/track_640.jpg?file=${encodeURIComponent(file)}` : '');
+      const thumb = thumbSrc
+        ? `<img src="${thumbSrc}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />`
+        : '<div style="width:36px;height:36px"></div>';
+      const stars = isPodcastLike(x) ? '' : starsHtml(file, Number(x.rating || 0));
+      const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
+      const rowClass = `queueRow ${idx % 2 === 0 ? 'queueRowEven' : 'queueRowOdd'}`;
+      return `<div class="${rowClass}" data-track-idx="${idx}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${idx + 1}</b>. ${esc(String(x.artist || ''))}</div><div class="muted">${esc(String(x.title || ''))} ${x.album ? `• ${esc(String(x.album || ''))}` : ''}</div>${starsRow}</div><button type="button" data-remove-track="${idx}" style="margin-left:auto;">Remove</button></div>`;
+    }).join('');
   }
 
   function isPodcastLike(item = {}) {

@@ -50,7 +50,13 @@
     return j;
   }
 
-  function render(el, q) {
+  async function loadNowPlaying(key) {
+    const r = await fetch(`${apiBase}/now-playing`, { headers: key ? { 'x-track-key': key } : {} });
+    if (!r.ok) return {};
+    return await r.json().catch(() => ({}));
+  }
+
+  function render(el, q, np = {}) {
     const items = Array.isArray(q?.items) ? q.items : [];
     const head = items.find((x) => !!x?.isHead) || items[0] || null;
     const state = String(q?.playbackState || '').toLowerCase();
@@ -58,7 +64,12 @@
     const randomOn = !!q?.randomOn;
     const repeatOn = !!q?.repeatOn;
     const thumb = head?.thumbUrl ? (String(head.thumbUrl).startsWith('http') ? String(head.thumbUrl) : `${apiBase}${head.thumbUrl}`) : '';
-    const text = head ? `Now Playing · ${head.artist || ''} • ${head.title || ''}` : 'Now Playing · Nothing playing';
+    const text = head ? `${head.artist || ''} • ${head.title || ''}` : 'Nothing playing';
+
+    const elapsed = Number(np?.elapsed ?? q?.elapsed ?? q?.elapsedSec ?? head?.elapsed ?? head?.elapsedSec ?? 0);
+    const duration = Number(np?.duration ?? q?.duration ?? q?.durationSec ?? head?.duration ?? head?.durationSec ?? 0);
+    const showProgress = Number.isFinite(duration) && duration > 0;
+    const progressPct = showProgress ? Math.max(0, Math.min(100, (elapsed / duration) * 100)) : 0;
 
     el.innerHTML =
       `<div class="heroArt">${thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>'}</div>` +
@@ -70,7 +81,10 @@
           `<button class="tbtn" data-a="next" title="Next">${icon('next')}</button>` +
           `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
         `</div>` +
-        `<div class="np"><div class="txt">${text}</div></div>` +
+        `<div class="np">` +
+          `<div class="txt">${text}</div>` +
+          `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div></div>` +
+        `</div>` +
       `</div>`;
   }
 
@@ -86,7 +100,7 @@
           `<button class="tbtn" disabled title="Next">${icon('next')}</button>` +
           `<button class="tbtn" disabled title="Shuffle">${icon('shuffle')}</button>` +
         `</div>` +
-        `<div class="np"><div class="txt">${msg}</div></div>` +
+        `<div class="np"><div class="txt">${msg}</div><div class="progress-bar-wrapper is-hidden"><div class="progress-fill" style="transform:scaleX(0)"></div></div></div>` +
       `</div>`;
   }
 
@@ -98,8 +112,12 @@
     const refresh = async () => {
       try {
         await ensureRuntimeKey();
-        const q = await loadQueueState(currentKey());
-        render(el, q);
+        const key = currentKey();
+        const [q, np] = await Promise.all([
+          loadQueueState(key),
+          loadNowPlaying(key),
+        ]);
+        render(el, q, np);
       } catch {
         renderShell(el, 'unavailable');
       }

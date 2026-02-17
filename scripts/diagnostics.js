@@ -416,6 +416,8 @@
     const meta = $('meta');
     const imageWrap = $('imageWrap');
     const imageOut = $('imageOut');
+    const outputCard = $('outputCard');
+    const requestCard = $('requestCard');
 
     if (!path) return;
     const url = `${base}${path.startsWith('/') ? path : '/' + path}`;
@@ -429,9 +431,13 @@
     }
 
     st.innerHTML = '<span class="spin"></span>Running…';
+    if (outputCard) outputCard.style.display = '';
+    if (outputCard && requestCard && outputCard.previousElementSibling !== requestCard) {
+      requestCard.insertAdjacentElement('afterend', outputCard);
+    }
     if (imageWrap) imageWrap.style.display = 'none';
     if (imageOut) imageOut.removeAttribute('src');
-    $('meta')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    outputCard?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     const t0 = performance.now();
     try {

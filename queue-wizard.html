@@ -27,6 +27,21 @@
     body.theme-light .card{background:rgba(206,188,234,.82) !important;border:1px solid rgba(63,47,95,.34) !important;color:#16151d !important;box-shadow:0 10px 26px rgba(30,20,48,.22)}
     body.theme-light .actionBar{background:rgba(195,176,226,.68) !important;border-color:rgba(63,47,95,.26) !important}
     body.theme-light select, body.theme-light input, body.theme-light button{background:rgba(233,226,246,.86) !important;color:#16151d !important;border:1px solid rgba(63,47,95,.22) !important}
+    body.theme-light .actionBar input[type="checkbox"],
+    body.theme-light .actionBar input[type="radio"]{
+      -webkit-appearance:auto !important;
+      appearance:auto !important;
+      width:16px;
+      height:16px;
+      margin:0 8px 0 0;
+      vertical-align:middle;
+      accent-color:#1e88e5;
+      background:transparent !important;
+      border:0 !important;
+      box-shadow:none !important;
+      padding:0;
+      cursor:pointer;
+    }
     body.theme-light .btnPrimary{background:linear-gradient(180deg,#7c6cff,#6b5be8) !important;border-color:#5f50d6 !important;color:#fff !important;box-shadow:0 2px 8px rgba(107,91,232,.28)}
     body.theme-light .muted{color:#2e2348 !important}
     body.theme-light th, body.theme-light td{border-bottom-color:rgba(63,47,95,.26) !important;color:#16151d}
@@ -35,25 +50,31 @@
     body.theme-light .pill span{color:inherit !important}
     body.theme-light .brand h1{color:#16151d !important;letter-spacing:-0.01em}
     body.theme-light .brand .sub{color:#2e2348 !important}
-    body.theme-light .topTabs a{background:rgba(218,204,240,.74) !important;border:1px solid rgba(63,47,95,.24) !important;color:#231b35 !important}
-    body.theme-light .topTabs a.active{background:rgba(103,80,164,.55) !important;border-color:rgba(53,40,78,.44) !important;color:#f4eefe !important}
+    body.theme-light .topTabs a{background:rgba(218,204,240,.74) !important;border:0 !important;color:#231b35 !important}
+    body.theme-light .topTabs a.active{background:rgba(103,80,164,.55) !important;border:1px solid rgba(53,40,78,.44) !important;color:#f4eefe !important}
     body.theme-light #existingPlaylistMenu{background:rgba(228,216,247,.94) !important;border:1px solid rgba(63,47,95,.28) !important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
     #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
     .wrap{max-width:1080px;margin:0 auto;padding:18px}
-    .card{background:#101c33;border:1px solid #2a3a58;border-radius:18px;padding:12px;margin:10px 0}
+    /* Queue Wizard tabs: keep original shape; no border on inactive tabs */
+    .topTabs a:not(.active){border:0 !important;box-shadow:none !important}
+    .card{background:#101c33;border:1px solid #2a3a58;border-radius:18px;padding:12px;margin:10px 0;overflow:visible}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
     .pickGrid{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:10px}
     .pickGrid label{display:block}
     .pickGrid select{width:100%;min-width:0}
-    .actionBar{display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:10px;border:1px solid #2a3a58;border-radius:10px;background:#0d182d;margin-top:10px}
+    .actionBar{display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:10px;border:1px solid #2a3a58;border-radius:10px;background:#0d182d;margin-top:10px;overflow:visible}
     .choiceLine{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
     .choiceGroup{display:flex;gap:10px;align-items:center}
-    .btnPrimary{background:#1f6feb;border-color:#356fb6;font-weight:600}
+    .btnPrimary{background:linear-gradient(90deg,#1d4ed8,#7c3aed);border-color:transparent;color:#fff;font-weight:650}
+    .btnPrimary:hover{filter:brightness(1.06)}
     .hidden{display:none !important}
     select,input,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
     select.starFilter{color:#fbbf24 !important;font-weight:600;font-size:125%}
+    select.starFilter option{color:#fbbf24 !important}
     body.theme-light select.starFilter{color:#fbbf24 !important}
-    button{cursor:pointer;background:#17324f}
+    body.theme-light select.starFilter option{color:#fbbf24 !important}
+    button{cursor:pointer;background:rgba(255,255,255,.06);color:#eef;border:1px solid rgba(255,255,255,.20);border-radius:12px;transition:all .16s ease}
+    button:hover{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.26)}
     table{width:100%;border-collapse:collapse;font-size:12px}
     th,td{padding:6px;border-bottom:1px solid #22314d;text-align:left}
     tr.dragging{opacity:1 !important}
@@ -63,8 +84,8 @@
     .queueRowEven{background:rgba(130,170,230,.08)}
     .queueRowOdd{background:rgba(120,150,210,.03)}
     .queueRowHead{background:rgba(34,197,94,.15);border-radius:8px}
-    body.theme-light .queueRowEven{background:rgba(214,197,239,.44)}
-    body.theme-light .queueRowOdd{background:rgba(206,188,234,.26)}
+    body.theme-light .queueRowEven{background:rgba(192,201,238,.54)}
+    body.theme-light .queueRowOdd{background:rgba(162,170,219,.30)}
     .queueControlsWrap{margin-top:8px;padding:10px;border:1px solid #2a3a58;border-radius:14px;background:rgba(10,18,34,.35);display:inline-block;width:fit-content;max-width:100%}
     .queueControls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center}
     .iconBtn{display:inline-flex;align-items:center;justify-content:center;width:63px;height:63px;padding:0;border-radius:999px;border:0;transition:transform .08s ease,box-shadow .12s ease,background-color .12s ease;background:rgba(255,255,255,.12);color:#eef;box-shadow:0 6px 18px rgba(0,0,0,.35)}
@@ -80,12 +101,12 @@
     .nowPlayingInline .meta{min-width:0;display:flex;flex-direction:column;gap:2px}
     .nowPlayingInline .line1{font-size:18px;line-height:1.1;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .nowPlayingInline .line2{font-size:15px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#9fb1d9}
-    body.theme-light .queueControlsWrap{background:rgba(255,255,255,.26);border-color:rgba(63,47,95,.28)}
-    body.theme-light .iconBtn{background:rgba(255,255,255,.38);color:#2b2341;box-shadow:0 6px 14px rgba(30,20,48,.18)}
-    body.theme-light .iconBtn.big{background:rgba(255,255,255,.48)}
-    body.theme-light .nowPlayingInline{background:rgba(255,255,255,.45);border-color:rgba(63,47,95,.32)}
-    body.theme-light .nowPlayingInline .line2{color:#2e2348}
-    body.theme-light .iconBtn.clicked{box-shadow:0 0 0 2px rgba(63,47,95,.35) inset;background:rgba(255,255,255,.55)}
+    body.theme-light .queueControlsWrap{background:rgba(255,242,224,.52);border-color:rgba(137,138,196,.42)}
+    body.theme-light .iconBtn{background:#c0c9ee !important;color:#2f2a4f;box-shadow:0 6px 14px rgba(137,138,196,.20)}
+    body.theme-light .iconBtn.big{background:#c0c9ee !important}
+    body.theme-light .nowPlayingInline{background:rgba(255,242,224,.62);border-color:rgba(137,138,196,.42)}
+    body.theme-light .nowPlayingInline .line2{color:#494276}
+    body.theme-light .iconBtn.clicked{box-shadow:0 0 0 2px rgba(137,138,196,.40) inset;background:rgba(255,242,224,.92)}
     body.theme-light .iconBtn.on{background:rgba(255,255,255,.38) !important;border-color:rgba(21,128,61,.85) !important;box-shadow:0 0 0 1px rgba(21,128,61,.24) inset !important;color:#15803d !important}
     body.theme-light .iconBtn.on svg{fill:#15803d !important}
     .queueRateStar.on{color:#fbbf24 !important}
@@ -121,11 +142,37 @@
     }
     #podcastDateFrom,
     #podcastDateTo{
-      -webkit-appearance:none;
-      appearance:none;
+      -webkit-appearance:auto;
+      appearance:auto;
     }
     .warn{color:#ffd28a}
     .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.28);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+    .miniCals{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:12px;margin-top:10px}
+    .miniCal{border:1px solid #334;border-radius:12px;background:#0a1222;padding:8px}
+    .miniCalHead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+    .miniCalHead button{padding:4px 8px;border-radius:8px}
+    .miniCalTitle{font-size:12px;font-weight:700;opacity:.9}
+    .miniCalGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+    .miniCalDow{font-size:11px;opacity:.75;text-align:center;padding:2px 0}
+    .miniCalDay{padding:6px 0;text-align:center;border-radius:8px;border:1px solid transparent;background:transparent;color:inherit;cursor:pointer}
+    .miniCalDay:hover{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.18)}
+    .miniCalDay.out{opacity:.35}
+    .miniCalDay.sel{background:#1e88e5;color:#fff;border-color:#1e88e5}
+    body.theme-light .miniCal{background:rgba(233,226,246,.86);border-color:rgba(63,47,95,.24)}
+    @media (max-width:900px){.miniCals{grid-template-columns:1fr}}
+    .starSelectNativeHidden{position:absolute !important;left:-9999px !important;opacity:0 !important;pointer-events:none !important;width:1px !important;height:1px !important}
+    .starSelect{position:relative;display:inline-block;min-width:140px}
+    .starSelectBtn{width:100%;height:44px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef;cursor:pointer}
+    .starSelectBtn .stars{color:#fbbf24;font-weight:700;letter-spacing:.5px;font-size:125%;line-height:1}
+    .starSelectMenu{position:absolute;z-index:2000;left:0;right:0;top:calc(100% + 6px);background:#0f1a30;border:1px solid #334;border-radius:10px;padding:6px;box-shadow:0 10px 24px rgba(0,0,0,.35);display:none}
+    .starSelect.open .starSelectMenu{display:block}
+    .starSelectOpt{width:100%;text-align:left;padding:8px 10px;border:0;background:transparent;color:#eef;border-radius:8px;cursor:pointer}
+    .starSelectOpt .stars{color:#fbbf24;font-weight:700;letter-spacing:.5px;font-size:125%;line-height:1}
+    .starSelectOpt:hover{background:rgba(255,255,255,.08)}
+    body.theme-light .starSelectBtn{background:rgba(255,242,224,.92);color:#2f2a4f;border:1px solid rgba(137,138,196,.42)}
+    body.theme-light .starSelectMenu{background:rgba(255,242,224,.98);border:1px solid rgba(137,138,196,.46)}
+    body.theme-light .starSelectOpt{color:#2f2a4f}
+    body.theme-light .starSelectOpt:hover{background:rgba(162,170,219,.20)}
     @media (max-width:900px){.pickGrid{grid-template-columns:1fr}}
     @keyframes spin{to{transform:rotate(360deg)}}
   </style>
@@ -210,11 +257,11 @@
         <label>At least rating<br>
           <select id="minRating" class="starFilter" style="width:140px">
             <option value="0">Any</option>
-            <option value="1">★☆☆☆☆</option>
-            <option value="2" selected>★★☆☆☆</option>
-            <option value="3">★★★☆☆</option>
-            <option value="4">★★★★☆</option>
-            <option value="5">★★★★★</option>
+            <option value="1">⭐☆☆☆☆</option>
+            <option value="2" selected>⭐⭐☆☆☆</option>
+            <option value="3">⭐⭐⭐☆☆</option>
+            <option value="4">⭐⭐⭐⭐☆</option>
+            <option value="5">⭐⭐⭐⭐⭐</option>
           </select>
         </label>
       </div>
@@ -251,11 +298,11 @@
           <label>At least rating
             <select id="minRatingVibe" class="starFilter" style="width:140px;margin-left:6px">
               <option value="0">Any</option>
-              <option value="1">★☆☆☆☆</option>
-              <option value="2" selected>★★☆☆☆</option>
-              <option value="3">★★★☆☆</option>
-              <option value="4">★★★★☆</option>
-              <option value="5">★★★★★</option>
+              <option value="1">⭐☆☆☆☆</option>
+              <option value="2" selected>⭐⭐☆☆☆</option>
+              <option value="3">⭐⭐⭐☆☆</option>
+              <option value="4">⭐⭐⭐⭐☆</option>
+              <option value="5">⭐⭐⭐⭐⭐</option>
             </select>
           </label>
         </div>
@@ -281,9 +328,13 @@
 
       <div class="pickGrid" style="margin-top:10px;grid-template-columns: 1.4fr .8fr .8fr .8fr;">
         <label>Shows<br><select id="podcastShows" multiple size="8"></select></label>
-        <label>From date<br><input id="podcastDateFrom" type="date" /></label>
-        <label>To date<br><input id="podcastDateTo" type="date" /></label>
+        <label>From date<br><input id="podcastDateFrom" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" /></label>
+        <label>To date<br><input id="podcastDateTo" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" /></label>
         <label>Max eps/show<br><input id="podcastMaxPerShow" type="number" min="1" max="100" value="10" style="width:120px" /></label>
+      </div>
+      <div class="miniCals">
+        <div id="miniCalFrom" class="miniCal"></div>
+        <div id="miniCalTo" class="miniCal"></div>
       </div>
 
       <div class="actionBar" style="margin-top:10px">
@@ -342,6 +393,161 @@
 
   <script src="scripts/queue-wizard.js?v=20260216-75"></script>
   <script src="scripts/hero-transport.js?v=20260216-7"></script>
+
+<script>
+(function enhanceStarFilters(){
+  const starText = (v) => {
+    const n = Number(v) || 0;
+    if (n <= 0) return 'Any';
+    return '★'.repeat(n) + '☆'.repeat(5 - n);
+  };
+
+  const closeAll = () => document.querySelectorAll('.starSelect.open').forEach((el) => el.classList.remove('open'));
+
+  const enhance = (sel) => {
+    if (!sel || sel.dataset.starEnhanced === '1') return;
+    sel.dataset.starEnhanced = '1';
+    sel.classList.add('starSelectNativeHidden');
+
+    const wrap = document.createElement('div');
+    wrap.className = 'starSelect';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'starSelectBtn';
+    btn.innerHTML = '<span class="stars"></span><span aria-hidden="true">▾</span>';
+
+    const menu = document.createElement('div');
+    menu.className = 'starSelectMenu';
+
+    const syncBtn = () => {
+      const v = sel.value;
+      const s = btn.querySelector('.stars');
+      if (s) s.textContent = starText(v);
+    };
+
+    Array.from(sel.options).forEach((opt) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'starSelectOpt';
+      item.innerHTML = `<span class="stars">${starText(opt.value)}</span>`;
+      item.addEventListener('click', () => {
+        sel.value = opt.value;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        syncBtn();
+        wrap.classList.remove('open');
+      });
+      menu.appendChild(item);
+    });
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = wrap.classList.contains('open');
+      closeAll();
+      if (!open) wrap.classList.add('open');
+    });
+
+    sel.addEventListener('change', syncBtn);
+
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+    sel.insertAdjacentElement('afterend', wrap);
+    syncBtn();
+  };
+
+  document.addEventListener('click', closeAll);
+  document.addEventListener('DOMContentLoaded', () => {
+    enhance(document.getElementById('minRating'));
+    enhance(document.getElementById('minRatingVibe'));
+  });
+})();
+</script>
+
+<script>
+(function inlineMiniCalendars(){
+  const pad = (n) => String(n).padStart(2, '0');
+  const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const parse = (s) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s||''))) return null;
+    const d = new Date(`${s}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
+  function mount(hostId, inputId, title){
+    const host = document.getElementById(hostId);
+    const input = document.getElementById(inputId);
+    if (!host || !input) return;
+
+    let selected = parse(input.value) || null;
+    let view = selected || new Date();
+    view = new Date(view.getFullYear(), view.getMonth(), 1);
+
+    const render = () => {
+      const y = view.getFullYear();
+      const m = view.getMonth();
+      const first = new Date(y, m, 1);
+      const start = new Date(y, m, 1 - first.getDay());
+      const monthLabel = view.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+      let days = '';
+      for (let i=0;i<42;i++){
+        const d = new Date(start.getFullYear(), start.getMonth(), start.getDate()+i);
+        const inMonth = d.getMonth() === m;
+        const isSel = selected && fmt(d) === fmt(selected);
+        days += `<button type="button" class="miniCalDay${inMonth ? '' : ' out'}${isSel ? ' sel' : ''}" data-d="${fmt(d)}">${d.getDate()}</button>`;
+      }
+
+      host.innerHTML = `
+        <div class="miniCalHead">
+          <div class="miniCalTitle">${title} · ${monthLabel}</div>
+          <div style="display:flex;gap:6px;">
+            <button type="button" data-nav="-1">◀</button>
+            <button type="button" data-nav="1">▶</button>
+          </div>
+        </div>
+        <div class="miniCalGrid">
+          <div class="miniCalDow">Su</div><div class="miniCalDow">Mo</div><div class="miniCalDow">Tu</div><div class="miniCalDow">We</div><div class="miniCalDow">Th</div><div class="miniCalDow">Fr</div><div class="miniCalDow">Sa</div>
+          ${days}
+        </div>`;
+
+      host.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => {
+        const n = Number(b.getAttribute('data-nav') || 0);
+        view = new Date(view.getFullYear(), view.getMonth() + n, 1);
+        render();
+      }));
+
+      host.querySelectorAll('.miniCalDay').forEach((b) => b.addEventListener('click', () => {
+        const d = parse(b.getAttribute('data-d') || '');
+        if (!d) return;
+        selected = d;
+        input.value = fmt(d);
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        if (d.getMonth() !== view.getMonth() || d.getFullYear() !== view.getFullYear()) {
+          view = new Date(d.getFullYear(), d.getMonth(), 1);
+        }
+        render();
+      }));
+    };
+
+    input.addEventListener('change', () => {
+      const d = parse(input.value);
+      if (!d) return;
+      selected = d;
+      view = new Date(d.getFullYear(), d.getMonth(), 1);
+      render();
+    });
+
+    render();
+  }
+
+  const boot = () => {
+    mount('miniCalFrom', 'podcastDateFrom', 'From date');
+    mount('miniCalTo', 'podcastDateTo', 'To date');
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
 
 <script>
 (async function syncPodcastsNavVisibility(){

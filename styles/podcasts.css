@@ -85,6 +85,10 @@
     background: linear-gradient(180deg, #4a6fd6, #3a5cc0);
     box-shadow: inset 0 1px 0 #88a7f0;
   }
+  .topTabs a:not(.active){
+    border:0 !important;
+    box-shadow:none !important;
+  }
 
   .heroWrap{
     position: relative;
@@ -817,12 +821,17 @@ body.theme-light .preHeroStatusWrap{margin-top:24px}
 .heroTransport .tbtn.tbtnBig svg{width:34px;height:34px}
 .heroTransport .tbtn.on{color:#22c55e;box-shadow:0 0 0 1px rgba(34,197,94,.35) inset}
 .heroTransport .tbtn:active{transform:scale(.95)}
-.heroTransport .np{min-width:0;display:flex;align-items:center;justify-content:center;gap:12px;width:100%}
+.heroTransport .np{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:100%}
 .heroTransport .np .txt{min-width:0;font-size:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#dbe6ff;max-width:none;text-align:center}
+.heroTransport .np .progress-bar-wrapper{width:min(720px,96%);height:8px;background:rgba(255,255,255,.18);border-radius:4px;overflow:hidden}
+.heroTransport .np .progress-bar-wrapper.is-hidden{display:none}
+.heroTransport .np .progress-fill{height:12px;background:#4fc3f7;transform:scaleX(0);transform-origin:left}
 body.theme-light .heroTransport{background:rgba(255,255,255,.72);border-color:rgba(63,47,95,.34)}
-body.theme-light .heroTransport .tbtn{background:rgba(255,255,255,.78);color:#2b2341;border-color:rgba(63,47,95,.22)}
+body.theme-light .heroTransport .tbtn{background:#c0c9ee !important;color:#2b2341;border-color:rgba(137,138,196,.42) !important}
 body.theme-light .heroTransport .tbtn.on{color:#16a34a !important;border-color:rgba(22,163,74,.75) !important;box-shadow:0 0 0 1px rgba(22,163,74,.26) inset !important}
 body.theme-light .heroTransport .tbtn.on svg{fill:#16a34a !important}
 body.theme-light .heroTransport .np .txt{color:#2a2140}
+body.theme-light .heroTransport .np .progress-bar-wrapper{background:rgba(137,138,196,.30)}
+body.theme-light .heroTransport .np .progress-fill{background:#898ac4}
 @media (max-width: 900px){.heroTransport{width:calc(100vw - 96px);flex-direction:column;align-items:center}.heroTransport .heroArt{flex:0 0 auto}.heroTransport .heroArt img,.heroTransport .heroArtPh{width:112px;height:112px}.heroTransport .np .txt{max-width:92vw}}
 
