@@ -2130,7 +2130,9 @@ function wireEvents() {
       playbackBtn.classList.add('clicked');
       setTimeout(() => playbackBtn.classList.remove('clicked'), 140);
       const actionRaw = String(playbackBtn.getAttribute('data-queue-playback') || '').trim().toLowerCase();
-      const action = actionRaw === 'togglepp' ? (queuePlayPauseMode === 'play' ? 'play' : 'pause') : actionRaw;
+      const action = actionRaw === 'togglepp'
+        ? (queuePlayPauseMode === 'play' ? 'play' : 'pause')
+        : (actionRaw === 'prev' ? 'previous' : actionRaw);
       playbackBtn.disabled = true;
       const op = action === 'reload'
         ? loadCurrentQueueCard()
