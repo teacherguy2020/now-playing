@@ -772,4 +772,12 @@ body.theme-light .btnPrimary{
   border-color:#5f50d6 !important;
   color:#fff !important;
 }
+/* Keep JSON/log vibe in light mode */
+body.theme-light pre,
+body.theme-light pre#out,
+body.theme-light pre#log{
+  background:#000 !important;
+  color:#39ff14 !important;
+  border:1px solid rgba(57,255,20,.35) !important;
+}
 body.theme-light th, body.theme-light td{ border-bottom-color:rgba(63,47,95,.26) !important; color:#16151d; }
