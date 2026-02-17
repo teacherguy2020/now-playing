@@ -86,6 +86,7 @@
   let dragInsertAfter = false;
   let podcastBuildTimer = null;
   let listOrderShuffled = false;
+  let queuePlayPauseMode = 'play';
 
 // ---------- Vibe progress + Cancel/Send button (single-source-of-truth) ----------
 
@@ -732,13 +733,32 @@ async function syncVibeAvailability() {
     return out;
   }
 
+  function queueControlIcon(name = '') {
+    const n = String(name || '').toLowerCase();
+    if (n === 'play') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+    if (n === 'pause') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
+    if (n === 'prev') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3 6 9-6v12z"/></svg>';
+    if (n === 'next') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM7 18V6l9 6z"/></svg>';
+    if (n === 'shuffle') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5h-2V6.41l-3.29 3.3-1.42-1.42L17.59 5H16V3zM4 7h3l4.5 4.5-1.42 1.42L6.41 9H4V7zm10.29 4.29 1.42 1.42L6.41 22H4v-2h1.59l8.7-8.71zM19 16v-1.59l-3.29-3.3 1.42-1.42 3.29 3.3V11h2v5h-5z"/></svg>';
+    if (n === 'reload') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6V3L8 7l4 4V8c2.76 0 5 2.24 5 5a5 5 0 1 1-8.66-3.46L6.92 8.12A7 7 0 1 0 19 13c0-3.87-3.13-7-7-7z"/></svg>';
+    return '';
+  }
+
   function renderQueueCard(items, randomOn = null) {
     if (!resultsEl) return;
     const apiBase = getApiBase();
     const list = Array.isArray(items) ? items.slice(0, 120) : [];
     const shuffleLabel = typeof randomOn === 'boolean' ? `Shuffle: ${randomOn ? 'On' : 'Off'}` : 'Shuffle';
     const shuffleStyle = typeof randomOn === 'boolean' && randomOn ? 'border-color:#22c55e;' : '';
-    const controlsHtml = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 10px 0;padding-top:6px;"><button type="button" data-queue-playback="play">Play</button><button type="button" data-queue-playback="pause">Pause</button><button type="button" data-queue-playback="prev">Prev</button><button type="button" data-queue-playback="next">Next</button><button type="button" data-queue-playback="shuffle" style="${shuffleStyle}">${shuffleLabel}</button><button type="button" data-queue-playback="reload">Reload queue</button></div>`;
+    const ppLabel = queuePlayPauseMode === 'play' ? 'Play' : 'Pause';
+    const ppIcon = queueControlIcon(queuePlayPauseMode === 'play' ? 'play' : 'pause');
+    const controlsHtml = `<div class="queueControls">` +
+      `<button type="button" class="iconBtn" data-queue-playback="prev" title="Previous" aria-label="Previous">${queueControlIcon('prev')}</button>` +
+      `<button type="button" class="iconBtn" data-queue-playback="togglepp" title="${ppLabel}" aria-label="${ppLabel}">${ppIcon}</button>` +
+      `<button type="button" class="iconBtn" data-queue-playback="next" title="Next" aria-label="Next">${queueControlIcon('next')}</button>` +
+      `<button type="button" class="iconBtn" data-queue-playback="shuffle" title="${shuffleLabel}" aria-label="${shuffleLabel}" style="${shuffleStyle}">${queueControlIcon('shuffle')}</button>` +
+      `<button type="button" class="iconBtn" data-queue-playback="reload" title="Reload queue" aria-label="Reload queue">${queueControlIcon('reload')}</button>` +
+      `</div>`;
     if (!list.length) {
       resultsEl.innerHTML = `${controlsHtml}<div class="muted">Queue is empty.</div>`;
       return;
@@ -2089,11 +2109,15 @@ function wireEvents() {
     const playbackBtn = el.closest('button[data-queue-playback]');
     if (playbackBtn) {
       ev.preventDefault();
-      const action = String(playbackBtn.getAttribute('data-queue-playback') || '').trim().toLowerCase();
+      const actionRaw = String(playbackBtn.getAttribute('data-queue-playback') || '').trim().toLowerCase();
+      const action = actionRaw === 'togglepp' ? (queuePlayPauseMode === 'play' ? 'play' : 'pause') : actionRaw;
       playbackBtn.disabled = true;
       const op = action === 'reload'
         ? loadCurrentQueueCard()
-        : sendDiagnosticsAction(action).then(() => loadCurrentQueueCard());
+        : sendDiagnosticsAction(action).then(() => {
+            if (actionRaw === 'togglepp') queuePlayPauseMode = (action === 'play') ? 'pause' : 'play';
+            return loadCurrentQueueCard();
+          });
       op
         .then(() => setStatus(action === 'reload' ? 'Queue reloaded.' : `Playback: ${action}`))
         .catch((e) => setStatus(`Error: ${esc(e?.message || e)}`))
