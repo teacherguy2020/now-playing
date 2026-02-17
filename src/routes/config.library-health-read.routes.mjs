@@ -367,6 +367,75 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
     }
   });
 
+  app.get('/config/library-health/albums', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const isAudio = (f) => /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|dsf|wv|ape)$/i.test(String(f || ''));
+      const folderOf = (file) => {
+        const s = String(file || '');
+        const i = s.lastIndexOf('/');
+        return i > 0 ? s.slice(0, i) : '(root)';
+      };
+
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const { stdout } = await execFileP(
+        'mpc',
+        ['-h', mpdHost, '-f', '%file%\t%artist%\t%albumartist%\t%album%', 'listall'],
+        { maxBuffer: 64 * 1024 * 1024 }
+      );
+
+      const byFolder = new Map();
+      for (const ln of String(stdout || '').split(/\r?\n/)) {
+        if (!ln) continue;
+        const [file = '', artist = '', albumartist = '', album = ''] = ln.split('\t');
+        const f = String(file || '').trim();
+        if (!f || !isAudio(f)) continue;
+        const folder = folderOf(f);
+        if (!folder || folder === '(root)') continue;
+
+        if (!byFolder.has(folder)) {
+          byFolder.set(folder, {
+            folder,
+            album: String(album || '').trim(),
+            artists: new Set(),
+            trackCount: 0,
+          });
+        }
+
+        const row = byFolder.get(folder);
+        row.trackCount += 1;
+        const who = String(albumartist || artist || '').trim();
+        if (who) row.artists.add(who);
+        if (!row.album && String(album || '').trim()) row.album = String(album || '').trim();
+      }
+
+      const leafName = (p) => {
+        const s = String(p || '');
+        const i = s.lastIndexOf('/');
+        return i >= 0 ? s.slice(i + 1) : s;
+      };
+
+      const albums = Array.from(byFolder.values()).map((row) => {
+        const artists = Array.from(row.artists || []);
+        const artistLabel = artists.length === 1
+          ? artists[0]
+          : (artists.length > 1 ? 'Various Artists' : 'Unknown Artist');
+        const albumName = String(row.album || '').trim() || leafName(row.folder);
+        return {
+          folder: row.folder,
+          label: `${artistLabel} — ${albumName}`,
+          trackCount: Number(row.trackCount || 0),
+        };
+      });
+
+      albums.sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' }));
+      return res.json({ ok: true, count: albums.length, albums });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.get('/config/library-health/album-tracks', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
