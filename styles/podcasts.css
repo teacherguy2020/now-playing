@@ -811,7 +811,7 @@ body.theme-light .preHeroStatusWrap{margin-top:24px}
 .heroTransportRow{display:flex;align-items:center;justify-content:flex-start;margin:12px 0 6px}
 .heroTransport{display:flex;align-items:stretch;gap:14px;padding:14px 16px;border:1px solid rgba(255,255,255,.24);border-radius:18px;background:rgba(8,14,28,.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 8px 22px rgba(0,0,0,.30);min-height:168px;width:min(100%,1060px)}
 .heroTransport .heroArt{flex:0 0 152px;display:flex;align-items:center;justify-content:center}
-.heroTransport .heroArt img,.heroTransport .heroArtPh{width:152px;height:152px;border-radius:16px;object-fit:cover;border:1px solid #334;background:#0a1222}
+.heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{width:152px;height:152px;border-radius:16px;object-fit:cover;border:1px solid #334;background:#0a1222}
 .heroTransport .heroArtPh{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.14))}
 .heroTransport .heroMain{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;gap:12px;min-width:0}
 .heroTransport .heroTransportControls{display:flex;align-items:center;justify-content:center;gap:15px;flex-wrap:wrap;width:100%}
@@ -856,5 +856,5 @@ body.theme-light .heroTransport .np .txt{color:#2a2140}
 body.theme-light .heroTransport .np .heroSubline{color:#4b3e6f}
 body.theme-light .heroTransport .np .progress-bar-wrapper{background:rgba(137,138,196,.30)}
 body.theme-light .heroTransport .np .progress-fill{background:#898ac4}
-@media (max-width: 900px){.heroTransport{width:calc(100vw - 96px);flex-direction:column;align-items:center}.heroTransport .heroArt{flex:0 0 auto}.heroTransport .heroArt img,.heroTransport .heroArtPh{width:124px;height:124px}.heroTransport .np .txt{max-width:92vw}}
+@media (max-width: 900px){.heroTransport{width:calc(100vw - 96px);flex-direction:column;align-items:center}.heroTransport .heroArt{flex:0 0 auto}.heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{width:124px;height:124px}.heroTransport .np .txt{max-width:92vw}}
 

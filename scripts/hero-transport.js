@@ -16,6 +16,11 @@
 
   let runtimeTrackKey = '';
   let runtimeKeyAttempted = false;
+  const motionArtCache = new Map();
+  const localMotionCache = new Map();
+  const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
+  let lastMotionIdentity = '';
+  let lastMotionMp4 = '';
 
   function currentKey() {
     return String($('key')?.value || '').trim() || runtimeTrackKey;
@@ -56,6 +61,96 @@
     return await r.json().catch(() => ({}));
   }
 
+  function normalizeAppleMusicUrl(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return '';
+    try {
+      const u = new URL(s);
+      u.search = '';
+      u.hash = '';
+      return u.toString();
+    } catch {
+      return s.split('?')[0].split('#')[0];
+    }
+  }
+
+  function motionArtEnabled() {
+    try {
+      const v = String(localStorage.getItem(MOTION_ART_STORAGE_KEY) || '').trim().toLowerCase();
+      if (!v) return true;
+      return !(['0', 'false', 'off', 'no'].includes(v));
+    } catch {
+      return true;
+    }
+  }
+
+  async function resolveLocalMotionMp4(artist, album, key) {
+    const a = String(artist || '').trim();
+    const b = String(album || '').trim();
+    const k = `${a.toLowerCase()}|${b.toLowerCase()}`;
+    if (!a || !b) return '';
+    if (localMotionCache.has(k)) return String(localMotionCache.get(k) || '');
+    try {
+      const url = `${apiBase}/config/library-health/animated-art/lookup?artist=${encodeURIComponent(a)}&album=${encodeURIComponent(b)}`;
+      const r = await fetch(url, { headers: key ? { 'x-track-key': key } : {} });
+      const j = await r.json().catch(() => ({}));
+      const mp4 = String(j?.hit?.mp4 || '').trim();
+      localMotionCache.set(k, mp4);
+      return mp4;
+    } catch {
+      localMotionCache.set(k, '');
+      return '';
+    }
+  }
+
+  async function resolveMotionMp4(appleUrl) {
+    const normalized = normalizeAppleMusicUrl(appleUrl);
+    if (!normalized) return '';
+    const cached = motionArtCache.get(normalized);
+    if (cached?.state === 'ready') return String(cached.mp4 || '');
+    if (cached?.state === 'none') return '';
+    if (cached?.state === 'pending' && cached.promise) return cached.promise;
+
+    const p = (async () => {
+      try {
+        const endpoint = `https://api.aritra.ovh/v1/covers?url=${encodeURIComponent(normalized)}`;
+        const r = await fetch(endpoint, { cache: 'force-cache' });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const j = await r.json().catch(() => ({}));
+        const square = Array.isArray(j?.master_Streams?.square) ? j.master_Streams.square : [];
+        const list = square.filter((x) => String(x?.uri || '').includes('.m3u8'));
+        if (!list.length) {
+          motionArtCache.set(normalized, { state: 'none' });
+          return '';
+        }
+
+        // Prefer mid/high square sizes (avoid huge 2k+ assets by default).
+        const preferred = list
+          .map((x) => ({
+            uri: String(x?.uri || ''),
+            width: Number(x?.width || 0),
+            bw: Number(x?.bandwidth || 0),
+          }))
+          .filter((x) => x.uri)
+          .sort((a, b) => (a.width - b.width) || (a.bw - b.bw));
+        const choice = preferred.filter((x) => x.width >= 700 && x.width <= 1200).slice(-1)[0] || preferred.slice(-1)[0];
+        const mp4 = String(choice?.uri || '').replace(/\.m3u8(?:\?.*)?$/i, '-.mp4');
+        if (!mp4 || mp4 === choice.uri) {
+          motionArtCache.set(normalized, { state: 'none' });
+          return '';
+        }
+        motionArtCache.set(normalized, { state: 'ready', mp4 });
+        return mp4;
+      } catch {
+        motionArtCache.set(normalized, { state: 'none' });
+        return '';
+      }
+    })();
+
+    motionArtCache.set(normalized, { state: 'pending', promise: p });
+    return p;
+  }
+
   function render(el, q, np = {}) {
     const items = Array.isArray(q?.items) ? q.items : [];
     const head = items.find((x) => !!x?.isHead) || items[0] || null;
@@ -70,6 +165,7 @@
     const thumb = rawThumb
       ? (rawThumb.startsWith('http') ? rawThumb : `${apiBase}${rawThumb}`)
       : '';
+    const motionMp4 = String(np?._motionMp4 || '').trim();
 
     const displayArtist = String(np?._radioDisplay?.artist || np?.radioArtist || np?.artist || head?.artist || '').trim();
     const displayTitle = String(np?._radioDisplay?.title || np?.radioTitle || np?.title || head?.title || '').trim();
@@ -95,7 +191,9 @@
     const progressPct = showProgress ? Math.max(0, Math.min(100, (elapsed / duration) * 100)) : 0;
 
     el.innerHTML =
-      `<div class="heroArt">${thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>'}</div>` +
+      `<div class="heroArt">${motionMp4
+        ? `<video class="heroArtVid" src="${motionMp4}" autoplay muted loop playsinline preload="metadata"></video>`
+        : (thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>')}</div>` +
       `<div class="heroMain">` +
         `<div class="np">` +
           (appleUrl
@@ -146,6 +244,36 @@
           loadQueueState(key),
           loadNowPlaying(key),
         ]);
+        const appleUrl = String(np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
+        const motionEnabled = motionArtEnabled();
+        const isRadioOrStream = !!np?.isRadio || !!np?.isStream;
+        const artist = String(np?.artist || '').trim();
+        const album = String(np?.album || '').trim();
+        const motionIdentity = `${isRadioOrStream ? 'r' : 'l'}|${appleUrl || ''}|${artist}|${album}`;
+        const shouldTryRemoteMotion = motionEnabled && !!appleUrl && isRadioOrStream;
+
+        let motionMp4 = '';
+        if (motionEnabled && motionIdentity === lastMotionIdentity && lastMotionMp4) {
+          motionMp4 = lastMotionMp4;
+        }
+
+        if (!motionMp4) {
+          if (shouldTryRemoteMotion) {
+            motionMp4 = await resolveMotionMp4(appleUrl).catch(() => '');
+          } else if (motionEnabled && !isRadioOrStream) {
+            motionMp4 = await resolveLocalMotionMp4(artist, album, key).catch(() => '');
+          }
+        }
+
+        if (motionEnabled && motionMp4) {
+          lastMotionIdentity = motionIdentity;
+          lastMotionMp4 = motionMp4;
+        } else if (motionIdentity !== lastMotionIdentity) {
+          lastMotionIdentity = motionIdentity;
+          lastMotionMp4 = '';
+        }
+
+        np._motionMp4 = motionMp4;
         render(el, q, np);
         try { window.dispatchEvent(new CustomEvent('heroTransport:update', { detail: { q, np } })); } catch {}
       } catch {

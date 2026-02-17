@@ -302,6 +302,14 @@
                       </div>
                     </div>
                   </div>
+
+                  <div class="cfgCard gateCard" id="animatedArtCard">
+                    <h3>Animated Art</h3>
+                    <div class="cfgField">
+                      <label><input id="motionArtToggle" type="checkbox" checked /> Use animated Apple Music artwork (when available)</label>
+                    </div>
+                    <div class="cfgHint">When enabled, hero transport and index can swap static radio artwork for Apple Music animated cover video when it can be resolved from Apple Music links.</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1706,9 +1714,23 @@ applyRuntimeGate();
 refreshSshSetupHelp();
 applyInitialNetworkPrefills();
 loadCfg().catch(e => log(String(e)));
+
+const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
+(function wireMotionArtToggle(){
+  const el = document.getElementById('motionArtToggle');
+  if (!el) return;
+  try {
+    const raw = String(localStorage.getItem(MOTION_ART_STORAGE_KEY) || '').trim().toLowerCase();
+    const enabled = !raw || !(['0','false','off','no'].includes(raw));
+    el.checked = enabled;
+  } catch {}
+  el.addEventListener('change', () => {
+    try { localStorage.setItem(MOTION_ART_STORAGE_KEY, el.checked ? '1' : '0'); } catch {}
+  });
+})();
 </script>
 
-<script src="scripts/hero-transport.js?v=20260217-10"></script>
+<script src="scripts/hero-transport.js?v=20260217-14"></script>
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
 
 

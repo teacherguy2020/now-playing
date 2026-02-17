@@ -25,6 +25,7 @@ let fgLoadingKey = '';
 let fgLoadingUrl = '';
 let radioFooterActive = false;
 let fgReqToken = 0;     // monotonically increasing request id
+let motionReqToken = 0;
 const PODCAST_GENRES = new Set([
   'podcast',
   'podcasts',
@@ -150,6 +151,131 @@ dlog('[NP] NEXT_UP_URL=', NEXT_UP_URL);
 
 const ENABLE_NEXT_UP = true;
 const ENABLE_BACKGROUND_ART = true; // set false to disable background updates entirely
+const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
+const motionArtCache = new Map();
+const localMotionCache = new Map();
+let runtimeTrackKeyAuth = '';
+let runtimeTrackKeyAttempted = false;
+
+async function ensureRuntimeTrackKey() {
+  if (runtimeTrackKeyAttempted || runtimeTrackKeyAuth) return runtimeTrackKeyAuth;
+  runtimeTrackKeyAttempted = true;
+  try {
+    const r = await fetch(`${API_BASE}/config/runtime`, { cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    const k = String(j?.config?.trackKey || '').trim();
+    if (k) runtimeTrackKeyAuth = k;
+  } catch {}
+  return runtimeTrackKeyAuth;
+}
+
+function motionArtEnabled() {
+  try {
+    const v = String(localStorage.getItem(MOTION_ART_STORAGE_KEY) || '').trim().toLowerCase();
+    if (!v) return true;
+    return !(['0', 'false', 'off', 'no'].includes(v));
+  } catch {
+    return true;
+  }
+}
+
+function normalizeAppleMusicUrl(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  try {
+    const u = new URL(s);
+    u.search = '';
+    u.hash = '';
+    return u.toString();
+  } catch {
+    return s.split('?')[0].split('#')[0];
+  }
+}
+
+async function resolveLocalMotionMp4(artist, album) {
+  const a = String(artist || '').trim();
+  const b = String(album || '').trim();
+  const k = `${a.toLowerCase()}|${b.toLowerCase()}`;
+  if (!a || !b) return '';
+  if (localMotionCache.has(k)) return String(localMotionCache.get(k) || '');
+  try {
+    const url = `${API_BASE}/config/library-health/animated-art/lookup?artist=${encodeURIComponent(a)}&album=${encodeURIComponent(b)}`;
+    const key = await ensureRuntimeTrackKey();
+    const headers = key ? { 'x-track-key': key } : {};
+    const r = await fetch(url, { headers });
+    const j = await r.json().catch(() => ({}));
+    const mp4 = String(j?.hit?.mp4 || '').trim();
+    localMotionCache.set(k, mp4);
+    return mp4;
+  } catch {
+    localMotionCache.set(k, '');
+    return '';
+  }
+}
+
+async function resolveMotionMp4(appleUrl) {
+  const normalized = normalizeAppleMusicUrl(appleUrl);
+  if (!normalized) return '';
+  const cached = motionArtCache.get(normalized);
+  if (cached?.state === 'ready') return String(cached.mp4 || '');
+  if (cached?.state === 'none') return '';
+  if (cached?.state === 'pending' && cached.promise) return cached.promise;
+
+  const p = (async () => {
+    try {
+      const endpoint = `https://api.aritra.ovh/v1/covers?url=${encodeURIComponent(normalized)}`;
+      const r = await fetch(endpoint, { cache: 'force-cache' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json().catch(() => ({}));
+      const square = Array.isArray(j?.master_Streams?.square) ? j.master_Streams.square : [];
+      const list = square.filter((x) => String(x?.uri || '').includes('.m3u8'));
+      if (!list.length) {
+        motionArtCache.set(normalized, { state: 'none' });
+        return '';
+      }
+      const preferred = list
+        .map((x) => ({ uri: String(x?.uri || ''), width: Number(x?.width || 0), bw: Number(x?.bandwidth || 0) }))
+        .filter((x) => x.uri)
+        .sort((a, b) => (a.width - b.width) || (a.bw - b.bw));
+      const choice = preferred.filter((x) => x.width >= 700 && x.width <= 1200).slice(-1)[0] || preferred.slice(-1)[0];
+      const mp4 = String(choice?.uri || '').replace(/\.m3u8(?:\?.*)?$/i, '-.mp4');
+      if (!mp4 || mp4 === choice.uri) {
+        motionArtCache.set(normalized, { state: 'none' });
+        return '';
+      }
+      motionArtCache.set(normalized, { state: 'ready', mp4 });
+      return mp4;
+    } catch {
+      motionArtCache.set(normalized, { state: 'none' });
+      return '';
+    }
+  })();
+  motionArtCache.set(normalized, { state: 'pending', promise: p });
+  return p;
+}
+
+function setMotionArtVideo(mp4Url, posterUrl = '') {
+  const videoEl = document.getElementById('album-art-video');
+  const artEl = document.getElementById('album-art');
+  if (!videoEl || !artEl) return;
+  const src = String(mp4Url || '').trim();
+  if (!src) {
+    try { videoEl.pause(); } catch {}
+    videoEl.style.display = 'none';
+    videoEl.removeAttribute('src');
+    videoEl.load?.();
+    artEl.style.display = 'block';
+    return;
+  }
+  if (posterUrl) videoEl.setAttribute('poster', posterUrl);
+  if (videoEl.getAttribute('src') !== src) videoEl.setAttribute('src', src);
+  artEl.style.display = 'none';
+  videoEl.style.display = 'block';
+  try {
+    const p = (typeof videoEl.play === 'function') ? videoEl.play() : null;
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch {}
+}
 
 /* =========================
  * Timers / refresh intervals
@@ -2502,6 +2628,36 @@ if (titleEl) {
     : (data.alexaMode
         ? rawArtUrl
         : (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : ''));
+
+  const appleUrl = String(data.radioItunesUrl || data.itunesUrl || data.radioAppleMusicUrl || '').trim();
+  const motionToken = ++motionReqToken;
+  if (motionArtEnabled()) {
+    if (isRadio && appleUrl) {
+      resolveMotionMp4(appleUrl)
+        .then((mp4) => {
+          if (motionToken !== motionReqToken) return;
+          setMotionArtVideo(mp4, fgUrl || rawArtUrl);
+        })
+        .catch(() => {
+          if (motionToken !== motionReqToken) return;
+          setMotionArtVideo('', fgUrl || rawArtUrl);
+        });
+    } else if (!isRadio && !isAirplay) {
+      resolveLocalMotionMp4(String(data.artist || ''), String(data.album || ''))
+        .then((mp4) => {
+          if (motionToken !== motionReqToken) return;
+          setMotionArtVideo(mp4, fgUrl || rawArtUrl);
+        })
+        .catch(() => {
+          if (motionToken !== motionReqToken) return;
+          setMotionArtVideo('', fgUrl || rawArtUrl);
+        });
+    } else {
+      setMotionArtVideo('', fgUrl || rawArtUrl);
+    }
+  } else {
+    setMotionArtVideo('', fgUrl || rawArtUrl);
+  }
 
   // =========================
   // Background + glow updates

@@ -120,7 +120,8 @@ body.booting .fade-out {
 }
 
 /* Foreground art */
-#album-art {
+#album-art,
+#album-art-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -129,6 +130,7 @@ body.booting .fade-out {
   position: relative;
   z-index: 2;
 }
+#album-art-video { z-index: 3; }
 
 /* Blurred halo */
 #album-art-bg {

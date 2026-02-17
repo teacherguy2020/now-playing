@@ -1237,7 +1237,10 @@ async function fetchJsonWithTimeout(url, ms) {
   const timer = setTimeout(() => controller.abort(), ms);
   try {
     const resp = await fetch(url, {
-      headers: { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'now-playing-next/1.0 (+https://moode.brianwis.com)',
+      },
       agent: agentForUrl(url),
       signal: controller.signal,
       cache: 'no-store',
@@ -1435,19 +1438,23 @@ function parseIheartTitleBlob(raw) {
         if (m && m[1]) artistPrefix = m[1].trim();
     }
 
-    // 2) Extract key="value" pairs
-    const out = {};
-    const re = /(\w+)="([^"]*)"/g;
-    let m;
-    while ((m = re.exec(s)) !== null) {
-        out[m[1]] = m[2];
+    // 2) Extract key="value" pairs (resilient parser for malformed blobs)
+    const out = parseQuotedAttrs(s) || {};
+
+    // 3) Fallback: directly capture text="..." / text=\"...\"
+    let fallbackText = '';
+    {
+        const m1 = s.match(/(?:^|\s|,)text\s*=\s*"([^"]+)"/i);
+        const m2 = s.match(/(?:^|\s|,)text\s*=\s*\\"([^\\"]+)\\"/i);
+        fallbackText = String((m1 && m1[1]) || (m2 && m2[1]) || '').trim();
     }
 
-    const cleanTitle = (out.text || '').trim();
-    const art = (out.amgArtworkURL || '').trim();
+    const cleanTitle = String(out.text || fallbackText || out.title || '').trim();
+    const cleanArtist = String(artistPrefix || out.artist || '').trim();
+    const art = String(out.amgartworkurl || out.amgArtworkURL || '').trim();
 
     return {
-        artist: artistPrefix,
+        artist: cleanArtist,
         title: cleanTitle,
         artUrl: art,
         raw: s,
@@ -2892,6 +2899,17 @@ async function resolveLibraryFileForStream(inputs, debugLog = null) {
  * ========================= */
 
 const itunesArtCache = new Map();
+let itunesBackoffUntil = 0;
+let itunesBackoffReason = '';
+let itunesNextAllowedTs = 0;
+
+async function waitForItunesSlot() {
+  const now = Date.now();
+  const waitMs = Math.max(0, itunesNextAllowedTs - now);
+  if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+  // 20/min limit => 3000ms spacing; use 3200ms safety margin
+  itunesNextAllowedTs = Date.now() + 3200;
+}
 
 function pickArtFromItunesItem(item) {
   let art = item?.artworkUrl100 || '';
@@ -3069,6 +3087,19 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
   const a = String(artist || '').trim();
   const t = String(title || '').trim();
 
+  const now0 = Date.now();
+  if (itunesBackoffUntil && now0 < itunesBackoffUntil) {
+    const secs = Math.max(1, Math.ceil((itunesBackoffUntil - now0) / 1000));
+    return {
+      url: '',
+      album: '',
+      year: '',
+      trackUrl: '',
+      albumUrl: '',
+      reason: `itunes-backoff-active:${secs}s:${itunesBackoffReason || 'rate-limited'}`,
+    };
+  }
+
   // ✅ Always return a consistent shape
   const empty = (reason, extra = {}) => ({
     url: '',
@@ -3110,10 +3141,14 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
   }
 
   const queryUrl =
-    `${ITUNES_SEARCH_URL}?term=${encodeURIComponent(termStr)}&media=music&entity=song&limit=5&country=${ITUNES_COUNTRY}`;
+    `${ITUNES_SEARCH_URL}?term=${encodeURIComponent(termStr)}&entity=song&limit=1`;
 
   try {
+    await waitForItunesSlot();
     const data = await fetchJsonWithTimeout(queryUrl, ITUNES_TIMEOUT_MS);
+    // Successful response clears any previous temporary backoff lock.
+    itunesBackoffUntil = 0;
+    itunesBackoffReason = '';
     const results = Array.isArray(data?.results) ? data.results : [];
 
     let url = '';
@@ -3167,19 +3202,27 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
 
     return { url, album, year, trackUrl, albumUrl, reason };
   } catch (e) {
-    // ✅ Cache miss on error too (prevents hammering)
-    itunesArtCache.set(cacheKey, {
-      url: '',
-      album: '',
-      year: '',
-      trackUrl: '',
-      albumUrl: '',
-      ts: now,
-    });
-
     const name = e?.name || 'Error';
     const msg  = e?.message || String(e);
     const reason = `error:${name}:${msg}`;
+
+    // On hard upstream blocks (e.g. 403/429), avoid sticky empty cache entries and trip backoff.
+    const isHardBlock = /HTTP\s*(403|429)\b/i.test(String(msg || ''));
+    if (isHardBlock) {
+      itunesBackoffReason = /429/.test(String(msg || '')) ? '429' : '403';
+      itunesBackoffUntil = Math.max(itunesBackoffUntil || 0, Date.now() + (45 * 60 * 1000));
+    }
+    if (!isHardBlock) {
+      // ✅ Cache miss on ordinary errors (prevents hammering)
+      itunesArtCache.set(cacheKey, {
+        url: '',
+        album: '',
+        year: '',
+        trackUrl: '',
+        albumUrl: '',
+        ts: now,
+      });
+    }
 
     if (debug) {
       return empty(reason, {
@@ -4173,14 +4216,19 @@ app.get('/now-playing', async (req, res) => {
         const s = String(t || '').trim();
         if (!s) return false;
 
-        // ✅ Sponsor/ad blob (does NOT contain text="..." / TPID= reliably)
+        // ✅ Sponsor/ad blob
         if (/(^|[\s,])adContext="[^"]+"/i.test(s)) return true;
 
-        // Existing “track blob” signature
-        return /(^|\s)text="[^"]+"/i.test(s) && /\bTPID="\d+"/.test(s);
+        // iHeart track blob variants seen in wild:
+        // - text="..." + TPID="..."
+        // - title="...",artist="..." with extra key/value payload
+        if ((/(^|\s)text="[^"]+"/i.test(s) && /\bTPID="\d+"/.test(s))) return true;
+        if (/\btitle="[^"]+"/i.test(s) && /\bartist="[^"]+"/i.test(s) && /\bTPID="\d+"/.test(s)) return true;
+
+        return false;
     }
 
-    if (isRadio && looksLikeIheartBlob(title)) {
+    if ((isRadio || stream) && looksLikeIheartBlob(title)) {
         const parsed = parseIheartTitleBlob(title);
 
         if (parsed?.artist) {

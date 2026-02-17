@@ -12,6 +12,7 @@ import { registerConfigLibraryHealthGenreRoutes } from './config.library-health-
 import { registerConfigLibraryHealthPerformersRoutes } from './config.library-health-performers.routes.mjs';
 import { registerConfigLibraryHealthBatchRoutes } from './config.library-health-batch.routes.mjs';
 import { registerConfigLibraryHealthReadRoutes } from './config.library-health-read.routes.mjs';
+import { registerConfigLibraryHealthAnimatedArtRoutes } from './config.library-health-animated-art.routes.mjs';
 import { registerConfigRoutes } from './config.routes.mjs';
 
 export function registerAllConfigRoutes(app, deps) {
@@ -79,6 +80,10 @@ export function registerAllConfigRoutes(app, deps) {
     mpdQueryRaw: deps.mpdQueryRaw,
     getRatingForFile: deps.getRatingForFile,
     mpdStickerGetSong: deps.mpdStickerGetSong,
+  });
+
+  registerConfigLibraryHealthAnimatedArtRoutes(app, {
+    requireTrackKey: deps.requireTrackKey,
   });
 
   // compatibility no-op
