@@ -739,7 +739,7 @@ async function syncVibeAvailability() {
     if (n === 'pause') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
     if (n === 'prev') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3 6 9-6v12z"/></svg>';
     if (n === 'next') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM7 18V6l9 6z"/></svg>';
-    if (n === 'shuffle') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5h-2V6.41l-3.29 3.3-1.42-1.42L17.59 5H16V3zM4 7h3l4.5 4.5-1.42 1.42L6.41 9H4V7zm10.29 4.29 1.42 1.42L6.41 22H4v-2h1.59l8.7-8.71zM19 16v-1.59l-3.29-3.3 1.42-1.42 3.29 3.3V11h2v5h-5z"/></svg>';
+    if (n === 'shuffle') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 3h5v5h-2V6.5h-2.2l-3.6 3.6-1.4-1.4 3.6-3.7H16V3zM4 7h3.3l4.1 4.1-1.4 1.4L6.7 9H4V7zm8.9 6.1 1.4 1.4-3.6 3.6H19v-1.5h2V21h-5v-2h2.3l-5.4-5.5z"/></svg>';
     // reload icon intentionally removed from queue controls.
     return '';
   }
@@ -754,7 +754,7 @@ async function syncVibeAvailability() {
     const ppIcon = queueControlIcon(queuePlayPauseMode === 'play' ? 'play' : 'pause');
     const controlsHtml = `<div class="queueControls">` +
       `<button type="button" class="iconBtn" data-queue-playback="prev" title="Previous" aria-label="Previous">${queueControlIcon('prev')}</button>` +
-      `<button type="button" class="iconBtn" data-queue-playback="togglepp" title="${ppLabel}" aria-label="${ppLabel}">${ppIcon}</button>` +
+      `<button type="button" class="iconBtn big" data-queue-playback="togglepp" title="${ppLabel}" aria-label="${ppLabel}">${ppIcon}</button>` +
       `<button type="button" class="iconBtn" data-queue-playback="next" title="Next" aria-label="Next">${queueControlIcon('next')}</button>` +
       `<button type="button" class="iconBtn ${shuffleOn ? 'on' : ''}" data-queue-playback="shuffle" title="${shuffleLabel}" aria-label="${shuffleLabel}">${queueControlIcon('shuffle')}</button>` +
       `<span class="shuffleState ${shuffleOn ? 'on' : ''}">Shuffle ${shuffleOn ? 'ON' : 'OFF'}</span>` +
