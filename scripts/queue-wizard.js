@@ -48,6 +48,7 @@
   const cropPodcastEl = $('cropPodcast');
 
   const playlistHintEl = $('playlistHint');
+  const queuePlaybackAreaEl = $('queuePlaybackArea');
   const playlistSuggestionEl = $('playlistSuggestion');
   const sendConfirmEl = $('sendConfirm');
   const coverCardEl = $('coverCard');
@@ -699,6 +700,7 @@ async function syncVibeAvailability() {
 
   function renderTracksToTable(tracks) {
     clearResults();
+    if (queuePlaybackAreaEl) queuePlaybackAreaEl.innerHTML = '';
     const tbody = ensureResultsTable();
     (tracks || []).slice(0, MAX_RENDER_ROWS).forEach((t, idx) => appendRow(t, idx, tbody));
   }
@@ -771,13 +773,13 @@ async function syncVibeAvailability() {
       `<button type="button" class="iconBtn big" data-queue-playback="togglepp" title="${ppLabel}" aria-label="${ppLabel}">${ppIcon}</button>` +
       `<button type="button" class="iconBtn" data-queue-playback="next" title="Next" aria-label="Next">${queueControlIcon('next')}</button>` +
       `<button type="button" class="iconBtn ${shuffleOn ? 'on' : ''}" data-queue-playback="shuffle" title="${shuffleLabel}" aria-label="${shuffleLabel}">${queueControlIcon('shuffle')}</button>` +
-      nowPlayingInline +
       `</div>`;
+    if (queuePlaybackAreaEl) queuePlaybackAreaEl.innerHTML = controlsHtml + (nowPlayingInline || '');
     if (!list.length) {
-      resultsEl.innerHTML = `${controlsHtml}<div class="muted">Queue is empty.</div>`;
+      resultsEl.innerHTML = `<div class="muted">Queue is empty.</div>`;
       return;
     }
-    resultsEl.innerHTML = controlsHtml + list.map((x, idx) => {
+    resultsEl.innerHTML = list.map((x, idx) => {
       const thumbSrc = x.thumbUrl ? (String(x.thumbUrl).startsWith('http') ? String(x.thumbUrl) : `${apiBase}${x.thumbUrl}`) : '';
       const thumb = thumbSrc
         ? `<img src="${thumbSrc}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />`
