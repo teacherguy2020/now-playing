@@ -752,11 +752,26 @@ async function syncVibeAvailability() {
     const shuffleOn = typeof randomOn === 'boolean' && randomOn;
     const ppLabel = queuePlayPauseMode === 'play' ? 'Play' : 'Pause';
     const ppIcon = queueControlIcon(queuePlayPauseMode === 'play' ? 'play' : 'pause');
+    const headItem = list.find((x) => !!x?.isHead) || null;
+    let nowPlayingInline = '';
+    if (headItem) {
+      const hThumbSrc = headItem.thumbUrl ? (String(headItem.thumbUrl).startsWith('http') ? String(headItem.thumbUrl) : `${apiBase}${headItem.thumbUrl}`) : '';
+      const hThumb = hThumbSrc
+        ? `<img class="art" src="${hThumbSrc}" alt="" />`
+        : '<div class="art"></div>';
+      const hPos = Number(headItem.position || 0);
+      const hArtist = esc(String(headItem.artist || ''));
+      const hTitle = esc(String(headItem.title || ''));
+      const hAlbum = esc(String(headItem.album || ''));
+      const hStars = isPodcastLike(headItem) ? '' : starsHtml(String(headItem.file || ''), Number(headItem.rating || 0));
+      nowPlayingInline = `<div class="nowPlayingInline">${hThumb}<div class="meta"><div class="line1">${hPos ? `${hPos}. ` : ''}${hArtist}</div><div class="line2">${hTitle}${hAlbum ? ` • ${hAlbum}` : ''}</div>${hStars}</div></div>`;
+    }
     const controlsHtml = `<div class="queueControls">` +
       `<button type="button" class="iconBtn" data-queue-playback="prev" title="Previous" aria-label="Previous">${queueControlIcon('prev')}</button>` +
       `<button type="button" class="iconBtn big" data-queue-playback="togglepp" title="${ppLabel}" aria-label="${ppLabel}">${ppIcon}</button>` +
       `<button type="button" class="iconBtn" data-queue-playback="next" title="Next" aria-label="Next">${queueControlIcon('next')}</button>` +
       `<button type="button" class="iconBtn ${shuffleOn ? 'on' : ''}" data-queue-playback="shuffle" title="${shuffleLabel}" aria-label="${shuffleLabel}">${queueControlIcon('shuffle')}</button>` +
+      nowPlayingInline +
       `</div>`;
     if (!list.length) {
       resultsEl.innerHTML = `${controlsHtml}<div class="muted">Queue is empty.</div>`;
