@@ -322,6 +322,21 @@
       if (typeof j?.randomOn === 'boolean') updateShuffleBtn(j.randomOn);
       if (typeof j?.ratingsEnabled === 'boolean') ratingsEnabled = j.ratingsEnabled;
       const items = Array.isArray(j.items) ? j.items : [];
+
+      // Head stream fallback: prefer now-playing enriched art (e.g., iTunes) over moOde question-mark art.
+      try {
+        const head = items.find((x) => !!x?.isHead);
+        const isHeadStream = !!head && (head.isStream || String(head.file || '').includes('://'));
+        if (isHeadStream) {
+          const nr = await fetch(`${base}/now-playing`, { headers: { 'x-track-key': key } });
+          const nj = await nr.json().catch(() => ({}));
+          const npArt = String(nj?.albumArtUrl || '').trim();
+          if (npArt && /^https?:\/\//i.test(npArt)) {
+            head.thumbUrl = npArt;
+          }
+        }
+      } catch {}
+
       if (!items.length) { wrap.innerHTML = '<div class="muted">Queue is empty.</div>'; return; }
       wrap.innerHTML = items.slice(0, 80).map((x) => {
         const thumbSrc = x.thumbUrl ? (String(x.thumbUrl).startsWith('http') ? String(x.thumbUrl) : `${base}${x.thumbUrl}`) : '';
@@ -333,9 +348,14 @@
         const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
 
         const stationName = String(x.stationName || x.album || '').trim() || 'Radio Stream';
-        const displayArtist = (isStream && !head) ? stationName : String(x.artist || '');
-        const displayTitle = (isStream && !head) ? '' : String(x.title || '');
-        const detailLine = displayTitle ? `${displayTitle} ${x.album ? `• ${String(x.album)}` : ''}` : '';
+        const stationGenre = String(x.stationGenre || '').trim();
+        const displayArtist = isStream ? stationName : String(x.artist || '');
+        const displayTitle = isStream ? String(x.title || '').trim() : String(x.title || '');
+        const detailLine = isStream
+          ? ((head && displayTitle)
+              ? `${displayTitle}${stationGenre ? ` • ${stationGenre}` : ''}`
+              : (stationGenre || ''))
+          : (displayTitle ? `${displayTitle} ${x.album ? `• ${String(x.album)}` : ''}` : '');
 
         return `<div data-queue-play-pos="${pos}" style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;cursor:pointer;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${displayArtist}</div><div class="muted">${detailLine}</div>${starsRow}</div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
       }).join('');

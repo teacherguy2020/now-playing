@@ -824,14 +824,16 @@ async function syncVibeAvailability() {
 
       const stationName = String(x.stationName || x.album || '').trim() || 'Radio Stream';
       const stationGenre = String(x.stationGenre || '').trim();
-      const displayArtist = (isStream && !head)
+      const displayArtist = isStream
         ? stationName
         : String(x.artist || '');
-      const displayTitle = (isStream && !head)
-        ? ''
+      const displayTitle = isStream
+        ? String(x.title || '').trim()
         : String(x.title || '');
-      const detailLine = (isStream && !head)
-        ? (stationGenre ? esc(stationGenre) : '')
+      const detailLine = isStream
+        ? ((head && displayTitle)
+            ? `${esc(displayTitle)}${stationGenre ? ` • ${esc(stationGenre)}` : ''}`
+            : (stationGenre ? esc(stationGenre) : ''))
         : (displayTitle ? `${esc(displayTitle)} ${x.album ? `• ${esc(String(x.album || ''))}` : ''}` : '');
 
       return `<div class="${rowClass}" data-queue-play-pos="${pos}" style="cursor:pointer;">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(displayArtist)}</div><div class="muted">${detailLine}</div>${starsRow}</div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
@@ -1174,6 +1176,21 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
       syncRatingsUi();
     }
     const items = Array.isArray(j.items) ? j.items : [];
+
+    // Head stream fallback: prefer now-playing enriched art (e.g., iTunes) over moOde question-mark art.
+    try {
+      const head = items.find((x) => !!x?.isHead);
+      const isHeadStream = !!head && (head.isStream || String(head.file || '').includes('://'));
+      if (isHeadStream) {
+        const nr = await fetch(`${apiBase}/now-playing`, { headers: { 'x-track-key': key } });
+        const nj = await nr.json().catch(() => ({}));
+        const npArt = String(nj?.albumArtUrl || '').trim();
+        if (npArt && /^https?:\/\//i.test(npArt)) {
+          head.thumbUrl = npArt;
+        }
+      }
+    } catch {}
+
     const randomOn = typeof j.randomOn === 'boolean' ? j.randomOn : null;
     const repeatOn = typeof j.repeatOn === 'boolean' ? j.repeatOn : null;
     const playbackState = String(j.playbackState || '').toLowerCase();
@@ -1264,6 +1281,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
   }
 
   async function buildRadioList() {
+    currentListSource = 'radio';
     const apiBase = getApiBase();
     const key = getKey();
     if (!apiBase) return;
@@ -1371,6 +1389,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     }
     if (busy) return;
     busy = true;
+    currentListSource = 'podcast';
 
     const apiBase = getApiBase();
     const key = getKey();
@@ -1465,6 +1484,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
   async function doPreview() {
     if (busy) return;
     busy = true;
+    currentListSource = 'filters';
 
     const apiBase = getApiBase();
     const key = getKey();
@@ -1516,6 +1536,7 @@ async function doVibeBuild() {
 
   if (busy) return;
   busy = true;
+  currentListSource = 'vibe';
 
   const apiBase = getApiBase();
   const key = getKey();
@@ -2026,9 +2047,8 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       setStatus(statusMsg);
       showSendConfirmation(`✅ Sent ${j.added}/${j.requested} track(s) to moOde.`);
 
-      if (mode === 'append') {
-        await loadCurrentQueueCard().catch(() => {});
-      }
+      // Always refresh queue card after send so stream logos/station metadata update immediately.
+      await loadCurrentQueueCard().catch(() => {});
 
       if (j.collageGenerated && playlistName) {
         await forceReloadCoverUntilItLoads({
@@ -2207,7 +2227,6 @@ function wireEvents() {
   document.querySelectorAll('input[name="modeRadio"]').forEach((el) => {
     el.addEventListener('change', () => {
       suppressCollageForUi();
-      activateBuilder('radio');
       syncCropRadioUi();
     });
   });
@@ -2235,7 +2254,7 @@ function wireEvents() {
   });
   cropVibeEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('vibe'); });
   cropPodcastEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('podcast'); });
-  $('cropRadio')?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('radio'); });
+  $('cropRadio')?.addEventListener('change', () => { suppressCollageForUi(); });
   cropExistingEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('existing'); });
   shuffleExistingEl?.addEventListener('change', () => {
     suppressCollageForUi();

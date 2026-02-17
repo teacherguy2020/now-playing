@@ -351,7 +351,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const streamArtFallback = String(cleaned.artUrl || '').trim();
         const isHead = Number.isFinite(pos) && pos === headPos;
         const thumbUrl = isStream
-          ? (stationLogo || streamArtFallback || '')
+          ? (stationLogo || streamArtFallback || (isHead ? '/art/current.jpg' : ''))
           : (f ? `/art/track_640.jpg?file=${encodeURIComponent(f)}` : '');
         items.push({
           position: pos,
