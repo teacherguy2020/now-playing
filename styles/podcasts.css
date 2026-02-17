@@ -732,6 +732,10 @@ body.theme-light .topTabs a.active{
   border-color:rgba(53,40,78,.44) !important;
   color:#f4eefe !important;
 }
+body.theme-light .subsScroll,
+body.theme-light .subsWrap{
+  background:transparent !important;
+}
 body.theme-light .card,
 body.theme-light .panel,
 body.theme-light .subsShell,
