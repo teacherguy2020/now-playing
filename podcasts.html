@@ -138,23 +138,9 @@
 
   <script src="scripts/podcasts.js?v=20260216-3"></script>
 
-<script>
-(function(){
-  const btn = document.getElementById('themeToggle');
-  function applyTheme(theme){
-    const t = (String(theme||'dark').toLowerCase()==='light') ? 'light' : 'dark';
-    document.documentElement.classList.toggle('theme-light', t === 'light');
-    document.body.classList.toggle('theme-light', t === 'light');
-    document.documentElement.style.background = t === 'light' ? '#8e79b6' : '#0c1526';
-    if (btn) btn.textContent = t === 'light' ? '☀️' : '🌙';
-    try { localStorage.setItem('np-theme', t); } catch {}
-  }
-  let saved = 'dark';
-  try { saved = localStorage.getItem('np-theme') || 'dark'; } catch {}
-  applyTheme(saved);
-  btn?.addEventListener('click', ()=> applyTheme(document.body.classList.contains('theme-light') ? 'dark' : 'light'));
-})();
+<script src="scripts/theme-toggle.js?v=20260216-1"></script>
 
+<script>
 (async function syncPodcastsNavVisibility(){
   try {
     const link = document.getElementById('podcastsNavLink');
