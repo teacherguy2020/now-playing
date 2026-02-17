@@ -289,7 +289,7 @@
     let out = '<div style="display:flex;gap:2px;align-items:center;">';
     for (let i = 1; i <= 5; i += 1) {
       const on = i <= r;
-      out += `<button type="button" data-rate-file="${f}" data-rate-val="${i}" title="Rate ${i} star${i>1?'s':''}" style="padding:0 2px;border:0;background:transparent;font-size:15px;line-height:1;color:${on?'#fbbf24':'#5b6780'};cursor:pointer;">★</button>`;
+      out += `<button type="button" data-rate-file="${f}" data-rate-val="${i}" class="rateStar ${on?'on':'off'}" title="Rate ${i} star${i>1?'s':''}" style="padding:0 2px;border:0;background:transparent;font-size:15px;line-height:1;cursor:pointer;">★</button>`;
     }
     out += '</div>';
     return out;
@@ -470,7 +470,8 @@
         const stars = row.querySelectorAll('button[data-rate-file][data-rate-val]');
         stars.forEach((s) => {
           const v = Number(s.getAttribute('data-rate-val') || 0);
-          s.style.color = v <= rating ? '#fbbf24' : '#5b6780';
+          s.classList.toggle('on', v <= rating);
+          s.classList.toggle('off', v > rating);
         });
       }
 
