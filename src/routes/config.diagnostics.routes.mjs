@@ -78,7 +78,19 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         await execFileP('mpc', ['-h', mpdHost, 'random', setTo]);
         const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
-        return res.json({ ok: true, action, randomOn, status: String(afterStatus || '') });
+        const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, randomOn, repeatOn, status: String(afterStatus || '') });
+      }
+
+      if (action === 'repeat') {
+        const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const wasOn = /repeat:\s*on/i.test(String(beforeStatus || ''));
+        const setTo = wasOn ? 'off' : 'on';
+        await execFileP('mpc', ['-h', mpdHost, 'repeat', setTo]);
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, randomOn, repeatOn, status: String(afterStatus || '') });
       }
 
       if (action === 'remove') {
@@ -130,6 +142,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const m = st.match(/#(\d+)\/(\d+)/);
       const headPos = m ? Number(m[1] || 0) : -1;
       const randomOn = /random:\s*on/i.test(st);
+      const repeatOn = /repeat:\s*on/i.test(st);
       const playbackState = /\[playing\]/i.test(st)
         ? 'playing'
         : (/\[paused\]/i.test(st) ? 'paused' : 'stopped');
@@ -161,7 +174,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           thumbUrl: f ? `/art/track_640.jpg?file=${encodeURIComponent(f)}` : '',
         });
       }
-      return res.json({ ok: true, count: items.length, headPos, randomOn, playbackState, ratingsEnabled, items });
+      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, playbackState, ratingsEnabled, items });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

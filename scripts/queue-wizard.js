@@ -741,17 +741,20 @@ async function syncVibeAvailability() {
     if (n === 'pause') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
     if (n === 'prev') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3 6 9-6v12z"/></svg>';
     if (n === 'next') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM7 18V6l9 6z"/></svg>';
+    if (n === 'repeat') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 7h10v3l4-4-4-4v3H6a3 3 0 0 0-3 3v3h2V8a1 1 0 0 1 1-1zm10 10H7v-3l-4 4 4 4v-3h11a3 3 0 0 0 3-3v-3h-2v2a1 1 0 0 1-1 1z"/></svg>';
     if (n === 'shuffle') return '<svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M24.414,16.586L30.828,23l-6.414,6.414l-2.828-2.828L23.172,25H22c-3.924,0-6.334-2.289-8.173-4.747c0.987-1.097,1.799-2.285,2.516-3.36C18.109,19.46,19.521,21,22,21h1.172l-1.586-1.586L24.414,16.586z M22,11h1.172l-1.586,1.586l2.828,2.828L30.828,9l-6.414-6.414l-2.828,2.828L23.172,7H22c-5.07,0-7.617,3.82-9.664,6.891C10.224,17.059,8.788,19,6,19H2v4h4c5.07,0,7.617-3.82,9.664-6.891C17.776,12.941,19.212,11,22,11z M10.212,15.191c0.399-0.539,1.957-2.848,2.322-3.365C10.917,10.216,8.86,9,6,9H2v4h4C7.779,13,9.007,13.797,10.212,15.191z"/></svg>';
     // reload icon intentionally removed from queue controls.
     return '';
   }
 
-  function renderQueueCard(items, randomOn = null) {
+  function renderQueueCard(items, randomOn = null, repeatOn = null) {
     if (!resultsEl) return;
     const apiBase = getApiBase();
     const list = Array.isArray(items) ? items.slice(0, 120) : [];
     const shuffleLabel = typeof randomOn === 'boolean' ? `Shuffle: ${randomOn ? 'On' : 'Off'}` : 'Shuffle';
     const shuffleOn = typeof randomOn === 'boolean' && randomOn;
+    const repeatLabel = typeof repeatOn === 'boolean' ? `Repeat: ${repeatOn ? 'On' : 'Off'}` : 'Repeat';
+    const repeatEnabled = typeof repeatOn === 'boolean' && repeatOn;
     const ppLabel = queuePlayPauseMode === 'play' ? 'Play' : 'Pause';
     const ppIcon = queueControlIcon(queuePlayPauseMode === 'play' ? 'play' : 'pause');
     const headItem = list.find((x) => !!x?.isHead) || list[0] || null;
@@ -768,13 +771,14 @@ async function syncVibeAvailability() {
       const hStars = isPodcastLike(headItem) ? '' : starsHtml(String(headItem.file || ''), Number(headItem.rating || 0));
       nowPlayingInline = `<div class="nowPlayingInline">${hThumb}<div class="meta"><div class="line1">${hPos ? `${hPos}. ` : ''}${hArtist}</div><div class="line2">${hTitle}${hAlbum ? ` • ${hAlbum}` : ''}</div>${hStars}</div></div>`;
     }
-    const controlsHtml = `<div class="queueControls">` +
+    const controlsHtml = `<div class="queueControlsWrap"><div class="queueControls">` +
+      `<button type="button" class="iconBtn ${repeatEnabled ? 'on' : ''}" data-queue-playback="repeat" title="${repeatLabel}" aria-label="${repeatLabel}">${queueControlIcon('repeat')}</button>` +
       `<button type="button" class="iconBtn" data-queue-playback="prev" title="Previous" aria-label="Previous">${queueControlIcon('prev')}</button>` +
       `<button type="button" class="iconBtn big" data-queue-playback="togglepp" title="${ppLabel}" aria-label="${ppLabel}">${ppIcon}</button>` +
       `<button type="button" class="iconBtn" data-queue-playback="next" title="Next" aria-label="Next">${queueControlIcon('next')}</button>` +
       `<button type="button" class="iconBtn ${shuffleOn ? 'on' : ''}" data-queue-playback="shuffle" title="${shuffleLabel}" aria-label="${shuffleLabel}">${queueControlIcon('shuffle')}</button>` +
-      `</div>`;
-    if (queuePlaybackAreaEl) queuePlaybackAreaEl.innerHTML = controlsHtml + (nowPlayingInline || '');
+      `</div></div>`;
+    if (queuePlaybackAreaEl) queuePlaybackAreaEl.innerHTML = controlsHtml + (nowPlayingInline ? `<div style="margin-top:8px;">${nowPlayingInline}</div>` : '');
     if (!list.length) {
       resultsEl.innerHTML = `<div class="muted">Queue is empty.</div>`;
       return;
@@ -1129,9 +1133,10 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     }
     const items = Array.isArray(j.items) ? j.items : [];
     const randomOn = typeof j.randomOn === 'boolean' ? j.randomOn : null;
+    const repeatOn = typeof j.repeatOn === 'boolean' ? j.repeatOn : null;
     const playbackState = String(j.playbackState || '').toLowerCase();
     queuePlayPauseMode = playbackState === 'playing' ? 'pause' : 'play';
-    renderQueueCard(items, randomOn);
+    renderQueueCard(items, randomOn, repeatOn);
 
     const tracks = items.map((x) => ({
       artist: String(x.artist || ''),
@@ -2111,7 +2116,7 @@ function wireEvents() {
     doSendToMoode(src);
   });
 
-  resultsEl?.addEventListener('click', (ev) => {
+  const handleQueueAreaClick = (ev) => {
     const el = ev.target instanceof Element ? ev.target : null;
     if (!el) return;
 
@@ -2180,7 +2185,10 @@ function wireEvents() {
         .catch((e) => setStatus(`Error: ${esc(e?.message || e)}`))
         .finally(() => { removeBtn.disabled = false; });
     }
-  });
+  };
+
+  resultsEl?.addEventListener('click', handleQueueAreaClick);
+  queuePlaybackAreaEl?.addEventListener('click', handleQueueAreaClick);
 
   // remove-by-checkbox removed; using explicit Remove button for consistency.
 
