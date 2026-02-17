@@ -64,8 +64,8 @@
     .queueRowHead{background:rgba(34,197,94,.15);border-radius:8px}
     body.theme-light .queueRowEven{background:rgba(214,197,239,.44)}
     body.theme-light .queueRowOdd{background:rgba(206,188,234,.26)}
-    .queueControlsWrap{margin-top:8px;padding:10px;border:1px solid #2a3a58;border-radius:14px;background:rgba(10,18,34,.35)}
-    .queueControls{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+    .queueControlsWrap{margin-top:8px;padding:10px;border:1px solid #2a3a58;border-radius:14px;background:rgba(10,18,34,.35);display:inline-block;width:fit-content;max-width:100%}
+    .queueControls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center}
     .iconBtn{display:inline-flex;align-items:center;justify-content:center;width:63px;height:63px;padding:0;border-radius:999px;border:0;transition:transform .08s ease,box-shadow .12s ease,background-color .12s ease;background:rgba(255,255,255,.12);color:#eef;box-shadow:0 6px 18px rgba(0,0,0,.35)}
     .iconBtn.big{width:78px;height:78px;background:rgba(255,255,255,.18)}
     .iconBtn svg{width:30px;height:30px;fill:currentColor;opacity:.96}
@@ -74,7 +74,7 @@
     .iconBtn.clicked{box-shadow:0 0 0 2px rgba(125,211,252,.45) inset;background:rgba(125,211,252,.16)}
     .iconBtn.on{background:transparent !important;border-color:#22c55e !important;box-shadow:0 0 0 1px rgba(34,197,94,.28) inset !important;color:#22c55e !important}
     .iconBtn.on svg{fill:#22c55e !important}
-    .nowPlayingInline{display:flex;align-items:center;gap:10px;min-width:280px;max-width:560px;padding:6px 10px;border-radius:12px;border:1px solid #2a3a58;background:rgba(10,18,34,.45)}
+    .nowPlayingInline{display:flex;align-items:center;gap:10px;min-width:280px;max-width:560px;padding:6px 10px;border-radius:12px;border:1px solid #2a3a58;background:rgba(10,18,34,.45);margin-top:8px}
     .nowPlayingInline .art{width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid #334;background:#0a1222;flex:0 0 auto}
     .nowPlayingInline .meta{min-width:0;display:flex;flex-direction:column;gap:2px}
     .nowPlayingInline .line1{font-size:18px;line-height:1.1;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -346,7 +346,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260216-73"></script>
+  <script src="scripts/queue-wizard.js?v=20260216-74"></script>
 
 <script>
 (async function syncPodcastsNavVisibility(){
