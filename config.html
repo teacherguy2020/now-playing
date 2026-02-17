@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Now-Playing Configuration</title>
-  <link rel="stylesheet" href="styles/podcasts.css?v=20260209-2" />
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260216-55" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     .cfgWrap { max-width: 1080px; margin: 0 auto; padding: 10px 18px 36px; }
@@ -54,6 +54,7 @@
     .modalCard { width:min(520px,92vw); background:#0f141a; border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:16px; }
     .modalCard h4 { margin:0 0 8px; }
     .modalActions { display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }
+    #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
   </style>
 </head>
 <body>
@@ -68,23 +69,24 @@
           <a href="podcasts.html" id="podcastsNavLink">Podcasts</a>
         </nav>
 
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <div class="pill" id="apiPill" title="Active API endpoint">
             <span class="dot" aria-hidden="true"></span>
-            API: <span id="apiHint" style="color:rgba(255,255,255,.9)">loading…</span>
+            API: <span id="apiHint">loading…</span>
           </div>
           <div class="pill" id="webPill" title="Active web UI endpoint">
             <span class="dot" aria-hidden="true"></span>
-            Web: <span id="webHint" style="color:rgba(255,255,255,.9)">loading…</span>
+            Web: <span id="webHint">loading…</span>
           </div>
           <div class="pill" id="alexaPill" title="Alexa public domain health">
             <span class="dot" aria-hidden="true"></span>
-            Alexa: <span id="alexaHint" style="color:rgba(255,255,255,.9)">unknown</span>
+            Alexa: <span id="alexaHint">unknown</span>
           </div>
           <div class="pill" id="moodePill" title="moOde host verification">
             <span class="dot" aria-hidden="true"></span>
-            moOde: <span id="moodeHint" style="color:rgba(255,255,255,.9)">not verified</span>
+            moOde: <span id="moodeHint">not verified</span>
           </div>
+          <button id="themeToggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme">🌙</button>
         </div>
       </div>
       <header>
@@ -1711,6 +1713,24 @@ applyRuntimeGate();
 refreshSshSetupHelp();
 applyInitialNetworkPrefills();
 loadCfg().catch(e => log(String(e)));
+</script>
+
+<script>
+(function(){
+  const btn = document.getElementById('themeToggle');
+  function applyTheme(theme){
+    const t = (String(theme||'dark').toLowerCase()==='light') ? 'light' : 'dark';
+    document.documentElement.classList.toggle('theme-light', t === 'light');
+    document.body.classList.toggle('theme-light', t === 'light');
+    document.documentElement.style.background = t === 'light' ? '#8e79b6' : '#0c1526';
+    if (btn) btn.textContent = t === 'light' ? '☀️' : '🌙';
+    try { localStorage.setItem('np-theme', t); } catch {}
+  }
+  let saved = 'dark';
+  try { saved = localStorage.getItem('np-theme') || 'dark'; } catch {}
+  applyTheme(saved);
+  btn?.addEventListener('click', ()=> applyTheme(document.body.classList.contains('theme-light') ? 'dark' : 'light'));
+})();
 </script>
 
 <script>

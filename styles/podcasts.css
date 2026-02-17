@@ -674,3 +674,87 @@ input::placeholder {
   fill: #bbb
 }
 .btnPrimary { pointer-events: auto !important; z-index: 10; }
+
+/* ---------- Shared Light Theme (Apple-ish Purple) ---------- */
+html.theme-light{
+  background:#8e79b6 !important;
+  background-attachment: fixed !important;
+  background-repeat:no-repeat !important;
+}
+body.theme-light{
+  background: transparent !important;
+  color:#16151d;
+  display:block !important;
+}
+body.theme-light .heroRail{
+  background:rgba(116,92,158,.90) !important;
+  border-bottom:1px solid rgba(53,40,78,.30) !important;
+  backdrop-filter:blur(16px) saturate(120%) !important;
+  -webkit-backdrop-filter:blur(16px) saturate(120%) !important;
+  padding-top:10px !important;
+}
+body.theme-light .heroWrap{
+  background:rgba(214,197,239,.82) !important;
+  border:1px solid rgba(63,47,95,.36) !important;
+  box-shadow:0 12px 30px rgba(30,20,48,.26) !important;
+  margin-top:0 !important;
+}
+body.theme-light .brand h1{ color:#16151d !important; }
+body.theme-light .brand .sub,
+body.theme-light .muted,
+body.theme-light .statusText,
+body.theme-light .tinyMuted{ color:#2e2348 !important; }
+body.theme-light .pill{
+  background:rgba(225,214,244,.74) !important;
+  border:1px solid rgba(63,47,95,.24) !important;
+  color:#231b35 !important;
+}
+body.theme-light .pill span{ color:inherit !important; }
+body.theme-light .topTabs a{
+  background:rgba(174,149,216,.62) !important;
+  border-color:rgba(63,47,95,.28) !important;
+  color:#1d172d !important;
+  box-shadow:none !important;
+}
+body.theme-light .topTabs a.active{
+  background:rgba(103,80,164,.55) !important;
+  border-color:rgba(53,40,78,.44) !important;
+  color:#f4eefe !important;
+}
+body.theme-light .card,
+body.theme-light .panel,
+body.theme-light .subsShell,
+body.theme-light .cfgCard,
+body.theme-light details{
+  background:rgba(206,188,234,.82) !important;
+  border:1px solid rgba(63,47,95,.34) !important;
+  color:#16151d !important;
+  box-shadow:0 10px 26px rgba(30,20,48,.22) !important;
+}
+body.theme-light .actionBar,
+body.theme-light .statusRow,
+body.theme-light .cardHead,
+body.theme-light .modalHead,
+body.theme-light .modalActions{
+  background:rgba(195,176,226,.68) !important;
+  border-color:rgba(63,47,95,.26) !important;
+}
+body.theme-light input,
+body.theme-light select,
+body.theme-light textarea,
+body.theme-light button,
+body.theme-light .btn,
+body.theme-light .modal,
+body.theme-light pre,
+body.theme-light #queueWrap,
+body.theme-light #liveFrameViewport{
+  background:rgba(233,226,246,.86) !important;
+  color:#16151d !important;
+  border-color:rgba(63,47,95,.22) !important;
+}
+body.theme-light .btnPrimary{
+  background:linear-gradient(180deg,#7c6cff,#6b5be8) !important;
+  border-color:#5f50d6 !important;
+  color:#fff !important;
+}
+body.theme-light th, body.theme-light td{ border-bottom-color:rgba(63,47,95,.26) !important; color:#16151d; }

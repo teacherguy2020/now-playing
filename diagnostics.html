@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Diagnostics</title>
-  <link rel="stylesheet" href="styles/podcasts.css?v=20260211-1" />
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260216-55" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
@@ -18,6 +18,7 @@
     pre{white-space:pre-wrap;word-break:break-word;background:#071021;border:1px solid #2a3a58;border-radius:10px;padding:12px;max-height:55vh;overflow:auto}
     .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.28);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
     @keyframes spin{to{transform:rotate(360deg)}}
+    #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
   </style>
 </head>
 <body>
@@ -31,11 +32,12 @@
           <a href="queue-wizard.html">Queue Wizard</a>
           <a href="podcasts.html" id="podcastsNavLink">Podcasts</a>
         </nav>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <div class="pill" id="apiPill" title="Active API endpoint"><span class="dot"></span>API: <span id="apiHint">loading…</span></div>
           <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot"></span>Web: <span id="webHint">loading…</span></div>
           <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot"></span>Alexa: <span id="alexaHint">unknown</span></div>
           <div class="pill" id="moodePill" title="moOde host verification"><span class="dot"></span>moOde: <span id="moodeHint">unknown</span></div>
+          <button id="themeToggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme">🌙</button>
         </div>
       </div>
       <header>
@@ -132,6 +134,22 @@
   <script src="scripts/diagnostics.js?v=20260216-8"></script>
 
 <script>
+(function(){
+  const btn = document.getElementById('themeToggle');
+  function applyTheme(theme){
+    const t = (String(theme||'dark').toLowerCase()==='light') ? 'light' : 'dark';
+    document.documentElement.classList.toggle('theme-light', t === 'light');
+    document.body.classList.toggle('theme-light', t === 'light');
+    document.documentElement.style.background = t === 'light' ? '#8e79b6' : '#0c1526';
+    if (btn) btn.textContent = t === 'light' ? '☀️' : '🌙';
+    try { localStorage.setItem('np-theme', t); } catch {}
+  }
+  let saved = 'dark';
+  try { saved = localStorage.getItem('np-theme') || 'dark'; } catch {}
+  applyTheme(saved);
+  btn?.addEventListener('click', ()=> applyTheme(document.body.classList.contains('theme-light') ? 'dark' : 'light'));
+})();
+
 (async function syncPodcastsNavVisibility(){
   try {
     const link = document.getElementById('podcastsNavLink');
