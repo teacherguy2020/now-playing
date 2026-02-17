@@ -751,34 +751,8 @@ async function syncVibeAvailability() {
     if (!resultsEl) return;
     const apiBase = getApiBase();
     const list = Array.isArray(items) ? items.slice(0, 120) : [];
-    const shuffleLabel = typeof randomOn === 'boolean' ? `Shuffle: ${randomOn ? 'On' : 'Off'}` : 'Shuffle';
-    const shuffleOn = typeof randomOn === 'boolean' && randomOn;
-    const repeatLabel = typeof repeatOn === 'boolean' ? `Repeat: ${repeatOn ? 'On' : 'Off'}` : 'Repeat';
-    const repeatEnabled = typeof repeatOn === 'boolean' && repeatOn;
-    const ppLabel = queuePlayPauseMode === 'play' ? 'Play' : 'Pause';
-    const ppIcon = queueControlIcon(queuePlayPauseMode === 'play' ? 'play' : 'pause');
-    const headItem = list.find((x) => !!x?.isHead) || list[0] || null;
-    let nowPlayingInline = '';
-    if (headItem) {
-      const hThumbSrc = headItem.thumbUrl ? (String(headItem.thumbUrl).startsWith('http') ? String(headItem.thumbUrl) : `${apiBase}${headItem.thumbUrl}`) : '';
-      const hThumb = hThumbSrc
-        ? `<img class="art" src="${hThumbSrc}" alt="" />`
-        : '<div class="art"></div>';
-      const hPos = Number(headItem.position || 0);
-      const hArtist = esc(String(headItem.artist || ''));
-      const hTitle = esc(String(headItem.title || ''));
-      const hAlbum = esc(String(headItem.album || ''));
-      const hStars = isPodcastLike(headItem) ? '' : starsHtml(String(headItem.file || ''), Number(headItem.rating || 0));
-      nowPlayingInline = `<div class="nowPlayingInline">${hThumb}<div class="meta"><div class="line1">${hPos ? `${hPos}. ` : ''}${hArtist}</div><div class="line2">${hTitle}${hAlbum ? ` • ${hAlbum}` : ''}</div>${hStars}</div></div>`;
-    }
-    const controlsHtml = `<div class="queueControlsWrap"><div class="queueControls">` +
-      `<button type="button" class="iconBtn ${repeatEnabled ? 'on' : ''}" data-queue-playback="repeat" title="${repeatLabel}" aria-label="${repeatLabel}">${queueControlIcon('repeat')}</button>` +
-      `<button type="button" class="iconBtn" data-queue-playback="prev" title="Previous" aria-label="Previous">${queueControlIcon('prev')}</button>` +
-      `<button type="button" class="iconBtn big" data-queue-playback="togglepp" title="${ppLabel}" aria-label="${ppLabel}">${ppIcon}</button>` +
-      `<button type="button" class="iconBtn" data-queue-playback="next" title="Next" aria-label="Next">${queueControlIcon('next')}</button>` +
-      `<button type="button" class="iconBtn ${shuffleOn ? 'on' : ''}" data-queue-playback="shuffle" title="${shuffleLabel}" aria-label="${shuffleLabel}">${queueControlIcon('shuffle')}</button>` +
-      `</div>${nowPlayingInline || ''}</div>`;
-    if (queuePlaybackAreaEl) queuePlaybackAreaEl.innerHTML = controlsHtml;
+    // Controls + mini now-playing are now rendered in hero transport.
+    if (queuePlaybackAreaEl) queuePlaybackAreaEl.innerHTML = '';
     if (!list.length) {
       resultsEl.innerHTML = `<div class="muted">Queue is empty.</div>`;
       return;

@@ -320,35 +320,8 @@
       if (typeof j?.randomOn === 'boolean') updateShuffleBtn(j.randomOn);
       if (typeof j?.ratingsEnabled === 'boolean') ratingsEnabled = j.ratingsEnabled;
       const items = Array.isArray(j.items) ? j.items : [];
-      const randomOn = typeof j?.randomOn === 'boolean' ? j.randomOn : false;
-      const repeatOn = typeof j?.repeatOn === 'boolean' ? j.repeatOn : false;
-      const playbackState = String(j?.playbackState || '').toLowerCase();
-      queuePlayPauseMode = playbackState === 'playing' ? 'pause' : 'play';
-
-      const ppLabel = queuePlayPauseMode === 'play' ? 'Play' : 'Pause';
-      const controlsHtml = `<div class="queueControlsWrap"><div class="queueControls">` +
-        `<button type="button" class="iconBtn ${repeatOn ? 'on' : ''}" data-queue-playback="repeat" title="Repeat" aria-label="Repeat">${queueControlIcon('repeat')}</button>` +
-        `<button type="button" class="iconBtn" data-queue-playback="prev" title="Previous" aria-label="Previous">${queueControlIcon('prev')}</button>` +
-        `<button type="button" class="iconBtn big" data-queue-playback="togglepp" title="${ppLabel}" aria-label="${ppLabel}">${queueControlIcon(queuePlayPauseMode === 'play' ? 'play' : 'pause')}</button>` +
-        `<button type="button" class="iconBtn" data-queue-playback="next" title="Next" aria-label="Next">${queueControlIcon('next')}</button>` +
-        `<button type="button" class="iconBtn ${randomOn ? 'on' : ''}" data-queue-playback="shuffle" title="Shuffle" aria-label="Shuffle">${queueControlIcon('shuffle')}</button>` +
-        `</div>`;
-
-      const headItem = items.find((x) => !!x?.isHead) || items[0] || null;
-      let nowPlayingInline = '';
-      if (headItem) {
-        const hThumbSrc = headItem.thumbUrl ? (String(headItem.thumbUrl).startsWith('http') ? String(headItem.thumbUrl) : `${base}${headItem.thumbUrl}`) : '';
-        const hThumb = hThumbSrc ? `<img class="art" src="${hThumbSrc}" alt="" />` : '<div class="art"></div>';
-        const hPos = Number(headItem.position || 0);
-        const hArtist = String(headItem.artist || '');
-        const hTitle = String(headItem.title || '');
-        const hAlbum = String(headItem.album || '');
-        const hStars = isPodcastLike(headItem) ? '' : starsHtml(headItem.file, Number(headItem.rating || 0));
-        nowPlayingInline = `<div class="nowPlayingInline">${hThumb}<div class="meta"><div class="line1">${hPos ? `${hPos}. ` : ''}${hArtist}</div><div class="line2">${hTitle}${hAlbum ? ` • ${hAlbum}` : ''}</div>${hStars}</div></div>`;
-      }
-
-      if (!items.length) { wrap.innerHTML = controlsHtml + (nowPlayingInline || '') + '</div><div class="muted">Queue is empty.</div>'; return; }
-      wrap.innerHTML = controlsHtml + (nowPlayingInline || '') + '</div>' + items.slice(0, 80).map((x) => {
+      if (!items.length) { wrap.innerHTML = '<div class="muted">Queue is empty.</div>'; return; }
+      wrap.innerHTML = items.slice(0, 80).map((x) => {
         const thumbSrc = x.thumbUrl ? (String(x.thumbUrl).startsWith('http') ? String(x.thumbUrl) : `${base}${x.thumbUrl}`) : '';
         const thumb = thumbSrc ? `<img src="${thumbSrc}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />` : '<div style="width:36px;height:36px"></div>';
         const head = !!x.isHead;

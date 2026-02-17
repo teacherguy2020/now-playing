@@ -1,0 +1,83 @@
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const host = location.hostname;
+  const apiPort = (location.port === '8101') ? '3101' : '3000';
+  const apiBase = `${location.protocol}//${host}:${apiPort}`;
+
+  function icon(name) {
+    if (name === 'play') return '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+    if (name === 'pause') return '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
+    if (name === 'prev') return '<svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3 6 9-6v12z"/></svg>';
+    if (name === 'next') return '<svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM7 18V6l9 6z"/></svg>';
+    if (name === 'repeat') return '<svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H6a3 3 0 0 0-3 3v3h2V8a1 1 0 0 1 1-1zm10 10H7v-3l-4 4 4 4v-3h11a3 3 0 0 0 3-3v-3h-2v2a1 1 0 0 1-1 1z"/></svg>';
+    if (name === 'shuffle') return '<svg viewBox="0 0 32 32"><path fill="currentColor" d="M24.414,16.586L30.828,23l-6.414,6.414l-2.828-2.828L23.172,25H22c-3.924,0-6.334-2.289-8.173-4.747c0.987-1.097,1.799-2.285,2.516-3.36C18.109,19.46,19.521,21,22,21h1.172l-1.586-1.586L24.414,16.586z M22,11h1.172l-1.586,1.586l2.828,2.828L30.828,9l-6.414-6.414l-2.828,2.828L23.172,7H22c-5.07,0-7.617,3.82-9.664,6.891C10.224,17.059,8.788,19,6,19H2v4h4c5.07,0,7.617-3.82,9.664-6.891C17.776,12.941,19.212,11,22,11z M10.212,15.191c0.399-0.539,1.957-2.848,2.322-3.365C10.917,10.216,8.86,9,6,9H2v4h4C7.779,13,9.007,13.797,10.212,15.191z"/></svg>';
+    return '';
+  }
+
+  async function playback(action, key) {
+    const r = await fetch(`${apiBase}/config/diagnostics/playback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
+      body: JSON.stringify({ action }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    return j;
+  }
+
+  async function loadQueueState(key) {
+    const r = await fetch(`${apiBase}/config/diagnostics/queue`, { headers: key ? { 'x-track-key': key } : {} });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    return j;
+  }
+
+  function render(el, q) {
+    const items = Array.isArray(q?.items) ? q.items : [];
+    const head = items.find((x) => !!x?.isHead) || items[0] || null;
+    const state = String(q?.playbackState || '').toLowerCase();
+    const pp = state === 'playing' ? 'pause' : 'play';
+    const randomOn = !!q?.randomOn;
+    const repeatOn = !!q?.repeatOn;
+    const thumb = head?.thumbUrl ? (String(head.thumbUrl).startsWith('http') ? String(head.thumbUrl) : `${apiBase}${head.thumbUrl}`) : '';
+    const text = head ? `${head.artist || ''} • ${head.title || ''}` : 'Nothing playing';
+
+    el.innerHTML =
+      `<button class="tbtn ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` +
+      `<button class="tbtn" data-a="previous" title="Previous">${icon('prev')}</button>` +
+      `<button class="tbtn" data-a="${pp}" title="${pp}">${icon(pp)}</button>` +
+      `<button class="tbtn" data-a="next" title="Next">${icon('next')}</button>` +
+      `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
+      `<div class="np">${thumb ? `<img src="${thumb}" alt="">` : ''}<div class="txt">${text}</div></div>`;
+  }
+
+  function init() {
+    const el = $('heroTransport');
+    if (!el) return;
+    const key = String($('key')?.value || '').trim();
+    let busy = false;
+
+    const refresh = async () => {
+      try {
+        const q = await loadQueueState(key);
+        render(el, q);
+      } catch {}
+    };
+
+    el.addEventListener('click', async (ev) => {
+      const btn = ev.target instanceof Element ? ev.target.closest('button[data-a]') : null;
+      if (!btn || busy) return;
+      busy = true;
+      const action = String(btn.getAttribute('data-a') || '').trim().toLowerCase();
+      try { await playback(action, key); } catch {}
+      await refresh();
+      busy = false;
+    });
+
+    refresh();
+    setInterval(refresh, 5000);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
