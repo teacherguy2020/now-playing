@@ -1,6 +1,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   let ratingsEnabled = true;
+  let queuePlayPauseMode = 'play';
 
   const ENDPOINTS_FALLBACK = [
     // Auto-expanded endpoint catalog
@@ -295,6 +296,17 @@
     return out;
   }
 
+  function queueControlIcon(name = '') {
+    const n = String(name || '').toLowerCase();
+    if (n === 'play') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+    if (n === 'pause') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
+    if (n === 'prev') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3 6 9-6v12z"/></svg>';
+    if (n === 'next') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6h2v12h-2zM7 18V6l9 6z"/></svg>';
+    if (n === 'repeat') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v3l4-4-4-4v3H6a3 3 0 0 0-3 3v3h2V8a1 1 0 0 1 1-1zm10 10H7v-3l-4 4 4 4v-3h11a3 3 0 0 0 3-3v-3h-2v2a1 1 0 0 1-1 1z"/></svg>';
+    if (n === 'shuffle') return '<svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M24.414,16.586L30.828,23l-6.414,6.414l-2.828-2.828L23.172,25H22c-3.924,0-6.334-2.289-8.173-4.747c0.987-1.097,1.799-2.285,2.516-3.36C18.109,19.46,19.521,21,22,21h1.172l-1.586-1.586L24.414,16.586z M22,11h1.172l-1.586,1.586l2.828,2.828L30.828,9l-6.414-6.414l-2.828,2.828L23.172,7H22c-5.07,0-7.617,3.82-9.664,6.891C10.224,17.059,8.788,19,6,19H2v4h4c5.07,0,7.617-3.82,9.664-6.891C17.776,12.941,19.212,11,22,11z M10.212,15.191c0.399-0.539,1.957-2.848,2.322-3.365C10.917,10.216,8.86,9,6,9H2v4h4C7.779,13,9.007,13.797,10.212,15.191z"/></svg>';
+    return '';
+  }
+
   async function loadQueue(){
     const base = String($('apiBase').value || apiBaseDefault()).replace(/\/$/,'');
     const key = String($('key').value || '').trim();
@@ -308,8 +320,35 @@
       if (typeof j?.randomOn === 'boolean') updateShuffleBtn(j.randomOn);
       if (typeof j?.ratingsEnabled === 'boolean') ratingsEnabled = j.ratingsEnabled;
       const items = Array.isArray(j.items) ? j.items : [];
-      if (!items.length) { wrap.innerHTML = '<div class="muted">Queue is empty.</div>'; return; }
-      wrap.innerHTML = items.slice(0, 80).map((x) => {
+      const randomOn = typeof j?.randomOn === 'boolean' ? j.randomOn : false;
+      const repeatOn = typeof j?.repeatOn === 'boolean' ? j.repeatOn : false;
+      const playbackState = String(j?.playbackState || '').toLowerCase();
+      queuePlayPauseMode = playbackState === 'playing' ? 'pause' : 'play';
+
+      const ppLabel = queuePlayPauseMode === 'play' ? 'Play' : 'Pause';
+      const controlsHtml = `<div class="queueControlsWrap"><div class="queueControls">` +
+        `<button type="button" class="iconBtn ${repeatOn ? 'on' : ''}" data-queue-playback="repeat" title="Repeat" aria-label="Repeat">${queueControlIcon('repeat')}</button>` +
+        `<button type="button" class="iconBtn" data-queue-playback="prev" title="Previous" aria-label="Previous">${queueControlIcon('prev')}</button>` +
+        `<button type="button" class="iconBtn big" data-queue-playback="togglepp" title="${ppLabel}" aria-label="${ppLabel}">${queueControlIcon(queuePlayPauseMode === 'play' ? 'play' : 'pause')}</button>` +
+        `<button type="button" class="iconBtn" data-queue-playback="next" title="Next" aria-label="Next">${queueControlIcon('next')}</button>` +
+        `<button type="button" class="iconBtn ${randomOn ? 'on' : ''}" data-queue-playback="shuffle" title="Shuffle" aria-label="Shuffle">${queueControlIcon('shuffle')}</button>` +
+        `</div>`;
+
+      const headItem = items.find((x) => !!x?.isHead) || items[0] || null;
+      let nowPlayingInline = '';
+      if (headItem) {
+        const hThumbSrc = headItem.thumbUrl ? (String(headItem.thumbUrl).startsWith('http') ? String(headItem.thumbUrl) : `${base}${headItem.thumbUrl}`) : '';
+        const hThumb = hThumbSrc ? `<img class="art" src="${hThumbSrc}" alt="" />` : '<div class="art"></div>';
+        const hPos = Number(headItem.position || 0);
+        const hArtist = String(headItem.artist || '');
+        const hTitle = String(headItem.title || '');
+        const hAlbum = String(headItem.album || '');
+        const hStars = isPodcastLike(headItem) ? '' : starsHtml(headItem.file, Number(headItem.rating || 0));
+        nowPlayingInline = `<div class="nowPlayingInline">${hThumb}<div class="meta"><div class="line1">${hPos ? `${hPos}. ` : ''}${hArtist}</div><div class="line2">${hTitle}${hAlbum ? ` • ${hAlbum}` : ''}</div>${hStars}</div></div>`;
+      }
+
+      if (!items.length) { wrap.innerHTML = controlsHtml + (nowPlayingInline || '') + '</div><div class="muted">Queue is empty.</div>'; return; }
+      wrap.innerHTML = controlsHtml + (nowPlayingInline || '') + '</div>' + items.slice(0, 80).map((x) => {
         const thumbSrc = x.thumbUrl ? (String(x.thumbUrl).startsWith('http') ? String(x.thumbUrl) : `${base}${x.thumbUrl}`) : '';
         const thumb = thumbSrc ? `<img src="${thumbSrc}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />` : '<div style="width:36px;height:36px"></div>';
         const head = !!x.isHead;
@@ -452,9 +491,26 @@
   $('runBtn').addEventListener('click', () => run());
   $('reloadLiveBtn')?.addEventListener('click', () => loadRuntime());
   $('liveZoom')?.addEventListener('input', applyLiveZoom);
-  $('reloadQueueBtn')?.addEventListener('click', () => loadQueue());
   $('queueWrap')?.addEventListener('click', (ev) => {
     const el = ev.target instanceof Element ? ev.target : null;
+
+    const playbackBtn = el ? el.closest('button[data-queue-playback]') : null;
+    if (playbackBtn) {
+      ev.preventDefault();
+      playbackBtn.classList.add('clicked');
+      setTimeout(() => playbackBtn.classList.remove('clicked'), 140);
+      const raw = String(playbackBtn.getAttribute('data-queue-playback') || '').trim().toLowerCase();
+      const action = raw === 'togglepp' ? (queuePlayPauseMode === 'play' ? 'play' : 'pause') : raw;
+      playbackBtn.disabled = true;
+      sendPlayback(action)
+        .then(() => {
+          if (raw === 'togglepp') queuePlayPauseMode = action === 'play' ? 'pause' : 'play';
+        })
+        .catch((e) => { $('status').textContent = String(e?.message || e); })
+        .finally(() => { playbackBtn.disabled = false; });
+      return;
+    }
+
     const rateBtn = el ? el.closest('button[data-rate-file][data-rate-val]') : null;
     if (rateBtn) {
       if (!ratingsEnabled) return;
@@ -493,11 +549,7 @@
       .catch((e) => { $('status').textContent = String(e?.message || e); })
       .finally(() => { btn.disabled = false; });
   });
-  $('playBtn')?.addEventListener('click', () => sendPlayback('play').catch((e)=>$('status').textContent=String(e?.message||e)));
-  $('pauseBtn')?.addEventListener('click', () => sendPlayback('pause').catch((e)=>$('status').textContent=String(e?.message||e)));
-  $('shuffleBtn')?.addEventListener('click', () => sendPlayback('shuffle').catch((e)=>$('status').textContent=String(e?.message||e)));
-  $('prevBtn')?.addEventListener('click', () => sendPlayback('prev').catch((e)=>$('status').textContent=String(e?.message||e)));
-  $('nextBtn')?.addEventListener('click', () => sendPlayback('next').catch((e)=>$('status').textContent=String(e?.message||e)));
+  // Transport controls are rendered inside queueWrap and handled via event delegation.
   async function copyResponse(){
     try { await navigator.clipboard.writeText($('out').textContent || ''); $('status').textContent = 'Response copied.'; }
     catch { $('status').textContent = 'Copy failed.'; }
