@@ -1466,17 +1466,47 @@ function splitTitlePerformersProgram(titleLine) {
   const raw = String(titleLine || '').trim();
   if (!raw) return null;
 
-  // Case A: "work - performers - program"
-  const parts = raw.split(/\s*-\s*/).map(s => s.trim()).filter(Boolean);
-  if (parts.length >= 3) {
-    const program = parts.pop();
-    const perfRaw = parts.pop();
-    const work = parts.join(' - ');
-    const personnel = perfRaw.split(/\s*,\s*/).map(s => s.trim()).filter(Boolean);
+  const normalizeEns = (s) => String(s || '')
+    .replace(/\bOrch\b/gi, 'Orchestra')
+    .replace(/\bSym\b/gi, 'Symphony')
+    .replace(/\bPhil\b/gi, 'Philharmonic')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  const parsePersonnel = (perfRaw) => {
+    const p = String(perfRaw || '').trim();
+    if (!p) return [];
+    if (p.includes('/')) {
+      const [lhs = '', rhs = ''] = p.split('/').map((x) => x.trim());
+      const out = [];
+      if (lhs) out.push(normalizeEns(lhs));
+      if (rhs) out.push(`${rhs} (conductor)`);
+      return out.filter(Boolean);
+    }
+    return p.split(/\s*,\s*/).map((x) => normalizeEns(x)).filter(Boolean);
+  };
+
+  // Case A: spaced-dash pattern (preserve hyphenated names like Ippolitov-Ivanov)
+  const parts = raw.split(/\s+-\s+/).map(s => s.trim()).filter(Boolean);
+  if (parts.length >= 4) {
+    // WFMT often: Composer - Work - Performers - Program (- Label)
+    const first = String(parts[0] || '');
+    const second = String(parts[1] || '');
+    const perfRaw = String(parts[2] || '');
+    const looksComposer = /^[A-Za-zÀ-ÿ'’. -]+$/.test(first) && /\s/.test(first);
+    const work = looksComposer ? second : `${first} - ${second}`;
+    const personnel = parsePersonnel(perfRaw);
+    const program = String(parts[3] || '');
+    return { work, personnel, program };
+  }
+  if (parts.length === 3) {
+    const work = String(parts[0] || '');
+    const personnel = parsePersonnel(parts[1]);
+    const program = String(parts[2] || '');
     return { work, personnel, program };
   }
 
-  // Case B (WFMT-ish): "work-soloist, p; Orchestra/Conductor"
+  // Case B (WFMT-ish compact): "work-soloist, p; Orchestra/Conductor"
   const m = raw.match(/^(.*?)\s*-\s*(.*?)\s*;\s*([^\/;]+?)(?:\s*\/\s*([^;]+))?\s*$/);
   if (!m) return null;
   const work = String(m[1] || '').trim();
@@ -1486,7 +1516,6 @@ function splitTitlePerformersProgram(titleLine) {
 
   const personnel = [];
   if (soloistRaw) {
-    // expand short instrument role hints
     const solo = soloistRaw
       .replace(/,\s*p\b/i, ' (piano)')
       .replace(/,\s*pf\b/i, ' (piano)')
@@ -1495,7 +1524,7 @@ function splitTitlePerformersProgram(titleLine) {
       .trim();
     personnel.push(solo);
   }
-  if (orchRaw) personnel.push(orchRaw.replace(/\bOrch\b/gi, 'Orchestra').trim());
+  if (orchRaw) personnel.push(normalizeEns(orchRaw));
   if (condRaw) personnel.push(`${condRaw} (conductor)`);
 
   return { work, personnel, program: '' };
@@ -4694,7 +4723,20 @@ app.get('/now-playing', async (req, res) => {
         }
       } else {
         const decoded = decodeHtmlEntities(String(title || '').trim());
-        const prefix = `${a0} - `;
+
+        // If title starts with full hyphenated composer surname (e.g., Ippolitov-Ivanov)
+        // and current artist is only a prefix, promote artist to the full composer.
+        const hyComposer = decoded.match(/^([A-Za-zÀ-ÿ'’.\- ]+\-[A-Za-zÀ-ÿ'’.\- ]+)\s+-\s+(.+)$/);
+        if (hyComposer) {
+          const fullComposer = String(hyComposer[1] || '').trim();
+          const rest = String(hyComposer[2] || '').trim();
+          if (!a0 || fullComposer.toLowerCase().startsWith(a0.toLowerCase())) {
+            artist = fullComposer;
+            title = rest;
+          }
+        }
+
+        const prefix = `${String(artist || a0).trim()} - `;
         if (decoded.toLowerCase().startsWith(prefix.toLowerCase())) {
           title = decoded.slice(prefix.length).trim();
         }
