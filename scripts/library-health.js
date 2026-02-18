@@ -1175,6 +1175,8 @@ async function applyPerformers(){
 
 
 
+let animatedArtViewMode = 'motion';
+
 function setAnimatedArtPreview(mp4, label = '') {
   const box = $('animatedArtPreview');
   const lab = $('animatedArtPreviewLabel');
@@ -1201,15 +1203,21 @@ async function refreshAnimatedArtSummary() {
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
     sumEl.textContent = `Cached albums: ${Number(j.total || 0).toLocaleString()} · Motion matches: ${Number(j.matched || 0).toLocaleString()} · Updated: ${String(j.updatedAt || 'n/a')}`;
     if (listEl) {
-      const rows = (Array.isArray(j.entries) ? j.entries : [])
+      const rowsAll = (Array.isArray(j.entries) ? j.entries : [])
         .sort((a, b) => {
-          const aa = String(a?.artist || '').toLowerCase();
-          const ba = String(b?.artist || '').toLowerCase();
-          if (aa !== ba) return aa.localeCompare(ba);
-          const al = String(a?.album || '').toLowerCase();
-          const bl = String(b?.album || '').toLowerCase();
-          return al.localeCompare(bl);
-        });
+           const aa = String(a?.artist || '').toLowerCase();
+           const ba = String(b?.artist || '').toLowerCase();
+           if (aa !== ba) return aa.localeCompare(ba);
+           const al = String(a?.album || '').toLowerCase();
+           const bl = String(b?.album || '').toLowerCase();
+           return al.localeCompare(bl);
+         });
+      const rows = rowsAll.filter((x) => {
+        const hasMotion = !!x?.hasMotion && !!String(x?.mp4 || x?.mp4H264 || '').trim();
+        if (animatedArtViewMode === 'motion') return hasMotion;
+        if (animatedArtViewMode === 'no-motion') return !hasMotion;
+        return true;
+      });
       listEl.innerHTML = rows.length
         ? `<table style="width:100%;border-collapse:separate;border-spacing:0 6px;">
             <thead>
@@ -1248,7 +1256,7 @@ async function refreshAnimatedArtSummary() {
             }).join('')}
             </tbody>
           </table>`
-        : '<div class="muted">No cached motion albums yet.</div>';
+        : `<div class="muted">No ${animatedArtViewMode === 'all' ? '' : animatedArtViewMode + ' '}cached albums in this view.</div>`;
     }
   } catch (e) {
     sumEl.textContent = `Animated art summary unavailable: ${String(e?.message || e)}`;
@@ -1298,6 +1306,13 @@ $('suggestPerformersBtn')?.addEventListener('click', suggestPerformers);
 $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
 // discovery workflow removed
 // discovery workflow removed
+document.querySelectorAll('input[name="animatedArtViewMode"]').forEach((el) => {
+  el.addEventListener('change', () => {
+    animatedArtViewMode = String(document.querySelector('input[name="animatedArtViewMode"]:checked')?.value || 'motion');
+    refreshAnimatedArtSummary().catch(() => {});
+  });
+});
+
 $('animatedArtCacheList')?.addEventListener('click', (ev) => {
   const suppressChk = ev.target?.closest?.('[data-suppress-animated-key]');
   if (suppressChk) {

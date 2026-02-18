@@ -73,6 +73,12 @@
     <details id="animatedArtCacheCard">
       <summary>Animated Art Cache (local library)</summary>
       <div class="muted" id="animatedArtSummary" style="margin-top:8px;"></div>
+      <div class="row" style="margin-top:6px;gap:8px;align-items:center;">
+        <span class="muted">View:</span>
+        <label class="tiny" style="display:inline-flex;align-items:center;gap:4px;"><input type="radio" name="animatedArtViewMode" value="motion" checked> Motion</label>
+        <label class="tiny" style="display:inline-flex;align-items:center;gap:4px;"><input type="radio" name="animatedArtViewMode" value="no-motion"> No-motion</label>
+        <label class="tiny" style="display:inline-flex;align-items:center;gap:4px;"><input type="radio" name="animatedArtViewMode" value="all"> All</label>
+      </div>
       <div id="animatedArtLayout" style="margin-top:8px;display:flex;gap:14px;align-items:flex-start;justify-content:space-between;">
         <div style="flex:1 1 auto;min-width:0;">
           <div id="animatedArtCacheList" class="muted" style="max-height:320px;overflow:auto;"></div>
