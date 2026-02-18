@@ -159,6 +159,21 @@ Recent behavior highlights:
 - Collage preview is generated for both filtered and vibe lists
 - Vibe is automatically hidden when Last.fm is not configured
 
+### Radio page (`radio.html`)
+
+`radio.html` is the dedicated radio control surface.
+
+Highlights:
+- Uses the shared hero transport card for now-playing context and transport actions.
+- Includes a right-side favorites drawer for one-tap station actions.
+- Shows stream-focused metadata in hero mode (for example `Live • <station name>` when no progress bar is available).
+- Keeps status pill parity with other pages (API / Web / moOde / Alexa).
+- Uses the same runtime key + API patterns as other UI pages.
+
+Notes:
+- Radio workflows were moved out of Queue Wizard into this dedicated page.
+- If changes seem stale on deployed Pis, hard refresh and/or bump cache-buster query strings for `radio.js` / `hero-transport.js`.
+
 ### Web config page
 
 You can edit core settings in-browser at:
