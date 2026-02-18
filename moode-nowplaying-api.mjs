@@ -3347,6 +3347,48 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       break;
     }
 
+    // Album-tier fallback for classical-like radio misses:
+    // performer/ensemble + program hint often works better than composer+movement song search.
+    if (!url && String(opts?.albumHint || '').trim() && String(a || '').trim()) {
+      const shortComposer = String(opts?.composerShort || '').trim();
+      const albumTerms = [
+        `${a} ${opts.albumHint}`,
+        shortComposer ? `${shortComposer} ${opts.albumHint}` : '',
+      ].filter(Boolean);
+
+      for (const term of albumTerms) {
+        const albumQueryUrl = `${ITUNES_SEARCH_URL}?term=${encodeURIComponent(term)}&entity=album&limit=8`;
+        const d2 = await fetchJsonWithTimeout(albumQueryUrl, ITUNES_TIMEOUT_MS);
+        const r2 = Array.isArray(d2?.results) ? d2.results : [];
+        let picked = null;
+
+        for (const item of r2) {
+          const cName = String(item?.collectionName || '').trim();
+          const aName = String(item?.artistName || '').trim();
+          if (!albumHintMatches(String(opts.albumHint || ''), cName)) continue;
+          if (a && !artistMatchStrict(a, aName) && !String(aName).toLowerCase().includes(String(a).toLowerCase())) continue;
+          picked = item;
+          break;
+        }
+
+        if (!picked && r2.length) {
+          picked = r2.find((item) => albumHintMatches(String(opts.albumHint || ''), String(item?.collectionName || '').trim())) || null;
+        }
+
+        if (picked) {
+          url = pickArtFromItunesItem(picked) || '';
+          const p2 = pickAlbumAndYearFromItunesItem(picked) || {};
+          album = String(p2.album || picked?.collectionName || '');
+          year = String(p2.year || '');
+          albumUrl = String(picked?.collectionViewUrl || '');
+          trackUrl = '';
+          matchedArtist = String(picked?.artistName || '').trim();
+          matchedTitle = '';
+          break;
+        }
+      }
+    }
+
     // ✅ Cache both hits and misses, including URLs if present
     itunesArtCache.set(cacheKey, {
       url,
@@ -3359,7 +3401,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       ts: now,
     });
 
-    const reason = url ? 'ok:bestMatch' : ((opts?.strictArtist && strictRejected > 0) ? 'no-artist-match' : 'no-art');
+    const reason = url ? (trackUrl ? 'ok:bestMatch' : 'ok:albumFallback') : ((opts?.strictArtist && strictRejected > 0) ? 'no-artist-match' : 'no-art');
 
     if (debug) {
       return {
@@ -4404,6 +4446,7 @@ app.get('/now-playing', async (req, res) => {
 
   function deriveRadioLookupContext({ artist, title, radioPerformers = '', personnel = [], albumHint = '' }) {
     const s = sanitizeRadioLookupInputs({ artist, title });
+    const composerDisplay = String(artist || '').trim();
     let lookupArtist = String(s.artist || '').trim();
     let lookupTitle = String(s.title || '').trim();
 
@@ -4422,10 +4465,16 @@ app.get('/now-playing', async (req, res) => {
     // For classical, movement-heavy titles over-constrain iTunes query.
     if (lookupArtist && cleaned.length) lookupTitle = stripClassicalMovementDetail(lookupTitle);
 
+    const parts = composerDisplay.replace(/\([^)]*\)/g, ' ').replace(/\s{2,}/g, ' ').trim().split(/\s+/).filter(Boolean);
+    const composerShort = parts.length >= 2
+      ? `${parts[0].charAt(0)}. ${parts[1].slice(0, 4)}`
+      : '';
+
     return {
       lookupArtist,
       lookupTitle,
       lookupAlbumHint: String(albumHint || '').trim(),
+      composerShort,
     };
   }
 
@@ -4957,6 +5006,7 @@ app.get('/now-playing', async (req, res) => {
         const it = await lookupItunesFirst(lookupArtist, lookupTitle, debug, {
           radioAlbum: albumForLookup,
           albumHint: albumForLookup,
+          composerShort: lookupCtx.composerShort || '',
           strictArtist: true,
         });
 
@@ -4989,6 +5039,7 @@ app.get('/now-playing', async (req, res) => {
           const it = await lookupItunesFirst(String(s2.artist || '').trim(), String(s2.title || '').trim(), debug, {
             radioAlbum: albumForLookup,
             albumHint: albumForLookup,
+            composerShort: '',
             strictArtist: true,
           });
           if (it.url) primaryArtUrl = it.url;
@@ -5055,6 +5106,7 @@ app.get('/now-playing', async (req, res) => {
         const ap = await lookupItunesFirst(String(s3.lookupArtist || '').trim(), String(s3.lookupTitle || '').trim(), debug, {
           radioAlbum: albumForTerm,
           albumHint: albumForTerm,
+          composerShort: String(s3.composerShort || '').trim(),
           strictArtist: true,
         });
 
