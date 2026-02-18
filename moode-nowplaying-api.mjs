@@ -4685,7 +4685,10 @@ app.get('/now-playing', async (req, res) => {
 
     if (isRadio && radioLookupGuard.allow && (!primaryArtUrl || primaryArtUrl === stationLogoUrl)) {
       if (lookupArtist && lookupTitle) {
-        const it = await lookupItunesFirst(lookupArtist, lookupTitle, debug, { radioAlbum: radioAlbum || album || '' });
+        const it = await lookupItunesFirst(lookupArtist, lookupTitle, debug, {
+          radioAlbum: radioAlbum || album || '',
+          strictArtist: true,
+        });
 
         if (it.url) primaryArtUrl = it.url;
 
@@ -4713,7 +4716,10 @@ app.get('/now-playing', async (req, res) => {
         const parts = decodedTitle.split(' - ').map(s => s.trim()).filter(Boolean);
         if (parts.length >= 2) {
           const s2 = sanitizeRadioLookupInputs({ artist: parts[0], title: parts.slice(1).join(' - ') });
-          const it = await lookupItunesFirst(String(s2.artist || '').trim(), String(s2.title || '').trim(), debug, { radioAlbum: radioAlbum || album || '' });
+          const it = await lookupItunesFirst(String(s2.artist || '').trim(), String(s2.title || '').trim(), debug, {
+            radioAlbum: radioAlbum || album || '',
+            strictArtist: true,
+          });
           if (it.url) primaryArtUrl = it.url;
 
           radioAlbum = radioAlbum || it.album || '';
