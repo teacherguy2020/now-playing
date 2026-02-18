@@ -40,15 +40,45 @@
     body.theme-light .epQueueBtn{ color:#3b2f5a !important; }
     body.theme-light .epPlayBtn svg{ fill:currentColor !important; }
 
-    /* Keep status-pill row visual parity with other pages */
-    .pill{ background:rgba(15,23,42,.55) !important; border:1px solid rgba(125,211,252,.30) !important; }
-    body.theme-light .pill{ background:rgba(225,214,244,.74) !important; border:1px solid rgba(63,47,95,.24) !important; color:#231b35 !important; box-shadow:0 2px 6px rgba(30,20,48,.10) !important; }
-    body.theme-light .pill span{ color:inherit !important; }
-
     /* Podcasts page: use normal page scroll (hero not sticky) */
-    #heroRail{position:relative !important; top:auto !important;}
-    body{display:block !important;}
+    #heroRail{position:relative !important; top:auto !important; padding-bottom:0 !important; background:rgba(3,7,18,.70) !important;}
+    #heroRail .heroWrap{margin-top:0 !important;}
+    /* Remove podcasts2 black underlay that creates a second background band */
+    #heroRail::before{content:none !important; background:transparent !important;}
+    body{
+      display:block !important;
+      background:
+        radial-gradient(1200px 600px at 20% 0%, rgba(125,211,252,.18), transparent 60%),
+        radial-gradient(1000px 600px at 90% 10%, rgba(167,139,250,.14), transparent 55%),
+        radial-gradient(900px 600px at 50% 110%, rgba(52,211,153,.10), transparent 60%),
+        linear-gradient(180deg, #081021 0%, #070b14 100%) !important;
+      background-attachment: fixed !important;
+    }
     .subsScroll{overflow:visible !important;}
+
+    /* Make the status-pill lane use a single flat backdrop (no body gradient band) */
+    .preHeroStatusWrap{
+      max-width:none !important;
+      margin:0 !important;
+      padding:10px 0 !important;
+      background:rgba(3,7,18,.70) !important;
+      border-top:1px solid rgba(255,255,255,.06);
+      border-bottom:1px solid rgba(255,255,255,.06);
+      box-shadow:none !important;
+      backdrop-filter:none !important;
+      -webkit-backdrop-filter:none !important;
+    }
+    .preHeroStatus{
+      max-width:1080px;
+      margin:0 auto;
+      padding:0 18px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:center;
+      background:transparent !important;
+    }
   </style>
 </head>
 
