@@ -4108,6 +4108,35 @@ app.get('/now-playing', async (req, res) => {
     return false;
   }
 
+  // Guard iTunes lookups for non-music radio (talk/news/sports, etc.)
+  function getRadioLookupGuard({ artist, title, album, encoded = '', stationName = '' }) {
+    const a = String(artist || '').trim();
+    const t = String(title || '').trim();
+    const al = String(album || '').trim();
+    const enc = String(encoded || '').trim();
+    const st = String(stationName || '').trim();
+
+    if (!t) return { allow: false, reason: 'empty-title' };
+
+    const blob = [a, t, al, enc, st].join(' | ').toLowerCase();
+
+    const talkish = [
+      ' talk ', 'news', ' sports', 'sportstalk', 'espn', 'npr', 'hour',
+      'podcast', 'weather', 'traffic', 'headline', 'commentary', 'interview',
+      'morning show', 'afternoon show', 'drive time', 'play-by-play'
+    ].some(k => blob.includes(k));
+
+    if (talkish) return { allow: false, reason: 'talk-news-sports' };
+
+    // If artist is generic and title does not look like an artist-track split,
+    // it is very likely station/program metadata rather than a song.
+    if (artistLooksGeneric(a) && !/\s[-–—]\s/.test(t)) {
+      return { allow: false, reason: 'generic-artist' };
+    }
+
+    return { allow: true, reason: 'ok' };
+  }
+
   // Build a deterministic Apple lookup term (keeps cache stable)
   function buildAppleLookupTerm({ artist, title, album }) {
     const a = String(artist || '').trim();
@@ -4557,11 +4586,21 @@ app.get('/now-playing', async (req, res) => {
     producer = deep.producer || '';
     personnel = deep.performers || [];
 
+    const radioLookupGuard = isRadio
+      ? getRadioLookupGuard({
+          artist,
+          title,
+          album: radioAlbum || album || '',
+          encoded: song.encoded || '',
+          stationName: song.name || '',
+        })
+      : { allow: true, reason: 'not-radio' };
+
     // =========================
     // STREAM: iTunes art + album/year fallback (RADIO ONLY)
     // (Also captures links when available, without clobbering later.)
     // =========================
-    if (isRadio && (!primaryArtUrl || primaryArtUrl === stationLogoUrl)) {
+    if (isRadio && radioLookupGuard.allow && (!primaryArtUrl || primaryArtUrl === stationLogoUrl)) {
       const a = String(artist || '').trim();
       const t = String(title || '').trim();
 
@@ -4602,7 +4641,9 @@ app.get('/now-playing', async (req, res) => {
 
       if (!album && radioAlbum) album = radioAlbum;
     } else if (isRadio) {
-      debugItunesReason = meStation ? 'skip:private-meta-or-primary' : 'skip';
+      debugItunesReason = radioLookupGuard.allow
+        ? (meStation ? 'skip:private-meta-or-primary' : 'skip')
+        : `skip:${radioLookupGuard.reason}`;
     } else if (stream) {
       debugItunesReason = `skip:${streamKind || 'stream'}`;
     }
@@ -4618,7 +4659,7 @@ app.get('/now-playing', async (req, res) => {
     // =========================
     let debugAppleLookup = null;
 
-    if (isRadio) {
+    if (isRadio && radioLookupGuard.allow) {
       try {
         const albumForTerm = String(radioAlbum || album || '').trim();
         radioLookupTerm = buildAppleLookupTerm({ artist, title, album: albumForTerm });
@@ -4655,6 +4696,8 @@ app.get('/now-playing', async (req, res) => {
         radioLookupReason = radioLookupReason || `error:${e?.name || 'Error'}`;
         if (debug) debugAppleLookup = { reason: radioLookupReason, term: radioLookupTerm };
       }
+    } else if (isRadio && !radioLookupGuard.allow) {
+      radioLookupReason = radioLookupReason || `skip:${radioLookupGuard.reason}`;
     }
 
     // Prefer radioAlbum for displayed album (your UI already does this)
