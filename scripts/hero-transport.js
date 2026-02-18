@@ -290,8 +290,8 @@
     if (!(vid instanceof HTMLVideoElement)) return;
     const fb = el.querySelector('.heroArtFallback');
 
-    vid.style.display = 'none';
-
+    // Avoid fallback flicker on periodic re-renders: keep video visible by default
+    // and only fall back to static art on hard video load error.
     let resolved = false;
     const showVideo = () => {
       if (resolved) return;
@@ -310,8 +310,11 @@
       vid.style.display = 'none';
     };
 
+    // If the frame is already buffered, settle immediately with video.
+    if (vid.readyState >= 2) showVideo();
     vid.addEventListener('loadeddata', showVideo, { once: true });
     vid.addEventListener('error', keepFallback, { once: true });
+    setTimeout(() => { if (!resolved && vid.readyState >= 2) showVideo(); }, 300);
     setTimeout(() => { if (!resolved) keepFallback(); }, 2500);
   }
 
