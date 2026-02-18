@@ -5,6 +5,51 @@ import { MPD_HOST } from '../config.mjs';
 
 const execFileP = promisify(execFile);
 
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function pickVarietyTracks(candidates, maxTracks) {
+  if (!Array.isArray(candidates) || !candidates.length) return [];
+  if (candidates.length <= maxTracks) return candidates.slice();
+
+  const buckets = new Map();
+  for (const t of candidates) {
+    const artistKey = String(t.albumartist || t.artist || '').trim().toLowerCase();
+    const albumKey = String(t.album || '').trim().toLowerCase();
+    const file = String(t.file || '').trim().toLowerCase();
+    const key = (artistKey || albumKey)
+      ? `${artistKey}|${albumKey}`
+      : (() => {
+          const i = file.lastIndexOf('/');
+          return i > 0 ? `dir:${file.slice(0, i)}` : `file:${file}`;
+        })();
+
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(t);
+  }
+
+  const groups = Array.from(buckets.values()).map((g) => shuffleInPlace(g.slice()));
+  shuffleInPlace(groups);
+
+  const out = [];
+  while (out.length < maxTracks) {
+    let progressed = false;
+    for (const g of groups) {
+      if (out.length >= maxTracks) break;
+      if (!g.length) continue;
+      out.push(g.shift());
+      progressed = true;
+    }
+    if (!progressed) break;
+  }
+  return out;
+}
+
 export function registerConfigQueueWizardPreviewRoute(app, deps) {
   const { requireTrackKey, getRatingForFile } = deps;
   const configPath = process.env.NOW_PLAYING_CONFIG_PATH || `${process.cwd()}/config/now-playing.config.json`;
@@ -40,6 +85,7 @@ export function registerConfigQueueWizardPreviewRoute(app, deps) {
       const minRatingRaw = Math.max(0, Math.min(5, Number(req.body?.minRating || 0)));
       const minRating = ratingsEnabled ? minRatingRaw : 0;
       const maxTracks = Math.max(1, Math.min(5000, Number(req.body?.maxTracks || 250)));
+      const varietyMode = req.body?.varietyMode !== false;
 
       const mpdHost = String(MPD_HOST || '10.0.0.254');
       const fmt = '%file%\t%artist%\t%title%\t%album%\t%albumartist%\t%genre%';
@@ -47,7 +93,7 @@ export function registerConfigQueueWizardPreviewRoute(app, deps) {
         maxBuffer: 64 * 1024 * 1024,
       });
 
-      const tracks = [];
+      const candidates = [];
 
       for (const ln of String(stdout || '').split(/\r?\n/)) {
         if (!ln) continue;
@@ -79,7 +125,7 @@ export function registerConfigQueueWizardPreviewRoute(app, deps) {
           if (rating < minRating) continue;
         }
 
-        tracks.push({
+        candidates.push({
           file: f,
           artist: String(artist || ''),
           title: String(title || ''),
@@ -87,11 +133,13 @@ export function registerConfigQueueWizardPreviewRoute(app, deps) {
           albumartist: String(albumartist || ''),
           genre: String(genreRaw || ''),
         });
-
-        if (tracks.length >= maxTracks) break;
       }
 
-      return res.json({ ok: true, count: tracks.length, tracks });
+      const tracks = varietyMode
+        ? pickVarietyTracks(candidates, maxTracks)
+        : candidates.slice(0, maxTracks);
+
+      return res.json({ ok: true, count: tracks.length, tracks, varietyMode });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
