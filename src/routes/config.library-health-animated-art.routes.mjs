@@ -11,6 +11,10 @@ const CACHE_FILE = path.resolve(process.cwd(), 'data', 'animated-art-cache.json'
 const DISCOVERY_FILE = path.resolve(process.cwd(), 'data', 'animated-art-discovery.json');
 const H264_DIR = path.resolve(process.cwd(), 'data', 'animated-art-h264');
 
+const KNOWN_APPLE_URL_OVERRIDES = {
+  'john mayer|sob rock': 'https://music.apple.com/us/album/sob-rock/1568819304',
+};
+
 let activeJob = null;
 let discoverJob = null;
 let appleLookupBackoffUntil = 0;
@@ -238,7 +242,10 @@ async function lookupMotionForAlbum(artist, album) {
     return { ok: false, reason: 'backoff-active' };
   }
 
-  const appleUrls = await lookupAppleAlbumUrls(artist, album, 8);
+  const key = albumKey(artist, album);
+  const overrideUrl = String(KNOWN_APPLE_URL_OVERRIDES[key] || '').trim();
+  const candidateUrls = await lookupAppleAlbumUrls(artist, album, 8);
+  const appleUrls = [overrideUrl, ...candidateUrls].filter(Boolean).filter((u, i, arr) => arr.indexOf(u) === i);
   if (!appleUrls.length) return { ok: false, reason: 'no-apple-url' };
 
   let lastReason = 'no-motion';
