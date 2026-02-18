@@ -1545,14 +1545,26 @@ function splitTitlePerformersProgram(titleLine) {
     return { composer: looksComposer ? first : '', work, personnel, program };
   }
   if (parts.length === 4) {
-    // WFMT medium form: Composer - Work - Performers - Program
+    // WFMT medium forms:
+    //  A) Composer - Work - Performers - Program
+    //  B) Work - Performers - Program - Label  (composer may already be in artist field)
     const first = String(parts[0] || '');
     const second = String(parts[1] || '');
-    const perfRaw = String(parts[2] || '');
+    const third = String(parts[2] || '');
+    const fourth = String(parts[3] || '');
     const looksComposer = /^[A-Za-zÀ-ÿ'’. -]+$/.test(first) && /\s/.test(first);
+    const looksPerfBlock = (s) => /\//.test(s) || /\b(orch|orchestra|sym|symphony|phil|camerata|ensemble|concert|members|conduct)\b/i.test(s) || /,\s*(p|pf|pno|vn|vln|vc|cello|va|vla|vi)\b/i.test(s);
+
+    if (!looksComposer && looksPerfBlock(second) && !looksPerfBlock(third)) {
+      const work = first;
+      const personnel = parsePersonnel(second);
+      const program = third;
+      return { composer: '', work, personnel, program };
+    }
+
     const work = looksComposer ? second : `${first} - ${second}`;
-    const personnel = parsePersonnel(perfRaw);
-    const program = String(parts[3] || '');
+    const personnel = parsePersonnel(third);
+    const program = fourth;
     return { composer: looksComposer ? first : '', work, personnel, program };
   }
   if (parts.length === 3) {
@@ -4895,14 +4907,20 @@ app.get('/now-playing', async (req, res) => {
         title = split.work;
         const splitComposer = String(split.composer || '').trim();
         const curArtist = String(artist || '').trim();
-        const shouldPromoteComposer = !!splitComposer && (
-          artistLooksGeneric(curArtist) ||
-          !curArtist ||
-          curArtist.toLowerCase() === String(split.work || '').trim().toLowerCase() ||
-          /wfmt|radio station|classical|davide|mimic/i.test(curArtist)
-        );
+        const programTxt = String(split.program || '').trim();
+        const programComposer = /^\s*(?:J\.?\s*Chr\.?\s*Bach|JC\s*Bach)\s*:/i.test(programTxt)
+          ? 'Johann Christian Bach'
+          : '';
+        const shouldPromoteComposer = (
+          !!splitComposer && (
+            artistLooksGeneric(curArtist) ||
+            !curArtist ||
+            curArtist.toLowerCase() === String(split.work || '').trim().toLowerCase() ||
+            /wfmt|radio station|classical|davide|mimic/i.test(curArtist)
+          )
+        ) || (!curArtist && !!programComposer);
         if (shouldPromoteComposer) {
-          artist = splitComposer;
+          artist = splitComposer || programComposer;
         }
 
         const set = new Set(
@@ -4916,9 +4934,12 @@ app.get('/now-playing', async (req, res) => {
         if (split.personnel?.length) {
           radioPerformers = split.personnel.join(', ');
         }
-        if (!radioAlbum && split.program) {
-          const programClean = String(split.program || '').replace(/^.*?:\s*/, '').trim();
-          if (programClean) radioAlbum = programClean;
+        if (split.program) {
+          const programRaw = String(split.program || '').trim();
+          const programClean = programRaw.replace(/^.*?:\s*/, '').trim();
+          if (programClean && (!radioAlbum || /\barchiv\b|\bdecca\b|\berato\b|\bemi\b/i.test(String(radioAlbum)))) {
+            radioAlbum = programRaw;
+          }
         }
         // If station/label-ish album is present but metadata provided a richer program title,
         // use that richer text as radio album line.
