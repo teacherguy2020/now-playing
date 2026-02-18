@@ -258,7 +258,7 @@
             `<button class="tbtn tbtnFar ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
             (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekfwd30" title="Forward 30 seconds"><span style="font-size:13px;font-weight:700;">30↻</span></button>` : '') +
           `</div>` +
-          `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div></div>` +
+          `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}" data-seekable="${showProgress ? '1' : '0'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div><div class="progress-handle" style="left:${progressPct}%;"></div><div class="progress-tip" style="left:${progressPct}%">Drag to seek</div></div>` +
           `${(!showProgress && isRadioOrStream) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${state === 'playing' ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(liveLabel)}${liveBadge ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-size:11px;font-weight:700;vertical-align:1px;">${liveBadge}</span>` : ''}</div>` : ''}` +
         `</div>` +
       `</div>`;
@@ -616,6 +616,60 @@
       } catch (e) {
         console.warn('favorite station click failed', e);
       }
+    });
+
+    const hostEl = document.getElementById('heroTransport');
+    let seeking = false;
+    let seekBar = null;
+    let seekPct = null;
+
+    const calcSeekPct = (bar, clientX) => {
+      const rect = bar.getBoundingClientRect();
+      if (!rect.width) return null;
+      const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+      return Math.max(0, Math.min(100, (x / rect.width) * 100));
+    };
+
+    const paintSeekPct = (bar, pct) => {
+      const fill = bar.querySelector('.progress-fill');
+      if (fill) fill.style.transform = `scaleX(${pct / 100})`;
+      const handle = bar.querySelector('.progress-handle');
+      if (handle) handle.style.left = `${pct}%`;
+      const tip = bar.querySelector('.progress-tip');
+      if (tip) tip.style.left = `${pct}%`;
+    };
+
+    hostEl?.addEventListener('pointerdown', (ev) => {
+      const bar = ev.target instanceof Element ? ev.target.closest('.progress-bar-wrapper[data-seekable="1"]') : null;
+      if (!bar || busy) return;
+      const pct = calcSeekPct(bar, ev.clientX);
+      if (pct == null) return;
+      seeking = true;
+      seekBar = bar;
+      seekPct = pct;
+      paintSeekPct(bar, pct);
+      try { ev.preventDefault(); } catch {}
+    });
+
+    hostEl?.addEventListener('pointermove', (ev) => {
+      if (!seeking || !seekBar) return;
+      const pct = calcSeekPct(seekBar, ev.clientX);
+      if (pct == null) return;
+      seekPct = pct;
+      paintSeekPct(seekBar, pct);
+    });
+
+    window.addEventListener('pointerup', async () => {
+      if (!seeking) return;
+      seeking = false;
+      const pct = seekPct;
+      seekBar = null;
+      seekPct = null;
+      if (!Number.isFinite(pct) || busy) return;
+      busy = true;
+      try { await playback('seekpct', currentKey(), { percent: pct }); } catch {}
+      await refresh();
+      busy = false;
     });
 
     setTimeout(refresh, 150);

@@ -895,9 +895,15 @@ body.theme-light #results [data-queue-play-pos]:hover{background:rgba(137,138,19
 .heroTransport .np .progress-bar-wrapper{order:4}
 .heroTransport .np .txtLink{text-decoration:none;cursor:pointer}
 .heroTransport .np .txtLink:hover{text-decoration:underline;text-underline-offset:3px}
-.heroTransport .np .progress-bar-wrapper{width:min(660px,calc(100% - 140px));height:8px;background:rgba(255,255,255,.18);border-radius:4px;overflow:hidden;margin-inline:auto}
+.heroTransport .np .progress-bar-wrapper{position:relative;width:min(660px,calc(100% - 140px));height:8px;background:rgba(255,255,255,.18);border-radius:4px;overflow:visible;margin-inline:auto;cursor:pointer;touch-action:none}
 .heroTransport .np .progress-bar-wrapper.is-hidden{display:none}
-.heroTransport .np .progress-fill{height:12px;background:#4fc3f7;transform:scaleX(0);transform-origin:left}
+.heroTransport .np .progress-fill{height:8px;background:#4fc3f7;transform:scaleX(0);transform-origin:left;border-radius:4px}
+.heroTransport .np .progress-handle{position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:999px;background:#7dd3fc;border:1px solid rgba(15,23,42,.55);box-shadow:0 1px 4px rgba(0,0,0,.35);opacity:.12;transition:opacity .14s ease,transform .14s ease;pointer-events:none}
+.heroTransport .np .progress-tip{position:absolute;left:0;top:-26px;transform:translateX(-50%);font-size:11px;line-height:1;padding:3px 6px;border-radius:7px;background:rgba(15,23,42,.92);border:1px solid rgba(125,211,252,.35);color:#eaf3ff;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .14s ease}
+@media (hover:hover){
+  .heroTransport .np .progress-bar-wrapper:hover .progress-handle{opacity:.95;transform:translate(-50%,-50%) scale(1.06)}
+  .heroTransport .np .progress-bar-wrapper:hover .progress-tip{opacity:.95}
+}
 body.theme-light .heroTransport{background:rgba(255,255,255,.72);border-color:rgba(63,47,95,.34)}
 body.theme-light .heroTransport .tbtn{background:#c0c9ee !important;color:#2b2341;border-color:rgba(137,138,196,.42) !important}
 body.theme-light .heroTransport .tbtn.on{color:#16a34a !important;border-color:rgba(22,163,74,.75) !important;box-shadow:0 0 0 1px rgba(22,163,74,.26) inset !important}

@@ -279,6 +279,18 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.json({ ok: true, action, seconds, randomOn, status: String(afterStatus || '') });
       }
 
+      if (action === 'seekpct') {
+        const pctRaw = Number(req.body?.percent);
+        const percent = Number.isFinite(pctRaw) ? Math.max(0, Math.min(100, Math.round(pctRaw))) : -1;
+        if (percent < 0) return res.status(400).json({ ok: false, error: 'percent (0..100) is required for seekpct' });
+
+        await execFileP('mpc', ['-h', mpdHost, 'seek', `${percent}%`]);
+
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, percent, randomOn, status: String(afterStatus || '') });
+      }
+
       const cmd = map[action];
       if (!cmd) return res.status(400).json({ ok: false, error: 'Invalid action' });
       await execFileP('mpc', ['-h', mpdHost, cmd]);

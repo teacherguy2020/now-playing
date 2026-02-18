@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>moOde Podcasts Add-On</title>
 
-  <link rel="stylesheet" href="styles/podcasts.css?v=20260218-79" />
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260211-1" />
   <style>
     body.theme-light .subsScroll,
@@ -39,6 +39,11 @@
     body.theme-light .epPlayBtn,
     body.theme-light .epQueueBtn{ color:#3b2f5a !important; }
     body.theme-light .epPlayBtn svg{ fill:currentColor !important; }
+
+    /* Keep status-pill row visual parity with other pages */
+    .pill{ background:rgba(15,23,42,.55) !important; border:1px solid rgba(125,211,252,.30) !important; }
+    body.theme-light .pill{ background:rgba(225,214,244,.74) !important; border:1px solid rgba(63,47,95,.24) !important; color:#231b35 !important; box-shadow:0 2px 6px rgba(30,20,48,.10) !important; }
+    body.theme-light .pill span{ color:inherit !important; }
 
     /* Podcasts page: use normal page scroll (hero not sticky) */
     #heroRail{position:relative !important; top:auto !important;}
@@ -178,7 +183,7 @@
 
   <script src="scripts/podcasts.js?v=20260218-6"></script>
 
-<script src="scripts/hero-transport.js?v=20260218-74"></script>
+<script src="scripts/hero-transport.js?v=20260218-76"></script>
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
 
 <script>
