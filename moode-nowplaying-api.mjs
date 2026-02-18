@@ -1495,14 +1495,24 @@ function splitTitlePerformersProgram(titleLine) {
   // Case A: spaced-dash pattern (preserve hyphenated names like Ippolitov-Ivanov)
   const parts = raw.split(/\s+-\s+/).map(s => s.trim()).filter(Boolean);
   if (parts.length >= 5) {
-    // WFMT long form: Composer - Work - Movement - Performers - Program (- Label)
     const first = String(parts[0] || '');
     const second = String(parts[1] || '');
     const third = String(parts[2] || '');
-    const perfRaw = String(parts[3] || '');
+    const fourth = String(parts[3] || '');
     const looksComposer = /^[A-Za-zÀ-ÿ'’. -]+$/.test(first) && /\s/.test(first);
+    const looksPerfBlock = (s) => /\//.test(s) || /\b(orch|orchestra|sym|symphony|phil|camerata|ensemble|choir|conduct|chailly|maestro)\b/i.test(s) || /,\s*(p|pf|pno|vn|vln|vc|cello)\b/i.test(s);
+
+    // Pattern A: Composer - Work - Performers - Program - Label
+    if (looksPerfBlock(third) && !looksPerfBlock(fourth)) {
+      const work = looksComposer ? second : `${first} - ${second}`;
+      const personnel = parsePersonnel(third);
+      const program = fourth;
+      return { work, personnel, program };
+    }
+
+    // Pattern B: Composer - Work - Movement - Performers - Program
     const work = looksComposer ? `${second} - ${third}` : `${first} - ${second} - ${third}`;
-    const personnel = parsePersonnel(perfRaw);
+    const personnel = parsePersonnel(fourth);
     const program = String(parts[4] || '');
     return { work, personnel, program };
   }
