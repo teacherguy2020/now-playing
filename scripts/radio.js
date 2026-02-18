@@ -2,6 +2,7 @@
   const $ = (id) => document.getElementById(id);
   let allStations = [];
   let selected = new Set();
+  const FILTERS_KEY = 'radio:filters:v1';
 
   function apiBaseDefault(){ return `${location.protocol}//${location.hostname || '10.0.0.233'}:3101`; }
   function key(){ return String($('key')?.value || '').trim(); }
@@ -15,6 +16,28 @@
     const dot = pill.querySelector('.dot');
     if (dot) { dot.style.background = s.c; dot.style.boxShadow = `0 0 0 6px ${s.b.replace('.55','.20')}`; }
     pill.style.borderColor = s.b;
+  }
+
+  function loadFilters(){
+    try {
+      const raw = localStorage.getItem(FILTERS_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  }
+
+  function saveFilters(){
+    try {
+      localStorage.setItem(FILTERS_KEY, JSON.stringify({
+        favoritesOnly: !!$('favoritesOnly')?.checked,
+        hqOnly: !!$('hqOnly')?.checked,
+      }));
+    } catch {}
+  }
+
+  function applySavedFilters(){
+    const f = loadFilters();
+    if ($('favoritesOnly') && typeof f.favoritesOnly === 'boolean') $('favoritesOnly').checked = f.favoritesOnly;
+    if ($('hqOnly') && typeof f.hqOnly === 'boolean') $('hqOnly').checked = f.hqOnly;
   }
 
   async function loadRuntime(){
@@ -288,12 +311,16 @@
     });
 
     ['genre','favoritesOnly','hqOnly','search','favoritesPreset'].forEach((id) => {
-      $(id)?.addEventListener('change', () => loadStations().catch((e) => setStatus(String(e?.message || e))));
+      $(id)?.addEventListener('change', () => {
+        if (id === 'favoritesOnly' || id === 'hqOnly') saveFilters();
+        loadStations().catch((e) => setStatus(String(e?.message || e)));
+      });
     });
   }
 
   (async () => {
     await loadRuntime();
+    applySavedFilters();
     wire();
     await loadGenres().catch(() => {});
     await loadFavoritePreset().catch(() => {});

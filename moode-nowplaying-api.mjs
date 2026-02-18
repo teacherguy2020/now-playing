@@ -4249,6 +4249,7 @@ app.get('/now-playing', async (req, res) => {
 
     let stationLogoUrl = '';
     let primaryArtUrl = '';
+    const streamStationName = String(song?.name || song?.album || '').trim();
 
     // ✅ Apple Music link fields (RADIO)
     let radioItunesUrl = '';
@@ -4445,6 +4446,8 @@ app.get('/now-playing', async (req, res) => {
         altArtUrl: altArtUrl || '',
 
         stationLogoUrl: '',
+        stationName: '',
+        radioStationName: '',
 
         // RADIO fields (empty on AirPlay)
         radioAlbum: '',
@@ -4798,6 +4801,8 @@ app.get('/now-playing', async (req, res) => {
 
       altArtUrl: altArtUrl || '',
       stationLogoUrl: stationLogoUrl || '',
+      stationName: streamStationName || '',
+      radioStationName: streamStationName || '',
 
       // Radio meta (what your UI already uses)
       radioAlbum,

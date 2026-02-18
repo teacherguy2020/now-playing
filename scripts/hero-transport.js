@@ -216,8 +216,8 @@
 
     const radioAlbum = String(np?.radioAlbum || np?.album || '').trim();
     const radioYear = String(np?.radioYear || np?.year || '').trim();
-    const stationNameLive = String(np?._stationName || np?.stationName || np?.radioStationName || head?.stationName || head?.album || '').trim();
-    const liveLabel = stationNameLive || displayTitle || displayArtist || 'Radio';
+    const stationNameLive = String(np?._stationName || np?.stationName || np?.radioStationName || head?.stationName || '').trim();
+    const liveLabel = stationNameLive || 'Radio';
     const albumYearText = [radioAlbum, radioYear].filter(Boolean).join(' • ');
     const metaRow = starsRow || (albumYearText ? `<div class="heroSubline">${albumYearText}</div>` : '');
 
