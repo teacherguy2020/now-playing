@@ -259,8 +259,9 @@ async function lookupAppleAlbumCandidates(artist, album, limit = 6) {
       const candArtist = String(it?.artistName || '');
       const artistLooksRelated = isStrongArtistMatch(a, candArtist);
       if (!artistLooksRelated) continue;
-      const s = scoreAlbumCandidate(a, b, candArtist, it?.collectionName);
-      scored.push({ url, score: s });
+      const candAlbum = String(it?.collectionName || '');
+      const s = scoreAlbumCandidate(a, b, candArtist, candAlbum);
+      scored.push({ url, score: s, candArtist, candAlbum });
     }
   }
 
@@ -312,13 +313,15 @@ async function lookupMotionForAlbum(artist, album) {
     const j = out?.json || {};
     if (r?.ok) {
       const mp4 = pickMp4FromCovers(j);
-      if (mp4) return { ok: true, appleUrl: overrideUrl, mp4 };
+      if (mp4) return { ok: true, appleUrl: overrideUrl, mp4, matchDebug: { source: 'override', score: 999 } };
     }
   }
 
   const candidateRows = await lookupAppleAlbumCandidates(artist, album, 8);
   const minAcceptScore = 6;
-  const candidateUrls = candidateRows.filter((r) => Number(r?.score || 0) >= minAcceptScore).map((r) => r.url);
+  const candidateRowsAccepted = candidateRows.filter((r) => Number(r?.score || 0) >= minAcceptScore);
+  const candidateUrls = candidateRowsAccepted.map((r) => r.url);
+  const byUrl = new Map(candidateRowsAccepted.map((r) => [String(r.url), r]));
   const appleUrls = [overrideUrl, ...candidateUrls].filter(Boolean).filter((u, i, arr) => arr.indexOf(u) === i);
   if (!appleUrls.length) return { ok: false, reason: 'no-apple-url' };
 
@@ -349,7 +352,20 @@ async function lookupMotionForAlbum(artist, album) {
       continue;
     }
     const mp4 = pickMp4FromCovers(j);
-    if (mp4) return { ok: true, appleUrl, mp4 };
+    if (mp4) {
+      const m = byUrl.get(String(appleUrl)) || null;
+      return {
+        ok: true,
+        appleUrl,
+        mp4,
+        matchDebug: {
+          source: 'candidate',
+          score: Number(m?.score || 0),
+          matchedArtist: String(m?.candArtist || ''),
+          matchedAlbum: String(m?.candAlbum || ''),
+        },
+      };
+    }
     lastReason = 'no-motion';
     lastUrl = appleUrl;
   }
@@ -414,6 +430,7 @@ async function runBuildJob({ limitAlbums = 0, force = false, onlyKeys = [] } = {
         tracks: row.tracks,
         appleUrl: String(hit.appleUrl || ''),
         mp4: String(hit.mp4 || ''),
+        matchDebug: hit?.matchDebug || null,
         hasMotion: !!hit.ok,
         reason: String(hit.reason || ''),
         updatedAt: new Date().toISOString(),
@@ -472,6 +489,7 @@ async function runDiscoverJob({ limitAlbums = 0 } = {}) {
         tracks: row.tracks,
         appleUrl: String(hit.appleUrl || ''),
         mp4: String(hit.mp4 || ''),
+        matchDebug: hit?.matchDebug || null,
         hasMotion: !!hit.ok,
         reason: String(hit.reason || ''),
         updatedAt: new Date().toISOString(),
@@ -627,6 +645,7 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
               tracks: Number(existing?.tracks || 0),
               appleUrl: String(hit?.appleUrl || ''),
               mp4: String(hit?.mp4 || ''),
+              matchDebug: hit?.matchDebug || null,
               hasMotion: !!hit?.ok,
               reason: String(hit?.reason || ''),
               updatedAt: new Date().toISOString(),
