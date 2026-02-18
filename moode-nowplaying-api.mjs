@@ -4262,7 +4262,8 @@ app.get('/now-playing', async (req, res) => {
 
     // Classical-radio cleanup: if artist is likely composer and title carries
     // performer suffixes, prefer soloist or orchestra for iTunes matching.
-    const composerLike = /^[A-Za-zÀ-ÿ'’.-]+(?:\s+[A-Za-zÀ-ÿ'’.-]+){0,3}$/.test(a);
+    const composerBase = String(a || '').replace(/\([^)]*\)/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    const composerLike = /^[A-Za-zÀ-ÿ'’.-]+(?:\s+[A-Za-zÀ-ÿ'’.-]+){0,7}$/.test(composerBase);
     if (composerLike) {
       // e.g. "... Op. 7-Isata Kanneh-Mason, p; Royal Liverpool Phil Orch/Holly..."
       const soloistMatch = t.match(/^(.*?)\s*-\s*([^,;\/\-]+?)\s*,\s*(?:p|pf|pno|vn|vln|vc|cello|soprano|mezzo|tenor|baritone)\b/i);
