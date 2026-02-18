@@ -3083,6 +3083,19 @@ function buildItunesTerm(artist, title, opts = {}) {
  * - uses cleaned term for classical/radio soup titles
  * ============================================================ */
 
+function splitPrimaryArtistPart(s) {
+  return String(s || '')
+    .split(/\bfeat\.?\b|\bfeaturing\b|\bwith\b|,|&|\band\b|\bx\b|\+/i)[0]
+    .trim();
+}
+
+function artistMatchStrict(targetArtist, candArtist) {
+  const t = splitPrimaryArtistPart(targetArtist).toLowerCase();
+  const c = splitPrimaryArtistPart(candArtist).toLowerCase();
+  if (!t || !c) return false;
+  return c === t || c.includes(t) || t.includes(c);
+}
+
 async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
   const a = String(artist || '').trim();
   const t = String(title || '').trim();
@@ -3122,7 +3135,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
 
   if (!termStr) return empty('missing-term', { term: termStr, termDebug });
 
-  const cacheKey = `song|${termStr.toLowerCase()}`;
+  const cacheKey = `song|${opts?.strictArtist ? 'strict|' : ''}${termStr.toLowerCase()}`;
   const now = Date.now();
 
   // ✅ Cache hit (only when not debugging)
@@ -3162,8 +3175,15 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     let albumUrl = '';
     let matchedArtist = '';
     let matchedTitle = '';
+    let strictRejected = 0;
 
     for (const item of results) {
+      const matchedArtistCandidate = String(item?.artistName || '').trim();
+      if (opts?.strictArtist && !artistMatchStrict(a, matchedArtistCandidate)) {
+        strictRejected += 1;
+        continue;
+      }
+
       const art = pickArtFromItunesItem(item);
       if (!art) continue;
 
@@ -3194,7 +3214,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       ts: now,
     });
 
-    const reason = url ? 'ok:bestMatch' : 'no-art';
+    const reason = url ? 'ok:bestMatch' : ((opts?.strictArtist && strictRejected > 0) ? 'no-artist-match' : 'no-art');
 
     if (debug) {
       return {
@@ -4436,7 +4456,20 @@ app.get('/now-playing', async (req, res) => {
         title  = ap.title  || title  || '';
         album  = ap.album  || album  || 'AirPlay Source';
 
-        altArtUrl = ap.coverUrl || '';
+        const isAirplaySourceAlbum = /^airplay\s+source$/i.test(String(ap.album || '').trim());
+        const looksStickyCover = /imagesw\/airplay-covers\/cover-[a-f0-9]{8,}\.jpg/i.test(String(ap.coverRel || ''));
+        const ytBlob = [ap.title, ap.artist, ap.album, ap.coverRel].map((x) => String(x || '').toLowerCase()).join(' | ');
+        const looksYouTube = /(youtube|youtu\.be|ytmusic|yt music)/i.test(ytBlob);
+        const youtubeLogo = 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/512px-YouTube_full-color_icon_%282017%29.svg.png';
+        // YouTube/other senders often provide title/artist but no fresh art, while aplmeta can retain an older cover file.
+        // In that case, prefer non-stale fallback art.
+        if (isAirplaySourceAlbum && looksStickyCover) {
+          altArtUrl = looksYouTube ? youtubeLogo : `${MOODE_BASE_URL}/images/default-album-cover.png`;
+        } else if (looksYouTube && !ap.coverUrl) {
+          altArtUrl = youtubeLogo;
+        } else {
+          altArtUrl = ap.coverUrl || '';
+        }
         airplayInfoLine = ap.format || 'AirPlay';
       } catch {}
 
@@ -4731,7 +4764,10 @@ app.get('/now-playing', async (req, res) => {
         radioLookupTerm = buildAppleLookupTerm({ artist: s3.artist, title: s3.title, album: albumForTerm });
 
         // Reuse existing iTunes lookup (it already returns trackUrl/albumUrl)
-        const ap = await lookupItunesFirst(String(s3.artist || '').trim(), String(s3.title || '').trim(), debug, { radioAlbum: albumForTerm });
+        const ap = await lookupItunesFirst(String(s3.artist || '').trim(), String(s3.title || '').trim(), debug, {
+          radioAlbum: albumForTerm,
+          strictArtist: true,
+        });
 
         const tUrl = String(ap?.trackUrl || '').trim();
         const aUrl = String(ap?.albumUrl || '').trim();
