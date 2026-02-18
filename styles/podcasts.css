@@ -845,7 +845,7 @@ body.theme-light #results [data-queue-play-pos]:hover{background:rgba(137,138,19
 .heroTransport .np .progress-bar-wrapper{order:4}
 .heroTransport .np .txtLink{text-decoration:none;cursor:pointer}
 .heroTransport .np .txtLink:hover{text-decoration:underline;text-underline-offset:3px}
-.heroTransport .np .progress-bar-wrapper{width:min(720px,96%);height:8px;background:rgba(255,255,255,.18);border-radius:4px;overflow:hidden}
+.heroTransport .np .progress-bar-wrapper{width:min(660px,calc(100% - 140px));height:8px;background:rgba(255,255,255,.18);border-radius:4px;overflow:hidden;margin-inline:auto}
 .heroTransport .np .progress-bar-wrapper.is-hidden{display:none}
 .heroTransport .np .progress-fill{height:12px;background:#4fc3f7;transform:scaleX(0);transform-origin:left}
 body.theme-light .heroTransport{background:rgba(255,255,255,.72);border-color:rgba(63,47,95,.34)}
