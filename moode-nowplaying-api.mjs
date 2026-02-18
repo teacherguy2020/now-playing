@@ -4197,15 +4197,29 @@ app.get('/now-playing', async (req, res) => {
     t = t.replace(/^\s*\d{1,3}[\s.)-]+/, '').trim();
 
     // Classical-radio cleanup: if artist is likely composer and title carries
-    // ensemble/conductor suffix (e.g., "... - Minnesota Orch/Osmo Vanska"),
-    // switch lookup artist to ensemble for better iTunes matching.
+    // performer suffixes, prefer soloist or orchestra for iTunes matching.
     const composerLike = /^[A-Za-zÀ-ÿ'’.-]+(?:\s+[A-Za-zÀ-ÿ'’.-]+){0,3}$/.test(a);
-    const perfMatch = t.match(/^(.*?)[\s-]+([A-Za-zÀ-ÿ0-9'’.&\- ]+\s+Orch(?:estra)?)(?:\s*\/\s*([A-Za-zÀ-ÿ'’.\- ]+))?\s*$/i);
-    if (composerLike && perfMatch) {
-      const work = String(perfMatch[1] || '').trim();
-      const ens = String(perfMatch[2] || '').trim().replace(/\bOrch\b/i, 'Orchestra');
-      if (ens) a = ens;
-      if (work) t = work;
+    if (composerLike) {
+      // e.g. "... Op. 7-Isata Kanneh-Mason, p; Royal Liverpool Phil Orch/Holly..."
+      const soloistMatch = t.match(/^(.*?)\s*-\s*([^,;\/\-]+?)\s*,\s*(?:p|pf|pno|vn|vln|vc|cello|soprano|mezzo|tenor|baritone)\b/i);
+      if (soloistMatch) {
+        const work = String(soloistMatch[1] || '').trim();
+        const soloist = String(soloistMatch[2] || '').trim();
+        if (soloist) a = soloist;
+        if (work) t = work;
+      } else {
+        // e.g. "... - Minnesota Orch/Osmo Vanska"
+        const perfMatch = t.match(/^(.*?)[\s-]+([A-Za-zÀ-ÿ0-9'’.&\- ]+\s+Orch(?:estra)?)(?:\s*\/\s*([A-Za-zÀ-ÿ'’.\- ]+))?\s*$/i);
+        if (perfMatch) {
+          const work = String(perfMatch[1] || '').trim();
+          const ens = String(perfMatch[2] || '').trim().replace(/\bOrch\b/gi, 'Orchestra');
+          if (ens) a = ens;
+          if (work) t = work;
+        }
+      }
+
+      // Drop trailing performer blocks after semicolon/slash from title.
+      t = t.replace(/\s*[;\/].*$/, '').trim();
     }
 
     return { artist: a, title: t };
@@ -4777,7 +4791,10 @@ app.get('/now-playing', async (req, res) => {
 
     if (isRadio && radioLookupGuard.allow) {
       try {
-        const albumForTerm = String(radioAlbum || album || '').trim();
+        let albumForTerm = String(radioAlbum || album || '').trim();
+        const stName = String(song?.name || '').trim();
+        if (albumForTerm && stName && albumForTerm.toLowerCase() === stName.toLowerCase()) albumForTerm = '';
+        if (/\bwfmt\b|\bclassical\b|\bstream\b|\bradio\b/i.test(albumForTerm)) albumForTerm = '';
         const s3 = sanitizeRadioLookupInputs({ artist, title });
         radioLookupTerm = buildAppleLookupTerm({ artist: s3.artist, title: s3.title, album: albumForTerm });
 
