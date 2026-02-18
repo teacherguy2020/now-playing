@@ -2028,6 +2028,8 @@ function parseQuotedAttrs(s) {
 function stabilizeRadioDisplay(data) {
     const stationKey = `${data.file}|${data.album || ''}`;
     const incomingRaw = decodeHtmlEntities(String(data.title || '').trim());
+    const apiArtist = String(data.artist || '').trim();
+    const apiArtistGeneric = !apiArtist || /^\d{1,3}$/.test(apiArtist) || /radio|stream|wfmt|mimic|station/i.test(apiArtist);
     const attrs = parseQuotedAttrs(incomingRaw);
     if (attrs) {
         const t = String(attrs.title || '').trim();
@@ -2042,6 +2044,12 @@ function stabilizeRadioDisplay(data) {
         };
     }
     const incoming = incomingRaw;
+
+    // If backend already gave a strong artist (e.g., composer after WFMT parsing),
+    // don't let client-side dash-splitting overwrite it on subsequent polls.
+    if (!apiArtistGeneric && apiArtist.split(/\s+/).length >= 2) {
+        return { artist: apiArtist, title: incoming };
+    }
 
     // Prefer a real artist (prevents boot flicker where artist becomes album/station)
     function fallbackRadioArtist() {
