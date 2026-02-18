@@ -170,10 +170,6 @@ Highlights:
 - Keeps status pill parity with other pages (API / Web / moOde / Alexa).
 - Uses the same runtime key + API patterns as other UI pages.
 
-Notes:
-- Radio workflows were moved out of Queue Wizard into this dedicated page.
-- If changes seem stale on deployed Pis, hard refresh and/or bump cache-buster query strings for `radio.js` / `hero-transport.js`.
-
 ### Web config page
 
 You can edit core settings in-browser at:
