@@ -99,8 +99,18 @@ async function waitForAppleItunesSlot() {
   appleItunesNextAllowedTs = Date.now() + 3400;
 }
 
+function normKeyPart(s) {
+  return String(s || '')
+    .normalize('NFKC')
+    .replace(/\\'+/g, "'")
+    .replace(/[‘’`´]/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
 function albumKey(artist, album) {
-  return `${String(artist || '').trim().toLowerCase()}|${String(album || '').trim().toLowerCase()}`;
+  return `${normKeyPart(artist)}|${normKeyPart(album)}`;
 }
 
 async function readJsonFile(file, fallback) {
