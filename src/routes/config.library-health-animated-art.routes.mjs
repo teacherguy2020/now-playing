@@ -18,6 +18,18 @@ let appleItunesNextAllowedTs = 0;
 const runtimeLookupInFlight = new Map();
 const h264TranscodeInFlight = new Map();
 
+async function fetchJsonWithTimeout(url, ms = 12000, init = {}) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), Math.max(1000, Number(ms) || 12000));
+  try {
+    const r = await fetch(url, { ...init, signal: controller.signal });
+    const j = await r.json().catch(() => ({}));
+    return { response: r, json: j };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 function hashUrl(url) {
   return crypto.createHash('sha1').update(String(url || ''), 'utf8').digest('hex');
 }
@@ -146,12 +158,11 @@ async function itunesAlbumCandidates(term, limit = 8) {
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await waitForAppleItunesSlot();
-    const r = await fetch(u, {
+    const { response: r, json: j } = await fetchJsonWithTimeout(u, 12000, {
       cache: 'no-store',
       headers: { 'user-agent': 'now-playing-next/1.0 (+https://moode.brianwis.com)' },
     });
     if (r.ok) {
-      const j = await r.json().catch(() => ({}));
       return Array.isArray(j?.results) ? j.results : [];
     }
     if (r.status === 429) {
@@ -231,10 +242,13 @@ async function lookupMotionForAlbum(artist, album) {
     const endpoint = `https://api.aritra.ovh/v1/covers?url=${encodeURIComponent(appleUrl)}`;
 
     let r = null;
+    let j = {};
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      r = await fetch(endpoint, { cache: 'no-store' });
-      if (r.ok) break;
-      if (r.status === 429) {
+      const out = await fetchJsonWithTimeout(endpoint, 12000, { cache: 'no-store' }).catch(() => null);
+      r = out?.response || null;
+      j = out?.json || {};
+      if (r?.ok) break;
+      if (r?.status === 429) {
         appleLookupBackoffUntil = Math.max(appleLookupBackoffUntil || 0, Date.now() + (45 * 60 * 1000));
         await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
         continue;
@@ -247,8 +261,6 @@ async function lookupMotionForAlbum(artist, album) {
       lastUrl = appleUrl;
       continue;
     }
-
-    const j = await r.json().catch(() => ({}));
     const mp4 = pickMp4FromCovers(j);
     if (mp4) return { ok: true, appleUrl, mp4 };
     lastReason = 'no-motion';
