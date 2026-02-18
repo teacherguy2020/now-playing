@@ -1173,16 +1173,7 @@ async function applyPerformers(){
   }
 }
 
-function setAnimatedArtBusy(busy) {
-  ['buildAnimatedArtBtn','animatedArtLimit','animatedArtForce']
-    .forEach((id) => { const el = $(id); if (el) el.disabled = !!busy; });
-}
 
-function setAnimatedArtStatus(msg, busy = false) {
-  const stEl = $('animatedArtStatus');
-  if (!stEl) return;
-  stEl.innerHTML = `${busy ? '<span class="spin"></span>' : ''}${esc(String(msg || ''))}`;
-}
 
 async function refreshAnimatedArtSummary() {
   const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
@@ -1207,52 +1198,7 @@ async function refreshAnimatedArtSummary() {
   }
 }
 
-async function pollAnimatedArtJob() {
-  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
-  const key = ($('key')?.value || '').trim();
-  try {
-    const buildR = await fetch(`${apiBase}/config/library-health/animated-art/job`, { headers: key ? { 'x-track-key': key } : {} });
-    const bj = await buildR.json().catch(() => ({}));
-    const b = bj.job || { status: 'idle' };
-    const bTxt = `Build: ${b.status || 'idle'} ${Number(b.processed || 0)}/${Number(b.total || 0)} matched ${Number(b.matched || 0)} misses ${Number(b.misses || 0)}`;
-    const isBusy = (String(b.status) === 'running');
-    setAnimatedArtBusy(isBusy);
-    setAnimatedArtStatus(bTxt, isBusy);
-    if (isBusy) {
-      setTimeout(() => pollAnimatedArtJob().catch(() => {}), 3000);
-    } else {
-      refreshAnimatedArtSummary().catch(() => {});
-    }
-  } catch (e) {
-    setAnimatedArtBusy(false);
-    setAnimatedArtStatus(`Animated art job check failed: ${String(e?.message || e)}`, false);
-  }
-}
 
-async function startAnimatedArtBuild(onlyKeys = null) {
-  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
-  const key = ($('key')?.value || '').trim();
-  const limitAlbums = Math.max(0, Number($('animatedArtLimit')?.value || 0));
-  const force = !!$('animatedArtForce')?.checked;
-  try {
-    setAnimatedArtBusy(true);
-    setAnimatedArtStatus('Starting animated art cache build…', true);
-    const payload = { limitAlbums, force };
-    if (Array.isArray(onlyKeys) && onlyKeys.length) payload.onlyKeys = onlyKeys;
-    const r = await fetch(`${apiBase}/config/library-health/animated-art/build`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
-      body: JSON.stringify(payload),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-    setAnimatedArtStatus('Animated art cache build started…', true);
-    pollAnimatedArtJob().catch(() => {});
-  } catch (e) {
-    setAnimatedArtBusy(false);
-    setAnimatedArtStatus(`Start failed: ${String(e?.message || e)}`, false);
-  }
-}
 
 async function clearAnimatedArtEntry(keyToClear) {
   const key = String(keyToClear || '').trim();
@@ -1268,7 +1214,6 @@ async function clearAnimatedArtEntry(keyToClear) {
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-  setAnimatedArtStatus(`Cleared: ${key}`, false);
   await refreshAnimatedArtSummary();
 }
 
@@ -1278,14 +1223,13 @@ if (runBtn) runBtn.addEventListener('click', run);
 $('albumPick')?.addEventListener('change', () => loadAlbumMetadata());
 $('suggestPerformersBtn')?.addEventListener('click', suggestPerformers);
 $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
-$('buildAnimatedArtBtn')?.addEventListener('click', () => startAnimatedArtBuild());
 // discovery workflow removed
 // discovery workflow removed
 $('animatedArtCacheList')?.addEventListener('click', (ev) => {
   const btn = ev.target?.closest?.('[data-clear-animated-key]');
   if (!btn) return;
   clearAnimatedArtEntry(btn.getAttribute('data-clear-animated-key')).catch((e) => {
-    setAnimatedArtStatus(`Clear failed: ${String(e?.message || e)}`, false);
+    alert(`Clear failed: ${String(e?.message || e)}`);
   });
 });
 
@@ -1298,6 +1242,5 @@ loadRuntimeMeta().finally(() => {
   run();
   loadAlbumOptions().then(() => loadAlbumMetadata());
   refreshAnimatedArtSummary().catch(() => {});
-  pollAnimatedArtJob().catch(() => {});
 });
 })();
