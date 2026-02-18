@@ -1477,6 +1477,14 @@ function splitTitlePerformersProgram(titleLine) {
   const parsePersonnel = (perfRaw) => {
     const p = String(perfRaw || '').trim();
     if (!p) return [];
+
+    const roleMap = {
+      p: 'piano', pf: 'piano', pno: 'piano',
+      vn: 'violin', vln: 'violin',
+      vc: 'cello',
+      va: 'viola', vla: 'viola', vi: 'viola',
+    };
+
     if (p.includes('/')) {
       const [lhs = '', rhs = ''] = p.split('/').map((x) => x.trim());
       const out = [];
@@ -1484,12 +1492,27 @@ function splitTitlePerformersProgram(titleLine) {
       if (rhs) out.push(`${rhs} (conductor)`);
       return out.filter(Boolean);
     }
+
     const arr = p.split(/\s*,\s*/).map((x) => normalizeEns(x)).filter(Boolean);
-    if (arr.length === 2 && looksEnsemble(arr[1]) && !/\((?:conductor|violin|piano|cello|viola)\)/i.test(arr[0])) {
-      return [`${arr[0]} (conductor)`, `${arr[1]} (orchestra)`];
+
+    // Pair "Name, vi, Name, p" into role-tagged personnel
+    const out = [];
+    for (let i = 0; i < arr.length; i += 1) {
+      const cur = String(arr[i] || '').trim();
+      const next = String(arr[i + 1] || '').trim().toLowerCase();
+      if (roleMap[next]) {
+        out.push(`${cur} (${roleMap[next]})`);
+        i += 1;
+        continue;
+      }
+      out.push(cur);
     }
-    if (arr.length === 1 && looksEnsemble(arr[0])) return [`${arr[0]} (orchestra)`];
-    return arr;
+
+    if (out.length === 2 && looksEnsemble(out[1]) && !/\((?:conductor|violin|piano|cello|viola|orchestra)\)/i.test(out[0])) {
+      return [`${out[0]} (conductor)`, `${out[1]} (orchestra)`];
+    }
+    if (out.length === 1 && looksEnsemble(out[0])) return [`${out[0]} (orchestra)`];
+    return out;
   };
 
   // Case A: spaced-dash pattern (preserve hyphenated names like Ippolitov-Ivanov)
@@ -1507,14 +1530,14 @@ function splitTitlePerformersProgram(titleLine) {
       const work = looksComposer ? second : `${first} - ${second}`;
       const personnel = parsePersonnel(third);
       const program = fourth;
-      return { work, personnel, program };
+      return { composer: looksComposer ? first : '', work, personnel, program };
     }
 
     // Pattern B: Composer - Work - Movement - Performers - Program
     const work = looksComposer ? `${second} - ${third}` : `${first} - ${second} - ${third}`;
     const personnel = parsePersonnel(fourth);
     const program = String(parts[4] || '');
-    return { work, personnel, program };
+    return { composer: looksComposer ? first : '', work, personnel, program };
   }
   if (parts.length === 4) {
     // WFMT medium form: Composer - Work - Performers - Program
@@ -1525,7 +1548,7 @@ function splitTitlePerformersProgram(titleLine) {
     const work = looksComposer ? second : `${first} - ${second}`;
     const personnel = parsePersonnel(perfRaw);
     const program = String(parts[3] || '');
-    return { work, personnel, program };
+    return { composer: looksComposer ? first : '', work, personnel, program };
   }
   if (parts.length === 3) {
     const work = String(parts[0] || '');
@@ -1555,7 +1578,7 @@ function splitTitlePerformersProgram(titleLine) {
     if (orchRaw) personnel.push(normalizeEns(orchRaw));
     if (condRaw) personnel.push(`${condRaw} (conductor)`);
 
-    return { work, personnel, program: '' };
+    return { composer: '', work, personnel, program: '' };
   }
 
   // Case C: "work-Orchestra/Soloist, v" (no semicolon)
@@ -1572,7 +1595,7 @@ function splitTitlePerformersProgram(titleLine) {
     const personnel = [];
     if (orchRaw) personnel.push(`${normalizeEns(orchRaw)} (orchestra)`);
     if (soloist) personnel.push(`${soloist} (${role})`);
-    return { work, personnel, program: '' };
+    return { composer: '', work, personnel, program: '' };
   }
 
   return null;
@@ -4753,6 +4776,9 @@ app.get('/now-playing', async (req, res) => {
       const split = splitTitlePerformersProgram(title);
       if (split) {
         title = split.work;
+        if (artistLooksGeneric(artist) && String(split.composer || '').trim()) {
+          artist = String(split.composer).trim();
+        }
 
         const set = new Set(
           (Array.isArray(personnel) ? personnel : [])
