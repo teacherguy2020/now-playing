@@ -4291,6 +4291,15 @@ app.get('/now-playing', async (req, res) => {
   }
 
   // Build a deterministic Apple lookup term (keeps cache stable)
+  function looksAlbumHintText(s) {
+    const v = String(s || '').trim();
+    if (!v) return false;
+    if (/^wfmt\b|radio|stream/i.test(v)) return false;
+    // album-ish: work separators and rich punctuation, not just person names
+    if (/:/.test(v) || /\b(op\.|concerto|symphony|quartet|sonata|season|saisons|concertos?)\b/i.test(v)) return true;
+    return false;
+  }
+
   function buildAppleLookupTerm({ artist, title, album }) {
     const s = sanitizeRadioLookupInputs({ artist, title });
     const a = String(s.artist || '').trim();
@@ -4804,7 +4813,10 @@ app.get('/now-playing', async (req, res) => {
       let albumForLookup = String(radioAlbum || album || '').trim();
       const stName0 = String(song?.name || '').trim();
       if (albumForLookup && stName0 && albumForLookup.toLowerCase() === stName0.toLowerCase()) albumForLookup = '';
-      if (/\bwfmt\b|\bclassical\b|\bradio\b|\bstream\b|\bmimic\b/i.test(albumForLookup)) albumForLookup = '';
+      if (/\bwfmt\b|\bclassical\b|\bradio\b|\bstream\b|\bmimic\b|\berato\b/i.test(albumForLookup)) albumForLookup = '';
+      // WFMT often places useful program/album clue in radioPerformers; use it as album hint when present.
+      const perfAlbumHint = decodeHtmlEntities(String(radioPerformers || '').trim());
+      if (!albumForLookup && looksAlbumHintText(perfAlbumHint)) albumForLookup = perfAlbumHint;
 
       if (lookupArtist && lookupTitle) {
         const it = await lookupItunesFirst(lookupArtist, lookupTitle, debug, {
@@ -4890,7 +4902,9 @@ app.get('/now-playing', async (req, res) => {
         let albumForTerm = String(radioAlbum || album || '').trim();
         const stName = String(song?.name || '').trim();
         if (albumForTerm && stName && albumForTerm.toLowerCase() === stName.toLowerCase()) albumForTerm = '';
-        if (/\bwfmt\b|\bclassical\b|\bstream\b|\bradio\b/i.test(albumForTerm)) albumForTerm = '';
+        if (/\bwfmt\b|\bclassical\b|\bstream\b|\bradio\b|\berato\b/i.test(albumForTerm)) albumForTerm = '';
+        const perfAlbumHint = decodeHtmlEntities(String(radioPerformers || '').trim());
+        if (!albumForTerm && looksAlbumHintText(perfAlbumHint)) albumForTerm = perfAlbumHint;
         const s3 = sanitizeRadioLookupInputs({ artist, title });
         radioLookupTerm = buildAppleLookupTerm({ artist: s3.artist, title: s3.title, album: albumForTerm });
 
