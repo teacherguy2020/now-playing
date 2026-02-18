@@ -1175,6 +1175,20 @@ async function applyPerformers(){
 
 
 
+function setAnimatedArtPreview(mp4, label = '') {
+  const box = $('animatedArtPreview');
+  const lab = $('animatedArtPreviewLabel');
+  if (!box) return;
+  const src = String(mp4 || '').trim();
+  if (!src) {
+    box.innerHTML = '<span class="muted" style="font-size:11px;">Preview</span>';
+    if (lab) lab.textContent = label || 'Click a cached album to preview';
+    return;
+  }
+  box.innerHTML = `<video src="${esc(src)}" autoplay muted loop playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video>`;
+  if (lab) lab.textContent = label || 'Preview';
+}
+
 async function refreshAnimatedArtSummary() {
   const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
   const key = ($('key')?.value || '').trim();
@@ -1189,7 +1203,16 @@ async function refreshAnimatedArtSummary() {
     if (listEl) {
       const rows = (Array.isArray(j.entries) ? j.entries : []).filter((x) => !!x?.hasMotion && !!x?.mp4);
       listEl.innerHTML = rows.length
-        ? rows.map((x) => `<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;margin:4px 0;"><span>• ${esc(String(x.artist || ''))} — ${esc(String(x.album || ''))}</span><button type="button" class="tiny danger" data-clear-animated-key="${esc(String(x.key || ''))}">Clear</button></div>`).join('')
+        ? rows.map((x) => {
+            const artist = esc(String(x.artist || ''));
+            const album = esc(String(x.album || ''));
+            const k = esc(String(x.key || ''));
+            const mp4 = esc(String(x.mp4 || x.mp4H264 || ''));
+            return `<div style="display:flex;align-items:center;gap:6px;margin:4px 0;">
+              <button type="button" class="tiny" data-preview-mp4="${mp4}" data-preview-label="${artist} — ${album}" style="padding:2px 6px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;">• ${artist} — ${album}</button>
+              <button type="button" class="tiny danger" data-clear-animated-key="${k}">Remove</button>
+            </div>`;
+          }).join('')
         : '<div class="muted">No cached motion albums yet.</div>';
     }
   } catch (e) {
@@ -1226,11 +1249,17 @@ $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
 // discovery workflow removed
 // discovery workflow removed
 $('animatedArtCacheList')?.addEventListener('click', (ev) => {
-  const btn = ev.target?.closest?.('[data-clear-animated-key]');
-  if (!btn) return;
-  clearAnimatedArtEntry(btn.getAttribute('data-clear-animated-key')).catch((e) => {
-    alert(`Clear failed: ${String(e?.message || e)}`);
-  });
+  const clearBtn = ev.target?.closest?.('[data-clear-animated-key]');
+  if (clearBtn) {
+    clearAnimatedArtEntry(clearBtn.getAttribute('data-clear-animated-key')).catch((e) => {
+      alert(`Clear failed: ${String(e?.message || e)}`);
+    });
+    return;
+  }
+  const previewBtn = ev.target?.closest?.('[data-preview-mp4]');
+  if (previewBtn) {
+    setAnimatedArtPreview(previewBtn.getAttribute('data-preview-mp4'), previewBtn.getAttribute('data-preview-label') || 'Preview');
+  }
 });
 
 syncAnimatedArtCardVisibility();
