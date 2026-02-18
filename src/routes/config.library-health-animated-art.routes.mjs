@@ -48,7 +48,7 @@ async function ensureH264ForSource(sourceUrl) {
   if (!p) {
     p = (async () => {
       await fs.mkdir(H264_DIR, { recursive: true });
-      await execFileP('ffmpeg', [
+      await execFileP('/usr/bin/ffmpeg', [
         '-hide_banner',
         '-loglevel', 'error',
         '-y',
@@ -461,7 +461,8 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
               liveCache.updatedAt = new Date().toISOString();
               await writeCache(liveCache);
             }
-          } catch {
+          } catch (e) {
+            console.warn('[animated-art] h264 transcode failed (cache-hit):', e?.message || e);
             // fallback to original mp4 URL
           }
         }
@@ -516,7 +517,8 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
             liveCache.updatedAt = new Date().toISOString();
             await writeCache(liveCache);
           }
-        } catch {
+        } catch (e) {
+          console.warn('[animated-art] h264 transcode failed (resolved):', e?.message || e);
           // fallback to original mp4 URL
         }
       }
