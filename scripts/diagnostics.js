@@ -363,7 +363,8 @@
               : (stationGenre || ''))
           : (displayTitle ? `${displayTitle} ${x.album ? `• ${String(x.album)}` : ''}` : '');
 
-        return `<div data-queue-play-pos="${pos}" style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;cursor:pointer;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${displayArtist}${favBtn}</div><div class="muted">${detailLine}</div>${starsRow}</div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
+        const moveBtns = `<div style="display:flex;gap:4px;margin-left:auto;"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove from queue">Remove</button></div>`;
+        return `<div data-queue-play-pos="${pos}" style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;cursor:pointer;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${displayArtist}${favBtn}</div><div class="muted">${detailLine}</div>${starsRow}</div>${moveBtns}</div>`;
       }).join('');
     } catch (e) {
       wrap.innerHTML = `<div class="muted">Queue load failed: ${e?.message || e}</div>`;
@@ -591,6 +592,21 @@
         .then(() => { $('status').textContent = `Rated: ${rating} star${rating===1?'':'s'}`; })
         .catch((e) => { $('status').textContent = String(e?.message || e); })
         .finally(() => { rateBtn.disabled = false; });
+      return;
+    }
+
+    const moveBtn = el ? el.closest('button[data-move-pos][data-move-dir]') : null;
+    if (moveBtn) {
+      const fromPosition = Number(moveBtn.getAttribute('data-move-pos') || 0);
+      const dir = String(moveBtn.getAttribute('data-move-dir') || '');
+      if (!Number.isFinite(fromPosition) || fromPosition <= 0) return;
+      const toPosition = dir === 'up' ? (fromPosition - 1) : (fromPosition + 1);
+      if (toPosition <= 0) return;
+      moveBtn.disabled = true;
+      sendPlayback('move', { fromPosition, toPosition })
+        .then(() => { $('status').textContent = `Moved queue item ${fromPosition} ${dir}.`; })
+        .catch((e) => { $('status').textContent = String(e?.message || e); })
+        .finally(() => { moveBtn.disabled = false; });
       return;
     }
 

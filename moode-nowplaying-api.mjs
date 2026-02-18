@@ -3926,6 +3926,22 @@ app.post('/mpd/play-file', async (req, res) => {
   }
 });
 
+app.post('/mpd/add-file', async (req, res) => {
+  try {
+    const file = String(req.body?.file || '').trim();
+    if (!file) {
+      return res.status(400).json({ ok: false, error: 'Missing file' });
+    }
+
+    const q = `"${file.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+    await mpdQueryRaw(`add ${q}`);
+
+    return res.json({ ok: true, file });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
 registerPodcastEpisodeRoutes(app, {
   normUrl,
   readSubs,

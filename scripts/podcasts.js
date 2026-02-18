@@ -15,6 +15,7 @@
   const retentionDaysEl = document.getElementById('retentionDays');
   const saveRetentionBtn = document.getElementById('saveRetentionBtn');
   const runCleanupBtn = document.getElementById('runCleanupBtn');
+  const queueWrapEl = document.getElementById('queueWrap');
 
   let API_BASE = (() => {
     const q = new URLSearchParams(window.location.search);
@@ -24,6 +25,11 @@
     const host = window.location.hostname || '10.0.0.233';
     return `http://${host}:3101`;
   })();
+  let runtimeTrackKey = '';
+
+  function currentKey(){
+    return String(runtimeTrackKey || '').trim();
+  }
 
   function setPillState(pillId, state){
     const map = {
@@ -56,6 +62,9 @@
         API_BASE = `${proto}//${host}:${apiPort}`;
         if (apiHintEl) apiHintEl.textContent = `${host}:${apiPort}`;
         if (webHintEl) webHintEl.textContent = `${host}:${uiPort}`;
+        const k = String(j?.config?.trackKey || '').trim();
+        if (k) runtimeTrackKey = k;
+
         const axEnabled = !!j?.config?.alexa?.enabled;
         const axDomain = String(j?.config?.alexa?.publicDomain || '').trim();
         if (alexaHintEl) alexaHintEl.textContent = !axEnabled ? 'disabled' : (axDomain ? 'moode.••••••••.com' : 'missing domain');
@@ -209,21 +218,51 @@
   }
 
   async function apiGet(path) {
-    const r = await fetch(`${API_BASE}${path}`, { cache: 'no-store' });
+    const key = currentKey();
+    const r = await fetch(`${API_BASE}${path}`, {
+      cache: 'no-store',
+      headers: key ? { 'x-track-key': key } : {}
+    });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
     return j;
   }
 
   async function apiPost(path, body) {
+    const key = currentKey();
     const r = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: { 'Content-Type':'application/json', ...(key ? { 'x-track-key': key } : {}) },
       body: JSON.stringify(body || {})
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.ok === false) throw new Error(j.error || `HTTP ${r.status}`);
     return j;
+  }
+
+  async function loadQueueCard() {
+    if (!queueWrapEl) return;
+    try {
+      const j = await apiGet('/config/diagnostics/queue');
+      const items = Array.isArray(j?.items) ? j.items.slice(0, 60) : [];
+      if (!items.length) { queueWrapEl.innerHTML = '<div class="muted">Queue is empty.</div>'; return; }
+      queueWrapEl.innerHTML = items.map((x) => {
+        const pos = Number(x.position || 0);
+        const head = !!x.isHead;
+        const thumbSrc = x.thumbUrl ? (String(x.thumbUrl).startsWith('http') ? String(x.thumbUrl) : `${API_BASE}${x.thumbUrl}`) : '';
+        const thumb = thumbSrc ? `<img src="${thumbSrc}" style="width:34px;height:34px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;" />` : '<div style="width:34px;height:34px"></div>';
+        const artist = String(x.stationName || x.artist || x.album || '').trim();
+        const title = String(x.title || '').trim();
+        const detail = title ? title : String(x.album || '').trim();
+        return `<div data-queue-play-pos="${pos}" style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;cursor:pointer;${head?'background:rgba(34,197,94,.14);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${pos}</b>. ${head?'▶️ ':''}${esc(artist)}</div><div class="muted">${esc(detail)}</div></div><div style="display:flex;gap:4px;margin-left:auto;"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove from queue">Remove</button></div></div>`;
+      }).join('');
+    } catch (e) {
+      queueWrapEl.innerHTML = `<div class="muted">Queue load failed: ${esc(e?.message || e)}</div>`;
+    }
+  }
+
+  async function sendQueueAction(action, payload = {}) {
+    await apiPost('/config/diagnostics/playback', { action, ...payload });
   }
 
   function canonicalEpisodeIdFromKeyOrUrl(raw) {
@@ -347,20 +386,31 @@ function renderEpisodes(eps) {
                     (filename ? `${String(modalCtx?.mpdPrefix || '').trim()}/${filename}` : '');
 
     if (downloaded && mpdPath) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'epPlayBtn';
-      btn.title = 'Play';
-      btn.setAttribute('aria-label', 'Play episode');
-      btn.dataset.file = mpdPath;
+      const btnPlay = document.createElement('button');
+      btnPlay.type = 'button';
+      btnPlay.className = 'epPlayBtn';
+      btnPlay.title = 'Play now';
+      btnPlay.setAttribute('aria-label', 'Play episode now');
+      btnPlay.dataset.tip = 'Play now';
+      btnPlay.dataset.file = mpdPath;
 
-      btn.innerHTML = `
+      btnPlay.innerHTML = `
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path d="M8 5v14l11-7z"></path>
         </svg>
       `;
 
-      right.appendChild(btn);
+      const btnQueue = document.createElement('button');
+      btnQueue.type = 'button';
+      btnQueue.className = 'epQueueBtn';
+      btnQueue.title = 'Add to queue';
+      btnQueue.setAttribute('aria-label', 'Add episode to queue');
+      btnQueue.dataset.tip = 'Add to queue';
+      btnQueue.dataset.file = mpdPath;
+      btnQueue.textContent = '+';
+
+      right.appendChild(btnQueue);
+      right.appendChild(btnPlay);
     }
 
     const rowThumb = document.createElement('img');
@@ -386,6 +436,33 @@ function renderEpisodes(eps) {
 
 // Play button handler (event delegation)
 epList.addEventListener('click', async (e) => {
+  const queueBtn = e.target.closest('.epQueueBtn');
+  if (queueBtn) {
+    const file = String(queueBtn.dataset.file || '').trim();
+    if (!file) return;
+    try {
+      queueBtn.disabled = true;
+      await apiPost('/mpd/add-file', { file });
+      const row = queueBtn.closest('.epRow');
+      const epTitle = String(row?.querySelector('.epTitle')?.textContent || '').trim();
+      modalHint.textContent = epTitle ? `Added to queue: ${epTitle}` : 'Added to queue.';
+
+      const prevText = queueBtn.textContent;
+      queueBtn.textContent = '✓';
+      queueBtn.classList.add('epBtnDone');
+      setTimeout(() => {
+        queueBtn.textContent = prevText || '+';
+        queueBtn.classList.remove('epBtnDone');
+      }, 1400);
+    } catch (err) {
+      console.error('add-file failed:', err);
+      alert(`Add to queue failed: ${err?.message || err}`);
+    } finally {
+      queueBtn.disabled = false;
+    }
+    return;
+  }
+
   const btn = e.target.closest('.epPlayBtn');
   if (!btn) return;
 
@@ -395,6 +472,7 @@ epList.addEventListener('click', async (e) => {
   try {
     btn.disabled = true;
     await apiPost('/mpd/play-file', { file });
+    modalHint.textContent = 'Playing episode…';
   } catch (err) {
     console.error('play-file failed:', err);
     alert(`Play failed: ${err?.message || err}`);
@@ -783,6 +861,66 @@ async function loadEpisodes() {
   }
 
   // =========================
+  // Queue card actions
+  // =========================
+  queueWrapEl?.addEventListener('click', async (ev) => {
+    const el = ev.target instanceof Element ? ev.target : null;
+    if (!el) return;
+
+    const moveBtn = el.closest('button[data-move-pos][data-move-dir]');
+    if (moveBtn) {
+      ev.preventDefault();
+      const fromPosition = Number(moveBtn.getAttribute('data-move-pos') || 0);
+      const dir = String(moveBtn.getAttribute('data-move-dir') || '');
+      const toPosition = dir === 'up' ? (fromPosition - 1) : (fromPosition + 1);
+      if (!fromPosition || toPosition <= 0) return;
+      moveBtn.disabled = true;
+      try {
+        await sendQueueAction('move', { fromPosition, toPosition });
+        setStatus(`Moved queue item ${fromPosition} ${dir}.`, 'ok');
+        await loadQueueCard();
+      } catch (e) {
+        setStatus(`Error: ${e?.message || e}`, 'err');
+      } finally {
+        moveBtn.disabled = false;
+      }
+      return;
+    }
+
+    const removeBtn = el.closest('button[data-remove-pos]');
+    if (removeBtn) {
+      ev.preventDefault();
+      const position = Number(removeBtn.getAttribute('data-remove-pos') || 0);
+      if (!position) return;
+      removeBtn.disabled = true;
+      try {
+        await sendQueueAction('remove', { position });
+        setStatus(`Removed queue item ${position}.`, 'ok');
+        await loadQueueCard();
+      } catch (e) {
+        setStatus(`Error: ${e?.message || e}`, 'err');
+      } finally {
+        removeBtn.disabled = false;
+      }
+      return;
+    }
+
+    const row = el.closest('[data-queue-play-pos]');
+    if (row && !el.closest('button')) {
+      ev.preventDefault();
+      const position = Number(row.getAttribute('data-queue-play-pos') || 0);
+      if (!position) return;
+      try {
+        await sendQueueAction('playpos', { position });
+        setStatus(`Playing queue position ${position}.`, 'ok');
+        await loadQueueCard();
+      } catch (e) {
+        setStatus(`Error: ${e?.message || e}`, 'err');
+      }
+    }
+  });
+
+  // =========================
   // Hero actions
   // =========================
   btnRefresh.addEventListener('click', boot);
@@ -826,4 +964,6 @@ async function loadEpisodes() {
     }
   });
 
-  loadRuntimeHints().finally(() => { boot(); loadNightlyStatus(); });
+  window.addEventListener('heroTransport:update', () => { loadQueueCard().catch(() => {}); });
+
+  loadRuntimeHints().finally(() => { boot(); loadNightlyStatus(); loadQueueCard(); });

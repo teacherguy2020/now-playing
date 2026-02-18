@@ -673,18 +673,59 @@ input::placeholder {
   gap: 10px;
 }
 
-.epPlayBtn {
+.epPlayBtn,
+.epQueueBtn {
   border: 0;
   background: transparent;
   padding: 4px;
   cursor: pointer;
+  color: #bbb;
 }
 
 .epPlayBtn svg {
   width: 24px;
   height: 24px;
-  fill: #bbb
+  fill: currentColor;
 }
+
+.epQueueBtn {
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.epPlayBtn:hover,
+.epQueueBtn:hover,
+.epPlayBtn:focus-visible,
+.epQueueBtn:focus-visible {
+  color: #e5e7eb;
+}
+
+.epPlayBtn,
+.epQueueBtn { position: relative; }
+.epPlayBtn::after,
+.epQueueBtn::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+.epPlayBtn:hover::after,
+.epQueueBtn:hover::after,
+.epPlayBtn:focus-visible::after,
+.epQueueBtn:focus-visible::after { opacity: 1; }
+
+.epBtnDone { color: #22c55e !important; }
 .btnPrimary { pointer-events: auto !important; z-index: 10; }
 
 /* ---------- Shared Light Theme (Apple-ish Purple) ---------- */

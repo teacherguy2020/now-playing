@@ -230,6 +230,18 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.json({ ok: true, action, playedPosition: pos, randomOn, status: String(afterStatus || '') });
       }
 
+      if (action === 'move') {
+        const fromRaw = Number(req.body?.fromPosition);
+        const toRaw = Number(req.body?.toPosition);
+        const fromPosition = Number.isFinite(fromRaw) ? Math.max(1, Math.floor(fromRaw)) : 0;
+        const toPosition = Number.isFinite(toRaw) ? Math.max(1, Math.floor(toRaw)) : 0;
+        if (!fromPosition || !toPosition) return res.status(400).json({ ok: false, error: 'fromPosition and toPosition are required for move' });
+        await execFileP('mpc', ['-h', mpdHost, 'move', String(fromPosition), String(toPosition)]);
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, fromPosition, toPosition, randomOn, status: String(afterStatus || '') });
+      }
+
       if (action === 'rate') {
         const ratingsEnabled = await isRatingsEnabled();
         if (!ratingsEnabled) return res.status(403).json({ ok: false, error: 'Ratings feature is disabled' });

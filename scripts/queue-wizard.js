@@ -844,7 +844,8 @@ async function syncVibeAvailability() {
             : (stationGenre ? esc(stationGenre) : ''))
         : (displayTitle ? `${esc(displayTitle)} ${x.album ? `• ${esc(String(x.album || ''))}` : ''}` : '');
 
-      return `<div class="${rowClass}" data-queue-play-pos="${pos}" style="cursor:pointer;">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(displayArtist)}${favBtn}</div><div class="muted">${detailLine}</div>${starsRow}</div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
+      const moveBtns = `<div style="display:flex;gap:4px;margin-left:auto;"><button type="button" data-queue-move-pos="${pos}" data-queue-move-dir="up" title="Move up">↑</button><button type="button" data-queue-move-pos="${pos}" data-queue-move-dir="down" title="Move down">↓</button><button type="button" data-queue-remove-pos="${pos}" title="Remove from queue">Remove</button></div>`;
+      return `<div class="${rowClass}" data-queue-play-pos="${pos}" style="cursor:pointer;">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(displayArtist)}${favBtn}</div><div class="muted">${detailLine}</div>${starsRow}</div>${moveBtns}</div>`;
     }).join('');
   }
 
@@ -2425,6 +2426,23 @@ function wireEvents() {
       sendDiagnosticsAction('rate', { file, rating })
         .then(() => setStatus(`Rated: ${rating} star${rating===1?'':'s'}`))
         .catch((e) => setStatus(`Error: ${esc(e?.message || e)}`));
+      return;
+    }
+
+    const moveBtn = el.closest('button[data-queue-move-pos][data-queue-move-dir]');
+    if (moveBtn) {
+      ev.preventDefault();
+      const fromPosition = Number(moveBtn.getAttribute('data-queue-move-pos') || 0);
+      const dir = String(moveBtn.getAttribute('data-queue-move-dir') || '');
+      if (!Number.isFinite(fromPosition) || fromPosition <= 0) return;
+      const toPosition = dir === 'up' ? (fromPosition - 1) : (fromPosition + 1);
+      if (toPosition <= 0) return;
+      moveBtn.disabled = true;
+      sendDiagnosticsAction('move', { fromPosition, toPosition })
+        .then(() => loadCurrentQueueCard())
+        .then(() => setStatus(`Moved queue item ${fromPosition} ${dir}.`))
+        .catch((e) => setStatus(`Error: ${esc(e?.message || e)}`))
+        .finally(() => { moveBtn.disabled = false; });
       return;
     }
 

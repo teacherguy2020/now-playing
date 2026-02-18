@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>moOde Podcasts Add-On</title>
 
-  <link rel="stylesheet" href="styles/podcasts.css?v=20260216-74" />
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260218-75" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260211-1" />
   <style>
     body.theme-light .subsScroll,
@@ -36,7 +36,9 @@
     }
 
     body.theme-light input::placeholder{ color:#4b3e6f !important; }
-    body.theme-light .epPlayBtn svg{ fill:#3b2f5a !important; }
+    body.theme-light .epPlayBtn,
+    body.theme-light .epQueueBtn{ color:#3b2f5a !important; }
+    body.theme-light .epPlayBtn svg{ fill:currentColor !important; }
 
     /* Podcasts page: use normal page scroll (hero not sticky) */
     #heroRail{position:relative !important; top:auto !important;}
@@ -118,6 +120,14 @@
         </div>
       </section>
 
+      <section class="panel" id="podcastsQueuePanel" style="margin-top:10px;">
+        <div class="subsHeader" style="margin-bottom:8px;">
+          <div class="h">Current Queue</div>
+          <div class="hint">Tap row to play • ↑/↓ to reorder</div>
+        </div>
+        <div id="queueWrap"><div class="muted">Loading queue…</div></div>
+      </section>
+
       <pre id="log" aria-label="Request log"></pre>
       <div class="divider" aria-hidden="true"></div>
     </div>
@@ -166,7 +176,7 @@
     </div>
   </div>
 
-  <script src="scripts/podcasts.js?v=20260216-3"></script>
+  <script src="scripts/podcasts.js?v=20260218-6"></script>
 
 <script src="scripts/hero-transport.js?v=20260217-70"></script>
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
