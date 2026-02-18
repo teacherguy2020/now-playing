@@ -226,7 +226,7 @@ async function itunesAlbumCandidates(term, limit = 8) {
   return [];
 }
 
-async function lookupAppleAlbumUrls(artist, album, limit = 6) {
+async function lookupAppleAlbumCandidates(artist, album, limit = 6) {
   if (appleLookupBackoffUntil && Date.now() < appleLookupBackoffUntil) return [];
   const a = String(artist || '').trim();
   const b = String(album || '').trim();
@@ -261,15 +261,14 @@ async function lookupAppleAlbumUrls(artist, album, limit = 6) {
       if (seen.has(x.url)) return false;
       seen.add(x.url);
       return true;
-    })
-    .map((x) => x.url);
+    });
 
   return ordered.slice(0, Math.max(1, Math.min(20, Number(limit) || 6)));
 }
 
 async function lookupAppleAlbumUrl(artist, album) {
-  const urls = await lookupAppleAlbumUrls(artist, album, 1);
-  return urls[0] || '';
+  const rows = await lookupAppleAlbumCandidates(artist, album, 1);
+  return rows[0]?.url || '';
 }
 
 function pickMp4FromCovers(covers) {
@@ -307,7 +306,9 @@ async function lookupMotionForAlbum(artist, album) {
     }
   }
 
-  const candidateUrls = await lookupAppleAlbumUrls(artist, album, 8);
+  const candidateRows = await lookupAppleAlbumCandidates(artist, album, 8);
+  const minAcceptScore = 6;
+  const candidateUrls = candidateRows.filter((r) => Number(r?.score || 0) >= minAcceptScore).map((r) => r.url);
   const appleUrls = [overrideUrl, ...candidateUrls].filter(Boolean).filter((u, i, arr) => arr.indexOf(u) === i);
   if (!appleUrls.length) return { ok: false, reason: 'no-apple-url' };
 
