@@ -1209,7 +1209,7 @@ async function refreshAnimatedArtSummary() {
             const k = esc(String(x.key || ''));
             const mp4 = esc(String(x.mp4 || x.mp4H264 || ''));
             return `<div style="display:flex;align-items:center;gap:6px;margin:4px 0;">
-              <button type="button" class="tiny" data-preview-mp4="${mp4}" data-preview-label="${artist} — ${album}" style="height:28px;line-height:26px;padding:0 8px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:1px solid currentColor;border-radius:8px;background:transparent;">• ${artist} — ${album}</button>
+              <button type="button" class="tiny" data-preview-mp4="${mp4}" data-preview-artist="${artist}" data-preview-album="${album}" data-preview-label="${artist} — ${album}" style="height:28px;line-height:26px;padding:0 8px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:1px solid currentColor;border-radius:8px;background:transparent;">• ${artist} — ${album}</button>
               <button type="button" class="tiny danger" data-clear-animated-key="${k}" style="height:28px;line-height:26px;padding:0 8px;border:1px solid #ef4444;color:#ef4444;border-radius:8px;background:transparent;">Remove</button>
             </div>`;
           }).join('')
@@ -1266,7 +1266,27 @@ $('animatedArtCacheList')?.addEventListener('click', (ev) => {
     previewBtn.style.borderColor = '#22c55e';
     previewBtn.style.color = '#22c55e';
     previewBtn.dataset.active = '1';
-    setAnimatedArtPreview(previewBtn.getAttribute('data-preview-mp4'), previewBtn.getAttribute('data-preview-label') || 'Preview');
+
+    const label = previewBtn.getAttribute('data-preview-label') || 'Preview';
+    const directMp4 = String(previewBtn.getAttribute('data-preview-mp4') || '').trim();
+    setAnimatedArtPreview(directMp4, label);
+
+    // If cached URL is stale/non-playable, re-resolve live to fetch H.264 and preview that.
+    const artist = String(previewBtn.getAttribute('data-preview-artist') || '').trim();
+    const album = String(previewBtn.getAttribute('data-preview-album') || '').trim();
+    if (artist && album) {
+      const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+      const trackKey = ($('key')?.value || '').trim();
+      fetch(`${apiBase}/config/library-health/animated-art/lookup?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}`, {
+        headers: trackKey ? { 'x-track-key': trackKey } : {},
+      })
+        .then((r) => r.json().catch(() => ({})))
+        .then((j) => {
+          const mp4 = String(j?.hit?.mp4 || '').trim();
+          if (mp4) setAnimatedArtPreview(mp4, label);
+        })
+        .catch(() => {});
+    }
   }
 });
 

@@ -661,14 +661,25 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
   app.post('/config/library-health/animated-art/clear', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const keyRaw = String(req.body?.key || '').trim();
+      const keyRaw = String(req.body?.key || '');
       const artist = String(req.body?.artist || '').trim();
       const album = String(req.body?.album || '').trim();
-      const key = keyRaw || albumKey(artist, album);
-      if (!key) return res.status(400).json({ ok: false, error: 'key or artist+album required' });
+      const requestedKey = keyRaw || albumKey(artist, album);
+      if (!String(requestedKey || '').trim()) return res.status(400).json({ ok: false, error: 'key or artist+album required' });
 
       const cache = await readCache();
       cache.entries = cache.entries || {};
+
+      // Resolve key robustly (handles historical trailing-space keys)
+      const keys = Object.keys(cache.entries || {});
+      const reqNorm = String(requestedKey).trim().toLowerCase();
+      let key = keys.find((k) => String(k || '').toLowerCase() === String(requestedKey || '').toLowerCase()) ||
+                keys.find((k) => String(k || '').trim().toLowerCase() === reqNorm) || '';
+      if (!key && artist && album) {
+        const canonical = albumKey(artist, album);
+        key = keys.find((k) => String(k || '').trim().toLowerCase() === canonical) || canonical;
+      }
+
       const existing = cache.entries[key] || null;
       if (existing?.mp4H264) {
         const p = h264PathFromPublicUrl(existing.mp4H264);
