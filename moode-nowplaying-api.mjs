@@ -1472,6 +1472,7 @@ function splitTitlePerformersProgram(titleLine) {
     .replace(/\bPhil\b/gi, 'Philharmonic')
     .replace(/\s{2,}/g, ' ')
     .trim();
+  const looksEnsemble = (s) => /orchester|orchestra|ensemble|phil(harm|harmon)|symph|sinfon|choir|chor|quartet|quintet|trio|camerata/i.test(String(s || ''));
 
   const parsePersonnel = (perfRaw) => {
     const p = String(perfRaw || '').trim();
@@ -1483,13 +1484,30 @@ function splitTitlePerformersProgram(titleLine) {
       if (rhs) out.push(`${rhs} (conductor)`);
       return out.filter(Boolean);
     }
-    return p.split(/\s*,\s*/).map((x) => normalizeEns(x)).filter(Boolean);
+    const arr = p.split(/\s*,\s*/).map((x) => normalizeEns(x)).filter(Boolean);
+    if (arr.length === 2 && looksEnsemble(arr[1]) && !/\((?:conductor|violin|piano|cello|viola)\)/i.test(arr[0])) {
+      return [`${arr[0]} (conductor)`, `${arr[1]} (orchestra)`];
+    }
+    if (arr.length === 1 && looksEnsemble(arr[0])) return [`${arr[0]} (orchestra)`];
+    return arr;
   };
 
   // Case A: spaced-dash pattern (preserve hyphenated names like Ippolitov-Ivanov)
   const parts = raw.split(/\s+-\s+/).map(s => s.trim()).filter(Boolean);
-  if (parts.length >= 4) {
-    // WFMT often: Composer - Work - Performers - Program (- Label)
+  if (parts.length >= 5) {
+    // WFMT long form: Composer - Work - Movement - Performers - Program (- Label)
+    const first = String(parts[0] || '');
+    const second = String(parts[1] || '');
+    const third = String(parts[2] || '');
+    const perfRaw = String(parts[3] || '');
+    const looksComposer = /^[A-Za-zÀ-ÿ'’. -]+$/.test(first) && /\s/.test(first);
+    const work = looksComposer ? `${second} - ${third}` : `${first} - ${second} - ${third}`;
+    const personnel = parsePersonnel(perfRaw);
+    const program = String(parts[4] || '');
+    return { work, personnel, program };
+  }
+  if (parts.length === 4) {
+    // WFMT medium form: Composer - Work - Performers - Program
     const first = String(parts[0] || '');
     const second = String(parts[1] || '');
     const perfRaw = String(parts[2] || '');
@@ -4706,6 +4724,10 @@ app.get('/now-playing', async (req, res) => {
         if (!radioPerformers && split.personnel?.length) {
           radioPerformers = split.personnel.join(', ');
         }
+        if (!radioAlbum && split.program) {
+          const programClean = String(split.program || '').replace(/^.*?:\s*/, '').trim();
+          if (programClean) radioAlbum = programClean;
+        }
       }
     }
 
@@ -4778,9 +4800,14 @@ app.get('/now-playing', async (req, res) => {
     const lookupTitle = String(sanitizedLookup.title || '').trim();
 
     if (isRadio && radioLookupGuard.allow && (!primaryArtUrl || primaryArtUrl === stationLogoUrl)) {
+      let albumForLookup = String(radioAlbum || album || '').trim();
+      const stName0 = String(song?.name || '').trim();
+      if (albumForLookup && stName0 && albumForLookup.toLowerCase() === stName0.toLowerCase()) albumForLookup = '';
+      if (/\bwfmt\b|\bclassical\b|\bradio\b|\bstream\b|\bmimic\b/i.test(albumForLookup)) albumForLookup = '';
+
       if (lookupArtist && lookupTitle) {
         const it = await lookupItunesFirst(lookupArtist, lookupTitle, debug, {
-          radioAlbum: radioAlbum || album || '',
+          radioAlbum: albumForLookup,
           strictArtist: true,
         });
 
@@ -4811,7 +4838,7 @@ app.get('/now-playing', async (req, res) => {
         if (parts.length >= 2) {
           const s2 = sanitizeRadioLookupInputs({ artist: parts[0], title: parts.slice(1).join(' - ') });
           const it = await lookupItunesFirst(String(s2.artist || '').trim(), String(s2.title || '').trim(), debug, {
-            radioAlbum: radioAlbum || album || '',
+            radioAlbum: albumForLookup,
             strictArtist: true,
           });
           if (it.url) primaryArtUrl = it.url;
