@@ -490,6 +490,36 @@
     const el = $('heroTransport');
     if (!el) return;
     let busy = false;
+    let lastQ = null;
+    let lastNp = null;
+
+    const cloneObj = (v) => {
+      try { return JSON.parse(JSON.stringify(v || {})); } catch { return (v && typeof v === 'object') ? { ...v } : {}; }
+    };
+
+    const renderOptimistic = (action) => {
+      if (!lastQ || !lastNp) return;
+      const q = cloneObj(lastQ);
+      const np = cloneObj(lastNp);
+      const a = String(action || '').toLowerCase();
+      if (a === 'play') q.playbackState = 'playing';
+      else if (a === 'pause') q.playbackState = 'paused';
+      else if (a === 'shuffle') q.randomOn = !q.randomOn;
+      else if (a === 'repeat') q.repeatOn = !q.repeatOn;
+      else if (a === 'seekback15') {
+        const e = Number(np?.elapsed ?? q?.elapsed ?? 0) || 0;
+        const n = Math.max(0, e - 15);
+        np.elapsed = n; q.elapsed = n;
+      } else if (a === 'seekfwd30') {
+        const e = Number(np?.elapsed ?? q?.elapsed ?? 0) || 0;
+        const d = Number(np?.duration ?? q?.duration ?? 0) || 0;
+        const n = d > 0 ? Math.min(d, e + 30) : (e + 30);
+        np.elapsed = n; q.elapsed = n;
+      }
+      render(el, q, np);
+      armVideoFallback(el);
+      try { ensureRadioDrawer(); } catch {}
+    };
 
     let refreshSeq = 0;
     const refresh = async () => {
@@ -500,6 +530,8 @@
           loadQueueState(key),
           loadNowPlaying(key),
         ]);
+        lastQ = cloneObj(q);
+        lastNp = cloneObj(np);
         const seq = ++refreshSeq;
 
         const appleUrl = String(np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
@@ -585,6 +617,7 @@
         if (heroDrawerOpen) openRadioDrawer().catch(() => {});
         return;
       }
+      renderOptimistic(action);
       busy = true;
       try {
         if (action === 'seekback15') await playback('seekrel', currentKey(), { seconds: -15 });

@@ -888,7 +888,7 @@ body.theme-light #queueWrap [data-queue-play-pos]:hover,
 body.theme-light #results [data-queue-play-pos]:hover{background:rgba(137,138,196,.18) !important;box-shadow:0 0 0 1px rgba(137,138,196,.36) inset}
 
 .heroTransport .np{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;width:100%}
-.heroTransport .np .txt{min-width:0;font-size:20px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#dbe6ff;max-width:none;text-align:center;order:1}
+.heroTransport .np .txt{min-width:0;font-size:20px;font-weight:600;white-space:normal;overflow:hidden;text-overflow:ellipsis;color:#dbe6ff;max-width:min(100%,calc(100% - 140px));text-align:center;order:1;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .heroTransport .np .heroRating{order:2}
 .heroTransport .np .heroSubline{order:2;font-size:16px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .heroTransport .np .heroTransportControls{order:3}

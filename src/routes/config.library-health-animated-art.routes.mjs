@@ -13,6 +13,7 @@ let activeJob = null;
 let discoverJob = null;
 let appleLookupBackoffUntil = 0;
 let appleItunesNextAllowedTs = 0;
+const runtimeLookupInFlight = new Map();
 
 async function waitForAppleItunesSlot() {
   const now = Date.now();
@@ -366,11 +367,56 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const artist = String(req.query?.artist || '').trim();
       const album = String(req.query?.album || '').trim();
+      const resolveOnMiss = String(req.query?.resolve || '1').trim().toLowerCase() !== '0';
       if (!artist || !album) return res.status(400).json({ ok: false, error: 'artist and album are required' });
-      const cache = await readCache();
+
       const key = albumKey(artist, album);
-      const hit = cache.entries?.[key] || null;
-      return res.json({ ok: true, key, hit });
+      const cache = await readCache();
+      const entries = cache.entries || {};
+      const existing = entries[key] || null;
+
+      // Fast path: cached motion hit
+      if (existing?.hasMotion && existing?.mp4) {
+        return res.json({ ok: true, key, hit: existing, source: 'cache-hit' });
+      }
+
+      // Optional miss resolution (default ON): one-shot runtime lookup for current playing album.
+      if (!resolveOnMiss) {
+        return res.json({ ok: true, key, hit: existing, source: 'cache-miss-no-resolve' });
+      }
+
+      // De-duplicate concurrent lookups by album key.
+      let p = runtimeLookupInFlight.get(key);
+      if (!p) {
+        p = (async () => {
+          try {
+            const hit = await lookupMotionForAlbum(artist, album);
+            const nextEntry = {
+              key,
+              artist,
+              album,
+              tracks: Number(existing?.tracks || 0),
+              appleUrl: String(hit?.appleUrl || ''),
+              mp4: String(hit?.mp4 || ''),
+              hasMotion: !!hit?.ok,
+              reason: String(hit?.reason || ''),
+              updatedAt: new Date().toISOString(),
+            };
+            const liveCache = await readCache();
+            liveCache.entries = liveCache.entries || {};
+            liveCache.entries[key] = nextEntry;
+            liveCache.updatedAt = new Date().toISOString();
+            await writeCache(liveCache);
+            return nextEntry;
+          } finally {
+            runtimeLookupInFlight.delete(key);
+          }
+        })();
+        runtimeLookupInFlight.set(key, p);
+      }
+
+      const resolved = await p;
+      return res.json({ ok: true, key, hit: resolved, source: resolved?.hasMotion ? 'resolved-hit' : 'resolved-miss' });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
