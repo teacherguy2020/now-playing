@@ -605,9 +605,39 @@
       .finally(() => { btn.disabled = false; });
   });
   // Transport controls are rendered inside queueWrap and handled via event delegation.
+  async function copyTextSmart(text){
+    const txt = String(text || '');
+    if (!txt) return false;
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(txt);
+        return true;
+      }
+    } catch {}
+
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return !!ok;
+    } catch {
+      return false;
+    }
+  }
+
   async function copyResponse(){
-    try { await navigator.clipboard.writeText($('out').textContent || ''); $('status').textContent = 'Response copied.'; }
-    catch { $('status').textContent = 'Copy failed.'; }
+    const ok = await copyTextSmart($('out').textContent || '');
+    $('status').textContent = ok ? 'Response copied.' : 'Copy failed.';
   }
 
   async function copyAsCurl(){
@@ -627,8 +657,8 @@
         parts.push(`-d '${bodyTxt.replace(/'/g, "'\\''")}'`);
       }
       parts.push(`'${url.replace(/'/g, "'\\''")}'`);
-      await navigator.clipboard.writeText(parts.join(' '));
-      $('status').textContent = 'Copied as curl.';
+      const ok = await copyTextSmart(parts.join(' '));
+      $('status').textContent = ok ? 'Copied as curl.' : 'Copy as curl failed.';
     } catch (e) {
       $('status').textContent = `Copy as curl failed: ${e?.message || e}`;
     }

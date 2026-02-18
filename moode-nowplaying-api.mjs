@@ -3107,6 +3107,8 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     year: '',
     trackUrl: '',
     albumUrl: '',
+    matchedArtist: '',
+    matchedTitle: '',
     reason,
     ...(debug ? extra : {}),
   });
@@ -3134,6 +3136,8 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
         year: cached.year || '',
         trackUrl: cached.trackUrl || '',
         albumUrl: cached.albumUrl || '',
+        matchedArtist: cached.matchedArtist || '',
+        matchedTitle: cached.matchedTitle || '',
         reason: cached.url ? 'cache-hit' : 'cache-hit-empty',
       };
     }
@@ -3156,6 +3160,8 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     let year = '';
     let trackUrl = '';
     let albumUrl = '';
+    let matchedArtist = '';
+    let matchedTitle = '';
 
     for (const item of results) {
       const art = pickArtFromItunesItem(item);
@@ -3170,6 +3176,8 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       // ✅ FIX: "links" was undefined; pull URLs from the item (or a helper if you have one)
       trackUrl = String(item?.trackViewUrl || '');
       albumUrl = String(item?.collectionViewUrl || '');
+      matchedArtist = String(item?.artistName || '').trim();
+      matchedTitle = String(item?.trackName || '').trim();
 
       break;
     }
@@ -3181,6 +3189,8 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       year,
       trackUrl,
       albumUrl,
+      matchedArtist,
+      matchedTitle,
       ts: now,
     });
 
@@ -3193,6 +3203,8 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
         year,
         trackUrl,
         albumUrl,
+        matchedArtist,
+        matchedTitle,
         reason,
         queryUrl,
         term: termStr,
@@ -3200,7 +3212,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       };
     }
 
-    return { url, album, year, trackUrl, albumUrl, reason };
+    return { url, album, year, trackUrl, albumUrl, matchedArtist, matchedTitle, reason };
   } catch (e) {
     const name = e?.name || 'Error';
     const msg  = e?.message || String(e);
@@ -4105,6 +4117,7 @@ app.get('/now-playing', async (req, res) => {
     if (/^radio\s*station$/i.test(s)) return true;
     if (/^unknown$/i.test(s)) return true;
     if (/^stream$/i.test(s)) return true;
+    if (/^\d{1,3}$/.test(s)) return true; // e.g., "06" track-number junk
     return false;
   }
 
@@ -4137,10 +4150,24 @@ app.get('/now-playing', async (req, res) => {
     return { allow: true, reason: 'ok' };
   }
 
+  function sanitizeRadioLookupInputs({ artist, title }) {
+    let a = String(artist || '').trim();
+    let t = decodeHtmlEntities(String(title || '').trim());
+
+    // Drop obvious non-artist tokens like track numbers.
+    if (artistLooksGeneric(a)) a = '';
+
+    // Remove leading track-number noise from title.
+    t = t.replace(/^\s*\d{1,3}[\s.)-]+/, '').trim();
+
+    return { artist: a, title: t };
+  }
+
   // Build a deterministic Apple lookup term (keeps cache stable)
   function buildAppleLookupTerm({ artist, title, album }) {
-    const a = String(artist || '').trim();
-    const t = String(title || '').trim();
+    const s = sanitizeRadioLookupInputs({ artist, title });
+    const a = String(s.artist || '').trim();
+    const t = String(s.title || '').trim();
     const al = String(album || '').trim();
 
     const parts = [];
@@ -4600,12 +4627,13 @@ app.get('/now-playing', async (req, res) => {
     // STREAM: iTunes art + album/year fallback (RADIO ONLY)
     // (Also captures links when available, without clobbering later.)
     // =========================
-    if (isRadio && radioLookupGuard.allow && (!primaryArtUrl || primaryArtUrl === stationLogoUrl)) {
-      const a = String(artist || '').trim();
-      const t = String(title || '').trim();
+    const sanitizedLookup = sanitizeRadioLookupInputs({ artist, title });
+    const lookupArtist = String(sanitizedLookup.artist || '').trim();
+    const lookupTitle = String(sanitizedLookup.title || '').trim();
 
-      if (a && t && !artistLooksGeneric(a)) {
-        const it = await lookupItunesFirst(a, t, debug, { radioAlbum: radioAlbum || album || '' });
+    if (isRadio && radioLookupGuard.allow && (!primaryArtUrl || primaryArtUrl === stationLogoUrl)) {
+      if (lookupArtist && lookupTitle) {
+        const it = await lookupItunesFirst(lookupArtist, lookupTitle, debug, { radioAlbum: radioAlbum || album || '' });
 
         if (it.url) primaryArtUrl = it.url;
 
@@ -4617,13 +4645,23 @@ app.get('/now-playing', async (req, res) => {
         if (!radioAlbumUrl) radioAlbumUrl = String(it.albumUrl || '').trim();
         if (!radioItunesUrl) radioItunesUrl = radioAlbumUrl || radioTrackUrl || '';
 
+        // If stream metadata had junk artist (e.g., "06"), adopt iTunes artist/title.
+        if (artistLooksGeneric(artist) && String(it?.matchedArtist || '').trim()) {
+          artist = String(it.matchedArtist).trim();
+          if (!radioPerformers) radioPerformers = artist;
+        }
+        if ((/^\d{1,3}$/.test(String(artist || '').trim()) || !String(title || '').trim()) && String(it?.matchedTitle || '').trim()) {
+          title = String(it.matchedTitle).trim();
+        }
+
         dlog('[radio links]', { radioItunesUrl, radioAlbumUrl, radioTrackUrl });
         debugItunesReason = it.reason || '';
       } else {
         const decodedTitle = decodeHtmlEntities(song.title || '');
         const parts = decodedTitle.split(' - ').map(s => s.trim()).filter(Boolean);
         if (parts.length >= 2) {
-          const it = await lookupItunesFirst(parts[0], parts.slice(1).join(' - '), debug, { radioAlbum: radioAlbum || album || '' });
+          const s2 = sanitizeRadioLookupInputs({ artist: parts[0], title: parts.slice(1).join(' - ') });
+          const it = await lookupItunesFirst(String(s2.artist || '').trim(), String(s2.title || '').trim(), debug, { radioAlbum: radioAlbum || album || '' });
           if (it.url) primaryArtUrl = it.url;
 
           radioAlbum = radioAlbum || it.album || '';
@@ -4634,6 +4672,14 @@ app.get('/now-playing', async (req, res) => {
           if (!radioTrackUrl) radioTrackUrl = String(it.trackUrl || '').trim();
           if (!radioAlbumUrl) radioAlbumUrl = String(it.albumUrl || '').trim();
           if (!radioItunesUrl) radioItunesUrl = radioAlbumUrl || radioTrackUrl || '';
+
+          if (artistLooksGeneric(artist) && String(it?.matchedArtist || '').trim()) {
+            artist = String(it.matchedArtist).trim();
+            if (!radioPerformers) radioPerformers = artist;
+          }
+          if ((/^\d{1,3}$/.test(String(artist || '').trim()) || !String(title || '').trim()) && String(it?.matchedTitle || '').trim()) {
+            title = String(it.matchedTitle).trim();
+          }
         } else {
           debugItunesReason = 'no-parse';
         }
@@ -4662,10 +4708,11 @@ app.get('/now-playing', async (req, res) => {
     if (isRadio && radioLookupGuard.allow) {
       try {
         const albumForTerm = String(radioAlbum || album || '').trim();
-        radioLookupTerm = buildAppleLookupTerm({ artist, title, album: albumForTerm });
+        const s3 = sanitizeRadioLookupInputs({ artist, title });
+        radioLookupTerm = buildAppleLookupTerm({ artist: s3.artist, title: s3.title, album: albumForTerm });
 
         // Reuse existing iTunes lookup (it already returns trackUrl/albumUrl)
-        const ap = await lookupItunesFirst(String(artist || '').trim(), String(title || '').trim(), debug, { radioAlbum: albumForTerm });
+        const ap = await lookupItunesFirst(String(s3.artist || '').trim(), String(s3.title || '').trim(), debug, { radioAlbum: albumForTerm });
 
         const tUrl = String(ap?.trackUrl || '').trim();
         const aUrl = String(ap?.albumUrl || '').trim();
@@ -4680,6 +4727,9 @@ app.get('/now-playing', async (req, res) => {
         // Fill album/year if missing
         if (!radioAlbum) radioAlbum = String(ap?.album || '').trim() || radioAlbum;
         if (!radioYear)  radioYear  = String(ap?.year  || '').trim() || radioYear;
+        if (!radioPerformers && String(ap?.matchedArtist || '').trim()) {
+          radioPerformers = String(ap.matchedArtist).trim();
+        }
 
         if (debug) {
           debugAppleLookup = {
