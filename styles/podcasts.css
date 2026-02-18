@@ -859,8 +859,8 @@ body.theme-light .preHeroStatusWrap{margin-top:24px}
 .heroTransport .heroTransportControls{display:flex;align-items:center;justify-content:center;gap:15px;flex-wrap:wrap;width:100%}
 .heroTransport .heroRating{display:flex;justify-content:center;align-items:center;gap:2px;width:100%}
 .heroTransport .heroRateStar{padding:0 2px;border:0;background:transparent;cursor:pointer;font-size:24px;line-height:1;letter-spacing:1px}
-.heroTransport .heroRateStar.on{color:#fbbf24}
-.heroTransport .heroRateStar.off{color:#5b6780}
+.heroTransport .heroRateStar.on{color:#fbbf24 !important}
+.heroTransport .heroRateStar.off{color:#5b6780 !important}
 .heroTransport .heroRateStar:hover{filter:brightness(1.12)}
 .heroTransport .tbtn{width:52px;height:52px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.18);color:#eef;display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
 .heroTransport .tbtn.tbtnBig{width:64px;height:64px}
