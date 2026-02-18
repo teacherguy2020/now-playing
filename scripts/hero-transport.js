@@ -328,19 +328,17 @@
     if (!(vid instanceof HTMLVideoElement)) return;
     const fb = el.querySelector('.heroArtFallback');
 
-    // Avoid fallback flicker on periodic re-renders: keep video visible by default
-    // and only fall back to static art on hard video load error.
+    // Keep static art visible until we confirm decoded frame progress.
     let resolved = false;
+    let startedAt = Number(vid.currentTime || 0);
+
     const showVideo = () => {
       if (resolved) return;
       resolved = true;
       vid.style.display = '';
       if (fb) fb.style.display = 'none';
-      try {
-        const p = (typeof vid.play === 'function') ? vid.play() : null;
-        if (p && typeof p.catch === 'function') p.catch(() => {});
-      } catch {}
     };
+
     const keepFallback = () => {
       if (resolved) return;
       resolved = true;
@@ -348,12 +346,34 @@
       vid.style.display = 'none';
     };
 
-    // If the frame is already buffered, settle immediately with video.
-    if (vid.readyState >= 2) showVideo();
-    vid.addEventListener('loadeddata', showVideo, { once: true });
-    vid.addEventListener('error', keepFallback, { once: true });
-    setTimeout(() => { if (!resolved && vid.readyState >= 2) showVideo(); }, 300);
-    setTimeout(() => { if (!resolved) keepFallback(); }, 2500);
+    // Start conservative: fallback visible until video is truly advancing.
+    if (fb) fb.style.display = '';
+    vid.style.display = 'none';
+
+    const tryPlay = () => {
+      try {
+        const p = (typeof vid.play === 'function') ? vid.play() : null;
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } catch {}
+    };
+
+    const onProgress = () => {
+      const t = Number(vid.currentTime || 0);
+      if (t > startedAt + 0.02 || (vid.readyState >= 3 && !vid.paused)) showVideo();
+    };
+
+    tryPlay();
+    vid.addEventListener('timeupdate', onProgress);
+    vid.addEventListener('playing', onProgress);
+    vid.addEventListener('loadeddata', onProgress);
+    ['error', 'stalled', 'abort', 'emptied'].forEach((ev) => vid.addEventListener(ev, keepFallback, { once: true }));
+
+    // If decode never advances, keep static art (avoids pink/frozen video surfaces on low-end GPUs).
+    setTimeout(() => {
+      if (resolved) return;
+      onProgress();
+      if (!resolved) keepFallback();
+    }, 1800);
   }
 
   let heroDrawerOpen = false;
