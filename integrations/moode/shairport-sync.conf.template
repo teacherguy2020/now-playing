@@ -1,0 +1,95 @@
+// /etc/shairport-sync.conf
+// moOde + enhanced aplmeta.py configuration
+//
+// Goals:
+// - Stable AirPlay 2 audio
+// - Reliable metadata + cover art via aplmeta pipeline
+// - Proper moOde UI / display state switching
+// - No sudo usage inside session hooks
+//
+// Restart after editing:
+//   sudo systemctl restart nqptp
+//   sudo systemctl restart shairport-sync
+//   sudo systemctl restart aplmeta-reader
+//
+
+// --------------------------------------------------
+// General
+// --------------------------------------------------
+general =
+{
+  // Name shown in AirPlay picker
+  name = "Moode AirPlay";
+
+  // High-quality resampling (keep as-is)
+  interpolation = "soxr";
+
+  // Explicit AirPlay 2 port (default, but be explicit)
+  port = 7000;
+};
+
+// --------------------------------------------------
+// Session Control (CRITICAL FOR UI STATE)
+// --------------------------------------------------
+// These hooks tell moOde:
+//   - AirPlay is active
+//   - MPD is no longer the owner
+//   - Displays should switch mode
+//
+// IMPORTANT:
+// Scripts MUST NOT call sudo.
+// They already run as root.
+sessioncontrol =
+{
+  run_this_before_entering_active_state = "/var/local/www/commandw/spspre.sh";
+  run_this_after_exiting_active_state  = "/var/local/www/commandw/spspost.sh";
+
+  active_state_timeout = 10.0;
+  wait_for_completion = "yes";
+
+  allow_session_interruption = "no";
+  session_timeout = 15;
+};
+
+// --------------------------------------------------
+// ALSA Backend
+// --------------------------------------------------
+alsa =
+{
+  // Keep stable, predictable output
+  output_rate = 44100;
+  output_format = "S16";
+
+  disable_synchronization = "no";
+  disable_standby_mode = "auto";
+};
+
+// --------------------------------------------------
+// Metadata + Cover Art (aplmeta pipeline)
+// --------------------------------------------------
+metadata =
+{
+  // REQUIRED: enable metadata emission
+  enabled = "yes";
+
+  // REQUIRED: allow cover art extraction
+  include_cover_art = "yes";
+
+  // Where shairport-sync writes cover-*.jpg
+  cover_art_cache_directory = "/var/local/www/imagesw/airplay-covers";
+
+  // Named pipe consumed by aplmeta-reader
+  pipe_name = "/tmp/shairport-sync-metadata";
+
+  // Optional safety
+  // pipe_timeout = 5000;
+};
+
+// --------------------------------------------------
+// Diagnostics (leave quiet)
+// --------------------------------------------------
+diagnostics =
+{
+  // retain_cover_art = "no";
+  // log_verbosity = 0;
+};
