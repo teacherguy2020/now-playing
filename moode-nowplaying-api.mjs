@@ -1615,6 +1615,18 @@ function splitTitlePerformersProgram(titleLine) {
     return { composer: '', work, personnel, program: '' };
   }
 
+  // Case D: "work - Ensemble/Conductor Label" (label appended, no extra dash)
+  const m3 = raw.match(/^(.*?)\s*-\s*([^\/;]+?)\s*\/\s*([A-Za-zÀ-ÿ'’.\- ]+?)(?:\s+(Archiv|Decca|Erato|EMI|DG|DGG|Laserlight|Naxos|Philips))?\s*$/i);
+  if (m3) {
+    const work = String(m3[1] || '').trim();
+    const ensRaw = String(m3[2] || '').trim();
+    const condRaw = String(m3[3] || '').trim();
+    const personnel = [];
+    if (ensRaw) personnel.push(`${normalizeEns(ensRaw)} (ensemble)`);
+    if (condRaw) personnel.push(`${condRaw} (conductor)`);
+    return { composer: '', work, personnel, program: '' };
+  }
+
   return null;
 }
 
@@ -4937,13 +4949,13 @@ app.get('/now-playing', async (req, res) => {
         if (split.program) {
           const programRaw = String(split.program || '').trim();
           const programClean = programRaw.replace(/^.*?:\s*/, '').trim();
-          if (programClean && (!radioAlbum || /\barchiv\b|\bdecca\b|\berato\b|\bemi\b/i.test(String(radioAlbum)))) {
+          if (programClean && (!radioAlbum || /\barchiv\b|\bdecca\b|\berato\b|\bemi\b|\blaserlight\b/i.test(String(radioAlbum)))) {
             radioAlbum = programRaw;
           }
         }
         // If station/label-ish album is present but metadata provided a richer program title,
         // use that richer text as radio album line.
-        if (looksAlbumHintText(previousRadioPerformers) && (!radioAlbum || /\berato\b|\bwfmt\b|\bradio\b|\bstream\b/i.test(String(radioAlbum)))) {
+        if (looksAlbumHintText(previousRadioPerformers) && (!radioAlbum || /\berato\b|\blaserlight\b|\bwfmt\b|\bradio\b|\bstream\b/i.test(String(radioAlbum)))) {
           radioAlbum = previousRadioPerformers;
         }
       }
@@ -5021,7 +5033,7 @@ app.get('/now-playing', async (req, res) => {
       let albumForLookup = String(radioAlbum || album || '').trim();
       const stName0 = String(song?.name || '').trim();
       if (albumForLookup && stName0 && albumForLookup.toLowerCase() === stName0.toLowerCase()) albumForLookup = '';
-      if (/\bwfmt\b|\bclassical\b|\bradio\b|\bstream\b|\bmimic\b|\berato\b/i.test(albumForLookup)) albumForLookup = '';
+      if (/\bwfmt\b|\bclassical\b|\bradio\b|\bstream\b|\bmimic\b|\berato\b|\blaserlight\b/i.test(albumForLookup)) albumForLookup = '';
       // WFMT often places useful program/album clue in radioPerformers; use it as album hint when present.
       const perfAlbumHint = decodeHtmlEntities(String(radioPerformers || '').trim());
       if (!albumForLookup && looksAlbumHintText(perfAlbumHint)) albumForLookup = perfAlbumHint;
@@ -5124,7 +5136,7 @@ app.get('/now-playing', async (req, res) => {
         let albumForTerm = String(radioAlbum || album || '').trim();
         const stName = String(song?.name || '').trim();
         if (albumForTerm && stName && albumForTerm.toLowerCase() === stName.toLowerCase()) albumForTerm = '';
-        if (/\bwfmt\b|\bclassical\b|\bstream\b|\bradio\b|\berato\b/i.test(albumForTerm)) albumForTerm = '';
+        if (/\bwfmt\b|\bclassical\b|\bstream\b|\bradio\b|\berato\b|\blaserlight\b/i.test(albumForTerm)) albumForTerm = '';
         const perfAlbumHint = decodeHtmlEntities(String(radioPerformers || '').trim());
         if (!albumForTerm && looksAlbumHintText(perfAlbumHint)) albumForTerm = perfAlbumHint;
         const s3 = deriveRadioLookupContext({
