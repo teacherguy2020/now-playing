@@ -146,13 +146,21 @@
       const logo = `${b}/art/radio-logo.jpg?name=${encodeURIComponent(name)}`;
       const on = !!s.isFavoriteStation;
       const isSel = selected.has(file);
-      const bitrateNum = Number(s?.bitrate || 0);
-      const isHq = !!s?.hq || bitrateNum >= 192;
+      const formatStr = String(s?.format || '').toUpperCase();
+      const brRaw = String(s?.bitrate || '').trim();
+      const brMatch = brRaw.match(/(\d+(?:\.\d+)?)/);
+      const bitrateNum = brMatch ? Number(brMatch[1]) : Number(s?.bitrate || 0);
+      const isLossless = /(FLAC|ALAC|WAV|AIFF|PCM)/i.test(formatStr);
+      const isOpus = /OPUS/i.test(formatStr);
+      const isMp3Aac = /(MP3|AAC)/i.test(formatStr);
+      const isHqByRate = isLossless || (isOpus ? bitrateNum >= 128 : (isMp3Aac ? bitrateNum >= 320 : bitrateNum >= 320));
+      const isHq = isHqByRate || (!!s?.hq && bitrateNum >= 320);
+      const qualityBadge = isLossless ? 'Lossless' : (isHq ? 'HQ' : '');
       return `<div class="stationCard ${isSel ? 'isSel' : ''}" data-card-sel="${encodeURIComponent(file)}">
         <img class="logo" src="${logo}" onerror="this.style.opacity=.25;this.removeAttribute('src')" alt="">
         <div>
           <div class="stationName">${name}</div>
-          <div class="stationMeta">${String(s.bitrate || '')}${s.bitrate && s.format ? ' • ' : ''}${String(s.format || '')}${isHq ? ` <span class='chip hq'>HQ</span>` : ''}${genreLabel ? ` <span class='chip'>${genreLabel}</span>` : ''}</div>
+          <div class="stationMeta">${String(s.bitrate || '')}${s.bitrate && s.format ? ' • ' : ''}${String(s.format || '')}${qualityBadge ? ` <span class='chip hq'>${qualityBadge}</span>` : ''}${genreLabel ? ` <span class='chip'>${genreLabel}</span>` : ''}</div>
         </div>
         <div class="stationControls">
           <button class="heartBtn ${on ? 'on' : ''}" data-fav="${encodeURIComponent(file)}" data-state="${on ? '1':'0'}" title="Toggle favorite">♥</button>

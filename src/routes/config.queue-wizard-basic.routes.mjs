@@ -293,7 +293,19 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
 
       const where = [];
       if (favoritesOnly) where.push("type='f'");
-      if (hqOnly) where.push("(type='h' OR cast(replace(bitrate,'kbps','') as integer) >= 256)");
+      if (hqOnly) {
+        // Keep "High quality" strict and codec-aware:
+        // - Lossless codecs always qualify
+        // - Opus qualifies at >=128 kbps
+        // - MP3/AAC (and unknown fallback) require >=320 kbps
+        const br = "cast(replace(replace(lower(bitrate),'kbps',''),' ','') as integer)";
+        const fmt = "upper(coalesce(format,''))";
+        where.push(`(
+          ${fmt} like '%FLAC%' OR ${fmt} like '%ALAC%' OR ${fmt} like '%WAV%' OR ${fmt} like '%AIFF%' OR ${fmt} like '%PCM%'
+          OR (${fmt} like '%OPUS%' AND ${br} >= 128)
+          OR (((${fmt} like '%MP3%') OR (${fmt} like '%AAC%') OR ${fmt} = '') AND ${br} >= 320)
+        )`);
+      }
       if (genres.length) {
         const likes = genres.map((g) => `genre like ${sqlQuoteLike(g)}`).join(' OR ');
         where.push(`(${likes})`);

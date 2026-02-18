@@ -221,6 +221,16 @@
     const albumYearText = [radioAlbum, radioYear].filter(Boolean).join(' • ');
     const metaRow = starsRow || (albumYearText ? `<div class="heroSubline">${albumYearText}</div>` : '');
 
+    const fmt = String(np?.encoded || np?.format || '').toUpperCase();
+    const brRaw = String(np?.bitrate || '').trim();
+    const brMatch = brRaw.match(/(\d+(?:\.\d+)?)/);
+    const kbps = brMatch ? Number(brMatch[1]) : 0;
+    const isLossless = /(FLAC|ALAC|WAV|AIFF|PCM)/i.test(fmt);
+    const isOpus = /OPUS/i.test(fmt);
+    const isMp3Aac = /(MP3|AAC)/i.test(fmt);
+    const isHq = isLossless || (isOpus ? kbps >= 128 : (isMp3Aac ? kbps >= 320 : kbps >= 320));
+    const liveBadge = isLossless ? 'Lossless' : (isHq ? 'HQ' : '');
+
     const elapsed = Number(np?.elapsed ?? q?.elapsed ?? q?.elapsedSec ?? head?.elapsed ?? head?.elapsedSec ?? 0);
     const duration = Number(np?.duration ?? q?.duration ?? q?.durationSec ?? head?.duration ?? head?.durationSec ?? 0);
     const showProgress = !isRadioOrStream && Number.isFinite(duration) && duration > 0;
@@ -244,7 +254,7 @@
             `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
           `</div>` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div></div>` +
-          `${(!showProgress && isRadioOrStream) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${state === 'playing' ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(liveLabel)}</div>` : ''}` +
+          `${(!showProgress && isRadioOrStream) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${state === 'playing' ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(liveLabel)}${liveBadge ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-size:11px;font-weight:700;vertical-align:1px;">${liveBadge}</span>` : ''}</div>` : ''}` +
         `</div>` +
       `</div>`;
 
