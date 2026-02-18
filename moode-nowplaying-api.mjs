@@ -3213,6 +3213,28 @@ function artistMatchStrict(targetArtist, candArtist) {
   return c === t || c.includes(t) || t.includes(c);
 }
 
+function normLoose(s) {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function albumHintMatches(hint, collectionName) {
+  const h = normLoose(hint);
+  const c = normLoose(collectionName);
+  if (!h || !c) return false;
+  if (c.includes(h) || h.includes(c)) return true;
+  const hTok = h.split(' ').filter(Boolean);
+  const cTok = new Set(c.split(' ').filter(Boolean));
+  const overlap = hTok.filter((t) => cTok.has(t)).length;
+  return overlap >= Math.max(2, Math.floor(hTok.length * 0.5));
+}
+
 async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
   const a = String(artist || '').trim();
   const t = String(title || '').trim();
@@ -3259,7 +3281,8 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
   const cached = itunesArtCache.get(cacheKey);
   if (cached && !debug) {
     const ttl = cached.url ? ITUNES_TTL_HIT_MS : ITUNES_TTL_MISS_MS;
-    if ((now - (cached.ts || 0)) < ttl) {
+    const allowEmptyCache = !(opts?.albumHint && !cached.url);
+    if ((now - (cached.ts || 0)) < ttl && allowEmptyCache) {
       return {
         url: cached.url || '',
         album: cached.album || '',
@@ -3297,8 +3320,13 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     for (const item of results) {
       const matchedArtistCandidate = String(item?.artistName || '').trim();
       if (opts?.strictArtist && !artistMatchStrict(a, matchedArtistCandidate)) {
-        strictRejected += 1;
-        continue;
+        const hint = String(opts?.albumHint || '').trim();
+        const collectionName = String(item?.collectionName || '').trim();
+        const allowByAlbumHint = !!hint && albumHintMatches(hint, collectionName);
+        if (!allowByAlbumHint) {
+          strictRejected += 1;
+          continue;
+        }
       }
 
       const art = pickArtFromItunesItem(item);
@@ -4883,6 +4911,7 @@ app.get('/now-playing', async (req, res) => {
       if (lookupArtist && lookupTitle) {
         const it = await lookupItunesFirst(lookupArtist, lookupTitle, debug, {
           radioAlbum: albumForLookup,
+          albumHint: albumForLookup,
           strictArtist: true,
         });
 
@@ -4914,6 +4943,7 @@ app.get('/now-playing', async (req, res) => {
           const s2 = sanitizeRadioLookupInputs({ artist: parts[0], title: parts.slice(1).join(' - ') });
           const it = await lookupItunesFirst(String(s2.artist || '').trim(), String(s2.title || '').trim(), debug, {
             radioAlbum: albumForLookup,
+            albumHint: albumForLookup,
             strictArtist: true,
           });
           if (it.url) primaryArtUrl = it.url;
@@ -4973,6 +5003,7 @@ app.get('/now-playing', async (req, res) => {
         // Reuse existing iTunes lookup (it already returns trackUrl/albumUrl)
         const ap = await lookupItunesFirst(String(s3.artist || '').trim(), String(s3.title || '').trim(), debug, {
           radioAlbum: albumForTerm,
+          albumHint: albumForTerm,
           strictArtist: true,
         });
 
