@@ -902,9 +902,9 @@ body.theme-light #results [data-queue-play-pos]:hover{background:rgba(137,138,19
 .heroTransport .np .progress-bar-wrapper{order:4}
 .heroTransport .np .txtLink{text-decoration:none;cursor:pointer}
 .heroTransport .np .txtLink:hover{text-decoration:underline;text-underline-offset:3px}
-.heroTransport .np .progress-bar-wrapper{position:relative;width:min(660px,calc(100% - 140px));height:8px;background:rgba(255,255,255,.18);border-radius:4px;overflow:visible;margin-inline:auto;cursor:pointer;touch-action:none}
+.heroTransport .np .progress-bar-wrapper{position:relative;width:min(660px,calc(100% - 140px));height:8px;background:rgba(255,255,255,.18);border-radius:999px;overflow:visible;margin-inline:auto;cursor:pointer;touch-action:none;outline:1px solid transparent;-webkit-mask-image:-webkit-radial-gradient(white, black)}
 .heroTransport .np .progress-bar-wrapper.is-hidden{display:none}
-.heroTransport .np .progress-fill{height:8px;background:#4fc3f7;transform:scaleX(0);transform-origin:left;border-radius:4px}
+.heroTransport .np .progress-fill{height:8px;background:#4fc3f7;transform:scaleX(0);transform-origin:left;border-radius:999px;-webkit-mask-image:-webkit-radial-gradient(white, black)}
 .heroTransport .np .progress-handle{position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:999px;background:#7dd3fc;border:1px solid rgba(15,23,42,.55);box-shadow:0 1px 4px rgba(0,0,0,.35);opacity:.12;transition:opacity .14s ease,transform .14s ease;pointer-events:none}
 .heroTransport .np .progress-tip{position:absolute;left:0;top:-26px;transform:translateX(-50%);font-size:11px;line-height:1;padding:3px 6px;border-radius:7px;background:rgba(15,23,42,.92);border:1px solid rgba(125,211,252,.35);color:#eaf3ff;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .14s ease}
 @media (hover:hover){
