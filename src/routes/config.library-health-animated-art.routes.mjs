@@ -47,6 +47,18 @@ function h264PublicUrlForSource(req, sourceUrl) {
   return `${req.protocol}://${req.get('host')}/config/library-health/animated-art/media/${name}`;
 }
 
+function h264PathFromPublicUrl(url) {
+  const m = String(url || '').match(/\/media\/([a-f0-9]{40}\.mp4)$/i);
+  if (!m) return '';
+  return path.join(H264_DIR, m[1]);
+}
+
+async function h264PublicUrlExists(url) {
+  const p = h264PathFromPublicUrl(url);
+  if (!p) return false;
+  try { await fs.access(p); return true; } catch { return false; }
+}
+
 async function ensureH264ForSource(sourceUrl) {
   const src = String(sourceUrl || '').trim();
   if (!src) return '';
@@ -513,12 +525,18 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
         let hit = existing;
         const wantH264 = String(req.query?.h264 || '1').trim().toLowerCase() !== '0';
         if (wantH264 && existing?.sourceCodec === 'h264' && existing?.mp4H264) {
-          hit = { ...existing, mp4: String(existing.mp4H264) };
+          const okLocal = await h264PublicUrlExists(existing.mp4H264);
+          if (okLocal) {
+            hit = { ...existing, mp4: String(existing.mp4H264) };
+          } else {
+            // stale cache pointer to missing local file: force re-resolve below.
+            hit = null;
+          }
         } else if (wantH264) {
           try {
             const outPath = await ensureH264ForSource(existing.mp4);
             if (outPath) {
-              hit = { ...existing, mp4H264: h264PublicUrlForSource(req, existing.mp4), mp4: h264PublicUrlForSource(req, existing.mp4), sourceCodec: 'h264' };
+              hit = { ...existing, mp4Source: String(existing.mp4Source || existing.mp4 || ''), mp4H264: h264PublicUrlForSource(req, existing.mp4), mp4: h264PublicUrlForSource(req, existing.mp4), sourceCodec: 'h264' };
               const liveCache = await readCache();
               liveCache.entries = liveCache.entries || {};
               liveCache.entries[key] = { ...(liveCache.entries[key] || {}), ...hit, updatedAt: new Date().toISOString() };
@@ -530,7 +548,7 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
             // fallback to original mp4 URL
           }
         }
-        return res.json({ ok: true, key, hit, source: 'cache-hit' });
+        if (hit) return res.json({ ok: true, key, hit, source: 'cache-hit' });
       }
 
       // Optional miss resolution (default ON): one-shot runtime lookup for current playing album.
@@ -574,7 +592,7 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
         try {
           const outPath = await ensureH264ForSource(resolved.mp4);
           if (outPath) {
-            resolved = { ...resolved, mp4H264: h264PublicUrlForSource(req, resolved.mp4), mp4: h264PublicUrlForSource(req, resolved.mp4), sourceCodec: 'h264' };
+            resolved = { ...resolved, mp4Source: String(resolved.mp4Source || resolved.mp4 || ''), mp4H264: h264PublicUrlForSource(req, resolved.mp4), mp4: h264PublicUrlForSource(req, resolved.mp4), sourceCodec: 'h264' };
             const liveCache = await readCache();
             liveCache.entries = liveCache.entries || {};
             liveCache.entries[key] = { ...(liveCache.entries[key] || {}), ...resolved, updatedAt: new Date().toISOString() };
