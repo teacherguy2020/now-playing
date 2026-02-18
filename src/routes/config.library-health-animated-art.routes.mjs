@@ -563,6 +563,11 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
       const entries = cache.entries || {};
       const existing = entries[key] || null;
 
+      // Respect manual suppression for this album key.
+      if (existing?.suppress) {
+        return res.json({ ok: true, key, hit: { ...existing, hasMotion: false, mp4: '', mp4H264: '', reason: 'suppressed-by-user' }, source: 'cache-suppressed' });
+      }
+
       // Fast path: cached motion hit
       if (existing?.hasMotion && existing?.mp4) {
         let hit = existing;
@@ -653,6 +658,37 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
         }
       }
       return res.json({ ok: true, key, hit: resolved, source: resolved?.hasMotion ? 'resolved-hit' : 'resolved-miss' });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/library-health/animated-art/suppress', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const keyRaw = String(req.body?.key || '');
+      const artist = String(req.body?.artist || '').trim();
+      const album = String(req.body?.album || '').trim();
+      const requestedKey = keyRaw || albumKey(artist, album);
+      const suppress = !!req.body?.suppress;
+      if (!String(requestedKey || '').trim()) return res.status(400).json({ ok: false, error: 'key or artist+album required' });
+
+      const cache = await readCache();
+      cache.entries = cache.entries || {};
+      const keys = Object.keys(cache.entries || {});
+      const reqNorm = String(requestedKey).trim().toLowerCase();
+      let key = keys.find((k) => String(k || '').toLowerCase() === String(requestedKey || '').toLowerCase()) ||
+                keys.find((k) => String(k || '').trim().toLowerCase() === reqNorm) || '';
+      if (!key && artist && album) {
+        const canonical = albumKey(artist, album);
+        key = keys.find((k) => String(k || '').trim().toLowerCase() === canonical) || canonical;
+      }
+
+      const existing = cache.entries[key] || { key, artist, album, tracks: 0, appleUrl: '', mp4: '', hasMotion: false, reason: '', updatedAt: new Date().toISOString() };
+      cache.entries[key] = { ...existing, suppress, updatedAt: new Date().toISOString() };
+      cache.updatedAt = new Date().toISOString();
+      await writeCache(cache);
+      return res.json({ ok: true, key, suppress });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

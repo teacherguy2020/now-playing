@@ -1208,8 +1208,13 @@ async function refreshAnimatedArtSummary() {
             const album = esc(String(x.album || ''));
             const k = esc(String(x.key || ''));
             const mp4 = esc(String(x.mp4 || x.mp4H264 || ''));
-            return `<div style="display:flex;align-items:center;gap:6px;margin:4px 0;">
-              <button type="button" class="tiny" data-preview-mp4="${mp4}" data-preview-artist="${artist}" data-preview-album="${album}" data-preview-label="${artist} — ${album}" style="height:28px;line-height:26px;padding:0 8px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:1px solid currentColor;border-radius:8px;background:transparent;">• ${artist} — ${album}</button>
+            const suppressed = !!x?.suppress;
+            return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0;flex-wrap:wrap;">
+              <button type="button" class="tiny" data-preview-mp4="${mp4}" data-preview-artist="${artist}" data-preview-album="${album}" data-preview-label="${artist} — ${album}" style="height:28px;line-height:26px;padding:0 8px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:1px solid currentColor;border-radius:8px;background:transparent;${suppressed ? 'opacity:.6;' : ''}">• ${artist} — ${album}</button>
+              <label class="tiny" style="display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 6px;border:1px solid #4b5563;border-radius:8px;">
+                <input type="checkbox" data-suppress-animated-key="${k}" ${suppressed ? 'checked' : ''}>
+                <span>Don’t display</span>
+              </label>
               <button type="button" class="tiny danger" data-clear-animated-key="${k}" style="height:28px;line-height:26px;padding:0 8px;border:1px solid #ef4444;color:#ef4444;border-radius:8px;background:transparent;">Remove</button>
             </div>`;
           }).join('')
@@ -1222,6 +1227,21 @@ async function refreshAnimatedArtSummary() {
 }
 
 
+
+async function setAnimatedArtSuppressed(keyToSet, suppress) {
+  const key = String(keyToSet || '').trim();
+  if (!key) return;
+  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+  const trackKey = ($('key')?.value || '').trim();
+  const r = await fetch(`${apiBase}/config/library-health/animated-art/suppress`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(trackKey ? { 'x-track-key': trackKey } : {}) },
+    body: JSON.stringify({ key, suppress: !!suppress }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+  await refreshAnimatedArtSummary();
+}
 
 async function clearAnimatedArtEntry(keyToClear) {
   const key = String(keyToClear || '').trim();
@@ -1249,6 +1269,15 @@ $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
 // discovery workflow removed
 // discovery workflow removed
 $('animatedArtCacheList')?.addEventListener('click', (ev) => {
+  const suppressChk = ev.target?.closest?.('[data-suppress-animated-key]');
+  if (suppressChk) {
+    setAnimatedArtSuppressed(suppressChk.getAttribute('data-suppress-animated-key'), !!suppressChk.checked).catch((e) => {
+      alert(`Suppress update failed: ${String(e?.message || e)}`);
+      suppressChk.checked = !suppressChk.checked;
+    });
+    return;
+  }
+
   const clearBtn = ev.target?.closest?.('[data-clear-animated-key]');
   if (clearBtn) {
     clearAnimatedArtEntry(clearBtn.getAttribute('data-clear-animated-key')).catch((e) => {
