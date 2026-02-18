@@ -4196,6 +4196,18 @@ app.get('/now-playing', async (req, res) => {
     // Remove leading track-number noise from title.
     t = t.replace(/^\s*\d{1,3}[\s.)-]+/, '').trim();
 
+    // Classical-radio cleanup: if artist is likely composer and title carries
+    // ensemble/conductor suffix (e.g., "... - Minnesota Orch/Osmo Vanska"),
+    // switch lookup artist to ensemble for better iTunes matching.
+    const composerLike = /^[A-Za-zÀ-ÿ'’.-]+(?:\s+[A-Za-zÀ-ÿ'’.-]+){0,3}$/.test(a);
+    const perfMatch = t.match(/^(.*?)[\s-]+([A-Za-zÀ-ÿ0-9'’.&\- ]+\s+Orch(?:estra)?)(?:\s*\/\s*([A-Za-zÀ-ÿ'’.\- ]+))?\s*$/i);
+    if (composerLike && perfMatch) {
+      const work = String(perfMatch[1] || '').trim();
+      const ens = String(perfMatch[2] || '').trim().replace(/\bOrch\b/i, 'Orchestra');
+      if (ens) a = ens;
+      if (work) t = work;
+    }
+
     return { artist: a, title: t };
   }
 
