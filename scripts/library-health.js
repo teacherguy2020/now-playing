@@ -1174,7 +1174,7 @@ async function applyPerformers(){
 }
 
 function setAnimatedArtBusy(busy) {
-  ['discoverAnimatedArtBtn','buildAnimatedArtBtn','buildAnimatedArtFromDiscoveryBtn','animatedArtLimit','animatedArtForce']
+  ['buildAnimatedArtBtn','animatedArtLimit','animatedArtForce']
     .forEach((id) => { const el = $(id); if (el) el.disabled = !!busy; });
 }
 
@@ -1207,49 +1207,21 @@ async function refreshAnimatedArtSummary() {
   }
 }
 
-async function refreshAnimatedArtDiscovery() {
-  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
-  const key = ($('key')?.value || '').trim();
-  const sumEl = $('animatedArtDiscoverySummary');
-  const listEl = $('animatedArtDiscoveryList');
-  if (!sumEl || !listEl) return;
-  try {
-    const r = await fetch(`${apiBase}/config/library-health/animated-art/discovery`, { headers: key ? { 'x-track-key': key } : {} });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-    sumEl.textContent = `Discovery albums: ${Number(j.total || 0).toLocaleString()} · Motion found: ${Number(j.found || 0).toLocaleString()} · Updated: ${String(j.updatedAt || 'n/a')}`;
-    const hits = (Array.isArray(j.entries) ? j.entries : []).filter((x) => !!x?.hasMotion && !!x?.mp4).slice(0, 200);
-    listEl.innerHTML = hits.length
-      ? hits.map((x) => `<div>• ${esc(String(x.artist || ''))} — ${esc(String(x.album || ''))}</div>`).join('')
-      : '<div class="muted">No discovered motion albums yet.</div>';
-  } catch (e) {
-    sumEl.textContent = `Discovery summary unavailable: ${String(e?.message || e)}`;
-    listEl.innerHTML = '';
-  }
-}
-
 async function pollAnimatedArtJob() {
   const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
   const key = ($('key')?.value || '').trim();
   try {
-    const [buildR, discoverR] = await Promise.all([
-      fetch(`${apiBase}/config/library-health/animated-art/job`, { headers: key ? { 'x-track-key': key } : {} }),
-      fetch(`${apiBase}/config/library-health/animated-art/discover-job`, { headers: key ? { 'x-track-key': key } : {} }),
-    ]);
+    const buildR = await fetch(`${apiBase}/config/library-health/animated-art/job`, { headers: key ? { 'x-track-key': key } : {} });
     const bj = await buildR.json().catch(() => ({}));
-    const dj = await discoverR.json().catch(() => ({}));
     const b = bj.job || { status: 'idle' };
-    const d = dj.job || { status: 'idle' };
     const bTxt = `Build: ${b.status || 'idle'} ${Number(b.processed || 0)}/${Number(b.total || 0)} matched ${Number(b.matched || 0)} misses ${Number(b.misses || 0)}`;
-    const dTxt = `Discover: ${d.status || 'idle'} ${Number(d.processed || 0)}/${Number(d.total || 0)} found ${Number(d.found || 0)} misses ${Number(d.misses || 0)}`;
-    const isBusy = (String(b.status) === 'running' || String(d.status) === 'running');
+    const isBusy = (String(b.status) === 'running');
     setAnimatedArtBusy(isBusy);
-    setAnimatedArtStatus(`${bTxt} · ${dTxt}`, isBusy);
+    setAnimatedArtStatus(bTxt, isBusy);
     if (isBusy) {
       setTimeout(() => pollAnimatedArtJob().catch(() => {}), 3000);
     } else {
       refreshAnimatedArtSummary().catch(() => {});
-      refreshAnimatedArtDiscovery().catch(() => {});
     }
   } catch (e) {
     setAnimatedArtBusy(false);
@@ -1282,44 +1254,6 @@ async function startAnimatedArtBuild(onlyKeys = null) {
   }
 }
 
-async function startAnimatedArtDiscover() {
-  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
-  const key = ($('key')?.value || '').trim();
-  const limitAlbums = Math.max(0, Number($('animatedArtLimit')?.value || 0));
-  try {
-    setAnimatedArtBusy(true);
-    setAnimatedArtStatus('Starting discovery…', true);
-    const r = await fetch(`${apiBase}/config/library-health/animated-art/discover`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
-      body: JSON.stringify({ limitAlbums }),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-    setAnimatedArtStatus('Discovery started…', true);
-    pollAnimatedArtJob().catch(() => {});
-  } catch (e) {
-    setAnimatedArtBusy(false);
-    setAnimatedArtStatus(`Discovery start failed: ${String(e?.message || e)}`, false);
-  }
-}
-
-async function buildFromDiscoveryPrompt() {
-  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
-  const key = ($('key')?.value || '').trim();
-  const q = prompt('Optional filter (artist/album contains). Leave empty to build all discovered motion albums:', '');
-  if (q === null) return;
-  const needle = String(q || '').trim().toLowerCase();
-  const r = await fetch(`${apiBase}/config/library-health/animated-art/discovery`, { headers: key ? { 'x-track-key': key } : {} });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-  let rows = (Array.isArray(j.entries) ? j.entries : []).filter((x) => !!x?.hasMotion && !!x?.key);
-  if (needle) rows = rows.filter((x) => `${String(x.artist || '').toLowerCase()} ${String(x.album || '').toLowerCase()}`.includes(needle));
-  const onlyKeys = rows.map((x) => String(x.key || '')).filter(Boolean);
-  if (!onlyKeys.length) throw new Error('No discovered albums matched that filter.');
-  await startAnimatedArtBuild(onlyKeys);
-}
-
 async function clearAnimatedArtEntry(keyToClear) {
   const key = String(keyToClear || '').trim();
   if (!key) return;
@@ -1345,8 +1279,8 @@ $('albumPick')?.addEventListener('change', () => loadAlbumMetadata());
 $('suggestPerformersBtn')?.addEventListener('click', suggestPerformers);
 $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
 $('buildAnimatedArtBtn')?.addEventListener('click', () => startAnimatedArtBuild());
-$('discoverAnimatedArtBtn')?.addEventListener('click', startAnimatedArtDiscover);
-$('buildAnimatedArtFromDiscoveryBtn')?.addEventListener('click', () => buildFromDiscoveryPrompt().catch((e) => { setAnimatedArtBusy(false); setAnimatedArtStatus(String(e?.message || e), false); }));
+// discovery workflow removed
+// discovery workflow removed
 $('animatedArtCacheList')?.addEventListener('click', (ev) => {
   const btn = ev.target?.closest?.('[data-clear-animated-key]');
   if (!btn) return;
@@ -1364,7 +1298,6 @@ loadRuntimeMeta().finally(() => {
   run();
   loadAlbumOptions().then(() => loadAlbumMetadata());
   refreshAnimatedArtSummary().catch(() => {});
-  refreshAnimatedArtDiscovery().catch(() => {});
   pollAnimatedArtJob().catch(() => {});
 });
 })();
