@@ -257,6 +257,28 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.json({ ok: true, action, file, rating, randomOn, status: String(afterStatus || '') });
       }
 
+      if (action === 'seekrel') {
+        const secRaw = Number(req.body?.seconds);
+        const seconds = Number.isFinite(secRaw) ? Math.max(-600, Math.min(600, Math.round(secRaw))) : 0;
+        if (!seconds) return res.status(400).json({ ok: false, error: 'seconds is required for seekrel' });
+
+        const delta = seconds > 0 ? `+${seconds}` : String(seconds);
+        try {
+          await execFileP('mpc', ['-h', mpdHost, 'seekcur', delta]);
+        } catch (e) {
+          // Fallback for older mpc versions without seekcur.
+          const msg = String(e?.message || '');
+          if (!/unknown command\s+"seekcur"/i.test(msg)) throw e;
+
+          // Older mpc supports relative seek via `seek [+|-]HH:MM:SS|seconds|%`.
+          await execFileP('mpc', ['-h', mpdHost, 'seek', delta]);
+        }
+
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, seconds, randomOn, status: String(afterStatus || '') });
+      }
+
       const cmd = map[action];
       if (!cmd) return res.status(400).json({ ok: false, error: 'Invalid action' });
       await execFileP('mpc', ['-h', mpdHost, cmd]);

@@ -207,7 +207,8 @@
       ? `${displayArtist}${displayArtist && displayTitle ? ' • ' : ''}${displayTitle}`
       : 'Nothing playing';
     const appleUrl = String(np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
-    const isLibraryTrack = !np?.isStream && !np?.isRadio && !np?.isPodcast;
+    const isPodcast = !!np?.isPodcast;
+    const isLibraryTrack = !np?.isStream && !np?.isRadio && !isPodcast;
     const rating = Math.max(0, Math.min(5, Number(np?.rating ?? head?.rating ?? 0) || 0));
     const ratingFile = String(np?.ratingFile || np?.file || head?.file || '').trim();
     const starsRow = (isLibraryTrack && ratingFile)
@@ -235,6 +236,8 @@
     const duration = Number(np?.duration ?? q?.duration ?? q?.durationSec ?? head?.duration ?? head?.durationSec ?? 0);
     const showProgress = !isRadioOrStream && Number.isFinite(duration) && duration > 0;
     const progressPct = showProgress ? Math.max(0, Math.min(100, (elapsed / duration) * 100)) : 0;
+    const spinPeriodMs = 5600;
+    const spinDelayStyle = state === 'playing' ? ` style="--spin-delay:-${Date.now() % spinPeriodMs}ms;"` : '';
 
     el.innerHTML =
       `<div class="heroArt">${motionMp4
@@ -247,11 +250,13 @@
             : `<div class="txt">${text}</div>`) +
           `${metaRow}` +
           `<div class="heroTransportControls">` +
-            `<button class="tbtn ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` +
-            `<button class="tbtn" data-a="previous" title="Previous">${icon('prev')}</button>` +
-            `<button class="tbtn tbtnBig" data-a="${pp}" title="${pp}">${icon(pp)}</button>` +
-            `<button class="tbtn" data-a="next" title="Next">${icon('next')}</button>` +
-            `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
+            (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekback15" title="Back 15 seconds"><span style="font-size:13px;font-weight:700;">↺15</span></button>` : '') +
+            `<button class="tbtn tbtnFar ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` +
+            `<button class="tbtn tbtnNear" data-a="previous" title="Previous">${icon('prev')}</button>` +
+            `<button class="tbtn tbtnBig ${state === 'playing' ? 'on' : ''}" data-a="${pp}" title="${pp}"${spinDelayStyle}>${icon(pp)}</button>` +
+            `<button class="tbtn tbtnNear" data-a="next" title="Next">${icon('next')}</button>` +
+            `<button class="tbtn tbtnFar ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
+            (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekfwd30" title="Forward 30 seconds"><span style="font-size:13px;font-weight:700;">30↻</span></button>` : '') +
           `</div>` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div></div>` +
           `${(!showProgress && isRadioOrStream) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${state === 'playing' ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(liveLabel)}${liveBadge ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-size:11px;font-weight:700;vertical-align:1px;">${liveBadge}</span>` : ''}</div>` : ''}` +
@@ -581,7 +586,11 @@
         return;
       }
       busy = true;
-      try { await playback(action, currentKey()); } catch {}
+      try {
+        if (action === 'seekback15') await playback('seekrel', currentKey(), { seconds: -15 });
+        else if (action === 'seekfwd30') await playback('seekrel', currentKey(), { seconds: 30 });
+        else await playback(action, currentKey());
+      } catch {}
       await refresh();
       busy = false;
     });

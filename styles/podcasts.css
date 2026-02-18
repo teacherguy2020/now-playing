@@ -864,9 +864,18 @@ body.theme-light .preHeroStatusWrap{margin-top:24px}
 .heroTransport .heroRateStar:hover{filter:brightness(1.12)}
 .heroTransport .tbtn{width:52px;height:52px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.18);color:#eef;display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
 .heroTransport .tbtn.tbtnBig{width:64px;height:64px}
+.heroTransport .tbtn.tbtnNear{width:50px;height:50px}
+.heroTransport .tbtn.tbtnFar{width:47px;height:47px}
+.heroTransport .tbtn.tbtnSeek{width:44px;height:44px}
 .heroTransport .tbtn svg{width:28px;height:28px;fill:currentColor}
 .heroTransport .tbtn.tbtnBig svg{width:34px;height:34px}
+.heroTransport .tbtn.tbtnNear svg{width:26px;height:26px}
+.heroTransport .tbtn.tbtnFar svg{width:24px;height:24px}
 .heroTransport .tbtn.on{color:#22c55e;box-shadow:0 0 0 1px rgba(34,197,94,.35) inset}
+.heroTransport .tbtn.tbtnBig{position:relative}
+.heroTransport .tbtn.tbtnBig.on{border-color:rgba(34,197,94,.20);box-shadow:none}
+.heroTransport .tbtn.tbtnBig.on::after{content:'';position:absolute;inset:-3px;border-radius:999px;pointer-events:none;background:conic-gradient(from 0deg,rgba(34,197,94,.20),rgba(34,197,94,.85),rgba(34,197,94,.20));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));animation:heroPlaySpin 5.6s linear infinite;animation-delay:var(--spin-delay,0ms)}
+@keyframes heroPlaySpin{to{transform:rotate(360deg)}}
 .heroTransport .tbtn:hover{background:rgba(255,255,255,.28);border-color:rgba(255,255,255,.34);box-shadow:0 0 0 1px rgba(125,211,252,.28) inset}
 .heroTransport .tbtn:active{transform:scale(.95)}
 
