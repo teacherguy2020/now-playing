@@ -218,7 +218,7 @@
             `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
           `</div>` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div></div>` +
-          `${(!showProgress && isRadioOrStream && stationNameLive) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;"><span class="heroLivePulse">Live</span> • ${escHtml(stationNameLive)}</div>` : ''}` +
+          `${(!showProgress && isRadioOrStream && stationNameLive) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${state === 'playing' ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(stationNameLive)}</div>` : ''}` +
         `</div>` +
       `</div>`;
 

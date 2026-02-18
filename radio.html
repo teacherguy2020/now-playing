@@ -23,6 +23,7 @@
     .logo{width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;vertical-align:middle;margin-right:8px}
     .heartBtn{border:0;background:transparent;cursor:pointer;font-size:17px;color:#7f8fae;padding:0}
     .heartBtn.on{color:#ef4444}
+    #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
     @media (max-width:1024px){.radioGrid{grid-template-columns:1fr 1fr}.radioTable{font-size:13px}}
   </style>
 </head>
@@ -53,6 +54,7 @@
           <h1>Radio</h1>
           <div class="sub">Station-native management: genres, favorites, quality, presets, and queue send.</div>
         </div>
+        <button id="themeToggle" class="heroThemeToggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme" style="position:absolute;top:12px;right:16px;z-index:12;">🌙</button>
       </header>
       <div class="heroTransportRow">
         <div id="heroTransport" class="heroTransport"><span class="muted">Now Playing · loading…</span></div>
@@ -105,7 +107,8 @@
     <input id="key" type="hidden" />
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260217-68"></script>
+  <script src="scripts/theme-toggle.js?v=20260217-1"></script>
+  <script src="scripts/hero-transport.js?v=20260217-70"></script>
   <script src="scripts/radio.js?v=20260217-4"></script>
 </body>
 </html>
