@@ -68,13 +68,17 @@
     <details id="animatedArtCacheCard">
       <summary>Animated Art Cache (local library)</summary>
       <div class="muted" id="animatedArtSummary" style="margin-top:8px;"></div>
-      <div id="animatedArtPreviewWrap" style="margin-top:6px;display:flex;gap:10px;align-items:center;">
-        <div id="animatedArtPreview" style="width:84px;height:84px;border:1px solid #334;border-radius:10px;background:#0a1222;display:grid;place-items:center;overflow:hidden;flex:0 0 auto;">
-          <span class="muted" style="font-size:11px;">Preview</span>
+      <div id="animatedArtLayout" style="margin-top:8px;display:flex;gap:14px;align-items:flex-start;justify-content:space-between;">
+        <div style="flex:1 1 auto;min-width:0;">
+          <div id="animatedArtCacheList" class="muted" style="max-height:320px;overflow:auto;"></div>
         </div>
-        <div id="animatedArtPreviewLabel" class="muted" style="font-size:12px;">Click a cached album to preview</div>
+        <div id="animatedArtPreviewWrap" style="flex:0 0 auto;display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+          <div id="animatedArtPreview" style="width:300px;height:300px;border:1px solid #334;border-radius:12px;background:#0a1222;display:grid;place-items:center;overflow:hidden;">
+            <span class="muted" style="font-size:12px;">Preview</span>
+          </div>
+          <div id="animatedArtPreviewLabel" class="muted" style="font-size:12px;max-width:300px;text-align:right;">Click a cached album to preview</div>
+        </div>
       </div>
-      <div id="animatedArtCacheList" class="muted" style="max-height:220px;overflow:auto;margin-top:8px;"></div>
     </details>
     <input id="apiBase" type="hidden" value="" />
     <input id="key" type="hidden" value="" />
