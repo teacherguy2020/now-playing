@@ -16,6 +16,20 @@ const KNOWN_APPLE_URL_OVERRIDES = {
   "michael mcdonald|if that's what it takes": 'https://music.apple.com/us/album/if-thats-what-it-takes/358567891',
 };
 
+function pickKnownOverrideUrl(artist, album) {
+  const exact = String(KNOWN_APPLE_URL_OVERRIDES[albumKey(artist, album)] || '').trim();
+  if (exact) return exact;
+  const a = normText(artist);
+  const b = normText(album);
+  if (a === 'michael mcdonald' && (b === 'if that s what it takes' || b.includes('if that s what it takes'))) {
+    return 'https://music.apple.com/us/album/if-thats-what-it-takes/358567891';
+  }
+  if (a === 'john mayer' && b === 'sob rock') {
+    return 'https://music.apple.com/us/album/sob-rock/1568819304';
+  }
+  return '';
+}
+
 let activeJob = null;
 let discoverJob = null;
 let appleLookupBackoffUntil = 0;
@@ -266,7 +280,7 @@ async function lookupMotionForAlbum(artist, album) {
   }
 
   const key = albumKey(artist, album);
-  const overrideUrl = String(KNOWN_APPLE_URL_OVERRIDES[key] || '').trim();
+  const overrideUrl = pickKnownOverrideUrl(artist, album);
   const candidateUrls = await lookupAppleAlbumUrls(artist, album, 8);
   const appleUrls = [overrideUrl, ...candidateUrls].filter(Boolean).filter((u, i, arr) => arr.indexOf(u) === i);
   if (!appleUrls.length) return { ok: false, reason: 'no-apple-url' };
