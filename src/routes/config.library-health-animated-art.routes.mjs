@@ -189,6 +189,19 @@ function normText(s) {
     .trim();
 }
 
+function primaryArtistPart(s) {
+  return String(s || '')
+    .split(/\bfeat\.?\b|\bfeaturing\b|\bwith\b|,|&|\band\b|\bx\b|\+/i)[0]
+    .trim();
+}
+
+function isStrongArtistMatch(targetArtist, candArtist) {
+  const tp = normText(primaryArtistPart(targetArtist));
+  const cp = normText(primaryArtistPart(candArtist));
+  if (!tp || !cp) return false;
+  return cp === tp || cp.includes(tp) || tp.includes(cp);
+}
+
 function scoreAlbumCandidate(targetArtist, targetAlbum, candArtist, candAlbum) {
   const ta = normText(targetArtist);
   const tb = normText(targetAlbum);
@@ -244,12 +257,9 @@ async function lookupAppleAlbumCandidates(artist, album, limit = 6) {
       const url = String(it?.collectionViewUrl || '').trim().split('?')[0];
       if (!url) continue;
       const candArtist = String(it?.artistName || '');
-      const ta = normText(a);
-      const ca = normText(candArtist);
-      const artistLooksRelated = !ta || !ca || ca.includes(ta) || ta.includes(ca);
+      const artistLooksRelated = isStrongArtistMatch(a, candArtist);
+      if (!artistLooksRelated) continue;
       const s = scoreAlbumCandidate(a, b, candArtist, it?.collectionName);
-      // Guard against unrelated albums (e.g., generic "Rock" matches).
-      if (!artistLooksRelated && s < 10) continue;
       scored.push({ url, score: s });
     }
   }
