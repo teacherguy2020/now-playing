@@ -1209,8 +1209,8 @@ async function refreshAnimatedArtSummary() {
             const k = esc(String(x.key || ''));
             const mp4 = esc(String(x.mp4 || x.mp4H264 || ''));
             return `<div style="display:flex;align-items:center;gap:6px;margin:4px 0;">
-              <button type="button" class="tiny" data-preview-mp4="${mp4}" data-preview-label="${artist} — ${album}" style="padding:2px 6px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;">• ${artist} — ${album}</button>
-              <button type="button" class="tiny danger" data-clear-animated-key="${k}">Remove</button>
+              <button type="button" class="tiny" data-preview-mp4="${mp4}" data-preview-label="${artist} — ${album}" style="height:28px;line-height:26px;padding:0 8px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:1px solid currentColor;border-radius:8px;background:transparent;">• ${artist} — ${album}</button>
+              <button type="button" class="tiny danger" data-clear-animated-key="${k}" style="height:28px;line-height:26px;padding:0 8px;border:1px solid #ef4444;color:#ef4444;border-radius:8px;background:transparent;">Remove</button>
             </div>`;
           }).join('')
         : '<div class="muted">No cached motion albums yet.</div>';
@@ -1258,6 +1258,14 @@ $('animatedArtCacheList')?.addEventListener('click', (ev) => {
   }
   const previewBtn = ev.target?.closest?.('[data-preview-mp4]');
   if (previewBtn) {
+    document.querySelectorAll('#animatedArtCacheList [data-preview-mp4]').forEach((b) => {
+      b.style.borderColor = 'currentColor';
+      b.style.color = '';
+      b.dataset.active = '0';
+    });
+    previewBtn.style.borderColor = '#22c55e';
+    previewBtn.style.color = '#22c55e';
+    previewBtn.dataset.active = '1';
     setAnimatedArtPreview(previewBtn.getAttribute('data-preview-mp4'), previewBtn.getAttribute('data-preview-label') || 'Preview');
   }
 });
