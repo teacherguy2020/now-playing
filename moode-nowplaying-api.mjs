@@ -1466,22 +1466,39 @@ function splitTitlePerformersProgram(titleLine) {
   const raw = String(titleLine || '').trim();
   if (!raw) return null;
 
-  // Normalize spacing around dashes
+  // Case A: "work - performers - program"
   const parts = raw.split(/\s*-\s*/).map(s => s.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    const program = parts.pop();
+    const perfRaw = parts.pop();
+    const work = parts.join(' - ');
+    const personnel = perfRaw.split(/\s*,\s*/).map(s => s.trim()).filter(Boolean);
+    return { work, personnel, program };
+  }
 
-  if (parts.length < 3) return null; // need "work - performers - program" shape
+  // Case B (WFMT-ish): "work-soloist, p; Orchestra/Conductor"
+  const m = raw.match(/^(.*?)\s*-\s*(.*?)\s*;\s*([^\/;]+?)(?:\s*\/\s*([^;]+))?\s*$/);
+  if (!m) return null;
+  const work = String(m[1] || '').trim();
+  const soloistRaw = String(m[2] || '').trim();
+  const orchRaw = String(m[3] || '').trim();
+  const condRaw = String(m[4] || '').trim();
 
-  const program = parts.pop();        // last
-  const perfRaw = parts.pop();        // second last
-  const work    = parts.join(' - ');  // rest (preserve inner dashes)
+  const personnel = [];
+  if (soloistRaw) {
+    // expand short instrument role hints
+    const solo = soloistRaw
+      .replace(/,\s*p\b/i, ' (piano)')
+      .replace(/,\s*pf\b/i, ' (piano)')
+      .replace(/,\s*vn\b/i, ' (violin)')
+      .replace(/,\s*vc\b/i, ' (cello)')
+      .trim();
+    personnel.push(solo);
+  }
+  if (orchRaw) personnel.push(orchRaw.replace(/\bOrch\b/gi, 'Orchestra').trim());
+  if (condRaw) personnel.push(`${condRaw} (conductor)`);
 
-  // Turn "David Zinman, Baltimore Symphony Orchestra" into separate-ish personnel items
-  const personnel = perfRaw
-    .split(/\s*,\s*/)
-    .map(s => s.trim())
-    .filter(Boolean);
-
-  return { work, personnel, program };
+  return { work, personnel, program: '' };
 }
 
 function clampRating(v) {
@@ -4657,6 +4674,9 @@ app.get('/now-playing', async (req, res) => {
 
         for (const p of split.personnel) set.add(p);
         personnel = Array.from(set);
+        if (!radioPerformers && split.personnel?.length) {
+          radioPerformers = split.personnel.join(', ');
+        }
       }
     }
 
@@ -4689,7 +4709,13 @@ app.get('/now-playing', async (req, res) => {
       : await getDeepMetadataCached(file);
 
     producer = deep.producer || '';
-    personnel = deep.performers || [];
+    {
+      const merged = new Set([
+        ...((Array.isArray(personnel) ? personnel : []).map((p) => String(p).trim()).filter(Boolean)),
+        ...((Array.isArray(deep.performers) ? deep.performers : []).map((p) => String(p).trim()).filter(Boolean)),
+      ]);
+      personnel = Array.from(merged);
+    }
 
     const radioLookupGuard = isRadio
       ? getRadioLookupGuard({

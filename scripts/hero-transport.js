@@ -8,6 +8,24 @@
     return String(v || '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
   }
 
+  function expandInstrumentAbbrevs(input) {
+    let s = String(input || '');
+    if (!s) return s;
+    const reps = [
+      ['vc', 'cello'], ['db', 'double bass'], ['cb', 'double bass'], ['p', 'piano'], ['hp', 'harp'],
+      ['ob', 'oboe'], ['eh', 'english horn'], ['cl', 'clarinet'], ['bcl', 'bass clarinet'], ['fl', 'flute'],
+      ['hn', 'horn'], ['fh', 'horn'], ['tpt', 'trumpet'], ['tp', 'trumpet'], ['tbn', 'trombone'],
+      ['tb', 'trombone'], ['tba', 'tuba'], ['perc', 'percussion'], ['timp', 'timpani'], ['vln', 'violin'],
+      ['vn', 'violin'], ['vla', 'viola'], ['va', 'viola'], ['sop', 'soprano'], ['mez', 'mezzo-soprano'],
+      ['ten', 'tenor'], ['bar', 'baritone'], ['bs', 'bass'],
+    ];
+    for (const [abbr, full] of reps) {
+      const re = new RegExp(`(^|[\\s,;])${abbr}(?=\\s*(?:[;,)\\]]|\\-|$))`, 'gi');
+      s = s.replace(re, `$1${full}`);
+    }
+    return s.replace(/\s{2,}/g, ' ').trim();
+  }
+
   function icon(name) {
     if (name === 'play') return '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
     if (name === 'pause') return '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
@@ -240,6 +258,9 @@
       // Strip trailing year-like tails from title (year is shown separately when needed).
       displayTitle = displayTitle.replace(/[\s•\-–—,;:]*((19|20)\d{2})\s*$/i, '').trim();
     }
+
+    displayArtist = expandInstrumentAbbrevs(displayArtist);
+    displayTitle = expandInstrumentAbbrevs(displayTitle);
 
     const text = (displayArtist || displayTitle)
       ? `${displayArtist}${displayArtist && displayTitle ? ' • ' : ''}${displayTitle}`
