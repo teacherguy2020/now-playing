@@ -1201,7 +1201,16 @@ async function refreshAnimatedArtSummary() {
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
     sumEl.textContent = `Cached albums: ${Number(j.total || 0).toLocaleString()} · Motion matches: ${Number(j.matched || 0).toLocaleString()} · Updated: ${String(j.updatedAt || 'n/a')}`;
     if (listEl) {
-      const rows = (Array.isArray(j.entries) ? j.entries : []).filter((x) => !!x?.hasMotion && !!x?.mp4);
+      const rows = (Array.isArray(j.entries) ? j.entries : [])
+        .filter((x) => !!x?.hasMotion && !!x?.mp4)
+        .sort((a, b) => {
+          const aa = String(a?.artist || '').toLowerCase();
+          const ba = String(b?.artist || '').toLowerCase();
+          if (aa !== ba) return aa.localeCompare(ba);
+          const al = String(a?.album || '').toLowerCase();
+          const bl = String(b?.album || '').toLowerCase();
+          return al.localeCompare(bl);
+        });
       listEl.innerHTML = rows.length
         ? `<table style="width:100%;border-collapse:separate;border-spacing:0 6px;">
             <thead>
