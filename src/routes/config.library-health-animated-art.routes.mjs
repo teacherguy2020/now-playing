@@ -657,6 +657,33 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
     }
   });
 
+  app.post('/config/library-health/animated-art/clear', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const keyRaw = String(req.body?.key || '').trim();
+      const artist = String(req.body?.artist || '').trim();
+      const album = String(req.body?.album || '').trim();
+      const key = keyRaw || albumKey(artist, album);
+      if (!key) return res.status(400).json({ ok: false, error: 'key or artist+album required' });
+
+      const cache = await readCache();
+      cache.entries = cache.entries || {};
+      const existing = cache.entries[key] || null;
+      if (existing?.mp4H264) {
+        const p = h264PathFromPublicUrl(existing.mp4H264);
+        if (p) {
+          try { await fs.unlink(p); } catch {}
+        }
+      }
+      delete cache.entries[key];
+      cache.updatedAt = new Date().toISOString();
+      await writeCache(cache);
+      return res.json({ ok: true, cleared: key });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/library-health/animated-art/discover', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

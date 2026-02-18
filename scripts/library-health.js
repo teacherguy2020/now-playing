@@ -1188,14 +1188,22 @@ async function refreshAnimatedArtSummary() {
   const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
   const key = ($('key')?.value || '').trim();
   const sumEl = $('animatedArtSummary');
+  const listEl = $('animatedArtCacheList');
   if (!sumEl) return;
   try {
     const r = await fetch(`${apiBase}/config/library-health/animated-art/cache`, { headers: key ? { 'x-track-key': key } : {} });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
     sumEl.textContent = `Cached albums: ${Number(j.total || 0).toLocaleString()} · Motion matches: ${Number(j.matched || 0).toLocaleString()} · Updated: ${String(j.updatedAt || 'n/a')}`;
+    if (listEl) {
+      const rows = (Array.isArray(j.entries) ? j.entries : []).filter((x) => !!x?.hasMotion && !!x?.mp4).slice(0, 200);
+      listEl.innerHTML = rows.length
+        ? rows.map((x) => `<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;margin:4px 0;"><span>• ${esc(String(x.artist || ''))} — ${esc(String(x.album || ''))}</span><button type="button" class="tiny danger" data-clear-animated-key="${esc(String(x.key || ''))}">Clear</button></div>`).join('')
+        : '<div class="muted">No cached motion albums yet.</div>';
+    }
   } catch (e) {
     sumEl.textContent = `Animated art summary unavailable: ${String(e?.message || e)}`;
+    if (listEl) listEl.innerHTML = '';
   }
 }
 
@@ -1312,6 +1320,24 @@ async function buildFromDiscoveryPrompt() {
   await startAnimatedArtBuild(onlyKeys);
 }
 
+async function clearAnimatedArtEntry(keyToClear) {
+  const key = String(keyToClear || '').trim();
+  if (!key) return;
+  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+  const trackKey = ($('key')?.value || '').trim();
+  const ok = confirm(`Clear cached motion entry for:\n${key}\n\nThis will force re-evaluation next lookup.`);
+  if (!ok) return;
+  const r = await fetch(`${apiBase}/config/library-health/animated-art/clear`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(trackKey ? { 'x-track-key': trackKey } : {}) },
+    body: JSON.stringify({ key }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+  setAnimatedArtStatus(`Cleared: ${key}`, false);
+  await refreshAnimatedArtSummary();
+}
+
 // ---- Init ----
 const runBtn = $('run');
 if (runBtn) runBtn.addEventListener('click', run);
@@ -1321,6 +1347,13 @@ $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
 $('buildAnimatedArtBtn')?.addEventListener('click', () => startAnimatedArtBuild());
 $('discoverAnimatedArtBtn')?.addEventListener('click', startAnimatedArtDiscover);
 $('buildAnimatedArtFromDiscoveryBtn')?.addEventListener('click', () => buildFromDiscoveryPrompt().catch((e) => { setAnimatedArtBusy(false); setAnimatedArtStatus(String(e?.message || e), false); }));
+$('animatedArtCacheList')?.addEventListener('click', (ev) => {
+  const btn = ev.target?.closest?.('[data-clear-animated-key]');
+  if (!btn) return;
+  clearAnimatedArtEntry(btn.getAttribute('data-clear-animated-key')).catch((e) => {
+    setAnimatedArtStatus(`Clear failed: ${String(e?.message || e)}`, false);
+  });
+});
 
 syncAnimatedArtCardVisibility();
 window.addEventListener('storage', (ev) => {
