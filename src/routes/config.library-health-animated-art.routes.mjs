@@ -286,6 +286,18 @@ async function lookupMotionForAlbum(artist, album) {
 
   const key = albumKey(artist, album);
   const overrideUrl = pickKnownOverrideUrl(artist, album);
+  // Hard pin known-problem albums before search to prevent candidate drift.
+  if (overrideUrl) {
+    const endpoint = `https://api.aritra.ovh/v1/covers?url=${encodeURIComponent(overrideUrl)}`;
+    const out = await fetchJsonWithTimeout(endpoint, 12000, { cache: 'no-store' }).catch(() => null);
+    const r = out?.response || null;
+    const j = out?.json || {};
+    if (r?.ok) {
+      const mp4 = pickMp4FromCovers(j);
+      if (mp4) return { ok: true, appleUrl: overrideUrl, mp4 };
+    }
+  }
+
   const candidateUrls = await lookupAppleAlbumUrls(artist, album, 8);
   const appleUrls = [overrideUrl, ...candidateUrls].filter(Boolean).filter((u, i, arr) => arr.indexOf(u) === i);
   if (!appleUrls.length) return { ok: false, reason: 'no-apple-url' };
@@ -595,6 +607,11 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
             };
             const liveCache = await readCache();
             liveCache.entries = liveCache.entries || {};
+            const prior = liveCache.entries[key] || null;
+            // Never clobber a known motion hit with a no-motion probe.
+            if (prior?.hasMotion && prior?.mp4 && !nextEntry.hasMotion) {
+              return prior;
+            }
             liveCache.entries[key] = nextEntry;
             liveCache.updatedAt = new Date().toISOString();
             await writeCache(liveCache);
