@@ -37,7 +37,7 @@ async function ensureH264ForSource(sourceUrl) {
 
   const name = h264FilenameForSource(src);
   const outPath = path.join(H264_DIR, name);
-  const tmpPath = `${outPath}.tmp`;
+  const tmpPath = `${outPath}.tmp.mp4`;
 
   try {
     await fs.access(outPath);
