@@ -83,6 +83,19 @@
         },
 
         {
+          "name": "PlayQueueIntent",
+          "slots": [],
+          "samples": [
+            "play the queue",
+            "play queue",
+            "start the queue",
+            "start queue",
+            "resume the queue",
+            "resume queue"
+          ]
+        },
+
+        {
           "name": "PlayArtistIntent",
           "slots": [
             { "name": "artist", "type": "AMAZON.SearchQuery" }

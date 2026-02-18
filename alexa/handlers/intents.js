@@ -105,23 +105,11 @@ function createIntentHandlers(deps) {
             .getResponse();
         }
 
-        const snap = await getStableNowPlayingSnapshot();
-
-        // 2) Not currently playing, but queue head exists: confirm before starting.
-        if (snap && snap.file) {
-          markAwaitingQueueConfirmation(handlerInput, true);
-          return handlerInput.responseBuilder
-            .speak('I see you have a queue ready. Want me to start that?')
-            .reprompt('You can say yes to start your queue, or say play artist followed by a name.')
-            .withShouldEndSession(false)
-            .getResponse();
-        }
-
-        // 3) Not playing and no head: ask what to hear.
-        console.log('Launch: no head ready; prompting for invocation');
+        // Not currently playing: always ask what to hear.
+        markAwaitingQueueConfirmation(handlerInput, false);
         return handlerInput.responseBuilder
-          .speak('What would you like to hear?')
-          .reprompt('You can say play artist, play album, play track, or play playlist.')
+          .speak('What do you want to hear?')
+          .reprompt('You can say play the queue, play artist, play album, play track, or play playlist.')
           .withShouldEndSession(false)
           .getResponse();
 
@@ -341,6 +329,31 @@ function createIntentHandlers(deps) {
       album: decodeHtmlEntities(safeStr(snap.album || '')),
     }, spokenTitle || 'Starting playback');
   }
+
+  const PlayQueueIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayQueueIntent';
+    },
+    async handle(handlerInput) {
+      markAwaitingQueueConfirmation(handlerInput, false);
+      try {
+        const snap = await ensureCurrentTrack();
+        if (!snap || !snap.file) {
+          return speak(handlerInput, 'I do not see a queue ready right now. What would you like to hear?', false);
+        }
+        const directive = buildPlayReplaceAll(snap, 'Starting your queue');
+        rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
+        return handlerInput.responseBuilder
+          .speak('Starting your queue.')
+          .withShouldEndSession(true)
+          .addDirective(directive)
+          .getResponse();
+      } catch (e) {
+        return speak(handlerInput, 'I could not start your queue right now.', false);
+      }
+    },
+  };
 
   const PlayArtistIntentHandler = {
     canHandle(handlerInput) {
@@ -740,6 +753,7 @@ function createIntentHandlers(deps) {
     NoIntentHandler,
     HelpIntentHandler,
     FallbackIntentHandler,
+    PlayQueueIntentHandler,
     PlayArtistIntentHandler,
     PlayAlbumIntentHandler,
     PlayTrackIntentHandler,
