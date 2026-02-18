@@ -840,7 +840,14 @@ body.theme-light #imageOut{
 }
 button.rateStar.on{ color:#fbbf24 !important; }
 button.rateStar.off{ color:#5b6780 !important; }
-body.theme-light button.rateStar{ background:transparent !important; border:0 !important; }
+body.theme-light button.rateStar{ background:transparent !important; border:0 !important; box-shadow:none !important; }
+body.theme-light .heroTransport .heroRateStar,
+body.theme-light button.queueRateStar,
+body.theme-light button[data-queue-rate-file][data-queue-rate-val]{
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+}
 body.theme-light th, body.theme-light td{ border-bottom-color:rgba(63,47,95,.26) !important; color:#16151d; }
 
 /* Status pills above hero */
