@@ -1203,21 +1203,38 @@ async function refreshAnimatedArtSummary() {
     if (listEl) {
       const rows = (Array.isArray(j.entries) ? j.entries : []).filter((x) => !!x?.hasMotion && !!x?.mp4);
       listEl.innerHTML = rows.length
-        ? rows.map((x) => {
-            const artist = esc(String(x.artist || ''));
-            const album = esc(String(x.album || ''));
-            const k = esc(String(x.key || ''));
-            const mp4 = esc(String(x.mp4 || x.mp4H264 || ''));
-            const suppressed = !!x?.suppress;
-            return `<div style="display:flex;align-items:center;gap:8px;margin:4px 0;flex-wrap:wrap;">
-              <button type="button" class="tiny" data-preview-mp4="${mp4}" data-preview-artist="${artist}" data-preview-album="${album}" data-preview-label="${artist} — ${album}" style="height:28px;line-height:26px;padding:0 8px;max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:1px solid currentColor;border-radius:8px;background:transparent;${suppressed ? 'opacity:.6;' : ''}">• ${artist} — ${album}</button>
-              <label class="tiny" style="display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 6px;border:1px solid #4b5563;border-radius:8px;">
-                <input type="checkbox" data-suppress-animated-key="${k}" ${suppressed ? 'checked' : ''}>
-                <span>Don’t display</span>
-              </label>
-              <button type="button" class="tiny danger" data-clear-animated-key="${k}" style="height:28px;line-height:26px;padding:0 8px;border:1px solid #ef4444;color:#ef4444;border-radius:8px;background:transparent;">Remove</button>
-            </div>`;
-          }).join('')
+        ? `<table style="width:100%;border-collapse:separate;border-spacing:0 6px;">
+            <thead>
+              <tr class="muted" style="font-size:12px;">
+                <th style="text-align:left;font-weight:600;padding:0 4px;">Album</th>
+                <th style="text-align:left;font-weight:600;padding:0 4px;white-space:nowrap;">Don’t display</th>
+                <th style="text-align:left;font-weight:600;padding:0 4px;white-space:nowrap;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+            ${rows.map((x) => {
+              const artist = esc(String(x.artist || ''));
+              const album = esc(String(x.album || ''));
+              const k = esc(String(x.key || ''));
+              const mp4 = esc(String(x.mp4 || x.mp4H264 || ''));
+              const suppressed = !!x?.suppress;
+              return `<tr>
+                <td style="padding:0 4px;">
+                  <button type="button" class="tiny" data-preview-mp4="${mp4}" data-preview-artist="${artist}" data-preview-album="${album}" data-preview-label="${artist} — ${album}" style="height:28px;line-height:26px;padding:0 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:1px solid currentColor;border-radius:8px;background:transparent;${suppressed ? 'opacity:.6;' : ''}">• ${artist} — ${album}</button>
+                </td>
+                <td style="padding:0 4px;white-space:nowrap;">
+                  <label class="tiny" style="display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 6px;border:1px solid #4b5563;border-radius:8px;">
+                    <input type="checkbox" data-suppress-animated-key="${k}" ${suppressed ? 'checked' : ''}>
+                    <span>Don’t display</span>
+                  </label>
+                </td>
+                <td style="padding:0 4px;white-space:nowrap;">
+                  <button type="button" class="tiny danger" data-clear-animated-key="${k}" style="height:28px;line-height:26px;padding:0 8px;border:1px solid #ef4444;color:#ef4444;border-radius:8px;background:transparent;">Remove</button>
+                </td>
+              </tr>`;
+            }).join('')}
+            </tbody>
+          </table>`
         : '<div class="muted">No cached motion albums yet.</div>';
     }
   } catch (e) {
