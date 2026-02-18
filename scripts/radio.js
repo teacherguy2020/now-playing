@@ -94,25 +94,110 @@
     setStatus('');
   }
 
+  function normalizeGenreToken(token){
+    const raw = String(token || '').trim();
+    if (!raw) return null;
+    const t = raw.toLowerCase();
+
+    // De-prioritize decade buckets; we want style-forward clustering.
+    if (/\b\d{2}s\b/.test(t) || /\b\d{4}s\b/.test(t) || /\b(decade|70s|80s|90s|00s|10s|20s)\b/.test(t)) return null;
+
+    if (t.includes('classical')) return 'Classical';
+    if (t.includes('jazz')) return 'Jazz';
+    if (t.includes('blues')) return 'Blues';
+    if (t.includes('r&b') || t.includes('rnb') || t.includes('soul')) return 'R&B / Soul';
+    if (t.includes('hip hop') || t.includes('hip-hop') || t.includes('rap')) return 'Hip-Hop / Rap';
+    if (t.includes('electronic') || t.includes('edm') || t.includes('dance') || t.includes('house') || t.includes('techno')) return 'Electronic / Dance';
+    if (t.includes('rock') || t.includes('alt')) return 'Rock / Alternative';
+    if (t.includes('country') || t.includes('americana') || t.includes('folk') || t.includes('bluegrass')) return 'Country / Folk';
+    if (t.includes('latin') || t.includes('reggaeton') || t.includes('salsa') || t.includes('bachata')) return 'Latin';
+    if (t.includes('news') || t.includes('talk') || t.includes('public radio')) return 'News / Talk';
+    if (t.includes('ambient') || t.includes('chill') || t.includes('lofi') || t.includes('lo-fi')) return 'Chill / Ambient';
+
+    // Title-case fallback
+    return raw.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  }
+
   function renderRows(){
     const rows = $('rows');
     if (!rows) return;
     const b = base();
-    rows.innerHTML = allStations.map((s, i) => {
+
+    const groups = new Map();
+    allStations.forEach((s) => {
+      const rawGenre = String(s.genre || '').trim();
+      const parts = rawGenre
+        ? rawGenre.split(/\s*[\/;,|]\s*/g).map((x) => x.trim()).filter(Boolean)
+        : [];
+
+      const normalized = Array.from(new Set(parts.map(normalizeGenreToken).filter(Boolean)));
+      const hasDecadeOnly = parts.length > 0 && normalized.length === 0;
+      const genres = normalized.length ? normalized : (hasDecadeOnly ? ['Throwback / Hits'] : ['Other']);
+
+      genres.forEach((g) => {
+        if (!groups.has(g)) groups.set(g, []);
+        groups.get(g).push(s);
+      });
+    });
+
+    const makeCard = (s, genreLabel = '') => {
       const file = String(s.file || '');
       const name = String(s.stationName || s.artist || 'Radio Station');
       const logo = `${b}/art/radio-logo.jpg?name=${encodeURIComponent(name)}`;
       const on = !!s.isFavoriteStation;
-      return `<tr>
-        <td><input type="checkbox" data-sel="${encodeURIComponent(file)}" ${selected.has(file) ? 'checked' : ''}></td>
-        <td><button class="heartBtn ${on ? 'on' : ''}" data-fav="${encodeURIComponent(file)}" data-state="${on ? '1':'0'}">♥</button></td>
-        <td><img class="logo" src="${logo}" onerror="this.style.opacity=.25;this.removeAttribute('src')"> ${name}</td>
-        <td>${String(s.genre || '')}</td>
-        <td>${String(s.bitrate || '')}</td>
-        <td>${String(s.format || '')}</td>
-        <td>${String(s.radioType || '')}</td>
-      </tr>`;
+      const isSel = selected.has(file);
+      const bitrateNum = Number(s?.bitrate || 0);
+      const isHq = !!s?.hq || bitrateNum >= 192;
+      return `<div class="stationCard ${isSel ? 'isSel' : ''}" data-card-sel="${encodeURIComponent(file)}">
+        <img class="logo" src="${logo}" onerror="this.style.opacity=.25;this.removeAttribute('src')" alt="">
+        <div>
+          <div class="stationName">${name}</div>
+          <div class="stationMeta">${String(s.bitrate || '')}${s.bitrate && s.format ? ' • ' : ''}${String(s.format || '')}${isHq ? ` <span class='chip hq'>HQ</span>` : ''}${genreLabel ? ` <span class='chip'>${genreLabel}</span>` : ''}</div>
+        </div>
+        <div class="stationControls">
+          <button class="heartBtn ${on ? 'on' : ''}" data-fav="${encodeURIComponent(file)}" data-state="${on ? '1':'0'}" title="Toggle favorite">♥</button>
+        </div>
+      </div>`;
+    };
+
+    const groupOrder = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b));
+    const grouped = groupOrder.map((genre) => {
+      const list = groups.get(genre) || [];
+      list.sort((a, b) => {
+        const an = String(a?.stationName || a?.artist || '').toLowerCase();
+        const bn = String(b?.stationName || b?.artist || '').toLowerCase();
+        return an.localeCompare(bn);
+      });
+      return { genre, list };
+    });
+
+    const multi = grouped.filter((g) => g.list.length > 1);
+    const singles = grouped.filter((g) => g.list.length === 1);
+
+    const multiHtml = multi.map(({ genre, list }) => {
+      const cards = list.map((s) => makeCard(s)).join('');
+      return `<section class="stationCluster">
+        <div class="clusterHead">
+          <div class="clusterTitle">${genre}</div>
+          <div class="clusterCount">${list.length} stations</div>
+        </div>
+        <div class="stationGrid">${cards}</div>
+      </section>`;
     }).join('');
+
+    const singlesHtml = singles.length
+      ? `<div class="singletonClusterGrid">${singles.map(({ genre, list }) => `
+          <section class="stationCluster singleton">
+            <div class="clusterHead">
+              <div class="clusterTitle">${genre}</div>
+              <div class="clusterCount">1 station</div>
+            </div>
+            <div class="stationGrid">${makeCard(list[0])}</div>
+          </section>
+        `).join('')}</div>`
+      : '';
+
+    rows.innerHTML = `${multiHtml}${singlesHtml}`;
   }
 
   async function toggleFavorite(file, next){
@@ -152,25 +237,46 @@
       if ($('count')) $('count').textContent = `${allStations.length} station(s) shown · ${selected.size} selected`;
     });
 
-    $('rows')?.addEventListener('change', (ev) => {
-      const el = ev.target instanceof Element ? ev.target.closest('input[data-sel]') : null;
-      if (!el) return;
-      const file = decodeURIComponent(String(el.getAttribute('data-sel') || ''));
-      if (!file) return;
-      if (el.checked) selected.add(file); else selected.delete(file);
-      if ($('count')) $('count').textContent = `${allStations.length} station(s) shown · ${selected.size} selected`;
-    });
-
     $('rows')?.addEventListener('click', (ev) => {
-      const btn = ev.target instanceof Element ? ev.target.closest('button[data-fav]') : null;
-      if (!btn) return;
-      ev.preventDefault();
-      const file = decodeURIComponent(String(btn.getAttribute('data-fav') || ''));
-      const next = String(btn.getAttribute('data-state') || '0') !== '1';
-      toggleFavorite(file, next)
-        .then(() => loadFavoritePreset())
-        .then(() => loadStations())
-        .catch((e) => setStatus(`Favorite failed: ${String(e?.message || e)}`));
+      const favBtn = ev.target instanceof Element ? ev.target.closest('button[data-fav]') : null;
+      if (favBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const file = decodeURIComponent(String(favBtn.getAttribute('data-fav') || ''));
+        const prevOn = String(favBtn.getAttribute('data-state') || '0') === '1';
+        const next = !prevOn;
+
+        // Optimistic UI (like hero stars): flip heart immediately.
+        favBtn.setAttribute('data-state', next ? '1' : '0');
+        favBtn.classList.toggle('on', next);
+
+        // Keep local model in sync immediately.
+        allStations.forEach((s) => {
+          if (String(s?.file || '') === file) s.isFavoriteStation = next;
+        });
+
+        toggleFavorite(file, next)
+          .then(() => loadFavoritePreset())
+          .then(() => { renderRows(); if ($('count')) $('count').textContent = `${allStations.length} station(s) shown · ${selected.size} selected`; })
+          .catch((e) => {
+            // Rollback optimistic state on failure.
+            favBtn.setAttribute('data-state', prevOn ? '1' : '0');
+            favBtn.classList.toggle('on', prevOn);
+            allStations.forEach((s) => {
+              if (String(s?.file || '') === file) s.isFavoriteStation = prevOn;
+            });
+            setStatus(`Favorite failed: ${String(e?.message || e)}`);
+          });
+        return;
+      }
+
+      const card = ev.target instanceof Element ? ev.target.closest('[data-card-sel]') : null;
+      if (!card) return;
+      const file = decodeURIComponent(String(card.getAttribute('data-card-sel') || ''));
+      if (!file) return;
+      if (selected.has(file)) selected.delete(file); else selected.add(file);
+      card.classList.toggle('isSel', selected.has(file));
+      if ($('count')) $('count').textContent = `${allStations.length} station(s) shown · ${selected.size} selected`;
     });
 
     ['genre','favoritesOnly','hqOnly','search','favoritesPreset'].forEach((id) => {

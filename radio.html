@@ -20,11 +20,28 @@
     .radioTable{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
     .radioTable th,.radioTable td{padding:8px;border-bottom:1px dashed #233650;text-align:left;vertical-align:middle}
     .radioTable th{color:#9fb2d1;font-weight:600}
-    .logo{width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;vertical-align:middle;margin-right:8px}
+    .logo{width:44px;height:44px;object-fit:cover;border-radius:10px;border:1px solid #2a3a58;background:#111}
     .heartBtn{border:0;background:transparent;cursor:pointer;font-size:17px;color:#7f8fae;padding:0}
     .heartBtn.on{color:#ef4444}
     #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
-    @media (max-width:1024px){.radioGrid{grid-template-columns:1fr 1fr}.radioTable{font-size:13px}}
+
+    .stationClusters{display:grid;gap:12px;margin-top:10px}
+    .stationCluster{border:1px solid #2a3a58;border-radius:12px;background:rgba(7,16,33,.55);padding:10px}
+    .singletonClusterGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .stationCluster.singleton .stationGrid{grid-template-columns:1fr}
+    .clusterHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .clusterTitle{font-size:13px;color:#bcd0f6;font-weight:700;letter-spacing:.3px}
+    .clusterCount{font-size:12px;color:#8ea3c6}
+    .stationGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .stationCard{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;border:1px solid #2a3a58;border-radius:10px;background:#0a1222;padding:8px;cursor:pointer}
+    .stationCard.isSel{border-color:#22c55e;box-shadow:0 0 0 1px rgba(34,197,94,.25) inset}
+    .stationName{font-size:14px;color:#e6edff;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .stationMeta{font-size:11px;color:#8ea3c6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .stationControls{display:flex;align-items:center;gap:4px}
+    .chip{display:inline-block;border:1px solid #2a3a58;border-radius:999px;padding:1px 7px;font-size:10px;color:#9fb1d9;margin-left:4px}
+    .chip.hq{border-color:rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-weight:700}
+
+    @media (max-width:1024px){.radioGrid{grid-template-columns:1fr 1fr}.stationGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.singletonClusterGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
   </style>
 </head>
 <body>
@@ -87,20 +104,7 @@
       <div id="status" class="muted" style="margin-top:8px"></div>
       <div id="count" class="mutedSm"></div>
 
-      <table class="radioTable">
-        <thead>
-          <tr>
-            <th style="width:26px"></th>
-            <th style="width:26px"></th>
-            <th>Station</th>
-            <th>Genre</th>
-            <th>Bitrate</th>
-            <th>Format</th>
-            <th>Type</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
+      <div id="rows" class="stationClusters"></div>
     </section>
 
     <input id="apiBase" type="hidden" />
@@ -109,6 +113,6 @@
 
   <script src="scripts/theme-toggle.js?v=20260217-1"></script>
   <script src="scripts/hero-transport.js?v=20260217-70"></script>
-  <script src="scripts/radio.js?v=20260217-4"></script>
+  <script src="scripts/radio.js?v=20260217-14"></script>
 </body>
 </html>
