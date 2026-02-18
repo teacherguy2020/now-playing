@@ -13,6 +13,7 @@ const H264_DIR = path.resolve(process.cwd(), 'data', 'animated-art-h264');
 
 const KNOWN_APPLE_URL_OVERRIDES = {
   'john mayer|sob rock': 'https://music.apple.com/us/album/sob-rock/1568819304',
+  "michael mcdonald|if that's what it takes": 'https://music.apple.com/us/album/if-thats-what-it-takes/358567891',
 };
 
 let activeJob = null;
