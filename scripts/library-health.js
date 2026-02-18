@@ -1234,8 +1234,10 @@ async function refreshAnimatedArtSummary() {
             </thead>
             <tbody>
             ${rows.map((x) => {
-              const artist = esc(String(x.artist || ''));
-              const album = esc(String(x.album || ''));
+              const artistRaw = String(x.artist || '').replace(/&amp;/gi, '&');
+              const albumRaw = String(x.album || '').replace(/&amp;/gi, '&');
+              const artist = esc(artistRaw);
+              const album = esc(albumRaw);
               const k = esc(String(x.key || ''));
               const mp4Raw = String(x.mp4 || x.mp4H264 || '').trim();
               const mp4 = esc(mp4Raw);
