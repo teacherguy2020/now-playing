@@ -258,6 +258,7 @@ function setMotionArtVideo(mp4Url, posterUrl = '') {
   const videoEl = document.getElementById('album-art-video');
   const artEl = document.getElementById('album-art');
   if (!videoEl || !artEl) return;
+
   const src = String(mp4Url || '').trim();
   if (!src) {
     try { videoEl.pause(); } catch {}
@@ -267,14 +268,53 @@ function setMotionArtVideo(mp4Url, posterUrl = '') {
     artEl.style.display = 'block';
     return;
   }
+
   if (posterUrl) videoEl.setAttribute('poster', posterUrl);
-  if (videoEl.getAttribute('src') !== src) videoEl.setAttribute('src', src);
-  artEl.style.display = 'none';
-  videoEl.style.display = 'block';
+  if (videoEl.getAttribute('src') !== src) {
+    videoEl.setAttribute('src', src);
+    videoEl.load?.();
+  }
+
+  // Conservative reveal: keep static art until video decode actually advances.
+  artEl.style.display = 'block';
+  videoEl.style.display = 'none';
+  const startedAt = Number(videoEl.currentTime || 0);
+  let done = false;
+
+  const reveal = () => {
+    if (done) return;
+    done = true;
+    artEl.style.display = 'none';
+    videoEl.style.display = 'block';
+  };
+
+  const fallback = () => {
+    if (done) return;
+    done = true;
+    videoEl.style.display = 'none';
+    artEl.style.display = 'block';
+  };
+
+  const onProgress = () => {
+    const t = Number(videoEl.currentTime || 0);
+    if (t > startedAt + 0.02 || (videoEl.readyState >= 3 && !videoEl.paused)) reveal();
+  };
+
   try {
     const p = (typeof videoEl.play === 'function') ? videoEl.play() : null;
     if (p && typeof p.catch === 'function') p.catch(() => {});
   } catch {}
+
+  videoEl.addEventListener('timeupdate', onProgress, { once: true });
+  videoEl.addEventListener('playing', onProgress, { once: true });
+  videoEl.addEventListener('loadeddata', onProgress, { once: true });
+  ['error', 'stalled', 'abort', 'emptied'].forEach((ev) => videoEl.addEventListener(ev, fallback, { once: true }));
+
+  setTimeout(() => {
+    if (done) return;
+    onProgress();
+    if (!done) fallback();
+  }, 1800);
 }
 
 /* =========================
