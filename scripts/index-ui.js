@@ -1928,6 +1928,9 @@ function removeInlinePersonnelFromTitleLine(titleLine) {
   // Handles "-Orchestra/Soloist, v" compact form
   idx = s.search(/\s*-\s*[^\/;]+\s*\/\s*[^,;]+,\s*(?:p|pf|pno|vn|vln|vc|cello)\b/i);
   if (idx >= 0) return s.slice(0, idx).trim();
+  // Handles "- English Concert members Archiv" style trailing performer+label suffix
+  idx = s.search(/\s*-\s*(?:the\s+)?[A-Za-zÀ-ÿ'’.&\- ]+\s+(?:members|orch(?:estra)?|ensemble|camerata|concert)\b.*$/i);
+  if (idx >= 0) return s.slice(0, idx).trim();
   return s;
 }
 
@@ -2523,15 +2526,15 @@ function updateUI(data) {
     displayArtist =
       radioArtist ||
       stabArtist ||
-      teasedArtist ||
       String(data.artist || '').trim() ||
+      teasedArtist ||
       'Radio Stream';
 
     displayTitle =
       radioTitle ||
       stabTitle ||
-      teasedTitle ||
       String(displayTitle || '').trim() ||
+      teasedTitle ||
       incomingTitleLine;
 
     // ✅ Key change: strip inline performers from the title line
