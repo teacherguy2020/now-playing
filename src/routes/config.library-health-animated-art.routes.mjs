@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { MPD_HOST } from '../config.mjs';
@@ -8,12 +9,69 @@ const execFileP = promisify(execFile);
 
 const CACHE_FILE = path.resolve(process.cwd(), 'data', 'animated-art-cache.json');
 const DISCOVERY_FILE = path.resolve(process.cwd(), 'data', 'animated-art-discovery.json');
+const H264_DIR = path.resolve(process.cwd(), 'data', 'animated-art-h264');
 
 let activeJob = null;
 let discoverJob = null;
 let appleLookupBackoffUntil = 0;
 let appleItunesNextAllowedTs = 0;
 const runtimeLookupInFlight = new Map();
+const h264TranscodeInFlight = new Map();
+
+function hashUrl(url) {
+  return crypto.createHash('sha1').update(String(url || ''), 'utf8').digest('hex');
+}
+
+function h264FilenameForSource(url) {
+  return `${hashUrl(url)}.mp4`;
+}
+
+function h264PublicUrlForSource(req, sourceUrl) {
+  const name = h264FilenameForSource(sourceUrl);
+  return `${req.protocol}://${req.get('host')}/config/library-health/animated-art/media/${name}`;
+}
+
+async function ensureH264ForSource(sourceUrl) {
+  const src = String(sourceUrl || '').trim();
+  if (!src) return '';
+
+  const name = h264FilenameForSource(src);
+  const outPath = path.join(H264_DIR, name);
+  const tmpPath = `${outPath}.tmp`;
+
+  try {
+    await fs.access(outPath);
+    return outPath;
+  } catch {}
+
+  let p = h264TranscodeInFlight.get(src);
+  if (!p) {
+    p = (async () => {
+      await fs.mkdir(H264_DIR, { recursive: true });
+      await execFileP('ffmpeg', [
+        '-hide_banner',
+        '-loglevel', 'error',
+        '-y',
+        '-i', src,
+        '-an',
+        '-c:v', 'libx264',
+        '-preset', 'veryfast',
+        '-crf', '28',
+        '-pix_fmt', 'yuv420p',
+        '-movflags', '+faststart',
+        tmpPath,
+      ], { timeout: 180000, maxBuffer: 4 * 1024 * 1024 });
+      await fs.rename(tmpPath, outPath);
+      return outPath;
+    })().finally(async () => {
+      h264TranscodeInFlight.delete(src);
+      try { await fs.unlink(tmpPath); } catch {}
+    });
+    h264TranscodeInFlight.set(src, p);
+  }
+
+  return p;
+}
 
 async function waitForAppleItunesSlot() {
   const now = Date.now();
@@ -319,6 +377,17 @@ async function runDiscoverJob({ limitAlbums = 0 } = {}) {
 export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
   const { requireTrackKey } = deps;
 
+  app.get('/config/library-health/animated-art/media/:name', async (req, res) => {
+    try {
+      const name = String(req.params?.name || '').trim();
+      if (!/^[a-f0-9]{40}\.mp4$/i.test(name)) return res.status(400).end();
+      const file = path.join(H264_DIR, name);
+      return res.sendFile(file, { headers: { 'cache-control': 'public, max-age=604800, immutable' } });
+    } catch {
+      return res.status(404).end();
+    }
+  });
+
   app.get('/config/library-health/animated-art/cache', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
@@ -377,7 +446,26 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
 
       // Fast path: cached motion hit
       if (existing?.hasMotion && existing?.mp4) {
-        return res.json({ ok: true, key, hit: existing, source: 'cache-hit' });
+        let hit = existing;
+        const wantH264 = String(req.query?.h264 || '1').trim().toLowerCase() !== '0';
+        if (wantH264 && existing?.sourceCodec === 'h264' && existing?.mp4H264) {
+          hit = { ...existing, mp4: String(existing.mp4H264) };
+        } else if (wantH264) {
+          try {
+            const outPath = await ensureH264ForSource(existing.mp4);
+            if (outPath) {
+              hit = { ...existing, mp4H264: h264PublicUrlForSource(req, existing.mp4), mp4: h264PublicUrlForSource(req, existing.mp4), sourceCodec: 'h264' };
+              const liveCache = await readCache();
+              liveCache.entries = liveCache.entries || {};
+              liveCache.entries[key] = { ...(liveCache.entries[key] || {}), ...hit, updatedAt: new Date().toISOString() };
+              liveCache.updatedAt = new Date().toISOString();
+              await writeCache(liveCache);
+            }
+          } catch {
+            // fallback to original mp4 URL
+          }
+        }
+        return res.json({ ok: true, key, hit, source: 'cache-hit' });
       }
 
       // Optional miss resolution (default ON): one-shot runtime lookup for current playing album.
@@ -415,7 +503,23 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
         runtimeLookupInFlight.set(key, p);
       }
 
-      const resolved = await p;
+      let resolved = await p;
+      const wantH264 = String(req.query?.h264 || '1').trim().toLowerCase() !== '0';
+      if (wantH264 && resolved?.hasMotion && resolved?.mp4) {
+        try {
+          const outPath = await ensureH264ForSource(resolved.mp4);
+          if (outPath) {
+            resolved = { ...resolved, mp4H264: h264PublicUrlForSource(req, resolved.mp4), mp4: h264PublicUrlForSource(req, resolved.mp4), sourceCodec: 'h264' };
+            const liveCache = await readCache();
+            liveCache.entries = liveCache.entries || {};
+            liveCache.entries[key] = { ...(liveCache.entries[key] || {}), ...resolved, updatedAt: new Date().toISOString() };
+            liveCache.updatedAt = new Date().toISOString();
+            await writeCache(liveCache);
+          }
+        } catch {
+          // fallback to original mp4 URL
+        }
+      }
       return res.json({ ok: true, key, hit: resolved, source: resolved?.hasMotion ? 'resolved-hit' : 'resolved-miss' });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
