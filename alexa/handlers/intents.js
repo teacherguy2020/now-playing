@@ -32,6 +32,23 @@ function createIntentHandlers(deps) {
     apiGetRuntimeConfig,
   } = deps;
 
+  function markAwaitingQueueConfirmation(handlerInput, value) {
+    try {
+      const attrs = handlerInput.attributesManager.getSessionAttributes() || {};
+      attrs.awaitingQueueConfirmation = !!value;
+      handlerInput.attributesManager.setSessionAttributes(attrs);
+    } catch (_) {}
+  }
+
+  function isAwaitingQueueConfirmation(handlerInput) {
+    try {
+      const attrs = handlerInput.attributesManager.getSessionAttributes() || {};
+      return !!attrs.awaitingQueueConfirmation;
+    } catch (_) {
+      return false;
+    }
+  }
+
   const LaunchRequestHandler = {
     canHandle(handlerInput) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'LaunchRequest';
@@ -90,19 +107,13 @@ function createIntentHandlers(deps) {
 
         const snap = await getStableNowPlayingSnapshot();
 
-        // 2) Not currently playing, but head exists: start queue.
+        // 2) Not currently playing, but queue head exists: confirm before starting.
         if (snap && snap.file) {
-          const directive = buildPlayReplaceAll(snap, 'Starting playback');
-          try {
-            const issuedToken = directive.audioItem.stream.token;
-            const issuedUrl = directive.audioItem.stream.url;
-            rememberIssuedStream(issuedToken, issuedUrl, 0);
-          } catch (e) {}
-
+          markAwaitingQueueConfirmation(handlerInput, true);
           return handlerInput.responseBuilder
-            .speak('Starting your queue.')
-            .withShouldEndSession(true)
-            .addDirective(directive)
+            .speak('I see you have a queue ready. Want me to start that?')
+            .reprompt('You can say yes to start your queue, or say play artist followed by a name.')
+            .withShouldEndSession(false)
             .getResponse();
         }
 
@@ -236,6 +247,61 @@ function createIntentHandlers(deps) {
     },
   };
 
+  const YesIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.YesIntent';
+    },
+    async handle(handlerInput) {
+      if (!isAwaitingQueueConfirmation(handlerInput)) {
+        return speak(handlerInput, 'Okay.', false);
+      }
+
+      try {
+        const snap = await getStableNowPlayingSnapshot();
+        if (!snap || !snap.file) {
+          markAwaitingQueueConfirmation(handlerInput, false);
+          return speak(handlerInput, 'I cannot find a playable queue right now. What would you like to hear?', false);
+        }
+
+        const directive = buildPlayReplaceAll(snap, 'Starting playback');
+        try {
+          const issuedToken = directive.audioItem.stream.token;
+          const issuedUrl = directive.audioItem.stream.url;
+          rememberIssuedStream(issuedToken, issuedUrl, 0);
+        } catch (_) {}
+
+        markAwaitingQueueConfirmation(handlerInput, false);
+        return handlerInput.responseBuilder
+          .speak('Starting your queue.')
+          .withShouldEndSession(true)
+          .addDirective(directive)
+          .getResponse();
+      } catch (e) {
+        markAwaitingQueueConfirmation(handlerInput, false);
+        return speak(handlerInput, 'I could not start your queue right now.', false);
+      }
+    },
+  };
+
+  const NoIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.NoIntent';
+    },
+    handle(handlerInput) {
+      if (!isAwaitingQueueConfirmation(handlerInput)) {
+        return speak(handlerInput, 'Okay.', false);
+      }
+      markAwaitingQueueConfirmation(handlerInput, false);
+      return handlerInput.responseBuilder
+        .speak('Okay. What would you like to hear?')
+        .reprompt('You can say play artist, play album, play track, or play playlist.')
+        .withShouldEndSession(false)
+        .getResponse();
+    },
+  };
+
   const HelpIntentHandler = {
     canHandle(handlerInput) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
@@ -282,6 +348,7 @@ function createIntentHandlers(deps) {
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayArtistIntent';
     },
     async handle(handlerInput) {
+      markAwaitingQueueConfirmation(handlerInput, false);
       const artist = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.artist?.value);
       if (!artist) return speak(handlerInput, 'Tell me which artist to play.', false);
       try {
@@ -333,6 +400,7 @@ function createIntentHandlers(deps) {
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayAlbumIntent';
     },
     async handle(handlerInput) {
+      markAwaitingQueueConfirmation(handlerInput, false);
       const album = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.album?.value);
       if (!album) return speak(handlerInput, 'Tell me which album to play.', false);
       try {
@@ -371,6 +439,7 @@ function createIntentHandlers(deps) {
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayTrackIntent';
     },
     async handle(handlerInput) {
+      markAwaitingQueueConfirmation(handlerInput, false);
       const track = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.track?.value);
       if (!track) return speak(handlerInput, 'Tell me which track to play.', false);
       try {
@@ -396,6 +465,7 @@ function createIntentHandlers(deps) {
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayPlaylistIntent';
     },
     async handle(handlerInput) {
+      markAwaitingQueueConfirmation(handlerInput, false);
       const playlist = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.playlist?.value);
       if (!playlist) return speak(handlerInput, 'Tell me which playlist to play.', false);
       try {
@@ -493,6 +563,7 @@ function createIntentHandlers(deps) {
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayMixIntent';
     },
     async handle(handlerInput) {
+      markAwaitingQueueConfirmation(handlerInput, false);
       const mixQuery = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.mixQuery?.value);
       const parsedArtists = parseArtistsFromMixQuery(mixQuery);
       const resolved = await resolveArtistAliasesForMix(parsedArtists);
@@ -665,6 +736,8 @@ function createIntentHandlers(deps) {
     PauseIntentHandler,
     ResumeIntentHandler,
     NextIntentHandler,
+    YesIntentHandler,
+    NoIntentHandler,
     HelpIntentHandler,
     FallbackIntentHandler,
     PlayArtistIntentHandler,
