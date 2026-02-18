@@ -1526,26 +1526,46 @@ function splitTitlePerformersProgram(titleLine) {
 
   // Case B (WFMT-ish compact): "work-soloist, p; Orchestra/Conductor"
   const m = raw.match(/^(.*?)\s*-\s*(.*?)\s*;\s*([^\/;]+?)(?:\s*\/\s*([^;]+))?\s*$/);
-  if (!m) return null;
-  const work = String(m[1] || '').trim();
-  const soloistRaw = String(m[2] || '').trim();
-  const orchRaw = String(m[3] || '').trim();
-  const condRaw = String(m[4] || '').trim();
+  if (m) {
+    const work = String(m[1] || '').trim();
+    const soloistRaw = String(m[2] || '').trim();
+    const orchRaw = String(m[3] || '').trim();
+    const condRaw = String(m[4] || '').trim();
 
-  const personnel = [];
-  if (soloistRaw) {
-    const solo = soloistRaw
-      .replace(/,\s*p\b/i, ' (piano)')
-      .replace(/,\s*pf\b/i, ' (piano)')
-      .replace(/,\s*vn\b/i, ' (violin)')
-      .replace(/,\s*vc\b/i, ' (cello)')
-      .trim();
-    personnel.push(solo);
+    const personnel = [];
+    if (soloistRaw) {
+      const solo = soloistRaw
+        .replace(/,\s*p\b/i, ' (piano)')
+        .replace(/,\s*pf\b/i, ' (piano)')
+        .replace(/,\s*vn\b/i, ' (violin)')
+        .replace(/,\s*vc\b/i, ' (cello)')
+        .trim();
+      personnel.push(solo);
+    }
+    if (orchRaw) personnel.push(normalizeEns(orchRaw));
+    if (condRaw) personnel.push(`${condRaw} (conductor)`);
+
+    return { work, personnel, program: '' };
   }
-  if (orchRaw) personnel.push(normalizeEns(orchRaw));
-  if (condRaw) personnel.push(`${condRaw} (conductor)`);
 
-  return { work, personnel, program: '' };
+  // Case C: "work-Orchestra/Soloist, v" (no semicolon)
+  const m2 = raw.match(/^(.*?)\s*-\s*([^\/;]+?)\s*\/\s*([^,;]+?)\s*,\s*(p|pf|pno|vn|vln|vc|cello)\b/i);
+  if (m2) {
+    const work = String(m2[1] || '').trim();
+    const orchRaw = String(m2[2] || '').trim();
+    const soloist = String(m2[3] || '').trim();
+    const abbr = String(m2[4] || '').toLowerCase();
+    const role = (abbr === 'p' || abbr === 'pf' || abbr === 'pno') ? 'piano'
+      : ((abbr === 'vn' || abbr === 'vln') ? 'violin'
+      : ((abbr === 'vc' || abbr === 'cello') ? 'cello' : abbr));
+
+    const personnel = [];
+    if (orchRaw) personnel.push(`${normalizeEns(orchRaw)} (orchestra)`);
+    if (soloist) personnel.push(`${soloist} (${role})`);
+    return { work, personnel, program: '' };
+  }
+
+  return null;
 }
 
 function clampRating(v) {
@@ -4719,6 +4739,7 @@ app.get('/now-playing', async (req, res) => {
     // RADIO: extract performers from verbose title lines
     // =========================
     if (isRadio && title) {
+      const previousRadioPerformers = decodeHtmlEntities(String(radioPerformers || '').trim());
       const split = splitTitlePerformersProgram(title);
       if (split) {
         title = split.work;
@@ -4731,12 +4752,17 @@ app.get('/now-playing', async (req, res) => {
 
         for (const p of split.personnel) set.add(p);
         personnel = Array.from(set);
-        if (!radioPerformers && split.personnel?.length) {
+        if (split.personnel?.length) {
           radioPerformers = split.personnel.join(', ');
         }
         if (!radioAlbum && split.program) {
           const programClean = String(split.program || '').replace(/^.*?:\s*/, '').trim();
           if (programClean) radioAlbum = programClean;
+        }
+        // If station/label-ish album is present but metadata provided a richer program title,
+        // use that richer text as radio album line.
+        if (looksAlbumHintText(previousRadioPerformers) && (!radioAlbum || /\berato\b|\bwfmt\b|\bradio\b|\bstream\b/i.test(String(radioAlbum)))) {
+          radioAlbum = previousRadioPerformers;
         }
       }
     }

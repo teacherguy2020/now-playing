@@ -1923,7 +1923,10 @@ function looksLikeEnsembleConductor(s) {
 function removeInlinePersonnelFromTitleLine(titleLine) {
   const s = normalizeDashSpacing(titleLine);
   // Handles both " - Soloist, p; Orchestra/Conductor" and "-Soloist, p; ..."
-  const idx = s.search(/\s*-\s*[^-]+,\s*[a-z]{1,4}\s*;/i);
+  let idx = s.search(/\s*-\s*[^-]+,\s*[a-z]{1,4}\s*;/i);
+  if (idx >= 0) return s.slice(0, idx).trim();
+  // Handles "-Orchestra/Soloist, v" compact form
+  idx = s.search(/\s*-\s*[^\/;]+\s*\/\s*[^,;]+,\s*(?:p|pf|pno|vn|vln|vc|cello)\b/i);
   if (idx >= 0) return s.slice(0, idx).trim();
   return s;
 }
