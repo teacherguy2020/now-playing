@@ -1922,7 +1922,8 @@ function looksLikeEnsembleConductor(s) {
 
 function removeInlinePersonnelFromTitleLine(titleLine) {
   const s = normalizeDashSpacing(titleLine);
-  const idx = s.search(/\s-\s[^-]+,\s*[a-z]{1,4}\s*;/i);
+  // Handles both " - Soloist, p; Orchestra/Conductor" and "-Soloist, p; ..."
+  const idx = s.search(/\s*-\s*[^-]+,\s*[a-z]{1,4}\s*;/i);
   if (idx >= 0) return s.slice(0, idx).trim();
   return s;
 }
@@ -1946,6 +1947,9 @@ function buildRadioPersonnelLine(data, displayTitle) {
     !/[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ]+/.test(perfNorm.replace(/^[IVXLCDM]+\.\s*/i, '').trim());
 
   if (looksLikeMovementOnly) return '';
+
+  const parts = cleaned.split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean);
+  if (parts.length > 1) return parts.join(' • ');
   return cleaned;
 }
 
