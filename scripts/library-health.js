@@ -1219,7 +1219,12 @@ async function refreshAnimatedArtSummary() {
         return true;
       });
       listEl.innerHTML = rows.length
-        ? `<table style="width:100%;border-collapse:separate;border-spacing:0 6px;">
+        ? `<table style="width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0 6px;">
+            <colgroup>
+              <col style="width:auto;">
+              <col style="width:150px;">
+              <col style="width:84px;">
+            </colgroup>
             <thead>
               <tr class="muted" style="font-size:12px;">
                 <th style="text-align:left;font-weight:600;padding:0 4px;">Album</th>
@@ -1239,8 +1244,8 @@ async function refreshAnimatedArtSummary() {
               const state = suppressed ? 'suppressed' : (hasMotion ? 'motion' : 'no-motion');
               const stateColor = suppressed ? '#f59e0b' : (hasMotion ? '#22c55e' : '#9ca3af');
               return `<tr>
-                <td style="padding:0 4px;">
-                  <button type="button" class="tiny" data-preview-mp4="${mp4}" data-preview-artist="${artist}" data-preview-album="${album}" data-preview-label="${artist} — ${album}" ${hasMotion ? '' : 'disabled'} style="height:28px;line-height:26px;padding:0 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:1px solid currentColor;border-radius:8px;background:transparent;${suppressed ? 'opacity:.6;' : ''}${hasMotion ? '' : 'opacity:.55;cursor:default;'}">• ${artist} — ${album}</button>
+                <td style="padding:0 4px;overflow:hidden;">
+                  <button type="button" class="tiny" data-preview-mp4="${mp4}" data-preview-artist="${artist}" data-preview-album="${album}" data-preview-label="${artist} — ${album}" ${hasMotion ? '' : 'disabled'} style="display:block;width:100%;height:28px;line-height:26px;padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;border:1px solid currentColor;border-radius:8px;background:transparent;${suppressed ? 'opacity:.6;' : ''}${hasMotion ? '' : 'opacity:.55;cursor:default;'}">• ${artist} — ${album}</button>
                   <span class="tiny" style="margin-left:6px;color:${stateColor};">${state}</span>
                 </td>
                 <td style="padding:0 4px;white-space:nowrap;">
