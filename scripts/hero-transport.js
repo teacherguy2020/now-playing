@@ -155,6 +155,44 @@
     return p;
   }
 
+  function updateHeroDynamic(el, q, np = {}) {
+    const state = String(q?.playbackState || '').toLowerCase();
+    const pp = state === 'playing' ? 'pause' : 'play';
+    const randomOn = !!q?.randomOn;
+    const repeatOn = !!q?.repeatOn;
+
+    const big = el.querySelector('.heroTransportControls .tbtnBig');
+    if (big) {
+      big.classList.toggle('on', state === 'playing');
+      big.setAttribute('data-a', pp);
+      big.setAttribute('title', pp);
+      big.innerHTML = icon(pp);
+      if (state === 'playing') big.style.setProperty('--spin-delay', `-${Date.now() % 5600}ms`);
+      else big.style.removeProperty('--spin-delay');
+    }
+    const shuf = el.querySelector('.heroTransportControls .tbtnFar[data-a="shuffle"]');
+    if (shuf) shuf.classList.toggle('on', randomOn);
+    const rep = el.querySelector('.heroTransportControls .tbtnFar[data-a="repeat"]');
+    if (rep) rep.classList.toggle('on', repeatOn);
+
+    const isRadioOrStream = !!np?.isRadio || !!np?.isStream;
+    const elapsed = Number(np?.elapsed ?? q?.elapsed ?? q?.elapsedSec ?? 0);
+    const duration = Number(np?.duration ?? q?.duration ?? q?.durationSec ?? 0);
+    const showProgress = !isRadioOrStream && Number.isFinite(duration) && duration > 0;
+    const pct = showProgress ? Math.max(0, Math.min(100, (elapsed / duration) * 100)) : 0;
+    const bar = el.querySelector('.progress-bar-wrapper');
+    if (bar) {
+      bar.classList.toggle('is-hidden', !showProgress);
+      bar.setAttribute('data-seekable', showProgress ? '1' : '0');
+      const fill = bar.querySelector('.progress-fill');
+      if (fill) fill.style.transform = `scaleX(${pct / 100})`;
+      const handle = bar.querySelector('.progress-handle');
+      if (handle) handle.style.left = `${pct}%`;
+      const tip = bar.querySelector('.progress-tip');
+      if (tip) tip.style.left = `${pct}%`;
+    }
+  }
+
   function render(el, q, np = {}) {
     const prevVid = el.querySelector('.heroArtVid');
     const prevVidSrc = prevVid ? String(prevVid.currentSrc || prevVid.src || '').trim() : '';
@@ -495,6 +533,7 @@
     let busy = false;
     let lastQ = null;
     let lastNp = null;
+    let lastRenderSignature = '';
 
     const cloneObj = (v) => {
       try { return JSON.parse(JSON.stringify(v || {})); } catch { return (v && typeof v === 'object') ? { ...v } : {}; }
@@ -548,8 +587,27 @@
         let motionMp4 = '';
         if (motionEnabled && motionIdentity === lastMotionIdentity && lastMotionMp4) motionMp4 = lastMotionMp4;
         np._motionMp4 = motionMp4;
-        render(el, q, np);
-        armVideoFallback(el);
+
+        const head = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
+        const renderSig = JSON.stringify({
+          f: String(np?.file || head?.file || ''),
+          t: String(np?.title || np?.radioTitle || head?.title || ''),
+          a: String(np?.artist || np?.radioArtist || head?.artist || ''),
+          al: String(np?.album || np?.radioAlbum || ''),
+          art: String(np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || head?.thumbUrl || ''),
+          m: String(motionMp4 || ''),
+          r: !!np?.isRadio || !!np?.isStream || !!head?.isStream,
+          p: !!np?.isPodcast,
+        });
+
+        if (renderSig !== lastRenderSignature) {
+          render(el, q, np);
+          armVideoFallback(el);
+          lastRenderSignature = renderSig;
+        } else {
+          updateHeroDynamic(el, q, np);
+        }
+
         try { ensureRadioDrawer(); } catch {}
         try { window.dispatchEvent(new CustomEvent('heroTransport:update', { detail: { q, np } })); } catch {}
 
@@ -573,8 +631,20 @@
 
         lastMotionIdentity = motionIdentity;
         lastMotionMp4 = resolved;
-        render(el, q, { ...np, _motionMp4: resolved });
+        const npResolved = { ...np, _motionMp4: resolved };
+        render(el, q, npResolved);
         armVideoFallback(el);
+        const head2 = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
+        lastRenderSignature = JSON.stringify({
+          f: String(npResolved?.file || head2?.file || ''),
+          t: String(npResolved?.title || npResolved?.radioTitle || head2?.title || ''),
+          a: String(npResolved?.artist || npResolved?.radioArtist || head2?.artist || ''),
+          al: String(npResolved?.album || npResolved?.radioAlbum || ''),
+          art: String(npResolved?.albumArtUrl || npResolved?.altArtUrl || npResolved?.stationLogoUrl || head2?.thumbUrl || ''),
+          m: String(resolved || ''),
+          r: !!npResolved?.isRadio || !!npResolved?.isStream || !!head2?.isStream,
+          p: !!npResolved?.isPodcast,
+        });
         try { ensureRadioDrawer(); } catch {}
       } catch {
         renderShell(el, 'unavailable');
