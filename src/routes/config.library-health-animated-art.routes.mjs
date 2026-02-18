@@ -164,8 +164,8 @@ async function itunesAlbumCandidates(term, limit = 8) {
   return [];
 }
 
-async function lookupAppleAlbumUrl(artist, album) {
-  if (appleLookupBackoffUntil && Date.now() < appleLookupBackoffUntil) return '';
+async function lookupAppleAlbumUrls(artist, album, limit = 6) {
+  if (appleLookupBackoffUntil && Date.now() < appleLookupBackoffUntil) return [];
   const a = String(artist || '').trim();
   const b = String(album || '').trim();
   const attempts = [
@@ -175,21 +175,33 @@ async function lookupAppleAlbumUrl(artist, album) {
     `${normText(b)}`.trim(),
   ].filter(Boolean);
 
-  let best = { score: -1, url: '' };
-  let firstAny = '';
+  const scored = [];
   for (const term of attempts) {
     const rows = await itunesAlbumCandidates(term, 10);
     for (const it of rows) {
       const url = String(it?.collectionViewUrl || '').trim().split('?')[0];
       if (!url) continue;
-      if (!firstAny) firstAny = url;
       const s = scoreAlbumCandidate(a, b, it?.artistName, it?.collectionName);
-      if (s > best.score) best = { score: s, url };
-      if (s >= 12) return url; // strong exact-ish match
+      scored.push({ url, score: s });
     }
   }
-  // Be permissive: for discovery we prefer trying a plausible URL over dropping to empty.
-  return best.url || firstAny || '';
+
+  const seen = new Set();
+  const ordered = scored
+    .sort((x, y) => (y.score - x.score))
+    .filter((x) => {
+      if (seen.has(x.url)) return false;
+      seen.add(x.url);
+      return true;
+    })
+    .map((x) => x.url);
+
+  return ordered.slice(0, Math.max(1, Math.min(20, Number(limit) || 6)));
+}
+
+async function lookupAppleAlbumUrl(artist, album) {
+  const urls = await lookupAppleAlbumUrls(artist, album, 1);
+  return urls[0] || '';
 }
 
 function pickMp4FromCovers(covers) {
@@ -208,27 +220,42 @@ async function lookupMotionForAlbum(artist, album) {
   if (appleLookupBackoffUntil && Date.now() < appleLookupBackoffUntil) {
     return { ok: false, reason: 'backoff-active' };
   }
-  const appleUrl = await lookupAppleAlbumUrl(artist, album);
-  if (!appleUrl) return { ok: false, reason: 'no-apple-url' };
-  const endpoint = `https://api.aritra.ovh/v1/covers?url=${encodeURIComponent(appleUrl)}`;
 
-  let r = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    r = await fetch(endpoint, { cache: 'no-store' });
-    if (r.ok) break;
-    if (r.status === 429) {
-      appleLookupBackoffUntil = Math.max(appleLookupBackoffUntil || 0, Date.now() + (45 * 60 * 1000));
-      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+  const appleUrls = await lookupAppleAlbumUrls(artist, album, 8);
+  if (!appleUrls.length) return { ok: false, reason: 'no-apple-url' };
+
+  let lastReason = 'no-motion';
+  let lastUrl = appleUrls[0] || '';
+
+  for (const appleUrl of appleUrls) {
+    const endpoint = `https://api.aritra.ovh/v1/covers?url=${encodeURIComponent(appleUrl)}`;
+
+    let r = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      r = await fetch(endpoint, { cache: 'no-store' });
+      if (r.ok) break;
+      if (r.status === 429) {
+        appleLookupBackoffUntil = Math.max(appleLookupBackoffUntil || 0, Date.now() + (45 * 60 * 1000));
+        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+        continue;
+      }
+      break;
+    }
+
+    if (!r || !r.ok) {
+      lastReason = `covers-http-${r?.status || 0}`;
+      lastUrl = appleUrl;
       continue;
     }
-    break;
+
+    const j = await r.json().catch(() => ({}));
+    const mp4 = pickMp4FromCovers(j);
+    if (mp4) return { ok: true, appleUrl, mp4 };
+    lastReason = 'no-motion';
+    lastUrl = appleUrl;
   }
 
-  if (!r || !r.ok) return { ok: false, reason: `covers-http-${r?.status || 0}`, appleUrl };
-  const j = await r.json().catch(() => ({}));
-  const mp4 = pickMp4FromCovers(j);
-  if (!mp4) return { ok: false, reason: 'no-motion', appleUrl };
-  return { ok: true, appleUrl, mp4 };
+  return { ok: false, reason: lastReason, appleUrl: lastUrl };
 }
 
 async function listLibraryAlbums(limitAlbums = 0) {
