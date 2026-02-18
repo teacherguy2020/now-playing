@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Radio</title>
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260216-74" />
+  <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
+  <style>
+    body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    .wrap{max-width:1080px;margin:0 auto;padding:18px}
+    .card{background:#101c33;border:1px solid #2a3a58;border-radius:18px;padding:12px;margin:10px 0}
+    .radioGrid{display:grid;grid-template-columns:1.15fr 1fr 1fr .8fr .8fr;gap:10px}
+    label{display:block;font-size:12px;color:#9fb1d9;margin-bottom:6px}
+    input,select,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
+    .choiceLine{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+    .muted{color:#9fb1d9;font-size:12px}
+    .mutedSm{color:#8ea3c6;font-size:12px}
+    .btnPrimary{background:linear-gradient(90deg,#1d4ed8,#7c3aed);border-color:transparent;color:#fff;font-weight:650}
+    .radioTable{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+    .radioTable th,.radioTable td{padding:8px;border-bottom:1px dashed #233650;text-align:left;vertical-align:middle}
+    .radioTable th{color:#9fb2d1;font-weight:600}
+    .logo{width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #2a3a58;background:#111;vertical-align:middle;margin-right:8px}
+    .heartBtn{border:0;background:transparent;cursor:pointer;font-size:17px;color:#7f8fae;padding:0}
+    .heartBtn.on{color:#ef4444}
+    @media (max-width:1024px){.radioGrid{grid-template-columns:1fr 1fr}.radioTable{font-size:13px}}
+  </style>
+</head>
+<body>
+  <div class="preHeroStatusWrap">
+    <div class="preHeroStatus">
+      <div class="pill" id="apiPill"><span class="dot" aria-hidden="true"></span>API: <span id="apiHint">loading…</span></div>
+      <div class="pill" id="webPill"><span class="dot" aria-hidden="true"></span>Web: <span id="webHint">loading…</span></div>
+      <div class="pill" id="moodePill"><span class="dot" aria-hidden="true"></span>moOde: <span id="moodeHint">unknown</span></div>
+      <div class="pill" id="alexaPill"><span class="dot" aria-hidden="true"></span>Alexa: <span id="alexaHint">unknown</span></div>
+    </div>
+  </div>
+
+  <div class="heroRail">
+    <div class="heroWrap">
+      <div style="display:flex;gap:10px;justify-content:flex-start;align-items:flex-end;flex-wrap:wrap;">
+        <nav class="topTabs" aria-label="Main pages" style="margin-bottom:0;">
+          <a href="config.html">Config</a>
+          <a href="diagnostics.html">Diagnostics</a>
+          <a href="library-health.html">Library Health</a>
+          <a href="queue-wizard.html">Queue Wizard</a>
+          <a href="radio.html" class="active">Radio</a>
+          <a href="podcasts.html" id="podcastsNavLink">Podcasts</a>
+        </nav>
+      </div>
+      <header>
+        <div class="brand">
+          <h1>Radio</h1>
+          <div class="sub">Station-native management: genres, favorites, quality, presets, and queue send.</div>
+        </div>
+      </header>
+      <div class="heroTransportRow">
+        <div id="heroTransport" class="heroTransport"><span class="muted">Now Playing · loading…</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section class="card">
+      <div class="muted">Filter stations, assign favorites with ♥, and send selected stations to moOde queue.</div>
+
+      <div class="radioGrid" style="margin-top:10px;">
+        <label>Genre<br><select id="genre"></select></label>
+        <label>Favorites dropdown<br><select id="favoritesPreset" multiple size="6"></select></label>
+        <label>Search station<br><input id="search" type="text" placeholder="station name" /></label>
+        <label><input id="favoritesOnly" type="checkbox" /> Favorites only</label>
+        <label><input id="hqOnly" type="checkbox" /> High quality only</label>
+      </div>
+
+      <div class="choiceLine" style="margin-top:10px; gap:8px;">
+        <button id="refreshBtn">Refresh list</button>
+        <button id="selectAllBtn">Select all shown</button>
+        <button id="clearSelBtn">Clear selection</button>
+        <label><input id="modeReplace" type="radio" name="modeRadioPage" value="replace" checked /> Replace queue</label>
+        <label><input id="modeAppend" type="radio" name="modeRadioPage" value="append" /> Append</label>
+        <label><input id="crop" type="checkbox" checked /> Crop queue</label>
+        <button id="sendBtn" class="btnPrimary">Send selected to moOde</button>
+      </div>
+
+      <div id="status" class="muted" style="margin-top:8px"></div>
+      <div id="count" class="mutedSm"></div>
+
+      <table class="radioTable">
+        <thead>
+          <tr>
+            <th style="width:26px"></th>
+            <th style="width:26px"></th>
+            <th>Station</th>
+            <th>Genre</th>
+            <th>Bitrate</th>
+            <th>Format</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+
+    <input id="apiBase" type="hidden" />
+    <input id="key" type="hidden" />
+  </div>
+
+  <script src="scripts/hero-transport.js?v=20260217-68"></script>
+  <script src="scripts/radio.js?v=20260217-4"></script>
+</body>
+</html>

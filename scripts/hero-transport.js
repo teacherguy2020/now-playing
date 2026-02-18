@@ -4,6 +4,10 @@
   const apiPort = (location.port === '8101') ? '3101' : '3000';
   const apiBase = `${location.protocol}//${host}:${apiPort}`;
 
+  function escHtml(v = '') {
+    return String(v || '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+  }
+
   function icon(name) {
     if (name === 'play') return '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
     if (name === 'pause') return '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>';
@@ -152,6 +156,10 @@
   }
 
   function render(el, q, np = {}) {
+    const prevVid = el.querySelector('.heroArtVid');
+    const prevVidSrc = prevVid ? String(prevVid.currentSrc || prevVid.src || '').trim() : '';
+    const prevVidTime = prevVid ? Number(prevVid.currentTime || 0) : 0;
+
     const items = Array.isArray(q?.items) ? q.items : [];
     const head = items.find((x) => !!x?.isHead) || items[0] || null;
     const state = String(q?.playbackState || '').toLowerCase();
@@ -167,6 +175,7 @@
       : '';
     const motionMp4 = String(np?._motionMp4 || '').trim();
 
+    const isRadioOrStream = !!np?.isRadio || !!np?.isStream || !!head?.isStream;
     const displayArtist = String(np?._radioDisplay?.artist || np?.radioArtist || np?.artist || head?.artist || '').trim();
     const displayTitle = String(np?._radioDisplay?.title || np?.radioTitle || np?.title || head?.title || '').trim();
     const text = (displayArtist || displayTitle)
@@ -182,6 +191,7 @@
 
     const radioAlbum = String(np?.radioAlbum || np?.album || '').trim();
     const radioYear = String(np?.radioYear || np?.year || '').trim();
+    const stationNameLive = String(np?.stationName || np?.radioStationName || head?.stationName || head?.album || '').trim();
     const albumYearText = [radioAlbum, radioYear].filter(Boolean).join(' • ');
     const metaRow = starsRow || (albumYearText ? `<div class="heroSubline">${albumYearText}</div>` : '');
 
@@ -208,8 +218,30 @@
             `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
           `</div>` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div></div>` +
+          `${(!showProgress && isRadioOrStream && stationNameLive) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;"><span class="heroLivePulse">Live</span> • ${escHtml(stationNameLive)}</div>` : ''}` +
         `</div>` +
       `</div>`;
+
+    // Preserve motion-video playback position across periodic re-renders.
+    try {
+      const nextVid = el.querySelector('.heroArtVid');
+      if (nextVid && prevVidSrc && prevVidTime > 0.2) {
+        const nextSrc = String(nextVid.currentSrc || nextVid.src || '').trim();
+        if (nextSrc && nextSrc === prevVidSrc) {
+          const seek = () => {
+            try {
+              if (Number.isFinite(nextVid.duration) && nextVid.duration > 0) {
+                nextVid.currentTime = Math.min(prevVidTime, Math.max(0, nextVid.duration - 0.1));
+              } else {
+                nextVid.currentTime = prevVidTime;
+              }
+            } catch {}
+          };
+          if (nextVid.readyState >= 1) seek();
+          else nextVid.addEventListener('loadedmetadata', seek, { once: true });
+        }
+      }
+    } catch {}
   }
 
   function armVideoFallback(el) {
@@ -240,6 +272,158 @@
     vid.addEventListener('loadeddata', showVideo, { once: true });
     vid.addEventListener('error', keepFallback, { once: true });
     setTimeout(() => { if (!resolved) keepFallback(); }, 2500);
+  }
+
+  let heroDrawerOpen = false;
+  const HERO_FAV_GRID_KEY = 'nowplaying.heroFavGridHtml.v1';
+  const HERO_FAV_LAST_KEY = 'nowplaying.heroFavLastStation.v1';
+  let heroDrawerGridHtml = (() => {
+    try { return String(localStorage.getItem(HERO_FAV_GRID_KEY) || ''); } catch { return ''; }
+  })();
+
+  function ensureRadioDrawer() {
+    let drawer = document.getElementById('heroRadioDrawer');
+    if (drawer) return drawer;
+
+    if (!document.getElementById('heroRadioDrawerStyle')) {
+      const st = document.createElement('style');
+      st.id = 'heroRadioDrawerStyle';
+      st.textContent = `
+#heroTransport{position:relative;overflow:visible}
+.heroTransportRow{position:relative}
+#heroRadioDrawerWrap{position:absolute;right:6px;top:calc(58% - 15px);transform:translateY(-50%);z-index:12;display:flex;align-items:center;transition:transform .18s ease}
+#heroRadioDrawerWrap.open{transform:translate(-178px,-50%)}
+.heroFavTab{border:1px solid #2a3a58;border-right:0;border-radius:10px 0 0 10px;padding:8px 6px;background:#0f1a31;color:#dbe7ff;cursor:pointer;font-size:12px;line-height:1;writing-mode:vertical-rl;text-orientation:mixed;user-select:none;z-index:13}
+.heroFavTab:hover{background:#132241}
+#heroRadioDrawer{position:absolute;left:100%;top:0;height:100%;width:168px;background:#0f1a31;border-left:1px solid #2a3a58;box-shadow:-8px 0 24px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;border-radius:0 10px 10px 0;transform:translateX(-10px);opacity:0;visibility:hidden;pointer-events:none;transition:transform .18s ease,opacity .14s ease,visibility 0s linear .18s}
+#heroRadioDrawerWrap.open #heroRadioDrawer{transform:translateX(0);opacity:1;visibility:visible;pointer-events:auto;transition:transform .18s ease,opacity .14s ease}
+#heroRadioDrawer .grid{padding:6px;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;width:100%}
+#heroRadioDrawer .tile{width:100%;aspect-ratio:1/1;border:1px solid #2a3a58;border-radius:7px;background:#0a1222;display:flex;align-items:center;justify-content:center;padding:0;overflow:hidden;cursor:pointer;transition:border-color .12s ease,box-shadow .12s ease,transform .08s ease}
+#heroRadioDrawer .tile:hover{border-color:#8bd3ff;box-shadow:0 0 0 1px rgba(139,211,255,.35) inset}
+#heroRadioDrawer .tile:active{transform:scale(.97)}
+#heroRadioDrawer .tile.isLive{border-color:#22c55e !important;box-shadow:0 0 0 1px rgba(34,197,94,.42) inset, 0 0 12px rgba(34,197,94,.20)}
+#heroRadioDrawer .tile img{width:100%;height:100%;object-fit:cover}
+#heroTransport .heroMain{transform:translateX(-60px)}
+#heroTransport .heroLivePulse{color:#ef4444;animation:heroLivePulse 2.2s ease-in-out infinite}
+@keyframes heroLivePulse{0%,100%{opacity:1;text-shadow:0 0 0 rgba(239,68,68,0)}50%{opacity:.45;text-shadow:0 0 10px rgba(239,68,68,.45)}}
+`;
+      document.head.appendChild(st);
+    }
+
+    const host = document.getElementById('heroTransport');
+
+    let wrap = document.getElementById('heroRadioDrawerWrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'heroRadioDrawerWrap';
+      wrap.innerHTML = `<button type="button" class="heroFavTab" data-a="radio-favs" title="Favorite stations">♥ Favorites</button>`;
+      host?.appendChild(wrap);
+    }
+
+    drawer = document.createElement('aside');
+    drawer.id = 'heroRadioDrawer';
+    drawer.innerHTML = `<div class="grid">${heroDrawerGridHtml || ''}</div>`;
+    wrap.appendChild(drawer);
+
+    wrap.classList.toggle('open', heroDrawerOpen);
+    document.getElementById('heroTransport')?.classList.toggle('hasFavDrawerOpen', heroDrawerOpen);
+
+    return drawer;
+  }
+
+  async function loadRadioFavoritesList() {
+    const r = await fetch(`${apiBase}/config/queue-wizard/radio-favorites`, { headers: currentKey() ? { 'x-track-key': currentKey() } : {} });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    return Array.isArray(j.favorites) ? j.favorites : [];
+  }
+
+  async function sendStationToQueue(file, mode = 'append', keepNowPlaying = false, playNow = false) {
+    const run = async () => {
+      const r = await fetch(`${apiBase}/config/queue-wizard/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(currentKey() ? { 'x-track-key': currentKey() } : {}) },
+        body: JSON.stringify({ mode, keepNowPlaying, tracks: [String(file || '')], forceRandomOff: true }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) {
+        const err = new Error(j?.error || `HTTP ${r.status}`);
+        err.status = r.status;
+        throw err;
+      }
+      return j;
+    };
+
+    let j;
+    try {
+      j = await run();
+    } catch (e) {
+      if (Number(e?.status) === 401 || Number(e?.status) === 403) {
+        try { await ensureRuntimeKey(); } catch {}
+        j = await run();
+      } else {
+        throw e;
+      }
+    }
+
+    if (playNow) {
+      try {
+        await fetch(`${apiBase}/config/diagnostics/playback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(currentKey() ? { 'x-track-key': currentKey() } : {}) },
+          body: JSON.stringify({ action: 'play' }),
+        });
+      } catch {}
+    }
+
+    return j;
+  }
+
+  async function toggleFavoriteStation(file, favorite) {
+    const r = await fetch(`${apiBase}/config/queue-wizard/radio-favorite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(currentKey() ? { 'x-track-key': currentKey() } : {}) },
+      body: JSON.stringify({ station: String(file || ''), favorite: !!favorite }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    return j;
+  }
+
+  async function openRadioDrawer() {
+    const drawer = ensureRadioDrawer();
+    const grid = drawer.querySelector('.grid');
+    if (!grid) return;
+    const wrap = document.getElementById('heroRadioDrawerWrap');
+    heroDrawerOpen = true;
+    wrap?.classList.add('open');
+    document.getElementById('heroTransport')?.classList.add('hasFavDrawerOpen');
+
+    const skeleton = Array.from({ length: 9 }).map(() => '<div class="tile" aria-hidden="true" style="opacity:.25"></div>').join('');
+    grid.innerHTML = heroDrawerGridHtml || skeleton;
+
+    try {
+      const favs = await loadRadioFavoritesList();
+      const top = favs.slice(0, 9);
+      let lastPicked = '';
+      try { lastPicked = String(localStorage.getItem(HERO_FAV_LAST_KEY) || ''); } catch {}
+      const cells = top.map((f) => {
+        const file = String(f.file || '');
+        const name = String(f.stationName || file || 'Station');
+        const logo = `${apiBase}/art/radio-logo.jpg?name=${encodeURIComponent(name)}`;
+        const on = lastPicked && file === lastPicked;
+        return `<button class="tile ${on ? 'isLive' : ''}" data-station-tile="${encodeURIComponent(file)}" title="${name}"><img src="${logo}" alt="${name}"></button>`;
+      });
+      while (cells.length < 9) cells.push('<div class="tile" aria-hidden="true" style="opacity:.25"></div>');
+      const nextHtml = cells.join('');
+      if (nextHtml !== heroDrawerGridHtml) {
+        heroDrawerGridHtml = nextHtml;
+        try { localStorage.setItem(HERO_FAV_GRID_KEY, heroDrawerGridHtml); } catch {}
+        grid.innerHTML = heroDrawerGridHtml;
+      }
+    } catch {
+      // keep last rendered grid/skeleton; avoid flashing error text in drawer
+    }
   }
 
   function renderShell(el, status = 'loading') {
@@ -290,6 +474,7 @@
         np._motionMp4 = motionMp4;
         render(el, q, np);
         armVideoFallback(el);
+        try { ensureRadioDrawer(); } catch {}
         try { window.dispatchEvent(new CustomEvent('heroTransport:update', { detail: { q, np } })); } catch {}
 
         // Background motion resolution (non-blocking)
@@ -314,8 +499,10 @@
         lastMotionMp4 = resolved;
         render(el, q, { ...np, _motionMp4: resolved });
         armVideoFallback(el);
+        try { ensureRadioDrawer(); } catch {}
       } catch {
         renderShell(el, 'unavailable');
+        try { ensureRadioDrawer(); } catch {}
       }
     };
 
@@ -348,11 +535,42 @@
 
       const btn = ev.target instanceof Element ? ev.target.closest('button[data-a]') : null;
       if (!btn || busy) return;
-      busy = true;
       const action = String(btn.getAttribute('data-a') || '').trim().toLowerCase();
+      if (action === 'radio-favs') {
+        ev.preventDefault();
+        heroDrawerOpen = !heroDrawerOpen;
+        document.getElementById('heroRadioDrawerWrap')?.classList.toggle('open', heroDrawerOpen);
+        document.getElementById('heroTransport')?.classList.toggle('hasFavDrawerOpen', heroDrawerOpen);
+        if (heroDrawerOpen) openRadioDrawer().catch(() => {});
+        return;
+      }
+      busy = true;
       try { await playback(action, currentKey()); } catch {}
       await refresh();
       busy = false;
+    });
+
+    ensureRadioDrawer();
+    document.addEventListener('click', async (ev) => {
+      const tile = ev.target instanceof Element ? ev.target.closest('#heroRadioDrawer button[data-station-tile]') : null;
+      if (!tile) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const file = decodeURIComponent(String(tile.getAttribute('data-station-tile') || ''));
+      if (!file) return;
+      try {
+        await ensureRuntimeKey();
+        try { localStorage.setItem(HERO_FAV_LAST_KEY, file); } catch {}
+        tile.classList.add('isLive');
+        await sendStationToQueue(file, 'replace', false, true);
+        heroDrawerOpen = false;
+        document.getElementById('heroRadioDrawerWrap')?.classList.remove('open');
+        document.getElementById('heroTransport')?.classList.remove('hasFavDrawerOpen');
+        await refresh();
+        try { window.dispatchEvent(new CustomEvent('heroTransport:update')); } catch {}
+      } catch (e) {
+        console.warn('favorite station click failed', e);
+      }
     });
 
     setTimeout(refresh, 150);

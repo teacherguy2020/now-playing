@@ -82,19 +82,20 @@ async function loadRadioCatalogMap() {
   if (radioMetaByStation.size && (now - radioCatalogCacheTs) < (5 * 60 * 1000)) return radioMetaByStation;
   const host = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
   const user = String(MOODE_SSH_USER || 'moode');
-  const sql = "select station,name,genre from cfg_radio;";
+  const sql = "select station,name,genre,type from cfg_radio;";
   const { stdout } = await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${user}@${host}`, 'sqlite3', '-separator', '\t', '/var/local/www/db/moode-sqlite3.db', sql], { timeout: 12000, maxBuffer: 4 * 1024 * 1024 });
   const map = new Map();
   const hostCounts = new Map();
   const hostName = new Map();
   for (const ln of String(stdout || '').split(/\r?\n/)) {
     if (!ln) continue;
-    const [station = '', name = '', genre = ''] = ln.split('\t');
+    const [station = '', name = '', genre = '', type = ''] = ln.split('\t');
     const s = String(station || '').trim();
     const n = String(name || '').trim();
     const g = String(genre || '').trim();
+    const t = String(type || '').trim().toLowerCase();
     if (s && n) {
-      const meta = { stationName: n, genre: g };
+      const meta = { stationName: n, genre: g, isFavorite: t === 'f' };
       map.set(s, meta);
       const k = stationKey(s);
       if (k) map.set(k, meta);
@@ -106,7 +107,7 @@ async function loadRadioCatalogMap() {
     }
   }
   for (const [h, c] of hostCounts.entries()) {
-    if (c === 1) map.set(`host:${h}`, hostName.get(h) || { stationName: '', genre: '' });
+    if (c === 1) map.set(`host:${h}`, hostName.get(h) || { stationName: '', genre: '', isFavorite: false });
   }
   radioMetaByStation = map;
   radioCatalogCacheTs = now;
@@ -331,6 +332,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           || String(catMetaDirect.genre || '').trim()
           || String(catMetaKey.genre || '').trim()
           || String(catMetaHost.genre || '').trim();
+        const stationFavorite = !!(queueMeta.isFavorite || catMetaDirect.isFavorite || catMetaKey.isFavorite || catMetaHost.isFavorite);
 
         const isStream = isStreamUrl(f);
         if (isStream) {
@@ -362,6 +364,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           album: albumTxt,
           stationName: stationNameTxt,
           stationGenre: stationGenreTxt,
+          isFavoriteStation: stationFavorite,
           file: f,
           isPodcast,
           rating: Math.max(0, Math.min(5, Math.round(Number(rating) || 0))),

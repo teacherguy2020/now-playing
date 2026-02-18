@@ -2,6 +2,7 @@
   const $ = (id) => document.getElementById(id);
   let ratingsEnabled = true;
   let queuePlayPauseMode = 'play';
+  let queueLoadInFlight = false;
 
   const ENDPOINTS_FALLBACK = [
     // Auto-expanded endpoint catalog
@@ -310,11 +311,13 @@
   }
 
   async function loadQueue(){
+    if (queueLoadInFlight) return;
+    queueLoadInFlight = true;
     const base = String($('apiBase').value || apiBaseDefault()).replace(/\/$/,'');
     const key = String($('key').value || '').trim();
     const wrap = $('queueWrap');
-    if (!wrap) return;
-    wrap.innerHTML = 'Loading queue…';
+    if (!wrap) { queueLoadInFlight = false; return; }
+    if (!wrap.innerHTML.trim()) wrap.innerHTML = 'Loading queue…';
     try {
       const r = await fetch(`${base}/config/diagnostics/queue`, { headers: { 'x-track-key': key } });
       const j = await r.json().catch(() => ({}));
@@ -349,6 +352,9 @@
 
         const stationName = String(x.stationName || x.album || '').trim() || 'Radio Stream';
         const stationGenre = String(x.stationGenre || '').trim();
+        const favBtn = isStream
+          ? `<button type="button" data-queue-fav-file="${encodeURIComponent(String(x.file || ''))}" data-queue-fav-state="${x.isFavoriteStation ? '1' : '0'}" title="${x.isFavoriteStation ? 'Unfavorite station' : 'Favorite station'}" style="margin-left:6px;border:0;background:transparent;cursor:pointer;font-size:16px;line-height:1;color:${x.isFavoriteStation ? '#ef4444' : '#7f8fae'}">♥</button>`
+          : '';
         const displayArtist = isStream ? stationName : String(x.artist || '');
         const displayTitle = isStream ? String(x.title || '').trim() : String(x.title || '');
         const detailLine = isStream
@@ -357,10 +363,12 @@
               : (stationGenre || ''))
           : (displayTitle ? `${displayTitle} ${x.album ? `• ${String(x.album)}` : ''}` : '');
 
-        return `<div data-queue-play-pos="${pos}" style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;cursor:pointer;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${displayArtist}</div><div class="muted">${detailLine}</div>${starsRow}</div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
+        return `<div data-queue-play-pos="${pos}" style="display:flex;gap:8px;align-items:center;padding:6px 6px;border-bottom:1px dashed #233650;cursor:pointer;${head?'background:rgba(34,197,94,.15);border-radius:8px;':''}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(x.position||0)}</b>. ${head?'▶️ ':''}${displayArtist}${favBtn}</div><div class="muted">${detailLine}</div>${starsRow}</div><button type="button" data-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
       }).join('');
     } catch (e) {
       wrap.innerHTML = `<div class="muted">Queue load failed: ${e?.message || e}</div>`;
+    } finally {
+      queueLoadInFlight = false;
     }
   }
 
@@ -516,6 +524,32 @@
         })
         .catch((e) => { $('status').textContent = String(e?.message || e); })
         .finally(() => { playbackBtn.disabled = false; });
+      return;
+    }
+
+    const favBtn = el ? el.closest('button[data-queue-fav-file]') : null;
+    if (favBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const base = String($('apiBase').value || apiBaseDefault()).replace(/\/$/, '');
+      const key = String($('key').value || '').trim();
+      const file = decodeURIComponent(String(favBtn.getAttribute('data-queue-fav-file') || ''));
+      const curr = String(favBtn.getAttribute('data-queue-fav-state') || '0') === '1';
+      if (!file) return;
+      favBtn.disabled = true;
+      fetch(`${base}/config/queue-wizard/radio-favorite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+        body: JSON.stringify({ station: file, favorite: !curr }),
+      })
+        .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+        .then(({ ok, j }) => {
+          if (!ok || !j?.ok) throw new Error(j?.error || 'favorite update failed');
+          $('status').textContent = j.favorite ? 'Station favorited.' : 'Station unfavorited.';
+          return loadQueue();
+        })
+        .catch((e) => { $('status').textContent = String(e?.message || e); })
+        .finally(() => { favBtn.disabled = false; });
       return;
     }
 

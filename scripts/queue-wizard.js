@@ -22,6 +22,7 @@
 
   const radioSectionEl = $('radioSection');
   const radioGenresEl = $('radioGenres');
+  const radioFavoritesPresetEl = $('radioFavoritesPreset');
   const radioBuildBtn = $('radioBuild');
   const sendRadioBtn = $('sendRadioToMoode');
   const podcastSectionEl = $('podcastSection');
@@ -556,7 +557,7 @@ async function syncVibeAvailability() {
       'apiBase', 'key', 'maxTracks', 'minRating',
       'genres', 'artists', 'albums', 'excludeGenres',
       'shuffle', 'crop', 'cropVibe', 'cropPodcast', 'minRatingVibe',
-      'radioGenres', 'radioFavoritesOnly', 'radioHqOnly', 'radioMaxStations', 'cropRadio',
+      'radioGenres', 'radioFavoritesPreset', 'radioFavoritesOnly', 'radioHqOnly', 'radioMaxStations', 'cropRadio',
       'podcastShows', 'podcastDateFrom', 'podcastDateTo', 'podcastMaxPerShow', 'podcastDownloadedOnly', 'podcastNewestFirst',
       'playlistName',
     ].forEach((id) => {
@@ -750,8 +751,12 @@ async function syncVibeAvailability() {
         : '<div style="width:36px;height:36px"></div>';
       const stars = isPodcastLike(x) ? '' : starsHtml(file, Number(x.rating || 0));
       const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
+      const isStream = String(file || '').includes('://');
+      const favBtn = isStream
+        ? `<button type="button" data-queue-fav-file="${encodeURIComponent(file)}" data-queue-fav-state="${x.isFavoriteStation ? '1' : '0'}" title="${x.isFavoriteStation ? 'Unfavorite station' : 'Favorite station'}" style="margin-left:6px;border:0;background:transparent;cursor:pointer;font-size:15px;line-height:1;color:${x.isFavoriteStation ? '#ef4444' : '#7f8fae'}">♥</button>`
+        : '';
       const rowClass = `queueRow ${idx % 2 === 0 ? 'queueRowEven' : 'queueRowOdd'}`;
-      return `<div class="${rowClass}" data-track-idx="${idx}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${idx + 1}</b>. ${esc(String(x.artist || ''))}</div><div class="muted">${esc(String(x.title || ''))} ${x.album ? `• ${esc(String(x.album || ''))}` : ''}</div>${starsRow}</div><button type="button" data-remove-track="${idx}" style="margin-left:auto;">Remove</button></div>`;
+      return `<div class="${rowClass}" data-track-idx="${idx}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${idx + 1}</b>. ${esc(String(x.artist || ''))}${favBtn}</div><div class="muted">${esc(String(x.title || ''))} ${x.album ? `• ${esc(String(x.album || ''))}` : ''}</div>${starsRow}</div><button type="button" data-remove-track="${idx}" style="margin-left:auto;">Remove</button></div>`;
     }).join('');
   }
 
@@ -820,6 +825,9 @@ async function syncVibeAvailability() {
       const file = String(x.file || '');
       const stars = isPodcastLike(x) ? '' : starsHtml(file, Number(x.rating || 0));
       const starsRow = stars ? `<div style="margin-top:2px;">${stars}</div>` : '';
+      const favBtn = isStream
+        ? `<button type="button" data-queue-fav-file="${encodeURIComponent(file)}" data-queue-fav-state="${x.isFavoriteStation ? '1' : '0'}" title="${x.isFavoriteStation ? 'Unfavorite station' : 'Favorite station'}" style="margin-left:6px;border:0;background:transparent;cursor:pointer;font-size:16px;line-height:1;color:${x.isFavoriteStation ? '#ef4444' : '#7f8fae'}">♥</button>`
+        : '';
       const rowClass = `queueRow ${idx % 2 === 0 ? 'queueRowEven' : 'queueRowOdd'} ${head ? 'queueRowHead' : ''}`;
 
       const stationName = String(x.stationName || x.album || '').trim() || 'Radio Stream';
@@ -836,7 +844,7 @@ async function syncVibeAvailability() {
             : (stationGenre ? esc(stationGenre) : ''))
         : (displayTitle ? `${esc(displayTitle)} ${x.album ? `• ${esc(String(x.album || ''))}` : ''}` : '');
 
-      return `<div class="${rowClass}" data-queue-play-pos="${pos}" style="cursor:pointer;">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(displayArtist)}</div><div class="muted">${detailLine}</div>${starsRow}</div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
+      return `<div class="${rowClass}" data-queue-play-pos="${pos}" style="cursor:pointer;">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(displayArtist)}${favBtn}</div><div class="muted">${detailLine}</div>${starsRow}</div><button type="button" data-queue-remove-pos="${pos}" style="margin-left:auto;">Remove</button></div>`;
     }).join('');
   }
 
@@ -1254,7 +1262,6 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
 
       setStatus('');
       renderFiltersSummary();
-      await loadRadioOptions().catch(() => {});
       if (podcastsEnabled) await loadPodcastShows().catch(() => {});
     } catch (e) {
       setStatus(`Error: ${esc(e?.message || e)}`);
@@ -1280,6 +1287,25 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     }
   }
 
+  async function loadRadioFavorites() {
+    const apiBase = getApiBase();
+    const key = getKey();
+    if (!apiBase || !radioFavoritesPresetEl) return;
+    try {
+      const r = await fetch(`${apiBase}/config/queue-wizard/radio-favorites`, { headers: { 'x-track-key': key } });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      const favs = Array.isArray(j.favorites) ? j.favorites : [];
+      const opts = [{ value: '', label: 'All favorites (none selected)' }].concat(
+        favs.map((x) => ({ value: String(x.file || ''), label: String(x.stationName || x.file || '') }))
+      );
+      setOptions(radioFavoritesPresetEl, opts);
+      radioFavoritesPresetEl.value = '';
+    } catch {
+      setOptions(radioFavoritesPresetEl, [{ value: '', label: 'All favorites (none selected)' }]);
+    }
+  }
+
   async function buildRadioList() {
     currentListSource = 'radio';
     const apiBase = getApiBase();
@@ -1288,6 +1314,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     const genres = selectedValues(radioGenresEl || $('radioGenres'));
     const favoritesOnly = !!$('radioFavoritesOnly')?.checked;
     const hqOnly = !!$('radioHqOnly')?.checked;
+    const favoriteStations = selectedValues(radioFavoritesPresetEl || $('radioFavoritesPreset'));
     const maxStations = Math.max(1, Math.min(200, Number($('radioMaxStations')?.value || 25)));
 
     setStatus('<span class="spin"></span>Building radio list…');
@@ -1297,7 +1324,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
       const r = await fetch(`${apiBase}/config/queue-wizard/radio-preview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-track-key': key },
-        body: JSON.stringify({ genres, favoritesOnly, hqOnly, maxStations }),
+        body: JSON.stringify({ genres, favoritesOnly, hqOnly, favoriteStations, maxStations }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
@@ -2113,19 +2140,7 @@ function wireEvents() {
     doSendToMoode('podcast');
   });
 
-  radioBuildBtn?.addEventListener('click', (e) => {
-    e.preventDefault();
-    activateBuilder('radio');
-    buildRadioList();
-  });
-
-  sendRadioBtn?.addEventListener('click', (e) => {
-    e.preventDefault();
-    activateBuilder('radio');
-    doSendToMoode('radio');
-  });
-
-  // Radio filter controls intentionally do not auto-switch/hide cards while selecting.
+  // Radio builder controls moved to radio.html.
 
   podcastPreset24hBtn?.addEventListener('click', (e) => {
     e.preventDefault();
@@ -2224,12 +2239,7 @@ function wireEvents() {
     });
   });
 
-  document.querySelectorAll('input[name="modeRadio"]').forEach((el) => {
-    el.addEventListener('change', () => {
-      suppressCollageForUi();
-      syncCropRadioUi();
-    });
-  });
+  // Radio mode controls moved to radio.html.
 
   document.querySelectorAll('input[name="modeExisting"]').forEach((el) => {
     el.addEventListener('change', () => {
@@ -2248,13 +2258,13 @@ function wireEvents() {
   shuffleEl?.addEventListener('change', () => {
     suppressCollageForUi();
     if (!shuffleEl.checked) return;
-    if (!['filters', 'existing', 'vibe', 'radio', 'podcast'].includes(currentListSource)) return;
+    if (!['filters', 'existing', 'vibe', 'podcast'].includes(currentListSource)) return;
     shuffleCurrentTracksInPlace();
     setStatus('List shuffled.');
   });
   cropVibeEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('vibe'); });
   cropPodcastEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('podcast'); });
-  $('cropRadio')?.addEventListener('change', () => { suppressCollageForUi(); });
+  // Radio crop control moved to radio.html.
   cropExistingEl?.addEventListener('change', () => { suppressCollageForUi(); activateBuilder('existing'); });
   shuffleExistingEl?.addEventListener('change', () => {
     suppressCollageForUi();
@@ -2354,6 +2364,33 @@ function wireEvents() {
         .then(() => setStatus(action === 'reload' ? 'Queue reloaded.' : `Playback: ${action}`))
         .catch((e) => setStatus(`Error: ${esc(e?.message || e)}`))
         .finally(() => { playbackBtn.disabled = false; });
+      return;
+    }
+
+    const favBtn = el.closest('button[data-queue-fav-file]');
+    if (favBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const file = decodeURIComponent(String(favBtn.getAttribute('data-queue-fav-file') || ''));
+      const curr = String(favBtn.getAttribute('data-queue-fav-state') || '0') === '1';
+      const nextFav = !curr;
+      const apiBase = getApiBase();
+      const key = getKey();
+      if (!file || !apiBase) return;
+      favBtn.disabled = true;
+      fetch(`${apiBase}/config/queue-wizard/radio-favorite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+        body: JSON.stringify({ station: file, favorite: nextFav }),
+      })
+        .then((r) => r.json().then((j) => ({ ok: r.ok, j })))
+        .then(({ ok, j }) => {
+          if (!ok || !j?.ok) throw new Error(j?.error || 'favorite update failed');
+          setStatus(nextFav ? 'Station favorited.' : 'Station unfavorited.');
+          return Promise.all([loadCurrentQueueCard().catch(() => {}), loadRadioFavorites().catch(() => {})]);
+        })
+        .catch((e) => setStatus(`Favorite update failed: ${esc(e?.message || e)}`))
+        .finally(() => { favBtn.disabled = false; });
       return;
     }
 
