@@ -1470,6 +1470,8 @@ function splitTitlePerformersProgram(titleLine) {
     .replace(/\bOrch\b/gi, 'Orchestra')
     .replace(/\bSym\b/gi, 'Symphony')
     .replace(/\bPhil\b/gi, 'Philharmonic')
+    .replace(/\bmembers\b/gi, '')
+    .replace(/^English Concert$/i, 'The English Concert')
     .replace(/\s{2,}/g, ' ')
     .trim();
   const looksEnsemble = (s) => /orchester|orchestra|ensemble|phil(harm|harmon)|symph|sinfon|choir|chor|quartet|quintet|trio|camerata/i.test(String(s || ''));
@@ -1508,10 +1510,13 @@ function splitTitlePerformersProgram(titleLine) {
       out.push(cur);
     }
 
-    if (out.length === 2 && looksEnsemble(out[1]) && !/\((?:conductor|violin|piano|cello|viola|orchestra)\)/i.test(out[0])) {
+    if (out.length === 2 && looksEnsemble(out[1]) && !/\((?:conductor|violin|piano|cello|viola|orchestra|ensemble)\)/i.test(out[0])) {
       return [`${out[0]} (conductor)`, `${out[1]} (orchestra)`];
     }
-    if (out.length === 1 && looksEnsemble(out[0])) return [`${out[0]} (orchestra)`];
+    if (out.length === 1 && looksEnsemble(out[0])) {
+      const role = /camerata|ensemble|concert/i.test(out[0]) ? 'ensemble' : 'orchestra';
+      return [`${out[0]} (${role})`];
+    }
     return out;
   };
 
@@ -4888,8 +4893,16 @@ app.get('/now-playing', async (req, res) => {
       const split = splitTitlePerformersProgram(title);
       if (split) {
         title = split.work;
-        if (artistLooksGeneric(artist) && String(split.composer || '').trim()) {
-          artist = String(split.composer).trim();
+        const splitComposer = String(split.composer || '').trim();
+        const curArtist = String(artist || '').trim();
+        const shouldPromoteComposer = !!splitComposer && (
+          artistLooksGeneric(curArtist) ||
+          !curArtist ||
+          curArtist.toLowerCase() === String(split.work || '').trim().toLowerCase() ||
+          /wfmt|radio station|classical|davide|mimic/i.test(curArtist)
+        );
+        if (shouldPromoteComposer) {
+          artist = splitComposer;
         }
 
         const set = new Set(
