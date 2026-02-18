@@ -117,13 +117,13 @@ export function registerConfigQueueWizardPreviewRoute(app, deps) {
         if (wantedAlbums.length && !wantedAlbums.includes(alb)) continue;
         if (excludeGenres.length && excludeGenres.some((g) => genreTokens.includes(g))) continue;
 
-        if (minRating > 0 && typeof getRatingForFile === 'function') {
-          let rating = 0;
+        let rating = 0;
+        if (typeof getRatingForFile === 'function' && (minRating > 0 || ratingsEnabled)) {
           try {
             rating = Number(await getRatingForFile(f)) || 0;
           } catch (_) {}
-          if (rating < minRating) continue;
         }
+        if (minRating > 0 && rating < minRating) continue;
 
         candidates.push({
           file: f,
@@ -132,6 +132,7 @@ export function registerConfigQueueWizardPreviewRoute(app, deps) {
           album: String(album || ''),
           albumartist: String(albumartist || ''),
           genre: String(genreRaw || ''),
+          rating: Math.max(0, Math.min(5, Math.round(Number(rating) || 0))),
         });
       }
 
