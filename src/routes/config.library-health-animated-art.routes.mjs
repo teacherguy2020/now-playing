@@ -16,6 +16,11 @@ const KNOWN_APPLE_URL_OVERRIDES = {
   "michael mcdonald|if that's what it takes": 'https://music.apple.com/us/album/if-thats-what-it-takes/358567891',
 };
 
+const KNOWN_MP4_OVERRIDES = {
+  'john mayer|sob rock': 'https://mvod.itunes.apple.com/itunes-assets/HLSMusic126/v4/3c/c4/43/3cc4432f-aeb7-2ccc-e011-242d85a518c8/P359476653_Anull_video_gr290_sdr_1080x1080-.mp4',
+  "michael mcdonald|if that's what it takes": 'https://mvod.itunes.apple.com/itunes-assets/HLSVideo221/v4/8d/6f/65/8d6f6572-0e8c-e7a3-b95f-ebff0c533581/P1220875422_Anull_video_gr585_sdr_1080x1080-.mp4',
+};
+
 function pickKnownOverrideUrl(artist, album) {
   const exact = String(KNOWN_APPLE_URL_OVERRIDES[albumKey(artist, album)] || '').trim();
   if (exact) return exact;
@@ -287,9 +292,13 @@ async function lookupMotionForAlbum(artist, album) {
   const key = albumKey(artist, album);
   const overrideUrl = pickKnownOverrideUrl(artist, album);
   // Hard pin known-problem albums before search to prevent candidate drift.
+  const pinnedMp4 = String(KNOWN_MP4_OVERRIDES[key] || '').trim();
+  if (overrideUrl && pinnedMp4) {
+    return { ok: true, appleUrl: overrideUrl, mp4: pinnedMp4 };
+  }
   if (overrideUrl) {
     const endpoint = `https://api.aritra.ovh/v1/covers?url=${encodeURIComponent(overrideUrl)}`;
-    const out = await fetchJsonWithTimeout(endpoint, 12000, { cache: 'no-store' }).catch(() => null);
+    const out = await fetchJsonWithTimeout(endpoint, 20000, { cache: 'no-store' }).catch(() => null);
     const r = out?.response || null;
     const j = out?.json || {};
     if (r?.ok) {
