@@ -1187,7 +1187,7 @@ async function refreshAnimatedArtSummary() {
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
     sumEl.textContent = `Cached albums: ${Number(j.total || 0).toLocaleString()} · Motion matches: ${Number(j.matched || 0).toLocaleString()} · Updated: ${String(j.updatedAt || 'n/a')}`;
     if (listEl) {
-      const rows = (Array.isArray(j.entries) ? j.entries : []).filter((x) => !!x?.hasMotion && !!x?.mp4).slice(0, 200);
+      const rows = (Array.isArray(j.entries) ? j.entries : []).filter((x) => !!x?.hasMotion && !!x?.mp4);
       listEl.innerHTML = rows.length
         ? rows.map((x) => `<div style="display:flex;align-items:center;gap:8px;justify-content:space-between;margin:4px 0;"><span>• ${esc(String(x.artist || ''))} — ${esc(String(x.album || ''))}</span><button type="button" class="tiny danger" data-clear-animated-key="${esc(String(x.key || ''))}">Clear</button></div>`).join('')
         : '<div class="muted">No cached motion albums yet.</div>';

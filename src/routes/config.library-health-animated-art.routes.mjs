@@ -513,7 +513,8 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
       const entries = Object.values(cache.entries || {});
       const total = entries.length;
       const matched = entries.filter((e) => !!e?.hasMotion && !!e?.mp4).length;
-      return res.json({ ok: true, updatedAt: cache.updatedAt, total, matched, entries: entries.slice(0, 200) });
+      const ordered = entries.sort((a, b) => String(b?.updatedAt || '').localeCompare(String(a?.updatedAt || '')));
+      return res.json({ ok: true, updatedAt: cache.updatedAt, total, matched, entries: ordered });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
