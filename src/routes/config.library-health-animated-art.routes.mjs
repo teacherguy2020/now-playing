@@ -21,7 +21,12 @@ function pickKnownOverrideUrl(artist, album) {
   if (exact) return exact;
   const a = normText(artist);
   const b = normText(album);
-  if (a === 'michael mcdonald' && (b === 'if that s what it takes' || b.includes('if that s what it takes'))) {
+  const ar = String(artist || '').toLowerCase();
+  const al = String(album || '').toLowerCase();
+  if ((a === 'michael mcdonald' || ar.includes('michael mcdonald')) && (
+    b === 'if that s what it takes' || b.includes('if that s what it takes') ||
+    al.includes("if that's what it takes") || al.includes("if that\\'s what it takes") || al.includes('if thats what it takes')
+  )) {
     return 'https://music.apple.com/us/album/if-thats-what-it-takes/358567891';
   }
   if (a === 'john mayer' && b === 'sob rock') {
