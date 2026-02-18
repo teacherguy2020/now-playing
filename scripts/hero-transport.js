@@ -176,8 +176,33 @@
     const motionMp4 = String(np?._motionMp4 || '').trim();
 
     const isRadioOrStream = !!np?.isRadio || !!np?.isStream || !!head?.isStream;
-    const displayArtist = String(np?._radioDisplay?.artist || np?.radioArtist || np?.artist || head?.artist || '').trim();
-    const displayTitle = String(np?._radioDisplay?.title || np?.radioTitle || np?.title || head?.title || '').trim();
+    let displayArtist = String(np?._radioDisplay?.artist || np?.radioArtist || np?.artist || head?.artist || '').trim();
+    let displayTitle = String(np?._radioDisplay?.title || np?.radioTitle || np?.title || head?.title || '').trim();
+
+    if (isRadioOrStream) {
+      const isGenericArtist = /^(radio\s*station|unknown|stream)$/i.test(displayArtist);
+      const lookupReason = String(np?.radioLookupReason || '').toLowerCase();
+
+      if (isGenericArtist && lookupReason.includes('talk-news-sports')) {
+        displayArtist = 'Talk radio';
+      }
+
+      // Avoid "Radio station • Radio station ..." duplication.
+      if (isGenericArtist) {
+        displayTitle = displayTitle.replace(/^radio\s*station\s*/i, '').trim();
+      }
+
+      // If iTunes album text got echoed into title, trim it from the end.
+      const radioAlbumForTrim = String(np?.radioAlbum || np?.album || '').trim();
+      if (radioAlbumForTrim) {
+        const esc = radioAlbumForTrim.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        displayTitle = displayTitle.replace(new RegExp(`([\\s,;:-]*)${esc}$`, 'i'), '').trim();
+      }
+
+      // Strip trailing year-like tails from title (year is shown separately when needed).
+      displayTitle = displayTitle.replace(/[\s•\-–—,;:]*((19|20)\d{2})\s*$/i, '').trim();
+    }
+
     const text = (displayArtist || displayTitle)
       ? `${displayArtist}${displayArtist && displayTitle ? ' • ' : ''}${displayTitle}`
       : 'Nothing playing';
@@ -191,13 +216,14 @@
 
     const radioAlbum = String(np?.radioAlbum || np?.album || '').trim();
     const radioYear = String(np?.radioYear || np?.year || '').trim();
-    const stationNameLive = String(np?.stationName || np?.radioStationName || head?.stationName || head?.album || '').trim();
+    const stationNameLive = String(np?._stationName || np?.stationName || np?.radioStationName || head?.stationName || head?.album || '').trim();
+    const liveLabel = stationNameLive || displayTitle || displayArtist || 'Radio';
     const albumYearText = [radioAlbum, radioYear].filter(Boolean).join(' • ');
     const metaRow = starsRow || (albumYearText ? `<div class="heroSubline">${albumYearText}</div>` : '');
 
     const elapsed = Number(np?.elapsed ?? q?.elapsed ?? q?.elapsedSec ?? head?.elapsed ?? head?.elapsedSec ?? 0);
     const duration = Number(np?.duration ?? q?.duration ?? q?.durationSec ?? head?.duration ?? head?.durationSec ?? 0);
-    const showProgress = Number.isFinite(duration) && duration > 0;
+    const showProgress = !isRadioOrStream && Number.isFinite(duration) && duration > 0;
     const progressPct = showProgress ? Math.max(0, Math.min(100, (elapsed / duration) * 100)) : 0;
 
     el.innerHTML =
@@ -218,7 +244,7 @@
             `<button class="tbtn ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
           `</div>` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div></div>` +
-          `${(!showProgress && isRadioOrStream && stationNameLive) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${state === 'playing' ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(stationNameLive)}</div>` : ''}` +
+          `${(!showProgress && isRadioOrStream) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${state === 'playing' ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(liveLabel)}</div>` : ''}` +
         `</div>` +
       `</div>`;
 
