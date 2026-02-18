@@ -4394,6 +4394,41 @@ app.get('/now-playing', async (req, res) => {
     return parts.join(' ').replace(/\s{2,}/g, ' ').trim();
   }
 
+  function stripClassicalMovementDetail(s) {
+    let t = decodeHtmlEntities(String(s || '').trim());
+    t = t.replace(/,\s*\d+(?:st|nd|rd|th)\s+tableau\s*:\s*.*/i, '');
+    t = t.replace(/:\s*[IVXLC]+\.?\s+.*$/i, '');
+    t = t.replace(/\s{2,}/g, ' ').trim();
+    return t;
+  }
+
+  function deriveRadioLookupContext({ artist, title, radioPerformers = '', personnel = [], albumHint = '' }) {
+    const s = sanitizeRadioLookupInputs({ artist, title });
+    let lookupArtist = String(s.artist || '').trim();
+    let lookupTitle = String(s.title || '').trim();
+
+    const perf = decodeHtmlEntities(String(radioPerformers || '').trim());
+    const pList = [];
+    for (const p of (Array.isArray(personnel) ? personnel : [])) pList.push(String(p || '').trim());
+    if (perf) pList.push(...perf.split(/\s*,\s*/));
+
+    const cleaned = pList
+      .map((p) => p.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s{2,}/g, ' ').trim())
+      .filter(Boolean);
+
+    const ensemble = cleaned.find((p) => /orchestra|symphony|philharmonic|camerata|ensemble|chamber\s+orchestra/i.test(p));
+    if (ensemble) lookupArtist = ensemble;
+
+    // For classical, movement-heavy titles over-constrain iTunes query.
+    if (lookupArtist && cleaned.length) lookupTitle = stripClassicalMovementDetail(lookupTitle);
+
+    return {
+      lookupArtist,
+      lookupTitle,
+      lookupAlbumHint: String(albumHint || '').trim(),
+    };
+  }
+
   try {
     // 1) Fetch moOde/MPD snapshots
     let song, statusRaw;
@@ -4896,8 +4931,8 @@ app.get('/now-playing', async (req, res) => {
     // (Also captures links when available, without clobbering later.)
     // =========================
     const sanitizedLookup = sanitizeRadioLookupInputs({ artist, title });
-    const lookupArtist = String(sanitizedLookup.artist || '').trim();
-    const lookupTitle = String(sanitizedLookup.title || '').trim();
+    let lookupArtist = String(sanitizedLookup.artist || '').trim();
+    let lookupTitle = String(sanitizedLookup.title || '').trim();
 
     if (isRadio && radioLookupGuard.allow && (!primaryArtUrl || primaryArtUrl === stationLogoUrl)) {
       let albumForLookup = String(radioAlbum || album || '').trim();
@@ -4907,6 +4942,16 @@ app.get('/now-playing', async (req, res) => {
       // WFMT often places useful program/album clue in radioPerformers; use it as album hint when present.
       const perfAlbumHint = decodeHtmlEntities(String(radioPerformers || '').trim());
       if (!albumForLookup && looksAlbumHintText(perfAlbumHint)) albumForLookup = perfAlbumHint;
+
+      const lookupCtx = deriveRadioLookupContext({
+        artist,
+        title,
+        radioPerformers,
+        personnel,
+        albumHint: albumForLookup,
+      });
+      lookupArtist = String(lookupCtx.lookupArtist || lookupArtist || '').trim();
+      lookupTitle = String(lookupCtx.lookupTitle || lookupTitle || '').trim();
 
       if (lookupArtist && lookupTitle) {
         const it = await lookupItunesFirst(lookupArtist, lookupTitle, debug, {
@@ -4997,11 +5042,17 @@ app.get('/now-playing', async (req, res) => {
         if (/\bwfmt\b|\bclassical\b|\bstream\b|\bradio\b|\berato\b/i.test(albumForTerm)) albumForTerm = '';
         const perfAlbumHint = decodeHtmlEntities(String(radioPerformers || '').trim());
         if (!albumForTerm && looksAlbumHintText(perfAlbumHint)) albumForTerm = perfAlbumHint;
-        const s3 = sanitizeRadioLookupInputs({ artist, title });
-        radioLookupTerm = buildAppleLookupTerm({ artist: s3.artist, title: s3.title, album: albumForTerm });
+        const s3 = deriveRadioLookupContext({
+          artist,
+          title,
+          radioPerformers,
+          personnel,
+          albumHint: albumForTerm,
+        });
+        radioLookupTerm = buildAppleLookupTerm({ artist: s3.lookupArtist, title: s3.lookupTitle, album: albumForTerm });
 
         // Reuse existing iTunes lookup (it already returns trackUrl/albumUrl)
-        const ap = await lookupItunesFirst(String(s3.artist || '').trim(), String(s3.title || '').trim(), debug, {
+        const ap = await lookupItunesFirst(String(s3.lookupArtist || '').trim(), String(s3.lookupTitle || '').trim(), debug, {
           radioAlbum: albumForTerm,
           albumHint: albumForTerm,
           strictArtist: true,
