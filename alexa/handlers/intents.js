@@ -356,103 +356,111 @@ function createIntentHandlers(deps) {
     },
   };
 
+  async function runPlayAnything(handlerInput, rawQuery, forceHere = false) {
+    markAwaitingQueueConfirmation(handlerInput, false);
+    if (!rawQuery) return speak(handlerInput, 'Tell me what you want to hear.', false);
+
+    const playHere = forceHere || /\bhere\b\s*$/i.test(rawQuery);
+    const query = rawQuery.replace(/\bhere\b\s*$/i, '').trim() || rawQuery;
+
+    const tryStartFromResp = async (resp) => {
+      const snap = extractSnapFromApi(resp);
+      if (!snap) return null;
+
+      if (playHere) {
+        try {
+          await apiPlayFile(String(snap.file || '').trim());
+          return handlerInput.responseBuilder
+            .speak('Playing on moode.')
+            .withShouldEndSession(true)
+            .getResponse();
+        } catch (_) {
+          return speak(handlerInput, 'I found it, but could not start moode playback right now.', false);
+        }
+      }
+
+      const directive = buildDirectiveFromApiSnap(snap, 'Starting your selection');
+      if (!directive) return null;
+      rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
+      return handlerInput.responseBuilder.withShouldEndSession(true).addDirective(directive).getResponse();
+    };
+
+    const attempts = [
+      {
+        kind: 'artist',
+        run: async () => {
+          try { await apiLogHeardArtist(query, 'alexa-play-anything', 'attempt'); } catch (_) {}
+          return apiPlayArtist(query);
+        },
+        ok: async () => { try { await apiLogHeardArtist(query, 'alexa-play-anything', 'ok'); } catch (_) {} },
+        miss: async () => {
+          try { await apiLogHeardArtist(query, 'alexa-play-anything', 'not-found'); } catch (_) {}
+          try { await apiSuggestArtistAlias(query, 'alexa-play-anything-not-found'); } catch (_) {}
+        },
+      },
+      {
+        kind: 'playlist',
+        run: async () => {
+          try { await apiLogHeardPlaylist(query, 'alexa-play-anything', 'attempt'); } catch (_) {}
+          return apiPlayPlaylist(query);
+        },
+        ok: async (resp) => { try { await apiLogHeardPlaylist(query, 'alexa-play-anything', 'ok', String(resp?.chosen || resp?.playlist || '')); } catch (_) {} },
+        miss: async () => {
+          try { await apiLogHeardPlaylist(query, 'alexa-play-anything', 'not-found'); } catch (_) {}
+          try { await apiSuggestPlaylistAlias(query, 'alexa-play-anything-not-found'); } catch (_) {}
+        },
+      },
+      {
+        kind: 'album',
+        run: async () => {
+          try { await apiLogHeardAlbum(query, 'alexa-play-anything', 'attempt'); } catch (_) {}
+          return apiPlayAlbum(query);
+        },
+        ok: async (resp) => { try { await apiLogHeardAlbum(query, 'alexa-play-anything', 'ok', String(resp?.album || '')); } catch (_) {} },
+        miss: async () => {
+          try { await apiLogHeardAlbum(query, 'alexa-play-anything', 'not-found'); } catch (_) {}
+          try { await apiSuggestAlbumAlias(query, 'alexa-play-anything-not-found'); } catch (_) {}
+        },
+      },
+      { kind: 'track', run: async () => apiPlayTrack(query), ok: async () => {}, miss: async () => {} },
+    ];
+
+    for (const step of attempts) {
+      try {
+        const resp = await step.run();
+        const out = await tryStartFromResp(resp);
+        if (out) {
+          try { await step.ok(resp); } catch (_) {}
+          return out;
+        }
+        try { await step.miss(); } catch (_) {}
+      } catch (e) {
+        try { await step.miss(); } catch (_) {}
+      }
+    }
+
+    return speak(handlerInput, `I could not find ${query}. Try saying play artist, play album, or play playlist.`, false);
+  }
+
   const PlayAnythingIntentHandler = {
     canHandle(handlerInput) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayAnythingIntent';
     },
     async handle(handlerInput) {
-      markAwaitingQueueConfirmation(handlerInput, false);
       const rawQuery = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.query?.value);
-      if (!rawQuery) return speak(handlerInput, 'Tell me what you want to hear.', false);
+      return runPlayAnything(handlerInput, rawQuery, false);
+    },
+  };
 
-      const playHere = /\bhere\b\s*$/i.test(rawQuery);
-      const query = rawQuery.replace(/\bhere\b\s*$/i, '').trim() || rawQuery;
-
-      const tryStartFromResp = async (resp) => {
-        const snap = extractSnapFromApi(resp);
-        if (!snap) return null;
-
-        if (playHere) {
-          try {
-            await apiPlayFile(String(snap.file || '').trim());
-            return handlerInput.responseBuilder
-              .speak('Playing on moode.')
-              .withShouldEndSession(true)
-              .getResponse();
-          } catch (_) {
-            return speak(handlerInput, 'I found it, but could not start moode playback right now.', false);
-          }
-        }
-
-        const directive = buildDirectiveFromApiSnap(snap, 'Starting your selection');
-        if (!directive) return null;
-        rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
-        return handlerInput.responseBuilder.withShouldEndSession(true).addDirective(directive).getResponse();
-      };
-
-      // Preferred order: artist -> playlist -> album -> track
-      const attempts = [
-        {
-          kind: 'artist',
-          run: async () => {
-            try { await apiLogHeardArtist(query, 'alexa-play-anything', 'attempt'); } catch (_) {}
-            return apiPlayArtist(query);
-          },
-          ok: async () => { try { await apiLogHeardArtist(query, 'alexa-play-anything', 'ok'); } catch (_) {} },
-          miss: async () => {
-            try { await apiLogHeardArtist(query, 'alexa-play-anything', 'not-found'); } catch (_) {}
-            try { await apiSuggestArtistAlias(query, 'alexa-play-anything-not-found'); } catch (_) {}
-          },
-        },
-        {
-          kind: 'playlist',
-          run: async () => {
-            try { await apiLogHeardPlaylist(query, 'alexa-play-anything', 'attempt'); } catch (_) {}
-            return apiPlayPlaylist(query);
-          },
-          ok: async (resp) => { try { await apiLogHeardPlaylist(query, 'alexa-play-anything', 'ok', String(resp?.chosen || resp?.playlist || '')); } catch (_) {} },
-          miss: async () => {
-            try { await apiLogHeardPlaylist(query, 'alexa-play-anything', 'not-found'); } catch (_) {}
-            try { await apiSuggestPlaylistAlias(query, 'alexa-play-anything-not-found'); } catch (_) {}
-          },
-        },
-        {
-          kind: 'album',
-          run: async () => {
-            try { await apiLogHeardAlbum(query, 'alexa-play-anything', 'attempt'); } catch (_) {}
-            return apiPlayAlbum(query);
-          },
-          ok: async (resp) => { try { await apiLogHeardAlbum(query, 'alexa-play-anything', 'ok', String(resp?.album || '')); } catch (_) {} },
-          miss: async () => {
-            try { await apiLogHeardAlbum(query, 'alexa-play-anything', 'not-found'); } catch (_) {}
-            try { await apiSuggestAlbumAlias(query, 'alexa-play-anything-not-found'); } catch (_) {}
-          },
-        },
-        {
-          kind: 'track',
-          run: async () => apiPlayTrack(query),
-          ok: async () => {},
-          miss: async () => {},
-        },
-      ];
-
-      for (const step of attempts) {
-        try {
-          const resp = await step.run();
-          const out = await tryStartFromResp(resp);
-          if (out) {
-            try { await step.ok(resp); } catch (_) {}
-            return out;
-          }
-          try { await step.miss(); } catch (_) {}
-        } catch (e) {
-          try { await step.miss(); } catch (_) {}
-          // continue to next resolver
-        }
-      }
-
-      return speak(handlerInput, `I could not find ${query}. Try saying play artist, play album, or play playlist.`, false);
+  const PlayHereIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayHereIntent';
+    },
+    async handle(handlerInput) {
+      const rawQuery = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.query?.value);
+      return runPlayAnything(handlerInput, rawQuery, true);
     },
   };
 
@@ -856,6 +864,7 @@ function createIntentHandlers(deps) {
     FallbackIntentHandler,
     PlayQueueIntentHandler,
     PlayAnythingIntentHandler,
+    PlayHereIntentHandler,
     PlayArtistIntentHandler,
     PlayAlbumIntentHandler,
     PlayTrackIntentHandler,

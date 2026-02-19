@@ -96,6 +96,18 @@
         },
 
         {
+          "name": "PlayHereIntent",
+          "slots": [
+            { "name": "query", "type": "AMAZON.SearchQuery" }
+          ],
+          "samples": [
+            "play {query} here",
+            "start {query} here",
+            "queue {query} here"
+          ]
+        },
+
+        {
           "name": "PlayAnythingIntent",
           "slots": [
             { "name": "query", "type": "AMAZON.SearchQuery" }
@@ -105,10 +117,7 @@
             "start {query}",
             "queue {query}",
             "play music by {query}",
-            "play songs by {query}",
-            "play {query} here",
-            "start {query} here",
-            "queue {query} here"
+            "play songs by {query}"
           ]
         },
 
