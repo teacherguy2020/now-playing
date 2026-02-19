@@ -31,7 +31,9 @@ function createIntentHandlers(deps) {
     apiMpdShuffle,
     apiPlayFile,
     apiVibeNowPlaying,
+    apiVibeStart,
     apiVibeSeed,
+    apiVibeSeedStart,
     apiQueueWizardApply,
     apiGetWasPlaying,
     apiGetRuntimeConfig,
@@ -52,6 +54,23 @@ function createIntentHandlers(deps) {
     } catch (_) {
       return false;
     }
+  }
+
+  function withTimeout(promise, ms, label) {
+    let timer = null;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        const err = new Error(`${label || 'operation'} timed out after ${ms}ms`);
+        err.code = 'TIMEOUT';
+        reject(err);
+      }, ms);
+    });
+    return Promise.race([
+      Promise.resolve(promise).finally(() => {
+        if (timer) clearTimeout(timer);
+      }),
+      timeout,
+    ]);
   }
 
   const LaunchRequestHandler = {
@@ -471,64 +490,46 @@ function createIntentHandlers(deps) {
 
   async function runVibeFromCurrent(handlerInput, forceHere = false) {
     markAwaitingQueueConfirmation(handlerInput, false);
+    const t0 = Date.now();
+    const reqId = safeStr(handlerInput?.requestEnvelope?.request?.requestId) || 'unknown';
     try {
-      // Keep Alexa response under timeout budget: build a small starter queue,
-      // then let vibe top-up extend it during playback.
-      let vibe;
+      // Keep Alexa response under timeout budget.
       const audioTok = safeStr(handlerInput?.requestEnvelope?.context?.AudioPlayer?.token);
       const parsedTok = audioTok ? ((typeof parseTokenB64 === 'function' ? parseTokenB64(audioTok) : null) || {}) : {};
       const seedArtist = safeStr(parsedTok?.artist);
       const seedTitle = safeStr(parsedTok?.title);
-      if (seedArtist && seedTitle) {
-        vibe = await apiVibeSeed(seedArtist, seedTitle, 12);
-      } else {
-        vibe = await apiVibeNowPlaying(12, 0);
-      }
-      const tracksRaw = Array.isArray(vibe?.tracks) ? vibe.tracks : [];
-      const files = tracksRaw
-        .map((t) => (typeof t === 'string' ? t : String(t?.file || '').trim()))
-        .filter(Boolean);
+      console.log('[VibeThisSong] start', { reqId, forceHere: !!forceHere, hasSeed: !!(seedArtist && seedTitle) });
 
-      if (!files.length) {
-        return speak(handlerInput, 'I could not build a vibe list from this song right now.', false);
-      }
-
-      const applied = await apiQueueWizardApply(files, {
-        mode: 'replace',
-        shuffle: true,
-        keepNowPlaying: false,
-      });
-      const snap = extractSnapFromApi(applied);
-
+      // "Here" mode: fire-and-forget build/play on moode and return immediately.
       if (forceHere) {
-        if (!snap || !snap.file) return speak(handlerInput, `Built a vibe list with ${files.length} tracks, but could not start moode playback.`, false);
-        await apiPlayFile(String(snap.file || '').trim());
+        if (seedArtist && seedTitle) {
+          await withTimeout(apiVibeSeedStart(seedArtist, seedTitle, 12, { playNow: true, keepPlaying: false }), 1500, 'apiVibeSeedStart');
+        } else {
+          await withTimeout(apiVibeStart(12, 0, { playNow: true, keepPlaying: false }), 1500, 'apiVibeStart');
+        }
         return handlerInput.responseBuilder
-          .speak(`Loaded ${files.length} vibe tracks. Playing on moode.`)
+          .speak('Starting a vibe from this song on moode now.')
           .withShouldEndSession(true)
-          .addDirective({ type: 'AudioPlayer.Stop' })
           .getResponse();
       }
 
-      const directive = buildDirectiveFromApiSnap(snap, 'Starting your vibe');
-      if (!directive) return speak(handlerInput, `Built a vibe list with ${files.length} tracks, but could not start playback.`, false);
+      // Non-"here" mode: same queue-build process, but do not force playback.
+      if (seedArtist && seedTitle) {
+        await withTimeout(apiVibeSeedStart(seedArtist, seedTitle, 12, { playNow: false, keepPlaying: true }), 1500, 'apiVibeSeedStart');
+      } else {
+        await withTimeout(apiVibeStart(12, 0, { playNow: false, keepPlaying: true }), 1500, 'apiVibeStart');
+      }
 
-      try {
-        const tok = String(directive?.audioItem?.stream?.token || '').trim();
-        const parsed = (typeof parseTokenB64 === 'function' ? parseTokenB64(tok) : null) || {};
-        const enriched = makeToken({ ...parsed, vibeMode: true });
-        directive.audioItem.stream.token = enriched;
-      } catch (_) {}
-
-      rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
       return handlerInput.responseBuilder
-        .speak(`Loaded ${files.length} vibe tracks. Starting now.`)
+        .speak('Building a vibe list from this song now.')
         .withShouldEndSession(true)
-        .addDirective(directive)
         .getResponse();
     } catch (e) {
       const msg = e && e.message ? e.message : String(e);
+      console.log('[VibeThisSong] error', { reqId, msg, elapsedMs: Date.now() - t0 });
       return speak(handlerInput, `I couldn't vibe this song right now. ${msg.includes('Last.fm') ? 'Check Last.fm configuration.' : ''}`.trim(), false);
+    } finally {
+      console.log('[VibeThisSong] done', { reqId, elapsedMs: Date.now() - t0 });
     }
   }
 

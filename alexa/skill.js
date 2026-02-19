@@ -44,6 +44,8 @@ const {
   apiGetRuntimeConfig,
   apiSetWasPlaying,
   apiQueueMix,
+  apiVibeStart,
+  apiVibeSeedStart,
 } = createApiClient(config);
 
 /* =========================
@@ -447,7 +449,9 @@ const {
   apiMpdShuffle,
   apiPlayFile,
   apiVibeNowPlaying,
+  apiVibeStart,
   apiVibeSeed,
+  apiVibeSeedStart,
   apiQueueWizardApply,
   apiGetWasPlaying,
   apiGetRuntimeConfig,
@@ -482,7 +486,7 @@ const { PlaybackControllerEventHandler, AudioPlayerEventHandler } = createAudioH
 
 const { LogRequestInterceptor, SystemExceptionHandler, ErrorHandler } = createMiscHandlers({ VERSION });
 
-exports.handler = Alexa.SkillBuilders.custom()
+const skillHandler = Alexa.SkillBuilders.custom()
   .addRequestInterceptors(LogRequestInterceptor)
   .addRequestHandlers(
     // Launch
@@ -522,3 +526,5 @@ exports.handler = Alexa.SkillBuilders.custom()
   )
   .addErrorHandlers(ErrorHandler)
   .lambda();
+
+exports.handler = skillHandler;

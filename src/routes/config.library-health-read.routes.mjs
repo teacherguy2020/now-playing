@@ -501,6 +501,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
           track: String(track || '').trim(),
           title: String(title || '').trim(),
           artist: String(artist || albumartist || '').trim(),
+          albumArtist: String(albumartist || '').trim(),
           album: String(album || '').trim(),
           date: String(date || '').trim(),
           genre: String(genre || '').trim(),

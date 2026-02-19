@@ -155,10 +155,12 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/preview', body: { genres: [], artists: [], albums: [], excludeGenres: [], minRating: 0, maxTracks: 25 } },
     { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/apply', body: { mode: 'append', keepNowPlaying: false, tracks: [''], shuffle: false } },
     { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/vibe-start', body: { targetQueue: 50, minRating: 0 } },
+    { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/vibe-seed-start', body: { seedArtist: 'John Mayer', seedTitle: 'Gravity', targetQueue: 12 } },
 
     { group: 'Library Health', method: 'GET', path: '/config/library-health' },
     { group: 'Library Health', method: 'GET', path: '/config/library-health/missing-artwork' },
     { group: 'Library Health', method: 'GET', path: '/config/library-health/album-tracks' },
+    { group: 'Library Health', method: 'POST', path: '/config/library-health/album-artist-cleanup', body: { folder: '' } },
     { group: 'Library Health', method: 'GET', path: '/config/library-health/album-genre' },
     { group: 'Library Health', method: 'POST', path: '/config/library-health/album-genre', body: { folder: '', genre: '' } },
     { group: 'Library Health', method: 'POST', path: '/config/library-health/rating-batch', body: { files: [], rating: 3 } },

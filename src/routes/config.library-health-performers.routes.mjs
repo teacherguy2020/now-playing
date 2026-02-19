@@ -167,6 +167,121 @@ export function registerConfigLibraryHealthPerformersRoutes(app, deps) {
     }
   });
 
+  app.post('/config/library-health/album-artist-cleanup', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const folderWanted = String(req.body?.folder || '').trim();
+      if (!folderWanted) return res.status(400).json({ ok: false, error: 'folder is required' });
+
+      const isAudio = (f) => /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|dsf|wv|ape)$/i.test(String(f || ''));
+      const folderOf = (file) => {
+        const s = String(file || '');
+        const i = s.lastIndexOf('/');
+        return i > 0 ? s.slice(0, i) : '(root)';
+      };
+      const mode = String(req.body?.mode || 'featOnly').trim(); // featOnly | normalizeAll
+      const hasJoiners = (artist) => /\bfeat\.?\b|\bfeaturing\b|\bwith\b|\s&\s|,/.test(String(artist || ''));
+      const toPrimaryArtist = (name) => {
+        const s = String(name || '').trim();
+        if (!s) return '';
+        return s
+          .split(/\bwith\b|\bconducted by\b|\bfeat\.?\b|\bfeaturing\b|\s&\s|,|;|\//i)[0]
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const { stdout } = await execFileP(
+        'mpc',
+        ['-h', mpdHost, '-f', '%file%\t%artist%\t%albumartist%\t%title%', 'listall'],
+        { maxBuffer: 64 * 1024 * 1024 }
+      );
+
+      const rows = String(stdout || '').split(/\r?\n/)
+        .map((ln) => {
+          const [file = '', artist = '', albumartist = '', title = ''] = String(ln || '').split('\t');
+          return {
+            file: String(file || '').trim(),
+            artist: String(artist || '').trim(),
+            albumArtist: String(albumartist || '').trim(),
+            title: String(title || '').trim(),
+          };
+        })
+        .filter((r) => r.file && isAudio(r.file))
+        .filter((r) => {
+          const ff = folderOf(r.file);
+          return ff === folderWanted || ff.startsWith(`${folderWanted}/`);
+        });
+
+      const candidates = rows
+        .map((r) => ({ ...r, proposedArtist: toPrimaryArtist(r.albumArtist || r.artist) }))
+        .filter((r) => {
+          const proposed = String(r.proposedArtist || '').trim();
+          if (!proposed) return false;
+          if (proposed.toLowerCase() === String(r.artist || '').trim().toLowerCase()) return false;
+          if (mode === 'normalizeAll') return true;
+          return hasJoiners(r.artist);
+        });
+      if (!candidates.length) {
+        return res.json({ ok: true, folder: folderWanted, candidates: 0, updated: 0, skipped: rows.length, changes: [], errors: [] });
+      }
+
+      const musicRoot = String(process.env.MPD_MUSIC_ROOT || '/var/lib/mpd/music').replace(/\/$/, '');
+      let updated = 0;
+      let skipped = 0;
+      const changes = [];
+      const errors = [];
+
+      for (const c of candidates) {
+        if (!/\.flac$/i.test(c.file)) {
+          skipped += 1;
+          continue;
+        }
+
+        const full = `${musicRoot}/${c.file}`;
+        const pQ = shQuoteArg(full);
+        const nextArtist = String(c.proposedArtist || '').trim();
+        const script = [
+          `if ! sudo test -f ${pQ}; then echo MISS; exit 3; fi`,
+          `sudo metaflac --remove-tag=ARTIST ${pQ}`,
+          `sudo metaflac --set-tag=${shQuoteArg(`ARTIST=${nextArtist}`)} ${pQ}`,
+          'echo OK',
+        ].join('; ');
+
+        try {
+          const { stdout: outStd } = await sshBashLc({
+            user: String(MOODE_SSH_USER || 'moode'),
+            host: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
+            script,
+            timeoutMs: 12000,
+          });
+          const out = String(outStd || '').trim();
+          if (out.includes('OK')) {
+            updated += 1;
+            if (changes.length < 100) changes.push({ file: c.file, title: c.title, fromArtist: c.artist, toArtist: nextArtist });
+          } else {
+            skipped += 1;
+            if (errors.length < 20) errors.push({ file: c.file, error: out || 'apply failed' });
+          }
+        } catch (e) {
+          skipped += 1;
+          if (errors.length < 20) errors.push({ file: c.file, error: e?.message || String(e) });
+        }
+      }
+
+      // Ask MPD to refresh tags for this folder so UI reflects updates quickly.
+      if (updated > 0) {
+        try {
+          await execFileP('mpc', ['-h', mpdHost, 'update', folderWanted]);
+        } catch (_) {}
+      }
+
+      return res.json({ ok: true, folder: folderWanted, mode, candidates: candidates.length, updated, skipped, total: rows.length, changes, errors });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/library-health/album-performers-apply', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

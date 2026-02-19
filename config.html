@@ -72,6 +72,7 @@
         <nav class="topTabs" aria-label="Main pages" style="margin-bottom:0;">
           <a href="config.html" class="active">Config</a>
           <a href="diagnostics.html">Diagnostics</a>
+          <a href="alexa.html">Alexa</a>
           <a href="library-health.html">Library Health</a>
           <a href="queue-wizard.html">Queue Wizard</a>
           <a href="radio.html">Radio</a>
@@ -220,38 +221,24 @@
                     <div class="cfgHint" id="alexaDomainCheckStatus"></div>
                   </div>
 
-                  <h4 style="margin:10px 0 6px;">Artist corrections</h4>
-                  <div class="cfgHint">Use <strong>Promote</strong> below to create corrections from failed requests. Existing corrections are listed here.</div>
-                  <div id="artistAliasList" class="cfgHint" style="margin-top:8px;"></div>
+                  <div class="cfgHint" style="margin-top:10px;">
+                    Alexa corrections and misheard review moved to the dedicated <a href="alexa.html">Alexa page</a>.
+                    Keep Config focused on enable/domain setup.
+                  </div>
 
-                  <h4 style="margin:12px 0 6px;">Needs correction (auto-captured)</h4>
-                  <div id="unresolvedArtistList" class="cfgHint"></div>
-
-                  <h4 style="margin:12px 0 6px;">Recent Alexa artist inputs</h4>
-                  <div id="heardArtistList" class="cfgHint"></div>
-
-                  <h4 style="margin:16px 0 6px;">Album corrections</h4>
-                  <div id="albumAliasList" class="cfgHint" style="margin-top:8px;"></div>
-
-                  <h4 style="margin:12px 0 6px;">Album needs correction (auto-captured)</h4>
-                  <div id="unresolvedAlbumList" class="cfgHint"></div>
-
-                  <h4 style="margin:12px 0 6px;">Recent Alexa album inputs</h4>
-                  <div id="heardAlbumList" class="cfgHint"></div>
-
-                  <h4 style="margin:16px 0 6px;">Playlist corrections</h4>
-                  <div id="playlistAliasList" class="cfgHint" style="margin-top:8px;"></div>
-
-                  <h4 style="margin:12px 0 6px;">Playlist needs correction (auto-captured)</h4>
-                  <div id="unresolvedPlaylistList" class="cfgHint"></div>
-
-                  <h4 style="margin:12px 0 6px;">Recent Alexa playlist inputs</h4>
-                  <div id="heardPlaylistList" class="cfgHint"></div>
-
-                  <details style="margin-top:8px;">
-                    <summary>Advanced JSON view</summary>
-                    <textarea id="artistAliasesJson" rows="5" placeholder='{"harry connick junior":"Harry Connick, Jr."}'></textarea>
-                  </details>
+                  <!-- Keep legacy IDs present (hidden) so existing config script remains stable. -->
+                  <div style="display:none;">
+                    <div id="artistAliasList"></div>
+                    <div id="unresolvedArtistList"></div>
+                    <div id="heardArtistList"></div>
+                    <div id="albumAliasList"></div>
+                    <div id="unresolvedAlbumList"></div>
+                    <div id="heardAlbumList"></div>
+                    <div id="playlistAliasList"></div>
+                    <div id="unresolvedPlaylistList"></div>
+                    <div id="heardPlaylistList"></div>
+                    <textarea id="artistAliasesJson" rows="5"></textarea>
+                  </div>
                 </div>
 
                 <div class="splitCardsRight">

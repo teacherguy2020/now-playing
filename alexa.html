@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Alexa</title>
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
+  <style>
+    body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    .wrap{max-width:1080px;margin:0 auto;padding:18px}
+    .card{background:#101c33;border:1px solid #2a3a58;border-radius:18px;padding:12px;margin:10px 0}
+    label{display:block;font-size:12px;color:#9fb1d9;margin-bottom:6px}
+    input,textarea,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
+    textarea{width:100%;min-height:120px;font-family:ui-monospace,Menlo,Consolas,monospace}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+    .muted{color:#9fb1d9;font-size:12px}
+    code{background:#0a1222;border:1px solid #334;border-radius:6px;padding:1px 6px}
+    ul{margin:8px 0 0 18px}
+    li{margin:4px 0}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #2a3a58;font-size:12px;color:#9fb1d9}
+  </style>
+</head>
+<body>
+  <div class="heroRail">
+    <div class="heroWrap">
+      <nav class="topTabs" aria-label="Main pages" style="margin-bottom:8px;">
+        <a href="config.html">Config</a>
+        <a href="diagnostics.html">Diagnostics</a>
+        <a href="alexa.html" class="active">Alexa</a>
+        <a href="library-health.html">Library Health</a>
+        <a href="queue-wizard.html">Queue Wizard</a>
+        <a href="radio.html">Radio</a>
+        <a href="podcasts.html" id="podcastsNavLink">Podcasts</a>
+      </nav>
+      <header>
+        <div class="brand">
+          <h1>Alexa</h1>
+          <div class="sub">Settings • Misheard corrections • Phrase helpers</div>
+        </div>
+      </header>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <div class="row">
+        <div>
+          <label><input id="alexaEnabled" type="checkbox" /> Enable Alexa integration</label>
+        </div>
+        <div style="min-width:360px;flex:1 1 420px;">
+          <label for="publicDomain">Public domain</label>
+          <input id="publicDomain" type="text" style="width:100%" placeholder="moode.example.com" />
+        </div>
+        <div>
+          <button id="saveSettingsBtn" type="button">Save settings</button>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:8px;">These save into <code>config.alexa</code> in your runtime config JSON.</div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center;">
+        <div>
+          <strong>Corrections</strong> <span class="pill">persisted to config JSON</span>
+        </div>
+        <button id="saveAliasesBtn" type="button">Save corrections</button>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div style="min-width:320px;flex:1 1 320px;">
+          <label for="artistAliases">Artist aliases (JSON)</label>
+          <textarea id="artistAliases" placeholder='{"heard name":"Correct Artist"}'></textarea>
+        </div>
+        <div style="min-width:320px;flex:1 1 320px;">
+          <label for="albumAliases">Album aliases (JSON)</label>
+          <textarea id="albumAliases" placeholder='{"heard album":"Correct Album"}'></textarea>
+        </div>
+        <div style="min-width:320px;flex:1 1 320px;">
+          <label for="playlistAliases">Playlist aliases (JSON)</label>
+          <textarea id="playlistAliases" placeholder='{"heard playlist":"Correct Playlist"}'></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>Recent misheard</strong>
+      <div class="row" style="margin-top:8px;align-items:flex-start;">
+        <div style="flex:1 1 300px;min-width:260px;"><label>Artists</label><div id="heardArtists" class="muted"></div></div>
+        <div style="flex:1 1 300px;min-width:260px;"><label>Albums</label><div id="heardAlbums" class="muted"></div></div>
+        <div style="flex:1 1 300px;min-width:260px;"><label>Playlists</label><div id="heardPlaylists" class="muted"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <strong>Helpers: things you can say</strong>
+      <ul>
+        <li>“Alexa, ask Now Playing what’s playing”</li>
+        <li>“Alexa, ask Now Playing to play artist John Mayer”</li>
+        <li>“Alexa, ask Now Playing to play album Continuum”</li>
+        <li>“Alexa, ask Now Playing to play playlist Chill Mix”</li>
+        <li>“Alexa, ask Now Playing to vibe this song”</li>
+        <li>“Alexa, ask Now Playing to vibe this song here”</li>
+        <li>“Alexa, ask Now Playing to shuffle”</li>
+        <li>“Alexa, ask Now Playing to thumbs up this track”</li>
+      </ul>
+    </div>
+
+    <div class="card muted" id="status">Loading…</div>
+  </div>
+
+  <script src="scripts/alexa.js?v=20260219-3"></script>
+</body>
+</html>

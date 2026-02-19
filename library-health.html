@@ -41,6 +41,7 @@
         <nav class="topTabs" aria-label="Main pages" style="margin-bottom:0;">
           <a href="config.html">Config</a>
           <a href="diagnostics.html">Diagnostics</a>
+          <a href="alexa.html">Alexa</a>
           <a href="library-health.html" class="active">Library Health</a>
           <a href="queue-wizard.html">Queue Wizard</a>
           <a href="radio.html">Radio</a>
@@ -108,9 +109,22 @@
       <div id="albumMetaOut" style="margin-top:8px;"></div>
     </details>
 
+    <details id="featCleanupCard">
+      <summary>Artist cleanup: remove “feat./featuring” from track artist (use album artist)</summary>
+      <div class="row" style="margin-top:8px;">
+        <select id="featAlbumPick" style="min-width:360px;max-width:100%;"></select>
+        <button id="featScanBtn" type="button">Find candidate tracks</button>
+        <button id="featApplyBtn" type="button">Apply cleanup</button>
+        <label class="muted" style="display:flex;align-items:center;gap:6px;"><input id="featNormalizeAll" type="checkbox" /> Normalize all track artists on album</label>
+        <span class="muted" id="featStatus"></span>
+      </div>
+      <div class="muted" style="margin-bottom:8px;">Default mode changes tracks where ARTIST looks collaborative (<code>feat.</code>, <code>featuring</code>, <code>with</code>, <code>&</code>, comma-separated names). New ARTIST uses the primary name (first artist token). Optional mode can normalize all tracks in the album.</div>
+      <div id="featOut"></div>
+    </details>
+
     <div id="sections"></div>
   </div>
-  <script src="scripts/library-health.js?v=20260217-8"></script>
+  <script src="scripts/library-health.js?v=20260219-12"></script>
 
 <script src="scripts/hero-transport.js?v=20260218-76"></script>
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>

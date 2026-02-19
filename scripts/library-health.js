@@ -1041,28 +1041,52 @@
     });
   }
 
+  function setFeatBusy(busy = false) {
+    const ids = ['featAlbumPick', 'featScanBtn', 'featApplyBtn'];
+    ids.forEach((id) => {
+      const el = $(id);
+      if (el) el.disabled = !!busy;
+    });
+  }
+
+  function setFeatStatus(msg, busy = false) {
+    const st = $('featStatus');
+    if (!st) return;
+    st.innerHTML = busy ? `<span class="spin"></span>${esc(msg)}` : esc(msg);
+  }
+
   async function loadAlbumOptions(){
   const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
   const key = ($('key')?.value || '').trim();
   const sel = $('albumPick');
-  if (!sel) return;
+  const featSel = $('featAlbumPick');
+  if (!sel && !featSel) return;
   setAlbumMetaBusy(true);
-  sel.innerHTML = '<option>Loading albums…</option>';
+  setFeatBusy(true);
+  if (sel) sel.innerHTML = '<option>Loading albums…</option>';
+  if (featSel) featSel.innerHTML = '<option>Loading albums…</option>';
   setAlbumMetaStatus('Loading albums…', true);
+  setFeatStatus('Loading albums…', true);
   try {
     const r = await fetch(`${apiBase}/config/library-health/albums`, { headers: { 'x-track-key': key } });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
     const albums = Array.isArray(j.albums) ? j.albums : [];
-    sel.innerHTML = albums.length
+    const html = albums.length
       ? albums.map((a) => `<option value="${esc(a.folder)}">${esc(a.label)} (${Number(a.trackCount||0)})</option>`).join('')
       : '<option value="">(no albums found)</option>';
+    if (sel) sel.innerHTML = html;
+    if (featSel) featSel.innerHTML = html;
     setAlbumMetaStatus(albums.length ? `${albums.length} album(s)` : 'No albums.');
+    setFeatStatus(albums.length ? `${albums.length} album(s)` : 'No albums.');
   } catch (e) {
-    sel.innerHTML = '<option value="">(failed to load albums)</option>';
+    if (sel) sel.innerHTML = '<option value="">(failed to load albums)</option>';
+    if (featSel) featSel.innerHTML = '<option value="">(failed to load albums)</option>';
     setAlbumMetaStatus(`Album load failed: ${e?.message || e}`);
+    setFeatStatus(`Album load failed: ${e?.message || e}`);
   } finally {
     setAlbumMetaBusy(false);
+    setFeatBusy(false);
   }
 }
 
@@ -1173,6 +1197,101 @@ async function applyPerformers(){
   }
 }
 
+async function scanFeatCleanup() {
+  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+  const key = ($('key')?.value || '').trim();
+  const folder = String($('featAlbumPick')?.value || '').trim();
+  const out = $('featOut');
+  if (!folder || !out) return;
+
+  const toPrimaryArtist = (name) => String(name || '')
+    .trim()
+    .split(/\bwith\b|\bconducted by\b|\bfeat\.?\b|\bfeaturing\b|,|;|\//i)[0]
+    .replace(/\s+/g, ' ')
+    .trim();
+  setFeatBusy(true);
+  setFeatStatus('Scanning album tracks…', true);
+  try {
+    const r = await fetch(`${apiBase}/config/library-health/album-tracks?folder=${encodeURIComponent(folder)}`, {
+      headers: { 'x-track-key': key },
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    const normalizeAll = !!$('featNormalizeAll')?.checked;
+    const rows = (Array.isArray(j.tracks) ? j.tracks : [])
+      .map((x) => ({ ...x, proposedArtist: toPrimaryArtist(x.albumArtist || x.artist || '') }))
+      .filter((x) => {
+        const proposed = String(x.proposedArtist || '').trim();
+        if (!proposed) return false;
+        if (proposed.toLowerCase() === String(x.artist || '').trim().toLowerCase()) return false;
+        if (normalizeAll) return true;
+        return /\bfeat\.?\b|\bfeaturing\b|\bwith\b|\s&\s|,/.test(String(x.artist || ''));
+      });
+
+    out.innerHTML = rows.length ? `
+      <table>
+        <thead><tr><th>#</th><th>Title</th><th>Current ARTIST</th><th>ALBUMARTIST</th><th>Proposed ARTIST</th><th>File</th></tr></thead>
+        <tbody>${rows.map((x) => `<tr>
+          <td>${esc(x.track || '')}</td>
+          <td>${esc(x.title || '')}</td>
+          <td>${esc(x.artist || '')}</td>
+          <td>${esc(x.albumArtist || '')}</td>
+          <td><strong>${esc(x.proposedArtist || '(missing album artist)')}</strong></td>
+          <td>${esc(x.file || '')}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    ` : '<div class="muted">No tracks with “feat./featuring” found in ARTIST for this album.</div>';
+
+    setFeatStatus(rows.length ? `${rows.length} candidate track(s) found.` : 'No candidates found.');
+  } catch (e) {
+    out.innerHTML = '';
+    setFeatStatus(`Scan failed: ${e?.message || e}`);
+  } finally {
+    setFeatBusy(false);
+  }
+}
+
+async function applyFeatCleanup() {
+  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+  const key = ($('key')?.value || '').trim();
+  const folder = String($('featAlbumPick')?.value || '').trim();
+  if (!folder) return;
+  if (!confirm('Apply cleanup? This will replace ARTIST with ALBUMARTIST for tracks containing feat./featuring.')) return;
+
+  setFeatBusy(true);
+  setFeatStatus('Applying cleanup…', true);
+  try {
+    const normalizeAll = !!$('featNormalizeAll')?.checked;
+    const r = await fetch(`${apiBase}/config/library-health/album-artist-cleanup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+      body: JSON.stringify({ folder, mode: normalizeAll ? 'normalizeAll' : 'featOnly' }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+    const errN = Array.isArray(j.errors) ? j.errors.length : 0;
+    const chg = Array.isArray(j.changes) ? j.changes : [];
+    setFeatStatus(`Cleanup applied: updated ${Number(j.updated || 0)}/${Number(j.candidates || 0)} candidates (skipped ${Number(j.skipped || 0)}).${errN ? ` errors: ${errN}` : ''}`);
+
+    const out = $('featOut');
+    if (out) {
+      const changeRows = chg.length
+        ? `<div style="margin-top:8px;"><b>Updated tracks</b><table><thead><tr><th>Title</th><th>From</th><th>To</th></tr></thead><tbody>${chg.slice(0, 80).map((c) => `<tr><td>${esc(c.title || '')}</td><td>${esc(c.fromArtist || '')}</td><td><strong>${esc(c.toArtist || '')}</strong></td></tr>`).join('')}</tbody></table></div>`
+        : '<div class="muted" style="margin-top:8px;">No tracks updated.</div>';
+      const errRows = errN
+        ? `<div style="margin-top:8px;"><b>Errors</b><table><thead><tr><th>File</th><th>Error</th></tr></thead><tbody>${j.errors.slice(0, 40).map((e) => `<tr><td>${esc(e.file || '')}</td><td>${esc(e.error || '')}</td></tr>`).join('')}</tbody></table></div>`
+        : '';
+      out.innerHTML = changeRows + errRows;
+    }
+
+    setTimeout(() => { scanFeatCleanup().catch(() => {}); }, 1200);
+  } catch (e) {
+    setFeatStatus(`Apply failed: ${e?.message || e}`);
+  } finally {
+    setFeatBusy(false);
+  }
+}
 
 
 let animatedArtViewMode = 'motion';
@@ -1311,6 +1430,9 @@ if (runBtn) runBtn.addEventListener('click', run);
 $('albumPick')?.addEventListener('change', () => loadAlbumMetadata());
 $('suggestPerformersBtn')?.addEventListener('click', suggestPerformers);
 $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
+$('featAlbumPick')?.addEventListener('change', () => { const out = $('featOut'); if (out) out.innerHTML = ''; setFeatStatus('Ready. Click "Find featured-artist tracks".'); });
+$('featScanBtn')?.addEventListener('click', scanFeatCleanup);
+$('featApplyBtn')?.addEventListener('click', applyFeatCleanup);
 // discovery workflow removed
 // discovery workflow removed
 document.querySelectorAll('input[name="animatedArtViewMode"]').forEach((el) => {

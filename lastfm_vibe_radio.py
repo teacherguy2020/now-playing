@@ -321,6 +321,8 @@ def main():
                     help="Optional JSON output path")
     ap.add_argument("--dry-run", action="store_true",
                     help="Preview tracks without touching MPD")
+    ap.add_argument("--no-final-stop", action="store_true",
+                    help="When mode=load, do not send a final stop command")
 
     args = ap.parse_args()
 
@@ -678,7 +680,7 @@ def main():
                 mpd.play()
             except Exception:
                 pass
-        else:
+        elif not args.no_final_stop:
             try:
                 mpd.stop()
             except Exception:

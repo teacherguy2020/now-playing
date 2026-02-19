@@ -34,6 +34,8 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const targetQueueRaw = req.body?.targetQueue;
       const targetQueue = Math.max(10, Math.min(200, Number(targetQueueRaw) || 50));
       const minRating = Math.max(0, Math.min(5, Number(req.body?.minRating || 0)));
+      const playNow = !!req.body?.playNow;
+      const keepPlaying = !!req.body?.keepPlaying;
       const mpdHost = String(MPD_HOST || '10.0.0.254');
 
       let artist = '';
@@ -63,11 +65,24 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         '--seed-title', title,
         '--target-queue', String(targetQueue),
         '--json-out', jsonTmp,
-        '--mode', 'load',
+        '--mode', playNow ? 'play' : 'load',
         '--host', mpdHost,
         '--port', '6600',
-        '--dry-run',
       ];
+      if (!playNow) {
+        if (keepPlaying) {
+          pyArgs.push('--crop');
+          pyArgs.push('--no-final-stop');
+        } else {
+          pyArgs.push('--dry-run');
+        }
+      } else {
+        pyArgs.push('--crop');
+      }
+
+      if (playNow || keepPlaying) {
+        try { await execFileP('mpc', ['-h', mpdHost, '-p', '6600', 'random', 'off']); } catch (_) {}
+      }
 
       const job = {
         id: jobId,
@@ -279,6 +294,85 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const data = JSON.parse(await fs.readFile(jsonTmp, 'utf8'));
       await fs.unlink(jsonTmp).catch(() => {});
       return res.json({ ok: true, tracks: data?.tracks || [], summary: data, targetQueue, seedArtist: artist, seedTitle: title });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  // Fire-and-forget seeded start for Alexa "vibe here" mode.
+  // Returns immediately after spawning the builder process.
+  app.post('/config/queue-wizard/vibe-seed-start', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const targetQueue = Math.max(1, Math.min(200, Number(req.body?.targetQueue) || 12));
+      const playNow = !!req.body?.playNow;
+      const keepPlaying = !!req.body?.keepPlaying;
+      const seedArtist = String(req.body?.seedArtist || '').trim();
+      const seedTitle = String(req.body?.seedTitle || '').trim();
+      if (!seedArtist || !seedTitle) return res.status(400).json({ ok: false, error: 'Missing seedArtist/seedTitle' });
+
+      const lastfmApiKey = await resolveLastfmApiKey();
+      if (!lastfmApiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
+
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
+      const jobId = makeVibeJobId();
+
+      // Ensure deterministic queue order for seeded vibe starts.
+      if (playNow || keepPlaying) {
+        try { await execFileP('mpc', ['-h', mpdHost, '-p', '6600', 'random', 'off']); } catch (_) {}
+      }
+
+      const pyArgs = [
+        pyPath,
+        '--api-key', lastfmApiKey,
+        '--seed-artist', seedArtist,
+        '--seed-title', seedTitle,
+        '--target-queue', String(targetQueue),
+        '--mode', playNow ? 'play' : 'load',
+        '--host', mpdHost,
+        '--port', '6600',
+      ];
+      if (playNow || keepPlaying) {
+        pyArgs.push('--crop');
+      }
+      if (keepPlaying && !playNow) {
+        pyArgs.push('--no-final-stop');
+      }
+
+      const child = spawn('python3', pyArgs, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        detached: false,
+      });
+
+      let outBuf = '';
+      let errBuf = '';
+      child.stdout.on('data', (buf) => {
+        outBuf += String(buf || '');
+        const lines = outBuf.split(/\r?\n/);
+        outBuf = lines.pop() || '';
+        lines.filter(Boolean).forEach((ln) => console.log(`[vibe-seed-start:${jobId}] ${ln}`));
+      });
+      child.stderr.on('data', (buf) => {
+        errBuf += String(buf || '');
+        const lines = errBuf.split(/\r?\n/);
+        errBuf = lines.pop() || '';
+        lines.filter(Boolean).forEach((ln) => console.log(`[vibe-seed-start:${jobId}] stderr: ${ln}`));
+      });
+      child.on('close', (code) => {
+        if (outBuf.trim()) console.log(`[vibe-seed-start:${jobId}] ${outBuf.trim()}`);
+        if (errBuf.trim()) console.log(`[vibe-seed-start:${jobId}] stderr: ${errBuf.trim()}`);
+        console.log(`[vibe-seed-start:${jobId}] exited code=${code}`);
+      });
+
+      return res.status(202).json({
+        ok: true,
+        accepted: true,
+        jobId,
+        targetQueue,
+        seedArtist,
+        seedTitle,
+      });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

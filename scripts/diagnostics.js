@@ -44,6 +44,7 @@
     { name: '/config/queue-wizard/vibe-nowplaying', method: 'GET', path: '/config/queue-wizard/vibe-nowplaying' },
     { name: '/config/queue-wizard/vibe-nowplaying', method: 'POST', path: '/config/queue-wizard/vibe-nowplaying', body: { targetQueue: 50, minRating: 0 } },
     { name: '/config/queue-wizard/vibe-start', method: 'POST', path: '/config/queue-wizard/vibe-start', body: { targetQueue: 50, minRating: 0 } },
+    { name: '/config/queue-wizard/vibe-seed-start', method: 'POST', path: '/config/queue-wizard/vibe-seed-start', body: { seedArtist: "John Mayer", seedTitle: "Gravity", targetQueue: 12 } },
     { name: '/config/queue-wizard/vibe-status/<jobId>', method: 'GET', path: '/config/queue-wizard/vibe-status/<jobId>' },
     { name: '/config/ratings/sticker-backup', method: 'POST', path: '/config/ratings/sticker-backup', body: {} },
     { name: '/config/ratings/sticker-backups', method: 'GET', path: '/config/ratings/sticker-backups' },
@@ -156,13 +157,22 @@
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok || !Array.isArray(j.endpoints) || !j.endpoints.length) return;
-      endpointList = j.endpoints.map((e) => ({
+      const serverList = j.endpoints.map((e) => ({
         name: String(e?.name || e?.path || '').trim(),
         method: String(e?.method || 'GET').toUpperCase(),
         path: String(e?.path || '').trim(),
         body: (e && typeof e.body === 'object') ? e.body : undefined,
         group: String(e?.group || 'Other').trim(),
       })).filter((e) => e.path);
+
+      // Merge server + fallback so newly-added client-only endpoints still appear
+      // even if the running API build has an older diagnostics catalog.
+      const byKey = new Map();
+      [...serverList, ...ENDPOINTS_FALLBACK].forEach((e) => {
+        const k = `${String(e?.method || 'GET').toUpperCase()} ${String(e?.path || '')}`;
+        if (!byKey.has(k)) byKey.set(k, e);
+      });
+      endpointList = Array.from(byKey.values());
     } catch (_) {
       // fallback stays in place
     }
