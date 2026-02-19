@@ -1622,6 +1622,27 @@ function isPauseOrStopState(data) {
   return (state === 'pause' || state === 'paused' || state === 'stop' || state === 'stopped' || state === 'idle');
 }
 
+function ensurePauseArtEl() {
+  let el = document.getElementById('pause-art');
+  if (el) return el;
+  el = document.createElement('img');
+  el.id = 'pause-art';
+  el.alt = 'Pause art';
+  el.style.position = 'fixed';
+  el.style.display = 'none';
+  el.style.maxWidth = '40vw';
+  el.style.maxHeight = '40vh';
+  el.style.width = 'auto';
+  el.style.height = 'auto';
+  el.style.borderRadius = '18px';
+  el.style.opacity = '0.35';
+  el.style.zIndex = '999';
+  el.style.pointerEvents = 'none';
+  el.style.objectFit = 'cover';
+  document.body.appendChild(el);
+  return el;
+}
+
 function setPausedScreensaver(on) {
   pauseMode = on;
   if (on) clearStars(); // ✅ entering pause screensaver: hide/clear stars
@@ -1649,29 +1670,32 @@ function setPausedScreensaver(on) {
   if (nextUpEl) nextUpEl.style.display = show ? '' : 'none';
 
   const artEl = document.getElementById('album-art');
+  const artVideoEl = document.getElementById('album-art-video');
+  const artWrapEl = document.getElementById('album-art-wrapper');
+  const pauseArtEl = ensurePauseArtEl();
   if (artEl) {
     if (on) {
-      artEl.src = PAUSE_ART_URL;
-      lastAlbumArtUrl = '';
+      // In pause screensaver, force static dedicated pause image for Pi stability.
+      if (artVideoEl) {
+        try { artVideoEl.pause(); } catch {}
+        artVideoEl.style.display = 'none';
+      }
+      if (artWrapEl) artWrapEl.style.visibility = 'hidden';
+      artEl.style.display = 'none';
 
-      artEl.style.position = 'fixed';
-      artEl.style.maxWidth = '40vw';
-      artEl.style.maxHeight = '40vh';
-      artEl.style.width = 'auto';
-      artEl.style.height = 'auto';
+      pauseArtEl.src = PAUSE_ART_URL;
+      pauseArtEl.style.display = 'block';
       movePauseArtRandomly(true);
-      artEl.style.opacity = '0.35';
+      lastAlbumArtUrl = '';
     } else {
-      artEl.style.position = '';
-      artEl.style.left = '';
-      artEl.style.top = '';
-      artEl.style.transform = '';
-      artEl.style.maxWidth = '';
-      artEl.style.maxHeight = '';
-      artEl.style.width = '';
-      artEl.style.height = '';
-      artEl.style.opacity = '';
-      
+      pauseArtEl.style.display = 'none';
+      pauseArtEl.style.left = '';
+      pauseArtEl.style.top = '';
+      pauseArtEl.style.transform = '';
+
+      if (artWrapEl) artWrapEl.style.visibility = '';
+      artEl.style.display = 'block';
+
       // ✅ Coming out of pause: force artwork to repaint even if track didn't change
       lastAlbumArtKey = '';
       lastAlbumArtUrl = '';
@@ -1690,7 +1714,7 @@ function movePauseArtRandomly(force = false) {
   if (!force && (now - lastPauseMoveTs) < PAUSE_MOVE_INTERVAL_MS) return;
   lastPauseMoveTs = now;
 
-  const artEl = document.getElementById('album-art');
+  const artEl = document.getElementById('pause-art') || document.getElementById('album-art');
   if (!artEl) return;
 
   const vw = window.innerWidth;
