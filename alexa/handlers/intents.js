@@ -467,43 +467,68 @@ function createIntentHandlers(deps) {
     },
   };
 
+  async function runVibeFromCurrent(handlerInput, forceHere = false) {
+    markAwaitingQueueConfirmation(handlerInput, false);
+    try {
+      const vibe = await apiVibeNowPlaying(50, 0);
+      const tracksRaw = Array.isArray(vibe?.tracks) ? vibe.tracks : [];
+      const files = tracksRaw
+        .map((t) => (typeof t === 'string' ? t : String(t?.file || '').trim()))
+        .filter(Boolean);
+
+      if (!files.length) {
+        return speak(handlerInput, 'I could not build a vibe list from this song right now.', false);
+      }
+
+      const applied = await apiQueueWizardApply(files, {
+        mode: 'replace',
+        shuffle: true,
+        keepNowPlaying: false,
+      });
+      const snap = extractSnapFromApi(applied);
+
+      if (forceHere) {
+        if (!snap || !snap.file) return speak(handlerInput, `Built a vibe list with ${files.length} tracks, but could not start moode playback.`, false);
+        await apiPlayFile(String(snap.file || '').trim());
+        return handlerInput.responseBuilder
+          .speak(`Loaded ${files.length} vibe tracks. Playing on moode.`)
+          .withShouldEndSession(true)
+          .addDirective({ type: 'AudioPlayer.Stop' })
+          .getResponse();
+      }
+
+      const directive = buildDirectiveFromApiSnap(snap, 'Starting your vibe');
+      if (!directive) return speak(handlerInput, `Built a vibe list with ${files.length} tracks, but could not start playback.`, false);
+
+      rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
+      return handlerInput.responseBuilder
+        .speak(`Loaded ${files.length} vibe tracks. Starting now.`)
+        .withShouldEndSession(true)
+        .addDirective(directive)
+        .getResponse();
+    } catch (e) {
+      const msg = e && e.message ? e.message : String(e);
+      return speak(handlerInput, `I couldn't vibe this song right now. ${msg.includes('Last.fm') ? 'Check Last.fm configuration.' : ''}`.trim(), false);
+    }
+  }
+
   const VibeThisSongIntentHandler = {
     canHandle(handlerInput) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'VibeThisSongIntent';
     },
     async handle(handlerInput) {
-      markAwaitingQueueConfirmation(handlerInput, false);
-      try {
-        const vibe = await apiVibeNowPlaying(50, 0);
-        const tracksRaw = Array.isArray(vibe?.tracks) ? vibe.tracks : [];
-        const files = tracksRaw
-          .map((t) => (typeof t === 'string' ? t : String(t?.file || '').trim()))
-          .filter(Boolean);
+      return runVibeFromCurrent(handlerInput, false);
+    },
+  };
 
-        if (!files.length) {
-          return speak(handlerInput, 'I could not build a vibe list from this song right now.', false);
-        }
-
-        const applied = await apiQueueWizardApply(files, {
-          mode: 'replace',
-          shuffle: true,
-          keepNowPlaying: false,
-        });
-        const snap = extractSnapFromApi(applied);
-        const directive = buildDirectiveFromApiSnap(snap, 'Starting your vibe');
-        if (!directive) return speak(handlerInput, `Built a vibe list with ${files.length} tracks, but could not start playback.`, false);
-
-        rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
-        return handlerInput.responseBuilder
-          .speak(`Loaded ${files.length} vibe tracks. Starting now.`)
-          .withShouldEndSession(true)
-          .addDirective(directive)
-          .getResponse();
-      } catch (e) {
-        const msg = e && e.message ? e.message : String(e);
-        return speak(handlerInput, `I couldn't vibe this song right now. ${msg.includes('Last.fm') ? 'Check Last.fm configuration.' : ''}`.trim(), false);
-      }
+  const VibeThisSongHereIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'VibeThisSongHereIntent';
+    },
+    async handle(handlerInput) {
+      return runVibeFromCurrent(handlerInput, true);
     },
   };
 
@@ -909,6 +934,7 @@ function createIntentHandlers(deps) {
     PlayAnythingIntentHandler,
     PlayHereIntentHandler,
     VibeThisSongIntentHandler,
+    VibeThisSongHereIntentHandler,
     PlayArtistIntentHandler,
     PlayAlbumIntentHandler,
     PlayTrackIntentHandler,

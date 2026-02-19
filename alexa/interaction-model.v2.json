@@ -122,6 +122,17 @@
         },
 
         {
+          "name": "VibeThisSongHereIntent",
+          "slots": [],
+          "samples": [
+            "vibe this song here",
+            "vibe this track here",
+            "make a vibe from this song here",
+            "build a vibe from this song here"
+          ]
+        },
+
+        {
           "name": "VibeThisSongIntent",
           "slots": [],
           "samples": [
