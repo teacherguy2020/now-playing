@@ -31,6 +31,7 @@ function createIntentHandlers(deps) {
     apiMpdShuffle,
     apiPlayFile,
     apiVibeNowPlaying,
+    apiVibeSeed,
     apiQueueWizardApply,
     apiGetWasPlaying,
     apiGetRuntimeConfig,
@@ -473,7 +474,16 @@ function createIntentHandlers(deps) {
     try {
       // Keep Alexa response under timeout budget: build a small starter queue,
       // then let vibe top-up extend it during playback.
-      const vibe = await apiVibeNowPlaying(12, 0);
+      let vibe;
+      const audioTok = safeStr(handlerInput?.requestEnvelope?.context?.AudioPlayer?.token);
+      const parsedTok = audioTok ? ((typeof parseTokenB64 === 'function' ? parseTokenB64(audioTok) : null) || {}) : {};
+      const seedArtist = safeStr(parsedTok?.artist);
+      const seedTitle = safeStr(parsedTok?.title);
+      if (seedArtist && seedTitle) {
+        vibe = await apiVibeSeed(seedArtist, seedTitle, 12);
+      } else {
+        vibe = await apiVibeNowPlaying(12, 0);
+      }
       const tracksRaw = Array.isArray(vibe?.tracks) ? vibe.tracks : [];
       const files = tracksRaw
         .map((t) => (typeof t === 'string' ? t : String(t?.file || '').trim()))

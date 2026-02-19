@@ -283,4 +283,28 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });
+
+  // Seeded one-shot endpoint for Alexa/Echo mode (when MPD current is not the Echo track)
+  app.post('/config/queue-wizard/vibe-seed', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const targetQueue = Math.max(1, Math.min(200, Number(req.body?.targetQueue) || 12));
+      const seedArtist = String(req.body?.seedArtist || '').trim();
+      const seedTitle = String(req.body?.seedTitle || '').trim();
+      if (!seedArtist || !seedTitle) return res.status(400).json({ ok: false, error: 'Missing seedArtist/seedTitle' });
+
+      const lastfmApiKey = await resolveLastfmApiKey();
+      if (!lastfmApiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
+
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
+      const jsonTmp = `/tmp/vibe-seed-${Date.now()}-${process.pid}.json`;
+      await execFileP('python3', [pyPath, '--api-key', lastfmApiKey, '--seed-artist', seedArtist, '--seed-title', seedTitle, '--target-queue', String(targetQueue), '--json-out', jsonTmp, '--mode', 'load', '--host', mpdHost, '--port', '6600', '--dry-run']);
+      const data = JSON.parse(await fs.readFile(jsonTmp, 'utf8'));
+      await fs.unlink(jsonTmp).catch(() => {});
+      return res.json({ ok: true, tracks: data?.tracks || [], summary: data, targetQueue, seedArtist, seedTitle });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
 }

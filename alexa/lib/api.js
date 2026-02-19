@@ -251,6 +251,20 @@ function createApiClient(config) {
     });
   }
 
+  async function apiVibeSeed(seedArtist, seedTitle, targetQueue) {
+    const url = API_BASE + '/config/queue-wizard/vibe-seed';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: {
+        seedArtist: String(seedArtist || ''),
+        seedTitle: String(seedTitle || ''),
+        targetQueue: Number(targetQueue || 12),
+      },
+      timeoutMs: Math.max(HTTP_TIMEOUT_MS, 30000),
+    });
+  }
+
   async function apiQueueWizardApply(tracks, opts) {
     const url = API_BASE + '/config/queue-wizard/apply';
     const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
@@ -301,6 +315,7 @@ function createApiClient(config) {
     apiMpdShuffle,
     apiPlayFile,
     apiVibeNowPlaying,
+    apiVibeSeed,
     apiQueueWizardApply,
     apiGetWasPlaying,
     apiGetRuntimeConfig,
