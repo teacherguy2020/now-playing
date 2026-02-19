@@ -376,18 +376,61 @@ function createIntentHandlers(deps) {
 
       // Preferred order: artist -> playlist -> album -> track
       const attempts = [
-        async () => apiPlayArtist(query),
-        async () => apiPlayPlaylist(query),
-        async () => apiPlayAlbum(query),
-        async () => apiPlayTrack(query),
+        {
+          kind: 'artist',
+          run: async () => {
+            try { await apiLogHeardArtist(query, 'alexa-play-anything', 'attempt'); } catch (_) {}
+            return apiPlayArtist(query);
+          },
+          ok: async () => { try { await apiLogHeardArtist(query, 'alexa-play-anything', 'ok'); } catch (_) {} },
+          miss: async () => {
+            try { await apiLogHeardArtist(query, 'alexa-play-anything', 'not-found'); } catch (_) {}
+            try { await apiSuggestArtistAlias(query, 'alexa-play-anything-not-found'); } catch (_) {}
+          },
+        },
+        {
+          kind: 'playlist',
+          run: async () => {
+            try { await apiLogHeardPlaylist(query, 'alexa-play-anything', 'attempt'); } catch (_) {}
+            return apiPlayPlaylist(query);
+          },
+          ok: async (resp) => { try { await apiLogHeardPlaylist(query, 'alexa-play-anything', 'ok', String(resp?.chosen || resp?.playlist || '')); } catch (_) {} },
+          miss: async () => {
+            try { await apiLogHeardPlaylist(query, 'alexa-play-anything', 'not-found'); } catch (_) {}
+            try { await apiSuggestPlaylistAlias(query, 'alexa-play-anything-not-found'); } catch (_) {}
+          },
+        },
+        {
+          kind: 'album',
+          run: async () => {
+            try { await apiLogHeardAlbum(query, 'alexa-play-anything', 'attempt'); } catch (_) {}
+            return apiPlayAlbum(query);
+          },
+          ok: async (resp) => { try { await apiLogHeardAlbum(query, 'alexa-play-anything', 'ok', String(resp?.album || '')); } catch (_) {} },
+          miss: async () => {
+            try { await apiLogHeardAlbum(query, 'alexa-play-anything', 'not-found'); } catch (_) {}
+            try { await apiSuggestAlbumAlias(query, 'alexa-play-anything-not-found'); } catch (_) {}
+          },
+        },
+        {
+          kind: 'track',
+          run: async () => apiPlayTrack(query),
+          ok: async () => {},
+          miss: async () => {},
+        },
       ];
 
-      for (const fn of attempts) {
+      for (const step of attempts) {
         try {
-          const resp = await fn();
+          const resp = await step.run();
           const out = tryStartFromResp(resp);
-          if (out) return out;
+          if (out) {
+            try { await step.ok(resp); } catch (_) {}
+            return out;
+          }
+          try { await step.miss(); } catch (_) {}
         } catch (e) {
+          try { await step.miss(); } catch (_) {}
           // continue to next resolver
         }
       }
