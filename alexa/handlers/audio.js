@@ -26,6 +26,8 @@ function createAudioHandlers(deps) {
     buildPlayEnqueue,
     buildPlayReplaceAll,
     apiSetWasPlaying,
+    apiVibeNowPlaying,
+    apiQueueWizardApply,
   } = deps;
 
   async function ensureHeadReady(previousToken, logPrefix, options) {
@@ -122,6 +124,26 @@ function createAudioHandlers(deps) {
     console.log(logPrefix, 'enqueue directive:', JSON.stringify(enq, null, 2));
 
     return enq;
+  }
+
+  async function maybeTopUpVibeQueueFromToken(token, logPrefix) {
+    try {
+      const p = parseTokenB64(safeStr(token)) || {};
+      if (!p || !p.vibeMode) return;
+
+      const vibe = await apiVibeNowPlaying(1, 0);
+      const tracksRaw = Array.isArray(vibe?.tracks) ? vibe.tracks : [];
+      const files = tracksRaw
+        .map((t) => (typeof t === 'string' ? t : String(t?.file || '').trim()))
+        .filter(Boolean)
+        .slice(0, 1);
+
+      if (!files.length) return;
+      await apiQueueWizardApply(files, { mode: 'append', shuffle: false, keepNowPlaying: true });
+      console.log(logPrefix, 'vibe top-up appended', files[0]);
+    } catch (e) {
+      console.log(logPrefix, 'vibe top-up failed:', e && e.message ? e.message : String(e));
+    }
   }
 
   const PlaybackControllerEventHandler = {
@@ -234,6 +256,7 @@ function createAudioHandlers(deps) {
 
           console.log('NearlyFinished: token prefix:', finishedToken.slice(0, 160));
 
+          await maybeTopUpVibeQueueFromToken(finishedToken, 'NearlyFinished:');
           const enq = await ensureHeadReady(finishedToken, 'NearlyFinished:', { advanceFromPrevious: true });
           if (enq) return handlerInput.responseBuilder.addDirective(enq).getResponse();
 

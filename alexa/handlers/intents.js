@@ -8,6 +8,7 @@ function createIntentHandlers(deps) {
     safeNumFloat,
     decodeHtmlEntities,
     parseTokenB64,
+    makeToken,
     speak,
     getStableNowPlayingSnapshot,
     ensureCurrentTrack,
@@ -499,6 +500,13 @@ function createIntentHandlers(deps) {
 
       const directive = buildDirectiveFromApiSnap(snap, 'Starting your vibe');
       if (!directive) return speak(handlerInput, `Built a vibe list with ${files.length} tracks, but could not start playback.`, false);
+
+      try {
+        const tok = String(directive?.audioItem?.stream?.token || '').trim();
+        const parsed = (typeof parseTokenB64 === 'function' ? parseTokenB64(tok) : null) || {};
+        const enriched = makeToken({ ...parsed, vibeMode: true });
+        directive.audioItem.stream.token = enriched;
+      } catch (_) {}
 
       rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
       return handlerInput.responseBuilder

@@ -423,6 +423,7 @@ const {
   safeNumFloat,
   decodeHtmlEntities,
   parseTokenB64,
+  makeToken,
   speak,
   getStableNowPlayingSnapshot,
   ensureCurrentTrack,
@@ -473,6 +474,8 @@ const { PlaybackControllerEventHandler, AudioPlayerEventHandler } = createAudioH
   buildPlayEnqueue,
   buildPlayReplaceAll,
   apiSetWasPlaying,
+  apiVibeNowPlaying,
+  apiQueueWizardApply,
 });
 
 const { LogRequestInterceptor, SystemExceptionHandler, ErrorHandler } = createMiscHandlers({ VERSION });
