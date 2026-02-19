@@ -202,6 +202,21 @@ function isStrongArtistMatch(targetArtist, candArtist) {
   return cp === tp || cp.includes(tp) || tp.includes(cp);
 }
 
+function albumLooksRelated(targetAlbum, candAlbum) {
+  const tb = normText(targetAlbum);
+  const cb = normText(candAlbum);
+  if (!tb || !cb) return false;
+  if (cb === tb || cb.includes(tb) || tb.includes(cb)) return true;
+
+  const tWords = new Set(tb.split(/\s+/).filter((w) => w.length >= 3));
+  const cWords = new Set(cb.split(/\s+/).filter((w) => w.length >= 3));
+  let overlap = 0;
+  for (const w of tWords) {
+    if (cWords.has(w)) overlap += 1;
+  }
+  return overlap >= 2;
+}
+
 function scoreAlbumCandidate(targetArtist, targetAlbum, candArtist, candAlbum) {
   const ta = normText(targetArtist);
   const tb = normText(targetAlbum);
@@ -212,6 +227,7 @@ function scoreAlbumCandidate(targetArtist, targetAlbum, candArtist, candAlbum) {
   if (cb && tb && (cb === tb)) score += 8;
   if (tb && cb && (cb.includes(tb) || tb.includes(cb))) score += 4;
   if (ta && ca && (ca.includes(ta) || ta.includes(ca))) score += 2;
+  if (albumLooksRelated(tb, cb)) score += 3;
   return score;
 }
 
@@ -260,6 +276,7 @@ async function lookupAppleAlbumCandidates(artist, album, limit = 6) {
       const artistLooksRelated = isStrongArtistMatch(a, candArtist);
       if (!artistLooksRelated) continue;
       const candAlbum = String(it?.collectionName || '');
+      if (!albumLooksRelated(b, candAlbum)) continue;
       const s = scoreAlbumCandidate(a, b, candArtist, candAlbum);
       scored.push({ url, score: s, candArtist, candAlbum });
     }

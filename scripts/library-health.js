@@ -390,6 +390,8 @@
                 </select>
               </label>
               <button id="aaLoad">Load art</button>
+              <button id="aaFindHq">Find HQ art</button>
+              <button id="aaUseHq" type="button">Use suggested art</button>
               <label>New image
                 <input id="aaFile" type="file" accept="image/*" />
               </label>
@@ -626,11 +628,15 @@
       // ---------- Album art module ----------
       const aaAlbum = $('aaAlbum');
       const aaLoad = $('aaLoad');
+      const aaFindHq = $('aaFindHq');
+      const aaUseHq = $('aaUseHq');
       const aaApply = $('aaApply');
       const aaFile = $('aaFile');
       const aaStatus = $('aaStatus');
       const aaPreview = $('aaPreview');
       const aaMeta = $('aaMeta');
+      let aaSuggestedBase64 = '';
+      let aaSuggestedMime = 'image/jpeg';
 
       const agAlbum = $('agAlbum');
       const agApply = $('agApply');
@@ -718,9 +724,69 @@
 
       if (aaAlbum) {
         aaAlbum.addEventListener('change', () => {
+          aaSuggestedBase64 = '';
           if (aaPreview) aaPreview.removeAttribute('src');
           if (aaFile) aaFile.value = '';
-          if (aaMeta) aaMeta.textContent = 'Album changed. Click “Load art”.';
+          if (aaMeta) aaMeta.textContent = 'Album changed. Click “Load art” or “Find HQ art”.';
+        });
+      }
+
+      if (aaFindHq) {
+        aaFindHq.addEventListener('click', async () => {
+          const folder = String(aaAlbum?.value || '').trim();
+          if (!folder) { if (aaStatus) aaStatus.textContent = 'Pick an album first.'; return; }
+          aaSuggestedBase64 = '';
+          if (aaStatus) aaStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Searching for HQ artwork…';
+          try {
+            const r = await fetch(`${apiBase}/config/library-health/album-art-search?folder=${encodeURIComponent(folder)}`, {
+              headers: { 'x-track-key': key },
+            });
+            const jj = await r.json().catch(() => ({}));
+            if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
+            const cand = Array.isArray(jj.candidates) ? jj.candidates[0] : null;
+            if (!cand?.hiResUrl) throw new Error('No HQ candidate found for this album');
+
+            const f = await fetch(`${apiBase}/config/library-health/album-art-fetch?url=${encodeURIComponent(cand.hiResUrl)}`, {
+              headers: { 'x-track-key': key },
+            });
+            const fj = await f.json().catch(() => ({}));
+            if (!f.ok || !fj?.ok || !fj?.dataBase64) throw new Error(fj?.error || `HTTP ${f.status}`);
+
+            aaSuggestedBase64 = String(fj.dataBase64 || '');
+            aaSuggestedMime = String(fj.mimeType || 'image/jpeg');
+            if (aaPreview) aaPreview.src = `data:${aaSuggestedMime};base64,${aaSuggestedBase64}`;
+            if (aaMeta) aaMeta.textContent = `Suggested HQ art: ${cand.artistName || ''} — ${cand.albumName || ''}`;
+            if (aaStatus) aaStatus.textContent = 'HQ suggestion ready. Click “Use suggested art” to apply.';
+          } catch (e) {
+            if (aaStatus) aaStatus.textContent = `HQ search error: ${e?.message || e}`;
+          }
+        });
+      }
+
+      if (aaUseHq) {
+        aaUseHq.addEventListener('click', async () => {
+          const folder = String(aaAlbum?.value || '').trim();
+          if (!folder) { if (aaStatus) aaStatus.textContent = 'Pick an album first.'; return; }
+          if (!aaSuggestedBase64) { if (aaStatus) aaStatus.textContent = 'No suggested HQ art loaded yet.'; return; }
+          if (aaStatus) aaStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Applying suggested HQ art…';
+          try {
+            const modeEl = document.querySelector('input[name="aaMode"]:checked');
+            const mode = String(modeEl?.value || 'both');
+            const r = await fetch(`${apiBase}/config/library-health/album-art`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+              body: JSON.stringify({ folder, imageBase64: aaSuggestedBase64, mode }),
+            });
+            const jj = await r.json().catch(() => ({}));
+            if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
+            if (aaStatus) aaStatus.textContent = 'Suggested HQ art applied.';
+            if (aaMeta) {
+              const coverState = jj.coverCreated ? 'created' : (jj.coverUpdated ? 'updated' : 'unchanged');
+              aaMeta.textContent = `${folder} · mode: ${jj.mode || 'both'} · updated tracks: ${jj.updatedTracks}/${jj.totalFiles} · cover.jpg ${coverState}`;
+            }
+          } catch (e) {
+            if (aaStatus) aaStatus.textContent = `Error: ${e?.message || e}`;
+          }
         });
       }
 
@@ -730,7 +796,6 @@
           const file = aaFile?.files?.[0];
 
           if (!folder) { if (aaStatus) aaStatus.textContent = 'Pick an album first.'; return; }
-          if (!file) { if (aaStatus) aaStatus.textContent = 'Choose an image file first.'; return; }
 
           const toBase64 = async (f) => {
             const ab = await f.arrayBuffer();
@@ -746,7 +811,11 @@
           if (aaStatus) aaStatus.innerHTML = '<span class="spin" aria-hidden="true"></span>Updating album art…';
 
           try {
-            const b64 = await toBase64(file);
+            let b64 = '';
+            if (file) b64 = await toBase64(file);
+            else if (aaSuggestedBase64) b64 = aaSuggestedBase64;
+            if (!b64) { if (aaStatus) aaStatus.textContent = 'Choose an image file or click “Find HQ art” first.'; return; }
+
             const modeEl = document.querySelector('input[name="aaMode"]:checked');
             const mode = String(modeEl?.value || 'both');
 
@@ -765,7 +834,10 @@
               throw new Error(jj?.error || `HTTP ${r.status}`);
             }
 
-            if (aaPreview) aaPreview.src = URL.createObjectURL(file);
+            if (aaPreview) {
+              if (file) aaPreview.src = URL.createObjectURL(file);
+              else if (aaSuggestedBase64) aaPreview.src = `data:${aaSuggestedMime || 'image/jpeg'};base64,${aaSuggestedBase64}`;
+            }
             if (aaMeta) {
               const coverState = jj.coverCreated ? 'created' : (jj.coverUpdated ? 'updated' : 'unchanged');
               aaMeta.textContent =

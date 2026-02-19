@@ -115,9 +115,7 @@
           "samples": [
             "play {query}",
             "start {query}",
-            "queue {query}",
-            "play music by {query}",
-            "play songs by {query}"
+            "queue {query}"
           ]
         },
 
@@ -154,7 +152,16 @@
             "play music by {artist}",
             "start artist {artist}",
             "queue artist {artist}",
-            "play songs by {artist}"
+            "play songs by {artist}",
+            "play tracks by {artist}",
+            "play songs from {artist}",
+            "play tracks from {artist}",
+            "to play songs by {artist}",
+            "to play tracks by {artist}",
+            "play songs by artist {artist}",
+            "play tracks by artist {artist}",
+            "play songs from artist {artist}",
+            "play tracks from artist {artist}"
           ]
         },
 

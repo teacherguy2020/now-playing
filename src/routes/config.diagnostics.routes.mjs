@@ -162,6 +162,8 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     { group: 'Library Health', method: 'GET', path: '/config/library-health/album-tracks' },
     { group: 'Library Health', method: 'POST', path: '/config/library-health/album-artist-cleanup', body: { folder: '' } },
     { group: 'Library Health', method: 'GET', path: '/config/library-health/album-genre' },
+    { group: 'Library Health', method: 'GET', path: '/config/library-health/album-art-search', body: { folder: '' } },
+    { group: 'Library Health', method: 'GET', path: '/config/library-health/album-art-fetch', body: { url: '' } },
     { group: 'Library Health', method: 'POST', path: '/config/library-health/album-genre', body: { folder: '', genre: '' } },
     { group: 'Library Health', method: 'POST', path: '/config/library-health/rating-batch', body: { files: [], rating: 3 } },
 
