@@ -228,6 +228,16 @@ function createApiClient(config) {
     });
   }
 
+  async function apiPlayFile(file) {
+    const url = API_BASE + '/mpd/play-file';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: { file },
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
   async function apiGetWasPlaying() {
     const url = API_BASE + '/alexa/was-playing';
     return httpRequestJson('GET', url, { timeoutMs: HTTP_TIMEOUT_MS });
@@ -266,6 +276,7 @@ function createApiClient(config) {
     apiSuggestPlaylistAlias,
     apiLogHeardPlaylist,
     apiMpdShuffle,
+    apiPlayFile,
     apiGetWasPlaying,
     apiGetRuntimeConfig,
     apiSetWasPlaying,

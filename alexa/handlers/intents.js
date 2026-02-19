@@ -28,6 +28,7 @@ function createIntentHandlers(deps) {
     apiQueueMix,
     apiLogHeardPlaylist,
     apiMpdShuffle,
+    apiPlayFile,
     apiGetWasPlaying,
     apiGetRuntimeConfig,
   } = deps;
@@ -362,12 +363,28 @@ function createIntentHandlers(deps) {
     },
     async handle(handlerInput) {
       markAwaitingQueueConfirmation(handlerInput, false);
-      const query = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.query?.value);
-      if (!query) return speak(handlerInput, 'Tell me what you want to hear.', false);
+      const rawQuery = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.query?.value);
+      if (!rawQuery) return speak(handlerInput, 'Tell me what you want to hear.', false);
 
-      const tryStartFromResp = (resp) => {
+      const playHere = /\bhere\b\s*$/i.test(rawQuery);
+      const query = rawQuery.replace(/\bhere\b\s*$/i, '').trim() || rawQuery;
+
+      const tryStartFromResp = async (resp) => {
         const snap = extractSnapFromApi(resp);
         if (!snap) return null;
+
+        if (playHere) {
+          try {
+            await apiPlayFile(String(snap.file || '').trim());
+            return handlerInput.responseBuilder
+              .speak('Playing on moode.')
+              .withShouldEndSession(true)
+              .getResponse();
+          } catch (_) {
+            return speak(handlerInput, 'I found it, but could not start moode playback right now.', false);
+          }
+        }
+
         const directive = buildDirectiveFromApiSnap(snap, 'Starting your selection');
         if (!directive) return null;
         rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
@@ -423,7 +440,7 @@ function createIntentHandlers(deps) {
       for (const step of attempts) {
         try {
           const resp = await step.run();
-          const out = tryStartFromResp(resp);
+          const out = await tryStartFromResp(resp);
           if (out) {
             try { await step.ok(resp); } catch (_) {}
             return out;

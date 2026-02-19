@@ -105,7 +105,10 @@
             "start {query}",
             "queue {query}",
             "play music by {query}",
-            "play songs by {query}"
+            "play songs by {query}",
+            "play {query} here",
+            "start {query} here",
+            "queue {query} here"
           ]
         },
 

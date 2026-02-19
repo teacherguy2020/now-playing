@@ -36,6 +36,7 @@ const {
   apiSuggestPlaylistAlias,
   apiLogHeardPlaylist,
   apiMpdShuffle,
+  apiPlayFile,
   apiGetWasPlaying,
   apiGetRuntimeConfig,
   apiSetWasPlaying,
@@ -437,6 +438,7 @@ const {
   apiLogHeardPlaylist,
   apiQueueMix,
   apiMpdShuffle,
+  apiPlayFile,
   apiGetWasPlaying,
   apiGetRuntimeConfig,
 });
