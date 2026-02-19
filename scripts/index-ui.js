@@ -2566,9 +2566,16 @@ if (titleEl) {
       ? decodeHtmlEntities(String(data.radioAlbum || data.album || ''))
       : decodeHtmlEntities(String(data.album || ''));
 
-    const year = isRadio
+    let year = isRadio
       ? String(data.radioYear || data.year || '').trim()
       : String(data.year || '').trim();
+
+    // Alexa mode often has date but not year; derive year from date when missing.
+    if (!year) {
+      const d = String(data.date || '').trim();
+      const m = d.match(/^(\d{4})/);
+      if (m) year = m[1];
+    }
 
     // ✅ Podcast: show episode date where album would normally go
     const episodeDate = currentIsPodcast ? formatEpisodeDate(data) : '';
