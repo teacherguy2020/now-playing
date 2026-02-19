@@ -373,6 +373,7 @@ function createIntentHandlers(deps) {
           return handlerInput.responseBuilder
             .speak('Playing on moode.')
             .withShouldEndSession(true)
+            .addDirective({ type: 'AudioPlayer.Stop' })
             .getResponse();
         } catch (_) {
           return speak(handlerInput, 'I found it, but could not start moode playback right now.', false);
