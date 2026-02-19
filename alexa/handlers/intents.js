@@ -355,6 +355,47 @@ function createIntentHandlers(deps) {
     },
   };
 
+  const PlayAnythingIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'PlayAnythingIntent';
+    },
+    async handle(handlerInput) {
+      markAwaitingQueueConfirmation(handlerInput, false);
+      const query = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.query?.value);
+      if (!query) return speak(handlerInput, 'Tell me what you want to hear.', false);
+
+      const tryStartFromResp = (resp) => {
+        const snap = extractSnapFromApi(resp);
+        if (!snap) return null;
+        const directive = buildDirectiveFromApiSnap(snap, 'Starting your selection');
+        if (!directive) return null;
+        rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
+        return handlerInput.responseBuilder.withShouldEndSession(true).addDirective(directive).getResponse();
+      };
+
+      // Preferred order: artist -> playlist -> album -> track
+      const attempts = [
+        async () => apiPlayArtist(query),
+        async () => apiPlayPlaylist(query),
+        async () => apiPlayAlbum(query),
+        async () => apiPlayTrack(query),
+      ];
+
+      for (const fn of attempts) {
+        try {
+          const resp = await fn();
+          const out = tryStartFromResp(resp);
+          if (out) return out;
+        } catch (e) {
+          // continue to next resolver
+        }
+      }
+
+      return speak(handlerInput, `I could not find ${query}. Try saying play artist, play album, or play playlist.`, false);
+    },
+  };
+
   const PlayArtistIntentHandler = {
     canHandle(handlerInput) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
@@ -754,6 +795,7 @@ function createIntentHandlers(deps) {
     HelpIntentHandler,
     FallbackIntentHandler,
     PlayQueueIntentHandler,
+    PlayAnythingIntentHandler,
     PlayArtistIntentHandler,
     PlayAlbumIntentHandler,
     PlayTrackIntentHandler,

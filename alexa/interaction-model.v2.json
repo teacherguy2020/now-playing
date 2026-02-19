@@ -96,6 +96,20 @@
         },
 
         {
+          "name": "PlayAnythingIntent",
+          "slots": [
+            { "name": "query", "type": "AMAZON.SearchQuery" }
+          ],
+          "samples": [
+            "play {query}",
+            "start {query}",
+            "queue {query}",
+            "play music by {query}",
+            "play songs by {query}"
+          ]
+        },
+
+        {
           "name": "PlayArtistIntent",
           "slots": [
             { "name": "artist", "type": "AMAZON.SearchQuery" }
