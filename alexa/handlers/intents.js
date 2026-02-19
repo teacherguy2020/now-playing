@@ -471,7 +471,9 @@ function createIntentHandlers(deps) {
   async function runVibeFromCurrent(handlerInput, forceHere = false) {
     markAwaitingQueueConfirmation(handlerInput, false);
     try {
-      const vibe = await apiVibeNowPlaying(50, 0);
+      // Keep Alexa response under timeout budget: build a small starter queue,
+      // then let vibe top-up extend it during playback.
+      const vibe = await apiVibeNowPlaying(12, 0);
       const tracksRaw = Array.isArray(vibe?.tracks) ? vibe.tracks : [];
       const files = tracksRaw
         .map((t) => (typeof t === 'string' ? t : String(t?.file || '').trim()))
