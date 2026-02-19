@@ -122,6 +122,18 @@
         },
 
         {
+          "name": "VibeThisSongIntent",
+          "slots": [],
+          "samples": [
+            "vibe this song",
+            "vibe this track",
+            "make a vibe from this song",
+            "make a vibe from this track",
+            "build a vibe from this song"
+          ]
+        },
+
+        {
           "name": "PlayArtistIntent",
           "slots": [
             { "name": "artist", "type": "AMAZON.SearchQuery" }

@@ -238,6 +238,29 @@ function createApiClient(config) {
     });
   }
 
+  async function apiVibeNowPlaying(targetQueue, minRating) {
+    const url = API_BASE + '/config/queue-wizard/vibe-nowplaying';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: {
+        targetQueue: Number(targetQueue || 50),
+        minRating: Number(minRating || 0),
+      },
+      timeoutMs: Math.max(HTTP_TIMEOUT_MS, 30000),
+    });
+  }
+
+  async function apiQueueWizardApply(tracks, opts) {
+    const url = API_BASE + '/config/queue-wizard/apply';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: Object.assign({ mode: 'replace', tracks: tracks || [], shuffle: true }, opts || {}),
+      timeoutMs: Math.max(HTTP_TIMEOUT_MS, 30000),
+    });
+  }
+
   async function apiGetWasPlaying() {
     const url = API_BASE + '/alexa/was-playing';
     return httpRequestJson('GET', url, { timeoutMs: HTTP_TIMEOUT_MS });
@@ -277,6 +300,8 @@ function createApiClient(config) {
     apiLogHeardPlaylist,
     apiMpdShuffle,
     apiPlayFile,
+    apiVibeNowPlaying,
+    apiQueueWizardApply,
     apiGetWasPlaying,
     apiGetRuntimeConfig,
     apiSetWasPlaying,

@@ -29,6 +29,8 @@ function createIntentHandlers(deps) {
     apiLogHeardPlaylist,
     apiMpdShuffle,
     apiPlayFile,
+    apiVibeNowPlaying,
+    apiQueueWizardApply,
     apiGetWasPlaying,
     apiGetRuntimeConfig,
   } = deps;
@@ -465,6 +467,46 @@ function createIntentHandlers(deps) {
     },
   };
 
+  const VibeThisSongIntentHandler = {
+    canHandle(handlerInput) {
+      return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+        && Alexa.getIntentName(handlerInput.requestEnvelope) === 'VibeThisSongIntent';
+    },
+    async handle(handlerInput) {
+      markAwaitingQueueConfirmation(handlerInput, false);
+      try {
+        const vibe = await apiVibeNowPlaying(50, 0);
+        const tracksRaw = Array.isArray(vibe?.tracks) ? vibe.tracks : [];
+        const files = tracksRaw
+          .map((t) => (typeof t === 'string' ? t : String(t?.file || '').trim()))
+          .filter(Boolean);
+
+        if (!files.length) {
+          return speak(handlerInput, 'I could not build a vibe list from this song right now.', false);
+        }
+
+        const applied = await apiQueueWizardApply(files, {
+          mode: 'replace',
+          shuffle: true,
+          keepNowPlaying: false,
+        });
+        const snap = extractSnapFromApi(applied);
+        const directive = buildDirectiveFromApiSnap(snap, 'Starting your vibe');
+        if (!directive) return speak(handlerInput, `Built a vibe list with ${files.length} tracks, but could not start playback.`, false);
+
+        rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
+        return handlerInput.responseBuilder
+          .speak(`Loaded ${files.length} vibe tracks. Starting now.`)
+          .withShouldEndSession(true)
+          .addDirective(directive)
+          .getResponse();
+      } catch (e) {
+        const msg = e && e.message ? e.message : String(e);
+        return speak(handlerInput, `I couldn't vibe this song right now. ${msg.includes('Last.fm') ? 'Check Last.fm configuration.' : ''}`.trim(), false);
+      }
+    },
+  };
+
   const PlayArtistIntentHandler = {
     canHandle(handlerInput) {
       return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
@@ -866,6 +908,7 @@ function createIntentHandlers(deps) {
     PlayQueueIntentHandler,
     PlayAnythingIntentHandler,
     PlayHereIntentHandler,
+    VibeThisSongIntentHandler,
     PlayArtistIntentHandler,
     PlayAlbumIntentHandler,
     PlayTrackIntentHandler,
