@@ -366,6 +366,7 @@ def main():
     # -----------------------------
     seed_artist = (args.seed_artist or "").strip()
     seed_title = (args.seed_title or "").strip()
+    original_seed = (seed_artist, seed_title)
 
     if (seed_artist and not seed_title) or (seed_title and not seed_artist):
         mpd.disconnect()
@@ -400,6 +401,9 @@ def main():
             alb0 = read_tags(seed_file)[2]
             if alb0:
                 last_album_k = album_key(alb0)
+
+    # Keep stable fallback seed to break dead-ends.
+    original_seed = (seed_artist, seed_title)
 
     # -----------------------------
     # Queue handling (ONLY when not dry-run)
@@ -479,6 +483,7 @@ def main():
         chosen_rec_title = ""
         chosen_album_k = ""
         fallback_repeat = None
+        fallback_seed_artist = None
 
         print(f"[{datetime.now().strftime('%H:%M:%S')}] pick from {len(sim)} similar", flush=True)
         for t in sim:
@@ -550,6 +555,13 @@ def main():
                 continue
 
             cand_artist_n = norm(a_tag or rec_artist)
+
+            # Strong preference on first added hop: branch to a different artist than the seed.
+            if hops == 1 and cand_artist_n and cand_artist_n == norm(seed_artist):
+                if fallback_seed_artist is None:
+                    fallback_seed_artist = (cand, method, rec_title, rec_artist, cand_album_k)
+                continue
+
             if last_added_artist_n and cand_artist_n and cand_artist_n == last_added_artist_n:
                 # Soft guard: avoid back-to-back same artist when possible.
                 if fallback_repeat is None:
@@ -573,8 +585,13 @@ def main():
             chosen_rec_title = rec_title
             chosen_album_k = cand_album_k
 
+        # Intentionally do NOT fall back to same-artist on hop 1.
+        # If no cross-artist candidate can be added, treat as miss and reseed.
+
         if not chosen_file:
             misses += 1
+            if hops == 1 and fallback_seed_artist is not None:
+                print(f"[hop {hops}] No cross-artist add from seed; forcing reseed path.")
 
             if added_seed_history:
                 window = added_seed_history[-args.reseed_window:] if args.reseed_window > 0 else added_seed_history[:]
@@ -583,7 +600,11 @@ def main():
                     window = [s for s in window if not is_seasonal_text(s[1], s[0])]
 
                 if not window:
-                    print(f"[hop {hops}] No add (miss {misses}/{args.max_misses}). No alternate reseed candidates.")
+                    if original_seed and original_seed != (seed_artist, seed_title):
+                        seed_artist, seed_title = original_seed
+                        print(f"[hop {hops}] No add (miss {misses}/{args.max_misses}). Reseed -> original {seed_title} — {seed_artist}")
+                    else:
+                        print(f"[hop {hops}] No add (miss {misses}/{args.max_misses}). No alternate reseed candidates.")
                 else:
                     if args.reseed_random:
                         new_seed = random.choice(window)

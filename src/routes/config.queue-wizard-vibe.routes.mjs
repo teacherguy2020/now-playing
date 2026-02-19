@@ -66,6 +66,9 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         '--target-queue', String(targetQueue),
         '--json-out', jsonTmp,
         '--mode', playNow ? 'play' : 'load',
+        '--shuffle-top', '25',
+        '--reseed-random',
+        '--max-misses', '12',
         '--host', mpdHost,
         '--port', '6600',
       ];
@@ -330,6 +333,9 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         '--seed-title', seedTitle,
         '--target-queue', String(targetQueue),
         '--mode', playNow ? 'play' : 'load',
+        '--shuffle-top', '25',
+        '--reseed-random',
+        '--max-misses', '12',
         '--host', mpdHost,
         '--port', '6600',
       ];

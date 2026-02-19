@@ -62,8 +62,12 @@
       <div class="row" style="justify-content:space-between;align-items:center;">
         <div>
           <strong>Corrections</strong> <span class="pill">persisted to config JSON</span>
+          <div class="muted" style="margin-top:4px;">Fix buttons in the misheard lists save immediately.</div>
         </div>
-        <button id="saveAliasesBtn" type="button">Save corrections</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button id="saveAliasesBtn" type="button">Save manual JSON edits</button>
+          <span id="aliasesSaveNote" class="muted"></span>
+        </div>
       </div>
       <div class="row" style="margin-top:10px;">
         <div style="min-width:320px;flex:1 1 320px;">
@@ -82,31 +86,68 @@
     </div>
 
     <div class="card">
-      <strong>Recent misheard</strong>
+      <strong>Recently Heard</strong>
       <div class="row" style="margin-top:8px;align-items:flex-start;">
-        <div style="flex:1 1 300px;min-width:260px;"><label>Artists</label><div id="heardArtists" class="muted"></div></div>
-        <div style="flex:1 1 300px;min-width:260px;"><label>Albums</label><div id="heardAlbums" class="muted"></div></div>
-        <div style="flex:1 1 300px;min-width:260px;"><label>Playlists</label><div id="heardPlaylists" class="muted"></div></div>
+        <div style="flex:1 1 300px;min-width:260px;">
+          <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px;"><label>Artists</label><button id="clearHeardArtistsBtn" type="button">Clear</button></div>
+          <div id="heardArtists" class="muted"></div>
+        </div>
+        <div style="flex:1 1 300px;min-width:260px;">
+          <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px;"><label>Albums</label><button id="clearHeardAlbumsBtn" type="button">Clear</button></div>
+          <div id="heardAlbums" class="muted"></div>
+        </div>
+        <div style="flex:1 1 300px;min-width:260px;">
+          <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px;"><label>Playlists</label><button id="clearHeardPlaylistsBtn" type="button">Clear</button></div>
+          <div id="heardPlaylists" class="muted"></div>
+        </div>
       </div>
     </div>
 
     <div class="card">
       <strong>Helpers: things you can say</strong>
+      <div class="muted" style="margin-top:8px;">
+        Invocation name is <code>mood audio</code>. Start commands with:
+        <br />• <code>Alexa, ask mood audio ...</code>
+      </div>
+
+      <div style="margin-top:10px;"><strong>Playback</strong></div>
       <ul>
-        <li>“Alexa, ask Now Playing what’s playing”</li>
-        <li>“Alexa, ask Now Playing to play artist John Mayer”</li>
-        <li>“Alexa, ask Now Playing to play album Continuum”</li>
-        <li>“Alexa, ask Now Playing to play playlist Chill Mix”</li>
-        <li>“Alexa, ask Now Playing to vibe this song”</li>
-        <li>“Alexa, ask Now Playing to vibe this song here”</li>
-        <li>“Alexa, ask Now Playing to shuffle”</li>
-        <li>“Alexa, ask Now Playing to thumbs up this track”</li>
+        <li>“Alexa, ask mood audio what’s playing”</li>
+        <li>“Alexa, ask mood audio to play artist John Mayer” <span class="muted">(most reliable)</span></li>
+        <li>“Alexa, ask mood audio to play album Continuum”</li>
+        <li>“Alexa, ask mood audio to play playlist Chill Mix”</li>
+        <li>“Alexa, ask mood audio to play songs by James Taylor”</li>
+        <li>“Alexa, ask mood audio to play John Mayer” <span class="muted">(you can omit artist/album/playlist specifier; Alexa will still try to match)</span></li>
+      </ul>
+
+      <div style="margin-top:10px;"><strong>Vibe</strong></div>
+      <div class="muted" style="margin-top:4px;">Requires Last.fm Vibe to be enabled/configured on the Config page.</div>
+      <ul>
+        <li>“Alexa, ask mood audio to vibe this song” <span class="muted">(build/normalize vibe queue from current track context)</span></li>
+        <li>“Alexa, ask mood audio to vibe this song here” <span class="muted">(same, but force play on moOde)</span></li>
+      </ul>
+
+      <div style="margin-top:10px;"><strong>Controls</strong></div>
+      <div class="muted" style="margin-top:4px;">For transport, built-in commands work great:</div>
+      <ul>
+        <li>“Alexa pause”</li>
+        <li>“Alexa resume”</li>
+        <li>“Alexa skip”</li>
+      </ul>
+      <div class="muted" style="margin-top:4px;">Skill-scoped alternatives:</div>
+      <ul>
+        <li>“Alexa, ask mood audio to shuffle”</li>
+        <li>“Alexa, ask mood audio to repeat”</li>
+        <li>“Alexa, ask mood audio to pause”</li>
+        <li>“Alexa, ask mood audio to resume”</li>
+        <li>“Alexa, ask mood audio to next”</li>
+        <li>“Alexa, ask mood audio to thumbs up this track”</li>
       </ul>
     </div>
 
     <div class="card muted" id="status">Loading…</div>
   </div>
 
-  <script src="scripts/alexa.js?v=20260219-3"></script>
+  <script src="scripts/alexa.js?v=20260219-6"></script>
 </body>
 </html>

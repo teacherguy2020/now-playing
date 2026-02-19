@@ -431,9 +431,14 @@ async function syncVibeAvailability() {
   }
 
   const MAX_TRACKS_STORAGE = 'nowplaying.queuewizard.maxTracks';
+  const VIBE_MAX_TRACKS_STORAGE = 'nowplaying.queuewizard.vibeMaxTracks';
   function getMaxTracks() {
     const n = Number($('maxTracks')?.value || 25);
     return Number.isFinite(n) ? n : 25;
+  }
+  function getVibeMaxTracks() {
+    const n = Number($('vibeMaxTracks')?.value || getMaxTracks());
+    return Number.isFinite(n) ? n : getMaxTracks();
   }
 
   function getMinRating() {
@@ -1568,7 +1573,7 @@ async function doVibeBuild() {
 
   const apiBase = getApiBase();
   const key = getKey();
-  const targetQueue = getMaxTracks();
+  const targetQueue = getVibeMaxTracks();
   const minRatingVibe = getMinRatingVibe();
 
   vibeCancelled = false;
@@ -2546,7 +2551,7 @@ function wireEvents() {
     schedulePreview(300);
   };
 
-  ['genres', 'artists', 'albums', 'excludeGenres', 'minRating', 'maxTracks', 'shuffle', 'apiBase', 'key'].forEach((id) => {
+  ['genres', 'artists', 'albums', 'excludeGenres', 'minRating', 'maxTracks', 'vibeMaxTracks', 'shuffle', 'apiBase', 'key'].forEach((id) => {
     const el = $(id);
     if (!el) return;
     el.addEventListener('change', () => {
@@ -2556,6 +2561,7 @@ function wireEvents() {
       }
       if (id === 'key') loadExistingPlaylists();
       if (id === 'maxTracks') localStorage.setItem(MAX_TRACKS_STORAGE, String(getMaxTracks()));
+      if (id === 'vibeMaxTracks') localStorage.setItem(VIBE_MAX_TRACKS_STORAGE, String(getVibeMaxTracks()));
       if (!['apiBase','key'].includes(id)) activateBuilder('filters');
       if (id === 'shuffle') { renderFiltersSummary(); return; }
       maybePreview();
@@ -2568,6 +2574,7 @@ function wireEvents() {
         }
         if (id === 'key') loadExistingPlaylists();
         if (id === 'maxTracks') localStorage.setItem(MAX_TRACKS_STORAGE, String(getMaxTracks()));
+        if (id === 'vibeMaxTracks') localStorage.setItem(VIBE_MAX_TRACKS_STORAGE, String(getVibeMaxTracks()));
         if (!['apiBase','key'].includes(id)) activateBuilder('filters');
         maybePreview();
       });
@@ -2580,6 +2587,8 @@ try {
   if ($('apiBase') && !$('apiBase').value.trim()) $('apiBase').value = defaultApiBase();
   const savedMax = Number(localStorage.getItem(MAX_TRACKS_STORAGE) || '');
   if ($('maxTracks') && Number.isFinite(savedMax) && savedMax > 0) $('maxTracks').value = String(savedMax);
+  const savedVibeMax = Number(localStorage.getItem(VIBE_MAX_TRACKS_STORAGE) || '');
+  if ($('vibeMaxTracks') && Number.isFinite(savedVibeMax) && savedVibeMax > 0) $('vibeMaxTracks').value = String(savedVibeMax);
 
   clearResults();
   renderPlaylistThumbStrip([]);

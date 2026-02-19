@@ -13,6 +13,48 @@
     if (el) el.textContent = msg;
   }
 
+  function setAliasesSaveNote(msg, ok = true) {
+    const el = $('aliasesSaveNote');
+    if (!el) return;
+    el.textContent = String(msg || '');
+    el.style.color = ok ? '#86efac' : '#fca5a5';
+  }
+
+  async function withButtonFeedback(btn, action, opts = {}) {
+    if (!btn) return action();
+    const idle = String(opts.idle || btn.dataset.idleText || btn.textContent || 'Save');
+    const busy = String(opts.busy || 'Saving…');
+    const done = String(opts.done || 'Saved ✓');
+
+    btn.dataset.idleText = idle;
+    btn.disabled = true;
+    btn.textContent = busy;
+    btn.style.opacity = '0.85';
+
+    try {
+      const out = await action();
+      btn.textContent = done;
+      btn.style.background = '#14532d';
+      setTimeout(() => {
+        btn.textContent = idle;
+        btn.style.background = '';
+        btn.style.opacity = '';
+        btn.disabled = false;
+      }, 900);
+      return out;
+    } catch (e) {
+      btn.textContent = 'Save failed';
+      btn.style.background = '#7f1d1d';
+      setTimeout(() => {
+        btn.textContent = idle;
+        btn.style.background = '';
+        btn.style.opacity = '';
+        btn.disabled = false;
+      }, 1200);
+      throw e;
+    }
+  }
+
   function pretty(obj){ return JSON.stringify(obj || {}, null, 2); }
 
   function parseJsonField(id){
@@ -37,8 +79,21 @@
   function renderHeard(id, rows, field, type){
     const host = $(id);
     if (!host) return;
-    const list = Array.isArray(rows) ? rows.slice(0, 20) : [];
-    if (!list.length) { host.innerHTML = '<div>None</div>'; return; }
+
+    const mapId = type === 'album' ? 'albumAliases' : (type === 'playlist' ? 'playlistAliases' : 'artistAliases');
+    const aliases = readAliasMap(mapId);
+
+    const list = (Array.isArray(rows) ? rows : [])
+      .filter((r) => {
+        const what = String(r?.[field] || '').trim();
+        if (!what) return false;
+        // Hide items already corrected in alias map.
+        return !aliases[aliasKey(what)];
+      })
+      .slice(0, 20);
+
+    if (!list.length) { host.innerHTML = '<div>None (all recent items are already fixed)</div>'; return; }
+
     host.innerHTML = list.map((r, idx) => {
       const what = String(r?.[field] || '').trim() || '(blank)';
       const st = String(r?.status || 'seen');
@@ -111,12 +166,62 @@
       playlistAliases: parseJsonField('playlistAliases'),
     };
     await postRuntime(nextAlexa);
+    const when = new Date().toLocaleTimeString();
+    setAliasesSaveNote(`Saved at ${when}.`, true);
     status('Saved Alexa corrections.');
     await load();
   }
 
-  $('saveSettingsBtn')?.addEventListener('click', () => saveSettings().catch((e) => status(`Error: ${e.message || e}`)));
-  $('saveAliasesBtn')?.addEventListener('click', () => saveAliases().catch((e) => status(`Error: ${e.message || e}`)));
+  async function clearHeard(kind){
+    if (!runtimeConfig) throw new Error('Runtime config not loaded yet');
+    const ax = runtimeConfig.alexa || {};
+    const nextAlexa = { ...ax };
+    if (kind === 'artist') nextAlexa.heardArtists = [];
+    if (kind === 'album') nextAlexa.heardAlbums = [];
+    if (kind === 'playlist') nextAlexa.heardPlaylists = [];
+    await postRuntime(nextAlexa);
+    status(`Cleared recently heard ${kind}s.`);
+    await load();
+  }
+
+  $('saveSettingsBtn')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    try {
+      await withButtonFeedback(btn, () => saveSettings(), { busy: 'Saving…', done: 'Saved ✓' });
+    } catch (e) {
+      status(`Error: ${e.message || e}`);
+    }
+  });
+
+  $('clearHeardArtistsBtn')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    if (!confirm('Clear recently heard artists list?')) return;
+    try { await withButtonFeedback(btn, () => clearHeard('artist'), { idle: 'Clear', busy: 'Clearing…', done: 'Cleared ✓' }); }
+    catch (e) { status(`Error: ${e.message || e}`); }
+  });
+  $('clearHeardAlbumsBtn')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    if (!confirm('Clear recently heard albums list?')) return;
+    try { await withButtonFeedback(btn, () => clearHeard('album'), { idle: 'Clear', busy: 'Clearing…', done: 'Cleared ✓' }); }
+    catch (e) { status(`Error: ${e.message || e}`); }
+  });
+  $('clearHeardPlaylistsBtn')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    if (!confirm('Clear recently heard playlists list?')) return;
+    try { await withButtonFeedback(btn, () => clearHeard('playlist'), { idle: 'Clear', busy: 'Clearing…', done: 'Cleared ✓' }); }
+    catch (e) { status(`Error: ${e.message || e}`); }
+  });
+
+  $('saveAliasesBtn')?.addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    try {
+      setAliasesSaveNote('');
+      await withButtonFeedback(btn, () => saveAliases(), { busy: 'Saving…', done: 'Saved ✓' });
+    } catch (e) {
+      setAliasesSaveNote(`Save failed: ${e.message || e}`, false);
+      status(`Error: ${e.message || e}`);
+    }
+  });
 
   document.addEventListener('click', async (ev) => {
     const btn = ev.target && ev.target.closest ? ev.target.closest('button[data-fix-type]') : null;
