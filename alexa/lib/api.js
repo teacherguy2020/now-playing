@@ -123,7 +123,7 @@ function createApiClient(config) {
     const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
     return httpRequestJson('POST', url, {
       headers,
-      bodyObj: { artist },
+      bodyObj: { artist, shuffle: true },
       timeoutMs: HTTP_TIMEOUT_MS,
     });
   }

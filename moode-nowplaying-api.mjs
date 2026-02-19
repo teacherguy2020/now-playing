@@ -3807,20 +3807,37 @@ app.post('/mpd/play-artist', async (req, res) => {
 
     let added = finalFiles.length;
 
-    // If random is enabled, randomize queue head without starting local playback.
+    // Shuffle behavior for artist queues:
+    // - Explicit request body { shuffle:true } always shuffles (preferred for Alexa)
+    // - Otherwise preserve prior behavior: if MPD random is enabled, randomize head only.
     let randomizedHeadFromPos = null;
+    let shuffledQueue = false;
+    const shuffleRequested = String(req.body?.shuffle ?? '').toLowerCase() === 'true'
+      || req.body?.shuffle === true
+      || req.body?.shuffle === 1;
+
     const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
     const randomOn = String(stPrime.random || '0').trim() === '1';
     const hasPodcastGenre = finalFiles.some((r) => isPodcastLikeGenre([r.genre, r.genresort].filter(Boolean).join(' | ')));
-    if (randomOn && added > 1 && !hasPodcastGenre) {
-      try {
-        const fromPos = Math.floor(Math.random() * added);
-        if (fromPos > 0) {
-          await mpdQueryRaw(`move ${fromPos} 0`);
-          randomizedHeadFromPos = fromPos;
+
+    if (added > 1 && !hasPodcastGenre) {
+      if (shuffleRequested) {
+        try {
+          await mpdQueryRaw('shuffle');
+          shuffledQueue = true;
+        } catch (e) {
+          log.debug('[play-artist] shuffle failed', { artist, msg: e?.message || String(e) });
         }
-      } catch (e) {
-        log.debug('[play-artist] random head move failed', { artist, msg: e?.message || String(e) });
+      } else if (randomOn) {
+        try {
+          const fromPos = Math.floor(Math.random() * added);
+          if (fromPos > 0) {
+            await mpdQueryRaw(`move ${fromPos} 0`);
+            randomizedHeadFromPos = fromPos;
+          }
+        } catch (e) {
+          log.debug('[play-artist] random head move failed', { artist, msg: e?.message || String(e) });
+        }
       }
     }
 
@@ -3849,6 +3866,7 @@ app.post('/mpd/play-artist', async (req, res) => {
       removedHoliday,
       removedRating1,
       hasPodcastGenre,
+      shuffledQueue,
       randomizedHeadFromPos,
       nowPlaying: {
         file: head.file || '',
