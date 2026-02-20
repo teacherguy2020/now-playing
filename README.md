@@ -1,6 +1,8 @@
+![Index screenshot](index.jpeg)
+
 # now-playing
 
-A moOde-focused now-playing API + UI stack with optional Alexa integration that you run on a separate. The project began as a way to display enhanced information on a dedicated display (like your TV), especially useful if you like to have Peppymeter running on your moOde box! The project grew from there to add library maintance tools, a full podcasts module, ratings support and more. 
+A moOde-focused now-playing API + UI stack with optional Alexa integration that you run on a separate pi. The project began as a way to display enhanced information (like performers) on a dedicated display (like your TV), especially useful if you like to have Peppymeter running on your moOde box! The project grew from there to add library maintance tools, a full podcasts module, ratings support and more. 
 
 Note: Heavily vibe-coded with openclaw/chatGPT.
 
