@@ -3,6 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script id="shell-redirect">
+    (function(){
+      try {
+        if (window.top !== window.self) return;
+        const file = String(location.pathname.split('/').pop() || 'config.html');
+        const app = new URL('app.html', location.href);
+        app.searchParams.set('page', file);
+        location.replace(app.toString());
+      } catch (_) {}
+    })();
+  </script>
   <title>Now-Playing Configuration</title>
   <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
@@ -22,15 +33,16 @@
     .cfgRow { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .cfgActions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
     .cfgHint { font-size:12px; opacity:.8; }
-    .tripleCards { grid-column: 1 / -1; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px; align-items:stretch; }
+    .tripleCards { grid-column: 1 / -1; display:grid; grid-template-columns: repeat(2,minmax(320px,1fr)); gap:14px; align-items:stretch; }
     .tripleCards > .cfgCard { height: 100%; }
-    .splitCards { grid-column: 1 / -1; display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-items:start; }
-    .splitCardsRight { display:grid; gap:14px; align-items:start; }
+    .splitCards { grid-column: 1 / -1; display:grid; grid-template-columns: repeat(2,minmax(320px,1fr)); gap:14px; align-items:start; }
+    .splitCardsRight { display: contents; }
     @media (max-width: 1100px) {
       .tripleCards { grid-template-columns: 1fr; }
     }
     @media (max-width: 980px) {
       .splitCards { grid-template-columns: 1fr; }
+      .splitCardsRight { display:grid; gap:14px; align-items:start; }
     }
     input[type="checkbox"] { appearance: auto !important; -webkit-appearance: checkbox !important; }
     pre#out {
@@ -818,6 +830,10 @@ async function loadCfg(){
   document.getElementById('alexaDomain').value = c.alexa?.publicDomain || '';
   syncAlexaCardVisibility();
   syncAlexaDomainUi();
+  // Auto-verify domain so the light reflects reachability (green when reachable).
+  if (c.alexa?.enabled && String(c.alexa?.publicDomain || '').trim() && getTrackKey()) {
+    setTimeout(() => { checkAlexaDomain().catch(() => {}); }, 0);
+  }
   syncPodcastsUi();
 
   const hasPushover = !!(String(c.notifications?.pushover?.token || '').trim() || String(c.notifications?.pushover?.userKey || '').trim() || c.notifications?.trackNotify?.enabled);
@@ -1717,8 +1733,6 @@ const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
   });
 })();
 </script>
-
-<script src="scripts/hero-transport.js?v=20260218-76"></script>
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
 
 
@@ -1734,6 +1748,59 @@ const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
     const enabled = !!(r.ok && j?.ok && j?.config?.features?.podcasts);
     if (!enabled) link.style.display = 'none';
   } catch (_) {}
+})();
+</script>
+
+<script>
+(function arrangeFeatureCards(){
+  const triple = document.querySelector('.tripleCards');
+  const split = document.querySelector('.splitCards');
+  const pushover = document.getElementById('pushoverCard');
+  const ratings = document.getElementById('ratingsCard');
+  const alexa = document.getElementById('alexaCard');
+  const animated = document.getElementById('animatedArtCard');
+  if (!triple || !split || !pushover || !ratings || !alexa || !animated) return;
+  try {
+    // Put Alexa in the upper section (fills the blank beside Last.fm).
+    // Then place Ratings where Alexa was in the lower section.
+    triple.appendChild(alexa);
+
+    // Lower section order:
+    // row1: Pushover | Ratings
+    // row2: Animated Art
+    split.appendChild(pushover);
+    split.appendChild(ratings);
+    split.appendChild(animated);
+  } catch (_) {}
+})();
+</script>
+<script id="embedded-shell-strip">
+(function(){
+  if (window.top === window.self) return;
+  function stripShellChrome(){
+    document.querySelectorAll('.preHeroStatusWrap').forEach((el)=>el.remove());
+    document.body.classList.add('embeddedShell');
+
+    // Some pages (notably config) keep main content inside .heroRail/.heroWrap.
+    // Remove only chrome elements, not containers that may hold page content.
+    document.querySelectorAll('.heroRail .topTabs, .heroRail header, .heroRail .heroTransportRow, .heroRail #themeToggle').forEach((el)=>el.remove());
+
+    if (!document.getElementById('embeddedShellStyle')) {
+      const st = document.createElement('style');
+      st.id = 'embeddedShellStyle';
+      st.textContent = [
+        'html, body { margin: 0 !important; }',
+        '.heroRail { background: transparent !important; border: 0 !important; box-shadow: none !important; }',
+        '.heroWrap { max-width: 100% !important; margin: 0 !important; padding: 0 8px !important; box-sizing: border-box; }',
+        '.wrap, .cfgWrap { max-width: 100% !important; width: calc(100% - 16px) !important; margin: 0 auto !important; padding: 12px 8px 10px !important; box-sizing: border-box; }',
+        '.panel { margin: 0 !important; padding-top: 8px !important; }',
+        '.panel, .cfgGrid, .card, .cfgCard { box-sizing: border-box; }'
+      ].join('\n');
+      document.head.appendChild(st);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', stripShellChrome);
+  else stripShellChrome();
 })();
 </script>
 </body>

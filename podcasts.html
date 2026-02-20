@@ -3,11 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script id="shell-redirect">
+    (function(){
+      try {
+        if (window.top !== window.self) return;
+        const file = String(location.pathname.split('/').pop() || 'config.html');
+        const app = new URL('app.html', location.href);
+        app.searchParams.set('page', file);
+        location.replace(app.toString());
+      } catch (_) {}
+    })();
+  </script>
   <title>moOde Podcasts Add-On</title>
 
   <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260211-1" />
   <style>
+    .subsShell{margin-top:10px;}
+    #podcastsQueuePanel{background:#101c33 !important;border:1px solid #2a3a58 !important;border-radius:18px !important;padding:12px !important;overflow:visible !important;cursor:default !important;}
+    #podcastsQueuePanel:hover{background:#101c33 !important;border-color:#2a3a58 !important;}
     body.theme-light .subsScroll,
     body.theme-light .subsWrap{ background:transparent !important; }
 
@@ -156,14 +170,6 @@
         </div>
       </section>
 
-      <section class="panel" id="podcastsQueuePanel" style="margin-top:10px;">
-        <div class="subsHeader" style="margin-bottom:8px;">
-          <div class="h">Current Queue</div>
-          <div class="hint">Tap row to play • ↑/↓ to reorder</div>
-        </div>
-        <div id="queueWrap"><div class="muted">Loading queue…</div></div>
-      </section>
-
       <pre id="log" aria-label="Request log"></pre>
       <div class="divider" aria-hidden="true"></div>
     </div>
@@ -212,9 +218,7 @@
     </div>
   </div>
 
-  <script src="scripts/podcasts.js?v=20260218-6"></script>
-
-<script src="scripts/hero-transport.js?v=20260218-76"></script>
+  <script src="scripts/podcasts.js?v=20260220-7"></script>
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
 
 <script>
@@ -229,6 +233,36 @@
     const enabled = !!(r.ok && j?.ok && j?.config?.features?.podcasts);
     if (!enabled) link.style.display = 'none';
   } catch (_) {}
+})();
+</script>
+<script id="embedded-shell-strip">
+(function(){
+  if (window.top === window.self) return;
+  function stripShellChrome(){
+    document.querySelectorAll('.preHeroStatusWrap').forEach((el)=>el.remove());
+    document.body.classList.add('embeddedShell');
+
+    // Some pages (notably config) keep main content inside .heroRail/.heroWrap.
+    // Remove only chrome elements, not containers that may hold page content.
+    document.querySelectorAll('.heroRail .topTabs, .heroRail header, .heroRail .heroTransportRow, .heroRail #themeToggle').forEach((el)=>el.remove());
+
+    if (!document.getElementById('embeddedShellStyle')) {
+      const st = document.createElement('style');
+      st.id = 'embeddedShellStyle';
+      st.textContent = [
+        'html, body { margin: 0 !important; }',
+        '.heroRail { background: transparent !important; border: 0 !important; box-shadow: none !important; }',
+        '.heroWrap, .subsWrap { max-width: 100% !important; width: 100% !important; margin: 0 !important; box-sizing: border-box; }',
+        '.heroWrap { padding: 10px 18px 0 !important; }',
+        '.subsWrap { padding: 14px 18px 0 !important; }',
+        '.wrap, .cfgWrap { max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 12px 18px !important; box-sizing: border-box; }',
+        '.panel, .cfgGrid, .card, .cfgCard { box-sizing: border-box; }'
+      ].join('\n');
+      document.head.appendChild(st);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', stripShellChrome);
+  else stripShellChrome();
 })();
 </script>
 </body>

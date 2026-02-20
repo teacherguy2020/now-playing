@@ -1,5 +1,6 @@
 (() => {
   const $ = (id) => document.getElementById(id);
+  const dbg = () => {};
   let ratingsEnabled = true;
   let queuePlayPauseMode = 'play';
   let queueLoadInFlight = false;
@@ -210,18 +211,45 @@
   }
 
   function refreshLiveFrame(uiPort = 8101){
+    dbg(`refreshLiveFrame(uiPort=${uiPort})`);
     const host = location.hostname || '10.0.0.233';
     const proto = location.protocol || 'http:';
-    const url = `${proto}//${host}:${uiPort}/index.html`;
+    const sameOriginIndex1080 = new URL('index1080.html', location.href).toString();
+    const uiPathPrefix = String(location.pathname || '/').replace(/[^/]*$/, '');
+    const fallbackIndex1080 = `${proto}//${host}:${uiPort}${uiPathPrefix}index1080.html`;
     const fr = $('liveFrame');
     const a = $('openLiveLink');
-    if (fr) fr.src = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+    const dbgEl = $('liveFrameDebug');
+
+    const preferSameOrigin = (window.top !== window.self) || (Number(location.port || 0) === Number(uiPort));
+    const url = preferSameOrigin ? sameOriginIndex1080 : fallbackIndex1080;
+    const target = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
+
+    if (fr) {
+      fr.onload = () => {
+        try {
+          const title = String(fr.contentDocument?.title || '');
+          const href = String(fr.contentWindow?.location?.href || fr.src || '');
+          dbg(`liveFrame onload | title="${title}" | href=${href}`);
+        } catch (e) {
+          dbg(`liveFrame onload | (inaccessible) | src=${fr.src} | err=${e?.message || e}`);
+        }
+      };
+      fr.onerror = () => {
+        dbg(`liveFrame onerror | src=${fr.src}`);
+      };
+      fr.src = target;
+      dbg(`loading ${target}`);
+    } else {
+      dbg('liveFrame missing in DOM');
+    }
     if (a) a.href = url;
     applyLiveZoom();
   }
 
   async function loadRuntime(){
     const host = location.hostname || '10.0.0.233';
+    dbg('loadRuntime start');
     try {
       const r = await fetch(`${apiBaseDefault()}/config/runtime`, { cache: 'no-store' });
       const j = await r.json().catch(() => ({}));
@@ -230,24 +258,26 @@
       const apiPort = Number(cfg?.ports?.api || 3101);
       const uiPort = Number(cfg?.ports?.ui || 8101);
       const base = `${location.protocol}//${host}:${apiPort}`;
-      $('apiBase').value = base;
-      $('key').value = String(cfg?.trackKey || '').trim();
-      $('apiHint').textContent = `${host}:${apiPort}`;
-      $('webHint').textContent = `${host}:${uiPort}`;
+      if ($('apiBase')) $('apiBase').value = base;
+      if ($('key')) $('key').value = String(cfg?.trackKey || '').trim();
+      if ($('apiHint')) $('apiHint').textContent = `${host}:${apiPort}`;
+      if ($('webHint')) $('webHint').textContent = `${host}:${uiPort}`;
       const axEnabled = !!cfg?.alexa?.enabled;
       const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
       const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || cfg?.mpdHost || '').trim();
       ratingsEnabled = Boolean(cfg?.features?.ratings ?? true);
-      $('alexaHint').textContent = !axEnabled ? 'disabled' : (axDomain ? 'moode.••••••••.com' : 'missing domain');
+      if ($('alexaHint')) $('alexaHint').textContent = !axEnabled ? 'disabled' : (axDomain ? 'moode.••••••••.com' : 'missing domain');
       if ($('moodeHint')) $('moodeHint').textContent = moodeHost ? `confirmed (${moodeHost})` : 'not verified';
       setPillState('apiPill','ok'); setPillState('webPill','ok'); setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn')); setPillState('moodePill', moodeHost ? 'ok' : 'warn');
+      dbg(`loadRuntime ok api=${apiPort} ui=${uiPort}`);
       refreshLiveFrame(uiPort);
       loadQueue();
-    } catch {
-      $('apiBase').value = apiBaseDefault();
-      $('apiHint').textContent = $('apiBase').value.replace(/^https?:\/\//,'');
-      $('webHint').textContent = `${host}:8101`;
-      $('alexaHint').textContent = 'unknown';
+    } catch (e) {
+      dbg(`loadRuntime error: ${e?.message || e}`);
+      if ($('apiBase')) $('apiBase').value = apiBaseDefault();
+      if ($('apiHint')) $('apiHint').textContent = String($('apiBase')?.value || apiBaseDefault()).replace(/^https?:\/\//,'');
+      if ($('webHint')) $('webHint').textContent = `${host}:8101`;
+      if ($('alexaHint')) $('alexaHint').textContent = 'unknown';
       if ($('moodeHint')) $('moodeHint').textContent = 'not verified';
       setPillState('apiPill','bad'); setPillState('webPill','warn'); setPillState('alexaPill','warn'); setPillState('moodePill','warn');
       refreshLiveFrame(8101);
@@ -515,7 +545,7 @@
     }
   }
 
-  $('runBtn').addEventListener('click', () => run());
+  $('runBtn')?.addEventListener('click', () => run());
   $('reloadLiveBtn')?.addEventListener('click', () => loadRuntime());
   $('liveZoom')?.addEventListener('input', applyLiveZoom);
   $('queueWrap')?.addEventListener('click', (ev) => {
@@ -700,7 +730,7 @@
     hydrateEndpoints();
   }
 
-  $('copyBtn').addEventListener('click', copyResponse);
+  $('copyBtn')?.addEventListener('click', copyResponse);
   $('copyBtnCard')?.addEventListener('click', copyResponse);
   $('copyCurlBtn')?.addEventListener('click', copyAsCurl);
   $('favBtn')?.addEventListener('click', toggleFavorite);
@@ -737,6 +767,8 @@
     if (typeof state.useTrackKey === 'boolean' && $('useTrackKey')) {
       $('useTrackKey').checked = state.useTrackKey;
     }
+    // Prime live preview immediately, even if runtime fetch is slow/failing.
+    try { refreshLiveFrame(8101); } catch (e) { dbg(`prime refresh error: ${e?.message || e}`); }
     await loadRuntime();
     await loadEndpointCatalog();
     hydrateEndpoints();

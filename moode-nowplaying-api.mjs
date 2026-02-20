@@ -4403,11 +4403,26 @@ app.get('/now-playing', async (req, res) => {
 
     const blob = [a, t, al, enc, st].join(' | ').toLowerCase();
 
-    const talkish = [
-      ' talk ', 'news', ' sports', 'sportstalk', 'espn', 'npr', 'hour',
-      'podcast', 'weather', 'traffic', 'headline', 'commentary', 'interview',
-      'morning show', 'afternoon show', 'drive time', 'play-by-play'
-    ].some(k => blob.includes(k));
+    const talkishPatterns = [
+      /(^|\W)talk(\W|$)/i,
+      /(^|\W)news(\W|$)/i,
+      /(^|\W)sports?(\W|$)/i,
+      /sportstalk/i,
+      /(^|\W)espn(\W|$)/i,
+      /(^|\W)npr(\W|$)/i,
+      /(^|\W)hour(\W|$)/i,
+      /podcast/i,
+      /weather/i,
+      /traffic/i,
+      /headline/i,
+      /commentary/i,
+      /interview/i,
+      /morning\s+show/i,
+      /afternoon\s+show/i,
+      /drive\s*time/i,
+      /play-by-play/i,
+    ];
+    const talkish = talkishPatterns.some((re) => re.test(blob));
 
     if (talkish) return { allow: false, reason: 'talk-news-sports' };
 
@@ -4436,7 +4451,7 @@ app.get('/now-playing', async (req, res) => {
     const composerLike = /^[A-Za-zÀ-ÿ'’.-]+(?:\s+[A-Za-zÀ-ÿ'’.-]+){0,7}$/.test(composerBase);
     if (composerLike) {
       // e.g. "... Op. 7-Isata Kanneh-Mason, p; Royal Liverpool Phil Orch/Holly..."
-      const soloistMatch = t.match(/^(.*?)\s*-\s*([^,;\/\-]+?)\s*,\s*(?:p|pf|pno|vn|vln|vc|cello|soprano|mezzo|tenor|baritone)\b/i);
+      const soloistMatch = t.match(/^(.*?)\s*-\s*([^,;\/\-]+?)\s*,\s*(?:h|hp|harp|p|pf|pno|vn|vln|vc|cello|soprano|mezzo|tenor|baritone)\b/i);
       if (soloistMatch) {
         const work = String(soloistMatch[1] || '').trim();
         const soloist = String(soloistMatch[2] || '').trim();

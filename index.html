@@ -5,6 +5,45 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Now Playing</title>
+  <style>html,body{background:#000;color:#fff;}</style>
+  <script>
+    // Fallbacks for embedded preview mode.
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        const embedded = (window.top !== window.self);
+        if (embedded) {
+          const host = location.hostname || '10.0.0.233';
+          const proto = location.protocol || 'http:';
+          const b = document.body;
+          const c = document.getElementById('content');
+          const bgA = document.getElementById('background-a');
+          const bgB = document.getElementById('background-b');
+
+          // Ensure background layers are actually visible in iframe context.
+          if (b) b.style.background = 'transparent';
+          if (c) { c.style.position = 'relative'; c.style.zIndex = '1'; }
+          if (bgA) { bgA.style.zIndex = '0'; bgA.style.opacity = '1'; }
+          if (bgB) { bgB.style.zIndex = '0'; bgB.style.opacity = '0'; }
+
+          // Use current art and let CSS blur/filter create the backdrop.
+          if (bgA && !bgA.style.backgroundImage) {
+            bgA.style.backgroundImage = `url(${proto}//${host}:3101/art/current.jpg?t=${Date.now()})`;
+          }
+        }
+      } catch (_) {}
+
+      // If boot JS errors, don't leave preview on a blank/white boot screen.
+      setTimeout(() => {
+        try {
+          const b = document.body;
+          if (b && b.classList.contains('booting')) {
+            b.classList.remove('booting');
+            b.classList.add('ready');
+          }
+        } catch (_) {}
+      }, 1800);
+    });
+  </script>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 

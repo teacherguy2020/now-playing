@@ -443,6 +443,7 @@ epList.addEventListener('click', async (e) => {
     try {
       queueBtn.disabled = true;
       await apiPost('/mpd/add-file', { file });
+      await loadQueueCard();
       const row = queueBtn.closest('.epRow');
       const epTitle = String(row?.querySelector('.epTitle')?.textContent || '').trim();
       modalHint.textContent = epTitle ? `Added to queue: ${epTitle}` : 'Added to queue.';

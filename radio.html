@@ -3,6 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script id="shell-redirect">
+    (function(){
+      try {
+        if (window.top !== window.self) return;
+        const file = String(location.pathname.split('/').pop() || 'config.html');
+        const app = new URL('app.html', location.href);
+        app.searchParams.set('page', file);
+        location.replace(app.toString());
+      } catch (_) {}
+    })();
+  </script>
   <title>Radio</title>
   <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
@@ -45,41 +56,6 @@
   </style>
 </head>
 <body>
-  <div class="preHeroStatusWrap">
-    <div class="preHeroStatus">
-      <div class="pill" id="apiPill"><span class="dot" aria-hidden="true"></span>API: <span id="apiHint">loading…</span></div>
-      <div class="pill" id="webPill"><span class="dot" aria-hidden="true"></span>Web: <span id="webHint">loading…</span></div>
-      <div class="pill" id="moodePill"><span class="dot" aria-hidden="true"></span>moOde: <span id="moodeHint">unknown</span></div>
-      <div class="pill" id="alexaPill"><span class="dot" aria-hidden="true"></span>Alexa: <span id="alexaHint">unknown</span></div>
-    </div>
-  </div>
-
-  <div class="heroRail">
-    <div class="heroWrap">
-      <div style="display:flex;gap:10px;justify-content:flex-start;align-items:flex-end;flex-wrap:wrap;">
-        <nav class="topTabs" aria-label="Main pages" style="margin-bottom:0;">
-          <a href="config.html">Config</a>
-          <a href="diagnostics.html">Diagnostics</a>
-          <a href="alexa.html">Alexa</a>
-          <a href="library-health.html">Library Health</a>
-          <a href="queue-wizard.html">Queue Wizard</a>
-          <a href="radio.html" class="active">Radio</a>
-          <a href="podcasts.html" id="podcastsNavLink">Podcasts</a>
-        </nav>
-      </div>
-      <header>
-        <div class="brand">
-          <h1>Radio</h1>
-          <div class="sub">Station-native management: genres, favorites, quality, presets, and queue send.</div>
-        </div>
-        <button id="themeToggle" class="heroThemeToggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme" style="position:absolute;top:12px;right:16px;z-index:12;">🌙</button>
-      </header>
-      <div class="heroTransportRow">
-        <div id="heroTransport" class="heroTransport"><span class="muted">Now Playing · loading…</span></div>
-      </div>
-    </div>
-  </div>
-
   <div class="wrap">
     <section class="card">
       <div class="muted">Filter stations, assign favorites with ♥, and send selected stations to moOde queue.</div>
@@ -113,7 +89,6 @@
   </div>
 
   <script src="scripts/theme-toggle.js?v=20260217-1"></script>
-  <script src="scripts/hero-transport.js?v=20260218-76"></script>
   <script src="scripts/radio.js?v=20260217-14"></script>
 </body>
 </html>

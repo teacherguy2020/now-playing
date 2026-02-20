@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Now Playing</title>
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
+  <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
+  <style>
+    body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    .viewWrap{max-width:1080px;width:min(1080px, calc(100vw - 24px));margin:0 auto;padding:2px 0 14px;box-sizing:border-box}
+    #appFrame{width:100% !important;height:calc(100vh - 220px);min-height:720px;border:1px solid #2a3a58;border-radius:14px;background:#071021;display:block;box-sizing:border-box}
+    #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
+    /* In app-shell mode, let top chrome scroll away (not sticky) to maximize iframe area */
+    .preHeroStatusWrap,
+    .heroRail{position:relative !important; top:auto !important;}
+    .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important;}
+    .heroQueueCard{margin-top:10px;border:1px solid #2a3a58;border-radius:14px;padding:10px;background:rgba(10,18,34,.45)}
+    .heroQueueHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .heroQueueTitle{color:#9fb1d9;font-size:12px}
+    .heroQueueWrap{overflow:visible;border:1px solid #2a3a58;border-radius:10px;padding:8px;background:#071021}
+    .heroQueueRow{display:flex;gap:8px;align-items:center;padding:6px;border-bottom:1px dashed #233650}
+    .heroQueueRow:last-child{border-bottom:none}
+    .heroQueueMeta{color:#9fb1d9;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .heroQueueActions{display:flex;gap:4px;margin-left:auto}
+    .heroQueueBtn,
+    .heroQueueActions button{padding:4px 8px;border-radius:7px;border:1px solid #334;background:#0a1222;color:#eef;cursor:pointer;transition:all .12s ease}
+    .heroQueueBtn{padding:6px 10px;border-radius:8px}
+    .heroQueueBtn:hover,
+    .heroQueueActions button:hover{background:#12203c;border-color:#4b5f86;box-shadow:0 0 0 1px rgba(125,211,252,.25) inset}
+    .heroQueueBtn:active,
+    .heroQueueActions button:active{transform:scale(.97);background:#16294b;border-color:#7dd3fc;box-shadow:0 0 0 2px rgba(125,211,252,.35) inset}
+  </style>
+</head>
+<body>
+  <div class="preHeroStatusWrap">
+    <div class="preHeroStatus">
+      <div class="pill" id="apiPill" title="Active API endpoint"><span class="dot" aria-hidden="true"></span>API: <span id="apiHint">loading…</span></div>
+      <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot" aria-hidden="true"></span>Web: <span id="webHint">loading…</span></div>
+      <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot" aria-hidden="true"></span>Alexa: <span id="alexaHint">unknown</span></div>
+      <div class="pill" id="moodePill" title="moOde host verification"><span class="dot" aria-hidden="true"></span>moOde: <span id="moodeHint">unknown</span></div>
+    </div>
+  </div>
+
+  <div class="heroRail">
+    <div class="heroWrap">
+      <div style="display:flex;gap:10px;justify-content:flex-start;align-items:flex-end;flex-wrap:wrap;">
+        <nav class="topTabs" aria-label="Main pages" style="margin-bottom:0;" id="appTabs">
+          <a href="?page=config.html" data-page="config.html">Config</a>
+          <a href="?page=diagnostics.html" data-page="diagnostics.html">Diagnostics</a>
+          <a href="?page=alexa.html" data-page="alexa.html">Alexa</a>
+          <a href="?page=library-health.html" data-page="library-health.html">Library Health</a>
+          <a href="?page=queue-wizard.html" data-page="queue-wizard.html">Queue Wizard</a>
+          <a href="?page=radio.html" data-page="radio.html">Radio</a>
+          <a href="?page=podcasts.html" id="podcastsNavLink" data-page="podcasts.html">Podcasts</a>
+        </nav>
+        <button id="themeToggle" class="heroThemeToggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme" style="position:absolute;top:12px;right:16px;z-index:12;">🌙</button>
+      </div>
+      <header>
+        <div class="brand">
+          <h1>Now Playing</h1>
+          <div class="sub">Unified shell • persistent transport • no hero reload on tab switch</div>
+        </div>
+      </header>
+      <div class="heroTransportRow">
+        <div id="heroTransport" class="heroTransport"><span class="muted">Now Playing · loading…</span></div>
+      </div>
+      <div class="heroQueueCard" id="heroQueueCard">
+        <div class="heroQueueHead">
+          <div class="heroQueueTitle">Current Queue</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button id="heroQueueClear" class="heroQueueBtn" type="button">Clear</button>
+            <button id="heroQueueCrop" class="heroQueueBtn" type="button">Crop</button>
+            <button id="heroQueueToggle" class="heroQueueBtn" type="button">Collapse</button>
+          </div>
+        </div>
+        <div class="heroQueueWrap" id="heroQueueWrap"><div class="heroQueueMeta">Loading queue…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="viewWrap" id="viewWrap">
+    <iframe id="appFrame" title="Now Playing view" src="about:blank" scrolling="no" style="width:100%;display:block;"></iframe>
+  </div>
+
+  <script src="scripts/hero-transport.js?v=20260218-76"></script>
+  <script src="scripts/theme-toggle.js?v=20260216-1"></script>
+  <script>
+    (() => {
+      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html']);
+      const frame = document.getElementById('appFrame');
+      const viewWrap = document.getElementById('viewWrap');
+      const tabs = Array.from(document.querySelectorAll('#appTabs a[data-page]'));
+
+      function syncFrameWidth(){
+        try {
+          const heroWrap = document.querySelector('.heroWrap');
+          const targetW = Math.max(320, Math.min(1080, Math.floor(heroWrap?.clientWidth || (window.innerWidth - 24))));
+          if (viewWrap) viewWrap.style.width = `${targetW}px`;
+          if (frame) frame.style.width = '100%';
+        } catch {}
+      }
+
+      function normalizeEmbeddedDoc(){
+        try {
+          const doc = frame?.contentDocument;
+          if (!doc) return;
+          if (doc.getElementById('appShellNormalizeStyle')) return;
+          const currentSrc = String(frame?.getAttribute('src') || '');
+          const isConfig = currentSrc.includes('config.html');
+          const isPodcasts = currentSrc.includes('podcasts.html');
+          const isQueueWizard = currentSrc.includes('queue-wizard.html');
+          const st = doc.createElement('style');
+          st.id = 'appShellNormalizeStyle';
+          st.textContent = [
+            'html, body { margin: 0 !important; overflow-x: hidden !important; }',
+            '.preHeroStatusWrap { display:none !important; }',
+            '.heroRail { background: transparent !important; border: 0 !important; box-shadow: none !important; position: relative !important; top: auto !important; }',
+            '.heroRail::before { content:none !important; display:none !important; }',
+            '.heroRail .topTabs, .heroRail header, .heroRail .heroTransportRow, .heroRail #themeToggle { display:none !important; }',
+            '.heroWrap, .wrap, .cfgWrap, .subsWrap { max-width: 100% !important; width: calc(100% - 16px) !important; margin: 0 auto !important; box-sizing: border-box !important; }',
+            '.heroWrap { padding: 12px 8px 0 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }',
+            '.wrap, .cfgWrap, .subsWrap { padding: 12px 8px 10px !important; }',
+            '.panel { margin: 0 !important; padding-top: 8px !important; }',
+            '.card, .cfgCard, .panel, .subsShell { box-sizing: border-box !important; }',
+            (isConfig
+              ? '.panel{background:transparent !important;border:0 !important;box-shadow:none !important;padding-top:0 !important;} .cfgWrap{padding-top:0 !important;} .tripleCards,.splitCards{grid-template-columns:repeat(2,minmax(320px,1fr)) !important;} .splitCardsRight{display:contents !important;}'
+              : ''),
+            (isQueueWizard
+              ? '.heroRail,.heroWrap{display:none !important;}'
+              : ''),
+            (isPodcasts
+              ? '.heroWrap{padding-top:10px !important;}'
+              : '')
+          ].join('\n');
+          doc.head.appendChild(st);
+        } catch {}
+      }
+
+      function syncFrameHeight(){
+        try {
+          if (!frame) return;
+          const doc = frame.contentDocument;
+          const win = frame.contentWindow;
+          if (!doc || !win) return;
+          normalizeEmbeddedDoc();
+          const b = doc.body;
+          const e = doc.documentElement;
+          if (b) b.style.overflow = 'visible';
+          if (e) e.style.overflow = 'visible';
+          const contentH = Math.max(
+            b ? b.scrollHeight : 0,
+            b ? b.offsetHeight : 0,
+            e ? e.scrollHeight : 0,
+            e ? e.offsetHeight : 0,
+            e ? e.clientHeight : 0
+          );
+          const minH = Math.max(720, Math.floor(window.innerHeight - 220));
+          frame.style.height = `${Math.max(minH, contentH + 8)}px`;
+        } catch {}
+      }
+
+      function setPillState(pillId, state){
+        const map = { ok:{c:'#22c55e',b:'rgba(34,197,94,.55)'}, warn:{c:'#f59e0b',b:'rgba(245,158,11,.55)'}, bad:{c:'#ef4444',b:'rgba(239,68,68,.55)'}, off:{c:'#64748b',b:'rgba(100,116,139,.45)'} };
+        const s = map[state] || map.off;
+        const pill = document.getElementById(pillId); if (!pill) return;
+        const dot = pill.querySelector('.dot');
+        if (dot) { dot.style.background = s.c; dot.style.boxShadow = `0 0 0 6px ${s.b.replace('.55','.20')}`; }
+        pill.style.borderColor = s.b;
+      }
+
+      let runtimeTrackKey = '';
+
+      async function sendHeroPlayback(action, extra = null){
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        if (!runtimeTrackKey) {
+          const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+          const rj = await rr.json().catch(() => ({}));
+          runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+        }
+        const payload = Object.assign({ action }, extra || {});
+        const r = await fetch(`${base}/config/diagnostics/playback`, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+          body: JSON.stringify(payload),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        return j;
+      }
+
+      async function syncHeroQueue(){
+        try {
+          const host = location.hostname || '10.0.0.233';
+          const base = `${location.protocol}//${host}:3101`;
+          const wrap = document.getElementById('heroQueueWrap');
+          if (!wrap) return;
+
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+
+          const headers = runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {};
+          const r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          const items = (Array.isArray(j.items) ? j.items : []).map((it, idx) => {
+            const p = Number.isFinite(Number(it?.pos)) ? Number(it.pos)
+              : (Number.isFinite(Number(it?.position)) ? Number(it.position) : (idx + 1));
+            return { ...it, _posDisplay: p };
+          });
+          if (!items.length) { wrap.innerHTML = '<div class="heroQueueMeta">Queue is empty.</div>'; return; }
+          wrap.innerHTML = items.slice(0,12).map((x) => {
+            const pos = Number(x?._posDisplay || 0);
+            const head = !!x?.isHead;
+            const artist = String(x?.artist || x?.name || '').trim() || '(unknown)';
+            const title = String(x?.title || '').trim();
+            const thumbRaw = String(x?.thumbUrl || '').trim();
+            const thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
+            const thumbHtml = thumb
+              ? `<img src="${thumb}" alt="" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
+              : `<div style="width:28px;height:28px;border-radius:6px;border:1px solid #334;background:#0a1222;"></div>`;
+            const actions = `<div class="heroQueueActions"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
+            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div>${artist}</div><div class="heroQueueMeta">${title}</div></div>${actions}</div>`;
+          }).join('');
+        } catch (e) {
+          const wrap = document.getElementById('heroQueueWrap');
+          if (wrap) wrap.innerHTML = `<div class="heroQueueMeta">Queue load failed: ${String(e?.message || e)}</div>`;
+        }
+      }
+
+      async function syncPills(){
+        try {
+          const host = location.hostname || '10.0.0.233';
+          const base = `${location.protocol}//${host}:3101`;
+          const r = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) throw new Error('runtime unavailable');
+          const cfg = j.config || {};
+          const ports = cfg.ports || {};
+          const apiPort = Number(ports.api || 3101);
+          const uiPort = Number(ports.ui || 8101);
+          const axEnabled = !!cfg?.alexa?.enabled;
+          const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
+          const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || cfg?.mpdHost || '').trim();
+
+          const $ = (id) => document.getElementById(id);
+          if ($('apiHint')) $('apiHint').textContent = `${host}:${apiPort}`;
+          if ($('webHint')) $('webHint').textContent = `${host}:${uiPort}`;
+          if ($('alexaHint')) $('alexaHint').textContent = !axEnabled ? 'disabled' : (axDomain ? 'moode.••••••••.com' : 'missing domain');
+          if ($('moodeHint')) $('moodeHint').textContent = moodeHost ? `confirmed (${moodeHost})` : 'not verified';
+          setPillState('apiPill','ok');
+          setPillState('webPill','ok');
+          setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
+          setPillState('moodePill', moodeHost ? 'ok' : 'warn');
+
+          const podcastsLink = document.getElementById('podcastsNavLink');
+          if (podcastsLink && !cfg?.features?.podcasts) podcastsLink.style.display = 'none';
+        } catch {
+          setPillState('apiPill','bad');
+          setPillState('webPill','warn');
+          setPillState('alexaPill','warn');
+          setPillState('moodePill','warn');
+        }
+      }
+
+      function getPageFromUrl() {
+        const u = new URL(location.href);
+        const p = String(u.searchParams.get('page') || 'config.html').trim();
+        return VALID.has(p) ? p : 'config.html';
+      }
+
+      function setActive(page){
+        tabs.forEach((a) => a.classList.toggle('active', a.dataset.page === page));
+      }
+
+      function navigate(page, push = true){
+        const safe = VALID.has(page) ? page : 'config.html';
+        setActive(safe);
+        const src = `${safe}${safe.includes('?') ? '&' : '?'}shellts=${Date.now()}`;
+        frame.setAttribute('src', src);
+        if (push) {
+          const u = new URL(location.href);
+          u.searchParams.set('page', safe);
+          history.pushState({ page: safe }, '', u);
+        }
+        setTimeout(syncFrameHeight, 120);
+        setTimeout(syncFrameHeight, 500);
+      }
+
+      tabs.forEach((a) => a.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        navigate(a.dataset.page || 'config.html', true);
+      }));
+
+      window.addEventListener('popstate', () => navigate(getPageFromUrl(), false));
+      window.addEventListener('resize', () => { syncFrameWidth(); syncFrameHeight(); });
+      frame.addEventListener('load', () => {
+        syncFrameWidth();
+        syncFrameHeight();
+        setTimeout(syncFrameHeight, 250);
+        setTimeout(syncFrameHeight, 900);
+      });
+
+      const hqBtn = document.getElementById('heroQueueToggle');
+      const hqClear = document.getElementById('heroQueueClear');
+      const hqCrop = document.getElementById('heroQueueCrop');
+      const hqWrap = document.getElementById('heroQueueWrap');
+      if (hqBtn && hqWrap) {
+        let collapsed = false;
+        hqBtn.addEventListener('click', () => {
+          collapsed = !collapsed;
+          hqWrap.style.display = collapsed ? 'none' : '';
+          hqBtn.textContent = collapsed ? 'Expand' : 'Collapse';
+        });
+
+        hqClear?.addEventListener('click', async () => {
+          hqClear.disabled = true;
+          try { await sendHeroPlayback('clear'); } catch (_) {}
+          finally { hqClear.disabled = false; await syncHeroQueue(); }
+        });
+
+        hqCrop?.addEventListener('click', async () => {
+          hqCrop.disabled = true;
+          try { await sendHeroPlayback('crop'); } catch (_) {}
+          finally { hqCrop.disabled = false; await syncHeroQueue(); }
+        });
+
+        hqWrap.addEventListener('click', async (ev) => {
+          const el = ev.target instanceof Element ? ev.target : null;
+          if (!el) return;
+
+          const moveBtn = el.closest('button[data-move-pos][data-move-dir]');
+          if (moveBtn) {
+            ev.stopPropagation();
+            const fromPosition = Number(moveBtn.getAttribute('data-move-pos') || 0);
+            const dir = String(moveBtn.getAttribute('data-move-dir') || '');
+            if (!Number.isFinite(fromPosition) || fromPosition <= 0) return;
+            const toPosition = dir === 'up' ? (fromPosition - 1) : (fromPosition + 1);
+            if (toPosition <= 0) return;
+            moveBtn.disabled = true;
+            try { await sendHeroPlayback('move', { fromPosition, toPosition }); }
+            catch (_) {}
+            finally { moveBtn.disabled = false; await syncHeroQueue(); }
+            return;
+          }
+
+          const removeBtn = el.closest('button[data-remove-pos]');
+          if (removeBtn) {
+            ev.stopPropagation();
+            const pos = Number(removeBtn.getAttribute('data-remove-pos') || 0);
+            if (!Number.isFinite(pos) || pos <= 0) return;
+            removeBtn.disabled = true;
+            try { await sendHeroPlayback('remove', { position: pos }); }
+            catch (_) {}
+            finally { removeBtn.disabled = false; await syncHeroQueue(); }
+            return;
+          }
+
+          const row = el.closest('[data-queue-play-pos]');
+          if (!row) return;
+          const pos = Number(row.getAttribute('data-queue-play-pos') || 0);
+          if (!Number.isFinite(pos) || pos <= 0) return;
+          try { await sendHeroPlayback('playpos', { position: pos }); }
+          catch (_) {}
+          finally { await syncHeroQueue(); }
+        });
+      }
+
+      syncFrameWidth();
+      navigate(getPageFromUrl(), false);
+      syncPills();
+      syncHeroQueue();
+      setInterval(syncPills, 15000);
+      setInterval(syncHeroQueue, 7000);
+      setInterval(syncFrameHeight, 1200);
+    })();
+  </script>
+</body>
+</html>

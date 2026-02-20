@@ -224,6 +224,20 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.json({ ok: true, action, removedPosition: pos, randomOn, status: String(afterStatus || '') });
       }
 
+      if (action === 'clear') {
+        await execFileP('mpc', ['-h', mpdHost, 'clear']);
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, randomOn, status: String(afterStatus || '') });
+      }
+
+      if (action === 'crop') {
+        await execFileP('mpc', ['-h', mpdHost, 'crop']);
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, randomOn, status: String(afterStatus || '') });
+      }
+
       if (action === 'playpos') {
         const posRaw = Number(req.body?.position);
         const pos = Number.isFinite(posRaw) ? Math.max(1, Math.floor(posRaw)) : 0;
