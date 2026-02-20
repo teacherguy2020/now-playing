@@ -2082,6 +2082,12 @@ let alexaWasPlaying = {
   title: '',
   artist: '',
   album: '',
+  year: '',
+  date: '',
+  personnel: [],
+  rating: 0,
+  ratingFile: '',
+  ratingDisabled: false,
   startedAt: 0,
   stoppedAt: 0,
   active: false,
@@ -2106,12 +2112,15 @@ app.get('/alexa/was-playing', async (req, res) => {
     const ratingFile = String(wp.ratingFile || file || '').trim();
     const ratingDisabled = (typeof wp.ratingDisabled === 'boolean') ? !!wp.ratingDisabled : !ratingFile;
 
-    // now-playing-compatible payload (safe defaults)
+    const passthrough = {};
+    for (const [k, v] of Object.entries(wp || {})) {
+      if (['token', 'active', 'startedAt', 'stoppedAt', 'updatedAt'].includes(k)) continue;
+      if (typeof v === 'undefined') continue;
+      passthrough[k] = v;
+    }
+
+    // now-playing-compatible payload (safe defaults + passthrough parity)
     const nowPlaying = {
-      artist,
-      title,
-      album,
-      file,
       playbackUrl: '',
       songpos: '',
       songid: '',
@@ -2130,7 +2139,6 @@ app.get('/alexa/was-playing', async (req, res) => {
       radioAlbumUrl: '',
       radioLookupReason: '',
       radioLookupTerm: '',
-      state: (fresh && !!wp.active) ? 'play' : 'stop',
       elapsed: 0,
       duration: 0,
       percent: 0,
@@ -2154,6 +2162,12 @@ app.get('/alexa/was-playing', async (req, res) => {
       rating: ratingNum,
       ratingDisabled,
       ratingFile,
+      ...passthrough,
+      artist,
+      title,
+      album,
+      file,
+      state: (fresh && !!wp.active) ? 'play' : 'stop',
       alexaMode: true,
       fresh,
       ageMs,
@@ -2176,19 +2190,31 @@ app.post('/alexa/was-playing', async (req, res) => {
     const active = !!req.body?.active;
     const nowTs = Date.now();
 
+    const incoming = (req.body && typeof req.body === 'object') ? req.body : {};
+    const merged = { ...alexaWasPlaying };
+    for (const [k, v] of Object.entries(incoming)) {
+      if (['active', 'startedAt', 'stoppedAt', 'updatedAt'].includes(k)) continue;
+      if (typeof v === 'undefined') continue;
+      merged[k] = v;
+    }
+
     alexaWasPlaying = {
-      token: String(req.body?.token || alexaWasPlaying.token || '').trim(),
-      file: String(req.body?.file || alexaWasPlaying.file || '').trim(),
-      title: decodeHtmlEntities(String(req.body?.title || alexaWasPlaying.title || '').trim()),
-      artist: decodeHtmlEntities(String(req.body?.artist || alexaWasPlaying.artist || '').trim()),
-      album: decodeHtmlEntities(String(req.body?.album || alexaWasPlaying.album || '').trim()),
-      year: String(req.body?.year || alexaWasPlaying.year || '').trim(),
-      date: String(req.body?.date || alexaWasPlaying.date || '').trim(),
-      rating: Math.max(0, Math.min(5, Number(req.body?.rating ?? alexaWasPlaying.rating ?? 0) || 0)),
-      ratingFile: String(req.body?.ratingFile || alexaWasPlaying.ratingFile || req.body?.file || alexaWasPlaying.file || '').trim(),
-      ratingDisabled: (typeof req.body?.ratingDisabled === 'boolean') ? !!req.body.ratingDisabled : ((typeof alexaWasPlaying.ratingDisabled === 'boolean') ? !!alexaWasPlaying.ratingDisabled : false),
-      startedAt: Number.parseInt(String(req.body?.startedAt || alexaWasPlaying.startedAt || nowTs).trim(), 10) || nowTs,
-      stoppedAt: active ? 0 : (Number.parseInt(String(req.body?.stoppedAt || nowTs).trim(), 10) || nowTs),
+      ...merged,
+      token: String(incoming?.token || merged.token || '').trim(),
+      file: String(incoming?.file || merged.file || '').trim(),
+      title: decodeHtmlEntities(String(incoming?.title || merged.title || '').trim()),
+      artist: decodeHtmlEntities(String(incoming?.artist || merged.artist || '').trim()),
+      album: decodeHtmlEntities(String(incoming?.album || merged.album || '').trim()),
+      year: String(incoming?.year || merged.year || '').trim(),
+      date: String(incoming?.date || merged.date || '').trim(),
+      personnel: Array.isArray(incoming?.personnel)
+        ? incoming.personnel
+        : (Array.isArray(merged.personnel) ? merged.personnel : []),
+      rating: Math.max(0, Math.min(5, Number(incoming?.rating ?? merged.rating ?? 0) || 0)),
+      ratingFile: String(incoming?.ratingFile || merged.ratingFile || incoming?.file || merged.file || '').trim(),
+      ratingDisabled: (typeof incoming?.ratingDisabled === 'boolean') ? !!incoming.ratingDisabled : ((typeof merged.ratingDisabled === 'boolean') ? !!merged.ratingDisabled : false),
+      startedAt: Number.parseInt(String(incoming?.startedAt || merged.startedAt || nowTs).trim(), 10) || nowTs,
+      stoppedAt: active ? 0 : (Number.parseInt(String(incoming?.stoppedAt || nowTs).trim(), 10) || nowTs),
       active,
       updatedAt: nowTs,
     };
