@@ -3532,7 +3532,11 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
 
         const qRoman = new Set([...queryMovement].filter((t) => /^rm/.test(t)));
         const cRoman = new Set([...candMovement].filter((t) => /^rm/.test(t)));
-        if (qRoman.size && cRoman.size && overlapCount(qRoman, cRoman) === 0) score -= 120;
+        // For classical movement lines, roman numeral mismatch is a hard reject.
+        if (qRoman.size) {
+          if (!cRoman.size) continue;
+          if (overlapCount(qRoman, cRoman) === 0) continue;
+        }
       }
 
       if (conductorTokens.size) {
