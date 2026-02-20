@@ -1528,7 +1528,14 @@ function splitTitlePerformersProgram(titleLine) {
     const third = String(parts[2] || '');
     const fourth = String(parts[3] || '');
     const looksComposer = /^[A-Za-zÀ-ÿ'’. -]+$/.test(first) && /\s/.test(first);
-    const looksPerfBlock = (s) => /\//.test(s) || /\b(orch|orchestra|sym|symphony|phil|camerata|ensemble|choir|conduct|chailly|maestro)\b/i.test(s) || /,\s*(p|pf|pno|vn|vln|vc|cello)\b/i.test(s);
+    const looksPerfBlock = (s) => {
+      const v = String(s || '').trim();
+      if (!v) return false;
+      const hasPerfWords = /\b(orch|orchestra|sym|symphony|phil|camerata|ensemble|choir|conduct|chailly|maestro)\b/i.test(v);
+      // Program/catalog lines often contain ':' and '/' (work lists), which are not performer blocks.
+      if (/:/.test(v) && !hasPerfWords) return false;
+      return /\//.test(v) || hasPerfWords || /,\s*(p|pf|pno|vn|vln|vc|cello)\b/i.test(v);
+    };
 
     // Pattern A: Composer - Work - Performers - Program - Label
     if (looksPerfBlock(third) && !looksPerfBlock(fourth)) {
@@ -1553,7 +1560,13 @@ function splitTitlePerformersProgram(titleLine) {
     const third = String(parts[2] || '');
     const fourth = String(parts[3] || '');
     const looksComposer = /^[A-Za-zÀ-ÿ'’. -]+$/.test(first) && /\s/.test(first);
-    const looksPerfBlock = (s) => /\//.test(s) || /\b(orch|orchestra|sym|symphony|phil|camerata|ensemble|concert|members|conduct)\b/i.test(s) || /,\s*(p|pf|pno|vn|vln|vc|cello|va|vla|vi)\b/i.test(s);
+    const looksPerfBlock = (s) => {
+      const v = String(s || '').trim();
+      if (!v) return false;
+      const hasPerfWords = /\b(orch|orchestra|sym|symphony|phil|camerata|ensemble|concert|members|conduct)\b/i.test(v);
+      if (/:/.test(v) && !hasPerfWords) return false;
+      return /\//.test(v) || hasPerfWords || /,\s*(p|pf|pno|vn|vln|vc|cello|va|vla|vi)\b/i.test(v);
+    };
 
     if (!looksComposer && looksPerfBlock(second) && !looksPerfBlock(third)) {
       const work = first;
