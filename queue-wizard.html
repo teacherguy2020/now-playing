@@ -345,42 +345,7 @@
 
     <!-- Radio Queue Builder moved to dedicated radio.html -->
 
-    <div class="card" id="podcastSection">
-      <h3 style="margin:0 0 8px">Podcast Queue Builder</h3>
-      <div class="muted">Build a queue from podcast episodes by show/date, then send to moOde.</div>
-
-      <div class="pickGrid" style="margin-top:10px;grid-template-columns: 1.4fr .8fr .8fr .8fr;">
-        <label>Shows<br><select id="podcastShows" multiple size="8"></select></label>
-        <label>From date<br><input id="podcastDateFrom" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" /></label>
-        <label>To date<br><input id="podcastDateTo" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" /></label>
-        <label>Max eps/show<br><input id="podcastMaxPerShow" type="number" min="1" max="100" value="10" style="width:120px" /></label>
-      </div>
-      <div class="miniCals">
-        <div id="miniCalFrom" class="miniCal"></div>
-        <div id="miniCalTo" class="miniCal"></div>
-      </div>
-
-      <div class="actionBar" style="margin-top:10px">
-        <div class="choiceLine">
-          <label><input type="radio" name="modePodcast" value="replace" checked> Replace Queue</label>
-          <label><input type="radio" name="modePodcast" value="append"> Add to Queue</label>
-          <label><input id="cropPodcast" type="checkbox" checked> Crop Queue</label>
-        </div>
-        <div class="choiceLine" style="margin-top:4px">
-          <label><input id="podcastDownloadedOnly" type="checkbox" checked /> Downloaded only</label>
-          <label><input id="podcastNewestFirst" type="checkbox" checked /> Newest first</label>
-        </div>
-        <div class="choiceLine" style="margin-top:4px">
-          <span class="muted">Presets:</span>
-          <button id="podcastPreset24h" type="button">Last 24h</button>
-          <button id="podcastPreset48h" type="button">Last 48h</button>
-          <button id="podcastPreset7d" type="button">Last 7 days</button>
-        </div>
-        <div class="choiceLine" style="margin-top:4px">
-          <button id="sendPodcastToMoode" class="btnPrimary">Send podcast queue to moOde</button>
-        </div>
-      </div>
-    </div>
+    
 
     <div class="muted" id="status" style="margin-top:6px"></div>
     <div class="muted" id="sendConfirm" style="margin-top:4px;color:#9ef7b2;"></div>
