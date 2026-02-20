@@ -170,6 +170,10 @@
       }
 
       let runtimeTrackKey = '';
+      let radioStationByKey = new Map();
+      let radioStationByHost = new Map();
+      let radioHostAmbiguous = new Set();
+      let radioHostMapTs = 0;
 
       async function sendHeroPlayback(action, extra = null){
         const host = location.hostname || '10.0.0.233';
@@ -190,6 +194,52 @@
         return j;
       }
 
+      function streamKey(u){
+        try {
+          const x = new URL(String(u || ''));
+          const hp = `${String(x.hostname||'').toLowerCase()}${x.port ? `:${x.port}` : ''}`;
+          return `${hp}${String(x.pathname||'')}`.replace(/\/+$/, '');
+        } catch { return ''; }
+      }
+
+      async function loadRadioHostNameMap(base, headers = {}) {
+        const now = Date.now();
+        if (radioStationByKey.size && (now - radioHostMapTs) < (5 * 60 * 1000)) {
+          return { byKey: radioStationByKey, byHost: radioStationByHost, ambHosts: radioHostAmbiguous };
+        }
+        try {
+          const r = await fetch(`${base}/config/queue-wizard/radio-preview`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(headers || {}) },
+            body: JSON.stringify({ genres: [], favoritesOnly: false, hqOnly: false, favoriteStations: [], maxStations: 1000 }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) return { byKey: radioStationByKey, byHost: radioStationByHost, ambHosts: radioHostAmbiguous };
+          const byKey = new Map();
+          const byHost = new Map();
+          const ambHosts = new Set();
+          for (const t of (Array.isArray(j.tracks) ? j.tracks : [])) {
+            const file = String(t?.file || '').trim();
+            const st = String(t?.stationName || t?.artist || '').trim();
+            if (!file || !st) continue;
+            const k = streamKey(file);
+            if (k) byKey.set(k, st);
+            try {
+              const h = String(new URL(file).hostname || '').toLowerCase();
+              if (h) {
+                if (!byHost.has(h)) byHost.set(h, st);
+                else if (byHost.get(h) !== st) ambHosts.add(h);
+              }
+            } catch {}
+          }
+          radioStationByKey = byKey;
+          radioStationByHost = byHost;
+          radioHostAmbiguous = ambHosts;
+          radioHostMapTs = now;
+        } catch {}
+        return { byKey: radioStationByKey, byHost: radioStationByHost, ambHosts: radioHostAmbiguous };
+      }
+
       async function syncHeroQueue(){
         try {
           const host = location.hostname || '10.0.0.233';
@@ -204,9 +254,11 @@
           }
 
           const headers = runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {};
-          const [r, npRes] = await Promise.all([
+          const radioMapP = loadRadioHostNameMap(base, headers);
+          const [r, npRes, radioMap] = await Promise.all([
             fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers }),
             fetch(`${base}/now-playing`, { cache:'no-store' }).catch(() => null),
+            radioMapP,
           ]);
           const j = await r.json().catch(() => ({}));
           const np = npRes ? await npRes.json().catch(() => ({})) : {};
@@ -225,15 +277,35 @@
           wrap.innerHTML = items.slice(0,12).map((x) => {
             const pos = Number(x?._posDisplay || 0);
             const head = !!x?.isHead;
-            const artist = String(x?.artist || x?.name || '').trim() || '(unknown)';
-            const title = String(x?.title || '').trim().replace(/\s*\[\d{1,4}\]\s*$/,'').trim();
             const thumbRaw = String(x?.thumbUrl || '').trim();
             const fileRaw = String(x?.file || '').trim();
             const isStreamish = /^https?:\/\//i.test(fileRaw);
-            const stationName = String(x?.name || x?.stationName || fallbackStation).trim();
+            const stationName = String(x?.name || x?.stationName || '').trim();
+            let derivedStation = '';
+            let derivedHost = '';
+            if (isStreamish && fileRaw) {
+              try {
+                const u = new URL(fileRaw);
+                derivedHost = String(u.hostname || '').toLowerCase();
+                derivedStation = String(u.hostname || '').replace(/^www\./i, '').trim();
+              } catch {}
+            }
+            const derivedKey = streamKey(fileRaw);
+            const mappedByKey = (derivedKey && radioMap?.byKey && typeof radioMap.byKey.get === 'function') ? String(radioMap.byKey.get(derivedKey) || '').trim() : '';
+            const hostAmb = !!(derivedHost && radioMap?.ambHosts && typeof radioMap.ambHosts.has === 'function' && radioMap.ambHosts.has(derivedHost));
+            const mappedByHost = (!hostAmb && derivedHost && radioMap?.byHost && typeof radioMap.byHost.get === 'function') ? String(radioMap.byHost.get(derivedHost) || '').trim() : '';
+            const displayStation = stationName || mappedByKey || mappedByHost || (head ? fallbackStation : '') || derivedStation;
+            const artistRaw = String(x?.artist || '').trim();
+            const artist = (isStreamish ? (artistRaw || displayStation || 'Radio stream') : (artistRaw || String(x?.name || '').trim() || '(unknown)'));
+            const titleRaw = String(x?.title || '').trim().replace(/\s*\[\d{1,4}\]\s*$/,'').trim();
+            const title = (isStreamish && !titleRaw) ? (displayStation || '') : titleRaw;
+            const hostFavicon = derivedHost ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(derivedHost)}.ico` : '';
+            const stationLogoByDisplay = (stationName || displayStation) ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName || displayStation)}` : '';
             let thumb = '';
             if (isStreamish) {
-              thumb = fallbackNowArt || (stationName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName)}` : '');
+              thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
+              if (!thumb && stationLogoByDisplay) thumb = stationLogoByDisplay;
+              if (!thumb && head && fallbackNowArt) thumb = fallbackNowArt;
             } else {
               thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
               if (!thumb && nowIsAirplay && fallbackNowArt) thumb = fallbackNowArt;
@@ -241,9 +313,11 @@
                 thumb += (thumb.includes('?') ? '&' : '?') + `_=${stamp}`;
               }
             }
+            const fallbackIcon = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="10" fill="#0a1222" stroke="#3b4f72"/><circle cx="32" cy="32" r="6" fill="#8fb3ff"/><path d="M32 26V14M32 50V38M26 32H14M50 32H38" stroke="#8fb3ff" stroke-width="4" stroke-linecap="round"/></svg>')}`;
+            const fallbackJs = `if(this.dataset.step!=='1' && '${stationLogoByDisplay}') { this.dataset.step='1'; this.src='${stationLogoByDisplay}'; return; } if(this.dataset.step!=='2' && '${hostFavicon}') { this.dataset.step='2'; this.src='${hostFavicon}'; return; } this.src='${fallbackIcon}';`;
             const thumbHtml = thumb
-              ? `<img src="${thumb}" alt="" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
-              : `<div style="width:34px;height:34px;border-radius:7px;border:1px solid #334;background:#0a1222;"></div>`;
+              ? `<img src="${thumb}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
+              : `<img src="${stationLogoByDisplay || hostFavicon || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
             const actions = `<div class="heroQueueActions"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
             return `<div class="heroQueueRow" data-queue-play-pos="${pos}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div>${artist}</div><div class="heroQueueMeta">${title}</div></div>${actions}</div>`;
           }).join('');

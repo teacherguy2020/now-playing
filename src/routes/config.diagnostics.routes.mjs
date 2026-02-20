@@ -38,12 +38,41 @@ function stationLogoUrlFromAlbum(album) {
   return `/art/radio-logo.jpg?name=${encodeURIComponent(a)}`;
 }
 
+const radioLogoCacheDirUrl = new URL('../../var/radio-logo-cache/', import.meta.url);
+
+function safeLogoKey(name) {
+  return String(name || '').trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 120);
+}
+
+async function readCachedRadioLogo(name) {
+  const k = safeLogoKey(name);
+  if (!k) return null;
+  const p = new URL(`${k}.jpg`, radioLogoCacheDirUrl);
+  try {
+    const buf = await fs.readFile(p);
+    return buf;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCachedRadioLogo(name, buf) {
+  const k = safeLogoKey(name);
+  if (!k || !buf) return;
+  const p = new URL(`${k}.jpg`, radioLogoCacheDirUrl);
+  try {
+    await fs.mkdir(radioLogoCacheDirUrl, { recursive: true });
+    await fs.writeFile(p, buf);
+  } catch {}
+}
+
 function stationKey(raw) {
   const s = String(raw || '').trim();
   if (!s) return '';
   try {
     const u = new URL(s);
-    return `${u.hostname}${u.pathname}`.replace(/\/+$/, '').toLowerCase();
+    const hostPort = `${u.hostname}${u.port ? `:${u.port}` : ''}`;
+    return `${hostPort}${u.pathname}`.replace(/\/+$/, '').toLowerCase();
   } catch {
     return s.replace(/\?.*$/, '').replace(/\/+$/, '').toLowerCase();
   }
@@ -63,11 +92,27 @@ async function loadRadioQueueMap() {
       const stationName = String(e?.stationName || '').trim();
       const genre = String(e?.genre || '').trim();
       if (!f) continue;
-      map.set(f, { stationName, genre });
+      const meta = { stationName, genre };
+      map.set(f, meta);
+      const k = stationKey(f);
+      const h = stationHost(f);
+      if (k) map.set(`key:${k}`, meta);
+      if (h) map.set(`host:${h}`, meta);
     }
     return map;
   } catch {
     return new Map();
+  }
+}
+
+async function loadRadioLogoAliases() {
+  try {
+    const p = new URL('../../config/radio-logo-aliases.json', import.meta.url);
+    const raw = await fs.readFile(p, 'utf8');
+    const j = JSON.parse(raw || '{}');
+    return (j && typeof j === 'object') ? j : {};
+  } catch {
+    return {};
   }
 }
 
@@ -323,15 +368,44 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
   app.get('/art/radio-logo.jpg', async (req, res) => {
     try {
       const mpdHost = String(MPD_HOST || '10.0.0.254');
-      const name = String(req.query?.name || '').trim();
+      let name = String(req.query?.name || '').trim();
+      const file = String(req.query?.file || '').trim();
+
+      if (!name && file) {
+        let stationMap = new Map();
+        let recentRadioMap = new Map();
+        let aliases = {};
+        try { stationMap = await loadRadioCatalogMap(); } catch {}
+        try { recentRadioMap = await loadRadioQueueMap(); } catch {}
+        try { aliases = await loadRadioLogoAliases(); } catch {}
+        const fKey = stationKey(file);
+        const fHost = stationHost(file);
+        const q = recentRadioMap.get(file) || recentRadioMap.get(`key:${fKey}`) || recentRadioMap.get(`host:${fHost}`) || {};
+        const c1 = stationMap.get(file) || {};
+        const c2 = stationMap.get(fKey) || {};
+        const c3 = stationMap.get(`host:${fHost}`) || {};
+        const aliasName = String(aliases?.[fHost] || aliases?.[fKey] || '').trim();
+        name = String(q.stationName || c1.stationName || c2.stationName || c3.stationName || aliasName || fHost || '').trim();
+      }
+
       if (!name) return res.status(400).end('missing name');
+
+      const cached = await readCachedRadioLogo(name);
+      if (cached) {
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.end(cached);
+      }
+
       const u = `http://${mpdHost}/imagesw/radio-logos/${encodeURIComponent(name)}.jpg`;
       const r = await fetch(u, { redirect: 'follow' });
       if (!r.ok) return res.status(404).end('not found');
       const ab = await r.arrayBuffer();
+      const buf = Buffer.from(ab);
+      await writeCachedRadioLogo(name, buf);
       res.setHeader('Content-Type', r.headers.get('content-type') || 'image/jpeg');
-      res.setHeader('Cache-Control', 'public, max-age=300');
-      return res.end(Buffer.from(ab));
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.end(buf);
     } catch {
       return res.status(404).end('not found');
     }
@@ -365,8 +439,10 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
 
       let stationMap = new Map();
       let recentRadioMap = new Map();
+      let logoAliases = {};
       try { stationMap = await loadRadioCatalogMap(); } catch {}
       try { recentRadioMap = await loadRadioQueueMap(); } catch {}
+      try { logoAliases = await loadRadioLogoAliases(); } catch {}
 
       const lines = String(qOut || '').split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean);
       const items = [];
@@ -382,16 +458,20 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         let artistTxt = String(cleaned.artist || '').trim();
         let titleTxt = String(cleaned.title || '').trim();
         const albumTxt = String(album || '').trim();
-        const queueMeta = recentRadioMap.get(f) || {};
+        const fKey = stationKey(f);
+        const fHost = stationHost(f);
+        const queueMeta = recentRadioMap.get(f) || recentRadioMap.get(`key:${fKey}`) || recentRadioMap.get(`host:${fHost}`) || {};
         const catMetaDirect = stationMap.get(f) || {};
-        const catMetaKey = stationMap.get(stationKey(f)) || {};
-        const catMetaHost = stationMap.get(`host:${stationHost(f)}`) || {};
+        const catMetaKey = stationMap.get(fKey) || {};
+        const catMetaHost = stationMap.get(`host:${fHost}`) || {};
 
-        const stationNameTxt = String(name || '').trim()
+        const aliasName = String(logoAliases?.[fHost] || logoAliases?.[fKey] || '').trim();
+        let stationNameTxt = String(name || '').trim()
           || String(queueMeta.stationName || '').trim()
           || String(catMetaDirect.stationName || '').trim()
           || String(catMetaKey.stationName || '').trim()
-          || String(catMetaHost.stationName || '').trim();
+          || String(catMetaHost.stationName || '').trim()
+          || aliasName;
         const stationGenreTxt = String(queueMeta.genre || '').trim()
           || String(catMetaDirect.genre || '').trim()
           || String(catMetaKey.genre || '').trim()
@@ -399,6 +479,9 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const stationFavorite = !!(queueMeta.isFavorite || catMetaDirect.isFavorite || catMetaKey.isFavorite || catMetaHost.isFavorite);
 
         const isStream = isStreamUrl(f);
+        if (isStream && !stationNameTxt) {
+          stationNameTxt = stationHost(f) || stationKey(f);
+        }
         if (isStream) {
           const split = splitArtistDashTitle(titleTxt);
           if (split) {
@@ -413,7 +496,10 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const podcastBlob = `${f}\n${artistTxt}\n${titleTxt}\n${albumTxt}`.toLowerCase();
         const isPodcast = /\bpodcast\b/.test(podcastBlob) || /\/podcasts?\//.test(podcastBlob);
         const streamLogoName = stationNameTxt || albumTxt;
-        const stationLogo = stationLogoUrlFromAlbum(streamLogoName);
+        const logoLooksHost = !!streamLogoName && /\./.test(streamLogoName) && !/\s/.test(streamLogoName);
+        const stationLogo = (streamLogoName && !logoLooksHost)
+          ? stationLogoUrlFromAlbum(streamLogoName)
+          : (f ? `/art/radio-logo.jpg?file=${encodeURIComponent(f)}` : '');
         const streamArtFallback = String(cleaned.artUrl || '').trim();
         const isHead = Number.isFinite(pos) && pos === headPos;
         const thumbUrl = isStream
