@@ -226,7 +226,7 @@
             const pos = Number(x?._posDisplay || 0);
             const head = !!x?.isHead;
             const artist = String(x?.artist || x?.name || '').trim() || '(unknown)';
-            const title = String(x?.title || '').trim();
+            const title = String(x?.title || '').trim().replace(/\s*\[\d{1,4}\]\s*$/,'').trim();
             const thumbRaw = String(x?.thumbUrl || '').trim();
             const fileRaw = String(x?.file || '').trim();
             const isStreamish = /^https?:\/\//i.test(fileRaw);
