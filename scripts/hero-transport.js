@@ -11,6 +11,10 @@
   function expandInstrumentAbbrevs(input) {
     let s = String(input || '');
     if (!s) return s;
+
+    // Targeted classical metadata shorthand: ", h;" -> ", harp;"
+    s = s.replace(/,\s*h(?=\s*(?:[;,)\]]|\-|$))/gi, ', harp');
+
     const reps = [
       ['vc', 'cello'], ['db', 'double bass'], ['cb', 'double bass'], ['p', 'piano'], ['hp', 'harp'],
       ['ob', 'oboe'], ['eh', 'english horn'], ['cl', 'clarinet'], ['bcl', 'bass clarinet'], ['fl', 'flute'],
