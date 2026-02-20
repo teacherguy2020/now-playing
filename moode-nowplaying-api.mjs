@@ -3314,6 +3314,13 @@ function movementTokenSet(s) {
   return out;
 }
 
+function nameTokenSet(s) {
+  return new Set(
+    String(s || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+      .filter((x) => x && x.length > 2 && !/^(van|von|der|den|the|and)$/.test(x))
+  );
+}
+
 function extractLabelHintFromRawTitle(raw) {
   const s = decodeHtmlEntities(String(raw || '').trim());
   if (!s || !/\s-\s/.test(s)) return '';
@@ -3365,7 +3372,14 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
 
   if (!termStr) return empty('missing-term', { term: termStr, termDebug });
 
-  const cacheKey = `song|${opts?.strictArtist ? 'strict|' : ''}${termStr.toLowerCase()}`;
+  const cacheScope = [
+    opts?.strictArtist ? 'strict' : 'loose',
+    String(opts?.ensembleHint || '').toLowerCase(),
+    String(opts?.conductorHint || '').toLowerCase(),
+    String(opts?.soloistHint || '').toLowerCase(),
+    String(opts?.labelHint || '').toLowerCase(),
+  ].join('|');
+  const cacheKey = `song|${cacheScope}|${termStr.toLowerCase()}`;
   const now = Date.now();
 
   // ✅ Cache hit (only when not debugging)
@@ -3440,6 +3454,9 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     const conductorHint = String(opts?.conductorHint || '').trim();
     const conductorTokens = ensembleTokenSet(conductorHint);
     const labelHint = String(opts?.labelHint || '').trim().toLowerCase();
+    const soloistHint = String(opts?.soloistHint || '').trim();
+    const soloistTokens = nameTokenSet(soloistHint);
+    const soloistSensitive = /\b(concerto|sonata|rhapsody|fantasy|variations?)\b/i.test(queryWork);
     let bestItem = null;
     let bestArt = '';
     let bestScore = -1e9;
@@ -3461,6 +3478,11 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       const ensembleHint = String(opts?.ensembleHint || '').trim();
       if (ensembleHint && !ensembleMatchesCandidate(ensembleHint, matchedArtistCandidate, collectionName)) {
         continue;
+      }
+
+      if (soloistSensitive && soloistTokens.size) {
+        const candTokens = nameTokenSet(`${matchedArtistCandidate} ${collectionName}`);
+        if (overlapCount(soloistTokens, candTokens) === 0) continue;
       }
 
       const art = pickArtFromItunesItem(item);
@@ -4725,6 +4747,8 @@ app.get('/now-playing', async (req, res) => {
     if (ensemble) lookupArtist = ensemble;
     const conductorRaw = cleaned.find((p) => /\(conductor\)/i.test(p)) || '';
     const conductor = String(conductorRaw).replace(/\s*\(conductor\)\s*/i, '').trim();
+    const soloistRaw = cleaned.find((p) => !/\(conductor\)|orchestra|symphony|philharmonic|ensemble|camerata/i.test(p)) || '';
+    const soloist = String(soloistRaw || '').replace(/\s*\([^)]*\)\s*/g, '').trim();
 
     // For classical, movement-heavy titles over-constrain iTunes query.
     if (lookupArtist && cleaned.length) lookupTitle = stripClassicalMovementDetail(lookupTitle);
@@ -4741,6 +4765,7 @@ app.get('/now-playing', async (req, res) => {
       composerShort,
       ensembleHint: String(ensemble || '').trim(),
       conductorHint: String(conductor || '').trim(),
+      soloistHint: String(soloist || '').trim(),
     };
   }
 
@@ -5293,20 +5318,25 @@ app.get('/now-playing', async (req, res) => {
         personnel,
         albumHint: albumForLookup,
       });
+      const soloistHintRaw = decodeHtmlEntities(String(radioPerformers || '').trim()).split(',')[0]?.trim() || '';
       lookupArtist = String(lookupCtx.lookupArtist || lookupArtist || '').trim();
       lookupTitle = String(lookupCtx.lookupTitle || lookupTitle || '').trim();
 
       if (lookupArtist && lookupTitle) {
         const likelyClassical = /\b(op\.?|concerto|symphony|quartet|sonata|andante|allegro|adagio|lento|presto)\b/i.test(`${lookupTitle} ${title}`);
-        const it = await lookupItunesFirst(lookupArtist, lookupTitle, debug, {
-          radioAlbum: albumForLookup,
-          albumHint: albumForLookup,
-          composerShort: lookupCtx.composerShort || '',
-          ensembleHint: lookupCtx.ensembleHint || '',
-          conductorHint: lookupCtx.conductorHint || '',
-          labelHint,
-          strictArtist: !likelyClassical,
-        });
+        const classicalContextOk = !!String(lookupCtx.ensembleHint || lookupCtx.conductorHint || lookupCtx.soloistHint || soloistHintRaw || '').trim() || !!String(albumForLookup || '').trim();
+        const it = (likelyClassical && !classicalContextOk)
+          ? { url:'', album:'', year:'', trackUrl:'', albumUrl:'', matchedArtist:'', matchedTitle:'', reason:'insufficient-metadata' }
+          : await lookupItunesFirst(lookupArtist, lookupTitle, debug, {
+              radioAlbum: albumForLookup,
+              albumHint: albumForLookup,
+              composerShort: lookupCtx.composerShort || '',
+              ensembleHint: lookupCtx.ensembleHint || '',
+              conductorHint: lookupCtx.conductorHint || '',
+              labelHint,
+              soloistHint: lookupCtx.soloistHint || soloistHintRaw || '',
+              strictArtist: !likelyClassical,
+            });
 
         if (it.url) primaryArtUrl = it.url;
 
@@ -5336,13 +5366,17 @@ app.get('/now-playing', async (req, res) => {
           const s2 = sanitizeRadioLookupInputs({ artist: parts[0], title: parts.slice(1).join(' - ') });
           const s2Title = String(s2.title || '').trim();
           const likelyClassical2 = /\b(op\.?|concerto|symphony|quartet|sonata|andante|allegro|adagio|lento|presto)\b/i.test(s2Title);
-          const it = await lookupItunesFirst(String(s2.artist || '').trim(), s2Title, debug, {
-            radioAlbum: albumForLookup,
-            albumHint: albumForLookup,
-            composerShort: '',
-            labelHint,
-            strictArtist: !likelyClassical2,
-          });
+          const classicalContextOk2 = !!String(albumForLookup || '').trim();
+          const it = (likelyClassical2 && !classicalContextOk2)
+            ? { url:'', album:'', year:'', trackUrl:'', albumUrl:'', matchedArtist:'', matchedTitle:'', reason:'insufficient-metadata' }
+            : await lookupItunesFirst(String(s2.artist || '').trim(), s2Title, debug, {
+                radioAlbum: albumForLookup,
+                albumHint: albumForLookup,
+                composerShort: '',
+                labelHint,
+                soloistHint: '',
+                strictArtist: !likelyClassical2,
+              });
           if (it.url) primaryArtUrl = it.url;
 
           radioAlbum = radioAlbum || it.album || '';
@@ -5403,20 +5437,25 @@ app.get('/now-playing', async (req, res) => {
           albumHint: albumForTerm,
         });
         const labelHint2 = extractLabelHintFromRawTitle(song.title || title || '');
+        const soloistHint2 = decodeHtmlEntities(String(radioPerformers || '').trim()).split(',')[0]?.trim() || '';
         radioLookupTerm = buildAppleLookupTerm({ artist: s3.lookupArtist, title: s3.lookupTitle, album: albumForTerm });
 
         // Reuse existing iTunes lookup (it already returns trackUrl/albumUrl)
         const s3Title = String(s3.lookupTitle || '').trim();
         const likelyClassical3 = /\b(op\.?|concerto|symphony|quartet|sonata|andante|allegro|adagio|lento|presto)\b/i.test(s3Title);
-        const ap = await lookupItunesFirst(String(s3.lookupArtist || '').trim(), s3Title, debug, {
-          radioAlbum: albumForTerm,
-          albumHint: albumForTerm,
-          composerShort: String(s3.composerShort || '').trim(),
-          ensembleHint: String(s3.ensembleHint || '').trim(),
-          conductorHint: String(s3.conductorHint || '').trim(),
-          labelHint: labelHint2,
-          strictArtist: !likelyClassical3,
-        });
+        const classicalContextOk3 = !!String(s3.ensembleHint || s3.conductorHint || s3.soloistHint || soloistHint2 || '').trim() || !!String(albumForTerm || '').trim();
+        const ap = (likelyClassical3 && !classicalContextOk3)
+          ? { url:'', album:'', year:'', trackUrl:'', albumUrl:'', matchedArtist:'', matchedTitle:'', reason:'insufficient-metadata' }
+          : await lookupItunesFirst(String(s3.lookupArtist || '').trim(), s3Title, debug, {
+              radioAlbum: albumForTerm,
+              albumHint: albumForTerm,
+              composerShort: String(s3.composerShort || '').trim(),
+              ensembleHint: String(s3.ensembleHint || '').trim(),
+              conductorHint: String(s3.conductorHint || '').trim(),
+              labelHint: labelHint2,
+              soloistHint: String(s3.soloistHint || soloistHint2 || '').trim(),
+              strictArtist: !likelyClassical3,
+            });
 
         const tUrl = String(ap?.trackUrl || '').trim();
         const aUrl = String(ap?.albumUrl || '').trim();
