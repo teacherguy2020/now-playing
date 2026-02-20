@@ -17,7 +17,7 @@
 
     const reps = [
       ['vc', 'cello'], ['db', 'double bass'], ['cb', 'double bass'], ['p', 'piano'], ['hp', 'harp'],
-      ['ob', 'oboe'], ['eh', 'english horn'], ['cl', 'clarinet'], ['bcl', 'bass clarinet'], ['fl', 'flute'],
+      ['ob', 'oboe'], ['eh', 'english horn'], ['cl', 'clarinet'], ['bcl', 'bass clarinet'], ['fl', 'flute'], ['f', 'flute'],
       ['hn', 'horn'], ['fh', 'horn'], ['tpt', 'trumpet'], ['tp', 'trumpet'], ['tbn', 'trombone'],
       ['tb', 'trombone'], ['tba', 'tuba'], ['perc', 'percussion'], ['timp', 'timpani'], ['vln', 'violin'],
       ['vn', 'violin'], ['vla', 'viola'], ['va', 'viola'], ['sop', 'soprano'], ['mez', 'mezzo-soprano'],
@@ -281,7 +281,9 @@
     const radioAlbum = String(np?.radioAlbum || np?.album || '').trim();
     const radioYear = String(np?.radioYear || np?.year || '').trim();
     const stationNameLive = String(np?._stationName || np?.stationName || np?.radioStationName || head?.stationName || '').trim();
-    const liveLabel = stationNameLive || 'Radio';
+    const airplaySource = String(np?.airplaySource || np?.airplaySourceName || np?.airplaySender || '').trim();
+    const isAirplay = !!np?.isAirplay;
+    const liveLabel = isAirplay ? (airplaySource ? `AirPlay • ${airplaySource}` : 'AirPlay') : (stationNameLive || 'Radio');
     const albumYearText = [radioAlbum, radioYear].filter(Boolean).join(' • ');
     const metaRow = starsRow || (albumYearText ? `<div class="heroSubline">${albumYearText}</div>` : '');
 

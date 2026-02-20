@@ -2016,6 +2016,7 @@ function expandInstrumentAbbrevs(input) {
     ['cl', 'clarinet'],
     ['bcl','bass clarinet'],
     ['fl', 'flute'],
+    ['f', 'flute'],
     ['fh', 'horn'],
     ['g',  'guitar'],
     ['pic', 'piccolo'],

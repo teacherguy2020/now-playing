@@ -1485,6 +1485,7 @@ function splitTitlePerformersProgram(titleLine) {
       vn: 'violin', vln: 'violin',
       vc: 'cello',
       va: 'viola', vla: 'viola', vi: 'viola',
+      f: 'flute', fl: 'flute',
     };
 
     if (p.includes('/')) {
@@ -3349,7 +3350,29 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     // Successful response clears any previous temporary backoff lock.
     itunesBackoffUntil = 0;
     itunesBackoffReason = '';
-    const results = Array.isArray(data?.results) ? data.results : [];
+    let results = Array.isArray(data?.results) ? data.results : [];
+
+    // Retry with looser term when album/program hint over-constrains search.
+    if (!results.length) {
+      const looseTerms = [];
+      const baseLoose = `${a} ${t}`.trim();
+      if (baseLoose) looseTerms.push(baseLoose);
+      const tTar = String(t || '').replace(/\btarentelle\b/i, 'tarantelle');
+      if (tTar !== t) looseTerms.push(`${a} ${tTar}`.trim());
+      const tTer = String(t || '').replace(/\btarantelle\b/i, 'tarentelle');
+      if (tTer !== t && tTer !== tTar) looseTerms.push(`${a} ${tTer}`.trim());
+
+      for (const lt of looseTerms) {
+        if (!lt || lt.toLowerCase() === termStr.toLowerCase()) continue;
+        const u2 = `${ITUNES_SEARCH_URL}?term=${encodeURIComponent(lt)}&entity=song&limit=12`;
+        const d2 = await fetchJsonWithTimeout(u2, ITUNES_TIMEOUT_MS);
+        const r2 = Array.isArray(d2?.results) ? d2.results : [];
+        if (r2.length) {
+          results = r2;
+          break;
+        }
+      }
+    }
 
     let url = '';
     let album = '';
