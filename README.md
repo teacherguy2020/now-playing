@@ -14,10 +14,11 @@ NOTE: Developed to run on a separate pi than your moOde pi so moOde famous relia
 - Provides highly flexible queue creation (especially if you add Lastfm api key)
 - Supports optional Alexa endpoint flow when enabled
 - Allows for considerable library metadata and art maintanence
+- Supports push notifcations (great for headless moOde setup) with album art
 - Keeps display behavior as consistent as possible across listening modes:
   - local library music/podcasts
-  - radio streams
-  - AirPlay
+  - radio streams (includes iTunes art (even animated!) if it finds it, and album link
+  - AirPlay (some mods made to aplmeta.txt to help with this)
   - UPnP
 
 ## Project layout
