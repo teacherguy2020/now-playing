@@ -3279,6 +3279,53 @@ function tokenOverlapCount(a, b) {
   return ta.filter((x) => tb.has(x)).length;
 }
 
+function ensembleTokenSet(s) {
+  const stop = new Set(['orchestra','symphony','philharmonic','phil','ensemble','chamber','the']);
+  return new Set(
+    String(s || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+      .filter((x) => x && x.length > 2 && !stop.has(x))
+  );
+}
+
+function overlapCount(setA, setB) {
+  let n = 0;
+  for (const t of setA) if (setB.has(t)) n += 1;
+  return n;
+}
+
+function ensembleMatchesCandidate(hint, candArtist, candAlbum) {
+  const h = ensembleTokenSet(hint);
+  if (!h.size) return true;
+  const c = ensembleTokenSet(`${candArtist || ''} ${candAlbum || ''}`);
+  if (!c.size) return false;
+  return overlapCount(h, c) >= 1;
+}
+
+function movementTokenSet(s) {
+  const m = String(s || '').toLowerCase();
+  const out = new Set();
+  if (/\bscherzo\b/.test(m)) out.add('scherzo');
+  if (/\btrio\b/.test(m)) out.add('trio');
+  if (/\bfinale\b/.test(m)) out.add('finale');
+  if (/\badagio\b/.test(m)) out.add('adagio');
+  if (/\ballegro\b/.test(m)) out.add('allegro');
+  const mv = m.match(/(?:^|\W)([1-9])\s*[.)]/);
+  if (mv) out.add(`mv${mv[1]}`);
+  return out;
+}
+
+function extractLabelHintFromRawTitle(raw) {
+  const s = decodeHtmlEntities(String(raw || '').trim());
+  if (!s || !/\s-\s/.test(s)) return '';
+  const parts = s.split(/\s-\s/).map((x) => x.trim()).filter(Boolean);
+  if (parts.length < 3) return '';
+  const last = String(parts[parts.length - 1] || '').trim();
+  if (!last) return '';
+  if (/\b(wfmt|radio|classical|stream)\b/i.test(last)) return '';
+  if (/^[A-Za-z0-9&'’. -]{2,20}$/.test(last)) return last;
+  return '';
+}
+
 async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
   const a = String(artist || '').trim();
   const t = String(title || '').trim();
@@ -3389,6 +3436,10 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       .replace(/:\s*[IVXLC]+\.?\s+.*$/i, '')
       .replace(/\s{2,}/g, ' ')
       .trim();
+    const queryMovement = movementTokenSet(queryWork);
+    const conductorHint = String(opts?.conductorHint || '').trim();
+    const conductorTokens = ensembleTokenSet(conductorHint);
+    const labelHint = String(opts?.labelHint || '').trim().toLowerCase();
     let bestItem = null;
     let bestArt = '';
     let bestScore = -1e9;
@@ -3407,6 +3458,11 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
         }
       }
 
+      const ensembleHint = String(opts?.ensembleHint || '').trim();
+      if (ensembleHint && !ensembleMatchesCandidate(ensembleHint, matchedArtistCandidate, collectionName)) {
+        continue;
+      }
+
       const art = pickArtFromItunesItem(item);
       if (!art) continue;
 
@@ -3423,7 +3479,28 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       }
 
       const hint = String(opts?.albumHint || '').trim();
-      if (hint && albumHintMatches(hint, collectionName)) score += 35;
+      if (hint) {
+        if (albumHintMatches(hint, collectionName)) score += 85;
+        else score -= 55;
+      }
+
+      const candMovement = movementTokenSet(`${trackName} ${collectionName}`);
+      if (queryMovement.size) {
+        const mOverlap = overlapCount(queryMovement, candMovement);
+        if (mOverlap > 0) score += 28;
+        else score -= 60;
+      }
+
+      if (conductorTokens.size) {
+        const candTokens = ensembleTokenSet(`${matchedArtistCandidate} ${collectionName}`);
+        const cOverlap = overlapCount(conductorTokens, candTokens);
+        if (cOverlap > 0) score += 26;
+      }
+
+      if (labelHint) {
+        const labelBlob = `${matchedArtistCandidate} ${collectionName}`.toLowerCase();
+        if (labelBlob.includes(labelHint)) score += 22;
+      }
 
       if (score > bestScore) {
         bestScore = score;
@@ -3463,6 +3540,14 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
           const aName = String(item?.artistName || '').trim();
           if (!albumHintMatches(String(opts.albumHint || ''), cName)) continue;
           if (a && !artistMatchStrict(a, aName) && !String(aName).toLowerCase().includes(String(a).toLowerCase())) continue;
+          const ensembleHint = String(opts?.ensembleHint || '').trim();
+          if (ensembleHint && !ensembleMatchesCandidate(ensembleHint, aName, cName)) continue;
+          const conductorHint = String(opts?.conductorHint || '').trim();
+          if (conductorHint) {
+            const condTok = ensembleTokenSet(conductorHint);
+            const candTok = ensembleTokenSet(`${aName} ${cName}`);
+            if (condTok.size && overlapCount(condTok, candTok) === 0) continue;
+          }
           picked = item;
           break;
         }
@@ -4630,6 +4715,8 @@ app.get('/now-playing', async (req, res) => {
 
     const ensemble = cleaned.find((p) => /orchestra|symphony|philharmonic|camerata|ensemble|chamber\s+orchestra/i.test(p));
     if (ensemble) lookupArtist = ensemble;
+    const conductorRaw = cleaned.find((p) => /\(conductor\)/i.test(p)) || '';
+    const conductor = String(conductorRaw).replace(/\s*\(conductor\)\s*/i, '').trim();
 
     // For classical, movement-heavy titles over-constrain iTunes query.
     if (lookupArtist && cleaned.length) lookupTitle = stripClassicalMovementDetail(lookupTitle);
@@ -4644,6 +4731,8 @@ app.get('/now-playing', async (req, res) => {
       lookupTitle,
       lookupAlbumHint: String(albumHint || '').trim(),
       composerShort,
+      ensembleHint: String(ensemble || '').trim(),
+      conductorHint: String(conductor || '').trim(),
     };
   }
 
@@ -5187,6 +5276,7 @@ app.get('/now-playing', async (req, res) => {
       // WFMT often places useful program/album clue in radioPerformers; use it as album hint when present.
       const perfAlbumHint = decodeHtmlEntities(String(radioPerformers || '').trim());
       if (!albumForLookup && looksAlbumHintText(perfAlbumHint)) albumForLookup = perfAlbumHint;
+      const labelHint = extractLabelHintFromRawTitle(song.title || title || '');
 
       const lookupCtx = deriveRadioLookupContext({
         artist,
@@ -5204,6 +5294,9 @@ app.get('/now-playing', async (req, res) => {
           radioAlbum: albumForLookup,
           albumHint: albumForLookup,
           composerShort: lookupCtx.composerShort || '',
+          ensembleHint: lookupCtx.ensembleHint || '',
+          conductorHint: lookupCtx.conductorHint || '',
+          labelHint,
           strictArtist: !likelyClassical,
         });
 
@@ -5239,6 +5332,7 @@ app.get('/now-playing', async (req, res) => {
             radioAlbum: albumForLookup,
             albumHint: albumForLookup,
             composerShort: '',
+            labelHint,
             strictArtist: !likelyClassical2,
           });
           if (it.url) primaryArtUrl = it.url;
@@ -5300,6 +5394,7 @@ app.get('/now-playing', async (req, res) => {
           personnel,
           albumHint: albumForTerm,
         });
+        const labelHint2 = extractLabelHintFromRawTitle(song.title || title || '');
         radioLookupTerm = buildAppleLookupTerm({ artist: s3.lookupArtist, title: s3.lookupTitle, album: albumForTerm });
 
         // Reuse existing iTunes lookup (it already returns trackUrl/albumUrl)
@@ -5309,6 +5404,9 @@ app.get('/now-playing', async (req, res) => {
           radioAlbum: albumForTerm,
           albumHint: albumForTerm,
           composerShort: String(s3.composerShort || '').trim(),
+          ensembleHint: String(s3.ensembleHint || '').trim(),
+          conductorHint: String(s3.conductorHint || '').trim(),
+          labelHint: labelHint2,
           strictArtist: !likelyClassical3,
         });
 
