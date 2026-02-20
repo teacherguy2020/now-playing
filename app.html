@@ -59,7 +59,7 @@
       <header>
         <div class="brand">
           <h1>Now Playing</h1>
-          <div class="sub">Unified shell • persistent transport • no hero reload on tab switch</div>
+          <div class="sub">moOde enhancement dashboard</div>
         </div>
       </header>
       <div class="heroTransportRow">
@@ -212,6 +212,9 @@
           const np = npRes ? await npRes.json().catch(() => ({})) : {};
           if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
           const fallbackStation = String(np?.stationName || np?._stationName || np?.radioStationName || '').trim();
+          const fallbackNowArtRaw = String(np?.albumArtUrl || np?.altArtUrl || '').trim();
+          const fallbackNowArt = fallbackNowArtRaw ? (fallbackNowArtRaw.startsWith('http') ? fallbackNowArtRaw : `${base}${fallbackNowArtRaw}`) : '';
+          const nowIsAirplay = !!np?.isAirplay;
           const items = (Array.isArray(j.items) ? j.items : []).map((it, idx) => {
             const p = Number.isFinite(Number(it?.pos)) ? Number(it.pos)
               : (Number.isFinite(Number(it?.position)) ? Number(it.position) : (idx + 1));
@@ -229,10 +232,11 @@
             const isStreamish = /^https?:\/\//i.test(fileRaw);
             const stationName = String(x?.name || x?.stationName || fallbackStation).trim();
             let thumb = '';
-            if (isStreamish && stationName) {
-              thumb = `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName)}`;
+            if (isStreamish) {
+              thumb = fallbackNowArt || (stationName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName)}` : '');
             } else {
               thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
+              if (!thumb && nowIsAirplay && fallbackNowArt) thumb = fallbackNowArt;
               if (thumb && /\/art\/current\.jpg(?:$|\?)/i.test(thumb)) {
                 thumb += (thumb.includes('?') ? '&' : '?') + `_=${stamp}`;
               }

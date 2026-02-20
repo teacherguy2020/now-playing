@@ -2,11 +2,25 @@
 
 # now-playing
 
-A moOde-focused now-playing API + UI stack with optional Alexa integration that you run on a separate pi. The project began as a way to display enhanced information (like performers) on a dedicated display (like your TV), especially useful if you like to have Peppymeter running on your moOde box! The project grew from there to add library maintance tools, a full podcasts module, ratings support and more. 
+A moOde-focused now-playing API + UI stack with optional Alexa integration that you run on a separate Pi. The project began as a way to display enhanced information (like performers) on a dedicated display (like your TV), especially useful if you like to have Peppymeter running on your moOde box. The project grew from there to add library maintenance tools, a full podcasts module, ratings support, and more.
 
-Note: Heavily vibe-coded with openclaw/chatGPT.
+NOTE: Developed/tested to run on a separate Pi than your moOde Pi so moOde's famous reliability is not compromised. It may work when co-located on the moOde Pi, but that setup is currently untested and at your own risk.
 
-NOTE: Developed/tested to run on a separate pi than your moOde pi so moOde's famous reliability is not compromosed. It's possible the project could work from the moOde pi but I have not tested it, so you would be trying that at your own risk.
+## Architecture at a glance
+
+- **API/UI host (recommended):** a separate Pi running this project (`api` + web UI)
+- **moOde host:** your moOde box running MPD/library playback
+- **Display client (optional):** TV/tablet/browser opening `app.html` or `index.html`
+
+This split-host model keeps moOde stable while enabling richer metadata, automation, and UI features.
+
+## First 5 minutes
+
+1. Run the installer on your API/UI host.
+2. Open `config.html`.
+3. Set core fields: `trackKey`, `mpd.host`, `moode.baseUrl`, `moode.sshHost`, `moode.sshUser`.
+4. In Config, run **Check SSH + Paths**.
+5. Open `app.html` (unified shell) or `index.html` (now-playing display).
 
 ## What this project does
 
@@ -15,8 +29,8 @@ NOTE: Developed/tested to run on a separate pi than your moOde pi so moOde's fam
 - Manages podcast subscriptions/downloads/playlists
 - Provides highly flexible queue creation (especially if you add Lastfm api key)
 - Supports optional Alexa endpoint flow when enabled
-- Allows for considerable library metadata and art maintanence
-- Supports push notifcations (great for headless moOde setup) with album art
+- Allows for considerable library metadata and art maintenance
+- Supports push notifications (great for headless moOde setup) with album art
 - Keeps display behavior as consistent as possible across listening modes:
   - local library music/podcasts
   - radio streams (includes iTunes art (even animated!) if it finds it, and album link
@@ -65,6 +79,9 @@ curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scr
 
 ## UX highlights
 
+- **Unified shell (`app.html`)**: persistent hero transport + tabs with iframe-loaded pages, so transport state stays visible while navigating.
+
+
 - **Clickable stars for ratings**: users can click star ratings in the now-playing UI to update track rating.
 - **Adaptive layout**: `index.html` adapts to screen/environment, including portrait behavior with on-screen playback controls.
 - **Alexa-aware display mode**: UI can auto-switch to Alexa playback state using `/alexa/was-playing` (with explicit lifecycle active/inactive state).
@@ -97,6 +114,15 @@ export NOW_PLAYING_CONFIG_PATH=/path/to/now-playing.config.json
 - `lastfmApiKey`
 - `notifications.trackNotify.*` + `notifications.pushover.*`
 - `paths.musicLibraryRoot`, `paths.moodeUsbMount`, `paths.piMountBase`, `paths.podcastRoot`
+
+## Feature prerequisites
+
+| Feature | Requirement |
+|---|---|
+| Vibe Queue Builder | Last.fm API key |
+| Ratings | MPD `sticker_file` configured and writable |
+| Push notifications | Pushover token + user key |
+| Cover/art maintenance + some runtime checks | SSH from API host to moOde host (`sudo -n` for required commands) |
 
 ## Optional: iOS track-start push notifications (Pushover)
 
@@ -261,6 +287,16 @@ ssh moode@<moode-host> 'sudo -n true && echo sudo_ok'
 If `sudo -n true` fails, configure sudoers on moOde for the `moode` user (or your configured SSH user) to allow the minimum commands needed by this project.
 
 Use **Config → Network & Runtime → Check SSH + Paths** as your verification step after setup.
+
+## Known limitations
+
+- Radio/classical metadata quality varies by station; matching accuracy is only as good as source metadata.
+- iTunes art/link matching is best-effort and may occasionally choose near-miss results.
+- Primary tested topology is split-host (separate API/UI Pi + moOde Pi).
+
+## Notes
+
+- Heavily vibe-coded with OpenClaw/ChatGPT.
 
 ## License
 
