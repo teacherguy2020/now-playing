@@ -702,13 +702,8 @@ async function bootThenStart() {
       _alexaModeDecisionMade = true;
 
       if (useAlexaBoot && np && np.file) {
-        const base = data;
         data = { ...data, ...np, alexaMode: true };
-        if (!String(data?.ratingFile || '').trim() && String(base?.ratingFile || '').trim()) data.ratingFile = String(base.ratingFile).trim();
-        if ((Number(data?.rating || 0) <= 0) && Number(base?.rating || 0) > 0) data.rating = Number(base.rating || 0);
-        if (typeof data?.ratingDisabled !== 'boolean' && typeof base?.ratingDisabled === 'boolean') data.ratingDisabled = base.ratingDisabled;
       } else if (useAlexaBoot && wp && wp.file) {
-        const base = data;
         data = {
           ...data,
           file: wp.file || data.file,
@@ -717,9 +712,6 @@ async function bootThenStart() {
           album: wp.album || data.album,
           alexaMode: true,
         };
-        if (!String(data?.ratingFile || '').trim() && String(base?.ratingFile || '').trim()) data.ratingFile = String(base.ratingFile).trim();
-        if ((Number(data?.rating || 0) <= 0) && Number(base?.rating || 0) > 0) data.rating = Number(base.rating || 0);
-        if (typeof data?.ratingDisabled !== 'boolean' && typeof base?.ratingDisabled === 'boolean') data.ratingDisabled = base.ratingDisabled;
       }
     } catch (e) {
       // If was-playing fetch fails, continue with /now-playing boot data.
@@ -1055,13 +1047,8 @@ function fetchNowPlaying() {
           const useAlexa = _alexaSourceLocked ? hasAlexaPayload : useAlexaNow;
 
           if (useAlexa && np && np.file) {
-            const base = data;
             data = { ...data, ...np, alexaMode: true };
-            if (!String(data?.ratingFile || '').trim() && String(base?.ratingFile || '').trim()) data.ratingFile = String(base.ratingFile).trim();
-            if ((Number(data?.rating || 0) <= 0) && Number(base?.rating || 0) > 0) data.rating = Number(base.rating || 0);
-            if (typeof data?.ratingDisabled !== 'boolean' && typeof base?.ratingDisabled === 'boolean') data.ratingDisabled = base.ratingDisabled;
           } else if (useAlexa && wp && wp.file) {
-            const base = data;
             data = {
               ...data,
               file: wp.file || data.file,
@@ -1070,9 +1057,6 @@ function fetchNowPlaying() {
               album: wp.album || data.album,
               alexaMode: true,
             };
-            if (!String(data?.ratingFile || '').trim() && String(base?.ratingFile || '').trim()) data.ratingFile = String(base.ratingFile).trim();
-            if ((Number(data?.rating || 0) <= 0) && Number(base?.rating || 0) > 0) data.rating = Number(base.rating || 0);
-            if (typeof data?.ratingDisabled !== 'boolean' && typeof base?.ratingDisabled === 'boolean') data.ratingDisabled = base.ratingDisabled;
           } else if (_alexaSourceLocked) {
             // Keep prior Alexa view rather than flashing back to queue head.
             return null;
@@ -1104,13 +1088,6 @@ function fetchNowPlaying() {
       lastNowPlayingData = data;
       window.lastNowPlayingData = data;
 
-      const isAirplay = data.isAirplay === true;
-      const isStream  = data.isStream === true;
-
-      // Keep mode flags in sync even if updateUI() isn't called
-      currentIsAirplay = isAirplay;
-      currentIsStream  = isStream;
-      currentIsPodcast = inferIsPodcast(data);
       if (DEBUG) {
         DEBUG && console.groupCollapsed('%c[PODCAST DETECT]', 'color:#ff9800;font-weight:bold');
         dlog('file:', data.file);
@@ -2322,16 +2299,6 @@ function applyRatingFromNowPlaying(np) {
   if (!ratingsAllowedNow()) {
     pendingRating = null;
     clearStars();
-    return;
-  }
-
-  // Alexa mode fallback: if payload carries a rating but no ratingFile,
-  // still show stars (read-only-ish visual continuity).
-  if (currentAlexaMode && !npFile && npRating > 0) {
-    ratingDisabled = false;
-    currentRating = npRating;
-    if (!lastRatingFile) lastRatingFile = String(currentFile || np?.file || '').trim();
-    renderStars(currentRating);
     return;
   }
 
