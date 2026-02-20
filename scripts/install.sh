@@ -15,6 +15,7 @@ REPO_URL="${DEFAULT_REPO_URL}"
 REF="${DEFAULT_REF}"
 ALLOW_ROOT="false"
 NON_INTERACTIVE="false"
+FRESH_INSTALL="false"
 
 usage() {
   cat <<EOF
@@ -28,6 +29,7 @@ Options:
   --ref <branch|tag|sha>      Git ref to install (default: ${DEFAULT_REF})
   --non-interactive           Do not prompt; require env/flags
   --allow-root                Allow running as root
+  --fresh                     Destructive refresh: do NOT preserve runtime/user state
   -h, --help                  Show this help
 EOF
 }
@@ -72,6 +74,8 @@ while [[ $# -gt 0 ]]; do
       NON_INTERACTIVE="true"; shift ;;
     --allow-root)
       ALLOW_ROOT="true"; shift ;;
+    --fresh)
+      FRESH_INSTALL="true"; shift ;;
     -h|--help)
       usage; exit 0 ;;
     *)
@@ -120,6 +124,7 @@ STAGING_DIR="$(mktemp -d -t now-playing-install.XXXXXX)"
 trap 'rm -rf "$STAGING_DIR"' EXIT
 
 log "Mode: ${MODE}"
+log "Fresh install: ${FRESH_INSTALL}"
 log "Repo: ${REPO_URL}"
 log "Ref: ${REF}"
 log "Install dir: ${INSTALL_DIR}"
@@ -135,12 +140,36 @@ git clone --depth 1 --branch "${REF}" "${REPO_URL}" "${STAGING_DIR}/src" 2>/dev/
 log "Creating install directory"
 ${SUDO} mkdir -p "${INSTALL_DIR}"
 
-log "Syncing files"
-${SUDO} rsync -a --delete \
-  --exclude ".git" \
-  --exclude "node_modules" \
-  --exclude "*.zip" \
-  "${STAGING_DIR}/src/" "${INSTALL_DIR}/"
+if [[ "${FRESH_INSTALL}" == "true" && "${NON_INTERACTIVE}" != "true" ]]; then
+  echo
+  err "--fresh will overwrite/reset runtime state under ${INSTALL_DIR} (config/data/var)."
+  read -r -p "Type FRESH to continue: " _fresh_ack
+  if [[ "${_fresh_ack}" != "FRESH" ]]; then
+    err "Aborted fresh install."
+    exit 1
+  fi
+fi
+
+if [[ "${FRESH_INSTALL}" == "true" ]]; then
+  log "Syncing files (FRESH mode: runtime/user state may be overwritten)"
+  ${SUDO} rsync -a --delete \
+    --exclude ".git" \
+    --exclude "node_modules" \
+    --exclude "*.zip" \
+    "${STAGING_DIR}/src/" "${INSTALL_DIR}/"
+else
+  log "Syncing files (preserving runtime/user state)"
+  ${SUDO} rsync -a --delete \
+    --exclude ".git" \
+    --exclude "node_modules" \
+    --exclude "*.zip" \
+    --exclude ".env" \
+    --exclude "config/now-playing.config.json" \
+    --exclude "subscriptions.json" \
+    --exclude "data/***" \
+    --exclude "var/***" \
+    "${STAGING_DIR}/src/" "${INSTALL_DIR}/"
+fi
 
 ${SUDO} chown -R "${INSTALL_USER}":"${INSTALL_USER}" "${INSTALL_DIR}"
 

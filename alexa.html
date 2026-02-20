@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Alexa</title>
   <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
+  <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
     .wrap{max-width:1080px;margin:0 auto;padding:18px}
@@ -17,10 +18,18 @@
     code{background:#0a1222;border:1px solid #334;border-radius:6px;padding:1px 6px}
     ul{margin:8px 0 0 18px}
     li{margin:4px 0}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #2a3a58;font-size:12px;color:#9fb1d9}
+    .miniPill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #2a3a58;font-size:12px;color:#9fb1d9}
   </style>
 </head>
 <body>
+  <div class="preHeroStatusWrap">
+    <div class="preHeroStatus">
+      <div class="pill" id="apiPill" title="Active API endpoint"><span class="dot" aria-hidden="true"></span>API: <span id="apiHint">loading…</span></div>
+      <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot" aria-hidden="true"></span>Web: <span id="webHint">loading…</span></div>
+      <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot" aria-hidden="true"></span>Alexa: <span id="alexaHint">unknown</span></div>
+      <div class="pill" id="moodePill" title="moOde host verification"><span class="dot" aria-hidden="true"></span>moOde: <span id="moodeHint">unknown</span></div>
+    </div>
+  </div>
   <div class="heroRail">
     <div class="heroWrap">
       <nav class="topTabs" aria-label="Main pages" style="margin-bottom:8px;">
@@ -61,7 +70,7 @@
     <div class="card">
       <div class="row" style="justify-content:space-between;align-items:center;">
         <div>
-          <strong>Corrections</strong> <span class="pill">persisted to config JSON</span>
+          <strong>Corrections</strong> <span class="miniPill">persisted to config JSON</span>
           <div class="muted" style="margin-top:4px;">Fix buttons in the misheard lists save immediately.</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -148,6 +157,6 @@
     <div class="card muted" id="status">Loading…</div>
   </div>
 
-  <script src="scripts/alexa.js?v=20260219-6"></script>
+  <script src="scripts/alexa.js?v=20260220-15"></script>
 </body>
 </html>

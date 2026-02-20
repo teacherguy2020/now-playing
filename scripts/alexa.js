@@ -13,6 +13,42 @@
     if (el) el.textContent = msg;
   }
 
+  function setPillState(pillId, state){
+    const map = {
+      ok:{c:'#22c55e',b:'rgba(34,197,94,.55)'},
+      warn:{c:'#f59e0b',b:'rgba(245,158,11,.55)'},
+      bad:{c:'#ef4444',b:'rgba(239,68,68,.55)'},
+      off:{c:'#64748b',b:'rgba(100,116,139,.45)'}
+    };
+    const s = map[state] || map.off;
+    const pill = $(pillId); if (!pill) return;
+    const dot = pill.querySelector('.dot');
+    if (dot) { dot.style.background = s.c; dot.style.boxShadow = `0 0 0 6px ${s.b.replace('.55','.20')}`; }
+    pill.style.borderColor = s.b;
+  }
+
+  function updateServicePillsFromConfig(cfg){
+    const c = cfg || {};
+    const host = location.hostname || '10.0.0.233';
+    const ports = c.ports || {};
+    const apiPort = Number(ports.api || 3101);
+    const uiPort = Number(ports.ui || 8101);
+    const ax = c.alexa || {};
+    const axEnabled = !!ax.enabled;
+    const axDomain = String(ax.publicDomain || '').trim();
+    const moodeHost = String(c?.moode?.sshHost || c?.mpd?.host || c?.mpdHost || c?.moodeSshHost || '').trim();
+
+    if ($('apiHint')) $('apiHint').textContent = `${host}:${apiPort}`;
+    if ($('webHint')) $('webHint').textContent = `${host}:${uiPort}`;
+    if ($('alexaHint')) $('alexaHint').textContent = !axEnabled ? 'disabled' : (axDomain ? 'moode.••••••••.com' : 'missing domain');
+    if ($('moodeHint')) $('moodeHint').textContent = moodeHost ? `confirmed (${moodeHost})` : 'not verified';
+
+    setPillState('apiPill','ok');
+    setPillState('webPill','ok');
+    setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
+    setPillState('moodePill', moodeHost ? 'ok' : 'warn');
+  }
+
   function setAliasesSaveNote(msg, ok = true) {
     const el = $('aliasesSaveNote');
     if (!el) return;
@@ -83,23 +119,54 @@
     const mapId = type === 'album' ? 'albumAliases' : (type === 'playlist' ? 'playlistAliases' : 'artistAliases');
     const aliases = readAliasMap(mapId);
 
-    const list = (Array.isArray(rows) ? rows : [])
+    const all = (Array.isArray(rows) ? rows : [])
       .filter((r) => {
         const what = String(r?.[field] || '').trim();
-        if (!what) return false;
-        // Hide items already corrected in alias map.
-        return !aliases[aliasKey(what)];
+        return !!what;
+      });
+
+    // If an item has an error row, hide its attempt rows to reduce noise.
+    const hasErrorByKey = new Set();
+    for (const r of all) {
+      const what = String(r?.[field] || '').trim();
+      const st = String(r?.status || 'seen').trim().toLowerCase();
+      const isError = /(^|[^a-z])(error|failed|failure|not[\s_-]?found|no[\s_-]?match)([^a-z]|$)/.test(st);
+      if (what && isError) hasErrorByKey.add(aliasKey(what));
+    }
+
+    const list = all
+      .filter((r) => {
+        const what = String(r?.[field] || '').trim();
+        const st = String(r?.status || 'seen').trim().toLowerCase();
+        const isAttempt = st === 'attempt';
+        if (isAttempt && hasErrorByKey.has(aliasKey(what))) return false;
+        return true;
       })
       .slice(0, 20);
 
-    if (!list.length) { host.innerHTML = '<div>None (all recent items are already fixed)</div>'; return; }
+    if (!list.length) { host.innerHTML = '<div>None</div>'; return; }
 
     host.innerHTML = list.map((r, idx) => {
       const what = String(r?.[field] || '').trim() || '(blank)';
-      const st = String(r?.status || 'seen');
-      const src = String(r?.source || 'alexa');
+      const st = String(r?.status || 'seen').trim().toLowerCase();
+      const srcRaw = String(r?.source || '').trim().toLowerCase();
+      const src = srcRaw.replace(/^alexa-?/, '');
       const safeWhat = what.replace(/</g,'&lt;');
-      return `<div style="margin:4px 0;">• <code>${safeWhat}</code> <span style="opacity:.8;">[${st} · ${src}]</span> <button type="button" data-fix-type="${type}" data-heard="${encodeURIComponent(what)}" data-row="${idx}" style="margin-left:6px;">Fix</button></div>`;
+      const isError = /(^|[^a-z])(error|failed|failure|not[\s_-]?found|no[\s_-]?match)([^a-z]|$)/.test(st);
+      const isOk = ['ok', 'success', 'matched', 'played'].includes(st);
+      const meta = src ? `${st} · ${src}` : st;
+      const mapped = String(aliases[aliasKey(what)] || '').trim();
+      const hasMapping = !!mapped;
+      const showFix = isError && !hasMapping;
+      const chipStyle = isError
+        ? 'display:inline-block;padding:1px 8px;border-radius:999px;border:1px solid #7f1d1d;background:#3f1212;color:#fecaca;font-size:12px;'
+        : (isOk
+            ? 'display:inline-block;padding:1px 8px;border-radius:999px;border:1px solid #14532d;background:#052e16;color:#bbf7d0;font-size:12px;'
+            : 'display:inline-block;padding:1px 8px;border-radius:999px;border:1px solid #2a3a58;background:#16233f;color:#c7d2fe;font-size:12px;');
+      const mapChip = hasMapping
+        ? ` <span style="display:inline-block;padding:1px 8px;border-radius:999px;border:1px solid #14532d;background:#052e16;color:#bbf7d0;font-size:12px;">→ ${mapped.replace(/</g,'&lt;')}</span>`
+        : '';
+      return `<div style="margin:4px 0;">• <code>${safeWhat}</code> <span style="${chipStyle}">${meta}</span>${mapChip}${showFix ? ` <button type="button" data-fix-type="${type}" data-heard="${encodeURIComponent(what)}" data-row="${idx}" style="margin-left:6px;">Fix</button>` : ''}</div>`;
     }).join('');
   }
 
@@ -123,6 +190,7 @@
     renderHeard('heardArtists', ax.heardArtists, 'artist', 'artist');
     renderHeard('heardAlbums', ax.heardAlbums, 'album', 'album');
     renderHeard('heardPlaylists', ax.heardPlaylists, 'playlist', 'playlist');
+    updateServicePillsFromConfig(runtimeConfig);
 
     status('Loaded.');
   }
@@ -249,5 +317,15 @@
     }
   });
 
-  load().catch((e) => status(`Error: ${e.message || e}`));
+  load().catch((e) => {
+    if ($('apiHint')) $('apiHint').textContent = (apiBaseDefault() || '').replace(/^https?:\/\//, '');
+    if ($('webHint')) $('webHint').textContent = `${location.hostname || '10.0.0.233'}:8101`;
+    if ($('alexaHint')) $('alexaHint').textContent = 'unknown';
+    if ($('moodeHint')) $('moodeHint').textContent = 'not verified';
+    setPillState('apiPill','bad');
+    setPillState('webPill','warn');
+    setPillState('alexaPill','warn');
+    setPillState('moodePill','warn');
+    status(`Error: ${e.message || e}`);
+  });
 })();

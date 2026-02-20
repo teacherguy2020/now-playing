@@ -42,15 +42,11 @@ export function registerConfigAlexaAliasRoutes(app, deps) {
         });
       }
 
-      const heard = Array.isArray(current?.alexa?.heardArtists) ? current.alexa.heardArtists : [];
-      heard.unshift({ artist, key, source, at: now, status: 'not-found' });
-
       const next = {
         ...current,
         alexa: {
           ...(current.alexa || {}),
           unresolvedArtists: unresolved.slice(0, 200),
-          heardArtists: heard.slice(0, 400),
         },
       };
 
@@ -115,15 +111,11 @@ export function registerConfigAlexaAliasRoutes(app, deps) {
         unresolved.unshift({ album, key, count: 1, createdAt: now, updatedAt: now, lastSource: source });
       }
 
-      const heard = Array.isArray(current?.alexa?.heardAlbums) ? current.alexa.heardAlbums : [];
-      heard.unshift({ album, key, source, at: now, status: 'not-found' });
-
       const next = {
         ...current,
         alexa: {
           ...(current.alexa || {}),
           unresolvedAlbums: unresolved.slice(0, 200),
-          heardAlbums: heard.slice(0, 400),
         },
       };
 
@@ -189,15 +181,11 @@ export function registerConfigAlexaAliasRoutes(app, deps) {
         unresolved.unshift({ playlist, key, count: 1, createdAt: now, updatedAt: now, lastSource: source });
       }
 
-      const heard = Array.isArray(current?.alexa?.heardPlaylists) ? current.alexa.heardPlaylists : [];
-      heard.unshift({ playlist, key, source, at: now, status: 'not-found' });
-
       const next = {
         ...current,
         alexa: {
           ...(current.alexa || {}),
           unresolvedPlaylists: unresolved.slice(0, 200),
-          heardPlaylists: heard.slice(0, 400),
         },
       };
 
