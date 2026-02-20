@@ -4511,6 +4511,8 @@ app.get('/now-playing', async (req, res) => {
 
     // Remove leading track-number noise from title.
     t = t.replace(/^\s*\d{1,3}[\s.)-]+/, '').trim();
+    // Remove trailing bracketed index noise like "[95]" sometimes injected by stations.
+    t = t.replace(/\s*\[\d{1,4}\]\s*$/,'').trim();
 
     // Classical-radio cleanup: if artist is likely composer and title carries
     // performer suffixes, prefer soloist or orchestra for iTunes matching.
@@ -5220,7 +5222,7 @@ app.get('/now-playing', async (req, res) => {
           artist = String(it.matchedArtist).trim();
           if (!radioPerformers) radioPerformers = artist;
         }
-        if ((/^\d{1,3}$/.test(String(artist || '').trim()) || !String(title || '').trim()) && String(it?.matchedTitle || '').trim()) {
+        if (String(it?.matchedTitle || '').trim()) {
           title = String(it.matchedTitle).trim();
         }
 
@@ -5254,7 +5256,7 @@ app.get('/now-playing', async (req, res) => {
             artist = String(it.matchedArtist).trim();
             if (!radioPerformers) radioPerformers = artist;
           }
-          if ((/^\d{1,3}$/.test(String(artist || '').trim()) || !String(title || '').trim()) && String(it?.matchedTitle || '').trim()) {
+          if (String(it?.matchedTitle || '').trim()) {
             title = String(it.matchedTitle).trim();
           }
         } else {
@@ -5325,6 +5327,9 @@ app.get('/now-playing', async (req, res) => {
         if (!radioYear)  radioYear  = String(ap?.year  || '').trim() || radioYear;
         if (!radioPerformers && String(ap?.matchedArtist || '').trim()) {
           radioPerformers = String(ap.matchedArtist).trim();
+        }
+        if (String(ap?.matchedTitle || '').trim()) {
+          title = String(ap.matchedTitle).trim();
         }
 
         if (debug) {
