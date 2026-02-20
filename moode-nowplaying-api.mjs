@@ -3324,6 +3324,11 @@ function movementTokenSet(s) {
   if (/\ballegro\b/.test(m)) out.add('allegro');
   const mv = m.match(/(?:^|\W)([1-9])\s*[.)]/);
   if (mv) out.add(`mv${mv[1]}`);
+  const romans = m.match(/(?:^|\W)(i{1,3}|iv|v|vi{0,3}|ix|x)\s*\./g) || [];
+  for (const r of romans) {
+    const tok = String(r).replace(/[^ivx]/g, '');
+    if (tok) out.add(`rm${tok}`);
+  }
   return out;
 }
 
@@ -3524,6 +3529,10 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
         const mOverlap = overlapCount(queryMovement, candMovement);
         if (mOverlap > 0) score += 28;
         else score -= 60;
+
+        const qRoman = new Set([...queryMovement].filter((t) => /^rm/.test(t)));
+        const cRoman = new Set([...candMovement].filter((t) => /^rm/.test(t)));
+        if (qRoman.size && cRoman.size && overlapCount(qRoman, cRoman) === 0) score -= 120;
       }
 
       if (conductorTokens.size) {
