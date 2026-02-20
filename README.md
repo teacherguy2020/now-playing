@@ -154,7 +154,10 @@ Recent behavior highlights:
 - Separate send actions for filtered vs vibe list
 - Shared playlist-save controls in the lower cover module
 - Collage preview is generated for both filtered and vibe lists
-- Vibe is automatically hidden when Last.fm is not configured
+- Vibe is automatically hidden when Last.fm is not configured 
+
+Queue Wizard will also save your built queue to a playlist, and create a collage cover for it.
+![queue-wizard.html](collage.jpeg)
 
 ### Radio page (`radio.html`)
 
