@@ -137,6 +137,7 @@ pm2 save
 ```
 
 ### Queue Wizard (`queue-wizard.html`)
+![queue-wizard.html](queue.jpeg)
 
 Queue Wizard now supports two explicit build modes:
 - **Filter Queue Builder** (genre/artist/excludes/rating threshold)
