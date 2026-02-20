@@ -2100,6 +2100,11 @@ app.get('/alexa/was-playing', async (req, res) => {
     const title = String(wp.title || '').trim();
     const artist = String(wp.artist || '').trim();
     const album = String(wp.album || '').trim();
+    const year = String(wp.year || '').trim();
+    const date = String(wp.date || '').trim();
+    const ratingNum = Math.max(0, Math.min(5, Number(wp.rating) || 0));
+    const ratingFile = String(wp.ratingFile || file || '').trim();
+    const ratingDisabled = (typeof wp.ratingDisabled === 'boolean') ? !!wp.ratingDisabled : !ratingFile;
 
     // now-playing-compatible payload (safe defaults)
     const nowPlaying = {
@@ -2129,7 +2134,7 @@ app.get('/alexa/was-playing', async (req, res) => {
       elapsed: 0,
       duration: 0,
       percent: 0,
-      year: '',
+      year,
       label: '',
       producer: '',
       personnel: [],
@@ -2139,16 +2144,16 @@ app.get('/alexa/was-playing', async (req, res) => {
       volume: '0',
       mute: '0',
       track: '',
-      date: '',
+      date,
       isStream: false,
       isAirplay: false,
       isPodcast: false,
       streamKind: '',
       isUpnp: false,
       isFavorite: false,
-      rating: 0,
-      ratingDisabled: true,
-      ratingFile: file || '',
+      rating: ratingNum,
+      ratingDisabled,
+      ratingFile,
       alexaMode: true,
       fresh,
       ageMs,
@@ -2177,6 +2182,11 @@ app.post('/alexa/was-playing', async (req, res) => {
       title: decodeHtmlEntities(String(req.body?.title || alexaWasPlaying.title || '').trim()),
       artist: decodeHtmlEntities(String(req.body?.artist || alexaWasPlaying.artist || '').trim()),
       album: decodeHtmlEntities(String(req.body?.album || alexaWasPlaying.album || '').trim()),
+      year: String(req.body?.year || alexaWasPlaying.year || '').trim(),
+      date: String(req.body?.date || alexaWasPlaying.date || '').trim(),
+      rating: Math.max(0, Math.min(5, Number(req.body?.rating ?? alexaWasPlaying.rating ?? 0) || 0)),
+      ratingFile: String(req.body?.ratingFile || alexaWasPlaying.ratingFile || req.body?.file || alexaWasPlaying.file || '').trim(),
+      ratingDisabled: (typeof req.body?.ratingDisabled === 'boolean') ? !!req.body.ratingDisabled : ((typeof alexaWasPlaying.ratingDisabled === 'boolean') ? !!alexaWasPlaying.ratingDisabled : false),
       startedAt: Number.parseInt(String(req.body?.startedAt || alexaWasPlaying.startedAt || nowTs).trim(), 10) || nowTs,
       stoppedAt: active ? 0 : (Number.parseInt(String(req.body?.stoppedAt || nowTs).trim(), 10) || nowTs),
       active,

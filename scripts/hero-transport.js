@@ -87,6 +87,16 @@
     return await r.json().catch(() => ({}));
   }
 
+  async function loadAlexaWasPlaying() {
+    try {
+      const r = await fetch(`${apiBase}/alexa/was-playing?maxAgeMs=21600000`, { cache: 'no-store' });
+      if (!r.ok) return null;
+      return await r.json().catch(() => null);
+    } catch {
+      return null;
+    }
+  }
+
   function normalizeAppleMusicUrl(raw) {
     const s = String(raw || '').trim();
     if (!s) return '';
@@ -235,7 +245,8 @@
       : '';
     const motionMp4 = String(np?._motionMp4 || '').trim();
 
-    const isRadioOrStream = !!np?.isRadio || !!np?.isStream || !!head?.isStream;
+    const isAlexaMode = !!np?.alexaMode;
+    const isRadioOrStream = !!np?.isRadio || !!np?.isStream || !!head?.isStream || isAlexaMode;
     let displayArtist = String(np?._radioDisplay?.artist || np?.radioArtist || np?.artist || head?.artist || '').trim();
     let displayTitle = String(np?._radioDisplay?.title || np?.radioTitle || np?.title || head?.title || '').trim();
 
@@ -271,7 +282,7 @@
       : 'Nothing playing';
     const appleUrl = String(np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
     const isPodcast = !!np?.isPodcast;
-    const isLibraryTrack = !np?.isStream && !np?.isRadio && !isPodcast;
+    const isLibraryTrack = ((!np?.isStream && !np?.isRadio && !isPodcast) || isAlexaMode);
     const rating = Math.max(0, Math.min(5, Number(np?.rating ?? head?.rating ?? 0) || 0));
     const ratingFile = String(np?.ratingFile || np?.file || head?.file || '').trim();
     const starsRow = (isLibraryTrack && ratingFile)
@@ -279,11 +290,18 @@
       : '';
 
     const radioAlbum = String(np?.radioAlbum || np?.album || '').trim();
-    const radioYear = String(np?.radioYear || np?.year || '').trim();
+    let radioYear = String(np?.radioYear || np?.year || '').trim();
+    if (!radioYear && isAlexaMode) {
+      const d = String(np?.date || '').trim();
+      const m = d.match(/^(\d{4})/);
+      if (m) radioYear = m[1];
+    }
     const stationNameLive = String(np?._stationName || np?.stationName || np?.radioStationName || head?.stationName || '').trim();
     const airplaySource = String(np?.airplaySource || np?.airplaySourceName || np?.airplaySender || '').trim();
     const isAirplay = !!np?.isAirplay;
-    const liveLabel = isAirplay ? (airplaySource ? `AirPlay • ${airplaySource}` : 'AirPlay') : (stationNameLive || 'Radio');
+    const liveLabel = isAlexaMode
+      ? 'Alexa Mode'
+      : (isAirplay ? (airplaySource ? `AirPlay • ${airplaySource}` : 'AirPlay') : (stationNameLive || 'Radio'));
     const albumYearText = [radioAlbum, radioYear].filter(Boolean).join(' • ');
     const metaRow = starsRow || (albumYearText ? `<div class="heroSubline">${albumYearText}</div>` : '');
 
@@ -324,7 +342,7 @@
             (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekfwd30" title="Forward 30 seconds"><span style="font-size:13px;font-weight:700;">30↻</span></button>` : '') +
           `</div>` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}" data-seekable="${showProgress ? '1' : '0'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div><div class="progress-handle" style="left:${progressPct}%;"></div><div class="progress-tip" style="left:${progressPct}%">Drag to seek</div></div>` +
-          `${(!showProgress && isRadioOrStream) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${state === 'playing' ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(liveLabel)}${liveBadge ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-size:11px;font-weight:700;vertical-align:1px;">${liveBadge}</span>` : ''}</div>` : ''}` +
+          `${(!showProgress && isRadioOrStream) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${(state === 'playing' && !isAlexaMode) ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(liveLabel)}${liveBadge ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-size:11px;font-weight:700;vertical-align:1px;">${liveBadge}</span>` : ''}</div>` : ''}` +
         `</div>` +
       `</div>`;
 
@@ -615,10 +633,27 @@
       try {
         await ensureRuntimeKey();
         const key = currentKey();
-        const [q, np] = await Promise.all([
+        const [q, npRaw, alexaWas] = await Promise.all([
           loadQueueState(key),
           loadNowPlaying(key),
+          loadAlexaWasPlaying(),
         ]);
+
+        let np = npRaw || {};
+        const aw = alexaWas || null;
+        const awNp = aw?.nowPlaying || null;
+        const awWp = aw?.wasPlaying || null;
+        const awActive = !!((awNp && awNp.active) || (awWp && awWp.active));
+        const awFresh = !!aw?.fresh;
+        const awPayload = (awNp && awNp.file) ? awNp : ((awWp && awWp.file) ? awWp : null);
+        if (awFresh && awActive && awPayload) {
+          const baseNp = np;
+          np = { ...np, ...awPayload, alexaMode: true };
+          // Preserve rating context from primary now-playing when Alexa payload lacks it.
+          if (!String(np?.ratingFile || '').trim() && String(baseNp?.ratingFile || '').trim()) np.ratingFile = String(baseNp.ratingFile).trim();
+          if ((Number(np?.rating || 0) <= 0) && Number(baseNp?.rating || 0) > 0) np.rating = Number(baseNp.rating || 0);
+        }
+
         lastQ = cloneObj(q);
         lastNp = cloneObj(np);
         const seq = ++refreshSeq;

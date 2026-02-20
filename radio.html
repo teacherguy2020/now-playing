@@ -44,11 +44,14 @@
     .clusterTitle{font-size:13px;color:#bcd0f6;font-weight:700;letter-spacing:.3px}
     .clusterCount{font-size:12px;color:#8ea3c6}
     .stationGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    .stationCard{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;border:1px solid #2a3a58;border-radius:10px;background:#0a1222;padding:8px;cursor:pointer}
-    .stationCard.isSel{border-color:#22c55e;box-shadow:0 0 0 1px rgba(34,197,94,.25) inset}
+    .stationCard{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;border:1px solid #2a3a58;border-radius:10px;background:#0a1222;padding:8px}
+    .stationCard.isActive{border-color:#22c55e;box-shadow:0 0 0 1px rgba(34,197,94,.25) inset}
     .stationName{font-size:14px;color:#e6edff;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .stationMeta{font-size:11px;color:#8ea3c6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .stationControls{display:flex;align-items:center;gap:4px}
+    .stationMeta{font-size:11px;color:#8ea3c6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
+    .stationControls{display:flex;align-items:center;gap:6px}
+    .stationAction{border:1px solid #334;background:#0f1a31;color:#e6edff;border-radius:7px;padding:2px 8px;cursor:pointer;font-size:12px;line-height:1.2}
+    .stationAction:hover{border-color:#5b78a8;background:#152748}
+    .stationAction.isOn{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.08)}
     .chip{display:inline-block;border:1px solid #2a3a58;border-radius:999px;padding:1px 7px;font-size:10px;color:#9fb1d9;margin-left:4px}
     .chip.hq{border-color:rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-weight:700}
 
@@ -89,6 +92,6 @@
   </div>
 
   <script src="scripts/theme-toggle.js?v=20260217-1"></script>
-  <script src="scripts/radio.js?v=20260217-14"></script>
+  <script src="scripts/radio.js?v=20260220-15"></script>
 </body>
 </html>

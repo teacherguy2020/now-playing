@@ -449,8 +449,8 @@ function isUpnpMode(data) {
 }
 
 function ratingsAllowedNow() {
-  // ratings only for local MUSIC (no pause/airplay/stream/podcast)
-  return !pauseMode && !currentIsAirplay && !currentIsStream && !currentIsPodcast;
+  // ratings for local music and Alexa mode; still disabled for pause/airplay/podcast.
+  return !pauseMode && !currentIsAirplay && !currentIsPodcast && (!currentIsStream || currentAlexaMode);
 }
 
 /* =========================
@@ -474,6 +474,7 @@ const PENDING_RATING_HOLD_MS = 3500;
 let ratingReqToken = 0;
 let currentIsStream = false;
 let currentIsAirplay = false;
+let currentAlexaMode = false;
 
 /* =========================
  * modal personnel
@@ -701,8 +702,13 @@ async function bootThenStart() {
       _alexaModeDecisionMade = true;
 
       if (useAlexaBoot && np && np.file) {
+        const base = data;
         data = { ...data, ...np, alexaMode: true };
+        if (!String(data?.ratingFile || '').trim() && String(base?.ratingFile || '').trim()) data.ratingFile = String(base.ratingFile).trim();
+        if ((Number(data?.rating || 0) <= 0) && Number(base?.rating || 0) > 0) data.rating = Number(base.rating || 0);
+        if (typeof data?.ratingDisabled !== 'boolean' && typeof base?.ratingDisabled === 'boolean') data.ratingDisabled = base.ratingDisabled;
       } else if (useAlexaBoot && wp && wp.file) {
+        const base = data;
         data = {
           ...data,
           file: wp.file || data.file,
@@ -711,6 +717,9 @@ async function bootThenStart() {
           album: wp.album || data.album,
           alexaMode: true,
         };
+        if (!String(data?.ratingFile || '').trim() && String(base?.ratingFile || '').trim()) data.ratingFile = String(base.ratingFile).trim();
+        if ((Number(data?.rating || 0) <= 0) && Number(base?.rating || 0) > 0) data.rating = Number(base.rating || 0);
+        if (typeof data?.ratingDisabled !== 'boolean' && typeof base?.ratingDisabled === 'boolean') data.ratingDisabled = base.ratingDisabled;
       }
     } catch (e) {
       // If was-playing fetch fails, continue with /now-playing boot data.
@@ -1046,8 +1055,13 @@ function fetchNowPlaying() {
           const useAlexa = _alexaSourceLocked ? hasAlexaPayload : useAlexaNow;
 
           if (useAlexa && np && np.file) {
+            const base = data;
             data = { ...data, ...np, alexaMode: true };
+            if (!String(data?.ratingFile || '').trim() && String(base?.ratingFile || '').trim()) data.ratingFile = String(base.ratingFile).trim();
+            if ((Number(data?.rating || 0) <= 0) && Number(base?.rating || 0) > 0) data.rating = Number(base.rating || 0);
+            if (typeof data?.ratingDisabled !== 'boolean' && typeof base?.ratingDisabled === 'boolean') data.ratingDisabled = base.ratingDisabled;
           } else if (useAlexa && wp && wp.file) {
+            const base = data;
             data = {
               ...data,
               file: wp.file || data.file,
@@ -1056,6 +1070,9 @@ function fetchNowPlaying() {
               album: wp.album || data.album,
               alexaMode: true,
             };
+            if (!String(data?.ratingFile || '').trim() && String(base?.ratingFile || '').trim()) data.ratingFile = String(base.ratingFile).trim();
+            if ((Number(data?.rating || 0) <= 0) && Number(base?.rating || 0) > 0) data.rating = Number(base.rating || 0);
+            if (typeof data?.ratingDisabled !== 'boolean' && typeof base?.ratingDisabled === 'boolean') data.ratingDisabled = base.ratingDisabled;
           } else if (_alexaSourceLocked) {
             // Keep prior Alexa view rather than flashing back to queue head.
             return null;
@@ -1108,6 +1125,15 @@ function fetchNowPlaying() {
         dlog('server isPodcast flag:', data.isPodcast === true);
         dlog('👉 inferred isPodcast:', currentIsPodcast);
         DEBUG && console.groupEnd();
+      }
+
+      // Prime mode flags before star logic so Alexa mode isn't blocked by stale stream flags.
+      {
+        const preAlexa = data?.alexaMode === true;
+        currentAlexaMode = preAlexa;
+        currentIsAirplay = preAlexa ? false : (data?.isAirplay === true);
+        currentIsStream = preAlexa ? false : (data?.isStream === true);
+        currentIsPodcast = inferIsPodcast(data);
       }
 
       // ⭐ Single source of truth for stars:
@@ -2299,6 +2325,16 @@ function applyRatingFromNowPlaying(np) {
     return;
   }
 
+  // Alexa mode fallback: if payload carries a rating but no ratingFile,
+  // still show stars (read-only-ish visual continuity).
+  if (currentAlexaMode && !npFile && npRating > 0) {
+    ratingDisabled = false;
+    currentRating = npRating;
+    if (!lastRatingFile) lastRatingFile = String(currentFile || np?.file || '').trim();
+    renderStars(currentRating);
+    return;
+  }
+
   // If server says disabled, always clear (also clears pending)
   if (npDisabled) {
     pendingRating = null;
@@ -2492,8 +2528,14 @@ function updateUI(data) {
   // =========================
   // Mode flags
   // =========================
-  const isStream  = data.isStream === true;
-  const isAirplay = data.isAirplay === true;
+  let isStream  = data.isStream === true;
+  let isAirplay = data.isAirplay === true;
+  const isAlexaMode = data?.alexaMode === true;
+  // Alexa mode should behave like local-track display for ratings/stars.
+  if (isAlexaMode) {
+    isStream = false;
+    isAirplay = false;
+  }
 
   setPlayIcon(isPlayingState(data));
 
@@ -2511,6 +2553,7 @@ function updateUI(data) {
   currentFile = String(data.file || '');
   currentIsStream = isStream;
   currentIsAirplay = isAirplay;
+  currentAlexaMode = data?.alexaMode === true;
   currentIsPodcast = inferIsPodcast(data);
 
   if (DEBUG) {
@@ -2605,13 +2648,14 @@ if (titleEl) {
   // Album line + share icon (DOM-stable)
   // =========================
   if (albumTextEl) {
-    const album = isRadio
+    const inAlexaMode = data?.alexaMode === true;
+    const album = (isRadio && !inAlexaMode)
       ? decodeHtmlEntities(String(data.radioAlbum || data.album || ''))
-      : decodeHtmlEntities(String(data.album || ''));
+      : decodeHtmlEntities(String(data.album || data.radioAlbum || ''));
 
-    let year = isRadio
+    let year = (isRadio && !inAlexaMode)
       ? String(data.radioYear || data.year || '').trim()
-      : String(data.year || '').trim();
+      : String(data.year || data.radioYear || '').trim();
 
     // Alexa mode often has date but not year; derive year from date when missing.
     if (!year) {
