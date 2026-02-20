@@ -397,12 +397,26 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.end(cached);
       }
 
-      const u = `http://${mpdHost}/imagesw/radio-logos/${encodeURIComponent(name)}.jpg`;
-      const r = await fetch(u, { redirect: 'follow' });
-      if (!r.ok) return res.status(404).end('not found');
-      const ab = await r.arrayBuffer();
-      const buf = Buffer.from(ab);
-      await writeCachedRadioLogo(name, buf);
+      const tryFetchLogo = async (nm) => {
+        const u = `http://${mpdHost}/imagesw/radio-logos/${encodeURIComponent(nm)}.jpg`;
+        const r = await fetch(u, { redirect: 'follow' });
+        if (!r.ok) return null;
+        const ab = await r.arrayBuffer();
+        return { r, buf: Buffer.from(ab), nameUsed: nm };
+      };
+
+      let got = await tryFetchLogo(name);
+      if (!got) {
+        const aliases = await loadRadioLogoAliases();
+        const aliasTarget = String(aliases?.[name] || aliases?.[String(name).toLowerCase()] || '').trim();
+        if (aliasTarget && aliasTarget.toLowerCase() !== String(name).toLowerCase()) {
+          got = await tryFetchLogo(aliasTarget);
+        }
+      }
+      if (!got) return res.status(404).end('not found');
+
+      const { r, buf, nameUsed } = got;
+      await writeCachedRadioLogo(nameUsed || name, buf);
       res.setHeader('Content-Type', r.headers.get('content-type') || 'image/jpeg');
       res.setHeader('Cache-Control', 'public, max-age=3600');
       return res.end(buf);

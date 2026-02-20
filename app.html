@@ -296,9 +296,12 @@
             const mappedByHost = (!hostAmb && derivedHost && radioMap?.byHost && typeof radioMap.byHost.get === 'function') ? String(radioMap.byHost.get(derivedHost) || '').trim() : '';
             const displayStation = stationName || mappedByKey || mappedByHost || (head ? fallbackStation : '') || derivedStation;
             const artistRaw = String(x?.artist || '').trim();
-            const artist = (isStreamish ? (artistRaw || displayStation || 'Radio stream') : (artistRaw || String(x?.name || '').trim() || '(unknown)'));
+            const looksIheartBlob = /\btext="[^"]+"|\bsong_spot="[^"]+"|\bspEventID="[^"]+"|\bTPID="\d+"/i.test(artistRaw);
+            const iheartText = (artistRaw.match(/\btext="([^"]+)"/i) || [])[1] || '';
+            const artistClean = looksIheartBlob ? '' : artistRaw;
+            const artist = (isStreamish ? (artistClean || iheartText || displayStation || 'Radio stream') : (artistClean || String(x?.name || '').trim() || '(unknown)'));
             const titleRaw = String(x?.title || '').trim().replace(/\s*\[\d{1,4}\]\s*$/,'').trim();
-            const title = (isStreamish && !titleRaw) ? (displayStation || '') : titleRaw;
+            const title = (isStreamish && !titleRaw) ? (iheartText || displayStation || '') : titleRaw;
             const hostFavicon = derivedHost ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(derivedHost)}.ico` : '';
             const stationLogoByDisplay = (stationName || displayStation) ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName || displayStation)}` : '';
             let thumb = '';
