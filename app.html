@@ -83,7 +83,7 @@
     <iframe id="appFrame" title="Now Playing view" src="about:blank" scrolling="no" style="width:100%;display:block;"></iframe>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260218-76"></script>
+  <script src="scripts/hero-transport.js?v=20260220-91"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -204,9 +204,14 @@
           }
 
           const headers = runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {};
-          const r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
+          const [r, npRes] = await Promise.all([
+            fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers }),
+            fetch(`${base}/now-playing`, { cache:'no-store' }).catch(() => null),
+          ]);
           const j = await r.json().catch(() => ({}));
+          const np = npRes ? await npRes.json().catch(() => ({})) : {};
           if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          const fallbackStation = String(np?.stationName || np?._stationName || np?.radioStationName || '').trim();
           const items = (Array.isArray(j.items) ? j.items : []).map((it, idx) => {
             const p = Number.isFinite(Number(it?.pos)) ? Number(it.pos)
               : (Number.isFinite(Number(it?.position)) ? Number(it.position) : (idx + 1));
@@ -220,13 +225,21 @@
             const artist = String(x?.artist || x?.name || '').trim() || '(unknown)';
             const title = String(x?.title || '').trim();
             const thumbRaw = String(x?.thumbUrl || '').trim();
-            let thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
-            if (thumb && /\/art\/current\.jpg(?:$|\?)/i.test(thumb)) {
-              thumb += (thumb.includes('?') ? '&' : '?') + `_=${stamp}`;
+            const fileRaw = String(x?.file || '').trim();
+            const isStreamish = /^https?:\/\//i.test(fileRaw);
+            const stationName = String(x?.name || x?.stationName || fallbackStation).trim();
+            let thumb = '';
+            if (isStreamish && stationName) {
+              thumb = `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName)}`;
+            } else {
+              thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
+              if (thumb && /\/art\/current\.jpg(?:$|\?)/i.test(thumb)) {
+                thumb += (thumb.includes('?') ? '&' : '?') + `_=${stamp}`;
+              }
             }
             const thumbHtml = thumb
-              ? `<img src="${thumb}" alt="" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
-              : `<div style="width:28px;height:28px;border-radius:6px;border:1px solid #334;background:#0a1222;"></div>`;
+              ? `<img src="${thumb}" alt="" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
+              : `<div style="width:34px;height:34px;border-radius:7px;border:1px solid #334;background:#0a1222;"></div>`;
             const actions = `<div class="heroQueueActions"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
             return `<div class="heroQueueRow" data-queue-play-pos="${pos}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div>${artist}</div><div class="heroQueueMeta">${title}</div></div>${actions}</div>`;
           }).join('');
