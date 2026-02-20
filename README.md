@@ -23,6 +23,8 @@ NOTE: Developed/tested to run on a separate pi than your moOde pi so moOde's fam
   - AirPlay (some mods made to aplmeta.txt to help with this)
   - UPnP
 
+![WFMT radio](parse.jpeg)
+
 ## Installer (systemd Linux)
 
 For host installs (intended GitHub invocation path):
