@@ -4662,6 +4662,14 @@ app.get('/now-playing', async (req, res) => {
     return false;
   }
 
+  function isProgramDateHint(s) {
+    const v = String(s || '').trim();
+    if (!v) return false;
+    if (/\blive\s+in\b/i.test(v)) return true;
+    if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/i.test(v) && /\b(19|20)\d{2}\b/.test(v)) return true;
+    return false;
+  }
+
   function buildAppleLookupTerm({ artist, title, album }) {
     const s = sanitizeRadioLookupInputs({ artist, title });
     const a = String(s.artist || '').trim();
@@ -5268,7 +5276,7 @@ app.get('/now-playing', async (req, res) => {
       const stName0 = String(song?.name || '').trim();
       if (albumForLookup && stName0 && albumForLookup.toLowerCase() === stName0.toLowerCase()) albumForLookup = '';
       if (/\bwfmt\b|\bclassical\b|\bradio\b|\bstream\b|\bmimic\b|\berato\b|\blaserlight\b/i.test(albumForLookup)) albumForLookup = '';
-      if (isLabelLikeHint(albumForLookup)) albumForLookup = '';
+      if (isLabelLikeHint(albumForLookup) || isProgramDateHint(albumForLookup)) albumForLookup = '';
       // Classical streams may include album as the last dashed segment in title metadata.
       const dashedAlbumHint = extractClassicalAlbumHintFromDashedTitle(song.title || title || '');
       if (!albumForLookup && looksAlbumHintText(dashedAlbumHint)) albumForLookup = dashedAlbumHint;
@@ -5384,7 +5392,7 @@ app.get('/now-playing', async (req, res) => {
         const stName = String(song?.name || '').trim();
         if (albumForTerm && stName && albumForTerm.toLowerCase() === stName.toLowerCase()) albumForTerm = '';
         if (/\bwfmt\b|\bclassical\b|\bstream\b|\bradio\b|\berato\b|\blaserlight\b/i.test(albumForTerm)) albumForTerm = '';
-        if (isLabelLikeHint(albumForTerm)) albumForTerm = '';
+        if (isLabelLikeHint(albumForTerm) || isProgramDateHint(albumForTerm)) albumForTerm = '';
         const perfAlbumHint = decodeHtmlEntities(String(radioPerformers || '').trim());
         if (!albumForTerm && looksAlbumHintText(perfAlbumHint)) albumForTerm = perfAlbumHint;
         const s3 = deriveRadioLookupContext({
