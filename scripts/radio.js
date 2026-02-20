@@ -2,6 +2,7 @@
   const $ = (id) => document.getElementById(id);
   let allStations = [];
   let selected = new Set();
+  let activeStationFile = '';
   const FILTERS_KEY = 'radio:filters:v1';
 
   function apiBaseDefault(){ return `${location.protocol}//${location.hostname || '10.0.0.233'}:3101`; }
@@ -92,6 +93,16 @@
     sel.innerHTML = favs.map((f) => `<option value="${encodeURIComponent(String(f.file||''))}">${String(f.stationName || f.file || '')}</option>`).join('');
   }
 
+  async function loadActiveStation(){
+    try {
+      const r = await fetch(`${base()}/now-playing`, { headers: { 'x-track-key': key() } });
+      const j = await r.json().catch(() => ({}));
+      activeStationFile = String(j?.file || '').trim();
+    } catch {
+      activeStationFile = '';
+    }
+  }
+
   async function loadStations(){
     setStatus('Loading stations…');
     const genre = String($('genre')?.value || '').trim();
@@ -112,6 +123,7 @@
       const n = String(s.stationName || s.artist || '').toLowerCase();
       return n.includes(search);
     });
+    await loadActiveStation();
     renderRows();
     if ($('count')) $('count').textContent = `${allStations.length} station(s) shown · ${selected.size} selected`;
     setStatus('');
@@ -169,6 +181,7 @@
       const logo = `${b}/art/radio-logo.jpg?name=${encodeURIComponent(name)}`;
       const on = !!s.isFavoriteStation;
       const isSel = selected.has(file);
+      const isActive = !!activeStationFile && file === activeStationFile;
       const formatStr = String(s?.format || '').toUpperCase();
       const brRaw = String(s?.bitrate || '').trim();
       const brMatch = brRaw.match(/(\d+(?:\.\d+)?)/);
@@ -179,14 +192,15 @@
       const isHqByRate = isLossless || (isOpus ? bitrateNum >= 128 : (isMp3Aac ? bitrateNum >= 320 : bitrateNum >= 320));
       const isHq = isHqByRate || (!!s?.hq && bitrateNum >= 320);
       const qualityBadge = isLossless ? 'Lossless' : (isHq ? 'HQ' : '');
-      return `<div class="stationCard ${isSel ? 'isSel' : ''}" data-card-sel="${encodeURIComponent(file)}">
+      return `<div class="stationCard ${isActive ? 'isActive' : ''}" data-card-file="${encodeURIComponent(file)}">
         <img class="logo" src="${logo}" onerror="this.style.opacity=.25;this.removeAttribute('src')" alt="">
         <div>
           <div class="stationName">${name}</div>
-          <div class="stationMeta">${String(s.bitrate || '')}${s.bitrate && s.format ? ' • ' : ''}${String(s.format || '')}${qualityBadge ? ` <span class='chip hq'>${qualityBadge}</span>` : ''}${genreLabel ? ` <span class='chip'>${genreLabel}</span>` : ''}</div>
+          <div class="stationMeta">${String(s.bitrate || '')}${s.bitrate && s.format ? ' • ' : ''}${String(s.format || '')}${qualityBadge ? ` <span class='chip hq'>${qualityBadge}</span>` : ''}<button class="heartBtn ${on ? 'on' : ''}" data-fav="${encodeURIComponent(file)}" data-state="${on ? '1':'0'}" title="Toggle favorite">♥</button>${genreLabel ? ` <span class='chip'>${genreLabel}</span>` : ''}</div>
         </div>
         <div class="stationControls">
-          <button class="heartBtn ${on ? 'on' : ''}" data-fav="${encodeURIComponent(file)}" data-state="${on ? '1':'0'}" title="Toggle favorite">♥</button>
+          <button class="stationAction ${isSel ? 'isOn' : ''}" data-add="${encodeURIComponent(file)}" title="Add to send list">＋</button>
+          <button class="stationAction" data-play="${encodeURIComponent(file)}" title="Play now">▶</button>
         </div>
       </div>`;
     };
@@ -255,6 +269,39 @@
     setStatus(`Sent ${j.added}/${j.requested} station(s).`);
   }
 
+  async function playNow(file){
+    const f = String(file || '').trim();
+    if (!f) return;
+    setStatus('Starting station…');
+    const r = await fetch(`${base()}/config/queue-wizard/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key() },
+      body: JSON.stringify({ mode: 'replace', keepNowPlaying: false, tracks: [f], forceRandomOff: true }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+    // Optimistic active-station highlight immediately in station cards.
+    activeStationFile = f;
+    renderRows();
+
+    await fetch(`${base()}/config/diagnostics/playback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key() },
+      body: JSON.stringify({ action: 'play' }),
+    }).catch(() => {});
+
+    // Re-sync from now-playing after playback switches.
+    setTimeout(async () => {
+      try {
+        await loadActiveStation();
+        renderRows();
+      } catch {}
+    }, 700);
+
+    setStatus('Playing station now.');
+  }
+
   function wire(){
     $('refreshBtn')?.addEventListener('click', () => loadStations().catch((e) => setStatus(String(e?.message || e))));
     $('sendBtn')?.addEventListener('click', () => sendSelected().catch((e) => setStatus(String(e?.message || e))));
@@ -301,13 +348,26 @@
         return;
       }
 
-      const card = ev.target instanceof Element ? ev.target.closest('[data-card-sel]') : null;
-      if (!card) return;
-      const file = decodeURIComponent(String(card.getAttribute('data-card-sel') || ''));
-      if (!file) return;
-      if (selected.has(file)) selected.delete(file); else selected.add(file);
-      card.classList.toggle('isSel', selected.has(file));
-      if ($('count')) $('count').textContent = `${allStations.length} station(s) shown · ${selected.size} selected`;
+      const addBtn = ev.target instanceof Element ? ev.target.closest('button[data-add]') : null;
+      if (addBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const file = decodeURIComponent(String(addBtn.getAttribute('data-add') || ''));
+        if (!file) return;
+        if (selected.has(file)) selected.delete(file); else selected.add(file);
+        renderRows();
+        if ($('count')) $('count').textContent = `${allStations.length} station(s) shown · ${selected.size} selected`;
+        return;
+      }
+
+      const playBtn = ev.target instanceof Element ? ev.target.closest('button[data-play]') : null;
+      if (playBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const file = decodeURIComponent(String(playBtn.getAttribute('data-play') || ''));
+        playNow(file).catch((e) => setStatus(String(e?.message || e)));
+        return;
+      }
     });
 
     ['genre','favoritesOnly','hqOnly','search','favoritesPreset'].forEach((id) => {
@@ -318,6 +378,14 @@
     });
   }
 
+  async function syncActiveOnly(){
+    try {
+      const prev = activeStationFile;
+      await loadActiveStation();
+      if (activeStationFile !== prev) renderRows();
+    } catch {}
+  }
+
   (async () => {
     await loadRuntime();
     applySavedFilters();
@@ -325,5 +393,12 @@
     await loadGenres().catch(() => {});
     await loadFavoritePreset().catch(() => {});
     await loadStations().catch((e) => setStatus(String(e?.message || e)));
+
+    setInterval(() => {
+      if (document.hidden) return;
+      syncActiveOnly();
+    }, 2500);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) syncActiveOnly(); });
+    window.addEventListener('focus', () => syncActiveOnly());
   })();
 })();
