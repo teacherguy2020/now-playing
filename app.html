@@ -213,13 +213,17 @@
             return { ...it, _posDisplay: p };
           });
           if (!items.length) { wrap.innerHTML = '<div class="heroQueueMeta">Queue is empty.</div>'; return; }
+          const stamp = Date.now();
           wrap.innerHTML = items.slice(0,12).map((x) => {
             const pos = Number(x?._posDisplay || 0);
             const head = !!x?.isHead;
             const artist = String(x?.artist || x?.name || '').trim() || '(unknown)';
             const title = String(x?.title || '').trim();
             const thumbRaw = String(x?.thumbUrl || '').trim();
-            const thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
+            let thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
+            if (thumb && /\/art\/current\.jpg(?:$|\?)/i.test(thumb)) {
+              thumb += (thumb.includes('?') ? '&' : '?') + `_=${stamp}`;
+            }
             const thumbHtml = thumb
               ? `<img src="${thumb}" alt="" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
               : `<div style="width:28px;height:28px;border-radius:6px;border:1px solid #334;background:#0a1222;"></div>`;

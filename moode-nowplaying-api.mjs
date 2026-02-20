@@ -1511,11 +1511,10 @@ function splitTitlePerformersProgram(titleLine) {
     }
 
     if (out.length === 2 && looksEnsemble(out[1]) && !/\((?:conductor|violin|piano|cello|viola|orchestra|ensemble)\)/i.test(out[0])) {
-      return [`${out[0]} (conductor)`, `${out[1]} (orchestra)`];
+      return [`${out[0]} (conductor)`, `${out[1]}`];
     }
     if (out.length === 1 && looksEnsemble(out[0])) {
-      const role = /camerata|ensemble|concert/i.test(out[0]) ? 'ensemble' : 'orchestra';
-      return [`${out[0]} (${role})`];
+      return [`${out[0]}`];
     }
     return out;
   };
@@ -1610,7 +1609,7 @@ function splitTitlePerformersProgram(titleLine) {
       : ((abbr === 'vc' || abbr === 'cello') ? 'cello' : abbr));
 
     const personnel = [];
-    if (orchRaw) personnel.push(`${normalizeEns(orchRaw)} (orchestra)`);
+    if (orchRaw) personnel.push(`${normalizeEns(orchRaw)}`);
     if (soloist) personnel.push(`${soloist} (${role})`);
     return { composer: '', work, personnel, program: '' };
   }
@@ -1622,7 +1621,7 @@ function splitTitlePerformersProgram(titleLine) {
     const ensRaw = String(m3[2] || '').trim();
     const condRaw = String(m3[3] || '').trim();
     const personnel = [];
-    if (ensRaw) personnel.push(`${normalizeEns(ensRaw)} (ensemble)`);
+    if (ensRaw) personnel.push(`${normalizeEns(ensRaw)}`);
     if (condRaw) personnel.push(`${condRaw} (conductor)`);
     return { composer: '', work, personnel, program: '' };
   }
@@ -3264,6 +3263,21 @@ function albumHintMatches(hint, collectionName) {
   return overlap >= Math.max(2, Math.floor(hTok.length * 0.5));
 }
 
+function extractOpusNums(s) {
+  const txt = String(s || '').toLowerCase();
+  const out = new Set();
+  const re = /\bop\.?\s*(\d{1,3})\b/g;
+  let m;
+  while ((m = re.exec(txt))) out.add(String(m[1]));
+  return out;
+}
+
+function tokenOverlapCount(a, b) {
+  const ta = String(a || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((x) => x && x.length > 2);
+  const tb = new Set(String(b || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((x) => x && x.length > 2));
+  return ta.filter((x) => tb.has(x)).length;
+}
+
 async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
   const a = String(artist || '').trim();
   const t = String(title || '').trim();
@@ -3327,7 +3341,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
   }
 
   const queryUrl =
-    `${ITUNES_SEARCH_URL}?term=${encodeURIComponent(termStr)}&entity=song&limit=1`;
+    `${ITUNES_SEARCH_URL}?term=${encodeURIComponent(termStr)}&entity=song&limit=12`;
 
   try {
     await waitForItunesSlot();
@@ -3346,11 +3360,23 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     let matchedTitle = '';
     let strictRejected = 0;
 
+    const queryOpus = extractOpusNums(t);
+    const queryWork = String(t || '')
+      .replace(/,\s*\d+(?:st|nd|rd|th)\s+tableau\s*:\s*.*/i, '')
+      .replace(/:\s*[IVXLC]+\.?\s+.*$/i, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    let bestItem = null;
+    let bestArt = '';
+    let bestScore = -1e9;
+
     for (const item of results) {
       const matchedArtistCandidate = String(item?.artistName || '').trim();
+      const collectionName = String(item?.collectionName || '').trim();
+      const trackName = String(item?.trackName || '').trim();
+
       if (opts?.strictArtist && !artistMatchStrict(a, matchedArtistCandidate)) {
         const hint = String(opts?.albumHint || '').trim();
-        const collectionName = String(item?.collectionName || '').trim();
         const allowByAlbumHint = !!hint && albumHintMatches(hint, collectionName);
         if (!allowByAlbumHint) {
           strictRejected += 1;
@@ -3361,19 +3387,37 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       const art = pickArtFromItunesItem(item);
       if (!art) continue;
 
-      url = art;
+      let score = 0;
+      const candidateText = `${trackName} ${collectionName}`.trim();
+      const overlap = tokenOverlapCount(queryWork, candidateText);
+      score += Math.min(50, overlap * 10);
 
-      const picked = pickAlbumAndYearFromItunesItem(item) || {};
+      const itemOpus = extractOpusNums(candidateText);
+      if (queryOpus.size && itemOpus.size) {
+        const shared = [...queryOpus].filter((n) => itemOpus.has(n)).length;
+        if (shared > 0) score += 70;
+        else score -= 90;
+      }
+
+      const hint = String(opts?.albumHint || '').trim();
+      if (hint && albumHintMatches(hint, collectionName)) score += 35;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestItem = item;
+        bestArt = art;
+      }
+    }
+
+    if (bestItem) {
+      url = bestArt;
+      const picked = pickAlbumAndYearFromItunesItem(bestItem) || {};
       album = String(picked.album || '');
       year  = String(picked.year  || '');
-
-      // ✅ FIX: "links" was undefined; pull URLs from the item (or a helper if you have one)
-      trackUrl = String(item?.trackViewUrl || '');
-      albumUrl = String(item?.collectionViewUrl || '');
-      matchedArtist = String(item?.artistName || '').trim();
-      matchedTitle = String(item?.trackName || '').trim();
-
-      break;
+      trackUrl = String(bestItem?.trackViewUrl || '');
+      albumUrl = String(bestItem?.collectionViewUrl || '');
+      matchedArtist = String(bestItem?.artistName || '').trim();
+      matchedTitle = String(bestItem?.trackName || '').trim();
     }
 
     // Album-tier fallback for classical-like radio misses:
@@ -4458,13 +4502,26 @@ app.get('/now-playing', async (req, res) => {
         if (soloist) a = soloist;
         if (work) t = work;
       } else {
-        // e.g. "... - Minnesota Orch/Osmo Vanska"
-        const perfMatch = t.match(/^(.*?)[\s-]+([A-Za-zÀ-ÿ0-9'’.&\- ]+\s+Orch(?:estra)?)(?:\s*\/\s*([A-Za-zÀ-ÿ'’.\- ]+))?\s*$/i);
+        // e.g. "... Op 39-Milwaukee Sym Orch/Zdenek Macal"
+        const perfMatchOp = t.match(/^(.*?\bOp\.?\s*\d+\b)\s*-\s*([A-Za-zÀ-ÿ0-9'’.&\- ]+\s+Orch(?:estra)?)(?:\s*\/\s*([A-Za-zÀ-ÿ'’.\- ]+))?\s*$/i);
+        const perfMatch = perfMatchOp || t.match(/^(.*?)[\s-]+([A-Za-zÀ-ÿ0-9'’.&\- ]+\s+Orch(?:estra)?)(?:\s*\/\s*([A-Za-zÀ-ÿ'’.\- ]+))?\s*$/i);
         if (perfMatch) {
           const work = String(perfMatch[1] || '').trim();
           const ens = String(perfMatch[2] || '').trim().replace(/\bOrch\b/gi, 'Orchestra');
           if (ens) a = ens;
           if (work) t = work;
+        } else {
+          // e.g. "Fields of Wonder - Cantus" (performer trailing in title)
+          const trailingPerf = t.match(/^(.*?)\s*-\s*([A-Za-zÀ-ÿ0-9'’.&\- ]{2,80})\s*$/i);
+          if (trailingPerf) {
+            const work = String(trailingPerf[1] || '').trim();
+            const perf = String(trailingPerf[2] || '').trim();
+            const perfLooksUseful = /\b(choir|chorale|chorus|consort|ensemble|orchestra|orch|singers|cantus|players|quartet|trio|duo)\b/i.test(perf) || /^cantus$/i.test(perf);
+            if (perfLooksUseful && work) {
+              a = perf;
+              t = work;
+            }
+          }
         }
       }
 
@@ -4481,7 +4538,17 @@ app.get('/now-playing', async (req, res) => {
     if (!v) return false;
     if (/^wfmt\b|radio|stream/i.test(v)) return false;
     // album-ish: work separators and rich punctuation, not just person names
-    if (/:/.test(v) || /\b(op\.|concerto|symphony|quartet|sonata|season|saisons|concertos?)\b/i.test(v)) return true;
+    if (/:/.test(v) || /\b(op\.?|concerto|symphony|quartet|sonata|season|saisons|concertos?)\b/i.test(v)) return true;
+    return false;
+  }
+
+  function isLabelLikeHint(s) {
+    const v = String(s || '').trim();
+    if (!v) return false;
+    if (/:/.test(v)) return false;
+    if (/\b(op\.?|concerto|symphony|quartet|sonata|suite|metamorphoses?)\b/i.test(v)) return false;
+    // short single-token label-ish hints: Koss, Decca, Naxos, etc.
+    if (/^[A-Za-z0-9&'’.-]{2,18}$/.test(v)) return true;
     return false;
   }
 
@@ -4504,6 +4571,21 @@ app.get('/now-playing', async (req, res) => {
     t = t.replace(/:\s*[IVXLC]+\.?\s+.*$/i, '');
     t = t.replace(/\s{2,}/g, ' ').trim();
     return t;
+  }
+
+  function extractClassicalAlbumHintFromDashedTitle(raw) {
+    const s = decodeHtmlEntities(String(raw || '').trim());
+    if (!s || !/\s-\s/.test(s)) return '';
+    const parts = s.split(/\s-\s/).map((x) => x.trim()).filter(Boolean);
+    if (parts.length < 4) return '';
+    const last = String(parts[parts.length - 1] || '').trim();
+    const prev = String(parts[parts.length - 2] || '').trim();
+    if (!last) return '';
+
+    const prevLooksPerformer = /orch|orchestra|symphony|philharmonic|ensemble|\/|,/.test(prev.toLowerCase());
+    const lastLooksAlbum = /:/.test(last) || /\b(op\.?|concerto|symphony|quartet|sonata|metamorphoses?)\b/i.test(last);
+    if (prevLooksPerformer && lastLooksAlbum) return last;
+    return '';
   }
 
   function deriveRadioLookupContext({ artist, title, radioPerformers = '', personnel = [], albumHint = '' }) {
@@ -4994,6 +5076,11 @@ app.get('/now-playing', async (req, res) => {
       }
     }
 
+    // If radio album resolves to a plain label token (e.g., Signum/Decca), don't present it as album.
+    if (isRadio && isLabelLikeHint(radioAlbum)) {
+      radioAlbum = '';
+    }
+
     // =========================
     // RADIO: normalize displayed artist/title from "Artist - Title"
     // =========================
@@ -5067,6 +5154,11 @@ app.get('/now-playing', async (req, res) => {
       const stName0 = String(song?.name || '').trim();
       if (albumForLookup && stName0 && albumForLookup.toLowerCase() === stName0.toLowerCase()) albumForLookup = '';
       if (/\bwfmt\b|\bclassical\b|\bradio\b|\bstream\b|\bmimic\b|\berato\b|\blaserlight\b/i.test(albumForLookup)) albumForLookup = '';
+      if (isLabelLikeHint(albumForLookup)) albumForLookup = '';
+      // Classical streams may include album as the last dashed segment in title metadata.
+      const dashedAlbumHint = extractClassicalAlbumHintFromDashedTitle(song.title || title || '');
+      if (!albumForLookup && looksAlbumHintText(dashedAlbumHint)) albumForLookup = dashedAlbumHint;
+
       // WFMT often places useful program/album clue in radioPerformers; use it as album hint when present.
       const perfAlbumHint = decodeHtmlEntities(String(radioPerformers || '').trim());
       if (!albumForLookup && looksAlbumHintText(perfAlbumHint)) albumForLookup = perfAlbumHint;
@@ -5082,11 +5174,12 @@ app.get('/now-playing', async (req, res) => {
       lookupTitle = String(lookupCtx.lookupTitle || lookupTitle || '').trim();
 
       if (lookupArtist && lookupTitle) {
+        const likelyClassical = /\b(op\.?|concerto|symphony|quartet|sonata|andante|allegro|adagio|lento|presto)\b/i.test(`${lookupTitle} ${title}`);
         const it = await lookupItunesFirst(lookupArtist, lookupTitle, debug, {
           radioAlbum: albumForLookup,
           albumHint: albumForLookup,
           composerShort: lookupCtx.composerShort || '',
-          strictArtist: true,
+          strictArtist: !likelyClassical,
         });
 
         if (it.url) primaryArtUrl = it.url;
@@ -5115,11 +5208,13 @@ app.get('/now-playing', async (req, res) => {
         const parts = decodedTitle.split(' - ').map(s => s.trim()).filter(Boolean);
         if (parts.length >= 2) {
           const s2 = sanitizeRadioLookupInputs({ artist: parts[0], title: parts.slice(1).join(' - ') });
-          const it = await lookupItunesFirst(String(s2.artist || '').trim(), String(s2.title || '').trim(), debug, {
+          const s2Title = String(s2.title || '').trim();
+          const likelyClassical2 = /\b(op\.?|concerto|symphony|quartet|sonata|andante|allegro|adagio|lento|presto)\b/i.test(s2Title);
+          const it = await lookupItunesFirst(String(s2.artist || '').trim(), s2Title, debug, {
             radioAlbum: albumForLookup,
             albumHint: albumForLookup,
             composerShort: '',
-            strictArtist: true,
+            strictArtist: !likelyClassical2,
           });
           if (it.url) primaryArtUrl = it.url;
 
@@ -5170,6 +5265,7 @@ app.get('/now-playing', async (req, res) => {
         const stName = String(song?.name || '').trim();
         if (albumForTerm && stName && albumForTerm.toLowerCase() === stName.toLowerCase()) albumForTerm = '';
         if (/\bwfmt\b|\bclassical\b|\bstream\b|\bradio\b|\berato\b|\blaserlight\b/i.test(albumForTerm)) albumForTerm = '';
+        if (isLabelLikeHint(albumForTerm)) albumForTerm = '';
         const perfAlbumHint = decodeHtmlEntities(String(radioPerformers || '').trim());
         if (!albumForTerm && looksAlbumHintText(perfAlbumHint)) albumForTerm = perfAlbumHint;
         const s3 = deriveRadioLookupContext({
@@ -5182,11 +5278,13 @@ app.get('/now-playing', async (req, res) => {
         radioLookupTerm = buildAppleLookupTerm({ artist: s3.lookupArtist, title: s3.lookupTitle, album: albumForTerm });
 
         // Reuse existing iTunes lookup (it already returns trackUrl/albumUrl)
-        const ap = await lookupItunesFirst(String(s3.lookupArtist || '').trim(), String(s3.lookupTitle || '').trim(), debug, {
+        const s3Title = String(s3.lookupTitle || '').trim();
+        const likelyClassical3 = /\b(op\.?|concerto|symphony|quartet|sonata|andante|allegro|adagio|lento|presto)\b/i.test(s3Title);
+        const ap = await lookupItunesFirst(String(s3.lookupArtist || '').trim(), s3Title, debug, {
           radioAlbum: albumForTerm,
           albumHint: albumForTerm,
           composerShort: String(s3.composerShort || '').trim(),
-          strictArtist: true,
+          strictArtist: !likelyClassical3,
         });
 
         const tUrl = String(ap?.trackUrl || '').trim();
