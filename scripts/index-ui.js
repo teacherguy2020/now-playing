@@ -141,8 +141,8 @@ function svgDataUrl(svg) {
 const AIRPLAY_ICON_URL = svgDataUrl(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <rect x="10" y="16" width="108" height="76" rx="10" fill="#0b1220" stroke="#9fb1d9" stroke-width="6"/>
-  <path d="M64 90 42 114h44z" fill="#9fb1d9"/>
-  <path d="M64 96 49 114h30z" fill="#60a5fa"/>
+  <path d="M64 80 42 114h44z" fill="#9fb1d9"/>
+  <path d="M64 86 49 114h30z" fill="#60a5fa"/>
 </svg>`);
 
 const UPNP_ICON_URL = svgDataUrl(`
