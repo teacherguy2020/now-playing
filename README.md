@@ -1,10 +1,10 @@
 # now-playing
 
-A moOde-focused now-playing API + UI stack with optional Alexa integration. The project began as a way to display enhanced information on a dedicated display (like your TV), especially useful if you like to have Peppymeter running on your moOde box! The project grew from there to add library maintance tools, a full podcasts module, ratings support and more. 
+A moOde-focused now-playing API + UI stack with optional Alexa integration that you run on a separate. The project began as a way to display enhanced information on a dedicated display (like your TV), especially useful if you like to have Peppymeter running on your moOde box! The project grew from there to add library maintance tools, a full podcasts module, ratings support and more. 
 
 Note: Heavily vibe-coded with openclaw/chatGPT.
 
-NOTE: Developed to run on a separate pi than your moOde pi so moOde famous reliability is left alone. It's possible the project could work from the moOde pi but I have not tested it, so you would be trying that at your own risk.
+NOTE: Developed/tested to run on a separate pi than your moOde pi so moOde's famous reliability is not compromosed. It's possible the project could work from the moOde pi but I have not tested it, so you would be trying that at your own risk.
 
 ## What this project does
 
@@ -20,15 +20,6 @@ NOTE: Developed to run on a separate pi than your moOde pi so moOde famous relia
   - radio streams (includes iTunes art (even animated!) if it finds it, and album link
   - AirPlay (some mods made to aplmeta.txt to help with this)
   - UPnP
-
-## Project layout
-
-- `moode-nowplaying-api.mjs` – main API server entrypoint
-- `src/` – routes/services/config helpers
-- `styles/`, `scripts/`, `index.html`, `podcasts.html` – UI assets
-- `config/now-playing.config.example.json` – master config template
-- `CONFIG.md` – config details
-- `INSTALLER_PLAN.md` – installer roadmap
 
 ## Installer (systemd Linux)
 
