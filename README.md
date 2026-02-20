@@ -1,8 +1,10 @@
 # now-playing
 
-A moOde-focused now-playing API + UI stack with podcast management, queue controls, ratings, and optional Alexa integration. The project began as a way to display enhanced information on a dedicated display (like your TV), and now also adapts to devices and adds playback controls. Heavily vibe-coded with openclaw/chatGPT.
+A moOde-focused now-playing API + UI stack with podcast management, queue controls, ratings, and optional Alexa integration. The project began as a way to display enhanced information on a dedicated display (like your TV), especially useful if you like to have Peppymeter running on your moOde box! The project grew from there to add library maintance tools, a full podcasts module, and more. 
 
-NOTE: Developed to run on a separate pi than your moOde pi. It's possible the project could work from the moOde pi but I have not tested it, so you would be trying that at your own risk.
+Note: Heavily vibe-coded with openclaw/chatGPT.
+
+NOTE: Developed to run on a separate pi than your moOde pi so moOde famous reliability is left alone. It's possible the project could work from the moOde pi but I have not tested it, so you would be trying that at your own risk.
 
 ## What this project does
 
