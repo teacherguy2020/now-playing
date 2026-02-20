@@ -133,9 +133,27 @@ const ALEXA_MODE_FORCED = /^(1|true|yes|on)$/i.test(_alexaParam) || /^alexa$/i.t
 const ALEXA_MODE_DISABLED = /^(0|false|no|off)$/i.test(_alexaParam) || /^normal$/i.test(_modeParam);
 const ALEXA_MODE_AUTO = !ALEXA_MODE_DISABLED;
 
-// Static icons
-const AIRPLAY_ICON_URL = `${STATIC_BASE}/airplay.png?v=3`;
-const UPNP_ICON_URL    = `${STATIC_BASE}/upnp.png?v=1`;
+// Static icons (inline SVG data URLs to avoid broken-file paths)
+function svgDataUrl(svg) {
+  return `data:image/svg+xml;utf8,${encodeURIComponent(String(svg || '').trim())}`;
+}
+
+const AIRPLAY_ICON_URL = svgDataUrl(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect x="10" y="16" width="108" height="76" rx="10" fill="#0b1220" stroke="#9fb1d9" stroke-width="6"/>
+  <path d="M64 90 42 114h44z" fill="#9fb1d9"/>
+  <path d="M64 96 49 114h30z" fill="#60a5fa"/>
+</svg>`);
+
+const UPNP_ICON_URL = svgDataUrl(`
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <circle cx="64" cy="64" r="52" fill="#0b1220" stroke="#9fb1d9" stroke-width="6"/>
+  <circle cx="64" cy="64" r="7" fill="#dbe7ff"/>
+  <circle cx="64" cy="34" r="7" fill="#60a5fa"/>
+  <circle cx="37" cy="80" r="7" fill="#60a5fa"/>
+  <circle cx="91" cy="80" r="7" fill="#60a5fa"/>
+  <path d="M64 64 64 34M64 64 37 80M64 64 91 80" stroke="#9fb1d9" stroke-width="5" stroke-linecap="round"/>
+</svg>`);
 
 // moOde player (LAN-only; used for pause-cover fallback image)
 const MOODE_BASE_URL = 'http://10.0.0.254';
