@@ -185,6 +185,14 @@ Recent behavior highlights:
 - Vibe is automatically hidden when Last.fm is not configured 
 
 Queue Wizard will also save your built queue to a playlist, and create a collage cover for it.
+
+**Collage prerequisite (important for fresh installs):**
+- On the moOde host, ensure this script exists and is executable:
+  - `/home/moode/moode-playlist-cover.sh`
+- If missing, playlist save still works, but collage/cover generation can fail.
+- Quick check:
+  - `ssh moode@<MOODE_HOST> 'test -x /home/moode/moode-playlist-cover.sh && echo OK || echo MISSING'`
+
 ![queue-wizard.html](collage.jpeg)
 
 ### Radio page (`radio.html`)

@@ -110,6 +110,49 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
     }
   });
 
+  app.get('/config/queue-wizard/collage-health', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const host = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+      const user = String(process.env.MOODE_SSH_USER || 'moode');
+      const scriptPath = String(process.env.MOODE_PLAYLIST_COVER_REMOTE_SCRIPT || '/home/moode/moode-playlist-cover.sh');
+
+      const cmd = `bash -lc 'set -e; if [ -x ${shQuoteArg(scriptPath)} ]; then echo OK; else echo MISSING; fi'`;
+      const { stdout } = await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${user}@${host}`, cmd], { timeout: 12000 });
+      const ok = /\bOK\b/i.test(String(stdout || ''));
+
+      return res.json({ ok: true, collageReady: ok, host, user, scriptPath, installHint: `ssh ${user}@${host} 'chmod +x ${scriptPath}'` });
+    } catch (e) {
+      return res.json({ ok: true, collageReady: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/queue-wizard/install-collage-script', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const host = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+      const user = String(process.env.MOODE_SSH_USER || 'moode');
+      const remotePath = String(process.env.MOODE_PLAYLIST_COVER_REMOTE_SCRIPT || '/home/moode/moode-playlist-cover.sh');
+      const localPath = path.resolve(process.cwd(), 'scripts', 'moode-playlist-cover.sh');
+      const remoteTmp = `/tmp/moode-playlist-cover-${Date.now()}.sh`;
+
+      await execFileP('scp', ['-q', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', localPath, `${user}@${host}:${remoteTmp}`], { timeout: 20000 });
+
+      const sudoCmd = `sudo -n bash -lc 'set -euo pipefail; mkdir -p -- $(dirname ${shQuoteArg(remotePath)}); mv -f -- ${shQuoteArg(remoteTmp)} ${shQuoteArg(remotePath)}; chmod +x ${shQuoteArg(remotePath)}; chown moode:moode ${shQuoteArg(remotePath)} 2>/dev/null || true'`;
+      const nonSudoCmd = `bash -lc 'set -euo pipefail; mkdir -p -- $(dirname ${shQuoteArg(remotePath)}); mv -f -- ${shQuoteArg(remoteTmp)} ${shQuoteArg(remotePath)}; chmod +x ${shQuoteArg(remotePath)}'`;
+
+      try {
+        await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${user}@${host}`, sudoCmd], { timeout: 20000 });
+      } catch {
+        await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${user}@${host}`, nonSudoCmd], { timeout: 20000 });
+      }
+
+      return res.json({ ok: true, installed: true, host, user, remotePath });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.get('/config/queue-wizard/playlists', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

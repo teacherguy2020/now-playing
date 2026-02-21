@@ -56,6 +56,7 @@
   const cropPodcastEl = $('cropPodcast');
 
   const playlistHintEl = $('playlistHint');
+  const collageHealthEl = $('collageHealth');
   const queuePlaybackAreaEl = $('queuePlaybackArea');
   const playlistSuggestionEl = $('playlistSuggestion');
   const sendConfirmEl = $('sendConfirm');
@@ -389,6 +390,31 @@ async function syncVibeAvailability() {
     const dot = pill.querySelector('.dot');
     if (dot) { dot.style.background = s.c; dot.style.boxShadow = `0 0 0 6px ${s.b.replace('.55','.20')}`; }
     pill.style.borderColor = s.b;
+  }
+
+  async function loadCollageHealth() {
+    if (!collageHealthEl) return;
+    const apiBase = getApiBase() || defaultApiBase();
+    const key = getKey();
+    if (!apiBase || !key) {
+      collageHealthEl.textContent = '';
+      return;
+    }
+    try {
+      const r = await fetch(`${apiBase}/config/queue-wizard/collage-health`, { headers: { 'x-track-key': key }, cache: 'no-store' });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      if (j.collageReady) {
+        collageHealthEl.textContent = `Collage tool ready on moOde (${j.host || 'host'}).`;
+        collageHealthEl.style.color = '#9ef7b2';
+      } else {
+        collageHealthEl.textContent = 'Collage tool missing on moOde. Playlist saves still work, but auto-cover generation may fail.';
+        collageHealthEl.style.color = '#fbbf24';
+      }
+    } catch {
+      collageHealthEl.textContent = 'Unable to verify collage tool on moOde.';
+      collageHealthEl.style.color = '#fbbf24';
+    }
   }
 
   async function loadRuntimeMeta() {
@@ -3055,8 +3081,12 @@ function wireEvents() {
       if (id === 'apiBase') {
         syncVibeAvailability();
         loadExistingPlaylists();
+        loadCollageHealth();
       }
-      if (id === 'key') loadExistingPlaylists();
+      if (id === 'key') {
+        loadExistingPlaylists();
+        loadCollageHealth();
+      }
       if (id === 'maxTracks') localStorage.setItem(MAX_TRACKS_STORAGE, String(getMaxTracks()));
       if (id === 'vibeMaxTracks') localStorage.setItem(VIBE_MAX_TRACKS_STORAGE, String(getVibeMaxTracks()));
       if (!['apiBase','key'].includes(id)) activateBuilder('filters');
@@ -3068,11 +3098,16 @@ function wireEvents() {
         if (id === 'apiBase') {
           syncVibeAvailability();
           loadExistingPlaylists();
+          loadCollageHealth();
         }
-        if (id === 'key') loadExistingPlaylists();
+        if (id === 'key') {
+          loadExistingPlaylists();
+          loadCollageHealth();
+        }
         if (id === 'maxTracks') localStorage.setItem(MAX_TRACKS_STORAGE, String(getMaxTracks()));
         if (id === 'vibeMaxTracks') localStorage.setItem(VIBE_MAX_TRACKS_STORAGE, String(getVibeMaxTracks()));
         if (!['apiBase','key'].includes(id)) activateBuilder('filters');
+        if (id === 'shuffle') { renderFiltersSummary(); return; }
         maybePreview();
       });
     }
@@ -3167,6 +3202,7 @@ try {
     loadOptions();
     loadExistingPlaylists();
     syncVibeAvailability();
+    loadCollageHealth();
     loadCurrentQueueCard().catch((e) => {
       setStatus(`Error loading current queue: ${esc(e?.message || e)}`);
     });
