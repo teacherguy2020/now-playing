@@ -67,7 +67,13 @@
       </div>
       <div class="heroQueueCard" id="heroQueueCard">
         <div class="heroQueueHead">
-          <div class="heroQueueTitle">Current Queue</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div class="heroQueueTitle">Current Queue</div>
+            <label style="display:inline-flex;align-items:center;gap:6px;color:#9fb1d9;font-size:12px;white-space:nowrap;">
+              <input id="heroQueueArrowKeys" type="checkbox" />
+              <span>activate keyboard arrow keys</span>
+            </label>
+          </div>
           <div style="display:flex;gap:8px;align-items:center;">
             <button id="heroQueueClear" class="heroQueueBtn" type="button">Clear</button>
             <button id="heroQueueCrop" class="heroQueueBtn" type="button">Crop</button>
@@ -297,6 +303,19 @@
           if (lastHeroQueueSignature === queueSig) return;
           lastHeroQueueSignature = queueSig;
 
+          const existingIconByFile = new Map();
+          try {
+            wrap.querySelectorAll('.heroQueueRow[data-queue-file]').forEach((row) => {
+              const fEnc = String(row.getAttribute('data-queue-file') || '');
+              const img = row.querySelector('img');
+              const src = String(img?.getAttribute('src') || '').trim();
+              if (!fEnc || !src) return;
+              let f = '';
+              try { f = decodeURIComponent(fEnc); } catch { f = fEnc; }
+              if (f) existingIconByFile.set(f, src);
+            });
+          } catch {}
+
           const stamp = Date.now();
           wrap.innerHTML = items.map((x) => {
             const pos = Number(x?._posDisplay || 0);
@@ -330,14 +349,13 @@
             const hostFavicon = derivedHost ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(derivedHost)}.ico` : '';
             const hostFaviconAlt = derivedHost ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(derivedHost)}&sz=64` : '';
             const logoName = ((!stationLooksHost ? stationName : '') || displayStation || stationName || '').trim();
-            const stationLogoByDisplay = logoName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoName)}&_=${stamp}` : '';
-            const stationLogoByFile = fileRaw ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(fileRaw)}&_=${stamp}` : '';
+            const stationLogoByDisplay = logoName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoName)}` : '';
+            const stationLogoByFile = fileRaw ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(fileRaw)}` : '';
             let thumb = '';
             if (isStreamish) {
-              thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
-              if (!thumb && stationLogoByDisplay) thumb = stationLogoByDisplay;
-              if (!thumb && stationLogoByFile) thumb = stationLogoByFile;
-              if (!thumb && head && fallbackNowArt) thumb = fallbackNowArt;
+              // Queue card policy: for stream/radio rows, always use station branding (never album art).
+              const cachedIcon = String(existingIconByFile.get(fileRaw) || '').trim();
+              thumb = cachedIcon || stationLogoByDisplay || stationLogoByFile || hostFavicon || hostFaviconAlt || '';
             } else {
               thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
               if (!thumb && nowIsAirplay && fallbackNowArt) thumb = fallbackNowArt;
@@ -351,7 +369,7 @@
               ? `<img src="${thumb}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
               : `<img src="${stationLogoByFile || stationLogoByDisplay || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
             const actions = `<div class="heroQueueActions"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
-            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div>${artist}</div><div class="heroQueueMeta">${title}</div></div>${actions}</div>`;
+            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div>${artist}</div><div class="heroQueueMeta">${title}</div></div>${actions}</div>`;
           }).join('');
         } catch (e) {
           const wrap = document.getElementById('heroQueueWrap');
@@ -505,6 +523,48 @@
           finally { await syncHeroQueue(); }
         });
       }
+
+      const HERO_ARROW_KEYS_ENABLED_KEY = 'nowplaying.app.arrowKeysEnabled';
+      const arrowKeysEl = document.getElementById('heroQueueArrowKeys');
+      let arrowKeysEnabled = false;
+      try {
+        const saved = String(localStorage.getItem(HERO_ARROW_KEYS_ENABLED_KEY) || '').trim().toLowerCase();
+        arrowKeysEnabled = (saved === '1' || saved === 'true' || saved === 'yes' || saved === 'on');
+      } catch {}
+      if (arrowKeysEl) {
+        arrowKeysEl.checked = !!arrowKeysEnabled;
+        arrowKeysEl.addEventListener('change', () => {
+          arrowKeysEnabled = !!arrowKeysEl.checked;
+          try { localStorage.setItem(HERO_ARROW_KEYS_ENABLED_KEY, arrowKeysEnabled ? '1' : '0'); } catch {}
+        });
+      }
+
+      function canHandleTransportHotkey(ev){
+        if (!arrowKeysEnabled) return false;
+        if (!ev) return false;
+        if (ev.defaultPrevented) return false;
+        if (ev.metaKey || ev.ctrlKey || ev.altKey) return false;
+        const ae = document.activeElement;
+        if (!ae) return true;
+        const tag = String(ae.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return false;
+        if (ae.isContentEditable) return false;
+        return true;
+      }
+
+      window.addEventListener('keydown', (ev) => {
+        const k = String(ev.key || '');
+        if (k !== 'ArrowLeft' && k !== 'ArrowRight') return;
+        if (!canHandleTransportHotkey(ev)) return;
+        if (ev.repeat) return;
+
+        const action = (k === 'ArrowLeft') ? 'previous' : 'next';
+        const btn = document.querySelector(`#heroTransport button[data-a="${action}"]`);
+        if (!btn) return;
+
+        ev.preventDefault();
+        try { btn.click(); } catch {}
+      });
 
       syncFrameWidth();
       navigate(getPageFromUrl(), false);

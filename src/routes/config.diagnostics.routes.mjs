@@ -235,7 +235,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const action = String(req.body?.action || '').trim().toLowerCase();
       const mpdHost = String(MPD_HOST || '10.0.0.254');
-      const map = { play: 'play', pause: 'pause', toggle: 'toggle', next: 'next', prev: 'previous', previous: 'previous', stop: 'stop' };
+      const map = { play: 'play', pause: 'pause', toggle: 'toggle', next: 'next', prev: 'prev', previous: 'prev', stop: 'stop' };
 
       if (action === 'shuffle') {
         const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
