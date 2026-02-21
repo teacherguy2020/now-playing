@@ -6,6 +6,12 @@
   <script id="shell-redirect">
     (function(){
       try {
+        const qs = new URLSearchParams(location.search || '');
+        const standalone = qs.get('standalone') === '1';
+        if (standalone) {
+          document.documentElement.classList.add('standaloneMode');
+          return;
+        }
         if (window.top !== window.self) return;
         const file = String(location.pathname.split('/').pop() || 'config.html');
         const app = new URL('app.html', location.href);
@@ -19,6 +25,8 @@
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     html,body{min-height:100%}
+    html.standaloneMode .preHeroStatusWrap,
+    html.standaloneMode .heroRail{display:none !important}
     body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh;overflow-x:hidden}
     html.theme-light{
       background:#8e79b6 !important;
@@ -66,6 +74,8 @@
     body.theme-light #existingPlaylistMenu{background:rgba(228,216,247,.94) !important;border:1px solid rgba(63,47,95,.28) !important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
     #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
     .wrap{max-width:1080px;width:100%;box-sizing:border-box;margin:0 auto;padding:18px;overflow-x:hidden}
+    .panel{overflow:visible !important}
+    #results{max-height:none !important;overflow:visible !important}
     /* Queue Wizard tabs: keep original shape; no border on inactive tabs */
     .topTabs a:not(.active){border:0 !important;box-shadow:none !important}
     .card{background:#101c33;border:1px solid #2a3a58;border-radius:18px;padding:12px;margin:10px 0;overflow:visible;min-width:0;box-sizing:border-box}
@@ -81,6 +91,9 @@
     .btnPrimary{background:linear-gradient(90deg,#1d4ed8,#7c3aed);border-color:transparent;color:#fff;font-weight:650}
     .btnPrimary:hover{filter:brightness(1.06)}
     .hidden{display:none !important}
+    html, body, #main { overflow-anchor: none; }
+    @keyframes npSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    .iconSpin{animation:npSpin .8s linear infinite}
     select,input,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
     select.starFilter{color:#fbbf24 !important;font-weight:600;font-size:125%}
     select.starFilter option{color:#fbbf24 !important}
@@ -350,8 +363,9 @@
 
     <div class="card">
       <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
-        <div id="coverCard" style="display:none;min-width:160px;max-width:220px;">
-          <div class="muted" id="coverStatus">Playlist cover preview</div>
+        <div id="coverCard" style="display:none;min-width:160px;max-width:220px;position:relative;">
+          <div class="muted" id="coverStatus" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px;">Playlist cover preview</div>
+          <button id="refreshCollagePreviewBtn" type="button" title="Refresh cover preview" aria-label="Refresh cover preview" style="position:absolute;right:6px;top:24px;width:28px;height:28px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #334;background:rgba(10,18,34,.85);font-size:15px;line-height:1;">↻</button>
           <img id="coverPreview" alt="Playlist cover preview"
                style="margin-top:8px;width:220px;max-width:100%;aspect-ratio:1/1;object-fit:cover;border:1px solid #334;border-radius:16px;background:#0a1222;" />
           <div class="choiceGroup" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;"></div>
@@ -360,16 +374,14 @@
           <div class="muted" id="count">No list yet.</div>
           <div class="muted" id="filtersSummary" style="margin-top:4px"></div>
           <div class="muted" id="playlistSuggestion" style="margin-top:8px;display:none;"></div>
-          <button id="savePlaylistBtn" type="button" class="btnPrimary" style="margin-top:8px;">Save Queue to Playlist</button>
-          <div id="playlistOptions" class="hidden" style="margin-top:8px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+          <div id="playlistOptions" style="margin-top:8px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;min-height:52px;">
+            <button id="savePlaylistBtn" type="button" class="btnPrimary" style="align-self:flex-end;">Name playlist</button>
             <div id="playlistNameWrap">
               <label>Playlist name<br><input id="playlistName" placeholder="e.g., Chill Evening Mix"></label>
             </div>
             <button id="savePlaylistNowBtn" type="button" class="btnPrimary" style="align-self:flex-end;">Save Playlist + Cover to moOde</button>
           </div>
           <div class="muted warn" id="playlistHint" style="margin-top:6px"></div>
-          <div class="muted" id="collageHealth" style="margin-top:4px;"></div>
-          <div id="queuePlaybackArea" style="margin-top:10px;"></div>
         </div>
       </div>
       <div id="results" style="margin-top:10px;"></div>
@@ -377,7 +389,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260221-96"></script>
+  <script src="scripts/queue-wizard.js?v=20260221-109"></script>
 
 <script>
 (function enhanceStarFilters(){

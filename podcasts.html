@@ -6,8 +6,14 @@
   <script id="shell-redirect">
     (function(){
       try {
+        const qs = new URLSearchParams(location.search || '');
+        const standalone = qs.get('standalone') === '1';
+        if (standalone) {
+          document.documentElement.classList.add('standaloneMode');
+          return;
+        }
         if (window.top !== window.self) return;
-        const file = String(location.pathname.split('/').pop() || 'config.html');
+        const file = String(location.pathname.split('/').pop() || 'podcasts.html');
         const app = new URL('app.html', location.href);
         app.searchParams.set('page', file);
         location.replace(app.toString());
@@ -19,6 +25,8 @@
   <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260211-1" />
   <style>
+    html.standaloneMode .preHeroStatusWrap,
+    html.standaloneMode .heroRail{display:none !important}
     .subsShell{margin-top:10px;}
     #podcastsQueuePanel{background:#101c33 !important;border:1px solid #2a3a58 !important;border-radius:18px !important;padding:12px !important;overflow:visible !important;cursor:default !important;}
     #podcastsQueuePanel:hover{background:#101c33 !important;border-color:#2a3a58 !important;}

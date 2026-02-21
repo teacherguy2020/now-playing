@@ -6,6 +6,12 @@
   <script id="shell-redirect">
     (function(){
       try {
+        const qs = new URLSearchParams(location.search || '');
+        const standalone = qs.get('standalone') === '1';
+        if (standalone) {
+          document.documentElement.classList.add('standaloneMode');
+          return;
+        }
         if (window.top !== window.self) return;
         const file = String(location.pathname.split('/').pop() || 'config.html');
         const app = new URL('app.html', location.href);
@@ -18,6 +24,8 @@
   <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
+    html.standaloneMode .preHeroStatusWrap,
+    html.standaloneMode .heroRail{display:none !important}
     .cfgWrap { max-width: 1080px; margin: 0 auto; padding: 10px 18px 36px; }
     .cfgGrid { display:grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap:14px; align-items:start; }
     .cfgCard { background: rgba(15,20,26,.7); border:1px solid rgba(255,255,255,.12); border-radius:18px; padding:14px; }
@@ -185,10 +193,8 @@
                 <!-- podcast root moved to Podcasts card -->
                 <div class="cfgActions" style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap;">
                   <button class="btn" id="checkRuntimeBtn" type="button">Check SSH + Paths</button>
-                  <button class="btn" id="installCollageScriptBtn" type="button">Install/Repair collage script on moOde</button>
                 </div>
                 <div class="cfgHint" id="runtimeCheckStatus" style="margin-top:6px;"></div>
-                <div class="cfgHint" id="collageInstallStatus" style="margin-top:6px;"></div>
                 <div id="runtimeCheckDetails" class="cfgHint" style="margin-top:6px;"></div>
               </div>
 
@@ -1261,7 +1267,6 @@ function resetMoodeVerificationPill(){
   setMpdHostLight('neutral', 'not verified');
   ['apiPortLight','uiPortLight','apiNodeIpLight','mpdPortLight','sshHostLight','sshUserLight','pathMusicLibraryRootLight','pathMoodeUsbMountLight','pathPiMountBaseLight','pathPodcastRootLight'].forEach((id) => setLight(id, 'neutral'));
   setActionBtnDone('checkRuntimeBtn', false);
-  setActionBtnDone('installCollageScriptBtn', false);
 }
 
 async function checkRuntimeEnv(silent = false){
@@ -1362,42 +1367,6 @@ async function checkRuntimeEnv(silent = false){
     applyRuntimeGate();
     if (!silent && statusEl) statusEl.textContent = `❌ Runtime check failed: ${String(e?.message || e)}`;
     setActionBtnDone('checkRuntimeBtn', false);
-  } finally {
-    if (btn) btn.disabled = false;
-  }
-}
-
-async function installCollageScript(){
-  const key = getTrackKey();
-  const btn = document.getElementById('installCollageScriptBtn');
-  const statusEl = document.getElementById('collageInstallStatus');
-  if (!key) return log('Track key is required to install collage script.');
-
-  if (btn) btn.disabled = true;
-  if (statusEl) {
-    statusEl.style.color = '';
-    statusEl.textContent = 'Installing collage script on moOde…';
-  }
-  try {
-    const r = await fetch(`${API_BASE}/config/queue-wizard/install-collage-script`, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'x-track-key': key },
-      body: JSON.stringify({}),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-    if (statusEl) {
-      statusEl.style.color = '#9ef7b2';
-      statusEl.textContent = `Installed collage script to ${j.remotePath || '/home/moode/moode-playlist-cover.sh'} on ${j.host || 'moOde'}.`;
-    }
-    setActionBtnDone('installCollageScriptBtn', true);
-    try { await checkRuntimeEnv(true); } catch {}
-  } catch (e) {
-    if (statusEl) {
-      statusEl.style.color = '#fca5a5';
-      statusEl.textContent = `Install failed: ${String(e?.message || e)}`;
-    }
-    setActionBtnDone('installCollageScriptBtn', false);
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -1720,7 +1689,6 @@ document.getElementById('alexaDomain')?.addEventListener('input', () => {
   syncAlexaDomainUi();
 });
 document.getElementById('checkRuntimeBtn')?.addEventListener('click', () => checkRuntimeEnv().catch(e => log(String(e))));
-document.getElementById('installCollageScriptBtn')?.addEventListener('click', () => installCollageScript().catch(e => log(String(e))));
 document.getElementById('pathMoodeUsbMount')?.addEventListener('input', derivePathsFromMoode);
 document.getElementById('pathMoodeUsbMount')?.addEventListener('change', derivePathsFromMoode);
 // derivePathsBtn removed; auto-derive runs on input/change.

@@ -9,7 +9,7 @@
   <style>
     body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
     .viewWrap{max-width:1080px;width:min(1080px, calc(100vw - 24px));margin:0 auto;padding:2px 0 14px;box-sizing:border-box}
-    #appFrame{width:100% !important;height:calc(100vh - 220px);min-height:720px;border:1px solid #2a3a58;border-radius:14px;background:#071021;display:block;box-sizing:border-box}
+    #appFrame{width:100% !important;height:1400px;min-height:0;border:1px solid #2a3a58;border-radius:14px;background:#071021;display:block;box-sizing:border-box}
     #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
     /* In app-shell mode, let top chrome scroll away (not sticky) to maximize iframe area */
     .preHeroStatusWrap,
@@ -197,8 +197,12 @@
             e ? e.offsetHeight : 0,
             e ? e.clientHeight : 0
           );
-          const minH = Math.max(720, Math.floor(window.innerHeight - 220));
-          frame.style.height = `${Math.max(minH, contentH + 8)}px`;
+          const measured = Math.max(contentH + 12, 480);
+          const cur = Math.max(0, parseInt(String(frame.style.height || '0'), 10) || 0);
+          const isQueueWizard = String(currentShellPage || '').includes('queue-wizard.html');
+          // Prevent scroll jumps from iframe shrink/reflow in Queue Wizard: only grow while on that page.
+          const next = isQueueWizard ? Math.max(cur, measured) : measured;
+          frame.style.height = `${next}px`;
         } catch {}
       }
 
@@ -1046,7 +1050,7 @@
       syncHeroQueue();
       setInterval(syncPills, 15000);
       setInterval(syncHeroQueue, 2500);
-      setInterval(syncFrameHeight, 1200);
+      setInterval(syncFrameHeight, 1500);
     })();
   </script>
 </body>

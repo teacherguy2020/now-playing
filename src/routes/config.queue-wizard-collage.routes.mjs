@@ -1,248 +1,122 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
+import crypto from 'node:crypto';
+import sharp from 'sharp';
 
-const execFileP = promisify(execFile);
-
-function sshArgsFor(user, host, extra = []) {
-  return [
-    '-o', 'BatchMode=yes',
-    '-o', 'ConnectTimeout=6',
-    ...extra,
-    `${user}@${host}`,
-  ];
+function uniqCleanTracks(arr = []) {
+  return Array.from(new Set((arr || [])
+    .map((x) => String(x ?? '').replace(/\r/g, '').trim())
+    .map((s) => s.replace(/^"(.*)"$/, '$1'))
+    .filter(Boolean)));
 }
 
-function shQuoteArg(s) {
-  const v = String(s ?? '');
-  return `'${v.replace(/'/g, `'"'"'`)}'`;
+function apiBases(req) {
+  const proto = String(req?.protocol || 'http');
+  const host = String(req?.get?.('host') || '').trim();
+  const localPort = Number(req?.socket?.localPort || process.env.PORT || 3101) || 3101;
+  const out = [`${proto}://127.0.0.1:${localPort}`];
+  if (host) out.push(`${proto}://${host}`);
+  return Array.from(new Set(out));
 }
 
-async function sshBashLc({ user, host, script, timeoutMs = 20000, maxBuffer = 10 * 1024 * 1024 }) {
-  return execFileP('ssh', [...sshArgsFor(user, host), 'bash', '-lc', shQuoteArg(String(script || ''))], {
-    timeout: timeoutMs,
-    maxBuffer,
-  });
+async function fetchTrackArtBuffer(file, req) {
+  const qs = `file=${encodeURIComponent(String(file || '').trim())}`;
+  for (const base of apiBases(req)) {
+    const url = `${base}/art/track_640.jpg?${qs}`;
+    try {
+      const r = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(6000) });
+      if (!r.ok) continue;
+      const ct = String(r.headers.get('content-type') || '').toLowerCase();
+      if (!ct.includes('image')) continue;
+      const ab = await r.arrayBuffer();
+      const buf = Buffer.from(ab);
+      if (buf.length < 1024) continue;
+      return buf;
+    } catch {}
+  }
+  return null;
+}
+
+function shuffleInPlace(arr = []) {
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+
+async function buildCollageJpeg({ tracks = [], req, forceSingle = false, randomize = false }) {
+  const files = uniqCleanTracks(tracks);
+  if (!files.length) throw new Error('tracks[] is required');
+
+  const seen = new Set();
+  const arts = [];
+
+  // Spread picks across list; stop after enough unique covers.
+  const idxs = [];
+  const n = files.length;
+  const targetSamples = Math.min(Math.max(n, 1), 24);
+  for (let i = 0; i < targetSamples; i++) idxs.push(Math.floor((i * n) / targetSamples));
+  for (let i = 0; i < n && arts.length < 8; i++) idxs.push(i);
+
+  for (const i of idxs) {
+    if (arts.length >= 8) break;
+    const f = files[Math.max(0, Math.min(n - 1, i))];
+    const buf = await fetchTrackArtBuffer(f, req);
+    if (!buf) continue;
+    const h = crypto.createHash('sha1').update(buf).digest('hex');
+    if (seen.has(h)) continue;
+    seen.add(h);
+    arts.push(buf);
+  }
+
+  if (!arts.length) throw new Error('No artwork found for supplied tracks');
+
+  if (randomize && arts.length > 1) shuffleInPlace(arts);
+
+  if (forceSingle || arts.length === 1) {
+    return sharp(arts[0]).resize(600, 600, { fit: 'cover' }).jpeg({ quality: 90 }).toBuffer();
+  }
+
+  const slots = [arts[0], arts[1] || arts[0], arts[2] || arts[0], arts[3] || arts[1] || arts[0]];
+  const tiles = await Promise.all(slots.map((b) => sharp(b).resize(300, 300, { fit: 'cover' }).jpeg({ quality: 90 }).toBuffer()));
+
+  return sharp({
+    create: { width: 600, height: 600, channels: 3, background: '#0b1220' },
+  })
+    .composite([
+      { input: tiles[0], left: 0, top: 0 },
+      { input: tiles[1], left: 300, top: 0 },
+      { input: tiles[2], left: 0, top: 300 },
+      { input: tiles[3], left: 300, top: 300 },
+    ])
+    .jpeg({ quality: 90 })
+    .toBuffer();
 }
 
 export function registerConfigQueueWizardCollageRoute(app, deps) {
   const { requireTrackKey } = deps;
 
-app.post('/config/queue-wizard/collage-preview', async (req, res) => {
-    let remoteTracks = '';
-    let remoteOut = '';
-    let remoteRunner = '';
-    let localTracks = '';
-    let localRunner = '';
-
-    const moodeUser = String(MOODE_SSH_USER || 'moode');
-    const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
-    const remoteScript = String(
-        process.env.MOODE_PLAYLIST_COVER_REMOTE_SCRIPT || '/home/moode/moode-playlist-cover.sh'
-    );
-
+  app.post('/config/queue-wizard/collage-preview', async (req, res) => {
     try {
-        if (!requireTrackKey(req, res)) return;
+      if (!requireTrackKey(req, res)) return;
 
-        const playlistName = String(req.body?.playlistName || '').trim() || null;
+      const playlistName = String(req.body?.playlistName || '').trim() || null;
+      const tracks = Array.isArray(req.body?.tracks) ? req.body.tracks : [];
+      const forceSingle = Boolean(req.body?.forceSingle);
+      const randomize = Boolean(req.body?.randomize);
 
-        const tracksIn = Array.isArray(req.body?.tracks) ? req.body.tracks : [];
-        const tracks = tracksIn
-            .map((x) => String(x ?? ''))
-            .map((s) => s.replace(/\r/g, '').trim())
-            .map((s) => s.replace(/^"(.*)"$/, '$1'))
-            .filter(Boolean);
-
-        const forceSingle = Boolean(req.body?.forceSingle);
-
-        if (!tracks.length) {
-            return res.status(400).json({
-                ok: false,
-                reason: 'bad_request',
-                error: 'tracks[] is required',
-            });
-        }
-
-        const ts = Date.now();
-        localTracks = path.join('/tmp', `qw-preview-tracks-${process.pid}-${ts}.txt`);
-        localRunner = path.join('/tmp', `qw-preview-run-${process.pid}-${ts}.sh`);
-
-        remoteTracks = `/tmp/qw-preview-tracks-${process.pid}-${ts}.txt`;
-        remoteOut = `/tmp/qw-preview-${process.pid}-${ts}.jpg`;
-        remoteRunner = `/tmp/qw-preview-run-${process.pid}-${ts}.sh`;
-
-        await fs.writeFile(localTracks, tracks.join('\n') + '\n', 'utf8');
-
-        // Build a tiny runner script to execute on moOde.
-        // IMPORTANT: keep stdout = base64 ONLY. Any status goes to stderr.
-        const runner = [
-            '#!/usr/bin/env bash',
-            'set -euo pipefail',
-            'set -o pipefail',
-            `rt=${shQuoteArg(remoteTracks)}`,
-            `ro=${shQuoteArg(remoteOut)}`,
-            `script=${shQuoteArg(remoteScript)}`,
-            '',
-            'chmod 0644 -- "$rt" >/dev/null 2>&1 || true',
-            '',
-            // Capture ALL script output to a variable so it can't pollute stdout
-            'preview_out="$("$script" --preview --tracks-file "$rt" --out "$ro" ' +
-                (forceSingle ? '--single' : '') +
-                ' 2>&1)"',
-            'rc=$?',
-            'if [ "$rc" -ne 0 ]; then printf "%s\\n" "$preview_out" >&2; exit "$rc"; fi',
-            '',
-            'if [ ! -s "$ro" ]; then echo "ERROR: preview file missing/empty: $ro" >&2; exit 2; fi',
-            '',
-            // JPEG magic check (FF D8 FF)
-            'magic="$(dd if="$ro" bs=1 count=3 2>/dev/null | od -An -tx1 | tr -d \' \\n\')"',
-            'if [ "$magic" != "ffd8ff" ]; then echo "ERROR: preview output not JPEG (magic=$magic) $ro" >&2; exit 3; fi',
-            '',
-            // stdout must be base64 only
-            'base64 "$ro" 2>/dev/null | tr -d "\\r\\n"',
-            '',
-        ].join('\n');
-
-        await fs.writeFile(localRunner, runner, 'utf8');
-
-        // scp both files to moOde
-        await execFileP(
-            'scp',
-            [
-                '-q',
-                '-o', 'BatchMode=yes',
-                '-o', 'ConnectTimeout=6',
-                localTracks,
-                `${moodeUser}@${moodeHost}:${remoteTracks}`,
-            ],
-            { timeout: 20000 }
-        );
-
-        await execFileP(
-            'scp',
-            [
-                '-q',
-                '-o', 'BatchMode=yes',
-                '-o', 'ConnectTimeout=6',
-                localRunner,
-                `${moodeUser}@${moodeHost}:${remoteRunner}`,
-            ],
-            { timeout: 20000 }
-        );
-
-        // run the runner on moOde
-        let stdout = '';
-        let stderr = '';
-        let rc = 0;
-
-        try {
-            const r = await execFileP(
-                'ssh',
-                [
-                    ...sshArgsFor(moodeUser, moodeHost),
-                    'bash', '--noprofile', '--norc', '-c',
-                    // run runner as a file; avoid quoting giant scripts
-                    `chmod 0755 -- ${shQuoteArg(remoteRunner)} >/dev/null 2>&1 || true; ` +
-                    `bash --noprofile --norc ${shQuoteArg(remoteRunner)}`,
-                ],
-                { timeout: 180000, maxBuffer: 50 * 1024 * 1024 }
-            );
-
-            stdout = String(r.stdout || '');
-            stderr = String(r.stderr || '');
-            rc = 0;
-        } catch (e) {
-            stdout = String(e?.stdout || '');
-            stderr = String(e?.stderr || e?.message || '');
-            rc = typeof e?.code === 'number' ? e.code : 1;
-
-            return res.status(200).json({
-                ok: false,
-                reason: 'preview_failed',
-                playlistName,
-                message: 'Preview generation / readback failed on moOde.',
-                debug: {
-                    remoteTracks,
-                    remoteOut,
-                    remoteRunner,
-                    remoteScript,
-                    rc,
-                    stdoutHead: stdout.slice(0, 400),
-                    stdoutLen: stdout.length,
-                    stderrHead: stderr.slice(0, 1200),
-                    stderrLen: stderr.length,
-                },
-            });
-        }
-
-        const b64 = stdout.trim();
-
-        if (!b64) {
-            return res.status(200).json({
-                ok: false,
-                reason: 'base64_empty',
-                playlistName,
-                message: 'Remote command succeeded but produced empty base64.',
-                debug: {
-                    remoteTracks,
-                    remoteOut,
-                    remoteRunner,
-                    remoteScript,
-                    stderrHead: (stderr || '').slice(0, 1200),
-                },
-            });
-        }
-
-        if (!b64.startsWith('/9j/')) {
-            return res.status(200).json({
-                ok: false,
-                reason: 'base64_not_jpeg',
-                playlistName,
-                message: 'Remote stdout was not JPEG base64.',
-                debug: {
-                    remoteTracks,
-                    remoteOut,
-                    remoteRunner,
-                    remoteScript,
-                    b64Head: b64.slice(0, 220),
-                    stderrHead: (stderr || '').slice(0, 1200),
-                },
-            });
-        }
-
-        return res.json({
-            ok: true,
-            playlistName,
-            mimeType: 'image/jpeg',
-            dataBase64: b64,
-        });
+      const jpg = await buildCollageJpeg({ tracks, req, forceSingle, randomize });
+      return res.json({
+        ok: true,
+        playlistName,
+        mimeType: 'image/jpeg',
+        dataBase64: jpg.toString('base64'),
+      });
     } catch (e) {
-        return res.status(500).json({
-            ok: false,
-            reason: 'server_error',
-            error: e?.message || String(e),
-            remoteTracks,
-            remoteOut,
-            remoteRunner,
-        });
-    } finally {
-        if (localTracks) await fs.unlink(localTracks).catch(() => {});
-        if (localRunner) await fs.unlink(localRunner).catch(() => {});
-
-        // remote cleanup (best effort)
-        if (remoteTracks || remoteOut || remoteRunner) {
-            const rm = [
-                'rm -f --',
-                remoteTracks ? shQuoteArg(remoteTracks) : '',
-                remoteOut ? shQuoteArg(remoteOut) : '',
-                remoteRunner ? shQuoteArg(remoteRunner) : '',
-                '>/dev/null 2>&1 || true',
-            ].join(' ').trim();
-
-            await sshBashLc({ user: moodeUser, host: moodeHost, timeoutMs: 10000, script: rm }).catch(() => {});
-        }
+      return res.status(200).json({
+        ok: false,
+        reason: 'preview_failed',
+        error: e?.message || String(e),
+      });
     }
-});
+  });
 }

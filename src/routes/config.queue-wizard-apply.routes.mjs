@@ -170,9 +170,6 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       let collageGenerated = false;
       let collageError = '';
       if (generateCollage && playlistName && playlistSaved) {
-        const localScript = String(
-          process.env.MOODE_PLAYLIST_COVER_SCRIPT || path.resolve(process.cwd(), 'scripts/moode-playlist-cover.sh')
-        );
         const moodeUser = String(MOODE_SSH_USER || 'moode');
         const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
         const coverDir = String(process.env.MOODE_PLAYLIST_COVER_DIR || '/var/local/www/imagesw/playlist-covers');
@@ -216,20 +213,8 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
           }
         }
 
-        if (!collageGenerated) {
-          try {
-            await execFileP(localScript, [playlistName, '--force'], {
-              timeout: 120000,
-              env: {
-                ...process.env,
-                MOODE_SSH_USER: String(MOODE_SSH_USER || 'moode'),
-                MOODE_SSH_HOST: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
-              },
-            });
-            collageGenerated = true;
-          } catch (e) {
-            collageError = e?.message || String(e);
-          }
+        if (!collageGenerated && !collageError) {
+          collageError = 'No preview cover provided. Generate collage preview first.';
         }
       }
 

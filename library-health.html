@@ -6,8 +6,14 @@
   <script id="shell-redirect">
     (function(){
       try {
+        const qs = new URLSearchParams(location.search || '');
+        const standalone = qs.get('standalone') === '1';
+        if (standalone) {
+          document.documentElement.classList.add('standaloneMode');
+          return;
+        }
         if (window.top !== window.self) return;
-        const file = String(location.pathname.split('/').pop() || 'config.html');
+        const file = String(location.pathname.split('/').pop() || 'library-health.html');
         const app = new URL('app.html', location.href);
         app.searchParams.set('page', file);
         location.replace(app.toString());
@@ -18,6 +24,8 @@
   <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
+    html.standaloneMode .preHeroStatusWrap,
+    html.standaloneMode .heroRail{display:none !important}
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#0c1526;color:#e7eefc}
     .wrap{max-width:1080px;margin:0 auto;padding:18px;box-sizing:border-box;width:100%}
     #cards,#sections,#albumMetaInspector{width:100%;box-sizing:border-box}
