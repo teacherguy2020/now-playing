@@ -104,17 +104,29 @@
     }
   }
 
-  function loadLocalRadioQueuePresets(){
+  async function loadRadioQueuePresets(){
+    try {
+      const r = await fetch(`${base()}/config/queue-wizard/radio-presets`, {
+        headers: { 'x-track-key': key() },
+        cache: 'no-store',
+      });
+      const j = await r.json().catch(() => ({}));
+      const list = Array.isArray(j?.presets) ? j.presets : [];
+      if (list.length) {
+        try { localStorage.setItem(RADIO_QUEUE_PRESETS_KEY, JSON.stringify(list)); } catch {}
+        return list;
+      }
+    } catch {}
     try {
       const v = JSON.parse(localStorage.getItem(RADIO_QUEUE_PRESETS_KEY) || '[]');
       return Array.isArray(v) ? v : [];
     } catch { return []; }
   }
 
-  function renderLoadPresetsDropdown(){
+  async function renderLoadPresetsDropdown(){
     const sel = $('loadPresets');
     if (!sel) return;
-    const list = loadLocalRadioQueuePresets();
+    const list = await loadRadioQueuePresets();
     const opts = [`<option value="">Select preset…</option>`]
       .concat(list.map((p) => {
         const id = String(p?.id || '');
@@ -128,7 +140,7 @@
   async function applyLoadedPreset(presetId){
     const id = String(presetId || '').trim();
     if (!id) return;
-    const list = loadLocalRadioQueuePresets();
+    const list = await loadRadioQueuePresets();
     const p = list.find((x) => String(x?.id || '') === id);
     if (!p) { setStatus('Preset not found.'); return; }
     const tracks = Array.from(new Set((Array.isArray(p?.stations) ? p.stations : []).map((s) => String(s?.file || '').trim()).filter(Boolean)));

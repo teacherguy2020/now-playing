@@ -1,10 +1,12 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import { MPD_HOST, MOODE_SSH_HOST } from '../config.mjs';
 
 const execFileP = promisify(execFile);
 const RADIO_DB_SEP = '__NPSEP__';
+const RADIO_PRESETS_PATH = path.resolve(process.cwd(), 'data/radio-queue-presets.json');
 
 function sqlQuoteLike(v = '') {
   const s = String(v || '').replace(/'/g, "''");
@@ -31,6 +33,24 @@ function stationHost(raw) {
   const s = String(raw || '').trim();
   if (!s) return '';
   try { return String(new URL(s).hostname || '').toLowerCase(); } catch { return ''; }
+}
+
+async function readRadioPresetsFile() {
+  try {
+    const raw = await fs.readFile(RADIO_PRESETS_PATH, 'utf8');
+    const arr = JSON.parse(String(raw || '[]'));
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeRadioPresetsFile(list = []) {
+  const arr = Array.isArray(list) ? list : [];
+  await fs.mkdir(path.dirname(RADIO_PRESETS_PATH), { recursive: true });
+  const tmp = `${RADIO_PRESETS_PATH}.tmp`;
+  await fs.writeFile(tmp, JSON.stringify(arr, null, 2), 'utf8');
+  await fs.rename(tmp, RADIO_PRESETS_PATH);
 }
 
 async function queryMoodeRadioDb(sql) {
@@ -353,6 +373,60 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       }).filter((x)=>x.file);
 
       return res.json({ ok: true, count: tracks.length, tracks });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/queue-wizard/radio-presets', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const presets = await readRadioPresetsFile();
+      return res.json({ ok: true, presets });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/queue-wizard/radio-presets', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const name = String(req.body?.name || '').trim();
+      const stationsIn = Array.isArray(req.body?.stations) ? req.body.stations : [];
+      if (!name) return res.status(400).json({ ok: false, error: 'name is required' });
+
+      const stations = stationsIn
+        .map((s) => {
+          if (s && typeof s === 'object') {
+            const file = String(s.file || '').trim();
+            const stationName = String(s.stationName || s.artist || '').trim();
+            if (!file) return null;
+            return { file, stationName };
+          }
+          const file = String(s || '').trim();
+          if (!file) return null;
+          return { file, stationName: '' };
+        })
+        .filter(Boolean);
+
+      if (!stations.length) return res.status(400).json({ ok: false, error: 'stations are required' });
+
+      let presets = await readRadioPresetsFile();
+      if (!Array.isArray(presets)) presets = [];
+
+      const entry = {
+        id: 
+          'rp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+        name,
+        createdAt: Date.now(),
+        stations,
+      };
+
+      presets.unshift(entry);
+      if (presets.length > 60) presets = presets.slice(0, 60);
+      await writeRadioPresetsFile(presets);
+
+      return res.json({ ok: true, preset: entry, count: presets.length });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

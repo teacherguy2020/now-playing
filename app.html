@@ -298,25 +298,49 @@
         btn.style.display = (!queueCollapsed && onRadioTab && hasStations) ? '' : 'none';
       }
 
-      function saveCurrentQueueAsRadioPreset(){
+      async function saveCurrentQueueAsRadioPreset(){
         const stations = Array.isArray(lastRadioPresetStations) ? lastRadioPresetStations : [];
         if (!stations.length) return;
         const d = new Date();
         const def = `Radio preset ${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
         const name = String(window.prompt('Preset name:', def) || '').trim();
         if (!name) return;
-        let list = [];
-        try { list = JSON.parse(localStorage.getItem(RADIO_QUEUE_PRESETS_KEY) || '[]'); } catch {}
-        if (!Array.isArray(list)) list = [];
-        const entry = {
-          id: `rp_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
-          name,
-          createdAt: Date.now(),
-          stations: stations,
-        };
-        list.unshift(entry);
-        if (list.length > 30) list = list.slice(0, 30);
-        try { localStorage.setItem(RADIO_QUEUE_PRESETS_KEY, JSON.stringify(list)); } catch {}
+
+        // Primary: persist server-side for reliability across browser/profile restarts.
+        try {
+          const host = location.hostname || '10.0.0.233';
+          const base = `${location.protocol}//${host}:3101`;
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const r = await fetch(`${base}/config/queue-wizard/radio-presets`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}),
+            },
+            body: JSON.stringify({ name, stations }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        } catch {
+          // Fallback: localStorage (legacy behavior)
+          let list = [];
+          try { list = JSON.parse(localStorage.getItem(RADIO_QUEUE_PRESETS_KEY) || '[]'); } catch {}
+          if (!Array.isArray(list)) list = [];
+          const entry = {
+            id: `rp_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+            name,
+            createdAt: Date.now(),
+            stations: stations,
+          };
+          list.unshift(entry);
+          if (list.length > 30) list = list.slice(0, 30);
+          try { localStorage.setItem(RADIO_QUEUE_PRESETS_KEY, JSON.stringify(list)); } catch {}
+        }
+
         try { frame.contentWindow?.postMessage({ type: 'radio-presets-updated' }, '*'); } catch {}
       }
 
