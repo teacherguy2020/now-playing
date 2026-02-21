@@ -1080,6 +1080,9 @@ function fetchNowPlaying() {
         currentIsPodcast = inferIsPodcast(data);
       }
 
+      const isAirplay = currentIsAirplay;
+      const isStream = currentIsStream;
+
       // ⭐ Single source of truth for stars:
       applyRatingFromNowPlaying(data);
       
@@ -1173,6 +1176,7 @@ function fetchNowPlaying() {
       if (
         ENABLE_NEXT_UP &&
         !wantsFooterRow &&
+        !currentAlexaMode &&
         (pauseMode || isAirplay || isStream)
       ) {
         clearNextUpUI();
@@ -1288,11 +1292,15 @@ function fetchNowPlaying() {
         }
 
         if (ENABLE_NEXT_UP && !pauseMode && !isAirplay) {
-          const now = Date.now();
-          const due = (now - (lastNextUpFetchTs || 0)) >= NEXT_UP_REFRESH_MS;
-          if (trackChanged || due) {
-            lastNextUpFetchTs = now;
+          if (currentAlexaMode) {
             updateNextUp({ isAirplay, isStream, data });
+          } else {
+            const now = Date.now();
+            const due = (now - (lastNextUpFetchTs || 0)) >= NEXT_UP_REFRESH_MS;
+            if (trackChanged || due) {
+              lastNextUpFetchTs = now;
+              updateNextUp({ isAirplay, isStream, data });
+            }
           }
         }
 
@@ -1325,6 +1333,10 @@ function fetchNowPlaying() {
         });
       } catch (e) {
         console.warn('[radio updateUI] failed:', e);
+      }
+
+      if (ENABLE_NEXT_UP && currentAlexaMode && !pauseMode && !isAirplay) {
+        updateNextUp({ isAirplay, isStream, data });
       }
 
       currentTrackKey = radioKey;
@@ -1456,7 +1468,8 @@ function updateNextUp({ isAirplay, isStream, data }) {
       const title = String(q.title || '').trim();
       const file = String(q.file || '').trim();
       const artist = String(q.artist || '').trim();
-      const artUrl = String(q.albumArtUrl || q.altArtUrl || '').trim();
+      const artUrlRaw = String(q.albumArtUrl || q.altArtUrl || q.artUrl || q.coverUrl || '').trim();
+      const artUrl = artUrlRaw.startsWith('/') ? `${API_BASE}${artUrlRaw}` : artUrlRaw;
 
       const showTitle = title || file.split('/').pop() || file || 'Unknown title';
       const showArtist = artist ? ` • ${artist}` : '';
@@ -1466,7 +1479,8 @@ function updateNextUp({ isAirplay, isStream, data }) {
       wrap.style.visibility = 'visible';
       wrap.style.opacity = '1';
 
-      if (!imgEl || !artUrl) {
+      const resolvedArtUrl = artUrl || `${API_BASE}/art/current.jpg`;
+      if (!imgEl || !resolvedArtUrl) {
         if (imgEl) {
           imgEl.style.display = 'none';
           imgEl.removeAttribute('src');
@@ -1476,9 +1490,9 @@ function updateNextUp({ isAirplay, isStream, data }) {
       }
 
       const lastUrl = imgEl.dataset.lastUrl || '';
-      if (artUrl !== lastUrl) {
-        imgEl.dataset.lastUrl = artUrl;
-        imgEl.src = artUrl;
+      if (resolvedArtUrl !== lastUrl) {
+        imgEl.dataset.lastUrl = resolvedArtUrl;
+        imgEl.src = resolvedArtUrl;
       }
       imgEl.style.display = 'block';
     };
