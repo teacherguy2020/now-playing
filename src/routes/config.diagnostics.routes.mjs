@@ -187,6 +187,8 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     { group: 'Now Playing', method: 'GET', path: '/track' },
 
     { group: 'Diagnostics', method: 'GET', path: '/config/diagnostics/queue' },
+    { group: 'Diagnostics', method: 'GET', path: '/config/diagnostics/album-tracks', query: { album: '', artist: '' } },
+    { group: 'Diagnostics', method: 'GET', path: '/config/diagnostics/artist-albums', query: { artist: '' } },
     { group: 'Diagnostics', method: 'POST', path: '/config/diagnostics/playback', body: { action: 'play' } },
 
     { group: 'Runtime/Admin', method: 'GET', path: '/config/runtime' },
@@ -225,6 +227,88 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
       return res.json({ ok: true, count: endpointCatalog.length, endpoints: endpointCatalog });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/diagnostics/album-tracks', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const album = String(req.query?.album || '').trim();
+      const artist = String(req.query?.artist || '').trim();
+      if (!album) return res.status(400).json({ ok: false, error: 'album is required' });
+
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const args = ['-h', mpdHost, '-f', '%file%\t%track%\t%title%\t%artist%\t%album%', 'find', 'album', album];
+      if (artist) args.push('artist', artist);
+      let out = '';
+      try {
+        const { stdout } = await execFileP('mpc', args, { maxBuffer: 16 * 1024 * 1024 });
+        out = String(stdout || '');
+      } catch {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%track%\t%title%\t%artist%\t%album%', 'find', 'album', album], { maxBuffer: 16 * 1024 * 1024 });
+        out = String(stdout || '');
+      }
+
+      const tracks = String(out || '').split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean).map((ln) => {
+        const [file = '', track = '', title = '', rowArtist = '', rowAlbum = ''] = ln.split('\t');
+        return {
+          file: String(file || '').trim(),
+          track: String(track || '').trim(),
+          title: String(title || '').trim(),
+          artist: String(rowArtist || artist || '').trim(),
+          album: String(rowAlbum || album || '').trim(),
+        };
+      }).filter((t) => !!t.file);
+
+      tracks.sort((a, b) => {
+        const ta = Number.parseInt(String(a.track || '').replace(/[^0-9].*$/, ''), 10);
+        const tb = Number.parseInt(String(b.track || '').replace(/[^0-9].*$/, ''), 10);
+        if (Number.isFinite(ta) && Number.isFinite(tb) && ta !== tb) return ta - tb;
+        return `${a.artist} ${a.title}`.localeCompare(`${b.artist} ${b.title}`, undefined, { sensitivity: 'base' });
+      });
+
+      return res.json({ ok: true, album, artist, count: tracks.length, tracks });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/diagnostics/artist-albums', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const artist = String(req.query?.artist || '').trim();
+      if (!artist) return res.status(400).json({ ok: false, error: 'artist is required' });
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+
+      const pull = async (field) => {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%', 'find', field, artist], { maxBuffer: 24 * 1024 * 1024 });
+        return String(stdout || '').split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean);
+      };
+
+      const rows = [...(await pull('artist')), ...(await pull('albumartist'))];
+      const byAlbum = new Map();
+      for (const ln of rows) {
+        const [file = '', album = '', rowArtist = '', rowAlbumArtist = ''] = ln.split('\t');
+        const albumName = String(album || '').trim();
+        const fileName = String(file || '').trim();
+        if (!albumName || !fileName) continue;
+        const key = albumName.toLowerCase();
+        if (!byAlbum.has(key)) {
+          byAlbum.set(key, {
+            album: albumName,
+            artist: String(rowArtist || rowAlbumArtist || artist || '').trim(),
+            sampleFile: fileName,
+            count: 1,
+          });
+        } else {
+          byAlbum.get(key).count += 1;
+        }
+      }
+
+      const albums = Array.from(byAlbum.values()).sort((a, b) => String(a.album || '').localeCompare(String(b.album || ''), undefined, { sensitivity: 'base' }));
+      return res.json({ ok: true, artist, count: albums.length, albums });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
@@ -303,6 +387,107 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
         return res.json({ ok: true, action, fromPosition, toPosition, randomOn, status: String(afterStatus || '') });
+      }
+
+      if (action === 'addfile') {
+        const file = String(req.body?.file || '').trim();
+        if (!file) return res.status(400).json({ ok: false, error: 'file is required for addfile' });
+        await execFileP('mpc', ['-h', mpdHost, 'add', file]);
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, file, randomOn, status: String(afterStatus || '') });
+      }
+
+      if (action === 'playfile') {
+        const file = String(req.body?.file || '').trim();
+        if (!file) return res.status(400).json({ ok: false, error: 'file is required for playfile' });
+
+        const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const beforeMatch = String(beforeStatus || '').match(/#(\d+)\/(\d+)/);
+        const curPos = beforeMatch ? Number(beforeMatch[1] || 0) : 0;
+
+        await execFileP('mpc', ['-h', mpdHost, 'add', file]);
+
+        const { stdout: midStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const midMatch = String(midStatus || '').match(/#(\d+)\/(\d+)/);
+        const totalAfterAdd = midMatch ? Number(midMatch[2] || 0) : 0;
+
+        let targetPos = 0;
+        if (Number.isFinite(curPos) && curPos > 0) {
+          targetPos = curPos + 1;
+          const fromPos = Number.isFinite(totalAfterAdd) && totalAfterAdd > 0 ? totalAfterAdd : 0;
+          if (fromPos > 0 && fromPos !== targetPos) {
+            await execFileP('mpc', ['-h', mpdHost, 'move', String(fromPos), String(targetPos)]);
+          }
+          await execFileP('mpc', ['-h', mpdHost, 'play', String(targetPos)]);
+        } else {
+          const fallbackPos = Number.isFinite(totalAfterAdd) && totalAfterAdd > 0 ? totalAfterAdd : 1;
+          targetPos = fallbackPos;
+          await execFileP('mpc', ['-h', mpdHost, 'play', String(fallbackPos)]);
+        }
+
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, file, targetPos, randomOn, status: String(afterStatus || '') });
+      }
+
+      if (action === 'addalbum') {
+        const album = String(req.body?.album || '').trim();
+        const artist = String(req.body?.artist || '').trim();
+        const mode = String(req.body?.mode || 'append').trim().toLowerCase();
+        if (!album) return res.status(400).json({ ok: false, error: 'album is required for addalbum' });
+        if (!['append', 'crop', 'replace'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode must be append|crop|replace' });
+
+        if (mode === 'replace') await execFileP('mpc', ['-h', mpdHost, 'clear']);
+        if (mode === 'crop') await execFileP('mpc', ['-h', mpdHost, 'crop']);
+
+        const args = ['-h', mpdHost, '-f', '%file%', 'find', 'album', album];
+        if (artist) args.push('artist', artist);
+        let filesOut = '';
+        try {
+          const { stdout } = await execFileP('mpc', args, { maxBuffer: 16 * 1024 * 1024 });
+          filesOut = String(stdout || '');
+        } catch {
+          const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'find', 'album', album], { maxBuffer: 16 * 1024 * 1024 });
+          filesOut = String(stdout || '');
+        }
+        const files = Array.from(new Set(String(filesOut || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean)));
+        for (const f of files) {
+          await execFileP('mpc', ['-h', mpdHost, 'add', f]);
+        }
+        if (mode === 'replace' && files.length > 0) {
+          await execFileP('mpc', ['-h', mpdHost, 'play', '1']);
+        }
+
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, album, artist, mode, added: files.length, randomOn, status: String(afterStatus || '') });
+      }
+
+      if (action === 'addartistshuffle') {
+        const artist = String(req.body?.artist || '').trim();
+        const mode = String(req.body?.mode || 'append').trim().toLowerCase();
+        if (!artist) return res.status(400).json({ ok: false, error: 'artist is required for addartistshuffle' });
+        if (!['append', 'crop', 'replace'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode must be append|crop|replace' });
+
+        if (mode === 'replace') await execFileP('mpc', ['-h', mpdHost, 'clear']);
+        if (mode === 'crop') await execFileP('mpc', ['-h', mpdHost, 'crop']);
+
+        const pull = async (field) => {
+          const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'find', field, artist], { maxBuffer: 24 * 1024 * 1024 });
+          return String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
+        };
+        const dedup = Array.from(new Set([...(await pull('artist')), ...(await pull('albumartist'))]));
+        for (let i = dedup.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const t = dedup[i]; dedup[i] = dedup[j]; dedup[j] = t;
+        }
+        for (const f of dedup) await execFileP('mpc', ['-h', mpdHost, 'add', f]);
+        if (mode === 'replace' && dedup.length > 0) await execFileP('mpc', ['-h', mpdHost, 'play', '1']);
+
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, artist, mode, added: dedup.length, randomOn, status: String(afterStatus || '') });
       }
 
       if (action === 'rate') {

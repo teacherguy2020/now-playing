@@ -32,6 +32,28 @@
     .heroQueueActions button:hover{background:#12203c;border-color:#4b5f86;box-shadow:0 0 0 1px rgba(125,211,252,.25) inset}
     .heroQueueBtn:active,
     .heroQueueActions button:active{transform:scale(.97);background:#16294b;border-color:#7dd3fc;box-shadow:0 0 0 2px rgba(125,211,252,.35) inset}
+
+    .queueAlbumModal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,8,20,.72);z-index:9999;padding:16px}
+    .queueAlbumModal.open{display:flex}
+    .queueAlbumCard{max-width:min(760px,96vw);width:100%;background:#0f1a31;border:1px solid #2a3a58;border-radius:14px;padding:14px;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+    .queueAlbumHead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .queueAlbumClose{padding:6px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef;cursor:pointer}
+    .queueAlbumBody{display:grid;grid-template-columns:120px 1fr;gap:12px;margin-top:10px}
+    .queueAlbumBody img{width:120px;height:120px;border-radius:10px;object-fit:cover;border:1px solid #334;background:#0a1222}
+    .queueAlbumMeta{display:grid;gap:6px}
+    .queueAlbumTitle{font-size:22px;color:#eaf3ff;font-weight:700;line-height:1.2}
+    .queueAlbumSub{font-size:14px;color:#9fb1d9}
+    .queueAlbumLineBtn{border:0;background:transparent;color:#9fb1d9;padding:0;cursor:pointer;font:inherit;text-align:left;text-decoration:underline;text-underline-offset:2px}
+    .queueAlbumTracks{grid-column:1 / -1;margin-top:8px;max-height:48vh;overflow:auto;border-top:1px solid #2a3a58;padding-top:8px}
+    .queueAlbumTrackRow{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:10px;padding:6px 4px;border-bottom:1px dashed #23324f}
+    .queueAlbumTrackNum{color:#9fb1d9;font-weight:600;text-align:right}
+    .queueAlbumTrackTitle{min-width:0;color:#eaf3ff;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .queueAlbumTrackActions{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-end}
+    .queueAlbumTrackBtn{padding:4px 8px !important;min-width:auto !important;font-size:13px;line-height:1.1;white-space:nowrap}
+    .queueArtistGrid{grid-column:1 / -1;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:10px;max-height:48vh;overflow:auto}
+    .queueArtistAlbumBtn{border:1px solid #2a3a58;background:#0a1222;border-radius:10px;padding:8px;color:#eaf3ff;cursor:pointer;text-align:left}
+    .queueArtistAlbumBtn img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;border:1px solid #334;background:#071021;margin-bottom:6px}
+    .queueArtistAlbumName{font-size:13px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   </style>
 </head>
 <body>
@@ -93,7 +115,17 @@
     <iframe id="appFrame" title="Now Playing view" src="about:blank" scrolling="no" style="width:100%;display:block;"></iframe>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260221-004"></script>
+  <div id="queueAlbumModal" class="queueAlbumModal" aria-hidden="true">
+    <div class="queueAlbumCard" role="dialog" aria-modal="true" aria-label="Album details">
+      <div class="queueAlbumHead">
+        <div class="heroQueueTitle">Album details</div>
+        <button id="queueAlbumClose" class="queueAlbumClose" type="button">Close</button>
+      </div>
+      <div id="queueAlbumBody" class="queueAlbumBody"></div>
+    </div>
+  </div>
+
+  <script src="scripts/hero-transport.js?v=20260221-005"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -455,7 +487,13 @@
               ? `<img src="${thumb}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
               : `<img src="${stationLogoByDisplay || stationLogoByDisplayAlt || stationLogoByFile || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
             const actions = `<div class="heroQueueActions"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
-            const detailHtml = isStreamish ? '' : `<div class="heroQueueMeta">${title}</div>`;
+            const albumTxt = String(x?.album || '').trim();
+            const detailLabel = albumTxt || title;
+            const detailHtml = isStreamish
+              ? ''
+              : (albumTxt
+                ? `<div class="heroQueueMeta"><button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(albumTxt)}" data-queue-artist="${encodeURIComponent(artist)}" data-queue-title="${encodeURIComponent(title)}" data-queue-art="${encodeURIComponent(thumb || '')}">${detailLabel || '(album)'}</button></div>`
+                : `<div class="heroQueueMeta">${detailLabel || '(album)'}</div>`);
             return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div>${artist}</div>${detailHtml}</div>${actions}</div>`;
           }).join('');
 
@@ -559,6 +597,9 @@
       const hqNextUp = document.getElementById('heroQueueNextUp');
       const hqActionsHead = document.getElementById('heroQueueActionsHead');
       const hqArrowWrap = document.getElementById('heroQueueArrowKeysWrap');
+      const queueAlbumModal = document.getElementById('queueAlbumModal');
+      const queueAlbumBody = document.getElementById('queueAlbumBody');
+      const queueAlbumClose = document.getElementById('queueAlbumClose');
 
       function markQueueRowActiveOptimistic(position){
         const wrap = document.getElementById('heroQueueWrap');
@@ -583,6 +624,199 @@
         const base = 'Current Queue';
         el.textContent = msg ? `${base} · ${msg}` : base;
       }
+
+      function closeQueueAlbumModal(){
+        if (!queueAlbumModal) return;
+        queueAlbumModal.classList.remove('open');
+        queueAlbumModal.setAttribute('aria-hidden', 'true');
+      }
+
+      async function ensureTrackKey(base){
+        if (runtimeTrackKey) return runtimeTrackKey;
+        const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+        const rj = await rr.json().catch(() => ({}));
+        runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+        return runtimeTrackKey;
+      }
+
+      async function openArtistAlbumsModal({ artist = '' } = {}){
+        if (!queueAlbumModal || !queueAlbumBody) return;
+        const artistTxt = String(artist || '').trim();
+        if (!artistTxt) return;
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+
+        queueAlbumBody.innerHTML = `<div class="queueAlbumMeta" style="grid-column:1 / -1;">`
+          + `<div class="queueAlbumTitle">${artistTxt}</div>`
+          + `<div class="queueAlbumSub">Loading albums…</div>`
+          + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">`
+          + `<button type="button" class="queueAlbumClose" data-artist-action="shuffle" data-artist="${encodeURIComponent(artistTxt)}">Shuffle all</button>`
+          + `</div></div>`;
+
+        queueAlbumModal.classList.add('open');
+        queueAlbumModal.setAttribute('aria-hidden', 'false');
+
+        try {
+          await ensureTrackKey(base);
+          const q = new URLSearchParams({ artist: artistTxt });
+          const r = await fetch(`${base}/config/diagnostics/artist-albums?${q.toString()}`, { cache:'no-store', headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) } });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          const albums = Array.isArray(j.albums) ? j.albums : [];
+          const grid = albums.length
+            ? `<div class="queueArtistGrid">${albums.map((a) => {
+                const alb = String(a?.album || '').trim();
+                const sf = String(a?.sampleFile || '').trim();
+                const art = sf ? `${base}/art/track_640.jpg?file=${encodeURIComponent(sf)}` : '';
+                return `<button type="button" class="queueArtistAlbumBtn" data-open-album="${encodeURIComponent(alb)}" data-open-artist="${encodeURIComponent(artistTxt)}" data-open-art="${encodeURIComponent(art)}">`
+                  + `${art ? `<img src="${art}" alt="">` : ''}`
+                  + `<div class="queueArtistAlbumName">${alb || '(unknown album)'}</div>`
+                  + `</button>`;
+              }).join('')}</div>`
+            : `<div class="queueAlbumSub" style="grid-column:1 / -1;">No albums found for this artist.</div>`;
+          queueAlbumBody.innerHTML = queueAlbumBody.innerHTML.replace('Loading albums…', `${albums.length} album(s)`) + grid;
+        } catch (e) {
+          queueAlbumBody.innerHTML = queueAlbumBody.innerHTML.replace('Loading albums…', `Failed to load albums: ${String(e?.message || e)}`);
+        }
+      }
+
+      async function openQueueAlbumModal({ album = '', artist = '', title = '', art = '' } = {}){
+        if (!queueAlbumModal || !queueAlbumBody) return;
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        const albumTxt = String(album || '').trim() || '(unknown album)';
+        const artistTxt = String(artist || '').trim();
+        const titleTxt = String(title || '').trim();
+        const artUrl = String(art || '').trim();
+
+        queueAlbumBody.innerHTML =
+          `${artUrl ? `<img src="${artUrl}" alt="">` : '<div style="width:120px;height:120px;border-radius:10px;border:1px solid #334;background:#0a1222"></div>'}` +
+          `<div class="queueAlbumMeta">` +
+            `<div class="queueAlbumTitle">${albumTxt}</div>` +
+            `${artistTxt ? `<div class="queueAlbumSub">Artist: <button type="button" class="queueAlbumLineBtn" data-open-artist-albums="${encodeURIComponent(artistTxt)}">${artistTxt}</button></div>` : ''}` +
+            `<div class="queueAlbumSub">Loading album tracks…</div>` +
+            `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">` +
+              `<button type="button" class="queueAlbumClose" data-album-action="append" data-album="${encodeURIComponent(albumTxt)}" data-artist="${encodeURIComponent(artistTxt)}">Append album</button>` +
+              `<button type="button" class="queueAlbumClose" data-album-action="crop" data-album="${encodeURIComponent(albumTxt)}" data-artist="${encodeURIComponent(artistTxt)}">Add album (crop)</button>` +
+              `<button type="button" class="queueAlbumClose" data-album-action="replace" data-album="${encodeURIComponent(albumTxt)}" data-artist="${encodeURIComponent(artistTxt)}">Replace with album</button>` +
+            `</div>` +
+            `${titleTxt ? `<div class="queueAlbumSub">From track: ${titleTxt}</div>` : ''}` +
+          `</div>`;
+        queueAlbumModal.classList.add('open');
+        queueAlbumModal.setAttribute('aria-hidden', 'false');
+
+        try {
+          await ensureTrackKey(base);
+          const q = new URLSearchParams({ album: albumTxt });
+          if (artistTxt) q.set('artist', artistTxt);
+          const r = await fetch(`${base}/config/diagnostics/album-tracks?${q.toString()}`, {
+            cache:'no-store',
+            headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) }
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          const tracks = Array.isArray(j.tracks) ? j.tracks : [];
+          const listHtml = tracks.length
+            ? `<div class="queueAlbumTracks">${tracks.map((t, idx) => {
+                const tr = String(t?.track || '').trim();
+                const tt = String(t?.title || '').trim() || '(untitled)';
+                const tf = String(t?.file || '').trim();
+                return `<div class="queueAlbumTrackRow">`
+                  + `<div class="queueAlbumTrackNum">${tr || (idx+1)}</div>`
+                  + `<div class="queueAlbumTrackTitle">${tt}</div>`
+                  + `<div class="queueAlbumTrackActions">`
+                  + `<button type="button" class="queueAlbumClose queueAlbumTrackBtn" data-track-action="play" data-track-file="${encodeURIComponent(tf)}">Play now</button>`
+                  + `<button type="button" class="queueAlbumClose queueAlbumTrackBtn" data-track-action="add" data-track-file="${encodeURIComponent(tf)}">Add</button>`
+                  + `</div></div>`;
+              }).join('')}</div>`
+            : `<div class="queueAlbumSub" style="margin-top:8px;">No tracks found for this album.</div>`;
+          queueAlbumBody.innerHTML = queueAlbumBody.innerHTML.replace('<div class="queueAlbumSub">Loading album tracks…</div>', `<div class="queueAlbumSub">${tracks.length} track(s)</div>`) + listHtml;
+        } catch (e) {
+          queueAlbumBody.innerHTML = queueAlbumBody.innerHTML.replace('<div class="queueAlbumSub">Loading album tracks…</div>', `<div class="queueAlbumSub">Failed to load tracks: ${String(e?.message || e)}</div>`);
+        }
+      }
+
+      function queueRefreshBurst(){
+        try { syncHeroQueue(); } catch {}
+        try { setTimeout(() => { try { syncHeroQueue(); } catch {} }, 220); } catch {}
+        try { setTimeout(() => { try { syncHeroQueue(); } catch {} }, 700); } catch {}
+      }
+
+      window.addEventListener('openclaw:hero-open-album-modal', async (ev) => {
+        const d = ev?.detail || {};
+        const album = String(d.album || '').trim();
+        const artist = String(d.artist || '').trim();
+        const art = String(d.art || '').trim();
+        if (!album) return;
+        try { await openQueueAlbumModal({ album, artist, art }); } catch {}
+      });
+
+      queueAlbumClose?.addEventListener('click', closeQueueAlbumModal);
+      queueAlbumModal?.addEventListener('click', async (ev) => {
+        if (ev.target === queueAlbumModal) { closeQueueAlbumModal(); return; }
+        const el = ev.target instanceof Element ? ev.target : null;
+        if (!el) return;
+
+        const artistLink = el.closest('button[data-open-artist-albums]');
+        if (artistLink) {
+          const artist = decodeURIComponent(String(artistLink.getAttribute('data-open-artist-albums') || ''));
+          try { await openArtistAlbumsModal({ artist }); } catch {}
+          return;
+        }
+
+        const openAlb = el.closest('button[data-open-album]');
+        if (openAlb) {
+          const album = decodeURIComponent(String(openAlb.getAttribute('data-open-album') || ''));
+          const artist = decodeURIComponent(String(openAlb.getAttribute('data-open-artist') || ''));
+          const art = decodeURIComponent(String(openAlb.getAttribute('data-open-art') || ''));
+          try { await openQueueAlbumModal({ album, artist, art }); } catch {}
+          return;
+        }
+
+        const trk = el.closest('button[data-track-action][data-track-file]');
+        if (trk) {
+          const action = String(trk.getAttribute('data-track-action') || '');
+          const file = decodeURIComponent(String(trk.getAttribute('data-track-file') || ''));
+          if (!file) return;
+          trk.setAttribute('disabled', 'disabled');
+          try {
+            if (action === 'play') await sendHeroPlayback('playfile', { file });
+            else await sendHeroPlayback('addfile', { file });
+            queueRefreshBurst();
+            if (action === 'play') closeQueueAlbumModal();
+          } catch {}
+          trk.removeAttribute('disabled');
+          return;
+        }
+
+        const artistAction = el.closest('button[data-artist-action][data-artist]');
+        if (artistAction) {
+          const artist = decodeURIComponent(String(artistAction.getAttribute('data-artist') || ''));
+          const mode = 'replace';
+          artistAction.setAttribute('disabled', 'disabled');
+          try {
+            await sendHeroPlayback('addartistshuffle', { artist, mode });
+            queueRefreshBurst();
+            closeQueueAlbumModal();
+          } catch {}
+          artistAction.removeAttribute('disabled');
+          return;
+        }
+
+        const alb = el.closest('button[data-album-action][data-album]');
+        if (alb) {
+          const mode = String(alb.getAttribute('data-album-action') || 'append');
+          const album = decodeURIComponent(String(alb.getAttribute('data-album') || ''));
+          const artist = decodeURIComponent(String(alb.getAttribute('data-artist') || ''));
+          alb.setAttribute('disabled', 'disabled');
+          try {
+            await sendHeroPlayback('addalbum', { mode, album, artist });
+            queueRefreshBurst();
+            closeQueueAlbumModal();
+          } catch {}
+          alb.removeAttribute('disabled');
+        }
+      });
       const HERO_QUEUE_COLLAPSED_KEY = 'nowplaying.app.heroQueueCollapsed';
       let queueCollapsed = false;
 
@@ -633,6 +867,17 @@
         hqWrap.addEventListener('click', async (ev) => {
           const el = ev.target instanceof Element ? ev.target : null;
           if (!el) return;
+
+          const albumBtn = el.closest('button[data-queue-album]');
+          if (albumBtn) {
+            ev.stopPropagation();
+            const album = decodeURIComponent(String(albumBtn.getAttribute('data-queue-album') || ''));
+            const artist = decodeURIComponent(String(albumBtn.getAttribute('data-queue-artist') || ''));
+            const title = decodeURIComponent(String(albumBtn.getAttribute('data-queue-title') || ''));
+            const art = decodeURIComponent(String(albumBtn.getAttribute('data-queue-art') || ''));
+            openQueueAlbumModal({ album, artist, title, art });
+            return;
+          }
 
           const moveBtn = el.closest('button[data-move-pos][data-move-dir]');
           if (moveBtn) {
@@ -762,6 +1007,11 @@
 
       window.addEventListener('keydown', (ev) => {
         const k = String(ev.key || '');
+        if (k === 'Escape' && queueAlbumModal?.classList.contains('open')) {
+          ev.preventDefault();
+          closeQueueAlbumModal();
+          return;
+        }
         if (k !== 'ArrowLeft' && k !== 'ArrowRight') return;
         if (!canHandleTransportHotkey(ev)) return;
         if (ev.repeat) return;

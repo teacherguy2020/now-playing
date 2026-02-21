@@ -285,6 +285,11 @@
     const appleUrl = String(np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
     const isPodcast = !!np?.isPodcast;
     const isLibraryTrack = ((!np?.isStream && !np?.isRadio && !isPodcast) || isAlexaMode);
+    const modalAlbum = String(np?.album || head?.album || '').trim();
+    const modalArtist = String(np?.artist || head?.artist || '').trim();
+    const modalArtRaw = String(np?.albumArtUrl || np?.altArtUrl || head?.thumbUrl || '').trim();
+    const modalArt = modalArtRaw ? (modalArtRaw.startsWith('http') ? modalArtRaw : `${apiBase}${modalArtRaw}`) : '';
+    const canOpenAlbumModal = !appleUrl && isLibraryTrack && !isRadioOrStream && !!modalAlbum;
     const rating = Math.max(0, Math.min(5, Number(np?.rating ?? head?.rating ?? 0) || 0));
     const ratingFile = String(np?.ratingFile || np?.file || head?.file || '').trim();
     const starsRow = (isLibraryTrack && ratingFile)
@@ -332,7 +337,7 @@
         `<div class="np">` +
           (appleUrl
             ? `<a class="txt txtLink" href="${appleUrl}" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">${text}</a>`
-            : `<div class="txt">${text}</div>`) +
+            : `<div class="txt"${canOpenAlbumModal ? ` data-hero-open-album="1" data-hero-album="${encodeURIComponent(modalAlbum)}" data-hero-artist="${encodeURIComponent(modalArtist)}" data-hero-art="${encodeURIComponent(modalArt)}" title="Open album" style="cursor:pointer;"` : ''}>${text}</div>`) +
           `${metaRow}` +
           `${isAlexaMode ? '' : (`<div class="heroTransportControls">` +
             (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekback15" title="Back 15 seconds"><span style="font-size:13px;font-weight:700;">↺15</span></button>` : '') +
@@ -754,6 +759,20 @@
     renderShell(el, 'loading');
 
     el.addEventListener('click', async (ev) => {
+      const albumHit = ev.target instanceof Element ? ev.target.closest('[data-hero-open-album]') : null;
+      if (albumHit) {
+        ev.preventDefault();
+        const album = decodeURIComponent(String(albumHit.getAttribute('data-hero-album') || ''));
+        const artist = decodeURIComponent(String(albumHit.getAttribute('data-hero-artist') || ''));
+        const art = decodeURIComponent(String(albumHit.getAttribute('data-hero-art') || ''));
+        if (album) {
+          try {
+            window.dispatchEvent(new CustomEvent('openclaw:hero-open-album-modal', { detail: { album, artist, art } }));
+          } catch {}
+        }
+        return;
+      }
+
       const rateBtn = ev.target instanceof Element ? ev.target.closest('button[data-hero-rate-file][data-hero-rate-val]') : null;
       if (rateBtn) {
         ev.preventDefault();
