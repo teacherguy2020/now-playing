@@ -269,6 +269,12 @@
           <h3 style="margin:0 0 8px">Filter Queue Builder</h3>
           <div class="muted" style="margin-top:4px">Pick genres/artists and exclusions, preview matches, then send that filtered list.</div>
         </div>
+        <div style="min-width:260px;max-width:360px;flex:1 1 300px;position:relative;">
+          <label style="display:block;">Quick search
+            <input id="filterQuickSearch" type="text" placeholder="Type to find genre, artist, album…" style="width:100%;margin-top:4px;" autocomplete="off" />
+          </label>
+          <div id="filterQuickSearchResults" style="display:none;position:absolute;left:0;right:0;top:58px;max-height:280px;overflow:auto;z-index:20;background:#0f1a31;border:1px solid #2a3a58;border-radius:10px;padding:6px;"></div>
+        </div>
       </div>
       <div class="row" style="margin-top:10px">
         <label>Max tracks<br><input id="maxTracks" type="number" min="1" max="5000" value="25" style="width:100px"></label>

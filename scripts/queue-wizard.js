@@ -36,6 +36,8 @@
   const cropEl = $('crop');
   const cropExistingEl = $('cropExisting');
   const shuffleExistingEl = $('shuffleExisting');
+  const filterQuickSearchEl = $('filterQuickSearch');
+  const filterQuickSearchResultsEl = $('filterQuickSearchResults');
 
   const savePlaylistBtn = $('savePlaylistBtn');
   const playlistNameEl = $('playlistName');
@@ -98,6 +100,7 @@
   let podcastBuildTimer = null;
   let listOrderShuffled = false;
   let queuePlayPauseMode = 'play';
+  let filterQuickIndex = [];
 
 // ---------- Vibe progress + Cancel/Send button (single-source-of-truth) ----------
 
@@ -1038,6 +1041,140 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
       (wantsCollage ? ' · Cover: collage' : '');
   }
 
+  function rebuildFilterQuickIndex() {
+    const pack = (id, type) => Array.from($(id)?.options || []).map((o) => ({
+      type,
+      value: String(o.value || ''),
+      label: String(o.textContent || o.label || o.value || '').trim(),
+      lower: String(o.textContent || o.label || o.value || '').trim().toLowerCase(),
+    })).filter((x) => x.value && x.label);
+
+    filterQuickIndex = [
+      ...pack('genres', 'Genre'),
+      ...pack('artists', 'Artist'),
+      ...pack('albums', 'Album'),
+      ...pack('excludeGenres', 'Exclude genre'),
+      ...pack('existingPlaylists', 'Playlist').filter((x) => !/^\(select existing playlist\)$/i.test(String(x.label || '').trim())),
+    ];
+  }
+
+  function renderFilterQuickResults(qRaw = '') {
+    if (!filterQuickSearchResultsEl) return;
+    const q = String(qRaw || '').trim().toLowerCase();
+    if (!q) {
+      filterQuickSearchResultsEl.style.display = 'none';
+      filterQuickSearchResultsEl.innerHTML = '';
+      return;
+    }
+
+    const scored = filterQuickIndex
+      .map((x) => {
+        const i = x.lower.indexOf(q);
+        if (i < 0) return null;
+        const score = (i === 0 ? 0 : 10) + i;
+        return { ...x, score };
+      })
+      .filter(Boolean)
+      .slice(0, 120);
+
+    if (!scored.length) {
+      filterQuickSearchResultsEl.style.display = 'block';
+      filterQuickSearchResultsEl.innerHTML = '<div class="muted" style="padding:6px 8px;">No matches.</div>';
+      return;
+    }
+
+    const typeOrder = ['Genre', 'Artist', 'Album', 'Playlist', 'Exclude genre'];
+    const typeColor = {
+      'Genre': 'rgba(56,189,248,.20)',
+      'Artist': 'rgba(34,197,94,.20)',
+      'Album': 'rgba(168,85,247,.22)',
+      'Playlist': 'rgba(244,114,182,.22)',
+      'Exclude genre': 'rgba(245,158,11,.20)',
+    };
+
+    const byType = new Map();
+    for (const t of typeOrder) byType.set(t, []);
+    for (const row of scored) {
+      if (!byType.has(row.type)) byType.set(row.type, []);
+      byType.get(row.type).push(row);
+    }
+
+    const chunks = [];
+    for (const t of typeOrder) {
+      const rows = (byType.get(t) || []).sort((a, b) => a.score - b.score).slice(0, 12);
+      if (!rows.length) continue;
+      const pillBg = typeColor[t] || 'rgba(148,163,184,.2)';
+      chunks.push(`<div style="padding:4px 6px 6px;"><div style="font-size:12px;font-weight:700;color:#c7d8ff;margin:2px 0 6px;"><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:${pillBg};border:1px solid #2a3a58;">${esc(t)}</span></div>`
+        + rows.map((x) => {
+          const canMultiAdd = x.type !== 'Playlist';
+          const selected = isQuickValueSelected(x.type, x.value);
+          return `<div style="display:flex;align-items:center;gap:6px;">`
+            + `<button type="button" data-quick-type="${esc(x.type)}" data-quick-value="${esc(x.value)}" style="flex:1 1 auto;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:0;background:${selected ? 'rgba(34,197,94,.10)' : 'transparent'};color:#e7eefc;text-align:left;border-radius:8px;cursor:pointer;">`
+            + `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(x.label)}</span>`
+            + `<span style="font-size:11px;white-space:nowrap;opacity:.88;padding:1px 6px;border-radius:999px;background:${pillBg};">${esc(x.type)}</span>`
+            + `</button>`
+            + (canMultiAdd ? `<button type="button" data-quick-add="1" data-quick-type="${esc(x.type)}" data-quick-value="${esc(x.value)}" title="Add and keep searching" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid ${selected ? 'rgba(34,197,94,.7)' : '#2a3a58'};background:${selected ? 'rgba(34,197,94,.22)' : pillBg};color:${selected ? '#22c55e' : '#e7eefc'};cursor:pointer;font-weight:700;line-height:1;">${selected ? '✓' : '+'}</button>` : '')
+            + `</div>`;
+        }).join('')
+        + `</div>`);
+    }
+
+    filterQuickSearchResultsEl.innerHTML = chunks.join('');
+    filterQuickSearchResultsEl.style.display = 'block';
+  }
+
+  function isQuickValueSelected(type, value) {
+    const t = String(type || '');
+    const v = String(value || '');
+    const map = {
+      'Genre': 'genres',
+      'Artist': 'artists',
+      'Album': 'albums',
+      'Exclude genre': 'excludeGenres',
+      'Playlist': 'existingPlaylists',
+    };
+    const id = map[t];
+    const sel = id ? $(id) : null;
+    if (!sel) return false;
+    if (t === 'Playlist') return String(sel.value || '') === v;
+    return Array.from(sel.selectedOptions || []).some((o) => String(o.value || '') === v);
+  }
+
+  function applyQuickPick(type, value) {
+    const t = String(type || '');
+
+    if (t === 'Playlist') {
+      const sel = $('existingPlaylists');
+      if (!sel) return;
+      sel.value = String(value || '');
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      try { activateBuilder('existing'); } catch {}
+      try { previewExistingPlaylistSelection(); } catch {}
+      return;
+    }
+
+    const map = {
+      'Genre': 'genres',
+      'Artist': 'artists',
+      'Album': 'albums',
+      'Exclude genre': 'excludeGenres',
+    };
+    const id = map[t];
+    const sel = id ? $(id) : null;
+    if (!sel) return;
+    let matched = false;
+    Array.from(sel.options || []).forEach((o) => {
+      if (String(o.value || '') === String(value || '')) {
+        o.selected = true;
+        try { o.scrollIntoView({ block: 'nearest' }); } catch {}
+        matched = true;
+      }
+    });
+    if (matched) {
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
   // ---- Load options ----
   function setOptions(el, arr) {
     if (!el) return;
@@ -1094,10 +1231,12 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
       if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
       const names = Array.isArray(j?.playlists) ? j.playlists.map((x) => String(x || '').trim()).filter(Boolean) : [];
       setExistingPlaylistOptions(names, getPlaylistNameRaw());
+      rebuildFilterQuickIndex();
       existingPlaylistsEl.disabled = false;
       updatePlaylistUi();
     } catch (_) {
       setExistingPlaylistOptions([]);
+      rebuildFilterQuickIndex();
       existingPlaylistsEl.disabled = false;
       updatePlaylistUi();
     }
@@ -1265,6 +1404,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
       }
 
       moodeHost = String(j.moodeHost || moodeHost || '10.0.0.254');
+      rebuildFilterQuickIndex();
 
       setStatus('');
       renderFiltersSummary();
@@ -2579,6 +2719,40 @@ function wireEvents() {
         maybePreview();
       });
     }
+  });
+
+  filterQuickSearchEl?.addEventListener('input', () => {
+    renderFilterQuickResults(filterQuickSearchEl.value || '');
+  });
+
+  filterQuickSearchEl?.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') {
+      filterQuickSearchEl.value = '';
+      renderFilterQuickResults('');
+    }
+  });
+
+  filterQuickSearchResultsEl?.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const b = ev.target instanceof Element ? ev.target.closest('button[data-quick-type][data-quick-value]') : null;
+    if (!b) return;
+    const keepOpen = b.hasAttribute('data-quick-add');
+    const type = String(b.getAttribute('data-quick-type') || '');
+    const value = String(b.getAttribute('data-quick-value') || '');
+    applyQuickPick(type, value);
+    if (keepOpen) {
+      renderFilterQuickResults(filterQuickSearchEl?.value || '');
+      return;
+    }
+    if (filterQuickSearchEl) filterQuickSearchEl.value = '';
+    renderFilterQuickResults('');
+  });
+
+  document.addEventListener('click', (ev) => {
+    const t = ev.target;
+    if (!(t instanceof Element)) return;
+    if (t.closest('#filterQuickSearch') || t.closest('#filterQuickSearchResults')) return;
+    renderFilterQuickResults('');
   });
 }
 

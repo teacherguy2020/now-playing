@@ -649,8 +649,17 @@
         queueAlbumBody.innerHTML = `<div class="queueAlbumMeta" style="grid-column:1 / -1;">`
           + `<div class="queueAlbumTitle">${artistTxt}</div>`
           + `<div class="queueAlbumSub">Loading albums…</div>`
-          + `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">`
+          + `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;">`
           + `<button type="button" class="queueAlbumClose" data-artist-action="shuffle" data-artist="${encodeURIComponent(artistTxt)}">Shuffle all</button>`
+          + `<label class="queueAlbumSub" style="display:inline-flex;align-items:center;gap:6px;margin:0;">min rating`
+          + `<select id="queueArtistMinRating" style="min-width:116px;">`
+          + `<option value="0">Any</option>`
+          + `<option value="1">1★+</option>`
+          + `<option value="2" selected>2★+</option>`
+          + `<option value="3">3★+</option>`
+          + `<option value="4">4★+</option>`
+          + `<option value="5">5★</option>`
+          + `</select></label>`
           + `</div></div>`;
 
         queueAlbumModal.classList.add('open');
@@ -793,9 +802,10 @@
         if (artistAction) {
           const artist = decodeURIComponent(String(artistAction.getAttribute('data-artist') || ''));
           const mode = 'replace';
+          const minRating = Number(document.getElementById('queueArtistMinRating')?.value || 2);
           artistAction.setAttribute('disabled', 'disabled');
           try {
-            await sendHeroPlayback('addartistshuffle', { artist, mode });
+            await sendHeroPlayback('addartistshuffle', { artist, mode, minRating });
             queueRefreshBurst();
             closeQueueAlbumModal();
           } catch {}

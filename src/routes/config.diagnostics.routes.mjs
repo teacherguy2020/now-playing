@@ -467,6 +467,8 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       if (action === 'addartistshuffle') {
         const artist = String(req.body?.artist || '').trim();
         const mode = String(req.body?.mode || 'append').trim().toLowerCase();
+        const minRatingRaw = Number(req.body?.minRating);
+        const minRating = Number.isFinite(minRatingRaw) ? Math.max(0, Math.min(5, Math.round(minRatingRaw))) : 2;
         if (!artist) return res.status(400).json({ ok: false, error: 'artist is required for addartistshuffle' });
         if (!['append', 'crop', 'replace'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode must be append|crop|replace' });
 
@@ -478,16 +480,24 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           return String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
         };
         const dedup = Array.from(new Set([...(await pull('artist')), ...(await pull('albumartist'))]));
-        for (let i = dedup.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          const t = dedup[i]; dedup[i] = dedup[j]; dedup[j] = t;
+
+        const filtered = [];
+        for (const f of dedup) {
+          let rating = 0;
+          try { rating = Number(await getRatingForFile(f)) || 0; } catch {}
+          if (rating >= minRating) filtered.push(f);
         }
-        for (const f of dedup) await execFileP('mpc', ['-h', mpdHost, 'add', f]);
-        if (mode === 'replace' && dedup.length > 0) await execFileP('mpc', ['-h', mpdHost, 'play', '1']);
+
+        for (let i = filtered.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const t = filtered[i]; filtered[i] = filtered[j]; filtered[j] = t;
+        }
+        for (const f of filtered) await execFileP('mpc', ['-h', mpdHost, 'add', f]);
+        if (mode === 'replace' && filtered.length > 0) await execFileP('mpc', ['-h', mpdHost, 'play', '1']);
 
         const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
-        return res.json({ ok: true, action, artist, mode, added: dedup.length, randomOn, status: String(afterStatus || '') });
+        return res.json({ ok: true, action, artist, mode, minRating, matched: dedup.length, added: filtered.length, randomOn, status: String(afterStatus || '') });
       }
 
       if (action === 'rate') {
