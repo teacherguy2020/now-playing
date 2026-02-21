@@ -21,7 +21,7 @@
     body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
     .wrap{max-width:1080px;margin:0 auto;padding:18px}
     .card{background:#101c33;border:1px solid #2a3a58;border-radius:18px;padding:12px;margin:10px 0}
-    .radioGrid{display:grid;grid-template-columns:1.15fr 1fr 1fr .8fr .8fr;gap:10px}
+    .radioGrid{display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr .8fr .8fr;gap:10px}
     label{display:block;font-size:12px;color:#9fb1d9;margin-bottom:6px}
     input,select,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
     .choiceLine{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
@@ -66,6 +66,7 @@
       <div class="radioGrid" style="margin-top:10px;">
         <label>Genre<br><select id="genre"></select></label>
         <label>Favorites dropdown<br><select id="favoritesPreset" multiple size="6"></select></label>
+        <label>Load Presets<br><select id="loadPresets"><option value="">Select preset…</option></select></label>
         <label>Search station<br><input id="search" type="text" placeholder="station name" /></label>
         <label><input id="favoritesOnly" type="checkbox" /> Favorites only</label>
         <label><input id="hqOnly" type="checkbox" /> High quality only</label>

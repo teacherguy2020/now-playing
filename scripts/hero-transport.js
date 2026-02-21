@@ -755,7 +755,7 @@
 
     el.addEventListener('click', async (ev) => {
       const rateBtn = ev.target instanceof Element ? ev.target.closest('button[data-hero-rate-file][data-hero-rate-val]') : null;
-      if (rateBtn && !busy) {
+      if (rateBtn) {
         ev.preventDefault();
         const file = decodeURIComponent(String(rateBtn.getAttribute('data-hero-rate-file') || ''));
         const rating = Number(rateBtn.getAttribute('data-hero-rate-val') || 0);
@@ -773,7 +773,7 @@
 
         busy = true;
         try { await playback('rate', currentKey(), { file, rating }); } catch {}
-        await refresh();
+        try { await refresh(); } catch {}
         busy = false;
         return;
       }
@@ -878,7 +878,7 @@
     });
 
     setTimeout(refresh, 150);
-    setInterval(refresh, 5000);
+    setInterval(refresh, 2000);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

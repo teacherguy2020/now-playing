@@ -4,6 +4,7 @@
   let selected = new Set();
   let activeStationFile = '';
   const FILTERS_KEY = 'radio:filters:v1';
+  const RADIO_QUEUE_PRESETS_KEY = 'nowplaying.radioQueuePresets.v1';
 
   function apiBaseDefault(){ return `${location.protocol}//${location.hostname || '10.0.0.233'}:3101`; }
   function key(){ return String($('key')?.value || '').trim(); }
@@ -101,6 +102,52 @@
     } catch {
       activeStationFile = '';
     }
+  }
+
+  function loadLocalRadioQueuePresets(){
+    try {
+      const v = JSON.parse(localStorage.getItem(RADIO_QUEUE_PRESETS_KEY) || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch { return []; }
+  }
+
+  function renderLoadPresetsDropdown(){
+    const sel = $('loadPresets');
+    if (!sel) return;
+    const list = loadLocalRadioQueuePresets();
+    const opts = [`<option value="">Select preset…</option>`]
+      .concat(list.map((p) => {
+        const id = String(p?.id || '');
+        const n = String(p?.name || 'Preset').trim() || 'Preset';
+        const c = Array.isArray(p?.stations) ? p.stations.length : 0;
+        return `<option value="${id.replace(/"/g,'&quot;')}">${n} (${c})</option>`;
+      }));
+    sel.innerHTML = opts.join('');
+  }
+
+  async function applyLoadedPreset(presetId){
+    const id = String(presetId || '').trim();
+    if (!id) return;
+    const list = loadLocalRadioQueuePresets();
+    const p = list.find((x) => String(x?.id || '') === id);
+    if (!p) { setStatus('Preset not found.'); return; }
+    const tracks = Array.from(new Set((Array.isArray(p?.stations) ? p.stations : []).map((s) => String(s?.file || '').trim()).filter(Boolean)));
+    if (!tracks.length) { setStatus('Preset is empty.'); return; }
+
+    setStatus('Loading preset to moOde queue…');
+    const r = await fetch(`${base()}/config/queue-wizard/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key() },
+      body: JSON.stringify({ mode: 'replace', keepNowPlaying: false, tracks, forceRandomOff: true }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+    // Mirror selection in UI for easy resend/inspection.
+    selected = new Set(tracks);
+    renderRows();
+    if ($('count')) $('count').textContent = `${allStations.length} station(s) shown · ${selected.size} selected`;
+    setStatus(`Loaded preset “${String(p?.name || 'Preset')}” (${tracks.length} station${tracks.length===1?'':'s'}).`);
   }
 
   async function loadStations(){
@@ -376,6 +423,20 @@
         loadStations().catch((e) => setStatus(String(e?.message || e)));
       });
     });
+
+    $('loadPresets')?.addEventListener('change', (ev) => {
+      const id = String(ev?.target?.value || '').trim();
+      if (!id) return;
+      applyLoadedPreset(id).catch((e) => setStatus(String(e?.message || e)));
+    });
+
+    window.addEventListener('storage', (ev) => {
+      if (String(ev?.key || '') === RADIO_QUEUE_PRESETS_KEY) renderLoadPresetsDropdown();
+    });
+    window.addEventListener('message', (ev) => {
+      const t = String(ev?.data?.type || '');
+      if (t === 'radio-presets-updated') renderLoadPresetsDropdown();
+    });
   }
 
   async function syncActiveOnly(){
@@ -392,6 +453,7 @@
     wire();
     await loadGenres().catch(() => {});
     await loadFavoritePreset().catch(() => {});
+    renderLoadPresetsDropdown();
     await loadStations().catch((e) => setStatus(String(e?.message || e)));
 
     setInterval(() => {

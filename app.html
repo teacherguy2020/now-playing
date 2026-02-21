@@ -74,7 +74,8 @@
               <span>activate keyboard arrow keys</span>
             </label>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+            <button id="heroQueueSavePresets" class="heroQueueBtn" type="button" style="display:none;">Save queue as presets group</button>
             <button id="heroQueueClear" class="heroQueueBtn" type="button">Clear</button>
             <button id="heroQueueCrop" class="heroQueueBtn" type="button">Crop</button>
             <button id="heroQueueToggle" class="heroQueueBtn" type="button">Collapse</button>
@@ -89,7 +90,7 @@
     <iframe id="appFrame" title="Now Playing view" src="about:blank" scrolling="no" style="width:100%;display:block;"></iframe>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260221-002"></script>
+  <script src="scripts/hero-transport.js?v=20260221-004"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -181,6 +182,9 @@
       let radioHostAmbiguous = new Set();
       let radioHostMapTs = 0;
       let lastHeroQueueSignature = '';
+      let currentShellPage = getPageFromUrl();
+      let lastRadioPresetStations = [];
+      const RADIO_QUEUE_PRESETS_KEY = 'nowplaying.radioQueuePresets.v1';
 
       async function sendHeroPlayback(action, extra = null){
         const host = location.hostname || '10.0.0.233';
@@ -247,7 +251,38 @@
         return { byKey: radioStationByKey, byHost: radioStationByHost, ambHosts: radioHostAmbiguous };
       }
 
+      function updateSavePresetsButtonVisibility(){
+        const btn = document.getElementById('heroQueueSavePresets');
+        if (!btn) return;
+        const onRadioTab = String(currentShellPage || '') === 'radio.html';
+        const hasStations = Array.isArray(lastRadioPresetStations) && lastRadioPresetStations.length > 0;
+        btn.style.display = (onRadioTab && hasStations) ? '' : 'none';
+      }
+
+      function saveCurrentQueueAsRadioPreset(){
+        const stations = Array.isArray(lastRadioPresetStations) ? lastRadioPresetStations : [];
+        if (!stations.length) return;
+        const d = new Date();
+        const def = `Radio preset ${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        const name = String(window.prompt('Preset name:', def) || '').trim();
+        if (!name) return;
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem(RADIO_QUEUE_PRESETS_KEY) || '[]'); } catch {}
+        if (!Array.isArray(list)) list = [];
+        const entry = {
+          id: `rp_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+          name,
+          createdAt: Date.now(),
+          stations: stations,
+        };
+        list.unshift(entry);
+        if (list.length > 30) list = list.slice(0, 30);
+        try { localStorage.setItem(RADIO_QUEUE_PRESETS_KEY, JSON.stringify(list)); } catch {}
+        try { frame.contentWindow?.postMessage({ type: 'radio-presets-updated' }, '*'); } catch {}
+      }
+
       async function syncHeroQueue(){
+
         try {
           const host = location.hostname || '10.0.0.233';
           const base = `${location.protocol}//${host}:3101`;
@@ -279,12 +314,15 @@
               : (Number.isFinite(Number(it?.position)) ? Number(it.position) : (idx + 1));
             return { ...it, _posDisplay: p };
           });
+          const presetStations = [];
           if (!items.length) {
             const emptySig = 'empty';
             if (lastHeroQueueSignature !== emptySig) {
               wrap.innerHTML = '<div class="heroQueueMeta">Queue is empty.</div>';
               lastHeroQueueSignature = emptySig;
             }
+            lastRadioPresetStations = [];
+            updateSavePresetsButtonVisibility();
             return;
           }
           const queueSig = JSON.stringify({
@@ -339,23 +377,36 @@
             const mappedByHost = (derivedHost && radioMap?.byHost && typeof radioMap.byHost.get === 'function') ? String(radioMap.byHost.get(derivedHost) || '').trim() : '';
             const stationLooksHost = !!(stationName && /\./.test(stationName) && !/\s/.test(stationName));
             const displayStation = (!stationLooksHost ? stationName : '') || mappedByKey || mappedByHost || stationName || (head ? fallbackStation : '') || derivedStation;
+            if (isStreamish && fileRaw) {
+              presetStations.push({ file: fileRaw, stationName: String(displayStation || stationName || '').trim() });
+            }
             const artistRaw = String(x?.artist || '').trim();
             const looksIheartBlob = /\btext="[^"]+"|\bsong_spot="[^"]+"|\bspEventID="[^"]+"|\bTPID="\d+"/i.test(artistRaw);
             const iheartText = (artistRaw.match(/\btext="([^"]+)"/i) || [])[1] || '';
             const artistClean = looksIheartBlob ? '' : artistRaw;
-            const artist = (isStreamish ? (artistClean || iheartText || displayStation || 'Radio stream') : (artistClean || String(x?.name || '').trim() || '(unknown)'));
+            const artist = (isStreamish
+              ? (displayStation || stationName || derivedStation || 'Radio station')
+              : (artistClean || String(x?.name || '').trim() || '(unknown)'));
             const titleRaw = String(x?.title || '').trim().replace(/\s*\[\d{1,4}\]\s*$/,'').trim();
-            const title = (isStreamish && !titleRaw) ? (iheartText || displayStation || '') : titleRaw;
+            const title = isStreamish ? '' : titleRaw;
             const hostFavicon = derivedHost ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(derivedHost)}.ico` : '';
             const hostFaviconAlt = derivedHost ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(derivedHost)}&sz=64` : '';
             const logoName = ((!stationLooksHost ? stationName : '') || displayStation || stationName || '').trim();
+            const logoNameAlt = logoName
+              ? logoName
+                  .replace(/\s*\([^)]*\)\s*/g, ' ')
+                  .replace(/\s*:\s*/g, ' - ')
+                  .replace(/\s{2,}/g, ' ')
+                  .trim()
+              : '';
             const stationLogoByDisplay = logoName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoName)}` : '';
+            const stationLogoByDisplayAlt = (logoNameAlt && logoNameAlt !== logoName) ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoNameAlt)}` : '';
             const stationLogoByFile = fileRaw ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(fileRaw)}` : '';
             let thumb = '';
             if (isStreamish) {
               // Queue card policy: for stream/radio rows, always use station branding (never album art).
               const cachedIcon = String(existingIconByFile.get(fileRaw) || '').trim();
-              thumb = cachedIcon || stationLogoByDisplay || stationLogoByFile || hostFavicon || hostFaviconAlt || '';
+              thumb = cachedIcon || stationLogoByDisplay || stationLogoByDisplayAlt || stationLogoByFile || hostFavicon || hostFaviconAlt || '';
             } else {
               thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
               if (!thumb && nowIsAirplay && fallbackNowArt) thumb = fallbackNowArt;
@@ -364,16 +415,29 @@
               }
             }
             const fallbackIcon = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="10" fill="#0a1222" stroke="#3b4f72"/><circle cx="32" cy="32" r="6" fill="#8fb3ff"/><path d="M32 26V14M32 50V38M26 32H14M50 32H38" stroke="#8fb3ff" stroke-width="4" stroke-linecap="round"/></svg>')}`;
-            const fallbackJs = `if(this.dataset.step!=='1' && '${stationLogoByFile}') { this.dataset.step='1'; this.src='${stationLogoByFile}'; return; } if(this.dataset.step!=='2' && '${stationLogoByDisplay}') { this.dataset.step='2'; this.src='${stationLogoByDisplay}'; return; } if(this.dataset.step!=='3' && '${hostFavicon}') { this.dataset.step='3'; this.src='${hostFavicon}'; return; } if(this.dataset.step!=='4' && '${hostFaviconAlt}') { this.dataset.step='4'; this.src='${hostFaviconAlt}'; return; } this.src='${fallbackIcon}';`;
+            const fallbackJs = `if(this.dataset.step!=='1' && '${stationLogoByDisplay}') { this.dataset.step='1'; this.src='${stationLogoByDisplay}'; return; } if(this.dataset.step!=='2' && '${stationLogoByDisplayAlt}') { this.dataset.step='2'; this.src='${stationLogoByDisplayAlt}'; return; } if(this.dataset.step!=='3' && '${stationLogoByFile}') { this.dataset.step='3'; this.src='${stationLogoByFile}'; return; } if(this.dataset.step!=='4' && '${hostFavicon}') { this.dataset.step='4'; this.src='${hostFavicon}'; return; } if(this.dataset.step!=='5' && '${hostFaviconAlt}') { this.dataset.step='5'; this.src='${hostFaviconAlt}'; return; } this.src='${fallbackIcon}';`;
             const thumbHtml = thumb
               ? `<img src="${thumb}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
-              : `<img src="${stationLogoByFile || stationLogoByDisplay || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
+              : `<img src="${stationLogoByDisplay || stationLogoByDisplayAlt || stationLogoByFile || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
             const actions = `<div class="heroQueueActions"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
-            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div>${artist}</div><div class="heroQueueMeta">${title}</div></div>${actions}</div>`;
+            const detailHtml = isStreamish ? '' : `<div class="heroQueueMeta">${title}</div>`;
+            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div>${artist}</div>${detailHtml}</div>${actions}</div>`;
           }).join('');
+
+          const onlyRadioStations = !!items.length && items.every((x) => {
+            const f = String(x?.file || '').trim();
+            const streamish = /^https?:\/\//i.test(f);
+            return streamish && !x?.isPodcast;
+          });
+          lastRadioPresetStations = onlyRadioStations
+            ? Array.from(new Map(presetStations.filter((s) => !!s?.file).map((s) => [String(s.file), s])).values())
+            : [];
+          updateSavePresetsButtonVisibility();
         } catch (e) {
           const wrap = document.getElementById('heroQueueWrap');
           if (wrap) wrap.innerHTML = `<div class="heroQueueMeta">Queue load failed: ${String(e?.message || e)}</div>`;
+          lastRadioPresetStations = [];
+          updateSavePresetsButtonVisibility();
         }
       }
 
@@ -424,7 +488,9 @@
 
       function navigate(page, push = true){
         const safe = VALID.has(page) ? page : 'config.html';
+        currentShellPage = safe;
         setActive(safe);
+        updateSavePresetsButtonVisibility();
         const src = `${safe}${safe.includes('?') ? '&' : '?'}shellts=${Date.now()}`;
         frame.setAttribute('src', src);
         if (push) {
@@ -453,7 +519,32 @@
       const hqBtn = document.getElementById('heroQueueToggle');
       const hqClear = document.getElementById('heroQueueClear');
       const hqCrop = document.getElementById('heroQueueCrop');
+      const hqSave = document.getElementById('heroQueueSavePresets');
       const hqWrap = document.getElementById('heroQueueWrap');
+
+      function markQueueRowActiveOptimistic(position){
+        const wrap = document.getElementById('heroQueueWrap');
+        if (!wrap) return;
+        const target = Number(position || 0);
+        if (!Number.isFinite(target) || target <= 0) return;
+        wrap.querySelectorAll('.heroQueueRow[data-queue-play-pos]').forEach((row) => {
+          const p = Number(row.getAttribute('data-queue-play-pos') || 0);
+          if (p === target) {
+            row.style.background = 'rgba(34,197,94,.14)';
+            row.style.borderRadius = '8px';
+          } else {
+            row.style.background = '';
+            row.style.borderRadius = '';
+          }
+        });
+      }
+
+      function setQueueBusyHint(msg = ''){
+        const el = document.querySelector('.heroQueueTitle');
+        if (!el) return;
+        const base = 'Current Queue';
+        el.textContent = msg ? `${base} · ${msg}` : base;
+      }
       const HERO_QUEUE_COLLAPSED_KEY = 'nowplaying.app.heroQueueCollapsed';
       if (hqBtn && hqWrap) {
         let collapsed = false;
@@ -483,6 +574,10 @@
           finally { hqCrop.disabled = false; await syncHeroQueue(); }
         });
 
+        hqSave?.addEventListener('click', () => {
+          try { saveCurrentQueueAsRadioPreset(); } catch {}
+        });
+
         hqWrap.addEventListener('click', async (ev) => {
           const el = ev.target instanceof Element ? ev.target : null;
           if (!el) return;
@@ -507,10 +602,30 @@
             ev.stopPropagation();
             const pos = Number(removeBtn.getAttribute('data-remove-pos') || 0);
             if (!Number.isFinite(pos) || pos <= 0) return;
+
+            const row = removeBtn.closest('.heroQueueRow');
+            if (row) {
+              row.style.opacity = '.45';
+              row.style.pointerEvents = 'none';
+            }
             removeBtn.disabled = true;
-            try { await sendHeroPlayback('remove', { position: pos }); }
-            catch (_) {}
-            finally { removeBtn.disabled = false; await syncHeroQueue(); }
+            setQueueBusyHint('removing…');
+
+            try {
+              await sendHeroPlayback('remove', { position: pos });
+              // optimistic hide so user gets immediate feedback
+              if (row) row.style.display = 'none';
+            } catch (_) {
+              if (row) {
+                row.style.opacity = '';
+                row.style.pointerEvents = '';
+                row.style.display = '';
+              }
+            } finally {
+              removeBtn.disabled = false;
+              await syncHeroQueue();
+              setQueueBusyHint('');
+            }
             return;
           }
 
@@ -518,6 +633,7 @@
           if (!row) return;
           const pos = Number(row.getAttribute('data-queue-play-pos') || 0);
           if (!Number.isFinite(pos) || pos <= 0) return;
+          markQueueRowActiveOptimistic(pos);
           try { await sendHeroPlayback('playpos', { position: pos }); }
           catch (_) {}
           finally { await syncHeroQueue(); }
@@ -526,16 +642,37 @@
 
       const HERO_ARROW_KEYS_ENABLED_KEY = 'nowplaying.app.arrowKeysEnabled';
       const arrowKeysEl = document.getElementById('heroQueueArrowKeys');
-      let arrowKeysEnabled = false;
-      try {
-        const saved = String(localStorage.getItem(HERO_ARROW_KEYS_ENABLED_KEY) || '').trim().toLowerCase();
-        arrowKeysEnabled = (saved === '1' || saved === 'true' || saved === 'yes' || saved === 'on');
-      } catch {}
+
+      function readArrowPref(){
+        const isOn = (v) => ['1','true','yes','on'].includes(String(v || '').trim().toLowerCase());
+        try {
+          const v = localStorage.getItem(HERO_ARROW_KEYS_ENABLED_KEY);
+          if (v != null && String(v).trim() !== '') return isOn(v);
+        } catch {}
+        try {
+          const v = sessionStorage.getItem(HERO_ARROW_KEYS_ENABLED_KEY);
+          if (v != null && String(v).trim() !== '') return isOn(v);
+        } catch {}
+        try {
+          const m = document.cookie.match(new RegExp(`(?:^|; )${HERO_ARROW_KEYS_ENABLED_KEY.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}=([^;]*)`));
+          if (m && m[1] != null) return isOn(decodeURIComponent(m[1]));
+        } catch {}
+        return false;
+      }
+
+      function writeArrowPref(on){
+        const v = on ? '1' : '0';
+        try { localStorage.setItem(HERO_ARROW_KEYS_ENABLED_KEY, v); } catch {}
+        try { sessionStorage.setItem(HERO_ARROW_KEYS_ENABLED_KEY, v); } catch {}
+        try { document.cookie = `${HERO_ARROW_KEYS_ENABLED_KEY}=${encodeURIComponent(v)}; path=/; max-age=${60*60*24*365}`; } catch {}
+      }
+
+      let arrowKeysEnabled = readArrowPref();
       if (arrowKeysEl) {
         arrowKeysEl.checked = !!arrowKeysEnabled;
         arrowKeysEl.addEventListener('change', () => {
           arrowKeysEnabled = !!arrowKeysEl.checked;
-          try { localStorage.setItem(HERO_ARROW_KEYS_ENABLED_KEY, arrowKeysEnabled ? '1' : '0'); } catch {}
+          writeArrowPref(arrowKeysEnabled);
         });
       }
 
@@ -552,6 +689,25 @@
         return true;
       }
 
+      function getActiveQueuePosFromDom(){
+        const rows = Array.from(document.querySelectorAll('#heroQueueWrap .heroQueueRow[data-queue-play-pos]'));
+        if (!rows.length) return 0;
+        for (const row of rows) {
+          const bg = String(row.style.background || '').toLowerCase();
+          if (bg.includes('34,197,94')) {
+            const p = Number(row.getAttribute('data-queue-play-pos') || 0);
+            if (Number.isFinite(p) && p > 0) return p;
+          }
+        }
+        for (const row of rows) {
+          if (String(row.textContent || '').includes('▶')) {
+            const p = Number(row.getAttribute('data-queue-play-pos') || 0);
+            if (Number.isFinite(p) && p > 0) return p;
+          }
+        }
+        return Number(rows[0].getAttribute('data-queue-play-pos') || 0) || 0;
+      }
+
       window.addEventListener('keydown', (ev) => {
         const k = String(ev.key || '');
         if (k !== 'ArrowLeft' && k !== 'ArrowRight') return;
@@ -562,6 +718,12 @@
         const btn = document.querySelector(`#heroTransport button[data-a="${action}"]`);
         if (!btn) return;
 
+        const cur = getActiveQueuePosFromDom();
+        if (cur > 0) {
+          const nextPos = k === 'ArrowLeft' ? Math.max(1, cur - 1) : (cur + 1);
+          markQueueRowActiveOptimistic(nextPos);
+        }
+
         ev.preventDefault();
         try { btn.click(); } catch {}
       });
@@ -571,7 +733,7 @@
       syncPills();
       syncHeroQueue();
       setInterval(syncPills, 15000);
-      setInterval(syncHeroQueue, 7000);
+      setInterval(syncHeroQueue, 2500);
       setInterval(syncFrameHeight, 1200);
     })();
   </script>
