@@ -3,15 +3,38 @@
     "languageModel": {
       "invocationName": "mood audio",
       "intents": [
-        { "name": "AMAZON.CancelIntent", "samples": [] },
-        { "name": "AMAZON.HelpIntent", "samples": [] },
-        { "name": "AMAZON.StopIntent", "samples": [] },
-        { "name": "AMAZON.FallbackIntent", "samples": [] },
-        { "name": "AMAZON.PauseIntent", "samples": [] },
-        { "name": "AMAZON.ResumeIntent", "samples": [] },
-        { "name": "AMAZON.NextIntent", "samples": [] },
-        { "name": "AMAZON.NavigateHomeIntent", "samples": [] },
-
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.PauseIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.ResumeIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NextIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
         {
           "name": "NowPlayingIntent",
           "slots": [],
@@ -29,11 +52,13 @@
             "who is singing"
           ]
         },
-
         {
           "name": "PlayAlbumIntent",
           "slots": [
-            { "name": "album", "type": "AMAZON.SearchQuery" }
+            {
+              "name": "album",
+              "type": "AMAZON.SearchQuery"
+            }
           ],
           "samples": [
             "play album {album}",
@@ -45,11 +70,13 @@
             "start the album called {album}"
           ]
         },
-
         {
           "name": "PlayPlaylistIntent",
           "slots": [
-            { "name": "playlist", "type": "AMAZON.SearchQuery" }
+            {
+              "name": "playlist",
+              "type": "AMAZON.SearchQuery"
+            }
           ],
           "samples": [
             "play playlist {playlist}",
@@ -64,11 +91,13 @@
             "start the playlist called {playlist}"
           ]
         },
-
         {
           "name": "PlayMixIntent",
           "slots": [
-            { "name": "mixQuery", "type": "AMAZON.SearchQuery" }
+            {
+              "name": "mixQuery",
+              "type": "AMAZON.SearchQuery"
+            }
           ],
           "samples": [
             "play a mix of {mixQuery}",
@@ -81,7 +110,6 @@
             "make a mix of {mixQuery}"
           ]
         },
-
         {
           "name": "PlayQueueIntent",
           "slots": [],
@@ -94,23 +122,39 @@
             "resume queue"
           ]
         },
-
         {
           "name": "PlayHereIntent",
           "slots": [
-            { "name": "query", "type": "AMAZON.SearchQuery" }
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
           ],
           "samples": [
             "play {query} here",
             "start {query} here",
-            "queue {query} here"
+            "queue {query} here",
+            "play artist {query} here",
+            "start artist {query} here",
+            "queue artist {query} here",
+            "play album {query} here",
+            "start album {query} here",
+            "queue album {query} here",
+            "play playlist {query} here",
+            "start playlist {query} here",
+            "queue playlist {query} here",
+            "play song {query} here",
+            "play track {query} here",
+            "play music by {query} here"
           ]
         },
-
         {
           "name": "PlayAnythingIntent",
           "slots": [
-            { "name": "query", "type": "AMAZON.SearchQuery" }
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
           ],
           "samples": [
             "play {query}",
@@ -118,7 +162,6 @@
             "queue {query}"
           ]
         },
-
         {
           "name": "VibeThisSongHereIntent",
           "slots": [],
@@ -129,7 +172,6 @@
             "build a vibe from this song here"
           ]
         },
-
         {
           "name": "VibeThisSongIntent",
           "slots": [],
@@ -141,11 +183,13 @@
             "build a vibe from this song"
           ]
         },
-
         {
           "name": "PlayArtistIntent",
           "slots": [
-            { "name": "artist", "type": "AMAZON.SearchQuery" }
+            {
+              "name": "artist",
+              "type": "AMAZON.SearchQuery"
+            }
           ],
           "samples": [
             "play artist {artist}",
@@ -164,11 +208,13 @@
             "play tracks from artist {artist}"
           ]
         },
-
         {
           "name": "PlayTrackIntent",
           "slots": [
-            { "name": "track", "type": "AMAZON.SearchQuery" }
+            {
+              "name": "track",
+              "type": "AMAZON.SearchQuery"
+            }
           ],
           "samples": [
             "play song {track}",
@@ -179,11 +225,13 @@
             "queue track {track}"
           ]
         },
-
         {
           "name": "ShuffleIntent",
           "slots": [
-            { "name": "state", "type": "ShuffleStateType" }
+            {
+              "name": "state",
+              "type": "ShuffleStateType"
+            }
           ],
           "samples": [
             "shuffle {state}",
@@ -192,11 +240,13 @@
             "shuffle mode {state}"
           ]
         },
-
         {
           "name": "RepeatIntent",
           "slots": [
-            { "name": "mode", "type": "RepeatModeType" }
+            {
+              "name": "mode",
+              "type": "RepeatModeType"
+            }
           ],
           "samples": [
             "set repeat to {mode}",
@@ -205,11 +255,13 @@
             "turn repeat {mode}"
           ]
         },
-
         {
           "name": "RateTrackIntent",
           "slots": [
-            { "name": "rating", "type": "RatingValueType" }
+            {
+              "name": "rating",
+              "type": "RatingValueType"
+            }
           ],
           "samples": [
             "rate this {rating}",
@@ -219,7 +271,6 @@
             "thumbs {rating}"
           ]
         },
-
         {
           "name": "AMAZON.YesIntent",
           "samples": []
@@ -233,28 +284,92 @@
         {
           "name": "ShuffleStateType",
           "values": [
-            { "name": { "value": "on" }, "synonyms": ["enable", "enabled"] },
-            { "name": { "value": "off" }, "synonyms": ["disable", "disabled"] }
+            {
+              "name": {
+                "value": "on"
+              },
+              "synonyms": [
+                "enable",
+                "enabled"
+              ]
+            },
+            {
+              "name": {
+                "value": "off"
+              },
+              "synonyms": [
+                "disable",
+                "disabled"
+              ]
+            }
           ]
         },
         {
           "name": "RepeatModeType",
           "values": [
-            { "name": { "value": "off" } },
-            { "name": { "value": "one" } },
-            { "name": { "value": "all" } }
+            {
+              "name": {
+                "value": "off"
+              }
+            },
+            {
+              "name": {
+                "value": "one"
+              }
+            },
+            {
+              "name": {
+                "value": "all"
+              }
+            }
           ]
         },
         {
           "name": "RatingValueType",
           "values": [
-            { "name": { "value": "one star" } },
-            { "name": { "value": "two stars" } },
-            { "name": { "value": "three stars" } },
-            { "name": { "value": "four stars" } },
-            { "name": { "value": "five stars" } },
-            { "name": { "value": "up" }, "synonyms": ["thumbs up", "like"] },
-            { "name": { "value": "down" }, "synonyms": ["thumbs down", "dislike"] }
+            {
+              "name": {
+                "value": "one star"
+              }
+            },
+            {
+              "name": {
+                "value": "two stars"
+              }
+            },
+            {
+              "name": {
+                "value": "three stars"
+              }
+            },
+            {
+              "name": {
+                "value": "four stars"
+              }
+            },
+            {
+              "name": {
+                "value": "five stars"
+              }
+            },
+            {
+              "name": {
+                "value": "up"
+              },
+              "synonyms": [
+                "thumbs up",
+                "like"
+              ]
+            },
+            {
+              "name": {
+                "value": "down"
+              },
+              "synonyms": [
+                "thumbs down",
+                "dislike"
+              ]
+            }
           ]
         }
       ]

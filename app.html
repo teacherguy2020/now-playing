@@ -83,7 +83,7 @@
     <iframe id="appFrame" title="Now Playing view" src="about:blank" scrolling="no" style="width:100%;display:block;"></iframe>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260220-91"></script>
+  <script src="scripts/hero-transport.js?v=20260221-002"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -274,7 +274,7 @@
           });
           if (!items.length) { wrap.innerHTML = '<div class="heroQueueMeta">Queue is empty.</div>'; return; }
           const stamp = Date.now();
-          wrap.innerHTML = items.slice(0,12).map((x) => {
+          wrap.innerHTML = items.map((x) => {
             const pos = Number(x?._posDisplay || 0);
             const head = !!x?.isHead;
             const thumbRaw = String(x?.thumbUrl || '').trim();

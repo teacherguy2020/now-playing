@@ -334,7 +334,7 @@
             ? `<a class="txt txtLink" href="${appleUrl}" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">${text}</a>`
             : `<div class="txt">${text}</div>`) +
           `${metaRow}` +
-          `<div class="heroTransportControls">` +
+          `${isAlexaMode ? '' : (`<div class="heroTransportControls">` +
             (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekback15" title="Back 15 seconds"><span style="font-size:13px;font-weight:700;">↺15</span></button>` : '') +
             `<button class="tbtn tbtnFar ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` +
             `<button class="tbtn tbtnNear" data-a="previous" title="Previous">${icon('prev')}</button>` +
@@ -342,7 +342,7 @@
             `<button class="tbtn tbtnNear" data-a="next" title="Next">${icon('next')}</button>` +
             `<button class="tbtn tbtnFar ${randomOn ? 'on' : ''}" data-a="shuffle" title="Shuffle">${icon('shuffle')}</button>` +
             (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekfwd30" title="Forward 30 seconds"><span style="font-size:13px;font-weight:700;">30↻</span></button>` : '') +
-          `</div>` +
+          `</div>` )}` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}" data-seekable="${showProgress ? '1' : '0'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div><div class="progress-handle" style="left:${progressPct}%;"></div><div class="progress-tip" style="left:${progressPct}%">Drag to seek</div></div>` +
           `${(!showProgress && isRadioOrStream) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${(state === 'playing' && !isAlexaMode) ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(liveLabel)}${liveBadge ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-size:11px;font-weight:700;vertical-align:1px;">${liveBadge}</span>` : ''}</div>` : ''}` +
         `</div>` +
@@ -737,6 +737,15 @@
         });
         try { ensureRadioDrawer(); } catch {}
       } catch {
+        // Never blank a previously good hero card on transient fetch/render failures.
+        if (lastQ || lastNp) {
+          try {
+            render(el, lastQ || { items: [], playbackState: '' }, lastNp || {});
+            armVideoFallback(el);
+            try { ensureRadioDrawer(); } catch {}
+            return;
+          } catch {}
+        }
         renderShell(el, 'unavailable');
         try { ensureRadioDrawer(); } catch {}
       }
