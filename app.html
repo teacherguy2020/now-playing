@@ -174,6 +174,7 @@
       let radioStationByHost = new Map();
       let radioHostAmbiguous = new Set();
       let radioHostMapTs = 0;
+      let lastHeroQueueSignature = '';
 
       async function sendHeroPlayback(action, extra = null){
         const host = location.hostname || '10.0.0.233';
@@ -272,7 +273,30 @@
               : (Number.isFinite(Number(it?.position)) ? Number(it.position) : (idx + 1));
             return { ...it, _posDisplay: p };
           });
-          if (!items.length) { wrap.innerHTML = '<div class="heroQueueMeta">Queue is empty.</div>'; return; }
+          if (!items.length) {
+            const emptySig = 'empty';
+            if (lastHeroQueueSignature !== emptySig) {
+              wrap.innerHTML = '<div class="heroQueueMeta">Queue is empty.</div>';
+              lastHeroQueueSignature = emptySig;
+            }
+            return;
+          }
+          const queueSig = JSON.stringify({
+            state: String(j.playbackState || ''),
+            count: items.length,
+            head: Number(j.headPos || -1),
+            items: items.map((x) => [
+              Number(x?._posDisplay || 0),
+              !!x?.isHead,
+              String(x?.artist || ''),
+              String(x?.title || ''),
+              String(x?.thumbUrl || ''),
+              String(x?.file || ''),
+            ])
+          });
+          if (lastHeroQueueSignature === queueSig) return;
+          lastHeroQueueSignature = queueSig;
+
           const stamp = Date.now();
           wrap.innerHTML = items.map((x) => {
             const pos = Number(x?._posDisplay || 0);
@@ -306,13 +330,13 @@
             const hostFavicon = derivedHost ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(derivedHost)}.ico` : '';
             const hostFaviconAlt = derivedHost ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(derivedHost)}&sz=64` : '';
             const logoName = ((!stationLooksHost ? stationName : '') || displayStation || stationName || '').trim();
-            const stationLogoByDisplay = logoName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoName)}` : '';
-            const stationLogoByFile = fileRaw ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(fileRaw)}` : '';
+            const stationLogoByDisplay = logoName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoName)}&_=${stamp}` : '';
+            const stationLogoByFile = fileRaw ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(fileRaw)}&_=${stamp}` : '';
             let thumb = '';
             if (isStreamish) {
               thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
-              if (!thumb && stationLogoByFile) thumb = stationLogoByFile;
               if (!thumb && stationLogoByDisplay) thumb = stationLogoByDisplay;
+              if (!thumb && stationLogoByFile) thumb = stationLogoByFile;
               if (!thumb && head && fallbackNowArt) thumb = fallbackNowArt;
             } else {
               thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
