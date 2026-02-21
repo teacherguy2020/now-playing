@@ -21,6 +21,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       if (!requireTrackKey(req, res)) return;
 
       const mode = String(req.body?.mode || 'replace').trim().toLowerCase();
+      const saveOnly = Boolean(req.body?.saveOnly);
       if (!['replace', 'append'].includes(mode)) {
         return res.status(400).json({ ok: false, error: 'mode must be replace|append' });
       }
@@ -51,40 +52,42 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       let didClear = false;
       let randomTurnedOff = false;
 
-      if (mode === 'replace') {
-        if (keepNowPlaying) {
-          await execFileP('mpc', ['-h', mpdHost, 'crop']);
-          didCrop = true;
-        } else {
-          await execFileP('mpc', ['-h', mpdHost, 'clear']);
-          didClear = true;
-        }
-
-        // Always disable random before building a deterministic queue.
-        try {
-          await execFileP('mpc', ['-h', mpdHost, 'random', 'off']);
-          randomTurnedOff = true;
-        } catch (_) {}
-      }
-
-      if (forceRandomOff && !randomTurnedOff) {
-        try {
-          await execFileP('mpc', ['-h', mpdHost, 'random', 'off']);
-          randomTurnedOff = true;
-        } catch (_) {}
-      }
-
       let added = 0;
       const failedFiles = [];
       const addedFiles = [];
 
-      for (const file of tracks) {
-        try {
-          await execFileP('mpc', ['-h', mpdHost, 'add', file]);
-          added += 1;
-          addedFiles.push(file);
-        } catch (_) {
-          failedFiles.push(file);
+      if (!saveOnly) {
+        if (mode === 'replace') {
+          if (keepNowPlaying) {
+            await execFileP('mpc', ['-h', mpdHost, 'crop']);
+            didCrop = true;
+          } else {
+            await execFileP('mpc', ['-h', mpdHost, 'clear']);
+            didClear = true;
+          }
+
+          // Always disable random before building a deterministic queue.
+          try {
+            await execFileP('mpc', ['-h', mpdHost, 'random', 'off']);
+            randomTurnedOff = true;
+          } catch (_) {}
+        }
+
+        if (forceRandomOff && !randomTurnedOff) {
+          try {
+            await execFileP('mpc', ['-h', mpdHost, 'random', 'off']);
+            randomTurnedOff = true;
+          } catch (_) {}
+        }
+
+        for (const file of tracks) {
+          try {
+            await execFileP('mpc', ['-h', mpdHost, 'add', file]);
+            added += 1;
+            addedFiles.push(file);
+          } catch (_) {
+            failedFiles.push(file);
+          }
         }
       }
 
@@ -111,7 +114,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
 
       let playStarted = false;
       // Only auto-play when we replaced the queue and did NOT crop (crop keeps playing).
-      if (mode === 'replace' && !didCrop && added > 0) {
+      if (!saveOnly && mode === 'replace' && !didCrop && added > 0) {
         try {
           await execFileP('mpc', ['-h', mpdHost, 'play']);
           playStarted = true;
@@ -119,7 +122,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       }
 
       let randomEnabled = false;
-      if (shuffle) {
+      if (!saveOnly && shuffle) {
         try {
           await execFileP('mpc', ['-h', mpdHost, 'random', 'on']);
           randomEnabled = true;
@@ -129,14 +132,38 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       let playlistSaved = false;
       let playlistError = '';
       if (playlistName) {
-        try {
-          await execFileP('mpc', ['-h', mpdHost, 'rm', playlistName]);
-        } catch (_) {}
-        try {
-          await execFileP('mpc', ['-h', mpdHost, 'save', playlistName]);
-          playlistSaved = true;
-        } catch (e) {
-          playlistError = e?.message || String(e);
+        if (saveOnly) {
+          try {
+            if (/[\/\\]/.test(String(playlistName || ''))) throw new Error('playlistName cannot contain / or \\');
+            const moodeUser = String(MOODE_SSH_USER || 'moode');
+            const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+            const localTmp = path.join('/tmp', `qw-saveonly-${process.pid}-${Date.now()}.m3u`);
+            const remoteTmp = `/tmp/qw-saveonly-${process.pid}-${Date.now()}.m3u`;
+            const remoteDst = `/var/lib/mpd/playlists/${String(playlistName || '').trim()}.m3u`;
+            await fs.writeFile(localTmp, `${tracks.join('\n')}\n`, 'utf8');
+            await execFileP('scp', ['-q', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', localTmp, `${moodeUser}@${moodeHost}:${remoteTmp}`], { timeout: 20000 });
+            const sudoCmd = `sudo -n bash -lc 'set -euo pipefail; mkdir -p /var/lib/mpd/playlists; mv -f -- ${JSON.stringify(remoteTmp)} ${JSON.stringify(remoteDst)}; chown mpd:audio -- ${JSON.stringify(remoteDst)} 2>/dev/null || true; chmod 0664 -- ${JSON.stringify(remoteDst)} 2>/dev/null || true'`;
+            const nonSudoCmd = `bash -lc 'set -euo pipefail; mkdir -p /var/lib/mpd/playlists; mv -f -- ${JSON.stringify(remoteTmp)} ${JSON.stringify(remoteDst)}; chmod 0664 -- ${JSON.stringify(remoteDst)} 2>/dev/null || true'`;
+            try {
+              await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, sudoCmd], { timeout: 20000 });
+            } catch {
+              await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, nonSudoCmd], { timeout: 20000 });
+            }
+            await fs.unlink(localTmp).catch(() => {});
+            playlistSaved = true;
+          } catch (e) {
+            playlistError = e?.message || String(e);
+          }
+        } else {
+          try {
+            await execFileP('mpc', ['-h', mpdHost, 'rm', playlistName]);
+          } catch (_) {}
+          try {
+            await execFileP('mpc', ['-h', mpdHost, 'save', playlistName]);
+            playlistSaved = true;
+          } catch (e) {
+            playlistError = e?.message || String(e);
+          }
         }
       }
 
@@ -206,16 +233,18 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
         }
       }
 
-      // Ensure cover filename matches exact playlist name (spaces/case), even if fallback scripts used a sanitized filename.
+      // Ensure cover filename matches exact playlist name (spaces/case), even if fallback scripts wrote underscore/sanitized names.
       if (playlistName && playlistSaved && collageGenerated) {
         try {
           const moodeUser = String(MOODE_SSH_USER || 'moode');
           const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
           const coverDir = String(process.env.MOODE_PLAYLIST_COVER_DIR || '/var/local/www/imagesw/playlist-covers');
-          const exact = `${coverDir}/${String(playlistName || '').trim()}.jpg`;
+          const raw = String(playlistName || '').trim();
+          const exact = `${coverDir}/${raw}.jpg`;
           const safe = `${coverDir}/${safePlaylistName(playlistName)}.jpg`;
+          const underscored = `${coverDir}/${raw.replace(/\s+/g, '_')}.jpg`;
 
-          const syncCmd = `bash -lc 'set -euo pipefail; mkdir -p -- ${JSON.stringify(coverDir)}; if [ ! -s ${JSON.stringify(exact)} ] && [ -s ${JSON.stringify(safe)} ]; then cp -f -- ${JSON.stringify(safe)} ${JSON.stringify(exact)}; fi; if [ -s ${JSON.stringify(exact)} ] && [ ! -s ${JSON.stringify(safe)} ]; then cp -f -- ${JSON.stringify(exact)} ${JSON.stringify(safe)}; fi; chmod 0644 -- ${JSON.stringify(exact)} ${JSON.stringify(safe)} >/dev/null 2>&1 || true'`;
+          const syncCmd = `bash -lc 'set -euo pipefail; mkdir -p -- ${JSON.stringify(coverDir)}; src=""; for c in ${JSON.stringify(exact)} ${JSON.stringify(safe)} ${JSON.stringify(underscored)}; do if [ -s "$c" ]; then src="$c"; break; fi; done; if [ -n "$src" ]; then for d in ${JSON.stringify(exact)} ${JSON.stringify(safe)} ${JSON.stringify(underscored)}; do [ "$src" = "$d" ] && continue; cp -f -- "$src" "$d"; done; chmod 0644 -- ${JSON.stringify(exact)} ${JSON.stringify(safe)} ${JSON.stringify(underscored)} >/dev/null 2>&1 || true; fi'`;
           const syncSudoCmd = `sudo -n ${syncCmd}`;
 
           try {

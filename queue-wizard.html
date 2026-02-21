@@ -354,14 +354,13 @@
           <div class="muted" id="coverStatus">Playlist cover preview</div>
           <img id="coverPreview" alt="Playlist cover preview"
                style="margin-top:8px;width:220px;max-width:100%;aspect-ratio:1/1;object-fit:cover;border:1px solid #334;border-radius:16px;background:#0a1222;" />
-          <div class="choiceGroup" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <button id="savePlaylistBtn" type="button" class="btnPrimary" style="width:100%;">Save Queue to Playlist</button>
-          </div>
+          <div class="choiceGroup" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;"></div>
         </div>
         <div style="flex:1 1 380px;min-width:280px;">
           <div class="muted" id="count">No list yet.</div>
           <div class="muted" id="filtersSummary" style="margin-top:4px"></div>
           <div class="muted" id="playlistSuggestion" style="margin-top:8px;display:none;"></div>
+          <button id="savePlaylistBtn" type="button" class="btnPrimary" style="margin-top:8px;">Save Queue to Playlist</button>
           <div id="playlistOptions" class="hidden" style="margin-top:8px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
             <div id="playlistNameWrap">
               <label>Playlist name<br><input id="playlistName" placeholder="e.g., Chill Evening Mix"></label>
@@ -377,7 +376,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260219-94"></script>
+  <script src="scripts/queue-wizard.js?v=20260221-95"></script>
 
 <script>
 (function enhanceStarFilters(){

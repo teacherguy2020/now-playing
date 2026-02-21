@@ -172,6 +172,20 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
     }
   });
 
+  app.post('/config/queue-wizard/delete-playlist', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const playlist = String(req.body?.playlist || '').trim();
+      if (!playlist) return res.status(400).json({ ok: false, error: 'playlist is required' });
+
+      await execFileP('mpc', ['-h', mpdHost, 'rm', playlist]);
+      return res.json({ ok: true, deleted: playlist });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.get('/config/queue-wizard/playlist-preview', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

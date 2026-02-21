@@ -104,6 +104,7 @@
   let filterQuickIndex = [];
   let selectedExistingPlaylists = new Set();
   let existingCarouselSavedScrollLeft = 0;
+  let existingEditLockName = '';
 
 // ---------- Vibe progress + Cancel/Send button (single-source-of-truth) ----------
 
@@ -268,6 +269,34 @@ async function syncVibeAvailability() {
     return `http://${moodeHost}/images/default-cover.jpg`;
   }
 
+  function playlistCoverSafeName(name = '') {
+    return String(name || '').trim().replace(/[^A-Za-z0-9 _.\-]/g, '').trim().replace(/\s+/g, '_');
+  }
+
+  function playlistCoverUrl(name = '', useSafe = false) {
+    const raw = String(name || '').trim();
+    const n = useSafe ? playlistCoverSafeName(raw) : raw;
+    return `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(n)}.jpg`;
+  }
+
+  function setImgPlaylistCoverFallback(imgEl, name = '', bust = false) {
+    const baseExact = playlistCoverUrl(name, false);
+    const baseSafe = playlistCoverUrl(name, true);
+    const q = bust ? `?t=${Date.now()}` : '';
+    imgEl.dataset.altSrc = `${baseSafe}${q}`;
+    imgEl.dataset.altTried = '0';
+    imgEl.src = `${baseExact}${q}`;
+    imgEl.onerror = () => {
+      if (imgEl.dataset.altTried !== '1' && imgEl.dataset.altSrc) {
+        imgEl.dataset.altTried = '1';
+        imgEl.src = imgEl.dataset.altSrc;
+        return;
+      }
+      imgEl.onerror = null;
+      imgEl.src = moodeDefaultCoverUrl();
+    };
+  }
+
   function applyTheme(theme = 'dark') {
     const t = String(theme || 'dark').toLowerCase() === 'light' ? 'light' : 'dark';
     document.body.classList.toggle('theme-light', t === 'light');
@@ -296,11 +325,7 @@ async function syncVibeAvailability() {
       return;
     }
     existingPlaylistThumbEl.style.display = '';
-    existingPlaylistThumbEl.src = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(n)}.jpg?t=${Date.now()}`;
-    existingPlaylistThumbEl.onerror = () => {
-      existingPlaylistThumbEl.onerror = null;
-      existingPlaylistThumbEl.src = moodeDefaultCoverUrl();
-    };
+    setImgPlaylistCoverFallback(existingPlaylistThumbEl, n, true);
   }
 
   function showInlineCoverPreview({ mimeType, dataBase64, note = '' }) {
@@ -929,6 +954,7 @@ async function syncVibeAvailability() {
 
     renderTracksToTable(currentTracks);
     renderPlaylistThumbStrip(currentTracks);
+    if (queuePlaybackAreaEl) queuePlaybackAreaEl.style.display = currentTracks.length ? '' : 'none';
     if (coverCardEl) coverCardEl.style.display = (currentListSource === 'podcast' || currentListSource === 'radio') ? 'none' : '';
 
     lastCollageSig = '';
@@ -965,36 +991,39 @@ async function syncVibeAvailability() {
 async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
   if (!coverCardEl || !coverImgEl || !coverStatusEl) return false;
 
-  const baseUrl = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(name)}.jpg`;
-  coverCardEl.style.display = '';
-  coverStatusEl.textContent = note || `Loading cover for “${name}”…`;
+  const rawName = String(name || '').trim();
+  const safeName = rawName.replace(/[^A-Za-z0-9 _.\-]/g, '').trim().replace(/\s+/g, '_');
+  const baseUrls = Array.from(new Set([
+    `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(rawName)}.jpg`,
+    `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(safeName)}.jpg`,
+  ])).filter(Boolean);
 
-  const delays = [150, 250, 400, 650, 900, 1200, 1500, 1700, 2000, 2200];
+  coverCardEl.style.display = '';
+  coverStatusEl.textContent = note || `Loading cover for “${rawName}”…`;
+
+  const delays = [150, 250, 400, 650, 900, 1200, 1500, 1700, 2000, 2200, 2600, 3000];
 
   for (let i = 0; i < tries; i++) {
-    const url = `${baseUrl}?t=${Date.now()}&try=${i + 1}`;
+    for (const baseUrl of baseUrls) {
+      const url = `${baseUrl}?t=${Date.now()}&try=${i + 1}`;
 
-    const loaded = await new Promise((resolve) => {
-      // Use a *fresh* Image each try (Safari behaves much better)
-      const img = new Image();
+      const loaded = await new Promise((resolve) => {
+        const img = new Image();
+        const done = (ok) => {
+          img.onload = null;
+          img.onerror = null;
+          resolve(ok);
+        };
+        img.onload = () => done(true);
+        img.onerror = () => done(false);
+        img.src = url;
+      });
 
-      const done = (ok) => {
-        img.onload = null;
-        img.onerror = null;
-        resolve(ok);
-      };
-
-      img.onload = () => done(true);
-      img.onerror = () => done(false);
-
-      img.src = url;
-    });
-
-    if (loaded) {
-      // Only now swap into the real DOM <img>
-      coverImgEl.src = url;
-      coverStatusEl.textContent = note || `Cover loaded for “${name}”.`;
-      return true;
+      if (loaded) {
+        coverImgEl.src = url;
+        coverStatusEl.textContent = note || `Cover loaded for “${rawName}”.`;
+        return true;
+      }
     }
 
     coverStatusEl.textContent = `Cover not visible yet… retry ${i + 1}/${tries}`;
@@ -1002,7 +1031,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     await new Promise((r) => setTimeout(r, delays[Math.min(i, delays.length - 1)]));
   }
 
-  coverStatusEl.textContent = `Cover still not showing for “${name}”.`;
+  coverStatusEl.textContent = `Cover still not showing for “${rawName}”.`;
   return false;
 }
 
@@ -1209,10 +1238,11 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     for (const n0 of names || []) {
       const n = String(n0 || '').trim();
       if (!n) continue;
-      const src = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(n)}.jpg`;
+      const src = playlistCoverUrl(n, false);
+      const srcSafe = playlistCoverUrl(n, true);
       rows.push(
         `<button type="button" data-existing-playlist="${esc(n)}" style="width:100%;display:flex;align-items:center;gap:12px;padding:10px 10px;border:0;background:${selected===n?'rgba(127,211,167,.18)':'transparent'};color:#e7eefc;text-align:left;border-radius:10px;font-size:15px;line-height:1.25;">` +
-        `<img src="${src}" onerror="this.onerror=null;this.src='${moodeDefaultCoverUrl()}'" style="width:40px;height:40px;object-fit:cover;border-radius:10px;border:1px solid #334;background:#0a1222;flex:0 0 auto;" />` +
+        `<img src="${src}" data-alt-src="${srcSafe}" data-alt-tried="0" onerror="if(this.dataset.altTried!=='1' && this.dataset.altSrc){this.dataset.altTried='1';this.src=this.dataset.altSrc;return;} this.onerror=null;this.src='${moodeDefaultCoverUrl()}'" style="width:40px;height:40px;object-fit:cover;border-radius:10px;border:1px solid #334;background:#0a1222;flex:0 0 auto;" />` +
         `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(n)}</span>` +
         `</button>`
       );
@@ -1230,13 +1260,19 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
       const n = String(n0 || '').trim();
       if (!n) continue;
       const src = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(n)}.jpg`;
+      const srcAlt = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(String(n).replace(/\s+/g, '_'))}.jpg`;
       const on = selected.has(n);
+      const lockedOut = !!existingEditLockName && existingEditLockName !== n;
       rows.push(
-        `<button type="button" data-existing-carousel="${esc(n)}" title="${esc(n)}" style="position:relative;width:132px;max-width:100%;justify-self:start;border:1px solid ${on ? 'rgba(34,197,94,.8)' : '#334'};background:${on ? 'rgba(34,197,94,.14)' : '#0a1222'};border-radius:14px;padding:8px;cursor:pointer;">`
+        `<div role="button" tabindex="0" data-existing-carousel="${esc(n)}" title="${esc(n)}" style="position:relative;width:132px;max-width:100%;justify-self:start;border:1px solid ${on ? 'rgba(34,197,94,.8)' : '#334'};background:${on ? 'rgba(34,197,94,.14)' : '#0a1222'};border-radius:14px;padding:8px;cursor:${lockedOut ? 'not-allowed' : 'pointer'};opacity:${lockedOut ? '.42' : '1'};pointer-events:${lockedOut ? 'none' : 'auto'};">`
         + `${on ? '<span style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:999px;background:rgba(34,197,94,.95);color:#052e16;font-weight:900;font-size:14px;line-height:22px;text-align:center;">✓</span>' : ''}`
-        + `<img src="${src}" onerror="this.onerror=null;this.src='${moodeDefaultCoverUrl()}'" style="width:116px;height:116px;object-fit:cover;border-radius:10px;border:1px solid #334;background:#071021;display:block;margin:0 auto 8px;" />`
-        + `<div style="font-size:12px;line-height:1.25;max-width:116px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 auto;color:#dbe7ff;">${esc(n)}</div>`
-        + `</button>`
+        + `<img src="${src}" data-alt-src="${srcAlt}" data-alt-tried="0" onerror="if(this.dataset.altTried!=='1' && this.dataset.altSrc){this.dataset.altTried='1';this.src=this.dataset.altSrc;return;} this.onerror=null;this.src='${moodeDefaultCoverUrl()}'" style="width:116px;height:116px;object-fit:cover;border-radius:10px;border:1px solid #334;background:#071021;display:block;margin:0 auto 8px;" />`
+        + `<div style="font-size:12px;line-height:1.25;max-width:116px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 auto 6px;color:#dbe7ff;">${esc(n)}</div>`
+        + `<div style="display:flex;gap:6px;justify-content:center;">`
+        + `<button type="button" data-existing-action="edit" data-existing-name="${esc(n)}" title="Edit playlist" style="padding:3px 7px;border-radius:7px;border:1px solid #3a4a66;background:#0c1830;color:#cde3ff;font-size:11px;">Edit</button>`
+        + `<button type="button" data-existing-action="delete" data-existing-name="${esc(n)}" title="Delete playlist" style="padding:3px 7px;border-radius:7px;border:1px solid #5a3140;background:#1b0f18;color:#ffc9d5;font-size:11px;">Delete</button>`
+        + `</div>`
+        + `</div>`
       );
     }
     existingPlaylistCarouselEl.innerHTML = rows.join('');
@@ -1295,6 +1331,26 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     }
   }
 
+  async function fetchExistingSelectedTracks() {
+    const apiBase = getApiBase();
+    const key = getKey();
+    const names = selectedExistingListNames();
+    if (!apiBase || !names.length) return { names: [], tracks: [] };
+
+    const all = [];
+    for (const name of names) {
+      const r = await fetch(`${apiBase}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(name)}`, {
+        headers: { 'x-track-key': key },
+        cache: 'no-store',
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(`${name}: ${j?.error || `HTTP ${r.status}`}`);
+      const tracks = Array.isArray(j?.tracks) ? j.tracks : [];
+      all.push(...tracks);
+    }
+    return { names, tracks: all };
+  }
+
   async function previewExistingPlaylistSelection() {
     const apiBase = getApiBase();
     const key = getKey();
@@ -1309,25 +1365,12 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
         ? `Playlist covers: ${names.length} selected (showing first).`
         : `Playlist cover: “${firstName}”.`;
       if (coverImgEl) {
-        coverImgEl.src = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(firstName)}.jpg?t=${Date.now()}`;
-        coverImgEl.onerror = () => {
-          coverImgEl.onerror = null;
-          coverImgEl.src = moodeDefaultCoverUrl();
-        };
+        setImgPlaylistCoverFallback(coverImgEl, firstName, true);
       }
 
       setStatus(`<span class="spin"></span>Loading playlist preview${names.length > 1 ? 's' : ''}…`);
-      const all = [];
-      for (const name of names) {
-        const r = await fetch(`${apiBase}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(name)}`, {
-          headers: { 'x-track-key': key },
-          cache: 'no-store',
-        });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok || !j?.ok) throw new Error(`${name}: ${j?.error || `HTTP ${r.status}`}`);
-        const tracks = Array.isArray(j?.tracks) ? j.tracks : [];
-        all.push(...tracks);
-      }
+      const out = await fetchExistingSelectedTracks();
+      const all = Array.isArray(out?.tracks) ? out.tracks : [];
       setCurrentList('existing', all);
       setStatus(`Loaded ${names.length} playlist(s): ${all.length.toLocaleString()} track(s).`);
     } catch (e) {
@@ -1362,6 +1405,57 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     } finally {
       if (loadExistingPlaylistBtn) loadExistingPlaylistBtn.disabled = false;
     }
+  }
+
+  async function deleteExistingPlaylist(name) {
+    const apiBase = getApiBase();
+    const key = getKey();
+    const n = String(name || '').trim();
+    if (!apiBase || !n) return;
+    const ok = confirm(`Delete playlist “${n}”? This cannot be undone.`);
+    if (!ok) return;
+    try {
+      setStatus('<span class="spin"></span>Deleting playlist…');
+      const r = await fetch(`${apiBase}/config/queue-wizard/delete-playlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+        body: JSON.stringify({ playlist: n }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      selectedExistingPlaylists.delete(n);
+      if (String(existingPlaylistsEl?.value || '') === n) existingPlaylistsEl.value = '';
+      await loadExistingPlaylists();
+      setStatus(`Deleted playlist: ${esc(n)}.`);
+    } catch (e) {
+      setStatus(`Delete failed: ${esc(e?.message || e)}`);
+    }
+  }
+
+  async function editExistingPlaylist(name) {
+    const n = String(name || '').trim();
+    if (!n || !existingPlaylistsEl) return;
+    selectedExistingPlaylists = new Set([n]);
+    existingPlaylistsEl.value = n;
+    await previewExistingPlaylistSelection();
+
+    // Lock carousel to this playlist while editing.
+    existingEditLockName = n;
+
+    // Switch into editable queue state and prefill save target to overwrite.
+    selectedExistingPlaylists.clear();
+    existingPlaylistsEl.value = '';
+    savePlaylistEnabled = true;
+    if (playlistNameEl) playlistNameEl.value = n;
+
+    const names = Array.from(existingPlaylistsEl.options).map((o) => String(o.value || '')).filter(Boolean);
+    renderExistingPlaylistMenu(names);
+    renderExistingPlaylistCarousel(names);
+
+    // Make Filter Builder visible so user can add/adjust before saving.
+    activateBuilder('filters');
+    updatePlaylistUi();
+    setStatus(`Editing playlist: ${esc(n)}. Filter Builder is now active. Add tracks, then save to overwrite.`);
   }
 
   async function sendDiagnosticsAction(action, payload = {}) {
@@ -2097,7 +2191,11 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
     const savePlaylist = savePlaylistEnabled;
     const opts = $('playlistOptions');
 
-    if (savePlaylistBtn) savePlaylistBtn.classList.toggle('hidden', existingSelected);
+    if (savePlaylistBtn) {
+      const hide = existingSelected || savePlaylistEnabled;
+      savePlaylistBtn.style.visibility = hide ? 'hidden' : 'visible';
+      savePlaylistBtn.style.pointerEvents = hide ? 'none' : 'auto';
+    }
     if (opts) opts.classList.toggle('hidden', !savePlaylist || existingSelected);
     // collage is implicit when Save Playlist is enabled
 
@@ -2139,6 +2237,93 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
   }
 
   // ---- Send current list to moOde ----
+  async function doSavePlaylistOnly() {
+    if (sendBusy) return;
+    sendBusy = true;
+
+    const apiBase = getApiBase();
+    const key = getKey();
+    const playlistName = getPlaylistNameRaw();
+    const filesSnapshot = currentFiles.slice();
+    const previewFilesSnapshot = collageCandidateFiles();
+    const previewSigSnapshot = computeCollageSig(playlistName, previewFilesSnapshot);
+    const previewCoverBase64 = (lastPreviewDataBase64 && lastPreviewSig === previewSigSnapshot)
+      ? lastPreviewDataBase64
+      : '';
+
+    const p = playlistNameProblems(playlistName);
+    if (!p.ok) {
+      setStatus(p.msg);
+      showPlaylistHint(p.msg);
+      sendBusy = false;
+      return;
+    }
+    if (!filesSnapshot.length) {
+      setStatus('Build or load a list first.');
+      sendBusy = false;
+      return;
+    }
+
+    const existingNames = Array.from(existingPlaylistsEl?.options || []).map((o) => String(o.value || '').trim()).filter(Boolean);
+    const existsAlready = existingNames.some((n) => n.toLowerCase() === String(playlistName || '').trim().toLowerCase());
+    if (existsAlready) {
+      const okOverwrite = confirm(`Overwrite ${playlistName}?`);
+      if (!okOverwrite) { sendBusy = false; return; }
+    }
+
+    const prevSaveNowDisplay = savePlaylistNowBtn ? String(savePlaylistNowBtn.style.display || '') : '';
+    if (savePlaylistNowBtn) savePlaylistNowBtn.style.display = 'none';
+
+    disableUI(true);
+    try {
+      setStatus('<span class="spin"></span>Saving playlist + cover to moOde…');
+      const r = await fetch(`${apiBase}/config/queue-wizard/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+        body: JSON.stringify({
+          mode: 'append',
+          keepNowPlaying: true,
+          tracks: filesSnapshot,
+          shuffle: false,
+          forceRandomOff: false,
+          playlistName,
+          generateCollage: true,
+          previewCoverBase64: previewCoverBase64 || undefined,
+          previewCoverMimeType: previewCoverBase64 ? (lastPreviewMimeType || 'image/jpeg') : undefined,
+          saveOnly: true,
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+      setStatus(`Saved playlist only: ${esc(playlistName)} (${filesSnapshot.length.toLocaleString()} track(s))${j.collageGenerated ? ' · cover saved' : ''}${j.collageError ? ` · cover error: ${esc(j.collageError)}` : ''}`);
+      showSendConfirmation(`✅ Saved playlist “${playlistName}” (no queue playback changes).`);
+      existingEditLockName = '';
+      await loadExistingPlaylists();
+
+      // Keep just-saved playlist selected and preloaded so Send works immediately.
+      selectedExistingPlaylists = new Set([playlistName]);
+      if (existingPlaylistsEl) existingPlaylistsEl.value = playlistName;
+      const names = Array.from(existingPlaylistsEl?.options || []).map((o) => String(o.value || '')).filter(Boolean);
+      renderExistingPlaylistMenu(names);
+      renderExistingPlaylistCarousel(names);
+      updateExistingPlaylistThumb(playlistName);
+      activateBuilder('existing');
+      await previewExistingPlaylistSelection();
+
+      if (j.collageGenerated && playlistName) {
+        // Do not block post-save actions (like Send) on cover polling.
+        forceReloadCoverUntilItLoads({ name: playlistName, note: `Collage generated for “${playlistName}”.`, tries: 10 }).catch(() => {});
+      }
+    } catch (e) {
+      setStatus(`Save failed: ${esc(e?.message || e)}`);
+    } finally {
+      disableUI(false);
+      if (savePlaylistNowBtn) savePlaylistNowBtn.style.display = prevSaveNowDisplay;
+      sendBusy = false;
+    }
+  }
+
   async function doSendToMoode(source = 'any') {
     if (sendBusy) return;
     sendBusy = true;
@@ -2171,6 +2356,18 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       }
     }
 
+    if (source === 'existing') {
+      try {
+        const out = await fetchExistingSelectedTracks();
+        const tracks = Array.isArray(out?.tracks) ? out.tracks : [];
+        if (tracks.length) setCurrentList('existing', tracks);
+      } catch (e) {
+        setStatus(`Playlist preview failed: ${esc(e?.message || e)}`);
+        sendBusy = false;
+        return;
+      }
+    }
+
     if (!currentFiles.length) {
       await doPreview();
       if (!currentFiles.length) {
@@ -2196,9 +2393,9 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
     const doShuffleFlag = false; // UI shuffle reorders list directly; do not enable MPD random mode.
     const forceRandomOff = listOrderShuffled || (isExistingSend ? getShuffleExisting() : getShuffle());
 
-    const savePlaylist = (source === 'podcast' || source === 'radio') ? false : savePlaylistEnabled;
-    const playlistName = savePlaylist ? getPlaylistNameRaw() : '';
-    const wantsCollage = !!savePlaylist;
+    const savePlaylist = false; // Sending to moOde should never do playlist-save side effects.
+    const playlistName = '';
+    const wantsCollage = false;
     const filesSnapshot = currentFiles.slice();
     const previewFilesSnapshot = collageCandidateFiles();
     const previewSigSnapshot = computeCollageSig(playlistName, previewFilesSnapshot);
@@ -2213,6 +2410,18 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
         showPlaylistHint(p.msg);
         sendBusy = false;
         return;
+      }
+
+      const existingNames = Array.from(existingPlaylistsEl?.options || [])
+        .map((o) => String(o.value || '').trim())
+        .filter(Boolean);
+      const existsAlready = existingNames.some((n) => n.toLowerCase() === String(playlistName || '').trim().toLowerCase());
+      if (existsAlready) {
+        const okOverwrite = confirm(`Overwrite ${playlistName}?`);
+        if (!okOverwrite) {
+          sendBusy = false;
+          return;
+        }
       }
     }
 
@@ -2229,6 +2438,10 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
         setStatus(`Collage lock warning: ${esc(e?.message || e)} · continuing save…`);
       }
     }
+
+    const prevSaveNowDisplay = savePlaylistNowBtn ? String(savePlaylistNowBtn.style.display || '') : '';
+    if (savePlaylistNowBtn) savePlaylistNowBtn.style.display = 'none';
+    if (queuePlaybackAreaEl) queuePlaybackAreaEl.style.display = 'none';
 
     disableUI(true);
     try {
@@ -2280,9 +2493,6 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       setStatus(statusMsg);
       showSendConfirmation(`✅ Sent ${j.added}/${j.requested} track(s) to moOde.`);
 
-      // Always refresh queue card after send so stream logos/station metadata update immediately.
-      await loadCurrentQueueCard().catch(() => {});
-
       if (j.collageGenerated && playlistName) {
         await forceReloadCoverUntilItLoads({
           name: playlistName,
@@ -2290,10 +2500,13 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
           tries: 10,
         });
       }
+
+      // Keep current builder list visible after send.
     } catch (e) {
       setStatus(`Error: ${esc(e?.message || e)}`);
     } finally {
       disableUI(false);
+      if (savePlaylistNowBtn) savePlaylistNowBtn.style.display = prevSaveNowDisplay;
       sendBusy = false;
     }
   }
@@ -2320,9 +2533,14 @@ function wireEvents() {
     doSendToMoode(src);
   });
 
-  sendExistingBtn?.addEventListener('click', (e) => {
+  sendExistingBtn?.addEventListener('click', async (e) => {
     e.preventDefault();
     activateBuilder('existing');
+    try {
+      if (selectedExistingListNames().length) {
+        await previewExistingPlaylistSelection();
+      }
+    } catch {}
     doSendToMoode('existing');
   });
 
@@ -2482,11 +2700,18 @@ function wireEvents() {
 
   // Playlist controls should NOT rebuild the list
   savePlaylistBtn?.addEventListener('click', () => {
+    const y = Number(window.scrollY || window.pageYOffset || 0);
     savePlaylistEnabled = true;
     const suggested = suggestedPlaylistName();
     if (playlistNameEl) playlistNameEl.value = suggested;
     syncSavePlaylistButton();
     updatePlaylistUi();
+    try {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: y, behavior: 'auto' });
+        try { playlistNameEl?.focus({ preventScroll: true }); } catch {}
+      });
+    } catch {}
   });
 
   playlistNameEl?.addEventListener('input', () => {
@@ -2553,10 +2778,20 @@ function wireEvents() {
     setTimeout(() => { existingCarouselPointerDown = null; }, 0);
   }, { passive: true });
 
-  existingPlaylistCarouselEl?.addEventListener('click', (e) => {
+  existingPlaylistCarouselEl?.addEventListener('click', async (e) => {
+    const actionBtn = e.target instanceof Element ? e.target.closest('button[data-existing-action][data-existing-name]') : null;
+    if (actionBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const action = String(actionBtn.getAttribute('data-existing-action') || '');
+      const name = String(actionBtn.getAttribute('data-existing-name') || '');
+      if (action === 'delete') { await deleteExistingPlaylist(name); return; }
+      if (action === 'edit') { await editExistingPlaylist(name); return; }
+    }
+
     if (existingCarouselMoved) return;
     if ((Date.now() - existingCarouselLastScrollTs) < 300) return;
-    const el = e.target instanceof Element ? e.target.closest('button[data-existing-carousel]') : null;
+    const el = e.target instanceof Element ? e.target.closest('[data-existing-carousel]') : null;
     if (!el || !existingPlaylistsEl) return;
     const val = String(el.getAttribute('data-existing-carousel') || '').trim();
     if (!val) return;
@@ -2596,8 +2831,7 @@ function wireEvents() {
 
   savePlaylistNowBtn?.addEventListener('click', (e) => {
     e.preventDefault();
-    const src = currentListSource === 'vibe' ? 'vibe' : (currentListSource === 'podcast' ? 'podcast' : (currentListSource === 'radio' ? 'radio' : 'filters'));
-    doSendToMoode(src);
+    doSavePlaylistOnly();
   });
 
   const handleQueueAreaClick = (ev) => {
