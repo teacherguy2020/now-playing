@@ -356,6 +356,7 @@ let lastAlbumArtUrl = '';
 let bgKeyFront = '';
 let bgLoadingKey = '';
 let currentFile = '';
+let lastAlexaForcedArtFile = '';
 
 // Background crossfade state
 let bgFront = 'a';     // 'a' or 'b'
@@ -374,6 +375,23 @@ let _alexaWasCache = null;
 let _alexaWasCacheTs = 0;
 let _alexaModeDecisionMade = false;
 let _alexaSourceLocked = false;
+
+async function fetchAlexaPayload() {
+  try {
+    const r = await fetch(`${ALEXA_WAS_PLAYING_URL}?maxAgeMs=21600000&_=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return null;
+    const wj = await r.json();
+    const fresh = !!wj?.fresh;
+    const np = wj?.nowPlaying || null;
+    const wp = wj?.wasPlaying || null;
+    const active = !!((np && np.active) || (wp && wp.active));
+    const payload = (np && np.file) ? np : ((wp && wp.file) ? wp : null);
+    if (!fresh || !active || !payload) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
 let pendingFavorite = null; // { file, isFavorite, ts }
 const PENDING_FAVORITE_HOLD_MS = 3500;
 
@@ -680,42 +698,10 @@ async function bootThenStart() {
 
   try { await loadRatingsFeatureFlag(); } catch {}
 
-  // Apply same Alexa-source decision during boot to avoid first-paint flicker.
+  // Boot behavior mirrors normal mode: single fetch path, optional Alexa override.
   if (data && (ALEXA_MODE_AUTO || ALEXA_MODE_FORCED)) {
-    try {
-      const wr = await fetch(`${ALEXA_WAS_PLAYING_URL}?maxAgeMs=21600000`, { cache: 'no-store' });
-      if (wr.ok) {
-        _alexaWasCache = await wr.json();
-        _alexaWasCacheTs = Date.now();
-      }
-
-      const wj = _alexaWasCache;
-      const fresh = !!(wj && wj.fresh);
-      const np = wj && wj.nowPlaying ? wj.nowPlaying : null;
-      const wp = wj && wj.wasPlaying ? wj.wasPlaying : null;
-      const active = !!((np && np.active) || (wp && wp.active));
-      const hasAlexaPayload = !!((np && np.file) || (wp && wp.file));
-      const useAlexaBoot = (!!ALEXA_MODE_FORCED && hasAlexaPayload) ||
-                           (!!ALEXA_MODE_AUTO && fresh && active && hasAlexaPayload);
-
-      _alexaSourceLocked = !!useAlexaBoot;
-      _alexaModeDecisionMade = true;
-
-      if (useAlexaBoot && np && np.file) {
-        data = { ...data, ...np, alexaMode: true };
-      } else if (useAlexaBoot && wp && wp.file) {
-        data = {
-          ...data,
-          file: wp.file || data.file,
-          title: wp.title || data.title,
-          artist: wp.artist || data.artist,
-          album: wp.album || data.album,
-          alexaMode: true,
-        };
-      }
-    } catch (e) {
-      // If was-playing fetch fails, continue with /now-playing boot data.
-    }
+    const ap = await fetchAlexaPayload();
+    if (ap) data = { ...data, ...ap, alexaMode: true };
   }
 
   if (data && baseNowPlaying) data.__queueHead = baseNowPlaying;
@@ -794,6 +780,8 @@ function markReadyOnce() {
   body.classList.remove('booting');
   body.classList.add('ready');
 }
+
+// (debug overlay removed)
 
 /* =========================
  * Background crossfade
@@ -1004,72 +992,31 @@ function attachRatingsClickHandler() {
  * ========================= */
 
 function fetchNowPlaying() {
-  fetch(NOW_PLAYING_URL, { cache: 'no-store' })
-    .then(async r => {
-      if (!r.ok) throw new Error(`now-playing HTTP ${r.status}`);
-      let data = await r.json();
-      if (!data) return data;
+  const sourcePromise = ALEXA_MODE_FORCED
+    ? (async () => {
+        const ap = await fetchAlexaPayload();
+        return ap ? { ...ap, alexaMode: true } : null;
+      })()
+    : fetch(NOW_PLAYING_URL, { cache: 'no-store' })
+        .then(async r => {
+          if (!r.ok) throw new Error(`now-playing HTTP ${r.status}`);
+          let data = await r.json();
+          if (!data) return data;
 
-      const baseNowPlaying = { ...data };
+          const baseNowPlaying = { ...data };
 
-      // Alexa mode source override:
-      // - forced via ?alexa=1 or ?mode=alexa
-      // - auto-detect by default unless disabled (?alexa=0 or ?mode=normal)
-      if (ALEXA_MODE_AUTO || ALEXA_MODE_FORCED) {
-        try {
-          const now = Date.now();
-          if (!_alexaWasCache || (now - _alexaWasCacheTs) > 4000) {
-            const wr = await fetch(`${ALEXA_WAS_PLAYING_URL}?maxAgeMs=21600000`, { cache: 'no-store' });
-            if (wr.ok) {
-              _alexaWasCache = await wr.json();
-              _alexaWasCacheTs = now;
-            }
+          // Alexa auto mode can optionally override with was-playing when fresh+active.
+          if (ALEXA_MODE_AUTO) {
+            const ap = await fetchAlexaPayload();
+            if (ap) data = { ...data, ...ap, alexaMode: true };
           }
 
-          const wj = _alexaWasCache;
-          const fresh = !!(wj && wj.fresh);
-          const np = wj && wj.nowPlaying ? wj.nowPlaying : null;
-          const wp = wj && wj.wasPlaying ? wj.wasPlaying : null;
-          const active = !!((np && np.active) || (wp && wp.active));
+          // keep original /now-playing snapshot for queue-head use (e.g., Next up row in Alexa mode)
+          data.__queueHead = baseNowPlaying;
+          return data;
+        });
 
-          // Auto mode only adopts Alexa source when it's fresh + active + has a file.
-          // Forced mode always prefers Alexa source when available.
-          const hasAlexaPayload = !!((np && np.file) || (wp && wp.file));
-          const useAlexaNow = (!!ALEXA_MODE_FORCED && hasAlexaPayload) ||
-                              (!!ALEXA_MODE_AUTO && fresh && active && hasAlexaPayload);
-
-          // Latch source on first decision to avoid initial head->alexa flip/flicker.
-          if (!_alexaModeDecisionMade) {
-            _alexaSourceLocked = !!useAlexaNow;
-            _alexaModeDecisionMade = true;
-          }
-
-          const useAlexa = _alexaSourceLocked ? hasAlexaPayload : useAlexaNow;
-
-          if (useAlexa && np && np.file) {
-            data = { ...data, ...np, alexaMode: true };
-          } else if (useAlexa && wp && wp.file) {
-            data = {
-              ...data,
-              file: wp.file || data.file,
-              title: wp.title || data.title,
-              artist: wp.artist || data.artist,
-              album: wp.album || data.album,
-              alexaMode: true,
-            };
-          } else if (_alexaSourceLocked) {
-            // Keep prior Alexa view rather than flashing back to queue head.
-            return null;
-          }
-        } catch (e) {
-          dlog('Alexa was-playing fetch failed:', e && e.message ? e.message : String(e));
-        }
-      }
-
-      // keep original /now-playing snapshot for queue-head use (e.g., Next up row in Alexa mode)
-      data.__queueHead = baseNowPlaying;
-      return data;
-    })
+  sourcePromise
     .then(data => {
         if (!data) return;
         dlog('[album link fields]', {
@@ -1087,6 +1034,24 @@ function fetchNowPlaying() {
       // Keep a copy for controls / modal
       lastNowPlayingData = data;
       window.lastNowPlayingData = data;
+      // debug overlay disabled
+
+      // Alexa forced mode: keep refresh path brutally simple and direct.
+      if (ALEXA_MODE_FORCED) {
+        try {
+          currentAlexaMode = true;
+          currentIsAirplay = false;
+          currentIsStream = false;
+          currentIsPodcast = inferIsPodcast(data);
+          // Alexa mode has no reliable progress timing; keep bar hidden.
+          setProgressVisibility(true);
+          applyRatingFromNowPlaying(data);
+          updateUI(data);
+        } catch (e) {
+          console.warn('[alexa forced repaint] failed:', e?.message || e);
+        }
+        return;
+      }
 
       if (DEBUG) {
         DEBUG && console.groupCollapsed('%c[PODCAST DETECT]', 'color:#ff9800;font-weight:bold');
@@ -1311,7 +1276,11 @@ function fetchNowPlaying() {
 
       // Local files + AirPlay
       if (!isStream) {
-        if (trackChanged) {
+        // In Alexa mode, repaint every poll from was-playing source to avoid stale UI state.
+        if (currentAlexaMode) {
+          currentTrackKey = baseKey;
+          try { updateUI(data); } catch (e) { console.warn('[alexa updateUI] failed:', e); }
+        } else if (trackChanged) {
           currentTrackKey = baseKey;
           updateUI(data);
         }
@@ -1360,7 +1329,7 @@ function fetchNowPlaying() {
       justResumedFromPause = false;
       justResumedFromPause = false;
     })
-    .catch(() => {});
+    .catch((e) => { console.warn('[fetchNowPlaying] failed:', e?.message || e); });
 }
 
 /* =========================
@@ -2556,6 +2525,22 @@ function updateUI(data) {
   const personnelEl = document.getElementById('personnel-info');
   const artEl       = document.getElementById('album-art');
   const artBgEl     = document.getElementById('album-art-bg');
+
+  // Alexa mode: brute-force art refresh by file, independent of art cache/crossfade logic.
+  if (currentAlexaMode && artEl) {
+    const f = String(currentFile || '').trim();
+    if (f && f !== lastAlexaForcedArtFile) {
+      const u = `${API_BASE}/art/track_640.jpg?file=${encodeURIComponent(f)}&_=${Date.now()}`;
+      artEl.src = u;
+      if (artBgEl) {
+        artBgEl.style.backgroundImage = `url("${u}")`;
+        artBgEl.style.backgroundSize = 'cover';
+        artBgEl.style.backgroundPosition = 'center';
+      }
+      try { setMotionArtVideo('', u); } catch {}
+      lastAlexaForcedArtFile = f;
+    }
+  }
 
   // =========================
   // Artist / Title (radio stabilized)

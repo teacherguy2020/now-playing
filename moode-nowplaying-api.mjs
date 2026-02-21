@@ -2106,15 +2106,83 @@ app.get('/alexa/was-playing', async (req, res) => {
     const title = String(wp.title || '').trim();
     const artist = String(wp.artist || '').trim();
     const album = String(wp.album || '').trim();
-    const year = String(wp.year || '').trim();
-    const date = String(wp.date || '').trim();
-    const ratingNum = Math.max(0, Math.min(5, Number(wp.rating) || 0));
-    const ratingFile = String(wp.ratingFile || file || '').trim();
-    const ratingDisabled = (typeof wp.ratingDisabled === 'boolean') ? !!wp.ratingDisabled : !ratingFile;
+    let year = String(wp.year || '').trim();
+    let date = String(wp.date || '').trim();
+    let ratingNum = Math.max(0, Math.min(5, Number(wp.rating) || 0));
+    let ratingFile = String(wp.ratingFile || file || '').trim();
+    let ratingDisabled = (typeof wp.ratingDisabled === 'boolean') ? !!wp.ratingDisabled : !ratingFile;
+
+    // Prefer rich metadata from latest /now-playing snapshot when it matches the same file.
+    const lnp = (lastNowPlayingOk && typeof lastNowPlayingOk === 'object') ? lastNowPlayingOk : null;
+    const lnpFile = String(lnp?.file || '').trim();
+    const sameAsLastNp = !!(file && lnpFile && file === lnpFile);
+
+    if (sameAsLastNp) {
+      if (!year) year = String(lnp?.year || '').trim();
+      if (!date) date = String(lnp?.date || '').trim();
+      if ((!ratingFile || ratingFile !== file) && String(lnp?.ratingFile || '').trim() === file) {
+        ratingFile = file;
+      }
+      if (ratingNum <= 0 && Number(lnp?.rating || 0) > 0) {
+        ratingNum = Math.max(0, Math.min(5, Number(lnp?.rating) || 0));
+      }
+      if (typeof lnp?.ratingDisabled === 'boolean') ratingDisabled = !!lnp.ratingDisabled;
+    }
+
+    if (file && (!year || !date)) {
+      try {
+        const deep = await getDeepMetadataCached(file);
+        if (!year) year = String(deep?.year || '').trim();
+        if (!date && year) date = year;
+      } catch {}
+    }
+
+    // Keep Alexa rating in sync with the actual file when payload is stale/incomplete.
+    if (file) {
+      try {
+        // Use direct sticker read here (not cache) so Alexa view cannot carry stale rating across tracks.
+        const liveRating = Math.max(0, Math.min(5, Number(await getRatingForFile(file)) || 0));
+        ratingNum = liveRating;
+        ratingDisabled = false;
+        ratingFile = file;
+      } catch {
+        if (!ratingFile || ratingFile !== file || ratingNum <= 0) {
+          try {
+            const rr = await getRatingForFileCached(file);
+            ratingNum = Math.max(0, Math.min(5, Number(rr?.rating) || 0));
+            ratingDisabled = !!rr?.disabled;
+            ratingFile = file;
+          } catch {}
+        }
+      }
+    }
+
+    let deepPerformers = [];
+    if (file) {
+      try {
+        const deep = await getDeepMetadataCached(file);
+        deepPerformers = Array.isArray(deep?.performers) ? deep.performers : [];
+      } catch {}
+    }
+
+    const personnelOut = (sameAsLastNp && Array.isArray(lnp?.personnel) && lnp.personnel.length)
+      ? lnp.personnel
+      : ((Array.isArray(wp?.personnel) && wp.personnel.length)
+          ? wp.personnel
+          : deepPerformers);
+    const encodedOut = String((sameAsLastNp ? (lnp?.encoded || '') : '') || (wp?.encoded || '')).trim();
+    const bitrateOut = String((sameAsLastNp ? (lnp?.bitrate || '') : '') || (wp?.bitrate || '')).trim();
+    const outrateOut = String((sameAsLastNp ? (lnp?.outrate || '') : '') || (wp?.outrate || '')).trim();
 
     const passthrough = {};
     for (const [k, v] of Object.entries(wp || {})) {
-      if (['token', 'active', 'startedAt', 'stoppedAt', 'updatedAt'].includes(k)) continue;
+      if ([
+        'token', 'active', 'startedAt', 'stoppedAt', 'updatedAt',
+        // computed/normalized fields must not be overwritten by stale was-playing values
+        'file', 'title', 'artist', 'album', 'year', 'date',
+        'rating', 'ratingFile', 'ratingDisabled',
+        'personnel', 'encoded', 'bitrate', 'outrate'
+      ].includes(k)) continue;
       if (typeof v === 'undefined') continue;
       passthrough[k] = v;
     }
@@ -2145,10 +2213,10 @@ app.get('/alexa/was-playing', async (req, res) => {
       year,
       label: '',
       producer: '',
-      personnel: [],
-      encoded: '',
-      bitrate: '0 bps',
-      outrate: '',
+      personnel: personnelOut,
+      encoded: encodedOut,
+      bitrate: bitrateOut || '0 bps',
+      outrate: outrateOut,
       volume: '0',
       mute: '0',
       track: '',

@@ -41,7 +41,7 @@
   }
 
   let runtimeTrackKey = '';
-  let runtimeKeyAttempted = false;
+  let runtimeKeyLastAttemptMs = 0;
   const motionArtCache = new Map();
   const localMotionCache = new Map();
   const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
@@ -53,8 +53,10 @@
   }
 
   async function ensureRuntimeKey() {
-    if (runtimeKeyAttempted || currentKey()) return;
-    runtimeKeyAttempted = true;
+    if (currentKey()) return;
+    const now = Date.now();
+    if (runtimeKeyLastAttemptMs && (now - runtimeKeyLastAttemptMs) < 3000) return;
+    runtimeKeyLastAttemptMs = now;
     try {
       const r = await fetch(`${apiBase}/config/runtime`, { cache: 'no-store' });
       const j = await r.json().catch(() => ({}));
@@ -210,7 +212,7 @@
     const isRadioOrStream = !!np?.isRadio || !!np?.isStream;
     const elapsed = Number(np?.elapsed ?? q?.elapsed ?? q?.elapsedSec ?? 0);
     const duration = Number(np?.duration ?? q?.duration ?? q?.durationSec ?? 0);
-    const showProgress = !isRadioOrStream && Number.isFinite(duration) && duration > 0;
+    const showProgress = !isAlexaMode && !isRadioOrStream && Number.isFinite(duration) && duration > 0;
     const pct = showProgress ? Math.max(0, Math.min(100, (elapsed / duration) * 100)) : 0;
     const bar = el.querySelector('.progress-bar-wrapper');
     if (bar) {
@@ -317,7 +319,7 @@
 
     const elapsed = Number(np?.elapsed ?? q?.elapsed ?? q?.elapsedSec ?? head?.elapsed ?? head?.elapsedSec ?? 0);
     const duration = Number(np?.duration ?? q?.duration ?? q?.durationSec ?? head?.duration ?? head?.durationSec ?? 0);
-    const showProgress = !isRadioOrStream && Number.isFinite(duration) && duration > 0;
+    const showProgress = !isAlexaMode && !isRadioOrStream && Number.isFinite(duration) && duration > 0;
     const progressPct = showProgress ? Math.max(0, Math.min(100, (elapsed / duration) * 100)) : 0;
     const spinPeriodMs = 5600;
     const spinDelayStyle = state === 'playing' ? ` style="--spin-delay:-${Date.now() % spinPeriodMs}ms;"` : '';
@@ -633,13 +635,19 @@
       try {
         await ensureRuntimeKey();
         const key = currentKey();
-        const [q, npRaw, alexaWas] = await Promise.all([
+        const [qRes, npRes, awRes] = await Promise.allSettled([
           loadQueueState(key),
           loadNowPlaying(key),
           loadAlexaWasPlaying(),
         ]);
 
-        let np = npRaw || {};
+        const q = (qRes.status === 'fulfilled' && qRes.value) ? qRes.value : (lastQ || { items: [], playbackState: '' });
+        let np = (npRes.status === 'fulfilled' && npRes.value) ? npRes.value : (lastNp || {});
+        const alexaWas = (awRes.status === 'fulfilled') ? awRes.value : null;
+
+        if (!(qRes.status === 'fulfilled' || npRes.status === 'fulfilled' || awRes.status === 'fulfilled')) {
+          throw new Error('all refresh sources failed');
+        }
         const aw = alexaWas || null;
         const awNp = aw?.nowPlaying || null;
         const awWp = aw?.wasPlaying || null;

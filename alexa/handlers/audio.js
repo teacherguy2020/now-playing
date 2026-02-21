@@ -30,6 +30,26 @@ function createAudioHandlers(deps) {
     apiQueueWizardApply,
   } = deps;
 
+  async function postWasPlaying(payload, logPrefix) {
+    const p = payload || {};
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        await apiSetWasPlaying(p);
+        if (attempt > 1) {
+          console.log(logPrefix, 'set was-playing succeeded on retry');
+        }
+        return true;
+      } catch (e) {
+        const msg = e && e.message ? e.message : String(e);
+        console.log(logPrefix, `set was-playing attempt ${attempt} failed:`, msg);
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 150));
+        }
+      }
+    }
+    return false;
+  }
+
   async function ensureHeadReady(previousToken, logPrefix, options) {
     const opts = options || {};
     const prevToken = safeStr(previousToken);
@@ -175,11 +195,7 @@ function createAudioHandlers(deps) {
           console.log('AudioPlayer event:', eventType);
           console.log('PlaybackStopped: token prefix:', safeStr(token).slice(0, 160), 'offsetMs=', off);
           rememberStop(token, off);
-          try {
-            await apiSetWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() });
-          } catch (e) {
-            console.log('PlaybackStopped: set was-playing inactive failed:', e && e.message ? e.message : String(e));
-          }
+          await postWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() }, 'PlaybackStopped:');
         } catch (e) {
           console.log('PlaybackStopped handler failed:', e && e.message ? e.message : String(e));
         }
@@ -195,8 +211,10 @@ function createAudioHandlers(deps) {
           if (safeStr(token)) setLastPlayedToken(safeStr(token));
 
           try {
+            // Keep this write path minimal and deterministic (token metadata only)
+            // so was-playing updates reliably on every track transition.
             const p = parseTokenB64(safeStr(token)) || {};
-            await apiSetWasPlaying({
+            const ok = await postWasPlaying({
               token: safeStr(token),
               file: safeStr(p.file),
               title: decodeHtmlEntities(safeStr(p.title || '')),
@@ -204,7 +222,8 @@ function createAudioHandlers(deps) {
               album: decodeHtmlEntities(safeStr(p.album || '')),
               startedAt: Date.now(),
               active: true,
-            });
+            }, 'PlaybackStarted:');
+            if (ok) console.log('PlaybackStarted: set was-playing ok for file:', safeStr(p.file));
           } catch (e) {
             console.log('PlaybackStarted: set was-playing failed:', e && e.message ? e.message : String(e));
           }
@@ -232,11 +251,7 @@ function createAudioHandlers(deps) {
       if (eventType === 'AudioPlayer.PlaybackFailed') {
         try {
           console.log('AudioPlayer event:', eventType);
-          try {
-            await apiSetWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() });
-          } catch (e) {
-            console.log('PlaybackFailed: set was-playing inactive failed:', e && e.message ? e.message : String(e));
-          }
+          await postWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() }, 'PlaybackFailed:');
           return handlerInput.responseBuilder.getResponse();
         } catch (e) {
           console.log('PlaybackFailed handler failed:', e && e.message ? e.message : String(e));
@@ -271,11 +286,7 @@ function createAudioHandlers(deps) {
       if (eventType === 'AudioPlayer.PlaybackFinished') {
         try {
           console.log('AudioPlayer event:', eventType);
-          try {
-            await apiSetWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() });
-          } catch (e) {
-            console.log('PlaybackFinished: set was-playing inactive failed:', e && e.message ? e.message : String(e));
-          }
+          await postWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() }, 'PlaybackFinished:');
           // Alexa does not allow AudioPlayer.Play directives in PlaybackFinished responses.
           console.log('PlaybackFinished: no directives allowed; no action');
           return handlerInput.responseBuilder.getResponse();

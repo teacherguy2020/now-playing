@@ -356,6 +356,10 @@ body.pause      #fav-heart {
   color: #aaa;
 }
 
+#mode-status {
+  margin-left: 8px;
+}
+
 .hires-badge {
   background: gold;
   color: #000;
