@@ -310,6 +310,12 @@
                     </div>
                     <div class="cfgHint">When enabled, hero transport and index can swap static radio artwork for Apple Music animated cover video when it can be resolved from Apple Music links.</div>
                   </div>
+
+                  <div class="cfgCard gateCard" id="albumPersonnelCard">
+                    <h3>Album Personnel</h3>
+                    <div class="cfgField"><label><input id="featureAlbumPersonnel" type="checkbox" /> Enabled</label></div>
+                    <div class="cfgHint">When disabled, the personnel block is hidden on the Now Playing index page.</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -848,6 +854,7 @@ async function loadCfg(){
   syncPodcastsUi();
   document.getElementById('featureRatings').checked = !!c.features?.ratings;
   document.getElementById('featureRadio').checked = !!c.features?.radio;
+  document.getElementById('featureAlbumPersonnel').checked = !!(c.features?.albumPersonnel ?? true);
   syncRatingsCardVisibility();
   const lastfmKey = String(full.lastfmApiKey || localStorage.getItem('nowplaying.secret.lastfmApiKey') || '');
   document.getElementById('featureLastfm').checked = !!lastfmKey;
@@ -1007,6 +1014,7 @@ async function saveCfg(){
         podcasts: document.getElementById('featurePodcasts').checked,
         ratings: document.getElementById('featureRatings').checked,
         radio: document.getElementById('featureRadio').checked,
+        albumPersonnel: document.getElementById('featureAlbumPersonnel').checked,
       },
       trackKey: document.getElementById('configTrackKey').value.trim(),
       ports: {
@@ -1759,7 +1767,26 @@ const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
   const ratings = document.getElementById('ratingsCard');
   const alexa = document.getElementById('alexaCard');
   const animated = document.getElementById('animatedArtCard');
-  if (!triple || !split || !pushover || !ratings || !alexa || !animated) return;
+  const albumPersonnel = document.getElementById('albumPersonnelCard');
+  if (!triple || !split || !pushover || !ratings || !alexa || !animated || !albumPersonnel) return;
+
+  function syncFeatureCardHeights(){
+    const pairs = [
+      [ratings, pushover],
+      [albumPersonnel, animated],
+    ];
+    for (const [a, b] of pairs) {
+      if (!a || !b) continue;
+      a.style.minHeight = '';
+      b.style.minHeight = '';
+      const h = Math.max(a.offsetHeight || 0, b.offsetHeight || 0);
+      if (h > 0) {
+        a.style.minHeight = `${h}px`;
+        b.style.minHeight = `${h}px`;
+      }
+    }
+  }
+
   try {
     // Put Alexa in the upper section (fills the blank beside Last.fm).
     // Then place Ratings where Alexa was in the lower section.
@@ -1768,9 +1795,16 @@ const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
     // Lower section order:
     // row1: Pushover | Ratings
     // row2: Animated Art
+    // row3: Album Personnel
     split.appendChild(pushover);
     split.appendChild(ratings);
     split.appendChild(animated);
+    split.appendChild(albumPersonnel);
+
+    syncFeatureCardHeights();
+    window.addEventListener('resize', syncFeatureCardHeights);
+    setTimeout(syncFeatureCardHeights, 120);
+    setTimeout(syncFeatureCardHeights, 600);
   } catch (_) {}
 })();
 </script>

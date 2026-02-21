@@ -118,10 +118,13 @@ async function loadRatingsFeatureFlag() {
     const j = await r.json().catch(() => ({}));
     if (r.ok && j?.ok) {
       RATINGS_ENABLED = Boolean(j?.config?.features?.ratings ?? true);
+      PERSONNEL_ENABLED = Boolean(j?.config?.features?.albumPersonnel ?? true);
       if (!RATINGS_ENABLED) {
         ratingDisabled = true;
         renderStars(0);
       }
+      const personnelEl = document.getElementById('personnel-info');
+      if (personnelEl && !PERSONNEL_ENABLED) personnelEl.style.display = 'none';
     }
   } catch (_) {}
 }
@@ -169,6 +172,7 @@ dlog('[NP] NEXT_UP_URL=', NEXT_UP_URL);
 
 const ENABLE_NEXT_UP = true;
 const ENABLE_BACKGROUND_ART = true; // set false to disable background updates entirely
+let PERSONNEL_ENABLED = true;
 const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
 const motionArtCache = new Map();
 const localMotionCache = new Map();
@@ -1672,7 +1676,7 @@ function setPausedScreensaver(on) {
   if (albumEl)  albumEl.style.display  = show ? '' : 'none';
   if (fileInfoText) fileInfoText.style.display = show ? '' : 'none';
   if (hiresBadge) hiresBadge.style.display = show ? '' : 'none';
-  if (personnelEl) personnelEl.style.display = show ? '' : 'none';
+  if (personnelEl) personnelEl.style.display = (show && PERSONNEL_ENABLED) ? '' : 'none';
   if (nextUpEl) nextUpEl.style.display = show ? '' : 'none';
 
   const artEl = document.getElementById('album-art');
@@ -2702,17 +2706,23 @@ if (titleEl) {
   // - AirPlay / UPnP: hide
   // =========================
   if (personnelEl) {
-    if (isAirplay || isUpnp) {
+    if (!PERSONNEL_ENABLED) {
       personnelEl.textContent = '';
+      personnelEl.style.display = 'none';
+    } else if (isAirplay || isUpnp) {
+      personnelEl.textContent = '';
+      personnelEl.style.display = '';
     } else if (isRadio) {
       // Move radio performers into the personnel line
       const pLine = buildRadioPersonnelLine(data, displayTitle);
       personnelEl.textContent = pLine || '';
+      personnelEl.style.display = '';
     } else {
       const personnel = Array.isArray(data.personnel) ? data.personnel : [];
       personnelEl.textContent = personnel.length
         ? personnel.map(expandInstrumentAbbrevs).join(' • ')
         : '';
+      personnelEl.style.display = '';
     }
   }
 

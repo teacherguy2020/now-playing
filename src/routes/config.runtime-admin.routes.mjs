@@ -72,6 +72,7 @@ function pickPublicConfig(cfg) {
       podcasts: Boolean(c.features?.podcasts ?? true),
       ratings: Boolean(c.features?.ratings ?? true),
       radio: Boolean(c.features?.radio ?? true),
+      albumPersonnel: Boolean(c.features?.albumPersonnel ?? true),
     },
   };
 }
