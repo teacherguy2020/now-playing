@@ -47,6 +47,7 @@
   const existingPlaylistToggleEl = $('existingPlaylistToggle');
   const existingPlaylistLabelEl = $('existingPlaylistLabel');
   const existingPlaylistMenuEl = $('existingPlaylistMenu');
+  const existingPlaylistCarouselEl = $('existingPlaylistCarousel');
   const loadExistingPlaylistBtn = $('loadExistingPlaylistBtn');
   const sendExistingBtn = $('sendExistingToMoode');
   const savePlaylistNowBtn = $('savePlaylistNowBtn');
@@ -101,6 +102,8 @@
   let listOrderShuffled = false;
   let queuePlayPauseMode = 'play';
   let filterQuickIndex = [];
+  let selectedExistingPlaylists = new Set();
+  let existingCarouselSavedScrollLeft = 0;
 
 // ---------- Vibe progress + Cancel/Send button (single-source-of-truth) ----------
 
@@ -453,7 +456,7 @@ async function syncVibeAvailability() {
   }
 
   function hasExistingPlaylistSelected() {
-    return !!String(existingPlaylistsEl?.value || '').trim();
+    return selectedExistingListNames().length > 0;
   }
 
   function syncRatingsUi(){
@@ -1189,10 +1192,18 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     }).join('');
   }
 
+  function selectedExistingListNames() {
+    const fromSet = Array.from(selectedExistingPlaylists || []).map((x) => String(x || '').trim()).filter(Boolean);
+    if (fromSet.length) return fromSet;
+    const single = String(existingPlaylistsEl?.value || '').trim();
+    return single ? [single] : [];
+  }
+
   function renderExistingPlaylistMenu(names = []) {
     if (!existingPlaylistMenuEl || !existingPlaylistLabelEl) return;
     const selected = String(existingPlaylistsEl?.value || '').trim();
-    existingPlaylistLabelEl.textContent = selected || '(select existing playlist)';
+    const multi = selectedExistingListNames();
+    existingPlaylistLabelEl.textContent = multi.length > 1 ? `${multi.length} selected` : (selected || '(select existing playlist)');
 
     const rows = [`<button type="button" data-existing-playlist="" style="width:100%;display:flex;align-items:center;gap:12px;padding:10px 10px;border:0;background:transparent;color:#e7eefc;text-align:left;border-radius:10px;font-size:15px;line-height:1.25;">(select existing playlist)</button>`];
     for (const n0 of names || []) {
@@ -1209,14 +1220,56 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     existingPlaylistMenuEl.innerHTML = rows.join('');
   }
 
+  function renderExistingPlaylistCarousel(names = []) {
+    if (!existingPlaylistCarouselEl) return;
+    const prevScrollLeft = Number(existingPlaylistCarouselEl.scrollLeft || 0);
+    const keepScrollLeft = Math.max(prevScrollLeft, Number(existingCarouselSavedScrollLeft || 0));
+    const selected = new Set(selectedExistingListNames());
+    const rows = [];
+    for (const n0 of names || []) {
+      const n = String(n0 || '').trim();
+      if (!n) continue;
+      const src = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(n)}.jpg`;
+      const on = selected.has(n);
+      rows.push(
+        `<button type="button" data-existing-carousel="${esc(n)}" title="${esc(n)}" style="position:relative;width:132px;max-width:100%;justify-self:start;border:1px solid ${on ? 'rgba(34,197,94,.8)' : '#334'};background:${on ? 'rgba(34,197,94,.14)' : '#0a1222'};border-radius:14px;padding:8px;cursor:pointer;">`
+        + `${on ? '<span style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:999px;background:rgba(34,197,94,.95);color:#052e16;font-weight:900;font-size:14px;line-height:22px;text-align:center;">✓</span>' : ''}`
+        + `<img src="${src}" onerror="this.onerror=null;this.src='${moodeDefaultCoverUrl()}'" style="width:116px;height:116px;object-fit:cover;border-radius:10px;border:1px solid #334;background:#071021;display:block;margin:0 auto 8px;" />`
+        + `<div style="font-size:12px;line-height:1.25;max-width:116px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 auto;color:#dbe7ff;">${esc(n)}</div>`
+        + `</button>`
+      );
+    }
+    existingPlaylistCarouselEl.innerHTML = rows.join('');
+    try {
+      requestAnimationFrame(() => {
+        existingPlaylistCarouselEl.scrollLeft = keepScrollLeft;
+        existingCarouselSavedScrollLeft = keepScrollLeft;
+        setTimeout(() => { try { existingPlaylistCarouselEl.scrollLeft = keepScrollLeft; } catch {} }, 60);
+        setTimeout(() => { try { existingPlaylistCarouselEl.scrollLeft = keepScrollLeft; } catch {} }, 180);
+      });
+    } catch {}
+  }
+
   function setExistingPlaylistOptions(names = [], selected = '') {
     if (!existingPlaylistsEl) return;
     const selectedName = String(selected || '').trim();
+    const nameSet = new Set((names || []).map((n) => String(n || '').trim()).filter(Boolean));
+    selectedExistingPlaylists = new Set(Array.from(selectedExistingPlaylists || []).filter((n) => nameSet.has(n)));
+
     const opts = [{ value: '', label: '(select existing playlist)' }, ...(names || []).map((n) => ({ value: String(n || ''), label: String(n || '') }))];
     existingPlaylistsEl.innerHTML = opts.map((x) => `<option value="${esc(x.value)}">${esc(x.label)}</option>`).join('');
-    if (selectedName && (names || []).includes(selectedName)) existingPlaylistsEl.value = selectedName;
+
+    if (selectedName && (names || []).includes(selectedName)) {
+      existingPlaylistsEl.value = selectedName;
+      if (!selectedExistingPlaylists.size) selectedExistingPlaylists.add(selectedName);
+    } else if (selectedExistingPlaylists.size) {
+      const first = Array.from(selectedExistingPlaylists)[0] || '';
+      existingPlaylistsEl.value = first;
+    }
+
     updateExistingPlaylistThumb(existingPlaylistsEl.value || '');
     renderExistingPlaylistMenu(names);
+    renderExistingPlaylistCarousel(names);
   }
 
   async function loadExistingPlaylists() {
@@ -1245,31 +1298,38 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
   async function previewExistingPlaylistSelection() {
     const apiBase = getApiBase();
     const key = getKey();
-    const name = String(existingPlaylistsEl?.value || '').trim();
-    if (!apiBase || !name) return;
+    const names = selectedExistingListNames();
+    if (!apiBase || !names.length) return;
 
     try {
       activateBuilder('existing');
       if (coverCardEl) coverCardEl.style.display = '';
-      if (coverStatusEl) coverStatusEl.textContent = `Playlist cover: “${name}”.`;
+      const firstName = names[0];
+      if (coverStatusEl) coverStatusEl.textContent = names.length > 1
+        ? `Playlist covers: ${names.length} selected (showing first).`
+        : `Playlist cover: “${firstName}”.`;
       if (coverImgEl) {
-        coverImgEl.src = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(name)}.jpg?t=${Date.now()}`;
+        coverImgEl.src = `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(firstName)}.jpg?t=${Date.now()}`;
         coverImgEl.onerror = () => {
           coverImgEl.onerror = null;
           coverImgEl.src = moodeDefaultCoverUrl();
         };
       }
 
-      setStatus('<span class="spin"></span>Loading playlist preview…');
-      const r = await fetch(`${apiBase}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(name)}`, {
-        headers: { 'x-track-key': key },
-        cache: 'no-store',
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-      const tracks = Array.isArray(j?.tracks) ? j.tracks : [];
-      setCurrentList('existing', tracks);
-      setStatus(`Loaded playlist preview: ${esc(name)} (${tracks.length.toLocaleString()} track(s)).`);
+      setStatus(`<span class="spin"></span>Loading playlist preview${names.length > 1 ? 's' : ''}…`);
+      const all = [];
+      for (const name of names) {
+        const r = await fetch(`${apiBase}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(name)}`, {
+          headers: { 'x-track-key': key },
+          cache: 'no-store',
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j?.ok) throw new Error(`${name}: ${j?.error || `HTTP ${r.status}`}`);
+        const tracks = Array.isArray(j?.tracks) ? j.tracks : [];
+        all.push(...tracks);
+      }
+      setCurrentList('existing', all);
+      setStatus(`Loaded ${names.length} playlist(s): ${all.length.toLocaleString()} track(s).`);
     } catch (e) {
       setStatus(`Playlist preview failed: ${esc(e?.message || e)}`);
     }
@@ -2437,8 +2497,12 @@ function wireEvents() {
   });
 
   existingPlaylistsEl?.addEventListener('change', () => {
+    const v = String(existingPlaylistsEl?.value || '').trim();
+    selectedExistingPlaylists = new Set(v ? [v] : []);
     updateExistingPlaylistThumb(existingPlaylistsEl?.value || '');
-    renderExistingPlaylistMenu(Array.from(existingPlaylistsEl.options).map((o) => String(o.value || '')).filter(Boolean));
+    const names = Array.from(existingPlaylistsEl.options).map((o) => String(o.value || '')).filter(Boolean);
+    renderExistingPlaylistMenu(names);
+    renderExistingPlaylistCarousel(names);
     updatePlaylistUi();
     previewExistingPlaylistSelection();
   });
@@ -2457,6 +2521,65 @@ function wireEvents() {
     existingPlaylistsEl.value = val;
     existingPlaylistMenuEl.style.display = 'none';
     existingPlaylistsEl.dispatchEvent(new Event('change'));
+  });
+
+  let existingCarouselPointerDown = null;
+  let existingCarouselMoved = false;
+  let existingCarouselLastScrollTs = 0;
+
+  existingPlaylistCarouselEl?.addEventListener('scroll', () => {
+    existingCarouselLastScrollTs = Date.now();
+    existingCarouselSavedScrollLeft = Number(existingPlaylistCarouselEl?.scrollLeft || 0);
+  }, { passive: true });
+
+  existingPlaylistCarouselEl?.addEventListener('pointerdown', (e) => {
+    existingCarouselPointerDown = { x: Number(e.clientX || 0), y: Number(e.clientY || 0) };
+    existingCarouselMoved = false;
+  }, { passive: true });
+
+  existingPlaylistCarouselEl?.addEventListener('pointermove', (e) => {
+    if (!existingCarouselPointerDown) return;
+    const dx = Math.abs(Number(e.clientX || 0) - existingCarouselPointerDown.x);
+    const dy = Math.abs(Number(e.clientY || 0) - existingCarouselPointerDown.y);
+    if (dx > 8 || dy > 8) existingCarouselMoved = true;
+  }, { passive: true });
+
+  existingPlaylistCarouselEl?.addEventListener('pointercancel', () => {
+    existingCarouselMoved = true;
+    existingCarouselPointerDown = null;
+  }, { passive: true });
+
+  existingPlaylistCarouselEl?.addEventListener('pointerup', () => {
+    setTimeout(() => { existingCarouselPointerDown = null; }, 0);
+  }, { passive: true });
+
+  existingPlaylistCarouselEl?.addEventListener('click', (e) => {
+    if (existingCarouselMoved) return;
+    if ((Date.now() - existingCarouselLastScrollTs) < 300) return;
+    const el = e.target instanceof Element ? e.target.closest('button[data-existing-carousel]') : null;
+    if (!el || !existingPlaylistsEl) return;
+    const val = String(el.getAttribute('data-existing-carousel') || '').trim();
+    if (!val) return;
+
+    if (selectedExistingPlaylists.has(val)) selectedExistingPlaylists.delete(val);
+    else selectedExistingPlaylists.add(val);
+
+    // Keep select synced to first selected for compatibility with legacy flows.
+    const first = Array.from(selectedExistingPlaylists)[0] || '';
+    existingPlaylistsEl.value = first;
+
+    const names = Array.from(existingPlaylistsEl.options).map((o) => String(o.value || '')).filter(Boolean);
+    renderExistingPlaylistMenu(names);
+    renderExistingPlaylistCarousel(names);
+    updateExistingPlaylistThumb(first);
+    updatePlaylistUi();
+
+    if (selectedExistingPlaylists.size) previewExistingPlaylistSelection();
+    else {
+      setCurrentList('existing', []);
+      setCount('No list yet.');
+      setStatus('Select one or more playlist covers.');
+    }
   });
 
   document.addEventListener('click', (e) => {
