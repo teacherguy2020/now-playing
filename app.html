@@ -23,6 +23,8 @@
     .heroQueueRow:last-child{border-bottom:none}
     .heroQueueMeta{color:#9fb1d9;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .heroQueueActions{display:flex;gap:4px;margin-left:auto}
+    .heroQueueNextUp{display:none;margin-bottom:8px;border:1px solid #2a3a58;border-radius:10px;padding:8px;background:#071021;align-items:center;gap:8px}
+    .heroQueueNextUp img{width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222}
     .heroQueueBtn,
     .heroQueueActions button{padding:4px 8px;border-radius:7px;border:1px solid #334;background:#0a1222;color:#eef;cursor:pointer;transition:all .12s ease}
     .heroQueueBtn{padding:6px 10px;border-radius:8px}
@@ -69,18 +71,19 @@
         <div class="heroQueueHead">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <div class="heroQueueTitle">Current Queue</div>
-            <label style="display:inline-flex;align-items:center;gap:6px;color:#9fb1d9;font-size:12px;white-space:nowrap;">
+            <label id="heroQueueArrowKeysWrap" style="display:inline-flex;align-items:center;gap:6px;color:#9fb1d9;font-size:12px;white-space:nowrap;">
               <input id="heroQueueArrowKeys" type="checkbox" />
               <span>activate keyboard arrow keys</span>
             </label>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+          <div id="heroQueueActionsHead" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
             <button id="heroQueueSavePresets" class="heroQueueBtn" type="button" style="display:none;">Save queue as presets group</button>
             <button id="heroQueueClear" class="heroQueueBtn" type="button">Clear</button>
             <button id="heroQueueCrop" class="heroQueueBtn" type="button">Crop</button>
             <button id="heroQueueToggle" class="heroQueueBtn" type="button">Collapse</button>
           </div>
         </div>
+        <div class="heroQueueNextUp" id="heroQueueNextUp"></div>
         <div class="heroQueueWrap" id="heroQueueWrap"><div class="heroQueueMeta">Loading queue…</div></div>
       </div>
     </div>
@@ -256,7 +259,7 @@
         if (!btn) return;
         const onRadioTab = String(currentShellPage || '') === 'radio.html';
         const hasStations = Array.isArray(lastRadioPresetStations) && lastRadioPresetStations.length > 0;
-        btn.style.display = (onRadioTab && hasStations) ? '' : 'none';
+        btn.style.display = (!queueCollapsed && onRadioTab && hasStations) ? '' : 'none';
       }
 
       function saveCurrentQueueAsRadioPreset(){
@@ -297,13 +300,15 @@
 
           const headers = runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {};
           const radioMapP = loadRadioHostNameMap(base, headers);
-          const [r, npRes, radioMap] = await Promise.all([
+          const [r, npRes, nextUpRes, radioMap] = await Promise.all([
             fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers }),
             fetch(`${base}/now-playing`, { cache:'no-store' }).catch(() => null),
+            fetch(`${base}/next-up`, { cache:'no-store' }).catch(() => null),
             radioMapP,
           ]);
           const j = await r.json().catch(() => ({}));
           const np = npRes ? await npRes.json().catch(() => ({})) : {};
+          const nextUpApi = nextUpRes ? await nextUpRes.json().catch(() => ({})) : {};
           if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
           const fallbackStation = String(np?.stationName || np?._stationName || np?.radioStationName || '').trim();
           const fallbackNowArtRaw = String(np?.albumArtUrl || np?.altArtUrl || '').trim();
@@ -322,9 +327,39 @@
               lastHeroQueueSignature = emptySig;
             }
             lastRadioPresetStations = [];
+            if (hqNextUp) hqNextUp.innerHTML = '<div class="heroQueueMeta">Next-up: none</div>';
             updateSavePresetsButtonVisibility();
             return;
           }
+          const headPosNum = Number(j.headPos || -1);
+          let headIdx = items.findIndex((x) => Number(x?._posDisplay || 0) === headPosNum);
+          if (headIdx < 0) headIdx = items.findIndex((x) => !!x?.isHead);
+          const nextItem = (headIdx >= 0 && headIdx < (items.length - 1)) ? items[headIdx + 1] : null;
+          if (hqNextUp) {
+            const apiNext = (nextUpApi && nextUpApi.ok && nextUpApi.next) ? nextUpApi.next : null;
+            if (apiNext) {
+              const aArtist = String(apiNext.artist || '').trim();
+              const aTitle = String(apiNext.title || '').trim() || String(apiNext.file || '').trim();
+              const aArtRaw = String(apiNext.artUrl || '').trim();
+              const aArt = aArtRaw ? (aArtRaw.startsWith('http') ? aArtRaw : `${base}${aArtRaw}`) : '';
+              const txt = [aArtist, aTitle].filter(Boolean).join(' • ') || '(unknown)';
+              hqNextUp.innerHTML = `${aArt ? `<img src="${aArt}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${txt}</div>`;
+            } else if (!nextItem) {
+              hqNextUp.innerHTML = '<div class="heroQueueMeta">Next-up: none</div>';
+            } else {
+              const nf = String(nextItem?.file || '').trim();
+              const nStream = /^https?:\/\//i.test(nf);
+              const nThumbRaw = String(nextItem?.thumbUrl || '').trim();
+              const nThumb = nThumbRaw ? (nThumbRaw.startsWith('http') ? nThumbRaw : `${base}${nThumbRaw}`) : '';
+              const nName = nStream
+                ? String(nextItem?.stationName || nextItem?.name || nextItem?.artist || 'Radio station').trim()
+                : String(nextItem?.artist || nextItem?.name || '').trim();
+              const nTitle = nStream ? '' : String(nextItem?.title || '').trim();
+              const nText = nTitle ? `${nName} • ${nTitle}` : nName;
+              hqNextUp.innerHTML = `${nThumb ? `<img src="${nThumb}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${nText || '(unknown)'}</div>`;
+            }
+          }
+
           const queueSig = JSON.stringify({
             state: String(j.playbackState || ''),
             count: items.length,
@@ -521,6 +556,9 @@
       const hqCrop = document.getElementById('heroQueueCrop');
       const hqSave = document.getElementById('heroQueueSavePresets');
       const hqWrap = document.getElementById('heroQueueWrap');
+      const hqNextUp = document.getElementById('heroQueueNextUp');
+      const hqActionsHead = document.getElementById('heroQueueActionsHead');
+      const hqArrowWrap = document.getElementById('heroQueueArrowKeysWrap');
 
       function markQueueRowActiveOptimistic(position){
         const wrap = document.getElementById('heroQueueWrap');
@@ -546,19 +584,33 @@
         el.textContent = msg ? `${base} · ${msg}` : base;
       }
       const HERO_QUEUE_COLLAPSED_KEY = 'nowplaying.app.heroQueueCollapsed';
+      let queueCollapsed = false;
+
+      function updateQueueCollapsedUi(){
+        if (hqWrap) hqWrap.style.display = queueCollapsed ? 'none' : '';
+        if (hqBtn) hqBtn.textContent = queueCollapsed ? 'Expand' : 'Collapse';
+        if (hqClear) hqClear.style.display = queueCollapsed ? 'none' : '';
+        if (hqCrop) hqCrop.style.display = queueCollapsed ? 'none' : '';
+        if (hqSave) hqSave.style.display = queueCollapsed ? 'none' : hqSave.style.display;
+        if (hqArrowWrap) hqArrowWrap.style.display = queueCollapsed ? 'none' : '';
+        if (hqNextUp) hqNextUp.style.display = queueCollapsed ? 'flex' : 'none';
+      }
+
       if (hqBtn && hqWrap) {
         let collapsed = false;
         try {
           const saved = String(localStorage.getItem(HERO_QUEUE_COLLAPSED_KEY) || '').trim().toLowerCase();
           collapsed = (saved === '1' || saved === 'true' || saved === 'yes' || saved === 'on');
         } catch {}
-        hqWrap.style.display = collapsed ? 'none' : '';
-        hqBtn.textContent = collapsed ? 'Expand' : 'Collapse';
+        queueCollapsed = collapsed;
+        updateQueueCollapsedUi();
+        updateSavePresetsButtonVisibility();
 
         hqBtn.addEventListener('click', () => {
           collapsed = !collapsed;
-          hqWrap.style.display = collapsed ? 'none' : '';
-          hqBtn.textContent = collapsed ? 'Expand' : 'Collapse';
+          queueCollapsed = collapsed;
+          updateQueueCollapsedUi();
+          updateSavePresetsButtonVisibility();
           try { localStorage.setItem(HERO_QUEUE_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch {}
         });
 
