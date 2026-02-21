@@ -146,17 +146,17 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
         const localScript = String(
           process.env.MOODE_PLAYLIST_COVER_SCRIPT || path.resolve(process.cwd(), 'scripts/moode-playlist-cover.sh')
         );
+        const moodeUser = String(MOODE_SSH_USER || 'moode');
+        const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+        const coverDir = String(process.env.MOODE_PLAYLIST_COVER_DIR || '/var/local/www/imagesw/playlist-covers');
 
         // Prefer promoting the exact preview image the user saw.
         const canPromotePreview = previewCoverBase64 && previewCoverMimeType.includes('jpeg');
         if (canPromotePreview) {
-          const moodeUser = String(MOODE_SSH_USER || 'moode');
-          const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
-          const coverDir = String(process.env.MOODE_PLAYLIST_COVER_DIR || '/var/local/www/imagesw/playlist-covers');
-          const safeName = safePlaylistName(playlistName);
+          const coverName = String(playlistName || '').trim();
           const localTmp = path.join('/tmp', `qw-preview-cover-${process.pid}-${Date.now()}.jpg`);
           const remoteTmp = `/tmp/qw-preview-cover-${process.pid}-${Date.now()}.jpg`;
-          const remoteDst = `${coverDir}/${safeName}.jpg`;
+          const remoteDst = `${coverDir}/${coverName}.jpg`;
 
           try {
             const imgBuf = Buffer.from(previewCoverBase64, 'base64');
@@ -203,6 +203,28 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
           } catch (e) {
             collageError = e?.message || String(e);
           }
+        }
+      }
+
+      // Ensure cover filename matches exact playlist name (spaces/case), even if fallback scripts used a sanitized filename.
+      if (playlistName && playlistSaved && collageGenerated) {
+        try {
+          const moodeUser = String(MOODE_SSH_USER || 'moode');
+          const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+          const coverDir = String(process.env.MOODE_PLAYLIST_COVER_DIR || '/var/local/www/imagesw/playlist-covers');
+          const exact = `${coverDir}/${String(playlistName || '').trim()}.jpg`;
+          const safe = `${coverDir}/${safePlaylistName(playlistName)}.jpg`;
+
+          const syncCmd = `bash -lc 'set -euo pipefail; mkdir -p -- ${JSON.stringify(coverDir)}; if [ ! -s ${JSON.stringify(exact)} ] && [ -s ${JSON.stringify(safe)} ]; then cp -f -- ${JSON.stringify(safe)} ${JSON.stringify(exact)}; fi; if [ -s ${JSON.stringify(exact)} ] && [ ! -s ${JSON.stringify(safe)} ]; then cp -f -- ${JSON.stringify(exact)} ${JSON.stringify(safe)}; fi; chmod 0644 -- ${JSON.stringify(exact)} ${JSON.stringify(safe)} >/dev/null 2>&1 || true'`;
+          const syncSudoCmd = `sudo -n ${syncCmd}`;
+
+          try {
+            await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, syncSudoCmd], { timeout: 20000 });
+          } catch {
+            await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, syncCmd], { timeout: 20000 });
+          }
+        } catch (e) {
+          if (!collageError) collageError = e?.message || String(e);
         }
       }
 
