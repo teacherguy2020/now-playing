@@ -1047,6 +1047,8 @@ function fetchNowPlaying() {
           setProgressVisibility(true);
           applyRatingFromNowPlaying(data);
           updateUI(data);
+          // Next-up in Alexa mode must come from /now-playing queue head.
+          updateNextUp({ isAirplay: false, isStream: false, data });
         } catch (e) {
           console.warn('[alexa forced repaint] failed:', e?.message || e);
         }
