@@ -8,13 +8,24 @@
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-    .viewWrap{max-width:1080px;width:min(1080px, calc(100vw - 24px));margin:0 auto;padding:2px 0 14px;box-sizing:border-box}
-    #appFrame{width:100% !important;height:1400px;min-height:0;border:1px solid #2a3a58;border-radius:14px;background:#071021;display:block;box-sizing:border-box}
-    #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
+    .viewWrap{max-width:1080px;width:min(1080px, calc(100vw - 24px));margin:0 auto;padding:0 0 14px;box-sizing:border-box}
+    .heroWrap{padding-top:4px !important;position:relative}
+    #appFrame{width:100% !important;height:1400px;min-height:0;border:1px solid #2a3a58;border-top:0;border-radius:0 0 14px 14px;background:#071021;display:block;box-sizing:border-box}
+    #themeToggle{min-width:40px;padding:6px 10px;font-size:15px;line-height:1}
     /* In app-shell mode, let top chrome scroll away (not sticky) to maximize iframe area */
-    .preHeroStatusWrap,
     .heroRail{position:relative !important; top:auto !important;}
     .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important;}
+    .heroRailTop{border:1px solid #2a3a58;border-bottom:0;border-radius:14px 14px 0 0;background:#0b1426;padding:6px 10px;box-sizing:border-box}
+    .heroTopBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0}
+    .heroTopBar .topTabs{margin:0 !important}
+    .heroTopBar .statusInline{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .heroTopBar .statusInline .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;line-height:1;font-size:12px}
+    .heroTopBar .statusInline .pill .hint{display:none}
+    .heroTopBar .themeBtnWrap{margin-left:auto}
+    .heroWrap > header{margin:0 0 4px}
+    .heroWrap > header .brand{display:flex !important;align-items:baseline;gap:8px;flex-wrap:nowrap}
+    .heroWrap > header h1{margin:0 !important;line-height:1.05;display:inline !important}
+    .heroWrap > header .sub{font-size:14px;line-height:1.05;opacity:.9;display:inline !important;white-space:nowrap}
     .heroQueueCard{margin-top:10px;border:1px solid #2a3a58;border-radius:14px;padding:10px;background:rgba(10,18,34,.45)}
     .heroQueueHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
     .heroQueueTitle{display:none}
@@ -51,6 +62,11 @@
     body.theme-light .heroQueueActions button:hover{background:#d7def4;border-color:rgba(137,138,196,.56);box-shadow:0 0 0 1px rgba(137,138,196,.26) inset}
     body.theme-light .heroQueueBtn:active,
     body.theme-light .heroQueueActions button:active{background:#c8d2f0;border-color:rgba(137,138,196,.62)}
+    body.theme-light .heroRailTop{background:rgba(236,229,247,.92);border-color:rgba(137,138,196,.46)}
+    body.theme-light .heroRailTop .topTabs a{background:#cbc0e6;color:#2f2a4f;border-color:rgba(137,138,196,.46)}
+    body.theme-light .heroRailTop .topTabs a.active,
+    body.theme-light .heroRailTop .topTabs a[aria-current="page"]{background:#b2a2dd;color:#1f1833;border-color:rgba(110,96,158,.58)}
+    body.theme-light .heroRailTop .pill{background:rgba(255,255,255,.66);color:#2f2a4f;border-color:rgba(137,138,196,.42)}
     body.theme-light .queueAlbumCard{background:rgba(233,226,246,.96);border-color:rgba(63,47,95,.30)}
     body.theme-light .queueAlbumClose,
     body.theme-light .queueAlbumTrackBtn,
@@ -87,35 +103,14 @@
   </style>
 </head>
 <body>
-  <div class="preHeroStatusWrap">
-    <div class="preHeroStatus">
-      <div class="pill" id="apiPill" title="Active API endpoint"><span class="dot" aria-hidden="true"></span>API: <span id="apiHint">loading…</span></div>
-      <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot" aria-hidden="true"></span>Web: <span id="webHint">loading…</span></div>
-      <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot" aria-hidden="true"></span>Alexa: <span id="alexaHint">unknown</span></div>
-      <div class="pill" id="moodePill" title="moOde host verification"><span class="dot" aria-hidden="true"></span>moOde: <span id="moodeHint">unknown</span></div>
-    </div>
-  </div>
-
   <div class="heroRail">
     <div class="heroWrap">
-      <div style="display:flex;gap:10px;justify-content:flex-start;align-items:flex-end;flex-wrap:wrap;">
-        <nav class="topTabs" aria-label="Main pages" style="margin-bottom:0;" id="appTabs">
-          <a href="?page=config.html" data-page="config.html">Config</a>
-          <a href="?page=diagnostics.html" data-page="diagnostics.html">Diagnostics</a>
-          <a href="?page=alexa.html" data-page="alexa.html">Alexa</a>
-          <a href="?page=library-health.html" data-page="library-health.html">Library Health</a>
-          <a href="?page=queue-wizard.html" data-page="queue-wizard.html">Queue Wizard</a>
-          <a href="?page=radio.html" data-page="radio.html">Radio</a>
-          <a href="?page=podcasts.html" id="podcastsNavLink" data-page="podcasts.html">Podcasts</a>
-        </nav>
-        <button id="themeToggle" class="heroThemeToggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme" style="position:absolute;top:12px;right:16px;z-index:12;">🌙</button>
-      </div>
       <header>
-        <div class="brand">
-          <h1>Now Playing</h1>
-          <div class="sub">moOde enhancement dashboard</div>
+        <div class="brand" style="display:block;">
+          <h1 style="margin:0;line-height:1.05;white-space:nowrap;">Now Playing <span style="font-size:14px;font-weight:500;opacity:.9;">moOde enhancement dashboard</span></h1>
         </div>
       </header>
+      <button id="themeToggle" class="heroThemeToggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme" style="position:absolute;top:8px;right:12px;z-index:12;">🌙</button>
       <div class="heroTransportRow">
         <div id="heroTransport" class="heroTransport"><span class="muted">Now Playing · loading…</span></div>
       </div>
@@ -142,6 +137,25 @@
   </div>
 
   <div class="viewWrap" id="viewWrap">
+    <div class="heroRailTop">
+      <div class="heroTopBar">
+        <nav class="topTabs" aria-label="Main pages" id="appTabs">
+          <a href="?page=config.html" data-page="config.html">Config</a>
+          <a href="?page=diagnostics.html" data-page="diagnostics.html">Diagnostics</a>
+          <a href="?page=alexa.html" data-page="alexa.html">Alexa</a>
+          <a href="?page=library-health.html" data-page="library-health.html">Library Health</a>
+          <a href="?page=queue-wizard.html" data-page="queue-wizard.html">Queue Wizard</a>
+          <a href="?page=radio.html" data-page="radio.html">Radio</a>
+          <a href="?page=podcasts.html" id="podcastsNavLink" data-page="podcasts.html">Podcasts</a>
+        </nav>
+        <div class="statusInline" aria-label="status pills">
+          <div class="pill" id="apiPill" title="Active API endpoint"><span class="dot" aria-hidden="true"></span>API<span class="hint" id="apiHint">loading…</span></div>
+          <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></div>
+          <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot" aria-hidden="true"></span>Alexa<span class="hint" id="alexaHint">unknown</span></div>
+          <div class="pill" id="moodePill" title="moOde host verification"><span class="dot" aria-hidden="true"></span>moOde<span class="hint" id="moodeHint">unknown</span></div>
+        </div>
+      </div>
+    </div>
     <iframe id="appFrame" title="Now Playing view" src="about:blank" scrolling="no" style="width:100%;display:block;"></iframe>
   </div>
 
