@@ -10,7 +10,7 @@ body {
 
   background: transparent;
   color: #fff;
-  font-family: 'Inter', sans-serif;
+  font-family: "SF Pro Text", "SF Pro Display", "Geist", "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
   position: relative;
 }

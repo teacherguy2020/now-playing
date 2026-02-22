@@ -329,11 +329,13 @@
     displayArtist = expandInstrumentAbbrevs(displayArtist);
     displayTitle = expandInstrumentAbbrevs(displayTitle);
 
-    const text = (displayArtist || displayTitle)
-      ? `${displayArtist}${displayArtist && displayTitle ? ' • ' : ''}${displayTitle}`
-      : 'Nothing playing';
     const appleUrl = String(np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
     const isPodcast = !!np?.isPodcast;
+    const text = isPodcast
+      ? (displayTitle || displayArtist || 'Nothing playing')
+      : ((displayArtist || displayTitle)
+        ? `${displayArtist}${displayArtist && displayTitle ? ' • ' : ''}${displayTitle}`
+        : 'Nothing playing');
     const isLibraryTrack = ((!np?.isStream && !np?.isRadio && !isPodcast) || isAlexaMode);
     const modalAlbum = String(np?.album || head?.album || '').trim();
     const modalArtist = String(np?.artist || head?.artist || '').trim();

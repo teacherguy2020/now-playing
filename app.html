@@ -4,14 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Now Playing</title>
-  <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260222-transportglass1" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
-    body{background:#0c1526;color:#e7eefc;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    body{background:#0c1526;color:#e7eefc;margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
     .viewWrap{max-width:1080px;width:min(1080px, calc(100vw - 24px));margin:0 auto;padding:0 0 14px;box-sizing:border-box}
     .heroWrap{padding-top:4px !important;position:relative}
     #appFrame{width:100% !important;height:1400px;min-height:0;border:1px solid #2a3a58;border-top:0;border-radius:0 0 14px 14px;background:#071021;display:block;box-sizing:border-box}
-    #themeToggle{min-width:40px;padding:6px 10px;font-size:15px;line-height:1}
+    #themeToggle{min-width:32px;padding:5px 8px;font-size:12px;line-height:1}
     /* In app-shell mode, let top chrome scroll away (not sticky) to maximize iframe area */
     .heroRail{position:relative !important; top:auto !important;}
     .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important;}
@@ -51,7 +51,12 @@
     body.theme-light #appFrame{background:rgba(233,226,246,.78);border-color:rgba(63,47,95,.28)}
     body.theme-light .heroQueueCard{background:rgba(255,242,224,.52);border-color:rgba(137,138,196,.42)}
     body.theme-light .heroQueueWrap,
-    body.theme-light .heroQueueNextUp{background:rgba(255,255,255,.70);border-color:rgba(137,138,196,.42)}
+    body.theme-light .heroQueueNextUp{
+      background:rgba(255,255,255,.38);
+      border-color:rgba(137,138,196,.34);
+      backdrop-filter: blur(16px) saturate(1.16);
+      -webkit-backdrop-filter: blur(16px) saturate(1.16);
+    }
     body.theme-light .heroQueueTitle,
     body.theme-light .heroQueueMeta{color:#3b3260}
     body.theme-light .heroQueueRow{border-bottom-color:rgba(137,138,196,.35)}
@@ -100,6 +105,68 @@
     .queueArtistAlbumBtn{border:1px solid #2a3a58;background:#0a1222;border-radius:10px;padding:8px;color:#eaf3ff;cursor:pointer;text-align:left}
     .queueArtistAlbumBtn img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;border:1px solid #334;background:#071021;margin-bottom:6px}
     .queueArtistAlbumName{font-size:13px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+    /* Liquid glass pass (hero) */
+    .heroWrap{
+      background:linear-gradient(180deg, rgba(15,24,42,.62), rgba(10,18,34,.48)) !important;
+      border:1px solid rgba(173,216,255,.22) !important;
+      box-shadow:
+        0 10px 30px rgba(0,0,0,.30),
+        inset 0 1px 0 rgba(255,255,255,.18),
+        inset 0 -1px 0 rgba(125,211,252,.12) !important;
+      backdrop-filter: blur(18px) saturate(1.18);
+      -webkit-backdrop-filter: blur(18px) saturate(1.18);
+    }
+    .heroTransport,
+    .heroQueueCard{
+      background:linear-gradient(180deg, rgba(18,32,58,.34), rgba(10,20,40,.24)) !important;
+      border:1px solid rgba(191,219,254,.30) !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.20),
+        inset 0 -1px 0 rgba(125,211,252,.14),
+        0 14px 34px rgba(2,8,20,.26) !important;
+      backdrop-filter: blur(18px) saturate(1.22) brightness(1.05);
+      -webkit-backdrop-filter: blur(18px) saturate(1.22) brightness(1.05);
+    }
+    .heroTransport{position:relative;overflow:hidden}
+    .heroTransport::before,
+    .heroQueueCard::before{
+      content:'';
+      position:absolute;
+      left:10px; right:10px; top:6px; height:20px;
+      border-radius:12px;
+      background:linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,0));
+      pointer-events:none;
+    }
+    .heroWrap::before{
+      content:'';position:absolute;left:12px;right:12px;top:6px;height:22px;
+      border-radius:14px;
+      background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0));
+      pointer-events:none;
+    }
+    body.theme-light .heroWrap{
+      background:linear-gradient(180deg, rgba(255,255,255,.44), rgba(234,221,250,.34)) !important;
+      border-color:rgba(138,139,196,.38) !important;
+      box-shadow:0 12px 28px rgba(77,54,124,.18), inset 0 1px 0 rgba(255,255,255,.92) !important;
+      backdrop-filter: blur(20px) saturate(1.22) contrast(1.03);
+      -webkit-backdrop-filter: blur(20px) saturate(1.22) contrast(1.03);
+    }
+    body.theme-light .heroTransport,
+    body.theme-light .heroQueueCard{
+      background:linear-gradient(180deg, rgba(255,255,255,.30), rgba(222,201,246,.20)) !important;
+      border-color:rgba(98,78,156,.44) !important;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.98),
+        inset 0 -1px 0 rgba(124,58,237,.20),
+        0 18px 36px rgba(70,44,122,.24),
+        0 0 0 1px rgba(255,255,255,.26) !important;
+      backdrop-filter: blur(28px) saturate(1.36) contrast(1.06) brightness(1.03);
+      -webkit-backdrop-filter: blur(28px) saturate(1.36) contrast(1.06) brightness(1.03);
+    }
+    body.theme-light .heroTransport::before,
+    body.theme-light .heroQueueCard::before{
+      background:linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,0));
+    }
   </style>
 </head>
 <body>
@@ -107,7 +174,7 @@
     <div class="heroWrap">
       <header>
         <div class="brand" style="display:block;">
-          <h1 style="margin:0;line-height:1.05;white-space:nowrap;">Now Playing <span style="font-size:14px;font-weight:500;opacity:.9;">moOde enhancement dashboard</span></h1>
+          <h1 style="margin:0;line-height:1.05;white-space:nowrap;font-size:18px;font-weight:620;letter-spacing:-0.012em;">Now Playing <span style="font-size:13px;font-weight:520;opacity:.86;letter-spacing:0;">moOde enhancement dashboard</span></h1>
         </div>
       </header>
       <button id="themeToggle" class="heroThemeToggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme" style="position:absolute;top:8px;right:12px;z-index:12;">🌙</button>
@@ -169,7 +236,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260221-011"></script>
+  <script src="scripts/hero-transport.js?v=20260222-podcastline1"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -678,16 +745,19 @@
               : `<img loading="lazy" decoding="async" fetchpriority="low" src="${stationLogoByDisplay || stationLogoByDisplayAlt || stationLogoByFile || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
             const actions = `<div class="heroQueueActions"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
             const albumTxt = String(x?.album || '').trim();
+            const isPodcastItem = !!x?.isPodcast || /\/(podcasts?|podcast)\//i.test(fileRaw);
             const rating = Math.max(0, Math.min(5, Number(x?.rating || 0)));
-            const starsInline = isStreamish
+            const starsInline = (isStreamish || isPodcastItem)
               ? ''
               : `<span style="margin-left:8px;letter-spacing:1px;font-size:14px;white-space:nowrap;">${'<span style="color:#fbbf24;">★</span>'.repeat(rating)}${'<span style="color:#64748b;">★</span>'.repeat(5 - rating)}</span>`;
             const line1 = isStreamish ? (artist || '(station)') : (title || '(unknown title)');
             const line2 = isStreamish
               ? ''
-              : (albumTxt
-                ? `<div class="heroQueueMeta">${artist || '(unknown artist)'} • <button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(albumTxt)}" data-queue-artist="${encodeURIComponent(artist)}" data-queue-title="${encodeURIComponent(title)}" data-queue-art="${encodeURIComponent(thumb || '')}">${albumTxt}</button></div>`
-                : `<div class="heroQueueMeta">${artist || '(unknown artist)'}</div>`);
+              : (isPodcastItem
+                ? `<div class="heroQueueMeta">${artist || '(unknown show)'}</div>`
+                : (albumTxt
+                  ? `<div class="heroQueueMeta">${artist || '(unknown artist)'} • <button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(albumTxt)}" data-queue-artist="${encodeURIComponent(artist)}" data-queue-title="${encodeURIComponent(title)}" data-queue-art="${encodeURIComponent(thumb || '')}">${albumTxt}</button></div>`
+                  : `<div class="heroQueueMeta">${artist || '(unknown artist)'}</div>`));
             const headRowStyle = head
               ? (isAlexaMode
                   ? 'background:rgba(56,189,248,.14);border-radius:8px;border:1px dashed rgba(125,211,252,.35);'

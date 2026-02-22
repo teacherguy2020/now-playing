@@ -71,8 +71,9 @@
     border-radius:12px 12px 0 0;
     clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 100%, 0 100%);
     padding:7px 16px;
-    font-size:12px;
-    font-weight:650;
+    font-size:14px;
+    font-weight:600;
+    letter-spacing:-0.01em;
     margin-left:-6px;
     margin-bottom:-1px;
     box-shadow:0 -1px 0 #4a5a78 inset;
@@ -869,7 +870,8 @@ body.theme-light .preHeroStatusWrap{margin-top:24px}
 .heroTransport .heroRateStar.on{color:#fbbf24 !important}
 .heroTransport .heroRateStar.off{color:#5b6780 !important}
 .heroTransport .heroRateStar:hover{filter:brightness(1.12)}
-.heroTransport .tbtn{width:52px;height:52px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.18);color:#eef;display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer}
+.heroTransport .tbtn{width:52px;height:52px;border-radius:999px;border:1px solid rgba(191,219,254,.34);background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(180,210,255,.14));color:#eef;display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer;position:relative;overflow:hidden;backdrop-filter:blur(12px) saturate(1.2);-webkit-backdrop-filter:blur(12px) saturate(1.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(125,211,252,.10),0 6px 16px rgba(2,8,20,.22)}
+.heroTransport .tbtn::before{content:'';position:absolute;inset:6px;border-radius:50%;background:radial-gradient(120% 70% at 50% 0%,rgba(255,255,255,.34),rgba(255,255,255,0) 62%);pointer-events:none}
 .heroTransport .tbtn.tbtnBig{width:64px;height:64px}
 .heroTransport .tbtn.tbtnNear{width:50px;height:50px}
 .heroTransport .tbtn.tbtnFar{width:47px;height:47px}
@@ -878,12 +880,12 @@ body.theme-light .preHeroStatusWrap{margin-top:24px}
 .heroTransport .tbtn.tbtnBig svg{width:34px;height:34px}
 .heroTransport .tbtn.tbtnNear svg{width:26px;height:26px}
 .heroTransport .tbtn.tbtnFar svg{width:24px;height:24px}
-.heroTransport .tbtn.on{color:#22c55e;box-shadow:0 0 0 1px rgba(34,197,94,.35) inset}
+.heroTransport .tbtn.on{color:#22c55e;box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 0 0 1px rgba(34,197,94,.30) inset,0 6px 16px rgba(2,8,20,.22)}
 .heroTransport .tbtn.tbtnBig{position:relative}
-.heroTransport .tbtn.tbtnBig.on{border-color:rgba(34,197,94,.20);box-shadow:none}
+.heroTransport .tbtn.tbtnBig.on{border-color:rgba(34,197,94,.28)}
 .heroTransport .tbtn.tbtnBig.on::after{content:'';position:absolute;inset:-3px;border-radius:999px;pointer-events:none;background:conic-gradient(from 0deg,rgba(34,197,94,.20),rgba(34,197,94,.85),rgba(34,197,94,.20));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 2px));animation:heroPlaySpin 5.6s linear infinite;animation-delay:var(--spin-delay,0ms)}
 @keyframes heroPlaySpin{to{transform:rotate(360deg)}}
-.heroTransport .tbtn:hover{background:rgba(255,255,255,.28);border-color:rgba(255,255,255,.34);box-shadow:0 0 0 1px rgba(125,211,252,.28) inset}
+.heroTransport .tbtn:hover{background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(180,210,255,.20));border-color:rgba(191,219,254,.46);box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 0 0 1px rgba(125,211,252,.26) inset,0 8px 18px rgba(2,8,20,.24)}
 .heroTransport .tbtn:active{transform:scale(.95)}
 
 /* Clickable queue-row hover affordance */
@@ -895,7 +897,7 @@ body.theme-light #queueWrap [data-queue-play-pos]:hover,
 body.theme-light #results [data-queue-play-pos]:hover{background:rgba(137,138,196,.18) !important;box-shadow:0 0 0 1px rgba(137,138,196,.36) inset}
 
 .heroTransport .np{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;width:100%}
-.heroTransport .np .txt{min-width:0;font-size:20px;font-weight:600;white-space:normal;overflow:hidden;text-overflow:ellipsis;color:#dbe6ff;max-width:min(100%,calc(100% - 140px));text-align:center;order:1;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.heroTransport .np .txt{min-width:0;font-size:18px;font-weight:600;letter-spacing:-0.012em;white-space:normal;overflow:hidden;text-overflow:ellipsis;color:#dbe6ff;max-width:min(100%,calc(100% - 140px));text-align:center;order:1;line-height:1.16;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .heroTransport .np .heroRating{order:2}
 .heroTransport .np .heroSubline{order:2;font-size:16px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .heroTransport .np .heroTransportControls{order:3}
@@ -912,10 +914,11 @@ body.theme-light #results [data-queue-play-pos]:hover{background:rgba(137,138,19
   .heroTransport .np .progress-bar-wrapper:hover .progress-tip{opacity:.95}
 }
 body.theme-light .heroTransport{background:rgba(255,255,255,.72);border-color:rgba(63,47,95,.34)}
-body.theme-light .heroTransport .tbtn{background:#c0c9ee !important;color:#2b2341;border-color:rgba(137,138,196,.42) !important}
-body.theme-light .heroTransport .tbtn.on{color:#16a34a !important;border-color:rgba(22,163,74,.75) !important;box-shadow:0 0 0 1px rgba(22,163,74,.26) inset !important}
+body.theme-light .heroTransport .tbtn{background:linear-gradient(180deg,rgba(255,255,255,.58),rgba(214,195,242,.36)) !important;color:#2b2341;border-color:rgba(108,93,165,.52) !important;backdrop-filter:blur(14px) saturate(1.22);-webkit-backdrop-filter:blur(14px) saturate(1.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.96),inset 0 -1px 0 rgba(120,101,176,.20),0 8px 18px rgba(74,52,124,.22) !important}
+body.theme-light .heroTransport .tbtn::before{background:radial-gradient(120% 70% at 50% 0%,rgba(255,255,255,.62),rgba(255,255,255,0) 62%)}
+body.theme-light .heroTransport .tbtn.on{color:#16a34a !important;border-color:rgba(22,163,74,.68) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 0 0 1px rgba(22,163,74,.28) inset,0 8px 18px rgba(74,52,124,.22) !important}
 body.theme-light .heroTransport .tbtn.on svg{fill:#16a34a !important}
-body.theme-light .heroTransport .tbtn:hover{background:#d7def4 !important;border-color:rgba(137,138,196,.58) !important;box-shadow:0 0 0 1px rgba(137,138,196,.26) inset}
+body.theme-light .heroTransport .tbtn:hover{background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(222,205,246,.44)) !important;border-color:rgba(108,93,165,.66) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.98),0 0 0 1px rgba(108,93,165,.26) inset,0 10px 20px rgba(74,52,124,.24) !important}
 body.theme-light .heroTransport .np .txt{color:#2a2140}
 body.theme-light .heroTransport .np .heroSubline{color:#4b3e6f}
 body.theme-light .heroTransport .np .progress-bar-wrapper{background:rgba(137,138,196,.30)}
