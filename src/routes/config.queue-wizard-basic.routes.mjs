@@ -8,6 +8,11 @@ const execFileP = promisify(execFile);
 const RADIO_DB_SEP = '__NPSEP__';
 const RADIO_PRESETS_PATH = path.resolve(process.cwd(), 'data/radio-queue-presets.json');
 
+const OPTIONS_CACHE_TTL_MS = 30_000;
+const PLAYLISTS_CACHE_TTL_MS = 45_000;
+let optionsCache = { ts: 0, host: '', payload: null, inflight: null };
+let playlistsCache = { ts: 0, host: '', payload: null, inflight: null };
+
 function sqlQuoteLike(v = '') {
   const s = String(v || '').replace(/'/g, "''");
   return `'%${s}%'`;
@@ -77,55 +82,74 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
       const mpdHost = String(MPD_HOST || '10.0.0.254');
-      const fmt = '%artist%\t%albumartist%\t%album%\t%genre%';
-      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
-        maxBuffer: 64 * 1024 * 1024,
-      });
-
-      const artists = new Set();
-      const albumArtistByName = new Map();
-      const genres = new Set();
-
-      for (const ln of String(stdout || '').split(/\r?\n/)) {
-        if (!ln) continue;
-        const [artist = '', albumArtist = '', album = '', genreRaw = ''] = ln.split('\t');
-
-        const a = String(artist || albumArtist || '').trim();
-        if (a) artists.add(a);
-
-        const alb = String(album || '').trim();
-        if (alb && !albumArtistByName.has(alb)) albumArtistByName.set(alb, a);
-
-        for (const g of String(genreRaw || '')
-          .split(/[;,|/]/)
-          .map((x) => String(x || '').trim())
-          .filter(Boolean)) {
-          genres.add(g);
-        }
+      const now = Date.now();
+      if (optionsCache.payload && optionsCache.host === mpdHost && (now - optionsCache.ts) < OPTIONS_CACHE_TTL_MS) {
+        return res.json(optionsCache.payload);
+      }
+      if (optionsCache.inflight && optionsCache.host === mpdHost) {
+        const payload = await optionsCache.inflight;
+        return res.json(payload);
       }
 
-      const albums = Array.from(albumArtistByName.entries())
-        .map(([albumName, artistName]) => ({
-          value: String(albumName || ''),
-          label: artistName ? `${String(artistName)} — ${String(albumName)}` : String(albumName || ''),
-          sortArtist: String(artistName || '').toLowerCase(),
-          sortAlbum: String(albumName || '').toLowerCase(),
-        }))
-        .sort((a, b) => {
-          const aa = a.sortArtist.localeCompare(b.sortArtist, undefined, { sensitivity: 'base' });
-          if (aa !== 0) return aa;
-          return a.sortAlbum.localeCompare(b.sortAlbum, undefined, { sensitivity: 'base' });
-        })
-        .map(({ value, label }) => ({ value, label }));
+      optionsCache.host = mpdHost;
+      optionsCache.inflight = (async () => {
+        const fmt = '%artist%\t%albumartist%\t%album%\t%genre%';
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
+          maxBuffer: 64 * 1024 * 1024,
+        });
 
-      return res.json({
-        ok: true,
-        moodeHost: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
-        genres: Array.from(genres).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
-        artists: Array.from(artists).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
-        albums,
-      });
+        const artists = new Set();
+        const albumArtistByName = new Map();
+        const genres = new Set();
+
+        for (const ln of String(stdout || '').split(/\r?\n/)) {
+          if (!ln) continue;
+          const [artist = '', albumArtist = '', album = '', genreRaw = ''] = ln.split('\t');
+
+          const a = String(artist || albumArtist || '').trim();
+          if (a) artists.add(a);
+
+          const alb = String(album || '').trim();
+          if (alb && !albumArtistByName.has(alb)) albumArtistByName.set(alb, a);
+
+          for (const g of String(genreRaw || '')
+            .split(/[;,|/]/)
+            .map((x) => String(x || '').trim())
+            .filter(Boolean)) {
+            genres.add(g);
+          }
+        }
+
+        const albums = Array.from(albumArtistByName.entries())
+          .map(([albumName, artistName]) => ({
+            value: String(albumName || ''),
+            label: artistName ? `${String(artistName)} — ${String(albumName)}` : String(albumName || ''),
+            sortArtist: String(artistName || '').toLowerCase(),
+            sortAlbum: String(albumName || '').toLowerCase(),
+          }))
+          .sort((a, b) => {
+            const aa = a.sortArtist.localeCompare(b.sortArtist, undefined, { sensitivity: 'base' });
+            if (aa !== 0) return aa;
+            return a.sortAlbum.localeCompare(b.sortAlbum, undefined, { sensitivity: 'base' });
+          })
+          .map(({ value, label }) => ({ value, label }));
+
+        return {
+          ok: true,
+          moodeHost: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
+          genres: Array.from(genres).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+          artists: Array.from(artists).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+          albums,
+        };
+      })();
+
+      const payload = await optionsCache.inflight;
+      optionsCache.payload = payload;
+      optionsCache.ts = Date.now();
+      optionsCache.inflight = null;
+      return res.json(payload);
     } catch (e) {
+      optionsCache.inflight = null;
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });
@@ -134,35 +158,54 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
       const mpdHost = String(MPD_HOST || '10.0.0.254');
-      const { stdout } = await execFileP('mpc', ['-h', mpdHost, 'lsplaylists']);
-      const isPodcastName = (name) => /podcast/i.test(String(name || ''));
-      const isPodcastFile = (f) => {
-        const s = String(f || '').toLowerCase();
-        return /\/podcasts?\//.test(s) || /\bpodcast\b/.test(s);
-      };
-
-      const names = String(stdout || '')
-        .split(/\r?\n/)
-        .map((x) => String(x || '').trim())
-        .filter(Boolean);
-
-      const kept = [];
-      for (const name of names) {
-        if (isPodcastName(name)) continue;
-        let skip = false;
-        try {
-          const r = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'playlist', name], { maxBuffer: 8 * 1024 * 1024 });
-          const files = String(r?.stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
-          if (files.length && files.every((f) => isPodcastFile(f))) skip = true;
-        } catch (_) {
-          // if inspection fails, keep name rather than hiding unexpectedly
-        }
-        if (!skip) kept.push(name);
+      const now = Date.now();
+      if (playlistsCache.payload && playlistsCache.host === mpdHost && (now - playlistsCache.ts) < PLAYLISTS_CACHE_TTL_MS) {
+        return res.json(playlistsCache.payload);
+      }
+      if (playlistsCache.inflight && playlistsCache.host === mpdHost) {
+        const payload = await playlistsCache.inflight;
+        return res.json(payload);
       }
 
-      const playlists = kept.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-      return res.json({ ok: true, count: playlists.length, playlists });
+      playlistsCache.host = mpdHost;
+      playlistsCache.inflight = (async () => {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, 'lsplaylists']);
+        const isPodcastName = (name) => /podcast/i.test(String(name || ''));
+        const isPodcastFile = (f) => {
+          const s = String(f || '').toLowerCase();
+          return /\/podcasts?\//.test(s) || /\bpodcast\b/.test(s);
+        };
+
+        const names = String(stdout || '')
+          .split(/\r?\n/)
+          .map((x) => String(x || '').trim())
+          .filter(Boolean);
+
+        const kept = [];
+        for (const name of names) {
+          if (isPodcastName(name)) continue;
+          let skip = false;
+          try {
+            const r = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'playlist', name], { maxBuffer: 8 * 1024 * 1024 });
+            const files = String(r?.stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
+            if (files.length && files.every((f) => isPodcastFile(f))) skip = true;
+          } catch (_) {
+            // if inspection fails, keep name rather than hiding unexpectedly
+          }
+          if (!skip) kept.push(name);
+        }
+
+        const playlists = kept.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+        return { ok: true, count: playlists.length, playlists };
+      })();
+
+      const payload = await playlistsCache.inflight;
+      playlistsCache.payload = payload;
+      playlistsCache.ts = Date.now();
+      playlistsCache.inflight = null;
+      return res.json(payload);
     } catch (e) {
+      playlistsCache.inflight = null;
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });
@@ -200,6 +243,8 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       if (!playlist) return res.status(400).json({ ok: false, error: 'playlist is required' });
 
       await execFileP('mpc', ['-h', mpdHost, 'rm', playlist]);
+      playlistsCache.ts = 0;
+      playlistsCache.payload = null;
       return res.json({ ok: true, deleted: playlist });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
