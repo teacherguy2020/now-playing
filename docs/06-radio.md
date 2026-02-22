@@ -2,19 +2,27 @@
 
 ![Radio tab](./images/06-radio.jpg)
 
-Radio tab focuses on station browsing, favorites, and queue submission.
+Use this page to browse stations and queue them to moOde.
 
-## Features
-- filter by genre
-- favorite stations with ♥
-- quality filters (favorites-only, HQ-only)
-- presets load/send flow
+## What this page is for
+- Filtering stations by genre/search
+- Managing favorites
+- Sending selected stations to queue
 
-## Queue interactions
-- replace queue vs append
-- optional crop behavior
-- send selected stations to moOde in one action
+## What the main controls do
+- **Refresh list**: reload station catalog.
+- **Select all shown / Clear selection**: bulk selection helpers.
+- **Replace queue / Append**: queue mode.
+- **Crop queue**: trim queue before send.
+- **Send selected to moOde**: push selected stations.
+- **♥**: mark/unmark favorite station.
+- **▶ / +**: quick play or quick add actions.
 
-## UX details
-- station rows expose quick add/play actions
-- badges indicate quality tiers (HQ/lossless where applicable)
+## Common tasks
+### Queue a few favorite stations
+1. Enable Favorites-only (optional)
+2. Select stations
+3. Send selected to moOde
+
+### Save and reuse station sets
+- Use presets controls to load known groups quickly

@@ -2,25 +2,31 @@
 
 ![Config tab](./images/01-config.jpg)
 
-The Config tab is the control plane for runtime behavior. Most support issues eventually trace back to values set here.
+Use this page to set up how the app connects to your system.
 
-## What this tab controls
-- API/web endpoint wiring
-- moOde and MPD connectivity
-- feature toggles (Alexa, animated art, etc.)
-- maintenance knobs (podcasts, library, ratings)
+## What this page is for
+- Telling the app where moOde and MPD live
+- Turning features on/off (Alexa, podcasts, notifications, animated art)
+- Saving runtime settings
 
-## Key sections
-- **Network & Runtime**: host/port/base URL fields used by API and shell.
-- **Public domain / Alexa**: domain and integration toggles used for external Alexa requests.
-- **Ratings + Artwork**: enable/disable metadata enrichment and artwork strategy.
-- **Persistence**: values saved to `config/now-playing.config.json`.
+## What the main controls do
+- **Save settings / Save configuration**: writes your changes to config.
+- **Check SSH + Paths**: tests your SSH/path setup so jobs can run correctly.
+- **Reload**: reloads current config values from disk.
 
-## Typical workflows
-1. Set `trackKey`, MPD host/port, and moOde host.
-2. Save, then run any built-in connectivity checks.
-3. Restart `api` if core host settings change.
+## Common tasks
+### First-time setup
+1. Enter MPD host/port and web/API ports.
+2. Enter moOde host/base URL.
+3. Set your `trackKey`.
+4. Click **Check SSH + Paths**.
+5. Save settings.
 
-## Troubleshooting hints
-- If shell badges are red/unknown, re-check host fields here first.
-- If Alexa mode never activates, verify Alexa fields and public domain match this runtime config.
+### Turn features on/off
+- Toggle feature checkboxes (Alexa, podcasts, etc.)
+- Save settings
+
+## If something looks wrong
+- API/Web badges wrong? Re-check host/port fields here.
+- Alexa not behaving? Re-check Alexa/domain fields and save.
+- Changes not taking effect? Restart API/webserver.

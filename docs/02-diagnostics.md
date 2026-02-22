@@ -2,21 +2,30 @@
 
 ![Diagnostics tab](./images/02-diagnostics.jpg)
 
-Diagnostics is your live observability and endpoint test bench.
+Use this page to test endpoints and see live JSON/output quickly.
 
-## What it does
-- lets you hit API endpoints quickly
-- shows live `index.html` rendering inside the shell
-- helps confirm parity between shell hero/queue and display view
+## What this page is for
+- Running API calls by hand
+- Copying responses/curl commands
+- Comparing shell view with embedded `index.html`
 
-## Main areas
-- **Endpoint runner**: choose method/path and run request with optional `x-track-key`.
-- **Copy helpers**: copy as curl / copy response for debugging.
-- **Live view panel**: embeds `index.html` for visual validation.
+## What the main controls do
+- **Endpoint / Method / Path**: choose what request to run.
+- **Run request**: executes the request.
+- **Copy as curl**: copies a terminal-ready curl command.
+- **Copy response**: copies the latest JSON result.
+- **send x-track-key**: includes auth key on requests that need it.
 
-## Why it matters
-This is the fastest place to catch drift (for example, Next-up mismatch or Alexa mode status mismatch) without opening multiple tools.
+## Common tasks
+### Check now-playing quickly
+1. Set path to `/now-playing`
+2. Click **Run request**
+3. Review JSON in the response panel
 
-## Good practices
-- Keep one known-good request preset for `/now-playing`.
-- Use this tab immediately after deploy/restart to verify runtime health.
+### Check queue state
+1. Set path to `/config/diagnostics/queue`
+2. Run request
+3. Look at `headPos`, `items`, `randomOn`
+
+## Tip
+This is the best page for troubleshooting before changing code.

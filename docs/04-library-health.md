@@ -2,17 +2,27 @@
 
 ![Library Health tab](./images/04-library-health.jpg)
 
-Library Health gives a metadata quality dashboard and repair actions.
+Use this page to audit and clean your music metadata.
 
-## What you can inspect
-- track totals, rating distribution, genre distribution
-- missing or inconsistent metadata classes
-- artwork and animated-art candidate coverage
+## What this page is for
+- Spotting missing/inconsistent metadata
+- Seeing rating and genre distribution
+- Running cleanup actions
 
-## Typical actions
-- normalize genres
-- fix artist/album metadata drift
-- run targeted cleanup tasks from sampled rows
+## What the main controls do
+- **Inspector / sample sections**: show problem rows to review.
+- **Apply / update buttons**: run targeted fixes.
+- **Charts**: quick health view of ratings/genres.
 
-## Why this tab exists
-Queue quality and recommendations depend heavily on clean metadata. This tab keeps the music corpus healthy over time.
+## Common tasks
+### Clean genre issues
+1. Review genre samples
+2. Pick replacement/normalization
+3. Apply to checked items
+
+### Check rating coverage
+- Use rating distribution chart to spot unrated tracks
+- Run rating-related maintenance actions
+
+## Tip
+Do small batches first, then verify results before broad changes.

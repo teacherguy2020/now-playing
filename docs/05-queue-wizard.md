@@ -2,21 +2,32 @@
 
 ![Queue Wizard tab](./images/05-queue-wizard.jpg)
 
-Queue Wizard is the composition engine for curated or generated queues.
+Use this page to build and send queues fast.
 
-## Builders
-- **Playlists Queue Builder**: select existing playlists and send to moOde.
-- **Filter Queue Builder**: constrain by genres/artists/albums/exclusions.
-- **Vibe Queue Builder**: generate from now-playing context (Last.fm-assisted flow).
+## What this page is for
+- Building queue from playlists
+- Building queue from filters (genre/artist/album)
+- Building vibe queues from current track context
 
-## Modes and toggles
-- Replace vs Add
-- Crop queue
-- Random (selection behavior)
+## What the main controls do
+- **Replace Queue / Add to Queue**: choose how to send results.
+- **Crop Queue**: trim existing queue before sending.
+- **Random**: random playback mode behavior (does not reorder items).
+- **Send queue to moOde**: applies current selection.
+- **Save playlist**: stores generated set as playlist.
 
-## Output
-- send directly to moOde queue
-- save generated set as playlist (+ optional cover flow in related paths)
+## Common tasks
+### Build from existing playlists
+1. Select playlist cards
+2. Choose replace/add mode
+3. Click **Send queue to moOde**
 
-## Usage tip
-Treat this tab as "batch intent" and keep transport controls in hero for immediate playback tweaks.
+### Build a filtered queue
+1. Set max tracks + rating
+2. Pick genre/artist/album filters
+3. Send queue
+
+### Build a vibe queue
+1. Click **Build vibe queue from now playing**
+2. Review
+3. Send to moOde
