@@ -270,6 +270,9 @@
     const prevVid = el.querySelector('.heroArtVid');
     const prevVidSrc = prevVid ? String(prevVid.currentSrc || prevVid.src || '').trim() : '';
     const prevVidTime = prevVid ? Number(prevVid.currentTime || 0) : 0;
+    const prevArtNode = el.querySelector('.heroArt');
+    const prevArtMedia = prevArtNode?.querySelector?.('video.heroArtVid, img:not(.heroArtFallback)');
+    const prevArtSrc = prevArtMedia ? canonicalMediaSrc(String(prevArtMedia.currentSrc || prevArtMedia.src || '').trim()) : '';
 
     const items = Array.isArray(q?.items) ? q.items : [];
     const head = items.find((x) => !!x?.isHead) || items[0] || null;
@@ -405,6 +408,17 @@
           `${(!showProgress && isRadioOrStream) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:#9fb1d9;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${(state === 'playing' && !isAlexaMode) ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(liveLabel)}${liveBadge ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-size:11px;font-weight:700;vertical-align:1px;">${liveBadge}</span>` : ''}</div>` : ''}` +
         `</div>` +
       `</div>`;
+
+    // Preserve already-loaded art node when source is effectively unchanged
+    // (prevents visible flash on delayed repaint after tab wake / Alexa settle).
+    try {
+      const nextArtNode = el.querySelector('.heroArt');
+      const nextArtMedia = nextArtNode?.querySelector?.('video.heroArtVid, img:not(.heroArtFallback)');
+      const nextArtSrc = nextArtMedia ? canonicalMediaSrc(String(nextArtMedia.currentSrc || nextArtMedia.src || '').trim()) : '';
+      if (prevArtNode && nextArtNode && prevArtSrc && nextArtSrc && prevArtSrc === nextArtSrc) {
+        nextArtNode.replaceWith(prevArtNode);
+      }
+    } catch {}
 
     // Preserve motion-video playback position across periodic re-renders.
     try {
@@ -773,7 +787,7 @@
           t: sigIsRadio ? String(np?.title || np?.radioTitle || head?.title || '') : '',
           a: sigIsRadio ? String(np?.artist || np?.radioArtist || head?.artist || '') : '',
           al: sigIsRadio ? String(np?.album || np?.radioAlbum || '') : '',
-          art: String((motionLockedForTrack ? '' : (np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || head?.thumbUrl || ''))),
+          art: canonicalMediaSrc(String(motionLockedForTrack ? '' : (np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || head?.thumbUrl || ''))),
           m: String(motionMp4 || ''),
           r: sigIsRadio,
           p: !!np?.isPodcast,
@@ -854,7 +868,7 @@
           t: sig2IsRadio ? String(npResolved?.title || npResolved?.radioTitle || head2?.title || '') : '',
           a: sig2IsRadio ? String(npResolved?.artist || npResolved?.radioArtist || head2?.artist || '') : '',
           al: sig2IsRadio ? String(npResolved?.album || npResolved?.radioAlbum || '') : '',
-          art: String(npResolved?.albumArtUrl || npResolved?.altArtUrl || npResolved?.stationLogoUrl || head2?.thumbUrl || ''),
+          art: canonicalMediaSrc(String(npResolved?.albumArtUrl || npResolved?.altArtUrl || npResolved?.stationLogoUrl || head2?.thumbUrl || '')),
           m: String(resolved || ''),
           r: sig2IsRadio,
           p: !!npResolved?.isPodcast,
