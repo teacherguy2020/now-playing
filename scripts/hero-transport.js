@@ -635,6 +635,20 @@
     let lastNp = null;
     let lastRenderSignature = '';
 
+  function heroMotionDebugEnabled() {
+    try {
+      const v = String(localStorage.getItem('nowplaying.debug.hero') || '').trim().toLowerCase();
+      return ['1', 'true', 'on', 'yes'].includes(v);
+    } catch {
+      return false;
+    }
+  }
+
+  function heroMotionLog(...args) {
+    if (!heroMotionDebugEnabled()) return;
+    try { console.log('[hero-motion]', ...args); } catch {}
+  }
+
     const cloneObj = (v) => {
       try { return JSON.parse(JSON.stringify(v || {})); } catch { return (v && typeof v === 'object') ? { ...v } : {}; }
     };
@@ -747,18 +761,28 @@
 
         np._motionMp4 = motionMp4;
 
+        const sigIsRadio = !!np?.isRadio || !!np?.isStream || !!head?.isStream;
         const renderSig = JSON.stringify({
           f: String(np?.file || head?.file || ''),
-          t: String(np?.title || np?.radioTitle || head?.title || ''),
-          a: String(np?.artist || np?.radioArtist || head?.artist || ''),
-          al: String(np?.album || np?.radioAlbum || ''),
+          // For local/static tracks, avoid full hero repaint on late metadata enrichment
+          // (prevents one-time art flash a few seconds after page load).
+          t: sigIsRadio ? String(np?.title || np?.radioTitle || head?.title || '') : '',
+          a: sigIsRadio ? String(np?.artist || np?.radioArtist || head?.artist || '') : '',
+          al: sigIsRadio ? String(np?.album || np?.radioAlbum || '') : '',
           art: String((motionLockedForTrack ? '' : (np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || head?.thumbUrl || ''))),
           m: String(motionMp4 || ''),
-          r: !!np?.isRadio || !!np?.isStream || !!head?.isStream,
+          r: sigIsRadio,
           p: !!np?.isPodcast,
+          x: !!np?.alexaMode,
         });
 
         if (renderSig !== lastRenderSignature) {
+          heroMotionLog('renderSig changed', {
+            trackKey: effectiveTrackKey,
+            motionLockedForTrack,
+            hasMotion: !!motionMp4,
+            isAlexaMode: !!np?.alexaMode,
+          });
           render(el, q, np);
           armVideoFallback(el);
           lastRenderSignature = renderSig;
@@ -774,17 +798,25 @@
         // Background motion resolution (non-blocking)
         if (!motionEnabled) return;
         const shouldTryRemoteMotion = !!appleUrl && isRadioOrStream;
-        if (motionMp4) return;
+        if (motionMp4) {
+          heroMotionLog('skip motion resolve (already have motion)', { trackKey: effectiveTrackKey, src: canonicalMediaSrc(motionMp4) });
+          return;
+        }
 
         const resolved = shouldTryRemoteMotion
           ? await resolveMotionMp4(appleUrl).catch(() => '')
           : await resolveLocalMotionMp4(artist, album, key).catch(() => '');
 
-        if (seq !== refreshSeq) return; // stale refresh result
+        if (seq !== refreshSeq) {
+          heroMotionLog('discard stale motion resolve', { trackKey: effectiveTrackKey });
+          return; // stale refresh result
+        }
         if (!resolved) {
+          heroMotionLog('motion resolve miss', { trackKey: effectiveTrackKey, remote: shouldTryRemoteMotion });
           // Do not clear known-good motion on transient lookup misses.
           return;
         }
+        heroMotionLog('motion resolved', { trackKey: effectiveTrackKey, src: canonicalMediaSrc(resolved), remote: shouldTryRemoteMotion });
 
         lastMotionIdentity = motionIdentity;
         lastMotionMp4 = resolved;
@@ -812,15 +844,17 @@
         render(el, q, npResolved);
         armVideoFallback(el);
         const head2 = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
+        const sig2IsRadio = !!npResolved?.isRadio || !!npResolved?.isStream || !!head2?.isStream;
         lastRenderSignature = JSON.stringify({
           f: String(npResolved?.file || head2?.file || ''),
-          t: String(npResolved?.title || npResolved?.radioTitle || head2?.title || ''),
-          a: String(npResolved?.artist || npResolved?.radioArtist || head2?.artist || ''),
-          al: String(npResolved?.album || npResolved?.radioAlbum || ''),
+          t: sig2IsRadio ? String(npResolved?.title || npResolved?.radioTitle || head2?.title || '') : '',
+          a: sig2IsRadio ? String(npResolved?.artist || npResolved?.radioArtist || head2?.artist || '') : '',
+          al: sig2IsRadio ? String(npResolved?.album || npResolved?.radioAlbum || '') : '',
           art: String(npResolved?.albumArtUrl || npResolved?.altArtUrl || npResolved?.stationLogoUrl || head2?.thumbUrl || ''),
           m: String(resolved || ''),
-          r: !!npResolved?.isRadio || !!npResolved?.isStream || !!head2?.isStream,
+          r: sig2IsRadio,
           p: !!npResolved?.isPodcast,
+          x: !!npResolved?.alexaMode,
         });
         if (effectiveTrackKey) lastRenderedTrackKey = effectiveTrackKey;
         try { ensureRadioDrawer(); } catch {}
