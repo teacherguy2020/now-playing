@@ -29,3 +29,11 @@ Use this page to manage podcast subscriptions and episode downloads.
 
 ### Keep storage under control
 - Enable nightly delete and set days threshold
+
+### Work inside a subscription
+1. Click a subscription card to open its episode list.
+2. From episode rows, you can:
+   - play an episode directly
+   - add an episode to queue
+   - download newer episodes
+   - delete older/local episodes
