@@ -1442,7 +1442,15 @@ function updateNextUp({ isAirplay, isStream, data }) {
       const artUrlRaw = String(q.albumArtUrl || q.altArtUrl || q.artUrl || q.coverUrl || '').trim();
       const artUrl = artUrlRaw.startsWith('/') ? `${API_BASE}${artUrlRaw}` : artUrlRaw;
 
-      const showTitle = title || file.split('/').pop() || file || 'Unknown title';
+      const hasIdentity = !!(title || file);
+      if (!hasIdentity) {
+        // Avoid regressing to "Unknown title" during transient Alexa/random races.
+        const existing = String(textEl?.textContent || '').trim();
+        if (existing && !/unknown title/i.test(existing)) return;
+        return;
+      }
+
+      const showTitle = title || file.split('/').pop() || file;
       const showArtist = artist ? ` • ${artist}` : '';
       setNextUpLine(`Next up: ${showTitle}${showArtist}`);
 
@@ -1468,10 +1476,20 @@ function updateNextUp({ isAirplay, isStream, data }) {
       imgEl.style.display = 'block';
     };
 
+    // Prefer already-available queue-head snapshot to avoid transient "Unknown title"
+    // when an extra NOW_PLAYING fetch races/fails during random toggles.
+    const immediateHead = (data && (data.__queueHead || data)) || {};
+    applyAlexaQueueHead(immediateHead);
+
+    // Best-effort refresh from API; only repaint if better data arrives.
     fetch(NOW_PLAYING_URL, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((np) => applyAlexaQueueHead(np || data.__queueHead || {}))
-      .catch(() => applyAlexaQueueHead(data.__queueHead || {}));
+      .then((np) => {
+        const cand = np || {};
+        const hasBetter = !!String(cand.title || cand.file || '').trim();
+        if (hasBetter) applyAlexaQueueHead(cand);
+      })
+      .catch(() => {});
     return;
   }
 
