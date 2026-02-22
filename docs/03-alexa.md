@@ -27,3 +27,9 @@ Use this page to manage Alexa integration and voice command behavior.
 
 ## Behavior note
 In Alexa mode, queue behavior is different from normal playback. The UI treats queue head as queued-next.
+
+## Full phrase coverage
+All current Alexa utterance samples are documented in:
+- [Alexa phrase reference](./13-alexa-phrases.md)
+
+That file is sourced from `alexa/interaction-model.v2.json` so docs stay aligned with the interaction model.
