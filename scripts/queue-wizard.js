@@ -2188,6 +2188,17 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
     } catch {}
   }
 
+  function notifyParentQueueBusy(on, label = '') {
+    try {
+      window.parent?.postMessage({
+        type: 'np-queue-busy',
+        busy: !!on,
+        label: String(label || ''),
+        source: 'queue-wizard',
+      }, '*');
+    } catch {}
+  }
+
   function syncSavePlaylistButton() {
     if (!savePlaylistBtn) return;
     savePlaylistBtn.textContent = 'Name playlist';
@@ -2429,6 +2440,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
     if (queuePlaybackAreaEl) queuePlaybackAreaEl.style.display = 'none';
 
     disableUI(true);
+    notifyParentQueueBusy(true, 'Updating queue…');
     try {
       setStatus('<span class="spin"></span>Sending list to moOde…');
 
@@ -2478,6 +2490,15 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       setStatus(statusMsg);
       showSendConfirmation(`✅ Sent ${j.added}/${j.requested} track(s) to moOde.`);
 
+      // After sending from Existing Playlists, clear highlighted selection state.
+      if (isExistingSend) {
+        selectedExistingPlaylists.clear();
+        if (existingPlaylistsEl) existingPlaylistsEl.value = '';
+        const names = Array.from(existingPlaylistsEl?.options || []).map((o) => String(o.value || '')).filter(Boolean);
+        renderExistingPlaylistCarousel(names);
+        updateExistingPlaylistThumb('');
+      }
+
       if (j.collageGenerated && playlistName) {
         await forceReloadCoverUntilItLoads({
           name: playlistName,
@@ -2491,6 +2512,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       setStatus(`Error: ${esc(e?.message || e)}`);
     } finally {
       disableUI(false);
+      notifyParentQueueBusy(false);
       if (savePlaylistNowBtn) savePlaylistNowBtn.style.display = prevSaveNowDisplay;
       sendBusy = false;
     }

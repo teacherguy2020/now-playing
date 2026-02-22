@@ -167,6 +167,15 @@
     body.theme-light .heroQueueCard::before{
       background:linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,0));
     }
+
+    .heroQueueCard{position:relative}
+    .heroQueueBusyOverlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:25;background:rgba(3,8,20,.34);backdrop-filter:blur(3px) saturate(1.05);-webkit-backdrop-filter:blur(3px) saturate(1.05);border-radius:18px}
+    .heroQueueBusyOverlay.show{display:flex}
+    .heroQueueBusyCard{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:14px;border:1px solid rgba(191,219,254,.34);background:rgba(7,16,30,.72);box-shadow:0 8px 24px rgba(0,0,0,.28);color:#e6f0ff;font-size:16px;font-weight:600}
+    .heroQueueBusySpin{display:inline-block;width:28px;height:28px;border-radius:50%;border:3px solid rgba(191,219,254,.26);border-top-color:#7dd3fc;border-right-color:#93c5fd;transform:translateZ(0);transform-origin:50% 50%;will-change:transform;animation:hqBusySpin .75s linear infinite}
+    @keyframes hqBusySpin{from{transform:translateZ(0) rotate(0deg)}to{transform:translateZ(0) rotate(360deg)}}
+    body.theme-light .heroQueueBusyOverlay{background:rgba(236,229,247,.42)}
+    body.theme-light .heroQueueBusyCard{background:rgba(255,255,255,.78);border-color:rgba(126,111,179,.42);color:#2f2a4f}
   </style>
 </head>
 <body>
@@ -199,6 +208,9 @@
         </div>
         <div class="heroQueueNextUp" id="heroQueueNextUp"></div>
         <div class="heroQueueWrap" id="heroQueueWrap"><div class="heroQueueMeta">Loading queue…</div></div>
+        <div id="heroQueueBusyOverlay" class="heroQueueBusyOverlay" aria-hidden="true">
+          <div class="heroQueueBusyCard"><span class="heroQueueBusySpin" aria-hidden="true"></span><span id="heroQueueBusyLabel">Updating queue…</span></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1135,6 +1147,37 @@
         }
       }
 
+      let heroQueueBusyAnim = null;
+      function setHeroQueueBusy(on, label = '') {
+        const ov = document.getElementById('heroQueueBusyOverlay');
+        const lb = document.getElementById('heroQueueBusyLabel');
+        const sp = document.querySelector('#heroQueueBusyOverlay .heroQueueBusySpin');
+        if (!ov) return;
+        ov.classList.toggle('show', !!on);
+        ov.setAttribute('aria-hidden', on ? 'false' : 'true');
+        if (lb && label) lb.textContent = String(label);
+
+        // Safari/WebKit can occasionally freeze CSS-only spinner under heavy backdrop layers.
+        // Force a JS-driven rotation fallback so motion is always visible.
+        if (sp) {
+          if (heroQueueBusyAnim) {
+            cancelAnimationFrame(heroQueueBusyAnim);
+            heroQueueBusyAnim = null;
+          }
+          if (on) {
+            let deg = 0;
+            const tick = () => {
+              deg = (deg + 8) % 360;
+              sp.style.transform = `translateZ(0) rotate(${deg}deg)`;
+              heroQueueBusyAnim = requestAnimationFrame(tick);
+            };
+            heroQueueBusyAnim = requestAnimationFrame(tick);
+          } else {
+            sp.style.transform = 'translateZ(0) rotate(0deg)';
+          }
+        }
+      }
+
       if (hqBtn && hqWrap) {
         let collapsed = false;
         try {
@@ -1341,6 +1384,16 @@
 
         ev.preventDefault();
         try { btn.click(); } catch {}
+      });
+
+      window.addEventListener('message', (ev) => {
+        const d = ev?.data || {};
+        if (!d || d.type !== 'np-queue-busy') return;
+        setHeroQueueBusy(!!d.busy, String(d.label || 'Updating queue…'));
+        if (!d.busy) {
+          // Pull latest queue as soon as operation settles.
+          setTimeout(() => { try { syncHeroQueue(); } catch {} }, 120);
+        }
       });
 
       syncFrameWidth();
