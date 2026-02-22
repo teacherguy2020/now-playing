@@ -214,9 +214,9 @@
     dbg(`refreshLiveFrame(uiPort=${uiPort})`);
     const host = location.hostname || '10.0.0.233';
     const proto = location.protocol || 'http:';
-    const sameOriginIndex1080 = new URL('index1080.html', location.href).toString();
+    const sameOriginIndex1080 = new URL('index.html', location.href).toString();
     const uiPathPrefix = String(location.pathname || '/').replace(/[^/]*$/, '');
-    const fallbackIndex1080 = `${proto}//${host}:${uiPort}${uiPathPrefix}index1080.html`;
+    const fallbackIndex1080 = `${proto}//${host}:${uiPort}${uiPathPrefix}index.html`;
     const fr = $('liveFrame');
     const a = $('openLiveLink');
     const dbgEl = $('liveFrameDebug');

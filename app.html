@@ -17,7 +17,7 @@
     .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important;}
     .heroQueueCard{margin-top:10px;border:1px solid #2a3a58;border-radius:14px;padding:10px;background:rgba(10,18,34,.45)}
     .heroQueueHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-    .heroQueueTitle{color:#9fb1d9;font-size:12px}
+    .heroQueueTitle{display:none}
     .heroQueueWrap{overflow:visible;border:1px solid #2a3a58;border-radius:10px;padding:8px;background:#071021}
     .heroQueueRow{display:flex;gap:8px;align-items:center;padding:6px;border-bottom:1px dashed #233650}
     .heroQueueRow:last-child{border-bottom:none}
@@ -152,7 +152,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260221-005"></script>
+  <script src="scripts/hero-transport.js?v=20260221-006"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -390,6 +390,7 @@
       async function syncHeroQueue(){
 
         try {
+          if (document.hidden) return;
           const host = location.hostname || '10.0.0.233';
           const base = `${location.protocol}//${host}:3101`;
           const wrap = document.getElementById('heroQueueWrap');
@@ -455,7 +456,7 @@
                 : String(headItem?.artist || headItem?.name || '').trim();
               const hTitle = hStream ? '' : String(headItem?.title || '').trim();
               const hText = hTitle ? `${hName} • ${hTitle}` : (hName || String(np?.title || '').trim() || '(unknown)');
-              hqNextUp.innerHTML = `${hThumb ? `<img src="${hThumb}" alt="">` : ''}<div class="heroQueueMeta">Now: ${hText}</div>`;
+              hqNextUp.innerHTML = `${hThumb ? `<img src="${hThumb}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${hText}</div>`;
             } else {
               const apiNext = (nextUpApi && nextUpApi.ok && nextUpApi.next) ? nextUpApi.next : null;
               if (apiNext) {
@@ -480,6 +481,27 @@
                 hqNextUp.innerHTML = `${nThumb ? `<img src="${nThumb}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${nText || '(unknown)'}</div>`;
               }
             }
+
+            if (queueCollapsed && hqBtn) {
+              hqNextUp.appendChild(hqBtn);
+              hqBtn.style.marginLeft = 'auto';
+            }
+          }
+
+          if (queueCollapsed) {
+            const collapsedSig = JSON.stringify({
+              c: true,
+              state: String(j.playbackState || ''),
+              count: items.length,
+              head: Number(j.headPos || -1),
+              next: String(nextUpApi?.next?.file || nextUpApi?.next?.title || ''),
+            });
+            if (lastHeroQueueSignature === collapsedSig) return;
+            lastHeroQueueSignature = collapsedSig;
+            if (hqWrap) hqWrap.innerHTML = '';
+            lastRadioPresetStations = [];
+            updateSavePresetsButtonVisibility();
+            return;
           }
 
           const queueSig = JSON.stringify({
@@ -574,8 +596,8 @@
             const fallbackIcon = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="10" fill="#0a1222" stroke="#3b4f72"/><circle cx="32" cy="32" r="6" fill="#8fb3ff"/><path d="M32 26V14M32 50V38M26 32H14M50 32H38" stroke="#8fb3ff" stroke-width="4" stroke-linecap="round"/></svg>')}`;
             const fallbackJs = `if(this.dataset.step!=='1' && '${stationLogoByDisplay}') { this.dataset.step='1'; this.src='${stationLogoByDisplay}'; return; } if(this.dataset.step!=='2' && '${stationLogoByDisplayAlt}') { this.dataset.step='2'; this.src='${stationLogoByDisplayAlt}'; return; } if(this.dataset.step!=='3' && '${stationLogoByFile}') { this.dataset.step='3'; this.src='${stationLogoByFile}'; return; } if(this.dataset.step!=='4' && '${hostFavicon}') { this.dataset.step='4'; this.src='${hostFavicon}'; return; } if(this.dataset.step!=='5' && '${hostFaviconAlt}') { this.dataset.step='5'; this.src='${hostFaviconAlt}'; return; } this.src='${fallbackIcon}';`;
             const thumbHtml = thumb
-              ? `<img src="${thumb}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
-              : `<img src="${stationLogoByDisplay || stationLogoByDisplayAlt || stationLogoByFile || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
+              ? `<img loading="lazy" decoding="async" fetchpriority="low" src="${thumb}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
+              : `<img loading="lazy" decoding="async" fetchpriority="low" src="${stationLogoByDisplay || stationLogoByDisplayAlt || stationLogoByFile || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
             const actions = `<div class="heroQueueActions"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
             const albumTxt = String(x?.album || '').trim();
             const rating = Math.max(0, Math.min(5, Number(x?.rating || 0)));
@@ -588,7 +610,7 @@
               : (albumTxt
                 ? `<div class="heroQueueMeta">${artist || '(unknown artist)'} • <button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(albumTxt)}" data-queue-artist="${encodeURIComponent(artist)}" data-queue-title="${encodeURIComponent(title)}" data-queue-art="${encodeURIComponent(thumb || '')}">${albumTxt}</button></div>`
                 : `<div class="heroQueueMeta">${artist || '(unknown artist)'}</div>`);
-            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;"><span style="font-size:18px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${line1}</span>${starsInline}</div>${line2}</div>${actions}</div>`;
+            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;"><span style="font-size:16px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${line1}</span>${starsInline}</div>${line2}</div>${actions}</div>`;
           }).join('');
 
           const onlyRadioStations = !!items.length && items.every((x) => {
@@ -939,6 +961,16 @@
         if (hqSave) hqSave.style.display = queueCollapsed ? 'none' : hqSave.style.display;
         if (hqArrowWrap) hqArrowWrap.style.display = queueCollapsed ? 'none' : '';
         if (hqNextUp) hqNextUp.style.display = queueCollapsed ? 'flex' : 'none';
+
+        if (hqBtn && hqNextUp && hqActionsHead) {
+          if (queueCollapsed) {
+            if (hqBtn.parentElement !== hqNextUp) hqNextUp.appendChild(hqBtn);
+            hqBtn.style.marginLeft = 'auto';
+          } else {
+            if (hqBtn.parentElement !== hqActionsHead) hqActionsHead.appendChild(hqBtn);
+            hqBtn.style.marginLeft = '';
+          }
+        }
       }
 
       if (hqBtn && hqWrap) {
@@ -1145,9 +1177,9 @@
       navigate(getPageFromUrl(), false);
       syncPills();
       syncHeroQueue();
-      setInterval(syncPills, 15000);
-      setInterval(syncHeroQueue, 2500);
-      setInterval(syncFrameHeight, 1500);
+      setInterval(() => { if (!document.hidden) syncPills(); }, 30000);
+      setInterval(() => { if (!document.hidden) syncHeroQueue(); }, 7000);
+      setInterval(() => { if (!document.hidden) syncFrameHeight(); }, 4000);
     })();
   </script>
 </body>

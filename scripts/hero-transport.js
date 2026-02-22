@@ -251,6 +251,12 @@
     const isRadioOrStream = !!np?.isRadio || !!np?.isStream || !!head?.isStream || isAlexaMode;
     let displayArtist = String(np?._radioDisplay?.artist || np?.radioArtist || np?.artist || head?.artist || '').trim();
     let displayTitle = String(np?._radioDisplay?.title || np?.radioTitle || np?.title || head?.title || '').trim();
+    if (!displayTitle) {
+      const fileRaw = String(np?.file || head?.file || '').trim();
+      const base = fileRaw ? fileRaw.split('/').pop() || '' : '';
+      const noExt = base.replace(/\.[a-z0-9]{2,5}$/i, '').trim();
+      if (noExt) displayTitle = noExt;
+    }
 
     if (isRadioOrStream) {
       const isGenericArtist = /^(radio\s*station|unknown|stream)$/i.test(displayArtist);
@@ -265,15 +271,17 @@
         displayTitle = displayTitle.replace(/^radio\s*station\s*/i, '').trim();
       }
 
-      // If iTunes album text got echoed into title, trim it from the end.
-      const radioAlbumForTrim = String(np?.radioAlbum || np?.album || '').trim();
-      if (radioAlbumForTrim) {
-        const esc = radioAlbumForTrim.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        displayTitle = displayTitle.replace(new RegExp(`([\\s,;:-]*)${esc}$`, 'i'), '').trim();
-      }
+      if (!isAlexaMode) {
+        // If iTunes album text got echoed into title, trim it from the end.
+        const radioAlbumForTrim = String(np?.radioAlbum || np?.album || '').trim();
+        if (radioAlbumForTrim) {
+          const esc = radioAlbumForTrim.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          displayTitle = displayTitle.replace(new RegExp(`([\\s,;:-]*)${esc}$`, 'i'), '').trim();
+        }
 
-      // Strip trailing year-like tails from title (year is shown separately when needed).
-      displayTitle = displayTitle.replace(/[\s•\-–—,;:]*((19|20)\d{2})\s*$/i, '').trim();
+        // Strip trailing year-like tails from title (year is shown separately when needed).
+        displayTitle = displayTitle.replace(/[\s•\-–—,;:]*((19|20)\d{2})\s*$/i, '').trim();
+      }
     }
 
     displayArtist = expandInstrumentAbbrevs(displayArtist);
@@ -309,7 +317,9 @@
     const liveLabel = isAlexaMode
       ? 'Alexa Mode'
       : (isAirplay ? (airplaySource ? `AirPlay • ${airplaySource}` : 'AirPlay') : (stationNameLive || 'Radio'));
-    const albumYearText = [radioAlbum, radioYear].filter(Boolean).join(' • ');
+    const albumYearText = radioAlbum
+      ? `${radioAlbum}${radioYear ? ` (${radioYear})` : ''}`
+      : '';
     const metaRow = starsRow || (albumYearText ? `<div class="heroSubline">${albumYearText}</div>` : '');
 
     const fmt = String(np?.encoded || np?.format || '').toUpperCase();
@@ -897,7 +907,7 @@
     });
 
     setTimeout(refresh, 150);
-    setInterval(refresh, 2000);
+    setInterval(() => { if (!document.hidden) refresh(); }, 6000);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
