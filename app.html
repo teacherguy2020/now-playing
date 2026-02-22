@@ -29,6 +29,9 @@
     .heroQueueBtn,
     .heroQueueActions button{padding:4px 8px;border-radius:7px;border:1px solid #334;background:#0a1222;color:#eef;cursor:pointer;transition:all .12s ease}
     .heroQueueBtn{padding:6px 10px;border-radius:8px}
+    .heroQueueBtn.isLoading{position:relative;padding-left:30px;pointer-events:none;opacity:.9}
+    .heroQueueBtn.isLoading::before{content:'';position:absolute;left:10px;top:50%;width:12px;height:12px;margin-top:-7px;border:2px solid rgba(191,219,254,.35);border-top-color:#bfdbfe;border-radius:50%;animation:hqSpin .75s linear infinite}
+    @keyframes hqSpin{to{transform:rotate(360deg)}}
     .heroQueueBtn:hover,
     .heroQueueActions button:hover{background:#12203c;border-color:#4b5f86;box-shadow:0 0 0 1px rgba(125,211,252,.25) inset}
     .heroQueueBtn:active,
@@ -421,6 +424,7 @@
           ]);
           const j = await r.json().catch(() => ({}));
           let np = npRes ? await npRes.json().catch(() => ({})) : {};
+          const npQueueHead = np ? { ...np } : {};
           const nextUpApi = nextUpRes ? await nextUpRes.json().catch(() => ({})) : {};
           const aw = awRes ? await awRes.json().catch(() => ({})) : {};
           if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
@@ -477,19 +481,19 @@
             let nextHtml = '';
             let nextReason = '';
             if (isAlexaMode) {
-              // Keep Alexa next-up source aligned with index-ui behavior:
-              // derive from /now-playing context first, then fallback to queue head.
-              const npTitle = String(np?.title || '').trim();
-              const npFile = String(np?.file || '').trim();
-              const npArtist = String(np?.artist || '').trim();
-              const npArtRaw = String(np?.albumArtUrl || np?.altArtUrl || '').trim();
-              const npArt = npArtRaw ? (npArtRaw.startsWith('http') ? npArtRaw : `${base}${npArtRaw}`) : '';
+              // Match index-ui Alexa behavior exactly:
+              // use raw /now-playing snapshot (queue head) captured BEFORE Alexa overlay merge.
+              const qhTitle = String(npQueueHead?.title || '').trim();
+              const qhFile = String(npQueueHead?.file || '').trim();
+              const qhArtist = String(npQueueHead?.artist || '').trim();
+              const qhArtRaw = String(npQueueHead?.albumArtUrl || npQueueHead?.altArtUrl || '').trim();
+              const qhArt = qhArtRaw ? (qhArtRaw.startsWith('http') ? qhArtRaw : `${base}${qhArtRaw}`) : fallbackNowArt;
 
-              if (npTitle || npFile || npArtist) {
-                const showTitle = npTitle || (npFile ? String(npFile).split('/').pop() : '') || npFile || 'Unknown title';
-                const showArtist = npArtist ? ` • ${npArtist}` : '';
-                nextHtml = `${npArt ? `<img src="${npArt}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${showTitle}${showArtist}</div>`;
-                nextReason = 'alexa-now-playing';
+              if (qhTitle || qhFile || qhArtist) {
+                const showTitle = qhTitle || (qhFile ? String(qhFile).split('/').pop() : '') || qhFile || 'Unknown title';
+                const showArtist = qhArtist ? ` • ${qhArtist}` : '';
+                nextHtml = `${qhArt ? `<img src="${qhArt}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${showTitle}${showArtist}</div>`;
+                nextReason = 'alexa-queue-head';
               } else if (headItem) {
                 const hf = String(headItem?.file || '').trim();
                 const hStream = /^https?:\/\//i.test(hf);
@@ -501,7 +505,7 @@
                   ? String(headItem?.stationName || headItem?.name || headItem?.artist || fallbackStation || 'Radio station').trim()
                   : String(headItem?.artist || headItem?.name || '').trim();
                 const hTitle = hStream ? '' : String(headItem?.title || '').trim();
-                const hText = hTitle ? `${hName} • ${hTitle}` : (hName || String(np?.title || '').trim() || '(unknown)');
+                const hText = hTitle ? `${hTitle}${hName ? ` • ${hName}` : ''}` : (hName || '(unknown)');
                 nextHtml = `${hThumb ? `<img src="${hThumb}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${hText}</div>`;
                 nextReason = 'alexa-head-fallback';
               } else {
@@ -670,7 +674,13 @@
               : (albumTxt
                 ? `<div class="heroQueueMeta">${artist || '(unknown artist)'} • <button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(albumTxt)}" data-queue-artist="${encodeURIComponent(artist)}" data-queue-title="${encodeURIComponent(title)}" data-queue-art="${encodeURIComponent(thumb || '')}">${albumTxt}</button></div>`
                 : `<div class="heroQueueMeta">${artist || '(unknown artist)'}</div>`);
-            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;"><span style="font-size:16px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${line1}</span>${starsInline}</div>${line2}</div>${actions}</div>`;
+            const headRowStyle = head
+              ? (isAlexaMode
+                  ? 'background:rgba(56,189,248,.14);border-radius:8px;border:1px dashed rgba(125,211,252,.35);'
+                  : 'background:rgba(34,197,94,.14);border-radius:8px;')
+              : '';
+            const headLabel = head ? (isAlexaMode ? ' Queued' : ' ▶') : '';
+            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${headRowStyle}">${thumbHtml}<div><b>${pos}</b>${headLabel}</div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;"><span style="font-size:16px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${line1}</span>${starsInline}</div>${line2}</div>${actions}</div>`;
           }).join('');
 
           const onlyRadioStations = !!items.length && items.every((x) => {
@@ -1012,10 +1022,18 @@
       });
       const HERO_QUEUE_COLLAPSED_KEY = 'nowplaying.app.heroQueueCollapsed';
       let queueCollapsed = false;
+      let queueExpandLoading = false;
+
+      function setQueueExpandLoading(on){
+        queueExpandLoading = !!on;
+        if (!hqBtn) return;
+        hqBtn.classList.toggle('isLoading', queueExpandLoading);
+        hqBtn.textContent = queueExpandLoading ? 'Expanding…' : (queueCollapsed ? 'Expand' : 'Collapse');
+      }
 
       function updateQueueCollapsedUi(){
         if (hqWrap) hqWrap.style.display = queueCollapsed ? 'none' : '';
-        if (hqBtn) hqBtn.textContent = queueCollapsed ? 'Expand' : 'Collapse';
+        if (hqBtn) hqBtn.textContent = queueExpandLoading ? 'Expanding…' : (queueCollapsed ? 'Expand' : 'Collapse');
         if (hqClear) hqClear.style.display = queueCollapsed ? 'none' : '';
         if (hqCrop) hqCrop.style.display = queueCollapsed ? 'none' : '';
         if (hqSave) hqSave.style.display = queueCollapsed ? 'none' : hqSave.style.display;
@@ -1043,12 +1061,20 @@
         updateQueueCollapsedUi();
         updateSavePresetsButtonVisibility();
 
-        hqBtn.addEventListener('click', () => {
+        hqBtn.addEventListener('click', async () => {
+          const wasCollapsed = collapsed;
           collapsed = !collapsed;
           queueCollapsed = collapsed;
           updateQueueCollapsedUi();
           updateSavePresetsButtonVisibility();
           try { localStorage.setItem(HERO_QUEUE_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch {}
+
+          // Expanding can wait on network queue fetch; show activity feedback.
+          if (wasCollapsed && !collapsed) {
+            setQueueExpandLoading(true);
+            try { await syncHeroQueue(); } catch {}
+            finally { setQueueExpandLoading(false); }
+          }
         });
 
         hqClear?.addEventListener('click', async () => {
