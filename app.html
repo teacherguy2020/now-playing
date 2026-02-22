@@ -152,7 +152,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260221-006"></script>
+  <script src="scripts/hero-transport.js?v=20260221-010"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -548,7 +548,6 @@
             });
           } catch {}
 
-          const stamp = Date.now();
           wrap.innerHTML = items.map((x) => {
             const pos = Number(x?._posDisplay || 0);
             const head = !!x?.isHead;
@@ -605,7 +604,8 @@
               thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
               if (!thumb && nowIsAirplay && fallbackNowArt) thumb = fallbackNowArt;
               if (thumb && /\/art\/current\.jpg(?:$|\?)/i.test(thumb)) {
-                thumb += (thumb.includes('?') ? '&' : '?') + `_=${stamp}`;
+                const stableBust = encodeURIComponent(String(fileRaw || titleRaw || pos || '').trim());
+                if (stableBust) thumb += (thumb.includes('?') ? '&' : '?') + `k=${stableBust}`;
               }
             }
             const fallbackIcon = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="10" fill="#0a1222" stroke="#3b4f72"/><circle cx="32" cy="32" r="6" fill="#8fb3ff"/><path d="M32 26V14M32 50V38M26 32H14M50 32H38" stroke="#8fb3ff" stroke-width="4" stroke-linecap="round"/></svg>')}`;

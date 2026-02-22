@@ -283,60 +283,25 @@ function setMotionArtVideo(mp4Url, posterUrl = '') {
 
   const src = String(mp4Url || '').trim();
   if (!src) {
-    try { videoEl.pause(); } catch {}
-    videoEl.style.display = 'none';
-    videoEl.removeAttribute('src');
-    videoEl.load?.();
-    artEl.style.display = 'block';
+    // No-op on missing motion: keep whatever is currently visible (static or motion).
     return;
   }
 
   if (posterUrl) videoEl.setAttribute('poster', posterUrl);
-  if (videoEl.getAttribute('src') !== src) {
+  const oldSrc = String(videoEl.getAttribute('src') || '').trim();
+  if (oldSrc !== src) {
     videoEl.setAttribute('src', src);
     videoEl.load?.();
   }
 
-  // Conservative reveal: keep static art until video decode actually advances.
-  artEl.style.display = 'block';
-  videoEl.style.display = 'none';
-  const startedAt = Number(videoEl.currentTime || 0);
-  let done = false;
-
-  const reveal = () => {
-    if (done) return;
-    done = true;
-    artEl.style.display = 'none';
-    videoEl.style.display = 'block';
-  };
-
-  const fallback = () => {
-    if (done) return;
-    done = true;
-    videoEl.style.display = 'none';
-    artEl.style.display = 'block';
-  };
-
-  const onProgress = () => {
-    const t = Number(videoEl.currentTime || 0);
-    if (t > startedAt + 0.02 || (videoEl.readyState >= 3 && !videoEl.paused)) reveal();
-  };
+  // Motion is law: once we have a motion source, keep static hidden to avoid flashing.
+  artEl.style.display = 'none';
+  videoEl.style.display = 'block';
 
   try {
     const p = (typeof videoEl.play === 'function') ? videoEl.play() : null;
     if (p && typeof p.catch === 'function') p.catch(() => {});
   } catch {}
-
-  videoEl.addEventListener('timeupdate', onProgress, { once: true });
-  videoEl.addEventListener('playing', onProgress, { once: true });
-  videoEl.addEventListener('loadeddata', onProgress, { once: true });
-  ['error', 'stalled', 'abort', 'emptied'].forEach((ev) => videoEl.addEventListener(ev, fallback, { once: true }));
-
-  setTimeout(() => {
-    if (done) return;
-    onProgress();
-    if (!done) fallback();
-  }, 1800);
 }
 
 /* =========================
@@ -356,6 +321,8 @@ let lastNextUpFetchTs = 0;
 
 let lastAlbumArtKey = '';
 let lastAlbumArtUrl = '';
+let motionLockTrackKey = '';
+let motionLockMp4 = '';
 
 let bgKeyFront = '';
 let bgLoadingKey = '';
@@ -2760,27 +2727,56 @@ if (titleEl) {
         : (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : ''));
 
   const appleUrl = String(data.radioItunesUrl || data.itunesUrl || data.radioAppleMusicUrl || '').trim();
+  const trackKey = String(data.file || data.songid || '').trim();
   const motionToken = ++motionReqToken;
-  if (motionArtEnabled()) {
+
+  // Motion lock: once motion is proven for a track, keep using it for that same track.
+  if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
+    setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl);
+  } else if (motionArtEnabled()) {
     if (isRadio && appleUrl) {
       resolveMotionMp4(appleUrl)
         .then((mp4) => {
           if (motionToken !== motionReqToken) return;
-          setMotionArtVideo(mp4, fgUrl || rawArtUrl);
+          const resolved = String(mp4 || '').trim();
+          if (resolved) {
+            if (trackKey) { motionLockTrackKey = trackKey; motionLockMp4 = resolved; }
+            setMotionArtVideo(resolved, fgUrl || rawArtUrl);
+          } else if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
+            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl);
+          } else {
+            setMotionArtVideo('', fgUrl || rawArtUrl);
+          }
         })
         .catch(() => {
           if (motionToken !== motionReqToken) return;
-          setMotionArtVideo('', fgUrl || rawArtUrl);
+          if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
+            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl);
+          } else {
+            setMotionArtVideo('', fgUrl || rawArtUrl);
+          }
         });
     } else if (!isRadio && !isAirplay) {
       resolveLocalMotionMp4(String(data.artist || ''), String(data.album || ''))
         .then((mp4) => {
           if (motionToken !== motionReqToken) return;
-          setMotionArtVideo(mp4, fgUrl || rawArtUrl);
+          const resolved = String(mp4 || '').trim();
+          if (resolved) {
+            if (trackKey) { motionLockTrackKey = trackKey; motionLockMp4 = resolved; }
+            setMotionArtVideo(resolved, fgUrl || rawArtUrl);
+          } else if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
+            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl);
+          } else {
+            setMotionArtVideo('', fgUrl || rawArtUrl);
+          }
         })
         .catch(() => {
           if (motionToken !== motionReqToken) return;
-          setMotionArtVideo('', fgUrl || rawArtUrl);
+          if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
+            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl);
+          } else {
+            setMotionArtVideo('', fgUrl || rawArtUrl);
+          }
         });
     } else {
       setMotionArtVideo('', fgUrl || rawArtUrl);

@@ -48,7 +48,13 @@
   let lastMotionIdentity = '';
   let lastMotionMp4 = '';
   let lastMotionFile = '';
+  let lastKnownNowFile = '';
+  let lastKnownSongId = '';
   let lastVisibleMotionSrc = '';
+  let lastVisibleMotionFile = '';
+  let lastMotionTrackKey = '';
+  let lastRenderedTrackKey = '';
+  const motionLockByTrack = new Map();
 
   function currentKey() {
     return String($('key')?.value || '').trim() || runtimeTrackKey;
@@ -114,6 +120,29 @@
     }
   }
 
+  function stripUrlNoise(s) {
+    if (!s) return '';
+    try {
+      const u = new URL(s, window.location.href);
+      u.search = '';
+      u.hash = '';
+      return u.toString();
+    } catch {
+      return String(s).split('?')[0].split('#')[0];
+    }
+  }
+
+  function canonicalMediaSrc(s) {
+    const clean = stripUrlNoise(s);
+    if (!clean) return '';
+    try {
+      const u = new URL(clean, window.location.href);
+      return `${u.origin}${u.pathname}`;
+    } catch {
+      return clean;
+    }
+  }
+
   function motionArtEnabled() {
     try {
       const v = String(localStorage.getItem(MOTION_ART_STORAGE_KEY) || '').trim().toLowerCase();
@@ -122,6 +151,14 @@
     } catch {
       return true;
     }
+  }
+
+  function motionTrackKey(file = '', songid = '') {
+    const f = String(file || '').trim();
+    if (f) return `f:${f}`;
+    const s = String(songid || '').trim();
+    if (s) return `s:${s}`;
+    return '';
   }
 
   async function resolveLocalMotionMp4(artist, album, key) {
@@ -393,62 +430,30 @@
     const fb = el.querySelector('.heroArtFallback');
     const src = String(vid.currentSrc || vid.src || '').trim();
 
-    // Keep static art visible until we confirm decoded frame progress.
-    let resolved = false;
-    let startedAt = Number(vid.currentTime || 0);
+    // No fallback downgrade path: once motion is present, keep video visible.
+    if (fb) fb.style.display = 'none';
+    vid.style.display = '';
 
-    const showVideo = () => {
-      if (resolved) return;
-      resolved = true;
-      vid.style.display = '';
-      if (fb) fb.style.display = 'none';
-      if (src) lastVisibleMotionSrc = src;
-    };
+    try {
+      const p = (typeof vid.play === 'function') ? vid.play() : null;
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch {}
 
-    const keepFallback = () => {
-      if (resolved) return;
-      resolved = true;
-      if (fb) fb.style.display = '';
-      vid.style.display = 'none';
-    };
-
-    const tryPlay = () => {
-      try {
-        const p = (typeof vid.play === 'function') ? vid.play() : null;
-        if (p && typeof p.catch === 'function') p.catch(() => {});
-      } catch {}
-    };
-
-    // If this exact motion clip already displayed successfully, keep it visible immediately.
-    if (src && src === lastVisibleMotionSrc) {
-      if (fb) fb.style.display = 'none';
-      vid.style.display = '';
-      tryPlay();
-      ['error', 'stalled', 'abort', 'emptied'].forEach((ev) => vid.addEventListener(ev, keepFallback, { once: true }));
-      return;
+    if (src) {
+      lastVisibleMotionSrc = src;
+      if (lastKnownNowFile) lastVisibleMotionFile = lastKnownNowFile;
+      lastMotionMp4 = src;
+      if (lastKnownNowFile) lastMotionFile = lastKnownNowFile;
+      const k = motionTrackKey(lastKnownNowFile, lastKnownSongId);
+      if (k) {
+        lastMotionTrackKey = k;
+        motionLockByTrack.set(k, src);
+        if (motionLockByTrack.size > 100) {
+          const firstKey = motionLockByTrack.keys().next().value;
+          if (firstKey) motionLockByTrack.delete(firstKey);
+        }
+      }
     }
-
-    // Start conservative for first-time clip display.
-    if (fb) fb.style.display = '';
-    vid.style.display = 'none';
-
-    const onProgress = () => {
-      const t = Number(vid.currentTime || 0);
-      if (t > startedAt + 0.02 || (vid.readyState >= 3 && !vid.paused)) showVideo();
-    };
-
-    tryPlay();
-    vid.addEventListener('timeupdate', onProgress);
-    vid.addEventListener('playing', onProgress);
-    vid.addEventListener('loadeddata', onProgress);
-    ['error', 'stalled', 'abort', 'emptied'].forEach((ev) => vid.addEventListener(ev, keepFallback, { once: true }));
-
-    // Give decode a bit more time before deciding fallback.
-    setTimeout(() => {
-      if (resolved) return;
-      onProgress();
-      if (!resolved) keepFallback();
-    }, 4500);
   }
 
   let heroDrawerOpen = false;
@@ -703,13 +708,43 @@
 
         const head = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
         const currentFile = String(np?.file || head?.file || '').trim();
+        const currentSongId = String(np?.songid || head?.songid || '').trim();
+        if (currentFile) lastKnownNowFile = currentFile;
+        if (currentSongId) lastKnownSongId = currentSongId;
+        const effectiveFile = currentFile || lastKnownNowFile;
+        const effectiveSongId = currentSongId || lastKnownSongId;
+        const effectiveTrackKey = motionTrackKey(effectiveFile, effectiveSongId);
 
         // Render immediately with cached motion if available; do not block on remote lookup.
-        // "Motion is law": if track file is unchanged, keep using known-good motion clip.
+        // "Motion is law": if track file is unchanged (or temporarily missing in payload), keep using known-good motion clip.
         let motionMp4 = '';
-        if (motionEnabled && lastMotionMp4 && ((motionIdentity === lastMotionIdentity) || (currentFile && currentFile === lastMotionFile))) {
+        const lockedMotion = effectiveTrackKey ? String(motionLockByTrack.get(effectiveTrackKey) || '').trim() : '';
+        if (lockedMotion) {
+          motionMp4 = lockedMotion;
+        } else if (effectiveTrackKey && lastVisibleMotionSrc && effectiveTrackKey === lastMotionTrackKey) {
+          motionMp4 = lastVisibleMotionSrc;
+        } else if (effectiveFile && lastVisibleMotionSrc && effectiveFile === lastVisibleMotionFile) {
+          motionMp4 = lastVisibleMotionSrc;
+        } else if (lastMotionMp4 && ((motionIdentity === lastMotionIdentity) || (effectiveFile && effectiveFile === lastMotionFile))) {
           motionMp4 = lastMotionMp4;
         }
+
+        // Hard render guard: if same track key is still active, keep currently visible motion src.
+        if (!motionMp4) {
+          const liveVid = el.querySelector('.heroArtVid');
+          const liveSrc = String(liveVid?.currentSrc || liveVid?.src || '').trim();
+          if (liveSrc && effectiveTrackKey && lastRenderedTrackKey && effectiveTrackKey === lastRenderedTrackKey) {
+            motionMp4 = liveSrc;
+          }
+        }
+
+        // If this track previously proved motion, NEVER render static fallback branch.
+        const motionLockedForTrack = !!(effectiveTrackKey && (motionLockByTrack.get(effectiveTrackKey) || (effectiveTrackKey === lastMotionTrackKey && lastVisibleMotionSrc)));
+        if (motionLockedForTrack && !motionMp4) {
+          const fallbackMotion = String(motionLockByTrack.get(effectiveTrackKey) || lastVisibleMotionSrc || '').trim();
+          if (fallbackMotion) motionMp4 = fallbackMotion;
+        }
+
         np._motionMp4 = motionMp4;
 
         const renderSig = JSON.stringify({
@@ -717,7 +752,7 @@
           t: String(np?.title || np?.radioTitle || head?.title || ''),
           a: String(np?.artist || np?.radioArtist || head?.artist || ''),
           al: String(np?.album || np?.radioAlbum || ''),
-          art: String(np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || head?.thumbUrl || ''),
+          art: String((motionLockedForTrack ? '' : (np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || head?.thumbUrl || ''))),
           m: String(motionMp4 || ''),
           r: !!np?.isRadio || !!np?.isStream || !!head?.isStream,
           p: !!np?.isPodcast,
@@ -728,8 +763,10 @@
           armVideoFallback(el);
           lastRenderSignature = renderSig;
         } else {
-          updateHeroDynamic(el, q, np);
+          // If motion is locked for this track, avoid text-only update path that can repaint static art elsewhere.
+          if (!motionLockedForTrack) updateHeroDynamic(el, q, np);
         }
+        if (effectiveTrackKey) lastRenderedTrackKey = effectiveTrackKey;
 
         try { ensureRadioDrawer(); } catch {}
         try { window.dispatchEvent(new CustomEvent('heroTransport:update', { detail: { q, np } })); } catch {}
@@ -745,18 +782,32 @@
 
         if (seq !== refreshSeq) return; // stale refresh result
         if (!resolved) {
-          // Keep prior known-good motion for same track; do not aggressively clear on transient misses.
-          if (motionIdentity !== lastMotionIdentity && currentFile && currentFile !== lastMotionFile) {
-            lastMotionIdentity = motionIdentity;
-            lastMotionMp4 = '';
-            lastMotionFile = currentFile;
-          }
+          // Do not clear known-good motion on transient lookup misses.
           return;
         }
 
         lastMotionIdentity = motionIdentity;
         lastMotionMp4 = resolved;
-        lastMotionFile = currentFile;
+        lastMotionFile = effectiveFile;
+        if (effectiveTrackKey) {
+          lastMotionTrackKey = effectiveTrackKey;
+          motionLockByTrack.set(effectiveTrackKey, resolved);
+        }
+
+        const liveVid = el.querySelector('.heroArtVid');
+        const liveSrc = String(liveVid?.currentSrc || liveVid?.src || '').trim();
+        if (liveVid && liveSrc && canonicalMediaSrc(liveSrc) === canonicalMediaSrc(resolved)) {
+          // Avoid one-time flash: do not rebuild hero DOM when the same motion clip is already visible.
+          try {
+            const fb = el.querySelector('.heroArtFallback');
+            if (fb) fb.style.display = 'none';
+            liveVid.style.display = '';
+            const p = (typeof liveVid.play === 'function') ? liveVid.play() : null;
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          } catch {}
+          return;
+        }
+
         const npResolved = { ...np, _motionMp4: resolved };
         render(el, q, npResolved);
         armVideoFallback(el);
@@ -771,6 +822,7 @@
           r: !!npResolved?.isRadio || !!npResolved?.isStream || !!head2?.isStream,
           p: !!npResolved?.isPodcast,
         });
+        if (effectiveTrackKey) lastRenderedTrackKey = effectiveTrackKey;
         try { ensureRadioDrawer(); } catch {}
       } catch {
         // Never blank a previously good hero card on transient fetch/render failures.
