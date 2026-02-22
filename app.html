@@ -476,20 +476,38 @@
             const headItem = (headIdx >= 0) ? items[headIdx] : (items[0] || null);
             let nextHtml = '';
             let nextReason = '';
-            if (isAlexaMode && headItem) {
-              const hf = String(headItem?.file || '').trim();
-              const hStream = /^https?:\/\//i.test(hf);
-              const hThumbRaw = String(headItem?.thumbUrl || '').trim();
-              const hThumb = hThumbRaw
-                ? (hThumbRaw.startsWith('http') ? hThumbRaw : `${base}${hThumbRaw}`)
-                : fallbackNowArt;
-              const hName = hStream
-                ? String(headItem?.stationName || headItem?.name || headItem?.artist || fallbackStation || 'Radio station').trim()
-                : String(headItem?.artist || headItem?.name || '').trim();
-              const hTitle = hStream ? '' : String(headItem?.title || '').trim();
-              const hText = hTitle ? `${hName} • ${hTitle}` : (hName || String(np?.title || '').trim() || '(unknown)');
-              nextHtml = `${hThumb ? `<img src="${hThumb}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${hText}</div>`;
-              nextReason = 'alexa-head';
+            if (isAlexaMode) {
+              // Keep Alexa next-up source aligned with index-ui behavior:
+              // derive from /now-playing context first, then fallback to queue head.
+              const npTitle = String(np?.title || '').trim();
+              const npFile = String(np?.file || '').trim();
+              const npArtist = String(np?.artist || '').trim();
+              const npArtRaw = String(np?.albumArtUrl || np?.altArtUrl || '').trim();
+              const npArt = npArtRaw ? (npArtRaw.startsWith('http') ? npArtRaw : `${base}${npArtRaw}`) : '';
+
+              if (npTitle || npFile || npArtist) {
+                const showTitle = npTitle || (npFile ? String(npFile).split('/').pop() : '') || npFile || 'Unknown title';
+                const showArtist = npArtist ? ` • ${npArtist}` : '';
+                nextHtml = `${npArt ? `<img src="${npArt}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${showTitle}${showArtist}</div>`;
+                nextReason = 'alexa-now-playing';
+              } else if (headItem) {
+                const hf = String(headItem?.file || '').trim();
+                const hStream = /^https?:\/\//i.test(hf);
+                const hThumbRaw = String(headItem?.thumbUrl || '').trim();
+                const hThumb = hThumbRaw
+                  ? (hThumbRaw.startsWith('http') ? hThumbRaw : `${base}${hThumbRaw}`)
+                  : fallbackNowArt;
+                const hName = hStream
+                  ? String(headItem?.stationName || headItem?.name || headItem?.artist || fallbackStation || 'Radio station').trim()
+                  : String(headItem?.artist || headItem?.name || '').trim();
+                const hTitle = hStream ? '' : String(headItem?.title || '').trim();
+                const hText = hTitle ? `${hName} • ${hTitle}` : (hName || String(np?.title || '').trim() || '(unknown)');
+                nextHtml = `${hThumb ? `<img src="${hThumb}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${hText}</div>`;
+                nextReason = 'alexa-head-fallback';
+              } else {
+                nextHtml = '<div class="heroQueueMeta">Next-up: none</div>';
+                nextReason = 'alexa-none';
+              }
             } else {
               const apiNext = (nextUpApi && nextUpApi.ok && nextUpApi.next) ? nextUpApi.next : null;
               if (apiNext) {
