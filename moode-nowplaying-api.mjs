@@ -2266,9 +2266,25 @@ app.post('/alexa/was-playing', async (req, res) => {
       merged[k] = v;
     }
 
+    const tokenResolved = String(incoming?.token || merged.token || '').trim();
+    const pos0IncomingNum = Number(incoming?.removedPos0);
+    let pos0FromToken = Number.NaN;
+    try {
+      if (tokenResolved.startsWith('moode-track:')) {
+        const raw = tokenResolved.slice('moode-track:'.length);
+        const pad = raw.length % 4 ? '='.repeat(4 - (raw.length % 4)) : '';
+        const j = JSON.parse(Buffer.from((raw + pad).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8') || '{}');
+        pos0FromToken = Number(j?.pos0);
+      }
+    } catch {}
+    const removedPos0Resolved = Number.isFinite(pos0IncomingNum)
+      ? Math.max(0, Math.floor(pos0IncomingNum))
+      : (Number.isFinite(pos0FromToken) ? Math.max(0, Math.floor(pos0FromToken)) : Number(incoming?.removedPos1) - 1);
+    const removedPos1Resolved = Number.isFinite(removedPos0Resolved) ? (removedPos0Resolved + 1) : Number(incoming?.removedPos1);
+
     alexaWasPlaying = {
       ...merged,
-      token: String(incoming?.token || merged.token || '').trim(),
+      token: tokenResolved,
       file: String(incoming?.file || merged.file || '').trim(),
       title: decodeHtmlEntities(String(incoming?.title || merged.title || '').trim()),
       artist: decodeHtmlEntities(String(incoming?.artist || merged.artist || '').trim()),
@@ -2281,6 +2297,8 @@ app.post('/alexa/was-playing', async (req, res) => {
       rating: Math.max(0, Math.min(5, Number(incoming?.rating ?? merged.rating ?? 0) || 0)),
       ratingFile: String(incoming?.ratingFile || merged.ratingFile || incoming?.file || merged.file || '').trim(),
       ratingDisabled: (typeof incoming?.ratingDisabled === 'boolean') ? !!incoming.ratingDisabled : ((typeof merged.ratingDisabled === 'boolean') ? !!merged.ratingDisabled : false),
+      removedPos0: Number.isFinite(removedPos0Resolved) ? removedPos0Resolved : null,
+      removedPos1: Number.isFinite(removedPos1Resolved) ? Math.max(1, Math.floor(removedPos1Resolved)) : null,
       startedAt: Number.parseInt(String(incoming?.startedAt || merged.startedAt || nowTs).trim(), 10) || nowTs,
       stoppedAt: active ? 0 : (Number.parseInt(String(incoming?.stoppedAt || nowTs).trim(), 10) || nowTs),
       active,
@@ -6017,6 +6035,7 @@ registerAllConfigRoutes(app, {
   getRatingForFile,
   setRatingForFile,
   mpdStickerGetSong,
+  getAlexaWasPlaying: () => alexaWasPlaying,
 });
 
 

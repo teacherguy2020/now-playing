@@ -168,8 +168,23 @@ function splitArtistDashTitle(line) {
 }
 
 export function registerConfigDiagnosticsRoutes(app, deps) {
-  const { requireTrackKey, getRatingForFile, setRatingForFile } = deps;
+  const { requireTrackKey, getRatingForFile, setRatingForFile, getAlexaWasPlaying } = deps;
   const configPath = process.env.NOW_PLAYING_CONFIG_PATH || `${process.cwd()}/config/now-playing.config.json`;
+
+  function pos0FromAlexaToken(tokenRaw) {
+    const s = String(tokenRaw || '').trim();
+    if (!s || !s.startsWith('moode-track:')) return null;
+    try {
+      const b64 = s.slice('moode-track:'.length);
+      const pad = b64.length % 4 ? '='.repeat(4 - (b64.length % 4)) : '';
+      const json = Buffer.from((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+      const obj = JSON.parse(json || '{}');
+      const n = Number(obj?.pos0);
+      return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
+    } catch {
+      return null;
+    }
+  }
 
   async function isRatingsEnabled() {
     try {
@@ -326,10 +341,46 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const wasOn = /random:\s*on/i.test(String(beforeStatus || ''));
         const setTo = wasOn ? 'off' : 'on';
         await execFileP('mpc', ['-h', mpdHost, 'random', setTo]);
-        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        let { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
         const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
-        return res.json({ ok: true, action, randomOn, repeatOn, status: String(afterStatus || '') });
+
+        // Alexa continuity anchor: when turning random OFF while Alexa-mode lifecycle is active,
+        // prime MPD current position to the remembered removed position (without leaving local playback running).
+        let primedPos = null;
+        let primeSkipped = '';
+        try {
+          const wp = (typeof getAlexaWasPlaying === 'function') ? (getAlexaWasPlaying() || null) : null;
+          const alexaActive = !!wp?.active;
+          if (setTo === 'off' && alexaActive) {
+            const fromField = Number(wp?.removedPos0);
+            const fromToken = pos0FromAlexaToken(wp?.token);
+            const anchorPos0 = Number.isFinite(fromField) ? Math.max(0, Math.floor(fromField)) : fromToken;
+            const anchorPos1Raw = Number.isFinite(anchorPos0) ? (anchorPos0 + 1) : null;
+
+            const statusText = String(afterStatus || '');
+            const isLocallyPlaying = /\[(playing|paused)\]/i.test(statusText);
+            const mTot = statusText.match(/#\d+\/(\d+)/);
+            const total = mTot ? Number(mTot[1] || 0) : 0;
+
+            if (!Number.isFinite(anchorPos1Raw) || (anchorPos1Raw || 0) <= 0) {
+              primeSkipped = 'no-anchor';
+            } else if (isLocallyPlaying) {
+              primeSkipped = 'local-playing';
+            } else {
+              const targetPos = total > 0 ? Math.max(1, Math.min(total, Math.floor(anchorPos1Raw))) : Math.max(1, Math.floor(anchorPos1Raw));
+              await execFileP('mpc', ['-h', mpdHost, 'play', String(targetPos)]);
+              await execFileP('mpc', ['-h', mpdHost, 'stop']);
+              primedPos = targetPos;
+              const refreshed = await execFileP('mpc', ['-h', mpdHost, 'status']);
+              afterStatus = refreshed?.stdout || afterStatus;
+            }
+          }
+        } catch (e) {
+          primeSkipped = `prime-error:${e?.message || String(e)}`;
+        }
+
+        return res.json({ ok: true, action, randomOn, repeatOn, primedPos, primeSkipped, status: String(afterStatus || '') });
       }
 
       if (action === 'repeat') {

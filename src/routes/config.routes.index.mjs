@@ -42,6 +42,7 @@ export function registerAllConfigRoutes(app, deps) {
     requireTrackKey: deps.requireTrackKey,
     getRatingForFile: deps.getRatingForFile,
     setRatingForFile: deps.setRatingForFile,
+    getAlexaWasPlaying: deps.getAlexaWasPlaying,
   });
 
   registerConfigRatingsStickerRoutes(app, {
