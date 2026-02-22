@@ -1,13 +1,20 @@
 # Alexa
 
-Purpose: Alexa lifecycle integration and UI overlay behavior.
+![Alexa tab](./images/03-alexa.jpg)
 
-## Covers
-- `/track` and Alexa skill flow
-- `/alexa/was-playing` lifecycle state
-- Alexa Mode rendering rules
+Alexa tab manages voice lifecycle state and correction maps.
 
-## Important behaviors
-- Alexa playback can be external to MPD current item.
-- Queue "head" in Alexa mode is the queued-next anchor.
-- Lifecycle state now stores `removedPos0/removedPos1` for continuity logic.
+## Core responsibilities
+- Alexa integration on/off
+- correction dictionaries (artist/album/playlist aliases)
+- recent intent history and command outcomes
+- helper phrase guidance for users
+
+## Lifecycle model
+- Alexa playback can be external to MPD current queue item.
+- `/alexa/was-playing` tracks active lifecycle and remembered context.
+- Recent work added remembered removed position (`removedPos0/removedPos1`) used for random-off continuity anchoring.
+
+## Notes
+- In Alexa mode, queue semantics differ: queue head is effectively queued-next.
+- Hero controls are reduced, with Random still available.

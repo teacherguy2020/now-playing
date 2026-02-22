@@ -1,12 +1,22 @@
 # Queue Wizard
 
-Purpose: build queues by filters or vibe seeds.
+![Queue Wizard tab](./images/05-queue-wizard.jpg)
 
-## Modes
-- Filter Queue Builder
-- Vibe Queue Builder (Last.fm required)
+Queue Wizard is the composition engine for curated or generated queues.
 
-## Covers
-- queue preview/apply
-- vibe async job flow (`start/status/cancel`)
-- save queue + collage output
+## Builders
+- **Playlists Queue Builder**: select existing playlists and send to moOde.
+- **Filter Queue Builder**: constrain by genres/artists/albums/exclusions.
+- **Vibe Queue Builder**: generate from now-playing context (Last.fm-assisted flow).
+
+## Modes and toggles
+- Replace vs Add
+- Crop queue
+- Random (selection behavior)
+
+## Output
+- send directly to moOde queue
+- save generated set as playlist (+ optional cover flow in related paths)
+
+## Usage tip
+Treat this tab as "batch intent" and keep transport controls in hero for immediate playback tweaks.

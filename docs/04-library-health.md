@@ -1,13 +1,18 @@
 # Library Health
 
-Purpose: metadata, art, performers, and cleanup tools.
+![Library Health tab](./images/04-library-health.jpg)
 
-## Covers
-- `library-health.html`
-- library-health endpoints
+Library Health gives a metadata quality dashboard and repair actions.
 
-## Focus areas
-- missing artwork
-- genre normalization
-- performer extraction
-- batch rating/metadata maintenance
+## What you can inspect
+- track totals, rating distribution, genre distribution
+- missing or inconsistent metadata classes
+- artwork and animated-art candidate coverage
+
+## Typical actions
+- normalize genres
+- fix artist/album metadata drift
+- run targeted cleanup tasks from sampled rows
+
+## Why this tab exists
+Queue quality and recommendations depend heavily on clean metadata. This tab keeps the music corpus healthy over time.
