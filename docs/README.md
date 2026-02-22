@@ -19,4 +19,3 @@ This docs set follows the same order as the app tabs.
 - [Random vs Shuffle semantics](./10-random-vs-shuffle.md)
 - [Deploy / PM2 / Rollback](./11-deploy-pm2-rollback.md)
 - [Troubleshooting playbook](./12-troubleshooting.md)
-- [Alexa phrase reference](./13-alexa-phrases.md)
