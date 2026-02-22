@@ -404,16 +404,31 @@
 
           const headers = runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {};
           const radioMapP = loadRadioHostNameMap(base, headers);
-          const [r, npRes, nextUpRes, radioMap] = await Promise.all([
+          const [r, npRes, nextUpRes, awRes, radioMap] = await Promise.all([
             fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers }),
             fetch(`${base}/now-playing`, { cache:'no-store', headers }).catch(() => null),
             fetch(`${base}/next-up`, { cache:'no-store', headers }).catch(() => null),
+            fetch(`${base}/alexa/was-playing`, { cache:'no-store', headers }).catch(() => null),
             radioMapP,
           ]);
           const j = await r.json().catch(() => ({}));
-          const np = npRes ? await npRes.json().catch(() => ({})) : {};
+          let np = npRes ? await npRes.json().catch(() => ({})) : {};
           const nextUpApi = nextUpRes ? await nextUpRes.json().catch(() => ({})) : {};
+          const aw = awRes ? await awRes.json().catch(() => ({})) : {};
           if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+          // Honor Alexa mode sensor payload when active/fresh so hero reflects Alexa-driven playback.
+          try {
+            const awNp = aw?.nowPlaying || null;
+            const awWp = aw?.wasPlaying || null;
+            const awFresh = !!aw?.fresh;
+            const awActive = !!((awNp && awNp.active) || (awWp && awWp.active));
+            const awPayload = (awNp && awNp.file) ? awNp : ((awWp && awWp.file) ? awWp : null);
+            if (awFresh && awActive && awPayload) {
+              np = { ...np, ...awPayload, alexaMode: true };
+            }
+          } catch {}
+
           const fallbackStation = String(np?.stationName || np?._stationName || np?.radioStationName || '').trim();
           const fallbackNowArtRaw = String(np?.albumArtUrl || np?.altArtUrl || '').trim();
           const fallbackNowArt = fallbackNowArtRaw ? (fallbackNowArtRaw.startsWith('http') ? fallbackNowArtRaw : `${base}${fallbackNowArtRaw}`) : '';
