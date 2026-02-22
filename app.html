@@ -152,7 +152,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260221-010"></script>
+  <script src="scripts/hero-transport.js?v=20260221-011"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -264,6 +264,14 @@
       let radioHostAmbiguous = new Set();
       let radioHostMapTs = 0;
       let lastHeroQueueSignature = '';
+      let lastHeroNextUpSignature = '';
+      const heroDlog = (...args) => {
+        try {
+          if (globalThis?.localStorage?.getItem('heroQueueDebug') === '1') {
+            console.debug('[hero-queue]', ...args);
+          }
+        } catch {}
+      };
       let currentShellPage = getPageFromUrl();
       let lastRadioPresetStations = [];
       const RADIO_QUEUE_PRESETS_KEY = 'nowplaying.radioQueuePresets.v1';
@@ -449,7 +457,14 @@
               lastHeroQueueSignature = emptySig;
             }
             lastRadioPresetStations = [];
-            if (hqNextUp) hqNextUp.innerHTML = '<div class="heroQueueMeta">Next-up: none</div>';
+            if (hqNextUp) {
+              const nextHtml = '<div class="heroQueueMeta">Next-up: none</div>';
+              if (globalThis.lastHeroNextUpSignature !== nextHtml) {
+                heroDlog('next-up repaint', { reason: 'empty' });
+                hqNextUp.innerHTML = nextHtml;
+                globalThis.lastHeroNextUpSignature = nextHtml;
+              }
+            }
             updateSavePresetsButtonVisibility();
             return;
           }
@@ -459,6 +474,8 @@
           const nextItem = (headIdx >= 0 && headIdx < (items.length - 1)) ? items[headIdx + 1] : null;
           if (hqNextUp) {
             const headItem = (headIdx >= 0) ? items[headIdx] : (items[0] || null);
+            let nextHtml = '';
+            let nextReason = '';
             if (isAlexaMode && headItem) {
               const hf = String(headItem?.file || '').trim();
               const hStream = /^https?:\/\//i.test(hf);
@@ -471,7 +488,8 @@
                 : String(headItem?.artist || headItem?.name || '').trim();
               const hTitle = hStream ? '' : String(headItem?.title || '').trim();
               const hText = hTitle ? `${hName} • ${hTitle}` : (hName || String(np?.title || '').trim() || '(unknown)');
-              hqNextUp.innerHTML = `${hThumb ? `<img src="${hThumb}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${hText}</div>`;
+              nextHtml = `${hThumb ? `<img src="${hThumb}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${hText}</div>`;
+              nextReason = 'alexa-head';
             } else {
               const apiNext = (nextUpApi && nextUpApi.ok && nextUpApi.next) ? nextUpApi.next : null;
               if (apiNext) {
@@ -480,9 +498,11 @@
                 const aArtRaw = String(apiNext.artUrl || '').trim();
                 const aArt = aArtRaw ? (aArtRaw.startsWith('http') ? aArtRaw : `${base}${aArtRaw}`) : '';
                 const txt = [aArtist, aTitle].filter(Boolean).join(' • ') || '(unknown)';
-                hqNextUp.innerHTML = `${aArt ? `<img src="${aArt}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${txt}</div>`;
+                nextHtml = `${aArt ? `<img src="${aArt}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${txt}</div>`;
+                nextReason = 'next-up-api';
               } else if (!nextItem) {
-                hqNextUp.innerHTML = '<div class="heroQueueMeta">Next-up: none</div>';
+                nextHtml = '<div class="heroQueueMeta">Next-up: none</div>';
+                nextReason = 'none';
               } else {
                 const nf = String(nextItem?.file || '').trim();
                 const nStream = /^https?:\/\//i.test(nf);
@@ -493,8 +513,15 @@
                   : String(nextItem?.artist || nextItem?.name || '').trim();
                 const nTitle = nStream ? '' : String(nextItem?.title || '').trim();
                 const nText = nTitle ? `${nName} • ${nTitle}` : nName;
-                hqNextUp.innerHTML = `${nThumb ? `<img src="${nThumb}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${nText || '(unknown)'}</div>`;
+                nextHtml = `${nThumb ? `<img src="${nThumb}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${nText || '(unknown)'}</div>`;
+                nextReason = 'queue-derived';
               }
+            }
+
+            if (nextHtml && globalThis.lastHeroNextUpSignature !== nextHtml) {
+              heroDlog('next-up repaint', { reason: nextReason, isAlexaMode, headPos: headPosNum });
+              hqNextUp.innerHTML = nextHtml;
+              globalThis.lastHeroNextUpSignature = nextHtml;
             }
 
             if (queueCollapsed && hqBtn) {
