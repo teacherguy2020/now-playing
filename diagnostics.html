@@ -21,8 +21,8 @@
     })();
   </script>
   <title>Diagnostics</title>
-  <link rel="stylesheet" href="styles/podcasts.css?v=20260218-82" />
-  <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260222-widepages1" />
+  <link rel="stylesheet" href="styles/podcasts2.css?v=20260222-widepages2" />
   <style>
     html.standaloneMode .preHeroStatusWrap,
     html.standaloneMode .heroRail{display:none !important}
@@ -147,21 +147,26 @@
 
     
 
-    <div class="card">
-      <div class="muted" style="margin-bottom:8px;">Live now-playing view (index.html)</div>
-      <div class="row" style="margin-bottom:8px;align-items:center;">
-        <button id="reloadLiveBtn" type="button">Reload live view</button>
-        <label class="muted" for="liveZoom" style="margin:0 0 0 8px;">Zoom</label>
-        <input id="liveZoom" type="range" min="35" max="100" step="5" value="45" />
-        <span id="liveZoomLabel" class="muted">45%</span>
-        <a id="openLiveLink" href="index.html" target="_blank" rel="noopener" class="muted">Open in new tab</a>
+    <div class="card" id="liveCard">
+      <div class="row" style="margin-bottom:8px;align-items:center;justify-content:space-between;gap:10px;">
+        <div class="muted" style="margin:0;">Live now-playing view (index.html)</div>
+        <button id="liveToggleBtn" type="button" title="Collapse/expand live view">Collapse</button>
       </div>
-      <div id="liveFrameViewport" style="overflow:auto;border:1px solid #2a3a58;border-radius:10px;background:#071021;padding:8px;display:flex;justify-content:center;align-items:flex-start;">
-        <div id="liveFrameScaleWrap" style="transform-origin:top left; width:1920px; height:1080px;">
-          <iframe id="liveFrame" title="Live now-playing" style="width:1920px;height:1080px;border:0;display:block;background:#071021;"></iframe>
+      <div id="liveCardBody">
+        <div class="row" style="margin-bottom:8px;align-items:center;">
+          <button id="reloadLiveBtn" type="button">Reload live view</button>
+          <label class="muted" for="liveZoom" style="margin:0 0 0 8px;">Zoom</label>
+          <input id="liveZoom" type="range" min="35" max="100" step="5" value="45" />
+          <span id="liveZoomLabel" class="muted">45%</span>
+          <a id="openLiveLink" href="index.html" target="_blank" rel="noopener" class="muted">Open in new tab</a>
         </div>
+        <div id="liveFrameViewport" style="overflow:auto;border:1px solid #2a3a58;border-radius:10px;background:#071021;padding:8px;display:flex;justify-content:center;align-items:flex-start;">
+          <div id="liveFrameScaleWrap" style="transform-origin:top left; width:1920px; height:1080px;">
+            <iframe id="liveFrame" title="Live now-playing" style="width:1920px;height:1080px;border:0;display:block;background:#071021;"></iframe>
+          </div>
+        </div>
+        <div class="muted" style="margin-top:6px;">Desktop viewport stays 1920×1080; zoom only scales display.</div>
       </div>
-      <div class="muted" style="margin-top:6px;">Desktop viewport stays 1920×1080; zoom only scales display.</div>
     </div>
 
     <div class="card" id="outputCard" style="display:none;">
@@ -179,7 +184,7 @@
     <input id="key" type="hidden" />
   </div>
 
-  <script src="scripts/diagnostics.js?v=20260220-35"></script>
+  <script src="scripts/diagnostics.js?v=20260222-livecollapse1"></script>
 
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
 

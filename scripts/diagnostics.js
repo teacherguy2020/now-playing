@@ -101,6 +101,7 @@
   const FILTER_KEY = 'diagnostics:endpointFilter:v1';
   const LAST_ENDPOINT_KEY = 'diagnostics:lastEndpoint:v1';
   const STATE_KEY = 'diagnostics:requestState:v1';
+  const LIVE_COLLAPSED_KEY = 'diagnostics:liveCardCollapsed:v1';
 
   function loadFavorites(){
     try {
@@ -191,6 +192,19 @@
   function apiBaseDefault(){
     const host = location.hostname || '10.0.0.233';
     return `${location.protocol}//${host}:3101`;
+  }
+
+  function isLiveCollapsed(){
+    try { return localStorage.getItem(LIVE_COLLAPSED_KEY) === '1'; } catch (_) { return false; }
+  }
+
+  function setLiveCollapsed(on){
+    const collapsed = !!on;
+    const body = $('liveCardBody');
+    const btn = $('liveToggleBtn');
+    if (body) body.style.display = collapsed ? 'none' : '';
+    if (btn) btn.textContent = collapsed ? 'Expand' : 'Collapse';
+    try { localStorage.setItem(LIVE_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (_) {}
   }
 
   function applyLiveZoom(){
@@ -548,6 +562,7 @@
   $('runBtn')?.addEventListener('click', () => run());
   $('reloadLiveBtn')?.addEventListener('click', () => loadRuntime());
   $('liveZoom')?.addEventListener('input', applyLiveZoom);
+  $('liveToggleBtn')?.addEventListener('click', () => setLiveCollapsed(!isLiveCollapsed()));
   $('queueWrap')?.addEventListener('click', (ev) => {
     const el = ev.target instanceof Element ? ev.target : null;
 
@@ -767,6 +782,7 @@
     if (typeof state.useTrackKey === 'boolean' && $('useTrackKey')) {
       $('useTrackKey').checked = state.useTrackKey;
     }
+    setLiveCollapsed(isLiveCollapsed());
     // Prime live preview immediately, even if runtime fetch is slow/failing.
     try { refreshLiveFrame(8101); } catch (e) { dbg(`prime refresh error: ${e?.message || e}`); }
     await loadRuntime();

@@ -57,8 +57,8 @@ body {
 .heroWrap {
   margin: 10px auto 0;
   box-sizing: border-box;
-  width: calc(100% - 36px);
-  max-width: 1044px;
+  width: calc(100% - 12px);
+  max-width: var(--page-max, calc(100vw - 12px));
   background: rgba(10, 14, 26, 0.72);
   border: 1px solid rgba(125, 211, 252, 0.28);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.36);

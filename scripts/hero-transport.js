@@ -505,7 +505,7 @@
 #heroRadioDrawer .tile:active{transform:scale(.97)}
 #heroRadioDrawer .tile.isLive{border-color:#22c55e !important;box-shadow:0 0 0 1px rgba(34,197,94,.42) inset, 0 0 12px rgba(34,197,94,.20)}
 #heroRadioDrawer .tile img{width:100%;height:100%;object-fit:cover}
-#heroTransport .heroMain{transform:translateX(-60px)}
+#heroTransport .heroMain{transform:translateX(-40px) !important;padding-right:130px}
 #heroTransport .heroLivePulse{color:#ef4444;animation:heroLivePulse 2.2s ease-in-out infinite}
 @keyframes heroLivePulse{0%,100%{opacity:1;text-shadow:0 0 0 rgba(239,68,68,0)}50%{opacity:.45;text-shadow:0 0 10px rgba(239,68,68,.45)}}
 `;

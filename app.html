@@ -8,8 +8,9 @@
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     body{background:#0c1526;color:#e7eefc;margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-    .viewWrap{max-width:1080px;width:min(1080px, calc(100vw - 24px));margin:0 auto;padding:0 0 14px;box-sizing:border-box}
-    .heroWrap{padding-top:4px !important;position:relative}
+    :root{--app-shell-max: min(1680px, calc(100vw - 12px));}
+    .viewWrap{max-width:var(--app-shell-max);width:var(--app-shell-max);margin:0 auto;padding:0 0 14px;box-sizing:border-box}
+    .heroWrap{max-width:var(--app-shell-max) !important;width:var(--app-shell-max) !important;padding-top:4px !important;position:relative}
     #appFrame{width:100% !important;height:1400px;min-height:0;border:1px solid #2a3a58;border-top:0;border-radius:0 0 14px 14px;background:#071021;display:block;box-sizing:border-box}
     #themeToggle{min-width:32px;padding:5px 8px;font-size:12px;line-height:1}
     /* In app-shell mode, let top chrome scroll away (not sticky) to maximize iframe area */
@@ -248,7 +249,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260222-podcastline1"></script>
+  <script src="scripts/hero-transport.js?v=20260222-heromainshift2"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -260,7 +261,7 @@
       function syncFrameWidth(){
         try {
           const heroWrap = document.querySelector('.heroWrap');
-          const targetW = Math.max(320, Math.min(1080, Math.floor(heroWrap?.clientWidth || (window.innerWidth - 24))));
+          const targetW = Math.max(320, Math.floor(heroWrap?.clientWidth || (window.innerWidth - 12)));
           if (viewWrap) viewWrap.style.width = `${targetW}px`;
           if (frame) frame.style.width = '100%';
         } catch {}
@@ -360,6 +361,8 @@
       let radioHostAmbiguous = new Set();
       let radioHostMapTs = 0;
       let lastHeroQueueSignature = '';
+      let lastHeroQueueContentSignature = '';
+      let lastHeroHeadPos = -1;
       let lastHeroNextUpSignature = '';
       const heroDlog = (...args) => {
         try {
@@ -552,6 +555,8 @@
             if (lastHeroQueueSignature !== emptySig) {
               wrap.innerHTML = '<div class="heroQueueMeta">Queue is empty.</div>';
               lastHeroQueueSignature = emptySig;
+              lastHeroQueueContentSignature = '';
+              lastHeroHeadPos = -1;
             }
             lastRadioPresetStations = [];
             if (hqNextUp) {
@@ -655,27 +660,52 @@
             });
             if (lastHeroQueueSignature === collapsedSig) return;
             lastHeroQueueSignature = collapsedSig;
+            lastHeroQueueContentSignature = '';
+            lastHeroHeadPos = Number(j.headPos || -1);
             if (hqWrap) hqWrap.innerHTML = '';
             lastRadioPresetStations = [];
             updateSavePresetsButtonVisibility();
             return;
           }
 
-          const queueSig = JSON.stringify({
+          const headPosNow = Number(j.headPos || -1);
+          const queueContentSig = JSON.stringify({
             state: String(j.playbackState || ''),
             count: items.length,
-            head: Number(j.headPos || -1),
             items: items.map((x) => [
               Number(x?._posDisplay || 0),
-              !!x?.isHead,
               String(x?.artist || ''),
               String(x?.title || ''),
               String(x?.thumbUrl || ''),
               String(x?.file || ''),
+              String(x?.album || ''),
+              Number(x?.rating || 0),
+              !!x?.isPodcast,
             ])
           });
+
+          // Avoid full row re-render when only head position changed (prevents all thumbs refresh).
+          if (lastHeroQueueContentSignature === queueContentSig && lastHeroHeadPos !== headPosNow) {
+            const rows = Array.from((wrap || document).querySelectorAll('.heroQueueRow[data-queue-play-pos]'));
+            rows.forEach((row) => {
+              const posNum = Number(row.getAttribute('data-queue-play-pos') || 0);
+              const isHead = (posNum === headPosNow);
+              row.style.background = isHead ? (isAlexaMode ? 'rgba(56,189,248,.14)' : 'rgba(34,197,94,.14)') : '';
+              row.style.borderRadius = isHead ? '8px' : '';
+              row.style.border = isHead && isAlexaMode ? '1px dashed rgba(125,211,252,.35)' : '';
+              const posCell = row.querySelector('.heroQueuePosCell');
+              if (posCell) posCell.textContent = isHead ? (isAlexaMode ? 'Queued' : '▶') : '';
+            });
+            lastHeroHeadPos = headPosNow;
+            lastHeroQueueSignature = `${queueContentSig}|h:${headPosNow}`;
+            return;
+          }
+
+          const queueSig = `${queueContentSig}|h:${headPosNow}`;
           if (lastHeroQueueSignature === queueSig) return;
           lastHeroQueueSignature = queueSig;
+          lastHeroQueueContentSignature = queueContentSig;
+          lastHeroHeadPos = headPosNow;
 
           const existingIconByFile = new Map();
           try {
@@ -776,7 +806,7 @@
                   : 'background:rgba(34,197,94,.14);border-radius:8px;')
               : '';
             const headLabel = head ? (isAlexaMode ? ' Queued' : ' ▶') : '';
-            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${headRowStyle}">${thumbHtml}<div><b>${pos}</b>${headLabel}</div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;"><span style="font-size:16px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${line1}</span>${starsInline}</div>${line2}</div>${actions}</div>`;
+            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${headRowStyle}">${thumbHtml}<div><b>${pos}</b> <span class="heroQueuePosCell">${headLabel}</span></div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;"><span style="font-size:16px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${line1}</span>${starsInline}</div>${line2}</div>${actions}</div>`;
           }).join('');
 
           const onlyRadioStations = !!items.length && items.every((x) => {
