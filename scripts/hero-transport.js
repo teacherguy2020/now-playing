@@ -47,6 +47,8 @@
   const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
   let lastMotionIdentity = '';
   let lastMotionMp4 = '';
+  let lastMotionFile = '';
+  let lastVisibleMotionSrc = '';
 
   function currentKey() {
     return String($('key')?.value || '').trim() || runtimeTrackKey;
@@ -389,6 +391,7 @@
     const vid = el.querySelector('.heroArtVid');
     if (!(vid instanceof HTMLVideoElement)) return;
     const fb = el.querySelector('.heroArtFallback');
+    const src = String(vid.currentSrc || vid.src || '').trim();
 
     // Keep static art visible until we confirm decoded frame progress.
     let resolved = false;
@@ -399,6 +402,7 @@
       resolved = true;
       vid.style.display = '';
       if (fb) fb.style.display = 'none';
+      if (src) lastVisibleMotionSrc = src;
     };
 
     const keepFallback = () => {
@@ -408,16 +412,25 @@
       vid.style.display = 'none';
     };
 
-    // Start conservative: fallback visible until video is truly advancing.
-    if (fb) fb.style.display = '';
-    vid.style.display = 'none';
-
     const tryPlay = () => {
       try {
         const p = (typeof vid.play === 'function') ? vid.play() : null;
         if (p && typeof p.catch === 'function') p.catch(() => {});
       } catch {}
     };
+
+    // If this exact motion clip already displayed successfully, keep it visible immediately.
+    if (src && src === lastVisibleMotionSrc) {
+      if (fb) fb.style.display = 'none';
+      vid.style.display = '';
+      tryPlay();
+      ['error', 'stalled', 'abort', 'emptied'].forEach((ev) => vid.addEventListener(ev, keepFallback, { once: true }));
+      return;
+    }
+
+    // Start conservative for first-time clip display.
+    if (fb) fb.style.display = '';
+    vid.style.display = 'none';
 
     const onProgress = () => {
       const t = Number(vid.currentTime || 0);
@@ -430,12 +443,12 @@
     vid.addEventListener('loadeddata', onProgress);
     ['error', 'stalled', 'abort', 'emptied'].forEach((ev) => vid.addEventListener(ev, keepFallback, { once: true }));
 
-    // If decode never advances, keep static art (avoids pink/frozen video surfaces on low-end GPUs).
+    // Give decode a bit more time before deciding fallback.
     setTimeout(() => {
       if (resolved) return;
       onProgress();
       if (!resolved) keepFallback();
-    }, 1800);
+    }, 4500);
   }
 
   let heroDrawerOpen = false;
@@ -688,12 +701,17 @@
         const album = String(np?.album || '').trim();
         const motionIdentity = `${isRadioOrStream ? 'r' : 'l'}|${appleUrl || ''}|${artist}|${album}`;
 
+        const head = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
+        const currentFile = String(np?.file || head?.file || '').trim();
+
         // Render immediately with cached motion if available; do not block on remote lookup.
+        // "Motion is law": if track file is unchanged, keep using known-good motion clip.
         let motionMp4 = '';
-        if (motionEnabled && motionIdentity === lastMotionIdentity && lastMotionMp4) motionMp4 = lastMotionMp4;
+        if (motionEnabled && lastMotionMp4 && ((motionIdentity === lastMotionIdentity) || (currentFile && currentFile === lastMotionFile))) {
+          motionMp4 = lastMotionMp4;
+        }
         np._motionMp4 = motionMp4;
 
-        const head = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
         const renderSig = JSON.stringify({
           f: String(np?.file || head?.file || ''),
           t: String(np?.title || np?.radioTitle || head?.title || ''),
@@ -727,15 +745,18 @@
 
         if (seq !== refreshSeq) return; // stale refresh result
         if (!resolved) {
-          if (motionIdentity !== lastMotionIdentity) {
+          // Keep prior known-good motion for same track; do not aggressively clear on transient misses.
+          if (motionIdentity !== lastMotionIdentity && currentFile && currentFile !== lastMotionFile) {
             lastMotionIdentity = motionIdentity;
             lastMotionMp4 = '';
+            lastMotionFile = currentFile;
           }
           return;
         }
 
         lastMotionIdentity = motionIdentity;
         lastMotionMp4 = resolved;
+        lastMotionFile = currentFile;
         const npResolved = { ...np, _motionMp4: resolved };
         render(el, q, npResolved);
         armVideoFallback(el);
