@@ -43,15 +43,28 @@
     .heartBtn{border:0;background:transparent;cursor:pointer;font-size:17px;color:#7f8fae;padding:0}
     .heartBtn.on{color:#ef4444}
     #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
+    body.theme-light .muted{color:#2f2a4f}
+    body.theme-light .mutedSm{color:#4b3e6f}
+    body.theme-light label{color:#4b3e6f}
+    body.theme-light input::placeholder{color:#6b5f90;opacity:1}
     body.theme-light .stationCluster{background:rgba(255,255,255,.68);border-color:rgba(137,138,196,.36)}
     body.theme-light .clusterTitle{color:#2f2a4f}
-    body.theme-light .clusterCount,.theme-light .mutedSm{color:#4b3e6f}
+    body.theme-light .clusterCount{color:#4b3e6f}
     body.theme-light .stationCard{background:rgba(255,255,255,.78);border-color:rgba(137,138,196,.36)}
     body.theme-light .stationName{color:#1f1833}
     body.theme-light .stationMeta{color:#4b3e6f}
     body.theme-light .stationAction{background:#c0c9ee;color:#2f2a4f;border-color:rgba(137,138,196,.42)}
     body.theme-light .stationAction:hover{background:#d7def4;border-color:rgba(137,138,196,.56)}
     body.theme-light .chip{border-color:rgba(137,138,196,.46);color:#3b3260;background:rgba(255,255,255,.7)}
+
+    body:not(.theme-light){background:#0c1526 !important;color:#e7eefc !important}
+    body:not(.theme-light) .card{background:#101c33 !important;border-color:#2a3a58 !important}
+    body:not(.theme-light) .stationCluster{background:rgba(7,16,33,.55) !important;border-color:#2a3a58 !important}
+    body:not(.theme-light) .stationCard{background:#0a1222 !important;border-color:#2a3a58 !important}
+    body:not(.theme-light) .stationName{color:#e6edff !important}
+    body:not(.theme-light) .stationMeta,
+    body:not(.theme-light) .mutedSm{color:#8ea3c6 !important}
+    body:not(.theme-light) .stationAction{background:#0f1a31 !important;color:#e6edff !important;border-color:#334 !important}
 
     .stationClusters{display:grid;gap:12px;margin-top:10px}
     .stationCluster{border:1px solid #2a3a58;border-radius:12px;background:rgba(7,16,33,.55);padding:10px}
@@ -61,11 +74,12 @@
     .clusterTitle{font-size:13px;color:#bcd0f6;font-weight:700;letter-spacing:.3px}
     .clusterCount{font-size:12px;color:#8ea3c6}
     .stationGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    .stationCard{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;border:1px solid #2a3a58;border-radius:10px;background:#0a1222;padding:8px}
+    .stationCard{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid #2a3a58;border-radius:10px;background:#0a1222;padding:8px;overflow:hidden}
     .stationCard.isActive{border-color:#22c55e;box-shadow:0 0 0 1px rgba(34,197,94,.25) inset}
     .stationName{font-size:14px;color:#e6edff;font-weight:600;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .stationMeta{font-size:11px;color:#8ea3c6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
-    .stationControls{display:flex;align-items:center;gap:6px}
+    .stationCard > div:nth-child(2){min-width:0}
+    .stationControls{display:flex;align-items:center;gap:6px;flex:0 0 auto}
     .stationAction{border:1px solid #334;background:#0f1a31;color:#e6edff;border-radius:7px;padding:2px 8px;cursor:pointer;font-size:12px;line-height:1.2}
     .stationAction:hover{border-color:#5b78a8;background:#152748}
     .stationAction.isOn{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.08)}

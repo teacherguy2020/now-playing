@@ -613,7 +613,8 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const { r, buf, nameUsed } = got;
       await writeCachedRadioLogo(nameUsed || name, buf);
       res.setHeader('Content-Type', r.headers.get('content-type') || 'image/jpeg');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      // Treat freshly fetched logos as cacheable for a full day to reduce repeat latency.
+      res.setHeader('Cache-Control', 'public, max-age=86400');
       return res.end(buf);
     } catch {
       return res.status(404).end('not found');

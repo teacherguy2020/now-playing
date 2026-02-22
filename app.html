@@ -233,6 +233,22 @@
         } catch {}
       }
 
+      function syncThemeToFrame(){
+        try {
+          if (!frame) return;
+          const doc = frame.contentDocument;
+          const win = frame.contentWindow;
+          if (!doc || !win) return;
+          const isLight = document.body?.classList.contains('theme-light');
+          const t = isLight ? 'light' : 'dark';
+          doc.documentElement?.classList.toggle('theme-light', isLight);
+          doc.body?.classList.toggle('theme-light', isLight);
+          if (doc.documentElement) doc.documentElement.style.background = isLight ? '#8e79b6' : '#0c1526';
+          try { win.localStorage.setItem('np-theme', t); } catch {}
+          try { win.postMessage({ type: 'np-theme-sync', theme: t }, '*'); } catch {}
+        } catch {}
+      }
+
       function setPillState(pillId, state){
         const map = { ok:{c:'#22c55e',b:'rgba(34,197,94,.55)'}, warn:{c:'#f59e0b',b:'rgba(245,158,11,.55)'}, bad:{c:'#ef4444',b:'rgba(239,68,68,.55)'}, off:{c:'#64748b',b:'rgba(100,116,139,.45)'} };
         const s = map[state] || map.off;
@@ -562,13 +578,17 @@
               : `<img src="${stationLogoByDisplay || stationLogoByDisplayAlt || stationLogoByFile || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
             const actions = `<div class="heroQueueActions"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
             const albumTxt = String(x?.album || '').trim();
-            const detailLabel = [String(title || '').trim(), albumTxt].filter(Boolean).join(' • ');
-            const detailHtml = isStreamish
+            const rating = Math.max(0, Math.min(5, Number(x?.rating || 0)));
+            const starsInline = isStreamish
+              ? ''
+              : `<span style="margin-left:8px;letter-spacing:1px;font-size:14px;white-space:nowrap;">${'<span style="color:#fbbf24;">★</span>'.repeat(rating)}${'<span style="color:#64748b;">★</span>'.repeat(5 - rating)}</span>`;
+            const line1 = isStreamish ? (artist || '(station)') : (title || '(unknown title)');
+            const line2 = isStreamish
               ? ''
               : (albumTxt
-                ? `<div class="heroQueueMeta"><button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(albumTxt)}" data-queue-artist="${encodeURIComponent(artist)}" data-queue-title="${encodeURIComponent(title)}" data-queue-art="${encodeURIComponent(thumb || '')}">${detailLabel || '(album)'}</button></div>`
-                : `<div class="heroQueueMeta">${detailLabel || '(track)'}</div>`);
-            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div>${artist}</div>${detailHtml}</div>${actions}</div>`;
+                ? `<div class="heroQueueMeta">${artist || '(unknown artist)'} • <button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(albumTxt)}" data-queue-artist="${encodeURIComponent(artist)}" data-queue-title="${encodeURIComponent(title)}" data-queue-art="${encodeURIComponent(thumb || '')}">${albumTxt}</button></div>`
+                : `<div class="heroQueueMeta">${artist || '(unknown artist)'}</div>`);
+            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${head ? 'background:rgba(34,197,94,.14);border-radius:8px;' : ''}">${thumbHtml}<div><b>${pos}</b>${head?' ▶':''}</div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;"><span style="font-size:18px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${line1}</span>${starsInline}</div>${line2}</div>${actions}</div>`;
           }).join('');
 
           const onlyRadioStations = !!items.length && items.every((x) => {
@@ -659,8 +679,15 @@
       frame.addEventListener('load', () => {
         syncFrameWidth();
         syncFrameHeight();
+        syncThemeToFrame();
         setTimeout(syncFrameHeight, 250);
         setTimeout(syncFrameHeight, 900);
+        setTimeout(syncThemeToFrame, 120);
+      });
+
+      document.getElementById('themeToggle')?.addEventListener('click', () => {
+        setTimeout(syncThemeToFrame, 0);
+        setTimeout(syncThemeToFrame, 120);
       });
 
       const hqBtn = document.getElementById('heroQueueToggle');
