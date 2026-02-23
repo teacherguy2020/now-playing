@@ -1,7 +1,7 @@
 # now-playing
 
 <p align="center">
-  <img src="./icons/icon-192.png" alt="Now Playing moOde icon" width="120" height="120" />
+  <img src="./icons/icon-192.png" alt="Now Playing for moOde icon" width="120" height="120" />
 </p>
 
 <p align="center"><strong>Now Playing for moOde</strong></p>
