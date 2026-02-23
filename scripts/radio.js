@@ -351,6 +351,11 @@
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
     setStatus(`Sent ${j.added}/${j.requested} station(s).`);
+
+    // Clear selection highlights after successful send so user sees a fresh state.
+    selected.clear();
+    renderRows();
+    if ($('count')) $('count').textContent = `${allStations.length} station(s) shown · ${selected.size} selected`;
   }
 
   async function playNow(file){

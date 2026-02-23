@@ -78,6 +78,23 @@
     }
     .subsScroll{overflow:visible !important;}
 
+    /* iOS standalone/app-shell modal hardening */
+    .modalOverlay{
+      z-index:2147483640 !important;
+      padding-top:calc(env(safe-area-inset-top,0px) + 18px) !important;
+      overflow:auto !important;
+      -webkit-overflow-scrolling:touch;
+    }
+    .modalOverlay.open{display:flex !important;align-items:flex-start !important;justify-content:center !important}
+    .modalOverlay .modal{
+      position:relative;
+      z-index:2147483641;
+      margin:0 auto 14px !important;
+      transform:translateZ(0);
+      -webkit-transform:translateZ(0);
+      opacity:1 !important;
+    }
+
     /* Make the status-pill lane use a single flat backdrop (no body gradient band) */
     .preHeroStatusWrap{
       max-width:none !important;
