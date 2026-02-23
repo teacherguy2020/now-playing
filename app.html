@@ -20,7 +20,8 @@
   <link rel="stylesheet" href="styles/podcasts.css?v=20260222-progresswidth1" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
-    body{background:#0c1526;color:#e7eefc;margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;padding-top:calc(env(safe-area-inset-top,0px) + 8px)}
+    html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
+    body{background:#0c1526;color:#e7eefc;margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;padding-top:calc(env(safe-area-inset-top,0px) + 8px);touch-action:pan-y pinch-zoom}
     :root{--app-shell-max:min(2200px, calc(100dvw - 12px));}
     .viewWrap{max-width:var(--app-shell-max);width:min(var(--app-shell-max), calc(100% - 12px));margin:0 auto;padding:0 0 14px;box-sizing:border-box}
     .heroWrap{max-width:var(--app-shell-max) !important;width:min(var(--app-shell-max), calc(100% - 12px)) !important;margin:10px auto 0 !important;padding-top:4px !important;position:relative}
@@ -293,7 +294,7 @@
           const st = doc.createElement('style');
           st.id = 'appShellNormalizeStyle';
           st.textContent = [
-            'html, body { margin: 0 !important; overflow-x: hidden !important; }',
+            'html, body { margin: 0 !important; overflow-x: hidden !important; overscroll-behavior-x: none !important; }',
             '.preHeroStatusWrap { display:none !important; }',
             '.heroRail { background: transparent !important; border: 0 !important; box-shadow: none !important; position: relative !important; top: auto !important; }',
             '.heroRail::before { content:none !important; display:none !important; }',
