@@ -73,6 +73,7 @@ function pickPublicConfig(cfg) {
       ratings: Boolean(c.features?.ratings ?? true),
       radio: Boolean(c.features?.radio ?? true),
       albumPersonnel: Boolean(c.features?.albumPersonnel ?? true),
+      mpdscribbleControl: Boolean(c.features?.mpdscribbleControl ?? false),
     },
   };
 }
@@ -144,6 +145,49 @@ async function sshBashLc({ user, host, script, timeoutMs = 20000, maxBuffer = 10
     timeout: timeoutMs,
     maxBuffer,
   });
+}
+
+function parseKvOutput(stdout = '') {
+  const out = {};
+  String(stdout || '').split(/\r?\n/).forEach((line) => {
+    const m = String(line || '').match(/^([A-Z_]+)=(.*)$/);
+    if (!m) return;
+    out[m[1]] = m[2];
+  });
+  return out;
+}
+
+async function getMpdscribbleStatus({ user, host }) {
+  const script = [
+    'svc="mpdscribble.service"',
+    'if systemctl list-unit-files "$svc" --no-legend >/dev/null 2>&1; then INSTALLED=1; else INSTALLED=0; fi',
+    'ACTIVE=$(systemctl is-active "$svc" 2>/dev/null || true)',
+    'ENABLED=$(systemctl is-enabled "$svc" 2>/dev/null || true)',
+    'echo "INSTALLED=$INSTALLED"',
+    'echo "ACTIVE=$ACTIVE"',
+    'echo "ENABLED=$ENABLED"',
+  ].join('; ');
+
+  const { stdout } = await sshBashLc({ user, host, script, timeoutMs: 12000 });
+  const kv = parseKvOutput(stdout);
+  const installed = String(kv.INSTALLED || '0') === '1';
+  const activeRaw = String(kv.ACTIVE || '').trim().toLowerCase();
+  const enabledRaw = String(kv.ENABLED || '').trim().toLowerCase();
+  const running = activeRaw === 'active';
+
+  return {
+    ok: true,
+    service: 'mpdscribble.service',
+    manager: 'systemd',
+    host,
+    user,
+    installed,
+    running,
+    status: installed ? (running ? 'running' : (activeRaw || 'stopped')) : 'not-installed',
+    activeRaw,
+    enabled: enabledRaw === 'enabled',
+    enabledRaw,
+  };
 }
 
 export function registerConfigRuntimeAdminRoutes(app, deps) {
@@ -242,6 +286,54 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const ok = String(stdout || '').includes('OK');
       if (!ok) return res.status(500).json({ ok: false, error: `Unable to create ${podcastRoot}` });
       return res.json({ ok: true, podcastRoot, created: true });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/services/mpdscribble/status', async (req, res) => {
+    try {
+      let cfg = {};
+      try {
+        cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      } catch {}
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const status = await getMpdscribbleStatus({ user: sshUser, host: sshHost });
+      return res.json(status);
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/services/mpdscribble/action', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const action = String(req.body?.action || '').trim().toLowerCase();
+      if (!['start', 'stop', 'restart'].includes(action)) {
+        return res.status(400).json({ ok: false, error: 'action must be start|stop|restart' });
+      }
+
+      let cfg = {};
+      try {
+        cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      } catch {}
+
+      const controlsEnabled = Boolean(cfg?.features?.mpdscribbleControl ?? false);
+      if (!controlsEnabled) {
+        return res.status(403).json({ ok: false, error: 'mpdscribble controls are disabled in config features' });
+      }
+
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const cmd = `sudo -n systemctl ${action} mpdscribble.service || systemctl ${action} mpdscribble.service`;
+      await sshBashLc({ user: sshUser, host: sshHost, script: cmd, timeoutMs: 15000 });
+      const status = await getMpdscribbleStatus({ user: sshUser, host: sshHost });
+      return res.json({ ok: true, action, ...status });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

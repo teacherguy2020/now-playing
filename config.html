@@ -224,6 +224,18 @@
                   <div class="cfgHint">Enable radio per-track artwork behavior in now-playing flows.</div>
                 </div>
 
+                <div class="cfgCard gateCard" id="mpdscribbleCard">
+                  <h3>mpdscribble</h3>
+                  <div class="cfgField"><label><input id="featureMpdscribbleControl" type="checkbox" /> Enable controls</label></div>
+                  <div class="cfgHint">Shows scrobble control in hero and enables start/stop actions.</div>
+                  <div class="cfgHint" id="mpdscribbleStatus" style="margin-top:8px;">Status: unknown</div>
+                  <div class="cfgActions" style="margin-top:8px;">
+                    <button class="btn" id="mpdscribbleRefreshBtn" type="button">Refresh</button>
+                    <button class="btn" id="mpdscribbleStartBtn" type="button">Start</button>
+                    <button class="btn" id="mpdscribbleStopBtn" type="button">Stop</button>
+                  </div>
+                </div>
+
                 <div class="cfgCard gateCard" id="lastfmCard">
                   <h3>Last.fm (Vibe)</h3>
                   <div class="cfgField"><label><input id="featureLastfm" type="checkbox" /> Enabled</label></div>
@@ -732,6 +744,53 @@ function syncRatingsCardVisibility(){
   });
 }
 
+let mpdscribbleLastStatus = null;
+function syncMpdscribbleUi(){
+  const enabled = !!document.getElementById('featureMpdscribbleControl')?.checked;
+  ['mpdscribbleRefreshBtn','mpdscribbleStartBtn','mpdscribbleStopBtn'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !enabled;
+  });
+  const statusEl = document.getElementById('mpdscribbleStatus');
+  if (statusEl && !enabled) statusEl.textContent = 'Status: controls disabled';
+}
+
+async function refreshMpdscribbleStatus(){
+  const statusEl = document.getElementById('mpdscribbleStatus');
+  if (statusEl) statusEl.textContent = 'Status: checking…';
+  try {
+    const r = await fetch(`${API_BASE}/config/services/mpdscribble/status`, { cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    mpdscribbleLastStatus = j;
+    if (statusEl) {
+      const marker = j.installed ? (j.running ? 'running' : 'stopped') : 'not installed';
+      statusEl.textContent = `Status: ${marker}${j.host ? ` (${j.host})` : ''}`;
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = `Status: ${String(e?.message || e)}`;
+  }
+}
+
+async function runMpdscribbleAction(action){
+  const key = getTrackKey();
+  if (!key) return log('Track key is required for mpdscribble actions.');
+  const statusEl = document.getElementById('mpdscribbleStatus');
+  if (statusEl) statusEl.textContent = `Status: ${action}…`;
+  try {
+    const r = await fetch(`${API_BASE}/config/services/mpdscribble/action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+      body: JSON.stringify({ action }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    await refreshMpdscribbleStatus();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = `Status: action failed (${String(e?.message || e)})`;
+  }
+}
+
 let runtimeReady = false;
 function applyRuntimeGate(){
   document.querySelectorAll('.gateCard').forEach((el) => {
@@ -872,7 +931,9 @@ async function loadCfg(){
   document.getElementById('featureRatings').checked = !!c.features?.ratings;
   document.getElementById('featureRadio').checked = !!c.features?.radio;
   document.getElementById('featureAlbumPersonnel').checked = !!(c.features?.albumPersonnel ?? true);
+  document.getElementById('featureMpdscribbleControl').checked = !!(c.features?.mpdscribbleControl ?? false);
   syncRatingsCardVisibility();
+  syncMpdscribbleUi();
   const lastfmKey = String(full.lastfmApiKey || localStorage.getItem('nowplaying.secret.lastfmApiKey') || '');
   document.getElementById('featureLastfm').checked = !!lastfmKey;
   document.getElementById('lastfmApiKey').value = lastfmKey;
@@ -942,6 +1003,9 @@ async function loadCfg(){
   log({ ok:true, configPath:j.configPath, loadedAt:new Date().toISOString() });
   await loadRatingsBackups();
   await checkRuntimeEnv(true).catch(() => {});
+  if (document.getElementById('featureMpdscribbleControl')?.checked) {
+    await refreshMpdscribbleStatus().catch(() => {});
+  }
   markConfigSaved();
 }
 
@@ -1032,6 +1096,7 @@ async function saveCfg(){
         ratings: document.getElementById('featureRatings').checked,
         radio: document.getElementById('featureRadio').checked,
         albumPersonnel: document.getElementById('featureAlbumPersonnel').checked,
+        mpdscribbleControl: document.getElementById('featureMpdscribbleControl').checked,
       },
       trackKey: document.getElementById('configTrackKey').value.trim(),
       ports: {
@@ -1690,6 +1755,10 @@ document.getElementById('featureRatings')?.addEventListener('change', () => {
   syncRatingsCardVisibility();
   if (document.getElementById('featureRatings')?.checked) loadRatingsBackups().catch(() => {});
 });
+document.getElementById('featureMpdscribbleControl')?.addEventListener('change', () => {
+  syncMpdscribbleUi();
+  if (document.getElementById('featureMpdscribbleControl')?.checked) refreshMpdscribbleStatus().catch(() => {});
+});
 document.getElementById('checkAlexaDomainBtn')?.addEventListener('click', () => checkAlexaDomain().catch(e => log(String(e))));
 document.getElementById('alexaDomain')?.addEventListener('input', () => {
   const v = String(document.getElementById('alexaDomain')?.value || '').trim();
@@ -1697,6 +1766,9 @@ document.getElementById('alexaDomain')?.addEventListener('input', () => {
   syncAlexaDomainUi();
 });
 document.getElementById('checkRuntimeBtn')?.addEventListener('click', () => checkRuntimeEnv().catch(e => log(String(e))));
+document.getElementById('mpdscribbleRefreshBtn')?.addEventListener('click', () => refreshMpdscribbleStatus().catch(e => log(String(e))));
+document.getElementById('mpdscribbleStartBtn')?.addEventListener('click', () => runMpdscribbleAction('start').catch(e => log(String(e))));
+document.getElementById('mpdscribbleStopBtn')?.addEventListener('click', () => runMpdscribbleAction('stop').catch(e => log(String(e))));
 document.getElementById('pathMoodeUsbMount')?.addEventListener('input', derivePathsFromMoode);
 document.getElementById('pathMoodeUsbMount')?.addEventListener('change', derivePathsFromMoode);
 // derivePathsBtn removed; auto-derive runs on input/change.
@@ -1748,6 +1820,7 @@ syncLastfmCardVisibility();
 syncPodcastsUi();
 syncPushoverCardVisibility();
 syncRatingsCardVisibility();
+syncMpdscribbleUi();
 applyRuntimeGate();
 refreshSshSetupHelp();
 applyInitialNetworkPrefills();

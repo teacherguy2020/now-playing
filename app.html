@@ -35,6 +35,13 @@
     .heroTopBar .topTabs{margin:0 !important}
     .heroTopBar .statusInline{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
     .heroTopBar .statusInline .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;line-height:1;font-size:12px}
+    .heroTopBar .statusInline button.pill{appearance:none;-webkit-appearance:none;background:transparent;color:inherit;border:1px solid rgba(148,163,184,.45);transition:transform .08s ease,box-shadow .14s ease,filter .14s ease}
+    .heroTopBar .statusInline button.pill:hover{filter:brightness(1.08);box-shadow:0 0 0 1px rgba(125,211,252,.34) inset,0 0 14px rgba(125,211,252,.18)}
+    .heroTopBar .statusInline button.pill:active{transform:translateY(1px) scale(.99)}
+    .heroTopBar .statusInline button.pill.busy{cursor:progress;opacity:.92}
+    .heroTopBar .statusInline .pill .miniSpin{display:none;width:11px;height:11px;border:2px solid rgba(255,255,255,.32);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite}
+    .heroTopBar .statusInline button.pill.busy .miniSpin{display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
     .heroTopBar .statusInline .pill .hint{display:none}
     .heroTopBar .themeBtnWrap{margin-left:auto}
     .heroWrap > header{margin:0 0 4px}
@@ -248,6 +255,7 @@
           <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></div>
           <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot" aria-hidden="true"></span>Alexa<span class="hint" id="alexaHint">unknown</span></div>
           <div class="pill" id="moodePill" title="moOde host verification"><span class="dot" aria-hidden="true"></span>moOde<span class="hint" id="moodeHint">unknown</span></div>
+          <button class="pill" id="scrobblePill" type="button" title="mpdscribble scrobble service" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Scrobble<span class="hint" id="scrobbleHint">off</span></button>
         </div>
       </div>
     </div>
@@ -371,6 +379,8 @@
       }
 
       let runtimeTrackKey = '';
+      let scrobbleControlsEnabled = false;
+      let scrobbleRunning = null;
       let radioStationByKey = new Map();
       let radioStationByHost = new Map();
       let radioHostAmbiguous = new Set();
@@ -841,6 +851,85 @@
         }
       }
 
+      function setScrobbleBusy(on){
+        const pill = document.getElementById('scrobblePill');
+        if (!pill) return;
+        pill.classList.toggle('busy', !!on);
+        pill.disabled = !!on;
+      }
+
+      async function fetchJsonWithTimeout(url, opts = {}, timeoutMs = 9000){
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), Math.max(1000, Number(timeoutMs) || 9000));
+        try {
+          const r = await fetch(url, { ...opts, signal: ctrl.signal });
+          const j = await r.json().catch(() => ({}));
+          return { r, j };
+        } finally {
+          clearTimeout(t);
+        }
+      }
+
+      async function refreshScrobblePill(base){
+        const hint = document.getElementById('scrobbleHint');
+        const pill = document.getElementById('scrobblePill');
+        if (pill) pill.style.display = scrobbleControlsEnabled ? '' : 'none';
+        if (!scrobbleControlsEnabled) {
+          if (hint) hint.textContent = 'off';
+          setPillState('scrobblePill', 'off');
+          return;
+        }
+        try {
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/services/mpdscribble/status`, { cache: 'no-store' }, 7000);
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          const running = !!j?.running;
+          scrobbleRunning = running;
+          if (hint) hint.textContent = running ? 'on' : 'off';
+          setPillState('scrobblePill', running ? 'ok' : 'warn');
+        } catch {
+          if (hint) hint.textContent = 'err';
+          scrobbleRunning = null;
+          setPillState('scrobblePill', 'bad');
+        }
+      }
+
+      async function toggleScrobbleFromHero(){
+        if (!scrobbleControlsEnabled) return;
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        const hint = document.getElementById('scrobbleHint');
+        const desired = (scrobbleRunning === true) ? 'stop' : 'start';
+        setScrobbleBusy(true);
+        if (hint) hint.textContent = desired === 'start' ? 'starting…' : 'stopping…';
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/services/mpdscribble/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ action: desired }),
+          }, 10000);
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          // Apply immediate result from action response, then verify after a short delay.
+          if (typeof j?.running === 'boolean') {
+            scrobbleRunning = !!j.running;
+            if (hint) hint.textContent = scrobbleRunning ? 'on' : 'off';
+            setPillState('scrobblePill', scrobbleRunning ? 'ok' : 'warn');
+          }
+          setTimeout(() => { refreshScrobblePill(base).catch(() => {}); }, 1200);
+        } catch (e) {
+          console.warn('scrobble toggle failed', e?.message || e);
+          if (hint) hint.textContent = 'err';
+          setPillState('scrobblePill', 'bad');
+          setTimeout(() => { refreshScrobblePill(base).catch(() => {}); }, 1200);
+        } finally {
+          setScrobbleBusy(false);
+        }
+      }
+
       async function syncPills(){
         try {
           const host = location.hostname || '10.0.0.233';
@@ -855,6 +944,7 @@
           const axEnabled = !!cfg?.alexa?.enabled;
           const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
           const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || cfg?.mpdHost || '').trim();
+          scrobbleControlsEnabled = !!cfg?.features?.mpdscribbleControl;
 
           const $ = (id) => document.getElementById(id);
           if ($('apiHint')) $('apiHint').textContent = `${host}:${apiPort}`;
@@ -868,11 +958,15 @@
 
           const podcastsLink = document.getElementById('podcastsNavLink');
           if (podcastsLink && !cfg?.features?.podcasts) podcastsLink.style.display = 'none';
+          await refreshScrobblePill(base);
         } catch {
           setPillState('apiPill','bad');
           setPillState('webPill','warn');
           setPillState('alexaPill','warn');
           setPillState('moodePill','warn');
+          scrobbleControlsEnabled = false;
+          const sp = document.getElementById('scrobblePill');
+          if (sp) sp.style.display = 'none';
         }
       }
 
@@ -906,6 +1000,11 @@
         ev.preventDefault();
         navigate(a.dataset.page || 'config.html', true);
       }));
+
+      document.getElementById('scrobblePill')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        toggleScrobbleFromHero();
+      });
 
       window.addEventListener('popstate', () => navigate(getPageFromUrl(), false));
       window.addEventListener('resize', () => { syncFrameWidth(); syncFrameHeight(); });
