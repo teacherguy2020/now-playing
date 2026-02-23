@@ -70,9 +70,17 @@
     .stationCluster{border:1px solid #2a3a58;border-radius:12px;background:rgba(7,16,33,.55);padding:10px}
     .singletonClusterGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .stationCluster.singleton .stationGrid{grid-template-columns:1fr}
-    .clusterHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .clusterHead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
     .clusterTitle{font-size:13px;color:#bcd0f6;font-weight:700;letter-spacing:.3px}
-    .clusterCount{font-size:12px;color:#8ea3c6}
+    .clusterCount{font-size:12px;color:#8ea3c6;margin-left:auto}
+    .clusterToggle{border:1px solid #334;background:#0f1a31;color:#bcd0f6;border-radius:10px;padding:3px;cursor:pointer;line-height:1;min-width:34px;min-height:29px;display:inline-flex;align-items:center;justify-content:center;touch-action:manipulation}
+    .clusterToggle:hover{border-color:#5b78a8;background:#152748}
+    .clusterChevron{width:13px;height:13px;display:inline-block;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-top:-2px;transition:transform .14s ease}
+    .stationCluster.isCollapsed .clusterChevron{transform:rotate(-45deg);margin-top:0}
+    body.theme-light .clusterToggle{background:#c0c9ee;color:#2f2a4f;border-color:rgba(137,138,196,.42)}
+    body.theme-light .clusterToggle:hover{background:#d7def4;border-color:rgba(137,138,196,.56)}
+    .stationCluster.isCollapsed .stationGrid{display:none}
+    .stationCluster.isCollapsed .clusterHead{margin-bottom:0}
     .stationGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .stationCard{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid #2a3a58;border-radius:10px;background:#0a1222;padding:8px;overflow:hidden}
     .stationCard.isActive{border-color:#22c55e;box-shadow:0 0 0 1px rgba(34,197,94,.25) inset}
@@ -80,9 +88,13 @@
     .stationMeta{font-size:11px;color:#8ea3c6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
     .stationCard > div:nth-child(2){min-width:0}
     .stationControls{display:flex;align-items:center;gap:6px;flex:0 0 auto}
-    .stationAction{border:1px solid #334;background:#0f1a31;color:#e6edff;border-radius:7px;padding:2px 8px;cursor:pointer;font-size:12px;line-height:1.2}
+    .stationAction{border:1px solid #334;background:#0f1a31;color:#e6edff;border-radius:9px;padding:4px 10px;cursor:pointer;font-size:14px;line-height:1.1;min-width:36px;min-height:32px;touch-action:manipulation}
     .stationAction:hover{border-color:#5b78a8;background:#152748}
-    .stationAction.isOn{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.08)}
+    .stationAction.isOn{border-color:#22c55e !important;color:#22c55e !important;background:rgba(34,197,94,.20) !important;box-shadow:0 0 0 1px rgba(34,197,94,.45) inset,0 0 12px rgba(34,197,94,.35)}
+    .stationAction.isOn[data-add]{font-weight:800;text-shadow:0 0 8px rgba(34,197,94,.7)}
+    .stationCard:has(.stationAction.isOn[data-add]){border-color:rgba(34,197,94,.9) !important;box-shadow:0 0 0 1px rgba(34,197,94,.45) inset,0 0 22px rgba(34,197,94,.28)}
+    body.theme-light .stationAction.isOn{border-color:#16a34a !important;color:#166534 !important;background:rgba(22,163,74,.28) !important;box-shadow:0 0 0 1px rgba(22,163,74,.5) inset,0 0 10px rgba(22,163,74,.25)}
+    body.theme-light .stationCard:has(.stationAction.isOn[data-add]){border-color:rgba(22,163,74,.75) !important;box-shadow:0 0 0 1px rgba(22,163,74,.34) inset,0 0 16px rgba(22,163,74,.18)}
     .chip{display:inline-block;border:1px solid #2a3a58;border-radius:999px;padding:1px 7px;font-size:10px;color:#9fb1d9;margin-left:4px}
     .chip.hq{border-color:rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-weight:700}
 
@@ -124,6 +136,6 @@
   </div>
 
   <script src="scripts/theme-toggle.js?v=20260217-1"></script>
-  <script src="scripts/radio.js?v=20260220-15"></script>
+  <script src="scripts/radio.js?v=20260223-collapse-chevron-large"></script>
 </body>
 </html>

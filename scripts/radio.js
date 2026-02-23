@@ -3,8 +3,10 @@
   let allStations = [];
   let selected = new Set();
   let activeStationFile = '';
+  let collapsedGenres = new Set();
   const FILTERS_KEY = 'radio:filters:v1';
   const RADIO_QUEUE_PRESETS_KEY = 'nowplaying.radioQueuePresets.v1';
+  const RADIO_COLLAPSED_GENRES_KEY = 'radio:collapsedGenres:v1';
 
   function apiBaseDefault(){ return `${location.protocol}//${location.hostname || '10.0.0.233'}:3101`; }
   function key(){ return String($('key')?.value || '').trim(); }
@@ -40,6 +42,22 @@
     const f = loadFilters();
     if ($('favoritesOnly') && typeof f.favoritesOnly === 'boolean') $('favoritesOnly').checked = f.favoritesOnly;
     if ($('hqOnly') && typeof f.hqOnly === 'boolean') $('hqOnly').checked = f.hqOnly;
+  }
+
+  function genreCollapseKey(genre){
+    return String(genre || '').trim().toLowerCase();
+  }
+
+  function loadCollapsedGenres(){
+    try {
+      const raw = localStorage.getItem(RADIO_COLLAPSED_GENRES_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(arr) ? arr.map((x) => String(x || '').trim().toLowerCase()).filter(Boolean) : []);
+    } catch { return new Set(); }
+  }
+
+  function saveCollapsedGenres(){
+    try { localStorage.setItem(RADIO_COLLAPSED_GENRES_KEY, JSON.stringify(Array.from(collapsedGenres))); } catch {}
   }
 
   async function loadRuntime(){
@@ -280,25 +298,32 @@
 
     const multiHtml = multi.map(({ genre, list }) => {
       const cards = list.map((s) => makeCard(s)).join('');
-      return `<section class="stationCluster">
+      const gKey = genreCollapseKey(genre);
+      const isCollapsed = collapsedGenres.has(gKey);
+      return `<section class="stationCluster ${isCollapsed ? 'isCollapsed' : ''}" data-genre-key="${encodeURIComponent(gKey)}">
         <div class="clusterHead">
           <div class="clusterTitle">${genre}</div>
           <div class="clusterCount">${list.length} stations</div>
+          <button class="clusterToggle" data-collapse-genre="${encodeURIComponent(gKey)}" title="${isCollapsed ? 'Expand group' : 'Collapse group'}" aria-expanded="${isCollapsed ? 'false' : 'true'}" aria-label="${isCollapsed ? 'Expand group' : 'Collapse group'}"><span class="clusterChevron" aria-hidden="true"></span></button>
         </div>
         <div class="stationGrid">${cards}</div>
       </section>`;
     }).join('');
 
     const singlesHtml = singles.length
-      ? `<div class="singletonClusterGrid">${singles.map(({ genre, list }) => `
-          <section class="stationCluster singleton">
+      ? `<div class="singletonClusterGrid">${singles.map(({ genre, list }) => {
+          const gKey = genreCollapseKey(genre);
+          const isCollapsed = collapsedGenres.has(gKey);
+          return `
+          <section class="stationCluster singleton ${isCollapsed ? 'isCollapsed' : ''}" data-genre-key="${encodeURIComponent(gKey)}">
             <div class="clusterHead">
               <div class="clusterTitle">${genre}</div>
               <div class="clusterCount">1 station</div>
+              <button class="clusterToggle" data-collapse-genre="${encodeURIComponent(gKey)}" title="${isCollapsed ? 'Expand group' : 'Collapse group'}" aria-expanded="${isCollapsed ? 'false' : 'true'}" aria-label="${isCollapsed ? 'Expand group' : 'Collapse group'}"><span class="clusterChevron" aria-hidden="true"></span></button>
             </div>
             <div class="stationGrid">${makeCard(list[0])}</div>
-          </section>
-        `).join('')}</div>`
+          </section>`;
+        }).join('')}</div>`
       : '';
 
     rows.innerHTML = `${multiHtml}${singlesHtml}`;
@@ -374,11 +399,39 @@
       if ($('count')) $('count').textContent = `${allStations.length} station(s) shown · ${selected.size} selected`;
     });
 
-    $('rows')?.addEventListener('click', (ev) => {
-      const favBtn = ev.target instanceof Element ? ev.target.closest('button[data-fav]') : null;
+    let lastActionSig = '';
+    let lastActionTs = 0;
+    const handleRowAction = (ev) => {
+      const targetEl = ev.target instanceof Element ? ev.target : null;
+      if (!targetEl) return;
+
+      const collapseBtn = targetEl.closest('button[data-collapse-genre]');
+      const favBtn = collapseBtn ? null : targetEl.closest('button[data-fav]');
+      const addBtn = (collapseBtn || favBtn) ? null : targetEl.closest('button[data-add]');
+      const playBtn = (collapseBtn || favBtn || addBtn) ? null : targetEl.closest('button[data-play]');
+      if (!collapseBtn && !favBtn && !addBtn && !playBtn) return;
+
+      const sig = collapseBtn
+        ? `collapse::${String(collapseBtn.getAttribute('data-collapse-genre') || '')}`
+        : `${favBtn ? 'fav' : (addBtn ? 'add' : 'play')}::${String((favBtn || addBtn || playBtn)?.getAttribute(favBtn ? 'data-fav' : (addBtn ? 'data-add' : 'data-play')) || '')}`;
+      const now = Date.now();
+      if (sig && sig === lastActionSig && (now - lastActionTs) < 220) return;
+      lastActionSig = sig;
+      lastActionTs = now;
+
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      if (collapseBtn) {
+        const gKey = decodeURIComponent(String(collapseBtn.getAttribute('data-collapse-genre') || '')).toLowerCase().trim();
+        if (!gKey) return;
+        if (collapsedGenres.has(gKey)) collapsedGenres.delete(gKey); else collapsedGenres.add(gKey);
+        saveCollapsedGenres();
+        renderRows();
+        return;
+      }
+
       if (favBtn) {
-        ev.preventDefault();
-        ev.stopPropagation();
         const file = decodeURIComponent(String(favBtn.getAttribute('data-fav') || ''));
         const prevOn = String(favBtn.getAttribute('data-state') || '0') === '1';
         const next = !prevOn;
@@ -407,10 +460,7 @@
         return;
       }
 
-      const addBtn = ev.target instanceof Element ? ev.target.closest('button[data-add]') : null;
       if (addBtn) {
-        ev.preventDefault();
-        ev.stopPropagation();
         const file = decodeURIComponent(String(addBtn.getAttribute('data-add') || ''));
         if (!file) return;
         if (selected.has(file)) selected.delete(file); else selected.add(file);
@@ -419,15 +469,15 @@
         return;
       }
 
-      const playBtn = ev.target instanceof Element ? ev.target.closest('button[data-play]') : null;
       if (playBtn) {
-        ev.preventDefault();
-        ev.stopPropagation();
         const file = decodeURIComponent(String(playBtn.getAttribute('data-play') || ''));
         playNow(file).catch((e) => setStatus(String(e?.message || e)));
-        return;
       }
-    });
+    };
+
+    $('rows')?.addEventListener('pointerdown', handleRowAction, { passive: false, capture: true });
+    $('rows')?.addEventListener('touchend', handleRowAction, { passive: false, capture: true });
+    $('rows')?.addEventListener('click', handleRowAction, { capture: true });
 
     ['genre','favoritesOnly','hqOnly','search','favoritesPreset'].forEach((id) => {
       $(id)?.addEventListener('change', () => {
@@ -462,6 +512,7 @@
   (async () => {
     await loadRuntime();
     applySavedFilters();
+    collapsedGenres = loadCollapsedGenres();
     wire();
     await loadGenres().catch(() => {});
     await loadFavoritePreset().catch(() => {});
