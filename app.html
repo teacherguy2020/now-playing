@@ -10,13 +10,17 @@
   <meta name="theme-color" content="#0c1526" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+  <link rel="shortcut icon" href="/icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
   <title>Now Playing</title>
   <link rel="stylesheet" href="styles/podcasts.css?v=20260222-progresswidth1" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
-    body{background:#0c1526;color:#e7eefc;margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden}
+    body{background:#0c1526;color:#e7eefc;margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;padding-top:calc(env(safe-area-inset-top,0px) + 8px)}
     :root{--app-shell-max:min(2200px, calc(100dvw - 12px));}
     .viewWrap{max-width:var(--app-shell-max);width:min(var(--app-shell-max), calc(100% - 12px));margin:0 auto;padding:0 0 14px;box-sizing:border-box}
     .heroWrap{max-width:var(--app-shell-max) !important;width:min(var(--app-shell-max), calc(100% - 12px)) !important;margin:10px auto 0 !important;padding-top:4px !important;position:relative}
@@ -259,7 +263,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260222-alexaartfix1"></script>
+  <script src="scripts/hero-transport.js?v=20260223-fast-resume-refresh"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {

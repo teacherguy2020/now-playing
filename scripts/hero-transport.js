@@ -1038,8 +1038,29 @@
       busy = false;
     });
 
+    let fastRefreshTimer = null;
+    let lastFastRefreshAt = 0;
+    const scheduleFastRefresh = (delayMs = 0) => {
+      const now = Date.now();
+      if ((now - lastFastRefreshAt) < 800) return;
+      if (fastRefreshTimer) clearTimeout(fastRefreshTimer);
+      fastRefreshTimer = setTimeout(() => {
+        fastRefreshTimer = null;
+        if (document.hidden) return;
+        lastFastRefreshAt = Date.now();
+        refresh();
+      }, Math.max(0, Number(delayMs) || 0));
+    };
+
     setTimeout(refresh, 150);
     setInterval(() => { if (!document.hidden) refresh(); }, 6000);
+
+    // Prioritize now-playing freshness when returning to this tab/PWA window.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) scheduleFastRefresh(20);
+    });
+    window.addEventListener('focus', () => scheduleFastRefresh(20));
+    window.addEventListener('pageshow', () => scheduleFastRefresh(20));
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
