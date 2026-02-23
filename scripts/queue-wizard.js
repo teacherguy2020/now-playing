@@ -1007,15 +1007,37 @@ async function syncVibeAvailability() {
     coverStatusEl.textContent = note || 'Cover preview ready.';
   }
 
+function playlistCoverCandidateUrls(name = '') {
+  const rawName = String(name || '').trim();
+  const safeName = rawName.replace(/[^A-Za-z0-9 _.\-]/g, '').trim().replace(/\s+/g, '_');
+  return Array.from(new Set([
+    `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(rawName)}.jpg`,
+    `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(safeName)}.jpg`,
+  ])).filter(Boolean);
+}
+
+async function hasMoodePlaylistCover(name = '') {
+  const baseUrls = playlistCoverCandidateUrls(name);
+  for (const baseUrl of baseUrls) {
+    const url = `${baseUrl}?t=${Date.now()}`;
+    // eslint-disable-next-line no-await-in-loop
+    const loaded = await new Promise((resolve) => {
+      const img = new Image();
+      const done = (ok) => { img.onload = null; img.onerror = null; resolve(ok); };
+      img.onload = () => done(true);
+      img.onerror = () => done(false);
+      img.src = url;
+    });
+    if (loaded) return true;
+  }
+  return false;
+}
+
 async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
   if (!coverCardEl || !coverImgEl || !coverStatusEl) return false;
 
   const rawName = String(name || '').trim();
-  const safeName = rawName.replace(/[^A-Za-z0-9 _.\-]/g, '').trim().replace(/\s+/g, '_');
-  const baseUrls = Array.from(new Set([
-    `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(rawName)}.jpg`,
-    `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(safeName)}.jpg`,
-  ])).filter(Boolean);
+  const baseUrls = playlistCoverCandidateUrls(rawName);
 
   coverCardEl.style.display = '';
   coverStatusEl.textContent = note || `Loading cover for “${rawName}”…`;
@@ -1474,6 +1496,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     // Make Filter Builder visible so user can add/adjust before saving.
     activateBuilder('filters');
     updatePlaylistUi();
+    scrollToPreviewEditor();
     setStatus(`Editing playlist: ${esc(n)}. Filter Builder is now active. Add tracks, then save to overwrite.`);
   }
 
@@ -2187,6 +2210,12 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
     refreshCoverPreview('');
   }
 
+  function scrollToPreviewEditor() {
+    const anchor = coverCardEl?.closest('.card') || coverCardEl || playlistNameEl;
+    if (!anchor || typeof anchor.scrollIntoView !== 'function') return;
+    try { anchor.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {}
+  }
+
   function showSendConfirmation(msg) {
     if (!sendConfirmEl) return;
     sendConfirmEl.textContent = msg || '';
@@ -2251,24 +2280,60 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       return;
     }
 
-    let coverToSave = previewCoverBase64;
-    if (!coverToSave) {
-      const visibleDataUrl = String(coverImgEl?.src || '');
-      if (visibleDataUrl.startsWith('data:image/') && lastPreviewDataBase64) {
-        coverToSave = lastPreviewDataBase64;
-      }
-    }
-    if (!coverToSave) {
-      setStatus('No cover preview data is available yet. Click “Refresh cover preview”, then save.');
-      sendBusy = false;
-      return;
-    }
-
     const existingNames = Array.from(existingPlaylistsEl?.options || []).map((o) => String(o.value || '').trim()).filter(Boolean);
     const existsAlready = existingNames.some((n) => n.toLowerCase() === String(playlistName || '').trim().toLowerCase());
     if (existsAlready) {
       const okOverwrite = confirm(`Overwrite ${playlistName}?`);
       if (!okOverwrite) { sendBusy = false; return; }
+    }
+
+    let preserveExistingCover = false;
+    let coverToSave = previewCoverBase64;
+    if (!coverToSave) {
+      const visibleDataUrl = String(coverImgEl?.src || '').trim();
+      if (visibleDataUrl.startsWith('data:image/')) {
+        const comma = visibleDataUrl.indexOf(',');
+        if (comma > 0) {
+          const b64 = visibleDataUrl.slice(comma + 1).trim();
+          if (b64) coverToSave = b64;
+        }
+      }
+    }
+
+    if (!coverToSave && existsAlready) {
+      // Editing existing playlist: keep current moOde cover if present.
+      try {
+        const hasExisting = await hasMoodePlaylistCover(playlistName);
+        preserveExistingCover = !!hasExisting;
+      } catch {}
+    }
+
+    if (!coverToSave && !preserveExistingCover) {
+      // Auto-heal stale preview data so user doesn't need to manually refresh.
+      try {
+        setStatus('<span class="spin"></span>Refreshing cover preview before save…');
+        await maybeGenerateCollagePreview('save-autorefresh', { force: true });
+      } catch {}
+
+      // Re-check cache and visible image data after forced refresh.
+      coverToSave = (lastPreviewDataBase64 && lastPreviewSig === previewSigSnapshot)
+        ? lastPreviewDataBase64
+        : coverToSave;
+      if (!coverToSave) {
+        const visibleDataUrl2 = String(coverImgEl?.src || '').trim();
+        if (visibleDataUrl2.startsWith('data:image/')) {
+          const comma2 = visibleDataUrl2.indexOf(',');
+          if (comma2 > 0) {
+            const b642 = visibleDataUrl2.slice(comma2 + 1).trim();
+            if (b642) coverToSave = b642;
+          }
+        }
+      }
+    }
+    if (!coverToSave && !preserveExistingCover) {
+      setStatus('Unable to capture cover preview data for save.');
+      sendBusy = false;
+      return;
     }
 
     const prevSaveNowDisplay = savePlaylistNowBtn ? String(savePlaylistNowBtn.style.display || '') : '';
@@ -2283,7 +2348,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
 
     disableUI(true);
     try {
-      setStatus('<span class="spin"></span>Saving playlist + cover to moOde…');
+      setStatus(`<span class="spin"></span>Saving playlist${preserveExistingCover ? ' (keeping existing cover)…' : ' + cover to moOde…'}`);
       const r = await fetch(`${apiBase}/config/queue-wizard/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-track-key': key },
@@ -2294,29 +2359,28 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
           shuffle: false,
           forceRandomOff: false,
           playlistName,
-          generateCollage: true,
-          previewCoverBase64: coverToSave || undefined,
-          previewCoverMimeType: coverToSave ? (lastPreviewMimeType || 'image/jpeg') : undefined,
+          generateCollage: !preserveExistingCover,
+          previewCoverBase64: (!preserveExistingCover ? (coverToSave || undefined) : undefined),
+          previewCoverMimeType: (!preserveExistingCover && coverToSave) ? (lastPreviewMimeType || 'image/jpeg') : undefined,
           saveOnly: true,
         }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
 
-      setStatus(`Saved playlist only: ${esc(playlistName)} (${filesSnapshot.length.toLocaleString()} track(s))${j.collageGenerated ? ' · cover saved' : ''}${j.collageError ? ` · cover error: ${esc(j.collageError)}` : ''}`);
+      setStatus(`Saved playlist only: ${esc(playlistName)} (${filesSnapshot.length.toLocaleString()} track(s))${preserveExistingCover ? ' · existing cover kept' : (j.collageGenerated ? ' · cover saved' : '')}${j.collageError ? ` · cover error: ${esc(j.collageError)}` : ''}`);
       showSendConfirmation(`✅ Saved playlist “${playlistName}” (no queue playback changes).`);
       existingEditLockName = '';
       await loadExistingPlaylists();
 
-      // Keep just-saved playlist selected and preloaded so Send works immediately.
-      selectedExistingPlaylists = new Set([playlistName]);
-      if (existingPlaylistsEl) existingPlaylistsEl.value = playlistName;
+      // After overwrite, clear visual selection highlight to signal edit is complete.
+      selectedExistingPlaylists.clear();
+      if (existingPlaylistsEl) existingPlaylistsEl.value = '';
       const names = Array.from(existingPlaylistsEl?.options || []).map((o) => String(o.value || '')).filter(Boolean);
       renderExistingPlaylistMenu(names);
       renderExistingPlaylistCarousel(names);
-      updateExistingPlaylistThumb(playlistName);
+      updateExistingPlaylistThumb('');
       activateBuilder('existing');
-      await previewExistingPlaylistSelection();
 
       if (j.collageGenerated && playlistName) {
         // Do not block post-save actions (like Send) on cover polling.

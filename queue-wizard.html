@@ -368,14 +368,14 @@
 
     
 
-    <div class="muted" id="status" style="margin-top:6px"></div>
-    <div class="muted" id="sendConfirm" style="margin-top:4px;color:#9ef7b2;"></div>
     <div class="muted" style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
       <label><input id="fastStartQueue" type="checkbox" checked> Start playback ASAP (queue continues loading)</label>
     </div>
 
     <div class="card">
-      <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+      <div class="muted" id="status" style="margin-top:2px;font-size:22px;line-height:1.25;font-weight:620;"></div>
+      <div class="muted" id="sendConfirm" style="margin-top:6px;color:#9ef7b2;font-size:18px;line-height:1.25;font-weight:560;"></div>
+      <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-top:8px;">
         <div id="coverCard" style="display:none;min-width:160px;max-width:220px;position:relative;">
           <div class="muted" id="coverStatus" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px;">Playlist cover preview</div>
           <button id="refreshCollagePreviewBtn" type="button" title="Refresh cover preview" aria-label="Refresh cover preview" style="position:absolute;right:6px;top:24px;width:28px;height:28px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #334;background:rgba(10,18,34,.85);font-size:15px;line-height:1;">↻</button>
