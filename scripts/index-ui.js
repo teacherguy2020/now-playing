@@ -43,6 +43,22 @@ const PODCAST_GENRES = new Set([
 // =========================
 
 let favBound = false;
+let artAppleLinkBound = false;
+
+function bindAlbumArtAppleLinkOnce() {
+  if (artAppleLinkBound) return;
+  artAppleLinkBound = true;
+
+  document.addEventListener('click', (ev) => {
+    const hit = ev.target?.closest?.('#album-art, #album-art-video');
+    if (!hit) return;
+    const href = String(document.getElementById('album-art-wrapper')?.dataset?.appleUrl || '').trim();
+    if (!href) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    try { window.open(href, '_blank', 'noopener'); } catch {}
+  }, { capture: true });
+}
 
 function bindFavoriteUIOnce() {
   if (favBound) return;
@@ -285,6 +301,25 @@ function clearMotionArtVideo() {
   try { videoEl.removeAttribute('src'); videoEl.load?.(); } catch {}
   videoEl.style.display = 'none';
   artEl.style.display = 'block';
+}
+
+function setAlbumArtAppleLink(url = '') {
+  const wrap = document.getElementById('album-art-wrapper');
+  const img = document.getElementById('album-art');
+  const vid = document.getElementById('album-art-video');
+  const href = String(url || '').trim();
+  const on = !!href;
+
+  if (wrap) {
+    wrap.dataset.appleUrl = href;
+    wrap.classList.toggle('apple-link-active', on);
+  }
+  [img, vid].forEach((el) => {
+    if (!el) return;
+    el.style.cursor = on ? 'pointer' : '';
+    if (on) el.setAttribute('title', 'Open in Apple Music');
+    else el.removeAttribute('title');
+  });
 }
 
 function setMotionArtVideo(mp4Url, posterUrl = '', trackKey = '') {
@@ -630,6 +665,7 @@ window.addEventListener('load', () => {
 
     try { if (typeof attachClickEventToAlbumArt === 'function') attachClickEventToAlbumArt(); } catch (e) { console.warn('album modal init failed', e); }
     try { if (typeof bindFavoriteUIOnce === 'function') bindFavoriteUIOnce(); } catch (e) { console.warn('favorites init failed', e); }
+    try { if (typeof bindAlbumArtAppleLinkOnce === 'function') bindAlbumArtAppleLinkOnce(); } catch (e) { console.warn('album apple-link init failed', e); }
     try { if (typeof attachRatingsClickHandler === 'function') attachRatingsClickHandler(); } catch (e) { console.warn('ratings init failed', e); }
 
     // One authoritative place to keep UI + artBottom updated
@@ -2755,6 +2791,7 @@ if (titleEl) {
         : (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : ''));
 
   const appleUrl = String(data.radioItunesUrl || data.itunesUrl || data.radioAppleMusicUrl || '').trim();
+  setAlbumArtAppleLink((isRadio && appleUrl) ? appleUrl : '');
   const trackKey = String(data.file || data.songid || '').trim();
   const motionToken = ++motionReqToken;
 

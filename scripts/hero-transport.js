@@ -386,9 +386,13 @@
     const artTrackKey = String(np?.songid || np?.file || `${displayArtist}|${displayTitle}` || '').trim();
 
     el.innerHTML =
-      `<div class="heroArt" data-track-key="${escHtml(artTrackKey)}">${motionMp4
-        ? `${thumb ? `<img class="heroArtFallback" src="${thumb}" alt="">` : '<div class="heroArtPh heroArtFallback"></div>'}<video class="heroArtVid" src="${motionMp4}" data-fallback-src="${thumb}" autoplay muted loop playsinline preload="metadata"></video>`
-        : (thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>')}</div>` +
+      `${appleUrl
+        ? `<a class="heroArt heroArtLink" data-track-key="${escHtml(artTrackKey)}" href="${escHtml(appleUrl)}" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">${motionMp4
+            ? `${thumb ? `<img class="heroArtFallback" src="${thumb}" alt="">` : '<div class="heroArtPh heroArtFallback"></div>'}<video class="heroArtVid" src="${motionMp4}" data-fallback-src="${thumb}" autoplay muted loop playsinline preload="metadata"></video>`
+            : (thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>')}</a>`
+        : `<div class="heroArt" data-track-key="${escHtml(artTrackKey)}">${motionMp4
+            ? `${thumb ? `<img class="heroArtFallback" src="${thumb}" alt="">` : '<div class="heroArtPh heroArtFallback"></div>'}<video class="heroArtVid" src="${motionMp4}" data-fallback-src="${thumb}" autoplay muted loop playsinline preload="metadata"></video>`
+            : (thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>')}</div>`}` +
       `<div class="heroMain">` +
         `<div class="np">` +
           (appleUrl
