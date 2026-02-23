@@ -924,27 +924,40 @@ body.theme-light .heroTransport .np .heroSubline{color:#4b3e6f}
 body.theme-light .heroTransport .np .progress-bar-wrapper{background:rgba(137,138,196,.30)}
 body.theme-light .heroTransport .np .progress-fill{background:#898ac4}
 @media (max-width: 1120px){
-  .heroTransport{padding:12px 12px;gap:10px;min-height:146px}
-  .heroTransport .heroArt{flex:0 0 124px}
-  .heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{width:124px;height:124px;border-radius:13px}
-  .heroTransport .np{gap:8px}
-  .heroTransport .np .txt{font-size:16px;line-height:1.15;max-width:min(100%,calc(100% - 86px));-webkit-line-clamp:2}
-  .heroTransport .heroRateStar{font-size:22px}
-  .heroTransport .heroTransportControls{gap:10px}
-  .heroTransport .tbtn{width:46px;height:46px}
-  .heroTransport .tbtn.tbtnBig{width:56px;height:56px}
-  .heroTransport .tbtn.tbtnNear{width:44px;height:44px}
-  .heroTransport .tbtn.tbtnFar{width:41px;height:41px}
-  .heroTransport .tbtn svg{width:24px;height:24px}
-  .heroTransport .tbtn.tbtnBig svg{width:30px;height:30px}
-  .heroTransport .np .progress-bar-wrapper{width:calc((100% - 20px) * 0.94)}
+  /* Compact hero for split-screen/tablet widths: keep art on the left */
+  .heroTransport{display:grid;grid-template-columns:80px minmax(0,1fr);align-items:center;padding:10px 10px;gap:10px;min-height:0}
+  .heroTransport .heroArt{flex:0 0 80px;display:block}
+  .heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{width:80px;height:80px;border-radius:11px}
+  .heroTransport .heroMain{gap:8px;min-width:0}
+  .heroTransport .np{gap:6px;align-items:flex-start;justify-content:center}
+  .heroTransport .np .txt{font-size:15px;line-height:1.14;max-width:100%;text-align:left;-webkit-line-clamp:2}
+  .heroTransport .np .heroRating{justify-content:flex-start}
+  .heroTransport .heroRateStar{font-size:20px}
+  .heroTransport .heroTransportControls{gap:8px;justify-content:center}
+  .heroTransport .tbtn{width:42px;height:42px}
+  .heroTransport .tbtn.tbtnBig{width:50px;height:50px}
+  .heroTransport .tbtn.tbtnNear{width:40px;height:40px}
+  .heroTransport .tbtn.tbtnFar{width:38px;height:38px}
+  .heroTransport .tbtn svg{width:22px;height:22px}
+  .heroTransport .tbtn.tbtnBig svg{width:27px;height:27px}
+  .heroTransport .np .progress-bar-wrapper{width:100%}
 }
 
 @media (max-width: 900px){
-  .heroTransport{width:100%;flex-direction:column;align-items:center;min-height:0}
+  .heroTransport{width:100%;grid-template-columns:72px minmax(0,1fr);padding:9px 9px;gap:9px}
+  .heroTransport .heroArt{flex:0 0 72px}
+  .heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{width:72px;height:72px}
+  .heroTransport .np .txt{font-size:14px;-webkit-line-clamp:2}
+  .heroTransport .heroTransportControls{gap:7px}
+}
+
+@media (max-width: 700px){
+  /* Phones can still stack if needed */
+  .heroTransport{display:flex;flex-direction:column;align-items:center}
   .heroTransport .heroArt{flex:0 0 auto}
-  .heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{width:112px;height:112px}
-  .heroTransport .np .txt{max-width:95vw;font-size:15px;-webkit-line-clamp:2}
-  .heroTransport .heroTransportControls{gap:8px}
+  .heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{width:104px;height:104px}
+  .heroTransport .np{align-items:center}
+  .heroTransport .np .txt{text-align:center}
+  .heroTransport .np .heroRating{justify-content:center}
 }
 
