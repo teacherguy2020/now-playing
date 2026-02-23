@@ -1,5 +1,11 @@
 # now-playing
 
+<p align="center">
+  <img src="./icons/icon-192.png" alt="Now Playing moOde icon" width="120" height="120" />
+</p>
+
+<p align="center"><strong>Now Playing for moOde</strong></p>
+
 A moOde-focused now-playing API + UI stack with optional Alexa integration.
 
 > Recommended topology: run this project on a separate Pi from your moOde host.
