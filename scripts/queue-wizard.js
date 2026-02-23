@@ -48,6 +48,7 @@
   const existingPlaylistLabelEl = $('existingPlaylistLabel');
   const existingPlaylistMenuEl = $('existingPlaylistMenu');
   const existingPlaylistCarouselEl = $('existingPlaylistCarousel');
+  const existingLoadingLayerEl = $('existingLoadingLayer');
   const loadExistingPlaylistBtn = $('loadExistingPlaylistBtn');
   const sendExistingBtn = $('sendExistingToMoode');
   const savePlaylistNowBtn = $('savePlaylistNowBtn');
@@ -352,6 +353,16 @@ async function syncVibeAvailability() {
   function setCount(text) {
     if (!countEl) return;
     countEl.textContent = String(text ?? '');
+  }
+
+  function setExistingPlaylistsLoading(loading) {
+    const on = !!loading;
+    if (existingLoadingLayerEl) {
+      existingLoadingLayerEl.classList.toggle('show', on);
+      existingLoadingLayerEl.setAttribute('aria-busy', on ? 'true' : 'false');
+    }
+    if (existingPlaylistsEl) existingPlaylistsEl.disabled = on;
+    if (existingPlaylistCarouselEl) existingPlaylistCarouselEl.style.pointerEvents = on ? 'none' : '';
   }
 
   function showPlaylistHint(msg) {
@@ -1316,21 +1327,21 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     const key = getKey();
     if (!apiBase || !existingPlaylistsEl) return;
     try {
+      setExistingPlaylistsLoading(true);
       setExistingPlaylistOptions(['loading…']);
-      existingPlaylistsEl.disabled = true;
       const r = await fetch(`${apiBase}/config/queue-wizard/playlists`, { headers: { 'x-track-key': key }, cache: 'no-store' });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
       const names = Array.isArray(j?.playlists) ? j.playlists.map((x) => String(x || '').trim()).filter(Boolean) : [];
       setExistingPlaylistOptions(names, getPlaylistNameRaw());
       rebuildFilterQuickIndex();
-      existingPlaylistsEl.disabled = false;
       updatePlaylistUi();
     } catch (_) {
       setExistingPlaylistOptions([]);
       rebuildFilterQuickIndex();
-      existingPlaylistsEl.disabled = false;
       updatePlaylistUi();
+    } finally {
+      setExistingPlaylistsLoading(false);
     }
   }
 
@@ -3186,11 +3197,17 @@ try {
   });
 
   loadRuntimeMeta().finally(() => {
-    loadOptions();
-    loadExistingPlaylists();
     syncVibeAvailability();
-    loadCurrentQueueCard().catch((e) => {
-      setStatus(`Error loading current queue: ${esc(e?.message || e)}`);
+
+    // Give the hero/header a frame to paint before heavier builders kick in.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        loadOptions();
+        loadCurrentQueueCard().catch((e) => {
+          setStatus(`Error loading current queue: ${esc(e?.message || e)}`);
+        });
+        setTimeout(() => { loadExistingPlaylists(); }, 120);
+      });
     });
 
   });

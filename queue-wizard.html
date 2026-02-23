@@ -176,6 +176,12 @@
     }
     .warn{color:#ffd28a}
     .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.28);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+    .cardLoadingLayer{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:12;background:rgba(10,18,34,.28);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+    .cardLoadingLayer.show{display:flex}
+    .cardLoadingLayer .cardLoadingInner{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid #334;background:rgba(10,18,34,.82);font-size:13px;color:#e7eefc;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+    .cardLoadingLayer .bigSpin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.28);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite}
+    body.theme-light .cardLoadingLayer{background:rgba(214,197,239,.35)}
+    body.theme-light .cardLoadingLayer .cardLoadingInner{background:rgba(255,242,224,.95);border-color:rgba(137,138,196,.42);color:#2f2a4f}
     .miniCals{display:none;grid-template-columns:repeat(2,minmax(220px,1fr));gap:12px;margin-top:10px}
     .miniCals.show{display:grid}
     .miniCal{border:1px solid #334;border-radius:12px;background:#0a1222;padding:8px}
@@ -248,6 +254,9 @@
     <input id="key" type="hidden" />
 
     <div class="card" id="existingSection" style="overflow:hidden;position:relative;">
+      <div id="existingLoadingLayer" class="cardLoadingLayer" aria-live="polite" aria-busy="false">
+        <div class="cardLoadingInner"><span class="bigSpin" aria-hidden="true"></span>Loading playlists…</div>
+      </div>
       <h3 style="margin:0 0 8px">Playlists Queue Builder</h3>
       <div class="muted" style="margin-top:4px">Choose existing playlist(s) to load.</div>
       <div id="existingPlaylistWrap" style="margin-top:10px;min-width:320px;max-width:100%;width:100%;display:flex;flex-direction:column;align-items:stretch;overflow:visible;position:relative;">
@@ -389,7 +398,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260221-109"></script>
+  <script src="scripts/queue-wizard.js?v=20260223-hero-playlists-loading"></script>
 
 <script>
 (function enhanceStarFilters(){
