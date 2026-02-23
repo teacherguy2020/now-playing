@@ -910,6 +910,21 @@ async function syncVibeAvailability() {
     playlistThumbStripEl.style.display = 'none';
   }
 
+  function postFrameHeightHint() {
+    try {
+      const b = document.body;
+      const e = document.documentElement;
+      const h = Math.max(
+        b ? b.scrollHeight : 0,
+        b ? b.offsetHeight : 0,
+        e ? e.scrollHeight : 0,
+        e ? e.offsetHeight : 0,
+        e ? e.clientHeight : 0,
+      );
+      window.parent?.postMessage({ type: 'np-frame-height', height: h }, '*');
+    } catch {}
+  }
+
   function refreshCurrentListMetaAndUi() {
     currentFiles = currentTracks.map((t) => String(t.file || '').trim()).filter(Boolean);
 
@@ -928,6 +943,10 @@ async function syncVibeAvailability() {
 
     renderFiltersSummary();
     renderPlaylistSuggestion();
+
+    // Nudge app shell iframe height after large dynamic list changes.
+    setTimeout(postFrameHeightHint, 0);
+    setTimeout(postFrameHeightHint, 120);
   }
 
   function removeTrackAt(idx) {
@@ -2370,7 +2389,10 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       setStatus(`Saved playlist only: ${esc(playlistName)} (${filesSnapshot.length.toLocaleString()} track(s))${preserveExistingCover ? ' · existing cover kept' : (j.collageGenerated ? ' · cover saved' : '')}${j.collageError ? ` · cover error: ${esc(j.collageError)}` : ''}`);
       showSendConfirmation(`✅ Saved playlist “${playlistName}” (no queue playback changes).`);
       existingEditLockName = '';
-      await loadExistingPlaylists();
+
+      // Clear preview queue after save to avoid stale list state.
+      setCurrentList('none', []);
+      setCount('No preview yet.');
 
       // After overwrite, clear visual selection highlight to signal edit is complete.
       selectedExistingPlaylists.clear();
@@ -2596,6 +2618,12 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
 
       setStatus(statusMsg);
       showSendConfirmation(`✅ Sent ${j.added}/${j.requested} track(s) to moOde.`);
+
+      // If this send also saved a playlist, clear preview queue to avoid stale state.
+      if (j.playlistSaved) {
+        setCurrentList('none', []);
+        setCount('No preview yet.');
+      }
 
       // After sending from Existing Playlists, clear highlighted selection state.
       if (isExistingSend) {

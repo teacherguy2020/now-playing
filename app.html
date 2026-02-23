@@ -17,7 +17,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
   <title>Now Playing</title>
-  <link rel="stylesheet" href="styles/podcasts.css?v=20260222-progresswidth1" />
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260223-iframeheight1" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
     html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
@@ -280,6 +280,9 @@
       const frame = document.getElementById('appFrame');
       const viewWrap = document.getElementById('viewWrap');
       const tabs = Array.from(document.querySelectorAll('#appTabs a[data-page]'));
+      let frameResizeObserver = null;
+      let frameMutationObserver = null;
+      let frameResizeRaf = 0;
 
       function syncFrameWidth(){
         try {
@@ -287,6 +290,49 @@
           // get stuck with a stale inline pixel width.
           if (viewWrap) viewWrap.style.width = '';
           if (frame) frame.style.width = '100%';
+        } catch {}
+      }
+
+      function requestFrameHeightSync(){
+        try {
+          if (frameResizeRaf) cancelAnimationFrame(frameResizeRaf);
+          frameResizeRaf = requestAnimationFrame(() => {
+            frameResizeRaf = 0;
+            syncFrameHeight();
+          });
+        } catch {
+          syncFrameHeight();
+        }
+      }
+
+      function attachFrameAutoResizeObservers(){
+        try {
+          if (frameResizeObserver) { try { frameResizeObserver.disconnect(); } catch {} frameResizeObserver = null; }
+          if (frameMutationObserver) { try { frameMutationObserver.disconnect(); } catch {} frameMutationObserver = null; }
+
+          const doc = frame?.contentDocument;
+          if (!doc) return;
+          const b = doc.body;
+          const e = doc.documentElement;
+
+          if ('ResizeObserver' in window) {
+            frameResizeObserver = new ResizeObserver(() => requestFrameHeightSync());
+            if (e) frameResizeObserver.observe(e);
+            if (b && b !== e) frameResizeObserver.observe(b);
+          }
+
+          frameMutationObserver = new MutationObserver(() => requestFrameHeightSync());
+          frameMutationObserver.observe(doc, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            characterData: true,
+          });
+
+          // Catch late layout/asset changes (images, fonts, transitions).
+          doc.addEventListener('load', requestFrameHeightSync, true);
+          doc.addEventListener('transitionend', requestFrameHeightSync, true);
+          doc.addEventListener('animationend', requestFrameHeightSync, true);
         } catch {}
       }
 
@@ -1067,8 +1113,8 @@
           u.searchParams.set('page', safe);
           history.pushState({ page: safe }, '', u);
         }
-        setTimeout(syncFrameHeight, 120);
-        setTimeout(syncFrameHeight, 500);
+        setTimeout(requestFrameHeightSync, 120);
+        setTimeout(requestFrameHeightSync, 500);
       }
 
       tabs.forEach((a) => a.addEventListener('click', (ev) => {
@@ -1082,13 +1128,14 @@
       });
 
       window.addEventListener('popstate', () => navigate(getPageFromUrl(), false));
-      window.addEventListener('resize', () => { syncFrameWidth(); syncFrameHeight(); });
+      window.addEventListener('resize', () => { syncFrameWidth(); requestFrameHeightSync(); });
       frame.addEventListener('load', () => {
         syncFrameWidth();
-        syncFrameHeight();
+        attachFrameAutoResizeObservers();
+        requestFrameHeightSync();
         syncThemeToFrame();
-        setTimeout(syncFrameHeight, 250);
-        setTimeout(syncFrameHeight, 900);
+        setTimeout(requestFrameHeightSync, 250);
+        setTimeout(requestFrameHeightSync, 900);
         setTimeout(syncThemeToFrame, 120);
       });
 
@@ -1635,7 +1682,8 @@
       setTimeout(() => { if (!document.hidden) syncHeroQueue(); }, 650);
       setInterval(() => { if (!document.hidden) syncPills(); }, 30000);
       setInterval(() => { if (!document.hidden) syncHeroQueue(); }, 7000);
-      setInterval(() => { if (!document.hidden) syncFrameHeight(); }, 4000);
+      // Fallback safety net; primary sizing is ResizeObserver/MutationObserver based.
+      setInterval(() => { if (!document.hidden) requestFrameHeightSync(); }, 8000);
     })();
   </script>
 </body>
