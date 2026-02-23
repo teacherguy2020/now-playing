@@ -1576,11 +1576,23 @@
 
       window.addEventListener('message', (ev) => {
         const d = ev?.data || {};
-        if (!d || d.type !== 'np-queue-busy') return;
-        setHeroQueueBusy(!!d.busy, String(d.label || 'Updating queue…'));
-        if (!d.busy) {
-          // Pull latest queue as soon as operation settles.
-          setTimeout(() => { try { syncHeroQueue(); } catch {} }, 120);
+        if (!d || typeof d !== 'object') return;
+
+        if (d.type === 'np-queue-busy') {
+          setHeroQueueBusy(!!d.busy, String(d.label || 'Updating queue…'));
+          if (!d.busy) {
+            // Pull latest queue as soon as operation settles.
+            setTimeout(() => { try { syncHeroQueue(); } catch {} }, 120);
+          }
+          return;
+        }
+
+        if (d.type === 'np-frame-height') {
+          const h = Math.max(480, Number(d.height || 0) + 14);
+          if (Number.isFinite(h) && h > 0) {
+            const cur = Math.max(0, parseInt(String(frame.style.height || '0'), 10) || 0);
+            if (Math.abs(cur - h) > 4) frame.style.height = `${h}px`;
+          }
         }
       });
 

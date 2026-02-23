@@ -473,6 +473,44 @@
 </script>
 
 <script>
+(function postShellHeight(){
+  let raf = null;
+  const compute = () => {
+    const b = document.body;
+    const e = document.documentElement;
+    return Math.max(
+      b ? b.scrollHeight : 0,
+      b ? b.offsetHeight : 0,
+      e ? e.scrollHeight : 0,
+      e ? e.offsetHeight : 0,
+      e ? e.clientHeight : 0,
+    );
+  };
+  const send = () => {
+    raf = null;
+    const h = compute();
+    try { window.parent?.postMessage({ type: 'np-frame-height', page: 'queue-wizard', height: h }, '*'); } catch {}
+  };
+  const schedule = () => {
+    if (raf) return;
+    raf = requestAnimationFrame(send);
+  };
+
+  window.addEventListener('load', () => { schedule(); setTimeout(schedule, 120); setTimeout(schedule, 450); });
+  window.addEventListener('resize', schedule);
+  document.addEventListener('input', schedule, true);
+  document.addEventListener('change', schedule, true);
+  const mo = new MutationObserver(schedule);
+  mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+  if ('ResizeObserver' in window) {
+    const ro = new ResizeObserver(schedule);
+    ro.observe(document.documentElement);
+    if (document.body) ro.observe(document.body);
+  }
+})();
+</script>
+
+<script>
 (function inlineMiniCalendars(){
   const pad = (n) => String(n).padStart(2, '0');
   const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;

@@ -810,7 +810,11 @@ async function syncVibeAvailability() {
         ? `<button type="button" data-queue-fav-file="${encodeURIComponent(file)}" data-queue-fav-state="${x.isFavoriteStation ? '1' : '0'}" title="${x.isFavoriteStation ? 'Unfavorite station' : 'Favorite station'}" style="margin-left:6px;border:0;background:transparent;cursor:pointer;font-size:15px;line-height:1;color:${x.isFavoriteStation ? '#ef4444' : '#7f8fae'}">♥</button>`
         : '';
       const rowClass = `queueRow ${idx % 2 === 0 ? 'queueRowEven' : 'queueRowOdd'}`;
-      return `<div class="${rowClass}" data-track-idx="${idx}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${idx + 1}</b>. ${esc(String(x.artist || ''))}${favBtn}</div><div class="muted">${esc(String(x.title || ''))} ${x.album ? `• ${esc(String(x.album || ''))}` : ''}</div>${starsRow}</div><button type="button" data-remove-track="${idx}" style="margin-left:auto;">Remove</button></div>`;
+      const titleMain = isStream ? String(x.artist || x.stationName || x.title || '').trim() : String(x.title || '').trim();
+      const subMain = isStream
+        ? String(x.title || x.album || '').trim()
+        : `${String(x.artist || '').trim()}${x.album ? ` • ${String(x.album || '').trim()}` : ''}`.trim();
+      return `<div class="${rowClass}" data-track-idx="${idx}">${thumb}<div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;"><b>${idx + 1}</b>.<span style="font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(titleMain || '(unknown title)')}</span>${favBtn}</div><div class="muted">${esc(subMain || '')}</div>${starsRow}</div><button type="button" data-remove-track="${idx}" style="margin-left:auto;">Remove</button></div>`;
     }).join('');
   }
 
@@ -887,20 +891,15 @@ async function syncVibeAvailability() {
 
       const stationName = String(x.stationName || x.album || '').trim() || 'Radio Stream';
       const stationGenre = String(x.stationGenre || '').trim();
-      const displayArtist = isStream
+      const titleMain = isStream
         ? stationName
-        : String(x.artist || '');
-      const displayTitle = isStream
-        ? String(x.title || '').trim()
-        : String(x.title || '');
-      const detailLine = isStream
-        ? ((head && displayTitle)
-            ? `${esc(displayTitle)}${stationGenre ? ` • ${esc(stationGenre)}` : ''}`
-            : (stationGenre ? esc(stationGenre) : ''))
-        : (displayTitle ? `${esc(displayTitle)} ${x.album ? `• ${esc(String(x.album || ''))}` : ''}` : '');
+        : String(x.title || '').trim();
+      const subMain = isStream
+        ? `${String(x.title || '').trim()}${stationGenre ? ` • ${stationGenre}` : ''}`.trim()
+        : `${String(x.artist || '').trim()}${x.album ? ` • ${String(x.album || '').trim()}` : ''}`.trim();
 
       const moveBtns = `<div style="display:flex;gap:4px;margin-left:auto;"><button type="button" data-queue-move-pos="${pos}" data-queue-move-dir="up" title="Move up">↑</button><button type="button" data-queue-move-pos="${pos}" data-queue-move-dir="down" title="Move down">↓</button><button type="button" data-queue-remove-pos="${pos}" title="Remove from queue">Remove</button></div>`;
-      return `<div class="${rowClass}" data-queue-play-pos="${pos}" style="cursor:pointer;">${thumb}<div style="min-width:0;flex:1 1 auto;"><div><b>${String(pos||0)}</b>. ${head?'▶️ ':''}${esc(displayArtist)}${favBtn}</div><div class="muted">${detailLine}</div>${starsRow}</div>${moveBtns}</div>`;
+      return `<div class="${rowClass}" data-queue-play-pos="${pos}" style="cursor:pointer;">${thumb}<div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;"><b>${String(pos||0)}</b>.<span style="font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${head?'▶️ ':''}${esc(titleMain || '(unknown title)')}</span>${favBtn}</div><div class="muted">${esc(subMain || '')}</div>${starsRow}</div>${moveBtns}</div>`;
     }).join('');
   }
 
@@ -2404,12 +2403,28 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
     if (sendBusy) return;
     sendBusy = true;
 
+    const sendBtnIntent = (source === 'existing')
+      ? sendExistingBtn
+      : (source === 'vibe' ? sendVibeBtn : (source === 'podcast' ? sendPodcastBtn : (source === 'radio' ? sendRadioBtn : sendFilteredBtn)));
+    const prevSendBtnIntentHtml = sendBtnIntent ? String(sendBtnIntent.innerHTML || '') : '';
+    const clearIntentBusy = () => {
+      if (sendBtnIntent) {
+        sendBtnIntent.disabled = false;
+        sendBtnIntent.innerHTML = prevSendBtnIntentHtml || 'Send queue to moOde';
+      }
+    };
+    if (sendBtnIntent) {
+      sendBtnIntent.disabled = true;
+      sendBtnIntent.innerHTML = '<span class="spin"></span> Sending…';
+    }
+
     if (source === 'filters' && currentListSource !== 'existing') {
       await doPreview();
     }
 
     if (source === 'vibe' && currentListSource !== 'vibe') {
       setStatus('Build a vibe list first, then send it.');
+      clearIntentBusy();
       sendBusy = false;
       return;
     }
@@ -2418,6 +2433,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       await doPodcastBuild();
       if (currentListSource !== 'podcast' || !currentFiles.length) {
         setStatus('Podcast list is empty (or still building). Adjust filters and try again.');
+        clearIntentBusy();
         sendBusy = false;
         return;
       }
@@ -2427,6 +2443,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       await buildRadioList();
       if (currentListSource !== 'radio' || !currentFiles.length) {
         setStatus('Radio list is empty. Adjust filters and try again.');
+        clearIntentBusy();
         sendBusy = false;
         return;
       }
@@ -2439,6 +2456,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
         if (tracks.length) setCurrentList('existing', tracks);
       } catch (e) {
         setStatus(`Playlist preview failed: ${esc(e?.message || e)}`);
+        clearIntentBusy();
         sendBusy = false;
         return;
       }
@@ -2448,6 +2466,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       await doPreview();
       if (!currentFiles.length) {
         setStatus('No tracks to send.');
+        clearIntentBusy();
         sendBusy = false;
         return;
       }
@@ -2484,6 +2503,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       if (!p.ok) {
         setStatus(p.msg);
         showPlaylistHint(p.msg);
+        clearIntentBusy();
         sendBusy = false;
         return;
       }
@@ -2495,6 +2515,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       if (existsAlready) {
         const okOverwrite = confirm(`Overwrite ${playlistName}?`);
         if (!okOverwrite) {
+          clearIntentBusy();
           sendBusy = false;
           return;
         }
@@ -2503,7 +2524,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
 
     if (mode === 'replace' && !keepNowPlaying) {
       const ok = confirm('Replace queue by CLEARING everything and loading this list?');
-      if (!ok) { sendBusy = false; return; }
+      if (!ok) { clearIntentBusy(); sendBusy = false; return; }
     }
 
     if (wantsCollage && playlistName && filesSnapshot.length) {
@@ -2522,13 +2543,9 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
     const sendBtn = isExistingSend
       ? sendExistingBtn
       : (isVibeSend ? sendVibeBtn : (isPodcastSend ? sendPodcastBtn : sendFilteredBtn));
-    const prevSendBtnHtml = sendBtn ? String(sendBtn.innerHTML || '') : '';
+    const prevSendBtnHtml = prevSendBtnIntentHtml;
 
     disableUI(true);
-    if (sendBtn) {
-      sendBtn.disabled = true;
-      sendBtn.innerHTML = '<span class="spin"></span> Sending…';
-    }
     notifyParentQueueBusy(true, 'Updating queue…');
     try {
       setStatus('<span class="spin"></span>Sending list to moOde…');
