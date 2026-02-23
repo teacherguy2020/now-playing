@@ -28,6 +28,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
 
       const shuffle = Boolean(req.body?.shuffle);
       const forceRandomOff = Boolean(req.body?.forceRandomOff);
+      const fastStart = req.body?.fastStart !== false;
       const generateCollage = Boolean(req.body?.generateCollage);
       const previewCoverBase64 = String(req.body?.previewCoverBase64 || '').trim();
       const previewCoverMimeType = String(req.body?.previewCoverMimeType || 'image/jpeg').trim().toLowerCase();
@@ -53,6 +54,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       let randomTurnedOff = false;
 
       let added = 0;
+      let playStarted = false;
       const failedFiles = [];
       const addedFiles = [];
 
@@ -80,7 +82,27 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
           } catch (_) {}
         }
 
-        for (const file of tracks) {
+        let startIdx = 0;
+        if (mode === 'replace' && !didCrop && fastStart && tracks.length) {
+          const first = String(tracks[0] || '').trim();
+          if (first) {
+            try {
+              await execFileP('mpc', ['-h', mpdHost, 'add', first]);
+              added += 1;
+              addedFiles.push(first);
+              startIdx = 1;
+              try {
+                await execFileP('mpc', ['-h', mpdHost, 'play']);
+                playStarted = true;
+              } catch (_) {}
+            } catch (_) {
+              failedFiles.push(first);
+              startIdx = 1;
+            }
+          }
+        }
+
+        for (const file of tracks.slice(startIdx)) {
           try {
             await execFileP('mpc', ['-h', mpdHost, 'add', file]);
             added += 1;
@@ -112,9 +134,8 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
         }
       } catch {}
 
-      let playStarted = false;
       // Only auto-play when we replaced the queue and did NOT crop (crop keeps playing).
-      if (!saveOnly && mode === 'replace' && !didCrop && added > 0) {
+      if (!saveOnly && mode === 'replace' && !didCrop && added > 0 && !playStarted) {
         try {
           await execFileP('mpc', ['-h', mpdHost, 'play']);
           playStarted = true;
@@ -250,6 +271,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
         didClear,
         shuffle,
         forceRandomOff,
+        fastStart,
         randomTurnedOff,
         randomEnabled,
         generateCollage,

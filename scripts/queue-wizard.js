@@ -61,6 +61,7 @@
   const queuePlaybackAreaEl = $('queuePlaybackArea');
   const playlistSuggestionEl = $('playlistSuggestion');
   const sendConfirmEl = $('sendConfirm');
+  const fastStartQueueEl = $('fastStartQueue');
   const coverCardEl = $('coverCard');
   const coverImgEl = $('coverPreview');
   const coverStatusEl = $('coverStatus');
@@ -531,6 +532,10 @@ async function syncVibeAvailability() {
 
   function getShuffleExisting() {
     return !!shuffleExistingEl?.checked;
+  }
+
+  function getFastStartQueue() {
+    return fastStartQueueEl ? !!fastStartQueueEl.checked : true;
   }
 
   // Your definition:
@@ -2450,7 +2455,16 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
     if (savePlaylistNowBtn) savePlaylistNowBtn.style.display = 'none';
     if (queuePlaybackAreaEl) queuePlaybackAreaEl.style.display = 'none';
 
+    const sendBtn = isExistingSend
+      ? sendExistingBtn
+      : (isVibeSend ? sendVibeBtn : (isPodcastSend ? sendPodcastBtn : sendFilteredBtn));
+    const prevSendBtnHtml = sendBtn ? String(sendBtn.innerHTML || '') : '';
+
     disableUI(true);
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<span class="spin"></span> Sending…';
+    }
     notifyParentQueueBusy(true, 'Updating queue…');
     try {
       setStatus('<span class="spin"></span>Sending list to moOde…');
@@ -2471,6 +2485,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
             : undefined,
           shuffle: doShuffleFlag,
           forceRandomOff,
+          fastStart: getFastStartQueue(),
           playlistName,
           generateCollage: wantsCollage,
           previewCoverBase64: previewCoverBase64 || undefined,
@@ -2491,7 +2506,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
         `Added to moOde queue: ${j.added}/${j.requested}` +
         (mode === 'replace' ? ` · ${replaceModeMsg}` : ' · appended') +
         (j.randomTurnedOff ? ' · random off' : '') +
-        (j.playStarted ? ' · playing' : '') +
+        (j.playStarted ? (j.fastStart ? ' · playing (fast start)' : ' · playing') : '') +
         (j.playlistSaved ? ' · playlist saved' : '') +
         (j.collageGenerated ? ' · collage generated' : '') +
         (failedN ? ` · failed: ${failedN}` : '') +
@@ -2523,6 +2538,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       setStatus(`Error: ${esc(e?.message || e)}`);
     } finally {
       disableUI(false);
+      if (sendBtn) sendBtn.innerHTML = prevSendBtnHtml || 'Send queue to moOde';
       notifyParentQueueBusy(false);
       if (savePlaylistNowBtn) savePlaylistNowBtn.style.display = prevSaveNowDisplay;
       sendBusy = false;
@@ -2537,6 +2553,16 @@ function wireEvents() {
     const isLight = document.body.classList.contains('theme-light');
     applyTheme(isLight ? 'dark' : 'light');
   });
+
+  if (fastStartQueueEl) {
+    try {
+      const raw = String(localStorage.getItem('qw.fastStartQueue') || '').trim().toLowerCase();
+      if (raw) fastStartQueueEl.checked = !(['0','false','off','no'].includes(raw));
+    } catch {}
+    fastStartQueueEl.addEventListener('change', () => {
+      try { localStorage.setItem('qw.fastStartQueue', fastStartQueueEl.checked ? '1' : '0'); } catch {}
+    });
+  }
 
   vibeBtn?.addEventListener('click', (e) => {
     e.preventDefault();

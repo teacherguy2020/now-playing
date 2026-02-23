@@ -560,6 +560,11 @@
                   hqNextUp.innerHTML = nextHtml;
                   globalThis.lastHeroNextUpSignature = nextHtml;
                 }
+                // Keep expand button visible while collapsed; next-up repaint can replace innerHTML.
+                if (queueCollapsed && hqBtn) {
+                  if (hqBtn.parentElement !== hqNextUp) hqNextUp.appendChild(hqBtn);
+                  hqBtn.style.marginLeft = 'auto';
+                }
               } catch {}
             }
             return;

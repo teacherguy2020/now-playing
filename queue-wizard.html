@@ -370,6 +370,9 @@
 
     <div class="muted" id="status" style="margin-top:6px"></div>
     <div class="muted" id="sendConfirm" style="margin-top:4px;color:#9ef7b2;"></div>
+    <div class="muted" style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <label><input id="fastStartQueue" type="checkbox" checked> Start playback ASAP (queue continues loading)</label>
+    </div>
 
     <div class="card">
       <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
@@ -398,7 +401,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260223-hero-playlists-loading"></script>
+  <script src="scripts/queue-wizard.js?v=20260223-fast-start"></script>
 
 <script>
 (function enhanceStarFilters(){
