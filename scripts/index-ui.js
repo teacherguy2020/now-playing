@@ -276,16 +276,24 @@ async function resolveMotionMp4(appleUrl) {
   return p;
 }
 
-function setMotionArtVideo(mp4Url, posterUrl = '') {
+function clearMotionArtVideo() {
+  const videoEl = document.getElementById('album-art-video');
+  const artEl = document.getElementById('album-art');
+  if (!videoEl || !artEl) return;
+
+  try { videoEl.pause?.(); } catch {}
+  try { videoEl.removeAttribute('src'); videoEl.load?.(); } catch {}
+  videoEl.style.display = 'none';
+  artEl.style.display = 'block';
+}
+
+function setMotionArtVideo(mp4Url, posterUrl = '', trackKey = '') {
   const videoEl = document.getElementById('album-art-video');
   const artEl = document.getElementById('album-art');
   if (!videoEl || !artEl) return;
 
   const src = String(mp4Url || '').trim();
-  if (!src) {
-    // No-op on missing motion: keep whatever is currently visible (static or motion).
-    return;
-  }
+  if (!src) return;
 
   if (posterUrl) videoEl.setAttribute('poster', posterUrl);
   const oldSrc = String(videoEl.getAttribute('src') || '').trim();
@@ -297,6 +305,7 @@ function setMotionArtVideo(mp4Url, posterUrl = '') {
   // Motion is law: once we have a motion source, keep static hidden to avoid flashing.
   artEl.style.display = 'none';
   videoEl.style.display = 'block';
+  if (trackKey) lastMotionAppliedTrackKey = String(trackKey);
 
   try {
     const p = (typeof videoEl.play === 'function') ? videoEl.play() : null;
@@ -323,6 +332,7 @@ let lastAlbumArtKey = '';
 let lastAlbumArtUrl = '';
 let motionLockTrackKey = '';
 let motionLockMp4 = '';
+let lastMotionAppliedTrackKey = '';
 
 let bgKeyFront = '';
 let bgLoadingKey = '';
@@ -2748,9 +2758,15 @@ if (titleEl) {
   const trackKey = String(data.file || data.songid || '').trim();
   const motionToken = ++motionReqToken;
 
+  const trackChangedForMotion = !!trackKey && (trackKey !== lastMotionAppliedTrackKey);
+  if (trackChangedForMotion && !(motionLockTrackKey === trackKey && motionLockMp4)) {
+    // New track: immediately drop previous motion clip so old video never "sticks".
+    clearMotionArtVideo();
+  }
+
   // Motion lock: once motion is proven for a track, keep using it for that same track.
   if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
-    setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl);
+    setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl, trackKey);
   } else if (motionArtEnabled()) {
     if (isRadio && appleUrl) {
       resolveMotionMp4(appleUrl)
@@ -2759,19 +2775,19 @@ if (titleEl) {
           const resolved = String(mp4 || '').trim();
           if (resolved) {
             if (trackKey) { motionLockTrackKey = trackKey; motionLockMp4 = resolved; }
-            setMotionArtVideo(resolved, fgUrl || rawArtUrl);
+            setMotionArtVideo(resolved, fgUrl || rawArtUrl, trackKey);
           } else if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
-            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl);
+            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl, trackKey);
           } else {
-            setMotionArtVideo('', fgUrl || rawArtUrl);
+            setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
           }
         })
         .catch(() => {
           if (motionToken !== motionReqToken) return;
           if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
-            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl);
+            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl, trackKey);
           } else {
-            setMotionArtVideo('', fgUrl || rawArtUrl);
+            setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
           }
         });
     } else if (!isRadio && !isAirplay) {
@@ -2781,26 +2797,26 @@ if (titleEl) {
           const resolved = String(mp4 || '').trim();
           if (resolved) {
             if (trackKey) { motionLockTrackKey = trackKey; motionLockMp4 = resolved; }
-            setMotionArtVideo(resolved, fgUrl || rawArtUrl);
+            setMotionArtVideo(resolved, fgUrl || rawArtUrl, trackKey);
           } else if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
-            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl);
+            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl, trackKey);
           } else {
-            setMotionArtVideo('', fgUrl || rawArtUrl);
+            setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
           }
         })
         .catch(() => {
           if (motionToken !== motionReqToken) return;
           if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
-            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl);
+            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl, trackKey);
           } else {
-            setMotionArtVideo('', fgUrl || rawArtUrl);
+            setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
           }
         });
     } else {
-      setMotionArtVideo('', fgUrl || rawArtUrl);
+      setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
     }
   } else {
-    setMotionArtVideo('', fgUrl || rawArtUrl);
+    setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
   }
 
   // =========================
@@ -2813,6 +2829,7 @@ if (titleEl) {
     if (ENABLE_BACKGROUND_ART) setBackgroundCrossfade('', '');
     lastAlbumArtUrl = '';
     lastAlbumArtKey = '';
+    lastMotionAppliedTrackKey = '';
     fgLoadingKey = '';
     fgLoadingUrl = '';
     return;
