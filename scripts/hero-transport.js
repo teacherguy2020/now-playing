@@ -273,6 +273,7 @@
     const prevArtNode = el.querySelector('.heroArt');
     const prevArtMedia = prevArtNode?.querySelector?.('video.heroArtVid, img:not(.heroArtFallback)');
     const prevArtSrc = prevArtMedia ? canonicalMediaSrc(String(prevArtMedia.currentSrc || prevArtMedia.src || '').trim()) : '';
+    const prevArtTrackKey = String(prevArtNode?.getAttribute?.('data-track-key') || '').trim();
 
     const items = Array.isArray(q?.items) ? q.items : [];
     const head = items.find((x) => !!x?.isHead) || items[0] || null;
@@ -382,9 +383,10 @@
     const progressPct = showProgress ? Math.max(0, Math.min(100, (elapsed / duration) * 100)) : 0;
     const spinPeriodMs = 5600;
     const spinDelayStyle = state === 'playing' ? ` style="--spin-delay:-${Date.now() % spinPeriodMs}ms;"` : '';
+    const artTrackKey = String(np?.songid || np?.file || `${displayArtist}|${displayTitle}` || '').trim();
 
     el.innerHTML =
-      `<div class="heroArt">${motionMp4
+      `<div class="heroArt" data-track-key="${escHtml(artTrackKey)}">${motionMp4
         ? `${thumb ? `<img class="heroArtFallback" src="${thumb}" alt="">` : '<div class="heroArtPh heroArtFallback"></div>'}<video class="heroArtVid" src="${motionMp4}" data-fallback-src="${thumb}" autoplay muted loop playsinline preload="metadata"></video>`
         : (thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>')}</div>` +
       `<div class="heroMain">` +
@@ -417,7 +419,10 @@
       const nextArtNode = el.querySelector('.heroArt');
       const nextArtMedia = nextArtNode?.querySelector?.('video.heroArtVid, img:not(.heroArtFallback)');
       const nextArtSrc = nextArtMedia ? canonicalMediaSrc(String(nextArtMedia.currentSrc || nextArtMedia.src || '').trim()) : '';
-      if (prevArtNode && nextArtNode && prevArtSrc && nextArtSrc && prevArtSrc === nextArtSrc) {
+      const nextArtTrackKey = String(nextArtNode?.getAttribute?.('data-track-key') || '').trim();
+      // Preserve art only when both media src AND track identity are unchanged.
+      // This avoids stale carry-over in Alexa mode where art URLs can be reused.
+      if (prevArtNode && nextArtNode && prevArtSrc && nextArtSrc && prevArtSrc === nextArtSrc && prevArtTrackKey && nextArtTrackKey && prevArtTrackKey === nextArtTrackKey) {
         nextArtNode.replaceWith(prevArtNode);
       }
     } catch {}

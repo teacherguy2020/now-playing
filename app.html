@@ -139,11 +139,12 @@
       background:linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,0));
       pointer-events:none;
     }
-    .heroWrap::before{
-      content:'';position:absolute;left:12px;right:12px;top:6px;height:22px;
-      border-radius:14px;
-      background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0));
-      pointer-events:none;
+    .heroWrap::before{display:none !important}
+    .heroWrap > header{
+      background:none !important;
+      box-shadow:none !important;
+      backdrop-filter:none !important;
+      -webkit-backdrop-filter:none !important;
     }
     body.theme-light .heroWrap{
       background:linear-gradient(180deg, rgba(255,255,255,.44), rgba(234,221,250,.34)) !important;
@@ -249,7 +250,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260222-heromainshift2"></script>
+  <script src="scripts/hero-transport.js?v=20260222-alexaartfix1"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
