@@ -2378,10 +2378,7 @@ async function sendPushoverTrackNotification(track) {
   form.append('user', PUSHOVER_USER_KEY);
   form.append('title', title);
   const bodyLine = [artist, album].filter(Boolean).join(' — ') || 'Now playing';
-  // Put link in body too (Pushover always auto-linkifies message URLs).
-  form.append('message', `${bodyLine}\nhttp://moode.local`);
-  form.append('url', 'http://moode.local');
-  form.append('url_title', 'Open moOde');
+  form.append('message', bodyLine);
 
   if (track.artUrl) {
     try {
