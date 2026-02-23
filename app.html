@@ -539,7 +539,8 @@
 
           // When collapsed, avoid heavy full-queue fetch/render work.
           if (queueCollapsed) {
-            if (wrap) wrap.innerHTML = '';
+            // Keep last rendered queue DOM in memory; just hide via collapsed UI.
+            // This avoids racey blank states if a collapsed sync finishes after expand.
             lastRadioPresetStations = [];
             updateSavePresetsButtonVisibility();
 
@@ -1374,7 +1375,7 @@
         updateQueueCollapsedUi();
         updateSavePresetsButtonVisibility();
 
-        hqBtn.addEventListener('click', async () => {
+        hqBtn.addEventListener('click', () => {
           const wasCollapsed = collapsed;
           collapsed = !collapsed;
           queueCollapsed = collapsed;
@@ -1382,11 +1383,12 @@
           updateSavePresetsButtonVisibility();
           try { localStorage.setItem(HERO_QUEUE_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch {}
 
-          // Expanding can wait on network queue fetch; show activity feedback.
+          // Never block expand on network.
           if (wasCollapsed && !collapsed) {
             setQueueExpandLoading(true);
-            try { await syncHeroQueue(); } catch {}
-            finally { setQueueExpandLoading(false); }
+            setTimeout(() => setQueueExpandLoading(false), 700);
+            setTimeout(() => { try { syncHeroQueue(); } catch {} }, 0);
+            setTimeout(() => { try { syncHeroQueue(); } catch {} }, 300);
           }
         });
 
