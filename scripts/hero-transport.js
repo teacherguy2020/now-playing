@@ -660,6 +660,12 @@
     const el = $('heroTransport');
     if (!el) return;
     let busy = false;
+    let busyWatchdog = null;
+    const setBusy = (on) => {
+      busy = !!on;
+      if (busyWatchdog) { clearTimeout(busyWatchdog); busyWatchdog = null; }
+      if (busy) busyWatchdog = setTimeout(() => { busy = false; busyWatchdog = null; }, 5500);
+    };
     let lastQ = null;
     let lastNp = null;
     let lastRenderSignature = '';
@@ -936,10 +942,13 @@
           });
         }
 
-        busy = true;
-        try { await playback('rate', currentKey(), { file, rating }); } catch {}
-        try { await refresh(); } catch {}
-        busy = false;
+        setBusy(true);
+        try {
+          try { await playback('rate', currentKey(), { file, rating }); } catch {}
+          try { await refresh(); } catch {}
+        } finally {
+          setBusy(false);
+        }
         return;
       }
 
@@ -955,14 +964,17 @@
         return;
       }
       renderOptimistic(action);
-      busy = true;
+      setBusy(true);
       try {
-        if (action === 'seekback15') await playback('seekrel', currentKey(), { seconds: -15 });
-        else if (action === 'seekfwd30') await playback('seekrel', currentKey(), { seconds: 30 });
-        else await playback(action, currentKey());
-      } catch {}
-      await refresh();
-      busy = false;
+        try {
+          if (action === 'seekback15') await playback('seekrel', currentKey(), { seconds: -15 });
+          else if (action === 'seekfwd30') await playback('seekrel', currentKey(), { seconds: 30 });
+          else await playback(action, currentKey());
+        } catch {}
+        try { await refresh(); } catch {}
+      } finally {
+        setBusy(false);
+      }
     });
 
     ensureRadioDrawer();
@@ -1036,10 +1048,13 @@
       seekBar = null;
       seekPct = null;
       if (!Number.isFinite(pct) || busy) return;
-      busy = true;
-      try { await playback('seekpct', currentKey(), { percent: pct }); } catch {}
-      await refresh();
-      busy = false;
+      setBusy(true);
+      try {
+        try { await playback('seekpct', currentKey(), { percent: pct }); } catch {}
+        try { await refresh(); } catch {}
+      } finally {
+        setBusy(false);
+      }
     });
 
     let fastRefreshTimer = null;

@@ -255,7 +255,7 @@
           <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></div>
           <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot" aria-hidden="true"></span>Alexa<span class="hint" id="alexaHint">unknown</span></div>
           <div class="pill" id="moodePill" title="moOde host verification"><span class="dot" aria-hidden="true"></span>moOde<span class="hint" id="moodeHint">unknown</span></div>
-          <button class="pill" id="scrobblePill" type="button" title="mpdscribble scrobble service" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Scrobble<span class="hint" id="scrobbleHint">off</span></button>
+          <button class="pill" id="scrobblePill" type="button" title="mpdscribble scrobble service" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="scrobbleLabel">Scrobble</span><span class="hint" id="scrobbleHint">off</span></button>
         </div>
       </div>
     </div>
@@ -272,7 +272,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260223-apple-art-link"></script>
+  <script src="scripts/hero-transport.js?v=20260223-hero-controls-lockfix2"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -381,6 +381,7 @@
       let runtimeTrackKey = '';
       let scrobbleControlsEnabled = false;
       let scrobbleRunning = null;
+      let collapsedQueueLastLiteSyncAt = 0;
       let radioStationByKey = new Map();
       let radioStationByHost = new Map();
       let radioHostAmbiguous = new Set();
@@ -535,6 +536,35 @@
           }
 
           const headers = runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {};
+
+          // When collapsed, avoid heavy full-queue fetch/render work.
+          if (queueCollapsed) {
+            if (wrap) wrap.innerHTML = '';
+            lastRadioPresetStations = [];
+            updateSavePresetsButtonVisibility();
+
+            const now = Date.now();
+            if ((now - collapsedQueueLastLiteSyncAt) < 12000) return;
+            collapsedQueueLastLiteSyncAt = now;
+
+            if (hqNextUp) {
+              try {
+                const rLite = await fetch(`${base}/next-up`, { cache:'no-store', headers });
+                const jLite = await rLite.json().catch(() => ({}));
+                const n = (rLite.ok && jLite?.ok) ? (jLite.next || null) : null;
+                const txt = n ? [String(n.artist || '').trim(), String(n.title || n.file || '').trim()].filter(Boolean).join(' • ') : 'none';
+                const artRaw = String(n?.artUrl || '').trim();
+                const art = artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : '';
+                const nextHtml = `${art ? `<img src="${art}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${txt || 'none'}</div>`;
+                if (globalThis.lastHeroNextUpSignature !== nextHtml) {
+                  hqNextUp.innerHTML = nextHtml;
+                  globalThis.lastHeroNextUpSignature = nextHtml;
+                }
+              } catch {}
+            }
+            return;
+          }
+
           const radioMapP = loadRadioHostNameMap(base, headers);
           const [r, npRes, nextUpRes, awRes, radioMap] = await Promise.all([
             fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers }),
@@ -872,10 +902,12 @@
 
       async function refreshScrobblePill(base){
         const hint = document.getElementById('scrobbleHint');
+        const label = document.getElementById('scrobbleLabel');
         const pill = document.getElementById('scrobblePill');
         if (pill) pill.style.display = scrobbleControlsEnabled ? '' : 'none';
         if (!scrobbleControlsEnabled) {
           if (hint) hint.textContent = 'off';
+          if (label) label.textContent = 'Scrobble';
           setPillState('scrobblePill', 'off');
           return;
         }
@@ -885,9 +917,11 @@
           const running = !!j?.running;
           scrobbleRunning = running;
           if (hint) hint.textContent = running ? 'on' : 'off';
+          if (label) label.textContent = running ? 'Scrobbling' : 'Scrobble';
           setPillState('scrobblePill', running ? 'ok' : 'warn');
         } catch {
           if (hint) hint.textContent = 'err';
+          if (label) label.textContent = 'Scrobble';
           scrobbleRunning = null;
           setPillState('scrobblePill', 'bad');
         }
@@ -898,6 +932,7 @@
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;
         const hint = document.getElementById('scrobbleHint');
+        const label = document.getElementById('scrobbleLabel');
         const desired = (scrobbleRunning === true) ? 'stop' : 'start';
         setScrobbleBusy(true);
         if (hint) hint.textContent = desired === 'start' ? 'starting…' : 'stopping…';
@@ -917,12 +952,14 @@
           if (typeof j?.running === 'boolean') {
             scrobbleRunning = !!j.running;
             if (hint) hint.textContent = scrobbleRunning ? 'on' : 'off';
+            if (label) label.textContent = scrobbleRunning ? 'Scrobbling' : 'Scrobble';
             setPillState('scrobblePill', scrobbleRunning ? 'ok' : 'warn');
           }
           setTimeout(() => { refreshScrobblePill(base).catch(() => {}); }, 1200);
         } catch (e) {
           console.warn('scrobble toggle failed', e?.message || e);
           if (hint) hint.textContent = 'err';
+          if (label) label.textContent = 'Scrobble';
           setPillState('scrobblePill', 'bad');
           setTimeout(() => { refreshScrobblePill(base).catch(() => {}); }, 1200);
         } finally {
@@ -1543,7 +1580,8 @@
       syncFrameWidth();
       navigate(getPageFromUrl(), false);
       syncPills();
-      syncHeroQueue();
+      // Prioritize transport controls/hero paint first; queue can load just after.
+      setTimeout(() => { if (!document.hidden) syncHeroQueue(); }, 650);
       setInterval(() => { if (!document.hidden) syncPills(); }, 30000);
       setInterval(() => { if (!document.hidden) syncHeroQueue(); }, 7000);
       setInterval(() => { if (!document.hidden) syncFrameHeight(); }, 4000);
