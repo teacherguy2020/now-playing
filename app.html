@@ -7,10 +7,10 @@
   <link rel="stylesheet" href="styles/podcasts.css?v=20260222-progresswidth1" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <style>
-    body{background:#0c1526;color:#e7eefc;margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-    :root{--app-shell-max: min(1680px, calc(100vw - 12px));}
-    .viewWrap{max-width:var(--app-shell-max);width:var(--app-shell-max);margin:0 auto;padding:0 0 14px;box-sizing:border-box}
-    .heroWrap{max-width:var(--app-shell-max) !important;width:var(--app-shell-max) !important;padding-top:4px !important;position:relative}
+    body{background:#0c1526;color:#e7eefc;margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden}
+    :root{--app-shell-max:min(2200px, calc(100dvw - 12px));}
+    .viewWrap{max-width:var(--app-shell-max);width:min(var(--app-shell-max), calc(100% - 12px));margin:0 auto;padding:0 0 14px;box-sizing:border-box}
+    .heroWrap{max-width:var(--app-shell-max) !important;width:min(var(--app-shell-max), calc(100% - 12px)) !important;margin:10px auto 0 !important;padding-top:4px !important;position:relative}
     #appFrame{width:100% !important;height:1400px;min-height:0;border:1px solid #2a3a58;border-top:0;border-radius:0 0 14px 14px;background:#071021;display:block;box-sizing:border-box}
     #themeToggle{min-width:32px;padding:5px 8px;font-size:12px;line-height:1}
     /* In app-shell mode, let top chrome scroll away (not sticky) to maximize iframe area */
@@ -261,9 +261,9 @@
 
       function syncFrameWidth(){
         try {
-          const heroWrap = document.querySelector('.heroWrap');
-          const targetW = Math.max(320, Math.floor(heroWrap?.clientWidth || (window.innerWidth - 12)));
-          if (viewWrap) viewWrap.style.width = `${targetW}px`;
+          // Keep sizing CSS-driven so iOS standalone/orientation changes don't
+          // get stuck with a stale inline pixel width.
+          if (viewWrap) viewWrap.style.width = '';
           if (frame) frame.style.width = '100%';
         } catch {}
       }
