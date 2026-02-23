@@ -388,6 +388,8 @@
       let radioHostMapTs = 0;
       let lastHeroQueueSignature = '';
       let lastHeroQueueContentSignature = '';
+      let lastHeroQueueBaseSignature = '';
+      let lastHeroQueueRatingsSignature = '';
       let lastHeroHeadPos = -1;
       let lastHeroNextUpSignature = '';
       const heroDlog = (...args) => {
@@ -617,6 +619,8 @@
               wrap.innerHTML = '<div class="heroQueueMeta">Queue is empty.</div>';
               lastHeroQueueSignature = emptySig;
               lastHeroQueueContentSignature = '';
+              lastHeroQueueBaseSignature = '';
+              lastHeroQueueRatingsSignature = '';
               lastHeroHeadPos = -1;
             }
             lastRadioPresetStations = [];
@@ -722,6 +726,8 @@
             if (lastHeroQueueSignature === collapsedSig) return;
             lastHeroQueueSignature = collapsedSig;
             lastHeroQueueContentSignature = '';
+            lastHeroQueueBaseSignature = '';
+            lastHeroQueueRatingsSignature = '';
             lastHeroHeadPos = Number(j.headPos || -1);
             if (hqWrap) hqWrap.innerHTML = '';
             lastRadioPresetStations = [];
@@ -730,7 +736,7 @@
           }
 
           const headPosNow = Number(j.headPos || -1);
-          const queueContentSig = JSON.stringify({
+          const queueBaseSig = JSON.stringify({
             state: String(j.playbackState || ''),
             count: items.length,
             items: items.map((x) => [
@@ -740,13 +746,17 @@
               String(x?.thumbUrl || ''),
               String(x?.file || ''),
               String(x?.album || ''),
-              Number(x?.rating || 0),
               !!x?.isPodcast,
             ])
           });
+          const queueRatingSig = JSON.stringify(items.map((x) => [
+            Number(x?._posDisplay || 0),
+            Number(x?.rating || 0),
+          ]));
+          const queueContentSig = `${queueBaseSig}|r:${queueRatingSig}`;
 
           // Avoid full row re-render when only head position changed (prevents all thumbs refresh).
-          if (lastHeroQueueContentSignature === queueContentSig && lastHeroHeadPos !== headPosNow) {
+          if (lastHeroQueueBaseSignature === queueBaseSig && lastHeroHeadPos !== headPosNow) {
             const rows = Array.from((wrap || document).querySelectorAll('.heroQueueRow[data-queue-play-pos]'));
             rows.forEach((row) => {
               const posNum = Number(row.getAttribute('data-queue-play-pos') || 0);
@@ -762,10 +772,32 @@
             return;
           }
 
+          // Avoid full row re-render when only ratings changed.
+          if (lastHeroQueueBaseSignature === queueBaseSig && lastHeroHeadPos === headPosNow && lastHeroQueueRatingsSignature !== queueRatingSig) {
+            const ratingByPos = new Map(items.map((x) => [Number(x?._posDisplay || 0), Math.max(0, Math.min(5, Number(x?.rating || 0)))]));
+            const rows = Array.from((wrap || document).querySelectorAll('.heroQueueRow[data-queue-play-pos]'));
+            rows.forEach((row) => {
+              const posNum = Number(row.getAttribute('data-queue-play-pos') || 0);
+              const starsEl = row.querySelector('.heroQueueStars');
+              if (!starsEl) return;
+              const r = Number(ratingByPos.get(posNum) || 0);
+              const prev = Number(starsEl.getAttribute('data-rating') || 0);
+              if (r === prev) return;
+              starsEl.setAttribute('data-rating', String(r));
+              starsEl.innerHTML = `${'<span style="color:#fbbf24;">★</span>'.repeat(r)}${'<span style="color:#64748b;">★</span>'.repeat(5 - r)}`;
+            });
+            lastHeroQueueRatingsSignature = queueRatingSig;
+            lastHeroQueueContentSignature = queueContentSig;
+            lastHeroQueueSignature = `${queueContentSig}|h:${headPosNow}`;
+            return;
+          }
+
           const queueSig = `${queueContentSig}|h:${headPosNow}`;
           if (lastHeroQueueSignature === queueSig) return;
           lastHeroQueueSignature = queueSig;
           lastHeroQueueContentSignature = queueContentSig;
+          lastHeroQueueBaseSignature = queueBaseSig;
+          lastHeroQueueRatingsSignature = queueRatingSig;
           lastHeroHeadPos = headPosNow;
 
           const existingIconByFile = new Map();
@@ -852,7 +884,7 @@
             const rating = Math.max(0, Math.min(5, Number(x?.rating || 0)));
             const starsInline = (isStreamish || isPodcastItem)
               ? ''
-              : `<span style="margin-left:8px;letter-spacing:1px;font-size:14px;white-space:nowrap;">${'<span style="color:#fbbf24;">★</span>'.repeat(rating)}${'<span style="color:#64748b;">★</span>'.repeat(5 - rating)}</span>`;
+              : `<span class="heroQueueStars" data-rating="${rating}" style="margin-left:8px;letter-spacing:1px;font-size:14px;white-space:nowrap;">${'<span style="color:#fbbf24;">★</span>'.repeat(rating)}${'<span style="color:#64748b;">★</span>'.repeat(5 - rating)}</span>`;
             const line1 = isStreamish ? (artist || '(station)') : (title || '(unknown title)');
             const line2 = isStreamish
               ? ''
