@@ -516,6 +516,10 @@
 #heroRadioDrawer .tile img{width:100%;height:100%;object-fit:cover}
 #heroTransport .heroMain{transform:translateX(-40px) !important;padding-right:130px}
 #heroTransport .heroLivePulse{color:#ef4444;animation:heroLivePulse 2.2s ease-in-out infinite}
+@media (max-width:1180px){
+  #heroRadioDrawerWrap{display:none !important}
+  #heroTransport .heroMain{transform:none !important;padding-right:0 !important}
+}
 @keyframes heroLivePulse{0%,100%{opacity:1;text-shadow:0 0 0 rgba(239,68,68,0)}50%{opacity:.45;text-shadow:0 0 10px rgba(239,68,68,.45)}}
 `;
       document.head.appendChild(st);

@@ -923,5 +923,28 @@ body.theme-light .heroTransport .np .txt{color:#2a2140}
 body.theme-light .heroTransport .np .heroSubline{color:#4b3e6f}
 body.theme-light .heroTransport .np .progress-bar-wrapper{background:rgba(137,138,196,.30)}
 body.theme-light .heroTransport .np .progress-fill{background:#898ac4}
-@media (max-width: 900px){.heroTransport{width:calc(100vw - 96px);flex-direction:column;align-items:center}.heroTransport .heroArt{flex:0 0 auto}.heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{width:124px;height:124px}.heroTransport .np .txt{max-width:92vw}}
+@media (max-width: 1120px){
+  .heroTransport{padding:12px 12px;gap:10px;min-height:146px}
+  .heroTransport .heroArt{flex:0 0 124px}
+  .heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{width:124px;height:124px;border-radius:13px}
+  .heroTransport .np{gap:8px}
+  .heroTransport .np .txt{font-size:16px;line-height:1.15;max-width:min(100%,calc(100% - 86px));-webkit-line-clamp:2}
+  .heroTransport .heroRateStar{font-size:22px}
+  .heroTransport .heroTransportControls{gap:10px}
+  .heroTransport .tbtn{width:46px;height:46px}
+  .heroTransport .tbtn.tbtnBig{width:56px;height:56px}
+  .heroTransport .tbtn.tbtnNear{width:44px;height:44px}
+  .heroTransport .tbtn.tbtnFar{width:41px;height:41px}
+  .heroTransport .tbtn svg{width:24px;height:24px}
+  .heroTransport .tbtn.tbtnBig svg{width:30px;height:30px}
+  .heroTransport .np .progress-bar-wrapper{width:calc((100% - 20px) * 0.94)}
+}
+
+@media (max-width: 900px){
+  .heroTransport{width:100%;flex-direction:column;align-items:center;min-height:0}
+  .heroTransport .heroArt{flex:0 0 auto}
+  .heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{width:112px;height:112px}
+  .heroTransport .np .txt{max-width:95vw;font-size:15px;-webkit-line-clamp:2}
+  .heroTransport .heroTransportControls{gap:8px}
+}
 
