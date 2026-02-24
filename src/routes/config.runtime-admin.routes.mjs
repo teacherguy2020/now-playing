@@ -484,6 +484,50 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.post('/config/moode/display', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const mode = String(req.body?.mode || '').trim().toLowerCase();
+      if (!['peppy', 'webui'].includes(mode)) {
+        return res.status(400).json({ ok: false, error: 'mode must be peppy or webui' });
+      }
+
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const moodeBaseRaw = String(cfg?.moode?.baseUrl || '').trim();
+      const mpdHost = String(cfg?.mpd?.host || MPD_HOST || '10.0.0.254').trim();
+      let moodeBase = moodeBaseRaw || `http://${mpdHost}`;
+      if (!/^https?:\/\//i.test(moodeBase)) moodeBase = `http://${moodeBase}`;
+      const cmd = encodeURIComponent(`set_display ${mode}`);
+      const baseNoSlash = moodeBase.replace(/\/$/, '');
+      const urls = [
+        `${baseNoSlash}/command/?cmd=${cmd}`,
+        `${baseNoSlash}/command/?cmd=set_display ${mode}`,
+        `${baseNoSlash}/command/?cmd=set_display%20${mode}`,
+      ];
+
+      let okResp = null;
+      const attempts = [];
+      for (const url of urls) {
+        try {
+          const r = await fetch(url, { method: 'GET' });
+          const txt = await r.text().catch(() => '');
+          attempts.push({ url, status: r.status, body: String(txt || '').slice(0, 200) });
+          if (r.ok) {
+            okResp = { url, status: r.status, body: txt };
+            break;
+          }
+        } catch (e) {
+          attempts.push({ url, status: 0, body: e?.message || String(e) });
+        }
+      }
+
+      if (!okResp) return res.status(502).json({ ok: false, error: 'moode command failed', moodeBase, attempts });
+      return res.json({ ok: true, mode, moodeBase, url: okResp.url, response: String(okResp.body || '').slice(0, 300), attempts });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/restart-services', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

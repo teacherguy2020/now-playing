@@ -2371,6 +2371,7 @@ async function selectNotificationTrack() {
     if (state !== 'play' || !file) return null;
 
     const cleaned = sanitizeNotifyMeta(song?.artist, song?.title);
+    const isStreamLike = /^https?:\/\//i.test(file);
     return {
       source: 'now-playing',
       file,
@@ -2378,6 +2379,9 @@ async function selectNotificationTrack() {
       artist: cleaned.artist,
       album: decodeHtmlEntities(String(song?.album || '').trim()),
       artUrl: buildArtUrlForFile(file),
+      stationLogoUrl: isStreamLike
+        ? `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}`
+        : '',
       key: `np|${file}|${cleaned.title}|${cleaned.artist}`,
     };
   } catch {
@@ -2400,6 +2404,7 @@ async function sendPushoverTrackNotification(track) {
   const bodyLine = [artist, album].filter(Boolean).join(' — ') || 'Now playing';
   form.append('message', bodyLine);
 
+  let attached = false;
   if (track.artUrl) {
     try {
       const r = await fetch(track.artUrl, { cache: 'no-store' });
@@ -2409,6 +2414,22 @@ async function sendPushoverTrackNotification(track) {
         const ab = await r.arrayBuffer();
         const blob = new Blob([ab], { type: ct });
         form.append('attachment', blob, `cover.${ext}`);
+        attached = true;
+      }
+    } catch (e) {}
+  }
+
+  // Radio fallback: if track art is unavailable in time, attach local station logo.
+  if (!attached && track.stationLogoUrl) {
+    try {
+      const r = await fetch(track.stationLogoUrl, { cache: 'no-store' });
+      if (r.ok) {
+        const ct = r.headers.get('content-type') || 'image/jpeg';
+        const ext = /png/i.test(ct) ? 'png' : 'jpg';
+        const ab = await r.arrayBuffer();
+        const blob = new Blob([ab], { type: ct });
+        form.append('attachment', blob, `station.${ext}`);
+        attached = true;
       }
     } catch (e) {}
   }

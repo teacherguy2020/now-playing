@@ -55,8 +55,7 @@
     .cfgRow { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .cfgActions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
     .cfgHint { font-size:12px; opacity:.8; }
-    .tripleCards { grid-column: 1 / -1; display:grid; grid-template-columns: repeat(2,minmax(320px,1fr)); gap:14px; align-items:stretch; }
-    .tripleCards > .cfgCard { height: 100%; }
+    .tripleCards { grid-column: 1 / -1; display:grid; grid-template-columns: repeat(2,minmax(320px,1fr)); gap:14px; align-items:start; }
     .splitCards { grid-column: 1 / -1; display:grid; grid-template-columns: repeat(2,minmax(320px,1fr)); gap:14px; align-items:start; }
     .splitCardsRight { display: contents; }
     @media (max-width: 1100px) {
@@ -650,8 +649,46 @@ function getArtistAliasesFromUi(){
 }
 
 const restartModal = document.getElementById('restartModal');
-function showRestartModal(){ if (restartModal) restartModal.classList.add('show'); }
-function hideRestartModal(){ if (restartModal) restartModal.classList.remove('show'); }
+let parentRestartModal = null;
+
+function ensureParentRestartModal(){
+  try {
+    if (!(window.parent && window.parent !== window && window.parent.document)) return null;
+    const doc = window.parent.document;
+    let root = doc.getElementById('npParentRestartModal');
+    if (root) return root;
+    root = doc.createElement('div');
+    root.id = 'npParentRestartModal';
+    root.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:2147483646;';
+    root.innerHTML = `
+      <div style="width:min(520px,92vw);background:#0f141a;border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:16px;color:#e6edf7;box-shadow:0 20px 50px rgba(0,0,0,.45)">
+        <h4 style="margin:0 0 8px;">Config saved</h4>
+        <div style="opacity:.92;">Restart services now to apply changes?</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px;">
+          <button id="npParentRestartLater" style="padding:9px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:transparent;color:#e6edf7;cursor:pointer;">Later</button>
+          <button id="npParentRestartNow" style="padding:9px 14px;border-radius:10px;border:1px solid #3566ff;background:linear-gradient(180deg,#4f7bff,#3a61e8);color:white;cursor:pointer;">Restart services now</button>
+        </div>
+      </div>`;
+    doc.body.appendChild(root);
+    root.querySelector('#npParentRestartLater')?.addEventListener('click', () => hideRestartModal());
+    root.querySelector('#npParentRestartNow')?.addEventListener('click', () => restartServicesNow().catch(e => log(String(e))));
+    return root;
+  } catch { return null; }
+}
+
+function showRestartModal(){
+  const parentModal = ensureParentRestartModal();
+  if (parentModal) {
+    parentRestartModal = parentModal;
+    parentRestartModal.style.display = 'flex';
+    return;
+  }
+  if (restartModal) restartModal.classList.add('show');
+}
+function hideRestartModal(){
+  if (parentRestartModal) parentRestartModal.style.display = 'none';
+  if (restartModal) restartModal.classList.remove('show');
+}
 
 let _savedConfigSnapshot = '';
 let _isDirty = false;
@@ -1883,23 +1920,6 @@ const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
   const albumPersonnel = document.getElementById('albumPersonnelCard');
   if (!triple || !split || !pushover || !ratings || !alexa || !animated || !albumPersonnel) return;
 
-  function syncFeatureCardHeights(){
-    const pairs = [
-      [ratings, pushover],
-      [albumPersonnel, animated],
-    ];
-    for (const [a, b] of pairs) {
-      if (!a || !b) continue;
-      a.style.minHeight = '';
-      b.style.minHeight = '';
-      const h = Math.max(a.offsetHeight || 0, b.offsetHeight || 0);
-      if (h > 0) {
-        a.style.minHeight = `${h}px`;
-        b.style.minHeight = `${h}px`;
-      }
-    }
-  }
-
   try {
     // Put Alexa in the upper section (fills the blank beside Last.fm).
     // Then place Ratings where Alexa was in the lower section.
@@ -1914,10 +1934,6 @@ const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
     split.appendChild(animated);
     split.appendChild(albumPersonnel);
 
-    syncFeatureCardHeights();
-    window.addEventListener('resize', syncFeatureCardHeights);
-    setTimeout(syncFeatureCardHeights, 120);
-    setTimeout(syncFeatureCardHeights, 600);
   } catch (_) {}
 })();
 </script>

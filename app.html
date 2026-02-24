@@ -255,9 +255,10 @@
           <a href="?page=podcasts.html" id="podcastsNavLink" data-page="podcasts.html">Podcasts</a>
         </nav>
         <div class="statusInline" aria-label="status pills">
-          <div class="pill" id="apiPill" title="Active API endpoint"><span class="dot" aria-hidden="true"></span>API<span class="hint" id="apiHint">loading…</span></div>
-          <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></div>
-          <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot" aria-hidden="true"></span>Alexa<span class="hint" id="alexaHint">unknown</span></div>
+          <button class="pill" id="apiPill" type="button" title="Active API endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>API<span class="hint" id="apiHint">loading…</span></button>
+          <button class="pill" id="webPill" type="button" title="Active web UI endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></button>
+          <button class="pill" id="alexaPill" type="button" title="Alexa public domain health" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Alexa<span class="hint" id="alexaHint">unknown</span></button>
+          <button class="pill" id="peppyPill" type="button" title="moOde display mode" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Peppy<span class="hint" id="peppyHint">off</span></button>
           <div class="pill" id="moodePill" title="moOde host verification"><span class="dot" aria-hidden="true"></span>moOde<span class="hint" id="moodeHint">unknown</span></div>
           <button class="pill" id="notifyPill" type="button" title="Pushover track notifications" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="notifyLabel">Notify</span><span class="hint" id="notifyHint">off</span></button>
           <button class="pill" id="scrobblePill" type="button" title="mpdscribble scrobble service" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="scrobbleLabel">Scrobble</span><span class="hint" id="scrobbleHint">off</span></button>
@@ -388,14 +389,27 @@
           const e = doc.documentElement;
           if (b) b.style.overflow = 'visible';
           if (e) e.style.overflow = 'visible';
-          const contentH = Math.max(
+          let contentH = Math.max(
             b ? b.scrollHeight : 0,
-            b ? b.offsetHeight : 0,
-            e ? e.scrollHeight : 0,
-            e ? e.offsetHeight : 0,
-            e ? e.clientHeight : 0
+            e ? e.scrollHeight : 0
           );
-          const measured = Math.max(contentH + 12, 480);
+
+          // Config page can form a feedback loop if body/html heights track iframe viewport.
+          // Prefer concrete content wrappers there.
+          const isConfig = String(currentShellPage || '') === 'config.html';
+          if (isConfig) {
+            const candidates = Array.from(doc.querySelectorAll('.cfgWrap, .wrap, .panel, .cfgGrid, .splitCards, .tripleCards'));
+            let maxBottom = 0;
+            for (const n of candidates) {
+              const r = n.getBoundingClientRect?.();
+              if (!r) continue;
+              const btm = Math.round((r.top + win.scrollY) + r.height);
+              if (btm > maxBottom) maxBottom = btm;
+            }
+            if (maxBottom > 0) contentH = Math.max(480, maxBottom + 12);
+          }
+
+          const measured = Math.max(contentH + 8, 480);
           const cur = Math.max(0, parseInt(String(frame.style.height || '0'), 10) || 0);
           const isQueueWizard = String(currentShellPage || '').includes('queue-wizard.html');
           // Prevent scroll jumps from iframe shrink/reflow in Queue Wizard: only grow while on that page.
@@ -434,6 +448,9 @@
       let scrobbleRunning = null;
       let notifyConfigured = false;
       let notifyEnabled = null;
+      let peppyModeState = (() => { try { return String(localStorage.getItem('np.peppyMode') || 'webui'); } catch { return 'webui'; } })();
+      let alexaEnabledState = null;
+      let alexaDomainState = '';
       let collapsedQueueLastLiteSyncAt = 0;
       let radioStationByKey = new Map();
       let radioStationByHost = new Map();
@@ -990,6 +1007,34 @@
         pill.disabled = !!on;
       }
 
+      function setApiBusy(on){
+        const pill = document.getElementById('apiPill');
+        if (!pill) return;
+        pill.classList.toggle('busy', !!on);
+        pill.disabled = !!on;
+      }
+
+      function setWebBusy(on){
+        const pill = document.getElementById('webPill');
+        if (!pill) return;
+        pill.classList.toggle('busy', !!on);
+        pill.disabled = !!on;
+      }
+
+      function setAlexaBusy(on){
+        const pill = document.getElementById('alexaPill');
+        if (!pill) return;
+        pill.classList.toggle('busy', !!on);
+        pill.disabled = !!on;
+      }
+
+      function setPeppyBusy(on){
+        const pill = document.getElementById('peppyPill');
+        if (!pill) return;
+        pill.classList.toggle('busy', !!on);
+        pill.disabled = !!on;
+      }
+
       async function fetchJsonWithTimeout(url, opts = {}, timeoutMs = 9000){
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), Math.max(1000, Number(timeoutMs) || 9000));
@@ -1060,6 +1105,9 @@
 
       async function toggleNotifyPause(){
         if (!notifyConfigured) return;
+        const nextEnabled = !notifyEnabled;
+        const ok = window.confirm(nextEnabled ? 'Resume Pushover notifications?' : 'Pause Pushover notifications?');
+        if (!ok) return;
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;
         const hint = document.getElementById('notifyHint');
@@ -1071,7 +1119,6 @@
             const rj = await rr.json().catch(() => ({}));
             runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
           }
-          const nextEnabled = !notifyEnabled;
           const { r, j } = await fetchJsonWithTimeout(`${base}/config/runtime`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
@@ -1097,13 +1144,149 @@
         }
       }
 
+      function refreshPeppyPill(){
+        const hint = document.getElementById('peppyHint');
+        const on = String(peppyModeState || 'webui') === 'peppy';
+        if (hint) hint.textContent = on ? 'on' : 'off';
+        setPillState('peppyPill', on ? 'ok' : 'off');
+      }
+
+      async function togglePeppyFromPill(){
+        const nextMode = (String(peppyModeState || 'webui') === 'peppy') ? 'webui' : 'peppy';
+        const ok = window.confirm(nextMode === 'peppy' ? 'Enable Peppy display?' : 'Switch display to Web UI?');
+        if (!ok) return;
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        setPeppyBusy(true);
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/display`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ mode: nextMode }),
+          }, 12000);
+          if (!r.ok || !j?.ok) {
+            console.warn('peppy command details', j);
+            throw new Error(j?.error || `HTTP ${r.status}`);
+          }
+          peppyModeState = nextMode;
+          try { localStorage.setItem('np.peppyMode', peppyModeState); } catch {}
+          refreshPeppyPill();
+        } catch (e) {
+          console.warn('peppy toggle failed', e?.message || e);
+          setPillState('peppyPill', 'bad');
+        } finally {
+          setPeppyBusy(false);
+        }
+      }
+
+      async function restartApiFromPill(){
+        const ok = window.confirm('Restart API?');
+        if (!ok) return;
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        setApiBusy(true);
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/restart-api`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ reason: 'api-pill' }),
+          }, 12000);
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          setPillState('apiPill','ok');
+        } catch (e) {
+          console.warn('api restart failed', e?.message || e);
+          setPillState('apiPill','bad');
+        } finally {
+          setApiBusy(false);
+          setTimeout(() => { syncPills().catch(() => {}); }, 1200);
+        }
+      }
+
+      async function toggleAlexaPause(){
+        const turningOn = !alexaEnabledState;
+        const ok = window.confirm(turningOn ? 'Enable Alexa feature?' : 'Pause Alexa feature?');
+        if (!ok) return;
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        setAlexaBusy(true);
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/runtime`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ config: { alexa: { enabled: turningOn, publicDomain: alexaDomainState || '' } } }),
+          }, 12000);
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+          // apply immediately
+          await fetchJsonWithTimeout(`${base}/config/restart-api`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ reason: 'alexa-pill-toggle' }),
+          }, 12000);
+
+          alexaEnabledState = turningOn;
+          setPillState('alexaPill', !turningOn ? 'off' : (alexaDomainState ? 'ok' : 'warn'));
+        } catch (e) {
+          console.warn('alexa toggle failed', e?.message || e);
+          setPillState('alexaPill','bad');
+        } finally {
+          setAlexaBusy(false);
+          setTimeout(() => { syncPills().catch(() => {}); }, 1500);
+        }
+      }
+
+      async function restartWebFromPill(){
+        const ok = window.confirm('Restart Web?');
+        if (!ok) return;
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        setWebBusy(true);
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/restart-services`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({}),
+          }, 12000);
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          setPillState('webPill','ok');
+        } catch (e) {
+          console.warn('web restart failed', e?.message || e);
+          setPillState('webPill','bad');
+        } finally {
+          setWebBusy(false);
+          setTimeout(() => { syncPills().catch(() => {}); }, 1800);
+        }
+      }
+
       async function toggleScrobbleFromHero(){
         if (!scrobbleControlsEnabled) return;
+        const desired = (scrobbleRunning === true) ? 'stop' : 'start';
+        const ok = window.confirm(desired === 'start' ? 'Start scrobbling?' : 'Stop scrobbling?');
+        if (!ok) return;
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;
         const hint = document.getElementById('scrobbleHint');
         const label = document.getElementById('scrobbleLabel');
-        const desired = (scrobbleRunning === true) ? 'stop' : 'start';
         setScrobbleBusy(true);
         if (hint) hint.textContent = desired === 'start' ? 'starting…' : 'stopping…';
         try {
@@ -1150,6 +1333,8 @@
           const uiPort = Number(ports.ui || 8101);
           const axEnabled = !!cfg?.alexa?.enabled;
           const axDomain = String(cfg?.alexa?.publicDomain || '').trim();
+          alexaEnabledState = axEnabled;
+          alexaDomainState = axDomain;
           const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || cfg?.mpdHost || '').trim();
           scrobbleControlsEnabled = !!cfg?.features?.mpdscribbleControl;
 
@@ -1162,6 +1347,7 @@
           setPillState('webPill','ok');
           setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
           setPillState('moodePill', moodeHost ? 'ok' : 'warn');
+          refreshPeppyPill();
 
           const podcastsLink = document.getElementById('podcastsNavLink');
           if (podcastsLink && !cfg?.features?.podcasts) podcastsLink.style.display = 'none';
@@ -1172,6 +1358,7 @@
           setPillState('webPill','warn');
           setPillState('alexaPill','warn');
           setPillState('moodePill','warn');
+          refreshPeppyPill();
           scrobbleControlsEnabled = false;
           const sp = document.getElementById('scrobblePill');
           if (sp) sp.style.display = 'none';
@@ -1210,6 +1397,26 @@
         ev.preventDefault();
         navigate(a.dataset.page || 'config.html', true);
       }));
+
+      document.getElementById('apiPill')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        restartApiFromPill();
+      });
+
+      document.getElementById('webPill')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        restartWebFromPill();
+      });
+
+      document.getElementById('alexaPill')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        toggleAlexaPause();
+      });
+
+      document.getElementById('peppyPill')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        togglePeppyFromPill();
+      });
 
       document.getElementById('notifyPill')?.addEventListener('click', (ev) => {
         ev.preventDefault();
