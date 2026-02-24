@@ -2329,6 +2329,23 @@ function buildArtUrlForFile(file) {
   return `${PUBLIC_BASE_URL}/art/track_640.jpg?file=${encodeURIComponent(f)}${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}`;
 }
 
+function sanitizeNotifyMeta(rawArtist, rawTitle) {
+  let artist = decodeHtmlEntities(String(rawArtist || '').trim());
+  let title = decodeHtmlEntities(String(rawTitle || '').trim());
+
+  // iHeart blob cleanup (e.g., text="..." song_spot="..." TPID="...")
+  const blobish = /(\btext="[^"]+"|\bsong_spot="[^"]+"|\bTPID="\d+"|\bamgArtworkURL="[^"]+")/i;
+  if (blobish.test(title) || blobish.test(artist)) {
+    const parsed = parseIheartTitleBlob(title) || parseIheartTitleBlob(artist);
+    if (parsed) {
+      if (parsed.title) title = parsed.title;
+      if (parsed.artist) artist = parsed.artist;
+    }
+  }
+
+  return { artist: String(artist || '').trim(), title: String(title || '').trim() };
+}
+
 async function selectNotificationTrack() {
   const now = Date.now();
   const age = (alexaWasPlaying.updatedAt > 0) ? Math.max(0, now - alexaWasPlaying.updatedAt) : null;
@@ -2353,14 +2370,15 @@ async function selectNotificationTrack() {
     const file = String(song?.file || '').trim();
     if (state !== 'play' || !file) return null;
 
+    const cleaned = sanitizeNotifyMeta(song?.artist, song?.title);
     return {
       source: 'now-playing',
       file,
-      title: decodeHtmlEntities(String(song?.title || '').trim()),
-      artist: decodeHtmlEntities(String(song?.artist || '').trim()),
+      title: cleaned.title,
+      artist: cleaned.artist,
       album: decodeHtmlEntities(String(song?.album || '').trim()),
       artUrl: buildArtUrlForFile(file),
-      key: `np|${file}|${String(song?.title || '').trim()}|${String(song?.artist || '').trim()}`,
+      key: `np|${file}|${cleaned.title}|${cleaned.artist}`,
     };
   } catch {
     return null;
