@@ -17,8 +17,9 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
   <title>Now Playing</title>
-  <link rel="stylesheet" href="styles/podcasts.css?v=20260223-heroresponsive2" />
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260223-heroresponsive3" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
+  <link rel="stylesheet" href="styles/hero.css?v=20260223-13" />
   <style>
     html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
     body{background:#0c1526;color:#e7eefc;margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;padding-top:calc(env(safe-area-inset-top,0px) + 8px);touch-action:pan-y pinch-zoom}
@@ -54,8 +55,8 @@
     .heroQueueWrap{overflow:visible;border:1px solid #2a3a58;border-radius:10px;padding:8px;background:#071021}
     .heroQueueRow{display:flex;gap:8px;align-items:center;padding:6px;border-bottom:1px dashed #233650}
     .heroQueueRow:last-child{border-bottom:none}
-    .heroQueueMeta{color:#9fb1d9;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    #heroQueueNextUp .heroQueueMeta{font-size:18px;font-weight:600;line-height:1.2}
+    .heroQueueMeta{color:#9fb1d9;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #heroQueueNextUp .heroQueueMeta{font-size:13px;font-weight:560;line-height:1.2}
     .heroQueueActions{display:flex;gap:4px;margin-left:auto}
     .heroQueueNextUp{display:none;margin-bottom:8px;border:1px solid #2a3a58;border-radius:10px;padding:8px;background:#071021;align-items:center;gap:8px}
     .heroQueueNextUp img{width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222}
@@ -272,7 +273,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260223-heroresponsive1"></script>
+  <script src="scripts/hero-transport.js?v=20260223-halfmode-480-1600"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -945,7 +946,7 @@
                   : 'background:rgba(34,197,94,.14);border-radius:8px;')
               : '';
             const headLabel = head ? (isAlexaMode ? ' Queued' : ' ▶') : '';
-            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${headRowStyle}">${thumbHtml}<div><b>${pos}</b> <span class="heroQueuePosCell">${headLabel}</span></div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;"><span style="font-size:16px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${line1}</span>${starsInline}</div>${line2}</div>${actions}</div>`;
+            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="cursor:pointer;${headRowStyle}">${thumbHtml}<div><b>${pos}</b> <span class="heroQueuePosCell">${headLabel}</span></div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;"><span style="font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${line1}</span>${starsInline}</div>${line2}</div>${actions}</div>`;
           }).join('');
 
           const onlyRadioStations = !!items.length && items.every((x) => {

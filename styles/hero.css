@@ -1,0 +1,61 @@
+/* styles/hero.css
+ * Hero transport-only responsive overrides.
+ * IMPORTANT: keep desktop/full-size layout untouched.
+ */
+
+/* Full-size proportion restore */
+@media (min-width:1201px){
+  #heroTransport:not(.heroHalfMode){align-items:stretch}
+  #heroTransport:not(.heroHalfMode) .heroArt{align-self:flex-start}
+  #heroTransport:not(.heroHalfMode) .heroMain{align-self:stretch;display:flex;min-height:100%}
+  #heroTransport:not(.heroHalfMode) .np{height:100%;display:flex;flex-direction:column;justify-content:space-between;align-items:center}
+  #heroTransport:not(.heroHalfMode) .np .txt{align-self:center;margin-top:2px}
+  #heroTransport:not(.heroHalfMode) .np .progress-bar-wrapper{margin-top:auto;margin-bottom:2px}
+}
+
+/* Narrow/tablet only */
+@media (max-width: 980px){
+  .heroTransport{
+    display:grid;
+    grid-template-columns:100px minmax(0,1fr);
+    align-items:center;
+    gap:24px;
+    padding:12px;
+    position:relative;
+  }
+  .heroTransport .heroArt{flex:0 0 100px;display:block;justify-self:start}
+  .heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{
+    width:100px;height:100px;border-radius:12px;
+  }
+  .heroTransport .heroMain{min-width:0;padding-left:0;gap:10px;display:flex;justify-content:center}
+  .heroTransport .np{align-items:center;gap:7px;width:min(560px, 90vw);margin-inline:auto}
+  .heroTransport .np .txt{text-align:center;max-width:100%}
+  .heroTransport .np .heroRating{justify-content:center}
+  .heroTransport .heroTransportControls{justify-content:center;gap:9px}
+
+  /* Keep progress compact and proportionate in split-width */
+  .heroTransport .np .progress-bar-wrapper{width:min(240px,40%);height:4px;margin-inline:auto}
+  .heroTransport .np .progress-fill{height:4px}
+}
+
+/* Very narrow phones */
+@media (max-width: 700px){
+  .heroTransport{grid-template-columns:92px minmax(0,1fr);gap:18px;padding:10px;position:relative}
+  .heroTransport .heroArt{flex:0 0 92px}
+  .heroTransport .heroArt img,.heroTransport .heroArtPh,.heroTransport .heroArtVid{width:92px;height:92px;border-radius:11px}
+  .heroTransport .heroMain{padding-left:0;gap:8px;display:flex;justify-content:center}
+  .heroTransport .np{align-items:center}
+  .heroTransport .np .txt{font-size:14px;-webkit-line-clamp:2;text-align:center}
+  .heroTransport .np .heroRating{justify-content:center}
+  .heroTransport .heroRateStar{font-size:19px}
+  .heroTransport .heroTransportControls{gap:7px;justify-content:center}
+  .heroTransport .tbtn{width:40px;height:40px}
+  .heroTransport .tbtn.tbtnBig{width:48px;height:48px}
+  .heroTransport .tbtn.tbtnNear{width:38px;height:38px}
+  .heroTransport .tbtn.tbtnFar{width:36px;height:36px}
+  .heroTransport .tbtn svg{width:21px;height:21px}
+  .heroTransport .tbtn.tbtnBig svg{width:25px;height:25px}
+  .heroTransport .np .progress-bar-wrapper{width:min(200px,52%);height:4px;margin-inline:auto}
+  .heroTransport .np{width:min(460px, 88vw)}
+  .heroTransport .np .progress-fill{height:4px}
+}

@@ -514,11 +514,91 @@
 #heroRadioDrawer .tile:active{transform:scale(.97)}
 #heroRadioDrawer .tile.isLive{border-color:#22c55e !important;box-shadow:0 0 0 1px rgba(34,197,94,.42) inset, 0 0 12px rgba(34,197,94,.20)}
 #heroRadioDrawer .tile img{width:100%;height:100%;object-fit:cover}
-#heroTransport .heroMain{transform:translateX(-40px) !important;padding-right:130px}
+#heroTransport .heroMain{transform:none !important;padding-right:0 !important}
 #heroTransport .heroLivePulse{color:#ef4444;animation:heroLivePulse 2.2s ease-in-out infinite}
-@media (max-width:1180px){
-  #heroRadioDrawerWrap{display:none !important}
-  #heroTransport .heroMain{transform:none !important;padding-right:0 !important}
+
+/* Half-width structural layout: art | transport | empty reserve */
+#heroTransport.heroHalfMode{
+  display:grid !important;
+  grid-template-columns:20% 60% 20% !important;
+  column-gap:0 !important;
+  align-items:center;
+}
+#heroTransport.heroHalfMode .heroArt{
+  grid-column:1 !important;
+  justify-self:center;
+  width:100% !important;
+  max-width:100% !important;
+  flex:0 0 auto !important;
+  box-sizing:border-box;
+  padding-right:0;
+}
+#heroTransport.heroHalfMode .heroArt img,
+#heroTransport.heroHalfMode .heroArt .heroArtPh,
+#heroTransport.heroHalfMode .heroArt .heroArtVid{
+  width:100% !important;
+  max-width:100% !important;
+  height:auto !important;
+  aspect-ratio:1 / 1;
+}
+#heroTransport.heroHalfMode .heroMain{
+  grid-column:2 !important;
+  position:static !important;
+  width:100% !important;
+  max-width:100% !important;
+  justify-self:stretch !important;
+  transform:none !important;
+  padding-right:0 !important;
+  display:flex;
+  justify-content:center;
+  overflow:hidden;
+}
+#heroTransport.heroHalfMode .np{
+  width:100%;
+  max-width:100%;
+  margin-inline:auto;
+  transform:none !important;
+}
+#heroTransport.heroHalfMode #heroRadioDrawerWrap{
+  right:max(6px, 1.2%) !important;
+  top:50% !important;
+}
+#heroTransport.heroHalfMode #heroRadioDrawerWrap.open{
+  transform:translate(calc(-1 * min(19vw, 210px)), -50%) !important;
+}
+#heroTransport.heroHalfMode #heroRadioDrawer{
+  width:min(19vw, 210px) !important;
+}
+#heroTransport.heroHalfMode .heroFavTab{
+  font-size:clamp(11px, 1.05vw, 13px);
+  padding:clamp(7px, 0.8vw, 9px) clamp(5px, 0.6vw, 7px);
+}
+#heroTransport.heroHalfMode .heroRateStar{
+  font-size:clamp(22px, 2.1vw, 26px) !important;
+}
+#heroTransport.heroHalfMode #heroRadioDrawer .grid{
+  gap:clamp(4px, 0.45vw, 6px);
+  padding:clamp(5px, 0.6vw, 8px);
+}
+#heroTransport.heroHalfMode::after{display:none;
+  content:'';
+  grid-column:3;
+  align-self:center;
+  justify-self:center;
+  color:#fbbf24;
+  font-size:12px;
+  letter-spacing:.08em;
+  border:1px dashed rgba(251,191,36,.65);
+  border-radius:8px;
+  padding:4px 8px;
+  background:rgba(251,191,36,.08);
+  z-index:5;
+}
+/* COL3 TEST removed */
+
+@media (max-width:480px){
+  #heroTransport .heroMain{position:static;left:auto;top:auto;width:100%;transform:none !important;padding-right:0 !important}
+  #heroTransport .np{transform:none !important}
 }
 @keyframes heroLivePulse{0%,100%{opacity:1;text-shadow:0 0 0 rgba(239,68,68,0)}50%{opacity:.45;text-shadow:0 0 10px rgba(239,68,68,.45)}}
 `;
@@ -641,6 +721,15 @@
     }
   }
 
+  function applyHeroViewportCentering(el) {
+    try {
+      const vw = Math.max(0, Number(window.innerWidth || 0));
+      const halfMode = (vw >= 480 && vw <= 1600);
+      if (!el?.classList) return;
+      el.classList.toggle('heroHalfMode', halfMode);
+    } catch {}
+  }
+
   function renderShell(el, status = 'loading') {
     const msg = status === 'unavailable' ? 'Now Playing · unavailable' : 'Now Playing · loading…';
     el.innerHTML =
@@ -659,6 +748,8 @@
         `</div>` +
       `</div>`;
   }
+
+  const HERO_CENTER_OFFSET_PX = 0;
 
   function init() {
     const el = $('heroTransport');
@@ -712,6 +803,7 @@
         np.elapsed = n; q.elapsed = n;
       }
       render(el, q, np);
+      applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
       armVideoFallback(el);
       try { ensureRadioDrawer(); } catch {}
     };
@@ -823,11 +915,13 @@
             isAlexaMode: !!np?.alexaMode,
           });
           render(el, q, np);
+          applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
           armVideoFallback(el);
           lastRenderSignature = renderSig;
         } else {
           // If motion is locked for this track, avoid text-only update path that can repaint static art elsewhere.
           if (!motionLockedForTrack) updateHeroDynamic(el, q, np);
+        applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
         }
         if (effectiveTrackKey) lastRenderedTrackKey = effectiveTrackKey;
 
@@ -881,6 +975,7 @@
 
         const npResolved = { ...np, _motionMp4: resolved };
         render(el, q, npResolved);
+        applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
         armVideoFallback(el);
         const head2 = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
         const sig2IsRadio = !!npResolved?.isRadio || !!npResolved?.isStream || !!head2?.isStream;
@@ -902,17 +997,20 @@
         if (lastQ || lastNp) {
           try {
             render(el, lastQ || { items: [], playbackState: '' }, lastNp || {});
+            applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
             armVideoFallback(el);
             try { ensureRadioDrawer(); } catch {}
             return;
           } catch {}
         }
         renderShell(el, 'unavailable');
+        applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
         try { ensureRadioDrawer(); } catch {}
       }
     };
 
     renderShell(el, 'loading');
+    applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
 
     el.addEventListener('click', async (ev) => {
       const albumHit = ev.target instanceof Element ? ev.target.closest('[data-hero-open-album]') : null;
@@ -1077,6 +1175,7 @@
 
     setTimeout(refresh, 150);
     setInterval(() => { if (!document.hidden) refresh(); }, 6000);
+    window.addEventListener('resize', () => applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX));
 
     // Prioritize now-playing freshness when returning to this tab/PWA window.
     document.addEventListener('visibilitychange', () => {
