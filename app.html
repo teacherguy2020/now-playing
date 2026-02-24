@@ -1162,8 +1162,25 @@
         }
       }
 
-      function refreshPeppyPill(){
+      async function refreshPeppyPill(baseOverride = ''){
         const hint = document.getElementById('peppyHint');
+        const host = location.hostname || '10.0.0.233';
+        const base = baseOverride || `${location.protocol}//${host}:3101`;
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/display/status`, {
+            headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            cache: 'no-store',
+          }, 9000);
+          if (r.ok && j?.ok) {
+            peppyModeState = String(j.mode || 'webui').toLowerCase() === 'peppy' ? 'peppy' : 'webui';
+            try { localStorage.setItem('np.peppyMode', peppyModeState); } catch {}
+          }
+        } catch {}
         const on = String(peppyModeState || 'webui') === 'peppy';
         if (hint) hint.textContent = on ? 'on' : 'off';
         setPillState('peppyPill', on ? 'ok' : 'off');
@@ -1193,7 +1210,7 @@
           }
           peppyModeState = nextMode;
           try { localStorage.setItem('np.peppyMode', peppyModeState); } catch {}
-          refreshPeppyPill();
+          await refreshPeppyPill(base);
         } catch (e) {
           console.warn('peppy toggle failed', e?.message || e);
           setPillState('peppyPill', 'bad');
@@ -1365,7 +1382,7 @@
           setPillState('webPill','ok');
           setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
           setPillState('moodePill', moodeHost ? 'ok' : 'warn');
-          refreshPeppyPill();
+          await refreshPeppyPill(base);
 
           const podcastsLink = document.getElementById('podcastsNavLink');
           if (podcastsLink && !cfg?.features?.podcasts) podcastsLink.style.display = 'none';
@@ -1376,7 +1393,7 @@
           setPillState('webPill','warn');
           setPillState('alexaPill','warn');
           setPillState('moodePill','warn');
-          refreshPeppyPill();
+          await refreshPeppyPill();
           scrobbleControlsEnabled = false;
           const sp = document.getElementById('scrobblePill');
           if (sp) sp.style.display = 'none';

@@ -484,6 +484,24 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.get('/config/moode/display/status', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const script = "db=/var/local/www/db/moode-sqlite3.db; if [ -f \"$db\" ]; then sqlite3 \"$db\" \"select value from cfg_system where param='peppy_display' limit 1;\"; else echo ''; fi";
+      const { stdout } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 12000 });
+      const raw = String(stdout || '').trim();
+      const mode = (raw === '1' || /^on$/i.test(raw)) ? 'peppy' : 'webui';
+      return res.json({ ok: true, mode, raw, sshHost, sshUser });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/moode/display', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
