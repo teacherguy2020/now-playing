@@ -888,9 +888,22 @@
         const artSide = Math.max(0, Math.round(Math.min(Number(artRect?.width || 0), Number(artRect?.height || 0))));
         const mainRect = main?.getBoundingClientRect?.();
         const col2W = Math.max(0, Number(mainRect?.width || 0));
-        const fitK = Math.max(0.68, Math.min(1, col2W ? (col2W / 760) : 1));
+        // Button fit curve: much gentler for half-width iPad.
+        let fitK = 1;
+        if (col2W > 0) {
+          if (col2W >= 600) fitK = 1;
+          else if (col2W <= 420) fitK = 0.86;
+          else fitK = 0.86 + ((col2W - 420) / 180) * 0.14;
+        }
+        // Gentler, text-only fit curve: hold near 1.0 until col2 is tighter.
+        let textFitK = 1;
+        if (col2W > 0) {
+          if (col2W >= 620) textFitK = 1;
+          else if (col2W <= 420) textFitK = 0.82;
+          else textFitK = 0.82 + ((col2W - 420) / 200) * 0.18;
+        }
         if (txt && artH > 0) {
-          const fs = Math.max(12, Math.min(40, Math.round(artH * 0.12 * fitK)));
+          const fs = Math.max(12, Math.min(40, Math.round(artH * 0.12 * textFitK)));
           txt.style.fontSize = `${fs}px`;
           txt.style.lineHeight = '1.15';
         }
@@ -918,8 +931,8 @@
 
         // Radio-mode text sizing tied to artwork height so it always scales with layout.
         if (artH > 0) {
-          const albumPx = Math.max(11, Math.min(33, Math.round(artH * 0.098 * fitK))); // ~= title(0.12) * 0.82
-          const livePx = Math.max(10, Math.min(30, Math.round(artH * 0.089 * fitK)));  // ~= title(0.12) * 0.74
+          const albumPx = Math.max(11, Math.min(33, Math.round(artH * 0.098 * textFitK))); // ~= title(0.12) * 0.82
+          const livePx = Math.max(10, Math.min(30, Math.round(artH * 0.089 * textFitK)));  // ~= title(0.12) * 0.74
           const albumEl = el.querySelector('.np .heroSubline');
           const liveEl = el.querySelector('.np .heroLiveLine');
           if (albumEl) albumEl.style.setProperty('font-size', `${albumPx}px`, 'important');
@@ -939,23 +952,63 @@
         // Scale transport controls from art height.
         const btns = Array.from(el.querySelectorAll('.heroTransportControls .tbtn'));
         if (btns.length && artH > 0) {
-          const bigPx = Math.max(28, Math.min(Math.round(88 * fitK), Math.round(artH * 0.33 * fitK)));
-          const normalPx = Math.max(22, Math.min(Math.round(68 * fitK), Math.round(artH * 0.27 * fitK)));
+          // Single-source sizing to preserve proportions at all widths.
+          let normalPx = Math.max(24, Math.min(74, Math.round(artH * 0.35 * fitK)));
+          let bigPx = Math.round(normalPx * 1.14);
+          let seekPx = Math.max(22, Math.round(normalPx * 0.90));
+
+          // Ensure one-row fit in tighter widths (esp. podcasts with seek buttons).
+          const controlsEl = el.querySelector('.np .heroTransportControls');
+          const gapPx = Number((controlsEl && getComputedStyle(controlsEl).gap || '8').replace('px', '')) || 8;
+          const availW = Math.max(180, Math.round(col2W * 0.94));
+          const totalW = () => btns.reduce((sum, b) => {
+            const isBig = b.classList.contains('tbtnBig');
+            const isSeek = b.classList.contains('tbtnSeek');
+            return sum + (isSeek ? seekPx : (isBig ? bigPx : normalPx));
+          }, 0) + (Math.max(0, btns.length - 1) * gapPx);
+
+          const need = totalW();
+          if (need > availW) {
+            const s = Math.max(0.82, availW / need);
+            normalPx = Math.max(22, Math.round(normalPx * s));
+            bigPx = Math.max(24, Math.round(bigPx * s));
+            seekPx = Math.max(20, Math.round(seekPx * s));
+          }
+
+          if (controlsEl) controlsEl.style.setProperty('flex-wrap', 'nowrap', 'important');
+
           btns.forEach((b) => {
             const isBig = b.classList.contains('tbtnBig');
-            const px = isBig ? bigPx : normalPx;
+            const isSeek = b.classList.contains('tbtnSeek');
+            const px = isSeek ? seekPx : (isBig ? bigPx : normalPx);
             b.style.width = `${px}px`;
             b.style.height = `${px}px`;
           });
 
-          // Also scale SVG icon sizes with button size.
+          // Also scale SVG/icon sizes with button size.
           btns.forEach((b) => {
             const isBig = b.classList.contains('tbtnBig');
-            const iconPx = Math.max(13, Math.round((isBig ? bigPx : normalPx) * 0.57));
+            const isSeek = b.classList.contains('tbtnSeek');
+            const px = isSeek ? seekPx : (isBig ? bigPx : normalPx);
+            const iconPx = Math.max(12, Math.round(px * (isSeek ? 0.50 : 0.57)));
             const svgs = b.querySelectorAll('svg');
             svgs.forEach((s) => {
               s.style.width = `${iconPx}px`;
               s.style.height = `${iconPx}px`;
+            });
+            const spans = b.querySelectorAll('span');
+            spans.forEach((sp) => {
+              if (!isSeek) return;
+              sp.style.fontSize = `${Math.max(10, Math.round(px * 0.30))}px`;
+              const tightSeek = fitK < 0.86 || col2W < 560;
+              const full = String(sp.dataset.fullText || sp.textContent || '').trim();
+              if (!sp.dataset.fullText) sp.dataset.fullText = full;
+              if (tightSeek) {
+                if (full.includes('15')) sp.textContent = '↺';
+                else if (full.includes('30')) sp.textContent = '↻';
+              } else {
+                sp.textContent = sp.dataset.fullText || full;
+              }
             });
           });
         }
