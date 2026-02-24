@@ -110,8 +110,27 @@
   
   
   
-  function openModal(ctx) {
+  function openModal(ctx, anchorEl = null) {
     modalCtx = ctx || null;
+
+    try {
+      // Anchor modal vertically near clicked card while guaranteeing on-screen visibility.
+      const modalEl = modalOverlay.querySelector('.modal');
+      if (modalEl) {
+        modalEl.style.removeProperty('margin');
+        if (anchorEl && typeof anchorEl.getBoundingClientRect === 'function') {
+          const r = anchorEl.getBoundingClientRect();
+          const desired = Math.round((r.top + (r.height * 0.5)) - 180);
+          const minTop = 12;
+          const maxTop = Math.max(12, Math.round(window.innerHeight - 420));
+          const top = Math.max(minTop, Math.min(maxTop, desired));
+          // Override podcasts.html margin shorthand !important.
+          modalEl.style.setProperty('margin', `${top}px auto 14px`, 'important');
+        } else {
+          modalEl.style.setProperty('margin', `18px auto 14px`, 'important');
+        }
+      }
+    } catch {}
 
     modalTitle.textContent = (ctx && ctx.title) ? ctx.title : 'Podcast';
     modalSub.textContent   = (ctx && ctx.rss) ? ctx.rss : '';
@@ -135,6 +154,8 @@
     modalOverlay.classList.remove('open');
     document.body.classList.remove('modal-open');
     modalOverlay.setAttribute('aria-hidden', 'true');
+    const modalEl = modalOverlay.querySelector('.modal');
+    if (modalEl) modalEl.style.removeProperty('margin');
     modalCtx = null;
     lastEpisodes = [];
   }
@@ -745,7 +766,7 @@ async function loadEpisodes() {
           imageUrl: String(p.imageUrl || '').trim(),
           mapJson: p.mapJson || '',
           limit: Number(p.limit || 0) || null
-        });
+        }, card);
 
         loadEpisodes();
       });
