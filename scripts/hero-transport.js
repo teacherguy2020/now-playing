@@ -754,6 +754,14 @@
   justify-content:space-between !important;
   align-items:center !important;
 }
+#heroTransport.heroGridMode .np .txt{
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  display:block !important;
+  -webkit-line-clamp:unset !important;
+  -webkit-box-orient:unset !important;
+}
 #heroTransport.heroGridMode .np .txt,
 #heroTransport.heroGridMode .np .heroRating,
 #heroTransport.heroGridMode .np .heroTransportControls,
@@ -906,6 +914,10 @@
           const fs = Math.max(12, Math.min(40, Math.round(artH * 0.12 * textFitK)));
           txt.style.fontSize = `${fs}px`;
           txt.style.lineHeight = '1.15';
+          txt.style.whiteSpace = 'nowrap';
+          txt.style.overflow = 'hidden';
+          txt.style.textOverflow = 'ellipsis';
+          txt.style.display = 'block';
         }
 
         // Constrain center stack to artwork height so top/bottom rows stay within art bounds.
@@ -1199,7 +1211,8 @@
         const isRadioOrStream = !!np?.isRadio || !!np?.isStream;
         const artist = String(np?.artist || '').trim();
         const album = String(np?.album || '').trim();
-        const motionIdentity = `${isRadioOrStream ? 'r' : 'l'}|${appleUrl || ''}|${artist}|${album}`;
+        const radioTitle = String(np?.title || np?.radioTitle || head?.title || '').trim();
+        const motionIdentity = `${isRadioOrStream ? 'r' : 'l'}|${appleUrl || ''}|${artist}|${album}|${isRadioOrStream ? radioTitle : ''}`;
 
         const head = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
         const currentFile = String(np?.file || head?.file || '').trim();
@@ -1208,7 +1221,10 @@
         if (currentSongId) lastKnownSongId = currentSongId;
         const effectiveFile = currentFile || lastKnownNowFile;
         const effectiveSongId = currentSongId || lastKnownSongId;
-        const effectiveTrackKey = motionTrackKey(effectiveFile, effectiveSongId);
+        const baseTrackKey = motionTrackKey(effectiveFile, effectiveSongId);
+        const effectiveTrackKey = isRadioOrStream
+          ? `radio|${String(appleUrl || '').trim().toLowerCase()}|${artist.toLowerCase()}|${album.toLowerCase()}|${radioTitle.toLowerCase()}`
+          : baseTrackKey;
 
         // Render immediately with cached motion if available; do not block on remote lookup.
         // "Motion is law": if track file is unchanged (or temporarily missing in payload), keep using known-good motion clip.
@@ -1218,7 +1234,7 @@
           motionMp4 = lockedMotion;
         } else if (effectiveTrackKey && lastVisibleMotionSrc && effectiveTrackKey === lastMotionTrackKey) {
           motionMp4 = lastVisibleMotionSrc;
-        } else if (effectiveFile && lastVisibleMotionSrc && effectiveFile === lastVisibleMotionFile) {
+        } else if (!isRadioOrStream && effectiveFile && lastVisibleMotionSrc && effectiveFile === lastVisibleMotionFile) {
           motionMp4 = lastVisibleMotionSrc;
         } else if (lastMotionMp4 && ((motionIdentity === lastMotionIdentity) || (effectiveFile && effectiveFile === lastMotionFile))) {
           motionMp4 = lastMotionMp4;
