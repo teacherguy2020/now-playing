@@ -773,6 +773,7 @@
   overflow:hidden !important;
   text-overflow:ellipsis !important;
   display:block !important;
+  color:var(--theme-text, #e7eefc) !important;
   -webkit-line-clamp:unset !important;
   -webkit-box-orient:unset !important;
 }

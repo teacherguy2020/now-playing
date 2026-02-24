@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Theme</title>
+  <style>
+    body{margin:0;background:#071021;color:#e7eefc;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    .wrap{max-width:1100px;margin:14px auto;padding:0 10px 16px}
+    .card{background:#0f1a31;border:1px solid #2a3a58;border-radius:12px;padding:12px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+    .token{display:grid;gap:6px;padding:10px;border:1px solid #2a3a58;border-radius:10px;background:#0a1222}
+    .row{display:flex;align-items:center;gap:8px}
+    .swWrap{position:relative;width:28px;height:28px;flex:0 0 28px}
+    .sw{width:28px;height:28px;border-radius:8px;border:1px solid rgba(255,255,255,.35);cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+    .colorNative{position:absolute;inset:0;opacity:0;pointer-events:auto;width:100%;height:100%;cursor:pointer}
+    input[type="text"]{flex:1;background:#0f1a31;color:#e7eefc;border:1px solid #334;border-radius:8px;padding:6px 8px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    button{padding:8px 10px;border-radius:9px;border:1px solid var(--editor-border);background:var(--editor-token-bg);color:var(--editor-input-text);cursor:pointer}
+    button.primary{border-color:var(--editor-border);background:var(--editor-token-bg);color:var(--editor-input-text)}
+    .muted{opacity:.8;font-size:12px}
+    .status{margin-top:8px;font-size:12px;opacity:.85;color:#9fd2ff;min-height:1.2em}
+    #presetSelect,#modeSelect{-webkit-appearance:none;appearance:none;background:var(--editor-token-bg) !important;color:var(--editor-input-text) !important;border:1px solid var(--editor-border) !important;border-radius:10px !important}
+
+    :root{
+      --editor-bg:#071021;
+      --editor-text:#e7eefc;
+      --editor-border:#334;
+      --editor-card-bg:#0f1a31;
+      --editor-token-bg:#0a1222;
+      --editor-input-bg:#0f1a31;
+      --editor-input-text:#e7eefc;
+    }
+    body{background:var(--editor-bg);color:var(--editor-text)}
+    .card{background:var(--editor-card-bg);border-color:var(--editor-border)}
+    .token{background:var(--editor-token-bg);border-color:var(--editor-border)}
+    select,button,input[type="text"]{color:var(--editor-input-text);border-color:var(--editor-border)}
+    select,input[type="text"]{background:var(--editor-input-bg)}
+    button:hover{filter:brightness(1.06)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h3 style="margin:0 0 6px">Theme</h3>
+      <div class="muted">Edit core shell colors. Changes apply live in app shell.</div>
+      <div id="tokenGrid" class="grid" style="margin-top:10px"></div>
+      <div class="actions" style="margin-bottom:6px">
+        <select id="presetSelect" style="min-width:220px;padding:7px 8px"></select>
+        <button id="loadPresetBtn" type="button">Load preset</button>
+        <button id="savePresetBtn" type="button">Save as preset</button>
+        <button id="deletePresetBtn" type="button">Delete preset</button>
+        <select id="modeSelect" style="padding:7px 8px">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select>
+        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;opacity:.9"><input id="autoPair" type="checkbox" /> Auto-pair opposite</label>
+      </div>
+      <div class="actions">
+        <button id="applyBtn" class="primary" type="button">Apply</button>
+        <button id="saveBtn" type="button">Save</button>
+        <button id="resetBtn" type="button">Reset defaults</button>
+      </div>
+      <div id="statusMsg" class="status"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const KEY='nowplaying.themeTokens.v1';
+  const PRESETS_KEY='nowplaying.themePresets.v1';
+  const ACTIVE_KEY='nowplaying.themeActivePreset.v1';
+  const defaults={
+    // Shell
+    '--theme-bg':'#0c1526',
+    '--theme-text':'#e7eefc',
+    '--theme-frame-border':'#2a3a58',
+    '--theme-rail-bg':'#0b1426',
+    '--theme-rail-border':'#2a3a58',
+
+    // Tabs
+    '--theme-tab-bg':'#0f1a31',
+    '--theme-tab-text':'#e7eefc',
+    '--theme-tab-border':'#2a3a58',
+    '--theme-tab-hover-bg':'#2f4f93',
+    '--theme-tab-active-bg':'#3357d6',
+    '--theme-tab-active-text':'#ffffff',
+
+    // Cards
+    '--theme-hero-card-bg':'#0a122273',
+    '--theme-hero-card-border':'#2a3a58',
+
+    // Pills
+    '--theme-pill-border':'#94a3b873',
+    '--theme-pill-glow':'#7dd3fc57',
+  };
+  const labels={
+    '--theme-bg':'App background',
+    '--theme-text':'Primary text',
+    '--theme-frame-border':'Frame border',
+    '--theme-rail-bg':'Top rail background',
+    '--theme-rail-border':'Top rail border',
+
+    '--theme-tab-bg':'Tab background',
+    '--theme-tab-text':'Tab text',
+    '--theme-tab-border':'Tab border',
+    '--theme-tab-hover-bg':'Tab hover background',
+    '--theme-tab-active-bg':'Tab active background',
+    '--theme-tab-active-text':'Tab active text',
+
+    '--theme-hero-card-bg':'Card background',
+    '--theme-hero-card-border':'Card border/progress bar',
+
+    '--theme-pill-border':'Pill border',
+    '--theme-pill-glow':'Pill hover glow',
+  };
+
+  function load(){
+    try { return { ...defaults, ...(JSON.parse(localStorage.getItem(KEY)||'{}')||{}) }; }
+    catch { return { ...defaults }; }
+  }
+  let state = load();
+  let forcedUiMode = ''; // 'light' | 'dark' (from shell toggle)
+
+  function loadPresets(){
+    try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '{}') || {}; }
+    catch { return {}; }
+  }
+  function savePresets(p){ try { localStorage.setItem(PRESETS_KEY, JSON.stringify(p || {})); } catch {} }
+  function normalizePreset(v){
+    if (!v) return null;
+    if (v.tokens && typeof v.tokens === 'object') return { mode: String(v.mode||'dark'), tokens: v.tokens };
+    if (typeof v === 'object') return { mode: 'dark', tokens: v };
+    return null;
+  }
+  function oppositeMode(mode){ return String(mode||'dark') === 'dark' ? 'light' : 'dark'; }
+  function parseColorToRgb(v){
+    const s = String(v || '').trim();
+    if (!s) return null;
+    const hx = toHex(s);
+    if (hx) {
+      const n = hx.slice(1);
+      return { r: parseInt(n.slice(0,2),16), g: parseInt(n.slice(2,4),16), b: parseInt(n.slice(4,6),16) };
+    }
+    const m = s.match(/^rgba?\(([^)]+)\)$/i);
+    if (m) {
+      const p = m[1].split(',').map(x=>Number(String(x).trim()));
+      if (p.length >= 3 && p.every(Number.isFinite)) return { r:p[0], g:p[1], b:p[2] };
+    }
+    return null;
+  }
+  function clamp255(n){ return Math.max(0, Math.min(255, Math.round(n))); }
+  function shiftRgb(c, amt){ return { r: clamp255(c.r + amt), g: clamp255(c.g + amt), b: clamp255(c.b + amt) }; }
+  function rgbToHex(c){ return `#${[c.r,c.g,c.b].map(v=>clamp255(v).toString(16).padStart(2,'0')).join('')}`; }
+  function updateEditorChrome(){
+    const bg = parseColorToRgb(state['--theme-rail-bg'] || defaults['--theme-rail-bg'] || state['--theme-bg'] || defaults['--theme-bg']) || {r:12,g:21,b:38};
+    const heroCardBgRaw = String(state['--theme-hero-card-bg'] || defaults['--theme-hero-card-bg'] || '').trim();
+    const heroCardBgRgb = parseColorToRgb(heroCardBgRaw) || bg;
+    const heroCardBorder = state['--theme-hero-card-border'] || defaults['--theme-hero-card-border'] || '#334';
+
+    const l = relLum(bg);
+    const isLight = (forcedUiMode === 'light') ? true : (forcedUiMode === 'dark' ? false : (l > 0.5));
+    const inputRgb = isLight ? shiftRgb(bg, -22) : shiftRgb(bg, 20);
+
+    document.documentElement.style.setProperty('--editor-bg', rgbToHex(bg));
+    document.documentElement.style.setProperty('--editor-text', pickReadableText(rgbToHex(bg)));
+    // Main container tracks hero card style
+    document.documentElement.style.setProperty('--editor-card-bg', (forcedUiMode ? rgbToHex(heroCardBgRgb) : (heroCardBgRaw || rgbToHex(heroCardBgRgb))));
+    document.documentElement.style.setProperty('--editor-border', String(heroCardBorder));
+
+    // Individual token cards now tie directly to frame/hero border color.
+    document.documentElement.style.setProperty('--editor-token-bg', String(heroCardBorder));
+    document.documentElement.style.setProperty('--editor-input-bg', rgbToHex(inputRgb));
+    document.documentElement.style.setProperty('--editor-input-text', pickReadableText(rgbToHex(inputRgb)));
+  }
+  function relLum({r,g,b}){
+    const t = [r,g,b].map(v=>{
+      const x = v/255;
+      return x <= 0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055, 2.4);
+    });
+    return 0.2126*t[0] + 0.7152*t[1] + 0.0722*t[2];
+  }
+  function pickReadableText(bg){
+    const rgb = parseColorToRgb(bg) || { r:12, g:21, b:38 };
+    const Lbg = relLum(rgb);
+    const Lw = 1.0;
+    const Lb = 0.0;
+    const cw = (Math.max(Lbg,Lw)+0.05)/(Math.min(Lbg,Lw)+0.05);
+    const cb = (Math.max(Lbg,Lb)+0.05)/(Math.min(Lbg,Lb)+0.05);
+    return cw >= cb ? '#f3f7ff' : '#141821';
+  }
+  function modeText(mode, kind='primary'){
+    const light = String(mode||'dark') === 'light';
+    if (light) {
+      if (kind === 'active') return '#1a1428';
+      if (kind === 'muted') return '#2b2240';
+      return '#1f1833';
+    }
+    if (kind === 'active') return '#ffffff';
+    if (kind === 'muted') return '#d6deef';
+    return '#e7eefc';
+  }
+
+  function buildOppositeTokens(tokens, mode){
+    const base = { ...tokens };
+    const dark = {
+      '--theme-bg':'#0c1526','--theme-frame-border':'#2a3a58','--theme-rail-bg':'#0b1426','--theme-rail-border':'#2a3a58',
+      '--theme-tab-bg':'#0f1a31','--theme-tab-border':'#2a3a58','--theme-tab-hover-bg':'#2f4f93','--theme-tab-active-bg':'#3357d6',
+      '--theme-hero-card-bg':'#0a122273','--theme-hero-card-border':'#2a3a58','--theme-pill-border':'#94a3b873','--theme-pill-glow':'#7dd3fc57'
+    };
+    const light = {
+      '--theme-bg':'#efe9fb','--theme-frame-border':'#8f83b5','--theme-rail-bg':'#ddd2f2','--theme-rail-border':'#8f83b5',
+      '--theme-tab-bg':'#d8c9ee','--theme-tab-border':'#8f83b5','--theme-tab-hover-bg':'#c8b8e2','--theme-tab-active-bg':'#8a73b8',
+      '--theme-hero-card-bg':'#fff2e085','--theme-hero-card-border':'#8f83b5','--theme-pill-border':'#8f83b56b','--theme-pill-glow':'#8f83b54f'
+    };
+    const targetMode = String(mode||'dark') === 'dark' ? 'light' : 'dark';
+    const target = targetMode === 'light' ? light : dark;
+    const out = { ...base, ...target };
+    // Rule of thumb enforcement: dark mode -> light text; light mode -> dark text.
+    out['--theme-text'] = modeText(targetMode, 'primary');
+    out['--theme-tab-text'] = modeText(targetMode, 'muted');
+    out['--theme-tab-active-text'] = modeText(targetMode, 'active');
+    return out;
+  }
+
+  const grid = document.getElementById('tokenGrid');
+  const presetSelect = document.getElementById('presetSelect');
+  const modeSelect = document.getElementById('modeSelect');
+  function render(){
+    updateEditorChrome();
+    grid.innerHTML='';
+    Object.keys(defaults).forEach((k)=>{
+      const v = String(state[k] || defaults[k]);
+      const item = document.createElement('div'); item.className='token';
+      const label = document.createElement('div'); label.textContent = labels[k] || k;
+      const row = document.createElement('div'); row.className='row';
+      const swWrap = document.createElement('div'); swWrap.className='swWrap';
+      const sw = document.createElement('div'); sw.className='sw'; sw.style.background=v;
+      const c = document.createElement('input'); c.type='color'; c.className='colorNative'; c.value = toHex(v) || '#000000';
+      const t = document.createElement('input'); t.type='text'; t.value=v;
+      sw.title = 'Pick color';
+      c.addEventListener('input', ()=>{
+        t.value=c.value;
+        sw.style.background=c.value;
+        state[k]=c.value;
+        updateEditorChrome();
+        push(); // live preview while picker is open/dragging
+      });
+      t.addEventListener('input', ()=>{
+        state[k]=t.value;
+        sw.style.background=t.value;
+        const hx=toHex(t.value);
+        if (hx) c.value=hx;
+        updateEditorChrome();
+        push(); // live preview while typing hex
+      });
+      swWrap.append(sw,c);
+      row.append(swWrap,t); item.append(label,row); grid.append(item);
+    });
+  }
+
+  function toHex(v){
+    if (!v) return '';
+    const s = String(v).trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(s)) return s;
+    if (/^#[0-9a-fA-F]{3}$/.test(s)) return '#'+s.slice(1).split('').map(ch=>ch+ch).join('');
+    return '';
+  }
+
+  const statusMsg = document.getElementById('statusMsg');
+  function flash(msg){
+    if (!statusMsg) return;
+    statusMsg.textContent = msg;
+    clearTimeout(flash._t);
+    flash._t = setTimeout(()=>{ statusMsg.textContent = ''; }, 1600);
+  }
+
+  function push(){
+    try { window.parent?.postMessage({ type:'np-theme-updated', tokens: state }, '*'); } catch {}
+  }
+
+  function renderPresetOptions(selected=''){
+    if (!presetSelect) return;
+    const presets = loadPresets();
+    const names = Object.keys(presets).sort((a,b)=>a.localeCompare(b));
+    presetSelect.innerHTML = `<option value="">(select preset)</option>` + names.map(n=>{
+      const p = normalizePreset(presets[n]);
+      const mode = p?.mode ? ` (${p.mode})` : '';
+      const hasModeInName = /\((dark|light)\)\s*$/i.test(String(n));
+      const label = hasModeInName ? String(n) : `${n}${mode}`;
+      return `<option value="${n.replace(/"/g,'&quot;')}">${label}</option>`;
+    }).join('');
+    if (selected) presetSelect.value = selected;
+  }
+
+  document.getElementById('loadPresetBtn')?.addEventListener('click', ()=>{
+    const name = String(presetSelect?.value || '').trim();
+    if (!name) return flash('Pick a preset');
+    const presets = loadPresets();
+    const p = normalizePreset(presets[name]);
+    if (!p) return flash('Preset missing');
+    state = { ...defaults, ...(p.tokens || {}) };
+    if (modeSelect) modeSelect.value = (p.mode === 'light' ? 'light' : 'dark');
+    try { localStorage.setItem(ACTIVE_KEY, name); } catch {}
+    render();
+    push();
+    flash(`Loaded: ${name}`);
+  });
+
+  document.getElementById('savePresetBtn')?.addEventListener('click', ()=>{
+    const suggested = String(presetSelect?.value || '').trim();
+    const name = String(prompt('Preset name:', suggested || '') || '').trim();
+    if (!name) return;
+    const mode = (modeSelect?.value === 'light') ? 'light' : 'dark';
+    const autoPair = !!document.getElementById('autoPair')?.checked;
+    const presets = loadPresets();
+    presets[name] = { mode, tokens: { ...state } };
+    if (autoPair) {
+      const pairName = `${name} (${oppositeMode(mode)})`;
+      presets[pairName] = { mode: oppositeMode(mode), tokens: buildOppositeTokens(state, mode) };
+    }
+    savePresets(presets);
+    try { localStorage.setItem(ACTIVE_KEY, name); } catch {}
+    renderPresetOptions(name);
+    flash(autoPair ? `Saved + paired` : `Preset saved: ${name}`);
+  });
+
+  document.getElementById('deletePresetBtn')?.addEventListener('click', ()=>{
+    const name = String(presetSelect?.value || '').trim();
+    if (!name) return flash('Pick a preset');
+    if (!confirm(`Delete preset "${name}"?`)) return;
+    const presets = loadPresets();
+    delete presets[name];
+    savePresets(presets);
+    renderPresetOptions('');
+    flash(`Deleted: ${name}`);
+  });
+
+  document.getElementById('applyBtn').addEventListener('click', ()=>{ push(); flash('Applied'); });
+  document.getElementById('saveBtn').addEventListener('click', ()=>{
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch{}
+    push();
+    flash('Saved');
+  });
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    state={...defaults};
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch{}
+    try{ localStorage.removeItem(ACTIVE_KEY); }catch{}
+    render();
+    push();
+    flash('Reset to defaults');
+  });
+
+  window.addEventListener('message', (ev) => {
+    try {
+      const d = ev?.data || {};
+      if (d.type === 'np-theme-sync') {
+        const m = String(d.theme || '').toLowerCase();
+        forcedUiMode = (m === 'light' || m === 'dark') ? m : '';
+        updateEditorChrome();
+      }
+    } catch {}
+  });
+
+  render();
+  renderPresetOptions();
+})();
+</script>
+</body>
+</html>
