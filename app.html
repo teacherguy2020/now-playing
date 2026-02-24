@@ -17,9 +17,9 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
   <title>Now Playing</title>
-  <link rel="stylesheet" href="styles/podcasts.css?v=20260223-heroresponsive3" />
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260224-hide-art-hard" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
-  <link rel="stylesheet" href="styles/hero.css?v=20260223-13" />
+  <link rel="stylesheet" href="styles/hero.css?v=20260224-no-halfmode" />
   <style>
     html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
     body{background:#0c1526;color:#e7eefc;margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;padding-top:calc(env(safe-area-inset-top,0px) + 8px);touch-action:pan-y pinch-zoom}
@@ -43,6 +43,9 @@
     .heroTopBar .statusInline .pill .miniSpin{display:none;width:11px;height:11px;border:2px solid rgba(255,255,255,.32);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite}
     .heroTopBar .statusInline button.pill.busy .miniSpin{display:inline-block}
     @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* TEMP DEBUG: force-hide entire hero transport to verify active source */
+    #heroTransport{display:none !important}
     .heroTopBar .statusInline .pill .hint{display:none}
     .heroTopBar .themeBtnWrap{margin-left:auto}
     .heroWrap > header{margin:0 0 4px}
@@ -273,7 +276,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260223-halfmode-480-1600"></script>
+  <script src="scripts/hero-transport.js?v=20260224-art-bounded-pack"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {

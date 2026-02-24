@@ -5,12 +5,12 @@
 
 /* Full-size proportion restore */
 @media (min-width:1201px){
-  #heroTransport:not(.heroHalfMode){align-items:stretch}
-  #heroTransport:not(.heroHalfMode) .heroArt{align-self:flex-start}
-  #heroTransport:not(.heroHalfMode) .heroMain{align-self:stretch;display:flex;min-height:100%}
-  #heroTransport:not(.heroHalfMode) .np{height:100%;display:flex;flex-direction:column;justify-content:space-between;align-items:center}
-  #heroTransport:not(.heroHalfMode) .np .txt{align-self:center;margin-top:2px}
-  #heroTransport:not(.heroHalfMode) .np .progress-bar-wrapper{margin-top:auto;margin-bottom:2px}
+  #heroTransport{align-items:stretch}
+  #heroTransport .heroArt{align-self:flex-start}
+  #heroTransport .heroMain{align-self:stretch;display:flex;min-height:100%}
+  #heroTransport .np{height:100%;display:flex;flex-direction:column;justify-content:space-between;align-items:center}
+  #heroTransport .np .txt{align-self:center;margin-top:2px}
+  #heroTransport .np .progress-bar-wrapper{margin-top:auto;margin-bottom:2px}
 }
 
 /* Narrow/tablet only */

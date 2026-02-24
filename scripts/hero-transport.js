@@ -485,12 +485,71 @@
     }
   }
 
-  let heroDrawerOpen = false;
+  const HERO_FAV_DRAWER_OPEN_KEY = 'nowplaying.heroFavDrawerOpen.v1';
+  let heroDrawerOpen = (() => {
+    try { return String(localStorage.getItem(HERO_FAV_DRAWER_OPEN_KEY) || '') === '1'; } catch { return false; }
+  })();
+  let heroDrawerLastSidePx = 168;
+  let heroDrawerSizedReady = false;
+  let heroDrawerRevealTimer = null;
   const HERO_FAV_GRID_KEY = 'nowplaying.heroFavGridHtml.v1';
+
+  function applyFavTabSize(tab, sidePx) {
+    if (!tab) return;
+    const s = Math.max(120, Number(sidePx || heroDrawerLastSidePx || 168));
+    const fs = Math.max(12, Math.min(22, Math.round(s * 0.09)));
+    tab.style.setProperty('font-size', `${fs}px`, 'important');
+    tab.style.setProperty('line-height', '1', 'important');
+    tab.style.setProperty('padding', `${Math.max(7, Math.round(fs * 0.72))}px ${Math.max(5, Math.round(fs * 0.58))}px`, 'important');
+  }
+
+  function setHeroDrawerOpen(next) {
+    heroDrawerOpen = !!next;
+    try { localStorage.setItem(HERO_FAV_DRAWER_OPEN_KEY, heroDrawerOpen ? '1' : '0'); } catch {}
+  }
   const HERO_FAV_LAST_KEY = 'nowplaying.heroFavLastStation.v1';
   let heroDrawerGridHtml = (() => {
     try { return String(localStorage.getItem(HERO_FAV_GRID_KEY) || ''); } catch { return ''; }
   })();
+
+  function syncDrawerOpenState() {
+    const wrap = document.getElementById('heroRadioDrawerWrap');
+    const drawer = document.getElementById('heroRadioDrawer');
+    if (!wrap || !drawer) return;
+
+    // Avoid first-paint jump: keep hidden until first art-based sizing pass completes.
+    if (!heroDrawerSizedReady) {
+      wrap.style.setProperty('opacity', '0', 'important');
+      wrap.style.setProperty('visibility', 'hidden', 'important');
+      wrap.classList.remove('open');
+      document.getElementById('heroTransport')?.classList.remove('hasFavDrawerOpen');
+      drawer.style.setProperty('border-left', '0', 'important');
+      drawer.style.setProperty('opacity', '0', 'important');
+      drawer.style.setProperty('visibility', 'hidden', 'important');
+      drawer.style.setProperty('pointer-events', 'none', 'important');
+      drawer.style.setProperty('transform', 'translateX(-10px)', 'important');
+      return;
+    }
+
+    wrap.style.setProperty('opacity', '1', 'important');
+    wrap.style.setProperty('visibility', 'visible', 'important');
+    wrap.classList.toggle('open', !!heroDrawerOpen);
+    document.getElementById('heroTransport')?.classList.toggle('hasFavDrawerOpen', !!heroDrawerOpen);
+
+    if (heroDrawerOpen) {
+      drawer.style.setProperty('border-left', '1px solid #2a3a58', 'important');
+      drawer.style.setProperty('opacity', '1', 'important');
+      drawer.style.setProperty('visibility', 'visible', 'important');
+      drawer.style.setProperty('pointer-events', 'auto', 'important');
+      drawer.style.setProperty('transform', 'translateX(0)', 'important');
+    } else {
+      drawer.style.setProperty('border-left', '0', 'important');
+      drawer.style.setProperty('opacity', '0', 'important');
+      drawer.style.setProperty('visibility', 'hidden', 'important');
+      drawer.style.setProperty('pointer-events', 'none', 'important');
+      drawer.style.setProperty('transform', 'translateX(-10px)', 'important');
+    }
+  }
 
   function ensureRadioDrawer() {
     let drawer = document.getElementById('heroRadioDrawer');
@@ -502,12 +561,12 @@
       st.textContent = `
 #heroTransport{position:relative;overflow:visible}
 .heroTransportRow{position:relative}
-#heroRadioDrawerWrap{position:absolute;right:6px;top:calc(58% - 15px);transform:translateY(-50%);z-index:12;display:flex;align-items:center;transition:transform .18s ease}
-#heroRadioDrawerWrap.open{transform:translate(-178px,-50%)}
+#heroRadioDrawerWrap{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:12;display:flex;align-items:center;transition:transform .18s ease;--drawer-w:168px;opacity:0;visibility:hidden}
+#heroRadioDrawerWrap.open{transform:translate(calc(-1 * var(--drawer-w)),-50%)}
 .heroFavTab{border:1px solid #2a3a58;border-right:0;border-radius:10px 0 0 10px;padding:8px 6px;background:#0f1a31;color:#dbe7ff;cursor:pointer;font-size:12px;line-height:1;writing-mode:vertical-rl;text-orientation:mixed;user-select:none;z-index:13}
 .heroFavTab:hover{background:#132241}
-#heroRadioDrawer{position:absolute;left:100%;top:0;height:100%;width:168px;background:#0f1a31;border-left:1px solid #2a3a58;box-shadow:-8px 0 24px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;border-radius:0 10px 10px 0;transform:translateX(-10px);opacity:0;visibility:hidden;pointer-events:none;transition:transform .18s ease,opacity .14s ease,visibility 0s linear .18s}
-#heroRadioDrawerWrap.open #heroRadioDrawer{transform:translateX(0);opacity:1;visibility:visible;pointer-events:auto;transition:transform .18s ease,opacity .14s ease}
+#heroRadioDrawer{position:absolute;left:100%;top:0;height:100%;width:var(--drawer-w);background:#0f1a31;border-left:0;box-shadow:-8px 0 24px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;border-radius:0 10px 10px 0;transform:translateX(-10px);opacity:0;visibility:hidden;pointer-events:none;transition:transform .18s ease,opacity .14s ease,visibility 0s linear .18s}
+#heroRadioDrawerWrap.open #heroRadioDrawer{transform:translateX(0);opacity:1;visibility:visible;pointer-events:auto;border-left:1px solid #2a3a58;transition:transform .18s ease,opacity .14s ease}
 #heroRadioDrawer .grid{padding:6px;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;width:100%}
 #heroRadioDrawer .tile{width:100%;aspect-ratio:1/1;border:1px solid #2a3a58;border-radius:7px;background:#0a1222;display:flex;align-items:center;justify-content:center;padding:0;overflow:hidden;cursor:pointer;transition:border-color .12s ease,box-shadow .12s ease,transform .08s ease}
 #heroRadioDrawer .tile:hover{border-color:#8bd3ff;box-shadow:0 0 0 1px rgba(139,211,255,.35) inset}
@@ -517,84 +576,7 @@
 #heroTransport .heroMain{transform:none !important;padding-right:0 !important}
 #heroTransport .heroLivePulse{color:#ef4444;animation:heroLivePulse 2.2s ease-in-out infinite}
 
-/* Half-width structural layout: art | transport | empty reserve */
-#heroTransport.heroHalfMode{
-  display:grid !important;
-  grid-template-columns:20% 60% 20% !important;
-  column-gap:0 !important;
-  align-items:center;
-}
-#heroTransport.heroHalfMode .heroArt{
-  grid-column:1 !important;
-  justify-self:center;
-  width:100% !important;
-  max-width:100% !important;
-  flex:0 0 auto !important;
-  box-sizing:border-box;
-  padding-right:0;
-}
-#heroTransport.heroHalfMode .heroArt img,
-#heroTransport.heroHalfMode .heroArt .heroArtPh,
-#heroTransport.heroHalfMode .heroArt .heroArtVid{
-  width:100% !important;
-  max-width:100% !important;
-  height:auto !important;
-  aspect-ratio:1 / 1;
-}
-#heroTransport.heroHalfMode .heroMain{
-  grid-column:2 !important;
-  position:static !important;
-  width:100% !important;
-  max-width:100% !important;
-  justify-self:stretch !important;
-  transform:none !important;
-  padding-right:0 !important;
-  display:flex;
-  justify-content:center;
-  overflow:hidden;
-}
-#heroTransport.heroHalfMode .np{
-  width:100%;
-  max-width:100%;
-  margin-inline:auto;
-  transform:none !important;
-}
-#heroTransport.heroHalfMode #heroRadioDrawerWrap{
-  right:max(6px, 1.2%) !important;
-  top:50% !important;
-}
-#heroTransport.heroHalfMode #heroRadioDrawerWrap.open{
-  transform:translate(calc(-1 * min(19vw, 210px)), -50%) !important;
-}
-#heroTransport.heroHalfMode #heroRadioDrawer{
-  width:min(19vw, 210px) !important;
-}
-#heroTransport.heroHalfMode .heroFavTab{
-  font-size:clamp(11px, 1.05vw, 13px);
-  padding:clamp(7px, 0.8vw, 9px) clamp(5px, 0.6vw, 7px);
-}
-#heroTransport.heroHalfMode .heroRateStar{
-  font-size:clamp(22px, 2.1vw, 26px) !important;
-}
-#heroTransport.heroHalfMode #heroRadioDrawer .grid{
-  gap:clamp(4px, 0.45vw, 6px);
-  padding:clamp(5px, 0.6vw, 8px);
-}
-#heroTransport.heroHalfMode::after{display:none;
-  content:'';
-  grid-column:3;
-  align-self:center;
-  justify-self:center;
-  color:#fbbf24;
-  font-size:12px;
-  letter-spacing:.08em;
-  border:1px dashed rgba(251,191,36,.65);
-  border-radius:8px;
-  padding:4px 8px;
-  background:rgba(251,191,36,.08);
-  z-index:5;
-}
-/* COL3 TEST removed */
+/* legacy half-width mode removed; dynamic art-relative scaling is source-of-truth */
 
 @media (max-width:480px){
   #heroTransport .heroMain{position:static;left:auto;top:auto;width:100%;transform:none !important;padding-right:0 !important}
@@ -612,16 +594,20 @@
       wrap = document.createElement('div');
       wrap.id = 'heroRadioDrawerWrap';
       wrap.innerHTML = `<button type="button" class="heroFavTab" data-a="radio-favs" title="Favorite stations">♥ Favorites</button>`;
+      wrap.style.setProperty('--drawer-w', `${heroDrawerLastSidePx}px`, 'important');
+      wrap.style.setProperty('height', `${heroDrawerLastSidePx}px`, 'important');
       host?.appendChild(wrap);
     }
+    applyFavTabSize(wrap.querySelector('.heroFavTab'), heroDrawerLastSidePx);
 
     drawer = document.createElement('aside');
     drawer.id = 'heroRadioDrawer';
     drawer.innerHTML = `<div class="grid">${heroDrawerGridHtml || ''}</div>`;
+    drawer.style.setProperty('width', `${heroDrawerLastSidePx}px`, 'important');
+    drawer.style.setProperty('height', '100%', 'important');
     wrap.appendChild(drawer);
 
-    wrap.classList.toggle('open', heroDrawerOpen);
-    document.getElementById('heroTransport')?.classList.toggle('hasFavDrawerOpen', heroDrawerOpen);
+    syncDrawerOpenState();
 
     return drawer;
   }
@@ -689,10 +675,8 @@
     const drawer = ensureRadioDrawer();
     const grid = drawer.querySelector('.grid');
     if (!grid) return;
-    const wrap = document.getElementById('heroRadioDrawerWrap');
-    heroDrawerOpen = true;
-    wrap?.classList.add('open');
-    document.getElementById('heroTransport')?.classList.add('hasFavDrawerOpen');
+    setHeroDrawerOpen(true);
+    syncDrawerOpenState();
 
     const skeleton = Array.from({ length: 9 }).map(() => '<div class="tile" aria-hidden="true" style="opacity:.25"></div>').join('');
     grid.innerHTML = heroDrawerGridHtml || skeleton;
@@ -721,13 +705,326 @@
     }
   }
 
+  function ensureHeroGridResetStyle() {
+    if (document.getElementById('heroGridResetStyle')) return;
+    const st = document.createElement('style');
+    st.id = 'heroGridResetStyle';
+    st.textContent = `
+#heroTransport.heroGridMode{
+  display:grid !important;
+  grid-template-columns:25% 50% 25% !important;
+  column-gap:0 !important;
+  align-items:center !important;
+}
+#heroTransport.heroGridMode .heroArt{
+
+  display:block !important;  grid-column:1 !important;
+  justify-self:stretch !important;
+  align-self:center !important;
+  width:100% !important;
+  max-width:none !important;
+  padding:0 !important;
+}
+#heroTransport.heroGridMode .heroArt img,
+#heroTransport.heroGridMode .heroArt .heroArtPh,
+#heroTransport.heroGridMode .heroArt .heroArtVid{
+  width:100% !important;
+  max-width:none !important;
+  height:auto !important;
+  aspect-ratio:1/1 !important;
+}
+#heroTransport.heroGridMode .heroMain{
+  grid-column:2 !important;
+  position:static !important;
+  transform:none !important;
+  width:100% !important;
+  max-width:100% !important;
+  padding-left:3% !important;
+  padding-right:3% !important;
+  display:flex !important;
+  align-items:stretch !important;
+  justify-content:center !important;
+}
+#heroTransport.heroGridMode .np{
+  width:100% !important;
+  max-width:100% !important;
+  height:100% !important;
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:space-between !important;
+  align-items:center !important;
+}
+#heroTransport.heroGridMode .np .txt,
+#heroTransport.heroGridMode .np .heroRating,
+#heroTransport.heroGridMode .np .heroTransportControls,
+#heroTransport.heroGridMode .np .progress-bar-wrapper{
+  margin-top:0 !important;
+  margin-bottom:0 !important;
+}
+`;
+    document.head.appendChild(st);
+  }
+
+  const HERO_GRID_COL2_KEY = 'nowplaying.heroGridCol2Pct.v1';
+  let heroGridCol2 = (() => {
+    try {
+      const v = Number(localStorage.getItem(HERO_GRID_COL2_KEY));
+      return Number.isFinite(v) ? Math.max(50, Math.min(80, Math.round(v))) : 70;
+    } catch {
+      return 70;
+    }
+  })();
+
+  function getHeroCols() {
+    const c2 = Math.max(50, Math.min(80, Number(heroGridCol2) || 70));
+    const side = (100 - c2) / 2;
+    return { c1: side, c2, c3: side };
+  }
+
+  function setHeroCol2(next) {
+    heroGridCol2 = Math.max(50, Math.min(80, Math.round(Number(next) || 70)));
+    try { localStorage.setItem(HERO_GRID_COL2_KEY, String(heroGridCol2)); } catch {}
+    const el = document.getElementById('heroTransport');
+    if (el) applyHeroViewportCentering(el);
+    refreshHeroGridTuner();
+  }
+
+  function ensureHeroGridTuner(el) {
+    if (!el || document.getElementById('heroGridTuner')) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'heroGridTuner';
+    wrap.style.cssText = 'position:absolute;left:1px;top:50%;transform:translateY(-50%);z-index:70;display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.50;transition:opacity .15s ease;';
+
+    const mkDot = (col1Pct) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'heroGridDot';
+      b.dataset.col1 = String(col1Pct);
+      b.title = `${col1Pct}/${100 - (col1Pct * 2)}/${col1Pct}`;
+      b.setAttribute('aria-label', `Set hero layout ${b.title}`);
+      b.style.cssText = 'width:9px;height:9px;border-radius:999px;border:1px solid rgba(159,177,217,.65);background:rgba(159,177,217,.22);padding:0;cursor:pointer;';
+      b.addEventListener('click', () => {
+        const c1 = Number(b.dataset.col1 || '20');
+        const c2 = 100 - (c1 * 2);
+        setHeroCol2(c2);
+        refreshHeroGridTuner();
+      });
+      return b;
+    };
+
+    const top = mkDot(22);
+    const mid = mkDot(18);
+    const bot = mkDot(15);
+
+    wrap.appendChild(top);
+    wrap.appendChild(mid);
+    wrap.appendChild(bot);
+
+    wrap.addEventListener('mouseenter', () => { wrap.style.opacity = '.95'; });
+    wrap.addEventListener('mouseleave', () => { wrap.style.opacity = '.50'; });
+
+    el.appendChild(wrap);
+    refreshHeroGridTuner();
+  }
+
+  function refreshHeroGridTuner() {
+    const wrap = document.getElementById('heroGridTuner');
+    if (!wrap) return;
+    const c1 = Math.round((100 - heroGridCol2) / 2);
+    wrap.querySelectorAll('.heroGridDot').forEach((dot) => {
+      const on = Number(dot.dataset.col1 || '0') === c1;
+      dot.style.background = on ? 'rgba(125,211,252,.95)' : 'rgba(159,177,217,.22)';
+      dot.style.borderColor = on ? 'rgba(125,211,252,1)' : 'rgba(159,177,217,.65)';
+      dot.style.boxShadow = on ? '0 0 0 2px rgba(125,211,252,.22)' : 'none';
+    });
+    const lbl = document.getElementById('heroGridTuneLabel');
+    if (lbl) {
+      const { c1, c2, c3 } = getHeroCols();
+      lbl.textContent = `${Math.round(c1)}/${Math.round(c2)}/${Math.round(c3)}`;
+    }
+  }
+
   function applyHeroViewportCentering(el) {
     try {
-      const vw = Math.max(0, Number(window.innerWidth || 0));
-      const halfMode = (vw >= 480 && vw <= 1600);
       if (!el?.classList) return;
-      el.classList.toggle('heroHalfMode', halfMode);
-    } catch {}
+      ensureHeroGridTuner(el);
+      el.classList.add('heroGridMode');
+      const { c1, c2, c3 } = getHeroCols();
+      el.style.setProperty('--hero-col1', `${c1}%`);
+      el.style.setProperty('--hero-col2', `${c2}%`);
+      el.style.setProperty('--hero-col3', `${c3}%`);
+      // Dynamic inline enforce
+      el.style.setProperty('display', 'grid', 'important');
+      el.style.setProperty('grid-template-columns', `${c1}% ${c2}% ${c3}%`, 'important');
+      el.style.setProperty('column-gap', '0', 'important');
+      el.style.setProperty('position', 'relative', 'important');
+
+
+      const np = el.querySelector('.np');
+      const main = el.querySelector('.heroMain');
+      if (np) {
+        np.style.position = 'relative';
+        np.style.zIndex = '2';
+      }
+
+      // Scale title text relative to artwork height.
+      try {
+        const artVisual = el.querySelector('.heroArt img, .heroArt .heroArtVid, .heroArt .heroArtPh');
+        const artEl = el.querySelector('.heroArt');
+        const txt = el.querySelector('.np .txt');
+
+        // Re-apply sizing once artwork media has fully loaded (avoids late shrink from placeholder metrics).
+        if (artVisual && artVisual.tagName === 'IMG' && !artVisual.complete && !artVisual.dataset.heroSizeHooked) {
+          artVisual.dataset.heroSizeHooked = '1';
+          artVisual.addEventListener('load', () => {
+            try { applyHeroViewportCentering(el); } catch {}
+          }, { once: true });
+        }
+        const artRectVisual = artVisual?.getBoundingClientRect?.();
+        const artH = Math.max(0, Number(artRectVisual?.height || 0));
+        const artW = Math.max(0, Number(artRectVisual?.width || 0));
+        const artVisualSide = Math.max(0, Math.round(Math.min(artW, artH)));
+        const artRect = artEl?.getBoundingClientRect?.();
+        const artSide = Math.max(0, Math.round(Math.min(Number(artRect?.width || 0), Number(artRect?.height || 0))));
+        const mainRect = main?.getBoundingClientRect?.();
+        const col2W = Math.max(0, Number(mainRect?.width || 0));
+        const fitK = Math.max(0.68, Math.min(1, col2W ? (col2W / 760) : 1));
+        if (txt && artH > 0) {
+          const fs = Math.max(12, Math.min(40, Math.round(artH * 0.12 * fitK)));
+          txt.style.fontSize = `${fs}px`;
+          txt.style.lineHeight = '1.15';
+        }
+
+        // Constrain center stack to artwork height so top/bottom rows stay within art bounds.
+        if (np && artH > 0) {
+          const packH = Math.round(artH);
+          np.style.setProperty('height', `${packH}px`, 'important');
+          np.style.setProperty('min-height', `${packH}px`, 'important');
+          np.style.setProperty('max-height', `${packH}px`, 'important');
+          np.style.setProperty('justify-content', 'space-between', 'important');
+          np.style.setProperty('overflow', 'hidden', 'important');
+
+          const controls = el.querySelector('.np .heroTransportControls');
+          const isTight = artH < 128;
+          if (controls) {
+            controls.style.setProperty('gap', isTight ? '6px' : '8px', 'important');
+            controls.style.setProperty('margin', '0', 'important');
+          }
+          const sub = el.querySelector('.np .heroSubline');
+          const live = el.querySelector('.np .heroLiveLine');
+          if (sub) sub.style.setProperty('margin', isTight ? '0' : '1px 0', 'important');
+          if (live) live.style.setProperty('margin', isTight ? '0' : '1px 0', 'important');
+        }
+
+        // Radio-mode text sizing tied to artwork height so it always scales with layout.
+        if (artH > 0) {
+          const albumPx = Math.max(11, Math.min(33, Math.round(artH * 0.098 * fitK))); // ~= title(0.12) * 0.82
+          const livePx = Math.max(10, Math.min(30, Math.round(artH * 0.089 * fitK)));  // ~= title(0.12) * 0.74
+          const albumEl = el.querySelector('.np .heroSubline');
+          const liveEl = el.querySelector('.np .heroLiveLine');
+          if (albumEl) albumEl.style.setProperty('font-size', `${albumPx}px`, 'important');
+          if (liveEl) {
+            liveEl.style.setProperty('font-size', `${livePx}px`, 'important');
+            const badge = liveEl.querySelector('span[style*="border-radius:999px"]');
+            if (badge) badge.style.setProperty('font-size', `${Math.max(9, Math.round(livePx * 0.72))}px`, 'important');
+          }
+        }
+
+        const stars = Array.from(el.querySelectorAll('.heroRateStar'));
+        if (stars.length && artH > 0) {
+          const starPx = Math.max(11, Math.min(34, Math.round(artH * 0.14 * fitK)));
+          stars.forEach((s) => { s.style.fontSize = `${starPx}px`; });
+        }
+
+        // Scale transport controls from art height.
+        const btns = Array.from(el.querySelectorAll('.heroTransportControls .tbtn'));
+        if (btns.length && artH > 0) {
+          const bigPx = Math.max(28, Math.min(Math.round(88 * fitK), Math.round(artH * 0.33 * fitK)));
+          const normalPx = Math.max(22, Math.min(Math.round(68 * fitK), Math.round(artH * 0.27 * fitK)));
+          btns.forEach((b) => {
+            const isBig = b.classList.contains('tbtnBig');
+            const px = isBig ? bigPx : normalPx;
+            b.style.width = `${px}px`;
+            b.style.height = `${px}px`;
+          });
+
+          // Also scale SVG icon sizes with button size.
+          btns.forEach((b) => {
+            const isBig = b.classList.contains('tbtnBig');
+            const iconPx = Math.max(13, Math.round((isBig ? bigPx : normalPx) * 0.57));
+            const svgs = b.querySelectorAll('svg');
+            svgs.forEach((s) => {
+              s.style.width = `${iconPx}px`;
+              s.style.height = `${iconPx}px`;
+            });
+          });
+        }
+
+        // Scale radio favorites drawer from art size; tiles/icons scale from drawer width.
+        const drawerWrap = document.getElementById('heroRadioDrawerWrap');
+        const drawer = document.getElementById('heroRadioDrawer');
+        const favTab = drawerWrap?.querySelector('.heroFavTab');
+        if (drawerWrap && drawer && (artH > 0 || artSide > 0)) {
+          // Match drawer square to rendered artwork square.
+          const measuredSide = Math.max(artVisualSide || 0, artSide || 0, Math.round(artH || 0));
+          const side = Math.max(120, Math.min(420, measuredSide));
+          heroDrawerLastSidePx = side;
+          const drawerW = side;
+          const pad = Math.max(5, Math.min(14, Math.round(drawerW * 0.04)));
+          const gap = Math.max(4, Math.min(12, Math.round(drawerW * 0.03)));
+          const tabFs = Math.max(11, Math.min(18, Math.round(side * 0.08)));
+
+          drawerWrap.style.setProperty('--drawer-w', `${drawerW}px`, 'important');
+          drawerWrap.style.setProperty('height', `${side}px`, 'important');
+          drawer.style.setProperty('width', `${drawerW}px`, 'important');
+          drawer.style.setProperty('height', '100%', 'important');
+
+          // Keep vertical anchor stable and reveal only after layout settles.
+          heroDrawerSizedReady = false;
+          syncDrawerOpenState();
+          try { if (heroDrawerRevealTimer) clearTimeout(heroDrawerRevealTimer); } catch {}
+          heroDrawerRevealTimer = setTimeout(() => {
+            heroDrawerSizedReady = true;
+            syncDrawerOpenState();
+          }, 220);
+
+          const grid = drawer.querySelector('.grid');
+          if (grid) {
+            grid.style.setProperty('padding', `${pad}px`, 'important');
+            grid.style.setProperty('gap', `${gap}px`, 'important');
+          }
+
+          const tileImgSizePct = Math.max(78, Math.min(92, Math.round(86 + (drawerW - 160) * 0.04)));
+          drawer.querySelectorAll('.tile img').forEach((img) => {
+            img.style.width = `${tileImgSizePct}%`;
+            img.style.height = `${tileImgSizePct}%`;
+            img.style.objectFit = 'contain';
+            img.style.margin = 'auto';
+          });
+
+          if (favTab) {
+            applyFavTabSize(favTab, side);
+          }
+        }
+      } catch {}
+    
+
+      // Scale progress bar by column-2 dimensions.
+      try {
+        const mainRect = main?.getBoundingClientRect?.();
+        const col2W = Math.max(0, Number(mainRect?.width || 0));
+        const col2H = Math.max(0, Number(mainRect?.height || 0));
+        const prog = el.querySelector('.np .progress-bar-wrapper');
+        const progFill = el.querySelector('.np .progress-fill');
+        if (prog && col2W > 0) {
+          const w = Math.max(180, Math.min(680, Math.round(col2W * 0.72)));
+          const h = Math.max(3, Math.min(10, Math.round(col2H * 0.03)));
+          prog.style.width = `${w}px`;
+          prog.style.height = `${h}px`;
+          if (progFill) progFill.style.height = `${h}px`;
+        }
+      } catch {}
+} catch {}
   }
 
   function renderShell(el, status = 'loading') {
@@ -803,7 +1100,7 @@
         np.elapsed = n; q.elapsed = n;
       }
       render(el, q, np);
-      applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
+      applyHeroViewportCentering(el);
       armVideoFallback(el);
       try { ensureRadioDrawer(); } catch {}
     };
@@ -915,13 +1212,13 @@
             isAlexaMode: !!np?.alexaMode,
           });
           render(el, q, np);
-          applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
+          applyHeroViewportCentering(el);
           armVideoFallback(el);
           lastRenderSignature = renderSig;
         } else {
           // If motion is locked for this track, avoid text-only update path that can repaint static art elsewhere.
           if (!motionLockedForTrack) updateHeroDynamic(el, q, np);
-        applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
+        applyHeroViewportCentering(el);
         }
         if (effectiveTrackKey) lastRenderedTrackKey = effectiveTrackKey;
 
@@ -975,7 +1272,7 @@
 
         const npResolved = { ...np, _motionMp4: resolved };
         render(el, q, npResolved);
-        applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
+        applyHeroViewportCentering(el);
         armVideoFallback(el);
         const head2 = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
         const sig2IsRadio = !!npResolved?.isRadio || !!npResolved?.isStream || !!head2?.isStream;
@@ -997,20 +1294,22 @@
         if (lastQ || lastNp) {
           try {
             render(el, lastQ || { items: [], playbackState: '' }, lastNp || {});
-            applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
+            applyHeroViewportCentering(el);
             armVideoFallback(el);
             try { ensureRadioDrawer(); } catch {}
             return;
           } catch {}
         }
         renderShell(el, 'unavailable');
-        applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
+        applyHeroViewportCentering(el);
         try { ensureRadioDrawer(); } catch {}
       }
     };
 
+    ensureHeroGridResetStyle();
     renderShell(el, 'loading');
-    applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX);
+    ensureHeroGridTuner(el);
+    applyHeroViewportCentering(el);
 
     el.addEventListener('click', async (ev) => {
       const albumHit = ev.target instanceof Element ? ev.target.closest('[data-hero-open-album]') : null;
@@ -1059,9 +1358,8 @@
       const action = String(btn.getAttribute('data-a') || '').trim().toLowerCase();
       if (action === 'radio-favs') {
         ev.preventDefault();
-        heroDrawerOpen = !heroDrawerOpen;
-        document.getElementById('heroRadioDrawerWrap')?.classList.toggle('open', heroDrawerOpen);
-        document.getElementById('heroTransport')?.classList.toggle('hasFavDrawerOpen', heroDrawerOpen);
+        setHeroDrawerOpen(!heroDrawerOpen);
+        syncDrawerOpenState();
         if (heroDrawerOpen) openRadioDrawer().catch(() => {});
         return;
       }
@@ -1092,9 +1390,8 @@
         try { localStorage.setItem(HERO_FAV_LAST_KEY, file); } catch {}
         tile.classList.add('isLive');
         await sendStationToQueue(file, 'replace', false, true);
-        heroDrawerOpen = false;
-        document.getElementById('heroRadioDrawerWrap')?.classList.remove('open');
-        document.getElementById('heroTransport')?.classList.remove('hasFavDrawerOpen');
+        setHeroDrawerOpen(false);
+        syncDrawerOpenState();
         await refresh();
         try { window.dispatchEvent(new CustomEvent('heroTransport:update')); } catch {}
       } catch (e) {
@@ -1174,8 +1471,11 @@
     };
 
     setTimeout(refresh, 150);
+    if (heroDrawerOpen) {
+      setTimeout(() => { try { openRadioDrawer(); } catch {} }, 260);
+    }
     setInterval(() => { if (!document.hidden) refresh(); }, 6000);
-    window.addEventListener('resize', () => applyHeroViewportCentering(el, HERO_CENTER_OFFSET_PX));
+    window.addEventListener('resize', () => applyHeroViewportCentering(el));
 
     // Prioritize now-playing freshness when returning to this tab/PWA window.
     document.addEventListener('visibilitychange', () => {
