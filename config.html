@@ -33,11 +33,25 @@
 .cfgCard.blocked * { pointer-events:none !important; }
     .cfgCard h3 { margin:0 0 10px; font-size:16px; }
     .cfgField { margin: 10px 0; }
-    .cfgField label { display:block; font-size:12px; opacity:.9; margin-bottom:6px; }
-    .cfgField input[type=text], .cfgField input[type=password], .cfgField input[type=number] { width:100%; max-width:520px; font-size:14px; line-height:1.2; }
-    .cfgField.narrow input[type=number] { max-width: 180px; }
-    .ipField { max-width: 240px !important; }
-    #alexaDomain { max-width: 360px; }
+    .cfgField label { display:block; font-size:12px; opacity:.9; margin-bottom:6px; line-height:1.25; min-height:2.5em; }
+    .cfgField input[type=text], .cfgField input[type=password], .cfgField input[type=number], .cfgField select { width:100%; max-width:min(100%, 360px); font-size:14px; line-height:1.2; }
+    .cfgField.narrow input[type=number] { max-width: 160px; }
+    .ipField { max-width: 220px !important; }
+    #alexaDomain, #moodeBaseUrl, #fallbackAlbumArt, #musicLibraryRoot, #radioStationMapFile { max-width: min(100%, 520px); }
+
+    /* Network card: constrain field lengths to realistic values */
+    #networkCard #apiNodeIp,
+    #networkCard #mpdHost,
+    #networkCard #moodeSshHost { max-width: min(100%, 16ch) !important; }
+    #networkCard #apiPort,
+    #networkCard #uiPort,
+    #networkCard #mpdPort { max-width: min(100%, 7ch) !important; }
+    #networkCard #moodeSshUser { max-width: min(100%, 12ch) !important; }
+    #networkCard #configTrackKey { max-width: min(100%, 22ch) !important; }
+    #networkCard #moodeBaseUrl { max-width: min(100%, 34ch) !important; }
+    #networkCard #pathMusicLibraryRoot,
+    #networkCard #pathMoodeUsbMount,
+    #networkCard #pathPiMountBase { max-width: min(100%, 30ch) !important; }
     .cfgRow { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .cfgActions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
     .cfgHint { font-size:12px; opacity:.8; }
@@ -127,7 +141,7 @@
               <div class="cfgCard" id="networkCard" style="grid-column: 1 / -1;">
                 <h3>Network & Runtime</h3>
                 <div class="cfgHint" style="margin-bottom:8px;"><strong>Step 1:</strong> Fill this card, then click <strong>Check SSH + Paths</strong> to unlock the other modules.</div>
-                <div class="cfgRow" style="grid-template-columns: 240px 180px 180px; align-items:start; justify-content:start;">
+                <div class="cfgRow" style="grid-template-columns: fit-content(220px) fit-content(130px) fit-content(130px); align-items:start; justify-content:start;">
                   <div class="cfgField">
                     <label for="apiNodeIp">IP of Webserver and API host <span id="apiNodeIpLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="apiNodeIp" class="ipField" type="text" placeholder="ex. 10.0.0.233" />
@@ -143,7 +157,7 @@
                   </div>
                 </div>
                 <div class="cfgHint">Defaults are API <code>3101</code>, UI <code>8101</code>, MPD port <code>6600</code>, and music library root <code>/var/lib/mpd/music</code>. Host fields are auto-prefilled conservatively and never overwrite saved values.</div>
-                <div class="cfgRow" style="grid-template-columns: 240px 180px 240px 180px; align-items:start; justify-content:start;">
+                <div class="cfgRow" style="grid-template-columns: fit-content(220px) fit-content(130px) fit-content(220px) fit-content(130px); align-items:start; justify-content:start;">
                   <div class="cfgField">
                     <label for="mpdHost">MPD host <span id="mpdHostLight" title="MPD host verification" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span> <span id="mpdHostVerifyText" class="cfgHint" style="display:inline;color:#9fb3c8;">not verified</span></label>
                     <input id="mpdHost" class="ipField" type="text" placeholder="ex. 10.0.0.254" />
@@ -155,7 +169,7 @@
                     <div class="cfgHint" id="mpdPortHint"></div>
                   </div>
                   <div class="cfgField">
-                    <label for="moodeSshHost">moOde SSH host (optional override) <span id="sshHostLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
+                    <label for="moodeSshHost">moOde SSH host (opt. override) <span id="sshHostLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="moodeSshHost" class="ipField" type="text" placeholder="defaults to MPD host" />
                   </div>
                   <div class="cfgField narrow">
@@ -171,9 +185,9 @@
                 </details>
                 <div style="display:none" id="runtimeCheckStatusOld"></div>
                 <div style="display:none" id="runtimeCheckDetailsOld"></div>
-                <div class="cfgRow">
+                <div class="cfgRow" style="grid-template-columns: fit-content(380px) fit-content(280px); align-items:start; justify-content:start;">
                   <div class="cfgField">
-                    <label for="moodeBaseUrl">moOde base URL (optional override)</label>
+                    <label for="moodeBaseUrl">moOde base URL (opt. override)</label>
                     <input id="moodeBaseUrl" type="text" placeholder="ex. http://10.0.0.254" />
                     <div class="cfgHint">Leave blank to derive from SSH/MPD host.</div>
                   </div>
@@ -183,7 +197,7 @@
                     <div class="cfgHint">Create a unique key used to protect config and maintenance endpoints (sent as <code>x-track-key</code>).</div>
                   </div>
                 </div>
-                <div class="cfgRow" style="grid-template-columns: 1fr 1fr 1fr; align-items:start;">
+                <div class="cfgRow" style="grid-template-columns: fit-content(340px) fit-content(340px) fit-content(340px); align-items:start; justify-content:start;">
                   <div class="cfgField">
                     <label for="pathMusicLibraryRoot">Music library root <span id="pathMusicLibraryRootLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
                     <input id="pathMusicLibraryRoot" type="text" placeholder="ex. /var/lib/mpd/music" />
@@ -717,7 +731,7 @@ function syncPodcastsUi(){
   if (input) input.disabled = !on;
   if (hint) hint.textContent = on
     ? 'Used when Podcasts is enabled. Missing folder can be created on demand.'
-    : 'Podcasts disabled: path is optional (field kept visible for convenience).';
+    : 'Podcasts disabled: path is opt. (field kept visible for convenience).';
 }
 
 function syncPushoverCardVisibility(){
