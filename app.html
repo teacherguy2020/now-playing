@@ -259,6 +259,7 @@
           <div class="pill" id="webPill" title="Active web UI endpoint"><span class="dot" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></div>
           <div class="pill" id="alexaPill" title="Alexa public domain health"><span class="dot" aria-hidden="true"></span>Alexa<span class="hint" id="alexaHint">unknown</span></div>
           <div class="pill" id="moodePill" title="moOde host verification"><span class="dot" aria-hidden="true"></span>moOde<span class="hint" id="moodeHint">unknown</span></div>
+          <button class="pill" id="notifyPill" type="button" title="Pushover track notifications" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="notifyLabel">Notify</span><span class="hint" id="notifyHint">off</span></button>
           <button class="pill" id="scrobblePill" type="button" title="mpdscribble scrobble service" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="scrobbleLabel">Scrobble</span><span class="hint" id="scrobbleHint">off</span></button>
         </div>
       </div>
@@ -431,6 +432,8 @@
       let runtimeTrackKey = '';
       let scrobbleControlsEnabled = false;
       let scrobbleRunning = null;
+      let notifyConfigured = false;
+      let notifyEnabled = null;
       let collapsedQueueLastLiteSyncAt = 0;
       let radioStationByKey = new Map();
       let radioStationByHost = new Map();
@@ -976,6 +979,13 @@
         pill.disabled = !!on;
       }
 
+      function setNotifyBusy(on){
+        const pill = document.getElementById('notifyPill');
+        if (!pill) return;
+        pill.classList.toggle('busy', !!on);
+        pill.disabled = !!on;
+      }
+
       async function fetchJsonWithTimeout(url, opts = {}, timeoutMs = 9000){
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), Math.max(1000, Number(timeoutMs) || 9000));
@@ -1012,6 +1022,74 @@
           if (label) label.textContent = 'Scrobble';
           scrobbleRunning = null;
           setPillState('scrobblePill', 'bad');
+        }
+      }
+
+      function refreshNotifyPillFromCfg(cfg){
+        try {
+          const n = cfg?.notifications || {};
+          const track = n?.trackNotify || {};
+          const po = n?.pushover || {};
+          notifyConfigured = !!(String(po?.token || '').trim() && String(po?.userKey || '').trim());
+          notifyEnabled = !!track?.enabled;
+
+          const hint = document.getElementById('notifyHint');
+          const label = document.getElementById('notifyLabel');
+          const pill = document.getElementById('notifyPill');
+          if (!pill) return;
+          pill.style.display = notifyConfigured ? '' : 'none';
+
+          if (!notifyConfigured) {
+            if (hint) hint.textContent = 'off';
+            if (label) label.textContent = 'Notify';
+            setPillState('notifyPill', 'off');
+            return;
+          }
+
+          if (hint) hint.textContent = notifyEnabled ? 'on' : 'paused';
+          if (label) label.textContent = notifyEnabled ? 'Pushover' : 'Pushover';
+          setPillState('notifyPill', notifyEnabled ? 'ok' : 'warn');
+        } catch {
+          setPillState('notifyPill', 'bad');
+        }
+      }
+
+      async function toggleNotifyPause(){
+        if (!notifyConfigured) return;
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        const hint = document.getElementById('notifyHint');
+        setNotifyBusy(true);
+        if (hint) hint.textContent = notifyEnabled ? 'pausing…' : 'resuming…';
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const nextEnabled = !notifyEnabled;
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/runtime`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ config: { notifications: { trackNotify: { enabled: nextEnabled } } } }),
+          }, 10000);
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          refreshNotifyPillFromCfg(j?.config || {});
+
+          // Track-notify daemon reads enabled flag at process start; restart api to apply immediately.
+          try {
+            await fetchJsonWithTimeout(`${base}/config/restart-api`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+              body: JSON.stringify({ reason: 'toggle-track-notify' }),
+            }, 12000);
+          } catch {}
+        } catch (e) {
+          console.warn('notify pause toggle failed', e?.message || e);
+          if (hint) hint.textContent = 'err';
+          setPillState('notifyPill', 'bad');
+        } finally {
+          setNotifyBusy(false);
         }
       }
 
@@ -1083,6 +1161,7 @@
 
           const podcastsLink = document.getElementById('podcastsNavLink');
           if (podcastsLink && !cfg?.features?.podcasts) podcastsLink.style.display = 'none';
+          refreshNotifyPillFromCfg(cfg);
           await refreshScrobblePill(base);
         } catch {
           setPillState('apiPill','bad');
@@ -1092,6 +1171,8 @@
           scrobbleControlsEnabled = false;
           const sp = document.getElementById('scrobblePill');
           if (sp) sp.style.display = 'none';
+          const np = document.getElementById('notifyPill');
+          if (np) np.style.display = 'none';
         }
       }
 
@@ -1125,6 +1206,11 @@
         ev.preventDefault();
         navigate(a.dataset.page || 'config.html', true);
       }));
+
+      document.getElementById('notifyPill')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        toggleNotifyPause();
+      });
 
       document.getElementById('scrobblePill')?.addEventListener('click', (ev) => {
         ev.preventDefault();
