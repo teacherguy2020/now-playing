@@ -21,47 +21,69 @@
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
   <link rel="stylesheet" href="styles/hero.css?v=20260224-no-halfmode" />
   <style>
+    :root{
+      --app-shell-max:min(2200px, calc(100dvw - 12px));
+      --theme-bg:#0c1526;
+      --theme-text:#e7eefc;
+      --theme-rail-bg:#0b1426;
+      --theme-rail-border:#2a3a58;
+      --theme-frame-bg:var(--theme-bg);
+      --theme-frame-border:#2a3a58;
+      --theme-pill-border:rgba(148,163,184,.45);
+      --theme-pill-glow:rgba(125,211,252,.34);
+      --theme-hero-card-bg:rgba(10,18,34,.45);
+      --theme-hero-card-border:#2a3a58;
+      --theme-tab-bg:#0f1a31;
+      --theme-tab-text:#e7eefc;
+      --theme-tab-active-bg:#3357d6;
+      --theme-tab-active-text:#ffffff;
+      --theme-tab-border:#2a3a58;
+      --theme-tab-hover-bg:#2f4f93;
+    }
     html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
-    body{background:#0c1526;color:#e7eefc;margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;padding-top:calc(env(safe-area-inset-top,0px) + 8px);touch-action:pan-y pinch-zoom}
-    :root{--app-shell-max:min(2200px, calc(100dvw - 12px));}
+    body{background:var(--theme-bg);color:var(--theme-text);margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;padding-top:calc(env(safe-area-inset-top,0px) + 8px);touch-action:pan-y pinch-zoom}
     .viewWrap{max-width:var(--app-shell-max);width:min(var(--app-shell-max), calc(100% - 12px));margin:0 auto;padding:0 0 14px;box-sizing:border-box}
-    .heroWrap{max-width:var(--app-shell-max) !important;width:min(var(--app-shell-max), calc(100% - 12px)) !important;margin:10px auto 0 !important;padding-top:4px !important;position:relative}
-    #appFrame{width:100% !important;height:1400px;min-height:0;border:1px solid #2a3a58;border-top:0;border-radius:0 0 14px 14px;background:#071021;display:block;box-sizing:border-box}
+    .heroWrap{max-width:var(--app-shell-max) !important;width:min(var(--app-shell-max), calc(100% - 12px)) !important;margin:10px auto -1px !important;padding-top:4px !important;position:relative}
+    #appFrame{width:100% !important;height:1400px;min-height:0;border:1px solid var(--theme-frame-border);border-top:0;border-radius:0 0 14px 14px;background:var(--theme-frame-bg);display:block;box-sizing:border-box}
     #themeToggle{min-width:32px;padding:5px 8px;font-size:12px;line-height:1}
     /* In app-shell mode, let top chrome scroll away (not sticky) to maximize iframe area */
-    .heroRail{position:relative !important; top:auto !important;}
-    .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important;}
-    .heroRailTop{border:1px solid #2a3a58;border-bottom:0;border-radius:14px 14px 0 0;background:#0b1426;padding:6px 10px;box-sizing:border-box}
+    .heroRail{position:relative !important; top:auto !important; border-bottom:0 !important;}
+    .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important; background:var(--theme-bg) !important;}
+    .heroRail::before{content:none !important; display:none !important;}
+    .heroRailTop{border:1px solid var(--theme-rail-border);border-bottom:0;border-radius:14px 14px 0 0;background:var(--theme-rail-bg);padding:6px 10px;box-sizing:border-box}
     .heroTopBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0}
     .heroTopBar .topTabs{margin:0 !important}
     .heroTopBar .statusInline{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
     .heroTopBar .statusInline .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;line-height:1;font-size:12px}
-    .heroTopBar .statusInline button.pill{appearance:none;-webkit-appearance:none;background:transparent;color:inherit;border:1px solid rgba(148,163,184,.45);transition:transform .08s ease,box-shadow .14s ease,filter .14s ease}
-    .heroTopBar .statusInline button.pill:hover{filter:brightness(1.08);box-shadow:0 0 0 1px rgba(125,211,252,.34) inset,0 0 14px rgba(125,211,252,.18)}
+    .heroTopBar .statusInline button.pill{appearance:none;-webkit-appearance:none;background:var(--theme-tab-active-bg);color:var(--theme-tab-active-text);border:1px solid var(--theme-tab-active-bg);transition:transform .08s ease,box-shadow .14s ease,filter .14s ease}
+    .heroTopBar .statusInline button.pill:hover{filter:brightness(1.08);box-shadow:0 0 0 1px var(--theme-pill-glow) inset,0 0 14px rgba(125,211,252,.18)}
     .heroTopBar .statusInline button.pill:active{transform:translateY(1px) scale(.99)}
     .heroTopBar .statusInline button.pill.busy{cursor:progress;opacity:.92}
     .heroTopBar .statusInline .pill .miniSpin{display:none;width:11px;height:11px;border:2px solid rgba(255,255,255,.32);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite}
     .heroTopBar .statusInline button.pill.busy .miniSpin{display:inline-block}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* TEMP DEBUG: force-hide entire hero transport to verify active source */
-    #heroTransport{display:none !important}
     .heroTopBar .statusInline .pill .hint{display:none}
     .heroTopBar .themeBtnWrap{margin-left:auto}
+    .heroTransport .np .progress-fill{background:var(--theme-hero-card-border) !important}
+    .heroRailTop .topTabs a{background:var(--theme-tab-bg) !important;color:var(--theme-tab-text) !important;border-color:var(--theme-tab-border) !important;box-shadow:none !important}
+    .heroRailTop .topTabs a:hover{background:var(--theme-tab-hover-bg) !important}
+    .heroRailTop .topTabs a.active,
+    .heroRailTop .topTabs a[aria-current="page"]{background:var(--theme-tab-active-bg) !important;color:var(--theme-tab-active-text) !important;border-color:var(--theme-tab-border) !important;box-shadow:none !important}
     .heroWrap > header{margin:0 0 4px}
     .heroWrap > header .brand{display:flex !important;align-items:baseline;gap:8px;flex-wrap:nowrap}
     .heroWrap > header h1{margin:0 !important;line-height:1.05;display:inline !important}
     .heroWrap > header .sub{font-size:14px;line-height:1.05;opacity:.9;display:inline !important;white-space:nowrap}
-    .heroQueueCard{margin-top:10px;border:1px solid #2a3a58;border-radius:14px;padding:10px;background:rgba(10,18,34,.45)}
+    .heroQueueCard{margin-top:10px;border:1px solid var(--theme-hero-card-border);border-radius:14px;padding:10px;background:var(--theme-hero-card-bg)}
     .heroQueueHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
     .heroQueueTitle{display:none}
-    .heroQueueWrap{overflow:visible;border:1px solid #2a3a58;border-radius:10px;padding:8px;background:#071021}
+    .heroQueueWrap{overflow:visible;border:1px solid var(--theme-rail-border);border-radius:10px;padding:8px;background:var(--theme-rail-bg)}
     .heroQueueRow{display:flex;gap:8px;align-items:center;padding:6px;border-bottom:1px dashed #233650}
     .heroQueueRow:last-child{border-bottom:none}
     .heroQueueMeta{color:#9fb1d9;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     #heroQueueNextUp .heroQueueMeta{font-size:13px;font-weight:560;line-height:1.2}
     .heroQueueActions{display:flex;gap:4px;margin-left:auto}
-    .heroQueueNextUp{display:none;margin-bottom:8px;border:1px solid #2a3a58;border-radius:10px;padding:8px;background:#071021;align-items:center;gap:8px}
+    .heroQueueNextUp{display:none;margin-bottom:8px;border:1px solid var(--theme-rail-border);border-radius:10px;padding:8px;background:var(--theme-rail-bg);align-items:center;gap:8px}
     .heroQueueNextUp img{width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222}
     .heroQueueBtn,
     .heroQueueActions button{padding:4px 8px;border-radius:7px;border:1px solid #334;background:#0a1222;color:#eef;cursor:pointer;transition:all .12s ease}
@@ -134,19 +156,17 @@
 
     /* Liquid glass pass (hero) */
     .heroWrap{
-      background:linear-gradient(180deg, rgba(15,24,42,.62), rgba(10,18,34,.48)) !important;
-      border:1px solid rgba(173,216,255,.22) !important;
+      background:var(--theme-rail-bg) !important;
+      border:1px solid var(--theme-rail-border) !important;
       box-shadow:
-        0 10px 30px rgba(0,0,0,.30),
-        inset 0 1px 0 rgba(255,255,255,.18),
-        inset 0 -1px 0 rgba(125,211,252,.12) !important;
-      backdrop-filter: blur(18px) saturate(1.18);
-      -webkit-backdrop-filter: blur(18px) saturate(1.18);
+        inset 0 1px 0 rgba(255,255,255,.18) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
     .heroTransport,
     .heroQueueCard{
-      background:linear-gradient(180deg, rgba(18,32,58,.34), rgba(10,20,40,.24)) !important;
-      border:1px solid rgba(191,219,254,.30) !important;
+      background:var(--theme-hero-card-bg) !important;
+      border:1px solid var(--theme-hero-card-border) !important;
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,.20),
         inset 0 -1px 0 rgba(125,211,252,.14),
@@ -175,8 +195,8 @@
       background:linear-gradient(180deg, rgba(255,255,255,.44), rgba(234,221,250,.34)) !important;
       border-color:rgba(138,139,196,.38) !important;
       box-shadow:0 12px 28px rgba(77,54,124,.18), inset 0 1px 0 rgba(255,255,255,.92) !important;
-      backdrop-filter: blur(20px) saturate(1.22) contrast(1.03);
-      -webkit-backdrop-filter: blur(20px) saturate(1.22) contrast(1.03);
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
     body.theme-light .heroTransport,
     body.theme-light .heroQueueCard{
@@ -253,6 +273,7 @@
           <a href="?page=queue-wizard.html" data-page="queue-wizard.html">Queue Wizard</a>
           <a href="?page=radio.html" data-page="radio.html">Radio</a>
           <a href="?page=podcasts.html" id="podcastsNavLink" data-page="podcasts.html">Podcasts</a>
+          <a href="?page=theme.html" data-page="theme.html">Theme</a>
         </nav>
         <div class="statusInline" aria-label="status pills">
           <button class="pill" id="apiPill" type="button" title="Active API endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>API<span class="hint" id="apiHint">loading…</span></button>
@@ -278,13 +299,15 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260224-hero-motion-no-jump"></script>
+  <script src="scripts/hero-transport.js?v=20260224-title-primary-text"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
-      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html']);
+      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','theme.html']);
       const frame = document.getElementById('appFrame');
       const viewWrap = document.getElementById('viewWrap');
+      const shellUrl = new URL(location.href);
+      const NO_IFRAME_MODE = ['1','true','yes','on'].includes(String(shellUrl.searchParams.get('noiframe') || '').trim().toLowerCase());
       const tabs = Array.from(document.querySelectorAll('#appTabs a[data-page]'));
       let frameResizeObserver = null;
       let frameMutationObserver = null;
@@ -309,6 +332,36 @@
         } catch {
           syncFrameHeight();
         }
+      }
+
+      function applyThemeBridgeToFrame(){
+        try {
+          const doc = frame?.contentDocument;
+          if (!doc) return;
+          const cs = getComputedStyle(document.documentElement);
+          const bg = cs.getPropertyValue('--theme-bg').trim() || '#0c1526';
+          const text = cs.getPropertyValue('--theme-text').trim() || '#e7eefc';
+          const railBg = cs.getPropertyValue('--theme-rail-bg').trim() || '#0b1426';
+          const cardBg = cs.getPropertyValue('--theme-hero-card-bg').trim() || 'rgba(10,18,34,.45)';
+          const cardBorder = cs.getPropertyValue('--theme-hero-card-border').trim() || '#2a3a58';
+          const tabBg = cs.getPropertyValue('--theme-tab-bg').trim() || '#0f1a31';
+          const tabText = cs.getPropertyValue('--theme-tab-text').trim() || '#e7eefc';
+          const tabActiveBg = cs.getPropertyValue('--theme-tab-active-bg').trim() || '#3357d6';
+          const tabActiveText = cs.getPropertyValue('--theme-tab-active-text').trim() || '#ffffff';
+          const tabBorder = cs.getPropertyValue('--theme-tab-border').trim() || '#2a3a58';
+          const tabHoverBg = cs.getPropertyValue('--theme-tab-hover-bg').trim() || '#2f4f93';
+          const isThemePage = String(currentShellPage || '') === 'theme.html';
+          let st = doc.getElementById('npThemeBridge');
+          if (!st) { st = doc.createElement('style'); st.id = 'npThemeBridge'; doc.head?.appendChild(st); }
+          st.textContent = `
+            :root{--npb-bg:${bg};--npb-rail-bg:${railBg};--npb-text:${text};--npb-card-bg:${cardBg};--npb-card-border:${cardBorder};--npb-tab-bg:${tabBg};--npb-tab-text:${tabText};--npb-tab-active-bg:${tabActiveBg};--npb-tab-active-text:${tabActiveText};--npb-tab-border:${tabBorder};--npb-tab-hover-bg:${tabHoverBg};}
+            html,body{background:${isThemePage ? 'var(--npb-rail-bg)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
+            .card,.panel,.cfgCard,.section,#results,#queueWrap,.heroQueueWrap,.heroQueueCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
+            .topTabs a{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;box-shadow:none !important;}
+            .topTabs a:hover{background:var(--npb-tab-hover-bg) !important;}
+            .topTabs a.active,.topTabs a[aria-current="page"]{background:var(--npb-tab-active-bg) !important;color:var(--npb-tab-active-text) !important;border-color:var(--npb-tab-border) !important;}
+          `;
+        } catch {}
       }
 
       function attachFrameAutoResizeObservers(){
@@ -431,6 +484,7 @@
           if (doc.documentElement) doc.documentElement.style.background = isLight ? '#8e79b6' : '#0c1526';
           try { win.localStorage.setItem('np-theme', t); } catch {}
           try { win.postMessage({ type: 'np-theme-sync', theme: t }, '*'); } catch {}
+          applyThemeBridgeToFrame();
         } catch {}
       }
 
@@ -474,6 +528,110 @@
       let currentShellPage = getPageFromUrl();
       let lastRadioPresetStations = [];
       const RADIO_QUEUE_PRESETS_KEY = 'nowplaying.radioQueuePresets.v1';
+      const THEME_TOKENS_KEY = 'nowplaying.themeTokens.v1';
+      const THEME_PRESETS_KEY = 'nowplaying.themePresets.v1';
+      const THEME_ACTIVE_PRESET_KEY = 'nowplaying.themeActivePreset.v1';
+      const THEME_DEFAULTS = {
+        '--theme-bg': '#0c1526',
+        '--theme-text': '#e7eefc',
+        '--theme-rail-bg': '#0b1426',
+        '--theme-rail-border': '#2a3a58',
+        '--theme-frame-border': '#2a3a58',
+        '--theme-pill-border': 'rgba(148,163,184,.45)',
+        '--theme-pill-glow': 'rgba(125,211,252,.34)',
+        '--theme-hero-card-bg': 'rgba(10,18,34,.45)',
+        '--theme-hero-card-border': '#2a3a58',
+        '--theme-tab-bg': '#0f1a31',
+        '--theme-tab-text': '#e7eefc',
+        '--theme-tab-active-bg': '#3357d6',
+        '--theme-tab-active-text': '#ffffff',
+        '--theme-tab-border': '#2a3a58',
+        '--theme-tab-hover-bg': '#2f4f93',
+      };
+
+      function applyThemeTokens(tokens = {}) {
+        const root = document.documentElement;
+        const cleaned = { ...(tokens || {}) };
+        delete cleaned['--theme-frame-bg']; // retired token
+        const merged = { ...THEME_DEFAULTS, ...cleaned };
+        Object.entries(merged).forEach(([k, v]) => root.style.setProperty(k, String(v)));
+        root.style.setProperty('--theme-frame-bg', String(merged['--theme-bg'] || '#0c1526'));
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', String(merged['--theme-bg'] || '#0c1526'));
+      }
+
+      function normalizeThemePreset(v){
+        if (!v) return null;
+        if (v.tokens && typeof v.tokens === 'object') return { mode: String(v.mode || 'dark').toLowerCase(), tokens: v.tokens };
+        if (typeof v === 'object') return { mode: 'dark', tokens: v };
+        return null;
+      }
+
+      function stripThemeModeSuffix(name=''){
+        return String(name).replace(/\s*\((dark|light)\)\s*$/i, '').trim();
+      }
+
+      function loadThemeTokens() {
+        try {
+          const raw = localStorage.getItem(THEME_TOKENS_KEY);
+          const parsed = raw ? JSON.parse(raw) : {};
+          applyThemeTokens(parsed || {});
+        } catch {
+          applyThemeTokens({});
+        }
+      }
+
+      function applyThemeModeFromActivePreset(){
+        try {
+          const activeName = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
+          if (!activeName) return false;
+          const presetsRaw = localStorage.getItem(THEME_PRESETS_KEY);
+          const presets = presetsRaw ? JSON.parse(presetsRaw) : {};
+          const active = normalizeThemePreset(presets[activeName]);
+          if (!active) return false;
+          const isLight = String(active.mode || 'dark').toLowerCase() === 'light';
+          document.body.classList.toggle('theme-light', isLight);
+          try { localStorage.setItem('np-theme', isLight ? 'light' : 'dark'); } catch {}
+          return true;
+        } catch { return false; }
+      }
+
+      function tryApplyOppositeThemePreset(){
+        try {
+          const activeName = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
+          if (!activeName) return false;
+          const presetsRaw = localStorage.getItem(THEME_PRESETS_KEY);
+          const presets = presetsRaw ? JSON.parse(presetsRaw) : {};
+          const active = normalizeThemePreset(presets[activeName]);
+          if (!active) return false;
+          const targetMode = active.mode === 'light' ? 'dark' : 'light';
+          const base = stripThemeModeSuffix(activeName);
+          const candidates = [
+            `${base} (${targetMode})`,
+            `${base} (${targetMode.charAt(0).toUpperCase()}${targetMode.slice(1)})`,
+          ];
+          let selectedName = '';
+          for (const n of candidates) { if (presets[n]) { selectedName = n; break; } }
+          if (!selectedName) {
+            for (const [name, val] of Object.entries(presets || {})) {
+              const p = normalizeThemePreset(val);
+              if (!p) continue;
+              if (stripThemeModeSuffix(name) === base && p.mode === targetMode) { selectedName = name; break; }
+            }
+          }
+          if (!selectedName) return false;
+          const selected = normalizeThemePreset(presets[selectedName]);
+          if (!selected?.tokens) return false;
+          localStorage.setItem(THEME_ACTIVE_PRESET_KEY, selectedName);
+          localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(selected.tokens));
+          applyThemeTokens(selected.tokens);
+          document.body.classList.toggle('theme-light', targetMode === 'light');
+          syncThemeToFrame();
+          return true;
+        } catch { return false; }
+      }
+
+      loadThemeTokens();
 
       async function sendHeroPlayback(action, extra = null){
         const host = location.hostname || '10.0.0.233';
@@ -1454,15 +1612,18 @@
         currentShellPage = safe;
         setActive(safe);
         updateSavePresetsButtonVisibility();
-        const src = `${safe}${safe.includes('?') ? '&' : '?'}shellts=${Date.now()}`;
-        frame.setAttribute('src', src);
+        if (!NO_IFRAME_MODE && frame) {
+          const src = `${safe}${safe.includes('?') ? '&' : '?'}shellts=${Date.now()}`;
+          frame.setAttribute('src', src);
+          setTimeout(requestFrameHeightSync, 120);
+          setTimeout(requestFrameHeightSync, 500);
+        }
         if (push) {
           const u = new URL(location.href);
           u.searchParams.set('page', safe);
+          if (NO_IFRAME_MODE) u.searchParams.set('noiframe', '1');
           history.pushState({ page: safe }, '', u);
         }
-        setTimeout(requestFrameHeightSync, 120);
-        setTimeout(requestFrameHeightSync, 500);
       }
 
       tabs.forEach((a) => a.addEventListener('click', (ev) => {
@@ -1506,20 +1667,31 @@
       });
 
       window.addEventListener('popstate', () => navigate(getPageFromUrl(), false));
-      window.addEventListener('resize', () => { syncFrameWidth(); requestFrameHeightSync(); });
-      frame.addEventListener('load', () => {
-        syncFrameWidth();
-        attachFrameAutoResizeObservers();
-        requestFrameHeightSync();
-        syncThemeToFrame();
-        setTimeout(requestFrameHeightSync, 250);
-        setTimeout(requestFrameHeightSync, 900);
-        setTimeout(syncThemeToFrame, 120);
-      });
+      window.addEventListener('resize', () => { syncFrameWidth(); if (!NO_IFRAME_MODE) requestFrameHeightSync(); });
+      if (frame && !NO_IFRAME_MODE) {
+        frame.addEventListener('load', () => {
+          syncFrameWidth();
+          attachFrameAutoResizeObservers();
+          requestFrameHeightSync();
+          syncThemeToFrame();
+          setTimeout(requestFrameHeightSync, 250);
+          setTimeout(requestFrameHeightSync, 900);
+          setTimeout(syncThemeToFrame, 120);
+        });
+      }
 
       document.getElementById('themeToggle')?.addEventListener('click', () => {
-        setTimeout(syncThemeToFrame, 0);
-        setTimeout(syncThemeToFrame, 120);
+        // Prefer paired preset mode switch when available.
+        const paired = tryApplyOppositeThemePreset();
+        // Other theme toggle handlers may still flip class; enforce preset mode after they run.
+        if (paired) {
+          setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 0);
+          setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 120);
+          setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 260);
+        } else {
+          setTimeout(syncThemeToFrame, 0);
+          setTimeout(syncThemeToFrame, 120);
+        }
       });
 
       const hqBtn = document.getElementById('heroQueueToggle');
@@ -2050,9 +2222,31 @@
             const cur = Math.max(0, parseInt(String(frame.style.height || '0'), 10) || 0);
             if (Math.abs(cur - h) > 4) frame.style.height = `${h}px`;
           }
+          return;
+        }
+
+        if (d.type === 'np-theme-updated') {
+          try {
+            const tokens = d.tokens && typeof d.tokens === 'object' ? d.tokens : {};
+            localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(tokens));
+            applyThemeTokens(tokens);
+            syncThemeToFrame();
+          } catch {}
+          return;
         }
       });
 
+      if (NO_IFRAME_MODE) {
+        try {
+          const allFrames = Array.from(document.querySelectorAll('iframe'));
+          allFrames.forEach((fr) => {
+            try { fr.removeAttribute('src'); } catch {}
+            try { fr.removeAttribute('srcdoc'); } catch {}
+            try { fr.style.display = 'none'; } catch {}
+            try { fr.remove(); } catch {}
+          });
+        } catch {}
+      }
       syncFrameWidth();
       navigate(getPageFromUrl(), false);
       syncPills();
@@ -2061,7 +2255,7 @@
       setInterval(() => { if (!document.hidden) syncPills(); }, 30000);
       setInterval(() => { if (!document.hidden) syncHeroQueue(); }, 7000);
       // Fallback safety net; primary sizing is ResizeObserver/MutationObserver based.
-      setInterval(() => { if (!document.hidden) requestFrameHeightSync(); }, 8000);
+      if (!NO_IFRAME_MODE) setInterval(() => { if (!document.hidden) requestFrameHeightSync(); }, 8000);
     })();
   </script>
 </body>
