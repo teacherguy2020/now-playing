@@ -860,6 +860,9 @@
               const img = row.querySelector('img');
               const src = String(img?.getAttribute('src') || '').trim();
               if (!fEnc || !src) return;
+              // Keep only strong/local logo hits; never persist placeholder/fallback sources.
+              if (/^data:image\//i.test(src)) return;
+              if (/icons\.duckduckgo\.com|google\.com\/s2\/favicons/i.test(src)) return;
               let f = '';
               try { f = decodeURIComponent(fEnc); } catch { f = fEnc; }
               if (f) existingIconByFile.set(f, src);
@@ -912,12 +915,13 @@
               : '';
             const stationLogoByDisplay = logoName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoName)}` : '';
             const stationLogoByDisplayAlt = (logoNameAlt && logoNameAlt !== logoName) ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoNameAlt)}` : '';
+            // Prefer file-based lookup so backend can resolve via cfg_radio + recent queue maps.
             const stationLogoByFile = fileRaw ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(fileRaw)}` : '';
             let thumb = '';
             if (isStreamish) {
               // Queue card policy: for stream/radio rows, always use station branding (never album art).
               const cachedIcon = String(existingIconByFile.get(fileRaw) || '').trim();
-              thumb = cachedIcon || stationLogoByDisplay || stationLogoByDisplayAlt || stationLogoByFile || hostFavicon || hostFaviconAlt || '';
+              thumb = cachedIcon || stationLogoByFile || stationLogoByDisplay || stationLogoByDisplayAlt || hostFavicon || hostFaviconAlt || '';
             } else {
               thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
               if (!thumb && nowIsAirplay && fallbackNowArt) thumb = fallbackNowArt;
@@ -927,7 +931,7 @@
               }
             }
             const fallbackIcon = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="10" fill="#0a1222" stroke="#3b4f72"/><circle cx="32" cy="32" r="6" fill="#8fb3ff"/><path d="M32 26V14M32 50V38M26 32H14M50 32H38" stroke="#8fb3ff" stroke-width="4" stroke-linecap="round"/></svg>')}`;
-            const fallbackJs = `if(this.dataset.step!=='1' && '${stationLogoByDisplay}') { this.dataset.step='1'; this.src='${stationLogoByDisplay}'; return; } if(this.dataset.step!=='2' && '${stationLogoByDisplayAlt}') { this.dataset.step='2'; this.src='${stationLogoByDisplayAlt}'; return; } if(this.dataset.step!=='3' && '${stationLogoByFile}') { this.dataset.step='3'; this.src='${stationLogoByFile}'; return; } if(this.dataset.step!=='4' && '${hostFavicon}') { this.dataset.step='4'; this.src='${hostFavicon}'; return; } if(this.dataset.step!=='5' && '${hostFaviconAlt}') { this.dataset.step='5'; this.src='${hostFaviconAlt}'; return; } this.src='${fallbackIcon}';`;
+            const fallbackJs = `if(this.dataset.step!=='1' && '${stationLogoByFile}') { this.dataset.step='1'; this.src='${stationLogoByFile}'; return; } if(this.dataset.step!=='2' && '${stationLogoByDisplay}') { this.dataset.step='2'; this.src='${stationLogoByDisplay}'; return; } if(this.dataset.step!=='3' && '${stationLogoByDisplayAlt}') { this.dataset.step='3'; this.src='${stationLogoByDisplayAlt}'; return; } if(this.dataset.step!=='4' && '${hostFavicon}') { this.dataset.step='4'; this.src='${hostFavicon}'; return; } if(this.dataset.step!=='5' && '${hostFaviconAlt}') { this.dataset.step='5'; this.src='${hostFaviconAlt}'; return; } this.src='${fallbackIcon}';`;
             const thumbHtml = thumb
               ? `<img loading="lazy" decoding="async" fetchpriority="low" src="${thumb}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
               : `<img loading="lazy" decoding="async" fetchpriority="low" src="${stationLogoByDisplay || stationLogoByDisplayAlt || stationLogoByFile || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
