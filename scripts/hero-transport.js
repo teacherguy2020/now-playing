@@ -490,6 +490,7 @@
     try { return String(localStorage.getItem(HERO_FAV_DRAWER_OPEN_KEY) || '') === '1'; } catch { return false; }
   })();
   let heroDrawerLastSidePx = 168;
+  let heroDrawerAppliedSidePx = 0;
   let heroDrawerSizedReady = false;
   let heroDrawerRevealTimer = null;
   const HERO_FAV_GRID_KEY = 'nowplaying.heroFavGridHtml.v1';
@@ -1044,14 +1045,20 @@
           drawer.style.setProperty('width', `${drawerW}px`, 'important');
           drawer.style.setProperty('height', '100%', 'important');
 
-          // Keep vertical anchor stable and reveal only after layout settles.
-          heroDrawerSizedReady = false;
-          syncDrawerOpenState();
-          try { if (heroDrawerRevealTimer) clearTimeout(heroDrawerRevealTimer); } catch {}
-          heroDrawerRevealTimer = setTimeout(() => {
-            heroDrawerSizedReady = true;
+          // Avoid periodic drawer flicker: only re-hide/reveal when size actually changes.
+          const sideChanged = Math.abs(Number(heroDrawerAppliedSidePx || 0) - Number(side || 0)) > 2;
+          if (!heroDrawerSizedReady || sideChanged) {
+            heroDrawerSizedReady = false;
             syncDrawerOpenState();
-          }, 220);
+            try { if (heroDrawerRevealTimer) clearTimeout(heroDrawerRevealTimer); } catch {}
+            heroDrawerRevealTimer = setTimeout(() => {
+              heroDrawerAppliedSidePx = side;
+              heroDrawerSizedReady = true;
+              syncDrawerOpenState();
+            }, 220);
+          } else {
+            heroDrawerAppliedSidePx = side;
+          }
 
           const grid = drawer.querySelector('.grid');
           if (grid) {
@@ -1206,15 +1213,14 @@
         lastNp = cloneObj(np);
         const seq = ++refreshSeq;
 
-        const appleUrl = String(np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
+        const appleUrl = String(np?.radioItunesUrl || np?.radioTrackUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
         const motionEnabled = motionArtEnabled();
-        const isRadioOrStream = !!np?.isRadio || !!np?.isStream;
+        const head = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
+        const isRadioOrStream = !!np?.isRadio || !!np?.isStream || !!head?.isStream;
         const artist = String(np?.artist || '').trim();
         const album = String(np?.album || '').trim();
         const radioTitle = String(np?.title || np?.radioTitle || head?.title || '').trim();
         const motionIdentity = `${isRadioOrStream ? 'r' : 'l'}|${appleUrl || ''}|${artist}|${album}|${isRadioOrStream ? radioTitle : ''}`;
-
-        const head = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
         const currentFile = String(np?.file || head?.file || '').trim();
         const currentSongId = String(np?.songid || head?.songid || '').trim();
         if (currentFile) lastKnownNowFile = currentFile;

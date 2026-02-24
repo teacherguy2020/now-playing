@@ -278,7 +278,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260224-title-ellipsis-one-line"></script>
+  <script src="scripts/hero-transport.js?v=20260224-drawer-no-periodic-refresh"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -454,6 +454,8 @@
       let collapsedQueueLastLiteSyncAt = 0;
       let radioStationByKey = new Map();
       let radioStationByHost = new Map();
+      let radioLogoByKey = new Map();
+      let radioLogoByHost = new Map();
       let radioHostAmbiguous = new Set();
       let radioHostMapTs = 0;
       let lastHeroQueueSignature = '';
@@ -503,7 +505,7 @@
       async function loadRadioHostNameMap(base, headers = {}) {
         const now = Date.now();
         if (radioStationByKey.size && (now - radioHostMapTs) < (5 * 60 * 1000)) {
-          return { byKey: radioStationByKey, byHost: radioStationByHost, ambHosts: radioHostAmbiguous };
+          return { byKey: radioStationByKey, byHost: radioStationByHost, logoByKey: radioLogoByKey, logoByHost: radioLogoByHost, ambHosts: radioHostAmbiguous };
         }
         try {
           const r = await fetch(`${base}/config/queue-wizard/radio-preview`, {
@@ -512,30 +514,40 @@
             body: JSON.stringify({ genres: [], favoritesOnly: false, hqOnly: false, favoriteStations: [], maxStations: 1000 }),
           });
           const j = await r.json().catch(() => ({}));
-          if (!r.ok || !j?.ok) return { byKey: radioStationByKey, byHost: radioStationByHost, ambHosts: radioHostAmbiguous };
+          if (!r.ok || !j?.ok) return { byKey: radioStationByKey, byHost: radioStationByHost, logoByKey: radioLogoByKey, logoByHost: radioLogoByHost, ambHosts: radioHostAmbiguous };
           const byKey = new Map();
           const byHost = new Map();
+          const logoByKey = new Map();
+          const logoByHost = new Map();
           const ambHosts = new Set();
           for (const t of (Array.isArray(j.tracks) ? j.tracks : [])) {
             const file = String(t?.file || '').trim();
             const st = String(t?.stationName || t?.artist || '').trim();
+            const logoRaw = String(t?.stationLogoUrl || t?.thumbUrl || t?.artUrl || '').trim();
+            const logo = logoRaw ? (logoRaw.startsWith('http') ? logoRaw : `${base}${logoRaw}`) : '';
             if (!file || !st) continue;
             const k = streamKey(file);
-            if (k) byKey.set(k, st);
+            if (k) {
+              byKey.set(k, st);
+              if (logo) logoByKey.set(k, logo);
+            }
             try {
               const h = String(new URL(file).hostname || '').toLowerCase();
               if (h) {
                 if (!byHost.has(h)) byHost.set(h, st);
                 else if (byHost.get(h) !== st) ambHosts.add(h);
+                if (logo && !logoByHost.has(h)) logoByHost.set(h, logo);
               }
             } catch {}
           }
           radioStationByKey = byKey;
           radioStationByHost = byHost;
+          radioLogoByKey = logoByKey;
+          radioLogoByHost = logoByHost;
           radioHostAmbiguous = ambHosts;
           radioHostMapTs = now;
         } catch {}
-        return { byKey: radioStationByKey, byHost: radioStationByHost, ambHosts: radioHostAmbiguous };
+        return { byKey: radioStationByKey, byHost: radioStationByHost, logoByKey: radioLogoByKey, logoByHost: radioLogoByHost, ambHosts: radioHostAmbiguous };
       }
 
       function updateSavePresetsButtonVisibility(){
@@ -904,8 +916,10 @@
             }
             const derivedKey = streamKey(fileRaw);
             const mappedByKey = (derivedKey && radioMap?.byKey && typeof radioMap.byKey.get === 'function') ? String(radioMap.byKey.get(derivedKey) || '').trim() : '';
+            const mappedLogoByKey = (derivedKey && radioMap?.logoByKey && typeof radioMap.logoByKey.get === 'function') ? String(radioMap.logoByKey.get(derivedKey) || '').trim() : '';
             const hostAmb = !!(derivedHost && radioMap?.ambHosts && typeof radioMap.ambHosts.has === 'function' && radioMap.ambHosts.has(derivedHost));
             const mappedByHost = (derivedHost && radioMap?.byHost && typeof radioMap.byHost.get === 'function') ? String(radioMap.byHost.get(derivedHost) || '').trim() : '';
+            const mappedLogoByHost = (derivedHost && radioMap?.logoByHost && typeof radioMap.logoByHost.get === 'function') ? String(radioMap.logoByHost.get(derivedHost) || '').trim() : '';
             const stationLooksHost = !!(stationName && /\./.test(stationName) && !/\s/.test(stationName));
             const displayStation = (!stationLooksHost ? stationName : '') || mappedByKey || mappedByHost || stationName || (head ? fallbackStation : '') || derivedStation;
             if (isStreamish && fileRaw) {
@@ -932,13 +946,17 @@
               : '';
             const stationLogoByDisplay = logoName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoName)}` : '';
             const stationLogoByDisplayAlt = (logoNameAlt && logoNameAlt !== logoName) ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoNameAlt)}` : '';
-            // Prefer file-based lookup so backend can resolve via cfg_radio + recent queue maps.
+            // Prefer direct moOde logo URLs first; fallback to backend lookup only when needed.
             const stationLogoByFile = fileRaw ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(fileRaw)}` : '';
+            const npDirectLogo = (fileRaw && String(npQueueHead?.file || '').trim() === fileRaw)
+              ? String(npQueueHead?.stationLogoUrl || npQueueHead?.altArtUrl || '').trim()
+              : '';
+            const directLogo = npDirectLogo || mappedLogoByKey || mappedLogoByHost;
             let thumb = '';
             if (isStreamish) {
               // Queue card policy: for stream/radio rows, always use station branding (never album art).
               const cachedIcon = String(existingIconByFile.get(fileRaw) || '').trim();
-              thumb = cachedIcon || stationLogoByFile || stationLogoByDisplay || stationLogoByDisplayAlt || hostFavicon || hostFaviconAlt || '';
+              thumb = cachedIcon || directLogo || stationLogoByFile || stationLogoByDisplay || stationLogoByDisplayAlt || hostFavicon || hostFaviconAlt || '';
             } else {
               thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
               if (!thumb && nowIsAirplay && fallbackNowArt) thumb = fallbackNowArt;
@@ -948,10 +966,10 @@
               }
             }
             const fallbackIcon = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="10" fill="#0a1222" stroke="#3b4f72"/><circle cx="32" cy="32" r="6" fill="#8fb3ff"/><path d="M32 26V14M32 50V38M26 32H14M50 32H38" stroke="#8fb3ff" stroke-width="4" stroke-linecap="round"/></svg>')}`;
-            const fallbackJs = `if(this.dataset.step!=='1' && '${stationLogoByFile}') { this.dataset.step='1'; this.src='${stationLogoByFile}'; return; } if(this.dataset.step!=='2' && '${stationLogoByDisplay}') { this.dataset.step='2'; this.src='${stationLogoByDisplay}'; return; } if(this.dataset.step!=='3' && '${stationLogoByDisplayAlt}') { this.dataset.step='3'; this.src='${stationLogoByDisplayAlt}'; return; } if(this.dataset.step!=='4' && '${hostFavicon}') { this.dataset.step='4'; this.src='${hostFavicon}'; return; } if(this.dataset.step!=='5' && '${hostFaviconAlt}') { this.dataset.step='5'; this.src='${hostFaviconAlt}'; return; } this.src='${fallbackIcon}';`;
+            const fallbackJs = `if(this.dataset.step!=='1' && '${directLogo}') { this.dataset.step='1'; this.src='${directLogo}'; return; } if(this.dataset.step!=='2' && '${stationLogoByFile}') { this.dataset.step='2'; this.src='${stationLogoByFile}'; return; } if(this.dataset.step!=='3' && '${stationLogoByDisplay}') { this.dataset.step='3'; this.src='${stationLogoByDisplay}'; return; } if(this.dataset.step!=='4' && '${stationLogoByDisplayAlt}') { this.dataset.step='4'; this.src='${stationLogoByDisplayAlt}'; return; } if(this.dataset.step!=='5' && '${hostFavicon}') { this.dataset.step='5'; this.src='${hostFavicon}'; return; } if(this.dataset.step!=='6' && '${hostFaviconAlt}') { this.dataset.step='6'; this.src='${hostFaviconAlt}'; return; } this.src='${fallbackIcon}';`;
             const thumbHtml = thumb
               ? `<img loading="lazy" decoding="async" fetchpriority="low" src="${thumb}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
-              : `<img loading="lazy" decoding="async" fetchpriority="low" src="${stationLogoByDisplay || stationLogoByDisplayAlt || stationLogoByFile || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
+              : `<img loading="lazy" decoding="async" fetchpriority="low" src="${directLogo || stationLogoByFile || stationLogoByDisplay || stationLogoByDisplayAlt || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
             const actions = `<div class="heroQueueActions"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
             const albumTxt = String(x?.album || '').trim();
             const isPodcastItem = !!x?.isPodcast || /\/(podcasts?|podcast)\//i.test(fileRaw);

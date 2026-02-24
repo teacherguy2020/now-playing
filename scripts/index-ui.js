@@ -2792,7 +2792,9 @@ if (titleEl) {
 
   const appleUrl = String(data.radioItunesUrl || data.itunesUrl || data.radioAppleMusicUrl || '').trim();
   setAlbumArtAppleLink((isRadio && appleUrl) ? appleUrl : '');
-  const trackKey = String(data.file || data.songid || '').trim();
+  const trackKey = (isRadio)
+    ? `radio|${String(appleUrl || '').trim().toLowerCase()}|${String(data.artist || '').trim().toLowerCase()}|${String(data.album || '').trim().toLowerCase()}|${String(data.title || data.radioTitle || '').trim().toLowerCase()}`
+    : String(data.file || data.songid || '').trim();
   const motionToken = ++motionReqToken;
 
   const trackChangedForMotion = !!trackKey && (trackKey !== lastMotionAppliedTrackKey);

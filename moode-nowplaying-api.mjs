@@ -2372,6 +2372,14 @@ async function selectNotificationTrack() {
 
     const cleaned = sanitizeNotifyMeta(song?.artist, song?.title);
     const isStreamLike = /^https?:\/\//i.test(file);
+
+    const lnp = (lastNowPlayingOk && typeof lastNowPlayingOk === 'object') ? lastNowPlayingOk : null;
+    const lnpFile = String(lnp?.file || '').trim();
+    const sameAsLastNp = !!(file && lnpFile && file === lnpFile);
+    const lnpStationLogo = sameAsLastNp
+      ? String(lnp?.stationLogoUrl || lnp?.altArtUrl || '').trim()
+      : '';
+
     return {
       source: 'now-playing',
       file,
@@ -2380,7 +2388,7 @@ async function selectNotificationTrack() {
       album: decodeHtmlEntities(String(song?.album || '').trim()),
       artUrl: buildArtUrlForFile(file),
       stationLogoUrl: isStreamLike
-        ? `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}`
+        ? (lnpStationLogo || `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}`)
         : '',
       key: `np|${file}|${cleaned.title}|${cleaned.artist}`,
     };
@@ -2405,7 +2413,24 @@ async function sendPushoverTrackNotification(track) {
   form.append('message', bodyLine);
 
   let attached = false;
-  if (track.artUrl) {
+  const isStreamLike = /^https?:\/\//i.test(String(track.file || ''));
+
+  // For radio/streams prefer station logo first (avoids generic moOde default art races).
+  if (isStreamLike && track.stationLogoUrl) {
+    try {
+      const r = await fetch(track.stationLogoUrl, { cache: 'no-store' });
+      if (r.ok) {
+        const ct = r.headers.get('content-type') || 'image/jpeg';
+        const ext = /png/i.test(ct) ? 'png' : 'jpg';
+        const ab = await r.arrayBuffer();
+        const blob = new Blob([ab], { type: ct });
+        form.append('attachment', blob, `station.${ext}`);
+        attached = true;
+      }
+    } catch (e) {}
+  }
+
+  if (!attached && track.artUrl) {
     try {
       const r = await fetch(track.artUrl, { cache: 'no-store' });
       if (r.ok) {
@@ -2419,7 +2444,7 @@ async function sendPushoverTrackNotification(track) {
     } catch (e) {}
   }
 
-  // Radio fallback: if track art is unavailable in time, attach local station logo.
+  // Non-stream fallback: if track art unavailable, use station logo when present.
   if (!attached && track.stationLogoUrl) {
     try {
       const r = await fetch(track.stationLogoUrl, { cache: 'no-store' });
