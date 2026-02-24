@@ -725,13 +725,26 @@
   width:100% !important;
   max-width:none !important;
   padding:0 !important;
+  position:relative !important;
+  overflow:hidden !important;
+  aspect-ratio:1/1 !important;
 }
 #heroTransport.heroGridMode .heroArt img,
-#heroTransport.heroGridMode .heroArt .heroArtPh,
-#heroTransport.heroGridMode .heroArt .heroArtVid{
+#heroTransport.heroGridMode .heroArt .heroArtPh{
+  display:block !important;
   width:100% !important;
   max-width:none !important;
-  height:auto !important;
+  height:100% !important;
+  aspect-ratio:1/1 !important;
+}
+#heroTransport.heroGridMode .heroArt .heroArtVid{
+  position:absolute !important;
+  inset:0 !important;
+  display:block !important;
+  width:100% !important;
+  height:100% !important;
+  max-width:none !important;
+  object-fit:cover !important;
   aspect-ratio:1/1 !important;
 }
 #heroTransport.heroGridMode .heroMain{
@@ -1310,7 +1323,7 @@
 
         const resolved = shouldTryRemoteMotion
           ? await resolveMotionMp4(appleUrl).catch(() => '')
-          : await resolveLocalMotionMp4(artist, album, key).catch(() => '');
+          : await resolveLocalMotionMp4(artist, album, currentKey()).catch(() => '');
 
         if (seq !== refreshSeq) {
           heroMotionLog('discard stale motion resolve', { trackKey: effectiveTrackKey });

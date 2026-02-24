@@ -546,6 +546,25 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.post('/config/moode/reboot', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const moodeBaseRaw = String(cfg?.moode?.baseUrl || '').trim();
+      const mpdHost = String(cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '10.0.0.254').trim();
+      let moodeBase = moodeBaseRaw || `http://${mpdHost}`;
+      if (!/^https?:\/\//i.test(moodeBase)) moodeBase = `http://${moodeBase}`;
+      const url = `${moodeBase.replace(/\/$/, '')}/command/?cmd=reboot`;
+
+      const r = await fetch(url, { method: 'GET' });
+      const txt = await r.text().catch(() => '');
+      if (!r.ok) return res.status(502).json({ ok: false, error: `moode reboot failed (${r.status})`, detail: txt.slice(0, 300), url });
+      return res.json({ ok: true, url, response: String(txt || '').slice(0, 300) });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/restart-services', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

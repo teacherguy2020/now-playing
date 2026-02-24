@@ -259,7 +259,7 @@
           <button class="pill" id="webPill" type="button" title="Active web UI endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></button>
           <button class="pill" id="alexaPill" type="button" title="Alexa public domain health" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Alexa<span class="hint" id="alexaHint">unknown</span></button>
           <button class="pill" id="peppyPill" type="button" title="moOde display mode" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Peppy<span class="hint" id="peppyHint">off</span></button>
-          <div class="pill" id="moodePill" title="moOde host verification"><span class="dot" aria-hidden="true"></span>moOde<span class="hint" id="moodeHint">unknown</span></div>
+          <button class="pill" id="moodePill" type="button" title="Restart moOde" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>moOde<span class="hint" id="moodeHint">unknown</span></button>
           <button class="pill" id="notifyPill" type="button" title="Pushover track notifications" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="notifyLabel">Notify</span><span class="hint" id="notifyHint">off</span></button>
           <button class="pill" id="scrobblePill" type="button" title="mpdscribble scrobble service" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="scrobbleLabel">Scrobble</span><span class="hint" id="scrobbleHint">off</span></button>
         </div>
@@ -278,7 +278,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260224-drawer-no-periodic-refresh"></script>
+  <script src="scripts/hero-transport.js?v=20260224-hero-motion-no-jump"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -1046,6 +1046,13 @@
         pill.disabled = !!on;
       }
 
+      function setMoodeBusy(on){
+        const pill = document.getElementById('moodePill');
+        if (!pill) return;
+        pill.classList.toggle('busy', !!on);
+        pill.disabled = !!on;
+      }
+
       function setPeppyBusy(on){
         const pill = document.getElementById('peppyPill');
         if (!pill) return;
@@ -1285,6 +1292,36 @@
         }
       }
 
+      async function restartMoodeFromPill(){
+        const ok = window.confirm('Restart moOde now?');
+        if (!ok) return;
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        setMoodeBusy(true);
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/reboot`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({}),
+          }, 12000);
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          setPillState('moodePill','warn');
+          const hint = document.getElementById('moodeHint');
+          if (hint) hint.textContent = 'restarting…';
+        } catch (e) {
+          console.warn('moode restart failed', e?.message || e);
+          setPillState('moodePill','bad');
+        } finally {
+          setMoodeBusy(false);
+          setTimeout(() => { syncPills().catch(() => {}); }, 4000);
+        }
+      }
+
       async function restartWebFromPill(){
         const ok = window.confirm('Restart Web?');
         if (!ok) return;
@@ -1446,6 +1483,11 @@
       document.getElementById('alexaPill')?.addEventListener('click', (ev) => {
         ev.preventDefault();
         toggleAlexaPause();
+      });
+
+      document.getElementById('moodePill')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        restartMoodeFromPill();
       });
 
       document.getElementById('peppyPill')?.addEventListener('click', (ev) => {
