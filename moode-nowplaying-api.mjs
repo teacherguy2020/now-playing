@@ -2320,6 +2320,8 @@ const TRACK_NOTIFY_ALEXA_MAX_AGE_MS_SAFE = Math.max(30000, Number(TRACK_NOTIFY_A
 
 let _lastTrackNotifyKey = '';
 let _lastTrackNotifyAt = 0;
+let _trackNotifyBusy = false;
+const TRACK_NOTIFY_RADIO_ENRICH_WAIT_MS = 1800;
 
 function buildArtUrlForFile(file) {
   const f = String(file || '').trim();
@@ -2404,15 +2406,28 @@ async function sendPushoverTrackNotification(track) {
 async function trackNotificationTick() {
   if (!TRACK_NOTIFY_ENABLED) return;
   if (!PUSHOVER_TOKEN || !PUSHOVER_USER_KEY) return;
+  if (_trackNotifyBusy) return;
 
-  const track = await selectNotificationTrack();
-  if (!track || !track.key) return;
-
-  const now = Date.now();
-  // Notify once per track key change (no periodic repeats on same track).
-  if (track.key === _lastTrackNotifyKey) return;
-
+  _trackNotifyBusy = true;
   try {
+    let track = await selectNotificationTrack();
+    if (!track || !track.key) return;
+
+    const now = Date.now();
+    // Notify once per track key change (no periodic repeats on same track).
+    if (track.key === _lastTrackNotifyKey) return;
+
+    // Radio/stream enrichment lag guard: allow iTunes/artwork resolution to settle.
+    const isStreamLike = /^https?:\/\//i.test(String(track.file || ''));
+    if (isStreamLike) {
+      await sleep(TRACK_NOTIFY_RADIO_ENRICH_WAIT_MS);
+      const refreshed = await selectNotificationTrack();
+      if (!refreshed || !refreshed.key) return;
+      // If track changed during wait, skip this cycle and let next tick handle it.
+      if (refreshed.key !== track.key) return;
+      track = refreshed;
+    }
+
     const ok = await sendPushoverTrackNotification(track);
     if (ok) {
       _lastTrackNotifyKey = track.key;
@@ -2421,6 +2436,8 @@ async function trackNotificationTick() {
     }
   } catch (e) {
     log.debug('[notify] failed', e?.message || String(e));
+  } finally {
+    _trackNotifyBusy = false;
   }
 }
 
