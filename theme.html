@@ -18,6 +18,11 @@
     .colorNative{position:absolute;inset:0;opacity:0;pointer-events:auto;width:100%;height:100%;cursor:pointer}
     input[type="text"]{flex:1;background:#0f1a31;color:#e7eefc;border:1px solid #334;border-radius:8px;padding:6px 8px}
     .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .actionPanel{margin-top:10px;display:grid;gap:8px;padding:10px;border:1px solid var(--editor-border);border-radius:12px;background:color-mix(in oklab, var(--editor-bg) 82%, #000 18%)}
+    .actionRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .actionLabel{font-size:11px;letter-spacing:.04em;text-transform:uppercase;opacity:.78}
+    .actionRow > button{min-height:36px}
+    #presetSelect{min-height:36px;min-width:280px}
     button{padding:8px 10px;border-radius:9px;border:1px solid var(--editor-border);background:var(--editor-token-bg);color:var(--editor-input-text);cursor:pointer}
     button.primary{border-color:var(--editor-border);background:var(--editor-token-bg);color:var(--editor-input-text)}
     .muted{opacity:.8;font-size:12px}
@@ -72,18 +77,26 @@
       <h3 style="margin:0 0 6px">Theme</h3>
       <div class="muted">Edit core shell colors. Changes apply live in app shell.</div>
       <div id="pickerCardsWrap"><div id="tokenGrid" class="grid"></div></div>
-      <div class="actions" style="margin-bottom:6px">
-        <select id="presetSelect" style="min-width:220px;padding:7px 8px"></select>
-        <button id="loadPresetBtn" type="button">Load preset</button>
-        <button id="savePresetBtn" type="button">Save as preset</button>
-        <button id="deletePresetBtn" type="button">Delete preset</button>
-      </div>
-      <div class="actions">
-        <button id="applyBtn" class="primary" type="button">Apply</button>
-        <button id="saveBtn" type="button">Save</button>
-        <button id="exportBtn" type="button">Export theme</button>
-        <button id="importBtn" type="button">Import theme</button>
-        <button id="resetBtn" type="button">Reset defaults</button>
+
+      <div class="actionPanel">
+        <div class="actionLabel">Preset</div>
+        <div class="actionRow">
+          <select id="presetSelect" style="padding:7px 8px"></select>
+          <button id="savePresetBtn" type="button">Save as preset</button>
+          <button id="deletePresetBtn" type="button">Delete preset</button>
+        </div>
+
+        <div class="actionLabel">Theme I/O</div>
+        <div class="actionRow">
+          <button id="importBtn" type="button">Import theme</button>
+          <button id="exportBtn" type="button">Export theme</button>
+        </div>
+
+        <div class="actionLabel">State</div>
+        <div class="actionRow">
+          <button id="saveBtn" type="button">Save</button>
+          <button id="resetBtn" type="button">Reset to Slate Medium</button>
+        </div>
       </div>
       <div id="statusMsg" class="status"></div>
     </div>
@@ -180,6 +193,7 @@
 
 
   const STARTER_PRESETS = {
+    'Slate Medium': { tokens: { '--theme-bg':'#121820','--theme-text':'#e8edf4','--theme-text-secondary':'#a5b0bf','--theme-rail-bg':'#1d2632','--theme-frame-fill':'#17202b','--theme-rail-border':'#5f6e82','--theme-tab-bg':'#2a3a4d','--theme-tab-text':'#e7eefc','--theme-tab-border':'#7b8ea8','--theme-tab-hover-bg':'#3b516a','--theme-tab-active-bg':'#4a6280','--theme-tab-active-text':'#ffffff','--theme-hero-card-bg':'#243244','--theme-hero-card-border':'#7b8ea8','--theme-picker-card-bg':'#314257','--theme-pill-border':'#f2c14e','--theme-pill-glow':'#35b36a','--theme-card-secondary-fill':'#3a4c62','--theme-progress-fill':'#8ea6c7','--theme-frame-border':'#5f6e82' } },
     'Chill Blue': { tokens: { '--theme-bg':'#0b141d','--theme-text':'#e7f0fb','--theme-text-secondary':'#9fb6cf','--theme-rail-bg':'#142434','--theme-frame-fill':'#10202f','--theme-rail-border':'#4f6f90','--theme-tab-bg':'#1f3a57','--theme-tab-text':'#e9f3ff','--theme-tab-border':'#7fa5ce','--theme-tab-hover-bg':'#2d4f76','--theme-tab-active-bg':'#3f6898','--theme-tab-active-text':'#ffffff','--theme-hero-card-bg':'#1a3149','--theme-hero-card-border':'#7fa5ce','--theme-picker-card-bg':'#274864','--theme-pill-border':'#ffd166','--theme-pill-glow':'#37a86a','--theme-card-secondary-fill':'#345a7d','--theme-progress-fill':'#98bce4','--theme-frame-border':'#4f6f90' } },
     'Monotone Gray': { tokens: { '--theme-bg':'#121212','--theme-text':'#ededed','--theme-text-secondary':'#b3b3b3','--theme-rail-bg':'#1c1c1c','--theme-frame-fill':'#181818','--theme-rail-border':'#5e5e5e','--theme-tab-bg':'#2b2b2b','--theme-tab-text':'#efefef','--theme-tab-border':'#8a8a8a','--theme-tab-hover-bg':'#393939','--theme-tab-active-bg':'#4a4a4a','--theme-tab-active-text':'#ffffff','--theme-hero-card-bg':'#232323','--theme-hero-card-border':'#8a8a8a','--theme-picker-card-bg':'#343434','--theme-pill-border':'#c9c9c9','--theme-pill-glow':'#7f7f7f','--theme-card-secondary-fill':'#3f3f3f','--theme-progress-fill':'#a0a0a0','--theme-frame-border':'#5e5e5e' } },
     'Warm Parchment': { tokens: { '--theme-bg':'#f3ece2','--theme-text':'#2f2a24','--theme-text-secondary':'#6e6458','--theme-rail-bg':'#e8dccb','--theme-frame-fill':'#efe5d7','--theme-rail-border':'#b8a893','--theme-tab-bg':'#d9c8b2','--theme-tab-text':'#332c24','--theme-tab-border':'#a89278','--theme-tab-hover-bg':'#ceb99f','--theme-tab-active-bg':'#8d7358','--theme-tab-active-text':'#fffaf4','--theme-hero-card-bg':'#e1d2be','--theme-hero-card-border':'#a89278','--theme-picker-card-bg':'#cbb79e','--theme-pill-border':'#b8860b','--theme-pill-glow':'#3f8f4e','--theme-card-secondary-fill':'#d2c1aa','--theme-progress-fill':'#9f876a','--theme-frame-border':'#b8a893' } },
@@ -372,9 +386,9 @@
     }
   }
 
-  document.getElementById('loadPresetBtn')?.addEventListener('click', ()=>{
+  presetSelect?.addEventListener('change', ()=>{
     const name = String(presetSelect?.value || '').trim();
-    if (!name) return flash('Pick a preset');
+    if (!name) return;
     const presets = loadPresets();
     const p = normalizePreset(presets[name]);
     if (!p) return flash('Preset missing');
@@ -408,7 +422,6 @@
     flash(`Deleted: ${name}`);
   });
 
-  document.getElementById('applyBtn').addEventListener('click', ()=>{ push(); flash('Applied'); });
   document.getElementById('saveBtn').addEventListener('click', ()=>{
     try{ localStorage.setItem(KEY, JSON.stringify(withLinkedTokens(state))); }catch{}
     syncPickerCardBgVar();
@@ -488,12 +501,14 @@
   });
 
   document.getElementById('resetBtn').addEventListener('click', ()=>{
-    state={...defaults};
+    const slate = normalizePreset(loadPresets()['Slate Medium']);
+    state = { ...defaults, ...(slate?.tokens || defaults) };
     try{ localStorage.setItem(KEY, JSON.stringify(withLinkedTokens(state))); }catch{}
-    try{ localStorage.removeItem(ACTIVE_KEY); }catch{}
+    try{ localStorage.setItem(ACTIVE_KEY, 'Slate Medium'); }catch{}
     render();
+    renderPresetOptions('Slate Medium');
     push();
-    flash('Reset to defaults');
+    flash('Loaded default: Slate Medium');
   });
 
   window.addEventListener('message', (ev) => {

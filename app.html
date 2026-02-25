@@ -77,10 +77,14 @@
     .heroRailTop .topTabs a:hover{background:var(--theme-tab-hover-bg) !important}
     .heroRailTop .topTabs a.active,
     .heroRailTop .topTabs a[aria-current="page"]{background:var(--theme-tab-active-bg) !important;color:var(--theme-tab-active-text) !important;border-color:var(--theme-tab-border) !important;box-shadow:none !important}
-    .heroWrap > header{margin:0 0 4px}
+    .heroWrap > header{margin:0 0 4px;position:relative}
     .heroWrap > header .brand{display:flex !important;align-items:baseline;gap:8px;flex-wrap:nowrap}
     .heroWrap > header h1{margin:0 !important;line-height:1.05;display:inline !important}
     .heroWrap > header .sub{font-size:14px;line-height:1.05;opacity:.9;display:inline !important;white-space:nowrap}
+    .quickThemeWrap{position:absolute;right:4px;top:-2px;z-index:6}
+    .quickThemeSelect{min-width:180px;max-width:260px;padding:5px 9px;border-radius:9px;border:1px solid var(--theme-tab-border);background:var(--theme-tab-bg);color:var(--theme-tab-text);font-size:12px;opacity:.03;transition:opacity .16s ease,filter .14s ease}
+    .heroWrap:hover .quickThemeSelect,.quickThemeSelect:focus{opacity:.82;filter:brightness(1.04)}
+    @media (hover:none){.quickThemeSelect{opacity:.18}}
     .heroQueueCard{margin-top:10px;border:1px solid var(--theme-hero-card-border);border-radius:14px;padding:10px;background:var(--theme-hero-card-bg)}
     .heroQueueHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
     .heroQueueTitle{display:none}
@@ -255,6 +259,11 @@
       <header>
         <div class="brand" style="display:block;">
           <h1 style="margin:0;line-height:1.05;white-space:nowrap;font-size:18px;font-weight:620;letter-spacing:-0.012em;">Now Playing <span style="font-size:13px;font-weight:520;opacity:.86;letter-spacing:0;">moOde enhancement dashboard</span></h1>
+        </div>
+        <div class="quickThemeWrap">
+          <select id="quickThemeSelect" class="quickThemeSelect" aria-label="Quick theme preset" title="Quick theme preset">
+            <option value="">Theme preset…</option>
+          </select>
         </div>
       </header>
             <div class="heroTransportRow">
@@ -737,7 +746,49 @@
         } catch { return false; }
       }
 
+      const quickThemeSelect = document.getElementById('quickThemeSelect');
+
+      function listThemePresets(){
+        try {
+          const raw = localStorage.getItem(THEME_PRESETS_KEY);
+          const obj = raw ? JSON.parse(raw) : {};
+          return (obj && typeof obj === 'object') ? obj : {};
+        } catch { return {}; }
+      }
+
+      function applyThemePresetByName(name=''){
+        const n = String(name || '').trim();
+        if (!n) return false;
+        try {
+          const presets = listThemePresets();
+          const p = normalizeThemePreset(presets[n]);
+          if (!p?.tokens) return false;
+          localStorage.setItem(THEME_ACTIVE_PRESET_KEY, n);
+          localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(p.tokens));
+          applyThemeTokens(p.tokens);
+          try { frame?.contentWindow?.postMessage({ type:'np-theme-load-preset', name:n }, '*'); } catch {}
+          syncThemeToFrame();
+          return true;
+        } catch { return false; }
+      }
+
+      function refreshQuickThemeSelect(preferred=''){
+        if (!quickThemeSelect) return;
+        const presets = listThemePresets();
+        const names = Object.keys(presets).sort((a,b)=>a.localeCompare(b));
+        quickThemeSelect.innerHTML = '<option value="">Theme preset…</option>' + names.map((n)=>`<option value="${String(n).replace(/"/g,'&quot;')}">${n}</option>`).join('');
+        const active = String(preferred || localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
+        if (active && presets[active]) quickThemeSelect.value = active;
+      }
+
+      quickThemeSelect?.addEventListener('change', ()=>{
+        const name = String(quickThemeSelect.value || '').trim();
+        if (!name) return;
+        applyThemePresetByName(name);
+      });
+
       loadThemeTokens();
+      refreshQuickThemeSelect();
 
       async function sendHeroPlayback(action, extra = null){
         const host = location.hostname || '10.0.0.233';
@@ -2350,6 +2401,7 @@
             const tokens = d.tokens && typeof d.tokens === 'object' ? d.tokens : {};
             localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(tokens));
             applyThemeTokens(tokens);
+            refreshQuickThemeSelect();
             const m = String(d.mode || '').toLowerCase();
             if (m === 'light' || m === 'dark') {
               const isLight = (m === 'light');
