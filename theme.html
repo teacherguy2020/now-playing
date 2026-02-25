@@ -28,6 +28,14 @@
     .muted{opacity:.8;font-size:12px}
     .status{margin-top:8px;font-size:12px;opacity:.85;color:#9fd2ff;min-height:1.2em}
     #presetSelect{-webkit-appearance:none;appearance:none;background:var(--editor-token-bg) !important;color:var(--editor-input-text) !important;border:1px solid var(--editor-border) !important;border-radius:10px !important}
+    .exportModal{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(2,6,12,.68);padding:16px}
+    .exportModal.open{display:flex}
+    .exportModalCard{width:min(920px,96vw);max-height:85vh;display:grid;grid-template-rows:auto 1fr auto;gap:10px;background:#000 !important;border:1px solid #1a3f2a !important;border-radius:12px;padding:12px;box-shadow:0 0 0 1px rgba(20,255,120,.12) inset}
+    .exportModalTitle{font-size:14px;font-weight:700;opacity:.95;color:#5dff89 !important}
+    .exportModalPre{margin:0;white-space:pre;word-break:normal;overflow:auto;max-height:60vh;background:#000 !important;color:#5dff89 !important;border:1px solid #1a3f2a !important;border-radius:10px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.35;resize:vertical;width:100%;min-height:280px;box-sizing:border-box}
+    .exportModalPre::selection{background:#1d4f2d;color:#b9ffd0}
+    .exportModalActions{display:flex;gap:8px;justify-content:flex-end}
+    .exportModalActions button{background:#07120b !important;color:#7bff9f !important;border:1px solid #1a3f2a !important}
 
     :root{
       --editor-bg:#071021;
@@ -99,6 +107,17 @@
         </div>
       </div>
       <div id="statusMsg" class="status"></div>
+    </div>
+  </div>
+
+  <div id="exportModal" class="exportModal" aria-hidden="true">
+    <div class="exportModalCard" role="dialog" aria-modal="true" aria-label="Exported theme JSON">
+      <div class="exportModalTitle">Theme JSON</div>
+      <textarea id="exportJsonText" class="exportModalPre" spellcheck="false"></textarea>
+      <div class="exportModalActions">
+        <button id="exportCopyBtn" type="button">Copy to clipboard</button>
+        <button id="exportCloseBtn" type="button">Close</button>
+      </div>
     </div>
   </div>
 
@@ -429,37 +448,65 @@
     flash('Saved');
   });
 
-  document.getElementById('exportBtn')?.addEventListener('click', async ()=>{
+  const exportModal = document.getElementById('exportModal');
+  const exportJsonText = document.getElementById('exportJsonText');
+  const exportCopyBtn = document.getElementById('exportCopyBtn');
+  const exportCloseBtn = document.getElementById('exportCloseBtn');
+  let lastExportJson = '';
+
+  function closeExportModal(){
+    if (!exportModal) return;
+    exportModal.classList.remove('open');
+    exportModal.setAttribute('aria-hidden', 'true');
+  }
+
+  function openExportModal(json){
+    if (!exportModal || !exportJsonText) return;
+    lastExportJson = String(json || '');
+    exportJsonText.value = lastExportJson;
+    exportModal.classList.add('open');
+    exportModal.setAttribute('aria-hidden', 'false');
+  }
+
+  exportCloseBtn?.addEventListener('click', closeExportModal);
+  exportModal?.addEventListener('click', (e)=>{ if (e.target === exportModal) closeExportModal(); });
+  document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') closeExportModal(); });
+
+  exportCopyBtn?.addEventListener('click', async ()=>{
+    const json = String(exportJsonText?.value || lastExportJson || '').trim();
+    if (!json) return;
+    const statusEl = document.getElementById('statusMsg');
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(json);
+        closeExportModal();
+        if (statusEl) statusEl.textContent = 'Theme JSON copied to clipboard.';
+        return;
+      }
+    } catch {}
+
+    try {
+      // iOS/Safari fallback: select editable textarea + execCommand copy.
+      exportJsonText?.focus();
+      exportJsonText?.select();
+      const ok = document.execCommand('copy');
+      if (ok) {
+        try { exportJsonText.setSelectionRange(0, 0); } catch {}
+        closeExportModal();
+        if (statusEl) statusEl.textContent = 'Theme JSON copied to clipboard.';
+        return;
+      }
+    } catch {}
+
+    if (statusEl) statusEl.textContent = 'Select all and copy JSON manually.';
+  });
+
+  document.getElementById('exportBtn')?.addEventListener('click', ()=>{
     try {
       const activePresetName = String(presetSelect?.value || localStorage.getItem(ACTIVE_KEY) || '').trim();
       const payload = buildThemePayload(withLinkedTokens(state), activePresetName);
       const json = JSON.stringify(payload, null, 2);
-      const fileName = `now-playing-theme.json`;
-
-      try { window.parent?.postMessage({ type:'np-theme-export', json, fileName, payload }, '*'); } catch {}
-
-      if (navigator.share) {
-        try {
-          const file = new File([json], fileName, { type: 'application/json' });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ title: 'Now Playing Theme', text: 'Theme export JSON', files: [file] });
-            flash('Theme shared');
-            return;
-          }
-          await navigator.share({ title: 'Now Playing Theme', text: json });
-          flash('Theme shared');
-          return;
-        } catch (e) {
-          if (String(e?.name || '') === 'AbortError') return;
-        }
-      }
-
-      try {
-        await navigator.clipboard.writeText(json);
-        flash('Theme JSON copied');
-      } catch {
-        prompt('Copy theme JSON:', json);
-      }
+      openExportModal(json);
     } catch {
       flash('Export failed');
     }
