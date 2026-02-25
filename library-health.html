@@ -27,7 +27,8 @@
     html.standaloneMode .preHeroStatusWrap,
     html.standaloneMode .heroRail{display:none !important}
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#0c1526;color:#e7eefc}
-    .wrap{max-width:1080px;margin:0 auto;padding:18px;box-sizing:border-box;width:100%}
+    .wrap{max-width:1080px;margin:0 auto;padding:34px 18px 18px;box-sizing:border-box;width:100%}
+    .wrap > .row:first-child{margin-top:8px}
     #cards,#sections,#albumMetaInspector{width:100%;box-sizing:border-box}
     h1{margin:0 0 10px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
@@ -35,6 +36,7 @@
     button{padding:8px 12px;border-radius:8px;border:1px solid #4b5;cursor:pointer;background:#17324f;color:#fff}
     .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:12px 0 16px}
     .card{background:#101c33;border:1px solid #2a3a58;border-radius:18px;padding:10px}
+    #scanResultsCard{margin-top:12px}
 
     .k{font-size:12px;color:#9fb1d9}.v{font-size:24px;font-weight:700}
     details{background:#101c33;border:1px solid #2a3a58;border-radius:12px;padding:8px 10px;margin:10px 0}
@@ -123,8 +125,8 @@
     <input id="apiBase" type="hidden" value="" />
     <input id="key" type="hidden" value="" />
 
-    <div class="card" id="scanResultsCard">
-      <div class="cards" id="cards" style="margin:0;"></div>
+    <div class="card" id="scanResultsCard" style="padding-top:22px;">
+      <div class="cards" id="cards" style="margin:14px 0 0;"></div>
     </div>
 
     <details id="animatedArtCacheCard">
