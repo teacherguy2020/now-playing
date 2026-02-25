@@ -96,7 +96,7 @@
   const labels={
     '--theme-bg':'App background',
     '--theme-text':'Primary text',
-    '--theme-rail-bg':'Top rail background',
+    '--theme-rail-bg':'Surface Tint',
     '--theme-rail-border':'Shell + frame border',
 
     '--theme-tab-bg':'Inactive tabs',
@@ -281,7 +281,13 @@
   }
 
   function push(){
-    try { window.parent?.postMessage({ type:'np-theme-updated', tokens: withLinkedTokens(state) }, '*'); } catch {}
+    try {
+      window.parent?.postMessage({
+        type:'np-theme-updated',
+        tokens: withLinkedTokens(state),
+        mode: (modeSelect?.value === 'light' ? 'light' : 'dark')
+      }, '*');
+    } catch {}
   }
 
   function renderPresetOptions(selected=''){
@@ -365,6 +371,11 @@
         updateEditorChrome();
       }
     } catch {}
+  });
+
+  modeSelect?.addEventListener('change', ()=>{
+    push();
+    flash(`Mode: ${modeSelect.value}`);
   });
 
   render();
