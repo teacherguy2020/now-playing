@@ -195,6 +195,10 @@
     .heroTopBar .topTabs a{background:var(--theme-tab-bg) !important;color:var(--theme-tab-text) !important;border-color:var(--theme-tab-border) !important}
     .heroTopBar .topTabs a:hover{background:var(--theme-tab-hover-bg) !important}
     .heroTopBar .topTabs a.active,.heroTopBar .topTabs a[aria-current="page"]{background:var(--theme-tab-active-bg) !important;color:var(--theme-tab-active-text) !important;border-color:var(--theme-tab-border) !important}
+    /* Playback control symbols follow Primary text */
+    .heroTransport .tbtn,
+    .heroTransport .tbtn svg{color:var(--theme-text) !important;}
+    .heroTransport .tbtn svg path{fill:currentColor !important;}
 
     /* Final authority: hero rail side surround follows app background */
     .heroRail{ background:var(--theme-bg) !important; }
@@ -208,8 +212,7 @@
           <h1 style="margin:0;line-height:1.05;white-space:nowrap;font-size:18px;font-weight:620;letter-spacing:-0.012em;">Now Playing <span style="font-size:13px;font-weight:520;opacity:.86;letter-spacing:0;">moOde enhancement dashboard</span></h1>
         </div>
       </header>
-      <button id="themeToggle" class="heroThemeToggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme" style="position:absolute;top:8px;right:12px;z-index:12;">🌙</button>
-      <div class="heroTransportRow">
+            <div class="heroTransportRow">
         <div id="heroTransport" class="heroTransport"><span class="muted">Now Playing · loading…</span></div>
       </div>
       <div class="heroQueueCard" id="heroQueueCard">
@@ -275,7 +278,6 @@
   </div>
 
   <script src="scripts/hero-transport.js?v=20260224-secondary-text"></script>
-  <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
       const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','theme.html']);
@@ -543,6 +545,7 @@
         } catch {}
       };
       let currentShellPage = getPageFromUrl();
+      let suppressThemeUpdateUntil = 0;
       let lastRadioPresetStations = [];
       const RADIO_QUEUE_PRESETS_KEY = 'nowplaying.radioQueuePresets.v1';
       const THEME_TOKENS_KEY = 'nowplaying.themeTokens.v1';
@@ -649,12 +652,15 @@
           let selectedName = '';
           for (const n of candidates) { if (presets[n]) { selectedName = n; break; } }
           if (!selectedName) {
+            // Controlled fallback: if there is exactly one same-base preset in target mode, use it.
+            const matches = [];
             for (const [name, val] of Object.entries(presets || {})) {
               const p = normalizeThemePreset(val);
               if (!p) continue;
               const pMode = effectivePresetMode(name, p);
-              if (stripThemeModeSuffix(name) === base && pMode === targetMode) { selectedName = name; break; }
+              if (stripThemeModeSuffix(name) === base && pMode === targetMode) matches.push(name);
             }
+            if (matches.length === 1) selectedName = matches[0];
           }
           if (!selectedName) return false;
 
@@ -665,6 +671,8 @@
           applyThemeTokens(selected.tokens);
           document.body.classList.toggle('theme-light', targetMode === 'light');
           try { localStorage.setItem('np-theme', targetMode === 'light' ? 'light' : 'dark'); } catch {}
+          // Keep Theme editor iframe state in lockstep with shell toggle selection.
+          try { frame?.contentWindow?.postMessage({ type:'np-theme-load-preset', name:selectedName }, '*'); } catch {}
           syncThemeToFrame();
           return true;
         } catch { return false; }
@@ -1719,26 +1727,6 @@
         });
       }
 
-      function refreshThemeToggleIcon(){
-        const btn = document.getElementById('themeToggle');
-        if (!btn) return;
-        const isLight = document.body?.classList.contains('theme-light');
-        btn.textContent = isLight ? '☀️' : '🌙';
-      }
-
-      document.getElementById('themeToggle')?.addEventListener('click', () => {
-        // Upper-right toggle behavior: switch only via paired opposite preset.
-        const paired = tryApplyOppositeThemePreset();
-        // Other handlers may flip class; enforce preset mode after they run.
-        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); refreshThemeToggleIcon(); }, 0);
-        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); refreshThemeToggleIcon(); }, 120);
-        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); refreshThemeToggleIcon(); }, 260);
-        if (!paired) {
-          // No paired preset found: keep current active preset mode (no generic toggle fallback).
-          return;
-        }
-      });
-
       const hqBtn = document.getElementById('heroQueueToggle');
       const hqClear = document.getElementById('heroQueueClear');
       const hqCrop = document.getElementById('heroQueueCrop');
@@ -2274,6 +2262,7 @@
 
         if (d.type === 'np-theme-updated') {
           try {
+            if (Date.now() < suppressThemeUpdateUntil) return;
             const tokens = d.tokens && typeof d.tokens === 'object' ? d.tokens : {};
             localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(tokens));
             applyThemeTokens(tokens);
@@ -2303,7 +2292,6 @@
       syncFrameWidth();
       navigate(getPageFromUrl(), false);
       syncPills();
-      try { refreshThemeToggleIcon(); } catch {}
       // Prioritize transport controls/hero paint first; queue can load just after.
       setTimeout(() => { if (!document.hidden) syncHeroQueue(); }, 650);
       setInterval(() => { if (!document.hidden) syncPills(); }, 30000);

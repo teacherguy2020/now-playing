@@ -430,6 +430,30 @@
     flash(`Mode: ${modeSelect.value}`);
   });
 
+  function loadPresetByName(name=''){
+    const n = String(name || '').trim();
+    if (!n) return false;
+    const all = loadPresets();
+    const p = normalizePreset(all[n]);
+    if (!p?.tokens) return false;
+    state = { ...defaults, ...p.tokens };
+    modeSelect.value = (p.mode === 'light') ? 'light' : 'dark';
+    try { localStorage.setItem(KEY, JSON.stringify(withLinkedTokens(state))); } catch {}
+    try { localStorage.setItem(ACTIVE_KEY, n); } catch {}
+    render();
+    renderPresetOptions(n);
+    push();
+    return true;
+  }
+
+  window.addEventListener('message', (ev)=>{
+    const d = ev?.data || {};
+    if (!d || typeof d !== 'object') return;
+    if (d.type === 'np-theme-load-preset') {
+      loadPresetByName(String(d.name || ''));
+    }
+  });
+
   render();
   renderPresetOptions();
 })();
