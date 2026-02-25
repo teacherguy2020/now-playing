@@ -11,6 +11,7 @@ This docs set follows the same order as the app tabs.
 5. [Queue Wizard](./05-queue-wizard.md)
 6. [Radio](./06-radio.md)
 7. [Podcasts](./07-podcasts.md)
+8. [Theme](./13-theme.md)
 
 ## Cross-cutting chapters
 
