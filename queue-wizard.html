@@ -89,6 +89,12 @@
     .pickGrid label{display:block}
     .pickGrid select{width:100%;min-width:0}
     .actionBar{display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:10px;border:1px solid var(--npb-tab-border,#2a3a58);border-radius:10px;background:var(--npb-card-secondary-fill,var(--npb-tab-bg,#0d182d));margin-top:10px;overflow:visible}
+    .actionBar input[type="checkbox"],
+    .actionBar input[type="radio"],
+    .queueBuilderSection input[type="checkbox"],
+    .queueBuilderSection input[type="radio"]{
+      accent-color: var(--npb-progress-fill,var(--npb-tab-active-bg,#3357d6));
+    }
     .choiceLine{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
     .choiceGroup{display:flex;gap:10px;align-items:center}
     .btnPrimary{background:linear-gradient(90deg,#1d4ed8,#7c3aed);border-color:transparent;color:#fff;font-weight:650}
