@@ -152,8 +152,7 @@
     .heroWrap{
       background:var(--theme-rail-bg) !important;
       border:1px solid var(--theme-rail-border) !important;
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.18) !important;
+      box-shadow:none !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
     }
@@ -161,21 +160,13 @@
     .heroQueueCard{
       background:var(--theme-hero-card-bg) !important;
       border:1px solid var(--theme-hero-card-border) !important;
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.20),
-        inset 0 -1px 0 rgba(125,211,252,.14),
-        0 14px 34px rgba(2,8,20,.26) !important;
+      box-shadow:none !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
     }
     .heroTransport{position:relative;overflow:hidden}
     .heroTransport::before,
-    .heroQueueCard::before{
-      content:none !important;
-      display:none !important;
-      background:transparent !important;
-      pointer-events:none;
-    }
+    .heroQueueCard::before{content:none !important;display:none !important;}
     .heroWrap::before{display:none !important}
     .heroWrap > header{
       background:none !important;
@@ -200,6 +191,49 @@
     .heroTopBar .topTabs a{background:var(--theme-tab-bg) !important;color:var(--theme-tab-text) !important;border-color:var(--theme-tab-border) !important}
     .heroTopBar .topTabs a:hover{background:var(--theme-tab-hover-bg) !important}
     .heroTopBar .topTabs a.active,.heroTopBar .topTabs a[aria-current="page"]{background:var(--theme-tab-active-bg) !important;color:var(--theme-tab-active-text) !important;border-color:var(--theme-tab-border) !important}
+    /* Map radio favorites handle + queue expand to Inactive tabs token */
+    .heroFavTab,
+    #heroQueueToggle,
+    .heroQueueNextUp button,
+    .heroQueueActions button{
+      background:var(--theme-tab-bg) !important;
+      color:var(--theme-tab-text) !important;
+      border-color:var(--theme-tab-border) !important;
+    }
+    .heroFavTab:hover,
+    #heroQueueToggle:hover,
+    .heroQueueNextUp button:hover,
+    .heroQueueActions button:hover{
+      background:var(--theme-tab-hover-bg) !important;
+      border-color:var(--theme-tab-border) !important;
+    }
+    /* Radio favorites drawer fill follows Inactive tabs */
+    #heroRadioDrawer,
+    #heroRadioDrawer .grid,
+    #heroRadioDrawer .tile{
+      background:var(--theme-tab-bg) !important;
+      border-color:var(--theme-tab-border) !important;
+      color:var(--theme-tab-text) !important;
+    }
+    #heroRadioDrawer .tile:hover{
+      background:var(--theme-tab-hover-bg) !important;
+      border-color:var(--theme-tab-border) !important;
+    }
+    /* Unified border thickness (shell/frame/cards/tabs/pills) */
+    #appFrame,
+    .viewWrap,
+    .heroRailTop,
+    .heroWrap,
+    .heroTransport,
+    .heroQueueCard,
+    .heroQueueWrap,
+    .heroQueueNextUp,
+    .heroTopBar .topTabs a,
+    .heroTopBar .statusInline .pill,
+    .heroTopBar .statusInline button.pill{
+      border-width:1px !important;
+      border-style:solid !important;
+    }
     /* Playback control symbols follow Primary text */
     .heroTransport .tbtn,
     .heroTransport .tbtn svg{color:var(--theme-text) !important;}
@@ -333,22 +367,25 @@
           const railBg = cs.getPropertyValue('--theme-rail-bg').trim() || '#0b1426';
           const frameFill = cs.getPropertyValue('--theme-frame-fill').trim() || bg;
           const cardBg = cs.getPropertyValue('--theme-hero-card-bg').trim() || 'rgba(10,18,34,.45)';
-          const cardBorder = cs.getPropertyValue('--theme-hero-card-border').trim() || '#2a3a58';
+          const cardBorder = cs.getPropertyValue('--theme-rail-border').trim() || '#2a3a58';
           const cardSecondaryFill = cs.getPropertyValue('--theme-card-secondary-fill').trim() || '#0f1a31';
           const tabBg = cs.getPropertyValue('--theme-tab-bg').trim() || '#0f1a31';
           const tabText = cs.getPropertyValue('--theme-tab-text').trim() || '#e7eefc';
           const tabActiveBg = cs.getPropertyValue('--theme-tab-active-bg').trim() || '#3357d6';
           const tabActiveText = cs.getPropertyValue('--theme-tab-active-text').trim() || '#ffffff';
-          const tabBorder = cs.getPropertyValue('--theme-tab-border').trim() || '#2a3a58';
+          const tabBorder = cs.getPropertyValue('--theme-rail-border').trim() || '#2a3a58';
           const tabHoverBg = cs.getPropertyValue('--theme-tab-hover-bg').trim() || '#2f4f93';
+          const starColor = cs.getPropertyValue('--theme-pill-border').trim() || '#fbbf24';
           const pageNow = String(currentShellPage || '');
           const isThemePage = pageNow === 'theme.html';
+          const isPodcastsPage = pageNow === 'podcasts.html';
           let st = doc.getElementById('npThemeBridge');
           if (!st) { st = doc.createElement('style'); st.id = 'npThemeBridge'; doc.head?.appendChild(st); }
           st.textContent = `
-            :root{--npb-bg:${bg};--npb-rail-bg:${railBg};--npb-frame-fill:${frameFill};--npb-text:${text};--npb-text-secondary:${textSecondary};--npb-card-bg:${cardBg};--npb-card-border:${cardBorder};--npb-card-secondary-fill:${cardSecondaryFill};--npb-tab-bg:${tabBg};--npb-tab-text:${tabText};--npb-tab-active-bg:${tabActiveBg};--npb-tab-active-text:${tabActiveText};--npb-tab-border:${tabBorder};--npb-tab-hover-bg:${tabHoverBg};}
-            html,body{background:${isThemePage ? 'var(--npb-frame-fill)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
+            :root{--npb-bg:${bg};--npb-rail-bg:${railBg};--npb-frame-fill:${frameFill};--npb-text:${text};--npb-text-secondary:${textSecondary};--npb-card-bg:${cardBg};--npb-card-border:${cardBorder};--npb-card-secondary-fill:${cardSecondaryFill};--npb-tab-bg:${tabBg};--npb-tab-text:${tabText};--npb-tab-active-bg:${tabActiveBg};--npb-tab-active-text:${tabActiveText};--npb-tab-border:${tabBorder};--npb-tab-hover-bg:${tabHoverBg};--npb-star:${starColor};}
+            html,body{background:${isThemePage ? 'var(--npb-rail-bg)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
             .card,.panel,.cfgCard,.section,#results,#queueWrap,.heroQueueWrap,.heroQueueCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
+            ${isThemePage ? '.card{background:var(--npb-rail-bg) !important;}' : ''}
             .stationCluster{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
             .stationCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
             .topTabs a{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;box-shadow:none !important;}
@@ -356,10 +393,10 @@
             .topTabs a.active,.topTabs a[aria-current="page"]{background:var(--npb-tab-active-bg) !important;color:var(--npb-tab-active-text) !important;border-color:var(--npb-tab-border) !important;}
             .stationName{color:var(--npb-text) !important;}
             .stationMeta,.muted,.mutedSm,label{color:var(--npb-text-secondary) !important;}
-            .stationAction,.clusterToggle,input,select,button{background:var(--npb-card-secondary-fill,var(--npb-tab-bg)) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;}
+            .stationAction,.clusterToggle,input,select,button{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;}
             .stationAction:hover,.clusterToggle:hover,button:hover{background:var(--npb-tab-hover-bg) !important;}
             /* Radio page has high-specificity !important defaults; override them explicitly. */
-            body:not(.theme-light), body.theme-light{background:var(--npb-bg) !important;color:var(--npb-text) !important;}
+            body:not(.theme-light), body.theme-light{background:${isThemePage ? 'var(--npb-rail-bg)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
             body:not(.theme-light) .card, body.theme-light .card,
             body:not(.theme-light) .stationCard, body.theme-light .stationCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
             body:not(.theme-light) .stationCluster, body.theme-light .stationCluster{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
@@ -442,7 +479,7 @@
               ? '.heroWrap{padding-top:10px !important;}'
               : ''),
             (isTheme
-              ? '.wrap{max-width:100% !important; width:100% !important; margin:0 !important; padding:0 !important; background:var(--npb-frame-fill) !important; min-height:100% !important;} .card{margin:0 !important; border-radius:0 !important;}'
+              ? '.wrap{max-width:100% !important; width:100% !important; margin:0 !important; padding:0 !important; background:var(--npb-rail-bg) !important; min-height:100% !important;} .card{margin:0 !important; border-radius:0 !important; background:var(--npb-rail-bg) !important;}'
               : '')
           ].join('\n');
           doc.head.appendChild(st);
@@ -595,6 +632,11 @@
         const merged = { ...THEME_DEFAULTS, ...cleaned };
         Object.entries(merged).forEach(([k, v]) => root.style.setProperty(k, String(v)));
         root.style.setProperty('--theme-frame-bg', String(merged['--theme-bg'] || '#0c1526'));
+        const railBorder = String(merged['--theme-rail-border'] || '#2a3a58');
+        root.style.setProperty('--theme-frame-border', railBorder);
+        root.style.setProperty('--theme-hero-card-border', railBorder);
+        root.style.setProperty('--theme-tab-border', railBorder);
+
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute('content', String(merged['--theme-bg'] || '#0c1526'));
       }
@@ -1088,7 +1130,7 @@
               const prev = Number(starsEl.getAttribute('data-rating') || 0);
               if (r === prev) return;
               starsEl.setAttribute('data-rating', String(r));
-              starsEl.innerHTML = `${'<span style="color:#fbbf24;">★</span>'.repeat(r)}${'<span style="color:#64748b;">★</span>'.repeat(5 - r)}`;
+              starsEl.innerHTML = `${'<span style="color:var(--theme-pill-border,#fbbf24);">★</span>'.repeat(r)}${'<span style="color:#64748b;">★</span>'.repeat(5 - r)}`;
             });
             lastHeroQueueRatingsSignature = queueRatingSig;
             lastHeroQueueContentSignature = queueContentSig;
@@ -1198,7 +1240,7 @@
             const rating = Math.max(0, Math.min(5, Number(x?.rating || 0)));
             const starsInline = (isStreamish || isPodcastItem)
               ? ''
-              : `<span class="heroQueueStars" data-rating="${rating}" style="margin-left:8px;letter-spacing:1px;font-size:14px;white-space:nowrap;">${'<span style="color:#fbbf24;">★</span>'.repeat(rating)}${'<span style="color:#64748b;">★</span>'.repeat(5 - rating)}</span>`;
+              : `<span class="heroQueueStars" data-rating="${rating}" style="margin-left:8px;letter-spacing:1px;font-size:14px;white-space:nowrap;">${'<span style="color:var(--theme-pill-border,#fbbf24);">★</span>'.repeat(rating)}${'<span style="color:#64748b;">★</span>'.repeat(5 - rating)}</span>`;
             const line1 = isStreamish ? (artist || '(station)') : (title || '(unknown title)');
             const line2 = isStreamish
               ? ''

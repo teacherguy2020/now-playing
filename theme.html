@@ -9,6 +9,8 @@
     .wrap{max-width:1100px;margin:14px auto;padding:0 10px 16px}
     .card{background:#0f1a31;border:1px solid #2a3a58;border-radius:12px;padding:12px}
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+    #pickerCardsWrap{background:var(--editor-card-bg);border:1px solid var(--editor-border);border-radius:12px;padding:10px;display:grid;gap:10px;margin-top:10px;}
+    #pickerCardsWrap .token{background:var(--editor-picker-card-bg,#30436b) !important;}
     .token{display:grid;gap:6px;padding:10px;border:1px solid #2a3a58;border-radius:10px;background:#0a1222}
     .row{display:flex;align-items:center;gap:8px}
     .swWrap{position:relative;width:28px;height:28px;flex:0 0 28px}
@@ -32,7 +34,7 @@
       --editor-input-text:#e7eefc;
     }
     body{background:var(--editor-bg);color:var(--editor-text)}
-    .card{background:var(--editor-card-bg);border-color:var(--editor-border)}
+    .card{background:var(--editor-bg) !important;border-color:var(--editor-border)}
     .token{background:var(--editor-token-bg);border-color:var(--editor-border)}
     select,button,input[type="text"]{color:var(--editor-input-text);border-color:var(--editor-border)}
     select,input[type="text"]{background:var(--editor-input-bg)}
@@ -69,7 +71,7 @@
     <div class="card">
       <h3 style="margin:0 0 6px">Theme</h3>
       <div class="muted">Edit core shell colors. Changes apply live in app shell.</div>
-      <div id="tokenGrid" class="grid" style="margin-top:10px"></div>
+      <div id="pickerCardsWrap"><div id="tokenGrid" class="grid"></div></div>
       <div class="actions" style="margin-bottom:6px">
         <select id="presetSelect" style="min-width:220px;padding:7px 8px"></select>
         <button id="loadPresetBtn" type="button">Load preset</button>
@@ -141,7 +143,7 @@
     '--theme-picker-card-bg':'Picker card background',
     '--theme-progress-fill':'Progress bar fill',
 
-    '--theme-pill-border':'Pill border',
+    '--theme-pill-border':'Stars',
     '--theme-pill-glow':'Pill hover glow',
   };
 
@@ -190,7 +192,9 @@
 
     const l = relLum(bg);
     const isLight = (forcedUiMode === 'light') ? true : (forcedUiMode === 'dark' ? false : (l > 0.5));
-    const inputRgb = isLight ? shiftRgb(bg, -22) : shiftRgb(bg, 20);
+    const tabBgRaw = String(state['--theme-tab-bg'] || defaults['--theme-tab-bg'] || '#0f1a31').trim();
+    const tabBgRgb = parseColorToRgb(tabBgRaw) || { r:15, g:26, b:49 };
+    const tabTextRaw = String(state['--theme-tab-text'] || defaults['--theme-tab-text'] || pickReadableText(rgbToHex(tabBgRgb))).trim();
 
     document.documentElement.style.setProperty('--editor-bg', rgbToHex(bg));
     document.documentElement.style.setProperty('--editor-text', pickReadableText(rgbToHex(bg)));
@@ -200,8 +204,9 @@
 
     // Individual token cards now tie directly to frame/hero border color.
     document.documentElement.style.setProperty('--editor-token-bg', String(heroCardBorder));
-    document.documentElement.style.setProperty('--editor-input-bg', rgbToHex(inputRgb));
-    document.documentElement.style.setProperty('--editor-input-text', pickReadableText(rgbToHex(inputRgb)));
+    // Hex input fields follow Inactive tabs fill/text.
+    document.documentElement.style.setProperty('--editor-input-bg', tabBgRaw || rgbToHex(tabBgRgb));
+    document.documentElement.style.setProperty('--editor-input-text', tabTextRaw || pickReadableText(tabBgRaw || rgbToHex(tabBgRgb)));
   }
   function relLum({r,g,b}){
     const t = [r,g,b].map(v=>{
@@ -275,6 +280,7 @@
         sw.style.background=c.value;
         state[k]=c.value;
         updateEditorChrome();
+        applyThemeEditorZones();
         push(); // live preview while picker is open/dragging
       });
       t.addEventListener('input', ()=>{
@@ -283,6 +289,7 @@
         const hx=toHex(t.value);
         if (hx) c.value=hx;
         updateEditorChrome();
+        applyThemeEditorZones();
         push(); // live preview while typing hex
       });
       swWrap.append(sw,c);
@@ -458,10 +465,27 @@
     }
   });
 
+  function applyThemeEditorZones(){
+    try {
+      const card = document.querySelector('.wrap > .card');
+      const outer = String(state['--theme-rail-bg'] || defaults['--theme-rail-bg'] || '#0b1426');
+      if (card) {
+        card.style.setProperty('background', outer, 'important');
+        card.style.setProperty('background-color', outer, 'important');
+      }
+      const wrap = document.getElementById('pickerCardsWrap');
+      const inner = String(state['--theme-hero-card-bg'] || defaults['--theme-hero-card-bg'] || '#0a122273');
+      if (wrap) {
+        wrap.style.setProperty('background', inner, 'important');
+        wrap.style.setProperty('background-color', inner, 'important');
+      }
+    } catch {}
+  }
+
   function applyPickerTileBg(){
     try {
       const c = String(state['--theme-picker-card-bg'] || '#30436b');
-      document.querySelectorAll('.token').forEach((el)=>{
+      document.querySelectorAll('#pickerCardsWrap .token').forEach((el)=>{
         el.style.setProperty('background', c, 'important');
         el.style.setProperty('background-color', c, 'important');
       });
@@ -471,10 +495,12 @@
   const _render = render;
   render = function(){
     _render();
+    applyThemeEditorZones();
     applyPickerTileBg();
   };
 
   render();
+  applyThemeEditorZones();
   renderPresetOptions();
 })();
 </script>
