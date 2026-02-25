@@ -1496,9 +1496,32 @@ async function clearAnimatedArtEntry(keyToClear) {
   await refreshAnimatedArtSummary();
 }
 
+async function updateMoodeLibrary() {
+  const btn = $('updateMoodeLibraryBtn');
+  const statusEl = $('updateMoodeLibraryStatus');
+  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+  const key = ($('key')?.value || '').trim();
+  if (btn) btn.disabled = true;
+  if (statusEl) statusEl.innerHTML = '<span class="spin" aria-hidden="true"></span>Requesting moOde library update…';
+  try {
+    const r = await fetch(`${apiBase}/config/moode/library-update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) }
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    if (statusEl) statusEl.textContent = 'moOde library update started.';
+  } catch (e) {
+    if (statusEl) statusEl.textContent = `Library update failed: ${String(e?.message || e)}`;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 // ---- Init ----
 const runBtn = $('run');
 if (runBtn) runBtn.addEventListener('click', run);
+$('updateMoodeLibraryBtn')?.addEventListener('click', updateMoodeLibrary);
 $('albumPick')?.addEventListener('change', () => loadAlbumMetadata());
 $('suggestPerformersBtn')?.addEventListener('click', suggestPerformers);
 $('applyPerformersBtn')?.addEventListener('click', applyPerformers);

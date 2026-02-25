@@ -546,6 +546,19 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.post('/config/moode/library-update', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const host = String(cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '10.0.0.254').trim();
+      const port = Number(cfg?.mpd?.port || 6600) || 6600;
+      const { stdout, stderr } = await execFileP('mpc', ['-h', host, '-p', String(port), 'update']);
+      return res.json({ ok: true, host, port, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/moode/reboot', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
