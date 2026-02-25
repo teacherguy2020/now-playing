@@ -589,6 +589,19 @@
         return String(name).replace(/\s*\((dark|light)\)\s*$/i, '').trim();
       }
 
+      function inferModeFromPresetName(name=''){
+        const m = String(name || '').match(/\((dark|light)\)\s*$/i);
+        return m ? String(m[1] || '').toLowerCase() : '';
+      }
+
+      function effectivePresetMode(name='', preset=null){
+        const byName = inferModeFromPresetName(name);
+        if (byName === 'dark' || byName === 'light') return byName;
+        const byPreset = String(preset?.mode || '').toLowerCase();
+        if (byPreset === 'dark' || byPreset === 'light') return byPreset;
+        return document.body?.classList.contains('theme-light') ? 'light' : 'dark';
+      }
+
       function loadThemeTokens() {
         try {
           const raw = localStorage.getItem(THEME_TOKENS_KEY);
@@ -607,7 +620,8 @@
           const presets = presetsRaw ? JSON.parse(presetsRaw) : {};
           const active = normalizeThemePreset(presets[activeName]);
           if (!active) return false;
-          const isLight = String(active.mode || 'dark').toLowerCase() === 'light';
+          const mode = effectivePresetMode(activeName, active);
+          const isLight = mode === 'light';
           document.body.classList.toggle('theme-light', isLight);
           try { localStorage.setItem('np-theme', isLight ? 'light' : 'dark'); } catch {}
           return true;
@@ -622,28 +636,34 @@
           const presets = presetsRaw ? JSON.parse(presetsRaw) : {};
           const active = normalizeThemePreset(presets[activeName]);
           if (!active) return false;
-          const targetMode = active.mode === 'light' ? 'dark' : 'light';
+
+          const currentMode = effectivePresetMode(activeName, active);
+          const targetMode = currentMode === 'light' ? 'dark' : 'light';
           const base = stripThemeModeSuffix(activeName);
           const candidates = [
             `${base} (${targetMode})`,
             `${base} (${targetMode.charAt(0).toUpperCase()}${targetMode.slice(1)})`,
           ];
+
           let selectedName = '';
           for (const n of candidates) { if (presets[n]) { selectedName = n; break; } }
           if (!selectedName) {
             for (const [name, val] of Object.entries(presets || {})) {
               const p = normalizeThemePreset(val);
               if (!p) continue;
-              if (stripThemeModeSuffix(name) === base && p.mode === targetMode) { selectedName = name; break; }
+              const pMode = effectivePresetMode(name, p);
+              if (stripThemeModeSuffix(name) === base && pMode === targetMode) { selectedName = name; break; }
             }
           }
           if (!selectedName) return false;
+
           const selected = normalizeThemePreset(presets[selectedName]);
           if (!selected?.tokens) return false;
           localStorage.setItem(THEME_ACTIVE_PRESET_KEY, selectedName);
           localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(selected.tokens));
           applyThemeTokens(selected.tokens);
           document.body.classList.toggle('theme-light', targetMode === 'light');
+          try { localStorage.setItem('np-theme', targetMode === 'light' ? 'light' : 'dark'); } catch {}
           syncThemeToFrame();
           return true;
         } catch { return false; }
