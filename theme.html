@@ -22,7 +22,7 @@
     button.primary{border-color:var(--editor-border);background:var(--editor-token-bg);color:var(--editor-input-text)}
     .muted{opacity:.8;font-size:12px}
     .status{margin-top:8px;font-size:12px;opacity:.85;color:#9fd2ff;min-height:1.2em}
-    #presetSelect,#modeSelect{-webkit-appearance:none;appearance:none;background:var(--editor-token-bg) !important;color:var(--editor-input-text) !important;border:1px solid var(--editor-border) !important;border-radius:10px !important}
+    #presetSelect{-webkit-appearance:none;appearance:none;background:var(--editor-token-bg) !important;color:var(--editor-input-text) !important;border:1px solid var(--editor-border) !important;border-radius:10px !important}
 
     :root{
       --editor-bg:#071021;
@@ -77,9 +77,6 @@
         <button id="loadPresetBtn" type="button">Load preset</button>
         <button id="savePresetBtn" type="button">Save as preset</button>
         <button id="deletePresetBtn" type="button">Delete preset</button>
-        <select id="modeSelect" style="display:none">
-          <option value="dark" selected>Editing</option>
-        </select>
       </div>
       <div class="actions">
         <button id="applyBtn" class="primary" type="button">Apply</button>
@@ -97,6 +94,7 @@
   const KEY='nowplaying.themeTokens.v1';
   const PRESETS_KEY='nowplaying.themePresets.v1';
   const ACTIVE_KEY='nowplaying.themeActivePreset.v1';
+  const THEME_FORMAT_VERSION = 2;
   const defaults={
     // Shell
     '--theme-bg':'#0c1526',
@@ -147,16 +145,64 @@
     '--theme-pill-glow':'Pill hover glow',
   };
 
+  function normalizeThemePayload(input){
+    try {
+      const p = (input && typeof input === 'object') ? input : {};
+      const name = String(p.name || '').trim();
+      const tokens = (p.tokens && typeof p.tokens === 'object') ? p.tokens : (p && typeof p === 'object' ? p : {});
+      return {
+        version: THEME_FORMAT_VERSION,
+        name,
+        tokens: { ...defaults, ...(tokens || {}) },
+      };
+    } catch {
+      return { version: THEME_FORMAT_VERSION, name: '', tokens: { ...defaults } };
+    }
+  }
+
+  function buildThemePayload(tokens, name=''){
+    const n = String(name || '').trim();
+    return {
+      version: THEME_FORMAT_VERSION,
+      name: n,
+      exportedAt: new Date().toISOString(),
+      tokens: { ...defaults, ...(tokens || {}) },
+    };
+  }
+
   function load(){
     try { return { ...defaults, ...(JSON.parse(localStorage.getItem(KEY)||'{}')||{}) }; }
     catch { return { ...defaults }; }
   }
   let state = load();
   let forcedUiMode = ''; // 'light' | 'dark' (from shell toggle)
+  let importBusy = false;
+
+
+  const STARTER_PRESETS = {
+    'Chill Blue': { tokens: { '--theme-bg':'#0b141d','--theme-text':'#e7f0fb','--theme-text-secondary':'#9fb6cf','--theme-rail-bg':'#142434','--theme-frame-fill':'#10202f','--theme-rail-border':'#4f6f90','--theme-tab-bg':'#1f3a57','--theme-tab-text':'#e9f3ff','--theme-tab-border':'#7fa5ce','--theme-tab-hover-bg':'#2d4f76','--theme-tab-active-bg':'#3f6898','--theme-tab-active-text':'#ffffff','--theme-hero-card-bg':'#1a3149','--theme-hero-card-border':'#7fa5ce','--theme-picker-card-bg':'#274864','--theme-pill-border':'#ffd166','--theme-pill-glow':'#37a86a','--theme-card-secondary-fill':'#345a7d','--theme-progress-fill':'#98bce4','--theme-frame-border':'#4f6f90' } },
+    'Monotone Gray': { tokens: { '--theme-bg':'#121212','--theme-text':'#ededed','--theme-text-secondary':'#b3b3b3','--theme-rail-bg':'#1c1c1c','--theme-frame-fill':'#181818','--theme-rail-border':'#5e5e5e','--theme-tab-bg':'#2b2b2b','--theme-tab-text':'#efefef','--theme-tab-border':'#8a8a8a','--theme-tab-hover-bg':'#393939','--theme-tab-active-bg':'#4a4a4a','--theme-tab-active-text':'#ffffff','--theme-hero-card-bg':'#232323','--theme-hero-card-border':'#8a8a8a','--theme-picker-card-bg':'#343434','--theme-pill-border':'#c9c9c9','--theme-pill-glow':'#7f7f7f','--theme-card-secondary-fill':'#3f3f3f','--theme-progress-fill':'#a0a0a0','--theme-frame-border':'#5e5e5e' } },
+    'Warm Parchment': { tokens: { '--theme-bg':'#f3ece2','--theme-text':'#2f2a24','--theme-text-secondary':'#6e6458','--theme-rail-bg':'#e8dccb','--theme-frame-fill':'#efe5d7','--theme-rail-border':'#b8a893','--theme-tab-bg':'#d9c8b2','--theme-tab-text':'#332c24','--theme-tab-border':'#a89278','--theme-tab-hover-bg':'#ceb99f','--theme-tab-active-bg':'#8d7358','--theme-tab-active-text':'#fffaf4','--theme-hero-card-bg':'#e1d2be','--theme-hero-card-border':'#a89278','--theme-picker-card-bg':'#cbb79e','--theme-pill-border':'#b8860b','--theme-pill-glow':'#3f8f4e','--theme-card-secondary-fill':'#d2c1aa','--theme-progress-fill':'#9f876a','--theme-frame-border':'#b8a893' } },
+    'Muted Merlot': { tokens: { '--theme-bg':'#1a1315','--theme-text':'#f0e7e8','--theme-text-secondary':'#b7a4a8','--theme-rail-bg':'#24181b','--theme-frame-fill':'#201517','--theme-rail-border':'#6e5258','--theme-tab-bg':'#3a2329','--theme-tab-text':'#f2e9ea','--theme-tab-border':'#8a646d','--theme-tab-hover-bg':'#4a2d34','--theme-tab-active-bg':'#6a3f49','--theme-tab-active-text':'#fff7f8','--theme-hero-card-bg':'#2f1d22','--theme-hero-card-border':'#8a646d','--theme-picker-card-bg':'#452a31','--theme-pill-border':'#d6a24a','--theme-pill-glow':'#4f9b62','--theme-card-secondary-fill':'#56353d','--theme-progress-fill':'#a6757f','--theme-frame-border':'#6e5258' } },
+    'Abyss Graphite': { tokens: { '--theme-bg':'#020306','--theme-text':'#e4ebf7','--theme-text-secondary':'#8f9db1','--theme-rail-bg':'#070c14','--theme-frame-fill':'#040912','--theme-rail-border':'#3f4b5d','--theme-tab-bg':'#0f1825','--theme-tab-text':'#dfe8f7','--theme-tab-border':'#5a6a82','--theme-tab-hover-bg':'#1a2739','--theme-tab-active-bg':'#24364d','--theme-tab-active-text':'#ffffff','--theme-hero-card-bg':'#0b1422','--theme-hero-card-border':'#5a6a82','--theme-picker-card-bg':'#111f33','--theme-pill-border':'#ffbf3f','--theme-pill-glow':'#2ea85f','--theme-card-secondary-fill':'#18263a','--theme-progress-fill':'#6f86a9','--theme-frame-border':'#3f4b5d' } }
+  };
 
   function loadPresets(){
-    try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '{}') || {}; }
-    catch { return {}; }
+    try {
+      const raw = JSON.parse(localStorage.getItem(PRESETS_KEY) || '{}') || {};
+      const merged = { ...STARTER_PRESETS, ...raw };
+      // Backfill starter presets into localStorage without overriding user presets.
+      try {
+        const rawKeys = Object.keys(raw || {});
+        const mergedKeys = Object.keys(merged || {});
+        if (mergedKeys.length !== rawKeys.length) {
+          localStorage.setItem(PRESETS_KEY, JSON.stringify(merged));
+        }
+      } catch {}
+      return merged;
+    } catch {
+      return { ...STARTER_PRESETS };
+    }
   }
   function savePresets(p){ try { localStorage.setItem(PRESETS_KEY, JSON.stringify(p || {})); } catch {} }
   function normalizePreset(v){
@@ -165,9 +211,67 @@
     if (typeof v === 'object') return { tokens: v };
     return null;
   }
+  function parseColorToRgb(v){
+    const s = String(v || '').trim();
+    if (!s) return null;
+    const hx = toHex(s);
+    if (hx) {
+      const n = hx.slice(1);
+      return { r: parseInt(n.slice(0,2),16), g: parseInt(n.slice(2,4),16), b: parseInt(n.slice(4,6),16) };
+    }
+    const m = s.match(/^rgba?\(([^)]+)\)$/i);
+    if (m) {
+      const p = m[1].split(',').map(x=>Number(String(x).trim()));
+      if (p.length >= 3 && p.every(Number.isFinite)) return { r:p[0], g:p[1], b:p[2] };
+    }
+    return null;
+  }
+  function clamp255(n){ return Math.max(0, Math.min(255, Math.round(n))); }
+  function shiftRgb(c, amt){ return { r: clamp255(c.r + amt), g: clamp255(c.g + amt), b: clamp255(c.b + amt) }; }
+  function rgbToHex(c){ return `#${[c.r,c.g,c.b].map(v=>clamp255(v).toString(16).padStart(2,'0')).join('')}`; }
+  function updateEditorChrome(){
+    const bg = parseColorToRgb(state['--theme-rail-bg'] || defaults['--theme-rail-bg'] || state['--theme-bg'] || defaults['--theme-bg']) || {r:12,g:21,b:38};
+    const heroCardBgRaw = String(state['--theme-hero-card-bg'] || defaults['--theme-hero-card-bg'] || '').trim();
+    const heroCardBgRgb = parseColorToRgb(heroCardBgRaw) || bg;
+    const heroCardBorder = state['--theme-hero-card-border'] || defaults['--theme-hero-card-border'] || '#334';
+
+    const l = relLum(bg);
+    const isLight = (forcedUiMode === 'light') ? true : (forcedUiMode === 'dark' ? false : (l > 0.5));
+    const tabBgRaw = String(state['--theme-tab-bg'] || defaults['--theme-tab-bg'] || '#0f1a31').trim();
+    const tabBgRgb = parseColorToRgb(tabBgRaw) || { r:15, g:26, b:49 };
+    const tabTextRaw = String(state['--theme-tab-text'] || defaults['--theme-tab-text'] || pickReadableText(rgbToHex(tabBgRgb))).trim();
+
+    document.documentElement.style.setProperty('--editor-bg', rgbToHex(bg));
+    document.documentElement.style.setProperty('--editor-text', pickReadableText(rgbToHex(bg)));
+    // Main container tracks hero card style
+    document.documentElement.style.setProperty('--editor-card-bg', (forcedUiMode ? rgbToHex(heroCardBgRgb) : (heroCardBgRaw || rgbToHex(heroCardBgRgb))));
+    document.documentElement.style.setProperty('--editor-border', String(heroCardBorder));
+
+    // Individual token cards now tie directly to frame/hero border color.
+    document.documentElement.style.setProperty('--editor-token-bg', String(heroCardBorder));
+    // Hex input fields follow Inactive tabs fill/text.
+    document.documentElement.style.setProperty('--editor-input-bg', tabBgRaw || rgbToHex(tabBgRgb));
+    document.documentElement.style.setProperty('--editor-input-text', tabTextRaw || pickReadableText(tabBgRaw || rgbToHex(tabBgRgb)));
+  }
+  function relLum({r,g,b}){
+    const t = [r,g,b].map(v=>{
+      const x = v/255;
+      return x <= 0.03928 ? x/12.92 : Math.pow((x+0.055)/1.055, 2.4);
+    });
+    return 0.2126*t[0] + 0.7152*t[1] + 0.0722*t[2];
+  }
+  function pickReadableText(bg){
+    const rgb = parseColorToRgb(bg) || { r:12, g:21, b:38 };
+    const Lbg = relLum(rgb);
+    const Lw = 1.0;
+    const Lb = 0.0;
+    const cw = (Math.max(Lbg,Lw)+0.05)/(Math.min(Lbg,Lw)+0.05);
+    const cb = (Math.max(Lbg,Lb)+0.05)/(Math.min(Lbg,Lb)+0.05);
+    return cw >= cb ? '#f3f7ff' : '#141821';
+  }
   const grid = document.getElementById('tokenGrid');
   const presetSelect = document.getElementById('presetSelect');
-  const modeSelect = document.getElementById('modeSelect');
+
   function render(){
     updateEditorChrome();
     grid.innerHTML='';
@@ -315,19 +419,11 @@
   document.getElementById('exportBtn')?.addEventListener('click', async ()=>{
     try {
       const activePresetName = String(presetSelect?.value || localStorage.getItem(ACTIVE_KEY) || '').trim();
-      const payload = {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        name: activePresetName || '',
-        tokens: withLinkedTokens(state),
-      };
+      const payload = buildThemePayload(withLinkedTokens(state), activePresetName);
       const json = JSON.stringify(payload, null, 2);
       const fileName = `now-playing-theme.json`;
 
-      // Prefer parent shell share (top-level user gesture context on iOS/Safari)
-      try {
-        window.parent?.postMessage({ type:'np-theme-export', json, fileName, payload }, '*');
-      } catch {}
+      try { window.parent?.postMessage({ type:'np-theme-export', json, fileName, payload }, '*'); } catch {}
 
       if (navigator.share) {
         try {
@@ -357,30 +453,25 @@
   });
 
   document.getElementById('importBtn')?.addEventListener('click', ()=>{
+    if (importBusy) return;
+    importBusy = true;
     try {
       const raw = prompt('Paste theme JSON:', '');
       if (!raw) return;
       let parsed = null;
       try { parsed = JSON.parse(String(raw)); } catch { flash('Invalid JSON'); return; }
 
-      const incomingName = String(parsed?.name || '').trim();
-      const incomingTokens = (parsed && typeof parsed === 'object' && parsed.tokens && typeof parsed.tokens === 'object')
-        ? parsed.tokens
-        : (parsed && typeof parsed === 'object' ? parsed : null);
-      if (!incomingTokens) { flash('No tokens found'); return; }
-
-      state = { ...defaults, ...incomingTokens };
-
+      const normalized = normalizeThemePayload(parsed);
+      state = { ...defaults, ...(normalized.tokens || {}) };
       const linked = withLinkedTokens(state);
       try { localStorage.setItem(KEY, JSON.stringify(linked)); } catch {}
 
-      let appliedName = '';
-      if (incomingName) {
+      let appliedName = String(normalized.name || '').trim();
+      if (appliedName) {
         const presets = loadPresets();
-        presets[incomingName] = { tokens: linked };
+        presets[appliedName] = { tokens: linked };
         savePresets(presets);
-        appliedName = incomingName;
-        try { localStorage.setItem(ACTIVE_KEY, incomingName); } catch {}
+        try { localStorage.setItem(ACTIVE_KEY, appliedName); } catch {}
       } else {
         try { localStorage.removeItem(ACTIVE_KEY); } catch {}
       }
@@ -391,6 +482,8 @@
       flash(appliedName ? `Theme imported: ${appliedName}` : 'Theme imported');
     } catch {
       flash('Import failed');
+    } finally {
+      importBusy = false;
     }
   });
 
@@ -413,6 +506,7 @@
       }
     } catch {}
   });
+
 
   function loadPresetByName(name=''){
     const n = String(name || '').trim();
