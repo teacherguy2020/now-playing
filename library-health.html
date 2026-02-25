@@ -47,7 +47,31 @@
     body.theme-light .v{color:#1f1833}
     body.theme-light #animatedArtPreview{background:rgba(255,255,255,.75);border-color:rgba(137,138,196,.42)}
     body.theme-light #animatedArtPreviewLabel{color:#4b3e6f}
-  </style>
+  
+    /* Unified token mapping (phase 1) */
+    :root{
+      --np-bg:var(--npb-bg,#0c1526);
+      --np-rail-bg:var(--npb-rail-bg,#0b1426);
+      --np-text:var(--npb-text,#e7eefc);
+      --np-card-bg:var(--npb-card-bg,rgba(10,18,34,.45));
+      --np-card-border:var(--npb-card-border,#2a3a58);
+      --np-tab-bg:var(--npb-tab-bg,#0f1a31);
+      --np-tab-text:var(--npb-tab-text,#e7eefc);
+      --np-tab-border:var(--npb-tab-border,#2a3a58);
+      --np-tab-hover:var(--npb-tab-hover-bg,#2f4f93);
+      --np-tab-active-bg:var(--npb-tab-active-bg,#3357d6);
+      --np-tab-active-text:var(--npb-tab-active-text,#ffffff);
+    }
+    html,body{background:var(--np-bg) !important;color:var(--np-text) !important;}
+    .card,.cfgCard,.panel,.section,.subsShell,.stationCluster,.stationCard{background:var(--np-card-bg) !important;border-color:var(--np-card-border) !important;color:var(--np-text) !important;}
+    .topTabs a{background:var(--np-tab-bg) !important;color:var(--np-tab-text) !important;border-color:var(--np-tab-border) !important;}
+    .topTabs a:hover{background:var(--np-tab-hover) !important;}
+    .topTabs a.active,.topTabs a[aria-current="page"]{background:var(--np-tab-active-bg) !important;color:var(--np-tab-active-text) !important;border-color:var(--np-tab-border) !important;}
+    input,select,textarea,button,.stationAction,.clusterToggle{background:var(--np-tab-bg) !important;color:var(--np-tab-text) !important;border-color:var(--np-tab-border) !important;}
+    .btnPrimary,.primary{background:var(--np-tab-active-bg) !important;color:var(--np-tab-active-text) !important;border-color:var(--np-tab-border) !important;}
+    button:hover,.stationAction:hover,.clusterToggle:hover{background:var(--np-tab-hover) !important;}
+    .muted,.mutedSm,label,.stationMeta{color:var(--np-text) !important;opacity:.82;}
+</style>
 </head>
 <body>
   <div class="preHeroStatusWrap">

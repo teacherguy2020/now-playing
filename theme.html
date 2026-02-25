@@ -37,7 +37,32 @@
     select,button,input[type="text"]{color:var(--editor-input-text);border-color:var(--editor-border)}
     select,input[type="text"]{background:var(--editor-input-bg)}
     button:hover{filter:brightness(1.06)}
-  </style>
+  
+    /* Unified token mapping (phase 1) */
+    :root{
+      --np-bg:var(--npb-bg,#0c1526);
+      --np-rail-bg:var(--npb-rail-bg,#0b1426);
+      --np-text:var(--npb-text,#e7eefc);
+      --np-text-secondary:var(--npb-text-secondary,#9fb1d9);
+      --np-card-bg:var(--npb-card-bg,rgba(10,18,34,.45));
+      --np-card-border:var(--npb-card-border,#2a3a58);
+      --np-tab-bg:var(--npb-tab-bg,#0f1a31);
+      --np-tab-text:var(--npb-tab-text,#e7eefc);
+      --np-tab-border:var(--npb-tab-border,#2a3a58);
+      --np-tab-hover:var(--npb-tab-hover-bg,#2f4f93);
+      --np-tab-active-bg:var(--npb-tab-active-bg,#3357d6);
+      --np-tab-active-text:var(--npb-tab-active-text,#ffffff);
+    }
+    html,body{background:var(--np-bg) !important;color:var(--np-text) !important;}
+    .card,.cfgCard,.panel,.section,.subsShell,.stationCluster,.stationCard{background:var(--np-card-bg) !important;border-color:var(--np-card-border) !important;color:var(--np-text) !important;}
+    .topTabs a{background:var(--np-tab-bg) !important;color:var(--np-tab-text) !important;border-color:var(--np-tab-border) !important;}
+    .topTabs a:hover{background:var(--np-tab-hover) !important;}
+    .topTabs a.active,.topTabs a[aria-current="page"]{background:var(--np-tab-active-bg) !important;color:var(--np-tab-active-text) !important;border-color:var(--np-tab-border) !important;}
+    input,select,textarea,button,.stationAction,.clusterToggle{background:var(--np-tab-bg) !important;color:var(--np-text) !important;border-color:var(--np-tab-border) !important;}
+    .btnPrimary,.primary{background:var(--np-tab-active-bg) !important;color:var(--np-text) !important;border-color:var(--np-tab-border) !important;}
+    button:hover,.stationAction:hover,.clusterToggle:hover{background:var(--np-tab-hover) !important;}
+    .muted,.mutedSm,label,.stationMeta{color:var(--np-text-secondary) !important;opacity:.95;}
+</style>
 </head>
 <body>
   <div class="wrap">
@@ -51,7 +76,7 @@
         <button id="savePresetBtn" type="button">Save as preset</button>
         <button id="deletePresetBtn" type="button">Delete preset</button>
         <select id="modeSelect" style="padding:7px 8px">
-          <option value="dark">Dark</option>
+          <option value="dark">Editing</option>
           <option value="light">Light</option>
         </select>
         <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;opacity:.9"><input id="autoPair" type="checkbox" /> Auto-pair opposite</label>
@@ -74,7 +99,9 @@
     // Shell
     '--theme-bg':'#0c1526',
     '--theme-text':'#e7eefc',
+    '--theme-text-secondary':'#9fb1d9',
     '--theme-rail-bg':'#0b1426',
+    '--theme-frame-fill':'#0c1526',
     '--theme-rail-border':'#2a3a58',
 
     // Tabs
@@ -96,7 +123,9 @@
   const labels={
     '--theme-bg':'App background',
     '--theme-text':'Primary text',
+    '--theme-text-secondary':'Secondary text',
     '--theme-rail-bg':'Surface Tint',
+    '--theme-frame-fill':'Frame fill',
     '--theme-rail-border':'Shell + frame border',
 
     '--theme-tab-bg':'Inactive tabs',
@@ -202,12 +231,12 @@
   function buildOppositeTokens(tokens, mode){
     const base = { ...tokens };
     const dark = {
-      '--theme-bg':'#0c1526','--theme-rail-bg':'#0b1426','--theme-rail-border':'#2a3a58',
+      '--theme-bg':'#0c1526','--theme-text-secondary':'#9fb1d9','--theme-rail-bg':'#0b1426','--theme-frame-fill':'#0c1526','--theme-rail-border':'#2a3a58',
       '--theme-tab-bg':'#0f1a31','--theme-tab-border':'#2a3a58','--theme-tab-hover-bg':'#2f4f93','--theme-tab-active-bg':'#3357d6',
       '--theme-hero-card-bg':'#0a122273','--theme-hero-card-border':'#2a3a58','--theme-pill-border':'#94a3b873','--theme-pill-glow':'#7dd3fc57'
     };
     const light = {
-      '--theme-bg':'#efe9fb','--theme-rail-bg':'#ddd2f2','--theme-rail-border':'#8f83b5',
+      '--theme-bg':'#efe9fb','--theme-text-secondary':'#4b3e6f','--theme-rail-bg':'#ddd2f2','--theme-frame-fill':'#efe9fb','--theme-rail-border':'#8f83b5',
       '--theme-tab-bg':'#d8c9ee','--theme-tab-border':'#8f83b5','--theme-tab-hover-bg':'#c8b8e2','--theme-tab-active-bg':'#8a73b8',
       '--theme-hero-card-bg':'#fff2e085','--theme-hero-card-border':'#8f83b5','--theme-pill-border':'#8f83b56b','--theme-pill-glow':'#8f83b54f'
     };
@@ -216,6 +245,7 @@
     const out = { ...base, ...target };
     // Rule of thumb enforcement: dark mode -> light text; light mode -> dark text.
     out['--theme-text'] = modeText(targetMode, 'primary');
+    out['--theme-text-secondary'] = modeText(targetMode, 'muted');
     out['--theme-tab-text'] = modeText(targetMode, 'muted');
     out['--theme-tab-active-text'] = modeText(targetMode, 'active');
     return out;

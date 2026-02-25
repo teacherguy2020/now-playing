@@ -25,7 +25,9 @@
       --app-shell-max:min(2200px, calc(100dvw - 12px));
       --theme-bg:#0c1526;
       --theme-text:#e7eefc;
+      --theme-text-secondary:#9fb1d9;
       --theme-rail-bg:#0b1426;
+      --theme-frame-fill:var(--theme-bg);
       --theme-rail-border:#2a3a58;
       --theme-frame-bg:var(--theme-bg);
       --theme-frame-border:#2a3a58;
@@ -42,15 +44,15 @@
     }
     html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
     body{background:var(--theme-bg);color:var(--theme-text);margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;padding-top:calc(env(safe-area-inset-top,0px) + 8px);touch-action:pan-y pinch-zoom}
-    .viewWrap{max-width:var(--app-shell-max);width:min(var(--app-shell-max), calc(100% - 12px));margin:0 auto;padding:0 0 14px;box-sizing:border-box}
+    .viewWrap{max-width:var(--app-shell-max);width:min(var(--app-shell-max), calc(100% - 12px));margin:0 auto;padding:0 0 14px;box-sizing:border-box;border:1px solid var(--theme-rail-border);border-radius:14px;overflow:hidden;background:var(--theme-frame-fill);}
     .heroWrap{max-width:var(--app-shell-max) !important;width:min(var(--app-shell-max), calc(100% - 12px)) !important;margin:10px auto -1px !important;padding-top:4px !important;position:relative}
-    #appFrame{width:100% !important;height:1400px;min-height:0;border:1px solid var(--theme-frame-border);border-top:0;border-radius:0 0 14px 14px;background:var(--theme-frame-bg);display:block;box-sizing:border-box}
+    #appFrame{width:100% !important;height:1400px;min-height:0;border:0;border-radius:0;background:var(--theme-frame-bg);display:block;box-sizing:border-box}
     #themeToggle{min-width:32px;padding:5px 8px;font-size:12px;line-height:1}
     /* In app-shell mode, let top chrome scroll away (not sticky) to maximize iframe area */
-    .heroRail{position:relative !important; top:auto !important; border-bottom:0 !important;}
-    .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important; background:var(--theme-bg) !important;}
+    .heroRail{position:relative !important; top:auto !important; border-bottom:0 !important; background:var(--theme-bg) !important;}
+    .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important; background:transparent !important;}
     .heroRail::before{content:none !important; display:none !important;}
-    .heroRailTop{border:1px solid var(--theme-rail-border);border-bottom:0;border-radius:14px 14px 0 0;background:var(--theme-rail-bg);padding:6px 10px;box-sizing:border-box}
+    .heroRailTop{border:0;border-bottom:1px solid var(--theme-rail-border);border-radius:0;background:var(--theme-frame-fill);padding:6px 10px;box-sizing:border-box}
     .heroTopBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0}
     .heroTopBar .topTabs{margin:0 !important}
     .heroTopBar .statusInline{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -99,7 +101,7 @@
     .heroQueueWrap,
     .heroQueueNextUp{backdrop-filter: blur(16px) saturate(1.16);-webkit-backdrop-filter: blur(16px) saturate(1.16)}
     .heroQueueTitle,
-    .heroQueueMeta{color:var(--theme-text)}
+    .heroQueueMeta{color:var(--theme-text-secondary)}
     .heroQueueRow{border-bottom-color:color-mix(in oklab, var(--theme-hero-card-border) 70%, transparent)}
     .heroQueueBtn,
     .heroQueueActions button{background:var(--theme-tab-bg);color:var(--theme-tab-text);border-color:var(--theme-tab-border)}
@@ -113,9 +115,9 @@
     .queueArtistAlbumBtn{background:var(--theme-tab-bg);color:var(--theme-tab-text);border-color:var(--theme-tab-border)}
     .queueAlbumTitle{color:var(--theme-text)}
     .queueAlbumSub,
-    .queueAlbumLineBtn{color:color-mix(in oklab, var(--theme-text) 75%, transparent)}
+    .queueAlbumLineBtn{color:var(--theme-text-secondary)}
     .queueAlbumTrackTitle{color:var(--theme-text)}
-    .queueAlbumTrackNum{color:color-mix(in oklab, var(--theme-text) 65%, transparent)}
+    .queueAlbumTrackNum{color:var(--theme-text-secondary)}
     .queueAlbumTrackRow{border-bottom-color:color-mix(in oklab, var(--theme-hero-card-border) 75%, transparent)}
     .queueAlbumTracks{border-top-color:color-mix(in oklab, var(--theme-hero-card-border) 85%, transparent)}
 
@@ -143,7 +145,7 @@
 
     /* Liquid glass pass (hero) */
     .heroWrap{
-      background:var(--theme-rail-bg) !important;
+      background:var(--theme-bg) !important;
       border:1px solid var(--theme-rail-border) !important;
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,.18) !important;
@@ -158,8 +160,8 @@
         inset 0 1px 0 rgba(255,255,255,.20),
         inset 0 -1px 0 rgba(125,211,252,.14),
         0 14px 34px rgba(2,8,20,.26) !important;
-      backdrop-filter: blur(18px) saturate(1.22) brightness(1.05);
-      -webkit-backdrop-filter: blur(18px) saturate(1.22) brightness(1.05);
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
     .heroTransport{position:relative;overflow:hidden}
     .heroTransport::before,
@@ -188,7 +190,8 @@
 
     /* Token authority lock: keep shell token-driven in both dark/light modes */
     #appFrame{background:var(--theme-frame-bg) !important;border-color:var(--theme-frame-border) !important}
-    .heroRailTop{background:var(--theme-rail-bg) !important;border-color:var(--theme-rail-border) !important}
+    .heroRail{background:var(--theme-bg) !important}
+    .heroRailTop{background:var(--theme-frame-fill) !important;border-color:var(--theme-rail-border) !important}
     .heroWrap{background:var(--theme-rail-bg) !important;border-color:var(--theme-rail-border) !important}
     .heroTransport,.heroQueueCard{background:var(--theme-hero-card-bg) !important;border-color:var(--theme-hero-card-border) !important}
     .heroTopBar .topTabs a{background:var(--theme-tab-bg) !important;color:var(--theme-tab-text) !important;border-color:var(--theme-tab-border) !important}
@@ -270,7 +273,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260224-title-primary-text"></script>
+  <script src="scripts/hero-transport.js?v=20260224-secondary-text"></script>
   <script src="scripts/theme-toggle.js?v=20260216-1"></script>
   <script>
     (() => {
@@ -312,7 +315,9 @@
           const cs = getComputedStyle(document.documentElement);
           const bg = cs.getPropertyValue('--theme-bg').trim() || '#0c1526';
           const text = cs.getPropertyValue('--theme-text').trim() || '#e7eefc';
+          const textSecondary = cs.getPropertyValue('--theme-text-secondary').trim() || '#9fb1d9';
           const railBg = cs.getPropertyValue('--theme-rail-bg').trim() || '#0b1426';
+          const frameFill = cs.getPropertyValue('--theme-frame-fill').trim() || bg;
           const cardBg = cs.getPropertyValue('--theme-hero-card-bg').trim() || 'rgba(10,18,34,.45)';
           const cardBorder = cs.getPropertyValue('--theme-hero-card-border').trim() || '#2a3a58';
           const tabBg = cs.getPropertyValue('--theme-tab-bg').trim() || '#0f1a31';
@@ -323,32 +328,31 @@
           const tabHoverBg = cs.getPropertyValue('--theme-tab-hover-bg').trim() || '#2f4f93';
           const pageNow = String(currentShellPage || '');
           const isThemePage = pageNow === 'theme.html';
-          const useRailBg = isThemePage || pageNow === 'radio.html';
           let st = doc.getElementById('npThemeBridge');
           if (!st) { st = doc.createElement('style'); st.id = 'npThemeBridge'; doc.head?.appendChild(st); }
           st.textContent = `
-            :root{--npb-bg:${bg};--npb-rail-bg:${railBg};--npb-text:${text};--npb-card-bg:${cardBg};--npb-card-border:${cardBorder};--npb-tab-bg:${tabBg};--npb-tab-text:${tabText};--npb-tab-active-bg:${tabActiveBg};--npb-tab-active-text:${tabActiveText};--npb-tab-border:${tabBorder};--npb-tab-hover-bg:${tabHoverBg};}
-            html,body{background:${useRailBg ? 'var(--npb-rail-bg)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
-            .card,.panel,.cfgCard,.section,#results,#queueWrap,.heroQueueWrap,.heroQueueCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
-            .stationCluster{background:color-mix(in oklab, var(--npb-rail-bg) 78%, var(--npb-bg) 22%) !important;border-color:var(--npb-card-border) !important;}
+            :root{--npb-bg:${bg};--npb-rail-bg:${railBg};--npb-frame-fill:${frameFill};--npb-text:${text};--npb-text-secondary:${textSecondary};--npb-card-bg:${cardBg};--npb-card-border:${cardBorder};--npb-tab-bg:${tabBg};--npb-tab-text:${tabText};--npb-tab-active-bg:${tabActiveBg};--npb-tab-active-text:${tabActiveText};--npb-tab-border:${tabBorder};--npb-tab-hover-bg:${tabHoverBg};}
+            html,body{background:${isThemePage ? 'var(--npb-frame-fill)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
+            .card,.panel,.cfgCard,.section,#results,#queueWrap,.heroQueueWrap,.heroQueueCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
+            .stationCluster{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
             .stationCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
             .topTabs a{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;box-shadow:none !important;}
             .topTabs a:hover{background:var(--npb-tab-hover-bg) !important;}
             .topTabs a.active,.topTabs a[aria-current="page"]{background:var(--npb-tab-active-bg) !important;color:var(--npb-tab-active-text) !important;border-color:var(--npb-tab-border) !important;}
             .stationName{color:var(--npb-text) !important;}
-            .stationMeta,.muted,.mutedSm,label{color:color-mix(in oklab, var(--npb-text) 70%, black 30%) !important;}
+            .stationMeta,.muted,.mutedSm,label{color:var(--npb-text-secondary) !important;}
             .stationAction,.clusterToggle,input,select,button{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;}
             .stationAction:hover,.clusterToggle:hover,button:hover{background:var(--npb-tab-hover-bg) !important;}
             /* Radio page has high-specificity !important defaults; override them explicitly. */
-            body:not(.theme-light), body.theme-light{background:${useRailBg ? 'var(--npb-rail-bg)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
+            body:not(.theme-light), body.theme-light{background:var(--npb-bg) !important;color:var(--npb-text) !important;}
             body:not(.theme-light) .card, body.theme-light .card,
             body:not(.theme-light) .stationCard, body.theme-light .stationCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
-            body:not(.theme-light) .stationCluster, body.theme-light .stationCluster{background:color-mix(in oklab, var(--npb-rail-bg) 78%, var(--npb-bg) 22%) !important;border-color:var(--npb-card-border) !important;}
+            body:not(.theme-light) .stationCluster, body.theme-light .stationCluster{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
             body:not(.theme-light) .stationName, body.theme-light .stationName{color:var(--npb-text) !important;}
             body:not(.theme-light) .stationMeta, body.theme-light .stationMeta,
             body:not(.theme-light) .muted, body.theme-light .muted,
             body:not(.theme-light) .mutedSm, body.theme-light .mutedSm,
-            body:not(.theme-light) label, body.theme-light label{color:color-mix(in oklab, var(--npb-text) 70%, black 30%) !important;}
+            body:not(.theme-light) label, body.theme-light label{color:var(--npb-text-secondary) !important;}
             body:not(.theme-light) .stationAction, body.theme-light .stationAction,
             body:not(.theme-light) .clusterToggle, body.theme-light .clusterToggle{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;}
             body:not(.theme-light) .stationAction:hover, body.theme-light .stationAction:hover,
@@ -397,6 +401,7 @@
           const isConfig = currentSrc.includes('config.html');
           const isPodcasts = currentSrc.includes('podcasts.html');
           const isQueueWizard = currentSrc.includes('queue-wizard.html');
+          const isTheme = currentSrc.includes('theme.html');
           const st = doc.createElement('style');
           st.id = 'appShellNormalizeStyle';
           st.textContent = [
@@ -407,7 +412,7 @@
             '.heroRail .topTabs, .heroRail header, .heroRail .heroTransportRow, .heroRail #themeToggle { display:none !important; }',
             '.heroWrap, .wrap, .cfgWrap, .subsWrap { max-width: 100% !important; width: calc(100% - 16px) !important; margin: 0 auto !important; box-sizing: border-box !important; }',
             '.heroWrap { padding: 12px 8px 0 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }',
-            '.wrap, .cfgWrap, .subsWrap { padding: 0 8px 10px !important; }',
+            '.wrap, .cfgWrap, .subsWrap { padding: 0 8px 10px !important; background: transparent !important; }',
             '.panel { margin: 0 !important; padding-top: 0 !important; }',
             '.card, .cfgCard, .panel, .subsShell { box-sizing: border-box !important; }',
             '.card, .cfgCard, .panel { margin-top: 0 !important; padding-top: 0 !important; border-top: 0 !important; }',
@@ -420,6 +425,9 @@
               : ''),
             (isPodcasts
               ? '.heroWrap{padding-top:10px !important;}'
+              : ''),
+            (isTheme
+              ? '.wrap{max-width:100% !important; width:100% !important; margin:0 !important; padding:0 !important; background:var(--npb-frame-fill) !important; min-height:100% !important;} .card{margin:0 !important; border-radius:0 !important;}'
               : '')
           ].join('\n');
           doc.head.appendChild(st);
@@ -442,11 +450,16 @@
             e ? e.scrollHeight : 0
           );
 
-          // Config page can form a feedback loop if body/html heights track iframe viewport.
+          // Some pages can form a feedback loop if body/html heights track iframe viewport.
           // Prefer concrete content wrappers there.
-          const isConfig = String(currentShellPage || '') === 'config.html';
-          if (isConfig) {
-            const candidates = Array.from(doc.querySelectorAll('.cfgWrap, .wrap, .panel, .cfgGrid, .splitCards, .tripleCards'));
+          const pageNow = String(currentShellPage || '');
+          const isConfig = pageNow === 'config.html';
+          const isTheme = pageNow === 'theme.html';
+          if (isConfig || isTheme) {
+            const sel = isConfig
+              ? '.cfgWrap, .wrap, .panel, .cfgGrid, .splitCards, .tripleCards'
+              : '.wrap, .card, .themeGrid, .panel';
+            const candidates = Array.from(doc.querySelectorAll(sel));
             let maxBottom = 0;
             for (const n of candidates) {
               const r = n.getBoundingClientRect?.();
@@ -454,10 +467,11 @@
               const btm = Math.round((r.top + win.scrollY) + r.height);
               if (btm > maxBottom) maxBottom = btm;
             }
-            if (maxBottom > 0) contentH = Math.max(480, maxBottom + 12);
+            if (maxBottom > 0) contentH = Math.max(isTheme ? 220 : 480, maxBottom + (isTheme ? 4 : 12));
           }
 
-          const measured = Math.max(contentH + 8, 480);
+          const minH = isTheme ? 220 : 480;
+          const measured = Math.max(contentH + (isTheme ? 2 : 8), minH);
           const cur = Math.max(0, parseInt(String(frame.style.height || '0'), 10) || 0);
           const isQueueWizard = String(currentShellPage || '').includes('queue-wizard.html');
           // Prevent scroll jumps from iframe shrink/reflow in Queue Wizard: only grow while on that page.
@@ -476,7 +490,14 @@
           const t = isLight ? 'light' : 'dark';
           doc.documentElement?.classList.toggle('theme-light', isLight);
           doc.body?.classList.toggle('theme-light', isLight);
-          if (doc.documentElement) doc.documentElement.style.background = isLight ? '#8e79b6' : '#0c1526';
+          if (doc.documentElement) {
+            const cs = getComputedStyle(document.documentElement);
+            const appBg = cs.getPropertyValue('--theme-bg').trim() || (isLight ? '#efe9fb' : '#0c1526');
+            const railBg = cs.getPropertyValue('--theme-rail-bg').trim() || appBg;
+            const isThemePageNow = String(currentShellPage || '') === 'theme.html';
+            doc.documentElement.style.background = appBg;
+            if (frame) frame.style.background = isThemePageNow ? railBg : appBg;
+          }
           try { win.localStorage.setItem('np-theme', t); } catch {}
           try { win.postMessage({ type: 'np-theme-sync', theme: t }, '*'); } catch {}
           applyThemeBridgeToFrame();
@@ -529,7 +550,9 @@
       const THEME_DEFAULTS = {
         '--theme-bg': '#0c1526',
         '--theme-text': '#e7eefc',
+        '--theme-text-secondary': '#9fb1d9',
         '--theme-rail-bg': '#0b1426',
+        '--theme-frame-fill': '#0c1526',
         '--theme-rail-border': '#2a3a58',
         '--theme-frame-border': '#2a3a58',
         '--theme-pill-border': 'rgba(148,163,184,.45)',
@@ -1676,16 +1699,15 @@
       }
 
       document.getElementById('themeToggle')?.addEventListener('click', () => {
-        // Prefer paired preset mode switch when available.
+        // Upper-right toggle behavior: switch only via paired opposite preset.
         const paired = tryApplyOppositeThemePreset();
-        // Other theme toggle handlers may still flip class; enforce preset mode after they run.
-        if (paired) {
-          setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 0);
-          setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 120);
-          setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 260);
-        } else {
-          setTimeout(syncThemeToFrame, 0);
-          setTimeout(syncThemeToFrame, 120);
+        // Other handlers may flip class; enforce preset mode after they run.
+        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 0);
+        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 120);
+        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 260);
+        if (!paired) {
+          // No paired preset found: keep current active preset mode (no generic toggle fallback).
+          return;
         }
       });
 
@@ -2212,7 +2234,9 @@
         }
 
         if (d.type === 'np-frame-height') {
-          const h = Math.max(480, Number(d.height || 0) + 14);
+          const isTheme = String(currentShellPage || '') === 'theme.html';
+          const minH = isTheme ? 220 : 480;
+          const h = Math.max(minH, Number(d.height || 0) + (isTheme ? 2 : 14));
           if (Number.isFinite(h) && h > 0) {
             const cur = Math.max(0, parseInt(String(frame.style.height || '0'), 10) || 0);
             if (Math.abs(cur - h) > 4) frame.style.height = `${h}px`;
