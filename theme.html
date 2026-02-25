@@ -114,7 +114,7 @@
 
     // Cards
     '--theme-hero-card-bg':'#0a122273',
-    '--theme-hero-card-border':'#2a3a58',
+    '--theme-hero-card-border':'#2a3a58','--theme-picker-card-bg':'#30436b',
 
     // Pills
     '--theme-pill-border':'#94a3b873',
@@ -136,7 +136,10 @@
     '--theme-tab-active-text':'Tab active text',
 
     '--theme-hero-card-bg':'Card background',
-    '--theme-hero-card-border':'Card border/progress bar',
+    '--theme-hero-card-border':'Card border',
+    '--theme-picker-card-bg':'Picker card background',
+    '--theme-picker-card-bg':'Picker card background',
+    '--theme-progress-fill':'Progress bar fill',
 
     '--theme-pill-border':'Pill border',
     '--theme-pill-glow':'Pill hover glow',
@@ -233,12 +236,12 @@
     const dark = {
       '--theme-bg':'#0c1526','--theme-text-secondary':'#9fb1d9','--theme-rail-bg':'#0b1426','--theme-frame-fill':'#0c1526','--theme-rail-border':'#2a3a58',
       '--theme-tab-bg':'#0f1a31','--theme-tab-border':'#2a3a58','--theme-tab-hover-bg':'#2f4f93','--theme-tab-active-bg':'#3357d6',
-      '--theme-hero-card-bg':'#0a122273','--theme-hero-card-border':'#2a3a58','--theme-pill-border':'#94a3b873','--theme-pill-glow':'#7dd3fc57'
+      '--theme-hero-card-bg':'#0a122273','--theme-hero-card-border':'#2a3a58','--theme-picker-card-bg':'#30436b','--theme-pill-border':'#94a3b873','--theme-pill-glow':'#7dd3fc57'
     };
     const light = {
       '--theme-bg':'#efe9fb','--theme-text-secondary':'#4b3e6f','--theme-rail-bg':'#ddd2f2','--theme-frame-fill':'#efe9fb','--theme-rail-border':'#8f83b5',
       '--theme-tab-bg':'#d8c9ee','--theme-tab-border':'#8f83b5','--theme-tab-hover-bg':'#c8b8e2','--theme-tab-active-bg':'#8a73b8',
-      '--theme-hero-card-bg':'#fff2e085','--theme-hero-card-border':'#8f83b5','--theme-pill-border':'#8f83b56b','--theme-pill-glow':'#8f83b54f'
+      '--theme-hero-card-bg':'#fff2e085','--theme-hero-card-border':'#8f83b5','--theme-picker-card-bg':'#cbc0e6','--theme-pill-border':'#8f83b56b','--theme-pill-glow':'#8f83b54f'
     };
     const targetMode = String(mode||'dark') === 'dark' ? 'light' : 'dark';
     const target = targetMode === 'light' ? light : dark;
@@ -402,6 +405,7 @@
   document.getElementById('applyBtn').addEventListener('click', ()=>{ push(); flash('Applied'); });
   document.getElementById('saveBtn').addEventListener('click', ()=>{
     try{ localStorage.setItem(KEY, JSON.stringify(withLinkedTokens(state))); }catch{}
+    syncPickerCardBgVar();
     push();
     flash('Saved');
   });
@@ -453,6 +457,22 @@
       loadPresetByName(String(d.name || ''));
     }
   });
+
+  function applyPickerTileBg(){
+    try {
+      const c = String(state['--theme-picker-card-bg'] || '#30436b');
+      document.querySelectorAll('.token').forEach((el)=>{
+        el.style.setProperty('background', c, 'important');
+        el.style.setProperty('background-color', c, 'important');
+      });
+    } catch {}
+  }
+
+  const _render = render;
+  render = function(){
+    _render();
+    applyPickerTileBg();
+  };
 
   render();
   renderPresetOptions();

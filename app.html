@@ -33,8 +33,13 @@
       --theme-frame-border:#2a3a58;
       --theme-pill-border:rgba(148,163,184,.45);
       --theme-pill-glow:rgba(125,211,252,.34);
+      --theme-transport-active:#22c55e;
+      --theme-transport-ring:#22c55e;
       --theme-hero-card-bg:rgba(10,18,34,.45);
       --theme-hero-card-border:#2a3a58;
+      --theme-picker-card-bg:#30436b;
+      --theme-card-secondary-fill:#0f1a31;
+      --theme-progress-fill:#2a3a58;
       --theme-tab-bg:#0f1a31;
       --theme-tab-text:#e7eefc;
       --theme-tab-active-bg:#3357d6;
@@ -67,7 +72,7 @@
 
     .heroTopBar .statusInline .pill .hint{display:none}
     .heroTopBar .themeBtnWrap{margin-left:auto}
-    .heroTransport .np .progress-fill{background:var(--theme-hero-card-border) !important}
+    .heroTransport .np .progress-fill{background:var(--theme-progress-fill) !important}
     .heroRailTop .topTabs a{background:var(--theme-tab-bg) !important;color:var(--theme-tab-text) !important;border-color:var(--theme-tab-border) !important;box-shadow:none !important}
     .heroRailTop .topTabs a:hover{background:var(--theme-tab-hover-bg) !important}
     .heroRailTop .topTabs a.active,
@@ -199,6 +204,12 @@
     .heroTransport .tbtn,
     .heroTransport .tbtn svg{color:var(--theme-text) !important;}
     .heroTransport .tbtn svg path{fill:currentColor !important;}
+    .heroTransport .tbtn.on,
+    .heroTransport .tbtn.on svg{color:var(--theme-transport-active) !important;}
+    .heroTransport .tbtnBig.on{
+      box-shadow:0 0 0 2px color-mix(in oklab, var(--theme-transport-ring) 55%, transparent) inset,
+                 0 0 18px color-mix(in oklab, var(--theme-transport-ring) 35%, transparent) !important;
+    }
 
     /* Final authority: hero rail side surround follows app background */
     .heroRail{ background:var(--theme-bg) !important; }
@@ -323,6 +334,7 @@
           const frameFill = cs.getPropertyValue('--theme-frame-fill').trim() || bg;
           const cardBg = cs.getPropertyValue('--theme-hero-card-bg').trim() || 'rgba(10,18,34,.45)';
           const cardBorder = cs.getPropertyValue('--theme-hero-card-border').trim() || '#2a3a58';
+          const cardSecondaryFill = cs.getPropertyValue('--theme-card-secondary-fill').trim() || '#0f1a31';
           const tabBg = cs.getPropertyValue('--theme-tab-bg').trim() || '#0f1a31';
           const tabText = cs.getPropertyValue('--theme-tab-text').trim() || '#e7eefc';
           const tabActiveBg = cs.getPropertyValue('--theme-tab-active-bg').trim() || '#3357d6';
@@ -334,7 +346,7 @@
           let st = doc.getElementById('npThemeBridge');
           if (!st) { st = doc.createElement('style'); st.id = 'npThemeBridge'; doc.head?.appendChild(st); }
           st.textContent = `
-            :root{--npb-bg:${bg};--npb-rail-bg:${railBg};--npb-frame-fill:${frameFill};--npb-text:${text};--npb-text-secondary:${textSecondary};--npb-card-bg:${cardBg};--npb-card-border:${cardBorder};--npb-tab-bg:${tabBg};--npb-tab-text:${tabText};--npb-tab-active-bg:${tabActiveBg};--npb-tab-active-text:${tabActiveText};--npb-tab-border:${tabBorder};--npb-tab-hover-bg:${tabHoverBg};}
+            :root{--npb-bg:${bg};--npb-rail-bg:${railBg};--npb-frame-fill:${frameFill};--npb-text:${text};--npb-text-secondary:${textSecondary};--npb-card-bg:${cardBg};--npb-card-border:${cardBorder};--npb-card-secondary-fill:${cardSecondaryFill};--npb-tab-bg:${tabBg};--npb-tab-text:${tabText};--npb-tab-active-bg:${tabActiveBg};--npb-tab-active-text:${tabActiveText};--npb-tab-border:${tabBorder};--npb-tab-hover-bg:${tabHoverBg};}
             html,body{background:${isThemePage ? 'var(--npb-frame-fill)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
             .card,.panel,.cfgCard,.section,#results,#queueWrap,.heroQueueWrap,.heroQueueCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
             .stationCluster{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
@@ -344,7 +356,7 @@
             .topTabs a.active,.topTabs a[aria-current="page"]{background:var(--npb-tab-active-bg) !important;color:var(--npb-tab-active-text) !important;border-color:var(--npb-tab-border) !important;}
             .stationName{color:var(--npb-text) !important;}
             .stationMeta,.muted,.mutedSm,label{color:var(--npb-text-secondary) !important;}
-            .stationAction,.clusterToggle,input,select,button{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;}
+            .stationAction,.clusterToggle,input,select,button{background:var(--npb-card-secondary-fill,var(--npb-tab-bg)) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;}
             .stationAction:hover,.clusterToggle:hover,button:hover{background:var(--npb-tab-hover-bg) !important;}
             /* Radio page has high-specificity !important defaults; override them explicitly. */
             body:not(.theme-light), body.theme-light{background:var(--npb-bg) !important;color:var(--npb-text) !important;}
@@ -357,7 +369,7 @@
             body:not(.theme-light) .mutedSm, body.theme-light .mutedSm,
             body:not(.theme-light) label, body.theme-light label{color:var(--npb-text-secondary) !important;}
             body:not(.theme-light) .stationAction, body.theme-light .stationAction,
-            body:not(.theme-light) .clusterToggle, body.theme-light .clusterToggle{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;}
+            body:not(.theme-light) .clusterToggle, body.theme-light .clusterToggle{background:var(--npb-card-secondary-fill,var(--npb-tab-bg)) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;}
             body:not(.theme-light) .stationAction:hover, body.theme-light .stationAction:hover,
             body:not(.theme-light) .clusterToggle:hover, body.theme-light .clusterToggle:hover{background:var(--npb-tab-hover-bg) !important;}
           `;
@@ -561,8 +573,13 @@
         '--theme-frame-border': '#2a3a58',
         '--theme-pill-border': 'rgba(148,163,184,.45)',
         '--theme-pill-glow': 'rgba(125,211,252,.34)',
+        '--theme-transport-active': '#22c55e',
+        '--theme-transport-ring': '#22c55e',
         '--theme-hero-card-bg': 'rgba(10,18,34,.45)',
         '--theme-hero-card-border': '#2a3a58',
+        '--theme-picker-card-bg': '#30436b',
+        '--theme-card-secondary-fill': '#0f1a31',
+        '--theme-progress-fill': '#2a3a58',
         '--theme-tab-bg': '#0f1a31',
         '--theme-tab-text': '#e7eefc',
         '--theme-tab-active-bg': '#3357d6',
