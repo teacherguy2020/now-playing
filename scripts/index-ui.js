@@ -365,6 +365,7 @@ let lastNextUpFetchTs = 0;
 
 let lastAlbumArtKey = '';
 let lastAlbumArtUrl = '';
+let lastAlbumContinuityKey = '';
 let motionLockTrackKey = '';
 let motionLockMp4 = '';
 let lastMotionAppliedTrackKey = '';
@@ -2768,6 +2769,13 @@ if (titleEl) {
   // In Alexa mode, keep full URL (including file query) so art changes per track are detected.
   const artKey = data.alexaMode ? String(rawArtUrl || '').trim() : normalizeArtKey(rawArtUrl);
 
+  const continuityArtist = String(data.albumartist || data.artist || '').trim().toLowerCase();
+  const continuityAlbum  = String(data.album || '').trim().toLowerCase();
+  const continuityKey = (!isRadio && !isAirplay && !isUpnp && continuityAlbum)
+    ? `${continuityArtist}|${continuityAlbum}`
+    : '';
+  const sameAlbumRun = !!(continuityKey && continuityKey === lastAlbumContinuityKey && lastAlbumArtKey && lastAlbumArtUrl);
+
   // Detect placeholder / missing
   const needsInitialPaint =
     artEl &&
@@ -2790,22 +2798,32 @@ if (titleEl) {
         ? rawArtUrl
         : (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : ''));
 
+  // Keep existing art/background stable for consecutive tracks from same album.
+  const effectiveArtKey = sameAlbumRun ? String(lastAlbumArtKey || artKey) : artKey;
+  const effectiveFgUrl = sameAlbumRun ? String(lastAlbumArtUrl || fgUrl || '') : fgUrl;
+  const effectiveBgArtUrl = sameAlbumRun
+    ? ((ENABLE_BACKGROUND_ART && effectiveArtKey)
+        ? `${API_BASE}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(effectiveArtKey)}`
+        : '')
+    : bgArtUrl;
+
   const appleUrl = String(data.radioItunesUrl || data.itunesUrl || data.radioAppleMusicUrl || '').trim();
   setAlbumArtAppleLink((isRadio && appleUrl) ? appleUrl : '');
   const trackKey = (isRadio)
     ? `radio|${String(appleUrl || '').trim().toLowerCase()}|${String(data.artist || '').trim().toLowerCase()}|${String(data.album || '').trim().toLowerCase()}|${String(data.title || data.radioTitle || '').trim().toLowerCase()}`
     : String(data.file || data.songid || '').trim();
+  const motionKey = (!isRadio && !isAirplay && !isUpnp && continuityKey) ? continuityKey : trackKey;
   const motionToken = ++motionReqToken;
 
-  const trackChangedForMotion = !!trackKey && (trackKey !== lastMotionAppliedTrackKey);
-  if (trackChangedForMotion && !(motionLockTrackKey === trackKey && motionLockMp4)) {
-    // New track: immediately drop previous motion clip so old video never "sticks".
+  const trackChangedForMotion = !!motionKey && (motionKey !== lastMotionAppliedTrackKey);
+  if (trackChangedForMotion && !(motionLockTrackKey === motionKey && motionLockMp4)) {
+    // New motion context: drop previous motion clip unless lock already matches.
     clearMotionArtVideo();
   }
 
-  // Motion lock: once motion is proven for a track, keep using it for that same track.
-  if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
-    setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl, trackKey);
+  // Motion lock: once motion is proven for a context, keep using it for that same context.
+  if (motionKey && motionLockTrackKey === motionKey && motionLockMp4) {
+    setMotionArtVideo(motionLockMp4, effectiveFgUrl || rawArtUrl, motionKey);
   } else if (motionArtEnabled()) {
     if (isRadio && appleUrl) {
       resolveMotionMp4(appleUrl)
@@ -2813,20 +2831,20 @@ if (titleEl) {
           if (motionToken !== motionReqToken) return;
           const resolved = String(mp4 || '').trim();
           if (resolved) {
-            if (trackKey) { motionLockTrackKey = trackKey; motionLockMp4 = resolved; }
-            setMotionArtVideo(resolved, fgUrl || rawArtUrl, trackKey);
-          } else if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
-            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl, trackKey);
+            if (motionKey) { motionLockTrackKey = motionKey; motionLockMp4 = resolved; }
+            setMotionArtVideo(resolved, effectiveFgUrl || rawArtUrl, motionKey);
+          } else if (motionKey && motionLockTrackKey === motionKey && motionLockMp4) {
+            setMotionArtVideo(motionLockMp4, effectiveFgUrl || rawArtUrl, motionKey);
           } else {
-            setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
+            setMotionArtVideo('', effectiveFgUrl || rawArtUrl, motionKey);
           }
         })
         .catch(() => {
           if (motionToken !== motionReqToken) return;
-          if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
-            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl, trackKey);
+          if (motionKey && motionLockTrackKey === motionKey && motionLockMp4) {
+            setMotionArtVideo(motionLockMp4, effectiveFgUrl || rawArtUrl, motionKey);
           } else {
-            setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
+            setMotionArtVideo('', effectiveFgUrl || rawArtUrl, motionKey);
           }
         });
     } else if (!isRadio && !isAirplay) {
@@ -2835,39 +2853,40 @@ if (titleEl) {
           if (motionToken !== motionReqToken) return;
           const resolved = String(mp4 || '').trim();
           if (resolved) {
-            if (trackKey) { motionLockTrackKey = trackKey; motionLockMp4 = resolved; }
-            setMotionArtVideo(resolved, fgUrl || rawArtUrl, trackKey);
-          } else if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
-            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl, trackKey);
+            if (motionKey) { motionLockTrackKey = motionKey; motionLockMp4 = resolved; }
+            setMotionArtVideo(resolved, effectiveFgUrl || rawArtUrl, motionKey);
+          } else if (motionKey && motionLockTrackKey === motionKey && motionLockMp4) {
+            setMotionArtVideo(motionLockMp4, effectiveFgUrl || rawArtUrl, motionKey);
           } else {
-            setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
+            setMotionArtVideo('', effectiveFgUrl || rawArtUrl, motionKey);
           }
         })
         .catch(() => {
           if (motionToken !== motionReqToken) return;
-          if (trackKey && motionLockTrackKey === trackKey && motionLockMp4) {
-            setMotionArtVideo(motionLockMp4, fgUrl || rawArtUrl, trackKey);
+          if (motionKey && motionLockTrackKey === motionKey && motionLockMp4) {
+            setMotionArtVideo(motionLockMp4, effectiveFgUrl || rawArtUrl, motionKey);
           } else {
-            setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
+            setMotionArtVideo('', effectiveFgUrl || rawArtUrl, motionKey);
           }
         });
     } else {
-      setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
+      setMotionArtVideo('', effectiveFgUrl || rawArtUrl, motionKey);
     }
   } else {
-    setMotionArtVideo('', fgUrl || rawArtUrl, trackKey);
+    setMotionArtVideo('', effectiveFgUrl || rawArtUrl, motionKey);
   }
 
   // =========================
   // Background + glow updates
   // =========================
-  if (!artKey) {
+  if (!effectiveArtKey) {
     // Truly no art → clear everything (and allow retry later)
     if (artEl) artEl.removeAttribute('src');
     if (artBgEl) artBgEl.style.backgroundImage = 'none';
     if (ENABLE_BACKGROUND_ART) setBackgroundCrossfade('', '');
     lastAlbumArtUrl = '';
     lastAlbumArtKey = '';
+    lastAlbumContinuityKey = '';
     lastMotionAppliedTrackKey = '';
     fgLoadingKey = '';
     fgLoadingUrl = '';
@@ -2875,10 +2894,10 @@ if (titleEl) {
   }
 
   if (ENABLE_BACKGROUND_ART) {
-    setBackgroundCrossfade(bgArtUrl, artKey);
+    setBackgroundCrossfade(effectiveBgArtUrl, effectiveArtKey);
 
     if (artBgEl) {
-      const glowUrl = fgUrl || '';
+      const glowUrl = effectiveFgUrl || '';
       artBgEl.style.backgroundImage = glowUrl ? `url("${glowUrl}")` : 'none';
       artBgEl.style.backgroundSize = 'cover';
       artBgEl.style.backgroundPosition = 'center';
@@ -2891,11 +2910,13 @@ if (titleEl) {
   // =========================
   // Foreground: commit-on-load (fixes “missing art” races)
   // =========================
-  const artKeyChanged = (artKey !== lastAlbumArtKey);
+  const artKeyChanged = (effectiveArtKey !== lastAlbumArtKey);
   if (needsInitialPaint || artKeyChanged) {
     // Important: do NOT set lastAlbumArtKey here — only after load succeeds
-    setForegroundArtWithPreload(artEl, fgUrl, artKey);
+    setForegroundArtWithPreload(artEl, effectiveFgUrl, effectiveArtKey);
   }
+
+  lastAlbumContinuityKey = continuityKey || '';
 
   dlog('[UI]', {
     isRadio,

@@ -172,10 +172,10 @@
       const r = await fetch(url, { headers: key ? { 'x-track-key': key } : {} });
       const j = await r.json().catch(() => ({}));
       const mp4 = String(j?.hit?.mp4 || '').trim();
-      localMotionCache.set(k, mp4);
+      // Cache only positive hits so transient misses/auth races can retry on next refresh.
+      if (mp4) localMotionCache.set(k, mp4);
       return mp4;
     } catch {
-      localMotionCache.set(k, '');
       return '';
     }
   }
@@ -274,6 +274,7 @@
     const prevArtMedia = prevArtNode?.querySelector?.('video.heroArtVid, img:not(.heroArtFallback)');
     const prevArtSrc = prevArtMedia ? canonicalMediaSrc(String(prevArtMedia.currentSrc || prevArtMedia.src || '').trim()) : '';
     const prevArtTrackKey = String(prevArtNode?.getAttribute?.('data-track-key') || '').trim();
+    const prevArtAlbumKey = String(prevArtNode?.getAttribute?.('data-album-key') || '').trim();
 
     const items = Array.isArray(q?.items) ? q.items : [];
     const head = items.find((x) => !!x?.isHead) || items[0] || null;
@@ -340,6 +341,9 @@
     const isLibraryTrack = ((!np?.isStream && !np?.isRadio && !isPodcast) || isAlexaMode);
     const modalAlbum = String(np?.album || head?.album || '').trim();
     const modalArtist = String(np?.artist || head?.artist || '').trim();
+    const artAlbumKey = (!isRadioOrStream && modalAlbum)
+      ? `${String(modalArtist || '').trim().toLowerCase()}|${String(modalAlbum || '').trim().toLowerCase()}`
+      : '';
     const modalArtRaw = String(np?.albumArtUrl || np?.altArtUrl || head?.thumbUrl || '').trim();
     const modalArt = modalArtRaw ? (modalArtRaw.startsWith('http') ? modalArtRaw : `${apiBase}${modalArtRaw}`) : '';
     const canOpenAlbumModal = !appleUrl && isLibraryTrack && !isRadioOrStream && !!modalAlbum;
@@ -387,10 +391,10 @@
 
     el.innerHTML =
       `${appleUrl
-        ? `<a class="heroArt heroArtLink" data-track-key="${escHtml(artTrackKey)}" href="${escHtml(appleUrl)}" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">${motionMp4
+        ? `<a class="heroArt heroArtLink" data-track-key="${escHtml(artTrackKey)}" data-album-key="${escHtml(artAlbumKey)}" href="${escHtml(appleUrl)}" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">${motionMp4
             ? `${thumb ? `<img class="heroArtFallback" src="${thumb}" alt="">` : '<div class="heroArtPh heroArtFallback"></div>'}<video class="heroArtVid" src="${motionMp4}" data-fallback-src="${thumb}" autoplay muted loop playsinline preload="metadata"></video>`
             : (thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>')}</a>`
-        : `<div class="heroArt" data-track-key="${escHtml(artTrackKey)}">${motionMp4
+        : `<div class="heroArt" data-track-key="${escHtml(artTrackKey)}" data-album-key="${escHtml(artAlbumKey)}">${motionMp4
             ? `${thumb ? `<img class="heroArtFallback" src="${thumb}" alt="">` : '<div class="heroArtPh heroArtFallback"></div>'}<video class="heroArtVid" src="${motionMp4}" data-fallback-src="${thumb}" autoplay muted loop playsinline preload="metadata"></video>`
             : (thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>')}</div>`}` +
       `<div class="heroMain">` +
@@ -424,9 +428,17 @@
       const nextArtMedia = nextArtNode?.querySelector?.('video.heroArtVid, img:not(.heroArtFallback)');
       const nextArtSrc = nextArtMedia ? canonicalMediaSrc(String(nextArtMedia.currentSrc || nextArtMedia.src || '').trim()) : '';
       const nextArtTrackKey = String(nextArtNode?.getAttribute?.('data-track-key') || '').trim();
-      // Preserve art only when both media src AND track identity are unchanged.
-      // This avoids stale carry-over in Alexa mode where art URLs can be reused.
-      if (prevArtNode && nextArtNode && prevArtSrc && nextArtSrc && prevArtSrc === nextArtSrc && prevArtTrackKey && nextArtTrackKey && prevArtTrackKey === nextArtTrackKey) {
+      const nextArtAlbumKey = String(nextArtNode?.getAttribute?.('data-album-key') || '').trim();
+      const prevHasMotion = !!prevArtNode?.querySelector?.('.heroArtVid');
+      const nextHasMotion = !!nextArtNode?.querySelector?.('.heroArtVid');
+      // Preserve art when either:
+      // 1) exact same track+src, or
+      // 2) same album and we already have motion but this render temporarily does not.
+      //    (Do NOT block static -> motion upgrades.)
+      const sameTrackSameSrc = !!(prevArtNode && nextArtNode && prevArtSrc && nextArtSrc && prevArtSrc === nextArtSrc && prevArtTrackKey && nextArtTrackKey && prevArtTrackKey === nextArtTrackKey);
+      const sameAlbumRun = !!(prevArtNode && nextArtNode && prevArtAlbumKey && nextArtAlbumKey && prevArtAlbumKey === nextArtAlbumKey);
+      const keepPriorMotionOnMiss = !!(sameAlbumRun && prevHasMotion && !nextHasMotion);
+      if (sameTrackSameSrc || keepPriorMotionOnMiss) {
         nextArtNode.replaceWith(prevArtNode);
       }
     } catch {}
@@ -1243,9 +1255,12 @@
         const effectiveFile = currentFile || lastKnownNowFile;
         const effectiveSongId = currentSongId || lastKnownSongId;
         const baseTrackKey = motionTrackKey(effectiveFile, effectiveSongId);
+        const localAlbumContinuityKey = (!isRadioOrStream && album)
+          ? `album|${artist.toLowerCase()}|${album.toLowerCase()}`
+          : '';
         const effectiveTrackKey = isRadioOrStream
           ? `radio|${String(appleUrl || '').trim().toLowerCase()}|${artist.toLowerCase()}|${album.toLowerCase()}|${radioTitle.toLowerCase()}`
-          : baseTrackKey;
+          : (localAlbumContinuityKey || baseTrackKey);
 
         // Render immediately with cached motion if available; do not block on remote lookup.
         // "Motion is law": if track file is unchanged (or temporarily missing in payload), keep using known-good motion clip.
@@ -1328,8 +1343,12 @@
           : await resolveLocalMotionMp4(artist, album, currentKey()).catch(() => '');
 
         if (seq !== refreshSeq) {
-          heroMotionLog('discard stale motion resolve', { trackKey: effectiveTrackKey });
-          return; // stale refresh result
+          const stillSameTrack = !!(effectiveTrackKey && effectiveTrackKey === lastRenderedTrackKey);
+          if (!stillSameTrack) {
+            heroMotionLog('discard stale motion resolve', { trackKey: effectiveTrackKey });
+            return; // stale refresh result
+          }
+          heroMotionLog('accept stale motion resolve (same track)', { trackKey: effectiveTrackKey });
         }
         if (!resolved) {
           heroMotionLog('motion resolve miss', { trackKey: effectiveTrackKey, remote: shouldTryRemoteMotion });
