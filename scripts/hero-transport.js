@@ -1205,6 +1205,21 @@
     };
 
     let refreshSeq = 0;
+    let reflowTimerA = null;
+    let reflowTimerB = null;
+    let reflowRaf = 0;
+    const scheduleHeroReflow = () => {
+      try { if (reflowRaf) cancelAnimationFrame(reflowRaf); } catch {}
+      try { if (reflowTimerA) clearTimeout(reflowTimerA); } catch {}
+      try { if (reflowTimerB) clearTimeout(reflowTimerB); } catch {}
+      reflowRaf = requestAnimationFrame(() => {
+        try { applyHeroViewportCentering(el); } catch {}
+      });
+      // Late settle passes for art-size transitions that finish after initial paint.
+      reflowTimerA = setTimeout(() => { try { applyHeroViewportCentering(el); } catch {} }, 120);
+      reflowTimerB = setTimeout(() => { try { applyHeroViewportCentering(el); } catch {} }, 320);
+    };
+
     const refresh = async () => {
       try {
         await ensureRuntimeKey();
@@ -1318,12 +1333,14 @@
           });
           render(el, q, np);
           applyHeroViewportCentering(el);
+          scheduleHeroReflow();
           armVideoFallback(el);
           lastRenderSignature = renderSig;
         } else {
           // If motion is locked for this track, avoid text-only update path that can repaint static art elsewhere.
           if (!motionLockedForTrack) updateHeroDynamic(el, q, np);
-        applyHeroViewportCentering(el);
+          applyHeroViewportCentering(el);
+          scheduleHeroReflow();
         }
         if (effectiveTrackKey) lastRenderedTrackKey = effectiveTrackKey;
 
@@ -1382,6 +1399,7 @@
         const npResolved = { ...np, _motionMp4: resolved };
         render(el, q, npResolved);
         applyHeroViewportCentering(el);
+        scheduleHeroReflow();
         armVideoFallback(el);
         const head2 = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
         const sig2IsRadio = !!npResolved?.isRadio || !!npResolved?.isStream || !!head2?.isStream;
@@ -1404,6 +1422,7 @@
           try {
             render(el, lastQ || { items: [], playbackState: '' }, lastNp || {});
             applyHeroViewportCentering(el);
+            scheduleHeroReflow();
             armVideoFallback(el);
             try { ensureRadioDrawer(); } catch {}
             return;
@@ -1411,6 +1430,7 @@
         }
         renderShell(el, 'unavailable');
         applyHeroViewportCentering(el);
+        scheduleHeroReflow();
         try { ensureRadioDrawer(); } catch {}
       }
     };
@@ -1584,7 +1604,15 @@
       setTimeout(() => { try { openRadioDrawer(); } catch {} }, 260);
     }
     setInterval(() => { if (!document.hidden) refresh(); }, 6000);
-    window.addEventListener('resize', () => applyHeroViewportCentering(el));
+    window.addEventListener('resize', () => { applyHeroViewportCentering(el); scheduleHeroReflow(); });
+
+    // Catch art-size/layout transitions that do not emit window resize.
+    try {
+      const ro = new ResizeObserver(() => scheduleHeroReflow());
+      ro.observe(el);
+      const artNode = el.querySelector('.heroArt');
+      if (artNode) ro.observe(artNode);
+    } catch {}
 
     // Prioritize now-playing freshness when returning to this tab/PWA window.
     document.addEventListener('visibilitychange', () => {
