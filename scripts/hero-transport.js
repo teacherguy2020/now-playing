@@ -405,11 +405,11 @@
               `</div>`)
             : (`<div class="heroTransportControls">` +
                 (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekback15" title="Back 15 seconds"><span style="font-size:13px;font-weight:700;">↺15</span></button>` : '') +
-                `<button class="tbtn tbtnFar ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` +
+                (!isRadioOrStream ? `<button class="tbtn tbtnFar ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` : '') +
                 `<button class="tbtn tbtnNear" data-a="previous" title="Previous">${icon('prev')}</button>` +
                 `<button class="tbtn tbtnBig ${state === 'playing' ? 'on' : ''}" data-a="${pp}" title="${pp}"${spinDelayStyle}>${icon(pp)}</button>` +
                 `<button class="tbtn tbtnNear" data-a="next" title="Next">${icon('next')}</button>` +
-                `<button class="tbtn tbtnFar ${randomOn ? 'on' : ''}" data-a="shuffle" title="Random">${icon('shuffle')}</button>` +
+                (!isRadioOrStream ? `<button class="tbtn tbtnFar ${randomOn ? 'on' : ''}" data-a="shuffle" title="Random">${icon('shuffle')}</button>` : '') +
                 (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekfwd30" title="Forward 30 seconds"><span style="font-size:13px;font-weight:700;">30↻</span></button>` : '') +
               `</div>` )}` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}" data-seekable="${showProgress ? '1' : '0'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div><div class="progress-handle" style="left:${progressPct}%;"></div><div class="progress-tip" style="left:${progressPct}%">Drag to seek</div></div>` +
