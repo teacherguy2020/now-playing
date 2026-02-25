@@ -1519,8 +1519,7 @@
         try { localStorage.setItem(HERO_FAV_LAST_KEY, file); } catch {}
         tile.classList.add('isLive');
         await sendStationToQueue(file, 'replace', false, true);
-        setHeroDrawerOpen(false);
-        syncDrawerOpenState();
+        // Keep drawer state as user-chosen; do not force-close on station pick.
         await refresh();
         try { window.dispatchEvent(new CustomEvent('heroTransport:update')); } catch {}
       } catch (e) {
