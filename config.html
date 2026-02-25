@@ -69,7 +69,8 @@
       .splitCards { grid-template-columns: 1fr; }
       .splitCardsRight { display:grid; gap:14px; align-items:stretch; }
     }
-    input[type="checkbox"] { appearance: auto !important; -webkit-appearance: checkbox !important; }
+    input[type="checkbox"],
+    input[type="radio"] { appearance: auto !important; -webkit-appearance: auto !important; accent-color: var(--npb-progress-fill,var(--npb-tab-active-bg,#3357d6)); }
     pre#out {
       min-height: 120px;
       max-height: 260px;
