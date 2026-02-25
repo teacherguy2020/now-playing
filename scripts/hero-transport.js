@@ -980,9 +980,9 @@
         const btns = Array.from(el.querySelectorAll('.heroTransportControls .tbtn'));
         if (btns.length && artH > 0) {
           // Single-source sizing to preserve proportions at all widths.
-          let normalPx = Math.max(24, Math.min(74, Math.round(artH * 0.35 * fitK)));
-          let bigPx = Math.round(normalPx * 1.14);
-          let seekPx = Math.max(22, Math.round(normalPx * 0.90));
+          let normalPx = Math.max(20, Math.min(60, Math.round(artH * 0.29 * fitK)));
+          let bigPx = Math.round(normalPx * 1.08);
+          let seekPx = Math.max(18, Math.round(normalPx * 0.82));
 
           // Ensure one-row fit in tighter widths (esp. podcasts with seek buttons).
           const controlsEl = el.querySelector('.np .heroTransportControls');
