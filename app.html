@@ -350,16 +350,36 @@
           const tabActiveText = cs.getPropertyValue('--theme-tab-active-text').trim() || '#ffffff';
           const tabBorder = cs.getPropertyValue('--theme-tab-border').trim() || '#2a3a58';
           const tabHoverBg = cs.getPropertyValue('--theme-tab-hover-bg').trim() || '#2f4f93';
-          const isThemePage = String(currentShellPage || '') === 'theme.html';
+          const pageNow = String(currentShellPage || '');
+          const isThemePage = pageNow === 'theme.html';
+          const useRailBg = isThemePage || pageNow === 'radio.html';
           let st = doc.getElementById('npThemeBridge');
           if (!st) { st = doc.createElement('style'); st.id = 'npThemeBridge'; doc.head?.appendChild(st); }
           st.textContent = `
             :root{--npb-bg:${bg};--npb-rail-bg:${railBg};--npb-text:${text};--npb-card-bg:${cardBg};--npb-card-border:${cardBorder};--npb-tab-bg:${tabBg};--npb-tab-text:${tabText};--npb-tab-active-bg:${tabActiveBg};--npb-tab-active-text:${tabActiveText};--npb-tab-border:${tabBorder};--npb-tab-hover-bg:${tabHoverBg};}
-            html,body{background:${isThemePage ? 'var(--npb-rail-bg)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
-            .card,.panel,.cfgCard,.section,#results,#queueWrap,.heroQueueWrap,.heroQueueCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
+            html,body{background:${useRailBg ? 'var(--npb-rail-bg)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
+            .card,.panel,.cfgCard,.section,#results,#queueWrap,.heroQueueWrap,.heroQueueCard,.stationCluster,.stationCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
             .topTabs a{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;box-shadow:none !important;}
             .topTabs a:hover{background:var(--npb-tab-hover-bg) !important;}
             .topTabs a.active,.topTabs a[aria-current="page"]{background:var(--npb-tab-active-bg) !important;color:var(--npb-tab-active-text) !important;border-color:var(--npb-tab-border) !important;}
+            .stationName{color:var(--npb-text) !important;}
+            .stationMeta,.muted,.mutedSm,label{color:color-mix(in oklab, var(--npb-text) 70%, black 30%) !important;}
+            .stationAction,.clusterToggle,input,select,button{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;}
+            .stationAction:hover,.clusterToggle:hover,button:hover{background:var(--npb-tab-hover-bg) !important;}
+            /* Radio page has high-specificity !important defaults; override them explicitly. */
+            body:not(.theme-light), body.theme-light{background:${useRailBg ? 'var(--npb-rail-bg)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
+            body:not(.theme-light) .card, body.theme-light .card,
+            body:not(.theme-light) .stationCluster, body.theme-light .stationCluster,
+            body:not(.theme-light) .stationCard, body.theme-light .stationCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
+            body:not(.theme-light) .stationName, body.theme-light .stationName{color:var(--npb-text) !important;}
+            body:not(.theme-light) .stationMeta, body.theme-light .stationMeta,
+            body:not(.theme-light) .muted, body.theme-light .muted,
+            body:not(.theme-light) .mutedSm, body.theme-light .mutedSm,
+            body:not(.theme-light) label, body.theme-light label{color:color-mix(in oklab, var(--npb-text) 70%, black 30%) !important;}
+            body:not(.theme-light) .stationAction, body.theme-light .stationAction,
+            body:not(.theme-light) .clusterToggle, body.theme-light .clusterToggle{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;}
+            body:not(.theme-light) .stationAction:hover, body.theme-light .stationAction:hover,
+            body:not(.theme-light) .clusterToggle:hover, body.theme-light .clusterToggle:hover{background:var(--npb-tab-hover-bg) !important;}
           `;
         } catch {}
       }

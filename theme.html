@@ -74,7 +74,6 @@
     // Shell
     '--theme-bg':'#0c1526',
     '--theme-text':'#e7eefc',
-    '--theme-frame-border':'#2a3a58',
     '--theme-rail-bg':'#0b1426',
     '--theme-rail-border':'#2a3a58',
 
@@ -97,11 +96,10 @@
   const labels={
     '--theme-bg':'App background',
     '--theme-text':'Primary text',
-    '--theme-frame-border':'Frame border',
     '--theme-rail-bg':'Top rail background',
-    '--theme-rail-border':'Top rail border',
+    '--theme-rail-border':'Shell + frame border',
 
-    '--theme-tab-bg':'Tab background',
+    '--theme-tab-bg':'Inactive tabs',
     '--theme-tab-text':'Tab text',
     '--theme-tab-border':'Tab border',
     '--theme-tab-hover-bg':'Tab hover background',
@@ -204,12 +202,12 @@
   function buildOppositeTokens(tokens, mode){
     const base = { ...tokens };
     const dark = {
-      '--theme-bg':'#0c1526','--theme-frame-border':'#2a3a58','--theme-rail-bg':'#0b1426','--theme-rail-border':'#2a3a58',
+      '--theme-bg':'#0c1526','--theme-rail-bg':'#0b1426','--theme-rail-border':'#2a3a58',
       '--theme-tab-bg':'#0f1a31','--theme-tab-border':'#2a3a58','--theme-tab-hover-bg':'#2f4f93','--theme-tab-active-bg':'#3357d6',
       '--theme-hero-card-bg':'#0a122273','--theme-hero-card-border':'#2a3a58','--theme-pill-border':'#94a3b873','--theme-pill-glow':'#7dd3fc57'
     };
     const light = {
-      '--theme-bg':'#efe9fb','--theme-frame-border':'#8f83b5','--theme-rail-bg':'#ddd2f2','--theme-rail-border':'#8f83b5',
+      '--theme-bg':'#efe9fb','--theme-rail-bg':'#ddd2f2','--theme-rail-border':'#8f83b5',
       '--theme-tab-bg':'#d8c9ee','--theme-tab-border':'#8f83b5','--theme-tab-hover-bg':'#c8b8e2','--theme-tab-active-bg':'#8a73b8',
       '--theme-hero-card-bg':'#fff2e085','--theme-hero-card-border':'#8f83b5','--theme-pill-border':'#8f83b56b','--theme-pill-glow':'#8f83b54f'
     };
@@ -275,8 +273,15 @@
     flash._t = setTimeout(()=>{ statusMsg.textContent = ''; }, 1600);
   }
 
+  function withLinkedTokens(tokens){
+    const t = { ...(tokens || {}) };
+    const railBorder = String(t['--theme-rail-border'] || defaults['--theme-rail-border'] || '#2a3a58');
+    t['--theme-frame-border'] = railBorder;
+    return t;
+  }
+
   function push(){
-    try { window.parent?.postMessage({ type:'np-theme-updated', tokens: state }, '*'); } catch {}
+    try { window.parent?.postMessage({ type:'np-theme-updated', tokens: withLinkedTokens(state) }, '*'); } catch {}
   }
 
   function renderPresetOptions(selected=''){
@@ -314,10 +319,10 @@
     const mode = (modeSelect?.value === 'light') ? 'light' : 'dark';
     const autoPair = !!document.getElementById('autoPair')?.checked;
     const presets = loadPresets();
-    presets[name] = { mode, tokens: { ...state } };
+    presets[name] = { mode, tokens: withLinkedTokens(state) };
     if (autoPair) {
       const pairName = `${name} (${oppositeMode(mode)})`;
-      presets[pairName] = { mode: oppositeMode(mode), tokens: buildOppositeTokens(state, mode) };
+      presets[pairName] = { mode: oppositeMode(mode), tokens: withLinkedTokens(buildOppositeTokens(state, mode)) };
     }
     savePresets(presets);
     try { localStorage.setItem(ACTIVE_KEY, name); } catch {}
@@ -338,13 +343,13 @@
 
   document.getElementById('applyBtn').addEventListener('click', ()=>{ push(); flash('Applied'); });
   document.getElementById('saveBtn').addEventListener('click', ()=>{
-    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch{}
+    try{ localStorage.setItem(KEY, JSON.stringify(withLinkedTokens(state))); }catch{}
     push();
     flash('Saved');
   });
   document.getElementById('resetBtn').addEventListener('click', ()=>{
     state={...defaults};
-    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch{}
+    try{ localStorage.setItem(KEY, JSON.stringify(withLinkedTokens(state))); }catch{}
     try{ localStorage.removeItem(ACTIVE_KEY); }catch{}
     render();
     push();
