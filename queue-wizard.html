@@ -75,7 +75,8 @@
     body.theme-light .topTabs a.active{background:rgba(103,80,164,.55) !important;border:1px solid rgba(53,40,78,.44) !important;color:#f4eefe !important}
     body.theme-light #existingPlaylistMenu{background:rgba(228,216,247,.94) !important;border:1px solid rgba(63,47,95,.28) !important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
     #themeToggle{min-width:44px;padding:8px 12px;font-size:16px;line-height:1}
-    .wrap{max-width:1080px;width:100%;box-sizing:border-box;margin:0 auto;padding:18px;overflow-x:hidden}
+    .wrap{max-width:1080px;width:100%;box-sizing:border-box;margin:0 auto;padding:34px 18px 18px;overflow-x:hidden}
+    .wrap > .card:first-child{margin-top:28px !important}
     .panel{overflow:visible !important}
     #results{max-height:none !important;overflow:visible !important}
     /* Queue Wizard tabs: keep original shape; no border on inactive tabs */
@@ -282,10 +283,11 @@
       <div id="existingLoadingLayer" class="cardLoadingLayer" aria-live="polite" aria-busy="false">
         <div class="cardLoadingInner"><span class="bigSpin" aria-hidden="true"></span>Loading playlists…</div>
       </div>
-      <h3 style="margin:0 0 8px">Playlists Queue Builder</h3>
-      <div class="muted" style="margin-top:4px">Choose existing playlist(s) to load.</div>
+      <h3 style="margin:0 0 8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+        <span>Playlists Queue Builder</span>
+        <span class="muted" style="font-size:16px;font-weight:520;line-height:1.15;opacity:.9;">Choose existing playlist(s) to load.</span>
+      </h3>
       <div id="existingPlaylistWrap" style="margin-top:10px;min-width:320px;max-width:100%;width:100%;display:flex;flex-direction:column;align-items:stretch;overflow:visible;position:relative;">
-        <label for="existingPlaylists" style="display:block;text-align:left;width:100%;">Existing playlists</label>
         <select id="existingPlaylists" style="display:none;"></select>
       </div>
       <div id="existingPlaylistCarousel" style="display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;padding:10px 2px 6px;margin-top:8px;max-width:100%;width:100%;min-width:0;box-sizing:border-box;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;"></div>
@@ -306,8 +308,10 @@
     <div class="card" id="filterSection">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
         <div>
-          <h3 style="margin:0 0 8px">Filter Queue Builder</h3>
-          <div class="muted" style="margin-top:4px">Pick genres/artists and exclusions, preview matches, then send that filtered list.</div>
+          <h3 style="margin:0 0 8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+            <span>Filter Queue Builder</span>
+            <span class="muted" style="font-size:16px;font-weight:520;line-height:1.15;opacity:.9;">Pick genres/artists and exclusions, preview matches, then send that filtered list.</span>
+          </h3>
         </div>
         <div style="min-width:260px;max-width:360px;flex:1 1 300px;position:relative;">
           <label style="display:block;">Quick search
@@ -351,8 +355,10 @@
     </div>
 
     <div class="card" id="vibeSection">
-      <h3 style="margin:0 0 8px">Vibe Queue Builder</h3>
-      <div class="muted">Uses the currently playing track as a seed and discovers similar tracks live.</div>
+      <h3 style="margin:0 0 8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;">
+        <span>Vibe Queue Builder</span>
+        <span class="muted" style="font-size:16px;font-weight:520;line-height:1.15;opacity:.9;">Uses the currently playing track as a seed and discovers similar tracks live.</span>
+      </h3>
 
       <div class="actionBar" style="margin-top:10px">
         <div class="choiceLine">
