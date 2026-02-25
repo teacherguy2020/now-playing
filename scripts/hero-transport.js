@@ -518,10 +518,11 @@
     const drawer = document.getElementById('heroRadioDrawer');
     if (!wrap || !drawer) return;
 
-    // Avoid first-paint jump: keep hidden until first art-based sizing pass completes.
+    // Keep handle visible even before first art-based sizing pass;
+    // only keep the drawer panel itself hidden until sizing settles.
     if (!heroDrawerSizedReady) {
-      wrap.style.setProperty('opacity', '0', 'important');
-      wrap.style.setProperty('visibility', 'hidden', 'important');
+      wrap.style.setProperty('opacity', '1', 'important');
+      wrap.style.setProperty('visibility', 'visible', 'important');
       wrap.classList.remove('open');
       document.getElementById('heroTransport')?.classList.remove('hasFavDrawerOpen');
       drawer.style.setProperty('border-left', '0', 'important');
