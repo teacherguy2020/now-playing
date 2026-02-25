@@ -27,7 +27,7 @@
       --theme-text:#e7eefc;
       --theme-rail-bg:#0b1426;
       --theme-rail-border:#2a3a58;
-      --theme-frame-bg:var(--theme-bg);
+      --theme-frame-bg:var(--theme-rail-bg);
       --theme-frame-border:#2a3a58;
       --theme-pill-border:rgba(148,163,184,.45);
       --theme-pill-glow:rgba(125,211,252,.34);
@@ -48,7 +48,7 @@
     #themeToggle{min-width:32px;padding:5px 8px;font-size:12px;line-height:1}
     /* In app-shell mode, let top chrome scroll away (not sticky) to maximize iframe area */
     .heroRail{position:relative !important; top:auto !important; border-bottom:0 !important;}
-    .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important; background:var(--theme-bg) !important;}
+    .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important; background:var(--theme-rail-bg) !important;}
     .heroRail::before{content:none !important; display:none !important;}
     .heroRailTop{border:1px solid var(--theme-rail-border);border-bottom:0;border-radius:14px 14px 0 0;background:var(--theme-rail-bg);padding:6px 10px;box-sizing:border-box}
     .heroTopBar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0}
@@ -358,7 +358,9 @@
           st.textContent = `
             :root{--npb-bg:${bg};--npb-rail-bg:${railBg};--npb-text:${text};--npb-card-bg:${cardBg};--npb-card-border:${cardBorder};--npb-tab-bg:${tabBg};--npb-tab-text:${tabText};--npb-tab-active-bg:${tabActiveBg};--npb-tab-active-text:${tabActiveText};--npb-tab-border:${tabBorder};--npb-tab-hover-bg:${tabHoverBg};}
             html,body{background:${useRailBg ? 'var(--npb-rail-bg)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
-            .card,.panel,.cfgCard,.section,#results,#queueWrap,.heroQueueWrap,.heroQueueCard,.stationCluster,.stationCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
+            .card,.panel,.cfgCard,.section,#results,#queueWrap,.heroQueueWrap,.heroQueueCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
+            .stationCluster{background:color-mix(in oklab, var(--npb-rail-bg) 78%, var(--npb-bg) 22%) !important;border-color:var(--npb-card-border) !important;}
+            .stationCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
             .topTabs a{background:var(--npb-tab-bg) !important;color:var(--npb-tab-text) !important;border-color:var(--npb-tab-border) !important;box-shadow:none !important;}
             .topTabs a:hover{background:var(--npb-tab-hover-bg) !important;}
             .topTabs a.active,.topTabs a[aria-current="page"]{background:var(--npb-tab-active-bg) !important;color:var(--npb-tab-active-text) !important;border-color:var(--npb-tab-border) !important;}
@@ -369,8 +371,8 @@
             /* Radio page has high-specificity !important defaults; override them explicitly. */
             body:not(.theme-light), body.theme-light{background:${useRailBg ? 'var(--npb-rail-bg)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
             body:not(.theme-light) .card, body.theme-light .card,
-            body:not(.theme-light) .stationCluster, body.theme-light .stationCluster,
             body:not(.theme-light) .stationCard, body.theme-light .stationCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;}
+            body:not(.theme-light) .stationCluster, body.theme-light .stationCluster{background:color-mix(in oklab, var(--npb-rail-bg) 78%, var(--npb-bg) 22%) !important;border-color:var(--npb-card-border) !important;}
             body:not(.theme-light) .stationName, body.theme-light .stationName{color:var(--npb-text) !important;}
             body:not(.theme-light) .stationMeta, body.theme-light .stationMeta,
             body:not(.theme-light) .muted, body.theme-light .muted,
@@ -427,16 +429,18 @@
           const st = doc.createElement('style');
           st.id = 'appShellNormalizeStyle';
           st.textContent = [
-            'html, body { margin: 0 !important; overflow-x: hidden !important; overscroll-behavior-x: none !important; }',
+            'html, body { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; overscroll-behavior-x: none !important; }',
             '.preHeroStatusWrap { display:none !important; }',
-            '.heroRail { background: transparent !important; border: 0 !important; box-shadow: none !important; position: relative !important; top: auto !important; }',
+            '.heroRail { display:none !important; background: transparent !important; border: 0 !important; box-shadow: none !important; position: relative !important; top: auto !important; padding:0 !important; margin:0 !important; min-height:0 !important; }',
             '.heroRail::before { content:none !important; display:none !important; }',
             '.heroRail .topTabs, .heroRail header, .heroRail .heroTransportRow, .heroRail #themeToggle { display:none !important; }',
             '.heroWrap, .wrap, .cfgWrap, .subsWrap { max-width: 100% !important; width: calc(100% - 16px) !important; margin: 0 auto !important; box-sizing: border-box !important; }',
             '.heroWrap { padding: 12px 8px 0 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }',
-            '.wrap, .cfgWrap, .subsWrap { padding: 12px 8px 10px !important; }',
-            '.panel { margin: 0 !important; padding-top: 8px !important; }',
+            '.wrap, .cfgWrap, .subsWrap { padding: 0 8px 10px !important; }',
+            '.panel { margin: 0 !important; padding-top: 0 !important; }',
             '.card, .cfgCard, .panel, .subsShell { box-sizing: border-box !important; }',
+            '.card, .cfgCard, .panel { margin-top: 0 !important; padding-top: 0 !important; border-top: 0 !important; }',
+            'body > *:first-child, .wrap > *:first-child, .cfgWrap > *:first-child, .subsWrap > *:first-child { margin-top: 0 !important; }',
             (isConfig
               ? '.panel{background:transparent !important;border:0 !important;box-shadow:none !important;padding-top:0 !important;} .cfgWrap{padding-top:0 !important;} .tripleCards,.splitCards{grid-template-columns:repeat(2,minmax(320px,1fr)) !important;} .splitCardsRight{display:contents !important;}'
               : ''),
@@ -575,7 +579,7 @@
         delete cleaned['--theme-frame-bg']; // retired token
         const merged = { ...THEME_DEFAULTS, ...cleaned };
         Object.entries(merged).forEach(([k, v]) => root.style.setProperty(k, String(v)));
-        root.style.setProperty('--theme-frame-bg', String(merged['--theme-bg'] || '#0c1526'));
+        root.style.setProperty('--theme-frame-bg', String(merged['--theme-rail-bg'] || merged['--theme-bg'] || '#0c1526'));
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute('content', String(merged['--theme-bg'] || '#0c1526'));
       }
