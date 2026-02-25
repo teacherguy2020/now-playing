@@ -643,101 +643,13 @@
 
       function normalizeThemePreset(v){
         if (!v) return null;
-        if (v.tokens && typeof v.tokens === 'object') return { mode: String(v.mode || 'dark').toLowerCase(), tokens: v.tokens };
-        if (typeof v === 'object') return { mode: 'dark', tokens: v };
+        if (v.tokens && typeof v.tokens === 'object') return { tokens: v.tokens };
+        if (typeof v === 'object') return { tokens: v };
         return null;
       }
 
-      function stripThemeModeSuffix(name=''){
-        return String(name).replace(/\s*\((dark|light)\)\s*$/i, '').trim();
-      }
-
-      function inferModeFromPresetName(name=''){
-        const m = String(name || '').match(/\((dark|light)\)\s*$/i);
-        return m ? String(m[1] || '').toLowerCase() : '';
-      }
-
-      function effectivePresetMode(name='', preset=null){
-        const byName = inferModeFromPresetName(name);
-        if (byName === 'dark' || byName === 'light') return byName;
-        const byPreset = String(preset?.mode || '').toLowerCase();
-        if (byPreset === 'dark' || byPreset === 'light') return byPreset;
-        return document.body?.classList.contains('theme-light') ? 'light' : 'dark';
-      }
-
-      function loadThemeTokens() {
-        try {
-          const raw = localStorage.getItem(THEME_TOKENS_KEY);
-          const parsed = raw ? JSON.parse(raw) : {};
-          applyThemeTokens(parsed || {});
-        } catch {
-          applyThemeTokens({});
-        }
-      }
-
-      function applyThemeModeFromActivePreset(){
-        try {
-          const activeName = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
-          if (!activeName) return false;
-          const presetsRaw = localStorage.getItem(THEME_PRESETS_KEY);
-          const presets = presetsRaw ? JSON.parse(presetsRaw) : {};
-          const active = normalizeThemePreset(presets[activeName]);
-          if (!active) return false;
-          const mode = effectivePresetMode(activeName, active);
-          const isLight = mode === 'light';
-          document.body.classList.toggle('theme-light', isLight);
-          try { localStorage.setItem('np-theme', isLight ? 'light' : 'dark'); } catch {}
-          return true;
-        } catch { return false; }
-      }
-
-      function tryApplyOppositeThemePreset(){
-        try {
-          const activeName = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
-          if (!activeName) return false;
-          const presetsRaw = localStorage.getItem(THEME_PRESETS_KEY);
-          const presets = presetsRaw ? JSON.parse(presetsRaw) : {};
-          const active = normalizeThemePreset(presets[activeName]);
-          if (!active) return false;
-
-          const currentMode = effectivePresetMode(activeName, active);
-          const targetMode = currentMode === 'light' ? 'dark' : 'light';
-          const base = stripThemeModeSuffix(activeName);
-          const candidates = [
-            `${base} (${targetMode})`,
-            `${base} (${targetMode.charAt(0).toUpperCase()}${targetMode.slice(1)})`,
-          ];
-
-          let selectedName = '';
-          for (const n of candidates) { if (presets[n]) { selectedName = n; break; } }
-          if (!selectedName) {
-            // Controlled fallback: if there is exactly one same-base preset in target mode, use it.
-            const matches = [];
-            for (const [name, val] of Object.entries(presets || {})) {
-              const p = normalizeThemePreset(val);
-              if (!p) continue;
-              const pMode = effectivePresetMode(name, p);
-              if (stripThemeModeSuffix(name) === base && pMode === targetMode) matches.push(name);
-            }
-            if (matches.length === 1) selectedName = matches[0];
-          }
-          if (!selectedName) return false;
-
-          const selected = normalizeThemePreset(presets[selectedName]);
-          if (!selected?.tokens) return false;
-          localStorage.setItem(THEME_ACTIVE_PRESET_KEY, selectedName);
-          localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(selected.tokens));
-          applyThemeTokens(selected.tokens);
-          document.body.classList.toggle('theme-light', targetMode === 'light');
-          try { localStorage.setItem('np-theme', targetMode === 'light' ? 'light' : 'dark'); } catch {}
-          // Keep Theme editor iframe state in lockstep with shell toggle selection.
-          try { frame?.contentWindow?.postMessage({ type:'np-theme-load-preset', name:selectedName }, '*'); } catch {}
-          syncThemeToFrame();
-          return true;
-        } catch { return false; }
-      }
-
       loadThemeTokens();
+      try { document.body.classList.remove('theme-light'); localStorage.setItem('np-theme','dark'); } catch {}
 
       async function sendHeroPlayback(action, extra = null){
         const host = location.hostname || '10.0.0.233';
@@ -2308,6 +2220,31 @@
           return;
         }
 
+        if (d.type === 'np-theme-export') {
+          const json = String(d.json || '').trim();
+          const fileName = String(d.fileName || 'now-playing-theme.json').trim() || 'now-playing-theme.json';
+          if (!json) return;
+          (async () => {
+            try {
+              if (navigator.share) {
+                try {
+                  const file = new File([json], fileName, { type: 'application/json' });
+                  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({ title:'Now Playing Theme', text:'Theme export JSON', files:[file] });
+                    return;
+                  }
+                  await navigator.share({ title:'Now Playing Theme', text: json });
+                  return;
+                } catch (e) {
+                  if (String(e?.name || '') === 'AbortError') return;
+                }
+              }
+              try { await navigator.clipboard.writeText(json); } catch {}
+            } catch {}
+          })();
+          return;
+        }
+
         if (d.type === 'np-frame-height') {
           const isTheme = String(currentShellPage || '') === 'theme.html';
           const minH = isTheme ? 220 : 480;
@@ -2325,12 +2262,7 @@
             const tokens = d.tokens && typeof d.tokens === 'object' ? d.tokens : {};
             localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(tokens));
             applyThemeTokens(tokens);
-            const m = String(d.mode || '').toLowerCase();
-            if (m === 'light' || m === 'dark') {
-              const isLight = (m === 'light');
-              document.body.classList.toggle('theme-light', isLight);
-              try { localStorage.setItem('np-theme', isLight ? 'light' : 'dark'); } catch {}
-            }
+            try { document.body.classList.remove('theme-light'); localStorage.setItem('np-theme','dark'); } catch {}
             syncThemeToFrame();
           } catch {}
           return;
