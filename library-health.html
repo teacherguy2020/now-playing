@@ -59,6 +59,7 @@
       --np-card-bg:var(--npb-card-bg,rgba(10,18,34,.45));
       --np-card-border:var(--npb-card-border,#2a3a58);
       --np-tab-bg:var(--npb-tab-bg,#0f1a31);
+      --np-card-secondary-fill:var(--npb-card-secondary-fill,var(--np-tab-bg));
       --np-tab-text:var(--npb-tab-text,#e7eefc);
       --np-tab-border:var(--npb-tab-border,#2a3a58);
       --np-tab-hover:var(--npb-tab-hover-bg,#2f4f93);
@@ -67,6 +68,8 @@
     }
     html,body{background:var(--np-bg) !important;color:var(--np-text) !important;}
     .card,.cfgCard,.panel,.section,.subsShell,.stationCluster,.stationCard{background:var(--np-card-bg) !important;border-color:var(--np-card-border) !important;color:var(--np-text) !important;}
+    details{background:var(--np-card-secondary-fill) !important;border-color:var(--np-card-border) !important;color:var(--np-text) !important;}
+    details summary{color:var(--np-text) !important;}
     .topTabs a{background:var(--np-tab-bg) !important;color:var(--np-tab-text) !important;border-color:var(--np-tab-border) !important;}
     .topTabs a:hover{background:var(--np-tab-hover) !important;}
     .topTabs a.active,.topTabs a[aria-current="page"]{background:var(--np-tab-active-bg) !important;color:var(--np-tab-active-text) !important;border-color:var(--np-tab-border) !important;}
