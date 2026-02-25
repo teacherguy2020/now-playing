@@ -6,7 +6,7 @@
     if (!root || !body) return;
     root.classList.toggle('theme-light', t === 'light');
     body.classList.toggle('theme-light', t === 'light');
-    root.style.background = (t === 'light') ? '#8e79b6' : '#0c1526';
+    // Shell/page background is token-driven in app CSS; avoid hardcoded overrides here.
     var btn = document.getElementById('themeToggle');
     if (btn) btn.textContent = (t === 'light') ? '☀️' : '🌙';
     try { localStorage.setItem('np-theme', t); } catch (e) {}
@@ -18,10 +18,14 @@
     applyTheme(saved);
     var btn = document.getElementById('themeToggle');
     if (btn) {
-      btn.addEventListener('click', function () {
-        var isLight = document.body && document.body.classList.contains('theme-light');
-        applyTheme(isLight ? 'dark' : 'light');
-      });
+      // In app shell, theme toggle behavior is handled by app.html paired-preset logic.
+      var isShell = !!document.getElementById('appFrame');
+      if (!isShell) {
+        btn.addEventListener('click', function () {
+          var isLight = document.body && document.body.classList.contains('theme-light');
+          applyTheme(isLight ? 'dark' : 'light');
+        });
+      }
     }
   }
 

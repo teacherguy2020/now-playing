@@ -17,8 +17,8 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
   <title>Now Playing</title>
-  <link rel="stylesheet" href="styles/podcasts.css?v=20260224-hide-art-hard" />
-  <link rel="stylesheet" href="styles/podcasts2.css?v=20260209-2" />
+  <link rel="stylesheet" href="styles/podcasts.css?v=20260224-no-rail-before" />
+  <link rel="stylesheet" href="styles/podcasts2.css?v=20260224-no-rail-before" />
   <link rel="stylesheet" href="styles/hero.css?v=20260224-no-halfmode" />
   <style>
     :root{
@@ -145,7 +145,7 @@
 
     /* Liquid glass pass (hero) */
     .heroWrap{
-      background:var(--theme-bg) !important;
+      background:var(--theme-rail-bg) !important;
       border:1px solid var(--theme-rail-border) !important;
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,.18) !important;
@@ -166,11 +166,9 @@
     .heroTransport{position:relative;overflow:hidden}
     .heroTransport::before,
     .heroQueueCard::before{
-      content:'';
-      position:absolute;
-      left:10px; right:10px; top:6px; height:20px;
-      border-radius:12px;
-      background:linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,0));
+      content:none !important;
+      display:none !important;
+      background:transparent !important;
       pointer-events:none;
     }
     .heroWrap::before{display:none !important}
@@ -190,13 +188,16 @@
 
     /* Token authority lock: keep shell token-driven in both dark/light modes */
     #appFrame{background:var(--theme-frame-bg) !important;border-color:var(--theme-frame-border) !important}
-    .heroRail{background:var(--theme-bg) !important}
+    .heroRail{background:var(--theme-frame-fill) !important}
     .heroRailTop{background:var(--theme-frame-fill) !important;border-color:var(--theme-rail-border) !important}
     .heroWrap{background:var(--theme-rail-bg) !important;border-color:var(--theme-rail-border) !important}
     .heroTransport,.heroQueueCard{background:var(--theme-hero-card-bg) !important;border-color:var(--theme-hero-card-border) !important}
     .heroTopBar .topTabs a{background:var(--theme-tab-bg) !important;color:var(--theme-tab-text) !important;border-color:var(--theme-tab-border) !important}
     .heroTopBar .topTabs a:hover{background:var(--theme-tab-hover-bg) !important}
     .heroTopBar .topTabs a.active,.heroTopBar .topTabs a[aria-current="page"]{background:var(--theme-tab-active-bg) !important;color:var(--theme-tab-active-text) !important;border-color:var(--theme-tab-border) !important}
+
+    /* Final authority: hero rail side surround follows app background */
+    .heroRail{ background:var(--theme-bg) !important; }
   </style>
 </head>
 <body>
@@ -1718,13 +1719,20 @@
         });
       }
 
+      function refreshThemeToggleIcon(){
+        const btn = document.getElementById('themeToggle');
+        if (!btn) return;
+        const isLight = document.body?.classList.contains('theme-light');
+        btn.textContent = isLight ? '☀️' : '🌙';
+      }
+
       document.getElementById('themeToggle')?.addEventListener('click', () => {
         // Upper-right toggle behavior: switch only via paired opposite preset.
         const paired = tryApplyOppositeThemePreset();
         // Other handlers may flip class; enforce preset mode after they run.
-        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 0);
-        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 120);
-        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); }, 260);
+        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); refreshThemeToggleIcon(); }, 0);
+        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); refreshThemeToggleIcon(); }, 120);
+        setTimeout(() => { applyThemeModeFromActivePreset(); syncThemeToFrame(); refreshThemeToggleIcon(); }, 260);
         if (!paired) {
           // No paired preset found: keep current active preset mode (no generic toggle fallback).
           return;
@@ -2295,6 +2303,7 @@
       syncFrameWidth();
       navigate(getPageFromUrl(), false);
       syncPills();
+      try { refreshThemeToggleIcon(); } catch {}
       // Prioritize transport controls/hero paint first; queue can load just after.
       setTimeout(() => { if (!document.hidden) syncHeroQueue(); }, 650);
       setInterval(() => { if (!document.hidden) syncPills(); }, 30000);

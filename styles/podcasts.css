@@ -748,7 +748,9 @@ body.theme-light .heroRail{
   padding-top:10px !important;
 }
 body.theme-light .heroRail::before{
-  background:rgba(108,84,148,.94) !important;
+  content:none !important;
+  display:none !important;
+  background:transparent !important;
 }
 body.theme-light .heroWrap{
   background:rgba(214,197,239,.82) !important;

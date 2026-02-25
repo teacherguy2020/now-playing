@@ -320,10 +320,29 @@
     } catch {}
   }
 
+  function sameTokens(a={}, b={}){
+    const keys = Array.from(new Set([...Object.keys(defaults), ...Object.keys(a||{}), ...Object.keys(b||{})]));
+    return keys.every((k)=> String((a||{})[k] ?? defaults[k] ?? '') === String((b||{})[k] ?? defaults[k] ?? ''));
+  }
+
+  function inferActivePresetName(presets, selected=''){
+    try {
+      const explicit = String(selected || localStorage.getItem(ACTIVE_KEY) || '').trim();
+      if (explicit && presets && presets[explicit]) return explicit;
+      for (const [name, val] of Object.entries(presets || {})) {
+        const p = normalizePreset(val);
+        if (!p?.tokens) continue;
+        if (sameTokens(state, p.tokens)) return name;
+      }
+    } catch {}
+    return '';
+  }
+
   function renderPresetOptions(selected=''){
     if (!presetSelect) return;
     const presets = loadPresets();
     const names = Object.keys(presets).sort((a,b)=>a.localeCompare(b));
+    const activeName = inferActivePresetName(presets, selected);
     presetSelect.innerHTML = `<option value="">(select preset)</option>` + names.map(n=>{
       const p = normalizePreset(presets[n]);
       const mode = p?.mode ? ` (${p.mode})` : '';
@@ -331,7 +350,10 @@
       const label = hasModeInName ? String(n) : `${n}${mode}`;
       return `<option value="${n.replace(/"/g,'&quot;')}">${label}</option>`;
     }).join('');
-    if (selected) presetSelect.value = selected;
+    if (activeName) {
+      presetSelect.value = activeName;
+      try { localStorage.setItem(ACTIVE_KEY, activeName); } catch {}
+    }
   }
 
   document.getElementById('loadPresetBtn')?.addEventListener('click', ()=>{
