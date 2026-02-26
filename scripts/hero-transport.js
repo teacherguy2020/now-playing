@@ -55,15 +55,19 @@
   let lastMotionTrackKey = '';
   let lastRenderedTrackKey = '';
   const motionLockByTrack = new Map();
+  // Shared latest queue/now-playing snapshots (used by drawer + hero refresh paths).
+  let lastQ = null;
+  let lastNp = null;
 
   function currentKey() {
-    return String($('key')?.value || '').trim() || runtimeTrackKey;
+    // Prefer runtime-fetched key over any stale UI field value.
+    return runtimeTrackKey || String($('key')?.value || '').trim();
   }
 
-  async function ensureRuntimeKey() {
-    if (currentKey()) return;
+  async function ensureRuntimeKey(force = false) {
+    if (!force && currentKey()) return;
     const now = Date.now();
-    if (runtimeKeyLastAttemptMs && (now - runtimeKeyLastAttemptMs) < 3000) return;
+    if (!force && runtimeKeyLastAttemptMs && (now - runtimeKeyLastAttemptMs) < 3000) return;
     runtimeKeyLastAttemptMs = now;
     try {
       const r = await fetch(`${apiBase}/config/runtime`, { cache: 'no-store' });
@@ -505,7 +509,7 @@
   let heroDrawerAppliedSidePx = 0;
   let heroDrawerSizedReady = false;
   let heroDrawerRevealTimer = null;
-  const HERO_FAV_GRID_KEY = 'nowplaying.heroFavGridHtml.v1';
+  const HERO_FAV_LIST_KEY = 'nowplaying.heroFavList.v1';
 
   function applyFavTabSize(tab, sidePx) {
     if (!tab) return;
@@ -521,9 +525,18 @@
     try { localStorage.setItem(HERO_FAV_DRAWER_OPEN_KEY, heroDrawerOpen ? '1' : '0'); } catch {}
   }
   const HERO_FAV_LAST_KEY = 'nowplaying.heroFavLastStation.v1';
-  let heroDrawerGridHtml = (() => {
-    try { return String(localStorage.getItem(HERO_FAV_GRID_KEY) || ''); } catch { return ''; }
+  let heroFavoriteList = (() => {
+    try {
+      const raw = localStorage.getItem(HERO_FAV_LIST_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
   })();
+  let pendingLiveStationKey = '';
+  let pendingLiveStationUntilMs = 0;
+  let stickyLiveStationKey = '';
+  let loadingStationKey = '';
+  let loadingStationUntilMs = 0;
 
   function syncDrawerOpenState() {
     const wrap = document.getElementById('heroRadioDrawerWrap');
@@ -582,11 +595,14 @@
 #heroRadioDrawer{position:absolute;left:100%;top:0;height:100%;width:var(--drawer-w);background:#0f1a31;border-left:0;box-shadow:-8px 0 24px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;border-radius:0 10px 10px 0;transform:translateX(-10px);opacity:0;visibility:hidden;pointer-events:none;transition:transform .18s ease,opacity .14s ease,visibility 0s linear .18s}
 #heroRadioDrawerWrap.open #heroRadioDrawer{transform:translateX(0);opacity:1;visibility:visible;pointer-events:auto;border-left:1px solid #2a3a58;transition:transform .18s ease,opacity .14s ease}
 #heroRadioDrawer .grid{padding:6px;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;width:100%}
-#heroRadioDrawer .tile{width:100%;aspect-ratio:1/1;border:1px solid #2a3a58;border-radius:7px;background:#0a1222;display:flex;align-items:center;justify-content:center;padding:0;overflow:hidden;cursor:pointer;transition:border-color .12s ease,box-shadow .12s ease,transform .08s ease}
+#heroRadioDrawer .tile{position:relative;width:100%;aspect-ratio:1/1;border:1px solid #2a3a58;border-radius:7px;background:#0a1222;display:flex;align-items:center;justify-content:center;padding:0;overflow:hidden;cursor:pointer;transition:border-color .12s ease,box-shadow .12s ease,transform .08s ease}
 #heroRadioDrawer .tile:hover{border-color:#8bd3ff;box-shadow:0 0 0 1px rgba(139,211,255,.35) inset}
 #heroRadioDrawer .tile:active{transform:scale(.97)}
-#heroRadioDrawer .tile.isLive{border-color:#22c55e !important;box-shadow:0 0 0 1px rgba(34,197,94,.42) inset, 0 0 12px rgba(34,197,94,.20)}
+#heroRadioDrawer .tile.isLive{border-color:#22c55e !important;border-width:2px !important;box-shadow:0 0 0 2px rgba(34,197,94,.48) inset,0 0 18px rgba(34,197,94,.34)}
 #heroRadioDrawer .tile img{width:100%;height:100%;object-fit:cover}
+#heroRadioDrawer .tile .tileSpinner{position:absolute;inset:auto;right:5px;top:5px;width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.35);border-top-color:#7dd3fc;display:none;pointer-events:none;animation:heroTileSpin .75s linear infinite}
+#heroRadioDrawer .tile.isLoading .tileSpinner{display:block}
+@keyframes heroTileSpin{to{transform:rotate(360deg)}}
 #heroTransport .heroMain{transform:none !important;padding-right:0 !important}
 #heroTransport .heroLivePulse{color:#ef4444;animation:heroLivePulse 2.2s ease-in-out infinite}
 
@@ -616,10 +632,14 @@
 
     drawer = document.createElement('aside');
     drawer.id = 'heroRadioDrawer';
-    drawer.innerHTML = `<div class="grid">${heroDrawerGridHtml || ''}</div>`;
+    const emptyGrid = Array.from({ length: 9 }).map(() => '<div class="tile" aria-hidden="true" style="opacity:.25"></div>').join('');
+    drawer.innerHTML = `<div class="grid">${emptyGrid}</div>`;
     drawer.style.setProperty('width', `${heroDrawerLastSidePx}px`, 'important');
     drawer.style.setProperty('height', '100%', 'important');
     wrap.appendChild(drawer);
+
+    // On any hero re-render, repopulate immediately from cached favorite list to avoid blank flashes.
+    try { renderRadioDrawerGrid(drawer.querySelector('.grid'), heroFavoriteList); } catch {}
 
     syncDrawerOpenState();
 
@@ -627,10 +647,28 @@
   }
 
   async function loadRadioFavoritesList() {
-    const r = await fetch(`${apiBase}/config/queue-wizard/radio-favorites`, { headers: currentKey() ? { 'x-track-key': currentKey() } : {} });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-    return Array.isArray(j.favorites) ? j.favorites : [];
+    const run = async () => {
+      const k = currentKey();
+      const url = `${apiBase}/config/queue-wizard/radio-favorites${k ? `?k=${encodeURIComponent(k)}` : ''}`;
+      const r = await fetch(url, { headers: k ? { 'x-track-key': k } : {}, cache: 'no-store' });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) {
+        const err = new Error(j?.error || `HTTP ${r.status}`);
+        err.status = r.status;
+        throw err;
+      }
+      return Array.isArray(j.favorites) ? j.favorites : [];
+    };
+
+    try {
+      return await run();
+    } catch (e) {
+      if (Number(e?.status) === 401 || Number(e?.status) === 403) {
+        try { await ensureRuntimeKey(true); } catch {}
+        return await run();
+      }
+      throw e;
+    }
   }
 
   async function sendStationToQueue(file, mode = 'append', keepNowPlaying = false, playNow = false) {
@@ -654,7 +692,7 @@
       j = await run();
     } catch (e) {
       if (Number(e?.status) === 401 || Number(e?.status) === 403) {
-        try { await ensureRuntimeKey(); } catch {}
+        try { await ensureRuntimeKey(true); } catch {}
         j = await run();
       } else {
         throw e;
@@ -675,47 +713,193 @@
   }
 
   async function toggleFavoriteStation(file, favorite) {
-    const r = await fetch(`${apiBase}/config/queue-wizard/radio-favorite`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(currentKey() ? { 'x-track-key': currentKey() } : {}) },
-      body: JSON.stringify({ station: String(file || ''), favorite: !!favorite }),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-    return j;
+    const run = async () => {
+      const r = await fetch(`${apiBase}/config/queue-wizard/radio-favorite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(currentKey() ? { 'x-track-key': currentKey() } : {}) },
+        body: JSON.stringify({ station: String(file || ''), favorite: !!favorite }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) {
+        const err = new Error(j?.error || `HTTP ${r.status}`);
+        err.status = r.status;
+        throw err;
+      }
+      return j;
+    };
+
+    try {
+      return await run();
+    } catch (e) {
+      if (Number(e?.status) === 401 || Number(e?.status) === 403) {
+        try { await ensureRuntimeKey(true); } catch {}
+        return await run();
+      }
+      throw e;
+    }
   }
 
-  async function openRadioDrawer() {
+  function stationKey(v=''){
+    const raw = String(v || '').trim();
+    if (!raw) return '';
+    try {
+      const u = new URL(raw);
+      return `${String(u.hostname || '').toLowerCase()}${String(u.pathname || '').replace(/\/+$/, '').toLowerCase()}`;
+    } catch {
+      return raw.toLowerCase().replace(/\?.*$/, '').replace(/\/+$/, '');
+    }
+  }
+
+  function renderRadioDrawerGrid(grid, favs = []) {
+    if (!grid) return;
+    const top = (Array.isArray(favs) ? favs : []).slice(0, 9);
+    let lastPicked = '';
+    try { lastPicked = String(localStorage.getItem(HERO_FAV_LAST_KEY) || ''); } catch {}
+    const headItem = Array.isArray(lastQ?.items) ? (lastQ.items.find((x)=>!!x?.isHead) || lastQ.items[0] || null) : null;
+    const radioContext = !!(lastNp?.isRadio || lastNp?.isStream || headItem?.isStream);
+    const liveFile = String(lastNp?.file || headItem?.file || '').trim();
+    const liveStationName = String(
+      lastNp?._stationName ||
+      lastNp?.stationName ||
+      lastNp?.radioStationName ||
+      headItem?.stationName ||
+      headItem?.name ||
+      headItem?.artist ||
+      ''
+    ).trim();
+    const lastPickedKey = stationKey(lastPicked);
+    const liveKey = stationKey(liveFile);
+    const liveNameKey = stationKey(liveStationName);
+    const hasLiveIdentity = !!(liveKey || liveNameKey);
+    const nowMs = Date.now();
+    const pendingKeyActive = !!(pendingLiveStationKey && nowMs < pendingLiveStationUntilMs);
+    if (pendingKeyActive && ((liveKey && liveKey === pendingLiveStationKey) || (liveNameKey && liveNameKey === pendingLiveStationKey))) {
+      pendingLiveStationKey = '';
+      pendingLiveStationUntilMs = 0;
+    }
+
+    let confirmedLiveKey = '';
+    if (radioContext && hasLiveIdentity) {
+      const found = top.find((f) => {
+        const k = stationKey(String(f.file || '').trim());
+        const nk = stationKey(String(f.stationName || '').trim());
+        return (k && liveKey && k === liveKey) || (nk && liveNameKey && nk === liveNameKey);
+      });
+      confirmedLiveKey = stationKey(String(found?.file || ''));
+      if (confirmedLiveKey) stickyLiveStationKey = confirmedLiveKey;
+    }
+    if (loadingStationKey) {
+      const loadingExpired = Date.now() >= loadingStationUntilMs;
+      const loadingConfirmed = !!(confirmedLiveKey && confirmedLiveKey === loadingStationKey);
+      if (loadingExpired || loadingConfirmed) {
+        loadingStationKey = '';
+        loadingStationUntilMs = 0;
+      }
+    }
+
+    const fallbackKey = pendingKeyActive
+      ? pendingLiveStationKey
+      : ((confirmedLiveKey ? '' : (stickyLiveStationKey || lastPickedKey)) || ((!radioContext || !hasLiveIdentity) ? (stickyLiveStationKey || lastPickedKey) : ''));
+
+    const rows = top.map((f) => {
+      const file = String(f.file || '').trim();
+      const name = String(f.stationName || file || 'Station');
+      const key = stationKey(file);
+      const nameKey = stationKey(name);
+      const liveMatch = !!(
+        (key && liveKey && key === liveKey) ||
+        (nameKey && liveNameKey && nameKey === liveNameKey)
+      );
+      const fallbackPickedMatch = !!(fallbackKey && key && key === fallbackKey);
+      const on = pendingKeyActive
+        ? !!(key && key === pendingLiveStationKey)
+        : (confirmedLiveKey
+            ? !!(key && key === confirmedLiveKey)
+            : !!(liveMatch || fallbackPickedMatch));
+      const isLoading = !!(loadingStationKey && Date.now() < loadingStationUntilMs && key && key === loadingStationKey);
+      return { file, name, on, isLoading };
+    });
+
+    const existingBtns = Array.from(grid.querySelectorAll('button[data-station-tile]'));
+    const sameStructure = existingBtns.length === rows.length && rows.every((r, i) => {
+      const ex = existingBtns[i];
+      const exFile = decodeURIComponent(String(ex.getAttribute('data-station-tile') || ''));
+      return exFile === r.file;
+    });
+
+    if (sameStructure && rows.length) {
+      rows.forEach((r, i) => {
+        existingBtns[i].classList.toggle('isLive', !!r.on);
+        existingBtns[i].classList.toggle('isLoading', !!r.isLoading);
+      });
+      // keep placeholders if already present; no full redraw needed
+      return;
+    }
+
+    const cells = rows.map((r) => {
+      const logo = `${apiBase}/art/radio-logo.jpg?name=${encodeURIComponent(r.name)}`;
+      return `<button class="tile ${r.on ? 'isLive' : ''} ${r.isLoading ? 'isLoading' : ''}" data-station-tile="${encodeURIComponent(r.file)}" title="${r.name}"><img src="${logo}" alt="${r.name}"><span class="tileSpinner" aria-hidden="true"></span></button>`;
+    });
+
+    while (cells.length < 9) cells.push('<div class="tile" aria-hidden="true" style="opacity:.25"></div>');
+    grid.innerHTML = cells.join('');
+  }
+
+  function loadRadioFavoritesFromFrameDom() {
+    try {
+      const frame = document.getElementById('appFrame');
+      const doc = frame?.contentDocument || frame?.contentWindow?.document;
+      if (!doc) return [];
+      const hearts = Array.from(doc.querySelectorAll('button.heartBtn.on[data-fav]'));
+      const out = hearts.map((btn) => {
+        const file = decodeURIComponent(String(btn.getAttribute('data-fav') || '')).trim();
+        const card = btn.closest('.stationCard');
+        const name = String(card?.querySelector('.stationName')?.textContent || '').trim();
+        return { file, stationName: name || file };
+      }).filter((x) => x.file);
+      return out;
+    } catch {
+      return [];
+    }
+  }
+
+  async function openRadioDrawer(opts = {}) {
     const drawer = ensureRadioDrawer();
     const grid = drawer.querySelector('.grid');
     if (!grid) return;
     setHeroDrawerOpen(true);
     syncDrawerOpenState();
 
-    const skeleton = Array.from({ length: 9 }).map(() => '<div class="tile" aria-hidden="true" style="opacity:.25"></div>').join('');
-    grid.innerHTML = heroDrawerGridHtml || skeleton;
+    const shouldFetch = opts.fetch !== false;
+
+    // Immediate render from last known favorite list (if any).
+    renderRadioDrawerGrid(grid, heroFavoriteList);
+    if (!shouldFetch) return;
 
     try {
+      await ensureRuntimeKey(true);
       const favs = await loadRadioFavoritesList();
-      const top = favs.slice(0, 9);
-      let lastPicked = '';
-      try { lastPicked = String(localStorage.getItem(HERO_FAV_LAST_KEY) || ''); } catch {}
-      const cells = top.map((f) => {
-        const file = String(f.file || '');
-        const name = String(f.stationName || file || 'Station');
-        const logo = `${apiBase}/art/radio-logo.jpg?name=${encodeURIComponent(name)}`;
-        const on = lastPicked && file === lastPicked;
-        return `<button class="tile ${on ? 'isLive' : ''}" data-station-tile="${encodeURIComponent(file)}" title="${name}"><img src="${logo}" alt="${name}"></button>`;
-      });
-      while (cells.length < 9) cells.push('<div class="tile" aria-hidden="true" style="opacity:.25"></div>');
-      const nextHtml = cells.join('');
-      if (nextHtml !== heroDrawerGridHtml) {
-        heroDrawerGridHtml = nextHtml;
-        try { localStorage.setItem(HERO_FAV_GRID_KEY, heroDrawerGridHtml); } catch {}
-        grid.innerHTML = heroDrawerGridHtml;
+      let next = Array.isArray(favs) ? favs : [];
+      if (!next.length) {
+        // Fallback: if radio page is open and already has favorites rendered, mirror those.
+        next = loadRadioFavoritesFromFrameDom();
       }
+      // Guard against transient empty responses while playback/metadata flips.
+      // Keep last known non-empty list unless we intentionally have no favorites at all.
+      if (!next.length && Array.isArray(heroFavoriteList) && heroFavoriteList.length) {
+        next = heroFavoriteList;
+      }
+      heroFavoriteList = next;
+      try { localStorage.setItem(HERO_FAV_LIST_KEY, JSON.stringify(heroFavoriteList)); } catch {}
+      renderRadioDrawerGrid(grid, heroFavoriteList);
     } catch {
-      // keep last rendered grid/skeleton; avoid flashing error text in drawer
+      const fromFrame = loadRadioFavoritesFromFrameDom();
+      if (fromFrame.length) {
+        heroFavoriteList = fromFrame;
+        try { localStorage.setItem(HERO_FAV_LIST_KEY, JSON.stringify(heroFavoriteList)); } catch {}
+        renderRadioDrawerGrid(grid, heroFavoriteList);
+      }
+      // Otherwise keep last known rendered list.
     }
   }
 
@@ -1093,13 +1277,8 @@
             grid.style.setProperty('gap', `${gap}px`, 'important');
           }
 
-          const tileImgSizePct = Math.max(78, Math.min(92, Math.round(86 + (drawerW - 160) * 0.04)));
-          drawer.querySelectorAll('.tile img').forEach((img) => {
-            img.style.width = `${tileImgSizePct}%`;
-            img.style.height = `${tileImgSizePct}%`;
-            img.style.objectFit = 'contain';
-            img.style.margin = 'auto';
-          });
+          // Keep tile icon sizing stable to avoid visible resize pops when switching tabs/pages.
+          // Per-image runtime resizing removed; CSS handles tile image fit consistently.
 
           if (favTab) {
             applyFavTabSize(favTab, side);
@@ -1157,8 +1336,8 @@
       if (busyWatchdog) { clearTimeout(busyWatchdog); busyWatchdog = null; }
       if (busy) busyWatchdog = setTimeout(() => { busy = false; busyWatchdog = null; }, 5500);
     };
-    let lastQ = null;
-    let lastNp = null;
+    lastQ = null;
+    lastNp = null;
     let lastRenderSignature = '';
 
   function heroMotionDebugEnabled() {
@@ -1416,6 +1595,9 @@
         });
         if (effectiveTrackKey) lastRenderedTrackKey = effectiveTrackKey;
         try { ensureRadioDrawer(); } catch {}
+        if (heroDrawerOpen) {
+          try { openRadioDrawer({ fetch: false }); } catch {}
+        }
       } catch {
         // Never blank a previously good hero card on transient fetch/render failures.
         if (lastQ || lastNp) {
@@ -1425,6 +1607,9 @@
             scheduleHeroReflow();
             armVideoFallback(el);
             try { ensureRadioDrawer(); } catch {}
+            if (heroDrawerOpen) {
+              try { openRadioDrawer({ fetch: false }); } catch {}
+            }
             return;
           } catch {}
         }
@@ -1432,6 +1617,9 @@
         applyHeroViewportCentering(el);
         scheduleHeroReflow();
         try { ensureRadioDrawer(); } catch {}
+        if (heroDrawerOpen) {
+          try { openRadioDrawer({ fetch: false }); } catch {}
+        }
       }
     };
 
@@ -1516,13 +1704,29 @@
       if (!file) return;
       try {
         await ensureRuntimeKey();
-        try { localStorage.setItem(HERO_FAV_LAST_KEY, file); } catch {}
-        tile.classList.add('isLive');
+        const pickedKey = stationKey(file);
+        try { localStorage.setItem(HERO_FAV_LAST_KEY, pickedKey); } catch {}
+        pendingLiveStationKey = pickedKey;
+        pendingLiveStationUntilMs = Date.now() + 8000;
+        stickyLiveStationKey = pickedKey;
+        loadingStationKey = pickedKey;
+        loadingStationUntilMs = Date.now() + 12000;
+        const drawerGrid = document.querySelector('#heroRadioDrawer .grid');
+        if (drawerGrid) renderRadioDrawerGrid(drawerGrid, heroFavoriteList);
         await sendStationToQueue(file, 'replace', false, true);
         // Keep drawer state as user-chosen; do not force-close on station pick.
         await refresh();
+        if (heroDrawerOpen) {
+          // Keep UI stable immediately; hydrate favorites in background after station switch settles.
+          try { openRadioDrawer({ fetch: false }); } catch {}
+          setTimeout(() => { try { openRadioDrawer({ fetch: true }); } catch {} }, 850);
+        }
         try { window.dispatchEvent(new CustomEvent('heroTransport:update')); } catch {}
       } catch (e) {
+        pendingLiveStationKey = '';
+        pendingLiveStationUntilMs = 0;
+        loadingStationKey = '';
+        loadingStationUntilMs = 0;
         console.warn('favorite station click failed', e);
       }
     });

@@ -3,6 +3,7 @@
   let allStations = [];
   let selected = new Set();
   let activeStationFile = '';
+  let activeStationName = '';
   let collapsedGenres = new Set();
   const FILTERS_KEY = 'radio:filters:v1';
   const RADIO_QUEUE_PRESETS_KEY = 'nowplaying.radioQueuePresets.v1';
@@ -117,8 +118,16 @@
       const r = await fetch(`${base()}/now-playing`, { headers: { 'x-track-key': key() } });
       const j = await r.json().catch(() => ({}));
       activeStationFile = String(j?.file || '').trim();
+      activeStationName = String(
+        j?._stationName ||
+        j?.stationName ||
+        j?.radioStationName ||
+        j?.album ||
+        ''
+      ).trim().toLowerCase();
     } catch {
       activeStationFile = '';
+      activeStationName = '';
     }
   }
 
@@ -258,7 +267,10 @@
       const logo = `${b}/art/radio-logo.jpg?name=${encodeURIComponent(name)}`;
       const on = !!s.isFavoriteStation;
       const isSel = selected.has(file);
-      const isActive = !!activeStationFile && file === activeStationFile;
+      const nameKey = String(name || '').trim().toLowerCase();
+      const isActiveByFile = !!activeStationFile && file === activeStationFile;
+      const isActiveByName = !!activeStationName && !!nameKey && nameKey === activeStationName;
+      const isActive = isActiveByFile || isActiveByName;
       const formatStr = String(s?.format || '').toUpperCase();
       const brRaw = String(s?.bitrate || '').trim();
       const brMatch = brRaw.match(/(\d+(?:\.\d+)?)/);
@@ -508,9 +520,10 @@
 
   async function syncActiveOnly(){
     try {
-      const prev = activeStationFile;
+      const prevFile = activeStationFile;
+      const prevName = activeStationName;
       await loadActiveStation();
-      if (activeStationFile !== prev) renderRows();
+      if (activeStationFile !== prevFile || activeStationName !== prevName) renderRows();
     } catch {}
   }
 

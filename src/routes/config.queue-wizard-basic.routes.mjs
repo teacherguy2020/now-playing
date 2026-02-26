@@ -368,7 +368,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       const genres = Array.isArray(req.body?.genres) ? req.body.genres.map((x)=>String(x||'').trim()).filter(Boolean) : [];
       const favoritesOnly = !!req.body?.favoritesOnly;
       const hqOnly = !!req.body?.hqOnly;
-      const maxStations = Math.max(1, Math.min(200, Number(req.body?.maxStations || 25)));
+      const maxStations = Math.max(1, Math.min(2000, Number(req.body?.maxStations || 500)));
 
       const where = [];
       if (favoritesOnly) where.push("type='f'");
