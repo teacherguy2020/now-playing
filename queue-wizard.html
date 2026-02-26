@@ -115,10 +115,10 @@
     @keyframes npSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
     .iconSpin{animation:npSpin .8s linear infinite}
     select,input,button{padding:8px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
-    select.starFilter{color:var(--npb-star,#fbbf24) !important;font-weight:600;font-size:125%}
-    select.starFilter option{color:var(--npb-star,#fbbf24) !important}
-    body.theme-light select.starFilter{color:var(--npb-star,#fbbf24) !important}
-    body.theme-light select.starFilter option{color:var(--npb-star,#fbbf24) !important}
+    select.starFilter{color:var(--npb-progress-fill,var(--npb-star,#fbbf24)) !important;font-weight:600;font-size:125%}
+    select.starFilter option{color:var(--npb-progress-fill,var(--npb-star,#fbbf24)) !important}
+    body.theme-light select.starFilter{color:var(--npb-progress-fill,var(--npb-star,#fbbf24)) !important}
+    body.theme-light select.starFilter option{color:var(--npb-progress-fill,var(--npb-star,#fbbf24)) !important}
     button{cursor:pointer;background:rgba(255,255,255,.06);color:#eef;border:1px solid rgba(255,255,255,.20);border-radius:12px;transition:all .16s ease}
     button:hover{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.26)}
     table{width:100%;border-collapse:collapse;font-size:12px}
@@ -345,11 +345,11 @@
         <label>At least rating<br>
           <select id="minRating" class="starFilter" style="width:140px">
             <option value="0">Any</option>
-            <option value="1">⭐☆☆☆☆</option>
-            <option value="2" selected>⭐⭐☆☆☆</option>
-            <option value="3">⭐⭐⭐☆☆</option>
-            <option value="4">⭐⭐⭐⭐☆</option>
-            <option value="5">⭐⭐⭐⭐⭐</option>
+            <option value="1">★☆☆☆☆</option>
+            <option value="2" selected>★★☆☆☆</option>
+            <option value="3">★★★☆☆</option>
+            <option value="4">★★★★☆</option>
+            <option value="5">★★★★★</option>
           </select>
         </label>
       </div>
@@ -388,11 +388,11 @@
           <label>At least rating
             <select id="minRatingVibe" class="starFilter" style="width:140px;margin-left:6px">
               <option value="0">Any</option>
-              <option value="1">⭐☆☆☆☆</option>
-              <option value="2" selected>⭐⭐☆☆☆</option>
-              <option value="3">⭐⭐⭐☆☆</option>
-              <option value="4">⭐⭐⭐⭐☆</option>
-              <option value="5">⭐⭐⭐⭐⭐</option>
+              <option value="1">★☆☆☆☆</option>
+              <option value="2" selected>★★☆☆☆</option>
+              <option value="3">★★★☆☆</option>
+              <option value="4">★★★★☆</option>
+              <option value="5">★★★★★</option>
             </select>
           </label>
           <label>Vibe max tracks
