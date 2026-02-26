@@ -82,12 +82,23 @@
     /* Queue Wizard tabs: keep original shape; no border on inactive tabs */
     .topTabs a:not(.active){border:0 !important;box-shadow:none !important}
     .card{background:#101c33;border:1px solid #2a3a58;border-radius:18px;padding:12px;margin:10px 0;overflow:visible;min-width:0;box-sizing:border-box}
-    #existingSection{z-index:6}
-    #filterSection,#vibeSection,#podcastSection{z-index:1}
+    #existingSection,#filterSection,#vibeSection,#podcastSection{position:relative}
+    /* Section stacking order (top->bottom) so overlay menus can escape into next cards */
+    #existingSection{z-index:10}
+    #filterSection{z-index:9}
+    #vibeSection{z-index:8}
+    #podcastSection{z-index:7}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
     .pickGrid{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:10px}
     .pickGrid label{display:block}
     .pickGrid select{width:100%;min-width:0}
+    /* Keep star-rating menu above nearby controls */
+    #filterSection .pickGrid,
+    #vibeSection .pickGrid{position:relative;z-index:20}
+    #filterSection .actionBar,
+    #vibeSection .actionBar{position:relative;z-index:5}
+    #filterSection .starSelect,
+    #vibeSection .starSelect{position:relative;z-index:60}
     .actionBar{display:flex;flex-direction:column;gap:10px;align-items:stretch;padding:10px;border:1px solid var(--npb-tab-border,#2a3a58);border-radius:10px;background:var(--npb-card-secondary-fill,var(--npb-tab-bg,#0d182d));margin-top:10px;overflow:visible}
     .actionBar input[type="checkbox"],
     .actionBar input[type="radio"],
@@ -208,8 +219,11 @@
     .starSelect{position:relative;display:inline-block;min-width:140px}
     .starSelectBtn{width:100%;height:44px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef;cursor:pointer}
     .starSelectBtn .stars{color:var(--npb-star,#fbbf24);font-weight:700;letter-spacing:.5px;font-size:125%;line-height:1}
-    .starSelectMenu{position:absolute;z-index:2000;left:0;right:0;top:calc(100% + 6px);background:#0f1a30;border:1px solid #334;border-radius:10px;padding:6px;box-shadow:0 10px 24px rgba(0,0,0,.35);display:none}
+    .starSelectMenu{position:absolute;z-index:9999;left:0;right:0;top:auto;bottom:calc(100% + 6px);background:#0f1a30;border:1px solid #334;border-radius:10px;padding:6px;box-shadow:0 10px 24px rgba(0,0,0,.35);display:none}
     .starSelect.open .starSelectMenu{display:block}
+    .starSelectMenu.starSelectMenuPortal{display:block !important;position:fixed !important;z-index:2147483647 !important;overflow:auto}
+    #filterQuickSearchResults.quickSearchPortal{position:fixed !important;z-index:2147483646 !important;background:#0f1a31;border:1px solid #2a3a58;border-radius:10px;padding:6px;box-shadow:0 12px 28px rgba(0,0,0,.42);overflow:auto}
+    body.theme-light #filterQuickSearchResults.quickSearchPortal{background:rgba(255,242,224,.98);border:1px solid rgba(137,138,196,.46)}
     .starSelectOpt{width:100%;text-align:left;padding:8px 10px;border:0;background:transparent;color:#eef;border-radius:8px;cursor:pointer}
     .starSelectOpt .stars{color:var(--npb-star,#fbbf24);font-weight:700;letter-spacing:.5px;font-size:125%;line-height:1}
     .starSelectOpt:hover{background:rgba(255,255,255,.08)}
@@ -323,7 +337,7 @@
           <label style="display:block;">Quick search
             <input id="filterQuickSearch" type="text" placeholder="Type to find genre, artist, album…" style="width:100%;margin-top:4px;" autocomplete="off" />
           </label>
-          <div id="filterQuickSearchResults" style="display:none;position:absolute;left:0;right:0;top:58px;max-height:280px;overflow:auto;z-index:20;background:#0f1a31;border:1px solid #2a3a58;border-radius:10px;padding:6px;"></div>
+          <div id="filterQuickSearchResults" style="display:none;position:absolute;left:0;right:0;top:58px;max-height:260px;overflow:auto;z-index:120;background:#0f1a31;border:1px solid #2a3a58;border-radius:10px;padding:6px;box-shadow:0 12px 24px rgba(0,0,0,.34);"></div>
         </div>
       </div>
       <div class="row" style="margin-top:10px">
@@ -438,17 +452,76 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260223-fast-start"></script>
+  <script src="scripts/queue-wizard.js?v=20260226-quicksearch-portal"></script>
 
 <script>
 (function enhanceStarFilters(){
+  // iPad/Safari reliability: use native <select> for star filters.
+  // Native picker guarantees top-layer rendering and touch behavior.
+  const DISABLE_CUSTOM_STAR_SELECT = true;
+  if (DISABLE_CUSTOM_STAR_SELECT) return;
+
   const starText = (v) => {
     const n = Number(v) || 0;
     if (n <= 0) return 'Any';
     return '★'.repeat(n) + '☆'.repeat(5 - n);
   };
 
-  const closeAll = () => document.querySelectorAll('.starSelect.open').forEach((el) => el.classList.remove('open'));
+  let activeWrap = null;
+
+  const positionMenu = (wrap) => {
+    if (!wrap) return;
+    const btn = wrap.querySelector('.starSelectBtn');
+    const menu = wrap.querySelector('.starSelectMenu');
+    if (!btn || !menu || !menu.classList.contains('starSelectMenuPortal')) return;
+    const r = btn.getBoundingClientRect();
+    const vw = window.innerWidth || document.documentElement.clientWidth || 0;
+    const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+    const margin = 8;
+    const width = Math.max(r.width, 140);
+    menu.style.left = `${Math.max(margin, Math.min(vw - width - margin, r.left))}px`;
+    menu.style.width = `${width}px`;
+
+    const mH = Math.max(220, menu.scrollHeight || 0);
+    const spaceBelow = vh - r.bottom - margin;
+    const spaceAbove = r.top - margin;
+    if (spaceBelow >= Math.min(mH, 260) || spaceBelow >= spaceAbove) {
+      menu.style.top = `${Math.max(margin, r.bottom + 6)}px`;
+      menu.style.bottom = 'auto';
+      menu.style.maxHeight = `${Math.max(120, vh - (r.bottom + 6) - margin)}px`;
+    } else {
+      menu.style.top = 'auto';
+      menu.style.bottom = `${Math.max(margin, vh - r.top + 6)}px`;
+      menu.style.maxHeight = `${Math.max(120, r.top - margin - 6)}px`;
+    }
+  };
+
+  const closeAll = () => {
+    document.querySelectorAll('.starSelect.open').forEach((wrap) => {
+      wrap.classList.remove('open');
+      const menu = wrap.querySelector('.starSelectMenu');
+      if (menu && menu.classList.contains('starSelectMenuPortal')) {
+        menu.classList.remove('starSelectMenuPortal');
+        menu.style.left = '';
+        menu.style.top = '';
+        menu.style.bottom = '';
+        menu.style.width = '';
+        menu.style.maxHeight = '';
+        wrap.appendChild(menu);
+      }
+    });
+    activeWrap = null;
+  };
+
+  const openMenu = (wrap) => {
+    const menu = wrap?.querySelector('.starSelectMenu');
+    if (!menu) return;
+    wrap.classList.add('open');
+    menu.classList.add('starSelectMenuPortal');
+    document.body.appendChild(menu);
+    positionMenu(wrap);
+    activeWrap = wrap;
+  };
 
   const enhance = (sel) => {
     if (!sel || sel.dataset.starEnhanced === '1') return;
@@ -481,16 +554,16 @@
         sel.value = opt.value;
         sel.dispatchEvent(new Event('change', { bubbles: true }));
         syncBtn();
-        wrap.classList.remove('open');
+        closeAll();
       });
       menu.appendChild(item);
     });
 
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const open = wrap.classList.contains('open');
+      const isOpen = wrap.classList.contains('open');
       closeAll();
-      if (!open) wrap.classList.add('open');
+      if (!isOpen) openMenu(wrap);
     });
 
     sel.addEventListener('change', syncBtn);
@@ -502,6 +575,8 @@
   };
 
   document.addEventListener('click', closeAll);
+  window.addEventListener('resize', () => { if (activeWrap) positionMenu(activeWrap); });
+  window.addEventListener('scroll', () => { if (activeWrap) positionMenu(activeWrap); }, true);
   document.addEventListener('DOMContentLoaded', () => {
     enhance(document.getElementById('minRating'));
     enhance(document.getElementById('minRatingVibe'));

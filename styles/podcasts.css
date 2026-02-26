@@ -676,31 +676,48 @@ input::placeholder {
 
 .epPlayBtn,
 .epQueueBtn {
-  border: 0;
-  background: transparent;
-  padding: 4px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(148,163,184,.36) !important;
+  background: linear-gradient(180deg, rgba(22,42,72,.92), rgba(16,34,60,.92)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 4px 10px rgba(2,8,20,.20);
+  padding: 0;
   cursor: pointer;
-  color: #bbb;
+  color: #e6eefc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .08s ease, box-shadow .14s ease, border-color .14s ease, background .14s ease;
 }
 
 .epPlayBtn svg {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   fill: currentColor;
+  margin-left: 1px;
 }
 
 .epQueueBtn {
-  font-size: 24px;
+  font-size: 34px;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 500;
+  padding-bottom: 2px;
 }
 
 .epPlayBtn:hover,
 .epQueueBtn:hover,
 .epPlayBtn:focus-visible,
 .epQueueBtn:focus-visible {
-  color: #e5e7eb;
+  color: #f8fbff;
+  border-color: rgba(125,211,252,.72) !important;
+  background: linear-gradient(180deg, rgba(27,52,88,.98), rgba(19,40,72,.98)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 0 0 2px rgba(125,211,252,.18), 0 8px 16px rgba(2,8,20,.24);
 }
+
+.epPlayBtn:active,
+.epQueueBtn:active { transform: translateY(1px) scale(.98); }
 
 .epPlayBtn,
 .epQueueBtn { position: relative; }

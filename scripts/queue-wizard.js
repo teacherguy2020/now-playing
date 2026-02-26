@@ -1149,6 +1149,8 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     ];
   }
 
+  function placeFilterQuickResultsPopover() {}
+
   function renderFilterQuickResults(qRaw = '') {
     if (!filterQuickSearchResultsEl) return;
     const q = String(qRaw || '').trim().toLowerCase();
@@ -3279,6 +3281,7 @@ function wireEvents() {
     if (t.closest('#filterQuickSearch') || t.closest('#filterQuickSearchResults')) return;
     renderFilterQuickResults('');
   });
+
 }
 
 // ---- Init ----
