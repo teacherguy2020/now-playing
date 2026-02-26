@@ -811,12 +811,12 @@
         (nameKey && liveNameKey && nameKey === liveNameKey)
       );
       const fallbackPickedMatch = !!(fallbackKey && key && key === fallbackKey);
-      const on = pendingKeyActive
+      const on = radioContext && (pendingKeyActive
         ? !!(key && key === pendingLiveStationKey)
         : (confirmedLiveKey
             ? !!(key && key === confirmedLiveKey)
-            : !!(liveMatch || fallbackPickedMatch));
-      const isLoading = !!(loadingStationKey && Date.now() < loadingStationUntilMs && key && key === loadingStationKey);
+            : !!(liveMatch || fallbackPickedMatch)));
+      const isLoading = !!(radioContext && loadingStationKey && Date.now() < loadingStationUntilMs && key && key === loadingStationKey);
       return { file, name, on, isLoading };
     });
 
