@@ -7,7 +7,7 @@ This docs set follows the same order as the app tabs.
 1. [Config](./01-config.md)
 2. [Diagnostics](./02-diagnostics.md)
 3. [Alexa](./03-alexa.md)
-4. [Library Health](./04-library-health.md)
+4. [Library Health](./04-library-health.md) — Album Workbench flow, cached scan + full refresh, album-row queue actions, persistent inventory sorting, thumbnail behavior
 5. [Queue Wizard](./05-queue-wizard.md)
 6. [Radio](./06-radio.md)
 7. [Podcasts](./07-podcasts.md)

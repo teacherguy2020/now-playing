@@ -512,8 +512,10 @@
                       </div>
                     </td>
                     <td>${Number(r.trackCount || 0).toLocaleString()}</td>
-                    <td style="white-space:nowrap;">
+                    <td style="white-space:nowrap;display:flex;gap:6px;align-items:center;">
                       <button type="button" class="albInspectBtn" data-folder="${esc(r.folder || '')}" style="padding:4px 8px;">Inspect</button>
+                      <button type="button" class="albQueueBtn" data-folder="${esc(r.folder || '')}" title="Add album to queue" style="padding:4px 8px;min-width:28px;">+</button>
+                      <button type="button" class="albPlayBtn" data-folder="${esc(r.folder || '')}" title="Play album now" style="padding:4px 8px;min-width:28px;">▶</button>
                     </td>
                   </tr>
                 `).join('')}
@@ -864,6 +866,57 @@
             if (agMod) agMod.open = true;
             mod?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             await preloadAlbumAcrossModules(folder, { preloadMeta: true, preloadArt: true, preloadGenre: true });
+          });
+        });
+
+        host.querySelectorAll('.albQueueBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const folder = String(btn.getAttribute('data-folder') || '').trim();
+            if (!folder) return;
+            const prev = btn.textContent;
+            btn.disabled = true;
+            try {
+              const r = await fetch(`${apiBase}/mpd/add-album-folder`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folder }),
+              });
+              const jj = await r.json().catch(() => ({}));
+              if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
+              btn.textContent = '✓';
+              const st = $('allAlbumsStatus');
+              if (st) st.textContent = `Queued album: ${folder}`;
+              setTimeout(() => { btn.textContent = prev || '+'; }, 1200);
+            } catch (e) {
+              const st = $('allAlbumsStatus');
+              if (st) st.textContent = `Queue failed: ${e?.message || e}`;
+            } finally {
+              btn.disabled = false;
+            }
+          });
+        });
+
+        host.querySelectorAll('.albPlayBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const folder = String(btn.getAttribute('data-folder') || '').trim();
+            if (!folder) return;
+            btn.disabled = true;
+            try {
+              const r = await fetch(`${apiBase}/mpd/play-album-folder`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folder }),
+              });
+              const jj = await r.json().catch(() => ({}));
+              if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
+              const st = $('allAlbumsStatus');
+              if (st) st.textContent = `Playing album: ${folder}`;
+            } catch (e) {
+              const st = $('allAlbumsStatus');
+              if (st) st.textContent = `Play failed: ${e?.message || e}`;
+            } finally {
+              btn.disabled = false;
+            }
           });
         });
 

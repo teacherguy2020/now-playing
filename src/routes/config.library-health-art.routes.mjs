@@ -105,12 +105,53 @@ export function registerConfigLibraryHealthArtRoutes(app, deps) {
         .filter(Boolean);
 
       let coverPath = '';
+      let mimeType = 'image/jpeg';
+      const names = ['cover.jpg', 'folder.jpg', 'front.jpg', 'cover.jpeg', 'folder.jpeg', 'front.jpeg', 'cover.png', 'folder.png', 'front.png'];
       for (const c of localCandidates) {
-        const p = path.join(c, 'cover.jpg');
+        for (const n of names) {
+          const p = path.join(c, n);
+          try {
+            await fs.access(p);
+            coverPath = p;
+            mimeType = n.endsWith('.png') ? 'image/png' : 'image/jpeg';
+            break;
+          } catch (_) {}
+        }
+        if (coverPath) break;
+      }
+
+      // Fallback: no standalone cover file found, try embedded artwork from first track.
+      if (!coverPath) {
         try {
-          await fs.access(p);
-          coverPath = p;
-          break;
+          const mpdHost = String(MPD_HOST || '10.0.0.254');
+          const { stdout: lsOut } = await execFileP('mpc', ['-h', mpdHost, 'find', 'base', folder], { maxBuffer: 16 * 1024 * 1024 });
+          const firstTrack = String(lsOut || '').split(/\r?\n/).map((s) => s.trim()).find(Boolean);
+          if (firstTrack) {
+            const p = String(firstTrack || '').trim().replace(/^\/+/, '');
+            const candidates = [
+              p.startsWith('/mnt/') ? p : '',
+              p.startsWith('mnt/') ? '/' + p : '',
+              p.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + p.slice('USB/SamsungMoode/'.length) : '',
+              p.startsWith('OSDISK/') ? '/mnt/OSDISK/' + p.slice('OSDISK/'.length) : '',
+              '/mnt/SamsungMoode/' + p,
+              '/mnt/OSDISK/' + p,
+            ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+            let localTrack = '';
+            for (const c of candidates) {
+              try { await fs.access(c); localTrack = c; break; } catch (_) {}
+            }
+            if (localTrack) {
+              const outPath = path.join('/tmp', `library-health-embedded-${Date.now()}.jpg`);
+              try {
+                await execFileP('ffmpeg', ['-y', '-i', localTrack, '-an', '-vframes', '1', outPath], { timeout: 8000 });
+                const buf = await fs.readFile(outPath);
+                await fs.unlink(outPath).catch(() => {});
+                if (buf?.length) {
+                  return res.json({ ok: true, folder, hasCover: true, mimeType: 'image/jpeg', dataBase64: buf.toString('base64'), source: 'embedded' });
+                }
+              } catch (_) {}
+            }
+          }
         } catch (_) {}
       }
 
@@ -121,7 +162,7 @@ export function registerConfigLibraryHealthArtRoutes(app, deps) {
         ok: true,
         folder,
         hasCover: true,
-        mimeType: 'image/jpeg',
+        mimeType,
         dataBase64: buf.toString('base64'),
       });
     } catch (e) {

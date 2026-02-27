@@ -24,7 +24,7 @@ See [docs/README.md](./docs/README.md).
 - Config
 - Diagnostics
 - Alexa
-- Library Health
+- Library Health (Album Workbench flow, cached scans + full refresh, inventory sort modes, album-row queue/play actions)
 - Queue Wizard
 - Radio
 - Podcasts

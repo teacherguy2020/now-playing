@@ -4596,6 +4596,32 @@ app.post('/mpd/add-file', async (req, res) => {
   }
 });
 
+app.post('/mpd/add-album-folder', async (req, res) => {
+  try {
+    const folder = String(req.body?.folder || '').trim();
+    if (!folder) return res.status(400).json({ ok: false, error: 'Missing folder' });
+    const q = `"${folder.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+    await mpdQueryRaw(`findadd base ${q}`);
+    return res.json({ ok: true, folder });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+app.post('/mpd/play-album-folder', async (req, res) => {
+  try {
+    const folder = String(req.body?.folder || '').trim();
+    if (!folder) return res.status(400).json({ ok: false, error: 'Missing folder' });
+    const q = `"${folder.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+    await mpdQueryRaw('clear');
+    await mpdQueryRaw(`findadd base ${q}`);
+    await mpdQueryRaw('play 0');
+    return res.json({ ok: true, folder, playing: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
 registerPodcastEpisodeRoutes(app, {
   normUrl,
   readSubs,
