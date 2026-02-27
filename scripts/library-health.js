@@ -7,6 +7,7 @@
   const sections = $('sections');
   const status = $('status');
   const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
+  const LIBRARY_SORT_STORAGE_KEY = 'nowplaying.libraryHealth.albumSortMode';
 
   function motionArtEnabled() {
     try {
@@ -32,6 +33,20 @@
       '"': '&quot;',
       "'": '&#39;',
     }[m]));
+  }
+
+  function setAlbumContext(folder) {
+    const badge = $('albumContextBadge');
+    const text = $('albumContextText');
+    if (!badge || !text) return;
+    const v = String(folder || '').trim();
+    if (!v) {
+      text.textContent = '';
+      badge.style.display = 'none';
+      return;
+    }
+    text.textContent = v;
+    badge.style.display = '';
   }
 
   function renderTable(rows) {
@@ -325,19 +340,21 @@
     setPillState('moodePill','warn');
   }
 
-  async function run() {
+  async function run({ refresh = false } = {}) {
     const key = ($('key')?.value || '').trim();
     const sample = 100;
     const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
     const runBtn = $('run');
 
     if (runBtn) runBtn.disabled = true;
-    if (status) status.innerHTML = '<span class="spin" aria-hidden="true"></span>Scanning, please wait';
+    const refreshBtn = $('refreshScan');
+    if (refreshBtn) refreshBtn.disabled = true;
+    if (status) status.innerHTML = `<span class="spin" aria-hidden="true"></span>${refresh ? 'Refreshing full scan…' : 'Scanning, please wait'}`;
     if (cards) cards.innerHTML = '';
     if (sections) sections.innerHTML = '';
 
     try {
-      const url = `${apiBase}/config/library-health?sampleLimit=${encodeURIComponent(sample)}`;
+      const url = `${apiBase}/config/library-health?sampleLimit=${encodeURIComponent(sample)}${refresh ? '&refresh=1' : ''}`;
       const res = await fetch(url, { headers: { 'x-track-key': key } });
 
       const raw = await res.text();
@@ -369,6 +386,153 @@
       let unratedRows = sampleMap.unrated || [];
       let missingRemaining = Number(s.missingGenre || 0);
       let unratedRemaining = Number(s.unrated || 0);
+      let allAlbumsRows = [];
+
+      function buildOperationsHub() {
+        const sectionsEl = $('sections');
+        if (!sectionsEl || $('libraryOpsHub')) return;
+
+        const defs = [
+          { key: 'albums', label: 'Albums', ids: ['allAlbumsModule', 'albumMetaInspector'] },
+          { key: 'art', label: 'Artwork', ids: ['mawModule', 'animatedArtCacheCard'] },
+          { key: 'genre', label: 'Genres', ids: ['gfModule', 'mgModule', 'genreCountsModule'] },
+          { key: 'ratings', label: 'Ratings', ids: ['urModule', 'lowRatedModule', 'ratingsModule'] },
+          { key: 'cleanup', label: 'Cleanup', ids: ['mbidModule', 'featCleanupCard'] },
+        ];
+
+        const hub = document.createElement('details');
+        hub.id = 'libraryOpsHub';
+        hub.open = true;
+        hub.innerHTML = `
+          <summary>Library Operations</summary>
+          <div id="libraryOpsTabs" class="row" style="margin:8px 0;gap:8px;flex-wrap:wrap;"></div>
+          <div id="libraryOpsPanels"></div>
+        `;
+
+        sectionsEl.prepend(hub);
+        const tabsWrap = hub.querySelector('#libraryOpsTabs');
+        const panelsWrap = hub.querySelector('#libraryOpsPanels');
+
+        const panels = new Map();
+
+        defs.forEach((d, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = d.label;
+          btn.setAttribute('data-op-tab', d.key);
+          btn.style.padding = '6px 10px';
+          btn.style.borderRadius = '10px';
+          btn.style.border = '1px solid #2a3a58';
+          btn.style.background = idx === 0 ? 'rgba(125,211,252,.18)' : 'rgba(255,255,255,.06)';
+          btn.style.color = '#e7eefc';
+          tabsWrap?.appendChild(btn);
+
+          const panel = document.createElement('div');
+          panel.setAttribute('data-op-panel', d.key);
+          panel.style.display = idx === 0 ? 'block' : 'none';
+          panel.style.marginTop = '6px';
+          panelsWrap?.appendChild(panel);
+          panels.set(d.key, panel);
+
+          d.ids.forEach((id) => {
+            const el = $(id);
+            if (el) panel.appendChild(el);
+          });
+
+          btn.addEventListener('click', () => {
+            tabsWrap?.querySelectorAll('button[data-op-tab]').forEach((b) => {
+              b.style.background = 'rgba(255,255,255,.06)';
+            });
+            btn.style.background = 'rgba(125,211,252,.18)';
+            panels.forEach((p, k) => {
+              p.style.display = (k === d.key) ? 'block' : 'none';
+            });
+          });
+        });
+      }
+
+      function sortAllAlbumsRows(rows, mode = 'alpha') {
+        const list = Array.isArray(rows) ? rows.slice() : [];
+        const m = String(mode || 'alpha');
+        if (m === 'artistAlbum') {
+          list.sort((a, b) => {
+            const aa = `${String(a?.artist || '')} ${String(a?.album || '')}`.toLowerCase();
+            const bb = `${String(b?.artist || '')} ${String(b?.album || '')}`.toLowerCase();
+            return aa.localeCompare(bb, undefined, { sensitivity: 'base' });
+          });
+          return list;
+        }
+        if (m === 'oldest') {
+          list.sort((a, b) => Number(a?.addedTs || 0) - Number(b?.addedTs || 0));
+          return list;
+        }
+        if (m === 'newest') {
+          list.sort((a, b) => Number(b?.addedTs || 0) - Number(a?.addedTs || 0));
+          return list;
+        }
+        list.sort((a, b) => String(a?.label || '').localeCompare(String(b?.label || ''), undefined, { sensitivity: 'base' }));
+        return list;
+      }
+
+      function getAllAlbumsSortMode() {
+        const fromUi = String(document.querySelector('input[name="allAlbumsSort"]:checked')?.value || '').trim();
+        if (fromUi) return fromUi;
+        const fromLs = String(localStorage.getItem(LIBRARY_SORT_STORAGE_KEY) || '').trim();
+        return fromLs || 'alpha';
+      }
+
+      function renderAllAlbumsList(rows, query = '') {
+        const q = String(query || '').trim().toLowerCase();
+        const sorted = sortAllAlbumsRows(rows, getAllAlbumsSortMode());
+        const list = (Array.isArray(sorted) ? sorted : []).filter((r) => {
+          if (!q) return true;
+          const blob = `${r.label || ''} ${r.folder || ''}`.toLowerCase();
+          return blob.includes(q);
+        });
+
+        if (!list.length) return '<div class="muted">No albums match the current filter.</div>';
+
+        return `
+          <div class="muted" style="margin-bottom:6px;">Showing ${Number(list.length).toLocaleString()} of ${Number((rows || []).length || 0).toLocaleString()} album(s).</div>
+          <div style="max-height:460px;overflow:auto;border:1px solid #2a3a58;border-radius:10px;">
+            <table>
+              <thead><tr><th>Album</th><th>Tracks</th><th>Action</th></tr></thead>
+              <tbody>
+                ${list.map((r) => `
+                  <tr>
+                    <td>
+                      <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                        ${r.resolvedThumbUrl
+                          ? `<img src="${esc(String(r.resolvedThumbUrl || ''))}" alt="" loading="lazy" decoding="async" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #334;background:#0a1222;flex:0 0 auto;" onerror="this.style.visibility='hidden';" />`
+                          : `<div style="width:40px;height:40px;border-radius:6px;border:1px solid #334;background:#0a1222;flex:0 0 auto;"></div>`}
+                        <div style="min-width:0;">
+                          <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.label || r.folder || '(unknown)')}</div>
+                          <div class="muted" style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.folder || '')}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>${Number(r.trackCount || 0).toLocaleString()}</td>
+                    <td style="white-space:nowrap;">
+                      <button type="button" class="albInspectBtn" data-folder="${esc(r.folder || '')}" style="padding:4px 8px;">Inspect</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function mountAlbumFixersIntoInspector() {
+        const inspector = $('albumMetaInspector');
+        const anchor = $('albumMetaOut');
+        const art = $('aaModule');
+        const genre = $('agModule');
+        if (!inspector || !anchor) return;
+
+        if (art && art.parentElement !== inspector) inspector.insertBefore(art, anchor);
+        if (genre && genre.parentElement !== inspector) inspector.insertBefore(genre, anchor);
+      }
 
       if (sections) {
         sections.innerHTML = `
@@ -449,7 +613,7 @@
             <div id="gfListHost"><div class="muted">Pick a current genre, then click “Load folders”.</div></div>
           </details>
 
-          <details open>
+          <details id="urModule" open>
             <summary>Unrated samples (${unratedRows.length})</summary>
             <div class="row" style="margin:8px 0;">
               <label>Assign rating
@@ -466,17 +630,17 @@
             <div id="urListHost">${renderFolderSelection('ur', unratedRows)}</div>
           </details>
 
-          <details>
+          <details id="lowRatedModule">
             <summary>Low-rated=1 samples (${(sampleMap.lowRated1 || []).length})</summary>
             ${renderTable(sampleMap.lowRated1 || [])}
           </details>
 
-          <details>
+          <details id="mbidModule">
             <summary>Missing MBID samples (${(sampleMap.missingMbid || []).length})</summary>
             ${renderTable(sampleMap.missingMbid || [])}
           </details>
 
-          <details open>
+          <details id="mgModule" open>
             <summary>Missing Genre samples (${missingRows.length})</summary>
             <div class="row" style="margin:8px 0;">
               <label>Assign genre
@@ -491,17 +655,37 @@
             <div id="mgListHost">${renderFolderSelection('mg', missingRows)}</div>
           </details>
 
-          <details open>
+          <details id="ratingsModule" open>
             <summary>Ratings distribution</summary>
             ${renderRatingBars(j.ratingCounts || [])}
           </details>
 
-          <details open>
+          <details id="genreCountsModule" open>
             <summary>Genre counts (all ${Number((j.genreCounts || []).length || 0).toLocaleString()})</summary>
             ${renderGenreBars(j.genreCounts || [])}
           </details>
+
+          <details id="allAlbumsModule" open>
+            <summary>Album inventory (full library)</summary>
+            <div class="row" style="margin:8px 0;align-items:flex-end;gap:10px;flex-wrap:wrap;">
+              <label>Filter
+                <input id="allAlbumsSearch" type="text" placeholder="artist, album, folder" style="min-width:260px;max-width:420px;" />
+              </label>
+              <div class="row" style="margin:0;gap:10px;align-items:center;">
+                <span class="muted">Sort:</span>
+                <label class="tiny" style="display:inline-flex;align-items:center;gap:4px;"><input type="radio" name="allAlbumsSort" value="alpha" checked> Album (A→Z)</label>
+                <label class="tiny" style="display:inline-flex;align-items:center;gap:4px;"><input type="radio" name="allAlbumsSort" value="artistAlbum"> Artist→Album</label>
+                <label class="tiny" style="display:inline-flex;align-items:center;gap:4px;"><input type="radio" name="allAlbumsSort" value="oldest"> Oldest added</label>
+                <label class="tiny" style="display:inline-flex;align-items:center;gap:4px;"><input type="radio" name="allAlbumsSort" value="newest"> Newest added</label>
+              </div>
+              <span class="muted" id="allAlbumsStatus">Loading albums…</span>
+            </div>
+            <div id="allAlbumsHost"><div class="muted">Loading albums…</div></div>
+          </details>
         `;
       }
+
+      mountAlbumFixersIntoInspector();
 
       initFolderSelectionHandlers('ur');
       initFolderSelectionHandlers('mg');
@@ -644,13 +828,72 @@
       const agCurrent = $('agCurrent');
       const agStatus = $('agStatus');
 
+      async function preloadAlbumAcrossModules(folder, { preloadMeta = false, preloadArt = false, preloadGenre = false } = {}) {
+        const f = String(folder || '').trim();
+        if (!f) return;
+
+        const albumPick = $('albumPick');
+        if (albumPick) albumPick.value = f;
+        if (aaAlbum) aaAlbum.value = f;
+        if (agAlbum) agAlbum.value = f;
+        setAlbumContext(f);
+
+        const jobs = [];
+        if (preloadMeta && typeof loadAlbumMetadata === 'function') jobs.push(loadAlbumMetadata());
+        if (preloadArt && typeof loadAlbumArt === 'function') jobs.push(loadAlbumArt(f));
+        if (preloadGenre && typeof loadAlbumGenres === 'function') jobs.push(loadAlbumGenres());
+
+        if (jobs.length) {
+          await Promise.allSettled(jobs);
+        }
+      }
+
+      function bindAllAlbumsActions() {
+        const host = $('allAlbumsHost');
+        if (!host) return;
+
+        host.querySelectorAll('.albInspectBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const folder = String(btn.getAttribute('data-folder') || '').trim();
+            if (!folder) return;
+            const mod = $('albumMetaInspector');
+            if (mod) mod.open = true;
+            const aaMod = $('aaModule');
+            if (aaMod) aaMod.open = true;
+            const agMod = $('agModule');
+            if (agMod) agMod.open = true;
+            mod?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            await preloadAlbumAcrossModules(folder, { preloadMeta: true, preloadArt: true, preloadGenre: true });
+          });
+        });
+
+
+      }
+
+      function refreshAllAlbumsList() {
+        const host = $('allAlbumsHost');
+        const q = $('allAlbumsSearch')?.value || '';
+        if (!host) return;
+        host.innerHTML = renderAllAlbumsList(allAlbumsRows, q);
+        bindAllAlbumsActions();
+      }
+
       async function loadAlbumOptions() {
+        const allAlbumsStatus = $('allAlbumsStatus');
         try {
           const r = await fetch(`${apiBase}/config/library-health/albums`, { headers: { 'x-track-key': key } });
           const jj = await r.json();
           if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
 
           const rows = Array.isArray(jj.albums) ? jj.albums : [];
+          const resolvedRows = rows.map((r) => {
+            const t = String(r?.thumbUrl || '').trim();
+            const resolvedThumbUrl = t
+              ? (/^https?:\/\//i.test(t) ? t : `${apiBase}${t.startsWith('/') ? '' : '/'}${t}`)
+              : '';
+            return { ...r, resolvedThumbUrl };
+          });
+          allAlbumsRows = resolvedRows;
 
           // IMPORTANT:
           // - option value MUST be the folder path, because downstream uses ?folder=...
@@ -666,8 +909,11 @@
 
           if (aaAlbum) aaAlbum.innerHTML = opts;
           if (agAlbum) agAlbum.innerHTML = opts;
+          refreshAllAlbumsList();
+          if (allAlbumsStatus) allAlbumsStatus.textContent = `${Number(rows.length).toLocaleString()} albums loaded.`;
         } catch (e) {
           if (aaStatus) aaStatus.textContent = `Albums error: ${e?.message || e}`;
+          if (allAlbumsStatus) allAlbumsStatus.textContent = `Album list error: ${e?.message || e}`;
         }
       }
 
@@ -724,6 +970,7 @@
 
       if (aaAlbum) {
         aaAlbum.addEventListener('change', () => {
+          setAlbumContext(aaAlbum?.value || '');
           aaSuggestedBase64 = '';
           if (aaPreview) aaPreview.removeAttribute('src');
           if (aaFile) aaFile.value = '';
@@ -876,7 +1123,10 @@
         }
       }
 
-      if (agAlbum) agAlbum.addEventListener('change', loadAlbumGenres);
+      if (agAlbum) agAlbum.addEventListener('change', () => {
+        setAlbumContext(agAlbum?.value || '');
+        loadAlbumGenres();
+      });
 
       if (agApply) {
         agApply.addEventListener('click', async () => {
@@ -926,7 +1176,7 @@
               const row = missingArtworkAlbums[idx];
               if (!row) return;
 
-              if (aaAlbum) aaAlbum.value = row.folder;
+              await preloadAlbumAcrossModules(row.folder);
 
               const aaModule = $('aaModule');
               if (aaModule) aaModule.open = true;
@@ -941,6 +1191,25 @@
       }
 
       await loadAlbumOptions();
+
+      {
+        const savedSort = String(localStorage.getItem(LIBRARY_SORT_STORAGE_KEY) || 'alpha').trim() || 'alpha';
+        const savedEl = document.querySelector(`input[name="allAlbumsSort"][value="${savedSort}"]`)
+          || document.querySelector('input[name="allAlbumsSort"][value="alpha"]');
+        if (savedEl) savedEl.checked = true;
+        refreshAllAlbumsList();
+      }
+
+      $('allAlbumsSearch')?.addEventListener('input', () => {
+        refreshAllAlbumsList();
+      });
+      document.querySelectorAll('input[name="allAlbumsSort"]').forEach((el) => {
+        el.addEventListener('change', () => {
+          const mode = String(document.querySelector('input[name="allAlbumsSort"]:checked')?.value || 'alpha');
+          localStorage.setItem(LIBRARY_SORT_STORAGE_KEY, mode);
+          refreshAllAlbumsList();
+        });
+      });
 
       const mawSearchBtn = $('mawSearch');
       if (mawSearchBtn) {
@@ -1084,9 +1353,15 @@
         });
       }
 
+      buildOperationsHub();
+
       if (status) {
+        const cacheNote = j?.cache?.hit
+          ? ` · cache ${Math.round(Number(j.cache.ageMs || 0) / 1000)}s old`
+          : '';
+        const pendingNote = j?.pending ? ' · refresh running in background' : '';
         status.textContent =
-          `Done in ${j.elapsedMs} ms · scanned ${j.scannedTracks || s.totalTracks || 0} tracks · ${j.generatedAt}`;
+          `Done in ${j.elapsedMs} ms · scanned ${j.scannedTracks || s.totalTracks || 0} tracks · ${j.generatedAt}${cacheNote}${pendingNote}`;
       }
       requestAnimationFrame(() => {
         window.dispatchEvent(new Event('resize'));
@@ -1096,6 +1371,26 @@
     } finally {
       const runBtn2 = $('run');
       if (runBtn2) runBtn2.disabled = false;
+      const refreshBtn2 = $('refreshScan');
+      if (refreshBtn2) refreshBtn2.disabled = false;
+    }
+  }
+
+  async function refreshFullScan() {
+    const key = ($('key')?.value || '').trim();
+    const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+    if (status) status.innerHTML = '<span class="spin" aria-hidden="true"></span>Starting full refresh in background…';
+    try {
+      const r = await fetch(`${apiBase}/config/library-health/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+        body: JSON.stringify({ sampleLimit: 100 }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      await run();
+    } catch (e) {
+      if (status) status.textContent = `Refresh start failed: ${e?.message || e}`;
     }
   }
 
@@ -1106,7 +1401,7 @@
   }
 
   function setAlbumMetaBusy(busy = false) {
-    const ids = ['albumPick', 'suggestPerformersBtn', 'applyPerformersBtn'];
+    const ids = ['albumPick', 'suggestPerformersBtn', 'applyPerformersBtn', 'inspectOpenArtBtn', 'inspectOpenGenreBtn'];
     ids.forEach((id) => {
       const el = $(id);
       if (el) el.disabled = !!busy;
@@ -1149,11 +1444,13 @@
       : '<option value="">(no albums found)</option>';
     if (sel) sel.innerHTML = html;
     if (featSel) featSel.innerHTML = html;
+    setAlbumContext((sel?.value || featSel?.value || ''));
     setAlbumMetaStatus(albums.length ? `${albums.length} album(s)` : 'No albums.');
     setFeatStatus(albums.length ? `${albums.length} album(s)` : 'No albums.');
   } catch (e) {
     if (sel) sel.innerHTML = '<option value="">(failed to load albums)</option>';
     if (featSel) featSel.innerHTML = '<option value="">(failed to load albums)</option>';
+    setAlbumContext('');
     setAlbumMetaStatus(`Album load failed: ${e?.message || e}`);
     setFeatStatus(`Album load failed: ${e?.message || e}`);
   } finally {
@@ -1520,12 +1817,43 @@ async function updateMoodeLibrary() {
 
 // ---- Init ----
 const runBtn = $('run');
-if (runBtn) runBtn.addEventListener('click', run);
+if (runBtn) runBtn.addEventListener('click', () => run());
+$('refreshScan')?.addEventListener('click', refreshFullScan);
 $('updateMoodeLibraryBtn')?.addEventListener('click', updateMoodeLibrary);
-$('albumPick')?.addEventListener('change', () => loadAlbumMetadata());
+$('albumPick')?.addEventListener('change', () => {
+  setAlbumContext($('albumPick')?.value || '');
+  loadAlbumMetadata();
+});
 $('suggestPerformersBtn')?.addEventListener('click', suggestPerformers);
 $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
-$('featAlbumPick')?.addEventListener('change', () => { const out = $('featOut'); if (out) out.innerHTML = ''; setFeatStatus('Ready. Click "Find featured-artist tracks".'); });
+$('inspectOpenArtBtn')?.addEventListener('click', () => {
+  const folder = String($('albumPick')?.value || '').trim();
+  if (!folder) return;
+  if ($('aaAlbum')) $('aaAlbum').value = folder;
+  setAlbumContext(folder);
+  const mod = $('aaModule');
+  if (mod) mod.open = true;
+  mod?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  $('aaLoad')?.click();
+});
+$('inspectOpenGenreBtn')?.addEventListener('click', () => {
+  const folder = String($('albumPick')?.value || '').trim();
+  if (!folder) return;
+  if ($('agAlbum')) {
+    $('agAlbum').value = folder;
+    $('agAlbum').dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  setAlbumContext(folder);
+  const mod = $('agModule');
+  if (mod) mod.open = true;
+  mod?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+$('featAlbumPick')?.addEventListener('change', () => {
+  setAlbumContext($('featAlbumPick')?.value || '');
+  const out = $('featOut');
+  if (out) out.innerHTML = '';
+  setFeatStatus('Ready. Click "Find featured-artist tracks".');
+});
 $('featScanBtn')?.addEventListener('click', scanFeatCleanup);
 $('featApplyBtn')?.addEventListener('click', applyFeatCleanup);
 // discovery workflow removed

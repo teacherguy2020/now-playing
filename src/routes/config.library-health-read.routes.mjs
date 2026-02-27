@@ -19,11 +19,162 @@ function mpdQuote(s = '') {
   return `"${String(s).replace(/(["\\])/g, '\\$1')}"`;
 }
 
+async function resolveLocalMusicPath(pLike) {
+  const f = String(pLike || '').trim().replace(/^\/+/, '');
+  if (!f || f === '(root)') return '';
+  const candidates = [
+    f.startsWith('/mnt/') ? f : '',
+    f.startsWith('mnt/') ? '/' + f : '',
+    f.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + f.slice('USB/SamsungMoode/'.length) : '',
+    f.startsWith('OSDISK/') ? '/mnt/OSDISK/' + f.slice('OSDISK/'.length) : '',
+    '/mnt/SamsungMoode/' + f,
+    '/mnt/OSDISK/' + f,
+  ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+  for (const c of candidates) {
+    try { await fs.access(c); return c; } catch (_) {}
+  }
+  return '';
+}
+
+async function resolveLocalFolderPath(folder) {
+  return resolveLocalMusicPath(folder);
+}
+
 async function sshBashLc({ user, host, script, timeoutMs = 20000, maxBuffer = 10 * 1024 * 1024 }) {
   return execFileP('ssh', [...sshArgsFor(user, host), 'bash', '-lc', shQuoteArg(String(script || ''))], {
     timeout: timeoutMs,
     maxBuffer,
   });
+}
+
+const LIB_HEALTH_CACHE_TTL_MS = 15 * 60 * 1000;
+let libraryHealthCache = null;
+let libraryHealthJob = null;
+
+async function computeLibraryHealthSnapshot({ sampleLimit, scanLimit, getRatingForFile, mpdStickerGetSong }) {
+  const started = Date.now();
+  const isAudio = (f) => /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|dsf|wv|ape)$/i.test(String(f || ''));
+  const folderOf = (file) => {
+    const s = String(file || '');
+    const i = s.lastIndexOf('/');
+    return i > 0 ? s.slice(0, i) : '(root)';
+  };
+  const pick = (arr, row) => { if (arr.length < sampleLimit) arr.push(row); };
+
+  const mpdHost = String(MPD_HOST || '10.0.0.254');
+  const fmt = '%file%\t%artist%\t%title%\t%album%\t%genre%\t%MUSICBRAINZ_TRACKID%';
+  const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], { maxBuffer: 64 * 1024 * 1024 });
+  const allFiles = String(stdout || '')
+    .split(/\r?\n/)
+    .map((ln) => {
+      const [file = '', artist = '', title = '', album = '', genre = '', mbid = ''] = ln.split('\t');
+      return {
+        file: String(file || '').trim(),
+        artist: String(artist || '').trim(),
+        title: String(title || '').trim(),
+        album: String(album || '').trim(),
+        genres: String(genre || '').trim() ? [String(genre || '').trim()] : [],
+        musicbrainz_trackid: String(mbid || '').trim(),
+      };
+    })
+    .filter((x) => x.file && isAudio(x.file))
+    .slice(0, Number.isFinite(scanLimit) ? scanLimit : undefined);
+
+  const summary = {
+    totalTracks: 0, totalAlbums: 0, missingArtwork: 0, unrated: 0, lowRated1: 0, missingMbid: 0, missingGenre: 0, christmasGenre: 0, podcastGenre: 0,
+  };
+  const genreSet = new Set();
+  const genreCounts = new Map();
+  const ratingCounts = new Map();
+  const samples = { unrated: [], lowRated1: [], missingMbid: [], missingGenre: [] };
+
+  let scanned = 0;
+  for (const b0 of allFiles) {
+    const file = String(b0?.file || '').trim();
+    if (!file || !isAudio(file)) continue;
+    if (scanned >= scanLimit) break;
+    scanned += 1;
+
+    summary.totalTracks += 1;
+    const b = b0 || { file, genres: [] };
+    const artist = String(b.artist || b.albumartist || '').trim();
+    const title = String(b.title || '').trim();
+    const album = String(b.album || '').trim();
+
+    const genreVals = Array.isArray(b.genres) ? b.genres : [];
+    for (const g of genreVals) {
+      const raw = String(g || '').trim();
+      if (!raw) continue;
+      const splitVals = raw.split(/[;,|/]/).map((x) => String(x || '').trim()).filter(Boolean);
+      const list = splitVals.length ? splitVals : [raw];
+      for (const gg of list) {
+        genreSet.add(gg);
+        genreCounts.set(gg, Number(genreCounts.get(gg) || 0) + 1);
+      }
+    }
+    const genreBlob = genreVals.join(' | ').trim();
+    if (!genreBlob) { summary.missingGenre += 1; pick(samples.missingGenre, { file, artist, title, album }); }
+    if (/christmas/i.test(genreBlob)) summary.christmasGenre += 1;
+    if (/\bpodcast\b/i.test(genreBlob)) summary.podcastGenre += 1;
+
+    const isPodcast = /\bpodcast\b/i.test(genreBlob);
+    let rating = 0;
+    try { rating = Number(await getRatingForFile(file)) || 0; } catch (_) {}
+    const ratingBucket = Number.isFinite(rating) ? Math.max(0, Math.min(5, Math.round(rating))) : 0;
+    ratingCounts.set(String(ratingBucket), Number(ratingCounts.get(String(ratingBucket)) || 0) + 1);
+
+    if (!isPodcast && rating <= 0) { summary.unrated += 1; pick(samples.unrated, { file, artist, title, album, rating }); }
+    if (rating === 1) { summary.lowRated1 += 1; pick(samples.lowRated1, { file, artist, title, album, rating }); }
+
+    const mbTag = String(b.musicbrainz_trackid || '').trim();
+    let mbSticker = '';
+    if (!mbTag) {
+      try { mbSticker = String(await mpdStickerGetSong(file, 'mb_trackid') || '').trim(); } catch (_) {}
+    }
+    if (!mbTag && !mbSticker) { summary.missingMbid += 1; pick(samples.missingMbid, { file, artist, title, album }); }
+  }
+
+  const resolveLocalFolder = async (folder) => {
+    const f = String(folder || '').trim().replace(/^\/+/, '');
+    if (!f || f === '(root)') return '';
+    const candidates = [
+      f.startsWith('/mnt/') ? f : '',
+      f.startsWith('mnt/') ? '/' + f : '',
+      f.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + f.slice('USB/SamsungMoode/'.length) : '',
+      f.startsWith('OSDISK/') ? '/mnt/OSDISK/' + f.slice('OSDISK/'.length) : '',
+      '/mnt/SamsungMoode/' + f,
+      '/mnt/OSDISK/' + f,
+    ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+    for (const c of candidates) {
+      try { await fs.access(c); return c; } catch (_) {}
+    }
+    return '';
+  };
+
+  const folderSet = new Set(allFiles.map((r) => folderOf(r.file)).filter((f) => f && f !== '(root)'));
+  summary.totalAlbums = folderSet.size;
+  for (const folder of folderSet) {
+    const localFolder = await resolveLocalFolder(folder);
+    if (!localFolder) { summary.missingArtwork += 1; continue; }
+    const coverPath = path.join(localFolder, 'cover.jpg');
+    try { await fs.access(coverPath); } catch (_) { summary.missingArtwork += 1; }
+  }
+
+  return {
+    ok: true,
+    generatedAt: new Date().toISOString(),
+    elapsedMs: Date.now() - started,
+    summary,
+    samples,
+    genreCounts: Array.from(genreCounts.entries())
+      .map(([genre, count]) => ({ genre, count: Number(count || 0) }))
+      .sort((a, b) => b.count - a.count || a.genre.localeCompare(b.genre, undefined, { sensitivity: 'base' })),
+    ratingCounts: [0, 1, 2, 3, 4, 5].map((r) => ({ rating: r, count: Number(ratingCounts.get(String(r)) || 0) })),
+    genreOptions: Array.from(genreSet).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+    sampleLimit,
+    scanLimit,
+    scannedTracks: summary.totalTracks,
+  };
 }
 
 export function registerConfigLibraryHealthReadRoutes(app, deps) {
@@ -45,180 +196,86 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
         req.query?.scanLimit != null
           ? Math.max(100, Math.min(200000, Number(req.query.scanLimit || 100)))
           : Number.MAX_SAFE_INTEGER;
-      const started = Date.now();
+      const forceRefresh = ['1', 'true', 'yes'].includes(String(req.query?.refresh || '').toLowerCase());
+      const now = Date.now();
 
-      const isAudio = (f) => /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|dsf|wv|ape)$/i.test(String(f || ''));
-      const folderOf = (file) => {
-        const s = String(file || '');
-        const i = s.lastIndexOf('/');
-        return i > 0 ? s.slice(0, i) : '(root)';
-      };
-      const pick = (arr, row) => {
-        if (arr.length < sampleLimit) arr.push(row);
-      };
+      if (!forceRefresh && libraryHealthCache && (now - Number(libraryHealthCache.cachedAt || 0) < LIB_HEALTH_CACHE_TTL_MS)) {
+        return res.json({
+          ...libraryHealthCache.payload,
+          cache: { hit: true, ageMs: now - Number(libraryHealthCache.cachedAt || 0), ttlMs: LIB_HEALTH_CACHE_TTL_MS },
+          job: { running: !!libraryHealthJob },
+        });
+      }
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
-      const fmt = '%file%\t%artist%\t%title%\t%album%\t%genre%\t%MUSICBRAINZ_TRACKID%';
-      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
-        maxBuffer: 64 * 1024 * 1024,
+      if (!forceRefresh && libraryHealthJob?.promise) {
+        return res.json({
+          ok: true,
+          pending: true,
+          message: 'Library health refresh in progress',
+          cache: libraryHealthCache
+            ? { hit: true, ageMs: now - Number(libraryHealthCache.cachedAt || 0), ttlMs: LIB_HEALTH_CACHE_TTL_MS, stale: true }
+            : { hit: false, ttlMs: LIB_HEALTH_CACHE_TTL_MS },
+          job: { running: true, startedAt: libraryHealthJob.startedAt },
+          ...(libraryHealthCache?.payload || {}),
+        });
+      }
+
+      const payload = await computeLibraryHealthSnapshot({ sampleLimit, scanLimit, getRatingForFile, mpdStickerGetSong });
+      libraryHealthCache = { payload, cachedAt: Date.now() };
+      return res.json({
+        ...payload,
+        cache: { hit: false, ageMs: 0, ttlMs: LIB_HEALTH_CACHE_TTL_MS },
+        job: { running: false },
       });
-      const allFiles = String(stdout || '')
-        .split(/\r?\n/)
-        .map((ln) => {
-          const [file = '', artist = '', title = '', album = '', genre = '', mbid = ''] = ln.split('\t');
-          return {
-            file: String(file || '').trim(),
-            artist: String(artist || '').trim(),
-            title: String(title || '').trim(),
-            album: String(album || '').trim(),
-            genres: String(genre || '').trim() ? [String(genre || '').trim()] : [],
-            musicbrainz_trackid: String(mbid || '').trim(),
-          };
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/library-health/refresh', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      if (libraryHealthJob?.promise) {
+        return res.json({ ok: true, started: false, running: true, startedAt: libraryHealthJob.startedAt });
+      }
+      const sampleLimit = Math.max(10, Math.min(500, Number(req.body?.sampleLimit || req.query?.sampleLimit || 100)));
+      const scanLimit =
+        req.body?.scanLimit != null || req.query?.scanLimit != null
+          ? Math.max(100, Math.min(200000, Number(req.body?.scanLimit || req.query?.scanLimit || 100)))
+          : Number.MAX_SAFE_INTEGER;
+
+      const startedAt = new Date().toISOString();
+      const promise = computeLibraryHealthSnapshot({ sampleLimit, scanLimit, getRatingForFile, mpdStickerGetSong })
+        .then((payload) => {
+          libraryHealthCache = { payload, cachedAt: Date.now() };
+          return payload;
         })
-        .filter((x) => x.file && isAudio(x.file))
-        .slice(0, Number.isFinite(scanLimit) ? scanLimit : undefined);
+        .finally(() => {
+          libraryHealthJob = null;
+        });
 
-      const summary = {
-        totalTracks: 0,
-        totalAlbums: 0,
-        missingArtwork: 0,
-        unrated: 0,
-        lowRated1: 0,
-        missingMbid: 0,
-        missingGenre: 0,
-        christmasGenre: 0,
-        podcastGenre: 0,
-      };
-      const genreSet = new Set();
-      const genreCounts = new Map();
-      const ratingCounts = new Map();
+      libraryHealthJob = { startedAt, promise };
+      return res.json({ ok: true, started: true, running: true, startedAt });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
 
-      const samples = {
-        unrated: [],
-        lowRated1: [],
-        missingMbid: [],
-        missingGenre: [],
-      };
-
-      let scanned = 0;
-      for (const b0 of allFiles) {
-        const file = String(b0?.file || '').trim();
-        if (!file || !isAudio(file)) continue;
-        if (scanned >= scanLimit) break;
-        scanned += 1;
-
-        summary.totalTracks += 1;
-
-        const b = b0 || { file, genres: [] };
-
-        const artist = String(b.artist || b.albumartist || '').trim();
-        const title = String(b.title || '').trim();
-        const album = String(b.album || '').trim();
-
-        const genreVals = Array.isArray(b.genres) ? b.genres : [];
-        for (const g of genreVals) {
-          const raw = String(g || '').trim();
-          if (!raw) continue;
-          const splitVals = raw.split(/[;,|/]/).map((x) => String(x || '').trim()).filter(Boolean);
-          const list = splitVals.length ? splitVals : [raw];
-          for (const gg of list) {
-            genreSet.add(gg);
-            genreCounts.set(gg, Number(genreCounts.get(gg) || 0) + 1);
-          }
-        }
-        const genreBlob = genreVals.join(' | ').trim();
-
-        if (!genreBlob) {
-          summary.missingGenre += 1;
-          pick(samples.missingGenre, { file, artist, title, album });
-        }
-        if (/christmas/i.test(genreBlob)) summary.christmasGenre += 1;
-        if (/\bpodcast\b/i.test(genreBlob)) summary.podcastGenre += 1;
-
-        const isPodcast = /\bpodcast\b/i.test(genreBlob);
-
-        let rating = 0;
-        try {
-          rating = Number(await getRatingForFile(file)) || 0;
-        } catch (_) {}
-        const ratingBucket = Number.isFinite(rating) ? Math.max(0, Math.min(5, Math.round(rating))) : 0;
-        ratingCounts.set(String(ratingBucket), Number(ratingCounts.get(String(ratingBucket)) || 0) + 1);
-
-        if (!isPodcast && rating <= 0) {
-          summary.unrated += 1;
-          pick(samples.unrated, { file, artist, title, album, rating });
-        }
-        if (rating === 1) {
-          summary.lowRated1 += 1;
-          pick(samples.lowRated1, { file, artist, title, album, rating });
-        }
-
-        const mbTag = String(b.musicbrainz_trackid || '').trim();
-        let mbSticker = '';
-        if (!mbTag) {
-          try {
-            mbSticker = String(await mpdStickerGetSong(file, 'mb_trackid') || '').trim();
-          } catch (_) {}
-        }
-        if (!mbTag && !mbSticker) {
-          summary.missingMbid += 1;
-          pick(samples.missingMbid, { file, artist, title, album });
-        }
-      }
-
-      const resolveLocalFolder = async (folder) => {
-        const f = String(folder || '').trim().replace(/^\/+/, '');
-        if (!f || f === '(root)') return '';
-        const candidates = [
-          f.startsWith('/mnt/') ? f : '',
-          f.startsWith('mnt/') ? '/' + f : '',
-          f.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + f.slice('USB/SamsungMoode/'.length) : '',
-          f.startsWith('OSDISK/') ? '/mnt/OSDISK/' + f.slice('OSDISK/'.length) : '',
-          '/mnt/SamsungMoode/' + f,
-          '/mnt/OSDISK/' + f,
-        ]
-          .map((x) => String(x || '').replace(/\/+/g, '/'))
-          .filter(Boolean);
-        for (const c of candidates) {
-          try {
-            await fs.access(c);
-            return c;
-          } catch (_) {}
-        }
-        return '';
-      };
-
-      const folderSet = new Set(allFiles.map((r) => folderOf(r.file)).filter((f) => f && f !== '(root)'));
-      summary.totalAlbums = folderSet.size;
-
-      for (const folder of folderSet) {
-        const localFolder = await resolveLocalFolder(folder);
-        if (!localFolder) {
-          summary.missingArtwork += 1;
-          continue;
-        }
-        const coverPath = path.join(localFolder, 'cover.jpg');
-        try {
-          await fs.access(coverPath);
-        } catch (_) {
-          summary.missingArtwork += 1;
-        }
-      }
-
+  app.get('/config/library-health/job', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
       return res.json({
         ok: true,
-        generatedAt: new Date().toISOString(),
-        elapsedMs: Date.now() - started,
-        summary,
-        samples,
-        genreCounts: Array.from(genreCounts.entries())
-          .map(([genre, count]) => ({ genre, count: Number(count || 0) }))
-          .sort((a, b) => b.count - a.count || a.genre.localeCompare(b.genre, undefined, { sensitivity: 'base' })),
-        ratingCounts: [0, 1, 2, 3, 4, 5].map((r) => ({ rating: r, count: Number(ratingCounts.get(String(r)) || 0) })),
-        genreOptions: Array.from(genreSet).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
-        sampleLimit,
-        scanLimit,
-        scannedTracks: summary.totalTracks,
+        running: !!libraryHealthJob,
+        startedAt: libraryHealthJob?.startedAt || null,
+        cache: libraryHealthCache
+          ? {
+              generatedAt: libraryHealthCache.payload?.generatedAt || null,
+              cachedAt: new Date(Number(libraryHealthCache.cachedAt || 0)).toISOString(),
+              ageMs: Date.now() - Number(libraryHealthCache.cachedAt || 0),
+              ttlMs: LIB_HEALTH_CACHE_TTL_MS,
+            }
+          : null,
       });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
@@ -367,6 +424,62 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
     }
   });
 
+  app.get('/config/library-health/album-thumb', async (req, res) => {
+    try {
+      const folder = String(req.query?.folder || '').trim();
+      const file = String(req.query?.file || '').trim();
+      if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
+      const localFolder = await resolveLocalFolderPath(folder);
+      if (!localFolder) return res.status(404).end();
+
+      const candidates = ['cover.jpg', 'folder.jpg', 'front.jpg', 'cover.jpeg', 'folder.jpeg', 'front.jpeg', 'cover.png', 'folder.png', 'front.png'];
+      for (const name of candidates) {
+        const p = path.join(localFolder, name);
+        try {
+          await fs.access(p);
+          const buf = await fs.readFile(p);
+          const ct = name.endsWith('.png') ? 'image/png' : 'image/jpeg';
+          res.setHeader('Content-Type', ct);
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          return res.send(buf);
+        } catch (_) {}
+      }
+
+      // Fallback: attempt extracting embedded art from one sample track, cached to disk.
+      const sample = await resolveLocalMusicPath(file);
+      if (sample) {
+        const cacheDir = '/tmp/now-playing/library-thumbs';
+        const cacheName = Buffer.from(String(folder || '')).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 64) || 'thumb';
+        const outPath = path.join(cacheDir, `${cacheName}.jpg`);
+        try {
+          await fs.mkdir(cacheDir, { recursive: true });
+          try {
+            const buf = await fs.readFile(outPath);
+            if (buf?.length) {
+              res.setHeader('Content-Type', 'image/jpeg');
+              res.setHeader('Cache-Control', 'public, max-age=86400');
+              return res.send(buf);
+            }
+          } catch (_) {}
+
+          try {
+            await execFileP('ffmpeg', ['-y', '-i', sample, '-an', '-vframes', '1', outPath], { timeout: 8000 });
+            const buf = await fs.readFile(outPath);
+            if (buf?.length) {
+              res.setHeader('Content-Type', 'image/jpeg');
+              res.setHeader('Cache-Control', 'public, max-age=86400');
+              return res.send(buf);
+            }
+          } catch (_) {}
+        } catch (_) {}
+      }
+
+      return res.status(404).end();
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.get('/config/library-health/albums', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
@@ -400,6 +513,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
             album: String(album || '').trim(),
             artists: new Set(),
             trackCount: 0,
+            sampleFile: f,
           });
         }
 
@@ -416,18 +530,32 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
         return i >= 0 ? s.slice(i + 1) : s;
       };
 
-      const albums = Array.from(byFolder.values()).map((row) => {
+      const albums = await Promise.all(Array.from(byFolder.values()).map(async (row) => {
         const artists = Array.from(row.artists || []);
         const artistLabel = artists.length === 1
           ? artists[0]
           : (artists.length > 1 ? 'Various Artists' : 'Unknown Artist');
         const albumName = String(row.album || '').trim() || leafName(row.folder);
+
+        let addedTs = 0;
+        try {
+          const localFolder = await resolveLocalFolderPath(row.folder);
+          if (localFolder) {
+            const st = await fs.stat(localFolder);
+            addedTs = Number(st?.birthtimeMs || st?.mtimeMs || 0) || 0;
+          }
+        } catch (_) {}
+
         return {
           folder: row.folder,
+          artist: artistLabel,
+          album: albumName,
           label: `${artistLabel} — ${albumName}`,
           trackCount: Number(row.trackCount || 0),
+          addedTs,
+          thumbUrl: `/config/library-health/album-thumb?folder=${encodeURIComponent(String(row.folder || ''))}&file=${encodeURIComponent(String(row.sampleFile || ''))}`,
         };
-      });
+      }));
 
       albums.sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' }));
       return res.json({ ok: true, count: albums.length, albums });

@@ -120,6 +120,7 @@
     <div class="row" style="justify-content:space-between;align-items:center;">
       <div class="row" style="margin:0;">
         <button id="run">Scan</button>
+        <button id="refreshScan" type="button">Refresh full scan</button>
         <span class="muted" id="status"></span>
       </div>
       <div class="row" style="margin:0;justify-content:flex-end;">
@@ -132,6 +133,10 @@
 
     <div class="card" id="scanResultsCard" style="padding-top:22px;">
       <div class="cards" id="cards" style="margin:14px 0 0;"></div>
+    </div>
+
+    <div id="albumContextBadge" class="muted" style="margin:8px 0 10px;padding:8px 10px;border:1px solid #334;border-radius:10px;background:#0a1222;display:none;">
+      Current album context: <strong id="albumContextText" style="color:#eef;"></strong>
     </div>
 
     <details id="animatedArtCacheCard">
@@ -162,6 +167,8 @@
         <select id="albumPick" style="min-width:360px;max-width:100%;"></select>
         <button id="suggestPerformersBtn" type="button">Suggest performers</button>
         <button id="applyPerformersBtn" type="button">Apply performers</button>
+        <button id="inspectOpenArtBtn" type="button">Album art tools</button>
+        <button id="inspectOpenGenreBtn" type="button">Genre tools</button>
         <span class="muted" id="albumMetaStatus"></span>
       </div>
       <div class="row" style="margin-top:6px;align-items:flex-start;">
@@ -187,7 +194,7 @@
 
     <div id="sections"></div>
   </div>
-  <script src="scripts/library-health.js?v=20260225-1"></script>
+  <script src="scripts/library-health.js?v=20260227-6"></script>
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
 
 <script>
