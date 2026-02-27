@@ -8,6 +8,8 @@
 
 A moOde-focused now-playing API + UI stack with optional Alexa integration.
 
+![Now Playing promo collage](./docs/images/master-best-20260227/_collages/collage-promo-mixed-tabs-themes-normalized.jpg)
+
 > Recommended topology: run this project on a separate Pi from your moOde host.
 
 ## Quick start
