@@ -43,8 +43,8 @@ const RADIO_META_EVAL_LOG = String(process.env.RADIO_META_EVAL_LOG || path.join(
 const RADIO_META_EVAL_MIN_INTERVAL_MS = Math.max(5000, Number(process.env.RADIO_META_EVAL_MIN_INTERVAL_MS || '45000') || 45000);
 
 const RADIO_META_HOLDBACK_ENABLED = String(process.env.RADIO_META_HOLDBACK_ENABLED || '1').trim() !== '0';
-const RADIO_META_HOLDBACK_MS = Math.max(0, Number(process.env.RADIO_META_HOLDBACK_MS || '12000') || 12000);
-const RADIO_META_NEW_STREAM_RESET_DELTA_S = Math.max(2, Number(process.env.RADIO_META_NEW_STREAM_RESET_DELTA_S || '6') || 6);
+const RADIO_META_HOLDBACK_MS = Math.max(0, Number(process.env.RADIO_META_HOLDBACK_MS || '6000') || 6000);
+const RADIO_META_NEW_STREAM_RESET_DELTA_S = Math.max(2, Number(process.env.RADIO_META_NEW_STREAM_RESET_DELTA_S || '3') || 3);
 const radioMetaHoldbackState = new Map();
 
 let lastRadioMetaEvalKey = '';
@@ -5191,6 +5191,8 @@ app.get('/now-playing', async (req, res) => {
 
     const songpos = String(moodeValByKey(statusRaw, 'song') || '').trim();
     const songid  = String(moodeValByKey(statusRaw, 'songid') || '').trim();
+    const randomState = String(moodeValByKey(statusRaw, 'random') || '').trim();
+    const repeatState = String(moodeValByKey(statusRaw, 'repeat') || '').trim();
 
     const file = String(song.file || '').trim();
     const isLocalPodcast = isLocalPodcastFile(file);
@@ -6008,6 +6010,8 @@ app.get('/now-playing', async (req, res) => {
       radioLookupTerm,
 
       state: status.state || song.state,
+      random: randomState,
+      repeat: repeatState,
       elapsed: status.elapsed,
       duration: status.duration,
       percent: status.percent,

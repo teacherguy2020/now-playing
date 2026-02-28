@@ -546,6 +546,37 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.post('/config/moode/browser', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const target = String(req.body?.target || '').trim().toLowerCase();
+      if (!['nowplaying', 'webui'].includes(target)) {
+        return res.status(400).json({ ok: false, error: 'target must be nowplaying or webui' });
+      }
+
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const hostHdr = String(req.get('host') || '').trim();
+      const appHost = hostHdr.replace(/:\d+$/, '') || '10.0.0.233';
+      const stamp = Date.now();
+      const nowPlayingUrl = `http://${appHost}:8101/index.html?sw=${stamp}`;
+      const webUiUrl = `http://localhost/?sw=${stamp}`;
+      const url = target === 'nowplaying' ? nowPlayingUrl : webUiUrl;
+
+      const pre = target === 'webui'
+        ? `curl -fsS 'http://localhost/command/?cmd=set_display%20webui' >/dev/null 2>&1 || true; `
+        : '';
+      const script = `${pre}DISPLAY=:0 chromium-browser ${shQuoteArg(url)} >/tmp/chromium-switch.log 2>&1 & disown; sleep 1; tail -n 12 /tmp/chromium-switch.log || true`;
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 14000 });
+      return res.json({ ok: true, target, url, sshHost, sshUser, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/moode/library-update', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

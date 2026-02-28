@@ -47,7 +47,7 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles/index1080.css?v=20260221-009" />
+  <link rel="stylesheet" href="styles/index1080.css?v=20260228-waveshare-ctrl15" />
 
 </head>
 
@@ -147,6 +147,12 @@
 
   <!-- Phone controls -->
   <div id="phone-controls" aria-label="Playback controls">
+    <button class="ctl" id="btn-repeat" aria-label="Repeat" title="Repeat" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M17 17H7v-3l-4 4 4 4v-3h10a4 4 0 004-4v-6h-2v6a2 2 0 01-2 2zM7 7h10v3l4-4-4-4v3H7a4 4 0 00-4 4v6h2V9a2 2 0 012-2z"/>
+      </svg>
+    </button>
+
     <button class="ctl" id="btn-prev" aria-label="Previous" title="Previous" type="button">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M6 5h2v14H6V5zm3.5 7 10-7v14l-10-7z"/>
@@ -162,6 +168,12 @@
     <button class="ctl" id="btn-next" aria-label="Next" title="Next" type="button">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M16 5h2v14h-2V5zM4.5 19V5l10 7-10 7z"/>
+      </svg>
+    </button>
+
+    <button class="ctl" id="btn-shuffle" aria-label="Shuffle" title="Shuffle" type="button">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path fill="currentColor" d="M24.414,16.586L30.828,23l-6.414,6.414l-2.828-2.828L23.172,25H22c-3.924,0-6.334-2.289-8.173-4.747c0.987-1.097,1.799-2.285,2.516-3.36C18.109,19.46,19.521,21,22,21h1.172l-1.586-1.586L24.414,16.586z M22,11h1.172l-1.586,1.586l2.828,2.828L30.828,9l-6.414-6.414l-2.828,2.828L23.172,7H22c-5.07,0-7.617,3.82-9.664,6.891C10.224,17.059,8.788,19,6,19H2v4h4c5.07,0,7.617-3.82,9.664-6.891C17.776,12.941,19.212,11,22,11z M10.212,15.191c0.399-0.539,1.957-2.848,2.322-3.365C10.917,10.216,8.86,9,6,9H2v4h4C7.779,13,9.007,13.797,10.212,15.191z"/>
       </svg>
     </button>
   </div>
@@ -195,6 +207,6 @@
     <script src="scripts/index.js"></script>
 
 
-  <script src="scripts/index-ui.js?v=20260224-radio-motion-clear-index"></script>
+  <script src="scripts/index-ui.js?v=20260228-waveshare-easter1"></script>
 </body>
 </html>

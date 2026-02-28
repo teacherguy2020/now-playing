@@ -584,6 +584,7 @@
       let notifyConfigured = false;
       let notifyEnabled = null;
       let peppyModeState = (() => { try { return String(localStorage.getItem('np.peppyMode') || 'webui'); } catch { return 'webui'; } })();
+      let screenModeState = (() => { try { return String(localStorage.getItem('np.screenMode') || 'nowplaying'); } catch { return 'nowplaying'; } })();
       let alexaEnabledState = null;
       let alexaDomainState = '';
       let collapsedQueueLastLiteSyncAt = 0;
@@ -1497,6 +1498,13 @@
         pill.disabled = !!on;
       }
 
+      function setScreenBusy(on){
+        const pill = document.getElementById('screenPill');
+        if (!pill) return;
+        pill.classList.toggle('busy', !!on);
+        pill.disabled = !!on;
+      }
+
       async function fetchJsonWithTimeout(url, opts = {}, timeoutMs = 9000){
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), Math.max(1000, Number(timeoutMs) || 9000));
@@ -1660,6 +1668,41 @@
           setPillState('peppyPill', 'bad');
         } finally {
           setPeppyBusy(false);
+        }
+      }
+
+      function refreshScreenPill(){
+        const hint = document.getElementById('screenHint');
+        const mode = String(screenModeState || 'nowplaying').toLowerCase() === 'webui' ? 'webui' : 'nowplaying';
+        if (hint) hint.textContent = mode === 'webui' ? 'moode' : 'np';
+        setPillState('screenPill', mode === 'webui' ? 'warn' : 'ok');
+      }
+
+      async function toggleScreenFromPill(){
+        const next = String(screenModeState || 'nowplaying') === 'webui' ? 'nowplaying' : 'webui';
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        setScreenBusy(true);
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ target: next }),
+          }, 12000);
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          screenModeState = next;
+          try { localStorage.setItem('np.screenMode', screenModeState); } catch {}
+          refreshScreenPill();
+        } catch (e) {
+          console.warn('screen toggle failed', e?.message || e);
+          setPillState('screenPill', 'bad');
+        } finally {
+          setScreenBusy(false);
         }
       }
 
@@ -1857,6 +1900,7 @@
           setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
           setPillState('moodePill', moodeHost ? 'ok' : 'warn');
           await refreshPeppyPill(base);
+          refreshScreenPill();
 
           const podcastsLink = document.getElementById('podcastsNavLink');
           if (podcastsLink && !cfg?.features?.podcasts) podcastsLink.style.display = 'none';
@@ -1868,6 +1912,7 @@
           setPillState('alexaPill','warn');
           setPillState('moodePill','warn');
           await refreshPeppyPill();
+          refreshScreenPill();
           scrobbleControlsEnabled = false;
           const sp = document.getElementById('scrobblePill');
           if (sp) sp.style.display = 'none';
@@ -1925,10 +1970,27 @@
         toggleAlexaPause();
       });
 
-      document.getElementById('moodePill')?.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        restartMoodeFromPill();
-      });
+      {
+        const moodeBtn = document.getElementById('moodePill');
+        let moodeTapCount = 0;
+        let moodeTapTimer = null;
+        moodeBtn?.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          moodeTapCount += 1;
+          if (moodeTapTimer) clearTimeout(moodeTapTimer);
+          moodeTapTimer = setTimeout(() => {
+            const n = moodeTapCount;
+            moodeTapCount = 0;
+            moodeTapTimer = null;
+            // Easter egg: triple-tap moOde pill toggles display screen target.
+            if (n >= 3) {
+              toggleScreenFromPill();
+              return;
+            }
+            restartMoodeFromPill();
+          }, 420);
+        });
+      }
 
       document.getElementById('peppyPill')?.addEventListener('click', (ev) => {
         ev.preventDefault();

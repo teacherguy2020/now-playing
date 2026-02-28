@@ -440,6 +440,20 @@ function setPlayIcon(isPlaying) {
   const p = document.getElementById("playIcon");
   if (!p) return;
   p.setAttribute("d", isPlaying ? PATH_PAUSE : PATH_PLAY);
+  const btn = document.getElementById('btn-play');
+  if (btn) btn.classList.toggle('on', !!isPlaying);
+}
+
+function isToggleOn(v) {
+  const s = String(v ?? '').trim().toLowerCase();
+  return s === '1' || s === 'on' || s === 'true' || s === 'yes';
+}
+
+function setTransportToggleState(data = {}) {
+  const shuf = document.getElementById('btn-shuffle');
+  const rep = document.getElementById('btn-repeat');
+  if (shuf) shuf.classList.toggle('on', isToggleOn(data?.random));
+  if (rep) rep.classList.toggle('on', isToggleOn(data?.repeat));
 }
 
 function isPlayingState(data) {
@@ -596,7 +610,9 @@ function computePhoneUI() {
   const portrait  = (aspect > 0 && aspect <= 0.85);
   const narrow    = (w > 0 && w <= 900);
 
-  // Explicit kiosk / car display (your 1280x400 = 3.2)
+  // Explicit landscape strip display (e.g., Waveshare 1280x400)
+  const landscapeStrip = (w >= 1100 && h > 0 && h <= 430 && aspect >= 2.4);
+  // Legacy kiosk bucket
   const ultraWideKiosk = (aspect >= 3.0 && h > 0 && h <= 650);
 
   // Legacy: only accept it if we ALSO think it's mobile/kiosk-ish
@@ -610,8 +626,11 @@ function computePhoneUI() {
     return legacy || short || portrait || narrow || (touchish && (short || narrow || portrait));
   }
 
+  // Desktop/laptop: keep landscape-strip displays in desktop layout.
+  if (landscapeStrip) return false;
+
   // Desktop/laptop: protect against “everything becomes portrait”
-  return legacy || ultraWideKiosk || (h > 0 && h <= 420); // keep 1280x400 + extreme short panes
+  return legacy || ultraWideKiosk || (h > 0 && h <= 420);
 }
 
 function applyPhoneUIClass() {
@@ -634,7 +653,36 @@ function schedulePhoneUIUpdate() {
     _phoneUiRaf = 0;
     try { applyPhoneUIClass(); } catch {}
     try { updatePhoneArtBottomVar(); } catch {}
+    try { fitPersonnelForWaveshare(); } catch {}
   });
+}
+
+function isWaveshareStripLayout() {
+  try {
+    return !!window.matchMedia?.('(orientation: landscape) and (min-width: 1180px) and (max-width: 1400px) and (max-height: 430px)').matches;
+  } catch {
+    return false;
+  }
+}
+
+function fitPersonnelForWaveshare() {
+  const el = document.getElementById('personnel-info');
+  if (!el) return;
+  if (!isWaveshareStripLayout()) {
+    el.style.removeProperty('font-size');
+    return;
+  }
+  if (getComputedStyle(el).display === 'none') return;
+
+  const maxPx = 22;
+  const minPx = 12;
+  let size = maxPx;
+  el.style.fontSize = `${size}px`;
+  // shrink until content fits
+  while (size > minPx && el.scrollHeight > el.clientHeight + 1) {
+    size -= 1;
+    el.style.fontSize = `${size}px`;
+  }
 }
 
 function logPhoneControlSizes(reason = '') {
@@ -2526,6 +2574,7 @@ function updateUI(data) {
   }
 
   setPlayIcon(isPlayingState(data));
+  setTransportToggleState(data);
 
   const streamKind = String(data.streamKind || '').trim().toLowerCase();
   const isUpnp  = isStream && (data.isUpnp === true || streamKind === 'upnp');
@@ -2756,6 +2805,7 @@ if (titleEl) {
         : '';
       personnelEl.style.display = '';
     }
+    try { requestAnimationFrame(() => fitPersonnelForWaveshare()); } catch {}
   }
 
   // =========================
@@ -2980,6 +3030,15 @@ function attachClickEventToAlbumArt() {
 
     const src = art?.getAttribute('src') || '';
 
+    const strip = isWaveshareStripLayout();
+    const artWrap = document.getElementById('album-art-wrapper');
+    const r = artWrap?.getBoundingClientRect?.();
+    const cardW = (strip && r?.width) ? Math.max(280, Math.round(r.width)) : 0;
+    const cardH = (strip && r?.height) ? Math.max(280, Math.round(r.height)) : 0;
+    const cardStyle = strip
+      ? `width:${cardW}px;max-width:${cardW}px;max-height:${cardH}px;`
+      : `width:min(92vw,560px);max-height:min(86vh,740px);`;
+
     const hdr = `
       <div style="font-weight:700;font-size:18px;margin-bottom:10px;">
         ${artist}${artist && title ? ' — ' : ''}${title}
@@ -2996,8 +3055,7 @@ function attachClickEventToAlbumArt() {
 
       return `
         <div style="
-          width:min(92vw,560px);
-          max-height:min(86vh,740px);
+          ${cardStyle}
           overflow:auto;
           padding:18px 18px;
           border-radius:18px;
@@ -3018,7 +3076,7 @@ function attachClickEventToAlbumArt() {
 
     return `
       <div style="
-        width:min(92vw,560px);
+        ${cardStyle}
         padding:18px;
         border-radius:18px;
         background:rgba(0,0,0,0.78);
@@ -3073,6 +3131,77 @@ function attachClickEventToAlbumArt() {
 /* =========================
  * Clear UI (optional)
  * ========================= */
+
+/* =========================
+ * Screen-toggle easter egg (long-press next-up art)
+ * ========================= */
+
+(() => {
+  const STATE_KEY = 'np.screenMode';
+  let pressTimer = null;
+  let fired = false;
+
+  function getMode() {
+    try {
+      const s = String(localStorage.getItem(STATE_KEY) || 'nowplaying').toLowerCase();
+      return s === 'webui' ? 'webui' : 'nowplaying';
+    } catch {
+      return 'nowplaying';
+    }
+  }
+
+  function setMode(v) {
+    try { localStorage.setItem(STATE_KEY, v); } catch {}
+  }
+
+  async function toggleScreenTarget() {
+    const next = getMode() === 'webui' ? 'nowplaying' : 'webui';
+    try {
+      const key = await ensureRuntimeTrackKey();
+      const headers = { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) };
+      const r = await fetch(`${API_BASE}/config/moode/browser`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ target: next }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      setMode(next);
+      dlog('[screen-easter-egg] switched', next);
+    } catch (e) {
+      console.warn('screen easter egg toggle failed', e?.message || e);
+    }
+  }
+
+  function bind() {
+    const img = document.getElementById('next-up-img');
+    if (!img) return;
+
+    const start = (e) => {
+      fired = false;
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = setTimeout(async () => {
+        fired = true;
+        try { e?.preventDefault?.(); } catch {}
+        await toggleScreenTarget();
+      }, 700);
+    };
+    const end = (e) => {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+      if (fired) {
+        try { e?.preventDefault?.(); e?.stopPropagation?.(); } catch {}
+      }
+    };
+
+    img.addEventListener('pointerdown', start, { passive: true });
+    img.addEventListener('pointerup', end, { passive: false });
+    img.addEventListener('pointercancel', end, { passive: false });
+    img.addEventListener('pointerleave', end, { passive: false });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind, { once: true });
+  else bind();
+})();
 
 /* =========================
  * Phone controls (LAN moOde commands) + Play/Pause icon
@@ -3130,9 +3259,23 @@ function attachClickEventToAlbumArt() {
 
     const ok2 = bind("btn-next", () => sendCmd("next"));
     const ok3 = bind("btn-prev", () => sendPrev());
+    const ok4 = bind("btn-shuffle", () => {
+      sendCmd("random");
+      try {
+        const el = document.getElementById('btn-shuffle');
+        if (el) el.classList.toggle('on');
+      } catch {}
+    });
+    const ok5 = bind("btn-repeat", () => {
+      sendCmd("repeat");
+      try {
+        const el = document.getElementById('btn-repeat');
+        if (el) el.classList.toggle('on');
+      } catch {}
+    });
 
-    if (!(ok1 && ok2 && ok3)) {
-      console.warn("Phone controls: buttons not found at init time.", { ok1, ok2, ok3 });
+    if (!(ok1 && ok2 && ok3 && ok4 && ok5)) {
+      console.warn("Phone controls: buttons not found at init time.", { ok1, ok2, ok3, ok4, ok5 });
     }
 
     // ✅ Initial icon state (uses same data source as UI; avoids CORS)
@@ -3141,6 +3284,7 @@ function attachClickEventToAlbumArt() {
       const s = String(d?.state || "").toLowerCase();
       const isPlaying = (s === "play" || s === "playing");
       if (typeof setPlayIcon === "function") setPlayIcon(isPlaying);
+      if (typeof setTransportToggleState === 'function') setTransportToggleState(d || {});
     } catch {}
   }
 
