@@ -3230,6 +3230,18 @@ function attachClickEventToAlbumArt() {
     for (const c of PREV_TRIES) sendCmd(c);
   }
 
+  let controlsAwakeTimer = null;
+  function wakeControls(ms = 3500) {
+    const wrap = document.getElementById('phone-controls');
+    if (!wrap) return;
+    wrap.classList.add('controls-awake');
+    if (controlsAwakeTimer) clearTimeout(controlsAwakeTimer);
+    controlsAwakeTimer = setTimeout(() => {
+      wrap.classList.remove('controls-awake');
+      controlsAwakeTimer = null;
+    }, Math.max(800, Number(ms) || 3500));
+  }
+
   function bind(id, fn) {
     const el = document.getElementById(id);
     if (!el) return false;
@@ -3238,6 +3250,7 @@ function attachClickEventToAlbumArt() {
     el.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       e.stopPropagation();
+      wakeControls();
       fn();
     }, { passive: false });
 
@@ -3285,6 +3298,14 @@ function attachClickEventToAlbumArt() {
       const isPlaying = (s === "play" || s === "playing");
       if (typeof setPlayIcon === "function") setPlayIcon(isPlaying);
       if (typeof setTransportToggleState === 'function') setTransportToggleState(d || {});
+    } catch {}
+
+    try {
+      const wrap = document.getElementById('phone-controls');
+      if (wrap) {
+        wrap.addEventListener('pointerdown', () => wakeControls(), { passive: true });
+      }
+      wakeControls(2200);
     } catch {}
   }
 

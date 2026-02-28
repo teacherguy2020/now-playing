@@ -849,27 +849,36 @@ body.phone-ui #phone-controls .ctl.big.on {
   body:not(.phone-ui) .text-column {
     height: calc(100vh - 22px);
     max-height: none;
-    gap: 12px;
+    gap: 18px;
     padding-bottom: 46px;
     padding-right: 300px; /* reserve top-right space so artist/title don't sit under controls */
   }
 
   body:not(.phone-ui) #artist-name {
     padding-top: 6px;
+    padding-bottom: 4px;
     line-height: 1.14;
     font-size: clamp(37px, calc(var(--artSize) * 0.107), 78px);
   }
 
+  body:not(.phone-ui) #titleLine {
+    margin-bottom: 4px;
+  }
+
   body:not(.phone-ui) #track-title {
     font-size: clamp(32px, calc(var(--artSize) * 0.090), 67px);
+    margin-bottom: 10px;
   }
 
   body:not(.phone-ui) #titleLine .rating-stars {
     font-size: clamp(25px, calc(var(--artSize) * 0.073), 51px);
+    margin-top: 8px;
   }
 
   body:not(.phone-ui) #album-link {
     font-size: clamp(25px, calc(var(--artSize) * 0.076), 55px);
+    margin-top: 2px;
+    margin-bottom: 4px;
   }
 
   body:not(.phone-ui) #file-info {
@@ -908,11 +917,19 @@ body.phone-ui #phone-controls .ctl.big.on {
 
     padding: 6px 10px !important;
     border-radius: 999px;
-    background: rgba(8, 12, 20, 0.45) !important;
-    border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(8, 12, 20, 0.20) !important;
+    border: 1px solid rgba(255,255,255,0.10);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     z-index: 5200 !important;
+    opacity: .22;
+    transition: opacity .22s ease, background-color .22s ease, border-color .22s ease;
+  }
+
+  body:not(.phone-ui) #phone-controls.controls-awake {
+    opacity: 1;
+    background: rgba(8, 12, 20, 0.45) !important;
+    border-color: rgba(255,255,255,0.16);
   }
 
   body:not(.phone-ui) #phone-controls .ctl {
