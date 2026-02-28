@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
@@ -60,28 +62,32 @@ export function registerConfigRatingsStickerRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
 
+      const sshUser = String(MOODE_SSH_USER || 'moode');
+      const sshHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
       const stickerPath = String(process.env.MPD_STICKER_PATH || '/var/lib/mpd/sticker.sql');
-      const backupDir = String(process.env.MPD_STICKER_BACKUP_DIR || '/var/lib/mpd/sticker-backups');
+      const backupDir = String(process.env.MPD_STICKER_BACKUP_DIR || '/home/brianwis/backups/sticker-backups');
       const ts = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
-      const backupPath = `${backupDir}/sticker-${ts}.sql`;
+      const backupPath = path.join(backupDir, `sticker-${ts}.sql`);
+
+      await fs.mkdir(backupDir, { recursive: true });
+
+      // Verify source exists on moOde first.
       const pQ = shQuoteArg(stickerPath);
-      const dQ = shQuoteArg(backupDir);
-      const bQ = shQuoteArg(backupPath);
-
-      const script = [
-        `if [ ! -f ${pQ} ]; then echo "MISSING"; exit 3; fi`,
-        `sudo install -d -m 0775 ${dQ}`,
-        `sudo cp -a ${pQ} ${bQ}`,
-        `echo ${bQ}`,
-      ].join('; ');
-
-      const { stdout } = await sshBashLc({ user: String(MOODE_SSH_USER || 'moode'), host: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'), script, timeoutMs: 15000 });
-      const out = String(stdout || '').trim().replace(/^'+|'+$/g, '');
-      if (!out || out === 'MISSING') {
+      const verifyScript = `if [ -f ${pQ} ] || sudo test -f ${pQ} 2>/dev/null; then echo OK; else echo MISSING; fi`;
+      const { stdout: checkOut } = await sshBashLc({ user: sshUser, host: sshHost, script: verifyScript, timeoutMs: 10000 });
+      if (!String(checkOut || '').includes('OK')) {
         return res.status(400).json({ ok: false, error: `Sticker DB not found at ${stickerPath}` });
       }
 
-      return res.json({ ok: true, stickerPath, backupPath: out });
+      // Pull the sticker DB to the API/Web host backup directory.
+      await execFileP('scp', [
+        '-o', 'BatchMode=yes',
+        '-o', 'ConnectTimeout=8',
+        `${sshUser}@${sshHost}:${stickerPath}`,
+        backupPath,
+      ], { timeout: 20000, maxBuffer: 8 * 1024 * 1024 });
+
+      return res.json({ ok: true, stickerPath, backupPath });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
@@ -90,20 +96,15 @@ export function registerConfigRatingsStickerRoutes(app, deps) {
   app.get('/config/ratings/sticker-backups', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const backupDir = String(process.env.MPD_STICKER_BACKUP_DIR || '/var/lib/mpd/sticker-backups');
-      const dQ = shQuoteArg(backupDir);
-      const script = [
-        `sudo install -d -m 0775 ${dQ}`,
-        `for f in $(sudo ls -1t ${dQ}/*.sql 2>/dev/null | head -n 50); do sz=$(sudo wc -c < "$f" 2>/dev/null || echo 0); echo "$f|$sz"; done`,
-      ].join('; ');
-      const { stdout } = await sshBashLc({ user: String(MOODE_SSH_USER || 'moode'), host: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'), script, timeoutMs: 12000 });
-      const rows = String(stdout || '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
-      const backups = rows.map((ln) => {
-        const [pathOut = '', sizeOut = '0'] = String(ln || '').split('|');
-        const p = String(pathOut || '').trim();
-        const size = Number(sizeOut || 0) || 0;
-        return { path: p, name: p.split('/').pop() || p, size };
-      }).filter((b) => !!b.path);
+      const backupDir = String(process.env.MPD_STICKER_BACKUP_DIR || '/home/brianwis/backups/sticker-backups');
+      await fs.mkdir(backupDir, { recursive: true });
+      const names = (await fs.readdir(backupDir).catch(() => [])).filter((n) => /\.sql$/i.test(n));
+      const stats = await Promise.all(names.map(async (n) => {
+        const p = path.join(backupDir, n);
+        const st = await fs.stat(p).catch(() => null);
+        return st ? { path: p, name: n, size: Number(st.size || 0), mtimeMs: Number(st.mtimeMs || 0) } : null;
+      }));
+      const backups = stats.filter(Boolean).sort((a, b) => b.mtimeMs - a.mtimeMs).slice(0, 50).map(({ mtimeMs, ...rest }) => rest);
       return res.json({ ok: true, backupDir, backups });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
@@ -113,20 +114,33 @@ export function registerConfigRatingsStickerRoutes(app, deps) {
   app.post('/config/ratings/sticker-restore', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
+      const sshUser = String(MOODE_SSH_USER || 'moode');
+      const sshHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
       const stickerPath = String(process.env.MPD_STICKER_PATH || '/var/lib/mpd/sticker.sql');
       const backupPath = String(req.body?.backupPath || '').trim();
       if (!backupPath) return res.status(400).json({ ok: false, error: 'backupPath is required' });
 
+      await fs.access(backupPath).catch(() => { throw new Error(`Backup file not found: ${backupPath}`); });
+
+      const remoteTmp = `/tmp/sticker-restore-${Date.now()}.sql`;
+      await execFileP('scp', [
+        '-o', 'BatchMode=yes',
+        '-o', 'ConnectTimeout=8',
+        backupPath,
+        `${sshUser}@${sshHost}:${remoteTmp}`,
+      ], { timeout: 20000, maxBuffer: 8 * 1024 * 1024 });
+
       const pQ = shQuoteArg(stickerPath);
-      const bQ = shQuoteArg(backupPath);
+      const tQ = shQuoteArg(remoteTmp);
       const script = [
-        `if ! sudo test -f ${bQ}; then echo "MISSING_BACKUP"; exit 3; fi`,
-        `sudo cp -a ${bQ} ${pQ}`,
+        `if ! test -f ${tQ}; then echo "MISSING_TMP"; exit 3; fi`,
+        `sudo cp -a ${tQ} ${pQ}`,
         `sudo chown mpd:audio ${pQ} >/dev/null 2>&1 || true`,
         `sudo chmod 664 ${pQ} >/dev/null 2>&1 || true`,
+        `rm -f ${tQ} >/dev/null 2>&1 || true`,
         `echo OK`,
       ].join('; ');
-      const { stdout } = await sshBashLc({ user: String(MOODE_SSH_USER || 'moode'), host: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'), script, timeoutMs: 15000 });
+      const { stdout } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 15000 });
       const out = String(stdout || '').trim();
       if (!out.includes('OK')) return res.status(400).json({ ok: false, error: `Restore failed for ${backupPath}` });
 

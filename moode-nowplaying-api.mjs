@@ -5432,6 +5432,7 @@ app.get('/now-playing', async (req, res) => {
         } else {
           altArtUrl = ap.coverUrl || '';
         }
+        if (altArtUrl) primaryArtUrl = altArtUrl;
         airplayInfoLine = ap.format || 'AirPlay';
       } catch {}
 
@@ -6327,13 +6328,40 @@ async function resolveBestArtForCurrentSong(song, statusRaw) {
 
 async function getAirplayCoverUrlFromAplmeta(MOODE_BASE_URL) {
   try {
-    const p = '/var/local/www/aplmeta.txt';
-    const raw = await fs.promises.readFile(p, 'utf8');
+    const p = `${String(MOODE_BASE_URL || '').replace(/\/+$/, '')}/aplmeta.txt`;
+    const rr = await fetch(p, { redirect: 'follow', headers: { 'User-Agent': 'now-playing-airplay/1.0' } });
+    if (!rr.ok) return '';
+    const raw = await rr.text();
     const parts = String(raw || '').trim().split('~~~');
 
     // [4] is cover_path_or_url per your print script
     const cover = String(parts[4] || '').trim();
-    if (!cover) return '';
+
+    const isDefault = /images\/default-album-cover\.png/i.test(cover);
+    if (!cover || isDefault) {
+      // Fallback: newest generated AirPlay cover (handles metadata parser drift).
+      try {
+        const dir = '/var/local/www/imagesw/airplay-covers';
+        const ents = await fs.promises.readdir(dir).catch(() => []);
+        const jpgs = ents.filter((n) => /^cover-.*\.jpg$/i.test(String(n || '')));
+        let best = '';
+        let bestM = 0;
+        for (const n of jpgs) {
+          const fp = `${dir}/${n}`;
+          const st = await fs.promises.stat(fp).catch(() => null);
+          const mt = Number(st?.mtimeMs || 0);
+          if (mt > bestM) { bestM = mt; best = n; }
+        }
+        if (best) {
+          const ageMs = Date.now() - bestM;
+          // Only trust fresh-ish covers while AirPlay active.
+          if (ageMs < 8 * 60 * 60 * 1000) {
+            return `${MOODE_BASE_URL.replace(/\/+$/, '')}/imagesw/airplay-covers/${encodeURIComponent(best)}`;
+          }
+        }
+      } catch {}
+      if (!cover) return '';
+    }
 
     // Sometimes includes ?v=... cachebuster; keep it.
     if (/^https?:\/\//i.test(cover)) return cover;

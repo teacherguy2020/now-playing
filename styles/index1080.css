@@ -995,6 +995,13 @@ body.phone-ui #phone-controls .ctl.big.on {
 
   body:not(.phone-ui) #mode-logo {
     bottom: 46px;
+    width: 72px;
+    height: 72px;
+  }
+
+  body:not(.phone-ui).is-airplay #mode-logo {
+    width: 64px;
+    height: 64px;
   }
 
   /* Personnel popup anchored over album-art region */
