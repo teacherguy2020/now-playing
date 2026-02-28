@@ -298,14 +298,14 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const mpdHost = String(MPD_HOST || '10.0.0.254');
 
       const pull = async (field) => {
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%', 'find', field, artist], { maxBuffer: 24 * 1024 * 1024 });
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%\t%genre%', 'find', field, artist], { maxBuffer: 24 * 1024 * 1024 });
         return String(stdout || '').split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean);
       };
 
       const rows = [...(await pull('artist')), ...(await pull('albumartist'))];
       const byAlbum = new Map();
       for (const ln of rows) {
-        const [file = '', album = '', rowArtist = '', rowAlbumArtist = ''] = ln.split('\t');
+        const [file = '', album = '', rowArtist = '', rowAlbumArtist = '', rowGenre = ''] = ln.split('\t');
         const albumName = String(album || '').trim();
         const fileName = String(file || '').trim();
         if (!albumName || !fileName) continue;
@@ -314,6 +314,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           byAlbum.set(key, {
             album: albumName,
             artist: String(rowArtist || rowAlbumArtist || artist || '').trim(),
+            genre: String(rowGenre || '').trim(),
             sampleFile: fileName,
             count: 1,
           });
@@ -520,6 +521,9 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const mode = String(req.body?.mode || 'append').trim().toLowerCase();
         const minRatingRaw = Number(req.body?.minRating);
         const minRating = Number.isFinite(minRatingRaw) ? Math.max(0, Math.min(5, Math.round(minRatingRaw))) : 2;
+        const excludeGenreEnabled = String(req.body?.excludeGenreEnabled || '').trim().toLowerCase();
+        const excludeGenre = String(req.body?.excludeGenre || '').trim();
+        const excludeOn = ['1','true','yes','on'].includes(excludeGenreEnabled) || (!!excludeGenre);
         if (!artist) return res.status(400).json({ ok: false, error: 'artist is required for addartistshuffle' });
         if (!['append', 'crop', 'replace'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode must be append|crop|replace' });
 
@@ -534,6 +538,13 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
 
         const filtered = [];
         for (const f of dedup) {
+          if (excludeOn && excludeGenre) {
+            try {
+              const { stdout: gOut } = await execFileP('mpc', ['-h', mpdHost, '-f', '%genre%', 'find', 'file', f], { maxBuffer: 1024 * 1024 });
+              const g = String(gOut || '').trim().toLowerCase();
+              if (g && g.includes(String(excludeGenre || '').trim().toLowerCase())) continue;
+            } catch {}
+          }
           let rating = 0;
           try { rating = Number(await getRatingForFile(f)) || 0; } catch {}
           if (rating >= minRating) filtered.push(f);
@@ -548,7 +559,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
 
         const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
-        return res.json({ ok: true, action, artist, mode, minRating, matched: dedup.length, added: filtered.length, randomOn, status: String(afterStatus || '') });
+        return res.json({ ok: true, action, artist, mode, minRating, excludeGenre: excludeOn ? excludeGenre : '', matched: dedup.length, added: filtered.length, randomOn, status: String(afterStatus || '') });
       }
 
       if (action === 'rate') {

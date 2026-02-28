@@ -2092,6 +2092,10 @@
           + `<option value="4">4★+</option>`
           + `<option value="5">5★</option>`
           + `</select></label>`
+          + `<label class="queueAlbumSub" style="display:inline-flex;align-items:center;gap:6px;margin:0;">`
+          + `<input id="queueArtistExcludeGenreOn" type="checkbox" checked> exclude genre`
+          + `</label>`
+          + `<input id="queueArtistExcludeGenreText" type="text" value="Christmas" style="min-width:110px;max-width:160px;">`
           + `</div></div>`;
 
         queueAlbumModal.classList.add('open');
@@ -2104,18 +2108,41 @@
           const j = await r.json().catch(() => ({}));
           if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
           const albums = Array.isArray(j.albums) ? j.albums : [];
-          const grid = albums.length
-            ? `<div class="queueArtistGrid">${albums.map((a) => {
-                const alb = String(a?.album || '').trim();
-                const sf = String(a?.sampleFile || '').trim();
-                const art = sf ? `${base}/art/track_640.jpg?file=${encodeURIComponent(sf)}` : '';
-                return `<button type="button" class="queueArtistAlbumBtn" data-open-album="${encodeURIComponent(alb)}" data-open-artist="${encodeURIComponent(artistTxt)}" data-open-art="${encodeURIComponent(art)}">`
-                  + `${art ? `<img src="${art}" alt="">` : ''}`
-                  + `<div class="queueArtistAlbumName">${alb || '(unknown album)'}</div>`
-                  + `</button>`;
-              }).join('')}</div>`
-            : `<div class="queueAlbumSub" style="grid-column:1 / -1;">No albums found for this artist.</div>`;
-          queueAlbumBody.innerHTML = queueAlbumBody.innerHTML.replace('Loading albums…', `${albums.length} album(s)`) + grid;
+          const renderAlbums = () => {
+            const exOn = !!document.getElementById('queueArtistExcludeGenreOn')?.checked;
+            const exTxt = String(document.getElementById('queueArtistExcludeGenreText')?.value || '').trim().toLowerCase();
+            const filtered = albums.filter((a) => {
+              if (!exOn || !exTxt) return true;
+              const g = String(a?.genre || '').trim().toLowerCase();
+              const alb = String(a?.album || '').trim().toLowerCase();
+              return !(g.includes(exTxt) || alb.includes(exTxt));
+            });
+            const grid = filtered.length
+              ? `<div class="queueArtistGrid">${filtered.map((a) => {
+                  const alb = String(a?.album || '').trim();
+                  const sf = String(a?.sampleFile || '').trim();
+                  const art = sf ? `${base}/art/track_640.jpg?file=${encodeURIComponent(sf)}` : '';
+                  return `<button type="button" class="queueArtistAlbumBtn" data-open-album="${encodeURIComponent(alb)}" data-open-artist="${encodeURIComponent(artistTxt)}" data-open-art="${encodeURIComponent(art)}">`
+                    + `${art ? `<img src="${art}" alt="">` : ''}`
+                    + `<div class="queueArtistAlbumName">${alb || '(unknown album)'}</div>`
+                    + `</button>`;
+                }).join('')}</div>`
+              : `<div class="queueAlbumSub" style="grid-column:1 / -1;">No albums found for this artist.</div>`;
+            queueAlbumBody.innerHTML = queueAlbumBody.innerHTML.replace(/<div class=\"queueAlbumSub\">[^<]*<\/div>/, `<div class=\"queueAlbumSub\">${filtered.length} album(s)</div>`) + grid;
+          };
+
+          queueAlbumBody.innerHTML = queueAlbumBody.innerHTML.replace('Loading albums…', `${albums.length} album(s)`);
+          renderAlbums();
+          document.getElementById('queueArtistExcludeGenreOn')?.addEventListener('change', () => {
+            const old = queueAlbumBody.querySelector('.queueArtistGrid, .queueAlbumSub[style*="grid-column"]');
+            if (old) old.remove();
+            renderAlbums();
+          });
+          document.getElementById('queueArtistExcludeGenreText')?.addEventListener('input', () => {
+            const old = queueAlbumBody.querySelector('.queueArtistGrid, .queueAlbumSub[style*="grid-column"]');
+            if (old) old.remove();
+            renderAlbums();
+          });
         } catch (e) {
           queueAlbumBody.innerHTML = queueAlbumBody.innerHTML.replace('Loading albums…', `Failed to load albums: ${String(e?.message || e)}`);
         }
@@ -2235,9 +2262,11 @@
           const artist = decodeURIComponent(String(artistAction.getAttribute('data-artist') || ''));
           const mode = 'replace';
           const minRating = Number(document.getElementById('queueArtistMinRating')?.value || 2);
+          const excludeGenreEnabled = !!document.getElementById('queueArtistExcludeGenreOn')?.checked;
+          const excludeGenre = String(document.getElementById('queueArtistExcludeGenreText')?.value || '').trim();
           artistAction.setAttribute('disabled', 'disabled');
           try {
-            await sendHeroPlayback('addartistshuffle', { artist, mode, minRating });
+            await sendHeroPlayback('addartistshuffle', { artist, mode, minRating, excludeGenreEnabled, excludeGenre });
             queueRefreshBurst();
             closeQueueAlbumModal();
           } catch {}
@@ -2540,6 +2569,16 @@
             // Pull latest queue as soon as operation settles.
             setTimeout(() => { try { syncHeroQueue(); } catch {} }, 120);
           }
+          return;
+        }
+
+        if (d.type === 'np-open-album-modal') {
+          const album = String(d.album || '').trim();
+          const artist = String(d.artist || '').trim();
+          const title = String(d.title || '').trim();
+          const art = String(d.art || '').trim();
+          if (!album && !artist && !title) return;
+          try { openQueueAlbumModal({ album, artist, title, art }); } catch {}
           return;
         }
 

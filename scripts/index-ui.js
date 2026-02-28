@@ -3204,6 +3204,49 @@ function attachClickEventToAlbumArt() {
 })();
 
 /* =========================
+ * Hero text -> album modal bridge (to app shell)
+ * ========================= */
+
+(() => {
+  function postOpenAlbumFromHero() {
+    try {
+      const d = (window.lastNowPlayingData || lastNowPlayingData || {});
+      const album = String(d?.radioAlbum || d?.album || '').trim();
+      const artist = String(d?.artist || '').trim();
+      const title = String(d?.title || '').trim();
+      const art = String(d?.albumArtUrl || d?.altArtUrl || '').trim();
+      if (!album && !artist && !title) return;
+      window.parent?.postMessage?.({
+        type: 'np-open-album-modal',
+        album,
+        artist,
+        title,
+        art,
+      }, '*');
+    } catch {}
+  }
+
+  function bind() {
+    const ids = ['artist-name', 'track-title'];
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      try {
+        el.style.cursor = 'pointer';
+        el.title = 'Open album details';
+      } catch {}
+      el.addEventListener('click', (ev) => {
+        try { ev.preventDefault(); ev.stopPropagation(); } catch {}
+        postOpenAlbumFromHero();
+      }, { passive: false });
+    });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind, { once: true });
+  else bind();
+})();
+
+/* =========================
  * Phone controls (LAN moOde commands) + Play/Pause icon
  * ========================= */
 
