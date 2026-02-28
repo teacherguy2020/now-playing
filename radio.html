@@ -98,6 +98,8 @@
     body.theme-light .stationCard:has(.stationAction.isOn[data-add]){border-color:rgba(22,163,74,.75) !important;box-shadow:0 0 0 1px rgba(22,163,74,.34) inset,0 0 16px rgba(22,163,74,.18)}
     .chip{display:inline-block;border:1px solid #2a3a58;border-radius:999px;padding:1px 7px;font-size:10px;color:#9fb1d9;margin-left:4px}
     .chip.hq{border-color:rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-weight:700}
+    .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(148,163,184,.35);border-top-color:#60a5fa;border-radius:999px;animation:rbspin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+    @keyframes rbspin{to{transform:rotate(360deg)}}
 
     @media (max-width:1024px){.radioGrid{grid-template-columns:1fr 1fr}.stationGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.singletonClusterGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
   
@@ -131,6 +133,38 @@
 <body>
   <div class="wrap">
     <section class="card">
+      <div class="choiceLine" style="justify-content:space-between;gap:10px;">
+        <strong>Global Directory (Radio Browser)</strong>
+        <span class="muted">Search + preview + add to moOde</span>
+      </div>
+      <div class="radioGrid" style="margin-top:10px;grid-template-columns:1.3fr .8fr .8fr .8fr .8fr .9fr;">
+        <label>Search name<br><input id="rbSearch" type="text" placeholder="jazz24, soma fm, bbc..." /></label>
+        <label>Country code<br><input id="rbCountry" type="text" placeholder="US" /></label>
+        <label>Tag / genre<br><input id="rbTag" type="text" placeholder="rock" /></label>
+        <label>Codec<br><input id="rbCodec" type="text" placeholder="mp3" /></label>
+        <label><input id="rbHqOnly" type="checkbox" /> HQ only</label>
+        <label><input id="rbExcludeExisting" type="checkbox" checked /> Omit already in moOde</label>
+      </div>
+      <div style="margin-top:10px;border-top:1px dashed #2a3a58;padding-top:10px;">
+        <div class="muted" style="margin-bottom:6px;">Manual stream URL</div>
+        <div class="radioGrid" style="grid-template-columns:auto 1.5fr 1fr auto auto auto;align-items:end;">
+          <div>
+            <div class="muted" style="margin-bottom:6px;">Logo</div>
+            <img id="rbManualLogo" class="logo" alt="" style="width:44px;height:44px;" src="" />
+          </div>
+          <label>Stream URL<br><input id="rbManualUrl" type="text" placeholder="https://example.com/stream" /></label>
+          <label>Name (optional)<br><input id="rbManualName" type="text" placeholder="Auto-detect if empty" /></label>
+          <label>&nbsp;<br><button id="rbManualPreview" class="stationAction">▶ Preview</button></label>
+          <label>&nbsp;<br><button id="rbManualAdd" class="stationAction">＋ Add</button></label>
+          <label>&nbsp;<br><button id="rbManualAddFav" class="stationAction">♥ Add favorite</button></label>
+        </div>
+      </div>
+
+      <div id="rbStatus" class="muted" style="margin-top:8px;"></div>
+      <div id="rbRows" class="stationClusters" style="margin-top:8px;"></div>
+    </section>
+
+    <section class="card">
       <div class="muted">Filter stations, assign favorites with ♥, and send selected stations to moOde queue.</div>
 
       <div class="radioGrid" style="margin-top:10px;">
@@ -163,6 +197,6 @@
   </div>
 
   <script src="scripts/theme-toggle.js?v=20260217-1"></script>
-  <script src="scripts/radio.js?v=20260223-collapse-chevron-large"></script>
+  <script src="scripts/radio.js?v=20260227-radiobrowser-mvp4"></script>
 </body>
 </html>

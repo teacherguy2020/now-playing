@@ -13,5 +13,8 @@
     "fast-xml-parser": "^4.5.0",
     "sharp": "^0.33.5",
     "undici": "5.28.5"
+  },
+  "devDependencies": {
+    "playwright": "^1.58.2"
   }
 }

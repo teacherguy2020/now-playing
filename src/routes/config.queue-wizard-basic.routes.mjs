@@ -40,6 +40,110 @@ function stationHost(raw) {
   try { return String(new URL(s).hostname || '').toLowerCase(); } catch { return ''; }
 }
 
+function toHttpsUrl(v = '') {
+  const s = String(v || '').trim();
+  if (!s) return '';
+  try {
+    const u = new URL(s);
+    if (!/^https?:$/i.test(u.protocol)) return '';
+    return u.toString();
+  } catch {
+    return '';
+  }
+}
+
+function normalizeGenreLabel(v = '') {
+  const raw = String(v || '').trim();
+  if (!raw) return '';
+  const lower = raw.toLowerCase();
+  const keepUpper = new Set(['r&b', 'edm', 'dj', 'am', 'fm']);
+  return lower
+    .split(/\s+/)
+    .map((w) => {
+      if (keepUpper.has(w)) return w.toUpperCase();
+      if (w.length <= 2) return w.toUpperCase();
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    })
+    .join(' ');
+}
+
+function guessStationNameFromUrl(streamUrl = '') {
+  const s = toHttpsUrl(streamUrl);
+  if (!s) return '';
+  try {
+    const u = new URL(s);
+    const host = String(u.hostname || '').replace(/^www\./i, '').toLowerCase();
+    const pathBits = String(u.pathname || '')
+      .split('/')
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const mount = String(pathBits[pathBits.length - 1] || '').toLowerCase();
+
+    // Host-aware improvements
+    if (host.includes('somafm.com') && mount) {
+      const channel = mount
+        .replace(/\.(mp3|aac|ogg|opus|m3u|pls)$/i, '')
+        .replace(/[-_]?\d+\s*(k|kbps)?$/i, '')
+        .replace(/[-_](mp3|aac|ogg|opus)$/i, '')
+        .replace(/[-_]+/g, ' ')
+        .trim();
+      if (channel) {
+        const pretty = channel
+          .split(/\s+/)
+          .map((w) => w ? (w.charAt(0).toUpperCase() + w.slice(1)) : '')
+          .join(' ')
+          .replace(/\bFm\b/g, 'FM');
+        return `SomaFM: ${pretty}`;
+      }
+      return 'SomaFM';
+    }
+
+    // Generic mountpoint-based fallback (often better than hostname)
+    if (mount) {
+      const cleanMount = mount
+        .replace(/\.(mp3|aac|ogg|opus|m3u|pls)$/i, '')
+        .replace(/[-_]?\d+\s*(k|kbps)?$/i, '')
+        .replace(/[-_](mp3|aac|ogg|opus)$/i, '')
+        .replace(/[-_]+/g, ' ')
+        .trim();
+      if (cleanMount && cleanMount.length >= 3) {
+        return cleanMount
+          .split(/\s+/)
+          .map((w) => w ? (w.charAt(0).toUpperCase() + w.slice(1)) : '')
+          .join(' ')
+          .replace(/\bFm\b/g, 'FM');
+      }
+    }
+
+    const stem = host.split('.').slice(0, -1).join('.') || host;
+    return stem
+      .split(/[-_.]+/)
+      .map((w) => w ? (w.charAt(0).toUpperCase() + w.slice(1)) : '')
+      .join(' ')
+      .trim();
+  } catch {
+    return '';
+  }
+}
+
+function guessFaviconFromUrl(streamUrl = '', homepage = '') {
+  const hp = toHttpsUrl(homepage);
+  if (hp) {
+    try {
+      const hu = new URL(hp);
+      return `${hu.origin}/favicon.ico`;
+    } catch {}
+  }
+  const s = toHttpsUrl(streamUrl);
+  if (!s) return '';
+  try {
+    const u = new URL(s);
+    return `${u.origin}/favicon.ico`;
+  } catch {
+    return '';
+  }
+}
+
 async function readRadioPresetsFile() {
   try {
     const raw = await fs.readFile(RADIO_PRESETS_PATH, 'utf8');
@@ -72,6 +176,61 @@ async function queryMoodeRadioDb(sql) {
     maxBuffer: 8 * 1024 * 1024,
   });
   return String(stdout || '');
+}
+
+async function saveMoodeRadioLogo({ stationName, faviconUrl }) {
+  const name = String(stationName || '').trim();
+  const fav = toHttpsUrl(faviconUrl || '');
+  if (!name || !fav) return { ok: false, reason: 'missing name or favicon' };
+
+  const host = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+  const localTmpDir = path.resolve(process.cwd(), 'tmp');
+  await fs.mkdir(localTmpDir, { recursive: true });
+
+  const base = `rb_logo_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const srcPath = path.join(localTmpDir, `${base}.img`);
+  const jpgPath = path.join(localTmpDir, `${base}.jpg`);
+  const remoteTmp = `/tmp/${base}.jpg`;
+  const remoteFinal = `/var/local/www/imagesw/radio-logos/${name}.jpg`;
+
+  try {
+    const r = await fetch(fav, { headers: { 'User-Agent': 'now-playing-radio-browser/1.0' } });
+    if (!r.ok) return { ok: false, reason: `favicon http ${r.status}` };
+    const ab = await r.arrayBuffer();
+    await fs.writeFile(srcPath, Buffer.from(ab));
+
+    await execFileP('ffmpeg', ['-y', '-i', srcPath, '-vf', 'scale=512:512:force_original_aspect_ratio=decrease', '-q:v', '3', jpgPath], {
+      timeout: 12000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+
+    await execFileP('scp', [
+      '-o', 'BatchMode=yes',
+      '-o', 'ConnectTimeout=6',
+      jpgPath,
+      `moode@${host}:${remoteTmp}`,
+    ], {
+      timeout: 12000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+
+    await execFileP('ssh', [
+      '-o', 'BatchMode=yes',
+      '-o', 'ConnectTimeout=6',
+      `moode@${host}`,
+      `sudo mkdir -p /var/local/www/imagesw/radio-logos && sudo mv ${shQuoteArg(remoteTmp)} ${shQuoteArg(remoteFinal)} && sudo chmod 644 ${shQuoteArg(remoteFinal)} && sudo chown root:root ${shQuoteArg(remoteFinal)}`,
+    ], {
+      timeout: 12000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+
+    return { ok: true, path: remoteFinal };
+  } catch (e) {
+    return { ok: false, reason: e?.message || String(e) };
+  } finally {
+    await fs.unlink(srcPath).catch(() => {});
+    await fs.unlink(jpgPath).catch(() => {});
+  }
 }
 
 export function registerConfigQueueWizardBasicRoutes(app, deps) {
@@ -283,17 +442,198 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
     }
   });
 
+  app.get('/config/radio-browser/search', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const q = String(req.query?.q || '').trim();
+      const country = String(req.query?.country || '').trim();
+      const tag = String(req.query?.tag || '').trim();
+      const tagNorm = tag.toLowerCase();
+      const codec = String(req.query?.codec || '').trim();
+      const hqOnly = ['1', 'true', 'yes'].includes(String(req.query?.hqOnly || '').toLowerCase());
+      const excludeExisting = ['1', 'true', 'yes'].includes(String(req.query?.excludeExisting || '').toLowerCase());
+      const limit = Math.max(1, Math.min(100, Number(req.query?.limit || 30)));
+      const apiLimit = Math.max(limit, Math.min(300, hqOnly ? limit * 4 : limit));
+
+      const useTagFastPath = !q && !!tagNorm && !country && !codec;
+      const u = useTagFastPath
+        ? new URL(`https://de1.api.radio-browser.info/json/stations/bytag/${encodeURIComponent(tagNorm)}`)
+        : new URL('https://de1.api.radio-browser.info/json/stations/search');
+      if (q) u.searchParams.set('name', q);
+      if (country) u.searchParams.set('countrycode', country);
+      if (tagNorm && !useTagFastPath) u.searchParams.set('tag', tagNorm);
+      if (codec) u.searchParams.set('codec', codec);
+      u.searchParams.set('hidebroken', 'true');
+      u.searchParams.set('order', 'votes');
+      u.searchParams.set('reverse', 'true');
+      u.searchParams.set('limit', String(apiLimit));
+
+      const r = await fetch(u.toString(), { headers: { 'User-Agent': 'now-playing-radio-browser/1.0' } });
+      const arr = await r.json().catch(() => ([]));
+      if (!r.ok) return res.status(502).json({ ok: false, error: `radio-browser HTTP ${r.status}` });
+
+      const isHq = (codecVal, bitrateVal) => {
+        const fmt = String(codecVal || '').toUpperCase();
+        const br = Number(bitrateVal || 0) || 0;
+        const isLossless = /(FLAC|ALAC|WAV|AIFF|PCM)/i.test(fmt);
+        if (isLossless) return true;
+        if (/OPUS/i.test(fmt)) return br >= 128;
+        if (/(MP3|AAC)/i.test(fmt)) return br >= 320;
+        return br >= 320;
+      };
+
+      let stations = (Array.isArray(arr) ? arr : []).map((s) => ({
+        id: String(s?.stationuuid || ''),
+        name: String(s?.name || '').trim(),
+        url: toHttpsUrl(String(s?.url_resolved || s?.url || '')),
+        homepage: toHttpsUrl(String(s?.homepage || '')),
+        favicon: toHttpsUrl(String(s?.favicon || '')),
+        country: String(s?.countrycode || s?.country || '').trim(),
+        tags: String(s?.tags || '').split(',').map((x) => String(x || '').trim()).filter(Boolean),
+        codec: String(s?.codec || '').trim(),
+        bitrate: Number(s?.bitrate || 0) || 0,
+        votes: Number(s?.votes || 0) || 0,
+        source: 'radiobrowser',
+      }))
+        .filter((s) => s.url && s.name)
+        .filter((s) => !hqOnly || isHq(s.codec, s.bitrate));
+
+      if (excludeExisting) {
+        const rawExisting = await queryMoodeRadioDb('select station,name from cfg_radio;');
+        const existingRows = String(rawExisting || '')
+          .split(/\r?\n/)
+          .map((ln) => String(ln || '').trim())
+          .filter(Boolean)
+          .map((ln) => {
+            const [st = '', nm = ''] = ln.split(RADIO_DB_SEP);
+            return {
+              station: String(st || '').trim(),
+              name: String(nm || '').trim().toLowerCase(),
+              key: stationKey(st),
+              host: stationHost(st),
+            };
+          })
+          .filter((r) => r.station);
+
+        const keySet = new Set(existingRows.map((r) => r.key).filter(Boolean));
+        const hostNameSet = new Set(existingRows.map((r) => `${r.host}::${r.name}`).filter((x) => !x.startsWith('::')));
+
+        stations = stations.filter((s) => {
+          const sKey = stationKey(s.url);
+          if (sKey && keySet.has(sKey)) return false;
+          const sHost = stationHost(s.url);
+          const sName = String(s.name || '').trim().toLowerCase();
+          if (sHost && sName && hostNameSet.has(`${sHost}::${sName}`)) return false;
+          return true;
+        });
+      }
+
+      stations = stations.slice(0, limit);
+      return res.json({ ok: true, count: stations.length, stations });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/radio-browser/probe', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const url = toHttpsUrl(req.body?.url || req.body?.file || '');
+      if (!url) return res.status(400).json({ ok: false, error: 'valid url is required' });
+      const homepage = toHttpsUrl(req.body?.homepage || '');
+      const guessedName = String(req.body?.name || '').trim() || guessStationNameFromUrl(url) || 'Custom Station';
+      const guessedFavicon = toHttpsUrl(req.body?.favicon || '') || guessFaviconFromUrl(url, homepage);
+      return res.json({ ok: true, station: { name: guessedName, url, homepage, favicon: guessedFavicon } });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/radio-browser/preview', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const url = toHttpsUrl(req.body?.url || req.body?.file || '');
+      if (!url) return res.status(400).json({ ok: false, error: 'valid url is required' });
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      await execFileP('mpc', ['-h', mpdHost, 'clear']);
+      await execFileP('mpc', ['-h', mpdHost, 'add', url]);
+      await execFileP('mpc', ['-h', mpdHost, 'play']);
+      return res.json({ ok: true, url, playing: true });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/radio-browser/add', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const station = toHttpsUrl(req.body?.url || req.body?.station || '');
+      const name = String(req.body?.name || '').trim();
+      if (!station || !name) return res.status(400).json({ ok: false, error: 'name and valid url required' });
+      const genre = String((Array.isArray(req.body?.tags) ? req.body.tags.join(', ') : req.body?.genre) || '').trim();
+      const bitrate = String(req.body?.bitrate || '').trim();
+      const format = String(req.body?.codec || req.body?.format || '').trim();
+      const favorite = !!req.body?.favorite;
+      const homepage = toHttpsUrl(req.body?.homepage || '');
+      const favicon = toHttpsUrl(req.body?.favicon || '') || guessFaviconFromUrl(station, homepage);
+
+      const check = await queryMoodeRadioDb(`select rowid,station,name,type from cfg_radio where station=${shQuoteArg(station)} limit 1;`);
+      let row = String(check || '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean)[0] || '';
+
+      if (!row) {
+        const all = await queryMoodeRadioDb('select rowid,station,name,type from cfg_radio;');
+        const wantedKey = stationKey(station);
+        const wantedHost = stationHost(station);
+        const rows = String(all || '').split(/\r?\n/).map((x)=>x.trim()).filter(Boolean).map((ln) => {
+          const [rowid='', st='', nm='', type=''] = ln.split(RADIO_DB_SEP);
+          return { rowid: Number(rowid)||0, station: String(st||''), name: String(nm||''), type: String(type||'') };
+        }).filter((r) => r.rowid > 0 && r.station);
+
+        const exactKey = rows.find((r) => stationKey(r.station) === wantedKey);
+        let chosen = exactKey || null;
+        if (!chosen && wantedHost) {
+          const byHost = rows.filter((r) => stationHost(r.station) === wantedHost);
+          if (byHost.length === 1) chosen = byHost[0];
+        }
+        if (chosen) row = `${chosen.rowid}${RADIO_DB_SEP}${chosen.station}${RADIO_DB_SEP}${chosen.name}${RADIO_DB_SEP}${chosen.type}`;
+      }
+
+      if (row) {
+        const [rowid='', foundStation='', foundName='', oldType=''] = row.split(RADIO_DB_SEP);
+        if (favorite && String(oldType || '').toLowerCase() !== 'f') {
+          await queryMoodeRadioDb(`update cfg_radio set type='f' where rowid=${Number(rowid)||0};`);
+        }
+        const logo = await saveMoodeRadioLogo({ stationName: foundName || name, faviconUrl: favicon });
+        return res.json({ ok: true, added: false, alreadyExists: true, station: String(foundStation||station), stationName: String(foundName||name), favorite: favorite || String(oldType||'').toLowerCase()==='f', logoSaved: !!logo?.ok, logoInfo: logo?.reason || logo?.path || '' });
+      }
+
+      const type = favorite ? 'f' : 'r';
+      await queryMoodeRadioDb(`insert into cfg_radio(station,name,genre,bitrate,format,type) values(${shQuoteArg(station)},${shQuoteArg(name)},${shQuoteArg(genre)},${shQuoteArg(bitrate)},${shQuoteArg(format)},${shQuoteArg(type)});`);
+      const logo = await saveMoodeRadioLogo({ stationName: name, faviconUrl: favicon });
+      return res.json({ ok: true, added: true, station, name, favorite: type === 'f', logoSaved: !!logo?.ok, logoInfo: logo?.reason || logo?.path || '' });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.get('/config/queue-wizard/radio-options', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
       const raw = await queryMoodeRadioDb('select genre from cfg_radio order by genre;');
-      const genres = new Set();
+      const genresByKey = new Map();
       for (const ln of String(raw || '').split(/\r?\n/)) {
         const gRaw = String(ln || '').trim();
         if (!gRaw) continue;
-        for (const g of gRaw.split(/[;,|/]/).map((x) => String(x || '').trim()).filter(Boolean)) genres.add(g);
+        for (const g of gRaw.split(/[;,|/]/).map((x) => String(x || '').trim()).filter(Boolean)) {
+          const key = String(g || '').toLowerCase();
+          if (!key) continue;
+          if (!genresByKey.has(key)) genresByKey.set(key, normalizeGenreLabel(g));
+        }
       }
-      return res.json({ ok: true, genres: Array.from(genres).sort((a,b)=>a.localeCompare(b, undefined, { sensitivity:'base'})) });
+      return res.json({
+        ok: true,
+        genres: Array.from(genresByKey.values()).sort((a,b)=>a.localeCompare(b, undefined, { sensitivity:'base'})),
+      });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
@@ -315,6 +655,41 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
         };
       }).filter((x)=>x.file);
       return res.json({ ok: true, count: favorites.length, favorites });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/queue-wizard/radio-delete', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const station = String(req.body?.station || req.body?.file || '').trim();
+      if (!station) return res.status(400).json({ ok: false, error: 'station is required' });
+
+      let out = await queryMoodeRadioDb(`select rowid,station,name from cfg_radio where station=${shQuoteArg(station)} limit 1;`);
+      let row = String(out || '').split(/\r?\n/).map((x)=>x.trim()).filter(Boolean)[0] || '';
+
+      if (!row) {
+        out = await queryMoodeRadioDb('select rowid,station,name from cfg_radio;');
+        const wantedKey = stationKey(station);
+        const wantedHost = stationHost(station);
+        const rows = String(out || '').split(/\r?\n/).map((x)=>x.trim()).filter(Boolean).map((ln) => {
+          const [rowid='', st='', name=''] = ln.split(RADIO_DB_SEP);
+          return { rowid: Number(rowid)||0, station: String(st||''), name: String(name||'') };
+        }).filter((r) => r.rowid > 0 && r.station);
+        const exactKey = rows.find((r) => stationKey(r.station) === wantedKey);
+        let chosen = exactKey || null;
+        if (!chosen && wantedHost) {
+          const byHost = rows.filter((r) => stationHost(r.station) === wantedHost);
+          if (byHost.length === 1) chosen = byHost[0];
+        }
+        if (chosen) row = `${chosen.rowid}${RADIO_DB_SEP}${chosen.station}${RADIO_DB_SEP}${chosen.name}`;
+      }
+
+      if (!row) return res.status(404).json({ ok: false, error: 'station not found in cfg_radio' });
+      const [rowid='', foundStation='', name=''] = row.split(RADIO_DB_SEP);
+      await queryMoodeRadioDb(`delete from cfg_radio where rowid=${Number(rowid)||0};`);
+      return res.json({ ok: true, deleted: true, station: String(foundStation||station), stationName: String(name||'').trim() });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

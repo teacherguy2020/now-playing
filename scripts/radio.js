@@ -14,6 +14,14 @@
   function base(){ return String($('apiBase')?.value || apiBaseDefault()).replace(/\/$/, ''); }
   function mode(){ return $('modeReplace')?.checked ? 'replace' : 'append'; }
   function setStatus(s){ if ($('status')) $('status').textContent = s || ''; }
+  let rbLoading = false;
+  function setRbStatus(s, { loading = rbLoading } = {}) {
+    const el = $('rbStatus');
+    if (!el) return;
+    const txt = String(s || '').trim();
+    if (!txt) { el.textContent = ''; return; }
+    el.innerHTML = `${loading ? '<span class="spin" aria-hidden="true"></span>' : ''}${esc(txt)}`;
+  }
   function setPillState(pillId, state){
     const map = { ok:{c:'#22c55e',b:'rgba(34,197,94,.55)'}, warn:{c:'#f59e0b',b:'rgba(245,158,11,.55)'}, bad:{c:'#ef4444',b:'rgba(239,68,68,.55)'}, off:{c:'#64748b',b:'rgba(100,116,139,.45)'} };
     const s = map[state] || map.off;
@@ -243,17 +251,24 @@
     const rows = $('rows');
     if (!rows) return;
     const b = base();
+    const selectedGenreFilter = String($('genre')?.value || '').trim();
 
     const groups = new Map();
     allStations.forEach((s) => {
-      const rawGenre = String(s.genre || '').trim();
-      const parts = rawGenre
-        ? rawGenre.split(/\s*[\/;,|]\s*/g).map((x) => x.trim()).filter(Boolean)
-        : [];
+      let genres = [];
+      if (selectedGenreFilter) {
+        // When user filters by one genre, keep results under that genre bucket only.
+        genres = [normalizeGenreToken(selectedGenreFilter) || selectedGenreFilter];
+      } else {
+        const rawGenre = String(s.genre || '').trim();
+        const parts = rawGenre
+          ? rawGenre.split(/\s*[\/;,|]\s*/g).map((x) => x.trim()).filter(Boolean)
+          : [];
 
-      const normalized = Array.from(new Set(parts.map(normalizeGenreToken).filter(Boolean)));
-      const hasDecadeOnly = parts.length > 0 && normalized.length === 0;
-      const genres = normalized.length ? normalized : (hasDecadeOnly ? ['Throwback / Hits'] : ['Other']);
+        const normalized = Array.from(new Set(parts.map(normalizeGenreToken).filter(Boolean)));
+        const hasDecadeOnly = parts.length > 0 && normalized.length === 0;
+        genres = normalized.length ? normalized : (hasDecadeOnly ? ['Throwback / Hits'] : ['Other']);
+      }
 
       genres.forEach((g) => {
         if (!groups.has(g)) groups.set(g, []);
@@ -290,6 +305,7 @@
         <div class="stationControls">
           <button class="stationAction ${isSel ? 'isOn' : ''}" data-add="${encodeURIComponent(file)}" title="Add to send list">＋</button>
           <button class="stationAction" data-play="${encodeURIComponent(file)}" title="Play now">▶</button>
+          <button class="stationAction" data-del="${encodeURIComponent(file)}" title="Remove from moOde">🗑</button>
         </div>
       </div>`;
     };
@@ -403,6 +419,198 @@
     setStatus('Playing station now.');
   }
 
+  function esc(s){ return String(s ?? '').replace(/[&<>"']/g, (m) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+
+  function renderRbRows(stations){
+    const host = $('rbRows');
+    if (!host) return;
+    const rows = Array.isArray(stations) ? stations : [];
+    if (!rows.length) {
+      host.innerHTML = '<div class="muted">No global stations found.</div>';
+      return;
+    }
+    host.innerHTML = rows.map((s, i) => {
+      const name = String(s?.name || 'Station');
+      const url = String(s?.url || '');
+      const meta = [String(s?.country || ''), String(s?.codec || ''), s?.bitrate ? `${s.bitrate} kbps` : ''].filter(Boolean).join(' • ');
+      const art = String(s?.favicon || '').trim() || `${base()}/art/radio-logo.jpg?name=${encodeURIComponent(name)}`;
+      return `<div class="stationCard" style="grid-template-columns:auto minmax(0,1fr) auto;">
+        <img class="logo" src="${esc(art)}" alt="" onerror="this.onerror=null;this.src='${base()}/art/radio-logo.jpg?name=${encodeURIComponent(name)}';" />
+        <div style="min-width:0;">
+          <div class="stationName">${esc(name)}</div>
+          <div class="stationMeta" title="${esc(url)}">${esc(meta || url)}</div>
+          <div class="stationMeta" data-rb-row-status="${i}" style="min-height:14px;"></div>
+        </div>
+        <div class="stationControls">
+          <button class="stationAction" data-rb-preview="${i}">▶</button>
+          <button class="stationAction" data-rb-add="${i}">＋</button>
+          <button class="stationAction" data-rb-addfav="${i}">♥</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    host.querySelectorAll('[data-rb-preview]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const idx = Number(btn.getAttribute('data-rb-preview') || -1);
+        const s = rows[idx];
+        if (!s?.url) return;
+        setRbStatus(`Previewing ${s.name}…`);
+        try {
+          const r = await fetch(`${base()}/config/radio-browser/preview`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'x-track-key': key() },
+            body: JSON.stringify({ url: s.url, name: s.name }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          setRbStatus(`Previewing: ${s.name}`);
+        } catch (e) { setRbStatus(`Preview failed: ${e?.message || e}`); }
+      });
+    });
+
+    const bindAdd = (selector, favorite) => {
+      host.querySelectorAll(selector).forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const idx = Number(btn.getAttribute(selector === '[data-rb-add]' ? 'data-rb-add' : 'data-rb-addfav') || -1);
+          const s = rows[idx];
+          if (!s?.url || !s?.name) return;
+          const rowStatus = host.querySelector(`[data-rb-row-status="${idx}"]`);
+          const addBtn = host.querySelector(`[data-rb-add="${idx}"]`);
+          if (rowStatus) rowStatus.textContent = 'Adding…';
+          btn.disabled = true;
+          if (addBtn) addBtn.disabled = true;
+          try {
+            const r = await fetch(`${base()}/config/radio-browser/add`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json', 'x-track-key': key() },
+              body: JSON.stringify({
+                url: s.url,
+                name: s.name,
+                homepage: s.homepage,
+                favicon: s.favicon,
+                tags: s.tags,
+                codec: s.codec,
+                bitrate: s.bitrate,
+                favorite,
+              }),
+            });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+            const logoNote = j.logoSaved ? ' · logo saved' : '';
+            if (rowStatus) rowStatus.textContent = `${j.added ? 'Added' : 'Already in library'}${favorite ? ' · favorited' : ''}${logoNote}`;
+            if (addBtn) {
+              addBtn.textContent = '✓';
+              addBtn.classList.add('isOn');
+              addBtn.disabled = true;
+              addBtn.removeAttribute('data-rb-add');
+            }
+            setRbStatus(`${j.added ? 'Added' : 'Already exists'}: ${s.name}${favorite ? ' (favorite)' : ''}`);
+            await loadGenres().catch(() => {});
+            await loadStations().catch(() => {});
+          } catch (e) {
+            if (rowStatus) rowStatus.textContent = `Add failed: ${e?.message || e}`;
+            setRbStatus(`Add failed: ${e?.message || e}`);
+            btn.disabled = false;
+            if (addBtn) addBtn.disabled = false;
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+    };
+    bindAdd('[data-rb-add]', false);
+    bindAdd('[data-rb-addfav]', true);
+  }
+
+  async function probeManualStation(){
+    const url = String($('rbManualUrl')?.value || '').trim();
+    const name = String($('rbManualName')?.value || '').trim();
+    if (!url) throw new Error('Enter stream URL first');
+    const r = await fetch(`${base()}/config/radio-browser/probe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key() },
+      body: JSON.stringify({ url, name }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    const st = j.station || {};
+    if ($('rbManualName') && !String($('rbManualName').value || '').trim()) $('rbManualName').value = String(st.name || '').trim();
+
+    const logoEl = $('rbManualLogo');
+    if (logoEl) {
+      const direct = String(st.favicon || '').trim();
+      const fallback = `${base()}/art/radio-logo.jpg?name=${encodeURIComponent(String(st.name || 'Station'))}`;
+      logoEl.src = direct || fallback;
+      logoEl.onerror = () => { logoEl.onerror = null; logoEl.src = fallback; };
+    }
+
+    return st;
+  }
+
+  async function addManualStation(favorite = false){
+    const st = await probeManualStation();
+    setRbStatus(`Adding ${st.name || 'station'}…`, { loading: true });
+    const r = await fetch(`${base()}/config/radio-browser/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key() },
+      body: JSON.stringify({
+        url: st.url,
+        name: st.name,
+        homepage: st.homepage,
+        favicon: st.favicon,
+        favorite,
+      }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    setRbStatus(`${j.added ? 'Added' : 'Already in library'}: ${st.name}${favorite ? ' (favorite)' : ''}${j.logoSaved ? ' · logo saved' : ''}`);
+    await loadGenres().catch(() => {});
+    await loadFavoritePreset().catch(() => {});
+    await loadStations().catch(() => {});
+  }
+
+  async function previewManualStation(){
+    const st = await probeManualStation();
+    setRbStatus(`Previewing ${st.name || 'station'}…`, { loading: true });
+    const r = await fetch(`${base()}/config/radio-browser/preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key() },
+      body: JSON.stringify({ url: st.url, name: st.name }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    setRbStatus(`Previewing: ${st.name || st.url}`);
+  }
+
+  async function searchRadioBrowser(){
+    const q = String($('rbSearch')?.value || '').trim();
+    const country = String($('rbCountry')?.value || '').trim();
+    const tag = String($('rbTag')?.value || '').trim();
+    const codec = String($('rbCodec')?.value || '').trim();
+    const hqOnly = !!$('rbHqOnly')?.checked;
+    const excludeExisting = !!$('rbExcludeExisting')?.checked;
+    rbLoading = true;
+    setRbStatus('Auto-searching global directory…', { loading: true });
+    try {
+      const u = new URL(`${base()}/config/radio-browser/search`);
+      if (q) u.searchParams.set('q', q);
+      if (country) u.searchParams.set('country', country);
+      if (tag) u.searchParams.set('tag', tag);
+      if (codec) u.searchParams.set('codec', codec);
+      if (hqOnly) u.searchParams.set('hqOnly', '1');
+      if (excludeExisting) u.searchParams.set('excludeExisting', '1');
+      u.searchParams.set('limit', '30');
+
+      const r = await fetch(u.toString(), { headers: { 'x-track-key': key() } });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      renderRbRows(j.stations || []);
+      rbLoading = false;
+      setRbStatus(`${Number(j.count || 0)} station(s)`);
+    } catch (e) {
+      rbLoading = false;
+      throw e;
+    }
+  }
+
   function wire(){
     $('refreshBtn')?.addEventListener('click', () => loadStations().catch((e) => setStatus(String(e?.message || e))));
     $('sendBtn')?.addEventListener('click', () => sendSelected().catch((e) => setStatus(String(e?.message || e))));
@@ -426,11 +634,12 @@
       const favBtn = collapseBtn ? null : targetEl.closest('button[data-fav]');
       const addBtn = (collapseBtn || favBtn) ? null : targetEl.closest('button[data-add]');
       const playBtn = (collapseBtn || favBtn || addBtn) ? null : targetEl.closest('button[data-play]');
-      if (!collapseBtn && !favBtn && !addBtn && !playBtn) return;
+      const delBtn = (collapseBtn || favBtn || addBtn || playBtn) ? null : targetEl.closest('button[data-del]');
+      if (!collapseBtn && !favBtn && !addBtn && !playBtn && !delBtn) return;
 
       const sig = collapseBtn
         ? `collapse::${String(collapseBtn.getAttribute('data-collapse-genre') || '')}`
-        : `${favBtn ? 'fav' : (addBtn ? 'add' : 'play')}::${String((favBtn || addBtn || playBtn)?.getAttribute(favBtn ? 'data-fav' : (addBtn ? 'data-add' : 'data-play')) || '')}`;
+        : `${favBtn ? 'fav' : (addBtn ? 'add' : (playBtn ? 'play' : 'del'))}::${String((favBtn || addBtn || playBtn || delBtn)?.getAttribute(favBtn ? 'data-fav' : (addBtn ? 'data-add' : (playBtn ? 'data-play' : 'data-del'))) || '')}`;
       const now = Date.now();
       if (sig && sig === lastActionSig && (now - lastActionTs) < 220) return;
       lastActionSig = sig;
@@ -486,6 +695,36 @@
         return;
       }
 
+      if (delBtn) {
+        if (delBtn.dataset.busy === '1') return;
+        delBtn.dataset.busy = '1';
+
+        const file = decodeURIComponent(String(delBtn.getAttribute('data-del') || ''));
+        if (!file) { delBtn.dataset.busy = '0'; return; }
+
+        const ok = window.confirm('Remove this station from moOde stations?');
+        if (!ok) { delBtn.dataset.busy = '0'; return; }
+
+        setStatus('Removing station…');
+        fetch(`${base()}/config/queue-wizard/radio-delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-track-key': key() },
+          body: JSON.stringify({ station: file }),
+        })
+          .then(async (r) => {
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+            selected.delete(file);
+            await loadGenres().catch(() => {});
+            await loadFavoritePreset().catch(() => {});
+            await loadStations();
+            setStatus(`Removed: ${j.stationName || j.station || file}`);
+          })
+          .catch((e) => setStatus(`Remove failed: ${String(e?.message || e)}`))
+          .finally(() => { delBtn.dataset.busy = '0'; });
+        return;
+      }
+
       if (playBtn) {
         const file = decodeURIComponent(String(playBtn.getAttribute('data-play') || ''));
         playNow(file).catch((e) => setStatus(String(e?.message || e)));
@@ -507,6 +746,35 @@
       const id = String(ev?.target?.value || '').trim();
       if (!id) return;
       applyLoadedPreset(id).catch((e) => setStatus(String(e?.message || e)));
+    });
+
+    $('rbManualPreview')?.addEventListener('click', () => previewManualStation().catch((e) => setRbStatus(String(e?.message || e))));
+    $('rbManualAdd')?.addEventListener('click', () => addManualStation(false).catch((e) => setRbStatus(String(e?.message || e))));
+    $('rbManualAddFav')?.addEventListener('click', () => addManualStation(true).catch((e) => setRbStatus(String(e?.message || e))));
+
+    ['rbManualUrl','rbManualName'].forEach((id) => {
+      $(id)?.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+        previewManualStation().catch((e) => setRbStatus(String(e?.message || e)));
+      });
+    });
+
+    let rbDebounce = null;
+    ['rbSearch','rbCountry','rbTag','rbCodec','rbHqOnly','rbExcludeExisting'].forEach((id) => {
+      $(id)?.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+        searchRadioBrowser().catch((e) => setRbStatus(String(e?.message || e)));
+      });
+      $(id)?.addEventListener('input', () => {
+        if (rbDebounce) clearTimeout(rbDebounce);
+        rbDebounce = setTimeout(() => {
+          const hasAny = ['rbSearch','rbCountry','rbTag','rbCodec'].some((k) => String($(k)?.value || '').trim());
+          if (!hasAny) return;
+          searchRadioBrowser().catch((e) => setRbStatus(String(e?.message || e)));
+        }, 450);
+      });
     });
 
     window.addEventListener('storage', (ev) => {
