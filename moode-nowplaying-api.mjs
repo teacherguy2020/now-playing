@@ -38,6 +38,124 @@ import os from "node:os";
 const DEFAULT_UA =
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36";
 
+const RADIO_META_EVAL_ENABLED = String(process.env.RADIO_META_EVAL_ENABLED || '1').trim() !== '0';
+const RADIO_META_EVAL_LOG = String(process.env.RADIO_META_EVAL_LOG || path.join(TRACK_CACHE_DIR, 'radio-metadata-eval.jsonl'));
+const RADIO_META_EVAL_MIN_INTERVAL_MS = Math.max(5000, Number(process.env.RADIO_META_EVAL_MIN_INTERVAL_MS || '45000') || 45000);
+
+const RADIO_META_HOLDBACK_ENABLED = String(process.env.RADIO_META_HOLDBACK_ENABLED || '1').trim() !== '0';
+const RADIO_META_HOLDBACK_MS = Math.max(0, Number(process.env.RADIO_META_HOLDBACK_MS || '12000') || 12000);
+const RADIO_META_NEW_STREAM_RESET_DELTA_S = Math.max(2, Number(process.env.RADIO_META_NEW_STREAM_RESET_DELTA_S || '6') || 6);
+const radioMetaHoldbackState = new Map();
+
+let lastRadioMetaEvalKey = '';
+let lastRadioMetaEvalTs = 0;
+
+function toNum(v, fallback = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function applyRadioMetadataHoldback({ stationKey = '', artist = '', title = '', album = '', radioPerformers = '', elapsedSec = 0 }) {
+  const current = {
+    artist: String(artist || '').trim(),
+    title: String(title || '').trim(),
+    album: String(album || '').trim(),
+    radioPerformers: String(radioPerformers || '').trim(),
+  };
+  const now = Date.now();
+  const key = String(stationKey || '').trim() || '__default__';
+
+  if (!RADIO_META_HOLDBACK_ENABLED || !current.title) {
+    return { ...current, holdback: { active: false, reason: 'disabled-or-empty' } };
+  }
+
+  let st = radioMetaHoldbackState.get(key);
+  if (!st) {
+    st = { stableSig: '', stable: null, pendingSig: '', pending: null, lastElapsedSec: 0 };
+    radioMetaHoldbackState.set(key, st);
+  }
+
+  const sig = `${current.artist}||${current.title}||${current.album}||${current.radioPerformers}`.toLowerCase();
+  const elapsed = Math.max(0, toNum(elapsedSec, 0));
+  const prevElapsed = Math.max(0, toNum(st.lastElapsedSec, elapsed));
+  const elapsedReset = prevElapsed > 0 && elapsed >= 0 && (prevElapsed - elapsed) >= RADIO_META_NEW_STREAM_RESET_DELTA_S;
+  st.lastElapsedSec = elapsed;
+
+  if (!st.stableSig) {
+    st.stableSig = sig;
+    st.stable = { ...current, ts: now };
+    st.pendingSig = '';
+    st.pending = null;
+    return { ...current, holdback: { active: false, reason: 'init', elapsedSec: elapsed } };
+  }
+
+  if (sig === st.stableSig) {
+    st.pendingSig = '';
+    st.pending = null;
+    return { ...current, holdback: { active: false, reason: 'same-as-stable', elapsedSec: elapsed } };
+  }
+
+  if (st.pendingSig !== sig || !st.pending) {
+    st.pendingSig = sig;
+    st.pending = { ...current, firstSeenTs: now, lastSeenTs: now };
+  } else {
+    st.pending.lastSeenTs = now;
+  }
+
+  const pendingAgeMs = Math.max(0, now - toNum(st.pending?.firstSeenTs, now));
+  const promoteByStable = pendingAgeMs >= RADIO_META_HOLDBACK_MS;
+  const canPromote = elapsedReset || promoteByStable;
+
+  if (canPromote) {
+    st.stableSig = sig;
+    st.stable = { ...current, ts: now };
+    st.pendingSig = '';
+    st.pending = null;
+    return {
+      ...current,
+      holdback: {
+        active: false,
+        reason: elapsedReset ? 'promoted:elapsed-reset' : 'promoted:stable-timeout',
+        pendingAgeMs,
+        elapsedSec: elapsed,
+        elapsedPrevSec: prevElapsed,
+      },
+    };
+  }
+
+  const stable = st.stable || current;
+  return {
+    ...stable,
+    holdback: {
+      active: true,
+      reason: 'holding',
+      pendingAgeMs,
+      elapsedSec: elapsed,
+      elapsedPrevSec: prevElapsed,
+      holdbackMs: RADIO_META_HOLDBACK_MS,
+      pendingTitle: current.title,
+      stableTitle: String(stable.title || ''),
+    },
+  };
+}
+
+async function appendRadioMetaEval(entry = {}) {
+  if (!RADIO_META_EVAL_ENABLED) return;
+  const station = String(entry?.stationName || '').trim().toLowerCase();
+  const title = String(entry?.raw?.title || '').trim().toLowerCase();
+  const artist = String(entry?.raw?.artist || '').trim().toLowerCase();
+  const key = `${station}||${artist}||${title}`;
+  const now = Date.now();
+  const isSame = key && key === lastRadioMetaEvalKey;
+  if (isSame && (now - lastRadioMetaEvalTs) < RADIO_META_EVAL_MIN_INTERVAL_MS) return;
+  if (key) lastRadioMetaEvalKey = key;
+  lastRadioMetaEvalTs = now;
+  try {
+    await fsp.mkdir(path.dirname(RADIO_META_EVAL_LOG), { recursive: true });
+    await fsp.appendFile(RADIO_META_EVAL_LOG, `${JSON.stringify(entry)}\n`, 'utf8');
+  } catch {}
+}
+
 
 // Lazy-load podcast ops so API can boot even if podcast module is broken
 let _podOps;
@@ -3551,8 +3669,17 @@ function extractLabelHintFromRawTitle(raw) {
   return '';
 }
 
+function sanitizeLookupArtistForItunes(v = '') {
+  return String(v || '')
+    // Drop instrument abbreviations after commas: ", fh", ", p", ", vn", etc.
+    .replace(/,\s*(?:fh|hp|harp|p|pf|pno|vn|vln|vc|cello|soprano|mezzo|tenor|baritone)\b/ig, '')
+    .replace(/[;|]/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
-  const a = String(artist || '').trim();
+  const a = sanitizeLookupArtistForItunes(String(artist || '').trim());
   const t = String(title || '').trim();
 
   const now0 = Date.now();
@@ -3678,6 +3805,10 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     let bestItem = null;
     let bestArt = '';
     let bestScore = -1e9;
+    let filteredStrict = 0;
+    let filteredEnsemble = 0;
+    let filteredSoloist = 0;
+    let filteredNoArt = 0;
 
     for (const item of results) {
       const matchedArtistCandidate = String(item?.artistName || '').trim();
@@ -3689,22 +3820,30 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
         const allowByAlbumHint = !!hint && albumHintMatches(hint, collectionName);
         if (!allowByAlbumHint) {
           strictRejected += 1;
+          filteredStrict += 1;
           continue;
         }
       }
 
       const ensembleHint = String(opts?.ensembleHint || '').trim();
       if (ensembleHint && !ensembleMatchesCandidate(ensembleHint, matchedArtistCandidate, collectionName)) {
+        filteredEnsemble += 1;
         continue;
       }
 
       if (soloistSensitive && soloistTokens.size) {
         const candTokens = nameTokenSet(`${matchedArtistCandidate} ${collectionName}`);
-        if (overlapCount(soloistTokens, candTokens) === 0) continue;
+        if (overlapCount(soloistTokens, candTokens) === 0) {
+          filteredSoloist += 1;
+          continue;
+        }
       }
 
       const art = pickArtFromItunesItem(item);
-      if (!art) continue;
+      if (!art) {
+        filteredNoArt += 1;
+        continue;
+      }
 
       let score = 0;
       const candidateText = `${trackName} ${collectionName}`.trim();
@@ -3845,6 +3984,18 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
         queryUrl,
         term: termStr,
         termDebug,
+        resultDebug: {
+          totalResults: Array.isArray(results) ? results.length : 0,
+          strictRejected,
+          filteredStrict,
+          filteredEnsemble,
+          filteredSoloist,
+          filteredNoArt,
+          bestScore,
+          bestTrack: String(bestItem?.trackName || ''),
+          bestArtist: String(bestItem?.artistName || ''),
+          bestAlbum: String(bestItem?.collectionName || ''),
+        },
       };
     }
 
@@ -5090,6 +5241,7 @@ app.get('/now-playing', async (req, res) => {
     let radioPerformers = '';
 
     let debugItunesReason = '';
+    let debugRadioHoldback = null;
 
     let stationLogoUrl = '';
     let primaryArtUrl = '';
@@ -5514,6 +5666,28 @@ app.get('/now-playing', async (req, res) => {
       }
     }
 
+    // Apply radio metadata holdback to avoid early “next track” flips.
+    if (isRadio) {
+      const hb = applyRadioMetadataHoldback({
+        stationKey: String(file || song?.name || '').trim(),
+        artist,
+        title,
+        album: radioAlbum || album || '',
+        radioPerformers,
+        elapsedSec: status?.elapsed,
+      });
+      artist = String(hb?.artist || artist || '').trim();
+      title = String(hb?.title || title || '').trim();
+      if (String(hb?.album || '').trim()) {
+        radioAlbum = String(hb.album).trim();
+        if (!String(album || '').trim()) album = radioAlbum;
+      }
+      if (String(hb?.radioPerformers || '').trim()) {
+        radioPerformers = String(hb.radioPerformers).trim();
+      }
+      debugRadioHoldback = hb?.holdback || null;
+    }
+
     // =========================
     // FILE: deep tags
     // =========================
@@ -5592,7 +5766,13 @@ app.get('/now-playing', async (req, res) => {
 
         if (it.url) primaryArtUrl = it.url;
 
-        radioAlbum = radioAlbum || it.album || '';
+        {
+          const itAlbum = String(it?.album || '').trim();
+          const curAlbum = String(radioAlbum || '').trim();
+          if (itAlbum && (!curAlbum || isLabelLikeHint(curAlbum) || looksLikePersonName(curAlbum))) {
+            radioAlbum = itAlbum;
+          }
+        }
         radioYear  = it.year || '';
 
         // Links (best effort)
@@ -5631,7 +5811,13 @@ app.get('/now-playing', async (req, res) => {
               });
           if (it.url) primaryArtUrl = it.url;
 
-          radioAlbum = radioAlbum || it.album || '';
+          {
+            const itAlbum = String(it?.album || '').trim();
+            const curAlbum = String(radioAlbum || '').trim();
+            if (itAlbum && (!curAlbum || isLabelLikeHint(curAlbum) || looksLikePersonName(curAlbum))) {
+              radioAlbum = itAlbum;
+            }
+          }
           radioYear  = it.year || '';
           debugItunesReason = it.reason || '';
 
@@ -5719,8 +5905,14 @@ app.get('/now-playing', async (req, res) => {
 
         radioLookupReason = String(ap?.reason || '').trim() || radioLookupReason || 'no-reason';
 
-        // Fill album/year if missing
-        if (!radioAlbum) radioAlbum = String(ap?.album || '').trim() || radioAlbum;
+        // Fill album/year; prefer iTunes album when current album is empty/label-ish/person-like.
+        {
+          const itAlbum = String(ap?.album || '').trim();
+          const curAlbum = String(radioAlbum || '').trim();
+          if (itAlbum && (!curAlbum || isLabelLikeHint(curAlbum) || looksLikePersonName(curAlbum))) {
+            radioAlbum = itAlbum;
+          }
+        }
         if (!radioYear)  radioYear  = String(ap?.year  || '').trim() || radioYear;
         if (!radioPerformers && String(ap?.matchedArtist || '').trim()) {
           radioPerformers = String(ap.matchedArtist).trim();
@@ -5737,6 +5929,7 @@ app.get('/now-playing', async (req, res) => {
             reason: radioLookupReason,
             term: radioLookupTerm,
             ...(ap?.termDebug ? { termDebug: ap.termDebug } : {}),
+            ...(ap?.resultDebug ? { resultDebug: ap.resultDebug } : {}),
           };
         }
       } catch (e) {
@@ -5851,6 +6044,7 @@ app.get('/now-playing', async (req, res) => {
         debugArtErr,
         debugItunesReason,
         debugPrimaryArtUrl: primaryArtUrl || '',
+        ...(debugRadioHoldback ? { debugRadioHoldback } : {}),
         ...(debugRatingErr ? { debugRatingErr } : {}),
         ...(debug ? { debugFavorites: favDbg } : {}),
         ...(debug ? {
@@ -5864,6 +6058,37 @@ app.get('/now-playing', async (req, res) => {
       } : {}),
     };
 
+    if (isRadio) {
+      appendRadioMetaEval({
+        ts: Date.now(),
+        iso: new Date().toISOString(),
+        stationName: String(song?.name || streamStationName || '').trim(),
+        streamUrl: String(file || '').trim(),
+        raw: {
+          artist: String(song?.artist || '').trim(),
+          title: String(song?.title || '').trim(),
+          album: String(song?.album || '').trim(),
+          name: String(song?.name || '').trim(),
+        },
+        parsed: {
+          artist: String(artist || '').trim(),
+          title: String(title || '').trim(),
+          album: String(radioAlbum || album || '').trim(),
+          performers: String(radioPerformers || '').trim(),
+          lookupArtist: String(lookupArtist || '').trim(),
+          lookupTitle: String(lookupTitle || '').trim(),
+        },
+        itunes: {
+          reason: String(radioLookupReason || debugItunesReason || '').trim(),
+          term: String(radioLookupTerm || '').trim(),
+          url: String(radioItunesUrl || '').trim(),
+          trackUrl: String(radioTrackUrl || '').trim(),
+          albumUrl: String(radioAlbumUrl || '').trim(),
+        },
+        holdback: debugRadioHoldback || null,
+      }).catch(() => {});
+    }
+
     lastNowPlayingOk = payload;
     lastNowPlayingTs = Date.now();
     return res.json(payload);
@@ -5871,6 +6096,34 @@ app.get('/now-playing', async (req, res) => {
   } catch (err) {
     console.error('now-playing error:', err?.stack || err?.message || String(err));
     return serveCached('exception', err?.message || String(err));
+  }
+});
+
+app.get('/debug/radio-metadata-log', async (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(500, Number(req.query.limit || 80) || 80));
+    const raw = await fsp.readFile(RADIO_META_EVAL_LOG, 'utf8').catch(() => '');
+    const lines = String(raw || '').split(/\r?\n/).filter(Boolean);
+    const tail = lines.slice(-limit);
+    const rows = tail.map((ln) => {
+      try { return JSON.parse(ln); } catch { return null; }
+    }).filter(Boolean);
+    return res.json({ ok: true, path: RADIO_META_EVAL_LOG, count: rows.length, rows });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+app.post('/debug/radio-metadata-log/clear', async (req, res) => {
+  try {
+    await fsp.mkdir(path.dirname(RADIO_META_EVAL_LOG), { recursive: true });
+    await fsp.writeFile(RADIO_META_EVAL_LOG, '', 'utf8');
+    lastRadioMetaEvalKey = '';
+    lastRadioMetaEvalTs = 0;
+    radioMetaHoldbackState.clear();
+    return res.json({ ok: true, path: RADIO_META_EVAL_LOG, cleared: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
   }
 });
 

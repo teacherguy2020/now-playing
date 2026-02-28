@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radio Metadata Eval</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; background:#111; color:#eee; }
+    .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+    input,button { background:#1c1c1c; color:#eee; border:1px solid #444; border-radius:8px; padding:8px 10px; }
+    button { cursor:pointer; }
+    table { width:100%; border-collapse: collapse; font-size:12px; }
+    th,td { border:1px solid #333; padding:6px; vertical-align: top; }
+    th { background:#1a1a1a; position: sticky; top: 0; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .muted { color:#aaa; }
+    .ok { color:#7ee787; }
+    .bad { color:#ff7b72; }
+  </style>
+</head>
+<body>
+  <h2>Radio Metadata Eval</h2>
+  <div class="row">
+    <label>API <input id="apiBase" type="text" value="" placeholder="http://host:3101" style="width:260px"></label>
+    <label>Limit <input id="limit" type="number" min="1" max="500" value="80" style="width:90px"></label>
+    <button id="refresh">Refresh</button>
+    <button id="clear">Clear Log</button>
+    <button id="auto">Auto: Off</button>
+    <span id="status" class="muted"></span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Time</th>
+        <th>Station</th>
+        <th>Raw StreamTitle-ish</th>
+        <th>Parsed</th>
+        <th>Lookup</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let timer = null;
+
+function esc(s){ return String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function norm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
+function verdict(r){
+  const reason = String(r?.itunes?.reason || '').toLowerCase();
+  const hasUrl = !!String(r?.itunes?.url || r?.itunes?.trackUrl || r?.itunes?.albumUrl || '').trim();
+  if (hasUrl || reason.startsWith('ok:')) return ['GOOD','ok'];
+  if (reason.includes('insufficient-metadata') || reason.includes('skip:')) return ['PARTIAL','muted'];
+
+  const rt = norm(r?.raw?.title), pt = norm(r?.parsed?.title);
+  const titleClose = rt && pt && (rt===pt || rt.includes(pt) || pt.includes(rt));
+  if (titleClose) return ['PARTIAL','muted'];
+  return ['BAD','bad'];
+}
+
+function defaultApiBase(){
+  const p = String(location.port || '');
+  if (p === '8101') return `${location.protocol}//${location.hostname}:3101`;
+  return `${location.protocol}//${location.host}`;
+}
+
+async function load(){
+  const limit = Math.max(1, Math.min(500, Number($('limit').value||80)));
+  const base = String(($('apiBase')?.value || '').trim() || defaultApiBase()).replace(/\/$/, '');
+  $('status').textContent = 'Loading…';
+  const r = await fetch(`${base}/debug/radio-metadata-log?limit=${limit}`);
+  const j = await r.json();
+  const rows = Array.isArray(j?.rows) ? j.rows.slice().reverse() : [];
+  $('rows').innerHTML = rows.map((x, i)=>{
+    const [v,cls] = verdict(x);
+    return `<tr>
+      <td class='mono'>${rows.length - i}</td>
+      <td class='mono'>${esc(x.iso || '')}</td>
+      <td>${esc(x.stationName || '')}<div class='muted mono'>${esc(x.streamUrl || '')}</div></td>
+      <td>
+        <div><b>A:</b> ${esc(x.raw?.artist || '')}</div>
+        <div><b>T:</b> ${esc(x.raw?.title || '')}</div>
+        <div><b>Al:</b> ${esc(x.raw?.album || '')}</div>
+      </td>
+      <td>
+        <div><b>A:</b> ${esc(x.parsed?.artist || '')}</div>
+        <div><b>T:</b> ${esc(x.parsed?.title || '')}</div>
+        <div><b>Al:</b> ${esc(x.parsed?.album || '')}</div>
+        <div class='muted'><b>Perf:</b> ${esc(x.parsed?.performers || '')}</div>
+      </td>
+      <td>
+        <div class='mono'><b>term:</b> ${esc(x.itunes?.term || '')}</div>
+        <div><b>reason:</b> ${esc(x.itunes?.reason || '')}</div>
+      </td>
+      <td class='${cls}'><b>${v}</b><div class='muted mono'>${esc(x.itunes?.url || '')}</div></td>
+    </tr>`;
+  }).join('');
+  $('status').textContent = `Loaded ${rows.length}`;
+}
+
+$('apiBase').value = defaultApiBase();
+$('refresh').onclick = () => load().catch(e => $('status').textContent = e.message || String(e));
+$('clear').onclick = async () => {
+  const base = String(($('apiBase')?.value || '').trim() || defaultApiBase()).replace(/\/$/, '');
+  $('status').textContent = 'Clearing…';
+  const r = await fetch(`${base}/debug/radio-metadata-log/clear`, { method:'POST' });
+  const j = await r.json().catch(()=>({}));
+  if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+  await load();
+};
+$('auto').onclick = () => {
+  if (timer){ clearInterval(timer); timer = null; $('auto').textContent = 'Auto: Off'; return; }
+  timer = setInterval(()=>load().catch(()=>{}), 5000);
+  $('auto').textContent = 'Auto: On (5s)';
+};
+load().catch(e => $('status').textContent = e.message || String(e));
+</script>
+</body>
+</html>
