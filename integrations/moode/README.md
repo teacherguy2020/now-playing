@@ -16,9 +16,14 @@ Some moOde/shairport combinations can show issues like:
 
 - stale or missing AirPlay metadata,
 - delayed cover-art refresh,
+- **stale artwork carryover** (previous source art reused when new source sends no art),
 - inconsistent parser behavior across sender apps (Apple Music, Spotify, YouTube/Safari, etc.).
 
 These overrides provide a more deterministic metadata pipeline.
+
+### Key behavior improvement
+
+When a new AirPlay source/track does **not** provide fresh cover art, this integration intentionally falls back to default/neutral art instead of reusing stale art from the previous source.
 
 ---
 
