@@ -532,7 +532,16 @@
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
     const st = j.station || {};
-    if ($('rbManualName') && !String($('rbManualName').value || '').trim()) $('rbManualName').value = String(st.name || '').trim();
+    if ($('rbManualName')) {
+      const current = String($('rbManualName').value || '').trim();
+      const generic = !current || /^custom station$/i.test(current) || /^stream revma ihrhls$/i.test(current) || /^zc\d+$/i.test(current);
+      if (generic && String(st.name || '').trim()) $('rbManualName').value = String(st.name || '').trim();
+    }
+    if (j?.adapted) {
+      const from = String(j?.adaptedFrom || url || '').trim();
+      const to = String(j?.adaptedTo || st?.url || '').trim();
+      setRbStatus(`Adapted iHeart page URL → direct stream${to ? ` · ${to}` : ''}${from ? ` (from ${from})` : ''}`);
+    }
 
     const logoEl = $('rbManualLogo');
     if (logoEl) {

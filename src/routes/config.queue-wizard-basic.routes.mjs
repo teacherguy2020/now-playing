@@ -52,6 +52,156 @@ function toHttpsUrl(v = '') {
   }
 }
 
+function parseIheartLiveUrl(v = '') {
+  const s = toHttpsUrl(v);
+  if (!s) return null;
+  try {
+    const u = new URL(s);
+    const host = String(u.hostname || '').toLowerCase();
+    if (!/(^|\.)iheart\.com$/.test(host)) return null;
+    const path = String(u.pathname || '').trim();
+    if (!/^\/live\//i.test(path)) return null;
+
+    const clean = path.replace(/\/+$/, '');
+    const lastSeg = decodeURIComponent(clean.split('/').filter(Boolean).pop() || '');
+    const m = lastSeg.match(/^(.*?)-(\d+)$/);
+    const slug = String((m?.[1] || lastSeg || '')).replace(/-/g, ' ').trim();
+    const stationId = Number(m?.[2] || 0) || 0;
+    return { originalUrl: s, stationId, slug };
+  } catch {
+    return null;
+  }
+}
+
+function parseIheartRevmaStationId(v = '') {
+  const s = toHttpsUrl(v);
+  if (!s) return 0;
+  try {
+    const u = new URL(s);
+    const host = String(u.hostname || '').toLowerCase();
+    if (!/(^|\.)revma\.ihrhls\.com$/.test(host)) return 0;
+    const m = String(u.pathname || '').match(/\/zc(\d+)(?:\/|$)/i);
+    return Number(m?.[1] || 0) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function fetchIheartStationById(id) {
+  const n = Number(id || 0);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const r = await fetch(`https://api.iheart.com/api/v2/content/liveStations/${n}`, {
+    headers: { 'User-Agent': 'now-playing-radio-browser/1.0' },
+  });
+  if (!r.ok) return null;
+  const j = await r.json().catch(() => null);
+  const hit = Array.isArray(j?.hits) ? j.hits[0] : null;
+  return hit && typeof hit === 'object' ? hit : null;
+}
+
+function listIheartStreamCandidates(st = null) {
+  const streams = st?.streams && typeof st.streams === 'object' ? st.streams : {};
+  const order = [
+    // MPD/moOde tends to be most reliable with direct shoutcast endpoints first.
+    'secure_shoutcast_stream',
+    'shoutcast_stream',
+    'secure_hls_stream',
+    'hls_stream',
+    'secure_pls_stream',
+    'pls_stream',
+    'stw_stream',
+  ];
+  const out = [];
+  const seen = new Set();
+  const add = (raw) => {
+    const u = toHttpsUrl(raw || '');
+    if (u && !seen.has(u)) { out.push(u); seen.add(u); }
+  };
+  for (const k of order) add(streams?.[k] || '');
+  for (const v of Object.values(streams || {})) add(v || '');
+
+  // Fallbacks: StreamTheWorld redirect endpoints by call letters.
+  const calls = String(st?.callLetters || st?.callletters || '').trim().toUpperCase();
+  const cc = calls.replace(/[^A-Z0-9]/g, '');
+  const stwIds = [calls, cc]
+    .map((x) => String(x || '').trim())
+    .filter(Boolean)
+    .flatMap((x) => [x, `${x}FM`, `${x}AM`, `${x}AAC`, `${x}FMAAC`, `${x}AMAAC`]);
+  const uniqueIds = Array.from(new Set(stwIds));
+  for (const id of uniqueIds) {
+    add(`https://playerservices.streamtheworld.com/api/livestream-redirect/${id}.aac`);
+    add(`https://playerservices.streamtheworld.com/api/livestream-redirect/${id}.m3u8`);
+    add(`https://playerservices.streamtheworld.com/api/livestream-redirect/${id}.pls`);
+  }
+
+  return out;
+}
+
+async function isLikelyReachableStream(url = '') {
+  const u = toHttpsUrl(url);
+  if (!u) return false;
+  try {
+    const head = await fetch(u, { method: 'HEAD', redirect: 'follow', headers: { 'User-Agent': 'now-playing-radio-browser/1.0' } });
+    if (head.status >= 200 && head.status < 400) return true;
+  } catch {}
+  try {
+    const get = await fetch(u, { method: 'GET', redirect: 'follow', headers: { 'User-Agent': 'now-playing-radio-browser/1.0', Range: 'bytes=0-1' } });
+    if (get.status >= 200 && get.status < 400) return true;
+  } catch {}
+  return false;
+}
+
+async function resolveIheartLivePage(rawUrl = '', fallbackName = '') {
+  const parsed = parseIheartLiveUrl(rawUrl);
+  if (!parsed) return null;
+
+  let station = null;
+  if (parsed.stationId > 0) {
+    station = await fetchIheartStationById(parsed.stationId);
+  }
+
+  if (!station) {
+    const keywords = String(fallbackName || parsed.slug || '').trim();
+    if (keywords) {
+      const sUrl = new URL('https://api.iheart.com/api/v1/catalog/searchAll');
+      sUrl.searchParams.set('keywords', keywords);
+      const r = await fetch(sUrl.toString(), { headers: { 'User-Agent': 'now-playing-radio-browser/1.0' } });
+      if (r.ok) {
+        const j = await r.json().catch(() => null);
+        const first = Array.isArray(j?.stations) ? j.stations[0] : null;
+        if (first?.id) station = await fetchIheartStationById(first.id);
+      }
+    }
+  }
+
+  if (!station) {
+    throw new Error('Could not resolve iHeart page to a playable stream URL');
+  }
+
+  const candidates = listIheartStreamCandidates(station);
+  if (!candidates.length) throw new Error('iHeart station has no exposed direct stream URL');
+  let streamUrl = '';
+  for (const c of candidates) {
+    if (await isLikelyReachableStream(c)) { streamUrl = c; break; }
+  }
+  if (!streamUrl) streamUrl = candidates[0] || '';
+  if (!streamUrl) throw new Error('iHeart station has no usable direct stream URL');
+
+  const home = toHttpsUrl(station?.website || station?.social?.website || parsed.originalUrl);
+  const favicon = toHttpsUrl(station?.logo || station?.newlogo || station?.image || '');
+
+  return {
+    resolved: true,
+    originalUrl: parsed.originalUrl,
+    station: {
+      name: String(station?.name || fallbackName || parsed.slug || 'iHeart Station').trim(),
+      url: streamUrl,
+      homepage: home,
+      favicon,
+    },
+  };
+}
+
 function normalizeGenreLabel(v = '') {
   const raw = String(v || '').trim();
   if (!raw) return '';
@@ -65,6 +215,16 @@ function normalizeGenreLabel(v = '') {
       return w.charAt(0).toUpperCase() + w.slice(1);
     })
     .join(' ');
+}
+
+function isGenericStationName(v = '') {
+  const s = String(v || '').trim().toLowerCase();
+  if (!s) return true;
+  if (s === 'custom station') return true;
+  if (s === 'stream revma ihrhls') return true;
+  if (/^zc\d+$/i.test(s)) return true;
+  if (/^stream\s+[a-z0-9.-]+$/i.test(s)) return true;
+  return false;
 }
 
 function guessStationNameFromUrl(streamUrl = '') {
@@ -538,12 +698,56 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
   app.post('/config/radio-browser/probe', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const url = toHttpsUrl(req.body?.url || req.body?.file || '');
-      if (!url) return res.status(400).json({ ok: false, error: 'valid url is required' });
-      const homepage = toHttpsUrl(req.body?.homepage || '');
-      const guessedName = String(req.body?.name || '').trim() || guessStationNameFromUrl(url) || 'Custom Station';
-      const guessedFavicon = toHttpsUrl(req.body?.favicon || '') || guessFaviconFromUrl(url, homepage);
-      return res.json({ ok: true, station: { name: guessedName, url, homepage, favicon: guessedFavicon } });
+      const rawUrl = toHttpsUrl(req.body?.url || req.body?.file || '');
+      if (!rawUrl) return res.status(400).json({ ok: false, error: 'valid url is required' });
+      const requestedName = String(req.body?.name || '').trim();
+
+      const iheartResolved = await resolveIheartLivePage(rawUrl, requestedName).catch((err) => ({ error: err }));
+      if (iheartResolved?.error) {
+        return res.status(400).json({ ok: false, error: iheartResolved.error?.message || 'Could not resolve iHeart URL' });
+      }
+
+      let station = iheartResolved?.resolved
+        ? iheartResolved.station
+        : {
+            name: requestedName || guessStationNameFromUrl(rawUrl) || 'Custom Station',
+            url: rawUrl,
+            homepage: toHttpsUrl(req.body?.homepage || ''),
+            favicon: toHttpsUrl(req.body?.favicon || ''),
+          };
+
+      // If user pasted a direct iHeart revma URL, enrich name/logo via station id.
+      if (!iheartResolved?.resolved) {
+        const sid = parseIheartRevmaStationId(rawUrl);
+        if (sid > 0) {
+          const meta = await fetchIheartStationById(sid).catch(() => null);
+          if (meta) {
+            const resolvedName = String(meta?.name || '').trim();
+            const keepUserName = requestedName && !isGenericStationName(requestedName);
+            station = {
+              name: keepUserName ? requestedName : (resolvedName || station.name),
+              url: station.url,
+              homepage: toHttpsUrl(meta?.website || station.homepage || ''),
+              favicon: toHttpsUrl(meta?.logo || meta?.newlogo || station.favicon || ''),
+            };
+          }
+        }
+      }
+
+      const homepage = toHttpsUrl(station?.homepage || '');
+      const guessedFavicon = toHttpsUrl(station?.favicon || '') || guessFaviconFromUrl(station?.url || '', homepage);
+      return res.json({
+        ok: true,
+        station: {
+          name: String(station?.name || '').trim() || 'Custom Station',
+          url: toHttpsUrl(station?.url || ''),
+          homepage,
+          favicon: guessedFavicon,
+        },
+        adapted: !!iheartResolved?.resolved,
+        adaptedFrom: iheartResolved?.originalUrl || '',
+        adaptedTo: String(station?.url || ''),
+      });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
@@ -600,11 +804,22 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
 
       if (row) {
         const [rowid='', foundStation='', foundName='', oldType=''] = row.split(RADIO_DB_SEP);
-        if (favorite && String(oldType || '').toLowerCase() !== 'f') {
-          await queryMoodeRadioDb(`update cfg_radio set type='f' where rowid=${Number(rowid)||0};`);
+        const rowNum = Number(rowid) || 0;
+
+        // Keep existing entries fresh: if caller has a better resolved name, update it.
+        const incomingName = String(name || '').trim();
+        const existingName = String(foundName || '').trim();
+        if (rowNum > 0 && incomingName && incomingName.toLowerCase() !== existingName.toLowerCase()) {
+          await queryMoodeRadioDb(`update cfg_radio set name=${shQuoteArg(incomingName)} where rowid=${rowNum};`);
         }
-        const logo = await saveMoodeRadioLogo({ stationName: foundName || name, faviconUrl: favicon });
-        return res.json({ ok: true, added: false, alreadyExists: true, station: String(foundStation||station), stationName: String(foundName||name), favorite: favorite || String(oldType||'').toLowerCase()==='f', logoSaved: !!logo?.ok, logoInfo: logo?.reason || logo?.path || '' });
+
+        if (favorite && String(oldType || '').toLowerCase() !== 'f') {
+          await queryMoodeRadioDb(`update cfg_radio set type='f' where rowid=${rowNum};`);
+        }
+
+        const effectiveName = incomingName || existingName || name;
+        const logo = await saveMoodeRadioLogo({ stationName: effectiveName, faviconUrl: favicon });
+        return res.json({ ok: true, added: false, alreadyExists: true, station: String(foundStation||station), stationName: effectiveName, favorite: favorite || String(oldType||'').toLowerCase()==='f', logoSaved: !!logo?.ok, logoInfo: logo?.reason || logo?.path || '' });
       }
 
       const type = favorite ? 'f' : 'r';
