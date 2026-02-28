@@ -151,6 +151,30 @@ async function isLikelyReachableStream(url = '') {
   return false;
 }
 
+function deriveIheartGenre(st = null) {
+  const parts = [];
+  const push = (v) => {
+    const s = String(v || '').trim();
+    if (s) parts.push(s);
+  };
+  const tags = st?.genres || st?.genre || st?.tags || '';
+  if (Array.isArray(tags)) tags.forEach(push);
+  else String(tags || '').split(/[;,|/]/).forEach(push);
+  push(st?.description || '');
+
+  const text = parts.join(' ').toLowerCase();
+  const pick = (...keys) => keys.some((k) => text.includes(k));
+  if (pick('top 40', 'chr', 'hit music', 'contemporary hit', 'pop')) return 'Pop / Top 40';
+  if (pick('country')) return 'Country';
+  if (pick('classic rock', 'alt rock', 'alternative', 'rock')) return 'Rock';
+  if (pick('hip hop', 'r&b', 'urban', 'rap')) return 'Hip-Hop / R&B';
+  if (pick('jazz', 'smooth jazz')) return 'Jazz';
+  if (pick('news', 'talk', 'sports')) return 'Talk / News';
+
+  const first = String(parts[0] || '').trim();
+  return normalizeGenreLabel(first) || '';
+}
+
 async function resolveIheartLivePage(rawUrl = '', fallbackName = '') {
   const parsed = parseIheartLiveUrl(rawUrl);
   if (!parsed) return null;
@@ -189,6 +213,7 @@ async function resolveIheartLivePage(rawUrl = '', fallbackName = '') {
 
   const home = toHttpsUrl(station?.website || station?.social?.website || parsed.originalUrl);
   const favicon = toHttpsUrl(station?.logo || station?.newlogo || station?.image || '');
+  const genre = deriveIheartGenre(station);
 
   return {
     resolved: true,
@@ -198,6 +223,7 @@ async function resolveIheartLivePage(rawUrl = '', fallbackName = '') {
       url: streamUrl,
       homepage: home,
       favicon,
+      genre,
     },
   };
 }
@@ -736,6 +762,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
               url: station.url,
               homepage: toHttpsUrl(meta?.website || station.homepage || ''),
               favicon: toHttpsUrl(meta?.logo || meta?.newlogo || station.favicon || ''),
+              genre: String(station?.genre || deriveIheartGenre(meta) || '').trim(),
             };
           }
         }
@@ -750,6 +777,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
           url: toHttpsUrl(station?.url || ''),
           homepage,
           favicon: guessedFavicon,
+          genre: String(station?.genre || '').trim(),
         },
         adapted: !!iheartResolved?.resolved,
         adaptedFrom: iheartResolved?.originalUrl || '',
@@ -788,16 +816,16 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       const homepage = toHttpsUrl(req.body?.homepage || '');
       const favicon = toHttpsUrl(req.body?.favicon || '') || guessFaviconFromUrl(station, homepage);
 
-      const check = await queryMoodeRadioDb(`select rowid,station,name,type from cfg_radio where station=${shQuoteArg(station)} limit 1;`);
+      const check = await queryMoodeRadioDb(`select rowid,station,name,type,genre from cfg_radio where station=${shQuoteArg(station)} limit 1;`);
       let row = String(check || '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean)[0] || '';
 
       if (!row) {
-        const all = await queryMoodeRadioDb('select rowid,station,name,type from cfg_radio;');
+        const all = await queryMoodeRadioDb('select rowid,station,name,type,genre from cfg_radio;');
         const wantedKey = stationKey(station);
         const wantedHost = stationHost(station);
         const rows = String(all || '').split(/\r?\n/).map((x)=>x.trim()).filter(Boolean).map((ln) => {
-          const [rowid='', st='', nm='', type=''] = ln.split(RADIO_DB_SEP);
-          return { rowid: Number(rowid)||0, station: String(st||''), name: String(nm||''), type: String(type||'') };
+          const [rowid='', st='', nm='', type='', genreDb=''] = ln.split(RADIO_DB_SEP);
+          return { rowid: Number(rowid)||0, station: String(st||''), name: String(nm||''), type: String(type||''), genre: String(genreDb||'') };
         }).filter((r) => r.rowid > 0 && r.station);
 
         const exactKey = rows.find((r) => stationKey(r.station) === wantedKey);
@@ -806,11 +834,11 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
           const byHost = rows.filter((r) => stationHost(r.station) === wantedHost);
           if (byHost.length === 1) chosen = byHost[0];
         }
-        if (chosen) row = `${chosen.rowid}${RADIO_DB_SEP}${chosen.station}${RADIO_DB_SEP}${chosen.name}${RADIO_DB_SEP}${chosen.type}`;
+        if (chosen) row = `${chosen.rowid}${RADIO_DB_SEP}${chosen.station}${RADIO_DB_SEP}${chosen.name}${RADIO_DB_SEP}${chosen.type}${RADIO_DB_SEP}${chosen.genre || ''}`;
       }
 
       if (row) {
-        const [rowid='', foundStation='', foundName='', oldType=''] = row.split(RADIO_DB_SEP);
+        const [rowid='', foundStation='', foundName='', oldType='', foundGenre=''] = row.split(RADIO_DB_SEP);
         const rowNum = Number(rowid) || 0;
 
         // Keep existing entries fresh: if caller has a better resolved name, update it.
@@ -818,6 +846,12 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
         const existingName = String(foundName || '').trim();
         if (rowNum > 0 && incomingName && incomingName.toLowerCase() !== existingName.toLowerCase()) {
           await queryMoodeRadioDb(`update cfg_radio set name=${shQuoteArg(incomingName)} where rowid=${rowNum};`);
+        }
+
+        const incomingGenre = String(genre || '').trim();
+        const existingGenre = String(foundGenre || '').trim();
+        if (rowNum > 0 && incomingGenre && incomingGenre.toLowerCase() !== existingGenre.toLowerCase()) {
+          await queryMoodeRadioDb(`update cfg_radio set genre=${shQuoteArg(incomingGenre)} where rowid=${rowNum};`);
         }
 
         if (favorite && String(oldType || '').toLowerCase() !== 'f') {

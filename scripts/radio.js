@@ -563,6 +563,7 @@
       body: JSON.stringify({
         url: st.url,
         name: st.name,
+        genre: st.genre,
         homepage: st.homepage,
         favicon: st.favicon,
         favorite,
