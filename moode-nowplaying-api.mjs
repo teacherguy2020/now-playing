@@ -5772,7 +5772,8 @@ app.get('/now-playing', async (req, res) => {
         {
           const itAlbum = String(it?.album || '').trim();
           const curAlbum = String(radioAlbum || '').trim();
-          if (itAlbum && (!curAlbum || isLabelLikeHint(curAlbum) || looksLikePersonName(curAlbum))) {
+          const itMatched = !!String(it?.url || it?.trackUrl || it?.albumUrl || '').trim() || /^ok:/i.test(String(it?.reason || ''));
+          if (itAlbum && (itMatched || !curAlbum || isLabelLikeHint(curAlbum) || looksLikePersonName(curAlbum))) {
             radioAlbum = itAlbum;
           }
         }
@@ -5817,7 +5818,8 @@ app.get('/now-playing', async (req, res) => {
           {
             const itAlbum = String(it?.album || '').trim();
             const curAlbum = String(radioAlbum || '').trim();
-            if (itAlbum && (!curAlbum || isLabelLikeHint(curAlbum) || looksLikePersonName(curAlbum))) {
+            const itMatched = !!String(it?.url || it?.trackUrl || it?.albumUrl || '').trim() || /^ok:/i.test(String(it?.reason || ''));
+            if (itAlbum && (itMatched || !curAlbum || isLabelLikeHint(curAlbum) || looksLikePersonName(curAlbum))) {
               radioAlbum = itAlbum;
             }
           }
@@ -5912,7 +5914,8 @@ app.get('/now-playing', async (req, res) => {
         {
           const itAlbum = String(ap?.album || '').trim();
           const curAlbum = String(radioAlbum || '').trim();
-          if (itAlbum && (!curAlbum || isLabelLikeHint(curAlbum) || looksLikePersonName(curAlbum))) {
+          const apMatched = !!String(ap?.url || ap?.trackUrl || ap?.albumUrl || '').trim() || /^ok:/i.test(String(ap?.reason || ''));
+          if (itAlbum && (apMatched || !curAlbum || isLabelLikeHint(curAlbum) || looksLikePersonName(curAlbum))) {
             radioAlbum = itAlbum;
           }
         }
