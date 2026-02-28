@@ -352,6 +352,8 @@ async function saveMoodeRadioLogo({ stationName, faviconUrl }) {
   const jpgPath = path.join(localTmpDir, `${base}.jpg`);
   const remoteTmp = `/tmp/${base}.jpg`;
   const remoteFinal = `/var/local/www/imagesw/radio-logos/${name}.jpg`;
+  const remoteThumb = `/var/local/www/imagesw/radio-logos/thumbs/${name}.jpg`;
+  const remoteThumbSm = `/var/local/www/imagesw/radio-logos/thumbs/${name}_sm.jpg`;
 
   try {
     const r = await fetch(fav, { headers: { 'User-Agent': 'now-playing-radio-browser/1.0' } });
@@ -378,13 +380,18 @@ async function saveMoodeRadioLogo({ stationName, faviconUrl }) {
       '-o', 'BatchMode=yes',
       '-o', 'ConnectTimeout=6',
       `moode@${host}`,
-      `sudo mkdir -p /var/local/www/imagesw/radio-logos && sudo mv ${shQuoteArg(remoteTmp)} ${shQuoteArg(remoteFinal)} && sudo chmod 644 ${shQuoteArg(remoteFinal)} && sudo chown root:root ${shQuoteArg(remoteFinal)}`,
+      `sudo mkdir -p /var/local/www/imagesw/radio-logos /var/local/www/imagesw/radio-logos/thumbs && ` +
+      `sudo mv ${shQuoteArg(remoteTmp)} ${shQuoteArg(remoteFinal)} && ` +
+      `sudo cp -f ${shQuoteArg(remoteFinal)} ${shQuoteArg(remoteThumb)} && ` +
+      `sudo cp -f ${shQuoteArg(remoteFinal)} ${shQuoteArg(remoteThumbSm)} && ` +
+      `sudo chmod 644 ${shQuoteArg(remoteFinal)} ${shQuoteArg(remoteThumb)} ${shQuoteArg(remoteThumbSm)} && ` +
+      `sudo chown root:root ${shQuoteArg(remoteFinal)} ${shQuoteArg(remoteThumb)} ${shQuoteArg(remoteThumbSm)}`,
     ], {
       timeout: 12000,
       maxBuffer: 8 * 1024 * 1024,
     });
 
-    return { ok: true, path: remoteFinal };
+    return { ok: true, path: remoteThumb };
   } catch (e) {
     return { ok: false, reason: e?.message || String(e) };
   } finally {
@@ -818,14 +825,38 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
         }
 
         const effectiveName = incomingName || existingName || name;
-        const logo = await saveMoodeRadioLogo({ stationName: effectiveName, faviconUrl: favicon });
-        return res.json({ ok: true, added: false, alreadyExists: true, station: String(foundStation||station), stationName: effectiveName, favorite: favorite || String(oldType||'').toLowerCase()==='f', logoSaved: !!logo?.ok, logoInfo: logo?.reason || logo?.path || '' });
+        // Save logo under both the existing and effective names to survive rename/caching gaps.
+        const logoTargets = Array.from(new Set([String(effectiveName || '').trim(), String(existingName || '').trim()].filter(Boolean)));
+        let logoOk = false;
+        let logoInfo = '';
+        for (const nm of logoTargets) {
+          const lg = await saveMoodeRadioLogo({ stationName: nm, faviconUrl: favicon });
+          logoOk = logoOk || !!lg?.ok;
+          if (!logoInfo) logoInfo = String(lg?.reason || lg?.path || '');
+        }
+        if (rowNum > 0 && logoOk) {
+          await queryMoodeRadioDb(`update cfg_radio set logo='local' where rowid=${rowNum};`);
+        }
+        return res.json({ ok: true, added: false, alreadyExists: true, station: String(foundStation||station), stationName: effectiveName, favorite: favorite || String(oldType||'').toLowerCase()==='f', logoSaved: logoOk, logoInfo });
       }
 
       const type = favorite ? 'f' : 'r';
       await queryMoodeRadioDb(`insert into cfg_radio(station,name,genre,bitrate,format,type) values(${shQuoteArg(station)},${shQuoteArg(name)},${shQuoteArg(genre)},${shQuoteArg(bitrate)},${shQuoteArg(format)},${shQuoteArg(type)});`);
-      const logo = await saveMoodeRadioLogo({ stationName: name, faviconUrl: favicon });
-      return res.json({ ok: true, added: true, station, name, favorite: type === 'f', logoSaved: !!logo?.ok, logoInfo: logo?.reason || logo?.path || '' });
+      const logoTargets = Array.from(new Set([
+        String(name || '').trim(),
+        String(name || '').replace(/\s+/g, ' ').trim(),
+      ].filter(Boolean)));
+      let logoOk = false;
+      let logoInfo = '';
+      for (const nm of logoTargets) {
+        const lg = await saveMoodeRadioLogo({ stationName: nm, faviconUrl: favicon });
+        logoOk = logoOk || !!lg?.ok;
+        if (!logoInfo) logoInfo = String(lg?.reason || lg?.path || '');
+      }
+      if (logoOk) {
+        await queryMoodeRadioDb(`update cfg_radio set logo='local' where station=${shQuoteArg(station)};`);
+      }
+      return res.json({ ok: true, added: true, station, name, favorite: type === 'f', logoSaved: logoOk, logoInfo });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
