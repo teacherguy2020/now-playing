@@ -395,6 +395,19 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.json({ ok: true, action, randomOn, repeatOn, status: String(afterStatus || '') });
       }
 
+      if (action === 'consume') {
+        const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const wasOn = /consume:\s*on/i.test(String(beforeStatus || ''));
+        const setToRaw = String(req.body?.setTo || '').trim().toLowerCase();
+        const setTo = (setToRaw === 'on' || setToRaw === 'off') ? setToRaw : (wasOn ? 'off' : 'on');
+        await execFileP('mpc', ['-h', mpdHost, 'consume', setTo]);
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const consumeOn = /consume:\s*on/i.test(String(afterStatus || ''));
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, consumeOn, randomOn, repeatOn, status: String(afterStatus || '') });
+      }
+
       if (action === 'remove') {
         const posRaw = Number(req.body?.position);
         const pos = Number.isFinite(posRaw) ? Math.max(1, Math.floor(posRaw)) : 0;
