@@ -5963,6 +5963,18 @@ app.get('/now-playing', async (req, res) => {
       updateArtCacheIfNeeded(rawArtUrl).catch(e => console.warn('[art] failed', e.message));
     }
 
+    // Radio mode-logo should remain station branding, not track art.
+    if (isRadio) {
+      const stLogo = String(stationLogoUrl || '').trim();
+      const artUrl = String(primaryArtUrl || '').trim();
+      const stripQ = (u = '') => String(u || '').replace(/\?.*$/, '').trim();
+      const sameAsArt = !!stLogo && !!artUrl && stripQ(stLogo) === stripQ(artUrl);
+      const looksTrackArt = /mzstatic|itunes\.apple\.com|coverart\.php|ytimg|googleusercontent/i.test(stLogo);
+      if ((sameAsArt || looksTrackArt) && streamStationName) {
+        stationLogoUrl = `${MOODE_BASE_URL}/imagesw/radio-logos/thumbs/${encodeURIComponent(streamStationName)}.jpg`;
+      }
+    }
+
     // ✅ rating (piggybacked) for local files only
     let rating = 0;
     let ratingDisabled = true;
