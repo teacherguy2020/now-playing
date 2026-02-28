@@ -569,7 +569,10 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const pre = target === 'webui'
         ? `curl -fsS 'http://localhost/command/?cmd=set_display%20webui' >/dev/null 2>&1 || true; `
         : '';
-      const script = `${pre}DISPLAY=:0 chromium-browser ${shQuoteArg(url)} >/tmp/chromium-switch.log 2>&1 & disown; sleep 1; tail -n 12 /tmp/chromium-switch.log || true`;
+      const post = target === 'webui'
+        ? `; curl -sG --data-urlencode 'cmd=restart_local_display' http://localhost/command/ >/dev/null 2>&1 || true`
+        : '';
+      const script = `${pre}DISPLAY=:0 chromium-browser ${shQuoteArg(url)} >/tmp/chromium-switch.log 2>&1 & disown; sleep 1${post}; tail -n 12 /tmp/chromium-switch.log || true`;
       const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 14000 });
       return res.json({ ok: true, target, url, sshHost, sshUser, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
     } catch (e) {

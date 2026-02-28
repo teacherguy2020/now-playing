@@ -858,6 +858,7 @@ body.phone-ui #phone-controls .ctl.big.on {
     height: calc(100vh - 22px);
     max-height: none;
     gap: 18px;
+    margin-top: 50px; /* nudge metadata block down so stars sit near art centerline */
     padding-bottom: 46px;
     padding-right: 300px; /* reserve top-right space so artist/title don't sit under controls */
   }
@@ -879,7 +880,7 @@ body.phone-ui #phone-controls .ctl.big.on {
   }
 
   body:not(.phone-ui) #titleLine .rating-stars {
-    font-size: clamp(25px, calc(var(--artSize) * 0.073), 51px);
+    font-size: clamp(29px, calc(var(--artSize) * 0.084), 59px);
     margin-top: 8px;
   }
 
@@ -906,7 +907,7 @@ body.phone-ui #phone-controls .ctl.big.on {
   body:not(.phone-ui) #progress-bar-wrapper {
     position: fixed !important;
     left: calc(var(--sidePad) + var(--artSize) + var(--colGap));
-    right: 360px;
+    right: 410px;
     bottom: 28px;
     width: auto !important;
     max-width: none !important;
