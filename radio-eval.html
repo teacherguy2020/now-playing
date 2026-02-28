@@ -33,6 +33,7 @@
       <tr>
         <th>#</th>
         <th>Time</th>
+        <th>TS</th>
         <th>Station</th>
         <th>Raw StreamTitle-ish</th>
         <th>Parsed</th>
@@ -79,6 +80,7 @@ async function load(){
     return `<tr>
       <td class='mono'>${rows.length - i}</td>
       <td class='mono'>${esc(x.iso || '')}</td>
+      <td class='mono'>${esc(String(x.ts || ''))}</td>
       <td>${esc(x.stationName || '')}<div class='muted mono'>${esc(x.streamUrl || '')}</div></td>
       <td>
         <div><b>A:</b> ${esc(x.raw?.artist || '')}</div>

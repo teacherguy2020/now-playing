@@ -44,6 +44,7 @@ const RADIO_META_EVAL_MIN_INTERVAL_MS = Math.max(5000, Number(process.env.RADIO_
 
 const RADIO_META_HOLDBACK_ENABLED = String(process.env.RADIO_META_HOLDBACK_ENABLED || '1').trim() !== '0';
 const RADIO_META_HOLDBACK_MS = Math.max(0, Number(process.env.RADIO_META_HOLDBACK_MS || '6000') || 6000);
+const RADIO_META_HOLDBACK_MS_NORMAL = Math.max(0, Number(process.env.RADIO_META_HOLDBACK_MS_NORMAL || '1500') || 1500);
 const RADIO_META_NEW_STREAM_RESET_DELTA_S = Math.max(2, Number(process.env.RADIO_META_NEW_STREAM_RESET_DELTA_S || '3') || 3);
 const radioMetaHoldbackState = new Map();
 
@@ -55,7 +56,19 @@ function toNum(v, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function applyRadioMetadataHoldback({ stationKey = '', artist = '', title = '', album = '', radioPerformers = '', elapsedSec = 0 }) {
+function radioHoldbackPolicy(stationName = '', stationKey = '') {
+  const s = `${String(stationName || '')} ${String(stationKey || '')}`.toLowerCase();
+  const strictPatterns = [
+    /\bwfmt\b/, /\bclassical\b/, /\bking\s*fm\b/, /\bkusc\b/, /\bkdfc\b/, /\bbc\s*radio\s*3\b/,
+  ];
+  const strict = strictPatterns.some((re) => re.test(s));
+  return {
+    mode: strict ? 'strict' : 'normal',
+    holdbackMs: strict ? RADIO_META_HOLDBACK_MS : RADIO_META_HOLDBACK_MS_NORMAL,
+  };
+}
+
+function applyRadioMetadataHoldback({ stationKey = '', stationName = '', artist = '', title = '', album = '', radioPerformers = '', elapsedSec = 0 }) {
   const current = {
     artist: String(artist || '').trim(),
     title: String(title || '').trim(),
@@ -76,6 +89,8 @@ function applyRadioMetadataHoldback({ stationKey = '', artist = '', title = '', 
   }
 
   const sig = `${current.artist}||${current.title}||${current.album}||${current.radioPerformers}`.toLowerCase();
+  const policy = radioHoldbackPolicy(stationName, stationKey);
+  const holdbackMs = Math.max(0, Number(policy?.holdbackMs || RADIO_META_HOLDBACK_MS) || RADIO_META_HOLDBACK_MS);
   const elapsed = Math.max(0, toNum(elapsedSec, 0));
   const prevElapsed = Math.max(0, toNum(st.lastElapsedSec, elapsed));
   const elapsedReset = prevElapsed > 0 && elapsed >= 0 && (prevElapsed - elapsed) >= RADIO_META_NEW_STREAM_RESET_DELTA_S;
@@ -103,7 +118,7 @@ function applyRadioMetadataHoldback({ stationKey = '', artist = '', title = '', 
   }
 
   const pendingAgeMs = Math.max(0, now - toNum(st.pending?.firstSeenTs, now));
-  const promoteByStable = pendingAgeMs >= RADIO_META_HOLDBACK_MS;
+  const promoteByStable = pendingAgeMs >= holdbackMs;
   const canPromote = elapsedReset || promoteByStable;
 
   if (canPromote) {
@@ -116,9 +131,11 @@ function applyRadioMetadataHoldback({ stationKey = '', artist = '', title = '', 
       holdback: {
         active: false,
         reason: elapsedReset ? 'promoted:elapsed-reset' : 'promoted:stable-timeout',
+        policy: String(policy?.mode || 'normal'),
         pendingAgeMs,
         elapsedSec: elapsed,
         elapsedPrevSec: prevElapsed,
+        holdbackMs,
       },
     };
   }
@@ -129,10 +146,11 @@ function applyRadioMetadataHoldback({ stationKey = '', artist = '', title = '', 
     holdback: {
       active: true,
       reason: 'holding',
+      policy: String(policy?.mode || 'normal'),
       pendingAgeMs,
       elapsedSec: elapsed,
       elapsedPrevSec: prevElapsed,
-      holdbackMs: RADIO_META_HOLDBACK_MS,
+      holdbackMs,
       pendingTitle: current.title,
       stableTitle: String(stable.title || ''),
     },
@@ -3678,6 +3696,20 @@ function sanitizeLookupArtistForItunes(v = '') {
     .trim();
 }
 
+function shouldAcceptMatchedTitle(rawTitle = '', matchedTitle = '') {
+  const a = String(rawTitle || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const b = String(matchedTitle || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  if (!a || !b) return false;
+  if (a === b || a.includes(b) || b.includes(a)) return true;
+  const ta = new Set(a.split(/\s+/).filter((x) => x.length > 2));
+  const tb = new Set(b.split(/\s+/).filter((x) => x.length > 2));
+  if (!ta.size || !tb.size) return false;
+  let overlap = 0;
+  for (const t of ta) if (tb.has(t)) overlap += 1;
+  const ratio = overlap / Math.max(ta.size, tb.size);
+  return ratio >= 0.5;
+}
+
 async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
   const a = sanitizeLookupArtistForItunes(String(artist || '').trim());
   const t = String(title || '').trim();
@@ -5005,8 +5037,12 @@ app.get('/now-playing', async (req, res) => {
 
     // If artist is generic and title does not look like an artist-track split,
     // it is very likely station/program metadata rather than a song.
+    // But allow if raw metadata includes an explicit "Artist - Title" form.
     if (artistLooksGeneric(a) && !/\s[-–—]\s/.test(t)) {
-      return { allow: false, reason: 'generic-artist' };
+      const splitFromRaw = splitArtistTitleFromRaw(t) || splitArtistTitleFromRaw(a) || { artist: '', title: '' };
+      if (!splitFromRaw.artist || !splitFromRaw.title) {
+        return { allow: false, reason: 'generic-artist' };
+      }
     }
 
     return { allow: true, reason: 'ok' };
@@ -5673,6 +5709,7 @@ app.get('/now-playing', async (req, res) => {
     if (isRadio) {
       const hb = applyRadioMetadataHoldback({
         stationKey: String(file || song?.name || '').trim(),
+        stationName: String(streamStationName || song?.name || '').trim(),
         artist,
         title,
         album: radioAlbum || album || '',
@@ -5767,34 +5804,70 @@ app.get('/now-playing', async (req, res) => {
               strictArtist: !likelyClassical,
             });
 
-        if (it.url) primaryArtUrl = it.url;
+        let itResolved = it;
+        if (!String(itResolved?.url || itResolved?.trackUrl || itResolved?.albumUrl || '').trim() && /no-artist-match/i.test(String(itResolved?.reason || ''))) {
+          const aTry = String(lookupArtist || '').trim();
+          const tTry = String(lookupTitle || '').trim();
+          if (aTry && tTry) {
+            const swapped = await lookupItunesFirst(tTry, aTry, debug, {
+              radioAlbum: albumForLookup,
+              albumHint: albumForLookup,
+              composerShort: lookupCtx.composerShort || '',
+              ensembleHint: lookupCtx.ensembleHint || '',
+              conductorHint: lookupCtx.conductorHint || '',
+              labelHint,
+              soloistHint: lookupCtx.soloistHint || soloistHintRaw || '',
+              strictArtist: false,
+            });
+            if (String(swapped?.url || swapped?.trackUrl || swapped?.albumUrl || '').trim()) {
+              itResolved = swapped;
+              radioLookupTerm = `${tTry} ${aTry}`.trim();
+            }
+          }
+        }
+
+        if (itResolved.url) primaryArtUrl = itResolved.url;
 
         {
-          const itAlbum = String(it?.album || '').trim();
+          const itAlbum = String(itResolved?.album || '').trim();
           const curAlbum = String(radioAlbum || '').trim();
-          const itMatched = !!String(it?.url || it?.trackUrl || it?.albumUrl || '').trim() || /^ok:/i.test(String(it?.reason || ''));
+          const itMatched = !!String(itResolved?.url || itResolved?.trackUrl || itResolved?.albumUrl || '').trim() || /^ok:/i.test(String(itResolved?.reason || ''));
           if (itAlbum && (itMatched || !curAlbum || isLabelLikeHint(curAlbum) || looksLikePersonName(curAlbum))) {
             radioAlbum = itAlbum;
           }
         }
-        radioYear  = it.year || '';
+        radioYear  = itResolved.year || '';
 
         // Links (best effort)
-        if (!radioTrackUrl) radioTrackUrl = String(it.trackUrl || '').trim();
-        if (!radioAlbumUrl) radioAlbumUrl = String(it.albumUrl || '').trim();
+        if (!radioTrackUrl) radioTrackUrl = String(itResolved.trackUrl || '').trim();
+        if (!radioAlbumUrl) radioAlbumUrl = String(itResolved.albumUrl || '').trim();
         if (!radioItunesUrl) radioItunesUrl = radioAlbumUrl || radioTrackUrl || '';
 
         // If stream metadata had junk artist (e.g., "06"), adopt iTunes artist/title.
-        if (artistLooksGeneric(artist) && String(it?.matchedArtist || '').trim()) {
-          artist = String(it.matchedArtist).trim();
+        if (artistLooksGeneric(artist) && String(itResolved?.matchedArtist || '').trim()) {
+          artist = String(itResolved.matchedArtist).trim();
           if (!radioPerformers) radioPerformers = artist;
         }
-        if (String(it?.matchedTitle || '').trim()) {
-          title = String(it.matchedTitle).trim();
+
+        // Heuristic: if matched pair appears fully swapped vs current pair, swap current artist/title.
+        {
+          const curA = String(artist || '').trim().toLowerCase();
+          const curT = String(title || '').trim().toLowerCase();
+          const mA = String(itResolved?.matchedArtist || '').trim();
+          const mT = String(itResolved?.matchedTitle || '').trim();
+          if (mA && mT && curA && curT && curA === mT.toLowerCase() && curT === mA.toLowerCase()) {
+            artist = mA;
+            title = mT;
+            if (!radioPerformers) radioPerformers = mA;
+          }
+        }
+
+        if (String(itResolved?.matchedTitle || '').trim() && shouldAcceptMatchedTitle(String(lookupTitle || title || '').trim(), String(itResolved.matchedTitle).trim())) {
+          title = String(itResolved.matchedTitle).trim();
         }
 
         dlog('[radio links]', { radioItunesUrl, radioAlbumUrl, radioTrackUrl });
-        debugItunesReason = it.reason || '';
+        debugItunesReason = itResolved.reason || '';
       } else {
         const decodedTitle = decodeHtmlEntities(song.title || '');
         const parts = decodedTitle.split(' - ').map(s => s.trim()).filter(Boolean);
@@ -5835,7 +5908,7 @@ app.get('/now-playing', async (req, res) => {
             artist = String(it.matchedArtist).trim();
             if (!radioPerformers) radioPerformers = artist;
           }
-          if (String(it?.matchedTitle || '').trim()) {
+          if (String(it?.matchedTitle || '').trim() && shouldAcceptMatchedTitle(String(s2.lookupTitle || title || '').trim(), String(it.matchedTitle).trim())) {
             title = String(it.matchedTitle).trim();
           }
         } else {
@@ -5866,9 +5939,11 @@ app.get('/now-playing', async (req, res) => {
     if (isRadio && radioLookupGuard.allow) {
       try {
         let albumForTerm = String(radioAlbum || album || '').trim();
-        const stName = String(song?.name || '').trim();
-        if (albumForTerm && stName && albumForTerm.toLowerCase() === stName.toLowerCase()) albumForTerm = '';
-        if (/\bwfmt\b|\bclassical\b|\bstream\b|\bradio\b|\berato\b|\blaserlight\b/i.test(albumForTerm)) albumForTerm = '';
+        const stName = String(song?.name || streamStationName || '').trim();
+        const lowAlbum = albumForTerm.toLowerCase();
+        const lowStation = stName.toLowerCase();
+        if (albumForTerm && stName && (lowAlbum === lowStation || lowAlbum.includes(lowStation) || lowStation.includes(lowAlbum))) albumForTerm = '';
+        if (/\biheart\b|\bwfmt\b|\bclassical\b|\bstream\b|\bradio\b|\berato\b|\blaserlight\b|\bhit music station\b/i.test(albumForTerm)) albumForTerm = '';
         if (isLabelLikeHint(albumForTerm) || isProgramDateHint(albumForTerm)) albumForTerm = '';
         const perfAlbumHint = decodeHtmlEntities(String(radioPerformers || '').trim());
         if (!albumForTerm && looksAlbumHintText(perfAlbumHint)) albumForTerm = perfAlbumHint;
@@ -5923,7 +5998,7 @@ app.get('/now-playing', async (req, res) => {
         if (!radioPerformers && String(ap?.matchedArtist || '').trim()) {
           radioPerformers = String(ap.matchedArtist).trim();
         }
-        if (String(ap?.matchedTitle || '').trim()) {
+        if (String(ap?.matchedTitle || '').trim() && shouldAcceptMatchedTitle(String(s3.lookupTitle || title || '').trim(), String(ap.matchedTitle).trim())) {
           title = String(ap.matchedTitle).trim();
         }
 
