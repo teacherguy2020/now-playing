@@ -397,7 +397,7 @@ body.pause      #fav-heart {
   bottom: 28px;
 
   display: flex;
-  align-items: center;
+  align-items: flex-end;
 
   gap: clamp(8px, calc(var(--artSize) * 0.02), 14px);
 
@@ -427,6 +427,8 @@ body:not(.phone-ui) #next-up-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  align-self: flex-end;
+  line-height: 1;
 }
 
 /* =========================================================
@@ -440,7 +442,7 @@ body:not(.phone-ui) #next-up-text {
   max-width: 100%;
   height: 8px;
 
-  background: rgba(255,255,255,0.15);
+  background: rgba(210, 216, 228, 0.55);
   border-radius: 4px;
 
   margin-top: 0;
@@ -453,7 +455,7 @@ body:not(.phone-ui) #next-up-text {
 
 #progress-fill {
   height: 12px;
-  background: #4fc3f7;
+  background: rgba(210, 216, 228, 0.92);
 
   transform: scaleX(0);
   transform-origin: left;
@@ -668,6 +670,7 @@ body.phone-ui #progress-bar-wrapper {
 
   margin: 0 !important;
   border-radius: 999px !important;
+  background: rgba(210, 216, 228, 0.58) !important;
 
   z-index: 2000 !important;
   pointer-events: none !important;
@@ -841,9 +844,14 @@ body.phone-ui #phone-controls .ctl.big.on {
   }
 
   body:not(.phone-ui) #content {
-    align-items: flex-start;
-    padding-top: 12px;
-    padding-bottom: 8px;
+    align-items: center;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  body:not(.phone-ui) #album-art-wrapper {
+    align-self: center;
+    margin-bottom: 0;
   }
 
   body:not(.phone-ui) .text-column {
@@ -978,7 +986,7 @@ body.phone-ui #phone-controls .ctl.big.on {
 
   body:not(.phone-ui) #next-up {
     right: 16px;
-    bottom: 14px;
+    bottom: 28px; /* align with progress bar lane */
     max-width: 320px;
     font-size: 15px;
     z-index: 5250;
