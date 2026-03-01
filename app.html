@@ -305,6 +305,7 @@
                 <option value="5">5★</option>
               </select>
             </label>
+            <button id="heroQueueApplyFilter" class="heroQueueBtn" type="button" style="display:none;">Apply to queue</button>
             <button id="heroQueueSavePresets" class="heroQueueBtn" type="button" style="display:none;">Save queue as presets group</button>
             <button id="heroQueueClear" class="heroQueueBtn" type="button">Clear</button>
             <button id="heroQueueCrop" class="heroQueueBtn" type="button">Crop</button>
@@ -622,6 +623,8 @@
       let lastHeroQueueRatingsSignature = '';
       let lastHeroHeadPos = -1;
       let lastHeroNextUpSignature = '';
+      let heroQueuePendingFilterRemovals = [];
+      let heroQueuePendingFilterThreshold = 0;
       const heroDlog = (...args) => {
         try {
           if (globalThis?.localStorage?.getItem('heroQueueDebug') === '1') {
@@ -1173,6 +1176,27 @@
           const items = (j?.ratingsEnabled && minRatingThreshold > 0)
             ? allItems.filter((x) => (Number(x?.rating || 0) || 0) >= minRatingThreshold)
             : allItems;
+          const headPosNum = Number(j.headPos || -1);
+          const removableForFilter = (j?.ratingsEnabled && minRatingThreshold > 0)
+            ? allItems.filter((x) => {
+                const p = Number(x?._posDisplay || 0);
+                const r0 = Number(x?.rating || 0) || 0;
+                if (!Number.isFinite(p) || p <= 0) return false;
+                if (p === headPosNum) return false; // Never remove current playing track.
+                return r0 < minRatingThreshold;
+              }).map((x) => Number(x?._posDisplay || 0)).filter((p) => Number.isFinite(p) && p > 0)
+            : [];
+          heroQueuePendingFilterRemovals = removableForFilter;
+          heroQueuePendingFilterThreshold = minRatingThreshold;
+          if (hqApplyFilter) {
+            if (j?.ratingsEnabled && minRatingThreshold > 0 && removableForFilter.length > 0) {
+              hqApplyFilter.style.display = '';
+              hqApplyFilter.textContent = `Apply to queue (${removableForFilter.length})`;
+            } else {
+              hqApplyFilter.style.display = 'none';
+              hqApplyFilter.textContent = 'Apply to queue';
+            }
+          }
           const presetStations = [];
           if (!items.length) {
             const filteredOut = !!allItems.length;
@@ -1199,7 +1223,6 @@
             updateSavePresetsButtonVisibility();
             return;
           }
-          const headPosNum = Number(j.headPos || -1);
           let headIdx = items.findIndex((x) => Number(x?._posDisplay || 0) === headPosNum);
           if (headIdx < 0) headIdx = items.findIndex((x) => !!x?.isHead);
           const nextItem = (headIdx >= 0 && headIdx < (items.length - 1)) ? items[headIdx + 1] : null;
@@ -2121,6 +2144,7 @@
       const hqBtn = document.getElementById('heroQueueToggle');
       const hqClear = document.getElementById('heroQueueClear');
       const hqCrop = document.getElementById('heroQueueCrop');
+      const hqApplyFilter = document.getElementById('heroQueueApplyFilter');
       const hqSave = document.getElementById('heroQueueSavePresets');
       const hqWrap = document.getElementById('heroQueueWrap');
       const hqNextUp = document.getElementById('heroQueueNextUp');
@@ -2597,6 +2621,30 @@
           hqCrop.disabled = true;
           try { await sendHeroPlayback('crop'); } catch (_) {}
           finally { hqCrop.disabled = false; await syncHeroQueue(); }
+        });
+
+        hqApplyFilter?.addEventListener('click', async () => {
+          const positions = Array.isArray(heroQueuePendingFilterRemovals) ? [...heroQueuePendingFilterRemovals] : [];
+          const threshold = Number(heroQueuePendingFilterThreshold || 0);
+          if (!positions.length || threshold <= 0) return;
+          const ok = window.confirm(`Apply ${threshold}★+ filter to live queue?\n\nThis will remove ${positions.length} track(s) below ${threshold}★.`);
+          if (!ok) return;
+          hqApplyFilter.disabled = true;
+          setHeroQueueBusy(true, 'Applying filter to queue…');
+          try {
+            positions.sort((a, b) => Number(b || 0) - Number(a || 0));
+            for (const pos of positions) {
+              const p = Number(pos || 0);
+              if (!Number.isFinite(p) || p <= 0) continue;
+              try { await sendHeroPlayback('remove', { position: p }); } catch {}
+            }
+            heroQueuePendingFilterRemovals = [];
+            heroQueuePendingFilterThreshold = 0;
+          } finally {
+            setHeroQueueBusy(false, '');
+            hqApplyFilter.disabled = false;
+            await syncHeroQueue();
+          }
         });
 
         hqSave?.addEventListener('click', () => {
