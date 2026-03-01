@@ -269,7 +269,7 @@
     <div class="heroWrap">
       <header>
         <div class="brand" style="display:block;">
-          <h1 style="margin:0;line-height:1.05;white-space:nowrap;font-size:18px;font-weight:620;letter-spacing:-0.012em;">Now Playing <span style="font-size:13px;font-weight:520;opacity:.86;letter-spacing:0;">moOde enhancement dashboard</span></h1>
+          <h1 id="heroNowPlayingTitle" title="Open moOde web UI" style="margin:0;line-height:1.05;white-space:nowrap;font-size:18px;font-weight:620;letter-spacing:-0.012em;cursor:pointer;user-select:none;">Now Playing <span style="font-size:13px;font-weight:520;opacity:.86;letter-spacing:0;">moOde enhancement dashboard</span></h1>
         </div>
         <div class="quickThemeWrap">
           <select id="quickThemeSelect" class="quickThemeSelect" aria-label="Quick theme preset" title="Quick theme preset">
@@ -294,6 +294,17 @@
             </label>
           </div>
           <div id="heroQueueActionsHead" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+            <label id="heroQueueMinRatingWrap" class="heroQueueCheckWrap" style="display:none;">
+              <span>Min ★</span>
+              <select id="heroQueueMinRating" class="heroQueueBtn" style="padding:4px 8px;min-width:78px;">
+                <option value="0">Any</option>
+                <option value="1">1★+</option>
+                <option value="2">2★+</option>
+                <option value="3">3★+</option>
+                <option value="4">4★+</option>
+                <option value="5">5★</option>
+              </select>
+            </label>
             <button id="heroQueueSavePresets" class="heroQueueBtn" type="button" style="display:none;">Save queue as presets group</button>
             <button id="heroQueueClear" class="heroQueueBtn" type="button">Clear</button>
             <button id="heroQueueCrop" class="heroQueueBtn" type="button">Crop</button>
@@ -1116,6 +1127,15 @@
           if (consumeEl && !consumeEl.disabled) {
             try { consumeEl.checked = !!j?.consumeOn; } catch {}
           }
+          if (queueMinRatingWrapEl) {
+            const ratingsVisible = !!j?.ratingsEnabled;
+            queueMinRatingWrapEl.style.display = ratingsVisible ? 'inline-flex' : 'none';
+            if (ratingsVisible && !queueRatingFilterWasVisible && queueMinRatingEl) {
+              queueMinRatingEl.value = '0';
+              try { localStorage.setItem(HERO_QUEUE_MIN_RATING_KEY, '0'); } catch {}
+            }
+            queueRatingFilterWasVisible = ratingsVisible;
+          }
           let np = npRes ? await npRes.json().catch(() => ({})) : {};
           const npQueueHead = np ? { ...np } : {};
           const nextUpApi = nextUpRes ? await nextUpRes.json().catch(() => ({})) : {};
@@ -1141,16 +1161,26 @@
           const heroAlexaText = String(document.getElementById('heroTransport')?.textContent || '').toLowerCase();
           const isAlexaMode = !!np?.alexaMode || !!nextUpApi?.alexaMode || alexaHintText.includes('alexa mode') || heroAlexaText.includes('alexa mode');
           const nowIsAirplay = !!np?.isAirplay;
-          const items = (Array.isArray(j.items) ? j.items : []).map((it, idx) => {
+          const allItems = (Array.isArray(j.items) ? j.items : []).map((it, idx) => {
             const p = Number.isFinite(Number(it?.pos)) ? Number(it.pos)
               : (Number.isFinite(Number(it?.position)) ? Number(it.position) : (idx + 1));
             return { ...it, _posDisplay: p };
           });
+          const minRatingThreshold = (() => {
+            const raw = Number(queueMinRatingEl?.value || 0);
+            return Number.isFinite(raw) ? Math.max(0, Math.min(5, Math.round(raw))) : 0;
+          })();
+          const items = (j?.ratingsEnabled && minRatingThreshold > 0)
+            ? allItems.filter((x) => (Number(x?.rating || 0) || 0) >= minRatingThreshold)
+            : allItems;
           const presetStations = [];
           if (!items.length) {
-            const emptySig = 'empty';
+            const filteredOut = !!allItems.length;
+            const emptySig = filteredOut ? 'empty-filtered' : 'empty';
             if (lastHeroQueueSignature !== emptySig) {
-              wrap.innerHTML = '<div class="heroQueueMeta">Queue is empty.</div>';
+              wrap.innerHTML = filteredOut
+                ? '<div class="heroQueueMeta">No tracks meet current rating filter.</div>'
+                : '<div class="heroQueueMeta">Queue is empty.</div>';
               lastHeroQueueSignature = emptySig;
               lastHeroQueueContentSignature = '';
               lastHeroQueueBaseSignature = '';
@@ -1979,6 +2009,42 @@
         navigate(a.dataset.page || 'config.html', true);
       }));
 
+      let heroNowPlayingIframeMoode = false;
+      let heroNowPlayingMoodeFallbackTimer = null;
+      let heroNowPlayingMoodeFrameLoaded = false;
+      document.getElementById('heroNowPlayingTitle')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        const moodeUrl = 'http://moode.local/index.php';
+        if (NO_IFRAME_MODE || !frame) {
+          window.location.href = moodeUrl;
+          return;
+        }
+        if (!heroNowPlayingIframeMoode) {
+          heroNowPlayingMoodeFrameLoaded = false;
+          if (heroNowPlayingMoodeFallbackTimer) clearTimeout(heroNowPlayingMoodeFallbackTimer);
+          // moOde UI needs native iframe scrolling for large library views (Album/Artist lists).
+          frame.setAttribute('scrolling', 'yes');
+          frame.style.height = 'calc(100vh - 220px)';
+          frame.style.minHeight = '680px';
+          frame.setAttribute('src', moodeUrl);
+          heroNowPlayingIframeMoode = true;
+          heroNowPlayingMoodeFallbackTimer = setTimeout(() => {
+            if (heroNowPlayingIframeMoode && !heroNowPlayingMoodeFrameLoaded) {
+              window.location.href = moodeUrl;
+            }
+          }, 2200);
+          return;
+        }
+        if (heroNowPlayingMoodeFallbackTimer) clearTimeout(heroNowPlayingMoodeFallbackTimer);
+        heroNowPlayingMoodeFallbackTimer = null;
+        heroNowPlayingMoodeFrameLoaded = false;
+        heroNowPlayingIframeMoode = false;
+        frame.setAttribute('scrolling', 'no');
+        frame.style.height = '1400px';
+        frame.style.minHeight = '0';
+        navigate(currentShellPage || getPageFromUrl(), false);
+      });
+
       document.getElementById('apiPill')?.addEventListener('click', (ev) => {
         ev.preventDefault();
         restartApiFromPill();
@@ -2035,6 +2101,13 @@
       window.addEventListener('resize', () => { syncFrameWidth(); if (!NO_IFRAME_MODE) requestFrameHeightSync(); });
       if (frame && !NO_IFRAME_MODE) {
         frame.addEventListener('load', () => {
+          if (heroNowPlayingIframeMoode) {
+            heroNowPlayingMoodeFrameLoaded = true;
+            if (heroNowPlayingMoodeFallbackTimer) {
+              clearTimeout(heroNowPlayingMoodeFallbackTimer);
+              heroNowPlayingMoodeFallbackTimer = null;
+            }
+          }
           syncFrameWidth();
           attachFrameAutoResizeObservers();
           requestFrameHeightSync();
@@ -2582,10 +2655,24 @@
             const file = decodeURIComponent(String(rateBtn.getAttribute('data-rate-file') || ''));
             const rating = Number(rateBtn.getAttribute('data-rate-value') || 0);
             if (!file || !Number.isFinite(rating) || rating < 0 || rating > 5) return;
+
+            // optimistic UI so it feels clickable immediately
+            try {
+              const starsEl = rateBtn.closest('.heroQueueStars');
+              if (starsEl) {
+                starsEl.setAttribute('data-rating', String(rating));
+                const fEnc = String(starsEl.getAttribute('data-file') || encodeURIComponent(file));
+                starsEl.innerHTML = [1,2,3,4,5].map((n)=>`<button type="button" class="heroQueueStarBtn ${n<=rating?'on':'off'}" data-rate-file="${fEnc}" data-rate-value="${n}" title="Set rating ${n}★">★</button>`).join('');
+              }
+            } catch {}
+
             rateBtn.disabled = true;
             try {
               await sendHeroPlayback('rate', { file, rating });
-            } catch (_) {}
+            } catch (_) {
+              setQueueBusyHint('rating failed');
+              setTimeout(() => setQueueBusyHint(''), 900);
+            }
             finally {
               rateBtn.disabled = false;
               await syncHeroQueue();
@@ -2656,8 +2743,12 @@
       }
 
       const HERO_ARROW_KEYS_ENABLED_KEY = 'nowplaying.app.arrowKeysEnabled';
+      const HERO_QUEUE_MIN_RATING_KEY = 'nowplaying.app.queueMinRating';
       const arrowKeysEl = document.getElementById('heroQueueArrowKeys');
       const consumeEl = document.getElementById('heroQueueConsume');
+      const queueMinRatingWrapEl = document.getElementById('heroQueueMinRatingWrap');
+      const queueMinRatingEl = document.getElementById('heroQueueMinRating');
+      let queueRatingFilterWasVisible = false;
 
       function readArrowPref(){
         const isOn = (v) => ['1','true','yes','on'].includes(String(v || '').trim().toLowerCase());
@@ -2704,6 +2795,18 @@
           } finally {
             consumeEl.disabled = false;
           }
+        });
+      }
+
+      if (queueMinRatingEl) {
+        let r0 = 0;
+        try { r0 = Math.max(0, Math.min(5, Number(localStorage.getItem(HERO_QUEUE_MIN_RATING_KEY) || 0) || 0)); } catch {}
+        queueMinRatingEl.value = String(r0);
+        queueMinRatingEl.addEventListener('change', () => {
+          const v = Math.max(0, Math.min(5, Number(queueMinRatingEl.value || 0) || 0));
+          queueMinRatingEl.value = String(v);
+          try { localStorage.setItem(HERO_QUEUE_MIN_RATING_KEY, String(v)); } catch {}
+          syncHeroQueue().catch(() => {});
         });
       }
 
