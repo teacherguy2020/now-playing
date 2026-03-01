@@ -95,6 +95,10 @@
     .heroQueueRow{display:flex;gap:8px;align-items:center;padding:6px;border-bottom:1px dashed #233650}
     .heroQueueRow:last-child{border-bottom:none}
     .heroQueueMeta{color:#9fb1d9;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .heroQueueStarsCtl{display:inline-flex;align-items:center;gap:1px;margin-left:8px;white-space:nowrap}
+    .heroQueueStarBtn{border:0;background:transparent;padding:0 1px;cursor:pointer;line-height:1;font-size:14px}
+    .heroQueueStarBtn.on{color:var(--theme-pill-border,#fbbf24)}
+    .heroQueueStarBtn.off{color:#64748b}
     #heroQueueNextUp .heroQueueMeta{font-size:13px;font-weight:560;line-height:1.2}
     .heroQueueActions{display:flex;gap:4px;margin-left:auto}
     .heroQueueNextUp{display:none;margin-bottom:8px;border:1px solid var(--theme-rail-border);border-radius:10px;padding:8px;background:var(--theme-rail-bg);align-items:center;gap:8px}
@@ -1109,6 +1113,9 @@
             radioMapP,
           ]);
           const j = await r.json().catch(() => ({}));
+          if (consumeEl && !consumeEl.disabled) {
+            try { consumeEl.checked = !!j?.consumeOn; } catch {}
+          }
           let np = npRes ? await npRes.json().catch(() => ({})) : {};
           const npQueueHead = np ? { ...np } : {};
           const nextUpApi = nextUpRes ? await nextUpRes.json().catch(() => ({})) : {};
@@ -1311,7 +1318,8 @@
               const prev = Number(starsEl.getAttribute('data-rating') || 0);
               if (r === prev) return;
               starsEl.setAttribute('data-rating', String(r));
-              starsEl.innerHTML = `${'<span style="color:var(--theme-pill-border,#fbbf24);">★</span>'.repeat(r)}${'<span style="color:#64748b;">★</span>'.repeat(5 - r)}`;
+              const fEnc = String(starsEl.getAttribute('data-file') || row.getAttribute('data-queue-file') || '');
+              starsEl.innerHTML = [1,2,3,4,5].map((n)=>`<button type="button" class="heroQueueStarBtn ${n<=r?'on':'off'}" data-rate-file="${fEnc}" data-rate-value="${n}" title="Set rating ${n}★">★</button>`).join('');
             });
             lastHeroQueueRatingsSignature = queueRatingSig;
             lastHeroQueueContentSignature = queueContentSig;
@@ -1417,15 +1425,17 @@
               : `<img loading="lazy" decoding="async" fetchpriority="low" src="${directLogo || stationLogoByFile || stationLogoByDisplay || stationLogoByDisplayAlt || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
             const actions = `<div class="heroQueueActions"><button type="button" data-play-pos-btn="${pos}" title="Play now">▶</button><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
             const albumTxt = String(x?.album || '').trim();
+            const yearTxt = String(x?.year || x?.date || '').trim();
+            const albumWithYear = albumTxt ? `${albumTxt}${yearTxt ? ` (${yearTxt})` : ''}` : '';
             const isPodcastItem = !!x?.isPodcast || /\/(podcasts?|podcast)\//i.test(fileRaw);
             const rating = Math.max(0, Math.min(5, Number(x?.rating || 0)));
             const starsInline = (isStreamish || isPodcastItem)
               ? ''
-              : `<span class="heroQueueStars" data-rating="${rating}" style="margin-left:8px;letter-spacing:1px;font-size:14px;white-space:nowrap;">${'<span style="color:var(--theme-pill-border,#fbbf24);">★</span>'.repeat(rating)}${'<span style="color:#64748b;">★</span>'.repeat(5 - rating)}</span>`;
+              : `<span class="heroQueueStars heroQueueStarsCtl" data-rating="${rating}" data-file="${encodeURIComponent(fileRaw)}">${[1,2,3,4,5].map((n)=>`<button type="button" class="heroQueueStarBtn ${n<=rating?'on':'off'}" data-rate-file="${encodeURIComponent(fileRaw)}" data-rate-value="${n}" title="Set rating ${n}★">★</button>`).join('')}</span>`;
             const line1 = isStreamish ? (artist || '(station)') : (title || '(unknown title)');
             const line1Html = isStreamish
               ? line1
-              : `<button type="button" class="queueTrackLineBtn" data-open-track-meta="1" data-track-title="${encodeURIComponent(line1)}" data-track-artist="${encodeURIComponent(artist)}" data-track-album="${encodeURIComponent(albumTxt)}" data-track-art="${encodeURIComponent(thumb || '')}" data-track-file="${encodeURIComponent(fileRaw)}" data-track-genre="${encodeURIComponent(String(x?.genre || ''))}" data-track-date="${encodeURIComponent(String(x?.date || x?.year || ''))}" data-track-num="${encodeURIComponent(String(x?.track || ''))}" data-track-time="${encodeURIComponent(String(x?.time || x?.duration || ''))}" data-track-rating="${encodeURIComponent(String(rating || 0))}">${line1}</button>`;
+              : `<button type="button" class="queueTrackLineBtn" data-open-track-meta="1" data-track-title="${encodeURIComponent(line1)}" data-track-artist="${encodeURIComponent(artist)}" data-track-album="${encodeURIComponent(albumTxt)}" data-track-art="${encodeURIComponent(thumb || '')}" data-track-file="${encodeURIComponent(fileRaw)}" data-track-genre="${encodeURIComponent(String(x?.genre || ''))}" data-track-date="${encodeURIComponent(String(x?.date || x?.year || ''))}" data-track-num="${encodeURIComponent(String(x?.track || ''))}" data-track-time="${encodeURIComponent(String(x?.time || x?.duration || ''))}" data-track-rating="${encodeURIComponent(String(rating || 0))}" data-track-personnel="${encodeURIComponent(String(x?.personnelText || x?.performers || x?.personnel || ''))}" data-track-bitrate="${encodeURIComponent(String(x?.bitrate || x?.kbps || ''))}" data-track-samplerate="${encodeURIComponent(String(x?.sampleRate || x?.samplerate || ''))}" data-track-bitdepth="${encodeURIComponent(String(x?.bits || x?.bitDepth || ''))}" data-track-codec="${encodeURIComponent(String(x?.codec || x?.format || ''))}">${line1}</button>`;
             const line2 = isStreamish
               ? ''
               : (isPodcastItem
@@ -1433,7 +1443,7 @@
                 : (() => {
                     const artistBtn = `<button type="button" class="queueAlbumLineBtn" data-open-artist-albums="${encodeURIComponent(artist || '')}">${artist || '(unknown artist)'}</button>`;
                     if (albumTxt) {
-                      return `<div class="heroQueueMeta">${artistBtn} • <button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(albumTxt)}" data-queue-artist="${encodeURIComponent(artist)}" data-queue-title="${encodeURIComponent(title)}" data-queue-art="${encodeURIComponent(thumb || '')}">${albumTxt}</button></div>`;
+                      return `<div class="heroQueueMeta">${artistBtn} • <button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(albumTxt)}" data-queue-artist="${encodeURIComponent(artist)}" data-queue-title="${encodeURIComponent(title)}" data-queue-art="${encodeURIComponent(thumb || '')}">${albumWithYear || albumTxt}</button></div>`;
                     }
                     return `<div class="heroQueueMeta">${artistBtn}</div>`;
                   })());
@@ -2096,6 +2106,7 @@
           + `<div class="queueAlbumTitle">${artistTxt}</div>`
           + `<div class="queueAlbumSub">Loading albums…</div>`
           + `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;">`
+          + `<button type="button" class="queueAlbumClose" data-artist-action="playall" data-artist="${encodeURIComponent(artistTxt)}">Play all</button>`
           + `<button type="button" class="queueAlbumClose" data-artist-action="shuffle" data-artist="${encodeURIComponent(artistTxt)}">Shuffle all</button>`
           + `<label class="queueAlbumSub" style="display:inline-flex;align-items:center;gap:6px;margin:0;">min rating`
           + `<select id="queueArtistMinRating" style="min-width:116px;">`
@@ -2162,31 +2173,79 @@
         }
       }
 
-      async function openQueueTrackMetaModal({ title = '', artist = '', album = '', art = '', file = '', genre = '', date = '', track = '', time = '', rating = 0 } = {}){
+      async function openQueueTrackMetaModal({ title = '', artist = '', album = '', art = '', file = '', genre = '', date = '', track = '', time = '', rating = 0, personnel = '', bitrate = '', samplerate = '', bitdepth = '', codec = '' } = {}){
         if (!queueAlbumModal || !queueAlbumBody) return;
         const t = String(title || '').trim() || '(unknown title)';
         const a = String(artist || '').trim() || '(unknown artist)';
         const alb = String(album || '').trim();
         const artUrl = String(art || '').trim();
         const f = String(file || '').trim();
-        const g = String(genre || '').trim();
-        const d = String(date || '').trim();
-        const tr = String(track || '').trim();
-        const tm = String(time || '').trim();
+        let g = String(genre || '').trim();
+        let d = String(date || '').trim();
+        let tr = String(track || '').trim();
+        let tm = String(time || '').trim();
+        let ppl = String(personnel || '').trim();
+        let br = String(bitrate || '').trim();
+        let sr = String(samplerate || '').trim();
+        let bd = String(bitdepth || '').trim();
+        let co = String(codec || '').trim();
         const r = Math.max(0, Math.min(5, Number(rating || 0) || 0));
+
+        if (f) {
+          try {
+            const j = await sendHeroPlayback('trackmeta', { file: f });
+            const m = j?.meta || {};
+            if (!g) g = String(m.genre || '').trim();
+            if (!d) d = String(m.date || '').trim();
+            if (!tr) tr = String(m.track || '').trim();
+            if (!tm) tm = String(m.time || '').trim();
+            if (!ppl) ppl = String(m.personnel || '').trim() || [String(m.performer || '').trim(), String(m.composer || '').trim()].filter(Boolean).join(' • ');
+            const ai = m.audioInfo || {};
+            if (!co) co = String(ai.codec || '').trim();
+            if (!sr) {
+              const v = String(ai.sample_rate || '').trim();
+              if (v) sr = Number(v) > 2000 ? `${Math.round(Number(v)/1000)} kHz` : v;
+            }
+            if (!bd) {
+              const v = String(ai.bits || '').trim();
+              if (v) bd = `${v}-bit`;
+            }
+            if (!br) {
+              const v = String(ai.bit_rate || '').trim();
+              if (v) br = v;
+            }
+            const aud = String(m.audio || '').trim();
+            if (aud && !co && !bd && !sr && !br) {
+              const mm = aud.match(/(\d+)\s*:\s*(\d+)\s*:\s*(\d+)/);
+              if (mm) {
+                if (!sr) sr = `${mm[1]} Hz`;
+                if (!bd) bd = `${mm[2]}-bit`;
+                if (!co) co = `ch ${mm[3]}`;
+              } else if (!co) {
+                co = aud;
+              }
+            }
+          } catch {}
+        }
 
         queueAlbumBody.innerHTML =
           `${artUrl ? `<img src="${artUrl}" alt="">` : '<div style="width:120px;height:120px;border-radius:10px;border:1px solid #334;background:#0a1222"></div>'}` +
           `<div class="queueAlbumMeta">` +
             `<div class="queueAlbumTitle">${t}</div>` +
+            `<div class="queueAlbumSub"><b>Track metadata</b> · Source: MPD lookup</div>` +
             `<div class="queueAlbumSub">Artist: ${a}</div>` +
-            `${alb ? `<div class="queueAlbumSub">Album: <button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(alb)}" data-queue-artist="${encodeURIComponent(a)}" data-queue-title="${encodeURIComponent(t)}" data-queue-art="${encodeURIComponent(artUrl)}">${alb}</button></div>` : ''}` +
+            `<div class="queueAlbumSub">Album: ${alb ? `<button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(alb)}" data-queue-artist="${encodeURIComponent(a)}" data-queue-title="${encodeURIComponent(t)}" data-queue-art="${encodeURIComponent(artUrl)}">${alb}</button>` : '—'}</div>` +
             `<div class="queueAlbumSub">Rating: ${'★'.repeat(r)}${'☆'.repeat(5-r)}</div>` +
-            `${tr ? `<div class="queueAlbumSub">Track #: ${tr}</div>` : ''}` +
-            `${d ? `<div class="queueAlbumSub">Year/Date: ${d}</div>` : ''}` +
-            `${g ? `<div class="queueAlbumSub">Genre: ${g}</div>` : ''}` +
-            `${tm ? `<div class="queueAlbumSub">Length: ${tm}</div>` : ''}` +
-            `${f ? `<div class="queueAlbumSub" style="word-break:break-all;">File: ${f}</div>` : ''}` +
+            `<div class="queueAlbumSub">Track #: ${tr || '—'}</div>` +
+            `<div class="queueAlbumSub">Year/Date: ${d || '—'}</div>` +
+            `<div class="queueAlbumSub">Genre: ${g || '—'}</div>` +
+            `<div class="queueAlbumSub">Length: ${tm || '—'}</div>` +
+            `<div class="queueAlbumSub" style="white-space:normal;">Personnel:</div>` +
+            `${ppl
+              ? `<div class="queueAlbumSub" style="white-space:normal;max-height:130px;overflow:auto;padding:8px 10px;border:1px solid color-mix(in oklab,var(--theme-tab-border) 70%, transparent);border-radius:10px;background:color-mix(in oklab,var(--theme-tab-bg) 70%, transparent);">${String(ppl).split(/\s*(?:•|;|\|)\s*/).filter(Boolean).map((s)=>`<div style="margin:0 0 4px 0;">• ${s}</div>`).join('')}</div>`
+              : `<div class="queueAlbumSub">—</div>`}` +
+            `<div class="queueAlbumSub">Audio: ${[co, (bd&&sr)?`${bd}/${sr}`:(bd||sr), br?`${br} kbps`:'' ].filter(Boolean).join(' • ') || '—'}</div>` +
+            `<div class="queueAlbumSub" style="word-break:break-all;">File: ${f || '—'}</div>` +
           `</div>`;
 
         queueAlbumModal.classList.add('open');
@@ -2286,6 +2345,16 @@
           return;
         }
 
+        const albumBtnInMeta = el.closest('button[data-queue-album]');
+        if (albumBtnInMeta) {
+          const album = decodeURIComponent(String(albumBtnInMeta.getAttribute('data-queue-album') || ''));
+          const artist = decodeURIComponent(String(albumBtnInMeta.getAttribute('data-queue-artist') || ''));
+          const title = decodeURIComponent(String(albumBtnInMeta.getAttribute('data-queue-title') || ''));
+          const art = decodeURIComponent(String(albumBtnInMeta.getAttribute('data-queue-art') || ''));
+          try { await openQueueAlbumModal({ album, artist, title, art }); } catch {}
+          return;
+        }
+
         const trk = el.closest('button[data-track-action][data-track-file]');
         if (trk) {
           const action = String(trk.getAttribute('data-track-action') || '');
@@ -2314,20 +2383,27 @@
           const track = decodeURIComponent(String(openTrackMeta.getAttribute('data-track-num') || ''));
           const time = decodeURIComponent(String(openTrackMeta.getAttribute('data-track-time') || ''));
           const rating = Number(decodeURIComponent(String(openTrackMeta.getAttribute('data-track-rating') || '0')) || 0);
-          await openQueueTrackMetaModal({ title, artist, album, art, file, genre, date, track, time, rating });
+          const personnel = decodeURIComponent(String(openTrackMeta.getAttribute('data-track-personnel') || ''));
+          const bitrate = decodeURIComponent(String(openTrackMeta.getAttribute('data-track-bitrate') || ''));
+          const samplerate = decodeURIComponent(String(openTrackMeta.getAttribute('data-track-samplerate') || ''));
+          const bitdepth = decodeURIComponent(String(openTrackMeta.getAttribute('data-track-bitdepth') || ''));
+          const codec = decodeURIComponent(String(openTrackMeta.getAttribute('data-track-codec') || ''));
+          await openQueueTrackMetaModal({ title, artist, album, art, file, genre, date, track, time, rating, personnel, bitrate, samplerate, bitdepth, codec });
           return;
         }
 
         const artistAction = el.closest('button[data-artist-action][data-artist]');
         if (artistAction) {
           const artist = decodeURIComponent(String(artistAction.getAttribute('data-artist') || ''));
+          const actionKind = String(artistAction.getAttribute('data-artist-action') || 'shuffle').trim().toLowerCase();
           const mode = 'replace';
           const minRating = Number(document.getElementById('queueArtistMinRating')?.value || 2);
           const excludeGenreEnabled = !!document.getElementById('queueArtistExcludeGenreOn')?.checked;
           const excludeGenre = String(document.getElementById('queueArtistExcludeGenreText')?.value || '').trim();
+          const playbackAction = actionKind === 'playall' ? 'addartist' : 'addartistshuffle';
           artistAction.setAttribute('disabled', 'disabled');
           try {
-            await sendHeroPlayback('addartistshuffle', { artist, mode, minRating, excludeGenreEnabled, excludeGenre });
+            await sendHeroPlayback(playbackAction, { artist, mode, minRating, excludeGenreEnabled, excludeGenre });
             queueRefreshBurst();
             closeQueueAlbumModal();
           } catch {}
@@ -2458,6 +2534,37 @@
           const el = ev.target instanceof Element ? ev.target : null;
           if (!el) return;
 
+          const artistBtn = el.closest('button[data-open-artist-albums]');
+          if (artistBtn) {
+            ev.stopPropagation();
+            const artist = decodeURIComponent(String(artistBtn.getAttribute('data-open-artist-albums') || ''));
+            if (!artist) return;
+            await openArtistAlbumsModal({ artist });
+            return;
+          }
+
+          const trackMetaBtn = el.closest('button[data-open-track-meta]');
+          if (trackMetaBtn) {
+            ev.stopPropagation();
+            const title = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-title') || ''));
+            const artist = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-artist') || ''));
+            const album = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-album') || ''));
+            const art = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-art') || ''));
+            const file = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-file') || ''));
+            const genre = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-genre') || ''));
+            const date = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-date') || ''));
+            const track = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-num') || ''));
+            const time = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-time') || ''));
+            const rating = Number(decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-rating') || '0')) || 0);
+            const personnel = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-personnel') || ''));
+            const bitrate = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-bitrate') || ''));
+            const samplerate = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-samplerate') || ''));
+            const bitdepth = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-bitdepth') || ''));
+            const codec = decodeURIComponent(String(trackMetaBtn.getAttribute('data-track-codec') || ''));
+            await openQueueTrackMetaModal({ title, artist, album, art, file, genre, date, track, time, rating, personnel, bitrate, samplerate, bitdepth, codec });
+            return;
+          }
+
           const albumBtn = el.closest('button[data-queue-album]');
           if (albumBtn) {
             ev.stopPropagation();
@@ -2466,6 +2573,23 @@
             const title = decodeURIComponent(String(albumBtn.getAttribute('data-queue-title') || ''));
             const art = decodeURIComponent(String(albumBtn.getAttribute('data-queue-art') || ''));
             openQueueAlbumModal({ album, artist, title, art });
+            return;
+          }
+
+          const rateBtn = el.closest('button[data-rate-file][data-rate-value]');
+          if (rateBtn) {
+            ev.stopPropagation();
+            const file = decodeURIComponent(String(rateBtn.getAttribute('data-rate-file') || ''));
+            const rating = Number(rateBtn.getAttribute('data-rate-value') || 0);
+            if (!file || !Number.isFinite(rating) || rating < 0 || rating > 5) return;
+            rateBtn.disabled = true;
+            try {
+              await sendHeroPlayback('rate', { file, rating });
+            } catch (_) {}
+            finally {
+              rateBtn.disabled = false;
+              await syncHeroQueue();
+            }
             return;
           }
 

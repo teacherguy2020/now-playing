@@ -463,6 +463,144 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.json({ ok: true, action, file, randomOn, status: String(afterStatus || '') });
       }
 
+      if (action === 'trackmeta') {
+        const file = String(req.body?.file || '').trim();
+        if (!file) return res.status(400).json({ ok: false, error: 'file is required for trackmeta' });
+        const fmt = '%file%\t%genre%\t%date%\t%track%\t%time%\t%composer%\t%performer%\t%albumartist%\t%name%\t%audio%';
+        const basename = file.split('/').pop() || file;
+
+        async function pull(args) {
+          try {
+            const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, ...args], { maxBuffer: 4 * 1024 * 1024 });
+            return String(stdout || '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+          } catch {
+            return [];
+          }
+        }
+
+        function resolveLocalPath(f) {
+          const s = String(f || '').trim().replace(/^\/+/, '');
+          if (!s) return '';
+          const candidates = [
+            s.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + s.slice('USB/SamsungMoode/'.length) : '',
+            s.startsWith('OSDISK/') ? '/mnt/OSDISK/' + s.slice('OSDISK/'.length) : '',
+            '/mnt/SamsungMoode/' + s,
+            '/mnt/OSDISK/' + s,
+            s.startsWith('/mnt/') ? s : '',
+          ].filter(Boolean);
+          return candidates;
+        }
+
+        async function ffprobeAudio(localPath) {
+          try {
+            const { stdout } = await execFileP('ffprobe', [
+              '-v', 'error',
+              '-select_streams', 'a:0',
+              '-show_entries', 'stream=codec_name,sample_rate,channels,bits_per_raw_sample,bits_per_sample,bit_rate',
+              '-of', 'default=noprint_wrappers=1:nokey=0',
+              localPath,
+            ], { timeout: 2500, maxBuffer: 2 * 1024 * 1024 });
+            const kv = {};
+            String(stdout || '').split(/\r?\n/).forEach((ln) => {
+              const i = ln.indexOf('=');
+              if (i > 0) kv[ln.slice(0, i).trim()] = ln.slice(i + 1).trim();
+            });
+            const codec = String(kv.codec_name || '').trim();
+            const sr = Number(kv.sample_rate || 0) || 0;
+            const ch = Number(kv.channels || 0) || 0;
+            const bits = Number(kv.bits_per_raw_sample || kv.bits_per_sample || 0) || 0;
+            const br = Number(kv.bit_rate || 0) || 0;
+            const human = [
+              codec || '',
+              bits ? `${bits}-bit` : '',
+              sr ? `${Math.round(sr/1000)} kHz` : '',
+              ch ? `${ch}ch` : '',
+              br ? `${Math.round(br/1000)} kbps` : '',
+            ].filter(Boolean).join(' • ');
+            return { codec, sample_rate: sr ? `${sr}` : '', bits: bits ? `${bits}` : '', bit_rate: br ? `${Math.round(br/1000)}` : '', channels: ch ? `${ch}` : '', human };
+          } catch {
+            return { codec:'', sample_rate:'', bits:'', bit_rate:'', channels:'', human:'' };
+          }
+        }
+
+        async function ffprobePersonnel(localPath) {
+          try {
+            const { stdout } = await execFileP('ffprobe', [
+              '-v', 'error',
+              '-show_entries', 'format_tags=artist,album_artist,performer,composer,conductor,ensemble,soloist',
+              '-of', 'default=noprint_wrappers=1:nokey=0',
+              localPath,
+            ], { timeout: 2500, maxBuffer: 2 * 1024 * 1024 });
+            const vals = [];
+            String(stdout || '').split(/\r?\n/).forEach((ln) => {
+              const m = ln.match(/^TAG:([^=]+)=(.*)$/);
+              if (!m) return;
+              const key = String(m[1] || '').toLowerCase();
+              const v = String(m[2] || '').trim();
+              if (!v) return;
+              if (['artist','album_artist','performer','composer','conductor','ensemble','soloist'].includes(key)) vals.push(v);
+            });
+            return Array.from(new Set(vals)).join(' • ');
+          } catch {
+            return '';
+          }
+        }
+
+        let rows = await pull(['find', 'file', file]);
+        if (!rows.length && !file.startsWith('/')) rows = await pull(['find', 'file', `/${file}`]);
+        if (!rows.length) rows = await pull(['find', 'filename', basename]);
+        if (!rows.length) rows = await pull(['search', 'filename', basename]);
+
+        let first = rows[0] || '';
+        if (rows.length > 1) {
+          const lowFile = file.toLowerCase();
+          const byPath = rows.find((ln) => String(ln.split('\t')[0] || '').toLowerCase().includes(lowFile));
+          if (byPath) first = byPath;
+        }
+
+        const [fileOut='', genre='', date='', track='', time='', composer='', performer='', albumartist='', name='', audio=''] = String(first || '').split('\t');
+        let audioOut = String(audio || '').trim();
+        let audioInfo = { codec:'', sample_rate:'', bits:'', bit_rate:'', channels:'', human:'' };
+        let personnelOut = [String(performer || '').trim(), String(composer || '').trim()].filter(Boolean).join(' • ');
+        if (!audioOut || /%audio%/i.test(audioOut)) {
+          const rel = String(fileOut || file || '').trim();
+          const cands = resolveLocalPath(rel);
+          for (const p of cands) {
+            try {
+              await fs.access(p);
+              audioInfo = await ffprobeAudio(p);
+              const pp = await ffprobePersonnel(p);
+              if (pp) personnelOut = pp;
+              if (audioInfo.human || pp) {
+                if (audioInfo.human) audioOut = audioInfo.human;
+                break;
+              }
+            } catch {}
+          }
+        }
+
+        return res.json({
+          ok: true,
+          action,
+          file,
+          found: !!first,
+          foundFile: String(fileOut || '').trim(),
+          meta: {
+            genre: String(genre || '').trim(),
+            date: String(date || '').trim(),
+            track: String(track || '').trim(),
+            time: String(time || '').trim(),
+            composer: String(composer || '').trim(),
+            performer: String(performer || '').trim(),
+            albumartist: String(albumartist || '').trim(),
+            name: String(name || '').trim(),
+            personnel: String(personnelOut || '').trim(),
+            audio: String(audioOut || '').trim(),
+            audioInfo,
+          },
+        });
+      }
+
       if (action === 'playfile') {
         const file = String(req.body?.file || '').trim();
         if (!file) return res.status(400).json({ ok: false, error: 'file is required for playfile' });
@@ -711,6 +849,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const headPos = m ? Number(m[1] || 0) : -1;
       const randomOn = /random:\s*on/i.test(st);
       const repeatOn = /repeat:\s*on/i.test(st);
+      const consumeOn = /consume:\s*on/i.test(st);
       const playbackState = /\[playing\]/i.test(st)
         ? 'playing'
         : (/\[paused\]/i.test(st) ? 'paused' : 'stopped');
@@ -806,7 +945,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           thumbUrl,
         });
       }
-      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, playbackState, ratingsEnabled, items });
+      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, consumeOn, playbackState, ratingsEnabled, items });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
