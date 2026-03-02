@@ -322,7 +322,7 @@
       };
       function skinMeta(name){
         const n = String(name || '').toLowerCase();
-        const linear = n.includes('cassette') || n.includes('tube') || n.includes('white-red');
+        const linear = n.includes('cassette');
         return { geometry: linear ? 'linear' : 'circular' };
       }
       function renderSkinOptions(selected = 'blue-1280') {
