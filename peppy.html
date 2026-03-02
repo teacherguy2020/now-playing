@@ -141,6 +141,11 @@
           <option value="segmented">Segmented</option>
           <option value="continuous">Continuous</option>
         </select>
+        <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
+          Norm
+          <input id="normalization" type="range" min="60" max="140" step="1" value="100" style="width:120px;" />
+          <span id="normalizationValue" style="font-size:12px;opacity:.9;min-width:30px;text-align:right;">100</span>
+        </label>
         <select id="themeName" class="skinSelect" aria-label="Peppy theme preset">
           <option value="graphite-green">Matrix</option>
           <option value="graphite-green">Green Neon</option>
@@ -313,6 +318,9 @@
         if (meterMode && p.meterMode) meterMode.value = String(p.meterMode);
         const n = Number(p.normalization);
         previewNormalization = (Number.isFinite(n) && n > 0) ? n : 100;
+        previewNormalization = Math.max(60, Math.min(140, Math.round(previewNormalization)));
+        if (normalization) normalization.value = String(previewNormalization);
+        if (normalizationValue) normalizationValue.textContent = String(previewNormalization);
         try { localStorage.setItem('peppy.normalization', String(previewNormalization)); } catch {}
         previewSkin = String(skinName?.value || p.skin || previewSkin || 'blue-1280');
         applyNeedleSkin(previewSkin);
@@ -344,6 +352,8 @@
       const meterTypeCircular = $('meterTypeCircular');
       const meterTypeLinear = $('meterTypeLinear');
       const meterMode = $('meterMode');
+      const normalization = $('normalization');
+      const normalizationValue = $('normalizationValue');
       const fontMode = $('fontMode');
       const fontSize = $('fontSize');
       const themeName = $('themeName');
@@ -547,6 +557,8 @@
       let previewFontSize = (() => { try { return localStorage.getItem('peppy.fontSize') || 'm'; } catch { return 'm'; } })();
       if (fontMode) fontMode.value = previewFontMode;
       if (fontSize) fontSize.value = previewFontSize;
+      if (normalization) normalization.value = String(Math.max(60, Math.min(140, Math.round(previewNormalization || 100))));
+      if (normalizationValue) normalizationValue.textContent = String(Math.max(60, Math.min(140, Math.round(previewNormalization || 100))));
       renderPresetSelect();
       renderSkinOptions(previewSkin);
       previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
@@ -1327,6 +1339,13 @@
         drawNeedles();
         publishProfileState();
       });
+      normalization?.addEventListener('input', () => {
+        const n = Math.max(60, Math.min(140, Math.round(Number(normalization.value || 100))));
+        previewNormalization = n;
+        if (normalizationValue) normalizationValue.textContent = String(n);
+        try { localStorage.setItem('peppy.normalization', String(n)); } catch {}
+        publishProfileState();
+      });
       themeName?.addEventListener('change', () => {
         const n = String(themeName?.value || 'midnight-blue');
         try { localStorage.setItem('peppy.theme', n); } catch {}
@@ -1404,8 +1423,10 @@
             try { localStorage.setItem('peppy.meterMode', mm); } catch {}
           }
           if (Number.isFinite(norm) && norm > 0) {
-            previewNormalization = norm;
-            try { localStorage.setItem('peppy.normalization', String(norm)); } catch {}
+            previewNormalization = Math.max(60, Math.min(140, Math.round(norm)));
+            if (normalization) normalization.value = String(previewNormalization);
+            if (normalizationValue) normalizationValue.textContent = String(previewNormalization);
+            try { localStorage.setItem('peppy.normalization', String(previewNormalization)); } catch {}
           }
           renderSkinOptions(previewSkin);
           previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
