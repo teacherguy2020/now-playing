@@ -462,11 +462,17 @@
         } catch { return 0.6; }
       }
 
+      const ASSET_VER = 'swap-1';
+      function withAssetVer(u){
+        const s = String(u || '');
+        if (!s) return '';
+        return `${s}${s.includes('?') ? '&' : '?'}v=${ASSET_VER}`;
+      }
       function applyNeedleSkin(name){
         const s = SKIN_ASSETS[name] || SKIN_ASSETS['blue-1280'];
-        needleSkin.bgr.src = s.bgr;
-        needleSkin.fgr.src = s.fgr;
-        needleSkin.needle.src = s.needle || '';
+        needleSkin.bgr.src = withAssetVer(s.bgr);
+        needleSkin.fgr.src = withAssetVer(s.fgr);
+        needleSkin.needle.src = withAssetVer(s.needle || '');
         applyNeedleGeometry(name);
       }
 
