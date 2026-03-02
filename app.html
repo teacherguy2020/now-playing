@@ -629,6 +629,7 @@
       let notifyConfigured = false;
       let notifyEnabled = null;
       let peppyModeState = (() => { try { return String(localStorage.getItem('np.peppyMode') || 'webui'); } catch { return 'webui'; } })();
+      let lastPeppyProfile = { skin:'', theme:'', ts:0 };
       let screenModeState = (() => { try { return String(localStorage.getItem('np.screenMode') || 'nowplaying'); } catch { return 'nowplaying'; } })();
       let alexaEnabledState = null;
       let alexaDomainState = '';
@@ -1854,8 +1855,8 @@
         const qs = new URLSearchParams();
         qs.set('kiosk', '1');
         qs.set('sw', String(Date.now()));
-        let s = '';
-        let t = '';
+        let s = String(lastPeppyProfile?.skin || '').trim();
+        let t = String(lastPeppyProfile?.theme || '').trim();
         try {
           const f = document.getElementById('appFrame');
           const w = f?.contentWindow;
@@ -3163,6 +3164,19 @@
             // Pull latest queue as soon as operation settles.
             setTimeout(() => { try { syncHeroQueue(); } catch {} }, 120);
           }
+          return;
+        }
+
+        if (d.type === 'peppy-profile') {
+          const skin = String(d.skin || '').trim();
+          const theme = String(d.theme || '').trim();
+          if (skin) lastPeppyProfile.skin = skin;
+          if (theme) lastPeppyProfile.theme = theme;
+          lastPeppyProfile.ts = Number(d.ts || Date.now()) || Date.now();
+          try {
+            if (skin) localStorage.setItem('peppy.skin', skin);
+            if (theme) localStorage.setItem('peppy.theme', theme);
+          } catch {}
           return;
         }
 

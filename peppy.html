@@ -232,6 +232,13 @@
         r.style.setProperty('--dot-bg', t.dotBg || t.card2);
         r.style.setProperty('--dot-dim', t.dotDim || t.line);
       }
+      function publishProfileState(){
+        try {
+          const skin = String(skinName?.value || previewSkin || '').trim();
+          const theme = String(themeName?.value || '').trim();
+          window.parent?.postMessage({ type:'peppy-profile', skin, theme, ts: Date.now() }, '*');
+        } catch {}
+      }
       if (skinOpsEl) skinOpsEl.style.display = kioskMode ? 'none' : 'flex';
       const ctrlPrev = $('ctrlPrev');
       const ctrlPlay = $('ctrlPlay');
@@ -1072,6 +1079,7 @@
         }
         applyNeedleSkin(previewSkin);
         drawNeedles();
+        publishProfileState();
       });
       skinGeometry?.addEventListener('change', () => {
         previewSkinGeometry = String(skinGeometry?.value || 'all');
@@ -1108,6 +1116,7 @@
         try { localStorage.setItem('peppy.theme', n); } catch {}
         applyTheme(n);
         redrawDotCanvases();
+        publishProfileState();
       });
       iframeScaleInput?.addEventListener('input', () => {
         const s = Math.max(30, Math.min(100, Number(iframeScaleInput.value || 50)));
@@ -1125,6 +1134,7 @@
 
       (async () => {
         fitPreviewScale();
+        publishProfileState();
         await loadSkinCatalog();
         renderSkinOptions(previewSkin);
         await resolveApiBase();
