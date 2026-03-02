@@ -29,6 +29,10 @@
         theme = String(p?.theme || '').trim();
       } catch {}
 
+      if (mode === 'moode') {
+        f.src = 'http://moode.local/index.php';
+        return;
+      }
       if (mode === 'index' || mode === 'webui') {
         f.src = `index.html?kiosk=1&ts=${Date.now()}`;
         return;

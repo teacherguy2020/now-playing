@@ -340,6 +340,7 @@
         </nav>
         <button id="pushPeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Push Peppy to moOde</button>
         <button id="showIndexBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Index on moOde</button>
+        <button id="showMoodeUiBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show moOde UI</button>
         <button id="refreshDisplayBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Refresh moOde Display</button>
         <div class="statusInline" aria-label="status pills">
           <button class="pill" id="apiPill" type="button" title="Active API endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>API<span class="hint" id="apiHint">loading…</span></button>
@@ -2212,9 +2213,11 @@
         const show = String(currentShellPage || '') === 'peppy.html';
         const btn = document.getElementById('pushPeppyBtn');
         const idxBtn = document.getElementById('showIndexBtn');
+        const moodeBtn = document.getElementById('showMoodeUiBtn');
         const refBtn = document.getElementById('refreshDisplayBtn');
         if (btn) btn.style.display = show ? '' : 'none';
         if (idxBtn) idxBtn.style.display = show ? '' : 'none';
+        if (moodeBtn) moodeBtn.style.display = show ? '' : 'none';
         if (refBtn) refBtn.style.display = show ? '' : 'none';
       }
 
@@ -2355,6 +2358,10 @@
       document.getElementById('showIndexBtn')?.addEventListener('click', async (ev) => {
         ev.preventDefault();
         try { await setDisplayModeAndRefresh('index'); } catch (e) { console.warn('show index failed', e?.message || e); }
+      });
+      document.getElementById('showMoodeUiBtn')?.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try { await setDisplayModeAndRefresh('moode'); } catch (e) { console.warn('show moode ui failed', e?.message || e); }
       });
       document.getElementById('refreshDisplayBtn')?.addEventListener('click', async (ev) => {
         ev.preventDefault();
