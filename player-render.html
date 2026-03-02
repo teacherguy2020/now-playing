@@ -51,12 +51,27 @@
   <style>
     /* Size-profile pass 1: keep 1280x400 composition, fit into target panel */
     body.player-size-800x480 #content{
-      width:1280px;
-      height:400px;
-      transform:scale(0.625);
-      transform-origin:top center;
-      margin-top:16px;
+      width:800px;
+      height:480px;
+      transform:none;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:360px 1fr;
+      gap:14px;
+      align-items:stretch;
+      padding:8px;
+      box-sizing:border-box;
     }
+    body.player-size-800x480 #album-art-wrapper{width:360px;height:464px;min-height:0}
+    body.player-size-800x480 #album-art,
+    body.player-size-800x480 #album-art-video{width:344px;height:344px;object-fit:cover}
+    body.player-size-800x480 .text-column{min-width:0;padding-top:4px}
+    body.player-size-800x480 #artist-name{font-size:40px;line-height:1.04}
+    body.player-size-800x480 #track-title{font-size:34px;line-height:1.06}
+    body.player-size-800x480 #album-text{font-size:24px}
+    body.player-size-800x480 #file-info,#mode-status,#personnel-info{font-size:18px}
+    body.player-size-800x480 #next-up{font-size:18px}
+    body.player-size-800x480 #progress-bar-wrapper{height:16px}
   </style>
 
 </head>
