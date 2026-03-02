@@ -94,6 +94,15 @@
         <button id="skinExport" class="skinBtn" type="button">Export Skin</button>
         <button id="skinDeploy" class="skinBtn" type="button">Deploy Skin</button>
         <select id="skinName" class="skinSelect" aria-label="Select skin"></select>
+        <select id="skinGeometry" class="skinSelect" aria-label="Meter geometry">
+          <option value="all">All geometry</option>
+          <option value="circular">Circular</option>
+          <option value="linear">Linear</option>
+        </select>
+        <select id="styleFamily" class="skinSelect" aria-label="Style family">
+          <option value="modern">Modern</option>
+          <option value="classic">Classic</option>
+        </select>
         <select id="meterMode" class="skinSelect" aria-label="Meter mode">
           <option value="segmented">Segmented</option>
           <option value="continuous">Continuous</option>
@@ -232,6 +241,8 @@
       const skinExport = $('skinExport');
       const skinDeploy = $('skinDeploy');
       const skinName = $('skinName');
+      const skinGeometry = $('skinGeometry');
+      const styleFamily = $('styleFamily');
       const meterMode = $('meterMode');
       const meterColorMode = $('meterColorMode');
       const themeName = $('themeName');
@@ -259,11 +270,26 @@
         'tube-1280': { bgr: 'assets/peppy/tube-1280-bgr.png', fgr: 'assets/peppy/tube-1280-fgr.png', needle: 'assets/peppy/tube-1280-needle.png' },
         'white-red-1280': { bgr: 'assets/peppy/white-red-1280-bgr.png', fgr: '', needle: 'assets/peppy/white-red-1280-needle.png' },
       };
+      function skinMeta(name){
+        const n = String(name || '').toLowerCase();
+        const linear = n.includes('cassette') || n.includes('tube') || n.includes('white-red');
+        const style = linear ? 'classic' : 'modern';
+        return { geometry: linear ? 'linear' : 'circular', style };
+      }
       function renderSkinOptions(selected = 'blue-1280') {
         if (!skinName) return;
-        const names = [...new Set([...Object.keys(SKIN_ASSETS), 'cassette-linear'])].filter((n) => n !== 'mack-blue-compact');
-        skinName.innerHTML = names.map((n) => `<option value="${n}">${n}</option>`).join('');
-        skinName.value = names.includes(selected) ? selected : (names[0] || 'blue-1280');
+        const g = String(skinGeometry?.value || 'all');
+        const sf = String(styleFamily?.value || 'modern');
+        const all = [...new Set([...Object.keys(SKIN_ASSETS), 'cassette-linear'])].filter((n) => n !== 'mack-blue-compact');
+        const names = all.filter((n) => {
+          const m = skinMeta(n);
+          const gOk = (g === 'all') || (m.geometry === g);
+          const sOk = (m.style === sf);
+          return gOk && sOk;
+        });
+        const final = names.length ? names : all;
+        skinName.innerHTML = final.map((n) => `<option value="${n}">${n}</option>`).join('');
+        skinName.value = final.includes(selected) ? selected : (final[0] || 'blue-1280');
       }
       async function loadSkinCatalog(){
         try {
@@ -391,7 +417,16 @@
         try { return localStorage.getItem('peppy.skin') || String(skinName?.value || 'blue-1280'); } catch { return String(skinName?.value || 'blue-1280'); }
       })();
       if (!(previewSkin in SKIN_ASSETS) && previewSkin !== 'cassette-linear') previewSkin = 'blue-1280';
+      let previewStyleFamily = (() => {
+        try { return localStorage.getItem('peppy.styleFamily') || skinMeta(previewSkin).style || 'modern'; } catch { return skinMeta(previewSkin).style || 'modern'; }
+      })();
+      let previewSkinGeometry = (() => {
+        try { return localStorage.getItem('peppy.skinGeometry') || 'all'; } catch { return 'all'; }
+      })();
+      if (styleFamily) styleFamily.value = previewStyleFamily;
+      if (skinGeometry) skinGeometry.value = previewSkinGeometry;
       renderSkinOptions(previewSkin);
+      previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
       applyNeedleSkin(previewSkin);
 
       let previewMeterMode = (() => { try { return localStorage.getItem('peppy.meterMode') || 'segmented'; } catch { return 'segmented'; } })();
@@ -800,6 +835,34 @@
         ctx.shadowBlur = 0;
       }
 
+      function drawPlainText(canvas, text, opts = {}) {
+        const p = prepCanvas(canvas);
+        if (!p) return;
+        const { ctx, w: W, h: H } = p;
+        const pal = opts.palette || dotPalette();
+        ctx.clearRect(0,0,W,H);
+        ctx.fillStyle = 'transparent';
+        ctx.fillRect(0,0,W,H);
+        const size = Number(opts.size || 54);
+        const family = String(opts.font || 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif');
+        const weight = String(opts.weight || '800');
+        ctx.font = `${weight} ${size}px ${family}`;
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = pal.on;
+        ctx.shadowColor = 'transparent';
+        const padX = Number(opts.padX || 8);
+        const y = Math.round(H / 2);
+        const s = String(text || '—');
+        const ellipsize = (t) => {
+          if (ctx.measureText(t).width <= (W - padX*2)) return t;
+          let out = t;
+          while (out.length > 1 && ctx.measureText(`${out}…`).width > (W - padX*2)) out = out.slice(0, -1);
+          return `${out}…`;
+        };
+        ctx.fillText(ellipsize(s), padX, y);
+      }
+
       async function resolveApiBase(){
         for (const base of candidates) {
           try {
@@ -876,14 +939,23 @@
       let dotFileMeta = '—';
       let dotFileMeta2 = '—';
       function redrawDotCanvases(){
-        const isWarmParchment = String(themeName?.value || '').trim() === 'warm-parchment';
-        const titleDot = isWarmParchment ? 1.8 : 1.4;
-        const metaDot = isWarmParchment ? 0.85 : 0.7;
-        drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
-        drawDotText(titleCanvas, dotTitle, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
-        drawDotText(albumYearCanvas, dotAlbumYear, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
-        drawDotText(fileMetaCanvas, dotFileMeta, { size: 22, pitch: 2, dot: metaDot, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
-        drawDotText(fileMetaCanvas2, dotFileMeta2, { size: 22, pitch: 2, dot: metaDot, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
+        const mode = String(styleFamily?.value || previewStyleFamily || 'modern');
+        if (mode === 'classic') {
+          const isWarmParchment = String(themeName?.value || '').trim() === 'warm-parchment';
+          const titleDot = isWarmParchment ? 1.8 : 1.4;
+          const metaDot = isWarmParchment ? 0.85 : 0.7;
+          drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
+          drawDotText(titleCanvas, dotTitle, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
+          drawDotText(albumYearCanvas, dotAlbumYear, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
+          drawDotText(fileMetaCanvas, dotFileMeta, { size: 22, pitch: 2, dot: metaDot, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
+          drawDotText(fileMetaCanvas2, dotFileMeta2, { size: 22, pitch: 2, dot: metaDot, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
+          return;
+        }
+        drawPlainText(artistCanvas, dotArtist, { size: 52, weight: 760 });
+        drawPlainText(titleCanvas, dotTitle, { size: 52, weight: 800 });
+        drawPlainText(albumYearCanvas, dotAlbumYear, { size: 52, weight: 760 });
+        drawPlainText(fileMetaCanvas, dotFileMeta, { size: 20, weight: 640 });
+        drawPlainText(fileMetaCanvas2, dotFileMeta2, { size: 20, weight: 640 });
       }
       window.addEventListener('resize', () => { fitPreviewScale(); redrawDotCanvases(); });
 
@@ -990,6 +1062,10 @@
       skinName?.addEventListener('change', () => {
         previewSkin = String(skinName?.value || 'blue-1280');
         try { localStorage.setItem('peppy.skin', previewSkin); } catch {}
+        const m = skinMeta(previewSkin);
+        previewStyleFamily = m.style;
+        if (styleFamily) styleFamily.value = previewStyleFamily;
+        try { localStorage.setItem('peppy.styleFamily', previewStyleFamily); } catch {}
         const matched = matchThemeForSkin(previewSkin);
         if (matched && THEMES[matched]) {
           if (themeName) themeName.value = matched;
@@ -998,6 +1074,26 @@
           redrawDotCanvases();
         }
         applyNeedleSkin(previewSkin);
+        drawNeedles();
+      });
+      skinGeometry?.addEventListener('change', () => {
+        previewSkinGeometry = String(skinGeometry?.value || 'all');
+        try { localStorage.setItem('peppy.skinGeometry', previewSkinGeometry); } catch {}
+        renderSkinOptions(previewSkin);
+        previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
+        try { localStorage.setItem('peppy.skin', previewSkin); } catch {}
+        applyNeedleSkin(previewSkin);
+        redrawDotCanvases();
+        drawNeedles();
+      });
+      styleFamily?.addEventListener('change', () => {
+        previewStyleFamily = String(styleFamily?.value || 'modern');
+        try { localStorage.setItem('peppy.styleFamily', previewStyleFamily); } catch {}
+        renderSkinOptions(previewSkin);
+        previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
+        try { localStorage.setItem('peppy.skin', previewSkin); } catch {}
+        applyNeedleSkin(previewSkin);
+        redrawDotCanvases();
         drawNeedles();
       });
       meterMode?.addEventListener('change', () => {
