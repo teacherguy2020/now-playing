@@ -313,9 +313,25 @@
       }
       function renderPresetSelect(){
         if (!peppyPreset) return;
-        let all = [];
-        try { all = listPresets(); } catch { all = [...BUILTIN_PRESETS]; }
-        if (!Array.isArray(all) || !all.length) all = [...BUILTIN_PRESETS];
+        // Keep server-rendered built-ins if present; append custom presets after them.
+        const hasStatic = peppyPreset.options.length >= 6;
+        let custom = [];
+        try {
+          const raw = JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]');
+          custom = Array.isArray(raw) ? raw : [];
+        } catch { custom = []; }
+        if (hasStatic) {
+          // Remove previously appended custom options, keep first 6 static options.
+          while (peppyPreset.options.length > 6) peppyPreset.remove(6);
+          custom.forEach((p, i) => {
+            const opt = document.createElement('option');
+            opt.value = String(BUILTIN_PRESETS.length + i);
+            opt.textContent = String(p?.name || `Preset ${BUILTIN_PRESETS.length + i + 1}`);
+            peppyPreset.appendChild(opt);
+          });
+          return;
+        }
+        const all = [...BUILTIN_PRESETS, ...custom];
         peppyPreset.innerHTML = ['<option value="">Load preset…</option>', ...all.map((p,i)=>`<option value="${i}">${String(p?.name || ('Preset ' + (i+1)))}</option>`)].join('');
       }
       function applyPreset(p){
