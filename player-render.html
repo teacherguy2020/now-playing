@@ -78,7 +78,16 @@
     body.player-size-800x480 #album-text{font-size:24px}
     body.player-size-800x480 #file-info,#mode-status,#personnel-info{font-size:18px}
     body.player-size-800x480 #next-up{font-size:18px}
-    body.player-size-800x480 #progress-bar-wrapper{height:9px}
+    body.player-size-800x480 #progress-bar-wrapper{
+      position:fixed !important;
+      left:8px !important;
+      top:430px !important;
+      width:344px !important;
+      right:auto !important;
+      bottom:auto !important;
+      height:9px;
+      z-index:9998 !important;
+    }
     body.player-size-800x480 #phone-controls{
       display:flex !important;
       position:fixed !important;
