@@ -77,10 +77,10 @@
   <div id="previewStage" class="previewStage">
   <div id="wrap" class="wrap">
     <section class="card left">
-      <img id="art" alt="Album art" src="" />
+      <div class="progress" style="margin:0;width:100%;border-left:none;border-right:none;border-bottom:none;"><div id="trackProgress" class="progressSegbar"></div></div>
       <canvas class="dotline small leftFileMeta" id="fileMetaCanvas" width="640" height="24"></canvas>
       <canvas class="dotline small leftFileMeta" id="fileMetaCanvas2" width="640" height="24"></canvas>
-      <div class="progress" style="margin:0;width:100%;border-left:none;border-right:none;border-bottom:none;"><div id="trackProgress" class="progressSegbar"></div></div>
+      <img id="art" alt="Album art" src="" />
     </section>
 
     <section class="card right">
@@ -105,6 +105,8 @@
         <select id="themeName" class="skinSelect" aria-label="UI theme">
           <option value="midnight-blue">midnight-blue</option>
           <option value="amber-night">amber-night</option>
+          <option value="red-neon">red-neon</option>
+          <option value="warm-parchment">warm-parchment</option>
           <option value="graphite-green">graphite-green</option>
           <option value="silver-black">silver-black</option>
           <option value="obsidian-black">obsidian-black</option>
@@ -162,6 +164,8 @@
       const THEMES = {
         'midnight-blue': { bg:'#05070d', fg:'#e6efff', muted:'#9bb0d3', card:'#0d1422', card2:'#08101a', line:'#22324a', accent:'#7dd3fc', accent2:'#22c55e', dotBg:'#06101a', dotDim:'#3a516f' },
         'amber-night': { bg:'#0d0a05', fg:'#ffe9cc', muted:'#d5b88c', card:'#24170b', card2:'#170f07', line:'#5a3e21', accent:'#ffb347', accent2:'#ffd166', dotBg:'#4a1216', dotDim:'#b45a63' },
+        'red-neon': { bg:'#120709', fg:'#ffe1e6', muted:'#d6a0ab', card:'#2a0f14', card2:'#1b0a0e', line:'#6e2b38', accent:'#ff5a7a', accent2:'#ff8fa3', dotBg:'#3a0f16', dotDim:'#934a58' },
+        'warm-parchment': { bg:'#e8e2d6', fg:'#201b16', muted:'#5b5247', card:'#d9cfbd', card2:'#cfc3af', line:'#b4a58b', accent:'#c68932', accent2:'#a96f22', dotBg:'#ddd1bf', dotDim:'#7f715d' },
         'graphite-green': { bg:'#060b08', fg:'#d9f5e3', muted:'#9cc9ae', card:'#0f1a14', card2:'#0a120d', line:'#284536', accent:'#67e8a5', accent2:'#34d399', dotBg:'#08140f', dotDim:'#2f5a45' },
         'silver-black': { bg:'#08090b', fg:'#edf1f7', muted:'#aab4c3', card:'#171b21', card2:'#0f1217', line:'#3a4352', accent:'#93c5fd', accent2:'#60a5fa', dotBg:'#111620', dotDim:'#455064' },
         'obsidian-black': { bg:'#000000', fg:'#f3f6fb', muted:'#9aa3b3', card:'#050608', card2:'#010204', line:'#2a2f38', accent:'#dbe4f2', accent2:'#9aa8bd', dotBg:'#06080b', dotDim:'#39414d' },
@@ -177,6 +181,7 @@
         'gold-1280':'amber-night',
         'red-1280':'amber-night',
         'tube-1280':'silver-black',
+        'white-red-1280':'silver-black',
         'blue':'midnight-blue',
         'blue-1280':'midnight-blue',
         'blue-2':'midnight-blue',
@@ -252,12 +257,13 @@
         'gold-1280': { bgr: 'assets/peppy/gold-1280-bgr.png', fgr: 'assets/peppy/gold-1280-fgr.png', needle: 'assets/peppy/gold-1280-needle.png' },
         'red-1280': { bgr: 'assets/peppy/red-1280-bgr.png', fgr: 'assets/peppy/red-1280-fgr.png', needle: 'assets/peppy/red-1280-needle.png' },
         'tube-1280': { bgr: 'assets/peppy/tube-1280-bgr.png', fgr: 'assets/peppy/tube-1280-fgr.png', needle: 'assets/peppy/tube-1280-needle.png' },
+        'white-red-1280': { bgr: 'assets/peppy/white-red-1280-bgr.png', fgr: '', needle: 'assets/peppy/white-red-1280-needle.png' },
       };
-      function renderSkinOptions(selected = 'mack-blue-compact') {
+      function renderSkinOptions(selected = 'blue-1280') {
         if (!skinName) return;
-        const names = [...new Set([...Object.keys(SKIN_ASSETS), 'cassette-linear'])];
+        const names = [...new Set([...Object.keys(SKIN_ASSETS), 'cassette-linear'])].filter((n) => n !== 'mack-blue-compact');
         skinName.innerHTML = names.map((n) => `<option value="${n}">${n}</option>`).join('');
-        skinName.value = names.includes(selected) ? selected : (names[0] || 'mack-blue-compact');
+        skinName.value = names.includes(selected) ? selected : (names[0] || 'blue-1280');
       }
       async function loadSkinCatalog(){
         try {
@@ -296,7 +302,7 @@
       }
 
       function applyNeedleSkin(name){
-        const s = SKIN_ASSETS[name] || SKIN_ASSETS['mack-blue-compact'];
+        const s = SKIN_ASSETS[name] || SKIN_ASSETS['blue-1280'];
         needleSkin.bgr.src = s.bgr;
         needleSkin.fgr.src = s.fgr;
         needleSkin.needle.src = s.needle || '';
@@ -335,18 +341,26 @@
 
       const NATIVE_NEEDLE_CFG = {
         'mack-blue-compact': { start: 45, stop: -45, distance: 265, ox: 319, oy: 460, lenMul: 1.0 },
-        'blue-1280': { start: 45, stop: -45, distance: 221, ox: 319, oy: 460, lenMul: 1.0 },
+        'blue-1280': { start: 57, stop: -57, startL: 58, startR: 57, distance: 170, ox: 320, oxL: 312, oxR: 290, oy: 390, lenMul: 1.26 },
         'orange-1280': { start: 48, stop: -48, distance: 140, ox: 347, oy: 344, lenMul: 1.0 },
-        'emerald-1280': { start: 47, stop: -47, distance: 170, ox: 337, oy: 402, lenMul: 1.0 },
-        'black-white-1280': { start: 45, stop: -46, distance: 190, ox: 342, oy: 464, lenMul: 1.0 },
-        'gold-1280': { start: 44, stop: -44, distance: 170, ox: 334, oy: 375, lenMul: 1.0 },
-        'red-1280': { start: 43, stop: -43, distance: 200, ox: 345, oy: 435, lenMul: 1.0 },
-        'tube-1280': { start: 35, stop: -35, distance: 120, ox: 281, oy: 366, lenMul: 1.0 },
+        'emerald': { start: 52, stop: -52, distance: 170, ox: 300, oxL: 326, oxR: 289, oy: 394, lenMul: 1.15 },
+        'emerald-1280': { start: 52, stop: -52, distance: 170, ox: 300, oxL: 326, oxR: 289, oy: 394, lenMul: 1.15 },
+        'black-white-1280': { start: 50, stop: -50, startR: 48, distance: 170, ox: 320, oxL: 312, oxR: 273, oy: 440, lenMul: 1.26 },
+        'gold-1280': { start: 48, stop: -48, distance: 170, ox: 320, oxL: 334, oxR: 320, oy: 384, lenMul: 1.15 },
+        'red-1280': { start: 46, stop: -46, distance: 170, ox: 320, oxL: 284, oxR: 236, oy: 384, lenMul: 1.15 },
+        'tube-1280': { start: 45, stop: -45, distance: 120, ox: 286, oxR: 346, oy: 366, lenMul: 1.5 },
+        'white-red-1280': { start: 38, stop: -38, distance: 170, ox: 345, oy: 424, lenMul: 1.0 },
       };
       let needleCfg = {
         startDeg: 225,
         endDeg: 315,
+        startDegLeft: 225,
+        endDegLeft: 315,
+        startDegRight: 225,
+        endDegRight: 315,
         pivotX: 0.50,
+        pivotXLeft: 0.50,
+        pivotXRight: 0.50,
         pivotY: 1.15,
         radiusMul: 0.41,
         needleInset: 0,
@@ -359,7 +373,13 @@
         const h = 400;
         needleCfg.startDeg = 270 - Number(c.start || 45);
         needleCfg.endDeg = 270 - Number(c.stop || -45);
+        needleCfg.startDegLeft = 270 - Number(c.startL || c.start || 45);
+        needleCfg.endDegLeft = 270 - Number(c.stopL || c.stop || -45);
+        needleCfg.startDegRight = 270 - Number(c.startR || c.start || 45);
+        needleCfg.endDegRight = 270 - Number(c.stopR || c.stop || -45);
         needleCfg.pivotX = Number(c.ox || 320) / halfW;
+        needleCfg.pivotXLeft = Number(c.oxL || c.ox || 320) / halfW;
+        needleCfg.pivotXRight = Number(c.oxR || c.ox || 320) / halfW;
         needleCfg.pivotY = Number(c.oy || 400) / h;
         // Global calibration: native distance renders short in this canvas pipeline.
         needleCfg.radiusMul = (Number(c.distance || 180) / halfW) * 1.38;
@@ -368,9 +388,9 @@
       let previewSkin = (() => {
         const fromUrl = String(qp.get('skin') || '').trim();
         if (fromUrl) return fromUrl;
-        try { return localStorage.getItem('peppy.skin') || String(skinName?.value || 'mack-blue-compact'); } catch { return String(skinName?.value || 'mack-blue-compact'); }
+        try { return localStorage.getItem('peppy.skin') || String(skinName?.value || 'blue-1280'); } catch { return String(skinName?.value || 'blue-1280'); }
       })();
-      if (!(previewSkin in SKIN_ASSETS) && previewSkin !== 'cassette-linear') previewSkin = 'mack-blue-compact';
+      if (!(previewSkin in SKIN_ASSETS) && previewSkin !== 'cassette-linear') previewSkin = 'blue-1280';
       renderSkinOptions(previewSkin);
       applyNeedleSkin(previewSkin);
 
@@ -390,7 +410,7 @@
         const cs = getComputedStyle(document.documentElement);
         const c = String(cs.getPropertyValue('--accent') || '').trim() || '#7dd3fc';
         // Stronger tint for warm themes, subtler for cool/default.
-        const warm = /amber|orange|red/i.test(String(themeName?.value || ''));
+        const warm = /amber|orange|red|parchment/i.test(String(themeName?.value || ''));
         return { color: c, alpha: warm ? 0.22 : 0.14 };
       }
 
@@ -517,11 +537,14 @@
             ctx.fillRect(x, y0, meterW, meterH);
           }
 
-          const cx = x + meterW * needleCfg.pivotX;
+          const px = side === 'R' ? (needleCfg.pivotXRight ?? needleCfg.pivotX) : (needleCfg.pivotXLeft ?? needleCfg.pivotX);
+          const cx = x + meterW * px;
           const cy = y0 + meterH * needleCfg.pivotY;
           const r = meterW * needleCfg.radiusMul;
-          const aStart = (needleCfg.startDeg * Math.PI) / 180;
-          const aEnd = (needleCfg.endDeg * Math.PI) / 180;
+          const sDeg = side === 'R' ? (needleCfg.startDegRight ?? needleCfg.startDeg) : (needleCfg.startDegLeft ?? needleCfg.startDeg);
+          const eDeg = side === 'R' ? (needleCfg.endDegRight ?? needleCfg.endDeg) : (needleCfg.endDegLeft ?? needleCfg.endDeg);
+          const aStart = (sDeg * Math.PI) / 180;
+          const aEnd = (eDeg * Math.PI) / 180;
           const n = clamp(level) / 100;
           const a = aStart + (aEnd - aStart) * n;
           const tipR = (r - needleCfg.needleInset) * (needleCfg.lenMul || 1.0);
@@ -853,11 +876,14 @@
       let dotFileMeta = '—';
       let dotFileMeta2 = '—';
       function redrawDotCanvases(){
-        drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: 1.4, font: '"Arial Black", "Segoe UI", sans-serif' });
-        drawDotText(titleCanvas, dotTitle, { size: 56, pitch: 4, dot: 1.4, font: '"Arial Black", "Segoe UI", sans-serif' });
-        drawDotText(albumYearCanvas, dotAlbumYear, { size: 56, pitch: 4, dot: 1.4, font: '"Arial Black", "Segoe UI", sans-serif' });
-        drawDotText(fileMetaCanvas, dotFileMeta, { size: 22, pitch: 2, dot: 0.7, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
-        drawDotText(fileMetaCanvas2, dotFileMeta2, { size: 22, pitch: 2, dot: 0.7, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
+        const isWarmParchment = String(themeName?.value || '').trim() === 'warm-parchment';
+        const titleDot = isWarmParchment ? 1.8 : 1.4;
+        const metaDot = isWarmParchment ? 0.85 : 0.7;
+        drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
+        drawDotText(titleCanvas, dotTitle, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
+        drawDotText(albumYearCanvas, dotAlbumYear, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
+        drawDotText(fileMetaCanvas, dotFileMeta, { size: 22, pitch: 2, dot: metaDot, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
+        drawDotText(fileMetaCanvas2, dotFileMeta2, { size: 22, pitch: 2, dot: metaDot, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
       }
       window.addEventListener('resize', () => { fitPreviewScale(); redrawDotCanvases(); });
 
@@ -962,7 +988,7 @@
       skinExport?.addEventListener('click', () => skinOp('/config/peppy/skins/export', {}, skinExport));
       skinDeploy?.addEventListener('click', () => skinOp('/config/peppy/skins/deploy', {}, skinDeploy));
       skinName?.addEventListener('change', () => {
-        previewSkin = String(skinName?.value || 'mack-blue-compact');
+        previewSkin = String(skinName?.value || 'blue-1280');
         try { localStorage.setItem('peppy.skin', previewSkin); } catch {}
         const matched = matchThemeForSkin(previewSkin);
         if (matched && THEMES[matched]) {
@@ -1004,9 +1030,9 @@
         }
       });
       skinActivate?.addEventListener('click', () => {
-        const name = String(skinName?.value || 'mack-blue-compact');
+        const name = String(skinName?.value || 'blue-1280');
         if (name === 'orange-1280' || name === 'blue-1280') {
-          alert('This is a web preview skin only. Use mack-blue-compact or another native-exported skin for Activate.');
+          alert('This is a web preview skin only. Use blue-1280 or another native-exported skin for Activate.');
           return;
         }
         skinOp('/config/peppy/skins/activate', { name }, skinActivate);

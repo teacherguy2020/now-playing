@@ -47,6 +47,12 @@
       "bgr": "assets/peppy/tube-1280-bgr.png",
       "fgr": "assets/peppy/tube-1280-fgr.png",
       "needle": "assets/peppy/tube-1280-needle.png"
+    },
+    {
+      "name": "white-red-1280",
+      "bgr": "assets/peppy/white-red-1280-bgr.png",
+      "fgr": "",
+      "needle": "assets/peppy/white-red-1280-needle.png"
     }
   ]
 }

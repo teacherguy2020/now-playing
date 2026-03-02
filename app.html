@@ -940,18 +940,19 @@
           // Theme preset -> closest peppy skin/theme mapping
           const themeMap = {
             'Matrix':'graphite-green','Green Neon':'graphite-green',
-            'Red Neon':'amber-night','Muted Merlot':'amber-night','Warm Parchment':'amber-night',
+            'Red Neon':'red-neon','Muted Merlot':'red-neon','Warm Parchment':'warm-parchment',
             'Blue Neon':'midnight-blue','Chill Blue':'midnight-blue','Abyss Graphite':'midnight-blue',
-            'Slate Medium':'silver-black','Monotone Gray':'silver-black','Obsidian Black':'obsidian-black'
+            'Slate Medium':'silver-black','Monotone Gray':'silver-black','Obsidian Black':'obsidian-black','Morning Paper':'silver-black','morning paper':'silver-black'
           };
           const skinMap = {
             'Matrix':'emerald-1280','Green Neon':'emerald-1280',
             'Red Neon':'red-1280','Muted Merlot':'red-1280','Warm Parchment':'gold-1280',
             'Blue Neon':'blue-1280','Chill Blue':'blue-1280',
-            'Abyss Graphite':'mack-blue-compact','Slate Medium':'mack-blue-compact','Monotone Gray':'mack-blue-compact','Obsidian Black':'black-white-1280'
+            'Abyss Graphite':'blue-1280','Slate Medium':'cassette-linear','Monotone Gray':'tube-1280','Obsidian Black':'black-white-1280','Morning Paper':'white-red-1280','morning paper':'white-red-1280'
           };
-          const peppyTheme = themeMap[n] || '';
-          const peppySkin = skinMap[n] || '';
+          const nKey = String(n||'').trim().toLowerCase();
+          const peppyTheme = nKey.includes('morning') && nKey.includes('paper') ? 'silver-black' : (themeMap[n] || themeMap[nKey] || '');
+          const peppySkin = nKey.includes('morning') && nKey.includes('paper') ? 'white-red-1280' : (skinMap[n] || skinMap[nKey] || '');
           try {
             if (peppyTheme) localStorage.setItem('peppy.theme', peppyTheme);
             if (peppySkin) localStorage.setItem('peppy.skin', peppySkin);
@@ -1874,9 +1875,9 @@
           const themeMap = {
             'Matrix':'graphite-green',
             'Green Neon':'graphite-green',
-            'Red Neon':'amber-night',
-            'Muted Merlot':'amber-night',
-            'Warm Parchment':'amber-night',
+            'Red Neon':'red-neon',
+            'Muted Merlot':'red-neon',
+            'Warm Parchment':'warm-parchment',
             'Blue Neon':'midnight-blue',
             'Chill Blue':'midnight-blue',
             'Abyss Graphite':'midnight-blue',
@@ -1892,13 +1893,17 @@
             'Warm Parchment':'gold-1280',
             'Blue Neon':'blue-1280',
             'Chill Blue':'blue-1280',
-            'Abyss Graphite':'mack-blue-compact',
-            'Slate Medium':'mack-blue-compact',
-            'Monotone Gray':'mack-blue-compact',
+            'Abyss Graphite':'blue-1280',
+            'Slate Medium':'cassette-linear',
+            'Monotone Gray':'tube-1280',
             'Obsidian Black':'black-white-1280',
           };
-          if (themeMap[preset]) t = themeMap[preset];
-          if (skinMap[preset]) s = skinMap[preset];
+          const pKey = String(preset||'').trim().toLowerCase();
+          if (pKey.includes('morning') && pKey.includes('paper')) { t = 'silver-black'; s = 'white-red-1280'; }
+          else {
+            if (themeMap[preset] || themeMap[pKey]) t = themeMap[preset] || themeMap[pKey];
+            if (skinMap[preset] || skinMap[pKey]) s = skinMap[preset] || skinMap[pKey];
+          }
         } catch {}
         if (!s) s = 'orange-1280';
         if (!t) t = 'amber-night';
@@ -2178,18 +2183,20 @@
           const preset = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
           const themeMap = {
             'Matrix':'graphite-green','Green Neon':'graphite-green',
-            'Red Neon':'amber-night','Muted Merlot':'amber-night','Warm Parchment':'amber-night',
+            'Red Neon':'red-neon','Muted Merlot':'red-neon','Warm Parchment':'warm-parchment',
             'Blue Neon':'midnight-blue','Chill Blue':'midnight-blue','Abyss Graphite':'midnight-blue',
-            'Slate Medium':'silver-black','Monotone Gray':'silver-black','Obsidian Black':'obsidian-black'
+            'Slate Medium':'silver-black','Monotone Gray':'silver-black','Obsidian Black':'obsidian-black','Morning Paper':'silver-black','morning paper':'silver-black'
           };
           const skinMap = {
             'Matrix':'emerald-1280','Green Neon':'emerald-1280',
             'Red Neon':'red-1280','Muted Merlot':'red-1280','Warm Parchment':'gold-1280',
             'Blue Neon':'blue-1280','Chill Blue':'blue-1280',
-            'Abyss Graphite':'mack-blue-compact','Slate Medium':'mack-blue-compact','Monotone Gray':'mack-blue-compact',
+            'Abyss Graphite':'blue-1280','Slate Medium':'cassette-linear','Monotone Gray':'tube-1280',
             'Obsidian Black':'black-white-1280'
           };
-          return { skin: skinMap[preset] || '', theme: themeMap[preset] || '' };
+          const pKey = String(preset||'').trim().toLowerCase();
+          if (pKey.includes('morning') && pKey.includes('paper')) return { skin:'white-red-1280', theme:'silver-black' };
+          return { skin: skinMap[preset] || skinMap[pKey] || '', theme: themeMap[preset] || themeMap[pKey] || '' };
         } catch { return { skin:'', theme:'' }; }
       }
 
