@@ -62,9 +62,10 @@
       padding:8px;
       box-sizing:border-box;
     }
-    body.player-size-800x480 #album-art-wrapper{width:360px;height:464px;min-height:0}
+    body.player-size-800x480 #album-art-wrapper{position:relative;width:344px !important;height:344px !important;min-height:0 !important;max-height:344px !important;overflow:hidden}
+    body.player-size-800x480 #album-art-bg{width:344px !important;height:344px !important}
     body.player-size-800x480 #album-art,
-    body.player-size-800x480 #album-art-video{width:344px;height:344px;object-fit:cover}
+    body.player-size-800x480 #album-art-video{position:absolute !important;left:0;top:0;width:344px !important;height:344px !important;object-fit:cover}
     body.player-size-800x480 .text-column{min-width:0;padding-top:4px}
     body.player-size-800x480 #artist-name{font-size:40px;line-height:1.04}
     body.player-size-800x480 #track-title{font-size:34px;line-height:1.06}
