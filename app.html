@@ -1872,40 +1872,9 @@
       async function pushPeppyToMoode(){
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;
-        const qs = new URLSearchParams();
-        qs.set('kiosk', '1');
-        qs.set('sw', String(Date.now()));
-        let s = String(lastPeppyProfile?.skin || '').trim();
-        let t = String(lastPeppyProfile?.theme || '').trim();
-        try {
-          const f = document.getElementById('appFrame');
-          const w = f?.contentWindow;
-          const d = w?.document;
-          const skinSel = d?.getElementById('skinName');
-          const themeSel = d?.getElementById('themeName');
-          s = String(skinSel?.value || '').trim();
-          t = String(themeSel?.value || '').trim();
-          if (!s || !t) {
-            const ls = w?.localStorage;
-            if (!s) s = String(ls?.getItem('peppy.skin') || '').trim();
-            if (!t) t = String(ls?.getItem('peppy.theme') || '').trim();
-          }
-        } catch {}
-        if (!s || !t) {
-          try {
-            if (!s) s = String(localStorage.getItem('peppy.skin') || '').trim();
-            if (!t) t = String(localStorage.getItem('peppy.theme') || '').trim();
-          } catch {}
-        }
-        // Strict mode: never remap from app preset here.
-        // Push should reflect explicit peppy selection only.
-        if (!s) s = String(lastPeppyProfile?.skin || '').trim();
-        if (!t) t = String(lastPeppyProfile?.theme || '').trim();
-        if (!s) s = 'blue-1280';
-        if (!t) t = 'midnight-blue';
-        qs.set('skin', s);
-        qs.set('theme', t);
-        const targetUrl = `${location.protocol}//${host}:8101/peppy.html?${qs.toString()}`;
+        const targetUrl = `${location.protocol}//${host}:8101/peppy.html?kiosk=1`;
+        const s = '';
+        const t = '';
         setPushPeppyBusy(true);
         try {
           if (!runtimeTrackKey) {
