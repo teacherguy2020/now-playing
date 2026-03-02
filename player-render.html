@@ -91,13 +91,29 @@
       z-index:2147483647 !important;
       opacity:1 !important;
       visibility:visible !important;
-      background:rgba(255,0,0,.18) !important;
-      border:1px solid rgba(255,0,0,.55) !important;
-      padding:2px !important;
+      background:transparent !important;
+      border:0 !important;
+      padding:0 !important;
+      gap:6px !important;
       backdrop-filter:none !important;
       -webkit-backdrop-filter:none !important;
     }
-    body.player-size-800x480 #phone-controls .ctl{display:grid !important;opacity:1 !important;visibility:visible !important;}
+    body.player-size-800x480 #phone-controls .ctl{
+      display:grid !important;
+      opacity:1 !important;
+      visibility:visible !important;
+      width:62px !important;
+      height:42px !important;
+      min-width:62px !important;
+      min-height:42px !important;
+      border-radius:8px !important;
+      background:rgba(255,255,255,.14) !important;
+      border:1px solid rgba(255,255,255,.24) !important;
+      color:#fff !important;
+      place-items:center !important;
+    }
+    body.player-size-800x480 #phone-controls .ctl.big{width:74px !important;min-width:74px !important;height:42px !important;min-height:42px !important;}
+    body.player-size-800x480 #phone-controls svg{width:22px !important;height:22px !important;fill:currentColor !important;display:block !important;}
   </style>
 
 </head>
