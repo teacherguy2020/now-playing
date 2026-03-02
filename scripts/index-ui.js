@@ -592,6 +592,7 @@ function isMobileEnv() {
 }
 
 function computePhoneUI() {
+  if (window.__PLAYER_RENDER_LOCK_DESKTOP__) return false;
   const vv = window.visualViewport;
   const w = Math.round(vv?.width  ?? window.innerWidth  ?? 0);
   const h = Math.round(vv?.height ?? window.innerHeight ?? 0);
