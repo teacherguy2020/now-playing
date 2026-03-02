@@ -66,8 +66,8 @@
     .playerControls label{font-size:12px;opacity:.9}
     .playerControls select{height:30px;border:1px solid rgba(120,140,180,.5);background:#111a2a;color:#e6efff;border-radius:8px;padding:0 8px}
     body.player-builder #displayViewport{position:fixed;left:0;right:0;top:56px;bottom:10px;display:flex;align-items:flex-start;justify-content:center;pointer-events:none}
-    body.player-builder #displayFrame{width:var(--player-w,1280px);height:var(--player-h,400px);border:2px solid rgba(180,196,226,.75);border-radius:0;overflow:hidden;background:#000;transform-origin:top center;transform:scale(var(--player-scale,1));pointer-events:auto}
-    body.player-builder #content{position:relative;width:100%;height:100%;margin:0;transform:none}
+    body.player-builder #displayFrame{width:calc(var(--player-w,1280px) + (var(--frame-pad,10px) * 2));height:calc(var(--player-h,400px) + (var(--frame-pad,10px) * 2));padding:var(--frame-pad,10px);box-sizing:border-box;border:2px solid rgba(180,196,226,.75);border-radius:0;overflow:hidden;background:#000;transform-origin:top center;transform:scale(var(--player-scale,1));pointer-events:auto}
+    body.player-builder #content{position:relative;width:var(--player-w,1280px);height:var(--player-h,400px);margin:0;transform:none}
   </style>
 </head>
 
@@ -265,9 +265,11 @@
       document.body.classList.add('player-builder');
       const dims = SIZE_MAP[size] || SIZE_MAP['1280x400'];
       const [w,h] = dims;
-      const availW = Math.max(320, window.innerWidth - 24);
-      const availH = Math.max(200, window.innerHeight - 80);
-      const scale = Math.min(1, availW / w, availH / h);
+      const frameW = w + 24;
+      const frameH = h + 24;
+      const availW = Math.max(320, window.innerWidth - 20);
+      const availH = Math.max(200, window.innerHeight - 66);
+      const scale = Math.min(1, availW / frameW, availH / frameH);
       document.body.style.setProperty('--player-w', `${w}px`);
       document.body.style.setProperty('--player-h', `${h}px`);
       document.body.style.setProperty('--player-scale', String(Math.max(0.35, scale)));
