@@ -1110,16 +1110,19 @@
         previewFontMode = String(fontMode?.value || 'ui-sans');
         try { localStorage.setItem('peppy.fontMode', previewFontMode); } catch {}
         redrawDotCanvases();
+        publishProfileState();
       });
       fontSize?.addEventListener('change', () => {
         previewFontSize = String(fontSize?.value || 'm');
         try { localStorage.setItem('peppy.fontSize', previewFontSize); } catch {}
         redrawDotCanvases();
+        publishProfileState();
       });
       meterMode?.addEventListener('change', () => {
         previewMeterMode = String(meterMode?.value || 'segmented');
         try { localStorage.setItem('peppy.meterMode', previewMeterMode); } catch {}
         drawNeedles();
+        publishProfileState();
       });
       themeName?.addEventListener('change', () => {
         const n = String(themeName?.value || 'midnight-blue');
