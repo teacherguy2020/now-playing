@@ -1,96 +1,236 @@
-<!doctype html>
+<!-- index.html (canonical now-playing UI) -->
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Player Display Builder</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Now Playing</title>
+  <style>html,body{background:#000;color:#fff;}</style>
+  <script>
+    // Fallbacks for embedded preview mode.
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        const embedded = (window.top !== window.self);
+        if (embedded) {
+          const host = location.hostname || '10.0.0.233';
+          const proto = location.protocol || 'http:';
+          const b = document.body;
+          const c = document.getElementById('content');
+          const bgA = document.getElementById('background-a');
+          const bgB = document.getElementById('background-b');
+
+          // Ensure background layers are actually visible in iframe context.
+          if (b) b.style.background = 'transparent';
+          if (c) { c.style.position = 'relative'; c.style.zIndex = '1'; }
+          if (bgA) { bgA.style.zIndex = '0'; bgA.style.opacity = '1'; }
+          if (bgB) { bgB.style.zIndex = '0'; bgB.style.opacity = '0'; }
+
+          // Use current art and let CSS blur/filter create the backdrop.
+          if (bgA && !bgA.style.backgroundImage) {
+            bgA.style.backgroundImage = `url(${proto}//${host}:3101/art/current.jpg?t=${Date.now()})`;
+          }
+        }
+      } catch (_) {}
+
+      // If boot JS errors, don't leave preview on a blank/white boot screen.
+      setTimeout(() => {
+        try {
+          const b = document.body;
+          if (b && b.classList.contains('booting')) {
+            b.classList.remove('booting');
+            b.classList.add('ready');
+          }
+        } catch (_) {}
+      }, 1800);
+    });
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles/index1080.css?v=20260228-airplay-logo-sm1" />
+
   <style>
-    :root{--bg:#0a0f18;--fg:#e8eefc;--muted:#9db0cf;--line:#2a3a58;--card:#121b2b}
-    html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-    .wrap{display:grid;grid-template-rows:auto 1fr;gap:10px;padding:10px;height:100%;box-sizing:border-box}
-    .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
-    .bar select,.bar button{height:30px;background:#0e1624;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:0 8px}
-    .stage{border:1px solid var(--line);border-radius:10px;background:#0d1422;display:grid;place-items:center;min-height:280px;overflow:auto}
-    .previewWrap{transform-origin:top left}
-    #playerFrame{border:0;display:block;background:#000}
-    .hint{color:var(--muted);font-size:13px}
+    /* Player.html display-profile scaffold (start here; keep index.html untouched) */
+    body.player-size-1280x400{}
+    body.player-size-1024x600{}
+    body.player-size-800x480{}
+    body.player-size-480x320{}
+    body.player-size-320x240{}
+
+    /* Example explicit breakpoints to iterate on next */
+    @media (min-width:1180px) and (max-height:430px) { body{ } }
+    @media (min-width:980px) and (max-width:1100px) and (max-height:640px) { body{ } }
+    @media (min-width:760px) and (max-width:900px) and (max-height:520px) { body{ } }
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <div class="bar">
-      <strong>Player Builder</strong>
-      <select id="playerSize" aria-label="Display size profile">
-        <option value="1280x400">1280x400</option>
-        <option value="1024x600">1024x600</option>
-        <option value="800x480">800x480</option>
-        <option value="480x320">480x320</option>
-        <option value="320x240">320x240</option>
-      </select>
-      <select id="playerTheme" aria-label="Player theme">
-        <option value="dark">Dark</option>
-        <option value="light">Light</option>
-      </select>
-      <button id="savePlayerProfile" type="button">Save profile</button>
-      <span class="hint" id="playerHint">Now previewing index layout in selected display size.</span>
+
+<body class="booting">
+  <div id="background-a"></div>
+  <div id="background-b"></div>
+
+  <div id="content">
+    <!-- Album Art -->
+    <div id="album-art-wrapper" role="group" aria-label="Album art and controls">
+      <div id="album-art-bg"></div>
+
+      <!-- Album artwork (does NOT open modal) -->
+      <img
+        id="album-art"
+        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+        alt="Album Art"
+        draggable="false"
+      />
+      <video id="album-art-video" muted loop playsinline preload="metadata" style="display:none;"></video>
+
+      <!-- Personnel hotspot (ONLY this opens the modal) -->
+      <button
+        id="art-info-hotspot"
+        class="art-hotspot"
+        type="button"
+        aria-label="Show personnel"
+        title="Show personnel"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M11 10h2v7h-2v-7zm0-3h2v2h-2V7zm1 15C6.935 22 3 18.065 3 13S6.935 4 12 4s9 3.935 9 9-3.935 9-9 9zm0-2c3.859 0 7-3.141 7-7s-3.141-7-7-7-7 3.141-7 7 3.141 7 7 7z"/>
+        </svg>
+      </button>
+
+      <!-- Favorites heart (should NOT trigger modal) -->
+      <button
+        id="fav-heart"
+        type="button"
+        aria-label="Toggle favorite"
+        title="Toggle favorite"
+      >
+        <svg viewBox="0 0 24 24" shape-rendering="geometricPrecision" aria-hidden="true" focusable="false">
+          <path d="M12 21
+                   C12 21 3 14.5 3 8.5
+                   C3 6 5 4 7.5 4
+                   C9.24 4 10.91 5 12 6.44
+                   C13.09 5 14.76 4 16.5 4
+                   C19 4 21 6 21 8.5
+                   C21 14.5 12 21 12 21Z"/>
+        </svg>
+      </button>
     </div>
-    <div class="stage" id="playerStage">
-      <div id="previewWrap" class="previewWrap">
-        <iframe id="playerFrame" title="Player preview"></iframe>
+
+    <!-- Text -->
+    <div class="text-column">
+      <div id="artist-name"></div>
+
+      <div id="titleLine">
+        <span id="track-title"></span>
+        <span id="ratingStars" class="rating-stars"></span>
+      </div>
+
+      <!-- Album + share icon live entirely inside this link -->
+      <a id="album-link" aria-label="Open in Apple Music">
+        <span id="album-text"></span>
+      </a>
+
+      <div id="file-info">
+        <span id="file-info-text"></span>
+        <span id="hires-badge" class="hires-badge">Lossless</span>
+        <span id="mode-status"></span>
+      </div>
+
+      <div id="personnel-info"></div>
+
+      <div id="next-up">
+        <img id="next-up-img" alt="">
+        <span id="next-up-text">
+          <span class="marquee-track">
+            <span class="marquee-copy"></span>
+            <span class="marquee-copy"></span>
+          </span>
+        </span>
+      </div>
+
+      <div id="progress-bar-wrapper">
+        <div id="progress-fill"></div>
+      </div>
+
+      <img id="mode-logo" alt="">
+    </div>
+  </div>
+
+  <div id="artist-details-container">
+    <div id="artist-details"></div>
+  </div>
+
+  <!-- Phone controls -->
+  <div id="phone-controls" aria-label="Playback controls">
+    <button class="ctl" id="btn-repeat" aria-label="Repeat" title="Repeat" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M17 17H7v-3l-4 4 4 4v-3h10a4 4 0 004-4v-6h-2v6a2 2 0 01-2 2zM7 7h10v3l4-4-4-4v3H7a4 4 0 00-4 4v6h2V9a2 2 0 012-2z"/>
+      </svg>
+    </button>
+
+    <button class="ctl" id="btn-prev" aria-label="Previous" title="Previous" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 5h2v14H6V5zm3.5 7 10-7v14l-10-7z"/>
+      </svg>
+    </button>
+
+    <button class="ctl big" id="btn-play" aria-label="Play/Pause" title="Play/Pause" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path id="playIcon" d="M8 5v14l11-7z"/>
+      </svg>
+    </button>
+
+    <button class="ctl" id="btn-next" aria-label="Next" title="Next" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M16 5h2v14h-2V5zM4.5 19V5l10 7-10 7z"/>
+      </svg>
+    </button>
+
+    <button class="ctl" id="btn-shuffle" aria-label="Shuffle" title="Shuffle" type="button">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path fill="currentColor" d="M24.414,16.586L30.828,23l-6.414,6.414l-2.828-2.828L23.172,25H22c-3.924,0-6.334-2.289-8.173-4.747c0.987-1.097,1.799-2.285,2.516-3.36C18.109,19.46,19.521,21,22,21h1.172l-1.586-1.586L24.414,16.586z M22,11h1.172l-1.586,1.586l2.828,2.828L30.828,9l-6.414-6.414l-2.828,2.828L23.172,7H22c-5.07,0-7.617,3.82-9.664,6.891C10.224,17.059,8.788,19,6,19H2v4h4c5.07,0,7.617-3.82,9.664-6.891C17.776,12.941,19.212,11,22,11z M10.212,15.191c0.399-0.539,1.957-2.848,2.322-3.365C10.917,10.216,8.86,9,6,9H2v4h4C7.779,13,9.007,13.797,10.212,15.191z"/>
+      </svg>
+    </button>
+  </div>
+    <!-- Modal -->
+  <div class="modalOverlay" id="modalOverlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <div class="modalHead">
+        <img class="thumb" id="modalThumb" src="" alt="" />
+        <div class="modalTitleWrap">
+          <div class="modalTitle" id="modalTitle">Podcast</div>
+          <div class="modalSub" id="modalSub"></div>
+        </div>
+        <button class="modalClose" id="modalClose" aria-label="Close">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="tinyMuted" id="modalHint">Loading…</div>
+        <div class="epList" id="epList" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="modalActions">
+        <div class="tinyMuted" id="modalCount"></div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn" id="modalRefresh">Refresh</button>
+          <button class="btn btnDanger" id="modalDeleteSelected" disabled title="Not wired yet">Delete selected</button>
+        </div>
       </div>
     </div>
   </div>
-  <script>
-    (() => {
-      const $ = (id) => document.getElementById(id);
-      const sizeEl = $('playerSize');
-      const themeEl = $('playerTheme');
-      const hintEl = $('playerHint');
-      const frame = $('playerFrame');
-      const wrap = $('previewWrap');
-      const KEY = 'player.profile.v1';
-      const SIZE_MAP = {
-        '1280x400':[1280,400],
-        '1024x600':[1024,600],
-        '800x480':[800,480],
-        '480x320':[480,320],
-        '320x240':[320,240],
-      };
-      function applyPreview(){
-        const size = String(sizeEl?.value || '1280x400');
-        const [w,h] = SIZE_MAP[size] || [1280,400];
-        if (frame) {
-          frame.width = String(w);
-          frame.height = String(h);
-          frame.style.width = `${w}px`;
-          frame.style.height = `${h}px`;
-          const theme = String(themeEl?.value || 'dark');
-          frame.src = `index.html?kiosk=1&theme=${encodeURIComponent(theme)}&sw=${Date.now()}`;
-        }
-        const stage = $('playerStage');
-        const stageW = Math.max(320, stage?.clientWidth || 320);
-        const scale = Math.min(1, (stageW - 24) / w);
-        if (wrap) wrap.style.transform = `scale(${Math.max(0.25, scale)})`;
-      }
-      function load(){
-        try {
-          const j = JSON.parse(localStorage.getItem(KEY) || '{}');
-          if (j.size && sizeEl) sizeEl.value = j.size;
-          if (j.theme && themeEl) themeEl.value = j.theme;
-        } catch {}
-        applyPreview();
-      }
-      function save(){
-        const p = { size: String(sizeEl?.value||'1280x400'), theme: String(themeEl?.value||'dark'), ts: Date.now() };
-        try { localStorage.setItem(KEY, JSON.stringify(p)); } catch {}
-        if (hintEl) hintEl.textContent = `Saved player profile: ${p.size} / ${p.theme}`;
-      }
-      $('savePlayerProfile')?.addEventListener('click', save);
-      sizeEl?.addEventListener('change', applyPreview);
-      themeEl?.addEventListener('change', applyPreview);
-      window.addEventListener('resize', applyPreview);
-      load();
-    })();
-  </script>
+
+    <script src="scripts/index.js"></script>
+
+
+  <script src="scripts/index-ui.js?v=20260228-hero-album-open1"></script>
+<script>
+(function(){
+  try {
+    const u = new URL(location.href);
+    const forced = String(u.searchParams.get('size') || localStorage.getItem('player.profile.size') || '').trim();
+    const valid = new Set(['1280x400','1024x600','800x480','480x320','320x240']);
+    const size = valid.has(forced) ? forced : '1280x400';
+    document.body.classList.add(`player-size-${size}`);
+  } catch {}
+})();
+</script>
 </body>
 </html>
