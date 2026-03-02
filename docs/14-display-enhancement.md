@@ -11,6 +11,29 @@ When **moOde Display Enhancement** is enabled in `config.html`, the app exposes:
 - `player-render.html` (actual player renderer)
 - `display.html` (stable router URL for moOde)
 
+## Why this is different (builder-first display design)
+
+This project does not treat meter skins and now-playing text as separate worlds.
+
+The custom flow is intentionally **builder-first**:
+
+- Build a single display composition that combines:
+  - meter geometry (`circular` or `linear`)
+  - meter skin + theme
+  - typography (artist/title/album/metadata)
+  - progress style and source behavior
+- Push that composition to moOde through a stable router URL.
+- Keep app-shell theme independent from peppy/player display theme.
+
+In practice, this lets users design complete display experiences (not just switch meter art):
+
+- classic or modern meter language
+- dot-matrix vs modern font behavior
+- linear/circular meter families
+- metadata visibility choices per use case (local/radio/airplay/upnp/podcast)
+
+The goal is creative control with predictable deployment: **design in-builder, push to moOde, render from one stable target URL**.
+
 ## Stable target URL
 
 In moOde, go to:
