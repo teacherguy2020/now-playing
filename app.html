@@ -629,7 +629,7 @@
       let notifyConfigured = false;
       let notifyEnabled = null;
       let peppyModeState = (() => { try { return String(localStorage.getItem('np.peppyMode') || 'webui'); } catch { return 'webui'; } })();
-      let lastPeppyProfile = { skin:'', theme:'', ts:0 };
+      let lastPeppyProfile = { skin:'', theme:'', meterType:'', fontMode:'', fontSize:'', meterMode:'', ts:0 };
       let screenModeState = (() => { try { return String(localStorage.getItem('np.screenMode') || 'nowplaying'); } catch { return 'nowplaying'; } })();
       let alexaEnabledState = null;
       let alexaDomainState = '';
@@ -1858,9 +1858,17 @@
           const p = j?.profile || {};
           const skin = String(p?.skin || '').trim();
           const theme = String(p?.theme || '').trim();
-          if (!skin && !theme) return;
+          const meterType = String(p?.meterType || '').trim();
+          const fontMode = String(p?.fontMode || '').trim();
+          const fontSize = String(p?.fontSize || '').trim();
+          const meterMode = String(p?.meterMode || '').trim();
+          if (!skin && !theme && !meterType && !fontMode && !fontSize && !meterMode) return;
           if (skin) lastPeppyProfile.skin = skin;
           if (theme) lastPeppyProfile.theme = theme;
+          if (meterType) lastPeppyProfile.meterType = meterType;
+          if (fontMode) lastPeppyProfile.fontMode = fontMode;
+          if (fontSize) lastPeppyProfile.fontSize = fontSize;
+          if (meterMode) lastPeppyProfile.meterMode = meterMode;
           lastPeppyProfile.ts = Date.now();
           try {
             if (skin) localStorage.setItem('peppy.skin', skin);
@@ -1900,7 +1908,15 @@
           await fetchJsonWithTimeout(`${base}/peppy/last-profile`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
-            body: JSON.stringify({ url: targetUrl, skin: s, theme: t }),
+            body: JSON.stringify({
+              url: targetUrl,
+              skin: s,
+              theme: t,
+              meterType: String(lastPeppyProfile?.meterType || '').trim(),
+              fontMode: String(lastPeppyProfile?.fontMode || '').trim(),
+              fontSize: String(lastPeppyProfile?.fontSize || '').trim(),
+              meterMode: String(lastPeppyProfile?.meterMode || '').trim(),
+            }),
           }, 8000).catch(() => null);
 
           const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser-url`, {
@@ -3136,8 +3152,16 @@
         if (d.type === 'peppy-profile') {
           const skin = String(d.skin || '').trim();
           const theme = String(d.theme || '').trim();
+          const meterType = String(d.meterType || '').trim();
+          const fontMode = String(d.fontMode || '').trim();
+          const fontSize = String(d.fontSize || '').trim();
+          const meterMode = String(d.meterMode || '').trim();
           if (skin) lastPeppyProfile.skin = skin;
           if (theme) lastPeppyProfile.theme = theme;
+          if (meterType) lastPeppyProfile.meterType = meterType;
+          if (fontMode) lastPeppyProfile.fontMode = fontMode;
+          if (fontSize) lastPeppyProfile.fontSize = fontSize;
+          if (meterMode) lastPeppyProfile.meterMode = meterMode;
           lastPeppyProfile.ts = Number(d.ts || Date.now()) || Date.now();
           try {
             if (skin) localStorage.setItem('peppy.skin', skin);

@@ -244,7 +244,11 @@
         try {
           const skin = String(skinName?.value || previewSkin || '').trim();
           const theme = String(themeName?.value || '').trim();
-          window.parent?.postMessage({ type:'peppy-profile', skin, theme, ts: Date.now() }, '*');
+          const meterType = meterTypeLinear?.checked ? 'linear' : 'circular';
+          const font = String(fontMode?.value || 'ui-sans');
+          const fontSizeVal = String(fontSize?.value || 'm');
+          const progress = String(meterMode?.value || 'segmented');
+          window.parent?.postMessage({ type:'peppy-profile', skin, theme, meterType, fontMode: font, fontSize: fontSizeVal, meterMode: progress, ts: Date.now() }, '*');
         } catch {}
       }
       if (skinOpsEl) skinOpsEl.style.display = kioskMode ? 'none' : 'flex';
@@ -1144,27 +1148,49 @@
         await loadSkinCatalog();
         renderSkinOptions(previewSkin);
         await resolveApiBase();
-        if (!hasSkinParam || !hasThemeParam) {
-          try {
-            const r = await fetch(`${api}/peppy/last-profile`, { cache:'no-store' });
-            const j = await r.json().catch(() => ({}));
-            const p = j?.profile || {};
-            const s = String(p?.skin || '').trim();
-            const t = String(p?.theme || '').trim();
-            if (!hasSkinParam && s) {
-              previewSkin = s;
-              try { localStorage.setItem('peppy.skin', s); } catch {}
-              renderSkinOptions(previewSkin);
-              applyNeedleSkin(previewSkin);
-            }
-            if (!hasThemeParam && t && THEMES[t]) {
-              if (themeName) themeName.value = t;
-              try { localStorage.setItem('peppy.theme', t); } catch {}
-              applyTheme(t);
-              redrawDotCanvases();
-            }
-          } catch {}
-        }
+        try {
+          const r = await fetch(`${api}/peppy/last-profile`, { cache:'no-store' });
+          const j = await r.json().catch(() => ({}));
+          const p = j?.profile || {};
+          const s = String(p?.skin || '').trim();
+          const t = String(p?.theme || '').trim();
+          const mt = String(p?.meterType || '').trim();
+          const fm = String(p?.fontMode || '').trim();
+          const fsz = String(p?.fontSize || '').trim();
+          const mm = String(p?.meterMode || '').trim();
+          if (!hasSkinParam && s) {
+            previewSkin = s;
+            try { localStorage.setItem('peppy.skin', s); } catch {}
+          }
+          if (!hasThemeParam && t && THEMES[t]) {
+            if (themeName) themeName.value = t;
+            try { localStorage.setItem('peppy.theme', t); } catch {}
+            applyTheme(t);
+          }
+          if (mt === 'linear' || mt === 'circular') {
+            if (meterTypeLinear) meterTypeLinear.checked = (mt === 'linear');
+            if (meterTypeCircular) meterTypeCircular.checked = (mt !== 'linear');
+            try { localStorage.setItem('peppy.meterType', mt); } catch {}
+          }
+          if (fm === 'ui-sans' || fm === 'dot-matrix') {
+            if (fontMode) fontMode.value = fm;
+            try { localStorage.setItem('peppy.fontMode', fm); } catch {}
+          }
+          if (['s','m','l','xl'].includes(fsz)) {
+            if (fontSize) fontSize.value = fsz;
+            try { localStorage.setItem('peppy.fontSize', fsz); } catch {}
+          }
+          if (mm === 'segmented' || mm === 'continuous') {
+            if (meterMode) meterMode.value = mm;
+            try { localStorage.setItem('peppy.meterMode', mm); } catch {}
+          }
+          renderSkinOptions(previewSkin);
+          previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
+          applyNeedleSkin(previewSkin);
+          redrawDotCanvases();
+          drawNeedles();
+          publishProfileState();
+        } catch {}
         await ensureRuntimeKey();
         await pollNowPlaying();
         await pollMeter();
