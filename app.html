@@ -1890,22 +1890,37 @@
         let fz = String(lastPeppyProfile?.fontSize || '').trim();
         let mm = String(lastPeppyProfile?.meterMode || '').trim();
         try {
-          const f = document.getElementById('appFrame');
-          const w = f?.contentWindow;
-          const d = w?.document;
-          const liveS = String(d?.getElementById('skinName')?.value || '').trim();
-          const liveT = String(d?.getElementById('themeName')?.value || '').trim();
-          const liveMT = (d?.getElementById('meterTypeLinear')?.checked ? 'linear' : (d?.getElementById('meterTypeCircular') ? 'circular' : '')).trim();
-          const liveFM = String(d?.getElementById('fontMode')?.value || '').trim();
-          const liveFZ = String(d?.getElementById('fontSize')?.value || '').trim();
-          const liveMM = String(d?.getElementById('meterMode')?.value || '').trim();
-          if (liveS) s = liveS;
-          if (liveT) t = liveT;
-          if (liveMT) mt = liveMT;
-          if (liveFM) fm = liveFM;
-          if (liveFZ) fz = liveFZ;
-          if (liveMM) mm = liveMM;
-          const ls = w?.localStorage;
+          const readLive = () => {
+            const f = document.getElementById('appFrame');
+            const w = f?.contentWindow;
+            const d = w?.document;
+            return {
+              w,
+              s: String(d?.getElementById('skinName')?.value || '').trim(),
+              t: String(d?.getElementById('themeName')?.value || '').trim(),
+              mt: (d?.getElementById('meterTypeLinear')?.checked ? 'linear' : (d?.getElementById('meterTypeCircular')?.checked ? 'circular' : '')).trim(),
+              fm: String(d?.getElementById('fontMode')?.value || '').trim(),
+              fz: String(d?.getElementById('fontSize')?.value || '').trim(),
+              mm: String(d?.getElementById('meterMode')?.value || '').trim(),
+            };
+          };
+          const a = readLive();
+          if (a.s) s = a.s;
+          if (a.t) t = a.t;
+          if (a.mt) mt = a.mt;
+          if (a.fm) fm = a.fm;
+          if (a.fz) fz = a.fz;
+          if (a.mm) mm = a.mm;
+          // Preset apply can be one tick behind visible UI. Sample once more after a short micro-delay.
+          await new Promise((r) => setTimeout(r, 90));
+          const b = readLive();
+          if (b.s) s = b.s;
+          if (b.t) t = b.t;
+          if (b.mt) mt = b.mt;
+          if (b.fm) fm = b.fm;
+          if (b.fz) fz = b.fz;
+          if (b.mm) mm = b.mm;
+          const ls = b.w?.localStorage || a.w?.localStorage;
           if (!s) s = String(ls?.getItem('peppy.skin') || '').trim();
           if (!t) t = String(ls?.getItem('peppy.theme') || '').trim();
           if (!mt) mt = String(ls?.getItem('peppy.meterType') || '').trim();
