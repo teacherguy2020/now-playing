@@ -2275,9 +2275,9 @@
         const adv = document.getElementById('displayAdvanced');
         const fixBtn = document.getElementById('fixTargetBtn');
         const natBtn = document.getElementById('nativePeppyBtn');
-        if (btn) btn.style.display = show ? '' : 'none';
+        if (btn) btn.style.display = 'none';
         if (moodeBtn) moodeBtn.style.display = show ? '' : 'none';
-        if (playerBtn) playerBtn.style.display = show ? '' : 'none';
+        if (playerBtn) playerBtn.style.display = 'none';
         if (refBtn) refBtn.style.display = show ? '' : 'none';
         if (adv) adv.style.display = show ? '' : 'none';
         if (fixBtn) fixBtn.style.display = show ? '' : 'none';
@@ -3265,6 +3265,16 @@
           if (!d.busy) {
             // Pull latest queue as soon as operation settles.
             setTimeout(() => { try { syncHeroQueue(); } catch {} }, 120);
+          }
+          return;
+        }
+
+        if (d.type === 'np-display-action') {
+          const a = String(d.action || '').trim();
+          if (a === 'push-peppy') {
+            try { pushPeppyToMoode(); } catch {}
+          } else if (a === 'push-player') {
+            try { setDisplayModeAndRefresh('player'); } catch {}
           }
           return;
         }

@@ -24,6 +24,7 @@
       </select>
       <label for="themeSel">Theme</label>
       <select id="themeSel"><option value="dark">dark</option><option value="light">light</option></select>
+      <button id="pushPlayerFromTab" type="button">Push Player to moOde</button>
     </div>
     <div class="stage" id="stage">
       <div id="frame" class="frame"><iframe id="preview" title="Player render preview"></iframe></div>
@@ -34,6 +35,7 @@
       const sizeSel=document.getElementById('sizeSel');
       const themeSel=document.getElementById('themeSel');
       const frame=document.getElementById('frame');
+      const pushPlayerFromTab=document.getElementById('pushPlayerFromTab');
       const preview=document.getElementById('preview');
       const stage=document.getElementById('stage');
       const KEY='player.profile.v2';
@@ -56,6 +58,7 @@
       try{const p=JSON.parse(localStorage.getItem(KEY)||'{}'); if(p.size) sizeSel.value=p.size; if(p.theme) themeSel.value=p.theme;}catch{}
       sizeSel.addEventListener('change',()=>apply(true));
       themeSel.addEventListener('change',()=>apply(true));
+      pushPlayerFromTab?.addEventListener('click',()=>{ try{ window.parent?.postMessage({ type:'np-display-action', action:'push-player' }, '*'); }catch{} });
       window.addEventListener('resize',()=>applyScaleOnly());
       apply(true);
     })();

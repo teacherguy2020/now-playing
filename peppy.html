@@ -113,6 +113,7 @@
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
         <button id="skinExport" class="skinBtn" type="button">Export JSON</button>
+        <button id="pushPeppyFromTab" class="skinBtn" type="button">Push Peppy to moOde</button>
         <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
           <input type="radio" name="meterType" id="meterTypeCircular" value="circular" checked /> Circular
         </label>
@@ -284,6 +285,7 @@
       const ctrlShuffle = $('ctrlShuffle');
       const controlsEl = document.querySelector('.controls');
       const skinExport = $('skinExport');
+      const pushPeppyFromTab = $('pushPeppyFromTab');
       const exportModal = $('exportModal');
       const exportJson = $('exportJson');
       const exportClose = $('exportClose');
@@ -1123,6 +1125,9 @@
             exportModal.setAttribute('aria-hidden', 'false');
           }
         } catch {}
+      });
+      pushPeppyFromTab?.addEventListener('click', () => {
+        try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
       });
       exportClose?.addEventListener('click', () => {
         if (!exportModal) return;
