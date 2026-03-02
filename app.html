@@ -1883,20 +1883,35 @@
         const targetUrl = `${location.protocol}//${host}:8101/peppy.html?kiosk=1`;
         let s = String(lastPeppyProfile?.skin || '').trim();
         let t = String(lastPeppyProfile?.theme || '').trim();
+        let mt = String(lastPeppyProfile?.meterType || '').trim();
+        let fm = String(lastPeppyProfile?.fontMode || '').trim();
+        let fz = String(lastPeppyProfile?.fontSize || '').trim();
+        let mm = String(lastPeppyProfile?.meterMode || '').trim();
         try {
           const f = document.getElementById('appFrame');
           const w = f?.contentWindow;
           const d = w?.document;
           if (!s) s = String(d?.getElementById('skinName')?.value || '').trim();
           if (!t) t = String(d?.getElementById('themeName')?.value || '').trim();
-          if (!s || !t) {
-            const ls = w?.localStorage;
-            if (!s) s = String(ls?.getItem('peppy.skin') || '').trim();
-            if (!t) t = String(ls?.getItem('peppy.theme') || '').trim();
-          }
+          if (!mt) mt = (d?.getElementById('meterTypeLinear')?.checked ? 'linear' : (d?.getElementById('meterTypeCircular') ? 'circular' : '')).trim();
+          if (!fm) fm = String(d?.getElementById('fontMode')?.value || '').trim();
+          if (!fz) fz = String(d?.getElementById('fontSize')?.value || '').trim();
+          if (!mm) mm = String(d?.getElementById('meterMode')?.value || '').trim();
+          const ls = w?.localStorage;
+          if (!s) s = String(ls?.getItem('peppy.skin') || '').trim();
+          if (!t) t = String(ls?.getItem('peppy.theme') || '').trim();
+          if (!mt) mt = String(ls?.getItem('peppy.meterType') || '').trim();
+          if (!fm) fm = String(ls?.getItem('peppy.fontMode') || '').trim();
+          if (!fz) fz = String(ls?.getItem('peppy.fontSize') || '').trim();
+          if (!mm) mm = String(ls?.getItem('peppy.meterMode') || '').trim();
         } catch {}
         if (!s) s = 'blue-1280';
         if (!t) t = 'midnight-blue';
+        if (!mt) mt = 'circular';
+        if (!fm) fm = 'ui-sans';
+        if (!fz) fz = 'm';
+        if (!mm) mm = 'segmented';
+        lastPeppyProfile = { ...lastPeppyProfile, skin:s, theme:t, meterType:mt, fontMode:fm, fontSize:fz, meterMode:mm, ts: Date.now() };
         setPushPeppyBusy(true);
         try {
           if (!runtimeTrackKey) {
@@ -1912,10 +1927,10 @@
               url: targetUrl,
               skin: s,
               theme: t,
-              meterType: String(lastPeppyProfile?.meterType || '').trim(),
-              fontMode: String(lastPeppyProfile?.fontMode || '').trim(),
-              fontSize: String(lastPeppyProfile?.fontSize || '').trim(),
-              meterMode: String(lastPeppyProfile?.meterMode || '').trim(),
+              meterType: mt,
+              fontMode: fm,
+              fontSize: fz,
+              meterMode: mm,
             }),
           }, 8000).catch(() => null);
 
