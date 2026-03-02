@@ -950,8 +950,15 @@
         const mode = String(fontMode?.value || previewFontMode || 'ui-sans');
         const sz = String(fontSize?.value || previewFontSize || 'm');
         const scale = ({ s:0.74, m:0.84, l:0.94, xl:1.04 }[sz] || 0.84);
+        const isWarmParchment = String(themeName?.value || '').trim() === 'warm-parchment';
+        const setCanvasBg = (bg) => {
+          [artistCanvas, titleCanvas, albumYearCanvas, fileMetaCanvas, fileMetaCanvas2].forEach((c) => {
+            if (!c) return;
+            c.style.background = bg;
+          });
+        };
         if (mode === 'dot-matrix') {
-          const isWarmParchment = String(themeName?.value || '').trim() === 'warm-parchment';
+          setCanvasBg('');
           const titleDot = (isWarmParchment ? 1.8 : 1.4) * scale;
           const metaDot = (isWarmParchment ? 0.85 : 0.7) * Math.max(0.9, scale);
           drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
@@ -961,6 +968,7 @@
           drawDotText(fileMetaCanvas2, dotFileMeta2, { size: 22, pitch: 2, dot: metaDot, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
           return;
         }
+        setCanvasBg(isWarmParchment ? '#efe2cf' : 'transparent');
         drawPlainText(artistCanvas, dotArtist, { size: Math.round(46*scale), weight: 760 });
         drawPlainText(titleCanvas, dotTitle, { size: Math.round(46*scale), weight: 800 });
         drawPlainText(albumYearCanvas, dotAlbumYear, { size: Math.round(46*scale), weight: 760 });
