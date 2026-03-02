@@ -29,6 +29,24 @@
       "bgr": "assets/peppy/black-white-1280-bgr.png",
       "fgr": "",
       "needle": "assets/peppy/black-white-1280-needle.png"
+    },
+    {
+      "name": "gold-1280",
+      "bgr": "assets/peppy/gold-1280-bgr.png",
+      "fgr": "assets/peppy/gold-1280-fgr.png",
+      "needle": "assets/peppy/gold-1280-needle.png"
+    },
+    {
+      "name": "red-1280",
+      "bgr": "assets/peppy/red-1280-bgr.png",
+      "fgr": "assets/peppy/red-1280-fgr.png",
+      "needle": "assets/peppy/red-1280-needle.png"
+    },
+    {
+      "name": "tube-1280",
+      "bgr": "assets/peppy/tube-1280-bgr.png",
+      "fgr": "assets/peppy/tube-1280-fgr.png",
+      "needle": "assets/peppy/tube-1280-needle.png"
     }
   ]
 }
