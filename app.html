@@ -3278,7 +3278,7 @@
         } catch {}
       }
       syncFrameWidth();
-      await hydratePeppyProfileFromLastPush();
+      hydratePeppyProfileFromLastPush().catch(() => {});
       navigate(getPageFromUrl(), false);
       syncPills();
       // Prioritize transport controls/hero paint first; queue can load just after.
