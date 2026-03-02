@@ -232,12 +232,33 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
   app.post('/peppy/last-profile', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const url = String(req.body?.url || '').trim();
-      const skin = String(req.body?.skin || '').trim();
-      const theme = String(req.body?.theme || '').trim();
+      const incoming = {
+        url: String(req.body?.url || '').trim(),
+        skin: String(req.body?.skin || '').trim(),
+        theme: String(req.body?.theme || '').trim(),
+        meterType: String(req.body?.meterType || '').trim(),
+        fontMode: String(req.body?.fontMode || '').trim(),
+        fontSize: String(req.body?.fontSize || '').trim(),
+        meterMode: String(req.body?.meterMode || '').trim(),
+      };
+      let prev = {};
+      try {
+        const rawPrev = await fs.readFile(peppyLastPushPath, 'utf8');
+        prev = JSON.parse(rawPrev || '{}') || {};
+      } catch {}
+      const merged = {
+        url: incoming.url || String(prev?.url || '').trim() || 'http://10.0.0.233:8101/peppy.html?kiosk=1',
+        skin: incoming.skin || String(prev?.skin || '').trim() || 'blue-1280',
+        theme: incoming.theme || String(prev?.theme || '').trim() || 'midnight-blue',
+        meterType: incoming.meterType || String(prev?.meterType || '').trim() || 'circular',
+        fontMode: incoming.fontMode || String(prev?.fontMode || '').trim() || 'ui-sans',
+        fontSize: incoming.fontSize || String(prev?.fontSize || '').trim() || 'm',
+        meterMode: incoming.meterMode || String(prev?.meterMode || '').trim() || 'segmented',
+        ts: Date.now(),
+      };
       await fs.mkdir(path.dirname(peppyLastPushPath), { recursive: true });
-      await fs.writeFile(peppyLastPushPath, JSON.stringify({ url, skin, theme, ts: Date.now() }, null, 2));
-      return res.json({ ok: true });
+      await fs.writeFile(peppyLastPushPath, JSON.stringify(merged, null, 2));
+      return res.json({ ok: true, profile: merged });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
