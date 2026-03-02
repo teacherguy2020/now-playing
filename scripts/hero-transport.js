@@ -478,14 +478,20 @@
     const fb = el.querySelector('.heroArtFallback');
     const src = String(vid.currentSrc || vid.src || '').trim();
 
-    // No fallback downgrade path: once motion is present, keep video visible.
-    if (fb) fb.style.display = 'none';
+    // Keep fallback visible until video actually renders; never blank hero art.
+    if (fb) fb.style.display = '';
     vid.style.display = '';
+
+    const showFallback = () => { try { if (fb) fb.style.display = ''; vid.style.display = 'none'; } catch {} };
+    const hideFallback = () => { try { if (fb) fb.style.display = 'none'; vid.style.display = ''; } catch {} };
+    vid.addEventListener('loadeddata', hideFallback, { once: true });
+    vid.addEventListener('playing', hideFallback, { once: true });
+    vid.addEventListener('error', showFallback, { once: true });
 
     try {
       const p = (typeof vid.play === 'function') ? vid.play() : null;
-      if (p && typeof p.catch === 'function') p.catch(() => {});
-    } catch {}
+      if (p && typeof p.catch === 'function') p.catch(() => showFallback());
+    } catch { showFallback(); }
 
     if (src) {
       lastVisibleMotionSrc = src;
