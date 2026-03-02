@@ -1873,8 +1873,22 @@
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;
         const targetUrl = `${location.protocol}//${host}:8101/peppy.html?kiosk=1`;
-        const s = '';
-        const t = '';
+        let s = String(lastPeppyProfile?.skin || '').trim();
+        let t = String(lastPeppyProfile?.theme || '').trim();
+        try {
+          const f = document.getElementById('appFrame');
+          const w = f?.contentWindow;
+          const d = w?.document;
+          if (!s) s = String(d?.getElementById('skinName')?.value || '').trim();
+          if (!t) t = String(d?.getElementById('themeName')?.value || '').trim();
+          if (!s || !t) {
+            const ls = w?.localStorage;
+            if (!s) s = String(ls?.getItem('peppy.skin') || '').trim();
+            if (!t) t = String(ls?.getItem('peppy.theme') || '').trim();
+          }
+        } catch {}
+        if (!s) s = 'blue-1280';
+        if (!t) t = 'midnight-blue';
         setPushPeppyBusy(true);
         try {
           if (!runtimeTrackKey) {
