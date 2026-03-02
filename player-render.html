@@ -48,6 +48,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="styles/index1080.css?v=20260228-airplay-logo-sm1" />
+  <style>
+    /* Size-profile pass 1: keep 1280x400 composition, fit into target panel */
+    body.player-size-800x480 #content{
+      width:1280px;
+      height:400px;
+      transform:scale(0.625);
+      transform-origin:top center;
+      margin-top:16px;
+    }
+  </style>
 
 </head>
 
