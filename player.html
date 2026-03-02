@@ -10,7 +10,9 @@
     .wrap{display:grid;grid-template-rows:auto 1fr;gap:10px;padding:10px;height:100%;box-sizing:border-box}
     .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
     .bar select,.bar button{height:30px;background:#0e1624;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:0 8px}
-    .stage{border:1px solid var(--line);border-radius:10px;background:#0d1422;display:grid;place-items:center;min-height:280px}
+    .stage{border:1px solid var(--line);border-radius:10px;background:#0d1422;display:grid;place-items:center;min-height:280px;overflow:auto}
+    .previewWrap{transform-origin:top left}
+    #playerFrame{border:0;display:block;background:#000}
     .hint{color:var(--muted);font-size:13px}
   </style>
 </head>
@@ -30,12 +32,11 @@
         <option value="light">Light</option>
       </select>
       <button id="savePlayerProfile" type="button">Save profile</button>
-      <span class="hint" id="playerHint">Scaffold mode: this page is the starting point for size-specific player design.</span>
+      <span class="hint" id="playerHint">Now previewing index layout in selected display size.</span>
     </div>
     <div class="stage" id="playerStage">
-      <div>
-        <h2 style="margin:0 0 8px;">Player display scaffold</h2>
-        <div class="hint">Next step: add per-size layout presets and live design controls like Peppy.</div>
+      <div id="previewWrap" class="previewWrap">
+        <iframe id="playerFrame" title="Player preview"></iframe>
       </div>
     </div>
   </div>
@@ -45,13 +46,39 @@
       const sizeEl = $('playerSize');
       const themeEl = $('playerTheme');
       const hintEl = $('playerHint');
+      const frame = $('playerFrame');
+      const wrap = $('previewWrap');
       const KEY = 'player.profile.v1';
+      const SIZE_MAP = {
+        '1280x400':[1280,400],
+        '1024x600':[1024,600],
+        '800x480':[800,480],
+        '480x320':[480,320],
+        '320x240':[320,240],
+      };
+      function applyPreview(){
+        const size = String(sizeEl?.value || '1280x400');
+        const [w,h] = SIZE_MAP[size] || [1280,400];
+        if (frame) {
+          frame.width = String(w);
+          frame.height = String(h);
+          frame.style.width = `${w}px`;
+          frame.style.height = `${h}px`;
+          const theme = String(themeEl?.value || 'dark');
+          frame.src = `index.html?kiosk=1&theme=${encodeURIComponent(theme)}&sw=${Date.now()}`;
+        }
+        const stage = $('playerStage');
+        const stageW = Math.max(320, stage?.clientWidth || 320);
+        const scale = Math.min(1, (stageW - 24) / w);
+        if (wrap) wrap.style.transform = `scale(${Math.max(0.25, scale)})`;
+      }
       function load(){
         try {
           const j = JSON.parse(localStorage.getItem(KEY) || '{}');
           if (j.size && sizeEl) sizeEl.value = j.size;
           if (j.theme && themeEl) themeEl.value = j.theme;
         } catch {}
+        applyPreview();
       }
       function save(){
         const p = { size: String(sizeEl?.value||'1280x400'), theme: String(themeEl?.value||'dark'), ts: Date.now() };
@@ -59,6 +86,9 @@
         if (hintEl) hintEl.textContent = `Saved player profile: ${p.size} / ${p.theme}`;
       }
       $('savePlayerProfile')?.addEventListener('click', save);
+      sizeEl?.addEventListener('change', applyPreview);
+      themeEl?.addEventListener('change', applyPreview);
+      window.addEventListener('resize', applyPreview);
       load();
     })();
   </script>
