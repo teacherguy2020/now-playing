@@ -21,7 +21,7 @@ A moOde-focused now-playing API + UI stack with optional Alexa integration.
 
 ## Docs (tab-ordered)
 
-See [docs/README.md](./docs/README.md).
+👉 **Start here for full documentation:** [docs/README.md](./docs/README.md)
 
 - Config
 - Diagnostics
