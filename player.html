@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Player Display Builder</title>
+  <style>
+    :root{--bg:#0a0f18;--fg:#e8eefc;--muted:#9db0cf;--line:#2a3a58;--card:#121b2b}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    .wrap{display:grid;grid-template-rows:auto 1fr;gap:10px;padding:10px;height:100%;box-sizing:border-box}
+    .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+    .bar select,.bar button{height:30px;background:#0e1624;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:0 8px}
+    .stage{border:1px solid var(--line);border-radius:10px;background:#0d1422;display:grid;place-items:center;min-height:280px}
+    .hint{color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="bar">
+      <strong>Player Builder</strong>
+      <select id="playerSize" aria-label="Display size profile">
+        <option value="1280x400">1280x400</option>
+        <option value="1024x600">1024x600</option>
+        <option value="800x480">800x480</option>
+        <option value="480x320">480x320</option>
+        <option value="320x240">320x240</option>
+      </select>
+      <select id="playerTheme" aria-label="Player theme">
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+      </select>
+      <button id="savePlayerProfile" type="button">Save profile</button>
+      <span class="hint" id="playerHint">Scaffold mode: this page is the starting point for size-specific player design.</span>
+    </div>
+    <div class="stage" id="playerStage">
+      <div>
+        <h2 style="margin:0 0 8px;">Player display scaffold</h2>
+        <div class="hint">Next step: add per-size layout presets and live design controls like Peppy.</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const sizeEl = $('playerSize');
+      const themeEl = $('playerTheme');
+      const hintEl = $('playerHint');
+      const KEY = 'player.profile.v1';
+      function load(){
+        try {
+          const j = JSON.parse(localStorage.getItem(KEY) || '{}');
+          if (j.size && sizeEl) sizeEl.value = j.size;
+          if (j.theme && themeEl) themeEl.value = j.theme;
+        } catch {}
+      }
+      function save(){
+        const p = { size: String(sizeEl?.value||'1280x400'), theme: String(themeEl?.value||'dark'), ts: Date.now() };
+        try { localStorage.setItem(KEY, JSON.stringify(p)); } catch {}
+        if (hintEl) hintEl.textContent = `Saved player profile: ${p.size} / ${p.theme}`;
+      }
+      $('savePlayerProfile')?.addEventListener('click', save);
+      load();
+    })();
+  </script>
+</body>
+</html>

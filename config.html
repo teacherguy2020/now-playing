@@ -266,6 +266,12 @@
                   <div class="cfgHint">Enable radio per-track artwork behavior in now-playing flows.</div>
                 </div>
 
+                <div class="cfgCard gateCard" id="displayTakeoverCard">
+                  <h3>moOde Display Takeover</h3>
+                  <div class="cfgField"><label><input id="featureMoodeDisplayTakeover" type="checkbox" /> Enable Now Playing display takeover on moOde</label></div>
+                  <div class="cfgHint">When enabled, Peppy/Player display tools are available and can set moOde target URL to this server.</div>
+                </div>
+
                 <div class="cfgCard gateCard" id="mpdscribbleCard">
                   <h3>mpdscribble</h3>
                   <div class="cfgField"><label><input id="featureMpdscribbleControl" type="checkbox" /> Enable controls</label></div>
@@ -1012,6 +1018,7 @@ async function loadCfg(){
   document.getElementById('featureRadio').checked = !!c.features?.radio;
   document.getElementById('featureAlbumPersonnel').checked = !!(c.features?.albumPersonnel ?? true);
   document.getElementById('featureMpdscribbleControl').checked = !!(c.features?.mpdscribbleControl ?? false);
+  document.getElementById('featureMoodeDisplayTakeover').checked = !!(c.features?.moodeDisplayTakeover ?? true);
   syncRatingsCardVisibility();
   syncMpdscribbleUi();
   const lastfmKey = String(full.lastfmApiKey || localStorage.getItem('nowplaying.secret.lastfmApiKey') || '');
@@ -1177,6 +1184,7 @@ async function saveCfg(){
         radio: document.getElementById('featureRadio').checked,
         albumPersonnel: document.getElementById('featureAlbumPersonnel').checked,
         mpdscribbleControl: document.getElementById('featureMpdscribbleControl').checked,
+        moodeDisplayTakeover: document.getElementById('featureMoodeDisplayTakeover').checked,
       },
       trackKey: document.getElementById('configTrackKey').value.trim(),
       ports: {

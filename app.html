@@ -335,7 +335,8 @@
           <a href="?page=queue-wizard.html" data-page="queue-wizard.html">Queue Wizard</a>
           <a href="?page=radio.html" data-page="radio.html">Radio</a>
           <a href="?page=podcasts.html" id="podcastsNavLink" data-page="podcasts.html">Podcasts</a>
-          <a href="?page=peppy.html" data-page="peppy.html">Peppy</a>
+          <a href="?page=peppy.html" id="peppyNavLink" data-page="peppy.html">Peppy</a>
+          <a href="?page=player.html" id="playerNavLink" data-page="player.html">Player</a>
           <a href="?page=theme.html" data-page="theme.html">Theme</a>
         </nav>
         <button id="pushPeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Push Peppy to moOde</button>
@@ -373,7 +374,7 @@
   <script src="scripts/hero-transport.js?v=20260224-secondary-text"></script>
   <script>
     (() => {
-      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','peppy.html','theme.html']);
+      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','peppy.html','player.html','theme.html']);
       const frame = document.getElementById('appFrame');
       const viewWrap = document.getElementById('viewWrap');
       const shellUrl = new URL(location.href);
@@ -640,6 +641,7 @@
       let notifyEnabled = null;
       let peppyModeState = (() => { try { return String(localStorage.getItem('np.peppyMode') || 'webui'); } catch { return 'webui'; } })();
       let lastPeppyProfile = { skin:'', theme:'', meterType:'', fontMode:'', fontSize:'', meterMode:'', displayMode:'peppy', ts:0 };
+      let moodeDisplayTakeoverEnabled = true;
       let screenModeState = (() => { try { return String(localStorage.getItem('np.screenMode') || 'nowplaying'); } catch { return 'nowplaying'; } })();
       let alexaEnabledState = null;
       let alexaDomainState = '';
@@ -2192,6 +2194,7 @@
           alexaDomainState = axDomain;
           const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || cfg?.mpdHost || '').trim();
           scrobbleControlsEnabled = !!cfg?.features?.mpdscribbleControl;
+          moodeDisplayTakeoverEnabled = !!(cfg?.features?.moodeDisplayTakeover ?? true);
 
           const $ = (id) => document.getElementById(id);
           if ($('apiHint')) $('apiHint').textContent = `${host}:${apiPort}`;
@@ -2206,7 +2209,15 @@
           refreshScreenPill();
 
           const podcastsLink = document.getElementById('podcastsNavLink');
-          if (podcastsLink && !cfg?.features?.podcasts) podcastsLink.style.display = 'none';
+          if (podcastsLink) podcastsLink.style.display = cfg?.features?.podcasts ? '' : 'none';
+          const peppyLink = document.getElementById('peppyNavLink');
+          const playerLink = document.getElementById('playerNavLink');
+          if (peppyLink) peppyLink.style.display = moodeDisplayTakeoverEnabled ? '' : 'none';
+          if (playerLink) playerLink.style.display = moodeDisplayTakeoverEnabled ? '' : 'none';
+          if (!moodeDisplayTakeoverEnabled && (String(currentShellPage || '') === 'peppy.html' || String(currentShellPage || '') === 'player.html')) {
+            navigate('config.html', true);
+          }
+          refreshPushPeppyVisibility();
           refreshNotifyPillFromCfg(cfg);
           await refreshScrobblePill(base);
         } catch {
@@ -2227,6 +2238,7 @@
       function getPageFromUrl() {
         const u = new URL(location.href);
         const p = String(u.searchParams.get('page') || 'config.html').trim();
+        if (!moodeDisplayTakeoverEnabled && (p === 'peppy.html' || p === 'player.html')) return 'config.html';
         return VALID.has(p) ? p : 'config.html';
       }
 
@@ -2244,7 +2256,8 @@
       }
 
       function refreshPushPeppyVisibility(){ 
-        const show = String(currentShellPage || '') === 'peppy.html';
+        const page = String(currentShellPage || '');
+        const show = moodeDisplayTakeoverEnabled && (page === 'peppy.html' || page === 'player.html');
         const btn = document.getElementById('pushPeppyBtn');
         const idxBtn = document.getElementById('showIndexBtn');
         const moodeBtn = document.getElementById('showMoodeUiBtn');
