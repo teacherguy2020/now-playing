@@ -74,6 +74,7 @@ function pickPublicConfig(cfg) {
       radio: Boolean(c.features?.radio ?? true),
       albumPersonnel: Boolean(c.features?.albumPersonnel ?? true),
       mpdscribbleControl: Boolean(c.features?.mpdscribbleControl ?? false),
+      moodeDisplayTakeover: Boolean(c.features?.moodeDisplayTakeover ?? true),
     },
   };
 }
