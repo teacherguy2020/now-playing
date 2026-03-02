@@ -122,9 +122,8 @@
           <option value="">Load preset…</option>
           <option value="builtin:0">Modern Blue Circular</option>
           <option value="builtin:1">Matrix Classic Needle</option>
-          <option value="builtin:2">Warm Parchment Dot</option>
-          <option value="builtin:3">Red Neon Studio</option>
-          <option value="builtin:4">Cassette Linear Classic</option>
+          <option value="builtin:2">Red Neon Studio</option>
+          <option value="builtin:3">Cassette Linear Classic</option>
         </select>
         <button id="pushPeppyFromTab" class="skinBtn" type="button">Push Peppy to moOde</button>
         <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
@@ -291,9 +290,8 @@
       const BUILTIN_PRESETS = [
         { name:'Modern Blue Circular', skin:'blue-1280', theme:'midnight-blue', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'segmented', sensitivity:'medium', smoothing:'medium' },
         { name:'Matrix Classic Needle', skin:'emerald-1280', theme:'graphite-green', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'segmented', sensitivity:'medium', smoothing:'medium' },
-        { name:'Warm Parchment Dot', skin:'gold-1280', theme:'warm-parchment', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'continuous', sensitivity:'medium', smoothing:'high' },
         { name:'Red Neon Studio', skin:'red-1280', theme:'red-neon', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'continuous', sensitivity:'high', smoothing:'medium' },
-        { name:'Cassette Linear Classic', skin:'cassette-linear', theme:'silver-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'m', meterMode:'segmented', sensitivity:'medium', smoothing:'high' },
+        { name:'Cassette Linear Classic', skin:'cassette-linear', theme:'silver-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'xl', meterMode:'segmented', sensitivity:'medium', smoothing:'low' },
       ];
       function getCurrentProfile(){
         const skin = String(skinName?.value || previewSkin || '').trim();
@@ -364,7 +362,8 @@
       }
       function refreshPresetSelect(){
         if (!peppyPreset) return;
-        while (peppyPreset.options.length > 6) peppyPreset.remove(6);
+        const staticCount = 1 + BUILTIN_PRESETS.length;
+        while (peppyPreset.options.length > staticCount) peppyPreset.remove(staticCount);
         listCustomPresets().forEach((p, i) => {
           const o = document.createElement('option');
           o.value = `custom:${i}`;
