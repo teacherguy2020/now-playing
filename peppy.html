@@ -1109,6 +1109,7 @@
           dotFileMeta2 = [qualityTag || 'DIGITAL', ratingLabel].filter(Boolean).join(' • ');
           redrawDotCanvases();
 
+          const isRadioLike = !!(j?.isRadio || j?.isStream || j?.isAirplay || j?.isUpnp || j?.isPodcast);
           const pctDirect = Number(j?.songPercent ?? j?.progressPercent ?? j?.percent ?? NaN);
           const elapsed = Number(j?.elapsed ?? j?.elapsedSec ?? j?.positionSec ?? j?.currentTime ?? 0);
           const total = Number(j?.time ?? j?.duration ?? j?.totalTime ?? 0);
@@ -1117,7 +1118,8 @@
             : ((Number.isFinite(elapsed) && Number.isFinite(total) && total > 0)
                 ? Math.max(0, Math.min(100, (elapsed / total) * 100))
                 : 0);
-          paintSegments(pseg, p);
+          if (progressEl) progressEl.style.display = isRadioLike ? 'none' : '';
+          paintSegments(pseg, isRadioLike ? 0 : p);
 
           if (playbackState !== 'play') {
             setTarget('L', 0);
