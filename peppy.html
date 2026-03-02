@@ -230,7 +230,7 @@
         r.style.setProperty('--dot-bg', t.dotBg || t.card2);
         r.style.setProperty('--dot-dim', t.dotDim || t.line);
       }
-      if (skinOpsEl) skinOpsEl.style.display = adminMode ? 'flex' : 'none';
+      if (skinOpsEl) skinOpsEl.style.display = kioskMode ? 'none' : 'flex';
       const ctrlPrev = $('ctrlPrev');
       const ctrlPlay = $('ctrlPlay');
       const ctrlNext = $('ctrlNext');
