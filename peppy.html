@@ -1146,13 +1146,6 @@
       skinName?.addEventListener('change', () => {
         previewSkin = String(skinName?.value || 'blue-1280');
         try { localStorage.setItem('peppy.skin', previewSkin); } catch {}
-        const matched = matchThemeForSkin(previewSkin);
-        if (matched && THEMES[matched]) {
-          if (themeName) themeName.value = matched;
-          try { localStorage.setItem('peppy.theme', matched); } catch {}
-          applyTheme(matched);
-          redrawDotCanvases();
-        }
         applyNeedleSkin(previewSkin);
         drawNeedles();
         publishProfileState();
