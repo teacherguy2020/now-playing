@@ -123,7 +123,14 @@
         <button id="skinSavePreset" class="skinBtn" type="button">Save as Preset</button>
         <button id="skinImport" class="skinBtn" type="button">Import Preset</button>
         <button id="pushPeppyFromTab" class="skinBtn" type="button">Push Peppy to moOde</button>
-        <select id="peppyPreset" class="skinSelect" aria-label="Peppy preset"></select>
+        <select id="peppyPreset" class="skinSelect" aria-label="Peppy preset">
+          <option value="">Load preset…</option>
+          <option value="0">Modern Blue Circular</option>
+          <option value="1">Matrix Classic Needle</option>
+          <option value="2">Warm Parchment Dot</option>
+          <option value="3">Red Neon Studio</option>
+          <option value="4">Cassette Linear Classic</option>
+        </select>
         <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
           <input type="radio" name="meterType" id="meterTypeCircular" value="circular" checked /> Circular
         </label>
@@ -306,8 +313,10 @@
       }
       function renderPresetSelect(){
         if (!peppyPreset) return;
-        const all = listPresets();
-        peppyPreset.innerHTML = ['<option value="">Load preset…</option>', ...all.map((p,i)=>`<option value="${i}">${String(p.name||`Preset ${i+1}`)}</option>`)].join('');
+        let all = [];
+        try { all = listPresets(); } catch { all = [...BUILTIN_PRESETS]; }
+        if (!Array.isArray(all) || !all.length) all = [...BUILTIN_PRESETS];
+        peppyPreset.innerHTML = ['<option value="">Load preset…</option>', ...all.map((p,i)=>`<option value="${i}">${String(p?.name || ('Preset ' + (i+1)))}</option>`)].join('');
       }
       function applyPreset(p){
         if (!p) return;
