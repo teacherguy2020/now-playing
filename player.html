@@ -66,8 +66,10 @@
     .playerControls label{font-size:12px;opacity:.9}
     .playerControls select{height:30px;border:1px solid rgba(120,140,180,.5);background:#111a2a;color:#e6efff;border-radius:8px;padding:0 8px}
     body.player-builder #displayViewport{position:fixed;left:0;right:0;top:56px;bottom:10px;display:flex;align-items:flex-start;justify-content:center;pointer-events:none}
-    body.player-builder #displayFrame{width:calc(var(--player-w,1280px) + (var(--frame-pad,10px) * 2));height:calc(var(--player-h,400px) + (var(--frame-pad,10px) * 2));padding:var(--frame-pad,10px);box-sizing:border-box;border:2px solid rgba(180,196,226,.75);border-radius:0;overflow:hidden;background:#000;transform-origin:top center;transform:scale(var(--player-scale,1));pointer-events:auto}
-    body.player-builder #content{position:relative;width:var(--player-w,1280px);height:var(--player-h,400px);margin:0;transform:none}
+    body.player-builder #displayFrame{position:relative;width:calc(var(--player-w,1280px) + (var(--frame-pad,10px) * 2));height:calc(var(--player-h,400px) + (var(--frame-pad,10px) * 2));padding:var(--frame-pad,10px);box-sizing:border-box;border:2px solid rgba(180,196,226,.75);border-radius:0;overflow:hidden;background:#000;transform-origin:top center;transform:scale(var(--player-scale,1));pointer-events:auto}
+    body.player-builder #displayFrame #background-a,
+    body.player-builder #displayFrame #background-b,
+    body.player-builder #displayFrame #content{position:absolute !important;left:var(--frame-pad,10px) !important;top:var(--frame-pad,10px) !important;width:var(--player-w,1280px) !important;height:var(--player-h,400px) !important;margin:0 !important;transform:none !important}
   </style>
 </head>
 
