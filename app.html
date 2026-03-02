@@ -1859,9 +1859,16 @@
         try {
           const f = document.getElementById('appFrame');
           const w = f?.contentWindow;
-          const ls = w?.localStorage;
-          s = String(ls?.getItem('peppy.skin') || '').trim();
-          t = String(ls?.getItem('peppy.theme') || '').trim();
+          const d = w?.document;
+          const skinSel = d?.getElementById('skinName');
+          const themeSel = d?.getElementById('themeName');
+          s = String(skinSel?.value || '').trim();
+          t = String(themeSel?.value || '').trim();
+          if (!s || !t) {
+            const ls = w?.localStorage;
+            if (!s) s = String(ls?.getItem('peppy.skin') || '').trim();
+            if (!t) t = String(ls?.getItem('peppy.theme') || '').trim();
+          }
         } catch {}
         if (!s || !t) {
           try {
