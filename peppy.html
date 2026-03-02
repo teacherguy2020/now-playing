@@ -554,15 +554,16 @@
             if (previewMeterMode === 'continuous') {
               const pct = clamp(level) / 100;
               const cw = Math.max(0, Math.floor((w - 14) * pct));
-              const grad = (previewColorMode === 'theme')
-                ? 'linear-gradient(90deg,#2eb9ee,#39c6f5)'
-                : 'linear-gradient(90deg,#bff3ff 0 72%, #ffe06b 72% 86%, #ff6464 86% 100%)';
               ctx.fillStyle = '#1a2a36';
               ctx.fillRect(x0 + 7, y + 6, w - 14, h - 12);
               const g = ctx.createLinearGradient(x0 + 7, 0, x0 + 7 + Math.max(1, cw), 0);
               if (previewColorMode === 'theme') {
-                g.addColorStop(0, '#2eb9ee');
-                g.addColorStop(1, '#39c6f5');
+                const rgb = getComputedStyle(document.documentElement).getPropertyValue('--progress-rgb').trim() || '46,185,238';
+                const mk = (a) => `rgba(${rgb},${a})`;
+                g.addColorStop(0, mk(0.24));
+                g.addColorStop(0.45, mk(0.56));
+                g.addColorStop(0.75, mk(0.82));
+                g.addColorStop(1, mk(1));
               } else {
                 g.addColorStop(0, '#bff3ff');
                 g.addColorStop(0.72, '#bff3ff');
