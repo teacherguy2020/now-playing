@@ -117,6 +117,15 @@
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
         <button id="skinExport" class="skinBtn" type="button">Export JSON</button>
+        <button id="skinSavePreset" class="skinBtn" type="button">Save as Preset</button>
+        <select id="peppyPreset" class="skinSelect" aria-label="Peppy preset">
+          <option value="">Load preset…</option>
+          <option value="builtin:0">Modern Blue Circular</option>
+          <option value="builtin:1">Matrix Classic Needle</option>
+          <option value="builtin:2">Warm Parchment Dot</option>
+          <option value="builtin:3">Red Neon Studio</option>
+          <option value="builtin:4">Cassette Linear Classic</option>
+        </select>
         <button id="pushPeppyFromTab" class="skinBtn" type="button">Push Peppy to moOde</button>
         <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
           <input type="radio" name="meterType" id="meterTypeCircular" value="circular" checked /> Circular
@@ -278,6 +287,14 @@
         r.style.setProperty('--dot-bg', t.dotBg || t.card2);
         r.style.setProperty('--dot-dim', t.dotDim || t.line);
       }
+      const PEPPY_PRESETS_KEY = 'peppy.presets.v1';
+      const BUILTIN_PRESETS = [
+        { name:'Modern Blue Circular', skin:'blue-1280', theme:'midnight-blue', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'segmented', sensitivity:'medium', smoothing:'medium' },
+        { name:'Matrix Classic Needle', skin:'emerald-1280', theme:'graphite-green', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'segmented', sensitivity:'medium', smoothing:'medium' },
+        { name:'Warm Parchment Dot', skin:'gold-1280', theme:'warm-parchment', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'continuous', sensitivity:'medium', smoothing:'high' },
+        { name:'Red Neon Studio', skin:'red-1280', theme:'red-neon', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'continuous', sensitivity:'high', smoothing:'medium' },
+        { name:'Cassette Linear Classic', skin:'cassette-linear', theme:'silver-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'m', meterMode:'segmented', sensitivity:'medium', smoothing:'high' },
+      ];
       function getCurrentProfile(){
         const skin = String(skinName?.value || previewSkin || '').trim();
         const theme = String(themeName?.value || '').trim();
@@ -288,6 +305,26 @@
         const sensitivity = String(needleSensitivity?.value || previewSensitivity || 'medium');
         const smoothing = String(needleSmoothing?.value || previewSmoothing || 'medium');
         return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, sensitivity, smoothing, ts: Date.now() };
+      }
+      function applyPreset(p){
+        if (!p) return;
+        if (meterTypeLinear) meterTypeLinear.checked = String(p.meterType||'circular') === 'linear';
+        if (meterTypeCircular) meterTypeCircular.checked = !meterTypeLinear?.checked;
+        syncMeterTypeClass();
+        renderSkinOptions(String(p.skin || previewSkin || 'blue-1280'));
+        if (skinName && p.skin) skinName.value = String(p.skin);
+        if (themeName && p.theme) themeName.value = String(p.theme);
+        if (fontMode && p.fontMode) fontMode.value = String(p.fontMode);
+        if (fontSize && p.fontSize) fontSize.value = String(p.fontSize);
+        if (meterMode && p.meterMode) meterMode.value = String(p.meterMode);
+        if (needleSensitivity && p.sensitivity) needleSensitivity.value = String(p.sensitivity);
+        if (needleSmoothing && p.smoothing) needleSmoothing.value = String(p.smoothing);
+        previewSkin = String(skinName?.value || p.skin || previewSkin || 'blue-1280');
+        applyNeedleSkin(previewSkin);
+        applyTheme(String(themeName?.value || p.theme || 'midnight-blue'));
+        redrawDotCanvases();
+        drawNeedles();
+        publishProfileState();
       }
       function publishProfileState(){
         try { window.parent?.postMessage({ type:'peppy-profile', ...getCurrentProfile() }, '*'); } catch {}
@@ -301,6 +338,8 @@
       const ctrlShuffle = $('ctrlShuffle');
       const controlsEl = document.querySelector('.controls');
       const skinExport = $('skinExport');
+      const skinSavePreset = $('skinSavePreset');
+      const peppyPreset = $('peppyPreset');
       const pushPeppyFromTab = $('pushPeppyFromTab');
       const exportModal = $('exportModal');
       const exportJson = $('exportJson');
@@ -320,6 +359,19 @@
       const fileMetaCanvas = $('fileMetaCanvas');
       const fileMetaCanvas2 = $('fileMetaCanvas2');
       const trackProgress = $('trackProgress');
+      function listCustomPresets(){
+        try { const j = JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]'); return Array.isArray(j) ? j : []; } catch { return []; }
+      }
+      function refreshPresetSelect(){
+        if (!peppyPreset) return;
+        while (peppyPreset.options.length > 6) peppyPreset.remove(6);
+        listCustomPresets().forEach((p, i) => {
+          const o = document.createElement('option');
+          o.value = `custom:${i}`;
+          o.textContent = String(p?.name || `Custom ${i+1}`);
+          peppyPreset.appendChild(o);
+        });
+      }
       const progressEl = trackProgress?.closest('.progress') || null;
       const leftCard = document.querySelector('.card.left');
       const metersEl = document.querySelector('.meters');
@@ -1187,6 +1239,7 @@
       ctrlPause?.addEventListener('click', () => playback('pause', ctrlPause));
       ctrlShuffle?.addEventListener('click', () => playback('shuffle', ctrlShuffle));
 
+      refreshPresetSelect();
       skinExport?.addEventListener('click', () => {
         try {
           const profile = getCurrentProfile();
@@ -1197,6 +1250,31 @@
             exportModal.setAttribute('aria-hidden', 'false');
           }
         } catch {}
+      });
+      skinSavePreset?.addEventListener('click', () => {
+        try {
+          const name = String(prompt('Preset name?', `My Preset ${new Date().toLocaleTimeString()}`) || '').trim();
+          if (!name) return;
+          const cur = listCustomPresets();
+          cur.push({ name, ...getCurrentProfile() });
+          localStorage.setItem(PEPPY_PRESETS_KEY, JSON.stringify(cur));
+          refreshPresetSelect();
+          if (peppyPreset) peppyPreset.value = `custom:${cur.length-1}`;
+        } catch {}
+      });
+      peppyPreset?.addEventListener('change', () => {
+        const v = String(peppyPreset.value || '');
+        if (!v) return;
+        if (v.startsWith('builtin:')) {
+          const i = Number(v.split(':')[1]);
+          if (Number.isFinite(i)) applyPreset(BUILTIN_PRESETS[i]);
+          return;
+        }
+        if (v.startsWith('custom:')) {
+          const i = Number(v.split(':')[1]);
+          const c = listCustomPresets();
+          if (Number.isFinite(i) && c[i]) applyPreset(c[i]);
+        }
       });
       pushPeppyFromTab?.addEventListener('click', () => {
         try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
