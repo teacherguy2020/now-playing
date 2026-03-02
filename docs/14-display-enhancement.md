@@ -13,7 +13,11 @@ When **moOde Display Enhancement** is enabled in `config.html`, the app exposes:
 
 ## Stable target URL
 
-Use this as moOde Web UI target:
+In moOde, go to:
+
+- **Configure -> Peripherals -> Local display -> Web UI target URL**
+
+Set it to:
 
 - `http://<WEB_HOST>:8101/display.html?kiosk=1`
 
