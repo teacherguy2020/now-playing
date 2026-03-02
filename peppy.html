@@ -91,17 +91,24 @@
       </div>
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
-        <select id="skinName" class="skinSelect" aria-label="Select skin"></select>
-        <select id="skinGeometry" class="skinSelect" aria-label="Meter geometry">
-          <option value="all">All geometry</option>
-          <option value="circular">Circular</option>
-          <option value="linear">Linear</option>
+        <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
+          <input type="radio" name="meterType" id="meterTypeCircular" value="circular" checked /> Circular
+        </label>
+        <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
+          <input type="radio" name="meterType" id="meterTypeLinear" value="linear" /> Linear
+        </label>
+        <select id="skinName" class="skinSelect" aria-label="Select meter"></select>
+        <select id="fontMode" class="skinSelect" aria-label="Font style">
+          <option value="ui-sans">UI Sans</option>
+          <option value="dot-matrix">Dot Matrix</option>
         </select>
-        <select id="styleFamily" class="skinSelect" aria-label="Style family">
-          <option value="modern">Modern</option>
-          <option value="classic">Classic</option>
+        <select id="fontSize" class="skinSelect" aria-label="Font size">
+          <option value="s">Font S</option>
+          <option value="m" selected>Font M</option>
+          <option value="l">Font L</option>
+          <option value="xl">Font XL</option>
         </select>
-        <select id="meterMode" class="skinSelect" aria-label="Meter mode">
+        <select id="meterMode" class="skinSelect" aria-label="Progress bar style">
           <option value="segmented">Segmented</option>
           <option value="continuous">Continuous</option>
         </select>
@@ -248,9 +255,11 @@
       const ctrlShuffle = $('ctrlShuffle');
       const controlsEl = document.querySelector('.controls');
       const skinName = $('skinName');
-      const skinGeometry = $('skinGeometry');
-      const styleFamily = $('styleFamily');
+      const meterTypeCircular = $('meterTypeCircular');
+      const meterTypeLinear = $('meterTypeLinear');
       const meterMode = $('meterMode');
+      const fontMode = $('fontMode');
+      const fontSize = $('fontSize');
       const meterColorMode = $('meterColorMode');
       const themeName = $('themeName');
       const artistCanvas = $('artistCanvas');
@@ -279,20 +288,13 @@
       function skinMeta(name){
         const n = String(name || '').toLowerCase();
         const linear = n.includes('cassette') || n.includes('tube') || n.includes('white-red');
-        const style = linear ? 'classic' : 'modern';
-        return { geometry: linear ? 'linear' : 'circular', style };
+        return { geometry: linear ? 'linear' : 'circular' };
       }
       function renderSkinOptions(selected = 'blue-1280') {
         if (!skinName) return;
-        const g = String(skinGeometry?.value || 'all');
-        const sf = String(styleFamily?.value || 'modern');
+        const g = meterTypeLinear?.checked ? 'linear' : 'circular';
         const all = [...new Set([...Object.keys(SKIN_ASSETS), 'cassette-linear'])].filter((n) => n !== 'mack-blue-compact');
-        const names = all.filter((n) => {
-          const m = skinMeta(n);
-          const gOk = (g === 'all') || (m.geometry === g);
-          const sOk = (m.style === sf);
-          return gOk && sOk;
-        });
+        const names = all.filter((n) => skinMeta(n).geometry === g);
         const final = names.length ? names : all;
         skinName.innerHTML = final.map((n) => `<option value="${n}">${n}</option>`).join('');
         skinName.value = final.includes(selected) ? selected : (final[0] || 'blue-1280');
@@ -423,14 +425,15 @@
         try { return localStorage.getItem('peppy.skin') || String(skinName?.value || 'blue-1280'); } catch { return String(skinName?.value || 'blue-1280'); }
       })();
       if (!(previewSkin in SKIN_ASSETS) && previewSkin !== 'cassette-linear') previewSkin = 'blue-1280';
-      let previewStyleFamily = (() => {
-        try { return localStorage.getItem('peppy.styleFamily') || skinMeta(previewSkin).style || 'modern'; } catch { return skinMeta(previewSkin).style || 'modern'; }
+      let previewMeterType = (() => {
+        try { return localStorage.getItem('peppy.meterType') || skinMeta(previewSkin).geometry || 'circular'; } catch { return skinMeta(previewSkin).geometry || 'circular'; }
       })();
-      let previewSkinGeometry = (() => {
-        try { return localStorage.getItem('peppy.skinGeometry') || 'all'; } catch { return 'all'; }
-      })();
-      if (styleFamily) styleFamily.value = previewStyleFamily;
-      if (skinGeometry) skinGeometry.value = previewSkinGeometry;
+      if (meterTypeLinear) meterTypeLinear.checked = (previewMeterType === 'linear');
+      if (meterTypeCircular) meterTypeCircular.checked = (previewMeterType !== 'linear');
+      let previewFontMode = (() => { try { return localStorage.getItem('peppy.fontMode') || 'ui-sans'; } catch { return 'ui-sans'; } })();
+      let previewFontSize = (() => { try { return localStorage.getItem('peppy.fontSize') || 'm'; } catch { return 'm'; } })();
+      if (fontMode) fontMode.value = previewFontMode;
+      if (fontSize) fontSize.value = previewFontSize;
       renderSkinOptions(previewSkin);
       previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
       applyNeedleSkin(previewSkin);
@@ -945,11 +948,13 @@
       let dotFileMeta = '—';
       let dotFileMeta2 = '—';
       function redrawDotCanvases(){
-        const mode = String(styleFamily?.value || previewStyleFamily || 'modern');
-        if (mode === 'classic') {
+        const mode = String(fontMode?.value || previewFontMode || 'ui-sans');
+        const sz = String(fontSize?.value || previewFontSize || 'm');
+        const scale = ({ s:0.88, m:1.0, l:1.14, xl:1.28 }[sz] || 1.0);
+        if (mode === 'dot-matrix') {
           const isWarmParchment = String(themeName?.value || '').trim() === 'warm-parchment';
-          const titleDot = isWarmParchment ? 1.8 : 1.4;
-          const metaDot = isWarmParchment ? 0.85 : 0.7;
+          const titleDot = (isWarmParchment ? 1.8 : 1.4) * scale;
+          const metaDot = (isWarmParchment ? 0.85 : 0.7) * Math.max(0.9, scale);
           drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
           drawDotText(titleCanvas, dotTitle, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
           drawDotText(albumYearCanvas, dotAlbumYear, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
@@ -957,11 +962,11 @@
           drawDotText(fileMetaCanvas2, dotFileMeta2, { size: 22, pitch: 2, dot: metaDot, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
           return;
         }
-        drawPlainText(artistCanvas, dotArtist, { size: 52, weight: 760 });
-        drawPlainText(titleCanvas, dotTitle, { size: 52, weight: 800 });
-        drawPlainText(albumYearCanvas, dotAlbumYear, { size: 52, weight: 760 });
-        drawPlainText(fileMetaCanvas, dotFileMeta, { size: 20, weight: 640 });
-        drawPlainText(fileMetaCanvas2, dotFileMeta2, { size: 20, weight: 640 });
+        drawPlainText(artistCanvas, dotArtist, { size: Math.round(52*scale), weight: 760 });
+        drawPlainText(titleCanvas, dotTitle, { size: Math.round(52*scale), weight: 800 });
+        drawPlainText(albumYearCanvas, dotAlbumYear, { size: Math.round(52*scale), weight: 760 });
+        drawPlainText(fileMetaCanvas, dotFileMeta, { size: Math.round(20*scale), weight: 640 });
+        drawPlainText(fileMetaCanvas2, dotFileMeta2, { size: Math.round(20*scale), weight: 640 });
       }
       window.addEventListener('resize', () => { fitPreviewScale(); redrawDotCanvases(); });
 
@@ -1066,10 +1071,6 @@
       skinName?.addEventListener('change', () => {
         previewSkin = String(skinName?.value || 'blue-1280');
         try { localStorage.setItem('peppy.skin', previewSkin); } catch {}
-        const m = skinMeta(previewSkin);
-        previewStyleFamily = m.style;
-        if (styleFamily) styleFamily.value = previewStyleFamily;
-        try { localStorage.setItem('peppy.styleFamily', previewStyleFamily); } catch {}
         const matched = matchThemeForSkin(previewSkin);
         if (matched && THEMES[matched]) {
           if (themeName) themeName.value = matched;
@@ -1081,25 +1082,28 @@
         drawNeedles();
         publishProfileState();
       });
-      skinGeometry?.addEventListener('change', () => {
-        previewSkinGeometry = String(skinGeometry?.value || 'all');
-        try { localStorage.setItem('peppy.skinGeometry', previewSkinGeometry); } catch {}
+      const onMeterTypeChange = () => {
+        previewMeterType = meterTypeLinear?.checked ? 'linear' : 'circular';
+        try { localStorage.setItem('peppy.meterType', previewMeterType); } catch {}
         renderSkinOptions(previewSkin);
         previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
         try { localStorage.setItem('peppy.skin', previewSkin); } catch {}
         applyNeedleSkin(previewSkin);
         redrawDotCanvases();
         drawNeedles();
+        publishProfileState();
+      };
+      meterTypeCircular?.addEventListener('change', onMeterTypeChange);
+      meterTypeLinear?.addEventListener('change', onMeterTypeChange);
+      fontMode?.addEventListener('change', () => {
+        previewFontMode = String(fontMode?.value || 'ui-sans');
+        try { localStorage.setItem('peppy.fontMode', previewFontMode); } catch {}
+        redrawDotCanvases();
       });
-      styleFamily?.addEventListener('change', () => {
-        previewStyleFamily = String(styleFamily?.value || 'modern');
-        try { localStorage.setItem('peppy.styleFamily', previewStyleFamily); } catch {}
-        renderSkinOptions(previewSkin);
-        previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
-        try { localStorage.setItem('peppy.skin', previewSkin); } catch {}
-        applyNeedleSkin(previewSkin);
+      fontSize?.addEventListener('change', () => {
+        previewFontSize = String(fontSize?.value || 'm');
+        try { localStorage.setItem('peppy.fontSize', previewFontSize); } catch {}
         redrawDotCanvases();
-        drawNeedles();
       });
       meterMode?.addEventListener('change', () => {
         previewMeterMode = String(meterMode?.value || 'segmented');
