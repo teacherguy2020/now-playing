@@ -423,7 +423,8 @@
         const all = [...new Set([...Object.keys(SKIN_ASSETS), 'cassette-linear'])].filter((n) => n !== 'mack-blue-compact');
         const names = all.filter((n) => skinMeta(n).geometry === g);
         const final = names.length ? names : all;
-        skinName.innerHTML = final.map((n) => `<option value="${n}">${n}</option>`).join('');
+        const labelFor = (n) => (n === 'red-1280' ? 'orange-1280' : (n === 'orange-1280' ? 'red-1280' : n));
+        skinName.innerHTML = final.map((n) => `<option value="${n}">${labelFor(n)}</option>`).join('');
         skinName.value = final.includes(selected) ? selected : (final[0] || 'blue-1280');
       }
       async function loadSkinCatalog(){
