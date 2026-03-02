@@ -1122,14 +1122,24 @@
         exportModal.setAttribute('aria-hidden', 'true');
       });
       exportCopy?.addEventListener('click', async () => {
+        const txt = String(exportJson?.value || '');
+        if (!txt) return;
+        let ok = false;
         try {
-          const txt = String(exportJson?.value || '');
-          if (!txt) return;
           await navigator.clipboard.writeText(txt);
-          const prev = exportCopy.textContent;
-          exportCopy.textContent = 'Copied';
-          setTimeout(() => { try { exportCopy.textContent = prev; } catch {} }, 1000);
+          ok = true;
         } catch {}
+        if (!ok) {
+          try {
+            exportJson?.focus();
+            exportJson?.select();
+            exportJson?.setSelectionRange(0, txt.length);
+            ok = document.execCommand('copy');
+          } catch {}
+        }
+        const prev = exportCopy.textContent;
+        exportCopy.textContent = ok ? 'Copied' : 'Select All + Copy';
+        setTimeout(() => { try { exportCopy.textContent = prev; } catch {} }, 1300);
       });
 
 
