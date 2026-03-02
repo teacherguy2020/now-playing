@@ -949,7 +949,7 @@
       function redrawDotCanvases(){
         const mode = String(fontMode?.value || previewFontMode || 'ui-sans');
         const sz = String(fontSize?.value || previewFontSize || 'm');
-        const scale = ({ s:0.88, m:1.0, l:1.14, xl:1.28 }[sz] || 1.0);
+        const scale = ({ s:0.74, m:0.84, l:0.94, xl:1.04 }[sz] || 0.84);
         if (mode === 'dot-matrix') {
           const isWarmParchment = String(themeName?.value || '').trim() === 'warm-parchment';
           const titleDot = (isWarmParchment ? 1.8 : 1.4) * scale;
@@ -961,11 +961,11 @@
           drawDotText(fileMetaCanvas2, dotFileMeta2, { size: 22, pitch: 2, dot: metaDot, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
           return;
         }
-        drawPlainText(artistCanvas, dotArtist, { size: Math.round(52*scale), weight: 760 });
-        drawPlainText(titleCanvas, dotTitle, { size: Math.round(52*scale), weight: 800 });
-        drawPlainText(albumYearCanvas, dotAlbumYear, { size: Math.round(52*scale), weight: 760 });
-        drawPlainText(fileMetaCanvas, dotFileMeta, { size: Math.round(20*scale), weight: 640 });
-        drawPlainText(fileMetaCanvas2, dotFileMeta2, { size: Math.round(20*scale), weight: 640 });
+        drawPlainText(artistCanvas, dotArtist, { size: Math.round(46*scale), weight: 760 });
+        drawPlainText(titleCanvas, dotTitle, { size: Math.round(46*scale), weight: 800 });
+        drawPlainText(albumYearCanvas, dotAlbumYear, { size: Math.round(46*scale), weight: 760 });
+        drawPlainText(fileMetaCanvas, dotFileMeta, { size: Math.round(18*scale), weight: 640 });
+        drawPlainText(fileMetaCanvas2, dotFileMeta2, { size: Math.round(18*scale), weight: 640 });
       }
       window.addEventListener('resize', () => { fitPreviewScale(); redrawDotCanvases(); });
 
