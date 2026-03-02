@@ -535,7 +535,7 @@ let lastNowPlayingData = null;
  * Pause "screensaver"
  * ========================= */
 
-const ENABLE_PAUSE_SCREENSAVER = true;
+const ENABLE_PAUSE_SCREENSAVER = !(window.__DISABLE_PAUSE_SCREENSAVER__ === true);
 const PAUSE_ART_URL = `${MOODE_BASE_URL}/images/default-album-cover.png`;
 const PAUSE_MOVE_INTERVAL_MS = 8000;
 const PAUSE_ART_MIN_MARGIN_PX = 20;
@@ -3276,6 +3276,7 @@ function attachClickEventToAlbumArt() {
 
   let controlsAwakeTimer = null;
   function wakeControls(ms = 3500) {
+    if (window.__DISABLE_CONTROLS_AWAKE__ === true) return;
     const wrap = document.getElementById('phone-controls');
     if (!wrap) return;
     wrap.classList.add('controls-awake');
