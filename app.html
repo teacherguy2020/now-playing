@@ -342,7 +342,9 @@
         <button id="showIndexBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Index on moOde</button>
         <button id="showMoodeUiBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show moOde UI</button>
         <button id="refreshDisplayBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Refresh moOde Display</button>
+        <button id="fixTargetBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Fix Target URL</button>
         <button id="nativePeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Native Peppy Takeover</button>
+        <span id="targetUrlHint" class="muted" style="display:none;margin-left:8px;font-size:12px;"></span>
         <div class="statusInline" aria-label="status pills">
           <button class="pill" id="apiPill" type="button" title="Active API endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>API<span class="hint" id="apiHint">loading…</span></button>
           <button class="pill" id="webPill" type="button" title="Active web UI endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></button>
@@ -1954,6 +1956,37 @@
         }
       }
 
+      async function checkMoodeTargetUrl(){
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        const expected = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+        const hint = document.getElementById('targetUrlHint');
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser-url/status`, {
+            headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            cache: 'no-store',
+          }, 8000);
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          const current = String(j?.appUrl || j?.runUrl || '').trim();
+          const ok = current.startsWith(`${location.protocol}//${host}:8101/display.html`);
+          if (hint) {
+            hint.style.display = '';
+            hint.textContent = ok ? 'Target URL OK' : `Target mismatch (${current || 'unknown'})`;
+            hint.style.color = ok ? '#22c55e' : '#f59e0b';
+            hint.title = `Expected: ${expected}`;
+          }
+          return ok;
+        } catch {
+          if (hint) { hint.style.display = ''; hint.textContent = 'Target check unavailable'; hint.style.color = '#f59e0b'; }
+          return false;
+        }
+      }
+
       async function setDisplayModeAndRefresh(mode = 'peppy'){
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;
@@ -2216,11 +2249,13 @@
         const idxBtn = document.getElementById('showIndexBtn');
         const moodeBtn = document.getElementById('showMoodeUiBtn');
         const refBtn = document.getElementById('refreshDisplayBtn');
+        const fixBtn = document.getElementById('fixTargetBtn');
         const natBtn = document.getElementById('nativePeppyBtn');
         if (btn) btn.style.display = show ? '' : 'none';
         if (idxBtn) idxBtn.style.display = show ? '' : 'none';
         if (moodeBtn) moodeBtn.style.display = show ? '' : 'none';
         if (refBtn) refBtn.style.display = show ? '' : 'none';
+        if (fixBtn) fixBtn.style.display = show ? '' : 'none';
         if (natBtn) natBtn.style.display = show ? '' : 'none';
       }
 
@@ -2232,6 +2267,7 @@
         setActive(safe);
         refreshPushPeppyVisibility();
         updateSavePresetsButtonVisibility();
+        if (safe === 'peppy.html') setTimeout(() => { checkMoodeTargetUrl().catch(() => {}); }, 150);
         if (!NO_IFRAME_MODE && frame) {
           let src = `${safe}${safe.includes('?') ? '&' : '?'}shellts=${Date.now()}`;
           if (safe === 'peppy.html') {
@@ -2369,6 +2405,13 @@
       document.getElementById('refreshDisplayBtn')?.addEventListener('click', async (ev) => {
         ev.preventDefault();
         try { await setDisplayModeAndRefresh(String(lastPeppyProfile?.displayMode || 'peppy')); } catch (e) { console.warn('refresh display failed', e?.message || e); }
+      });
+      document.getElementById('fixTargetBtn')?.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try {
+          await setDisplayModeAndRefresh(String(lastPeppyProfile?.displayMode || 'peppy'));
+          await checkMoodeTargetUrl();
+        } catch (e) { console.warn('fix target failed', e?.message || e); }
       });
       document.getElementById('nativePeppyBtn')?.addEventListener('click', async (ev) => {
         ev.preventDefault();

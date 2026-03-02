@@ -687,6 +687,26 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.get('/config/moode/browser-url/status', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+      const script = "APP_LINE=$(grep -E -- '--app=' /home/moode/.xinitrc | tail -n 1 || true); RUN_LINE=$(pgrep -af 'chromium-browser.*--app=' | head -n 1 || true); echo \"APP_LINE:$APP_LINE\"; echo \"RUN_LINE:$RUN_LINE\"";
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 9000 });
+      const out = String(stdout || '');
+      const appLine = (out.match(/APP_LINE:(.*)/) || [,''])[1].trim();
+      const runLine = (out.match(/RUN_LINE:(.*)/) || [,''])[1].trim();
+      const appUrl = (appLine.match(/--app=\"([^\"]+)\"/) || appLine.match(/--app=([^\s]+)/) || [,''])[1].trim();
+      const runUrl = (runLine.match(/--app=\"([^\"]+)\"/) || runLine.match(/--app=([^\s]+)/) || [,''])[1].trim();
+      return res.json({ ok: true, sshHost, sshUser, appLine, runLine, appUrl, runUrl, stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/moode/browser-url', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
