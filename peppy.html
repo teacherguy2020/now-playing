@@ -358,7 +358,23 @@
       const fileMetaCanvas2 = $('fileMetaCanvas2');
       const trackProgress = $('trackProgress');
       function listCustomPresets(){
-        try { const j = JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]'); return Array.isArray(j) ? j : []; } catch { return []; }
+        try {
+          const j = JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]');
+          if (!Array.isArray(j)) return [];
+          let changed = false;
+          const out = j.map((p) => {
+            const name = String(p?.name || '');
+            if (name === 'Red Neon Studio' && String(p?.skin || '') === 'orange-1280') {
+              changed = true;
+              return { ...p, skin: 'red-1280' };
+            }
+            return p;
+          });
+          if (changed) {
+            try { localStorage.setItem(PEPPY_PRESETS_KEY, JSON.stringify(out)); } catch {}
+          }
+          return out;
+        } catch { return []; }
       }
       function refreshPresetSelect(){
         if (!peppyPreset) return;
