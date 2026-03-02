@@ -91,6 +91,7 @@
       </div>
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
+        <button id="skinExport" class="skinBtn" type="button">Export JSON</button>
         <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
           <input type="radio" name="meterType" id="meterTypeCircular" value="circular" checked /> Circular
         </label>
@@ -240,16 +241,17 @@
         r.style.setProperty('--dot-bg', t.dotBg || t.card2);
         r.style.setProperty('--dot-dim', t.dotDim || t.line);
       }
+      function getCurrentProfile(){
+        const skin = String(skinName?.value || previewSkin || '').trim();
+        const theme = String(themeName?.value || '').trim();
+        const meterType = meterTypeLinear?.checked ? 'linear' : 'circular';
+        const fontModeVal = String(fontMode?.value || 'ui-sans');
+        const fontSizeVal = String(fontSize?.value || 'm');
+        const meterModeVal = String(meterMode?.value || 'segmented');
+        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, ts: Date.now() };
+      }
       function publishProfileState(){
-        try {
-          const skin = String(skinName?.value || previewSkin || '').trim();
-          const theme = String(themeName?.value || '').trim();
-          const meterType = meterTypeLinear?.checked ? 'linear' : 'circular';
-          const font = String(fontMode?.value || 'ui-sans');
-          const fontSizeVal = String(fontSize?.value || 'm');
-          const progress = String(meterMode?.value || 'segmented');
-          window.parent?.postMessage({ type:'peppy-profile', skin, theme, meterType, fontMode: font, fontSize: fontSizeVal, meterMode: progress, ts: Date.now() }, '*');
-        } catch {}
+        try { window.parent?.postMessage({ type:'peppy-profile', ...getCurrentProfile() }, '*'); } catch {}
       }
       if (skinOpsEl) skinOpsEl.style.display = kioskMode ? 'none' : 'flex';
       const ctrlPrev = $('ctrlPrev');
@@ -259,6 +261,7 @@
       const ctrlPause = $('ctrlPause');
       const ctrlShuffle = $('ctrlShuffle');
       const controlsEl = document.querySelector('.controls');
+      const skinExport = $('skinExport');
       const skinName = $('skinName');
       const meterTypeCircular = $('meterTypeCircular');
       const meterTypeLinear = $('meterTypeLinear');
@@ -1078,6 +1081,21 @@
       ctrlRepeat?.addEventListener('click', () => playback('repeat', ctrlRepeat));
       ctrlPause?.addEventListener('click', () => playback('pause', ctrlPause));
       ctrlShuffle?.addEventListener('click', () => playback('shuffle', ctrlShuffle));
+
+      skinExport?.addEventListener('click', () => {
+        try {
+          const profile = getCurrentProfile();
+          const json = JSON.stringify(profile, null, 2);
+          try { navigator.clipboard?.writeText(json); } catch {}
+          const w = window.open('', '_blank', 'noopener,noreferrer');
+          if (w && w.document) {
+            w.document.write(`<pre style="white-space:pre-wrap;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;padding:14px;">${json.replace(/[&<>]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</pre>`);
+            w.document.close();
+          } else {
+            alert(json);
+          }
+        } catch {}
+      });
 
       skinName?.addEventListener('change', () => {
         previewSkin = String(skinName?.value || 'blue-1280');
