@@ -139,6 +139,11 @@
           <option value="segmented">Segmented</option>
           <option value="continuous">Continuous</option>
         </select>
+        <select id="needleSensitivity" class="skinSelect" aria-label="Needle sensitivity">
+          <option value="low">Needle: Low</option>
+          <option value="medium" selected>Needle: Medium</option>
+          <option value="high">Needle: High</option>
+        </select>
         <select id="themeName" class="skinSelect" aria-label="Peppy theme preset">
           <option value="graphite-green">Matrix</option>
           <option value="graphite-green">Green Neon</option>
@@ -275,7 +280,8 @@
         const fontModeVal = String(fontMode?.value || 'ui-sans');
         const fontSizeVal = String(fontSize?.value || 'm');
         const meterModeVal = String(meterMode?.value || 'segmented');
-        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, ts: Date.now() };
+        const sensitivity = String(needleSensitivity?.value || previewSensitivity || 'medium');
+        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, sensitivity, ts: Date.now() };
       }
       function publishProfileState(){
         try { window.parent?.postMessage({ type:'peppy-profile', ...getCurrentProfile() }, '*'); } catch {}
@@ -298,6 +304,7 @@
       const meterTypeCircular = $('meterTypeCircular');
       const meterTypeLinear = $('meterTypeLinear');
       const meterMode = $('meterMode');
+      const needleSensitivity = $('needleSensitivity');
       const fontMode = $('fontMode');
       const fontSize = $('fontSize');
       const themeName = $('themeName');
@@ -433,7 +440,11 @@
         controlsEl.style.bottom = '10px';
       }
       const meterState = { L: { target: 0, cur: 0 }, R: { target: 0, cur: 0 } };
-      function setTarget(k, v){ meterState[k].target = clamp(v); }
+      function setTarget(k, v){
+        const s = String(needleSensitivity?.value || previewSensitivity || 'medium');
+        const mul = s === 'low' ? 0.8 : (s === 'high' ? 1.25 : 1.0);
+        meterState[k].target = clamp(Number(v || 0) * mul);
+      }
 
       const NATIVE_NEEDLE_CFG = {
         'mack-blue-compact': { start: 45, stop: -45, distance: 265, ox: 319, oy: 460, lenMul: 1.0 },
@@ -502,6 +513,7 @@
       applyNeedleSkin(previewSkin);
 
       let previewMeterMode = (() => { try { return localStorage.getItem('peppy.meterMode') || 'segmented'; } catch { return 'segmented'; } })();
+      let previewSensitivity = (() => { try { return localStorage.getItem('peppy.sensitivity') || 'medium'; } catch { return 'medium'; } })();
       const previewColorMode = 'classic';
       const previewTheme = (() => {
         const fromUrl = String(qp.get('theme') || '').trim();
@@ -511,6 +523,7 @@
       applyTheme(previewTheme);
       if (themeName) themeName.value = previewTheme;
       if (meterMode) meterMode.value = previewMeterMode;
+      if (needleSensitivity) needleSensitivity.value = ['low','medium','high'].includes(previewSensitivity) ? previewSensitivity : 'medium';
 
       function meterTint(){
         const cs = getComputedStyle(document.documentElement);
@@ -1242,6 +1255,12 @@
         drawNeedles();
         publishProfileState();
       });
+      needleSensitivity?.addEventListener('change', () => {
+        previewSensitivity = String(needleSensitivity?.value || 'medium');
+        try { localStorage.setItem('peppy.sensitivity', previewSensitivity); } catch {}
+        drawNeedles();
+        publishProfileState();
+      });
       themeName?.addEventListener('change', () => {
         const n = String(themeName?.value || 'midnight-blue');
         try { localStorage.setItem('peppy.theme', n); } catch {}
@@ -1291,6 +1310,7 @@
           const fm = String(p?.fontMode || '').trim();
           const fsz = String(p?.fontSize || '').trim();
           const mm = String(p?.meterMode || '').trim();
+          const sens = String(p?.sensitivity || '').trim().toLowerCase();
           if (!hasSkinParam && s) {
             previewSkin = s;
             try { localStorage.setItem('peppy.skin', s); } catch {}
@@ -1316,6 +1336,11 @@
           if (mm === 'segmented' || mm === 'continuous') {
             if (meterMode) meterMode.value = mm;
             try { localStorage.setItem('peppy.meterMode', mm); } catch {}
+          }
+          if (sens === 'low' || sens === 'medium' || sens === 'high') {
+            previewSensitivity = sens;
+            if (needleSensitivity) needleSensitivity.value = sens;
+            try { localStorage.setItem('peppy.sensitivity', sens); } catch {}
           }
           renderSkinOptions(previewSkin);
           previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
