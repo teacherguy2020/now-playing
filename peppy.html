@@ -155,6 +155,7 @@
           <option value="high">Needle: High</option>
         </select>
         <select id="needleSmoothing" class="skinSelect" aria-label="Needle smoothing">
+          <option value="off">Smoothing: Off</option>
           <option value="low">Smoothing: Low</option>
           <option value="medium" selected>Smoothing: Medium</option>
           <option value="high">Smoothing: High</option>
@@ -615,7 +616,7 @@
       if (themeName) themeName.value = previewTheme;
       if (meterMode) meterMode.value = previewMeterMode;
       if (needleSensitivity) needleSensitivity.value = ['low','medium','high'].includes(previewSensitivity) ? previewSensitivity : 'medium';
-      if (needleSmoothing) needleSmoothing.value = ['low','medium','high'].includes(previewSmoothing) ? previewSmoothing : 'medium';
+      if (needleSmoothing) needleSmoothing.value = ['off','low','medium','high'].includes(previewSmoothing) ? previewSmoothing : 'medium';
 
       function meterTint(){
         const cs = getComputedStyle(document.documentElement);
@@ -1252,8 +1253,8 @@
 
       function animate(){
         const sm = String(needleSmoothing?.value || previewSmoothing || 'medium');
-        const riseA = sm === 'low' ? 0.56 : (sm === 'high' ? 0.24 : 0.42);
-        const fallA = sm === 'low' ? 0.20 : (sm === 'high' ? 0.07 : 0.12);
+        const riseA = sm === 'off' ? 1.0 : (sm === 'low' ? 0.56 : (sm === 'high' ? 0.24 : 0.42));
+        const fallA = sm === 'off' ? 1.0 : (sm === 'low' ? 0.20 : (sm === 'high' ? 0.07 : 0.12));
         for (const k of ['L','R']) {
           const s = meterState[k];
           const a = s.target > s.cur ? riseA : fallA;
@@ -1471,7 +1472,7 @@
             if (needleSensitivity) needleSensitivity.value = sens;
             try { localStorage.setItem('peppy.sensitivity', sens); } catch {}
           }
-          if (smooth === 'low' || smooth === 'medium' || smooth === 'high') {
+          if (smooth === 'off' || smooth === 'low' || smooth === 'medium' || smooth === 'high') {
             previewSmoothing = smooth;
             if (needleSmoothing) needleSmoothing.value = smooth;
             try { localStorage.setItem('peppy.smoothing', smooth); } catch {}
