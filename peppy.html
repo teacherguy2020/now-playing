@@ -30,10 +30,7 @@
     .wrap{width:1280px;height:400px;display:grid;grid-template-columns:320px 1fr;gap:4px;padding:0;box-sizing:border-box;transform-origin:top center}
     .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:8px;overflow:hidden}
     .left{display:flex;flex-direction:column;align-items:stretch;height:100%;position:relative}
-    body.linear-meter .meters{position:absolute;right:4px;bottom:0;width:min(820px, calc(100% - 12px));}
-    body.linear-meter .meters .row{position:relative}
-    body.linear-meter .meters .statusLeds{position:absolute;left:30px;right:0;bottom:-28px;margin:0;width:auto}
-    body.linear-meter .meters .progress{position:absolute;left:30px;right:0;bottom:-54px;top:auto;margin:0;width:auto}
+    body.linear-meter .meters .progress{position:relative;top:-20px;margin-top:2px;width:calc((100% - 30px) * 0.9);margin-left:calc(30px + ((100% - 30px) * 0.05))}
     #art{flex:1 1 auto;min-height:0;width:100%;height:100%;aspect-ratio:1 / 1;object-fit:contain;background:#02040a;display:block;margin-top:0;margin-bottom:0;border-radius:4px;box-shadow:0 0 28px rgba(var(--progress-rgb,46,185,238),.24), 0 0 58px rgba(var(--progress-rgb,46,185,238),.16)}
     #artGlow{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:6;border-radius:4px;background:radial-gradient(128% 118% at 50% 50%, rgba(var(--progress-rgb,46,185,238),.52) 0%, rgba(var(--progress-rgb,46,185,238),.22) 22%, rgba(var(--progress-rgb,46,185,238),.08) 44%, rgba(var(--progress-rgb,46,185,238),.02) 58%, rgba(var(--progress-rgb,46,185,238),0) 70%);mix-blend-mode:screen;opacity:1}
     body.font-dot #artGlow{left:14px;right:14px;top:14px;bottom:14px;border-radius:0}
@@ -50,13 +47,6 @@
     .subline{display:flex;gap:14px;flex-wrap:wrap;font-size:16px;color:#bfd0ee;line-height:1.1}
     .right{position:relative;display:grid;grid-template-rows:auto;align-content:start}
     .meters{position:absolute;right:4px;bottom:0;width:min(820px, calc(100% - 12px));display:grid;grid-template-rows:auto;gap:2px;padding:0;align-content:end}
-    .statusLeds{display:none}
-    body.linear-meter .statusLeds{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:4px 0 2px 18px;width:calc(100% - 30px)}
-    .statusLed{display:grid;justify-items:center;gap:4px}
-    .statusLed .lamp{width:100%;max-width:120px;height:8px;border-radius:2px;background:rgba(120,145,170,.22);border:1px solid rgba(150,170,190,.28);box-shadow:inset 0 0 3px rgba(0,0,0,.35)}
-    .statusLed .lbl{font-size:10px;color:#a9b8cc;letter-spacing:.4px;text-transform:uppercase}
-    .statusLed.on .lamp{background:rgba(var(--progress-rgb,46,185,238),.78);border-color:rgba(var(--progress-rgb,46,185,238),.95);box-shadow:0 0 7px rgba(var(--progress-rgb,46,185,238),.65), inset 0 0 3px rgba(255,255,255,.28)}
-    .statusLed.on .lbl{color:#dbeeff}
     .controls{position:absolute;left:8px;bottom:10px;display:grid;grid-template-columns:repeat(2,60px);gap:8px}
     .skinOps{position:static;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;width:min(1280px,calc(100vw - 16px));padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--card),var(--card2));box-sizing:border-box}
     .skinBtn{height:26px;padding:0 10px;border:1px solid #3f4753;background:#1f2731;color:#d8e4f3;font-size:12px;cursor:pointer}
@@ -181,13 +171,6 @@
 
       <div class="meters">
         <div class="row"><div class="lbl"></div><div class="needleWrap"><canvas id="needleCanvas" width="900" height="208" aria-label="Needle VU"></canvas></div></div>
-        <div id="statusLeds" class="statusLeds" aria-label="Source status LEDs">
-          <div class="statusLed" data-k="local"><div class="lamp"></div><div class="lbl">Local</div></div>
-          <div class="statusLed" data-k="radio"><div class="lamp"></div><div class="lbl">Radio</div></div>
-          <div class="statusLed" data-k="podcast"><div class="lamp"></div><div class="lbl">Podcast</div></div>
-          <div class="statusLed" data-k="airplay"><div class="lamp"></div><div class="lbl">AirPlay</div></div>
-          <div class="statusLed" data-k="upnp"><div class="lamp"></div><div class="lbl">UPnP</div></div>
-        </div>
       </div>
     </section>
   </div>
@@ -327,7 +310,6 @@
       const leftCard = document.querySelector('.card.left');
       const metersEl = document.querySelector('.meters');
       const needleCanvas = $('needleCanvas');
-      const statusLeds = $('statusLeds');
 
       const needleSkin = {
         bgr: new Image(),
@@ -355,9 +337,9 @@
         const linear = !!meterTypeLinear?.checked;
         if (linear) {
           if (progressEl.parentElement !== metersEl) metersEl.appendChild(progressEl);
-          progressEl.style.marginTop = '0';
-          progressEl.style.marginLeft = '0';
-          progressEl.style.width = 'auto';
+          progressEl.style.marginTop = '2px';
+          progressEl.style.marginLeft = 'calc(30px + ((100% - 30px) * 0.05))';
+          progressEl.style.width = 'calc((100% - 30px) * 0.9)';
         } else {
           if (progressEl.parentElement !== leftCard) leftCard.insertBefore(progressEl, leftCard.firstChild || null);
           progressEl.style.marginTop = '0';
@@ -536,20 +518,6 @@
         // Stronger tint for warm themes, subtler for cool/default.
         const warm = /amber|orange|red|parchment/i.test(String(themeName?.value || ''));
         return { color: c, alpha: warm ? 0.22 : 0.14 };
-      }
-
-      function setStatusLeds(state = {}){
-        if (!statusLeds) return;
-        const isRadio = !!(state.isRadio || /radio/i.test(String(state.source || state.type || '')));
-        const isPodcast = !!(state.isPodcast || /podcast/i.test(String(state.source || state.type || '')));
-        const isAirplay = !!(state.isAirplay || /airplay/i.test(String(state.source || state.type || '')));
-        const isUpnp = !!(state.isUpnp || /upnp|dlna/i.test(String(state.source || state.type || '')));
-        const isLocal = !(isRadio || isPodcast || isAirplay || isUpnp);
-        const map = { local:isLocal, radio:isRadio, podcast:isPodcast, airplay:isAirplay, upnp:isUpnp };
-        statusLeds.querySelectorAll('.statusLed').forEach((el) => {
-          const k = String(el.getAttribute('data-k') || '').toLowerCase();
-          el.classList.toggle('on', !!map[k]);
-        });
       }
 
       function drawNeedles(){
@@ -1129,7 +1097,6 @@
           const ratingLabel = Number.isFinite(rating) && rating > 0 ? `RATING: ${rating}` : '';
           dotFileMeta = (encodedNoCh || compactFallback || 'DIGITAL');
           dotFileMeta2 = [qualityTag || 'DIGITAL', ratingLabel].filter(Boolean).join(' • ');
-          setStatusLeds(j || {});
           redrawDotCanvases();
 
           const pctDirect = Number(j?.songPercent ?? j?.progressPercent ?? j?.percent ?? NaN);
@@ -1298,7 +1265,6 @@
 
       (async () => {
         fitPreviewScale();
-        setStatusLeds({});
         publishProfileState();
         await loadSkinCatalog();
         renderSkinOptions(previewSkin);
