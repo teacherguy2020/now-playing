@@ -47,14 +47,17 @@
       --theme-tab-border:#2a3a58;
       --theme-tab-hover-bg:#2f4f93;
     }
-    html,body{max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}
-    body{background:var(--theme-bg);color:var(--theme-text);margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;padding-top:calc(env(safe-area-inset-top,0px) + 8px);touch-action:pan-y pinch-zoom}
+    html,body{max-width:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-x:none}
+    body{background:var(--theme-bg);color:var(--theme-text);margin:0;font-family:"SF Pro Text","SF Pro Display","Geist","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;padding-top:calc(env(safe-area-inset-top,0px) + 44px);touch-action:pan-y pinch-zoom}
     .viewWrap{max-width:var(--app-shell-max);width:min(var(--app-shell-max), calc(100% - 12px));margin:0 auto;padding:0 0 14px;box-sizing:border-box;border:1px solid var(--theme-rail-border);border-radius:14px;overflow:hidden;background:var(--theme-frame-fill);}
-    .heroWrap{max-width:var(--app-shell-max) !important;width:min(var(--app-shell-max), calc(100% - 12px)) !important;margin:10px auto -1px !important;padding-top:4px !important;position:relative}
+    .heroWrap{max-width:var(--app-shell-max) !important;width:min(var(--app-shell-max), calc(100% - 12px)) !important;margin:18px auto -1px !important;padding-top:24px !important;position:relative}
     #appFrame{width:100% !important;height:1400px;min-height:0;border:0;border-radius:0;background:var(--theme-frame-bg);display:block;box-sizing:border-box}
     #themeToggle{min-width:32px;padding:5px 8px;font-size:12px;line-height:1}
     /* In app-shell mode, let top chrome scroll away (not sticky) to maximize iframe area */
-    .heroRail{position:relative !important; top:auto !important; border-bottom:0 !important; background:var(--theme-bg) !important;}
+    .heroRail{position:sticky !important; top:0 !important; z-index:30; border-bottom:0 !important; background:var(--theme-bg) !important;}
+    body.peppy-shell .heroTransportRow,
+    body.peppy-shell #heroQueueCard{display:none !important;}
+    body.peppy-shell .heroWrap{margin:4px auto -1px !important;padding-top:8px !important;}
     .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important; background:transparent !important;}
     .heroRail::before{content:none !important; display:none !important;}
     .heroRailTop{border:0;border-bottom:1px solid var(--theme-rail-border);border-radius:0;background:var(--theme-frame-fill);padding:6px 10px;box-sizing:border-box}
@@ -77,17 +80,17 @@
     .heroRailTop .topTabs a:hover{background:var(--theme-tab-hover-bg) !important}
     .heroRailTop .topTabs a.active,
     .heroRailTop .topTabs a[aria-current="page"]{background:var(--theme-tab-active-bg) !important;color:var(--theme-tab-active-text) !important;border-color:var(--theme-tab-border) !important;box-shadow:none !important}
-    .heroWrap > header{margin:0 0 4px;position:relative}
-    .heroWrap > header .brand{display:flex !important;align-items:baseline;gap:8px;flex-wrap:nowrap}
-    .heroWrap > header h1{margin:0 !important;line-height:1.05;display:inline !important}
+    .heroWrap > header{margin:0 0 4px;position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:8px}
+    .heroWrap > header .brand{display:flex !important;align-items:baseline;gap:8px;flex-wrap:nowrap;min-width:0;flex:1 1 auto}
+    .heroWrap > header h1{margin:0 !important;line-height:1.05;display:inline !important;min-width:0;max-width:calc(100% - 220px);overflow:hidden;text-overflow:ellipsis}
     .heroWrap > header .sub{font-size:14px;line-height:1.05;opacity:.9;display:inline !important;white-space:nowrap}
     .heroWrap.matrixFx{position:relative;overflow:hidden}
     .heroWrap.matrixFx > *{position:relative;z-index:1}
     .heroWrap .matrixRain{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.26;mix-blend-mode:screen}
-    .quickThemeWrap{position:absolute;right:4px;top:-2px;z-index:6}
-    .quickThemeSelect{min-width:180px;max-width:260px;padding:5px 9px;border-radius:9px;border:1px solid var(--theme-tab-border);background:var(--theme-tab-bg);color:var(--theme-tab-text);font-size:12px;opacity:.03;transition:opacity .16s ease,filter .14s ease}
-    .heroWrap:hover .quickThemeSelect,.quickThemeSelect:focus{opacity:.82;filter:brightness(1.04)}
-    @media (hover:none){.quickThemeSelect{opacity:.18}}
+    .quickThemeWrap{position:static;z-index:6;display:flex;align-items:center;justify-content:flex-end;min-width:190px;padding-top:2px}
+    .quickThemeSelect{min-width:180px;max-width:260px;padding:5px 9px;border-radius:9px;border:1px solid var(--theme-tab-border);background:var(--theme-tab-bg);color:var(--theme-tab-text);font-size:12px;opacity:.88;transition:filter .14s ease}
+    .heroWrap:hover .quickThemeSelect,.quickThemeSelect:focus{filter:brightness(1.04)}
+    @media (hover:none){.quickThemeSelect{opacity:.92}}
     .heroQueueCard{margin-top:10px;border:1px solid var(--theme-hero-card-border);border-radius:14px;padding:10px;background:var(--theme-hero-card-bg)}
     .heroQueueHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
     .heroQueueTitle{display:none}
@@ -332,8 +335,10 @@
           <a href="?page=queue-wizard.html" data-page="queue-wizard.html">Queue Wizard</a>
           <a href="?page=radio.html" data-page="radio.html">Radio</a>
           <a href="?page=podcasts.html" id="podcastsNavLink" data-page="podcasts.html">Podcasts</a>
+          <a href="?page=peppy.html" data-page="peppy.html">Peppy</a>
           <a href="?page=theme.html" data-page="theme.html">Theme</a>
         </nav>
+        <button id="pushPeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Push Peppy to moOde</button>
         <div class="statusInline" aria-label="status pills">
           <button class="pill" id="apiPill" type="button" title="Active API endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>API<span class="hint" id="apiHint">loading…</span></button>
           <button class="pill" id="webPill" type="button" title="Active web UI endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></button>
@@ -342,10 +347,11 @@
           <button class="pill" id="moodePill" type="button" title="Restart moOde" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>moOde<span class="hint" id="moodeHint">unknown</span></button>
           <button class="pill" id="notifyPill" type="button" title="Pushover track notifications" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="notifyLabel">Notify</span><span class="hint" id="notifyHint">off</span></button>
           <button class="pill" id="scrobblePill" type="button" title="mpdscribble scrobble service" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="scrobbleLabel">Scrobble</span><span class="hint" id="scrobbleHint">off</span></button>
+
         </div>
       </div>
     </div>
-    <iframe id="appFrame" title="Now Playing view" src="about:blank" scrolling="no" allow="web-share; clipboard-write" style="width:100%;display:block;"></iframe>
+    <iframe id="appFrame" title="Now Playing view" src="about:blank" scrolling="yes" allow="web-share; clipboard-write" style="width:100%;display:block;"></iframe>
   </div>
 
   <div id="queueAlbumModal" class="queueAlbumModal" aria-hidden="true">
@@ -361,7 +367,7 @@
   <script src="scripts/hero-transport.js?v=20260224-secondary-text"></script>
   <script>
     (() => {
-      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','theme.html']);
+      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','peppy.html','theme.html']);
       const frame = document.getElementById('appFrame');
       const viewWrap = document.getElementById('viewWrap');
       const shellUrl = new URL(location.href);
@@ -390,6 +396,17 @@
         } catch {
           syncFrameHeight();
         }
+      }
+
+      function enforcePeppyFrameFit(){
+        try {
+          if (!frame || String(currentShellPage || '') !== 'peppy.html') return;
+          const top = frame.getBoundingClientRect().top;
+          const avail = Math.max(560, Math.floor((window.innerHeight || 900) - top - 2));
+          frame.style.setProperty('height', `${avail}px`, 'important');
+          frame.style.setProperty('max-height', `${avail}px`, 'important');
+          frame.style.setProperty('min-height', '0px', 'important');
+        } catch {}
       }
 
       function applyThemeBridgeToFrame(){
@@ -559,9 +576,14 @@
           }
 
           const minH = isTheme ? 220 : 480;
-          const measured = Math.max(contentH + (isTheme ? 2 : 8), minH);
+          let measured = Math.max(contentH + (isTheme ? 2 : 8), minH);
           const cur = Math.max(0, parseInt(String(frame.style.height || '0'), 10) || 0);
           const isQueueWizard = String(currentShellPage || '').includes('queue-wizard.html');
+          const isPeppy = String(currentShellPage || '') === 'peppy.html';
+          if (isPeppy) {
+            const viewportCap = Math.max(420, (window.innerHeight || 900) - 240);
+            measured = Math.min(measured, viewportCap);
+          }
           // Prevent scroll jumps from iframe shrink/reflow in Queue Wizard: only grow while on that page.
           const next = isQueueWizard ? Math.max(cur, measured) : measured;
           frame.style.height = `${next}px`;
@@ -632,6 +654,7 @@
           }
         } catch {}
       };
+      try { if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; } catch {}
       let currentShellPage = getPageFromUrl();
       let suppressThemeUpdateUntil = 0;
       let lastRadioPresetStations = [];
@@ -884,6 +907,7 @@
           'Warm Parchment': { tokens: { '--theme-bg':'#f3ece2','--theme-text':'#2f2a24','--theme-text-secondary':'#6e6458','--theme-rail-bg':'#e8dccb','--theme-frame-fill':'#efe5d7','--theme-rail-border':'#b8a893','--theme-tab-bg':'#d9c8b2','--theme-tab-text':'#332c24','--theme-tab-border':'#a89278','--theme-tab-hover-bg':'#ceb99f','--theme-tab-active-bg':'#8d7358','--theme-tab-active-text':'#fffaf4','--theme-hero-card-bg':'#e1d2be','--theme-hero-card-border':'#a89278','--theme-picker-card-bg':'#cbb79e','--theme-pill-border':'#b8860b','--theme-pill-glow':'#3f8f4e','--theme-card-secondary-fill':'#d2c1aa','--theme-progress-fill':'#9f876a','--theme-frame-border':'#b8a893' } },
           'Muted Merlot': { tokens: { '--theme-bg':'#1a1315','--theme-text':'#f0e7e8','--theme-text-secondary':'#b7a4a8','--theme-rail-bg':'#24181b','--theme-frame-fill':'#201517','--theme-rail-border':'#6e5258','--theme-tab-bg':'#3a2329','--theme-tab-text':'#f2e9ea','--theme-tab-border':'#8a646d','--theme-tab-hover-bg':'#4a2d34','--theme-tab-active-bg':'#6a3f49','--theme-tab-active-text':'#fff7f8','--theme-hero-card-bg':'#2f1d22','--theme-hero-card-border':'#8a646d','--theme-picker-card-bg':'#452a31','--theme-pill-border':'#d6a24a','--theme-pill-glow':'#4f9b62','--theme-card-secondary-fill':'#56353d','--theme-progress-fill':'#a6757f','--theme-frame-border':'#6e5258' } },
           'Abyss Graphite': { tokens: { '--theme-bg':'#020306','--theme-text':'#e4ebf7','--theme-text-secondary':'#8f9db1','--theme-rail-bg':'#070c14','--theme-frame-fill':'#040912','--theme-rail-border':'#3f4b5d','--theme-tab-bg':'#0f1825','--theme-tab-text':'#dfe8f7','--theme-tab-border':'#5a6a82','--theme-tab-hover-bg':'#1a2739','--theme-tab-active-bg':'#24364d','--theme-tab-active-text':'#ffffff','--theme-hero-card-bg':'#0b1422','--theme-hero-card-border':'#5a6a82','--theme-picker-card-bg':'#111f33','--theme-pill-border':'#ffbf3f','--theme-pill-glow':'#2ea85f','--theme-card-secondary-fill':'#18263a','--theme-progress-fill':'#6f86a9','--theme-frame-border':'#3f4b5d' } },
+          'Obsidian Black': { tokens: { '--theme-bg':'#000000','--theme-text':'#f3f6fb','--theme-text-secondary':'#9aa3b3','--theme-rail-bg':'#020203','--theme-frame-fill':'#000000','--theme-rail-border':'#2a2f38','--theme-tab-bg':'#07090d','--theme-tab-text':'#f3f6fb','--theme-tab-border':'#434a57','--theme-tab-hover-bg':'#11151d','--theme-tab-active-bg':'#1b222d','--theme-tab-active-text':'#ffffff','--theme-hero-card-bg':'#050608','--theme-hero-card-border':'#434a57','--theme-picker-card-bg':'#0b0d12','--theme-pill-border':'#dbe4f2','--theme-pill-glow':'#9aa8bd','--theme-card-secondary-fill':'#10141b','--theme-progress-fill':'#7e8da3','--theme-frame-border':'#2a2f38' } },
           'Matrix': { tokens: { '--theme-bg':'#000000','--theme-text':'#8cff66','--theme-text-secondary':'#57c84d','--theme-rail-bg':'#020702','--theme-frame-fill':'#000000','--theme-rail-border':'#1f5f1f','--theme-tab-bg':'#031003','--theme-tab-text':'#8cff66','--theme-tab-border':'#2f8f2f','--theme-tab-hover-bg':'#0b220b','--theme-tab-active-bg':'#145214','--theme-tab-active-text':'#d8ffcf','--theme-hero-card-bg':'#041404','--theme-hero-card-border':'#2f8f2f','--theme-picker-card-bg':'#071b07','--theme-pill-border':'#8cff66','--theme-pill-glow':'#39ff14','--theme-card-secondary-fill':'#0f2b0f','--theme-progress-fill':'#39ff14','--theme-frame-border':'#1f5f1f' } },
           'Blue Neon': { tokens: { '--theme-bg':'#000000','--theme-text':'#7fd3ff','--theme-text-secondary':'#58a9d8','--theme-rail-bg':'#01060d','--theme-frame-fill':'#000000','--theme-rail-border':'#1b4f73','--theme-tab-bg':'#031326','--theme-tab-text':'#7fd3ff','--theme-tab-border':'#2f7fb6','--theme-tab-hover-bg':'#0b2340','--theme-tab-active-bg':'#144a7a','--theme-tab-active-text':'#d9f3ff','--theme-hero-card-bg':'#041a2f','--theme-hero-card-border':'#2f7fb6','--theme-picker-card-bg':'#07243f','--theme-pill-border':'#7fd3ff','--theme-pill-glow':'#00a7ff','--theme-card-secondary-fill':'#0e2e4d','--theme-progress-fill':'#00a7ff','--theme-frame-border':'#1b4f73' } },
           'Red Neon': { tokens: { '--theme-bg':'#000000','--theme-text':'#ff8a8a','--theme-text-secondary':'#d86b6b','--theme-rail-bg':'#0d0101','--theme-frame-fill':'#000000','--theme-rail-border':'#7a1f1f','--theme-tab-bg':'#260303','--theme-tab-text':'#ff8a8a','--theme-tab-border':'#b62f2f','--theme-tab-hover-bg':'#400b0b','--theme-tab-active-bg':'#7a1414','--theme-tab-active-text':'#ffdede','--theme-hero-card-bg':'#2f0404','--theme-hero-card-border':'#b62f2f','--theme-picker-card-bg':'#3f0707','--theme-pill-border':'#ff8a8a','--theme-pill-glow':'#ff2d2d','--theme-card-secondary-fill':'#4d0e0e','--theme-progress-fill':'#ff2d2d','--theme-frame-border':'#7a1f1f' } }
@@ -912,7 +936,35 @@
           localStorage.setItem(THEME_ACTIVE_PRESET_KEY, n);
           localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(p.tokens));
           applyThemeTokens(p.tokens);
+
+          // Theme preset -> closest peppy skin/theme mapping
+          const themeMap = {
+            'Matrix':'graphite-green','Green Neon':'graphite-green',
+            'Red Neon':'amber-night','Muted Merlot':'amber-night','Warm Parchment':'amber-night',
+            'Blue Neon':'midnight-blue','Chill Blue':'midnight-blue','Abyss Graphite':'midnight-blue',
+            'Slate Medium':'silver-black','Monotone Gray':'silver-black','Obsidian Black':'obsidian-black'
+          };
+          const skinMap = {
+            'Matrix':'emerald-1280','Green Neon':'emerald-1280',
+            'Red Neon':'orange-1280','Muted Merlot':'orange-1280','Warm Parchment':'orange-1280',
+            'Blue Neon':'blue-1280','Chill Blue':'blue-1280',
+            'Abyss Graphite':'mack-blue-compact','Slate Medium':'mack-blue-compact','Monotone Gray':'mack-blue-compact','Obsidian Black':'black-white-1280'
+          };
+          const peppyTheme = themeMap[n] || '';
+          const peppySkin = skinMap[n] || '';
+          try {
+            if (peppyTheme) localStorage.setItem('peppy.theme', peppyTheme);
+            if (peppySkin) localStorage.setItem('peppy.skin', peppySkin);
+          } catch {}
+
           try { frame?.contentWindow?.postMessage({ type:'np-theme-load-preset', name:n }, '*'); } catch {}
+          if (String(currentShellPage || '') === 'peppy.html' && frame && !NO_IFRAME_MODE && (peppyTheme || peppySkin)) {
+            const q = new URLSearchParams();
+            q.set('shellts', String(Date.now()));
+            if (peppySkin) q.set('skin', peppySkin);
+            if (peppyTheme) q.set('theme', peppyTheme);
+            frame.setAttribute('src', `peppy.html?${q.toString()}`);
+          }
           syncThemeToFrame();
           return true;
         } catch { return false; }
@@ -936,6 +988,10 @@
 
       loadThemeTokens();
       refreshQuickThemeSelect();
+      try {
+        const activePreset = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
+        if (activePreset) applyThemePresetByName(activePreset);
+      } catch {}
       syncMatrixFx();
 
       async function sendHeroPlayback(action, extra = null){
@@ -1582,6 +1638,14 @@
         pill.disabled = !!on;
       }
 
+      function setPushPeppyBusy(on){
+        const btn = document.getElementById('pushPeppyBtn');
+        if (!btn) return;
+        btn.classList.toggle('busy', !!on);
+        btn.disabled = !!on;
+        btn.textContent = on ? 'Pushing…' : 'Push Peppy to moOde';
+      }
+
       async function fetchJsonWithTimeout(url, opts = {}, timeoutMs = 9000){
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), Math.max(1000, Number(timeoutMs) || 9000));
@@ -1780,6 +1844,107 @@
           setPillState('screenPill', 'bad');
         } finally {
           setScreenBusy(false);
+        }
+      }
+
+      async function pushPeppyToMoode(){
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        const qs = new URLSearchParams();
+        qs.set('kiosk', '1');
+        qs.set('sw', String(Date.now()));
+        let s = '';
+        let t = '';
+        try {
+          const f = document.getElementById('appFrame');
+          const w = f?.contentWindow;
+          const ls = w?.localStorage;
+          s = String(ls?.getItem('peppy.skin') || '').trim();
+          t = String(ls?.getItem('peppy.theme') || '').trim();
+        } catch {}
+        if (!s || !t) {
+          try {
+            if (!s) s = String(localStorage.getItem('peppy.skin') || '').trim();
+            if (!t) t = String(localStorage.getItem('peppy.theme') || '').trim();
+          } catch {}
+        }
+        // Push skin/theme should reflect currently active app preset at press time.
+        try {
+          const preset = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
+          const themeMap = {
+            'Matrix':'graphite-green',
+            'Green Neon':'graphite-green',
+            'Red Neon':'amber-night',
+            'Muted Merlot':'amber-night',
+            'Warm Parchment':'amber-night',
+            'Blue Neon':'midnight-blue',
+            'Chill Blue':'midnight-blue',
+            'Abyss Graphite':'midnight-blue',
+            'Slate Medium':'silver-black',
+            'Monotone Gray':'silver-black',
+            'Obsidian Black':'obsidian-black',
+          };
+          const skinMap = {
+            'Matrix':'emerald-1280',
+            'Green Neon':'emerald-1280',
+            'Red Neon':'orange-1280',
+            'Muted Merlot':'orange-1280',
+            'Warm Parchment':'orange-1280',
+            'Blue Neon':'blue-1280',
+            'Chill Blue':'blue-1280',
+            'Abyss Graphite':'mack-blue-compact',
+            'Slate Medium':'mack-blue-compact',
+            'Monotone Gray':'mack-blue-compact',
+            'Obsidian Black':'black-white-1280',
+          };
+          if (themeMap[preset]) t = themeMap[preset];
+          if (skinMap[preset]) s = skinMap[preset];
+        } catch {}
+        if (!s) s = 'orange-1280';
+        if (!t) t = 'amber-night';
+        qs.set('skin', s);
+        qs.set('theme', t);
+        const targetUrl = `${location.protocol}//${host}:8101/peppy.html?${qs.toString()}`;
+        setPushPeppyBusy(true);
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          // Persist last pushed profile explicitly (for bare /peppy.html?kiosk=1 resolution).
+          await fetchJsonWithTimeout(`${base}/peppy/last-profile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ url: targetUrl, skin: s, theme: t }),
+          }, 8000).catch(() => null);
+
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser-url`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ url: targetUrl }),
+          }, 14000);
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          const btn = document.getElementById('pushPeppyBtn');
+          if (btn) {
+            const verified = !!j?.verified;
+            btn.textContent = verified ? 'Pushed ✓' : 'Pushed (unverified)';
+            btn.title = String(j?.effectiveUrl || targetUrl);
+            setTimeout(() => { try { btn.textContent = 'Push Peppy to moOde'; } catch {} }, 2200);
+          }
+          if (String(currentShellPage || '') === 'peppy.html' && frame && !NO_IFRAME_MODE) {
+            frame.setAttribute('src', targetUrl);
+          }
+          if (!j?.verified) console.warn('push verification failed', j?.verify || '', j?.verifyErr || '');
+        } catch (e) {
+          console.warn('push peppy failed', e?.message || e);
+          const btn = document.getElementById('pushPeppyBtn');
+          if (btn) {
+            btn.textContent = 'Push failed';
+            setTimeout(() => { try { btn.textContent = 'Push Peppy to moOde'; } catch {} }, 1800);
+          }
+        } finally {
+          setPushPeppyBusy(false);
         }
       }
 
@@ -2008,13 +2173,56 @@
         tabs.forEach((a) => a.classList.toggle('active', a.dataset.page === page));
       }
 
+      function peppyProfileFromActivePreset(){
+        try {
+          const preset = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
+          const themeMap = {
+            'Matrix':'graphite-green','Green Neon':'graphite-green',
+            'Red Neon':'amber-night','Muted Merlot':'amber-night','Warm Parchment':'amber-night',
+            'Blue Neon':'midnight-blue','Chill Blue':'midnight-blue','Abyss Graphite':'midnight-blue',
+            'Slate Medium':'silver-black','Monotone Gray':'silver-black','Obsidian Black':'obsidian-black'
+          };
+          const skinMap = {
+            'Matrix':'emerald-1280','Green Neon':'emerald-1280',
+            'Red Neon':'orange-1280','Muted Merlot':'orange-1280','Warm Parchment':'orange-1280',
+            'Blue Neon':'blue-1280','Chill Blue':'blue-1280',
+            'Abyss Graphite':'mack-blue-compact','Slate Medium':'mack-blue-compact','Monotone Gray':'mack-blue-compact',
+            'Obsidian Black':'black-white-1280'
+          };
+          return { skin: skinMap[preset] || '', theme: themeMap[preset] || '' };
+        } catch { return { skin:'', theme:'' }; }
+      }
+
+      function refreshPushPeppyVisibility(){ 
+        const btn = document.getElementById('pushPeppyBtn');
+        const show = String(currentShellPage || '') === 'peppy.html';
+        if (btn) btn.style.display = show ? '' : 'none';
+      }
+
       function navigate(page, push = true){
         const safe = VALID.has(page) ? page : 'config.html';
+        try { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); } catch { try { window.scrollTo(0,0); } catch {} }
         currentShellPage = safe;
+        try { document.body.classList.toggle('peppy-shell', safe === 'peppy.html'); } catch {}
         setActive(safe);
+        refreshPushPeppyVisibility();
         updateSavePresetsButtonVisibility();
         if (!NO_IFRAME_MODE && frame) {
-          const src = `${safe}${safe.includes('?') ? '&' : '?'}shellts=${Date.now()}`;
+          let src = `${safe}${safe.includes('?') ? '&' : '?'}shellts=${Date.now()}`;
+          if (safe === 'peppy.html') {
+            const p = peppyProfileFromActivePreset();
+            const q = new URLSearchParams();
+            q.set('shellts', String(Date.now()));
+            if (p.skin) q.set('skin', p.skin);
+            if (p.theme) q.set('theme', p.theme);
+            src = `peppy.html?${q.toString()}`;
+            enforcePeppyFrameFit();
+          } else {
+            // Leaving Peppy: clear hard clamps so other pages can size naturally.
+            frame.style.removeProperty('max-height');
+            frame.style.removeProperty('min-height');
+            frame.style.removeProperty('height');
+          }
           frame.setAttribute('src', src);
           setTimeout(requestFrameHeightSync, 120);
           setTimeout(requestFrameHeightSync, 500);
@@ -2120,8 +2328,18 @@
         toggleScrobbleFromHero();
       });
 
+
+      document.getElementById('pushPeppyBtn')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        pushPeppyToMoode();
+      });
+
       window.addEventListener('popstate', () => navigate(getPageFromUrl(), false));
-      window.addEventListener('resize', () => { syncFrameWidth(); if (!NO_IFRAME_MODE) requestFrameHeightSync(); });
+      window.addEventListener('resize', () => {
+        syncFrameWidth();
+        if (!NO_IFRAME_MODE) enforcePeppyFrameFit();
+        if (!NO_IFRAME_MODE) requestFrameHeightSync();
+      });
       if (frame && !NO_IFRAME_MODE) {
         frame.addEventListener('load', () => {
           if (heroNowPlayingIframeMoode) {
@@ -2132,6 +2350,7 @@
             }
           }
           syncFrameWidth();
+          enforcePeppyFrameFit();
           attachFrameAutoResizeObservers();
           requestFrameHeightSync();
           syncThemeToFrame();

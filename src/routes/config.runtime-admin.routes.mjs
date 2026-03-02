@@ -193,12 +193,37 @@ async function getMpdscribbleStatus({ user, host }) {
 export function registerConfigRuntimeAdminRoutes(app, deps) {
   const { requireTrackKey, log } = deps;
   const configPath = process.env.NOW_PLAYING_CONFIG_PATH || path.resolve(process.cwd(), 'config/now-playing.config.json');
+  const peppyLastPushPath = path.resolve(process.cwd(), 'data/peppy-last-push.json');
 
   app.get('/config/runtime', async (req, res) => {
     try {
       const raw = await fs.readFile(configPath, 'utf8');
       const cfg = JSON.parse(raw);
       return res.json({ ok: true, configPath, config: withEnvOverrides(cfg), fullConfig: cfg });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/peppy/last-profile', async (_req, res) => {
+    try {
+      const raw = await fs.readFile(peppyLastPushPath, 'utf8');
+      const j = JSON.parse(raw || '{}');
+      return res.json({ ok: true, profile: j });
+    } catch {
+      return res.json({ ok: true, profile: null });
+    }
+  });
+
+  app.post('/peppy/last-profile', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const url = String(req.body?.url || '').trim();
+      const skin = String(req.body?.skin || '').trim();
+      const theme = String(req.body?.theme || '').trim();
+      await fs.mkdir(path.dirname(peppyLastPushPath), { recursive: true });
+      await fs.writeFile(peppyLastPushPath, JSON.stringify({ url, skin, theme, ts: Date.now() }, null, 2));
+      return res.json({ ok: true });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
@@ -580,6 +605,38 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.post('/config/moode/browser-url', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const rawUrl = String(req.body?.url || '').trim();
+      if (!/^https?:\/\//i.test(rawUrl)) {
+        return res.status(400).json({ ok: false, error: 'url must start with http:// or https://' });
+      }
+
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const script = `python3 - <<'PY'\nfrom pathlib import Path\np=Path('/home/moode/.xinitrc')\nurl=${shQuoteArg(rawUrl)}\ntry:\n    s=p.read_text()\n    import re\n    s2=re.sub(r'--app="[^"]*"', f'--app="{url}"', s)\n    if s2==s and '--app=' in s:\n        s2=s.replace('--app=', f'--app="{url}"')\n    p.write_text(s2)\nexcept Exception:\n    pass\nprint('xinitrc updated')\nPY\nDISPLAY=:0 XAUTHORITY=/home/moode/.Xauthority nohup chromium-browser --kiosk --start-fullscreen --noerrdialogs --disable-infobars --app=${shQuoteArg(rawUrl)} >/tmp/chromium-switch.log 2>&1 & disown; sleep 1; tail -n 12 /tmp/chromium-switch.log || true`;
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 14000 });
+      const verifyScript = `APP_LINE=$(grep -E -- '--app=' /home/moode/.xinitrc | tail -n 1 || true); RUN_LINE=$(pgrep -af 'chromium-browser.*--app=' | grep -F -- ${shQuoteArg(rawUrl)} | head -n 1 || true); echo "APP_LINE:$APP_LINE"; echo "RUN_LINE:$RUN_LINE"`;
+      const v = await sshBashLc({ user: sshUser, host: sshHost, script: verifyScript, timeoutMs: 8000 }).catch(() => ({ stdout: '', stderr: '' }));
+      const vOut = String(v?.stdout || '');
+      const verified = vOut.includes('RUN_LINE:') && !/RUN_LINE:\s*$/.test(vOut);
+      try {
+        const u = new URL(rawUrl);
+        const skin = String(u.searchParams.get('skin') || '').trim();
+        const theme = String(u.searchParams.get('theme') || '').trim();
+        await fs.mkdir(path.dirname(peppyLastPushPath), { recursive: true });
+        await fs.writeFile(peppyLastPushPath, JSON.stringify({ url: rawUrl, skin, theme, ts: Date.now() }, null, 2));
+      } catch {}
+      return res.json({ ok: true, url: rawUrl, effectiveUrl: rawUrl, verified, sshHost, sshUser, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim(), verify: vOut.trim(), verifyErr: String(v?.stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/moode/library-update', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
@@ -588,6 +645,45 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const port = Number(cfg?.mpd?.port || 6600) || 6600;
       const { stdout, stderr } = await execFileP('mpc', ['-h', host, '-p', String(port), 'update']);
       return res.json({ ok: true, host, port, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/peppy/skins/export', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const { stdout, stderr } = await execFileP('node', ['scripts/export-peppymeter-skins.mjs'], { cwd: process.cwd() });
+      return res.json({ ok: true, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/peppy/skins/deploy', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const { stdout, stderr } = await execFileP('bash', ['scripts/deploy-peppy-skins-to-moode.sh'], { cwd: process.cwd(), maxBuffer: 8 * 1024 * 1024 });
+      return res.json({ ok: true, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/peppy/skins/activate', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const name = String(req.body?.name || '').trim();
+      if (!name) return res.status(400).json({ ok: false, error: 'name is required' });
+
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const script = `sudo sed -i "s/^meter = .*/meter = ${name.replace(/"/g, '')}/" /etc/peppymeter/config.txt; cd /opt/peppymeter && nohup python3 peppymeter.py >/tmp/peppymeter-bg.log 2>&1 & sleep 1; grep -n '^meter = ' /etc/peppymeter/config.txt | head -n 1`;
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 15000 });
+      return res.json({ ok: true, name, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

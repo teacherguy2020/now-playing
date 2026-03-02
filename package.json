@@ -14,6 +14,10 @@
     "sharp": "^0.33.5",
     "undici": "5.28.5"
   },
+  "scripts": {
+    "peppy:export": "node scripts/export-peppymeter-skins.mjs",
+    "peppy:deploy": "scripts/deploy-peppy-skins-to-moode.sh"
+  },
   "devDependencies": {
     "playwright": "^1.58.2"
   }

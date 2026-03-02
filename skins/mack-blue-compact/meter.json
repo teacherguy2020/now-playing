@@ -1,0 +1,22 @@
+{
+  "name": "mack-blue-compact",
+  "resolution": "1280x400",
+  "meter": {
+    "type": "circular",
+    "channels": 2,
+    "uiRefreshPeriod": 0.033,
+    "stepsPerDegree": 2,
+    "startAngle": 45,
+    "stopAngle": -45,
+    "distance": 265,
+    "leftOrigin": { "x": 319, "y": 460 },
+    "rightOrigin": { "x": 940, "y": 460 },
+    "meterOffset": { "x": 0, "y": 0 },
+    "screenBgr": ""
+  },
+  "assets": {
+    "bgr": "mack-blue-compact-bgr.png",
+    "fgr": "mack-blue-compact-fgr.png",
+    "indicator": "mack-blue-compact-needle.png"
+  }
+}

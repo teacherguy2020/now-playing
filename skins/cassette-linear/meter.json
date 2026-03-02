@@ -1,0 +1,23 @@
+{
+  "name": "cassette-linear",
+  "resolution": "1280x400",
+  "meter": {
+    "type": "linear",
+    "channels": 2,
+    "uiRefreshPeriod": 0.033,
+    "stepsPerDegree": 2,
+    "startAngle": 0,
+    "stopAngle": 0,
+    "distance": 0,
+    "leftOrigin": { "x": 0, "y": 0 },
+    "rightOrigin": { "x": 0, "y": 0 },
+    "meterOffset": { "x": 0, "y": 0 },
+    "screenBgr": ""
+  },
+  "assets": {
+    "bgr": "cassette-linear-bgr.png",
+    "fgr": "",
+    "indicator": "cassette-linear-indicator.png"
+  },
+  "notes": "Linear theme currently web-first. Replace assets/params with final native Peppy linear art when ready."
+}

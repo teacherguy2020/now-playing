@@ -1,0 +1,34 @@
+{
+  "skins": [
+    {
+      "name": "blue-1280",
+      "bgr": "assets/peppy/blue-1280-bgr.png",
+      "fgr": "assets/peppy/blue-1280-fgr.png",
+      "needle": "assets/peppy/blue-1280-needle.png"
+    },
+    {
+      "name": "blue-2",
+      "bgr": "assets/peppy/blue-2-bgr.png",
+      "fgr": "assets/peppy/blue-2-fgr.png",
+      "needle": "assets/peppy/blue-2-needle.png"
+    },
+    {
+      "name": "orange-1280",
+      "bgr": "assets/peppy/orange-1280-bgr.png",
+      "fgr": "assets/peppy/orange-1280-fgr.png",
+      "needle": "assets/peppy/orange-1280-needle.png"
+    },
+    {
+      "name": "emerald-1280",
+      "bgr": "assets/peppy/emerald-1280-bgr.png",
+      "fgr": "assets/peppy/emerald-1280-fgr.png",
+      "needle": "assets/peppy/emerald-1280-needle.png"
+    },
+    {
+      "name": "black-white-1280",
+      "bgr": "assets/peppy/black-white-1280-bgr.png",
+      "fgr": "",
+      "needle": "assets/peppy/black-white-1280-needle.png"
+    }
+  ]
+}

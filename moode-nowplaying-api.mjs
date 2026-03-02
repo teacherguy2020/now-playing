@@ -418,6 +418,32 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+// PeppyMeter bridge (HTTP level data -> app API)
+let peppyMeterLast = { left: 0, right: 0, mono: 0, ts: 0, source: 'init' };
+app.put('/peppy/vumeter', (req, res) => {
+  try {
+    const left = Number(req?.body?.left ?? req?.query?.left ?? 0);
+    const right = Number(req?.body?.right ?? req?.query?.right ?? 0);
+    const mono = Number(req?.body?.mono ?? req?.query?.mono ?? 0);
+    peppyMeterLast = {
+      left: Number.isFinite(left) ? Math.max(0, Math.min(100, left)) : 0,
+      right: Number.isFinite(right) ? Math.max(0, Math.min(100, right)) : 0,
+      mono: Number.isFinite(mono) ? Math.max(0, Math.min(100, mono)) : 0,
+      ts: Date.now(),
+      source: req?.ip || 'unknown',
+    };
+    return res.json({ ok: true });
+  } catch {
+    return res.status(400).json({ ok: false, error: 'invalid payload' });
+  }
+});
+
+app.get('/peppy/vumeter', (_req, res) => {
+  const now = Date.now();
+  const ageMs = Math.max(0, now - Number(peppyMeterLast?.ts || 0));
+  return res.json({ ok: true, meter: peppyMeterLast, ageMs, fresh: ageMs < 4000 });
+});
+
 /* =========================
  * Agents: LAN-bound vs default
  * ========================= */

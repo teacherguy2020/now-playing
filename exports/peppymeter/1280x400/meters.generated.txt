@@ -1,0 +1,36 @@
+[cassette-linear]
+meter.type = linear
+channels = 2
+ui.refresh.period = 0.033
+bgr.filename = cassette-linear-bgr.png
+indicator.filename = cassette-linear-indicator.png
+steps.per.degree = 2
+start.angle = 0
+stop.angle = 0
+distance = 0
+left.origin.x = 0
+left.origin.y = 0
+right.origin.x = 0
+right.origin.y = 0
+meter.x = 0
+meter.y = 0
+screen.bgr = 
+
+[mack-blue-compact]
+meter.type = circular
+channels = 2
+ui.refresh.period = 0.033
+bgr.filename = mack-blue-compact-bgr.png
+fgr.filename = mack-blue-compact-fgr.png
+indicator.filename = mack-blue-compact-needle.png
+steps.per.degree = 2
+start.angle = 45
+stop.angle = -45
+distance = 265
+left.origin.x = 319
+left.origin.y = 460
+right.origin.x = 940
+right.origin.y = 460
+meter.x = 0
+meter.y = 0
+screen.bgr = 

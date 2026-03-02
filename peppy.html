@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Peppy Bridge</title>
+  <style>
+    @font-face{
+      font-family:"DotGothic16Local";
+      src:url("assets/fonts/DotGothic16-Regular.ttf") format("truetype");
+      font-display:swap;
+    }
+    :root{
+      --bg:#05070d;
+      --fg:#e6efff;
+      --muted:#9bb0d3;
+      --card:#0d1422;
+      --card2:#08101a;
+      --line:#22324a;
+      --accent:#7dd3fc;
+      --accent2:#22c55e;
+      --progress-seg:#2eb9ee;
+      --progress-rgb:46,185,238;
+      --dot-bg:#06101a;
+      --dot-dim:#3a516f;
+    }
+    html,body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;height:100%;overflow:hidden}
+    body{display:flex;align-items:flex-start;justify-content:center;padding:0;box-sizing:border-box}
+    .previewStage{position:relative;display:flex;align-items:flex-start;justify-content:center;overflow:hidden}
+    .wrap{width:1280px;height:400px;display:grid;grid-template-columns:320px 1fr;gap:4px;padding:0;box-sizing:border-box;transform-origin:top center}
+    .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:8px;overflow:hidden}
+    .left{display:flex;flex-direction:column;align-items:stretch;height:100%}
+    #art{flex:1 1 auto;min-height:0;width:100%;height:100%;aspect-ratio:1 / 1;object-fit:contain;background:#02040a;display:block;margin-top:0;margin-bottom:0}
+    .leftFileMeta{height:12px;border-radius:0;border-left:none;border-right:none;border-bottom:none;margin-top:0}
+    .meta{padding:4px 10px 0px;display:grid;gap:1px}
+    .title{font-size:28px;font-weight:760;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.02}
+    .sub{font-size:17px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05}
+    .matrix{display:block}
+    .dotline{display:block;width:100%;height:28px;background:#081018;border:none;border-radius:6px;padding:2px 6px;box-sizing:border-box;image-rendering:pixelated}
+    .dotline.title{height:56px}
+    .dotline.small{height:24px}
+    .subline{display:flex;gap:14px;flex-wrap:wrap;font-size:16px;color:#bfd0ee;line-height:1.1}
+    .right{position:relative;display:grid;grid-template-rows:auto;align-content:start}
+    .meters{position:absolute;right:4px;bottom:0;width:min(820px, calc(100% - 12px));display:grid;grid-template-rows:auto;gap:2px;padding:0;align-content:end}
+    .controls{position:absolute;left:8px;bottom:10px;display:grid;grid-template-columns:repeat(2,60px);gap:8px}
+    .skinOps{position:absolute;left:8px;top:4px;display:flex;gap:8px;align-items:center}
+    .skinBtn{height:26px;padding:0 10px;border:1px solid #3f4753;background:#1f2731;color:#d8e4f3;font-size:12px;cursor:pointer}
+    .skinSelect{height:26px;border:1px solid #3f4753;background:#131b24;color:#d8e4f3;font-size:12px;padding:0 6px}
+    .iframeScale{position:absolute;right:14px;top:10px;display:none;align-items:center;gap:8px;background:#0f1722;border:1px solid #2f3a4b;padding:4px 8px}
+    .iframeScale input{width:120px}
+    .iframeScale span{font-size:12px;color:#d8e4f3;min-width:42px;text-align:right}
+    .ctrlBtn{width:60px;height:60px;border:1px solid #3f4753;border-radius:4px;background:linear-gradient(180deg,#2f353f,#212730);color:#e9eef5;line-height:1;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.35), 0 2px 4px rgba(0,0,0,.45)}
+    .ctrlBtn .symSvg{width:28px;height:28px;fill:#aeb8c6;filter:drop-shadow(0 1px 0 rgba(255,255,255,.08)) drop-shadow(0 -1px 0 rgba(0,0,0,.62))}
+    .ctrlBtn:active{transform:translateY(1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.10), inset 0 -1px 0 rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.4)}
+    .ctrlBtn.lit .symSvg{fill:#9cffb0;filter:drop-shadow(0 0 6px rgba(120,255,150,.85)) drop-shadow(0 0 14px rgba(120,255,150,.45))}
+    .ctrlBtn.tap .symSvg{filter:drop-shadow(0 0 3px rgba(220,240,255,.45))}
+    .row{display:grid;grid-template-columns:14px 1fr;align-items:center;gap:4px;margin:0;padding:0}
+    .lbl{font-weight:800;color:#bcd0ef;text-align:center;font-size:11px}
+    .needleWrap{height:208px;border:none;background:transparent;overflow:hidden;box-shadow:inset 0 0 4px rgba(10,22,46,.16)}
+    #needleCanvas{display:block;width:100%;height:100%}
+    .stars{letter-spacing:2px;font-size:18px;display:inline-flex;gap:2px}
+    .star{color:#7a6420;opacity:.35;transition:opacity .12s linear, text-shadow .12s linear, color .12s linear}
+    .star.active{color:#fbbf24;opacity:.98;text-shadow:0 0 5px rgba(251,191,36,.55), 0 0 10px rgba(251,191,36,.35)}
+    .progress{height:10px;border-radius:0;border:1px solid #304764;background:#091120;overflow:hidden;margin:0;padding:0;width:100%}
+    .progressSegbar{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;padding:2px 8px;box-sizing:border-box;height:100%}
+    .pseg{border-radius:0;background:var(--progress-seg);opacity:.20;transition:opacity .12s linear, box-shadow .12s linear}
+    .pseg.active{opacity:.82;box-shadow:0 0 6px rgba(var(--progress-rgb),.72), 0 0 14px rgba(var(--progress-rgb),.42)}
+    .pseg.tail{animation:tailPulse 2.6s ease-in-out infinite}
+    @keyframes tailPulse{
+      0%,100%{opacity:.62;box-shadow:0 0 4px rgba(var(--progress-rgb),.35)}
+      50%{opacity:1;box-shadow:0 0 9px rgba(var(--progress-rgb),.92),0 0 18px rgba(var(--progress-rgb),.55)}
+    }
+    /* Keep fixed 1280x400 composition in all contexts (standalone + iframe). */
+  </style>
+</head>
+<body>
+  <div id="previewStage" class="previewStage">
+  <div id="wrap" class="wrap">
+    <section class="card left">
+      <img id="art" alt="Album art" src="" />
+      <canvas class="dotline small leftFileMeta" id="fileMetaCanvas" width="640" height="24"></canvas>
+      <canvas class="dotline small leftFileMeta" id="fileMetaCanvas2" width="640" height="24"></canvas>
+      <div class="progress" style="margin:0;width:100%;border-left:none;border-right:none;border-bottom:none;"><div id="trackProgress" class="progressSegbar"></div></div>
+    </section>
+
+    <section class="card right">
+      <div class="meta">
+        <canvas class="dotline title" id="artistCanvas" width="1200" height="88"></canvas>
+        <canvas class="dotline title" id="titleCanvas" width="1200" height="88"></canvas>
+        <canvas class="dotline title" id="albumYearCanvas" width="1200" height="88"></canvas>
+      </div>
+
+      <div id="skinOps" class="skinOps" aria-label="Skin operations">
+        <button id="skinExport" class="skinBtn" type="button">Export Skin</button>
+        <button id="skinDeploy" class="skinBtn" type="button">Deploy Skin</button>
+        <select id="skinName" class="skinSelect" aria-label="Select skin"></select>
+        <select id="meterMode" class="skinSelect" aria-label="Meter mode">
+          <option value="segmented">Segmented</option>
+          <option value="continuous">Continuous</option>
+        </select>
+        <select id="meterColorMode" class="skinSelect" aria-label="Meter color mode">
+          <option value="classic">Classic</option>
+          <option value="theme">Theme</option>
+        </select>
+        <select id="themeName" class="skinSelect" aria-label="UI theme">
+          <option value="midnight-blue">midnight-blue</option>
+          <option value="amber-night">amber-night</option>
+          <option value="graphite-green">graphite-green</option>
+          <option value="silver-black">silver-black</option>
+          <option value="obsidian-black">obsidian-black</option>
+        </select>
+        <button id="skinActivate" class="skinBtn" type="button">Activate</button>
+      </div>
+      <div id="iframeScale" class="iframeScale" aria-label="Iframe preview scale">
+        <label for="iframeScaleInput" style="font-size:12px;color:#d8e4f3;">Scale</label>
+        <input id="iframeScaleInput" type="range" min="30" max="100" step="1" value="50" />
+        <span id="iframeScaleValue">50%</span>
+      </div>
+
+      <div class="controls" aria-label="Playback controls">
+        <button id="ctrlPlay" class="ctrlBtn" type="button" title="Play"><svg class="symSvg" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
+        <button id="ctrlPause" class="ctrlBtn" type="button" title="Pause"><svg class="symSvg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg></button>
+        <button id="ctrlPrev" class="ctrlBtn" type="button" title="Previous"><svg class="symSvg" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM18 6v12l-8-6zM16 6v12l-8-6z"/></svg></button>
+        <button id="ctrlNext" class="ctrlBtn" type="button" title="Next"><svg class="symSvg" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM8 6v12l8-6zM10 6v12l8-6z"/></svg></button>
+        <button id="ctrlRepeat" class="ctrlBtn" type="button" title="Repeat"><svg class="symSvg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h9v3l4-4-4-4v3H7a3 3 0 0 0-3 3v2h2V8a1 1 0 0 1 1-1zm10 10H8v-3l-4 4 4 4v-3h9a3 3 0 0 0 3-3v-2h-2v2a1 1 0 0 1-1 1z"/></svg></button>
+        <button id="ctrlShuffle" class="ctrlBtn" type="button" title="Shuffle"><svg class="symSvg" viewBox="0 0 32 32" aria-hidden="true"><path d="M24.414,16.586L30.828,23l-6.414,6.414l-2.828-2.828L23.172,25H22c-3.924,0-6.334-2.289-8.173-4.747c0.987-1.097,1.799-2.285,2.516-3.36C18.109,19.46,19.521,21,22,21h1.172l-1.586-1.586L24.414,16.586z M22,11h1.172l-1.586,1.586l2.828,2.828L30.828,9l-6.414-6.414l-2.828,2.828L23.172,7H22c-5.07,0-7.617,3.82-9.664,6.891C10.224,17.059,8.788,19,6,19H2v4h4c5.07,0,7.617-3.82,9.664-6.891C17.776,12.941,19.212,11,22,11z M10.212,15.191c0.399-0.539,1.957-2.848,2.322-3.365C10.917,10.216,8.86,9,6,9H2v4h4C7.779,13,9.007,13.797,10.212,15.191z"/></svg></button>
+      </div>
+
+      <div class="meters">
+        <div class="row"><div class="lbl"></div><div class="needleWrap"><canvas id="needleCanvas" width="900" height="208" aria-label="Needle VU"></canvas></div></div>
+      </div>
+    </section>
+  </div>
+  </div>
+
+  <script>
+    (() => {
+      const API_FALLBACK_HOST = '10.0.0.233';
+      const candidates = [
+        `${location.protocol}//${location.hostname || API_FALLBACK_HOST}:3101`,
+        `http://${location.hostname || API_FALLBACK_HOST}:3101`,
+        `http://${API_FALLBACK_HOST}:3101`,
+      ];
+      let api = candidates[0];
+      let runtimeTrackKey = '';
+
+      const $ = (id) => document.getElementById(id);
+      const previewStage = $('previewStage');
+      const wrap = $('wrap');
+      const art = $('art');
+      const titleCanvas = $('titleCanvas');
+      const iframeScaleEl = $('iframeScale');
+      const iframeScaleInput = $('iframeScaleInput');
+      const iframeScaleValue = $('iframeScaleValue');
+      const skinOpsEl = $('skinOps');
+      const qp = new URLSearchParams(location.search);
+      const kioskMode = (qp.get('kiosk') === '1' || qp.get('display') === '1');
+      const adminMode = (qp.get('admin') === '1');
+      const fitMode = String(qp.get('fit') || '').toLowerCase();
+      const hasSkinParam = qp.has('skin');
+      const hasThemeParam = qp.has('theme');
+      const THEMES = {
+        'midnight-blue': { bg:'#05070d', fg:'#e6efff', muted:'#9bb0d3', card:'#0d1422', card2:'#08101a', line:'#22324a', accent:'#7dd3fc', accent2:'#22c55e', dotBg:'#06101a', dotDim:'#3a516f' },
+        'amber-night': { bg:'#0d0a05', fg:'#ffe9cc', muted:'#d5b88c', card:'#24170b', card2:'#170f07', line:'#5a3e21', accent:'#ffb347', accent2:'#ffd166', dotBg:'#4a1216', dotDim:'#b45a63' },
+        'graphite-green': { bg:'#060b08', fg:'#d9f5e3', muted:'#9cc9ae', card:'#0f1a14', card2:'#0a120d', line:'#284536', accent:'#67e8a5', accent2:'#34d399', dotBg:'#08140f', dotDim:'#2f5a45' },
+        'silver-black': { bg:'#08090b', fg:'#edf1f7', muted:'#aab4c3', card:'#171b21', card2:'#0f1217', line:'#3a4352', accent:'#93c5fd', accent2:'#60a5fa', dotBg:'#111620', dotDim:'#455064' },
+        'obsidian-black': { bg:'#000000', fg:'#f3f6fb', muted:'#9aa3b3', card:'#050608', card2:'#010204', line:'#2a2f38', accent:'#dbe4f2', accent2:'#9aa8bd', dotBg:'#06080b', dotDim:'#39414d' },
+      };
+      const SKIN_THEME_MAP = {
+        'black-white':'obsidian-black',
+        'black-white-1280':'obsidian-black',
+        'white-red':'amber-night',
+        'red':'amber-night',
+        'orange':'amber-night',
+        'orange-1280':'amber-night',
+        'gold':'amber-night',
+        'blue':'midnight-blue',
+        'blue-1280':'midnight-blue',
+        'blue-2':'midnight-blue',
+        'mack-blue-compact':'midnight-blue',
+        'emerald':'graphite-green',
+        'emerald-1280':'graphite-green',
+        'tube':'silver-black',
+      };
+      function matchThemeForSkin(skin){
+        return SKIN_THEME_MAP[String(skin || '').trim()] || null;
+      }
+      function hexToRgbTriplet(hex){
+        const h = String(hex || '').trim().replace('#','');
+        if (!h) return '46,185,238';
+        const full = h.length === 3 ? h.split('').map((c)=>c+c).join('') : h;
+        const n = parseInt(full, 16);
+        if (!Number.isFinite(n)) return '46,185,238';
+        const r = (n >> 16) & 255;
+        const g = (n >> 8) & 255;
+        const b = n & 255;
+        return `${r},${g},${b}`;
+      }
+
+      function applyTheme(name){
+        const t = THEMES[name] || THEMES['midnight-blue'];
+        const r = document.documentElement;
+        r.style.setProperty('--bg', t.bg);
+        r.style.setProperty('--fg', t.fg);
+        r.style.setProperty('--muted', t.muted);
+        r.style.setProperty('--card', t.card);
+        r.style.setProperty('--card2', t.card2);
+        r.style.setProperty('--line', t.line);
+        r.style.setProperty('--accent', t.accent);
+        r.style.setProperty('--accent2', t.accent2);
+        r.style.setProperty('--progress-seg', t.accent || '#2eb9ee');
+        r.style.setProperty('--progress-rgb', hexToRgbTriplet(t.accent || '#2eb9ee'));
+        r.style.setProperty('--dot-bg', t.dotBg || t.card2);
+        r.style.setProperty('--dot-dim', t.dotDim || t.line);
+      }
+      if (skinOpsEl) skinOpsEl.style.display = adminMode ? 'flex' : 'none';
+      const ctrlPrev = $('ctrlPrev');
+      const ctrlPlay = $('ctrlPlay');
+      const ctrlNext = $('ctrlNext');
+      const ctrlRepeat = $('ctrlRepeat');
+      const ctrlPause = $('ctrlPause');
+      const ctrlShuffle = $('ctrlShuffle');
+      const controlsEl = document.querySelector('.controls');
+      const skinExport = $('skinExport');
+      const skinDeploy = $('skinDeploy');
+      const skinName = $('skinName');
+      const meterMode = $('meterMode');
+      const meterColorMode = $('meterColorMode');
+      const themeName = $('themeName');
+      const skinActivate = $('skinActivate');
+      const artistCanvas = $('artistCanvas');
+      const albumYearCanvas = $('albumYearCanvas');
+      const fileMetaCanvas = $('fileMetaCanvas');
+      const fileMetaCanvas2 = $('fileMetaCanvas2');
+      const trackProgress = $('trackProgress');
+      const needleCanvas = $('needleCanvas');
+
+      const needleSkin = {
+        bgr: new Image(),
+        fgr: new Image(),
+        needle: new Image(),
+      };
+      const SKIN_ASSETS = {
+        'mack-blue-compact': { bgr: 'assets/peppy/blue-1280-bgr.png', fgr: 'assets/peppy/blue-1280-fgr.png', needle: 'assets/peppy/blue-1280-needle.png' },
+        'blue-1280': { bgr: 'assets/peppy/blue-1280-bgr.png', fgr: 'assets/peppy/blue-1280-fgr.png', needle: 'assets/peppy/blue-1280-needle.png' },
+        'orange-1280': { bgr: 'assets/peppy/orange-1280-bgr.png', fgr: 'assets/peppy/orange-1280-fgr.png', needle: 'assets/peppy/orange-1280-needle.png' },
+        'emerald-1280': { bgr: 'assets/peppy/emerald-1280-bgr.png', fgr: 'assets/peppy/emerald-1280-fgr.png', needle: 'assets/peppy/emerald-1280-needle.png' },
+        'black-white-1280': { bgr: 'assets/peppy/black-white-1280-bgr.png', fgr: '', needle: 'assets/peppy/black-white-1280-needle.png' },
+      };
+      function renderSkinOptions(selected = 'mack-blue-compact') {
+        if (!skinName) return;
+        const names = [...new Set([...Object.keys(SKIN_ASSETS), 'cassette-linear'])];
+        skinName.innerHTML = names.map((n) => `<option value="${n}">${n}</option>`).join('');
+        skinName.value = names.includes(selected) ? selected : (names[0] || 'mack-blue-compact');
+      }
+      async function loadSkinCatalog(){
+        try {
+          const r = await fetch('assets/peppy/catalog.json', { cache: 'no-store' });
+          const j = await r.json();
+          const items = Array.isArray(j?.skins) ? j.skins : [];
+          for (const it of items) {
+            if (!it?.name || !it?.bgr) continue;
+            SKIN_ASSETS[it.name] = { bgr: String(it.bgr), fgr: String(it.fgr || ''), needle: String(it.needle || '') };
+          }
+        } catch {}
+      }
+      function applyNeedleSkin(name){
+        const s = SKIN_ASSETS[name] || SKIN_ASSETS['mack-blue-compact'];
+        needleSkin.bgr.src = s.bgr;
+        needleSkin.fgr.src = s.fgr;
+        needleSkin.needle.src = s.needle || '';
+        applyNeedleGeometry(name);
+      }
+
+      function clamp(v){ const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0; }
+      function fitPreviewScale(){
+        if (!previewStage || !wrap) return;
+        if (iframeScaleEl) iframeScaleEl.style.display = 'none';
+
+        const vw = Math.max(320, (window.innerWidth || 1280));
+        const vh = Math.max(200, (window.innerHeight || 400));
+
+        // contain: no crop (may letterbox on tall screens)
+        // cover: fill viewport (may crop left/right on tall screens)
+        const containScale = Math.min(vw / 1280, vh / 400);
+        const coverScale = Math.max(vw / 1280, vh / 400);
+        const mode = fitMode || 'contain';
+        const scale = (mode === 'cover') ? coverScale : containScale;
+
+        previewStage.style.width = `${Math.floor(vw)}px`;
+        previewStage.style.height = `${Math.floor(vh)}px`;
+        wrap.style.transform = `scale(${Math.max(0.2, Math.min(2.2, scale))})`;
+      }
+
+      function updateIframeControlAnchor(_groupW = 0){
+        if (!controlsEl) return;
+        controlsEl.style.left = '8px';
+        controlsEl.style.right = 'auto';
+        controlsEl.style.top = 'auto';
+        controlsEl.style.bottom = '10px';
+      }
+      const meterState = { L: { target: 0, cur: 0 }, R: { target: 0, cur: 0 } };
+      function setTarget(k, v){ meterState[k].target = clamp(v); }
+
+      const NATIVE_NEEDLE_CFG = {
+        'mack-blue-compact': { start: 45, stop: -45, distance: 265, ox: 319, oy: 460, lenMul: 1.0 },
+        'blue-1280': { start: 45, stop: -45, distance: 221, ox: 319, oy: 460, lenMul: 1.0 },
+        'orange-1280': { start: 48, stop: -48, distance: 140, ox: 347, oy: 344, lenMul: 1.0 },
+        'emerald-1280': { start: 47, stop: -47, distance: 170, ox: 337, oy: 402, lenMul: 1.0 },
+        'black-white-1280': { start: 45, stop: -46, distance: 190, ox: 342, oy: 464, lenMul: 0.95 },
+      };
+      let needleCfg = {
+        startDeg: 225,
+        endDeg: 315,
+        pivotX: 0.50,
+        pivotY: 1.15,
+        radiusMul: 0.41,
+        needleInset: 0,
+        lenMul: 1.0,
+      };
+      function applyNeedleGeometry(name){
+        const c = NATIVE_NEEDLE_CFG[name];
+        if (!c) return;
+        const halfW = 640;
+        const h = 400;
+        needleCfg.startDeg = 270 - Number(c.start || 45);
+        needleCfg.endDeg = 270 - Number(c.stop || -45);
+        needleCfg.pivotX = Number(c.ox || 320) / halfW;
+        needleCfg.pivotY = Number(c.oy || 400) / h;
+        needleCfg.radiusMul = Number(c.distance || 180) / halfW;
+        needleCfg.lenMul = Number(c.lenMul || 1.0);
+      }
+      let previewSkin = (() => {
+        const fromUrl = String(qp.get('skin') || '').trim();
+        if (fromUrl) return fromUrl;
+        try { return localStorage.getItem('peppy.skin') || String(skinName?.value || 'mack-blue-compact'); } catch { return String(skinName?.value || 'mack-blue-compact'); }
+      })();
+      if (!(previewSkin in SKIN_ASSETS) && previewSkin !== 'cassette-linear') previewSkin = 'mack-blue-compact';
+      renderSkinOptions(previewSkin);
+      applyNeedleSkin(previewSkin);
+
+      let previewMeterMode = (() => { try { return localStorage.getItem('peppy.meterMode') || 'segmented'; } catch { return 'segmented'; } })();
+      let previewColorMode = (() => { try { return localStorage.getItem('peppy.colorMode') || 'classic'; } catch { return 'classic'; } })();
+      const previewTheme = (() => {
+        const fromUrl = String(qp.get('theme') || '').trim();
+        if (fromUrl) return fromUrl;
+        try { return localStorage.getItem('peppy.theme') || 'midnight-blue'; } catch { return 'midnight-blue'; }
+      })();
+      applyTheme(previewTheme);
+      if (themeName) themeName.value = previewTheme;
+      if (meterMode) meterMode.value = previewMeterMode;
+      if (meterColorMode) meterColorMode.value = previewColorMode;
+
+      function meterTint(){
+        const cs = getComputedStyle(document.documentElement);
+        const c = String(cs.getPropertyValue('--accent') || '').trim() || '#7dd3fc';
+        // Stronger tint for warm themes, subtler for cool/default.
+        const warm = /amber|orange|red/i.test(String(themeName?.value || ''));
+        return { color: c, alpha: warm ? 0.22 : 0.14 };
+      }
+
+      function drawNeedles(){
+        const p = prepCanvas(needleCanvas);
+        if (!p) return;
+        const { ctx, w: W, h: H } = p;
+        ctx.clearRect(0,0,W,H);
+
+        if (previewSkin === 'cassette-linear') {
+          const drawRow = (y, level) => {
+            const x0 = 18;
+            const w = W - 24;
+            const h = 36;
+            ctx.fillStyle = '#0a1118';
+            ctx.fillRect(x0, y, w, h);
+            ctx.strokeStyle = '#3f4b5b';
+            ctx.strokeRect(x0 + 0.5, y + 0.5, w - 1, h - 1);
+            const segs = 28;
+            const gap = 3;
+            const segW = Math.floor((w - 14 - (segs - 1) * gap) / segs);
+            const lit = Math.round((clamp(level) / 100) * segs);
+
+            const zoneColor = (i) => {
+              if (previewColorMode === 'theme') {
+                return '#2eb9ee';
+              }
+              const redZone = i >= Math.floor(segs * 0.86);
+              const yellowZone = !redZone && i >= Math.floor(segs * 0.72);
+              return redZone ? '#ff6464' : (yellowZone ? '#ffe06b' : '#bff3ff');
+            };
+
+            if (previewMeterMode === 'continuous') {
+              const pct = clamp(level) / 100;
+              const cw = Math.max(0, Math.floor((w - 14) * pct));
+              const grad = (previewColorMode === 'theme')
+                ? 'linear-gradient(90deg,#2eb9ee,#39c6f5)'
+                : 'linear-gradient(90deg,#bff3ff 0 72%, #ffe06b 72% 86%, #ff6464 86% 100%)';
+              ctx.fillStyle = '#1a2a36';
+              ctx.fillRect(x0 + 7, y + 6, w - 14, h - 12);
+              const g = ctx.createLinearGradient(x0 + 7, 0, x0 + 7 + Math.max(1, cw), 0);
+              if (previewColorMode === 'theme') {
+                g.addColorStop(0, '#2eb9ee');
+                g.addColorStop(1, '#39c6f5');
+              } else {
+                g.addColorStop(0, '#bff3ff');
+                g.addColorStop(0.72, '#bff3ff');
+                g.addColorStop(0.86, '#ffe06b');
+                g.addColorStop(1, '#ff6464');
+              }
+              ctx.fillStyle = g;
+              ctx.fillRect(x0 + 7, y + 6, cw, h - 12);
+            } else {
+              for (let i = 0; i < segs; i++) {
+                const sx = x0 + 7 + i * (segW + gap);
+                const active = i < lit;
+                const base = zoneColor(i);
+                const idle = previewColorMode === 'theme'
+                  ? 'rgba(85,165,200,.18)'
+                  : (i >= Math.floor(segs * 0.86)
+                      ? 'rgba(255,110,110,.22)'
+                      : (i >= Math.floor(segs * 0.72)
+                          ? 'rgba(255,230,120,.20)'
+                          : 'rgba(140,235,255,.18)'));
+                ctx.fillStyle = active ? base : idle;
+                ctx.fillRect(sx, y + 6, segW, h - 12);
+                if (active) {
+                  ctx.shadowColor = previewColorMode === 'theme'
+                    ? 'rgba(80,210,250,.65)'
+                    : (i >= Math.floor(segs * 0.86)
+                        ? 'rgba(255,110,110,.65)'
+                        : (i >= Math.floor(segs * 0.72)
+                            ? 'rgba(255,230,120,.60)'
+                            : 'rgba(140,235,255,.65)'));
+                  ctx.shadowBlur = 7;
+                  ctx.fillRect(sx, y + 6, segW, h - 12);
+                  ctx.shadowBlur = 0;
+                }
+              }
+            }
+          };
+          drawRow(16, meterState.L.cur);
+          drawRow(74, meterState.R.cur);
+          return;
+        }
+
+        const bgr = needleSkin.bgr;
+        const fgr = needleSkin.fgr;
+        const hasSkin = bgr.complete && bgr.naturalWidth > 0;
+
+        const baseH = H - 4;
+        let meterH = Math.floor(baseH * 1.72);
+        const skinAspect = (hasSkin && bgr.naturalWidth > 0 && bgr.naturalHeight > 0)
+          ? ((bgr.naturalWidth / 2) / bgr.naturalHeight)
+          : 1.6;
+        let meterW = Math.floor(meterH * skinAspect); // preserve source meter proportion
+        const gap = 6;
+        let groupW = meterW * 2 + gap;
+        if (groupW > (W - 2)) {
+          const maxWPer = Math.floor((W - 2 - gap) / 2);
+          meterW = Math.max(40, maxWPer);
+          meterH = Math.max(30, Math.floor(meterW / skinAspect));
+          groupW = meterW * 2 + gap;
+        }
+        meterH = Math.min(meterH, H - 2);
+        const startX = Math.max(0, W - groupW - 2); // anchored to lower-right
+        const y0 = Math.max(0, H - meterH);
+        updateIframeControlAnchor(groupW);
+
+        const drawOne = (x, level, side) => {
+          if (hasSkin) {
+            const sw = Math.floor(bgr.naturalWidth / 2);
+            const sx = side === 'L' ? 0 : sw;
+            ctx.drawImage(bgr, sx, 0, sw, bgr.naturalHeight, x, y0, meterW, meterH);
+            const tint = meterTint();
+            ctx.save();
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.globalAlpha = tint.alpha;
+            ctx.fillStyle = tint.color;
+            ctx.fillRect(x, y0, meterW, meterH);
+            ctx.restore();
+          } else {
+            ctx.fillStyle = '#1aa5de';
+            ctx.fillRect(x, y0, meterW, meterH);
+          }
+
+          const cx = x + meterW * needleCfg.pivotX;
+          const cy = y0 + meterH * needleCfg.pivotY;
+          const r = meterW * needleCfg.radiusMul;
+          const aStart = (needleCfg.startDeg * Math.PI) / 180;
+          const aEnd = (needleCfg.endDeg * Math.PI) / 180;
+          const n = clamp(level) / 100;
+          const a = aStart + (aEnd - aStart) * n;
+          const tipR = (r - needleCfg.needleInset) * (needleCfg.lenMul || 1.0);
+          const nx = cx + Math.cos(a) * tipR;
+          const ny = cy + Math.sin(a) * tipR;
+
+          const ni = needleSkin.needle;
+          const hiVisBlack = (previewSkin === 'black-white-1280');
+          if (hiVisBlack) {
+            ctx.strokeStyle = '#bfe9ff';
+            ctx.lineWidth = 1.6;
+            ctx.shadowColor = 'rgba(140,220,255,.75)';
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(nx, ny);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+          } else if (ni && ni.complete && ni.naturalWidth > 0) {
+            const sw = ni.naturalWidth;
+            const sh = ni.naturalHeight;
+            const tipLen = Math.max(12, r - needleCfg.needleInset);
+            const srcAspect = sw / Math.max(1, sh);
+            // Keep near config distance, with slight boost for sprite transparency.
+            const drawH = Math.max(12, tipLen * 1.15 * (needleCfg.lenMul || 1.0));
+            const drawW = Math.max(2, drawH * srcAspect);
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(a + Math.PI / 2);
+            ctx.drawImage(ni, 0, 0, sw, sh, -drawW * 0.5, -(drawH - 2), drawW, drawH);
+            ctx.restore();
+          } else {
+            ctx.strokeStyle = 'rgba(6,8,10,.98)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(nx, ny);
+            ctx.stroke();
+          }
+          ctx.fillStyle = hiVisBlack ? '#bfe9ff' : 'rgba(5,24,40,.95)';
+          ctx.beginPath();
+          ctx.arc(cx, cy, 2.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (fgr.complete && fgr.naturalWidth > 0) {
+            const swf = Math.floor(fgr.naturalWidth / 2);
+            const sxf = side === 'L' ? 0 : swf;
+            ctx.drawImage(fgr, sxf, 0, swf, fgr.naturalHeight, x, y0, meterW, meterH);
+          }
+        };
+
+        drawOne(startX, meterState.L.cur, 'L');
+        drawOne(startX + meterW + gap, meterState.R.cur, 'R');
+      }
+
+      function buildProgressSegments(el){
+        if (!el) return [];
+        const out = [];
+        for (let i = 0; i < 12; i++) {
+          const s = document.createElement('div');
+          s.className = 'pseg';
+          el.appendChild(s);
+          out.push(s);
+        }
+        return out;
+      }
+      const pseg = buildProgressSegments(trackProgress);
+
+      function paintSegments(segs, v){
+        const c = clamp(v);
+        const n = Math.round((c / 100) * segs.length);
+        segs.forEach((el, i) => {
+          const active = i < n;
+          el.classList.toggle('active', active);
+          el.classList.toggle('tail', active && i === (n - 1));
+        });
+      }
+
+      function prepCanvas(canvas){
+        if (!canvas) return null;
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const w = Math.max(10, Math.floor(canvas.clientWidth));
+        const h = Math.max(10, Math.floor(canvas.clientHeight));
+        const rw = Math.floor(w * dpr), rh = Math.floor(h * dpr);
+        if (canvas.width !== rw || canvas.height !== rh) {
+          canvas.width = rw; canvas.height = rh;
+        }
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        return { ctx, w, h };
+      }
+
+      const DOT_FONT_5x7 = {
+        'A':['01110','10001','10001','11111','10001','10001','10001'],
+        'B':['11110','10001','10001','11110','10001','10001','11110'],
+        'C':['01111','10000','10000','10000','10000','10000','01111'],
+        'D':['11110','10001','10001','10001','10001','10001','11110'],
+        'E':['11111','10000','10000','11110','10000','10000','11111'],
+        'F':['11111','10000','10000','11110','10000','10000','10000'],
+        'G':['01111','10000','10000','10111','10001','10001','01111'],
+        'H':['10001','10001','10001','11111','10001','10001','10001'],
+        'I':['11111','00100','00100','00100','00100','00100','11111'],
+        'J':['00001','00001','00001','00001','00001','10001','01110'],
+        'K':['10001','10010','10100','11000','10100','10010','10001'],
+        'L':['10000','10000','10000','10000','10000','10000','11111'],
+        'M':['10001','11011','10101','10101','10001','10001','10001'],
+        'N':['10001','10001','11001','10101','10011','10001','10001'],
+        'O':['01110','10001','10001','10001','10001','10001','01110'],
+        'P':['11110','10001','10001','11110','10000','10000','10000'],
+        'Q':['01110','10001','10001','10001','10101','10010','01101'],
+        'R':['11110','10001','10001','11110','10100','10010','10001'],
+        'S':['01111','10000','10000','01110','00001','00001','11110'],
+        'T':['11111','00100','00100','00100','00100','00100','00100'],
+        'U':['10001','10001','10001','10001','10001','10001','01110'],
+        'V':['10001','10001','10001','10001','10001','01010','00100'],
+        'W':['10001','10001','10001','10101','10101','10101','01010'],
+        'X':['10001','10001','01010','00100','01010','10001','10001'],
+        'Y':['10001','10001','01010','00100','00100','00100','00100'],
+        'Z':['11111','00001','00010','00100','01000','10000','11111'],
+        '0':['01110','10001','10011','10101','11001','10001','01110'],
+        '1':['00100','01100','00100','00100','00100','00100','01110'],
+        '2':['01110','10001','00001','00010','00100','01000','11111'],
+        '3':['11110','00001','00001','01110','00001','00001','11110'],
+        '4':['00010','00110','01010','10010','11111','00010','00010'],
+        '5':['11111','10000','10000','11110','00001','00001','11110'],
+        '6':['01110','10000','10000','11110','10001','10001','01110'],
+        '7':['11111','00001','00010','00100','01000','01000','01000'],
+        '8':['01110','10001','10001','01110','10001','10001','01110'],
+        '9':['01110','10001','10001','01111','00001','00001','01110'],
+        ' ':['00000','00000','00000','00000','00000','00000','00000'],
+        '.':['00000','00000','00000','00000','00000','00110','00110'],
+        ':':['00000','00110','00110','00000','00110','00110','00000'],
+        '-':['00000','00000','00000','01110','00000','00000','00000'],
+        '/':['00001','00010','00100','01000','10000','00000','00000'],
+        "'":['00110','00100','01000','00000','00000','00000','00000'],
+        '&':['01100','10010','10100','01000','10101','10010','01101'],
+        '(' :['00010','00100','01000','01000','01000','00100','00010'],
+        ')' :['01000','00100','00010','00010','00010','00100','01000'],
+        ',':['00000','00000','00000','00000','00110','00100','01000'],
+        '•':['00000','00000','00110','00110','00000','00000','00000']
+      };
+      function glyph(ch){
+        const c = String(ch || '');
+        if (DOT_FONT_5x7[c]) return DOT_FONT_5x7[c];
+        if (c >= 'a' && c <= 'z') {
+          const up = c.toUpperCase();
+          return DOT_FONT_5x7[up] || DOT_FONT_5x7[' '];
+        }
+        const up = c.toUpperCase();
+        return DOT_FONT_5x7[up] || DOT_FONT_5x7[' '];
+      }
+
+      function dotPalette(){
+        const cs = getComputedStyle(document.documentElement);
+        const npbBg = String(cs.getPropertyValue('--npb-card-bg') || '').trim();
+        const npbBorder = String(cs.getPropertyValue('--npb-card-border') || '').trim();
+        const npbText = String(cs.getPropertyValue('--npb-text') || '').trim();
+        const npbAccent = String(cs.getPropertyValue('--npb-tab-active-bg') || '').trim() || String(cs.getPropertyValue('--npb-star') || '').trim();
+        return {
+          bg: npbBg || String(cs.getPropertyValue('--dot-bg') || '').trim() || '#06101a',
+          dim: npbBorder || String(cs.getPropertyValue('--dot-dim') || '').trim() || '#3a516f',
+          on: npbText || String(cs.getPropertyValue('--fg') || '').trim() || '#d4e0ec',
+          glow: npbAccent || String(cs.getPropertyValue('--accent') || '').trim() || '#7dd3fc',
+        };
+      }
+
+      function drawDotText(canvas, text, opts = {}) {
+        const p = prepCanvas(canvas);
+        if (!p) return;
+        const { ctx, w: W, h: H } = p;
+        const pal = opts.palette || dotPalette();
+        ctx.clearRect(0,0,W,H);
+        // Keep matrix bed nearly black; theme tint should be barely perceptible.
+        ctx.fillStyle = '#040506';
+        ctx.fillRect(0,0,W,H);
+        ctx.globalAlpha = 0.16;
+        ctx.fillStyle = pal.bg;
+        ctx.fillRect(0,0,W,H);
+        ctx.globalAlpha = 1;
+
+        const pitch = opts.pitch || 8;
+        const radius = (opts.dot || 3.2) / 2;
+        const padX = 8;
+        const padY = Number.isFinite(Number(opts.padY)) ? Number(opts.padY) : 5;
+        const cols = Math.floor((W - padX*2) / pitch);
+        const rows = Math.floor((H - padY*2) / pitch);
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const x = padX + c * pitch + pitch/2;
+            const y = padY + r * pitch + pitch/2;
+            ctx.globalAlpha = 0.035;
+            ctx.fillStyle = pal.dim;
+            ctx.beginPath(); ctx.arc(x,y,radius,0,Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        }
+
+        const glyphW = 5, glyphH = 7, gap = 1;
+        const charAdvance = (ch) => (ch === ' ' ? 3 : (ch === '.' || ch === ':' || ch === ',' ? 4 : (glyphW + gap)));
+        let s = String(text || '—');
+        const fitText = (txt) => {
+          let out = '';
+          let used = 0;
+          for (const ch of txt) {
+            const adv = charAdvance(ch);
+            if ((used + adv) > cols) break;
+            out += ch;
+            used += adv;
+          }
+          return out;
+        };
+        let fitted = fitText(s);
+        if (fitted.length < s.length) {
+          fitted = fitText((fitted.slice(0, Math.max(0, fitted.length - 3)) + '...'));
+        }
+        s = fitted;
+
+        const startCol = 0;
+        const rowShift = Number.isFinite(Number(opts.rowShift)) ? Number(opts.rowShift) : 0;
+        const startRow = Math.max(0, Math.floor((rows - glyphH) / 2) + rowShift);
+
+        ctx.fillStyle = pal.on;
+        ctx.shadowColor = pal.glow;
+        ctx.shadowBlur = 7;
+        let penCol = startCol;
+        for (let i = 0; i < s.length; i++) {
+          const ch = s[i];
+          const g = glyph(ch);
+          for (let ry = 0; ry < glyphH; ry++) {
+            const row = g[ry] || '00000';
+            for (let rx = 0; rx < glyphW; rx++) {
+              if (row[rx] !== '1') continue;
+              const col = penCol + rx;
+              if (col < 0 || col >= cols) continue;
+              const x = padX + col * pitch + pitch/2;
+              const y = padY + (startRow + ry) * pitch + pitch/2;
+              ctx.beginPath(); ctx.arc(x,y,radius,0,Math.PI*2); ctx.fill();
+            }
+          }
+          penCol += charAdvance(ch);
+          if (penCol >= cols) break;
+        }
+        ctx.shadowBlur = 0;
+      }
+
+      async function resolveApiBase(){
+        for (const base of candidates) {
+          try {
+            const r = await fetch(`${base}/peppy/vumeter`, { cache:'no-store' });
+            if (r.ok) { api = base; return; }
+          } catch {}
+        }
+      }
+
+      async function ensureRuntimeKey(){
+        if (runtimeTrackKey) return;
+        try {
+          const r = await fetch(`${api}/config/runtime`, { cache:'no-store' });
+          const j = await r.json().catch(() => ({}));
+          runtimeTrackKey = String(j?.config?.trackKey || '').trim();
+        } catch {}
+      }
+
+      function setControlLights(np = {}){
+        const state = String(np?.state || '').toLowerCase();
+        const randomOn = String(np?.random ?? '').trim() === '1' || String(np?.random ?? '').toLowerCase() === 'on';
+        const repeatOn = String(np?.repeat ?? '').trim() === '1' || String(np?.repeat ?? '').toLowerCase() === 'on';
+        ctrlPlay?.classList.toggle('lit', state === 'play');
+        ctrlPause?.classList.toggle('lit', state === 'pause');
+        ctrlShuffle?.classList.toggle('lit', randomOn);
+        ctrlRepeat?.classList.toggle('lit', repeatOn);
+      }
+
+      async function playback(action, btn = null){
+        if (btn) {
+          btn.classList.add('tap');
+          setTimeout(() => { try { btn.classList.remove('tap'); } catch {} }, 180);
+        }
+        await ensureRuntimeKey();
+        await fetch(`${api}/config/diagnostics/playback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+          body: JSON.stringify({ action }),
+        }).catch(() => null);
+        setTimeout(() => { try { pollNowPlaying(); } catch {} }, 180);
+      }
+
+      async function skinOp(path, body = {}, btn = null){
+        if (btn) btn.disabled = true;
+        await ensureRuntimeKey();
+        try {
+          const r = await fetch(`${api}${path}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify(body || {}),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          if (btn) {
+            const prev = btn.textContent;
+            btn.textContent = 'Done';
+            setTimeout(() => { try { btn.textContent = prev; } catch {} }, 1200);
+          }
+        } catch (e) {
+          if (btn) {
+            const prev = btn.textContent;
+            btn.textContent = 'Err';
+            setTimeout(() => { try { btn.textContent = prev; } catch {} }, 1400);
+          }
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      }
+
+      let lastArt = '';
+      let dotTitle = 'LOADING…';
+      let dotArtist = '—';
+      let dotAlbumYear = '—';
+      let dotFileMeta = '—';
+      let dotFileMeta2 = '—';
+      function redrawDotCanvases(){
+        drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: 1.4, font: '"Arial Black", "Segoe UI", sans-serif' });
+        drawDotText(titleCanvas, dotTitle, { size: 56, pitch: 4, dot: 1.4, font: '"Arial Black", "Segoe UI", sans-serif' });
+        drawDotText(albumYearCanvas, dotAlbumYear, { size: 56, pitch: 4, dot: 1.4, font: '"Arial Black", "Segoe UI", sans-serif' });
+        drawDotText(fileMetaCanvas, dotFileMeta, { size: 22, pitch: 2, dot: 0.7, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
+        drawDotText(fileMetaCanvas2, dotFileMeta2, { size: 22, pitch: 2, dot: 0.7, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' });
+      }
+      window.addEventListener('resize', () => { fitPreviewScale(); redrawDotCanvases(); });
+
+      async function pollNowPlaying(){
+        try {
+          const r = await fetch(`${api}/now-playing`, { cache: 'no-store' });
+          const j = await r.json().catch(() => ({}));
+          const t = String(j?.title || j?.file || 'Unknown title');
+          const a = String(j?.artist || 'Unknown artist');
+          const playbackState = String(j?.state || '').toLowerCase();
+          setControlLights(j);
+          const al = String(j?.album || 'Unknown album');
+          const yRaw = String(j?.date || j?.year || '').trim();
+          const y = (() => {
+            const m = yRaw.match(/(19|20)\d{2}/);
+            return m ? m[0] : yRaw;
+          })();
+          const br = String(j?.bitrate || '').trim();
+          const srRaw = String(j?.samplerate || '').trim();
+          const bd = String(j?.bitdepth || '').trim();
+          const ch = String(j?.channels || '').trim();
+          const file = String(j?.file || '').trim();
+          const ext = (file.split('.').pop() || '').toLowerCase();
+          const fmt = ext ? ext.toUpperCase() : String(j?.codec || '').trim().toUpperCase();
+          const losslessExt = new Set(['FLAC','ALAC','WAV','AIFF','APE','WV','DSF','DFF']);
+          const lossyExt = new Set(['MP3','AAC','M4A','OGG','OPUS','WMA']);
+          const kind = losslessExt.has(fmt) ? 'Lossless' : (lossyExt.has(fmt) ? 'Lossy' : 'Digital');
+          const srKhz = (() => {
+            const n = Number(srRaw);
+            if (Number.isFinite(n) && n > 999) return `${(n/1000).toFixed(1)} kHz`;
+            if (Number.isFinite(n) && n > 0) return `${n} kHz`;
+            return '';
+          })();
+          const srNum = Number(srRaw);
+          const srShort = Number.isFinite(srNum)
+            ? (srNum > 999 ? `${(srNum/1000).toFixed(1)}k` : `${srNum}k`)
+            : String(srKhz || '').replace(/\s*kHz/i, 'k');
+
+          dotTitle = t;
+          dotArtist = a;
+          dotAlbumYear = `${al}${y ? ` (${y})` : ''}`;
+          const encoded = String(j?.encoded || '').trim();
+          const encodedNoCh = encoded.replace(/,?\s*\d+\s*ch\b/i, '').replace(/\s+/g, ' ').trim();
+          const hiRes = (Number(bd) > 16) || (Number.isFinite(srNum) && srNum > 48000);
+          const qualityTag = kind === 'Lossless' ? (hiRes ? 'HI-RES' : 'LOSSLESS') : kind.toUpperCase();
+          const compactFallback = [fmt, [bd, srShort].filter(Boolean).join('/')].filter(Boolean).join(' ');
+          dotFileMeta = (encodedNoCh || compactFallback || 'DIGITAL');
+          dotFileMeta2 = qualityTag || 'DIGITAL';
+          redrawDotCanvases();
+
+          const pctDirect = Number(j?.songPercent ?? j?.progressPercent ?? j?.percent ?? NaN);
+          const elapsed = Number(j?.elapsed ?? j?.elapsedSec ?? j?.positionSec ?? j?.currentTime ?? 0);
+          const total = Number(j?.time ?? j?.duration ?? j?.totalTime ?? 0);
+          const p = Number.isFinite(pctDirect)
+            ? Math.max(0, Math.min(100, pctDirect))
+            : ((Number.isFinite(elapsed) && Number.isFinite(total) && total > 0)
+                ? Math.max(0, Math.min(100, (elapsed / total) * 100))
+                : 0);
+          paintSegments(pseg, p);
+
+          if (playbackState !== 'play') {
+            setTarget('L', 0);
+            setTarget('R', 0);
+          }
+
+          const artRaw = String(j?.albumArtUrl || j?.artUrl || j?.altArtUrl || '').trim();
+          const artUrl = artRaw ? (artRaw.startsWith('http') ? artRaw : `${api}${artRaw}`) : '';
+          if (artUrl && artUrl !== lastArt) { art.src = artUrl; lastArt = artUrl; }
+        } catch {}
+      }
+
+      async function pollMeter(){
+        try {
+          const r = await fetch(`${api}/peppy/vumeter`, { cache:'no-store' });
+          const j = await r.json().catch(() => ({}));
+          const m = j?.meter || {};
+          setTarget('L', m.left);
+          setTarget('R', m.right);
+          if (!j?.fresh) { setTarget('L', 0); setTarget('R', 0); }
+        } catch {
+          setTarget('L', 0); setTarget('R', 0);
+        }
+      }
+
+      function animate(){
+        for (const k of ['L','R']) {
+          const s = meterState[k];
+          const a = s.target > s.cur ? 0.42 : 0.12;
+          s.cur = s.cur + (s.target - s.cur) * a;
+        }
+        drawNeedles();
+        requestAnimationFrame(animate);
+      }
+
+      ctrlPrev?.addEventListener('click', () => playback('prev', ctrlPrev));
+      ctrlPlay?.addEventListener('click', () => playback('play', ctrlPlay));
+      ctrlNext?.addEventListener('click', () => playback('next', ctrlNext));
+      ctrlRepeat?.addEventListener('click', () => playback('repeat', ctrlRepeat));
+      ctrlPause?.addEventListener('click', () => playback('pause', ctrlPause));
+      ctrlShuffle?.addEventListener('click', () => playback('shuffle', ctrlShuffle));
+
+      skinExport?.addEventListener('click', () => skinOp('/config/peppy/skins/export', {}, skinExport));
+      skinDeploy?.addEventListener('click', () => skinOp('/config/peppy/skins/deploy', {}, skinDeploy));
+      skinName?.addEventListener('change', () => {
+        previewSkin = String(skinName?.value || 'mack-blue-compact');
+        try { localStorage.setItem('peppy.skin', previewSkin); } catch {}
+        const matched = matchThemeForSkin(previewSkin);
+        if (matched && THEMES[matched]) {
+          if (themeName) themeName.value = matched;
+          try { localStorage.setItem('peppy.theme', matched); } catch {}
+          applyTheme(matched);
+          redrawDotCanvases();
+        }
+        applyNeedleSkin(previewSkin);
+        drawNeedles();
+      });
+      meterMode?.addEventListener('change', () => {
+        previewMeterMode = String(meterMode?.value || 'segmented');
+        try { localStorage.setItem('peppy.meterMode', previewMeterMode); } catch {}
+        drawNeedles();
+      });
+      meterColorMode?.addEventListener('change', () => {
+        previewColorMode = String(meterColorMode?.value || 'classic');
+        try { localStorage.setItem('peppy.colorMode', previewColorMode); } catch {}
+        drawNeedles();
+      });
+      themeName?.addEventListener('change', () => {
+        const n = String(themeName?.value || 'midnight-blue');
+        try { localStorage.setItem('peppy.theme', n); } catch {}
+        applyTheme(n);
+        redrawDotCanvases();
+      });
+      iframeScaleInput?.addEventListener('input', () => {
+        const s = Math.max(30, Math.min(100, Number(iframeScaleInput.value || 50)));
+        try { localStorage.setItem('peppy.iframeScale', String(s / 100)); } catch {}
+        if (iframeScaleValue) iframeScaleValue.textContent = `${s}%`;
+        fitPreviewScale();
+      });
+      window.addEventListener('message', (ev) => {
+        const d = ev?.data || {};
+        if (d?.type === 'np-theme-sync' || d?.type === 'np-theme-load-preset') {
+          redrawDotCanvases();
+          drawNeedles();
+        }
+      });
+      skinActivate?.addEventListener('click', () => {
+        const name = String(skinName?.value || 'mack-blue-compact');
+        if (name === 'orange-1280' || name === 'blue-1280') {
+          alert('This is a web preview skin only. Use mack-blue-compact or another native-exported skin for Activate.');
+          return;
+        }
+        skinOp('/config/peppy/skins/activate', { name }, skinActivate);
+      });
+
+      (async () => {
+        fitPreviewScale();
+        await loadSkinCatalog();
+        renderSkinOptions(previewSkin);
+        await resolveApiBase();
+        if (!hasSkinParam || !hasThemeParam) {
+          try {
+            const r = await fetch(`${api}/peppy/last-profile`, { cache:'no-store' });
+            const j = await r.json().catch(() => ({}));
+            const p = j?.profile || {};
+            const s = String(p?.skin || '').trim();
+            const t = String(p?.theme || '').trim();
+            if (!hasSkinParam && s) {
+              previewSkin = s;
+              try { localStorage.setItem('peppy.skin', s); } catch {}
+              renderSkinOptions(previewSkin);
+              applyNeedleSkin(previewSkin);
+            }
+            if (!hasThemeParam && t && THEMES[t]) {
+              if (themeName) themeName.value = t;
+              try { localStorage.setItem('peppy.theme', t); } catch {}
+              applyTheme(t);
+              redrawDotCanvases();
+            }
+          } catch {}
+        }
+        await ensureRuntimeKey();
+        await pollNowPlaying();
+        await pollMeter();
+        animate();
+        setInterval(pollNowPlaying, 2500);
+        setInterval(pollMeter, 90);
+      })();
+    })();
+  </script>
+</body>
+</html>
