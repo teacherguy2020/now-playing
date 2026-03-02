@@ -129,8 +129,21 @@
     body.player-size-480x320 #track-title{font-size:22px;line-height:1.06}
     body.player-size-480x320 #album-text{font-size:16px}
     body.player-size-480x320 #file-info,#mode-status{font-size:13px}
-    body.player-size-480x320 #personnel-info{font-size:11px;line-height:1.15}
-    body.player-size-480x320 #next-up{font-size:13px;min-height:0 !important;height:auto !important;padding:1px 0 !important;margin:2px 0 !important}
+    body.player-size-480x320 #personnel-info{display:none !important}
+    body.player-size-480x320 #art-info-hotspot{display:flex !important;left:8px !important;top:8px !important;right:auto !important;bottom:auto !important;z-index:10030 !important}
+    body.player-size-480x320 #next-up{
+      position:fixed !important;
+      left:226px !important;
+      right:8px !important;
+      bottom:6px !important;
+      top:auto !important;
+      font-size:13px;
+      min-height:0 !important;
+      height:auto !important;
+      padding:1px 0 !important;
+      margin:0 !important;
+      z-index:10005 !important;
+    }
     body.player-size-800x480 #progress-bar-wrapper{
       position:fixed !important;
       left:8px !important;
