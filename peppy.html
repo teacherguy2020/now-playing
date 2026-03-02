@@ -49,6 +49,13 @@
     .iframeScale{position:absolute;right:14px;top:10px;display:none;align-items:center;gap:8px;background:#0f1722;border:1px solid #2f3a4b;padding:4px 8px}
     .iframeScale input{width:120px}
     .iframeScale span{font-size:12px;color:#d8e4f3;min-width:42px;text-align:right}
+    .exportModal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,8,20,.72);z-index:9999;padding:16px}
+    .exportModal.open{display:flex}
+    .exportCard{width:min(820px,96vw);max-height:84vh;display:grid;grid-template-rows:auto 1fr auto;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+    .exportHead{display:flex;justify-content:space-between;align-items:center}
+    .exportTitle{font-weight:700}
+    .exportActions{display:flex;gap:8px}
+    .exportJson{width:100%;height:100%;min-height:320px;background:#0a1118;color:#d8e4f3;border:1px solid #3f4753;border-radius:8px;padding:10px;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;box-sizing:border-box}
     .ctrlBtn{width:60px;height:60px;border:1px solid #3f4753;border-radius:4px;background:linear-gradient(180deg,#2f353f,#212730);color:#e9eef5;line-height:1;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.35), 0 2px 4px rgba(0,0,0,.45)}
     .ctrlBtn .symSvg{width:28px;height:28px;fill:#aeb8c6;filter:drop-shadow(0 1px 0 rgba(255,255,255,.08)) drop-shadow(0 -1px 0 rgba(0,0,0,.62))}
     .ctrlBtn:active{transform:translateY(1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.10), inset 0 -1px 0 rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.4)}
@@ -74,6 +81,18 @@
   </style>
 </head>
 <body>
+  <div id="exportModal" class="exportModal" aria-hidden="true">
+    <div class="exportCard" role="dialog" aria-modal="true" aria-label="Export skin JSON">
+      <div class="exportHead">
+        <div class="exportTitle">Skin Profile JSON</div>
+        <button id="exportClose" class="skinBtn" type="button">Close</button>
+      </div>
+      <textarea id="exportJson" class="exportJson" spellcheck="false"></textarea>
+      <div class="exportActions">
+        <button id="exportCopy" class="skinBtn" type="button">Copy</button>
+      </div>
+    </div>
+  </div>
   <div id="previewStage" class="previewStage">
   <div id="wrap" class="wrap">
     <section class="card left">
@@ -262,6 +281,10 @@
       const ctrlShuffle = $('ctrlShuffle');
       const controlsEl = document.querySelector('.controls');
       const skinExport = $('skinExport');
+      const exportModal = $('exportModal');
+      const exportJson = $('exportJson');
+      const exportClose = $('exportClose');
+      const exportCopy = $('exportCopy');
       const skinName = $('skinName');
       const meterTypeCircular = $('meterTypeCircular');
       const meterTypeLinear = $('meterTypeLinear');
@@ -1086,16 +1109,29 @@
         try {
           const profile = getCurrentProfile();
           const json = JSON.stringify(profile, null, 2);
-          try { navigator.clipboard?.writeText(json); } catch {}
-          const w = window.open('', '_blank', 'noopener,noreferrer');
-          if (w && w.document) {
-            w.document.write(`<pre style="white-space:pre-wrap;font:12px ui-monospace,SFMono-Regular,Menlo,monospace;padding:14px;">${json.replace(/[&<>]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</pre>`);
-            w.document.close();
-          } else {
-            alert(json);
+          if (exportJson) exportJson.value = json;
+          if (exportModal) {
+            exportModal.classList.add('open');
+            exportModal.setAttribute('aria-hidden', 'false');
           }
         } catch {}
       });
+      exportClose?.addEventListener('click', () => {
+        if (!exportModal) return;
+        exportModal.classList.remove('open');
+        exportModal.setAttribute('aria-hidden', 'true');
+      });
+      exportCopy?.addEventListener('click', async () => {
+        try {
+          const txt = String(exportJson?.value || '');
+          if (!txt) return;
+          await navigator.clipboard.writeText(txt);
+          const prev = exportCopy.textContent;
+          exportCopy.textContent = 'Copied';
+          setTimeout(() => { try { exportCopy.textContent = prev; } catch {} }, 1000);
+        } catch {}
+      });
+
 
       skinName?.addEventListener('change', () => {
         previewSkin = String(skinName?.value || 'blue-1280');
@@ -1161,6 +1197,17 @@
           redrawDotCanvases();
           drawNeedles();
         }
+      });
+      window.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Escape') return;
+        if (!exportModal?.classList.contains('open')) return;
+        exportModal.classList.remove('open');
+        exportModal.setAttribute('aria-hidden', 'true');
+      });
+      exportModal?.addEventListener('click', (ev) => {
+        if (ev.target !== exportModal) return;
+        exportModal.classList.remove('open');
+        exportModal.setAttribute('aria-hidden', 'true');
       });
 
       (async () => {
