@@ -1049,15 +1049,25 @@
       }
       window.addEventListener('resize', () => { fitPreviewScale(); redrawDotCanvases(); });
 
+      function decodeEntities(s){
+        try {
+          const txt = String(s ?? '');
+          if (!/[&][a-z#0-9]+;/i.test(txt)) return txt;
+          const ta = document.createElement('textarea');
+          ta.innerHTML = txt;
+          return ta.value;
+        } catch { return String(s ?? ''); }
+      }
+
       async function pollNowPlaying(){
         try {
           const r = await fetch(`${api}/now-playing`, { cache: 'no-store' });
           const j = await r.json().catch(() => ({}));
-          const t = String(j?.title || j?.file || 'Unknown title');
-          const a = String(j?.artist || 'Unknown artist');
+          const t = decodeEntities(String(j?.title || j?.file || 'Unknown title'));
+          const a = decodeEntities(String(j?.artist || 'Unknown artist'));
           const playbackState = String(j?.state || '').toLowerCase();
           setControlLights(j);
-          const al = String(j?.album || 'Unknown album');
+          const al = decodeEntities(String(j?.album || 'Unknown album'));
           const yRaw = String(j?.date || j?.year || '').trim();
           const y = (() => {
             const m = yRaw.match(/(19|20)\d{2}/);
