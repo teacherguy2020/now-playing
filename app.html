@@ -1897,49 +1897,12 @@
             if (!t) t = String(localStorage.getItem('peppy.theme') || '').trim();
           } catch {}
         }
-        // Prefer exactly what user is currently seeing (iframe/localStorage).
-        // Only fallback to active preset mapping if values are missing.
-        if (!s || !t) {
-          try {
-            const preset = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
-            const themeMap = {
-              'Matrix':'graphite-green',
-              'Green Neon':'graphite-green',
-              'Red Neon':'red-neon',
-              'Muted Merlot':'red-neon',
-              'Warm Parchment':'warm-parchment',
-              'Blue Neon':'midnight-blue',
-              'Chill Blue':'midnight-blue',
-              'Abyss Graphite':'midnight-blue',
-              'Slate Medium':'silver-black',
-              'Monotone Gray':'silver-black',
-              'Obsidian Black':'obsidian-black',
-            };
-            const skinMap = {
-              'Matrix':'emerald-1280',
-              'Green Neon':'emerald-1280',
-              'Red Neon':'red-1280',
-              'Muted Merlot':'red-1280',
-              'Warm Parchment':'gold-1280',
-              'Blue Neon':'blue-1280',
-              'Chill Blue':'blue-1280',
-              'Abyss Graphite':'blue-1280',
-              'Slate Medium':'cassette-linear',
-              'Monotone Gray':'tube-1280',
-              'Obsidian Black':'black-white-1280',
-            };
-            const pKey = String(preset||'').trim().toLowerCase();
-            if ((!s || !t) && pKey.includes('morning') && pKey.includes('paper')) {
-              if (!t) t = 'silver-black';
-              if (!s) s = 'white-red-1280';
-            } else {
-              if (!t && (themeMap[preset] || themeMap[pKey])) t = themeMap[preset] || themeMap[pKey];
-              if (!s && (skinMap[preset] || skinMap[pKey])) s = skinMap[preset] || skinMap[pKey];
-            }
-          } catch {}
-        }
-        if (!s) s = 'orange-1280';
-        if (!t) t = 'amber-night';
+        // Strict mode: never remap from app preset here.
+        // Push should reflect explicit peppy selection only.
+        if (!s) s = String(lastPeppyProfile?.skin || '').trim();
+        if (!t) t = String(lastPeppyProfile?.theme || '').trim();
+        if (!s) s = 'blue-1280';
+        if (!t) t = 'midnight-blue';
         qs.set('skin', s);
         qs.set('theme', t);
         const targetUrl = `${location.protocol}//${host}:8101/peppy.html?${qs.toString()}`;
