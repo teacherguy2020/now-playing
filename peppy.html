@@ -91,8 +91,6 @@
       </div>
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
-        <button id="skinExport" class="skinBtn" type="button">Export Skin</button>
-        <button id="skinDeploy" class="skinBtn" type="button">Deploy Skin</button>
         <select id="skinName" class="skinSelect" aria-label="Select skin"></select>
         <select id="skinGeometry" class="skinSelect" aria-label="Meter geometry">
           <option value="all">All geometry</option>
@@ -120,7 +118,6 @@
           <option value="silver-black">silver-black</option>
           <option value="obsidian-black">obsidian-black</option>
         </select>
-        <button id="skinActivate" class="skinBtn" type="button">Activate</button>
       </div>
       <div id="iframeScale" class="iframeScale" aria-label="Iframe preview scale">
         <label for="iframeScaleInput" style="font-size:12px;color:#d8e4f3;">Scale</label>
@@ -243,15 +240,12 @@
       const ctrlPause = $('ctrlPause');
       const ctrlShuffle = $('ctrlShuffle');
       const controlsEl = document.querySelector('.controls');
-      const skinExport = $('skinExport');
-      const skinDeploy = $('skinDeploy');
       const skinName = $('skinName');
       const skinGeometry = $('skinGeometry');
       const styleFamily = $('styleFamily');
       const meterMode = $('meterMode');
       const meterColorMode = $('meterColorMode');
       const themeName = $('themeName');
-      const skinActivate = $('skinActivate');
       const artistCanvas = $('artistCanvas');
       const albumYearCanvas = $('albumYearCanvas');
       const fileMetaCanvas = $('fileMetaCanvas');
@@ -1062,8 +1056,6 @@
       ctrlPause?.addEventListener('click', () => playback('pause', ctrlPause));
       ctrlShuffle?.addEventListener('click', () => playback('shuffle', ctrlShuffle));
 
-      skinExport?.addEventListener('click', () => skinOp('/config/peppy/skins/export', {}, skinExport));
-      skinDeploy?.addEventListener('click', () => skinOp('/config/peppy/skins/deploy', {}, skinDeploy));
       skinName?.addEventListener('change', () => {
         previewSkin = String(skinName?.value || 'blue-1280');
         try { localStorage.setItem('peppy.skin', previewSkin); } catch {}
@@ -1129,14 +1121,6 @@
           redrawDotCanvases();
           drawNeedles();
         }
-      });
-      skinActivate?.addEventListener('click', () => {
-        const name = String(skinName?.value || 'blue-1280');
-        if (name === 'orange-1280' || name === 'blue-1280') {
-          alert('This is a web preview skin only. Use blue-1280 or another native-exported skin for Activate.');
-          return;
-        }
-        skinOp('/config/peppy/skins/activate', { name }, skinActivate);
       });
 
       (async () => {

@@ -675,32 +675,13 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
   });
 
   app.post('/config/peppy/skins/deploy', async (req, res) => {
-    try {
-      if (!requireTrackKey(req, res)) return;
-      const { stdout, stderr } = await execFileP('bash', ['scripts/deploy-peppy-skins-to-moode.sh'], { cwd: process.cwd(), maxBuffer: 8 * 1024 * 1024 });
-      return res.json({ ok: true, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: e?.message || String(e) });
-    }
+    if (!requireTrackKey(req, res)) return;
+    return res.status(410).json({ ok: false, error: 'disabled: remote moode skin deploy is locked down; use Push Peppy to moOde URL mode' });
   });
 
   app.post('/config/peppy/skins/activate', async (req, res) => {
-    try {
-      if (!requireTrackKey(req, res)) return;
-      const name = String(req.body?.name || '').trim();
-      if (!name) return res.status(400).json({ ok: false, error: 'name is required' });
-
-      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
-      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
-      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
-      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
-
-      const script = `sudo sed -i "s/^meter = .*/meter = ${name.replace(/"/g, '')}/" /etc/peppymeter/config.txt; cd /opt/peppymeter && nohup python3 peppymeter.py >/tmp/peppymeter-bg.log 2>&1 & sleep 1; grep -n '^meter = ' /etc/peppymeter/config.txt | head -n 1`;
-      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 15000 });
-      return res.json({ ok: true, name, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: e?.message || String(e) });
-    }
+    if (!requireTrackKey(req, res)) return;
+    return res.status(410).json({ ok: false, error: 'disabled: native peppymeter activation is locked down; use Push Peppy to moOde URL mode' });
   });
 
   app.post('/config/moode/reboot', async (req, res) => {
