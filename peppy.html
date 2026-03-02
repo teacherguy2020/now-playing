@@ -507,7 +507,7 @@
       const NATIVE_NEEDLE_CFG = {
         'mack-blue-compact': { start: 45, stop: -45, distance: 265, ox: 319, oy: 460, lenMul: 1.0 },
         'blue-1280': { start: 57, stop: -57, startL: 58, startR: 57, distance: 170, ox: 320, oxL: 312, oxR: 290, oy: 390, lenMul: 1.26 },
-        'orange-1280': { start: 55, stop: -41, distance: 140, ox: 347, oxL: 347, oxR: 312, oy: 344, lenMul: 1.19 },
+        'orange-1280': { start: 55, stop: -41, distance: 140, ox: 347, oxL: 347, oxR: 312, oy: 344, lenMul: 1.19, widthMul: 0.82 },
         'emerald': { start: 52, stop: -52, distance: 170, ox: 300, oxL: 326, oxR: 289, oy: 394, lenMul: 1.15 },
         'emerald-1280': { start: 52, stop: -52, distance: 170, ox: 300, oxL: 326, oxR: 289, oy: 394, lenMul: 1.15 },
         'black-white-1280': { start: 50, stop: -50, startR: 48, distance: 170, ox: 320, oxL: 312, oxR: 273, oy: 440, lenMul: 1.26 },
@@ -530,6 +530,7 @@
         radiusMul: 0.41,
         needleInset: 0,
         lenMul: 1.0,
+        widthMul: 1.0,
       };
       function applyNeedleGeometry(name){
         const c = NATIVE_NEEDLE_CFG[name];
@@ -549,6 +550,7 @@
         // Global calibration: native distance renders short in this canvas pipeline.
         needleCfg.radiusMul = (Number(c.distance || 180) / halfW) * 1.38;
         needleCfg.lenMul = Number(c.lenMul || 1.0);
+        needleCfg.widthMul = Number(c.widthMul || 1.0);
       }
       let previewSkin = (() => {
         const fromUrl = String(qp.get('skin') || '').trim();
@@ -743,7 +745,7 @@
             const visRatio = getNeedleVisibleRatio(ni);
             // Convert desired visible tip length -> sprite draw height.
             const drawH = Math.max(12, (tipLen * (needleCfg.lenMul || 1.0)) / Math.max(0.05, visRatio));
-            const drawW = Math.max(2, drawH * srcAspect);
+            const drawW = Math.max(2, drawH * srcAspect * (needleCfg.widthMul || 1.0));
             ctx.save();
             ctx.translate(cx, cy);
             ctx.rotate(a + Math.PI / 2);
