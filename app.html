@@ -342,6 +342,7 @@
         <button id="pushPeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Push Peppy to moOde</button>
         <button id="showIndexBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Index on moOde</button>
         <button id="showMoodeUiBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show moOde UI</button>
+        <button id="showPlayerBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Player on moOde</button>
         <button id="refreshDisplayBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Refresh moOde Display</button>
         <button id="fixTargetBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Fix Target URL</button>
         <button id="nativePeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Native Peppy Takeover</button>
@@ -2261,12 +2262,14 @@
         const btn = document.getElementById('pushPeppyBtn');
         const idxBtn = document.getElementById('showIndexBtn');
         const moodeBtn = document.getElementById('showMoodeUiBtn');
+        const playerBtn = document.getElementById('showPlayerBtn');
         const refBtn = document.getElementById('refreshDisplayBtn');
         const fixBtn = document.getElementById('fixTargetBtn');
         const natBtn = document.getElementById('nativePeppyBtn');
         if (btn) btn.style.display = show ? '' : 'none';
         if (idxBtn) idxBtn.style.display = show ? '' : 'none';
         if (moodeBtn) moodeBtn.style.display = show ? '' : 'none';
+        if (playerBtn) playerBtn.style.display = show ? '' : 'none';
         if (refBtn) refBtn.style.display = show ? '' : 'none';
         if (fixBtn) fixBtn.style.display = show ? '' : 'none';
         if (natBtn) natBtn.style.display = show ? '' : 'none';
@@ -2414,6 +2417,10 @@
       document.getElementById('showMoodeUiBtn')?.addEventListener('click', async (ev) => {
         ev.preventDefault();
         try { await setDisplayModeAndRefresh('moode'); } catch (e) { console.warn('show moode ui failed', e?.message || e); }
+      });
+      document.getElementById('showPlayerBtn')?.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try { await setDisplayModeAndRefresh('player'); } catch (e) { console.warn('show player failed', e?.message || e); }
       });
       document.getElementById('refreshDisplayBtn')?.addEventListener('click', async (ev) => {
         ev.preventDefault();
