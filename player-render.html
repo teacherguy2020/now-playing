@@ -62,10 +62,26 @@
       padding:8px;
       box-sizing:border-box;
     }
+    body.player-size-1024x600 #content{
+      width:1024px;
+      height:600px;
+      transform:none;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:450px 1fr;
+      gap:18px;
+      align-items:stretch;
+      padding:10px;
+      box-sizing:border-box;
+    }
     body.player-size-800x480 #album-art-wrapper{position:relative;width:344px !important;height:344px !important;min-height:0 !important;max-height:344px !important;overflow:hidden}
     body.player-size-800x480 #album-art-bg{width:344px !important;height:344px !important}
     body.player-size-800x480 #album-art,
     body.player-size-800x480 #album-art-video{position:absolute !important;left:0;top:0;width:344px !important;height:344px !important;object-fit:cover}
+    body.player-size-1024x600 #album-art-wrapper{position:relative;width:430px !important;height:430px !important;min-height:0 !important;max-height:430px !important;overflow:hidden}
+    body.player-size-1024x600 #album-art-bg{width:430px !important;height:430px !important}
+    body.player-size-1024x600 #album-art,
+    body.player-size-1024x600 #album-art-video{position:absolute !important;left:0;top:0;width:430px !important;height:430px !important;object-fit:cover}
     body.player-size-800x480 #background-a,
     body.player-size-800x480 #background-b,
     body.player-size-800x480 #album-art-bg{display:none !important}
@@ -87,6 +103,12 @@
       margin-top:4px !important;
       margin-bottom:4px !important;
     }
+    body.player-size-1024x600 #artist-name{font-size:48px;line-height:1.04}
+    body.player-size-1024x600 #track-title{font-size:40px;line-height:1.06}
+    body.player-size-1024x600 #album-text{font-size:28px}
+    body.player-size-1024x600 #file-info,#mode-status{font-size:20px}
+    body.player-size-1024x600 #personnel-info{font-size:15px;line-height:1.2}
+    body.player-size-1024x600 #next-up{font-size:20px;min-height:0 !important;height:auto !important;padding:2px 0 !important;margin:4px 0 !important}
     body.player-size-800x480 #progress-bar-wrapper{
       position:fixed !important;
       left:8px !important;
@@ -97,7 +119,18 @@
       height:9px;
       z-index:9998 !important;
     }
-    body.player-size-800x480 #mode-logo{
+    body.player-size-1024x600 #progress-bar-wrapper{
+      position:fixed !important;
+      left:10px !important;
+      top:525px !important;
+      width:430px !important;
+      right:auto !important;
+      bottom:auto !important;
+      height:9px;
+      z-index:9998 !important;
+    }
+    body.player-size-800x480 #mode-logo,
+    body.player-size-1024x600 #mode-logo{
       position:fixed !important;
       right:14px !important;
       bottom:14px !important;
@@ -129,7 +162,30 @@
       backdrop-filter:blur(6px) !important;
       -webkit-backdrop-filter:blur(6px) !important;
     }
-    body.player-size-800x480 #phone-controls .ctl{
+    body.player-size-1024x600 #phone-controls{
+      display:flex !important;
+      position:fixed !important;
+      left:225px !important;
+      right:auto !important;
+      top:445px !important;
+      bottom:auto !important;
+      transform:translateX(-50%) !important;
+      width:auto !important;
+      justify-content:center !important;
+      align-items:center !important;
+      z-index:2147483647 !important;
+      opacity:1 !important;
+      visibility:visible !important;
+      background:rgba(8,12,20,.45) !important;
+      border:1px solid rgba(255,255,255,.16) !important;
+      padding:7px 12px !important;
+      gap:11px !important;
+      border-radius:999px !important;
+      backdrop-filter:blur(6px) !important;
+      -webkit-backdrop-filter:blur(6px) !important;
+    }
+    body.player-size-800x480 #phone-controls .ctl,
+    body.player-size-1024x600 #phone-controls .ctl{
       display:grid !important;
       width:42px !important;
       height:42px !important;
@@ -142,8 +198,10 @@
       box-shadow:0 5px 14px rgba(0,0,0,.3) !important;
       place-items:center !important;
     }
-    body.player-size-800x480 #phone-controls .ctl.big{width:50px !important;min-width:50px !important;height:50px !important;min-height:50px !important;}
-    body.player-size-800x480 #phone-controls svg{width:22px !important;height:22px !important;fill:currentColor !important;display:block !important;}
+    body.player-size-800x480 #phone-controls .ctl.big,
+    body.player-size-1024x600 #phone-controls .ctl.big{width:50px !important;min-width:50px !important;height:50px !important;min-height:50px !important;}
+    body.player-size-800x480 #phone-controls svg,
+    body.player-size-1024x600 #phone-controls svg{width:22px !important;height:22px !important;fill:currentColor !important;display:block !important;}
     body.player-size-800x480 #phone-controls .ctl.on{
       background:rgba(22,163,74,.50) !important;
       box-shadow:0 0 0 1px rgba(34,197,94,.65), 0 0 16px rgba(34,197,94,.42), 0 5px 14px rgba(0,0,0,.3) !important;
