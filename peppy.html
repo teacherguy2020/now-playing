@@ -31,8 +31,8 @@
     .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:8px;overflow:hidden}
     .left{display:flex;flex-direction:column;align-items:stretch;height:100%}
     #art{flex:1 1 auto;min-height:0;width:100%;height:100%;aspect-ratio:1 / 1;object-fit:contain;background:#02040a;display:block;margin-top:0;margin-bottom:0;border-radius:4px}
-    body.font-dot #art{background:#161216;border:2px solid #5a4a3f;box-shadow:inset 0 1px 0 rgba(255,255,255,.22), inset 0 0 0 3px rgba(34,26,20,.58), inset 0 -20px 34px rgba(0,0,0,.38), 0 4px 16px rgba(0,0,0,.42);filter:contrast(1.06) saturate(.92)}
-    body.font-dot.warm-parchment #art{border-color:#8f7659;box-shadow:inset 0 0 0 3px rgba(72,52,32,.56), inset 0 -24px 38px rgba(52,30,14,.44), inset 0 0 38px rgba(105,72,38,.34), 0 6px 18px rgba(0,0,0,.34);filter:sepia(.16) contrast(1.07) saturate(.9)}
+    body.font-dot #art{width:calc(100% - 28px);height:calc(100% - 28px);margin:14px;border-radius:8px;background:#161216;border:3px solid #5a4a3f;outline:8px solid rgba(22,16,14,.9);box-shadow:0 0 0 2px rgba(214,184,146,.25), inset 0 0 0 4px rgba(34,26,20,.65), inset 0 -30px 44px rgba(0,0,0,.52), inset 0 0 54px rgba(0,0,0,.28), 0 8px 22px rgba(0,0,0,.46);filter:contrast(1.08) saturate(.9)}
+    body.font-dot.warm-parchment #art{border-color:#8f7659;outline-color:rgba(65,48,34,.9);box-shadow:0 0 0 2px rgba(241,224,198,.35), inset 0 0 0 4px rgba(72,52,32,.64), inset 0 -34px 50px rgba(52,30,14,.56), inset 0 0 60px rgba(120,84,45,.42), 0 10px 24px rgba(0,0,0,.36);filter:sepia(.2) contrast(1.08) saturate(.88)}
     .leftFileMeta{height:12px;border-radius:0;border-left:none;border-right:none;border-bottom:none;margin-top:0}
     .meta{padding:4px 10px 0px;display:grid;gap:1px}
     .title{font-size:28px;font-weight:760;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.02}
