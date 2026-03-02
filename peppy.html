@@ -319,6 +319,10 @@
         if (fontMode && p.fontMode) fontMode.value = String(p.fontMode);
         if (fontSize && p.fontSize) fontSize.value = String(p.fontSize);
         if (meterMode && p.meterMode) meterMode.value = String(p.meterMode);
+        if (p.meterMode) {
+          previewMeterMode = String(p.meterMode);
+          try { localStorage.setItem('peppy.meterMode', previewMeterMode); } catch {}
+        }
         if (needleSensitivity && p.sensitivity) needleSensitivity.value = String(p.sensitivity);
         if (needleSmoothing && p.smoothing) needleSmoothing.value = String(p.smoothing);
         previewSkin = String(skinName?.value || p.skin || previewSkin || 'blue-1280');
