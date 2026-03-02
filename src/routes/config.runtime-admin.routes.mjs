@@ -608,6 +608,31 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.post('/config/moode/native-peppy', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const moodeBaseRaw = String(cfg?.moode?.baseUrl || '').trim();
+      const mpdHost = String(cfg?.mpd?.host || MPD_HOST || '10.0.0.254').trim();
+      let moodeBase = moodeBaseRaw || `http://${mpdHost}`;
+      if (!/^https?:\/\//i.test(moodeBase)) moodeBase = `http://${moodeBase}`;
+      const baseNoSlash = moodeBase.replace(/\/$/, '');
+      await fetch(`${baseNoSlash}/command/?cmd=set_display%20peppy`, { method: 'GET' }).catch(() => null);
+      await fetch(`${baseNoSlash}/command/?cmd=restart_local_display`, { method: 'GET' }).catch(() => null);
+
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      let killOut = '';
+      if (sshHost) {
+        const k = await sshBashLc({ user: sshUser, host: sshHost, script: "pkill -f chromium-browser || true; sleep 1; pgrep -af chromium-browser || true", timeoutMs: 12000 }).catch(() => ({ stdout: '', stderr: '' }));
+        killOut = `${String(k?.stdout || '').trim()} ${String(k?.stderr || '').trim()}`.trim();
+      }
+      return res.json({ ok: true, moodeBase, sshHost, sshUser, killOut });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/moode/browser', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

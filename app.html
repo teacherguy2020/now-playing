@@ -342,6 +342,7 @@
         <button id="showIndexBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Index on moOde</button>
         <button id="showMoodeUiBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show moOde UI</button>
         <button id="refreshDisplayBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Refresh moOde Display</button>
+        <button id="nativePeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Native Peppy Takeover</button>
         <div class="statusInline" aria-label="status pills">
           <button class="pill" id="apiPill" type="button" title="Active API endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>API<span class="hint" id="apiHint">loading…</span></button>
           <button class="pill" id="webPill" type="button" title="Active web UI endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></button>
@@ -2215,10 +2216,12 @@
         const idxBtn = document.getElementById('showIndexBtn');
         const moodeBtn = document.getElementById('showMoodeUiBtn');
         const refBtn = document.getElementById('refreshDisplayBtn');
+        const natBtn = document.getElementById('nativePeppyBtn');
         if (btn) btn.style.display = show ? '' : 'none';
         if (idxBtn) idxBtn.style.display = show ? '' : 'none';
         if (moodeBtn) moodeBtn.style.display = show ? '' : 'none';
         if (refBtn) refBtn.style.display = show ? '' : 'none';
+        if (natBtn) natBtn.style.display = show ? '' : 'none';
       }
 
       function navigate(page, push = true){
@@ -2366,6 +2369,23 @@
       document.getElementById('refreshDisplayBtn')?.addEventListener('click', async (ev) => {
         ev.preventDefault();
         try { await setDisplayModeAndRefresh(String(lastPeppyProfile?.displayMode || 'peppy')); } catch (e) { console.warn('refresh display failed', e?.message || e); }
+      });
+      document.getElementById('nativePeppyBtn')?.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          await fetchJsonWithTimeout(`${base}/config/moode/native-peppy`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({}),
+          }, 15000);
+        } catch (e) { console.warn('native peppy takeover failed', e?.message || e); }
       });
 
       window.addEventListener('popstate', () => navigate(getPageFromUrl(), false));
