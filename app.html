@@ -430,6 +430,10 @@
           const tabHoverBg = cs.getPropertyValue('--theme-tab-hover-bg').trim() || '#2f4f93';
           const starColor = cs.getPropertyValue('--theme-pill-border').trim() || '#fbbf24';
           const pageNow = String(currentShellPage || '');
+          if (pageNow === 'peppy.html') {
+            try { doc.getElementById('npThemeBridge')?.remove(); } catch {}
+            return;
+          }
           const isThemePage = pageNow === 'theme.html';
           const isPodcastsPage = pageNow === 'podcasts.html';
           let st = doc.getElementById('npThemeBridge');
