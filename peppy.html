@@ -1060,8 +1060,11 @@
           const hiRes = (Number(bd) > 16) || (Number.isFinite(srNum) && srNum > 48000);
           const qualityTag = kind === 'Lossless' ? (hiRes ? 'HI-RES' : 'LOSSLESS') : kind.toUpperCase();
           const compactFallback = [fmt, [bd, srShort].filter(Boolean).join('/')].filter(Boolean).join(' ');
+          const ratingRaw = Number(j?.rating ?? j?.stars ?? j?.songRating ?? NaN);
+          const rating = Number.isFinite(ratingRaw) ? Math.max(0, Math.min(5, Math.round(ratingRaw))) : NaN;
+          const ratingLabel = Number.isFinite(rating) && rating > 0 ? `RATING: ${rating}` : '';
           dotFileMeta = (encodedNoCh || compactFallback || 'DIGITAL');
-          dotFileMeta2 = qualityTag || 'DIGITAL';
+          dotFileMeta2 = [qualityTag || 'DIGITAL', ratingLabel].filter(Boolean).join(' • ');
           redrawDotCanvases();
 
           const pctDirect = Number(j?.songPercent ?? j?.progressPercent ?? j?.percent ?? NaN);
