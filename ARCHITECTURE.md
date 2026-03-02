@@ -35,7 +35,8 @@ These are configurable via runtime config (`ports.api`, `ports.ui`).
 
 3. **Display/Kiosk (optional)**
    - Chromium kiosk or browser device
-   - Loads `http://<WEB_HOST>:8101/index.html`
+   - Recommended stable target: `http://<WEB_HOST>:8101/display.html?kiosk=1`
+   - `display.html` routes to custom Peppy/Player/moOde UI modes from saved profile state
    - No metadata/control logic on device
 
 ## Primary files/directories
@@ -43,7 +44,10 @@ These are configurable via runtime config (`ports.api`, `ports.ui`).
 - `moode-nowplaying-api.mjs` — API entrypoint
 - `src/routes/` — API route modules
 - `src/services/` — MPD/service helpers
-- `index.html`, `scripts/index-ui.js` — now-playing display UI
+- `index.html`, `scripts/index-ui.js` — legacy/primary display UI base
+- `display.html` — stable router target for moOde
+- `peppy.html` — custom peppy builder/display
+- `player.html` + `player-render.html` — player builder + render path
 - `queue-wizard.html`, `library-health.html`, `diagnostics.html`, `podcasts.html`, `config.html` — admin/ops UIs
 - `alexa/*` — optional Alexa skill runtime/assets
 

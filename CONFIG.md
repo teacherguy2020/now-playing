@@ -33,7 +33,8 @@ cp config/now-playing.config.example.json config/now-playing.config.json
 5. `alexa`
    - `enabled`, `publicDomain`, `skillId`, `webhookPath`
 6. `features`
-   - per-install feature flags (`podcasts`, `ratings`, `radio`)
+   - per-install feature flags (`podcasts`, `ratings`, `radio`, `moodeDisplayTakeover`)
+   - `moodeDisplayTakeover` enables custom Peppy/Player display enhancement flow for moOde
 7. `notifications`
    - track-notify/pushover settings
 

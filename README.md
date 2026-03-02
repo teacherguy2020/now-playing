@@ -30,6 +30,8 @@ See [docs/README.md](./docs/README.md).
 - Queue Wizard
 - Radio
 - Podcasts
+- Theme
+- moOde Display Enhancement (custom Peppy/Player push flow)
 
 Plus cross-cutting chapters for hero shell, index-vs-app parity, random-vs-shuffle, deploy/rollback, and troubleshooting.
 
