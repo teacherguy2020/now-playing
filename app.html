@@ -1849,6 +1849,26 @@
         }
       }
 
+      async function hydratePeppyProfileFromLastPush(){
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        try {
+          const { r, j } = await fetchJsonWithTimeout(`${base}/peppy/last-profile`, { cache:'no-store' }, 6000);
+          if (!r.ok || !j?.ok) return;
+          const p = j?.profile || {};
+          const skin = String(p?.skin || '').trim();
+          const theme = String(p?.theme || '').trim();
+          if (!skin && !theme) return;
+          if (skin) lastPeppyProfile.skin = skin;
+          if (theme) lastPeppyProfile.theme = theme;
+          lastPeppyProfile.ts = Date.now();
+          try {
+            if (skin) localStorage.setItem('peppy.skin', skin);
+            if (theme) localStorage.setItem('peppy.theme', theme);
+          } catch {}
+        } catch {}
+      }
+
       async function pushPeppyToMoode(){
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;
@@ -3258,6 +3278,7 @@
         } catch {}
       }
       syncFrameWidth();
+      await hydratePeppyProfileFromLastPush();
       navigate(getPageFromUrl(), false);
       syncPills();
       // Prioritize transport controls/hero paint first; queue can load just after.
