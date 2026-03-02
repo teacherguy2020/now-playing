@@ -112,10 +112,6 @@
           <option value="segmented">Segmented</option>
           <option value="continuous">Continuous</option>
         </select>
-        <select id="meterColorMode" class="skinSelect" aria-label="Meter color mode">
-          <option value="classic">Classic</option>
-          <option value="theme">Theme</option>
-        </select>
         <select id="themeName" class="skinSelect" aria-label="Peppy theme preset">
           <option value="graphite-green">Matrix</option>
           <option value="graphite-green">Green Neon</option>
@@ -265,7 +261,6 @@
       const meterMode = $('meterMode');
       const fontMode = $('fontMode');
       const fontSize = $('fontSize');
-      const meterColorMode = $('meterColorMode');
       const themeName = $('themeName');
       const artistCanvas = $('artistCanvas');
       const albumYearCanvas = $('albumYearCanvas');
@@ -444,7 +439,7 @@
       applyNeedleSkin(previewSkin);
 
       let previewMeterMode = (() => { try { return localStorage.getItem('peppy.meterMode') || 'segmented'; } catch { return 'segmented'; } })();
-      let previewColorMode = (() => { try { return localStorage.getItem('peppy.colorMode') || 'classic'; } catch { return 'classic'; } })();
+      const previewColorMode = 'classic';
       const previewTheme = (() => {
         const fromUrl = String(qp.get('theme') || '').trim();
         if (fromUrl) return fromUrl;
@@ -453,7 +448,6 @@
       applyTheme(previewTheme);
       if (themeName) themeName.value = previewTheme;
       if (meterMode) meterMode.value = previewMeterMode;
-      if (meterColorMode) meterColorMode.value = previewColorMode;
 
       function meterTint(){
         const cs = getComputedStyle(document.documentElement);
@@ -1113,11 +1107,6 @@
       meterMode?.addEventListener('change', () => {
         previewMeterMode = String(meterMode?.value || 'segmented');
         try { localStorage.setItem('peppy.meterMode', previewMeterMode); } catch {}
-        drawNeedles();
-      });
-      meterColorMode?.addEventListener('change', () => {
-        previewColorMode = String(meterColorMode?.value || 'classic');
-        try { localStorage.setItem('peppy.colorMode', previewColorMode); } catch {}
         drawNeedles();
       });
       themeName?.addEventListener('change', () => {
