@@ -36,7 +36,7 @@
       if (mode === 'player') {
         const q = new URLSearchParams();
         q.set('kiosk', '1');
-        q.set('size', '1280x400');
+        q.set('size', String(p?.playerSize || '1280x400'));
         q.set('ts', String(Date.now()));
         f.src = `player-render.html?${q.toString()}`;
         return;

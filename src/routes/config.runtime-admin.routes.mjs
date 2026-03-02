@@ -242,6 +242,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         fontSize: String(req.body?.fontSize || '').trim(),
         meterMode: String(req.body?.meterMode || '').trim(),
         displayMode: String(req.body?.displayMode || '').trim(),
+        playerSize: String(req.body?.playerSize || '').trim(),
       };
       let prev = {};
       try {
@@ -257,6 +258,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         fontSize: incoming.fontSize || String(prev?.fontSize || '').trim() || 'm',
         meterMode: incoming.meterMode || String(prev?.meterMode || '').trim() || 'segmented',
         displayMode: incoming.displayMode || String(prev?.displayMode || '').trim() || 'peppy',
+        playerSize: incoming.playerSize || String(prev?.playerSize || '').trim() || '1280x400',
         ts: Date.now(),
       };
       await fs.mkdir(path.dirname(peppyLastPushPath), { recursive: true });

@@ -1927,6 +1927,7 @@
               fontSize: fz,
               meterMode: mm,
               displayMode: 'peppy',
+              playerSize: String(localStorage.getItem('player.profile.size') || '1280x400').trim() || '1280x400',
             }),
           }, 8000).catch(() => null);
 
@@ -2002,7 +2003,11 @@
         await fetchJsonWithTimeout(`${base}/peppy/last-profile`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
-          body: JSON.stringify({ url: targetUrl, displayMode: String(mode || 'peppy') }),
+          body: JSON.stringify({
+            url: targetUrl,
+            displayMode: String(mode || 'peppy'),
+            playerSize: String(localStorage.getItem('player.profile.size') || '1280x400').trim() || '1280x400',
+          }),
         }, 8000);
         const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser-url`, {
           method: 'POST',
