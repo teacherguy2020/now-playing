@@ -645,7 +645,7 @@
       let notifyConfigured = false;
       let notifyEnabled = null;
       let peppyModeState = (() => { try { return String(localStorage.getItem('np.peppyMode') || 'webui'); } catch { return 'webui'; } })();
-      let lastPeppyProfile = { skin:'', theme:'', meterType:'', fontMode:'', fontSize:'', meterMode:'', displayMode:'peppy', ts:0 };
+      let lastPeppyProfile = { skin:'', theme:'', meterType:'', fontMode:'', fontSize:'', meterMode:'', normalization:100, displayMode:'peppy', ts:0 };
       let moodeDisplayTakeoverEnabled = true;
       let screenModeState = (() => { try { return String(localStorage.getItem('np.screenMode') || 'nowplaying'); } catch { return 'nowplaying'; } })();
       let alexaEnabledState = null;
@@ -1859,14 +1859,16 @@
           const fontMode = String(p?.fontMode || '').trim();
           const fontSize = String(p?.fontSize || '').trim();
           const meterMode = String(p?.meterMode || '').trim();
+          const normalization = Number(p?.normalization);
           const displayMode = String(p?.displayMode || '').trim();
-          if (!skin && !theme && !meterType && !fontMode && !fontSize && !meterMode && !displayMode) return;
+          if (!skin && !theme && !meterType && !fontMode && !fontSize && !meterMode && !displayMode && !Number.isFinite(normalization)) return;
           if (skin) lastPeppyProfile.skin = skin;
           if (theme) lastPeppyProfile.theme = theme;
           if (meterType) lastPeppyProfile.meterType = meterType;
           if (fontMode) lastPeppyProfile.fontMode = fontMode;
           if (fontSize) lastPeppyProfile.fontSize = fontSize;
           if (meterMode) lastPeppyProfile.meterMode = meterMode;
+          if (Number.isFinite(normalization) && normalization > 0) lastPeppyProfile.normalization = normalization;
           if (displayMode) lastPeppyProfile.displayMode = displayMode;
           lastPeppyProfile.ts = Date.now();
           try {
@@ -1930,6 +1932,7 @@
               fontMode: fm,
               fontSize: fz,
               meterMode: mm,
+              normalization: Number(lastPeppyProfile?.normalization || 100) || 100,
               displayMode: 'peppy',
               playerSize: String(localStorage.getItem('player.profile.size') || '1280x400').trim() || '1280x400',
             }),
@@ -2011,6 +2014,7 @@
             url: targetUrl,
             displayMode: String(mode || 'peppy'),
             playerSize: String(localStorage.getItem('player.profile.size') || '1280x400').trim() || '1280x400',
+            normalization: Number(lastPeppyProfile?.normalization || 100) || 100,
           }),
         }, 8000);
         const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser-url`, {
@@ -3286,12 +3290,14 @@
           const fontMode = String(d.fontMode || '').trim();
           const fontSize = String(d.fontSize || '').trim();
           const meterMode = String(d.meterMode || '').trim();
+          const normalization = Number(d.normalization);
           if (skin) lastPeppyProfile.skin = skin;
           if (theme) lastPeppyProfile.theme = theme;
           if (meterType) lastPeppyProfile.meterType = meterType;
           if (fontMode) lastPeppyProfile.fontMode = fontMode;
           if (fontSize) lastPeppyProfile.fontSize = fontSize;
           if (meterMode) lastPeppyProfile.meterMode = meterMode;
+          if (Number.isFinite(normalization) && normalization > 0) lastPeppyProfile.normalization = normalization;
           lastPeppyProfile.ts = Number(d.ts || Date.now()) || Date.now();
           try {
             if (skin) localStorage.setItem('peppy.skin', skin);

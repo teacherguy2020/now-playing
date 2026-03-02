@@ -272,11 +272,11 @@
       }
       const PEPPY_PRESETS_KEY = 'peppy.presets.v1';
       const BUILTIN_PRESETS = [
-        { name:'Modern Blue Circular', skin:'blue-1280', theme:'midnight-blue', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'segmented' },
-        { name:'Matrix Classic Needle', skin:'emerald-1280', theme:'graphite-green', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'segmented' },
-        { name:'Warm Parchment Dot', skin:'gold-1280', theme:'warm-parchment', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'continuous' },
-        { name:'Red Neon Studio', skin:'red-1280', theme:'red-neon', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'continuous' },
-        { name:'Cassette Linear Classic', skin:'cassette-linear', theme:'silver-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'m', meterMode:'segmented' },
+        { name:'Modern Blue Circular', skin:'blue-1280', theme:'midnight-blue', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'segmented', normalization:100 },
+        { name:'Matrix Classic Needle', skin:'emerald-1280', theme:'graphite-green', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'segmented', normalization:100 },
+        { name:'Warm Parchment Dot', skin:'gold-1280', theme:'warm-parchment', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'continuous', normalization:100 },
+        { name:'Red Neon Studio', skin:'red-1280', theme:'red-neon', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'continuous', normalization:100 },
+        { name:'Cassette Linear Classic', skin:'cassette-linear', theme:'silver-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'m', meterMode:'segmented', normalization:100 },
       ];
       function getCurrentProfile(){
         const skin = String(skinName?.value || previewSkin || '').trim();
@@ -285,7 +285,8 @@
         const fontModeVal = String(fontMode?.value || 'ui-sans');
         const fontSizeVal = String(fontSize?.value || 'm');
         const meterModeVal = String(meterMode?.value || 'segmented');
-        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, ts: Date.now() };
+        const normalization = Number(previewNormalization || 100) || 100;
+        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, normalization, ts: Date.now() };
       }
       function listPresets(){
         try {
@@ -310,6 +311,9 @@
         if (fontMode && p.fontMode) fontMode.value = String(p.fontMode);
         if (fontSize && p.fontSize) fontSize.value = String(p.fontSize);
         if (meterMode && p.meterMode) meterMode.value = String(p.meterMode);
+        const n = Number(p.normalization);
+        previewNormalization = (Number.isFinite(n) && n > 0) ? n : 100;
+        try { localStorage.setItem('peppy.normalization', String(previewNormalization)); } catch {}
         previewSkin = String(skinName?.value || p.skin || previewSkin || 'blue-1280');
         applyNeedleSkin(previewSkin);
         applyTheme(String(themeName?.value || p.theme || 'midnight-blue'));
@@ -475,7 +479,11 @@
         controlsEl.style.bottom = '10px';
       }
       const meterState = { L: { target: 0, cur: 0 }, R: { target: 0, cur: 0 } };
-      function setTarget(k, v){ meterState[k].target = clamp(v); }
+      function setTarget(k, v){
+        const norm = Number(previewNormalization || 100);
+        const scale = norm > 0 ? (100 / norm) : 1;
+        meterState[k].target = clamp(Number(v || 0) * scale);
+      }
 
       const NATIVE_NEEDLE_CFG = {
         'mack-blue-compact': { start: 45, stop: -45, distance: 265, ox: 319, oy: 460, lenMul: 1.0 },
@@ -545,6 +553,12 @@
       applyNeedleSkin(previewSkin);
 
       let previewMeterMode = (() => { try { return localStorage.getItem('peppy.meterMode') || 'segmented'; } catch { return 'segmented'; } })();
+      let previewNormalization = (() => {
+        try {
+          const n = Number(localStorage.getItem('peppy.normalization') || '100');
+          return Number.isFinite(n) && n > 0 ? n : 100;
+        } catch { return 100; }
+      })();
       const previewColorMode = 'classic';
       const previewTheme = (() => {
         const fromUrl = String(qp.get('theme') || '').trim();
@@ -1229,6 +1243,7 @@
             fontMode: String(p.fontMode || 'ui-sans'),
             fontSize: String(p.fontSize || 'm'),
             meterMode: String(p.meterMode || 'segmented'),
+            normalization: (Number.isFinite(Number(p.normalization)) && Number(p.normalization) > 0) ? Number(p.normalization) : 100,
           };
           const cur = (() => { try { return JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]'); } catch { return []; } })();
           const next = Array.isArray(cur) ? [...cur, item] : [item];
@@ -1361,6 +1376,7 @@
           const fm = String(p?.fontMode || '').trim();
           const fsz = String(p?.fontSize || '').trim();
           const mm = String(p?.meterMode || '').trim();
+          const norm = Number(p?.normalization);
           if (!hasSkinParam && s) {
             previewSkin = s;
             try { localStorage.setItem('peppy.skin', s); } catch {}
@@ -1386,6 +1402,10 @@
           if (mm === 'segmented' || mm === 'continuous') {
             if (meterMode) meterMode.value = mm;
             try { localStorage.setItem('peppy.meterMode', mm); } catch {}
+          }
+          if (Number.isFinite(norm) && norm > 0) {
+            previewNormalization = norm;
+            try { localStorage.setItem('peppy.normalization', String(norm)); } catch {}
           }
           renderSkinOptions(previewSkin);
           previewSkin = String(skinName?.value || previewSkin || 'blue-1280');

@@ -241,6 +241,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         fontMode: String(req.body?.fontMode || '').trim(),
         fontSize: String(req.body?.fontSize || '').trim(),
         meterMode: String(req.body?.meterMode || '').trim(),
+        normalization: Number(req.body?.normalization),
         displayMode: String(req.body?.displayMode || '').trim(),
         playerSize: String(req.body?.playerSize || '').trim(),
       };
@@ -257,6 +258,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         fontMode: incoming.fontMode || String(prev?.fontMode || '').trim() || 'ui-sans',
         fontSize: incoming.fontSize || String(prev?.fontSize || '').trim() || 'm',
         meterMode: incoming.meterMode || String(prev?.meterMode || '').trim() || 'segmented',
+        normalization: Number.isFinite(incoming.normalization) && incoming.normalization > 0 ? incoming.normalization : (Number(prev?.normalization) > 0 ? Number(prev.normalization) : 100),
         displayMode: incoming.displayMode || String(prev?.displayMode || '').trim() || 'peppy',
         playerSize: incoming.playerSize || String(prev?.playerSize || '').trim() || '1280x400',
         ts: Date.now(),
