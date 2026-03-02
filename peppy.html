@@ -547,8 +547,8 @@
               if (useThemeTint) {
                 return '#2eb9ee';
               }
-              const redZone = i >= Math.floor(segs * 0.86);
-              const yellowZone = !redZone && i >= Math.floor(segs * 0.72);
+              const redZone = i >= Math.floor(segs * 0.714);
+              const yellowZone = !redZone && i >= Math.floor(segs * 0.428);
               return redZone ? '#ff6464' : (yellowZone ? '#ffe06b' : '#bff3ff');
             };
 
@@ -580,9 +580,9 @@
                 const base = zoneColor(i);
                 const idle = useThemeTint
                   ? 'rgba(85,165,200,.18)'
-                  : (i >= Math.floor(segs * 0.86)
+                  : (i >= Math.floor(segs * 0.714)
                       ? 'rgba(255,110,110,.22)'
-                      : (i >= Math.floor(segs * 0.72)
+                      : (i >= Math.floor(segs * 0.428)
                           ? 'rgba(255,230,120,.20)'
                           : 'rgba(140,235,255,.18)'));
                 ctx.fillStyle = active ? base : idle;
@@ -590,9 +590,9 @@
                 if (active) {
                   ctx.shadowColor = useThemeTint
                     ? 'rgba(80,210,250,.65)'
-                    : (i >= Math.floor(segs * 0.86)
+                    : (i >= Math.floor(segs * 0.714)
                         ? 'rgba(255,110,110,.65)'
-                        : (i >= Math.floor(segs * 0.72)
+                        : (i >= Math.floor(segs * 0.428)
                             ? 'rgba(255,230,120,.60)'
                             : 'rgba(140,235,255,.65)'));
                   ctx.shadowBlur = 7;
