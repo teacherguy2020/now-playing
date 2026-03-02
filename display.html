@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Now Playing Display Router</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
+    #v{width:100%;height:100%;border:0;display:block;background:#000}
+  </style>
+</head>
+<body>
+  <iframe id="v" title="Display"></iframe>
+  <script>
+    (async () => {
+      const f = document.getElementById('v');
+      const host = location.hostname || '10.0.0.233';
+      const api = `${location.protocol}//${host}:3101`;
+      const fallback = 'peppy';
+      let mode = fallback;
+      let skin = '';
+      let theme = '';
+      try {
+        const r = await fetch(`${api}/peppy/last-profile`, { cache: 'no-store' });
+        const j = await r.json().catch(() => ({}));
+        const p = j?.profile || {};
+        mode = String(p?.displayMode || fallback).trim().toLowerCase();
+        skin = String(p?.skin || '').trim();
+        theme = String(p?.theme || '').trim();
+      } catch {}
+
+      if (mode === 'index' || mode === 'webui') {
+        f.src = `index.html?kiosk=1&ts=${Date.now()}`;
+        return;
+      }
+
+      const q = new URLSearchParams();
+      q.set('kiosk', '1');
+      if (skin) q.set('skin', skin);
+      if (theme) q.set('theme', theme);
+      q.set('ts', String(Date.now()));
+      f.src = `peppy.html?${q.toString()}`;
+    })();
+  </script>
+</body>
+</html>

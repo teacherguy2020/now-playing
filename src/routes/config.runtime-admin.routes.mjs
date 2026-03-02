@@ -218,14 +218,14 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
   app.get('/peppy/live', async (req, res) => {
     try {
       const hostHdr = String(req.get('host') || '').trim().replace(/:\d+$/, '') || '10.0.0.233';
-      const fallback = `http://${hostHdr}:8101/peppy.html?kiosk=1`;
+      const fallback = `http://${hostHdr}:8101/display.html?kiosk=1`;
       const raw = await fs.readFile(peppyLastPushPath, 'utf8').catch(() => '');
       const j = raw ? JSON.parse(raw) : null;
       const url = String(j?.url || '').trim() || fallback;
       return res.redirect(302, url);
     } catch {
       const hostHdr = String(req.get('host') || '').trim().replace(/:\d+$/, '') || '10.0.0.233';
-      return res.redirect(302, `http://${hostHdr}:8101/peppy.html?kiosk=1`);
+      return res.redirect(302, `http://${hostHdr}:8101/display.html?kiosk=1`);
     }
   });
 
@@ -240,6 +240,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         fontMode: String(req.body?.fontMode || '').trim(),
         fontSize: String(req.body?.fontSize || '').trim(),
         meterMode: String(req.body?.meterMode || '').trim(),
+        displayMode: String(req.body?.displayMode || '').trim(),
       };
       let prev = {};
       try {
@@ -247,13 +248,14 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         prev = JSON.parse(rawPrev || '{}') || {};
       } catch {}
       const merged = {
-        url: incoming.url || String(prev?.url || '').trim() || 'http://10.0.0.233:8101/peppy.html?kiosk=1',
+        url: incoming.url || String(prev?.url || '').trim() || 'http://10.0.0.233:8101/display.html?kiosk=1',
         skin: incoming.skin || String(prev?.skin || '').trim() || 'blue-1280',
         theme: incoming.theme || String(prev?.theme || '').trim() || 'midnight-blue',
         meterType: incoming.meterType || String(prev?.meterType || '').trim() || 'circular',
         fontMode: incoming.fontMode || String(prev?.fontMode || '').trim() || 'ui-sans',
         fontSize: incoming.fontSize || String(prev?.fontSize || '').trim() || 'm',
         meterMode: incoming.meterMode || String(prev?.meterMode || '').trim() || 'segmented',
+        displayMode: incoming.displayMode || String(prev?.displayMode || '').trim() || 'peppy',
         ts: Date.now(),
       };
       await fs.mkdir(path.dirname(peppyLastPushPath), { recursive: true });
