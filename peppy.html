@@ -542,7 +542,7 @@
             const segW = Math.floor((w - 14 - (segs - 1) * gap) / segs);
             const lit = Math.round((clamp(level) / 100) * segs);
 
-            const useThemeTint = true;
+            const useThemeTint = (previewMeterMode === 'continuous');
             const zoneColor = (i) => {
               if (useThemeTint) {
                 return '#2eb9ee';
