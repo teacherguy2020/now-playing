@@ -66,6 +66,8 @@
     body.player-size-800x480 #album-art-bg{width:344px !important;height:344px !important}
     body.player-size-800x480 #album-art,
     body.player-size-800x480 #album-art-video{position:absolute !important;left:0;top:0;width:344px !important;height:344px !important;object-fit:cover}
+    body.player-size-800x480 #background-a,
+    body.player-size-800x480 #background-b{display:none !important}
     body.player-size-800x480 .text-column{min-width:0;padding-top:4px}
     body.player-size-800x480 #artist-name{font-size:40px;line-height:1.04}
     body.player-size-800x480 #track-title{font-size:34px;line-height:1.06}
@@ -76,11 +78,17 @@
     body.player-size-800x480 #phone-controls{
       display:flex !important;
       position:absolute !important;
-      left:18px !important;
-      top:368px !important;
+      left:8px !important;
+      top:360px !important;
       width:344px !important;
       justify-content:space-between !important;
       z-index:25 !important;
+      opacity:1 !important;
+      background:transparent !important;
+      border:0 !important;
+      padding:0 !important;
+      backdrop-filter:none !important;
+      -webkit-backdrop-filter:none !important;
     }
   </style>
 
