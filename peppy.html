@@ -358,6 +358,14 @@
       const skinImport = $('skinImport');
       const pushPeppyFromTab = $('pushPeppyFromTab');
       const peppyPreset = $('peppyPreset');
+      if (peppyPreset && peppyPreset.options.length === 0) {
+        peppyPreset.innerHTML = '<option value="">Load preset…</option>' +
+          '<option value="0">Modern Blue Circular</option>' +
+          '<option value="1">Matrix Classic Needle</option>' +
+          '<option value="2">Warm Parchment Dot</option>' +
+          '<option value="3">Red Neon Studio</option>' +
+          '<option value="4">Cassette Linear Classic</option>';
+      }
       const exportModal = $('exportModal');
       const exportJson = $('exportJson');
       const exportClose = $('exportClose');
