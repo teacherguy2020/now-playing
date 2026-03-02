@@ -1203,9 +1203,10 @@
       });
       window.addEventListener('message', (ev) => {
         const d = ev?.data || {};
+        // Keep Peppy builder theme independent from app shell theme.
+        // Ignore app theme-sync/preset messages to prevent visual override while editing.
         if (d?.type === 'np-theme-sync' || d?.type === 'np-theme-load-preset') {
-          redrawDotCanvases();
-          drawNeedles();
+          return;
         }
       });
       window.addEventListener('keydown', (ev) => {
