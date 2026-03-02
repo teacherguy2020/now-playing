@@ -542,8 +542,9 @@
             const segW = Math.floor((w - 14 - (segs - 1) * gap) / segs);
             const lit = Math.round((clamp(level) / 100) * segs);
 
+            const useThemeTint = true;
             const zoneColor = (i) => {
-              if (previewColorMode === 'theme') {
+              if (useThemeTint) {
                 return '#2eb9ee';
               }
               const redZone = i >= Math.floor(segs * 0.86);
@@ -557,7 +558,7 @@
               ctx.fillStyle = '#1a2a36';
               ctx.fillRect(x0 + 7, y + 6, w - 14, h - 12);
               const g = ctx.createLinearGradient(x0 + 7, 0, x0 + 7 + Math.max(1, cw), 0);
-              if (previewColorMode === 'theme') {
+              if (useThemeTint) {
                 const rgb = getComputedStyle(document.documentElement).getPropertyValue('--progress-rgb').trim() || '46,185,238';
                 const mk = (a) => `rgba(${rgb},${a})`;
                 g.addColorStop(0, mk(0.24));
@@ -577,7 +578,7 @@
                 const sx = x0 + 7 + i * (segW + gap);
                 const active = i < lit;
                 const base = zoneColor(i);
-                const idle = previewColorMode === 'theme'
+                const idle = useThemeTint
                   ? 'rgba(85,165,200,.18)'
                   : (i >= Math.floor(segs * 0.86)
                       ? 'rgba(255,110,110,.22)'
@@ -587,7 +588,7 @@
                 ctx.fillStyle = active ? base : idle;
                 ctx.fillRect(sx, y + 6, segW, h - 12);
                 if (active) {
-                  ctx.shadowColor = previewColorMode === 'theme'
+                  ctx.shadowColor = useThemeTint
                     ? 'rgba(80,210,250,.65)'
                     : (i >= Math.floor(segs * 0.86)
                         ? 'rgba(255,110,110,.65)'
