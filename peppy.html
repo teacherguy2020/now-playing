@@ -48,12 +48,9 @@
     .right{position:relative;display:grid;grid-template-rows:auto;align-content:start}
     .meters{position:absolute;right:4px;bottom:0;width:min(820px, calc(100% - 12px));display:grid;grid-template-rows:auto;gap:2px;padding:0;align-content:end}
     .controls{position:absolute;left:28px;bottom:10px;display:grid;grid-template-columns:repeat(2,60px);gap:8px}
-    .skinOps{position:static;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-start;width:min(1280px,calc(100vw - 16px));padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--card),var(--card2));box-sizing:border-box}
-    .skinBtn{height:26px;padding:0 10px;border:1px solid #3f4753;background:#1f2731;color:#d8e4f3;font-size:12px;cursor:pointer;white-space:nowrap}
-    .skinSelect{height:26px;border:1px solid #3f4753;background:#131b24;color:#d8e4f3;font-size:12px;padding:0 6px;min-width:96px}
-    #skinName{min-width:160px}
-    #peppyPreset{min-width:170px}
-    #themeName{min-width:160px}
+    .skinOps{position:static;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;width:min(1280px,calc(100vw - 16px));padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--card),var(--card2));box-sizing:border-box}
+    .skinBtn{height:26px;padding:0 10px;border:1px solid #3f4753;background:#1f2731;color:#d8e4f3;font-size:12px;cursor:pointer}
+    .skinSelect{height:26px;border:1px solid #3f4753;background:#131b24;color:#d8e4f3;font-size:12px;padding:0 6px}
     .iframeScale{position:absolute;right:14px;top:10px;display:none;align-items:center;gap:8px;background:#0f1722;border:1px solid #2f3a4b;padding:4px 8px}
     .iframeScale input{width:120px}
     .iframeScale span{font-size:12px;color:#d8e4f3;min-width:42px;text-align:right}
@@ -120,17 +117,7 @@
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
         <button id="skinExport" class="skinBtn" type="button">Export JSON</button>
-        <button id="skinSavePreset" class="skinBtn" type="button">Save as Preset</button>
-        <button id="skinImport" class="skinBtn" type="button">Import Preset</button>
         <button id="pushPeppyFromTab" class="skinBtn" type="button">Push Peppy to moOde</button>
-        <select id="peppyPreset" class="skinSelect" aria-label="Peppy preset">
-          <option value="">Load preset…</option>
-          <option value="0">Modern Blue Circular</option>
-          <option value="1">Matrix Classic Needle</option>
-          <option value="2">Warm Parchment Dot</option>
-          <option value="3">Red Neon Studio</option>
-          <option value="4">Cassette Linear Classic</option>
-        </select>
         <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
           <input type="radio" name="meterType" id="meterTypeCircular" value="circular" checked /> Circular
         </label>
@@ -152,11 +139,6 @@
           <option value="segmented">Segmented</option>
           <option value="continuous">Continuous</option>
         </select>
-        <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
-          Norm
-          <input id="normalization" type="range" min="60" max="140" step="1" value="100" style="width:120px;" />
-          <span id="normalizationValue" style="font-size:12px;opacity:.9;min-width:30px;text-align:right;">100</span>
-        </label>
         <select id="themeName" class="skinSelect" aria-label="Peppy theme preset">
           <option value="graphite-green">Matrix</option>
           <option value="graphite-green">Green Neon</option>
@@ -286,14 +268,6 @@
         r.style.setProperty('--dot-bg', t.dotBg || t.card2);
         r.style.setProperty('--dot-dim', t.dotDim || t.line);
       }
-      const PEPPY_PRESETS_KEY = 'peppy.presets.v1';
-      const BUILTIN_PRESETS = [
-        { name:'Modern Blue Circular', skin:'blue-1280', theme:'midnight-blue', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'segmented', normalization:100 },
-        { name:'Matrix Classic Needle', skin:'emerald-1280', theme:'graphite-green', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'segmented', normalization:100 },
-        { name:'Warm Parchment Dot', skin:'gold-1280', theme:'warm-parchment', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'continuous', normalization:100 },
-        { name:'Red Neon Studio', skin:'red-1280', theme:'red-neon', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'continuous', normalization:100 },
-        { name:'Cassette Linear Classic', skin:'cassette-linear', theme:'silver-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'m', meterMode:'segmented', normalization:100 },
-      ];
       function getCurrentProfile(){
         const skin = String(skinName?.value || previewSkin || '').trim();
         const theme = String(themeName?.value || '').trim();
@@ -301,62 +275,7 @@
         const fontModeVal = String(fontMode?.value || 'ui-sans');
         const fontSizeVal = String(fontSize?.value || 'm');
         const meterModeVal = String(meterMode?.value || 'segmented');
-        const normalization = Number(previewNormalization || 100) || 100;
-        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, normalization, ts: Date.now() };
-      }
-      function listPresets(){
-        try {
-          const raw = JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]');
-          const custom = Array.isArray(raw) ? raw : [];
-          return [...BUILTIN_PRESETS, ...custom];
-        } catch { return [...BUILTIN_PRESETS]; }
-      }
-      function renderPresetSelect(){
-        if (!peppyPreset) return;
-        // Keep server-rendered built-ins if present; append custom presets after them.
-        const hasStatic = peppyPreset.options.length >= 6;
-        let custom = [];
-        try {
-          const raw = JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]');
-          custom = Array.isArray(raw) ? raw : [];
-        } catch { custom = []; }
-        if (hasStatic) {
-          // Remove previously appended custom options, keep first 6 static options.
-          while (peppyPreset.options.length > 6) peppyPreset.remove(6);
-          custom.forEach((p, i) => {
-            const opt = document.createElement('option');
-            opt.value = String(BUILTIN_PRESETS.length + i);
-            opt.textContent = String(p?.name || `Preset ${BUILTIN_PRESETS.length + i + 1}`);
-            peppyPreset.appendChild(opt);
-          });
-          return;
-        }
-        const all = [...BUILTIN_PRESETS, ...custom];
-        peppyPreset.innerHTML = ['<option value="">Load preset…</option>', ...all.map((p,i)=>`<option value="${i}">${String(p?.name || ('Preset ' + (i+1)))}</option>`)].join('');
-      }
-      function applyPreset(p){
-        if (!p) return;
-        if (meterTypeLinear) meterTypeLinear.checked = String(p.meterType||'circular') === 'linear';
-        if (meterTypeCircular) meterTypeCircular.checked = !meterTypeLinear?.checked;
-        syncMeterTypeClass();
-        renderSkinOptions(String(p.skin || previewSkin || 'blue-1280'));
-        if (skinName && p.skin) skinName.value = String(p.skin);
-        if (themeName && p.theme) themeName.value = String(p.theme);
-        if (fontMode && p.fontMode) fontMode.value = String(p.fontMode);
-        if (fontSize && p.fontSize) fontSize.value = String(p.fontSize);
-        if (meterMode && p.meterMode) meterMode.value = String(p.meterMode);
-        const n = Number(p.normalization);
-        previewNormalization = (Number.isFinite(n) && n > 0) ? n : 100;
-        previewNormalization = Math.max(60, Math.min(140, Math.round(previewNormalization)));
-        if (normalization) normalization.value = String(previewNormalization);
-        if (normalizationValue) normalizationValue.textContent = String(previewNormalization);
-        try { localStorage.setItem('peppy.normalization', String(previewNormalization)); } catch {}
-        previewSkin = String(skinName?.value || p.skin || previewSkin || 'blue-1280');
-        applyNeedleSkin(previewSkin);
-        applyTheme(String(themeName?.value || p.theme || 'midnight-blue'));
-        redrawDotCanvases();
-        drawNeedles();
-        publishProfileState();
+        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, ts: Date.now() };
       }
       function publishProfileState(){
         try { window.parent?.postMessage({ type:'peppy-profile', ...getCurrentProfile() }, '*'); } catch {}
@@ -370,18 +289,7 @@
       const ctrlShuffle = $('ctrlShuffle');
       const controlsEl = document.querySelector('.controls');
       const skinExport = $('skinExport');
-      const skinSavePreset = $('skinSavePreset');
-      const skinImport = $('skinImport');
       const pushPeppyFromTab = $('pushPeppyFromTab');
-      const peppyPreset = $('peppyPreset');
-      if (peppyPreset && peppyPreset.options.length === 0) {
-        peppyPreset.innerHTML = '<option value="">Load preset…</option>' +
-          '<option value="0">Modern Blue Circular</option>' +
-          '<option value="1">Matrix Classic Needle</option>' +
-          '<option value="2">Warm Parchment Dot</option>' +
-          '<option value="3">Red Neon Studio</option>' +
-          '<option value="4">Cassette Linear Classic</option>';
-      }
       const exportModal = $('exportModal');
       const exportJson = $('exportJson');
       const exportClose = $('exportClose');
@@ -390,8 +298,6 @@
       const meterTypeCircular = $('meterTypeCircular');
       const meterTypeLinear = $('meterTypeLinear');
       const meterMode = $('meterMode');
-      const normalization = $('normalization');
-      const normalizationValue = $('normalizationValue');
       const fontMode = $('fontMode');
       const fontSize = $('fontSize');
       const themeName = $('themeName');
@@ -527,11 +433,7 @@
         controlsEl.style.bottom = '10px';
       }
       const meterState = { L: { target: 0, cur: 0 }, R: { target: 0, cur: 0 } };
-      function setTarget(k, v){
-        const norm = Number(previewNormalization || 100);
-        const scale = norm > 0 ? (100 / norm) : 1;
-        meterState[k].target = clamp(Number(v || 0) * scale);
-      }
+      function setTarget(k, v){ meterState[k].target = clamp(v); }
 
       const NATIVE_NEEDLE_CFG = {
         'mack-blue-compact': { start: 45, stop: -45, distance: 265, ox: 319, oy: 460, lenMul: 1.0 },
@@ -595,20 +497,11 @@
       let previewFontSize = (() => { try { return localStorage.getItem('peppy.fontSize') || 'm'; } catch { return 'm'; } })();
       if (fontMode) fontMode.value = previewFontMode;
       if (fontSize) fontSize.value = previewFontSize;
-      if (normalization) normalization.value = String(Math.max(60, Math.min(140, Math.round(previewNormalization || 100))));
-      if (normalizationValue) normalizationValue.textContent = String(Math.max(60, Math.min(140, Math.round(previewNormalization || 100))));
-      renderPresetSelect();
       renderSkinOptions(previewSkin);
       previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
       applyNeedleSkin(previewSkin);
 
       let previewMeterMode = (() => { try { return localStorage.getItem('peppy.meterMode') || 'segmented'; } catch { return 'segmented'; } })();
-      let previewNormalization = (() => {
-        try {
-          const n = Number(localStorage.getItem('peppy.normalization') || '100');
-          return Number.isFinite(n) && n > 0 ? n : 100;
-        } catch { return 100; }
-      })();
       const previewColorMode = 'classic';
       const previewTheme = (() => {
         const fromUrl = String(qp.get('theme') || '').trim();
@@ -1280,46 +1173,6 @@
           }
         } catch {}
       });
-      skinSavePreset?.addEventListener('click', () => {
-        try {
-          const name = String(prompt('Preset name?', `My Preset ${new Date().toLocaleTimeString()}`) || '').trim();
-          if (!name) return;
-          const p = { name, ...getCurrentProfile() };
-          const cur = (() => { try { return JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]'); } catch { return []; } })();
-          const next = Array.isArray(cur) ? [...cur, p] : [p];
-          localStorage.setItem(PEPPY_PRESETS_KEY, JSON.stringify(next));
-          renderPresetSelect();
-          if (peppyPreset) peppyPreset.value = String(BUILTIN_PRESETS.length + next.length - 1);
-        } catch {}
-      });
-      skinImport?.addEventListener('click', () => {
-        try {
-          const raw = prompt('Paste preset JSON');
-          if (!raw) return;
-          const p = JSON.parse(raw);
-          const item = {
-            name: String(p.name || `Imported ${new Date().toLocaleString()}`),
-            skin: String(p.skin || 'blue-1280'),
-            theme: String(p.theme || 'midnight-blue'),
-            meterType: String(p.meterType || 'circular'),
-            fontMode: String(p.fontMode || 'ui-sans'),
-            fontSize: String(p.fontSize || 'm'),
-            meterMode: String(p.meterMode || 'segmented'),
-            normalization: (Number.isFinite(Number(p.normalization)) && Number(p.normalization) > 0) ? Number(p.normalization) : 100,
-          };
-          const cur = (() => { try { return JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]'); } catch { return []; } })();
-          const next = Array.isArray(cur) ? [...cur, item] : [item];
-          localStorage.setItem(PEPPY_PRESETS_KEY, JSON.stringify(next));
-          renderPresetSelect();
-          applyPreset(item);
-        } catch { alert('Invalid preset JSON'); }
-      });
-      peppyPreset?.addEventListener('change', () => {
-        const idx = Number(peppyPreset.value);
-        if (!Number.isFinite(idx)) return;
-        const all = listPresets();
-        applyPreset(all[idx]);
-      });
       pushPeppyFromTab?.addEventListener('click', () => {
         try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
       });
@@ -1389,13 +1242,6 @@
         drawNeedles();
         publishProfileState();
       });
-      normalization?.addEventListener('input', () => {
-        const n = Math.max(60, Math.min(140, Math.round(Number(normalization.value || 100))));
-        previewNormalization = n;
-        if (normalizationValue) normalizationValue.textContent = String(n);
-        try { localStorage.setItem('peppy.normalization', String(n)); } catch {}
-        publishProfileState();
-      });
       themeName?.addEventListener('change', () => {
         const n = String(themeName?.value || 'midnight-blue');
         try { localStorage.setItem('peppy.theme', n); } catch {}
@@ -1445,7 +1291,6 @@
           const fm = String(p?.fontMode || '').trim();
           const fsz = String(p?.fontSize || '').trim();
           const mm = String(p?.meterMode || '').trim();
-          const norm = Number(p?.normalization);
           if (!hasSkinParam && s) {
             previewSkin = s;
             try { localStorage.setItem('peppy.skin', s); } catch {}
@@ -1471,12 +1316,6 @@
           if (mm === 'segmented' || mm === 'continuous') {
             if (meterMode) meterMode.value = mm;
             try { localStorage.setItem('peppy.meterMode', mm); } catch {}
-          }
-          if (Number.isFinite(norm) && norm > 0) {
-            previewNormalization = Math.max(60, Math.min(140, Math.round(norm)));
-            if (normalization) normalization.value = String(previewNormalization);
-            if (normalizationValue) normalizationValue.textContent = String(previewNormalization);
-            try { localStorage.setItem('peppy.normalization', String(previewNormalization)); } catch {}
           }
           renderSkinOptions(previewSkin);
           previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
