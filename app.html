@@ -339,6 +339,8 @@
           <a href="?page=theme.html" data-page="theme.html">Theme</a>
         </nav>
         <button id="pushPeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Push Peppy to moOde</button>
+        <button id="showIndexBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Index on moOde</button>
+        <button id="refreshDisplayBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Refresh moOde Display</button>
         <div class="statusInline" aria-label="status pills">
           <button class="pill" id="apiPill" type="button" title="Active API endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>API<span class="hint" id="apiHint">loading…</span></button>
           <button class="pill" id="webPill" type="button" title="Active web UI endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></button>
@@ -633,7 +635,7 @@
       let notifyConfigured = false;
       let notifyEnabled = null;
       let peppyModeState = (() => { try { return String(localStorage.getItem('np.peppyMode') || 'webui'); } catch { return 'webui'; } })();
-      let lastPeppyProfile = { skin:'', theme:'', meterType:'', fontMode:'', fontSize:'', meterMode:'', ts:0 };
+      let lastPeppyProfile = { skin:'', theme:'', meterType:'', fontMode:'', fontSize:'', meterMode:'', displayMode:'peppy', ts:0 };
       let screenModeState = (() => { try { return String(localStorage.getItem('np.screenMode') || 'nowplaying'); } catch { return 'nowplaying'; } })();
       let alexaEnabledState = null;
       let alexaDomainState = '';
@@ -1846,13 +1848,15 @@
           const fontMode = String(p?.fontMode || '').trim();
           const fontSize = String(p?.fontSize || '').trim();
           const meterMode = String(p?.meterMode || '').trim();
-          if (!skin && !theme && !meterType && !fontMode && !fontSize && !meterMode) return;
+          const displayMode = String(p?.displayMode || '').trim();
+          if (!skin && !theme && !meterType && !fontMode && !fontSize && !meterMode && !displayMode) return;
           if (skin) lastPeppyProfile.skin = skin;
           if (theme) lastPeppyProfile.theme = theme;
           if (meterType) lastPeppyProfile.meterType = meterType;
           if (fontMode) lastPeppyProfile.fontMode = fontMode;
           if (fontSize) lastPeppyProfile.fontSize = fontSize;
           if (meterMode) lastPeppyProfile.meterMode = meterMode;
+          if (displayMode) lastPeppyProfile.displayMode = displayMode;
           lastPeppyProfile.ts = Date.now();
           try {
             if (skin) localStorage.setItem('peppy.skin', skin);
@@ -1895,7 +1899,7 @@
         if (!fm) fm = 'ui-sans';
         if (!fz) fz = 'm';
         if (!mm) mm = 'segmented';
-        lastPeppyProfile = { ...lastPeppyProfile, skin:s, theme:t, meterType:mt, fontMode:fm, fontSize:fz, meterMode:mm, ts: Date.now() };
+        lastPeppyProfile = { ...lastPeppyProfile, skin:s, theme:t, meterType:mt, fontMode:fm, fontSize:fz, meterMode:mm, displayMode:'peppy', ts: Date.now() };
         setPushPeppyBusy(true);
         try {
           if (!runtimeTrackKey) {
@@ -1946,6 +1950,28 @@
         } finally {
           setPushPeppyBusy(false);
         }
+      }
+
+      async function setDisplayModeAndRefresh(mode = 'peppy'){
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+        if (!runtimeTrackKey) {
+          const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+          const rj = await rr.json().catch(() => ({}));
+          runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+        }
+        await fetchJsonWithTimeout(`${base}/peppy/last-profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+          body: JSON.stringify({ url: targetUrl, displayMode: String(mode || 'peppy') }),
+        }, 8000);
+        const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+          body: JSON.stringify({ url: targetUrl }),
+        }, 14000);
+        if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
       }
 
       async function restartApiFromPill(){
@@ -2183,9 +2209,13 @@
       }
 
       function refreshPushPeppyVisibility(){ 
-        const btn = document.getElementById('pushPeppyBtn');
         const show = String(currentShellPage || '') === 'peppy.html';
+        const btn = document.getElementById('pushPeppyBtn');
+        const idxBtn = document.getElementById('showIndexBtn');
+        const refBtn = document.getElementById('refreshDisplayBtn');
         if (btn) btn.style.display = show ? '' : 'none';
+        if (idxBtn) idxBtn.style.display = show ? '' : 'none';
+        if (refBtn) refBtn.style.display = show ? '' : 'none';
       }
 
       function navigate(page, push = true){
@@ -2321,6 +2351,14 @@
       document.getElementById('pushPeppyBtn')?.addEventListener('click', (ev) => {
         ev.preventDefault();
         pushPeppyToMoode();
+      });
+      document.getElementById('showIndexBtn')?.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try { await setDisplayModeAndRefresh('index'); } catch (e) { console.warn('show index failed', e?.message || e); }
+      });
+      document.getElementById('refreshDisplayBtn')?.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try { await setDisplayModeAndRefresh(String(lastPeppyProfile?.displayMode || 'peppy')); } catch (e) { console.warn('refresh display failed', e?.message || e); }
       });
 
       window.addEventListener('popstate', () => navigate(getPageFromUrl(), false));
