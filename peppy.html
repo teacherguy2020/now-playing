@@ -1280,10 +1280,12 @@
           const name = String(prompt('Preset name?', `My Preset ${new Date().toLocaleTimeString()}`) || '').trim();
           if (!name) return;
           const cur = listCustomPresets();
-          cur.push({ name, ...getCurrentProfile() });
+          const idx = cur.findIndex((p) => String(p?.name || '').trim().toLowerCase() === name.toLowerCase());
+          if (idx >= 0) cur[idx] = { ...cur[idx], name, ...getCurrentProfile() };
+          else cur.push({ name, ...getCurrentProfile() });
           localStorage.setItem(PEPPY_PRESETS_KEY, JSON.stringify(cur));
           refreshPresetSelect();
-          if (peppyPreset) peppyPreset.value = `custom:${cur.length-1}`;
+          if (peppyPreset) peppyPreset.value = `custom:${idx >= 0 ? idx : (cur.length - 1)}`;
         } catch {}
       });
       peppyPreset?.addEventListener('change', () => {
