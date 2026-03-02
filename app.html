@@ -1882,6 +1882,7 @@
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;
         const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+        const refreshUrl = `${targetUrl}&sw=${Date.now()}`;
         let s = String(lastPeppyProfile?.skin || '').trim();
         let t = String(lastPeppyProfile?.theme || '').trim();
         let mt = String(lastPeppyProfile?.meterType || '').trim();
@@ -1947,7 +1948,7 @@
           const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser-url`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
-            body: JSON.stringify({ url: targetUrl }),
+            body: JSON.stringify({ url: refreshUrl }),
           }, 14000);
           if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
           const btn = document.getElementById('pushPeppyBtn');
@@ -2008,6 +2009,7 @@
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;
         const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+        const refreshUrl = `${targetUrl}&sw=${Date.now()}`;
         if (!runtimeTrackKey) {
           const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
           const rj = await rr.json().catch(() => ({}));
@@ -2026,7 +2028,7 @@
         const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser-url`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
-          body: JSON.stringify({ url: targetUrl }),
+          body: JSON.stringify({ url: refreshUrl }),
         }, 14000);
         if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
       }
