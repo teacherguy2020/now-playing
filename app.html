@@ -344,8 +344,13 @@
         <button id="showMoodeUiBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show moOde UI</button>
         <button id="showPlayerBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Player on moOde</button>
         <button id="refreshDisplayBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Refresh moOde Display</button>
-        <button id="fixTargetBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Fix Target URL</button>
-        <button id="nativePeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Native Peppy Takeover</button>
+        <details id="displayAdvanced" style="display:none;margin-left:8px;">
+          <summary class="heroQueueBtn" style="list-style:none;cursor:pointer;">Advanced</summary>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+            <button id="fixTargetBtn" class="heroQueueBtn" type="button">Fix Target URL</button>
+            <button id="nativePeppyBtn" class="heroQueueBtn" type="button">Native Peppy Takeover</button>
+          </div>
+        </details>
         <span id="targetUrlHint" class="muted" style="display:none;margin-left:8px;font-size:12px;"></span>
         <div class="statusInline" aria-label="status pills">
           <button class="pill" id="apiPill" type="button" title="Active API endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>API<span class="hint" id="apiHint">loading…</span></button>
@@ -2269,6 +2274,7 @@
         const moodeBtn = document.getElementById('showMoodeUiBtn');
         const playerBtn = document.getElementById('showPlayerBtn');
         const refBtn = document.getElementById('refreshDisplayBtn');
+        const adv = document.getElementById('displayAdvanced');
         const fixBtn = document.getElementById('fixTargetBtn');
         const natBtn = document.getElementById('nativePeppyBtn');
         if (btn) btn.style.display = show ? '' : 'none';
@@ -2276,6 +2282,7 @@
         if (moodeBtn) moodeBtn.style.display = show ? '' : 'none';
         if (playerBtn) playerBtn.style.display = show ? '' : 'none';
         if (refBtn) refBtn.style.display = show ? '' : 'none';
+        if (adv) adv.style.display = show ? '' : 'none';
         if (fixBtn) fixBtn.style.display = show ? '' : 'none';
         if (natBtn) natBtn.style.display = show ? '' : 'none';
       }
