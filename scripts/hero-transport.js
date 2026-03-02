@@ -290,9 +290,12 @@
     const npArt = String(np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || '').trim();
     const headArt = String(head?.thumbUrl || '').trim();
     const rawThumb = npArt || headArt;
+    const incomingTrackKey = String(np?.songid || np?.file || head?.file || '').trim();
     const thumb = rawThumb
       ? (rawThumb.startsWith('http') ? rawThumb : `${apiBase}${rawThumb}`)
-      : '';
+      : ((incomingTrackKey && prevArtTrackKey && incomingTrackKey === prevArtTrackKey && prevArtSrc)
+          ? prevArtSrc
+          : '');
     const motionMp4 = String(np?._motionMp4 || '').trim();
 
     const isAlexaMode = !!np?.alexaMode;
