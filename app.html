@@ -340,7 +340,6 @@
           <a href="?page=theme.html" data-page="theme.html">Theme</a>
         </nav>
         <button id="pushPeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Push Peppy to moOde</button>
-        <button id="showIndexBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Push Player to moOde</button>
         <button id="showMoodeUiBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show moOde UI</button>
         <button id="showPlayerBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Player on moOde</button>
         <button id="refreshDisplayBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Refresh moOde Display</button>
@@ -2270,7 +2269,6 @@
         const page = String(currentShellPage || '');
         const show = moodeDisplayTakeoverEnabled && (page === 'peppy.html' || page === 'player.html');
         const btn = document.getElementById('pushPeppyBtn');
-        const idxBtn = document.getElementById('showIndexBtn');
         const moodeBtn = document.getElementById('showMoodeUiBtn');
         const playerBtn = document.getElementById('showPlayerBtn');
         const refBtn = document.getElementById('refreshDisplayBtn');
@@ -2278,7 +2276,6 @@
         const fixBtn = document.getElementById('fixTargetBtn');
         const natBtn = document.getElementById('nativePeppyBtn');
         if (btn) btn.style.display = show ? '' : 'none';
-        if (idxBtn) idxBtn.style.display = show ? '' : 'none';
         if (moodeBtn) moodeBtn.style.display = show ? '' : 'none';
         if (playerBtn) playerBtn.style.display = show ? '' : 'none';
         if (refBtn) refBtn.style.display = show ? '' : 'none';
@@ -2421,10 +2418,6 @@
       document.getElementById('pushPeppyBtn')?.addEventListener('click', (ev) => {
         ev.preventDefault();
         pushPeppyToMoode();
-      });
-      document.getElementById('showIndexBtn')?.addEventListener('click', async (ev) => {
-        ev.preventDefault();
-        try { await setDisplayModeAndRefresh('index'); } catch (e) { console.warn('show index failed', e?.message || e); }
       });
       document.getElementById('showMoodeUiBtn')?.addEventListener('click', async (ev) => {
         ev.preventDefault();
