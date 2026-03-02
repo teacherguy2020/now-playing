@@ -65,6 +65,7 @@
     .playerControls{position:fixed;left:10px;top:10px;z-index:10000;display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid rgba(120,140,180,.45);background:rgba(7,12,22,.84);backdrop-filter:blur(4px);border-radius:10px}
     .playerControls label{font-size:12px;opacity:.9}
     .playerControls select{height:30px;border:1px solid rgba(120,140,180,.5);background:#111a2a;color:#e6efff;border-radius:8px;padding:0 8px}
+    body.player-builder #content{position:relative;width:var(--player-w,1280px);height:var(--player-h,400px);margin:58px auto 0;transform-origin:top center;transform:scale(var(--player-scale,1));}
   </style>
 </head>
 
@@ -245,9 +246,25 @@
     const fromLs = String(localStorage.getItem('player.profile.size') || '').trim();
     const initial = valid.includes(fromUrl) ? fromUrl : (valid.includes(fromLs) ? fromLs : '1280x400');
 
+    const SIZE_MAP = {
+      '1280x400':[1280,400],
+      '1024x600':[1024,600],
+      '800x480':[800,480],
+      '480x320':[480,320],
+      '320x240':[320,240],
+    };
     const applySizeClass = (size) => {
       valid.forEach((s) => document.body.classList.remove(`player-size-${s}`));
       document.body.classList.add(`player-size-${size}`);
+      document.body.classList.add('player-builder');
+      const dims = SIZE_MAP[size] || SIZE_MAP['1280x400'];
+      const [w,h] = dims;
+      const availW = Math.max(320, window.innerWidth - 24);
+      const availH = Math.max(200, window.innerHeight - 80);
+      const scale = Math.min(1, availW / w, availH / h);
+      document.body.style.setProperty('--player-w', `${w}px`);
+      document.body.style.setProperty('--player-h', `${h}px`);
+      document.body.style.setProperty('--player-scale', String(Math.max(0.35, scale)));
       try { localStorage.setItem('player.profile.size', size); } catch {}
       try {
         const nu = new URL(location.href);
@@ -264,6 +281,7 @@
       });
     }
     applySizeClass(initial);
+    window.addEventListener('resize', () => applySizeClass(String(sel?.value || initial)));
   } catch {}
 })();
 </script>
