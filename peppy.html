@@ -117,7 +117,9 @@
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
         <button id="skinExport" class="skinBtn" type="button">Export JSON</button>
+        <button id="skinImport" class="skinBtn" type="button">Import Preset</button>
         <button id="pushPeppyFromTab" class="skinBtn" type="button">Push Peppy to moOde</button>
+        <select id="peppyPreset" class="skinSelect" aria-label="Peppy preset"></select>
         <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
           <input type="radio" name="meterType" id="meterTypeCircular" value="circular" checked /> Circular
         </label>
@@ -268,6 +270,14 @@
         r.style.setProperty('--dot-bg', t.dotBg || t.card2);
         r.style.setProperty('--dot-dim', t.dotDim || t.line);
       }
+      const PEPPY_PRESETS_KEY = 'peppy.presets.v1';
+      const BUILTIN_PRESETS = [
+        { name:'Modern Blue Circular', skin:'blue-1280', theme:'midnight-blue', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'segmented' },
+        { name:'Matrix Classic Needle', skin:'emerald-1280', theme:'graphite-green', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'segmented' },
+        { name:'Warm Parchment Dot', skin:'gold-1280', theme:'warm-parchment', meterType:'circular', fontMode:'dot-matrix', fontSize:'l', meterMode:'continuous' },
+        { name:'Red Neon Studio', skin:'red-1280', theme:'red-neon', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'continuous' },
+        { name:'Cassette Linear Classic', skin:'cassette-linear', theme:'silver-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'m', meterMode:'segmented' },
+      ];
       function getCurrentProfile(){
         const skin = String(skinName?.value || previewSkin || '').trim();
         const theme = String(themeName?.value || '').trim();
@@ -276,6 +286,36 @@
         const fontSizeVal = String(fontSize?.value || 'm');
         const meterModeVal = String(meterMode?.value || 'segmented');
         return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, ts: Date.now() };
+      }
+      function listPresets(){
+        try {
+          const raw = JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]');
+          const custom = Array.isArray(raw) ? raw : [];
+          return [...BUILTIN_PRESETS, ...custom];
+        } catch { return [...BUILTIN_PRESETS]; }
+      }
+      function renderPresetSelect(){
+        if (!peppyPreset) return;
+        const all = listPresets();
+        peppyPreset.innerHTML = ['<option value="">Load preset…</option>', ...all.map((p,i)=>`<option value="${i}">${String(p.name||`Preset ${i+1}`)}</option>`)].join('');
+      }
+      function applyPreset(p){
+        if (!p) return;
+        if (meterTypeLinear) meterTypeLinear.checked = String(p.meterType||'circular') === 'linear';
+        if (meterTypeCircular) meterTypeCircular.checked = !meterTypeLinear?.checked;
+        syncMeterTypeClass();
+        renderSkinOptions(String(p.skin || previewSkin || 'blue-1280'));
+        if (skinName && p.skin) skinName.value = String(p.skin);
+        if (themeName && p.theme) themeName.value = String(p.theme);
+        if (fontMode && p.fontMode) fontMode.value = String(p.fontMode);
+        if (fontSize && p.fontSize) fontSize.value = String(p.fontSize);
+        if (meterMode && p.meterMode) meterMode.value = String(p.meterMode);
+        previewSkin = String(skinName?.value || p.skin || previewSkin || 'blue-1280');
+        applyNeedleSkin(previewSkin);
+        applyTheme(String(themeName?.value || p.theme || 'midnight-blue'));
+        redrawDotCanvases();
+        drawNeedles();
+        publishProfileState();
       }
       function publishProfileState(){
         try { window.parent?.postMessage({ type:'peppy-profile', ...getCurrentProfile() }, '*'); } catch {}
@@ -289,7 +329,9 @@
       const ctrlShuffle = $('ctrlShuffle');
       const controlsEl = document.querySelector('.controls');
       const skinExport = $('skinExport');
+      const skinImport = $('skinImport');
       const pushPeppyFromTab = $('pushPeppyFromTab');
+      const peppyPreset = $('peppyPreset');
       const exportModal = $('exportModal');
       const exportJson = $('exportJson');
       const exportClose = $('exportClose');
@@ -497,6 +539,7 @@
       let previewFontSize = (() => { try { return localStorage.getItem('peppy.fontSize') || 'm'; } catch { return 'm'; } })();
       if (fontMode) fontMode.value = previewFontMode;
       if (fontSize) fontSize.value = previewFontSize;
+      renderPresetSelect();
       renderSkinOptions(previewSkin);
       previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
       applyNeedleSkin(previewSkin);
@@ -1172,6 +1215,33 @@
             exportModal.setAttribute('aria-hidden', 'false');
           }
         } catch {}
+      });
+      skinImport?.addEventListener('click', () => {
+        try {
+          const raw = prompt('Paste preset JSON');
+          if (!raw) return;
+          const p = JSON.parse(raw);
+          const item = {
+            name: String(p.name || `Imported ${new Date().toLocaleString()}`),
+            skin: String(p.skin || 'blue-1280'),
+            theme: String(p.theme || 'midnight-blue'),
+            meterType: String(p.meterType || 'circular'),
+            fontMode: String(p.fontMode || 'ui-sans'),
+            fontSize: String(p.fontSize || 'm'),
+            meterMode: String(p.meterMode || 'segmented'),
+          };
+          const cur = (() => { try { return JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]'); } catch { return []; } })();
+          const next = Array.isArray(cur) ? [...cur, item] : [item];
+          localStorage.setItem(PEPPY_PRESETS_KEY, JSON.stringify(next));
+          renderPresetSelect();
+          applyPreset(item);
+        } catch { alert('Invalid preset JSON'); }
+      });
+      peppyPreset?.addEventListener('change', () => {
+        const idx = Number(peppyPreset.value);
+        if (!Number.isFinite(idx)) return;
+        const all = listPresets();
+        applyPreset(all[idx]);
       });
       pushPeppyFromTab?.addEventListener('click', () => {
         try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
