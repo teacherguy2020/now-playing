@@ -617,11 +617,31 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       let moodeBase = moodeBaseRaw || `http://${mpdHost}`;
       if (!/^https?:\/\//i.test(moodeBase)) moodeBase = `http://${moodeBase}`;
       const baseNoSlash = moodeBase.replace(/\/$/, '');
-      await fetch(`${baseNoSlash}/command/?cmd=set_display%20peppy`, { method: 'GET' }).catch(() => null);
-      await fetch(`${baseNoSlash}/command/?cmd=restart_local_display`, { method: 'GET' }).catch(() => null);
 
       const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
       const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+
+      // Guard: native peppy will show black screen if output.display = False.
+      if (sshHost) {
+        const g = await sshBashLc({
+          user: sshUser,
+          host: sshHost,
+          script: "grep -E '^output\.display\s*=\s*' /etc/peppymeter/config.txt | tail -n 1 || true",
+          timeoutMs: 8000,
+        }).catch(() => ({ stdout: '', stderr: '' }));
+        const line = String(g?.stdout || '').trim();
+        if (/=\s*false\s*$/i.test(line)) {
+          return res.status(409).json({
+            ok: false,
+            error: 'native peppy blocked: /etc/peppymeter/config.txt has output.display = False',
+            guard: { config: '/etc/peppymeter/config.txt', line },
+          });
+        }
+      }
+
+      await fetch(`${baseNoSlash}/command/?cmd=set_display%20peppy`, { method: 'GET' }).catch(() => null);
+      await fetch(`${baseNoSlash}/command/?cmd=restart_local_display`, { method: 'GET' }).catch(() => null);
+
       let killOut = '';
       if (sshHost) {
         const k = await sshBashLc({ user: sshUser, host: sshHost, script: "pkill -f chromium-browser || true; sleep 1; pgrep -af chromium-browser || true", timeoutMs: 12000 }).catch(() => ({ stdout: '', stderr: '' }));
