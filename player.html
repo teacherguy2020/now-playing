@@ -61,10 +61,24 @@
     @media (min-width:1180px) and (max-height:430px) { body{ } }
     @media (min-width:980px) and (max-width:1100px) and (max-height:640px) { body{ } }
     @media (min-width:760px) and (max-width:900px) and (max-height:520px) { body{ } }
+
+    .playerControls{position:fixed;left:10px;top:10px;z-index:10000;display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid rgba(120,140,180,.45);background:rgba(7,12,22,.84);backdrop-filter:blur(4px);border-radius:10px}
+    .playerControls label{font-size:12px;opacity:.9}
+    .playerControls select{height:30px;border:1px solid rgba(120,140,180,.5);background:#111a2a;color:#e6efff;border-radius:8px;padding:0 8px}
   </style>
 </head>
 
 <body class="booting">
+  <div class="playerControls" id="playerControlsCard" aria-label="Player display controls">
+    <label for="playerSizeSelect">Screen size</label>
+    <select id="playerSizeSelect">
+      <option value="1280x400">1280x400</option>
+      <option value="1024x600">1024x600</option>
+      <option value="800x480">800x480</option>
+      <option value="480x320">480x320</option>
+      <option value="320x240">320x240</option>
+    </select>
+  </div>
   <div id="background-a"></div>
   <div id="background-b"></div>
 
@@ -225,10 +239,31 @@
 (function(){
   try {
     const u = new URL(location.href);
-    const forced = String(u.searchParams.get('size') || localStorage.getItem('player.profile.size') || '').trim();
-    const valid = new Set(['1280x400','1024x600','800x480','480x320','320x240']);
-    const size = valid.has(forced) ? forced : '1280x400';
-    document.body.classList.add(`player-size-${size}`);
+    const valid = ['1280x400','1024x600','800x480','480x320','320x240'];
+    const sel = document.getElementById('playerSizeSelect');
+    const fromUrl = String(u.searchParams.get('size') || '').trim();
+    const fromLs = String(localStorage.getItem('player.profile.size') || '').trim();
+    const initial = valid.includes(fromUrl) ? fromUrl : (valid.includes(fromLs) ? fromLs : '1280x400');
+
+    const applySizeClass = (size) => {
+      valid.forEach((s) => document.body.classList.remove(`player-size-${s}`));
+      document.body.classList.add(`player-size-${size}`);
+      try { localStorage.setItem('player.profile.size', size); } catch {}
+      try {
+        const nu = new URL(location.href);
+        nu.searchParams.set('size', size);
+        history.replaceState(null, '', nu.toString());
+      } catch {}
+    };
+
+    if (sel) {
+      sel.value = initial;
+      sel.addEventListener('change', () => {
+        const v = String(sel.value || '1280x400');
+        applySizeClass(valid.includes(v) ? v : '1280x400');
+      });
+    }
+    applySizeClass(initial);
   } catch {}
 })();
 </script>
