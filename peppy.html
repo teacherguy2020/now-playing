@@ -334,8 +334,14 @@
         const linear = !!meterTypeLinear?.checked;
         if (linear) {
           if (progressEl.parentElement !== metersEl) metersEl.appendChild(progressEl);
+          progressEl.style.marginTop = '2px';
+          progressEl.style.marginLeft = '18px';
+          progressEl.style.width = 'calc(100% - 18px)';
         } else {
           if (progressEl.parentElement !== leftCard) leftCard.insertBefore(progressEl, leftCard.firstChild || null);
+          progressEl.style.marginTop = '0';
+          progressEl.style.marginLeft = '0';
+          progressEl.style.width = '100%';
         }
       }
       function syncMeterTypeClass(){
