@@ -38,19 +38,26 @@
       const stage=document.getElementById('stage');
       const KEY='player.profile.v2';
       const dims=s=>{const [w,h]=String(s).split('x').map(Number);return [w||1280,h||400];};
-      function apply(){
+      function applyScaleOnly(){
+        const size=sizeSel.value;
+        const [w,h]=dims(size);
+        const sw=Math.max(320,stage.clientWidth-20), sh=Math.max(220,stage.clientHeight-20);
+        frame.style.transform=`scale(${Math.max(0.25,Math.min(1,sw/w,sh/h))})`;
+      }
+      function apply(reload=true){
         const size=sizeSel.value; const theme=themeSel.value;
         const [w,h]=dims(size);
         frame.style.width=w+'px'; frame.style.height=h+'px';
         preview.width=w; preview.height=h; preview.style.width=w+'px'; preview.style.height=h+'px';
-        const sw=Math.max(320,stage.clientWidth-20), sh=Math.max(220,stage.clientHeight-20);
-        frame.style.transform=`scale(${Math.max(0.25,Math.min(1,sw/w,sh/h))})`;
-        preview.src=`player-render.html?kiosk=1&size=${encodeURIComponent(size)}&theme=${encodeURIComponent(theme)}&sw=${Date.now()}`;
+        applyScaleOnly();
+        if (reload) preview.src=`player-render.html?kiosk=1&size=${encodeURIComponent(size)}&theme=${encodeURIComponent(theme)}&sw=${Date.now()}`;
         localStorage.setItem(KEY,JSON.stringify({size,theme,ts:Date.now()}));
       }
       try{const p=JSON.parse(localStorage.getItem(KEY)||'{}'); if(p.size) sizeSel.value=p.size; if(p.theme) themeSel.value=p.theme;}catch{}
-      sizeSel.addEventListener('change',apply); themeSel.addEventListener('change',apply); window.addEventListener('resize',apply);
-      apply();
+      sizeSel.addEventListener('change',()=>apply(true));
+      themeSel.addEventListener('change',()=>apply(true));
+      window.addEventListener('resize',()=>applyScaleOnly());
+      apply(true);
     })();
   </script>
 </body>
