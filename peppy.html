@@ -248,7 +248,7 @@
         'midnight-blue': { bg:'#05070d', fg:'#e6efff', muted:'#9bb0d3', card:'#0d1422', card2:'#08101a', line:'#22324a', accent:'#7dd3fc', accent2:'#22c55e', dotBg:'#06101a', dotDim:'#3a516f' },
         'amber-night': { bg:'#0d0a05', fg:'#ffe9cc', muted:'#d5b88c', card:'#24170b', card2:'#170f07', line:'#5a3e21', accent:'#ffb347', accent2:'#ffd166', dotBg:'#4a1216', dotDim:'#b45a63' },
         'red-neon': { bg:'#120709', fg:'#ffe1e6', muted:'#d6a0ab', card:'#2a0f14', card2:'#1b0a0e', line:'#6e2b38', accent:'#ff5a7a', accent2:'#ff8fa3', dotBg:'#3a0f16', dotDim:'#934a58' },
-        'warm-parchment': { bg:'#e8e2d6', fg:'#201b16', muted:'#5b5247', card:'#d9cfbd', card2:'#cfc3af', line:'#b4a58b', accent:'#c68932', accent2:'#a96f22', dotBg:'#ddd1bf', dotDim:'#7f715d' },
+        'warm-parchment': { bg:'#e8e2d6', fg:'#201b16', muted:'#5b5247', card:'#d9cfbd', card2:'#cfc3af', line:'#b4a58b', accent:'#d6a43d', accent2:'#b98326', dotBg:'#0f1116', dotDim:'#6a5428' },
         'graphite-green': { bg:'#060b08', fg:'#d9f5e3', muted:'#9cc9ae', card:'#0f1a14', card2:'#0a120d', line:'#284536', accent:'#67e8a5', accent2:'#34d399', dotBg:'#08140f', dotDim:'#2f5a45' },
         'silver-black': { bg:'#08090b', fg:'#edf1f7', muted:'#aab4c3', card:'#171b21', card2:'#0f1217', line:'#3a4352', accent:'#93c5fd', accent2:'#60a5fa', dotBg:'#111620', dotDim:'#455064' },
         'obsidian-black': { bg:'#000000', fg:'#f3f6fb', muted:'#9aa3b3', card:'#050608', card2:'#010204', line:'#2a2f38', accent:'#dbe4f2', accent2:'#9aa8bd', dotBg:'#06080b', dotDim:'#39414d' },
@@ -1128,6 +1128,15 @@
         const npbBorder = String(cs.getPropertyValue('--npb-card-border') || '').trim();
         const npbText = String(cs.getPropertyValue('--npb-text') || '').trim();
         const npbAccent = String(cs.getPropertyValue('--npb-tab-active-bg') || '').trim() || String(cs.getPropertyValue('--npb-star') || '').trim();
+        const theme = String(themeName?.value || '').trim();
+        if (theme === 'warm-parchment') {
+          return {
+            bg: '#0f1116',
+            dim: '#6a5428',
+            on: '#ffd978',
+            glow: '#e6b85a',
+          };
+        }
         return {
           bg: npbBg || String(cs.getPropertyValue('--dot-bg') || '').trim() || '#06101a',
           dim: npbBorder || String(cs.getPropertyValue('--dot-dim') || '').trim() || '#3a516f',
