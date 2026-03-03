@@ -2041,9 +2041,14 @@
             return m ? m[0] : yRaw;
           })();
           const br = String(j?.bitrate || '').trim();
-          const srRaw = String(j?.samplerate || '').trim();
-          const bd = String(j?.bitdepth || '').trim();
-          const ch = String(j?.channels || '').trim();
+          const encodedRaw = String(j?.encoded || '').trim();
+          const outrateRaw = String(j?.outrate || '').trim();
+          const srExtract = (String(j?.samplerate || '').match(/\d+(?:\.\d+)?/) || encodedRaw.match(/(?:\b\d{2}\s*\/\s*)?(\d{2,3}(?:\.\d+)?)\s*kHz/i) || outrateRaw.match(/(?:\b\d{2}\s*\/\s*)?(\d{2,3}(?:\.\d+)?)\s*kHz/i) || [])[1] || String(j?.samplerate || '').trim();
+          const bdExtract = (String(j?.bitdepth || '').match(/\d+/) || encodedRaw.match(/\b(1|16|24|32)\s*(?:bit|\/)/i) || outrateRaw.match(/\b(1|16|24|32)\s*(?:bit|\/)/i) || [])[1] || String(j?.bitdepth || '').trim();
+          const chExtract = (String(j?.channels || '').match(/\d+(?:\.\d+)?/) || encodedRaw.match(/(?:,|\s)(\d(?:\.\d+)?)\s*ch\b/i) || outrateRaw.match(/(?:,|\s)(\d(?:\.\d+)?)\s*ch\b/i) || [])[1] || String(j?.channels || '').trim();
+          const srRaw = String(srExtract || '').trim();
+          const bd = String(bdExtract || '').trim();
+          const ch = String(chExtract || '').trim();
           const file = String(j?.file || '').trim();
           const peakKey = String(j?.songid || file || `${t}|${a}|${al}`).trim();
           if (peakKey && peakKey !== peakHoldTrackKey) {
