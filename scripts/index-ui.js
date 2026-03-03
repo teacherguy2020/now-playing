@@ -77,7 +77,7 @@ function bindAlbumArtAppleLinkOnce() {
   };
 
   document.addEventListener('click', (ev) => {
-    const hit = ev.target?.closest?.('#album-art, #album-art-video');
+    const hit = ev.target?.closest?.('#album-art-wrapper, #album-art, #album-art-video, #album-art-bg');
     if (!hit) return;
     ev.preventDefault();
     ev.stopPropagation();
@@ -85,7 +85,7 @@ function bindAlbumArtAppleLinkOnce() {
   }, { capture: true });
 
   document.addEventListener('touchend', (ev) => {
-    const hit = ev.target?.closest?.('#album-art, #album-art-video');
+    const hit = ev.target?.closest?.('#album-art-wrapper, #album-art, #album-art-video, #album-art-bg');
     if (!hit) return;
     try { ev.preventDefault(); } catch {}
     ev.stopPropagation();
