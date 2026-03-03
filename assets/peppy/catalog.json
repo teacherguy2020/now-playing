@@ -6,12 +6,7 @@
       "fgr": "assets/peppy/blue-1280-fgr.png",
       "needle": "assets/peppy/blue-1280-needle.png"
     },
-    {
-      "name": "blue-2",
-      "bgr": "assets/peppy/blue-2-bgr.png",
-      "fgr": "assets/peppy/blue-2-fgr.png",
-      "needle": "assets/peppy/blue-2-needle.png"
-    },
+
     {
       "name": "orange-1280",
       "bgr": "assets/peppy/orange-1280-bgr.png",
