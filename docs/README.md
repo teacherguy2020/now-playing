@@ -13,6 +13,7 @@ This docs set follows the same order as the app tabs.
 7. [Podcasts](./07-podcasts.md)
 8. [Theme](./13-theme.md)
 9. [moOde Display Enhancement](./14-display-enhancement.md)
+10. [moOde Remote Display Blanking Fix](./15-moode-remote-display-blanking-fix.md)
 
 ## Cross-cutting chapters
 
