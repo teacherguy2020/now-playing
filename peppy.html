@@ -729,7 +729,8 @@
           const panelW = Math.round(W * 0.90);
           const panelH = Math.round(H * 0.70);
           const sizeMode = String(previewLinearSize || 'm');
-          const sizeMul = sizeMode === 's' ? 0.78 : (sizeMode === 'l' ? 1.22 : 1.0);
+          // Calibrated so Medium feels balanced (previously too tall).
+          const sizeMul = sizeMode === 's' ? 0.58 : (sizeMode === 'l' ? 0.9 : 0.72);
           const laneBase = Math.max(14, Math.floor((panelH - 30) / 2));
           const laneH = Math.max(10, Math.round(laneBase * sizeMul));
           const pad = 18;
