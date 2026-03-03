@@ -240,8 +240,7 @@
     const host = location.hostname || '10.0.0.233';
     const proto = location.protocol || 'http:';
     const sameOriginUrl = new URL(page, location.href).toString();
-    const uiPathPrefix = String(location.pathname || '/').replace(/[^/]*$/, '');
-    const fallbackUrl = `${proto}//${host}:${uiPort}${uiPathPrefix}${page}`;
+    const fallbackUrl = `${proto}//${host}:${uiPort}/${String(page || '').replace(/^\/+/, '')}`;
     const fr = $(frameId);
     const a = $(linkId);
 
