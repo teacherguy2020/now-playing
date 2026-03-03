@@ -151,6 +151,10 @@
           <option value="segmented">Segmented</option>
           <option value="continuous">Continuous</option>
         </select>
+        <select id="linearColorMode" class="skinSelect" aria-label="Linear meter color mode">
+          <option value="theme">Linear: Theme</option>
+          <option value="classic">Linear: Green→Yellow→Red</option>
+        </select>
         <select id="needleSensitivity" class="skinSelect" aria-label="Needle sensitivity">
           <option value="low">Needle: Low</option>
           <option value="medium" selected>Needle: Medium</option>
@@ -317,9 +321,10 @@
         const fontModeVal = String(fontMode?.value || 'ui-sans');
         const fontSizeVal = String(fontSize?.value || 'm');
         const meterModeVal = (fontModeVal === 'ui-sans') ? 'continuous' : String(meterMode?.value || 'segmented');
+        const colorModeVal = String(linearColorMode?.value || previewColorMode || 'classic');
         const sensitivity = String(needleSensitivity?.value || previewSensitivity || 'medium');
         const smoothing = String(needleSmoothing?.value || previewSmoothing || 'medium');
-        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, sensitivity, smoothing, ts: Date.now() };
+        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, colorMode: colorModeVal, sensitivity, smoothing, ts: Date.now() };
       }
       function applyPreset(p){
         if (!p) return;
@@ -335,6 +340,11 @@
         if (p.meterMode) {
           previewMeterMode = String(p.meterMode);
           try { localStorage.setItem('peppy.meterMode', previewMeterMode); } catch {}
+        }
+        if (linearColorMode && p.colorMode) linearColorMode.value = String(p.colorMode);
+        if (p.colorMode) {
+          previewColorMode = String(p.colorMode);
+          try { localStorage.setItem('peppy.colorMode', previewColorMode); } catch {}
         }
         enforceMeterModeForFont();
         if (needleSensitivity && p.sensitivity) needleSensitivity.value = String(p.sensitivity);
@@ -369,6 +379,7 @@
       const meterTypeCircular = $('meterTypeCircular');
       const meterTypeLinear = $('meterTypeLinear');
       const meterMode = $('meterMode');
+      const linearColorMode = $('linearColorMode');
       const needleSensitivity = $('needleSensitivity');
       const needleSmoothing = $('needleSmoothing');
       const fontMode = $('fontMode');
@@ -622,7 +633,7 @@
       let previewMeterMode = (() => { try { return localStorage.getItem('peppy.meterMode') || 'segmented'; } catch { return 'segmented'; } })();
       let previewSensitivity = (() => { try { return localStorage.getItem('peppy.sensitivity') || 'medium'; } catch { return 'medium'; } })();
       let previewSmoothing = (() => { try { return localStorage.getItem('peppy.smoothing') || 'medium'; } catch { return 'medium'; } })();
-      const previewColorMode = 'classic';
+      let previewColorMode = (() => { try { return localStorage.getItem('peppy.colorMode') || 'classic'; } catch { return 'classic'; } })();
       const previewTheme = (() => {
         const fromUrl = String(qp.get('theme') || '').trim();
         if (fromUrl) return fromUrl;
@@ -631,6 +642,7 @@
       applyTheme(previewTheme);
       if (themeName) themeName.value = previewTheme;
       if (meterMode) meterMode.value = previewMeterMode;
+      if (linearColorMode) linearColorMode.value = (previewColorMode === 'theme' ? 'theme' : 'classic');
       enforceMeterModeForFont();
       if (needleSensitivity) needleSensitivity.value = ['low','medium','high'].includes(previewSensitivity) ? previewSensitivity : 'medium';
       if (needleSmoothing) needleSmoothing.value = ['off','low','medium','high'].includes(previewSmoothing) ? previewSmoothing : 'medium';
@@ -690,7 +702,7 @@
             const gap = 2;
             const segW = Math.max(2, Math.floor((w - (segs - 1) * gap) / segs));
             const lit = Math.round((clamp(level) / 100) * segs);
-            const useThemeTint = (previewMeterMode === 'continuous');
+            const useThemeTint = (String(previewColorMode || 'classic') === 'theme');
 
             ctx.fillStyle = 'rgba(10,18,30,.9)';
             ctx.fillRect(x0, y, w, h);
@@ -1649,6 +1661,12 @@
         paintSegments(pseg, lastProgressPct);
         publishProfileState();
       });
+      linearColorMode?.addEventListener('change', () => {
+        previewColorMode = String(linearColorMode?.value || 'classic');
+        try { localStorage.setItem('peppy.colorMode', previewColorMode); } catch {}
+        drawNeedles();
+        publishProfileState();
+      });
       needleSensitivity?.addEventListener('change', () => {
         previewSensitivity = String(needleSensitivity?.value || 'medium');
         try { localStorage.setItem('peppy.sensitivity', previewSensitivity); } catch {}
@@ -1709,6 +1727,7 @@
           const fm = String(p?.fontMode || '').trim();
           const fsz = String(p?.fontSize || '').trim();
           const mm = String(p?.meterMode || '').trim();
+          const cm = String(p?.colorMode || '').trim();
           const sens = String(p?.sensitivity || '').trim().toLowerCase();
           const smooth = String(p?.smoothing || '').trim().toLowerCase();
           if (!hasSkinParam && s) {
@@ -1736,6 +1755,11 @@
           if (mm === 'segmented' || mm === 'continuous') {
             if (meterMode) meterMode.value = mm;
             try { localStorage.setItem('peppy.meterMode', mm); } catch {}
+          }
+          if (cm === 'theme' || cm === 'classic') {
+            previewColorMode = cm;
+            if (linearColorMode) linearColorMode.value = cm;
+            try { localStorage.setItem('peppy.colorMode', cm); } catch {}
           }
           enforceMeterModeForFont();
           if (sens === 'low' || sens === 'medium' || sens === 'high') {
