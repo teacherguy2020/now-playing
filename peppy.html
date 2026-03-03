@@ -584,11 +584,23 @@
           const linear = !!meterTypeLinear?.checked;
           let leftPx = Math.max(0, Math.round(needleRect.left - cardRect.left));
           let widthPx = Math.max(40, Math.round(needleRect.width));
-          if (linear) {
-            // Match the actual linear rail span (not full needleWrap background).
+          if (linear && lastLinearLayout) {
+            const canvasLeft = Math.max(0, Math.round(needleRect.left - cardRect.left));
+            const canvasTop = Math.max(0, Math.round(needleRect.top - cardRect.top));
+            leftPx = Math.max(0, Math.round(canvasLeft + lastLinearLayout.panelX + lastLinearLayout.pad));
+            widthPx = Math.max(40, Math.round(lastLinearLayout.railW));
+            const topPx = Math.max(0, Math.round(canvasTop + lastLinearLayout.panelY + lastLinearLayout.panelH + 6));
+            progressEl.style.top = `${topPx}px`;
+            progressEl.style.bottom = 'auto';
+          } else if (linear) {
             const railInsetPx = 30 + ((widthPx - 30) * 0.05);
             leftPx = Math.max(0, Math.round(leftPx + railInsetPx));
             widthPx = Math.max(40, Math.round(widthPx - (railInsetPx * 2)));
+            progressEl.style.top = 'auto';
+            progressEl.style.bottom = '0';
+          } else {
+            progressEl.style.top = 'auto';
+            progressEl.style.bottom = '0';
           }
           progressEl.style.left = `${leftPx}px`;
           progressEl.style.right = 'auto';
@@ -600,8 +612,6 @@
         }
         progressEl.style.marginLeft = '0';
         progressEl.style.marginTop = '0';
-        progressEl.style.bottom = '0';
-        progressEl.style.top = 'auto';
         progressEl.style.zIndex = '3';
       }
       function syncLinearControlVisibility(){
@@ -729,6 +739,7 @@
         controlsEl.style.bottom = '10px';
       }
       const meterState = { L: { target: 0, cur: 0 }, R: { target: 0, cur: 0 } };
+      let lastLinearLayout = null;
       const peakHold = { L: 0, R: 0 };
       let peakHoldTrackKey = '';
       let spectrumState = Array.from({ length: 24 }, () => 0);
@@ -879,6 +890,7 @@
         ctx.clearRect(0,0,W,H);
 
         const linearMode = !!meterTypeLinear?.checked;
+        lastLinearLayout = null;
         if (linearMode) {
           const panelX = Math.round(W * 0.06);
           const panelW = Math.round(W * 0.90);
@@ -1017,6 +1029,8 @@
           drawRail(topY, meterState.L.cur, 'L', 'L');
           drawRail(botY, meterState.R.cur, 'R', 'R');
           drawSpectrumOverlay(ctx, panelX + 10, panelY + panelH - 18, panelW - 20, 12);
+          lastLinearLayout = { panelX, panelY, panelW, panelH, pad, railW: w };
+          syncProgressPlacement();
           return;
         }
 
