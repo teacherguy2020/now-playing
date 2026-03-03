@@ -62,6 +62,8 @@
     /* Compact profiles: keep classic 2x3 controls; JS positions block in left-column gap above art. */
     body.screen-compact .controls{height:208px;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start}
     body.screen-1024x320 .card.left{display:grid;grid-template-rows:minmax(0,3fr) minmax(0,0.75fr);align-items:stretch}
+    body.screen-1024x320 .meta{padding:0 8px 0;gap:0}
+    body.screen-1024x320 .dotline.title{height:44px}
     body.screen-1024x320 #leftMetaSlot:empty{display:none}
     body.screen-1024x320 .artFrame{grid-row:1;align-self:start}
     body.screen-1024x320 .controls{position:static;grid-row:2;height:44px;grid-template-columns:repeat(6,46px);grid-template-rows:44px;column-gap:4px;row-gap:0;justify-self:center;align-self:center;z-index:4}
