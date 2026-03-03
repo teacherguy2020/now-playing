@@ -1929,9 +1929,9 @@
           const titleDot = (isWarmParchment ? 1.8 : 1.4) * scale;
           const metaDot = (isWarmParchment ? 0.85 : 0.7) * Math.max(0.9, scale);
           if (compactHeader3) {
+            const is1280 = (sp === '1280x400');
             const metaShort = `${dotFileMeta} ${dotFileMeta2}`.replace(/\s+/g,' ').trim();
             const row3 = is1280 ? `${dotAlbumYear}` : `${dotAlbumYear} • ${metaShort}`;
-            const is1280 = (sp === '1280x400');
             const headSize = is1280 ? 50 : 42;
             const row3Size = is1280 ? 50 : 38;
             const headDot = Math.max(1.0, titleDot * (is1280 ? 1.12 : 0.88));
