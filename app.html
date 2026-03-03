@@ -1870,10 +1870,14 @@
           if (meterType) lastPeppyProfile.meterType = meterType;
           if (fontMode) lastPeppyProfile.fontMode = fontMode;
           if (fontSize) lastPeppyProfile.fontSize = fontSize;
-          if (linearStyle) lastPeppyProfile.linearStyle = linearStyle;
+          if (linearStyle) {
+            lastPeppyProfile.linearStyle = linearStyle;
+            lastPeppyProfile.meterMode = (linearStyle === 'cassette') ? 'segmented' : 'continuous';
+            lastPeppyProfile.colorMode = (linearStyle === 'continuous-theme') ? 'theme' : 'classic';
+          }
           if (linearSize) lastPeppyProfile.linearSize = linearSize;
-          if (meterMode) lastPeppyProfile.meterMode = meterMode;
-          if (colorMode) lastPeppyProfile.colorMode = colorMode;
+          if (!linearStyle && meterMode) lastPeppyProfile.meterMode = meterMode;
+          if (!linearStyle && colorMode) lastPeppyProfile.colorMode = colorMode;
           if (Number.isFinite(normalization) && normalization > 0) lastPeppyProfile.normalization = normalization;
           if (displayMode) lastPeppyProfile.displayMode = displayMode;
           lastPeppyProfile.ts = Date.now();
@@ -3357,10 +3361,14 @@
           if (meterType) lastPeppyProfile.meterType = meterType;
           if (fontMode) lastPeppyProfile.fontMode = fontMode;
           if (fontSize) lastPeppyProfile.fontSize = fontSize;
-          if (linearStyle) lastPeppyProfile.linearStyle = linearStyle;
+          if (linearStyle) {
+            lastPeppyProfile.linearStyle = linearStyle;
+            lastPeppyProfile.meterMode = (linearStyle === 'cassette') ? 'segmented' : 'continuous';
+            lastPeppyProfile.colorMode = (linearStyle === 'continuous-theme') ? 'theme' : 'classic';
+          }
           if (linearSize) lastPeppyProfile.linearSize = linearSize;
-          if (meterMode) lastPeppyProfile.meterMode = meterMode;
-          if (colorMode) lastPeppyProfile.colorMode = colorMode;
+          if (!linearStyle && meterMode) lastPeppyProfile.meterMode = meterMode;
+          if (!linearStyle && colorMode) lastPeppyProfile.colorMode = colorMode;
           if (Number.isFinite(normalization) && normalization > 0) lastPeppyProfile.normalization = normalization;
           lastPeppyProfile.ts = Number(d.ts || Date.now()) || Date.now();
           try {

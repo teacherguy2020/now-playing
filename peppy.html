@@ -793,8 +793,14 @@
 
               if (useThemeTint) {
                 const rgb = getComputedStyle(document.documentElement).getPropertyValue('--progress-rgb').trim() || '46,185,238';
-                ctx.fillStyle = `rgba(${rgb},.82)`;
-                ctx.fillRect(x0 + 1, y + 3, Math.max(0, fillW - 2), h - 6);
+                const fw = Math.max(0, fillW - 2);
+                const gx = x0 + 1;
+                const g = ctx.createLinearGradient(gx, 0, gx + Math.max(1, fw), 0);
+                g.addColorStop(0, `rgba(${rgb},.26)`);
+                g.addColorStop(0.55, `rgba(${rgb},.58)`);
+                g.addColorStop(1, `rgba(${rgb},.92)`);
+                ctx.fillStyle = g;
+                ctx.fillRect(gx, y + 3, fw, h - 6);
               } else {
                 const greenEnd = Math.floor(w * 0.62);
                 const yellowEnd = Math.floor(w * 0.82);
