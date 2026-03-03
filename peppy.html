@@ -1312,8 +1312,7 @@
       function paintSegments(segs, v){
         const c = clamp(v);
         const fm = String(fontMode?.value || previewFontMode || 'ui-sans');
-        const linearActive = !!meterTypeLinear?.checked;
-        const forceContinuous = linearActive || (fm === 'ui-sans' || fm === 'ui-sans-condensed' || fm === 'inter-tight' || fm === 'montserrat');
+        const forceContinuous = (fm === 'ui-sans' || fm === 'ui-sans-condensed' || fm === 'inter-tight' || fm === 'montserrat');
         if (forceContinuous) {
           segs.forEach((el) => {
             el.classList.remove('active', 'tail');
