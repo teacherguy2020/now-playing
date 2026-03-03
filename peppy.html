@@ -113,8 +113,6 @@
   <div id="wrap" class="wrap">
     <section class="card left">
       <div class="progress" style="margin:0;width:100%;border-left:none;border-right:none;border-bottom:none;"><div id="trackProgress" class="progressSegbar"></div></div>
-      <canvas class="dotline small leftFileMeta" id="fileMetaCanvas" width="640" height="24"></canvas>
-      <canvas class="dotline small leftFileMeta" id="fileMetaCanvas2" width="640" height="24"></canvas>
       <div class="artFrame" id="artFrame">
         <img id="art" alt="Album art" src="" />
         <video id="artVideo" muted loop playsinline preload="metadata" style="display:none;"></video>
@@ -127,6 +125,8 @@
         <canvas class="dotline title" id="artistCanvas" width="1200" height="88"></canvas>
         <canvas class="dotline title" id="titleCanvas" width="1200" height="88"></canvas>
         <canvas class="dotline title" id="albumYearCanvas" width="1200" height="88"></canvas>
+        <canvas class="dotline small leftFileMeta" id="fileMetaCanvas" width="640" height="24"></canvas>
+        <canvas class="dotline small leftFileMeta" id="fileMetaCanvas2" width="640" height="24"></canvas>
       </div>
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
@@ -680,14 +680,12 @@
           controlsEl.style.left = '36px';
           controlsEl.style.right = 'auto';
           controlsEl.style.bottom = 'auto';
-          let topPx = 92;
+          let topPx = 24;
           try {
             const cardRect = leftCard.getBoundingClientRect();
-            const meta2Rect = fileMetaCanvas2?.getBoundingClientRect?.();
             const artFrameRect = document.getElementById('artFrame')?.getBoundingClientRect?.();
-            if (meta2Rect) topPx = Math.max(76, Math.round(meta2Rect.bottom - cardRect.top + 8));
             if (artFrameRect) {
-              const maxTop = Math.max(76, Math.round(artFrameRect.top - cardRect.top - 208 - 8));
+              const maxTop = Math.max(12, Math.round(artFrameRect.top - cardRect.top - 208 - 8));
               topPx = Math.min(topPx, maxTop);
             }
           } catch {}
