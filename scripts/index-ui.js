@@ -49,15 +49,48 @@ function bindAlbumArtAppleLinkOnce() {
   if (artAppleLinkBound) return;
   artAppleLinkBound = true;
 
+  let artTapLockUntil = 0;
+  const switchToPeppyFromArt = async () => {
+    const now = Date.now();
+    if (now < artTapLockUntil) return;
+    artTapLockUntil = now + 1200;
+
+    // In app shell, delegate to parent.
+    try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
+
+    // Standalone/kiosk fallback.
+    try {
+      if (window.parent === window) {
+        const key = await ensureRuntimeTrackKey();
+        const headers = { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) };
+        await fetch(`${API_BASE}/config/moode/display-mode`, {
+          method: 'POST', headers, body: JSON.stringify({ displayMode: 'peppy' })
+        }).catch(() => null);
+        const host = (location.hostname || '10.0.0.233');
+        const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+        await fetch(`${API_BASE}/config/moode/browser-url`, {
+          method: 'POST', headers, body: JSON.stringify({ url: targetUrl })
+        }).catch(() => null);
+        location.href = `${targetUrl}&ts=${Date.now()}`;
+      }
+    } catch {}
+  };
+
   document.addEventListener('click', (ev) => {
     const hit = ev.target?.closest?.('#album-art, #album-art-video');
     if (!hit) return;
-    const href = String(document.getElementById('album-art-wrapper')?.dataset?.appleUrl || '').trim();
-    if (!href) return;
     ev.preventDefault();
     ev.stopPropagation();
-    try { window.open(href, '_blank', 'noopener'); } catch {}
+    switchToPeppyFromArt();
   }, { capture: true });
+
+  document.addEventListener('touchend', (ev) => {
+    const hit = ev.target?.closest?.('#album-art, #album-art-video');
+    if (!hit) return;
+    try { ev.preventDefault(); } catch {}
+    ev.stopPropagation();
+    switchToPeppyFromArt();
+  }, { passive: false, capture: true });
 }
 
 function bindFavoriteUIOnce() {
