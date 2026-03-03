@@ -771,7 +771,7 @@
                 }
               });
               const free = Math.max(0, freeFromArt - controlsH);
-              topPx = artBottom + Math.round(free / 2);
+              topPx = artBottom + Math.round(free / 2) + 14;
             } else {
               // Reset any 1024-specific inline sizing when leaving that profile.
               controlsEl.style.gridTemplateColumns = '';
