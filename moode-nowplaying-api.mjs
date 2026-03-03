@@ -419,16 +419,29 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
 // PeppyMeter bridge (HTTP level data -> app API)
-let peppyMeterLast = { left: 0, right: 0, mono: 0, ts: 0, source: 'init' };
+let peppyMeterLast = { left: 0, right: 0, mono: 0, spectrum: [], ts: 0, source: 'init' };
 app.put('/peppy/vumeter', (req, res) => {
   try {
     const left = Number(req?.body?.left ?? req?.query?.left ?? 0);
     const right = Number(req?.body?.right ?? req?.query?.right ?? 0);
     const mono = Number(req?.body?.mono ?? req?.query?.mono ?? 0);
+
+    let spectrumRaw = req?.body?.spectrum ?? req?.query?.spectrum ?? [];
+    if (typeof spectrumRaw === 'string') {
+      try { spectrumRaw = JSON.parse(spectrumRaw); } catch { spectrumRaw = []; }
+    }
+    const spectrum = Array.isArray(spectrumRaw)
+      ? spectrumRaw.slice(0, 128).map((v) => {
+          const n = Number(v);
+          return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+        })
+      : [];
+
     peppyMeterLast = {
       left: Number.isFinite(left) ? Math.max(0, Math.min(100, left)) : 0,
       right: Number.isFinite(right) ? Math.max(0, Math.min(100, right)) : 0,
       mono: Number.isFinite(mono) ? Math.max(0, Math.min(100, mono)) : 0,
+      spectrum,
       ts: Date.now(),
       source: req?.ip || 'unknown',
     };

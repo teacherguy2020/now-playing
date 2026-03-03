@@ -544,6 +544,7 @@
       const meterState = { L: { target: 0, cur: 0 }, R: { target: 0, cur: 0 } };
       const peakHold = { L: 0, R: 0 };
       let peakHoldTrackKey = '';
+      let spectrumState = Array.from({ length: 24 }, () => 0);
       function setTarget(k, v){
         const s = String(needleSensitivity?.value || previewSensitivity || 'medium');
         const mul = s === 'low' ? 0.8 : (s === 'high' ? 1.25 : 1.0);
@@ -642,6 +643,23 @@
         return { color: c, alpha: warm ? 0.22 : 0.14 };
       }
 
+      function drawSpectrumOverlay(ctx, x, y, w, h) {
+        const bins = Array.isArray(spectrumState) ? spectrumState : [];
+        if (!bins.length || w <= 10 || h <= 6) return;
+        const n = Math.min(32, bins.length);
+        const gap = 2;
+        const bw = Math.max(2, Math.floor((w - ((n - 1) * gap)) / n));
+        const rgb = getComputedStyle(document.documentElement).getPropertyValue('--progress-rgb').trim() || '46,185,238';
+        for (let i = 0; i < n; i++) {
+          const v = Math.max(0, Math.min(100, Number(bins[i] || 0)));
+          const bh = Math.max(1, Math.round((h * v) / 100));
+          const bx = x + i * (bw + gap);
+          const by = y + (h - bh);
+          ctx.fillStyle = `rgba(${rgb},${0.16 + (0.5 * (v / 100))})`;
+          ctx.fillRect(bx, by, bw, bh);
+        }
+      }
+
       function drawNeedles(){
         const p = prepCanvas(needleCanvas);
         if (!p) return;
@@ -737,6 +755,7 @@
 
           drawRail(topY, meterState.L.cur, 'L', 'L');
           drawRail(botY, meterState.R.cur, 'R', 'R');
+          drawSpectrumOverlay(ctx, panelX + 10, panelY + panelH - 18, panelW - 20, 12);
           return;
         }
 
@@ -831,6 +850,7 @@
 
         drawOne(startX, meterState.L.cur, 'L');
         drawOne(startX + meterW + gap, meterState.R.cur, 'R');
+        drawSpectrumOverlay(ctx, Math.max(6, startX), Math.max(6, H - 16), Math.min(W - 12, groupW), 10);
       }
 
       function buildProgressSegments(el){
@@ -1465,9 +1485,20 @@
           const m = j?.meter || {};
           setTarget('L', m.left);
           setTarget('R', m.right);
-          if (!j?.fresh) { setTarget('L', 0); setTarget('R', 0); }
+          const binsRaw = Array.isArray(m?.spectrum) ? m.spectrum : [];
+          if (binsRaw.length) {
+            spectrumState = binsRaw.slice(0, 32).map((v) => {
+              const n = Number(v);
+              return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+            });
+          }
+          if (!j?.fresh) {
+            setTarget('L', 0); setTarget('R', 0);
+            spectrumState = spectrumState.map(() => 0);
+          }
         } catch {
           setTarget('L', 0); setTarget('R', 0);
+          spectrumState = spectrumState.map(() => 0);
         }
       }
 
