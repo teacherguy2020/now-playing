@@ -751,7 +751,9 @@
               const colGap = 6;
               const rowGap = 6;
               const maxByWidth = Math.floor((cardW - 16 - (colGap * 2)) / 3);
-              const freeFromArt = Math.max(0, cardH - artBottom - gapTop - gapBottom);
+              const artSafety = 16; // account for art frame outline/shadow visual footprint
+              const artBottomSafe = artBottom + artSafety;
+              const freeFromArt = Math.max(0, cardH - artBottomSafe - gapTop - gapBottom);
               const maxByHeight = Math.floor((freeFromArt - rowGap) / 2);
               const btn = Math.max(22, Math.min(40, maxByWidth, maxByHeight));
               controlsW = (btn * 3) + (colGap * 2);
@@ -771,8 +773,8 @@
                   svg.style.height = `${s}px`;
                 }
               });
-              // Bottom anchored, guaranteed top clearance from art.
-              topPx = Math.max(artBottom + gapTop, cardH - controlsH - gapBottom);
+              // Bottom anchored, guaranteed top clearance from art (with safety for glow/outline).
+              topPx = Math.max(artBottomSafe + gapTop, cardH - controlsH - gapBottom);
             } else {
               // Reset any 1024-specific inline sizing when leaving that profile.
               controlsEl.style.gridTemplateColumns = '';
