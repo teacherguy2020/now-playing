@@ -71,7 +71,7 @@
     body.screen-1280x400 .meters{width:min(900px, calc(100% - 12px));left:50%;right:auto;transform:translateX(-50%)}
     body.screen-1280x400 .needleWrap{height:228px}
     body.screen-1280x400 .meta{padding:0 8px 0;gap:0}
-    body.screen-1280x400 .dotline.title{height:44px}
+    body.screen-1280x400 .dotline.title{height:52px}
     .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#9db0c7;letter-spacing:.3px}
     .fmtLed{width:7px;height:7px;border-radius:50%;background:#1e2e22;border:1px solid #3d5f45;box-shadow:inset 0 0 2px rgba(0,0,0,.55)}
     .fmtItem.on .fmtLed{background:#67f18b;border-color:#9ff7b4;box-shadow:0 0 6px rgba(108,241,148,.8), 0 0 12px rgba(108,241,148,.35)}
@@ -1880,14 +1880,15 @@
             const metaShort = `${dotFileMeta} ${dotFileMeta2}`.replace(/\s+/g,' ').trim();
             const row3 = `${dotAlbumYear} • ${metaShort}`;
             const is1280 = (sp === '1280x400');
-            const headSize = is1280 ? 46 : 42;
-            const row3Size = is1280 ? 42 : 38;
-            const headDot = Math.max(1.0, titleDot * (is1280 ? 0.94 : 0.88));
-            const row3Dot = Math.max(0.9, metaDot * (is1280 ? 1.2 : 1.1));
+            const headSize = is1280 ? 50 : 42;
+            const row3Size = is1280 ? 46 : 38;
+            const headDot = Math.max(1.0, titleDot * (is1280 ? 1.12 : 0.88));
+            const row3Dot = Math.max(0.9, metaDot * (is1280 ? 1.32 : 1.1));
             const glyphH = is1280 ? 9 : 7;
-            drawDotText(artistCanvas, dotArtist, { size: headSize, pitch: 3, dot: headDot, glyphH, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
-            drawDotText(titleCanvas, dotTitle, { size: headSize, pitch: 3, dot: headDot, glyphH, padY: 1, rowShift: 1, font: '"Arial Black", "Segoe UI", sans-serif' });
-            drawDotText(albumYearCanvas, row3, { size: row3Size, pitch: 3, dot: row3Dot, glyphH, padY: 1, rowShift: 2, font: '"Arial Black", "Segoe UI", sans-serif' });
+            const pitch = is1280 ? 4 : 3;
+            drawDotText(artistCanvas, dotArtist, { size: headSize, pitch, dot: headDot, glyphH, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(titleCanvas, dotTitle, { size: headSize, pitch, dot: headDot, glyphH, padY: 1, rowShift: 1, font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(albumYearCanvas, row3, { size: row3Size, pitch, dot: row3Dot, glyphH, padY: 1, rowShift: 2, font: '"Arial Black", "Segoe UI", sans-serif' });
             if (fileMetaCanvas) drawDotText(fileMetaCanvas, ' ', { size: 22, pitch: 2, dot: 0.01, padY: 0, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
           } else {
             drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
