@@ -425,10 +425,9 @@
         if (themeName && pp.theme) themeName.value = String(pp.theme);
         if (fontMode && pp.fontMode) fontMode.value = String(pp.fontMode);
         if (fontSize && pp.fontSize) fontSize.value = String(pp.fontSize);
-        // Don't force screen profile from legacy presets that never specified one.
-        // Preserve currently selected screen (e.g., 800x480) unless preset explicitly carries size.
-        const presetHasSize = Object.prototype.hasOwnProperty.call((p || {}), 'playerSize') || Object.prototype.hasOwnProperty.call((p || {}), 'screenProfile');
-        if (presetHasSize) applyScreenProfile(pp.playerSize || '1280x400');
+        // Keep current screen profile while previewing presets.
+        // Screen size should only change from the explicit Screen selector.
+        applyScreenProfile(screenProfile?.value || previewScreenProfile || '1280x400');
         const ls = toLinearStyle(pp);
         if (linearStyle) linearStyle.value = ls;
         previewLinearStyle = ls;
@@ -718,18 +717,19 @@
 
       function updateIframeControlAnchor(_groupW = 0){
         if (!controlsEl || !leftCard || !rightCard) return;
-        if (normalizeScreenProfile(previewScreenProfile) === '800x480') {
+        if (normalizeScreenProfile(screenProfile?.value || previewScreenProfile) === '800x480') {
           if (controlsEl.parentElement !== leftCard) leftCard.appendChild(controlsEl);
-          controlsEl.style.left = '36px';
+          const controlsW = 60 * 2 + 8;
+          const cardW = Math.max(140, leftCard.clientWidth || 200);
+          const leftPx = Math.max(8, Math.min(14, cardW - controlsW - 8));
+          controlsEl.style.left = `${leftPx}px`;
           controlsEl.style.right = 'auto';
           controlsEl.style.bottom = 'auto';
           let topPx = 180;
           try {
             const cardRect = leftCard.getBoundingClientRect();
             const artFrameRect = document.getElementById('artFrame')?.getBoundingClientRect?.();
-            if (artFrameRect) {
-              topPx = Math.round(artFrameRect.bottom - cardRect.top + 8);
-            }
+            if (artFrameRect) topPx = Math.round(artFrameRect.bottom - cardRect.top + 8);
           } catch {}
           try {
             const maxTop = Math.max(8, (leftCard.clientHeight || 480) - 208 - 8);
