@@ -300,13 +300,22 @@
         { name:'Obsidian Ember Matrix', skin:'orange-1280', theme:'obsidian-black', meterType:'circular', fontMode:'dot-matrix', fontSize:'xl', meterMode:'segmented', sensitivity:'high', smoothing:'low' },
         { name:'Gray Ghost', skin:'cassette-linear', theme:'obsidian-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'xl', meterMode:'continuous', sensitivity:'low', smoothing:'off' },
       ];
+      function enforceMeterModeForFont(){
+        const fm = String(fontMode?.value || previewFontMode || 'ui-sans');
+        if (fm === 'ui-sans') {
+          previewMeterMode = 'continuous';
+          if (meterMode) meterMode.value = 'continuous';
+          try { localStorage.setItem('peppy.meterMode', 'continuous'); } catch {}
+        }
+      }
+
       function getCurrentProfile(){
         const skin = String(skinName?.value || previewSkin || '').trim();
         const theme = String(themeName?.value || '').trim();
         const meterType = meterTypeLinear?.checked ? 'linear' : 'circular';
         const fontModeVal = String(fontMode?.value || 'ui-sans');
         const fontSizeVal = String(fontSize?.value || 'm');
-        const meterModeVal = String(meterMode?.value || 'segmented');
+        const meterModeVal = (fontModeVal === 'ui-sans') ? 'continuous' : String(meterMode?.value || 'segmented');
         const sensitivity = String(needleSensitivity?.value || previewSensitivity || 'medium');
         const smoothing = String(needleSmoothing?.value || previewSmoothing || 'medium');
         return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, sensitivity, smoothing, ts: Date.now() };
@@ -326,6 +335,7 @@
           previewMeterMode = String(p.meterMode);
           try { localStorage.setItem('peppy.meterMode', previewMeterMode); } catch {}
         }
+        enforceMeterModeForFont();
         if (needleSensitivity && p.sensitivity) needleSensitivity.value = String(p.sensitivity);
         if (needleSmoothing && p.smoothing) needleSmoothing.value = String(p.smoothing);
         previewSkin = String(skinName?.value || p.skin || previewSkin || 'blue-1280');
@@ -619,6 +629,7 @@
       applyTheme(previewTheme);
       if (themeName) themeName.value = previewTheme;
       if (meterMode) meterMode.value = previewMeterMode;
+      enforceMeterModeForFont();
       if (needleSensitivity) needleSensitivity.value = ['low','medium','high'].includes(previewSensitivity) ? previewSensitivity : 'medium';
       if (needleSmoothing) needleSmoothing.value = ['off','low','medium','high'].includes(previewSmoothing) ? previewSmoothing : 'medium';
 
@@ -1560,6 +1571,8 @@
       fontMode?.addEventListener('change', () => {
         previewFontMode = String(fontMode?.value || 'ui-sans');
         try { localStorage.setItem('peppy.fontMode', previewFontMode); } catch {}
+        enforceMeterModeForFont();
+        drawNeedles();
         redrawDotCanvases();
         publishProfileState();
       });
@@ -1571,6 +1584,7 @@
       });
       meterMode?.addEventListener('change', () => {
         previewMeterMode = String(meterMode?.value || 'segmented');
+        enforceMeterModeForFont();
         try { localStorage.setItem('peppy.meterMode', previewMeterMode); } catch {}
         drawNeedles();
         publishProfileState();
@@ -1663,6 +1677,7 @@
             if (meterMode) meterMode.value = mm;
             try { localStorage.setItem('peppy.meterMode', mm); } catch {}
           }
+          enforceMeterModeForFont();
           if (sens === 'low' || sens === 'medium' || sens === 'high') {
             previewSensitivity = sens;
             if (needleSensitivity) needleSensitivity.value = sens;
