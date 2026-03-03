@@ -578,8 +578,15 @@
         if (needleWrapEl) {
           const cardRect = rightCard.getBoundingClientRect();
           const needleRect = needleWrapEl.getBoundingClientRect();
-          const leftPx = Math.max(0, Math.round(needleRect.left - cardRect.left));
-          const widthPx = Math.max(40, Math.round(needleRect.width));
+          const linear = !!meterTypeLinear?.checked;
+          let leftPx = Math.max(0, Math.round(needleRect.left - cardRect.left));
+          let widthPx = Math.max(40, Math.round(needleRect.width));
+          if (linear) {
+            // Match the actual linear rail span (not full needleWrap background).
+            const railInsetPx = 30 + ((widthPx - 30) * 0.05);
+            leftPx = Math.max(0, Math.round(leftPx + railInsetPx));
+            widthPx = Math.max(40, Math.round(widthPx - (railInsetPx * 2)));
+          }
           progressEl.style.left = `${leftPx}px`;
           progressEl.style.right = 'auto';
           progressEl.style.width = `${widthPx}px`;
