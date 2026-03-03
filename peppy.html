@@ -649,50 +649,17 @@
         return { geometry: linear ? 'linear' : 'circular' };
       }
       function syncProgressPlacement(){
-        if (!progressEl || !metersEl || !rightCard) return;
+        if (!progressEl || !rightCard) return;
+        // Consistent across all meter modes:
+        // full width of right column, anchored to display bottom.
         if (progressEl.parentElement !== rightCard) rightCard.appendChild(progressEl);
         progressEl.style.position = 'absolute';
-        const needleWrapEl = metersEl.querySelector('.needleWrap');
-        if (needleWrapEl) {
-          const cardRect = rightCard.getBoundingClientRect();
-          const needleRect = needleWrapEl.getBoundingClientRect();
-          const linear = !!meterTypeLinear?.checked;
-          const meterLeft = Math.max(0, Math.round(needleRect.left - cardRect.left));
-          const meterWidth = Math.max(40, Math.round(needleRect.width));
-          let leftPx = meterLeft;
-          let widthPx = meterWidth;
-          if (linear && lastLinearLayout) {
-            const canvasTop = Math.max(0, Math.round(needleRect.top - cardRect.top));
-            const railW = Math.max(40, Math.round(lastLinearLayout.railW));
-            // Keep progress centered on the visible linear rail block.
-            leftPx = Math.max(0, Math.round(meterLeft + ((meterWidth - railW) / 2)));
-            widthPx = railW;
-            const topPx = Math.max(0, Math.round(canvasTop + lastLinearLayout.panelY + lastLinearLayout.panelH + 6));
-            progressEl.style.top = `${topPx}px`;
-            progressEl.style.bottom = 'auto';
-          } else if (linear) {
-            const railInsetPx = 30 + ((meterWidth - 30) * 0.05);
-            widthPx = Math.max(40, Math.round(meterWidth - (railInsetPx * 2)));
-            leftPx = Math.max(0, Math.round(meterLeft + ((meterWidth - widthPx) / 2)));
-            progressEl.style.top = 'auto';
-            progressEl.style.bottom = '0';
-          } else {
-            leftPx = meterLeft;
-            widthPx = meterWidth;
-            progressEl.style.top = 'auto';
-            progressEl.style.bottom = '0';
-          }
-          progressEl.style.left = `${leftPx}px`;
-          progressEl.style.right = 'auto';
-          progressEl.style.width = `${widthPx}px`;
-          progressEl.style.transform = 'none';
-        } else {
-          progressEl.style.left = '50%';
-          progressEl.style.transform = 'translateX(-50%)';
-          progressEl.style.width = '90%';
-          progressEl.style.top = 'auto';
-          progressEl.style.bottom = '0';
-        }
+        progressEl.style.left = '0';
+        progressEl.style.right = '0';
+        progressEl.style.width = 'auto';
+        progressEl.style.top = 'auto';
+        progressEl.style.bottom = '0';
+        progressEl.style.transform = 'none';
         progressEl.style.marginLeft = '0';
         progressEl.style.marginTop = '0';
         progressEl.style.zIndex = '3';
