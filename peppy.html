@@ -1927,9 +1927,18 @@
           const ratingLabel = Number.isFinite(rating) && rating > 0 ? `RATING: ${rating}` : '';
           dotFileMeta = (encodedNoCh || compactFallback || 'DIGITAL');
           dotFileMeta2 = [qualityTag || 'DIGITAL', ratingLabel].filter(Boolean).join(' • ');
-          redrawDotCanvases();
 
           const isRadioLike = !!(j?.isRadio || j?.isStream || j?.isAirplay || j?.isUpnp || j?.isPodcast);
+          if (isRadioLike) {
+            const stationName = decodeEntities(String(j?.stationName || j?._stationName || j?.name || '').trim());
+            const streamTitle = decodeEntities(String(j?.streamTitle || '').trim());
+            const titleLooksBad = (!t || /^unknown\b/i.test(t) || t.includes('/') || t.includes('http'));
+            const artistLooksBad = (!a || /^unknown\b/i.test(a) || a.includes('/') || a.includes('http'));
+            dotTitle = streamTitle || (titleLooksBad ? (stationName || 'Live Radio') : t);
+            dotArtist = artistLooksBad ? (stationName || 'Radio') : a;
+            dotAlbumYear = stationName ? `${stationName}${y ? ` (${y})` : ''}` : 'Live Radio';
+          }
+          redrawDotCanvases();
           const pctDirect = Number(j?.songPercent ?? j?.progressPercent ?? j?.percent ?? NaN);
           const elapsed = Number(j?.elapsed ?? j?.elapsedSec ?? j?.positionSec ?? j?.currentTime ?? 0);
           const total = Number(j?.time ?? j?.duration ?? j?.totalTime ?? 0);
@@ -1949,9 +1958,14 @@
             setTarget('R', 0);
           }
 
-          const artRaw = String(j?.albumArtUrl || j?.artUrl || j?.altArtUrl || '').trim();
+          const stationLogoRaw = String(j?.stationLogoUrl || j?.radioLogoUrl || j?.logoUrl || '').trim();
+          const artRaw = String(j?.albumArtUrl || j?.artUrl || j?.altArtUrl || (isRadioLike ? stationLogoRaw : '') || '').trim();
           const artUrl = artRaw ? (artRaw.startsWith('http') ? artRaw : `${api}${artRaw}`) : '';
-          if (artUrl && artUrl !== lastArt) { art.src = artUrl; lastArt = artUrl; }
+          if (artUrl !== lastArt) {
+            if (artUrl) art.src = artUrl;
+            else art.removeAttribute('src');
+            lastArt = artUrl;
+          }
 
           const appleUrl = String(j?.appleMusicUrl || j?.appleUrl || '').trim();
           const continuityKey = String(j?.file || j?.songid || `${a}|${al}`).trim();
