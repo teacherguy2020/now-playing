@@ -500,29 +500,17 @@
         return { geometry: linear ? 'linear' : 'circular' };
       }
       function syncProgressPlacement(){
-        if (!progressEl || !leftCard || !metersEl) return;
-        const linear = !!meterTypeLinear?.checked;
-        if (linear) {
-          if (progressEl.parentElement !== metersEl) metersEl.appendChild(progressEl);
-          progressEl.style.position = 'absolute';
-          progressEl.style.left = 'calc(30px + ((100% - 30px) * 0.05))';
-          progressEl.style.right = 'calc(30px + ((100% - 30px) * 0.05))';
-          progressEl.style.width = 'auto';
-          progressEl.style.marginLeft = '0';
-          progressEl.style.marginTop = '0';
-          progressEl.style.bottom = '10px'; // align with playback controls bottom
-          progressEl.style.top = 'auto';
-        } else {
-          if (progressEl.parentElement !== leftCard) leftCard.insertBefore(progressEl, leftCard.firstChild || null);
-          progressEl.style.position = '';
-          progressEl.style.left = '';
-          progressEl.style.right = '';
-          progressEl.style.bottom = '';
-          progressEl.style.top = '';
-          progressEl.style.marginTop = '0';
-          progressEl.style.marginLeft = '0';
-          progressEl.style.width = '100%';
-        }
+        if (!progressEl || !metersEl) return;
+        // Keep progress location consistent for both circular + linear: anchored at bottom under meter area.
+        if (progressEl.parentElement !== metersEl) metersEl.appendChild(progressEl);
+        progressEl.style.position = 'absolute';
+        progressEl.style.left = 'calc(30px + ((100% - 30px) * 0.05))';
+        progressEl.style.right = 'calc(30px + ((100% - 30px) * 0.05))';
+        progressEl.style.width = 'auto';
+        progressEl.style.marginLeft = '0';
+        progressEl.style.marginTop = '0';
+        progressEl.style.bottom = '10px';
+        progressEl.style.top = 'auto';
       }
       function syncLinearControlVisibility(){
         const linear = !!meterTypeLinear?.checked;
