@@ -795,12 +795,25 @@
                 const rgb = getComputedStyle(document.documentElement).getPropertyValue('--progress-rgb').trim() || '46,185,238';
                 const fw = Math.max(0, fillW - 2);
                 const gx = x0 + 1;
-                const g = ctx.createLinearGradient(gx, 0, gx + Math.max(1, fw), 0);
-                g.addColorStop(0, `rgba(${rgb},.26)`);
-                g.addColorStop(0.55, `rgba(${rgb},.58)`);
-                g.addColorStop(1, `rgba(${rgb},.92)`);
-                ctx.fillStyle = g;
-                ctx.fillRect(gx, y + 3, fw, h - 6);
+                // Thresholded theme progression (like G→Y→R behavior):
+                // low band always, mid only after threshold, high only near peak.
+                const lowEnd = Math.floor(w * 0.62);
+                const midEnd = Math.floor(w * 0.82);
+                const lowW = Math.min(fw, lowEnd);
+                const midW = Math.min(Math.max(0, fw - lowEnd), Math.max(0, midEnd - lowEnd));
+                const highW = Math.max(0, fw - midEnd);
+                if (lowW > 0) {
+                  ctx.fillStyle = `rgba(${rgb},.30)`;
+                  ctx.fillRect(gx, y + 3, lowW, h - 6);
+                }
+                if (midW > 0) {
+                  ctx.fillStyle = `rgba(${rgb},.58)`;
+                  ctx.fillRect(gx + lowEnd, y + 3, midW, h - 6);
+                }
+                if (highW > 0) {
+                  ctx.fillStyle = `rgba(${rgb},.90)`;
+                  ctx.fillRect(gx + midEnd, y + 3, highW, h - 6);
+                }
               } else {
                 const greenEnd = Math.floor(w * 0.62);
                 const yellowEnd = Math.floor(w * 0.82);
