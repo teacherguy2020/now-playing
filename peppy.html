@@ -86,6 +86,7 @@
     .fmtLed{width:7px;height:7px;border-radius:50%;background:#1e2e22;border:1px solid #3d5f45;box-shadow:inset 0 0 2px rgba(0,0,0,.55)}
     .fmtItem.on .fmtLed{background:#67f18b;border-color:#9ff7b4;box-shadow:0 0 6px rgba(108,241,148,.8), 0 0 12px rgba(108,241,148,.35)}
     .fmtItem[data-fmt="hq"].on .fmtLed{background:#f4c84a;border-color:#ffe08c;box-shadow:0 0 6px rgba(244,200,74,.85),0 0 12px rgba(244,200,74,.4)}
+    .fmtItem[data-fmt="sr44"].on .fmtLed,.fmtItem[data-fmt="sr96"].on .fmtLed,.fmtItem[data-fmt="b16"].on .fmtLed,.fmtItem[data-fmt="b24"].on .fmtLed{background:#5fc6ff;border-color:#a9e3ff;box-shadow:0 0 6px rgba(95,198,255,.82),0 0 12px rgba(95,198,255,.38)}
     .fmtRate{margin-left:auto;font-size:10px;color:#b7c6d8}
     /* Compact profiles: keep classic 2x3 controls; JS positions block in left-column gap above art. */
     body.screen-compact .controls{height:208px;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start}
@@ -934,7 +935,7 @@
 
       const NATIVE_NEEDLE_CFG = {
         'mack-blue-compact': { start: 45, stop: -45, distance: 265, ox: 319, oy: 460, lenMul: 1.0 },
-        'blue-1280': { start: 57, stop: -57, startL: 58, startR: 57, distance: 170, ox: 320, oxL: 312, oxR: 290, oy: 390, lenMul: 1.26 },
+        'blue-1280': { start: 57, stop: -57, startL: 58, startR: 57, distance: 170, ox: 320, oxL: 312, oxR: 290, oy: 390, lenMul: 1.26, needleInset: 10 },
         'orange-1280': { start: 55, stop: -41, distance: 140, ox: 347, oxL: 347, oxR: 307, oy: 344, lenMul: 1.19, widthMul: 0.82 },
         'emerald': { start: 52, stop: -52, distance: 170, ox: 300, oxL: 326, oxR: 289, oy: 394, lenMul: 1.15 },
         'emerald-1280': { start: 52, stop: -52, distance: 170, ox: 300, oxL: 326, oxR: 289, oy: 394, lenMul: 1.15 },
@@ -1806,8 +1807,17 @@
       function setFormatStrip({ fmt='', hq=false, rate='', sr=0, bd=0, ch='', isLive=false } = {}){
         if (!formatStrip) return;
         const f = String(fmt || '').toUpperCase();
-        const srN = Number(sr) || 0;
-        const bdN = Number(bd) || 0;
+        const toNum = (v, kind='') => {
+          if (Number.isFinite(Number(v))) return Number(v);
+          const s = String(v || '').trim().toLowerCase();
+          const m = s.match(/(\d+(?:\.\d+)?)/);
+          if (!m) return 0;
+          let n = Number(m[1]) || 0;
+          if (kind === 'sr' && /khz/.test(s) && n > 0 && n < 1000) n *= 1000;
+          return n;
+        };
+        const srN = toNum(sr, 'sr');
+        const bdN = toNum(bd, 'bd');
         const chTxt = String(ch || '').trim();
         const on = {
           flac: ['FLAC','ALAC','WAV','AIFF','APE','WV'].includes(f),
@@ -2060,8 +2070,8 @@
             fmt,
             hq: (qualityTag === 'HQ' || qualityTag === 'HI-RES'),
             rate: rateLabel || compactFallback || 'DIGITAL',
-            sr: Number(srRaw) || 0,
-            bd: Number(bd) || 0,
+            sr: srRaw,
+            bd: bd,
             ch,
             isLive: !!(j?.isRadio || j?.isStream),
           });
