@@ -1705,7 +1705,7 @@
           });
         };
         try {
-          if (titleCanvas) titleCanvas.style.display = compact1024 ? 'none' : '';
+          if (titleCanvas) titleCanvas.style.display = '';
           if (fileMetaCanvas2) fileMetaCanvas2.style.display = compact1024 ? 'none' : '';
         } catch {}
         if (mode === 'dot-matrix') {
@@ -1713,11 +1713,11 @@
           const titleDot = (isWarmParchment ? 1.8 : 1.4) * scale;
           const metaDot = (isWarmParchment ? 0.85 : 0.7) * Math.max(0.9, scale);
           if (compact1024) {
-            const row1 = `${dotArtist} • ${dotTitle}`;
             const metaShort = `${dotFileMeta} ${dotFileMeta2}`.replace(/\s+/g,' ').trim();
-            const row2 = `${dotAlbumYear} • ${metaShort}`;
-            drawDotText(artistCanvas, row1, { size: 44, pitch: 3, dot: Math.max(1.0, titleDot * 0.9), font: '"Arial Black", "Segoe UI", sans-serif' });
-            drawDotText(albumYearCanvas, row2, { size: 40, pitch: 3, dot: Math.max(0.9, metaDot * 1.15), font: '"Arial Black", "Segoe UI", sans-serif' });
+            const row3 = `${dotAlbumYear} • ${metaShort}`;
+            drawDotText(artistCanvas, dotArtist, { size: 42, pitch: 3, dot: Math.max(1.0, titleDot * 0.88), font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(titleCanvas, dotTitle, { size: 42, pitch: 3, dot: Math.max(1.0, titleDot * 0.88), font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(albumYearCanvas, row3, { size: 38, pitch: 3, dot: Math.max(0.9, metaDot * 1.1), font: '"Arial Black", "Segoe UI", sans-serif' });
             if (fileMetaCanvas) drawDotText(fileMetaCanvas, ' ', { size: 22, pitch: 2, dot: 0.01, padY: 0, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
           } else {
             drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
@@ -1751,10 +1751,10 @@
           };
         })();
         if (compact1024) {
-          const row1 = `${dotArtist} • ${dotTitle}`;
-          const row2 = `${dotAlbumYear} • ${(`${dotFileMeta} ${dotFileMeta2}`).replace(/\s+/g,' ').trim()}`;
-          drawPlainText(artistCanvas, row1, { size: Math.round(34*scale), weight: plainCfg.titleW, font: plainCfg.family });
-          drawPlainText(albumYearCanvas, row2, { size: Math.round(30*scale), weight: plainCfg.metaW, font: plainCfg.family });
+          const row3 = `${dotAlbumYear} • ${(`${dotFileMeta} ${dotFileMeta2}`).replace(/\s+/g,' ').trim()}`;
+          drawPlainText(artistCanvas, dotArtist, { size: Math.round(30*scale), weight: plainCfg.artistW, font: plainCfg.family });
+          drawPlainText(titleCanvas, dotTitle, { size: Math.round(30*scale), weight: plainCfg.titleW, font: plainCfg.family });
+          drawPlainText(albumYearCanvas, row3, { size: Math.round(26*scale), weight: plainCfg.metaW, font: plainCfg.family });
           drawPlainText(fileMetaCanvas, ' ', { size: 12, weight: 400, font: plainCfg.family });
         } else {
           drawPlainText(artistCanvas, dotArtist, { size: Math.round(46*scale), weight: plainCfg.artistW, font: plainCfg.family });
