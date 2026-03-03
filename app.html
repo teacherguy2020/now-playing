@@ -1925,8 +1925,6 @@
               fz: String(d?.getElementById('fontSize')?.value || '').trim(),
               lsMode: String(d?.getElementById('linearStyle')?.value || '').trim(),
               lzMode: String(d?.getElementById('linearSize')?.value || '').trim(),
-              mm: String(d?.getElementById('meterMode')?.value || '').trim(),
-              cm: String(d?.getElementById('linearColorMode')?.value || '').trim(),
             };
           };
           const a = readLive();
@@ -1935,7 +1933,8 @@
           if (a.mt) mt = a.mt;
           if (a.fm) fm = a.fm;
           if (a.fz) fz = a.fz;
-          if (a.mm) mm = a.mm;
+          if (a.lsMode) lsMode = a.lsMode;
+          if (a.lzMode) lzMode = a.lzMode;
           // Preset apply can be one tick behind visible UI. Sample once more after a short micro-delay.
           await new Promise((r) => setTimeout(r, 90));
           const b = readLive();
@@ -1946,8 +1945,6 @@
           if (b.fz) fz = b.fz;
           if (b.lsMode) lsMode = b.lsMode;
           if (b.lzMode) lzMode = b.lzMode;
-          if (b.mm) mm = b.mm;
-          if (b.cm) cm = b.cm;
           const ls = b.w?.localStorage || a.w?.localStorage;
           if (!s) s = String(ls?.getItem('peppy.skin') || '').trim();
           if (!t) t = String(ls?.getItem('peppy.theme') || '').trim();
@@ -1958,8 +1955,6 @@
           if (!lzMode) lzMode = String(ls?.getItem('peppy.linearSize') || '').trim();
           if (!mm) mm = String(ls?.getItem('peppy.meterMode') || '').trim();
           if (!cm) cm = String(ls?.getItem('peppy.colorMode') || '').trim();
-          if (lsMode && !mm) mm = (lsMode === 'cassette') ? 'segmented' : 'continuous';
-          if (lsMode && !cm) cm = (lsMode === 'continuous-theme') ? 'theme' : 'classic';
         } catch {}
         if (!s) s = 'blue-1280';
         if (!t) t = 'midnight-blue';
@@ -1968,8 +1963,9 @@
         if (!fz) fz = 'm';
         if (!lsMode) lsMode = 'continuous';
         if (!lzMode) lzMode = 'm';
-        if (!mm) mm = (lsMode === 'cassette') ? 'segmented' : 'continuous';
-        if (!cm) cm = (lsMode === 'continuous-theme') ? 'theme' : 'classic';
+        // Linear style is the source of truth for pushed linear rendering semantics.
+        mm = (lsMode === 'cassette') ? 'segmented' : 'continuous';
+        cm = (lsMode === 'continuous-theme') ? 'theme' : 'classic';
         lastPeppyProfile = { ...lastPeppyProfile, skin:s, theme:t, meterType:mt, fontMode:fm, fontSize:fz, linearStyle:lsMode, linearSize:lzMode, meterMode:mm, colorMode:cm, displayMode:'peppy', ts: Date.now() };
         setPushPeppyBusy(true);
         try {
