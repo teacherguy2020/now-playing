@@ -5110,7 +5110,7 @@ app.get('/now-playing', async (req, res) => {
     // it is very likely station/program metadata rather than a song.
     // But allow if raw metadata includes an explicit "Artist - Title" form.
     if (artistLooksGeneric(a) && !/\s[-–—]\s/.test(t)) {
-      const splitFromRaw = splitArtistTitleFromRaw(t) || splitArtistTitleFromRaw(a) || { artist: '', title: '' };
+      const splitFromRaw = splitArtistTitleFromTitle(t) || splitArtistTitleFromTitle(a) || { artist: '', title: '' };
       if (!splitFromRaw.artist || !splitFromRaw.title) {
         return { allow: false, reason: 'generic-artist' };
       }
