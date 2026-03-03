@@ -462,11 +462,21 @@
         const linear = !!meterTypeLinear?.checked;
         if (linear) {
           if (progressEl.parentElement !== metersEl) metersEl.appendChild(progressEl);
-          progressEl.style.marginTop = '2px';
-          progressEl.style.marginLeft = 'calc(30px + ((100% - 30px) * 0.05))';
-          progressEl.style.width = 'calc((100% - 30px) * 0.9)';
+          progressEl.style.position = 'absolute';
+          progressEl.style.left = 'calc(30px + ((100% - 30px) * 0.05))';
+          progressEl.style.right = 'calc(30px + ((100% - 30px) * 0.05))';
+          progressEl.style.width = 'auto';
+          progressEl.style.marginLeft = '0';
+          progressEl.style.marginTop = '0';
+          progressEl.style.bottom = '10px'; // align with playback controls bottom
+          progressEl.style.top = 'auto';
         } else {
           if (progressEl.parentElement !== leftCard) leftCard.insertBefore(progressEl, leftCard.firstChild || null);
+          progressEl.style.position = '';
+          progressEl.style.left = '';
+          progressEl.style.right = '';
+          progressEl.style.bottom = '';
+          progressEl.style.top = '';
           progressEl.style.marginTop = '0';
           progressEl.style.marginLeft = '0';
           progressEl.style.width = '100%';
@@ -717,16 +727,27 @@
         if (linearMode) {
           const panelX = Math.round(W * 0.06);
           const panelW = Math.round(W * 0.90);
-          const panelY = Math.round(H * 0.14);
           const panelH = Math.round(H * 0.70);
           const sizeMode = String(previewLinearSize || 'm');
           const sizeMul = sizeMode === 's' ? 0.78 : (sizeMode === 'l' ? 1.22 : 1.0);
           const laneBase = Math.max(14, Math.floor((panelH - 30) / 2));
           const laneH = Math.max(10, Math.round(laneBase * sizeMul));
-          const topY = panelY + Math.max(6, Math.floor((panelH - (laneH * 2 + 12)) / 2));
-          const botY = topY + laneH + 12;
           const pad = 18;
           const w = panelW - pad * 2;
+
+          // Align meter block top to playback-controls top.
+          let panelY = Math.round(H * 0.14);
+          try {
+            const cRect = controlsEl?.getBoundingClientRect?.();
+            const nRect = needleCanvas?.getBoundingClientRect?.();
+            if (cRect && nRect) {
+              const target = Math.round(cRect.top - nRect.top);
+              if (Number.isFinite(target)) panelY = Math.max(0, Math.min(H - panelH, target));
+            }
+          } catch {}
+
+          const topY = panelY + Math.max(6, Math.floor((panelH - (laneH * 2 + 12)) / 2));
+          const botY = topY + laneH + 12;
 
           ctx.fillStyle = 'rgba(8,16,28,.75)';
           ctx.fillRect(panelX, panelY, panelW, panelH);
@@ -1428,7 +1449,7 @@
           const bd = String(j?.bitdepth || '').trim();
           const ch = String(j?.channels || '').trim();
           const file = String(j?.file || '').trim();
-          const peakKey = String(j?.songid || file || `${a}|${al}`).trim();
+          const peakKey = String(j?.songid || file || `${t}|${a}|${al}`).trim();
           if (peakKey && peakKey !== peakHoldTrackKey) {
             peakHoldTrackKey = peakKey;
             peakHold.L = 0;
