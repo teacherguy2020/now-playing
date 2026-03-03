@@ -300,12 +300,12 @@
       }
       const PEPPY_PRESETS_KEY = 'peppy.presets.v1';
       const BUILTIN_PRESETS = [
-        { name:'Modern Blue Circular', skin:'blue-1280', theme:'midnight-blue', meterType:'circular', fontMode:'ui-sans', fontSize:'m', linearStyle:'continuous-theme', sensitivity:'medium', smoothing:'medium' },
-        { name:'Matrix Classic Needle', skin:'emerald-1280', theme:'graphite-green', meterType:'circular', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'cassette', sensitivity:'medium', smoothing:'medium' },
-        { name:'Red Neon Studio', skin:'red-1280', theme:'red-neon', meterType:'circular', fontMode:'ui-sans', fontSize:'m', linearStyle:'continuous-theme', sensitivity:'high', smoothing:'medium' },
-        { name:'Cassette Linear Classic', skin:'blue-1280', theme:'silver-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'cassette', sensitivity:'medium', smoothing:'low' },
-        { name:'Obsidian Ember Matrix', skin:'orange-1280', theme:'obsidian-black', meterType:'circular', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'cassette', sensitivity:'high', smoothing:'low' },
-        { name:'Gray Ghost', skin:'blue-1280', theme:'obsidian-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'continuous', sensitivity:'low', smoothing:'off' },
+        { name:'Modern Blue Circular', skin:'blue-1280', theme:'midnight-blue', meterType:'circular', fontMode:'ui-sans', fontSize:'m', linearStyle:'continuous-theme', linearSize:'m', meterMode:'continuous', colorMode:'theme', sensitivity:'medium', smoothing:'medium', normalization:100, displayMode:'peppy' },
+        { name:'Matrix Classic Needle', skin:'emerald-1280', theme:'graphite-green', meterType:'circular', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'cassette', linearSize:'m', meterMode:'segmented', colorMode:'classic', sensitivity:'medium', smoothing:'medium', normalization:100, displayMode:'peppy' },
+        { name:'Red Neon Studio', skin:'red-1280', theme:'red-neon', meterType:'circular', fontMode:'ui-sans', fontSize:'m', linearStyle:'continuous-theme', linearSize:'m', meterMode:'continuous', colorMode:'theme', sensitivity:'high', smoothing:'medium', normalization:100, displayMode:'peppy' },
+        { name:'Cassette Linear Classic', skin:'blue-1280', theme:'silver-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'cassette', linearSize:'m', meterMode:'segmented', colorMode:'classic', sensitivity:'medium', smoothing:'low', normalization:100, displayMode:'peppy' },
+        { name:'Obsidian Ember Matrix', skin:'orange-1280', theme:'obsidian-black', meterType:'circular', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'cassette', linearSize:'m', meterMode:'segmented', colorMode:'classic', sensitivity:'high', smoothing:'low', normalization:100, displayMode:'peppy' },
+        { name:'Gray Ghost', skin:'blue-1280', theme:'obsidian-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'continuous', linearSize:'m', meterMode:'continuous', colorMode:'classic', sensitivity:'low', smoothing:'off', normalization:100, displayMode:'peppy' },
       ];
 
       function toLinearStyle(p = {}) {
@@ -341,28 +341,29 @@
       }
       function applyPreset(p){
         if (!p) return;
-        if (meterTypeLinear) meterTypeLinear.checked = String(p.meterType||'circular') === 'linear';
+        const pp = normalizePresetProfile(p);
+        if (meterTypeLinear) meterTypeLinear.checked = String(pp.meterType||'circular') === 'linear';
         if (meterTypeCircular) meterTypeCircular.checked = !meterTypeLinear?.checked;
         syncMeterTypeClass();
-        renderSkinOptions(String(p.skin || previewSkin || 'blue-1280'));
-        if (skinName && p.skin) skinName.value = String(p.skin);
-        if (themeName && p.theme) themeName.value = String(p.theme);
-        if (fontMode && p.fontMode) fontMode.value = String(p.fontMode);
-        if (fontSize && p.fontSize) fontSize.value = String(p.fontSize);
-        const ls = toLinearStyle(p);
+        renderSkinOptions(String(pp.skin || previewSkin || 'blue-1280'));
+        if (skinName && pp.skin) skinName.value = String(pp.skin);
+        if (themeName && pp.theme) themeName.value = String(pp.theme);
+        if (fontMode && pp.fontMode) fontMode.value = String(pp.fontMode);
+        if (fontSize && pp.fontSize) fontSize.value = String(pp.fontSize);
+        const ls = toLinearStyle(pp);
         if (linearStyle) linearStyle.value = ls;
         previewLinearStyle = ls;
         try { localStorage.setItem('peppy.linearStyle', previewLinearStyle); } catch {}
-        const lz = ['s','m','l'].includes(String(p?.linearSize || '')) ? String(p.linearSize) : 'm';
+        const lz = ['s','m','l'].includes(String(pp?.linearSize || '')) ? String(pp.linearSize) : 'm';
         if (linearSize) linearSize.value = lz;
         previewLinearSize = lz;
         try { localStorage.setItem('peppy.linearSize', previewLinearSize); } catch {}
         enforceLinearRulesForFont();
-        if (needleSensitivity && p.sensitivity) needleSensitivity.value = String(p.sensitivity);
-        if (needleSmoothing && p.smoothing) needleSmoothing.value = String(p.smoothing);
-        previewSkin = String(skinName?.value || p.skin || previewSkin || 'blue-1280');
+        if (needleSensitivity && pp.sensitivity) needleSensitivity.value = String(pp.sensitivity);
+        if (needleSmoothing && pp.smoothing) needleSmoothing.value = String(pp.smoothing);
+        previewSkin = String(skinName?.value || pp.skin || previewSkin || 'blue-1280');
         applyNeedleSkin(previewSkin);
-        applyTheme(String(themeName?.value || p.theme || 'midnight-blue'));
+        applyTheme(String(themeName?.value || pp.theme || 'midnight-blue'));
         redrawDotCanvases();
         drawNeedles();
         publishProfileState();
@@ -401,6 +402,28 @@
       const fileMetaCanvas = $('fileMetaCanvas');
       const fileMetaCanvas2 = $('fileMetaCanvas2');
       const trackProgress = $('trackProgress');
+      function normalizePresetProfile(p = {}) {
+        const src = (p && typeof p === 'object') ? p : {};
+        const linearStyleNorm = toLinearStyle(src);
+        const linearSizeNorm = ['s','m','l'].includes(String(src.linearSize || '').trim()) ? String(src.linearSize).trim() : 'm';
+        return {
+          ...src,
+          skin: String(src.skin || 'blue-1280').trim() || 'blue-1280',
+          theme: String(src.theme || 'midnight-blue').trim() || 'midnight-blue',
+          meterType: (String(src.meterType || 'circular').trim() === 'linear') ? 'linear' : 'circular',
+          fontMode: (String(src.fontMode || 'ui-sans').trim() === 'dot-matrix') ? 'dot-matrix' : 'ui-sans',
+          fontSize: ['s','m','l','xl'].includes(String(src.fontSize || '').trim()) ? String(src.fontSize).trim() : 'm',
+          linearStyle: linearStyleNorm,
+          linearSize: linearSizeNorm,
+          meterMode: (linearStyleNorm === 'cassette') ? 'segmented' : 'continuous',
+          colorMode: (linearStyleNorm === 'continuous-theme') ? 'theme' : 'classic',
+          sensitivity: ['low','medium','high'].includes(String(src.sensitivity || '').trim()) ? String(src.sensitivity).trim() : 'medium',
+          smoothing: ['off','low','medium','high'].includes(String(src.smoothing || '').trim()) ? String(src.smoothing).trim() : 'medium',
+          normalization: Number.isFinite(Number(src.normalization)) && Number(src.normalization) > 0 ? Number(src.normalization) : 100,
+          displayMode: String(src.displayMode || 'peppy').trim() || 'peppy',
+        };
+      }
+
       function listCustomPresets(){
         try {
           const j = JSON.parse(localStorage.getItem(PEPPY_PRESETS_KEY) || '[]');
@@ -408,11 +431,14 @@
           let changed = false;
           const out = j.map((p) => {
             const name = String(p?.name || '');
+            let next = p;
             if (name === 'Red Neon Studio' && String(p?.skin || '') === 'orange-1280') {
+              next = { ...p, skin: 'red-1280' };
               changed = true;
-              return { ...p, skin: 'red-1280' };
             }
-            return p;
+            const normalized = normalizePresetProfile(next);
+            if (JSON.stringify(next || {}) !== JSON.stringify(normalized || {})) changed = true;
+            return normalized;
           });
           if (changed) {
             try { localStorage.setItem(PEPPY_PRESETS_KEY, JSON.stringify(out)); } catch {}
