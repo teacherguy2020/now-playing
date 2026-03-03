@@ -1474,7 +1474,16 @@
         }
       });
       pushPeppyFromTab?.addEventListener('click', () => {
-        try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
+        try {
+          const profile = getCurrentProfile();
+          window.parent?.postMessage({ type:'peppy-profile', ...profile }, '*');
+          // Give parent one tick to absorb profile before push action.
+          setTimeout(() => {
+            try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy', profile }, '*'); } catch {}
+          }, 40);
+        } catch {
+          try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
+        }
       });
       exportClose?.addEventListener('click', () => {
         if (!exportModal) return;

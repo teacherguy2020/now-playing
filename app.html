@@ -1878,7 +1878,7 @@
         } catch {}
       }
 
-      async function pushPeppyToMoode(){
+      async function pushPeppyToMoode(profileOverride = null){
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;
         const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
@@ -1889,6 +1889,16 @@
         let fm = String(lastPeppyProfile?.fontMode || '').trim();
         let fz = String(lastPeppyProfile?.fontSize || '').trim();
         let mm = String(lastPeppyProfile?.meterMode || '').trim();
+
+        if (profileOverride && typeof profileOverride === 'object') {
+          const po = profileOverride || {};
+          if (po.skin) s = String(po.skin).trim();
+          if (po.theme) t = String(po.theme).trim();
+          if (po.meterType) mt = String(po.meterType).trim();
+          if (po.fontMode) fm = String(po.fontMode).trim();
+          if (po.fontSize) fz = String(po.fontSize).trim();
+          if (po.meterMode) mm = String(po.meterMode).trim();
+        }
         try {
           const readLive = () => {
             const f = document.getElementById('appFrame');
@@ -3299,7 +3309,7 @@
         if (d.type === 'np-display-action') {
           const a = String(d.action || '').trim();
           if (a === 'push-peppy') {
-            try { pushPeppyToMoode(); } catch {}
+            try { pushPeppyToMoode(d.profile || null); } catch {}
           } else if (a === 'push-player') {
             try { setDisplayModeAndRefresh('player'); } catch {}
           }
