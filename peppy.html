@@ -750,9 +750,16 @@
           const topY = panelY + Math.max(6, Math.floor((panelH - (laneH * 2 + 12)) / 2));
           const botY = topY + laneH + 12;
 
-          ctx.fillStyle = 'rgba(8,16,28,.75)';
+          const cs = getComputedStyle(document.documentElement);
+          const panelBase = String(cs.getPropertyValue('--card2') || '').trim() || '#08101a';
+          const panelBorder = String(cs.getPropertyValue('--line') || '').trim() || '#22324a';
+          const laneBaseColor = String(cs.getPropertyValue('--card') || '').trim() || '#0d1422';
+
+          ctx.globalAlpha = 0.82;
+          ctx.fillStyle = panelBase;
           ctx.fillRect(panelX, panelY, panelW, panelH);
-          ctx.strokeStyle = 'rgba(70,90,120,.65)';
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle = panelBorder;
           ctx.strokeRect(panelX + 0.5, panelY + 0.5, panelW - 1, panelH - 1);
 
           const drawRail = (y, level, label = 'L', channel = 'L') => {
@@ -766,9 +773,11 @@
             const cassetteStyle = (style === 'cassette');
             const useThemeTint = (style === 'continuous-theme');
 
-            ctx.fillStyle = 'rgba(10,18,30,.9)';
+            ctx.globalAlpha = 0.9;
+            ctx.fillStyle = laneBaseColor;
             ctx.fillRect(x0, y, w, h);
-            ctx.strokeStyle = 'rgba(60,76,102,.65)';
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = panelBorder;
             ctx.strokeRect(x0 + 0.5, y + 0.5, w - 1, h - 1);
 
             // rail label
