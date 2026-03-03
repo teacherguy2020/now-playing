@@ -1930,12 +1930,11 @@
 
           const isRadioLike = !!(j?.isRadio || j?.isStream || j?.isAirplay || j?.isUpnp || j?.isPodcast);
           if (isRadioLike) {
-            const stationName = decodeEntities(String(j?.stationName || j?._stationName || j?.name || '').trim());
-            const streamTitle = decodeEntities(String(j?.streamTitle || '').trim());
-            const titleLooksBad = (!t || /^unknown\b/i.test(t) || t.includes('/') || t.includes('http'));
-            const artistLooksBad = (!a || /^unknown\b/i.test(a) || a.includes('/') || a.includes('http'));
-            dotTitle = streamTitle || (titleLooksBad ? (stationName || 'Live Radio') : t);
-            dotArtist = artistLooksBad ? (stationName || 'Radio') : a;
+            const stationName = decodeEntities(String(j?.stationName || j?._stationName || j?.radioStationName || j?.name || '').trim());
+            const streamTitle = decodeEntities(String(j?.streamTitle || j?.subline || '').trim());
+            // Radio rule: never reuse stale prior-library title/artist.
+            dotTitle = streamTitle || stationName || 'Live Radio';
+            dotArtist = stationName || 'Radio';
             dotAlbumYear = stationName ? `${stationName}${y ? ` (${y})` : ''}` : 'Live Radio';
           }
           redrawDotCanvases();
@@ -1959,7 +1958,7 @@
           }
 
           const stationLogoRaw = String(j?.stationLogoUrl || j?.radioLogoUrl || j?.logoUrl || '').trim();
-          const artRaw = String(j?.albumArtUrl || j?.artUrl || j?.altArtUrl || (isRadioLike ? stationLogoRaw : '') || '').trim();
+          const artRaw = String((isRadioLike ? (stationLogoRaw || j?.altArtUrl || '') : (j?.albumArtUrl || j?.artUrl || j?.altArtUrl || '')) || '').trim();
           const artUrl = artRaw ? (artRaw.startsWith('http') ? artRaw : `${api}${artRaw}`) : '';
           if (artUrl !== lastArt) {
             if (artUrl) art.src = artUrl;
