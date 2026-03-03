@@ -1707,9 +1707,11 @@
         const randomOn = String(np?.random ?? '').trim() === '1' || String(np?.random ?? '').toLowerCase() === 'on';
         const repeatOn = String(np?.repeat ?? '').trim() === '1' || String(np?.repeat ?? '').toLowerCase() === 'on';
         const isRadioLike = !!(np?.isRadio || np?.isStream || np?.isAirplay || np?.isUpnp || np?.isPodcast);
-        const isPlayingLike = (state === 'play' || state === 'playing' || state.includes('play') || (isRadioLike && state !== 'stop' && state !== 'stopped' && state !== 'idle'));
-        ctrlPlay?.classList.toggle('lit', isPlayingLike);
-        ctrlPause?.classList.toggle('lit', state === 'pause' || state === 'paused');
+        const isPausedLike = (state === 'pause' || state === 'paused');
+        const isPlayingLike = (state === 'play' || state === 'playing' || state.includes('play'))
+          || (isRadioLike && !isPausedLike && state !== 'stop' && state !== 'stopped' && state !== 'idle');
+        ctrlPlay?.classList.toggle('lit', isPlayingLike && !isPausedLike);
+        ctrlPause?.classList.toggle('lit', isPausedLike);
         ctrlShuffle?.classList.toggle('lit', randomOn);
         ctrlRepeat?.classList.toggle('lit', repeatOn);
       }
@@ -1940,7 +1942,8 @@
           lastProgressPct = isRadioLike ? 0 : p;
           paintSegments(pseg, lastProgressPct);
 
-          const playingLike = (playbackState === 'play' || playbackState === 'playing' || playbackState.includes('play') || (isRadioLike && playbackState !== 'stop' && playbackState !== 'stopped' && playbackState !== 'idle'));
+          const pausedLike = (playbackState === 'pause' || playbackState === 'paused');
+          const playingLike = (playbackState === 'play' || playbackState === 'playing' || playbackState.includes('play') || (isRadioLike && !pausedLike && playbackState !== 'stop' && playbackState !== 'stopped' && playbackState !== 'idle'));
           if (!playingLike) {
             setTarget('L', 0);
             setTarget('R', 0);
