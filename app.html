@@ -645,7 +645,7 @@
       let notifyConfigured = false;
       let notifyEnabled = null;
       let peppyModeState = (() => { try { return String(localStorage.getItem('np.peppyMode') || 'webui'); } catch { return 'webui'; } })();
-      let lastPeppyProfile = { skin:'', theme:'', meterType:'', fontMode:'', fontSize:'', meterMode:'', colorMode:'', normalization:100, displayMode:'peppy', ts:0 };
+      let lastPeppyProfile = { skin:'', theme:'', meterType:'', fontMode:'', fontSize:'', linearStyle:'', meterMode:'', colorMode:'', normalization:100, displayMode:'peppy', ts:0 };
       let moodeDisplayTakeoverEnabled = true;
       let screenModeState = (() => { try { return String(localStorage.getItem('np.screenMode') || 'nowplaying'); } catch { return 'nowplaying'; } })();
       let alexaEnabledState = null;
@@ -1858,16 +1858,18 @@
           const meterType = String(p?.meterType || '').trim();
           const fontMode = String(p?.fontMode || '').trim();
           const fontSize = String(p?.fontSize || '').trim();
+          const linearStyle = String(p?.linearStyle || '').trim();
           const meterMode = String(p?.meterMode || '').trim();
           const colorMode = String(p?.colorMode || '').trim();
           const normalization = Number(p?.normalization);
           const displayMode = String(p?.displayMode || '').trim();
-          if (!skin && !theme && !meterType && !fontMode && !fontSize && !meterMode && !colorMode && !displayMode && !Number.isFinite(normalization)) return;
+          if (!skin && !theme && !meterType && !fontMode && !fontSize && !linearStyle && !meterMode && !colorMode && !displayMode && !Number.isFinite(normalization)) return;
           if (skin) lastPeppyProfile.skin = skin;
           if (theme) lastPeppyProfile.theme = theme;
           if (meterType) lastPeppyProfile.meterType = meterType;
           if (fontMode) lastPeppyProfile.fontMode = fontMode;
           if (fontSize) lastPeppyProfile.fontSize = fontSize;
+          if (linearStyle) lastPeppyProfile.linearStyle = linearStyle;
           if (meterMode) lastPeppyProfile.meterMode = meterMode;
           if (colorMode) lastPeppyProfile.colorMode = colorMode;
           if (Number.isFinite(normalization) && normalization > 0) lastPeppyProfile.normalization = normalization;
@@ -1890,6 +1892,7 @@
         let mt = String(lastPeppyProfile?.meterType || '').trim();
         let fm = String(lastPeppyProfile?.fontMode || '').trim();
         let fz = String(lastPeppyProfile?.fontSize || '').trim();
+        let lsMode = String(lastPeppyProfile?.linearStyle || '').trim();
         let mm = String(lastPeppyProfile?.meterMode || '').trim();
         let cm = String(lastPeppyProfile?.colorMode || '').trim();
 
@@ -1900,6 +1903,7 @@
           if (po.meterType) mt = String(po.meterType).trim();
           if (po.fontMode) fm = String(po.fontMode).trim();
           if (po.fontSize) fz = String(po.fontSize).trim();
+          if (po.linearStyle) lsMode = String(po.linearStyle).trim();
           if (po.meterMode) mm = String(po.meterMode).trim();
           if (po.colorMode) cm = String(po.colorMode).trim();
         }
@@ -1915,6 +1919,7 @@
               mt: (d?.getElementById('meterTypeLinear')?.checked ? 'linear' : (d?.getElementById('meterTypeCircular')?.checked ? 'circular' : '')).trim(),
               fm: String(d?.getElementById('fontMode')?.value || '').trim(),
               fz: String(d?.getElementById('fontSize')?.value || '').trim(),
+              lsMode: String(d?.getElementById('linearStyle')?.value || '').trim(),
               mm: String(d?.getElementById('meterMode')?.value || '').trim(),
               cm: String(d?.getElementById('linearColorMode')?.value || '').trim(),
             };
@@ -1934,6 +1939,7 @@
           if (b.mt) mt = b.mt;
           if (b.fm) fm = b.fm;
           if (b.fz) fz = b.fz;
+          if (b.lsMode) lsMode = b.lsMode;
           if (b.mm) mm = b.mm;
           if (b.cm) cm = b.cm;
           const ls = b.w?.localStorage || a.w?.localStorage;
@@ -1942,17 +1948,21 @@
           if (!mt) mt = String(ls?.getItem('peppy.meterType') || '').trim();
           if (!fm) fm = String(ls?.getItem('peppy.fontMode') || '').trim();
           if (!fz) fz = String(ls?.getItem('peppy.fontSize') || '').trim();
+          if (!lsMode) lsMode = String(ls?.getItem('peppy.linearStyle') || '').trim();
           if (!mm) mm = String(ls?.getItem('peppy.meterMode') || '').trim();
           if (!cm) cm = String(ls?.getItem('peppy.colorMode') || '').trim();
+          if (lsMode && !mm) mm = (lsMode === 'cassette') ? 'segmented' : 'continuous';
+          if (lsMode && !cm) cm = (lsMode === 'continuous-theme') ? 'theme' : 'classic';
         } catch {}
         if (!s) s = 'blue-1280';
         if (!t) t = 'midnight-blue';
         if (!mt) mt = 'circular';
         if (!fm) fm = 'ui-sans';
         if (!fz) fz = 'm';
-        if (!mm) mm = 'segmented';
-        if (!cm) cm = 'classic';
-        lastPeppyProfile = { ...lastPeppyProfile, skin:s, theme:t, meterType:mt, fontMode:fm, fontSize:fz, meterMode:mm, colorMode:cm, displayMode:'peppy', ts: Date.now() };
+        if (!lsMode) lsMode = 'continuous';
+        if (!mm) mm = (lsMode === 'cassette') ? 'segmented' : 'continuous';
+        if (!cm) cm = (lsMode === 'continuous-theme') ? 'theme' : 'classic';
+        lastPeppyProfile = { ...lastPeppyProfile, skin:s, theme:t, meterType:mt, fontMode:fm, fontSize:fz, linearStyle:lsMode, meterMode:mm, colorMode:cm, displayMode:'peppy', ts: Date.now() };
         setPushPeppyBusy(true);
         try {
           if (!runtimeTrackKey) {
@@ -1971,6 +1981,7 @@
               meterType: mt,
               fontMode: fm,
               fontSize: fz,
+              linearStyle: lsMode,
               meterMode: mm,
               colorMode: cm,
               normalization: Number(lastPeppyProfile?.normalization || 100) || 100,
@@ -3331,6 +3342,7 @@
           const meterType = String(d.meterType || '').trim();
           const fontMode = String(d.fontMode || '').trim();
           const fontSize = String(d.fontSize || '').trim();
+          const linearStyle = String(d.linearStyle || '').trim();
           const meterMode = String(d.meterMode || '').trim();
           const colorMode = String(d.colorMode || '').trim();
           const normalization = Number(d.normalization);
@@ -3339,6 +3351,7 @@
           if (meterType) lastPeppyProfile.meterType = meterType;
           if (fontMode) lastPeppyProfile.fontMode = fontMode;
           if (fontSize) lastPeppyProfile.fontSize = fontSize;
+          if (linearStyle) lastPeppyProfile.linearStyle = linearStyle;
           if (meterMode) lastPeppyProfile.meterMode = meterMode;
           if (colorMode) lastPeppyProfile.colorMode = colorMode;
           if (Number.isFinite(normalization) && normalization > 0) lastPeppyProfile.normalization = normalization;

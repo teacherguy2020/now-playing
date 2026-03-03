@@ -147,13 +147,10 @@
           <option value="l">Font L</option>
           <option value="xl">Font XL</option>
         </select>
-        <select id="meterMode" class="skinSelect" aria-label="Progress bar style">
-          <option value="segmented">Segmented</option>
-          <option value="continuous">Continuous</option>
-        </select>
-        <select id="linearColorMode" class="skinSelect" aria-label="Linear meter color mode">
-          <option value="theme">Linear: Theme</option>
-          <option value="classic">Linear: Green→Yellow→Red</option>
+        <select id="linearStyle" class="skinSelect" aria-label="Linear meter style">
+          <option value="cassette">Linear: Cassette (segmented)</option>
+          <option value="continuous">Linear: Continuous (green→yellow→red)</option>
+          <option value="continuous-theme">Linear: Continuous (theme color)</option>
         </select>
         <select id="needleSensitivity" class="skinSelect" aria-label="Needle sensitivity">
           <option value="low">Needle: Low</option>
@@ -298,19 +295,31 @@
       }
       const PEPPY_PRESETS_KEY = 'peppy.presets.v1';
       const BUILTIN_PRESETS = [
-        { name:'Modern Blue Circular', skin:'blue-1280', theme:'midnight-blue', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'segmented', sensitivity:'medium', smoothing:'medium' },
-        { name:'Matrix Classic Needle', skin:'emerald-1280', theme:'graphite-green', meterType:'circular', fontMode:'dot-matrix', fontSize:'xl', meterMode:'segmented', sensitivity:'medium', smoothing:'medium' },
-        { name:'Red Neon Studio', skin:'red-1280', theme:'red-neon', meterType:'circular', fontMode:'ui-sans', fontSize:'m', meterMode:'continuous', sensitivity:'high', smoothing:'medium' },
-        { name:'Cassette Linear Classic', skin:'cassette-linear', theme:'silver-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'xl', meterMode:'segmented', sensitivity:'medium', smoothing:'low' },
-        { name:'Obsidian Ember Matrix', skin:'orange-1280', theme:'obsidian-black', meterType:'circular', fontMode:'dot-matrix', fontSize:'xl', meterMode:'segmented', sensitivity:'high', smoothing:'low' },
-        { name:'Gray Ghost', skin:'cassette-linear', theme:'obsidian-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'xl', meterMode:'continuous', sensitivity:'low', smoothing:'off' },
+        { name:'Modern Blue Circular', skin:'blue-1280', theme:'midnight-blue', meterType:'circular', fontMode:'ui-sans', fontSize:'m', linearStyle:'continuous-theme', sensitivity:'medium', smoothing:'medium' },
+        { name:'Matrix Classic Needle', skin:'emerald-1280', theme:'graphite-green', meterType:'circular', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'cassette', sensitivity:'medium', smoothing:'medium' },
+        { name:'Red Neon Studio', skin:'red-1280', theme:'red-neon', meterType:'circular', fontMode:'ui-sans', fontSize:'m', linearStyle:'continuous-theme', sensitivity:'high', smoothing:'medium' },
+        { name:'Cassette Linear Classic', skin:'blue-1280', theme:'silver-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'cassette', sensitivity:'medium', smoothing:'low' },
+        { name:'Obsidian Ember Matrix', skin:'orange-1280', theme:'obsidian-black', meterType:'circular', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'cassette', sensitivity:'high', smoothing:'low' },
+        { name:'Gray Ghost', skin:'blue-1280', theme:'obsidian-black', meterType:'linear', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'continuous', sensitivity:'low', smoothing:'off' },
       ];
-      function enforceMeterModeForFont(){
+
+      function toLinearStyle(p = {}) {
+        const direct = String(p?.linearStyle || '').trim();
+        if (['cassette', 'continuous', 'continuous-theme'].includes(direct)) return direct;
+        const mm = String(p?.meterMode || '').trim();
+        const cm = String(p?.colorMode || '').trim();
+        if (mm === 'segmented') return 'cassette';
+        if (mm === 'continuous' && cm === 'theme') return 'continuous-theme';
+        if (mm === 'continuous') return 'continuous';
+        return 'continuous';
+      }
+
+      function enforceLinearRulesForFont(){
         const fm = String(fontMode?.value || previewFontMode || 'ui-sans');
         if (fm === 'ui-sans') {
-          previewMeterMode = 'continuous';
-          if (meterMode) meterMode.value = 'continuous';
-          try { localStorage.setItem('peppy.meterMode', 'continuous'); } catch {}
+          previewLinearStyle = 'continuous-theme';
+          if (linearStyle) linearStyle.value = 'continuous-theme';
+          try { localStorage.setItem('peppy.linearStyle', 'continuous-theme'); } catch {}
         }
       }
 
@@ -320,11 +329,15 @@
         const meterType = meterTypeLinear?.checked ? 'linear' : 'circular';
         const fontModeVal = String(fontMode?.value || 'ui-sans');
         const fontSizeVal = String(fontSize?.value || 'm');
-        const meterModeVal = (fontModeVal === 'ui-sans') ? 'continuous' : String(meterMode?.value || 'segmented');
-        const colorModeVal = String(linearColorMode?.value || previewColorMode || 'classic');
+        const linearStyleVal = (fontModeVal === 'ui-sans')
+          ? 'continuous-theme'
+          : String(linearStyle?.value || previewLinearStyle || 'continuous');
+        // Keep backward-compatible fields for existing consumers.
+        const meterModeVal = (linearStyleVal === 'cassette') ? 'segmented' : 'continuous';
+        const colorModeVal = (linearStyleVal === 'continuous-theme') ? 'theme' : 'classic';
         const sensitivity = String(needleSensitivity?.value || previewSensitivity || 'medium');
         const smoothing = String(needleSmoothing?.value || previewSmoothing || 'medium');
-        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, meterMode: meterModeVal, colorMode: colorModeVal, sensitivity, smoothing, ts: Date.now() };
+        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, linearStyle: linearStyleVal, meterMode: meterModeVal, colorMode: colorModeVal, sensitivity, smoothing, ts: Date.now() };
       }
       function applyPreset(p){
         if (!p) return;
@@ -336,17 +349,11 @@
         if (themeName && p.theme) themeName.value = String(p.theme);
         if (fontMode && p.fontMode) fontMode.value = String(p.fontMode);
         if (fontSize && p.fontSize) fontSize.value = String(p.fontSize);
-        if (meterMode && p.meterMode) meterMode.value = String(p.meterMode);
-        if (p.meterMode) {
-          previewMeterMode = String(p.meterMode);
-          try { localStorage.setItem('peppy.meterMode', previewMeterMode); } catch {}
-        }
-        if (linearColorMode && p.colorMode) linearColorMode.value = String(p.colorMode);
-        if (p.colorMode) {
-          previewColorMode = String(p.colorMode);
-          try { localStorage.setItem('peppy.colorMode', previewColorMode); } catch {}
-        }
-        enforceMeterModeForFont();
+        const ls = toLinearStyle(p);
+        if (linearStyle) linearStyle.value = ls;
+        previewLinearStyle = ls;
+        try { localStorage.setItem('peppy.linearStyle', previewLinearStyle); } catch {}
+        enforceLinearRulesForFont();
         if (needleSensitivity && p.sensitivity) needleSensitivity.value = String(p.sensitivity);
         if (needleSmoothing && p.smoothing) needleSmoothing.value = String(p.smoothing);
         previewSkin = String(skinName?.value || p.skin || previewSkin || 'blue-1280');
@@ -378,8 +385,7 @@
       const skinName = $('skinName');
       const meterTypeCircular = $('meterTypeCircular');
       const meterTypeLinear = $('meterTypeLinear');
-      const meterMode = $('meterMode');
-      const linearColorMode = $('linearColorMode');
+      const linearStyle = $('linearStyle');
       const needleSensitivity = $('needleSensitivity');
       const needleSmoothing = $('needleSmoothing');
       const fontMode = $('fontMode');
@@ -461,15 +467,20 @@
           progressEl.style.width = '100%';
         }
       }
+      function syncLinearControlVisibility(){
+        const linear = !!meterTypeLinear?.checked;
+        if (linearStyle) linearStyle.style.display = linear ? '' : 'none';
+      }
       function syncMeterTypeClass(){
         const linear = !!meterTypeLinear?.checked;
         try { document.body.classList.toggle('linear-meter', linear); } catch {}
         syncProgressPlacement();
+        syncLinearControlVisibility();
       }
       function renderSkinOptions(selected = 'blue-1280') {
         if (!skinName) return;
         const g = meterTypeLinear?.checked ? 'linear' : 'circular';
-        const all = [...new Set([...Object.keys(SKIN_ASSETS), 'cassette-linear'])].filter((n) => n !== 'mack-blue-compact');
+        const all = [...new Set([...Object.keys(SKIN_ASSETS)])].filter((n) => n !== 'mack-blue-compact' && n !== 'cassette-linear');
         const names = all.filter((n) => skinMeta(n).geometry === g);
         const final = names.length ? names : all;
         skinName.innerHTML = final.map((n) => `<option value="${n}">${n}</option>`).join('');
@@ -615,7 +626,7 @@
         if (fromUrl) return fromUrl;
         try { return localStorage.getItem('peppy.skin') || String(skinName?.value || 'blue-1280'); } catch { return String(skinName?.value || 'blue-1280'); }
       })();
-      if (!(previewSkin in SKIN_ASSETS) && previewSkin !== 'cassette-linear') previewSkin = 'blue-1280';
+      if (!(previewSkin in SKIN_ASSETS) || previewSkin === 'cassette-linear') previewSkin = 'blue-1280';
       let previewMeterType = (() => {
         try { return localStorage.getItem('peppy.meterType') || skinMeta(previewSkin).geometry || 'circular'; } catch { return skinMeta(previewSkin).geometry || 'circular'; }
       })();
@@ -630,10 +641,20 @@
       previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
       applyNeedleSkin(previewSkin);
 
-      let previewMeterMode = (() => { try { return localStorage.getItem('peppy.meterMode') || 'segmented'; } catch { return 'segmented'; } })();
+      let previewLinearStyle = (() => {
+        try {
+          const direct = String(localStorage.getItem('peppy.linearStyle') || '').trim();
+          if (['cassette','continuous','continuous-theme'].includes(direct)) return direct;
+          const mm = String(localStorage.getItem('peppy.meterMode') || '').trim();
+          const cm = String(localStorage.getItem('peppy.colorMode') || '').trim();
+          if (mm === 'segmented') return 'cassette';
+          if (mm === 'continuous' && cm === 'theme') return 'continuous-theme';
+          if (mm === 'continuous') return 'continuous';
+          return 'continuous';
+        } catch { return 'continuous'; }
+      })();
       let previewSensitivity = (() => { try { return localStorage.getItem('peppy.sensitivity') || 'medium'; } catch { return 'medium'; } })();
       let previewSmoothing = (() => { try { return localStorage.getItem('peppy.smoothing') || 'medium'; } catch { return 'medium'; } })();
-      let previewColorMode = (() => { try { return localStorage.getItem('peppy.colorMode') || 'classic'; } catch { return 'classic'; } })();
       const previewTheme = (() => {
         const fromUrl = String(qp.get('theme') || '').trim();
         if (fromUrl) return fromUrl;
@@ -641,9 +662,8 @@
       })();
       applyTheme(previewTheme);
       if (themeName) themeName.value = previewTheme;
-      if (meterMode) meterMode.value = previewMeterMode;
-      if (linearColorMode) linearColorMode.value = (previewColorMode === 'theme' ? 'theme' : 'classic');
-      enforceMeterModeForFont();
+      if (linearStyle) linearStyle.value = previewLinearStyle;
+      enforceLinearRulesForFont();
       if (needleSensitivity) needleSensitivity.value = ['low','medium','high'].includes(previewSensitivity) ? previewSensitivity : 'medium';
       if (needleSmoothing) needleSmoothing.value = ['off','low','medium','high'].includes(previewSmoothing) ? previewSmoothing : 'medium';
 
@@ -702,7 +722,9 @@
             const gap = 2;
             const segW = Math.max(2, Math.floor((w - (segs - 1) * gap) / segs));
             const lit = Math.round((clamp(level) / 100) * segs);
-            const useThemeTint = (String(previewColorMode || 'classic') === 'theme');
+            const style = String(previewLinearStyle || 'continuous');
+            const cassetteStyle = (style === 'cassette');
+            const useThemeTint = (style === 'continuous-theme');
 
             ctx.fillStyle = 'rgba(10,18,30,.9)';
             ctx.fillRect(x0, y, w, h);
@@ -714,31 +736,33 @@
             ctx.font = 'bold 11px Inter, system-ui, sans-serif';
             ctx.fillText(label, x0 - 15, y + h - 5);
 
-            if (previewMeterMode === 'continuous') {
+            if (!cassetteStyle) {
               const pct = clamp(level) / 100;
               const fillW = Math.max(0, Math.floor(w * pct));
-              const bg = ctx.createLinearGradient(x0, 0, x0 + w, 0);
-              bg.addColorStop(0, 'rgba(120,200,230,.20)');
-              bg.addColorStop(1, 'rgba(120,200,230,.08)');
-              ctx.fillStyle = bg;
+              ctx.fillStyle = 'rgba(18,30,44,.55)';
               ctx.fillRect(x0 + 1, y + 3, w - 2, h - 6);
 
-              const g = ctx.createLinearGradient(x0, 0, x0 + Math.max(1, fillW), 0);
               if (useThemeTint) {
                 const rgb = getComputedStyle(document.documentElement).getPropertyValue('--progress-rgb').trim() || '46,185,238';
-                const mk = (a) => `rgba(${rgb},${a})`;
-                g.addColorStop(0, mk(0.28));
-                g.addColorStop(0.45, mk(0.62));
-                g.addColorStop(0.8, mk(0.9));
-                g.addColorStop(1, mk(1));
+                ctx.fillStyle = `rgba(${rgb},.82)`;
+                ctx.fillRect(x0 + 1, y + 3, Math.max(0, fillW - 2), h - 6);
               } else {
-                g.addColorStop(0, '#bff3ff');
-                g.addColorStop(0.72, '#bff3ff');
-                g.addColorStop(0.86, '#ffe06b');
-                g.addColorStop(1, '#ff6464');
+                const greenEnd = Math.floor(w * 0.62);
+                const yellowEnd = Math.floor(w * 0.82);
+                const fw = Math.max(0, fillW - 2);
+                const drawPart = (sx, sw, color) => {
+                  if (sw <= 0) return;
+                  ctx.fillStyle = color;
+                  ctx.fillRect(sx, y + 3, sw, h - 6);
+                };
+                const xStart = x0 + 1;
+                const gW = Math.min(fw, greenEnd);
+                const yW = Math.min(Math.max(0, fw - greenEnd), Math.max(0, yellowEnd - greenEnd));
+                const rW = Math.max(0, fw - yellowEnd);
+                drawPart(xStart, gW, '#79f28a');
+                drawPart(xStart + greenEnd, yW, '#ffe06b');
+                drawPart(xStart + yellowEnd, rW, '#ff6464');
               }
-              ctx.fillStyle = g;
-              ctx.fillRect(x0 + 1, y + 3, Math.max(0, fillW - 2), h - 6);
             } else {
               for (let i = 0; i < segs; i++) {
                 const sx = x0 + i * (segW + gap);
@@ -1641,7 +1665,7 @@
       fontMode?.addEventListener('change', () => {
         previewFontMode = String(fontMode?.value || 'ui-sans');
         try { localStorage.setItem('peppy.fontMode', previewFontMode); } catch {}
-        enforceMeterModeForFont();
+        enforceLinearRulesForFont();
         drawNeedles();
         paintSegments(pseg, lastProgressPct);
         redrawDotCanvases();
@@ -1653,18 +1677,12 @@
         redrawDotCanvases();
         publishProfileState();
       });
-      meterMode?.addEventListener('change', () => {
-        previewMeterMode = String(meterMode?.value || 'segmented');
-        enforceMeterModeForFont();
-        try { localStorage.setItem('peppy.meterMode', previewMeterMode); } catch {}
+      linearStyle?.addEventListener('change', () => {
+        previewLinearStyle = String(linearStyle?.value || 'continuous');
+        enforceLinearRulesForFont();
+        try { localStorage.setItem('peppy.linearStyle', previewLinearStyle); } catch {}
         drawNeedles();
         paintSegments(pseg, lastProgressPct);
-        publishProfileState();
-      });
-      linearColorMode?.addEventListener('change', () => {
-        previewColorMode = String(linearColorMode?.value || 'classic');
-        try { localStorage.setItem('peppy.colorMode', previewColorMode); } catch {}
-        drawNeedles();
         publishProfileState();
       });
       needleSensitivity?.addEventListener('change', () => {
@@ -1726,8 +1744,7 @@
           const mt = String(p?.meterType || '').trim();
           const fm = String(p?.fontMode || '').trim();
           const fsz = String(p?.fontSize || '').trim();
-          const mm = String(p?.meterMode || '').trim();
-          const cm = String(p?.colorMode || '').trim();
+          const ls = toLinearStyle(p);
           const sens = String(p?.sensitivity || '').trim().toLowerCase();
           const smooth = String(p?.smoothing || '').trim().toLowerCase();
           if (!hasSkinParam && s) {
@@ -1752,16 +1769,12 @@
             if (fontSize) fontSize.value = fsz;
             try { localStorage.setItem('peppy.fontSize', fsz); } catch {}
           }
-          if (mm === 'segmented' || mm === 'continuous') {
-            if (meterMode) meterMode.value = mm;
-            try { localStorage.setItem('peppy.meterMode', mm); } catch {}
+          if (['cassette','continuous','continuous-theme'].includes(ls)) {
+            previewLinearStyle = ls;
+            if (linearStyle) linearStyle.value = ls;
+            try { localStorage.setItem('peppy.linearStyle', ls); } catch {}
           }
-          if (cm === 'theme' || cm === 'classic') {
-            previewColorMode = cm;
-            if (linearColorMode) linearColorMode.value = cm;
-            try { localStorage.setItem('peppy.colorMode', cm); } catch {}
-          }
-          enforceMeterModeForFont();
+          enforceLinearRulesForFont();
           if (sens === 'low' || sens === 'medium' || sens === 'high') {
             previewSensitivity = sens;
             if (needleSensitivity) needleSensitivity.value = sens;
