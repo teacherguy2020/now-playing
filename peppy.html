@@ -663,9 +663,9 @@
           let widthPx = meterWidth;
           if (linear && lastLinearLayout) {
             const canvasTop = Math.max(0, Math.round(needleRect.top - cardRect.top));
-            const railLeftLocal = Math.max(0, Math.round(lastLinearLayout.panelX + lastLinearLayout.pad));
             const railW = Math.max(40, Math.round(lastLinearLayout.railW));
-            leftPx = Math.max(0, Math.round(meterLeft + Math.round((meterWidth - railW) / 2) + (railLeftLocal - Math.round((meterWidth - railW) / 2))));
+            // Keep progress centered on the visible linear rail block.
+            leftPx = Math.max(0, Math.round(meterLeft + ((meterWidth - railW) / 2)));
             widthPx = railW;
             const topPx = Math.max(0, Math.round(canvasTop + lastLinearLayout.panelY + lastLinearLayout.panelH + 6));
             progressEl.style.top = `${topPx}px`;
