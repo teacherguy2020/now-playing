@@ -741,8 +741,19 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         const u = new URL(rawUrl);
         const skin = String(u.searchParams.get('skin') || '').trim();
         const theme = String(u.searchParams.get('theme') || '').trim();
+        let prev = {};
+        try {
+          const rawPrev = await fs.readFile(peppyLastPushPath, 'utf8');
+          prev = JSON.parse(rawPrev || '{}') || {};
+        } catch {}
         await fs.mkdir(path.dirname(peppyLastPushPath), { recursive: true });
-        await fs.writeFile(peppyLastPushPath, JSON.stringify({ url: rawUrl, skin, theme, ts: Date.now() }, null, 2));
+        await fs.writeFile(peppyLastPushPath, JSON.stringify({
+          ...prev,
+          url: rawUrl,
+          skin: skin || String(prev?.skin || '').trim(),
+          theme: theme || String(prev?.theme || '').trim(),
+          ts: Date.now(),
+        }, null, 2));
       } catch {}
       return res.json({ ok: true, url: rawUrl, effectiveUrl: rawUrl, verified, sshHost, sshUser, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim(), verify: vOut.trim(), verifyErr: String(v?.stderr || '').trim() });
     } catch (e) {
