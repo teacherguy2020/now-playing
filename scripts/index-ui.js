@@ -55,22 +55,23 @@ function bindAlbumArtAppleLinkOnce() {
     if (now < artTapLockUntil) return;
     artTapLockUntil = now + 1200;
 
-    // In app shell, delegate to parent.
+    // Try shell relay first (parent/top).
     try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
+    try { if (window.top && window.top !== window.parent) window.top.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
 
-    // Standalone/kiosk fallback.
+    // Always run direct API fallback too (covers player-render inside player.html iframe).
     try {
+      const key = await ensureRuntimeTrackKey();
+      const headers = { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) };
+      await fetch(`${API_BASE}/config/moode/display-mode`, {
+        method: 'POST', headers, body: JSON.stringify({ displayMode: 'peppy' })
+      }).catch(() => null);
+      const host = (location.hostname || '10.0.0.233');
+      const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+      await fetch(`${API_BASE}/config/moode/browser-url`, {
+        method: 'POST', headers, body: JSON.stringify({ url: targetUrl })
+      }).catch(() => null);
       if (window.parent === window) {
-        const key = await ensureRuntimeTrackKey();
-        const headers = { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) };
-        await fetch(`${API_BASE}/config/moode/display-mode`, {
-          method: 'POST', headers, body: JSON.stringify({ displayMode: 'peppy' })
-        }).catch(() => null);
-        const host = (location.hostname || '10.0.0.233');
-        const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
-        await fetch(`${API_BASE}/config/moode/browser-url`, {
-          method: 'POST', headers, body: JSON.stringify({ url: targetUrl })
-        }).catch(() => null);
         location.href = `${targetUrl}&ts=${Date.now()}`;
       }
     } catch {}
