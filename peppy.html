@@ -770,8 +770,7 @@
                   svg.style.height = `${s}px`;
                 }
               });
-              const free = Math.max(0, freeFromArt - controlsH);
-              topPx = artBottom + Math.round(free / 2) + 14;
+              topPx = Math.max(8, cardH - controlsH - 8);
             } else {
               // Reset any 1024-specific inline sizing when leaving that profile.
               controlsEl.style.gridTemplateColumns = '';
