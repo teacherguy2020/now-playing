@@ -814,7 +814,19 @@
           return;
         }
         if (controlsEl.parentElement !== rightCard) rightCard.appendChild(controlsEl);
+        // Reset any compact-profile inline control sizing/layout so 1280x400 stays canonical.
         controlsEl.style.position = 'absolute';
+        controlsEl.style.gridTemplateColumns = '';
+        controlsEl.style.gridTemplateRows = '';
+        controlsEl.style.columnGap = '';
+        controlsEl.style.rowGap = '';
+        controlsEl.style.height = '';
+        controlsEl.querySelectorAll('.ctrlBtn').forEach((b) => {
+          b.style.width = '';
+          b.style.height = '';
+          const svg = b.querySelector('.symSvg');
+          if (svg) { svg.style.width = ''; svg.style.height = ''; }
+        });
         controlsEl.style.left = '8px';
         controlsEl.style.right = 'auto';
         controlsEl.style.top = 'auto';
