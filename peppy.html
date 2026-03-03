@@ -1717,9 +1717,9 @@
           if (compact1024) {
             const metaShort = `${dotFileMeta} ${dotFileMeta2}`.replace(/\s+/g,' ').trim();
             const row3 = `${dotAlbumYear} • ${metaShort}`;
-            drawDotText(artistCanvas, dotArtist, { size: 42, pitch: 3, dot: Math.max(1.0, titleDot * 0.88), font: '"Arial Black", "Segoe UI", sans-serif' });
-            drawDotText(titleCanvas, dotTitle, { size: 42, pitch: 3, dot: Math.max(1.0, titleDot * 0.88), font: '"Arial Black", "Segoe UI", sans-serif' });
-            drawDotText(albumYearCanvas, row3, { size: 38, pitch: 3, dot: Math.max(0.9, metaDot * 1.1), font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(artistCanvas, dotArtist, { size: 42, pitch: 3, dot: Math.max(1.0, titleDot * 0.88), rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(titleCanvas, dotTitle, { size: 42, pitch: 3, dot: Math.max(1.0, titleDot * 0.88), padY: 1, rowShift: 1, font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(albumYearCanvas, row3, { size: 38, pitch: 3, dot: Math.max(0.9, metaDot * 1.1), padY: 1, rowShift: 2, font: '"Arial Black", "Segoe UI", sans-serif' });
             if (fileMetaCanvas) drawDotText(fileMetaCanvas, ' ', { size: 22, pitch: 2, dot: 0.01, padY: 0, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
           } else {
             drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
