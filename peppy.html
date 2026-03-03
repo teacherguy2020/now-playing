@@ -808,6 +808,37 @@
                 }
               });
               return;
+            } else if (sp === '480x320') {
+              // 480x320: same philosophy as 800x480 (2x3 grid, centered, balanced below art).
+              const colGap = 8;
+              const rowGap = 8;
+              const free = Math.max(90, cardH - artBottom - 12);
+              const maxByWidth = Math.floor((cardW - 16 - colGap) / 2);
+              const maxByHeight = Math.floor((free - (rowGap * 2)) / 3);
+              const btn = Math.max(26, Math.min(50, maxByWidth, maxByHeight));
+              controlsW = (btn * 2) + colGap;
+              controlsH = (btn * 3) + (rowGap * 2);
+              controlsEl.style.position = 'absolute';
+              controlsEl.style.gridTemplateColumns = `repeat(2,${btn}px)`;
+              controlsEl.style.gridTemplateRows = `repeat(3,${btn}px)`;
+              controlsEl.style.columnGap = `${colGap}px`;
+              controlsEl.style.rowGap = `${rowGap}px`;
+              controlsEl.style.height = `${controlsH}px`;
+              controlsEl.style.marginBottom = '';
+              controlsEl.style.right = 'auto';
+              controlsEl.style.bottom = 'auto';
+              const free2 = Math.max(0, cardH - artBottom - controlsH);
+              topPx = artBottom + Math.round(free2 / 2);
+              controlsEl.querySelectorAll('.ctrlBtn').forEach((b) => {
+                b.style.width = `${btn}px`;
+                b.style.height = `${btn}px`;
+                const svg = b.querySelector('.symSvg');
+                if (svg) {
+                  const s = Math.max(12, Math.round(btn * 0.46));
+                  svg.style.width = `${s}px`;
+                  svg.style.height = `${s}px`;
+                }
+              });
             } else {
               // Reset any 1024-specific inline sizing when leaving that profile.
               controlsEl.style.gridTemplateColumns = '';
