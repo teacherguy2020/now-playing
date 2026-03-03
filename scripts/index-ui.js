@@ -2647,8 +2647,8 @@ function updateUI(data) {
   // =========================
   // Artist / Title (radio stabilized)
   // =========================
-  let displayArtist = String(data.artist || '');
-  let displayTitle  = String(data.title  || '');
+  let displayArtist = String(data.displayArtist || data.artist || '');
+  let displayTitle  = String(data.displayTitle  || data.title  || '');
 
   if (isAirplay && !displayTitle.trim()) displayTitle = 'AirPlay';
 
@@ -2674,14 +2674,14 @@ function updateUI(data) {
     displayArtist =
       radioArtist ||
       stabArtist ||
-      String(data.artist || '').trim() ||
+      String(data.displayArtist || data.artist || '').trim() ||
       teasedArtist ||
       'Radio Stream';
 
     displayTitle =
       radioTitle ||
       stabTitle ||
-      String(displayTitle || '').trim() ||
+      String(data.displayTitle || displayTitle || '').trim() ||
       teasedTitle ||
       incomingTitleLine;
 
@@ -2704,8 +2704,8 @@ if (titleEl) {
   if (albumTextEl) {
     const inAlexaMode = data?.alexaMode === true;
     const album = (isRadio && !inAlexaMode)
-      ? decodeHtmlEntities(String(data.radioAlbum || data.album || ''))
-      : decodeHtmlEntities(String(data.album || data.radioAlbum || ''));
+      ? decodeHtmlEntities(String(data.displayLine3 || data.radioAlbum || data.album || ''))
+      : decodeHtmlEntities(String(data.displayLine3 || data.album || data.radioAlbum || ''));
 
     let year = (isRadio && !inAlexaMode)
       ? String(data.radioYear || data.year || '').trim()
@@ -2813,7 +2813,7 @@ if (titleEl) {
   // Art selection
   // =========================
   const alt     = String(data.altArtUrl   || '').trim();
-  const primary = String(data.albumArtUrl || '').trim();
+  const primary = String(data.displayArtUrl || data.albumArtUrl || '').trim();
 
   // Prefer real cover art first; only fall back to alt art (station logo, etc.)
   const rawArtUrl = (primary || alt);
