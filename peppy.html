@@ -507,12 +507,23 @@
       function syncProgressPlacement(){
         if (!progressEl || !metersEl || !rightCard) return;
         // Keep progress location consistent for both circular + linear:
-        // anchor to bottom of right card, while matching meter background width.
+        // anchor to bottom of right card, and match exact needle/meter background width.
         if (progressEl.parentElement !== rightCard) rightCard.appendChild(progressEl);
         progressEl.style.position = 'absolute';
-        progressEl.style.left = 'calc(30px + ((100% - 30px) * 0.05))';
-        progressEl.style.right = 'calc(30px + ((100% - 30px) * 0.05))';
-        progressEl.style.width = 'auto';
+        const needleWrapEl = metersEl.querySelector('.needleWrap');
+        if (needleWrapEl) {
+          const cardRect = rightCard.getBoundingClientRect();
+          const needleRect = needleWrapEl.getBoundingClientRect();
+          const leftPx = Math.max(0, Math.round(needleRect.left - cardRect.left));
+          const widthPx = Math.max(40, Math.round(needleRect.width));
+          progressEl.style.left = `${leftPx}px`;
+          progressEl.style.right = 'auto';
+          progressEl.style.width = `${widthPx}px`;
+        } else {
+          progressEl.style.left = 'calc(30px + ((100% - 30px) * 0.05))';
+          progressEl.style.right = 'calc(30px + ((100% - 30px) * 0.05))';
+          progressEl.style.width = 'auto';
+        }
         progressEl.style.marginLeft = '0';
         progressEl.style.marginTop = '0';
         progressEl.style.bottom = '0';
@@ -1531,7 +1542,7 @@
         drawPlainText(fileMetaCanvas, dotFileMeta, { size: Math.round(18*scale), weight: plainCfg.metaW, font: plainCfg.family });
         drawPlainText(fileMetaCanvas2, dotFileMeta2, { size: Math.round(18*scale), weight: plainCfg.metaW, font: plainCfg.family });
       }
-      window.addEventListener('resize', () => { fitPreviewScale(); redrawDotCanvases(); });
+      window.addEventListener('resize', () => { fitPreviewScale(); redrawDotCanvases(); syncProgressPlacement(); });
 
       function decodeEntities(s){
         try {
