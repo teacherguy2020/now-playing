@@ -152,6 +152,11 @@
           <option value="continuous">Linear: Continuous (green→yellow→red)</option>
           <option value="continuous-theme">Linear: Continuous (theme color)</option>
         </select>
+        <select id="linearSize" class="skinSelect" aria-label="Linear meter size">
+          <option value="s">Linear Size: Small</option>
+          <option value="m" selected>Linear Size: Medium</option>
+          <option value="l">Linear Size: Large</option>
+        </select>
         <select id="needleSensitivity" class="skinSelect" aria-label="Needle sensitivity">
           <option value="low">Needle: Low</option>
           <option value="medium" selected>Needle: Medium</option>
@@ -326,12 +331,13 @@
         const fontModeVal = String(fontMode?.value || 'ui-sans');
         const fontSizeVal = String(fontSize?.value || 'm');
         const linearStyleVal = String(linearStyle?.value || previewLinearStyle || 'continuous');
+        const linearSizeVal = String(linearSize?.value || previewLinearSize || 'm');
         // Keep backward-compatible fields for existing consumers.
         const meterModeVal = (linearStyleVal === 'cassette') ? 'segmented' : 'continuous';
         const colorModeVal = (linearStyleVal === 'continuous-theme') ? 'theme' : 'classic';
         const sensitivity = String(needleSensitivity?.value || previewSensitivity || 'medium');
         const smoothing = String(needleSmoothing?.value || previewSmoothing || 'medium');
-        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, linearStyle: linearStyleVal, meterMode: meterModeVal, colorMode: colorModeVal, sensitivity, smoothing, ts: Date.now() };
+        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, linearStyle: linearStyleVal, linearSize: linearSizeVal, meterMode: meterModeVal, colorMode: colorModeVal, sensitivity, smoothing, ts: Date.now() };
       }
       function applyPreset(p){
         if (!p) return;
@@ -347,6 +353,10 @@
         if (linearStyle) linearStyle.value = ls;
         previewLinearStyle = ls;
         try { localStorage.setItem('peppy.linearStyle', previewLinearStyle); } catch {}
+        const lz = ['s','m','l'].includes(String(p?.linearSize || '')) ? String(p.linearSize) : 'm';
+        if (linearSize) linearSize.value = lz;
+        previewLinearSize = lz;
+        try { localStorage.setItem('peppy.linearSize', previewLinearSize); } catch {}
         enforceLinearRulesForFont();
         if (needleSensitivity && p.sensitivity) needleSensitivity.value = String(p.sensitivity);
         if (needleSmoothing && p.smoothing) needleSmoothing.value = String(p.smoothing);
@@ -380,6 +390,7 @@
       const meterTypeCircular = $('meterTypeCircular');
       const meterTypeLinear = $('meterTypeLinear');
       const linearStyle = $('linearStyle');
+      const linearSize = $('linearSize');
       const needleSensitivity = $('needleSensitivity');
       const needleSmoothing = $('needleSmoothing');
       const fontMode = $('fontMode');
@@ -464,6 +475,7 @@
       function syncLinearControlVisibility(){
         const linear = !!meterTypeLinear?.checked;
         if (linearStyle) linearStyle.style.display = linear ? '' : 'none';
+        if (linearSize) linearSize.style.display = linear ? '' : 'none';
         // Skin picker is only relevant for circular meter artwork.
         if (skinName) skinName.style.display = linear ? 'none' : '';
       }
@@ -649,6 +661,12 @@
           return 'continuous';
         } catch { return 'continuous'; }
       })();
+      let previewLinearSize = (() => {
+        try {
+          const v = String(localStorage.getItem('peppy.linearSize') || 'm').trim();
+          return ['s','m','l'].includes(v) ? v : 'm';
+        } catch { return 'm'; }
+      })();
       let previewSensitivity = (() => { try { return localStorage.getItem('peppy.sensitivity') || 'medium'; } catch { return 'medium'; } })();
       let previewSmoothing = (() => { try { return localStorage.getItem('peppy.smoothing') || 'medium'; } catch { return 'medium'; } })();
       const previewTheme = (() => {
@@ -659,6 +677,7 @@
       applyTheme(previewTheme);
       if (themeName) themeName.value = previewTheme;
       if (linearStyle) linearStyle.value = previewLinearStyle;
+      if (linearSize) linearSize.value = previewLinearSize;
       enforceLinearRulesForFont();
       if (needleSensitivity) needleSensitivity.value = ['low','medium','high'].includes(previewSensitivity) ? previewSensitivity : 'medium';
       if (needleSmoothing) needleSmoothing.value = ['off','low','medium','high'].includes(previewSmoothing) ? previewSmoothing : 'medium';
@@ -700,8 +719,11 @@
           const panelW = Math.round(W * 0.90);
           const panelY = Math.round(H * 0.14);
           const panelH = Math.round(H * 0.70);
-          const laneH = Math.max(14, Math.floor((panelH - 30) / 2));
-          const topY = panelY + 10;
+          const sizeMode = String(previewLinearSize || 'm');
+          const sizeMul = sizeMode === 's' ? 0.78 : (sizeMode === 'l' ? 1.22 : 1.0);
+          const laneBase = Math.max(14, Math.floor((panelH - 30) / 2));
+          const laneH = Math.max(10, Math.round(laneBase * sizeMul));
+          const topY = panelY + Math.max(6, Math.floor((panelH - (laneH * 2 + 12)) / 2));
           const botY = topY + laneH + 12;
           const pad = 18;
           const w = panelW - pad * 2;
@@ -1681,6 +1703,13 @@
         paintSegments(pseg, lastProgressPct);
         publishProfileState();
       });
+      linearSize?.addEventListener('change', () => {
+        previewLinearSize = String(linearSize?.value || 'm');
+        if (!['s','m','l'].includes(previewLinearSize)) previewLinearSize = 'm';
+        try { localStorage.setItem('peppy.linearSize', previewLinearSize); } catch {}
+        drawNeedles();
+        publishProfileState();
+      });
       needleSensitivity?.addEventListener('change', () => {
         previewSensitivity = String(needleSensitivity?.value || 'medium');
         try { localStorage.setItem('peppy.sensitivity', previewSensitivity); } catch {}
@@ -1741,6 +1770,7 @@
           const fm = String(p?.fontMode || '').trim();
           const fsz = String(p?.fontSize || '').trim();
           const ls = toLinearStyle(p);
+          const lz = String(p?.linearSize || '').trim();
           const sens = String(p?.sensitivity || '').trim().toLowerCase();
           const smooth = String(p?.smoothing || '').trim().toLowerCase();
           if (!hasSkinParam && s) {
@@ -1769,6 +1799,11 @@
             previewLinearStyle = ls;
             if (linearStyle) linearStyle.value = ls;
             try { localStorage.setItem('peppy.linearStyle', ls); } catch {}
+          }
+          if (['s','m','l'].includes(lz)) {
+            previewLinearSize = lz;
+            if (linearSize) linearSize.value = lz;
+            try { localStorage.setItem('peppy.linearSize', lz); } catch {}
           }
           enforceLinearRulesForFont();
           if (sens === 'low' || sens === 'medium' || sens === 'high') {
