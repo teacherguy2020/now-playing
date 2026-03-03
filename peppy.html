@@ -38,8 +38,8 @@
     #art,#artVideo{width:100%;height:100%;object-fit:contain;background:#02040a;display:block;margin:0;border-radius:4px;box-shadow:0 0 28px rgba(var(--progress-rgb,46,185,238),.24), 0 0 58px rgba(var(--progress-rgb,46,185,238),.16)}
     #artGlow{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:6;border-radius:4px;background:radial-gradient(128% 118% at 50% 50%, rgba(var(--progress-rgb,46,185,238),.44) 0%, rgba(var(--progress-rgb,46,185,238),.18) 22%, rgba(var(--progress-rgb,46,185,238),.06) 44%, rgba(var(--progress-rgb,46,185,238),.015) 58%, rgba(var(--progress-rgb,46,185,238),0) 70%);mix-blend-mode:screen;opacity:.86}
     body.font-dot .artFrame{width:calc(100% - 28px);aspect-ratio:1 / 1;height:auto;margin:auto 14px 0 14px;flex:0 0 auto}
-    /* 800x480 layout: pin art frame to top-left of left column across all presets. */
-    body.screen-800x480 .artFrame{width:calc(100% - 36px);max-width:calc(100% - 36px);aspect-ratio:1 / 1;height:auto;margin:14px auto auto 14px;flex:0 0 auto;justify-content:flex-start;align-items:flex-start}
+    /* Compact layout: pin art frame to top-left of left column across all presets. */
+    body.screen-compact .artFrame{width:calc(100% - 36px);max-width:calc(100% - 36px);aspect-ratio:1 / 1;height:auto;margin:14px auto auto 14px;flex:0 0 auto;justify-content:flex-start;align-items:flex-start}
     body.font-dot #artGlow{left:0;right:0;top:0;bottom:0;border-radius:0}
     body.font-dot #art,body.font-dot #artVideo{width:100%;height:100%;object-fit:contain;border-radius:0;background:#161216;border:3px solid #5a4a3f;outline:8px solid rgba(22,16,14,.9);box-shadow:0 0 0 2px rgba(214,184,146,.25), 0 0 18px rgba(232,196,130,.28), 0 0 34px rgba(232,196,130,.18), 0 0 28px rgba(var(--progress-rgb,46,185,238),.22), 0 0 56px rgba(var(--progress-rgb,46,185,238),.14), inset 0 0 0 4px rgba(34,26,20,.65), inset 0 -30px 44px rgba(0,0,0,.52), inset 0 0 54px rgba(0,0,0,.28), inset 0 0 26px rgba(255,220,165,.18), inset 0 0 48px rgba(var(--progress-rgb,46,185,238),.28), 0 8px 22px rgba(0,0,0,.46);filter:contrast(1.08) saturate(.9)}
     body.font-dot.warm-parchment #art,body.font-dot.warm-parchment #artVideo{border-radius:0;border-color:#8f7659;outline-color:rgba(65,48,34,.9);box-shadow:0 0 0 2px rgba(241,224,198,.35), 0 0 24px rgba(244,211,160,.36), 0 0 42px rgba(244,211,160,.22), inset 0 0 0 4px rgba(72,52,32,.64), inset 0 -34px 50px rgba(52,30,14,.56), inset 0 0 60px rgba(120,84,45,.42), inset 0 0 34px rgba(255,224,176,.28), 0 10px 24px rgba(0,0,0,.36);filter:sepia(.2) contrast(1.08) saturate(.88)}
@@ -59,8 +59,11 @@
     .right{position:relative;display:grid;grid-template-rows:auto;align-content:start}
     .meters{position:absolute;right:4px;bottom:12px;width:min(820px, calc(100% - 12px));display:grid;grid-template-rows:auto;gap:2px;padding:0;align-content:end}
     .controls{position:absolute;left:28px;bottom:12px;height:208px;display:grid;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start;z-index:4}
-    /* 800x480 profile: keep classic 2x3 controls; JS positions block in left-column gap above art. */
-    body.screen-800x480 .controls{height:208px;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start}
+    /* Compact profiles: keep classic 2x3 controls; JS positions block in left-column gap above art. */
+    body.screen-compact .controls{height:208px;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start}
+    body.screen-480x320 .controls{height:164px;grid-template-columns:repeat(2,50px);grid-template-rows:repeat(3,50px);column-gap:8px;row-gap:7px}
+    body.screen-480x320 .ctrlBtn{width:50px;height:50px}
+    body.screen-480x320 .ctrlBtn .symSvg{width:24px;height:24px}
     .skinOps{position:static;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;width:min(1280px,calc(100vw - 16px));padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--card),var(--card2));box-sizing:border-box}
     .skinBtn{height:26px;padding:0 10px;border:1px solid #3f4753;background:#1f2731;color:#d8e4f3;font-size:12px;cursor:pointer}
     .skinSelect{height:26px;border:1px solid #3f4753;background:#131b24;color:#d8e4f3;font-size:12px;padding:0 6px}
@@ -157,7 +160,9 @@
         <button id="pushPeppyFromTab" class="skinBtn" type="button">Push Peppy to moOde</button>
         <select id="screenProfile" class="skinSelect" aria-label="Peppy screen profile">
           <option value="1280x400">Screen: 1280×400</option>
+          <option value="1024x320">Screen: 1024×320</option>
           <option value="800x480">Screen: 800×480</option>
+          <option value="480x320">Screen: 480×320</option>
         </select>
         <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
           <input type="radio" name="meterType" id="meterTypeCircular" value="circular" checked /> Circular
@@ -263,7 +268,9 @@
       const adminMode = (qp.get('admin') === '1');
       const SCREEN_PROFILES = {
         '1280x400': { w:1280, h:400, leftCol:320 },
+        '1024x320': { w:1024, h:320, leftCol:256 },
         '800x480': { w:800, h:480, leftCol:200 },
+        '480x320': { w:480, h:320, leftCol:160 },
       };
       function normalizeScreenProfile(v){
         const key = String(v || '').trim();
@@ -287,9 +294,10 @@
           try {
             Object.keys(SCREEN_PROFILES).forEach((k) => document.body.classList.remove(`screen-${k}`));
             document.body.classList.add(`screen-${previewScreenProfile}`);
+            document.body.classList.toggle('screen-compact', previewScreenProfile !== '1280x400');
           } catch {}
           try {
-            const toRight = (previewScreenProfile === '800x480');
+            const toRight = (previewScreenProfile !== '1280x400');
             const slot = toRight ? rightMetaSlot : leftMetaSlot;
             if (slot && fileMetaCanvas && fileMetaCanvas.parentElement !== slot) slot.appendChild(fileMetaCanvas);
             if (slot && fileMetaCanvas2 && fileMetaCanvas2.parentElement !== slot) slot.appendChild(fileMetaCanvas2);
@@ -717,10 +725,11 @@
 
       function updateIframeControlAnchor(_groupW = 0){
         if (!controlsEl || !leftCard || !rightCard) return;
-        if (normalizeScreenProfile(previewScreenProfile || screenProfile?.value) === '800x480') {
+        if (normalizeScreenProfile(previewScreenProfile || screenProfile?.value) !== '1280x400') {
           if (controlsEl.parentElement !== leftCard) leftCard.appendChild(controlsEl);
-          const controlsW = 60 * 2 + 8;
-          const controlsH = 208;
+          const box = controlsEl.getBoundingClientRect?.();
+          const controlsW = Math.max(80, Math.round(box?.width || (60 * 2 + 8)));
+          const controlsH = Math.max(120, Math.round(box?.height || 208));
           const cardW = Math.max(140, leftCard.clientWidth || 200);
           const leftPx = Math.max(8, Math.round((cardW - controlsW) / 2));
           controlsEl.style.left = `${leftPx}px`;
