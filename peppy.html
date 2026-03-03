@@ -139,6 +139,9 @@
         <select id="skinName" class="skinSelect" aria-label="Select meter"></select>
         <select id="fontMode" class="skinSelect" aria-label="Font style">
           <option value="ui-sans">UI Sans</option>
+          <option value="ui-sans-light">UI Sans Light</option>
+          <option value="ui-sans-condensed">UI Sans Condensed</option>
+          <option value="ui-mono">UI Mono</option>
           <option value="dot-matrix">Dot Matrix</option>
         </select>
         <select id="fontSize" class="skinSelect" aria-label="Font size">
@@ -411,7 +414,10 @@
           skin: String(src.skin || 'blue-1280').trim() || 'blue-1280',
           theme: String(src.theme || 'midnight-blue').trim() || 'midnight-blue',
           meterType: (String(src.meterType || 'circular').trim() === 'linear') ? 'linear' : 'circular',
-          fontMode: (String(src.fontMode || 'ui-sans').trim() === 'dot-matrix') ? 'dot-matrix' : 'ui-sans',
+          fontMode: (() => {
+            const fm = String(src.fontMode || 'ui-sans').trim();
+            return ['ui-sans','ui-sans-light','ui-sans-condensed','ui-mono','dot-matrix'].includes(fm) ? fm : 'ui-sans';
+          })(),
           fontSize: ['s','m','l','xl'].includes(String(src.fontSize || '').trim()) ? String(src.fontSize).trim() : 'm',
           linearStyle: linearStyleNorm,
           linearSize: linearSizeNorm,
@@ -1008,7 +1014,8 @@
 
       function paintSegments(segs, v){
         const c = clamp(v);
-        const forceContinuous = String(fontMode?.value || previewFontMode || 'ui-sans') === 'ui-sans';
+        const fm = String(fontMode?.value || previewFontMode || 'ui-sans');
+        const forceContinuous = (fm === 'ui-sans' || fm === 'ui-sans-light' || fm === 'ui-sans-condensed');
         if (forceContinuous) {
           segs.forEach((el) => {
             el.classList.remove('active', 'tail');
@@ -1469,11 +1476,29 @@
           return;
         }
         setCanvasBg(isWarmParchment ? '#efe2cf' : 'transparent');
-        drawPlainText(artistCanvas, dotArtist, { size: Math.round(46*scale), weight: 760 });
-        drawPlainText(titleCanvas, dotTitle, { size: Math.round(46*scale), weight: 800 });
-        drawPlainText(albumYearCanvas, dotAlbumYear, { size: Math.round(46*scale), weight: 760 });
-        drawPlainText(fileMetaCanvas, dotFileMeta, { size: Math.round(18*scale), weight: 640 });
-        drawPlainText(fileMetaCanvas2, dotFileMeta2, { size: Math.round(18*scale), weight: 640 });
+        const plainCfg = (() => {
+          if (mode === 'ui-sans-light') return {
+            family: 'Inter, "Helvetica Neue", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+            artistW: 540, titleW: 580, metaW: 500,
+          };
+          if (mode === 'ui-sans-condensed') return {
+            family: '"Roboto Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif',
+            artistW: 700, titleW: 760, metaW: 620,
+          };
+          if (mode === 'ui-mono') return {
+            family: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+            artistW: 620, titleW: 680, metaW: 560,
+          };
+          return {
+            family: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+            artistW: 760, titleW: 800, metaW: 640,
+          };
+        })();
+        drawPlainText(artistCanvas, dotArtist, { size: Math.round(46*scale), weight: plainCfg.artistW, font: plainCfg.family });
+        drawPlainText(titleCanvas, dotTitle, { size: Math.round(46*scale), weight: plainCfg.titleW, font: plainCfg.family });
+        drawPlainText(albumYearCanvas, dotAlbumYear, { size: Math.round(46*scale), weight: plainCfg.artistW, font: plainCfg.family });
+        drawPlainText(fileMetaCanvas, dotFileMeta, { size: Math.round(18*scale), weight: plainCfg.metaW, font: plainCfg.family });
+        drawPlainText(fileMetaCanvas2, dotFileMeta2, { size: Math.round(18*scale), weight: plainCfg.metaW, font: plainCfg.family });
       }
       window.addEventListener('resize', () => { fitPreviewScale(); redrawDotCanvases(); });
 
@@ -1865,7 +1890,7 @@
             if (meterTypeCircular) meterTypeCircular.checked = (mt !== 'linear');
             try { localStorage.setItem('peppy.meterType', mt); } catch {}
           }
-          if (fm === 'ui-sans' || fm === 'dot-matrix') {
+          if (['ui-sans','ui-sans-light','ui-sans-condensed','ui-mono','dot-matrix'].includes(fm)) {
             if (fontMode) fontMode.value = fm;
             try { localStorage.setItem('peppy.fontMode', fm); } catch {}
           }
