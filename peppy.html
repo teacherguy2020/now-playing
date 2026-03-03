@@ -61,12 +61,16 @@
     .controls{position:absolute;left:28px;bottom:12px;height:208px;display:grid;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start;z-index:4}
     .formatStrip{display:none}
     /* 1280x400 adopts compact-style left panel: art top, LED strip, one-row controls. */
+    body.screen-1280x400 #leftMetaSlot{display:none}
     body.screen-1280x400 .artFrame{margin:14px auto auto 14px}
     body.screen-1280x400 .formatStrip{display:flex;position:absolute;left:12px;right:12px;bottom:58px;justify-content:center;align-items:center;gap:10px;z-index:5;pointer-events:none}
     body.screen-1280x400 .formatStrip .fmtRate{display:none}
     body.screen-1280x400 .controls{position:absolute;left:12px;right:12px;bottom:8px;height:44px;grid-template-columns:repeat(6,44px);grid-template-rows:44px;column-gap:6px;row-gap:0;justify-content:center;align-content:center;z-index:4}
     body.screen-1280x400 .ctrlBtn{width:44px;height:44px}
     body.screen-1280x400 .ctrlBtn .symSvg{width:18px;height:18px}
+    /* Restore original meter geometry basis for 1280 skins (prevents stretched look). */
+    body.screen-1280x400 .row{grid-template-columns:14px 1fr;gap:4px}
+    body.screen-1280x400 .lbl{display:block;visibility:hidden}
     .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#9db0c7;letter-spacing:.3px}
     .fmtLed{width:7px;height:7px;border-radius:50%;background:#1e2e22;border:1px solid #3d5f45;box-shadow:inset 0 0 2px rgba(0,0,0,.55)}
     .fmtItem.on .fmtLed{background:#67f18b;border-color:#9ff7b4;box-shadow:0 0 6px rgba(108,241,148,.8), 0 0 12px rgba(108,241,148,.35)}
