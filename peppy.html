@@ -1921,7 +1921,34 @@
       async function pollNowPlaying(){
         try {
           const r = await fetch(`${api}/now-playing`, { cache: 'no-store' });
-          const j = await r.json().catch(() => ({}));
+          let j = await r.json().catch(() => ({}));
+          const looksEmptyNow = !String(j?.title || '').trim() && !String(j?.artist || '').trim() && !String(j?.stationName || j?.radioStationName || '').trim() && !String(j?.file || '').trim();
+          if (looksEmptyNow) {
+            try {
+              await ensureRuntimeKey();
+              const qr = await fetch(`${api}/config/diagnostics/queue`, { cache:'no-store', headers: runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {} });
+              const qj = await qr.json().catch(() => ({}));
+              if (qr.ok && qj?.ok && Array.isArray(qj.items)) {
+                const head = qj.items.find((x) => !!x?.isHead) || qj.items[0] || null;
+                if (head) {
+                  j = {
+                    ...j,
+                    state: j?.state || qj?.playbackState || 'play',
+                    isStream: true,
+                    isRadio: true,
+                    file: String(head?.file || '').trim(),
+                    title: String(head?.title || '').trim(),
+                    artist: String(head?.artist || '').trim(),
+                    album: String(head?.album || '').trim(),
+                    stationName: String(head?.stationName || head?.name || head?.artist || '').trim(),
+                    stationLogoUrl: String(head?.thumbUrl || '').trim(),
+                    altArtUrl: String(head?.thumbUrl || '').trim(),
+                    albumArtUrl: String(head?.thumbUrl || '').trim(),
+                  };
+                }
+              }
+            } catch {}
+          }
           const t = decodeEntities(String(j?.title || j?.file || 'Unknown title'));
           const a = decodeEntities(String(j?.artist || 'Unknown artist'));
           const playbackState = String(j?.state || '').toLowerCase();
