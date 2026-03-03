@@ -279,7 +279,7 @@
   }
 
   function refreshPeppyFrame(uiPort = 8101){
-    refreshPreviewFrame({ name: 'Peppy', frameId: 'peppyFrame', linkId: 'openPeppyLink', page: 'peppy.html', uiPort, applyZoom: applyPeppyZoom });
+    refreshPreviewFrame({ name: 'Peppy', frameId: 'peppyFrame', linkId: 'openPeppyLink', page: 'peppy.html?kiosk=1', uiPort, applyZoom: applyPeppyZoom });
   }
 
   async function loadRuntime(){
