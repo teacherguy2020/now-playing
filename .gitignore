@@ -17,3 +17,5 @@ npm-debug.log*
 # Local runtime podcast artifacts
 /subscriptions.json
 /var/podcasts/
+
+.DS_Store
