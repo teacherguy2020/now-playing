@@ -1503,7 +1503,9 @@
           }
         }
 
-        const glyphW = 5, glyphH = 7, gap = 1;
+        const glyphW = Number.isFinite(Number(opts.glyphW)) ? Number(opts.glyphW) : 5;
+        const glyphH = Number.isFinite(Number(opts.glyphH)) ? Number(opts.glyphH) : 7;
+        const gap = 1;
         const charAdvance = (ch) => (ch === ' ' ? 3 : (ch === '.' || ch === ':' || ch === ',' ? 4 : (glyphW + gap)));
         let s = String(text || '—');
         const fitText = (txt) => {
@@ -1533,7 +1535,13 @@
         let penCol = startCol;
         for (let i = 0; i < s.length; i++) {
           const ch = s[i];
-          const g = glyph(ch);
+          const g0 = glyph(ch);
+          const g = (() => {
+            if (glyphH <= 7) return g0;
+            const padTop = Math.floor((glyphH - 7) / 2);
+            const padBot = Math.max(0, glyphH - 7 - padTop);
+            return Array.from({ length: padTop }, () => '00000').concat(g0).concat(Array.from({ length: padBot }, () => '00000'));
+          })();
           for (let ry = 0; ry < glyphH; ry++) {
             const row = g[ry] || '00000';
             for (let rx = 0; rx < glyphW; rx++) {
@@ -1876,9 +1884,10 @@
             const row3Size = is1280 ? 42 : 38;
             const headDot = Math.max(1.0, titleDot * (is1280 ? 0.94 : 0.88));
             const row3Dot = Math.max(0.9, metaDot * (is1280 ? 1.2 : 1.1));
-            drawDotText(artistCanvas, dotArtist, { size: headSize, pitch: 3, dot: headDot, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
-            drawDotText(titleCanvas, dotTitle, { size: headSize, pitch: 3, dot: headDot, padY: 1, rowShift: 1, font: '"Arial Black", "Segoe UI", sans-serif' });
-            drawDotText(albumYearCanvas, row3, { size: row3Size, pitch: 3, dot: row3Dot, padY: 1, rowShift: 2, font: '"Arial Black", "Segoe UI", sans-serif' });
+            const glyphH = is1280 ? 9 : 7;
+            drawDotText(artistCanvas, dotArtist, { size: headSize, pitch: 3, dot: headDot, glyphH, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(titleCanvas, dotTitle, { size: headSize, pitch: 3, dot: headDot, glyphH, padY: 1, rowShift: 1, font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(albumYearCanvas, row3, { size: row3Size, pitch: 3, dot: row3Dot, glyphH, padY: 1, rowShift: 2, font: '"Arial Black", "Segoe UI", sans-serif' });
             if (fileMetaCanvas) drawDotText(fileMetaCanvas, ' ', { size: 22, pitch: 2, dot: 0.01, padY: 0, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
           } else {
             drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
