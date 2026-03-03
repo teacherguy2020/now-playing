@@ -745,14 +745,15 @@
             const artBottom = artFrameRect ? Math.round(artFrameRect.bottom - cardRect.top) : 150;
 
             if (sp === '1024x320') {
-              // Rule: centered horizontally; equal gap above (from art) and below (to bottom).
-              const minGap = 6;
+              // Hard rule: controls must never touch art.
+              const gapTop = 10;
+              const gapBottom = 8;
               const colGap = 6;
               const rowGap = 6;
               const maxByWidth = Math.floor((cardW - 16 - (colGap * 2)) / 3);
-              const freeFromArt = Math.max(0, cardH - artBottom);
-              const maxByHeight = Math.floor((freeFromArt - (minGap * 2) - rowGap) / 2);
-              const btn = Math.max(30, Math.min(42, maxByWidth, maxByHeight));
+              const freeFromArt = Math.max(0, cardH - artBottom - gapTop - gapBottom);
+              const maxByHeight = Math.floor((freeFromArt - rowGap) / 2);
+              const btn = Math.max(22, Math.min(40, maxByWidth, maxByHeight));
               controlsW = (btn * 3) + (colGap * 2);
               controlsH = (btn * 2) + rowGap;
               controlsEl.style.gridTemplateColumns = `repeat(3,${btn}px)`;
@@ -765,12 +766,13 @@
                 b.style.height = `${btn}px`;
                 const svg = b.querySelector('.symSvg');
                 if (svg) {
-                  const s = Math.max(16, Math.round(btn * 0.48));
+                  const s = Math.max(12, Math.round(btn * 0.48));
                   svg.style.width = `${s}px`;
                   svg.style.height = `${s}px`;
                 }
               });
-              topPx = Math.max(8, cardH - controlsH - 8);
+              // Bottom anchored, guaranteed top clearance from art.
+              topPx = Math.max(artBottom + gapTop, cardH - controlsH - gapBottom);
             } else {
               // Reset any 1024-specific inline sizing when leaving that profile.
               controlsEl.style.gridTemplateColumns = '';
