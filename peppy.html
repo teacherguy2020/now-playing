@@ -68,8 +68,9 @@
     body.screen-1280x400 .controls{position:absolute;left:12px;right:12px;bottom:8px;height:44px;grid-template-columns:repeat(6,44px);grid-template-rows:44px;column-gap:6px;row-gap:0;justify-content:center;align-content:center;z-index:4}
     body.screen-1280x400 .ctrlBtn{width:44px;height:44px}
     body.screen-1280x400 .ctrlBtn .symSvg{width:18px;height:18px}
-    /* Match 1024 visual proportion for blue-1280 meter block (avoid stretched appearance). */
-    body.screen-1280x400 .meters{width:min(756px, calc(100% - 12px))}
+    body.screen-1280x400 .meters{width:min(820px, calc(100% - 12px))}
+    body.screen-1280x400 .meta{padding:0 8px 0;gap:0}
+    body.screen-1280x400 .dotline.title{height:44px}
     .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#9db0c7;letter-spacing:.3px}
     .fmtLed{width:7px;height:7px;border-radius:50%;background:#1e2e22;border:1px solid #3d5f45;box-shadow:inset 0 0 2px rgba(0,0,0,.55)}
     .fmtItem.on .fmtLed{background:#67f18b;border-color:#9ff7b4;box-shadow:0 0 6px rgba(108,241,148,.8), 0 0 12px rgba(108,241,148,.35)}
@@ -1847,7 +1848,7 @@
       function redrawDotCanvases(){
         const mode = String(fontMode?.value || previewFontMode || 'ui-sans');
         const sp = normalizeScreenProfile(previewScreenProfile || screenProfile?.value);
-        const compact1024 = (sp === '1024x320');
+        const compactHeader3 = (sp === '1024x320' || sp === '1280x400');
         syncFontLookClass();
         const sz = String(fontSize?.value || previewFontSize || 'm');
         const scale = ({ s:0.74, m:0.84, l:0.94, xl:1.04 }[sz] || 0.84);
@@ -1860,13 +1861,13 @@
         };
         try {
           if (titleCanvas) titleCanvas.style.display = '';
-          if (fileMetaCanvas2) fileMetaCanvas2.style.display = compact1024 ? 'none' : '';
+          if (fileMetaCanvas2) fileMetaCanvas2.style.display = compactHeader3 ? 'none' : '';
         } catch {}
         if (mode === 'dot-matrix') {
           setCanvasBg('');
           const titleDot = (isWarmParchment ? 1.8 : 1.4) * scale;
           const metaDot = (isWarmParchment ? 0.85 : 0.7) * Math.max(0.9, scale);
-          if (compact1024) {
+          if (compactHeader3) {
             const metaShort = `${dotFileMeta} ${dotFileMeta2}`.replace(/\s+/g,' ').trim();
             const row3 = `${dotAlbumYear} • ${metaShort}`;
             drawDotText(artistCanvas, dotArtist, { size: 42, pitch: 3, dot: Math.max(1.0, titleDot * 0.88), rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
@@ -1904,7 +1905,7 @@
             artistW: 760, titleW: 800, metaW: 640,
           };
         })();
-        if (compact1024) {
+        if (compactHeader3) {
           const row3 = `${dotAlbumYear} • ${(`${dotFileMeta} ${dotFileMeta2}`).replace(/\s+/g,' ').trim()}`;
           drawPlainText(artistCanvas, dotArtist, { size: Math.round(30*scale), weight: plainCfg.artistW, font: plainCfg.family });
           drawPlainText(titleCanvas, dotTitle, { size: Math.round(30*scale), weight: plainCfg.titleW, font: plainCfg.family });
