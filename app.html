@@ -597,7 +597,9 @@
           const isQueueWizard = String(currentShellPage || '').includes('queue-wizard.html');
           const isPeppy = String(currentShellPage || '') === 'peppy.html';
           if (isPeppy) {
-            const viewportCap = Math.max(420, (window.innerHeight || 900) - 240);
+            // Peppy designer needs enough iframe height for controls + 1280x400 stage.
+            // Previous cap was too aggressive and caused clipping in regular Chrome windows.
+            const viewportCap = Math.max(560, (window.innerHeight || 900) - 170);
             measured = Math.min(measured, viewportCap);
           }
           // Prevent scroll jumps from iframe shrink/reflow in Queue Wizard: only grow while on that page.
