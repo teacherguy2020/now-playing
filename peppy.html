@@ -573,8 +573,6 @@
       }
       function syncProgressPlacement(){
         if (!progressEl || !metersEl || !rightCard) return;
-        // Keep progress location consistent for both circular + linear:
-        // anchor to bottom of right card, and match exact needle/meter background width.
         if (progressEl.parentElement !== rightCard) rightCard.appendChild(progressEl);
         progressEl.style.position = 'absolute';
         const needleWrapEl = metersEl.querySelector('.needleWrap');
@@ -582,33 +580,41 @@
           const cardRect = rightCard.getBoundingClientRect();
           const needleRect = needleWrapEl.getBoundingClientRect();
           const linear = !!meterTypeLinear?.checked;
-          let leftPx = Math.max(0, Math.round(needleRect.left - cardRect.left));
-          let widthPx = Math.max(40, Math.round(needleRect.width));
+          const meterLeft = Math.max(0, Math.round(needleRect.left - cardRect.left));
+          const meterWidth = Math.max(40, Math.round(needleRect.width));
+          let leftPx = meterLeft;
+          let widthPx = meterWidth;
           if (linear && lastLinearLayout) {
-            const canvasLeft = Math.max(0, Math.round(needleRect.left - cardRect.left));
             const canvasTop = Math.max(0, Math.round(needleRect.top - cardRect.top));
-            leftPx = Math.max(0, Math.round(canvasLeft + lastLinearLayout.panelX + lastLinearLayout.pad));
-            widthPx = Math.max(40, Math.round(lastLinearLayout.railW));
+            const railLeftLocal = Math.max(0, Math.round(lastLinearLayout.panelX + lastLinearLayout.pad));
+            const railW = Math.max(40, Math.round(lastLinearLayout.railW));
+            leftPx = Math.max(0, Math.round(meterLeft + Math.round((meterWidth - railW) / 2) + (railLeftLocal - Math.round((meterWidth - railW) / 2))));
+            widthPx = railW;
             const topPx = Math.max(0, Math.round(canvasTop + lastLinearLayout.panelY + lastLinearLayout.panelH + 6));
             progressEl.style.top = `${topPx}px`;
             progressEl.style.bottom = 'auto';
           } else if (linear) {
-            const railInsetPx = 30 + ((widthPx - 30) * 0.05);
-            leftPx = Math.max(0, Math.round(leftPx + railInsetPx));
-            widthPx = Math.max(40, Math.round(widthPx - (railInsetPx * 2)));
+            const railInsetPx = 30 + ((meterWidth - 30) * 0.05);
+            widthPx = Math.max(40, Math.round(meterWidth - (railInsetPx * 2)));
+            leftPx = Math.max(0, Math.round(meterLeft + ((meterWidth - widthPx) / 2)));
             progressEl.style.top = 'auto';
             progressEl.style.bottom = '0';
           } else {
+            leftPx = meterLeft;
+            widthPx = meterWidth;
             progressEl.style.top = 'auto';
             progressEl.style.bottom = '0';
           }
           progressEl.style.left = `${leftPx}px`;
           progressEl.style.right = 'auto';
           progressEl.style.width = `${widthPx}px`;
+          progressEl.style.transform = 'none';
         } else {
-          progressEl.style.left = 'calc(30px + ((100% - 30px) * 0.05))';
-          progressEl.style.right = 'calc(30px + ((100% - 30px) * 0.05))';
-          progressEl.style.width = 'auto';
+          progressEl.style.left = '50%';
+          progressEl.style.transform = 'translateX(-50%)';
+          progressEl.style.width = '90%';
+          progressEl.style.top = 'auto';
+          progressEl.style.bottom = '0';
         }
         progressEl.style.marginLeft = '0';
         progressEl.style.marginTop = '0';
