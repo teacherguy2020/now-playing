@@ -667,10 +667,7 @@
             ctx.strokeStyle = 'rgba(60,76,102,.65)';
             ctx.strokeRect(x0 + 0.5, y + 0.5, w - 1, h - 1);
 
-            // center guide + label (same footprint, more instrument vibe)
-            const midX = x0 + Math.floor(w / 2);
-            ctx.strokeStyle = 'rgba(190,205,225,.18)';
-            ctx.beginPath(); ctx.moveTo(midX + 0.5, y + 2); ctx.lineTo(midX + 0.5, y + h - 2); ctx.stroke();
+            // rail label
             ctx.fillStyle = 'rgba(190,210,235,.72)';
             ctx.font = 'bold 11px Inter, system-ui, sans-serif';
             ctx.fillText(label, x0 - 15, y + h - 5);
@@ -718,7 +715,7 @@
             // subtle live peak line (replaced continuously as peak changes)
             const held = clamp(peakHold[channel] ?? level);
             const peakX = Math.max(x0 + 1, Math.min(x0 + w - 1, x0 + Math.round((held / 100) * w)));
-            ctx.strokeStyle = useThemeTint ? 'rgba(190,245,255,.55)' : 'rgba(255,255,255,.45)';
+            ctx.strokeStyle = useThemeTint ? 'rgba(190,245,255,.9)' : 'rgba(255,255,255,.82)';
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(peakX + 0.5, y + 2);
