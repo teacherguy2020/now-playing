@@ -523,34 +523,37 @@
           const isPodcasts = currentSrc.includes('podcasts.html');
           const isQueueWizard = currentSrc.includes('queue-wizard.html');
           const isTheme = currentSrc.includes('theme.html');
+          const isPeppy = currentSrc.includes('peppy.html');
           const st = doc.createElement('style');
           st.id = 'appShellNormalizeStyle';
-          st.textContent = [
-            'html, body { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; overscroll-behavior-x: none !important; }',
-            '.preHeroStatusWrap { display:none !important; }',
-            '.heroRail { background: transparent !important; border: 0 !important; box-shadow: none !important; position: relative !important; top: auto !important; padding:0 !important; margin:0 !important; min-height:0 !important; }',
-            '.heroRail::before, .heroRail:before, #heroRail::before, #heroRail:before { content:none !important; display:none !important; background:transparent !important; }',
-            '.heroRail .topTabs, .heroRail header, .heroRail .heroTransportRow, .heroRail #themeToggle { display:none !important; }',
-            '.heroWrap, .wrap, .cfgWrap, .subsWrap { max-width: 100% !important; width: calc(100% - 16px) !important; margin: 0 auto !important; box-sizing: border-box !important; }',
-            '.heroWrap { padding: 12px 8px 0 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }',
-            '.wrap, .cfgWrap, .subsWrap { padding: 0 8px 10px !important; background: transparent !important; }',
-            '.panel { margin: 0 !important; padding-top: 0 !important; }',
-            '.card, .cfgCard, .panel, .subsShell { box-sizing: border-box !important; }',
-            '.card, .cfgCard, .panel { margin-top: 0 !important; padding-top: 0 !important; border-top: 0 !important; }',
-            'body > *:first-child, .wrap > *:first-child, .cfgWrap > *:first-child, .subsWrap > *:first-child { margin-top: 0 !important; }',
-            (isConfig
-              ? '.heroWrap{padding:0 !important;margin:0 auto !important;} .panel{background:transparent !important;border:0 !important;box-shadow:none !important;padding:0 !important;margin:0 !important;} .cfgWrap{padding-top:0 !important;} .tripleCards,.splitCards{grid-template-columns:repeat(2,minmax(320px,1fr)) !important;} .splitCardsRight{display:contents !important;}'
-              : ''),
-            (isQueueWizard
-              ? '.heroRail,.heroWrap{display:none !important;}'
-              : ''),
-            (isPodcasts
-              ? '.heroWrap{padding-top:10px !important;}'
-              : ''),
-            (isTheme
-              ? '.wrap{max-width:100% !important; width:100% !important; margin:0 !important; padding:0 !important; background:var(--npb-rail-bg) !important; min-height:100% !important;} .card{margin:0 !important; border-radius:0 !important; background:var(--npb-rail-bg) !important;}'
-              : '')
-          ].join('\n');
+          st.textContent = isPeppy ?
+            'html, body { margin:0 !important; padding:0 !important; overflow:hidden !important; }' :
+            [
+              'html, body { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; overscroll-behavior-x: none !important; }',
+              '.preHeroStatusWrap { display:none !important; }',
+              '.heroRail { background: transparent !important; border: 0 !important; box-shadow: none !important; position: relative !important; top: auto !important; padding:0 !important; margin:0 !important; min-height:0 !important; }',
+              '.heroRail::before, .heroRail:before, #heroRail::before, #heroRail:before { content:none !important; display:none !important; background:transparent !important; }',
+              '.heroRail .topTabs, .heroRail header, .heroRail .heroTransportRow, .heroRail #themeToggle { display:none !important; }',
+              '.heroWrap, .wrap, .cfgWrap, .subsWrap { max-width: 100% !important; width: calc(100% - 16px) !important; margin: 0 auto !important; box-sizing: border-box !important; }',
+              '.heroWrap { padding: 12px 8px 0 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }',
+              '.wrap, .cfgWrap, .subsWrap { padding: 0 8px 10px !important; background: transparent !important; }',
+              '.panel { margin: 0 !important; padding-top: 0 !important; }',
+              '.card, .cfgCard, .panel, .subsShell { box-sizing: border-box !important; }',
+              '.card, .cfgCard, .panel { margin-top: 0 !important; padding-top: 0 !important; border-top: 0 !important; }',
+              'body > *:first-child, .wrap > *:first-child, .cfgWrap > *:first-child, .subsWrap > *:first-child { margin-top: 0 !important; }',
+              (isConfig
+                ? '.heroWrap{padding:0 !important;margin:0 auto !important;} .panel{background:transparent !important;border:0 !important;box-shadow:none !important;padding:0 !important;margin:0 !important;} .cfgWrap{padding-top:0 !important;} .tripleCards,.splitCards{grid-template-columns:repeat(2,minmax(320px,1fr)) !important;} .splitCardsRight{display:contents !important;}'
+                : ''),
+              (isQueueWizard
+                ? '.heroRail,.heroWrap{display:none !important;}'
+                : ''),
+              (isPodcasts
+                ? '.heroWrap{padding-top:10px !important;}'
+                : ''),
+              (isTheme
+                ? '.wrap{max-width:100% !important; width:100% !important; margin:0 !important; padding:0 !important; background:var(--npb-rail-bg) !important; min-height:100% !important;} .card{margin:0 !important; border-radius:0 !important; background:var(--npb-rail-bg) !important;}'
+                : '')
+            ].join('\n');
           doc.head.appendChild(st);
         } catch {}
       }
