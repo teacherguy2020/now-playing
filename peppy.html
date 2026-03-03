@@ -731,12 +731,9 @@
         if (normalizeScreenProfile(previewScreenProfile || screenProfile?.value) !== '1280x400') {
           const sp = normalizeScreenProfile(previewScreenProfile || screenProfile?.value);
           if (controlsEl.parentElement !== leftCard) leftCard.appendChild(controlsEl);
-          const box = controlsEl.getBoundingClientRect?.();
-          const controlsW = Math.max(80, Math.round(box?.width || (60 * 2 + 8)));
-          const controlsH = Math.max(96, Math.round(box?.height || 208));
+          let controlsW = 0;
+          let controlsH = 0;
           const cardW = Math.max(140, leftCard.clientWidth || 200);
-          const leftPx = Math.max(8, Math.round((cardW - controlsW) / 2));
-          controlsEl.style.left = `${leftPx}px`;
           controlsEl.style.right = 'auto';
           controlsEl.style.bottom = 'auto';
 
@@ -746,18 +743,65 @@
             const artFrameRect = document.getElementById('artFrame')?.getBoundingClientRect?.();
             const cardH = Math.max(260, leftCard.clientHeight || Math.round(cardRect.height) || 480);
             const artBottom = artFrameRect ? Math.round(artFrameRect.bottom - cardRect.top) : 150;
+
             if (sp === '1024x320') {
-              // Requested: two rows of three, centered horizontally, directly under art.
-              topPx = artBottom + 12;
+              // Rule: centered horizontally; equal gap above (from art) and below (to bottom).
+              const minGap = 6;
+              const colGap = 6;
+              const rowGap = 6;
+              const maxByWidth = Math.floor((cardW - 16 - (colGap * 2)) / 3);
+              const freeFromArt = Math.max(0, cardH - artBottom);
+              const maxByHeight = Math.floor((freeFromArt - (minGap * 2) - rowGap) / 2);
+              const btn = Math.max(30, Math.min(42, maxByWidth, maxByHeight));
+              controlsW = (btn * 3) + (colGap * 2);
+              controlsH = (btn * 2) + rowGap;
+              controlsEl.style.gridTemplateColumns = `repeat(3,${btn}px)`;
+              controlsEl.style.gridTemplateRows = `repeat(2,${btn}px)`;
+              controlsEl.style.columnGap = `${colGap}px`;
+              controlsEl.style.rowGap = `${rowGap}px`;
+              controlsEl.style.height = `${controlsH}px`;
+              controlsEl.querySelectorAll('.ctrlBtn').forEach((b) => {
+                b.style.width = `${btn}px`;
+                b.style.height = `${btn}px`;
+                const svg = b.querySelector('.symSvg');
+                if (svg) {
+                  const s = Math.max(16, Math.round(btn * 0.48));
+                  svg.style.width = `${s}px`;
+                  svg.style.height = `${s}px`;
+                }
+              });
+              const free = Math.max(0, freeFromArt - controlsH);
+              topPx = artBottom + Math.round(free / 2);
             } else {
-              // Other compact sizes: balance above/below gaps.
+              // Reset any 1024-specific inline sizing when leaving that profile.
+              controlsEl.style.gridTemplateColumns = '';
+              controlsEl.style.gridTemplateRows = '';
+              controlsEl.style.columnGap = '';
+              controlsEl.style.rowGap = '';
+              controlsEl.style.height = '';
+              controlsEl.querySelectorAll('.ctrlBtn').forEach((b) => {
+                b.style.width = '';
+                b.style.height = '';
+                const svg = b.querySelector('.symSvg');
+                if (svg) { svg.style.width = ''; svg.style.height = ''; }
+              });
+              const box = controlsEl.getBoundingClientRect?.();
+              controlsW = Math.max(80, Math.round(box?.width || (60 * 2 + 8)));
+              controlsH = Math.max(96, Math.round(box?.height || 208));
               const free = Math.max(0, cardH - artBottom - controlsH);
               const gap = Math.round(free / 2);
               topPx = artBottom + gap;
             }
-            const maxTop = Math.max(8, cardH - controlsH - 8);
+
+            const maxTop = Math.max(8, cardH - Math.max(96, controlsH || 96) - 8);
             topPx = Math.max(8, Math.min(topPx, maxTop));
           } catch {}
+          if (!controlsW) {
+            const box2 = controlsEl.getBoundingClientRect?.();
+            controlsW = Math.max(80, Math.round(box2?.width || (60 * 2 + 8)));
+          }
+          const leftPx = Math.max(8, Math.round((cardW - controlsW) / 2));
+          controlsEl.style.left = `${leftPx}px`;
           controlsEl.style.top = `${topPx}px`;
           return;
         }
