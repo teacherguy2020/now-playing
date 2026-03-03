@@ -6144,6 +6144,17 @@ app.get('/now-playing', async (req, res) => {
       debugRatingErr = rr.err || '';
     }
 
+    const displayStationName = String(streamStationName || song?.name || '').trim();
+    const radioArtistGeneric = artistLooksGeneric(artist);
+    const displayMode = isRadio ? 'radio' : (stream ? 'stream' : (isPodcast ? 'podcast' : 'track'));
+    const displayArtist = isRadio ? (radioArtistGeneric ? (displayStationName || 'Radio') : String(artist || '').trim()) : String(artist || '').trim();
+    const displayTitle = isRadio ? (String(title || '').trim() || displayStationName || 'Live Radio') : String(title || '').trim();
+    const displayLine3 = isRadio
+      ? String(radioAlbum || album || displayStationName || '').trim()
+      : String(album || '').trim();
+    const displayArtUrl = String((isRadio ? (stationLogoUrl || primaryArtUrl) : primaryArtUrl) || '').trim();
+    const displayConfidence = isRadio ? (displayStationName ? 'station' : 'fallback') : 'track';
+
     const payload = {
       artist: artist || '',
       title: title || '',
@@ -6161,6 +6172,15 @@ app.get('/now-playing', async (req, res) => {
       stationLogoUrl: stationLogoUrl || '',
       stationName: streamStationName || '',
       radioStationName: streamStationName || '',
+
+      // Canonical display fields (single source of truth for UIs)
+      displayMode,
+      displayArtist,
+      displayTitle,
+      displayLine3,
+      displayStationName,
+      displayArtUrl,
+      displayConfidence,
 
       // Radio meta (what your UI already uses)
       radioAlbum,

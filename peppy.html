@@ -1954,11 +1954,11 @@
               }
             } catch {}
           }
-          const t = decodeEntities(String(j?.title || j?.file || 'Unknown title'));
-          const a = decodeEntities(String(j?.artist || 'Unknown artist'));
+          const t = decodeEntities(String(j?.displayTitle || j?.title || j?.file || 'Unknown title'));
+          const a = decodeEntities(String(j?.displayArtist || j?.artist || 'Unknown artist'));
           const playbackState = String(j?.state || '').toLowerCase();
           setControlLights(j);
-          const al = decodeEntities(String(j?.album || 'Unknown album'));
+          const al = decodeEntities(String(j?.displayLine3 || j?.album || 'Unknown album'));
           const yRaw = String(j?.date || j?.year || '').trim();
           const y = (() => {
             const m = yRaw.match(/(19|20)\d{2}/);
@@ -2048,7 +2048,7 @@
           }
 
           const stationLogoRaw = String(resolvedRadioLogo || j?.stationLogoUrl || j?.radioLogoUrl || j?.logoUrl || '').trim();
-          const artRaw = String((isRadioLike ? (stationLogoRaw || j?.altArtUrl || '') : (j?.albumArtUrl || j?.artUrl || j?.altArtUrl || '')) || '').trim();
+          const artRaw = String(j?.displayArtUrl || (isRadioLike ? (stationLogoRaw || j?.altArtUrl || '') : (j?.albumArtUrl || j?.artUrl || j?.altArtUrl || '')) || '').trim();
           const artUrl = artRaw ? (artRaw.startsWith('http') ? artRaw : `${api}${artRaw}`) : '';
           if (artUrl !== lastArt) {
             if (artUrl) art.src = artUrl;
