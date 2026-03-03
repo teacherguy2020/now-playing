@@ -1610,9 +1610,10 @@
         const now = Date.now();
         if (radioByKey.size && (now - radioLookupTs) < (5 * 60 * 1000)) return;
         try {
+          await ensureRuntimeKey();
           const r = await fetch(`${api}/config/queue-wizard/radio-preview`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
             body: JSON.stringify({ genres: [], favoritesOnly: false, hqOnly: false, favoriteStations: [], maxStations: 1000 }),
           });
           const j = await r.json().catch(() => ({}));
@@ -1920,7 +1921,11 @@
 
       async function pollNowPlaying(){
         try {
-          const r = await fetch(`${api}/now-playing`, { cache: 'no-store' });
+          await ensureRuntimeKey();
+          const r = await fetch(`${api}/now-playing`, {
+            cache: 'no-store',
+            headers: runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}
+          });
           let j = await r.json().catch(() => ({}));
           const looksEmptyNow = !String(j?.title || '').trim() && !String(j?.artist || '').trim() && !String(j?.stationName || j?.radioStationName || '').trim() && !String(j?.file || '').trim();
           if (looksEmptyNow) {
