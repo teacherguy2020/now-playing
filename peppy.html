@@ -673,17 +673,44 @@
             ctx.font = 'bold 11px Inter, system-ui, sans-serif';
             ctx.fillText(label, x0 - 15, y + h - 5);
 
-            for (let i = 0; i < segs; i++) {
-              const sx = x0 + i * (segW + gap);
-              const zoneRed = i >= Math.floor(segs * 0.82);
-              const zoneYellow = !zoneRed && i >= Math.floor(segs * 0.62);
-              const active = i < lit;
-              const base = useThemeTint ? '#2eb9ee' : (zoneRed ? '#ff6464' : (zoneYellow ? '#ffe06b' : '#bff3ff'));
-              const idle = useThemeTint
-                ? 'rgba(85,165,200,.17)'
-                : (zoneRed ? 'rgba(255,110,110,.16)' : (zoneYellow ? 'rgba(255,230,120,.14)' : 'rgba(140,235,255,.12)'));
-              ctx.fillStyle = active ? base : idle;
-              ctx.fillRect(sx, y + 3, segW, h - 6);
+            if (previewMeterMode === 'continuous') {
+              const pct = clamp(level) / 100;
+              const fillW = Math.max(0, Math.floor(w * pct));
+              const bg = ctx.createLinearGradient(x0, 0, x0 + w, 0);
+              bg.addColorStop(0, 'rgba(120,200,230,.20)');
+              bg.addColorStop(1, 'rgba(120,200,230,.08)');
+              ctx.fillStyle = bg;
+              ctx.fillRect(x0 + 1, y + 3, w - 2, h - 6);
+
+              const g = ctx.createLinearGradient(x0, 0, x0 + Math.max(1, fillW), 0);
+              if (useThemeTint) {
+                const rgb = getComputedStyle(document.documentElement).getPropertyValue('--progress-rgb').trim() || '46,185,238';
+                const mk = (a) => `rgba(${rgb},${a})`;
+                g.addColorStop(0, mk(0.28));
+                g.addColorStop(0.45, mk(0.62));
+                g.addColorStop(0.8, mk(0.9));
+                g.addColorStop(1, mk(1));
+              } else {
+                g.addColorStop(0, '#bff3ff');
+                g.addColorStop(0.72, '#bff3ff');
+                g.addColorStop(0.86, '#ffe06b');
+                g.addColorStop(1, '#ff6464');
+              }
+              ctx.fillStyle = g;
+              ctx.fillRect(x0 + 1, y + 3, Math.max(0, fillW - 2), h - 6);
+            } else {
+              for (let i = 0; i < segs; i++) {
+                const sx = x0 + i * (segW + gap);
+                const zoneRed = i >= Math.floor(segs * 0.82);
+                const zoneYellow = !zoneRed && i >= Math.floor(segs * 0.62);
+                const active = i < lit;
+                const base = useThemeTint ? '#2eb9ee' : (zoneRed ? '#ff6464' : (zoneYellow ? '#ffe06b' : '#bff3ff'));
+                const idle = useThemeTint
+                  ? 'rgba(85,165,200,.17)'
+                  : (zoneRed ? 'rgba(255,110,110,.16)' : (zoneYellow ? 'rgba(255,230,120,.14)' : 'rgba(140,235,255,.12)'));
+                ctx.fillStyle = active ? base : idle;
+                ctx.fillRect(sx, y + 3, segW, h - 6);
+              }
             }
 
             // peak hold dot
