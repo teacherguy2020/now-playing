@@ -1059,7 +1059,7 @@
           groupW = meterW * 2 + gap;
         }
         meterH = Math.min(meterH, H - 2);
-        const startX = Math.max(0, W - groupW - 2); // anchored to lower-right
+        const startX = Math.max(0, Math.floor((W - groupW) / 2)); // centered in meter canvas
         const y0 = Math.max(0, H - meterH);
         updateIframeControlAnchor(groupW);
 
