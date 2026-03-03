@@ -324,6 +324,16 @@
             if (slot && fileMetaCanvas && fileMetaCanvas.parentElement !== slot) slot.appendChild(fileMetaCanvas);
             if (slot && fileMetaCanvas2 && fileMetaCanvas2.parentElement !== slot) slot.appendChild(fileMetaCanvas2);
           } catch {}
+          try {
+            // 1024x320: format strip belongs in left column (above controls).
+            if (formatStrip && leftCard && rightCard) {
+              if (previewScreenProfile === '1024x320') {
+                if (formatStrip.parentElement !== leftCard) leftCard.appendChild(formatStrip);
+              } else {
+                if (formatStrip.parentElement !== rightCard) rightCard.insertBefore(formatStrip, controlsEl || rightCard.firstChild || null);
+              }
+            }
+          } catch {}
           localStorage.setItem('peppy.screenProfile', previewScreenProfile);
           localStorage.setItem('player.profile.size', previewScreenProfile);
         } catch {}
