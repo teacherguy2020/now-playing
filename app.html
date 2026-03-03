@@ -2017,9 +2017,9 @@
             btn.title = String(j?.effectiveUrl || targetUrl);
             setTimeout(() => { try { btn.textContent = 'Push Peppy to moOde'; } catch {} }, 2200);
           }
-          if (String(currentShellPage || '') === 'peppy.html' && frame && !NO_IFRAME_MODE) {
-            frame.setAttribute('src', targetUrl);
-          }
+          // Keep current editor surface intact after push.
+          // Do not swap local frame into kiosk display URL.
+          // (This was collapsing the Peppy toolbar until manual refresh.)
           if (!j?.verified) console.warn('push verification failed', j?.verify || '', j?.verifyErr || '');
         } catch (e) {
           console.warn('push peppy failed', e?.message || e);
