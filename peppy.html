@@ -89,6 +89,9 @@
     .progress{height:10px;border-radius:0;border:1px solid #304764;background:#091120;overflow:hidden;margin:0;padding:0;width:100%}
     .progressSegbar{position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;padding:2px 8px;box-sizing:border-box;height:100%}
     .pfill{position:absolute;left:8px;right:8px;top:2px;bottom:2px;width:auto;pointer-events:none;border-radius:0;background:rgba(var(--progress-rgb),.88);box-shadow:0 0 7px rgba(var(--progress-rgb),.42),0 0 18px rgba(var(--progress-rgb),.24);transform-origin:left center;transform:scaleX(0);transition:transform .10s linear,opacity .10s linear;opacity:0}
+    /* Linear mode: align visible progress/fill rails with linear meter lane edges. */
+    body.linear-meter .progressSegbar{padding:2px 1px;gap:2px}
+    body.linear-meter .pfill{left:1px;right:1px}
     .pseg{border-radius:0;background:var(--progress-seg);opacity:.20;transition:opacity .12s linear, box-shadow .12s linear}
     .pseg.active{opacity:.82;box-shadow:0 0 6px rgba(var(--progress-rgb),.72), 0 0 14px rgba(var(--progress-rgb),.42)}
     .pseg.tail{animation:tailPulse 2.6s ease-in-out infinite}
