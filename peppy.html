@@ -61,7 +61,10 @@
     .controls{position:absolute;left:28px;bottom:12px;height:208px;display:grid;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start;z-index:4}
     /* Compact profiles: keep classic 2x3 controls; JS positions block in left-column gap above art. */
     body.screen-compact .controls{height:208px;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start}
-    body.screen-1024x320 .controls{height:90px;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(2,42px);column-gap:6px;row-gap:6px}
+    body.screen-1024x320 .card.left{display:grid;grid-template-rows:2fr 1fr;align-items:stretch}
+    body.screen-1024x320 #leftMetaSlot:empty{display:none}
+    body.screen-1024x320 .artFrame{grid-row:1;align-self:start}
+    body.screen-1024x320 .controls{position:static;grid-row:2;height:90px;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(2,42px);column-gap:6px;row-gap:6px;justify-self:center;align-self:center;z-index:4}
     body.screen-1024x320 .ctrlBtn{width:42px;height:42px}
     body.screen-1024x320 .ctrlBtn .symSvg{width:20px;height:20px}
     body.screen-480x320 .controls{height:164px;grid-template-columns:repeat(2,50px);grid-template-rows:repeat(3,50px);column-gap:8px;row-gap:7px}
@@ -731,6 +734,7 @@
         if (normalizeScreenProfile(previewScreenProfile || screenProfile?.value) !== '1280x400') {
           const sp = normalizeScreenProfile(previewScreenProfile || screenProfile?.value);
           if (controlsEl.parentElement !== leftCard) leftCard.appendChild(controlsEl);
+          controlsEl.style.position = 'absolute';
           let controlsW = 0;
           let controlsH = 0;
           const cardW = Math.max(140, leftCard.clientWidth || 200);
@@ -745,24 +749,25 @@
             const artBottom = artFrameRect ? Math.round(artFrameRect.bottom - cardRect.top) : 150;
 
             if (sp === '1024x320') {
-              // Hard rule: controls must never touch art.
-              const gapTop = 10;
-              const gapBottom = 8;
+              // 1024x320 uses structural layout: left column is 2fr art + 1fr controls.
               const colGap = 6;
               const rowGap = 6;
+              const zoneH = Math.max(70, Math.floor(cardH / 3) - 8);
               const maxByWidth = Math.floor((cardW - 16 - (colGap * 2)) / 3);
-              const artSafety = 16; // account for art frame outline/shadow visual footprint
-              const artBottomSafe = artBottom + artSafety;
-              const freeFromArt = Math.max(0, cardH - artBottomSafe - gapTop - gapBottom);
-              const maxByHeight = Math.floor((freeFromArt - rowGap) / 2);
-              const btn = Math.max(22, Math.min(40, maxByWidth, maxByHeight));
+              const maxByHeight = Math.floor((zoneH - rowGap) / 2);
+              const btn = Math.max(20, Math.min(40, maxByWidth, maxByHeight));
               controlsW = (btn * 3) + (colGap * 2);
               controlsH = (btn * 2) + rowGap;
+              controlsEl.style.position = 'static';
               controlsEl.style.gridTemplateColumns = `repeat(3,${btn}px)`;
               controlsEl.style.gridTemplateRows = `repeat(2,${btn}px)`;
               controlsEl.style.columnGap = `${colGap}px`;
               controlsEl.style.rowGap = `${rowGap}px`;
               controlsEl.style.height = `${controlsH}px`;
+              controlsEl.style.left = '';
+              controlsEl.style.right = '';
+              controlsEl.style.top = '';
+              controlsEl.style.bottom = '';
               controlsEl.querySelectorAll('.ctrlBtn').forEach((b) => {
                 b.style.width = `${btn}px`;
                 b.style.height = `${btn}px`;
@@ -773,8 +778,7 @@
                   svg.style.height = `${s}px`;
                 }
               });
-              // Bottom anchored, guaranteed top clearance from art (with safety for glow/outline).
-              topPx = Math.max(artBottomSafe + gapTop, cardH - controlsH - gapBottom);
+              return;
             } else {
               // Reset any 1024-specific inline sizing when leaving that profile.
               controlsEl.style.gridTemplateColumns = '';
@@ -809,6 +813,7 @@
           return;
         }
         if (controlsEl.parentElement !== rightCard) rightCard.appendChild(controlsEl);
+        controlsEl.style.position = 'absolute';
         controlsEl.style.left = '8px';
         controlsEl.style.right = 'auto';
         controlsEl.style.top = 'auto';
