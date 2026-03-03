@@ -2022,10 +2022,13 @@
             resolvedRadioLogo = String(j?.stationLogoUrl || j?.radioLogoUrl || j?.logoUrl || (k && radioLogoByKey.get(k)) || (host && radioLogoByHost.get(host)) || '').trim();
             if (!resolvedRadioLogo && file) resolvedRadioLogo = `${api}/art/radio-logo.jpg?file=${encodeURIComponent(file)}`;
             const streamTitle = decodeEntities(String(j?.streamTitle || j?.subline || '').trim());
-            // Radio rule: never reuse stale prior-library title/artist.
-            dotTitle = streamTitle || resolvedRadioStation || 'Live Radio';
-            dotArtist = resolvedRadioStation || 'Radio';
-            dotAlbumYear = resolvedRadioStation ? `${resolvedRadioStation}${y ? ` (${y})` : ''}` : 'Live Radio';
+            const hasCanonicalDisplay = !!String(j?.displayTitle || '').trim() || !!String(j?.displayArtist || '').trim();
+            // Only force station fallback when canonical display fields are absent.
+            if (!hasCanonicalDisplay) {
+              dotTitle = streamTitle || resolvedRadioStation || 'Live Radio';
+              dotArtist = resolvedRadioStation || 'Radio';
+              dotAlbumYear = resolvedRadioStation ? `${resolvedRadioStation}${y ? ` (${y})` : ''}` : 'Live Radio';
+            }
           }
           redrawDotCanvases();
           const pctDirect = Number(j?.songPercent ?? j?.progressPercent ?? j?.percent ?? NaN);
