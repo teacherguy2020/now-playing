@@ -1185,7 +1185,8 @@
 
           drawRail(topY, meterState.L.cur, 'L', 'L');
           drawRail(botY, meterState.R.cur, 'R', 'R');
-          drawSpectrumOverlay(ctx, panelX + 10, panelY + panelH - 18, panelW - 20, 12);
+          // Avoid legacy-looking extra strip in cassette style.
+          if (style !== 'cassette') drawSpectrumOverlay(ctx, panelX + 10, panelY + panelH - 18, panelW - 20, 12);
           lastLinearLayout = { panelX, panelY, panelW, panelH, pad, railW: w };
           updateIframeControlAnchor(panelW);
           syncProgressPlacement();
