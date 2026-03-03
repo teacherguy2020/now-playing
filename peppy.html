@@ -815,7 +815,7 @@
               const free = Math.max(90, cardH - artBottom - 12);
               const maxByWidth = Math.floor((cardW - 16 - colGap) / 2);
               const maxByHeight = Math.floor((free - (rowGap * 2)) / 3);
-              const btn = Math.max(34, Math.min(58, maxByWidth, maxByHeight));
+              const btn = Math.max(40, Math.min(64, maxByWidth, maxByHeight));
               controlsW = (btn * 2) + colGap;
               controlsH = (btn * 3) + (rowGap * 2);
               controlsEl.style.position = 'absolute';
