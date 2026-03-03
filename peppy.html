@@ -56,8 +56,8 @@
     .right{position:relative;display:grid;grid-template-rows:auto;align-content:start}
     .meters{position:absolute;right:4px;bottom:12px;width:min(820px, calc(100% - 12px));display:grid;grid-template-rows:auto;gap:2px;padding:0;align-content:end}
     .controls{position:absolute;left:28px;bottom:12px;height:208px;display:grid;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start;z-index:4}
-    /* 800x480 profile: keep circular meter size; move controls into one row above meters. */
-    body.screen-800x480 .controls{left:auto;right:18px;bottom:228px;height:60px;grid-template-columns:repeat(6,60px);grid-template-rows:60px;column-gap:8px;row-gap:0;align-content:start}
+    /* 800x480 profile: keep classic 2x3 controls; JS positions block in left-column gap above art. */
+    body.screen-800x480 .controls{height:208px;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start}
     .skinOps{position:static;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;width:min(1280px,calc(100vw - 16px));padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--card),var(--card2));box-sizing:border-box}
     .skinBtn{height:26px;padding:0 10px;border:1px solid #3f4753;background:#1f2731;color:#d8e4f3;font-size:12px;cursor:pointer}
     .skinSelect{height:26px;border:1px solid #3f4753;background:#131b24;color:#d8e4f3;font-size:12px;padding:0 6px}
@@ -674,14 +674,27 @@
       }
 
       function updateIframeControlAnchor(_groupW = 0){
-        if (!controlsEl) return;
+        if (!controlsEl || !leftCard || !rightCard) return;
         if (normalizeScreenProfile(previewScreenProfile) === '800x480') {
-          controlsEl.style.left = 'auto';
-          controlsEl.style.right = '18px';
-          controlsEl.style.top = 'auto';
-          controlsEl.style.bottom = '228px';
+          if (controlsEl.parentElement !== leftCard) leftCard.appendChild(controlsEl);
+          controlsEl.style.left = '36px';
+          controlsEl.style.right = 'auto';
+          controlsEl.style.bottom = 'auto';
+          let topPx = 92;
+          try {
+            const cardRect = leftCard.getBoundingClientRect();
+            const meta2Rect = fileMetaCanvas2?.getBoundingClientRect?.();
+            const artFrameRect = document.getElementById('artFrame')?.getBoundingClientRect?.();
+            if (meta2Rect) topPx = Math.max(76, Math.round(meta2Rect.bottom - cardRect.top + 8));
+            if (artFrameRect) {
+              const maxTop = Math.max(76, Math.round(artFrameRect.top - cardRect.top - 208 - 8));
+              topPx = Math.min(topPx, maxTop);
+            }
+          } catch {}
+          controlsEl.style.top = `${topPx}px`;
           return;
         }
+        if (controlsEl.parentElement !== rightCard) rightCard.appendChild(controlsEl);
         controlsEl.style.left = '8px';
         controlsEl.style.right = 'auto';
         controlsEl.style.top = 'auto';
