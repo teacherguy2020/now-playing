@@ -48,6 +48,7 @@
     .leftFileMeta.dotline.small{height:34px}
     body.kiosk .leftFileMeta.dotline.small{height:34px}
     .meta{padding:4px 10px 0px;display:grid;gap:1px}
+    #leftMetaSlot,#rightMetaSlot{display:grid;gap:0}
     .title{font-size:28px;font-weight:760;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.02}
     .sub{font-size:17px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05}
     .matrix{display:block}
@@ -115,6 +116,10 @@
   <div id="wrap" class="wrap">
     <section class="card left">
       <div class="progress" style="margin:0;width:100%;border-left:none;border-right:none;border-bottom:none;"><div id="trackProgress" class="progressSegbar"></div></div>
+      <div id="leftMetaSlot">
+        <canvas class="dotline small leftFileMeta" id="fileMetaCanvas" width="640" height="24"></canvas>
+        <canvas class="dotline small leftFileMeta" id="fileMetaCanvas2" width="640" height="24"></canvas>
+      </div>
       <div class="artFrame" id="artFrame">
         <img id="art" alt="Album art" src="" />
         <video id="artVideo" muted loop playsinline preload="metadata" style="display:none;"></video>
@@ -127,8 +132,7 @@
         <canvas class="dotline title" id="artistCanvas" width="1200" height="88"></canvas>
         <canvas class="dotline title" id="titleCanvas" width="1200" height="88"></canvas>
         <canvas class="dotline title" id="albumYearCanvas" width="1200" height="88"></canvas>
-        <canvas class="dotline small leftFileMeta" id="fileMetaCanvas" width="640" height="24"></canvas>
-        <canvas class="dotline small leftFileMeta" id="fileMetaCanvas2" width="640" height="24"></canvas>
+        <div id="rightMetaSlot"></div>
       </div>
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
@@ -280,6 +284,12 @@
           try {
             Object.keys(SCREEN_PROFILES).forEach((k) => document.body.classList.remove(`screen-${k}`));
             document.body.classList.add(`screen-${previewScreenProfile}`);
+          } catch {}
+          try {
+            const toRight = (previewScreenProfile === '800x480');
+            const slot = toRight ? rightMetaSlot : leftMetaSlot;
+            if (slot && fileMetaCanvas && fileMetaCanvas.parentElement !== slot) slot.appendChild(fileMetaCanvas);
+            if (slot && fileMetaCanvas2 && fileMetaCanvas2.parentElement !== slot) slot.appendChild(fileMetaCanvas2);
           } catch {}
           localStorage.setItem('peppy.screenProfile', previewScreenProfile);
           localStorage.setItem('player.profile.size', previewScreenProfile);
@@ -466,6 +476,8 @@
       const albumYearCanvas = $('albumYearCanvas');
       const fileMetaCanvas = $('fileMetaCanvas');
       const fileMetaCanvas2 = $('fileMetaCanvas2');
+      const leftMetaSlot = $('leftMetaSlot');
+      const rightMetaSlot = $('rightMetaSlot');
       const trackProgress = $('trackProgress');
       function normalizePresetProfile(p = {}) {
         const src = (p && typeof p === 'object') ? p : {};
