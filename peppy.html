@@ -600,7 +600,10 @@
         if (iframeScaleEl) iframeScaleEl.style.display = 'none';
 
         const vw = Math.max(320, (window.innerWidth || 1280));
-        const vh = Math.max(200, (window.innerHeight || 400));
+        const opsH = (!kioskMode && skinOpsEl && getComputedStyle(skinOpsEl).display !== 'none')
+          ? Math.ceil((skinOpsEl.getBoundingClientRect?.().height || 0) + 10)
+          : 0;
+        const vh = Math.max(200, (window.innerHeight || 400) - opsH);
 
         // contain: no crop (may letterbox on tall screens)
         // cover: fill viewport (may crop left/right on tall screens)
