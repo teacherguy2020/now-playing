@@ -978,6 +978,7 @@
         needleCfg.pivotY = Number(c.oy || 400) / h;
         // Global calibration: native distance renders short in this canvas pipeline.
         needleCfg.radiusMul = (Number(c.distance || 180) / halfW) * 1.38;
+        needleCfg.needleInset = Number(c.needleInset || 0);
         needleCfg.lenMul = Number(c.lenMul || 1.0);
         needleCfg.widthMul = Number(c.widthMul || 1.0);
       }
@@ -1816,9 +1817,20 @@
           if (kind === 'sr' && /khz/.test(s) && n > 0 && n < 1000) n *= 1000;
           return n;
         };
-        const srN = toNum(sr, 'sr');
-        const bdN = toNum(bd, 'bd');
+        let srN = toNum(sr, 'sr');
+        let bdN = toNum(bd, 'bd');
         const chTxt = String(ch || '').trim();
+        if (!srN || !bdN) {
+          const rr = String(rate || '').toLowerCase();
+          const mPair = rr.match(/(\d{2})\s*\/\s*(\d{2,3}(?:\.\d+)?)\s*k?/i);
+          if (mPair) {
+            if (!bdN) bdN = Number(mPair[1]) || bdN;
+            if (!srN) {
+              const v = Number(mPair[2]) || 0;
+              srN = v > 0 ? (v < 1000 ? v * 1000 : v) : srN;
+            }
+          }
+        }
         const on = {
           flac: ['FLAC','ALAC','WAV','AIFF','APE','WV'].includes(f),
           mp3: (f === 'MP3'),
