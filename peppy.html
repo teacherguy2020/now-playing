@@ -532,6 +532,7 @@
       }
       const meterState = { L: { target: 0, cur: 0 }, R: { target: 0, cur: 0 } };
       const peakHold = { L: 0, R: 0 };
+      let peakHoldTrackKey = '';
       function setTarget(k, v){
         const s = String(needleSensitivity?.value || previewSensitivity || 'medium');
         const mul = s === 'low' ? 0.8 : (s === 'high' ? 1.25 : 1.0);
@@ -1319,6 +1320,12 @@
           const bd = String(j?.bitdepth || '').trim();
           const ch = String(j?.channels || '').trim();
           const file = String(j?.file || '').trim();
+          const peakKey = String(j?.songid || file || `${a}|${al}`).trim();
+          if (peakKey && peakKey !== peakHoldTrackKey) {
+            peakHoldTrackKey = peakKey;
+            peakHold.L = 0;
+            peakHold.R = 0;
+          }
           const ext = (file.split('.').pop() || '').toLowerCase();
           const fmt = ext ? ext.toUpperCase() : String(j?.codec || '').trim().toUpperCase();
           const losslessExt = new Set(['FLAC','ALAC','WAV','AIFF','APE','WV','DSF','DFF']);
@@ -1438,11 +1445,10 @@
           const a = s.target > s.cur ? riseA : fallA;
           s.cur = s.cur + (s.target - s.cur) * a;
 
-          // Peak hold: snap up instantly, then fall slowly.
+          // Peak hold: no decay (updates only when a new higher peak arrives).
           const cur = clamp(s.cur);
           const held = clamp(peakHold[k] || 0);
           if (cur >= held) peakHold[k] = cur;
-          else peakHold[k] = Math.max(cur, held - 0.18);
         }
         drawNeedles();
         requestAnimationFrame(animate);
