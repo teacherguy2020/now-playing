@@ -102,6 +102,8 @@
   const LAST_ENDPOINT_KEY = 'diagnostics:lastEndpoint:v1';
   const STATE_KEY = 'diagnostics:requestState:v1';
   const LIVE_COLLAPSED_KEY = 'diagnostics:liveCardCollapsed:v1';
+  const PLAYER_COLLAPSED_KEY = 'diagnostics:playerCardCollapsed:v1';
+  const PEPPY_COLLAPSED_KEY = 'diagnostics:peppyCardCollapsed:v1';
 
   function loadFavorites(){
     try {
@@ -194,49 +196,57 @@
     return `${location.protocol}//${host}:3101`;
   }
 
-  function isLiveCollapsed(){
-    try { return localStorage.getItem(LIVE_COLLAPSED_KEY) === '1'; } catch (_) { return false; }
+  function isCollapsed(key){
+    try { return localStorage.getItem(String(key || '')) === '1'; } catch (_) { return false; }
   }
 
-  function setLiveCollapsed(on){
+  function setCollapsed({ key, bodyId, btnId, on }){
     const collapsed = !!on;
-    const body = $('liveCardBody');
-    const btn = $('liveToggleBtn');
+    const body = $(bodyId);
+    const btn = $(btnId);
     if (body) body.style.display = collapsed ? 'none' : '';
     if (btn) btn.textContent = collapsed ? 'Expand' : 'Collapse';
-    try { localStorage.setItem(LIVE_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (_) {}
+    try { localStorage.setItem(String(key || ''), collapsed ? '1' : '0'); } catch (_) {}
   }
 
-  function applyLiveZoom(){
-    const BASE_W = 1920;
-    const BASE_H = 1080;
-    const z = Number($('liveZoom')?.value || 55);
+  function isLiveCollapsed(){ return isCollapsed(LIVE_COLLAPSED_KEY); }
+  function setLiveCollapsed(on){ return setCollapsed({ key: LIVE_COLLAPSED_KEY, bodyId: 'liveCardBody', btnId: 'liveToggleBtn', on }); }
+  function isPlayerCollapsed(){ return isCollapsed(PLAYER_COLLAPSED_KEY); }
+  function setPlayerCollapsed(on){ return setCollapsed({ key: PLAYER_COLLAPSED_KEY, bodyId: 'playerCardBody', btnId: 'playerToggleBtn', on }); }
+  function isPeppyCollapsed(){ return isCollapsed(PEPPY_COLLAPSED_KEY); }
+  function setPeppyCollapsed(on){ return setCollapsed({ key: PEPPY_COLLAPSED_KEY, bodyId: 'peppyCardBody', btnId: 'peppyToggleBtn', on }); }
+
+  function applyZoom(prefix, baseW, baseH, fallback = 55){
+    const z = Number($(prefix + 'Zoom')?.value || fallback);
     const scale = Math.max(0.35, Math.min(1, z / 100));
-    const wrap = $('liveFrameScaleWrap');
-    const label = $('liveZoomLabel');
-    const viewport = $('liveFrameViewport');
+    const wrap = $(prefix + 'FrameScaleWrap');
+    const label = $(prefix + 'ZoomLabel');
+    const viewport = $(prefix + 'FrameViewport');
     if (wrap) {
       wrap.style.transform = `scale(${scale})`;
-      wrap.style.width = `${Math.round(BASE_W * scale)}px`;
-      wrap.style.height = `${Math.round(BASE_H * scale)}px`;
+      wrap.style.width = `${Math.round(baseW * scale)}px`;
+      wrap.style.height = `${Math.round(baseH * scale)}px`;
     }
-    if (viewport) viewport.style.minHeight = `${Math.round(BASE_H * scale) + 16}px`;
+    if (viewport) viewport.style.minHeight = `${Math.round(baseH * scale) + 16}px`;
     if (label) label.textContent = `${Math.round(scale * 100)}%`;
   }
 
-  function refreshLiveFrame(uiPort = 8101){
-    dbg(`refreshLiveFrame(uiPort=${uiPort})`);
+  function applyLiveZoom(){ applyZoom('live', 1920, 1080, 55); }
+  function applyPlayerZoom(){ applyZoom('player', 1920, 1080, 45); }
+  function applyPeppyZoom(){ applyZoom('peppy', 1280, 400, 60); }
+
+  function refreshPreviewFrame({ name, frameId, linkId, page, uiPort = 8101, applyZoom }){
+    dbg(`refresh${name}Frame(uiPort=${uiPort})`);
     const host = location.hostname || '10.0.0.233';
     const proto = location.protocol || 'http:';
-    const sameOriginIndex1080 = new URL('index.html', location.href).toString();
+    const sameOriginUrl = new URL(page, location.href).toString();
     const uiPathPrefix = String(location.pathname || '/').replace(/[^/]*$/, '');
-    const fallbackIndex1080 = `${proto}//${host}:${uiPort}${uiPathPrefix}index.html`;
-    const fr = $('liveFrame');
-    const a = $('openLiveLink');
-    const dbgEl = $('liveFrameDebug');
+    const fallbackUrl = `${proto}//${host}:${uiPort}${uiPathPrefix}${page}`;
+    const fr = $(frameId);
+    const a = $(linkId);
 
     const preferSameOrigin = (window.top !== window.self) || (Number(location.port || 0) === Number(uiPort));
-    const url = preferSameOrigin ? sameOriginIndex1080 : fallbackIndex1080;
+    const url = preferSameOrigin ? sameOriginUrl : fallbackUrl;
     const target = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
 
     if (fr) {
@@ -244,21 +254,33 @@
         try {
           const title = String(fr.contentDocument?.title || '');
           const href = String(fr.contentWindow?.location?.href || fr.src || '');
-          dbg(`liveFrame onload | title="${title}" | href=${href}`);
+          dbg(`${frameId} onload | title="${title}" | href=${href}`);
         } catch (e) {
-          dbg(`liveFrame onload | (inaccessible) | src=${fr.src} | err=${e?.message || e}`);
+          dbg(`${frameId} onload | (inaccessible) | src=${fr.src} | err=${e?.message || e}`);
         }
       };
       fr.onerror = () => {
-        dbg(`liveFrame onerror | src=${fr.src}`);
+        dbg(`${frameId} onerror | src=${fr.src}`);
       };
       fr.src = target;
       dbg(`loading ${target}`);
     } else {
-      dbg('liveFrame missing in DOM');
+      dbg(`${frameId} missing in DOM`);
     }
     if (a) a.href = url;
-    applyLiveZoom();
+    if (typeof applyZoom === 'function') applyZoom();
+  }
+
+  function refreshLiveFrame(uiPort = 8101){
+    refreshPreviewFrame({ name: 'Live', frameId: 'liveFrame', linkId: 'openLiveLink', page: 'index.html', uiPort, applyZoom: applyLiveZoom });
+  }
+
+  function refreshPlayerFrame(uiPort = 8101){
+    refreshPreviewFrame({ name: 'Player', frameId: 'playerFrame', linkId: 'openPlayerLink', page: 'player-render.html', uiPort, applyZoom: applyPlayerZoom });
+  }
+
+  function refreshPeppyFrame(uiPort = 8101){
+    refreshPreviewFrame({ name: 'Peppy', frameId: 'peppyFrame', linkId: 'openPeppyLink', page: 'peppy.html', uiPort, applyZoom: applyPeppyZoom });
   }
 
   async function loadRuntime(){
@@ -285,6 +307,8 @@
       setPillState('apiPill','ok'); setPillState('webPill','ok'); setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn')); setPillState('moodePill', moodeHost ? 'ok' : 'warn');
       dbg(`loadRuntime ok api=${apiPort} ui=${uiPort}`);
       refreshLiveFrame(uiPort);
+      refreshPlayerFrame(uiPort);
+      refreshPeppyFrame(uiPort);
       loadQueue();
     } catch (e) {
       dbg(`loadRuntime error: ${e?.message || e}`);
@@ -295,6 +319,8 @@
       if ($('moodeHint')) $('moodeHint').textContent = 'not verified';
       setPillState('apiPill','bad'); setPillState('webPill','warn'); setPillState('alexaPill','warn'); setPillState('moodePill','warn');
       refreshLiveFrame(8101);
+      refreshPlayerFrame(8101);
+      refreshPeppyFrame(8101);
       loadQueue();
     }
   }
@@ -561,8 +587,14 @@
 
   $('runBtn')?.addEventListener('click', () => run());
   $('reloadLiveBtn')?.addEventListener('click', () => loadRuntime());
+  $('reloadPlayerBtn')?.addEventListener('click', () => loadRuntime());
+  $('reloadPeppyBtn')?.addEventListener('click', () => loadRuntime());
   $('liveZoom')?.addEventListener('input', applyLiveZoom);
+  $('playerZoom')?.addEventListener('input', applyPlayerZoom);
+  $('peppyZoom')?.addEventListener('input', applyPeppyZoom);
   $('liveToggleBtn')?.addEventListener('click', () => setLiveCollapsed(!isLiveCollapsed()));
+  $('playerToggleBtn')?.addEventListener('click', () => setPlayerCollapsed(!isPlayerCollapsed()));
+  $('peppyToggleBtn')?.addEventListener('click', () => setPeppyCollapsed(!isPeppyCollapsed()));
   $('queueWrap')?.addEventListener('click', (ev) => {
     const el = ev.target instanceof Element ? ev.target : null;
 
@@ -783,8 +815,12 @@
       $('useTrackKey').checked = state.useTrackKey;
     }
     setLiveCollapsed(isLiveCollapsed());
-    // Prime live preview immediately, even if runtime fetch is slow/failing.
-    try { refreshLiveFrame(8101); } catch (e) { dbg(`prime refresh error: ${e?.message || e}`); }
+    setPlayerCollapsed(isPlayerCollapsed());
+    setPeppyCollapsed(isPeppyCollapsed());
+    // Prime previews immediately, even if runtime fetch is slow/failing.
+    try { refreshLiveFrame(8101); } catch (e) { dbg(`prime live refresh error: ${e?.message || e}`); }
+    try { refreshPlayerFrame(8101); } catch (e) { dbg(`prime player refresh error: ${e?.message || e}`); }
+    try { refreshPeppyFrame(8101); } catch (e) { dbg(`prime peppy refresh error: ${e?.message || e}`); }
     await loadRuntime();
     await loadEndpointCatalog();
     hydrateEndpoints();

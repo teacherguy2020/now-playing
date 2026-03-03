@@ -198,6 +198,50 @@
       </div>
     </div>
 
+    <div class="card" id="playerCard">
+      <div class="row" style="margin-bottom:8px;align-items:center;justify-content:space-between;gap:10px;">
+        <div class="muted" style="margin:0;">Live player view (player-render.html)</div>
+        <button id="playerToggleBtn" type="button" title="Collapse/expand player view">Collapse</button>
+      </div>
+      <div id="playerCardBody">
+        <div class="row" style="margin-bottom:8px;align-items:center;">
+          <button id="reloadPlayerBtn" type="button">Reload player view</button>
+          <label class="muted" for="playerZoom" style="margin:0 0 0 8px;">Zoom</label>
+          <input id="playerZoom" type="range" min="35" max="100" step="5" value="45" />
+          <span id="playerZoomLabel" class="muted">45%</span>
+          <a id="openPlayerLink" href="player-render.html" target="_blank" rel="noopener" class="muted">Open in new tab</a>
+        </div>
+        <div id="playerFrameViewport" style="overflow:auto;border:1px solid #2a3a58;border-radius:10px;background:#071021;padding:8px;display:flex;justify-content:center;align-items:flex-start;">
+          <div id="playerFrameScaleWrap" style="transform-origin:top left; width:1920px; height:1080px;">
+            <iframe id="playerFrame" title="Live player-render" style="width:1920px;height:1080px;border:0;display:block;background:#071021;"></iframe>
+          </div>
+        </div>
+        <div class="muted" style="margin-top:6px;">Desktop viewport stays 1920×1080; zoom only scales display.</div>
+      </div>
+    </div>
+
+    <div class="card" id="peppyCard">
+      <div class="row" style="margin-bottom:8px;align-items:center;justify-content:space-between;gap:10px;">
+        <div class="muted" style="margin:0;">Live peppy skin view (peppy.html)</div>
+        <button id="peppyToggleBtn" type="button" title="Collapse/expand peppy view">Collapse</button>
+      </div>
+      <div id="peppyCardBody">
+        <div class="row" style="margin-bottom:8px;align-items:center;">
+          <button id="reloadPeppyBtn" type="button">Reload peppy view</button>
+          <label class="muted" for="peppyZoom" style="margin:0 0 0 8px;">Zoom</label>
+          <input id="peppyZoom" type="range" min="35" max="100" step="5" value="60" />
+          <span id="peppyZoomLabel" class="muted">60%</span>
+          <a id="openPeppyLink" href="peppy.html" target="_blank" rel="noopener" class="muted">Open in new tab</a>
+        </div>
+        <div id="peppyFrameViewport" style="overflow:auto;border:1px solid #2a3a58;border-radius:10px;background:#071021;padding:8px;display:flex;justify-content:center;align-items:flex-start;">
+          <div id="peppyFrameScaleWrap" style="transform-origin:top left; width:1280px; height:400px;">
+            <iframe id="peppyFrame" title="Live peppy" style="width:1280px;height:400px;border:0;display:block;background:#071021;"></iframe>
+          </div>
+        </div>
+        <div class="muted" style="margin-top:6px;">Peppy viewport stays 1280×400; zoom only scales display.</div>
+      </div>
+    </div>
+
     <div class="card" id="outputCard" style="display:none;">
       <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px;">
         <div class="muted" id="meta"></div>
@@ -213,7 +257,7 @@
     <input id="key" type="hidden" />
   </div>
 
-  <script src="scripts/diagnostics.js?v=20260222-livecollapse1"></script>
+  <script src="scripts/diagnostics.js?v=20260303-previews1"></script>
 
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
 
