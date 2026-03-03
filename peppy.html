@@ -555,6 +555,7 @@
       const albumYearCanvas = $('albumYearCanvas');
       const fileMetaCanvas = $('fileMetaCanvas');
       const fileMetaCanvas2 = $('fileMetaCanvas2');
+      const artFrame = $('artFrame');
       const leftMetaSlot = $('leftMetaSlot');
       const rightMetaSlot = $('rightMetaSlot');
       const formatStrip = $('formatStrip');
@@ -1869,6 +1870,25 @@
         setTimeout(() => { try { pollNowPlaying(); } catch {} }, 180);
       }
 
+      let artTapLockUntil = 0;
+      async function switchToPlayerFromArt(){
+        const now = Date.now();
+        if (now < artTapLockUntil) return;
+        artTapLockUntil = now + 1200;
+        try { window.parent?.postMessage({ type:'np-display-action', action:'push-player' }, '*'); } catch {}
+        try {
+          if (window.parent === window) {
+            await ensureRuntimeKey();
+            const headers = { 'Content-Type':'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) };
+            await fetch(`${api}/config/moode/display-mode`, { method:'POST', headers, body: JSON.stringify({ displayMode:'player' }) }).catch(() => null);
+            const host = (location.hostname || API_FALLBACK_HOST);
+            const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+            await fetch(`${api}/config/moode/browser-url`, { method:'POST', headers, body: JSON.stringify({ url: targetUrl }) }).catch(() => null);
+            location.href = `${targetUrl}&ts=${Date.now()}`;
+          }
+        } catch {}
+      }
+
       async function skinOp(path, body = {}, btn = null){
         if (btn) btn.disabled = true;
         await ensureRuntimeKey();
@@ -2260,6 +2280,8 @@
       ctrlRepeat?.addEventListener('click', () => playback('repeat', ctrlRepeat));
       ctrlPause?.addEventListener('click', () => playback('pause', ctrlPause));
       ctrlShuffle?.addEventListener('click', () => playback('shuffle', ctrlShuffle));
+      artFrame?.addEventListener('click', () => { switchToPlayerFromArt(); });
+      artFrame?.addEventListener('touchend', (ev) => { try { ev.preventDefault(); } catch {} switchToPlayerFromArt(); }, { passive:false });
 
       refreshPresetSelect();
       skinExport?.addEventListener('click', () => {
