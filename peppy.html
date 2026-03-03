@@ -61,7 +61,7 @@
     .controls{position:absolute;left:28px;bottom:12px;height:208px;display:grid;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start;z-index:4}
     /* Compact profiles: keep classic 2x3 controls; JS positions block in left-column gap above art. */
     body.screen-compact .controls{height:208px;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start}
-    body.screen-1024x320 .card.left{display:grid;grid-template-rows:2fr 1fr;align-items:stretch}
+    body.screen-1024x320 .card.left{display:grid;grid-template-rows:2fr 1fr;align-items:stretch;background-image:linear-gradient(to bottom, transparent 0 66.666%, rgba(255,120,0,.12) 66.666% 100%)}
     body.screen-1024x320 #leftMetaSlot:empty{display:none}
     body.screen-1024x320 .artFrame{grid-row:1;align-self:start}
     body.screen-1024x320 .controls{position:static;grid-row:2;height:90px;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(2,42px);column-gap:6px;row-gap:6px;justify-self:center;align-self:center;z-index:4;background:rgba(255,120,0,.18);outline:1px dashed rgba(255,170,70,.75)}
