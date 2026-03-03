@@ -2224,7 +2224,10 @@
         }
       }
 
-      function animate(){
+      let lastNeedleDrawTs = 0;
+      let lastNeedleDrawL = 0;
+      let lastNeedleDrawR = 0;
+      function animate(ts = 0){
         const sm = String(needleSmoothing?.value || previewSmoothing || 'medium');
         const riseA = sm === 'off' ? 1.0 : (sm === 'low' ? 0.56 : (sm === 'high' ? 0.24 : 0.42));
         const fallA = sm === 'off' ? 1.0 : (sm === 'low' ? 0.20 : (sm === 'high' ? 0.07 : 0.12));
@@ -2238,7 +2241,19 @@
           const held = clamp(peakHold[k] || 0);
           if (cur >= held) peakHold[k] = cur;
         }
-        drawNeedles();
+
+        const maxFps = kioskMode ? 18 : 60;
+        const minFrameMs = 1000 / maxFps;
+        const dt = ts - lastNeedleDrawTs;
+        const dL = Math.abs(meterState.L.cur - lastNeedleDrawL);
+        const dR = Math.abs(meterState.R.cur - lastNeedleDrawR);
+        const changedEnough = (dL >= 0.18 || dR >= 0.18);
+        if (dt >= minFrameMs && (changedEnough || dt >= 500)) {
+          drawNeedles();
+          lastNeedleDrawTs = ts;
+          lastNeedleDrawL = meterState.L.cur;
+          lastNeedleDrawR = meterState.R.cur;
+        }
         requestAnimationFrame(animate);
       }
 
@@ -2507,8 +2522,8 @@
         await pollNowPlaying();
         await pollMeter();
         animate();
-        setInterval(pollNowPlaying, 2500);
-        setInterval(pollMeter, 90);
+        setInterval(pollNowPlaying, kioskMode ? 3000 : 2500);
+        setInterval(pollMeter, kioskMode ? 130 : 90);
       })();
     })();
   </script>
