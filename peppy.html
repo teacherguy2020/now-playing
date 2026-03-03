@@ -38,8 +38,8 @@
     body.font-dot #artGlow{left:0;right:0;top:0;bottom:0;border-radius:0}
     body.font-dot #art,body.font-dot #artVideo{width:100%;height:100%;object-fit:contain;border-radius:0;background:#161216;border:3px solid #5a4a3f;outline:8px solid rgba(22,16,14,.9);box-shadow:0 0 0 2px rgba(214,184,146,.25), 0 0 18px rgba(232,196,130,.28), 0 0 34px rgba(232,196,130,.18), 0 0 28px rgba(var(--progress-rgb,46,185,238),.22), 0 0 56px rgba(var(--progress-rgb,46,185,238),.14), inset 0 0 0 4px rgba(34,26,20,.65), inset 0 -30px 44px rgba(0,0,0,.52), inset 0 0 54px rgba(0,0,0,.28), inset 0 0 26px rgba(255,220,165,.18), inset 0 0 48px rgba(var(--progress-rgb,46,185,238),.28), 0 8px 22px rgba(0,0,0,.46);filter:contrast(1.08) saturate(.9)}
     body.font-dot.warm-parchment #art,body.font-dot.warm-parchment #artVideo{border-radius:0;border-color:#8f7659;outline-color:rgba(65,48,34,.9);box-shadow:0 0 0 2px rgba(241,224,198,.35), 0 0 24px rgba(244,211,160,.36), 0 0 42px rgba(244,211,160,.22), inset 0 0 0 4px rgba(72,52,32,.64), inset 0 -34px 50px rgba(52,30,14,.56), inset 0 0 60px rgba(120,84,45,.42), inset 0 0 34px rgba(255,224,176,.28), 0 10px 24px rgba(0,0,0,.36);filter:sepia(.2) contrast(1.08) saturate(.88)}
-    .leftFileMeta{height:20px;border-radius:0;border-left:none;border-right:none;border-bottom:none;margin-top:0}
-    body.kiosk .leftFileMeta{height:20px}
+    .leftFileMeta{height:24px;border-radius:0;border-left:none;border-right:none;border-bottom:none;margin-top:0}
+    body.kiosk .leftFileMeta{height:24px}
     .meta{padding:4px 10px 0px;display:grid;gap:1px}
     .title{font-size:28px;font-weight:760;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.02}
     .sub{font-size:17px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05}
@@ -1511,8 +1511,8 @@
           drawDotText(titleCanvas, dotTitle, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
           drawDotText(albumYearCanvas, dotAlbumYear, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
           const metaCfg = kioskMode
-            ? { size: 22, pitch: 2, dot: metaDot, padY: 1, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' }
-            : { size: 24, pitch: 3, dot: Math.max(1.0, metaDot), padY: 1, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' };
+            ? { size: 22, pitch: 2, dot: metaDot, padY: 2, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' }
+            : { size: 24, pitch: 3, dot: Math.max(1.0, metaDot), padY: 2, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' };
           drawDotText(fileMetaCanvas, dotFileMeta, metaCfg);
           drawDotText(fileMetaCanvas2, dotFileMeta2, metaCfg);
           return;
