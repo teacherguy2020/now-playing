@@ -11,6 +11,25 @@ When **moOde Display Enhancement** is enabled in `config.html`, the app exposes:
 - `player-render.html` (actual player renderer)
 - `display.html` (stable router URL for moOde)
 
+### How Peppy meter data works (ALSA -> HTTP bridge)
+
+The custom Peppy view does not read ALSA directly in browser JavaScript.
+
+Instead, the audio/meter path is:
+
+1. **ALSA / peppymeter pipeline** computes live meter values.
+2. A sender posts meter payloads to the API bridge endpoint:
+   - `PUT /peppy/vumeter`
+3. The UI polls:
+   - `GET /peppy/vumeter`
+4. `peppy.html` renders needles/linear rails from returned `left/right/mono`.
+
+Current practical behavior:
+
+- VU values (`left/right/mono`) are the canonical signal used by custom Peppy UI.
+- Optional `spectrum` is accepted by the bridge if provided by sender, but many native peppymeter HTTP senders only publish VU.
+- If sender does not include spectrum bins, the custom UI still works fully in VU mode.
+
 ## Why this is different (builder-first display design)
 
 This project does not treat meter skins and now-playing text as separate worlds.
@@ -49,6 +68,52 @@ Set it to:
 - `displayMode=peppy` -> `peppy.html`
 - `displayMode=player` -> `player-render.html`
 - `displayMode=moode` -> `http://moode.local/index.php`
+
+## Builder choices (Peppy) and what they do
+
+`peppy.html` is a composition builder. The key controls are:
+
+- **Preset**
+  - Loads a saved profile (built-in or custom).
+  - Presets include full profile fields and are normalized for backward compatibility.
+
+- **Meter geometry**
+  - **Circular**: classic dual VU meter art.
+  - **Linear**: dual horizontal rails with selectable style/size.
+
+- **Circular skin** (shown when Circular is selected)
+  - Selects artwork family (`blue-1280`, `gold-1280`, etc.).
+
+- **Linear style** (shown when Linear is selected)
+  - `Cassette (segmented)`
+  - `Continuous (green→yellow→red)`
+  - `Continuous (theme color)`
+
+- **Linear size** (shown when Linear is selected)
+  - `Small`, `Medium`, `Large`
+
+- **Font style**
+  - `UI Sans`, `UI Sans Condensed`, `Inter Tight`, `Montserrat`, `Dot Matrix`
+
+- **Font size**
+  - `S`, `M`, `L`, `XL`
+
+- **Needle sensitivity / smoothing**
+  - Controls animation attack/release and motion feel.
+
+- **Theme preset**
+  - Applies color system for cards, rails, progress, dot/LED look, etc.
+
+### Save vs Push
+
+- **Save as Preset**
+  - Stores profile in local preset list (builder convenience).
+  - Does *not* change moOde display target by itself.
+
+- **Push Peppy to moOde**
+  - Sends active profile state to API (`/peppy/last-profile`).
+  - Updates moOde Chromium app URL to stable router target.
+  - `display.html` resolves and renders the pushed mode/profile.
 
 ## Push actions
 
