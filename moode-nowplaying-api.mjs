@@ -430,6 +430,38 @@ app.put('/peppy/vumeter', (req, res) => {
     if (typeof spectrumRaw === 'string') {
       try { spectrumRaw = JSON.parse(spectrumRaw); } catch { spectrumRaw = []; }
     }
+
+    // Accept common alternate field names from external analyzers/bridges.
+    if (!Array.isArray(spectrumRaw)) {
+      const b = req?.body || {};
+      const q = req?.query || {};
+      const pickArray = (obj, key) => {
+        const v = obj?.[key];
+        if (Array.isArray(v)) return v;
+        if (typeof v === 'string') {
+          try { const j = JSON.parse(v); if (Array.isArray(j)) return j; } catch {}
+        }
+        return null;
+      };
+      const keys = ['fft', 'bands', 'bins', 'values', 'spectrumBins', 'spectrumData'];
+      for (const k of keys) {
+        spectrumRaw = pickArray(b, k) || pickArray(q, k) || spectrumRaw;
+        if (Array.isArray(spectrumRaw)) break;
+      }
+
+      // Some senders provide per-channel arrays: { left:[...], right:[...] }.
+      if (!Array.isArray(spectrumRaw) && Array.isArray(b?.left) && Array.isArray(b?.right)) {
+        const n = Math.min(b.left.length, b.right.length, 128);
+        spectrumRaw = Array.from({ length: n }, (_, i) => (Number(b.left[i] || 0) + Number(b.right[i] || 0)) / 2);
+      }
+
+      // Last resort: first numeric-ish array in body with a spectrum-like key name.
+      if (!Array.isArray(spectrumRaw)) {
+        const ent = Object.entries(b).find(([k, v]) => /fft|spec|band|bin|eq/i.test(String(k)) && Array.isArray(v));
+        if (ent) spectrumRaw = ent[1];
+      }
+    }
+
     const spectrum = Array.isArray(spectrumRaw)
       ? spectrumRaw.slice(0, 128).map((v) => {
           const n = Number(v);
