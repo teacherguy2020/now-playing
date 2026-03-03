@@ -5776,27 +5776,33 @@ app.get('/now-playing', async (req, res) => {
       }
     }
 
-    // Apply radio metadata holdback to avoid early “next track” flips.
+    // Apply radio metadata holdback only for strict stations (WFMT/classical).
+    // For normal talk/sports/news streams, do not hold stale track metadata.
     if (isRadio) {
-      const hb = applyRadioMetadataHoldback({
-        stationKey: String(file || song?.name || '').trim(),
-        stationName: String(streamStationName || song?.name || '').trim(),
-        artist,
-        title,
-        album: radioAlbum || album || '',
-        radioPerformers,
-        elapsedSec: status?.elapsed,
-      });
-      artist = String(hb?.artist || artist || '').trim();
-      title = String(hb?.title || title || '').trim();
-      if (String(hb?.album || '').trim()) {
-        radioAlbum = String(hb.album).trim();
-        if (!String(album || '').trim()) album = radioAlbum;
+      const hbPolicy = radioHoldbackPolicy(String(streamStationName || song?.name || '').trim(), String(file || song?.name || '').trim());
+      if (hbPolicy.mode === 'strict') {
+        const hb = applyRadioMetadataHoldback({
+          stationKey: String(file || song?.name || '').trim(),
+          stationName: String(streamStationName || song?.name || '').trim(),
+          artist,
+          title,
+          album: radioAlbum || album || '',
+          radioPerformers,
+          elapsedSec: status?.elapsed,
+        });
+        artist = String(hb?.artist || artist || '').trim();
+        title = String(hb?.title || title || '').trim();
+        if (String(hb?.album || '').trim()) {
+          radioAlbum = String(hb.album).trim();
+          if (!String(album || '').trim()) album = radioAlbum;
+        }
+        if (String(hb?.radioPerformers || '').trim()) {
+          radioPerformers = String(hb.radioPerformers).trim();
+        }
+        debugRadioHoldback = hb?.holdback || null;
+      } else {
+        debugRadioHoldback = { active: false, reason: 'skipped-non-strict', policy: hbPolicy.mode };
       }
-      if (String(hb?.radioPerformers || '').trim()) {
-        radioPerformers = String(hb.radioPerformers).trim();
-      }
-      debugRadioHoldback = hb?.holdback || null;
     }
 
     // =========================
