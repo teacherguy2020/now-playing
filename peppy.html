@@ -464,6 +464,8 @@
       function syncLinearControlVisibility(){
         const linear = !!meterTypeLinear?.checked;
         if (linearStyle) linearStyle.style.display = linear ? '' : 'none';
+        // Skin picker is only relevant for circular meter artwork.
+        if (skinName) skinName.style.display = linear ? 'none' : '';
       }
       function syncMeterTypeClass(){
         const linear = !!meterTypeLinear?.checked;
