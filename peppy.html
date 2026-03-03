@@ -49,7 +49,7 @@
     .dotline.small{height:24px}
     .subline{display:flex;gap:14px;flex-wrap:wrap;font-size:16px;color:#bfd0ee;line-height:1.1}
     .right{position:relative;display:grid;grid-template-rows:auto;align-content:start}
-    .meters{position:absolute;right:4px;bottom:22px;width:min(820px, calc(100% - 12px));display:grid;grid-template-rows:auto;gap:2px;padding:0;align-content:end}
+    .meters{position:absolute;right:4px;bottom:12px;width:min(820px, calc(100% - 12px));display:grid;grid-template-rows:auto;gap:2px;padding:0;align-content:end}
     .controls{position:absolute;left:28px;bottom:10px;display:grid;grid-template-columns:repeat(2,60px);gap:8px}
     .skinOps{position:static;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;width:min(1280px,calc(100vw - 16px));padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--card),var(--card2));box-sizing:border-box}
     .skinBtn{height:26px;padding:0 10px;border:1px solid #3f4753;background:#1f2731;color:#d8e4f3;font-size:12px;cursor:pointer}
@@ -479,6 +479,7 @@
       }
       const progressEl = trackProgress?.closest('.progress') || null;
       const leftCard = document.querySelector('.card.left');
+      const rightCard = document.querySelector('.card.right');
       const metersEl = document.querySelector('.meters');
       const needleCanvas = $('needleCanvas');
 
@@ -504,19 +505,19 @@
         return { geometry: linear ? 'linear' : 'circular' };
       }
       function syncProgressPlacement(){
-        if (!progressEl || !metersEl) return;
-        // Keep progress location consistent for both circular + linear: anchored at bottom under meter area.
-        if (progressEl.parentElement !== metersEl) metersEl.appendChild(progressEl);
+        if (!progressEl || !metersEl || !rightCard) return;
+        // Keep progress location consistent for both circular + linear:
+        // anchor to bottom of right card, while matching meter background width.
+        if (progressEl.parentElement !== rightCard) rightCard.appendChild(progressEl);
         progressEl.style.position = 'absolute';
-        // Match the meter background area (not the full meters wrapper/border).
         progressEl.style.left = 'calc(30px + ((100% - 30px) * 0.05))';
         progressEl.style.right = 'calc(30px + ((100% - 30px) * 0.05))';
         progressEl.style.width = 'auto';
         progressEl.style.marginLeft = '0';
         progressEl.style.marginTop = '0';
-        // Place progress in its own lane below meter background.
-        progressEl.style.bottom = '-12px';
+        progressEl.style.bottom = '0';
         progressEl.style.top = 'auto';
+        progressEl.style.zIndex = '3';
       }
       function syncLinearControlVisibility(){
         const linear = !!meterTypeLinear?.checked;
