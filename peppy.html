@@ -60,6 +60,13 @@
     .meters{position:absolute;right:4px;bottom:12px;width:min(820px, calc(100% - 12px));display:grid;grid-template-rows:auto;gap:2px;padding:0;align-content:end}
     .controls{position:absolute;left:28px;bottom:12px;height:208px;display:grid;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start;z-index:4}
     .formatStrip{display:none}
+    /* 1280x400 adopts compact-style left panel: art top, LED strip, one-row controls. */
+    body.screen-1280x400 .artFrame{margin:14px auto auto 14px}
+    body.screen-1280x400 .formatStrip{display:flex;position:absolute;left:12px;right:12px;bottom:58px;justify-content:center;align-items:center;gap:10px;z-index:5;pointer-events:none}
+    body.screen-1280x400 .formatStrip .fmtRate{display:none}
+    body.screen-1280x400 .controls{position:absolute;left:12px;right:12px;bottom:8px;height:44px;grid-template-columns:repeat(6,44px);grid-template-rows:44px;column-gap:6px;row-gap:0;justify-content:center;align-content:center;z-index:4}
+    body.screen-1280x400 .ctrlBtn{width:44px;height:44px}
+    body.screen-1280x400 .ctrlBtn .symSvg{width:18px;height:18px}
     .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#9db0c7;letter-spacing:.3px}
     .fmtLed{width:7px;height:7px;border-radius:50%;background:#1e2e22;border:1px solid #3d5f45;box-shadow:inset 0 0 2px rgba(0,0,0,.55)}
     .fmtItem.on .fmtLed{background:#67f18b;border-color:#9ff7b4;box-shadow:0 0 6px rgba(108,241,148,.8), 0 0 12px rgba(108,241,148,.35)}
@@ -328,7 +335,7 @@
           } catch {}
           try {
             if (formatStrip && leftCard && rightCard) {
-              if (previewScreenProfile === '1024x320') {
+              if (previewScreenProfile === '1024x320' || previewScreenProfile === '1280x400') {
                 if (formatStrip.parentElement !== leftCard) leftCard.appendChild(formatStrip);
               } else {
                 if (formatStrip.parentElement !== rightCard) rightCard.insertBefore(formatStrip, controlsEl || rightCard.firstChild || null);
@@ -872,24 +879,25 @@
           controlsEl.style.top = `${topPx}px`;
           return;
         }
-        if (controlsEl.parentElement !== rightCard) rightCard.appendChild(controlsEl);
-        // Reset any compact-profile inline control sizing/layout so 1280x400 stays canonical.
+        // 1280x400 adopts left-panel control strip layout.
+        if (controlsEl.parentElement !== leftCard) leftCard.appendChild(controlsEl);
         controlsEl.style.position = 'absolute';
         controlsEl.style.gridTemplateColumns = '';
         controlsEl.style.gridTemplateRows = '';
         controlsEl.style.columnGap = '';
         controlsEl.style.rowGap = '';
         controlsEl.style.height = '';
+        controlsEl.style.marginBottom = '';
         controlsEl.querySelectorAll('.ctrlBtn').forEach((b) => {
           b.style.width = '';
           b.style.height = '';
           const svg = b.querySelector('.symSvg');
           if (svg) { svg.style.width = ''; svg.style.height = ''; }
         });
-        controlsEl.style.left = '8px';
-        controlsEl.style.right = 'auto';
+        controlsEl.style.left = '12px';
+        controlsEl.style.right = '12px';
         controlsEl.style.top = 'auto';
-        controlsEl.style.bottom = '10px';
+        controlsEl.style.bottom = '8px';
       }
       const meterState = { L: { target: 0, cur: 0 }, R: { target: 0, cur: 0 } };
       let lastLinearLayout = null;
