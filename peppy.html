@@ -133,7 +133,7 @@
     .star{color:#7a6420;opacity:.35;transition:opacity .12s linear, text-shadow .12s linear, color .12s linear}
     .star.active{color:#fbbf24;opacity:.98;text-shadow:0 0 5px rgba(251,191,36,.55), 0 0 10px rgba(251,191,36,.35)}
     .progress{height:10px;border-radius:0;border:1px solid #304764;background:#091120;overflow:hidden;margin:0;padding:0;width:100%}
-    .progressSegbar{position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;padding:2px 8px;box-sizing:border-box;height:100%}
+    .progressSegbar{position:relative;display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:6px;padding:2px 8px;box-sizing:border-box;height:100%}
     .pfill{position:absolute;left:8px;right:8px;top:2px;bottom:2px;width:auto;pointer-events:none;border-radius:0;background:rgba(var(--progress-rgb),.88);box-shadow:0 0 7px rgba(var(--progress-rgb),.42),0 0 18px rgba(var(--progress-rgb),.24);transform-origin:left center;transform:scaleX(0);transition:transform .10s linear,opacity .10s linear;opacity:0}
     /* Linear mode: align visible progress/fill rails with linear meter lane edges. */
     body.linear-meter .progressSegbar{padding:2px 1px;gap:2px}
@@ -1288,7 +1288,7 @@
       function buildProgressSegments(el){
         if (!el) return [];
         const out = [];
-        for (let i = 0; i < 12; i++) {
+        for (let i = 0; i < 24; i++) {
           const s = document.createElement('div');
           s.className = 'pseg';
           el.appendChild(s);
