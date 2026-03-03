@@ -87,6 +87,8 @@
     .fmtItem.on .fmtLed{background:#67f18b;border-color:#9ff7b4;box-shadow:0 0 6px rgba(108,241,148,.8), 0 0 12px rgba(108,241,148,.35)}
     .fmtItem[data-fmt="hq"].on .fmtLed{background:#f4c84a;border-color:#ffe08c;box-shadow:0 0 6px rgba(244,200,74,.85),0 0 12px rgba(244,200,74,.4)}
     .fmtItem[data-fmt="sr44"].on .fmtLed,.fmtItem[data-fmt="sr48"].on .fmtLed,.fmtItem[data-fmt="sr96"].on .fmtLed,.fmtItem[data-fmt="b16"].on .fmtLed,.fmtItem[data-fmt="b24"].on .fmtLed{background:#3fa9e6;border-color:#89cdef;box-shadow:0 0 6px rgba(63,169,230,.8),0 0 12px rgba(63,169,230,.34)}
+    @keyframes livePulseSlow{0%{opacity:.62;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}100%{opacity:.62;transform:scale(1)}}
+    .fmtItem[data-fmt="live"].on .fmtLed{background:#f05a5a;border-color:#ffaaaa;box-shadow:0 0 6px rgba(240,90,90,.78),0 0 12px rgba(240,90,90,.36);animation:livePulseSlow 3.6s ease-in-out infinite}
     .fmtRate{margin-left:auto;font-size:10px;color:#b7c6d8}
     /* Compact profiles: keep classic 2x3 controls; JS positions block in left-column gap above art. */
     body.screen-compact .controls{height:208px;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start}
@@ -1927,7 +1929,7 @@
           const metaDot = (isWarmParchment ? 0.85 : 0.7) * Math.max(0.9, scale);
           if (compactHeader3) {
             const metaShort = `${dotFileMeta} ${dotFileMeta2}`.replace(/\s+/g,' ').trim();
-            const row3 = `${dotAlbumYear} • ${metaShort}`;
+            const row3 = is1280 ? `${dotAlbumYear}` : `${dotAlbumYear} • ${metaShort}`;
             const is1280 = (sp === '1280x400');
             const headSize = is1280 ? 50 : 42;
             const row3Size = is1280 ? 50 : 38;
@@ -1971,7 +1973,9 @@
           };
         })();
         if (compactHeader3) {
-          const row3 = `${dotAlbumYear} • ${(`${dotFileMeta} ${dotFileMeta2}`).replace(/\s+/g,' ').trim()}`;
+          const row3 = (sp === '1280x400')
+            ? `${dotAlbumYear}`
+            : `${dotAlbumYear} • ${(`${dotFileMeta} ${dotFileMeta2}`).replace(/\s+/g,' ').trim()}`;
           drawPlainText(artistCanvas, dotArtist, { size: Math.round(30*scale), weight: plainCfg.artistW, font: plainCfg.family });
           drawPlainText(titleCanvas, dotTitle, { size: Math.round(30*scale), weight: plainCfg.titleW, font: plainCfg.family });
           drawPlainText(albumYearCanvas, row3, { size: Math.round(26*scale), weight: plainCfg.metaW, font: plainCfg.family });
