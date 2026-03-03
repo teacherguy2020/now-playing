@@ -23,11 +23,14 @@
       --progress-rgb:46,185,238;
       --dot-bg:#06101a;
       --dot-dim:#3a516f;
+      --stage-w:1280;
+      --stage-h:400;
+      --stage-left-col:320;
     }
     html,body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;height:100%;overflow:hidden}
     body{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:6px 8px 0;box-sizing:border-box;gap:6px}
     .previewStage{position:relative;display:flex;align-items:flex-start;justify-content:center;overflow:hidden}
-    .wrap{width:1280px;height:400px;display:grid;grid-template-columns:320px 1fr;gap:4px;padding:0;box-sizing:border-box;transform-origin:top center}
+    .wrap{width:calc(var(--stage-w) * 1px);height:calc(var(--stage-h) * 1px);display:grid;grid-template-columns:calc(var(--stage-left-col) * 1px) 1fr;gap:4px;padding:0;box-sizing:border-box;transform-origin:top center}
     .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:8px;overflow:hidden}
     .left{display:flex;flex-direction:column;align-items:stretch;height:100%;position:relative}
     body.linear-meter .meters .progress{position:relative;top:0;margin-top:0;width:100%;margin-left:0}
@@ -141,6 +144,10 @@
           <option value="builtin:9">Warm Parchment Gold Circular</option>
         </select>
         <button id="pushPeppyFromTab" class="skinBtn" type="button">Push Peppy to moOde</button>
+        <select id="screenProfile" class="skinSelect" aria-label="Peppy screen profile">
+          <option value="1280x400">Screen: 1280×400</option>
+          <option value="800x480">Screen: 800×480</option>
+        </select>
         <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
           <input type="radio" name="meterType" id="meterTypeCircular" value="circular" checked /> Circular
         </label>
@@ -243,6 +250,33 @@
       const qp = new URLSearchParams(location.search);
       const kioskMode = (qp.get('kiosk') === '1' || qp.get('display') === '1');
       const adminMode = (qp.get('admin') === '1');
+      const SCREEN_PROFILES = {
+        '1280x400': { w:1280, h:400, leftCol:320 },
+        '800x480': { w:800, h:480, leftCol:200 },
+      };
+      function normalizeScreenProfile(v){
+        const key = String(v || '').trim();
+        return SCREEN_PROFILES[key] ? key : '1280x400';
+      }
+      function getScreenDims(){
+        const k = normalizeScreenProfile(previewScreenProfile || '1280x400');
+        return SCREEN_PROFILES[k] || SCREEN_PROFILES['1280x400'];
+      }
+      function applyScreenProfile(profileKey){
+        previewScreenProfile = normalizeScreenProfile(profileKey);
+        const d = getScreenDims();
+        try {
+          const r = document.documentElement?.style;
+          if (r) {
+            r.setProperty('--stage-w', String(d.w));
+            r.setProperty('--stage-h', String(d.h));
+            r.setProperty('--stage-left-col', String(d.leftCol));
+          }
+          if (screenProfile) screenProfile.value = previewScreenProfile;
+          localStorage.setItem('peppy.screenProfile', previewScreenProfile);
+          localStorage.setItem('player.profile.size', previewScreenProfile);
+        } catch {}
+      }
       try {
         if (skinOpsEl && previewStage && skinOpsEl.parentElement !== document.body) {
           document.body.insertBefore(skinOpsEl, previewStage);
@@ -251,6 +285,7 @@
       const fitMode = String(qp.get('fit') || '').toLowerCase();
       const hasSkinParam = qp.has('skin');
       const hasThemeParam = qp.has('theme');
+      const hasSizeParam = qp.has('size');
       const THEMES = {
         'midnight-blue': { bg:'#05070d', fg:'#e6efff', muted:'#9bb0d3', card:'#0d1422', card2:'#08101a', line:'#22324a', accent:'#7dd3fc', accent2:'#22c55e', dotBg:'#06101a', dotDim:'#3a516f' },
         'amber-night': { bg:'#0d0a05', fg:'#ffe9cc', muted:'#d5b88c', card:'#24170b', card2:'#170f07', line:'#5a3e21', accent:'#ffb347', accent2:'#ffd166', dotBg:'#4a1216', dotDim:'#b45a63' },
@@ -355,7 +390,8 @@
         const colorModeVal = (linearStyleVal === 'continuous-theme') ? 'theme' : 'classic';
         const sensitivity = String(needleSensitivity?.value || previewSensitivity || 'medium');
         const smoothing = String(needleSmoothing?.value || previewSmoothing || 'medium');
-        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, linearStyle: linearStyleVal, linearSize: linearSizeVal, meterMode: meterModeVal, colorMode: colorModeVal, sensitivity, smoothing, ts: Date.now() };
+        const playerSize = normalizeScreenProfile(screenProfile?.value || previewScreenProfile || '1280x400');
+        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, linearStyle: linearStyleVal, linearSize: linearSizeVal, meterMode: meterModeVal, colorMode: colorModeVal, sensitivity, smoothing, playerSize, ts: Date.now() };
       }
       function applyPreset(p){
         if (!p) return;
@@ -368,6 +404,7 @@
         if (themeName && pp.theme) themeName.value = String(pp.theme);
         if (fontMode && pp.fontMode) fontMode.value = String(pp.fontMode);
         if (fontSize && pp.fontSize) fontSize.value = String(pp.fontSize);
+        applyScreenProfile(pp.playerSize || '1280x400');
         const ls = toLinearStyle(pp);
         if (linearStyle) linearStyle.value = ls;
         previewLinearStyle = ls;
@@ -402,6 +439,7 @@
       const skinSavePreset = $('skinSavePreset');
       const peppyPreset = $('peppyPreset');
       const pushPeppyFromTab = $('pushPeppyFromTab');
+      const screenProfile = $('screenProfile');
       const exportModal = $('exportModal');
       const exportJson = $('exportJson');
       const exportClose = $('exportClose');
@@ -443,6 +481,7 @@
           smoothing: ['off','low','medium','high'].includes(String(src.smoothing || '').trim()) ? String(src.smoothing).trim() : 'medium',
           normalization: Number.isFinite(Number(src.normalization)) && Number(src.normalization) > 0 ? Number(src.normalization) : 100,
           displayMode: String(src.displayMode || 'peppy').trim() || 'peppy',
+          playerSize: normalizeScreenProfile(src.playerSize || src.screenProfile || '1280x400'),
         };
       }
 
@@ -617,8 +656,9 @@
 
         // contain: no crop (may letterbox on tall screens)
         // cover: fill viewport (may crop left/right on tall screens)
-        const containScale = Math.min(vw / 1280, vh / 400);
-        const coverScale = Math.max(vw / 1280, vh / 400);
+        const sd = getScreenDims();
+        const containScale = Math.min(vw / sd.w, vh / sd.h);
+        const coverScale = Math.max(vw / sd.w, vh / sd.h);
         const mode = fitMode || 'contain';
         const scale = (mode === 'cover') ? coverScale : containScale;
 
@@ -698,6 +738,14 @@
         try { return localStorage.getItem('peppy.skin') || String(skinName?.value || 'blue-1280'); } catch { return String(skinName?.value || 'blue-1280'); }
       })();
       if (!(previewSkin in SKIN_ASSETS) || previewSkin === 'cassette-linear') previewSkin = 'blue-1280';
+      let previewScreenProfile = (() => {
+        try {
+          return normalizeScreenProfile(
+            qp.get('size') || localStorage.getItem('peppy.screenProfile') || localStorage.getItem('player.profile.size') || '1280x400'
+          );
+        } catch { return '1280x400'; }
+      })();
+      applyScreenProfile(previewScreenProfile);
       let previewMeterType = (() => {
         try { return localStorage.getItem('peppy.meterType') || skinMeta(previewSkin).geometry || 'circular'; } catch { return skinMeta(previewSkin).geometry || 'circular'; }
       })();
@@ -1767,6 +1815,14 @@
           if (Number.isFinite(i) && c[i]) applyPreset(c[i]);
         }
       });
+      screenProfile?.addEventListener('change', () => {
+        applyScreenProfile(screenProfile.value || '1280x400');
+        fitPreviewScale();
+        redrawDotCanvases();
+        syncProgressPlacement();
+        drawNeedles();
+        publishProfileState();
+      });
       pushPeppyFromTab?.addEventListener('click', () => {
         try {
           const profile = getCurrentProfile();
@@ -1920,6 +1976,7 @@
           const lz = String(p?.linearSize || '').trim();
           const sens = String(p?.sensitivity || '').trim().toLowerCase();
           const smooth = String(p?.smoothing || '').trim().toLowerCase();
+          const ps = normalizeScreenProfile(p?.playerSize || p?.screenProfile || '1280x400');
           if (!hasSkinParam && s) {
             previewSkin = s;
             try { localStorage.setItem('peppy.skin', s); } catch {}
@@ -1934,6 +1991,7 @@
             if (meterTypeCircular) meterTypeCircular.checked = (mt !== 'linear');
             try { localStorage.setItem('peppy.meterType', mt); } catch {}
           }
+          if (!hasSizeParam) applyScreenProfile(ps);
           if (['ui-sans','ui-sans-condensed','inter-tight','montserrat','dot-matrix'].includes(fm)) {
             if (fontMode) fontMode.value = fm;
             try { localStorage.setItem('peppy.fontMode', fm); } catch {}
