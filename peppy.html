@@ -61,6 +61,9 @@
     .controls{position:absolute;left:28px;bottom:12px;height:208px;display:grid;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start;z-index:4}
     /* Compact profiles: keep classic 2x3 controls; JS positions block in left-column gap above art. */
     body.screen-compact .controls{height:208px;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start}
+    body.screen-1024x320 .controls{height:102px;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px);column-gap:6px;row-gap:6px}
+    body.screen-1024x320 .ctrlBtn{width:48px;height:48px}
+    body.screen-1024x320 .ctrlBtn .symSvg{width:22px;height:22px}
     body.screen-480x320 .controls{height:164px;grid-template-columns:repeat(2,50px);grid-template-rows:repeat(3,50px);column-gap:8px;row-gap:7px}
     body.screen-480x320 .ctrlBtn{width:50px;height:50px}
     body.screen-480x320 .ctrlBtn .symSvg{width:24px;height:24px}
@@ -726,10 +729,11 @@
       function updateIframeControlAnchor(_groupW = 0){
         if (!controlsEl || !leftCard || !rightCard) return;
         if (normalizeScreenProfile(previewScreenProfile || screenProfile?.value) !== '1280x400') {
+          const sp = normalizeScreenProfile(previewScreenProfile || screenProfile?.value);
           if (controlsEl.parentElement !== leftCard) leftCard.appendChild(controlsEl);
           const box = controlsEl.getBoundingClientRect?.();
           const controlsW = Math.max(80, Math.round(box?.width || (60 * 2 + 8)));
-          const controlsH = Math.max(120, Math.round(box?.height || 208));
+          const controlsH = Math.max(96, Math.round(box?.height || 208));
           const cardW = Math.max(140, leftCard.clientWidth || 200);
           const leftPx = Math.max(8, Math.round((cardW - controlsW) / 2));
           controlsEl.style.left = `${leftPx}px`;
@@ -742,9 +746,15 @@
             const artFrameRect = document.getElementById('artFrame')?.getBoundingClientRect?.();
             const cardH = Math.max(260, leftCard.clientHeight || Math.round(cardRect.height) || 480);
             const artBottom = artFrameRect ? Math.round(artFrameRect.bottom - cardRect.top) : 150;
-            const free = Math.max(0, cardH - artBottom - controlsH);
-            const gap = Math.round(free / 2);
-            topPx = artBottom + gap;
+            if (sp === '1024x320') {
+              // Requested: two rows of three, centered horizontally, directly under art.
+              topPx = artBottom + 8;
+            } else {
+              // Other compact sizes: balance above/below gaps.
+              const free = Math.max(0, cardH - artBottom - controlsH);
+              const gap = Math.round(free / 2);
+              topPx = artBottom + gap;
+            }
             const maxTop = Math.max(8, cardH - controlsH - 8);
             topPx = Math.max(8, Math.min(topPx, maxTop));
           } catch {}
