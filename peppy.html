@@ -1805,7 +1805,7 @@
         ctrlShuffle?.classList.toggle('lit', randomOn);
         ctrlRepeat?.classList.toggle('lit', repeatOn);
       }
-      function setFormatStrip({ fmt='', hq=false, rate='', sr=0, bd=0, ch='', isLive=false } = {}){
+      function setFormatStrip({ fmt='', hq=false, rate='', sr=0, bd=0, ch='', isLive=false, encoded='', outrate='' } = {}){
         if (!formatStrip) return;
         const f = String(fmt || '').toUpperCase();
         const toNum = (v, kind='') => {
@@ -1820,6 +1820,7 @@
         let srN = toNum(sr, 'sr');
         let bdN = toNum(bd, 'bd');
         const chTxt = String(ch || '').trim();
+        const blob = `${String(sr || '')} ${String(rate || '')} ${String(encoded || '')} ${String(outrate || '')}`.toLowerCase();
         if (!srN || !bdN) {
           const rr = String(rate || '').toLowerCase();
           const mPair = rr.match(/(\d{2})\s*\/\s*(\d{2,3}(?:\.\d+)?)\s*k?/i);
@@ -1837,8 +1838,8 @@
           dsd: ['DSD','DSF','DFF'].includes(f),
           aac: ['AAC','M4A'].includes(f),
           hq: !!hq,
-          sr44: (srN >= 43000 && srN < 46000),
-          sr48: (srN >= 46000 && srN < 52000),
+          sr44: ((srN >= 43000 && srN < 46000) || /\b44(?:\.1)?\s*k?\b/.test(blob)),
+          sr48: ((srN >= 46000 && srN < 52000) || /\b48(?:\.0)?\s*k?\b/.test(blob)),
           sr96: (srN >= 88200 || ['DSD','DSF','DFF'].includes(f)),
           b16: (bdN > 0 && bdN <= 16),
           b24: (bdN >= 24 || ['DSD','DSF','DFF'].includes(f)),
@@ -2090,6 +2091,8 @@
             sr: srRaw,
             bd: bd,
             ch,
+            encoded: encodedRaw,
+            outrate: outrateRaw,
             isLive: !!(j?.isRadio || j?.isStream),
           });
           const ratingRaw = Number(j?.rating ?? j?.stars ?? j?.songRating ?? NaN);
