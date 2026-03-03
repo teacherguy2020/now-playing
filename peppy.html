@@ -1505,7 +1505,7 @@
           drawDotText(titleCanvas, dotTitle, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
           drawDotText(albumYearCanvas, dotAlbumYear, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
           const metaCfg = kioskMode
-            ? { size: 22, pitch: 2, dot: metaDot, padY: 0, rowShift: -1, font: '"Arial Black", "Segoe UI", sans-serif' }
+            ? { size: 22, pitch: 2, dot: metaDot, padY: 1, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' }
             : { size: 24, pitch: 3, dot: Math.max(1.0, metaDot), padY: 1, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' };
           drawDotText(fileMetaCanvas, dotFileMeta, metaCfg);
           drawDotText(fileMetaCanvas2, dotFileMeta2, metaCfg);
