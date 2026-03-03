@@ -315,12 +315,8 @@
       }
 
       function enforceLinearRulesForFont(){
-        const fm = String(fontMode?.value || previewFontMode || 'ui-sans');
-        if (fm === 'ui-sans') {
-          previewLinearStyle = 'continuous-theme';
-          if (linearStyle) linearStyle.value = 'continuous-theme';
-          try { localStorage.setItem('peppy.linearStyle', 'continuous-theme'); } catch {}
-        }
+        // Intentionally no-op for linear style selection.
+        // UI Sans forcing applies only to bottom progress bar behavior.
       }
 
       function getCurrentProfile(){
@@ -329,9 +325,7 @@
         const meterType = meterTypeLinear?.checked ? 'linear' : 'circular';
         const fontModeVal = String(fontMode?.value || 'ui-sans');
         const fontSizeVal = String(fontSize?.value || 'm');
-        const linearStyleVal = (fontModeVal === 'ui-sans')
-          ? 'continuous-theme'
-          : String(linearStyle?.value || previewLinearStyle || 'continuous');
+        const linearStyleVal = String(linearStyle?.value || previewLinearStyle || 'continuous');
         // Keep backward-compatible fields for existing consumers.
         const meterModeVal = (linearStyleVal === 'cassette') ? 'segmented' : 'continuous';
         const colorModeVal = (linearStyleVal === 'continuous-theme') ? 'theme' : 'classic';
