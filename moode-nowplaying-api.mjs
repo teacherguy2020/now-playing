@@ -6152,7 +6152,7 @@ app.get('/now-playing', async (req, res) => {
     const displayLine3 = isRadio
       ? String(radioAlbum || album || displayStationName || '').trim()
       : String(album || '').trim();
-    const displayArtUrl = String((isRadio ? (stationLogoUrl || primaryArtUrl) : primaryArtUrl) || '').trim();
+    const displayArtUrl = String((isRadio ? (primaryArtUrl || stationLogoUrl) : primaryArtUrl) || '').trim();
     const displayConfidence = isRadio ? (displayStationName ? 'station' : 'fallback') : 'track';
 
     const payload = {
