@@ -1178,6 +1178,17 @@
           ctx.globalAlpha = 1;
         }
 
+        // Subtle surface tint to help matrix fields blend with active theme.
+        const [tr,tg,tb] = parseRgb(pal.glow);
+        const activeTheme = String(themeName?.value || '').trim();
+        const tintA = activeTheme === 'warm-parchment' ? 0.14 : 0.08;
+        const tint = ctx.createLinearGradient(0, 0, 0, H);
+        tint.addColorStop(0, `rgba(${tr},${tg},${tb},${tintA * 0.85})`);
+        tint.addColorStop(0.5, `rgba(${tr},${tg},${tb},${tintA * 0.35})`);
+        tint.addColorStop(1, `rgba(${tr},${tg},${tb},${tintA * 0.15})`);
+        ctx.fillStyle = tint;
+        ctx.fillRect(0,0,W,H);
+
         const pitch = opts.pitch || 8;
         const radius = (opts.dot || 3.2) / 2;
         const padX = 8;
