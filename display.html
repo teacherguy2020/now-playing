@@ -20,13 +20,14 @@
       let mode = fallback;
       let skin = '';
       let theme = '';
+      let profile = {};
       try {
         const r = await fetch(`${api}/peppy/last-profile`, { cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
-        const p = j?.profile || {};
-        mode = String(p?.displayMode || fallback).trim().toLowerCase();
-        skin = String(p?.skin || '').trim();
-        theme = String(p?.theme || '').trim();
+        profile = j?.profile || {};
+        mode = String(profile?.displayMode || fallback).trim().toLowerCase();
+        skin = String(profile?.skin || '').trim();
+        theme = String(profile?.theme || '').trim();
       } catch {}
 
       if (mode === 'moode') {
@@ -36,7 +37,7 @@
       if (mode === 'player') {
         const q = new URLSearchParams();
         q.set('kiosk', '1');
-        q.set('size', String(p?.playerSize || '1280x400'));
+        q.set('size', String(profile?.playerSize || '1280x400'));
         q.set('ts', String(Date.now()));
         f.src = `player-render.html?${q.toString()}`;
         return;
