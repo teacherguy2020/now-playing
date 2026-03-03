@@ -31,11 +31,11 @@
     .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:8px;overflow:hidden}
     .left{display:flex;flex-direction:column;align-items:stretch;height:100%;position:relative}
     body.linear-meter .meters .progress{position:relative;top:-20px;margin-top:2px;width:calc((100% - 30px) * 0.9);margin-left:calc(30px + ((100% - 30px) * 0.05))}
-    #art{flex:1 1 auto;min-height:0;width:100%;height:100%;aspect-ratio:1 / 1;object-fit:contain;background:#02040a;display:block;margin-top:0;margin-bottom:0;border-radius:4px;box-shadow:0 0 28px rgba(var(--progress-rgb,46,185,238),.24), 0 0 58px rgba(var(--progress-rgb,46,185,238),.16)}
+    #art,#artVideo{flex:1 1 auto;min-height:0;width:100%;height:100%;aspect-ratio:1 / 1;object-fit:contain;background:#02040a;display:block;margin-top:0;margin-bottom:0;border-radius:4px;box-shadow:0 0 28px rgba(var(--progress-rgb,46,185,238),.24), 0 0 58px rgba(var(--progress-rgb,46,185,238),.16)}
     #artGlow{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:6;border-radius:4px;background:radial-gradient(128% 118% at 50% 50%, rgba(var(--progress-rgb,46,185,238),.44) 0%, rgba(var(--progress-rgb,46,185,238),.18) 22%, rgba(var(--progress-rgb,46,185,238),.06) 44%, rgba(var(--progress-rgb,46,185,238),.015) 58%, rgba(var(--progress-rgb,46,185,238),0) 70%);mix-blend-mode:screen;opacity:.86}
     body.font-dot #artGlow{left:14px;right:14px;top:14px;bottom:14px;border-radius:0}
-    body.font-dot #art{width:calc(100% - 28px);height:calc(100% - 28px);margin:14px;border-radius:0;background:#161216;border:3px solid #5a4a3f;outline:8px solid rgba(22,16,14,.9);box-shadow:0 0 0 2px rgba(214,184,146,.25), 0 0 18px rgba(232,196,130,.28), 0 0 34px rgba(232,196,130,.18), 0 0 28px rgba(var(--progress-rgb,46,185,238),.22), 0 0 56px rgba(var(--progress-rgb,46,185,238),.14), inset 0 0 0 4px rgba(34,26,20,.65), inset 0 -30px 44px rgba(0,0,0,.52), inset 0 0 54px rgba(0,0,0,.28), inset 0 0 26px rgba(255,220,165,.18), inset 0 0 48px rgba(var(--progress-rgb,46,185,238),.28), 0 8px 22px rgba(0,0,0,.46);filter:contrast(1.08) saturate(.9)}
-    body.font-dot.warm-parchment #art{border-radius:0;border-color:#8f7659;outline-color:rgba(65,48,34,.9);box-shadow:0 0 0 2px rgba(241,224,198,.35), 0 0 24px rgba(244,211,160,.36), 0 0 42px rgba(244,211,160,.22), inset 0 0 0 4px rgba(72,52,32,.64), inset 0 -34px 50px rgba(52,30,14,.56), inset 0 0 60px rgba(120,84,45,.42), inset 0 0 34px rgba(255,224,176,.28), 0 10px 24px rgba(0,0,0,.36);filter:sepia(.2) contrast(1.08) saturate(.88)}
+    body.font-dot #art,body.font-dot #artVideo{width:calc(100% - 28px);height:calc(100% - 28px);margin:14px;border-radius:0;background:#161216;border:3px solid #5a4a3f;outline:8px solid rgba(22,16,14,.9);box-shadow:0 0 0 2px rgba(214,184,146,.25), 0 0 18px rgba(232,196,130,.28), 0 0 34px rgba(232,196,130,.18), 0 0 28px rgba(var(--progress-rgb,46,185,238),.22), 0 0 56px rgba(var(--progress-rgb,46,185,238),.14), inset 0 0 0 4px rgba(34,26,20,.65), inset 0 -30px 44px rgba(0,0,0,.52), inset 0 0 54px rgba(0,0,0,.28), inset 0 0 26px rgba(255,220,165,.18), inset 0 0 48px rgba(var(--progress-rgb,46,185,238),.28), 0 8px 22px rgba(0,0,0,.46);filter:contrast(1.08) saturate(.9)}
+    body.font-dot.warm-parchment #art,body.font-dot.warm-parchment #artVideo{border-radius:0;border-color:#8f7659;outline-color:rgba(65,48,34,.9);box-shadow:0 0 0 2px rgba(241,224,198,.35), 0 0 24px rgba(244,211,160,.36), 0 0 42px rgba(244,211,160,.22), inset 0 0 0 4px rgba(72,52,32,.64), inset 0 -34px 50px rgba(52,30,14,.56), inset 0 0 60px rgba(120,84,45,.42), inset 0 0 34px rgba(255,224,176,.28), 0 10px 24px rgba(0,0,0,.36);filter:sepia(.2) contrast(1.08) saturate(.88)}
     .leftFileMeta{height:12px;border-radius:0;border-left:none;border-right:none;border-bottom:none;margin-top:0}
     .meta{padding:4px 10px 0px;display:grid;gap:1px}
     .title{font-size:28px;font-weight:760;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.02}
@@ -105,6 +105,7 @@
       <canvas class="dotline small leftFileMeta" id="fileMetaCanvas" width="640" height="24"></canvas>
       <canvas class="dotline small leftFileMeta" id="fileMetaCanvas2" width="640" height="24"></canvas>
       <img id="art" alt="Album art" src="" />
+      <video id="artVideo" muted loop playsinline preload="metadata" style="display:none;"></video>
       <div id="artGlow" aria-hidden="true"></div>
     </section>
 
@@ -212,6 +213,7 @@
       const previewStage = $('previewStage');
       const wrap = $('wrap');
       const art = $('art');
+      const artVideo = $('artVideo');
       const titleCanvas = $('titleCanvas');
       const iframeScaleEl = $('iframeScale');
       const iframeScaleInput = $('iframeScaleInput');
@@ -1062,6 +1064,124 @@
         } catch {}
       }
 
+      const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
+      const motionArtCache = new Map();
+      const localMotionCache = new Map();
+      let motionReqToken = 0;
+      let motionLockTrackKey = '';
+      let motionLockMp4 = '';
+
+      function motionArtEnabled() {
+        try {
+          const v = String(localStorage.getItem(MOTION_ART_STORAGE_KEY) || '').trim().toLowerCase();
+          if (!v) return true;
+          return !(['0', 'false', 'off', 'no'].includes(v));
+        } catch {
+          return true;
+        }
+      }
+
+      function normalizeAppleMusicUrl(raw) {
+        const s = String(raw || '').trim();
+        if (!s) return '';
+        try {
+          const u = new URL(s);
+          u.search = '';
+          u.hash = '';
+          return u.toString();
+        } catch {
+          return s.split('?')[0].split('#')[0];
+        }
+      }
+
+      async function resolveLocalMotionMp4(artist, album) {
+        const a = String(artist || '').trim();
+        const b = String(album || '').trim();
+        const k = `${a.toLowerCase()}|${b.toLowerCase()}`;
+        if (!a || !b) return '';
+        if (localMotionCache.has(k)) return String(localMotionCache.get(k) || '');
+        try {
+          await ensureRuntimeKey();
+          const url = `${api}/config/library-health/animated-art/lookup?artist=${encodeURIComponent(a)}&album=${encodeURIComponent(b)}`;
+          const headers = runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {};
+          const r = await fetch(url, { headers });
+          const j = await r.json().catch(() => ({}));
+          const mp4 = String(j?.hit?.mp4 || '').trim();
+          localMotionCache.set(k, mp4);
+          return mp4;
+        } catch {
+          localMotionCache.set(k, '');
+          return '';
+        }
+      }
+
+      async function resolveMotionMp4(appleUrl) {
+        const normalized = normalizeAppleMusicUrl(appleUrl);
+        if (!normalized) return '';
+        const cached = motionArtCache.get(normalized);
+        if (cached?.state === 'ready') return String(cached.mp4 || '');
+        if (cached?.state === 'none') return '';
+        if (cached?.state === 'pending' && cached.promise) return cached.promise;
+
+        const p = (async () => {
+          try {
+            const endpoint = `https://api.aritra.ovh/v1/covers?url=${encodeURIComponent(normalized)}`;
+            const r = await fetch(endpoint, { cache: 'force-cache' });
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const j = await r.json().catch(() => ({}));
+            const square = Array.isArray(j?.master_Streams?.square) ? j.master_Streams.square : [];
+            const list = square.filter((x) => String(x?.uri || '').includes('.m3u8'));
+            if (!list.length) {
+              motionArtCache.set(normalized, { state: 'none' });
+              return '';
+            }
+            const preferred = list
+              .map((x) => ({ uri: String(x?.uri || ''), width: Number(x?.width || 0), bw: Number(x?.bandwidth || 0) }))
+              .filter((x) => x.uri)
+              .sort((a, b) => (a.width - b.width) || (a.bw - b.bw));
+            const choice = preferred.filter((x) => x.width >= 700 && x.width <= 1200).slice(-1)[0] || preferred.slice(-1)[0];
+            const mp4 = String(choice?.uri || '').replace(/\.m3u8(?:\?.*)?$/i, '-.mp4');
+            if (!mp4 || mp4 === choice.uri) {
+              motionArtCache.set(normalized, { state: 'none' });
+              return '';
+            }
+            motionArtCache.set(normalized, { state: 'ready', mp4 });
+            return mp4;
+          } catch {
+            motionArtCache.set(normalized, { state: 'none' });
+            return '';
+          }
+        })();
+        motionArtCache.set(normalized, { state: 'pending', promise: p });
+        return p;
+      }
+
+      function clearMotionArtVideo() {
+        if (!artVideo || !art) return;
+        try { artVideo.pause?.(); } catch {}
+        try { artVideo.removeAttribute('src'); artVideo.load?.(); } catch {}
+        artVideo.style.display = 'none';
+        art.style.display = 'block';
+      }
+
+      function setMotionArtVideo(mp4Url, posterUrl = '') {
+        if (!artVideo || !art) return;
+        const src = String(mp4Url || '').trim();
+        if (!src) { clearMotionArtVideo(); return; }
+        if (posterUrl) artVideo.setAttribute('poster', posterUrl);
+        const oldSrc = String(artVideo.getAttribute('src') || '').trim();
+        if (oldSrc !== src) {
+          artVideo.setAttribute('src', src);
+          artVideo.load?.();
+        }
+        art.style.display = 'none';
+        artVideo.style.display = 'block';
+        try {
+          const p = (typeof artVideo.play === 'function') ? artVideo.play() : null;
+          if (p && typeof p.catch === 'function') p.catch(() => {});
+        } catch {}
+      }
+
       function setControlLights(np = {}){
         const state = String(np?.state || '').toLowerCase();
         const randomOn = String(np?.random ?? '').trim() === '1' || String(np?.random ?? '').toLowerCase() === 'on';
@@ -1235,6 +1355,49 @@
           const artRaw = String(j?.albumArtUrl || j?.artUrl || j?.altArtUrl || '').trim();
           const artUrl = artRaw ? (artRaw.startsWith('http') ? artRaw : `${api}${artRaw}`) : '';
           if (artUrl && artUrl !== lastArt) { art.src = artUrl; lastArt = artUrl; }
+
+          const appleUrl = String(j?.appleMusicUrl || j?.appleUrl || '').trim();
+          const continuityKey = String(j?.file || j?.songid || `${a}|${al}`).trim();
+          const motionKey = continuityKey;
+          const motionToken = ++motionReqToken;
+          const trackChangedForMotion = !!motionKey && (motionKey !== motionLockTrackKey);
+          if (trackChangedForMotion && !(motionLockTrackKey === motionKey && motionLockMp4)) {
+            motionLockTrackKey = '';
+            motionLockMp4 = '';
+          }
+
+          if (!motionArtEnabled() || isRadioLike) {
+            clearMotionArtVideo();
+          } else if (motionKey && motionLockTrackKey === motionKey && motionLockMp4) {
+            setMotionArtVideo(motionLockMp4, artUrl);
+          } else {
+            resolveLocalMotionMp4(a, al)
+              .then((localMp4) => {
+                if (motionToken !== motionReqToken) return;
+                const resolved = String(localMp4 || '').trim();
+                if (resolved) {
+                  motionLockTrackKey = motionKey;
+                  motionLockMp4 = resolved;
+                  setMotionArtVideo(resolved, artUrl);
+                  return;
+                }
+                return resolveMotionMp4(appleUrl).then((remoteMp4) => {
+                  if (motionToken !== motionReqToken) return;
+                  const rmp4 = String(remoteMp4 || '').trim();
+                  if (rmp4) {
+                    motionLockTrackKey = motionKey;
+                    motionLockMp4 = rmp4;
+                    setMotionArtVideo(rmp4, artUrl);
+                  } else {
+                    clearMotionArtVideo();
+                  }
+                });
+              })
+              .catch(() => {
+                if (motionToken !== motionReqToken) return;
+                clearMotionArtVideo();
+              });
+          }
         } catch {}
       }
 
