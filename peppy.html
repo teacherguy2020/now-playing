@@ -2063,8 +2063,19 @@
             peakHold.R = 0;
           }
           const ext = (file.split('.').pop() || '').toLowerCase();
-          const fmt = ext ? ext.toUpperCase() : String(j?.codec || '').trim().toUpperCase();
-          const losslessExt = new Set(['FLAC','ALAC','WAV','AIFF','APE','WV','DSF','DFF']);
+          const codecRaw = String(j?.codec || '').trim().toUpperCase();
+          const encodedUpper = String(encodedRaw || '').toUpperCase();
+          const streamHintFmt = (() => {
+            if (/\bFLAC\b/.test(encodedUpper)) return 'FLAC';
+            if (/\bALAC\b/.test(encodedUpper)) return 'ALAC';
+            if (/\bDSD\b|\bDSF\b|\bDFF\b/.test(encodedUpper)) return 'DSD';
+            if (/\bAAC\b|\bHE-AAC\b/.test(encodedUpper)) return 'AAC';
+            if (/\bMP3\b|\bMPEG\b/.test(encodedUpper)) return 'MP3';
+            if (/\bOGG\b|\bVORBIS\b/.test(encodedUpper)) return 'OGG';
+            return '';
+          })();
+          const fmt = streamHintFmt || (ext ? ext.toUpperCase() : codecRaw);
+          const losslessExt = new Set(['FLAC','ALAC','WAV','AIFF','APE','WV','DSF','DFF','DSD']);
           const lossyExt = new Set(['MP3','AAC','M4A','OGG','OPUS','WMA']);
           const kind = losslessExt.has(fmt) ? 'Lossless' : (lossyExt.has(fmt) ? 'Lossy' : 'Digital');
           const srKhz = (() => {
