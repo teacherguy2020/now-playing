@@ -422,7 +422,10 @@
         if (themeName && pp.theme) themeName.value = String(pp.theme);
         if (fontMode && pp.fontMode) fontMode.value = String(pp.fontMode);
         if (fontSize && pp.fontSize) fontSize.value = String(pp.fontSize);
-        applyScreenProfile(pp.playerSize || '1280x400');
+        // Don't force screen profile from legacy presets that never specified one.
+        // Preserve currently selected screen (e.g., 800x480) unless preset explicitly carries size.
+        const presetHasSize = Object.prototype.hasOwnProperty.call((p || {}), 'playerSize') || Object.prototype.hasOwnProperty.call((p || {}), 'screenProfile');
+        if (presetHasSize) applyScreenProfile(pp.playerSize || '1280x400');
         const ls = toLinearStyle(pp);
         if (linearStyle) linearStyle.value = ls;
         previewLinearStyle = ls;
