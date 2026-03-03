@@ -139,9 +139,9 @@
         <select id="skinName" class="skinSelect" aria-label="Select meter"></select>
         <select id="fontMode" class="skinSelect" aria-label="Font style">
           <option value="ui-sans">UI Sans</option>
-          <option value="ui-sans-light">UI Sans Light</option>
           <option value="ui-sans-condensed">UI Sans Condensed</option>
-          <option value="ui-mono">UI Mono</option>
+          <option value="inter-tight">Inter Tight</option>
+          <option value="montserrat">Montserrat</option>
           <option value="dot-matrix">Dot Matrix</option>
         </select>
         <select id="fontSize" class="skinSelect" aria-label="Font size">
@@ -416,7 +416,7 @@
           meterType: (String(src.meterType || 'circular').trim() === 'linear') ? 'linear' : 'circular',
           fontMode: (() => {
             const fm = String(src.fontMode || 'ui-sans').trim();
-            return ['ui-sans','ui-sans-light','ui-sans-condensed','ui-mono','dot-matrix'].includes(fm) ? fm : 'ui-sans';
+            return ['ui-sans','ui-sans-condensed','inter-tight','montserrat','dot-matrix'].includes(fm) ? fm : 'ui-sans';
           })(),
           fontSize: ['s','m','l','xl'].includes(String(src.fontSize || '').trim()) ? String(src.fontSize).trim() : 'm',
           linearStyle: linearStyleNorm,
@@ -1015,7 +1015,7 @@
       function paintSegments(segs, v){
         const c = clamp(v);
         const fm = String(fontMode?.value || previewFontMode || 'ui-sans');
-        const forceContinuous = (fm === 'ui-sans' || fm === 'ui-sans-light' || fm === 'ui-sans-condensed');
+        const forceContinuous = (fm === 'ui-sans' || fm === 'ui-sans-condensed' || fm === 'inter-tight' || fm === 'montserrat');
         if (forceContinuous) {
           segs.forEach((el) => {
             el.classList.remove('active', 'tail');
@@ -1477,17 +1477,17 @@
         }
         setCanvasBg(isWarmParchment ? '#efe2cf' : 'transparent');
         const plainCfg = (() => {
-          if (mode === 'ui-sans-light') return {
-            family: 'Inter, "Helvetica Neue", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-            artistW: 540, titleW: 580, metaW: 500,
-          };
           if (mode === 'ui-sans-condensed') return {
             family: '"Roboto Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif',
             artistW: 700, titleW: 760, metaW: 620,
           };
-          if (mode === 'ui-mono') return {
-            family: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-            artistW: 620, titleW: 680, metaW: 560,
+          if (mode === 'inter-tight') return {
+            family: '"Inter Tight", Inter, "Segoe UI", Roboto, system-ui, sans-serif',
+            artistW: 640, titleW: 700, metaW: 560,
+          };
+          if (mode === 'montserrat') return {
+            family: 'Montserrat, "Segoe UI", Roboto, system-ui, sans-serif',
+            artistW: 620, titleW: 680, metaW: 540,
           };
           return {
             family: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
@@ -1890,7 +1890,7 @@
             if (meterTypeCircular) meterTypeCircular.checked = (mt !== 'linear');
             try { localStorage.setItem('peppy.meterType', mt); } catch {}
           }
-          if (['ui-sans','ui-sans-light','ui-sans-condensed','ui-mono','dot-matrix'].includes(fm)) {
+          if (['ui-sans','ui-sans-condensed','inter-tight','montserrat','dot-matrix'].includes(fm)) {
             if (fontMode) fontMode.value = fm;
             try { localStorage.setItem('peppy.fontMode', fm); } catch {}
           }
