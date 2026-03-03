@@ -717,7 +717,7 @@
 
       function updateIframeControlAnchor(_groupW = 0){
         if (!controlsEl || !leftCard || !rightCard) return;
-        if (normalizeScreenProfile(screenProfile?.value || previewScreenProfile) === '800x480') {
+        if (normalizeScreenProfile(previewScreenProfile || screenProfile?.value) === '800x480') {
           if (controlsEl.parentElement !== leftCard) leftCard.appendChild(controlsEl);
           const controlsW = 60 * 2 + 8;
           const cardW = Math.max(140, leftCard.clientWidth || 200);
@@ -1036,6 +1036,7 @@
           drawRail(botY, meterState.R.cur, 'R', 'R');
           drawSpectrumOverlay(ctx, panelX + 10, panelY + panelH - 18, panelW - 20, 12);
           lastLinearLayout = { panelX, panelY, panelW, panelH, pad, railW: w };
+          updateIframeControlAnchor(panelW);
           syncProgressPlacement();
           return;
         }
