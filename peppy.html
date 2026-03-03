@@ -531,6 +531,7 @@
         controlsEl.style.bottom = '10px';
       }
       const meterState = { L: { target: 0, cur: 0 }, R: { target: 0, cur: 0 } };
+      const peakHold = { L: 0, R: 0 };
       function setTarget(k, v){
         const s = String(needleSensitivity?.value || previewSensitivity || 'medium');
         const mul = s === 'low' ? 0.8 : (s === 'high' ? 1.25 : 1.0);
@@ -651,7 +652,7 @@
           ctx.strokeStyle = 'rgba(70,90,120,.65)';
           ctx.strokeRect(panelX + 0.5, panelY + 0.5, panelW - 1, panelH - 1);
 
-          const drawRail = (y, level, label = 'L') => {
+          const drawRail = (y, level, label = 'L', channel = 'L') => {
             const x0 = panelX + pad;
             const h = laneH;
             const segs = 34;
@@ -714,7 +715,8 @@
             }
 
             // subtle live peak line (replaced continuously as peak changes)
-            const peakX = Math.max(x0 + 1, Math.min(x0 + w - 1, x0 + Math.round((clamp(level) / 100) * w)));
+            const held = clamp(peakHold[channel] ?? level);
+            const peakX = Math.max(x0 + 1, Math.min(x0 + w - 1, x0 + Math.round((held / 100) * w)));
             ctx.strokeStyle = useThemeTint ? 'rgba(190,245,255,.55)' : 'rgba(255,255,255,.45)';
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -723,8 +725,8 @@
             ctx.stroke();
           };
 
-          drawRail(topY, meterState.L.cur, 'L');
-          drawRail(botY, meterState.R.cur, 'R');
+          drawRail(topY, meterState.L.cur, 'L', 'L');
+          drawRail(botY, meterState.R.cur, 'R', 'R');
           return;
         }
 
@@ -1435,6 +1437,12 @@
           const s = meterState[k];
           const a = s.target > s.cur ? riseA : fallA;
           s.cur = s.cur + (s.target - s.cur) * a;
+
+          // Peak hold: snap up instantly, then fall slowly.
+          const cur = clamp(s.cur);
+          const held = clamp(peakHold[k] || 0);
+          if (cur >= held) peakHold[k] = cur;
+          else peakHold[k] = Math.max(cur, held - 0.18);
         }
         drawNeedles();
         requestAnimationFrame(animate);
