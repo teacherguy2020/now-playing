@@ -59,6 +59,11 @@
     .right{position:relative;display:grid;grid-template-rows:auto;align-content:start}
     .meters{position:absolute;right:4px;bottom:12px;width:min(820px, calc(100% - 12px));display:grid;grid-template-rows:auto;gap:2px;padding:0;align-content:end}
     .controls{position:absolute;left:28px;bottom:12px;height:208px;display:grid;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start;z-index:4}
+    .formatStrip{display:none}
+    .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#9db0c7;letter-spacing:.3px}
+    .fmtLed{width:7px;height:7px;border-radius:50%;background:#1e2e22;border:1px solid #3d5f45;box-shadow:inset 0 0 2px rgba(0,0,0,.55)}
+    .fmtItem.on .fmtLed{background:#67f18b;border-color:#9ff7b4;box-shadow:0 0 6px rgba(108,241,148,.8), 0 0 12px rgba(108,241,148,.35)}
+    .fmtRate{margin-left:auto;font-size:10px;color:#b7c6d8}
     /* Compact profiles: keep classic 2x3 controls; JS positions block in left-column gap above art. */
     body.screen-compact .controls{height:208px;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start}
     body.screen-1024x320 .card.left{display:grid;grid-template-rows:minmax(0,3fr) minmax(0,0.75fr);align-items:stretch}
@@ -66,7 +71,8 @@
     body.screen-1024x320 .dotline.title{height:44px}
     body.screen-1024x320 #leftMetaSlot:empty{display:none}
     body.screen-1024x320 .artFrame{grid-row:1;align-self:start}
-    body.screen-1024x320 .controls{position:static;grid-row:2;height:44px;grid-template-columns:repeat(6,46px);grid-template-rows:44px;column-gap:4px;row-gap:0;justify-self:center;align-self:center;z-index:4}
+    body.screen-1024x320 .formatStrip{display:flex;grid-row:2;align-self:start;justify-self:center;width:calc(100% - 18px);max-width:236px;align-items:center;gap:6px;padding-top:2px}
+    body.screen-1024x320 .controls{position:static;grid-row:2;height:44px;grid-template-columns:repeat(6,46px);grid-template-rows:44px;column-gap:4px;row-gap:0;justify-self:center;align-self:end;z-index:4}
     body.screen-1024x320 .ctrlBtn{width:46px;height:44px}
     body.screen-1024x320 .ctrlBtn .symSvg{width:18px;height:18px}
     body.screen-480x320 .controls{height:164px;grid-template-columns:repeat(2,50px);grid-template-rows:repeat(3,50px);column-gap:8px;row-gap:7px}
@@ -234,6 +240,14 @@
         <span id="iframeScaleValue">50%</span>
       </div>
 
+      <div id="formatStrip" class="formatStrip" aria-label="Playback format indicators">
+        <span class="fmtItem" data-fmt="flac"><span class="fmtLed"></span><span class="fmtLbl">FLAC</span></span>
+        <span class="fmtItem" data-fmt="mp3"><span class="fmtLed"></span><span class="fmtLbl">MP3</span></span>
+        <span class="fmtItem" data-fmt="dsd"><span class="fmtLed"></span><span class="fmtLbl">DSD</span></span>
+        <span class="fmtItem" data-fmt="aac"><span class="fmtLed"></span><span class="fmtLbl">AAC</span></span>
+        <span class="fmtItem" data-fmt="hq"><span class="fmtLed"></span><span class="fmtLbl">HQ</span></span>
+        <span id="fmtRate" class="fmtRate">---</span>
+      </div>
       <div class="controls" aria-label="Playback controls">
         <button id="ctrlPlay" class="ctrlBtn" type="button" title="Play"><svg class="symSvg" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
         <button id="ctrlPause" class="ctrlBtn" type="button" title="Pause"><svg class="symSvg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg></button>
@@ -499,6 +513,8 @@
       const fileMetaCanvas2 = $('fileMetaCanvas2');
       const leftMetaSlot = $('leftMetaSlot');
       const rightMetaSlot = $('rightMetaSlot');
+      const formatStrip = $('formatStrip');
+      const fmtRate = $('fmtRate');
       const trackProgress = $('trackProgress');
       function normalizePresetProfile(p = {}) {
         const src = (p && typeof p === 'object') ? p : {};
@@ -1652,6 +1668,22 @@
         ctrlShuffle?.classList.toggle('lit', randomOn);
         ctrlRepeat?.classList.toggle('lit', repeatOn);
       }
+      function setFormatStrip({ fmt='', hq=false, rate='' } = {}){
+        if (!formatStrip) return;
+        const f = String(fmt || '').toUpperCase();
+        const on = {
+          flac: ['FLAC','ALAC','WAV','AIFF','APE','WV'].includes(f),
+          mp3: (f === 'MP3'),
+          dsd: ['DSD','DSF','DFF'].includes(f),
+          aac: ['AAC','M4A'].includes(f),
+          hq: !!hq,
+        };
+        formatStrip.querySelectorAll('.fmtItem').forEach((el) => {
+          const k = String(el.getAttribute('data-fmt') || '').toLowerCase();
+          el.classList.toggle('on', !!on[k]);
+        });
+        if (fmtRate) fmtRate.textContent = String(rate || '---');
+      }
 
       async function playback(action, btn = null){
         if (btn) {
@@ -1839,6 +1871,10 @@
           const hiRes = (Number(bd) > 16) || (Number.isFinite(srNum) && srNum > 48000);
           const qualityTag = kind === 'Lossless' ? (hiRes ? 'HI-RES' : 'HQ') : kind.toUpperCase();
           const compactFallback = [fmt, [bd, srShort].filter(Boolean).join('/')].filter(Boolean).join(' ');
+          const brNum = Number(br);
+          const brLabel = Number.isFinite(brNum) && brNum > 0 ? `${Math.round(brNum)}k` : '';
+          const rateLabel = [brLabel, [bd, srShort].filter(Boolean).join('/')].filter(Boolean).join(' • ');
+          setFormatStrip({ fmt, hq: (qualityTag === 'HQ' || qualityTag === 'HI-RES'), rate: rateLabel || compactFallback || 'DIGITAL' });
           const ratingRaw = Number(j?.rating ?? j?.stars ?? j?.songRating ?? NaN);
           const rating = Number.isFinite(ratingRaw) ? Math.max(0, Math.min(5, Math.round(ratingRaw))) : NaN;
           const ratingLabel = Number.isFinite(rating) && rating > 0 ? `RATING: ${rating}` : '';
