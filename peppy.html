@@ -720,19 +720,23 @@
         if (normalizeScreenProfile(previewScreenProfile || screenProfile?.value) === '800x480') {
           if (controlsEl.parentElement !== leftCard) leftCard.appendChild(controlsEl);
           const controlsW = 60 * 2 + 8;
+          const controlsH = 208;
           const cardW = Math.max(140, leftCard.clientWidth || 200);
-          const leftPx = Math.max(8, Math.min(14, cardW - controlsW - 8));
+          const leftPx = Math.max(8, Math.round((cardW - controlsW) / 2));
           controlsEl.style.left = `${leftPx}px`;
           controlsEl.style.right = 'auto';
           controlsEl.style.bottom = 'auto';
+
           let topPx = 180;
           try {
             const cardRect = leftCard.getBoundingClientRect();
             const artFrameRect = document.getElementById('artFrame')?.getBoundingClientRect?.();
-            if (artFrameRect) topPx = Math.round(artFrameRect.bottom - cardRect.top + 8);
-          } catch {}
-          try {
-            const maxTop = Math.max(8, (leftCard.clientHeight || 480) - 208 - 8);
+            const cardH = Math.max(260, leftCard.clientHeight || Math.round(cardRect.height) || 480);
+            const artBottom = artFrameRect ? Math.round(artFrameRect.bottom - cardRect.top) : 150;
+            const free = Math.max(0, cardH - artBottom - controlsH);
+            const gap = Math.round(free / 2);
+            topPx = artBottom + gap;
+            const maxTop = Math.max(8, cardH - controlsH - 8);
             topPx = Math.max(8, Math.min(topPx, maxTop));
           } catch {}
           controlsEl.style.top = `${topPx}px`;
