@@ -64,9 +64,9 @@
     body.screen-1024x320 .card.left{display:grid;grid-template-rows:minmax(0,3fr) minmax(0,0.75fr);align-items:stretch}
     body.screen-1024x320 #leftMetaSlot:empty{display:none}
     body.screen-1024x320 .artFrame{grid-row:1;align-self:start}
-    body.screen-1024x320 .controls{position:static;grid-row:2;height:90px;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(2,42px);column-gap:6px;row-gap:6px;justify-self:center;align-self:center;z-index:4}
-    body.screen-1024x320 .ctrlBtn{width:42px;height:42px}
-    body.screen-1024x320 .ctrlBtn .symSvg{width:20px;height:20px}
+    body.screen-1024x320 .controls{position:static;grid-row:2;height:44px;grid-template-columns:repeat(6,46px);grid-template-rows:44px;column-gap:4px;row-gap:0;justify-self:center;align-self:center;z-index:4}
+    body.screen-1024x320 .ctrlBtn{width:46px;height:44px}
+    body.screen-1024x320 .ctrlBtn .symSvg{width:18px;height:18px}
     body.screen-480x320 .controls{height:164px;grid-template-columns:repeat(2,50px);grid-template-rows:repeat(3,50px);column-gap:8px;row-gap:7px}
     body.screen-480x320 .ctrlBtn{width:50px;height:50px}
     body.screen-480x320 .ctrlBtn .symSvg{width:24px;height:24px}
@@ -749,31 +749,30 @@
             const artBottom = artFrameRect ? Math.round(artFrameRect.bottom - cardRect.top) : 150;
 
             if (sp === '1024x320') {
-              // 1024x320 uses structural layout: left column is 2fr art + 1fr controls.
-              const colGap = 6;
-              const rowGap = 6;
-              const zoneH = Math.max(52, Math.floor(cardH * 0.22) - 8);
-              const maxByWidth = Math.floor((cardW - 16 - (colGap * 2)) / 3);
-              const maxByHeight = Math.floor((zoneH - rowGap) / 2);
-              const btn = Math.max(18, Math.min(36, maxByWidth, maxByHeight));
-              controlsW = (btn * 3) + (colGap * 2);
-              controlsH = (btn * 2) + rowGap;
+              // 1024x320: one row of six rectangular buttons.
+              const colGap = 4;
+              const zoneH = Math.max(36, Math.floor(cardH * 0.22) - 8);
+              const btnH = Math.max(30, Math.min(44, zoneH));
+              const maxByWidth = Math.floor((cardW - 16 - (colGap * 5)) / 6);
+              const btnW = Math.max(30, Math.min(46, maxByWidth));
+              controlsW = (btnW * 6) + (colGap * 5);
+              controlsH = btnH;
               controlsEl.style.position = 'static';
-              controlsEl.style.gridTemplateColumns = `repeat(3,${btn}px)`;
-              controlsEl.style.gridTemplateRows = `repeat(2,${btn}px)`;
+              controlsEl.style.gridTemplateColumns = `repeat(6,${btnW}px)`;
+              controlsEl.style.gridTemplateRows = `${btnH}px`;
               controlsEl.style.columnGap = `${colGap}px`;
-              controlsEl.style.rowGap = `${rowGap}px`;
+              controlsEl.style.rowGap = '0px';
               controlsEl.style.height = `${controlsH}px`;
               controlsEl.style.left = '';
               controlsEl.style.right = '';
               controlsEl.style.top = '';
               controlsEl.style.bottom = '';
               controlsEl.querySelectorAll('.ctrlBtn').forEach((b) => {
-                b.style.width = `${btn}px`;
-                b.style.height = `${btn}px`;
+                b.style.width = `${btnW}px`;
+                b.style.height = `${btnH}px`;
                 const svg = b.querySelector('.symSvg');
                 if (svg) {
-                  const s = Math.max(12, Math.round(btn * 0.48));
+                  const s = Math.max(12, Math.round(Math.min(btnW, btnH) * 0.45));
                   svg.style.width = `${s}px`;
                   svg.style.height = `${s}px`;
                 }
