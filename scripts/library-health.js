@@ -454,11 +454,38 @@
       function sortAllAlbumsRows(rows, mode = 'alpha') {
         const list = Array.isArray(rows) ? rows.slice() : [];
         const m = String(mode || 'alpha');
+
+        const splitLabel = (row) => {
+          const lab = String(row?.label || '').trim();
+          const i = lab.indexOf(' — ');
+          if (i > 0) {
+            return {
+              artist: lab.slice(0, i).trim(),
+              album: lab.slice(i + 3).trim(),
+            };
+          }
+          return { artist: '', album: lab };
+        };
+
+        const keyArtist = (row) => {
+          const own = String(row?.artist || '').trim();
+          if (own) return own.toLowerCase();
+          return splitLabel(row).artist.toLowerCase();
+        };
+
+        const keyAlbum = (row) => {
+          const own = String(row?.album || '').trim();
+          if (own) return own.toLowerCase();
+          return splitLabel(row).album.toLowerCase();
+        };
+
         if (m === 'artistAlbum') {
           list.sort((a, b) => {
-            const aa = `${String(a?.artist || '')} ${String(a?.album || '')}`.toLowerCase();
-            const bb = `${String(b?.artist || '')} ${String(b?.album || '')}`.toLowerCase();
-            return aa.localeCompare(bb, undefined, { sensitivity: 'base' });
+            const byArtist = keyArtist(a).localeCompare(keyArtist(b), undefined, { sensitivity: 'base' });
+            if (byArtist) return byArtist;
+            const byAlbum = keyAlbum(a).localeCompare(keyAlbum(b), undefined, { sensitivity: 'base' });
+            if (byAlbum) return byAlbum;
+            return String(a?.folder || '').localeCompare(String(b?.folder || ''), undefined, { sensitivity: 'base' });
           });
           return list;
         }
@@ -470,7 +497,15 @@
           list.sort((a, b) => Number(b?.addedTs || 0) - Number(a?.addedTs || 0));
           return list;
         }
-        list.sort((a, b) => String(a?.label || '').localeCompare(String(b?.label || ''), undefined, { sensitivity: 'base' }));
+        list.sort((a, b) => {
+          const byAlbum = keyAlbum(a).localeCompare(keyAlbum(b), undefined, { sensitivity: 'base' });
+          if (byAlbum) return byAlbum;
+
+          const byArtist = keyArtist(a).localeCompare(keyArtist(b), undefined, { sensitivity: 'base' });
+          if (byArtist) return byArtist;
+
+          return String(a?.folder || '').localeCompare(String(b?.folder || ''), undefined, { sensitivity: 'base' });
+        });
         return list;
       }
 
@@ -483,7 +518,8 @@
 
       function renderAllAlbumsList(rows, query = '') {
         const q = String(query || '').trim().toLowerCase();
-        const sorted = sortAllAlbumsRows(rows, getAllAlbumsSortMode());
+        const mode = getAllAlbumsSortMode();
+        const sorted = sortAllAlbumsRows(rows, mode);
         const list = (Array.isArray(sorted) ? sorted : []).filter((r) => {
           if (!q) return true;
           const blob = `${r.label || ''} ${r.folder || ''}`.toLowerCase();
@@ -495,7 +531,12 @@
         return `
           <div class="muted" style="margin-bottom:6px;">Showing ${Number(list.length).toLocaleString()} of ${Number((rows || []).length || 0).toLocaleString()} album(s).</div>
           <div style="max-height:460px;overflow:auto;border:1px solid #2a3a58;border-radius:10px;">
-            <table>
+            <table style="width:100%;table-layout:fixed;">
+              <colgroup>
+                <col style="width:auto;" />
+                <col style="width:72px;" />
+                <col style="width:200px;" />
+              </colgroup>
               <thead><tr><th>Album</th><th>Tracks</th><th>Action</th></tr></thead>
               <tbody>
                 ${list.map((r) => `
@@ -506,16 +547,18 @@
                           ? `<img src="${esc(String(r.resolvedThumbUrl || ''))}" alt="" loading="lazy" decoding="async" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #334;background:#0a1222;flex:0 0 auto;" onerror="this.style.visibility='hidden';" />`
                           : `<div style="width:40px;height:40px;border-radius:6px;border:1px solid #334;background:#0a1222;flex:0 0 auto;"></div>`}
                         <div style="min-width:0;">
-                          <div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.label || r.folder || '(unknown)')}</div>
+                          <button type="button" class="albTitleBtn" data-folder="${esc(r.folder || '')}" data-album="${esc(String(r.album || '').trim())}" data-artist="${esc(String(r.artist || '').trim())}" data-art="${esc(String(r.resolvedThumbUrl || '').trim())}" style="display:block;width:100%;padding:0;margin:0;border:0;background:transparent;color:inherit;text-align:left;font:inherit;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;">${esc(mode === 'alpha' ? `${String(r.album || '').trim() || '(unknown album)'} — ${String(r.artist || '').trim() || 'Unknown Artist'}` : (r.label || r.folder || '(unknown)'))}</button>
                           <div class="muted" style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.folder || '')}</div>
                         </div>
                       </div>
                     </td>
                     <td>${Number(r.trackCount || 0).toLocaleString()}</td>
-                    <td style="white-space:nowrap;display:flex;gap:6px;align-items:center;">
-                      <button type="button" class="albInspectBtn" data-folder="${esc(r.folder || '')}" style="padding:4px 8px;">Inspect</button>
-                      <button type="button" class="albQueueBtn" data-folder="${esc(r.folder || '')}" title="Add album to queue" style="padding:4px 8px;min-width:28px;">+</button>
-                      <button type="button" class="albPlayBtn" data-folder="${esc(r.folder || '')}" title="Play album now" style="padding:4px 8px;min-width:28px;">▶</button>
+                    <td style="white-space:nowrap;vertical-align:middle;">
+                      <div style="display:inline-flex;gap:6px;align-items:center;justify-content:flex-start;">
+                        <button type="button" class="albInspectBtn" data-folder="${esc(r.folder || '')}" style="padding:4px 8px;">Inspect</button>
+                        <button type="button" class="albQueueBtn" data-folder="${esc(r.folder || '')}" title="Add album to queue" style="padding:4px 8px;min-width:28px;">+</button>
+                        <button type="button" class="albPlayBtn" data-folder="${esc(r.folder || '')}" title="Play album now" style="padding:4px 8px;min-width:28px;">▶</button>
+                      </div>
                     </td>
                   </tr>
                 `).join('')}
@@ -681,6 +724,7 @@
                 <label class="tiny" style="display:inline-flex;align-items:center;gap:4px;"><input type="radio" name="allAlbumsSort" value="newest"> Newest added</label>
               </div>
               <span class="muted" id="allAlbumsStatus">Loading albums…</span>
+              <span class="muted" id="allAlbumsSanity"></span>
             </div>
             <div id="allAlbumsHost"><div class="muted">Loading albums…</div></div>
           </details>
@@ -854,18 +898,46 @@
         const host = $('allAlbumsHost');
         if (!host) return;
 
+        const openAlbumCard = async (folder) => {
+          const f = String(folder || '').trim();
+          if (!f) return;
+          const mod = $('albumMetaInspector');
+          if (mod) mod.open = true;
+          const aaMod = $('aaModule');
+          if (aaMod) aaMod.open = true;
+          const agMod = $('agModule');
+          if (agMod) agMod.open = true;
+          mod?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          await preloadAlbumAcrossModules(f, { preloadMeta: true, preloadArt: true, preloadGenre: true });
+        };
+
         host.querySelectorAll('.albInspectBtn').forEach((btn) => {
           btn.addEventListener('click', async () => {
-            const folder = String(btn.getAttribute('data-folder') || '').trim();
-            if (!folder) return;
-            const mod = $('albumMetaInspector');
-            if (mod) mod.open = true;
-            const aaMod = $('aaModule');
-            if (aaMod) aaMod.open = true;
-            const agMod = $('agModule');
-            if (agMod) agMod.open = true;
-            mod?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            await preloadAlbumAcrossModules(folder, { preloadMeta: true, preloadArt: true, preloadGenre: true });
+            await openAlbumCard(btn.getAttribute('data-folder') || '');
+          });
+        });
+
+        host.querySelectorAll('.albTitleBtn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const album = String(btn.getAttribute('data-album') || '').trim();
+            const artist = String(btn.getAttribute('data-artist') || '').trim();
+            const art = String(btn.getAttribute('data-art') || '').trim();
+
+            // Open the existing live-queue album modal card in app shell.
+            try {
+              const payload = { album, artist, art };
+              const ev = new CustomEvent('openclaw:hero-open-album-modal', { detail: payload });
+              if (window.top && window.top !== window) {
+                window.top.dispatchEvent(ev);
+              } else {
+                window.dispatchEvent(ev);
+              }
+              const st = $('allAlbumsStatus');
+              if (st) st.textContent = `Opened album card: ${album || '(unknown album)'}`;
+            } catch (e) {
+              const st = $('allAlbumsStatus');
+              if (st) st.textContent = `Album card open failed: ${e?.message || e}`;
+            }
           });
         });
 
@@ -929,6 +1001,32 @@
         if (!host) return;
         host.innerHTML = renderAllAlbumsList(allAlbumsRows, q);
         bindAllAlbumsActions();
+
+        // Sanity check: show active mode + first 3 computed sort keys.
+        const sanity = $('allAlbumsSanity');
+        if (sanity) {
+          try {
+            const mode = getAllAlbumsSortMode();
+            const sorted = sortAllAlbumsRows(allAlbumsRows, mode).slice(0, 3);
+            const splitLabel = (row) => {
+              const lab = String(row?.label || '').trim();
+              const i = lab.indexOf(' — ');
+              return i > 0
+                ? { artist: lab.slice(0, i).trim(), album: lab.slice(i + 3).trim() }
+                : { artist: '', album: lab };
+            };
+            const keyArtist = (row) => String(row?.artist || '').trim() || splitLabel(row).artist;
+            const keyAlbum = (row) => String(row?.album || '').trim() || splitLabel(row).album;
+            const sample = sorted.map((r) => {
+              const a = keyArtist(r);
+              const b = keyAlbum(r);
+              return mode === 'artistAlbum' ? `${a} → ${b}` : `${b} ← ${a}`;
+            }).join(' | ');
+            sanity.textContent = `Sanity: ${mode} :: ${sample || '(no rows)'}`;
+          } catch (e) {
+            sanity.textContent = `Sanity error: ${e?.message || e}`;
+          }
+        }
       }
 
       async function loadAlbumOptions() {
