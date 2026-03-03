@@ -78,6 +78,50 @@ Advanced control is available via:
 
 Guardrail: native takeover checks `/etc/peppymeter/config.txt` and blocks if `output.display = False`.
 
+## Peppy built-in preset gallery
+
+Current built-in presets are documented below with captured screenshots from the Peppy builder in Chrome.
+
+### 1) Modern Blue Circular
+
+![Modern Blue Circular](./images/peppy-presets/01-modern-blue-circular.jpg)
+
+### 2) Matrix Classic Needle
+
+![Matrix Classic Needle](./images/peppy-presets/02-matrix-classic-needle.jpg)
+
+### 3) Red Neon Studio
+
+![Red Neon Studio](./images/peppy-presets/03-red-neon-studio.jpg)
+
+### 4) Cassette Linear Classic
+
+![Cassette Linear Classic](./images/peppy-presets/04-cassette-linear-classic.jpg)
+
+### 5) Obsidian Ember Matrix
+
+![Obsidian Ember Matrix](./images/peppy-presets/05-obsidian-ember-matrix.jpg)
+
+### 6) Gray Ghost
+
+![Gray Ghost](./images/peppy-presets/06-gray-ghost.jpg)
+
+### 7) Modern Condensed Linear Theme (S)
+
+![Modern Condensed Linear Theme (S)](./images/peppy-presets/07-modern-condensed-linear-theme-s.jpg)
+
+### 8) Inter Tight Studio Linear (L)
+
+![Inter Tight Studio Linear (L)](./images/peppy-presets/08-inter-tight-studio-linear-l.jpg)
+
+### 9) Montserrat Circular Clean
+
+![Montserrat Circular Clean](./images/peppy-presets/09-montserrat-circular-clean.jpg)
+
+### 10) Warm Parchment Gold Circular
+
+![Warm Parchment Gold Circular](./images/peppy-presets/10-warm-parchment-gold-circular.jpg)
+
 ## Verification
 
 SSH check on moOde:
