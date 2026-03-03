@@ -1590,6 +1590,55 @@
       let motionReqToken = 0;
       let motionLockTrackKey = '';
       let motionLockMp4 = '';
+      let radioLookupTs = 0;
+      let radioByKey = new Map();
+      let radioByHost = new Map();
+      let radioLogoByKey = new Map();
+      let radioLogoByHost = new Map();
+
+      function streamKey(url){
+        try {
+          const u = new URL(String(url || '').trim());
+          const host = String(u.hostname || '').toLowerCase();
+          const path = String(u.pathname || '').replace(/\/+$/,'');
+          const p = String(u.port || '');
+          return `${u.protocol}//${host}${p ? `:${p}` : ''}${path}`;
+        } catch { return ''; }
+      }
+
+      async function ensureRadioLookup(){
+        const now = Date.now();
+        if (radioByKey.size && (now - radioLookupTs) < (5 * 60 * 1000)) return;
+        try {
+          const r = await fetch(`${api}/config/queue-wizard/radio-preview`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ genres: [], favoritesOnly: false, hqOnly: false, favoriteStations: [], maxStations: 1000 }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) return;
+          const byKey = new Map(); const byHost = new Map();
+          const logoByKey = new Map(); const logoByHost = new Map();
+          for (const t of (Array.isArray(j.tracks) ? j.tracks : [])) {
+            const file = String(t?.file || '').trim();
+            const st = String(t?.stationName || t?.artist || '').trim();
+            const logoRaw = String(t?.stationLogoUrl || t?.thumbUrl || t?.artUrl || '').trim();
+            const logo = logoRaw ? (logoRaw.startsWith('http') ? logoRaw : `${api}${logoRaw}`) : '';
+            if (!file) continue;
+            const k = streamKey(file);
+            if (k && st) byKey.set(k, st);
+            if (k && logo) logoByKey.set(k, logo);
+            try {
+              const h = String(new URL(file).hostname || '').toLowerCase();
+              if (h && st && !byHost.has(h)) byHost.set(h, st);
+              if (h && logo && !logoByHost.has(h)) logoByHost.set(h, logo);
+            } catch {}
+          }
+          radioByKey = byKey; radioByHost = byHost;
+          radioLogoByKey = logoByKey; radioLogoByHost = logoByHost;
+          radioLookupTs = now;
+        } catch {}
+      }
 
       function motionArtEnabled() {
         try {
@@ -1929,13 +1978,22 @@
           dotFileMeta2 = [qualityTag || 'DIGITAL', ratingLabel].filter(Boolean).join(' • ');
 
           const isRadioLike = !!(j?.isRadio || j?.isStream || j?.isAirplay || j?.isUpnp || j?.isPodcast);
+          let resolvedRadioStation = '';
+          let resolvedRadioLogo = '';
           if (isRadioLike) {
-            const stationName = decodeEntities(String(j?.stationName || j?._stationName || j?.radioStationName || j?.name || '').trim());
+            await ensureRadioLookup();
+            const rawStation = String(j?.stationName || j?._stationName || j?.radioStationName || j?.name || '').trim();
+            const k = streamKey(file);
+            let host = '';
+            try { host = String(new URL(file).hostname || '').toLowerCase(); } catch {}
+            resolvedRadioStation = decodeEntities(rawStation || String((k && radioByKey.get(k)) || (host && radioByHost.get(host)) || '').trim());
+            resolvedRadioLogo = String(j?.stationLogoUrl || j?.radioLogoUrl || j?.logoUrl || (k && radioLogoByKey.get(k)) || (host && radioLogoByHost.get(host)) || '').trim();
+            if (!resolvedRadioLogo && file) resolvedRadioLogo = `${api}/art/radio-logo.jpg?file=${encodeURIComponent(file)}`;
             const streamTitle = decodeEntities(String(j?.streamTitle || j?.subline || '').trim());
             // Radio rule: never reuse stale prior-library title/artist.
-            dotTitle = streamTitle || stationName || 'Live Radio';
-            dotArtist = stationName || 'Radio';
-            dotAlbumYear = stationName ? `${stationName}${y ? ` (${y})` : ''}` : 'Live Radio';
+            dotTitle = streamTitle || resolvedRadioStation || 'Live Radio';
+            dotArtist = resolvedRadioStation || 'Radio';
+            dotAlbumYear = resolvedRadioStation ? `${resolvedRadioStation}${y ? ` (${y})` : ''}` : 'Live Radio';
           }
           redrawDotCanvases();
           const pctDirect = Number(j?.songPercent ?? j?.progressPercent ?? j?.percent ?? NaN);
@@ -1957,7 +2015,7 @@
             setTarget('R', 0);
           }
 
-          const stationLogoRaw = String(j?.stationLogoUrl || j?.radioLogoUrl || j?.logoUrl || '').trim();
+          const stationLogoRaw = String(resolvedRadioLogo || j?.stationLogoUrl || j?.radioLogoUrl || j?.logoUrl || '').trim();
           const artRaw = String((isRadioLike ? (stationLogoRaw || j?.altArtUrl || '') : (j?.albumArtUrl || j?.artUrl || j?.altArtUrl || '')) || '').trim();
           const artUrl = artRaw ? (artRaw.startsWith('http') ? artRaw : `${api}${artRaw}`) : '';
           if (artUrl !== lastArt) {
