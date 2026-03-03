@@ -634,84 +634,66 @@
         const { ctx, w: W, h: H } = p;
         ctx.clearRect(0,0,W,H);
 
-        if (previewSkin === 'cassette-linear') {
-          const drawRow = (y, level) => {
-            const laneX = 18;
-            const laneW = W - 24;
-            const x0 = Math.round(laneX + laneW * 0.05);
-            const w = Math.round(laneW * 0.90);
-            const h = 36;
-            ctx.fillStyle = '#0a1118';
-            ctx.fillRect(x0, y, w, h);
-            ctx.strokeStyle = '#3f4b5b';
-            ctx.strokeRect(x0 + 0.5, y + 0.5, w - 1, h - 1);
-            const segs = 28;
-            const gap = 3;
-            const segW = Math.floor((w - 14 - (segs - 1) * gap) / segs);
+        const linearMode = !!meterTypeLinear?.checked;
+        if (linearMode) {
+          const panelX = Math.round(W * 0.06);
+          const panelW = Math.round(W * 0.90);
+          const panelY = Math.round(H * 0.14);
+          const panelH = Math.round(H * 0.70);
+          const laneH = Math.max(18, Math.floor((panelH - 22) / 2));
+          const topY = panelY + 6;
+          const botY = topY + laneH + 10;
+          const pad = 10;
+          const w = panelW - pad * 2;
+
+          ctx.fillStyle = 'rgba(8,16,28,.75)';
+          ctx.fillRect(panelX, panelY, panelW, panelH);
+          ctx.strokeStyle = 'rgba(70,90,120,.65)';
+          ctx.strokeRect(panelX + 0.5, panelY + 0.5, panelW - 1, panelH - 1);
+
+          const drawRail = (y, level, label = 'L') => {
+            const x0 = panelX + pad;
+            const h = laneH;
+            const segs = 34;
+            const gap = 2;
+            const segW = Math.max(2, Math.floor((w - (segs - 1) * gap) / segs));
             const lit = Math.round((clamp(level) / 100) * segs);
-
             const useThemeTint = (previewMeterMode === 'continuous');
-            const zoneColor = (i) => {
-              if (useThemeTint) {
-                return '#2eb9ee';
-              }
-              const redZone = i >= Math.floor(segs * 0.714);
-              const yellowZone = !redZone && i >= Math.floor(segs * 0.428);
-              return redZone ? '#ff6464' : (yellowZone ? '#ffe06b' : '#bff3ff');
-            };
 
-            if (previewMeterMode === 'continuous') {
-              const pct = clamp(level) / 100;
-              const cw = Math.max(0, Math.floor((w - 14) * pct));
-              ctx.fillStyle = '#1a2a36';
-              ctx.fillRect(x0 + 7, y + 6, w - 14, h - 12);
-              const g = ctx.createLinearGradient(x0 + 7, 0, x0 + 7 + Math.max(1, cw), 0);
-              if (useThemeTint) {
-                const rgb = getComputedStyle(document.documentElement).getPropertyValue('--progress-rgb').trim() || '46,185,238';
-                const mk = (a) => `rgba(${rgb},${a})`;
-                g.addColorStop(0, mk(0.24));
-                g.addColorStop(0.45, mk(0.56));
-                g.addColorStop(0.75, mk(0.82));
-                g.addColorStop(1, mk(1));
-              } else {
-                g.addColorStop(0, '#bff3ff');
-                g.addColorStop(0.72, '#bff3ff');
-                g.addColorStop(0.86, '#ffe06b');
-                g.addColorStop(1, '#ff6464');
-              }
-              ctx.fillStyle = g;
-              ctx.fillRect(x0 + 7, y + 6, cw, h - 12);
-            } else {
-              for (let i = 0; i < segs; i++) {
-                const sx = x0 + 7 + i * (segW + gap);
-                const active = i < lit;
-                const base = zoneColor(i);
-                const idle = useThemeTint
-                  ? 'rgba(85,165,200,.18)'
-                  : (i >= Math.floor(segs * 0.714)
-                      ? 'rgba(255,110,110,.22)'
-                      : (i >= Math.floor(segs * 0.428)
-                          ? 'rgba(255,230,120,.20)'
-                          : 'rgba(140,235,255,.18)'));
-                ctx.fillStyle = active ? base : idle;
-                ctx.fillRect(sx, y + 6, segW, h - 12);
-                if (active) {
-                  ctx.shadowColor = useThemeTint
-                    ? 'rgba(80,210,250,.65)'
-                    : (i >= Math.floor(segs * 0.714)
-                        ? 'rgba(255,110,110,.65)'
-                        : (i >= Math.floor(segs * 0.428)
-                            ? 'rgba(255,230,120,.60)'
-                            : 'rgba(140,235,255,.65)'));
-                  ctx.shadowBlur = 7;
-                  ctx.fillRect(sx, y + 6, segW, h - 12);
-                  ctx.shadowBlur = 0;
-                }
-              }
+            ctx.fillStyle = 'rgba(10,18,30,.9)';
+            ctx.fillRect(x0, y, w, h);
+            ctx.strokeStyle = 'rgba(60,76,102,.65)';
+            ctx.strokeRect(x0 + 0.5, y + 0.5, w - 1, h - 1);
+
+            // center guide + label (same footprint, more instrument vibe)
+            const midX = x0 + Math.floor(w / 2);
+            ctx.strokeStyle = 'rgba(190,205,225,.18)';
+            ctx.beginPath(); ctx.moveTo(midX + 0.5, y + 2); ctx.lineTo(midX + 0.5, y + h - 2); ctx.stroke();
+            ctx.fillStyle = 'rgba(190,210,235,.72)';
+            ctx.font = 'bold 11px Inter, system-ui, sans-serif';
+            ctx.fillText(label, x0 - 15, y + h - 5);
+
+            for (let i = 0; i < segs; i++) {
+              const sx = x0 + i * (segW + gap);
+              const zoneRed = i >= Math.floor(segs * 0.82);
+              const zoneYellow = !zoneRed && i >= Math.floor(segs * 0.62);
+              const active = i < lit;
+              const base = useThemeTint ? '#2eb9ee' : (zoneRed ? '#ff6464' : (zoneYellow ? '#ffe06b' : '#bff3ff'));
+              const idle = useThemeTint
+                ? 'rgba(85,165,200,.17)'
+                : (zoneRed ? 'rgba(255,110,110,.16)' : (zoneYellow ? 'rgba(255,230,120,.14)' : 'rgba(140,235,255,.12)'));
+              ctx.fillStyle = active ? base : idle;
+              ctx.fillRect(sx, y + 3, segW, h - 6);
             }
+
+            // peak hold dot
+            const peakX = Math.max(x0 + 2, Math.min(x0 + w - 2, x0 + Math.round((clamp(level) / 100) * w)));
+            ctx.fillStyle = useThemeTint ? 'rgba(180,240,255,.95)' : 'rgba(255,255,255,.9)';
+            ctx.beginPath(); ctx.arc(peakX, y + 2, 2.4, 0, Math.PI * 2); ctx.fill();
           };
-          drawRow(16, meterState.L.cur);
-          drawRow(74, meterState.R.cur);
+
+          drawRail(topY, meterState.L.cur, 'L');
+          drawRail(botY, meterState.R.cur, 'R');
           return;
         }
 
