@@ -1186,8 +1186,9 @@
 
           drawRail(topY, meterState.L.cur, 'L', 'L');
           drawRail(botY, meterState.R.cur, 'R', 'R');
-          // Avoid legacy-looking extra strip in cassette style.
-          if (linearStyleActive !== 'cassette') drawSpectrumOverlay(ctx, panelX + 10, panelY + panelH - 18, panelW - 20, 12);
+          // Remove internal decorative strip in linear panel (reads as phantom extra progress line).
+          // Keep only the real bottom progress bar outside the panel.
+          // drawSpectrumOverlay(ctx, panelX + 10, panelY + panelH - 18, panelW - 20, 12);
           lastLinearLayout = { panelX, panelY, panelW, panelH, pad, railW: w };
           updateIframeControlAnchor(panelW);
           syncProgressPlacement();
