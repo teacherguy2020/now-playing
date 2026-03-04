@@ -62,7 +62,7 @@
   let heroArtBgEnabled = (() => {
     try { return String(localStorage.getItem(HERO_ART_BG_STORAGE_KEY) || '0') === '1'; } catch { return false; }
   })();
-  function applyHeroArtBackground(trackKey = '') {
+  function applyHeroArtBackground(trackKey = '', artSource = '') {
     const hostEl = document.getElementById('heroTransport');
     if (!hostEl) return;
     if (!heroArtBgEnabled) {
@@ -74,9 +74,10 @@
       } catch {}
       return;
     }
-    const artUrl = `${apiBase}/art/current_bg_640_blur.jpg`;
+    const artKey = canonicalMediaSrc(String(artSource || '').trim()) || String(trackKey || '').trim() || String(Date.now());
+    const artUrl = `${apiBase}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(artKey)}`;
     try {
-      hostEl.style.setProperty('background-image', `url("${artUrl}")`, 'important');
+      hostEl.style.setProperty('background-image', `linear-gradient(rgba(5,10,18,0.42), rgba(5,10,18,0.42)), url("${artUrl}")`, 'important');
       hostEl.style.setProperty('background-size', 'cover', 'important');
       hostEl.style.setProperty('background-position', 'center', 'important');
       hostEl.style.setProperty('background-repeat', 'no-repeat', 'important');
@@ -422,10 +423,10 @@
 
     el.innerHTML =
       `${appleUrl
-        ? `<a class="heroArt heroArtLink" data-track-key="${escHtml(artTrackKey)}" data-album-key="${escHtml(artAlbumKey)}" href="${escHtml(appleUrl)}" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">${motionMp4
+        ? `<a class="heroArt heroArtLink" data-track-key="${escHtml(artTrackKey)}" data-album-key="${escHtml(artAlbumKey)}" data-art-src="${escHtml(thumb || '')}" href="${escHtml(appleUrl)}" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">${motionMp4
             ? `${thumb ? `<img class="heroArtFallback" src="${thumb}" alt="">` : '<div class="heroArtPh heroArtFallback"></div>'}<video class="heroArtVid" src="${motionMp4}" data-fallback-src="${thumb}" autoplay muted loop playsinline preload="metadata"></video>`
             : (thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>')}</a>`
-        : `<div class="heroArt" data-track-key="${escHtml(artTrackKey)}" data-album-key="${escHtml(artAlbumKey)}">${motionMp4
+        : `<div class="heroArt" data-track-key="${escHtml(artTrackKey)}" data-album-key="${escHtml(artAlbumKey)}" data-art-src="${escHtml(thumb || '')}">${motionMp4
             ? `${thumb ? `<img class="heroArtFallback" src="${thumb}" alt="">` : '<div class="heroArtPh heroArtFallback"></div>'}<video class="heroArtVid" src="${motionMp4}" data-fallback-src="${thumb}" autoplay muted loop playsinline preload="metadata"></video>`
             : (thumb ? `<img src="${thumb}" alt="">` : '<div class="heroArtPh"></div>')}</div>`}` +
       `<div class="heroMain">` +
@@ -452,7 +453,7 @@
         `</div>` +
       `</div>`;
 
-    applyHeroArtBackground(artTrackKey);
+    applyHeroArtBackground(artTrackKey, thumb);
     pruneHeroTransportDuplicates(el);
 
     // Preserve already-loaded art node when source is effectively unchanged
