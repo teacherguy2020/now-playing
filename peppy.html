@@ -1258,6 +1258,41 @@
               ctx.stroke();
             }
 
+            // liquid-glass gloss final pass (on top of active colors)
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+
+            // broad soft upper sheen
+            const glassTop = ctx.createLinearGradient(x0, y, x0, y + h);
+            glassTop.addColorStop(0, 'rgba(255,255,255,0.30)');
+            glassTop.addColorStop(0.20, 'rgba(255,255,255,0.14)');
+            glassTop.addColorStop(0.50, 'rgba(255,255,255,0.03)');
+            glassTop.addColorStop(1, 'rgba(255,255,255,0.00)');
+            ctx.fillStyle = glassTop;
+            ctx.fillRect(x0 + 1, y + 1, w - 2, h - 2);
+
+            // very subtle specular streak
+            const specY = y + Math.max(1, Math.floor(h * 0.25));
+            const specH = Math.max(1, Math.floor(h * 0.08));
+            const spec = ctx.createLinearGradient(x0, specY, x0, specY + specH);
+            spec.addColorStop(0, 'rgba(255,255,255,0.01)');
+            spec.addColorStop(0.5, 'rgba(255,255,255,0.06)');
+            spec.addColorStop(1, 'rgba(255,255,255,0.01)');
+            ctx.fillStyle = spec;
+            ctx.fillRect(x0 + 2, specY, w - 4, specH);
+
+            // softened top rim line
+            ctx.fillStyle = 'rgba(255,255,255,0.18)';
+            ctx.fillRect(x0 + 1, y + 1, w - 2, 1);
+            ctx.restore();
+
+            // slight lower shadow to reinforce curvature
+            ctx.save();
+            ctx.globalCompositeOperation = 'multiply';
+            ctx.fillStyle = 'rgba(0,0,0,0.08)';
+            ctx.fillRect(x0 + 1, y + Math.max(2, Math.floor(h * 0.72)), w - 2, Math.max(1, Math.floor(h * 0.18)));
+            ctx.restore();
+
           };
 
           drawRail(topY, meterState.L.cur, 'L', 'L');
@@ -1315,6 +1350,34 @@
           const cx = x + meterW * px;
           const cy = y0 + meterH * needleCfg.pivotY;
           const r = meterW * needleCfg.radiusMul;
+
+          // panel-style glass reflection: subtle straight 45° streak
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          ctx.beginPath();
+          ctx.rect(x + 1, y0 + 1, meterW - 2, meterH - 2);
+          ctx.clip();
+
+          const reflMain = ctx.createLinearGradient(x, y0, x + meterW, y0 + meterH);
+          reflMain.addColorStop(0.00, 'rgba(255,255,255,0.00)');
+          reflMain.addColorStop(0.34, 'rgba(210,224,240,0.03)');
+          reflMain.addColorStop(0.49, 'rgba(210,224,240,0.15)');
+          reflMain.addColorStop(0.56, 'rgba(210,224,240,0.05)');
+          reflMain.addColorStop(1.00, 'rgba(255,255,255,0.00)');
+          ctx.fillStyle = reflMain;
+          ctx.fillRect(x + 1, y0 + 1, meterW - 2, meterH - 2);
+
+          // tiny companion streak for depth
+          const reflSub = ctx.createLinearGradient(x, y0, x + meterW, y0 + meterH);
+          reflSub.addColorStop(0.00, 'rgba(255,255,255,0.00)');
+          reflSub.addColorStop(0.62, 'rgba(198,216,236,0.015)');
+          reflSub.addColorStop(0.70, 'rgba(198,216,236,0.055)');
+          reflSub.addColorStop(0.76, 'rgba(198,216,236,0.015)');
+          reflSub.addColorStop(1.00, 'rgba(255,255,255,0.00)');
+          ctx.fillStyle = reflSub;
+          ctx.fillRect(x + 1, y0 + 1, meterW - 2, meterH - 2);
+          ctx.restore();
+
           const sDeg = side === 'R' ? (needleCfg.startDegRight ?? needleCfg.startDeg) : (needleCfg.startDegLeft ?? needleCfg.startDeg);
           const eDeg = side === 'R' ? (needleCfg.endDegRight ?? needleCfg.endDeg) : (needleCfg.endDegLeft ?? needleCfg.endDeg);
           const aStart = (sDeg * Math.PI) / 180;
