@@ -36,8 +36,8 @@
     body.linear-meter .meters .progress{position:relative;top:0;margin-top:0;width:100%;margin-left:0}
     body.linear-meter .meters{width:calc(100% - 8px);right:4px}
     .artFrame{position:relative;flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:flex-end;justify-content:center}
-    #art,#artVideo{width:100%;height:100%;object-fit:contain;background:#02040a;display:block;margin:0;border-radius:4px;box-shadow:0 0 28px rgba(var(--progress-rgb,46,185,238),.24), 0 0 58px rgba(var(--progress-rgb,46,185,238),.16)}
-    #artGlow{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:6;border-radius:4px;background:radial-gradient(128% 118% at 50% 50%, rgba(var(--progress-rgb,46,185,238),.44) 0%, rgba(var(--progress-rgb,46,185,238),.18) 22%, rgba(var(--progress-rgb,46,185,238),.06) 44%, rgba(var(--progress-rgb,46,185,238),.015) 58%, rgba(var(--progress-rgb,46,185,238),0) 70%);mix-blend-mode:screen;opacity:.86}
+    #art,#artVideo{width:100%;height:100%;object-fit:contain;background:#02040a;display:block;margin:0;border-radius:4px;box-shadow:none;filter:none}
+    #artGlow{display:none}
     #art-info-hotspot{display:flex;align-items:center;justify-content:center;position:absolute;top:10px;left:10px;width:32px;height:32px;border-radius:999px;border:0;background:transparent;color:rgba(210,210,210,.92);z-index:65;pointer-events:auto;opacity:.92;transition:transform 120ms ease,opacity 120ms ease;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     #art-info-hotspot svg{width:88%;height:88%;display:block;fill:currentColor}
     #art-info-hotspot:active{transform:scale(.96)}
@@ -57,8 +57,8 @@
     /* Compact layout: pin art frame to top-left of left column across all presets. */
     body.screen-compact .artFrame{width:calc(100% - 36px);max-width:calc(100% - 36px);aspect-ratio:1 / 1;height:auto;margin:14px auto auto 14px;flex:0 0 auto;justify-content:flex-start;align-items:flex-start}
     body.font-dot #artGlow{left:0;right:0;top:0;bottom:0;border-radius:0}
-    body.font-dot #art,body.font-dot #artVideo{width:100%;height:100%;object-fit:contain;border-radius:0;background:#161216;border:3px solid #5a4a3f;outline:8px solid rgba(22,16,14,.9);box-shadow:0 0 0 2px rgba(214,184,146,.25), 0 0 18px rgba(232,196,130,.28), 0 0 34px rgba(232,196,130,.18), 0 0 28px rgba(var(--progress-rgb,46,185,238),.22), 0 0 56px rgba(var(--progress-rgb,46,185,238),.14), inset 0 0 0 4px rgba(34,26,20,.65), inset 0 -30px 44px rgba(0,0,0,.52), inset 0 0 54px rgba(0,0,0,.28), inset 0 0 26px rgba(255,220,165,.18), inset 0 0 48px rgba(var(--progress-rgb,46,185,238),.28), 0 8px 22px rgba(0,0,0,.46);filter:contrast(1.08) saturate(.9)}
-    body.font-dot.warm-parchment #art,body.font-dot.warm-parchment #artVideo{border-radius:0;border-color:#8f7659;outline-color:rgba(65,48,34,.9);box-shadow:0 0 0 2px rgba(241,224,198,.35), 0 0 24px rgba(244,211,160,.36), 0 0 42px rgba(244,211,160,.22), inset 0 0 0 4px rgba(72,52,32,.64), inset 0 -34px 50px rgba(52,30,14,.56), inset 0 0 60px rgba(120,84,45,.42), inset 0 0 34px rgba(255,224,176,.28), 0 10px 24px rgba(0,0,0,.36);filter:sepia(.2) contrast(1.08) saturate(.88)}
+    body.font-dot #art,body.font-dot #artVideo{width:100%;height:100%;object-fit:contain;border-radius:0;background:#161216;border:3px solid #5a4a3f;outline:8px solid rgba(22,16,14,.9);box-shadow:none;filter:none}
+    body.font-dot.warm-parchment #art,body.font-dot.warm-parchment #artVideo{border-radius:0;border-color:#8f7659;outline-color:rgba(65,48,34,.9);box-shadow:none;filter:none}
     /* Keep ~4 dark-dot rows above and below 5x7 glyphs (pitch=2) for top meta rows. */
     .leftFileMeta{border-radius:0;border-left:none;border-right:none;border-bottom:none;margin-top:0}
     .leftFileMeta.dotline.small{height:34px}
@@ -97,7 +97,7 @@
     body.screen-1280x400 .meters{width:min(900px, calc(100% - 12px));left:50%;right:auto;transform:translateX(-50%)}
     body.screen-1280x400.linear-meter .meters{bottom:42px;left:0;right:0;width:100%;max-width:none;transform:none}
     body.screen-1280x400 .needleWrap{height:220px}
-    body.screen-1280x400 .meta{padding:0 8px 0;gap:0}
+    body.screen-1280x400 .meta{padding:15px 8px 0;gap:0}
     body.screen-1280x400 .dotline.title{height:52px}
     .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:color-mix(in oklab, var(--fg, #e6efff) 78%, transparent);letter-spacing:.3px}
     .fmtItem[data-fmt="lossless"] .fmtLblIconLossless{height:8px;width:auto;display:block;filter:grayscale(1) brightness(2.2) drop-shadow(0 0 1px rgba(0,0,0,.95))}
@@ -1138,24 +1138,29 @@
           const panelBorder = String(cs.getPropertyValue('--line') || '').trim() || '#22324a';
           const laneBaseColor = String(cs.getPropertyValue('--card') || '').trim() || '#0d1422';
 
-          // Base panel (neutral).
-          ctx.globalAlpha = 1;
-          ctx.fillStyle = 'rgba(5,10,18,0.90)';
-          ctx.fillRect(panelX, panelY, panelW, panelH);
-
-          // Meter bank panel (no border stroke).
+          // Meter bank panel geometry (source of truth for both bank + outer panel).
           const groupX = panelX;
           const groupY = topY - 8;
           const groupW = panelW;
           const groupH = (botY + laneH) - topY + 16;
+
+          // Outer linear panel: exactly same bounds as meter bank panel.
+          ctx.globalAlpha = 1;
+          const themeDark = String(cs.getPropertyValue('--bg') || '').trim() || panelBase || '#08101a';
+          ctx.fillStyle = themeDark;
+          ctx.fillRect(groupX, groupY, groupW, groupH);
+
+          // Meter bank panel (no border stroke).
           ctx.fillStyle = 'rgba(1,5,10,0.78)';
           ctx.fillRect(groupX, groupY, groupW, groupH);
           const bankGlow = ctx.createLinearGradient(groupX, groupY, groupX, groupY + groupH);
-          bankGlow.addColorStop(0, 'rgba(255,255,255,0.20)');
-          bankGlow.addColorStop(0.35, 'rgba(255,255,255,0.08)');
-          bankGlow.addColorStop(1, 'rgba(255,255,255,0.00)');
+          bankGlow.addColorStop(0, 'rgba(255,255,255,0.14)');
+          bankGlow.addColorStop(0.16, 'rgba(255,255,255,0.08)');
+          bankGlow.addColorStop(0.34, 'rgba(255,255,255,0.03)');
+          bankGlow.addColorStop(0.56, 'rgba(255,255,255,0.00)');
+          bankGlow.addColorStop(1, 'rgba(180,190,205,0.10)');
           ctx.fillStyle = bankGlow;
-          ctx.fillRect(groupX + 2, groupY + 2, groupW - 4, groupH - 4);
+          ctx.fillRect(groupX + 1, groupY + 1, groupW - 2, groupH - 2);
 
           const drawRail = (y, level, label = 'L', channel = 'L') => {
             const x0 = panelX + pad;
