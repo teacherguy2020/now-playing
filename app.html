@@ -55,9 +55,7 @@
     #themeToggle{min-width:32px;padding:5px 8px;font-size:12px;line-height:1}
     /* In app-shell mode, let top chrome scroll away (not sticky) to maximize iframe area */
     .heroRail{position:sticky !important; top:0 !important; z-index:30; border-bottom:0 !important; background:var(--theme-bg) !important;}
-    body.peppy-shell .heroTransportRow,
-    body.peppy-shell #heroQueueCard{display:none !important;}
-    body.peppy-shell .heroWrap{margin:4px auto -1px !important;padding-top:8px !important;}
+    body.peppy-shell .heroWrap{margin:18px auto -1px !important;padding-top:24px !important;}
     .heroRail{backdrop-filter:none !important; -webkit-backdrop-filter:none !important; background:transparent !important;}
     .heroRail::before{content:none !important; display:none !important;}
     .heroRailTop{border:0;border-bottom:1px solid var(--theme-rail-border);border-radius:0;background:var(--theme-frame-fill);padding:6px 10px;box-sizing:border-box}
@@ -2429,9 +2427,12 @@
           if (!optR.ok || !optJ?.ok) throw new Error(optJ?.error || `HTTP ${optR.status}`);
 
           const pack = (arr, type) => (Array.isArray(arr) ? arr : []).map((v) => {
-            const s = String(v || '').trim();
-            return { type, value: s, label: s, lower: s.toLowerCase() };
-          }).filter((x) => x.value);
+            const isObj = !!v && typeof v === 'object';
+            const value = String(isObj ? (v.value ?? v.label ?? '') : (v ?? '')).trim();
+            const label = String(isObj ? (v.label ?? v.value ?? '') : (v ?? '')).trim();
+            const text = label || value;
+            return { type, value, label: text, lower: text.toLowerCase() };
+          }).filter((x) => x.value && x.label);
 
           heroQuickIndex = [
             ...pack(optJ.genres, 'Genre'),
