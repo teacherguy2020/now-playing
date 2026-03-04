@@ -3793,6 +3793,9 @@
         const d = ev?.data || {};
         if (!d || typeof d !== 'object') return;
 
+        const frameWin = document.getElementById('appFrame')?.contentWindow || null;
+        const trustedFrameMsg = !!(frameWin && ev.source === frameWin);
+
         if (d.type === 'np-queue-busy') {
           setHeroQueueBusy(!!d.busy, String(d.label || 'Updating queue…'));
           if (!d.busy) {
@@ -3803,10 +3806,13 @@
         }
 
         if (d.type === 'np-display-action') {
+          if (!trustedFrameMsg) return;
           const a = String(d.action || '').trim();
           if (a === 'push-peppy') {
+            if (String(currentShellPage || '') !== 'peppy.html') return;
             try { pushPeppyToMoode(d.profile || null); } catch {}
           } else if (a === 'push-player') {
+            if (String(currentShellPage || '') !== 'player.html') return;
             try { setDisplayModeAndRefresh('player'); } catch {}
           }
           return;
