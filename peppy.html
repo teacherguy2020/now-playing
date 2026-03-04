@@ -118,6 +118,8 @@
     body.screen-1024x320 .card.left{display:grid;grid-template-rows:minmax(0,1fr) auto;align-items:stretch}
     body.screen-1024x320 .meta{padding:0 8px 0;gap:0}
     body.font-dot .meta{padding-left:20px;padding-right:20px}
+    body.font-dot #titleCanvas{transform:translateY(-5px)}
+    body.font-dot #albumYearCanvas{transform:translateY(-10px)}
     body.screen-1024x320 .dotline.title{height:44px}
     body.screen-1024x320 #leftMetaSlot:empty{display:none}
     body.screen-1024x320 .artFrame{grid-row:1;align-self:start}
@@ -1663,6 +1665,7 @@
 
         const startCol = 0;
         const rowShift = Number.isFinite(Number(opts.rowShift)) ? Number(opts.rowShift) : 0;
+        const yOffsetPx = Number.isFinite(Number(opts.yOffsetPx)) ? Number(opts.yOffsetPx) : 0;
         const startRow = Math.max(0, Math.floor((rows - glyphH) / 2) + rowShift);
 
         ctx.fillStyle = pal.on;
@@ -1685,7 +1688,7 @@
               const col = penCol + rx;
               if (col < 0 || col >= cols) continue;
               const x = padX + col * pitch + pitch/2;
-              const y = padY + (startRow + ry) * pitch + pitch/2;
+              const y = padY + (startRow + ry) * pitch + pitch/2 + yOffsetPx;
               ctx.beginPath(); ctx.arc(x,y,radius,0,Math.PI*2); ctx.fill();
             }
           }
@@ -2133,13 +2136,13 @@
             const glyphH = is1280 ? 9 : 7;
             const pitch = is1280 ? 4 : 3;
             drawDotText(artistCanvas, dotArtist, { size: headSize, pitch, dot: headDot, glyphH, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
-            drawDotText(titleCanvas, dotTitle, { size: headSize, pitch, dot: headDot, glyphH, padY: 1, rowShift: 1, font: '"Arial Black", "Segoe UI", sans-serif' });
-            drawDotText(albumYearCanvas, row3, { size: row3Size, pitch, dot: row3Dot, glyphH, padY: 1, rowShift: 2, font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(titleCanvas, dotTitle, { size: headSize, pitch, dot: headDot, glyphH, padY: 1, rowShift: 1, yOffsetPx: -5, font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(albumYearCanvas, row3, { size: row3Size, pitch, dot: row3Dot, glyphH, padY: 1, rowShift: 2, yOffsetPx: -10, font: '"Arial Black", "Segoe UI", sans-serif' });
             if (fileMetaCanvas) drawDotText(fileMetaCanvas, ' ', { size: 22, pitch: 2, dot: 0.01, padY: 0, rowShift: 0, font: '"Arial Black", "Segoe UI", sans-serif' });
           } else {
             drawDotText(artistCanvas, dotArtist, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
-            drawDotText(titleCanvas, dotTitle, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
-            drawDotText(albumYearCanvas, dotAlbumYear, { size: 56, pitch: 4, dot: titleDot, font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(titleCanvas, dotTitle, { size: 56, pitch: 4, dot: titleDot, yOffsetPx: -5, font: '"Arial Black", "Segoe UI", sans-serif' });
+            drawDotText(albumYearCanvas, dotAlbumYear, { size: 56, pitch: 4, dot: titleDot, yOffsetPx: -10, font: '"Arial Black", "Segoe UI", sans-serif' });
             const metaCfg = kioskMode
               ? { size: 22, pitch: 2, dot: metaDot, padY: 2, rowShift: 1, font: '"Arial Black", "Segoe UI", sans-serif' }
               : { size: 24, pitch: 3, dot: Math.max(1.0, metaDot), padY: 2, rowShift: 1, font: '"Arial Black", "Segoe UI", sans-serif' };
