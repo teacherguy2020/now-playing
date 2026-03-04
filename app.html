@@ -838,6 +838,13 @@
       const heroQuickSearchResults = document.getElementById('heroQuickSearchResults');
       let heroQuickIndex = [];
       let heroQuickLoadedAt = 0;
+      let heroQuickSelected = {
+        genres: new Set(),
+        artists: new Set(),
+        albums: new Set(),
+        excludeGenres: new Set(),
+        playlist: '',
+      };
       const matrixFx = { canvas:null, ctx:null, raf:0, drops:[], cols:0, dpr:1, running:false, tick:0 };
       const MATRIX_CHARS = 'アァカサタナハマヤャラワ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -2439,6 +2446,39 @@
         }
       }
 
+      function heroQuickMapKey(type){
+        const t = String(type || '');
+        if (t === 'Genre') return 'genres';
+        if (t === 'Artist') return 'artists';
+        if (t === 'Album') return 'albums';
+        if (t === 'Exclude genre') return 'excludeGenres';
+        if (t === 'Playlist') return 'playlist';
+        return '';
+      }
+
+      function isHeroQuickSelected(type, value){
+        const k = heroQuickMapKey(type);
+        const v = String(value || '');
+        if (!k || !v) return false;
+        if (k === 'playlist') return String(heroQuickSelected.playlist || '') === v;
+        const s = heroQuickSelected[k];
+        return !!(s && s.has && s.has(v));
+      }
+
+      function toggleHeroQuickSelection(type, value){
+        const k = heroQuickMapKey(type);
+        const v = String(value || '');
+        if (!k || !v) return;
+        if (k === 'playlist') {
+          heroQuickSelected.playlist = (String(heroQuickSelected.playlist || '') === v) ? '' : v;
+          return;
+        }
+        const s = heroQuickSelected[k];
+        if (!s || !s.has) return;
+        if (s.has(v)) s.delete(v);
+        else s.add(v);
+      }
+
       function applyQuickPickInQueueWizard(type, value) {
         try {
           if (!frame || String(currentShellPage || '') !== 'queue-wizard.html') return false;
@@ -2479,12 +2519,19 @@
       function heroQuickPreviewBody(type, value) {
         const t = String(type || '');
         const v = String(value || '').trim();
-        const body = { genres: [], artists: [], albums: [], excludeGenres: [], minRating: 0, maxTracks: 200 };
+        const body = {
+          genres: Array.from(heroQuickSelected.genres || []),
+          artists: Array.from(heroQuickSelected.artists || []),
+          albums: Array.from(heroQuickSelected.albums || []),
+          excludeGenres: Array.from(heroQuickSelected.excludeGenres || []),
+          minRating: 0,
+          maxTracks: 200,
+        };
         if (!v) return body;
-        if (t === 'Genre') body.genres = [v];
-        else if (t === 'Artist') body.artists = [v];
-        else if (t === 'Album') body.albums = [v];
-        else if (t === 'Exclude genre') body.excludeGenres = [v];
+        if (t === 'Genre' && !body.genres.includes(v)) body.genres.push(v);
+        else if (t === 'Artist' && !body.artists.includes(v)) body.artists.push(v);
+        else if (t === 'Album' && !body.albums.includes(v)) body.albums.push(v);
+        else if (t === 'Exclude genre' && !body.excludeGenres.includes(v)) body.excludeGenres.push(v);
         return body;
       }
 
@@ -2575,14 +2622,18 @@
           if (!rows.length) continue;
           const pillBg = typeColor[t] || 'rgba(148,163,184,.2)';
           chunks.push(`<div style="padding:4px 6px 6px;"><div style="font-size:12px;font-weight:700;color:#c7d8ff;margin:2px 0 6px;"><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:${pillBg};border:1px solid #2a3a58;">${escHtml(t)}</span></div>`
-            + rows.map((x) => `<div style="display:flex;align-items:center;gap:6px;">`
-                + `<button type="button" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" style="flex:1 1 auto;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:0;background:transparent;color:#e7eefc;text-align:left;border-radius:8px;cursor:pointer;">`
-                + `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(x.label)}</span>`
-                + `<span style="font-size:11px;white-space:nowrap;opacity:.88;padding:1px 6px;border-radius:999px;background:${pillBg};">${escHtml(x.type)}</span>`
-                + `</button>`
-                + `<button type="button" data-hero-quick-action="play" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Replace queue and play" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(59,130,246,.18);color:#dbeafe;cursor:pointer;font-weight:700;line-height:1;">▶</button>`
-                + `<button type="button" data-hero-quick-action="add" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add to queue" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(34,197,94,.18);color:#dcfce7;cursor:pointer;font-weight:700;line-height:1;">＋</button>`
-              + `</div>`).join('')
+            + rows.map((x) => {
+                const selected = isHeroQuickSelected(x.type, x.value);
+                return `<div style="display:flex;align-items:center;gap:6px;">`
+                  + `<button type="button" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" style="flex:1 1 auto;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:0;background:${selected ? 'rgba(34,197,94,.10)' : 'transparent'};color:#e7eefc;text-align:left;border-radius:8px;cursor:pointer;">`
+                  + `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(x.label)}</span>`
+                  + `<span style="font-size:11px;white-space:nowrap;opacity:.88;padding:1px 6px;border-radius:999px;background:${pillBg};">${escHtml(x.type)}</span>`
+                  + `</button>`
+                  + `<button type="button" data-hero-quick-add="1" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add filter" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid ${selected ? 'rgba(34,197,94,.7)' : '#2a3a58'};background:${selected ? 'rgba(34,197,94,.22)' : pillBg};color:${selected ? '#22c55e' : '#e7eefc'};cursor:pointer;font-weight:700;line-height:1;">${selected ? '✓' : '+'}</button>`
+                  + `<button type="button" data-hero-quick-action="play" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Replace queue and play" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(59,130,246,.18);color:#dbeafe;cursor:pointer;font-weight:700;line-height:1;">▶</button>`
+                  + `<button type="button" data-hero-quick-action="add" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add to queue" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(34,197,94,.18);color:#dcfce7;cursor:pointer;font-weight:700;line-height:1;">＋</button>`
+                + `</div>`;
+              }).join('')
             + `</div>`);
         }
 
@@ -2665,7 +2716,15 @@
         const type = String(btn.getAttribute('data-hero-quick-type') || '');
         const value = String(btn.getAttribute('data-hero-quick-value') || '');
         const action = String(btn.getAttribute('data-hero-quick-action') || '').trim().toLowerCase();
+        const isAddFilter = btn.hasAttribute('data-hero-quick-add');
         if (heroQuickSearch) heroQuickSearch.value = value;
+
+        if (isAddFilter) {
+          toggleHeroQuickSelection(type, value);
+          if (String(currentShellPage || '') === 'queue-wizard.html') applyQuickPickInQueueWizard(type, value);
+          renderHeroQuickResults(String(heroQuickSearch?.value || ''));
+          return;
+        }
 
         if (action === 'play' || action === 'add') {
           runHeroQuickAction(type, value, action);
@@ -2673,6 +2732,7 @@
           return;
         }
 
+        toggleHeroQuickSelection(type, value);
         if (String(currentShellPage || '') === 'queue-wizard.html') {
           applyQuickPickInQueueWizard(type, value);
         }

@@ -511,21 +511,25 @@ body.modal-open #mode-logo {
   top: 10px;
   left: 10px;
 
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
 
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.22);
-  background: rgba(0,0,0,0.35);
+  border: 0;
+  background: transparent;
 
-  color: #fff;
+  color: rgba(210,210,210,0.92);
 
   align-items: center;
   justify-content: center;
 
   z-index: 65;
   pointer-events: auto;
+  opacity: 0.92;
+  transition: transform 120ms ease, opacity 120ms ease;
 }
+#art-info-hotspot svg{width:88%;height:88%;display:block;fill:currentColor}
+#art-info-hotspot:active{transform:scale(0.96)}
 
 /* =========================================================
  * Phone UI (JS-controlled) — use body.phone-ui everywhere

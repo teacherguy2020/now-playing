@@ -37,6 +37,21 @@
     .artFrame{position:relative;flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:flex-end;justify-content:center}
     #art,#artVideo{width:100%;height:100%;object-fit:contain;background:#02040a;display:block;margin:0;border-radius:4px;box-shadow:0 0 28px rgba(var(--progress-rgb,46,185,238),.24), 0 0 58px rgba(var(--progress-rgb,46,185,238),.16)}
     #artGlow{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:6;border-radius:4px;background:radial-gradient(128% 118% at 50% 50%, rgba(var(--progress-rgb,46,185,238),.44) 0%, rgba(var(--progress-rgb,46,185,238),.18) 22%, rgba(var(--progress-rgb,46,185,238),.06) 44%, rgba(var(--progress-rgb,46,185,238),.015) 58%, rgba(var(--progress-rgb,46,185,238),0) 70%);mix-blend-mode:screen;opacity:.86}
+    #art-info-hotspot{display:flex;align-items:center;justify-content:center;position:absolute;top:10px;left:10px;width:32px;height:32px;border-radius:999px;border:0;background:transparent;color:rgba(210,210,210,.92);z-index:65;pointer-events:auto;opacity:.92;transition:transform 120ms ease,opacity 120ms ease;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+    #art-info-hotspot svg{width:88%;height:88%;display:block;fill:currentColor}
+    #art-info-hotspot:active{transform:scale(.96)}
+    #fav-heart{display:inline-flex;align-items:center;justify-content:center;position:absolute;right:14px;bottom:14px;width:32px;height:32px;border:0;background:transparent;padding:0;margin:0;z-index:9999;pointer-events:auto;opacity:.92;transition:transform 120ms ease, opacity 120ms ease;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+    #fav-heart svg{width:100%;height:100%;display:block;fill:transparent;stroke:rgba(210,210,210,.92);stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round;transition:fill 140ms ease, stroke 140ms ease}
+    #fav-heart.on svg{fill:rgba(210,210,210,.92);stroke:rgba(210,210,210,.92)}
+    #fav-heart:active{transform:scale(.96)}
+    #fav-heart.busy{opacity:.55;pointer-events:none}
+    #fav-heart.disabled{opacity:.35;pointer-events:none}
+    body.is-radio #fav-heart,body.is-stream #fav-heart,body.is-airplay #fav-heart,body.is-upnp #fav-heart,body.is-podcast #fav-heart,body.pause #fav-heart{display:none !important}
+    .peppyInfoModal{position:fixed;inset:0;display:none;z-index:9999;background:rgba(1,8,20,.72);align-items:center;justify-content:center;padding:14px}
+    .peppyInfoModal.open{display:flex}
+    .peppyInfoCard{width:min(820px,96vw);max-height:82vh;overflow:auto;background:#0f1828;border:1px solid #2a3a58;border-radius:12px;padding:12px;color:#dce9ff}
+    .peppyInfoHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+    .peppyInfoClose{border:1px solid #3f4e69;background:#162238;color:#dce9ff;border-radius:8px;padding:4px 8px;cursor:pointer}
     body.font-dot .artFrame{width:calc(100% - 28px);aspect-ratio:1 / 1;height:auto;margin:auto 14px 0 14px;flex:0 0 auto}
     /* Compact layout: pin art frame to top-left of left column across all presets. */
     body.screen-compact .artFrame{width:calc(100% - 36px);max-width:calc(100% - 36px);aspect-ratio:1 / 1;height:auto;margin:14px auto auto 14px;flex:0 0 auto;justify-content:flex-start;align-items:flex-start}
@@ -86,7 +101,7 @@
     .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#9db0c7;letter-spacing:.3px}
     .fmtItem[data-fmt="lossless"] .fmtLblIconLossless{height:8px;width:auto;display:block;filter:grayscale(1) brightness(2.2) drop-shadow(0 0 1px rgba(0,0,0,.95))}
     .fmtBreak{display:none}
-    .fmtItem[data-fmt="sr44"],.fmtItem[data-fmt="sr48"],.fmtItem[data-fmt="sr96"],.fmtItem[data-fmt="b16"],.fmtItem[data-fmt="b24"],.fmtItem[data-fmt="live"]{display:none}
+    .fmtItem[data-fmt="sr44"],.fmtItem[data-fmt="sr48"],.fmtItem[data-fmt="b16"],.fmtItem[data-fmt="b24"],.fmtItem[data-fmt="live"]{display:none}
     .fmtLed{width:7px;height:7px;border-radius:50%;background:#1e2e22;border:1px solid #3d5f45;box-shadow:inset 0 0 2px rgba(0,0,0,.55)}
     .fmtItem.on .fmtLed{background:#67f18b;border-color:#9ff7b4;box-shadow:0 0 6px rgba(108,241,148,.8), 0 0 12px rgba(108,241,148,.35)}
     .fmtItem[data-fmt="hq"].on .fmtLed,.fmtItem[data-fmt="lossless"].on .fmtLed{background:#f4c84a;border-color:#ffe08c;box-shadow:0 0 6px rgba(244,200,74,.85),0 0 12px rgba(244,200,74,.4)}
@@ -163,6 +178,15 @@
       </div>
     </div>
   </div>
+  <div id="peppyInfoModal" class="peppyInfoModal" aria-hidden="true">
+    <div class="peppyInfoCard" role="dialog" aria-modal="true" aria-label="Track info">
+      <div class="peppyInfoHead">
+        <div id="peppyInfoTitle" style="font-weight:700;">Track info</div>
+        <button id="peppyInfoClose" class="peppyInfoClose" type="button">Close</button>
+      </div>
+      <div id="peppyInfoBody" style="white-space:pre-wrap;line-height:1.35"></div>
+    </div>
+  </div>
   <div id="previewStage" class="previewStage">
   <div id="wrap" class="wrap">
     <section class="card left">
@@ -175,6 +199,12 @@
         <img id="art" alt="Album art" src="" />
         <video id="artVideo" muted loop playsinline preload="metadata" style="display:none;"></video>
         <div id="artGlow" aria-hidden="true"></div>
+        <button id="art-info-hotspot" type="button" aria-label="Show personnel" title="Show personnel">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 10h2v7h-2v-7zm0-3h2v2h-2V7zm1 15C6.935 22 3 18.065 3 13S6.935 4 12 4s9 3.935 9 9-3.935 9-9 9zm0-2c3.859 0 7-3.141 7-7s-3.141-7-7-7-7 3.141-7 7 3.141 7 7 7z"/></svg>
+        </button>
+        <button id="fav-heart" type="button" aria-label="Toggle favorite" title="Toggle favorite">
+          <svg viewBox="0 0 24 24" shape-rendering="geometricPrecision" aria-hidden="true" focusable="false"><path d="M12 21 C12 21 3 14.5 3 8.5 C3 6 5 4 7.5 4 C9.1 4 10.5 4.9 12 6.3 C13.5 4.9 14.9 4 16.5 4 C19 4 21 6 21 8.5 C21 14.5 12 21 12 21 Z"/></svg>
+        </button>
       </div>
     </section>
 
@@ -319,6 +349,12 @@
       const wrap = $('wrap');
       const art = $('art');
       const artVideo = $('artVideo');
+      const artInfoBtn = $('art-info-hotspot');
+      const artFavBtn = $('fav-heart');
+      const peppyInfoModal = $('peppyInfoModal');
+      const peppyInfoTitle = $('peppyInfoTitle');
+      const peppyInfoBody = $('peppyInfoBody');
+      const peppyInfoClose = $('peppyInfoClose');
       const titleCanvas = $('titleCanvas');
       const iframeScaleEl = $('iframeScale');
       const iframeScaleInput = $('iframeScaleInput');
@@ -1770,6 +1806,54 @@
         } catch {}
       }
 
+      function updatePeppyFavUi(){
+        if (!artFavBtn) return;
+        const disabled = !currentTrackFile || /^https?:\/\//i.test(currentTrackFile) || /\/podcasts?\//i.test(currentTrackFile);
+        artFavBtn.classList.toggle('on', !!currentIsFavorite);
+        artFavBtn.classList.toggle('disabled', !!disabled);
+        artFavBtn.setAttribute('aria-pressed', currentIsFavorite ? 'true' : 'false');
+        artFavBtn.title = disabled ? 'Favorites disabled for this source' : (currentIsFavorite ? 'Remove from Favorites' : 'Add to Favorites');
+      }
+
+      function openPeppyInfoModal(){
+        if (!peppyInfoModal || !peppyInfoBody) return;
+        peppyInfoTitle.textContent = dotTitle || 'Track info';
+        peppyInfoBody.textContent = currentPersonnelText || 'No personnel metadata for this track.';
+        peppyInfoModal.classList.add('open');
+        peppyInfoModal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closePeppyInfoModal(){
+        if (!peppyInfoModal) return;
+        peppyInfoModal.classList.remove('open');
+        peppyInfoModal.setAttribute('aria-hidden', 'true');
+      }
+
+      async function togglePeppyFavorite(){
+        if (!currentTrackFile || !artFavBtn) return;
+        if (artFavBtn.classList.contains('disabled')) return;
+        const was = !!currentIsFavorite;
+        const want = !was;
+        currentIsFavorite = want;
+        updatePeppyFavUi();
+        artFavBtn.disabled = true;
+        try {
+          const r = await fetch(`${api}/favorites/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ favorite: want, file: currentTrackFile }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          currentIsFavorite = !!j?.isFavorite;
+        } catch {
+          currentIsFavorite = was;
+        } finally {
+          artFavBtn.disabled = false;
+          updatePeppyFavUi();
+        }
+      }
+
       function setControlLights(np = {}){
         const state = String(np?.state || '').toLowerCase();
         const randomOn = String(np?.random ?? '').trim() === '1' || String(np?.random ?? '').toLowerCase() === 'on';
@@ -1787,7 +1871,11 @@
         if (!formatStrip) return;
         const f = String(fmt || '').toUpperCase();
         const toNum = (v, kind='') => {
-          if (Number.isFinite(Number(v))) return Number(v);
+          if (Number.isFinite(Number(v))) {
+            let n = Number(v);
+            if (kind === 'sr' && n > 0 && n < 1000) n *= 1000;
+            return n;
+          }
           const s = String(v || '').trim().toLowerCase();
           const m = s.match(/(\d+(?:\.\d+)?)/);
           if (!m) return 0;
@@ -1893,6 +1981,9 @@
       }
 
       let lastArt = '';
+      let currentTrackFile = '';
+      let currentIsFavorite = false;
+      let currentPersonnelText = '';
       let dotTitle = 'LOADING…';
       let dotArtist = '—';
       let dotAlbumYear = '—';
@@ -2035,6 +2126,14 @@
           const t = decodeEntities(String(j?.displayTitle || j?.title || j?.file || 'Unknown title'));
           const a = decodeEntities(String(j?.displayArtist || j?.artist || 'Unknown artist'));
           const playbackState = String(j?.state || '').toLowerCase();
+          try {
+            document.body.classList.toggle('is-radio', !!j?.isRadio);
+            document.body.classList.toggle('is-stream', !!j?.isStream);
+            document.body.classList.toggle('is-airplay', !!j?.isAirplay);
+            document.body.classList.toggle('is-upnp', !!j?.isUpnp);
+            document.body.classList.toggle('is-podcast', !!j?.isPodcast);
+            document.body.classList.toggle('pause', playbackState === 'pause' || playbackState === 'paused');
+          } catch {}
           setControlLights(j);
           const al = decodeEntities(String(j?.displayLine3 || j?.album || 'Unknown album'));
           const alLookup = decodeEntities(String(j?.album || '').trim());
@@ -2164,6 +2263,13 @@
             lastArt = artUrl;
           }
 
+          currentTrackFile = String(j?.file || '').trim();
+          currentIsFavorite = !!j?.isFavorite;
+          const personnelArr = Array.isArray(j?.personnel) ? j.personnel.filter(Boolean).map((x) => String(x).trim()).filter(Boolean) : [];
+          const personnelRaw = String(j?.personnelText || j?.performers || j?.personnel || '').trim();
+          currentPersonnelText = personnelArr.length ? personnelArr.join(' • ') : (personnelRaw || '');
+          updatePeppyFavUi();
+
           const appleUrl = String(j?.appleMusicUrl || j?.appleUrl || '').trim();
           const continuityKey = String(j?.file || j?.songid || `${a}|${al}`).trim();
           const motionKey = continuityKey;
@@ -2272,8 +2378,21 @@
       ctrlRepeat?.addEventListener('click', () => playback('repeat', ctrlRepeat));
       ctrlPause?.addEventListener('click', () => playback('pause', ctrlPause));
       ctrlShuffle?.addEventListener('click', () => playback('shuffle', ctrlShuffle));
-      artFrame?.addEventListener('click', () => { switchToPlayerFromArt(); });
-      artFrame?.addEventListener('touchend', (ev) => { try { ev.preventDefault(); } catch {} switchToPlayerFromArt(); }, { passive:false });
+      artInfoBtn?.addEventListener('click', (ev) => { try { ev.stopPropagation(); } catch {} openPeppyInfoModal(); });
+      artFavBtn?.addEventListener('click', (ev) => { try { ev.stopPropagation(); } catch {} togglePeppyFavorite(); });
+      peppyInfoClose?.addEventListener('click', () => closePeppyInfoModal());
+      peppyInfoModal?.addEventListener('click', (ev) => { if (ev.target === peppyInfoModal) closePeppyInfoModal(); });
+      artFrame?.addEventListener('click', (ev) => {
+        const t = ev.target instanceof Element ? ev.target : null;
+        if (t?.closest?.('#art-info-hotspot, #fav-heart')) return;
+        switchToPlayerFromArt();
+      });
+      artFrame?.addEventListener('touchend', (ev) => {
+        const t = ev.target instanceof Element ? ev.target : null;
+        if (t?.closest?.('#art-info-hotspot, #fav-heart')) return;
+        try { ev.preventDefault(); } catch {}
+        switchToPlayerFromArt();
+      }, { passive:false });
 
       refreshPresetSelect();
       skinExport?.addEventListener('click', () => {
@@ -2446,6 +2565,10 @@
       });
       window.addEventListener('keydown', (ev) => {
         if (ev.key !== 'Escape') return;
+        if (peppyInfoModal?.classList.contains('open')) {
+          closePeppyInfoModal();
+          return;
+        }
         if (!exportModal?.classList.contains('open')) return;
         exportModal.classList.remove('open');
         exportModal.setAttribute('aria-hidden', 'true');
