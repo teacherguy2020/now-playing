@@ -63,15 +63,16 @@
     /* 1280x400 adopts compact-style left panel: art top, LED strip, one-row controls. */
     body.screen-1280x400 #leftMetaSlot{display:none}
     body.screen-1280x400 .artFrame{width:calc(100% - 36px);max-width:calc(100% - 36px);aspect-ratio:1 / 1;height:auto;margin:14px auto auto 14px;flex:0 0 auto;justify-content:flex-start;align-items:flex-start}
-    body.screen-1280x400 .formatStrip{display:flex;position:absolute;left:12px;right:12px;bottom:55px;justify-content:center;align-items:center;align-content:center;flex-wrap:wrap;gap:6px 10px;z-index:5;pointer-events:none;max-width:296px;margin:0 auto}
-    body.screen-1280x400 .formatStrip .fmtBreak{display:block;flex-basis:100%;height:0}
+    body.screen-1280x400 .formatStrip{display:grid;position:absolute;left:12px;right:12px;bottom:57px;grid-template-columns:repeat(6, 44px);justify-content:center;justify-items:stretch;align-items:center;row-gap:6px;column-gap:6px;z-index:5;pointer-events:none;max-width:none;margin:0 auto;transform:translateX(2px)}
+    body.screen-1280x400 .formatStrip .fmtBreak{display:none}
+    body.screen-1280x400 .formatStrip .fmtItem{width:44px;justify-content:flex-start;display:inline-flex;align-items:center;gap:3px;overflow:visible}
+    body.screen-1280x400 .formatStrip .fmtLbl{font-size:9px;letter-spacing:.2px}
     body.screen-1280x400 .formatStrip .fmtItem[data-fmt="sr44"],
     body.screen-1280x400 .formatStrip .fmtItem[data-fmt="sr48"],
     body.screen-1280x400 .formatStrip .fmtItem[data-fmt="sr96"],
     body.screen-1280x400 .formatStrip .fmtItem[data-fmt="b16"],
     body.screen-1280x400 .formatStrip .fmtItem[data-fmt="b24"],
     body.screen-1280x400 .formatStrip .fmtItem[data-fmt="live"]{display:inline-flex}
-    body.screen-1280x400 .formatStrip .fmtItem:nth-child(-n+5){transform:translateY(5px)}
     body.screen-1280x400 .formatStrip .fmtRate{display:none}
     body.screen-1280x400 .controls{position:absolute;left:12px;right:12px;bottom:8px;height:44px;grid-template-columns:repeat(6,44px);grid-template-rows:44px;column-gap:6px;row-gap:0;justify-content:center;align-content:center;z-index:4}
     body.screen-1280x400 .ctrlBtn{width:44px;height:44px;border-radius:0;border-color:#5a616d;background:linear-gradient(180deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,.08) 16%, #3a414d 17%, #262d38 58%, #1a212b 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.35), inset 0 -2px 0 rgba(0,0,0,.42), 0 2px 4px rgba(0,0,0,.5)}
@@ -83,11 +84,12 @@
     body.screen-1280x400 .meta{padding:0 8px 0;gap:0}
     body.screen-1280x400 .dotline.title{height:52px}
     .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#9db0c7;letter-spacing:.3px}
+    .fmtItem[data-fmt="lossless"] .fmtLblIconLossless{height:8px;width:auto;display:block;filter:grayscale(1) brightness(2.2) drop-shadow(0 0 1px rgba(0,0,0,.95))}
     .fmtBreak{display:none}
     .fmtItem[data-fmt="sr44"],.fmtItem[data-fmt="sr48"],.fmtItem[data-fmt="sr96"],.fmtItem[data-fmt="b16"],.fmtItem[data-fmt="b24"],.fmtItem[data-fmt="live"]{display:none}
     .fmtLed{width:7px;height:7px;border-radius:50%;background:#1e2e22;border:1px solid #3d5f45;box-shadow:inset 0 0 2px rgba(0,0,0,.55)}
     .fmtItem.on .fmtLed{background:#67f18b;border-color:#9ff7b4;box-shadow:0 0 6px rgba(108,241,148,.8), 0 0 12px rgba(108,241,148,.35)}
-    .fmtItem[data-fmt="hq"].on .fmtLed{background:#f4c84a;border-color:#ffe08c;box-shadow:0 0 6px rgba(244,200,74,.85),0 0 12px rgba(244,200,74,.4)}
+    .fmtItem[data-fmt="hq"].on .fmtLed,.fmtItem[data-fmt="lossless"].on .fmtLed{background:#f4c84a;border-color:#ffe08c;box-shadow:0 0 6px rgba(244,200,74,.85),0 0 12px rgba(244,200,74,.4)}
     .fmtItem[data-fmt="sr44"].on .fmtLed,.fmtItem[data-fmt="sr48"].on .fmtLed,.fmtItem[data-fmt="sr96"].on .fmtLed,.fmtItem[data-fmt="b16"].on .fmtLed,.fmtItem[data-fmt="b24"].on .fmtLed{background:#3fa9e6;border-color:#89cdef;box-shadow:0 0 6px rgba(63,169,230,.8),0 0 12px rgba(63,169,230,.34)}
     @keyframes livePulseSlow{0%{opacity:.62;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}100%{opacity:.62;transform:scale(1)}}
     .fmtItem[data-fmt="live"].on .fmtLed{background:#f05a5a;border-color:#ffaaaa;box-shadow:0 0 6px rgba(240,90,90,.78),0 0 12px rgba(240,90,90,.36);animation:livePulseSlow 3.6s ease-in-out infinite}
@@ -275,6 +277,7 @@
         <span class="fmtItem" data-fmt="dsd"><span class="fmtLed"></span><span class="fmtLbl">DSD</span></span>
         <span class="fmtItem" data-fmt="aac"><span class="fmtLed"></span><span class="fmtLbl">AAC</span></span>
         <span class="fmtItem" data-fmt="hq"><span class="fmtLed"></span><span class="fmtLbl">HQ</span></span>
+        <span class="fmtItem" data-fmt="lossless"><span class="fmtLed"></span><img class="fmtLblIconLossless" src="assets/apple-lossless-logo.svg" alt="Lossless" /></span>
         <span class="fmtBreak" aria-hidden="true"></span>
         <span class="fmtItem" data-fmt="sr44"><span class="fmtLed"></span><span class="fmtLbl">44.1</span></span>
         <span class="fmtItem" data-fmt="sr48"><span class="fmtLed"></span><span class="fmtLbl">48</span></span>
@@ -1807,11 +1810,13 @@
             }
           }
         }
+        const isLosslessFmt = ['FLAC','ALAC','WAV','AIFF','APE','WV','DSD','DSF','DFF'].includes(f);
         const on = {
           flac: ['FLAC','ALAC','WAV','AIFF','APE','WV'].includes(f),
           mp3: (f === 'MP3'),
           dsd: ['DSD','DSF','DFF'].includes(f),
           aac: ['AAC','M4A'].includes(f),
+          lossless: isLosslessFmt,
           hq: !!hq,
           sr44: ((srN >= 43000 && srN < 46000) || /\b44(?:\.1)?\s*k?\b/.test(blob)),
           sr48: ((srN >= 46000 && srN < 52000) || /\b48(?:\.0)?\s*k?\b/.test(blob)),

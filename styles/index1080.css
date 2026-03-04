@@ -361,17 +361,32 @@ body.pause      #fav-heart {
 }
 
 .hires-badge {
+  display: none;
+  margin-left: 8px;
+  vertical-align: 0.2em;
+  line-height: 1;
+}
+
+.hires-badge.is-hq {
   background: gold;
   color: #000;
-
   font-size: 0.6em;
   padding: 1px 4px;
-  margin-left: 8px;
   margin-bottom: 1px;
-
   border-radius: 6px;
-  display: none;
-  vertical-align: 0.2em;
+}
+
+.hires-badge.is-lossless {
+  padding: 0;
+  margin-left: 10px;
+  vertical-align: -0.05em;
+}
+
+.hires-badge.is-lossless img {
+  display: block;
+  height: 0.81em;
+  width: auto;
+  filter: drop-shadow(0 0 1px rgba(0,0,0,0.98)) drop-shadow(0 0 2px rgba(0,0,0,0.95));
 }
 
 #personnel-info {

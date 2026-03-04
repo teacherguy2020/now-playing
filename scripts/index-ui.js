@@ -2808,9 +2808,20 @@ if (titleEl) {
 
     const badge = getBadgeInfo(data);
     if (badge.show) {
-      hiresBadge.textContent = badge.text;
+      const isLossless = /lossless/i.test(String(badge.text || ''));
+      hiresBadge.classList.toggle('is-lossless', isLossless);
+      hiresBadge.classList.toggle('is-hq', !isLossless);
+
+      if (isLossless) {
+        hiresBadge.innerHTML = '<img src="assets/apple-lossless-logo.svg" alt="Lossless" />';
+      } else {
+        hiresBadge.textContent = badge.text;
+      }
+
       hiresBadge.style.display = 'inline-block';
     } else {
+      hiresBadge.classList.remove('is-lossless', 'is-hq');
+      hiresBadge.textContent = '';
       hiresBadge.style.display = 'none';
     }
   }
