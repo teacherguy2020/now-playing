@@ -99,6 +99,7 @@
     body.screen-1280x400 .needleWrap{height:220px}
     body.screen-1280x400 .meta{padding:15px 8px 0;gap:0}
     body.screen-1280x400 .dotline.title{height:52px}
+    body.screen-1280x400:not(.font-dot) #albumYearCanvas{height:58px}
     .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:color-mix(in oklab, var(--fg, #e6efff) 78%, transparent);letter-spacing:.3px}
     .fmtItem[data-fmt="lossless"] .fmtLblIconLossless{height:8px;width:34px;display:block;background-color:var(--fg);-webkit-mask-image:url('assets/apple-lossless-logo.svg');mask-image:url('assets/apple-lossless-logo.svg');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center}
     .fmtBreak{display:none}
@@ -120,6 +121,8 @@
     body.font-dot .meta{padding-left:20px;padding-right:20px}
     body.font-dot #titleCanvas{transform:translateY(-5px)}
     body.font-dot #albumYearCanvas{transform:translateY(-10px)}
+    body.screen-1280x400:not(.font-dot) #titleCanvas{transform:translateY(-5px)}
+    body.screen-1280x400:not(.font-dot) #albumYearCanvas{transform:translateY(-5px)}
     body.screen-1024x320 .dotline.title{height:44px}
     body.screen-1024x320 #leftMetaSlot:empty{display:none}
     body.screen-1024x320 .artFrame{grid-row:1;align-self:start}
@@ -226,7 +229,9 @@
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
         <button id="skinExport" class="skinBtn" type="button">Export JSON</button>
+        <button id="skinImport" class="skinBtn" type="button">Import</button>
         <button id="skinSavePreset" class="skinBtn" type="button">Save as Preset</button>
+        <button id="skinDeletePreset" class="skinBtn" type="button">Delete this Preset</button>
         <select id="peppyPreset" class="skinSelect" aria-label="Peppy preset">
           <option value="">Load preset…</option>
           <option value="builtin:0">Modern Blue Circular</option>
@@ -589,7 +594,9 @@
       const ctrlShuffle = $('ctrlShuffle');
       const controlsEl = document.querySelector('.controls');
       const skinExport = $('skinExport');
+      const skinImport = $('skinImport');
       const skinSavePreset = $('skinSavePreset');
+      const skinDeletePreset = $('skinDeletePreset');
       const peppyPreset = $('peppyPreset');
       const pushPeppyFromTab = $('pushPeppyFromTab');
       const screenProfile = $('screenProfile');
@@ -1121,16 +1128,19 @@
           const w = Math.max(120, railRight - railX0);
           const panelW = Math.max(240, Math.min(W - panelX, (railRight - panelX) + pad));
 
-          // Align meter block top to playback-controls top.
+          // Absolute meter Y placement (stable; unaffected by text/padding layout changes).
           let panelY = Math.round(H * 0.14);
-          try {
-            const cRect = controlsEl?.getBoundingClientRect?.();
-            const nRect = needleCanvas?.getBoundingClientRect?.();
-            if (cRect && nRect) {
-              const target = Math.round(cRect.top - nRect.top);
-              if (Number.isFinite(target)) panelY = Math.max(0, Math.min(H - panelH, target));
-            }
-          } catch {}
+          const is1280 = document.body.classList.contains('screen-1280x400');
+          if (!is1280) {
+            try {
+              const cRect = controlsEl?.getBoundingClientRect?.();
+              const nRect = needleCanvas?.getBoundingClientRect?.();
+              if (cRect && nRect) {
+                const target = Math.round(cRect.top - nRect.top);
+                if (Number.isFinite(target)) panelY = Math.max(0, Math.min(H - panelH, target));
+              }
+            } catch {}
+          }
 
           const topY = panelY + Math.max(6, Math.floor((panelH - (laneH * 2 + 12)) / 2));
           const botY = topY + laneH + 12;
@@ -2529,6 +2539,19 @@
           }
         } catch {}
       });
+      skinImport?.addEventListener('click', () => {
+        try {
+          const raw = String(prompt('Paste profile JSON to import:') || '').trim();
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          const normalized = normalizePresetProfile(parsed || {});
+          applyPreset(normalized);
+          publishProfileState();
+          alert('Imported profile applied. Use "Save as Preset" to keep it.');
+        } catch {
+          alert('Import failed: invalid JSON');
+        }
+      });
       skinSavePreset?.addEventListener('click', () => {
         try {
           const name = String(prompt('Preset name?', `My Preset ${new Date().toLocaleTimeString()}`) || '').trim();
@@ -2540,6 +2563,24 @@
           localStorage.setItem(PEPPY_PRESETS_KEY, JSON.stringify(cur));
           refreshPresetSelect();
           if (peppyPreset) peppyPreset.value = `custom:${idx >= 0 ? idx : (cur.length - 1)}`;
+        } catch {}
+      });
+      skinDeletePreset?.addEventListener('click', () => {
+        try {
+          const v = String(peppyPreset?.value || '');
+          if (!v.startsWith('custom:')) {
+            alert('Select a custom preset to delete.');
+            return;
+          }
+          const i = Number(v.split(':')[1]);
+          const cur = listCustomPresets();
+          if (!Number.isFinite(i) || !cur[i]) return;
+          const name = String(cur[i]?.name || `Custom ${i+1}`);
+          if (!confirm(`Delete preset "${name}"?`)) return;
+          cur.splice(i, 1);
+          localStorage.setItem(PEPPY_PRESETS_KEY, JSON.stringify(cur));
+          refreshPresetSelect();
+          if (peppyPreset) peppyPreset.value = '';
         } catch {}
       });
       peppyPreset?.addEventListener('change', () => {
