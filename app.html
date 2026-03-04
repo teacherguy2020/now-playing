@@ -105,6 +105,10 @@
     .heroQueueStarBtn{border:0;background:transparent;padding:0 1px;cursor:pointer;line-height:1;font-size:14px}
     .heroQueueStarBtn.on{color:var(--theme-pill-border,#fbbf24)}
     .heroQueueStarBtn.off{color:#64748b}
+    .heroQueueFavBtn{border:0;background:transparent;padding:0 2px;cursor:pointer;line-height:1;font-size:14px}
+    .heroQueueFavBtn.on{color:#ef4444}
+    .heroQueueFavBtn.off{color:#64748b}
+    .heroQueueFavBtn.disabled{opacity:.35;cursor:not-allowed}
     #heroQueueNextUp .heroQueueMeta{font-size:13px;font-weight:560;line-height:1.2}
     .heroQueueActions{display:flex;gap:4px;margin-left:auto}
     .heroQueueNextUp{display:none;margin-bottom:8px;border:1px solid var(--theme-rail-border);border-radius:10px;padding:8px;background:var(--theme-rail-bg);align-items:center;gap:8px}
@@ -1546,6 +1550,12 @@
             const albumWithYear = albumTxt ? `${albumTxt}${yearTxt ? ` (${yearTxt})` : ''}` : '';
             const isPodcastItem = !!x?.isPodcast || /\/(podcasts?|podcast)\//i.test(fileRaw);
             const rating = Math.max(0, Math.min(5, Number(x?.rating || 0)));
+            const isCurrentTrack = !!(fileRaw && String(npQueueHead?.file || '').trim() === fileRaw);
+            const favOn = !!(isCurrentTrack && npQueueHead?.isFavorite);
+            const favDisabled = !fileRaw || isStreamish || isPodcastItem;
+            const favInline = (isStreamish || isPodcastItem)
+              ? ''
+              : `<button type="button" class="heroQueueFavBtn ${favOn ? 'on' : 'off'} ${favDisabled ? 'disabled' : ''}" data-fav-file="${encodeURIComponent(fileRaw)}" data-fav-state="${favOn ? '1' : '0'}" data-fav-disabled="${favDisabled ? '1' : '0'}" title="${favDisabled ? 'Favorite toggle works for currently playing track' : (favOn ? 'Remove from Favorites' : 'Add to Favorites')}">♥</button>`;
             const starsInline = (isStreamish || isPodcastItem)
               ? ''
               : `<span class="heroQueueStars heroQueueStarsCtl" data-rating="${rating}" data-file="${encodeURIComponent(fileRaw)}">${[1,2,3,4,5].map((n)=>`<button type="button" class="heroQueueStarBtn ${n<=rating?'on':'off'}" data-rate-file="${encodeURIComponent(fileRaw)}" data-rate-value="${n}" title="Set rating ${n}★">★</button>`).join('')}</span>`;
@@ -1570,7 +1580,7 @@
                   : 'background:rgba(34,197,94,.14);border-radius:8px;')
               : '';
             const headLabel = head ? (isAlexaMode ? ' Queued' : ' ▶') : '';
-            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="${headRowStyle}">${thumbHtml}<div><b>${pos}</b> <span class="heroQueuePosCell">${headLabel}</span></div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;">${line1Html ? `<span style="font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">${line1Html}</span>` : ''}${starsInline}</div>${line2}</div>${actions}</div>`;
+            return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="${headRowStyle}">${thumbHtml}<div><b>${pos}</b> <span class="heroQueuePosCell">${headLabel}</span></div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;">${line1Html ? `<span style="font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">${line1Html}</span>` : ''}${favInline}${starsInline}</div>${line2}</div>${actions}</div>`;
           }).join('');
 
           const onlyRadioStations = !!items.length && items.every((x) => {
@@ -3398,6 +3408,53 @@
             const title = decodeURIComponent(String(albumBtn.getAttribute('data-queue-title') || ''));
             const art = decodeURIComponent(String(albumBtn.getAttribute('data-queue-art') || ''));
             openQueueAlbumModal({ album, artist, title, art });
+            return;
+          }
+
+          const favBtn = el.closest('button[data-fav-file][data-fav-state]');
+          if (favBtn) {
+            ev.stopPropagation();
+            const disabled = String(favBtn.getAttribute('data-fav-disabled') || '') === '1';
+            if (disabled) {
+              setQueueBusyHint('favorite works on current track');
+              setTimeout(() => setQueueBusyHint(''), 900);
+              return;
+            }
+            const file = decodeURIComponent(String(favBtn.getAttribute('data-fav-file') || ''));
+            const was = String(favBtn.getAttribute('data-fav-state') || '') === '1';
+            const want = !was;
+
+            favBtn.setAttribute('data-fav-state', want ? '1' : '0');
+            favBtn.classList.toggle('on', want);
+            favBtn.classList.toggle('off', !want);
+            favBtn.title = want ? 'Remove from Favorites' : 'Add to Favorites';
+            favBtn.disabled = true;
+            try {
+              const host = location.hostname || '10.0.0.233';
+              const base = `${location.protocol}//${host}:3101`;
+              const r = await fetch(`${base}/favorites/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ favorite: want, file }),
+              });
+              const j = await r.json().catch(() => ({}));
+              if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+              const next = !!j?.isFavorite;
+              favBtn.setAttribute('data-fav-state', next ? '1' : '0');
+              favBtn.classList.toggle('on', next);
+              favBtn.classList.toggle('off', !next);
+              favBtn.title = next ? 'Remove from Favorites' : 'Add to Favorites';
+            } catch (_) {
+              favBtn.setAttribute('data-fav-state', was ? '1' : '0');
+              favBtn.classList.toggle('on', was);
+              favBtn.classList.toggle('off', !was);
+              favBtn.title = was ? 'Remove from Favorites' : 'Add to Favorites';
+              setQueueBusyHint('favorite failed');
+              setTimeout(() => setQueueBusyHint(''), 900);
+            } finally {
+              favBtn.disabled = false;
+              await syncHeroQueue();
+            }
             return;
           }
 

@@ -4987,9 +4987,13 @@ registerPodcastRefreshRoutes(app, {
 async function favoriteHandler(req, res) {
   try {
     const want = !!req?.body?.favorite;
+    const requestedFile = String(req?.body?.file || '').trim();
 
-    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-    const file = String(song?.file || '').trim();
+    let file = requestedFile;
+    if (!file) {
+      const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
+      file = String(song?.file || '').trim();
+    }
 
     // disable for stream/airplay/no file
     if (!file || isStreamPath(file) || isAirplayFile(file)) {

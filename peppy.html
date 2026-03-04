@@ -2037,6 +2037,7 @@
           const playbackState = String(j?.state || '').toLowerCase();
           setControlLights(j);
           const al = decodeEntities(String(j?.displayLine3 || j?.album || 'Unknown album'));
+          const alLookup = decodeEntities(String(j?.album || '').trim());
           const yRaw = String(j?.date || j?.year || '').trim();
           const y = (() => {
             const m = yRaw.match(/(19|20)\d{2}/);
@@ -2178,7 +2179,7 @@
           } else if (motionKey && motionLockTrackKey === motionKey && motionLockMp4) {
             setMotionArtVideo(motionLockMp4, artUrl);
           } else {
-            resolveLocalMotionMp4(a, al)
+            resolveLocalMotionMp4(a, alLookup || al)
               .then((localMp4) => {
                 if (motionToken !== motionReqToken) return;
                 const resolved = String(localMp4 || '').trim();
