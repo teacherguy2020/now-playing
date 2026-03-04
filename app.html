@@ -180,13 +180,20 @@
     }
     .heroTransport,
     .heroQueueCard{
-      background:var(--theme-hero-card-bg) !important;
+      background-color:var(--theme-hero-card-bg) !important;
       border:1px solid var(--theme-hero-card-border) !important;
       box-shadow:none !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
     }
     .heroTransport{position:relative;overflow:hidden}
+    #heroTransport.heroArtBgSanity::before{content:'';position:absolute;inset:0;z-index:0;pointer-events:none;background-image:var(--hero-art-bg-url);background-size:cover;background-position:center;background-repeat:no-repeat;opacity:.95}
+    #heroTransport.heroArtBgSanity .heroMain,
+    #heroTransport.heroArtBgSanity .np{background:transparent !important}
+    #heroTransport.heroArtBgSanity > .heroMain,
+    #heroTransport.heroArtBgSanity > .heroArt,
+    #heroTransport.heroArtBgSanity > #heroGridTuner,
+    #heroTransport.heroArtBgSanity > #heroRadioDrawerWrap{position:relative;z-index:1}
     .heroTransport::before,
     .heroQueueCard::before{content:none !important;display:none !important;}
     .heroWrap::before{display:none !important}
@@ -209,7 +216,7 @@
     .heroRail{background:var(--theme-frame-fill) !important}
     .heroRailTop{background:var(--theme-frame-fill) !important;border-color:var(--theme-rail-border) !important}
     .heroWrap{background:var(--theme-rail-bg) !important;border-color:var(--theme-rail-border) !important}
-    .heroTransport,.heroQueueCard{background:var(--theme-hero-card-bg) !important;border-color:var(--theme-hero-card-border) !important}
+    .heroTransport,.heroQueueCard{background-color:var(--theme-hero-card-bg) !important;border-color:var(--theme-hero-card-border) !important}
     .heroTopBar .topTabs a{background:var(--theme-tab-bg) !important;color:var(--theme-tab-text) !important;border-color:var(--theme-tab-border) !important}
     .heroTopBar .topTabs a:hover{background:var(--theme-tab-hover-bg) !important}
     .heroTopBar .topTabs a.active,.heroTopBar .topTabs a[aria-current="page"]{background:var(--theme-tab-active-bg) !important;color:var(--theme-tab-active-text) !important;border-color:var(--theme-tab-border) !important}
@@ -385,7 +392,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260224-secondary-text"></script>
+  <script src="scripts/hero-transport.js?v=20260304-hero-art-bg-toggle"></script>
   <script>
     (() => {
       const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','peppy.html','player.html','theme.html']);

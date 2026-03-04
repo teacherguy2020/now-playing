@@ -58,6 +58,30 @@
   // Shared latest queue/now-playing snapshots (used by drawer + hero refresh paths).
   let lastQ = null;
   let lastNp = null;
+  const HERO_ART_BG_STORAGE_KEY = 'nowplaying.hero.artbg.v1';
+  let heroArtBgEnabled = (() => {
+    try { return String(localStorage.getItem(HERO_ART_BG_STORAGE_KEY) || '0') === '1'; } catch { return false; }
+  })();
+  function applyHeroArtBackground(trackKey = '') {
+    const hostEl = document.getElementById('heroTransport');
+    if (!hostEl) return;
+    if (!heroArtBgEnabled) {
+      try {
+        hostEl.style.removeProperty('background-image');
+        hostEl.style.removeProperty('background-size');
+        hostEl.style.removeProperty('background-position');
+        hostEl.style.removeProperty('background-repeat');
+      } catch {}
+      return;
+    }
+    const artUrl = `${apiBase}/art/current_bg_640_blur.jpg`;
+    try {
+      hostEl.style.setProperty('background-image', `url("${artUrl}")`, 'important');
+      hostEl.style.setProperty('background-size', 'cover', 'important');
+      hostEl.style.setProperty('background-position', 'center', 'important');
+      hostEl.style.setProperty('background-repeat', 'no-repeat', 'important');
+    } catch {}
+  }
 
   function currentKey() {
     // Prefer runtime-fetched key over any stale UI field value.
@@ -427,6 +451,9 @@
           `${(!showProgress && isRadioOrStream) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:var(--theme-text-secondary,#9fb1d9);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${(state === 'playing' && !isAlexaMode) ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(liveLabel)}${liveBadge ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-size:11px;font-weight:700;vertical-align:1px;">${liveBadge}</span>` : ''}</div>` : ''}` +
         `</div>` +
       `</div>`;
+
+    applyHeroArtBackground(artTrackKey);
+    pruneHeroTransportDuplicates(el);
 
     // Preserve already-loaded art node when source is effectively unchanged
     // (prevents visible flash on delayed repaint after tab wake / Alexa settle).
@@ -1335,6 +1362,20 @@
 
   const HERO_CENTER_OFFSET_PX = 0;
 
+  function pruneHeroTransportDuplicates(el) {
+    if (!el) return;
+    const keepLast = (sel) => {
+      const nodes = Array.from(el.querySelectorAll(sel));
+      if (nodes.length <= 1) return;
+      nodes.slice(0, -1).forEach((n) => { try { n.remove(); } catch {} });
+    };
+    keepLast('.heroArt');
+    keepLast('.heroMain');
+    keepLast('#heroGridTuner');
+    keepLast('#heroRadioDrawerWrap');
+    keepLast('#heroRadioDrawer');
+  }
+
   function init() {
     const el = $('heroTransport');
     if (!el) return;
@@ -1533,6 +1574,7 @@
         if (effectiveTrackKey) lastRenderedTrackKey = effectiveTrackKey;
 
         try { ensureRadioDrawer(); } catch {}
+        pruneHeroTransportDuplicates(el);
         try { window.dispatchEvent(new CustomEvent('heroTransport:update', { detail: { q, np } })); } catch {}
 
         // Background motion resolution (non-blocking)
@@ -1634,10 +1676,22 @@
 
     ensureHeroGridResetStyle();
     renderShell(el, 'loading');
+    applyHeroArtBackground('init');
     ensureHeroGridTuner(el);
     applyHeroViewportCentering(el);
 
     el.addEventListener('click', async (ev) => {
+      const artHit = ev.target instanceof Element ? ev.target.closest('.heroArt') : null;
+      if (artHit) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        heroArtBgEnabled = !heroArtBgEnabled;
+        try { localStorage.setItem(HERO_ART_BG_STORAGE_KEY, heroArtBgEnabled ? '1' : '0'); } catch {}
+        const tk = String(artHit.getAttribute('data-track-key') || '').trim();
+        applyHeroArtBackground(tk || 'toggle');
+        return;
+      }
+
       const albumHit = ev.target instanceof Element ? ev.target.closest('[data-hero-open-album]') : null;
       if (albumHit) {
         ev.preventDefault();
