@@ -34,6 +34,7 @@
     .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:8px;overflow:hidden}
     .left{display:flex;flex-direction:column;align-items:stretch;height:100%;position:relative}
     body.linear-meter .meters .progress{position:relative;top:0;margin-top:0;width:100%;margin-left:0}
+    body.linear-meter .meters{width:calc(100% - 8px);right:4px}
     .artFrame{position:relative;flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:flex-end;justify-content:center}
     #art,#artVideo{width:100%;height:100%;object-fit:contain;background:#02040a;display:block;margin:0;border-radius:4px;box-shadow:0 0 28px rgba(var(--progress-rgb,46,185,238),.24), 0 0 58px rgba(var(--progress-rgb,46,185,238),.16)}
     #artGlow{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;z-index:6;border-radius:4px;background:radial-gradient(128% 118% at 50% 50%, rgba(var(--progress-rgb,46,185,238),.44) 0%, rgba(var(--progress-rgb,46,185,238),.18) 22%, rgba(var(--progress-rgb,46,185,238),.06) 44%, rgba(var(--progress-rgb,46,185,238),.015) 58%, rgba(var(--progress-rgb,46,185,238),0) 70%);mix-blend-mode:screen;opacity:.86}
@@ -94,7 +95,7 @@
     body.screen-1280x400 .ctrlBtn .symSvg{width:18px;height:18px}
     body.screen-1280x400 .ctrlBtn:active{transform:translateY(1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.22), inset 0 -1px 0 rgba(0,0,0,.52), 0 1px 2px rgba(0,0,0,.46)}
     body.screen-1280x400 .meters{width:min(900px, calc(100% - 12px));left:50%;right:auto;transform:translateX(-50%)}
-    body.screen-1280x400.linear-meter .meters{bottom:42px;transform:translateX(calc(-50% - 65px))}
+    body.screen-1280x400.linear-meter .meters{bottom:42px;left:0;right:0;width:100%;max-width:none;transform:none}
     body.screen-1280x400 .needleWrap{height:220px}
     body.screen-1280x400 .meta{padding:0 8px 0;gap:0}
     body.screen-1280x400 .dotline.title{height:52px}
@@ -1101,8 +1102,10 @@
         const linearMode = !!meterTypeLinear?.checked;
         lastLinearLayout = null;
         if (linearMode) {
-          const panelX = Math.max(0, Math.round(W * 0.09) - 25);
-          const panelW = Math.round(W * 0.84);
+          const matrixMeta = document.querySelector('.meta');
+          const metaCs = matrixMeta ? getComputedStyle(matrixMeta) : null;
+          const metaPadR = Math.max(0, Math.round(parseFloat(String(metaCs?.paddingRight || '20')) || 20));
+          const panelX = Math.max(0, Math.round(W * 0.09) - 60);
           const panelH = Math.round(H * 0.70);
           const sizeMode = String(previewLinearSize || 'm');
           const linearStyleActive = String(previewLinearStyle || linearStyle?.value || 'continuous');
@@ -1111,7 +1114,10 @@
           const laneBase = Math.max(14, Math.floor((panelH - 30) / 2));
           const laneH = Math.max(10, Math.round(laneBase * sizeMul));
           const pad = 18;
-          const w = panelW - pad * 2;
+          const railX0 = panelX + pad;
+          const railRight = Math.max(railX0 + 120, W - metaPadR - 15);
+          const w = Math.max(120, railRight - railX0);
+          const panelW = Math.max(240, Math.min(W - panelX, (railRight - panelX) + pad));
 
           // Align meter block top to playback-controls top.
           let panelY = Math.round(H * 0.14);
@@ -1132,13 +1138,24 @@
           const panelBorder = String(cs.getPropertyValue('--line') || '').trim() || '#22324a';
           const laneBaseColor = String(cs.getPropertyValue('--card') || '').trim() || '#0d1422';
 
-          // Tighter outer wrapper to avoid left-column bleed while preserving panel grouping.
-          ctx.globalAlpha = 0.9;
-          ctx.fillStyle = 'rgba(6,12,22,0.86)';
-          ctx.fillRect(panelX, panelY, panelW, panelH);
+          // Base panel (neutral).
           ctx.globalAlpha = 1;
-          ctx.strokeStyle = panelBorder;
-          ctx.strokeRect(panelX + 0.5, panelY + 0.5, panelW - 1, panelH - 1);
+          ctx.fillStyle = 'rgba(5,10,18,0.90)';
+          ctx.fillRect(panelX, panelY, panelW, panelH);
+
+          // Meter bank panel (no border stroke).
+          const groupX = panelX;
+          const groupY = topY - 8;
+          const groupW = panelW;
+          const groupH = (botY + laneH) - topY + 16;
+          ctx.fillStyle = 'rgba(1,5,10,0.78)';
+          ctx.fillRect(groupX, groupY, groupW, groupH);
+          const bankGlow = ctx.createLinearGradient(groupX, groupY, groupX, groupY + groupH);
+          bankGlow.addColorStop(0, 'rgba(255,255,255,0.20)');
+          bankGlow.addColorStop(0.35, 'rgba(255,255,255,0.08)');
+          bankGlow.addColorStop(1, 'rgba(255,255,255,0.00)');
+          ctx.fillStyle = bankGlow;
+          ctx.fillRect(groupX + 2, groupY + 2, groupW - 4, groupH - 4);
 
           const drawRail = (y, level, label = 'L', channel = 'L') => {
             const x0 = panelX + pad;
@@ -1151,17 +1168,17 @@
             const cassetteStyle = (style === 'cassette');
             const useThemeTint = (style === 'continuous-theme');
 
-            ctx.globalAlpha = 0.9;
+            ctx.globalAlpha = 0.92;
             ctx.fillStyle = laneBaseColor;
             ctx.fillRect(x0, y, w, h);
             ctx.globalAlpha = 1;
-            ctx.strokeStyle = panelBorder;
-            ctx.strokeRect(x0 + 0.5, y + 0.5, w - 1, h - 1);
 
-            // rail label
+            // rail label (vertically centered)
             ctx.fillStyle = 'rgba(190,210,235,.72)';
             ctx.font = 'bold 11px Inter, system-ui, sans-serif';
-            ctx.fillText(label, x0 - 15, y + h - 5);
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, x0 - 15, y + (h / 2));
+            ctx.textBaseline = 'alphabetic';
 
             if (!cassetteStyle) {
               const pct = clamp(level) / 100;
@@ -1235,6 +1252,7 @@
               ctx.lineTo(peakX + 0.5, y + h - 2);
               ctx.stroke();
             }
+
           };
 
           drawRail(topY, meterState.L.cur, 'L', 'L');
