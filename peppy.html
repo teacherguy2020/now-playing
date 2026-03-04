@@ -122,7 +122,7 @@
     body.font-dot #titleCanvas{transform:translateY(-5px)}
     body.font-dot #albumYearCanvas{transform:translateY(-10px)}
     body.screen-1280x400:not(.font-dot) #titleCanvas{transform:translateY(-5px)}
-    body.screen-1280x400:not(.font-dot) #albumYearCanvas{transform:translateY(-5px)}
+    body.screen-1280x400:not(.font-dot) #albumYearCanvas{transform:translateY(-10px)}
     body.screen-1024x320 .dotline.title{height:44px}
     body.screen-1024x320 #leftMetaSlot:empty{display:none}
     body.screen-1024x320 .artFrame{grid-row:1;align-self:start}
@@ -1574,7 +1574,7 @@
         const npbAccent = String(cs.getPropertyValue('--npb-tab-active-bg') || '').trim() || String(cs.getPropertyValue('--npb-star') || '').trim();
         const theme = String(themeName?.value || '').trim();
         const isDotMatrix = !!document.body?.classList?.contains('font-dot');
-        if (theme === 'warm-parchment') {
+        if (theme === 'warm-parchment' && isDotMatrix) {
           return {
             bg: '#0f1116',
             dim: '#6a5428',
@@ -1726,7 +1726,8 @@
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'left';
         ctx.fillStyle = pal.on;
-        ctx.shadowColor = 'transparent';
+        ctx.shadowColor = pal.on || 'rgba(212,224,236,0.35)';
+        ctx.shadowBlur = 2.5;
         const padX = Number(opts.padX || 8);
         const y = Math.round(H / 2);
         const s = String(text || '—');
@@ -1737,6 +1738,7 @@
           return `${out}…`;
         };
         ctx.fillText(ellipsize(s), padX, y);
+        ctx.shadowBlur = 0;
       }
 
       async function resolveApiBase(){
