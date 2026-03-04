@@ -99,6 +99,7 @@
     body.screen-1280x400 .needleWrap{height:220px}
     body.screen-1280x400 .meta{padding:15px 8px 0;gap:0}
     body.screen-1280x400 .dotline.title{height:52px}
+    body.screen-1280x400:not(.font-dot) .meta .dotline.title{width:calc(100% - 30px);margin-left:15px}
     body.screen-1280x400:not(.font-dot) #albumYearCanvas{height:58px}
     .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:color-mix(in oklab, var(--fg, #e6efff) 78%, transparent);letter-spacing:.3px}
     .fmtItem[data-fmt="lossless"] .fmtLblIconLossless{height:8px;width:34px;display:block;background-color:var(--fg);-webkit-mask-image:url('assets/apple-lossless-logo.svg');mask-image:url('assets/apple-lossless-logo.svg');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center}
@@ -124,6 +125,7 @@
     body.screen-1280x400:not(.font-dot) #titleCanvas{transform:translateY(-5px)}
     body.screen-1280x400:not(.font-dot) #albumYearCanvas{transform:translateY(-10px)}
     body.screen-1024x320 .dotline.title{height:44px}
+    body.screen-1024x320:not(.font-dot) .meta .dotline.title{width:calc(100% - 30px);margin-left:15px}
     body.screen-1024x320 #leftMetaSlot:empty{display:none}
     body.screen-1024x320 .artFrame{grid-row:1;align-self:start}
     body.screen-1024x320 .formatStrip{display:flex;position:absolute;left:10px;right:10px;bottom:50px;justify-content:center;align-items:center;gap:6px;padding-top:0;z-index:5;pointer-events:none}
