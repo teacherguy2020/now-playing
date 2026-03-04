@@ -232,7 +232,7 @@
   }
 
   function applyLiveZoom(){ applyZoom('live', 1920, 1080, 55); }
-  function applyPlayerZoom(){ applyZoom('player', 1920, 1080, 45); }
+  function applyPlayerZoom(){ applyZoom('player', 1280, 400, 45); }
   function applyPeppyZoom(){ applyZoom('peppy', 1280, 400, 60); }
 
   function refreshPreviewFrame({ name, frameId, linkId, page, uiPort = 8101, applyZoom }){
@@ -275,7 +275,7 @@
   }
 
   function refreshPlayerFrame(uiPort = 8101){
-    refreshPreviewFrame({ name: 'Player', frameId: 'playerFrame', linkId: 'openPlayerLink', page: 'player-render.html', uiPort, applyZoom: applyPlayerZoom });
+    refreshPreviewFrame({ name: 'Player', frameId: 'playerFrame', linkId: 'openPlayerLink', page: 'player.html', uiPort, applyZoom: applyPlayerZoom });
   }
 
   function refreshPeppyFrame(uiPort = 8101){
