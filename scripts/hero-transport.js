@@ -77,7 +77,7 @@
     const artKey = canonicalMediaSrc(String(artSource || '').trim()) || String(trackKey || '').trim() || String(Date.now());
     const artUrl = `${apiBase}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(artKey)}`;
     try {
-      hostEl.style.setProperty('background-image', `linear-gradient(rgba(5,10,18,0.42), rgba(5,10,18,0.42)), url("${artUrl}")`, 'important');
+      hostEl.style.setProperty('background-image', `linear-gradient(rgba(5,10,18,0.28), rgba(5,10,18,0.28)), url("${artUrl}")`, 'important');
       hostEl.style.setProperty('background-size', 'cover', 'important');
       hostEl.style.setProperty('background-position', 'center', 'important');
       hostEl.style.setProperty('background-repeat', 'no-repeat', 'important');
@@ -1689,7 +1689,9 @@
         heroArtBgEnabled = !heroArtBgEnabled;
         try { localStorage.setItem(HERO_ART_BG_STORAGE_KEY, heroArtBgEnabled ? '1' : '0'); } catch {}
         const tk = String(artHit.getAttribute('data-track-key') || '').trim();
-        applyHeroArtBackground(tk || 'toggle');
+        const artSrc = String(artHit.getAttribute('data-art-src') || '').trim()
+          || String(artHit.querySelector('img')?.getAttribute('src') || '').trim();
+        applyHeroArtBackground(tk || 'toggle', artSrc);
         return;
       }
 
