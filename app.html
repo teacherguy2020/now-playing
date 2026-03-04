@@ -1469,6 +1469,7 @@
           lastHeroHeadPos = headPosNow;
 
           const existingIconByFile = new Map();
+          const existingImgNodeByFile = new Map();
           try {
             wrap.querySelectorAll('.heroQueueRow[data-queue-file]').forEach((row) => {
               const fEnc = String(row.getAttribute('data-queue-file') || '');
@@ -1480,7 +1481,9 @@
               if (/icons\.duckduckgo\.com|google\.com\/s2\/favicons/i.test(src)) return;
               let f = '';
               try { f = decodeURIComponent(fEnc); } catch { f = fEnc; }
-              if (f) existingIconByFile.set(f, src);
+              if (!f) return;
+              existingIconByFile.set(f, src);
+              if (img instanceof HTMLImageElement) existingImgNodeByFile.set(f, img);
             });
           } catch {}
 
@@ -1594,6 +1597,24 @@
             const headLabel = head ? (isAlexaMode ? ' Queued' : ' ▶') : '';
             return `<div class="heroQueueRow" data-queue-play-pos="${pos}" data-queue-file="${encodeURIComponent(fileRaw)}" style="${headRowStyle}">${thumbHtml}<div><b>${pos}</b> <span class="heroQueuePosCell">${headLabel}</span></div><div style="min-width:0;flex:1 1 auto;"><div style="display:flex;align-items:center;gap:6px;min-width:0;">${line1Html ? `<span style="font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">${line1Html}</span>` : ''}${favInline}${starsInline}</div>${line2}</div>${actions}</div>`;
           }).join('');
+
+          // Reuse existing thumbnail DOM nodes where possible to avoid visible thumb refresh on reorder.
+          try {
+            wrap.querySelectorAll('.heroQueueRow[data-queue-file]').forEach((row) => {
+              const fEnc = String(row.getAttribute('data-queue-file') || '');
+              if (!fEnc) return;
+              let f = '';
+              try { f = decodeURIComponent(fEnc); } catch { f = fEnc; }
+              if (!f) return;
+              const oldImg = existingImgNodeByFile.get(f);
+              const newImg = row.querySelector('img');
+              if (!(oldImg instanceof HTMLImageElement) || !(newImg instanceof HTMLImageElement)) return;
+              const oldSrc = String(oldImg.getAttribute('src') || '').trim();
+              const newSrc = String(newImg.getAttribute('src') || '').trim();
+              if (!oldSrc || !newSrc || oldSrc !== newSrc) return;
+              newImg.replaceWith(oldImg);
+            });
+          } catch {}
 
           const onlyRadioStations = !!items.length && items.every((x) => {
             const f = String(x?.file || '').trim();
