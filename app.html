@@ -87,10 +87,13 @@
     .heroWrap.matrixFx{position:relative;overflow:hidden}
     .heroWrap.matrixFx > *{position:relative;z-index:1}
     .heroWrap .matrixRain{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.26;mix-blend-mode:screen}
-    .quickThemeWrap{position:static;z-index:6;display:flex;align-items:center;justify-content:flex-end;min-width:190px;padding-top:2px}
-    .quickThemeSelect{min-width:180px;max-width:260px;padding:5px 9px;border-radius:9px;border:1px solid var(--theme-tab-border);background:var(--theme-tab-bg);color:var(--theme-tab-text);font-size:12px;opacity:.88;transition:filter .14s ease}
-    .heroWrap:hover .quickThemeSelect,.quickThemeSelect:focus{filter:brightness(1.04)}
-    @media (hover:none){.quickThemeSelect{opacity:.92}}
+    .quickThemeWrap{position:static;z-index:6;display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:190px;padding-top:2px}
+    .quickThemeSelect{min-width:180px;max-width:260px;padding:5px 9px;border-radius:9px;border:1px solid var(--theme-tab-border);background:var(--theme-tab-bg);color:var(--theme-tab-text);font-size:12px;opacity:.18;filter:brightness(.82);transition:opacity .14s ease,filter .14s ease}
+    .heroQuickSearchWrap{position:relative;display:flex;align-items:center}
+    .heroQuickSearch{min-width:220px;max-width:360px;width:min(42vw,340px);padding:5px 9px;border-radius:9px;border:1px solid var(--theme-tab-border);background:var(--theme-tab-bg);color:var(--theme-tab-text);font-size:12px;opacity:.18;filter:brightness(.82);transition:opacity .14s ease,filter .14s ease}
+    .heroQuickSearchResults{display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);max-height:320px;overflow:auto;z-index:9999;background:var(--theme-rail-bg);border:1px solid var(--theme-rail-border);border-radius:10px;padding:6px;box-shadow:0 12px 24px rgba(0,0,0,.34)}
+    .quickThemeSelect:hover,.quickThemeSelect:focus,.heroQuickSearch:hover,.heroQuickSearch:focus{opacity:.96;filter:brightness(1.05)}
+    @media (hover:none){.quickThemeSelect,.heroQuickSearch{opacity:.26;filter:brightness(.9)}}
     .heroQueueCard{margin-top:10px;border:1px solid var(--theme-hero-card-border);border-radius:14px;padding:10px;background:var(--theme-hero-card-bg)}
     .heroQueueHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
     .heroQueueTitle{display:none}
@@ -275,6 +278,10 @@
           <h1 id="heroNowPlayingTitle" title="Open moOde web UI" style="margin:0;line-height:1.05;white-space:nowrap;font-size:18px;font-weight:620;letter-spacing:-0.012em;cursor:pointer;user-select:none;">Now Playing <span style="font-size:13px;font-weight:520;opacity:.86;letter-spacing:0;">moOde enhancement dashboard</span></h1>
         </div>
         <div class="quickThemeWrap">
+          <div class="heroQuickSearchWrap">
+            <input id="heroQuickSearch" class="heroQuickSearch" type="text" placeholder="Quick search (Queue Wizard)…" aria-label="Quick search" autocomplete="off" />
+            <div id="heroQuickSearchResults" class="heroQuickSearchResults" aria-label="Quick search results"></div>
+          </div>
           <select id="quickThemeSelect" class="quickThemeSelect" aria-label="Quick theme preset" title="Quick theme preset">
             <option value="">Theme preset…</option>
           </select>
@@ -823,6 +830,10 @@
       }
 
       const quickThemeSelect = document.getElementById('quickThemeSelect');
+      const heroQuickSearch = document.getElementById('heroQuickSearch');
+      const heroQuickSearchResults = document.getElementById('heroQuickSearchResults');
+      let heroQuickIndex = [];
+      let heroQuickLoadedAt = 0;
       const matrixFx = { canvas:null, ctx:null, raf:0, drops:[], cols:0, dpr:1, running:false, tick:0 };
       const MATRIX_CHARS = 'アァカサタナハマヤャラワ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
@@ -2355,6 +2366,227 @@
         if (natBtn) natBtn.style.display = show ? '' : 'none';
       }
 
+      function applyHeroQuickSearchToQueueWizard(qRaw = '') {
+        try {
+          if (!frame || String(currentShellPage || '') !== 'queue-wizard.html') return false;
+          const doc = frame.contentDocument;
+          if (!doc) return false;
+          const inp = doc.getElementById('filterQuickSearch');
+          if (!inp) return false;
+          inp.value = String(qRaw || '');
+          inp.dispatchEvent(new Event('input', { bubbles: true }));
+          return true;
+        } catch {
+          return false;
+        }
+      }
+
+      function escHtml(s = '') {
+        return String(s).replace(/[&<>'"]/g, (ch) => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[ch] || ch));
+      }
+
+      function hideHeroQuickResults() {
+        if (!heroQuickSearchResults) return;
+        heroQuickSearchResults.style.display = 'none';
+        heroQuickSearchResults.innerHTML = '';
+      }
+
+      async function loadHeroQuickIndex(force = false) {
+        const now = Date.now();
+        if (!force && heroQuickIndex.length && (now - heroQuickLoadedAt) < 5 * 60 * 1000) return;
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const headers = runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {};
+          const [optR, plR] = await Promise.all([
+            fetch(`${base}/config/queue-wizard/options`, { headers, cache:'no-store' }),
+            fetch(`${base}/config/queue-wizard/playlists`, { headers, cache:'no-store' }),
+          ]);
+          const optJ = await optR.json().catch(() => ({}));
+          const plJ = await plR.json().catch(() => ({}));
+          if (!optR.ok || !optJ?.ok) throw new Error(optJ?.error || `HTTP ${optR.status}`);
+
+          const pack = (arr, type) => (Array.isArray(arr) ? arr : []).map((v) => {
+            const s = String(v || '').trim();
+            return { type, value: s, label: s, lower: s.toLowerCase() };
+          }).filter((x) => x.value);
+
+          heroQuickIndex = [
+            ...pack(optJ.genres, 'Genre'),
+            ...pack(optJ.artists, 'Artist'),
+            ...pack(optJ.albums, 'Album'),
+            ...pack(optJ.genres, 'Exclude genre'),
+            ...pack(plJ.playlists, 'Playlist'),
+          ];
+          heroQuickLoadedAt = Date.now();
+        } catch {
+          heroQuickIndex = [];
+        }
+      }
+
+      function applyQuickPickInQueueWizard(type, value) {
+        try {
+          if (!frame || String(currentShellPage || '') !== 'queue-wizard.html') return false;
+          const doc = frame.contentDocument;
+          if (!doc) return false;
+          const map = {
+            'Genre': 'genres',
+            'Artist': 'artists',
+            'Album': 'albums',
+            'Exclude genre': 'excludeGenres',
+            'Playlist': 'existingPlaylists',
+          };
+          const id = map[String(type || '')];
+          if (!id) return false;
+          const sel = doc.getElementById(id);
+          if (!sel) return false;
+
+          if (String(type) === 'Playlist') {
+            sel.value = String(value || '');
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+          }
+
+          let matched = false;
+          Array.from(sel.options || []).forEach((o) => {
+            if (String(o.value || '') === String(value || '')) {
+              o.selected = true;
+              matched = true;
+            }
+          });
+          if (matched) sel.dispatchEvent(new Event('change', { bubbles: true }));
+          return matched;
+        } catch {
+          return false;
+        }
+      }
+
+      function heroQuickPreviewBody(type, value) {
+        const t = String(type || '');
+        const v = String(value || '').trim();
+        const body = { genres: [], artists: [], albums: [], excludeGenres: [], minRating: 0, maxTracks: 200 };
+        if (!v) return body;
+        if (t === 'Genre') body.genres = [v];
+        else if (t === 'Artist') body.artists = [v];
+        else if (t === 'Album') body.albums = [v];
+        else if (t === 'Exclude genre') body.excludeGenres = [v];
+        return body;
+      }
+
+      async function runHeroQuickAction(type, value, action = 'add') {
+        const host = location.hostname || '10.0.0.233';
+        const base = `${location.protocol}//${host}:3101`;
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const headers = { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) };
+
+          let tracks = [];
+          if (String(type || '') === 'Playlist') {
+            const pr = await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(String(value || ''))}`, { headers: runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}, cache:'no-store' });
+            const pj = await pr.json().catch(() => ({}));
+            if (!pr.ok || !pj?.ok) throw new Error(pj?.error || `HTTP ${pr.status}`);
+            tracks = Array.isArray(pj.tracks) ? pj.tracks : [];
+          } else {
+            const previewBody = heroQuickPreviewBody(type, value);
+            const pr = await fetch(`${base}/config/queue-wizard/preview`, { method:'POST', headers, body: JSON.stringify(previewBody) });
+            const pj = await pr.json().catch(() => ({}));
+            if (!pr.ok || !pj?.ok) throw new Error(pj?.error || `HTTP ${pr.status}`);
+            tracks = Array.isArray(pj.tracks) ? pj.tracks.map((t) => String(t?.file || '').trim()).filter(Boolean) : [];
+          }
+          if (!tracks.length) throw new Error('No tracks found');
+
+          const replace = String(action) === 'play';
+          const ar = await fetch(`${base}/config/queue-wizard/apply`, {
+            method:'POST',
+            headers,
+            body: JSON.stringify({
+              mode: replace ? 'replace' : 'append',
+              keepNowPlaying: false,
+              tracks,
+              shuffle: false,
+              forceRandomOff: true,
+              fastStart: replace,
+            })
+          });
+          const aj = await ar.json().catch(() => ({}));
+          if (!ar.ok || !aj?.ok) throw new Error(aj?.error || `HTTP ${ar.status}`);
+          try { syncHeroQueue(); } catch {}
+        } catch (e) {
+          console.warn('hero quick action failed', e?.message || e);
+        }
+      }
+
+      function renderHeroQuickResults(qRaw = '') {
+        if (!heroQuickSearchResults) return;
+        const q = String(qRaw || '').trim().toLowerCase();
+        if (!q) { hideHeroQuickResults(); return; }
+
+        const typeOrder = ['Genre', 'Artist', 'Album', 'Playlist', 'Exclude genre'];
+        const typeColor = {
+          'Genre': 'rgba(56,189,248,.20)',
+          'Artist': 'rgba(34,197,94,.20)',
+          'Album': 'rgba(168,85,247,.22)',
+          'Playlist': 'rgba(244,114,182,.22)',
+          'Exclude genre': 'rgba(245,158,11,.20)',
+        };
+
+        const scored = heroQuickIndex.map((x) => {
+          const i = x.lower.indexOf(q);
+          if (i < 0) return null;
+          const score = (i === 0 ? 0 : 10) + i;
+          return { ...x, score };
+        }).filter(Boolean).sort((a,b) => a.score - b.score).slice(0, 120);
+
+        if (!scored.length) {
+          heroQuickSearchResults.style.display = 'block';
+          heroQuickSearchResults.innerHTML = '<div class="muted" style="padding:6px 8px;">No matches.</div>';
+          return;
+        }
+
+        const byType = new Map();
+        for (const t of typeOrder) byType.set(t, []);
+        for (const row of scored) {
+          if (!byType.has(row.type)) byType.set(row.type, []);
+          byType.get(row.type).push(row);
+        }
+
+        const chunks = [];
+        for (const t of typeOrder) {
+          const rows = (byType.get(t) || []).slice(0, 12);
+          if (!rows.length) continue;
+          const pillBg = typeColor[t] || 'rgba(148,163,184,.2)';
+          chunks.push(`<div style="padding:4px 6px 6px;"><div style="font-size:12px;font-weight:700;color:#c7d8ff;margin:2px 0 6px;"><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:${pillBg};border:1px solid #2a3a58;">${escHtml(t)}</span></div>`
+            + rows.map((x) => `<div style="display:flex;align-items:center;gap:6px;">`
+                + `<button type="button" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" style="flex:1 1 auto;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:0;background:transparent;color:#e7eefc;text-align:left;border-radius:8px;cursor:pointer;">`
+                + `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(x.label)}</span>`
+                + `<span style="font-size:11px;white-space:nowrap;opacity:.88;padding:1px 6px;border-radius:999px;background:${pillBg};">${escHtml(x.type)}</span>`
+                + `</button>`
+                + `<button type="button" data-hero-quick-action="play" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Replace queue and play" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(59,130,246,.18);color:#dbeafe;cursor:pointer;font-weight:700;line-height:1;">▶</button>`
+                + `<button type="button" data-hero-quick-action="add" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add to queue" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(34,197,94,.18);color:#dcfce7;cursor:pointer;font-weight:700;line-height:1;">＋</button>`
+              + `</div>`).join('')
+            + `</div>`);
+        }
+
+        heroQuickSearchResults.innerHTML = chunks.join('');
+        heroQuickSearchResults.style.display = 'block';
+      }
+
+      function syncHeroQuickSearchHint() {
+        if (!heroQuickSearch) return;
+        heroQuickSearch.title = (String(currentShellPage || '') === 'queue-wizard.html')
+          ? 'Quick search in Queue Wizard'
+          : 'Press Enter to open Queue Wizard and search';
+      }
+
       function navigate(page, push = true){
         const safe = VALID.has(page) ? page : 'config.html';
         try { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); } catch { try { window.scrollTo(0,0); } catch {} }
@@ -2362,6 +2594,7 @@
         try { document.body.classList.toggle('peppy-shell', safe === 'peppy.html'); } catch {}
         setActive(safe);
         refreshPushPeppyVisibility();
+        syncHeroQuickSearchHint();
         updateSavePresetsButtonVisibility();
         if (safe === 'peppy.html') setTimeout(() => { checkMoodeTargetUrl().catch(() => {}); }, 150);
         if (!NO_IFRAME_MODE && frame) {
@@ -2383,6 +2616,11 @@
           frame.setAttribute('src', src);
           setTimeout(requestFrameHeightSync, 120);
           setTimeout(requestFrameHeightSync, 500);
+          if (safe === 'queue-wizard.html' && heroQuickSearch && String(heroQuickSearch.value || '').trim()) {
+            const q = String(heroQuickSearch.value || '').trim();
+            setTimeout(() => { try { applyHeroQuickSearchToQueueWizard(q); } catch {} }, 260);
+            setTimeout(() => { try { applyHeroQuickSearchToQueueWizard(q); } catch {} }, 700);
+          }
         }
         if (push) {
           const u = new URL(location.href);
@@ -2396,6 +2634,60 @@
         ev.preventDefault();
         navigate(a.dataset.page || 'config.html', true);
       }));
+
+      heroQuickSearch?.addEventListener('focus', async () => {
+        await loadHeroQuickIndex(false);
+        renderHeroQuickResults(String(heroQuickSearch.value || ''));
+      });
+
+      heroQuickSearch?.addEventListener('input', async () => {
+        const q = String(heroQuickSearch.value || '');
+        await loadHeroQuickIndex(false);
+        renderHeroQuickResults(q);
+        if (String(currentShellPage || '') === 'queue-wizard.html') {
+          applyHeroQuickSearchToQueueWizard(q);
+        }
+      });
+
+      heroQuickSearchResults?.addEventListener('click', (ev) => {
+        const btn = ev.target instanceof Element ? ev.target.closest('button[data-hero-quick-type][data-hero-quick-value]') : null;
+        if (!btn) return;
+        const type = String(btn.getAttribute('data-hero-quick-type') || '');
+        const value = String(btn.getAttribute('data-hero-quick-value') || '');
+        const action = String(btn.getAttribute('data-hero-quick-action') || '').trim().toLowerCase();
+        if (heroQuickSearch) heroQuickSearch.value = value;
+
+        if (action === 'play' || action === 'add') {
+          runHeroQuickAction(type, value, action);
+          renderHeroQuickResults(String(heroQuickSearch?.value || ''));
+          return;
+        }
+
+        if (String(currentShellPage || '') === 'queue-wizard.html') {
+          applyQuickPickInQueueWizard(type, value);
+        }
+        renderHeroQuickResults(String(heroQuickSearch?.value || ''));
+      });
+
+      document.addEventListener('click', (ev) => {
+        const t = ev.target instanceof Element ? ev.target : null;
+        if (!t) return;
+        if (t.closest('#heroQuickSearch') || t.closest('#heroQuickSearchResults')) return;
+        if (heroQuickSearch) heroQuickSearch.value = '';
+        hideHeroQuickResults();
+      });
+
+      heroQuickSearch?.addEventListener('keydown', (ev) => {
+        if (ev.key !== 'Enter') return;
+        ev.preventDefault();
+        const q = String(heroQuickSearch.value || '').trim();
+        if (!q) return;
+        if (String(currentShellPage || '') === 'queue-wizard.html') {
+          applyHeroQuickSearchToQueueWizard(q);
+        }
+      });
+
+      syncHeroQuickSearchHint();
 
       let heroNowPlayingIframeMoode = false;
       let heroNowPlayingMoodeFallbackTimer = null;

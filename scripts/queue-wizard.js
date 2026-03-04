@@ -1206,7 +1206,9 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
             + `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(x.label)}</span>`
             + `<span style="font-size:11px;white-space:nowrap;opacity:.88;padding:1px 6px;border-radius:999px;background:${pillBg};">${esc(x.type)}</span>`
             + `</button>`
-            + (canMultiAdd ? `<button type="button" data-quick-add="1" data-quick-type="${esc(x.type)}" data-quick-value="${esc(x.value)}" title="Add and keep searching" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid ${selected ? 'rgba(34,197,94,.7)' : '#2a3a58'};background:${selected ? 'rgba(34,197,94,.22)' : pillBg};color:${selected ? '#22c55e' : '#e7eefc'};cursor:pointer;font-weight:700;line-height:1;">${selected ? '✓' : '+'}</button>` : '')
+            + `<button type="button" data-quick-play="1" data-quick-type="${esc(x.type)}" data-quick-value="${esc(x.value)}" title="Replace queue and play" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(59,130,246,.18);color:#dbeafe;cursor:pointer;font-weight:700;line-height:1;">▶</button>`
+            + `<button type="button" data-quick-enqueue="1" data-quick-type="${esc(x.type)}" data-quick-value="${esc(x.value)}" title="Add to queue" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(34,197,94,.18);color:#dcfce7;cursor:pointer;font-weight:700;line-height:1;">＋</button>`
+            + (canMultiAdd ? `<button type="button" data-quick-add="1" data-quick-type="${esc(x.type)}" data-quick-value="${esc(x.value)}" title="Add filter and keep searching" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid ${selected ? 'rgba(34,197,94,.7)' : '#2a3a58'};background:${selected ? 'rgba(34,197,94,.22)' : pillBg};color:${selected ? '#22c55e' : '#e7eefc'};cursor:pointer;font-weight:700;line-height:1;">${selected ? '✓' : '+'}</button>` : '')
             + `</div>`;
         }).join('')
         + `</div>`);
@@ -1265,6 +1267,69 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
     });
     if (matched) {
       sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
+  async function quickActionSend(type, value, action = 'play') {
+    const apiBase = getApiBase();
+    const key = getKey();
+    if (!apiBase) { setStatus('API base is empty.'); return; }
+    if (!key) { setStatus('Track key is empty.'); return; }
+
+    const t = String(type || '');
+    const v = String(value || '').trim();
+    if (!v) return;
+
+    try {
+      setStatus('<span class="spin"></span>Building quick list…');
+      let tracks = [];
+
+      if (t === 'Playlist') {
+        const pr = await fetch(`${apiBase}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(v)}`, {
+          headers: { 'x-track-key': key }, cache: 'no-store'
+        });
+        const pj = await pr.json().catch(() => ({}));
+        if (!pr.ok || !pj?.ok) throw new Error(pj?.error || `HTTP ${pr.status}`);
+        tracks = Array.isArray(pj.tracks) ? pj.tracks : [];
+      } else {
+        const body = { genres: [], artists: [], albums: [], excludeGenres: [], minRating: 0, maxTracks: getMaxTracks() };
+        if (t === 'Genre') body.genres = [v];
+        else if (t === 'Artist') body.artists = [v];
+        else if (t === 'Album') body.albums = [v];
+        else if (t === 'Exclude genre') body.excludeGenres = [v];
+
+        const pr = await fetch(`${apiBase}/config/queue-wizard/preview`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+          body: JSON.stringify(body),
+        });
+        const pj = await pr.json().catch(() => ({}));
+        if (!pr.ok || !pj?.ok) throw new Error(pj?.error || `HTTP ${pr.status}`);
+        tracks = Array.isArray(pj.tracks) ? pj.tracks.map((x) => String(x?.file || '').trim()).filter(Boolean) : [];
+      }
+
+      if (!tracks.length) throw new Error('No tracks found');
+
+      const replacePlay = String(action) === 'play';
+      setStatus(`<span class="spin"></span>${replacePlay ? 'Replacing queue and starting playback…' : 'Adding to queue…'}`);
+      const ar = await fetch(`${apiBase}/config/queue-wizard/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+        body: JSON.stringify({
+          mode: replacePlay ? 'replace' : 'append',
+          keepNowPlaying: false,
+          tracks,
+          shuffle: false,
+          forceRandomOff: true,
+          fastStart: replacePlay,
+        }),
+      });
+      const aj = await ar.json().catch(() => ({}));
+      if (!ar.ok || !aj?.ok) throw new Error(aj?.error || `HTTP ${ar.status}`);
+
+      setStatus(replacePlay ? 'Quick Play sent.' : 'Quick Add sent.');
+    } catch (e) {
+      setStatus(`Quick action error: ${esc(e?.message || e)}`);
     }
   }
 
@@ -3264,8 +3329,22 @@ function wireEvents() {
     const b = ev.target instanceof Element ? ev.target.closest('button[data-quick-type][data-quick-value]') : null;
     if (!b) return;
     const keepOpen = b.hasAttribute('data-quick-add');
+    const doPlay = b.hasAttribute('data-quick-play');
+    const doEnqueue = b.hasAttribute('data-quick-enqueue');
     const type = String(b.getAttribute('data-quick-type') || '');
     const value = String(b.getAttribute('data-quick-value') || '');
+
+    if (doPlay) {
+      quickActionSend(type, value, 'play');
+      renderFilterQuickResults(filterQuickSearchEl?.value || '');
+      return;
+    }
+    if (doEnqueue) {
+      quickActionSend(type, value, 'add');
+      renderFilterQuickResults(filterQuickSearchEl?.value || '');
+      return;
+    }
+
     applyQuickPick(type, value);
     if (keepOpen) {
       renderFilterQuickResults(filterQuickSearchEl?.value || '');
