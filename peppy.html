@@ -100,7 +100,7 @@
     body.screen-1280x400 .meta{padding:15px 8px 0;gap:0}
     body.screen-1280x400 .dotline.title{height:52px}
     .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:color-mix(in oklab, var(--fg, #e6efff) 78%, transparent);letter-spacing:.3px}
-    .fmtItem[data-fmt="lossless"] .fmtLblIconLossless{height:8px;width:auto;display:block;filter:grayscale(1) brightness(2.2) drop-shadow(0 0 1px rgba(0,0,0,.95))}
+    .fmtItem[data-fmt="lossless"] .fmtLblIconLossless{height:8px;width:34px;display:block;background-color:var(--fg);-webkit-mask-image:url('assets/apple-lossless-logo.svg');mask-image:url('assets/apple-lossless-logo.svg');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center}
     .fmtBreak{display:none}
     .fmtItem[data-fmt="sr44"],.fmtItem[data-fmt="sr48"],.fmtItem[data-fmt="b16"],.fmtItem[data-fmt="b24"],.fmtItem[data-fmt="live"]{display:none}
     .fmtLed{width:7px;height:7px;border-radius:50%;background:#1e2e22;border:1px solid #3d5f45;box-shadow:inset 0 0 2px rgba(0,0,0,.55)}
@@ -315,7 +315,7 @@
         <span class="fmtItem" data-fmt="dsd"><span class="fmtLed"></span><span class="fmtLbl">DSD</span></span>
         <span class="fmtItem" data-fmt="aac"><span class="fmtLed"></span><span class="fmtLbl">AAC</span></span>
         <span class="fmtItem" data-fmt="hq"><span class="fmtLed"></span><span class="fmtLbl">HQ</span></span>
-        <span class="fmtItem" data-fmt="lossless"><span class="fmtLed"></span><img class="fmtLblIconLossless" src="assets/apple-lossless-logo.svg" alt="Lossless" /></span>
+        <span class="fmtItem" data-fmt="lossless"><span class="fmtLed"></span><span class="fmtLblIconLossless" role="img" aria-label="Lossless"></span></span>
         <span class="fmtBreak" aria-hidden="true"></span>
         <span class="fmtItem" data-fmt="sr44"><span class="fmtLed"></span><span class="fmtLbl">44.1</span></span>
         <span class="fmtItem" data-fmt="sr48"><span class="fmtLed"></span><span class="fmtLbl">48</span></span>
@@ -1533,6 +1533,9 @@
         ' ':['00000','00000','00000','00000','00000','00000','00000'],
         '.':['00000','00000','00000','00000','00000','00110','00110'],
         ':':['00000','00110','00110','00000','00110','00110','00000'],
+        "'":['00100','00100','00000','00000','00000','00000','00000'],
+        '’':['00100','00100','00000','00000','00000','00000','00000'],
+        '‘':['00100','00100','00000','00000','00000','00000','00000'],
         '-':['00000','00000','00000','01110','00000','00000','00000'],
         '/':['00001','00010','00100','01000','10000','00000','00000'],
         "'":['00110','00100','01000','00000','00000','00000','00000'],
