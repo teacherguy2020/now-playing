@@ -98,7 +98,7 @@
     body.screen-1280x400 .needleWrap{height:220px}
     body.screen-1280x400 .meta{padding:0 8px 0;gap:0}
     body.screen-1280x400 .dotline.title{height:52px}
-    .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#9db0c7;letter-spacing:.3px}
+    .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:color-mix(in oklab, var(--fg, #e6efff) 78%, transparent);letter-spacing:.3px}
     .fmtItem[data-fmt="lossless"] .fmtLblIconLossless{height:8px;width:auto;display:block;filter:grayscale(1) brightness(2.2) drop-shadow(0 0 1px rgba(0,0,0,.95))}
     .fmtBreak{display:none}
     .fmtItem[data-fmt="sr44"],.fmtItem[data-fmt="sr48"],.fmtItem[data-fmt="b16"],.fmtItem[data-fmt="b24"],.fmtItem[data-fmt="live"]{display:none}
@@ -108,11 +108,15 @@
     .fmtItem[data-fmt="sr44"].on .fmtLed,.fmtItem[data-fmt="sr48"].on .fmtLed,.fmtItem[data-fmt="sr96"].on .fmtLed,.fmtItem[data-fmt="b16"].on .fmtLed,.fmtItem[data-fmt="b24"].on .fmtLed{background:#3fa9e6;border-color:#89cdef;box-shadow:0 0 6px rgba(63,169,230,.8),0 0 12px rgba(63,169,230,.34)}
     @keyframes livePulseSlow{0%{opacity:.62;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}100%{opacity:.62;transform:scale(1)}}
     .fmtItem[data-fmt="live"].on .fmtLed{background:#f05a5a;border-color:#ffaaaa;box-shadow:0 0 6px rgba(240,90,90,.78),0 0 12px rgba(240,90,90,.36);animation:livePulseSlow 3.6s ease-in-out infinite}
-    .fmtRate{margin-left:auto;font-size:10px;color:#b7c6d8}
+    .fmtRate{margin-left:auto;font-size:10px;color:color-mix(in oklab, var(--fg, #e6efff) 72%, transparent)}
+    body:not(.font-dot) .fmtItem,
+    body:not(.font-dot) .fmtRate,
+    body:not(.font-dot) .subline{color:var(--fg)}
     /* Compact profiles: keep classic 2x3 controls; JS positions block in left-column gap above art. */
     body.screen-compact .controls{height:208px;grid-template-columns:repeat(2,60px);grid-template-rows:repeat(3,60px);column-gap:8px;row-gap:14px;align-content:start}
     body.screen-1024x320 .card.left{display:grid;grid-template-rows:minmax(0,1fr) auto;align-items:stretch}
     body.screen-1024x320 .meta{padding:0 8px 0;gap:0}
+    body.font-dot .meta{padding-left:20px;padding-right:20px}
     body.screen-1024x320 .dotline.title{height:44px}
     body.screen-1024x320 #leftMetaSlot:empty{display:none}
     body.screen-1024x320 .artFrame{grid-row:1;align-self:start}
@@ -145,6 +149,7 @@
     .row{display:grid;grid-template-columns:1fr;align-items:center;gap:0;margin:0;padding:0}
     .lbl{display:none;font-weight:800;color:#bcd0ef;text-align:center;font-size:11px}
     .needleWrap{height:208px;border:none;background:transparent;overflow:hidden;box-shadow:inset 0 0 4px rgba(10,22,46,.16)}
+    body.linear-meter .needleWrap{box-shadow:none;background:transparent}
     #needleCanvas{display:block;width:100%;height:100%}
     .stars{letter-spacing:2px;font-size:18px;display:inline-flex;gap:2px}
     .star{color:#7a6420;opacity:.35;transition:opacity .12s linear, text-shadow .12s linear, color .12s linear}
@@ -281,18 +286,18 @@
           <option value="high">Smoothing: High</option>
         </select>
         <select id="themeName" class="skinSelect" aria-label="Peppy theme preset">
-          <option value="graphite-green">Matrix</option>
-          <option value="graphite-green">Green Neon</option>
+          <option value="matrix-green">Matrix</option>
+          <option value="green-neon">Green Neon</option>
           <option value="red-neon">Red Neon</option>
-          <option value="red-neon">Muted Merlot</option>
+          <option value="muted-merlot">Muted Merlot</option>
           <option value="warm-parchment">Warm Parchment</option>
-          <option value="midnight-blue">Blue Neon</option>
-          <option value="midnight-blue">Chill Blue</option>
+          <option value="blue-neon">Blue Neon</option>
+          <option value="chill-blue">Chill Blue</option>
           <option value="midnight-blue">Abyss Graphite</option>
-          <option value="silver-black">Slate Medium</option>
+          <option value="slate-medium">Slate Medium</option>
           <option value="silver-black">Monotone Gray</option>
           <option value="obsidian-black">Obsidian Black</option>
-          <option value="silver-black">Morning Paper</option>
+          <option value="morning-paper">Morning Paper</option>
         </select>
       </div>
       <div id="iframeScale" class="iframeScale" aria-label="Iframe preview scale">
@@ -423,9 +428,16 @@
       const hasSizeParam = qp.has('size');
       const THEMES = {
         'midnight-blue': { bg:'#05070d', fg:'#e6efff', muted:'#9bb0d3', card:'#0d1422', card2:'#08101a', line:'#22324a', accent:'#7dd3fc', accent2:'#22c55e', dotBg:'#06101a', dotDim:'#3a516f' },
+        'blue-neon': { bg:'#061226', fg:'#dff1ff', muted:'#92b4d7', card:'#0c2340', card2:'#08192d', line:'#2d4f78', accent:'#36b9ff', accent2:'#6ee7ff', dotBg:'#071a2f', dotDim:'#3d6796' },
+        'chill-blue': { bg:'#0b1722', fg:'#e4eef7', muted:'#a4b7cb', card:'#1a2a38', card2:'#13212e', line:'#3f5a74', accent:'#7aa7d1', accent2:'#92c5e8', dotBg:'#10202d', dotDim:'#4d6b86' },
+        'slate-medium': { bg:'#111827', fg:'#e6ecf5', muted:'#a9b4c5', card:'#1f2937', card2:'#192332', line:'#4b5e77', accent:'#8ea7c5', accent2:'#6f8faf', dotBg:'#182231', dotDim:'#5a708b' },
         'amber-night': { bg:'#0d0a05', fg:'#ffe9cc', muted:'#d5b88c', card:'#24170b', card2:'#170f07', line:'#5a3e21', accent:'#ffb347', accent2:'#ffd166', dotBg:'#4a1216', dotDim:'#b45a63' },
         'red-neon': { bg:'#120709', fg:'#ffe1e6', muted:'#d6a0ab', card:'#2a0f14', card2:'#1b0a0e', line:'#6e2b38', accent:'#ff5a7a', accent2:'#ff8fa3', dotBg:'#3a0f16', dotDim:'#934a58' },
+        'muted-merlot': { bg:'#1a1315', fg:'#f0e7e8', muted:'#b7a4a8', card:'#2f1d22', card2:'#24181b', line:'#6e5258', accent:'#a6757f', accent2:'#d6a24a', dotBg:'#1f1216', dotDim:'#6c4e56' },
+        'morning-paper': { bg:'#e7ebf1', fg:'#1f2d3f', muted:'#5f6f82', card:'#d9e0ea', card2:'#ccd5e2', line:'#94a3b8', accent:'#6b8fb5', accent2:'#4f6f98', dotBg:'#0d1b2d', dotDim:'#31527a', dotOn:'#f5f8ff' },
         'warm-parchment': { bg:'#e6dcc9', fg:'#201b16', muted:'#5f5548', card:'#d4c5ad', card2:'#c8b89e', line:'#aa987b', accent:'#cfa24a', accent2:'#a9782d', dotBg:'#0f1116', dotDim:'#6a5428' },
+        'matrix-green': { bg:'#050a07', fg:'#d7ffd9', muted:'#88b995', card:'#0b150f', card2:'#07110b', line:'#1f402a', accent:'#57ff8f', accent2:'#2ce070', dotBg:'#07120c', dotDim:'#2f7b4f', dotOn:'#d6ffe6' },
+        'green-neon': { bg:'#07110d', fg:'#dbfceb', muted:'#8fc7ad', card:'#102118', card2:'#0b1912', line:'#2e5b44', accent:'#3eea96', accent2:'#64f5b2', dotBg:'#0a1811', dotDim:'#3c6f59', dotOn:'#eafff3' },
         'graphite-green': { bg:'#060b08', fg:'#d9f5e3', muted:'#9cc9ae', card:'#0f1a14', card2:'#0a120d', line:'#284536', accent:'#67e8a5', accent2:'#34d399', dotBg:'#08140f', dotDim:'#2f5a45' },
         'silver-black': { bg:'#08090b', fg:'#edf1f7', muted:'#aab4c3', card:'#171b21', card2:'#0f1217', line:'#3a4352', accent:'#93c5fd', accent2:'#60a5fa', dotBg:'#111620', dotDim:'#455064' },
         'obsidian-black': { bg:'#000000', fg:'#f3f6fb', muted:'#9aa3b3', card:'#050608', card2:'#010204', line:'#2a2f38', accent:'#dbe4f2', accent2:'#9aa8bd', dotBg:'#06080b', dotDim:'#39414d' },
@@ -480,6 +492,7 @@
         r.style.setProperty('--progress-rgb', hexToRgbTriplet(t.accent || '#2eb9ee'));
         r.style.setProperty('--dot-bg', t.dotBg || t.card2);
         r.style.setProperty('--dot-dim', t.dotDim || t.line);
+        r.style.setProperty('--dot-on', t.dotOn || t.fg || '#d4e0ec');
       }
       const PEPPY_PRESETS_KEY = 'peppy.presets.v1';
       const BUILTIN_PRESETS = [
@@ -1088,8 +1101,8 @@
         const linearMode = !!meterTypeLinear?.checked;
         lastLinearLayout = null;
         if (linearMode) {
-          const panelX = Math.round(W * 0.06);
-          const panelW = Math.round(W * 0.90);
+          const panelX = Math.max(0, Math.round(W * 0.09) - 25);
+          const panelW = Math.round(W * 0.84);
           const panelH = Math.round(H * 0.70);
           const sizeMode = String(previewLinearSize || 'm');
           const linearStyleActive = String(previewLinearStyle || linearStyle?.value || 'continuous');
@@ -1119,8 +1132,9 @@
           const panelBorder = String(cs.getPropertyValue('--line') || '').trim() || '#22324a';
           const laneBaseColor = String(cs.getPropertyValue('--card') || '').trim() || '#0d1422';
 
-          ctx.globalAlpha = 0.82;
-          ctx.fillStyle = panelBase;
+          // Tighter outer wrapper to avoid left-column bleed while preserving panel grouping.
+          ctx.globalAlpha = 0.9;
+          ctx.fillStyle = 'rgba(6,12,22,0.86)';
           ctx.fillRect(panelX, panelY, panelW, panelH);
           ctx.globalAlpha = 1;
           ctx.strokeStyle = panelBorder;
@@ -1458,6 +1472,7 @@
         const npbText = String(cs.getPropertyValue('--npb-text') || '').trim();
         const npbAccent = String(cs.getPropertyValue('--npb-tab-active-bg') || '').trim() || String(cs.getPropertyValue('--npb-star') || '').trim();
         const theme = String(themeName?.value || '').trim();
+        const isDotMatrix = !!document.body?.classList?.contains('font-dot');
         if (theme === 'warm-parchment') {
           return {
             bg: '#0f1116',
@@ -1467,10 +1482,12 @@
           };
         }
         return {
-          bg: npbBg || String(cs.getPropertyValue('--dot-bg') || '').trim() || '#06101a',
-          dim: npbBorder || String(cs.getPropertyValue('--dot-dim') || '').trim() || '#3a516f',
-          on: npbText || String(cs.getPropertyValue('--fg') || '').trim() || '#d4e0ec',
-          glow: npbAccent || String(cs.getPropertyValue('--accent') || '').trim() || '#7dd3fc',
+          bg: String(cs.getPropertyValue('--dot-bg') || '').trim() || npbBg || '#06101a',
+          dim: String(cs.getPropertyValue('--dot-dim') || '').trim() || npbBorder || '#3a516f',
+          on: isDotMatrix
+            ? (String(cs.getPropertyValue('--dot-on') || '').trim() || String(cs.getPropertyValue('--fg') || '').trim() || npbText || '#d4e0ec')
+            : (String(cs.getPropertyValue('--fg') || '').trim() || npbText || '#d4e0ec'),
+          glow: String(cs.getPropertyValue('--accent') || '').trim() || npbAccent || '#7dd3fc',
         };
       }
 

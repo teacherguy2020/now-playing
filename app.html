@@ -88,7 +88,7 @@
     .quickThemeWrap{position:static;z-index:6;display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:190px;padding-top:2px}
     .quickThemeSelect{min-width:180px;max-width:260px;padding:5px 9px;border-radius:9px;border:1px solid var(--theme-tab-border);background:var(--theme-tab-bg);color:var(--theme-tab-text);font-size:12px;opacity:.18;filter:brightness(.82);transition:opacity .14s ease,filter .14s ease}
     .heroQuickSearchWrap{position:relative;display:flex;align-items:center}
-    .heroQuickSearch{min-width:220px;max-width:360px;width:min(42vw,340px);padding:5px 9px;border-radius:9px;border:1px solid var(--theme-tab-border);background:var(--theme-tab-bg);color:var(--theme-tab-text);font-size:12px;opacity:.18;filter:brightness(.82);transition:opacity .14s ease,filter .14s ease}
+    .heroQuickSearch{min-width:220px;max-width:360px;width:min(42vw,340px);padding:5px 9px;border-radius:9px;border:1px solid var(--theme-tab-border);background:var(--theme-tab-bg);color:var(--theme-text);font-size:12px;opacity:.18;filter:brightness(.82);transition:opacity .14s ease,filter .14s ease}
     .heroQuickSearchResults{display:none;position:absolute;left:0;right:0;top:calc(100% + 6px);max-height:320px;overflow:auto;z-index:9999;background:var(--theme-rail-bg);border:1px solid var(--theme-rail-border);border-radius:10px;padding:6px;box-shadow:0 12px 24px rgba(0,0,0,.34)}
     .quickThemeSelect:hover,.quickThemeSelect:focus,.heroQuickSearch:hover,.heroQuickSearch:focus{opacity:.96;filter:brightness(1.05)}
     @media (hover:none){.quickThemeSelect,.heroQuickSearch{opacity:.26;filter:brightness(.9)}}
@@ -2622,15 +2622,15 @@
           const rows = (byType.get(t) || []).slice(0, 12);
           if (!rows.length) continue;
           const pillBg = typeColor[t] || 'rgba(148,163,184,.2)';
-          chunks.push(`<div style="padding:4px 6px 6px;"><div style="font-size:12px;font-weight:700;color:#c7d8ff;margin:2px 0 6px;"><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:${pillBg};border:1px solid #2a3a58;">${escHtml(t)}</span></div>`
+          chunks.push(`<div style="padding:4px 6px 6px;"><div style="font-size:12px;font-weight:700;color:var(--theme-text);margin:2px 0 6px;"><span style="display:inline-block;padding:2px 8px;border-radius:999px;background:${pillBg};border:1px solid #2a3a58;">${escHtml(t)}</span></div>`
             + rows.map((x) => {
                 const selected = isHeroQuickSelected(x.type, x.value);
                 return `<div style="display:flex;align-items:center;gap:6px;">`
-                  + `<button type="button" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" style="flex:1 1 auto;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:0;background:${selected ? 'rgba(34,197,94,.10)' : 'transparent'};color:#e7eefc;text-align:left;border-radius:8px;cursor:pointer;">`
+                  + `<button type="button" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" style="flex:1 1 auto;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:0;background:${selected ? 'rgba(34,197,94,.10)' : 'transparent'};color:var(--theme-text);text-align:left;border-radius:8px;cursor:pointer;">`
                   + `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(x.label)}</span>`
                   + `<span style="font-size:11px;white-space:nowrap;opacity:.88;padding:1px 6px;border-radius:999px;background:${pillBg};">${escHtml(x.type)}</span>`
                   + `</button>`
-                  + `<button type="button" data-hero-quick-add="1" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add filter" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid ${selected ? 'rgba(34,197,94,.7)' : '#2a3a58'};background:${selected ? 'rgba(34,197,94,.22)' : pillBg};color:${selected ? '#22c55e' : '#e7eefc'};cursor:pointer;font-weight:700;line-height:1;">${selected ? '✓' : '+'}</button>`
+                  + `<button type="button" data-hero-quick-add="1" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add filter" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid ${selected ? 'rgba(34,197,94,.7)' : '#2a3a58'};background:${selected ? 'rgba(34,197,94,.22)' : pillBg};color:${selected ? '#22c55e' : 'var(--theme-text)'};cursor:pointer;font-weight:700;line-height:1;">${selected ? '✓' : '+'}</button>`
                   + `<button type="button" data-hero-quick-action="play" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Replace queue and play" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(59,130,246,.18);color:#dbeafe;cursor:pointer;font-weight:700;line-height:1;">▶</button>`
                   + `<button type="button" data-hero-quick-action="add" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add to queue" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(34,197,94,.18);color:#dcfce7;cursor:pointer;font-weight:700;line-height:1;">＋</button>`
                 + `</div>`;
