@@ -61,7 +61,7 @@
         <button class="btn" id="applyBtn">Apply</button>
         <button class="btn" id="resetBtn">Reset</button>
       </div>
-      <p style="margin-top:10px;color:var(--muted)">Next: section ordering, gestures, module toggles.</p>
+      <p style="margin-top:10px;color:var(--muted)">Apply saves the current controller profile to server, and all controller pages load that profile.</p>
     </div>
     <div class="card previewHost">
       <div class="device">
@@ -73,21 +73,54 @@
     const $ = (id)=>document.getElementById(id);
     const KEY='nowplaying.mobile.profile.v1';
     const defaults={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,colorPreset:'ocean',recentCount:18};
+    const API_BASE = (()=>{ try { const h=location.hostname||'10.0.0.233'; const p=location.protocol||'http:'; return `${p}//${h}:3101`; } catch { return 'http://10.0.0.233:3101'; } })();
     const PRESET_COLORS={ocean:'#4aa8ff',violet:'#a78bfa',mint:'#34d399',amber:'#fbbf24'};
     function read(){try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...defaults}}}
     function write(p){localStorage.setItem(KEY,JSON.stringify(p));}
+    async function ensureKey(){
+      try {
+        const r=await fetch(`${API_BASE}/config/runtime`,{cache:'no-store'});
+        const j=await r.json().catch(()=>({}));
+        return String(j?.config?.trackKey||'').trim();
+      } catch { return ''; }
+    }
+    async function loadServerProfile(){
+      try {
+        const r=await fetch(`${API_BASE}/config/controller-profile`,{cache:'no-store'});
+        const j=await r.json().catch(()=>({}));
+        if (j?.ok && j?.profile) return {...defaults,...j.profile};
+      } catch {}
+      return null;
+    }
+    async function saveServerProfile(p){
+      try {
+        const key=await ensureKey();
+        await fetch(`${API_BASE}/config/controller-profile`,{
+          method:'POST',
+          headers:{'content-type':'application/json', ...(key?{'x-track-key':key}:{})},
+          body:JSON.stringify({profile:p})
+        });
+      } catch {}
+    }
     function paintPaletteDots(){}
     function markPalette(preset){ document.querySelectorAll('#paletteDots .dot').forEach(b=>b.classList.toggle('active', b.getAttribute('data-preset')===preset)); }
     function ui(p){$('devicePreset').value=p.devicePreset;$('theme').value=p.theme;$('layout').value=p.layout;$('showRecent').checked=!!p.showRecent;$('recentCount').value=String(p.recentCount||18); markPalette(String(p.colorPreset||'ocean'));}
     function collect(){const active=document.querySelector('#paletteDots .dot.active');return{devicePreset:$('devicePreset').value,theme:$('theme').value,layout:$('layout').value,showRecent:$('showRecent').checked,colorPreset:String(active?.getAttribute('data-preset')||'ocean'),recentCount:Number($('recentCount').value||18)}}
-    function apply(){const p=collect();write(p);const q=new URLSearchParams({preview:'1',profile:btoa(unescape(encodeURIComponent(JSON.stringify(p))))});$('controllerPreview').src='controller.html?'+q.toString();}
+    function profileToken(p){ return btoa(unescape(encodeURIComponent(JSON.stringify(p)))); }
+    async function apply(){const p=collect();write(p);saveServerProfile(p);const q=new URLSearchParams({preview:'1',profile:profileToken(p)});$('controllerPreview').src='controller.html?'+q.toString();}
     $('applyBtn').addEventListener('click',apply);
     $('resetBtn').addEventListener('click',()=>{write({...defaults});ui(defaults);apply();});
     document.querySelectorAll('#paletteDots .dot').forEach((b)=>{
       b.addEventListener('click', ()=>{ markPalette(String(b.getAttribute('data-preset')||'ocean')); apply(); });
     });
     paintPaletteDots();
-    const p=read();ui(p);apply();
+    (async ()=>{
+      const server = await loadServerProfile();
+      const p = server || read();
+      write(p);
+      ui(p);
+      await apply();
+    })();
   </script>
 </body>
 </html>

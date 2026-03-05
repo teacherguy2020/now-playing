@@ -145,14 +145,32 @@
   </div>
 
   <script>
+    const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v1';
+    const MOBILE_DEFAULT_PROFILE={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,colorPreset:'ocean',recentCount:18};
     function parseProfile(){
       const u=new URL(location.href); const p=u.searchParams.get('profile');
-      if(!p) return {showRecent:true,recentCount:18};
-      try{return JSON.parse(decodeURIComponent(escape(atob(p))))}catch{return {showRecent:true,recentCount:18}}
+      if (p){
+        try {
+          const parsed = JSON.parse(decodeURIComponent(escape(atob(p))));
+          const merged = {...MOBILE_DEFAULT_PROFILE, ...(parsed||{})};
+          try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(merged)); } catch {}
+          return merged;
+        } catch {}
+      }
+      try {
+        const fromLocal = JSON.parse(localStorage.getItem(MOBILE_PROFILE_KEY)||'{}');
+        return {...MOBILE_DEFAULT_PROFILE, ...(fromLocal||{})};
+      } catch {
+        return {...MOBILE_DEFAULT_PROFILE};
+      }
     }
-    const profile=parseProfile();
-    document.getElementById('recentTitle').style.display=profile.showRecent===false?'none':'';
-    document.getElementById('recentRail').style.display=profile.showRecent===false?'none':'';
+    let profile=parseProfile();
+    function applyProfileUi(){
+      document.getElementById('recentTitle').style.display=profile.showRecent===false?'none':'';
+      document.getElementById('recentRail').style.display=profile.showRecent===false?'none':'';
+      applyPalette(profile.colorPreset || 'ocean');
+    }
+    applyProfileUi();
 
     function applyPalette(name){
       const p = String(name||'ocean').toLowerCase();
@@ -171,8 +189,6 @@
       r.style.setProperty('--quick-line', t.line || '#2a3a58');
       r.style.setProperty('--quick-bg-menu', t.quickBgMenu || 'rgba(10,16,28,.94)');
     }
-    applyPalette(profile.colorPreset || 'ocean');
-
     const base=`${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
     let runtimeTrackKey='';
     let quickIndex=[];
@@ -186,6 +202,18 @@
       return runtimeTrackKey;
     }
     function reqHeaders(json=true){ return Object.assign({}, json?{'Content-Type':'application/json'}:{}, runtimeTrackKey?{'x-track-key':runtimeTrackKey}:{}); }
+
+    async function loadServerProfile(){
+      try {
+        const r = await fetch(`${base}/config/controller-profile`, { cache:'no-store' });
+        const j = await r.json().catch(()=>({}));
+        if (r.ok && j?.ok && j?.profile) {
+          profile = { ...MOBILE_DEFAULT_PROFILE, ...j.profile };
+          try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile)); } catch {}
+          applyProfileUi();
+        }
+      } catch {}
+    }
 
     let npSig='';
     async function refreshNowPlayingCard(){
@@ -209,7 +237,7 @@
     }
 
     const rail=document.getElementById('recentRail');
-    const n=Math.max(6,Math.min(30,Number(profile.recentCount||18)));
+    const recentLimit=()=>Math.max(6,Math.min(30,Number(profile.recentCount||18)));
     let recentAlbums=[];
     let recentMenuCtx={album:'',artist:'',art:''};
     let recentModalCtx={album:'',artist:'',art:'',tracks:[]};
@@ -223,9 +251,9 @@
         const j = await r.json().catch(()=>({}));
         const albums = (r.ok && j?.ok && Array.isArray(j.albums)) ? j.albums : [];
         albums.sort((a,b)=>Number(b?.addedTs||0)-Number(a?.addedTs||0));
-        const top = albums.slice(0, n);
+        const top = albums.slice(0, recentLimit());
         if (!top.length) {
-          for(let i=0;i<n;i++){
+          for(let i=0;i<recentLimit();i++){
             const d=document.createElement('div'); d.className='thumb';
             d.innerHTML=`<div class='ph'></div><div class='cap'>Recent ${i+1}</div>`;
             rail.appendChild(d);
@@ -246,7 +274,7 @@
           rail.appendChild(d);
         });
       } catch {
-        for(let i=0;i<n;i++){
+        for(let i=0;i<recentLimit();i++){
           const d=document.createElement('div'); d.className='thumb';
           d.innerHTML=`<div class='ph'></div><div class='cap'>Recent ${i+1}</div>`;
           rail.appendChild(d);
@@ -438,10 +466,13 @@
       row.addEventListener('click', ()=>openPage(row.getAttribute('data-page') || ''));
     });
 
-    loadHomeQuickIndex();
-    loadRecentlyAdded();
-    refreshNowPlayingCard();
-    setInterval(refreshNowPlayingCard, 3500);
+    (async ()=>{
+      await loadServerProfile();
+      await loadHomeQuickIndex();
+      await loadRecentlyAdded();
+      refreshNowPlayingCard();
+      setInterval(refreshNowPlayingCard, 3500);
+    })();
   
     // Pull-to-refresh (controller pages)
     (function enablePullToRefresh(){

@@ -14,6 +14,7 @@ import { registerConfigLibraryHealthBatchRoutes } from './config.library-health-
 import { registerConfigLibraryHealthReadRoutes } from './config.library-health-read.routes.mjs';
 import { registerConfigLibraryHealthAnimatedArtRoutes } from './config.library-health-animated-art.routes.mjs';
 import { registerConfigRoutes } from './config.routes.mjs';
+import { registerConfigControllerProfileRoutes } from './config.controller-profile.routes.mjs';
 
 export function registerAllConfigRoutes(app, deps) {
   registerConfigQueueWizardBasicRoutes(app, {
@@ -84,6 +85,10 @@ export function registerAllConfigRoutes(app, deps) {
   });
 
   registerConfigLibraryHealthAnimatedArtRoutes(app, {
+    requireTrackKey: deps.requireTrackKey,
+  });
+
+  registerConfigControllerProfileRoutes(app, {
     requireTrackKey: deps.requireTrackKey,
   });
 

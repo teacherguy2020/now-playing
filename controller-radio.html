@@ -87,6 +87,31 @@
 
 
   <script>
+
+    // Server-backed controller palette
+    const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    function __npApplyPalette(name){
+      const p = String(name||'ocean').toLowerCase();
+      const map = {
+        ocean:  { accent:'#4aa8ff', bg:'#0b111c', line:'#1f2a3d' },
+        violet: { accent:'#a78bfa', bg:'#120f1f', line:'#32284a' },
+        mint:   { accent:'#34d399', bg:'#0b1514', line:'#21423f' },
+        amber:  { accent:'#fbbf24', bg:'#171208', line:'#4a3720' },
+      };
+      const t = map[p] || map.ocean;
+      const r = document.documentElement;
+      r.style.setProperty('--accent', t.accent);
+      r.style.setProperty('--bg', t.bg);
+      r.style.setProperty('--line', t.line);
+    }
+    (async ()=>{
+      try {
+        const r = await fetch(`${__npBase}/config/controller-profile`, { cache:'no-store' });
+        const j = await r.json().catch(()=>({}));
+        __npApplyPalette(String(j?.profile?.colorPreset || 'ocean'));
+      } catch {}
+    })();
+
     const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
     let key='';
     const STATE_KEY='np.controller.radio.menu.v1';
