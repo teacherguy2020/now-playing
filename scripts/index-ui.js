@@ -3117,11 +3117,11 @@ function attachClickEventToAlbumArt() {
           backdrop-filter: blur(10px);
         ">
           ${hdr}
+          <div style="opacity:.85;font-size:12px;margin-bottom:10px;">Tap outside to close</div>
           <div style="font-weight:700;margin:10px 0 6px 0;">Personnel</div>
           <div style="font-size:15px;line-height:1.25;">
             ${items}
           </div>
-          <div style="margin-top:14px;opacity:.85;font-size:12px;">Tap outside to close</div>
         </div>
       `;
     }
@@ -3137,11 +3137,11 @@ function attachClickEventToAlbumArt() {
         backdrop-filter: blur(10px);
       ">
         ${hdr}
+        <div style="opacity:.85;font-size:12px;margin-bottom:10px;">Tap outside to close</div>
         ${src ? `
           <img src="${src}" alt="Album Art"
                style="display:block;max-width:100%;max-height:60vh;border-radius:14px;">
         ` : `<div style="opacity:.8">No artwork available.</div>`}
-        <div style="margin-top:14px;opacity:.85;font-size:12px;">Tap outside to close</div>
       </div>
     `;
   }

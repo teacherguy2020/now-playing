@@ -107,6 +107,23 @@
       padding-right: var(--padSide) !important;
     }
 
+    /* Personnel panel: on phone place a bit lower so top area remains tappable to dismiss */
+    body.phone-ui #artist-details-container{
+      align-items:flex-start !important;
+      justify-content:center !important;
+      padding-top: calc(env(safe-area-inset-top, 0px) + 104px) !important;
+      padding-left: 12px;
+      padding-right: 12px;
+      z-index: 7000 !important; /* above phone controls lane */
+    }
+    /* Keep playback chrome visible; personnel panel overlays above it */
+    body.modal-open #progress-bar-wrapper,
+    body.modal-open #phone-controls,
+    body.modal-open #next-up,
+    body.modal-open #mode-logo {
+      display: revert !important;
+    }
+
     /* Keep hidden until fully loaded, then slide in */
     body.cnp-hidden{opacity:0;visibility:hidden}
     body.cnp-ready{visibility:visible;animation:cnpSlideIn .22s ease-out both}
