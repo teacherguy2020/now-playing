@@ -235,9 +235,8 @@
         return `<li class="rowWrap" data-pos="${pos}" data-file="${encodeURIComponent(file)}" data-album="${encodeURIComponent(album)}" data-artist="${encodeURIComponent(artist)}" data-title="${encodeURIComponent(title)}">
           <div class="row ${head?'head':''}" data-pos="${pos}">
             <div class="num">${pos}</div>
-            <div class="coverWrap" style="width:34px;height:34px"><img class="thumb" src="${thumb}" alt="" loading="lazy" decoding="async" /><span class="coverMore" aria-hidden="true">•••</span></div>
+            <div class="coverWrap" style="width:34px;height:34px"><img class="thumb" src="${thumb}" alt="" loading="lazy" decoding="async" /></div>
             <div><div class="title">${title}</div><div class="sub">${artist}${album ? ' • ' + album : ''}</div></div>
-            <button type="button" class="more" data-a="more" data-pos="${pos}" aria-label="Track options">•••</button>
           </div>
           <button type="button" class="deleteBtn" data-a="rm" data-pos="${pos}">Delete</button>
         </li>`;
