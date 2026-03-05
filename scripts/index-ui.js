@@ -3138,10 +3138,7 @@ function attachClickEventToAlbumArt() {
       ">
         ${hdr}
         <div style="opacity:.85;font-size:12px;margin-bottom:10px;">Tap outside to close</div>
-        ${src ? `
-          <img src="${src}" alt="Album Art"
-               style="display:block;max-width:100%;max-height:60vh;border-radius:14px;">
-        ` : `<div style="opacity:.8">No artwork available.</div>`}
+        <div style="opacity:.9;font-size:14px;line-height:1.35;">Lookup and add personnel using Library tools</div>
       </div>
     `;
   }
