@@ -36,6 +36,12 @@ A moOde-focused now-playing API + UI stack with optional Alexa integration.
 
 Plus cross-cutting chapters for hero shell, index-vs-app parity, random-vs-shuffle, deploy/rollback, and troubleshooting.
 
+## Licensing
+
+- Project root license: [Unlicense](./LICENSE), unless otherwise noted.
+- Third-party license notices: [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)
+- `integrations/moode/aplmeta.py` is moOde-derived and remains licensed under GPL-3.0-or-later (per file header/SPDX).
+
 ## Install (systemd Linux)
 
 ```bash
