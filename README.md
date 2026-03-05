@@ -17,7 +17,7 @@ A moOde-focused now-playing API + UI stack with optional Alexa integration.
 1. Install on API/UI host.
 2. Open `config.html` and set core fields (`trackKey`, `mpd.host`, `moode.baseUrl`, SSH settings).
 3. Run **Check SSH + Paths**.
-4. Open `app.html` (shell) or `index.html` (display view).
+4. Open `app.html` (shell) or `index.html` (display view) or controller.html (mobile view).
 
 ## Docs (tab-ordered)
 
