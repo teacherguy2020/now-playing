@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Queue Wizard</title>
+  <style>
+    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d}
+    *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 10px}
+    .left{display:flex;align-items:center;gap:10px}
+    .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
+    h1{margin:0;font-size:30px;letter-spacing:-.01em}
+    .meta{color:var(--muted);font-size:13px;margin:0 0 10px}
+    .card{background:rgba(10,18,34,.52);border:1px solid #2a3a58;border-radius:14px;padding:12px;margin:0 0 10px}
+    .h{font-size:13px;font-weight:700;color:#cfe0ff;text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .inp,.sel{height:36px;border-radius:10px;border:1px solid #2a3a58;background:#121c30;color:#e6efff;padding:0 10px;min-width:0}
+    .inp{width:100%}
+    .half{flex:1 1 160px}
+    .btn{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:9px 12px;cursor:pointer}
+    .btn.primary{background:#20406f;border-color:#3e6aa5}
+    .btn.warn{background:#452020;border-color:#7a3a3a}
+    .checks{display:flex;gap:12px;flex-wrap:wrap}
+    .checks label{display:flex;gap:6px;align-items:center;color:#d7e4ff;font-size:14px}
+    .small{font-size:12px;color:var(--muted)}
+    .preview{max-height:38vh;overflow:auto;border:1px solid #2a3a58;border-radius:10px;background:#0d1628}
+    #quickResults:empty{display:none}
+    .collage{width:120px;height:120px;border-radius:10px;border:1px solid #2a3a58;object-fit:cover;background:#0a1222}
+    .item{padding:8px 10px;border-bottom:1px solid #1d2a40;display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:center}
+    .item:last-child{border-bottom:0}
+    .thumb{width:34px;height:34px;border-radius:7px;object-fit:cover;background:#0a1222;border:1px solid #2a3a58}
+  </style>
+</head>
+<body>
+  <div class="top"><div class="left"><button class="back" id="backBtn">‹</button><h1>Queue Wizard</h1></div></div>
+  <p class="meta" id="meta">Ready.</p>
+
+  <div class="card">
+    <div class="h">Quick search</div>
+    <div class="row">
+      <input id="quickSearch" class="inp" placeholder="Search artist, album, playlist…" autocomplete="off" />
+    </div>
+    <div class="preview" id="quickResults" style="margin-top:8px;max-height:30vh"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><div class="h" style="margin:0">Include filters</div><button id="clearFiltersBtn" class="btn" type="button">Clear</button></div>
+    <div class="row">
+      <input id="genres" class="inp" placeholder="Genres (comma-separated)" />
+      <input id="artists" class="inp" placeholder="Artists (comma-separated)" />
+      <input id="albums" class="inp" placeholder="Albums (comma-separated)" />
+      <input id="playlists" class="inp" placeholder="Playlists (comma-separated)" />
+      <input id="excludeGenres" class="inp" placeholder="Exclude genres (comma-separated)" />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="h">Load behavior</div>
+    <div class="row">
+      <select id="mode" class="sel half">
+        <option value="replace">Replace</option>
+        <option value="append">Append</option>
+        <option value="crop">Crop</option>
+      </select>
+      <input id="maxTracks" class="inp half" type="number" min="1" max="5000" value="100" placeholder="Max tracks" />
+      <input id="minRating" class="inp half" type="number" min="0" max="10" value="0" placeholder="Min rating" />
+    </div>
+    <div class="checks" style="margin-top:10px">
+      <label><input id="shuffle" type="checkbox" /> Shuffle</label>
+      <label><input id="keepNowPlaying" type="checkbox" /> Keep now playing</label>
+      <label><input id="fastStart" type="checkbox" checked /> Fast start</label>
+      <label><input id="forceRandomOff" type="checkbox" /> Force random off</label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="previewBtn" class="btn">Preview</button>
+      <button id="applyBtn" class="btn primary">Apply to queue</button>
+      <button id="resetBtn" class="btn warn">Reset</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="h">Preview</div>
+    <div class="small" id="previewMeta">No preview yet.</div>
+    <div class="row" style="margin-top:8px">
+      <input id="savePlaylistName" class="inp half" placeholder="Playlist name" />
+      <button id="savePlaylistBtn" class="btn" type="button">Save to playlist</button>
+      <button id="refreshCollageBtn" class="btn" type="button">Refresh collage</button>
+      <img id="collageImg" class="collage" alt="Collage preview" />
+    </div>
+    <div class="preview" id="previewHost" style="margin-top:8px"></div>
+  </div>
+
+  <script>
+    const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    const STATE_KEY='np.controller.qw.v1';
+    let key='';
+    let previewTracks=[];
+    let quickIndex=[];
+    let previewTimer=null;
+    let collageDataBase64='';
+    let collageMimeType='image/jpeg';
+
+    const $=(id)=>document.getElementById(id);
+    function splitCsv(v){ return String(v||'').split(',').map(x=>x.trim()).filter(Boolean); }
+    function uniquePushCsv(inputId, value){
+      const v=String(value||'').trim(); if(!v) return;
+      const arr=splitCsv($(inputId).value);
+      if(!arr.some(x=>x.toLowerCase()===v.toLowerCase())) arr.push(v);
+      $(inputId).value=arr.join(', ');
+      saveState();
+    }
+
+    async function ensureKey(){ if(key) return key; const r=await fetch(`${base}/config/runtime`,{cache:'no-store'}); const j=await r.json().catch(()=>({})); key=String(j?.config?.trackKey||'').trim(); return key; }
+    function headers(json=true){ return Object.assign({}, json?{'Content-Type':'application/json'}:{}, key?{'x-track-key':key}:{}); }
+
+    function stateFromUi(){
+      return {
+        genres: splitCsv($('genres').value),
+        artists: splitCsv($('artists').value),
+        albums: splitCsv($('albums').value),
+        playlists: splitCsv($('playlists').value),
+        excludeGenres: splitCsv($('excludeGenres').value),
+        mode: String($('mode').value||'replace'),
+        maxTracks: Math.max(1, Math.min(5000, Number($('maxTracks').value||100))),
+        minRating: Math.max(0, Math.min(10, Number($('minRating').value||0))),
+        shuffle: !!$('shuffle').checked,
+        keepNowPlaying: !!$('keepNowPlaying').checked,
+        fastStart: !!$('fastStart').checked,
+        forceRandomOff: !!$('forceRandomOff').checked,
+      };
+    }
+
+    function applyState(s){
+      if (!s || typeof s!=='object') return;
+      $('genres').value = Array.isArray(s.genres)?s.genres.join(', '):'';
+      $('artists').value = Array.isArray(s.artists)?s.artists.join(', '):'';
+      $('albums').value = Array.isArray(s.albums)?s.albums.join(', '):'';
+      $('playlists').value = Array.isArray(s.playlists)?s.playlists.join(', '):'';
+      $('excludeGenres').value = Array.isArray(s.excludeGenres)?s.excludeGenres.join(', '):'';
+      $('mode').value = ['replace','append','crop'].includes(String(s.mode||'')) ? s.mode : 'replace';
+      $('maxTracks').value = Number(s.maxTracks||100);
+      $('minRating').value = Number(s.minRating||0);
+      $('shuffle').checked = !!s.shuffle;
+      $('keepNowPlaying').checked = !!s.keepNowPlaying;
+      $('fastStart').checked = s.fastStart !== false;
+      $('forceRandomOff').checked = !!s.forceRandomOff;
+    }
+
+    function saveState(){ try{ localStorage.setItem(STATE_KEY, JSON.stringify(stateFromUi())); }catch{} }
+    function schedulePreview(){
+      if (previewTimer) clearTimeout(previewTimer);
+      previewTimer = setTimeout(()=>{ doPreview().catch(()=>{}); }, 280);
+    }
+    function loadState(){ try{ const raw=localStorage.getItem(STATE_KEY); if(raw) applyState(JSON.parse(raw)); }catch{} }
+
+    async function loadQuickIndex(){
+      await ensureKey();
+      const [optR, plR, libR] = await Promise.all([
+        fetch(`${base}/config/queue-wizard/options`, {cache:'no-store', headers:headers(false)}).then(r=>r.json().catch(()=>({}))),
+        fetch(`${base}/config/queue-wizard/playlists`, {cache:'no-store', headers:headers(false)}).then(r=>r.json().catch(()=>({}))),
+        fetch(`${base}/config/library-health/albums`, {cache:'no-store', headers:headers(false)}).then(r=>r.json().catch(()=>({})))
+      ]);
+      const artists = Array.isArray(optR?.artists) ? optR.artists : [];
+      const genres = Array.isArray(optR?.genres) ? optR.genres : [];
+      const playlists = Array.isArray(plR?.playlists) ? plR.playlists : [];
+      const libAlbums = Array.isArray(libR?.albums) ? libR.albums : [];
+
+      const albumPairs = [];
+      const seenPairs = new Set();
+      libAlbums.forEach((a)=>{
+        const album=String(a?.album||'').trim();
+        const artist=String(a?.artist||'').trim();
+        if(!album) return;
+        const k=`${artist.toLowerCase()}__${album.toLowerCase()}`;
+        if(seenPairs.has(k)) return;
+        seenPairs.add(k);
+        albumPairs.push({ type:'album', value:album, artist, search:`${artist} ${album}`.toLowerCase() });
+      });
+
+      quickIndex = [
+        ...artists.map(v=>({type:'artist', value:String(v||'').trim(), search:String(v||'').trim().toLowerCase()})),
+        ...genres.map(v=>({type:'genre', value:String(v||'').trim(), search:String(v||'').trim().toLowerCase()})),
+        ...albumPairs,
+        ...playlists.map(v=>({type:'playlist', value:String(v||'').trim(), search:String(v||'').trim().toLowerCase()})),
+      ].filter(x=>x.value);
+      renderQuickResults('');
+    }
+
+    function renderQuickResults(q){
+      const host=$('quickResults');
+      const t=String(q||'').trim().toLowerCase();
+      const list = !t ? [] : quickIndex.filter(x=>String(x.search||x.value||'').toLowerCase().includes(t)).slice(0,80);
+      host.innerHTML = list.map((x)=>{
+        const label = x.type==='album' && x.artist ? `${x.artist} — ${x.value}` : x.value;
+        return `<div class='item' data-qtype='${x.type}' data-qval='${encodeURIComponent(x.value)}' data-qartist='${encodeURIComponent(String(x.artist||''))}'><b>${x.type}</b> — ${label}</div>`;
+      }).join('');
+    }
+
+    function renderPreview(list){
+      const host=$('previewHost');
+      host.innerHTML = (list||[]).slice(0,300).map((t,i)=>{
+        const artist=String(t?.artist||t?.stationName||'').trim();
+        const title=String(t?.title||'').trim();
+        const album=String(t?.album||'').trim();
+        const file=String(t?.file||'').trim();
+        const thumb = file ? `${base}/art/track_640.jpg?file=${encodeURIComponent(file)}` : `${base}/art/current.jpg`;
+        return `<div class='item'><img class='thumb' src='${thumb}' alt='' loading='lazy' decoding='async' /><div><b>${i+1}.</b> ${artist ? artist+' — ' : ''}${title || album || '(track)'}</div></div>`;
+      }).join('') || `<div class='item'><div></div><div>No tracks.</div></div>`;
+      $('previewMeta').textContent = `${(list||[]).length} track(s) in preview`;
+    }
+
+    async function doPreview(){
+      await ensureKey();
+      const s=stateFromUi();
+      saveState();
+      $('meta').textContent='Previewing…';
+      const body={ genres:s.genres, artists:s.artists, albums:s.albums, excludeGenres:s.excludeGenres, minRating:s.minRating, maxTracks:s.maxTracks };
+      const r=await fetch(`${base}/config/queue-wizard/preview`,{method:'POST',headers:headers(true),body:JSON.stringify(body)});
+      const j=await r.json().catch(()=>({}));
+      let tracks=(r.ok && j?.ok && Array.isArray(j.tracks))?j.tracks:[];
+
+      if (Array.isArray(s.playlists) && s.playlists.length) {
+        for (const pl of s.playlists) {
+          const pr = await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(pl)}`,{cache:'no-store',headers:headers(false)});
+          const pj = await pr.json().catch(()=>({}));
+          const pt = (pr.ok && pj?.ok && Array.isArray(pj.tracks)) ? pj.tracks : [];
+          tracks = tracks.concat(pt);
+        }
+      }
+      const seen=new Set();
+      let deduped = tracks.filter(t=>{ const f=String(t?.file||'').trim(); if(!f||seen.has(f)) return false; seen.add(f); return true; });
+      if (s.shuffle && deduped.length > 1) {
+        for (let i = deduped.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const tmp = deduped[i]; deduped[i] = deduped[j]; deduped[j] = tmp;
+        }
+      }
+      previewTracks = deduped.slice(0, s.maxTracks);
+      renderPreview(previewTracks);
+      if (previewTracks.length) refreshCollage().catch(()=>{});
+      $('meta').textContent = r.ok ? 'Preview ready.' : `Preview failed (${r.status})`;
+    }
+
+    async function refreshCollage(){
+      const files = previewTracks.map(t=>String(t?.file||'').trim()).filter(Boolean);
+      if (!files.length) { collageDataBase64=''; $('collageImg').removeAttribute('src'); return; }
+      await ensureKey();
+      const playlistName = String($('savePlaylistName').value||'').trim();
+      const r=await fetch(`${base}/config/queue-wizard/collage-preview`,{method:'POST',headers:headers(true),body:JSON.stringify({playlistName,tracks:files})});
+      const j=await r.json().catch(()=>({}));
+      if (r.ok && j?.ok && j?.dataBase64) {
+        collageDataBase64 = String(j.dataBase64||'');
+        collageMimeType = String(j.mimeType||'image/jpeg');
+        $('collageImg').src = `data:${collageMimeType};base64,${collageDataBase64}`;
+      }
+    }
+
+    async function saveToPlaylistOnly(){
+      const playlistName = String($('savePlaylistName').value||'').trim();
+      if (!playlistName) { $('meta').textContent='Enter playlist name first.'; return; }
+      const files = previewTracks.map(t=>String(t?.file||'').trim()).filter(Boolean);
+      if (!files.length) { $('meta').textContent='Nothing to save.'; return; }
+      if (!collageDataBase64) await refreshCollage();
+      await ensureKey();
+      const body = {
+        mode:'replace', keepNowPlaying:false, tracks:files, shuffle:false, forceRandomOff:false, fastStart:false,
+        playlistName, generateCollage:true, saveOnly:true,
+        previewCoverDataUrl: collageDataBase64 ? `data:${collageMimeType};base64,${collageDataBase64}` : ''
+      };
+      const r=await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:headers(true),body:JSON.stringify(body)});
+      const j=await r.json().catch(()=>({}));
+      $('meta').textContent = (r.ok && j?.ok) ? `Saved playlist: ${playlistName}` : `Save failed (${r.status})`;
+    }
+
+    async function doApply(){
+      await ensureKey();
+      const s=stateFromUi();
+      saveState();
+      if (!previewTracks.length) await doPreview();
+      const files=previewTracks.map(t=>String(t?.file||'').trim()).filter(Boolean);
+      if (!files.length) { $('meta').textContent='Nothing to apply.'; return; }
+      $('meta').textContent='Applying queue…';
+      const body={ mode:s.mode, keepNowPlaying:s.keepNowPlaying, tracks:files, shuffle:s.shuffle, forceRandomOff:s.forceRandomOff, fastStart:s.fastStart };
+      const r=await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:headers(true),body:JSON.stringify(body)});
+      const j=await r.json().catch(()=>({}));
+      $('meta').textContent = (r.ok && j?.ok) ? `Applied ${files.length} track(s).` : `Apply failed (${r.status})`;
+    }
+
+    function resetAll(){
+      applyState({mode:'replace',maxTracks:100,minRating:0,shuffle:false,keepNowPlaying:false,fastStart:true,forceRandomOff:false,genres:[],artists:[],albums:[],playlists:[],excludeGenres:[]});
+      previewTracks=[]; renderPreview([]); $('previewMeta').textContent='No preview yet.';
+      try{ localStorage.removeItem(STATE_KEY); }catch{}
+      $('meta').textContent='Reset.';
+    }
+
+    $('previewBtn').addEventListener('click', doPreview);
+    $('applyBtn').addEventListener('click', doApply);
+    $('resetBtn').addEventListener('click', resetAll);
+    $('clearFiltersBtn').addEventListener('click', ()=>{
+      ['genres','artists','albums','playlists','excludeGenres'].forEach((id)=>{ const el=$(id); if(el) el.value=''; });
+      saveState();
+      schedulePreview();
+      $('meta').textContent='Filters cleared.';
+    });
+    ['genres','artists','albums','playlists','excludeGenres','mode','maxTracks','minRating','shuffle','keepNowPlaying','fastStart','forceRandomOff'].forEach((id)=>{
+      const el=$(id); if(!el) return;
+      const evt = (el.tagName==='INPUT' && el.type==='text') ? 'input' : 'change';
+      el.addEventListener(evt, ()=>{ saveState(); schedulePreview(); });
+      if (evt !== 'change') el.addEventListener('change', ()=>{ saveState(); schedulePreview(); });
+    });
+
+    $('quickSearch').addEventListener('input', (ev)=>renderQuickResults(ev.target.value||''));
+    $('refreshCollageBtn').addEventListener('click', ()=>refreshCollage().catch(()=>{}));
+    $('savePlaylistBtn').addEventListener('click', ()=>saveToPlaylistOnly().catch(()=>{}));
+    $('quickResults').addEventListener('click', (ev)=>{
+      const row=ev.target.closest('[data-qtype][data-qval]'); if(!row) return;
+      const type=String(row.getAttribute('data-qtype')||'');
+      let val=''; try{ val=decodeURIComponent(String(row.getAttribute('data-qval')||'')); }catch{ val=String(row.getAttribute('data-qval')||''); }
+      if(!val) return;
+      if(type==='artist') uniquePushCsv('artists', val);
+      else if(type==='genre') uniquePushCsv('genres', val);
+      else if(type==='album') {
+        uniquePushCsv('albums', val);
+      }
+      else if(type==='playlist') uniquePushCsv('playlists', val);
+      $('meta').textContent = `Added ${type}: ${val}`;
+      schedulePreview();
+    });
+
+    $('backBtn').addEventListener('click',()=>{ if(history.length>1) history.back(); else location.href='controller.html'; });
+
+    loadState();
+    renderPreview([]);
+    loadQuickIndex();
+    schedulePreview();
+  </script>
+</body>
+</html>

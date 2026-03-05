@@ -353,6 +353,7 @@
           <a href="?page=podcasts.html" id="podcastsNavLink" data-page="podcasts.html">Podcasts</a>
           <a href="?page=peppy.html" id="peppyNavLink" data-page="peppy.html">Peppy</a>
           <a href="?page=player.html" id="playerNavLink" data-page="player.html">Player</a>
+          <a href="?page=mobile.html" data-page="mobile.html">Mobile</a>
           <a href="?page=theme.html" data-page="theme.html">Theme</a>
         </nav>
         <button id="pushPeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Push Peppy to moOde</button>
@@ -395,7 +396,7 @@
   <script src="scripts/hero-transport.js?v=20260304-hero-art-bg-toggle"></script>
   <script>
     (() => {
-      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','peppy.html','player.html','theme.html']);
+      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','peppy.html','player.html','mobile.html','theme.html']);
       const frame = document.getElementById('appFrame');
       const viewWrap = document.getElementById('viewWrap');
       const shellUrl = new URL(location.href);
@@ -2758,6 +2759,7 @@
       });
 
       heroQuickSearchResults?.addEventListener('click', (ev) => {
+        ev.stopPropagation();
         const btn = ev.target instanceof Element ? ev.target.closest('button[data-hero-quick-type][data-hero-quick-value]') : null;
         if (!btn) return;
         const type = String(btn.getAttribute('data-hero-quick-type') || '');
@@ -3815,6 +3817,14 @@
             if (String(currentShellPage || '') !== 'player.html') return;
             try { setDisplayModeAndRefresh('player'); } catch {}
           }
+          return;
+        }
+
+        if (d.type === 'np-mobile-nav') {
+          if (!trustedFrameMsg) return;
+          const page = String(d.page || '').trim();
+          if (!VALID.has(page)) return;
+          navigate(page, true);
           return;
         }
 

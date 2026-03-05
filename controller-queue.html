@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Live Queue</title>
+  <style>
+    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--danger:#ff3b30}
+    *{box-sizing:border-box;-webkit-user-select:none;user-select:none} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
+    .top{display:flex;align-items:center;gap:10px;margin:4px 0 8px}
+    .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
+    h1{margin:0;font-size:30px;letter-spacing:-.01em}
+    .meta{color:var(--muted);font-size:13px;margin:0 0 8px}
+    .list{margin:0;padding:0;list-style:none}
+
+    .rowWrap{position:relative;border-bottom:1px solid var(--line);overflow:hidden}
+    .deleteBtn{position:absolute;right:0;top:0;bottom:0;width:92px;border:0;background:var(--danger);color:#fff;font-weight:700;font-size:15px;opacity:0;pointer-events:none;transition:opacity .16s ease}
+    .row{position:relative;z-index:1;background:var(--bg);display:grid;grid-template-columns:34px 34px 1fr 34px;gap:10px;align-items:center;padding:10px 0;transform:translateX(0);transition:transform .18s ease;touch-action:pan-y}
+    .row.swiped{transform:translateX(-92px)}
+    .row.swiped ~ .deleteBtn{opacity:1;pointer-events:auto}
+    .row.head{background:rgba(74,168,255,.10)}
+    .num{font-weight:700;color:#cde2ff;text-align:center}
+    .coverWrap{position:relative;display:block}
+    .thumb{width:34px;height:34px;border-radius:7px;object-fit:cover;background:#0a1222;border:1px solid #33485f}
+    .coverMore{position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:9px;display:flex;align-items:center;justify-content:center;z-index:2}
+    .title{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .row.dragging{opacity:.65}
+    .rowWrap.dropTarget{outline:2px solid rgba(125,211,252,.45);outline-offset:-2px}
+    .more{width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:#121c30;color:#dfeaff;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+
+    .menu{position:fixed;display:none;z-index:120;min-width:230px;padding:6px;border-radius:18px;
+      background:rgba(28,34,48,.78);border:1px solid rgba(255,255,255,.14);
+      backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);
+      box-shadow:0 18px 34px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.08)}
+    .menu.open{display:block}
+    .menu button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:0;background:transparent;color:#f2f6ff;padding:11px 12px;border-radius:12px;cursor:pointer;font-size:16px;line-height:1.2}
+    .menu button:hover{background:rgba(255,255,255,.08)}
+    .menu .ico{width:18px;display:inline-flex;justify-content:center;opacity:.92}
+    .menu .sep{height:1px;background:rgba(255,255,255,.14);margin:4px 8px}
+
+    .albumModal,.artistModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:130;align-items:center;justify-content:center}
+    .albumModal.open,.artistModal.open{display:flex}
+    .albumCard,.artistCard{width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .albumHead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .albumTitle{font-size:17px;font-weight:700}
+    .albumMeta{font-size:12px;color:var(--muted)}
+    .albumTracks{list-style:none;margin:8px 0 0;padding:0}
+    .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .trackBtns{display:flex;gap:6px}
+    .trackBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
+    .albumBtns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:9px 10px;cursor:pointer}
+    .artistControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 10px}
+    .artistControls button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:8px 10px;cursor:pointer}
+    .artistControls select,.artistControls input[type='text']{border:1px solid #2a3a58;background:#0d1628;color:#e6efff;border-radius:8px;padding:6px 8px}
+    .artistGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .artistAlbumBtn{border:1px solid #2a3a58;background:#12203a;color:#e6efff;border-radius:10px;padding:8px;cursor:pointer;text-align:left}
+    .artistAlbumBtn img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#0a1222;margin-bottom:6px}
+    .artistAlbumName{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .loadingRow{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:8px 2px}
+    .spin{width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1></div>
+  <p class="meta" id="meta">Loading…</p>
+  <ul class="list" id="list"></ul>
+
+  <div class="menu" id="trackMenu" aria-hidden="true">
+    <button id="goAlbumBtn" type="button"><span class="ico">◉</span><span>Go to Album</span></button>
+    <button id="goArtistBtn" type="button"><span class="ico">🎤</span><span>Go to Artist</span></button>
+  </div>
+
+  <div class="albumModal" id="albumModal" aria-hidden="true">
+    <div class="albumCard" role="dialog" aria-modal="true" aria-label="Album details">
+      <div class="albumHead">
+        <img id="albumArt" src="" alt="" />
+        <div>
+          <div class="albumTitle" id="albumTitle">Album</div>
+          <div class="albumMeta" id="albumMeta"></div>
+          <div class="albumMeta">Artist: <button id="albumArtistLink" type="button" style="background:none;border:0;color:#9fc4ff;text-decoration:underline;cursor:pointer;padding:0;">(artist)</button></div>
+        </div>
+      </div>
+      <ul class="albumTracks" id="albumTracks"></ul>
+      <div class="albumBtns">
+        <button id="albumAppendBtn" type="button">Append album</button>
+        <button id="albumCropBtn" type="button">Add album (crop)</button>
+        <button id="albumReplaceBtn" type="button">Replace with album</button>
+        <button id="albumCloseBtn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="artistModal" id="artistModal" aria-hidden="true">
+    <div class="artistCard" role="dialog" aria-modal="true" aria-label="Artist details">
+      <div class="albumHead">
+        <img id="artistArt" src="" alt="" />
+        <div>
+          <div class="albumTitle" id="artistTitle">Artist</div>
+          <div class="albumMeta" id="artistMeta"></div>
+        </div>
+      </div>
+      <div class="artistControls">
+        <button id="artistPlayAllBtn" type="button">Play all</button>
+        <button id="artistShuffleAllBtn" type="button">Shuffle all</button>
+        <label class="albumMeta">min rating
+          <select id="artistMinRating"><option value="0">Any</option><option value="1">1★+</option><option value="2" selected>2★+</option><option value="3">3★+</option><option value="4">4★+</option><option value="5">5★</option></select>
+        </label>
+        <label class="albumMeta"><input type="checkbox" id="artistExcludeOn" checked> exclude genre</label>
+        <input type="text" id="artistExcludeText" value="Christmas" />
+      </div>
+      <div class="artistGrid" id="artistAlbumsGrid"></div>
+      <div class="albumBtns">
+        <button id="artistCloseBtn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    let runtimeTrackKey = '';
+    let pollTimer = null;
+    let longPressTimer = null;
+    let dragState = null;
+    let lastBaseSig = '';
+    let lastHeadPos = -1;
+
+    async function ensureKey(){
+      if (runtimeTrackKey) return runtimeTrackKey;
+      const r = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+      const j = await r.json().catch(()=>({}));
+      runtimeTrackKey = String(j?.config?.trackKey || '').trim();
+      return runtimeTrackKey;
+    }
+
+    async function sendPlayback(action, extra={}){
+      await ensureKey();
+      const payload = Object.assign({ action }, extra || {});
+      const r = await fetch(`${base}/config/diagnostics/playback`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {})},
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json().catch(()=>({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      return j;
+    }
+
+    async function loadQueue(){
+      if (dragState) return;
+      await ensureKey();
+      const headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
+      const r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
+      const j = await r.json().catch(()=>({}));
+      const list = document.getElementById('list');
+      const meta = document.getElementById('meta');
+      if (!r.ok || !j?.ok) {
+        meta.textContent = 'Queue unavailable';
+        list.innerHTML = '';
+        return;
+      }
+      const items = Array.isArray(j.items) ? j.items : [];
+      const headPos = Number(j.headPos || -1);
+      meta.textContent = `${items.length} tracks`;
+
+      const baseSig = JSON.stringify(items.map((x, idx) => [
+        Number(x?._posDisplay || x?.pos || (idx + 1)),
+        String(x?.file || ''),
+        String(x?.title || x?.name || ''),
+        String(x?.artist || ''),
+        String(x?.album || ''),
+        String(x?.thumbUrl || ''),
+      ]));
+
+      // If only currently-playing row changed, update highlight only.
+      if (lastBaseSig === baseSig && lastHeadPos !== headPos) {
+        list.querySelectorAll('.row[data-pos]').forEach((row) => {
+          const pos = Number(row.getAttribute('data-pos') || 0);
+          row.classList.toggle('head', pos === headPos);
+        });
+        lastHeadPos = headPos;
+        return;
+      }
+
+      if (lastBaseSig === baseSig && lastHeadPos === headPos) return;
+
+      const existingImgByFile = new Map();
+      try {
+        list.querySelectorAll('.rowWrap[data-file] .thumb').forEach((img) => {
+          const wrap = img.closest('.rowWrap[data-file]');
+          const f = String(wrap?.getAttribute('data-file') || '').trim();
+          const src = String(img.getAttribute('src') || '').trim();
+          if (f && src) existingImgByFile.set(f, img);
+        });
+      } catch {}
+
+      list.innerHTML = items.map((x, idx)=>{
+        const pos = Number(x?._posDisplay || x?.pos || (idx + 1));
+        const artist = String(x?.artist || '').trim();
+        const title = String(x?.title || '').trim() || String(x?.name || '').trim() || '(untitled)';
+        const album = String(x?.album || '').trim();
+        const thumbRaw = String(x?.thumbUrl || '').trim();
+        const thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : `${base}/art/current.jpg`;
+        const head = pos === headPos;
+        const file = String(x?.file || '').trim();
+        return `<li class="rowWrap" data-pos="${pos}" data-file="${encodeURIComponent(file)}" data-album="${encodeURIComponent(album)}" data-artist="${encodeURIComponent(artist)}" data-title="${encodeURIComponent(title)}">
+          <div class="row ${head?'head':''}" data-pos="${pos}">
+            <div class="num">${pos}</div>
+            <div class="coverWrap" style="width:34px;height:34px"><img class="thumb" src="${thumb}" alt="" loading="lazy" decoding="async" /><span class="coverMore" aria-hidden="true">•••</span></div>
+            <div><div class="title">${title}</div><div class="sub">${artist}${album ? ' • ' + album : ''}</div></div>
+            <button type="button" class="more" data-a="more" data-pos="${pos}" aria-label="Track options">•••</button>
+          </div>
+          <button type="button" class="deleteBtn" data-a="rm" data-pos="${pos}">Delete</button>
+        </li>`;
+      }).join('');
+
+      // Reuse existing thumb DOM nodes where same file/src persists.
+      try {
+        list.querySelectorAll('.rowWrap[data-file]').forEach((wrapEl) => {
+          const fEnc = String(wrapEl.getAttribute('data-file') || '');
+          let f = '';
+          try { f = decodeURIComponent(fEnc); } catch { f = fEnc; }
+          if (!f) return;
+          const oldImg = existingImgByFile.get(f);
+          const newImg = wrapEl.querySelector('.thumb');
+          if (!(oldImg instanceof HTMLImageElement) || !(newImg instanceof HTMLImageElement)) return;
+          if (String(oldImg.src || '') !== String(newImg.src || '')) return;
+          newImg.replaceWith(oldImg);
+        });
+      } catch {}
+
+      lastBaseSig = baseSig;
+      lastHeadPos = headPos;
+    }
+
+    function clearSwipes(exceptRow=null){
+      document.querySelectorAll('.row.swiped').forEach(r=>{ if (r!==exceptRow) r.classList.remove('swiped'); });
+    }
+
+    document.getElementById('backBtn').addEventListener('click', ()=>{
+      if (history.length > 1) history.back(); else location.href='controller.html';
+    });
+
+    let modalCtx = { album:'', artist:'', title:'', art:'', tracks:[], artistTracks:[] };
+    const trackMenu = document.getElementById('trackMenu');
+    const albumModal = document.getElementById('albumModal');
+    const artistModal = document.getElementById('artistModal');
+
+    function closeTrackMenu(){
+      trackMenu.classList.remove('open');
+      trackMenu.setAttribute('aria-hidden','true');
+    }
+    function openTrackMenu(anchorBtn, ctx){
+      modalCtx = { ...modalCtx, ...(ctx||{}) };
+      const r = anchorBtn.getBoundingClientRect();
+      const menuW = 230;
+      const left = Math.min(window.innerWidth - menuW - 8, Math.max(8, Math.round(r.right - menuW + 12)));
+      const top = Math.min(window.innerHeight - 120, Math.round(r.bottom + 6));
+      trackMenu.style.left = `${left}px`;
+      trackMenu.style.top = `${top}px`;
+      trackMenu.classList.add('open');
+      trackMenu.setAttribute('aria-hidden','false');
+    }
+
+    function openAlbumModal(){
+      document.getElementById('albumTitle').textContent = modalCtx.album || '(album)';
+      document.getElementById('albumMeta').textContent = `${(modalCtx.tracks || []).length} track(s)`;
+      document.getElementById('albumArt').src = modalCtx.art || `${base}/art/current.jpg`;
+      document.getElementById('albumArtistLink').textContent = modalCtx.artist || '(unknown artist)';
+      const tracksEl = document.getElementById('albumTracks');
+      tracksEl.innerHTML = (modalCtx.tracks || []).map((t,i)=>{
+        const name = String(t.title || t.file || '').trim() || '(track)';
+        const file = encodeURIComponent(String(t.file || '').trim());
+        return `<li><span>${i+1}. ${name}</span><span class="trackBtns"><button data-track-action="play" data-track-file="${file}">Play now</button><button data-track-action="add" data-track-file="${file}">Add</button></span></li>`;
+      }).join('') || '<li>No tracks found</li>';
+      albumModal.classList.add('open');
+      albumModal.setAttribute('aria-hidden','false');
+    }
+    function closeAlbumModal(){
+      albumModal.classList.remove('open');
+      albumModal.setAttribute('aria-hidden','true');
+    }
+
+    function renderArtistAlbumsGrid(){
+      const exOn = !!document.getElementById('artistExcludeOn')?.checked;
+      const exTxt = String(document.getElementById('artistExcludeText')?.value || '').trim().toLowerCase();
+      const all = Array.isArray(modalCtx.artistAlbums) ? modalCtx.artistAlbums : [];
+      const filtered = all.filter((a)=>{
+        if (!exOn || !exTxt) return true;
+        const g = String(a?.genre || '').trim().toLowerCase();
+        const alb = String(a?.album || '').trim().toLowerCase();
+        return !(g.includes(exTxt) || alb.includes(exTxt));
+      });
+      const grid = document.getElementById('artistAlbumsGrid');
+      grid.innerHTML = filtered.map((a)=>{
+        const alb = String(a?.album || '').trim();
+        const sf = String(a?.sampleFile || '').trim();
+        const art = sf ? `${base}/art/track_640.jpg?file=${encodeURIComponent(sf)}` : (modalCtx.art || `${base}/art/current.jpg`);
+        return `<button type="button" class="artistAlbumBtn" data-album="${encodeURIComponent(alb)}" data-art="${encodeURIComponent(art)}">`
+          + `<img src="${art}" alt="" loading="lazy" decoding="async">`
+          + `<div class="artistAlbumName">${alb || '(unknown album)'}</div>`
+          + `</button>`;
+      }).join('') || `<div class='loadingRow'><span class='spin'></span><span>Loading albums…</span></div>`;
+      document.getElementById('artistMeta').textContent = filtered.length ? `${filtered.length} album(s)` : 'Loading albums…';
+    }
+
+    async function openArtistModal(){
+      document.getElementById('artistTitle').textContent = modalCtx.artist || '(artist)';
+      document.getElementById('artistArt').src = modalCtx.art || `${base}/art/current.jpg`;
+      document.getElementById('artistMeta').textContent = 'Loading albums…';
+      artistModal.classList.add('open');
+      artistModal.setAttribute('aria-hidden','false');
+      try {
+        modalCtx.artistAlbums = await fetchArtistAlbums(modalCtx.artist);
+      } catch { modalCtx.artistAlbums = []; }
+      renderArtistAlbumsGrid();
+    }
+    function closeArtistModal(){
+      artistModal.classList.remove('open');
+      artistModal.setAttribute('aria-hidden','true');
+    }
+
+    document.getElementById('albumCloseBtn').addEventListener('click', closeAlbumModal);
+    albumModal.addEventListener('click', (ev)=>{ if (ev.target === albumModal) closeAlbumModal(); });
+    document.getElementById('artistCloseBtn').addEventListener('click', closeArtistModal);
+    artistModal.addEventListener('click', (ev)=>{ if (ev.target === artistModal) closeArtistModal(); });
+
+    async function fetchAlbumTracks(album, artist){
+      try {
+        await ensureKey();
+        const headers = {'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {})};
+        const body = { genres:[], artists: artist ? [artist] : [], albums: album ? [album] : [], excludeGenres:[], minRating:0, maxTracks:500 };
+        const r = await fetch(`${base}/config/queue-wizard/preview`, { method:'POST', headers, body: JSON.stringify(body) });
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok || !j?.ok) return [];
+        return Array.isArray(j.tracks) ? j.tracks : [];
+      } catch { return []; }
+    }
+
+    async function fetchArtistAlbums(artist){
+      try {
+        await ensureKey();
+        const q = new URLSearchParams({ artist: String(artist || '').trim() });
+        const r = await fetch(`${base}/config/diagnostics/artist-albums?${q.toString()}`, { cache:'no-store', headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) } });
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok || !j?.ok) return [];
+        return Array.isArray(j.albums) ? j.albums : [];
+      } catch { return []; }
+    }
+
+    document.getElementById('goAlbumBtn').addEventListener('click', async ()=>{
+      closeTrackMenu();
+      modalCtx.tracks = await fetchAlbumTracks(modalCtx.album, modalCtx.artist);
+      openAlbumModal();
+    });
+
+    document.getElementById('goArtistBtn').addEventListener('click', async ()=>{
+      closeTrackMenu();
+      await openArtistModal();
+    });
+
+    async function runAlbumAction(mode){
+      if (!modalCtx.album) return;
+      try { await sendPlayback('addalbum', { mode, album: modalCtx.album, artist: modalCtx.artist || '' }); } catch(e){ console.warn(e); }
+      closeAlbumModal();
+      await loadQueue();
+    }
+
+    document.getElementById('albumAppendBtn').addEventListener('click', async ()=>{ await runAlbumAction('append'); });
+    document.getElementById('albumCropBtn').addEventListener('click', async ()=>{ await runAlbumAction('crop'); });
+    document.getElementById('albumReplaceBtn').addEventListener('click', async ()=>{ await runAlbumAction('replace'); });
+
+    document.getElementById('albumArtistLink').addEventListener('click', async ()=>{
+      modalCtx.artistAlbums = await fetchArtistAlbums(modalCtx.artist);
+      closeAlbumModal();
+      openArtistModal();
+    });
+
+    document.getElementById('albumTracks').addEventListener('click', async (ev)=>{
+      const b = ev.target.closest('button[data-track-action][data-track-file]');
+      if (!b) return;
+      const action = String(b.getAttribute('data-track-action') || '');
+      let file = '';
+      try { file = decodeURIComponent(String(b.getAttribute('data-track-file') || '')); } catch { file = String(b.getAttribute('data-track-file') || ''); }
+      if (!file) return;
+      if (action === 'play') {
+        try { await sendPlayback('playfile', { file }); } catch(e){ console.warn(e); }
+        closeAlbumModal();
+      } else {
+        try { await sendPlayback('addfile', { file }); } catch(e){ console.warn(e); }
+      }
+      await loadQueue();
+    });
+
+    async function previewArtistTracks(shuffle=false){
+      await ensureKey();
+      const headers = {'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {})};
+      const minRating = Number(document.getElementById('artistMinRating')?.value || 0) || 0;
+      const exOn = !!document.getElementById('artistExcludeOn')?.checked;
+      const exTxt = String(document.getElementById('artistExcludeText')?.value || '').trim();
+      const body = {
+        genres: [],
+        artists: modalCtx.artist ? [modalCtx.artist] : [],
+        albums: [],
+        excludeGenres: (exOn && exTxt) ? [exTxt] : [],
+        minRating,
+        maxTracks: 600,
+      };
+      const r = await fetch(`${base}/config/queue-wizard/preview`, { method:'POST', headers, body: JSON.stringify(body) });
+      const j = await r.json().catch(()=>({}));
+      const files = (Array.isArray(j?.tracks) ? j.tracks : []).map(t => String(t?.file || '').trim()).filter(Boolean);
+      return { files, shuffle };
+    }
+
+    async function applyTracks(files, mode='replace', shuffle=false){
+      if (!files.length) return;
+      await ensureKey();
+      const headers = {'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {})};
+      await fetch(`${base}/config/queue-wizard/apply`, { method:'POST', headers, body: JSON.stringify({ mode, keepNowPlaying:false, tracks:files, shuffle: !!shuffle, forceRandomOff: !shuffle, fastStart: mode==='replace' }) }).catch(()=>null);
+      await loadQueue();
+    }
+
+    document.getElementById('artistPlayAllBtn').addEventListener('click', async ()=>{
+      const { files } = await previewArtistTracks(false);
+      closeArtistModal();
+      await applyTracks(files, 'replace', false);
+    });
+    document.getElementById('artistShuffleAllBtn').addEventListener('click', async ()=>{
+      const { files } = await previewArtistTracks(true);
+      closeArtistModal();
+      await applyTracks(files, 'replace', true);
+    });
+
+    document.getElementById('artistExcludeOn').addEventListener('change', renderArtistAlbumsGrid);
+    document.getElementById('artistExcludeText').addEventListener('input', renderArtistAlbumsGrid);
+
+    document.getElementById('artistAlbumsGrid').addEventListener('click', async (ev)=>{
+      const btn = ev.target.closest('.artistAlbumBtn[data-album]');
+      if (!btn) return;
+      const dec = (s)=>{ try{return decodeURIComponent(String(s||''));}catch{return String(s||'');} };
+      const album = dec(btn.getAttribute('data-album'));
+      const art = dec(btn.getAttribute('data-art'));
+      modalCtx.album = album;
+      modalCtx.art = art || modalCtx.art;
+      modalCtx.tracks = await fetchAlbumTracks(album, modalCtx.artist);
+      closeArtistModal();
+      openAlbumModal();
+    });
+
+    document.addEventListener('click', (ev)=>{
+      const t = ev.target;
+      if (trackMenu.classList.contains('open')) {
+        if (!(t instanceof Element) || (!t.closest('#trackMenu') && !t.closest('.more'))) closeTrackMenu();
+      }
+    });
+
+    document.getElementById('list').addEventListener('click', async (ev)=>{
+      const more = ev.target.closest('button.more[data-a="more"][data-pos]');
+      if (more) {
+        ev.stopPropagation();
+        const wrap = more.closest('.rowWrap');
+        const dec = (s)=>{ try{return decodeURIComponent(String(s||''));}catch{return String(s||'');} };
+        const art = String(wrap?.querySelector('.thumb')?.getAttribute('src') || '').trim();
+        openTrackMenu(more, {
+          title: dec(wrap?.getAttribute('data-title')),
+          artist: dec(wrap?.getAttribute('data-artist')),
+          album: dec(wrap?.getAttribute('data-album')),
+          art,
+        });
+        return;
+      }
+
+      const del = ev.target.closest('button.deleteBtn[data-a="rm"]');
+      if (del) {
+        const pos = Number(del.getAttribute('data-pos')||0);
+        if (!pos) return;
+        del.disabled = true;
+        try { await sendPlayback('remove', { position: pos }); } catch(e){ console.warn(e); }
+        await loadQueue();
+        return;
+      }
+      const row = ev.target.closest('.row[data-pos]');
+      if (!row || dragState) return;
+      if (row.classList.contains('swiped')) { row.classList.remove('swiped'); return; }
+      const pos = Number(row.getAttribute('data-pos')||0);
+      if (!pos) return;
+      try { await sendPlayback('playpos', { position: pos }); } catch(e){ console.warn(e); }
+      await loadQueue();
+    });
+
+    const listEl = document.getElementById('list');
+    let touchStartX = 0, touchStartY = 0, activeRow = null, moved = false;
+
+    listEl.addEventListener('touchstart', (ev)=>{
+      closeTrackMenu();
+      const row = ev.target.closest('.row[data-pos]');
+      if (!row) return;
+      activeRow = row; moved = false;
+      touchStartX = ev.touches[0].clientX; touchStartY = ev.touches[0].clientY;
+
+      clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(()=>{
+        dragState = { row, fromPos: Number(row.getAttribute('data-pos')||0) };
+        row.classList.add('dragging');
+      }, 420);
+    }, { passive:true });
+
+    listEl.addEventListener('touchmove', (ev)=>{
+      if (!activeRow) return;
+      const t = ev.touches[0];
+      const dx = t.clientX - touchStartX;
+      const dy = t.clientY - touchStartY;
+      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) moved = true;
+
+      if (dragState && dragState.row === activeRow) {
+        ev.preventDefault();
+        document.querySelectorAll('.rowWrap.dropTarget').forEach(x=>x.classList.remove('dropTarget'));
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        const wrap = el?.closest?.('.rowWrap[data-pos]');
+        if (wrap) wrap.classList.add('dropTarget');
+        return;
+      }
+
+      if (Math.abs(dx) > Math.abs(dy) && dx < -16) {
+        clearTimeout(longPressTimer);
+        activeRow.classList.add('swiped');
+        clearSwipes(activeRow);
+      } else if (dx > 16) {
+        clearTimeout(longPressTimer);
+        activeRow.classList.remove('swiped');
+      }
+    }, { passive:false });
+
+    async function finishDrag(ev){
+      clearTimeout(longPressTimer);
+      if (dragState && dragState.row) {
+        const row = dragState.row;
+        row.classList.remove('dragging');
+        const changed = document.querySelector('.rowWrap.dropTarget');
+        const fromPos = Number(dragState.fromPos || 0);
+        const toPos = Number(changed?.getAttribute('data-pos') || 0);
+        document.querySelectorAll('.rowWrap.dropTarget').forEach(x=>x.classList.remove('dropTarget'));
+        dragState = null;
+        if (fromPos > 0 && toPos > 0 && fromPos !== toPos) {
+          try { await sendPlayback('move', { fromPosition: fromPos, toPosition: toPos }); } catch(e){ console.warn(e); }
+          await loadQueue();
+          return;
+        }
+      }
+      activeRow = null;
+    }
+
+    listEl.addEventListener('touchend', finishDrag, { passive:true });
+    listEl.addEventListener('touchcancel', finishDrag, { passive:true });
+
+    loadQueue();
+    // Light-touch background sync (avoid constant thumbnail churn).
+    pollTimer = setInterval(loadQueue, 15000);
+  </script>
+</body>
+</html>

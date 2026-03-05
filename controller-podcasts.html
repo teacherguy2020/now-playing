@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Podcasts</title>
+  <style>
+    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d}
+    *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 8px}
+    .left{display:flex;align-items:center;gap:10px}
+    .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
+    h1{margin:0;font-size:30px;letter-spacing:-.01em}
+    .more{width:32px;height:32px;border-radius:999px;border:1px solid #2a3a58;background:#121c30;color:#dfeaff;font-size:16px;display:flex;align-items:center;justify-content:center}
+    .meta{color:var(--muted);font-size:13px;margin:0 0 10px}
+
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-right:26px}
+    .list{display:block;padding-right:26px}
+    .item{border:0;background:transparent;color:var(--text);text-align:left;padding:0;cursor:pointer}
+    .item img,.ph{width:100%;aspect-ratio:1/1;border-radius:12px;object-fit:cover;background:#0a1222;display:block}
+    .title{font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .row{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
+    .row img,.row .ph{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#0a1222}
+
+    .alpha{position:fixed;right:4px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:2px;z-index:10}
+    .alpha button{border:0;background:transparent;color:#8ea7ce;font-size:11px;line-height:1;padding:1px 2px}
+
+    .menu{position:fixed;display:none;z-index:120;min-width:220px;padding:6px;border-radius:14px;background:rgba(20,24,34,.82);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 14px 30px rgba(0,0,0,.4)}
+    .menu.open{display:block}
+    .menu button{width:100%;text-align:left;border:0;background:transparent;color:#eef3ff;padding:10px;border-radius:10px}
+    .menu button.active{background:rgba(255,255,255,.08)}
+
+    .modal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:130;align-items:center;justify-content:center}
+    .modal.open{display:flex}
+    .card{width:min(760px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .head{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+    .head img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .hTitle{font-size:17px;font-weight:700}
+    .hMeta{font-size:12px;color:var(--muted)}
+    .topBtns{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px}
+    .topBtns button,.epBtn{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:7px 10px;cursor:pointer}
+    .eps{list-style:none;margin:0;padding:0}
+    .eps li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+    .epT{font-size:14px}
+    .epM{font-size:12px;color:var(--muted)}
+    .epBtns{display:flex;gap:6px}
+  </style>
+</head>
+<body>
+  <div class="top"><div class="left"><button class="back" id="backBtn">‹</button><h1>Podcasts</h1></div><button class="more" id="menuBtn">•••</button></div>
+  <p class="meta" id="meta">Loading shows…</p>
+  <div id="host" class="grid"></div>
+  <div id="alpha" class="alpha"></div>
+
+  <div class="menu" id="menu">
+    <button data-view="grid" class="active">Grid</button>
+    <button data-view="list">List</button>
+    <button data-sort="az" class="active">A–Z</button>
+    <button data-sort="za">Z–A</button>
+  </div>
+
+  <div class="modal" id="showModal" aria-hidden="true">
+    <div class="card" role="dialog" aria-modal="true" aria-label="Podcast show details">
+      <div class="head"><img id="showArt" src="" alt="" /><div><div class="hTitle" id="showTitle">Show</div><div class="hMeta" id="showMeta"></div></div></div>
+      <div class="topBtns">
+        <button id="loadAllBtn" type="button">Load all to queue</button>
+        <button id="closeBtn" type="button">Close</button>
+      </div>
+      <ul class="eps" id="episodes"></ul>
+    </div>
+  </div>
+
+  <script>
+    const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    const STATE_KEY='np.controller.podcasts.menu.v1';
+    let key='';
+    let state={view:'grid',sort:'az'};
+    let shows=[];
+    let modalCtx={rss:'',title:'',imageUrl:'',episodes:[]};
+
+    async function ensureKey(){ if(key) return key; const r=await fetch(`${base}/config/runtime`,{cache:'no-store'}); const j=await r.json().catch(()=>({})); key=String(j?.config?.trackKey||'').trim(); return key; }
+    function h(){ return {...(key?{'x-track-key':key}:{})}; }
+
+    function syncMenu(){
+      const m=document.getElementById('menu');
+      [...m.querySelectorAll('button[data-view]')].forEach(b=>b.classList.toggle('active',b.getAttribute('data-view')===state.view));
+      [...m.querySelectorAll('button[data-sort]')].forEach(b=>b.classList.toggle('active',b.getAttribute('data-sort')===state.sort));
+    }
+    function saveMenu(){ try{ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }catch{} }
+    function loadMenu(){
+      try{ const raw=localStorage.getItem(STATE_KEY); if(!raw) return; const s=JSON.parse(raw||'{}');
+        if(['grid','list'].includes(String(s?.view||''))) state.view=String(s.view);
+        if(['az','za'].includes(String(s?.sort||''))) state.sort=String(s.sort);
+      }catch{}
+    }
+
+    function sorted(){ const a=[...shows]; a.sort((x,y)=>String(x.title||'').localeCompare(String(y.title||''),undefined,{sensitivity:'base'})); if(state.sort==='za') a.reverse(); return a; }
+    function renderAlpha(list){
+      const a=document.getElementById('alpha'); a.innerHTML=''; const map=new Map();
+      list.forEach((x,i)=>{ const ch=String(x.title||'#').trim().charAt(0).toUpperCase(); const k=/[A-Z]/.test(ch)?ch:'#'; if(!map.has(k)) map.set(k,i); });
+      [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'].forEach(ch=>{ if(!map.has(ch)) return; const b=document.createElement('button'); b.textContent=ch; b.onclick=()=>document.querySelector(`[data-idx='${map.get(ch)}']`)?.scrollIntoView({behavior:'smooth',block:'start'}); a.appendChild(b); });
+    }
+
+    function render(){
+      const list=sorted(); const host=document.getElementById('host'); host.className=state.view==='list'?'list':'grid'; renderAlpha(list);
+      host.innerHTML=list.map((s,i)=>{
+        const art=String(s.imageUrl||'').trim() || `${base}/art/current.jpg`;
+        const sub = s.items==null ? 'Loading…' : `${Number(s.items||0)} downloaded`;
+        if(state.view==='list') return `<div class='row' data-idx='${i}' data-rss='${encodeURIComponent(s.rss)}'><img src='${art}' alt=''><div><div class='title'>${s.title||'(show)'}</div><div class='sub'>${sub}</div></div></div>`;
+        return `<button class='item' data-idx='${i}' data-rss='${encodeURIComponent(s.rss)}'><img src='${art}' alt=''><div class='title'>${s.title||'(show)'}</div><div class='sub'>${sub}</div></button>`;
+      }).join('');
+      document.getElementById('meta').textContent = `${list.length} shows`;
+    }
+
+    function byRss(enc){ let rss=''; try{rss=decodeURIComponent(String(enc||''));}catch{rss=String(enc||'');} return shows.find(x=>x.rss===rss) || null; }
+
+    async function loadShows(){
+      await ensureKey();
+      const r=await fetch(`${base}/podcasts`,{cache:'no-store',headers:h()});
+      const j=await r.json().catch(()=>({}));
+      shows = (r.ok && j?.ok && Array.isArray(j.items)) ? j.items.map(s=>({
+        rss:String(s?.rss||'').trim(),
+        title:String(s?.title||s?.rss||'').trim(),
+        imageUrl:String(s?.imageUrl||'').trim(),
+        items:null,
+      })).filter(s=>s.rss) : [];
+      render();
+      hydrateEpisodeCounts();
+    }
+
+    async function hydrateEpisodeCounts(){
+      for (let i=0;i<shows.length;i++) {
+        const s = shows[i];
+        if (!s?.rss) continue;
+        try {
+          const r=await fetch(`${base}/podcasts/episodes/list`,{method:'POST',headers:{'Content-Type':'application/json',...h()},body:JSON.stringify({rss:s.rss,limit:250})});
+          const j=await r.json().catch(()=>({}));
+          const eps = (r.ok && j?.ok && Array.isArray(j.episodes)) ? j.episodes : [];
+          s.items = eps.filter(ep => !!ep?.downloaded).length;
+        } catch {
+          s.items = 0;
+        }
+        if (i % 2 === 0) render();
+      }
+      render();
+    }
+
+    function closeModal(){ document.getElementById('showModal').classList.remove('open'); }
+    function fileForEpisode(ep){ return String(ep?.mpdPath || '').trim(); }
+
+    async function openShow(s){
+      if(!s?.rss) return;
+      modalCtx={rss:s.rss,title:s.title,imageUrl:s.imageUrl,episodes:[]};
+      document.getElementById('showTitle').textContent=s.title||'(show)';
+      document.getElementById('showMeta').textContent='Loading episodes…';
+      document.getElementById('showArt').src=s.imageUrl||`${base}/art/current.jpg`;
+      document.getElementById('episodes').innerHTML='<li><div class="epM">Loading episodes…</div></li>';
+      document.getElementById('showModal').classList.add('open');
+
+      const r=await fetch(`${base}/podcasts/episodes/list`,{method:'POST',headers:{'Content-Type':'application/json',...h()},body:JSON.stringify({rss:s.rss,limit:200})});
+      const j=await r.json().catch(()=>({}));
+      const eps=(r.ok && j?.ok && Array.isArray(j.episodes)) ? j.episodes : [];
+      modalCtx.episodes=eps;
+      const downloadedCount = eps.filter(ep => !!ep?.downloaded).length;
+      document.getElementById('showMeta').textContent=`${downloadedCount} downloaded • ${eps.length} total`;
+      document.getElementById('episodes').innerHTML = eps.map((ep,idx)=>{
+        const title=String(ep?.title||'(episode)').trim();
+        const date=String(ep?.date||'').trim();
+        const file=encodeURIComponent(fileForEpisode(ep));
+        const downloaded = !!ep?.downloaded;
+        const id = String(ep?.id || '').trim();
+        const enclosure = encodeURIComponent(String(ep?.enclosure || '').trim());
+        const image = encodeURIComponent(String(ep?.imageUrl || '').trim());
+        const metaState = downloaded ? 'Downloaded' : 'Not downloaded';
+        const btns = downloaded
+          ? `<button class='epBtn' data-ep='play' data-file='${file}'>▶</button><button class='epBtn' data-ep='add' data-file='${file}'>＋</button>`
+          : `<button class='epBtn' data-ep='download' data-id='${encodeURIComponent(id)}' data-enclosure='${enclosure}' data-title='${encodeURIComponent(title)}' data-date='${encodeURIComponent(date)}' data-image='${image}'>⬇</button>`;
+        return `<li><div><div class='epT'>${idx+1}. ${title}</div><div class='epM'>${date}${date?' • ':''}${metaState}</div></div><div class='epBtns'>${btns}</div></li>`;
+      }).join('') || '<li><div class="epM">No episodes found</div></li>';
+    }
+
+    async function sendPlayback(action, extra={}){ await ensureKey(); await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:{'Content-Type':'application/json',...h()},body:JSON.stringify(Object.assign({action},extra||{}))}).catch(()=>null); }
+    async function applyQueue(files){
+      const tracks=(Array.isArray(files)?files:[]).map(x=>String(x||'').trim()).filter(Boolean);
+      if(!tracks.length) return;
+      await ensureKey();
+      await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:{'Content-Type':'application/json',...h()},body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks,shuffle:false,forceRandomOff:false,fastStart:true})}).catch(()=>null);
+    }
+
+    document.getElementById('host').addEventListener('click', async (ev)=>{ const el=ev.target.closest('[data-rss]'); if(!el) return; const s=byRss(el.getAttribute('data-rss')); if(s) await openShow(s); });
+    async function downloadEpisodeFromButton(b){
+      const id = decodeURIComponent(String(b.getAttribute('data-id')||''));
+      const enclosure = decodeURIComponent(String(b.getAttribute('data-enclosure')||''));
+      const title = decodeURIComponent(String(b.getAttribute('data-title')||''));
+      const date = decodeURIComponent(String(b.getAttribute('data-date')||''));
+      const imageUrl = decodeURIComponent(String(b.getAttribute('data-image')||''));
+      if (!modalCtx?.rss || !id || !enclosure) return;
+      b.disabled = true;
+      try {
+        await ensureKey();
+        await fetch(`${base}/podcasts/download-one`,{method:'POST',headers:{'Content-Type':'application/json',...h()},body:JSON.stringify({rss:modalCtx.rss,id,enclosure,title,date,imageUrl})});
+      } catch {}
+      const s = shows.find(x=>x.rss===modalCtx.rss);
+      if (s) await openShow(s);
+      await hydrateEpisodeCounts();
+    }
+
+    document.getElementById('episodes').addEventListener('click', async (ev)=>{
+      const b=ev.target.closest('button[data-ep]'); if(!b) return;
+      const a=String(b.getAttribute('data-ep')||'');
+      if (a==='download') { await downloadEpisodeFromButton(b); return; }
+      let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-file')||''));}catch{file=String(b.getAttribute('data-file')||'');}
+      if(!file) return;
+      if(a==='play') await sendPlayback('playfile',{file});
+      if(a==='add') await sendPlayback('addfile',{file});
+    });
+    document.getElementById('loadAllBtn').addEventListener('click', async ()=>{ await applyQueue((modalCtx.episodes||[]).filter(ep=>!!ep?.downloaded).map(fileForEpisode)); });
+    document.getElementById('closeBtn').addEventListener('click', closeModal);
+    document.getElementById('showModal').addEventListener('click',(ev)=>{ if(ev.target.id==='showModal') closeModal(); });
+
+    const menu=document.getElementById('menu');
+    document.getElementById('menuBtn').addEventListener('click',(ev)=>{ const r=ev.currentTarget.getBoundingClientRect(); menu.style.left=`${Math.max(8,Math.round(r.right-220))}px`; menu.style.top=`${Math.round(r.bottom+6)}px`; menu.classList.toggle('open'); });
+    menu.addEventListener('click',(ev)=>{
+      const vb=ev.target.closest('button[data-view]'); const sb=ev.target.closest('button[data-sort]');
+      if(vb) state.view=String(vb.getAttribute('data-view')||'grid');
+      if(sb) state.sort=String(sb.getAttribute('data-sort')||'az');
+      syncMenu(); saveMenu(); render();
+    });
+    document.addEventListener('click',(ev)=>{ if(menu.classList.contains('open') && !(ev.target.closest('#menu')||ev.target.closest('#menuBtn'))) menu.classList.remove('open'); });
+
+    document.getElementById('backBtn').addEventListener('click',()=>{ if(history.length>1) history.back(); else location.href='controller.html'; });
+
+    loadMenu(); syncMenu(); loadShows();
+  </script>
+</body>
+</html>

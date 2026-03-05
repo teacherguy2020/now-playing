@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Radio</title>
+  <style>
+    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d}
+    *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 8px}
+    .left{display:flex;align-items:center;gap:10px}
+    .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
+    h1{margin:0;font-size:30px;letter-spacing:-.01em}
+    .more{width:32px;height:32px;border-radius:999px;border:1px solid #2a3a58;background:#121c30;color:#dfeaff;font-size:16px;display:flex;align-items:center;justify-content:center}
+    .meta{color:var(--muted);font-size:13px;margin:0 0 10px}
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+    .queueSend{display:inline-flex;align-items:center;justify-content:center;border:1px solid #2e5f3c;background:#173725;color:#d9ffe6;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer}
+    .queueSend:disabled{opacity:.45;cursor:default}
+    .presetSel{height:36px;min-width:180px;border-radius:10px;border:1px solid #2a3a58;background:#121c30;color:#e6efff;padding:0 10px}
+
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-right:26px}
+    .list{display:block;padding-right:26px}
+    .genreHdr{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:8px 0 2px;color:#cfe0ff;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+    .genreHdr::after{content:'';height:1px;flex:1;background:rgba(255,255,255,.18)}
+    .item{border:0;background:transparent;color:var(--text);text-align:left;padding:0;cursor:pointer}
+    .item.sel{outline:2px solid #2cc76a;outline-offset:2px;border-radius:12px}
+    .row.item.sel{border-radius:10px;background:rgba(44,199,106,.12)}
+    .coverWrap{position:relative;display:block;width:100%}
+    .item img,.ph{width:100%;aspect-ratio:1/1;border-radius:12px;object-fit:cover;background:#0a1222;display:block}
+    .favDot{position:absolute;right:6px;bottom:6px;width:24px;height:24px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(8,12,18,.72);color:#a9bfdc;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;cursor:pointer;z-index:3}
+    .favDot.on{color:#ff5f7f;border-color:rgba(255,95,127,.55);background:rgba(49,16,24,.78)}
+    .playDot{position:absolute;left:6px;top:6px;width:24px;height:24px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(8,12,18,.72);color:#d9ffe6;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;cursor:pointer;z-index:3}
+    .title{font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .row{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
+    .row .coverWrap{width:52px;height:52px}
+    .row img,.row .ph{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .row .favDot{right:3px;bottom:3px;width:18px;height:18px;font-size:10px}
+    .row .playDot{left:3px;top:3px;width:18px;height:18px;font-size:9px}
+
+    .alpha{position:fixed;right:4px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:2px;z-index:10}
+    .alpha button{border:0;background:transparent;color:#8ea7ce;font-size:11px;line-height:1;padding:1px 2px}
+
+    .menu{position:fixed;display:none;z-index:120;min-width:220px;padding:6px;border-radius:14px;background:rgba(20,24,34,.82);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 14px 30px rgba(0,0,0,.4)}
+    .menu.open{display:block}
+    .menu button{width:100%;text-align:left;border:0;background:transparent;color:#eef3ff;padding:10px;border-radius:10px}
+    .menu button.active{background:rgba(255,255,255,.08)}
+    .menu .sep{height:1px;background:rgba(255,255,255,.14);margin:4px 8px}
+
+    .modal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:130;align-items:center;justify-content:center}
+    .modal.open{display:flex}
+    .card{width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .head img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .hTitle{font-size:17px;font-weight:700}
+    .hMeta{font-size:12px;color:var(--muted)}
+    .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .btns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:8px 10px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="top"><div class="left"><button class="back" id="backBtn">‹</button><h1>Radio</h1></div><button class="more" id="menuBtn">•••</button></div>
+  <div class="actions">
+    <button id="sendQueueBtn" class="queueSend" type="button" disabled>Send station(s) to queue</button>
+    <select id="presetSelect" class="presetSel" aria-label="Load Presets">
+      <option value="">Load Presets</option>
+    </select>
+  </div>
+  <p class="meta" id="meta">Loading stations…</p>
+  <div id="host" class="grid"></div>
+  <div id="alpha" class="alpha"></div>
+
+  <div class="menu" id="menu">
+    <button data-view="grid" class="active">Grid</button>
+    <button data-view="list">List</button>
+    <div class="sep"></div>
+    <button data-sort="az" class="active">A–Z</button>
+    <button data-sort="za">Z–A</button>
+    <button data-sort="genre">Genre</button>
+    <div class="sep"></div>
+    <button data-filter="all" class="active">All</button>
+    <button data-filter="fav">Favorites</button>
+    <button data-filter="hq">HQ</button>
+  </div>
+
+
+  <script>
+    const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    let key='';
+    const STATE_KEY='np.controller.radio.menu.v1';
+    let state={view:'grid',sort:'az',filter:'all'};
+    let stations=[];
+    let selected = new Set();
+    let presets=[];
+
+    async function ensureKey(){ if(key) return key; const r=await fetch(`${base}/config/runtime`,{cache:'no-store'}); const j=await r.json().catch(()=>({})); key=String(j?.config?.trackKey||'').trim(); return key; }
+    function isHq(s){ const t=String(s||'').toLowerCase(); return /flac|alac|lossless|\b320\b|aac\b/.test(t); }
+    function coverFor(name){ return `${base}/art/radio-logo.jpg?name=${encodeURIComponent(name||'Radio')}`; }
+
+    function renderPresetSelect(){
+      const sel=document.getElementById('presetSelect');
+      if(!sel) return;
+      const cur=sel.value;
+      sel.innerHTML = `<option value="">Load Presets</option>` + presets.map((p,i)=>`<option value="${i}">${String(p?.name||`Preset ${i+1}`)}</option>`).join('');
+      if (cur && sel.querySelector(`option[value="${cur}"]`)) sel.value=cur;
+    }
+
+    async function loadStations(){
+      await ensureKey();
+      const headers = { 'Content-Type':'application/json', ...(key?{'x-track-key':key}:{}) };
+      const r = await fetch(`${base}/config/queue-wizard/radio-preview`, {
+        method:'POST',
+        cache:'no-store',
+        headers,
+        body: JSON.stringify({ favoritesOnly:false, hqOnly:false, genres:[], maxStations: 4000 })
+      });
+      const j = await r.json().catch(()=>({}));
+      const tracks = Array.isArray(j?.tracks) ? j.tracks : [];
+      const map = new Map();
+      tracks.forEach((t)=>{
+        const name = String(t?.stationName || t?.artist || t?.album || '').trim();
+        const url = String(t?.file || '').trim();
+        const genre = String(t?.genre || '').split(',')[0].trim();
+        if (!name || !url) return;
+        const fav = !!t?.isFavoriteStation || String(t?.radioType||'').toLowerCase()==='f';
+        const fmt = `${String(t?.format||'')} ${String(t?.bitrate||'')} ${name} ${url}`;
+        const hq = isHq(fmt);
+        if (!map.has(url)) map.set(url, {name,url,genre,fav,hq,cover:coverFor(name)});
+      });
+      stations = Array.from(map.values());
+
+      try {
+        const pr=await fetch(`${base}/config/queue-wizard/radio-presets`, {cache:'no-store', headers:{...(key?{'x-track-key':key}:{})}});
+        const pj=await pr.json().catch(()=>({}));
+        presets = (pr.ok && pj?.ok && Array.isArray(pj.presets)) ? pj.presets : [];
+      } catch { presets = []; }
+      renderPresetSelect();
+      render();
+    }
+
+    function filteredSorted(){
+      let arr = [...stations];
+      if (state.filter==='fav') arr = arr.filter(x=>x.fav);
+      if (state.filter==='hq') arr = arr.filter(x=>x.hq);
+      if (state.sort==='genre') {
+        arr.sort((a,b)=>{
+          const ag=String(a.genre||'').toLowerCase();
+          const bg=String(b.genre||'').toLowerCase();
+          if (ag!==bg) return ag.localeCompare(bg, undefined, {sensitivity:'base'});
+          return String(a.name||'').localeCompare(String(b.name||''),undefined,{sensitivity:'base'});
+        });
+      } else {
+        arr.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),undefined,{sensitivity:'base'}));
+        if (state.sort==='za') arr.reverse();
+      }
+      return arr;
+    }
+
+    function renderAlpha(list){
+      const a=document.getElementById('alpha'); a.innerHTML='';
+      const m=new Map();
+      if (state.sort==='genre') {
+        list.forEach((x,i)=>{
+          const g = String(x.genre || 'Unknown').trim() || 'Unknown';
+          const ch = g.charAt(0).toUpperCase();
+          const k = /[A-Z]/.test(ch) ? ch : '#';
+          if(!m.has(k)) m.set(k,i);
+        });
+      } else {
+        list.forEach((x,i)=>{
+          const ch=String(x.name||'#').trim().charAt(0).toUpperCase();
+          const k=/[A-Z]/.test(ch)?ch:'#';
+          if(!m.has(k)) m.set(k,i);
+        });
+      }
+      [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'].forEach(ch=>{ if(!m.has(ch)) return; const b=document.createElement('button'); b.textContent=ch; b.onclick=()=>{ const el=document.querySelector(`[data-idx='${m.get(ch)}']`); el?.scrollIntoView({behavior:'smooth',block:'start'}); }; a.appendChild(b); });
+    }
+
+    function updateSendBtn(){
+      const b=document.getElementById('sendQueueBtn');
+      if(!b) return;
+      b.disabled = selected.size===0;
+      b.textContent = selected.size ? `Send station(s) to queue (${selected.size})` : 'Send station(s) to queue';
+    }
+
+    function render(){
+      const list = filteredSorted();
+      const host=document.getElementById('host');
+      host.className = state.view==='list' ? 'list' : 'grid';
+      renderAlpha(list);
+
+      const out = [];
+      let lastGenre = '';
+      list.forEach((s,i)=>{
+        const g = String(s.genre || '').trim() || 'Unknown';
+        if (state.sort==='genre' && g !== lastGenre) {
+          out.push(`<div class='genreHdr'>${g}</div>`);
+          lastGenre = g;
+        }
+        const badge = s.fav ? '♥ ' : (s.hq ? 'HQ ' : '');
+        const meta = [s.genre, `${badge}${s.url}`].filter(Boolean).join(' • ');
+        const c = `<div class='coverWrap'><img src='${s.cover}' alt=''><button type='button' class='playDot' data-playnow='1' data-url='${encodeURIComponent(s.url)}' aria-label='Play station'>▶</button><button type='button' class='favDot ${s.fav?'on':''}' data-favtoggle='1' data-url='${encodeURIComponent(s.url)}' aria-label='Toggle favorite'>♥</button></div>`;
+        const sel = selected.has(s.url) ? ' sel' : '';
+        if (state.view==='list') out.push(`<div class='row item${sel}' data-idx='${i}' data-url='${encodeURIComponent(s.url)}'>${c}<div><div class='title'>${s.name}</div><div class='sub'>${meta}</div></div></div>`);
+        else out.push(`<div class='item${sel}' role='button' tabindex='0' data-idx='${i}' data-url='${encodeURIComponent(s.url)}'>${c}<div class='title'>${s.name}</div><div class='sub'>${meta}</div></div>`);
+      });
+      host.innerHTML = out.join('');
+      document.getElementById('meta').textContent = `${list.length} stations`;
+      updateSendBtn();
+    }
+
+    function pickByUrl(enc){ let u=''; try{u=decodeURIComponent(String(enc||''));}catch{u=String(enc||'');} return stations.find(x=>x.url===u) || null; }
+
+    async function playNowByUrl(url){
+      if (!url) return;
+      await ensureKey();
+      const headers={'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})};
+      await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers,body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:[url],shuffle:false,forceRandomOff:false,fastStart:true})}).catch(()=>null);
+    }
+
+    async function toggleFavoriteByUrl(url){
+      const st = stations.find(x=>x.url===url);
+      if (!st) return;
+      await ensureKey();
+      const headers={'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})};
+      const next = !st.fav;
+      const r = await fetch(`${base}/config/queue-wizard/radio-favorite`, { method:'POST', headers, body: JSON.stringify({ file:url, favorite: next }) });
+      const j = await r.json().catch(()=>({}));
+      if (!r.ok || !j?.ok) return;
+      st.fav = !!j.favorite;
+      render();
+    }
+
+    document.getElementById('host').addEventListener('click', async (ev)=>{
+      const playBtn = ev.target.closest('button[data-playnow="1"][data-url]');
+      if (playBtn) {
+        ev.stopPropagation();
+        let url=''; try{ url=decodeURIComponent(String(playBtn.getAttribute('data-url')||'')); }catch{ url=String(playBtn.getAttribute('data-url')||''); }
+        if (url) await playNowByUrl(url);
+        return;
+      }
+      const favBtn = ev.target.closest('button[data-favtoggle="1"][data-url]');
+      if (favBtn) {
+        ev.stopPropagation();
+        let url=''; try{ url=decodeURIComponent(String(favBtn.getAttribute('data-url')||'')); }catch{ url=String(favBtn.getAttribute('data-url')||''); }
+        if (url) await toggleFavoriteByUrl(url);
+        return;
+      }
+      const row = ev.target.closest('[data-url]');
+      if (!row) return;
+      const st = pickByUrl(row.getAttribute('data-url'));
+      if (!st) return;
+      if (selected.has(st.url)) selected.delete(st.url); else selected.add(st.url);
+      render();
+    });
+
+    async function sendUrlsToQueue(urls){
+      const tracks = (Array.isArray(urls)?urls:[]).map(x=>String(x||'').trim()).filter(Boolean);
+      if (!tracks.length) return;
+      await ensureKey();
+      const headers={'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})};
+      await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers,body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks,shuffle:false,forceRandomOff:false,fastStart:true})}).catch(()=>null);
+    }
+
+    document.getElementById('sendQueueBtn').addEventListener('click', async ()=>{
+      await sendUrlsToQueue(Array.from(selected));
+    });
+
+    document.getElementById('presetSelect').addEventListener('change', async (ev)=>{
+      const idx = Number(ev.target.value);
+      if (!Number.isFinite(idx) || idx < 0 || idx >= presets.length) return;
+      const p = presets[idx] || {};
+      const urls = (Array.isArray(p.stations)?p.stations:[]).map(s=>String(s?.file||s?.url||'').trim()).filter(Boolean);
+      await sendUrlsToQueue(urls);
+      ev.target.value = '';
+    });
+
+    const menu=document.getElementById('menu');
+    function syncMenuState(){
+      [...menu.querySelectorAll('button[data-view]')].forEach(b=>b.classList.toggle('active',b.getAttribute('data-view')===state.view));
+      [...menu.querySelectorAll('button[data-sort]')].forEach(b=>b.classList.toggle('active',b.getAttribute('data-sort')===state.sort));
+      [...menu.querySelectorAll('button[data-filter]')].forEach(b=>b.classList.toggle('active',b.getAttribute('data-filter')===state.filter));
+    }
+    function saveMenuState(){ try{ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }catch{} }
+    function loadMenuState(){
+      try {
+        const raw=localStorage.getItem(STATE_KEY); if(!raw) return;
+        const s=JSON.parse(raw||'{}');
+        const v=String(s?.view||''); const so=String(s?.sort||''); const f=String(s?.filter||'');
+        if(['grid','list'].includes(v)) state.view=v;
+        if(['az','za','genre'].includes(so)) state.sort=so;
+        if(['all','fav','hq'].includes(f)) state.filter=f;
+      } catch {}
+    }
+    document.getElementById('menuBtn').addEventListener('click',(ev)=>{ const r=ev.currentTarget.getBoundingClientRect(); menu.style.left=`${Math.max(8,Math.round(r.right-220))}px`; menu.style.top=`${Math.round(r.bottom+6)}px`; menu.classList.toggle('open'); });
+    menu.addEventListener('click',(ev)=>{
+      const vb=ev.target.closest('button[data-view]'); const sb=ev.target.closest('button[data-sort]'); const fb=ev.target.closest('button[data-filter]');
+      if(vb) state.view=String(vb.getAttribute('data-view')||'grid');
+      if(sb) state.sort=String(sb.getAttribute('data-sort')||'az');
+      if(fb) state.filter=String(fb.getAttribute('data-filter')||'all');
+      syncMenuState();
+      saveMenuState();
+      render();
+    });
+
+    document.addEventListener('click',(ev)=>{
+      if(menu.classList.contains('open') && !(ev.target.closest('#menu')||ev.target.closest('#menuBtn'))) menu.classList.remove('open');
+    });
+
+    document.getElementById('backBtn').addEventListener('click',()=>{ if(history.length>1) history.back(); else location.href='controller.html'; });
+
+    loadMenuState();
+    syncMenuState();
+    loadStations();
+  </script>
+</body>
+</html>

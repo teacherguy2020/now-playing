@@ -12,6 +12,8 @@ A moOde-focused now-playing API + UI stack with optional Alexa integration.
 
 ![Peppy preset example: Warm Parchment Gold Circular](./docs/images/peppy-presets/10-warm-parchment-gold-circular.jpg)
 
+![Controller mobile view](./docs/images/mobile-builder/controller.png)
+
 > Recommended topology: run this project on a separate Pi from your moOde host.
 
 ## Quick start
@@ -34,6 +36,7 @@ A moOde-focused now-playing API + UI stack with optional Alexa integration.
 - Podcasts
 - Theme
 - moOde Display Enhancement (custom Peppy/Player push flow)
+- Mobile Builder + Controller pages
 
 Plus cross-cutting chapters for hero shell, index-vs-app parity, random-vs-shuffle, deploy/rollback, and troubleshooting.
 

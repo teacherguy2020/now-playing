@@ -14,6 +14,7 @@ This docs set follows the same order as the app tabs.
 8. [Theme](./13-theme.md)
 9. [moOde Display Enhancement](./14-display-enhancement.md)
 10. [moOde Remote Display Blanking Fix](./15-moode-remote-display-blanking-fix.md)
+11. [Mobile Builder + Controller Pages](./16-mobile-builder.md)
 
 ## Cross-cutting chapters
 

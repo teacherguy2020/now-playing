@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Playlists</title>
+  <style>
+    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d}
+    *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 8px}
+    .left{display:flex;align-items:center;gap:10px}
+    .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
+    h1{margin:0;font-size:30px;letter-spacing:-.01em}
+    .more{width:32px;height:32px;border-radius:999px;border:1px solid #2a3a58;background:#121c30;color:#dfeaff;font-size:16px;display:flex;align-items:center;justify-content:center}
+    .meta{color:var(--muted);font-size:13px;margin:0 0 10px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .list{display:block}
+    .item{border:0;background:transparent;color:var(--text);text-align:left;padding:0;cursor:pointer}
+    .coverWrap{position:relative;display:block;width:100%}
+    .item .ph,.item img{width:100%;aspect-ratio:1/1;border-radius:12px;object-fit:cover;background:#0a1222;display:block}
+    .coverMore{position:absolute;left:6px;top:6px;width:24px;height:24px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:12px;display:flex;align-items:center;justify-content:center;z-index:2}
+    .ph{position:relative;display:flex;align-items:center;justify-content:center}
+    .spin{width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .title{font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .row{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
+    .row .coverWrap{width:52px;height:52px}
+    .row .ph,.row img{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .row .coverMore{left:4px;top:4px;width:20px;height:20px;font-size:11px}
+
+    .menu{position:fixed;display:none;z-index:120;min-width:220px;padding:6px;border-radius:14px;background:rgba(20,24,34,.82);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 14px 30px rgba(0,0,0,.4)}
+    .menu.open{display:block}
+    .menu button{width:100%;text-align:left;border:0;background:transparent;color:#eef3ff;padding:10px;border-radius:10px}
+    .menu button.active{background:rgba(255,255,255,.08)}
+    .menu .sep{height:1px;background:rgba(255,255,255,.14);margin:4px 8px}
+
+    .modal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:130;align-items:center;justify-content:center}
+    .modal.open{display:flex}
+    .card{width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .head img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .hTitle{font-size:17px;font-weight:700}
+    .hMeta{font-size:12px;color:var(--muted)}
+    .tracks{list-style:none;margin:8px 0 0;padding:0}
+    .tracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;font-size:14px}
+    .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .btns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:8px 10px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="top"><div class="left"><button class="back" id="backBtn">‹</button><h1>Playlists</h1></div><button class="more" id="menuBtn">•••</button></div>
+  <p class="meta" id="meta">Loading playlists…</p>
+  <div id="host" class="grid"></div>
+
+  <div class="menu" id="menu">
+    <button data-view="grid" class="active">Grid</button>
+    <button data-view="list">List</button>
+    <div class="sep"></div>
+    <button data-sort="az" class="active">A–Z</button>
+    <button data-sort="za">Z–A</button>
+  </div>
+
+  <div class="menu" id="playlistMenu">
+    <button data-pl-action="play">Play</button>
+    <button data-pl-action="shuffle">Play Shuffled</button>
+    <button data-pl-action="open">Open</button>
+  </div>
+
+  <div class="modal" id="plModal" aria-hidden="true">
+    <div class="card">
+      <div class="head"><img id="plArt" src="" alt="" /><div><div class="hTitle" id="plTitle">Playlist</div><div class="hMeta" id="plMeta"></div></div></div>
+      <div class="btns" style="margin-top:0;margin-bottom:8px">
+        <button id="plPlayBtn" type="button">Play playlist</button>
+        <button id="plAddBtn" type="button">Add playlist</button>
+        <button id="plCloseBtn" type="button">Close</button>
+      </div>
+      <ul class="tracks" id="plTracks"></ul>
+    </div>
+  </div>
+
+  <script>
+    const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    let key='';
+    let moodeHost='10.0.0.254';
+    const STATE_KEY='np.controller.playlists.menu.v1';
+    let state={view:'grid',sort:'az'};
+    let playlists=[];
+    let modalCtx={name:'',cover:'',tracks:[]};
+
+    function playlistCoverUrl(name){
+      const raw = String(name || '').trim();
+      const safe = raw.replace(/\s+/g,'_');
+      return {
+        primary: `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(raw)}.jpg`,
+        alt: `http://${moodeHost}/imagesw/playlist-covers/${encodeURIComponent(safe)}.jpg`
+      };
+    }
+
+    async function ensureKey(){
+      if(key) return key;
+      const r=await fetch(`${base}/config/runtime`,{cache:'no-store'});
+      const j=r.ok ? await r.json().catch(()=>({})) : {};
+      key=String(j?.config?.trackKey||'').trim();
+      moodeHost = String(j?.config?.mpd?.host || j?.config?.nodes?.moode || j?.config?.mpd?.hostname || moodeHost).trim() || moodeHost;
+      return key;
+    }
+
+    async function loadPlaylists(){
+      await ensureKey();
+      const r=await fetch(`${base}/config/queue-wizard/playlists`,{cache:'no-store',headers:{...(key?{'x-track-key':key}:{})}});
+      const j=await r.json().catch(()=>({}));
+      const names = (r.ok && j?.ok && Array.isArray(j.playlists)) ? j.playlists : [];
+      playlists = names.map((n)=>{
+        const name = String(n||'').trim();
+        const cov = playlistCoverUrl(name);
+        return { name, cover: cov.primary, coverAlt: cov.alt, count:null };
+      });
+      render();
+      hydrateCovers();
+    }
+
+    function sorted(){
+      const a=[...playlists];
+      a.sort((x,y)=>String(x.name||'').localeCompare(String(y.name||''),undefined,{sensitivity:'base'}));
+      if(state.sort==='za') a.reverse();
+      return a;
+    }
+
+    function render(){
+      const list=sorted();
+      const host=document.getElementById('host');
+      host.className = state.view==='list' ? 'list' : 'grid';
+      host.innerHTML = list.map((p)=>{
+        const cInner = p.cover
+          ? `<img class='cover' src='${p.cover}' data-alt='${p.coverAlt||''}' alt=''>`
+          : `<div class='ph'><span class='spin'></span></div>`;
+        const c = `<div class='coverWrap'>${cInner}<button type='button' class='coverMore' data-a='menu' data-name='${encodeURIComponent(p.name)}'>•••</button></div>`;
+        if(state.view==='list'){
+          return `<div class='row item' data-name='${encodeURIComponent(p.name)}'>${c}<div><div class='title'>${p.name}</div><div class='sub'>${p.count==null?'Loading…':(p.count+' tracks')}</div></div></div>`;
+        }
+        return `<div class='item' role='button' tabindex='0' data-name='${encodeURIComponent(p.name)}'>${c}<div class='title'>${p.name}</div><div class='sub'>${p.count==null?'Loading…':(p.count+' tracks')}</div></div>`;
+      }).join('');
+      host.querySelectorAll('img.cover[data-alt]').forEach((img)=>{
+        img.onerror = () => {
+          const alt = String(img.getAttribute('data-alt') || '').trim();
+          const cur = String(img.getAttribute('src') || '').trim();
+          if (alt && cur !== alt) { img.setAttribute('src', alt); return; }
+          const ph = document.createElement('div');
+          ph.className = 'ph';
+          ph.innerHTML = '<span class="spin"></span>';
+          img.replaceWith(ph);
+        };
+      });
+      document.getElementById('meta').textContent = `${list.length} playlists`;
+    }
+
+    async function hydrateCovers(){
+      const headers = { ...(key?{'x-track-key':key}:{}) };
+      for (let i=0;i<playlists.length;i++) {
+        const p=playlists[i];
+        if (!p.name) continue;
+        try {
+          const r=await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(p.name)}`,{cache:'no-store',headers});
+          const j=await r.json().catch(()=>({}));
+          const tracks = (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
+          p.count = tracks.length;
+        } catch {}
+        if (i % 3 === 0) render();
+      }
+      render();
+    }
+
+    async function openPlaylist(name){
+      modalCtx.name = name;
+      document.getElementById('plTitle').textContent = name;
+      document.getElementById('plMeta').textContent = 'Loading tracks…';
+      document.getElementById('plTracks').innerHTML = '<li>Loading tracks…</li>';
+      const p = playlists.find(x=>x.name===name);
+      document.getElementById('plArt').src = p?.cover || `${base}/art/current.jpg`;
+      document.getElementById('plModal').classList.add('open');
+      const r=await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(name)}`,{cache:'no-store',headers:{...(key?{'x-track-key':key}:{})}});
+      const j=await r.json().catch(()=>({}));
+      modalCtx.tracks = (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
+      document.getElementById('plMeta').textContent = `${modalCtx.tracks.length} track(s)`;
+      document.getElementById('plTracks').innerHTML = modalCtx.tracks.map((t,i)=>`<li>${i+1}. ${String(t.title||t.file||'').trim()||'(track)'}</li>`).join('') || '<li>No tracks</li>';
+    }
+
+    async function loadPlaylist(mode='replace', play=true){
+      const r=await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify({playlist:modalCtx.name,mode,play})});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||!j?.ok) return;
+      document.getElementById('plModal').classList.remove('open');
+    }
+
+    async function playPlaylistShuffled(name){
+      await ensureKey();
+      const r=await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(name)}`,{cache:'no-store',headers:{...(key?{'x-track-key':key}:{})}});
+      const j=await r.json().catch(()=>({}));
+      const files=(Array.isArray(j?.tracks)?j.tracks:[]).map(t=>String(t?.file||'').trim()).filter(Boolean);
+      if(!files.length) return;
+
+      // Shuffle track order directly, then force MPD random off.
+      for (let i = files.length - 1; i > 0; i--) {
+        const k = Math.floor(Math.random() * (i + 1));
+        const tmp = files[i]; files[i] = files[k]; files[k] = tmp;
+      }
+
+      await fetch(`${base}/config/queue-wizard/apply`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},
+        body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})
+      }).catch(()=>null);
+
+      // Ensure repeat is off too (if currently on, toggle it off).
+      try {
+        const rr = await fetch(`${base}/config/diagnostics/playback`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},
+          body: JSON.stringify({ action:'random', setTo:'off' })
+        });
+        const rj = await rr.json().catch(()=>({}));
+        if (rj?.repeatOn) {
+          await fetch(`${base}/config/diagnostics/playback`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},
+            body: JSON.stringify({ action:'repeat' })
+          }).catch(()=>null);
+        }
+      } catch {}
+    }
+
+    let playlistMenuTarget = '';
+
+    document.getElementById('host').addEventListener('click',(ev)=>{
+      const m = ev.target.closest('button.coverMore[data-a="menu"][data-name]');
+      if (m) {
+        ev.stopPropagation();
+        const r = m.getBoundingClientRect();
+        playlistMenuTarget = decodeURIComponent(String(m.getAttribute('data-name')||''));
+        const pm = document.getElementById('playlistMenu');
+        pm.style.left = `${Math.max(8, Math.round(r.left))}px`;
+        pm.style.top = `${Math.round(r.bottom + 6)}px`;
+        pm.classList.add('open');
+        return;
+      }
+      const el=ev.target.closest('[data-name]'); if(!el) return; let n=''; try{n=decodeURIComponent(String(el.getAttribute('data-name')||''));}catch{n=String(el.getAttribute('data-name')||'')} if(n) openPlaylist(n);
+    });
+    document.getElementById('plCloseBtn').addEventListener('click',()=>document.getElementById('plModal').classList.remove('open'));
+    document.getElementById('plModal').addEventListener('click',(ev)=>{ if(ev.target.id==='plModal') document.getElementById('plModal').classList.remove('open'); });
+    document.getElementById('plPlayBtn').addEventListener('click',()=>loadPlaylist('replace',true));
+    document.getElementById('plAddBtn').addEventListener('click',()=>loadPlaylist('append',false));
+
+    const menu=document.getElementById('menu');
+    function syncMenuState(){
+      [...menu.querySelectorAll('button[data-view]')].forEach(b=>b.classList.toggle('active',b.getAttribute('data-view')===state.view));
+      [...menu.querySelectorAll('button[data-sort]')].forEach(b=>b.classList.toggle('active',b.getAttribute('data-sort')===state.sort));
+    }
+    function saveMenuState(){ try{ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }catch{} }
+    function loadMenuState(){
+      try {
+        const raw=localStorage.getItem(STATE_KEY); if(!raw) return;
+        const s=JSON.parse(raw||'{}');
+        const v=String(s?.view||''); const so=String(s?.sort||'');
+        if(['grid','list'].includes(v)) state.view=v;
+        if(['az','za'].includes(so)) state.sort=so;
+      } catch {}
+    }
+    document.getElementById('menuBtn').addEventListener('click',(ev)=>{ const r=ev.currentTarget.getBoundingClientRect(); menu.style.left=`${Math.max(8,Math.round(r.right-220))}px`; menu.style.top=`${Math.round(r.bottom+6)}px`; menu.classList.toggle('open'); });
+    menu.addEventListener('click',(ev)=>{
+      const vb=ev.target.closest('button[data-view]'); const sb=ev.target.closest('button[data-sort]');
+      if(vb) state.view=String(vb.getAttribute('data-view')||'grid');
+      if(sb) state.sort=String(sb.getAttribute('data-sort')||'az');
+      syncMenuState();
+      saveMenuState();
+      render();
+    });
+    document.getElementById('playlistMenu').addEventListener('click', async (ev)=>{
+      const b = ev.target.closest('button[data-pl-action]');
+      if (!b) return;
+      const act = String(b.getAttribute('data-pl-action')||'');
+      const name = String(playlistMenuTarget || '').trim();
+      document.getElementById('playlistMenu').classList.remove('open');
+      if (!name) return;
+      if (act === 'open') { await openPlaylist(name); return; }
+      modalCtx.name = name;
+      if (act === 'play') await loadPlaylist('replace', true);
+      else if (act === 'shuffle') await playPlaylistShuffled(name);
+    });
+
+    document.addEventListener('click',(ev)=>{
+      if(menu.classList.contains('open') && !(ev.target.closest('#menu')||ev.target.closest('#menuBtn'))) menu.classList.remove('open');
+      const pm=document.getElementById('playlistMenu');
+      if(pm.classList.contains('open') && !ev.target.closest('#playlistMenu') && !ev.target.closest('.coverMore')) pm.classList.remove('open');
+    });
+
+    document.getElementById('backBtn').addEventListener('click',()=>{ if(history.length>1) history.back(); else location.href='controller.html'; });
+
+    loadMenuState();
+    syncMenuState();
+    loadPlaylists();
+  </script>
+</body>
+</html>

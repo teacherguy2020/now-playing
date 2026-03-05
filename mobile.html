@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mobile Controller Builder</title>
+  <style>
+    :root{--bg:#0b1322;--card:#121d32;--line:#2a3a58;--text:#e7eefc;--muted:#9fb1d9;--accent:#7dd3fc}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.35 Inter,system-ui}
+    .wrap{padding:12px;display:grid;grid-template-columns:360px 1fr;gap:12px}
+    @media (max-width: 1200px){
+      .wrap{grid-template-columns:1fr}
+      .previewHost{justify-content:flex-start}
+    }
+    @media (max-width: 720px){
+      .screen{width:100%;max-width:390px;height:70vh}
+    }
+    .card{background:var(--card);border:0;border-radius:12px;padding:12px}
+    h2{margin:0 0 10px;font-size:16px}
+    label{display:block;margin:8px 0 4px;color:var(--muted)}
+    select,input{width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:#0b1528;color:var(--text)}
+    input[type="checkbox"]{width:auto !important;padding:0 !important;accent-color:#4aa8ff}
+    .row{display:flex;gap:8px;align-items:center}
+    .chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--text)}
+    .chk span{min-width:0;word-break:break-word}
+    .btn{padding:8px 10px;border:1px solid var(--line);background:#10203a;color:var(--text);border-radius:8px;cursor:pointer}
+    .dots{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+    .dot{width:22px;height:22px;border-radius:999px;border:2px solid rgba(255,255,255,.28);cursor:pointer;box-shadow:0 0 0 1px rgba(0,0,0,.25) inset;padding:0;display:inline-block;appearance:none;-webkit-appearance:none}
+    .dot[data-preset="ocean"]{background:#4aa8ff !important}
+    .dot[data-preset="violet"]{background:#a78bfa !important}
+    .dot[data-preset="mint"]{background:#34d399 !important}
+    .dot[data-preset="amber"]{background:#fbbf24 !important}
+    .dot.active{outline:2px solid #fff;outline-offset:2px}
+    .previewHost{display:flex;align-items:flex-start;justify-content:center}
+    .device{background:#0a0f17;border:1px solid #29364d;border-radius:28px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .screen{width:390px;height:844px;border-radius:22px;overflow:hidden;border:1px solid #1f2b40;background:#000}
+    iframe{width:100%;height:100%;border:0;display:block}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h2>Mobile Builder (v1)</h2>
+      <label>Device preset</label>
+      <select id="devicePreset"><option value="iphone17" selected>iPhone 17</option></select>
+      <label>Theme</label>
+      <select id="theme"><option value="auto">Auto</option><option value="dark">Dark</option><option value="light">Light</option></select>
+      <label>Layout</label>
+      <select id="layout"><option value="home-rail" selected>Home + Recent Rail</option><option value="compact">Compact</option></select>
+      <div class="chk"><input id="showRecent" type="checkbox" checked /><span>Show recently played rail</span></div>
+      <label>Color preset</label>
+      <div class="dots" id="paletteDots">
+        <button type="button" class="dot" data-preset="ocean" title="Ocean"></button>
+        <button type="button" class="dot" data-preset="violet" title="Violet"></button>
+        <button type="button" class="dot" data-preset="mint" title="Mint"></button>
+        <button type="button" class="dot" data-preset="amber" title="Amber"></button>
+      </div>
+      <label>Recent card count</label>
+      <input id="recentCount" type="number" min="6" max="30" value="18" />
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="applyBtn">Apply</button>
+        <button class="btn" id="resetBtn">Reset</button>
+      </div>
+      <p style="margin-top:10px;color:var(--muted)">Next: section ordering, gestures, module toggles.</p>
+    </div>
+    <div class="card previewHost">
+      <div class="device">
+        <div class="screen"><iframe id="controllerPreview" src="controller.html?preview=1"></iframe></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const $ = (id)=>document.getElementById(id);
+    const KEY='nowplaying.mobile.profile.v1';
+    const defaults={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,colorPreset:'ocean',recentCount:18};
+    const PRESET_COLORS={ocean:'#4aa8ff',violet:'#a78bfa',mint:'#34d399',amber:'#fbbf24'};
+    function read(){try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...defaults}}}
+    function write(p){localStorage.setItem(KEY,JSON.stringify(p));}
+    function paintPaletteDots(){}
+    function markPalette(preset){ document.querySelectorAll('#paletteDots .dot').forEach(b=>b.classList.toggle('active', b.getAttribute('data-preset')===preset)); }
+    function ui(p){$('devicePreset').value=p.devicePreset;$('theme').value=p.theme;$('layout').value=p.layout;$('showRecent').checked=!!p.showRecent;$('recentCount').value=String(p.recentCount||18); markPalette(String(p.colorPreset||'ocean'));}
+    function collect(){const active=document.querySelector('#paletteDots .dot.active');return{devicePreset:$('devicePreset').value,theme:$('theme').value,layout:$('layout').value,showRecent:$('showRecent').checked,colorPreset:String(active?.getAttribute('data-preset')||'ocean'),recentCount:Number($('recentCount').value||18)}}
+    function apply(){const p=collect();write(p);const q=new URLSearchParams({preview:'1',profile:btoa(unescape(encodeURIComponent(JSON.stringify(p))))});$('controllerPreview').src='controller.html?'+q.toString();}
+    $('applyBtn').addEventListener('click',apply);
+    $('resetBtn').addEventListener('click',()=>{write({...defaults});ui(defaults);apply();});
+    document.querySelectorAll('#paletteDots .dot').forEach((b)=>{
+      b.addEventListener('click', ()=>{ markPalette(String(b.getAttribute('data-preset')||'ocean')); apply(); });
+    });
+    paintPaletteDots();
+    const p=read();ui(p);apply();
+  </script>
+</body>
+</html>
