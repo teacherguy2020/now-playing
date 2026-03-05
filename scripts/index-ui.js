@@ -46,6 +46,10 @@ let favBound = false;
 let artAppleLinkBound = false;
 
 function bindAlbumArtAppleLinkOnce() {
+  try {
+    const p = String(location.pathname || '').toLowerCase();
+    if (window.NP_DISABLE_ART_SWITCH || p.endsWith('/controller-now-playing.html') || p.endsWith('controller-now-playing.html')) return;
+  } catch {}
   if (artAppleLinkBound) return;
   artAppleLinkBound = true;
 
@@ -78,6 +82,7 @@ function bindAlbumArtAppleLinkOnce() {
   };
 
   document.addEventListener('click', (ev) => {
+    if (ev.target?.closest?.('#art-info-hotspot, #fav-heart')) return;
     const hit = ev.target?.closest?.('#album-art-wrapper, #album-art, #album-art-video, #album-art-bg');
     if (!hit) return;
     ev.preventDefault();
@@ -86,6 +91,7 @@ function bindAlbumArtAppleLinkOnce() {
   }, { capture: true });
 
   document.addEventListener('touchend', (ev) => {
+    if (ev.target?.closest?.('#art-info-hotspot, #fav-heart')) return;
     const hit = ev.target?.closest?.('#album-art-wrapper, #album-art, #album-art-video, #album-art-bg');
     if (!hit) return;
     try { ev.preventDefault(); } catch {}

@@ -4,8 +4,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="manifest" href="/manifest-controller.webmanifest" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+  <link rel="shortcut icon" href="/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Controller Now Playing</title>
-  <style>html,body{background:#000;color:#fff;}</style>
+  <style>
+    html,body{background:#0b1526;color:#fff;min-height:100dvh;overflow:auto;}
+    #content{min-height:100dvh !important;}
+    /* Background coverage */
+    #background-a,#background-b{
+      position:fixed !important;
+      inset:0 !important;
+      width:100vw !important;
+      height:100dvh !important;
+      background-size:cover !important;
+      background-position:center center !important;
+      background-repeat:no-repeat !important;
+      z-index:0 !important;
+      pointer-events:none !important;
+    }
+    #content{position:relative;z-index:1}
+  </style>
   <script>
     // Fallbacks for embedded preview mode.
     window.addEventListener('DOMContentLoaded', () => {
@@ -53,7 +79,20 @@
   <style>
     #cnpBack{position:fixed;right:10px;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:9999;border:1px solid rgba(255,255,255,.28);background:rgba(8,14,24,.66);color:#e9f1ff;border-radius:999px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:20px;text-decoration:none;backdrop-filter:blur(8px)}
     /* Ensure mobile next-up lane is active on controller surface */
-    body.phone-ui #next-up{display:flex !important;opacity:1 !important;visibility:visible !important}
+    /* Deterministic bottom lane: next-up at bottom, controls above */
+    body.phone-ui #next-up{
+      display:flex !important;
+      opacity:1 !important;
+      visibility:visible !important;
+      left: var(--padSide) !important;
+      right: var(--padSide) !important;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 46px) !important;
+      z-index: 5600 !important;
+    }
+    body.phone-ui #phone-controls{
+      bottom: calc(env(safe-area-inset-bottom, 0px) + var(--nextUpH) + 50px) !important;
+      z-index: 5590 !important;
+    }
     /* Keep album art clear of top-right close button */
     body.phone-ui #album-art-wrapper{margin-top:22px !important}
     /* Balance side padding so visual center is actual center */
@@ -80,8 +119,42 @@
 
 <body class="booting">
   <a id="cnpBack" href="controller.html" aria-label="Back">›</a>
-  <div id="background-a"></div>
+    <div id="background-a"></div>
   <div id="background-b"></div>
+  <script>
+    // Prime background immediately so top/bottom browser UI areas are covered at first paint.
+    (function(){
+      try {
+        const host = location.hostname || '10.0.0.233';
+        const proto = location.protocol || 'http:';
+        const url = `${proto}//${host}:3101/art/current_bg_640_blur.jpg`;
+        const a = document.getElementById('background-a');
+        const b = document.getElementById('background-b');
+        try {
+          const root = document.documentElement;
+          if (root) {
+            root.style.backgroundImage = `url(${url})`;
+            root.style.backgroundSize = 'cover';
+            root.style.backgroundPosition = 'center center';
+            root.style.backgroundRepeat = 'no-repeat';
+            root.style.backgroundAttachment = 'fixed';
+          }
+          const body = document.body;
+          if (body) {
+            body.style.backgroundImage = `url(${url})`;
+            body.style.backgroundSize = 'cover';
+            body.style.backgroundPosition = 'center center';
+            body.style.backgroundRepeat = 'no-repeat';
+            body.style.backgroundAttachment = 'fixed';
+          }
+        } catch {}
+        if (a && !a.style.backgroundImage) a.style.backgroundImage = `url(${url})`;
+        if (a) a.style.opacity = '1';
+        if (b) b.style.opacity = '0';
+
+      } catch {}
+    })();
+  </script>
 
   <div id="content">
     <!-- Album Art -->
@@ -233,6 +306,7 @@
   </div>
 
     <script>
+      window.NP_DISABLE_ART_SWITCH = true;
       // Controller now-playing should always use phone portrait layout.
       try {
         document.body.classList.add('phone-ui','cnp-hidden');
@@ -257,6 +331,43 @@
     <script src="scripts/index.js"></script>
 
 
-  <script src="scripts/index-ui.js?v=20260228-hero-album-open1"></script>
+  <script src="scripts/index-ui.js?v=20260305-artswitch-off-controller1"></script>
+
+    <script>
+    // Pull-to-refresh (controller pages)
+    (function enablePullToRefresh(){
+      if (window.__npPullRefreshBound) return;
+      window.__npPullRefreshBound = true;
+      let startY = 0;
+      let tracking = false;
+      let armed = false;
+      const THRESH = 80;
+
+      const topScrollable = () => {
+        const el = document.scrollingElement || document.documentElement || document.body;
+        return (el?.scrollTop || window.pageYOffset || 0) <= 0;
+      };
+
+      window.addEventListener('touchstart', (e) => {
+        if (!e.touches || e.touches.length !== 1) return;
+        if (!topScrollable()) return;
+        startY = e.touches[0].clientY;
+        tracking = true;
+        armed = false;
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (!tracking || !e.touches || e.touches.length !== 1) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy > THRESH && topScrollable()) armed = true;
+      }, { passive: true });
+
+      window.addEventListener('touchend', () => {
+        if (tracking && armed) location.reload();
+        tracking = false;
+        armed = false;
+      }, { passive: true });
+    })();
+</script>
 </body>
 </html>

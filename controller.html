@@ -3,6 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/manifest-controller.webmanifest" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+  <link rel="shortcut icon" href="/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <title>Controller</title>
   <style>
     :root{--bg:#070b13;--surface:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--accent:#4aa8ff}
@@ -177,17 +187,26 @@
     }
     function reqHeaders(json=true){ return Object.assign({}, json?{'Content-Type':'application/json'}:{}, runtimeTrackKey?{'x-track-key':runtimeTrackKey}:{}); }
 
-    fetch(`${base}/now-playing`,{cache:'no-store'}).then(r=>r.json()).then(j=>{
-      const art = String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`;
-      const line1 = `${j?.artist||''} • ${j?.title||''}`.trim() || 'Now Playing';
-      const line2 = String(j?.album||'');
-      document.getElementById('art').src = art;
-      document.getElementById('line1').textContent = line1;
-      document.getElementById('line2').textContent = line2;
-      const st = String(j?.state || '').toLowerCase();
-      const eq = document.getElementById('eqOverlay');
-      if (eq) eq.style.display = (st === 'play' || st === 'playing') ? 'inline-flex' : 'none';
-    }).catch(()=>{});
+    let npSig='';
+    async function refreshNowPlayingCard(){
+      try {
+        const r = await fetch(`${base}/now-playing`,{cache:'no-store'});
+        const j = await r.json().catch(()=>({}));
+        const art = String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`;
+        const line1 = `${j?.artist||''} • ${j?.title||''}`.trim() || 'Now Playing';
+        const line2 = String(j?.album||'');
+        const st = String(j?.state || '').toLowerCase();
+        const sig = `${String(j?.file||'')}|${line1}|${line2}|${st}|${art}`;
+        if (sig !== npSig) {
+          npSig = sig;
+          document.getElementById('art').src = art;
+          document.getElementById('line1').textContent = line1;
+          document.getElementById('line2').textContent = line2;
+        }
+        const eq = document.getElementById('eqOverlay');
+        if (eq) eq.style.display = (st === 'play' || st === 'playing') ? 'inline-flex' : 'none';
+      } catch {}
+    }
 
     const rail=document.getElementById('recentRail');
     const n=Math.max(6,Math.min(30,Number(profile.recentCount||18)));
@@ -421,6 +440,43 @@
 
     loadHomeQuickIndex();
     loadRecentlyAdded();
-  </script>
+    refreshNowPlayingCard();
+    setInterval(refreshNowPlayingCard, 3500);
+  
+    // Pull-to-refresh (controller pages)
+    (function enablePullToRefresh(){
+      if (window.__npPullRefreshBound) return;
+      window.__npPullRefreshBound = true;
+      let startY = 0;
+      let tracking = false;
+      let armed = false;
+      const THRESH = 80;
+
+      const topScrollable = () => {
+        const el = document.scrollingElement || document.documentElement || document.body;
+        return (el?.scrollTop || window.pageYOffset || 0) <= 0;
+      };
+
+      window.addEventListener('touchstart', (e) => {
+        if (!e.touches || e.touches.length !== 1) return;
+        if (!topScrollable()) return;
+        startY = e.touches[0].clientY;
+        tracking = true;
+        armed = false;
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (!tracking || !e.touches || e.touches.length !== 1) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy > THRESH && topScrollable()) armed = true;
+      }, { passive: true });
+
+      window.addEventListener('touchend', () => {
+        if (tracking && armed) location.reload();
+        tracking = false;
+        armed = false;
+      }, { passive: true });
+    })();
+</script>
 </body>
 </html>
