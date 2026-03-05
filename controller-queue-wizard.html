@@ -72,6 +72,8 @@
       <label><input id="keepNowPlaying" type="checkbox" /> Keep now playing</label>
       <label><input id="fastStart" type="checkbox" checked /> Fast start</label>
       <label><input id="forceRandomOff" type="checkbox" /> Force random off</label>
+      <label><input id="excludeGenreEnabled" type="checkbox" checked /> Exclude genre</label>
+      <input id="excludeGenre" class="inp half" value="Christmas" placeholder="Genre to exclude" />
     </div>
     <div class="row" style="margin-top:10px">
       <button id="previewBtn" class="btn">Preview</button>
@@ -121,6 +123,8 @@
     const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
     const STATE_KEY='np.controller.qw.v1';
     let key='';
+    let ratingsEnabled=true;
+    const DEFAULT_MIN_RATING_WHEN_ENABLED = 2;
     let previewTracks=[];
     let quickIndex=[];
     let previewTimer=null;
@@ -137,7 +141,33 @@
       saveState();
     }
 
-    async function ensureKey(){ if(key) return key; const r=await fetch(`${base}/config/runtime`,{cache:'no-store'}); const j=await r.json().catch(()=>({})); key=String(j?.config?.trackKey||'').trim(); return key; }
+    function normalizeMinRating(n){
+      const clamped = Math.max(0, Math.min(10, Number(n||0) || 0));
+      return ratingsEnabled ? Math.max(DEFAULT_MIN_RATING_WHEN_ENABLED, clamped) : 0;
+    }
+
+    function applyRatingsUiDefaults(){
+      const el = $('minRating');
+      if (!el) return;
+      if (ratingsEnabled) {
+        const v = normalizeMinRating(el.value);
+        el.value = String(v);
+        el.placeholder = `Min rating (default ${DEFAULT_MIN_RATING_WHEN_ENABLED})`;
+      } else {
+        el.value = '0';
+        el.placeholder = 'Min rating (ratings disabled)';
+      }
+    }
+
+    async function ensureKey(){
+      if(key) return key;
+      const r=await fetch(`${base}/config/runtime`,{cache:'no-store'});
+      const j=await r.json().catch(()=>({}));
+      key=String(j?.config?.trackKey||'').trim();
+      ratingsEnabled = Boolean(j?.config?.features?.ratings ?? true);
+      applyRatingsUiDefaults();
+      return key;
+    }
     function headers(json=true){ return Object.assign({}, json?{'Content-Type':'application/json'}:{}, key?{'x-track-key':key}:{}); }
 
     function stateFromUi(){
@@ -146,14 +176,19 @@
         artists: splitCsv($('artists').value),
         albums: splitCsv($('albums').value),
         playlists: splitCsv($('playlists').value),
-        excludeGenres: splitCsv($('excludeGenres').value),
+        excludeGenres: ($('excludeGenreEnabled')?.checked === false)
+          ? []
+          : (splitCsv($('excludeGenres').value).length
+              ? splitCsv($('excludeGenres').value)
+              : splitCsv($('excludeGenre').value)),
         mode: String($('mode').value||'replace'),
         maxTracks: Math.max(1, Math.min(5000, Number($('maxTracks').value||100))),
-        minRating: Math.max(0, Math.min(10, Number($('minRating').value||0))),
+        minRating: normalizeMinRating($('minRating').value||0),
         shuffle: !!$('shuffle').checked,
         keepNowPlaying: !!$('keepNowPlaying').checked,
         fastStart: !!$('fastStart').checked,
         forceRandomOff: !!$('forceRandomOff').checked,
+        excludeGenreEnabled: !!$('excludeGenreEnabled')?.checked,
       };
     }
 
@@ -163,10 +198,13 @@
       $('artists').value = Array.isArray(s.artists)?s.artists.join(', '):'';
       $('albums').value = Array.isArray(s.albums)?s.albums.join(', '):'';
       $('playlists').value = Array.isArray(s.playlists)?s.playlists.join(', '):'';
-      $('excludeGenres').value = Array.isArray(s.excludeGenres)?s.excludeGenres.join(', '):'';
+      const ex = Array.isArray(s.excludeGenres)?s.excludeGenres:[];
+      $('excludeGenres').value = ex.join(', ');
+      $('excludeGenre').value = ex.length ? String(ex[0]||'') : (String($('excludeGenre').value||'').trim() || 'Christmas');
+      $('excludeGenreEnabled').checked = ex.length ? true : (s.excludeGenreEnabled !== false);
       $('mode').value = ['replace','append','crop'].includes(String(s.mode||'')) ? s.mode : 'replace';
       $('maxTracks').value = Number(s.maxTracks||100);
-      $('minRating').value = Number(s.minRating||0);
+      $('minRating').value = String(normalizeMinRating(Number(s.minRating||0)));
       $('shuffle').checked = !!s.shuffle;
       $('keepNowPlaying').checked = !!s.keepNowPlaying;
       $('fastStart').checked = s.fastStart !== false;
@@ -314,7 +352,7 @@
     }
 
     function resetAll(){
-      applyState({mode:'replace',maxTracks:100,minRating:0,shuffle:false,keepNowPlaying:false,fastStart:true,forceRandomOff:false,genres:[],artists:[],albums:[],playlists:[],excludeGenres:[]});
+      applyState({mode:'replace',maxTracks:100,minRating:normalizeMinRating(0),shuffle:false,keepNowPlaying:false,fastStart:true,forceRandomOff:false,genres:[],artists:[],albums:[],playlists:[],excludeGenres:['Christmas'],excludeGenreEnabled:true});
       previewTracks=[]; renderPreview([]); $('previewMeta').textContent='No preview yet.';
       try{ localStorage.removeItem(STATE_KEY); }catch{}
       $('meta').textContent='Reset.';
@@ -325,11 +363,13 @@
     $('resetBtn').addEventListener('click', resetAll);
     $('clearFiltersBtn').addEventListener('click', ()=>{
       ['genres','artists','albums','playlists','excludeGenres'].forEach((id)=>{ const el=$(id); if(el) el.value=''; });
+      if ($('excludeGenre')) $('excludeGenre').value = 'Christmas';
+      if ($('excludeGenreEnabled')) $('excludeGenreEnabled').checked = true;
       saveState();
       schedulePreview();
-      $('meta').textContent='Filters cleared.';
+      $('meta').textContent='Filters cleared (Christmas exclusion kept).';
     });
-    ['genres','artists','albums','playlists','excludeGenres','mode','maxTracks','minRating','shuffle','keepNowPlaying','fastStart','forceRandomOff'].forEach((id)=>{
+    ['genres','artists','albums','playlists','excludeGenres','excludeGenre','excludeGenreEnabled','mode','maxTracks','minRating','shuffle','keepNowPlaying','fastStart','forceRandomOff'].forEach((id)=>{
       const el=$(id); if(!el) return;
       const evt = (el.tagName==='INPUT' && el.type==='text') ? 'input' : 'change';
       el.addEventListener(evt, ()=>{ saveState(); schedulePreview(); });
@@ -356,10 +396,14 @@
 
     $('backBtn').addEventListener('click',()=>{ if(history.length>1) history.back(); else location.href='controller.html'; });
 
-    loadState();
-    renderPreview([]);
-    loadQuickIndex();
-    schedulePreview();
+    (async ()=>{
+      await ensureKey();
+      loadState();
+      applyRatingsUiDefaults();
+      renderPreview([]);
+      await loadQuickIndex();
+      schedulePreview();
+    })();
   
     // Pull-to-refresh (controller pages)
     (function enablePullToRefresh(){
