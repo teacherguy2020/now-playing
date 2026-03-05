@@ -93,8 +93,14 @@
       bottom: calc(env(safe-area-inset-bottom, 0px) + var(--nextUpH) + 50px) !important;
       z-index: 5590 !important;
     }
-    /* Keep album art clear of top-right close button */
+    /* Keep album art clear of top-right close button (Safari tab baseline) */
     body.phone-ui #album-art-wrapper{margin-top:22px !important}
+    /* In iOS standalone web-app mode, account for status-bar safe area */
+    @media (display-mode: standalone) {
+      body.phone-ui #album-art-wrapper{
+        margin-top: calc(env(safe-area-inset-top, 0px) + 22px) !important;
+      }
+    }
     /* Balance side padding so visual center is actual center */
     body.phone-ui #content{
       padding-left: var(--padSide) !important;
