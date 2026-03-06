@@ -138,6 +138,8 @@
       display: revert !important;
     }
 
+    body.cnp-exit #album-art-bg{opacity:0 !important;background-image:none !important}
+
     /* Album modal (same interaction model as controller home) */
     .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:9000;align-items:center;justify-content:center}
     .albumModal.open{display:flex}
@@ -443,24 +445,19 @@
           const href = back.getAttribute('href') || 'controller.html';
 
           try {
-            const hrArt = document.getElementById('hrArt');
-            const hrL1 = document.getElementById('hrL1');
-            const hrL2 = document.getElementById('hrL2');
-            const art = document.getElementById('album-art');
-            const artist = String(document.getElementById('artist-name')?.textContent || '').trim();
-            const title = String(document.getElementById('track-title')?.textContent || '').trim();
-            const album = String(document.getElementById('album-text')?.textContent || '').trim();
-            if (hrArt && art) hrArt.src = art.currentSrc || art.src || '';
-            if (hrL1) hrL1.textContent = `${artist}${artist&&title?' • ':''}${title}`.trim();
-            if (hrL2) hrL2.textContent = album;
+            document.getElementById('npQueueModal')?.classList.remove('open');
+            document.getElementById('npAlbumModal')?.classList.remove('open');
+            const artBg = document.getElementById('album-art-bg');
+            if (artBg) {
+              artBg.style.transition = 'opacity .12s linear';
+              artBg.style.opacity = '0';
+              artBg.style.backgroundImage = 'none';
+            }
           } catch {}
 
           document.body.classList.remove('cnp-ready');
           document.body.classList.add('cnp-exit');
-          setTimeout(() => {
-            if (history.length > 1) history.back();
-            else location.href = href;
-          }, 190);
+          setTimeout(() => { location.href = href; }, 170);
         });
       } catch {}
     </script>
