@@ -21,7 +21,8 @@
     .card{background:transparent;border:0;padding:8px 0;margin-bottom:8px}
     .title{font-weight:750;font-size:18px;margin-bottom:10px}
 
-    .npTap{display:block;text-decoration:none;color:inherit}
+    .npTap{display:block;text-decoration:none;color:inherit;-webkit-touch-callout:none;touch-action:manipulation;-webkit-user-select:none;user-select:none;transition:background-color .16s ease, box-shadow .16s ease, transform .12s ease}
+    .npTap.togglePulse{background:rgba(69,178,111,.16);box-shadow:inset 0 0 0 2px rgba(69,178,111,.95);transform:scale(.995)}
     .np{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center}
     .artWrap{position:relative;width:64px;height:64px}
     .np img{width:64px;height:64px;border-radius:10px;object-fit:cover;display:block}
@@ -119,7 +120,7 @@
   </style>
 </head>
 <body>
-  <a class="npTap" href="controller-now-playing.html" title="Open full player">
+  <a class="npTap" data-href="controller-now-playing.html" title="Open full player">
     <div class="card">
       <div class="title">Now Playing on moOde</div>
       <div class="np">
@@ -786,10 +787,75 @@
     const hqs=document.getElementById('homeQuickSearch');
     const hqr=document.getElementById('homeQuickResults');
     hqs.addEventListener('input',(ev)=>renderHomeQuickResults(ev.target.value||''));
-    const npTapEl = document.querySelector('.npTap[href]');
+    const npTapEl = document.querySelector('.npTap[data-href]');
     if (npTapEl) {
+      const NP_LONG_MS = 520;
+      const NP_MOVE_SLOP = 12;
+      let npPressTimer = 0;
+      let npStartX = 0;
+      let npStartY = 0;
+      let npLongFired = false;
+      let npSuppressClickUntil = 0;
+
+      const clearNpPress = ()=>{ try { clearTimeout(npPressTimer); } catch {} npPressTimer = 0; };
+      const showTogglePulse = ()=>{
+        npTapEl.classList.add('togglePulse');
+        setTimeout(()=>{ try { npTapEl.classList.remove('togglePulse'); } catch {} }, 380);
+      };
+      const startNpPress = (x,y)=>{
+        npLongFired = false;
+        npStartX = Number(x||0);
+        npStartY = Number(y||0);
+        clearNpPress();
+        npPressTimer = setTimeout(async ()=>{
+          npLongFired = true;
+          npSuppressClickUntil = Date.now() + 900;
+          showTogglePulse();
+          try { await sendPlayback('toggle'); } catch {}
+        }, NP_LONG_MS);
+      };
+
+      npTapEl.addEventListener('touchstart', (ev)=>{
+        const t = ev.touches && ev.touches[0];
+        if (!t) return;
+        startNpPress(t.clientX, t.clientY);
+      }, { passive:true });
+      npTapEl.addEventListener('touchmove', (ev)=>{
+        const t = ev.touches && ev.touches[0];
+        if (!t) return;
+        const dx = Math.abs(t.clientX - npStartX);
+        const dy = Math.abs(t.clientY - npStartY);
+        if (dx > NP_MOVE_SLOP || dy > NP_MOVE_SLOP) clearNpPress();
+      }, { passive:true });
+      npTapEl.addEventListener('touchend', (ev)=>{
+        if (npLongFired || Date.now() < npSuppressClickUntil) {
+          try { ev.preventDefault(); ev.stopPropagation(); } catch {}
+        }
+        clearNpPress();
+      }, { passive:false });
+      npTapEl.addEventListener('touchcancel', ()=>{ clearNpPress(); }, { passive:true });
+
+      npTapEl.addEventListener('mousedown', (ev)=>{ startNpPress(ev.clientX, ev.clientY); });
+      npTapEl.addEventListener('mousemove', (ev)=>{
+        if (!npPressTimer) return;
+        const dx = Math.abs(ev.clientX - npStartX);
+        const dy = Math.abs(ev.clientY - npStartY);
+        if (dx > NP_MOVE_SLOP || dy > NP_MOVE_SLOP) clearNpPress();
+      });
+      npTapEl.addEventListener('mouseup', ()=>{ clearNpPress(); });
+      npTapEl.addEventListener('mouseleave', ()=>{ clearNpPress(); });
+
+      npTapEl.addEventListener('contextmenu', (ev)=>{ ev.preventDefault(); });
+      npTapEl.addEventListener('dragstart', (ev)=>{ ev.preventDefault(); });
+
       npTapEl.addEventListener('click', (ev)=>{
-        const href = String(npTapEl.getAttribute('href') || '').trim();
+        if (npLongFired || Date.now() < npSuppressClickUntil) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          npLongFired = false;
+          return;
+        }
+        const href = String(npTapEl.getAttribute('data-href') || '').trim();
         if (!href) return;
         ev.preventDefault();
         navigateWithSlide(href);
