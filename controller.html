@@ -65,13 +65,15 @@
     .row .lbl{font-size:22px;line-height:1.12;font-weight:560;letter-spacing:-0.01em}
     .row .chev{font-size:22px;line-height:1;color:#54627d;text-align:right}
 
-    .recentWrap{position:relative}
-    .recentTitle{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:760;letter-spacing:-0.01em;margin:6px 0 10px;padding-left:28px}
-    .railModeBtn{position:absolute;left:0;top:-2px;width:18px;height:44px;border:0;background:transparent;color:#dfeaff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
-    .railModeDots{display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center}
-    .railModeDots b{display:block;width:5px;height:5px;border-radius:999px;background:rgba(206,220,245,.35);transition:background-color .15s ease, transform .15s ease}
+    .recentWrap{position:relative;overflow:hidden}
+    .recentTitle{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:760;letter-spacing:-0.01em;margin:6px 0 10px;padding-left:28px;cursor:pointer}
+    .railModeBtn{position:absolute;left:0;top:-8px;width:16px;height:36px;border:0;background:transparent;color:#dfeaff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+    .railModeDots{display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center}
+    .railModeDots b{display:block;width:4px;height:4px;border-radius:999px;background:rgba(206,220,245,.35);transition:background-color .15s ease, transform .15s ease}
     .railModeDots b.on{background:#f2f7ff;transform:scale(1.08)}
-    .rail{display:flex;gap:10px;overflow:auto;padding-bottom:4px;padding-left:28px;touch-action:pan-x;overscroll-behavior:contain}
+    .rail{display:flex;gap:10px;overflow:auto;padding-bottom:4px;padding-left:28px;touch-action:pan-x;overscroll-behavior:contain;position:relative;z-index:2;transition:transform .08s linear}
+    .peekRail{display:none;position:absolute;left:0;right:0;bottom:0;z-index:1;opacity:.55;filter:saturate(.85)}
+    .recentWrap.peeking .peekRail{display:flex}
     .thumb{min-width:128px;width:128px}
     .thumbWrap{position:relative}
     .thumb img,.ph{width:128px;height:128px;border-radius:12px;object-fit:cover;background:#0a1222}
@@ -155,6 +157,7 @@
     </button>
     <div class="recentTitle" id="recentTitle">Recently Added <span id="railTitleSpin" class="titleSpin" hidden></span></div>
     <div class="rail" id="recentRail"></div>
+    <div class="rail peekRail" id="recentPeekRail"></div>
   </div>
 
   <div class="miniMenu" id="recentAlbumMenu">
@@ -167,13 +170,13 @@
     <div class="albumCard" role="dialog" aria-modal="true" aria-label="Album details">
       <button id="recentAlbumCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
       <div class="albumHead"><img id="recentAlbumArt" src="" alt="" /><div><div class="albumTitle" id="recentAlbumTitle">Album</div><div class="albumMeta" id="recentAlbumMeta"></div></div></div>
-      <ul class="albumTracks" id="recentAlbumTracks"></ul>
       <div class="albumBtns">
         <button id="recentAlbumAppendBtn" type="button">Append album</button>
         <button id="recentAlbumCropBtn" type="button">Add album (crop)</button>
         <button id="recentAlbumReplaceBtn" type="button">Replace with album</button>
         
       </div>
+      <ul class="albumTracks" id="recentAlbumTracks"></ul>
     </div>
   </div>
 
@@ -229,15 +232,29 @@
       } catch {}
     }
 
-    function cycleRecentSource(step=1){
+    function nextRecentSource(step=1){
       const order = ['albums','podcasts','playlists','radio'];
       const cur = String(profile?.recentSource || 'albums').toLowerCase();
       const idx = Math.max(0, order.indexOf(cur));
-      const next = order[(idx + (step>=0?1:-1) + order.length) % order.length];
+      return order[(idx + (step>=0?1:-1) + order.length) % order.length];
+    }
+    function cycleRecentSource(step=1){
+      const next = nextRecentSource(step);
       profile = { ...(profile||{}), recentSource: next, showRecent: true };
       applyProfileUi();
       loadRecentlyAdded().catch(()=>null);
       persistControllerProfile().catch(()=>null);
+    }
+    function renderPeekRow(step=1){
+      if (!peekRail) return;
+      const target = nextRecentSource(step);
+      const label = ({albums:'Albums',podcasts:'Podcasts',playlists:'Playlists',radio:'Radio'})[target] || 'Next';
+      peekRail.innerHTML = '';
+      for (let i=0;i<Math.min(recentLimit(),6);i++) {
+        const d=document.createElement('div'); d.className='thumb';
+        d.innerHTML = `<div class='thumbWrap'><div class='ph'></div></div><div class='cap'>${label}</div>`;
+        peekRail.appendChild(d);
+      }
     }
     applyProfileUi();
 
@@ -349,6 +366,9 @@
     }
 
     const rail=document.getElementById('recentRail');
+    const peekRail=document.getElementById('recentPeekRail');
+    const recentWrap=document.querySelector('.recentWrap');
+    const recentTitleEl=document.getElementById('recentTitle');
     const railModeBtn=document.getElementById('railModeBtn');
     const recentLimit=()=>Math.max(6,Math.min(30,Number(profile.recentCount||18)));
     let recentItems=[];
@@ -795,18 +815,41 @@
     document.addEventListener('click',(ev)=>{ if(!ev.target.closest('.quickWrap')){ hqr.classList.remove('open'); } });
 
     railModeBtn?.addEventListener('click', ()=>cycleRecentSource(1));
+    recentTitleEl?.addEventListener('click', ()=>cycleRecentSource(1));
 
     let __railTouchStartX = 0;
     let __railTouchStartY = 0;
+    let __railPeekStep = 1;
+    function clearRailPeek(){
+      rail && (rail.style.transform = 'translateY(0px)');
+      if (recentWrap) recentWrap.classList.remove('peeking');
+    }
     rail?.addEventListener('touchstart', (ev)=>{
       if (!ev.touches || ev.touches.length !== 1) return;
       __railTouchStartX = ev.touches[0].clientX;
       __railTouchStartY = ev.touches[0].clientY;
+      __railPeekStep = 1;
       document.body.classList.add('rail-touch-lock');
+      clearRailPeek();
+    }, { passive:true });
+    rail?.addEventListener('touchmove', (ev)=>{
+      const t = ev.touches && ev.touches[0];
+      if (!t) return;
+      const dx = t.clientX - __railTouchStartX;
+      const dy = t.clientY - __railTouchStartY;
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * 1.1) {
+        __railPeekStep = dy < 0 ? 1 : -1;
+        renderPeekRow(__railPeekStep);
+        if (recentWrap) recentWrap.classList.add('peeking');
+        const y = Math.max(-28, Math.min(28, dy * 0.35));
+        rail.style.transform = `translateY(${y}px)`;
+      } else {
+        clearRailPeek();
+      }
     }, { passive:true });
     rail?.addEventListener('touchend', (ev)=>{
       const t = ev.changedTouches && ev.changedTouches[0];
-      if (!t) { document.body.classList.remove('rail-touch-lock'); return; }
+      if (!t) { document.body.classList.remove('rail-touch-lock'); clearRailPeek(); return; }
       const dx = t.clientX - __railTouchStartX;
       const dy = t.clientY - __railTouchStartY;
       // Swipe up: next source. Swipe down: previous source.
@@ -814,8 +857,9 @@
         cycleRecentSource(dy < 0 ? 1 : -1);
       }
       document.body.classList.remove('rail-touch-lock');
+      clearRailPeek();
     }, { passive:true });
-    rail?.addEventListener('touchcancel', ()=>{ document.body.classList.remove('rail-touch-lock'); }, { passive:true });
+    rail?.addEventListener('touchcancel', ()=>{ document.body.classList.remove('rail-touch-lock'); clearRailPeek(); }, { passive:true });
 
     rail?.addEventListener('click', async (ev)=>{
       const more = ev.target.closest('button[data-ra-more="1"][data-ra-idx]');
