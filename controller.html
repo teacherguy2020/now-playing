@@ -65,11 +65,20 @@
     .row .lbl{font-size:22px;line-height:1.12;font-weight:560;letter-spacing:-0.01em}
     .row .chev{font-size:22px;line-height:1;color:#54627d;text-align:right}
 
-    .recentTitle{font-size:22px;font-weight:760;letter-spacing:-0.01em;margin:6px 0 10px}
-    .rail{display:flex;gap:10px;overflow:auto;padding-bottom:4px}
+    .recentWrap{position:relative}
+    .recentTitle{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:760;letter-spacing:-0.01em;margin:6px 0 10px;padding-left:28px}
+    .railModeBtn{position:absolute;left:0;top:-2px;width:18px;height:44px;border:0;background:transparent;color:#dfeaff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+    .railModeDots{display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center}
+    .railModeDots b{display:block;width:5px;height:5px;border-radius:999px;background:rgba(206,220,245,.35);transition:background-color .15s ease, transform .15s ease}
+    .railModeDots b.on{background:#f2f7ff;transform:scale(1.08)}
+    .rail{display:flex;gap:10px;overflow:auto;padding-bottom:4px;padding-left:28px;touch-action:pan-x;overscroll-behavior:contain}
     .thumb{min-width:128px;width:128px}
     .thumbWrap{position:relative}
     .thumb img,.ph{width:128px;height:128px;border-radius:12px;object-fit:cover;background:#0a1222}
+    .ph{display:flex;align-items:center;justify-content:center}
+    .miniSpin{width:16px;height:16px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:npSpin .8s linear infinite}
+    .titleSpin{width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:npSpin .8s linear infinite}
+    .titleSpin[hidden]{display:none !important}
     .thumb .cap{font-size:14px;color:#d9e5ff;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .thumbMore{position:absolute;left:6px;top:6px;width:22px;height:22px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:11px;display:flex;align-items:center;justify-content:center;z-index:2}
 
@@ -97,6 +106,7 @@
       animation:navForwardOut .18s ease forwards;
       will-change: transform, opacity;
     }
+    body.rail-touch-lock{overflow:hidden}
     @keyframes navForwardOut{
       from{transform:translateX(0);opacity:1}
       to{transform:translateX(-24px);opacity:.38}
@@ -139,13 +149,18 @@
     <li class="row" data-page="controller-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue</span><span class="chev">›</span></li>
   </ul>
 
-  <div class="recentTitle" id="recentTitle">Recently Added</div>
-  <div class="rail" id="recentRail"></div>
+  <div class="recentWrap">
+    <button type="button" class="railModeBtn" id="railModeBtn" aria-label="Switch recent rail source">
+      <span class="railModeDots" aria-hidden="true"><b data-rdot="albums"></b><b data-rdot="podcasts"></b><b data-rdot="playlists"></b><b data-rdot="radio"></b></span>
+    </button>
+    <div class="recentTitle" id="recentTitle">Recently Added <span id="railTitleSpin" class="titleSpin" hidden></span></div>
+    <div class="rail" id="recentRail"></div>
+  </div>
 
   <div class="miniMenu" id="recentAlbumMenu">
-    <button data-ra-act="open">Open</button>
-    <button data-ra-act="play">Play</button>
-    <button data-ra-act="shuffle">Play Shuffled</button>
+    <button data-ra-act="open" id="raOpenBtn">Open</button>
+    <button data-ra-act="play" id="raPlayBtn">Play</button>
+    <button data-ra-act="shuffle" id="raThirdBtn">Play Shuffled</button>
   </div>
 
   <div class="albumModal" id="recentAlbumModal" aria-hidden="true">
@@ -164,7 +179,7 @@
 
   <script>
     const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v1';
-    const MOBILE_DEFAULT_PROFILE={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,colorPreset:'ocean',recentCount:18};
+    const MOBILE_DEFAULT_PROFILE={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18};
     const IS_PREVIEW = new URL(location.href).searchParams.get('preview') === '1';
     function parseProfile(){
       const u=new URL(location.href); const p=u.searchParams.get('profile');
@@ -185,9 +200,44 @@
     }
     let profile=parseProfile();
     function applyProfileUi(){
-      document.getElementById('recentTitle').style.display=profile.showRecent===false?'none':'';
-      document.getElementById('recentRail').style.display=profile.showRecent===false?'none':'';
+      const show = profile.showRecent !== false;
+      const src = String(profile.recentSource || 'albums').toLowerCase();
+      const titleBySrc = { albums:'Recently Added', podcasts:'Recent Podcasts', playlists:'Recent Playlists', radio:'Favorite Radio Stations' };
+      const rt = document.getElementById('recentTitle');
+      if (rt) rt.innerHTML = `${titleBySrc[src] || 'Recently Added'} <span id="railTitleSpin" class="titleSpin" hidden></span>`;
+      document.getElementById('recentTitle').style.display=show?'':'none';
+      document.getElementById('recentRail').style.display=show?'':'none';
+      const btn = document.getElementById('railModeBtn');
+      if (btn) btn.style.display = show ? '' : 'none';
+      document.querySelectorAll('#railModeBtn [data-rdot]').forEach((d)=>{
+        d.classList.toggle('on', String(d.getAttribute('data-rdot')||'') === src);
+      });
       applyPalette(profile.colorPreset || 'ocean', profile.theme || 'auto');
+    }
+
+    async function persistControllerProfile(){
+      try {
+        localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile));
+      } catch {}
+      try {
+        await ensureKey();
+        await fetch(`${base}/config/controller-profile`, {
+          method:'POST',
+          headers:reqHeaders(true),
+          body: JSON.stringify({ profile })
+        });
+      } catch {}
+    }
+
+    function cycleRecentSource(step=1){
+      const order = ['albums','podcasts','playlists','radio'];
+      const cur = String(profile?.recentSource || 'albums').toLowerCase();
+      const idx = Math.max(0, order.indexOf(cur));
+      const next = order[(idx + (step>=0?1:-1) + order.length) % order.length];
+      profile = { ...(profile||{}), recentSource: next, showRecent: true };
+      applyProfileUi();
+      loadRecentlyAdded().catch(()=>null);
+      persistControllerProfile().catch(()=>null);
     }
     applyProfileUi();
 
@@ -228,6 +278,7 @@
     }
     const base=`${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
     let runtimeTrackKey='';
+    let runtimeMoodeHost='10.0.0.254';
     let quickIndex=[];
     async function ensureKey(){
       if (runtimeTrackKey) return runtimeTrackKey;
@@ -235,10 +286,24 @@
         const r=await fetch(`${base}/config/runtime`,{cache:'no-store'});
         const j=await r.json().catch(()=>({}));
         runtimeTrackKey = String(j?.config?.trackKey||'').trim();
+        runtimeMoodeHost = String(j?.config?.mpd?.host || j?.config?.nodes?.moode || j?.config?.mpd?.hostname || runtimeMoodeHost).trim() || runtimeMoodeHost;
       } catch {}
       return runtimeTrackKey;
     }
     function reqHeaders(json=true){ return Object.assign({}, json?{'Content-Type':'application/json'}:{}, runtimeTrackKey?{'x-track-key':runtimeTrackKey}:{}); }
+    async function fetchJsonWithTimeout(url, options={}, timeoutMs=3500){
+      const ctl = new AbortController();
+      const to = setTimeout(()=>{ try{ ctl.abort(); }catch{} }, timeoutMs);
+      try {
+        const r = await fetch(url, { ...(options||{}), signal: ctl.signal });
+        const j = await r.json().catch(()=>({}));
+        return { ok: r.ok, json: j, status: r.status };
+      } catch {
+        return { ok:false, json:{}, status:0 };
+      } finally {
+        clearTimeout(to);
+      }
+    }
 
     async function loadServerProfile(){
       if (IS_PREVIEW) return; // preview iframe must honor explicit profile token
@@ -246,9 +311,11 @@
         const r = await fetch(`${base}/config/controller-profile`, { cache:'no-store' });
         const j = await r.json().catch(()=>({}));
         if (r.ok && j?.ok && j?.profile) {
-          profile = { ...MOBILE_DEFAULT_PROFILE, ...j.profile };
+          const existing = profile || {};
+          profile = { ...MOBILE_DEFAULT_PROFILE, ...existing, ...j.profile, recentSource: (j?.profile?.recentSource ?? existing?.recentSource ?? MOBILE_DEFAULT_PROFILE.recentSource) };
           try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile)); } catch {}
           applyProfileUi();
+          loadRecentlyAdded().catch(()=>null);
         }
       } catch {}
     }
@@ -282,19 +349,152 @@
     }
 
     const rail=document.getElementById('recentRail');
+    const railModeBtn=document.getElementById('railModeBtn');
     const recentLimit=()=>Math.max(6,Math.min(30,Number(profile.recentCount||18)));
-    let recentAlbums=[];
-    let recentMenuCtx={album:'',artist:'',art:''};
-    let recentModalCtx={album:'',artist:'',art:'',tracks:[]};
+    let recentItems=[];
+    let recentMenuCtx={kind:'album',album:'',artist:'',art:'',playlist:'',title:'',rss:''};
+    let recentModalCtx={kind:'album',album:'',artist:'',art:'',playlist:'',tracks:[]};
+
+    function setRailLoading(on){
+      const sp = document.getElementById('railTitleSpin');
+      if (sp) sp.hidden = !on;
+    }
 
     async function loadRecentlyAdded(){
       if (!rail || profile.showRecent===false) return;
       rail.innerHTML = '';
+      recentItems = [];
       await ensureKey();
+      const src = String(profile.recentSource || 'albums').toLowerCase();
+      setRailLoading(true);
       try {
-        const r = await fetch(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) });
-        const j = await r.json().catch(()=>({}));
-        const albums = (r.ok && j?.ok && Array.isArray(j.albums)) ? j.albums : [];
+        if (src === 'podcasts') {
+          const pr = await fetchJsonWithTimeout(`${base}/podcasts`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+          const shows = (pr.ok && pr.json?.ok && Array.isArray(pr.json.items)) ? pr.json.items : [];
+
+          // Keep a stable visual order: show loading placeholders, then render once.
+          async function newestForRss(rss){
+            const key = String(rss||'').trim();
+            if (!key) return 0;
+            try {
+              const res = await Promise.race([
+                fetch(`${base}/podcasts/episodes/list`, { method:'POST', headers:reqHeaders(true), body: JSON.stringify({ rss:key, limit: 250 }) }),
+                new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), 3200))
+              ]);
+              const ej = await res.json().catch(()=>({}));
+              const eps = (res.ok && ej?.ok && Array.isArray(ej.episodes)) ? ej.episodes : [];
+              let newest = 0;
+              for (const ep of eps) {
+                if (!ep?.downloaded) continue;
+                const dt = Number(ep?.downloadedAt || ep?.published || 0) || 0;
+                if (dt > newest) newest = dt;
+              }
+              return newest;
+            } catch { return 0; }
+          }
+
+          const fastFallbackShows = shows.slice(0, recentLimit());
+          const topShows = await (async ()=>{
+            try {
+              const rankingTask = (async ()=>{
+                const scan = shows.slice(0, Math.min(10, shows.length));
+                const ranked = await Promise.all(scan.map(async (s)=>({ show:s, newestDl: await newestForRss(s?.rss) })));
+                ranked.sort((a,b)=> (Number(b.newestDl||0)-Number(a.newestDl||0)) || String(a.show?.title||'').localeCompare(String(b.show?.title||''), undefined, { sensitivity:'base' }));
+                const rankedShows = ranked.filter(x=>x.newestDl>0).concat(ranked.filter(x=>!(x.newestDl>0))).map(x=>x.show);
+                const fallbackShows = shows.filter((s)=> !rankedShows.includes(s));
+                return rankedShows.concat(fallbackShows).slice(0, recentLimit());
+              })();
+              return await Promise.race([
+                rankingTask,
+                new Promise((resolve)=>setTimeout(()=>resolve(fastFallbackShows), 1400))
+              ]);
+            } catch { return fastFallbackShows; }
+          })();
+
+          if (!topShows.length) return;
+          recentItems = topShows.map((s)=>{
+            return { kind:'podcast', title:String(s?.title||s?.rss||'(podcast)').trim(), art:String(s?.imageUrl||'').trim() || `${base}/art/current.jpg`, rss:String(s?.rss||'').trim() };
+          });
+          rail.innerHTML = '';
+          recentItems.forEach((it,i)=>{
+            const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
+            d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            rail.appendChild(d);
+          });
+          return;
+        }
+        if (src === 'playlists') {
+          const pl = await fetchJsonWithTimeout(`${base}/config/queue-wizard/playlists`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+          const names = (pl.ok && pl.json?.ok && Array.isArray(pl.json.playlists)) ? pl.json.playlists : [];
+          const top = names.slice(0, recentLimit());
+          if (!top.length) return;
+          recentItems = top.map((name)=>{
+            const n = String(name||'(playlist)').trim();
+            const safe = n.replace(/\s+/g,'_');
+            return {
+              kind:'playlist',
+              playlist:n,
+              title:n,
+              art:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(n)}.jpg`,
+              artAlt:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(safe)}.jpg`
+            };
+          });
+          recentItems.forEach((it,i)=>{
+            const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
+            d.innerHTML=`<div class='thumbWrap'><img class='plRailCover' src='${it.art}' data-alt='${it.artAlt||''}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            rail.appendChild(d);
+          });
+          rail.querySelectorAll('img.plRailCover[data-alt]').forEach((img)=>{
+            img.onerror = () => {
+              const alt = String(img.getAttribute('data-alt') || '').trim();
+              const cur = String(img.getAttribute('src') || '').trim();
+              if (alt && cur !== alt) { img.setAttribute('src', alt); return; }
+              const ph = document.createElement('div');
+              ph.className = 'ph';
+              img.replaceWith(ph);
+            };
+          });
+          return;
+        }
+
+        if (src === 'radio') {
+          const RADIO_CACHE_KEY = 'np.rail.radio.cache.v1';
+          try {
+            const cached = JSON.parse(localStorage.getItem(RADIO_CACHE_KEY) || '[]');
+            if (Array.isArray(cached) && cached.length) {
+              recentItems = cached.slice(0, recentLimit());
+              rail.innerHTML = '';
+              recentItems.forEach((it,i)=>{
+                const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
+                d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+                rail.appendChild(d);
+              });
+            }
+          } catch {}
+
+          const rr = await fetchJsonWithTimeout(`${base}/config/queue-wizard/radio-favorites`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+          const rows = (rr.ok && rr.json?.ok && Array.isArray(rr.json.favorites)) ? rr.json.favorites : [];
+          const top = rows.slice(0, recentLimit());
+          if (!top.length) return;
+          recentItems = top.map((x)=>{
+            const title = String(x?.stationName || x?.file || '(station)').trim();
+            const url = String(x?.file || '').trim();
+            return { kind:'radio', title, url, art:`${base}/art/radio-logo.jpg?name=${encodeURIComponent(title)}` };
+          });
+          if (recentItems.length) {
+            try { localStorage.setItem(RADIO_CACHE_KEY, JSON.stringify(recentItems)); } catch {}
+          }
+          rail.innerHTML = '';
+          recentItems.forEach((it,i)=>{
+            const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
+            d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            rail.appendChild(d);
+          });
+          return;
+        }
+
+        const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+        const albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
         albums.sort((a,b)=>Number(b?.addedTs||0)-Number(a?.addedTs||0));
         const top = albums.slice(0, recentLimit());
         if (!top.length) {
@@ -305,14 +505,14 @@
           }
           return;
         }
-        recentAlbums = top.map((a)=>{
+        recentItems = top.map((a)=>{
           const album=String(a?.album||'').trim() || '(album)';
           const artist=String(a?.artist||'').trim();
           const artRaw=String(a?.thumbUrl||'').trim();
           const art=artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
-          return { album, artist, art };
+          return { kind:'album', album, artist, art };
         });
-        recentAlbums.forEach((a,i)=>{
+        recentItems.forEach((a,i)=>{
           const d=document.createElement('div'); d.className='thumb';
           d.setAttribute('data-ra-idx', String(i));
           d.innerHTML=`<div class='thumbWrap'><img src='${a.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${a.artist?`${a.artist} — `:''}${a.album}'>${a.album}</div>`;
@@ -324,6 +524,8 @@
           d.innerHTML=`<div class='ph'></div><div class='cap'>Recent ${i+1}</div>`;
           rail.appendChild(d);
         }
+      } finally {
+        setRailLoading(false);
       }
     }
 
@@ -334,21 +536,122 @@
       const j=await r.json().catch(()=>({}));
       return (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
     }
+    async function fetchPlaylistTracks(playlist){
+      await ensureKey();
+      const r=await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(String(playlist||''))}`,{cache:'no-store',headers:reqHeaders(false)});
+      const j=await r.json().catch(()=>({}));
+      return (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
+    }
+    async function fetchPodcastEpisodeTracks(rss){
+      await ensureKey();
+      const r = await fetch(`${base}/podcasts/episodes/list`, {
+        method:'POST',
+        headers:reqHeaders(true),
+        body: JSON.stringify({ rss:String(rss||''), limit: 250 })
+      });
+      const j = await r.json().catch(()=>({}));
+      const eps = (r.ok && j?.ok && Array.isArray(j.episodes)) ? j.episodes : [];
+      return eps
+        .filter((ep)=>!!ep?.downloaded && !!ep?.mpdPath)
+        .map((ep)=>({ title:String(ep?.title||'(episode)').trim(), file:String(ep?.mpdPath||'').trim(), date:String(ep?.date||'').trim(), downloadedAt:Number(ep?.downloadedAt||0)||0 }));
+    }
     async function sendPlayback(action, extra={}){ await ensureKey(); await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify(Object.assign({action},extra||{}))}).catch(()=>null); }
+    async function playOrAddRadio(url, mode='replace'){
+      const u = String(url||'').trim();
+      if (!u) return;
+      await ensureKey();
+      await fetch(`${base}/config/queue-wizard/apply`, { method:'POST', headers:reqHeaders(true), body: JSON.stringify({ mode: mode==='append'?'append':'replace', keepNowPlaying:false, tracks:[u], shuffle:false, forceRandomOff:false, fastStart:true }) }).catch(()=>null);
+    }
 
     function openRecentAlbumModal(){
-      document.getElementById('recentAlbumTitle').textContent = recentModalCtx.album || '(album)';
-      document.getElementById('recentAlbumMeta').textContent = recentModalCtx.artist || '';
+      const isPlaylist = recentModalCtx.kind === 'playlist';
+      const isPodcast = recentModalCtx.kind === 'podcast';
+      document.getElementById('recentAlbumTitle').textContent = isPlaylist
+        ? (recentModalCtx.playlist || '(playlist)')
+        : (isPodcast ? (recentModalCtx.title || '(podcast)') : (recentModalCtx.album || '(album)'));
+      document.getElementById('recentAlbumMeta').textContent = isPlaylist ? 'Playlist' : (isPodcast ? 'Downloaded episodes' : (recentModalCtx.artist || ''));
       document.getElementById('recentAlbumArt').src = recentModalCtx.art || `${base}/art/current.jpg`;
-      document.getElementById('recentAlbumTracks').innerHTML = (recentModalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); return `<li><span>${i+1}. ${nm}</span><span class='trackBtns'><button data-track-action='play' data-track-file='${f}'>Play now</button><button data-track-action='add' data-track-file='${f}'>Add</button></span></li>`; }).join('') || '<li>No tracks found</li>';
+      document.getElementById('recentAlbumAppendBtn').textContent = isPlaylist ? 'Add playlist' : (isPodcast ? 'Add newest episode' : 'Append album');
+      document.getElementById('recentAlbumCropBtn').style.display = (isPlaylist || isPodcast) ? 'none' : '';
+      document.getElementById('recentAlbumReplaceBtn').textContent = isPlaylist ? 'Play playlist' : (isPodcast ? 'Play newest episode' : 'Replace with album');
+      document.getElementById('recentAlbumTracks').innerHTML = (recentModalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); const dt=String(t.date||'').trim(); return `<li><span>${i+1}. ${nm}${dt?`<div class='albumMeta'>${dt}</div>`:''}</span><span class='trackBtns'><button data-track-action='play' data-track-file='${f}'>▶</button><button data-track-action='add' data-track-file='${f}'>＋</button></span></li>`; }).join('') || '<li>No tracks found</li>';
       document.getElementById('recentAlbumModal').classList.add('open');
     }
     async function openRecentAlbumFrom(ctx){
-      recentModalCtx = { album:ctx.album||'', artist:ctx.artist||'', art:ctx.art||'', tracks:[] };
+      recentModalCtx = { kind:'album', album:ctx.album||'', artist:ctx.artist||'', art:ctx.art||'', playlist:'', tracks:[] };
       openRecentAlbumModal();
       document.getElementById('recentAlbumTracks').innerHTML = '<li>Loading album tracks…</li>';
       try { recentModalCtx.tracks = await fetchAlbumTracks(recentModalCtx.album, recentModalCtx.artist); } catch { recentModalCtx.tracks = []; }
       if (document.getElementById('recentAlbumModal').classList.contains('open')) openRecentAlbumModal();
+    }
+    async function openRecentPlaylistFrom(ctx){
+      recentModalCtx = { kind:'playlist', album:'', artist:'', art:ctx.art||'', playlist:ctx.playlist||ctx.title||'', tracks:[] };
+      openRecentAlbumModal();
+      document.getElementById('recentAlbumTracks').innerHTML = '<li>Loading playlist tracks…</li>';
+      try { recentModalCtx.tracks = await fetchPlaylistTracks(recentModalCtx.playlist); } catch { recentModalCtx.tracks = []; }
+      if (document.getElementById('recentAlbumModal').classList.contains('open')) openRecentAlbumModal();
+    }
+    async function openRecentPodcastFrom(ctx){
+      recentModalCtx = { kind:'podcast', album:'', artist:'', art:ctx.art||'', playlist:'', title:ctx.title||'(podcast)', rss:ctx.rss||'', tracks:[] };
+      openRecentAlbumModal();
+      document.getElementById('recentAlbumTracks').innerHTML = '<li>Loading episodes…</li>';
+      try {
+        const eps = await fetchPodcastEpisodeTracks(recentModalCtx.rss);
+        eps.sort((a,b)=>(Number(b.downloadedAt||0)-Number(a.downloadedAt||0)) || String(a.title||'').localeCompare(String(b.title||'')));
+        recentModalCtx.tracks = eps;
+      } catch { recentModalCtx.tracks = []; }
+      if (document.getElementById('recentAlbumModal').classList.contains('open')) openRecentAlbumModal();
+    }
+
+    async function mostRecentDownloadedPodcastFile(rss){
+      const r = await fetch(`${base}/podcasts/episodes/list`, {
+        method:'POST',
+        headers:reqHeaders(true),
+        body: JSON.stringify({ rss:String(rss||''), limit: 250 })
+      });
+      const j = await r.json().catch(()=>({}));
+      const eps = (r.ok && j?.ok && Array.isArray(j.episodes)) ? j.episodes : [];
+      let best = null;
+      let bestTs = -1;
+      for (const ep of eps) {
+        if (!ep?.downloaded || !ep?.mpdPath) continue;
+        const ts = Number(ep?.downloadedAt || ep?.published || 0) || 0;
+        if (ts > bestTs) { bestTs = ts; best = ep; }
+      }
+      return String(best?.mpdPath || '').trim();
+    }
+
+    function openRecentMenuFor(item){
+      const m=document.getElementById('recentAlbumMenu');
+      const bOpen=document.getElementById('raOpenBtn');
+      const bPlay=document.getElementById('raPlayBtn');
+      const bThird=document.getElementById('raThirdBtn');
+      const kind = String(item?.kind || 'album');
+      if (kind === 'podcast') {
+        bOpen.style.display = 'none';
+        bPlay.textContent = 'Play most recent episode';
+        bThird.style.display = '';
+        bThird.textContent = 'Add most recent episode';
+      } else if (kind === 'radio') {
+        bOpen.style.display = '';
+        bOpen.textContent = 'Open Radio page';
+        bPlay.textContent = 'Play station';
+        bThird.style.display = '';
+        bThird.textContent = 'Add station';
+      } else if (kind === 'playlist') {
+        bOpen.style.display = '';
+        bOpen.textContent = 'Open';
+        bPlay.textContent = 'Play';
+        bThird.style.display = '';
+        bThird.textContent = 'Play Shuffled';
+      } else {
+        bOpen.style.display = '';
+        bOpen.textContent = 'Open';
+        bPlay.textContent = 'Play';
+        bThird.style.display = '';
+        bThird.textContent = 'Play Shuffled';
+      }
+      return m;
     }
 
     let __navBusy = false;
@@ -491,27 +794,88 @@
     });
     document.addEventListener('click',(ev)=>{ if(!ev.target.closest('.quickWrap')){ hqr.classList.remove('open'); } });
 
+    railModeBtn?.addEventListener('click', ()=>cycleRecentSource(1));
+
+    let __railTouchStartX = 0;
+    let __railTouchStartY = 0;
+    rail?.addEventListener('touchstart', (ev)=>{
+      if (!ev.touches || ev.touches.length !== 1) return;
+      __railTouchStartX = ev.touches[0].clientX;
+      __railTouchStartY = ev.touches[0].clientY;
+      document.body.classList.add('rail-touch-lock');
+    }, { passive:true });
+    rail?.addEventListener('touchend', (ev)=>{
+      const t = ev.changedTouches && ev.changedTouches[0];
+      if (!t) { document.body.classList.remove('rail-touch-lock'); return; }
+      const dx = t.clientX - __railTouchStartX;
+      const dy = t.clientY - __railTouchStartY;
+      // Swipe up: next source. Swipe down: previous source.
+      if (Math.abs(dy) > 36 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+        cycleRecentSource(dy < 0 ? 1 : -1);
+      }
+      document.body.classList.remove('rail-touch-lock');
+    }, { passive:true });
+    rail?.addEventListener('touchcancel', ()=>{ document.body.classList.remove('rail-touch-lock'); }, { passive:true });
+
     rail?.addEventListener('click', async (ev)=>{
       const more = ev.target.closest('button[data-ra-more="1"][data-ra-idx]');
       if (more) {
         ev.stopPropagation();
-        const i=Number(more.getAttribute('data-ra-idx')); const a=recentAlbums[i]; if(!a) return;
+        const i=Number(more.getAttribute('data-ra-idx')); const a=recentItems[i]; if(!a) return;
         recentMenuCtx = { ...a };
-        const m=document.getElementById('recentAlbumMenu');
+        const m=openRecentMenuFor(a);
         const r=more.getBoundingClientRect();
         m.style.left=`${Math.max(8,Math.round(r.left))}px`; m.style.top=`${Math.round(r.bottom+6)}px`; m.classList.add('open');
         return;
       }
       const cell = ev.target.closest('[data-ra-idx]');
       if (!cell) return;
-      const i=Number(cell.getAttribute('data-ra-idx')); const a=recentAlbums[i]; if(!a) return;
-      await openRecentAlbumFrom(a);
+      const i=Number(cell.getAttribute('data-ra-idx')); const a=recentItems[i]; if(!a) return;
+      if (a.kind === 'playlist') { await openRecentPlaylistFrom(a); return; }
+      if (a.kind === 'podcast') { await openRecentPodcastFrom(a); return; }
+      if (a.kind === 'radio') { await playOrAddRadio(a.url, 'replace'); return; }
+      if (a.kind === 'album') { await openRecentAlbumFrom(a); return; }
     });
 
     document.getElementById('recentAlbumMenu').addEventListener('click', async (ev)=>{
       const b=ev.target.closest('button[data-ra-act]'); if(!b) return;
       const act=String(b.getAttribute('data-ra-act')||'open');
       document.getElementById('recentAlbumMenu').classList.remove('open');
+      const kind = String(recentMenuCtx?.kind || 'album');
+
+      if (kind === 'podcast') {
+        if (act === 'open') return;
+        const file = await mostRecentDownloadedPodcastFile(recentMenuCtx.rss || '');
+        if (!file) return;
+        if (act === 'play') { await sendPlayback('playfile',{file}); return; }
+        if (act === 'shuffle') { await sendPlayback('addfile',{file}); return; }
+        return;
+      }
+
+      if (kind === 'playlist') {
+        if (act==='open') { await openRecentPlaylistFrom(recentMenuCtx); return; }
+        if (act==='play') {
+          await ensureKey();
+          await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentMenuCtx.playlist,mode:'replace',play:true})}).catch(()=>null);
+          return;
+        }
+        if (act==='shuffle') {
+          const tracks = await fetchPlaylistTracks(recentMenuCtx.playlist);
+          const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean);
+          for (let i=files.length-1;i>0;i--){ const k=Math.floor(Math.random()*(i+1)); const tmp=files[i]; files[i]=files[k]; files[k]=tmp; }
+          await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})}).catch(()=>null);
+          return;
+        }
+        return;
+      }
+
+      if (kind === 'radio') {
+        if (act==='open') { openPage('controller-radio.html'); return; }
+        if (act==='play') { await playOrAddRadio(recentMenuCtx.url, 'replace'); return; }
+        if (act==='shuffle') { await playOrAddRadio(recentMenuCtx.url, 'append'); return; }
+        return;
+      }
+
       if (act==='open') { await openRecentAlbumFrom(recentMenuCtx); return; }
       if (act==='play') { await sendPlayback('addalbum',{mode:'replace',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
       if (act==='shuffle') {
@@ -524,9 +888,31 @@
 
     document.getElementById('recentAlbumCloseBtn').addEventListener('click', ()=>document.getElementById('recentAlbumModal').classList.remove('open'));
     document.getElementById('recentAlbumModal').addEventListener('click', (ev)=>{ if(ev.target.id==='recentAlbumModal') document.getElementById('recentAlbumModal').classList.remove('open'); });
-    document.getElementById('recentAlbumAppendBtn').addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'append',album:recentModalCtx.album,artist:recentModalCtx.artist||''}); document.getElementById('recentAlbumModal').classList.remove('open'); });
+    document.getElementById('recentAlbumAppendBtn').addEventListener('click', async ()=>{
+      if (recentModalCtx.kind === 'playlist') {
+        await ensureKey();
+        await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentModalCtx.playlist,mode:'append',play:false})}).catch(()=>null);
+      } else if (recentModalCtx.kind === 'podcast') {
+        const file = String((recentModalCtx.tracks||[])[0]?.file || '').trim();
+        if (file) await sendPlayback('addfile',{file});
+      } else {
+        await sendPlayback('addalbum',{mode:'append',album:recentModalCtx.album,artist:recentModalCtx.artist||''});
+      }
+      document.getElementById('recentAlbumModal').classList.remove('open');
+    });
     document.getElementById('recentAlbumCropBtn').addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'crop',album:recentModalCtx.album,artist:recentModalCtx.artist||''}); document.getElementById('recentAlbumModal').classList.remove('open'); });
-    document.getElementById('recentAlbumReplaceBtn').addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'replace',album:recentModalCtx.album,artist:recentModalCtx.artist||''}); document.getElementById('recentAlbumModal').classList.remove('open'); });
+    document.getElementById('recentAlbumReplaceBtn').addEventListener('click', async ()=>{
+      if (recentModalCtx.kind === 'playlist') {
+        await ensureKey();
+        await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentModalCtx.playlist,mode:'replace',play:true})}).catch(()=>null);
+      } else if (recentModalCtx.kind === 'podcast') {
+        const file = String((recentModalCtx.tracks||[])[0]?.file || '').trim();
+        if (file) await sendPlayback('playfile',{file});
+      } else {
+        await sendPlayback('addalbum',{mode:'replace',album:recentModalCtx.album,artist:recentModalCtx.artist||''});
+      }
+      document.getElementById('recentAlbumModal').classList.remove('open');
+    });
     document.getElementById('recentAlbumTracks').addEventListener('click', async (ev)=>{ const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if(a==='play'){ await sendPlayback('playfile',{file}); document.getElementById('recentAlbumModal').classList.remove('open'); } else { await sendPlayback('addfile',{file}); } });
 
     document.addEventListener('click',(ev)=>{

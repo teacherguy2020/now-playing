@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { MPD_HOST, MOODE_SSH_HOST } from '../config.mjs';
+import { MPD_HOST, MOODE_SSH_HOST, MPD_PLAYLIST_DIR } from '../config.mjs';
 
 const execFileP = promisify(execFile);
 const RADIO_DB_SEP = '__NPSEP__';
@@ -547,7 +547,23 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
           if (!skip) kept.push(name);
         }
 
-        const playlists = kept.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+        const withTs = await Promise.all(kept.map(async (name) => {
+          const filePath = path.join(MPD_PLAYLIST_DIR, `${String(name || '').trim()}.m3u`);
+          try {
+            const st = await fs.stat(filePath);
+            return { name, ts: Number(st?.mtimeMs || 0) || 0 };
+          } catch {
+            return { name, ts: 0 };
+          }
+        }));
+
+        const playlists = withTs
+          .sort((a, b) => {
+            if (b.ts !== a.ts) return b.ts - a.ts; // reverse-chrono by mtime
+            return String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
+          })
+          .map((x) => x.name);
+
         return { ok: true, count: playlists.length, playlists };
       })();
 

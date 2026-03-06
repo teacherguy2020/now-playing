@@ -19,7 +19,7 @@
     h2{margin:0 0 10px;font-size:16px}
     label{display:block;margin:8px 0 4px;color:var(--muted)}
     select,input{width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:#0b1528;color:var(--text)}
-    input[type="checkbox"]{width:auto !important;padding:0 !important;accent-color:#4aa8ff}
+    input[type="checkbox"],input[type="radio"]{width:auto !important;padding:0 !important;accent-color:#4aa8ff}
     .row{display:flex;gap:8px;align-items:center}
     .chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--text)}
     .chk span{min-width:0;word-break:break-word}
@@ -49,7 +49,11 @@
       <select id="theme"><option value="auto">Auto</option><option value="dark">Dark</option><option value="light">Light</option></select>
       <label>Layout</label>
       <select id="layout"><option value="home-rail" selected>Home + Recent Rail</option><option value="compact">Compact</option></select>
-      <div class="chk"><input id="showRecent" type="checkbox" checked /><span>Show recently added rail</span></div>
+      <label style="margin-top:10px">Recent rail source</label>
+      <div class="chk"><input name="recentSource" id="recentSourceAlbums" type="radio" value="albums" checked /><span>Recently Added</span></div>
+      <div class="chk"><input name="recentSource" id="recentSourcePodcasts" type="radio" value="podcasts" /><span>Recent Podcasts</span></div>
+      <div class="chk"><input name="recentSource" id="recentSourcePlaylists" type="radio" value="playlists" /><span>Recent Playlists</span></div>
+      <div class="chk"><input name="recentSource" id="recentSourceRadio" type="radio" value="radio" /><span>Favorite Radio Stations</span></div>
       <label>Color preset</label>
       <div class="dots" id="paletteDots">
         <button type="button" class="dot" data-preset="ocean" title="Ocean"></button>
@@ -76,7 +80,7 @@
   <script>
     const $ = (id)=>document.getElementById(id);
     const KEY='nowplaying.mobile.profile.v1';
-    const defaults={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,colorPreset:'ocean',recentCount:18};
+    const defaults={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18};
     const API_BASE = (()=>{ try { const h=location.hostname||'10.0.0.233'; const p=location.protocol||'http:'; return `${p}//${h}:3101`; } catch { return 'http://10.0.0.233:3101'; } })();
     const PRESET_COLORS={ocean:'#4aa8ff',violet:'#a78bfa',mint:'#34d399',amber:'#fbbf24',black:'#0a0a0a',orange:'#ff7a1a'};
     function read(){try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...defaults}}}
@@ -109,8 +113,21 @@
     }
     function paintPaletteDots(){}
     function markPalette(preset){ document.querySelectorAll('#paletteDots .dot').forEach(b=>b.classList.toggle('active', b.getAttribute('data-preset')===preset)); }
-    function ui(p){$('devicePreset').value=p.devicePreset;$('theme').value=(p.theme||'auto');$('layout').value=p.layout;$('showRecent').checked=!!p.showRecent;$('recentCount').value=String(p.recentCount||18); markPalette(String(p.colorPreset||'ocean'));}
-    function collect(){const active=document.querySelector('#paletteDots .dot.active');return{devicePreset:$('devicePreset').value,theme:$('theme').value,layout:$('layout').value,showRecent:$('showRecent').checked,colorPreset:String(active?.getAttribute('data-preset')||'ocean'),recentCount:Number($('recentCount').value||18)}}
+    function ui(p){
+      $('devicePreset').value=p.devicePreset;
+      $('theme').value=(p.theme||'auto');
+      $('layout').value=p.layout;
+      const src = String(p.recentSource || (p.showRecent===false ? 'albums' : 'albums')).toLowerCase();
+      const target = document.querySelector(`input[name="recentSource"][value="${src}"]`) || $('recentSourceAlbums');
+      if (target) target.checked = true;
+      $('recentCount').value=String(p.recentCount||18);
+      markPalette(String(p.colorPreset||'ocean'));
+    }
+    function collect(){
+      const active=document.querySelector('#paletteDots .dot.active');
+      const recentSource = String(document.querySelector('input[name="recentSource"]:checked')?.value || 'albums');
+      return {devicePreset:$('devicePreset').value,theme:$('theme').value,layout:$('layout').value,showRecent:true,recentSource,colorPreset:String(active?.getAttribute('data-preset')||'ocean'),recentCount:Number($('recentCount').value||18)};
+    }
     function profileToken(p){ return btoa(unescape(encodeURIComponent(JSON.stringify(p)))); }
     async function apply(){
       const p=collect();
@@ -121,17 +138,23 @@
     }
     $('applyBtn').addEventListener('click',apply);
     $('resetBtn').addEventListener('click',()=>{write({...defaults});ui(defaults);apply();});
-    ['devicePreset','theme','layout','showRecent','recentCount'].forEach((id)=>{
+    ['devicePreset','theme','layout','recentCount'].forEach((id)=>{
       const el=$(id); if(!el) return;
       el.addEventListener('change', ()=>apply());
     });
     document.querySelectorAll('#paletteDots .dot').forEach((b)=>{
       b.addEventListener('click', ()=>{ markPalette(String(b.getAttribute('data-preset')||'ocean')); apply(); });
     });
+    document.querySelectorAll('input[name="recentSource"]').forEach((el)=>{
+      el.addEventListener('change', ()=>apply());
+    });
     paintPaletteDots();
     (async ()=>{
+      const local = read();
       const server = await loadServerProfile();
-      const p = server || read();
+      const p = server
+        ? { ...local, ...server, recentSource: (server?.recentSource ?? local?.recentSource ?? defaults.recentSource) }
+        : local;
       write(p);
       ui(p);
       await apply();

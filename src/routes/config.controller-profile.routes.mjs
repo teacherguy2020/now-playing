@@ -6,6 +6,7 @@ const DEFAULT_PROFILE = {
   theme: 'auto',
   layout: 'home-rail',
   showRecent: true,
+  recentSource: 'albums',
   colorPreset: 'ocean',
   recentCount: 18,
 };
@@ -13,12 +14,14 @@ const DEFAULT_PROFILE = {
 function sanitizeProfile(input = {}) {
   const p = (input && typeof input === 'object') ? input : {};
   const colorPreset = String(p.colorPreset || DEFAULT_PROFILE.colorPreset).toLowerCase();
+  const recentSource = String(p.recentSource || DEFAULT_PROFILE.recentSource).toLowerCase();
   return {
     devicePreset: String(p.devicePreset || DEFAULT_PROFILE.devicePreset),
     theme: String(p.theme || DEFAULT_PROFILE.theme),
     layout: String(p.layout || DEFAULT_PROFILE.layout),
     showRecent: Boolean(p.showRecent ?? DEFAULT_PROFILE.showRecent),
-    colorPreset: ['ocean','violet','mint','amber'].includes(colorPreset) ? colorPreset : DEFAULT_PROFILE.colorPreset,
+    recentSource: ['albums','podcasts','playlists','radio'].includes(recentSource) ? recentSource : DEFAULT_PROFILE.recentSource,
+    colorPreset: ['ocean','violet','mint','amber','black','orange'].includes(colorPreset) ? colorPreset : DEFAULT_PROFILE.colorPreset,
     recentCount: Math.max(6, Math.min(30, Number(p.recentCount || DEFAULT_PROFILE.recentCount) || DEFAULT_PROFILE.recentCount)),
   };
 }
