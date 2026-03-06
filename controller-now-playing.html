@@ -587,15 +587,32 @@
 
       let __albumTapBusy = false;
       async function onAlbumTap(ev){
+        if (__albumTapBusy) return;
+        const d = (window.lastNowPlayingData || {});
+        const streamKind = String(d?.streamKind || '').trim().toLowerCase();
+        const isRadioNow = d?.isRadio === true || (d?.isStream === true && streamKind !== 'upnp') || d?.isAirplay === true || d?.isUpnp === true;
+        const linkUrl = String(albumLink.getAttribute('href') || '').trim();
+        const streamUrl = String(d?.radioAppleMusicUrl || d?.radioItunesUrl || d?.itunesUrl || '').trim();
+        const externalUrl = linkUrl || streamUrl;
+        const tapMode = String(albumLink.dataset.npTapMode || '').trim();
+
+        if (isRadioNow || externalUrl || tapMode === 'external') {
+          // If external link is present, always honor it (avoids early-load local/modal race).
+          if (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (typeof ev.stopImmediatePropagation==='function') ev.stopImmediatePropagation();
+          }
+          try { location.href = (externalUrl || linkUrl); } catch {}
+          return;
+        }
+
+        if (tapMode !== 'local') return;
         if (ev) {
           ev.preventDefault();
           ev.stopPropagation();
           if (typeof ev.stopImmediatePropagation==='function') ev.stopImmediatePropagation();
         }
-        if (__albumTapBusy) return;
-        const d = (window.lastNowPlayingData || {});
-        const isLocal = !(d?.isStream===true) && !(d?.isAirplay===true) && !(d?.isUpnp===true);
-        if (!isLocal) return;
         __albumTapBusy = true;
         try {
           ctx = { album:String(d?.album||'').trim(), artist:String(d?.artist||'').trim(), art:String(d?.albumArtUrl||d?.altArtUrl||'').trim(), tracks:[] };
@@ -611,12 +628,30 @@
 
       function syncAlbumTapState(){
         const d = (window.lastNowPlayingData || {});
-        const isLocal = !(d?.isStream===true) && !(d?.isAirplay===true) && !(d?.isUpnp===true);
-        if (isLocal) {
+        const streamKind = String(d?.streamKind || '').trim().toLowerCase();
+        const isRadioNow = d?.isRadio === true || (d?.isStream === true && streamKind !== 'upnp') || d?.isAirplay === true || d?.isUpnp === true;
+        const linkUrl = String(albumLink.getAttribute('href') || '').trim();
+        const hasStreamFlags = (typeof d?.isStream === 'boolean') || (typeof d?.isAirplay === 'boolean') || (typeof d?.isUpnp === 'boolean') || (typeof d?.isRadio === 'boolean');
+        const isLocal = hasStreamFlags ? !isRadioNow : false;
+
+        if (isRadioNow || linkUrl) {
+          albumLink.dataset.npTapMode = 'external';
+          albumLink.style.pointerEvents = 'auto';
+          albumLink.style.cursor = 'pointer';
+          albumLink.title = 'Open in Apple Music';
+          return;
+        }
+
+        if (hasStreamFlags && isLocal) {
+          albumLink.dataset.npTapMode = 'local';
           albumLink.style.pointerEvents = 'auto';
           albumLink.style.cursor = 'pointer';
           albumLink.title = 'Open album details';
+          return;
         }
+
+        // Unknown/bootstrapping state: do not allow modal misfire.
+        albumLink.dataset.npTapMode = 'unknown';
       }
       setInterval(syncAlbumTapState, 900);
       syncAlbumTapState();

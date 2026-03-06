@@ -71,10 +71,12 @@
     .railModeDots{display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center}
     .railModeDots b{display:block;width:4px;height:4px;border-radius:999px;background:rgba(206,220,245,.35);transition:background-color .15s ease, transform .15s ease}
     .railModeDots b.on{background:#f2f7ff;transform:scale(1.08)}
-    .rail{display:flex;gap:10px;overflow:auto;padding-bottom:4px;padding-left:28px;touch-action:pan-x;overscroll-behavior:contain;position:relative;z-index:2;transition:transform .08s linear}
+    .rail{display:flex;gap:10px;overflow:auto;padding-top:4px;padding-bottom:6px;padding-left:28px;touch-action:pan-x;overscroll-behavior:contain;position:relative;z-index:2;transition:transform .08s linear}
     .peekRail{display:none;position:absolute;left:0;right:0;bottom:0;z-index:1;opacity:.55;filter:saturate(.85)}
     .recentWrap.peeking .peekRail{display:flex}
     .thumb{min-width:128px;width:128px}
+    .thumb.is-active-radio .thumbWrap{outline:2px solid #45b26f;outline-offset:2px;border-radius:14px}
+    .thumb.is-active-radio .cap{color:#bff2cf}
     .thumbWrap{position:relative}
     .thumb img,.ph{width:128px;height:128px;border-radius:12px;object-fit:cover;background:#0a1222}
     .ph{display:flex;align-items:center;justify-content:center}
@@ -372,6 +374,7 @@
     const railModeBtn=document.getElementById('railModeBtn');
     const recentLimit=()=>Math.max(6,Math.min(30,Number(profile.recentCount||18)));
     let recentItems=[];
+    let recentActiveRadioUrl='';
     let recentMenuCtx={kind:'album',album:'',artist:'',art:'',playlist:'',title:'',rss:''};
     let recentModalCtx={kind:'album',album:'',artist:'',art:'',playlist:'',tracks:[]};
 
@@ -485,7 +488,7 @@
               recentItems = cached.slice(0, recentLimit());
               rail.innerHTML = '';
               recentItems.forEach((it,i)=>{
-                const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
+                const d=document.createElement('div'); d.className=`thumb${(String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`; d.setAttribute('data-ra-idx', String(i));
                 d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
                 rail.appendChild(d);
               });
@@ -506,7 +509,7 @@
           }
           rail.innerHTML = '';
           recentItems.forEach((it,i)=>{
-            const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
+            const d=document.createElement('div'); d.className=`thumb${(String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`; d.setAttribute('data-ra-idx', String(i));
             d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
             rail.appendChild(d);
           });
@@ -877,7 +880,13 @@
       const i=Number(cell.getAttribute('data-ra-idx')); const a=recentItems[i]; if(!a) return;
       if (a.kind === 'playlist') { await openRecentPlaylistFrom(a); return; }
       if (a.kind === 'podcast') { await openRecentPodcastFrom(a); return; }
-      if (a.kind === 'radio') { await playOrAddRadio(a.url, 'replace'); return; }
+      if (a.kind === 'radio') {
+        recentActiveRadioUrl = String(a.url||'').trim();
+        rail.querySelectorAll('.thumb.is-active-radio').forEach((el)=>el.classList.remove('is-active-radio'));
+        cell.classList.add('is-active-radio');
+        await playOrAddRadio(a.url, 'replace');
+        return;
+      }
       if (a.kind === 'album') { await openRecentAlbumFrom(a); return; }
     });
 
