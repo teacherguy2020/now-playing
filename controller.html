@@ -25,6 +25,10 @@
     .np{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center}
     .artWrap{position:relative;width:64px;height:64px}
     .np img{width:64px;height:64px;border-radius:10px;object-fit:cover;display:block}
+    .artSpin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(7,12,20,.36);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px)}
+    .artSpin[hidden]{display:none !important}
+    .artSpin::before{content:'';width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#ffffff;animation:npSpin .8s linear infinite}
+    @keyframes npSpin{to{transform:rotate(360deg)}}
     .eq{position:absolute;right:4px;bottom:4px;display:none;gap:2px;align-items:flex-end;padding:2px 3px;border-radius:6px;background:rgba(3,10,20,.55)}
     .eq b{display:block;width:2px;background:#7dd3fc;border-radius:2px;animation:eq 1s ease-in-out infinite}
     .eq b:nth-child(2){animation-delay:.15s}.eq b:nth-child(3){animation-delay:.3s}
@@ -86,6 +90,16 @@
     .trackBtns button,.albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
     .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 
+    body.nav-forwarding{
+      overflow:hidden;
+      animation:navForwardOut .18s ease forwards;
+      will-change: transform, opacity;
+    }
+    @keyframes navForwardOut{
+      from{transform:translateX(0);opacity:1}
+      to{transform:translateX(-24px);opacity:.38}
+    }
+
   </style>
 </head>
 <body>
@@ -95,10 +109,11 @@
       <div class="np">
         <div class="artWrap">
           <img id="art" src="" alt="" />
+          <span class="artSpin" id="npArtSpin" aria-hidden="true"></span>
           <span class="eq" id="eqOverlay" aria-hidden="true"><b></b><b></b><b></b></span>
         </div>
         <div>
-          <div id="line1">Loading…</div>
+          <div id="line1"></div>
           <div id="line2" class="muted"></div>
         </div>
       </div>
@@ -147,6 +162,7 @@
   <script>
     const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v1';
     const MOBILE_DEFAULT_PROFILE={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,colorPreset:'ocean',recentCount:18};
+    const IS_PREVIEW = new URL(location.href).searchParams.get('preview') === '1';
     function parseProfile(){
       const u=new URL(location.href); const p=u.searchParams.get('profile');
       if (p){
@@ -168,23 +184,41 @@
     function applyProfileUi(){
       document.getElementById('recentTitle').style.display=profile.showRecent===false?'none':'';
       document.getElementById('recentRail').style.display=profile.showRecent===false?'none':'';
-      applyPalette(profile.colorPreset || 'ocean');
+      applyPalette(profile.colorPreset || 'ocean', profile.theme || 'auto');
     }
     applyProfileUi();
 
-    function applyPalette(name){
+    function applyPalette(name, themeMode){
       const p = String(name||'ocean').toLowerCase();
+      const modeRaw = String(themeMode||'auto').toLowerCase();
+      const isLight = modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
       const map = {
         ocean:  { accent:'#4aa8ff', surface:'#0b111c', line:'#1f2a3d', quickBg:'#121c30', quickBgMenu:'rgba(10,16,28,.94)' },
         violet: { accent:'#a78bfa', surface:'#120f1f', line:'#32284a', quickBg:'#1a1330', quickBgMenu:'rgba(23,16,38,.94)' },
         mint:   { accent:'#34d399', surface:'#0b1514', line:'#21423f', quickBg:'#112421', quickBgMenu:'rgba(14,34,30,.94)' },
         amber:  { accent:'#fbbf24', surface:'#171208', line:'#4a3720', quickBg:'#2a1f12', quickBgMenu:'rgba(34,25,14,.94)' },
+        black:  { accent:'#f5f5f5', surface:'#050505', line:'#222222', quickBg:'#0e0e0e', quickBgMenu:'rgba(8,8,8,.94)' },
+        orange: { accent:'#ff7a1a', surface:'#16100a', line:'#4a2f1c', quickBg:'#24180f', quickBgMenu:'rgba(30,18,10,.94)' },
       };
-      const t = map[p] || map.ocean;
+      const d = map[p] || map.ocean;
+      const lightMap = {
+        ocean:  { surface:'#eef5ff', line:'#c8d7ee', quickBg:'#f8fbff', quickBgMenu:'rgba(248,251,255,.96)', text:'#0b0f17', muted:'#3f5673' },
+        violet: { surface:'#f5f0ff', line:'#d9cdf1', quickBg:'#fcf9ff', quickBgMenu:'rgba(252,249,255,.96)', text:'#0b0f17', muted:'#52436e' },
+        mint:   { surface:'#eefcf7', line:'#c7e8dd', quickBg:'#f8fffc', quickBgMenu:'rgba(248,255,252,.96)', text:'#0b0f17', muted:'#3d5f58' },
+        amber:  { surface:'#fff8ea', line:'#ead8b0', quickBg:'#fffdf6', quickBgMenu:'rgba(255,253,246,.96)', text:'#0b0f17', muted:'#65532e' },
+        black:  { surface:'#f2f4f8', line:'#d4dae4', quickBg:'#fafbfe', quickBgMenu:'rgba(250,251,254,.96)', text:'#0b0f17', muted:'#4b5567' },
+        orange: { surface:'#fff3ea', line:'#ebcfbe', quickBg:'#fffaf6', quickBgMenu:'rgba(255,250,246,.96)', text:'#0b0f17', muted:'#684937' },
+      };
+      const l = lightMap[p] || lightMap.ocean;
+      const t = isLight
+        ? { accent: (l.accent || d.accent), ...l }
+        : { ...d, text:'#f3f6ff', muted:'#9eb3d6' };
       const r = document.documentElement;
       r.style.setProperty('--accent', t.accent);
       r.style.setProperty('--surface', t.surface);
       r.style.setProperty('--line', t.line);
+      r.style.setProperty('--text', t.text || '#f3f6ff');
+      r.style.setProperty('--muted', t.muted || '#9eb3d6');
       r.style.setProperty('--quick-bg', t.quickBg || '#121c30');
       r.style.setProperty('--quick-line', t.line || '#2a3a58');
       r.style.setProperty('--quick-bg-menu', t.quickBgMenu || 'rgba(10,16,28,.94)');
@@ -204,6 +238,7 @@
     function reqHeaders(json=true){ return Object.assign({}, json?{'Content-Type':'application/json'}:{}, runtimeTrackKey?{'x-track-key':runtimeTrackKey}:{}); }
 
     async function loadServerProfile(){
+      if (IS_PREVIEW) return; // preview iframe must honor explicit profile token
       try {
         const r = await fetch(`${base}/config/controller-profile`, { cache:'no-store' });
         const j = await r.json().catch(()=>({}));
@@ -227,7 +262,14 @@
         const sig = `${String(j?.file||'')}|${line1}|${line2}|${st}|${art}`;
         if (sig !== npSig) {
           npSig = sig;
-          document.getElementById('art').src = art;
+          const artEl = document.getElementById('art');
+          const spinEl = document.getElementById('npArtSpin');
+          if (artEl) {
+            if (spinEl) spinEl.hidden = false;
+            artEl.onload = ()=>{ if (spinEl) spinEl.hidden = true; };
+            artEl.onerror = ()=>{ if (spinEl) spinEl.hidden = true; };
+            artEl.src = art;
+          }
           document.getElementById('line1').textContent = line1;
           document.getElementById('line2').textContent = line2;
         }
@@ -306,11 +348,29 @@
       if (document.getElementById('recentAlbumModal').classList.contains('open')) openRecentAlbumModal();
     }
 
+    let __navBusy = false;
+
+    function clearNavTransitionState(){
+      document.body.classList.remove('nav-forwarding','nav-backwarding');
+      document.body.style.transform = '';
+      document.body.style.opacity = '';
+      __navBusy = false;
+    }
+    window.addEventListener('pageshow', clearNavTransitionState);
+    window.addEventListener('load', clearNavTransitionState);
+
+    function navigateWithSlide(targetUrl){
+      if (!targetUrl || __navBusy) return;
+      __navBusy = true;
+      document.body.classList.add('nav-forwarding');
+      setTimeout(()=>{ location.href = targetUrl; }, 170);
+    }
+
     function openPage(page){
       const p = String(page || '').trim();
       if (!p) return;
       if (p.startsWith('controller-')) {
-        location.href = p;
+        navigateWithSlide(p);
         return;
       }
       try {
@@ -321,7 +381,7 @@
       } catch {}
       const u = new URL('app.html', location.href);
       u.searchParams.set('page', p);
-      location.href = u.toString();
+      navigateWithSlide(u.toString());
     }
 
     async function loadHomeQuickIndex(){
@@ -397,6 +457,15 @@
     const hqs=document.getElementById('homeQuickSearch');
     const hqr=document.getElementById('homeQuickResults');
     hqs.addEventListener('input',(ev)=>renderHomeQuickResults(ev.target.value||''));
+    const npTapEl = document.querySelector('.npTap[href]');
+    if (npTapEl) {
+      npTapEl.addEventListener('click', (ev)=>{
+        const href = String(npTapEl.getAttribute('href') || '').trim();
+        if (!href) return;
+        ev.preventDefault();
+        navigateWithSlide(href);
+      });
+    }
     hqr.addEventListener('click', async (ev)=>{
       const b=ev.target.closest('button.qBtn[data-act]');
       const row=ev.target.closest('.qRow[data-type][data-value]');

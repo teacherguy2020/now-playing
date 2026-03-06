@@ -116,6 +116,10 @@
       padding-right: 12px;
       z-index: 7000 !important; /* above phone controls lane */
     }
+    /* prevent accidental text selection in controller-now-playing */
+    body.phone-ui, body.phone-ui * { -webkit-user-select:none; user-select:none; }
+    /* sanity-check visual: album line should look tappable */
+    body.phone-ui #album-link { text-decoration: underline; text-underline-offset: 2px; }
     /* Keep playback chrome visible; personnel panel overlays above it */
     body.modal-open #progress-bar-wrapper,
     body.modal-open #phone-controls,
@@ -123,6 +127,21 @@
     body.modal-open #mode-logo {
       display: revert !important;
     }
+
+    /* Album modal (same interaction model as controller home) */
+    .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:9000;align-items:center;justify-content:center}
+    .albumModal.open{display:flex}
+    .albumCard{width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px)}
+    .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+    .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .albumTitle{font-size:17px;font-weight:700}
+    .albumMeta{font-size:12px;color:var(--muted,#9eb3d6)}
+    .albumMeta .artistLink{color:var(--accent,#4aa8ff);text-decoration:underline;text-underline-offset:2px;background:transparent;border:0;padding:0;margin:0;font:inherit;cursor:pointer}
+    .albumTracks{list-style:none;margin:8px 0 0;padding:0}
+    .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:flex;justify-content:space-between;gap:8px;font-size:14px}
+    .trackBtns{display:flex;gap:6px}
+    .trackBtns button,.albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
+    .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 
     /* Keep hidden until fully loaded, then slide in */
     body.cnp-hidden{opacity:0;visibility:hidden}
@@ -134,14 +153,46 @@
     }
     @keyframes cnpSlideOut{
       from{transform:translateX(0);opacity:1}
-      to{transform:translateX(34px);opacity:.7}
+      to{transform:translateX(46px);opacity:.5}
     }
+
+    /* Home card reveal underlay during exit */
+    #homeRevealCard{
+      position:fixed;
+      left:14px;
+      right:14px;
+      top:calc(env(safe-area-inset-top,0px) + 10px);
+      z-index:0;
+      opacity:0;
+      transform:translateX(-14px);
+      transition:opacity .16s ease, transform .18s ease;
+      pointer-events:none;
+    }
+    body.cnp-exit #homeRevealCard{opacity:1;transform:translateX(0)}
+    .hrCard{background:transparent;border:0;padding:8px 0}
+    .hrTitle{font-weight:750;font-size:18px;margin-bottom:10px;color:#f3f6ff}
+    .hrNp{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center}
+    .hrArt{width:64px;height:64px;border-radius:10px;object-fit:cover;display:block;background:#0a1222}
+    .hrL1{color:#f3f6ff;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .hrL2{color:#9eb3d6;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   </style>
 
 </head>
 
 <body class="booting">
   <a id="cnpBack" href="controller.html" aria-label="Back">›</a>
+  <div id="homeRevealCard" aria-hidden="true">
+    <div class="hrCard">
+      <div class="hrTitle">Now Playing on moOde</div>
+      <div class="hrNp">
+        <img id="hrArt" class="hrArt" src="" alt="" />
+        <div>
+          <div id="hrL1" class="hrL1"></div>
+          <div id="hrL2" class="hrL2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
     <div id="background-a"></div>
   <div id="background-b"></div>
   <script>
@@ -235,9 +286,9 @@
       </div>
 
       <!-- Album + share icon live entirely inside this link -->
-      <a id="album-link" aria-label="Open in Apple Music">
+      <button id="album-link" type="button" aria-label="Open album details" style="background:transparent;border:0;padding:0;margin:0;color:inherit;font:inherit;text-align:inherit;">
         <span id="album-text"></span>
-      </a>
+      </button>
 
       <div id="file-info">
         <span id="file-info-text"></span>
@@ -328,6 +379,19 @@
     </div>
   </div>
 
+  <div class="albumModal" id="npAlbumModal" aria-hidden="true">
+    <div class="albumCard" role="dialog" aria-modal="true" aria-label="Album details">
+      <div class="albumHead"><img id="npAlbumArt" src="" alt="" /><div><div class="albumTitle" id="npAlbumTitle">Album</div><div class="albumMeta" id="npAlbumMeta"></div></div></div>
+      <div class="albumBtns">
+        <button id="npAlbumAppendBtn" type="button">Append album</button>
+        <button id="npAlbumCropBtn" type="button">Add album (crop)</button>
+        <button id="npAlbumReplaceBtn" type="button">Replace with album</button>
+        <button id="npAlbumCloseBtn" type="button">Close</button>
+      </div>
+      <ul class="albumTracks" id="npAlbumTracks"></ul>
+    </div>
+  </div>
+
     <script>
       window.NP_DISABLE_ART_SWITCH = true;
       // Controller now-playing should always use phone portrait layout.
@@ -342,6 +406,20 @@
         back?.addEventListener('click', (ev) => {
           ev.preventDefault();
           const href = back.getAttribute('href') || 'controller.html';
+
+          try {
+            const hrArt = document.getElementById('hrArt');
+            const hrL1 = document.getElementById('hrL1');
+            const hrL2 = document.getElementById('hrL2');
+            const art = document.getElementById('album-art');
+            const artist = String(document.getElementById('artist-name')?.textContent || '').trim();
+            const title = String(document.getElementById('track-title')?.textContent || '').trim();
+            const album = String(document.getElementById('album-text')?.textContent || '').trim();
+            if (hrArt && art) hrArt.src = art.currentSrc || art.src || '';
+            if (hrL1) hrL1.textContent = `${artist}${artist&&title?' • ':''}${title}`.trim();
+            if (hrL2) hrL2.textContent = album;
+          } catch {}
+
           document.body.classList.remove('cnp-ready');
           document.body.classList.add('cnp-exit');
           setTimeout(() => {
@@ -390,6 +468,133 @@
         tracking = false;
         armed = false;
       }, { passive: true });
+    })();
+
+    // Ensure overlays don't persist when returning via history/BFCache
+    (function resetOverlaysOnReturn(){
+      function closeAll(){
+        try { document.getElementById('npAlbumModal')?.classList.remove('open'); } catch {}
+        try {
+          const mo = document.getElementById('modalOverlay');
+          mo?.classList.remove('open');
+          mo?.setAttribute('aria-hidden','true');
+        } catch {}
+        try {
+          const ad = document.getElementById('artist-details-container');
+          if (ad) ad.style.display = 'none';
+        } catch {}
+        try { document.body.classList.remove('modal-open'); } catch {}
+      }
+      window.addEventListener('pageshow', closeAll);
+      document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) closeAll(); });
+    })();
+
+    // Local-track album tap -> same album card/actions as controller home
+    (function bindAlbumCardFromAlbumLink(){
+      const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+      let runtimeTrackKey='';
+      let ctx={album:'',artist:'',art:'',tracks:[]};
+      const albumLink=document.getElementById('album-link');
+      const modal=document.getElementById('npAlbumModal');
+      const tracksHost=document.getElementById('npAlbumTracks');
+      if(!albumLink||!modal||!tracksHost) return;
+
+      async function ensureKey(){
+        if (runtimeTrackKey) return runtimeTrackKey;
+        try { const r=await fetch(`${base}/config/runtime`,{cache:'no-store'}); const j=await r.json().catch(()=>({})); runtimeTrackKey=String(j?.config?.trackKey||'').trim(); } catch {}
+        return runtimeTrackKey;
+      }
+      function reqHeaders(json=true){ return Object.assign({}, json?{'Content-Type':'application/json'}:{}, runtimeTrackKey?{'x-track-key':runtimeTrackKey}:{}); }
+      async function sendPlayback(action, extra={}){ await ensureKey(); await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify(Object.assign({action},extra||{}))}).catch(()=>null); }
+
+      function open(){ modal.classList.add('open'); }
+      function close(){ modal.classList.remove('open'); }
+      function render(){
+        document.getElementById('npAlbumTitle').textContent = ctx.album || '(album)';
+        const metaEl = document.getElementById('npAlbumMeta');
+        if (metaEl) {
+          const a = String(ctx.artist||'').trim();
+          metaEl.innerHTML = a ? `<button type="button" class="artistLink" id="npAlbumArtistLink" title="Open artist">${a}</button>` : '';
+        }
+        document.getElementById('npAlbumArt').src = ctx.art || `${base}/art/current.jpg`;
+        tracksHost.innerHTML = (ctx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); return `<li><span>${i+1}. ${nm}</span><span class='trackBtns'><button title='Play now' aria-label='Play now' data-track-action='play' data-track-file='${f}'>▶</button><button title='Add to queue' aria-label='Add to queue' data-track-action='add' data-track-file='${f}'>＋</button></span></li>`; }).join('') || '<li>No tracks found</li>';
+      }
+
+      async function fetchAlbumTracks(album, artist){
+        await ensureKey();
+        async function fetchPreviewTracks(body){
+          const r=await fetch(`${base}/config/queue-wizard/preview`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify(body)});
+          const j=await r.json().catch(()=>({}));
+          return (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
+        }
+        let tracks = await fetchPreviewTracks({genres:[],artists:artist?[artist]:[],albums:album?[album]:[],excludeGenres:[],minRating:0,maxTracks:2000});
+        if (!tracks.length && album) tracks = await fetchPreviewTracks({genres:[],artists:[],albums:[album],excludeGenres:[],minRating:0,maxTracks:2000});
+        if (!tracks.length && artist) tracks = await fetchPreviewTracks({genres:[],artists:[artist],albums:[],excludeGenres:[],minRating:0,maxTracks:2000});
+        if (album && tracks.length) {
+          const aLower = album.toLowerCase();
+          const narrowed = tracks.filter((t)=>String(t?.album||'').trim().toLowerCase()===aLower);
+          if (narrowed.length) tracks = narrowed;
+        }
+        return tracks;
+      }
+
+      let __albumTapBusy = false;
+      async function onAlbumTap(ev){
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (typeof ev.stopImmediatePropagation==='function') ev.stopImmediatePropagation();
+        }
+        if (__albumTapBusy) return;
+        const d = (window.lastNowPlayingData || {});
+        const isLocal = !(d?.isStream===true) && !(d?.isAirplay===true) && !(d?.isUpnp===true);
+        if (!isLocal) return;
+        __albumTapBusy = true;
+        try {
+          ctx = { album:String(d?.album||'').trim(), artist:String(d?.artist||'').trim(), art:String(d?.albumArtUrl||d?.altArtUrl||'').trim(), tracks:[] };
+          render();
+          tracksHost.innerHTML = '<li>Loading album tracks…</li>';
+          open();
+          try { ctx.tracks = await fetchAlbumTracks(ctx.album, ctx.artist); } catch { ctx.tracks = []; }
+          if (modal.classList.contains('open')) render();
+        } finally {
+          setTimeout(()=>{ __albumTapBusy = false; }, 120);
+        }
+      }
+
+      function syncAlbumTapState(){
+        const d = (window.lastNowPlayingData || {});
+        const isLocal = !(d?.isStream===true) && !(d?.isAirplay===true) && !(d?.isUpnp===true);
+        if (isLocal) {
+          albumLink.style.pointerEvents = 'auto';
+          albumLink.style.cursor = 'pointer';
+          albumLink.title = 'Open album details';
+        }
+      }
+      setInterval(syncAlbumTapState, 900);
+      syncAlbumTapState();
+
+      albumLink.addEventListener('pointerdown', onAlbumTap, {capture:true, passive:false});
+      albumLink.addEventListener('click', onAlbumTap, {capture:true, passive:false});
+
+      document.getElementById('npAlbumCloseBtn')?.addEventListener('click', close);
+      modal.addEventListener('click', (ev)=>{
+        if(ev.target===modal) { close(); return; }
+        const artistBtn = ev.target.closest('#npAlbumArtistLink');
+        if (artistBtn) {
+          const artist = String(ctx.artist||'').trim();
+          if (artist) {
+            const album = String(ctx.album||'').trim();
+            const q = new URLSearchParams({ artist });
+            if (album) q.set('album', album);
+            location.href = `controller-artists.html?${q.toString()}`;
+          }
+        }
+      });
+      document.getElementById('npAlbumAppendBtn')?.addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'append',album:ctx.album,artist:ctx.artist||''}); close(); });
+      document.getElementById('npAlbumCropBtn')?.addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'crop',album:ctx.album,artist:ctx.artist||''}); close(); });
+      document.getElementById('npAlbumReplaceBtn')?.addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'replace',album:ctx.album,artist:ctx.artist||''}); close(); });
+      tracksHost.addEventListener('click', async (ev)=>{ const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if(a==='play'){ await sendPlayback('playfile',{file}); close(); } else { await sendPlayback('addfile',{file}); } });
     })();
 </script>
 </body>

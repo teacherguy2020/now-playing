@@ -58,6 +58,18 @@
     .hMeta{font-size:12px;color:var(--muted)}
     .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
     .btns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:8px 10px;cursor:pointer}
+  
+
+    body.nav-backwarding{
+      overflow:hidden;
+      animation:navBackwardOut .18s ease forwards;
+      will-change: transform, opacity;
+    }
+    @keyframes navBackwardOut{
+      from{transform:translateX(0);opacity:1}
+      to{transform:translateX(24px);opacity:.38}
+    }
+
   </style>
 </head>
 <body>
@@ -90,25 +102,43 @@
 
     // Server-backed controller palette
     const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
-    function __npApplyPalette(name){
+    function __npApplyPalette(name, themeMode){
       const p = String(name||'ocean').toLowerCase();
+      const modeRaw = String(themeMode||'auto').toLowerCase();
+      const isLight = modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
       const map = {
         ocean:  { accent:'#4aa8ff', bg:'#0b111c', line:'#1f2a3d' },
         violet: { accent:'#a78bfa', bg:'#120f1f', line:'#32284a' },
         mint:   { accent:'#34d399', bg:'#0b1514', line:'#21423f' },
         amber:  { accent:'#fbbf24', bg:'#171208', line:'#4a3720' },
+        black:  { accent:'#f5f5f5', bg:'#050505', line:'#222222' },
+        orange: { accent:'#ff7a1a', bg:'#16100a', line:'#4a2f1c' },
       };
-      const t = map[p] || map.ocean;
+      const d = map[p] || map.ocean;
+      const lightMap = {
+        ocean:  { bg:'#eef5ff', line:'#c8d7ee', text:'#0b0f17', muted:'#3f5673' },
+        violet: { bg:'#f5f0ff', line:'#d9cdf1', text:'#0b0f17', muted:'#52436e' },
+        mint:   { bg:'#eefcf7', line:'#c7e8dd', text:'#0b0f17', muted:'#3d5f58' },
+        amber:  { bg:'#fff8ea', line:'#ead8b0', text:'#0b0f17', muted:'#65532e' },
+        black:  { bg:'#f2f4f8', line:'#d4dae4', text:'#0b0f17', muted:'#4b5567', accent:'#111111' },
+        orange: { bg:'#fff3ea', line:'#ebcfbe', text:'#0b0f17', muted:'#684937' },
+      };
+      const l = lightMap[p] || lightMap.ocean;
+      const t = isLight
+        ? { accent: (l.accent || d.accent), ...l }
+        : { ...d, text:'#f3f6ff', muted:'#9eb3d6' };
       const r = document.documentElement;
       r.style.setProperty('--accent', t.accent);
       r.style.setProperty('--bg', t.bg);
       r.style.setProperty('--line', t.line);
+      r.style.setProperty('--text', t.text || '#f3f6ff');
+      r.style.setProperty('--muted', t.muted || '#9eb3d6');
     }
     (async ()=>{
       try {
         const r = await fetch(`${__npBase}/config/controller-profile`, { cache:'no-store' });
         const j = await r.json().catch(()=>({}));
-        __npApplyPalette(String(j?.profile?.colorPreset || 'ocean'));
+        __npApplyPalette(String(j?.profile?.colorPreset || 'ocean'), String(j?.profile?.theme || 'auto'));
       } catch {}
     })();
 
@@ -334,7 +364,13 @@
       if(menu.classList.contains('open') && !(ev.target.closest('#menu')||ev.target.closest('#menuBtn'))) menu.classList.remove('open');
     });
 
-    document.getElementById('backBtn').addEventListener('click',()=>{ if(history.length>1) history.back(); else location.href='controller.html'; });
+    let __backNavBusy=false;
+    document.getElementById('backBtn').addEventListener('click', ()=>{
+      if (__backNavBusy) return;
+      __backNavBusy = true;
+      document.body.classList.add('nav-backwarding');
+      setTimeout(()=>{ if(history.length>1) history.back(); else location.href='controller.html'; }, 170);
+    });
 
     loadMenuState();
     syncMenuState();

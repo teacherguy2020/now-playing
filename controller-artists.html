@@ -16,7 +16,6 @@
     .row{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
     .coverWrap{position:relative;display:block}
     .row img,.ph{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#0a1222}
-    .coverMore{position:absolute;left:4px;top:4px;width:20px;height:20px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:11px;display:flex;align-items:center;justify-content:center;z-index:2}
     .name{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .sub{font-size:12px;color:var(--muted)}
 
@@ -55,6 +54,18 @@
     .trackBtns{display:flex;gap:6px}
     .trackBtns button,.albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
     .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  
+
+    body.nav-backwarding{
+      overflow:hidden;
+      animation:navBackwardOut .18s ease forwards;
+      will-change: transform, opacity;
+    }
+    @keyframes navBackwardOut{
+      from{transform:translateX(0);opacity:1}
+      to{transform:translateX(24px);opacity:.38}
+    }
+
   </style>
 </head>
 <body>
@@ -103,25 +114,43 @@
 
     // Server-backed controller palette
     const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
-    function __npApplyPalette(name){
+    function __npApplyPalette(name, themeMode){
       const p = String(name||'ocean').toLowerCase();
+      const modeRaw = String(themeMode||'auto').toLowerCase();
+      const isLight = modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
       const map = {
         ocean:  { accent:'#4aa8ff', bg:'#0b111c', line:'#1f2a3d' },
         violet: { accent:'#a78bfa', bg:'#120f1f', line:'#32284a' },
         mint:   { accent:'#34d399', bg:'#0b1514', line:'#21423f' },
         amber:  { accent:'#fbbf24', bg:'#171208', line:'#4a3720' },
+        black:  { accent:'#f5f5f5', bg:'#050505', line:'#222222' },
+        orange: { accent:'#ff7a1a', bg:'#16100a', line:'#4a2f1c' },
       };
-      const t = map[p] || map.ocean;
+      const d = map[p] || map.ocean;
+      const lightMap = {
+        ocean:  { bg:'#eef5ff', line:'#c8d7ee', text:'#0b0f17', muted:'#3f5673' },
+        violet: { bg:'#f5f0ff', line:'#d9cdf1', text:'#0b0f17', muted:'#52436e' },
+        mint:   { bg:'#eefcf7', line:'#c7e8dd', text:'#0b0f17', muted:'#3d5f58' },
+        amber:  { bg:'#fff8ea', line:'#ead8b0', text:'#0b0f17', muted:'#65532e' },
+        black:  { bg:'#f2f4f8', line:'#d4dae4', text:'#0b0f17', muted:'#4b5567', accent:'#111111' },
+        orange: { bg:'#fff3ea', line:'#ebcfbe', text:'#0b0f17', muted:'#684937' },
+      };
+      const l = lightMap[p] || lightMap.ocean;
+      const t = isLight
+        ? { accent: (l.accent || d.accent), ...l }
+        : { ...d, text:'#f3f6ff', muted:'#9eb3d6' };
       const r = document.documentElement;
       r.style.setProperty('--accent', t.accent);
       r.style.setProperty('--bg', t.bg);
       r.style.setProperty('--line', t.line);
+      r.style.setProperty('--text', t.text || '#f3f6ff');
+      r.style.setProperty('--muted', t.muted || '#9eb3d6');
     }
     (async ()=>{
       try {
         const r = await fetch(`${__npBase}/config/controller-profile`, { cache:'no-store' });
         const j = await r.json().catch(()=>({}));
-        __npApplyPalette(String(j?.profile?.colorPreset || 'ocean'));
+        __npApplyPalette(String(j?.profile?.colorPreset || 'ocean'), String(j?.profile?.theme || 'auto'));
       } catch {}
     })();
 
@@ -129,6 +158,9 @@
     let key='';
     let artists=[];
     let modalCtx={artist:'',art:'',albums:[],album:'',tracks:[]};
+    const __qs = new URL(location.href).searchParams;
+    const __openArtistParam = String(__qs.get('artist') || '').trim();
+    const __openAlbumParam = String(__qs.get('album') || '').trim();
 
     async function ensureKey(){ if(key) return key; const r=await fetch(`${base}/config/runtime`,{cache:'no-store'}); const j=await r.json().catch(()=>({})); key=String(j?.config?.trackKey||'').trim(); return key; }
     async function sendPlayback(action, extra={}){ await ensureKey(); const r=await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify(Object.assign({action},extra||{}))}); const j=await r.json().catch(()=>({})); if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`); }
@@ -155,7 +187,7 @@
       meta.textContent = `${artists.length} artists`;
       list.innerHTML = artists.map((a,i)=>{
         const art = a.art ? (a.art.startsWith('http') ? a.art : `${base}${a.art}`) : `${base}/art/current.jpg`;
-        return `<div class='row' data-idx='${i}' data-artist='${encodeURIComponent(a.artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><img src='${art}' alt=''><span class='coverMore' aria-hidden='true'>•••</span></div><div><div class='name'>${a.artist}</div><div class='sub'>${a.count} album(s)</div></div></div>`;
+        return `<div class='row' data-idx='${i}' data-artist='${encodeURIComponent(a.artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><img src='${art}' alt=''></div><div><div class='name'>${a.artist}</div><div class='sub'>${a.count} album(s)</div></div></div>`;
       }).join('');
       renderAlpha();
     }
@@ -229,6 +261,23 @@
     }
     function closeArtistModal(){ document.getElementById('artistModal').classList.remove('open'); }
 
+    async function openArtistByName(artistName, albumName=''){
+      const want = String(artistName||'').trim().toLowerCase();
+      if (!want) return;
+      const i = artists.findIndex((a)=>String(a?.artist||'').trim().toLowerCase()===want);
+      if (i < 0) return;
+      const a = artists[i];
+      const art = a?.art ? (String(a.art).startsWith('http') ? String(a.art) : `${base}${String(a.art)}`) : `${base}/art/current.jpg`;
+      modalCtx.artist = String(a.artist||'').trim();
+      modalCtx.art = art;
+      modalCtx.albums = [];
+      openArtistModal();
+      try { document.querySelector(`.row[data-idx='${i}']`)?.scrollIntoView({behavior:'smooth',block:'center'}); } catch {}
+      modalCtx.albums = await fetchArtistAlbums(modalCtx.artist);
+      renderArtistGrid();
+
+    }
+
     document.getElementById('list').addEventListener('click', async (ev)=>{
       const row = ev.target.closest('.row[data-artist]');
       if (!row) return;
@@ -295,9 +344,20 @@
       if (document.getElementById('albumModal').classList.contains('open')) openAlbumModal();
     });
 
-    document.getElementById('backBtn').addEventListener('click', ()=>{ if(history.length>1) history.back(); else location.href='controller.html'; });
+    let __backNavBusy=false;
+    document.getElementById('backBtn').addEventListener('click', ()=>{
+      if (__backNavBusy) return;
+      __backNavBusy = true;
+      document.body.classList.add('nav-backwarding');
+      setTimeout(()=>{ if(history.length>1) history.back(); else location.href='controller.html'; }, 170);
+    });
 
-    loadArtists();
+    (async ()=>{
+      await loadArtists();
+      if (__openArtistParam) {
+        await openArtistByName(__openArtistParam, __openAlbumParam);
+      }
+    })();
   
     // Pull-to-refresh (controller pages)
     (function enablePullToRefresh(){
