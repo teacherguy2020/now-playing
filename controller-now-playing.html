@@ -118,8 +118,17 @@
     }
     /* prevent accidental text selection in controller-now-playing */
     body.phone-ui, body.phone-ui * { -webkit-user-select:none; user-select:none; }
-    /* sanity-check visual: album line should look tappable */
-    body.phone-ui #album-link { text-decoration: underline; text-underline-offset: 2px; }
+    /* Album line affordance: no underline, use share glyph like radio */
+    body.phone-ui #album-link { text-decoration: none; }
+    body.phone-ui #album-link .share-icon {
+      display:inline-block !important;
+      width:13px;
+      height:13px;
+      margin-left:6px;
+      vertical-align:-2px;
+      opacity:.92;
+      fill:currentColor;
+    }
     /* Keep playback chrome visible; personnel panel overlays above it */
     body.modal-open #progress-bar-wrapper,
     body.modal-open #phone-controls,
