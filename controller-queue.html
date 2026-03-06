@@ -19,6 +19,7 @@
     .list{margin:0;padding:0;list-style:none}
 
     .rowWrap{position:relative;border-bottom:1px solid var(--line);overflow:hidden}
+    .rowWrap.dragActive{overflow:visible;z-index:9997}
     .deleteBtn{position:absolute;right:0;top:0;bottom:0;width:92px;border:0;background:var(--danger);color:#fff;font-weight:700;font-size:15px;opacity:0;pointer-events:none;transition:opacity .16s ease}
     .row{position:relative;z-index:1;background:var(--bg);display:grid;grid-template-columns:34px 34px 1fr 34px;gap:10px;align-items:center;padding:10px 0;transform:translateX(0);transition:transform .18s ease;touch-action:pan-y}
     .row.swiped{transform:translateX(-92px)}
@@ -31,8 +32,11 @@
     .title{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-    .row.dragging{opacity:.65}
-    .rowWrap.dropTarget{outline:2px solid rgba(125,211,252,.45);outline-offset:-2px}
+    .row.dragging{opacity:.96;z-index:9999;box-shadow:0 16px 34px rgba(0,0,0,.52);transform:scale(1.03)}
+    .rowWrap.dropTarget{outline:none}
+    .rowWrap.dropTarget::before{content:'';position:absolute;left:0;right:0;top:-1px;height:3px;background:#45b26f;box-shadow:0 0 0 1px rgba(69,178,111,.18)}
+    .rowWrap.dropTarget.dropBelow::before{content:none}
+    .rowWrap.dropTarget.dropBelow::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:3px;background:#45b26f;box-shadow:0 0 0 1px rgba(69,178,111,.18)}
     .more{width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:#121c30;color:#dfeaff;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
 
     .menu{position:fixed;display:none;z-index:120;min-width:230px;padding:6px;border-radius:18px;
@@ -564,6 +568,10 @@
 
     const listEl = document.getElementById('list');
     let touchStartX = 0, touchStartY = 0, activeRow = null, moved = false;
+    const LONG_PRESS_MS = 650;
+    const PRESS_SLOP = 10;
+    const VERTICAL_SCROLL_CANCEL = 14;
+    let lastDropWrap = null;
 
     listEl.addEventListener('touchstart', (ev)=>{
       closeTrackMenu();
@@ -574,9 +582,25 @@
 
       clearTimeout(longPressTimer);
       longPressTimer = setTimeout(()=>{
-        dragState = { row, fromPos: Number(row.getAttribute('data-pos')||0) };
+        // Only arm drag if finger has stayed mostly still (not scrolling/swiping)
+        if (!activeRow || moved || dragState) return;
+        const wrap = row.closest('.rowWrap');
+        dragState = {
+          row,
+          wrap,
+          fromPos: Number(row.getAttribute('data-pos')||0),
+          startY: touchStartY,
+        };
         row.classList.add('dragging');
-      }, 420);
+        row.style.willChange = 'transform';
+        row.style.position = 'relative';
+        row.style.zIndex = '9999';
+        if (wrap) {
+          wrap.classList.add('dragActive');
+          wrap.style.position = 'relative';
+          wrap.style.zIndex = '9998';
+        }
+      }, LONG_PRESS_MS);
     }, { passive:true });
 
     listEl.addEventListener('touchmove', (ev)=>{
@@ -584,14 +608,55 @@
       const t = ev.touches[0];
       const dx = t.clientX - touchStartX;
       const dy = t.clientY - touchStartY;
-      if (Math.abs(dx) > 8 || Math.abs(dy) > 8) moved = true;
+      if (Math.abs(dx) > PRESS_SLOP || Math.abs(dy) > PRESS_SLOP) moved = true;
+
+      // If user is vertically scrolling, never start drag.
+      if (!dragState && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > VERTICAL_SCROLL_CANCEL) {
+        clearTimeout(longPressTimer);
+      }
 
       if (dragState && dragState.row === activeRow) {
         ev.preventDefault();
-        document.querySelectorAll('.rowWrap.dropTarget').forEach(x=>x.classList.remove('dropTarget'));
-        const el = document.elementFromPoint(t.clientX, t.clientY);
-        const wrap = el?.closest?.('.rowWrap[data-pos]');
-        if (wrap) wrap.classList.add('dropTarget');
+        const dyDrag = t.clientY - Number(dragState.startY || touchStartY || 0);
+        activeRow.style.transform = `translateY(${dyDrag}px)`;
+        const allWraps = Array.from(listEl.querySelectorAll('.rowWrap[data-pos]'));
+        if (!allWraps.length) return;
+
+        // Stable nearest-wrap targeting from pointer Y; avoids jitter from elementFromPoint on moving layers.
+        let best = null;
+        let bestDist = Infinity;
+        for (const w of allWraps) {
+          if (w === dragState.wrap) continue;
+          const r = w.getBoundingClientRect();
+          const mid = r.top + r.height * 0.5;
+          const d = Math.abs(t.clientY - mid);
+          if (d < bestDist) { bestDist = d; best = w; }
+        }
+        if (!best) return;
+
+        const br = best.getBoundingClientRect();
+        let candidate = best;
+        if (t.clientY > (br.top + br.height * 0.6) && best.nextElementSibling?.classList?.contains('rowWrap')) {
+          candidate = best.nextElementSibling;
+        }
+
+        // Hysteresis: don't flip targets unless pointer moved enough.
+        if (lastDropWrap && candidate !== lastDropWrap) {
+          const cr = candidate.getBoundingClientRect();
+          const lr = lastDropWrap.getBoundingClientRect();
+          const threshold = Math.max(10, Math.min(26, br.height * 0.25));
+          if (Math.abs(t.clientY - (cr.top + cr.height * 0.5)) > Math.abs(t.clientY - (lr.top + lr.height * 0.5)) - threshold) {
+            candidate = lastDropWrap;
+          }
+        }
+
+        const draggingDown = t.clientY > touchStartY;
+        if (lastDropWrap !== candidate || (candidate.classList.contains('dropBelow') !== draggingDown)) {
+          document.querySelectorAll('.rowWrap.dropTarget').forEach(x=>x.classList.remove('dropTarget','dropBelow'));
+          candidate.classList.add('dropTarget');
+          if (draggingDown) candidate.classList.add('dropBelow');
+          lastDropWrap = candidate;
+        }
         return;
       }
 
@@ -605,19 +670,65 @@
       }
     }, { passive:false });
 
+    function optimisticReorderDom(fromPos, toPos){
+      const wraps = Array.from(listEl.querySelectorAll('.rowWrap[data-pos]'));
+      const fromIdx = wraps.findIndex((w)=>Number(w.getAttribute('data-pos')||0) === Number(fromPos));
+      const toIdx = wraps.findIndex((w)=>Number(w.getAttribute('data-pos')||0) === Number(toPos));
+      if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return false;
+
+      const moving = wraps[fromIdx];
+      const target = wraps[toIdx];
+      if (!moving || !target) return false;
+
+      if (toIdx > fromIdx) listEl.insertBefore(moving, target.nextSibling);
+      else listEl.insertBefore(moving, target);
+
+      // Renumber visible order immediately so UI matches gesture outcome.
+      Array.from(listEl.querySelectorAll('.rowWrap')).forEach((w, idx)=>{
+        const pos = idx + 1;
+        w.setAttribute('data-pos', String(pos));
+        const row = w.querySelector('.row');
+        if (row) row.setAttribute('data-pos', String(pos));
+        const num = w.querySelector('.num');
+        if (num) num.textContent = String(pos);
+        const del = w.querySelector('.deleteBtn[data-a="rm"]');
+        if (del) del.setAttribute('data-pos', String(pos));
+      });
+      return true;
+    }
+
     async function finishDrag(ev){
       clearTimeout(longPressTimer);
       if (dragState && dragState.row) {
         const row = dragState.row;
         row.classList.remove('dragging');
+        row.style.transform = '';
+        row.style.willChange = '';
+        row.style.zIndex = '';
+        row.style.position = '';
+        if (dragState.wrap) {
+          dragState.wrap.classList.remove('dragActive');
+          dragState.wrap.style.zIndex = '';
+          dragState.wrap.style.position = '';
+        }
         const changed = document.querySelector('.rowWrap.dropTarget');
+        lastDropWrap = null;
         const fromPos = Number(dragState.fromPos || 0);
         const toPos = Number(changed?.getAttribute('data-pos') || 0);
-        document.querySelectorAll('.rowWrap.dropTarget').forEach(x=>x.classList.remove('dropTarget'));
+        document.querySelectorAll('.rowWrap.dropTarget').forEach(x=>x.classList.remove('dropTarget','dropBelow'));
         dragState = null;
         if (fromPos > 0 && toPos > 0 && fromPos !== toPos) {
-          try { await sendPlayback('move', { fromPosition: fromPos, toPosition: toPos }); } catch(e){ console.warn(e); }
-          await loadQueue();
+          const didOptimistic = optimisticReorderDom(fromPos, toPos);
+          try {
+            await sendPlayback('move', { fromPosition: fromPos, toPosition: toPos });
+          } catch(e){
+            console.warn(e);
+            await loadQueue();
+            return;
+          }
+          // Keep optimistic DOM (including thumbs) to avoid full-image churn.
+          // If backend move fails, catch-path above falls back to full reload.
+          if (!didOptimistic) await loadQueue();
           return;
         }
       }
