@@ -349,6 +349,14 @@ body.pause      #fav-heart {
 }
 .rating-stars span.dim { opacity: 0.2; }
 .rating-stars span.filled { color: #d4af37; }
+.rating-stars span.loading {
+  opacity: 1;
+  color: #d4af37;
+  display: inline-block;
+  animation: ratingSpin 1s linear infinite;
+  transform-origin: 50% 54%;
+}
+@keyframes ratingSpin { to { transform: rotate(360deg); } }
 
 #file-info {
   font-size: clamp(18px, calc(var(--artSize) * var(--fs-file)), 36px);

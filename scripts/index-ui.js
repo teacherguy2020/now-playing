@@ -958,9 +958,20 @@ function renderStars(rating) {
   const el = document.getElementById('ratingStars');
   if (!el) return;
 
-  if (!RATINGS_ENABLED || ratingDisabled) {
+  if (!RATINGS_ENABLED) {
     el.innerHTML = '';
     el.style.display = 'none';
+    return;
+  }
+
+  // Keep row height stable while ratings metadata is still resolving.
+  if (ratingDisabled) {
+    if (ratingsAllowedNow()) {
+      renderStarsLoading();
+    } else {
+      el.innerHTML = '';
+      el.style.display = 'none';
+    }
     return;
   }
 
@@ -976,6 +987,25 @@ function renderStars(rating) {
     // ✅ add filled vs dim class
     s.className = (i <= r) ? 'filled' : 'dim';
 
+    el.appendChild(s);
+  }
+}
+
+function renderStarsLoading() {
+  const el = document.getElementById('ratingStars');
+  if (!el) return;
+  if (!RATINGS_ENABLED) {
+    el.innerHTML = '';
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'inline-flex';
+  el.innerHTML = '';
+  for (let i = 1; i <= 5; i++) {
+    const s = document.createElement('span');
+    s.textContent = '★';
+    s.className = 'dim';
+    if (i === 3) s.classList.add('loading');
     el.appendChild(s);
   }
 }
@@ -2412,10 +2442,13 @@ function applyRatingFromNowPlaying(np) {
     return;
   }
 
-  // If server says disabled, always clear (also clears pending)
+  // If server says disabled/missing, show loading placeholders while metadata catches up.
   if (npDisabled) {
     pendingRating = null;
-    clearStars();
+    ratingDisabled = false;
+    lastRatingFile = '';
+    currentRating = 0;
+    renderStarsLoading();
     return;
   }
 
