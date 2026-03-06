@@ -111,7 +111,7 @@
     body.phone-ui #album-link{grid-area:album;justify-self:center;text-align:center;width:100%;margin-top:-10px}
     body.phone-ui #file-info{grid-area:file;justify-self:center;text-align:center;width:100%;margin-top:-10px}
     body.phone-ui #next-up{grid-area:nextup;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5600 !important;pointer-events:auto !important;opacity:1 !important;visibility:visible !important;justify-self:stretch;margin-top:-10px}
-    body.phone-ui #progress-bar-wrapper{grid-area:progress;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;width:min(92vw, var(--artSize, 640px)) !important;justify-self:center;padding-left:10px;padding-right:10px}
+    body.phone-ui #progress-bar-wrapper{grid-area:progress;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;width:min(calc(92vw - 40px), calc(var(--artSize, 640px) - 40px)) !important;justify-self:center}
     body.phone-ui #phone-controls{grid-area:controls;display:flex !important;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5590 !important;margin-top:-7px !important;justify-self:center;width:100%}
     body.phone-ui #mode-logo{display:none !important}
     /* Remove extra dim overlays for prototype */
