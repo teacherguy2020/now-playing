@@ -113,7 +113,130 @@
     body.phone-ui #next-up{grid-area:nextup;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5600 !important;pointer-events:auto !important;opacity:1 !important;visibility:visible !important;justify-self:stretch;margin-top:-10px}
     body.phone-ui #progress-bar-wrapper{grid-area:progress;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;width:min(calc(92vw - 40px), calc(var(--artSize, 640px) - 40px)) !important;justify-self:center}
     body.phone-ui #phone-controls{grid-area:controls;display:flex !important;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5590 !important;margin-top:-7px !important;justify-self:center;width:100%}
+    /* Brass-ring control treatment */
+    body.phone-ui #phone-controls .ctl{
+      position:relative;
+      border:2px solid transparent !important;
+      background:
+        linear-gradient(rgba(10,14,22,.70), rgba(10,14,22,.70)) padding-box,
+        linear-gradient(135deg, rgba(255,224,130,.85) 0%, rgba(255,245,196,.55) 34%, rgba(255,214,102,.92) 58%, rgba(201,139,28,.88) 100%) border-box !important;
+      box-shadow:
+        0 0 0 1px rgba(255,241,188,.34) inset,
+        0 1px 0 rgba(255,255,255,.10) inset;
+      overflow:hidden;
+    }
+    body.phone-ui #phone-controls .ctl::before{
+      content:'';
+      position:absolute;
+      inset:2px;
+      border-radius:inherit;
+      pointer-events:none;
+      background:
+        radial-gradient(120% 80% at 18% 8%, rgba(255,255,255,.34), rgba(255,255,255,0) 44%),
+        linear-gradient(180deg, rgba(255,250,220,.10), rgba(0,0,0,0));
+      mix-blend-mode:screen;
+    }
+    body.phone-ui #phone-controls #btn-play::after{
+      content:'';
+      position:absolute;
+      inset:-2px;
+      border-radius:inherit;
+      pointer-events:none;
+      opacity:0;
+      /* ring-only sweep: transparent center so icon/body do not appear to rotate */
+      background:
+        conic-gradient(from 0deg, rgba(255,235,170,0) 0deg, rgba(255,245,210,.92) 24deg, rgba(255,235,170,0) 58deg, rgba(255,235,170,0) 360deg),
+        radial-gradient(circle at center, transparent 62%, rgba(0,0,0,.98) 63%);
+      -webkit-mask:
+        radial-gradient(circle at center, transparent 61.5%, #000 64.5%);
+      mask:
+        radial-gradient(circle at center, transparent 61.5%, #000 64.5%);
+      mix-blend-mode:screen;
+      transform-origin:50% 50%;
+    }
+    body.phone-ui #phone-controls .ctl:active{
+      box-shadow:
+        0 0 14px 3px rgba(255,193,44,.36),
+        0 0 0 1px rgba(255,243,194,.42) inset,
+        0 1px 0 rgba(255,255,255,.14) inset;
+    }
+    body.phone-ui #phone-controls .ctl.tapPulse{
+      box-shadow:
+        0 0 26px 7px rgba(255,193,44,.52),
+        0 0 0 1px rgba(255,243,194,.46) inset,
+        0 1px 0 rgba(255,255,255,.16) inset !important;
+    }
+    @media (hover:hover) {
+      body.phone-ui #phone-controls .ctl:hover{
+        box-shadow:
+          0 0 22px 5px rgba(255,193,44,.46),
+          0 0 0 1px rgba(255,243,194,.42) inset,
+          0 1px 0 rgba(255,255,255,.14) inset;
+      }
+    }
+    body.phone-ui #phone-controls .ctl:focus-visible{
+      box-shadow:
+        0 0 0 1px rgba(255,243,194,.42) inset,
+        0 1px 0 rgba(255,255,255,.14) inset;
+    }
+    /* Keep play icon green while preserving brass ring aesthetic */
+    /* Neutralize sticky .on glow from base theme; keep polished brass */
+    body.phone-ui #phone-controls .ctl.on,
+    body.phone-ui #phone-controls .ctl.big.on{
+      background:
+        linear-gradient(rgba(10,14,22,.70), rgba(10,14,22,.70)) padding-box,
+        linear-gradient(135deg, rgba(255,224,130,.85) 0%, rgba(255,245,196,.55) 34%, rgba(255,214,102,.92) 58%, rgba(201,139,28,.88) 100%) border-box !important;
+      box-shadow:
+        0 0 0 1px rgba(255,241,188,.34) inset,
+        0 1px 0 rgba(255,255,255,.10) inset !important;
+      color:inherit;
+    }
+    body.phone-ui #phone-controls #btn-play.on{
+      color:#22c55e !important;
+      background:
+        linear-gradient(rgba(10,14,22,.70), rgba(10,14,22,.70)) padding-box,
+        linear-gradient(135deg, rgba(255,224,130,.85) 0%, rgba(255,245,196,.55) 34%, rgba(255,214,102,.92) 58%, rgba(201,139,28,.88) 100%) border-box !important;
+      box-shadow:
+        0 0 0 1px rgba(255,241,188,.34) inset,
+        0 1px 0 rgba(255,255,255,.10) inset,
+        0 0 12px rgba(34,197,94,.22);
+    }
+    body.phone-ui #phone-controls #btn-play.on::after{
+      opacity:.95;
+      animation:brassSweep 4.2s linear infinite;
+    }
+    @keyframes brassSweep { to { transform: rotate(360deg); } }
     body.phone-ui #mode-logo{display:none !important}
+
+    /* Landscape phone tuning: keep art anchored full-left and scale everything sanely */
+    @media (orientation: landscape) and (max-height: 520px) {
+      body.phone-ui { --artSize: min(62vh, 520px); }
+      body.phone-ui #content{
+        grid-template-columns: 48% minmax(0, 1fr);
+        grid-template-areas:
+          "back back"
+          "art artist"
+          "art title"
+          "art stars"
+          "art album"
+          "art file"
+          "art controls"
+          "art progress"
+          "art nextup";
+        column-gap: 14px;
+        row-gap: 8px;
+      }
+      body.phone-ui #album-art-wrapper{justify-self:start;margin-top:8px !important}
+      body.phone-ui #progress-bar-wrapper{justify-self:stretch;width:100% !important;margin-top:2px}
+      body.phone-ui #phone-controls{justify-self:stretch;width:100%}
+      body.phone-ui #phone-controls .ctl{flex:0 0 auto !important;width:var(--ctlFinal) !important;height:var(--ctlFinal) !important;border-radius:999px !important}
+      body.phone-ui #phone-controls .ctl.big{width:var(--ctlBigFinal) !important;height:var(--ctlBigFinal) !important;border-radius:999px !important}
+      body.phone-ui #next-up{margin-top:2px;justify-self:stretch;width:100%}
+      #cnpBack{justify-self:start;transform:none !important}
+    }
+    @media (orientation: landscape) and (max-height: 520px) and (display-mode: standalone) {
+      body.phone-ui #content{padding-left:calc(var(--padSide) + 40px) !important}
+    }
     #ratingStars .loading{opacity:1;color:#d4af37;display:inline-block;animation:ratingSpin 1s linear infinite;transform-origin:50% 54%}
     @keyframes ratingSpin{to{transform:rotate(360deg)}}
     /* Remove extra dim overlays for prototype */
@@ -571,6 +694,29 @@
     })();
 
     // Next-up tap -> open Live Queue modal in app shell (or queue page fallback)
+    (function bindControlTapPulse(){
+      const host = document.getElementById('phone-controls');
+      if (!host) return;
+      let tmr = 0;
+      const pulse = (btn)=>{
+        if (!(btn instanceof HTMLElement)) return;
+        btn.classList.add('tapPulse');
+        try { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); } catch {}
+        clearTimeout(tmr);
+        tmr = setTimeout(()=>{ try { btn.classList.remove('tapPulse'); } catch {} }, 240);
+      };
+      host.addEventListener('pointerdown', (ev)=>{
+        const btn = ev.target.closest('button.ctl');
+        if (!btn) return;
+        pulse(btn);
+      }, { passive:true });
+      host.addEventListener('touchend', (ev)=>{
+        const btn = ev.target.closest('button.ctl');
+        if (!btn) return;
+        pulse(btn);
+      }, { passive:true });
+    })();
+
     (function bindNextUpOpenQueue(){
       const nextUp = document.getElementById('next-up');
       const modal = document.getElementById('npQueueModal');
