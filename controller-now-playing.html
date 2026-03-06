@@ -107,14 +107,31 @@
     body.phone-ui .text-column{display:contents}
     body.phone-ui #artist-name{grid-area:artist;justify-self:center;text-align:center;width:100%;margin-top:-10px}
     body.phone-ui #titleLine{grid-area:title;justify-self:center;text-align:center;width:100%;margin-top:-10px}
-    body.phone-ui #ratingRow{grid-area:stars;justify-self:center;text-align:center;width:100%;margin-top:-10px;min-height:30px}
+    #ratingRow{display:none !important}
+    body.phone-ui #ratingRow{grid-area:stars;justify-self:center;text-align:center;width:100%;margin-top:-10px;min-height:30px;display:none !important}
+    body.phone-ui.show-rating-row:not(.is-podcast) #ratingRow{display:block !important}
+    body.phone-ui.is-podcast #ratingRow{display:none !important}
     body.phone-ui #album-link{grid-area:album;justify-self:center;text-align:center;width:100%;margin-top:-10px}
     body.phone-ui #file-info{grid-area:file;justify-self:center;text-align:center;width:100%;margin-top:-10px}
     body.phone-ui #next-up{grid-area:nextup;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5600 !important;pointer-events:auto !important;opacity:1 !important;visibility:visible !important;justify-self:stretch;margin-top:-10px}
     body.phone-ui #progress-bar-wrapper{grid-area:progress;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;width:min(calc(92vw - 40px), calc(var(--artSize, 640px) - 40px)) !important;justify-self:center}
-    body.phone-ui #phone-controls{grid-area:controls;display:flex !important;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5590 !important;margin-top:-7px !important;justify-self:center;width:100%}
+    body.phone-ui #phone-controls{grid-area:controls;display:flex !important;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5590 !important;margin-top:-7px !important;justify-self:center;width:100%;gap:6px !important}
+    body.phone-ui #phone-controls.has-podcast-seek{gap:6px !important}
+    body.phone-ui #phone-controls .ctl.seek-ctl{display:none !important}
+    body.phone-ui #phone-controls .ctl.big{width:calc(var(--ctlBigFinal) * 0.97) !important;height:calc(var(--ctlBigFinal) * 0.97) !important;border-radius:999px !important}
+    body.phone-ui #phone-controls .ctl.seek-ctl .seekLbl{font-size:13px;font-weight:700;letter-spacing:.01em;line-height:1}
+    body.phone-ui .podSeekInline{display:none;align-items:center;justify-content:center;border:1px solid rgba(255,224,130,.5);background:rgba(30,20,8,.38);color:#f8e7b0;border-radius:999px;min-width:36px;height:26px;padding:0 8px;font-size:12px;font-weight:700;line-height:1;letter-spacing:.01em;vertical-align:middle}
+    body.phone-ui #btn-seek-back-inline{padding-right:12px;margin-right:8px}
+    body.phone-ui.is-podcast .podSeekInline{display:inline-flex}
     /* Brass-ring control treatment */
     body.phone-ui #phone-controls .ctl{
+      position:relative;
+      flex:0 0 auto !important;
+      width:calc(var(--ctlFinal) * 0.97) !important;
+      height:calc(var(--ctlFinal) * 0.97) !important;
+      aspect-ratio:1 / 1;
+      border-radius:999px !important;
+      padding:0 !important;
       position:relative;
       border:2px solid transparent !important;
       background:
@@ -229,8 +246,8 @@
       body.phone-ui #album-art-wrapper{justify-self:start;margin-top:8px !important}
       body.phone-ui #progress-bar-wrapper{justify-self:stretch;width:100% !important;margin-top:2px}
       body.phone-ui #phone-controls{justify-self:stretch;width:100%}
-      body.phone-ui #phone-controls .ctl{flex:0 0 auto !important;width:var(--ctlFinal) !important;height:var(--ctlFinal) !important;border-radius:999px !important}
-      body.phone-ui #phone-controls .ctl.big{width:var(--ctlBigFinal) !important;height:var(--ctlBigFinal) !important;border-radius:999px !important}
+      body.phone-ui #phone-controls .ctl{flex:0 0 auto !important;width:calc(var(--ctlFinal) * 0.97) !important;height:calc(var(--ctlFinal) * 0.97) !important;border-radius:999px !important}
+      body.phone-ui #phone-controls .ctl.big{width:calc(var(--ctlBigFinal) * 0.97) !important;height:calc(var(--ctlBigFinal) * 0.97) !important;border-radius:999px !important}
       body.phone-ui #next-up{margin-top:2px;justify-self:stretch;width:100%}
       #cnpBack{justify-self:start;transform:none !important}
     }
@@ -450,7 +467,7 @@
         <span id="track-title"></span>
       </div>
       <div id="ratingRow">
-        <span id="ratingStars" class="rating-stars"><span class="dim">★</span><span class="dim">★</span><span class="dim loading">★</span><span class="dim">★</span><span class="dim">★</span></span>
+        <span id="ratingStars" class="rating-stars"></span>
       </div>
 
       <!-- Album + share icon live entirely inside this link -->
@@ -459,9 +476,11 @@
       </button>
 
       <div id="file-info">
+        <button class="podSeekInline" id="btn-seek-back-inline" aria-label="Back 15 seconds" title="Back 15 seconds" type="button">↺15</button>
         <span id="file-info-text"></span>
         <span id="hires-badge" class="hires-badge" aria-label="Audio quality"></span>
         <span id="mode-status"></span>
+        <button class="podSeekInline" id="btn-seek-fwd-inline" aria-label="Forward 30 seconds" title="Forward 30 seconds" type="button">30↻</button>
       </div>
 
       <div id="personnel-info"></div>
@@ -484,6 +503,10 @@
 
     <!-- Phone controls as its own grid cell -->
     <div id="phone-controls" aria-label="Playback controls">
+      <button class="ctl seek-ctl" id="btn-seek-back" aria-label="Back 15 seconds" title="Back 15 seconds" type="button">
+        <span class="seekLbl">↺15</span>
+      </button>
+
       <button class="ctl" id="btn-repeat" aria-label="Repeat" title="Repeat" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M17 17H7v-3l-4 4 4 4v-3h10a4 4 0 004-4v-6h-2v6a2 2 0 01-2 2zM7 7h10v3l4-4-4-4v3H7a4 4 0 00-4 4v6h2V9a2 2 0 012-2z"/>
@@ -512,6 +535,10 @@
         <svg viewBox="0 0 32 32" aria-hidden="true">
           <path fill="currentColor" d="M24.414,16.586L30.828,23l-6.414,6.414l-2.828-2.828L23.172,25H22c-3.924,0-6.334-2.289-8.173-4.747c0.987-1.097,1.799-2.285,2.516-3.36C18.109,19.46,19.521,21,22,21h1.172l-1.586-1.586L24.414,16.586z M22,11h1.172l-1.586,1.586l2.828,2.828L30.828,9l-6.414-6.414l-2.828,2.828L23.172,7H22c-5.07,0-7.617,3.82-9.664,6.891C10.224,17.059,8.788,19,6,19H2v4h4c5.07,0,7.617-3.82,9.664-6.891C17.776,12.941,19.212,11,22,11z M10.212,15.191c0.399-0.539,1.957-2.848,2.322-3.365C10.917,10.216,8.86,9,6,9H2v4h4C7.779,13,9.007,13.797,10.212,15.191z"/>
         </svg>
+      </button>
+
+      <button class="ctl seek-ctl" id="btn-seek-fwd" aria-label="Forward 30 seconds" title="Forward 30 seconds" type="button">
+        <span class="seekLbl">30↻</span>
       </button>
     </div>
       </div>

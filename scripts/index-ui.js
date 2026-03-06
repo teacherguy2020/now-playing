@@ -2425,7 +2425,7 @@ async function onToggleFavorite(ev) {
  * ========================= */
 
 function applyRatingFromNowPlaying(np) {
-  if (np?.isPodcast === true) {
+  if (inferIsPodcast(np)) {
     pendingRating = null;
     clearStars();
     return;
@@ -2666,6 +2666,10 @@ function updateUI(data) {
   currentIsAirplay = isAirplay;
   currentAlexaMode = data?.alexaMode === true;
   currentIsPodcast = inferIsPodcast(data);
+  try {
+    document.body?.classList.toggle('is-podcast', !!currentIsPodcast);
+    document.body?.classList.toggle('show-rating-row', !currentIsPodcast);
+  } catch {}
 
   if (DEBUG) {
     DEBUG && console.groupCollapsed('%c[PODCAST DETECT]', 'color:#ff9800;font-weight:bold');
@@ -3355,6 +3359,56 @@ function attachClickEventToAlbumArt() {
     for (const c of PREV_TRIES) sendCmd(c);
   }
 
+  async function sendSeekRel(seconds = 0) {
+    const n = Number(seconds || 0);
+    if (!Number.isFinite(n) || !n) return;
+    try {
+      const key = await ensureRuntimeTrackKey();
+      await fetch(`${API_BASE}/config/diagnostics/playback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
+        body: JSON.stringify({ action: 'seekrel', seconds: n })
+      }).catch(() => null);
+    } catch {}
+  }
+
+  function detectPodcastNow() {
+    try {
+      const d = (window.lastNowPlayingData || lastNowPlayingData || {});
+      if (d?.isPodcast === true) return true;
+      const genre = String(d?.genre || '').toLowerCase();
+      const album = String(d?.album || '').toLowerCase();
+      const artist = String(d?.artist || '').toLowerCase();
+      const title = String(d?.title || '').toLowerCase();
+      const file = String(d?.file || '').toLowerCase();
+      if (genre.includes('podcast') || album.includes('podcast') || artist.includes('podcast') || title.includes('podcast')) return true;
+      if (/\/podcasts?\//.test(file)) return true;
+    } catch {}
+    return false;
+  }
+
+  function syncPodcastSeekVisibility(forceOn = null) {
+    try {
+      const wrap = document.getElementById('phone-controls');
+      if (!wrap) return;
+      const on = (typeof forceOn === 'boolean') ? forceOn : detectPodcastNow();
+      wrap.classList.toggle('has-podcast-seek', !!on);
+      document.body?.classList.toggle('is-podcast', !!on);
+      document.body?.classList.toggle('show-rating-row', !on);
+    } catch {}
+  }
+
+  async function primePodcastModeNow() {
+    try {
+      const r = await fetch(NOW_PLAYING_URL, { cache: 'no-store' });
+      if (!r.ok) return;
+      const data = await r.json().catch(() => null);
+      if (!data) return;
+      const on = !!inferIsPodcast(data);
+      syncPodcastSeekVisibility(on);
+    } catch {}
+  }
+
   let controlsAwakeTimer = null;
   function wakeControls(ms = 3500) {
     if (window.__DISABLE_CONTROLS_AWAKE__ === true) return;
@@ -3398,6 +3452,8 @@ function attachClickEventToAlbumArt() {
 
     const ok2 = bind("btn-next", () => sendCmd("next"));
     const ok3 = bind("btn-prev", () => sendPrev());
+    const okSeekBack = bind("btn-seek-back", () => sendSeekRel(-15));
+    const okSeekBackInline = bind("btn-seek-back-inline", () => sendSeekRel(-15));
     const ok4 = bind("btn-shuffle", () => {
       sendCmd("random");
       try {
@@ -3412,10 +3468,16 @@ function attachClickEventToAlbumArt() {
         if (el) el.classList.toggle('on');
       } catch {}
     });
+    const okSeekFwd = bind("btn-seek-fwd", () => sendSeekRel(30));
+    const okSeekFwdInline = bind("btn-seek-fwd-inline", () => sendSeekRel(30));
 
-    if (!(ok1 && ok2 && ok3 && ok4 && ok5)) {
-      console.warn("Phone controls: buttons not found at init time.", { ok1, ok2, ok3, ok4, ok5 });
+    if (!(ok1 && ok2 && ok3 && ok4 && ok5 && okSeekBack && okSeekFwd && okSeekBackInline && okSeekFwdInline)) {
+      console.warn("Phone controls: buttons not found at init time.", { ok1, ok2, ok3, ok4, ok5, okSeekBack, okSeekFwd, okSeekBackInline, okSeekFwdInline });
     }
+
+    syncPodcastSeekVisibility();
+    primePodcastModeNow();
+    setInterval(syncPodcastSeekVisibility, 350);
 
     // ✅ Initial icon state (uses same data source as UI; avoids CORS)
     try {
