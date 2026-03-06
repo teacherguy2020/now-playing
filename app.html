@@ -3871,6 +3871,20 @@
           return;
         }
 
+        if (d.type === 'np-open-live-queue-modal') {
+          try {
+            queueCollapsed = false;
+            updateQueueCollapsedUi();
+            updateSavePresetsButtonVisibility();
+            try { localStorage.setItem(HERO_QUEUE_COLLAPSED_KEY, '0'); } catch {}
+            setQueueExpandLoading(true);
+            setTimeout(() => setQueueExpandLoading(false), 650);
+            setTimeout(() => { try { syncHeroQueue(); } catch {} }, 0);
+            setTimeout(() => { try { syncHeroQueue(); } catch {} }, 260);
+          } catch {}
+          return;
+        }
+
         if (d.type === 'np-theme-export') {
           const json = String(d.json || '').trim();
           const fileName = String(d.fileName || 'now-playing-theme.json').trim() || 'now-playing-theme.json';

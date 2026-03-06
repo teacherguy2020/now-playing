@@ -88,6 +88,7 @@
       right: var(--padSide) !important;
       bottom: calc(env(safe-area-inset-bottom, 0px) + 46px) !important;
       z-index: 5600 !important;
+      pointer-events:auto !important;
     }
     body.phone-ui #phone-controls{
       bottom: calc(env(safe-area-inset-bottom, 0px) + var(--nextUpH) + 50px) !important;
@@ -141,6 +142,10 @@
     .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:9000;align-items:center;justify-content:center}
     .albumModal.open{display:flex}
     .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px)}
+    .queueModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:9100;align-items:flex-start;justify-content:center;padding-top:calc(env(safe-area-inset-top,0px) + 150px)}
+    .queueModal.open{display:flex}
+    .queueCard{position:relative;width:min(760px,94vw);height:min(62vh,620px);background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;overflow:hidden;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+    .queueFrame{width:100%;height:100%;border:0;display:block;background:transparent}
     .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
     .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .albumTitle{font-size:17px;font-weight:700}
@@ -414,6 +419,13 @@
     </div>
   </div>
 
+  <div class="queueModal" id="npQueueModal" aria-hidden="true">
+    <div class="queueCard" role="dialog" aria-modal="true" aria-label="Live queue">
+      <button id="npQueueCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
+      <iframe id="npQueueFrame" class="queueFrame" src="about:blank" loading="eager"></iframe>
+    </div>
+  </div>
+
     <script>
       window.NP_DISABLE_ART_SWITCH = true;
       window.__DISABLE_PAUSE_SCREENSAVER__ = true;
@@ -498,6 +510,13 @@
       function closeAll(){
         try { document.getElementById('npAlbumModal')?.classList.remove('open'); } catch {}
         try {
+          const qm = document.getElementById('npQueueModal');
+          qm?.classList.remove('open');
+          qm?.setAttribute('aria-hidden','true');
+          const qf = document.getElementById('npQueueFrame');
+          if (qf && String(qf.getAttribute('src')||'') !== 'about:blank') qf.setAttribute('src','about:blank');
+        } catch {}
+        try {
           const mo = document.getElementById('modalOverlay');
           mo?.classList.remove('open');
           mo?.setAttribute('aria-hidden','true');
@@ -534,6 +553,34 @@
       new MutationObserver(sync).observe(img, { attributes:true, attributeFilter:['src'] });
       sync();
       setInterval(sync, 1200);
+    })();
+
+    // Next-up tap -> open Live Queue modal in app shell (or queue page fallback)
+    (function bindNextUpOpenQueue(){
+      const nextUp = document.getElementById('next-up');
+      const modal = document.getElementById('npQueueModal');
+      const frame = document.getElementById('npQueueFrame');
+      const closeBtn = document.getElementById('npQueueCloseBtn');
+      if (!nextUp || !modal || !frame) return;
+      nextUp.style.cursor = 'pointer';
+      nextUp.title = 'Open Live Queue';
+
+      const closeQueue = ()=>{
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden','true');
+        frame.setAttribute('src','about:blank');
+      };
+
+      const openQueue = (ev)=>{
+        try { ev?.preventDefault?.(); ev?.stopPropagation?.(); if (typeof ev?.stopImmediatePropagation==='function') ev.stopImmediatePropagation(); } catch {}
+        frame.setAttribute('src', `controller-queue.html?embedded=1&ts=${Date.now()}`);
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden','false');
+      };
+
+      closeBtn?.addEventListener('click', closeQueue);
+      modal.addEventListener('click', (ev)=>{ if (ev.target === modal) closeQueue(); });
+      nextUp.addEventListener('click', openQueue, { passive:false, capture:true });
     })();
 
     // Local-track album tap -> same album card/actions as controller home

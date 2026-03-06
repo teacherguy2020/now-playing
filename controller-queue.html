@@ -8,6 +8,10 @@
     :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--danger:#ff3b30}
     *{box-sizing:border-box;-webkit-user-select:none;user-select:none} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
     .top{display:flex;align-items:center;gap:10px;margin:4px 0 8px}
+    body.embedded{background:transparent;padding:8px 10px 10px}
+    body.embedded .top{display:none}
+    body.embedded .row{background:rgba(11,17,28,.44)}
+    body.embedded .row.head{background:rgba(74,168,255,.18)}
     .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
     h1{margin:0;font-size:30px;letter-spacing:-.01em}
     .meta{color:var(--muted);font-size:13px;margin:0 0 8px}
@@ -179,6 +183,9 @@
         __npApplyPalette(String(j?.profile?.colorPreset || 'ocean'), String(j?.profile?.theme || 'auto'));
       } catch {}
     })();
+
+    const EMBEDDED = new URL(location.href).searchParams.get('embedded') === '1';
+    if (EMBEDDED) document.body.classList.add('embedded');
 
     const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
     let runtimeTrackKey = '';
