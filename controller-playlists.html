@@ -38,7 +38,7 @@
 
     .modal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:130;align-items:center;justify-content:center}
     .modal.open{display:flex}
-    .card{width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .card{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
     .head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
     .head img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .hTitle{font-size:17px;font-weight:700}
@@ -47,6 +47,8 @@
     .tracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;font-size:14px}
     .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .btns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:8px 10px;cursor:pointer}
+    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+    .modalX:active{transform:scale(.96)}
   
 
     body.nav-backwarding{
@@ -82,11 +84,12 @@
 
   <div class="modal" id="plModal" aria-hidden="true">
     <div class="card">
+      <button id="plCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
       <div class="head"><img id="plArt" src="" alt="" /><div><div class="hTitle" id="plTitle">Playlist</div><div class="hMeta" id="plMeta"></div></div></div>
       <div class="btns" style="margin-top:0;margin-bottom:8px">
         <button id="plPlayBtn" type="button">Play playlist</button>
         <button id="plAddBtn" type="button">Add playlist</button>
-        <button id="plCloseBtn" type="button">Close</button>
+        
       </div>
       <ul class="tracks" id="plTracks"></ul>
     </div>

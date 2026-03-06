@@ -13,8 +13,10 @@
     h1{margin:0;font-size:30px;letter-spacing:-.01em}
     .meta{color:var(--muted);font-size:13px;margin:0 0 8px}
     .list{padding-right:26px}
-    .row{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
+    .row{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;transition:background-color .14s ease, transform .14s ease, opacity .14s ease}
+    .row.activating{background:rgba(159,196,255,.12);transform:scale(.992);opacity:.92}
     .thumb{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#0a1222;display:flex;align-items:center;justify-content:center;color:#82a9de;font-size:22px}
+    .row.activating .thumb{color:#cfe2ff}
     .name{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .sub{font-size:12px;color:var(--muted)}
     .alpha{position:fixed;right:4px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:2px;z-index:10}
@@ -117,15 +119,18 @@
       });
     }
 
+    let __genreNavBusy = false;
     document.getElementById('list').addEventListener('click', (ev)=>{
       const row = ev.target.closest('.row[data-genre]');
-      if(!row) return;
+      if(!row || __genreNavBusy) return;
       let genre='';
       try{ genre=decodeURIComponent(String(row.getAttribute('data-genre')||'')); }catch{ genre=String(row.getAttribute('data-genre')||''); }
       if(!genre) return;
+      __genreNavBusy = true;
+      row.classList.add('activating');
       const u = new URL('controller-albums.html', location.href);
       u.searchParams.set('genre', genre);
-      location.href = u.toString();
+      setTimeout(()=>{ location.href = u.toString(); }, 110);
     });
 
     let __backNavBusy=false;

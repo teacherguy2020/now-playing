@@ -26,7 +26,7 @@
 
     .artistModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:130;align-items:center;justify-content:center}
     .artistModal.open{display:flex}
-    .artistCard{width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .artistCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
     .artistHead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
     .artistHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .artistTitle{font-size:17px;font-weight:700}
@@ -46,7 +46,7 @@
 
     .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:140;align-items:center;justify-content:center}
     .albumModal.open{display:flex}
-    .albumCard{width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
     .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
     .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .albumTitle{font-size:17px;font-weight:700}
@@ -56,6 +56,8 @@
     .trackBtns{display:flex;gap:6px}
     .trackBtns button,.albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
     .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+    .modalX:active{transform:scale(.96)}
   
 
     body.nav-backwarding{
@@ -78,6 +80,7 @@
 
   <div class="artistModal" id="artistModal" aria-hidden="true">
     <div class="artistCard" role="dialog" aria-modal="true" aria-label="Artist details">
+      <button id="artistCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
       <div class="artistHead">
         <img id="artistArt" src="" alt="" />
         <div>
@@ -95,19 +98,20 @@
         <input type="text" id="excludeText" value="Christmas" />
       </div>
       <div class="artistGrid" id="artistGrid"></div>
-      <div class="closeRow"><button id="artistCloseBtn" type="button">Close</button></div>
+      
     </div>
   </div>
 
   <div class="albumModal" id="albumModal" aria-hidden="true">
     <div class="albumCard" role="dialog" aria-modal="true" aria-label="Album details">
+      <button id="albumCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
       <div class="albumHead"><img id="albumArt" src="" alt="" /><div><div class="albumTitle" id="albumTitle">Album</div><div class="albumMeta" id="albumMeta"></div><div class="albumMeta">Artist: <button id="albumArtistLink" type="button" style="background:none;border:0;color:#9fc4ff;text-decoration:underline;cursor:pointer;padding:0;">(artist)</button></div></div></div>
       <ul class="albumTracks" id="albumTracks"></ul>
       <div class="albumBtns">
         <button id="albumAppendBtn" type="button">Append album</button>
         <button id="albumCropBtn" type="button">Add album (crop)</button>
         <button id="albumReplaceBtn" type="button">Replace with album</button>
-        <button id="albumCloseBtn" type="button">Close</button>
+        
       </div>
     </div>
   </div>

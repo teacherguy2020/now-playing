@@ -35,13 +35,19 @@
 
     .modal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:130;align-items:center;justify-content:center}
     .modal.open{display:flex}
-    .card{width:min(760px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .card{position:relative;width:min(760px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
     .head{display:flex;gap:10px;align-items:center;margin-bottom:10px}
     .head img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .hTitle{font-size:17px;font-weight:700}
     .hMeta{font-size:12px;color:var(--muted)}
     .topBtns{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px}
-    .topBtns button,.epBtn{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:7px 10px;cursor:pointer}
+    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+    .modalX:active{transform:scale(.96)}
+    .topBtns button,.epBtn{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:7px 10px;cursor:pointer;transition:background-color .14s ease,border-color .14s ease,transform .12s ease}
+    .epBtn.loading{position:relative;color:transparent;pointer-events:none}
+    .epBtn.loading::after{content:'';position:absolute;left:50%;top:50%;width:12px;height:12px;margin-left:-6px;margin-top:-6px;border-radius:999px;border:2px solid rgba(255,255,255,.28);border-top-color:#cfe2ff;animation:spin .8s linear infinite}
+    .epBtn.added-ok{background:#173826;border-color:#2f7d58;color:#d9ffe9;transform:scale(.97)}
+    @keyframes spin{to{transform:rotate(360deg)}}
     .eps{list-style:none;margin:0;padding:0}
     .eps li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
     .epT{font-size:14px}
@@ -76,10 +82,11 @@
 
   <div class="modal" id="showModal" aria-hidden="true">
     <div class="card" role="dialog" aria-modal="true" aria-label="Podcast show details">
+      <button id="closeBtn" class="modalX" type="button" aria-label="Close">✕</button>
       <div class="head"><img id="showArt" src="" alt="" /><div><div class="hTitle" id="showTitle">Show</div><div class="hMeta" id="showMeta"></div></div></div>
       <div class="topBtns">
         <button id="loadAllBtn" type="button">Load all to queue</button>
-        <button id="closeBtn" type="button">Close</button>
+        
       </div>
       <ul class="eps" id="episodes"></ul>
     </div>
@@ -254,6 +261,7 @@
       const imageUrl = decodeURIComponent(String(b.getAttribute('data-image')||''));
       if (!modalCtx?.rss || !id || !enclosure) return;
       b.disabled = true;
+      b.classList.add('loading');
       try {
         await ensureKey();
         await fetch(`${base}/podcasts/download-one`,{method:'POST',headers:{'Content-Type':'application/json',...h()},body:JSON.stringify({rss:modalCtx.rss,id,enclosure,title,date,imageUrl})});
@@ -270,7 +278,16 @@
       let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-file')||''));}catch{file=String(b.getAttribute('data-file')||'');}
       if(!file) return;
       if(a==='play') await sendPlayback('playfile',{file});
-      if(a==='add') await sendPlayback('addfile',{file});
+      if(a==='add') {
+        await sendPlayback('addfile',{file});
+        const prev = b.textContent;
+        b.textContent = '✓';
+        b.classList.add('added-ok');
+        setTimeout(()=>{
+          b.classList.remove('added-ok');
+          b.textContent = prev || '＋';
+        }, 520);
+      }
     });
     document.getElementById('loadAllBtn').addEventListener('click', async ()=>{ await applyQueue((modalCtx.episodes||[]).filter(ep=>!!ep?.downloaded).map(fileForEpisode)); });
     document.getElementById('closeBtn').addEventListener('click', closeModal);

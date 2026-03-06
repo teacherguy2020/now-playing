@@ -40,16 +40,21 @@
 
     .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:130;align-items:center;justify-content:center}
     .albumModal.open{display:flex}
-    .albumCard{width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
     .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
     .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .albumTitle{font-size:17px;font-weight:700}
     .albumMeta{font-size:12px;color:var(--muted)}
     .albumTracks{list-style:none;margin:8px 0 0;padding:0}
     .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:flex;justify-content:space-between;gap:8px;font-size:14px}
+    .loadingRow{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:10px 2px}
+    .spin{width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
     .trackBtns{display:flex;gap:6px}
     .trackBtns button,.albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
     .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+    .modalX:active{transform:scale(.96)}
   
 
     body.nav-backwarding{
@@ -93,14 +98,15 @@
 
   <div class="albumModal" id="albumModal" aria-hidden="true">
     <div class="albumCard" role="dialog" aria-modal="true" aria-label="Album details">
+      <button id="albumCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
       <div class="albumHead"><img id="albumArt" src="" alt="" /><div><div class="albumTitle" id="albumTitle">Album</div><div class="albumMeta" id="albumMeta"></div><div class="albumMeta">Artist: <button id="albumArtistLink" type="button" style="background:none;border:0;color:#9fc4ff;text-decoration:underline;cursor:pointer;padding:0;">(artist)</button></div></div></div>
-      <ul class="albumTracks" id="albumTracks"></ul>
       <div class="albumBtns">
         <button id="albumAppendBtn" type="button">Append album</button>
         <button id="albumCropBtn" type="button">Add album (crop)</button>
         <button id="albumReplaceBtn" type="button">Replace with album</button>
-        <button id="albumCloseBtn" type="button">Close</button>
+        
       </div>
+      <ul class="albumTracks" id="albumTracks"></ul>
     </div>
   </div>
 
@@ -154,6 +160,7 @@
     let state={view:'grid',sort:'az'};
     let albums=[];
     let modalCtx={album:'',artist:'',art:'',tracks:[]};
+    let albumLoadToken=0;
     let albumMenuCtx={album:'',artist:'',art:''};
     let currentGenreFilter='';
 
@@ -217,19 +224,35 @@
     }
 
     async function fetchAlbumTracks(album, artist){
-      try {
-        await ensureKey();
-        const headers={'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})};
-        const body={genres:[],artists:artist?[artist]:[],albums:album?[album]:[],excludeGenres:[],minRating:0,maxTracks:500};
-        const ctl = new AbortController();
-        const to = setTimeout(()=>{ try{ ctl.abort(); }catch{} }, 7000);
-        const r=await fetch(`${base}/config/queue-wizard/preview`,{method:'POST',headers,body:JSON.stringify(body),signal:ctl.signal});
-        clearTimeout(to);
-        const j=await r.json().catch(()=>({}));
-        return (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
-      } catch {
-        return [];
+      await ensureKey();
+      const headers={'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})};
+
+      async function previewOnce(body){
+        try {
+          const ctl = new AbortController();
+          const to = setTimeout(()=>{ try{ ctl.abort(); }catch{} }, 15000);
+          const r=await fetch(`${base}/config/queue-wizard/preview`,{method:'POST',headers,body:JSON.stringify(body),signal:ctl.signal});
+          clearTimeout(to);
+          const j=await r.json().catch(()=>({}));
+          return (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
+        } catch {
+          return [];
+        }
       }
+
+      const baseBody = { genres:[], albums:album?[album]:[], excludeGenres:[], minRating:0, maxTracks:1200 };
+
+      // First try: strict artist+album
+      let tracks = await previewOnce({ ...baseBody, artists: artist?[artist]:[] });
+      if (tracks.length) return tracks;
+
+      // Second try: album-only fallback (artist metadata can be inconsistent in library rows)
+      tracks = await previewOnce({ ...baseBody, artists:[] });
+      if (tracks.length) return tracks;
+
+      // Final retry once more (transient backend hiccups do happen)
+      tracks = await previewOnce({ ...baseBody, artists: artist?[artist]:[] });
+      return tracks;
     }
     async function sendPlayback(action, extra={}){ await ensureKey(); const r=await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify(Object.assign({action},extra||{}))}); const j=await r.json().catch(()=>({})); if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`); }
 
@@ -244,32 +267,37 @@
       await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers,body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:true,forceRandomOff:false,fastStart:true})}).catch(()=>null);
     }
 
-    function openAlbumModal(){
+    function openAlbumModal(isLoading=false){
       document.getElementById('albumTitle').textContent = modalCtx.album || '(album)';
       document.getElementById('albumMeta').textContent = modalCtx.artist || '';
       document.getElementById('albumArtistLink').textContent = modalCtx.artist || '(unknown artist)';
       document.getElementById('albumArt').src = modalCtx.art || `${base}/art/current.jpg`;
-      document.getElementById('albumTracks').innerHTML = (modalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); return `<li><span>${i+1}. ${nm}</span><span class='trackBtns'><button data-track-action='play' data-track-file='${f}'>Play now</button><button data-track-action='add' data-track-file='${f}'>Add</button></span></li>`; }).join('') || '<li>No tracks found</li>';
+      if (isLoading) {
+        document.getElementById('albumTracks').innerHTML = `<li class='loadingRow'><span class='spin'></span><span>Loading album tracks…</span></li>`;
+      } else {
+        document.getElementById('albumTracks').innerHTML = (modalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); return `<li><span>${i+1}. ${nm}</span><span class='trackBtns'><button data-track-action='play' data-track-file='${f}' aria-label='Play now' title='Play now'>▶</button><button data-track-action='add' data-track-file='${f}' aria-label='Add' title='Add'>＋</button></span></li>`; }).join('') || '<li>No tracks found — tap Close and reopen once.</li>';
+      }
       document.getElementById('albumModal').classList.add('open');
     }
-    function closeAlbumModal(){ document.getElementById('albumModal').classList.remove('open'); }
+    function closeAlbumModal(){ albumLoadToken += 1; document.getElementById('albumModal').classList.remove('open'); }
 
     async function openAlbumFromContext(ctx){
+      const myToken = ++albumLoadToken;
       modalCtx.album = ctx.album || '';
       modalCtx.artist = ctx.artist || '';
       modalCtx.art = ctx.art || '';
       modalCtx.tracks = [];
-      openAlbumModal();
-      document.getElementById('albumTracks').innerHTML = '<li>Loading album tracks…</li>';
+      openAlbumModal(true);
       try {
-        modalCtx.tracks = await Promise.race([
-          fetchAlbumTracks(modalCtx.album, modalCtx.artist),
-          new Promise((resolve)=>setTimeout(()=>resolve([]), 7500))
-        ]);
+        const tracks = await fetchAlbumTracks(modalCtx.album, modalCtx.artist);
+        if (myToken !== albumLoadToken) return;
+        modalCtx.tracks = tracks;
       } catch {
+        if (myToken !== albumLoadToken) return;
         modalCtx.tracks = [];
       }
-      if (document.getElementById('albumModal').classList.contains('open')) openAlbumModal();
+      if (myToken !== albumLoadToken) return;
+      if (document.getElementById('albumModal').classList.contains('open')) openAlbumModal(false);
     }
 
     host.addEventListener('click', async (ev)=>{
