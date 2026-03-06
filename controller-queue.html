@@ -16,7 +16,8 @@
     h1{margin:0;font-size:30px;letter-spacing:-.01em}
     .meta{color:var(--muted);font-size:13px;margin:0 0 8px}
     .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
-    .list{margin:0;padding:0;list-style:none}
+    .list{margin:0;padding:0;list-style:none;position:relative}
+    #dropLine{position:absolute;left:0;right:0;height:3px;background:#45b26f;box-shadow:0 0 0 1px rgba(69,178,111,.18);z-index:10003;pointer-events:none;display:none}
 
     .rowWrap{position:relative;border-bottom:1px solid var(--line);overflow:hidden}
     .rowWrap.dragActive{overflow:visible;z-index:9997}
@@ -25,6 +26,7 @@
     .row.swiped{transform:translateX(-92px)}
     .row.swiped ~ .deleteBtn{opacity:1;pointer-events:auto}
     .row.head{background:rgba(74,168,255,.10)}
+    .row.optimisticPlay{background:rgba(69,178,111,.16);box-shadow:inset 0 0 0 2px rgba(69,178,111,.95)}
     .num{font-weight:700;color:#cde2ff;text-align:center}
     .coverWrap{position:relative;display:block}
     .thumb{width:34px;height:34px;border-radius:7px;object-fit:cover;background:#0a1222;border:1px solid #33485f}
@@ -34,9 +36,6 @@
 
     .row.dragging{opacity:.96;z-index:9999;box-shadow:0 16px 34px rgba(0,0,0,.52);transform:scale(1.03)}
     .rowWrap.dropTarget{outline:none}
-    .rowWrap.dropTarget::before{content:'';position:absolute;left:0;right:0;top:-1px;height:3px;background:#45b26f;box-shadow:0 0 0 1px rgba(69,178,111,.18)}
-    .rowWrap.dropTarget.dropBelow::before{content:none}
-    .rowWrap.dropTarget.dropBelow::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:3px;background:#45b26f;box-shadow:0 0 0 1px rgba(69,178,111,.18)}
     .more{width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:#121c30;color:#dfeaff;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
 
     .menu{position:fixed;display:none;z-index:120;min-width:230px;padding:6px;border-radius:18px;
@@ -91,7 +90,7 @@
 <body>
   <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1></div>
   <p class="meta" id="meta"><span class="miniSpin" aria-label="Loading"></span></p>
-  <ul class="list" id="list"></ul>
+  <ul class="list" id="list"><li id="dropLine" aria-hidden="true"></li></ul>
 
   <div class="menu" id="trackMenu" aria-hidden="true">
     <button id="goAlbumBtn" type="button"><span class="ico">◉</span><span>Go to Album</span></button>
@@ -269,7 +268,7 @@
         });
       } catch {}
 
-      list.innerHTML = items.map((x, idx)=>{
+      const rowsHtml = items.map((x, idx)=>{
         const pos = Number(x?._posDisplay || x?.pos || (idx + 1));
         const artist = String(x?.artist || '').trim();
         const title = String(x?.title || '').trim() || String(x?.name || '').trim() || '(untitled)';
@@ -287,6 +286,7 @@
           <button type="button" class="deleteBtn" data-a="rm" data-pos="${pos}">Delete</button>
         </li>`;
       }).join('');
+      list.innerHTML = `<li id="dropLine" aria-hidden="true"></li>${rowsHtml}`;
 
       // Reuse existing thumb DOM nodes where same file/src persists.
       try {
@@ -309,6 +309,13 @@
 
     function clearSwipes(exceptRow=null){
       document.querySelectorAll('.row.swiped').forEach(r=>{ if (r!==exceptRow) r.classList.remove('swiped'); });
+    }
+
+    function markOptimisticPlay(row){
+      if (!(row instanceof HTMLElement)) return;
+      document.querySelectorAll('.row.optimisticPlay').forEach((r)=>r.classList.remove('optimisticPlay'));
+      row.classList.add('optimisticPlay');
+      setTimeout(()=>{ try{ row.classList.remove('optimisticPlay'); }catch{} }, 2400);
     }
 
     let __backNavBusy=false;
@@ -562,11 +569,13 @@
       if (row.classList.contains('swiped')) { row.classList.remove('swiped'); return; }
       const pos = Number(row.getAttribute('data-pos')||0);
       if (!pos) return;
+      markOptimisticPlay(row);
       try { await sendPlayback('playpos', { position: pos }); } catch(e){ console.warn(e); }
-      await loadQueue();
+      setTimeout(()=>{ loadQueue().catch(()=>null); }, 280);
     });
 
     const listEl = document.getElementById('list');
+    const dropLineEl = () => document.getElementById('dropLine');
     let touchStartX = 0, touchStartY = 0, activeRow = null, moved = false;
     const LONG_PRESS_MS = 650;
     const PRESS_SLOP = 10;
@@ -650,12 +659,20 @@
           }
         }
 
-        const draggingDown = t.clientY > touchStartY;
-        if (lastDropWrap !== candidate || (candidate.classList.contains('dropBelow') !== draggingDown)) {
-          document.querySelectorAll('.rowWrap.dropTarget').forEach(x=>x.classList.remove('dropTarget','dropBelow'));
-          candidate.classList.add('dropTarget');
-          if (draggingDown) candidate.classList.add('dropBelow');
+        const candidatePos = Number(candidate.getAttribute('data-pos') || 0);
+        const fromPos = Number(dragState?.fromPos || 0);
+        const dropBelow = candidatePos > fromPos;
+        if (lastDropWrap !== candidate) {
           lastDropWrap = candidate;
+        }
+
+        const dl = dropLineEl();
+        if (dl) {
+          const listRect = listEl.getBoundingClientRect();
+          const cr = candidate.getBoundingClientRect();
+          const y = dropBelow ? (cr.bottom - listRect.top - 1) : (cr.top - listRect.top - 1);
+          dl.style.top = `${Math.max(0, Math.round(y))}px`;
+          dl.style.display = 'block';
         }
         return;
       }
@@ -711,11 +728,12 @@
           dragState.wrap.style.zIndex = '';
           dragState.wrap.style.position = '';
         }
-        const changed = document.querySelector('.rowWrap.dropTarget');
-        lastDropWrap = null;
+        const changed = lastDropWrap;
         const fromPos = Number(dragState.fromPos || 0);
         const toPos = Number(changed?.getAttribute('data-pos') || 0);
-        document.querySelectorAll('.rowWrap.dropTarget').forEach(x=>x.classList.remove('dropTarget','dropBelow'));
+        lastDropWrap = null;
+        const dl = dropLineEl();
+        if (dl) dl.style.display = 'none';
         dragState = null;
         if (fromPos > 0 && toPos > 0 && fromPos !== toPos) {
           const didOptimistic = optimisticReorderDom(fromPos, toPos);
@@ -733,6 +751,8 @@
         }
       }
       activeRow = null;
+      const dl = dropLineEl();
+      if (dl) dl.style.display = 'none';
     }
 
     listEl.addEventListener('touchend', finishDrag, { passive:true });
