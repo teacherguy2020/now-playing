@@ -304,7 +304,10 @@
     document.addEventListener('click',(ev)=>{ if(menu.classList.contains('open') && !(ev.target.closest('#menu')||ev.target.closest('#menuBtn'))) menu.classList.remove('open'); });
 
     let __backNavBusy=false;
-    document.getElementById('backBtn').addEventListener('click', ()=>{
+    const backBtn = document.getElementById('backBtn');
+    const pageTitle = document.querySelector('.top h1');
+    if (pageTitle) { pageTitle.style.cursor='pointer'; pageTitle.addEventListener('click', ()=> backBtn?.click()); }
+    backBtn?.addEventListener('click', ()=>{
       if (__backNavBusy) return;
       __backNavBusy = true;
       document.body.classList.add('nav-backwarding');

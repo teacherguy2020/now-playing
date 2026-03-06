@@ -444,7 +444,10 @@
     });
 
     let __backNavBusy=false;
-    $('backBtn').addEventListener('click',()=>{
+    const backBtn = $('backBtn');
+    const pageTitle = document.querySelector('.top h1');
+    if (pageTitle) { pageTitle.style.cursor='pointer'; pageTitle.addEventListener('click', ()=> backBtn?.click()); }
+    backBtn?.addEventListener('click',()=>{
       if (__backNavBusy) return;
       __backNavBusy = true;
       document.body.classList.add('nav-backwarding');
