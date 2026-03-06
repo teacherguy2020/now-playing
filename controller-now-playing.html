@@ -143,6 +143,16 @@
     .trackBtns button,.albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
     .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 
+    /* Next-up art loading spinner */
+    #next-up-img{position:relative}
+    #next-up-img.nextup-loading{opacity:.18}
+    #next-up-img.nextup-loading::after{content:''}
+    #next-up-img-wrap{position:relative;display:inline-flex}
+    #nextUpSpin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    #nextUpSpin[hidden]{display:none !important}
+    #nextUpSpin::before{content:'';width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:nextUpSpin .8s linear infinite}
+    @keyframes nextUpSpin{to{transform:rotate(360deg)}}
+
     /* Keep hidden until fully loaded, then slide in */
     body.cnp-hidden{opacity:0;visibility:hidden}
     body.cnp-ready{visibility:visible;animation:cnpSlideIn .22s ease-out both}
@@ -299,7 +309,7 @@
       <div id="personnel-info"></div>
 
       <div id="next-up">
-        <img id="next-up-img" alt="">
+        <span id="next-up-img-wrap"><img id="next-up-img" alt=""><span id="nextUpSpin" aria-hidden="true"></span></span>
         <span id="next-up-text">
           <span class="marquee-track">
             <span class="marquee-copy"></span>
@@ -394,6 +404,7 @@
 
     <script>
       window.NP_DISABLE_ART_SWITCH = true;
+      window.__DISABLE_PAUSE_SCREENSAVER__ = true;
       // Controller now-playing should always use phone portrait layout.
       try {
         document.body.classList.add('phone-ui','cnp-hidden');
@@ -487,6 +498,30 @@
       }
       window.addEventListener('pageshow', closeAll);
       document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) closeAll(); });
+    })();
+
+    // Next-up art spinner until artwork is ready
+    (function bindNextUpSpinner(){
+      const img = document.getElementById('next-up-img');
+      const spin = document.getElementById('nextUpSpin');
+      if (!img || !spin) return;
+
+      function isLoadedSrc(){
+        const s = String(img.getAttribute('src') || '').trim();
+        return !!s && !/current\.jpg(?:\?|$)/.test(s) && !/data:image\//.test(s);
+      }
+      function show(){ spin.hidden = false; img.classList.add('nextup-loading'); }
+      function hide(){ spin.hidden = true; img.classList.remove('nextup-loading'); }
+      function sync(){
+        if (isLoadedSrc() && img.complete && img.naturalWidth > 1) hide();
+        else show();
+      }
+
+      img.addEventListener('load', ()=>{ hide(); });
+      img.addEventListener('error', ()=>{ show(); });
+      new MutationObserver(sync).observe(img, { attributes:true, attributeFilter:['src'] });
+      sync();
+      setInterval(sync, 1200);
     })();
 
     // Local-track album tap -> same album card/actions as controller home
