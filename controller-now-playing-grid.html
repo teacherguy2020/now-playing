@@ -69,10 +69,7 @@
 
 
   <style>
-    #cnpBack{grid-area:back;position:relative;justify-self:end;align-self:start;z-index:20;border:1px solid rgba(255,255,255,.28);background:rgba(8,14,24,.66);color:#e9f1ff;border-radius:999px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:20px;text-decoration:none;backdrop-filter:blur(8px);transform:translateY(28px)}
-    @media (display-mode: standalone){
-      #cnpBack{transform:translateY(calc(env(safe-area-inset-top,0px) + 12px))}
-    }
+    #cnpBack{grid-area:back;position:relative;justify-self:end;align-self:start;z-index:20;border:1px solid rgba(255,255,255,.28);background:rgba(8,14,24,.66);color:#e9f1ff;border-radius:999px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:20px;text-decoration:none;backdrop-filter:blur(8px)}
     /* Grid prototype: keep mobile layout in-flow (less Safari toolbar weirdness) */
     body.phone-ui{overflow:auto !important;-webkit-overflow-scrolling:touch}
     body.phone-ui #content{
@@ -111,7 +108,7 @@
     body.phone-ui #album-link{grid-area:album;justify-self:center;text-align:center;width:100%;margin-top:-10px}
     body.phone-ui #file-info{grid-area:file;justify-self:center;text-align:center;width:100%;margin-top:-10px}
     body.phone-ui #next-up{grid-area:nextup;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5600 !important;pointer-events:auto !important;opacity:1 !important;visibility:visible !important;justify-self:stretch;margin-top:-10px}
-    body.phone-ui #progress-bar-wrapper{grid-area:progress;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;width:min(92vw, var(--artSize, 640px)) !important;justify-self:center;padding-left:10px;padding-right:10px}
+    body.phone-ui #progress-bar-wrapper{grid-area:progress;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;width:min(92vw, var(--artSize, 640px)) !important;justify-self:center}
     body.phone-ui #phone-controls{grid-area:controls;display:flex !important;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5590 !important;margin-top:-7px !important;justify-self:center;width:100%}
     body.phone-ui #mode-logo{display:none !important}
     /* Remove extra dim overlays for prototype */

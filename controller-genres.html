@@ -12,6 +12,7 @@
     .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
     h1{margin:0;font-size:30px;letter-spacing:-.01em}
     .meta{color:var(--muted);font-size:13px;margin:0 0 8px}
+    .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
     .list{padding-right:26px}
     .row{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;transition:background-color .14s ease, transform .14s ease, opacity .14s ease}
     .row.activating{background:rgba(159,196,255,.12);transform:scale(.992);opacity:.92}
@@ -37,7 +38,7 @@
 </head>
 <body>
   <div class="top"><button class="back" id="backBtn">‹</button><h1>Genres</h1></div>
-  <p class="meta" id="meta">Loading…</p>
+  <p class="meta" id="meta"><span class="miniSpin" aria-label="Loading"></span></p>
   <div class="list" id="list"></div>
   <div class="alpha" id="alpha"></div>
   <script>

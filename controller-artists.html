@@ -13,6 +13,7 @@
     .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
     h1{margin:0;font-size:30px;letter-spacing:-.01em}
     .meta{color:var(--muted);font-size:13px;margin:0 0 8px}
+    .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
     .list{padding-right:26px;overflow-x:hidden}
     .row{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
 .row > div:last-child{min-width:0}
@@ -24,9 +25,9 @@
     .alpha{position:fixed;right:4px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:2px;z-index:10}
     .alpha button{border:0;background:transparent;color:#8ea7ce;font-size:11px;line-height:1;padding:1px 2px}
 
-    .artistModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:130;align-items:center;justify-content:center}
+    .artistModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:130;align-items:center;justify-content:center}
     .artistModal.open{display:flex}
-    .artistCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .artistCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
     .artistHead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
     .artistHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .artistTitle{font-size:17px;font-weight:700}
@@ -44,9 +45,9 @@
     .closeRow{display:flex;justify-content:flex-end;margin-top:10px}
     .closeRow button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:8px 10px;cursor:pointer}
 
-    .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:140;align-items:center;justify-content:center}
+    .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:140;align-items:center;justify-content:center}
     .albumModal.open{display:flex}
-    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
     .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
     .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .albumTitle{font-size:17px;font-weight:700}
@@ -74,7 +75,7 @@
 </head>
 <body>
   <div class="top"><button class="back" id="backBtn">‹</button><h1>Artists</h1></div>
-  <p class="meta" id="meta">Loading…</p>
+  <p class="meta" id="meta"><span class="miniSpin" aria-label="Loading"></span></p>
   <div id="list" class="list"></div>
   <div id="alpha" class="alpha"></div>
 

@@ -14,6 +14,7 @@
     h1{margin:0;font-size:30px;letter-spacing:-.01em}
     .more{width:32px;height:32px;border-radius:999px;border:1px solid #2a3a58;background:#121c30;color:#dfeaff;font-size:16px;display:flex;align-items:center;justify-content:center}
     .meta{color:var(--muted);font-size:13px;margin:0 0 10px}
+    .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
 
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-right:26px}
     .album{border:0;background:transparent;color:var(--text);text-align:left;padding:0;cursor:pointer}
@@ -38,9 +39,9 @@
     .menu button.active{background:rgba(255,255,255,.08)}
     .menu .sep{height:1px;background:rgba(255,255,255,.14);margin:4px 8px}
 
-    .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:130;align-items:center;justify-content:center}
+    .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:130;align-items:center;justify-content:center}
     .albumModal.open{display:flex}
-    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
     .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
     .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .albumTitle{font-size:17px;font-weight:700}
@@ -74,7 +75,7 @@
     <div class="left"><button class="back" id="backBtn">‹</button><h1>Albums</h1></div>
     <button type="button" class="more" id="albumsMenuBtn">•••</button>
   </div>
-  <p class="meta" id="meta">Loading…</p>
+  <p class="meta" id="meta"><span class="miniSpin" aria-label="Loading"></span></p>
   <div id="albumsHost" class="grid"></div>
   <div class="alpha" id="alphaRail"></div>
 
