@@ -4,12 +4,37 @@ This project keeps stable canonical URLs while preserving compatibility aliases 
 
 ## Canonical UI URLs
 
+### Core surfaces
+
+- `/app.html` — main shell/dashboard
 - `/index.html` — now-playing display
+- `/player.html` — player-focused display view
+- `/peppy.html` — peppy-focused display view
+- `/mobile.html` — mobile builder view
+- `/controller.html` — mobile controller home
+
+### Controller subpages
+
+- `/controller-now-playing.html`
+- `/controller-queue.html`
+- `/controller-queue-wizard.html`
+- `/controller-playlists.html`
+- `/controller-artists.html`
+- `/controller-albums.html`
+- `/controller-genres.html`
+- `/controller-podcasts.html`
+- `/controller-radio.html`
+
+### Admin / tooling
+
 - `/config.html` — runtime/config admin
 - `/diagnostics.html` — diagnostics and queue controls
 - `/library-health.html` — library maintenance tools
 - `/queue-wizard.html` — queue builder + vibe tools
 - `/podcasts.html` — podcast management
+- `/radio.html` — radio management
+- `/theme.html` — theme controls
+- `/alexa.html` — Alexa integration tools
 
 ## Legacy UI aliases
 
