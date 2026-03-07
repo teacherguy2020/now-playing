@@ -28,12 +28,20 @@ Six ways to use:
 3. Run **Check SSH + Paths**.
 4. Open `app.html` (shell) or `index.html` (display view) or `player.html` (player view) `controller.html` (mobile view).
 
-### Important when moving to a new host (Pi migration)
+### Peppy meter requirement (must configure on moOde)
 
-If Peppy art loads but needles do not move, moOde is usually still posting VU data to the old API host.
-Update moOde’s PeppyMeter config on the moOde box (`/etc/peppymeter/config.txt`) so its VU target points to the new now-playing API host (`http://<new-host>:3101/peppy/vumeter`), then restart/reboot moOde.
+For meter needles to move, moOde PeppyMeter must post VU data to your now-playing API.
+Set the VU target in moOde’s PeppyMeter config file on the moOde box:
 
-Quick verify on the new host:
+- File: `/etc/peppymeter/config.txt`
+- Target URL must point to your now-playing host:
+  - `http://<your-now-playing-host>:3101/peppy/vumeter`
+
+If this URL is missing or points to the wrong host, album art can still load but needles will stay still.
+
+After updating `config.txt`, restart/reboot moOde.
+
+Quick verify on the now-playing host:
 
 ```bash
 curl -s http://127.0.0.1:3101/peppy/vumeter
