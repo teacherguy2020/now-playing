@@ -761,6 +761,63 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.get('/config/moode/peppy-vumeter-target/status', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const hostHeader = String(req.headers?.host || '').trim();
+      const hostNoPort = hostHeader.includes(':') ? hostHeader.split(':')[0] : hostHeader;
+      const apiHost = String(cfg?.apiNodeIp || hostNoPort || req.hostname || '').trim();
+      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config.' });
+      const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
+      const expectedTargetUrl = `http://${apiHost}:${apiPort}`;
+      const expectedTargetUrlAlt = `http://${apiHost}:${apiPort}/peppy/vumeter`;
+      const expectedUpdatePeriod = '0.033';
+
+      const script = "target=$(sudo -n awk -F'=' '/^\\s*target\\.url\\s*=/{v=$2} END{gsub(/^\\s+|\\s+$/,\"\",v); print v}' /etc/peppymeter/config.txt 2>/dev/null || true); period=$(sudo -n awk -F'=' '/^\\s*update\\.period\\s*=/{v=$2} END{gsub(/^\\s+|\\s+$/,\"\",v); print v}' /etc/peppymeter/config.txt 2>/dev/null || true); echo \"TARGET:$target\"; echo \"PERIOD:$period\"";
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 12000 });
+      const out = String(stdout || '');
+      const targetUrl = (out.match(/TARGET:(.*)/) || [,''])[1].trim();
+      const updatePeriod = (out.match(/PERIOD:(.*)/) || [,''])[1].trim();
+      const targetOk = !!targetUrl && (targetUrl === expectedTargetUrl || targetUrl === expectedTargetUrlAlt);
+      const periodOk = !!updatePeriod && updatePeriod === expectedUpdatePeriod;
+      return res.json({ ok: true, sshHost, sshUser, expectedTargetUrl, expectedTargetUrlAlt, expectedUpdatePeriod, targetUrl, updatePeriod, targetOk, periodOk, configOk: targetOk && periodOk, stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/moode/peppy-vumeter-target', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const hostHeader = String(req.headers?.host || '').trim();
+      const hostNoPort = hostHeader.includes(':') ? hostHeader.split(':')[0] : hostHeader;
+      const apiHost = String(cfg?.apiNodeIp || req.body?.apiHost || hostNoPort || req.hostname || '').trim();
+      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config or pass apiHost.' });
+      const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
+      const updatePeriod = String(req.body?.updatePeriod || '0.033').trim() || '0.033';
+      const targetUrl = `http://${apiHost}:${apiPort}`;
+
+      const script = `python3 - <<'PY'\nfrom pathlib import Path\nimport re, time\np=Path('/etc/peppymeter/config.txt')\nurl=${shQuoteArg(targetUrl)}\nperiod=${shQuoteArg(updatePeriod)}\nif not p.exists():\n    raise SystemExit('missing /etc/peppymeter/config.txt')\ns=p.read_text()\nbackup = p.with_name(f"config.txt.bak-{int(time.time())}")\nbackup.write_text(s)\nif re.search(r'^\[http\.interface\]\s*$', s, flags=re.M):\n    blk = re.search(r'^\[http\.interface\]\s*$([\s\S]*?)(?=^\[|\Z)', s, flags=re.M)\n    body = blk.group(1) if blk else ''\n    if re.search(r'^\s*target\.url\s*=.*$', body, flags=re.M):\n        body = re.sub(r'^\s*target\.url\s*=.*$', f'target.url = {url}', body, flags=re.M)\n    else:\n        body += ('\n' if body and not body.endswith('\n') else '') + f'target.url = {url}\n'\n    if re.search(r'^\s*update\.period\s*=.*$', body, flags=re.M):\n        body = re.sub(r'^\s*update\.period\s*=.*$', f'update.period = {period}', body, flags=re.M)\n    else:\n        body += f'update.period = {period}\n'\n    s = s[:blk.start(1)] + body + s[blk.end(1):]\nelse:\n    if not s.endswith('\n'): s += '\n'\n    s += f'\n[http.interface]\ntarget.url = {url}\nupdate.period = {period}\n'\np.write_text(s)\nprint('updated')\nprint(f'target.url = {url}')\nprint(f'update.period = {period}')\nprint(f'backup = {backup}')\nPY`;
+
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script: `sudo -n bash -lc ${shQuoteArg(script)}`, timeoutMs: 16000 });
+      return res.json({ ok: true, sshHost, sshUser, targetUrl, updatePeriod, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/moode/library-update', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

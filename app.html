@@ -360,6 +360,8 @@
         <button id="showMoodeUiBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show moOde UI</button>
         <button id="showPlayerBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Player on moOde</button>
         <button id="refreshDisplayBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Refresh moOde Display</button>
+        <span id="peppyActionAnchor" style="display:none;"></span>
+        <span id="peppyTechAnchor" style="display:none;"></span>
         <details id="displayAdvanced" style="display:none;margin-left:8px;">
           <summary class="heroQueueBtn" style="list-style:none;cursor:pointer;">Advanced</summary>
           <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
@@ -368,7 +370,7 @@
           </div>
         </details>
         <span id="targetUrlHint" class="muted" style="display:none;margin-left:8px;font-size:12px;"></span>
-        <div class="statusInline" aria-label="status pills">
+        <div class="statusInline" id="statusInline" aria-label="status pills">
           <button class="pill" id="apiPill" type="button" title="Active API endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>API<span class="hint" id="apiHint">loading…</span></button>
           <button class="pill" id="webPill" type="button" title="Active web UI endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></button>
           <button class="pill" id="alexaPill" type="button" title="Alexa public domain health" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Alexa<span class="hint" id="alexaHint">unknown</span></button>
@@ -378,6 +380,10 @@
           <button class="pill" id="scrobblePill" type="button" title="mpdscribble scrobble service" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="scrobbleLabel">Scrobble</span><span class="hint" id="scrobbleHint">off</span></button>
 
         </div>
+      </div>
+      <div id="peppyTechDock" style="display:none; margin:8px 0 0; padding:8px 10px; border:1px solid #2a3a58; border-radius:10px; background:linear-gradient(180deg,#0f1726,#0b1320); gap:8px; flex-direction:column; align-items:stretch;">
+        <div id="peppyTechControlsRow" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;"></div>
+        <div id="peppyTechPillsRow" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;"></div>
       </div>
     </div>
     <iframe id="appFrame" title="Now Playing view" src="about:blank" scrolling="yes" allow="web-share; clipboard-write" style="width:100%;display:block;"></iframe>
@@ -2093,6 +2099,7 @@
         const base = `${location.protocol}//${host}:3101`;
         const expected = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
         const hint = document.getElementById('targetUrlHint');
+        const isPeppyPage = String(currentShellPage || '') === 'peppy.html';
         try {
           if (!runtimeTrackKey) {
             const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
@@ -2107,14 +2114,28 @@
           const current = String(j?.appUrl || j?.runUrl || '').trim();
           const ok = current.startsWith(`${location.protocol}//${host}:8101/display.html`);
           if (hint) {
-            hint.style.display = '';
-            hint.textContent = ok ? 'Target URL OK' : `Target mismatch (${current || 'unknown'})`;
-            hint.style.color = ok ? '#22c55e' : '#f59e0b';
-            hint.title = `Expected: ${expected}`;
+            if (isPeppyPage) {
+              hint.style.display = 'none';
+              hint.textContent = '';
+            } else {
+              hint.style.display = '';
+              hint.textContent = ok ? 'Target URL OK' : `Target mismatch (${current || 'unknown'})`;
+              hint.style.color = ok ? '#22c55e' : '#f59e0b';
+              hint.title = `Expected: ${expected}`;
+            }
           }
           return ok;
         } catch {
-          if (hint) { hint.style.display = ''; hint.textContent = 'Target check unavailable'; hint.style.color = '#f59e0b'; }
+          if (hint) {
+            if (isPeppyPage) {
+              hint.style.display = 'none';
+              hint.textContent = '';
+            } else {
+              hint.style.display = '';
+              hint.textContent = 'Target check unavailable';
+              hint.style.color = '#f59e0b';
+            }
+          }
           return false;
         }
       }
@@ -2391,9 +2412,48 @@
         } catch { return { skin:'', theme:'' }; }
       }
 
+      function dockPeppyTechRow(enabled){
+        const dock = document.getElementById('peppyTechDock');
+        const anchor = document.getElementById('peppyTechAnchor');
+        const actionAnchor = document.getElementById('peppyActionAnchor');
+        const adv = document.getElementById('displayAdvanced');
+        const hint = document.getElementById('targetUrlHint');
+        const pills = document.getElementById('statusInline');
+        const controlsRow = document.getElementById('peppyTechControlsRow');
+        const pillsRow = document.getElementById('peppyTechPillsRow');
+        const moodeBtn = document.getElementById('showMoodeUiBtn');
+        const playerBtn = document.getElementById('showPlayerBtn');
+        const refBtn = document.getElementById('refreshDisplayBtn');
+        if (!dock || !anchor || !adv || !hint || !pills || !actionAnchor || !controlsRow || !pillsRow) return;
+
+        if (enabled) {
+          dock.style.display = 'flex';
+          if (moodeBtn && moodeBtn.parentElement !== controlsRow) controlsRow.appendChild(moodeBtn);
+          if (playerBtn && playerBtn.parentElement !== controlsRow) controlsRow.appendChild(playerBtn);
+          if (refBtn && refBtn.parentElement !== controlsRow) controlsRow.appendChild(refBtn);
+          if (adv.parentElement !== controlsRow) controlsRow.appendChild(adv);
+          if (hint.parentElement !== controlsRow) controlsRow.appendChild(hint);
+          if (pills.parentElement !== pillsRow) pillsRow.appendChild(pills);
+          adv.style.marginLeft = '0';
+          hint.style.marginLeft = '0';
+        } else {
+          dock.style.display = 'none';
+          const parent = actionAnchor.parentElement;
+          if (moodeBtn && moodeBtn.parentElement !== parent) parent.insertBefore(moodeBtn, actionAnchor);
+          if (playerBtn && playerBtn.parentElement !== parent) parent.insertBefore(playerBtn, actionAnchor);
+          if (refBtn && refBtn.parentElement !== parent) parent.insertBefore(refBtn, actionAnchor);
+          if (adv.parentElement !== anchor.parentElement) anchor.parentElement.insertBefore(adv, anchor.nextSibling);
+          if (hint.parentElement !== anchor.parentElement) anchor.parentElement.insertBefore(hint, adv.nextSibling);
+          if (pills.parentElement !== anchor.parentElement) anchor.parentElement.appendChild(pills);
+          adv.style.marginLeft = '8px';
+          hint.style.marginLeft = '8px';
+        }
+      }
+
       function refreshPushPeppyVisibility(){ 
         const page = String(currentShellPage || '');
-        const show = moodeDisplayTakeoverEnabled && (page === 'peppy.html' || page === 'player.html');
+        const peppyPage = (page === 'peppy.html');
+        const show = moodeDisplayTakeoverEnabled && (page === 'player.html');
         const btn = document.getElementById('pushPeppyBtn');
         const moodeBtn = document.getElementById('showMoodeUiBtn');
         const playerBtn = document.getElementById('showPlayerBtn');
@@ -2408,6 +2468,7 @@
         if (adv) adv.style.display = show ? '' : 'none';
         if (fixBtn) fixBtn.style.display = show ? '' : 'none';
         if (natBtn) natBtn.style.display = show ? '' : 'none';
+        dockPeppyTechRow(false);
       }
 
       function applyHeroQuickSearchToQueueWizard(qRaw = '') {

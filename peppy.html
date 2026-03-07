@@ -136,6 +136,8 @@
     body.screen-480x320 .controls{height:164px;grid-template-columns:repeat(2,50px);grid-template-rows:repeat(3,50px);column-gap:8px;row-gap:7px}
     body.screen-480x320 .ctrlBtn{width:50px;height:50px}
     body.screen-480x320 .ctrlBtn .symSvg{width:24px;height:24px}
+    .peppySetupCard{position:static;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;width:min(1280px,calc(100vw - 16px));padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--card),var(--card2));box-sizing:border-box;margin-bottom:6px}
+    .peppySetupCard .setupTxt{font-size:12px;color:#fbbf24;white-space:nowrap}
     .skinOps{position:static;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;width:min(1280px,calc(100vw - 16px));padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--card),var(--card2));box-sizing:border-box}
     .skinBtn{height:26px;padding:0 10px;border:1px solid #3f4753;background:#1f2731;color:#d8e4f3;font-size:12px;cursor:pointer}
     .skinSelect{height:26px;border:1px solid #3f4753;background:#131b24;color:#d8e4f3;font-size:12px;padding:0 6px}
@@ -229,6 +231,13 @@
         <div id="rightMetaSlot"></div>
       </div>
 
+      <div id="peppySetupCard" class="peppySetupCard" aria-label="Peppy setup instructions">
+        <span id="peppyReadiness" class="setupTxt" style="color:#fbbf24;">Checking Peppy readiness…</span>
+        <button id="applyVuTargetBtn" class="skinBtn" type="button" title="Write target.url/update.period into /etc/peppymeter/config.txt on moOde">Apply VU Target</button>
+        <button id="recheckPeppyBtn" class="skinBtn" type="button">Re-check</button>
+        <span class="setupTxt">VU target should be <code id="vuTargetHint">http://10.0.0.233:3101</code>.</span>
+      </div>
+
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
         <button id="skinExport" class="skinBtn" type="button">Export JSON</button>
         <button id="skinImport" class="skinBtn" type="button">Import</button>
@@ -248,7 +257,6 @@
           <option value="builtin:9">Warm Parchment Gold Circular</option>
         </select>
         <button id="pushPeppyFromTab" class="skinBtn" type="button">Push Peppy to moOde</button>
-        <span style="font-size:12px;color:#fbbf24;white-space:nowrap;">Migration note: if needles don’t move after host change, update moOde <code>/etc/peppymeter/config.txt</code> VU target to <code id="vuTargetHint">http://10.0.0.233:3101/peppy/vumeter</code>.</span>
         <select id="screenProfile" class="skinSelect" aria-label="Peppy screen profile">
           <option value="1280x400">Screen: 1280×400</option>
           <option value="1024x320">Screen: 1024×320</option>
@@ -396,6 +404,7 @@
       const iframeScaleEl = $('iframeScale');
       const iframeScaleInput = $('iframeScaleInput');
       const iframeScaleValue = $('iframeScaleValue');
+      const peppySetupCardEl = $('peppySetupCard');
       const skinOpsEl = $('skinOps');
       const qp = new URLSearchParams(location.search);
       refreshVuTargetHint();
@@ -451,6 +460,9 @@
         } catch {}
       }
       try {
+        if (peppySetupCardEl && previewStage && peppySetupCardEl.parentElement !== document.body) {
+          document.body.insertBefore(peppySetupCardEl, previewStage);
+        }
         if (skinOpsEl && previewStage && skinOpsEl.parentElement !== document.body) {
           document.body.insertBefore(skinOpsEl, previewStage);
         }
@@ -610,6 +622,7 @@
         try { window.parent?.postMessage({ type:'peppy-profile', ...getCurrentProfile() }, '*'); } catch {}
       }
       try { document.body.classList.toggle('kiosk', kioskMode); } catch {}
+      if (peppySetupCardEl) peppySetupCardEl.style.display = kioskMode ? 'none' : 'flex';
       if (skinOpsEl) skinOpsEl.style.display = kioskMode ? 'none' : 'flex';
       const ctrlPrev = $('ctrlPrev');
       const ctrlPlay = $('ctrlPlay');
@@ -624,6 +637,9 @@
       const skinDeletePreset = $('skinDeletePreset');
       const peppyPreset = $('peppyPreset');
       const pushPeppyFromTab = $('pushPeppyFromTab');
+      const applyVuTargetBtn = $('applyVuTargetBtn');
+      const recheckPeppyBtn = $('recheckPeppyBtn');
+      const peppyReadiness = $('peppyReadiness');
       const screenProfile = $('screenProfile');
       const exportModal = $('exportModal');
       const exportJson = $('exportJson');
@@ -1786,6 +1802,72 @@
         } catch {}
       }
 
+      async function refreshPeppyReadiness(){
+        if (!peppyReadiness) return;
+        try {
+          await ensureRuntimeKey();
+          const headers = runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {};
+
+          const desired = buildPeppyTargetUrl();
+          const desiredLooksValid = /^https?:\/\/.+\/peppy\.html/i.test(desired);
+
+          const tr = await fetch(`${api}/config/moode/browser-url/status`, { headers, cache:'no-store' });
+          const tj = await tr.json().catch(() => ({}));
+          const current = String(tj?.runUrl || tj?.appUrl || '').trim();
+          const currentOnPeppy = !!current && current.includes('/peppy.html');
+
+          const vr = await fetch(`${api}/peppy/vumeter`, { cache:'no-store' });
+          const vj = await vr.json().catch(() => ({}));
+          const vuFresh = !!(vr.ok && vj?.fresh);
+
+          const hintEl = document.getElementById('vuTargetHint');
+          if (hintEl) {
+            const host = location.hostname || API_FALLBACK_HOST;
+            hintEl.textContent = `http://${host}:3101`;
+          }
+
+          // Check moOde /etc/peppymeter/config.txt VU target correctness.
+          let vuCfgOk = false;
+          try {
+            const sr = await fetch(`${api}/config/moode/peppy-vumeter-target/status`, { headers, cache:'no-store' });
+            const sj = await sr.json().catch(() => ({}));
+            vuCfgOk = !!(sr.ok && sj?.ok && sj?.configOk);
+            if (applyVuTargetBtn) applyVuTargetBtn.style.display = vuCfgOk ? 'none' : '';
+          } catch {
+            if (applyVuTargetBtn) applyVuTargetBtn.style.display = '';
+          }
+
+          if (!desiredLooksValid) {
+            peppyReadiness.textContent = '⚠ Peppy target template invalid — check host/port config';
+            peppyReadiness.style.color = '#f59e0b';
+            return;
+          }
+
+          if (!vuCfgOk) {
+            peppyReadiness.textContent = '⚠ Needs VU config — use Apply VU Target';
+            peppyReadiness.style.color = '#f59e0b';
+            return;
+          }
+
+          if (!vuFresh) {
+            peppyReadiness.textContent = '⚠ Needs VU feed — /peppy/vumeter is stale';
+            peppyReadiness.style.color = '#f59e0b';
+            return;
+          }
+
+          if (currentOnPeppy) {
+            peppyReadiness.textContent = '✅ Target URL OK — currently on peppy target; VU feed healthy';
+            peppyReadiness.style.color = '#22c55e';
+          } else {
+            peppyReadiness.textContent = '✅ Target URL OK (for push)';
+            peppyReadiness.style.color = '#22c55e';
+          }
+        } catch {
+          peppyReadiness.textContent = '⚠ Check failed — verify API/moOde connectivity';
+          peppyReadiness.style.color = '#f59e0b';
+        }
+      }
+
       const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
       const motionArtCache = new Map();
       const localMotionCache = new Map();
@@ -2646,6 +2728,70 @@
           try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
         }
       });
+
+      async function postMoodeDisplayMode(displayMode){
+        await ensureRuntimeKey();
+        const headers = { 'Content-Type':'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) };
+        const r = await fetch(`${api}/config/moode/display-mode`, { method:'POST', headers, body: JSON.stringify({ displayMode }) });
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        return j;
+      }
+
+      function buildPeppyTargetUrl(){
+        const p = getCurrentProfile();
+        const q = new URLSearchParams();
+        if (p?.skin) q.set('skin', String(p.skin));
+        if (p?.theme) q.set('theme', String(p.theme));
+        if (p?.playerSize) q.set('size', String(p.playerSize));
+        const host = location.hostname || API_FALLBACK_HOST;
+        return `http://${host}:8101/peppy.html${q.toString() ? `?${q.toString()}` : ''}`;
+      }
+
+      async function pushBrowserUrl(url){
+        await ensureRuntimeKey();
+        const headers = { 'Content-Type':'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) };
+        const r = await fetch(`${api}/config/moode/browser-url`, { method:'POST', headers, body: JSON.stringify({ url }) });
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        return j;
+      }
+
+      recheckPeppyBtn?.addEventListener('click', async () => {
+        await refreshPeppyReadiness();
+      });
+
+      applyVuTargetBtn?.addEventListener('click', async () => {
+        const btn = applyVuTargetBtn;
+        if (!btn) return;
+        const old = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Setting…';
+        try {
+          await ensureRuntimeKey();
+          const r = await fetch(`${api}/config/moode/peppy-vumeter-target`, {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ updatePeriod: '0.033' }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          if (j?.targetUrl) {
+            const el = document.getElementById('vuTargetHint');
+            if (el) el.textContent = String(j.targetUrl);
+          }
+          btn.textContent = 'VU target set ✓';
+          setTimeout(() => { try { btn.textContent = old || 'Apply VU Target'; } catch {} }, 1600);
+          await refreshPeppyReadiness();
+          alert('moOde Peppy VU target updated in /etc/peppymeter/config.txt');
+        } catch (e) {
+          btn.textContent = 'Failed';
+          setTimeout(() => { try { btn.textContent = old || 'Apply VU Target'; } catch {} }, 1600);
+          alert(`Failed to set moOde VU target: ${String(e?.message || e)}`);
+        } finally {
+          btn.disabled = false;
+        }
+      });
       exportClose?.addEventListener('click', () => {
         if (!exportModal) return;
         exportModal.classList.remove('open');
@@ -2844,11 +2990,13 @@
           publishProfileState();
         } catch {}
         await ensureRuntimeKey();
+        await refreshPeppyReadiness();
         await pollNowPlaying();
         await pollMeter();
         animate();
         setInterval(pollNowPlaying, kioskMode ? 3000 : 2500);
         setInterval(pollMeter, kioskMode ? 130 : 90);
+        setInterval(refreshPeppyReadiness, 10000);
       })();
     })();
   </script>
