@@ -53,6 +53,17 @@ Plus cross-cutting chapters for hero shell, index-vs-app parity, random-vs-shuff
 
 ## Install (systemd Linux)
 
+Prerequisite:
+- Node.js must be installed on the target machine (`node` and `npm` available in PATH).
+
+Quick check:
+
+```bash
+node -v && npm -v
+```
+
+If missing (Debian/Raspberry Pi OS), install Node.js first, then run:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/install.sh | bash -s -- --ref main
 ```
