@@ -8,7 +8,14 @@ A moOde-focused now-playing API + UI stack with optional Alexa integration.
 
 ![Peppy preset example: Warm Parchment Gold Circular](./docs/images/peppy-presets/10-warm-parchment-gold-circular.jpg)
 
+Six ways to use:
 
+1. Browser toolkit/dashboard
+2. Display html page
+3. Player screen for moOde box
+4. Peppymeter+track info screen for moOde box
+5. Mobile app
+6. Alexa skill
 
 > Recommended topology: run this project on a separate Pi from your moOde host.
 
@@ -17,7 +24,7 @@ A moOde-focused now-playing API + UI stack with optional Alexa integration.
 1. Install on API/UI host.
 2. Open `config.html` and set core fields (`trackKey`, `mpd.host`, `moode.baseUrl`, SSH settings).
 3. Run **Check SSH + Paths**.
-4. Open `app.html` (shell) or `index.html` (display view) or controller.html (mobile view).
+4. Open `app.html` (shell) or `index.html` (display view) or `player.html` (player view) `controller.html` (mobile view).
 
 ## Docs (tab-ordered)
 
