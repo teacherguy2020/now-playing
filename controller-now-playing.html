@@ -74,7 +74,17 @@
       #cnpBack{transform:translateY(calc(env(safe-area-inset-top,0px) + 12px))}
     }
     /* Grid prototype: keep mobile layout in-flow (less Safari toolbar weirdness) */
-    body.phone-ui{overflow:auto !important;-webkit-overflow-scrolling:touch}
+    body.phone-ui{overflow:auto !important;-webkit-overflow-scrolling:touch;--artSize:min(85vw,420px)}
+    /* Guardrail: on narrow screens, keep art sizing capped even if phone-ui class fails to apply */
+    @media (max-width: 900px){
+      body{--artSize:min(85vw,420px)}
+      /* Match/beat base specificity so phone-ui width/height rules cannot override this */
+      body.phone-ui #album-art-wrapper,
+      body:not(.phone-ui) #album-art-wrapper{
+        width:min(85vw,420px) !important;
+        height:min(85vw,420px) !important;
+      }
+    }
     body.phone-ui #content{
       position:relative;
       z-index:1;
@@ -227,7 +237,7 @@
 
     /* Landscape phone tuning: keep art anchored full-left and scale everything sanely */
     @media (orientation: landscape) and (max-height: 520px) {
-      body.phone-ui { --artSize: min(62vh, 520px); }
+      body.phone-ui { --artSize: min(85vw, 420px); }
       body.phone-ui #content{
         grid-template-columns: 48% minmax(0, 1fr);
         grid-template-areas:
@@ -355,6 +365,7 @@
     .hrArt{width:64px;height:64px;border-radius:10px;object-fit:cover;display:block;background:#0a1222}
     .hrL1{color:#f3f6ff;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .hrL2{color:#9eb3d6;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
   </style>
 
 </head>
@@ -602,6 +613,27 @@
       // Controller now-playing should always use phone portrait layout.
       try {
         document.body.classList.add('phone-ui','cnp-hidden');
+
+        // Hard runtime clamp for album art size (bypasses CSS cascade/PWA viewport quirks)
+        const forceArtSize = () => {
+          try {
+            const wrap = document.getElementById('album-art-wrapper');
+            if (!wrap) return;
+            const px = Math.min(Math.round((window.innerWidth || 0) * 0.85), 420);
+            document.documentElement.style.setProperty('--artSize', `${px}px`);
+            wrap.style.setProperty('width', `${px}px`, 'important');
+            wrap.style.setProperty('height', `${px}px`, 'important');
+            wrap.style.setProperty('max-width', `${px}px`, 'important');
+            wrap.style.setProperty('max-height', `${px}px`, 'important');
+            wrap.style.setProperty('flex', `0 0 ${px}px`, 'important');
+          } catch {}
+        };
+        forceArtSize();
+        window.addEventListener('load', forceArtSize, { once: true });
+        window.addEventListener('resize', forceArtSize);
+        window.addEventListener('orientationchange', forceArtSize);
+        window.addEventListener('pageshow', forceArtSize);
+        try { window.visualViewport?.addEventListener('resize', forceArtSize); } catch {}
         window.addEventListener('load', () => {
           document.body.classList.remove('cnp-hidden');
           document.body.classList.add('cnp-ready');
