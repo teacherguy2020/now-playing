@@ -563,8 +563,17 @@
         const pos = Number(del.getAttribute('data-pos')||0);
         if (!pos) return;
         del.disabled = true;
-        try { await sendPlayback('remove', { position: pos }); } catch(e){ console.warn(e); }
-        await loadQueue();
+
+        // Optimistic local removal to avoid full thumbnail churn on swipe-delete.
+        const didOptimistic = optimisticRemoveDom(pos);
+        try {
+          await sendPlayback('remove', { position: pos });
+          // Keep optimistic DOM; background poll will reconcile.
+          setTimeout(()=>{ loadQueue().catch(()=>null); }, 900);
+        } catch(e){
+          console.warn(e);
+          if (didOptimistic) await loadQueue();
+        }
         return;
       }
       const row = ev.target.closest('.row[data-pos]');
@@ -690,6 +699,24 @@
       }
     }, { passive:false });
 
+    function renumberVisibleRows(){
+      Array.from(listEl.querySelectorAll('.rowWrap')).forEach((w, idx)=>{
+        const pos = idx + 1;
+        w.setAttribute('data-pos', String(pos));
+        const row = w.querySelector('.row');
+        if (row) row.setAttribute('data-pos', String(pos));
+        const num = w.querySelector('.num');
+        if (num) num.textContent = String(pos);
+        const del = w.querySelector('.deleteBtn[data-a="rm"]');
+        if (del) del.setAttribute('data-pos', String(pos));
+      });
+      const meta = document.getElementById('meta');
+      if (meta) {
+        const n = listEl.querySelectorAll('.rowWrap').length;
+        meta.textContent = `${n} tracks`;
+      }
+    }
+
     function optimisticReorderDom(fromPos, toPos){
       const wraps = Array.from(listEl.querySelectorAll('.rowWrap[data-pos]'));
       const fromIdx = wraps.findIndex((w)=>Number(w.getAttribute('data-pos')||0) === Number(fromPos));
@@ -704,16 +731,15 @@
       else listEl.insertBefore(moving, target);
 
       // Renumber visible order immediately so UI matches gesture outcome.
-      Array.from(listEl.querySelectorAll('.rowWrap')).forEach((w, idx)=>{
-        const pos = idx + 1;
-        w.setAttribute('data-pos', String(pos));
-        const row = w.querySelector('.row');
-        if (row) row.setAttribute('data-pos', String(pos));
-        const num = w.querySelector('.num');
-        if (num) num.textContent = String(pos);
-        const del = w.querySelector('.deleteBtn[data-a="rm"]');
-        if (del) del.setAttribute('data-pos', String(pos));
-      });
+      renumberVisibleRows();
+      return true;
+    }
+
+    function optimisticRemoveDom(pos){
+      const wrap = listEl.querySelector(`.rowWrap[data-pos="${Number(pos)}"]`);
+      if (!wrap) return false;
+      wrap.remove();
+      renumberVisibleRows();
       return true;
     }
 
