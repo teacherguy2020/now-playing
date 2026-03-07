@@ -104,6 +104,7 @@
   const LIVE_COLLAPSED_KEY = 'diagnostics:liveCardCollapsed:v1';
   const PLAYER_COLLAPSED_KEY = 'diagnostics:playerCardCollapsed:v1';
   const PEPPY_COLLAPSED_KEY = 'diagnostics:peppyCardCollapsed:v1';
+  const MOBILE_COLLAPSED_KEY = 'diagnostics:mobileCardCollapsed:v1';
 
   function loadFavorites(){
     try {
@@ -215,6 +216,8 @@
   function setPlayerCollapsed(on){ return setCollapsed({ key: PLAYER_COLLAPSED_KEY, bodyId: 'playerCardBody', btnId: 'playerToggleBtn', on }); }
   function isPeppyCollapsed(){ return isCollapsed(PEPPY_COLLAPSED_KEY); }
   function setPeppyCollapsed(on){ return setCollapsed({ key: PEPPY_COLLAPSED_KEY, bodyId: 'peppyCardBody', btnId: 'peppyToggleBtn', on }); }
+  function isMobileCollapsed(){ return isCollapsed(MOBILE_COLLAPSED_KEY); }
+  function setMobileCollapsed(on){ return setCollapsed({ key: MOBILE_COLLAPSED_KEY, bodyId: 'mobileCardBody', btnId: 'mobileToggleBtn', on }); }
 
   function applyZoom(prefix, baseW, baseH, fallback = 55){
     const z = Number($(prefix + 'Zoom')?.value || fallback);
@@ -234,6 +237,7 @@
   function applyLiveZoom(){ applyZoom('live', 1920, 1080, 55); }
   function applyPlayerZoom(){ applyZoom('player', 1280, 400, 45); }
   function applyPeppyZoom(){ applyZoom('peppy', 1280, 400, 60); }
+  function applyMobileZoom(){ applyZoom('mobile', 430, 932, 65); }
 
   function refreshPreviewFrame({ name, frameId, linkId, page, uiPort = 8101, applyZoom }){
     dbg(`refresh${name}Frame(uiPort=${uiPort})`);
@@ -282,6 +286,10 @@
     refreshPreviewFrame({ name: 'Peppy', frameId: 'peppyFrame', linkId: 'openPeppyLink', page: 'peppy.html?kiosk=1', uiPort, applyZoom: applyPeppyZoom });
   }
 
+  function refreshMobileFrame(uiPort = 8101){
+    refreshPreviewFrame({ name: 'Mobile', frameId: 'mobileFrame', linkId: 'openMobileLink', page: 'controller.html', uiPort, applyZoom: applyMobileZoom });
+  }
+
   async function loadRuntime(){
     const host = location.hostname || '10.0.0.233';
     dbg('loadRuntime start');
@@ -308,6 +316,7 @@
       refreshLiveFrame(uiPort);
       refreshPlayerFrame(uiPort);
       refreshPeppyFrame(uiPort);
+      refreshMobileFrame(uiPort);
       loadQueue();
     } catch (e) {
       dbg(`loadRuntime error: ${e?.message || e}`);
@@ -320,6 +329,7 @@
       refreshLiveFrame(8101);
       refreshPlayerFrame(8101);
       refreshPeppyFrame(8101);
+      refreshMobileFrame(8101);
       loadQueue();
     }
   }
@@ -588,12 +598,15 @@
   $('reloadLiveBtn')?.addEventListener('click', () => loadRuntime());
   $('reloadPlayerBtn')?.addEventListener('click', () => loadRuntime());
   $('reloadPeppyBtn')?.addEventListener('click', () => loadRuntime());
+  $('reloadMobileBtn')?.addEventListener('click', () => loadRuntime());
   $('liveZoom')?.addEventListener('input', applyLiveZoom);
   $('playerZoom')?.addEventListener('input', applyPlayerZoom);
   $('peppyZoom')?.addEventListener('input', applyPeppyZoom);
+  $('mobileZoom')?.addEventListener('input', applyMobileZoom);
   $('liveToggleBtn')?.addEventListener('click', () => setLiveCollapsed(!isLiveCollapsed()));
   $('playerToggleBtn')?.addEventListener('click', () => setPlayerCollapsed(!isPlayerCollapsed()));
   $('peppyToggleBtn')?.addEventListener('click', () => setPeppyCollapsed(!isPeppyCollapsed()));
+  $('mobileToggleBtn')?.addEventListener('click', () => setMobileCollapsed(!isMobileCollapsed()));
   $('queueWrap')?.addEventListener('click', (ev) => {
     const el = ev.target instanceof Element ? ev.target : null;
 
@@ -816,10 +829,12 @@
     setLiveCollapsed(isLiveCollapsed());
     setPlayerCollapsed(isPlayerCollapsed());
     setPeppyCollapsed(isPeppyCollapsed());
+    setMobileCollapsed(isMobileCollapsed());
     // Prime previews immediately, even if runtime fetch is slow/failing.
     try { refreshLiveFrame(8101); } catch (e) { dbg(`prime live refresh error: ${e?.message || e}`); }
     try { refreshPlayerFrame(8101); } catch (e) { dbg(`prime player refresh error: ${e?.message || e}`); }
     try { refreshPeppyFrame(8101); } catch (e) { dbg(`prime peppy refresh error: ${e?.message || e}`); }
+    try { refreshMobileFrame(8101); } catch (e) { dbg(`prime mobile refresh error: ${e?.message || e}`); }
     await loadRuntime();
     await loadEndpointCatalog();
     hydrateEndpoints();

@@ -242,6 +242,28 @@
       </div>
     </div>
 
+    <div class="card" id="mobileCard">
+      <div class="row" style="margin-bottom:8px;align-items:center;justify-content:space-between;gap:10px;">
+        <div class="muted" style="margin:0;">Live controller view (controller.html)</div>
+        <button id="mobileToggleBtn" type="button" title="Collapse/expand mobile view">Collapse</button>
+      </div>
+      <div id="mobileCardBody">
+        <div class="row" style="margin-bottom:8px;align-items:center;">
+          <button id="reloadMobileBtn" type="button">Reload mobile view</button>
+          <label class="muted" for="mobileZoom" style="margin:0 0 0 8px;">Zoom</label>
+          <input id="mobileZoom" type="range" min="35" max="100" step="5" value="65" />
+          <span id="mobileZoomLabel" class="muted">65%</span>
+          <a id="openMobileLink" href="controller.html" target="_blank" rel="noopener" class="muted">Open in new tab</a>
+        </div>
+        <div id="mobileFrameViewport" style="overflow:auto;border:1px solid #2a3a58;border-radius:10px;background:#071021;padding:8px;display:flex;justify-content:center;align-items:flex-start;">
+          <div id="mobileFrameScaleWrap" style="transform-origin:top left; width:430px; height:932px;">
+            <iframe id="mobileFrame" title="Live mobile" style="width:430px;height:932px;border:0;display:block;background:#071021;"></iframe>
+          </div>
+        </div>
+        <div class="muted" style="margin-top:6px;">Mobile viewport stays 430×932; zoom only scales display.</div>
+      </div>
+    </div>
+
     <div class="card" id="outputCard" style="display:none;">
       <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px;">
         <div class="muted" id="meta"></div>
@@ -257,7 +279,7 @@
     <input id="key" type="hidden" />
   </div>
 
-  <script src="scripts/diagnostics.js?v=20260304-player-crop1"></script>
+  <script src="scripts/diagnostics.js?v=20260307-mobile-card1"></script>
 
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
 
