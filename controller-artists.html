@@ -55,7 +55,8 @@
     .albumTracks{list-style:none;margin:8px 0 0;padding:0}
     .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:flex;justify-content:space-between;gap:8px;font-size:14px}
     .trackBtns{display:flex;gap:6px}
-    .trackBtns button,.albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
+    .trackBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
+    .albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
     .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
     .modalX:active{transform:scale(.96)}
@@ -72,6 +73,7 @@
     }
 
   </style>
+  <link rel="stylesheet" href="styles/controller-modals.css?v=20260307-unify1" />
 </head>
 <body>
   <div class="top"><button class="back" id="backBtn">‹</button><h1>Artists</h1></div>
@@ -319,7 +321,7 @@
       document.getElementById('albumMeta').textContent = modalCtx.artist || '';
       document.getElementById('albumArtistLink').textContent = modalCtx.artist || '(unknown artist)';
       document.getElementById('albumArt').src = modalCtx.art || `${base}/art/current.jpg`;
-      document.getElementById('albumTracks').innerHTML = (modalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); return `<li><span>${i+1}. ${nm}</span><span class='trackBtns'><button data-track-action='play' data-track-file='${f}'>Play now</button><button data-track-action='add' data-track-file='${f}'>Add</button></span></li>`; }).join('') || '<li>No tracks found</li>';
+      document.getElementById('albumTracks').innerHTML = (modalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); return `<li><span>${i+1}. ${nm}</span><span class='trackBtns'><button title='Play now' aria-label='Play now' data-track-action='play' data-track-file='${f}'>▶</button><button title='Add to queue' aria-label='Add to queue' data-track-action='add' data-track-file='${f}'>＋</button></span></li>`; }).join('') || '<li>No tracks found</li>';
       document.getElementById('albumModal').classList.add('open');
     }
     function closeAlbumModal(){ document.getElementById('albumModal').classList.remove('open'); }

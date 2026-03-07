@@ -1,0 +1,44 @@
+/* Shared controller modal system */
+:root{
+  --cm-bg: rgba(0,0,0,.28);
+  --cm-card-bg: rgba(0,0,0,.58);
+  --cm-card-border: rgba(255,255,255,.16);
+  --cm-line: #1f2a3d;
+  --cm-btn-border: #2a3a58;
+  --cm-btn-bg: #132038;
+  --cm-btn-fg: #e6efff;
+}
+
+.albumModal,.artistModal,.queueModal{
+  position:fixed;inset:0;display:none;background:var(--cm-bg);z-index:130;align-items:center;justify-content:center;
+}
+.albumModal.open,.artistModal.open,.queueModal.open{display:flex}
+.albumCard,.artistCard,.queueCard{
+  position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;
+  background:var(--cm-card-bg);border:1px solid var(--cm-card-border);border-radius:14px;padding:12px;
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)
+}
+
+.albumHead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
+.albumTitle{font-size:17px;font-weight:700}
+.albumMeta{font-size:12px;color:var(--muted,#9eb3d6)}
+
+.albumTracks{list-style:none;margin:8px 0 0;padding:0}
+.albumTracks li{padding:8px 0;border-bottom:1px solid var(--cm-line);font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+
+.trackBtns{display:flex;gap:6px}
+.trackBtns button{
+  border:1px solid var(--cm-btn-border);background:var(--cm-btn-bg);color:var(--cm-btn-fg);
+  width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;
+  font-weight:700;line-height:1;cursor:pointer;
+}
+
+.albumBtns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.albumBtns button{
+  border:1px solid var(--cm-btn-border);background:var(--cm-btn-bg);color:var(--cm-btn-fg);
+  border-radius:10px;padding:9px 10px;cursor:pointer;
+}
+
+.modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+.modalX:active{transform:scale(.96)}
