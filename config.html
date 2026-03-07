@@ -244,7 +244,9 @@
                 <!-- podcast root moved to Podcasts card -->
                 <div class="cfgActions" style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap;">
                   <button class="btn" id="checkRuntimeBtn" type="button">Check SSH + Paths</button>
+                  <button class="btn btnPrimary" id="saveBtnTop" type="button">Save Configuration</button>
                 </div>
+                <div class="cfgHint" style="margin-top:4px;"><strong>Important:</strong> after edits, click <strong>Save Configuration</strong> (top or bottom) before leaving this page.</div>
                 <div class="cfgHint" id="runtimeCheckStatus" style="margin-top:6px;"></div>
                 <div id="runtimeCheckDetails" class="cfgHint" style="margin-top:6px;"></div>
               </div>
@@ -1899,6 +1901,7 @@ window.addEventListener('beforeunload', (e) => {
 });
 document.getElementById('reloadBtn').onclick = () => loadCfg().catch(e => log(String(e)));
 document.getElementById('saveBtn').onclick = () => saveCfg().catch(e => log(String(e)));
+document.getElementById('saveBtnTop')?.addEventListener('click', () => saveCfg().catch(e => log(String(e))));
 document.getElementById('saveFullBtn').onclick = () => saveFullCfg().catch(e => log(String(e)));
 document.getElementById('formatJsonBtn').onclick = () => formatFullJson();
 document.getElementById('modalLaterBtn').onclick = () => hideRestartModal();
