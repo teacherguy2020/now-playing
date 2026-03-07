@@ -15,6 +15,9 @@
     .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
     h1{margin:0;font-size:30px;letter-spacing:-.01em}
     .meta{color:var(--muted);font-size:13px;margin:0 0 8px}
+    .queueTopActions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px}
+    .queueTopActions button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:8px 10px;cursor:pointer}
+    .queueTopActions button.warn{border-color:#5a3140;background:#1b0f18;color:#ffc9d5}
     .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
     .list{margin:0;padding:0;list-style:none;position:relative}
     #dropLine{position:absolute;left:0;right:0;height:3px;background:#45b26f;box-shadow:0 0 0 1px rgba(69,178,111,.18);z-index:10003;pointer-events:none;display:none}
@@ -93,6 +96,10 @@
 <body>
   <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1></div>
   <p class="meta" id="meta"><span class="miniSpin" aria-label="Loading"></span></p>
+  <div class="queueTopActions">
+    <button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop Queue</button>
+    <button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear Queue</button>
+  </div>
   <ul class="list" id="list"><li id="dropLine" aria-hidden="true"></li></ul>
 
   <div class="menu" id="trackMenu" aria-hidden="true">
@@ -223,6 +230,7 @@
       return j;
     }
 
+
     async function loadQueue(){
       if (dragState) return;
       await ensureKey();
@@ -330,6 +338,34 @@
       __backNavBusy = true;
       document.body.classList.add('nav-backwarding');
       setTimeout(()=>{ if (history.length > 1) history.back(); else location.href='controller.html'; }, 170);
+    });
+
+    document.getElementById('cropQueueBtn')?.addEventListener('click', async (ev)=>{
+      const btn = ev.currentTarget;
+      if (btn) btn.disabled = true;
+      try {
+        await sendPlayback('crop');
+        await loadQueue();
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    document.getElementById('clearQueueBtn')?.addEventListener('click', async (ev)=>{
+      const ok = window.confirm('Clear entire queue?');
+      if (!ok) return;
+      const btn = ev.currentTarget;
+      if (btn) btn.disabled = true;
+      try {
+        await sendPlayback('clear');
+        await loadQueue();
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     });
 
     let modalCtx = { album:'', artist:'', title:'', art:'', tracks:[], artistTracks:[] };

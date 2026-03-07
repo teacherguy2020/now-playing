@@ -348,11 +348,26 @@
       try {
         const r = await fetch(`${base}/now-playing`,{cache:'no-store'});
         const j = await r.json().catch(()=>({}));
-        const art = String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`;
-        const line1 = `${j?.artist||''} • ${j?.title||''}`.trim() || 'Now Playing';
-        const line2 = String(j?.album||'');
+
+        const artist = String(j?.artist || '').trim();
+        const title = String(j?.title || '').trim();
+        const album = String(j?.album || '').trim();
+        const file = String(j?.file || '').trim();
         const st = String(j?.state || '').toLowerCase();
-        const sig = `${String(j?.file||'')}|${line1}|${line2}|${st}|${art}`;
+        const hasTrack = !!(title || artist || file);
+
+        const line1 = hasTrack
+          ? [artist, title].filter(Boolean).join(' • ')
+          : 'Queue is empty';
+        const line2 = hasTrack
+          ? album
+          : 'Use Queue Wizard or Recently Added to start music';
+
+        const art = hasTrack
+          ? (String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`)
+          : `/icons/icon-192.png`;
+
+        const sig = `${file}|${line1}|${line2}|${st}|${art}`;
         if (sig !== npSig) {
           npSig = sig;
           const artEl = document.getElementById('art');
@@ -360,14 +375,14 @@
           if (artEl) {
             if (spinEl) spinEl.hidden = false;
             artEl.onload = ()=>{ if (spinEl) spinEl.hidden = true; };
-            artEl.onerror = ()=>{ if (spinEl) spinEl.hidden = true; };
+            artEl.onerror = ()=>{ if (spinEl) spinEl.hidden = true; artEl.src = '/icons/icon-192.png'; };
             artEl.src = art;
           }
           document.getElementById('line1').textContent = line1;
           document.getElementById('line2').textContent = line2;
         }
         const eq = document.getElementById('eqOverlay');
-        if (eq) eq.style.display = (st === 'play' || st === 'playing') ? 'inline-flex' : 'none';
+        if (eq) eq.style.display = (hasTrack && (st === 'play' || st === 'playing')) ? 'inline-flex' : 'none';
       } catch {}
     }
 
