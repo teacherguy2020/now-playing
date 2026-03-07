@@ -1838,8 +1838,11 @@
       }
 
       async function togglePeppyFromPill(){
-        const nextMode = (String(peppyModeState || 'webui') === 'peppy') ? 'webui' : 'peppy';
-        const ok = window.confirm(nextMode === 'peppy' ? 'Enable Peppy display?' : 'Switch display to Web UI?');
+        const currentlyPeppy = (String(peppyModeState || 'webui') === 'peppy');
+        const nextMode = currentlyPeppy ? 'webui' : 'peppy';
+        const ok = window.confirm(currentlyPeppy
+          ? 'Turn off full screen Peppymeter?'
+          : 'Switch to full screen Peppymeter?');
         if (!ok) return;
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;

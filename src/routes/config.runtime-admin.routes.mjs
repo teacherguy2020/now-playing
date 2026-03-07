@@ -775,18 +775,18 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const apiHost = String(cfg?.apiNodeIp || hostNoPort || req.hostname || '').trim();
       if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config.' });
       const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
-      const expectedTargetUrl = `http://${apiHost}:${apiPort}`;
-      const expectedTargetUrlAlt = `http://${apiHost}:${apiPort}/peppy/vumeter`;
+      const expectedTargetUrl = `http://${apiHost}:${apiPort}/peppy/vumeter`;
       const expectedUpdatePeriod = '0.033';
 
-      const script = "target=$(sudo -n awk -F'=' '/^\\s*target\\.url\\s*=/{v=$2} END{gsub(/^\\s+|\\s+$/,\"\",v); print v}' /etc/peppymeter/config.txt 2>/dev/null || true); period=$(sudo -n awk -F'=' '/^\\s*update\\.period\\s*=/{v=$2} END{gsub(/^\\s+|\\s+$/,\"\",v); print v}' /etc/peppymeter/config.txt 2>/dev/null || true); echo \"TARGET:$target\"; echo \"PERIOD:$period\"";
+      const script = "python3 - <<'PY'\nfrom pathlib import Path\ncfg=Path('/etc/peppymeter/config.txt')\nraw=''\nreadok=0\nif cfg.exists():\n    try:\n        raw=cfg.read_text()\n        if raw:\n            readok=1\n    except Exception:\n        raw=''\nsec=''\ntarget=''\nperiod=''\nfor ln in raw.splitlines():\n    s=ln.strip()\n    if not s or s.startswith('#') or s.startswith(';'):\n        continue\n    if s.startswith('[') and s.endswith(']'):\n        sec=s[1:-1].strip().lower()\n        continue\n    if sec!='http.interface' or '=' not in s:\n        continue\n    k,v=s.split('=',1)\n    k=k.strip().lower(); v=v.strip()\n    if k=='target.url': target=v\n    elif k=='update.period': period=v\nprint(f'READ_OK:{1 if readok else 0}')\nprint(f'TARGET:{target}')\nprint(f'PERIOD:{period}')\nPY";
       const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 12000 });
       const out = String(stdout || '');
+      const readOk = (out.match(/READ_OK:(.*)/) || [,''])[1].trim() === '1';
       const targetUrl = (out.match(/TARGET:(.*)/) || [,''])[1].trim();
       const updatePeriod = (out.match(/PERIOD:(.*)/) || [,''])[1].trim();
-      const targetOk = !!targetUrl && (targetUrl === expectedTargetUrl || targetUrl === expectedTargetUrlAlt);
+      const targetOk = !!targetUrl && targetUrl === expectedTargetUrl;
       const periodOk = !!updatePeriod && updatePeriod === expectedUpdatePeriod;
-      return res.json({ ok: true, sshHost, sshUser, expectedTargetUrl, expectedTargetUrlAlt, expectedUpdatePeriod, targetUrl, updatePeriod, targetOk, periodOk, configOk: targetOk && periodOk, stderr: String(stderr || '').trim() });
+      return res.json({ ok: true, sshHost, sshUser, expectedTargetUrl, expectedUpdatePeriod, readOk, targetUrl, updatePeriod, targetOk, periodOk, configOk: readOk && targetOk && periodOk, stderr: String(stderr || '').trim() });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
@@ -807,7 +807,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config or pass apiHost.' });
       const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
       const updatePeriod = String(req.body?.updatePeriod || '0.033').trim() || '0.033';
-      const targetUrl = `http://${apiHost}:${apiPort}`;
+      const targetUrl = `http://${apiHost}:${apiPort}/peppy/vumeter`;
 
       const script = `python3 - <<'PY'\nfrom pathlib import Path\nimport re, time\np=Path('/etc/peppymeter/config.txt')\nurl=${shQuoteArg(targetUrl)}\nperiod=${shQuoteArg(updatePeriod)}\nif not p.exists():\n    raise SystemExit('missing /etc/peppymeter/config.txt')\ns=p.read_text()\nbackup = p.with_name(f"config.txt.bak-{int(time.time())}")\nbackup.write_text(s)\nif re.search(r'^\[http\.interface\]\s*$', s, flags=re.M):\n    blk = re.search(r'^\[http\.interface\]\s*$([\s\S]*?)(?=^\[|\Z)', s, flags=re.M)\n    body = blk.group(1) if blk else ''\n    if re.search(r'^\s*target\.url\s*=.*$', body, flags=re.M):\n        body = re.sub(r'^\s*target\.url\s*=.*$', f'target.url = {url}', body, flags=re.M)\n    else:\n        body += ('\n' if body and not body.endswith('\n') else '') + f'target.url = {url}\n'\n    if re.search(r'^\s*update\.period\s*=.*$', body, flags=re.M):\n        body = re.sub(r'^\s*update\.period\s*=.*$', f'update.period = {period}', body, flags=re.M)\n    else:\n        body += f'update.period = {period}\n'\n    s = s[:blk.start(1)] + body + s[blk.end(1):]\nelse:\n    if not s.endswith('\n'): s += '\n'\n    s += f'\n[http.interface]\ntarget.url = {url}\nupdate.period = {period}\n'\np.write_text(s)\nprint('updated')\nprint(f'target.url = {url}')\nprint(f'update.period = {period}')\nprint(f'backup = {backup}')\nPY`;
 

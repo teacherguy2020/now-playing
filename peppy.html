@@ -235,7 +235,7 @@
         <span id="peppyReadiness" class="setupTxt" style="color:#fbbf24;">Checking Peppy readiness…</span>
         <button id="applyVuTargetBtn" class="skinBtn" type="button" title="Write target.url/update.period into /etc/peppymeter/config.txt on moOde">Apply VU Target</button>
         <button id="recheckPeppyBtn" class="skinBtn" type="button">Re-check</button>
-        <span class="setupTxt">VU target should be <code id="vuTargetHint">http://10.0.0.233:3101</code>.</span>
+        <span class="setupTxt" id="vuTargetHintWrap" style="display:none;">VU target should be <code id="vuTargetHint">http://10.0.0.233:3101/peppy/vumeter</code>.</span>
       </div>
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
@@ -1821,40 +1821,49 @@
           const vuFresh = !!(vr.ok && vj?.fresh);
 
           const hintEl = document.getElementById('vuTargetHint');
+          const hintWrap = document.getElementById('vuTargetHintWrap');
+          let foundVuTarget = '';
           if (hintEl) {
             const host = location.hostname || API_FALLBACK_HOST;
-            hintEl.textContent = `http://${host}:3101`;
+            hintEl.textContent = `http://${host}:3101/peppy/vumeter`;
           }
 
           // Check moOde /etc/peppymeter/config.txt VU target correctness.
           let vuCfgOk = false;
+          let vuCfgReadable = false;
           try {
             const sr = await fetch(`${api}/config/moode/peppy-vumeter-target/status`, { headers, cache:'no-store' });
             const sj = await sr.json().catch(() => ({}));
+            vuCfgReadable = !!(sr.ok && sj?.ok && sj?.readOk);
             vuCfgOk = !!(sr.ok && sj?.ok && sj?.configOk);
-            if (applyVuTargetBtn) applyVuTargetBtn.style.display = vuCfgOk ? 'none' : '';
+            foundVuTarget = String(sj?.targetUrl || '').trim();
+            if (applyVuTargetBtn) applyVuTargetBtn.style.display = (vuCfgReadable && vuCfgOk) ? 'none' : '';
           } catch {
             if (applyVuTargetBtn) applyVuTargetBtn.style.display = '';
           }
 
           if (!desiredLooksValid) {
+            if (hintWrap) hintWrap.style.display = '';
             peppyReadiness.textContent = '⚠ Peppy target template invalid — check host/port config';
             peppyReadiness.style.color = '#f59e0b';
             return;
           }
 
-          if (!vuCfgOk) {
-            peppyReadiness.textContent = '⚠ Needs VU config — use Apply VU Target';
+          if (vuCfgReadable && !vuCfgOk) {
+            if (hintWrap) hintWrap.style.display = '';
+            peppyReadiness.textContent = `⚠ Needs VU config — found: ${foundVuTarget || 'missing'}; expected: ${hintEl?.textContent || 'http://<host>:3101/peppy/vumeter'}`;
             peppyReadiness.style.color = '#f59e0b';
             return;
           }
 
           if (!vuFresh) {
+            if (hintWrap) hintWrap.style.display = 'none';
             peppyReadiness.textContent = '⚠ Needs VU feed — /peppy/vumeter is stale';
             peppyReadiness.style.color = '#f59e0b';
             return;
           }
 
+          if (hintWrap) hintWrap.style.display = 'none';
           if (currentOnPeppy) {
             peppyReadiness.textContent = '✅ Target URL OK — currently on peppy target; VU feed healthy';
             peppyReadiness.style.color = '#22c55e';
@@ -1863,6 +1872,7 @@
             peppyReadiness.style.color = '#22c55e';
           }
         } catch {
+          try { const hintWrap = document.getElementById('vuTargetHintWrap'); if (hintWrap) hintWrap.style.display = ''; } catch {}
           peppyReadiness.textContent = '⚠ Check failed — verify API/moOde connectivity';
           peppyReadiness.style.color = '#f59e0b';
         }
