@@ -1803,7 +1803,7 @@
       }
 
       async function refreshPeppyReadiness(){
-        if (!peppyReadiness) return;
+        if (!peppyReadiness) return { ok:false, reason:'no-readiness-el' };
         try {
           await ensureRuntimeKey();
           const headers = runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {};
@@ -1844,26 +1844,30 @@
 
           if (!desiredLooksValid) {
             if (hintWrap) hintWrap.style.display = '';
+            if (recheckPeppyBtn) recheckPeppyBtn.style.display = '';
             peppyReadiness.textContent = '⚠ Peppy target template invalid — check host/port config';
             peppyReadiness.style.color = '#f59e0b';
-            return;
+            return { ok:false, reason:'bad-template' };
           }
 
           if (vuCfgReadable && !vuCfgOk) {
             if (hintWrap) hintWrap.style.display = '';
+            if (recheckPeppyBtn) recheckPeppyBtn.style.display = '';
             peppyReadiness.textContent = `⚠ Needs VU config — found: ${foundVuTarget || 'missing'}; expected: ${hintEl?.textContent || 'http://<host>:3101/peppy/vumeter'}`;
             peppyReadiness.style.color = '#f59e0b';
-            return;
+            return { ok:false, reason:'vu-config' };
           }
 
           if (!vuFresh) {
             if (hintWrap) hintWrap.style.display = 'none';
+            if (recheckPeppyBtn) recheckPeppyBtn.style.display = '';
             peppyReadiness.textContent = '⚠ VU feed is stale — PeppyMeter may not be running';
             peppyReadiness.style.color = '#f59e0b';
-            return;
+            return { ok:false, reason:'vu-stale' };
           }
 
           if (hintWrap) hintWrap.style.display = 'none';
+          if (recheckPeppyBtn) recheckPeppyBtn.style.display = 'none';
           if (currentOnPeppy) {
             peppyReadiness.textContent = '✅ Target URL OK — currently on peppy target; VU feed healthy';
             peppyReadiness.style.color = '#22c55e';
@@ -1871,10 +1875,13 @@
             peppyReadiness.textContent = '✅ Target URL OK (for push)';
             peppyReadiness.style.color = '#22c55e';
           }
+          return { ok:true, reason:'ready' };
         } catch {
           try { const hintWrap = document.getElementById('vuTargetHintWrap'); if (hintWrap) hintWrap.style.display = ''; } catch {}
+          if (recheckPeppyBtn) recheckPeppyBtn.style.display = '';
           peppyReadiness.textContent = '⚠ Check failed — verify API/moOde connectivity';
           peppyReadiness.style.color = '#f59e0b';
+          return { ok:false, reason:'check-failed' };
         }
       }
 
@@ -2768,7 +2775,16 @@
       }
 
       recheckPeppyBtn?.addEventListener('click', async () => {
-        await refreshPeppyReadiness();
+        const btn = recheckPeppyBtn;
+        if (!btn) return;
+        const old = btn.textContent || 'Re-check';
+        btn.disabled = true;
+        btn.textContent = '⏳ Checking…';
+        const out = await refreshPeppyReadiness();
+        if (out?.ok) btn.textContent = '✓ Checked';
+        else btn.textContent = '✕ Check issue';
+        setTimeout(() => { try { btn.textContent = old; } catch {} }, 1300);
+        btn.disabled = false;
       });
 
       applyVuTargetBtn?.addEventListener('click', async () => {
