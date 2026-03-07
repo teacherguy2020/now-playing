@@ -233,7 +233,7 @@
 
       <div id="peppySetupCard" class="peppySetupCard" aria-label="Peppy setup instructions">
         <span id="peppyReadiness" class="setupTxt" style="color:#fbbf24;">Checking Peppy readiness…</span>
-        <button id="applyVuTargetBtn" class="skinBtn" type="button" title="Write target.url/update.period into /etc/peppymeter/config.txt on moOde">Apply VU Target</button>
+        <button id="applyVuTargetBtn" class="skinBtn" type="button" title="Show instructions to fix /etc/peppymeter/config.txt on moOde">How to fix VU target</button>
         <button id="recheckPeppyBtn" class="skinBtn" type="button">Re-check</button>
         <span class="setupTxt" id="vuTargetHintWrap" style="display:none;">VU target should be <code id="vuTargetHint">http://10.0.0.233:3101/peppy/vumeter</code>.</span>
       </div>
@@ -2772,35 +2772,18 @@
       });
 
       applyVuTargetBtn?.addEventListener('click', async () => {
-        const btn = applyVuTargetBtn;
-        if (!btn) return;
-        const old = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = 'Setting…';
         try {
-          await ensureRuntimeKey();
-          const r = await fetch(`${api}/config/moode/peppy-vumeter-target`, {
-            method:'POST',
-            headers:{ 'Content-Type':'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
-            body: JSON.stringify({ updatePeriod: '0.033' }),
-          });
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-          if (j?.targetUrl) {
-            const el = document.getElementById('vuTargetHint');
-            if (el) el.textContent = String(j.targetUrl);
-          }
-          btn.textContent = 'VU target set ✓';
-          setTimeout(() => { try { btn.textContent = old || 'Apply VU Target'; } catch {} }, 1600);
-          await refreshPeppyReadiness();
-          alert('moOde Peppy VU target updated in /etc/peppymeter/config.txt');
-        } catch (e) {
-          btn.textContent = 'Failed';
-          setTimeout(() => { try { btn.textContent = old || 'Apply VU Target'; } catch {} }, 1600);
-          alert(`Failed to set moOde VU target: ${String(e?.message || e)}`);
-        } finally {
-          btn.disabled = false;
-        }
+          const host = location.hostname || API_FALLBACK_HOST;
+          const target = `http://${host}:3101/peppy/vumeter`;
+          alert(
+            'Fix on moOde:\n\n' +
+            '1) Open /etc/peppymeter/config.txt\n' +
+            '2) Under [http.interface], set:\n' +
+            `   target.url = ${target}\n` +
+            '   update.period = 0.033\n\n' +
+            '3) Restart Peppymeter (via moOde Config or start-peppy.sh meter).'
+          );
+        } catch {}
       });
       exportClose?.addEventListener('click', () => {
         if (!exportModal) return;
