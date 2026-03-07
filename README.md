@@ -3,11 +3,11 @@
 <p align="left"><strong>Now Playing for moOde</strong></p>
 
 A moOde-focused now-playing API + UI stack with optional Alexa integration.
-<img src="./docs/images/mobile-builder/controller.png" alt="Controller mobile view" width="300">
+
 ![Now Playing promo collage](./docs/images/master-best-20260227/_collages/collage-promo-mixed-tabs-themes-normalized.jpg)
 
 ![Peppy preset example: Warm Parchment Gold Circular](./docs/images/peppy-presets/10-warm-parchment-gold-circular.jpg)
-
+<img src="./docs/images/mobile-builder/controller.png" alt="Controller mobile view" width="300">
 Six ways to use:
 
 1. Browser toolkit/dashboard
