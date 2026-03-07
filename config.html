@@ -1142,6 +1142,18 @@ async function saveCfg(){
   const key = getTrackKey();
   if (!key) return log('Track key is required to save.');
 
+  const mpdHostEl = document.getElementById('mpdHost');
+  const mpdHostVal = String(mpdHostEl?.value || '').trim();
+  if (!mpdHostVal) {
+    try { setMpdHostLight('bad', 'required'); } catch {}
+    if (mpdHostEl) {
+      mpdHostEl.focus();
+      mpdHostEl.style.outline = '2px solid rgba(239,68,68,.9)';
+      setTimeout(() => { try { mpdHostEl.style.outline = ''; } catch {} }, 2200);
+    }
+    return log('MPD host is required. Enter your moOde IP/hostname (e.g. 10.0.0.254) and save again.');
+  }
+
   let artistAliases = {};
   try {
     artistAliases = getArtistAliasesFromUi();

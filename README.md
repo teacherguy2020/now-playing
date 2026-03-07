@@ -28,6 +28,19 @@ Six ways to use:
 3. Run **Check SSH + Paths**.
 4. Open `app.html` (shell) or `index.html` (display view) or `player.html` (player view) `controller.html` (mobile view).
 
+### Important when moving to a new host (Pi migration)
+
+If Peppy art loads but needles do not move, moOde is usually still posting VU data to the old API host.
+Update moOde’s PeppyMeter config on the moOde box (`/etc/peppymeter/config.txt`) so its VU target points to the new now-playing API host (`http://<new-host>:3101/peppy/vumeter`), then restart/reboot moOde.
+
+Quick verify on the new host:
+
+```bash
+curl -s http://127.0.0.1:3101/peppy/vumeter
+```
+
+You should see fresh timestamps (`fresh: true`) and non-zero levels while music is playing.
+
 ## Docs (tab-ordered)
 
 👉 **Start here for full documentation:** [docs/README.md](./docs/README.md)
@@ -53,16 +66,33 @@ Plus cross-cutting chapters for hero shell, index-vs-app parity, random-vs-shuff
 
 ## Install (systemd Linux)
 
-Prerequisite:
+Prerequisites:
 - Node.js must be installed on the target machine (`node` and `npm` available in PATH).
+- `mpc` (MPD client) must be installed on the target machine.
+- PM2 is strongly recommended for process management and auto-restart.
 
 Quick check:
 
 ```bash
 node -v && npm -v
+mpc --version
+pm2 -v
 ```
 
-If missing (Debian/Raspberry Pi OS), install Node.js first, then run:
+If `mpc` is missing (Debian/Raspberry Pi OS):
+
+```bash
+sudo apt update
+sudo apt install -y mpc
+```
+
+If PM2 is missing:
+
+```bash
+sudo npm install -g pm2
+```
+
+If Node.js is missing (Debian/Raspberry Pi OS), install Node.js first, then run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/install.sh | bash -s -- --ref main

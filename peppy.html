@@ -248,6 +248,7 @@
           <option value="builtin:9">Warm Parchment Gold Circular</option>
         </select>
         <button id="pushPeppyFromTab" class="skinBtn" type="button">Push Peppy to moOde</button>
+        <span style="font-size:12px;color:#fbbf24;white-space:nowrap;">Migration note: if needles don’t move after host change, update moOde <code>/etc/peppymeter/config.txt</code> VU target to <code id="vuTargetHint">http://10.0.0.233:3101/peppy/vumeter</code>.</span>
         <select id="screenProfile" class="skinSelect" aria-label="Peppy screen profile">
           <option value="1280x400">Screen: 1280×400</option>
           <option value="1024x320">Screen: 1024×320</option>
@@ -359,6 +360,27 @@
       let api = candidates[0];
       let runtimeTrackKey = '';
 
+      function refreshVuTargetHint(){
+        try {
+          const el = document.getElementById('vuTargetHint');
+          if (!el) return;
+          const base = String(api || candidates[0] || '').replace(/\/+$/, '');
+          el.textContent = `${base}/peppy/vumeter`;
+        } catch {}
+      }
+
+      function refreshVuTargetHintFromRuntime(cfg){
+        try {
+          const el = document.getElementById('vuTargetHint');
+          if (!el) return;
+          const c = cfg && typeof cfg === 'object' ? cfg : {};
+          const host = String(c.apiNodeIp || location.hostname || API_FALLBACK_HOST).trim() || (location.hostname || API_FALLBACK_HOST);
+          const port = Number(c?.ports?.api || 3101) || 3101;
+          const proto = String(location.protocol || 'http:');
+          el.textContent = `${proto}//${host}:${port}/peppy/vumeter`;
+        } catch {}
+      }
+
       const $ = (id) => document.getElementById(id);
       const previewStage = $('previewStage');
       const wrap = $('wrap');
@@ -376,6 +398,7 @@
       const iframeScaleValue = $('iframeScaleValue');
       const skinOpsEl = $('skinOps');
       const qp = new URLSearchParams(location.search);
+      refreshVuTargetHint();
       const kioskMode = (qp.get('kiosk') === '1' || qp.get('display') === '1');
       const adminMode = (qp.get('admin') === '1');
       const SCREEN_PROFILES = {
@@ -1747,9 +1770,10 @@
         for (const base of candidates) {
           try {
             const r = await fetch(`${base}/peppy/vumeter`, { cache:'no-store' });
-            if (r.ok) { api = base; return; }
+            if (r.ok) { api = base; refreshVuTargetHint(); return; }
           } catch {}
         }
+        refreshVuTargetHint();
       }
 
       async function ensureRuntimeKey(){
@@ -1758,6 +1782,7 @@
           const r = await fetch(`${api}/config/runtime`, { cache:'no-store' });
           const j = await r.json().catch(() => ({}));
           runtimeTrackKey = String(j?.config?.trackKey || '').trim();
+          refreshVuTargetHintFromRuntime(j?.config || {});
         } catch {}
       }
 
