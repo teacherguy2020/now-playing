@@ -277,6 +277,47 @@
     return 'http://10.0.0.233:3101';
   }
 
+  function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+
+  async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(new Error('timeout')), Math.max(1000, Number(timeoutMs || 15000)));
+    try {
+      return await fetch(url, { ...options, signal: ctrl.signal });
+    } catch (e) {
+      if (e?.name === 'AbortError') {
+        const err = new Error('Request timed out');
+        err.code = 'ETIMEDOUT';
+        throw err;
+      }
+      throw e;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  async function startLibraryHealthRefreshJob(apiBase, key, sampleLimit = 100) {
+    const r = await fetch(`${apiBase}/config/library-health/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+      body: JSON.stringify({ sampleLimit }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    return j;
+  }
+
+  async function waitForLibraryHealthReady(apiBase, key, timeoutMs = 120000, intervalMs = 2500) {
+    const started = Date.now();
+    while ((Date.now() - started) < timeoutMs) {
+      const r = await fetch(`${apiBase}/config/library-health/job`, { headers: { 'x-track-key': key }, cache: 'no-store' });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j?.ok && !j?.running && j?.cache) return true;
+      await sleep(intervalMs);
+    }
+    return false;
+  }
+
   function setPillState(pillId, state){
     const map = {
       ok: { c:'#22c55e', b:'rgba(34,197,94,.55)' },
@@ -355,7 +396,7 @@
 
     try {
       const url = `${apiBase}/config/library-health?sampleLimit=${encodeURIComponent(sample)}${refresh ? '&refresh=1' : ''}`;
-      const res = await fetch(url, { headers: { 'x-track-key': key } });
+      const res = await fetchWithTimeout(url, { headers: { 'x-track-key': key } }, refresh ? 45000 : 12000);
 
       const raw = await res.text();
       let j = null;
@@ -1518,7 +1559,22 @@
         window.dispatchEvent(new Event('resize'));
       });
     } catch (e) {
-      if (status) status.textContent = `Error: ${e?.message || e}`;
+      if (e?.code === 'ETIMEDOUT') {
+        if (status) status.innerHTML = '<span class="spin" aria-hidden="true"></span>First library scan is running in the background…';
+        try {
+          await startLibraryHealthRefreshJob(apiBase, key, sample);
+        } catch {}
+        (async () => {
+          const ready = await waitForLibraryHealthReady(apiBase, key, 120000, 2500).catch(() => false);
+          if (ready) {
+            run().catch(() => {});
+          } else if (status) {
+            status.textContent = 'Still scanning in background. You can continue using the app; summary will appear after refresh.';
+          }
+        })();
+      } else if (status) {
+        status.textContent = `Error: ${e?.message || e}`;
+      }
     } finally {
       const runBtn2 = $('run');
       if (runBtn2) runBtn2.disabled = false;
