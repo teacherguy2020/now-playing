@@ -414,49 +414,62 @@
           const pr = await fetchJsonWithTimeout(`${base}/podcasts`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
           const shows = (pr.ok && pr.json?.ok && Array.isArray(pr.json.items)) ? pr.json.items : [];
 
-          // Keep a stable visual order: show loading placeholders, then render once.
-          async function newestForRss(rss){
-            const key = String(rss||'').trim();
-            if (!key) return 0;
-            try {
-              const res = await Promise.race([
-                fetch(`${base}/podcasts/episodes/list`, { method:'POST', headers:reqHeaders(true), body: JSON.stringify({ rss:key, limit: 250 }) }),
-                new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), 3200))
-              ]);
-              const ej = await res.json().catch(()=>({}));
-              const eps = (res.ok && ej?.ok && Array.isArray(ej.episodes)) ? ej.episodes : [];
-              let newest = 0;
-              for (const ep of eps) {
-                if (!ep?.downloaded) continue;
-                const dt = Number(ep?.downloadedAt || ep?.published || 0) || 0;
-                if (dt > newest) newest = dt;
-              }
-              return newest;
-            } catch { return 0; }
-          }
+          // Podcast ordering should mirror Recently Added date logic when available.
+          const normKey = (v='') => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+          const leaf = (p='') => {
+            const s = String(p || '').trim().replace(/\/$/, '');
+            const i = s.lastIndexOf('/');
+            return i >= 0 ? s.slice(i + 1) : s;
+          };
 
-          const fastFallbackShows = shows.slice(0, recentLimit());
-          const topShows = await (async ()=>{
-            try {
-              const rankingTask = (async ()=>{
-                const scan = shows.slice(0, Math.min(10, shows.length));
-                const ranked = await Promise.all(scan.map(async (s)=>({ show:s, newestDl: await newestForRss(s?.rss) })));
-                ranked.sort((a,b)=> (Number(b.newestDl||0)-Number(a.newestDl||0)) || String(a.show?.title||'').localeCompare(String(b.show?.title||''), undefined, { sensitivity:'base' }));
-                const rankedShows = ranked.filter(x=>x.newestDl>0).concat(ranked.filter(x=>!(x.newestDl>0))).map(x=>x.show);
-                const fallbackShows = shows.filter((s)=> !rankedShows.includes(s));
-                return rankedShows.concat(fallbackShows).slice(0, recentLimit());
-              })();
-              return await Promise.race([
-                rankingTask,
-                new Promise((resolve)=>setTimeout(()=>resolve(fastFallbackShows), 1400))
-              ]);
-            } catch { return fastFallbackShows; }
-          })();
+          const addedByShow = new Map();
+          const podcastAlbums = [];
+          try {
+            const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 9000);
+            const albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
+            for (const a of albums) {
+              const folder = String(a?.folder || '').trim();
+              if (!/\/podcasts\//i.test(folder)) continue;
+              podcastAlbums.push(a);
+              const k = normKey(leaf(folder));
+              if (!k) continue;
+              const ts = Number(a?.addedTs || 0) || 0;
+              if (!addedByShow.has(k) || ts > Number(addedByShow.get(k) || 0)) addedByShow.set(k, ts);
+            }
+          } catch {}
 
-          if (!topShows.length) return;
-          recentItems = topShows.map((s)=>{
-            return { kind:'podcast', title:String(s?.title||s?.rss||'(podcast)').trim(), art:String(s?.imageUrl||'').trim() || `${base}/art/current.jpg`, rss:String(s?.rss||'').trim() };
+          const ranked = shows.map((s) => {
+            const title = String(s?.title || '').trim();
+            const k1 = normKey(leaf(String(s?.mpdPrefix || s?.dir || '')));
+            const k2 = normKey(title);
+            const ts = Math.max(Number(addedByShow.get(k1) || 0), Number(addedByShow.get(k2) || 0));
+            return { show: s, ts };
           });
+          ranked.sort((a,b)=> (Number(b.ts||0)-Number(a.ts||0)) || String(a.show?.title||'').localeCompare(String(b.show?.title||''), undefined, { sensitivity:'base' }));
+          let topShows = ranked.map((x)=>x.show).slice(0, recentLimit());
+
+          if (!topShows.length && podcastAlbums.length) {
+            const byShow = new Map();
+            for (const a of podcastAlbums) {
+              const folder = String(a?.folder || '').trim();
+              const showName = leaf(folder) || String(a?.album || '').trim() || '(podcast)';
+              const k = normKey(showName);
+              const ts = Number(a?.addedTs || 0) || 0;
+              const artRaw = String(a?.thumbUrl || '').trim();
+              const art = artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
+              const prev = byShow.get(k);
+              if (!prev || ts > prev.ts) byShow.set(k, { title: showName, ts, art });
+            }
+            recentItems = Array.from(byShow.values())
+              .sort((a,b)=> (Number(b.ts||0)-Number(a.ts||0)) || String(a.title||'').localeCompare(String(b.title||''), undefined, { sensitivity:'base' }))
+              .slice(0, recentLimit())
+              .map((x)=>({ kind:'podcast', title:String(x.title||'(podcast)').trim(), art:String(x.art||`${base}/art/current.jpg`), rss:'' }));
+          } else {
+            recentItems = topShows.map((s)=>{
+              return { kind:'podcast', title:String(s?.title||s?.rss||'(podcast)').trim(), art:String(s?.imageUrl||'').trim() || `${base}/art/current.jpg`, rss:String(s?.rss||'').trim() };
+            });
+          }
+          if (!recentItems.length) return;
           rail.innerHTML = '';
           recentItems.forEach((it,i)=>{
             const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
@@ -536,7 +549,11 @@
         }
 
         const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 9000);
-        const albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
+        const albumsRaw = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
+        const albums = albumsRaw.filter((a) => {
+          const f = String(a?.folder || '').trim().toLowerCase();
+          return !(f.startsWith('usb/samsungmoode/podcasts/') || f.includes('/podcasts/'));
+        });
         albums.sort((a,b)=>Number(b?.addedTs||0)-Number(a?.addedTs||0));
         const top = albums.slice(0, recentLimit());
         if (!top.length) {
@@ -547,17 +564,51 @@
           }
           return;
         }
+        const railBust = Date.now();
         recentItems = top.map((a)=>{
           const album=String(a?.album||'').trim() || '(album)';
           const artist=String(a?.artist||'').trim();
           const artRaw=String(a?.thumbUrl||'').trim();
-          const art=artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
+          let art=artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
+          if (art) art = `${art}${String(art).includes('?') ? '&' : '?'}rv=${railBust}`;
           return { kind:'album', album, artist, art };
         });
         recentItems.forEach((a,i)=>{
-          const d=document.createElement('div'); d.className='thumb';
+          const d = document.createElement('div');
+          d.className = 'thumb';
           d.setAttribute('data-ra-idx', String(i));
-          d.innerHTML=`<div class='thumbWrap'><img src='${a.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${a.artist?`${a.artist} — `:''}${a.album}'>${a.album}</div>`;
+
+          const wrap = document.createElement('div');
+          wrap.className = 'thumbWrap';
+
+          const img = document.createElement('img');
+          img.alt = '';
+          img.src = String(a.art || '');
+          img.onerror = function () {
+            try {
+              if (this.dataset.heal) return;
+              this.dataset.heal = '1';
+              const u = String(a.art || '');
+              this.src = `${u}${u.includes('?') ? '&' : '?'}heal=1`;
+            } catch {}
+          };
+
+          const more = document.createElement('button');
+          more.type = 'button';
+          more.className = 'thumbMore';
+          more.setAttribute('data-ra-more', '1');
+          more.setAttribute('data-ra-idx', String(i));
+          more.textContent = '•••';
+
+          const cap = document.createElement('div');
+          cap.className = 'cap';
+          cap.title = `${a.artist ? `${a.artist} — ` : ''}${a.album}`;
+          cap.textContent = String(a.album || '');
+
+          wrap.appendChild(img);
+          wrap.appendChild(more);
+          d.appendChild(wrap);
+          d.appendChild(cap);
           rail.appendChild(d);
         });
       } catch {

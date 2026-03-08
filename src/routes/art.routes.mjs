@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import sharp from 'sharp';
 
 async function fetchMoodeCoverBytes(ref, deps) {
@@ -110,12 +111,60 @@ export function registerArtRoutes(app, deps) {
   app.get('/art/track_640.jpg', async (req, res) => {
     try {
       const file = String(req.query.file || '').trim();
+      const heal = ['1','true','yes'].includes(String(req.query.heal || '').toLowerCase());
       let src = String(req.query.src || '').trim();
 
-      if (file) src = `${MOODE_BASE_URL}/coverart.php/${encodeURIComponent(file)}`;
+      if (file) {
+        const srcCover = `${MOODE_BASE_URL}/coverart.php/${encodeURIComponent(file)}`;
+        const i = file.lastIndexOf('/');
+        const folder = i > 0 ? file.slice(0, i) : '';
+        if (folder) {
+          try {
+            const origin = `${req.protocol}://${req.get('host')}`;
+            const qs = new URLSearchParams({ folder, file }).toString();
+            const rr = await fetch(`${origin}/config/library-health/album-thumb?${qs}`, { cache: 'no-store' });
+            if (rr.ok) {
+              const buf = Buffer.from(await rr.arrayBuffer());
+              // Cache-fill: write this resolved art into the shared 640 cache key for this file cover src.
+              try {
+                const key = normalizeArtKey(srcCover);
+                if (key) {
+                  const p640 = artPath640ForKey(key);
+                  await fs.promises.mkdir(path.dirname(p640), { recursive: true }).catch(() => {});
+                  const out = await sharp(buf)
+                    .rotate()
+                    .resize(640, 640, { fit: 'inside', withoutEnlargement: true })
+                    .jpeg({ quality: 82, mozjpeg: true })
+                    .toBuffer();
+                  await fs.promises.writeFile(p640, out).catch(() => {});
+                }
+              } catch (_) {}
+              return sendJpeg(res, buf, 640);
+            }
+          } catch (_) {}
+        }
+        src = srcCover;
+      }
       if (!src) return res.status(400).send('Missing ?file= or ?src=');
 
-      return serveCachedOrResizedSquare(res, src, 640, artPath640ForKey, deps);
+      try {
+        if (heal) {
+          const buf = await fetchMoodeCoverBytes(src, deps);
+          return await sendJpeg(res, buf, 640);
+        }
+        return await serveCachedOrResizedSquare(res, src, 640, artPath640ForKey, deps);
+      } catch (_) {
+        // Global self-heal fallback: if direct file art misses, use current-resolved art,
+        // cache it, then return it so UI surfaces don't show blanks.
+        const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`).catch(() => null);
+        const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`).catch(() => null);
+        const best = song ? await resolveBestArtForCurrentSong(song, statusRaw) : '';
+        if (best) {
+          await updateArtCacheIfNeeded(best).catch(() => {});
+          return await serveCachedOrResizedSquare(res, best, 640, artPath640ForKey, deps);
+        }
+        throw new Error('art unresolved');
+      }
     } catch (e) {
       console.warn('[art/track_640] failed:', e?.message || String(e));
       return res.status(404).end();
