@@ -20,16 +20,29 @@ function mpdQuote(s = '') {
 }
 
 async function resolveLocalMusicPath(pLike) {
-  const f = String(pLike || '').trim().replace(/^\/+/, '');
+  const raw = String(pLike || '').trim();
+  const f = raw.replace(/^\/+/, '');
   if (!f || f === '(root)') return '';
+
   const candidates = [
+    // absolute/local paths first
+    raw.startsWith('/') ? raw : '',
     f.startsWith('/mnt/') ? f : '',
     f.startsWith('mnt/') ? '/' + f : '',
+
+    // common moOde + MPD roots
+    '/var/lib/mpd/music/' + f,
+    '/media/' + f,
+
+    // legacy mount aliases used across deployments
     f.startsWith('USB/SamsungMoode/') ? '/mnt/SamsungMoode/' + f.slice('USB/SamsungMoode/'.length) : '',
     f.startsWith('OSDISK/') ? '/mnt/OSDISK/' + f.slice('OSDISK/'.length) : '',
     '/mnt/SamsungMoode/' + f,
     '/mnt/OSDISK/' + f,
-  ].map((x) => String(x || '').replace(/\/+/g, '/')).filter(Boolean);
+  ]
+    .map((x) => String(x || '').replace(/\/+/g, '/').trim())
+    .filter(Boolean);
+
   for (const c of candidates) {
     try { await fs.access(c); return c; } catch (_) {}
   }
