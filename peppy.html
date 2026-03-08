@@ -256,6 +256,7 @@
           <option value="builtin:9">Warm Parchment Gold Circular</option>
         </select>
         <button id="pushPeppyFromTab" class="skinBtn" type="button">Push Peppy to moOde</button>
+        <button id="showFullscreenPeppyBtn" class="skinBtn" type="button">Show Fullscreen Peppy</button>
         <select id="screenProfile" class="skinSelect" aria-label="Peppy screen profile">
           <option value="1280x400">Screen: 1280×400</option>
           <option value="1024x320">Screen: 1024×320</option>
@@ -636,6 +637,7 @@
       const skinDeletePreset = $('skinDeletePreset');
       const peppyPreset = $('peppyPreset');
       const pushPeppyFromTab = $('pushPeppyFromTab');
+      const showFullscreenPeppyBtn = $('showFullscreenPeppyBtn');
       const applyVuTargetBtn = $('applyVuTargetBtn');
       const peppyReadiness = $('peppyReadiness');
       const screenProfile = $('screenProfile');
@@ -2736,6 +2738,29 @@
           }, 40);
         } catch {
           try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
+        }
+      });
+
+      showFullscreenPeppyBtn?.addEventListener('click', async () => {
+        const btn = showFullscreenPeppyBtn;
+        const prev = String(btn?.textContent || 'Show Fullscreen Peppy');
+        try {
+          if (btn) { btn.disabled = true; btn.textContent = 'Switching…'; }
+          await ensureRuntimeKey();
+          const headers = { 'Content-Type':'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) };
+          // Ensure peppymeter engine is alive first.
+          await fetch(`${api}/config/moode/peppymeter/start`, { method:'POST', headers, body: JSON.stringify({ reason:'peppy-ui-fullscreen' }) }).catch(() => null);
+          const r = await fetch(`${api}/config/moode/display`, { method:'POST', headers, body: JSON.stringify({ mode:'peppy' }) });
+          const j = await r.json().catch(()=>({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          if (btn) btn.textContent = 'Fullscreen ✓';
+          setTimeout(() => { try { if (btn) btn.textContent = prev; } catch {} }, 1500);
+        } catch (e) {
+          if (btn) btn.textContent = 'Failed';
+          setTimeout(() => { try { if (btn) btn.textContent = prev; } catch {} }, 1500);
+          console.warn('show fullscreen peppy failed', e?.message || e);
+        } finally {
+          if (btn) btn.disabled = false;
         }
       });
 
