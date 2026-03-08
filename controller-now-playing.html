@@ -237,13 +237,13 @@
     /* Golden active indicator ring (play/pause control lane) */
     body.phone-ui #phone-controls{ position:relative; isolation:isolate; }
     body.phone-ui #phone-controls::before{
-      content:''; position:absolute; inset:-8px -6px; pointer-events:none; z-index:0;
-      background:radial-gradient(65% 85% at 50% 45%, rgba(232,175,72,.10), rgba(232,175,72,0) 70%);
-      filter: blur(7px);
+      content:''; position:absolute; inset:-10px -8px; pointer-events:none; z-index:0;
+      background:radial-gradient(65% 85% at 50% 45%, rgba(232,175,72,.12), rgba(232,175,72,0) 72%);
+      filter: blur(8px);
     }
     body.phone-ui #phone-controls::after{
-      content:''; position:absolute; inset:0; pointer-events:none; z-index:0; opacity:.05;
-      background-image: radial-gradient(rgba(255,255,255,.7) .45px, transparent .45px);
+      content:''; position:absolute; inset:0; pointer-events:none; z-index:0; opacity:.045;
+      background-image: radial-gradient(rgba(255,255,255,.72) .45px, transparent .45px);
       background-size: 3px 3px;
       mix-blend-mode: soft-light;
     }
@@ -252,28 +252,31 @@
     body.phone-ui #activeCtlRing{
       position:absolute; top:0; left:0; width:0; height:0; transform:translate3d(0,0,0);
       transition: transform 420ms cubic-bezier(0.34, 1.2, 0.64, 1), width 280ms ease, height 280ms ease;
-      pointer-events:none; z-index:3;
+      pointer-events:none; z-index:4;
     }
     body.phone-ui #activeCtlRing .glow{
-      position:absolute; inset:-1px; border-radius:999px; filter:blur(9px); opacity:.15; background:#e8af48;
+      position:absolute; inset:-2px; border-radius:999px; filter:blur(10px); opacity:.15; background:#e8af48;
     }
-    body.phone-ui #activeCtlRing .clip{ position:absolute; inset:0; border-radius:999px; overflow:hidden; }
+    body.phone-ui #activeCtlRing .clip{
+      position:absolute; inset:0; border-radius:999px; overflow:hidden;
+      box-shadow: 0 0 0 1px rgba(255,233,166,.28) inset;
+    }
     body.phone-ui #activeCtlRing .spin{
       position:absolute; inset:-50%; width:200%; height:200%;
       animation: goldSpin 4.5s linear infinite;
       background: conic-gradient(
         from 0deg,
-        #533517 0% 13%, #c49746 13% 31%, #feeaa5 31% 36%,
-        #ffffff 36% 39%, #ffc0cb 39% 40.5%, #8ec5ff 40.5% 42%, #c49746 42% 50%,
-        #533517 50% 63%, #c49746 63% 81%, #feeaa5 81% 86%,
-        #ffffff 86% 89%, #ffc0cb 89% 90.5%, #8ec5ff 90.5% 92%, #c49746 92% 100%
+        #533517 0% 12%, #c49746 12% 28%, #feeaa5 28% 35%,
+        #ffffff 35% 38%, #ffc0cb 38% 39.5%, #8ec5ff 39.5% 41%, #c49746 41% 50%,
+        #533517 50% 62%, #c49746 62% 78%, #feeaa5 78% 85%,
+        #ffffff 85% 88%, #ffc0cb 88% 89.5%, #8ec5ff 89.5% 91%, #c49746 91% 100%
       );
-      -webkit-mask: radial-gradient(circle at center, transparent 63%, #000 66%);
-      mask: radial-gradient(circle at center, transparent 63%, #000 66%);
+      -webkit-mask: radial-gradient(circle at center, transparent 62.5%, #000 65%);
+      mask: radial-gradient(circle at center, transparent 62.5%, #000 65%);
     }
     @keyframes goldSpin { to { transform:rotate(360deg); } }
     body.phone-ui #activeCtlRing .plate{
-      position:absolute; inset:3px; border-radius:999px;
+      position:absolute; inset:2px; border-radius:999px;
       background: linear-gradient(rgba(10,14,22,.82), rgba(10,14,22,.82));
       border:1px solid rgba(255,255,255,.06);
     }
@@ -282,6 +285,7 @@
       color:#e9eef6; font-size:22px; line-height:1; font-weight:700; letter-spacing:.02em;
       text-shadow:0 1px 8px rgba(0,0,0,.45);
       transform:translateX(1px);
+      transition:opacity 180ms ease;
     }
 
     body.phone-ui #mode-logo{display:none !important}
