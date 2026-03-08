@@ -273,13 +273,15 @@
         #533517 50% 60%, #a6782f 60% 74%, #c49746 74% 82%, #feeaa5 82% 86%,
         #ffffff 86% 89%, #ffc0cb 89% 90.5%, #8ec5ff 90.5% 92%, #c49746 92% 100%
       );
+      -webkit-mask: radial-gradient(circle at center, transparent 58%, #000 62%);
+      mask: radial-gradient(circle at center, transparent 58%, #000 62%);
     }
     @keyframes goldSpin { to { transform:rotate(360deg); } }
     body.phone-ui #activeCtlRing .plate{
       position:absolute; inset:2px; border-radius:16px;
       background:
         radial-gradient(120% 80% at 20% 10%, rgba(255,255,255,.16), rgba(255,255,255,0) 42%),
-        linear-gradient(rgba(16,22,34,.52), rgba(16,22,34,.52));
+        linear-gradient(#1b2536, #182233);
       border:1px solid rgba(255,255,255,.10);
     }
     body.phone-ui #activeCtlSymbol{
