@@ -356,7 +356,7 @@
           <a href="?page=mobile.html" data-page="mobile.html">Mobile</a>
           <a href="?page=theme.html" data-page="theme.html">Theme</a>
         </nav>
-        <button id="pushPeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Push Peppy to moOde</button>
+        <button id="pushPeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Push skin moOde</button>
         <button id="showMoodeUiBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show moOde UI</button>
         <button id="showPlayerBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Player on moOde</button>
         <button id="refreshDisplayBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Refresh moOde Display</button>
@@ -1701,7 +1701,7 @@
         if (!btn) return;
         btn.classList.toggle('busy', !!on);
         btn.disabled = !!on;
-        btn.textContent = on ? 'Pushing…' : 'Push Peppy to moOde';
+        btn.textContent = on ? 'Pushing…' : 'Push skin moOde';
       }
 
       async function fetchJsonWithTimeout(url, opts = {}, timeoutMs = 9000){
@@ -2087,7 +2087,7 @@
             const verified = !!j?.verified;
             btn.textContent = verified ? 'Pushed ✓' : 'Pushed (unverified)';
             btn.title = String(j?.effectiveUrl || targetUrl);
-            setTimeout(() => { try { btn.textContent = 'Push Peppy to moOde'; } catch {} }, 2200);
+            setTimeout(() => { try { btn.textContent = 'Push skin moOde'; } catch {} }, 2200);
           }
           // Keep current editor surface intact after push.
           // Do not swap local frame into kiosk display URL.
@@ -2098,7 +2098,7 @@
           const btn = document.getElementById('pushPeppyBtn');
           if (btn) {
             btn.textContent = 'Push failed';
-            setTimeout(() => { try { btn.textContent = 'Push Peppy to moOde'; } catch {} }, 1800);
+            setTimeout(() => { try { btn.textContent = 'Push skin moOde'; } catch {} }, 1800);
           }
         } finally {
           setPushPeppyBusy(false);
