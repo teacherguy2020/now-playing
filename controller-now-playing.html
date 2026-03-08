@@ -291,7 +291,7 @@
     body.phone-ui #activeCtlSymbol{
       position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
       color:#e9eef6; font-size:22px; line-height:1; font-weight:700; letter-spacing:.02em;
-      text-shadow:0 1px 8px rgba(0,0,0,.45);
+      text-shadow:none;
       transform:translateX(1px);
       transition:opacity 180ms ease;
       z-index:2;
@@ -847,6 +847,7 @@
       const host = document.getElementById('phone-controls');
       const ring = document.getElementById('activeCtlRing');
       const symbol = document.getElementById('activeCtlSymbol');
+      const spin = ring?.querySelector('.spin');
       const btnPlay = document.getElementById('btn-play');
       if (!host || !ring) return;
       const focusIds = ['btn-prev','btn-play','btn-next','btn-repeat','btn-shuffle'];
@@ -873,6 +874,7 @@
         symbol.style.transform = playing ? 'translateX(0)' : 'translateX(1px)';
         symbol.style.color = playing ? '#22c55e' : '#e9eef6';
         symbol.style.opacity = (activeBtn && activeBtn.id === 'btn-play') ? '1' : '.0';
+        if (spin) spin.style.animationPlayState = playing ? 'running' : 'paused';
       }
 
       function setActive(btn){
