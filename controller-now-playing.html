@@ -263,7 +263,7 @@
       z-index:1;
     }
     body.phone-ui #activeCtlRing .spin{
-      position:absolute; inset:0;
+      position:absolute; inset:-15px;
       border:2px solid transparent;
       border-radius:18px;
       box-sizing:border-box;
@@ -865,7 +865,7 @@
         if (!(btn instanceof HTMLElement)) return;
         const hb = host.getBoundingClientRect();
         const bb = btn.getBoundingClientRect();
-        const grow = 21;
+        const grow = 6;
         const w = Math.round(bb.width + grow);
         const h = Math.round(bb.height + grow);
         const x = Math.round((bb.left - hb.left) - (grow / 2));
