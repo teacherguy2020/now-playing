@@ -6,6 +6,7 @@
   const cards = $('cards');
   const sections = $('sections');
   const status = $('status');
+  let libraryScanWatchTimer = null;
   const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
   const LIBRARY_SORT_STORAGE_KEY = 'nowplaying.libraryHealth.albumSortMode';
 
@@ -316,6 +317,47 @@
       await sleep(intervalMs);
     }
     return false;
+  }
+
+  function stopLibraryScanWatch() {
+    if (libraryScanWatchTimer) {
+      clearInterval(libraryScanWatchTimer);
+      libraryScanWatchTimer = null;
+    }
+  }
+
+  function startLibraryScanWatch(apiBase, key) {
+    stopLibraryScanWatch();
+    let elapsedSec = 0;
+
+    const tick = async () => {
+      elapsedSec += 3;
+      try {
+        const r = await fetchWithTimeout(`${apiBase}/config/library-health/job`, {
+          headers: { 'x-track-key': key },
+          cache: 'no-store',
+        }, 8000);
+        const j = await r.json().catch(() => ({}));
+
+        if (r.ok && j?.ok) {
+          if (!j?.running && j?.cache) {
+            stopLibraryScanWatch();
+            run().catch(() => {});
+            return;
+          }
+          if (status) status.innerHTML = `<span class="spin" aria-hidden="true"></span>First library scan is running in the background… (${elapsedSec}s)`;
+          return;
+        }
+      } catch (_) {}
+
+      if (elapsedSec >= 300) {
+        stopLibraryScanWatch();
+        if (status) status.textContent = 'Library scan is taking longer than expected. Click Refresh scan to check again.';
+      }
+    };
+
+    tick().catch(() => {});
+    libraryScanWatchTimer = setInterval(() => { tick().catch(() => {}); }, 3000);
   }
 
   function setPillState(pillId, state){
@@ -1564,14 +1606,7 @@
         try {
           await startLibraryHealthRefreshJob(apiBase, key, sample);
         } catch {}
-        (async () => {
-          const ready = await waitForLibraryHealthReady(apiBase, key, 120000, 2500).catch(() => false);
-          if (ready) {
-            run().catch(() => {});
-          } else if (status) {
-            status.textContent = 'Still scanning in background. You can continue using the app; summary will appear after refresh.';
-          }
-        })();
+        startLibraryScanWatch(apiBase, key);
       } else if (status) {
         status.textContent = `Error: ${e?.message || e}`;
       }
