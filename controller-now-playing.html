@@ -857,11 +857,11 @@
         if (!(btn instanceof HTMLElement)) return;
         const hb = host.getBoundingClientRect();
         const bb = btn.getBoundingClientRect();
-        const pad = 0;
-        const w = Math.round(bb.width + pad * 2);
-        const h = Math.round(bb.height + pad * 2);
-        const x = Math.round((bb.left - hb.left) - pad);
-        const y = Math.round((bb.top - hb.top) - pad);
+        const grow = 5;
+        const w = Math.round(bb.width + grow);
+        const h = Math.round(bb.height + grow);
+        const x = Math.round((bb.left - hb.left) - (grow / 2));
+        const y = Math.round((bb.top - hb.top) - (grow / 2));
         ring.style.width = `${w}px`;
         ring.style.height = `${h}px`;
         ring.style.transform = `translate3d(${x}px, ${y}px, 0)`;
