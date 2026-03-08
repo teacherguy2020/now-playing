@@ -535,7 +535,7 @@
           return;
         }
 
-        const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+        const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 9000);
         const albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
         albums.sort((a,b)=>Number(b?.addedTs||0)-Number(a?.addedTs||0));
         const top = albums.slice(0, recentLimit());

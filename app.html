@@ -2376,6 +2376,8 @@
           if ($('webHint')) $('webHint').textContent = `${host}:${uiPort}`;
           if ($('alexaHint')) $('alexaHint').textContent = !axEnabled ? 'disabled' : (axDomain ? 'moode.••••••••.com' : 'missing domain');
           if ($('moodeHint')) $('moodeHint').textContent = moodeHost ? `confirmed (${moodeHost})` : 'not verified';
+          const alexaPillEl = $('alexaPill');
+          if (alexaPillEl) alexaPillEl.style.display = axEnabled ? '' : 'none';
           setPillState('apiPill','ok');
           setPillState('webPill','ok');
           setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
@@ -2400,6 +2402,8 @@
           setPillState('webPill','warn');
           setPillState('alexaPill','warn');
           setPillState('moodePill','warn');
+          const ap = document.getElementById('alexaPill');
+          if (ap) ap.style.display = 'none';
           await refreshPeppyPill();
           refreshScreenPill();
           scrobbleControlsEnabled = false;

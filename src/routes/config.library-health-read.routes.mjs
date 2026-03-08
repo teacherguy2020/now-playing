@@ -570,6 +570,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
       );
 
       const byFolder = new Map();
+      let folderSeq = 0;
       for (const ln of String(stdout || '').split(/\r?\n/)) {
         if (!ln) continue;
         const [file = '', artist = '', albumartist = '', album = ''] = ln.split('\t');
@@ -585,6 +586,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
             artists: new Set(),
             trackCount: 0,
             sampleFile: f,
+            seq: folderSeq++,
           });
         }
 
@@ -601,6 +603,31 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
         return i >= 0 ? s.slice(i + 1) : s;
       };
 
+      // Batch-resolve remote mtimes by sample file on moOde host (single SSH call)
+      // so Oldest/Newest can be true date-based when library is remote.
+      const remoteMtimeBySample = new Map();
+      try {
+        const sshHost = String(MOODE_SSH_HOST || MPD_HOST || '').trim();
+        const sshUser = String(MOODE_SSH_USER || 'moode').trim();
+        if (sshHost) {
+          const sampleFiles = Array.from(byFolder.values())
+            .map((r) => String(r?.sampleFile || '').trim())
+            .filter(Boolean);
+          if (sampleFiles.length) {
+            const pySamples = JSON.stringify(sampleFiles);
+            const script = `python3 - <<'PY'\nimport os,json\nsamples=json.loads(${shQuoteArg(pySamples)})\nfor f in samples:\n    s=str(f or '').strip().lstrip('/')\n    if not s:\n        continue\n    cands=[f'/var/lib/mpd/music/{s}', f'/media/{s}']\n    if s.startswith('USB/SamsungMoode/'):\n        cands.append('/media/SamsungMoode/' + s[len('USB/SamsungMoode/'):])\n    m=0\n    for c in cands:\n        try:\n            st=os.stat(c)\n            m=int(st.st_mtime*1000)\n            break\n        except Exception:\n            pass\n    print(f'{f}\t{m}')\nPY`;
+            const r = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 30000 }).catch(() => ({ stdout: '' }));
+            for (const ln of String(r?.stdout || '').split(/\r?\n/)) {
+              if (!ln || !ln.includes('\t')) continue;
+              const i = ln.lastIndexOf('\t');
+              const f = ln.slice(0, i).trim();
+              const n = Number(ln.slice(i + 1).trim());
+              if (f && Number.isFinite(n) && n > 0) remoteMtimeBySample.set(f, n);
+            }
+          }
+        }
+      } catch (_) {}
+
       const albums = await Promise.all(Array.from(byFolder.values()).map(async (row) => {
         const artists = Array.from(row.artists || []);
         const artistLabel = artists.length === 1
@@ -616,6 +643,16 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
             addedTs = Number(st?.birthtimeMs || st?.mtimeMs || 0) || 0;
           }
         } catch (_) {}
+
+        if (!(Number.isFinite(addedTs) && addedTs > 0)) {
+          const remoteTs = Number(remoteMtimeBySample.get(String(row.sampleFile || '').trim()) || 0);
+          if (Number.isFinite(remoteTs) && remoteTs > 0) addedTs = remoteTs;
+        }
+
+        // Last fallback when timestamps are unavailable: preserve MPD discovery order.
+        if (!(Number.isFinite(addedTs) && addedTs > 0)) {
+          addedTs = Number(row.seq || 0);
+        }
 
         return {
           folder: row.folder,
