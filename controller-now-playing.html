@@ -129,7 +129,7 @@
     body.phone-ui #phone-controls.has-podcast-seek{gap:6px !important}
     body.phone-ui #phone-controls .ctl.seek-ctl{display:none !important}
     body.phone-ui #phone-controls .ctl.big{width:calc(var(--ctlBigFinal) * 0.97) !important;height:calc(var(--ctlBigFinal) * 0.97) !important;border-radius:16px !important}
-    body.phone-ui #phone-controls #btn-play{margin-left:6px !important; margin-right:6px !important; background:#ff00ff !important;}
+    body.phone-ui #phone-controls #btn-play{margin-left:6px !important; margin-right:6px !important;}
     body.phone-ui #phone-controls .ctl.seek-ctl .seekLbl{font-size:13px;font-weight:700;letter-spacing:.01em;line-height:1}
     body.phone-ui .podSeekInline{display:none;align-items:center;justify-content:center;border:1px solid rgba(255,224,130,.5);background:rgba(30,20,8,.38);color:#f8e7b0;border-radius:999px;min-width:36px;height:26px;padding:0 8px;font-size:12px;font-weight:700;line-height:1;letter-spacing:.01em;vertical-align:middle}
     body.phone-ui #btn-seek-back-inline{padding-right:12px;margin-right:8px}
@@ -219,11 +219,11 @@
         0 1px 0 rgba(255,255,255,.10) inset !important;
       color:inherit;
     }
-    body.phone-ui #phone-controls #btn-play.ctl.on,
-    body.phone-ui #phone-controls #btn-play.ctl.big.on{ background:#ff00ff !important; }
     body.phone-ui #phone-controls #btn-play.on{
       color:#22c55e !important;
-      background:#ff00ff !important;
+      background:
+        linear-gradient(rgba(16,22,34,.52), rgba(16,22,34,.52)) padding-box,
+        linear-gradient(135deg, rgba(255,230,150,.95) 0%, rgba(255,244,198,.82) 32%, rgba(246,194,86,.96) 60%, rgba(191,130,26,.92) 100%) border-box !important;
       box-shadow:
         0 0 0 1px rgba(255,241,188,.34) inset,
         0 1px 0 rgba(255,255,255,.10) inset,
@@ -283,9 +283,9 @@
     @keyframes goldSpin { to { transform:rotate(360deg); } }
     body.phone-ui #activeCtlRing .plate{
       position:absolute; inset:2px; border-radius:16px;
-      background:#ff00ff !important;
-      border:1px solid rgba(255,239,188,.34);
-      box-shadow: 0 1px 0 rgba(255,255,255,.14) inset;
+      background: transparent !important;
+      border:0;
+      box-shadow:none;
       z-index:2;
     }
     body.phone-ui #activeCtlRing .plate::after{
