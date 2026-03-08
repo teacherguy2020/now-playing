@@ -1833,7 +1833,7 @@
           }
         } catch {}
         const on = String(peppyModeState || 'webui') === 'peppy';
-        if (hint) hint.textContent = on ? 'on' : 'off';
+        if (hint) hint.textContent = on ? 'fullscreen' : 'off';
         setPillState('peppyPill', on ? 'ok' : 'off');
       }
 
@@ -1841,8 +1841,8 @@
         const currentlyPeppy = (String(peppyModeState || 'webui') === 'peppy');
         const nextMode = currentlyPeppy ? 'webui' : 'peppy';
         const ok = window.confirm(currentlyPeppy
-          ? 'Turn off full screen Peppymeter?'
-          : 'Switch to full screen Peppymeter?');
+          ? 'Exit full-screen Peppymeter?'
+          : 'Switch to full-screen Peppymeter?');
         if (!ok) return;
         const host = location.hostname || '10.0.0.233';
         const base = `${location.protocol}//${host}:3101`;
