@@ -624,7 +624,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
           label: `${artistLabel} — ${albumName}`,
           trackCount: Number(row.trackCount || 0),
           addedTs,
-          thumbUrl: `/art/thumb.jpg?folder=${encodeURIComponent(String(row.folder || ''))}&file=${encodeURIComponent(String(row.sampleFile || ''))}`,
+          thumbUrl: `/art/track_640.jpg?file=${encodeURIComponent(String(row.sampleFile || ''))}`,
         };
       }));
 

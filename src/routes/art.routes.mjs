@@ -115,8 +115,7 @@ export function registerArtRoutes(app, deps) {
       if (file) src = `${MOODE_BASE_URL}/coverart.php/${encodeURIComponent(file)}`;
       if (!src) return res.status(400).send('Missing ?file= or ?src=');
 
-      const buf = await fetchMoodeCoverBytes(src, deps);
-      return sendJpeg(res, buf, 640);
+      return serveCachedOrResizedSquare(res, src, 640, artPath640ForKey, deps);
     } catch (e) {
       console.warn('[art/track_640] failed:', e?.message || String(e));
       return res.status(404).end();
