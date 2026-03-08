@@ -256,7 +256,7 @@
       pointer-events:none; z-index:4;
     }
     body.phone-ui #activeCtlRing .glow{
-      position:absolute; inset:-2px; border-radius:18px; filter:blur(10px); opacity:.15; background:#e8af48;
+      position:absolute; inset:0; border-radius:18px; filter:blur(8px); opacity:.15; background:#e8af48;
     }
     body.phone-ui #activeCtlRing .clip{
       position:absolute; inset:0; border-radius:18px; overflow:hidden;
@@ -856,7 +856,7 @@
         if (!(btn instanceof HTMLElement)) return;
         const hb = host.getBoundingClientRect();
         const bb = btn.getBoundingClientRect();
-        const pad = 4;
+        const pad = 0;
         const w = Math.round(bb.width + pad * 2);
         const h = Math.round(bb.height + pad * 2);
         const x = Math.round((bb.left - hb.left) - pad);
