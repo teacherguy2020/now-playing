@@ -145,8 +145,8 @@
       position:relative;
       border:2px solid transparent !important;
       background:
-        linear-gradient(rgba(10,14,22,.70), rgba(10,14,22,.70)) padding-box,
-        linear-gradient(135deg, rgba(255,224,130,.85) 0%, rgba(255,245,196,.55) 34%, rgba(255,214,102,.92) 58%, rgba(201,139,28,.88) 100%) border-box !important;
+        linear-gradient(rgba(16,22,34,.52), rgba(16,22,34,.52)) padding-box,
+        linear-gradient(135deg, rgba(255,230,150,.95) 0%, rgba(255,244,198,.82) 32%, rgba(246,194,86,.96) 60%, rgba(191,130,26,.92) 100%) border-box !important;
       box-shadow:
         0 0 0 1px rgba(255,241,188,.34) inset,
         0 1px 0 rgba(255,255,255,.10) inset;
@@ -211,8 +211,8 @@
     body.phone-ui #phone-controls .ctl.on,
     body.phone-ui #phone-controls .ctl.big.on{
       background:
-        linear-gradient(rgba(10,14,22,.70), rgba(10,14,22,.70)) padding-box,
-        linear-gradient(135deg, rgba(255,224,130,.85) 0%, rgba(255,245,196,.55) 34%, rgba(255,214,102,.92) 58%, rgba(201,139,28,.88) 100%) border-box !important;
+        linear-gradient(rgba(16,22,34,.52), rgba(16,22,34,.52)) padding-box,
+        linear-gradient(135deg, rgba(255,230,150,.95) 0%, rgba(255,244,198,.82) 32%, rgba(246,194,86,.96) 60%, rgba(191,130,26,.92) 100%) border-box !important;
       box-shadow:
         0 0 0 1px rgba(255,241,188,.34) inset,
         0 1px 0 rgba(255,255,255,.10) inset !important;
@@ -221,16 +221,16 @@
     body.phone-ui #phone-controls #btn-play.on{
       color:#22c55e !important;
       background:
-        linear-gradient(rgba(10,14,22,.70), rgba(10,14,22,.70)) padding-box,
-        linear-gradient(135deg, rgba(255,224,130,.85) 0%, rgba(255,245,196,.55) 34%, rgba(255,214,102,.92) 58%, rgba(201,139,28,.88) 100%) border-box !important;
+        linear-gradient(rgba(16,22,34,.52), rgba(16,22,34,.52)) padding-box,
+        linear-gradient(135deg, rgba(255,230,150,.95) 0%, rgba(255,244,198,.82) 32%, rgba(246,194,86,.96) 60%, rgba(191,130,26,.92) 100%) border-box !important;
       box-shadow:
         0 0 0 1px rgba(255,241,188,.34) inset,
         0 1px 0 rgba(255,255,255,.10) inset,
         0 0 12px rgba(34,197,94,.22);
     }
     body.phone-ui #phone-controls #btn-play.on::after{
-      opacity:.95;
-      animation:brassSweep 4.2s linear infinite;
+      opacity:0;
+      animation:none;
     }
     @keyframes brassSweep { to { transform: rotate(360deg); } }
 
@@ -255,30 +255,30 @@
       pointer-events:none; z-index:4;
     }
     body.phone-ui #activeCtlRing .glow{
-      position:absolute; inset:-2px; border-radius:18px; filter:blur(10px); opacity:.15; background:#e8af48;
+      position:absolute; inset:-1px; border-radius:18px; filter:blur(8px); opacity:.13; background:#e8af48;
     }
     body.phone-ui #activeCtlRing .clip{
       position:absolute; inset:0; border-radius:18px; overflow:hidden;
-      box-shadow: 0 0 0 1px rgba(255,233,166,.28) inset;
+      box-shadow: 0 0 0 1px rgba(255,233,166,.34) inset;
     }
     body.phone-ui #activeCtlRing .spin{
       position:absolute; inset:-50%; width:200%; height:200%;
       animation: goldSpin 4.5s linear infinite;
       background: conic-gradient(
         from 0deg,
-        #533517 0% 12%, #c49746 12% 28%, #feeaa5 28% 35%,
-        #ffffff 35% 38%, #ffc0cb 38% 39.5%, #8ec5ff 39.5% 41%, #c49746 41% 50%,
-        #533517 50% 62%, #c49746 62% 78%, #feeaa5 78% 85%,
-        #ffffff 85% 88%, #ffc0cb 88% 89.5%, #8ec5ff 89.5% 91%, #c49746 91% 100%
+        #533517 0% 10%, #a6782f 10% 24%, #c49746 24% 32%, #feeaa5 32% 36%,
+        #ffffff 36% 39%, #ffc0cb 39% 40.5%, #8ec5ff 40.5% 42%, #c49746 42% 50%,
+        #533517 50% 60%, #a6782f 60% 74%, #c49746 74% 82%, #feeaa5 82% 86%,
+        #ffffff 86% 89%, #ffc0cb 89% 90.5%, #8ec5ff 90.5% 92%, #c49746 92% 100%
       );
-      -webkit-mask: radial-gradient(circle at center, transparent 62.5%, #000 65%);
-      mask: radial-gradient(circle at center, transparent 62.5%, #000 65%);
     }
     @keyframes goldSpin { to { transform:rotate(360deg); } }
     body.phone-ui #activeCtlRing .plate{
       position:absolute; inset:2px; border-radius:16px;
-      background: linear-gradient(rgba(10,14,22,.82), rgba(10,14,22,.82));
-      border:1px solid rgba(255,255,255,.06);
+      background:
+        radial-gradient(120% 80% at 20% 10%, rgba(255,255,255,.10), rgba(255,255,255,0) 42%),
+        linear-gradient(#101827, #101827);
+      border:1px solid rgba(255,255,255,.08);
     }
     body.phone-ui #activeCtlSymbol{
       position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
