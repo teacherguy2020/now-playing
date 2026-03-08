@@ -288,6 +288,14 @@
       box-shadow: 0 1px 0 rgba(255,255,255,.14) inset;
       z-index:2;
     }
+    body.phone-ui #activeCtlRing .plate::after{
+      content:'';
+      position:absolute;
+      inset:-5px;
+      border:1px solid rgba(255,235,170,.80);
+      border-radius:21px;
+      pointer-events:none;
+    }
     body.phone-ui #activeCtlSymbol{
       position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
       color:#e9eef6; font-size:22px; line-height:1; font-weight:700; letter-spacing:.02em;
