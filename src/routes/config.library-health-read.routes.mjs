@@ -458,6 +458,36 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
         } catch (_) {}
       }
 
+      // Remote fallback (Pi5 app + moOde library on another host):
+      // try cover files over SSH from moOde host.
+      try {
+        const sshHost = String(MOODE_SSH_HOST || MPD_HOST || '').trim();
+        const sshUser = String(MOODE_SSH_USER || 'moode').trim();
+        if (sshHost) {
+          const folderNorm = String(folder || '').trim().replace(/^\/+/, '');
+          const remoteBases = [
+            `/var/lib/mpd/music/${folderNorm}`,
+            `/media/${folderNorm}`,
+            folderNorm.startsWith('USB/SamsungMoode/') ? `/media/SamsungMoode/${folderNorm.slice('USB/SamsungMoode/'.length)}` : '',
+          ].filter(Boolean);
+          const pyList = JSON.stringify(candidates);
+          const pyBases = JSON.stringify(remoteBases);
+          const script = `python3 - <<'PY'\nimport os,base64,json\nfiles=json.loads(${shQuoteArg(pyList)})\nbases=json.loads(${shQuoteArg(pyBases)})\nfor b in bases:\n    for n in files:\n        p=os.path.join(b,n)\n        if os.path.isfile(p):\n            with open(p,'rb') as f: data=f.read()\n            ct='image/png' if n.lower().endswith('.png') else 'image/jpeg'\n            print('CT:'+ct)\n            print('B64:'+base64.b64encode(data).decode('ascii'))\n            raise SystemExit(0)\nprint('MISS')\nPY`;
+          const { stdout } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 12000 }).catch(() => ({ stdout: '' }));
+          const out = String(stdout || '');
+          const ct = (out.match(/CT:([^\n]+)/) || [,''])[1].trim();
+          const b64 = (out.match(/B64:([A-Za-z0-9+/=\n\r]+)/) || [,''])[1].replace(/\s+/g, '');
+          if (ct && b64) {
+            const buf = Buffer.from(b64, 'base64');
+            if (buf?.length) {
+              res.setHeader('Content-Type', ct);
+              res.setHeader('Cache-Control', 'public, max-age=86400');
+              return res.send(buf);
+            }
+          }
+        }
+      } catch (_) {}
+
       // Fallback: attempt extracting embedded art from one sample track, cached to disk.
       const sample = await resolveLocalMusicPath(file);
       if (sample) {
