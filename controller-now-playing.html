@@ -262,7 +262,10 @@
       position:absolute; inset:0; border-radius:18px; overflow:hidden;
     }
     body.phone-ui #activeCtlRing .spin{
-      position:absolute; inset:-50%; width:200%; height:200%;
+      position:absolute; inset:0;
+      padding:2px;
+      box-sizing:border-box;
+      border-radius:18px;
       animation: goldSpin 4.5s linear infinite;
       background: conic-gradient(
         from 0deg,
@@ -270,7 +273,10 @@
         #ffffff 35% 38%, #ffc0cb 38% 39.5%, #8ec5ff 39.5% 41%, #c49746 41% 50%,
         #533517 50% 60.5%, #c49746 60.5% 77%, #feeaa5 77% 85%,
         #ffffff 85% 88%, #ffc0cb 88% 89.5%, #8ec5ff 89.5% 91%, #c49746 91% 100%
-      );
+      ) border-box;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
     }
     @keyframes goldSpin { to { transform:rotate(360deg); } }
     body.phone-ui #activeCtlRing .plate{
