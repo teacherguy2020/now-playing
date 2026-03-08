@@ -443,19 +443,20 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
       const file = String(req.query?.file || '').trim();
       if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
       const localFolder = await resolveLocalFolderPath(folder);
-      if (!localFolder) return res.status(404).end();
 
       const candidates = ['cover.jpg', 'folder.jpg', 'front.jpg', 'cover.jpeg', 'folder.jpeg', 'front.jpeg', 'cover.png', 'folder.png', 'front.png'];
-      for (const name of candidates) {
-        const p = path.join(localFolder, name);
-        try {
-          await fs.access(p);
-          const buf = await fs.readFile(p);
-          const ct = name.endsWith('.png') ? 'image/png' : 'image/jpeg';
-          res.setHeader('Content-Type', ct);
-          res.setHeader('Cache-Control', 'public, max-age=86400');
-          return res.send(buf);
-        } catch (_) {}
+      if (localFolder) {
+        for (const name of candidates) {
+          const p = path.join(localFolder, name);
+          try {
+            await fs.access(p);
+            const buf = await fs.readFile(p);
+            const ct = name.endsWith('.png') ? 'image/png' : 'image/jpeg';
+            res.setHeader('Content-Type', ct);
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            return res.send(buf);
+          } catch (_) {}
+        }
       }
 
       // Remote fallback (Pi5 app + moOde library on another host):
