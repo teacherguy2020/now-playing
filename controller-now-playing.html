@@ -128,7 +128,7 @@
     body.phone-ui #phone-controls{grid-area:controls;display:flex !important;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5590 !important;margin-top:-7px !important;justify-self:center;width:100%;gap:6px !important}
     body.phone-ui #phone-controls.has-podcast-seek{gap:6px !important}
     body.phone-ui #phone-controls .ctl.seek-ctl{display:none !important}
-    body.phone-ui #phone-controls .ctl.big{width:calc(var(--ctlBigFinal) * 0.97) !important;height:calc(var(--ctlBigFinal) * 0.97) !important;border-radius:999px !important}
+    body.phone-ui #phone-controls .ctl.big{width:calc(var(--ctlBigFinal) * 0.97) !important;height:calc(var(--ctlBigFinal) * 0.97) !important;border-radius:16px !important}
     body.phone-ui #phone-controls .ctl.seek-ctl .seekLbl{font-size:13px;font-weight:700;letter-spacing:.01em;line-height:1}
     body.phone-ui .podSeekInline{display:none;align-items:center;justify-content:center;border:1px solid rgba(255,224,130,.5);background:rgba(30,20,8,.38);color:#f8e7b0;border-radius:999px;min-width:36px;height:26px;padding:0 8px;font-size:12px;font-weight:700;line-height:1;letter-spacing:.01em;vertical-align:middle}
     body.phone-ui #btn-seek-back-inline{padding-right:12px;margin-right:8px}
@@ -140,7 +140,7 @@
       width:calc(var(--ctlFinal) * 0.97) !important;
       height:calc(var(--ctlFinal) * 0.97) !important;
       aspect-ratio:1 / 1;
-      border-radius:999px !important;
+      border-radius:16px !important;
       padding:0 !important;
       position:relative;
       border:2px solid transparent !important;
@@ -255,10 +255,10 @@
       pointer-events:none; z-index:4;
     }
     body.phone-ui #activeCtlRing .glow{
-      position:absolute; inset:-2px; border-radius:999px; filter:blur(10px); opacity:.15; background:#e8af48;
+      position:absolute; inset:-2px; border-radius:18px; filter:blur(10px); opacity:.15; background:#e8af48;
     }
     body.phone-ui #activeCtlRing .clip{
-      position:absolute; inset:0; border-radius:999px; overflow:hidden;
+      position:absolute; inset:0; border-radius:18px; overflow:hidden;
       box-shadow: 0 0 0 1px rgba(255,233,166,.28) inset;
     }
     body.phone-ui #activeCtlRing .spin{
@@ -276,7 +276,7 @@
     }
     @keyframes goldSpin { to { transform:rotate(360deg); } }
     body.phone-ui #activeCtlRing .plate{
-      position:absolute; inset:2px; border-radius:999px;
+      position:absolute; inset:2px; border-radius:16px;
       background: linear-gradient(rgba(10,14,22,.82), rgba(10,14,22,.82));
       border:1px solid rgba(255,255,255,.06);
     }
@@ -311,8 +311,8 @@
       body.phone-ui #album-art-wrapper{justify-self:start;margin-top:8px !important}
       body.phone-ui #progress-bar-wrapper{justify-self:stretch;width:100% !important;margin-top:2px}
       body.phone-ui #phone-controls{justify-self:stretch;width:100%}
-      body.phone-ui #phone-controls .ctl{flex:0 0 auto !important;width:calc(var(--ctlFinal) * 0.97) !important;height:calc(var(--ctlFinal) * 0.97) !important;border-radius:999px !important}
-      body.phone-ui #phone-controls .ctl.big{width:calc(var(--ctlBigFinal) * 0.97) !important;height:calc(var(--ctlBigFinal) * 0.97) !important;border-radius:999px !important}
+      body.phone-ui #phone-controls .ctl{flex:0 0 auto !important;width:calc(var(--ctlFinal) * 0.97) !important;height:calc(var(--ctlFinal) * 0.97) !important;border-radius:16px !important}
+      body.phone-ui #phone-controls .ctl.big{width:calc(var(--ctlBigFinal) * 0.97) !important;height:calc(var(--ctlBigFinal) * 0.97) !important;border-radius:16px !important}
       body.phone-ui #next-up{margin-top:2px;justify-self:stretch;width:100%}
       #cnpBack{justify-self:start;transform:none !important}
     }
