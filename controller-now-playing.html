@@ -865,7 +865,7 @@
         if (!(btn instanceof HTMLElement)) return;
         const hb = host.getBoundingClientRect();
         const bb = btn.getBoundingClientRect();
-        const grow = 5;
+        const grow = 7;
         const w = Math.round(bb.width + grow);
         const h = Math.round(bb.height + grow);
         const x = Math.round((bb.left - hb.left) - (grow / 2));
