@@ -233,6 +233,51 @@
       animation:brassSweep 4.2s linear infinite;
     }
     @keyframes brassSweep { to { transform: rotate(360deg); } }
+
+    /* Golden active indicator ring (play/pause control lane) */
+    body.phone-ui #phone-controls{ position:relative; isolation:isolate; }
+    body.phone-ui #phone-controls::before{
+      content:''; position:absolute; inset:-8px -6px; pointer-events:none; z-index:0;
+      background:radial-gradient(65% 85% at 50% 45%, rgba(232,175,72,.13), rgba(232,175,72,0) 70%);
+      filter: blur(8px);
+    }
+    body.phone-ui #phone-controls::after{
+      content:''; position:absolute; inset:0; pointer-events:none; z-index:0; opacity:.08;
+      background-image: radial-gradient(rgba(255,255,255,.7) .5px, transparent .5px);
+      background-size: 3px 3px;
+      mix-blend-mode: soft-light;
+    }
+    body.phone-ui #phone-controls .ctl{ z-index:1; }
+    body.phone-ui #activeCtlRing{
+      position:absolute; top:50%; left:0; width:0; height:0; transform:translate3d(0,0,0);
+      transition: transform 420ms cubic-bezier(0.34, 1.2, 0.64, 1), width 280ms ease, height 280ms ease;
+      pointer-events:none; z-index:2;
+    }
+    body.phone-ui #activeCtlRing .glow{
+      position:absolute; inset:-2px; border-radius:18px; filter:blur(10px); opacity:.15;
+      background:#e8af48;
+    }
+    body.phone-ui #activeCtlRing .clip{
+      position:absolute; inset:0; border-radius:18px; overflow:hidden;
+    }
+    body.phone-ui #activeCtlRing .spin{
+      position:absolute; inset:-50%; width:200%; height:200%;
+      animation: goldSpin 4.5s linear infinite;
+      background: conic-gradient(
+        from 0deg,
+        #533517 0% 11%, #c49746 11% 27%, #feeaa5 27% 35%,
+        #ffffff 35% 38%, #ffc0cb 38% 39.5%, #8ec5ff 39.5% 41%, #c49746 41% 50%,
+        #533517 50% 61%, #c49746 61% 77%, #feeaa5 77% 85%,
+        #ffffff 85% 88%, #ffc0cb 88% 89.5%, #8ec5ff 89.5% 91%, #c49746 91% 100%
+      );
+    }
+    @keyframes goldSpin { to { transform:rotate(360deg); } }
+    body.phone-ui #activeCtlRing .plate{
+      position:absolute; inset:2px; border-radius:16px;
+      background: linear-gradient(rgba(10,14,22,.78), rgba(10,14,22,.78));
+      border:1px solid rgba(255,255,255,.06);
+    }
+
     body.phone-ui #mode-logo{display:none !important}
 
     /* Landscape phone tuning: keep art anchored full-left and scale everything sanely */
@@ -516,6 +561,7 @@
 
     <!-- Phone controls as its own grid cell -->
     <div id="phone-controls" aria-label="Playback controls">
+      <div id="activeCtlRing" aria-hidden="true"><div class="glow"></div><div class="clip"><div class="spin"></div></div><div class="plate"></div></div>
       <button class="ctl seek-ctl" id="btn-seek-back" aria-label="Back 15 seconds" title="Back 15 seconds" type="button">
         <span class="seekLbl">↺15</span>
       </button>
@@ -776,6 +822,45 @@
         if (!btn) return;
         pulse(btn);
       }, { passive:true });
+    })();
+
+    (function bindActiveControlRing(){
+      const host = document.getElementById('phone-controls');
+      const ring = document.getElementById('activeCtlRing');
+      if (!host || !ring) return;
+      const focusIds = ['btn-prev','btn-play','btn-next','btn-repeat','btn-shuffle'];
+      let activeBtn = document.getElementById('btn-play') || host.querySelector('button.ctl');
+
+      function positionRing(btn){
+        if (!(btn instanceof HTMLElement)) return;
+        const hb = host.getBoundingClientRect();
+        const bb = btn.getBoundingClientRect();
+        const pad = 4;
+        const w = Math.round(bb.width + pad * 2);
+        const h = Math.round(bb.height + pad * 2);
+        const x = Math.round((bb.left - hb.left) - pad);
+        const y = Math.round((bb.top - hb.top) - pad);
+        ring.style.width = `${w}px`;
+        ring.style.height = `${h}px`;
+        ring.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      }
+
+      function setActive(btn){
+        if (!(btn instanceof HTMLElement)) return;
+        activeBtn = btn;
+        positionRing(btn);
+      }
+
+      host.addEventListener('click', (ev)=>{
+        const btn = ev.target.closest('button.ctl');
+        if (!btn) return;
+        const id = String(btn.id || '');
+        if (focusIds.includes(id)) setActive(btn);
+      }, { passive:true });
+
+      window.addEventListener('resize', () => { if (activeBtn) positionRing(activeBtn); });
+      setTimeout(() => { if (activeBtn) positionRing(activeBtn); }, 120);
+      setTimeout(() => { if (activeBtn) positionRing(activeBtn); }, 700);
     })();
 
     (function bindNextUpOpenQueue(){
