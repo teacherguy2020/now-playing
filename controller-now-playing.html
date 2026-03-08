@@ -256,32 +256,26 @@
       pointer-events:none; z-index:4;
     }
     body.phone-ui #activeCtlRing .glow{
-      position:absolute; inset:-1px; border-radius:18px; filter:blur(8px); opacity:.13; background:#e8af48;
+      position:absolute; inset:-2px; border-radius:18px; filter:blur(10px); opacity:.15; background:#e8af48;
     }
     body.phone-ui #activeCtlRing .clip{
       position:absolute; inset:0; border-radius:18px; overflow:hidden;
-      box-shadow: 0 0 0 1px rgba(255,233,166,.45) inset;
     }
     body.phone-ui #activeCtlRing .spin{
       position:absolute; inset:-50%; width:200%; height:200%;
-      animation: goldSpin 8.5s linear infinite;
-      opacity:.98;
+      animation: goldSpin 4.5s linear infinite;
       background: conic-gradient(
         from 0deg,
-        #533517 0% 10%, #a6782f 10% 24%, #c49746 24% 32%, #feeaa5 32% 36%,
-        #ffffff 36% 39%, #ffc0cb 39% 40.5%, #8ec5ff 40.5% 42%, #c49746 42% 50%,
-        #533517 50% 60%, #a6782f 60% 74%, #c49746 74% 82%, #feeaa5 82% 86%,
-        #ffffff 86% 89%, #ffc0cb 89% 90.5%, #8ec5ff 90.5% 92%, #c49746 92% 100%
+        #533517 0% 10.5%, #c49746 10.5% 27%, #feeaa5 27% 35%,
+        #ffffff 35% 38%, #ffc0cb 38% 39.5%, #8ec5ff 39.5% 41%, #c49746 41% 50%,
+        #533517 50% 60.5%, #c49746 60.5% 77%, #feeaa5 77% 85%,
+        #ffffff 85% 88%, #ffc0cb 88% 89.5%, #8ec5ff 89.5% 91%, #c49746 91% 100%
       );
-      -webkit-mask: radial-gradient(circle at center, transparent 58%, #000 62%);
-      mask: radial-gradient(circle at center, transparent 58%, #000 62%);
     }
     @keyframes goldSpin { to { transform:rotate(360deg); } }
     body.phone-ui #activeCtlRing .plate{
       position:absolute; inset:2px; border-radius:16px;
-      background:
-        radial-gradient(120% 80% at 20% 10%, rgba(255,255,255,.16), rgba(255,255,255,0) 42%),
-        linear-gradient(#1b2536, #182233);
+      background: linear-gradient(rgba(16,22,34,.52), rgba(16,22,34,.52));
       border:1px solid rgba(255,255,255,.10);
     }
     body.phone-ui #activeCtlSymbol{
@@ -844,6 +838,7 @@
       const symbol = document.getElementById('activeCtlSymbol');
       const btnPlay = document.getElementById('btn-play');
       if (!host || !ring) return;
+      const focusIds = ['btn-prev','btn-play','btn-next','btn-repeat','btn-shuffle'];
       let activeBtn = btnPlay || host.querySelector('button.ctl');
 
       function positionRing(btn){
@@ -875,9 +870,11 @@
         positionRing(btn);
       }
 
-      host.addEventListener('click', () => {
-        // Ring stays locked to play/pause button; no sliding between controls.
-        if (btnPlay) setActive(btnPlay);
+      host.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('button.ctl');
+        if (!btn) return;
+        const id = String(btn.id || '');
+        if (focusIds.includes(id)) setActive(btn);
         syncPlaySymbol();
       }, { passive:true });
 
