@@ -329,6 +329,7 @@
   function startLibraryScanWatch(apiBase, key) {
     stopLibraryScanWatch();
     let elapsedSec = 0;
+    let quickShown = false;
 
     const tick = async () => {
       elapsedSec += 3;
@@ -345,7 +346,15 @@
             run().catch(() => {});
             return;
           }
-          if (status) status.innerHTML = `<span class="spin" aria-hidden="true"></span>First library scan is running in the background… (${elapsedSec}s)`;
+
+          if (!quickShown && elapsedSec >= 15) {
+            quickShown = true;
+            run({ scanLimit: 6000 }).finally(() => {
+              if (status) status.innerHTML = `<span class="spin" aria-hidden="true"></span>Building full library scan in background… (${elapsedSec}s)`;
+            }).catch(() => {});
+          } else if (status) {
+            status.innerHTML = `<span class="spin" aria-hidden="true"></span>First library scan is running in the background… (${elapsedSec}s)`;
+          }
           return;
         }
       } catch (_) {}
@@ -423,7 +432,7 @@
     setPillState('moodePill','warn');
   }
 
-  async function run({ refresh = false } = {}) {
+  async function run({ refresh = false, scanLimit = null } = {}) {
     const key = ($('key')?.value || '').trim();
     const sample = 100;
     const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
@@ -437,7 +446,10 @@
     if (sections) sections.innerHTML = '';
 
     try {
-      const url = `${apiBase}/config/library-health?sampleLimit=${encodeURIComponent(sample)}${refresh ? '&refresh=1' : ''}`;
+      const limitPart = Number.isFinite(Number(scanLimit)) && Number(scanLimit) > 0
+        ? `&scanLimit=${encodeURIComponent(Number(scanLimit))}`
+        : '';
+      const url = `${apiBase}/config/library-health?sampleLimit=${encodeURIComponent(sample)}${refresh ? '&refresh=1' : ''}${limitPart}`;
       const res = await fetchWithTimeout(url, { headers: { 'x-track-key': key } }, refresh ? 45000 : 12000);
 
       const raw = await res.text();
