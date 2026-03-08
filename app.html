@@ -2068,6 +2068,14 @@
             }),
           }, 8000).catch(() => null);
 
+          // Ensure peppymeter engine is running so skin VU meters are alive even
+          // when we were previously in non-peppy display mode.
+          await fetchJsonWithTimeout(`${base}/config/moode/peppymeter/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ reason: 'push-peppy' }),
+          }, 12000).catch(() => null);
+
           const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser-url`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
@@ -2163,6 +2171,13 @@
             normalization: Number(lastPeppyProfile?.normalization || 100) || 100,
           }),
         }, 8000);
+        if (String(mode || 'peppy').toLowerCase() === 'peppy') {
+          await fetchJsonWithTimeout(`${base}/config/moode/peppymeter/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ reason: 'set-display-mode' }),
+          }, 12000).catch(() => null);
+        }
         const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser-url`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
