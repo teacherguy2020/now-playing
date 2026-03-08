@@ -146,7 +146,7 @@
       position:relative;
       border:2px solid transparent !important;
       background:
-        linear-gradient(rgba(16,22,34,.52), rgba(16,22,34,.52)) padding-box,
+        linear-gradient(#8f6a2a, #8f6a2a) padding-box,
         linear-gradient(135deg, rgba(255,230,150,.95) 0%, rgba(255,244,198,.82) 32%, rgba(246,194,86,.96) 60%, rgba(191,130,26,.92) 100%) border-box !important;
       box-shadow:
         0 0 0 1px rgba(255,241,188,.34) inset,
@@ -212,7 +212,7 @@
     body.phone-ui #phone-controls .ctl.on,
     body.phone-ui #phone-controls .ctl.big.on{
       background:
-        linear-gradient(rgba(16,22,34,.52), rgba(16,22,34,.52)) padding-box,
+        linear-gradient(#8f6a2a, #8f6a2a) padding-box,
         linear-gradient(135deg, rgba(255,230,150,.95) 0%, rgba(255,244,198,.82) 32%, rgba(246,194,86,.96) 60%, rgba(191,130,26,.92) 100%) border-box !important;
       box-shadow:
         0 0 0 1px rgba(255,241,188,.34) inset,
@@ -222,7 +222,7 @@
     body.phone-ui #phone-controls #btn-play.on{
       color:#22c55e !important;
       background:
-        linear-gradient(rgba(16,22,34,.52), rgba(16,22,34,.52)) padding-box,
+        linear-gradient(#8f6a2a, #8f6a2a) padding-box,
         linear-gradient(135deg, rgba(255,230,150,.95) 0%, rgba(255,244,198,.82) 32%, rgba(246,194,86,.96) 60%, rgba(191,130,26,.92) 100%) border-box !important;
       box-shadow:
         0 0 0 1px rgba(255,241,188,.34) inset,
@@ -272,9 +272,9 @@
         linear-gradient(transparent, transparent) padding-box,
         conic-gradient(
           from 0deg,
-          #bf821a 0% 10.5%, #ddb45a 10.5% 27%, #ffeeb0 27% 35%,
+          #ffffff 0% 10.5%, #ddb45a 10.5% 27%, #ffeeb0 27% 35%,
           rgba(255,255,255,.82) 35% 37%, #ffc0cb 37% 38.5%, #8ec5ff 38.5% 40%, #c49746 40% 50%,
-          #bf821a 50% 60.5%, #ddb45a 60.5% 77%, #ffeeb0 77% 85%,
+          #ffffff 50% 60.5%, #ddb45a 60.5% 77%, #ffeeb0 77% 85%,
           rgba(255,255,255,.82) 85% 87%, #ffc0cb 87% 88.5%, #8ec5ff 88.5% 90%, #c49746 90% 100%
         ) border-box;
       background-clip: padding-box, border-box;
@@ -283,18 +283,13 @@
     @keyframes goldSpin { to { transform:rotate(360deg); } }
     body.phone-ui #activeCtlRing .plate{
       position:absolute; inset:2px; border-radius:16px;
-      background: transparent !important;
-      border:0;
-      box-shadow:none;
+      background: #8f6a2a;
+      border:1px solid rgba(255,239,188,.34);
+      box-shadow: 0 1px 0 rgba(255,255,255,.14) inset;
       z-index:2;
     }
     body.phone-ui #activeCtlRing .plate::after{
-      content:'';
-      position:absolute;
-      inset:-5px;
-      border:1px solid rgba(255,235,170,.80);
-      border-radius:21px;
-      pointer-events:none;
+      content:none;
     }
     body.phone-ui #activeCtlSymbol{
       position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
