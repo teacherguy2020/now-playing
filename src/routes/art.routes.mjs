@@ -95,6 +95,18 @@ export function registerArtRoutes(app, deps) {
     safeIsFile,
   } = deps;
 
+  app.get('/art/thumb.jpg', async (req, res) => {
+    try {
+      const folder = String(req.query.folder || '').trim();
+      const file = String(req.query.file || '').trim();
+      if (!folder) return res.status(400).send('Missing ?folder=');
+      const qs = new URLSearchParams({ folder, ...(file ? { file } : {}) }).toString();
+      return res.redirect(302, `/config/library-health/album-thumb?${qs}`);
+    } catch {
+      return res.status(404).end();
+    }
+  });
+
   app.get('/art/track_640.jpg', async (req, res) => {
     try {
       const file = String(req.query.file || '').trim();
