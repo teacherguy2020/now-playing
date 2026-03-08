@@ -841,7 +841,6 @@
       const symbol = document.getElementById('activeCtlSymbol');
       const btnPlay = document.getElementById('btn-play');
       if (!host || !ring) return;
-      const focusIds = ['btn-prev','btn-play','btn-next','btn-repeat','btn-shuffle'];
       let activeBtn = btnPlay || host.querySelector('button.ctl');
 
       function positionRing(btn){
@@ -873,11 +872,9 @@
         positionRing(btn);
       }
 
-      host.addEventListener('click', (ev)=>{
-        const btn = ev.target.closest('button.ctl');
-        if (!btn) return;
-        const id = String(btn.id || '');
-        if (focusIds.includes(id)) setActive(btn);
+      host.addEventListener('click', () => {
+        // Ring stays locked to play/pause button; no sliding between controls.
+        if (btnPlay) setActive(btnPlay);
         syncPlaySymbol();
       }, { passive:true });
 
