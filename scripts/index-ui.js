@@ -24,6 +24,7 @@ const TEST_RADIO_FOOTER_TEXT = false;
 let fgLoadingKey = '';
 let fgLoadingUrl = '';
 let radioFooterActive = false;
+let idleClockTimer = 0;
 let fgReqToken = 0;     // monotonically increasing request id
 let motionReqToken = 0;
 const PODCAST_GENRES = new Set([
@@ -98,6 +99,42 @@ function bindAlbumArtAppleLinkOnce() {
     ev.stopPropagation();
     switchToPeppyFromArt();
   }, { passive: false, capture: true });
+}
+
+function ensureIdleOverlay() {
+  let el = document.getElementById('np-idle-overlay');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'np-idle-overlay';
+  el.style.cssText = 'position:fixed;inset:0;display:none;z-index:60;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(circle at 50% 35%, rgba(44,70,110,.45), rgba(6,10,18,.88));backdrop-filter:blur(4px);text-align:center;color:#eaf2ff;';
+  el.innerHTML = '<div id="np-idle-clock" style="font-size:clamp(42px,8vw,88px);font-weight:800;letter-spacing:.02em;">--:--</div><div style="margin-top:10px;font-size:15px;opacity:.85;">Queue is empty</div><div style="margin-top:6px;font-size:12px;opacity:.65;">Open Queue Wizard or YouTube to start playback</div>';
+  document.body.appendChild(el);
+  return el;
+}
+
+function setIdleOverlayVisible(on) {
+  const el = ensureIdleOverlay();
+  const clock = document.getElementById('np-idle-clock');
+  const stars = document.getElementById('star-row');
+  const tick = () => {
+    if (!clock) return;
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    const h24 = d.getHours();
+    const ap = h24 >= 12 ? 'PM' : 'AM';
+    const h12 = (h24 % 12) || 12;
+    clock.textContent = `${h12}:${p(d.getMinutes())} ${ap}`;
+  };
+  if (on) {
+    tick();
+    el.style.display = 'flex';
+    if (stars) stars.style.display = 'none';
+    if (!idleClockTimer) idleClockTimer = setInterval(tick, 15000);
+  } else {
+    el.style.display = 'none';
+    if (stars) stars.style.display = '';
+    if (idleClockTimer) { clearInterval(idleClockTimer); idleClockTimer = 0; }
+  }
 }
 
 function bindFavoriteUIOnce() {
@@ -2762,6 +2799,13 @@ function updateUI(data) {
   const isYoutubeNow = !!data?.isYoutube;
   if (favHeartEl) favHeartEl.style.display = isYoutubeNow ? 'none' : '';
   if (infoHotspotEl) infoHotspotEl.style.display = isYoutubeNow ? 'none' : '';
+
+  try {
+    const page = String(location.pathname || '').toLowerCase();
+    const playerLike = page.endsWith('/player-render.html') || page.endsWith('player-render.html') || page.endsWith('/player.html') || page.endsWith('player.html');
+    const hasPlayable = !!String(data?.file || '').trim() || !!String(data?.title || '').trim() || !!String(data?.artist || '').trim() || !!data?.isStream;
+    setIdleOverlayVisible(playerLike && !hasPlayable);
+  } catch {}
 
   // Alexa mode: brute-force art refresh by file, independent of art cache/crossfade logic.
   if (currentAlexaMode && artEl) {

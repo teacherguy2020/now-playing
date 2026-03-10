@@ -2239,6 +2239,7 @@
       let lastArt = '';
       let lastTrackSig = '';
       let lastPodcastArtRefreshAt = 0;
+      let peppyIdleClockTimer = 0;
       let currentTrackFile = '';
       let currentIsFavorite = false;
       let currentPersonnelText = '';
@@ -2346,6 +2347,39 @@
         } catch { return String(s ?? ''); }
       }
 
+      function ensurePeppyIdleOverlay(){
+        let el = document.getElementById('peppy-idle-overlay');
+        if (el) return el;
+        el = document.createElement('div');
+        el.id = 'peppy-idle-overlay';
+        el.style.cssText = 'position:fixed;inset:0;display:none;z-index:90;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(circle at 50% 35%, rgba(44,70,110,.40), rgba(6,10,18,.90));backdrop-filter:blur(3px);text-align:center;color:#eaf2ff;';
+        el.innerHTML = '<div id="peppy-idle-clock" style="font-size:clamp(44px,8vw,92px);font-weight:800;letter-spacing:.02em;">--:--</div><div style="margin-top:10px;font-size:15px;opacity:.85;">Queue is empty</div><div style="margin-top:6px;font-size:12px;opacity:.65;">Open Queue Wizard or YouTube to start playback</div>';
+        document.body.appendChild(el);
+        return el;
+      }
+
+      function setPeppyIdleOverlayVisible(on){
+        const el = ensurePeppyIdleOverlay();
+        const clock = document.getElementById('peppy-idle-clock');
+        const tick = () => {
+          if (!clock) return;
+          const d = new Date();
+          const p = (n) => String(n).padStart(2, '0');
+          const h24 = d.getHours();
+          const ap = h24 >= 12 ? 'PM' : 'AM';
+          const h12 = (h24 % 12) || 12;
+          clock.textContent = `${h12}:${p(d.getMinutes())} ${ap}`;
+        };
+        if (on) {
+          tick();
+          el.style.display = 'flex';
+          if (!peppyIdleClockTimer) peppyIdleClockTimer = setInterval(tick, 15000);
+        } else {
+          el.style.display = 'none';
+          if (peppyIdleClockTimer) { clearInterval(peppyIdleClockTimer); peppyIdleClockTimer = 0; }
+        }
+      }
+
       async function pollNowPlaying(){
         try {
           await ensureRuntimeKey();
@@ -2384,6 +2418,8 @@
           const t = decodeEntities(String(j?.displayTitle || j?.title || j?.file || 'Unknown title'));
           const a = decodeEntities(String(j?.displayArtist || j?.artist || 'Unknown artist'));
           const playbackState = String(j?.state || '').toLowerCase();
+          const hasPlayableNow = !!String(j?.file || '').trim() || !!String(j?.title || j?.displayTitle || '').trim() || !!String(j?.artist || j?.displayArtist || '').trim() || !!(j?.isStream);
+          setPeppyIdleOverlayVisible(!hasPlayableNow);
           try {
             document.body.classList.toggle('is-radio', !!j?.isRadio);
             document.body.classList.toggle('is-stream', !!j?.isStream);
