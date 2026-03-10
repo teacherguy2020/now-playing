@@ -939,7 +939,10 @@ async function syncVibeAvailability() {
     if (sendVibeBtn) sendVibeBtn.disabled = !(currentListSource === 'vibe' && currentFiles.length > 0);
     if (sendRadioBtn) sendRadioBtn.disabled = !(currentListSource === 'radio' && currentFiles.length > 0);
     if (sendPodcastBtn) sendPodcastBtn.disabled = !(currentListSource === 'podcast' && currentFiles.length > 0);
-    if (sendExistingBtn) sendExistingBtn.disabled = !(currentListSource === 'existing' && currentFiles.length > 0);
+    if (sendExistingBtn) {
+      const hasExistingSelection = selectedExistingListNames().length > 0;
+      sendExistingBtn.disabled = !(currentListSource === 'existing' && (currentFiles.length > 0 || hasExistingSelection));
+    }
 
     renderFiltersSummary();
     renderPlaylistSuggestion();
@@ -1507,29 +1510,63 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
   async function loadPlaylistToQueueNow() {
     const apiBase = getApiBase();
     const key = getKey();
-    const name = String(existingPlaylistsEl?.value || '').trim();
+    const names = selectedExistingListNames();
+    const fallback = String(existingPlaylistsEl?.value || '').trim();
+    const list = names.length ? names : (fallback ? [fallback] : []);
     if (!apiBase) return;
-    if (!name) {
+    if (!list.length) {
       setStatus('Pick an existing playlist first.');
       return;
     }
+
+    const prevSendExistingHtml = sendExistingBtn ? String(sendExistingBtn.innerHTML || '') : '';
+    const prevLoadBtnHtml = loadExistingPlaylistBtn ? String(loadExistingPlaylistBtn.innerHTML || '') : '';
     try {
-      if (loadExistingPlaylistBtn) loadExistingPlaylistBtn.disabled = true;
-      setStatus('<span class="spin"></span>Loading playlist into queue…');
-      const r = await fetch(`${apiBase}/config/queue-wizard/load-playlist`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-track-key': key },
-        body: JSON.stringify({ playlist: name, mode: 'replace', play: true }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-      setStatus(`Loaded playlist: ${esc(name)} (${Number(j.added || 0)} track(s)).`);
-      showSendConfirmation(`✅ Loaded “${name}” and started playback.`);
+      if (sendExistingBtn) {
+        sendExistingBtn.disabled = true;
+        sendExistingBtn.classList.add('is-busy');
+        sendExistingBtn.innerHTML = '<span class="spin"></span> Loading…';
+      }
+      if (loadExistingPlaylistBtn) {
+        loadExistingPlaylistBtn.disabled = true;
+        loadExistingPlaylistBtn.classList.add('is-busy');
+        loadExistingPlaylistBtn.innerHTML = '<span class="spin"></span> Loading…';
+      }
+      notifyParentQueueBusy(true, `Loading ${list.length > 1 ? list.length + ' playlists' : 'playlist'}…`);
+      setStatus(`<span class="spin"></span>Loading ${list.length > 1 ? list.length + ' playlists' : 'playlist'} into queue…`);
+
+      let totalAdded = 0;
+      let rebuiltYoutube = 0;
+      for (let i = 0; i < list.length; i++) {
+        const name = list[i];
+        setStatus(`<span class="spin"></span>Loading ${i + 1}/${list.length}: ${esc(name)}…`);
+        const r = await fetch(`${apiBase}/config/queue-wizard/load-playlist`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+          body: JSON.stringify({ playlist: name, mode: i === 0 ? 'replace' : 'append', play: i === 0 }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j?.ok) throw new Error(`${name}: ${j?.error || `HTTP ${r.status}`}`);
+        totalAdded += Number(j?.added || 0);
+        rebuiltYoutube += Number(j?.rebuiltYoutube || 0);
+      }
+      setStatus(`Loaded ${list.length} playlist(s): ${totalAdded} track(s).`);
+      showSendConfirmation(`✅ Loaded ${list.length} playlist(s)${rebuiltYoutube ? ` · rebuilt YouTube ${rebuiltYoutube}` : ''}.`);
       await loadCurrentQueueCard().catch(() => {});
     } catch (e) {
       setStatus(`Load playlist failed: ${esc(e?.message || e)}`);
     } finally {
-      if (loadExistingPlaylistBtn) loadExistingPlaylistBtn.disabled = false;
+      notifyParentQueueBusy(false);
+      if (sendExistingBtn) {
+        sendExistingBtn.disabled = false;
+        sendExistingBtn.classList.remove('is-busy');
+        sendExistingBtn.innerHTML = prevSendExistingHtml || 'Send Existing to moOde';
+      }
+      if (loadExistingPlaylistBtn) {
+        loadExistingPlaylistBtn.disabled = false;
+        loadExistingPlaylistBtn.classList.remove('is-busy');
+        loadExistingPlaylistBtn.innerHTML = prevLoadBtnHtml || 'Load playlist into queue';
+      }
     }
   }
 
@@ -2503,6 +2540,8 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
         sendBtnIntent.innerHTML = prevSendBtnIntentHtml || 'Send queue to moOde';
       }
     };
+    let existingNeedsDirectLoad = false;
+    let existingDirectNames = [];
     if (sendBtnIntent) {
       sendBtnIntent.disabled = true;
       sendBtnIntent.classList.add('is-busy');
@@ -2560,7 +2599,14 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       try {
         const out = await fetchExistingSelectedTracks();
         const tracks = Array.isArray(out?.tracks) ? out.tracks : [];
-        if (tracks.length) setCurrentList('existing', tracks);
+        const names = Array.isArray(out?.names) ? out.names.map((n)=>String(n||'').trim()).filter(Boolean) : [];
+        if (tracks.length) {
+          setCurrentList('existing', tracks);
+        } else if (names.length) {
+          // Manifest-backed YouTube playlists may preview as 0 tracks; load path can still rebuild them.
+          existingNeedsDirectLoad = true;
+          existingDirectNames = names;
+        }
       } catch (e) {
         setStatus(`Playlist preview failed: ${esc(e?.message || e)}`);
         clearIntentBusy();
@@ -2570,9 +2616,16 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       }
     }
 
-    if (!currentFiles.length) {
+    if (!currentFiles.length && !(source === 'existing' && existingNeedsDirectLoad && existingDirectNames.length)) {
       await doPreview();
-      if (!currentFiles.length) {
+      if (!currentFiles.length && source === 'existing' && !existingNeedsDirectLoad) {
+        const names = selectedExistingListNames();
+        if (names.length) {
+          existingNeedsDirectLoad = true;
+          existingDirectNames = names;
+        }
+      }
+      if (!currentFiles.length && !(source === 'existing' && existingNeedsDirectLoad && existingDirectNames.length)) {
         setStatus('No tracks to send.');
         clearIntentBusy();
         notifyParentQueueBusy(false);
@@ -2645,6 +2698,39 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       } catch (e) {
         setStatus(`Collage lock warning: ${esc(e?.message || e)} · continuing save…`);
       }
+    }
+
+    if (isExistingSend && existingNeedsDirectLoad && existingDirectNames.length) {
+      const loadMode = (mode === 'replace' && !keepNowPlaying) ? 'replace' : 'append';
+      try {
+        if (sendBtnIntent) sendBtnIntent.innerHTML = '<span class="spin"></span> Sending…';
+        setStatus('<span class="spin"></span>Loading manifest-backed playlist(s)…');
+        let totalAdded = 0;
+        let rebuilt = 0;
+        for (let i = 0; i < existingDirectNames.length; i++) {
+          const nm = existingDirectNames[i];
+          const r = await fetch(`${apiBase}/config/queue-wizard/load-playlist`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+            body: JSON.stringify({ playlist: nm, mode: (i === 0 ? loadMode : 'append'), play: i === 0 }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          totalAdded += Number(j?.added || 0);
+          rebuilt += Number(j?.rebuiltYoutube || 0);
+        }
+        showSendConfirmation(`✅ Loaded ${existingDirectNames.length} playlist(s): ${totalAdded} queue item(s)${rebuilt ? ` · rebuilt YouTube ${rebuilt}` : ''}`);
+        await loadCurrentQueueCard().catch(() => {});
+        await syncCurrentQueueFromServer().catch(() => {});
+        setStatus(`Loaded ${existingDirectNames.length} playlist(s).`);
+      } catch (e) {
+        setStatus(`Load playlist failed: ${esc(e?.message || e)}`);
+      } finally {
+        clearIntentBusy();
+        notifyParentQueueBusy(false);
+        sendBusy = false;
+      }
+      return;
     }
 
     const prevSaveNowDisplay = savePlaylistNowBtn ? String(savePlaylistNowBtn.style.display || '') : '';
@@ -2772,14 +2858,17 @@ function wireEvents() {
   sendFilteredBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     activateBuilder('filters');
-    const src = (currentListSource === 'existing') ? 'existing' : 'filters';
-    doSendToMoode(src);
+    if (currentListSource === 'existing') {
+      loadPlaylistToQueueNow();
+      return;
+    }
+    doSendToMoode('filters');
   });
 
   sendExistingBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     activateBuilder('existing');
-    doSendToMoode('existing');
+    loadPlaylistToQueueNow();
   });
 
   sendVibeBtn?.addEventListener('click', (e) => {

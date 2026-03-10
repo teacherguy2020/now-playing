@@ -336,7 +336,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const rawName = String(req.body?.playlistName || '').trim();
       if (!rawName) return res.status(400).json({ ok: false, error: 'playlistName is required' });
-      const safeName = rawName.replace(/[\r\n]/g, ' ').replace(/[\x00-\x1F]/g, '').trim();
+      const safeName = rawName.replace(/[\r\n]/g, ' ').replace(/[\x00-\x1F]/g, '').replace(/[\\/:*?"<>|]/g, '_').trim();
       if (!safeName) return res.status(400).json({ ok: false, error: 'playlistName is invalid' });
 
       const mpdHost = String(MPD_HOST || process.env.MPD_HOST || '127.0.0.1').trim();
@@ -354,6 +354,27 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           }
         })
         .filter(Boolean);
+
+      const sourceManifest = {
+        schema: 'now-playing.youtube-manifest.v1',
+        playlistName: safeName,
+        savedAt: new Date().toISOString(),
+        entries: qLines.map((u, idx) => {
+          const file = String(u || '').trim();
+          const isYtProxy = /\/youtube\/proxy\//i.test(file);
+          const hint = (isYtProxy && typeof getYoutubeQueueHint === 'function') ? (getYoutubeQueueHint(file) || {}) : {};
+          const sourceUrl = String(hint?.webpageUrl || '').trim();
+          return {
+            index: idx,
+            type: isYtProxy ? 'youtube' : 'mpd',
+            file,
+            sourceUrl,
+            title: String(hint?.title || '').trim(),
+            channel: String(hint?.channel || '').trim(),
+            thumbnail: String(hint?.thumbnail || '').trim(),
+          };
+        }),
+      };
       if (!trackCount) {
         return res.status(400).json({ ok: false, error: 'Live queue is empty. Nothing to save.' });
       }
@@ -362,6 +383,48 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         await execFileP('mpc', ['-h', mpdHost, '-p', mpdPort, 'rm', safeName], { timeout: 15000 });
       } catch {}
       await execFileP('mpc', ['-h', mpdHost, '-p', mpdPort, 'save', safeName], { timeout: 20000 });
+
+      const sshHost = String(MOODE_SSH_HOST || mpdHost || '').trim();
+      const sshUser = String(MOODE_SSH_USER || 'moode').trim();
+
+      // Rewrite saved .m3u to use durable source URLs for YouTube entries (not proxy URLs).
+      let m3uRewritten = false;
+      let m3uRewriteError = '';
+      try {
+        const playlistFileName = `${safeName}.m3u`;
+        const m3uLines = sourceManifest.entries
+          .map((ent) => {
+            const t = String(ent?.type || '').trim().toLowerCase();
+            const f = String(ent?.file || '').trim();
+            const src = String(ent?.sourceUrl || '').trim();
+            if (t === 'youtube') return src || f;
+            return f;
+          })
+          .filter(Boolean);
+        const m3uText = `${m3uLines.join('\n')}\n`;
+        const m3uB64 = Buffer.from(m3uText, 'utf8').toString('base64');
+        const remoteM3u = `/var/lib/mpd/playlists/${playlistFileName}`;
+        const cmd = `sudo -n bash -lc 'echo ${m3uB64} | base64 -d > ${remoteM3u.replace(/ /g, '\\ ')} && chown root:audio ${remoteM3u.replace(/ /g, '\\ ')} && chmod 644 ${remoteM3u.replace(/ /g, '\\ ')}'`;
+        await execFileP('ssh', [`${sshUser}@${sshHost}`, cmd], { timeout: 60000, maxBuffer: 2 * 1024 * 1024 });
+        m3uRewritten = true;
+      } catch (e) {
+        m3uRewriteError = e?.message || String(e);
+      }
+
+      // Save sidecar manifest so YouTube entries can be rebuilt later.
+      let manifestSaved = false;
+      let manifestError = '';
+      try {
+        const manifestName = `${safeName}.youtube.json`.replace(/[^A-Za-z0-9._ -]/g, '_');
+        const manifestJson = JSON.stringify(sourceManifest, null, 2);
+        const manifestB64 = Buffer.from(manifestJson, 'utf8').toString('base64');
+        const remotePath = `/var/lib/mpd/playlists/${manifestName}`;
+        const cmd = `sudo -n bash -lc 'echo ${manifestB64} | base64 -d > ${remotePath.replace(/ /g, '\\ ')} && chown root:audio ${remotePath.replace(/ /g, '\\ ')} && chmod 644 ${remotePath.replace(/ /g, '\\ ')}'`;
+        await execFileP('ssh', [`${sshUser}@${sshHost}`, cmd], { timeout: 60000, maxBuffer: 2 * 1024 * 1024 });
+        manifestSaved = true;
+      } catch (e) {
+        manifestError = e?.message || String(e);
+      }
 
       let collageGenerated = false;
       let collageError = '';
@@ -412,7 +475,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         collageError = one.replace(/^Command failed:\s*/i, '').slice(0, 180);
       }
 
-      return res.json({ ok: true, playlistName: safeName, playlistSaved: true, trackCount, collageGenerated, collageError });
+      return res.json({ ok: true, playlistName: safeName, playlistSaved: true, trackCount, m3uRewritten, m3uRewriteError, manifestSaved, manifestError, collageGenerated, collageError });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

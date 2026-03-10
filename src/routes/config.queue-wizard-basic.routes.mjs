@@ -591,16 +591,66 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       if (!playlist) return res.status(400).json({ ok: false, error: 'playlist is required' });
       if (!['replace', 'append'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode must be replace|append' });
 
+      const trackKey = String(req.headers['x-track-key'] || '').trim();
+      const sshHost = String(MOODE_SSH_HOST || mpdHost || '10.0.0.254').trim();
+      const manifestName = `${playlist}.youtube.json`;
+      let manifest = null;
+      try {
+        const cmd = `cat ${shQuoteArg(`${MPD_PLAYLIST_DIR}/${manifestName}`)}`;
+        const { stdout } = await execFileP('ssh', [`moode@${sshHost}`, cmd], { timeout: 15000, maxBuffer: 3 * 1024 * 1024 });
+        const parsed = JSON.parse(String(stdout || '{}'));
+        if (parsed && Array.isArray(parsed.entries) && parsed.entries.length) manifest = parsed;
+      } catch {}
+
       if (mode === 'replace') {
         await execFileP('mpc', ['-h', mpdHost, 'clear']);
       }
-      await execFileP('mpc', ['-h', mpdHost, 'load', playlist]);
-      if (play) {
+
+      let usedManifest = false;
+      let rebuiltYoutube = 0;
+      let startedPlaybackEarly = false;
+      if (manifest?.entries?.length) {
+        usedManifest = true;
+        for (const ent of manifest.entries) {
+          const t = String(ent?.type || '').trim().toLowerCase();
+          const f = String(ent?.file || '').trim();
+          const src = String(ent?.sourceUrl || '').trim();
+          if (t === 'youtube' && src) {
+            const ytMode = (!startedPlaybackEarly && play && mode === 'replace') ? 'replace' : 'append';
+            const r = await fetch('http://127.0.0.1:3101/youtube/queue', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', ...(trackKey ? { 'x-track-key': trackKey } : {}) },
+              body: JSON.stringify({ url: src, mode: ytMode }),
+            });
+            const j = await r.json().catch(() => ({}));
+            if (r.ok && j?.ok) {
+              rebuiltYoutube += 1;
+              if (ytMode === 'replace') startedPlaybackEarly = true;
+            }
+            continue;
+          }
+          if (f) {
+            try {
+              if (!startedPlaybackEarly && play && mode === 'replace') {
+                await execFileP('mpc', ['-h', mpdHost, 'add', f]);
+                await execFileP('mpc', ['-h', mpdHost, 'play']);
+                startedPlaybackEarly = true;
+              } else {
+                await execFileP('mpc', ['-h', mpdHost, 'add', f]);
+              }
+            } catch {}
+          }
+        }
+      } else {
+        await execFileP('mpc', ['-h', mpdHost, 'load', playlist]);
+      }
+
+      if (play && !startedPlaybackEarly) {
         await execFileP('mpc', ['-h', mpdHost, 'play']);
       }
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, 'playlist']);
       const added = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean).length;
-      return res.json({ ok: true, playlist, mode, play, added });
+      return res.json({ ok: true, playlist, mode, play, added, usedManifest, rebuiltYoutube });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

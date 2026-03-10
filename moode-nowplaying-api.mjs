@@ -2065,9 +2065,18 @@ function isLikelyYouTubeUrl(raw) {
   }
 }
 
+const ytResolveCache = new Map();
+const YT_RESOLVE_CACHE_MS = 45 * 60 * 1000;
+
 async function resolveYouTubeAudio(url) {
   const input = String(url || '').trim();
   if (!isLikelyYouTubeUrl(input)) throw new Error('Only YouTube URLs are supported');
+
+  const now = Date.now();
+  const cached = ytResolveCache.get(input);
+  if (cached && (now - Number(cached.ts || 0) < YT_RESOLVE_CACHE_MS)) {
+    return { ...cached.value };
+  }
 
   let parsed = null;
   try {
@@ -2086,7 +2095,7 @@ async function resolveYouTubeAudio(url) {
   }
   if (!streamUrl) throw new Error('Could not resolve playable audio URL');
 
-  return {
+  const out = {
     title: String(parsed?.title || '').trim(),
     channel: String(parsed?.uploader || parsed?.channel || '').trim(),
     thumbnail: String(parsed?.thumbnail || '').trim(),
@@ -2094,6 +2103,12 @@ async function resolveYouTubeAudio(url) {
     webpageUrl: String(parsed?.webpage_url || input).trim(),
     streamUrl,
   };
+  ytResolveCache.set(input, { ts: Date.now(), value: out });
+  if (ytResolveCache.size > 1000) {
+    const first = ytResolveCache.keys().next().value;
+    if (first) ytResolveCache.delete(first);
+  }
+  return out;
 }
 
 function normalizeYtEntry(e = {}) {
