@@ -524,6 +524,8 @@ const PODCAST_CACHE_MS = 60_000; // refresh once a minute
 let youtubeNowPlayingHint = { setAt: 0, streamUrl: '', title: '', channel: '', thumbnail: '', webpageUrl: '' };
 const youtubeQueueHints = new Map();
 const youtubeProxyHints = new Map();
+const youtubeProxyWorkers = new Map(); // id -> { ytdlp, ff, startedAt }
+const YT_PROXY_MAX_WORKERS = 2;
 const YOUTUBE_HINTS_PATH = process.env.YOUTUBE_HINTS_PATH || path.join(path.dirname(PODCAST_DL_LOG), 'youtube-hints.json');
 function youtubeStreamKey(url) {
   const s = String(url || '').trim();
@@ -547,6 +549,28 @@ function getYoutubeQueueHint(url) {
   const key = youtubeStreamKey(url);
   if (!key) return null;
   return youtubeQueueHints.get(key) || null;
+}
+
+function stopYoutubeProxyWorker(id) {
+  const w = youtubeProxyWorkers.get(String(id || ''));
+  if (!w) return;
+  try { w?.ytdlp?.stdout?.unpipe?.(w?.ff?.stdin); } catch {}
+  try { w?.ff?.stdout?.unpipe?.(); } catch {}
+  try { w?.ytdlp?.kill?.('SIGKILL'); } catch {}
+  try { w?.ff?.kill?.('SIGKILL'); } catch {}
+  youtubeProxyWorkers.delete(String(id || ''));
+}
+
+function pruneYoutubeProxyWorkers() {
+  for (const [id, w] of youtubeProxyWorkers.entries()) {
+    const dead = !!(w?.ff?.exitCode !== null || w?.ff?.killed || w?.ytdlp?.exitCode !== null || w?.ytdlp?.killed);
+    if (dead) youtubeProxyWorkers.delete(id);
+  }
+  while (youtubeProxyWorkers.size > YT_PROXY_MAX_WORKERS) {
+    const oldest = Array.from(youtubeProxyWorkers.entries()).sort((a,b)=>Number(a?.[1]?.startedAt||0)-Number(b?.[1]?.startedAt||0))[0];
+    if (!oldest) break;
+    stopYoutubeProxyWorker(oldest[0]);
+  }
 }
 
 async function loadYoutubeHintsFromDisk() {
@@ -587,6 +611,7 @@ function scheduleSaveYoutubeHints() {
 }
 
 loadYoutubeHintsFromDisk().catch(() => {});
+setInterval(() => { try { pruneYoutubeProxyWorkers(); } catch {} }, 15000);
 
 async function loadPodcastMaps() {
   const now = Date.now();
@@ -6988,49 +7013,88 @@ app.post('/youtube/playlist', async (req, res) => {
 app.get('/youtube/proxy/:id', async (req, res) => {
   try {
     const id = String(req.params?.id || '').trim();
-    const hint = youtubeProxyHints.get(id) || null;
+    let hint = youtubeProxyHints.get(id) || null;
+    if (!hint && id) {
+      const fallback = getYoutubeQueueHint(`http://${LOCAL_ADDRESS}:${PORT}/youtube/proxy/${id}`) || getYoutubeQueueHint(`/youtube/proxy/${id}`) || null;
+      if (fallback) {
+        hint = {
+          sourcePageUrl: String(fallback?.webpageUrl || '').trim(),
+          webpageUrl: String(fallback?.webpageUrl || '').trim(),
+          title: String(fallback?.title || '').trim(),
+          channel: String(fallback?.channel || '').trim(),
+          thumbnail: String(fallback?.thumbnail || '').trim(),
+        };
+      }
+    }
     const srcPage = String(hint?.sourcePageUrl || hint?.webpageUrl || '').trim();
     if (!id || !srcPage) return res.status(404).end('not found');
+    if (!youtubeProxyHints.has(id)) {
+      youtubeProxyHints.set(id, { ...(hint || {}), sourcePageUrl: srcPage, webpageUrl: String(hint?.webpageUrl || srcPage).trim(), restored: true });
+    }
 
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Connection', 'keep-alive');
 
-    const ytdlp = spawn('yt-dlp', [
-      '--no-warnings', '--no-playlist', '-f', 'bestaudio/best', '-o', '-', srcPage
-    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    // Ensure old worker for same proxy id is not lingering.
+    stopYoutubeProxyWorker(id);
+    pruneYoutubeProxyWorkers();
 
-    const ff = spawn('ffmpeg', [
-      '-hide_banner', '-loglevel', 'error',
-      '-i', 'pipe:0',
-      '-vn', '-ac', '2', '-ar', '44100', '-c:a', 'libmp3lame', '-b:a', '192k',
-      '-f', 'mp3', 'pipe:1'
-    ], { stdio: ['pipe', 'pipe', 'pipe'] });
+    // First try to resolve a direct non-HLS URL (avoids hlsnative 403 fragment issues).
+    let directUrl = '';
+    try {
+      const { stdout } = await execFileP('yt-dlp', [
+        '--no-warnings', '--extractor-args', 'youtube:player_client=android',
+        '--no-playlist', '-f', 'bestaudio[protocol!=m3u8][protocol!=m3u8_native]/bestaudio/best', '-g', srcPage
+      ], { timeout: 20000, maxBuffer: 2 * 1024 * 1024 });
+      directUrl = String(stdout || '').split(/\r?\n/).map((s) => String(s || '').trim()).find(Boolean) || '';
+    } catch {}
 
-    // Guard stream lifecycle to avoid crashing service on client disconnects.
-    ytdlp.stdout.on('error', () => {});
-    ff.stdin.on('error', (e) => {
-      if (String(e?.code || '') !== 'EPIPE') {
-        try { console.warn('[yt-proxy] ff stdin error', e?.message || e); } catch {}
-      }
-    });
+    let ytdlp = null;
+    let ff = null;
+    if (directUrl) {
+      ff = spawn('ffmpeg', [
+        '-hide_banner', '-loglevel', 'error',
+        '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '2',
+        '-i', directUrl,
+        '-vn', '-ac', '2', '-ar', '44100', '-c:a', 'libmp3lame', '-b:a', '192k',
+        '-f', 'mp3', 'pipe:1'
+      ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    } else {
+      ytdlp = spawn('yt-dlp', [
+        '--no-warnings', '--no-playlist', '-f', 'bestaudio/best', '-o', '-', srcPage
+      ], { stdio: ['ignore', 'pipe', 'pipe'] });
+      ff = spawn('ffmpeg', [
+        '-hide_banner', '-loglevel', 'error',
+        '-i', 'pipe:0',
+        '-vn', '-ac', '2', '-ar', '44100', '-c:a', 'libmp3lame', '-b:a', '192k',
+        '-f', 'mp3', 'pipe:1'
+      ], { stdio: ['pipe', 'pipe', 'pipe'] });
+      ytdlp.stdout.on('error', () => {});
+      ff.stdin.on('error', (e) => {
+        if (String(e?.code || '') !== 'EPIPE') {
+          try { console.warn('[yt-proxy] ff stdin error', e?.message || e); } catch {}
+        }
+      });
+      ytdlp.stdout.pipe(ff.stdin, { end: true });
+    }
 
-    ytdlp.stdout.pipe(ff.stdin, { end: true });
+    youtubeProxyWorkers.set(id, { ytdlp, ff, startedAt: Date.now() });
+    pruneYoutubeProxyWorkers();
+
     ff.stdout.pipe(res);
 
     const endAll = () => {
-      try { ytdlp.stdout.unpipe(ff.stdin); } catch {}
-      try { ff.stdout.unpipe(res); } catch {}
-      try { ytdlp.kill('SIGKILL'); } catch {}
-      try { ff.kill('SIGKILL'); } catch {}
+      stopYoutubeProxyWorker(id);
+      try { res.end(); } catch {}
     };
     req.on('close', endAll);
     res.on('close', endAll);
     res.on('error', () => endAll());
 
-    ytdlp.on('error', () => { try { res.end(); } catch {} });
-    ff.on('error', () => { try { res.end(); } catch {} });
-    ff.on('exit', () => { try { res.end(); } catch {} });
+    if (ytdlp) ytdlp.on('error', () => endAll());
+    ff.on('error', () => endAll());
+    ff.on('exit', () => endAll());
   } catch {
     try { res.status(500).end('proxy error'); } catch {}
   }

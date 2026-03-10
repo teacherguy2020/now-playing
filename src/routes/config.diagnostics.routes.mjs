@@ -202,6 +202,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     { group: 'Now Playing', method: 'GET', path: '/track' },
 
     { group: 'Diagnostics', method: 'GET', path: '/config/diagnostics/queue' },
+    { group: 'Diagnostics', method: 'POST', path: '/config/diagnostics/queue/save-playlist', body: { playlistName: 'My Queue', generateCollage: true } },
     { group: 'Diagnostics', method: 'GET', path: '/config/diagnostics/album-tracks', query: { album: '', artist: '' } },
     { group: 'Diagnostics', method: 'GET', path: '/config/diagnostics/artist-albums', query: { artist: '' } },
     { group: 'Diagnostics', method: 'POST', path: '/config/diagnostics/playback', body: { action: 'play' } },
@@ -325,6 +326,93 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
 
       const albums = Array.from(byAlbum.values()).sort((a, b) => String(a.album || '').localeCompare(String(b.album || ''), undefined, { sensitivity: 'base' }));
       return res.json({ ok: true, artist, count: albums.length, albums });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/diagnostics/queue/save-playlist', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const rawName = String(req.body?.playlistName || '').trim();
+      if (!rawName) return res.status(400).json({ ok: false, error: 'playlistName is required' });
+      const safeName = rawName.replace(/[\r\n]/g, ' ').replace(/[\x00-\x1F]/g, '').trim();
+      if (!safeName) return res.status(400).json({ ok: false, error: 'playlistName is invalid' });
+
+      const mpdHost = String(MPD_HOST || process.env.MPD_HOST || '127.0.0.1').trim();
+      const mpdPort = String(process.env.MPD_PORT || '6600').trim();
+
+      const q = await execFileP('mpc', ['-h', mpdHost, '-p', mpdPort, 'playlist'], { timeout: 15000 });
+      const qLines = String(q?.stdout || '').split(/\r?\n/).map((s)=>String(s||'').trim()).filter(Boolean);
+      const trackCount = qLines.length;
+      const youtubeThumbs = qLines
+        .map((u) => {
+          try {
+            return String((typeof getYoutubeQueueHint === 'function' ? (getYoutubeQueueHint(u)?.thumbnail || '') : '') || '').trim();
+          } catch {
+            return '';
+          }
+        })
+        .filter(Boolean);
+      if (!trackCount) {
+        return res.status(400).json({ ok: false, error: 'Live queue is empty. Nothing to save.' });
+      }
+
+      try {
+        await execFileP('mpc', ['-h', mpdHost, '-p', mpdPort, 'rm', safeName], { timeout: 15000 });
+      } catch {}
+      await execFileP('mpc', ['-h', mpdHost, '-p', mpdPort, 'save', safeName], { timeout: 20000 });
+
+      let collageGenerated = false;
+      let collageError = '';
+      const generateCollage = req.body?.generateCollage !== false;
+      if (generateCollage) {
+        const sshHost = String(MOODE_SSH_HOST || mpdHost || '').trim();
+        const sshUser = String(MOODE_SSH_USER || 'moode').trim();
+
+        // Prefer direct thumb cover for YouTube/stream-heavy queues.
+        if (youtubeThumbs.length) {
+          try {
+            const firstThumb = String(youtubeThumbs[0] || '').trim();
+            const coverName = safeName.replace(/\s+/g, '_').replace(/[^A-Za-z0-9._-]/g, '_');
+            const remoteOut = `/var/local/www/imagesw/playlist-covers/${coverName}.jpg`;
+            const esc = (s) => String(s).replace(/'/g, `'"'"'`);
+            const cmdInner = `set -e; mkdir -p /var/local/www/imagesw/playlist-covers; curl -fsSL '${esc(firstThumb)}' -o '${esc(remoteOut)}'`;
+            const cmd = `sudo -n bash -lc '${cmdInner.replace(/'/g, "'\\''")}'`;
+            await execFileP('ssh', [`${sshUser}@${sshHost}`, cmd], { timeout: 60000, maxBuffer: 2 * 1024 * 1024 });
+            collageGenerated = true;
+          } catch (e) {
+            collageError = e?.message || String(e);
+          }
+        }
+
+        // Non-YouTube or fallback path: try moOde collage script.
+        if (!collageGenerated) {
+          try {
+            const remoteScriptCandidates = [
+              '/usr/local/bin/moode-playlist-cover.sh',
+              '/opt/now-playing/scripts/moode-playlist-cover.sh',
+              '/var/local/www/scripts/moode-playlist-cover.sh',
+            ];
+            const cmdInner = `set -e; P='${safeName.replace(/'/g, "'\\''")}'; `
+              + `for s in ${remoteScriptCandidates.map((p)=>`'${p}'`).join(' ')}; do `
+              + `if [ -x "$s" ]; then bash "$s" "$P"; exit 0; fi; `
+              + `done; echo 'cover-script-not-found' >&2; exit 127`;
+            const cmd = `sudo -n bash -lc '${cmdInner.replace(/'/g, "'\\''")}'`;
+            await execFileP('ssh', [`${sshUser}@${sshHost}`, cmd], { timeout: 180000, maxBuffer: 4 * 1024 * 1024 });
+            collageGenerated = true;
+          } catch (e) {
+            if (!collageError) collageError = e?.message || String(e);
+          }
+        }
+      }
+
+      if (collageError) {
+        const one = String(collageError).split(/\r?\n/)[0];
+        collageError = one.replace(/^Command failed:\s*/i, '').slice(0, 180);
+      }
+
+      return res.json({ ok: true, playlistName: safeName, playlistSaved: true, trackCount, collageGenerated, collageError });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

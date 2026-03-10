@@ -8,7 +8,7 @@ const execFileP = promisify(execFile);
 const RADIO_DB_SEP = '__NPSEP__';
 const RADIO_PRESETS_PATH = path.resolve(process.cwd(), 'data/radio-queue-presets.json');
 
-const OPTIONS_CACHE_TTL_MS = 30_000;
+const OPTIONS_CACHE_TTL_MS = 5 * 60_000;
 const PLAYLISTS_CACHE_TTL_MS = 45_000;
 let optionsCache = { ts: 0, host: '', payload: null, inflight: null };
 let playlistsCache = { ts: 0, host: '', payload: null, inflight: null };
@@ -502,6 +502,9 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       return res.json(payload);
     } catch (e) {
       optionsCache.inflight = null;
+      if (optionsCache.payload && optionsCache.host === String(MPD_HOST || '10.0.0.254')) {
+        return res.json({ ...optionsCache.payload, stale: true, staleReason: e?.message || String(e) });
+      }
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });

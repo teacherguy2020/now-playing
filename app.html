@@ -328,6 +328,7 @@
             <button id="heroQueueSavePresets" class="heroQueueBtn" type="button" style="display:none;">Save queue as presets group</button>
             <button id="heroQueueClear" class="heroQueueBtn" type="button">Clear</button>
             <button id="heroQueueCrop" class="heroQueueBtn" type="button">Crop</button>
+            <button id="heroQueueSavePlaylist" class="heroQueueBtn" type="button">Save Queue Playlist</button>
             <button id="heroQueueToggle" class="heroQueueBtn" type="button">Collapse</button>
           </div>
         </div>
@@ -3166,6 +3167,7 @@
       const hqBtn = document.getElementById('heroQueueToggle');
       const hqClear = document.getElementById('heroQueueClear');
       const hqCrop = document.getElementById('heroQueueCrop');
+      const hqSavePlaylist = document.getElementById('heroQueueSavePlaylist');
       const hqApplyFilter = document.getElementById('heroQueueApplyFilter');
       const hqSave = document.getElementById('heroQueueSavePresets');
       const hqWrap = document.getElementById('heroQueueWrap');
@@ -3643,6 +3645,41 @@
           hqCrop.disabled = true;
           try { await sendHeroPlayback('crop'); } catch (_) {}
           finally { hqCrop.disabled = false; await syncHeroQueue(); }
+        });
+
+        hqSavePlaylist?.addEventListener('click', async () => {
+          const suggested = (() => {
+            const d = new Date();
+            const p = (n) => String(n).padStart(2, '0');
+            return `Queue ${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}${p(d.getMinutes())}`;
+          })();
+          const playlistName = String(window.prompt('Save live queue as playlist name:', suggested) || '').trim();
+          if (!playlistName) return;
+
+          hqSavePlaylist.disabled = true;
+          hqSavePlaylist.classList.add('isLoading');
+          setHeroQueueBusy(true, 'Saving queue playlist…');
+          try {
+            const host = location.hostname || '10.0.0.233';
+            const base = `${location.protocol}//${host}:3101`;
+            const key = await ensureTrackKey(base);
+            const r = await fetch(`${base}/config/diagnostics/queue/save-playlist`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
+              body: JSON.stringify({ playlistName, generateCollage: true }),
+            });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+            const msg = `Saved playlist “${playlistName}”${j?.collageGenerated ? ' with cover' : ''}${j?.collageError ? ` (cover: ${j.collageError})` : ''}`;
+            try { showSendConfirmation(`✅ ${msg}`); } catch { alert(msg); }
+          } catch (e) {
+            const msg = `Save queue playlist failed: ${e?.message || e}`;
+            try { showSendConfirmation(`❌ ${msg}`); } catch { alert(msg); }
+          } finally {
+            setHeroQueueBusy(false, '');
+            hqSavePlaylist.classList.remove('isLoading');
+            hqSavePlaylist.disabled = false;
+          }
         });
 
         hqApplyFilter?.addEventListener('click', async () => {
