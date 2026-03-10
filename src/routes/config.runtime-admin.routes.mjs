@@ -583,12 +583,19 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
       if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
 
-      const script = "if pgrep -af 'peppymeter|PeppyMeter|peppy_meter' >/tmp/np-peppy-ps.txt 2>&1; then echo RUNNING:1; else echo RUNNING:0; fi; cat /tmp/np-peppy-ps.txt 2>/dev/null || true";
+      const script = "pgrep -af 'peppymeter|PeppyMeter|peppy_meter' >/tmp/np-peppy-ps.txt 2>&1 || true; "
+        + "cnt=$(grep -c . /tmp/np-peppy-ps.txt 2>/dev/null || echo 0); "
+        + "if [ \"$cnt\" -gt 0 ]; then echo RUNNING:1; else echo RUNNING:0; fi; "
+        + "echo COUNT:$cnt; cat /tmp/np-peppy-ps.txt 2>/dev/null || true";
       const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 12000 });
       const out = String(stdout || '');
       const running = /RUNNING:1/.test(out);
-      const lines = out.split(/\r?\n/).map((s) => String(s || '').trim()).filter((s) => s && !s.startsWith('RUNNING:'));
-      return res.json({ ok: true, sshHost, sshUser, running, processes: lines.slice(0, 20), stderr: String(stderr || '').trim() });
+      const count = Number((out.match(/COUNT:(\d+)/)?.[1] || '0')) || 0;
+      const lines = out
+        .split(/\r?\n/)
+        .map((s) => String(s || '').trim())
+        .filter((s) => s && !/^RUNNING:|^COUNT:/.test(s));
+      return res.json({ ok: true, sshHost, sshUser, running, count, duplicate: count > 1, processes: lines.slice(0, 20), stderr: String(stderr || '').trim() });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
@@ -602,19 +609,26 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
       if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
 
-      const script = "if pgrep -af 'peppymeter|PeppyMeter|peppy_meter' >/tmp/np-peppy-ps-before.txt 2>&1; then echo BEFORE:1; else echo BEFORE:0; fi; "
+      const script = "pgrep -af 'peppymeter|PeppyMeter|peppy_meter' >/tmp/np-peppy-ps-before.txt 2>&1 || true; "
+        + "beforeCnt=$(grep -c . /tmp/np-peppy-ps-before.txt 2>/dev/null || echo 0); "
+        + "echo BEFORE:$([ \"$beforeCnt\" -gt 0 ] && echo 1 || echo 0); echo BEFORE_COUNT:$beforeCnt; "
+        + "if [ \"$beforeCnt\" -gt 1 ]; then pkill -f 'peppymeter|PeppyMeter|peppy_meter' >/tmp/np-peppy-kill.log 2>&1 || true; sleep 1; fi; "
         + "(sudo -n systemctl restart peppymeter.service || sudo -n systemctl restart peppymeter || systemctl restart peppymeter.service || systemctl restart peppymeter || true) >/tmp/np-peppy-start.log 2>&1; "
-        + "sleep 1; if pgrep -af 'peppymeter|PeppyMeter|peppy_meter' >/tmp/np-peppy-ps-after.txt 2>&1; then echo AFTER:1; else echo AFTER:0; fi; "
+        + "sleep 1; pgrep -af 'peppymeter|PeppyMeter|peppy_meter' >/tmp/np-peppy-ps-after.txt 2>&1 || true; "
+        + "afterCnt=$(grep -c . /tmp/np-peppy-ps-after.txt 2>/dev/null || echo 0); "
+        + "echo AFTER:$([ \"$afterCnt\" -gt 0 ] && echo 1 || echo 0); echo AFTER_COUNT:$afterCnt; "
         + "echo START_LOG_BEGIN; cat /tmp/np-peppy-start.log 2>/dev/null || true; echo START_LOG_END; cat /tmp/np-peppy-ps-after.txt 2>/dev/null || true";
       const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 15000 });
       const out = String(stdout || '');
       const beforeRunning = /BEFORE:1/.test(out);
       const running = /AFTER:1/.test(out);
+      const beforeCount = Number((out.match(/BEFORE_COUNT:(\d+)/)?.[1] || '0')) || 0;
+      const count = Number((out.match(/AFTER_COUNT:(\d+)/)?.[1] || '0')) || 0;
       const psLines = out
         .split(/\r?\n/)
         .map((s) => String(s || '').trim())
-        .filter((s) => s && !/^BEFORE:|^AFTER:|^START_LOG_BEGIN$|^START_LOG_END$/.test(s));
-      return res.json({ ok: true, sshHost, sshUser, beforeRunning, running, processes: psLines.slice(0, 20), stderr: String(stderr || '').trim() });
+        .filter((s) => s && !/^BEFORE:|^AFTER:|^BEFORE_COUNT:|^AFTER_COUNT:|^START_LOG_BEGIN$|^START_LOG_END$/.test(s));
+      return res.json({ ok: true, sshHost, sshUser, beforeRunning, beforeCount, running, count, duplicate: count > 1, processes: psLines.slice(0, 20), stderr: String(stderr || '').trim() });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
