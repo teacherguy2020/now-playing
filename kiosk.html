@@ -29,11 +29,22 @@
       };
 
       try {
-        localStorage.setItem(KIOSK_PROFILE_KEY, JSON.stringify({
+        const effective = {
           theme: resolved.theme || 'dark',
           colorPreset: resolved.colorPreset || 'ocean',
           recentSource: resolved.recentSource || 'albums',
           ts: Date.now(),
+        };
+        localStorage.setItem(KIOSK_PROFILE_KEY, JSON.stringify(effective));
+        // Keep controller/mobile profile in sync so all kiosk internal pages inherit theme/palette.
+        localStorage.setItem('nowplaying.mobile.profile.v1', JSON.stringify({
+          devicePreset:'iphone17',
+          theme: effective.theme,
+          layout:'home-rail',
+          showRecent:true,
+          recentSource: effective.recentSource,
+          colorPreset: effective.colorPreset,
+          recentCount:18
         }));
       } catch {}
 

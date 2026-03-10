@@ -84,6 +84,25 @@
       const stat=document.getElementById('stat');
       const preview=document.getElementById('preview');
       let key='';
+      const persistProfile=()=>{
+        const profile = {
+          theme: themeSel.value || 'dark',
+          colorPreset: colorPreset || 'ocean',
+          recentSource: recentSel.value || 'albums'
+        };
+        try {
+          localStorage.setItem('nowplaying.kiosk.profile.v1', JSON.stringify({ ...profile, ts: Date.now() }));
+          localStorage.setItem('nowplaying.mobile.profile.v1', JSON.stringify({
+            devicePreset:'iphone17',
+            theme: profile.theme,
+            layout:'home-rail',
+            showRecent:true,
+            recentSource: profile.recentSource,
+            colorPreset: profile.colorPreset,
+            recentCount:18
+          }));
+        } catch {}
+      };
       const buildRel=()=>{
         const u=new URL(sizeSel.value, 'http://x.local/');
         u.searchParams.set('theme', themeSel.value);
@@ -103,6 +122,12 @@
         setSwatch(String(b.dataset.c||'ocean'));
         refreshPreview();
       });
+      try {
+        const applied = JSON.parse(localStorage.getItem('nowplaying.kiosk.profile.v1') || '{}') || {};
+        if (applied.theme === 'light' || applied.theme === 'dark') themeSel.value = applied.theme;
+        if (applied.recentSource) recentSel.value = String(applied.recentSource);
+        if (applied.colorPreset) colorPreset = String(applied.colorPreset);
+      } catch {}
       setSwatch(colorPreset);
 
       sizeSel.addEventListener('change', refreshPreview);
@@ -126,6 +151,7 @@
           const r=await fetch(`${api}/config/moode/browser-url`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify({url,reason:'kiosk-designer-push'})});
           const j=await r.json().catch(()=>({}));
           if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`);
+          persistProfile();
           stat.textContent=`Pushed: ${url}`;
         }catch(e){stat.textContent=`Push failed: ${e?.message||e}`}
         finally{pushBtn.disabled=false; pushBtn.textContent='Push to moOde';}

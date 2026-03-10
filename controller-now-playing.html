@@ -730,7 +730,7 @@
 
           document.body.classList.remove('cnp-ready');
           document.body.classList.add('cnp-exit');
-          setTimeout(() => { location.href = href; }, 170);
+          setTimeout(() => { const embedded = new URL(location.href).searchParams.get('embedded') === '1'; if (embedded) { try { window.parent?.postMessage({ type:'np-kiosk-hide-pane' }, '*'); } catch {} return; } location.href = href; }, 170);
         });
       } catch {}
     </script>

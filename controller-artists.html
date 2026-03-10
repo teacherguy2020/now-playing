@@ -127,26 +127,58 @@
       const p = String(name||'ocean').toLowerCase();
       const modeRaw = String(themeMode||'auto').toLowerCase();
       const isLight = modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
-      const map = {
-        ocean:  { accent:'#4aa8ff', bg:'#0b111c', line:'#1f2a3d' },
-        violet: { accent:'#a78bfa', bg:'#120f1f', line:'#32284a' },
-        mint:   { accent:'#34d399', bg:'#0b1514', line:'#21423f' },
-        amber:  { accent:'#fbbf24', bg:'#171208', line:'#4a3720' },
-        black:  { accent:'#f5f5f5', bg:'#050505', line:'#222222' },
-        orange: { accent:'#ff7a1a', bg:'#16100a', line:'#4a2f1c' },
+            const map = {
+        ocean:    { accent:'#4aa8ff', bg:'#0b111c', line:'#1f2a3d' },
+        violet:   { accent:'#a78bfa', bg:'#120f1f', line:'#32284a' },
+        mint:     { accent:'#34d399', bg:'#0b1514', line:'#21423f' },
+        amber:    { accent:'#fbbf24', bg:'#171208', line:'#4a3720' },
+        black:    { accent:'#f5f5f5', bg:'#050505', line:'#222222' },
+        orange:   { accent:'#ff7a1a', bg:'#16100a', line:'#4a2f1c' },
+        midnight: { accent:'#7aa2ff', bg:'#070b14', line:'#202a3f' },
+        slate:    { accent:'#93a4bd', bg:'#0e131b', line:'#2f3c4d' },
+        mono:     { accent:'#d8d8d8', bg:'#0b0b0b', line:'#2d2d2d' },
+        sunset:   { accent:'#ff8f4d', bg:'#1b110d', line:'#5b3a2d' },
+        sunrise:  { accent:'#ffbf47', bg:'#1a130a', line:'#5a4523' },
+        rose:     { accent:'#fb7185', bg:'#1a0d14', line:'#5b2b3f' },
+        lavender: { accent:'#c4b5fd', bg:'#120d1e', line:'#3d3158' },
+        emerald:  { accent:'#34d399', bg:'#081511', line:'#1f4a3e' },
+        forest:   { accent:'#4ade80', bg:'#0a150d', line:'#2d4f36' },
       };
       const d = map[p] || map.ocean;
-      const lightMap = {
-        ocean:  { bg:'#eef5ff', line:'#c8d7ee', text:'#0b0f17', muted:'#3f5673' },
-        violet: { bg:'#f5f0ff', line:'#d9cdf1', text:'#0b0f17', muted:'#52436e' },
-        mint:   { bg:'#eefcf7', line:'#c7e8dd', text:'#0b0f17', muted:'#3d5f58' },
-        amber:  { bg:'#fff8ea', line:'#ead8b0', text:'#0b0f17', muted:'#65532e' },
-        black:  { bg:'#f2f4f8', line:'#d4dae4', text:'#0b0f17', muted:'#4b5567', accent:'#111111' },
-        orange: { bg:'#fff3ea', line:'#ebcfbe', text:'#0b0f17', muted:'#684937' },
+            const lightMap = {
+        ocean:    { bg:'#eef5ff', line:'#c8d7ee', text:'#0b0f17', muted:'#3f5673' },
+        violet:   { bg:'#f5f0ff', line:'#d9cdf1', text:'#0b0f17', muted:'#52436e' },
+        mint:     { bg:'#eefcf7', line:'#c7e8dd', text:'#0b0f17', muted:'#3d5f58' },
+        amber:    { bg:'#fff8ea', line:'#ead8b0', text:'#0b0f17', muted:'#65532e' },
+        black:    { bg:'#f2f4f8', line:'#d4dae4', text:'#0b0f17', muted:'#4b5567', accent:'#111111' },
+        orange:   { bg:'#fff3ea', line:'#ebcfbe', text:'#0b0f17', muted:'#684937' },
+        midnight: { bg:'#edf2ff', line:'#cbd5f1', text:'#0b0f17', muted:'#415172' },
+        slate:    { bg:'#f1f5f9', line:'#d0d8e2', text:'#0b0f17', muted:'#4a5567' },
+        mono:     { bg:'#f4f4f5', line:'#dadade', text:'#0b0f17', muted:'#52525b' },
+        sunset:   { bg:'#fff4ee', line:'#efd0c2', text:'#0b0f17', muted:'#6b4d3e' },
+        sunrise:  { bg:'#fff7ea', line:'#ecd7b0', text:'#0b0f17', muted:'#6a572f' },
+        rose:     { bg:'#fff1f5', line:'#f2cdd8', text:'#0b0f17', muted:'#6f4454' },
+        lavender: { bg:'#f6f3ff', line:'#ddd3fb', text:'#0b0f17', muted:'#534675' },
+        emerald:  { bg:'#ecfdf5', line:'#c7e9d8', text:'#0b0f17', muted:'#3f6257' },
+        forest:   { bg:'#eef9f0', line:'#cde3d0', text:'#0b0f17', muted:'#44614a' },
       };
-      const l = lightMap[p] || lightMap.ocean;
+            const l = lightMap[p] || lightMap.ocean;
+      const blendHex = (base, tint, ratio=0.20)=>{
+        const b = String(base||'').trim().match(/^#([0-9a-f]{6})$/i);
+        const t = String(tint||'').trim().match(/^#([0-9a-f]{6})$/i);
+        if (!b || !t) return base;
+        const bn = parseInt(b[1],16), tn = parseInt(t[1],16);
+        let br=(bn>>16)&255, bg=(bn>>8)&255, bb=bn&255;
+        const tr=(tn>>16)&255, tg=(tn>>8)&255, tb=tn&255;
+        const k = Math.max(0, Math.min(1, ratio));
+        br = Math.round(br + (tr-br)*k);
+        bg = Math.round(bg + (tg-bg)*k);
+        bb = Math.round(bb + (tb-bb)*k);
+        return `#${br.toString(16).padStart(2,'0')}${bg.toString(16).padStart(2,'0')}${bb.toString(16).padStart(2,'0')}`;
+      };
+      const accent = (l.accent || d.accent);
       const t = isLight
-        ? { accent: (l.accent || d.accent), ...l }
+        ? { accent, ...l, bg: blendHex(l.bg, accent, 0.20) }
         : { ...d, text:'#f3f6ff', muted:'#9eb3d6' };
       const r = document.documentElement;
       r.style.setProperty('--accent', t.accent);
@@ -156,10 +188,23 @@
       r.style.setProperty('--muted', t.muted || '#9eb3d6');
     }
     (async ()=>{
+      const __u = new URL(location.href);
+      const qColor = String(__u.searchParams.get('colorPreset') || '').trim().toLowerCase();
+      const qTheme = String(__u.searchParams.get('theme') || '').trim().toLowerCase();
+      let lsColor = '';
+      let lsTheme = '';
+      try {
+        const p = JSON.parse(localStorage.getItem('nowplaying.mobile.profile.v1') || '{}') || {};
+        lsColor = String(p?.colorPreset || '').trim().toLowerCase();
+        lsTheme = String(p?.theme || '').trim().toLowerCase();
+      } catch {}
+      __npApplyPalette(qColor || lsColor || 'ocean', qTheme || lsTheme || 'dark');
       try {
         const r = await fetch(`${__npBase}/config/controller-profile`, { cache:'no-store' });
         const j = await r.json().catch(()=>({}));
-        __npApplyPalette(String(j?.profile?.colorPreset || 'ocean'), String(j?.profile?.theme || 'auto'));
+        const sColor = String(j?.profile?.colorPreset || 'ocean').trim().toLowerCase();
+        const sTheme = String(j?.profile?.theme || 'dark').trim().toLowerCase();
+        __npApplyPalette(qColor || lsColor || sColor || 'ocean', qTheme || lsTheme || sTheme || 'dark');
       } catch {}
     })();
 
@@ -361,7 +406,7 @@
       if (__backNavBusy) return;
       __backNavBusy = true;
       document.body.classList.add('nav-backwarding');
-      setTimeout(()=>{ if(history.length>1) history.back(); else location.href='controller.html'; }, 170);
+      setTimeout(()=>{ const embedded = new URL(location.href).searchParams.get('embedded') === '1'; if (embedded) { try { window.parent?.postMessage({ type:'np-kiosk-hide-pane' }, '*'); } catch {} return; } if(history.length>1) history.back(); else location.href='controller.html'; }, 170);
     });
 
     (async ()=>{

@@ -126,17 +126,24 @@
     body.kiosk1280 .kioskCtl select, body.kiosk1280 .kioskCtl button{height:30px;border:1px solid #2b3f63;border-radius:8px;background:#0e1830;color:#e8efff;padding:0 10px;font-size:13px}
     body.kiosk1280 .kioskCtl .grow{flex:1}
     body.kiosk1280 .kioskCtl .stat{font-size:12px;color:#9eb0d7;max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    body.kiosk1280 #kioskCanvas{display:grid;grid-template-columns:332px 300px minmax(0,1fr);grid-template-rows:auto 1fr;grid-template-areas:'np search recent' 'np list recent';column-gap:2px;row-gap:8px;overflow:hidden;padding:8px 10px 10px;border:1px solid rgba(70,98,145,.55);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);background:linear-gradient(180deg,#0b1324,#0a1220)}
+    body.kiosk1280 #kioskCanvas{display:grid;grid-template-columns:332px 300px minmax(0,1fr);grid-template-rows:auto 1fr;grid-template-areas:'np search recent' 'np list recent';column-gap:7px;row-gap:8px;overflow:hidden;padding:8px 10px 10px;border:1px solid rgba(70,98,145,.55);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);background:linear-gradient(180deg,#0b1324,#0a1220)}
     body.kiosk1280 .npTap{grid-area:np;min-height:0;margin-right:-8px}
     body.kiosk1280 .quickWrap{grid-area:search;margin:0}
     body.kiosk1280 #libraryList{grid-area:list;margin:0;overflow:auto;min-height:0;padding-right:4px}
-    body.kiosk1280 .recentWrap{grid-area:recent;display:flex;flex-direction:column;min-height:0;overflow:hidden}
-    body.kiosk1280 .recentTitle{font-size:18px;margin:2px 0 8px;padding-left:0}
+    body.kiosk1280 .recentWrap{grid-area:recent;display:flex;flex-direction:column;min-height:0;overflow:hidden;position:relative}
+    body.kiosk1280 .recentTitle{font-size:18px;margin:2px 0 8px;padding-left:5px}
     body.kiosk1280 .railModeBtn{display:none}
     body.kiosk1280 .rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 24px)/4);grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;padding:0;overflow-x:auto;overflow-y:hidden;align-content:start}
+    body.kiosk1280 .kPane{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface,#0b1324);border:1px solid var(--line,#1f2a3d);border-radius:10px;overflow:hidden;transform:translateX(108%);opacity:0;pointer-events:none;transition:transform .24s ease,opacity .2s ease}
+    body.kiosk1280 .kPane.open{transform:translateX(0);opacity:1;pointer-events:auto}
+    body.kiosk1280 .recentWrap.paneOpen #recentTitle,
+    body.kiosk1280 .recentWrap.paneOpen #recentRail,
+    body.kiosk1280 .recentWrap.paneOpen #recentPeekRail,
+    body.kiosk1280 .recentWrap.paneOpen #railModeBtn{opacity:0;pointer-events:none;transition:opacity .12s ease}
+    body.kiosk1280 .kPaneIf{flex:1;width:100%;border:0;background:transparent}
     body.kiosk1280 .thumb{min-width:0;width:auto}
     body.kiosk1280 .thumb img, body.kiosk1280 .ph{width:90%;height:auto;aspect-ratio:1/1;display:block;margin:0 auto}
-    body.kiosk1280 .thumb .cap{font-size:12px;white-space:normal;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    body.kiosk1280 .thumb .cap{font-size:12px;white-space:normal;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding-left:5px}
     body.kiosk1280 .row{padding:8px 0;grid-template-columns:28px 1fr 14px;gap:8px}
     body.kiosk1280 .row .lbl{font-size:19px}
     body.kiosk1280 .title{font-size:17px;margin-bottom:6px}
@@ -192,14 +199,14 @@
   </div>
 
   <ul class="list" id="libraryList">
-    <li class="row" data-page="controller-playlists.html"><span class="ico">♫</span><span class="lbl">Playlists</span><span class="chev">›</span></li>
-    <li class="row" data-page="controller-artists.html"><span class="ico ico-mic" aria-hidden="true"></span><span class="lbl">Artists</span><span class="chev">›</span></li>
-    <li class="row" data-page="controller-albums.html"><span class="ico ico-album" aria-hidden="true"></span><span class="lbl">Albums</span><span class="chev">›</span></li>
-    <li class="row" data-page="controller-genres.html"><span class="ico ico-genre" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10V4h6l12 12l-6 6L3 10zm4-2.5A1.5 1.5 0 1 0 7 10.5A1.5 1.5 0 0 0 7 7.5z"/></svg></span><span class="lbl">Genres</span><span class="chev">›</span></li>
-    <li class="row" data-page="controller-podcasts.html"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11.5a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 0 0 0-3.4zm0-4.7a6.4 6.4 0 0 0-6.4 6.4h2.2a4.2 4.2 0 1 1 8.4 0h2.2A6.4 6.4 0 0 0 12 6.8zm0-3.6A10 10 0 0 0 2 13.2h2.2a7.8 7.8 0 0 1 15.6 0H22A10 10 0 0 0 12 3.2zM11 17h2v3h-2z"/></svg></span><span class="lbl">Podcasts</span><span class="chev">›</span></li>
-    <li class="row" data-page="controller-radio.html"><span class="ico ico-radio" aria-hidden="true"></span><span class="lbl">Radio</span><span class="chev">›</span></li>
-    <li class="row" data-page="controller-queue-wizard.html"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19l10.6-10.6l1.4 1.4L6.4 20.4L5 19zm9.8-13.2l1.1-2.8l1.1 2.8l2.8 1.1l-2.8 1.1l-1.1 2.8l-1.1-2.8L12 6.9l2.8-1.1zM20 12l.8-2l.8 2l2 .8l-2 .8l-.8 2l-.8-2l-2-.8l2-.8zM10 3l.6-1.5L11.2 3l1.5.6l-1.5.6L10.6 5.8L10 4.2L8.5 3.6L10 3z"/></svg></span><span class="lbl">Queue Wizard</span><span class="chev">›</span></li>
-    <li class="row" data-page="controller-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-playlists.html"><span class="ico">♫</span><span class="lbl">Playlists</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-artists.html"><span class="ico ico-mic" aria-hidden="true"></span><span class="lbl">Artists</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-albums.html"><span class="ico ico-album" aria-hidden="true"></span><span class="lbl">Albums</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-genres.html"><span class="ico ico-genre" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10V4h6l12 12l-6 6L3 10zm4-2.5A1.5 1.5 0 1 0 7 10.5A1.5 1.5 0 0 0 7 7.5z"/></svg></span><span class="lbl">Genres</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-podcasts.html"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11.5a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 0 0 0-3.4zm0-4.7a6.4 6.4 0 0 0-6.4 6.4h2.2a4.2 4.2 0 1 1 8.4 0h2.2A6.4 6.4 0 0 0 12 6.8zm0-3.6A10 10 0 0 0 2 13.2h2.2a7.8 7.8 0 0 1 15.6 0H22A10 10 0 0 0 12 3.2zM11 17h2v3h-2z"/></svg></span><span class="lbl">Podcasts</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-radio.html"><span class="ico ico-radio" aria-hidden="true"></span><span class="lbl">Radio</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-queue-wizard.html"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19l10.6-10.6l1.4 1.4L6.4 20.4L5 19zm9.8-13.2l1.1-2.8l1.1 2.8l2.8 1.1l-2.8 1.1l-1.1 2.8l-1.1-2.8L12 6.9l2.8-1.1zM20 12l.8-2l.8 2l2 .8l-2 .8l-.8 2l-.8-2l-2-.8l2-.8zM10 3l.6-1.5L11.2 3l1.5.6l-1.5.6L10.6 5.8L10 4.2L8.5 3.6L10 3z"/></svg></span><span class="lbl">Queue Wizard</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue</span><span class="chev">›</span></li>
   </ul>
 
   <div class="recentWrap">
@@ -209,6 +216,9 @@
     <div class="recentTitle" id="recentTitle">Recently Added <span id="railTitleSpin" class="titleSpin" hidden></span></div>
     <div class="rail" id="recentRail"></div>
     <div class="rail peekRail" id="recentPeekRail"></div>
+    <div class="kPane" id="kioskPane" aria-hidden="true">
+      <iframe class="kPaneIf" id="kioskPaneFrame" src="about:blank" loading="eager"></iframe>
+    </div>
   </div>
 
   <div class="miniMenu" id="recentAlbumMenu">
@@ -268,6 +278,8 @@
       if (qTheme) profile.theme = qTheme;
       if (qColor) profile.colorPreset = qColor;
       if (qRecent) profile.recentSource = qRecent;
+      // Persist effective profile so embedded controller subpages match theme/palette.
+      try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile)); } catch {}
     }
     function applyProfileUi(){
       const show = profile.showRecent !== false;
@@ -540,18 +552,39 @@
     const recentWrap=document.querySelector('.recentWrap');
     const recentTitleEl=document.getElementById('recentTitle');
     const railModeBtn=document.getElementById('railModeBtn');
+    const kioskPane=document.getElementById('kioskPane');
+    const kioskPaneFrame=document.getElementById('kioskPaneFrame');
+
     const recentLimit=()=> IS_KIOSK_1280 ? 16 : Math.max(6,Math.min(30,Number(profile.recentCount||18)));
     let recentItems=[];
     let recentActiveRadioUrl='';
     let recentMenuCtx={kind:'album',album:'',artist:'',art:'',playlist:'',title:'',rss:''};
     let recentModalCtx={kind:'album',album:'',artist:'',art:'',playlist:'',tracks:[]};
     let recentAlbumsCache = { ts: 0, albums: [] };
+    let recentAlbumsRefreshInFlight = null;
 
     async function getRecentAlbumsForRail(){
       const now = Date.now();
-      if (Array.isArray(recentAlbumsCache.albums) && recentAlbumsCache.albums.length && (now - Number(recentAlbumsCache.ts || 0) < 120000)) {
+      const hasCached = Array.isArray(recentAlbumsCache.albums) && recentAlbumsCache.albums.length;
+      const isFresh = hasCached && (now - Number(recentAlbumsCache.ts || 0) < 120000);
+      if (isFresh) return recentAlbumsCache.albums;
+
+      // Fast path: return stale cache immediately; refresh in background.
+      if (hasCached) {
+        if (!recentAlbumsRefreshInFlight) {
+          recentAlbumsRefreshInFlight = (async ()=>{
+            try {
+              const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'default', headers:reqHeaders(false) }, 9000);
+              const albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
+              if (albums.length) recentAlbumsCache = { ts: Date.now(), albums };
+            } catch {}
+            finally { recentAlbumsRefreshInFlight = null; }
+          })();
+        }
         return recentAlbumsCache.albums;
       }
+
+      // Cold-start path.
       const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'default', headers:reqHeaders(false) }, 9000);
       const albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
       recentAlbumsCache = { ts: now, albums };
@@ -757,8 +790,14 @@
         recentItems = top.map((a)=>{
           const album=String(a?.album||'').trim() || '(album)';
           const artist=String(a?.artist||'').trim();
+          const addedTs=Number(a?.addedTs||0)||0;
           const artRaw=String(a?.thumbUrl||'').trim();
-          const art=artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
+          let art=artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
+          // New albums can briefly show stale/default art; apply bounded cache-bust only for very recent adds.
+          if (addedTs && (Date.now() - addedTs) < (20 * 60 * 1000)) {
+            const bucket = Math.floor(Date.now() / 120000); // rotates every 2 min
+            art = `${art}${art.includes('?') ? '&' : '?'}ra=${bucket}`;
+          }
           return { kind:'album', album, artist, art };
         });
         recentItems.forEach((a,i)=>{
@@ -956,6 +995,31 @@
     function openPage(page){
       const p = String(page || '').trim();
       if (!p) return;
+      if (IS_KIOSK_1280 && !IS_KIOSK_EDITOR && p.startsWith('kiosk-')) {
+        const map = {
+          'kiosk-now-playing.html':'controller-now-playing.html',
+          'kiosk-playlists.html':'controller-playlists.html',
+          'kiosk-artists.html':'controller-artists.html',
+          'kiosk-albums.html':'controller-albums.html',
+          'kiosk-genres.html':'controller-genres.html',
+          'kiosk-podcasts.html':'controller-podcasts.html',
+          'kiosk-radio.html':'controller-radio.html',
+          'kiosk-queue-wizard.html':'controller-queue-wizard.html',
+          'kiosk-queue.html':'controller-queue.html',
+        };
+        const target = map[p] || 'controller-playlists.html';
+        recentWrap?.classList.add('paneOpen');
+        if (kioskPaneFrame) {
+          const u = new URL(target, location.href);
+          u.searchParams.set('embedded', '1');
+          u.searchParams.set('theme', String(profile?.theme || 'dark'));
+          u.searchParams.set('colorPreset', String(profile?.colorPreset || 'ocean'));
+          kioskPaneFrame.src = `${u.pathname.replace(/^\//,'')}${u.search}`;
+        }
+        kioskPane?.classList.add('open');
+        kioskPane?.setAttribute('aria-hidden','false');
+        return;
+      }
       if (p.startsWith('controller-')) {
         navigateWithSlide(p);
         return;
@@ -1359,6 +1423,18 @@
 
     document.querySelectorAll('.row[data-page]').forEach((row)=>{
       row.addEventListener('click', ()=>openPage(row.getAttribute('data-page') || ''));
+    });
+
+    const closeKioskPane = ()=>{
+      kioskPane?.classList.remove('open');
+      kioskPane?.setAttribute('aria-hidden','true');
+      recentWrap?.classList.remove('paneOpen');
+      setTimeout(()=>{ try { if (kioskPaneFrame) kioskPaneFrame.src = 'about:blank'; } catch {} }, 220);
+    };
+    window.addEventListener('message', (ev)=>{
+      const d = ev?.data || {};
+      if (!d || typeof d !== 'object') return;
+      if (String(d.type || '') === 'np-kiosk-hide-pane') closeKioskPane();
     });
 
     initKioskControls();
