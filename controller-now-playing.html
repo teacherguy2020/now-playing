@@ -229,6 +229,9 @@
         0 1px 0 rgba(255,255,255,.10) inset,
         0 0 12px rgba(34,197,94,.22);
     }
+    body.phone-ui #phone-controls #btn-shuffle.on{
+      color:#22c55e !important;
+    }
     body.phone-ui #phone-controls #btn-play.on::after{
       opacity:0;
       animation:none;
@@ -853,7 +856,6 @@
       const spin = ring?.querySelector('.spin');
       const btnPlay = document.getElementById('btn-play');
       if (!host || !ring) return;
-      const focusIds = ['btn-prev','btn-play','btn-next','btn-repeat','btn-shuffle'];
       let activeBtn = btnPlay || host.querySelector('button.ctl');
 
       function positionRing(btn){
@@ -873,11 +875,15 @@
       function syncPlaySymbol(){
         if (!symbol || !btnPlay) return;
         const playing = btnPlay.classList.contains('on');
+        const playIsActive = !!(activeBtn && activeBtn.id === 'btn-play');
         symbol.textContent = playing ? '❚❚' : '▶';
         symbol.style.transform = playing ? 'translateX(0)' : 'translateX(1px)';
         symbol.style.color = playing ? '#22c55e' : '#e9eef6';
-        symbol.style.opacity = (activeBtn && activeBtn.id === 'btn-play') ? '1' : '.0';
-        if (spin) spin.style.animationPlayState = playing ? 'running' : 'paused';
+        symbol.style.opacity = playIsActive ? '1' : '.0';
+        if (spin) {
+          spin.style.opacity = playIsActive ? '1' : '0';
+          spin.style.animationPlayState = (playIsActive && playing) ? 'running' : 'paused';
+        }
       }
 
       function setActive(btn){
@@ -889,8 +895,7 @@
       host.addEventListener('click', (ev) => {
         const btn = ev.target.closest('button.ctl');
         if (!btn) return;
-        const id = String(btn.id || '');
-        if (focusIds.includes(id)) setActive(btn);
+        if (btn.id === 'btn-play') setActive(btn);
         syncPlaySymbol();
       }, { passive:true });
 
