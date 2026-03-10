@@ -2227,6 +2227,7 @@
       }
 
       let lastArt = '';
+      let lastTrackSig = '';
       let currentTrackFile = '';
       let currentIsFavorite = false;
       let currentPersonnelText = '';
@@ -2405,6 +2406,8 @@
           const bd = String(bdExtract || '').trim();
           const ch = String(chExtract || '').trim();
           const file = String(j?.file || '').trim();
+          const trackSig = String(j?.songid || `${file}|${t}|${a}|${al}`).trim();
+          const trackChanged = !!trackSig && trackSig !== lastTrackSig;
           const peakKey = String(j?.songid || file || `${t}|${a}|${al}`).trim();
           if (peakKey && peakKey !== peakHoldTrackKey) {
             peakHoldTrackKey = peakKey;
@@ -2466,7 +2469,18 @@
           dotFileMeta = (encodedNoCh || compactFallback || 'DIGITAL');
           dotFileMeta2 = [qualityTag || 'DIGITAL', ratingLabel].filter(Boolean).join(' • ');
 
-          const isRadioLike = !!(j?.isRadio || j?.isStream || j?.isAirplay || j?.isUpnp || j?.isPodcast);
+          const fileIsUrl = /^https?:\/\//i.test(file);
+          const fileLooksPodcast = /\/podcasts?\//i.test(file);
+          const stationHint = String(j?.stationName || j?._stationName || j?.radioStationName || '').trim();
+          const streamTitleHint = String(j?.streamTitle || '').trim();
+          const hasAlbumMeta = !!String(j?.album || '').trim();
+          const hasTrackMeta = !!String(j?.title || j?.displayTitle || '').trim() || !!String(j?.artist || j?.displayArtist || '').trim();
+          const isLikelyLocalFile = !!(file && !fileIsUrl && !fileLooksPodcast);
+          const explicitRemote = !!(j?.isAirplay || j?.isUpnp || fileIsUrl || stationHint || streamTitleHint);
+          // Hard rule: local library file path wins over stale isRadio/isStream flags.
+          const isRadioLike = isLikelyLocalFile
+            ? false
+            : !!(j?.isPodcast || fileLooksPodcast || explicitRemote || (j?.isRadio && !hasAlbumMeta && !hasTrackMeta));
           let resolvedRadioStation = '';
           let resolvedRadioLogo = '';
           if (isRadioLike) {
@@ -2510,11 +2524,16 @@
           const stationLogoRaw = String(resolvedRadioLogo || j?.stationLogoUrl || j?.radioLogoUrl || j?.logoUrl || '').trim();
           const artRaw = String(j?.displayArtUrl || (isRadioLike ? (stationLogoRaw || j?.altArtUrl || '') : (j?.albumArtUrl || j?.artUrl || j?.altArtUrl || '')) || '').trim();
           const artUrl = artRaw ? (artRaw.startsWith('http') ? artRaw : `${api}${artRaw}`) : '';
-          if (artUrl !== lastArt) {
-            if (artUrl) art.src = artUrl;
-            else art.removeAttribute('src');
+          if (artUrl !== lastArt || trackChanged) {
+            if (artUrl) {
+              const finalArtUrl = trackChanged
+                ? `${artUrl}${artUrl.includes('?') ? '&' : '?'}tk=${encodeURIComponent(trackSig || String(Date.now()))}`
+                : artUrl;
+              art.src = finalArtUrl;
+            } else art.removeAttribute('src');
             lastArt = artUrl;
           }
+          if (trackChanged) lastTrackSig = trackSig;
 
           currentTrackFile = String(j?.file || '').trim();
           currentIsFavorite = !!j?.isFavorite;
@@ -3007,6 +3026,20 @@
         await refreshPeppyReadiness();
         await pollNowPlaying();
         await pollMeter();
+
+        let peppyImmediateRefreshTimer = 0;
+        const forcePeppyRefresh = () => {
+          try { clearTimeout(peppyImmediateRefreshTimer); } catch {}
+          peppyImmediateRefreshTimer = setTimeout(() => {
+            pollNowPlaying().catch(() => {});
+            pollMeter().catch(() => {});
+            refreshPeppyReadiness().catch(() => {});
+          }, 60);
+        };
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) forcePeppyRefresh(); });
+        window.addEventListener('focus', forcePeppyRefresh);
+        window.addEventListener('pageshow', forcePeppyRefresh);
+
         animate();
         setInterval(pollNowPlaying, kioskMode ? 3000 : 2500);
         setInterval(pollMeter, kioskMode ? 130 : 90);
