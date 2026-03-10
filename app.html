@@ -375,6 +375,7 @@
           <button class="pill" id="webPill" type="button" title="Active web UI endpoint" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Web<span class="hint" id="webHint">loading…</span></button>
           <button class="pill" id="alexaPill" type="button" title="Alexa public domain health" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Alexa<span class="hint" id="alexaHint">unknown</span></button>
           <button class="pill" id="peppyPill" type="button" title="moOde display mode" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Peppy<span class="hint" id="peppyHint">off</span></button>
+          <button class="pill" id="peppyAlsaPill" type="button" title="PeppyALSA driver status" style="cursor:default;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>PeppyALSA<span class="hint" id="peppyAlsaHint">unknown</span></button>
           <button class="pill" id="moodePill" type="button" title="Restart moOde" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>moOde<span class="hint" id="moodeHint">unknown</span></button>
           <button class="pill" id="notifyPill" type="button" title="Pushover track notifications" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="notifyLabel">Notify</span><span class="hint" id="notifyHint">off</span></button>
           <button class="pill" id="scrobblePill" type="button" title="mpdscribble scrobble service" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="scrobbleLabel">Scrobble</span><span class="hint" id="scrobbleHint">off</span></button>
@@ -1837,6 +1838,46 @@
         setPillState('peppyPill', on ? 'ok' : 'off');
       }
 
+      async function refreshPeppyAlsaPill(baseOverride = ''){
+        const hint = document.getElementById('peppyAlsaHint');
+        const host = location.hostname || '10.0.0.233';
+        const base = baseOverride || `${location.protocol}//${host}:3101`;
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/peppyalsa/status`, {
+            headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            cache: 'no-store',
+          }, 9000);
+          const on = !!(r.ok && j?.ok && j?.enabled === true);
+          if (hint) hint.textContent = on ? 'on' : 'off';
+          setPillState('peppyAlsaPill', on ? 'ok' : 'warn');
+          return;
+        } catch {}
+        if (hint) hint.textContent = 'unknown';
+        setPillState('peppyAlsaPill', 'warn');
+      }
+
+      async function ensurePeppyAlsa(baseOverride = '', reason = 'peppy-tab-open'){
+        const host = location.hostname || '10.0.0.233';
+        const base = baseOverride || `${location.protocol}//${host}:3101`;
+        try {
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          await fetchJsonWithTimeout(`${base}/config/moode/peppyalsa/ensure`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ reason }),
+          }, 12000).catch(() => null);
+        } catch {}
+      }
+
       async function togglePeppyFromPill(){
         const currentlyPeppy = (String(peppyModeState || 'webui') === 'peppy');
         const nextMode = currentlyPeppy ? 'webui' : 'peppy';
@@ -1872,6 +1913,7 @@
             }, 5000).catch(() => null);
           } catch {}
           await refreshPeppyPill(base);
+          await refreshPeppyAlsaPill(base);
         } catch (e) {
           console.warn('peppy toggle failed', e?.message || e);
           setPillState('peppyPill', 'bad');
@@ -2076,6 +2118,13 @@
             body: JSON.stringify({ reason: 'push-peppy' }),
           }, 12000).catch(() => null);
 
+          // Defensive: keep PeppyALSA enabled for meter data path.
+          await fetchJsonWithTimeout(`${base}/config/moode/peppyalsa/ensure`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ reason: 'push-peppy' }),
+          }, 12000).catch(() => null);
+
           const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/browser-url`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
@@ -2173,6 +2222,12 @@
         }, 8000);
         if (String(mode || 'peppy').toLowerCase() === 'peppy') {
           await fetchJsonWithTimeout(`${base}/config/moode/peppymeter/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+            body: JSON.stringify({ reason: 'set-display-mode' }),
+          }, 12000).catch(() => null);
+
+          await fetchJsonWithTimeout(`${base}/config/moode/peppyalsa/ensure`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
             body: JSON.stringify({ reason: 'set-display-mode' }),
@@ -2383,6 +2438,7 @@
           setPillState('alexaPill', !axEnabled ? 'off' : (axDomain ? 'ok' : 'warn'));
           setPillState('moodePill', moodeHost ? 'ok' : 'warn');
           await refreshPeppyPill(base);
+          await refreshPeppyAlsaPill(base);
           refreshScreenPill();
 
           const podcastsLink = document.getElementById('podcastsNavLink');
@@ -2405,6 +2461,7 @@
           const ap = document.getElementById('alexaPill');
           if (ap) ap.style.display = 'none';
           await refreshPeppyPill();
+          await refreshPeppyAlsaPill();
           refreshScreenPill();
           scrobbleControlsEnabled = false;
           const sp = document.getElementById('scrobblePill');
@@ -2788,7 +2845,10 @@
         refreshPushPeppyVisibility();
         syncHeroQuickSearchHint();
         updateSavePresetsButtonVisibility();
-        if (safe === 'peppy.html') setTimeout(() => { checkMoodeTargetUrl().catch(() => {}); }, 150);
+        if (safe === 'peppy.html') {
+          setTimeout(() => { checkMoodeTargetUrl().catch(() => {}); }, 150);
+          setTimeout(() => { ensurePeppyAlsa('', 'peppy-tab-open').then(() => refreshPeppyAlsaPill()).catch(() => {}); }, 220);
+        }
         if (!NO_IFRAME_MODE && frame) {
           let src = `${safe}${safe.includes('?') ? '&' : '?'}shellts=${Date.now()}`;
           if (safe === 'peppy.html') {

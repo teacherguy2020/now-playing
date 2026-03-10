@@ -620,6 +620,59 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.get('/config/moode/peppyalsa/status', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const script = "echo PEPPYALSA:$(sudo -n moodeutl -d -gv enable_peppyalsa 2>/dev/null || true); echo ALSA_LOOPBACK:$(sudo -n moodeutl -d -gv alsa_loopback 2>/dev/null || true)";
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 10000 });
+      const out = String(stdout || '');
+      const peppyAlsaRaw = (out.match(/PEPPYALSA:([^\r\n]*)/)?.[1] || '').trim();
+      const alsaLoopbackRaw = (out.match(/ALSA_LOOPBACK:([^\r\n]*)/)?.[1] || '').trim();
+      const enabled = peppyAlsaRaw === '1';
+      return res.json({ ok: true, sshHost, sshUser, enabled, peppyAlsaRaw, alsaLoopbackRaw, stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/moode/peppyalsa/ensure', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const script = "before=$(sudo -n moodeutl -d -gv enable_peppyalsa 2>/dev/null || true); "
+        + "echo BEFORE:$before; "
+        + "if [ \"$before\" != \"1\" ]; then "
+        + "  c=$(mktemp); "
+        + "  curl -fsS -c \"$c\" http://localhost/per-config.php >/dev/null 2>&1 || true; "
+        + "  curl -fsS -b \"$c\" -c \"$c\" -X POST -d 'enable_peppyalsa=1&update_enable_peppyalsa=novalue' http://localhost/per-config.php >/tmp/np-peppyalsa-post.log 2>&1 || true; "
+        + "  rm -f \"$c\"; "
+        + "  sleep 1; "
+        + "fi; "
+        + "after=$(sudo -n moodeutl -d -gv enable_peppyalsa 2>/dev/null || true); "
+        + "loop=$(sudo -n moodeutl -d -gv alsa_loopback 2>/dev/null || true); "
+        + "echo AFTER:$after; echo LOOPBACK:$loop; "
+        + "echo POST_LOG_BEGIN; cat /tmp/np-peppyalsa-post.log 2>/dev/null || true; echo POST_LOG_END";
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 15000 });
+      const out = String(stdout || '');
+      const beforeRaw = (out.match(/BEFORE:([^\r\n]*)/)?.[1] || '').trim();
+      const afterRaw = (out.match(/AFTER:([^\r\n]*)/)?.[1] || '').trim();
+      const loopbackRaw = (out.match(/LOOPBACK:([^\r\n]*)/)?.[1] || '').trim();
+      const enabled = afterRaw === '1';
+      return res.json({ ok: enabled, sshHost, sshUser, beforeRaw, afterRaw, loopbackRaw, changed: beforeRaw !== afterRaw, stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/moode/display', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
