@@ -351,6 +351,7 @@
           <a href="?page=queue-wizard.html" data-page="queue-wizard.html">Queue Wizard</a>
           <a href="?page=radio.html" data-page="radio.html">Radio</a>
           <a href="?page=podcasts.html" id="podcastsNavLink" data-page="podcasts.html">Podcasts</a>
+          <a href="?page=youtube.html" data-page="youtube.html">YouTube</a>
           <a href="?page=peppy.html" id="peppyNavLink" data-page="peppy.html">Peppy</a>
           <a href="?page=player.html" id="playerNavLink" data-page="player.html">Player</a>
           <a href="?page=mobile.html" data-page="mobile.html">Mobile</a>
@@ -400,10 +401,10 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260304-hero-art-bg-toggle"></script>
+  <script src="scripts/hero-transport.js?v=20260310-youtube-streaming-badge3"></script>
   <script>
     (() => {
-      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','peppy.html','player.html','mobile.html','theme.html']);
+      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','youtube.html','peppy.html','player.html','mobile.html','theme.html']);
       const frame = document.getElementById('appFrame');
       const viewWrap = document.getElementById('viewWrap');
       const shellUrl = new URL(location.href);
@@ -1527,11 +1528,16 @@
             const looksIheartBlob = /\btext="[^"]+"|\bsong_spot="[^"]+"|\bspEventID="[^"]+"|\bTPID="\d+"/i.test(artistRaw);
             const iheartText = (artistRaw.match(/\btext="([^"]+)"/i) || [])[1] || '';
             const artistClean = looksIheartBlob ? '' : artistRaw;
-            const artist = (isStreamish
-              ? (displayStation || stationName || derivedStation || 'Radio station')
-              : (artistClean || String(x?.name || '').trim() || '(unknown)'));
             const titleRaw = String(x?.title || '').trim().replace(/\s*\[\d{1,4}\]\s*$/,'').trim();
-            const title = isStreamish ? '' : titleRaw;
+            const isYoutubeStream = !!(x?.isYoutube || (isStreamish && /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(fileRaw)));
+            const artist = isStreamish
+              ? (isYoutubeStream
+                  ? (artistClean || String(x?.stationName || '').trim() || 'YouTube')
+                  : (displayStation || stationName || derivedStation || 'Radio station'))
+              : (artistClean || String(x?.name || '').trim() || '(unknown)');
+            const title = isStreamish
+              ? (isYoutubeStream ? titleRaw : '')
+              : titleRaw;
             const hostFavicon = derivedHost ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(derivedHost)}.ico` : '';
             const hostFaviconAlt = derivedHost ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(derivedHost)}&sz=64` : '';
             const logoName = ((!stationLooksHost ? stationName : '') || displayStation || stationName || '').trim();
@@ -1552,9 +1558,15 @@
             const directLogo = npDirectLogo || mappedLogoByKey || mappedLogoByHost;
             let thumb = '';
             if (isStreamish) {
-              // Queue card policy: for stream/radio rows, always use station branding (never album art).
-              const cachedIcon = String(existingIconByFile.get(fileRaw) || '').trim();
-              thumb = cachedIcon || directLogo || stationLogoByFile || stationLogoByDisplay || stationLogoByDisplayAlt || hostFavicon || hostFaviconAlt || '';
+              if (isYoutubeStream) {
+                thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
+                if (!thumb && head && npQueueHead?.albumArtUrl) thumb = String(npQueueHead.albumArtUrl || '').trim();
+                if (!thumb) thumb = `${base}/art/current.jpg`;
+              } else {
+                // Queue card policy: for stream/radio rows, always use station branding (never album art).
+                const cachedIcon = String(existingIconByFile.get(fileRaw) || '').trim();
+                thumb = cachedIcon || directLogo || stationLogoByFile || stationLogoByDisplay || stationLogoByDisplayAlt || hostFavicon || hostFaviconAlt || '';
+              }
             } else {
               thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
               if (!thumb && nowIsAirplay && fallbackNowArt) thumb = fallbackNowArt;
@@ -1583,15 +1595,17 @@
             const starsInline = (isStreamish || isPodcastItem)
               ? ''
               : `<span class="heroQueueStars heroQueueStarsCtl" data-rating="${rating}" data-file="${encodeURIComponent(fileRaw)}">${[1,2,3,4,5].map((n)=>`<button type="button" class="heroQueueStarBtn ${n<=rating?'on':'off'}" data-rate-file="${encodeURIComponent(fileRaw)}" data-rate-value="${n}" title="Set rating ${n}★">★</button>`).join('')}</span>`;
-            const line1 = isStreamish ? (artist || '(station)') : (title || '(unknown title)');
+            const line1 = isStreamish
+              ? (isYoutubeStream ? (title || artist || 'YouTube Audio Stream') : (artist || '(station)'))
+              : (title || '(unknown title)');
             const line1Html = isStreamish
               ? line1
               : `<button type="button" class="queueTrackLineBtn" data-open-track-meta="1" data-track-title="${encodeURIComponent(line1)}" data-track-artist="${encodeURIComponent(artist)}" data-track-album="${encodeURIComponent(albumTxt)}" data-track-art="${encodeURIComponent(thumb || '')}" data-track-file="${encodeURIComponent(fileRaw)}" data-track-genre="${encodeURIComponent(String(x?.genre || ''))}" data-track-date="${encodeURIComponent(String(x?.date || x?.year || ''))}" data-track-num="${encodeURIComponent(String(x?.track || ''))}" data-track-time="${encodeURIComponent(String(x?.time || x?.duration || ''))}" data-track-rating="${encodeURIComponent(String(rating || 0))}" data-track-personnel="${encodeURIComponent(String(x?.personnelText || x?.performers || x?.personnel || ''))}" data-track-bitrate="${encodeURIComponent(String(x?.bitrate || x?.kbps || ''))}" data-track-samplerate="${encodeURIComponent(String(x?.sampleRate || x?.samplerate || ''))}" data-track-bitdepth="${encodeURIComponent(String(x?.bits || x?.bitDepth || ''))}" data-track-codec="${encodeURIComponent(String(x?.codec || x?.format || ''))}">${line1}</button>`;
             const line2 = isStreamish
-              ? ''
+              ? (isYoutubeStream ? `<div class="heroQueueMeta">${artist || 'YouTube'}</div>` : '')
               : (isPodcastItem
                 ? `<div class="heroQueueMeta">${artist || '(unknown show)'}</div>`
-                : (() => {
+                : (() => { 
                     const artistBtn = `<button type="button" class="queueAlbumLineBtn" data-open-artist-albums="${encodeURIComponent(artist || '')}">${artist || '(unknown artist)'}</button>`;
                     if (albumTxt) {
                       return `<div class="heroQueueMeta">${artistBtn} • <button type="button" class="queueAlbumLineBtn" data-queue-album="${encodeURIComponent(albumTxt)}" data-queue-artist="${encodeURIComponent(artist)}" data-queue-title="${encodeURIComponent(title)}" data-queue-art="${encodeURIComponent(thumb || '')}">${albumWithYear || albumTxt}</button></div>`;

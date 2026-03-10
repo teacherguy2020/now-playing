@@ -737,7 +737,7 @@
     <script src="scripts/index.js"></script>
 
 
-  <script src="scripts/index-ui.js?v=20260305-personnel-empty-msg1"></script>
+  <script src="scripts/index-ui.js?v=20260310-isyoutube-controls2"></script>
 
     <script>
     // Pull-to-refresh (controller pages)
@@ -989,9 +989,10 @@
         if (__albumTapBusy) return;
         const d = (window.lastNowPlayingData || {});
         const streamKind = String(d?.streamKind || '').trim().toLowerCase();
-        const isRadioNow = d?.isRadio === true || (d?.isStream === true && streamKind !== 'upnp') || d?.isAirplay === true || d?.isUpnp === true;
+        const isYoutubeNow = d?.isYoutube === true || streamKind === 'youtube';
+        const isRadioNow = d?.isRadio === true || (d?.isStream === true && streamKind !== 'upnp' && !isYoutubeNow) || d?.isAirplay === true || d?.isUpnp === true;
         const linkUrl = String(albumLink.getAttribute('href') || '').trim();
-        const streamUrl = String(d?.radioAppleMusicUrl || d?.radioItunesUrl || d?.itunesUrl || '').trim();
+        const streamUrl = String(d?.shareUrl || d?.radioTrackUrl || d?.radioAppleMusicUrl || d?.radioItunesUrl || d?.itunesUrl || '').trim();
         const externalUrl = linkUrl || streamUrl;
         const tapMode = String(albumLink.dataset.npTapMode || '').trim();
 
@@ -1002,7 +1003,13 @@
             ev.stopPropagation();
             if (typeof ev.stopImmediatePropagation==='function') ev.stopImmediatePropagation();
           }
-          try { location.href = (externalUrl || linkUrl); } catch {}
+          try {
+            const u = String(externalUrl || linkUrl || '').trim();
+            if (u) {
+              const w = window.open(u, '_blank', 'noopener,noreferrer');
+              if (!w) location.href = u;
+            }
+          } catch {}
           return;
         }
 
@@ -1028,7 +1035,8 @@
       function syncAlbumTapState(){
         const d = (window.lastNowPlayingData || {});
         const streamKind = String(d?.streamKind || '').trim().toLowerCase();
-        const isRadioNow = d?.isRadio === true || (d?.isStream === true && streamKind !== 'upnp') || d?.isAirplay === true || d?.isUpnp === true;
+        const isYoutubeNow = d?.isYoutube === true || streamKind === 'youtube';
+        const isRadioNow = d?.isRadio === true || (d?.isStream === true && streamKind !== 'upnp' && !isYoutubeNow) || d?.isAirplay === true || d?.isUpnp === true;
         const linkUrl = String(albumLink.getAttribute('href') || '').trim();
         const hasStreamFlags = (typeof d?.isStream === 'boolean') || (typeof d?.isAirplay === 'boolean') || (typeof d?.isUpnp === 'boolean') || (typeof d?.isRadio === 'boolean');
         const isLocal = hasStreamFlags ? !isRadioNow : false;
@@ -1037,7 +1045,7 @@
           albumLink.dataset.npTapMode = 'external';
           albumLink.style.pointerEvents = 'auto';
           albumLink.style.cursor = 'pointer';
-          albumLink.title = 'Open in Apple Music';
+          albumLink.title = isYoutubeNow ? 'Open on YouTube' : 'Open in Apple Music';
           return;
         }
 

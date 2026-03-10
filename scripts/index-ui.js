@@ -563,6 +563,13 @@ function isUpnpMode(data) {
          (data?.isUpnp === true || getStreamKind(data) === 'upnp');
 }
 
+function isYouTubeStreamMode(data) {
+  if (data?.isYoutube === true) return true;
+  const f = String(data?.file || '').trim();
+  const k = getStreamKind(data);
+  return (data?.isStream === true) && (k === 'youtube' || /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(f));
+}
+
 function ratingsAllowedNow() {
   // ratings for local music and Alexa mode; still disabled for pause/airplay/podcast.
   return !pauseMode && !currentIsAirplay && !currentIsPodcast && (!currentIsStream || currentAlexaMode);
@@ -1283,7 +1290,7 @@ function fetchNowPlaying() {
       
       const streamKind = String(data.streamKind || '').trim().toLowerCase();
       const isUpnp  = isStream && (data.isUpnp === true || streamKind === 'upnp');
-      const isRadio = isStream && !isUpnp;
+      const isRadio = isStream && !isUpnp && !isYouTubeStreamMode(data);
       
       if (isRadio) {
         const stationKey = `${data.file}|${data.album || ''}`;
@@ -1348,11 +1355,12 @@ function fetchNowPlaying() {
       // Next Up visibility rules
       // - If footer is active, do NOT clear the row
       // - Otherwise hide for pause / airplay / stream
+      const isYouTubeStream = isYouTubeStreamMode(data);
       if (
         ENABLE_NEXT_UP &&
         !wantsFooterRow &&
         !currentAlexaMode &&
-        (pauseMode || isAirplay || isStream)
+        (pauseMode || isAirplay || (isStream && !isYouTubeStream))
       ) {
         clearNextUpUI();
       }
@@ -1510,8 +1518,13 @@ function fetchNowPlaying() {
         console.warn('[radio updateUI] failed:', e);
       }
 
-      if (ENABLE_NEXT_UP && currentAlexaMode && !pauseMode && !isAirplay) {
-        updateNextUp({ isAirplay, isStream, data });
+      if (ENABLE_NEXT_UP && !pauseMode && !isAirplay && (currentAlexaMode || isYouTubeStream)) {
+        const now = Date.now();
+        const due = (now - (lastNextUpFetchTs || 0)) >= NEXT_UP_REFRESH_MS;
+        if (currentAlexaMode || trackChanged || due) {
+          lastNextUpFetchTs = now;
+          updateNextUp({ isAirplay, isStream, data });
+        }
       }
 
       currentTrackKey = radioKey;
@@ -1697,7 +1710,8 @@ function updateNextUp({ isAirplay, isStream, data }) {
     return;
   }
 
-  if (pauseMode || isAirplay || isStream) {
+  const isYouTubeStream = isYouTubeStreamMode(data || {});
+  if (pauseMode || isAirplay || (isStream && !isYouTubeStream)) {
     setNextUpLine('');
     if (imgEl) {
       imgEl.style.display = 'none';
@@ -2037,7 +2051,7 @@ function getDisplayRate(data) {
 
   const streamKind = String(data?.streamKind || '').trim().toLowerCase();
   const isUpnp = isStream && (data?.isUpnp === true || streamKind === 'upnp');
-  const isRadio = isStream && !isUpnp;
+  const isRadio = isStream && !isUpnp && !isYouTubeStreamMode(data);
 
   const encoded = String(data?.encoded || '').trim();
   const outrate = String(data?.outrate || '').trim();
@@ -2690,7 +2704,7 @@ function updateUI(data) {
 
   const streamKind = String(data.streamKind || '').trim().toLowerCase();
   const isUpnp  = isStream && (data.isUpnp === true || streamKind === 'upnp');
-  const isRadio = isStream && !isUpnp;
+  const isRadio = isStream && !isUpnp && !isYouTubeStreamMode(data);
 
   const isPhonePortrait =
     window.matchMedia &&
@@ -2742,6 +2756,12 @@ function updateUI(data) {
   const personnelEl = document.getElementById('personnel-info');
   const artEl       = document.getElementById('album-art');
   const artBgEl     = document.getElementById('album-art-bg');
+  const favHeartEl  = document.getElementById('fav-heart');
+  const infoHotspotEl = document.getElementById('art-info-hotspot');
+
+  const isYoutubeNow = !!data?.isYoutube;
+  if (favHeartEl) favHeartEl.style.display = isYoutubeNow ? 'none' : '';
+  if (infoHotspotEl) infoHotspotEl.style.display = isYoutubeNow ? 'none' : '';
 
   // Alexa mode: brute-force art refresh by file, independent of art cache/crossfade logic.
   if (currentAlexaMode && artEl) {
@@ -2863,7 +2883,8 @@ if (titleEl) {
 
   // Link behavior (independent of whether we show icon)
   if (albumLinkEl) {
-    const url = String(data.radioItunesUrl || data.itunesUrl || '').trim();
+    const url = String(data.shareUrl || data.radioTrackUrl || data.radioItunesUrl || data.itunesUrl || '').trim();
+    const isYoutubeShare = !!data?.isYoutube && !!url;
 
     if (url) {
       albumLinkEl.href = url;
@@ -2871,7 +2892,7 @@ if (titleEl) {
       albumLinkEl.rel = 'noopener';
       albumLinkEl.style.pointerEvents = 'auto';
       albumLinkEl.style.cursor = 'pointer';
-      albumLinkEl.title = 'Open in Apple Music';
+      albumLinkEl.title = isYoutubeShare ? 'Open on YouTube' : 'Open in Apple Music';
     } else {
       albumLinkEl.removeAttribute('href');
       albumLinkEl.removeAttribute('target');

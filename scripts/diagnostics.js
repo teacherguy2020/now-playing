@@ -441,15 +441,20 @@
 
         const stationName = String(x.stationName || x.album || '').trim() || 'Radio Stream';
         const stationGenre = String(x.stationGenre || '').trim();
-        const favBtn = isStream
+        const isYoutube = !!x.isYoutube || /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(String(x.file || ''));
+        const favBtn = (isStream && !isYoutube)
           ? `<button type="button" data-queue-fav-file="${encodeURIComponent(String(x.file || ''))}" data-queue-fav-state="${x.isFavoriteStation ? '1' : '0'}" title="${x.isFavoriteStation ? 'Unfavorite station' : 'Favorite station'}" style="margin-left:6px;border:0;background:transparent;cursor:pointer;font-size:16px;line-height:1;color:${x.isFavoriteStation ? '#ef4444' : '#7f8fae'}">♥</button>`
           : '';
-        const displayArtist = isStream ? stationName : String(x.artist || '');
+        const displayArtist = isStream
+          ? (isYoutube ? (String(x.title || '').trim() || 'YouTube Audio Stream') : stationName)
+          : String(x.artist || '');
         const displayTitle = isStream ? String(x.title || '').trim() : String(x.title || '');
         const detailLine = isStream
-          ? ((head && displayTitle)
-              ? `${displayTitle}${stationGenre ? ` • ${stationGenre}` : ''}`
-              : (stationGenre || ''))
+          ? (isYoutube
+              ? (String(x.artist || '').trim() || 'YouTube')
+              : ((head && displayTitle)
+                  ? `${displayTitle}${stationGenre ? ` • ${stationGenre}` : ''}`
+                  : (stationGenre || '')))
           : (displayTitle ? `${displayTitle} ${x.album ? `• ${String(x.album)}` : ''}` : '');
 
         const moveBtns = `<div style="display:flex;gap:4px;margin-left:auto;"><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove from queue">Remove</button></div>`;

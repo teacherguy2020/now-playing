@@ -44,6 +44,8 @@ export function registerAllConfigRoutes(app, deps) {
     getRatingForFile: deps.getRatingForFile,
     setRatingForFile: deps.setRatingForFile,
     getAlexaWasPlaying: deps.getAlexaWasPlaying,
+    getYoutubeNowPlayingHint: deps.getYoutubeNowPlayingHint,
+    getYoutubeQueueHint: deps.getYoutubeQueueHint,
   });
 
   registerConfigRatingsStickerRoutes(app, {

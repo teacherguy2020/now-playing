@@ -324,7 +324,8 @@
     const motionMp4 = String(np?._motionMp4 || '').trim();
 
     const isAlexaMode = !!np?.alexaMode;
-    const isRadioOrStream = !!np?.isRadio || !!np?.isStream || !!head?.isStream || isAlexaMode;
+    const isYoutube = !!(np?.isYoutube || head?.isYoutube || /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(String(np?.file || head?.file || '')));
+    const isRadioOrStream = !!np?.isRadio || (!!np?.isStream && !isYoutube) || (!!head?.isStream && !isYoutube) || isAlexaMode;
     let displayArtist = String(np?._radioDisplay?.artist || np?.radioArtist || np?.artist || head?.artist || '').trim();
     let displayTitle = String(np?._radioDisplay?.title || np?.radioTitle || np?.title || head?.title || '').trim();
     if (!displayTitle) {
@@ -363,7 +364,7 @@
     displayArtist = expandInstrumentAbbrevs(displayArtist);
     displayTitle = expandInstrumentAbbrevs(displayTitle);
 
-    const appleUrl = String(np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
+    const appleUrl = String(np?.shareUrl || np?.radioTrackUrl || np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
     const isPodcast = !!np?.isPodcast;
     const text = isPodcast
       ? (displayTitle || displayArtist || 'Nothing playing')
@@ -397,7 +398,7 @@
     const isAirplay = !!np?.isAirplay;
     const liveLabel = isAlexaMode
       ? 'Alexa Mode'
-      : (isAirplay ? (airplaySource ? `AirPlay • ${airplaySource}` : 'AirPlay') : (stationNameLive || 'Radio'));
+      : (isAirplay ? (airplaySource ? `AirPlay • ${airplaySource}` : 'AirPlay') : (isYoutube ? 'YouTube Audio Stream' : (stationNameLive || 'Radio')));
     const albumYearText = radioAlbum
       ? `${radioAlbum}${radioYear ? ` (${radioYear})` : ''}`
       : '';
@@ -449,7 +450,7 @@
                 (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekfwd30" title="Forward 30 seconds"><span style="font-size:13px;font-weight:700;">30↻</span></button>` : '') +
               `</div>` )}` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}" data-seekable="${showProgress ? '1' : '0'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div><div class="progress-handle" style="left:${progressPct}%;"></div><div class="progress-tip" style="left:${progressPct}%">Drag to seek</div></div>` +
-          `${(!showProgress && isRadioOrStream) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:var(--theme-text-secondary,#9fb1d9);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${(state === 'playing' && !isAlexaMode) ? `<span class="heroLivePulse">Live</span> • ` : ''}${escHtml(liveLabel)}${liveBadge ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-size:11px;font-weight:700;vertical-align:1px;">${liveBadge}</span>` : ''}</div>` : ''}` +
+          `${(!showProgress && (isRadioOrStream || isYoutube)) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:var(--theme-text-secondary,#9fb1d9);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${(state === 'playing' && !isAlexaMode) ? `<span class="heroLivePulse">${isYoutube ? 'Streaming' : 'Live'}</span> • ` : ''}${escHtml(liveLabel)}${liveBadge ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-size:11px;font-weight:700;vertical-align:1px;">${liveBadge}</span>` : ''}</div>` : ''}` +
         `</div>` +
       `</div>`;
 
@@ -1488,7 +1489,8 @@
         const appleUrl = String(np?.radioItunesUrl || np?.radioTrackUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
         const motionEnabled = motionArtEnabled();
         const head = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
-        const isRadioOrStream = !!np?.isRadio || !!np?.isStream || !!head?.isStream;
+        const isYoutube = !!(np?.isYoutube || head?.isYoutube || /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(String(np?.file || head?.file || '')));
+        const isRadioOrStream = !!np?.isRadio || (!!np?.isStream && !isYoutube) || (!!head?.isStream && !isYoutube);
         const artist = String(np?.artist || '').trim();
         const album = String(np?.album || '').trim();
         const radioTitle = String(np?.title || np?.radioTitle || head?.title || '').trim();
@@ -1539,7 +1541,7 @@
 
         np._motionMp4 = motionMp4;
 
-        const sigIsRadio = !!np?.isRadio || !!np?.isStream || !!head?.isStream;
+        const sigIsRadio = !!np?.isRadio || (!!np?.isStream && !isYoutube) || (!!head?.isStream && !isYoutube);
         const renderSig = JSON.stringify({
           f: String(np?.file || head?.file || ''),
           // For local/static tracks, avoid full hero repaint on late metadata enrichment
@@ -1633,7 +1635,8 @@
         scheduleHeroReflow();
         armVideoFallback(el);
         const head2 = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
-        const sig2IsRadio = !!npResolved?.isRadio || !!npResolved?.isStream || !!head2?.isStream;
+        const isYoutube2 = !!(npResolved?.isYoutube || head2?.isYoutube || /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(String(npResolved?.file || head2?.file || '')));
+        const sig2IsRadio = !!npResolved?.isRadio || (!!npResolved?.isStream && !isYoutube2) || (!!head2?.isStream && !isYoutube2);
         lastRenderSignature = JSON.stringify({
           f: String(npResolved?.file || head2?.file || ''),
           t: sig2IsRadio ? String(npResolved?.title || npResolved?.radioTitle || head2?.title || '') : '',

@@ -168,7 +168,7 @@ function splitArtistDashTitle(line) {
 }
 
 export function registerConfigDiagnosticsRoutes(app, deps) {
-  const { requireTrackKey, getRatingForFile, setRatingForFile, getAlexaWasPlaying } = deps;
+  const { requireTrackKey, getRatingForFile, setRatingForFile, getAlexaWasPlaying, getYoutubeNowPlayingHint, getYoutubeQueueHint } = deps;
   const configPath = process.env.NOW_PLAYING_CONFIG_PATH || `${process.cwd()}/config/now-playing.config.json`;
 
   function pos0FromAlexaToken(tokenRaw) {
@@ -869,6 +869,8 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       try { logoAliases = await loadRadioLogoAliases(); } catch {}
 
       const lines = String(qOut || '').split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean);
+      const ytHint = (typeof getYoutubeNowPlayingHint === 'function') ? (getYoutubeNowPlayingHint() || {}) : {};
+      const ytHintFresh = (Date.now() - Number(ytHint?.setAt || 0)) < (6 * 60 * 60 * 1000);
       const items = [];
       for (const ln of lines) {
         const [position = '', artist = '', title = '', album = '', file = '', name = ''] = ln.split('\t');
@@ -926,13 +928,26 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           : (f ? `/art/radio-logo.jpg?file=${encodeURIComponent(f)}` : '');
         const streamArtFallback = String(cleaned.artUrl || '').trim();
         const isHead = Number.isFinite(pos) && pos === headPos;
-        const thumbUrl = isStream
-          ? (stationLogo || streamArtFallback || (isHead ? '/art/current.jpg' : ''))
-          : (f ? `/art/track_640.jpg?file=${encodeURIComponent(f)}` : '');
+        const ytStream = !!(isStream && /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(f));
+        if (ytStream) {
+          const byFile = (typeof getYoutubeQueueHint === 'function') ? (getYoutubeQueueHint(f) || null) : null;
+          const hTitle = String(byFile?.title || (ytHintFresh ? ytHint?.title : '') || '').trim();
+          const hChan = String(byFile?.channel || (ytHintFresh ? ytHint?.channel : '') || '').trim();
+          if (hTitle) titleTxt = hTitle;
+          if (hChan) artistTxt = hChan;
+          stationNameTxt = String(artistTxt || titleTxt || 'YouTube').trim();
+        }
+
+        const thumbUrl = ytStream
+          ? (String(((typeof getYoutubeQueueHint === 'function') ? (getYoutubeQueueHint(f)?.thumbnail || '') : '') || (ytHintFresh ? ytHint?.thumbnail : '') || '').trim() || '/art/current.jpg')
+          : (isStream
+              ? (stationLogo || streamArtFallback || (isHead ? '/art/current.jpg' : ''))
+              : (f ? `/art/track_640.jpg?file=${encodeURIComponent(f)}` : ''));
         items.push({
           position: pos,
           isHead,
           isStream,
+          isYoutube: ytStream,
           artist: artistTxt,
           title: titleTxt,
           album: albumTxt,

@@ -521,6 +521,72 @@ const PODCAST_MAP_DIR = process.env.PODCAST_MAP_DIR || path.join(path.dirname(PO
 
 let _podcastCache = { loadedAt: 0, maps: [] };
 const PODCAST_CACHE_MS = 60_000; // refresh once a minute
+let youtubeNowPlayingHint = { setAt: 0, streamUrl: '', title: '', channel: '', thumbnail: '', webpageUrl: '' };
+const youtubeQueueHints = new Map();
+const youtubeProxyHints = new Map();
+const YOUTUBE_HINTS_PATH = process.env.YOUTUBE_HINTS_PATH || path.join(path.dirname(PODCAST_DL_LOG), 'youtube-hints.json');
+function youtubeStreamKey(url) {
+  const s = String(url || '').trim();
+  if (!s) return '';
+  const mProxy = s.match(/\/youtube\/proxy\/([a-f0-9]{10,})/i);
+  if (mProxy && mProxy[1]) return String(mProxy[1]).trim();
+  const m = s.match(/\/id\/([^/]+)/i);
+  return String((m && m[1]) || '').trim() || s;
+}
+function setYoutubeQueueHint(url, meta) {
+  const key = youtubeStreamKey(url);
+  if (!key) return;
+  youtubeQueueHints.set(key, { ...(meta || {}), setAt: Date.now(), streamUrl: String(url || '') });
+  if (youtubeQueueHints.size > 300) {
+    const first = youtubeQueueHints.keys().next().value;
+    if (first) youtubeQueueHints.delete(first);
+  }
+  scheduleSaveYoutubeHints();
+}
+function getYoutubeQueueHint(url) {
+  const key = youtubeStreamKey(url);
+  if (!key) return null;
+  return youtubeQueueHints.get(key) || null;
+}
+
+async function loadYoutubeHintsFromDisk() {
+  try {
+    const raw = await fsp.readFile(YOUTUBE_HINTS_PATH, 'utf8');
+    const arr = JSON.parse(String(raw || '[]'));
+    if (!Array.isArray(arr)) return;
+    youtubeQueueHints.clear();
+    for (const it of arr) {
+      const streamUrl = String(it?.streamUrl || '').trim();
+      const key = youtubeStreamKey(streamUrl);
+      if (!key) continue;
+      youtubeQueueHints.set(key, {
+        setAt: Number(it?.setAt || 0) || Date.now(),
+        streamUrl,
+        title: String(it?.title || '').trim(),
+        channel: String(it?.channel || '').trim(),
+        thumbnail: String(it?.thumbnail || '').trim(),
+        webpageUrl: String(it?.webpageUrl || '').trim(),
+      });
+    }
+  } catch {}
+}
+
+let youtubeHintsSaveTimer = null;
+function scheduleSaveYoutubeHints() {
+  try { if (youtubeHintsSaveTimer) clearTimeout(youtubeHintsSaveTimer); } catch {}
+  youtubeHintsSaveTimer = setTimeout(async () => {
+    youtubeHintsSaveTimer = null;
+    try {
+      const items = Array.from(youtubeQueueHints.values())
+        .sort((a, b) => Number(b?.setAt || 0) - Number(a?.setAt || 0))
+        .slice(0, 500);
+      await fsp.mkdir(path.dirname(YOUTUBE_HINTS_PATH), { recursive: true });
+      await fsp.writeFile(YOUTUBE_HINTS_PATH, JSON.stringify(items, null, 2));
+    } catch {}
+  }, 250);
+}
+
+loadYoutubeHintsFromDisk().catch(() => {});
 
 async function loadPodcastMaps() {
   const now = Date.now();
@@ -1961,6 +2027,140 @@ function requireTrackKey(req, res) {
   }
   return true;
 }
+
+function isLikelyYouTubeUrl(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return false;
+  try {
+    const u = new URL(s);
+    const h = String(u.hostname || '').toLowerCase();
+    return h === 'youtube.com' || h.endsWith('.youtube.com') || h === 'youtu.be' || h.endsWith('.youtu.be');
+  } catch {
+    return false;
+  }
+}
+
+async function resolveYouTubeAudio(url) {
+  const input = String(url || '').trim();
+  if (!isLikelyYouTubeUrl(input)) throw new Error('Only YouTube URLs are supported');
+
+  let parsed = null;
+  try {
+    const { stdout } = await execFileP('yt-dlp', ['--no-warnings', '--no-playlist', '-f', 'bestaudio/best', '--dump-single-json', input], { maxBuffer: 8 * 1024 * 1024 });
+    parsed = JSON.parse(String(stdout || '{}'));
+  } catch (e) {
+    throw new Error(`yt-dlp resolve failed: ${e?.message || String(e)}`);
+  }
+
+  let streamUrl = String(parsed?.url || '').trim();
+  if (!streamUrl) {
+    try {
+      const { stdout } = await execFileP('yt-dlp', ['--no-warnings', '--no-playlist', '-f', 'bestaudio/best', '-g', input], { maxBuffer: 2 * 1024 * 1024 });
+      streamUrl = String(stdout || '').trim().split(/\r?\n/).find(Boolean) || '';
+    } catch {}
+  }
+  if (!streamUrl) throw new Error('Could not resolve playable audio URL');
+
+  return {
+    title: String(parsed?.title || '').trim(),
+    channel: String(parsed?.uploader || parsed?.channel || '').trim(),
+    thumbnail: String(parsed?.thumbnail || '').trim(),
+    duration: Number(parsed?.duration || 0) || 0,
+    webpageUrl: String(parsed?.webpage_url || input).trim(),
+    streamUrl,
+  };
+}
+
+function normalizeYtEntry(e = {}) {
+  const id = String(e?.id || '').trim();
+  const rawUrl = String(e?.url || '').trim();
+  const playlistId = String(e?.playlist_id || '').trim();
+  const playlistLikeId = /^PL[\w-]{8,}$/i.test(id) ? id : '';
+  const listIdFromUrl = (() => {
+    try {
+      const u = new URL(rawUrl);
+      return String(u.searchParams.get('list') || '').trim();
+    } catch { return ''; }
+  })();
+  const listId = playlistId || listIdFromUrl || playlistLikeId;
+  const isPlaylist = !!(String(e?._type || '').toLowerCase() === 'playlist' || listId);
+
+  let webpageUrl = '';
+  if (rawUrl.startsWith('http')) {
+    webpageUrl = rawUrl;
+  } else if (isPlaylist && listId) {
+    webpageUrl = `https://www.youtube.com/playlist?list=${encodeURIComponent(listId)}`;
+  } else if (id) {
+    webpageUrl = `https://www.youtube.com/watch?v=${id}`;
+  }
+
+  return {
+    id,
+    title: String(e?.title || '').trim(),
+    channel: String(e?.uploader || e?.channel || e?.channel_name || '').trim(),
+    duration: Number(e?.duration || 0) || 0,
+    thumbnail: String(e?.thumbnail || '').trim(),
+    webpageUrl,
+    isPlaylist,
+  };
+}
+
+async function searchYouTube(query, limit = 8, playlistsOnly = false) {
+  const q = String(query || '').trim();
+  const n = Math.max(1, Math.min(20, Number(limit || 8) || 8));
+  if (!q) return [];
+
+  try {
+    let querySource = '';
+    if (playlistsOnly) {
+      // YouTube search with "Type: Playlist" filter.
+      const qs = encodeURIComponent(q.replace(/\s+/g, ' ').trim());
+      querySource = `https://www.youtube.com/results?search_query=${qs}&sp=EgIQAw%253D%253D`;
+    } else {
+      querySource = `ytsearch${n}:${q}`;
+    }
+
+    const { stdout } = await execFileP('yt-dlp', ['--no-warnings', '--flat-playlist', '--dump-single-json', querySource], { maxBuffer: 20 * 1024 * 1024 });
+    const j = JSON.parse(String(stdout || '{}'));
+    const entries = Array.isArray(j?.entries) ? j.entries : [];
+    let out = entries.map((e) => normalizeYtEntry(e)).filter((x) => !!x.webpageUrl);
+
+    if (playlistsOnly) {
+      out = out.filter((x) => {
+        const u = String(x.webpageUrl || '');
+        return /youtube\.com\/playlist\?list=/i.test(u) || !!x.isPlaylist;
+      });
+    }
+
+    return out.slice(0, n);
+  } catch (e) {
+    throw new Error(`yt-dlp search failed: ${e?.message || String(e)}`);
+  }
+}
+
+async function listYouTubePlaylist(url, limit = 100) {
+  const input = String(url || '').trim();
+  if (!isLikelyYouTubeUrl(input)) throw new Error('Only YouTube URLs are supported');
+  let isPlaylist = false;
+  try {
+    const u = new URL(input);
+    isPlaylist = !!String(u.searchParams.get('list') || '').trim();
+  } catch {}
+  if (!isPlaylist) throw new Error('URL is not a YouTube playlist (missing list=...)');
+  const n = Math.max(1, Math.min(500, Number(limit || 100) || 100));
+  try {
+    const { stdout } = await execFileP('yt-dlp', ['--no-warnings', '--flat-playlist', '--playlist-end', String(n), '--dump-single-json', input], { maxBuffer: 30 * 1024 * 1024 });
+    const j = JSON.parse(String(stdout || '{}'));
+    const entries = Array.isArray(j?.entries) ? j.entries : [];
+    return {
+      playlistTitle: String(j?.title || '').trim(),
+      count: entries.length,
+      items: entries.map((e) => normalizeYtEntry(e)).filter((x) => !!x.webpageUrl),
+    };
+  } catch (e) {
+    throw new Error(`yt-dlp playlist failed: ${e?.message || String(e)}`);
+  }
+}
 /* =========================
  * MPD helpers
  * ========================= */
@@ -2412,6 +2612,7 @@ app.get('/alexa/was-playing', async (req, res) => {
       radioItunesUrl: '',
       radioTrackUrl: '',
       radioAlbumUrl: '',
+      shareUrl: '',
       radioLookupReason: '',
       radioLookupTerm: '',
       elapsed: 0,
@@ -2430,6 +2631,7 @@ app.get('/alexa/was-playing', async (req, res) => {
       date,
       isStream: false,
       isAirplay: false,
+      isYoutube: false,
       isPodcast: false,
       streamKind: '',
       isUpnp: false,
@@ -5307,15 +5509,17 @@ app.get('/now-playing', async (req, res) => {
     const randomState = String(moodeValByKey(statusRaw, 'random') || '').trim();
     const repeatState = String(moodeValByKey(statusRaw, 'repeat') || '').trim();
 
-    const file = String(song.file || '').trim();
+    let file = String(song.file || '').trim();
     const isLocalPodcast = isLocalPodcastFile(file);
     const stream = isStreamPath(file);
     const airplay =
       isAirplayFile(file) || (String(song.encoded || '').toLowerCase() === 'airplay');
 
     const streamKind = stream ? String(getStreamKind(file) || '').trim() : '';
-    const isUpnp = streamKind === 'upnp';
-    const isRadio = stream && streamKind === 'radio';
+    const isYouTubeStream = !!(stream && (/googlevideo\.com|youtube\.com|youtu\.be/i.test(file) || /\/youtube\/proxy\//i.test(file)));
+    const effectiveStreamKind = isYouTubeStream ? 'youtube' : streamKind;
+    const isUpnp = effectiveStreamKind === 'upnp';
+    const isRadio = stream && effectiveStreamKind === 'radio';
 
     // 2) Base metadata
     let artist = song.artist || '';
@@ -5360,12 +5564,13 @@ app.get('/now-playing', async (req, res) => {
 
     let stationLogoUrl = '';
     let primaryArtUrl = '';
-    const streamStationName = String(song?.name || song?.album || '').trim();
+    let streamStationName = String(song?.name || song?.album || '').trim();
 
     // ✅ Apple Music link fields (RADIO)
     let radioItunesUrl = '';
     let radioTrackUrl = '';
     let radioAlbumUrl = '';
+    let shareUrl = '';
     let radioLookupReason = '';
     let radioLookupTerm = '';
 
@@ -5584,6 +5789,7 @@ app.get('/now-playing', async (req, res) => {
         radioItunesUrl: '',
         radioTrackUrl: '',
         radioAlbumUrl: '',
+        shareUrl: '',
         radioLookupReason: '',
         radioLookupTerm: '',
 
@@ -5607,6 +5813,7 @@ app.get('/now-playing', async (req, res) => {
 
         isStream: false,
         isAirplay: true,
+        isYoutube: false,
         streamKind: '',
         isUpnp: false,
 
@@ -6005,7 +6212,7 @@ app.get('/now-playing', async (req, res) => {
         ? (meStation ? 'skip:private-meta-or-primary' : 'skip')
         : `skip:${radioLookupGuard.reason}`;
     } else if (stream) {
-      debugItunesReason = `skip:${streamKind || 'stream'}`;
+      debugItunesReason = `skip:${effectiveStreamKind || 'stream'}`;
     }
 
     // Secondary art:
@@ -6118,6 +6325,48 @@ app.get('/now-playing', async (req, res) => {
       encoded = `FLAC • ${formatHiresLabel(meStation.hiresLabel)}`;
     }
 
+    // YouTube stream hint overlay (for better now-playing metadata/art on transient stream URLs)
+    try {
+      let f = String(file || '').trim();
+      const ytFileLike = /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(f);
+      const ytStream = !!(stream && ytFileLike);
+      if (ytStream) {
+        // MPD current file is authoritative for currently playing stream; moOde JSON can lag.
+        try {
+          const args = ['-h', String(MPD_HOST || '127.0.0.1'), '-p', String(MPD_PORT || '6600'), '-f', '%file%', 'current'];
+          const { stdout } = await execFileP('mpc', args, { timeout: 4000 });
+          const mpcFile = String(stdout || '').split(/\r?\n/).map((s)=>String(s||'').trim()).find(Boolean) || '';
+          if (mpcFile && /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(mpcFile)) {
+            f = mpcFile;
+            file = mpcFile;
+          }
+        } catch {}
+
+        const byFile = getYoutubeQueueHint(f) || null;
+        const globalHint = youtubeNowPlayingHint || {};
+        const globalFresh = (Date.now() - Number(globalHint.setAt || 0)) < (6 * 60 * 60 * 1000);
+        const globalMatchesCurrent = youtubeStreamKey(String(globalHint.streamUrl || '')) === youtubeStreamKey(f);
+        const hint = byFile || ((globalFresh && globalMatchesCurrent) ? globalHint : null) || {};
+        const hTitle = String(hint.title || '').trim();
+        const hChan = String(hint.channel || '').trim();
+        const hThumb = String(hint.thumbnail || '').trim();
+        const hPage = String(hint.webpageUrl || '').trim();
+        if (hTitle) title = hTitle;
+        if (hChan) artist = hChan;
+        if (hPage) shareUrl = hPage;
+        album = 'YouTube Audio Stream';
+        // Clear stale radio-lookup-derived fields for YouTube stream entries.
+        radioAlbum = '';
+        radioYear = '';
+        radioItunesUrl = '';
+        radioAlbumUrl = '';
+        radioTrackUrl = '';
+        radioLookupReason = 'youtube-hint';
+        streamStationName = 'YouTube';
+        if (hThumb) primaryArtUrl = hThumb;
+      }
+    } catch {}
+
     // Build/cache art derivatives based on PRIMARY art (what the UI uses)
     const rawArtUrl = String(primaryArtUrl || '').trim();
     if (rawArtUrl) {
@@ -6200,6 +6449,7 @@ app.get('/now-playing', async (req, res) => {
       radioItunesUrl,
       radioTrackUrl,
       radioAlbumUrl,
+      shareUrl,
       radioLookupReason,
       radioLookupTerm,
 
@@ -6225,8 +6475,9 @@ app.get('/now-playing', async (req, res) => {
 
       isStream: stream,
       isAirplay: false,
+      isYoutube: isYouTubeStream,
       isPodcast,
-      streamKind,
+      streamKind: effectiveStreamKind,
       isUpnp,
 
       isFavorite,
@@ -6344,11 +6595,11 @@ app.get('/next-up', async (req, res) => {
     const isAirplay =
       isAirplayFile(file) || String(song.encoded || '').toLowerCase() === 'airplay';
 
-    if (isStream || isAirplay) {
+    if (isAirplay) {
       return res.json({
         ok: true,
         next: null,
-        ...(debug ? { reason: 'stream-or-airplay' } : {}),
+        ...(debug ? { reason: 'airplay' } : {}),
       });
     }
 
@@ -6384,22 +6635,31 @@ app.get('/next-up', async (req, res) => {
     }
 
     const nextFile = String(next.file || '').trim();
-    const nextArtUrl = coverArtForFile(nextFile);
+    const nextIsStream = isStreamPath(nextFile);
+    const nextYt = nextIsStream && /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(nextFile);
+    const ytHint = nextYt ? (getYoutubeQueueHint(nextFile) || {}) : {};
+    const nextTitle = String(next.title || ytHint?.title || '').trim();
+    const nextArtist = String(next.artist || ytHint?.channel || '').trim();
+    const nextAlbum = String(next.album || (nextYt ? 'YouTube Audio Stream' : '')).trim();
+    const nextArtUrl = nextIsStream
+      ? (String(ytHint?.thumbnail || '').trim() || `${PUBLIC_BASE_URL}/art/current.jpg`)
+      : coverArtForFile(nextFile);
 
     return res.json({
       ok: true,
       next: {
         songid: next.songid || String(nextsongid || ''),
         songpos: next.songpos || String(nextPos),
-        title: next.title || '',
-        artist: next.artist || '',
-        album: next.album || '',
+        title: nextTitle,
+        artist: nextArtist,
+        album: nextAlbum,
         file: nextFile,
+        isStream: nextIsStream,
+        isYoutube: !!nextYt,
 
-        artUrl: nextArtUrl, // ✅ cover art for NEXT track (LAN moOde)
+        artUrl: nextArtUrl, // ✅ cover art for NEXT track
         currentArtUrl: `${PUBLIC_BASE_URL}/art/current.jpg`, // ✅ public, consistent
 
-        // Keep client logic simple/consistent (even though next-up is local-only)
         stationLogoUrl: '',
       },
       ...(debug ? { reason: 'ok' } : {}),
@@ -6618,6 +6878,8 @@ registerAllConfigRoutes(app, {
   setRatingForFile,
   mpdStickerGetSong,
   getAlexaWasPlaying: () => alexaWasPlaying,
+  getYoutubeNowPlayingHint: () => youtubeNowPlayingHint,
+  getYoutubeQueueHint,
 });
 
 
@@ -6683,6 +6945,193 @@ if (process.argv.includes('--build-podcast-map')) {
         }
     })();
 }
+
+app.post('/youtube/resolve', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    const url = String(req.body?.url || '').trim();
+    if (!url) return res.status(400).json({ ok: false, error: 'url is required' });
+    const r = await resolveYouTubeAudio(url);
+    return res.json({ ok: true, ...r });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+app.post('/youtube/search', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    const query = String(req.body?.query || '').trim();
+    const limit = Number(req.body?.limit || 8) || 8;
+    const playlistsOnly = !!req.body?.playlistsOnly;
+    if (!query) return res.status(400).json({ ok: false, error: 'query is required' });
+    const items = await searchYouTube(query, limit, playlistsOnly);
+    return res.json({ ok: true, count: items.length, playlistsOnly, items });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+app.post('/youtube/playlist', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    const url = String(req.body?.url || '').trim();
+    const limit = Number(req.body?.limit || 100) || 100;
+    if (!url) return res.status(400).json({ ok: false, error: 'url is required' });
+    const out = await listYouTubePlaylist(url, limit);
+    return res.json({ ok: true, ...out });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+app.get('/youtube/proxy/:id', async (req, res) => {
+  try {
+    const id = String(req.params?.id || '').trim();
+    const hint = youtubeProxyHints.get(id) || null;
+    const srcPage = String(hint?.sourcePageUrl || hint?.webpageUrl || '').trim();
+    if (!id || !srcPage) return res.status(404).end('not found');
+
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Connection', 'keep-alive');
+
+    const ytdlp = spawn('yt-dlp', [
+      '--no-warnings', '--no-playlist', '-f', 'bestaudio/best', '-o', '-', srcPage
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+    const ff = spawn('ffmpeg', [
+      '-hide_banner', '-loglevel', 'error',
+      '-i', 'pipe:0',
+      '-vn', '-ac', '2', '-ar', '44100', '-c:a', 'libmp3lame', '-b:a', '192k',
+      '-f', 'mp3', 'pipe:1'
+    ], { stdio: ['pipe', 'pipe', 'pipe'] });
+
+    // Guard stream lifecycle to avoid crashing service on client disconnects.
+    ytdlp.stdout.on('error', () => {});
+    ff.stdin.on('error', (e) => {
+      if (String(e?.code || '') !== 'EPIPE') {
+        try { console.warn('[yt-proxy] ff stdin error', e?.message || e); } catch {}
+      }
+    });
+
+    ytdlp.stdout.pipe(ff.stdin, { end: true });
+    ff.stdout.pipe(res);
+
+    const endAll = () => {
+      try { ytdlp.stdout.unpipe(ff.stdin); } catch {}
+      try { ff.stdout.unpipe(res); } catch {}
+      try { ytdlp.kill('SIGKILL'); } catch {}
+      try { ff.kill('SIGKILL'); } catch {}
+    };
+    req.on('close', endAll);
+    res.on('close', endAll);
+    res.on('error', () => endAll());
+
+    ytdlp.on('error', () => { try { res.end(); } catch {} });
+    ff.on('error', () => { try { res.end(); } catch {} });
+    ff.on('exit', () => { try { res.end(); } catch {} });
+  } catch {
+    try { res.status(500).end('proxy error'); } catch {}
+  }
+});
+
+app.post('/youtube/queue', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    const modeIn = String(req.body?.mode || 'append').trim().toLowerCase();
+    const mode = ['append', 'replace', 'crop'].includes(modeIn) ? modeIn : 'append';
+    const urlsIn = Array.isArray(req.body?.urls) ? req.body.urls : null;
+    const singleUrl = String(req.body?.url || '').trim();
+    const urls = (urlsIn && urlsIn.length ? urlsIn : [singleUrl])
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+      .slice(0, 200);
+    if (!urls.length) return res.status(400).json({ ok: false, error: 'url or urls[] is required' });
+
+    const mpc = async (...args) => execFileP('mpc', ['-h', String(MPD_HOST || '127.0.0.1'), '-p', String(MPD_PORT || '6600'), ...args], { timeout: 15000 });
+    let effectiveMode = mode;
+
+    if (mode === 'replace') {
+      await mpc('clear');
+    } else if (mode === 'crop') {
+      await mpc('crop');
+      effectiveMode = 'crop';
+    }
+
+    const queuedItems = [];
+    const failed = [];
+    for (let i = 0; i < urls.length; i++) {
+      try {
+        const resolved = await resolveYouTubeAudio(urls[i]);
+        const streamUrl = String(resolved?.streamUrl || '').trim();
+        if (!streamUrl) {
+          failed.push({ url: urls[i], error: 'empty stream url' });
+          continue;
+        }
+
+        const hint = {
+          setAt: Date.now(),
+          streamUrl,
+          title: String(resolved?.title || '').trim(),
+          channel: String(resolved?.channel || '').trim(),
+          thumbnail: String(resolved?.thumbnail || '').trim(),
+          webpageUrl: String(resolved?.webpageUrl || '').trim(),
+        };
+
+        const proxyId = crypto.createHash('sha1').update(`${streamUrl}|${Date.now()}|${Math.random()}`).digest('hex').slice(0, 16);
+        const proxyUrl = `http://${LOCAL_ADDRESS}:${PORT}/youtube/proxy/${proxyId}`;
+        youtubeProxyHints.set(proxyId, { ...hint, sourceUrl: streamUrl, sourcePageUrl: String(resolved?.webpageUrl || '').trim(), proxyUrl });
+        if (youtubeProxyHints.size > 500) {
+          const first = youtubeProxyHints.keys().next().value;
+          if (first) youtubeProxyHints.delete(first);
+        }
+
+        setYoutubeQueueHint(proxyUrl, {
+          title: hint.title,
+          channel: hint.channel,
+          thumbnail: hint.thumbnail,
+          webpageUrl: hint.webpageUrl,
+        });
+
+        await mpc('add', proxyUrl);
+        queuedItems.push({
+          title: resolved.title,
+          channel: resolved.channel,
+          thumbnail: resolved.thumbnail,
+          duration: resolved.duration,
+          webpageUrl: resolved.webpageUrl,
+          streamUrl: proxyUrl,
+          sourceUrl: streamUrl,
+        });
+
+        if (mode === 'replace' && queuedItems.length === 1) {
+          youtubeNowPlayingHint = { ...hint, streamUrl: proxyUrl };
+        }
+      } catch (e) {
+        failed.push({ url: urls[i], error: e?.message || String(e) });
+      }
+    }
+
+    if (mode === 'replace' && queuedItems.length) {
+      await mpc('play');
+    }
+
+    return res.json({
+      ok: queuedItems.length > 0,
+      mode,
+      effectiveMode,
+      queued: queuedItems.length > 0,
+      queuedCount: queuedItems.length,
+      failedCount: failed.length,
+      failed,
+      item: queuedItems[0] || null,
+      items: queuedItems,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
 
 app.listen(PORT, '0.0.0.0', () => {
   log.debug(`moOde now-playing server running on port ${PORT}`);

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>YouTube Bridge</title>
+  <style>
+    body{margin:0;background:#0b1322;color:#e7eefc;font:14px/1.4 Inter,system-ui;padding:14px}
+    .card{border:1px solid #2a3a58;border-radius:12px;background:#121d32;padding:12px;max-width:960px}
+    input,select,button{padding:9px 10px;border-radius:8px;border:1px solid #334;background:#0a1222;color:#eef}
+    input{width:100%}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .btnPrimary{background:linear-gradient(90deg,#1d4ed8,#7c3aed);border-color:transparent;color:#fff;font-weight:650}
+    .spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.28);border-top-color:#9fd2ff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #status{margin-top:10px;color:#9fb1d9}
+    .meta{margin-top:10px;font-size:13px;color:#c8d7f7}
+    a{color:#7dd3fc}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h3 style="margin:0 0 10px;">YouTube Bridge</h3>
+    <p style="margin:0 0 10px;color:#9fb1d9;">Paste a YouTube URL, choose queue mode, then send to moOde/MPD.</p>
+    <label for="ytSearch">Search YouTube</label>
+    <div class="row">
+      <input id="ytSearch" placeholder="artist song title" style="flex:1;min-width:260px" />
+      <label><input type="checkbox" id="ytPlaylistsOnly"> Playlists only</label>
+      <button id="ytSearchBtn" type="button">Search</button>
+    </div>
+    <div id="results" class="meta" style="max-height:240px;overflow:auto;border:1px solid #2a3a58;border-radius:8px;padding:6px;margin-top:8px;"></div>
+
+    <div class="row" style="margin-top:10px;">
+      <label><input type="checkbox" id="ytSelectAll"> Select all</label>
+    </div>
+    <div id="playlistRows" class="meta" style="max-height:260px;overflow:auto;border:1px solid #2a3a58;border-radius:8px;padding:6px;margin-top:8px;"></div>
+
+    <label for="ytUrl" style="margin-top:10px;display:block;">YouTube URL</label>
+    <input id="ytUrl" placeholder="https://www.youtube.com/watch?v=..." />
+    <div class="row" style="margin-top:10px;">
+      <label for="ytMode">Mode</label>
+      <select id="ytMode">
+        <option value="append">Append</option>
+        <option value="crop">Crop (keep current + add)</option>
+        <option value="replace">Replace</option>
+      </select>
+      <button id="ytResolve" type="button">Resolve</button>
+      <button id="ytExpandUrl" type="button">Expand</button>
+      <button id="ytSend" class="btnPrimary" type="button">Send to moOde</button>
+    </div>
+    <div id="status"></div>
+    <div class="meta" id="meta"></div>
+  </div>
+  <script>
+    (()=>{
+      const $=(id)=>document.getElementById(id);
+      const status=$('status'), meta=$('meta'), urlEl=$('ytUrl'), modeEl=$('ytMode'), sendBtn=$('ytSend'), resolveBtn=$('ytResolve'), expandBtn=$('ytExpandUrl');
+      const searchEl=$('ytSearch'), searchBtn=$('ytSearchBtn'), resultsEl=$('results');
+      const playlistsOnlyEl=$('ytPlaylistsOnly');
+      const playlistRowsEl=$('playlistRows'), selectAllEl=$('ytSelectAll');
+      const base=`${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+      let key='';
+      let lastResolved=null;
+      const esc=(s)=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+      const isPlaylistUrl=(raw)=>{ try{ const u=new URL(String(raw||'').trim()); return !!String(u.searchParams.get('list')||'').trim(); }catch{return false;} };
+      async function ensureKey(){
+        if (key) return key;
+        const r=await fetch(`${base}/config/runtime`,{cache:'no-store'});
+        const j=await r.json().catch(()=>({}));
+        key=String(j?.config?.trackKey||'').trim();
+        return key;
+      }
+      async function resolveOnly(){
+        const url=String(urlEl.value||'').trim();
+        if(!url){ status.textContent='Paste a YouTube URL first.'; return; }
+        resolveBtn.disabled=true; resolveBtn.innerHTML='<span class="spin"></span> Resolving…';
+        status.innerHTML='<span class="spin"></span> Resolving URL…';
+        try{
+          await ensureKey();
+          const r=await fetch(`${base}/youtube/resolve`,{method:'POST',headers:{'content-type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify({url})});
+          const j=await r.json().catch(()=>({}));
+          if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`);
+          lastResolved=j;
+          status.textContent='Resolved ✅';
+          meta.innerHTML=`<div><b>${esc(j.title||'(untitled)')}</b>${j.channel?` · ${esc(j.channel)}`:''}</div><div>${j.duration?`Duration: ${Math.round(Number(j.duration)||0)}s · `:''}<a href="${esc(j.webpageUrl||url)}" target="_blank" rel="noopener">open source</a></div>`;
+        }catch(e){ status.textContent=`Resolve failed: ${e?.message||e}`; }
+        finally{ resolveBtn.disabled=false; resolveBtn.innerHTML='Resolve'; }
+      }
+      async function doSearch(){
+        const query=String(searchEl?.value||'').trim();
+        if(!query){ status.textContent='Enter a search query first.'; return; }
+        searchBtn.disabled=true; searchBtn.innerHTML='<span class="spin"></span> Searching…';
+        status.innerHTML='<span class="spin"></span> Searching YouTube…';
+        try{
+          await ensureKey();
+          const r=await fetch(`${base}/youtube/search`,{method:'POST',headers:{'content-type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify({query,limit:12,playlistsOnly:!!playlistsOnlyEl?.checked})});
+          const j=await r.json().catch(()=>({}));
+          if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`);
+          const items=Array.isArray(j.items)?j.items:[];
+          resultsEl.innerHTML = items.map((x,i)=>{ const u=String(x.webpageUrl||'').trim(); return `<div style="padding:6px;border-bottom:1px solid #24324f;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;">
+            <div>
+              <div style="font-weight:600;">${i+1}. ${esc(x.title||'(untitled)')}</div>
+              <div style="font-size:12px;color:#9fb1d9;">${esc(x.channel||'')} ${x.duration?`· ${Math.round(Number(x.duration)||0)}s`:''}</div>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button type="button" data-url="${esc(u)}" data-act="use">Use</button>
+              <button type="button" data-url="${esc(u)}" data-act="expand">Expand</button>
+            </div>
+          </div>`; }).join('') || '<div style="padding:8px;color:#9fb1d9;">No results.</div>';
+          status.textContent=`Found ${items.length} result(s).`;
+        }catch(e){ status.textContent=`Search failed: ${e?.message||e}`; }
+        finally{ searchBtn.disabled=false; searchBtn.innerHTML='Search'; }
+      }
+
+      async function loadPlaylist(urlOverride=''){
+        const url=String(urlOverride || urlEl.value || '').trim();
+        if(!url){ status.textContent='Paste a playlist URL first.'; return; }
+        status.innerHTML='<span class="spin"></span> Expanding playlist…';
+        if (expandBtn) { expandBtn.disabled = true; expandBtn.innerHTML = '<span class="spin"></span> Expanding…'; }
+        try{
+          await ensureKey();
+          const r=await fetch(`${base}/youtube/playlist`,{method:'POST',headers:{'content-type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify({url,limit:150})});
+          const j=await r.json().catch(()=>({}));
+          if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`);
+          const items=Array.isArray(j.items)?j.items:[];
+          playlistRowsEl.innerHTML = items.map((x,i)=>{ const t=String(x.title||'').trim(); const blocked=/^\[(Deleted|Private) video\]$/i.test(t); return `<label style="display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;align-items:start;padding:6px 8px;border-bottom:1px solid #24324f;width:100%;box-sizing:border-box;text-align:left;${blocked?'opacity:.55;':''}"><input type="checkbox" class="ytPlPick" data-url="${esc(x.webpageUrl||'')}" ${blocked?'disabled':''} ${blocked?'':'checked'} style="margin-top:3px;"><span style="min-width:0;display:block;"><b style="display:block;white-space:normal;word-break:break-word;line-height:1.28;">${i+1}. ${esc(t||'(untitled)')}</b><span style="display:block;font-size:12px;color:#9fb1d9;white-space:normal;word-break:break-word;">${esc(x.channel||'')}${blocked?' · skipped':''}</span></span></label>`; }).join('') || '<div style="padding:8px;color:#9fb1d9;">No playlist items found.</div>';
+          if (selectAllEl) selectAllEl.checked = true;
+          status.textContent = `Loaded playlist: ${j.playlistTitle || 'Untitled'} (${items.length} items)`;
+        }catch(e){ status.textContent=`Playlist load failed: ${e?.message||e}`; }
+        finally{ if (expandBtn) { expandBtn.disabled=false; expandBtn.innerHTML='Expand'; } }
+      }
+
+      async function sendNow(){
+        const url=String(urlEl.value||'').trim();
+        const picked = Array.from(document.querySelectorAll('.ytPlPick:checked')).map((el)=>String(el.getAttribute('data-url')||'').trim()).filter(Boolean);
+        const urls = picked.length ? picked : (url ? [url] : []);
+        if(!urls.length){ status.textContent='Paste a YouTube URL or select playlist items first.'; return; }
+        sendBtn.disabled=true; sendBtn.innerHTML='<span class="spin"></span> Sending…';
+        status.innerHTML='<span class="spin"></span> Queuing on moOde…';
+        try{
+          await ensureKey();
+          const mode = String(modeEl.value||'append');
+          const r=await fetch(`${base}/youtube/queue`,{method:'POST',headers:{'content-type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify({url:urls[0],urls,mode})});
+          const j=await r.json().catch(()=>({}));
+          if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`);
+          lastResolved=j;
+          status.textContent=`Queued ✅ (${mode}) ${j.queuedCount||urls.length} item(s)`;
+          const first = j?.item || null;
+          meta.innerHTML= first
+            ? `<div><b>${esc(first.title||'(untitled)')}</b>${first.channel?` · ${esc(first.channel)}`:''}</div><div><a href="${esc(first.webpageUrl||urls[0])}" target="_blank" rel="noopener">open source</a></div>`
+            : '';
+        }catch(e){ status.textContent=`Send failed: ${e?.message||e}`; }
+        finally{ sendBtn.disabled=false; sendBtn.innerHTML='Send to moOde'; }
+      }
+      resolveBtn.addEventListener('click', resolveOnly);
+      expandBtn?.addEventListener('click', ()=> loadPlaylist());
+      sendBtn.addEventListener('click', sendNow);
+      searchBtn.addEventListener('click', doSearch);
+      selectAllEl?.addEventListener('change', ()=>{ document.querySelectorAll('.ytPlPick').forEach((el)=>{ el.checked = !!selectAllEl.checked; }); });
+      searchEl?.addEventListener('keydown',(ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); doSearch(); }});
+      resultsEl?.addEventListener('click',(ev)=>{
+        const b=ev.target.closest('button[data-url][data-act]');
+        if(!b) return;
+        const u=String(b.getAttribute('data-url')||'').trim();
+        const act=String(b.getAttribute('data-act')||'').trim();
+        if(!u) return;
+        urlEl.value=u;
+        if (act === 'expand') {
+          loadPlaylist(u).then(()=>{
+            try { playlistRowsEl.scrollIntoView({ behavior:'smooth', block:'start' }); } catch {}
+          }).catch(()=>{});
+          return;
+        }
+        status.textContent='Selected result URL. Resolving…';
+        resolveOnly().catch(()=>{});
+      });
+    })();
+  </script>
+</body>
+</html>
