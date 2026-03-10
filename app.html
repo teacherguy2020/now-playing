@@ -675,6 +675,7 @@
       let notifyEnabled = null;
       let peppyModeState = (() => { try { return String(localStorage.getItem('np.peppyMode') || 'webui'); } catch { return 'webui'; } })();
       let lastPeppyProfile = { skin:'', theme:'', meterType:'', fontMode:'', fontSize:'', linearStyle:'', linearSize:'', meterMode:'', colorMode:'', normalization:100, displayMode:'peppy', ts:0 };
+      let peppyHealLastAt = 0;
       let moodeDisplayTakeoverEnabled = true;
       let screenModeState = (() => { try { return String(localStorage.getItem('np.screenMode') || 'nowplaying'); } catch { return 'nowplaying'; } })();
       let alexaEnabledState = null;
@@ -1848,13 +1849,40 @@
             const rj = await rr.json().catch(() => ({}));
             runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
           }
-          const { r, j } = await fetchJsonWithTimeout(`${base}/config/moode/peppyalsa/status`, {
-            headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
-            cache: 'no-store',
-          }, 9000);
+          const [{ r, j }, meter] = await Promise.all([
+            fetchJsonWithTimeout(`${base}/config/moode/peppyalsa/status`, {
+              headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+              cache: 'no-store',
+            }, 9000),
+            fetchJsonWithTimeout(`${base}/peppy/vumeter`, { cache: 'no-store' }, 5000).catch(() => ({ r: { ok: false }, j: null })),
+          ]);
+
           const on = !!(r.ok && j?.ok && j?.enabled === true);
-          if (hint) hint.textContent = on ? 'on' : 'off';
-          setPillState('peppyAlsaPill', on ? 'ok' : 'warn');
+          const fresh = !!(meter?.r?.ok && meter?.j?.ok && meter?.j?.fresh === true);
+          const ageMs = Number(meter?.j?.ageMs || 0);
+
+          if (on && fresh) {
+            if (hint) hint.textContent = 'on';
+            setPillState('peppyAlsaPill', 'ok');
+          } else if (on && !fresh) {
+            if (hint) hint.textContent = ageMs > 0 ? `stale ${Math.round(ageMs/1000)}s` : 'stale';
+            setPillState('peppyAlsaPill', 'warn');
+
+            const now = Date.now();
+            const onPeppyPage = String(currentShellPage || '') === 'peppy.html';
+            if (onPeppyPage && (now - peppyHealLastAt > 8000)) {
+              peppyHealLastAt = now;
+              ensurePeppyAlsa(base, 'peppyalsa-stale-heal').catch(() => null);
+              fetchJsonWithTimeout(`${base}/config/moode/peppymeter/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
+                body: JSON.stringify({ reason: 'peppyalsa-stale-heal' }),
+              }, 12000).catch(() => null);
+            }
+          } else {
+            if (hint) hint.textContent = 'off';
+            setPillState('peppyAlsaPill', 'warn');
+          }
           return;
         } catch {}
         if (hint) hint.textContent = 'unknown';
@@ -1913,7 +1941,14 @@
             }, 5000).catch(() => null);
           } catch {}
           await refreshPeppyPill(base);
+          if (nextMode === 'peppy') {
+            await ensurePeppyAlsa(base, 'peppy-pill-on');
+          } else {
+            await ensurePeppyAlsa(base, 'peppy-pill-off-heal');
+          }
           await refreshPeppyAlsaPill(base);
+          setTimeout(() => { refreshPeppyAlsaPill(base).catch(() => {}); }, 900);
+          setTimeout(() => { refreshPeppyAlsaPill(base).catch(() => {}); }, 2400);
         } catch (e) {
           console.warn('peppy toggle failed', e?.message || e);
           setPillState('peppyPill', 'bad');
@@ -2848,6 +2883,7 @@
         if (safe === 'peppy.html') {
           setTimeout(() => { checkMoodeTargetUrl().catch(() => {}); }, 150);
           setTimeout(() => { ensurePeppyAlsa('', 'peppy-tab-open').then(() => refreshPeppyAlsaPill()).catch(() => {}); }, 220);
+          setTimeout(() => { refreshPeppyAlsaPill().catch(() => {}); }, 1800);
         }
         if (!NO_IFRAME_MODE && frame) {
           let src = `${safe}${safe.includes('?') ? '&' : '?'}shellts=${Date.now()}`;
@@ -4102,6 +4138,11 @@
       // Prioritize transport controls/hero paint first; queue can load just after.
       setTimeout(() => { if (!document.hidden) syncHeroQueue(); }, 650);
       setInterval(() => { if (!document.hidden) syncPills(); }, 30000);
+      setInterval(() => {
+        if (document.hidden) return;
+        if (String(currentShellPage || '') !== 'peppy.html') return;
+        refreshPeppyAlsaPill().catch(() => {});
+      }, 5000);
       setInterval(() => { if (!document.hidden) syncHeroQueue(); }, 7000);
       // Fallback safety net; primary sizing is ResizeObserver/MutationObserver based.
       if (!NO_IFRAME_MODE) setInterval(() => { if (!document.hidden) requestFrameHeightSync(); }, 8000);
