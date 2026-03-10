@@ -995,6 +995,10 @@
     function openPage(page){
       const p = String(page || '').trim();
       if (!p) return;
+      if (!IS_KIOSK_1280 && p.startsWith('kiosk-')) {
+        navigateWithSlide(p.replace(/^kiosk-/, 'controller-'));
+        return;
+      }
       if (IS_KIOSK_1280 && !IS_KIOSK_EDITOR && p.startsWith('kiosk-')) {
         const map = {
           'kiosk-now-playing.html':'controller-now-playing.html',
