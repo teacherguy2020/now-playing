@@ -2499,13 +2499,28 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
     const clearIntentBusy = () => {
       if (sendBtnIntent) {
         sendBtnIntent.disabled = false;
+        sendBtnIntent.classList.remove('is-busy');
         sendBtnIntent.innerHTML = prevSendBtnIntentHtml || 'Send queue to moOde';
       }
     };
     if (sendBtnIntent) {
       sendBtnIntent.disabled = true;
-      sendBtnIntent.innerHTML = '<span class="spin"></span> Sending…';
+      sendBtnIntent.classList.add('is-busy');
+      sendBtnIntent.innerHTML = '<span class="spin"></span> Preparing…';
+      // Force immediate paint so spinner is visible before heavy prep work starts.
+      try { void sendBtnIntent.offsetHeight; } catch {}
     }
+    setStatus('<span class="spin"></span>Preparing queue…');
+    notifyParentQueueBusy(true, 'Preparing queue…');
+
+    // Yield one frame + macrotask so browser can paint busy state immediately.
+    await new Promise((resolve) => {
+      try {
+        requestAnimationFrame(() => setTimeout(resolve, 0));
+      } catch {
+        setTimeout(resolve, 0);
+      }
+    });
 
     if (source === 'filters' && currentListSource !== 'existing') {
       await doPreview();
@@ -2514,6 +2529,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
     if (source === 'vibe' && currentListSource !== 'vibe') {
       setStatus('Build a vibe list first, then send it.');
       clearIntentBusy();
+      notifyParentQueueBusy(false);
       sendBusy = false;
       return;
     }
@@ -2523,6 +2539,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       if (currentListSource !== 'podcast' || !currentFiles.length) {
         setStatus('Podcast list is empty (or still building). Adjust filters and try again.');
         clearIntentBusy();
+        notifyParentQueueBusy(false);
         sendBusy = false;
         return;
       }
@@ -2533,6 +2550,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       if (currentListSource !== 'radio' || !currentFiles.length) {
         setStatus('Radio list is empty. Adjust filters and try again.');
         clearIntentBusy();
+        notifyParentQueueBusy(false);
         sendBusy = false;
         return;
       }
@@ -2546,6 +2564,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       } catch (e) {
         setStatus(`Playlist preview failed: ${esc(e?.message || e)}`);
         clearIntentBusy();
+        notifyParentQueueBusy(false);
         sendBusy = false;
         return;
       }
@@ -2556,6 +2575,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       if (!currentFiles.length) {
         setStatus('No tracks to send.');
         clearIntentBusy();
+        notifyParentQueueBusy(false);
         sendBusy = false;
         return;
       }
@@ -2593,6 +2613,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
         setStatus(p.msg);
         showPlaylistHint(p.msg);
         clearIntentBusy();
+        notifyParentQueueBusy(false);
         sendBusy = false;
         return;
       }
@@ -2605,6 +2626,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
         const okOverwrite = confirm(`Overwrite ${playlistName}?`);
         if (!okOverwrite) {
           clearIntentBusy();
+          notifyParentQueueBusy(false);
           sendBusy = false;
           return;
         }
@@ -2613,7 +2635,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
 
     if (mode === 'replace' && !keepNowPlaying) {
       const ok = confirm('Replace queue by CLEARING everything and loading this list?');
-      if (!ok) { clearIntentBusy(); sendBusy = false; return; }
+      if (!ok) { clearIntentBusy(); notifyParentQueueBusy(false); sendBusy = false; return; }
     }
 
     if (wantsCollage && playlistName && filesSnapshot.length) {
@@ -2637,6 +2659,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
     disableUI(true);
     notifyParentQueueBusy(true, 'Updating queue…');
     try {
+      if (sendBtnIntent) sendBtnIntent.innerHTML = '<span class="spin"></span> Sending…';
       setStatus('<span class="spin"></span>Sending list to moOde…');
 
       const r = await fetch(`${apiBase}/config/queue-wizard/apply`, {
@@ -2753,14 +2776,9 @@ function wireEvents() {
     doSendToMoode(src);
   });
 
-  sendExistingBtn?.addEventListener('click', async (e) => {
+  sendExistingBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     activateBuilder('existing');
-    try {
-      if (selectedExistingListNames().length) {
-        await previewExistingPlaylistSelection();
-      }
-    } catch {}
     doSendToMoode('existing');
   });
 
