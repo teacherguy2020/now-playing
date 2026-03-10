@@ -396,6 +396,18 @@
     let recentActiveRadioUrl='';
     let recentMenuCtx={kind:'album',album:'',artist:'',art:'',playlist:'',title:'',rss:''};
     let recentModalCtx={kind:'album',album:'',artist:'',art:'',playlist:'',tracks:[]};
+    let recentAlbumsCache = { ts: 0, albums: [] };
+
+    async function getRecentAlbumsForRail(){
+      const now = Date.now();
+      if (Array.isArray(recentAlbumsCache.albums) && recentAlbumsCache.albums.length && (now - Number(recentAlbumsCache.ts || 0) < 120000)) {
+        return recentAlbumsCache.albums;
+      }
+      const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'default', headers:reqHeaders(false) }, 9000);
+      const albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
+      recentAlbumsCache = { ts: now, albums };
+      return albums;
+    }
 
     function setRailLoading(on){
       const sp = document.getElementById('railTitleSpin');
@@ -425,8 +437,7 @@
           const addedByShow = new Map();
           const podcastAlbums = [];
           try {
-            const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 9000);
-            const albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
+            const albums = await getRecentAlbumsForRail();
             for (const a of albums) {
               const folder = String(a?.folder || '').trim();
               if (!/\/podcasts\//i.test(folder)) continue;
@@ -548,8 +559,7 @@
           return;
         }
 
-        const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 9000);
-        const albumsRaw = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
+        const albumsRaw = await getRecentAlbumsForRail();
         const albums = albumsRaw.filter((a) => {
           const f = String(a?.folder || '').trim().toLowerCase();
           return !(f.startsWith('usb/samsungmoode/podcasts/') || f.includes('/podcasts/'));
@@ -564,13 +574,11 @@
           }
           return;
         }
-        const railBust = Date.now();
         recentItems = top.map((a)=>{
           const album=String(a?.album||'').trim() || '(album)';
           const artist=String(a?.artist||'').trim();
           const artRaw=String(a?.thumbUrl||'').trim();
-          let art=artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
-          if (art) art = `${art}${String(art).includes('?') ? '&' : '?'}rv=${railBust}`;
+          const art=artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
           return { kind:'album', album, artist, art };
         });
         recentItems.forEach((a,i)=>{
