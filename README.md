@@ -60,6 +60,7 @@ You should see fresh timestamps (`fresh: true`) and non-zero levels while music 
 - Queue Wizard
 - Radio
 - Podcasts
+- YouTube
 - Theme (for desktop)
 - moOde Display Enhancement (custom Peppy/Player push flow)
 - Mobile Builder + Controller pages
