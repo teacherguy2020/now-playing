@@ -13,6 +13,7 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
     syncSubscriptionInitial,
     execFileP,
     musicLibraryRoot,
+    podcastRoot,
   } = deps;
 
   const parseAutoDownload = (value, fallback = false) => {
@@ -205,28 +206,43 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
 
       folder = safeFolderNameKeepSpaces(folder, 'Podcast');
 
-      const fallbackPodcastRoot = path.join(path.dirname(process.env.PODCAST_DL_LOG || '/tmp/now-playing/podcasts/downloads.ndjson'), 'shows');
-      const candidateRoots = [
-        process.env.PODCAST_SHOWS_DIR,
-        musicLibraryRoot ? path.join(String(musicLibraryRoot), 'Podcasts') : '',
-        process.env.MUSIC_LIBRARY_ROOT ? path.join(process.env.MUSIC_LIBRARY_ROOT, 'Podcasts') : '',
-        '/var/lib/mpd/music/Podcasts',
-        fallbackPodcastRoot,
-      ].filter(Boolean);
-
-      let defaultPodcastRoot = fallbackPodcastRoot;
-      for (const root of candidateRoots) {
-        try {
-          await fsp.mkdir(root, { recursive: true });
-          defaultPodcastRoot = root;
-          break;
-        } catch {}
+      const configuredPodcastRoot = String(
+        podcastRoot ||
+        process.env.PODCAST_ROOT ||
+        process.env.PODCAST_SHOWS_DIR ||
+        (musicLibraryRoot ? path.join(String(musicLibraryRoot), 'Podcasts') : '')
+      ).trim();
+      if (!configuredPodcastRoot) {
+        return res.status(500).json({ ok: false, error: 'Podcast root is not configured. Set paths.podcastRoot in now-playing.config.json.' });
       }
 
-      const dir = String(prev?.dir || '').trim() || path.join(defaultPodcastRoot, folder);
+      try {
+        await fsp.mkdir(configuredPodcastRoot, { recursive: true });
+        await fsp.access(configuredPodcastRoot, fs.constants.W_OK);
+      } catch (e) {
+        return res.status(500).json({
+          ok: false,
+          error: `Podcast root is not writable: ${configuredPodcastRoot}`,
+          detail: e?.message || String(e),
+          podcastRoot: configuredPodcastRoot,
+        });
+      }
+
+      const dir = String(prev?.dir || '').trim() || path.join(configuredPodcastRoot, folder);
       const mpdPrefix = String(prev?.mpdPrefix || '').trim() || `USB/SamsungMoode/Podcasts/${folder}`;
 
-      logp('PATHS', { folder, dir, mpdPrefix, outM3u, mapJson });
+      const rootReal = path.resolve(configuredPodcastRoot) + path.sep;
+      const dirReal = path.resolve(dir) + path.sep;
+      if (!dirReal.startsWith(rootReal)) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Subscription dir is outside configured podcastRoot. Please update subscription path.',
+          dir,
+          podcastRoot: configuredPodcastRoot,
+        });
+      }
+
+      logp('PATHS', { folder, dir, mpdPrefix, outM3u, mapJson, podcastRoot: configuredPodcastRoot });
 
       await fsp.mkdir(dir, { recursive: true });
 

@@ -41,6 +41,7 @@ export const MOODE_USB_PREFIX =
     : 'USB/SamsungMoode/');
 export const PI4_MOUNT_BASE = process.env.PI4_MOUNT_BASE || MASTER_CONFIG?.paths?.piMountBase || '/mnt/SamsungMoode';
 export const MUSIC_LIBRARY_ROOT = process.env.MUSIC_LIBRARY_ROOT || MASTER_CONFIG?.paths?.musicLibraryRoot || '/var/lib/mpd/music';
+export const PODCAST_ROOT = process.env.PODCAST_ROOT || MASTER_CONFIG?.paths?.podcastRoot || path.join(MUSIC_LIBRARY_ROOT, 'Podcasts');
 
 export const METAFLAC = process.env.METAFLAC || '/usr/bin/metaflac';
 

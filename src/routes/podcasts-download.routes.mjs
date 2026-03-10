@@ -21,6 +21,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
     normUrl,
     readSubs,
     makePodcastId,
+    podcastRoot,
     ensureDir,
     safeFileName,
     downloadToFile,
@@ -39,6 +40,21 @@ export function registerPodcastDownloadRoutes(app, deps) {
     buildPodcastMapFromLocalItems,
     buildLocalPlaylistForRss,
   } = deps;
+
+  const configuredPodcastRoot = String(podcastRoot || process.env.PODCAST_ROOT || process.env.PODCAST_SHOWS_DIR || '').trim();
+  const assertPodcastRootWritable = async () => {
+    if (!configuredPodcastRoot) throw new Error('Podcast root is not configured (paths.podcastRoot).');
+    await fsp.mkdir(configuredPodcastRoot, { recursive: true });
+    await fsp.access(configuredPodcastRoot, fs.constants.W_OK);
+    return configuredPodcastRoot;
+  };
+  const assertSubDirWithinRoot = (subDir) => {
+    const rootReal = path.resolve(configuredPodcastRoot) + path.sep;
+    const dirReal = path.resolve(String(subDir || '')) + path.sep;
+    if (!dirReal.startsWith(rootReal)) {
+      throw new Error(`Subscription dir is outside configured podcastRoot: ${subDir}`);
+    }
+  };
 
   app.get('/podcasts/nightly-status', async (_req, res) => {
     try {
@@ -235,6 +251,12 @@ export function registerPodcastDownloadRoutes(app, deps) {
       if (!sub.dir || !sub.mpdPrefix) {
         return res.status(400).json({ ok: false, error: 'Subscription missing required fields (dir/mpdPrefix)', rss });
       }
+      try {
+        await assertPodcastRootWritable();
+        assertSubDirWithinRoot(sub.dir);
+      } catch (e) {
+        return res.status(500).json({ ok: false, error: e?.message || String(e), podcastRoot: configuredPodcastRoot, dir: String(sub.dir || '') });
+      }
 
       const rawTitle = String(req.body?.title || '').trim();
       const rawDate = String(req.body?.date || '').trim();
@@ -337,6 +359,13 @@ export function registerPodcastDownloadRoutes(app, deps) {
           error: 'Subscription missing required fields (dir/mpdPrefix/outM3u/mapJson)',
           rss,
         });
+      }
+
+      try {
+        await assertPodcastRootWritable();
+        assertSubDirWithinRoot(sub.dir);
+      } catch (e) {
+        return res.status(500).json({ ok: false, error: e?.message || String(e), podcastRoot: configuredPodcastRoot, dir: String(sub.dir || '') });
       }
 
       await fsp.mkdir(sub.dir, { recursive: true });
