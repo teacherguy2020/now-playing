@@ -114,6 +114,39 @@
       will-change: transform, opacity;
     }
     body.rail-touch-lock{overflow:hidden}
+
+    /* 1280x400 kiosk landscape profile */
+    html:has(body.kiosk1280){background:var(--surface,#060b16)}
+    body.kiosk1280{padding:8px 10px 10px;display:grid;grid-template-columns:1fr;grid-template-rows:34px 1fr;row-gap:8px;overflow:hidden;width:1280px;height:448px;max-width:1280px;max-height:448px;margin:14px auto;background:var(--surface,#060b16)}
+    body.kiosk1280 .kioskCtl{display:flex;gap:8px;align-items:center;min-height:0;padding:6px 10px;border:1px solid rgba(70,98,145,.55);border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);background:linear-gradient(180deg,#101a2f,#0d1730)}
+    body.kiosk1280:not(.kioskEditor){grid-template-rows:1fr;height:400px;max-height:400px;padding:0;margin:0 auto;background:var(--surface,#060b16);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+    body.kiosk1280:not(.kioskEditor) .kioskCtl{display:none !important}
+    body.kiosk1280:not(.kioskEditor) #kioskCanvas, body.kiosk1280:not(.kioskEditor) #kioskCanvas *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+    body.kiosk1280:not(.kioskEditor) #kioskCanvas{padding:8px 10px 10px;border:none;box-shadow:none;border-radius:0;background:var(--surface,#060b16)}
+    body.kiosk1280 .kioskCtl select, body.kiosk1280 .kioskCtl button{height:30px;border:1px solid #2b3f63;border-radius:8px;background:#0e1830;color:#e8efff;padding:0 10px;font-size:13px}
+    body.kiosk1280 .kioskCtl .grow{flex:1}
+    body.kiosk1280 .kioskCtl .stat{font-size:12px;color:#9eb0d7;max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    body.kiosk1280 #kioskCanvas{display:grid;grid-template-columns:332px 300px minmax(0,1fr);grid-template-rows:auto 1fr;grid-template-areas:'np search recent' 'np list recent';column-gap:2px;row-gap:8px;overflow:hidden;padding:8px 10px 10px;border:1px solid rgba(70,98,145,.55);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);background:linear-gradient(180deg,#0b1324,#0a1220)}
+    body.kiosk1280 .npTap{grid-area:np;min-height:0;margin-right:-8px}
+    body.kiosk1280 .quickWrap{grid-area:search;margin:0}
+    body.kiosk1280 #libraryList{grid-area:list;margin:0;overflow:auto;min-height:0;padding-right:4px}
+    body.kiosk1280 .recentWrap{grid-area:recent;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+    body.kiosk1280 .recentTitle{font-size:18px;margin:2px 0 8px;padding-left:0}
+    body.kiosk1280 .railModeBtn{display:none}
+    body.kiosk1280 .rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 24px)/4);grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;padding:0;overflow-x:auto;overflow-y:hidden;align-content:start}
+    body.kiosk1280 .thumb{min-width:0;width:auto}
+    body.kiosk1280 .thumb img, body.kiosk1280 .ph{width:90%;height:auto;aspect-ratio:1/1;display:block;margin:0 auto}
+    body.kiosk1280 .thumb .cap{font-size:12px;white-space:normal;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    body.kiosk1280 .row{padding:8px 0;grid-template-columns:28px 1fr 14px;gap:8px}
+    body.kiosk1280 .row .lbl{font-size:19px}
+    body.kiosk1280 .title{font-size:17px;margin-bottom:6px}
+    body.kiosk1280 .npTap .title{display:none}
+    body.kiosk1280 .np{display:flex;flex-direction:column;gap:8px;align-items:flex-start;justify-content:flex-start}
+    body.kiosk1280 .np .artWrap, body.kiosk1280 .np img{width:318px;height:318px}
+    body.kiosk1280 #line1{font-size:18px;font-weight:700;line-height:1.16;max-width:440px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+    body.kiosk1280 #line2{font-size:13px;max-width:440px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+    body.kiosk1280 .quickIn{height:34px;font-size:15px}
+    body.kiosk1280 .quickMenu{top:38px;max-height:46vh}
     @keyframes navForwardOut{
       from{transform:translateX(0);opacity:1}
       to{transform:translateX(-24px);opacity:.38}
@@ -123,6 +156,18 @@
   <link rel="stylesheet" href="styles/controller-modals.css?v=20260307-unify1" />
 </head>
 <body>
+  <div class="kioskCtl" id="kioskCtl" style="display:none">
+    <label class="muted" for="kioskSizeSel" style="font-size:12px">Size</label>
+    <select id="kioskSizeSel">
+      <option value="controller.html?kiosk=1&edit=1">1280×400</option>
+      <option value="controller.html">Default</option>
+      <option value="controller-now-playing.html">Now Playing</option>
+    </select>
+    <button id="kioskPushBtn" type="button">Push to moOde</button>
+    <span class="stat" id="kioskPushStat"></span>
+    <span class="grow"></span>
+  </div>
+  <div id="kioskCanvas">
   <a class="npTap" data-href="controller-now-playing.html" title="Open full player">
     <div class="card">
       <div class="title">Now Playing on moOde</div>
@@ -189,7 +234,14 @@
   <script>
     const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v1';
     const MOBILE_DEFAULT_PROFILE={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18};
-    const IS_PREVIEW = new URL(location.href).searchParams.get('preview') === '1';
+    const __u = new URL(location.href);
+    const IS_PREVIEW = __u.searchParams.get('preview') === '1';
+    const IS_KIOSK_1280 = (__u.searchParams.get('kiosk') === '1' || __u.searchParams.get('profile') === '1280x400' || __u.searchParams.get('layout') === '1280x400');
+    const IS_KIOSK_EDITOR = IS_KIOSK_1280 && (__u.searchParams.get('edit') === '1' || __u.searchParams.get('designer') === '1');
+    if (IS_KIOSK_1280) {
+      try { document.body.classList.add('kiosk1280'); } catch {}
+      if (IS_KIOSK_EDITOR) { try { document.body.classList.add('kioskEditor'); } catch {} }
+    }
     function parseProfile(){
       const u=new URL(location.href); const p=u.searchParams.get('profile');
       if (p){
@@ -208,6 +260,15 @@
       }
     }
     let profile=parseProfile();
+    // Allow URL-driven overrides (kiosk designer preview/push)
+    {
+      const qTheme = String(__u.searchParams.get('theme') || '').trim().toLowerCase();
+      const qColor = String(__u.searchParams.get('colorPreset') || '').trim().toLowerCase();
+      const qRecent = String(__u.searchParams.get('recentSource') || '').trim().toLowerCase();
+      if (qTheme) profile.theme = qTheme;
+      if (qColor) profile.colorPreset = qColor;
+      if (qRecent) profile.recentSource = qRecent;
+    }
     function applyProfileUi(){
       const show = profile.showRecent !== false;
       const src = String(profile.recentSource || 'albums').toLowerCase();
@@ -269,25 +330,62 @@
       const modeRaw = String(themeMode||'auto').toLowerCase();
       const isLight = modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
       const map = {
-        ocean:  { accent:'#4aa8ff', surface:'#0b111c', line:'#1f2a3d', quickBg:'#121c30', quickBgMenu:'rgba(10,16,28,.94)' },
-        violet: { accent:'#a78bfa', surface:'#120f1f', line:'#32284a', quickBg:'#1a1330', quickBgMenu:'rgba(23,16,38,.94)' },
-        mint:   { accent:'#34d399', surface:'#0b1514', line:'#21423f', quickBg:'#112421', quickBgMenu:'rgba(14,34,30,.94)' },
-        amber:  { accent:'#fbbf24', surface:'#171208', line:'#4a3720', quickBg:'#2a1f12', quickBgMenu:'rgba(34,25,14,.94)' },
-        black:  { accent:'#f5f5f5', surface:'#050505', line:'#222222', quickBg:'#0e0e0e', quickBgMenu:'rgba(8,8,8,.94)' },
-        orange: { accent:'#ff7a1a', surface:'#16100a', line:'#4a2f1c', quickBg:'#24180f', quickBgMenu:'rgba(30,18,10,.94)' },
+        ocean:    { accent:'#4aa8ff', surface:'#0b111c', line:'#1f2a3d', quickBg:'#121c30', quickBgMenu:'rgba(10,16,28,.94)' },
+        violet:   { accent:'#a78bfa', surface:'#120f1f', line:'#32284a', quickBg:'#1a1330', quickBgMenu:'rgba(23,16,38,.94)' },
+        mint:     { accent:'#34d399', surface:'#0b1514', line:'#21423f', quickBg:'#112421', quickBgMenu:'rgba(14,34,30,.94)' },
+        amber:    { accent:'#fbbf24', surface:'#171208', line:'#4a3720', quickBg:'#2a1f12', quickBgMenu:'rgba(34,25,14,.94)' },
+        black:    { accent:'#f5f5f5', surface:'#050505', line:'#222222', quickBg:'#0e0e0e', quickBgMenu:'rgba(8,8,8,.94)' },
+        orange:   { accent:'#ff7a1a', surface:'#16100a', line:'#4a2f1c', quickBg:'#24180f', quickBgMenu:'rgba(30,18,10,.94)' },
+        midnight: { accent:'#7aa2ff', surface:'#070b14', line:'#202a3f', quickBg:'#0d1322', quickBgMenu:'rgba(8,12,20,.94)' },
+        slate:    { accent:'#93a4bd', surface:'#0e131b', line:'#2f3c4d', quickBg:'#151d2a', quickBgMenu:'rgba(14,19,27,.94)' },
+        mono:     { accent:'#d8d8d8', surface:'#0b0b0b', line:'#2d2d2d', quickBg:'#141414', quickBgMenu:'rgba(12,12,12,.94)' },
+        sunset:   { accent:'#ff8f4d', surface:'#1b110d', line:'#5b3a2d', quickBg:'#2a1914', quickBgMenu:'rgba(36,22,16,.94)' },
+        sunrise:  { accent:'#ffbf47', surface:'#1a130a', line:'#5a4523', quickBg:'#2a2011', quickBgMenu:'rgba(34,26,14,.94)' },
+        rose:     { accent:'#fb7185', surface:'#1a0d14', line:'#5b2b3f', quickBg:'#2a1320', quickBgMenu:'rgba(34,16,26,.94)' },
+        lavender: { accent:'#c4b5fd', surface:'#120d1e', line:'#3d3158', quickBg:'#1b1430', quickBgMenu:'rgba(24,17,38,.94)' },
+        emerald:  { accent:'#34d399', surface:'#081511', line:'#1f4a3e', quickBg:'#0f241d', quickBgMenu:'rgba(12,34,28,.94)' },
+        forest:   { accent:'#4ade80', surface:'#0a150d', line:'#2d4f36', quickBg:'#132318', quickBgMenu:'rgba(14,31,20,.94)' },
       };
       const d = map[p] || map.ocean;
       const lightMap = {
-        ocean:  { surface:'#eef5ff', line:'#c8d7ee', quickBg:'#f8fbff', quickBgMenu:'rgba(248,251,255,.96)', text:'#0b0f17', muted:'#3f5673' },
-        violet: { surface:'#f5f0ff', line:'#d9cdf1', quickBg:'#fcf9ff', quickBgMenu:'rgba(252,249,255,.96)', text:'#0b0f17', muted:'#52436e' },
-        mint:   { surface:'#eefcf7', line:'#c7e8dd', quickBg:'#f8fffc', quickBgMenu:'rgba(248,255,252,.96)', text:'#0b0f17', muted:'#3d5f58' },
-        amber:  { surface:'#fff8ea', line:'#ead8b0', quickBg:'#fffdf6', quickBgMenu:'rgba(255,253,246,.96)', text:'#0b0f17', muted:'#65532e' },
-        black:  { surface:'#f2f4f8', line:'#d4dae4', quickBg:'#fafbfe', quickBgMenu:'rgba(250,251,254,.96)', text:'#0b0f17', muted:'#4b5567' },
-        orange: { surface:'#fff3ea', line:'#ebcfbe', quickBg:'#fffaf6', quickBgMenu:'rgba(255,250,246,.96)', text:'#0b0f17', muted:'#684937' },
+        ocean:    { surface:'#eef5ff', line:'#c8d7ee', quickBg:'#f8fbff', quickBgMenu:'rgba(248,251,255,.96)', text:'#0b0f17', muted:'#3f5673' },
+        violet:   { surface:'#f5f0ff', line:'#d9cdf1', quickBg:'#fcf9ff', quickBgMenu:'rgba(252,249,255,.96)', text:'#0b0f17', muted:'#52436e' },
+        mint:     { surface:'#eefcf7', line:'#c7e8dd', quickBg:'#f8fffc', quickBgMenu:'rgba(248,255,252,.96)', text:'#0b0f17', muted:'#3d5f58' },
+        amber:    { surface:'#fff8ea', line:'#ead8b0', quickBg:'#fffdf6', quickBgMenu:'rgba(255,253,246,.96)', text:'#0b0f17', muted:'#65532e' },
+        black:    { surface:'#f2f4f8', line:'#d4dae4', quickBg:'#fafbfe', quickBgMenu:'rgba(250,251,254,.96)', text:'#0b0f17', muted:'#4b5567' },
+        orange:   { surface:'#fff3ea', line:'#ebcfbe', quickBg:'#fffaf6', quickBgMenu:'rgba(255,250,246,.96)', text:'#0b0f17', muted:'#684937' },
+        midnight: { surface:'#edf2ff', line:'#cbd5f1', quickBg:'#f7f9ff', quickBgMenu:'rgba(247,249,255,.96)', text:'#0b0f17', muted:'#415172' },
+        slate:    { surface:'#f1f5f9', line:'#d0d8e2', quickBg:'#f8fafc', quickBgMenu:'rgba(248,250,252,.96)', text:'#0b0f17', muted:'#4a5567' },
+        mono:     { surface:'#f4f4f5', line:'#dadade', quickBg:'#fafafa', quickBgMenu:'rgba(250,250,250,.96)', text:'#0b0f17', muted:'#52525b' },
+        sunset:   { surface:'#fff4ee', line:'#efd0c2', quickBg:'#fffaf7', quickBgMenu:'rgba(255,250,247,.96)', text:'#0b0f17', muted:'#6b4d3e' },
+        sunrise:  { surface:'#fff7ea', line:'#ecd7b0', quickBg:'#fffdf5', quickBgMenu:'rgba(255,253,245,.96)', text:'#0b0f17', muted:'#6a572f' },
+        rose:     { surface:'#fff1f5', line:'#f2cdd8', quickBg:'#fff8fa', quickBgMenu:'rgba(255,248,250,.96)', text:'#0b0f17', muted:'#6f4454' },
+        lavender: { surface:'#f6f3ff', line:'#ddd3fb', quickBg:'#fcfbff', quickBgMenu:'rgba(252,251,255,.96)', text:'#0b0f17', muted:'#534675' },
+        emerald:  { surface:'#ecfdf5', line:'#c7e9d8', quickBg:'#f7fffb', quickBgMenu:'rgba(247,255,251,.96)', text:'#0b0f17', muted:'#3f6257' },
+        forest:   { surface:'#eef9f0', line:'#cde3d0', quickBg:'#f8fdf9', quickBgMenu:'rgba(248,253,249,.96)', text:'#0b0f17', muted:'#44614a' },
       };
       const l = lightMap[p] || lightMap.ocean;
+      const blendHex = (base, tint, ratio=0.10)=>{
+        const b = String(base||'').trim().match(/^#([0-9a-f]{6})$/i);
+        const t = String(tint||'').trim().match(/^#([0-9a-f]{6})$/i);
+        if (!b || !t) return base;
+        const bn = parseInt(b[1],16), tn = parseInt(t[1],16);
+        let br=(bn>>16)&255, bg=(bn>>8)&255, bb=bn&255;
+        const tr=(tn>>16)&255, tg=(tn>>8)&255, tb=tn&255;
+        const k = Math.max(0, Math.min(1, ratio));
+        br = Math.round(br + (tr-br)*k);
+        bg = Math.round(bg + (tg-bg)*k);
+        bb = Math.round(bb + (tb-bb)*k);
+        return `#${br.toString(16).padStart(2,'0')}${bg.toString(16).padStart(2,'0')}${bb.toString(16).padStart(2,'0')}`;
+      };
+      const accent = (l.accent || d.accent);
       const t = isLight
-        ? { accent: (l.accent || d.accent), ...l }
+        ? {
+            accent,
+            ...l,
+            surface: blendHex(l.surface, accent, 0.20),
+            quickBg: blendHex(l.quickBg, accent, 0.20),
+          }
         : { ...d, text:'#f3f6ff', muted:'#9eb3d6' };
       const r = document.documentElement;
       r.style.setProperty('--accent', t.accent);
@@ -314,6 +412,57 @@
       return runtimeTrackKey;
     }
     function reqHeaders(json=true){ return Object.assign({}, json?{'Content-Type':'application/json'}:{}, runtimeTrackKey?{'x-track-key':runtimeTrackKey}:{}); }
+
+    function initKioskControls(){
+      if (!IS_KIOSK_EDITOR) return;
+      const box = document.getElementById('kioskCtl');
+      const sel = document.getElementById('kioskSizeSel');
+      const btn = document.getElementById('kioskPushBtn');
+      const stat = document.getElementById('kioskPushStat');
+      if (box) box.style.display = 'flex';
+      if (sel) {
+        const cur = `${location.pathname.split('/').pop()}${location.search||''}`;
+        const hit = [...sel.options].find((o)=>String(o.value||'').trim()===cur);
+        if (hit) sel.value = hit.value;
+        sel.addEventListener('change', ()=>{
+          const rel = String(sel.value||'').trim();
+          if (!rel) return;
+          location.href = rel.startsWith('http') ? rel : rel;
+        });
+      }
+      btn?.addEventListener('click', async ()=>{
+        try {
+          btn.disabled = true;
+          btn.textContent = 'Pushing…';
+          await ensureKey();
+          const relRaw = String(sel?.value || 'controller.html?kiosk=1').trim().replace(/^\/+/, '');
+          const relUrl = new URL(relRaw, 'http://x.local/');
+          // Mirror current designer profile styling on pushed display URL.
+          relUrl.searchParams.set('theme', String(profile.theme || 'auto'));
+          relUrl.searchParams.set('colorPreset', String(profile.colorPreset || 'ocean'));
+          relUrl.searchParams.set('recentSource', String(profile.recentSource || 'albums'));
+          relUrl.searchParams.delete('edit');
+          relUrl.searchParams.delete('designer');
+          if (IS_KIOSK_1280) relUrl.searchParams.set('kiosk', '1');
+          const rel = `${relUrl.pathname.replace(/^\//,'')}${relUrl.search}`;
+
+          const webHost = String(location.hostname || '10.0.0.4').trim();
+          const url = `http://${webHost}:8101/${rel}`;
+          const r = await fetch(`${base}/config/moode/browser-url`, {
+            method:'POST', headers:reqHeaders(true), body:JSON.stringify({ url, reason:'kiosk-controls-push' })
+          });
+          const j = await r.json().catch(()=>({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          if (stat) stat.textContent = `Pushed ${url}`;
+        } catch(e) {
+          if (stat) stat.textContent = `Push failed: ${e?.message || e}`;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Push to moOde';
+        }
+      });
+    }
+
     async function fetchJsonWithTimeout(url, options={}, timeoutMs=3500){
       const ctl = new AbortController();
       const to = setTimeout(()=>{ try{ ctl.abort(); }catch{} }, timeoutMs);
@@ -391,7 +540,7 @@
     const recentWrap=document.querySelector('.recentWrap');
     const recentTitleEl=document.getElementById('recentTitle');
     const railModeBtn=document.getElementById('railModeBtn');
-    const recentLimit=()=>Math.max(6,Math.min(30,Number(profile.recentCount||18)));
+    const recentLimit=()=> IS_KIOSK_1280 ? 16 : Math.max(6,Math.min(30,Number(profile.recentCount||18)));
     let recentItems=[];
     let recentActiveRadioUrl='';
     let recentMenuCtx={kind:'album',album:'',artist:'',art:'',playlist:'',title:'',rss:''};
@@ -457,7 +606,16 @@
             return { show: s, ts };
           });
           ranked.sort((a,b)=> (Number(b.ts||0)-Number(a.ts||0)) || String(a.show?.title||'').localeCompare(String(b.show?.title||''), undefined, { sensitivity:'base' }));
-          let topShows = ranked.map((x)=>x.show).slice(0, recentLimit());
+          const seenPod = new Set();
+          const topShows = [];
+          for (const x of ranked) {
+            const s = x.show || {};
+            const k = normKey(String(s?.rss || s?.title || s?.dir || s?.mpdPrefix || ''));
+            if (!k || seenPod.has(k)) continue;
+            seenPod.add(k);
+            topShows.push(s);
+            if (topShows.length >= recentLimit()) break;
+          }
 
           if (!topShows.length && podcastAlbums.length) {
             const byShow = new Map();
@@ -492,7 +650,20 @@
         if (src === 'playlists') {
           const pl = await fetchJsonWithTimeout(`${base}/config/queue-wizard/playlists`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
           const names = (pl.ok && pl.json?.ok && Array.isArray(pl.json.playlists)) ? pl.json.playlists : [];
-          const top = names.slice(0, recentLimit());
+          const cleaned = names
+            .map((n)=>String(n||'').trim())
+            .filter(Boolean)
+            .filter((n)=>!n.toLowerCase().endsWith('.youtube'))
+            .filter((n)=>!n.toLowerCase().endsWith('.youtube.json'));
+          const seenPl = new Set();
+          const top = [];
+          for (const n of cleaned) {
+            const k = n.toLowerCase();
+            if (seenPl.has(k)) continue;
+            seenPl.add(k);
+            top.push(n);
+            if (top.length >= recentLimit()) break;
+          }
           if (!top.length) return;
           recentItems = top.map((name)=>{
             const n = String(name||'(playlist)').trim();
@@ -565,7 +736,16 @@
           return !(f.startsWith('usb/samsungmoode/podcasts/') || f.includes('/podcasts/'));
         });
         albums.sort((a,b)=>Number(b?.addedTs||0)-Number(a?.addedTs||0));
-        const top = albums.slice(0, recentLimit());
+        const seen = new Set();
+        const unique = [];
+        for (const a of albums) {
+          const k = `${String(a?.artist || '').trim().toLowerCase()}|${String(a?.album || '').trim().toLowerCase()}`;
+          if (!k || seen.has(k)) continue;
+          seen.add(k);
+          unique.push(a);
+          if (unique.length >= recentLimit()) break;
+        }
+        const top = unique;
         if (!top.length) {
           for(let i=0;i<recentLimit();i++){
             const d=document.createElement('div'); d.className='thumb';
@@ -868,16 +1048,55 @@
     if (npTapEl) {
       const NP_LONG_MS = 520;
       const NP_MOVE_SLOP = 12;
+      const NP_DBL_MS = 280;
       let npPressTimer = 0;
       let npStartX = 0;
       let npStartY = 0;
       let npLongFired = false;
       let npSuppressClickUntil = 0;
+      let npTapTimer = 0;
+      let npLastTouchAt = 0;
 
       const clearNpPress = ()=>{ try { clearTimeout(npPressTimer); } catch {} npPressTimer = 0; };
       const showTogglePulse = ()=>{
         npTapEl.classList.add('togglePulse');
         setTimeout(()=>{ try { npTapEl.classList.remove('togglePulse'); } catch {} }, 380);
+      };
+      const pushDisplayModeFromKiosk = async (mode='player')=>{
+        try {
+          await ensureKey();
+          const m = String(mode||'player').toLowerCase()==='peppy' ? 'peppy' : 'player';
+          const host = String(location.hostname || '10.0.0.4').trim();
+          const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+          const refreshUrl = `${targetUrl}&sw=${Date.now()}`;
+          await fetch(`${base}/config/moode/display-mode`, {
+            method:'POST',
+            headers:reqHeaders(true),
+            body: JSON.stringify({ displayMode: m })
+          }).catch(()=>null);
+
+          // Keep display-mode state aligned with app push flow.
+          await fetch(`${base}/peppy/last-profile`, {
+            method:'POST',
+            headers:reqHeaders(true),
+            body: JSON.stringify({
+              url: targetUrl,
+              displayMode: m,
+              playerSize: '1280x400'
+            })
+          }).catch(()=>null);
+
+          if (m === 'peppy') {
+            await fetch(`${base}/config/moode/peppymeter/start`, { method:'POST', headers:reqHeaders(true), body: JSON.stringify({ reason:'kiosk-art-longpress' }) }).catch(()=>null);
+            await fetch(`${base}/config/moode/peppyalsa/ensure`, { method:'POST', headers:reqHeaders(true), body: JSON.stringify({ reason:'kiosk-art-longpress' }) }).catch(()=>null);
+          }
+          await fetch(`${base}/config/moode/browser-url`, {
+            method:'POST',
+            headers:reqHeaders(true),
+            body: JSON.stringify({ url: refreshUrl, reason: `kiosk-art-${m}` })
+          }).catch(()=>null);
+          location.href = refreshUrl;
+        } catch {}
       };
       const startNpPress = (x,y)=>{
         npLongFired = false;
@@ -888,6 +1107,10 @@
           npLongFired = true;
           npSuppressClickUntil = Date.now() + 900;
           showTogglePulse();
+          if (IS_KIOSK_1280) {
+            // Kiosk mode uses tap/double-tap only (avoid long-press image-select quirks).
+            return;
+          }
           try { await sendPlayback('toggle'); } catch {}
         }, NP_LONG_MS);
       };
@@ -905,6 +1128,7 @@
         if (dx > NP_MOVE_SLOP || dy > NP_MOVE_SLOP) clearNpPress();
       }, { passive:true });
       npTapEl.addEventListener('touchend', (ev)=>{
+        npLastTouchAt = Date.now();
         if (npLongFired || Date.now() < npSuppressClickUntil) {
           try { ev.preventDefault(); ev.stopPropagation(); } catch {}
         }
@@ -932,10 +1156,27 @@
           npLongFired = false;
           return;
         }
+        if (IS_KIOSK_1280) {
+          ev.preventDefault();
+          try { clearTimeout(npTapTimer); } catch {}
+          npTapTimer = setTimeout(()=>{
+            npTapTimer = 0;
+            pushDisplayModeFromKiosk('player');
+          }, NP_DBL_MS);
+          return;
+        }
         const href = String(npTapEl.getAttribute('data-href') || '').trim();
         if (!href) return;
         ev.preventDefault();
         navigateWithSlide(href);
+      });
+      npTapEl.addEventListener('dblclick', (ev)=>{
+        if (!IS_KIOSK_1280) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        try { clearTimeout(npTapTimer); } catch {}
+        npTapTimer = 0;
+        pushDisplayModeFromKiosk('peppy');
       });
     }
     hqr.addEventListener('click', async (ev)=>{
@@ -1119,6 +1360,8 @@
     document.querySelectorAll('.row[data-page]').forEach((row)=>{
       row.addEventListener('click', ()=>openPage(row.getAttribute('data-page') || ''));
     });
+
+    initKioskControls();
 
     (async ()=>{
       // Prioritize Now Playing first so banner paints immediately.

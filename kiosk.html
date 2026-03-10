@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kiosk</title>
+  <style>html,body{margin:0;background:#060b16;height:100%}</style>
+</head>
+<body>
+  <script>
+    (()=>{
+      const src = new URL(location.href);
+      const dst = new URL('controller.html', location.href);
+      const KIOSK_PROFILE_KEY = 'nowplaying.kiosk.profile.v1';
+
+      const incoming = {
+        theme: String(src.searchParams.get('theme') || '').trim(),
+        colorPreset: String(src.searchParams.get('colorPreset') || '').trim(),
+        recentSource: String(src.searchParams.get('recentSource') || '').trim(),
+      };
+
+      let saved = {};
+      try { saved = JSON.parse(localStorage.getItem(KIOSK_PROFILE_KEY) || '{}') || {}; } catch {}
+
+      const resolved = {
+        theme: incoming.theme || String(saved.theme || '').trim(),
+        colorPreset: incoming.colorPreset || String(saved.colorPreset || '').trim(),
+        recentSource: incoming.recentSource || String(saved.recentSource || '').trim(),
+      };
+
+      try {
+        localStorage.setItem(KIOSK_PROFILE_KEY, JSON.stringify({
+          theme: resolved.theme || 'dark',
+          colorPreset: resolved.colorPreset || 'ocean',
+          recentSource: resolved.recentSource || 'albums',
+          ts: Date.now(),
+        }));
+      } catch {}
+
+      dst.searchParams.set('kiosk','1');
+      dst.searchParams.set('preview','1');
+      if (resolved.theme) dst.searchParams.set('theme', resolved.theme);
+      if (resolved.colorPreset) dst.searchParams.set('colorPreset', resolved.colorPreset);
+      if (resolved.recentSource) dst.searchParams.set('recentSource', resolved.recentSource);
+
+      location.replace(dst.toString());
+    })();
+  </script>
+</body>
+</html>

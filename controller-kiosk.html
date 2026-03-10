@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Controller Kiosk 1280x400</title>
+  <style>
+    :root{--bg:#0a1220;--panel:#121d32;--line:#233454;--txt:#e8efff;--muted:#9eb0d7;--acc:#60a5fa}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:14px/1.3 Inter,system-ui}
+    #app{width:1280px;height:400px;margin:0 auto;display:grid;grid-template-columns:320px 560px 400px;gap:10px;padding:10px;box-sizing:border-box}
+    .pane{background:var(--panel);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-height:0}
+    .head{padding:8px 10px;border-bottom:1px solid var(--line);font-weight:700}
+    .body{padding:8px;overflow:auto;min-height:0}
+    .source{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .source button{padding:10px;border:1px solid var(--line);border-radius:10px;background:#0e1830;color:var(--txt);cursor:pointer}
+    .source button.on{border-color:var(--acc);box-shadow:0 0 0 1px rgba(96,165,250,.25) inset}
+    .row{padding:8px;border-bottom:1px solid #1d2d49;cursor:pointer}
+    .row:hover{background:#0f1a30}
+    .muted{color:var(--muted)}
+    .actions{display:flex;gap:8px;padding:8px;border-top:1px solid var(--line)}
+    .actions button{flex:1;padding:9px;border:1px solid var(--line);border-radius:10px;background:#0e1830;color:var(--txt);cursor:pointer}
+    .actions .primary{background:linear-gradient(90deg,#1d4ed8,#7c3aed);border-color:transparent}
+    .np-art{width:100%;aspect-ratio:1/1;max-height:180px;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:#09101f}
+  </style>
+</head>
+<body>
+  <div id="app">
+    <section class="pane">
+      <div class="head">Sources</div>
+      <div class="body">
+        <div class="source" id="sources">
+          <button data-src="library" class="on">Library</button>
+          <button data-src="playlists">Playlists</button>
+          <button data-src="radio">Radio</button>
+          <button data-src="podcasts">Podcasts</button>
+          <button data-src="youtube">YouTube</button>
+          <button data-src="queue">Queue</button>
+        </div>
+        <div style="margin-top:10px" class="muted">1280x400 kiosk scaffold (phase 1)</div>
+      </div>
+    </section>
+
+    <section class="pane">
+      <div class="head" id="listTitle">Library</div>
+      <div class="body" id="listBody"></div>
+    </section>
+
+    <section class="pane">
+      <div class="head">Now Playing</div>
+      <div class="body">
+        <img id="art" class="np-art" alt="art" />
+        <div id="title" style="font-weight:700;margin-top:8px">—</div>
+        <div id="artist" class="muted">—</div>
+        <div id="album" class="muted">—</div>
+      </div>
+      <div class="actions">
+        <button id="btnAppend">Append</button>
+        <button id="btnCrop">Crop</button>
+        <button id="btnReplace" class="primary">Replace</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+  (async()=>{
+    const host=location.hostname||'10.0.0.4';
+    const api=`${location.protocol}//${host}:3101`;
+    let key='';
+    let currentSrc='library';
+
+    async function ensureKey(){
+      if(key) return key;
+      const r=await fetch(`${api}/config/runtime`,{cache:'no-store'});
+      const j=await r.json().catch(()=>({}));
+      key=String(j?.config?.trackKey||'').trim();
+      return key;
+    }
+
+    async function refreshNowPlaying(){
+      try{
+        await ensureKey();
+        const r=await fetch(`${api}/now-playing`,{cache:'no-store',headers:key?{'x-track-key':key}:{}});
+        const j=await r.json().catch(()=>({}));
+        document.getElementById('title').textContent=j?.title||j?.displayTitle||'—';
+        document.getElementById('artist').textContent=j?.artist||j?.displayArtist||'—';
+        document.getElementById('album').textContent=j?.album||'—';
+        const art=String(j?.albumArtUrl||j?.displayArtUrl||'').trim();
+        document.getElementById('art').src = art ? (art.startsWith('http')?art:`${api}${art}`) : `${api}/art/current.jpg`;
+      }catch{}
+    }
+
+    async function loadList(src){
+      currentSrc=src;
+      document.getElementById('listTitle').textContent=src[0].toUpperCase()+src.slice(1);
+      const body=document.getElementById('listBody');
+      body.innerHTML='<div class="muted">Loading…</div>';
+      try{
+        await ensureKey();
+        if(src==='queue'){
+          const r=await fetch(`${api}/config/diagnostics/queue`,{headers:key?{'x-track-key':key}:{}});
+          const j=await r.json().catch(()=>({}));
+          const items=Array.isArray(j?.items)?j.items:[];
+          body.innerHTML=items.map((x,i)=>`<div class='row'>${i+1}. ${x.title||x.stationName||x.file||'(item)'}<div class='muted'>${x.artist||''}</div></div>`).join('')||'<div class="muted">Queue empty</div>';
+          return;
+        }
+        if(src==='playlists'){
+          const r=await fetch(`${api}/config/queue-wizard/playlists`,{headers:key?{'x-track-key':key}:{}});
+          const j=await r.json().catch(()=>({}));
+          const names=Array.isArray(j?.playlists)?j.playlists:[];
+          body.innerHTML=names.map(n=>`<div class='row'>${n}</div>`).join('')||'<div class="muted">No playlists</div>';
+          return;
+        }
+        body.innerHTML=`<div class='muted'>${src} browsing wiring next.</div>`;
+      }catch(e){body.innerHTML=`<div class='muted'>Load failed: ${e?.message||e}</div>`}
+    }
+
+    document.getElementById('sources').addEventListener('click',e=>{
+      const b=e.target.closest('button[data-src]'); if(!b) return;
+      [...document.querySelectorAll('#sources button')].forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      loadList(b.dataset.src);
+    });
+
+    document.getElementById('btnReplace').onclick=()=>alert('Replace action wiring in phase 2');
+    document.getElementById('btnAppend').onclick=()=>alert('Append action wiring in phase 2');
+    document.getElementById('btnCrop').onclick=()=>alert('Crop action wiring in phase 2');
+
+    await refreshNowPlaying();
+    await loadList('library');
+    setInterval(refreshNowPlaying,5000);
+  })();
+  </script>
+</body>
+</html>

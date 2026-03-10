@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kiosk Designer</title>
+  <style>
+    :root{--bg:#060b16;--panel:#101a2f;--line:#2b3f63;--txt:#e8efff;--muted:#9eb0d7}
+    html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.35 Inter,system-ui}
+    .wrap{max-width:1320px;margin:0 auto;padding:10px}
+    .card{border:1px solid rgba(70,98,145,.55);border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);background:linear-gradient(180deg,#101a2f,#0d1730)}
+    .ctl{display:flex;gap:8px;align-items:center;padding:8px 10px}
+    .ctl select,.ctl button{height:30px;border:1px solid var(--line);border-radius:8px;background:#0e1830;color:var(--txt);padding:0 10px}
+    .swatches{display:flex;gap:6px;align-items:center}
+    .sw{width:18px;height:18px;border-radius:999px;border:1px solid rgba(255,255,255,.28);cursor:pointer;opacity:.9}
+    .sw.on{outline:2px solid #fff;outline-offset:1px}
+    .sw[data-c='ocean']{background:linear-gradient(135deg,#1e3a8a,#0284c7)}
+    .sw[data-c='midnight']{background:linear-gradient(135deg,#111827,#334155)}
+    .sw[data-c='slate']{background:linear-gradient(135deg,#334155,#64748b)}
+    .sw[data-c='mono']{background:linear-gradient(135deg,#2b2f33,#52575c)}
+    .sw[data-c='sunset']{background:linear-gradient(135deg,#7c2d12,#f97316)}
+    .sw[data-c='sunrise']{background:linear-gradient(135deg,#b45309,#f59e0b)}
+    .sw[data-c='amber']{background:linear-gradient(135deg,#78350f,#f59e0b)}
+    .sw[data-c='rose']{background:linear-gradient(135deg,#831843,#fb7185)}
+    .sw[data-c='lavender']{background:linear-gradient(135deg,#4c1d95,#a78bfa)}
+    .sw[data-c='emerald']{background:linear-gradient(135deg,#064e3b,#34d399)}
+    .sw[data-c='forest']{background:linear-gradient(135deg,#14532d,#22c55e)}
+    .sw[data-c='mint']{background:linear-gradient(135deg,#0f766e,#2dd4bf)}
+    .stat{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:520px}
+    .grow{flex:1}
+    iframe{display:block;width:1280px;height:400px;margin:10px auto;border:0;border-radius:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card ctl">
+      <label for="sizeSel" class="muted">Size</label>
+      <select id="sizeSel">
+        <option value="kiosk.html">1280×400</option>
+      </select>
+      <label for="themeSel" class="muted">Theme</label>
+      <select id="themeSel">
+        <option value="dark" selected>Dark</option>
+        <option value="light">Light</option>
+      </select>
+      <label for="recentSel" class="muted">Recents</label>
+      <select id="recentSel">
+        <option value="albums">Recently Added</option>
+        <option value="podcasts">Podcasts</option>
+        <option value="playlists">Playlists</option>
+      </select>
+      <label class="muted">Color</label>
+      <div class="swatches" id="swatches">
+        <button class="sw" data-c="ocean" title="Ocean"></button>
+        <button class="sw" data-c="midnight" title="Midnight"></button>
+        <button class="sw" data-c="slate" title="Slate"></button>
+        <button class="sw" data-c="mono" title="Mono"></button>
+        <button class="sw" data-c="sunset" title="Sunset"></button>
+        <button class="sw" data-c="sunrise" title="Sunrise"></button>
+        <button class="sw" data-c="amber" title="Amber"></button>
+        <button class="sw" data-c="rose" title="Rose"></button>
+        <button class="sw" data-c="lavender" title="Lavender"></button>
+        <button class="sw" data-c="emerald" title="Emerald"></button>
+        <button class="sw" data-c="forest" title="Forest"></button>
+        <button class="sw" data-c="mint" title="Mint"></button>
+      </div>
+      <button id="pushBtn" type="button">Push to moOde</button>
+      <span class="grow"></span>
+      <span id="stat" class="stat"></span>
+    </div>
+    <iframe id="preview" class="card" src="kiosk.html"></iframe>
+  </div>
+
+  <script>
+    (async()=>{
+      const host=location.hostname||'10.0.0.4';
+      const api=`${location.protocol}//${host}:3101`;
+      const sizeSel=document.getElementById('sizeSel');
+      const themeSel=document.getElementById('themeSel');
+      const recentSel=document.getElementById('recentSel');
+      const swatches=document.getElementById('swatches');
+      let colorPreset='ocean';
+      const pushBtn=document.getElementById('pushBtn');
+      const stat=document.getElementById('stat');
+      const preview=document.getElementById('preview');
+      let key='';
+      const buildRel=()=>{
+        const u=new URL(sizeSel.value, 'http://x.local/');
+        u.searchParams.set('theme', themeSel.value);
+        u.searchParams.set('recentSource', recentSel.value);
+        u.searchParams.set('colorPreset', colorPreset);
+        return `${u.pathname.replace(/^\//,'')}${u.search}`;
+      };
+      const refreshPreview=()=>{ preview.src = buildRel(); };
+      const setSwatch = (c)=>{
+        colorPreset = c || 'ocean';
+        swatches?.querySelectorAll('.sw').forEach((el)=>el.classList.toggle('on', el.dataset.c===colorPreset));
+      };
+      swatches?.addEventListener('click',(ev)=>{
+        const b=ev.target.closest('.sw[data-c]');
+        if(!b) return;
+        ev.preventDefault();
+        setSwatch(String(b.dataset.c||'ocean'));
+        refreshPreview();
+      });
+      setSwatch(colorPreset);
+
+      sizeSel.addEventListener('change', refreshPreview);
+      themeSel.addEventListener('change', refreshPreview);
+      recentSel.addEventListener('change', refreshPreview);
+      refreshPreview();
+
+      async function ensureKey(){
+        if(key) return key;
+        const r=await fetch(`${api}/config/runtime`,{cache:'no-store'});
+        const j=await r.json().catch(()=>({}));
+        key=String(j?.config?.trackKey||'').trim();
+        return key;
+      }
+      pushBtn.addEventListener('click', async ()=>{
+        try{
+          pushBtn.disabled=true; pushBtn.textContent='Pushing…';
+          await ensureKey();
+          const rel=buildRel();
+          const url=`http://${host}:8101/${rel}`;
+          const r=await fetch(`${api}/config/moode/browser-url`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify({url,reason:'kiosk-designer-push'})});
+          const j=await r.json().catch(()=>({}));
+          if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`);
+          stat.textContent=`Pushed: ${url}`;
+        }catch(e){stat.textContent=`Push failed: ${e?.message||e}`}
+        finally{pushBtn.disabled=false; pushBtn.textContent='Push to moOde';}
+      });
+    })();
+  </script>
+</body>
+</html>

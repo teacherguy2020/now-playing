@@ -2191,21 +2191,19 @@
       }
 
       let artTapLockUntil = 0;
-      async function switchToPlayerFromArt(){
+      async function switchToKioskFromArt(){
         const now = Date.now();
         if (now < artTapLockUntil) return;
         artTapLockUntil = now + 1200;
-        try { window.parent?.postMessage({ type:'np-display-action', action:'push-player' }, '*'); } catch {}
         try {
-          if (window.parent === window) {
-            await ensureRuntimeKey();
-            const headers = { 'Content-Type':'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) };
-            await fetch(`${api}/config/moode/display-mode`, { method:'POST', headers, body: JSON.stringify({ displayMode:'player' }) }).catch(() => null);
-            const host = (location.hostname || API_FALLBACK_HOST);
-            const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
-            await fetch(`${api}/config/moode/browser-url`, { method:'POST', headers, body: JSON.stringify({ url: targetUrl }) }).catch(() => null);
-            location.href = `${targetUrl}&ts=${Date.now()}`;
-          }
+          await ensureRuntimeKey();
+          const headers = { 'Content-Type':'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) };
+          const host = (location.hostname || API_FALLBACK_HOST);
+          const targetUrl = `${location.protocol}//${host}:8101/kiosk.html`;
+          await fetch(`${api}/config/moode/browser-url`, { method:'POST', headers, body: JSON.stringify({ url: targetUrl, reason:'peppy-art-to-kiosk' }) }).catch(() => null);
+          const navUrl = `${targetUrl}?ts=${Date.now()}`;
+          try { if (window.top && window.top !== window) { window.top.location.href = navUrl; return; } } catch {}
+          location.href = navUrl;
         } catch {}
       }
 
@@ -2718,13 +2716,13 @@
       artFrame?.addEventListener('click', (ev) => {
         const t = ev.target instanceof Element ? ev.target : null;
         if (t?.closest?.('#art-info-hotspot, #fav-heart')) return;
-        switchToPlayerFromArt();
+        switchToKioskFromArt();
       });
       artFrame?.addEventListener('touchend', (ev) => {
         const t = ev.target instanceof Element ? ev.target : null;
         if (t?.closest?.('#art-info-hotspot, #fav-heart')) return;
         try { ev.preventDefault(); } catch {}
-        switchToPlayerFromArt();
+        switchToKioskFromArt();
       }, { passive:false });
 
       refreshPresetSelect();

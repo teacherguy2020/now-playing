@@ -55,29 +55,22 @@ function bindAlbumArtAppleLinkOnce() {
   artAppleLinkBound = true;
 
   let artTapLockUntil = 0;
-  const switchToPeppyFromArt = async () => {
+  const switchToKioskFromArt = async () => {
     const now = Date.now();
     if (now < artTapLockUntil) return;
     artTapLockUntil = now + 1200;
 
-    // Try shell relay first (parent/top).
-    try { window.parent?.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
-    try { if (window.top && window.top !== window.parent) window.top.postMessage({ type:'np-display-action', action:'push-peppy' }, '*'); } catch {}
-
-    // Always run direct API fallback too (covers player-render inside player.html iframe).
+    // Direct API route back to kiosk runtime.
     try {
       const key = await ensureRuntimeTrackKey();
       const headers = { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) };
-      await fetch(`${API_BASE}/config/moode/display-mode`, {
-        method: 'POST', headers, body: JSON.stringify({ displayMode: 'peppy' })
-      }).catch(() => null);
       const host = (location.hostname || '10.0.0.233');
-      const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+      const targetUrl = `${location.protocol}//${host}:8101/kiosk.html`;
       await fetch(`${API_BASE}/config/moode/browser-url`, {
-        method: 'POST', headers, body: JSON.stringify({ url: targetUrl })
+        method: 'POST', headers, body: JSON.stringify({ url: targetUrl, reason:'player-art-to-kiosk' })
       }).catch(() => null);
       if (window.parent === window) {
-        location.href = `${targetUrl}&ts=${Date.now()}`;
+        location.href = `${targetUrl}?ts=${Date.now()}`;
       }
     } catch {}
   };
@@ -88,7 +81,7 @@ function bindAlbumArtAppleLinkOnce() {
     if (!hit) return;
     ev.preventDefault();
     ev.stopPropagation();
-    switchToPeppyFromArt();
+    switchToKioskFromArt();
   }, { capture: true });
 
   document.addEventListener('touchend', (ev) => {
@@ -97,7 +90,7 @@ function bindAlbumArtAppleLinkOnce() {
     if (!hit) return;
     try { ev.preventDefault(); } catch {}
     ev.stopPropagation();
-    switchToPeppyFromArt();
+    switchToKioskFromArt();
   }, { passive: false, capture: true });
 }
 
