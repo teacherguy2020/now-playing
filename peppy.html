@@ -1794,12 +1794,22 @@
 
       async function ensureRuntimeKey(){
         if (runtimeTrackKey) return;
-        try {
-          const r = await fetch(`${api}/config/runtime`, { cache:'no-store' });
-          const j = await r.json().catch(() => ({}));
-          runtimeTrackKey = String(j?.config?.trackKey || '').trim();
-          refreshVuTargetHintFromRuntime(j?.config || {});
-        } catch {}
+        const bases = [api, ...candidates].filter(Boolean);
+        for (const base of bases) {
+          try {
+            const r = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            if (!r.ok) continue;
+            const j = await r.json().catch(() => ({}));
+            const k = String(j?.config?.trackKey || '').trim();
+            if (k) {
+              api = base;
+              runtimeTrackKey = k;
+              refreshVuTargetHintFromRuntime(j?.config || {});
+              refreshVuTargetHint();
+              return;
+            }
+          } catch {}
+        }
       }
 
       async function refreshPeppyReadiness(){
@@ -2228,6 +2238,7 @@
 
       let lastArt = '';
       let lastTrackSig = '';
+      let lastPodcastArtRefreshAt = 0;
       let currentTrackFile = '';
       let currentIsFavorite = false;
       let currentPersonnelText = '';
@@ -2522,14 +2533,25 @@
           }
 
           const stationLogoRaw = String(resolvedRadioLogo || j?.stationLogoUrl || j?.radioLogoUrl || j?.logoUrl || '').trim();
-          const artRaw = String(j?.displayArtUrl || (isRadioLike ? (stationLogoRaw || j?.altArtUrl || '') : (j?.albumArtUrl || j?.artUrl || j?.altArtUrl || '')) || '').trim();
+          const isPodcastLike = !!(j?.isPodcast || fileLooksPodcast);
+          const artRaw = String(
+            isPodcastLike
+              ? `${api}/art/current.jpg`
+              : (isRadioLike
+                  ? (j?.displayArtUrl || stationLogoRaw || j?.altArtUrl || '')
+                  : `${api}/art/current.jpg`)
+            || ''
+          ).trim();
           const artUrl = artRaw ? (artRaw.startsWith('http') ? artRaw : `${api}${artRaw}`) : '';
-          if (artUrl !== lastArt || trackChanged) {
+          const nowTs = Date.now();
+          const podcastNeedsRefresh = isPodcastLike && (nowTs - Number(lastPodcastArtRefreshAt || 0) > 2500);
+          if (artUrl !== lastArt || trackChanged || podcastNeedsRefresh) {
             if (artUrl) {
-              const finalArtUrl = trackChanged
-                ? `${artUrl}${artUrl.includes('?') ? '&' : '?'}tk=${encodeURIComponent(trackSig || String(Date.now()))}`
+              const finalArtUrl = (trackChanged || podcastNeedsRefresh || isPodcastLike)
+                ? `${artUrl}${artUrl.includes('?') ? '&' : '?'}tk=${encodeURIComponent(trackSig || String(nowTs))}&pv=${nowTs}`
                 : artUrl;
               art.src = finalArtUrl;
+              if (isPodcastLike) lastPodcastArtRefreshAt = nowTs;
             } else art.removeAttribute('src');
             lastArt = artUrl;
           }

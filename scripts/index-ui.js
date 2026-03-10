@@ -234,6 +234,7 @@ const motionArtCache = new Map();
 const localMotionCache = new Map();
 let runtimeTrackKeyAuth = '';
 let runtimeTrackKeyAttempted = false;
+let podcastHeadThumbCache = { ts: 0, file: '', url: '' };
 
 async function ensureRuntimeTrackKey() {
   if (runtimeTrackKeyAttempted || runtimeTrackKeyAuth) return runtimeTrackKeyAuth;
@@ -289,6 +290,31 @@ async function resolveLocalMotionMp4(artist, album) {
     localMotionCache.set(k, '');
     return '';
   }
+}
+
+async function getPodcastHeadThumbForFile(file) {
+  const f = String(file || '').trim();
+  if (!f) return '';
+  const now = Date.now();
+  if (podcastHeadThumbCache.file === f && (now - Number(podcastHeadThumbCache.ts || 0) < 5000)) {
+    return String(podcastHeadThumbCache.url || '');
+  }
+  try {
+    const key = await ensureRuntimeTrackKey();
+    const headers = key ? { 'x-track-key': key } : {};
+    const r = await fetch(`${API_BASE}/config/diagnostics/queue`, { cache: 'no-store', headers });
+    const j = await r.json().catch(() => ({}));
+    const items = Array.isArray(j?.items) ? j.items : [];
+    const head = items.find((x) => !!x?.isHead) || items[0] || null;
+    const hFile = String(head?.file || '').trim();
+    const tRaw = String(head?.thumbUrl || '').trim();
+    const t = tRaw ? (tRaw.startsWith('http') ? tRaw : `${API_BASE}${tRaw}`) : '';
+    if (hFile && t) {
+      podcastHeadThumbCache = { ts: now, file: hFile, url: t };
+      if (hFile === f) return t;
+    }
+  } catch {}
+  return '';
 }
 
 async function resolveMotionMp4(appleUrl) {
@@ -1154,8 +1180,20 @@ function fetchNowPlaying() {
         });
 
   sourcePromise
-    .then(data => {
+    .then(async data => {
         if (!data) return;
+
+        try {
+          const f = String(data?.file || '').trim();
+          const podcastTrack = !!(data?.isPodcast || /\/podcasts?\//i.test(f));
+          if (podcastTrack) {
+            const headThumb = await getPodcastHeadThumbForFile(f);
+            if (headThumb) {
+              data.displayArtUrl = headThumb;
+              data.albumArtUrl = headThumb;
+            }
+          }
+        } catch {}
         dlog('[album link fields]', {
             radioItunesUrl: data.radioItunesUrl,
             itunesUrl: data.itunesUrl,
@@ -2901,7 +2939,13 @@ if (titleEl) {
   // Art selection
   // =========================
   const alt     = String(data.altArtUrl   || '').trim();
-  const primary = String(data.displayArtUrl || data.albumArtUrl || '').trim();
+  const fileLooksPodcast = /\/podcasts?\//i.test(String(data.file || ''));
+  const podcastTrack = !!(currentIsPodcast || fileLooksPodcast);
+  const qThumbRaw = String(data?.__queueHead?.thumbUrl || data?.thumbUrl || '').trim();
+  const qThumb = qThumbRaw ? (qThumbRaw.startsWith('/') ? `${API_BASE}${qThumbRaw}` : qThumbRaw) : '';
+  const primary = podcastTrack
+    ? String(qThumb || data.displayArtUrl || data.albumArtUrl || '').trim()
+    : String(data.displayArtUrl || data.albumArtUrl || '').trim();
 
   // Prefer real cover art first; only fall back to alt art (station logo, etc.)
   const rawArtUrl = (primary || alt);
@@ -2910,7 +2954,7 @@ if (titleEl) {
 
   const continuityArtist = String(data.albumartist || data.artist || '').trim().toLowerCase();
   const continuityAlbum  = String(data.album || '').trim().toLowerCase();
-  const continuityKey = (!isRadio && !isAirplay && !isUpnp && continuityAlbum)
+  const continuityKey = (!isRadio && !isAirplay && !isUpnp && !podcastTrack && continuityAlbum)
     ? `${continuityArtist}|${continuityAlbum}`
     : '';
   const sameAlbumRun = !!(continuityKey && continuityKey === lastAlbumContinuityKey && lastAlbumArtKey && lastAlbumArtUrl);
@@ -2935,7 +2979,9 @@ if (titleEl) {
     ? rawArtUrl
     : (data.alexaMode
         ? rawArtUrl
-        : (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : ''));
+        : (podcastTrack && rawArtUrl)
+            ? rawArtUrl
+            : (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : ''));
 
   // Keep existing art/background stable for consecutive tracks from same album.
   const effectiveArtKey = sameAlbumRun ? String(lastAlbumArtKey || artKey) : artKey;
@@ -2951,7 +2997,7 @@ if (titleEl) {
   const trackKey = (isRadio)
     ? `radio|${String(appleUrl || '').trim().toLowerCase()}|${String(data.artist || '').trim().toLowerCase()}|${String(data.album || '').trim().toLowerCase()}|${String(data.title || data.radioTitle || '').trim().toLowerCase()}`
     : String(data.file || data.songid || '').trim();
-  const motionKey = (!isRadio && !isAirplay && !isUpnp && continuityKey) ? continuityKey : trackKey;
+  const motionKey = (!isRadio && !isAirplay && !isUpnp && !podcastTrack && continuityKey) ? continuityKey : trackKey;
   const motionToken = ++motionReqToken;
 
   const trackChangedForMotion = !!motionKey && (motionKey !== lastMotionAppliedTrackKey);
