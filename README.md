@@ -10,14 +10,15 @@ A moOde-focused now-playing API + UI stack with optional Alexa integration.
 <img src="./docs/images/mobile-builder/controller.png" alt="Controller mobile view" width="300">
 
 
-Six ways to use:
+Seven ways to use:
 
 1. Browser toolkit/dashboard
 2. Display html page
-3. Player screen for moOde box
-4. Peppymeter+track info screen for moOde box
-5. Mobile app
-6. Alexa skill
+3. Player screen for moOde box (wth controls)
+4. Peppymeter+track info screen for moOde box (with controls)
+5. Kiosk (library navigation) for moOde box
+6. Mobile app (library and control)
+7. Alexa skill
 
 > Recommended topology: run this project on a separate Pi from your moOde host.
 
