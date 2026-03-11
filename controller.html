@@ -33,6 +33,14 @@
     @keyframes npSpin{to{transform:rotate(360deg)}}
     .eq{position:absolute;right:4px;bottom:4px;display:none;gap:2px;align-items:flex-end;padding:2px 3px;border-radius:6px;background:rgba(3,10,20,.55)}
     .eq b{display:block;width:2px;background:#7dd3fc;border-radius:2px;animation:eq 1s ease-in-out infinite}
+    .npCtrls{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);display:none;align-items:center;gap:8px;padding:4px 8px;border-radius:999px;background:rgba(8,12,20,.26);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);z-index:5;opacity:.35;transition:opacity .2s ease, background-color .2s ease, border-color .2s ease}
+    .npCtrls.is-awake{opacity:.95;background:rgba(8,12,20,.45);border:1px solid rgba(255,255,255,.16)}
+    .npCtrls .ctl{display:grid;width:30px;height:30px;min-width:30px;min-height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:#fff;box-shadow:0 3px 8px rgba(0,0,0,.25);place-items:center;cursor:pointer;padding:0;transition:background-color .2s ease, box-shadow .2s ease}
+    .npCtrls.is-awake .ctl{background:rgba(255,255,255,.14);box-shadow:0 5px 14px rgba(0,0,0,.3)}
+    .npCtrls .ctl.big{width:36px;min-width:36px;height:36px;min-height:36px}
+    .npCtrls .ctl svg{width:14px;height:14px;fill:currentColor;display:block}
+    .npCtrls .ctl.on{background:rgba(22,163,74,.50);box-shadow:0 0 0 1px rgba(34,197,94,.65),0 0 16px rgba(34,197,94,.42),0 5px 14px rgba(0,0,0,.3);color:#eaffef}
+    .npCtrls .ctl.big.on{background:rgba(22,163,74,.62);box-shadow:0 0 0 1px rgba(34,197,94,.72),0 0 20px rgba(34,197,94,.50),0 5px 14px rgba(0,0,0,.34)}
     .eq b:nth-child(2){animation-delay:.15s}.eq b:nth-child(3){animation-delay:.3s}
     @keyframes eq{0%,100%{height:4px}50%{height:10px}}
     .muted{color:var(--muted);font-size:12px}
@@ -156,6 +164,7 @@
     body.kiosk1280 .npTap .title{display:none}
     body.kiosk1280 .np{display:flex;flex-direction:column;gap:8px;align-items:flex-start;justify-content:flex-start}
     body.kiosk1280 .np .artWrap, body.kiosk1280 .np img{width:318px;height:318px}
+    body.kiosk1280 .npCtrls{display:flex}
     body.kiosk1280 #line1{font-size:18px;font-weight:700;line-height:1.16;max-width:440px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
     body.kiosk1280 #line2{font-size:13px;max-width:440px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
     body.kiosk1280 .quickIn{height:34px;font-size:15px}
@@ -189,6 +198,23 @@
           <img id="art" src="" alt="" />
           <span class="artSpin" id="npArtSpin" aria-hidden="true"></span>
           <span class="eq" id="eqOverlay" aria-hidden="true"><b></b><b></b><b></b></span>
+          <div class="npCtrls" id="npCtrls" aria-label="Playback controls">
+            <button type="button" class="ctl" data-np-act="repeat" aria-label="Repeat" title="Repeat">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 17H7v-3l-4 4 4 4v-3h10a4 4 0 004-4v-6h-2v6a2 2 0 01-2 2zM7 7h10v3l4-4-4-4v3H7a4 4 0 00-4 4v6h2V9a2 2 0 012-2z"/></svg>
+            </button>
+            <button type="button" class="ctl" data-np-act="prev" aria-label="Previous" title="Previous">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6V5zm3.5 7 10-7v14l-10-7z"/></svg>
+            </button>
+            <button type="button" class="ctl big" data-np-act="toggle" aria-label="Play/Pause" title="Play/Pause">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path id="npPlayIcon" d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button type="button" class="ctl" data-np-act="next" aria-label="Next" title="Next">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2V5zM4.5 19V5l10 7-10 7z"/></svg>
+            </button>
+            <button type="button" class="ctl" data-np-act="shuffle" aria-label="Shuffle" title="Shuffle">
+              <svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M24.414,16.586L30.828,23l-6.414,6.414l-2.828-2.828L23.172,25H22c-3.924,0-6.334-2.289-8.173-4.747c0.987-1.097,1.799-2.285,2.516-3.36C18.109,19.46,19.521,21,22,21h1.172l-1.586-1.586L24.414,16.586z M22,11h1.172l-1.586,1.586l2.828,2.828L30.828,9l-6.414-6.414l-2.828,2.828L23.172,7H22c-5.07,0-7.617,3.82-9.664,6.891C10.224,17.059,8.788,19,6,19H2v4h4c5.07,0,7.617-3.82,9.664-6.891C17.776,12.941,19.212,11,22,11z M10.212,15.191c0.399-0.539,1.957-2.848,2.322-3.365C10.917,10.216,8.86,9,6,9H2v4h4C7.779,13,9.007,13.797,10.212,15.191z"/></svg>
+            </button>
+          </div>
         </div>
         <div>
           <div id="line1"></div>
@@ -551,6 +577,13 @@
         }
         const eq = document.getElementById('eqOverlay');
         if (eq) eq.style.display = (hasTrack && (st === 'play' || st === 'playing')) ? 'inline-flex' : 'none';
+        const shOn = String(j?.random || '').toLowerCase() === 'on';
+        const rpOn = String(j?.repeat || '').toLowerCase() === 'on';
+        const isPlaying = (st === 'play' || st === 'playing');
+        const icon = document.getElementById('npPlayIcon');
+        if (icon) icon.setAttribute('d', isPlaying ? 'M8 5h3v14H8zM13 5h3v14h-3z' : 'M8 5v14l11-7z');
+        document.querySelectorAll('#npCtrls .ctl[data-np-act="shuffle"]').forEach((b)=>b.classList.toggle('on', shOn));
+        document.querySelectorAll('#npCtrls .ctl[data-np-act="repeat"]').forEach((b)=>b.classList.toggle('on', rpOn));
       } catch {}
     }
 
@@ -573,6 +606,15 @@
     let recentModalCtx={kind:'album',album:'',artist:'',art:'',playlist:'',tracks:[]};
     let recentAlbumsCache = { ts: 0, albums: [] };
     let recentAlbumsRefreshInFlight = null;
+    let npCtrlsAwakeTimer = 0;
+
+    function wakeNpCtrls(ms=3200){
+      const el = document.getElementById('npCtrls');
+      if (!el) return;
+      el.classList.add('is-awake');
+      try { clearTimeout(npCtrlsAwakeTimer); } catch {}
+      npCtrlsAwakeTimer = setTimeout(()=>{ try { el.classList.remove('is-awake'); } catch {} }, Math.max(800, Number(ms)||3200));
+    }
 
     async function getRecentAlbumsForRail(){
       const now = Date.now();
@@ -1147,6 +1189,23 @@
     hqClear?.addEventListener('click', ()=>{ if(!hqs) return; hqs.value=''; renderHomeQuickResults(''); hqr?.classList.remove('open'); syncQuickClear(); try{hqs.blur();}catch{} });
     syncQuickClear();
     const npTapEl = document.querySelector('.npTap[data-href]');
+    const npCtrlsEl = document.getElementById('npCtrls');
+    npCtrlsEl?.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); }, { passive:true });
+    npCtrlsEl?.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); });
+    npCtrlsEl?.addEventListener('click', async (ev)=>{
+      wakeNpCtrls(3200);
+      const btn = ev.target.closest('button[data-np-act]');
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const act = String(btn.getAttribute('data-np-act') || '').trim().toLowerCase();
+      if (!act) return;
+      btn.disabled = true;
+      try { await sendPlayback(act); } catch {}
+      finally { btn.disabled = false; }
+      refreshNowPlayingCard().catch(()=>null);
+    });
+    wakeNpCtrls(1400);
     if (npTapEl) {
       const NP_LONG_MS = 520;
       const NP_MOVE_SLOP = 12;

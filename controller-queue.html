@@ -76,6 +76,8 @@
     .artistControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 10px}
     .artistControls button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:8px 10px;cursor:pointer}
     .artistControls select,.artistControls input[type='text']{border:1px solid #2a3a58;background:#0d1628;color:#e6efff;border-radius:8px;padding:6px 8px}
+    .artistModal .artistControls .albumMeta,
+    .artistModal .artistControls label{color:#dbe8ff}
     .artistGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
     .artistAlbumBtn{border:1px solid #2a3a58;background:#12203a;color:#e6efff;border-radius:10px;padding:8px;cursor:pointer;text-align:left}
     .artistAlbumBtn img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#0a1222;margin-bottom:6px}
@@ -258,6 +260,15 @@
     let dragState = null;
     let lastBaseSig = '';
     let lastHeadPos = -1;
+    let lastUserScrollAt = 0;
+
+    function maybeScrollToHead(force=false){
+      const now = Date.now();
+      if (!force && (now - lastUserScrollAt) < 3500) return;
+      const headRow = document.querySelector('.row.head[data-pos]');
+      if (!headRow) return;
+      try { headRow.scrollIntoView({ block:'center', inline:'nearest', behavior: force ? 'auto' : 'smooth' }); } catch {}
+    }
 
     async function ensureKey(){
       if (runtimeTrackKey) return runtimeTrackKey;
@@ -314,6 +325,7 @@
           row.classList.toggle('head', pos === headPos);
         });
         lastHeadPos = headPos;
+        maybeScrollToHead(false);
         return;
       }
 
@@ -366,6 +378,7 @@
 
       lastBaseSig = baseSig;
       lastHeadPos = headPos;
+      maybeScrollToHead(false);
     }
 
     function clearSwipes(exceptRow=null){
@@ -897,7 +910,12 @@
     listEl.addEventListener('touchend', finishDrag, { passive:true });
     listEl.addEventListener('touchcancel', finishDrag, { passive:true });
 
-    loadQueue();
+    const markUserScroll = ()=>{ lastUserScrollAt = Date.now(); };
+    window.addEventListener('wheel', markUserScroll, { passive:true });
+    window.addEventListener('touchmove', markUserScroll, { passive:true });
+    window.addEventListener('scroll', markUserScroll, { passive:true });
+
+    loadQueue().then(()=>{ maybeScrollToHead(true); }).catch(()=>null);
     // Light-touch background sync (avoid constant thumbnail churn).
     pollTimer = setInterval(loadQueue, 15000);
   
