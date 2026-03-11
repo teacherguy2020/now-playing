@@ -82,7 +82,7 @@ You should see fresh timestamps (`fresh: true`) and non-zero levels while music 
 - Diagnostics
 - Alexa
 - Library Health (Album Workbench flow, cached scans + full refresh, inventory sort modes, album-row queue/play actions)
-- Queue Wizard
+- Queue Wizard (includes Last.fm Vibe; API host requires `python3-mpd`, `python3-requests`, `python3-mutagen`)
 - Radio
 - Podcasts
 - YouTube

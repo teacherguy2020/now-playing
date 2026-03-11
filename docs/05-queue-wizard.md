@@ -9,6 +9,21 @@ Use this page to build and send queues fast.
 - Building queue from filters (genre/artist/album)
 - Building vibe queues from current track context
 
+## Vibe prerequisites (API host)
+For Last.fm Vibe to work, the now-playing API host needs:
+
+- `python3-mpd`
+- `python3-requests`
+- `python3-mutagen`
+
+Install on Debian/Ubuntu:
+
+```bash
+sudo apt install -y python3-mpd python3-requests python3-mutagen
+```
+
+Also ensure `moode_library_index.json` is present on the API host (project root by default).
+
 ## What the main controls do
 - **Replace Queue / Add to Queue**: choose how to send results.
 - **Crop Queue**: trim existing queue before sending.

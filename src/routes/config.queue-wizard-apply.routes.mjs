@@ -40,7 +40,10 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
         String(req.body?.crop || '').toLowerCase() === 'true';
 
       const tracks = Array.isArray(req.body?.tracks)
-        ? req.body.tracks.map((x) => String(x || '').trim()).filter(Boolean)
+        ? req.body.tracks
+            .map((x) => String(x || '').trim())
+            .map((f) => f.replace(/[\\/]+$/g, ''))
+            .filter(Boolean)
         : [];
       const trackMeta = Array.isArray(req.body?.trackMeta) ? req.body.trackMeta : [];
 
