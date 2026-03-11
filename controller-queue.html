@@ -8,14 +8,15 @@
     :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--danger:#ff3b30}
     *{box-sizing:border-box;-webkit-user-select:none;user-select:none} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
     .top{display:flex;align-items:center;gap:10px;margin:2px 0 4px}
+    .grow{flex:1}
     body.embedded{background:transparent;padding:6px 8px 8px;position:relative}
     body.embedded .top{display:flex;margin:0 0 2px}
     body.embedded .row{background:rgba(11,17,28,.44)}
     body.embedded .row.head{background:rgba(74,168,255,.18)}
     .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
     h1{margin:0;font-size:28px;letter-spacing:-.01em}
-    .meta{color:var(--muted);font-size:12px;margin:0 0 4px}
-    .queueTopActions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 6px}
+    .meta{color:var(--muted);font-size:12px;margin:0}
+    .queueTopActions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0}
     .queueTopActions button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:9px;padding:6px 9px;font-size:12px;line-height:1.05;cursor:pointer}
     .queueTopActions button.warn{border-color:#5a3140;background:#1b0f18;color:#ffc9d5}
     .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
@@ -34,8 +35,8 @@
     .coverWrap{position:relative;display:block}
     .thumb{width:28px;height:28px;border-radius:6px;object-fit:cover;background:#0a1222;border:1px solid #33485f}
     .coverMore{position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:9px;display:flex;align-items:center;justify-content:center;z-index:2}
-    .title{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .sub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .title{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sub{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
     .row.dragging{opacity:.96;z-index:9999;box-shadow:0 16px 34px rgba(0,0,0,.52);transform:scale(1.03)}
     .rowWrap.dropTarget{outline:none}
@@ -52,7 +53,7 @@
     .menu .sep{height:1px;background:rgba(255,255,255,.14);margin:4px 8px}
 
     body.embedded h1{font-size:20px;line-height:1.05}
-    body.embedded .meta{margin:0 0 2px;font-size:11px}
+    body.embedded .meta{margin:0;font-size:11px}
     body.embedded .queueTopActions{position:absolute;top:6px;right:8px;margin:0;z-index:6}
     body.embedded .queueTopActions button{padding:5px 8px;font-size:11px;border-radius:8px}
 
@@ -101,12 +102,7 @@
   <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
 </head>
 <body>
-  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1></div>
-  <p class="meta" id="meta"><span class="miniSpin" aria-label="Loading"></span></p>
-  <div class="queueTopActions">
-    <button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop Queue</button>
-    <button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear Queue</button>
-  </div>
+  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
   <ul class="list" id="list"><li id="dropLine" aria-hidden="true"></li></ul>
 
   <div class="menu" id="trackMenu" aria-hidden="true">
