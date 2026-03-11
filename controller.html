@@ -585,7 +585,7 @@
         if (!recentAlbumsRefreshInFlight) {
           recentAlbumsRefreshInFlight = (async ()=>{
             try {
-              const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'default', headers:reqHeaders(false) }, 9000);
+              const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 9000);
               const albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
               if (albums.length) recentAlbumsCache = { ts: Date.now(), albums };
             } catch {}
@@ -596,8 +596,18 @@
       }
 
       // Cold-start path.
-      const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'default', headers:reqHeaders(false) }, 9000);
-      const albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
+      const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 9000);
+      let albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
+
+      // First-load guard: if thumb URLs are mostly missing, retry once shortly.
+      const withThumb = albums.filter((a)=>String(a?.thumbUrl||'').trim()).length;
+      if (albums.length && withThumb < Math.max(1, Math.floor(albums.length * 0.2))) {
+        await new Promise((r)=>setTimeout(r, 220));
+        const ar2 = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 9000);
+        const albums2 = (ar2.ok && ar2.json?.ok && Array.isArray(ar2.json.albums)) ? ar2.json.albums : [];
+        if (albums2.length) albums = albums2;
+      }
+
       recentAlbumsCache = { ts: now, albums };
       return albums;
     }
