@@ -14,9 +14,10 @@
     .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
     .card h3{margin:0 0 4px;font-size:16px}
     .chip{display:inline-block;padding:2px 8px;border:1px solid #345;border-radius:999px;font-size:11px;color:#bcd}
-    .actions{display:flex;gap:8px;margin-top:10px}
-    a.btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:#0e1830;color:#eef;text-decoration:none}
-    a.btn.primary{background:linear-gradient(90deg,#1d4ed8,#7c3aed);border-color:transparent}
+    .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:#0e1830;color:#eef;text-decoration:none;cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,#1d4ed8,#7c3aed);border-color:transparent}
+    .pushStatus{margin-top:8px;font-size:12px;color:var(--muted);min-height:1.2em}
     .section{margin-top:14px}
   </style>
 </head>
@@ -33,15 +34,27 @@
           <div class="muted">Album-art focused now playing display.</div>
           <div style="margin-top:6px"><span class="chip">Display</span></div>
           <div class="actions">
-            <a class="btn primary" target="_top" href="app.html?page=player.html">Open</a>
+            <a class="btn primary" target="_top" href="app.html?page=player.html">Open Designer</a>
+            <button class="btn" id="pushPlayerBtn" type="button">Push to moOde</button>
           </div>
+          <div id="pushPlayerStatus" class="pushStatus"></div>
         </div>
         <div class="card">
           <h3>Peppy</h3>
           <div class="muted">Skin/meter display with enhanced visuals.</div>
           <div style="margin-top:6px"><span class="chip">Display</span></div>
           <div class="actions">
-            <a class="btn primary" target="_top" href="app.html?page=peppy.html">Open</a>
+            <a class="btn primary" target="_top" href="app.html?page=peppy.html">Open Designer</a>
+            <button class="btn" id="pushPeppyBtn" type="button">Push to moOde</button>
+          </div>
+          <div id="pushPeppyStatus" class="pushStatus"></div>
+        </div>
+        <div class="card">
+          <h3>Index Display</h3>
+          <div class="muted">Classic now-playing display surface (`index.html`).</div>
+          <div style="margin-top:6px"><span class="chip">Display</span></div>
+          <div class="actions">
+            <a class="btn primary" target="_top" href="index.html">Open Designer</a>
           </div>
         </div>
       </div>
@@ -51,25 +64,11 @@
       <div class="muted" style="font-weight:700;margin-bottom:6px">Control Displays</div>
       <div class="grid">
         <div class="card">
-          <h3>Kiosk Controls</h3>
-          <div class="muted">Push a selected controller layout to moOde browser display.</div>
-          <div class="actions" style="margin-top:8px">
-            <select id="kioskSize" style="flex:1;padding:8px;border-radius:9px;border:1px solid var(--line);background:#0e1830;color:#eef">
-              <option value="controller.html?kiosk=1">1280×400 (Landscape Kiosk)</option>
-              <option value="controller.html">Controller Default</option>
-              <option value="controller-now-playing.html">Now Playing Controller</option>
-            </select>
-            <a class="btn" id="kioskPushBtn" href="#">Push to moOde</a>
-          </div>
-          <div id="kioskPushStatus" class="muted" style="margin-top:8px;font-size:12px"></div>
-        </div>
-
-        <div class="card">
           <h3>Mobile Controller</h3>
           <div class="muted">Touch-first library/navigation controller.</div>
           <div style="margin-top:6px"><span class="chip">Control</span></div>
           <div class="actions">
-            <a class="btn primary" target="_top" href="app.html?page=mobile.html">Open</a>
+            <a class="btn primary" target="_top" href="app.html?page=mobile.html">Open Designer</a>
           </div>
         </div>
         <div class="card">
@@ -77,8 +76,10 @@
           <div class="muted">Wide dashboard controller for the moOde display box.</div>
           <div style="margin-top:6px"><span class="chip">Control</span></div>
           <div class="actions">
-            <a class="btn primary" target="_top" href="kiosk-designer.html">Open</a>
+            <a class="btn primary" target="_top" href="kiosk-designer.html">Open Designer</a>
+            <button class="btn" id="pushKioskBtn" type="button">Push to moOde</button>
           </div>
+          <div id="pushKioskStatus" class="pushStatus"></div>
         </div>
       </div>
     </div>
@@ -86,10 +87,8 @@
 
   <script>
     (async()=>{
-      const btn=document.getElementById('kioskPushBtn');
-      const sel=document.getElementById('kioskSize');
-      const status=document.getElementById('kioskPushStatus');
-      const base=`${location.protocol}//${location.hostname||'10.0.0.4'}:3101`;
+      const host = location.hostname || '10.0.0.4';
+      const base = `${location.protocol}//${host}:3101`;
       let key='';
       async function ensureKey(){
         if(key) return key;
@@ -98,22 +97,68 @@
         key=String(j?.config?.trackKey||'').trim();
         return key;
       }
-      btn?.addEventListener('click', async (ev)=>{
-        ev.preventDefault();
-        try{
-          btn.textContent='Pushing…';
-          const rel=String(sel?.value||'controller.html?kiosk=1').trim();
-          const url=`http://10.0.0.4:8101/${rel}`;
+      async function pushUrl(url, reason, statusEl, btnEl){
+        if (!url) return;
+        try {
+          if (btnEl) btnEl.textContent='Pushing…';
           await ensureKey();
-          const r=await fetch(`${base}/config/moode/browser-url`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify({url,reason:'displays-kiosk-push'})});
+          const r=await fetch(`${base}/config/moode/browser-url`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify({url,reason})});
           const j=await r.json().catch(()=>({}));
           if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`);
-          status.textContent=`Pushed: ${url}`;
-        }catch(e){
-          status.textContent=`Push failed: ${e?.message||e}`;
-        }finally{
-          btn.textContent='Push to moOde';
+          if (statusEl) statusEl.textContent=`Pushed: ${url}`;
+        } catch (e) {
+          if (statusEl) statusEl.textContent=`Push failed: ${e?.message||e}`;
+        } finally {
+          if (btnEl) btnEl.textContent='Push to moOde';
         }
+      }
+
+      document.getElementById('pushPlayerBtn')?.addEventListener('click', async ()=>{
+        const statusEl = document.getElementById('pushPlayerStatus');
+        const btnEl = document.getElementById('pushPlayerBtn');
+        let size='1280x400';
+        try {
+          const p = JSON.parse(localStorage.getItem('player.profile.v2') || '{}') || {};
+          size = String(p?.size || size).trim() || size;
+        } catch {}
+        const url = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+        try {
+          if (btnEl) btnEl.textContent='Pushing…';
+          await ensureKey();
+          await fetch(`${base}/peppy/last-profile`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},
+            body: JSON.stringify({ url, displayMode:'player', playerSize:size })
+          }).catch(()=>null);
+          await pushUrl(url, 'displays-player-push', statusEl, btnEl);
+        } finally {
+          if (btnEl) btnEl.textContent='Push to moOde';
+        }
+      });
+
+      document.getElementById('pushPeppyBtn')?.addEventListener('click', async ()=>{
+        const statusEl = document.getElementById('pushPeppyStatus');
+        const btnEl = document.getElementById('pushPeppyBtn');
+        const url = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+        try {
+          if (btnEl) btnEl.textContent='Pushing…';
+          await ensureKey();
+          await fetch(`${base}/peppy/last-profile`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},
+            body: JSON.stringify({ url, displayMode:'peppy' })
+          }).catch(()=>null);
+          await pushUrl(url, 'displays-peppy-push', statusEl, btnEl);
+        } finally {
+          if (btnEl) btnEl.textContent='Push to moOde';
+        }
+      });
+
+      document.getElementById('pushKioskBtn')?.addEventListener('click', async ()=>{
+        const statusEl = document.getElementById('pushKioskStatus');
+        const btnEl = document.getElementById('pushKioskBtn');
+        const url = `${location.protocol}//${host}:8101/kiosk.html`;
+        await pushUrl(url, 'displays-kiosk-push', statusEl, btnEl);
       });
     })();
   </script>
