@@ -541,6 +541,7 @@
           const isQueueWizard = currentSrc.includes('queue-wizard.html');
           const isTheme = currentSrc.includes('theme.html');
           const isPeppy = currentSrc.includes('peppy.html');
+          const isKioskDesigner = currentSrc.includes('kiosk-designer.html');
           const st = doc.createElement('style');
           st.id = 'appShellNormalizeStyle';
           st.textContent = isPeppy ?
@@ -569,6 +570,9 @@
                 : ''),
               (isTheme
                 ? '.wrap{max-width:100% !important; width:100% !important; margin:0 !important; padding:0 !important; background:var(--npb-rail-bg) !important; min-height:100% !important;} .card{margin:0 !important; border-radius:0 !important; background:var(--npb-rail-bg) !important;}'
+                : ''),
+              (isKioskDesigner
+                ? '.wrap{padding-top:29px !important;}'
                 : '')
             ].join('\n');
           doc.head.appendChild(st);
