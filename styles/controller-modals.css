@@ -47,3 +47,23 @@
 
 .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
 .modalX:active{transform:scale(.96)}
+
+/* Kiosk: recent album modal must stay inside column 3 (recentWrap) */
+body.kiosk1280 .recentWrap #recentAlbumModal{
+  position:absolute !important;
+  inset:0 !important;
+  left:auto !important;
+  top:auto !important;
+  width:auto !important;
+  height:auto !important;
+  z-index:165 !important;
+  border-radius:10px;
+  background:rgba(0,0,0,.42);
+  align-items:center !important;
+  justify-content:center !important;
+}
+body.kiosk1280 .recentWrap #recentAlbumModal .albumCard{
+  width:min(650px,calc(100% - 14px));
+  max-height:calc(100% - 12px);
+}
+

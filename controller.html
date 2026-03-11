@@ -70,6 +70,8 @@
     .row .chev{font-size:22px;line-height:1;color:#54627d;text-align:right}
 
     .recentWrap{position:relative;overflow:hidden}
+    .kPane{display:none}
+    .kPaneIf{border:0;display:block}
     .recentTitle{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:760;letter-spacing:-0.01em;margin:6px 0 10px;padding-left:28px;cursor:pointer}
     .railModeBtn{position:absolute;left:0;top:-8px;width:16px;height:36px;border:0;background:transparent;color:#dfeaff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
     .railModeDots{display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center}
@@ -906,13 +908,12 @@
       document.getElementById('recentAlbumReplaceBtn').textContent = isPlaylist ? 'Play playlist' : (isPodcast ? 'Play newest episode' : 'Replace with album');
       document.getElementById('recentAlbumTracks').innerHTML = (recentModalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); const dt=String(t.date||'').trim(); return `<li><span>${i+1}. ${nm}${dt?`<div class='albumMeta'>${dt}</div>`:''}</span><span class='trackBtns'><button data-track-action='play' data-track-file='${f}'>▶</button><button data-track-action='add' data-track-file='${f}'>＋</button></span></li>`; }).join('') || '<li>No tracks found</li>';
       if (IS_KIOSK_1280 && recentWrap && modalEl) {
-        const r = recentWrap.getBoundingClientRect();
-        modalEl.style.position = 'fixed';
-        modalEl.style.left = `${Math.round(r.left)}px`;
-        modalEl.style.top = `${Math.round(r.top)}px`;
-        modalEl.style.width = `${Math.round(r.width)}px`;
-        modalEl.style.height = `${Math.round(r.height)}px`;
-        modalEl.style.inset = 'auto';
+        modalEl.style.setProperty('position', 'absolute', 'important');
+        modalEl.style.setProperty('inset', '0', 'important');
+        modalEl.style.removeProperty('left');
+        modalEl.style.removeProperty('top');
+        modalEl.style.removeProperty('width');
+        modalEl.style.removeProperty('height');
       }
       modalEl?.classList.add('open');
     }
