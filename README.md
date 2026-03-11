@@ -21,6 +21,7 @@ Seven ways to use:
 7. Alexa skill
 
 > Recommended topology: run this project on a separate Pi from your moOde host.
+>Deepwiki https://deepwiki.com/teacherguy2020/now-playing/1-overview
 
 ## Quick start
 
