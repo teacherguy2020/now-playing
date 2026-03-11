@@ -26,6 +26,7 @@
     .sw[data-c='emerald']{background:linear-gradient(135deg,#064e3b,#34d399)}
     .sw[data-c='forest']{background:linear-gradient(135deg,#14532d,#22c55e)}
     .sw[data-c='mint']{background:linear-gradient(135deg,#0f766e,#2dd4bf)}
+    .targetHint{font-size:12px;color:#fbbf24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:680px}
     .stat{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:520px}
     .grow{flex:1}
     iframe{display:block;width:1280px;height:400px;margin:10px auto;border:0;border-radius:12px}
@@ -66,6 +67,7 @@
       </div>
       <button id="pushBtn" type="button">Push to moOde</button>
       <span class="grow"></span>
+      <span id="targetHint" class="targetHint">Checking moOde target…</span>
       <span id="stat" class="stat"></span>
     </div>
     <iframe id="preview" class="card" src="kiosk.html"></iframe>
@@ -82,6 +84,7 @@
       let colorPreset='ocean';
       const pushBtn=document.getElementById('pushBtn');
       const stat=document.getElementById('stat');
+      const targetHint=document.getElementById('targetHint');
       const preview=document.getElementById('preview');
       let key='';
       const persistProfile=()=>{
@@ -142,6 +145,26 @@
         key=String(j?.config?.trackKey||'').trim();
         return key;
       }
+      async function refreshTargetHint(){
+        if (!targetHint) return;
+        const expected = `${location.protocol}//${host}:8101/kiosk.html`;
+        try {
+          await ensureKey();
+          const r = await fetch(`${api}/config/moode/browser-url/status`, { headers:{...(key?{'x-track-key':key}:{})}, cache:'no-store' });
+          const j = await r.json().catch(()=>({}));
+          const current = String(j?.appUrl || j?.runUrl || '').trim();
+          const ok = !!current && current.startsWith(`${location.protocol}//${host}:8101/`);
+          targetHint.style.color = ok ? '#22c55e' : '#f59e0b';
+          targetHint.textContent = ok
+            ? `✅ Target URL in moOde web-ui properly set to ${current}`
+            : `⚠ The target URL in moOde Web UI config needs to be ${expected} to use this display.`;
+        } catch {
+          targetHint.style.color = '#f59e0b';
+          targetHint.textContent = `⚠ Target check unavailable. The target URL in moOde Web UI config needs to be ${expected} to use this display.`;
+        }
+      }
+      refreshTargetHint();
+
       pushBtn.addEventListener('click', async ()=>{
         try{
           pushBtn.disabled=true; pushBtn.textContent='Pushing…';

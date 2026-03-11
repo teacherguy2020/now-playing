@@ -4,6 +4,23 @@ Kiosk mode is the 1280×400 control surface optimized for always-on display use.
 
 ---
 
+## Switching moOde to Kiosk
+
+To run kiosk on moOde local display, set moOde Web UI target URL to:
+
+- `http://<WEB_HOST>:8101/kiosk.html`
+
+Path in moOde:
+
+- **Configure -> Peripherals -> Local display -> Web UI target URL**
+
+Verification on moOde host:
+
+```bash
+grep -E -- '--app=' /home/moode/.xinitrc
+pgrep -af "chromium-browser.*--app="
+```
+
 ## Pages and roles
 
 - `kiosk-designer.html`

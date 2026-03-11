@@ -29,6 +29,30 @@ Seven ways to use:
 3. Run **Check SSH + Paths**.
 4. Open `app.html` (shell) or `index.html` (display view) or `player.html` (player view) `controller.html` (mobile view).
 
+## Switch moOde local display to this system (Player / Peppy / Kiosk)
+
+In moOde, open:
+
+- **Configure -> Peripherals -> Local display -> Web UI target URL**
+
+Set one of these URLs:
+
+- **Player / Peppy router (recommended):** `http://<WEB_HOST>:8101/display.html?kiosk=1`
+- **Kiosk runtime directly:** `http://<WEB_HOST>:8101/kiosk.html`
+
+Then use the app push actions:
+
+- **Push Player to moOde** → switches renderer to Player
+- **Push Peppy to moOde** → switches renderer to Peppy
+- **Push to moOde** (from `kiosk-designer.html`) → switches renderer to Kiosk
+
+Quick verify (on moOde):
+
+```bash
+grep -E -- '--app=' /home/moode/.xinitrc
+pgrep -af "chromium-browser.*--app="
+```
+
 ### Peppy meter requirement (must configure on moOde)
 
 For meter needles to move, moOde PeppyMeter must post VU data to your now-playing API.

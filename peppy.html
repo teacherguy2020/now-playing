@@ -1823,7 +1823,9 @@
 
           const tr = await fetch(`${api}/config/moode/browser-url/status`, { headers, cache:'no-store' });
           const tj = await tr.json().catch(() => ({}));
-          const current = String(tj?.runUrl || tj?.appUrl || '').trim();
+          const current = String(tj?.appUrl || tj?.runUrl || '').trim();
+          const expectedDisplayUrl = `${location.protocol}//${location.hostname || API_FALLBACK_HOST}:8101/display.html?kiosk=1`;
+          const onNowPlayingHost = !!current && current.startsWith(`${location.protocol}//${location.hostname || API_FALLBACK_HOST}:8101/`);
           const currentOnPeppy = !!current && current.includes('/peppy.html');
 
           const vr = await fetch(`${api}/peppy/vumeter`, { cache:'no-store' });
@@ -1873,12 +1875,19 @@
             return { ok:false, reason:'vu-stale' };
           }
 
+          if (!onNowPlayingHost) {
+            if (hintWrap) hintWrap.style.display = '';
+            peppyReadiness.textContent = `⚠ The target URL in moOde Web UI config needs to be ${expectedDisplayUrl} to use this display.`;
+            peppyReadiness.style.color = '#f59e0b';
+            return { ok:false, reason:'target-mismatch' };
+          }
+
           if (hintWrap) hintWrap.style.display = 'none';
           if (currentOnPeppy) {
             peppyReadiness.textContent = '✅ Target URL OK — currently on peppy target; VU feed healthy';
             peppyReadiness.style.color = '#22c55e';
           } else {
-            peppyReadiness.textContent = '✅ Target URL OK (for push)';
+            peppyReadiness.textContent = `✅ Target URL in moOde web-ui properly set to ${current}`;
             peppyReadiness.style.color = '#22c55e';
           }
           return { ok:true, reason:'ready' };
@@ -3099,7 +3108,7 @@
         animate();
         setInterval(pollNowPlaying, kioskMode ? 3000 : 2500);
         setInterval(pollMeter, kioskMode ? 130 : 90);
-        setInterval(refreshPeppyReadiness, 10000);
+        // Target/readiness check runs on load; no periodic polling.
       })();
     })();
   </script>

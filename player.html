@@ -10,6 +10,7 @@
     .wrap{display:grid;grid-template-rows:auto 1fr;gap:8px;height:100%;padding:10px;box-sizing:border-box}
     .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--line);background:var(--card)}
     .controls select{height:30px;background:#0e1624;color:var(--fg);border:1px solid var(--line);padding:0 8px}
+    .targetHint{font-size:12px;color:#fbbf24;display:block;flex:1 1 100%;min-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:none}
     .stage{display:grid;place-items:start center;overflow:auto;border:1px solid var(--line);background:#060a12}
     .frame{border:2px solid rgba(186,203,232,.78);background:#000;overflow:hidden;transform-origin:top center}
     #preview{border:0;display:block}
@@ -25,6 +26,7 @@
       <label for="themeSel">Theme</label>
       <select id="themeSel"><option value="dark">dark</option><option value="light">light</option></select>
       <button id="pushPlayerFromTab" type="button">Push Player to moOde</button>
+      <span id="targetHint" class="targetHint">Checking moOde target…</span>
     </div>
     <div class="stage" id="stage">
       <div id="frame" class="frame"><iframe id="preview" title="Player render preview"></iframe></div>
@@ -38,6 +40,7 @@
       const pushPlayerFromTab=document.getElementById('pushPlayerFromTab');
       const preview=document.getElementById('preview');
       const stage=document.getElementById('stage');
+      const targetHint=document.getElementById('targetHint');
       const KEY='player.profile.v2';
       const dims=s=>{const [w,h]=String(s).split('x').map(Number);return [w||1280,h||400];};
       function applyScaleOnly(){
@@ -46,6 +49,39 @@
         const sw=Math.max(320,stage.clientWidth-20), sh=Math.max(220,stage.clientHeight-20);
         frame.style.transform=`scale(${Math.max(0.25,Math.min(1,sw/w,sh/h))})`;
       }
+      let runtimeTrackKey='';
+      async function ensureRuntimeKey(){
+        if (runtimeTrackKey) return runtimeTrackKey;
+        try {
+          const host = location.hostname || '10.0.0.4';
+          const api = `${location.protocol}//${host}:3101`;
+          const r = await fetch(`${api}/config/runtime`, { cache:'no-store' });
+          const j = await r.json().catch(()=>({}));
+          runtimeTrackKey = String(j?.config?.trackKey || '').trim();
+        } catch {}
+        return runtimeTrackKey;
+      }
+      async function refreshTargetHint(){
+        if (!targetHint) return;
+        const host = location.hostname || '10.0.0.4';
+        const api = `${location.protocol}//${host}:3101`;
+        const expected = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+        try {
+          await ensureRuntimeKey();
+          const r = await fetch(`${api}/config/moode/browser-url/status`, { headers:{...(runtimeTrackKey?{'x-track-key':runtimeTrackKey}:{})}, cache:'no-store' });
+          const j = await r.json().catch(()=>({}));
+          const current = String(j?.appUrl || j?.runUrl || '').trim();
+          const ok = !!current && current.startsWith(`${location.protocol}//${host}:8101/`);
+          targetHint.style.color = ok ? '#22c55e' : '#f59e0b';
+          targetHint.textContent = ok
+            ? `✅ Target URL in moOde web-ui properly set to ${current}`
+            : `⚠ The target URL in moOde Web UI config needs to be ${expected} to use this display.`;
+        } catch {
+          targetHint.style.color = '#f59e0b';
+          targetHint.textContent = `⚠ Target check unavailable. The target URL in moOde Web UI config needs to be ${expected} to use this display.`;
+        }
+      }
+
       function apply(reload=true){
         const size=sizeSel.value; const theme=themeSel.value;
         const [w,h]=dims(size);
@@ -61,6 +97,7 @@
       pushPlayerFromTab?.addEventListener('click',()=>{ try{ window.parent?.postMessage({ type:'np-display-action', action:'push-player' }, '*'); }catch{} });
       window.addEventListener('resize',()=>applyScaleOnly());
       apply(true);
+      refreshTargetHint();
     })();
   </script>
 </body>

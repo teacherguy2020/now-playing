@@ -53,7 +53,7 @@ In practice, this lets users design complete display experiences (not just switc
 
 The goal is creative control with predictable deployment: **design in-builder, push to moOde, render from one stable target URL**.
 
-## Stable target URL
+## Stable target URL (how users switch from moOde Web UI)
 
 In moOde, go to:
 
@@ -62,6 +62,15 @@ In moOde, go to:
 Set it to:
 
 - `http://<WEB_HOST>:8101/display.html?kiosk=1`
+
+This is the recommended handoff URL for the display system in this project.
+
+Then in the app:
+
+- use **Push Player to moOde** to render `player-render.html`
+- use **Push Peppy to moOde** to render `peppy.html`
+
+So users only change moOde's target once; mode switching then happens from app push actions.
 
 `display.html` reads saved profile JSON and renders one of:
 

@@ -97,6 +97,8 @@
     .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:150;align-items:center;justify-content:center}
     .albumModal.open{display:flex}
     .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(7px)}
+    body.kiosk1280 .recentWrap #recentAlbumModal{position:absolute;inset:0;z-index:165;border-radius:10px;background:rgba(0,0,0,.42)}
+    body.kiosk1280 .recentWrap #recentAlbumModal .albumCard{width:min(650px,calc(100% - 14px));max-height:calc(100% - 12px)}
     .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
     .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .albumTitle{font-size:17px;font-weight:700}
@@ -557,6 +559,10 @@
     const railModeBtn=document.getElementById('railModeBtn');
     const kioskPane=document.getElementById('kioskPane');
     const kioskPaneFrame=document.getElementById('kioskPaneFrame');
+    if (IS_KIOSK_1280 && recentWrap) {
+      const recentModalEl = document.getElementById('recentAlbumModal');
+      if (recentModalEl && recentModalEl.parentElement !== recentWrap) recentWrap.appendChild(recentModalEl);
+    }
 
     const recentLimit=()=> IS_KIOSK_1280 ? 16 : Math.max(6,Math.min(30,Number(profile.recentCount||18)));
     let recentItems=[];
@@ -889,6 +895,7 @@
     function openRecentAlbumModal(){
       const isPlaylist = recentModalCtx.kind === 'playlist';
       const isPodcast = recentModalCtx.kind === 'podcast';
+      const modalEl = document.getElementById('recentAlbumModal');
       document.getElementById('recentAlbumTitle').textContent = isPlaylist
         ? (recentModalCtx.playlist || '(playlist)')
         : (isPodcast ? (recentModalCtx.title || '(podcast)') : (recentModalCtx.album || '(album)'));
@@ -898,7 +905,16 @@
       document.getElementById('recentAlbumCropBtn').style.display = (isPlaylist || isPodcast) ? 'none' : '';
       document.getElementById('recentAlbumReplaceBtn').textContent = isPlaylist ? 'Play playlist' : (isPodcast ? 'Play newest episode' : 'Replace with album');
       document.getElementById('recentAlbumTracks').innerHTML = (recentModalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); const dt=String(t.date||'').trim(); return `<li><span>${i+1}. ${nm}${dt?`<div class='albumMeta'>${dt}</div>`:''}</span><span class='trackBtns'><button data-track-action='play' data-track-file='${f}'>▶</button><button data-track-action='add' data-track-file='${f}'>＋</button></span></li>`; }).join('') || '<li>No tracks found</li>';
-      document.getElementById('recentAlbumModal').classList.add('open');
+      if (IS_KIOSK_1280 && recentWrap && modalEl) {
+        const r = recentWrap.getBoundingClientRect();
+        modalEl.style.position = 'fixed';
+        modalEl.style.left = `${Math.round(r.left)}px`;
+        modalEl.style.top = `${Math.round(r.top)}px`;
+        modalEl.style.width = `${Math.round(r.width)}px`;
+        modalEl.style.height = `${Math.round(r.height)}px`;
+        modalEl.style.inset = 'auto';
+      }
+      modalEl?.classList.add('open');
     }
     async function openRecentAlbumFrom(ctx){
       recentModalCtx = { kind:'album', album:ctx.album||'', artist:ctx.artist||'', art:ctx.art||'', playlist:'', tracks:[] };
@@ -1398,8 +1414,14 @@
       }
     });
 
-    document.getElementById('recentAlbumCloseBtn').addEventListener('click', ()=>document.getElementById('recentAlbumModal').classList.remove('open'));
-    document.getElementById('recentAlbumModal').addEventListener('click', (ev)=>{ if(ev.target.id==='recentAlbumModal') document.getElementById('recentAlbumModal').classList.remove('open'); });
+    function closeRecentAlbumModal(){
+      const m = document.getElementById('recentAlbumModal');
+      if (!m) return;
+      m.classList.remove('open');
+      m.style.left=''; m.style.top=''; m.style.width=''; m.style.height=''; m.style.inset=''; m.style.position='';
+    }
+    document.getElementById('recentAlbumCloseBtn').addEventListener('click', closeRecentAlbumModal);
+    document.getElementById('recentAlbumModal').addEventListener('click', (ev)=>{ if(ev.target.id==='recentAlbumModal') closeRecentAlbumModal(); });
     document.getElementById('recentAlbumAppendBtn').addEventListener('click', async ()=>{
       if (recentModalCtx.kind === 'playlist') {
         await ensureKey();
@@ -1410,9 +1432,9 @@
       } else {
         await sendPlayback('addalbum',{mode:'append',album:recentModalCtx.album,artist:recentModalCtx.artist||''});
       }
-      document.getElementById('recentAlbumModal').classList.remove('open');
+      closeRecentAlbumModal();
     });
-    document.getElementById('recentAlbumCropBtn').addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'crop',album:recentModalCtx.album,artist:recentModalCtx.artist||''}); document.getElementById('recentAlbumModal').classList.remove('open'); });
+    document.getElementById('recentAlbumCropBtn').addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'crop',album:recentModalCtx.album,artist:recentModalCtx.artist||''}); closeRecentAlbumModal(); });
     document.getElementById('recentAlbumReplaceBtn').addEventListener('click', async ()=>{
       if (recentModalCtx.kind === 'playlist') {
         await ensureKey();
@@ -1423,9 +1445,9 @@
       } else {
         await sendPlayback('addalbum',{mode:'replace',album:recentModalCtx.album,artist:recentModalCtx.artist||''});
       }
-      document.getElementById('recentAlbumModal').classList.remove('open');
+      closeRecentAlbumModal();
     });
-    document.getElementById('recentAlbumTracks').addEventListener('click', async (ev)=>{ const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if(a==='play'){ await sendPlayback('playfile',{file}); document.getElementById('recentAlbumModal').classList.remove('open'); } else { await sendPlayback('addfile',{file}); } });
+    document.getElementById('recentAlbumTracks').addEventListener('click', async (ev)=>{ const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if(a==='play'){ await sendPlayback('playfile',{file}); closeRecentAlbumModal(); } else { await sendPlayback('addfile',{file}); } });
 
     document.addEventListener('click',(ev)=>{
       const m=document.getElementById('recentAlbumMenu');
