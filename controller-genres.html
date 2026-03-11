@@ -176,6 +176,7 @@
       row.classList.add('activating');
       const u = new URL('controller-albums.html', location.href);
       u.searchParams.set('genre', genre);
+      if (new URL(location.href).searchParams.get('embedded') === '1') u.searchParams.set('embedded','1');
       setTimeout(()=>{ location.href = u.toString(); }, 110);
     });
 
