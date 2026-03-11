@@ -24,6 +24,8 @@
     .chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--text)}
     .chk span{min-width:0;word-break:break-word}
     .btn{padding:8px 10px;border:1px solid var(--line);background:#10203a;color:var(--text);border-radius:8px;cursor:pointer}
+    .colorRow{display:flex;gap:8px;align-items:center}
+    .colorRow input[type="color"]{flex:1}
     .dots{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
     .dot{width:22px;height:22px;border-radius:999px;border:2px solid rgba(255,255,255,.28);cursor:pointer;box-shadow:0 0 0 1px rgba(0,0,0,.25) inset;padding:0;display:inline-block;appearance:none;-webkit-appearance:none}
     .dot[data-preset="ocean"]{background:#4aa8ff !important}
@@ -37,6 +39,11 @@
     .device{background:#0a0f17;border:1px solid #29364d;border-radius:28px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
     .screen{width:390px;height:844px;border-radius:22px;overflow:hidden;border:1px solid #1f2b40;background:#000}
     iframe{width:100%;height:100%;border:0;display:block}
+    .jsonModal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;padding-top:18px;background:rgba(0,0,0,.45);z-index:9999}
+    .jsonModal.open{display:flex}
+    .jsonCard{width:min(760px,94vw);max-height:86vh;overflow:auto;background:#0e1830;border:1px solid var(--line);border-radius:12px;padding:10px}
+    .jsonCard textarea{width:100%;min-height:260px;background:#0b1328;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace}
+    .jsonActions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
   </style>
 </head>
 <body>
@@ -45,23 +52,19 @@
       <h2>Mobile Builder (v1)</h2>
       <label>Device preset</label>
       <select id="devicePreset"><option value="iphone17" selected>iPhone 17</option></select>
-      <label>Theme</label>
-      <select id="theme"><option value="auto">Auto</option><option value="dark">Dark</option><option value="light">Light</option></select>
-      <label>Layout</label>
-      <select id="layout"><option value="home-rail" selected>Home + Recent Rail</option><option value="compact">Compact</option></select>
-      <label style="margin-top:10px">Recent rail source</label>
-      <div class="chk"><input name="recentSource" id="recentSourceAlbums" type="radio" value="albums" checked /><span>Recently Added</span></div>
-      <div class="chk"><input name="recentSource" id="recentSourcePodcasts" type="radio" value="podcasts" /><span>Recent Podcasts</span></div>
-      <div class="chk"><input name="recentSource" id="recentSourcePlaylists" type="radio" value="playlists" /><span>Recent Playlists</span></div>
-      <div class="chk"><input name="recentSource" id="recentSourceRadio" type="radio" value="radio" /><span>Favorite Radio Stations</span></div>
-      <label>Color preset</label>
-      <div class="dots" id="paletteDots">
-        <button type="button" class="dot" data-preset="ocean" title="Ocean"></button>
-        <button type="button" class="dot" data-preset="violet" title="Violet"></button>
-        <button type="button" class="dot" data-preset="mint" title="Mint"></button>
-        <button type="button" class="dot" data-preset="amber" title="Amber"></button>
-        <button type="button" class="dot" data-preset="black" title="Black"></button>
-        <button type="button" class="dot" data-preset="orange" title="Orange"></button>
+      <label>Primary Theme Color</label><div class="colorRow"><input id="primaryThemeColor" type="color" value="#0b111c" /></div>
+      <label>Secondary Theme Color</label><div class="colorRow"><input id="secondaryThemeColor" type="color" value="#1f2a3d" /></div>
+      <label>Primary Text Color</label><div class="colorRow"><input id="primaryTextColor" type="color" value="#f3f6ff" /></div>
+      <label>Secondary Text Color</label><div class="colorRow"><input id="secondaryTextColor" type="color" value="#9eb3d6" /></div>
+      <label>JSON Presets</label>
+      <div class="row">
+        <select id="presetSel" style="flex:1"></select>
+        <button class="btn" id="savePresetBtn" type="button">Save</button>
+        <button class="btn" id="deletePresetBtn" type="button">Delete</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" id="exportPresetBtn" type="button">Export</button>
+        <button class="btn" id="importPresetBtn" type="button">Import</button>
       </div>
       <label>Recent card count</label>
       <input id="recentCount" type="number" min="6" max="30" value="18" />
@@ -77,12 +80,33 @@
       </div>
     </div>
   </div>
+  <div class="jsonModal" id="exportModal" aria-hidden="true">
+    <div class="jsonCard">
+      <div style="font-weight:700;margin-bottom:6px">Export Preset JSON</div>
+      <textarea id="exportJson" readonly></textarea>
+      <div class="jsonActions">
+        <button id="selectExportBtn" class="btn" type="button">Select All</button>
+        <button id="copyExportBtn" class="btn" type="button">Copy</button>
+        <button id="closeExportBtn" class="btn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
   <script>
     const $ = (id)=>document.getElementById(id);
     const KEY='nowplaying.mobile.profile.v1';
-    const defaults={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18};
+    const PRESETS_KEY='nowplaying.mobile.custom-presets.v1';
+    const BUILTIN_PRESETS={
+      'Deep Ocean':{primaryThemeColor:'#0b111c',secondaryThemeColor:'#1f2a3d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'},
+      'Blue Horizon':{primaryThemeColor:'#0b1730',secondaryThemeColor:'#1d4ed8',primaryTextColor:'#eaf2ff',secondaryTextColor:'#a9c2ff'},
+      'Sunset Glow':{primaryThemeColor:'#1b110d',secondaryThemeColor:'#5b3a2d',primaryTextColor:'#fff1e8',secondaryTextColor:'#f0b089'},
+      'Crimson Bloom':{primaryThemeColor:'#fffbfa',secondaryThemeColor:'#fa233b',primaryTextColor:'#4d0200',secondaryTextColor:'#ff9aa1'},
+      'Rose Noir':{primaryThemeColor:'#1a0d14',secondaryThemeColor:'#5b2b3f',primaryTextColor:'#ffeef5',secondaryTextColor:'#d9a8bc'},
+      'Mono Contrast':{primaryThemeColor:'#0b0b0b',secondaryThemeColor:'#2d2d2d',primaryTextColor:'#f2f2f2',secondaryTextColor:'#b8b8b8'},
+      'Lavender Mist':{primaryThemeColor:'#120d1e',secondaryThemeColor:'#3d3158',primaryTextColor:'#f2ecff',secondaryTextColor:'#c9b8f2'},
+      'Emerald Glass':{primaryThemeColor:'#081511',secondaryThemeColor:'#1f4a3e',primaryTextColor:'#e8fff6',secondaryTextColor:'#9ed9c3'}
+    };
+    const defaults={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18,customColors:{primaryThemeColor:'#0b111c',secondaryThemeColor:'#1f2a3d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}};
     const API_BASE = (()=>{ try { const h=location.hostname||'10.0.0.233'; const p=location.protocol||'http:'; return `${p}//${h}:3101`; } catch { return 'http://10.0.0.233:3101'; } })();
-    const PRESET_COLORS={ocean:'#4aa8ff',violet:'#a78bfa',mint:'#34d399',amber:'#fbbf24',black:'#0a0a0a',orange:'#ff7a1a'};
     function read(){try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...defaults}}}
     function write(p){localStorage.setItem(KEY,JSON.stringify(p));}
     async function ensureKey(){
@@ -111,24 +135,58 @@
         return !!r.ok;
       } catch { return false; }
     }
-    function paintPaletteDots(){}
-    function markPalette(preset){ document.querySelectorAll('#paletteDots .dot').forEach(b=>b.classList.toggle('active', b.getAttribute('data-preset')===preset)); }
+    function getPresets(){
+      try {
+        const custom = JSON.parse(localStorage.getItem(PRESETS_KEY) || '{}') || {};
+        return {...BUILTIN_PRESETS, ...custom};
+      } catch { return {...BUILTIN_PRESETS}; }
+    }
+    function setPresets(v){ try { localStorage.setItem(PRESETS_KEY, JSON.stringify(v||{})); } catch {} }
+    function refreshPresetList(){
+      const sel=$('presetSel'); if(!sel) return;
+      const map=getPresets();
+      const names=Object.keys(map).sort((a,b)=>a.localeCompare(b));
+      sel.innerHTML='<option value="">(select preset)</option>' + names.map((n)=>`<option value="${n}">${n}</option>`).join('');
+    }
+    function syncSwatches(){}
     function ui(p){
       $('devicePreset').value=p.devicePreset;
-      $('theme').value=(p.theme||'auto');
-      $('layout').value=p.layout;
-      const src = String(p.recentSource || (p.showRecent===false ? 'albums' : 'albums')).toLowerCase();
-      const target = document.querySelector(`input[name="recentSource"][value="${src}"]`) || $('recentSourceAlbums');
-      if (target) target.checked = true;
       $('recentCount').value=String(p.recentCount||18);
-      markPalette(String(p.colorPreset||'ocean'));
+      const c={...(defaults.customColors||{}),...((p&&p.customColors)||{})};
+      $('primaryThemeColor').value=String(c.primaryThemeColor||'#0b111c');
+      $('secondaryThemeColor').value=String(c.secondaryThemeColor||'#1f2a3d');
+      $('primaryTextColor').value=String(c.primaryTextColor||'#f3f6ff');
+      $('secondaryTextColor').value=String(c.secondaryTextColor||'#9eb3d6');
+      refreshPresetList();
+      syncSwatches();
     }
     function collect(){
-      const active=document.querySelector('#paletteDots .dot.active');
-      const recentSource = String(document.querySelector('input[name="recentSource"]:checked')?.value || 'albums');
-      return {devicePreset:$('devicePreset').value,theme:$('theme').value,layout:$('layout').value,showRecent:true,recentSource,colorPreset:String(active?.getAttribute('data-preset')||'ocean'),recentCount:Number($('recentCount').value||18)};
+      return {
+        devicePreset:$('devicePreset').value,
+        theme:'auto',
+        layout:'home-rail',
+        showRecent:true,
+        recentSource:'albums',
+        colorPreset:'ocean',
+        recentCount:Number($('recentCount').value||18),
+        customColors:{
+          primaryThemeColor:String($('primaryThemeColor').value||'#0b111c'),
+          secondaryThemeColor:String($('secondaryThemeColor').value||'#1f2a3d'),
+          primaryTextColor:String($('primaryTextColor').value||'#f3f6ff'),
+          secondaryTextColor:String($('secondaryTextColor').value||'#9eb3d6'),
+        }
+      };
     }
     function profileToken(p){ return btoa(unescape(encodeURIComponent(JSON.stringify(p)))); }
+    function postLiveTheme(){
+      const customColors={
+        primaryThemeColor:String($('primaryThemeColor')?.value||'#0b111c'),
+        secondaryThemeColor:String($('secondaryThemeColor')?.value||'#1f2a3d'),
+        primaryTextColor:String($('primaryTextColor')?.value||'#f3f6ff'),
+        secondaryTextColor:String($('secondaryTextColor')?.value||'#9eb3d6'),
+      };
+      try { $('controllerPreview')?.contentWindow?.postMessage({ type:'np-live-theme-update', customColors }, '*'); } catch {}
+    }
     async function apply(){
       const p=collect();
       write(p);
@@ -138,17 +196,83 @@
     }
     $('applyBtn').addEventListener('click',apply);
     $('resetBtn').addEventListener('click',()=>{write({...defaults});ui(defaults);apply();});
-    ['devicePreset','theme','layout','recentCount'].forEach((id)=>{
+    ['devicePreset','recentCount'].forEach((id)=>{
       const el=$(id); if(!el) return;
-      el.addEventListener('change', ()=>apply());
+      el.addEventListener('change', ()=>{ syncSwatches(); apply(); });
+      el.addEventListener('input', ()=>{ syncSwatches(); apply(); });
     });
-    document.querySelectorAll('#paletteDots .dot').forEach((b)=>{
-      b.addEventListener('click', ()=>{ markPalette(String(b.getAttribute('data-preset')||'ocean')); apply(); });
+    ['primaryThemeColor','secondaryThemeColor','primaryTextColor','secondaryTextColor'].forEach((id)=>{
+      const el=$(id); if(!el) return;
+      const onLive=async()=>{ syncSwatches(); const p=collect(); write(p); await saveServerProfile(p); postLiveTheme(); };
+      el.addEventListener('change', onLive);
+      el.addEventListener('input', onLive);
     });
-    document.querySelectorAll('input[name="recentSource"]').forEach((el)=>{
-      el.addEventListener('change', ()=>apply());
+    $('savePresetBtn')?.addEventListener('click', ()=>{
+      const name=prompt('Preset name?');
+      if(!name) return;
+      const map=getPresets();
+      map[String(name).trim()]=collect().customColors;
+      setPresets(map); refreshPresetList(); $('presetSel').value=String(name).trim();
     });
-    paintPaletteDots();
+    $('deletePresetBtn')?.addEventListener('click', ()=>{
+      const sel=$('presetSel'); const n=String(sel?.value||'').trim(); if(!n) return;
+      if (Object.prototype.hasOwnProperty.call(BUILTIN_PRESETS, n)) { alert('Built-in presets cannot be deleted.'); return; }
+      let custom={}; try{ custom=JSON.parse(localStorage.getItem(PRESETS_KEY)||'{}')||{}; }catch{}
+      delete custom[n]; setPresets(custom); refreshPresetList(); apply();
+    });
+    $('presetSel')?.addEventListener('change', async ()=>{
+      const n=String($('presetSel').value||'').trim(); if(!n) return;
+      const map=getPresets(); const c=map[n]; if(!c) return;
+      $('primaryThemeColor').value=String(c.primaryThemeColor||'#0b111c');
+      $('secondaryThemeColor').value=String(c.secondaryThemeColor||'#1f2a3d');
+      $('primaryTextColor').value=String(c.primaryTextColor||'#f3f6ff');
+      $('secondaryTextColor').value=String(c.secondaryTextColor||'#9eb3d6');
+      syncSwatches();
+      const p=collect(); write(p); await saveServerProfile(p); postLiveTheme();
+    });
+    const exportModal=$('exportModal');
+    const exportJson=$('exportJson');
+    $('exportPresetBtn')?.addEventListener('click', ()=>{
+      const presetName=String($('presetSel')?.value||'').trim() || 'Custom';
+      const payload=JSON.stringify({name:presetName,customColors:collect().customColors},null,2);
+      if (exportJson) exportJson.value=payload;
+      exportModal?.classList.add('open');
+      setTimeout(()=>{ try { const txt=String(exportJson?.value||''); exportJson?.focus(); exportJson?.select(); exportJson?.setSelectionRange(0, txt.length); } catch {} }, 0);
+    });
+    const selectExportAll=()=>{
+      try {
+        const txt=String(exportJson?.value||'');
+        exportJson?.focus();
+        exportJson?.select();
+        exportJson?.setSelectionRange(0, txt.length);
+        return true;
+      } catch { return false; }
+    };
+    $('selectExportBtn')?.addEventListener('click', ()=>{ selectExportAll(); });
+    $('copyExportBtn')?.addEventListener('click', async ()=>{
+      const txt=String(exportJson?.value||'');
+      selectExportAll();
+      let ok=false;
+      try { await navigator.clipboard.writeText(txt); ok=true; } catch {}
+      if (!ok) {
+        try { ok = !!document.execCommand('copy'); } catch {}
+      }
+      if (!ok) alert('Copy failed. Use Select All then Copy (⌘C / Ctrl+C).');
+    });
+    $('closeExportBtn')?.addEventListener('click', ()=>exportModal?.classList.remove('open'));
+    exportModal?.addEventListener('click',(ev)=>{ if(ev.target===exportModal) exportModal.classList.remove('open'); });
+    $('importPresetBtn')?.addEventListener('click', async ()=>{
+      const txt=prompt('Paste preset JSON'); if(!txt) return;
+      try {
+        const j=JSON.parse(txt); const c=j?.customColors||j;
+        $('primaryThemeColor').value=String(c.primaryThemeColor||'#0b111c');
+        $('secondaryThemeColor').value=String(c.secondaryThemeColor||'#1f2a3d');
+        $('primaryTextColor').value=String(c.primaryTextColor||'#f3f6ff');
+        $('secondaryTextColor').value=String(c.secondaryTextColor||'#9eb3d6');
+        syncSwatches();
+        const p=collect(); write(p); await saveServerProfile(p); postLiveTheme();
+      } catch { alert('Invalid JSON'); }
+    });
     (async ()=>{
       const local = read();
       const server = await loadServerProfile();

@@ -17,6 +17,10 @@
         theme: String(src.searchParams.get('theme') || '').trim(),
         colorPreset: String(src.searchParams.get('colorPreset') || '').trim(),
         recentSource: String(src.searchParams.get('recentSource') || '').trim(),
+        primaryThemeColor: String(src.searchParams.get('primaryThemeColor') || '').trim(),
+        secondaryThemeColor: String(src.searchParams.get('secondaryThemeColor') || '').trim(),
+        primaryTextColor: String(src.searchParams.get('primaryTextColor') || '').trim(),
+        secondaryTextColor: String(src.searchParams.get('secondaryTextColor') || '').trim(),
       };
 
       let saved = {};
@@ -26,6 +30,10 @@
         theme: incoming.theme || String(saved.theme || '').trim(),
         colorPreset: incoming.colorPreset || String(saved.colorPreset || '').trim(),
         recentSource: incoming.recentSource || String(saved.recentSource || '').trim(),
+        primaryThemeColor: incoming.primaryThemeColor || String(saved?.customColors?.primaryThemeColor || '').trim(),
+        secondaryThemeColor: incoming.secondaryThemeColor || String(saved?.customColors?.secondaryThemeColor || '').trim(),
+        primaryTextColor: incoming.primaryTextColor || String(saved?.customColors?.primaryTextColor || '').trim(),
+        secondaryTextColor: incoming.secondaryTextColor || String(saved?.customColors?.secondaryTextColor || '').trim(),
       };
 
       try {
@@ -33,6 +41,12 @@
           theme: resolved.theme || 'dark',
           colorPreset: resolved.colorPreset || 'ocean',
           recentSource: resolved.recentSource || 'albums',
+          customColors: {
+            primaryThemeColor: resolved.primaryThemeColor || '#0b111c',
+            secondaryThemeColor: resolved.secondaryThemeColor || '#1f2a3d',
+            primaryTextColor: resolved.primaryTextColor || '#f3f6ff',
+            secondaryTextColor: resolved.secondaryTextColor || '#9eb3d6',
+          },
           ts: Date.now(),
         };
         localStorage.setItem(KIOSK_PROFILE_KEY, JSON.stringify(effective));
@@ -44,7 +58,8 @@
           showRecent:true,
           recentSource: effective.recentSource,
           colorPreset: effective.colorPreset,
-          recentCount:18
+          recentCount:18,
+          customColors: effective.customColors
         }));
       } catch {}
 
@@ -53,6 +68,10 @@
       if (resolved.theme) dst.searchParams.set('theme', resolved.theme);
       if (resolved.colorPreset) dst.searchParams.set('colorPreset', resolved.colorPreset);
       if (resolved.recentSource) dst.searchParams.set('recentSource', resolved.recentSource);
+      if (resolved.primaryThemeColor) dst.searchParams.set('primaryThemeColor', resolved.primaryThemeColor);
+      if (resolved.secondaryThemeColor) dst.searchParams.set('secondaryThemeColor', resolved.secondaryThemeColor);
+      if (resolved.primaryTextColor) dst.searchParams.set('primaryTextColor', resolved.primaryTextColor);
+      if (resolved.secondaryTextColor) dst.searchParams.set('secondaryTextColor', resolved.secondaryTextColor);
 
       location.replace(dst.toString());
     })();

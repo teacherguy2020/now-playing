@@ -16,7 +16,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Controller Now Playing</title>
   <style>
-    html,body{color:#111;min-height:100dvh;overflow:auto;background-color:rgba(0,0,0,.56) !important;background-image:url('http://10.0.0.233:3101/art/current_bg_640_blur.jpg') !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important;background-attachment:fixed !important;background-blend-mode:multiply !important;}
+    html,body{color:#111;height:100dvh;min-height:100dvh;overflow:hidden !important;background-color:rgba(0,0,0,.56) !important;background-image:url('http://10.0.0.233:3101/art/current_bg_640_blur.jpg') !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important;background-attachment:fixed !important;background-blend-mode:multiply !important;}
     body::before{content:none !important;display:none !important}
     #content{min-height:100dvh !important;}
     /* Background layers disabled for yellow-fill debug pass */
@@ -74,7 +74,7 @@
       #cnpBack{transform:translateY(calc(env(safe-area-inset-top,0px) + 12px))}
     }
     /* Grid prototype: keep mobile layout in-flow (less Safari toolbar weirdness) */
-    body.phone-ui{overflow:auto !important;-webkit-overflow-scrolling:touch;--artSize:min(85vw,420px)}
+    body.phone-ui{overflow:hidden !important;-webkit-overflow-scrolling:auto;--artSize:min(85vw,420px)}
     /* Guardrail: on narrow screens, keep art sizing capped even if phone-ui class fails to apply */
     @media (max-width: 900px){
       body{--artSize:min(85vw,420px)}

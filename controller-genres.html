@@ -45,7 +45,7 @@
 
     // Server-backed controller palette
     const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
-    function __npApplyPalette(name, themeMode){
+    function __npApplyPalette(name, themeMode, customColors){
       const p = String(name||'ocean').toLowerCase();
       const modeRaw = String(themeMode||'auto').toLowerCase();
       const isLight = modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
@@ -102,31 +102,51 @@
       const t = isLight
         ? { accent, ...l, bg: blendHex(l.bg, accent, 0.20) }
         : { ...d, text:'#f3f6ff', muted:'#9eb3d6' };
+      const hex = (v)=>/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim()) ? String(v).trim() : '';
+      const cc = customColors && typeof customColors === 'object' ? customColors : {};
+      const cPrimary = hex(cc.primaryThemeColor);
+      const cSecondary = hex(cc.secondaryThemeColor);
+      const cText = hex(cc.primaryTextColor);
+      const cText2 = hex(cc.secondaryTextColor);
+
       const r = document.documentElement;
       r.style.setProperty('--accent', t.accent);
-      r.style.setProperty('--bg', t.bg);
-      r.style.setProperty('--line', t.line);
-      r.style.setProperty('--text', t.text || '#f3f6ff');
-      r.style.setProperty('--muted', t.muted || '#9eb3d6');
+      r.style.setProperty('--bg', cPrimary || t.bg);
+      r.style.setProperty('--line', cSecondary || t.line);
+      r.style.setProperty('--text', cText || t.text || '#f3f6ff');
+      r.style.setProperty('--muted', cText2 || t.muted || '#9eb3d6');
     }
     (async ()=>{
       const __u = new URL(location.href);
       const qColor = String(__u.searchParams.get('colorPreset') || '').trim().toLowerCase();
       const qTheme = String(__u.searchParams.get('theme') || '').trim().toLowerCase();
+      const qPrimary = String(__u.searchParams.get('primaryThemeColor') || '').trim();
+      const qSecondary = String(__u.searchParams.get('secondaryThemeColor') || '').trim();
+      const qText = String(__u.searchParams.get('primaryTextColor') || '').trim();
+      const qText2 = String(__u.searchParams.get('secondaryTextColor') || '').trim();
       let lsColor = '';
       let lsTheme = '';
+      let lsCustom = null;
       try {
         const p = JSON.parse(localStorage.getItem('nowplaying.mobile.profile.v1') || '{}') || {};
         lsColor = String(p?.colorPreset || '').trim().toLowerCase();
         lsTheme = String(p?.theme || '').trim().toLowerCase();
+        lsCustom = p?.customColors || null;
       } catch {}
-      __npApplyPalette(qColor || lsColor || 'ocean', qTheme || lsTheme || 'dark');
+      const qCustom = (qPrimary || qSecondary || qText || qText2) ? {
+        ...(qPrimary ? { primaryThemeColor:qPrimary } : {}),
+        ...(qSecondary ? { secondaryThemeColor:qSecondary } : {}),
+        ...(qText ? { primaryTextColor:qText } : {}),
+        ...(qText2 ? { secondaryTextColor:qText2 } : {}),
+      } : null;
+      __npApplyPalette(qColor || lsColor || 'ocean', qTheme || lsTheme || 'dark', qCustom || lsCustom || null);
       try {
         const r = await fetch(`${__npBase}/config/controller-profile`, { cache:'no-store' });
         const j = await r.json().catch(()=>({}));
         const sColor = String(j?.profile?.colorPreset || 'ocean').trim().toLowerCase();
         const sTheme = String(j?.profile?.theme || 'dark').trim().toLowerCase();
-        __npApplyPalette(qColor || lsColor || sColor || 'ocean', qTheme || lsTheme || sTheme || 'dark');
+        const sCustom = j?.profile?.customColors || null;
+        __npApplyPalette(qColor || lsColor || sColor || 'ocean', qTheme || lsTheme || sTheme || 'dark', qCustom || lsCustom || sCustom || null);
       } catch {}
     })();
 

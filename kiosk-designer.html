@@ -9,8 +9,11 @@
     html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.35 Inter,system-ui}
     .wrap{max-width:1320px;margin:0 auto;padding:29px 10px 10px}
     .card{border:1px solid rgba(70,98,145,.55);border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);background:linear-gradient(180deg,#101a2f,#0d1730)}
-    .ctl{display:flex;gap:8px;align-items:center;padding:8px 10px;margin-top:20px}
-    .ctl select,.ctl button{height:30px;border:1px solid var(--line);border-radius:8px;background:#0e1830;color:var(--txt);padding:0 10px}
+    .ctl{display:flex;flex-direction:column;gap:8px;align-items:stretch;padding:8px 10px;margin-top:20px}
+    .ctlRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .ctl select,.ctl button,.ctl input[type="color"]{height:30px;border:1px solid var(--line);border-radius:8px;background:#0e1830;color:var(--txt);padding:0 10px}
+    .colorRow{display:flex;gap:6px;align-items:center}
+    .colorRow input[type="color"]{width:78px;padding:0}
     .swatches{display:flex;gap:6px;align-items:center}
     .swatches .sw{appearance:none;-webkit-appearance:none;width:18px !important;min-width:18px !important;height:18px !important;min-height:18px !important;padding:0 !important;border-radius:999px;border:1px solid rgba(255,255,255,.28);cursor:pointer;opacity:.95;background-color:transparent}
     .sw.on{outline:2px solid #fff;outline-offset:1px}
@@ -30,47 +33,52 @@
     .stat{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:520px}
     .grow{flex:1}
     iframe{display:block;width:1280px;height:400px;margin:10px auto;border:0;border-radius:12px}
+    .jsonModal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;padding-top:18px;background:rgba(0,0,0,.45);z-index:9999}
+    .jsonModal.open{display:flex}
+    .jsonCard{width:min(760px,94vw);max-height:86vh;overflow:auto;background:#0e1830;border:1px solid var(--line);border-radius:12px;padding:10px}
+    .jsonCard textarea{width:100%;min-height:260px;background:#0b1328;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace}
+    .jsonActions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card ctl">
-      <label for="sizeSel" class="muted">Size</label>
-      <select id="sizeSel">
-        <option value="kiosk.html">1280×400</option>
-      </select>
-      <label for="themeSel" class="muted">Theme</label>
-      <select id="themeSel">
-        <option value="dark" selected>Dark</option>
-        <option value="light">Light</option>
-      </select>
-      <label for="recentSel" class="muted">Recents</label>
-      <select id="recentSel">
-        <option value="albums">Recently Added</option>
-        <option value="podcasts">Podcasts</option>
-        <option value="playlists">Playlists</option>
-      </select>
-      <label class="muted">Color</label>
-      <div class="swatches" id="swatches">
-        <button class="sw" data-c="ocean" title="Ocean"></button>
-        <button class="sw" data-c="midnight" title="Midnight"></button>
-        <button class="sw" data-c="slate" title="Slate"></button>
-        <button class="sw" data-c="mono" title="Mono"></button>
-        <button class="sw" data-c="sunset" title="Sunset"></button>
-        <button class="sw" data-c="sunrise" title="Sunrise"></button>
-        <button class="sw" data-c="amber" title="Amber"></button>
-        <button class="sw" data-c="rose" title="Rose"></button>
-        <button class="sw" data-c="lavender" title="Lavender"></button>
-        <button class="sw" data-c="emerald" title="Emerald"></button>
-        <button class="sw" data-c="forest" title="Forest"></button>
-        <button class="sw" data-c="mint" title="Mint"></button>
+      <div class="ctlRow">
+        <label for="sizeSel" class="muted">Size</label>
+        <select id="sizeSel">
+          <option value="kiosk.html">1280×400</option>
+        </select>
+        <select id="presetSel">
+          <option value="">(preset)</option>
+        </select>
+        <button id="savePresetBtn" type="button">Save</button>
+        <button id="deletePresetBtn" type="button">Delete</button>
+        <button id="exportPresetBtn" type="button">Export</button>
+        <button id="importPresetBtn" type="button">Import</button>
+        <button id="pushBtn" type="button">Push to moOde</button>
+        <span class="grow"></span>
+        <span id="targetHint" class="targetHint">Checking moOde target…</span>
+        <span id="stat" class="stat"></span>
       </div>
-      <button id="pushBtn" type="button">Push to moOde</button>
-      <span class="grow"></span>
-      <span id="targetHint" class="targetHint">Checking moOde target…</span>
-      <span id="stat" class="stat"></span>
+      <div class="ctlRow">
+        <label class="muted">Primary Theme</label><div class="colorRow"><input id="primaryThemeColor" type="color" value="#0b111c" /></div>
+        <label class="muted">Secondary Theme</label><div class="colorRow"><input id="secondaryThemeColor" type="color" value="#1f2a3d" /></div>
+        <label class="muted">Primary Text</label><div class="colorRow"><input id="primaryTextColor" type="color" value="#f3f6ff" /></div>
+        <label class="muted">Secondary Text</label><div class="colorRow"><input id="secondaryTextColor" type="color" value="#9eb3d6" /></div>
+      </div>
     </div>
     <iframe id="preview" class="card" src="kiosk.html"></iframe>
+  </div>
+  <div class="jsonModal" id="exportModal" aria-hidden="true">
+    <div class="jsonCard">
+      <div style="font-weight:700;margin-bottom:6px">Export Preset JSON</div>
+      <textarea id="exportJson" readonly></textarea>
+      <div class="jsonActions">
+        <button id="selectExportBtn" type="button">Select All</button>
+        <button id="copyExportBtn" type="button">Copy</button>
+        <button id="closeExportBtn" type="button">Close</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -78,10 +86,10 @@
       const host=location.hostname||'10.0.0.4';
       const api=`${location.protocol}//${host}:3101`;
       const sizeSel=document.getElementById('sizeSel');
-      const themeSel=document.getElementById('themeSel');
-      const recentSel=document.getElementById('recentSel');
-      const swatches=document.getElementById('swatches');
-      let colorPreset='ocean';
+      const primaryThemeColor=document.getElementById('primaryThemeColor');
+      const secondaryThemeColor=document.getElementById('secondaryThemeColor');
+      const primaryTextColor=document.getElementById('primaryTextColor');
+      const secondaryTextColor=document.getElementById('secondaryTextColor');
       const pushBtn=document.getElementById('pushBtn');
       const stat=document.getElementById('stat');
       const targetHint=document.getElementById('targetHint');
@@ -89,9 +97,15 @@
       let key='';
       const persistProfile=()=>{
         const profile = {
-          theme: themeSel.value || 'dark',
-          colorPreset: colorPreset || 'ocean',
-          recentSource: recentSel.value || 'albums'
+          theme: 'auto',
+          colorPreset: 'ocean',
+          recentSource: 'albums',
+          customColors: {
+            primaryThemeColor: String(primaryThemeColor?.value || '#0b111c'),
+            secondaryThemeColor: String(secondaryThemeColor?.value || '#1f2a3d'),
+            primaryTextColor: String(primaryTextColor?.value || '#f3f6ff'),
+            secondaryTextColor: String(secondaryTextColor?.value || '#9eb3d6'),
+          }
         };
         try {
           localStorage.setItem('nowplaying.kiosk.profile.v1', JSON.stringify({ ...profile, ts: Date.now() }));
@@ -102,40 +116,149 @@
             showRecent:true,
             recentSource: profile.recentSource,
             colorPreset: profile.colorPreset,
-            recentCount:18
+            recentCount:18,
+            customColors: profile.customColors
           }));
         } catch {}
       };
       const buildRel=()=>{
         const u=new URL(sizeSel.value, 'http://x.local/');
-        u.searchParams.set('theme', themeSel.value);
-        u.searchParams.set('recentSource', recentSel.value);
-        u.searchParams.set('colorPreset', colorPreset);
+        u.searchParams.set('theme', 'auto');
+        u.searchParams.set('recentSource', 'albums');
+        u.searchParams.set('colorPreset', 'ocean');
+        u.searchParams.set('primaryThemeColor', String(primaryThemeColor?.value || '#0b111c'));
+        u.searchParams.set('secondaryThemeColor', String(secondaryThemeColor?.value || '#1f2a3d'));
+        u.searchParams.set('primaryTextColor', String(primaryTextColor?.value || '#f3f6ff'));
+        u.searchParams.set('secondaryTextColor', String(secondaryTextColor?.value || '#9eb3d6'));
         return `${u.pathname.replace(/^\//,'')}${u.search}`;
       };
-      const refreshPreview=()=>{ preview.src = buildRel(); };
-      const setSwatch = (c)=>{
-        colorPreset = c || 'ocean';
-        swatches?.querySelectorAll('.sw').forEach((el)=>el.classList.toggle('on', el.dataset.c===colorPreset));
+      const syncSwatches=()=>{};
+      const postLiveTheme=()=>{
+        const customColors={
+          primaryThemeColor:String(primaryThemeColor?.value || '#0b111c'),
+          secondaryThemeColor:String(secondaryThemeColor?.value || '#1f2a3d'),
+          primaryTextColor:String(primaryTextColor?.value || '#f3f6ff'),
+          secondaryTextColor:String(secondaryTextColor?.value || '#9eb3d6'),
+        };
+        try { preview?.contentWindow?.postMessage({ type:'np-live-theme-update', customColors }, '*'); } catch {}
       };
-      swatches?.addEventListener('click',(ev)=>{
-        const b=ev.target.closest('.sw[data-c]');
-        if(!b) return;
-        ev.preventDefault();
-        setSwatch(String(b.dataset.c||'ocean'));
-        refreshPreview();
-      });
+      const refreshPreview=()=>{ syncSwatches(); preview.src = buildRel(); };
       try {
         const applied = JSON.parse(localStorage.getItem('nowplaying.kiosk.profile.v1') || '{}') || {};
-        if (applied.theme === 'light' || applied.theme === 'dark') themeSel.value = applied.theme;
-        if (applied.recentSource) recentSel.value = String(applied.recentSource);
-        if (applied.colorPreset) colorPreset = String(applied.colorPreset);
+        const c = applied?.customColors || {};
+        if (c.primaryThemeColor) primaryThemeColor.value = String(c.primaryThemeColor);
+        if (c.secondaryThemeColor) secondaryThemeColor.value = String(c.secondaryThemeColor);
+        if (c.primaryTextColor) primaryTextColor.value = String(c.primaryTextColor);
+        if (c.secondaryTextColor) secondaryTextColor.value = String(c.secondaryTextColor);
       } catch {}
-      setSwatch(colorPreset);
+
+      const PRESETS_KEY='nowplaying.kiosk.custom-presets.v1';
+      const BUILTIN_PRESETS={
+        'Deep Ocean':{primaryThemeColor:'#0b111c',secondaryThemeColor:'#1f2a3d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'},
+        'Blue Horizon':{primaryThemeColor:'#0b1730',secondaryThemeColor:'#1d4ed8',primaryTextColor:'#eaf2ff',secondaryTextColor:'#a9c2ff'},
+        'Sunset Glow':{primaryThemeColor:'#1b110d',secondaryThemeColor:'#5b3a2d',primaryTextColor:'#fff1e8',secondaryTextColor:'#f0b089'},
+        'Crimson Bloom':{primaryThemeColor:'#fffbfa',secondaryThemeColor:'#fa233b',primaryTextColor:'#4d0200',secondaryTextColor:'#ff9aa1'},
+        'Rose Noir':{primaryThemeColor:'#1a0d14',secondaryThemeColor:'#5b2b3f',primaryTextColor:'#ffeef5',secondaryTextColor:'#d9a8bc'},
+        'Mono Contrast':{primaryThemeColor:'#0b0b0b',secondaryThemeColor:'#2d2d2d',primaryTextColor:'#f2f2f2',secondaryTextColor:'#b8b8b8'},
+        'Lavender Mist':{primaryThemeColor:'#120d1e',secondaryThemeColor:'#3d3158',primaryTextColor:'#f2ecff',secondaryTextColor:'#c9b8f2'},
+        'Emerald Glass':{primaryThemeColor:'#081511',secondaryThemeColor:'#1f4a3e',primaryTextColor:'#e8fff6',secondaryTextColor:'#9ed9c3'}
+      };
+      const getPresets=()=>{ try{ const custom=JSON.parse(localStorage.getItem(PRESETS_KEY)||'{}')||{}; return {...BUILTIN_PRESETS, ...custom}; }catch{return {...BUILTIN_PRESETS}}; };
+      const setPresets=(v)=>{ try{localStorage.setItem(PRESETS_KEY, JSON.stringify(v||{}));}catch{} };
+      const presetSel=document.getElementById('presetSel');
+      const refreshPresetList=()=>{
+        if(!presetSel) return;
+        const map=getPresets();
+        const names=Object.keys(map).sort((a,b)=>a.localeCompare(b));
+        presetSel.innerHTML='<option value="">(preset)</option>'+names.map((n)=>`<option value="${n}">${n}</option>`).join('');
+      };
+      refreshPresetList();
+      syncSwatches();
+
+      document.getElementById('savePresetBtn')?.addEventListener('click', ()=>{
+        const name=prompt('Preset name?'); if(!name) return;
+        const map=getPresets();
+        map[String(name).trim()]={
+          primaryThemeColor:String(primaryThemeColor.value||'#0b111c'),
+          secondaryThemeColor:String(secondaryThemeColor.value||'#1f2a3d'),
+          primaryTextColor:String(primaryTextColor.value||'#f3f6ff'),
+          secondaryTextColor:String(secondaryTextColor.value||'#9eb3d6'),
+        };
+        setPresets(map); refreshPresetList(); presetSel.value=String(name).trim(); refreshPreview();
+      });
+      document.getElementById('deletePresetBtn')?.addEventListener('click', ()=>{
+        const n=String(presetSel?.value||'').trim(); if(!n) return;
+        if (Object.prototype.hasOwnProperty.call(BUILTIN_PRESETS, n)) { alert('Built-in presets cannot be deleted.'); return; }
+        let custom={}; try{ custom=JSON.parse(localStorage.getItem(PRESETS_KEY)||'{}')||{}; }catch{}
+        delete custom[n]; setPresets(custom); refreshPresetList();
+      });
+      presetSel?.addEventListener('change', ()=>{
+        const n=String(presetSel.value||'').trim(); if(!n) return;
+        const c=getPresets()[n]; if(!c) return;
+        if (c.primaryThemeColor) primaryThemeColor.value = String(c.primaryThemeColor);
+        if (c.secondaryThemeColor) secondaryThemeColor.value = String(c.secondaryThemeColor);
+        if (c.primaryTextColor) primaryTextColor.value = String(c.primaryTextColor);
+        if (c.secondaryTextColor) secondaryTextColor.value = String(c.secondaryTextColor);
+        syncSwatches();
+        persistProfile();
+        postLiveTheme();
+      });
+      const exportModal=document.getElementById('exportModal');
+      const exportJson=document.getElementById('exportJson');
+      document.getElementById('exportPresetBtn')?.addEventListener('click', ()=>{
+        const presetName=String(presetSel?.value||'').trim() || 'Custom';
+        const payload=JSON.stringify({
+          name:presetName,
+          primaryThemeColor:String(primaryThemeColor.value||'#0b111c'),
+          secondaryThemeColor:String(secondaryThemeColor.value||'#1f2a3d'),
+          primaryTextColor:String(primaryTextColor.value||'#f3f6ff'),
+          secondaryTextColor:String(secondaryTextColor.value||'#9eb3d6'),
+        }, null, 2);
+        if (exportJson) exportJson.value = payload;
+        exportModal?.classList.add('open');
+        setTimeout(()=>{ try { const txt=String(exportJson?.value||''); exportJson?.focus(); exportJson?.select(); exportJson?.setSelectionRange(0, txt.length); } catch {} }, 0);
+      });
+      const selectExportAll=()=>{
+        try {
+          const txt=String(exportJson?.value||'');
+          exportJson?.focus();
+          exportJson?.select();
+          exportJson?.setSelectionRange(0, txt.length);
+          return true;
+        } catch { return false; }
+      };
+      document.getElementById('selectExportBtn')?.addEventListener('click', ()=>{ selectExportAll(); });
+      document.getElementById('copyExportBtn')?.addEventListener('click', async ()=>{
+        const txt=String(exportJson?.value||'');
+        selectExportAll();
+        let ok=false;
+        try { await navigator.clipboard.writeText(txt); ok=true; } catch {}
+        if (!ok) {
+          try { ok = !!document.execCommand('copy'); } catch {}
+        }
+        if (!ok) alert('Copy failed. Use Select All then Copy (⌘C / Ctrl+C).');
+      });
+      document.getElementById('closeExportBtn')?.addEventListener('click', ()=>exportModal?.classList.remove('open'));
+      exportModal?.addEventListener('click',(ev)=>{ if(ev.target===exportModal) exportModal.classList.remove('open'); });
+      document.getElementById('importPresetBtn')?.addEventListener('click', ()=>{
+        const txt=prompt('Paste preset JSON'); if(!txt) return;
+        try{
+          const c=JSON.parse(txt)||{};
+          if (c.primaryThemeColor) primaryThemeColor.value = String(c.primaryThemeColor);
+          if (c.secondaryThemeColor) secondaryThemeColor.value = String(c.secondaryThemeColor);
+          if (c.primaryTextColor) primaryTextColor.value = String(c.primaryTextColor);
+          if (c.secondaryTextColor) secondaryTextColor.value = String(c.secondaryTextColor);
+          syncSwatches();
+          persistProfile();
+          postLiveTheme();
+        }catch{ alert('Invalid JSON'); }
+      });
 
       sizeSel.addEventListener('change', refreshPreview);
-      themeSel.addEventListener('change', refreshPreview);
-      recentSel.addEventListener('change', refreshPreview);
+      [primaryThemeColor, secondaryThemeColor, primaryTextColor, secondaryTextColor].forEach((el)=>{
+        el?.addEventListener('input', ()=>{ syncSwatches(); persistProfile(); postLiveTheme(); });
+        el?.addEventListener('change', ()=>{ syncSwatches(); persistProfile(); postLiveTheme(); });
+      });
       refreshPreview();
 
       async function ensureKey(){
