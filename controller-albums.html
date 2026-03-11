@@ -212,6 +212,8 @@
     let albums=[];
     let modalCtx={album:'',artist:'',art:'',tracks:[]};
     let albumLoadToken=0;
+    let coverQueuePaused = false;
+    let coverQueueToken = 0;
     let albumMenuCtx={album:'',artist:'',art:''};
     let currentGenreFilter='';
 
@@ -266,12 +268,47 @@
         const artRaw=String(a.thumbUrl||'').trim();
         const art=artRaw ? (artRaw.startsWith('http')?artRaw:`${base}${artRaw}`) : `${base}/art/current.jpg`;
         const alb=String(a.album||'').trim(); const artist=String(a.artist||'').trim();
+        const artNode = `<img class='lazyCover' data-src='${art}' alt=''>`;
         if(state.view==='list'){
-          return `<div class='row' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><img src='${art}' alt=''><span class='coverMore' aria-hidden='true'>•••</span></div><div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div></div>`;
+          return `<div class='row' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'>${artNode}<span class='coverMore' aria-hidden='true'>•••</span></div><div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div></div>`;
         }
-        return `<button class='album' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><img src='${art}' alt=''><span class='coverMore' aria-hidden='true'>•••</span></div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></button>`;
+        return `<button class='album' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'>${artNode}<span class='coverMore' aria-hidden='true'>•••</span></div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></button>`;
       }).join('');
+      host.querySelectorAll('img.lazyCover, .coverWrap > img:not(.lazyCover)').forEach((img)=>{
+        img.onerror = () => {
+          try {
+            if (img.dataset.heal === '1') return;
+            img.dataset.heal = '1';
+            const raw = String(img.getAttribute('src') || img.getAttribute('data-src') || '').trim();
+            if (!raw) return;
+            img.setAttribute('src', `${raw}${raw.includes('?') ? '&' : '?'}heal=1`);
+          } catch {}
+        };
+      });
+      scheduleEmbeddedCovers();
       meta.textContent = `${list.length} albums`;
+    }
+
+    function scheduleEmbeddedCovers(){
+      const token = ++coverQueueToken;
+      const imgs = Array.from(document.querySelectorAll('img.lazyCover[data-src]'));
+      let idx = 0;
+      let active = 0;
+      const CONC = 4;
+      const pump = ()=>{
+        if (token !== coverQueueToken) return;
+        if (coverQueuePaused) { setTimeout(pump, 120); return; }
+        while (active < CONC && idx < imgs.length) {
+          const img = imgs[idx++];
+          if (!img || img.getAttribute('src')) continue;
+          active += 1;
+          const done = ()=>{ active = Math.max(0, active-1); setTimeout(pump, 0); };
+          img.addEventListener('load', done, { once:true });
+          img.addEventListener('error', done, { once:true });
+          img.setAttribute('src', String(img.getAttribute('data-src') || ''));
+        }
+      };
+      pump();
     }
 
     async function fetchAlbumTracks(album, artist){
@@ -319,6 +356,7 @@
     }
 
     function openAlbumModal(isLoading=false){
+      coverQueuePaused = true;
       document.getElementById('albumTitle').textContent = modalCtx.album || '(album)';
       document.getElementById('albumMeta').textContent = modalCtx.artist || '';
       document.getElementById('albumArtistLink').textContent = modalCtx.artist || '(unknown artist)';
@@ -330,7 +368,7 @@
       }
       document.getElementById('albumModal').classList.add('open');
     }
-    function closeAlbumModal(){ albumLoadToken += 1; document.getElementById('albumModal').classList.remove('open'); }
+    function closeAlbumModal(){ albumLoadToken += 1; document.getElementById('albumModal').classList.remove('open'); coverQueuePaused = false; scheduleEmbeddedCovers(); }
 
     async function openAlbumFromContext(ctx){
       const myToken = ++albumLoadToken;

@@ -442,6 +442,20 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
       const folder = String(req.query?.folder || '').trim();
       const file = String(req.query?.file || '').trim();
       if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
+
+      const cacheDir = '/tmp/now-playing/library-thumbs';
+      const cacheName = Buffer.from(String(folder || '')).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 64) || 'thumb';
+      const outPath = path.join(cacheDir, `${cacheName}.jpg`);
+      try {
+        await fs.mkdir(cacheDir, { recursive: true });
+        const cached = await fs.readFile(outPath);
+        if (cached?.length) {
+          res.setHeader('Content-Type', 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          return res.send(cached);
+        }
+      } catch (_) {}
+
       const localFolder = await resolveLocalFolderPath(folder);
 
       const candidates = ['cover.jpg', 'folder.jpg', 'front.jpg', 'cover.jpeg', 'folder.jpeg', 'front.jpeg', 'cover.png', 'folder.png', 'front.png'];
@@ -452,6 +466,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
             await fs.access(p);
             const buf = await fs.readFile(p);
             const ct = name.endsWith('.png') ? 'image/png' : 'image/jpeg';
+            if (ct === 'image/jpeg') { try { await fs.writeFile(outPath, buf); } catch (_) {} }
             res.setHeader('Content-Type', ct);
             res.setHeader('Cache-Control', 'public, max-age=86400');
             return res.send(buf);
@@ -481,6 +496,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
           if (ct && b64) {
             const buf = Buffer.from(b64, 'base64');
             if (buf?.length) {
+              if (ct === 'image/jpeg') { try { await fs.writeFile(outPath, buf); } catch (_) {} }
               res.setHeader('Content-Type', ct);
               res.setHeader('Cache-Control', 'public, max-age=86400');
               return res.send(buf);
@@ -508,6 +524,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
           if (b64) {
             const buf = Buffer.from(b64, 'base64');
             if (buf?.length) {
+              try { await fs.writeFile(outPath, buf); } catch (_) {}
               res.setHeader('Content-Type', 'image/jpeg');
               res.setHeader('Cache-Control', 'public, max-age=86400');
               return res.send(buf);
@@ -519,29 +536,14 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
       // Fallback: attempt extracting embedded art from one sample track, cached to disk.
       const sample = await resolveLocalMusicPath(file);
       if (sample) {
-        const cacheDir = '/tmp/now-playing/library-thumbs';
-        const cacheName = Buffer.from(String(folder || '')).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 64) || 'thumb';
-        const outPath = path.join(cacheDir, `${cacheName}.jpg`);
         try {
-          await fs.mkdir(cacheDir, { recursive: true });
-          try {
-            const buf = await fs.readFile(outPath);
-            if (buf?.length) {
-              res.setHeader('Content-Type', 'image/jpeg');
-              res.setHeader('Cache-Control', 'public, max-age=86400');
-              return res.send(buf);
-            }
-          } catch (_) {}
-
-          try {
-            await execFileP('ffmpeg', ['-y', '-i', sample, '-an', '-vframes', '1', outPath], { timeout: 8000 });
-            const buf = await fs.readFile(outPath);
-            if (buf?.length) {
-              res.setHeader('Content-Type', 'image/jpeg');
-              res.setHeader('Cache-Control', 'public, max-age=86400');
-              return res.send(buf);
-            }
-          } catch (_) {}
+          await execFileP('ffmpeg', ['-y', '-i', sample, '-an', '-vframes', '1', outPath], { timeout: 8000 });
+          const buf = await fs.readFile(outPath);
+          if (buf?.length) {
+            res.setHeader('Content-Type', 'image/jpeg');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            return res.send(buf);
+          }
         } catch (_) {}
       }
 
@@ -661,7 +663,8 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
           label: `${artistLabel} — ${albumName}`,
           trackCount: Number(row.trackCount || 0),
           addedTs,
-          thumbUrl: `/art/track_640.jpg?file=${encodeURIComponent(String(row.sampleFile || ''))}`,
+          // Canonical local-cache-first album thumbnail endpoint.
+          thumbUrl: `/config/library-health/album-thumb?folder=${encodeURIComponent(String(row.folder || ''))}&file=${encodeURIComponent(String(row.sampleFile || ''))}`,
         };
       }));
 

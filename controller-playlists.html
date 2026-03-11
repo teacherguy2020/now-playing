@@ -15,6 +15,7 @@
     .more{width:32px;height:32px;border-radius:999px;border:1px solid #2a3a58;background:#121c30;color:#dfeaff;font-size:16px;display:flex;align-items:center;justify-content:center}
     .meta{color:var(--muted);font-size:13px;margin:0 0 10px}
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    body.embedded .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
     .list{display:block}
     .item{border:0;background:transparent;color:var(--text);text-align:left;padding:0;cursor:pointer}
     .coverWrap{position:relative;display:block;width:100%}
@@ -96,6 +97,8 @@
   </div>
 
   <script>
+    const __embedded = new URL(location.href).searchParams.get('embedded') === '1';
+    if (__embedded) document.body.classList.add('embedded');
 
     // Server-backed controller palette
     const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
@@ -191,6 +194,7 @@
     let state={view:'grid',sort:'az'};
     let playlists=[];
     let modalCtx={name:'',cover:'',tracks:[]};
+    const playlistCoverChoice = new Map();
 
     function playlistCoverUrl(name){
       const raw = String(name || '').trim();
@@ -218,7 +222,8 @@
       playlists = names.map((n)=>{
         const name = String(n||'').trim();
         const cov = playlistCoverUrl(name);
-        return { name, cover: cov.primary, coverAlt: cov.alt, count:null };
+        const pref = playlistCoverChoice.get(name);
+        return { name, cover: pref==='alt'?cov.alt:cov.primary, coverAlt: cov.alt, count:null };
       });
       render();
       hydrateCovers();
@@ -237,7 +242,7 @@
       host.className = state.view==='list' ? 'list' : 'grid';
       host.innerHTML = list.map((p)=>{
         const cInner = p.cover
-          ? `<img class='cover' src='${p.cover}' data-alt='${p.coverAlt||''}' alt=''>`
+          ? `<img class='cover' src='${p.cover}' data-name='${encodeURIComponent(p.name)}' data-alt='${p.coverAlt||''}' alt=''>`
           : `<div class='ph'><span class='spin'></span></div>`;
         const c = `<div class='coverWrap'>${cInner}<button type='button' class='coverMore' data-a='menu' data-name='${encodeURIComponent(p.name)}'>•••</button></div>`;
         if(state.view==='list'){
@@ -249,7 +254,8 @@
         img.onerror = () => {
           const alt = String(img.getAttribute('data-alt') || '').trim();
           const cur = String(img.getAttribute('src') || '').trim();
-          if (alt && cur !== alt) { img.setAttribute('src', alt); return; }
+          const name = decodeURIComponent(String(img.getAttribute('data-name') || ''));
+          if (alt && cur !== alt) { playlistCoverChoice.set(name, 'alt'); img.setAttribute('src', alt); return; }
           const ph = document.createElement('div');
           ph.className = 'ph';
           ph.innerHTML = '<span class="spin"></span>';
