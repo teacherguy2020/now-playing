@@ -158,7 +158,18 @@
     body.kiosk1280 .thumb{min-width:0;width:auto}
     body.kiosk1280 .thumb img, body.kiosk1280 .ph{width:90%;height:auto;aspect-ratio:1/1;display:block;margin:0 auto}
     body.kiosk1280 .thumb .cap{font-size:12px;white-space:normal;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding-left:5px}
-    body.kiosk1280 .row{padding:8px 0;grid-template-columns:28px 1fr 14px;gap:8px}
+    body.kiosk1280 .row{padding:6px 0;grid-template-columns:38px 1fr 14px;gap:8px}
+    body.kiosk1280 .row .ico{padding-left:10px;justify-content:flex-start}
+    body.kiosk1280 .row .ico.ico-mic,
+    body.kiosk1280 .row .ico.ico-album{transform:translateX(5px)}
+    body.kiosk1280 .row .ico.ico-radio{transform:translateX(8px)}
+    body.kiosk1280 .row .ico.ico-genre,
+    body.kiosk1280 .row .ico.ico-podcast,
+    body.kiosk1280 .row .ico.ico-queuewiz{width:32px;height:32px;overflow:visible}
+    body.kiosk1280 .row .ico.ico-genre svg{width:32px;height:32px;transform:translateX(-3px) scaleX(-1) rotate(-40deg) scale(1.12)}
+    body.kiosk1280 .row .ico.ico-genre svg path{stroke:currentColor;stroke-width:1.1;paint-order:stroke fill;stroke-linejoin:round}
+    body.kiosk1280 .row .ico.ico-podcast svg{width:32px;height:32px;transform:translateX(-3px) scale(1.12)}
+    body.kiosk1280 .row .ico.ico-queuewiz svg{width:32px;height:32px;transform:scale(1.12)}
     body.kiosk1280 .row .lbl{font-size:19px}
     body.kiosk1280 .title{font-size:17px;margin-bottom:6px}
     body.kiosk1280 .npTap .title{display:none}
@@ -236,9 +247,9 @@
     <li class="row" data-page="kiosk-artists.html"><span class="ico ico-mic" aria-hidden="true"></span><span class="lbl">Artists</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-albums.html"><span class="ico ico-album" aria-hidden="true"></span><span class="lbl">Albums</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-genres.html"><span class="ico ico-genre" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10V4h6l12 12l-6 6L3 10zm4-2.5A1.5 1.5 0 1 0 7 10.5A1.5 1.5 0 0 0 7 7.5z"/></svg></span><span class="lbl">Genres</span><span class="chev">›</span></li>
-    <li class="row" data-page="kiosk-podcasts.html"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11.5a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 0 0 0-3.4zm0-4.7a6.4 6.4 0 0 0-6.4 6.4h2.2a4.2 4.2 0 1 1 8.4 0h2.2A6.4 6.4 0 0 0 12 6.8zm0-3.6A10 10 0 0 0 2 13.2h2.2a7.8 7.8 0 0 1 15.6 0H22A10 10 0 0 0 12 3.2zM11 17h2v3h-2z"/></svg></span><span class="lbl">Podcasts</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-podcasts.html"><span class="ico ico-podcast"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11.5a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 0 0 0-3.4zm0-4.7a6.4 6.4 0 0 0-6.4 6.4h2.2a4.2 4.2 0 1 1 8.4 0h2.2A6.4 6.4 0 0 0 12 6.8zm0-3.6A10 10 0 0 0 2 13.2h2.2a7.8 7.8 0 0 1 15.6 0H22A10 10 0 0 0 12 3.2zM11 17h2v3h-2z"/></svg></span><span class="lbl">Podcasts</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-radio.html"><span class="ico ico-radio" aria-hidden="true"></span><span class="lbl">Radio</span><span class="chev">›</span></li>
-    <li class="row" data-page="kiosk-queue-wizard.html"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19l10.6-10.6l1.4 1.4L6.4 20.4L5 19zm9.8-13.2l1.1-2.8l1.1 2.8l2.8 1.1l-2.8 1.1l-1.1 2.8l-1.1-2.8L12 6.9l2.8-1.1zM20 12l.8-2l.8 2l2 .8l-2 .8l-.8 2l-.8-2l-2-.8l2-.8zM10 3l.6-1.5L11.2 3l1.5.6l-1.5.6L10.6 5.8L10 4.2L8.5 3.6L10 3z"/></svg></span><span class="lbl">Queue Wizard</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-queue-wizard.html"><span class="ico ico-queuewiz" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19l10.6-10.6l1.4 1.4L6.4 20.4L5 19zm9.8-13.2l1.1-2.8l1.1 2.8l2.8 1.1l-2.8 1.1l-1.1 2.8l-1.1-2.8L12 6.9l2.8-1.1zM20 12l.8-2l.8 2l2 .8l-2 .8l-.8 2l-.8-2l-2-.8l2-.8zM10 3l.6-1.5L11.2 3l1.5.6l-1.5.6L10.6 5.8L10 4.2L8.5 3.6L10 3z"/></svg></span><span class="lbl">Queue Wizard</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue</span><span class="chev">›</span></li>
   </ul>
 
