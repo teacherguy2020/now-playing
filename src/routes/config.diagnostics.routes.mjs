@@ -312,11 +312,14 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         if (!albumName || !fileName) continue;
         const key = albumName.toLowerCase();
         if (!byAlbum.has(key)) {
+          const i = fileName.lastIndexOf('/');
+          const folder = i > 0 ? fileName.slice(0, i) : '';
           byAlbum.set(key, {
             album: albumName,
             artist: String(rowArtist || rowAlbumArtist || artist || '').trim(),
             genre: String(rowGenre || '').trim(),
             sampleFile: fileName,
+            folder,
             count: 1,
           });
         } else {

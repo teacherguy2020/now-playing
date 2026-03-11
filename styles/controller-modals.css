@@ -16,8 +16,13 @@
 .albumCard,.artistCard,.queueCard{
   position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;
   background:var(--cm-card-bg);border:1px solid var(--cm-card-border);border-radius:14px;padding:12px;
-  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+  color:#eef3ff;
 }
+.albumCard .albumTitle,.artistCard .albumTitle,.queueCard .albumTitle{color:#f6f9ff}
+.albumCard .albumMeta,.artistCard .albumMeta,.queueCard .albumMeta{color:#c8d8f5}
+.albumCard .albumTracks li,.artistCard .albumTracks li,.queueCard .albumTracks li{color:#eef3ff}
+.albumCard a,.artistCard a,.queueCard a{color:#9fc4ff}
 
 .albumHead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}

@@ -36,6 +36,7 @@
     .artistControls button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:8px 10px;cursor:pointer}
     .artistControls select,.artistControls input[type='text']{border:1px solid #2a3a58;background:#0d1628;color:#e6efff;border-radius:8px;padding:6px 8px}
     .artistGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    body.embedded .artistGrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
     .artistAlbumBtn{border:1px solid #2a3a58;background:#12203a;color:#e6efff;border-radius:10px;padding:8px;cursor:pointer;text-align:left}
     .artistAlbumBtn img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#0a1222;margin-bottom:6px}
     .artistAlbumName{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -73,7 +74,7 @@
     }
 
   </style>
-  <link rel="stylesheet" href="styles/controller-modals.css?v=20260307-unify1" />
+  <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
 </head>
 <body>
   <div class="top"><button class="back" id="backBtn">‹</button><h1>Artists</h1></div>
@@ -120,6 +121,8 @@
   </div>
 
   <script>
+    const __embedded = new URL(location.href).searchParams.get('embedded') === '1';
+    if (__embedded) document.body.classList.add('embedded');
 
     // Server-backed controller palette
     const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
@@ -212,6 +215,8 @@
     let key='';
     let artists=[];
     let modalCtx={artist:'',art:'',albums:[],album:'',tracks:[]};
+    let artistCoverQueuePaused = false;
+    let artistCoverQueueToken = 0;
     const __qs = new URL(location.href).searchParams;
     const __openArtistParam = String(__qs.get('artist') || '').trim();
     const __openAlbumParam = String(__qs.get('album') || '').trim();
@@ -241,8 +246,20 @@
       meta.textContent = `${artists.length} artists`;
       list.innerHTML = artists.map((a,i)=>{
         const art = a.art ? (a.art.startsWith('http') ? a.art : `${base}${a.art}`) : `${base}/art/current.jpg`;
-        return `<div class='row' data-idx='${i}' data-artist='${encodeURIComponent(a.artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><img src='${art}' alt=''></div><div><div class='name'>${a.artist}</div><div class='sub'>${a.count} album(s)</div></div></div>`;
+        return `<div class='row' data-idx='${i}' data-artist='${encodeURIComponent(a.artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><img class='lazyArtistCover' data-src='${art}' alt=''></div><div><div class='name'>${a.artist}</div><div class='sub'>${a.count} album(s)</div></div></div>`;
       }).join('');
+      list.querySelectorAll('img.lazyArtistCover[data-src]').forEach((img)=>{
+        img.onerror = () => {
+          try {
+            if (img.dataset.heal === '1') return;
+            img.dataset.heal = '1';
+            const raw = String(img.getAttribute('src') || img.getAttribute('data-src') || '').trim();
+            if (!raw) return;
+            img.setAttribute('src', `${raw}${raw.includes('?') ? '&' : '?'}heal=1`);
+          } catch {}
+        };
+      });
+      scheduleArtistCovers();
       renderAlpha();
     }
 
@@ -267,6 +284,31 @@
       return (r.ok && j?.ok && Array.isArray(j.albums)) ? j.albums : [];
     }
 
+    function scheduleArtistCovers(){
+      const token = ++artistCoverQueueToken;
+      const modalOpen = document.getElementById('artistModal')?.classList.contains('open');
+      const gridImgs = Array.from(document.querySelectorAll('#artistGrid img.lazyArtistCover[data-src]'));
+      const listImgs = Array.from(document.querySelectorAll('#list img.lazyArtistCover[data-src]'));
+      const imgs = modalOpen ? gridImgs : [...gridImgs, ...listImgs];
+      let idx = 0;
+      let active = 0;
+      const CONC = modalOpen ? 6 : 4;
+      const pump = ()=>{
+        if (token !== artistCoverQueueToken) return;
+        if (artistCoverQueuePaused) { setTimeout(pump, 120); return; }
+        while (active < CONC && idx < imgs.length) {
+          const img = imgs[idx++];
+          if (!img || img.getAttribute('src')) continue;
+          active += 1;
+          const done = ()=>{ active = Math.max(0, active-1); setTimeout(pump, 0); };
+          img.addEventListener('load', done, { once:true });
+          img.addEventListener('error', done, { once:true });
+          img.setAttribute('src', String(img.getAttribute('data-src') || ''));
+        }
+      };
+      pump();
+    }
+
     function renderArtistGrid(){
       const exOn = !!document.getElementById('excludeOn')?.checked;
       const exTxt = String(document.getElementById('excludeText')?.value || '').trim().toLowerCase();
@@ -281,8 +323,20 @@
         const alb = String(a?.album || '').trim();
         const sf = String(a?.sampleFile || '').trim();
         const art = sf ? `${base}/art/track_640.jpg?file=${encodeURIComponent(sf)}` : (modalCtx.art || `${base}/art/current.jpg`);
-        return `<button type='button' class='artistAlbumBtn' data-album='${encodeURIComponent(alb)}' data-art='${encodeURIComponent(art)}'><img src='${art}' alt=''><div class='artistAlbumName'>${alb || '(unknown album)'}</div></button>`;
+        return `<button type='button' class='artistAlbumBtn' data-album='${encodeURIComponent(alb)}' data-art='${encodeURIComponent(art)}' data-folder='${encodeURIComponent(String(a?.folder||''))}'><img class='lazyArtistCover' data-src='${art}' alt=''><div class='artistAlbumName'>${alb || '(unknown album)'}</div></button>`;
       }).join('') || `<div class='loadingRow'><span class='spin'></span><span>Loading albums…</span></div>`;
+      grid.querySelectorAll('img.lazyArtistCover[data-src]').forEach((img)=>{
+        img.onerror = () => {
+          try {
+            if (img.dataset.heal === '1') return;
+            img.dataset.heal = '1';
+            const raw = String(img.getAttribute('src') || img.getAttribute('data-src') || '').trim();
+            if (!raw) return;
+            img.setAttribute('src', `${raw}${raw.includes('?') ? '&' : '?'}heal=1`);
+          } catch {}
+        };
+      });
+      scheduleArtistCovers();
       document.getElementById('artistMeta').textContent = filtered.length ? `${filtered.length} album(s)` : 'Loading albums…';
     }
 
@@ -327,7 +381,9 @@
       modalCtx.albums = [];
       openArtistModal();
       try { document.querySelector(`.row[data-idx='${i}']`)?.scrollIntoView({behavior:'smooth',block:'center'}); } catch {}
+      artistCoverQueuePaused = true;
       modalCtx.albums = await fetchArtistAlbums(modalCtx.artist);
+      artistCoverQueuePaused = false;
       renderArtistGrid();
 
     }
@@ -340,7 +396,9 @@
       modalCtx.art = dec(row.getAttribute('data-art'));
       modalCtx.albums = [];
       openArtistModal();
+      artistCoverQueuePaused = true;
       modalCtx.albums = await fetchArtistAlbums(modalCtx.artist);
+      artistCoverQueuePaused = false;
       renderArtistGrid();
     });
 
@@ -352,8 +410,16 @@
     document.getElementById('playAllBtn').addEventListener('click', async ()=>{ const {files}=await previewArtistTracks(false); closeArtistModal(); await applyTracks(files,'replace',false); });
     document.getElementById('shuffleAllBtn').addEventListener('click', async ()=>{ const {files}=await previewArtistTracks(true); closeArtistModal(); await applyTracks(files,'replace',true); });
 
-    async function fetchAlbumTracks(album, artist){
+    async function fetchAlbumTracks(album, artist, folder=''){
       await ensureKey();
+      if (folder) {
+        try {
+          const r = await fetch(`${base}/config/library-health/album-tracks?folder=${encodeURIComponent(String(folder))}`, { cache:'no-store', headers:{...(key?{'x-track-key':key}:{})} });
+          const j = await r.json().catch(()=>({}));
+          const tracks = (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
+          if (tracks.length) return tracks;
+        } catch {}
+      }
       const headers={'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})};
       const body={genres:[],artists:artist?[artist]:[],albums:album?[album]:[],excludeGenres:[],minRating:0,maxTracks:500};
       const r=await fetch(`${base}/config/queue-wizard/preview`,{method:'POST',headers,body:JSON.stringify(body)});
@@ -362,6 +428,7 @@
     }
 
     function openAlbumModal(){
+      artistCoverQueuePaused = true;
       document.getElementById('albumTitle').textContent = modalCtx.album || '(album)';
       document.getElementById('albumMeta').textContent = modalCtx.artist || '';
       document.getElementById('albumArtistLink').textContent = modalCtx.artist || '(unknown artist)';
@@ -369,7 +436,7 @@
       document.getElementById('albumTracks').innerHTML = (modalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); return `<li><span>${i+1}. ${nm}</span><span class='trackBtns'><button title='Play now' aria-label='Play now' data-track-action='play' data-track-file='${f}'>▶</button><button title='Add to queue' aria-label='Add to queue' data-track-action='add' data-track-file='${f}'>＋</button></span></li>`; }).join('') || '<li>No tracks found</li>';
       document.getElementById('albumModal').classList.add('open');
     }
-    function closeAlbumModal(){ document.getElementById('albumModal').classList.remove('open'); }
+    function closeAlbumModal(){ document.getElementById('albumModal').classList.remove('open'); artistCoverQueuePaused = false; scheduleArtistCovers(); }
 
     async function runAlbumAction(mode){ if(!modalCtx.album) return; try{ await sendPlayback('addalbum',{mode,album:modalCtx.album,artist:modalCtx.artist||''}); }catch{} closeAlbumModal(); }
     document.getElementById('albumAppendBtn').addEventListener('click', ()=>runAlbumAction('append'));
@@ -381,7 +448,9 @@
     document.getElementById('albumArtistLink').addEventListener('click', async ()=>{
       if (!modalCtx.artist) return;
       closeAlbumModal();
+      artistCoverQueuePaused = true;
       modalCtx.albums = await fetchArtistAlbums(modalCtx.artist);
+      artistCoverQueuePaused = false;
       openArtistModal();
     });
 
@@ -391,10 +460,11 @@
       const dec=(s)=>{try{return decodeURIComponent(String(s||''));}catch{return String(s||'');}};
       modalCtx.album = dec(btn.getAttribute('data-album') || '');
       modalCtx.art = dec(btn.getAttribute('data-art') || '') || modalCtx.art;
+      const folder = dec(btn.getAttribute('data-folder') || '');
       modalCtx.tracks = [];
       openAlbumModal();
-      document.getElementById('albumTracks').innerHTML = '<li>Loading album tracks…</li>';
-      modalCtx.tracks = await fetchAlbumTracks(modalCtx.album, modalCtx.artist);
+      document.getElementById('albumTracks').innerHTML = `<li class='loadingRow'><span class='spin'></span><span>Loading album tracks…</span></li>`;
+      modalCtx.tracks = await fetchAlbumTracks(modalCtx.album, modalCtx.artist, folder);
       if (document.getElementById('albumModal').classList.contains('open')) openAlbumModal();
     });
 
