@@ -273,6 +273,7 @@
                   <h3>moOde Display Enhancement</h3>
                   <div class="cfgField"><label><input id="featureMoodeDisplayTakeover" type="checkbox" /> Enable Now Playing display enhancement on moOde</label></div>
                   <div class="cfgHint">When enabled, Peppy/Player display tools are available and can set moOde target URL to this server.</div>
+                  <div class="cfgHint" id="displayTakeoverTargetHint" style="margin-top:6px;"></div>
                 </div>
 
                 <div class="cfgCard gateCard" id="mpdscribbleCard">
@@ -1862,6 +1863,44 @@ document.getElementById('featureMpdscribbleControl')?.addEventListener('change',
   syncMpdscribbleUi();
   if (document.getElementById('featureMpdscribbleControl')?.checked) refreshMpdscribbleStatus().catch(() => {});
 });
+
+async function checkDisplayTakeoverTargetNow(){
+  const hint = document.getElementById('displayTakeoverTargetHint');
+  const enabled = !!document.getElementById('featureMoodeDisplayTakeover')?.checked;
+  if (!hint) return;
+  if (!enabled) { hint.textContent = ''; return; }
+
+  const host = location.hostname || '10.0.0.4';
+  const expected = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+  const key = getTrackKey();
+  if (!key) {
+    hint.style.color = '#f59e0b';
+    hint.textContent = `Add Track Key and Save, then verify moOde target URL is ${expected}.`; 
+    return;
+  }
+  hint.style.color = '#9eb0d7';
+  hint.textContent = 'Checking moOde target URL…';
+  try {
+    const r = await fetch(`${API_BASE}/config/moode/browser-url/status`, { headers:{ 'x-track-key': key }, cache:'no-store' });
+    const j = await r.json().catch(()=>({}));
+    const current = String(j?.appUrl || j?.runUrl || '').trim();
+    const ok = !!current && current.startsWith(`${location.protocol}//${host}:8101/display.html`);
+    if (ok) {
+      hint.style.color = '#22c55e';
+      hint.textContent = `✅ Target URL in moOde web-ui properly set to ${current}`;
+    } else {
+      hint.style.color = '#f59e0b';
+      hint.textContent = `⚠ To use this display, set moOde Web UI target URL to ${expected}. Current: ${current || 'unknown'}`;
+    }
+  } catch {
+    hint.style.color = '#f59e0b';
+    hint.textContent = `⚠ To use this display, set moOde Web UI target URL to ${expected}. (Target check unavailable)`;
+  }
+}
+
+document.getElementById('featureMoodeDisplayTakeover')?.addEventListener('change', () => {
+  checkDisplayTakeoverTargetNow().catch(() => {});
+});
 document.getElementById('checkAlexaDomainBtn')?.addEventListener('click', () => checkAlexaDomain().catch(e => log(String(e))));
 document.getElementById('alexaDomain')?.addEventListener('input', () => {
   const v = String(document.getElementById('alexaDomain')?.value || '').trim();
@@ -1928,7 +1967,7 @@ syncMpdscribbleUi();
 applyRuntimeGate();
 refreshSshSetupHelp();
 applyInitialNetworkPrefills();
-loadCfg().catch(e => log(String(e)));
+loadCfg().then(() => { checkDisplayTakeoverTargetNow().catch(() => {}); }).catch(e => log(String(e)));
 
 const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
 (function wireMotionArtToggle(){
