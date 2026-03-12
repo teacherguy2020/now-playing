@@ -1009,6 +1009,32 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.post('/config/moode/peppyspectrum/ensure', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const hostHeader = String(req.headers?.host || '').trim();
+      const hostNoPort = hostHeader.includes(':') ? hostHeader.split(':')[0] : hostHeader;
+      const apiHost = String(cfg?.apiNodeIp || req.body?.apiHost || hostNoPort || req.hostname || '').trim();
+      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config or pass apiHost.' });
+      const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
+      const targetUrl = `http://${apiHost}:${apiPort}/peppy/spectrum`;
+      const updatePeriod = String(req.body?.updatePeriod || '0.05').trim() || '0.05';
+
+      const script = `TARGET_URL=${shQuoteArg(targetUrl)}\nUPDATE_PERIOD=${shQuoteArg(updatePeriod)}\nsudo -n python3 - <<'PY'\nfrom pathlib import Path\nimport configparser, time, os\np=Path('/etc/peppyspectrum/config.txt')\nif not p.exists():\n    raise SystemExit('missing /etc/peppyspectrum/config.txt')\ncp=configparser.ConfigParser()\ncp.read(p)\nif not cp.has_section('current'):\n    cp.add_section('current')\ncp.set('current','base.folder','/opt/peppyspectrum')\nif not cp.has_section('http.interface'):\n    cp.add_section('http.interface')\ncp.set('http.interface','target.url',os.environ.get('TARGET_URL','').strip())\ncp.set('http.interface','update.period',os.environ.get('UPDATE_PERIOD','0.05').strip())\nbackup = p.with_name(f"config.txt.bak-{int(time.time())}")\nbackup.write_text(p.read_text())\nwith p.open('w') as f:\n    cp.write(f)\nprint('updated')\nprint('target.url = ' + cp.get('http.interface','target.url',fallback=''))\nprint('update.period = ' + cp.get('http.interface','update.period',fallback=''))\nprint(f'backup = {backup}')\nPY\nsudo -n ln -sfn /etc/peppyspectrum/config.txt /opt/peppyspectrum/config.txt\n# Skins mode defaults: bridge ON, fullscreen spectrum OFF\nsudo -n pkill -f '/opt/peppyspectrum/spectrum.py' >/dev/null 2>&1 || true\nsudo -n systemctl start peppy-spectrum-bridge.service >/dev/null 2>&1 || true\nsudo -n systemctl restart localdisplay.service >/dev/null 2>&1 || true\nsleep 1\necho BRIDGE:$(systemctl is-active peppy-spectrum-bridge.service || true)\necho SPECTRUM:$(pgrep -c -f '/opt/peppyspectrum/spectrum.py' || true)`;
+
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 22000 });
+      return res.json({ ok: true, sshHost, sshUser, targetUrl, updatePeriod, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/moode/library-update', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;

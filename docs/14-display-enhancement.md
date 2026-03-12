@@ -11,24 +11,33 @@ When **moOde Display Enhancement** is enabled in `config.html`, the app exposes:
 - `player-render.html` (actual player renderer)
 - `display.html` (stable router URL for moOde)
 
-### How Peppy meter data works (ALSA -> HTTP bridge)
+### How Peppy meter + spectrum data works (ALSA -> HTTP bridge)
 
 The custom Peppy view does not read ALSA directly in browser JavaScript.
 
-Instead, the audio/meter path is:
+Instead, the audio path is split into two HTTP feeds:
 
-1. **ALSA / peppymeter pipeline** computes live meter values.
-2. A sender posts meter payloads to the API bridge endpoint:
-   - `PUT /peppy/vumeter`
-3. The UI polls:
-   - `GET /peppy/vumeter`
-4. `peppy.html` renders needles/linear rails from returned `left/right/mono`.
+1. **VU feed (meters)**
+   - Producer: moOde peppymeter path
+   - API ingest: `PUT /peppy/vumeter`
+   - UI read: `GET /peppy/vumeter`
+2. **Spectrum feed (bands)**
+   - Producer: peppyspectrum FIFO reader bridge
+   - API ingest: `PUT /peppy/spectrum`
+   - UI read: `GET /peppy/spectrum`
 
-Current practical behavior:
+`peppy.html` consumes both and chooses rendering by meter type:
 
-- VU values (`left/right/mono`) are the canonical signal used by custom Peppy UI.
-- Optional `spectrum` is accepted by the bridge if provided by sender, but many native peppymeter HTTP senders only publish VU.
-- If sender does not include spectrum bins, the custom UI still works fully in VU mode.
+- `circular` -> VU needles
+- `linear` -> VU rails
+- `spectrum` -> 30/32-band spectrum renderer
+
+Important runtime note:
+
+- Fullscreen native `spectrum.py` and the HTTP spectrum bridge should not be active as concurrent readers of `/tmp/peppyspectrum`.
+- Use explicit mode switching:
+  - **Skins/WebUI mode:** bridge ON, native fullscreen spectrum OFF
+  - **Native fullscreen spectrum:** bridge OFF, native spectrum ON
 
 ## Why this is different (builder-first display design)
 
@@ -86,9 +95,10 @@ So users only change moOde's target once; mode switching then happens from app p
   - Loads a saved profile (built-in or custom).
   - Presets include full profile fields and are normalized for backward compatibility.
 
-- **Meter geometry**
+- **Meter type**
   - **Circular**: classic dual VU meter art.
   - **Linear**: dual horizontal rails with selectable style/size.
+  - **Spectrum**: 30/32-band renderer in the same meter area.
 
 - **Circular skin** (shown when Circular is selected)
   - Selects artwork family (`blue-1280`, `gold-1280`, etc.).
@@ -101,14 +111,24 @@ So users only change moOde's target once; mode switching then happens from app p
 - **Linear size** (shown when Linear is selected)
   - `Small`, `Medium`, `Large`
 
+- **Spectrum color/theme** (shown when Spectrum is selected)
+  - `Theme`, `Cyan`, `Lime`, `Amber`, `Magenta`, `Mono`
+  - `Vintage EQ`, `Vintage Smooth`
+
+- **Spectrum energy** (shown when Spectrum is selected)
+  - `Off`, `Low`, `Medium`, `High`
+  - controls motion/reactivity intensity (vintage and modern variants)
+
 - **Font style**
   - `UI Sans`, `UI Sans Condensed`, `Inter Tight`, `Montserrat`, `Dot Matrix`
 
 - **Font size**
   - `S`, `M`, `L`, `XL`
 
-- **Needle sensitivity / smoothing**
-  - Controls animation attack/release and motion feel.
+- **Sensitivity / smoothing**
+  - `Sensitivity`: `Low`, `Medium`, `High`, `Ultra`
+  - `Smoothing`: `Off`, `Low`, `Medium`, `High`
+  - Applies to meter animation and spectrum behavior.
 
 - **Theme preset**
   - Applies color system for cards, rails, progress, dot/LED look, etc.
