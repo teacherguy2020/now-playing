@@ -3,6 +3,10 @@
 <p align="left"><strong>Now Playing for moOde</strong></p>
 
 A moOde-focused now-playing API + UI stack with optional Alexa integration.
+
+Turbo charge your moOde experience without altering your moOde installation.
+
+
 ![Now Playing index view](./docs/images/readme-index.jpg)
 ![Now Playing promo collage](./docs/images/master-best-20260227/_collages/collage-promo-mixed-tabs-themes-normalized.jpg)
 
