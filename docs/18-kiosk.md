@@ -24,7 +24,7 @@ pgrep -af "chromium-browser.*--app="
 ## Pages and roles
 
 - `kiosk-designer.html`
-  - Design-time page with controls (theme, recents source, swatches, push)
+  - Design-time page with full kiosk theming controls + push flow
   - Used for iteration and applying changes to moOde browser display
 - `kiosk.html`
   - Runtime entrypoint for display use
@@ -90,8 +90,27 @@ Kiosk profile keys:
 
 Designer behavior:
 
-- Control changes update preview
-- Push to moOde acts as apply/commit point for persisted profile
+- Control changes update preview and persist profile state
+- Push to moOde acts as apply/commit point for runtime display target
+
+### Kiosk Designer theme controls (current)
+
+`kiosk-designer.html` now provides direct UI control for kiosk color system, with no manual file edits required:
+
+- **Primary Theme Color**
+- **Secondary Theme Color**
+- **Primary Text Color**
+- **Secondary Text Color**
+
+Additional designer capabilities:
+
+- built-in **preset** selection
+- **Save/Delete** custom presets
+- **Import/Export** preset JSON
+- **live preview** in embedded kiosk frame
+- **Push to moOde** deployment action
+
+This keeps kiosk theming fully builder-driven: tune visually, save, and push — no need to open/edit config files for normal customization.
 
 ---
 
