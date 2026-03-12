@@ -843,10 +843,10 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
       if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
 
-      const script = `python3 - <<'PY'\nfrom pathlib import Path\np=Path('/home/moode/.xinitrc')\nurl=${shQuoteArg(rawUrl)}\ntry:\n    s=p.read_text()\n    import re\n    s2=re.sub(r'--app="[^"]*"', f'--app="{url}"', s)\n    if s2==s and '--app=' in s:\n        s2=s.replace('--app=', f'--app="{url}"')\n    p.write_text(s2)\nexcept Exception:\n    pass\nprint('xinitrc updated')\nPY\nDISPLAY=:0 XAUTHORITY=/home/moode/.Xauthority nohup chromium-browser --kiosk --start-fullscreen --noerrdialogs --disable-infobars --app=${shQuoteArg(rawUrl)} >/tmp/chromium-switch.log 2>&1 & disown; sleep 1; tail -n 12 /tmp/chromium-switch.log || true`;
-      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 14000 });
+      const script = `python3 - <<'PY'\nfrom pathlib import Path\np=Path('/home/moode/.xinitrc')\nurl=${shQuoteArg(rawUrl)}\ntry:\n    s=p.read_text()\n    import re\n    s2=re.sub(r'--app="[^"]*"', f'--app="{url}"', s)\n    if s2==s and '--app=' in s:\n        s2=s.replace('--app=', f'--app="{url}"')\n    p.write_text(s2)\nexcept Exception:\n    pass\nprint('xinitrc updated')\nPY\n# Restart local display the moOde-native way\ncurl -s 'http://localhost/command/system.php?cmd=restart_local_display' >/tmp/chromium-switch.log 2>&1 || true\nsleep 1\ntail -n 20 /tmp/chromium-switch.log || true`;
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 18000 });
       const verifyScript = `APP_LINE=$(grep -E -- '--app=' /home/moode/.xinitrc | tail -n 1 || true); RUN_LINE=$(pgrep -af 'chromium-browser.*--app=' | grep -F -- ${shQuoteArg(rawUrl)} | head -n 1 || true); echo "APP_LINE:$APP_LINE"; echo "RUN_LINE:$RUN_LINE"`;
-      const v = await sshBashLc({ user: sshUser, host: sshHost, script: verifyScript, timeoutMs: 8000 }).catch(() => ({ stdout: '', stderr: '' }));
+      const v = await sshBashLc({ user: sshUser, host: sshHost, script: verifyScript, timeoutMs: 10000 }).catch(() => ({ stdout: '', stderr: '' }));
       const vOut = String(v?.stdout || '');
       const verified = vOut.includes('RUN_LINE:') && !/RUN_LINE:\s*$/.test(vOut);
       try {

@@ -37,6 +37,7 @@
   const cropExistingEl = $('cropExisting');
   const shuffleExistingEl = $('shuffleExisting');
   const filterQuickSearchEl = $('filterQuickSearch');
+  const filterQuickKbEl = $('filterQuickKb');
   const filterQuickSearchResultsEl = $('filterQuickSearchResults');
 
   const savePlaylistBtn = $('savePlaylistBtn');
@@ -3421,6 +3422,13 @@ function wireEvents() {
       });
     }
   });
+
+  const showKeyboardFor = (el) => {
+    try { el?.focus(); el?.click(); } catch {}
+    try { if (navigator.virtualKeyboard && typeof navigator.virtualKeyboard.show === 'function') navigator.virtualKeyboard.show(); } catch {}
+  };
+
+  filterQuickKbEl?.addEventListener('click', () => showKeyboardFor(filterQuickSearchEl));
 
   filterQuickSearchEl?.addEventListener('input', () => {
     renderFilterQuickResults(filterQuickSearchEl.value || '');
