@@ -88,5 +88,27 @@ fi
 3. Confirm behavior:
    - With `wake_display=1`, screen wakes on active play state and no longer false-wakes from 8101 `/command/` 404s.
 
+## Reference files in this repo (drop-in + patch)
+
+For convenience, this repo includes version-specific reference artifacts:
+
+- `docs/references/moode/watchdog.sh.upstream-20260302.example`
+- `docs/references/moode/watchdog.sh.patched.example`
+- `docs/references/moode/watchdog-remote-display.patch`
+
+Recommended order:
+
+1. Try patch/diff approach first.
+2. Use full drop-in example only if your moOde version closely matches the reference baseline.
+
+## License / credit (moOde)
+
+These watchdog reference files are derived from moOde project files and retain upstream licensing:
+
+- Copyright: The moOde audio player project / Tim Curtis
+- License: **GPL-3.0-or-later**
+
+See `docs/references/moode/README.md` and `THIRD_PARTY_LICENSES.md`.
+
 ## Rollback
 Restore backup copy (created before patch) from `/var/www/daemon/watchdog.sh.bak.*` and restart watchdog.
