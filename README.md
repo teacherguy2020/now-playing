@@ -9,6 +9,7 @@ A moOde-focused now-playing API + UI stack with optional Alexa integration.
 ![Peppy preset example: Warm Parchment Gold Circular](./docs/images/peppy-presets/10-warm-parchment-gold-circular.jpg)
 ![Spectrum](./docs/images/readme-spectrum.jpg)
 ![Cyan Spectrum](./docs/images/readme-cyanspectrum.jpg)
+![Kiosk](./docs/images/readme-kiosk.jpg)
 <img src="./docs/images/mobile-builder/controller.png" alt="Controller mobile view" width="300">
 
 
