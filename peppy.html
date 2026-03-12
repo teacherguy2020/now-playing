@@ -326,6 +326,10 @@
           <option value="medium" selected>Energy: Medium</option>
           <option value="high">Energy: High</option>
         </select>
+        <select id="spectrumPeak" class="skinSelect" aria-label="Spectrum peak">
+          <option value="on" selected>Peak: On</option>
+          <option value="off">Peak: Off</option>
+        </select>
         <select id="themeName" class="skinSelect" aria-label="Peppy theme preset">
           <option value="matrix-green">Matrix</option>
           <option value="green-neon">Green Neon</option>
@@ -621,8 +625,10 @@
         const spectrumColorVal = String(spectrumColor?.value || previewSpectrumColor || 'theme');
         const spectrumEnergyVal = String(spectrumEnergy?.value || previewSpectrumEnergy || 'medium');
         const spectrumEnergyNorm = ['off','low','medium','high'].includes(spectrumEnergyVal) ? spectrumEnergyVal : 'medium';
+        const spectrumPeakVal = String(spectrumPeak?.value || previewSpectrumPeak || 'on');
+        const spectrumPeakNorm = (spectrumPeakVal === 'off') ? 'off' : 'on';
         const playerSize = normalizeScreenProfile(screenProfile?.value || previewScreenProfile || '1280x400');
-        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, linearStyle: linearStyleVal, linearSize: linearSizeVal, meterMode: meterModeVal, colorMode: colorModeVal, sensitivity, smoothing, spectrumColor: spectrumColorVal, spectrumEnergy: spectrumEnergyNorm, playerSize, ts: Date.now() };
+        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, linearStyle: linearStyleVal, linearSize: linearSizeVal, meterMode: meterModeVal, colorMode: colorModeVal, sensitivity, smoothing, spectrumColor: spectrumColorVal, spectrumEnergy: spectrumEnergyNorm, spectrumPeak: spectrumPeakNorm, playerSize, ts: Date.now() };
       }
       function applyPreset(p){
         if (!p) return;
@@ -656,6 +662,9 @@
         previewSpectrumEnergy = ['off','low','medium','high'].includes(String(pp?.spectrumEnergy || '').trim()) ? String(pp.spectrumEnergy).trim() : 'medium';
         if (spectrumEnergy) spectrumEnergy.value = previewSpectrumEnergy;
         try { localStorage.setItem('peppy.spectrumEnergy', previewSpectrumEnergy); } catch {}
+        previewSpectrumPeak = (String(pp?.spectrumPeak || 'on').trim() === 'off') ? 'off' : 'on';
+        if (spectrumPeak) spectrumPeak.value = previewSpectrumPeak;
+        try { localStorage.setItem('peppy.spectrumPeak', previewSpectrumPeak); } catch {}
         previewSkin = String(skinName?.value || pp.skin || previewSkin || 'blue-1280');
         applyNeedleSkin(previewSkin);
         applyTheme(String(themeName?.value || pp.theme || 'midnight-blue'));
@@ -704,6 +713,7 @@
       const themeName = $('themeName');
       const spectrumColor = $('spectrumColor');
       const spectrumEnergy = $('spectrumEnergy');
+      const spectrumPeak = $('spectrumPeak');
       const artistCanvas = $('artistCanvas');
       const albumYearCanvas = $('albumYearCanvas');
       const fileMetaCanvas = $('fileMetaCanvas');
@@ -742,6 +752,7 @@
           smoothing: ['off','low','medium','high'].includes(String(src.smoothing || '').trim()) ? String(src.smoothing).trim() : 'low',
           spectrumColor: ['theme','cyan','lime','amber','magenta','mono','vintage','vintage-smooth'].includes(String(src.spectrumColor || '').trim()) ? String(src.spectrumColor).trim() : 'theme',
           spectrumEnergy: ['off','low','medium','high'].includes(String(src.spectrumEnergy || '').trim()) ? String(src.spectrumEnergy).trim() : 'medium',
+          spectrumPeak: (String(src.spectrumPeak || '').trim() === 'off') ? 'off' : 'on',
           normalization: Number.isFinite(Number(src.normalization)) && Number(src.normalization) > 0 ? Number(src.normalization) : 100,
           displayMode: String(src.displayMode || 'peppy').trim() || 'peppy',
           playerSize: normalizeScreenProfile(src.playerSize || src.screenProfile || '1280x400'),
@@ -831,6 +842,7 @@
         if (linearSize) linearSize.style.display = linear ? '' : 'none';
         if (spectrumColor) spectrumColor.style.display = spectrum ? '' : 'none';
         if (spectrumEnergy) spectrumEnergy.style.display = spectrum ? '' : 'none';
+        if (spectrumPeak) spectrumPeak.style.display = spectrum ? '' : 'none';
         // Skin picker is only relevant for circular meter artwork.
         if (skinName) skinName.style.display = (linear || spectrum) ? 'none' : '';
       }
@@ -1064,6 +1076,7 @@
       let spectrumState = Array.from({ length: 24 }, () => 0);
       let spectrumSmoothState = Array.from({ length: 32 }, () => 0);
       let spectrumSpeedState = Array.from({ length: 32 }, () => 0);
+      let spectrumPeakState = Array.from({ length: 32 }, () => 0);
       function getSensitivityMul(){
         const s = String(needleSensitivity?.value || previewSensitivity || 'medium');
         return s === 'low' ? 0.8 : (s === 'high' ? 1.25 : (s === 'ultra' ? 1.6 : 1.0));
@@ -1183,6 +1196,9 @@
           return ['off','low','medium','high'].includes(v) ? v : 'medium';
         } catch { return 'medium'; }
       })();
+      let previewSpectrumPeak = (() => {
+        try { return String(localStorage.getItem('peppy.spectrumPeak') || 'on').trim() === 'off' ? 'off' : 'on'; } catch { return 'on'; }
+      })();
 
       const previewTheme = (() => {
         const fromUrl = String(qp.get('theme') || '').trim();
@@ -1198,6 +1214,7 @@
       if (needleSmoothing) needleSmoothing.value = ['off','low','medium','high'].includes(previewSmoothing) ? previewSmoothing : 'low';
       if (spectrumColor) spectrumColor.value = ['theme','cyan','lime','amber','magenta','mono','vintage','vintage-smooth'].includes(previewSpectrumColor) ? previewSpectrumColor : 'theme';
       if (spectrumEnergy) spectrumEnergy.value = ['off','low','medium','high'].includes(previewSpectrumEnergy) ? previewSpectrumEnergy : 'medium';
+      if (spectrumPeak) spectrumPeak.value = (previewSpectrumPeak === 'off') ? 'off' : 'on';
 
       function meterTint(){
         const cs = getComputedStyle(document.documentElement);
@@ -1391,6 +1408,15 @@
           const alphaBase = energyOn ? (0.16 + (0.5 * (v / 100) * Math.min(1.6, energyFactor))) : 0.42;
           ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${alphaBase})`;
           ctx.fillRect(bx, by, bw, bh);
+
+          // Subtle per-band peak marker (non-vintage only), toggleable.
+          const peakOn = (String(spectrumPeak?.value || previewSpectrumPeak || 'on') !== 'off');
+          if (peakOn) {
+            const pv = Math.max(0, Math.min(100, Number(spectrumPeakState[i] || v)));
+            const py = y + (h - Math.round((h * pv) / 100));
+            ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},0.55)`;
+            ctx.fillRect(bx, Math.max(y, py - 1), bw, 2);
+          }
         }
       }
 
@@ -2986,6 +3012,9 @@
             if (!Array.isArray(spectrumSpeedState) || spectrumSpeedState.length !== spectrumState.length) {
               spectrumSpeedState = spectrumState.map(() => 0);
             }
+            if (!Array.isArray(spectrumPeakState) || spectrumPeakState.length !== spectrumState.length) {
+              spectrumPeakState = spectrumState.slice();
+            }
           }
 
           const vuFresh = !!j?.fresh;
@@ -2995,12 +3024,14 @@
             spectrumState = spectrumState.map(() => 0);
             spectrumSmoothState = spectrumSmoothState.map(() => 0);
             spectrumSpeedState = spectrumSpeedState.map(() => 0);
+            spectrumPeakState = spectrumPeakState.map(() => 0);
           }
         } catch {
           setTarget('L', 0); setTarget('R', 0);
           spectrumState = spectrumState.map(() => 0);
           spectrumSmoothState = spectrumSmoothState.map(() => 0);
           spectrumSpeedState = spectrumSpeedState.map(() => 0);
+          spectrumPeakState = spectrumPeakState.map(() => 0);
         }
       }
 
@@ -3031,6 +3062,9 @@
         if (!Array.isArray(spectrumSpeedState) || spectrumSpeedState.length !== spectrumState.length) {
           spectrumSpeedState = Array.isArray(spectrumState) ? spectrumState.map(() => 0) : [];
         }
+        if (!Array.isArray(spectrumPeakState) || spectrumPeakState.length !== spectrumState.length) {
+          spectrumPeakState = Array.isArray(spectrumState) ? spectrumState.slice() : [];
+        }
         let specDelta = 0;
         for (let i = 0; i < spectrumState.length; i++) {
           const target = Number(spectrumState[i] || 0);
@@ -3039,7 +3073,10 @@
           const next = cur + (target - cur) * a;
           const rise = Math.max(0, next - cur);
           spectrumSpeedState[i] = (spectrumSpeedState[i] || 0) * 0.78 + rise * 0.9;
-          specDelta = Math.max(specDelta, Math.abs(next - cur));
+          const peakCur = Number(spectrumPeakState[i] || 0);
+          const peakDecay = sm === 'off' ? 1.8 : (sm === 'low' ? 0.75 : (sm === 'high' ? 0.22 : 0.45));
+          spectrumPeakState[i] = next >= peakCur ? next : Math.max(0, peakCur - peakDecay);
+          specDelta = Math.max(specDelta, Math.abs(next - cur), Math.abs((spectrumPeakState[i] || 0) - peakCur));
           spectrumSmoothState[i] = next;
         }
 
@@ -3366,6 +3403,12 @@
         drawNeedles();
         publishProfileState();
       });
+      spectrumPeak?.addEventListener('change', () => {
+        previewSpectrumPeak = (String(spectrumPeak?.value || 'on').trim() === 'off') ? 'off' : 'on';
+        try { localStorage.setItem('peppy.spectrumPeak', previewSpectrumPeak); } catch {}
+        drawNeedles();
+        publishProfileState();
+      });
       themeName?.addEventListener('change', () => {
         const n = String(themeName?.value || 'midnight-blue');
         try { localStorage.setItem('peppy.theme', n); } catch {}
@@ -3424,6 +3467,7 @@
           const smooth = String(p?.smoothing || '').trim().toLowerCase();
           const specColor = String(p?.spectrumColor || '').trim().toLowerCase();
           const specEnergy = String(p?.spectrumEnergy || '').trim().toLowerCase();
+          const specPeak = String(p?.spectrumPeak || '').trim().toLowerCase();
           const ps = normalizeScreenProfile(p?.playerSize || p?.screenProfile || '1280x400');
           if (!hasSkinParam && s) {
             previewSkin = s;
@@ -3479,6 +3523,11 @@
             previewSpectrumEnergy = specEnergy;
             if (spectrumEnergy) spectrumEnergy.value = specEnergy;
             try { localStorage.setItem('peppy.spectrumEnergy', specEnergy); } catch {}
+          }
+          if (specPeak === 'off' || specPeak === 'on') {
+            previewSpectrumPeak = specPeak;
+            if (spectrumPeak) spectrumPeak.value = specPeak;
+            try { localStorage.setItem('peppy.spectrumPeak', specPeak); } catch {}
           }
           renderSkinOptions(previewSkin);
           previewSkin = String(skinName?.value || previewSkin || 'blue-1280');
