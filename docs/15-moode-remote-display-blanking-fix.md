@@ -28,6 +28,52 @@ and wake only when:
 
 This preserves wake-on-play while using external target URL control.
 
+## How to apply on a new moOde host
+
+> Use this only when local display target URL points to an external host (`http://<other-host>:8101/...`).
+
+1. Backup watchdog file:
+
+```bash
+sudo cp -a /var/www/daemon/watchdog.sh /var/www/daemon/watchdog.sh.bak.$(date +%s)
+```
+
+2. Edit watchdog remote-display wake check in:
+
+- `/var/www/daemon/watchdog.sh`
+
+Replace the remote playback probe that calls:
+
+- `http://<host>/command/?cmd=get_output_format`
+
+with a now-playing API probe:
+
+- `http://<host>:3101/now-playing`
+
+and gate wake on JSON playback state:
+
+- wake only if `state == "play"`.
+
+3. Restart the watchdog path (or reboot moOde):
+
+```bash
+sudo systemctl restart php8.2-fpm || true
+sudo systemctl restart nginx || true
+# or simply reboot
+```
+
+If your moOde image uses different service names, reboot is the safest universal option.
+
+### Reference logic (shell sketch)
+
+```bash
+state=$(curl -fsS "http://$host:3101/now-playing" \
+  | python3 -c 'import sys,json; print((json.load(sys.stdin).get("state") or "").strip())' 2>/dev/null || true)
+if [ "$state" = "play" ]; then
+  # wake display path
+fi
+```
+
 ## Live Environment Details
 - moOde host: `moode@10.0.0.254`
 - External UI host: `10.0.0.233`

@@ -55,6 +55,8 @@ Then use the app push actions:
 - **Push Peppy to moOde** → switches renderer to Peppy
 - **Push to moOde** (from `kiosk-designer.html`) → switches renderer to Kiosk
 
+> If your moOde local display target is an external host (not moOde itself), also apply the watchdog blanking/wake compatibility patch documented in [docs/15-moode-remote-display-blanking-fix.md](./docs/15-moode-remote-display-blanking-fix.md).
+
 Quick verify (on moOde):
 
 ```bash

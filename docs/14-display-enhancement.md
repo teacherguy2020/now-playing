@@ -82,6 +82,9 @@ Set it to:
 
 This is the recommended handoff URL for the display system in this project.
 
+> **Important (moOde blanking/wake compatibility):**
+> If your moOde local display target points to an external host (not `moode.local`), you may need the watchdog remote-display patch described in [Chapter 15](./15-moode-remote-display-blanking-fix.md) so blanking/wake-on-play behaves correctly.
+
 Then in the app:
 
 - use **Push Player to moOde** to render `player-render.html`
