@@ -246,7 +246,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         colorMode: String(req.body?.colorMode || '').trim(),
         spectrumColor: String(req.body?.spectrumColor || '').trim(),
         spectrumEnergy: ['off','low','medium','high'].includes(String(req.body?.spectrumEnergy || '').trim()) ? String(req.body?.spectrumEnergy || '').trim() : '',
-        spectrumPeak: (String(req.body?.spectrumPeak || '').trim() === 'off') ? 'off' : (String(req.body?.spectrumPeak || '').trim() === 'on' ? 'on' : ''),
+        spectrumPeak: ['off','short','medium','long','hold'].includes(String(req.body?.spectrumPeak || '').trim()) ? String(req.body?.spectrumPeak || '').trim() : '',
         sensitivity: ['low','medium','high','ultra'].includes(String(req.body?.sensitivity || '').trim()) ? String(req.body?.sensitivity || '').trim() : '',
         smoothing: ['off','low','medium','high'].includes(String(req.body?.smoothing || '').trim()) ? String(req.body?.smoothing || '').trim() : '',
         normalization: Number(req.body?.normalization),
@@ -271,7 +271,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         colorMode: incoming.colorMode || String(prev?.colorMode || '').trim() || 'classic',
         spectrumColor: incoming.spectrumColor || String(prev?.spectrumColor || '').trim() || 'theme',
         spectrumEnergy: incoming.spectrumEnergy || String(prev?.spectrumEnergy || '').trim() || 'medium',
-        spectrumPeak: incoming.spectrumPeak || String(prev?.spectrumPeak || '').trim() || 'on',
+        spectrumPeak: incoming.spectrumPeak || String(prev?.spectrumPeak || '').trim() || 'medium',
         sensitivity: incoming.sensitivity || String(prev?.sensitivity || '').trim() || 'medium',
         smoothing: incoming.smoothing || String(prev?.smoothing || '').trim() || 'low',
         normalization: Number.isFinite(incoming.normalization) && incoming.normalization > 0 ? incoming.normalization : (Number(prev?.normalization) > 0 ? Number(prev.normalization) : 100),
@@ -977,7 +977,33 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const readOk = (out.match(/READ_OK:(.*)/) || [,''])[1].trim() === '1';
       const targetUrl = (out.match(/TARGET:(.*)/) || [,''])[1].trim();
       const updatePeriod = (out.match(/PERIOD:(.*)/) || [,''])[1].trim();
-      const targetOk = !!targetUrl && targetUrl === expectedTargetUrl;
+
+      const normalizeHost = (h = '') => {
+        const x = String(h || '').trim().toLowerCase();
+        if (!x) return '';
+        if (x === '127.0.0.1' || x === '::1' || x === 'localhost') return 'localhost';
+        return x;
+      };
+      const equivalentTarget = (a = '', b = '') => {
+        try {
+          const ua = new URL(a);
+          const ub = new URL(b);
+          if (ua.protocol !== ub.protocol) return false;
+          const pa = ua.port || (ua.protocol === 'https:' ? '443' : '80');
+          const pb = ub.port || (ub.protocol === 'https:' ? '443' : '80');
+          if (pa !== pb) return false;
+          if (ua.pathname !== ub.pathname) return false;
+          const ha = normalizeHost(ua.hostname);
+          const hb = normalizeHost(ub.hostname);
+          if (ha === hb) return true;
+          if ((ha === 'localhost' && hb === normalizeHost(apiHost)) || (hb === 'localhost' && ha === normalizeHost(apiHost))) return true;
+          return false;
+        } catch {
+          return false;
+        }
+      };
+
+      const targetOk = !!targetUrl && equivalentTarget(targetUrl, expectedTargetUrl);
       const periodOk = !!updatePeriod && updatePeriod === expectedUpdatePeriod;
       return res.json({ ok: true, sshHost, sshUser, expectedTargetUrl, expectedUpdatePeriod, readOk, targetUrl, updatePeriod, targetOk, periodOk, configOk: readOk && targetOk && periodOk, stderr: String(stderr || '').trim() });
     } catch (e) {

@@ -62,6 +62,14 @@ In practice, this lets users design complete display experiences (not just switc
 
 The goal is creative control with predictable deployment: **design in-builder, push to moOde, render from one stable target URL**.
 
+### No-config-file workflow (important)
+
+A core design goal of this project is that users can tune Peppy behavior from the UI without hand-editing config files.
+
+In practice, that means meter/spectrum composition and behavior are exposed directly in the builder (presets, meter type, linear/circular/spectrum styling, sensitivity, smoothing, spectrum color, energy, and peak behavior), then saved/pushed as profile JSON.
+
+For normal use, there is no need to open or edit moOde-side config files manually.
+
 ## Stable target URL (how users switch from moOde Web UI)
 
 In moOde, go to:
