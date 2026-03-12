@@ -102,7 +102,7 @@
   <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
 </head>
 <body>
-  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
+  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="shuffleQueueBtn" type="button" title="Turn random off and shuffle queue">Shuffle</button><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
   <ul class="list" id="list"><li id="dropLine" aria-hidden="true"></li></ul>
 
   <div class="menu" id="trackMenu" aria-hidden="true">
@@ -417,6 +417,21 @@
       __backNavBusy = true;
       document.body.classList.add('nav-backwarding');
       setTimeout(()=>{ const embedded = new URL(location.href).searchParams.get('embedded') === '1'; if (embedded) { try { window.parent?.postMessage({ type:'np-kiosk-hide-pane' }, '*'); } catch {} return; } if (history.length > 1) history.back(); else location.href='controller.html'; }, 170);
+    });
+
+    document.getElementById('shuffleQueueBtn')?.addEventListener('click', async (ev)=>{
+      const btn = ev.currentTarget;
+      if (!(btn instanceof HTMLButtonElement)) return;
+      const prev = btn.textContent || 'Shuffle';
+      btn.disabled = true;
+      btn.textContent = 'Shuffling…';
+      try {
+        await sendPlayback('shufflequeue');
+        await loadQueue();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = prev;
+      }
     });
 
     document.getElementById('cropQueueBtn')?.addEventListener('click', async (ev)=>{

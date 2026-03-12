@@ -11,7 +11,10 @@
     .card{border:1px solid rgba(70,98,145,.55);border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);background:linear-gradient(180deg,#101a2f,#0d1730)}
     .ctl{display:flex;flex-direction:column;gap:8px;align-items:stretch;padding:8px 10px;margin-top:20px}
     .ctlRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .ctl select,.ctl button,.ctl input[type="color"]{height:30px;border:1px solid var(--line);border-radius:8px;background:#0e1830;color:var(--txt);padding:0 10px}
+    .ctl select,.ctl button,.ctl input[type="color"]{height:30px;border:1px solid var(--line);border-radius:8px;background:#0e1830;color:var(--txt);padding:0 10px;transition:filter .15s ease, transform .08s ease, background-color .2s ease}
+    .ctl button.busy{opacity:.85;cursor:progress}
+    .ctl button.done{background:#1f5d33;border-color:#45b26f;color:#eafff1}
+    .ctl button.fail{background:#5a1f2a;border-color:#b2455a;color:#ffeef2}
     .colorRow{display:flex;gap:6px;align-items:center}
     .colorRow input[type="color"]{width:78px;padding:0}
     .swatches{display:flex;gap:6px;align-items:center}
@@ -175,7 +178,7 @@
       refreshPresetList();
       syncSwatches();
 
-      document.getElementById('savePresetBtn')?.addEventListener('click', ()=>{
+      document.getElementById('savePresetBtn')?.addEventListener('click', ()=>runBtnAction(document.getElementById('savePresetBtn'), async ()=>{
         const name=prompt('Preset name?'); if(!name) return;
         const map=getPresets();
         map[String(name).trim()]={
@@ -185,13 +188,13 @@
           secondaryTextColor:String(secondaryTextColor.value||'#9eb3d6'),
         };
         setPresets(map); refreshPresetList(); presetSel.value=String(name).trim(); refreshPreview();
-      });
-      document.getElementById('deletePresetBtn')?.addEventListener('click', ()=>{
+      },{busyText:'Saving…',doneText:'✓ Saved'}).catch(()=>null));
+      document.getElementById('deletePresetBtn')?.addEventListener('click', ()=>runBtnAction(document.getElementById('deletePresetBtn'), async ()=>{
         const n=String(presetSel?.value||'').trim(); if(!n) return;
         if (Object.prototype.hasOwnProperty.call(BUILTIN_PRESETS, n)) { alert('Built-in presets cannot be deleted.'); return; }
         let custom={}; try{ custom=JSON.parse(localStorage.getItem(PRESETS_KEY)||'{}')||{}; }catch{}
         delete custom[n]; setPresets(custom); refreshPresetList();
-      });
+      },{busyText:'Deleting…',doneText:'✓ Deleted'}).catch(()=>null));
       presetSel?.addEventListener('change', ()=>{
         const n=String(presetSel.value||'').trim(); if(!n) return;
         const c=getPresets()[n]; if(!c) return;
@@ -205,7 +208,7 @@
       });
       const exportModal=document.getElementById('exportModal');
       const exportJson=document.getElementById('exportJson');
-      document.getElementById('exportPresetBtn')?.addEventListener('click', ()=>{
+      document.getElementById('exportPresetBtn')?.addEventListener('click', ()=>runBtnAction(document.getElementById('exportPresetBtn'), async ()=>{
         const presetName=String(presetSel?.value||'').trim() || 'Custom';
         const payload=JSON.stringify({
           name:presetName,
@@ -217,7 +220,7 @@
         if (exportJson) exportJson.value = payload;
         exportModal?.classList.add('open');
         setTimeout(()=>{ try { const txt=String(exportJson?.value||''); exportJson?.focus(); exportJson?.select(); exportJson?.setSelectionRange(0, txt.length); } catch {} }, 0);
-      });
+      },{busyText:'Opening…',doneText:'✓ Ready'}).catch(()=>null));
       const selectExportAll=()=>{
         try {
           const txt=String(exportJson?.value||'');
@@ -228,7 +231,7 @@
         } catch { return false; }
       };
       document.getElementById('selectExportBtn')?.addEventListener('click', ()=>{ selectExportAll(); });
-      document.getElementById('copyExportBtn')?.addEventListener('click', async ()=>{
+      document.getElementById('copyExportBtn')?.addEventListener('click', ()=>runBtnAction(document.getElementById('copyExportBtn'), async ()=>{
         const txt=String(exportJson?.value||'');
         selectExportAll();
         let ok=false;
@@ -236,11 +239,11 @@
         if (!ok) {
           try { ok = !!document.execCommand('copy'); } catch {}
         }
-        if (!ok) alert('Copy failed. Use Select All then Copy (⌘C / Ctrl+C).');
-      });
+        if (!ok) throw new Error('copy-failed');
+      },{busyText:'Copying…',doneText:'✓ Copied'}).catch(()=>alert('Copy failed. Use Select All then Copy (⌘C / Ctrl+C).')));
       document.getElementById('closeExportBtn')?.addEventListener('click', ()=>exportModal?.classList.remove('open'));
       exportModal?.addEventListener('click',(ev)=>{ if(ev.target===exportModal) exportModal.classList.remove('open'); });
-      document.getElementById('importPresetBtn')?.addEventListener('click', ()=>{
+      document.getElementById('importPresetBtn')?.addEventListener('click', ()=>runBtnAction(document.getElementById('importPresetBtn'), async ()=>{
         const txt=prompt('Paste preset JSON'); if(!txt) return;
         try{
           const c=JSON.parse(txt)||{};
@@ -251,8 +254,8 @@
           syncSwatches();
           persistProfile();
           postLiveTheme();
-        }catch{ alert('Invalid JSON'); }
-      });
+        }catch{ alert('Invalid JSON'); throw new Error('invalid-json'); }
+      },{busyText:'Importing…',doneText:'✓ Imported'}).catch(()=>null));
 
       sizeSel.addEventListener('change', refreshPreview);
       [primaryThemeColor, secondaryThemeColor, primaryTextColor, secondaryTextColor].forEach((el)=>{
@@ -260,6 +263,26 @@
         el?.addEventListener('change', ()=>{ syncSwatches(); persistProfile(); postLiveTheme(); });
       });
       refreshPreview();
+
+      async function runBtnAction(btn, fn, opts={}){
+        if (!btn) return fn();
+        const idle=btn.dataset.idleText||btn.textContent;
+        btn.dataset.idleText=idle;
+        btn.disabled=true; btn.classList.remove('done','fail'); btn.classList.add('busy');
+        btn.textContent=opts.busyText||'Working…';
+        try{
+          const out=await fn();
+          btn.classList.remove('busy'); btn.classList.add('done');
+          btn.textContent=opts.doneText||'✓ Done';
+          setTimeout(()=>{ btn.classList.remove('done'); btn.textContent=idle; btn.disabled=false; }, 900);
+          return out;
+        }catch(e){
+          btn.classList.remove('busy'); btn.classList.add('fail');
+          btn.textContent='✕ Failed';
+          setTimeout(()=>{ btn.classList.remove('fail'); btn.textContent=idle; btn.disabled=false; }, 1200);
+          throw e;
+        }
+      }
 
       async function ensureKey(){
         if(key) return key;
@@ -288,20 +311,16 @@
       }
       refreshTargetHint();
 
-      pushBtn.addEventListener('click', async ()=>{
-        try{
-          pushBtn.disabled=true; pushBtn.textContent='Pushing…';
-          await ensureKey();
-          const rel=buildRel();
-          const url=`http://${host}:8101/${rel}`;
-          const r=await fetch(`${api}/config/moode/browser-url`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify({url,reason:'kiosk-designer-push'})});
-          const j=await r.json().catch(()=>({}));
-          if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`);
-          persistProfile();
-          stat.textContent=`Pushed: ${url}`;
-        }catch(e){stat.textContent=`Push failed: ${e?.message||e}`}
-        finally{pushBtn.disabled=false; pushBtn.textContent='Push to moOde';}
-      });
+      pushBtn.addEventListener('click', ()=>runBtnAction(pushBtn, async ()=>{
+        await ensureKey();
+        const rel=buildRel();
+        const url=`http://${host}:8101/${rel}`;
+        const r=await fetch(`${api}/config/moode/browser-url`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify({url,reason:'kiosk-designer-push'})});
+        const j=await r.json().catch(()=>({}));
+        if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`);
+        persistProfile();
+        stat.textContent=`Pushed: ${url}`;
+      },{busyText:'Pushing…',doneText:'✓ Pushed'}).catch((e)=>{ stat.textContent=`Push failed: ${e?.message||e}`; }));
     })();
   </script>
 </body>

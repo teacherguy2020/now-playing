@@ -9,20 +9,38 @@ const DEFAULT_PROFILE = {
   recentSource: 'albums',
   colorPreset: 'ocean',
   recentCount: 18,
+  customColors: {
+    primaryThemeColor: '#0b111c',
+    secondaryThemeColor: '#1f2a3d',
+    primaryTextColor: '#f3f6ff',
+    secondaryTextColor: '#9eb3d6',
+  },
 };
 
 function sanitizeProfile(input = {}) {
   const p = (input && typeof input === 'object') ? input : {};
   const colorPreset = String(p.colorPreset || DEFAULT_PROFILE.colorPreset).toLowerCase();
   const recentSource = String(p.recentSource || DEFAULT_PROFILE.recentSource).toLowerCase();
+  const ccIn = (p.customColors && typeof p.customColors === 'object') ? p.customColors : {};
+  const hex = (v, fb) => {
+    const s = String(v || '').trim();
+    return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s) ? s : fb;
+  };
+  const customColors = {
+    primaryThemeColor: hex(ccIn.primaryThemeColor, DEFAULT_PROFILE.customColors.primaryThemeColor),
+    secondaryThemeColor: hex(ccIn.secondaryThemeColor, DEFAULT_PROFILE.customColors.secondaryThemeColor),
+    primaryTextColor: hex(ccIn.primaryTextColor, DEFAULT_PROFILE.customColors.primaryTextColor),
+    secondaryTextColor: hex(ccIn.secondaryTextColor, DEFAULT_PROFILE.customColors.secondaryTextColor),
+  };
   return {
     devicePreset: String(p.devicePreset || DEFAULT_PROFILE.devicePreset),
     theme: String(p.theme || DEFAULT_PROFILE.theme),
     layout: String(p.layout || DEFAULT_PROFILE.layout),
     showRecent: Boolean(p.showRecent ?? DEFAULT_PROFILE.showRecent),
     recentSource: ['albums','podcasts','playlists','radio'].includes(recentSource) ? recentSource : DEFAULT_PROFILE.recentSource,
-    colorPreset: ['ocean','violet','mint','amber','black','orange'].includes(colorPreset) ? colorPreset : DEFAULT_PROFILE.colorPreset,
+    colorPreset: String(colorPreset || DEFAULT_PROFILE.colorPreset),
     recentCount: Math.max(6, Math.min(30, Number(p.recentCount || DEFAULT_PROFILE.recentCount) || DEFAULT_PROFILE.recentCount)),
+    customColors,
   };
 }
 

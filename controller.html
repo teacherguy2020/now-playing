@@ -654,6 +654,8 @@
     let recentAlbumsCache = { ts: 0, albums: [] };
     let recentAlbumsRefreshInFlight = null;
     let recentAlbumPrewarmSig = '';
+    let recentAlbumsRenderSig = '';
+    let recentRenderedSource = '';
     let npCtrlsAwakeTimer = 0;
 
     function wakeNpCtrls(ms=3200){
@@ -726,8 +728,6 @@
 
     async function loadRecentlyAdded(){
       if (!rail || profile.showRecent===false) return;
-      rail.innerHTML = '';
-      recentItems = [];
       await ensureKey();
       const src = String(profile.recentSource || 'albums').toLowerCase();
       setRailLoading(true);
@@ -806,6 +806,7 @@
             d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
             rail.appendChild(d);
           });
+          recentRenderedSource = 'podcasts';
           return;
         }
         if (src === 'playlists') {
@@ -852,6 +853,7 @@
               img.replaceWith(ph);
             };
           });
+          recentRenderedSource = 'playlists';
           return;
         }
 
@@ -888,6 +890,7 @@
             d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
             rail.appendChild(d);
           });
+          recentRenderedSource = 'radio';
           return;
         }
 
@@ -908,7 +911,12 @@
         }
         const top = unique;
         prewarmRecentAlbumThumbs(top).catch(()=>null);
+        const nextSig = top.map((a)=>`${String(a?.artist||'').trim()}|${String(a?.album||'').trim()}|${Number(a?.addedTs||0)}`).join('||');
+        if (nextSig && nextSig === recentAlbumsRenderSig && recentRenderedSource === 'albums') return;
         if (!top.length) {
+          recentAlbumsRenderSig = '';
+          recentRenderedSource = 'albums';
+          rail.innerHTML = '';
           for(let i=0;i<recentLimit();i++){
             const d=document.createElement('div'); d.className='thumb';
             d.innerHTML=`<div class='ph'></div><div class='cap'>Recent ${i+1}</div>`;
@@ -929,6 +937,7 @@
           }
           return { kind:'album', album, artist, art };
         });
+        rail.innerHTML = '';
         recentItems.forEach((a,i)=>{
           const d = document.createElement('div');
           d.className = 'thumb';
@@ -967,7 +976,12 @@
           d.appendChild(cap);
           rail.appendChild(d);
         });
+        recentAlbumsRenderSig = nextSig;
+        recentRenderedSource = 'albums';
       } catch {
+        recentAlbumsRenderSig = '';
+        recentRenderedSource = '';
+        rail.innerHTML = '';
         for(let i=0;i<recentLimit();i++){
           const d=document.createElement('div'); d.className='thumb';
           d.innerHTML=`<div class='ph'></div><div class='cap'>Recent ${i+1}</div>`;

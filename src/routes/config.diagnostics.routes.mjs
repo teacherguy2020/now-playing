@@ -538,6 +538,17 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.json({ ok: true, action, randomOn, repeatOn, primedPos, primeSkipped, status: String(afterStatus || '') });
       }
 
+      if (action === 'shufflequeue') {
+        const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const wasOn = /random:\s*on/i.test(String(beforeStatus || ''));
+        if (wasOn) await execFileP('mpc', ['-h', mpdHost, 'random', 'off']);
+        await execFileP('mpc', ['-h', mpdHost, 'shuffle']);
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, randomOn, repeatOn, status: String(afterStatus || '') });
+      }
+
       if (action === 'repeat') {
         const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
         const wasOn = /repeat:\s*on/i.test(String(beforeStatus || ''));

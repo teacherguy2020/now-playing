@@ -326,6 +326,7 @@
             </label>
             <button id="heroQueueApplyFilter" class="heroQueueBtn" type="button" style="display:none;">Apply to queue</button>
             <button id="heroQueueSavePresets" class="heroQueueBtn" type="button" style="display:none;">Save queue as presets group</button>
+            <button id="heroQueueShuffle" class="heroQueueBtn" type="button">Shuffle</button>
             <button id="heroQueueClear" class="heroQueueBtn" type="button">Clear</button>
             <button id="heroQueueCrop" class="heroQueueBtn" type="button">Crop</button>
             <button id="heroQueueSavePlaylist" class="heroQueueBtn" type="button">Save Queue Playlist</button>
@@ -3160,6 +3161,7 @@
       }
 
       const hqBtn = document.getElementById('heroQueueToggle');
+      const hqShuffle = document.getElementById('heroQueueShuffle');
       const hqClear = document.getElementById('heroQueueClear');
       const hqCrop = document.getElementById('heroQueueCrop');
       const hqSavePlaylist = document.getElementById('heroQueueSavePlaylist');
@@ -3628,6 +3630,14 @@
             setTimeout(() => { try { syncHeroQueue(); } catch {} }, 0);
             setTimeout(() => { try { syncHeroQueue(); } catch {} }, 300);
           }
+        });
+
+        hqShuffle?.addEventListener('click', async () => {
+          hqShuffle.disabled = true;
+          const prev = hqShuffle.textContent || 'Shuffle';
+          hqShuffle.textContent = 'Shuffling…';
+          try { await sendHeroPlayback('shufflequeue'); } catch (_) {}
+          finally { hqShuffle.disabled = false; hqShuffle.textContent = prev; await syncHeroQueue(); }
         });
 
         hqClear?.addEventListener('click', async () => {

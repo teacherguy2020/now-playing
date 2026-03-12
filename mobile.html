@@ -23,7 +23,10 @@
     .row{display:flex;gap:8px;align-items:center}
     .chk{display:flex;gap:8px;align-items:center;margin:8px 0;color:var(--text)}
     .chk span{min-width:0;word-break:break-word}
-    .btn{padding:8px 10px;border:1px solid var(--line);background:#10203a;color:var(--text);border-radius:8px;cursor:pointer}
+    .btn{padding:8px 10px;border:1px solid var(--line);background:#10203a;color:var(--text);border-radius:8px;cursor:pointer;transition:filter .15s ease, transform .08s ease, background-color .2s ease}
+    .btn.busy{opacity:.85;cursor:progress}
+    .btn.done{background:#1f5d33;border-color:#45b26f;color:#eafff1}
+    .btn.fail{background:#5a1f2a;border-color:#b2455a;color:#ffeef2}
     .colorRow{display:flex;gap:8px;align-items:center}
     .colorRow input[type="color"]{flex:1}
     .dots{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
@@ -69,10 +72,12 @@
       <label>Recent card count</label>
       <input id="recentCount" type="number" min="6" max="30" value="18" />
       <div class="row" style="margin-top:10px">
-        <button class="btn" id="applyBtn">Apply</button>
+        <button class="btn" id="applyBtn">Push</button>
         <button class="btn" id="resetBtn">Reset</button>
       </div>
-      <p style="margin-top:10px;color:var(--muted)">Apply saves the current controller profile to server, and all controller pages load that profile.</p>
+      <p style="margin-top:10px;color:var(--muted)">Push saves the current controller profile to server and generates a URL you can open on phone.</p>
+      <label>Pushed URL</label>
+      <div class="row"><input id="pushedUrl" type="text" readonly style="flex:1" /><button class="btn" id="copyPushedUrlBtn" type="button">Copy URL</button></div>
     </div>
     <div class="card previewHost">
       <div class="device">
@@ -178,6 +183,25 @@
       };
     }
     function profileToken(p){ return btoa(unescape(encodeURIComponent(JSON.stringify(p)))); }
+    async function runBtnAction(btn, fn, opts={}){
+      if (!btn) return fn();
+      const idle=btn.dataset.idleText||btn.textContent;
+      btn.dataset.idleText=idle;
+      const busy=opts.busyText||'Working…';
+      btn.disabled=true; btn.classList.remove('done','fail'); btn.classList.add('busy'); btn.textContent=busy;
+      try {
+        const out = await fn();
+        btn.classList.remove('busy'); btn.classList.add('done');
+        btn.textContent=opts.doneText||'✓ Done';
+        setTimeout(()=>{ btn.classList.remove('done'); btn.textContent=idle; btn.disabled=false; }, 900);
+        return out;
+      } catch (e) {
+        btn.classList.remove('busy'); btn.classList.add('fail');
+        btn.textContent='✕ Failed';
+        setTimeout(()=>{ btn.classList.remove('fail'); btn.textContent=idle; btn.disabled=false; }, 1200);
+        throw e;
+      }
+    }
     function postLiveTheme(){
       const customColors={
         primaryThemeColor:String($('primaryThemeColor')?.value||'#0b111c'),
@@ -191,11 +215,23 @@
       const p=collect();
       write(p);
       await saveServerProfile(p); // avoid race with controller page loading server profile
-      const q=new URLSearchParams({preview:'1',profile:profileToken(p),sw:String(Date.now())});
-      $('controllerPreview').src='controller.html?'+q.toString();
+      const q=new URLSearchParams({profile:profileToken(p)});
+      const pushed=`${location.protocol}//${location.hostname||'10.0.0.4'}:8101/controller.html?${q.toString()}`;
+      if ($('pushedUrl')) $('pushedUrl').value = pushed;
+      const qp=new URLSearchParams({preview:'1',profile:profileToken(p),sw:String(Date.now())});
+      $('controllerPreview').src='controller.html?'+qp.toString();
     }
-    $('applyBtn').addEventListener('click',apply);
-    $('resetBtn').addEventListener('click',()=>{write({...defaults});ui(defaults);apply();});
+    $('applyBtn').addEventListener('click',()=>runBtnAction($('applyBtn'), apply, {busyText:'Pushing…', doneText:'✓ Pushed'}).catch(()=>null));
+    $('copyPushedUrlBtn')?.addEventListener('click', ()=>runBtnAction($('copyPushedUrlBtn'), async ()=>{
+      const txt=String($('pushedUrl')?.value||''); if(!txt) throw new Error('empty');
+      let ok=false;
+      try { await navigator.clipboard.writeText(txt); ok=true; } catch {}
+      if (!ok) {
+        try { $('pushedUrl')?.focus(); $('pushedUrl')?.select(); ok=!!document.execCommand('copy'); } catch {}
+      }
+      if (!ok) throw new Error('copy-failed');
+    },{busyText:'Copying…',doneText:'✓ Copied'}).catch(()=>alert('Copy URL failed.')));
+    $('resetBtn').addEventListener('click',()=>runBtnAction($('resetBtn'), async ()=>{write({...defaults});ui(defaults);await apply();},{busyText:'Resetting…',doneText:'✓ Reset'}).catch(()=>null));
     ['devicePreset','recentCount'].forEach((id)=>{
       const el=$(id); if(!el) return;
       el.addEventListener('change', ()=>{ syncSwatches(); apply(); });
@@ -207,19 +243,19 @@
       el.addEventListener('change', onLive);
       el.addEventListener('input', onLive);
     });
-    $('savePresetBtn')?.addEventListener('click', ()=>{
+    $('savePresetBtn')?.addEventListener('click', ()=>runBtnAction($('savePresetBtn'), async ()=>{
       const name=prompt('Preset name?');
       if(!name) return;
       const map=getPresets();
       map[String(name).trim()]=collect().customColors;
       setPresets(map); refreshPresetList(); $('presetSel').value=String(name).trim();
-    });
-    $('deletePresetBtn')?.addEventListener('click', ()=>{
+    },{busyText:'Saving…',doneText:'✓ Saved'}).catch(()=>null));
+    $('deletePresetBtn')?.addEventListener('click', ()=>runBtnAction($('deletePresetBtn'), async ()=>{
       const sel=$('presetSel'); const n=String(sel?.value||'').trim(); if(!n) return;
       if (Object.prototype.hasOwnProperty.call(BUILTIN_PRESETS, n)) { alert('Built-in presets cannot be deleted.'); return; }
       let custom={}; try{ custom=JSON.parse(localStorage.getItem(PRESETS_KEY)||'{}')||{}; }catch{}
-      delete custom[n]; setPresets(custom); refreshPresetList(); apply();
-    });
+      delete custom[n]; setPresets(custom); refreshPresetList(); await apply();
+    },{busyText:'Deleting…',doneText:'✓ Deleted'}).catch(()=>null));
     $('presetSel')?.addEventListener('change', async ()=>{
       const n=String($('presetSel').value||'').trim(); if(!n) return;
       const map=getPresets(); const c=map[n]; if(!c) return;
@@ -232,13 +268,13 @@
     });
     const exportModal=$('exportModal');
     const exportJson=$('exportJson');
-    $('exportPresetBtn')?.addEventListener('click', ()=>{
+    $('exportPresetBtn')?.addEventListener('click', ()=>runBtnAction($('exportPresetBtn'), async ()=>{
       const presetName=String($('presetSel')?.value||'').trim() || 'Custom';
       const payload=JSON.stringify({name:presetName,customColors:collect().customColors},null,2);
       if (exportJson) exportJson.value=payload;
       exportModal?.classList.add('open');
       setTimeout(()=>{ try { const txt=String(exportJson?.value||''); exportJson?.focus(); exportJson?.select(); exportJson?.setSelectionRange(0, txt.length); } catch {} }, 0);
-    });
+    },{busyText:'Opening…',doneText:'✓ Ready'}).catch(()=>null));
     const selectExportAll=()=>{
       try {
         const txt=String(exportJson?.value||'');
@@ -249,7 +285,7 @@
       } catch { return false; }
     };
     $('selectExportBtn')?.addEventListener('click', ()=>{ selectExportAll(); });
-    $('copyExportBtn')?.addEventListener('click', async ()=>{
+    $('copyExportBtn')?.addEventListener('click', ()=>runBtnAction($('copyExportBtn'), async ()=>{
       const txt=String(exportJson?.value||'');
       selectExportAll();
       let ok=false;
@@ -257,12 +293,12 @@
       if (!ok) {
         try { ok = !!document.execCommand('copy'); } catch {}
       }
-      if (!ok) alert('Copy failed. Use Select All then Copy (⌘C / Ctrl+C).');
-    });
+      if (!ok) throw new Error('copy-failed');
+    },{busyText:'Copying…',doneText:'✓ Copied'}).catch(()=>alert('Copy failed. Use Select All then Copy (⌘C / Ctrl+C).')));
     $('closeExportBtn')?.addEventListener('click', ()=>exportModal?.classList.remove('open'));
     exportModal?.addEventListener('click',(ev)=>{ if(ev.target===exportModal) exportModal.classList.remove('open'); });
-    $('importPresetBtn')?.addEventListener('click', async ()=>{
-      const txt=prompt('Paste preset JSON'); if(!txt) return;
+    $('importPresetBtn')?.addEventListener('click', ()=>runBtnAction($('importPresetBtn'), async ()=>{
+      const txt=prompt('Paste preset JSON'); if(!txt) throw new Error('cancel');
       try {
         const j=JSON.parse(txt); const c=j?.customColors||j;
         $('primaryThemeColor').value=String(c.primaryThemeColor||'#0b111c');
@@ -271,8 +307,8 @@
         $('secondaryTextColor').value=String(c.secondaryTextColor||'#9eb3d6');
         syncSwatches();
         const p=collect(); write(p); await saveServerProfile(p); postLiveTheme();
-      } catch { alert('Invalid JSON'); }
-    });
+      } catch { throw new Error('invalid-json'); }
+    },{busyText:'Importing…',doneText:'✓ Imported'}).catch((e)=>{ if(!String(e?.message||'').includes('cancel')) alert('Invalid JSON'); }));
     (async ()=>{
       const local = read();
       const server = await loadServerProfile();
