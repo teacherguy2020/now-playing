@@ -2059,6 +2059,10 @@
         let lzMode = String(lastPeppyProfile?.linearSize || '').trim();
         let mm = String(lastPeppyProfile?.meterMode || '').trim();
         let cm = String(lastPeppyProfile?.colorMode || '').trim();
+        let sc = String(lastPeppyProfile?.spectrumColor || '').trim();
+        let se = String(lastPeppyProfile?.spectrumEnergy || '').trim();
+        let sens = String(lastPeppyProfile?.sensitivity || '').trim();
+        let smooth = String(lastPeppyProfile?.smoothing || '').trim();
 
         if (profileOverride && typeof profileOverride === 'object') {
           const po = profileOverride || {};
@@ -2071,6 +2075,10 @@
           if (po.linearSize) lzMode = String(po.linearSize).trim();
           if (po.meterMode) mm = String(po.meterMode).trim();
           if (po.colorMode) cm = String(po.colorMode).trim();
+          if (po.spectrumColor) sc = String(po.spectrumColor).trim();
+          if (po.spectrumEnergy) se = String(po.spectrumEnergy).trim();
+          if (po.sensitivity) sens = String(po.sensitivity).trim();
+          if (po.smoothing) smooth = String(po.smoothing).trim();
         }
         try {
           const readLive = () => {
@@ -2081,11 +2089,15 @@
               w,
               s: String(d?.getElementById('skinName')?.value || '').trim(),
               t: String(d?.getElementById('themeName')?.value || '').trim(),
-              mt: (d?.getElementById('meterTypeLinear')?.checked ? 'linear' : (d?.getElementById('meterTypeCircular')?.checked ? 'circular' : '')).trim(),
+              mt: (d?.getElementById('meterTypeSpectrum')?.checked ? 'spectrum' : (d?.getElementById('meterTypeLinear')?.checked ? 'linear' : (d?.getElementById('meterTypeCircular')?.checked ? 'circular' : ''))).trim(),
               fm: String(d?.getElementById('fontMode')?.value || '').trim(),
               fz: String(d?.getElementById('fontSize')?.value || '').trim(),
               lsMode: String(d?.getElementById('linearStyle')?.value || '').trim(),
               lzMode: String(d?.getElementById('linearSize')?.value || '').trim(),
+              sc: String(d?.getElementById('spectrumColor')?.value || '').trim(),
+              se: String(d?.getElementById('spectrumEnergy')?.value || '').trim(),
+              sens: String(d?.getElementById('needleSensitivity')?.value || '').trim(),
+              smooth: String(d?.getElementById('needleSmoothing')?.value || '').trim(),
             };
           };
           const a = readLive();
@@ -2096,6 +2108,10 @@
           if (a.fz) fz = a.fz;
           if (a.lsMode) lsMode = a.lsMode;
           if (a.lzMode) lzMode = a.lzMode;
+          if (a.sc) sc = a.sc;
+          if (a.se) se = a.se;
+          if (a.sens) sens = a.sens;
+          if (a.smooth) smooth = a.smooth;
           // Preset apply can be one tick behind visible UI. Sample once more after a short micro-delay.
           await new Promise((r) => setTimeout(r, 90));
           const b = readLive();
@@ -2106,6 +2122,10 @@
           if (b.fz) fz = b.fz;
           if (b.lsMode) lsMode = b.lsMode;
           if (b.lzMode) lzMode = b.lzMode;
+          if (b.sc) sc = b.sc;
+          if (b.se) se = b.se;
+          if (b.sens) sens = b.sens;
+          if (b.smooth) smooth = b.smooth;
           const ls = b.w?.localStorage || a.w?.localStorage;
           if (!s) s = String(ls?.getItem('peppy.skin') || '').trim();
           if (!t) t = String(ls?.getItem('peppy.theme') || '').trim();
@@ -2114,6 +2134,10 @@
           if (!fz) fz = String(ls?.getItem('peppy.fontSize') || '').trim();
           if (!lsMode) lsMode = String(ls?.getItem('peppy.linearStyle') || '').trim();
           if (!lzMode) lzMode = String(ls?.getItem('peppy.linearSize') || '').trim();
+          if (!sc) sc = String(ls?.getItem('peppy.spectrumColor') || '').trim();
+          if (!se) se = String(ls?.getItem('peppy.spectrumEnergy') || '').trim();
+          if (!sens) sens = String(ls?.getItem('peppy.sensitivity') || '').trim();
+          if (!smooth) smooth = String(ls?.getItem('peppy.smoothing') || '').trim();
           if (!mm) mm = String(ls?.getItem('peppy.meterMode') || '').trim();
           if (!cm) cm = String(ls?.getItem('peppy.colorMode') || '').trim();
         } catch {}
@@ -2124,10 +2148,14 @@
         if (!fz) fz = 'm';
         if (!lsMode) lsMode = 'continuous';
         if (!lzMode) lzMode = 'm';
+        if (!sc) sc = 'theme';
+        if (!se) se = 'medium';
+        if (!sens) sens = 'medium';
+        if (!smooth) smooth = 'low';
         // Linear style is the source of truth for pushed linear rendering semantics.
         mm = (lsMode === 'cassette') ? 'segmented' : 'continuous';
         cm = (lsMode === 'continuous-theme') ? 'theme' : 'classic';
-        lastPeppyProfile = { ...lastPeppyProfile, skin:s, theme:t, meterType:mt, fontMode:fm, fontSize:fz, linearStyle:lsMode, linearSize:lzMode, meterMode:mm, colorMode:cm, displayMode:'peppy', ts: Date.now() };
+        lastPeppyProfile = { ...lastPeppyProfile, skin:s, theme:t, meterType:mt, fontMode:fm, fontSize:fz, linearStyle:lsMode, linearSize:lzMode, meterMode:mm, colorMode:cm, spectrumColor:sc, spectrumEnergy:se, sensitivity:sens, smoothing:smooth, displayMode:'peppy', ts: Date.now() };
         setPushPeppyBusy(true);
         try {
           if (!runtimeTrackKey) {
@@ -2150,6 +2178,10 @@
               linearSize: lzMode,
               meterMode: mm,
               colorMode: cm,
+              spectrumColor: sc,
+              spectrumEnergy: se,
+              sensitivity: sens,
+              smoothing: smooth,
               normalization: Number(lastPeppyProfile?.normalization || 100) || 100,
               displayMode: 'peppy',
               playerSize: String(localStorage.getItem('player.profile.size') || '1280x400').trim() || '1280x400',

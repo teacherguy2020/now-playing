@@ -244,6 +244,10 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         linearSize: String(req.body?.linearSize || '').trim(),
         meterMode: String(req.body?.meterMode || '').trim(),
         colorMode: String(req.body?.colorMode || '').trim(),
+        spectrumColor: String(req.body?.spectrumColor || '').trim(),
+        spectrumEnergy: ['off','low','medium','high'].includes(String(req.body?.spectrumEnergy || '').trim()) ? String(req.body?.spectrumEnergy || '').trim() : '',
+        sensitivity: ['low','medium','high','ultra'].includes(String(req.body?.sensitivity || '').trim()) ? String(req.body?.sensitivity || '').trim() : '',
+        smoothing: ['off','low','medium','high'].includes(String(req.body?.smoothing || '').trim()) ? String(req.body?.smoothing || '').trim() : '',
         normalization: Number(req.body?.normalization),
         displayMode: String(req.body?.displayMode || '').trim(),
         playerSize: String(req.body?.playerSize || '').trim(),
@@ -264,6 +268,10 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         linearSize: incoming.linearSize || String(prev?.linearSize || '').trim() || 'm',
         meterMode: incoming.meterMode || String(prev?.meterMode || '').trim() || 'segmented',
         colorMode: incoming.colorMode || String(prev?.colorMode || '').trim() || 'classic',
+        spectrumColor: incoming.spectrumColor || String(prev?.spectrumColor || '').trim() || 'theme',
+        spectrumEnergy: incoming.spectrumEnergy || String(prev?.spectrumEnergy || '').trim() || 'medium',
+        sensitivity: incoming.sensitivity || String(prev?.sensitivity || '').trim() || 'medium',
+        smoothing: incoming.smoothing || String(prev?.smoothing || '').trim() || 'low',
         normalization: Number.isFinite(incoming.normalization) && incoming.normalization > 0 ? incoming.normalization : (Number(prev?.normalization) > 0 ? Number(prev.normalization) : 100),
         displayMode: incoming.displayMode || String(prev?.displayMode || '').trim() || 'peppy',
         playerSize: incoming.playerSize || String(prev?.playerSize || '').trim() || '1280x400',
@@ -725,7 +733,21 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       }
 
       if (!okResp) return res.status(502).json({ ok: false, error: 'moode command failed', moodeBase, attempts });
-      return res.json({ ok: true, mode, moodeBase, url: okResp.url, response: String(okResp.body || '').slice(0, 300), attempts });
+
+      // Enforce display-mode side effects over SSH because some moOde builds
+      // accept set_display but leave localdisplay/chromium running.
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      let enforce = { ran: false, stdout: '', stderr: '' };
+      if (sshHost) {
+        const script = mode === 'peppy'
+          ? "sudo -n systemctl stop localdisplay.service >/tmp/np-display-enforce.log 2>&1 || true; sudo -n systemctl stop peppy-spectrum-bridge.service >>/tmp/np-display-enforce.log 2>&1 || true; sudo -n pkill -f '/opt/peppyspectrum/spectrum.py' >>/tmp/np-display-enforce.log 2>&1 || true; sudo -n bash -lc 'cd /opt/peppyspectrum; nohup python3 /opt/peppyspectrum/spectrum.py >>/tmp/np-display-enforce.log 2>&1 &' || true; sleep 1; echo CFG:$(moodeutl -q \"SELECT value FROM cfg_system WHERE param='peppy_display';\" | tail -n1); echo CHROM:$(pgrep -c -f '[c]hromium-browser --enable-pinch --app=' || true); echo SPECTRUM:$(pgrep -c -f '/opt/peppyspectrum/spectrum.py' || true); tail -n 30 /tmp/np-display-enforce.log || true"
+          : "sudo -n pkill -f '/opt/peppyspectrum/spectrum.py' >/tmp/np-display-enforce.log 2>&1 || true; sudo -n systemctl start peppy-spectrum-bridge.service >>/tmp/np-display-enforce.log 2>&1 || true; sudo -n systemctl start localdisplay.service >>/tmp/np-display-enforce.log 2>&1 || true; sleep 1; echo CFG:$(moodeutl -q \"SELECT value FROM cfg_system WHERE param='local_display';\" | tail -n1); echo CHROM:$(pgrep -c -f '[c]hromium-browser --enable-pinch --app=' || true); echo SPECTRUM:$(pgrep -c -f '/opt/peppyspectrum/spectrum.py' || true); tail -n 30 /tmp/np-display-enforce.log || true";
+        const r = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 18000 }).catch(() => ({ stdout: '', stderr: '' }));
+        enforce = { ran: true, stdout: String(r?.stdout || '').trim(), stderr: String(r?.stderr || '').trim() };
+      }
+
+      return res.json({ ok: true, mode, moodeBase, url: okResp.url, response: String(okResp.body || '').slice(0, 300), attempts, enforce });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
@@ -843,9 +865,9 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
       if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
 
-      const script = `python3 - <<'PY'\nfrom pathlib import Path\np=Path('/home/moode/.xinitrc')\nurl=${shQuoteArg(rawUrl)}\ntry:\n    s=p.read_text()\n    import re\n    s2=re.sub(r'--app="[^"]*"', f'--app="{url}"', s)\n    if s2==s and '--app=' in s:\n        s2=s.replace('--app=', f'--app="{url}"')\n    p.write_text(s2)\nexcept Exception:\n    pass\nprint('xinitrc updated')\nPY\n# Restart local display the moOde-native way\ncurl -s 'http://localhost/command/system.php?cmd=restart_local_display' >/tmp/chromium-switch.log 2>&1 || true\nsleep 1\ntail -n 20 /tmp/chromium-switch.log || true`;
+      const script = `python3 - <<'PY'\nfrom pathlib import Path\np=Path('/home/moode/.xinitrc')\nurl=${shQuoteArg(rawUrl)}\ntry:\n    s=p.read_text()\n    import re\n    s2=re.sub(r'--app="[^"]*"', f'--app="{url}"', s)\n    if s2==s and '--app=' in s:\n        s2=s.replace('--app=', f'--app="{url}"')\n    p.write_text(s2)\nexcept Exception:\n    pass\nprint('xinitrc updated')\nPY\n# Restart local display (authoritative)\nsudo -n systemctl restart localdisplay.service >/tmp/chromium-switch.log 2>&1 || true\nsleep 2\ntail -n 20 /tmp/chromium-switch.log || true`;
       const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 18000 });
-      const verifyScript = `APP_LINE=$(grep -E -- '--app=' /home/moode/.xinitrc | tail -n 1 || true); RUN_LINE=$(pgrep -af 'chromium-browser.*--app=' | grep -F -- ${shQuoteArg(rawUrl)} | head -n 1 || true); echo "APP_LINE:$APP_LINE"; echo "RUN_LINE:$RUN_LINE"`;
+      const verifyScript = `APP_LINE=$(grep -E -- '--app=' /home/moode/.xinitrc | tail -n 1 || true); RUN_LINE=$(pgrep -af '/usr/lib/chromium-browser/chromium-browser .*--app=' | grep -F -- ${shQuoteArg(rawUrl)} | head -n 1 || true); echo "APP_LINE:$APP_LINE"; echo "RUN_LINE:$RUN_LINE"`;
       const v = await sshBashLc({ user: sshUser, host: sshHost, script: verifyScript, timeoutMs: 10000 }).catch(() => ({ stdout: '', stderr: '' }));
       const vOut = String(v?.stdout || '');
       const verified = vOut.includes('RUN_LINE:') && !/RUN_LINE:\s*$/.test(vOut);
@@ -924,6 +946,63 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const script = `python3 - <<'PY'\nfrom pathlib import Path\nimport re, time\np=Path('/etc/peppymeter/config.txt')\nurl=${shQuoteArg(targetUrl)}\nperiod=${shQuoteArg(updatePeriod)}\nif not p.exists():\n    raise SystemExit('missing /etc/peppymeter/config.txt')\ns=p.read_text()\nbackup = p.with_name(f"config.txt.bak-{int(time.time())}")\nbackup.write_text(s)\nif re.search(r'^\[http\.interface\]\s*$', s, flags=re.M):\n    blk = re.search(r'^\[http\.interface\]\s*$([\s\S]*?)(?=^\[|\Z)', s, flags=re.M)\n    body = blk.group(1) if blk else ''\n    if re.search(r'^\s*target\.url\s*=.*$', body, flags=re.M):\n        body = re.sub(r'^\s*target\.url\s*=.*$', f'target.url = {url}', body, flags=re.M)\n    else:\n        body += ('\n' if body and not body.endswith('\n') else '') + f'target.url = {url}\n'\n    if re.search(r'^\s*update\.period\s*=.*$', body, flags=re.M):\n        body = re.sub(r'^\s*update\.period\s*=.*$', f'update.period = {period}', body, flags=re.M)\n    else:\n        body += f'update.period = {period}\n'\n    s = s[:blk.start(1)] + body + s[blk.end(1):]\nelse:\n    if not s.endswith('\n'): s += '\n'\n    s += f'\n[http.interface]\ntarget.url = {url}\nupdate.period = {period}\n'\np.write_text(s)\nprint('updated')\nprint(f'target.url = {url}')\nprint(f'update.period = {period}')\nprint(f'backup = {backup}')\nPY`;
 
       const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script: `sudo -n bash -lc ${shQuoteArg(script)}`, timeoutMs: 16000 });
+      return res.json({ ok: true, sshHost, sshUser, targetUrl, updatePeriod, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/moode/peppy-spectrum-target/status', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const hostHeader = String(req.headers?.host || '').trim();
+      const hostNoPort = hostHeader.includes(':') ? hostHeader.split(':')[0] : hostHeader;
+      const apiHost = String(cfg?.apiNodeIp || hostNoPort || req.hostname || '').trim();
+      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config.' });
+      const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
+      const expectedTargetUrl = `http://${apiHost}:${apiPort}/peppy/spectrum`;
+      const expectedUpdatePeriod = '0.05';
+
+      const script = "python3 - <<'PY'\nfrom pathlib import Path\nimport configparser\np=Path('/etc/peppyspectrum/config.txt')\ncp=configparser.ConfigParser()\nif not p.exists():\n    print('READ_OK:0'); print('TARGET:'); print('PERIOD:'); raise SystemExit(0)\ncp.read(p)\nprint('READ_OK:1')\nprint('TARGET:' + cp.get('http.interface','target.url',fallback='').strip())\nprint('PERIOD:' + cp.get('http.interface','update.period',fallback='').strip())\nPY";
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 12000 });
+      const out = String(stdout || '');
+      const readOk = (out.match(/READ_OK:(.*)/) || [,''])[1].trim() === '1';
+      const targetUrl = (out.match(/TARGET:(.*)/) || [,''])[1].trim();
+      const updatePeriod = (out.match(/PERIOD:(.*)/) || [,''])[1].trim();
+      const targetOk = !!targetUrl && targetUrl === expectedTargetUrl;
+      const periodOk = !!updatePeriod && updatePeriod === expectedUpdatePeriod;
+      return res.json({ ok: true, sshHost, sshUser, expectedTargetUrl, expectedUpdatePeriod, readOk, targetUrl, updatePeriod, targetOk, periodOk, configOk: readOk && targetOk && periodOk, stderr: String(stderr || '').trim() });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/config/moode/peppy-spectrum-target', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
+      const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
+      if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
+
+      const hostHeader = String(req.headers?.host || '').trim();
+      const hostNoPort = hostHeader.includes(':') ? hostHeader.split(':')[0] : hostHeader;
+      const apiHost = String(cfg?.apiNodeIp || req.body?.apiHost || hostNoPort || req.hostname || '').trim();
+      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config or pass apiHost.' });
+      const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
+      const updatePeriod = String(req.body?.updatePeriod || '0.05').trim() || '0.05';
+      const targetUrl = `http://${apiHost}:${apiPort}/peppy/spectrum`;
+
+      const script = `python3 - <<'PY'\nfrom pathlib import Path\nimport configparser, time\np=Path('/etc/peppyspectrum/config.txt')\nurl=${shQuoteArg(targetUrl)}\nperiod=${shQuoteArg(updatePeriod)}\nif not p.exists():\n    raise SystemExit('missing /etc/peppyspectrum/config.txt')\ncp=configparser.ConfigParser()\ncp.read(p)\nif not cp.has_section('http.interface'):\n    cp.add_section('http.interface')\ncp.set('http.interface','target.url',url)\ncp.set('http.interface','update.period',period)\nif not cp.has_section('current'):\n    cp.add_section('current')\nif not cp.has_option('current','max.value'):\n    cp.set('current','max.value','100')\nbackup = p.with_name(f"config.txt.bak-{int(time.time())}")\nbackup.write_text(p.read_text())\nwith p.open('w') as f:\n    cp.write(f)\nprint('updated')\nprint(f'target.url = {url}')\nprint(f'update.period = {period}')\nprint(f'backup = {backup}')\nPY\n# Restart spectrum process so config is re-read\npkill -f 'python3 spectrum.py' >/dev/null 2>&1 || true\n/var/www/util/start-peppy.sh spectrum >/dev/null 2>&1 || true\nsleep 1\npgrep -af 'python3 spectrum.py' | head -n 1 || true`;
+
+      const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script: `sudo -n bash -lc ${shQuoteArg(script)}`, timeoutMs: 18000 });
       return res.json({ ok: true, sshHost, sshUser, targetUrl, updatePeriod, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });

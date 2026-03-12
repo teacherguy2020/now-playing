@@ -234,7 +234,9 @@
       <div id="peppySetupCard" class="peppySetupCard" aria-label="Peppy setup instructions">
         <span id="peppyReadiness" class="setupTxt" style="color:#fbbf24;">Checking Peppy readiness…</span>
         <button id="applyVuTargetBtn" class="skinBtn" type="button" title="Show instructions to fix /etc/peppymeter/config.txt on moOde">How to fix VU target</button>
+        <button id="applySpectrumTargetBtn" class="skinBtn" type="button" title="Show instructions to fix /etc/peppyspectrum/config.txt on moOde">How to fix Spectrum target</button>
         <span class="setupTxt" id="vuTargetHintWrap" style="display:none;">VU target should be <code id="vuTargetHint">http://10.0.0.233:3101/peppy/vumeter</code>.</span>
+        <span class="setupTxt" id="spectrumTargetHintWrap" style="display:none;">Spectrum target should be <code id="spectrumTargetHint">http://10.0.0.233:3101/peppy/spectrum</code>.</span>
       </div>
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
@@ -269,6 +271,9 @@
         <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
           <input type="radio" name="meterType" id="meterTypeLinear" value="linear" /> Linear
         </label>
+        <label class="skinSelect" style="display:inline-flex;align-items:center;gap:6px;padding:0 8px;">
+          <input type="radio" name="meterType" id="meterTypeSpectrum" value="spectrum" /> Spectrum
+        </label>
         <select id="skinName" class="skinSelect" aria-label="Select meter"></select>
         <select id="fontMode" class="skinSelect" aria-label="Font style">
           <option value="ui-sans">UI Sans</option>
@@ -293,16 +298,33 @@
           <option value="m" selected>Linear Size: Medium</option>
           <option value="l">Linear Size: Large</option>
         </select>
-        <select id="needleSensitivity" class="skinSelect" aria-label="Needle sensitivity">
-          <option value="low">Needle: Low</option>
-          <option value="medium" selected>Needle: Medium</option>
-          <option value="high">Needle: High</option>
+        <select id="needleSensitivity" class="skinSelect" aria-label="Sensitivity">
+          <option value="low">Sensitivity: Low</option>
+          <option value="medium" selected>Sensitivity: Medium</option>
+          <option value="high">Sensitivity: High</option>
+          <option value="ultra">Sensitivity: Ultra</option>
         </select>
         <select id="needleSmoothing" class="skinSelect" aria-label="Needle smoothing">
           <option value="off">Smoothing: Off</option>
-          <option value="low">Smoothing: Low</option>
-          <option value="medium" selected>Smoothing: Medium</option>
+          <option value="low" selected>Smoothing: Low</option>
+          <option value="medium">Smoothing: Medium</option>
           <option value="high">Smoothing: High</option>
+        </select>
+        <select id="spectrumColor" class="skinSelect" aria-label="Spectrum color">
+          <option value="theme" selected>Spectrum: Theme</option>
+          <option value="cyan">Spectrum: Cyan</option>
+          <option value="lime">Spectrum: Lime</option>
+          <option value="amber">Spectrum: Amber</option>
+          <option value="magenta">Spectrum: Magenta</option>
+          <option value="mono">Spectrum: Mono White</option>
+          <option value="vintage">Spectrum: Vintage EQ</option>
+          <option value="vintage-smooth">Spectrum: Vintage Smooth</option>
+        </select>
+        <select id="spectrumEnergy" class="skinSelect" aria-label="Spectrum energy">
+          <option value="off">Energy: Off</option>
+          <option value="low">Energy: Low</option>
+          <option value="medium" selected>Energy: Medium</option>
+          <option value="high">Energy: High</option>
         </select>
         <select id="themeName" class="skinSelect" aria-label="Peppy theme preset">
           <option value="matrix-green">Matrix</option>
@@ -377,6 +399,15 @@
         } catch {}
       }
 
+      function refreshSpectrumTargetHint(){
+        try {
+          const el = document.getElementById('spectrumTargetHint');
+          if (!el) return;
+          const base = String(api || candidates[0] || '').replace(/\/+$/, '');
+          el.textContent = `${base}/peppy/spectrum`;
+        } catch {}
+      }
+
       function refreshVuTargetHintFromRuntime(cfg){
         try {
           const el = document.getElementById('vuTargetHint');
@@ -386,6 +417,8 @@
           const port = Number(c?.ports?.api || 3101) || 3101;
           const proto = String(location.protocol || 'http:');
           el.textContent = `${proto}//${host}:${port}/peppy/vumeter`;
+          const sel = document.getElementById('spectrumTargetHint');
+          if (sel) sel.textContent = `${proto}//${host}:${port}/peppy/spectrum`;
         } catch {}
       }
 
@@ -408,6 +441,7 @@
       const skinOpsEl = $('skinOps');
       const qp = new URLSearchParams(location.search);
       refreshVuTargetHint();
+      refreshSpectrumTargetHint();
       const kioskMode = (qp.get('kiosk') === '1' || qp.get('display') === '1');
       const adminMode = (qp.get('admin') === '1');
       const SCREEN_PROFILES = {
@@ -552,6 +586,7 @@
         { name:'Montserrat Circular Clean', skin:'gold-1280', theme:'silver-black', meterType:'circular', fontMode:'montserrat', fontSize:'m', linearStyle:'continuous-theme', linearSize:'m', meterMode:'continuous', colorMode:'theme', sensitivity:'medium', smoothing:'medium', normalization:100, displayMode:'peppy' },
         { name:'Warm Parchment Gold Circular', skin:'gold-1280', theme:'warm-parchment', meterType:'circular', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'cassette', linearSize:'m', meterMode:'segmented', colorMode:'classic', sensitivity:'medium', smoothing:'low', normalization:100, displayMode:'peppy' },
         { name:'Obsidian Mono Modern', skin:'black-white-1280', theme:'obsidian-black', meterType:'circular', fontMode:'montserrat', fontSize:'xl', linearStyle:'cassette', linearSize:'m', meterMode:'segmented', colorMode:'classic', sensitivity:'high', smoothing:'low', playerSize:'1280x400', normalization:100, displayMode:'peppy' },
+        { name:'Muted Merlot Vintage Matrix', skin:'black-white-1280', theme:'muted-merlot', meterType:'spectrum', fontMode:'dot-matrix', fontSize:'m', linearStyle:'continuous', linearSize:'m', meterMode:'continuous', colorMode:'classic', sensitivity:'ultra', smoothing:'medium', spectrumColor:'vintage', spectrumEnergy:'low', playerSize:'1280x400', normalization:100, displayMode:'peppy' },
       ];
 
       function toLinearStyle(p = {}) {
@@ -573,7 +608,7 @@
       function getCurrentProfile(){
         const skin = String(skinName?.value || previewSkin || '').trim();
         const theme = String(themeName?.value || '').trim();
-        const meterType = meterTypeLinear?.checked ? 'linear' : 'circular';
+        const meterType = meterTypeSpectrum?.checked ? 'spectrum' : (meterTypeLinear?.checked ? 'linear' : 'circular');
         const fontModeVal = String(fontMode?.value || 'ui-sans');
         const fontSizeVal = String(fontSize?.value || 'm');
         const linearStyleVal = String(linearStyle?.value || previewLinearStyle || 'continuous');
@@ -582,15 +617,19 @@
         const meterModeVal = (linearStyleVal === 'cassette') ? 'segmented' : 'continuous';
         const colorModeVal = (linearStyleVal === 'continuous-theme') ? 'theme' : 'classic';
         const sensitivity = String(needleSensitivity?.value || previewSensitivity || 'medium');
-        const smoothing = String(needleSmoothing?.value || previewSmoothing || 'medium');
+        const smoothing = String(needleSmoothing?.value || previewSmoothing || 'low');
+        const spectrumColorVal = String(spectrumColor?.value || previewSpectrumColor || 'theme');
+        const spectrumEnergyVal = String(spectrumEnergy?.value || previewSpectrumEnergy || 'medium');
+        const spectrumEnergyNorm = ['off','low','medium','high'].includes(spectrumEnergyVal) ? spectrumEnergyVal : 'medium';
         const playerSize = normalizeScreenProfile(screenProfile?.value || previewScreenProfile || '1280x400');
-        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, linearStyle: linearStyleVal, linearSize: linearSizeVal, meterMode: meterModeVal, colorMode: colorModeVal, sensitivity, smoothing, playerSize, ts: Date.now() };
+        return { skin, theme, meterType, fontMode: fontModeVal, fontSize: fontSizeVal, linearStyle: linearStyleVal, linearSize: linearSizeVal, meterMode: meterModeVal, colorMode: colorModeVal, sensitivity, smoothing, spectrumColor: spectrumColorVal, spectrumEnergy: spectrumEnergyNorm, playerSize, ts: Date.now() };
       }
       function applyPreset(p){
         if (!p) return;
         const pp = normalizePresetProfile(p);
+        if (meterTypeSpectrum) meterTypeSpectrum.checked = String(pp.meterType||'circular') === 'spectrum';
         if (meterTypeLinear) meterTypeLinear.checked = String(pp.meterType||'circular') === 'linear';
-        if (meterTypeCircular) meterTypeCircular.checked = !meterTypeLinear?.checked;
+        if (meterTypeCircular) meterTypeCircular.checked = !meterTypeLinear?.checked && !meterTypeSpectrum?.checked;
         syncMeterTypeClass();
         renderSkinOptions(String(pp.skin || previewSkin || 'blue-1280'));
         if (skinName && pp.skin) skinName.value = String(pp.skin);
@@ -611,6 +650,12 @@
         enforceLinearRulesForFont();
         if (needleSensitivity && pp.sensitivity) needleSensitivity.value = String(pp.sensitivity);
         if (needleSmoothing && pp.smoothing) needleSmoothing.value = String(pp.smoothing);
+        previewSpectrumColor = ['theme','cyan','lime','amber','magenta','mono','vintage','vintage-smooth'].includes(String(pp?.spectrumColor || '').trim()) ? String(pp.spectrumColor).trim() : 'theme';
+        if (spectrumColor) spectrumColor.value = previewSpectrumColor;
+        try { localStorage.setItem('peppy.spectrumColor', previewSpectrumColor); } catch {}
+        previewSpectrumEnergy = ['off','low','medium','high'].includes(String(pp?.spectrumEnergy || '').trim()) ? String(pp.spectrumEnergy).trim() : 'medium';
+        if (spectrumEnergy) spectrumEnergy.value = previewSpectrumEnergy;
+        try { localStorage.setItem('peppy.spectrumEnergy', previewSpectrumEnergy); } catch {}
         previewSkin = String(skinName?.value || pp.skin || previewSkin || 'blue-1280');
         applyNeedleSkin(previewSkin);
         applyTheme(String(themeName?.value || pp.theme || 'midnight-blue'));
@@ -639,6 +684,7 @@
       const pushPeppyFromTab = $('pushPeppyFromTab');
       const showFullscreenPeppyBtn = $('showFullscreenPeppyBtn');
       const applyVuTargetBtn = $('applyVuTargetBtn');
+      const applySpectrumTargetBtn = $('applySpectrumTargetBtn');
       const peppyReadiness = $('peppyReadiness');
       const screenProfile = $('screenProfile');
       const exportModal = $('exportModal');
@@ -648,6 +694,7 @@
       const skinName = $('skinName');
       const meterTypeCircular = $('meterTypeCircular');
       const meterTypeLinear = $('meterTypeLinear');
+      const meterTypeSpectrum = $('meterTypeSpectrum');
       const linearStyle = $('linearStyle');
       const linearSize = $('linearSize');
       const needleSensitivity = $('needleSensitivity');
@@ -655,6 +702,8 @@
       const fontMode = $('fontMode');
       const fontSize = $('fontSize');
       const themeName = $('themeName');
+      const spectrumColor = $('spectrumColor');
+      const spectrumEnergy = $('spectrumEnergy');
       const artistCanvas = $('artistCanvas');
       const albumYearCanvas = $('albumYearCanvas');
       const fileMetaCanvas = $('fileMetaCanvas');
@@ -673,7 +722,13 @@
           ...src,
           skin: String(src.skin || 'blue-1280').trim() || 'blue-1280',
           theme: String(src.theme || 'midnight-blue').trim() || 'midnight-blue',
-          meterType: (String(src.meterType || 'circular').trim() === 'linear') ? 'linear' : 'circular',
+          meterType: (() => {
+            const mt = String(src.meterType || '').trim();
+            if (mt === 'linear' || mt === 'circular' || mt === 'spectrum') return mt;
+            // backward-compat: old visualMode=spectrum
+            if (String(src.visualMode || '').trim() === 'spectrum') return 'spectrum';
+            return 'circular';
+          })(),
           fontMode: (() => {
             const fm = String(src.fontMode || 'ui-sans').trim();
             return ['ui-sans','ui-sans-condensed','inter-tight','montserrat','dot-matrix'].includes(fm) ? fm : 'ui-sans';
@@ -683,8 +738,10 @@
           linearSize: linearSizeNorm,
           meterMode: (linearStyleNorm === 'cassette') ? 'segmented' : 'continuous',
           colorMode: (linearStyleNorm === 'continuous-theme') ? 'theme' : 'classic',
-          sensitivity: ['low','medium','high'].includes(String(src.sensitivity || '').trim()) ? String(src.sensitivity).trim() : 'medium',
-          smoothing: ['off','low','medium','high'].includes(String(src.smoothing || '').trim()) ? String(src.smoothing).trim() : 'medium',
+          sensitivity: ['low','medium','high','ultra'].includes(String(src.sensitivity || '').trim()) ? String(src.sensitivity).trim() : 'medium',
+          smoothing: ['off','low','medium','high'].includes(String(src.smoothing || '').trim()) ? String(src.smoothing).trim() : 'low',
+          spectrumColor: ['theme','cyan','lime','amber','magenta','mono','vintage','vintage-smooth'].includes(String(src.spectrumColor || '').trim()) ? String(src.spectrumColor).trim() : 'theme',
+          spectrumEnergy: ['off','low','medium','high'].includes(String(src.spectrumEnergy || '').trim()) ? String(src.spectrumEnergy).trim() : 'medium',
           normalization: Number.isFinite(Number(src.normalization)) && Number(src.normalization) > 0 ? Number(src.normalization) : 100,
           displayMode: String(src.displayMode || 'peppy').trim() || 'peppy',
           playerSize: normalizeScreenProfile(src.playerSize || src.screenProfile || '1280x400'),
@@ -769,10 +826,13 @@
       }
       function syncLinearControlVisibility(){
         const linear = !!meterTypeLinear?.checked;
+        const spectrum = !!meterTypeSpectrum?.checked;
         if (linearStyle) linearStyle.style.display = linear ? '' : 'none';
         if (linearSize) linearSize.style.display = linear ? '' : 'none';
+        if (spectrumColor) spectrumColor.style.display = spectrum ? '' : 'none';
+        if (spectrumEnergy) spectrumEnergy.style.display = spectrum ? '' : 'none';
         // Skin picker is only relevant for circular meter artwork.
-        if (skinName) skinName.style.display = linear ? 'none' : '';
+        if (skinName) skinName.style.display = (linear || spectrum) ? 'none' : '';
       }
       function syncMeterTypeClass(){
         const linear = !!meterTypeLinear?.checked;
@@ -1002,9 +1062,14 @@
       const peakHold = { L: 0, R: 0 };
       let peakHoldTrackKey = '';
       let spectrumState = Array.from({ length: 24 }, () => 0);
-      function setTarget(k, v){
+      let spectrumSmoothState = Array.from({ length: 32 }, () => 0);
+      let spectrumSpeedState = Array.from({ length: 32 }, () => 0);
+      function getSensitivityMul(){
         const s = String(needleSensitivity?.value || previewSensitivity || 'medium');
-        const mul = s === 'low' ? 0.8 : (s === 'high' ? 1.25 : 1.0);
+        return s === 'low' ? 0.8 : (s === 'high' ? 1.25 : (s === 'ultra' ? 1.6 : 1.0));
+      }
+      function setTarget(k, v){
+        const mul = getSensitivityMul();
         meterState[k].target = clamp(Number(v || 0) * mul);
       }
 
@@ -1074,8 +1139,9 @@
       let previewMeterType = (() => {
         try { return localStorage.getItem('peppy.meterType') || skinMeta(previewSkin).geometry || 'circular'; } catch { return skinMeta(previewSkin).geometry || 'circular'; }
       })();
+      if (meterTypeSpectrum) meterTypeSpectrum.checked = (previewMeterType === 'spectrum');
       if (meterTypeLinear) meterTypeLinear.checked = (previewMeterType === 'linear');
-      if (meterTypeCircular) meterTypeCircular.checked = (previewMeterType !== 'linear');
+      if (meterTypeCircular) meterTypeCircular.checked = (previewMeterType !== 'linear' && previewMeterType !== 'spectrum');
       syncMeterTypeClass();
       let previewFontMode = (() => { try { return localStorage.getItem('peppy.fontMode') || 'ui-sans'; } catch { return 'ui-sans'; } })();
       let previewFontSize = (() => { try { return localStorage.getItem('peppy.fontSize') || 'm'; } catch { return 'm'; } })();
@@ -1104,7 +1170,20 @@
         } catch { return 'm'; }
       })();
       let previewSensitivity = (() => { try { return localStorage.getItem('peppy.sensitivity') || 'medium'; } catch { return 'medium'; } })();
-      let previewSmoothing = (() => { try { return localStorage.getItem('peppy.smoothing') || 'medium'; } catch { return 'medium'; } })();
+      let previewSmoothing = (() => { try { return localStorage.getItem('peppy.smoothing') || 'low'; } catch { return 'low'; } })();
+      let previewSpectrumColor = (() => {
+        try {
+          const v = String(localStorage.getItem('peppy.spectrumColor') || 'theme').trim().toLowerCase();
+          return ['theme','cyan','lime','amber','magenta','mono','vintage','vintage-smooth'].includes(v) ? v : 'theme';
+        } catch { return 'theme'; }
+      })();
+      let previewSpectrumEnergy = (() => {
+        try {
+          const v = String(localStorage.getItem('peppy.spectrumEnergy') || 'medium').trim();
+          return ['off','low','medium','high'].includes(v) ? v : 'medium';
+        } catch { return 'medium'; }
+      })();
+
       const previewTheme = (() => {
         const fromUrl = String(qp.get('theme') || '').trim();
         if (fromUrl) return fromUrl;
@@ -1115,8 +1194,10 @@
       if (linearStyle) linearStyle.value = previewLinearStyle;
       if (linearSize) linearSize.value = previewLinearSize;
       enforceLinearRulesForFont();
-      if (needleSensitivity) needleSensitivity.value = ['low','medium','high'].includes(previewSensitivity) ? previewSensitivity : 'medium';
-      if (needleSmoothing) needleSmoothing.value = ['off','low','medium','high'].includes(previewSmoothing) ? previewSmoothing : 'medium';
+      if (needleSensitivity) needleSensitivity.value = ['low','medium','high','ultra'].includes(previewSensitivity) ? previewSensitivity : 'medium';
+      if (needleSmoothing) needleSmoothing.value = ['off','low','medium','high'].includes(previewSmoothing) ? previewSmoothing : 'low';
+      if (spectrumColor) spectrumColor.value = ['theme','cyan','lime','amber','magenta','mono','vintage','vintage-smooth'].includes(previewSpectrumColor) ? previewSpectrumColor : 'theme';
+      if (spectrumEnergy) spectrumEnergy.value = ['off','low','medium','high'].includes(previewSpectrumEnergy) ? previewSpectrumEnergy : 'medium';
 
       function meterTint(){
         const cs = getComputedStyle(document.documentElement);
@@ -1126,19 +1207,189 @@
         return { color: c, alpha: warm ? 0.22 : 0.14 };
       }
 
+      function parseRgbTriplet(s) {
+        const m = String(s || '').match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+        if (!m) return [46,185,238];
+        return [Number(m[1]||46), Number(m[2]||185), Number(m[3]||238)];
+      }
+      function mixRgb(a, b, t) {
+        const k = Math.max(0, Math.min(1, Number(t)||0));
+        return [
+          Math.round(a[0] + (b[0] - a[0]) * k),
+          Math.round(a[1] + (b[1] - a[1]) * k),
+          Math.round(a[2] + (b[2] - a[2]) * k),
+        ];
+      }
       function drawSpectrumOverlay(ctx, x, y, w, h) {
-        const bins = Array.isArray(spectrumState) ? spectrumState : [];
+        const bins = Array.isArray(spectrumSmoothState) && spectrumSmoothState.length ? spectrumSmoothState : (Array.isArray(spectrumState) ? spectrumState : []);
         if (!bins.length || w <= 10 || h <= 6) return;
         const n = Math.min(32, bins.length);
         const gap = 2;
         const bw = Math.max(2, Math.floor((w - ((n - 1) * gap)) / n));
-        const rgb = getComputedStyle(document.documentElement).getPropertyValue('--progress-rgb').trim() || '46,185,238';
+        const themeRgb = getComputedStyle(document.documentElement).getPropertyValue('--progress-rgb').trim() || '46,185,238';
+        const palette = String(spectrumColor?.value || previewSpectrumColor || 'theme');
+        const energyMode = String(spectrumEnergy?.value || previewSpectrumEnergy || 'medium');
+        const energyFactor = ({ off: 0, low: 0.45, medium: 1.0, high: 1.6 })[energyMode] ?? 1.0;
+        const energyOn = energyFactor > 0;
+
+        // Vintage hardware-style EQ: chunky segments with classic thresholds.
+        if (palette === 'vintage') {
+          const stepH = Math.max(2, Math.floor(h / 18));
+          for (let i = 0; i < n; i++) {
+            const v = Math.max(0, Math.min(100, Number(bins[i] || 0)));
+            const energy = v / 100;
+            const speedBase = Math.max(0, Math.min(1, Number((spectrumSpeedState?.[i] || 0) / 6)));
+            const speed = energyOn ? Math.max(0, Math.min(1, speedBase * energyFactor)) : 0;
+            const vintageFlat = !energyOn;
+            const bx = x + i * (bw + gap);
+            const bh = Math.max(1, Math.round((h * v) / 100));
+            const by = y + (h - bh);
+
+            // Fixed classic thresholds; with energy ON, yellow/red start lower.
+            // Vintage behavior: energy affects color-threshold onset only.
+            // With energy off, keep strict fixed thresholds.
+            const shift = energyOn ? Math.round((speed * 0.14 + energy * 0.02) * h * Math.min(1.8, energyFactor)) : 0;
+            const greenMax = Math.max(1, Math.round(h * 0.48) - shift);
+            const yellowMax = Math.max(1, Math.round(h * 0.30) + Math.round(shift * 0.35));
+
+            const gh = Math.min(bh, greenMax);
+            const yh = Math.min(Math.max(0, bh - greenMax), yellowMax);
+            const rh = Math.max(0, bh - greenMax - yellowMax);
+
+            const drawSeg = (startY, height, rgb, alphaBase) => {
+              if (height <= 0) return;
+              // Align to exact segment grid so adjacent color zones meet cleanly.
+              const segCount = Math.max(1, Math.ceil(height / stepH));
+              const alpha = Math.max(0.45, Math.min(0.98, alphaBase));
+              const bottom = startY + height;
+              for (let s = 0; s < segCount; s++) {
+                const segTop = Math.max(startY, bottom - ((s + 1) * stepH));
+                const segBottom = Math.min(bottom, segTop + stepH);
+                const segH = Math.max(1, segBottom - segTop);
+
+                // Inverse matrix cell: darker base + lit color dots
+                ctx.fillStyle = `rgba(8,10,12,${(0.45 + alpha * 0.25).toFixed(3)})`;
+                ctx.fillRect(bx, segTop, bw, segH);
+
+                ctx.fillStyle = `rgba(${rgb},${Math.min(1, alpha + 0.08).toFixed(3)})`;
+                const dotSize = 2;
+                const dotPitch = 3;
+                const usableW = Math.max(0, Math.floor((bw - 2) / dotPitch) * dotPitch);
+                const xStart = bx + Math.max(1, Math.floor((bw - usableW) / 2));
+                for (let dy = segTop + 1; dy <= segBottom - dotSize; dy += dotPitch) {
+                  for (let dx = xStart; dx <= xStart + usableW - dotSize; dx += dotPitch) {
+                    ctx.fillRect(dx, dy, dotSize, dotSize);
+                  }
+                }
+              }
+            };
+
+            let yCursor = by + bh;
+            if (gh > 0) {
+              yCursor -= gh;
+              drawSeg(yCursor, gh, '120,255,120', 0.80);
+            }
+            if (yh > 0) {
+              yCursor -= yh;
+              drawSeg(yCursor, yh, '255,220,90', 0.84);
+            }
+            if (rh > 0) {
+              yCursor -= rh;
+              drawSeg(yCursor, rh, '255,90,90', 0.88);
+            }
+
+            // Segment separators: keep subtle in flat mode, stronger with energy.
+            ctx.strokeStyle = vintageFlat ? 'rgba(0,0,0,0.10)' : 'rgba(0,0,0,0.28)';
+            ctx.lineWidth = 1;
+            for (let yy = by + bh - stepH; yy > by; yy -= stepH) {
+              ctx.beginPath();
+              ctx.moveTo(bx, yy + 0.5);
+              ctx.lineTo(bx + bw, yy + 0.5);
+              ctx.stroke();
+            }
+
+
+          }
+          return;
+        }
+
+        // Modernized retro: smooth bars with classic green->yellow->red transition.
+        if (palette === 'vintage-smooth') {
+          for (let i = 0; i < n; i++) {
+            const v = Math.max(0, Math.min(100, Number(bins[i] || 0)));
+            const energy = v / 100;
+            const speedBase = Math.max(0, Math.min(1, Number((spectrumSpeedState?.[i] || 0) / 6)));
+            const speed = energyOn ? Math.max(0, Math.min(1, speedBase * energyFactor)) : 0;
+            const hueMix = energy * 0.45;
+            const bh = Math.max(1, Math.round((h * v) / 100));
+            const bx = x + i * (bw + gap);
+            const by = y + (h - bh);
+
+            // Thresholded stacked fill based on full scale (not per-bar scale):
+            // low bars stay green, mid bars reach yellow, peaks reach red.
+            const greenMax = Math.round(h * 0.48);
+            const yellowMax = Math.round(h * 0.30);
+            const gh = Math.min(bh, greenMax);
+            const yh = Math.min(Math.max(0, bh - greenMax), yellowMax);
+            const rh = Math.max(0, bh - greenMax - yellowMax);
+
+            let yCursor = by + bh;
+            if (gh > 0) {
+              yCursor -= gh;
+              const gc = mixRgb([75,195,95], [165,255,165], energy * 0.95 + speed * 0.35);
+              const ga = 0.88 + 0.12 * speed;
+              ctx.fillStyle = `rgba(${gc[0]},${gc[1]},${gc[2]},${ga.toFixed(3)})`;
+              ctx.fillRect(bx, yCursor, bw, gh);
+            }
+
+            if (yh > 0) {
+              yCursor -= yh;
+              const yc = mixRgb([220,180,75], [255,215,110], hueMix * 0.9 + speed * 0.25);
+              const ya = 0.90 + 0.10 * speed;
+              ctx.fillStyle = `rgba(${yc[0]},${yc[1]},${yc[2]},${ya.toFixed(3)})`;
+              ctx.fillRect(bx, yCursor, bw, yh);
+            }
+
+            if (rh > 0) {
+              yCursor -= rh;
+              const rc = mixRgb([220,85,80], [255,145,120], hueMix * 0.5 + speed * 0.2);
+              const ra = 0.92 + 0.08 * speed;
+              ctx.fillStyle = `rgba(${rc[0]},${rc[1]},${rc[2]},${ra.toFixed(3)})`;
+              ctx.fillRect(bx, yCursor, bw, rh);
+            }
+
+            if (speed > 0.03) {
+              const flash = Math.min(0.22, speed * 0.28);
+              const fg = ctx.createLinearGradient(0, by + bh, 0, by);
+              fg.addColorStop(0, `rgba(255,255,255,${(flash * 0.25).toFixed(3)})`);
+              fg.addColorStop(1, `rgba(255,255,255,${flash.toFixed(3)})`);
+              ctx.fillStyle = fg;
+              ctx.fillRect(bx, by, bw, bh);
+            }
+          }
+          return;
+        }
+
+        const rgb = ({
+          theme: themeRgb,
+          cyan: '46,185,238',
+          lime: '140,230,70',
+          amber: '255,180,60',
+          magenta: '220,90,255',
+          mono: '230,230,230',
+        })[palette] || themeRgb;
+        const base = parseRgbTriplet(rgb);
+        const warm = [255, 180, 80];
         for (let i = 0; i < n; i++) {
           const v = Math.max(0, Math.min(100, Number(bins[i] || 0)));
           const bh = Math.max(1, Math.round((h * v) / 100));
           const bx = x + i * (bw + gap);
           const by = y + (h - bh);
-          ctx.fillStyle = `rgba(${rgb},${0.16 + (0.5 * (v / 100))})`;
+          // Optional energy-based hue drift toward warm tones at high energy.
+          const hueMix = energyOn ? ((v / 100) * 0.22 * Math.min(1.8, energyFactor)) : 0;
+          const c = mixRgb(base, warm, hueMix);
+          const alphaBase = energyOn ? (0.16 + (0.5 * (v / 100) * Math.min(1.6, energyFactor))) : 0.42;
+          ctx.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${alphaBase})`;
           ctx.fillRect(bx, by, bw, bh);
         }
       }
@@ -1150,6 +1401,7 @@
         ctx.clearRect(0,0,W,H);
 
         const linearMode = !!meterTypeLinear?.checked;
+        const spectrumMode = !!meterTypeSpectrum?.checked;
         lastLinearLayout = null;
         if (linearMode) {
           const matrixMeta = document.querySelector('.meta');
@@ -1348,11 +1600,16 @@
 
           };
 
-          drawRail(topY, meterState.L.cur, 'L', 'L');
-          drawRail(botY, meterState.R.cur, 'R', 'R');
-          // Remove internal decorative strip in linear panel (reads as phantom extra progress line).
-          // Keep only the real bottom progress bar outside the panel.
-          // drawSpectrumOverlay(ctx, panelX + 10, panelY + panelH - 18, panelW - 20, 12);
+          if (spectrumMode) {
+            const spectrumX = groupX + 10;
+            const spectrumY = groupY + 10;
+            const spectrumW = Math.max(120, groupW - 20);
+            const spectrumH = Math.max(20, groupH - 20);
+            drawSpectrumOverlay(ctx, spectrumX, spectrumY, spectrumW, spectrumH);
+          } else {
+            drawRail(topY, meterState.L.cur, 'L', 'L');
+            drawRail(botY, meterState.R.cur, 'R', 'R');
+          }
           lastLinearLayout = { panelX, panelY, panelW, panelH, pad, railW: w };
           updateIframeControlAnchor(panelW);
           syncProgressPlacement();
@@ -1476,9 +1733,17 @@
           }
         };
 
+        if (spectrumMode) {
+          const sx = Math.max(6, startX);
+          const sy = Math.max(6, y0 + 10);
+          const sw = Math.min(W - 12, groupW);
+          const sh = Math.max(20, meterH - 20);
+          drawSpectrumOverlay(ctx, sx, sy, sw, sh);
+          return;
+        }
+
         drawOne(startX, meterState.L.cur, 'L');
         drawOne(startX + meterW + gap, meterState.R.cur, 'R');
-        drawSpectrumOverlay(ctx, Math.max(6, startX), Math.max(6, H - 16), Math.min(W - 12, groupW), 10);
       }
 
       function buildProgressSegments(el){
@@ -1786,10 +2051,11 @@
         for (const base of candidates) {
           try {
             const r = await fetch(`${base}/peppy/vumeter`, { cache:'no-store' });
-            if (r.ok) { api = base; refreshVuTargetHint(); return; }
+            if (r.ok) { api = base; refreshVuTargetHint(); refreshSpectrumTargetHint(); return; }
           } catch {}
         }
         refreshVuTargetHint();
+        refreshSpectrumTargetHint();
       }
 
       async function ensureRuntimeKey(){
@@ -1806,6 +2072,7 @@
               runtimeTrackKey = k;
               refreshVuTargetHintFromRuntime(j?.config || {});
               refreshVuTargetHint();
+              refreshSpectrumTargetHint();
               return;
             }
           } catch {}
@@ -1831,13 +2098,20 @@
           const vr = await fetch(`${api}/peppy/vumeter`, { cache:'no-store' });
           const vj = await vr.json().catch(() => ({}));
           const vuFresh = !!(vr.ok && vj?.fresh);
+          const srFeed = await fetch(`${api}/peppy/spectrum`, { cache:'no-store' }).catch(() => null);
+          const sjFeed = await srFeed?.json?.().catch(() => ({}));
+          const spectrumFresh = !!(srFeed?.ok && sjFeed?.fresh);
 
           const hintEl = document.getElementById('vuTargetHint');
           const hintWrap = document.getElementById('vuTargetHintWrap');
+          const spectrumHintEl = document.getElementById('spectrumTargetHint');
+          const spectrumHintWrap = document.getElementById('spectrumTargetHintWrap');
           let foundVuTarget = '';
-          if (hintEl) {
+          let foundSpectrumTarget = '';
+          if (hintEl || spectrumHintEl) {
             const host = location.hostname || API_FALLBACK_HOST;
-            hintEl.textContent = `http://${host}:3101/peppy/vumeter`;
+            if (hintEl) hintEl.textContent = `http://${host}:3101/peppy/vumeter`;
+            if (spectrumHintEl) spectrumHintEl.textContent = `http://${host}:3101/peppy/spectrum`;
           }
 
           // Check moOde /etc/peppymeter/config.txt VU target correctness.
@@ -1854,6 +2128,20 @@
             if (applyVuTargetBtn) applyVuTargetBtn.style.display = '';
           }
 
+          // Check moOde /etc/peppyspectrum/config.txt Spectrum target correctness.
+          let spectrumCfgOk = false;
+          let spectrumCfgReadable = false;
+          try {
+            const sr2 = await fetch(`${api}/config/moode/peppy-spectrum-target/status`, { headers, cache:'no-store' });
+            const sj2 = await sr2.json().catch(() => ({}));
+            spectrumCfgReadable = !!(sr2.ok && sj2?.ok && sj2?.readOk);
+            spectrumCfgOk = !!(sr2.ok && sj2?.ok && sj2?.configOk);
+            foundSpectrumTarget = String(sj2?.targetUrl || '').trim();
+            if (applySpectrumTargetBtn) applySpectrumTargetBtn.style.display = (spectrumCfgReadable && spectrumCfgOk) ? 'none' : '';
+          } catch {
+            if (applySpectrumTargetBtn) applySpectrumTargetBtn.style.display = '';
+          }
+
           if (!desiredLooksValid) {
             if (hintWrap) hintWrap.style.display = '';
             peppyReadiness.textContent = '⚠ Peppy target template invalid — check host/port config';
@@ -1868,6 +2156,13 @@
             return { ok:false, reason:'vu-config' };
           }
 
+          if (spectrumCfgReadable && !spectrumCfgOk) {
+            if (spectrumHintWrap) spectrumHintWrap.style.display = '';
+            peppyReadiness.textContent = `⚠ Needs Spectrum config — found: ${foundSpectrumTarget || 'missing'}; expected: ${spectrumHintEl?.textContent || 'http://<host>:3101/peppy/spectrum'}`;
+            peppyReadiness.style.color = '#f59e0b';
+            return { ok:false, reason:'spectrum-config' };
+          }
+
           if (!vuFresh) {
             if (hintWrap) hintWrap.style.display = 'none';
             peppyReadiness.textContent = '⚠ VU feed is stale — PeppyMeter may not be running';
@@ -1875,16 +2170,25 @@
             return { ok:false, reason:'vu-stale' };
           }
 
+          if (!spectrumFresh) {
+            if (spectrumHintWrap) spectrumHintWrap.style.display = 'none';
+            peppyReadiness.textContent = '⚠ Spectrum feed is stale — PeppySpectrum may not be running';
+            peppyReadiness.style.color = '#f59e0b';
+            return { ok:false, reason:'spectrum-stale' };
+          }
+
           if (!onNowPlayingHost) {
             if (hintWrap) hintWrap.style.display = '';
+            if (spectrumHintWrap) spectrumHintWrap.style.display = '';
             peppyReadiness.textContent = `⚠ The target URL in moOde Web UI config needs to be ${expectedDisplayUrl} to use this display.`;
             peppyReadiness.style.color = '#f59e0b';
             return { ok:false, reason:'target-mismatch' };
           }
 
           if (hintWrap) hintWrap.style.display = 'none';
+          if (spectrumHintWrap) spectrumHintWrap.style.display = 'none';
           if (currentOnPeppy) {
-            peppyReadiness.textContent = '✅ Target URL OK — currently on peppy target; VU feed healthy';
+            peppyReadiness.textContent = '✅ Target URL OK — currently on peppy target; VU + Spectrum feeds healthy';
             peppyReadiness.style.color = '#22c55e';
           } else {
             peppyReadiness.textContent = `✅ Target URL in moOde web-ui properly set to ${current}`;
@@ -2657,25 +2961,46 @@
 
       async function pollMeter(){
         try {
-          const r = await fetch(`${api}/peppy/vumeter`, { cache:'no-store' });
-          const j = await r.json().catch(() => ({}));
+          const [rVu, rSpec] = await Promise.all([
+            fetch(`${api}/peppy/vumeter`, { cache:'no-store' }).catch(() => null),
+            fetch(`${api}/peppy/spectrum`, { cache:'no-store' }).catch(() => null),
+          ]);
+          const j = await rVu?.json?.().catch(() => ({}));
+          const s = await rSpec?.json?.().catch(() => ({}));
           const m = j?.meter || {};
           setTarget('L', m.left);
           setTarget('R', m.right);
-          const binsRaw = Array.isArray(m?.spectrum) ? m.spectrum : [];
+
+          const specBins = Array.isArray(s?.spectrum?.bins) ? s.spectrum.bins : [];
+          const vuBins = Array.isArray(m?.spectrum) ? m.spectrum : [];
+          const binsRaw = specBins.length ? specBins : vuBins;
           if (binsRaw.length) {
+            const smul = getSensitivityMul();
             spectrumState = binsRaw.slice(0, 32).map((v) => {
               const n = Number(v);
-              return Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+              return Number.isFinite(n) ? Math.max(0, Math.min(100, n * smul)) : 0;
             });
+            if (!Array.isArray(spectrumSmoothState) || spectrumSmoothState.length !== spectrumState.length) {
+              spectrumSmoothState = spectrumState.slice();
+            }
+            if (!Array.isArray(spectrumSpeedState) || spectrumSpeedState.length !== spectrumState.length) {
+              spectrumSpeedState = spectrumState.map(() => 0);
+            }
           }
-          if (!j?.fresh) {
+
+          const vuFresh = !!j?.fresh;
+          const spFresh = !!s?.fresh || !specBins.length; // tolerate older servers without /peppy/spectrum
+          if (!vuFresh || !spFresh) {
             setTarget('L', 0); setTarget('R', 0);
             spectrumState = spectrumState.map(() => 0);
+            spectrumSmoothState = spectrumSmoothState.map(() => 0);
+            spectrumSpeedState = spectrumSpeedState.map(() => 0);
           }
         } catch {
           setTarget('L', 0); setTarget('R', 0);
           spectrumState = spectrumState.map(() => 0);
+          spectrumSmoothState = spectrumSmoothState.map(() => 0);
+          spectrumSpeedState = spectrumSpeedState.map(() => 0);
         }
       }
 
@@ -2683,7 +3008,7 @@
       let lastNeedleDrawL = 0;
       let lastNeedleDrawR = 0;
       function animate(ts = 0){
-        const sm = String(needleSmoothing?.value || previewSmoothing || 'medium');
+        const sm = String(needleSmoothing?.value || previewSmoothing || 'low');
         const riseA = sm === 'off' ? 1.0 : (sm === 'low' ? 0.56 : (sm === 'high' ? 0.24 : 0.42));
         const fallA = sm === 'off' ? 1.0 : (sm === 'low' ? 0.20 : (sm === 'high' ? 0.07 : 0.12));
         for (const k of ['L','R']) {
@@ -2697,12 +3022,33 @@
           if (cur >= held) peakHold[k] = cur;
         }
 
+        // Apply same smoothing dropdown semantics to spectrum bins.
+        const specRiseA = sm === 'off' ? 1.0 : (sm === 'low' ? 0.62 : (sm === 'high' ? 0.26 : 0.44));
+        const specFallA = sm === 'off' ? 1.0 : (sm === 'low' ? 0.24 : (sm === 'high' ? 0.09 : 0.15));
+        if (!Array.isArray(spectrumSmoothState) || spectrumSmoothState.length !== spectrumState.length) {
+          spectrumSmoothState = Array.isArray(spectrumState) ? spectrumState.slice() : [];
+        }
+        if (!Array.isArray(spectrumSpeedState) || spectrumSpeedState.length !== spectrumState.length) {
+          spectrumSpeedState = Array.isArray(spectrumState) ? spectrumState.map(() => 0) : [];
+        }
+        let specDelta = 0;
+        for (let i = 0; i < spectrumState.length; i++) {
+          const target = Number(spectrumState[i] || 0);
+          const cur = Number(spectrumSmoothState[i] || 0);
+          const a = target > cur ? specRiseA : specFallA;
+          const next = cur + (target - cur) * a;
+          const rise = Math.max(0, next - cur);
+          spectrumSpeedState[i] = (spectrumSpeedState[i] || 0) * 0.78 + rise * 0.9;
+          specDelta = Math.max(specDelta, Math.abs(next - cur));
+          spectrumSmoothState[i] = next;
+        }
+
         const maxFps = kioskMode ? 18 : 60;
         const minFrameMs = 1000 / maxFps;
         const dt = ts - lastNeedleDrawTs;
         const dL = Math.abs(meterState.L.cur - lastNeedleDrawL);
         const dR = Math.abs(meterState.R.cur - lastNeedleDrawR);
-        const changedEnough = (dL >= 0.18 || dR >= 0.18);
+        const changedEnough = (dL >= 0.18 || dR >= 0.18 || specDelta >= 0.18);
         if (dt >= minFrameMs && (changedEnough || dt >= 500)) {
           drawNeedles();
           lastNeedleDrawTs = ts;
@@ -2890,6 +3236,31 @@
           );
         } catch {}
       });
+
+      applySpectrumTargetBtn?.addEventListener('click', async () => {
+        try {
+          await ensureRuntimeKey();
+          const headers = { 'Content-Type':'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) };
+          const r = await fetch(`${api}/config/moode/peppy-spectrum-target`, { method:'POST', headers, body: JSON.stringify({}) });
+          const j = await r.json().catch(() => ({}));
+          if (r.ok && j?.ok) {
+            await refreshPeppyReadiness();
+            return;
+          }
+        } catch {}
+        try {
+          const host = location.hostname || API_FALLBACK_HOST;
+          const target = `http://${host}:3101/peppy/spectrum`;
+          alert(
+            'Fix on moOde:\n\n' +
+            '1) Open /etc/peppyspectrum/config.txt\n' +
+            '2) Under [http.interface], set:\n' +
+            `   target.url = ${target}\n` +
+            '   update.period = 0.05\n\n' +
+            '3) Restart PeppySpectrum (start-peppy.sh spectrum).'
+          );
+        } catch {}
+      });
       exportClose?.addEventListener('click', () => {
         if (!exportModal) return;
         exportModal.classList.remove('open');
@@ -2925,7 +3296,7 @@
         publishProfileState();
       });
       const onMeterTypeChange = () => {
-        previewMeterType = meterTypeLinear?.checked ? 'linear' : 'circular';
+        previewMeterType = meterTypeSpectrum?.checked ? 'spectrum' : (meterTypeLinear?.checked ? 'linear' : 'circular');
         syncMeterTypeClass();
         try { localStorage.setItem('peppy.meterType', previewMeterType); } catch {}
         renderSkinOptions(previewSkin);
@@ -2938,6 +3309,7 @@
       };
       meterTypeCircular?.addEventListener('change', onMeterTypeChange);
       meterTypeLinear?.addEventListener('change', onMeterTypeChange);
+      meterTypeSpectrum?.addEventListener('change', onMeterTypeChange);
       fontMode?.addEventListener('change', () => {
         previewFontMode = String(fontMode?.value || 'ui-sans');
         try { localStorage.setItem('peppy.fontMode', previewFontMode); } catch {}
@@ -2975,8 +3347,23 @@
         publishProfileState();
       });
       needleSmoothing?.addEventListener('change', () => {
-        previewSmoothing = String(needleSmoothing?.value || 'medium');
+        previewSmoothing = String(needleSmoothing?.value || 'low');
         try { localStorage.setItem('peppy.smoothing', previewSmoothing); } catch {}
+        drawNeedles();
+        publishProfileState();
+      });
+      spectrumColor?.addEventListener('change', () => {
+        previewSpectrumColor = String(spectrumColor?.value || 'theme');
+        if (!['theme','cyan','lime','amber','magenta','mono','vintage','vintage-smooth'].includes(previewSpectrumColor)) previewSpectrumColor = 'theme';
+        try { localStorage.setItem('peppy.spectrumColor', previewSpectrumColor); } catch {}
+        drawNeedles();
+        publishProfileState();
+      });
+      spectrumEnergy?.addEventListener('change', () => {
+        const v = String(spectrumEnergy?.value || 'medium').trim();
+        previewSpectrumEnergy = ['off','low','medium','high'].includes(v) ? v : 'medium';
+        try { localStorage.setItem('peppy.spectrumEnergy', previewSpectrumEnergy); } catch {}
+        drawNeedles();
         publishProfileState();
       });
       themeName?.addEventListener('change', () => {
@@ -3035,6 +3422,8 @@
           const lz = String(p?.linearSize || '').trim();
           const sens = String(p?.sensitivity || '').trim().toLowerCase();
           const smooth = String(p?.smoothing || '').trim().toLowerCase();
+          const specColor = String(p?.spectrumColor || '').trim().toLowerCase();
+          const specEnergy = String(p?.spectrumEnergy || '').trim().toLowerCase();
           const ps = normalizeScreenProfile(p?.playerSize || p?.screenProfile || '1280x400');
           if (!hasSkinParam && s) {
             previewSkin = s;
@@ -3045,9 +3434,10 @@
             try { localStorage.setItem('peppy.theme', t); } catch {}
             applyTheme(t);
           }
-          if (mt === 'linear' || mt === 'circular') {
+          if (mt === 'linear' || mt === 'circular' || mt === 'spectrum') {
+            if (meterTypeSpectrum) meterTypeSpectrum.checked = (mt === 'spectrum');
             if (meterTypeLinear) meterTypeLinear.checked = (mt === 'linear');
-            if (meterTypeCircular) meterTypeCircular.checked = (mt !== 'linear');
+            if (meterTypeCircular) meterTypeCircular.checked = (mt === 'circular');
             try { localStorage.setItem('peppy.meterType', mt); } catch {}
           }
           if (!hasSizeParam) applyScreenProfile(ps);
@@ -3070,7 +3460,7 @@
             try { localStorage.setItem('peppy.linearSize', lz); } catch {}
           }
           enforceLinearRulesForFont();
-          if (sens === 'low' || sens === 'medium' || sens === 'high') {
+          if (sens === 'low' || sens === 'medium' || sens === 'high' || sens === 'ultra') {
             previewSensitivity = sens;
             if (needleSensitivity) needleSensitivity.value = sens;
             try { localStorage.setItem('peppy.sensitivity', sens); } catch {}
@@ -3079,6 +3469,16 @@
             previewSmoothing = smooth;
             if (needleSmoothing) needleSmoothing.value = smooth;
             try { localStorage.setItem('peppy.smoothing', smooth); } catch {}
+          }
+          if (['theme','cyan','lime','amber','magenta','mono','vintage','vintage-smooth'].includes(specColor)) {
+            previewSpectrumColor = specColor;
+            if (spectrumColor) spectrumColor.value = specColor;
+            try { localStorage.setItem('peppy.spectrumColor', specColor); } catch {}
+          }
+          if (['off','low','medium','high'].includes(specEnergy)) {
+            previewSpectrumEnergy = specEnergy;
+            if (spectrumEnergy) spectrumEnergy.value = specEnergy;
+            try { localStorage.setItem('peppy.spectrumEnergy', specEnergy); } catch {}
           }
           renderSkinOptions(previewSkin);
           previewSkin = String(skinName?.value || previewSkin || 'blue-1280');

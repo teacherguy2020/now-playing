@@ -420,6 +420,7 @@ app.use(express.json({ limit: '50mb' }));
 
 // PeppyMeter bridge (HTTP level data -> app API)
 let peppyMeterLast = { left: 0, right: 0, mono: 0, spectrum: [], ts: 0, source: 'init' };
+let peppySpectrumLast = { bins: [], size: 0, maxValue: 100, ts: 0, source: 'init' };
 app.put('/peppy/vumeter', (req, res) => {
   try {
     const left = Number(req?.body?.left ?? req?.query?.left ?? 0);
@@ -487,6 +488,42 @@ app.get('/peppy/vumeter', (_req, res) => {
   const now = Date.now();
   const ageMs = Math.max(0, now - Number(peppyMeterLast?.ts || 0));
   return res.json({ ok: true, meter: peppyMeterLast, ageMs, fresh: ageMs < 4000 });
+});
+
+// PeppySpectrum bridge (bins -> app API)
+app.put('/peppy/spectrum', (req, res) => {
+  try {
+    let binsRaw = req?.body?.bins ?? req?.body?.spectrum ?? req?.query?.bins ?? req?.query?.spectrum ?? [];
+    if (typeof binsRaw === 'string') {
+      try { binsRaw = JSON.parse(binsRaw); } catch { binsRaw = []; }
+    }
+    if (!Array.isArray(binsRaw)) binsRaw = [];
+
+    const maxValueRaw = Number(req?.body?.maxValue ?? req?.query?.maxValue ?? req?.body?.max ?? req?.query?.max ?? 100);
+    const maxValue = Number.isFinite(maxValueRaw) && maxValueRaw > 0 ? maxValueRaw : 100;
+
+    const bins = binsRaw.slice(0, 256).map((v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.max(0, Math.min(maxValue, n)) : 0;
+    });
+
+    peppySpectrumLast = {
+      bins,
+      size: Number(req?.body?.size ?? req?.query?.size ?? bins.length ?? 0),
+      maxValue,
+      ts: Date.now(),
+      source: req?.ip || 'unknown',
+    };
+    return res.json({ ok: true, size: bins.length });
+  } catch {
+    return res.status(400).json({ ok: false, error: 'invalid payload' });
+  }
+});
+
+app.get('/peppy/spectrum', (_req, res) => {
+  const now = Date.now();
+  const ageMs = Math.max(0, now - Number(peppySpectrumLast?.ts || 0));
+  return res.json({ ok: true, spectrum: peppySpectrumLast, ageMs, fresh: ageMs < 3000 });
 });
 
 /* =========================
