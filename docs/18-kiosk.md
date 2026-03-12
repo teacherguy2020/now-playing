@@ -112,6 +112,10 @@ Additional designer capabilities:
 
 This keeps kiosk theming fully builder-driven: tune visually, save, and push — no need to open/edit config files for normal customization.
 
+### Example: red kiosk theme
+
+![Kiosk Red Theme](./images/kioskred.jpg)
+
 ---
 
 ## Embedded page theming
