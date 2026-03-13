@@ -1189,6 +1189,16 @@
           u.searchParams.set('embedded', '1');
           u.searchParams.set('theme', String(profile?.theme || 'dark'));
           u.searchParams.set('colorPreset', String(profile?.colorPreset || 'ocean'));
+          if (p === 'kiosk-visualizer.html') {
+            const vp = String(__u.searchParams.get('vpreset') || '').trim();
+            const ve = String(__u.searchParams.get('venergy') || '').trim();
+            const vm = String(__u.searchParams.get('vmotion') || '').trim();
+            const vg = String(__u.searchParams.get('vglow') || '').trim();
+            if (vp) u.searchParams.set('preset', vp);
+            if (ve) u.searchParams.set('energy', ve);
+            if (vm) u.searchParams.set('motion', vm);
+            if (vg) u.searchParams.set('glow', vg);
+          }
           kioskPaneFrame.src = `${u.pathname.replace(/^\//,'')}${u.search}`;
         }
         kioskPane?.classList.add('open');

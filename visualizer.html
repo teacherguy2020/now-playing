@@ -33,6 +33,8 @@
       <option value="moire">moire</option>
       <option value="ambient">ambient</option>
     </select>
+    <span style="font-size:11px;opacity:.8;">Saved</span>
+    <select id="savedPresetSel" aria-label="Saved visualizer presets"><option value="">(none)</option></select>
     <span style="font-size:11px;opacity:.8;">Energy</span>
     <select id="energySel" aria-label="Energy level">
       <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
@@ -49,10 +51,15 @@
       <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
     </select>
     <button id="applyBtn" type="button">apply</button>
+    <button id="savePresetBtn" type="button">Save</button>
+    <button id="deletePresetBtn" type="button">Delete</button>
+    <button id="exportPresetBtn" type="button">Export</button>
+    <button id="importPresetBtn" type="button">Import</button>
     <button id="pushMoodeBtn" type="button">Push to moOde</button>
-    <span id="pushStatus" style="font-size:11px;opacity:.8;min-width:120px;"></span>
+    <span id="pushStatus" style="font-size:11px;opacity:.8;min-width:180px;"></span>
   </div>
   <div class="hud"><div><div id="t" class="t">Visualizer</div><div id="a" class="a">Waiting for audio…</div></div><div id="m" class="m">aurora</div></div>
+  <input id="importPresetFile" type="file" accept="application/json,.json" style="display:none" />
 <script>
 (()=>{
   const qp=new URLSearchParams(location.search);
@@ -60,7 +67,7 @@
   const api=`${location.protocol}//${host}:3101`;
   const c=document.getElementById('c'),x=c.getContext('2d');
   const tEl=document.getElementById('t'),aEl=document.getElementById('a'),mEl=document.getElementById('m');
-  const ctl=document.getElementById('ctl'),presetSel=document.getElementById('presetSel'),energySel=document.getElementById('energySel'),motionSel=document.getElementById('motionSel'),glowSel=document.getElementById('glowSel'),applyBtn=document.getElementById('applyBtn'),pushMoodeBtn=document.getElementById('pushMoodeBtn'),pushStatus=document.getElementById('pushStatus');
+  const ctl=document.getElementById('ctl'),presetSel=document.getElementById('presetSel'),savedPresetSel=document.getElementById('savedPresetSel'),energySel=document.getElementById('energySel'),motionSel=document.getElementById('motionSel'),glowSel=document.getElementById('glowSel'),applyBtn=document.getElementById('applyBtn'),savePresetBtn=document.getElementById('savePresetBtn'),deletePresetBtn=document.getElementById('deletePresetBtn'),exportPresetBtn=document.getElementById('exportPresetBtn'),importPresetBtn=document.getElementById('importPresetBtn'),importPresetFile=document.getElementById('importPresetFile'),pushMoodeBtn=document.getElementById('pushMoodeBtn'),pushStatus=document.getElementById('pushStatus');
   let W=0,H=0,dpr=1;
   function rs(){
     dpr=Math.max(1,Math.min(2,devicePixelRatio||1));
@@ -82,6 +89,10 @@
     moire:{scene:'moire', attack:0.34, release:0.13, onsetGain:0.9, feedback:0.1, sat:1.0},
     ambient:{scene:'aurora', attack:0.20, release:0.09, onsetGain:0.5, feedback:0.14, sat:0.85}
   };
+  const hasPresetParam = qp.has('preset');
+  const hasEnergyParam = qp.has('energy');
+  const hasMotionParam = qp.has('motion');
+  const hasGlowParam = qp.has('glow');
   let presetKey=String(qp.get('preset')||'classic').toLowerCase();
   if (presetKey === 'magnetosphere') presetKey = 'sphere';
   if (presetKey === 'jelly') presetKey = 'aeon';
@@ -92,7 +103,7 @@
     fireworks:{energy:8,motion:7,glow:7},
     sphere:{energy:6,motion:5,glow:8},
     moire:{energy:5,motion:6,glow:5},
-    ambient:{energy:2,motion:2,glow:7}
+    ambient:{energy:5,motion:10,glow:5}
   };
   const lv=PRESET_LEVELS[presetKey]||PRESET_LEVELS.classic;
   let energyLevel=Math.max(1,Math.min(10,Number(qp.get('energy')||String(lv.energy))||lv.energy));
@@ -161,7 +172,11 @@
       tappedBack = true;
       try {
         const hostPart = location.host || 'nowplaying.local:8101';
-        const target = `${location.protocol}//${hostPart}/controller.html?kiosk=1&preview=1&open=kiosk-visualizer.html`;
+        const p = encodeURIComponent(String(presetKey || 'classic'));
+        const e = encodeURIComponent(String(Math.round(energyLevel || 6)));
+        const m = encodeURIComponent(String(Math.round(motionLevel || 6)));
+        const g = encodeURIComponent(String(Math.round(glowLevel || 6)));
+        const target = `${location.protocol}//${hostPart}/controller.html?kiosk=1&preview=1&open=kiosk-visualizer.html&vpreset=${p}&venergy=${e}&vmotion=${m}&vglow=${g}`;
         if (window.top && window.top !== window) window.top.location.href = target;
         else location.href = target;
       } catch {}
@@ -197,7 +212,133 @@
   if (energySel) energySel.value = String(Math.round(energyLevel));
   if (motionSel) motionSel.value = String(Math.round(motionLevel));
   if (glowSel) glowSel.value = String(Math.round(glowLevel));
-  applyBtn?.addEventListener('click', () => {
+
+  const VIS_PRESETS_KEY = 'nowplaying.visualizer.presets.v1';
+  function readSavedPresets(){
+    try { const j=JSON.parse(localStorage.getItem(VIS_PRESETS_KEY)||'[]'); return Array.isArray(j)?j:[]; } catch { return []; }
+  }
+  function writeSavedPresets(arr){
+    try { localStorage.setItem(VIS_PRESETS_KEY, JSON.stringify(Array.isArray(arr)?arr:[])); } catch {}
+  }
+  function currentPresetPayload(){
+    return {
+      name:'',
+      preset: String(presetSel?.value || presetKey || 'classic').toLowerCase(),
+      energy: Math.max(1, Math.min(10, Number(energySel?.value || Math.round(energyLevel)) || 6)),
+      motion: Math.max(1, Math.min(10, Number(motionSel?.value || Math.round(motionLevel)) || 6)),
+      glow: Math.max(1, Math.min(10, Number(glowSel?.value || Math.round(glowLevel)) || 6)),
+      ts: Date.now(),
+      version: 1,
+    };
+  }
+  function refreshSavedPresetSelect(selectedName=''){
+    if (!savedPresetSel) return;
+    const list = readSavedPresets();
+    savedPresetSel.innerHTML = '<option value="">(none)</option>';
+    for (const p of list){
+      const o=document.createElement('option');
+      o.value=String(p?.name||'');
+      o.textContent=String(p?.name||'');
+      savedPresetSel.appendChild(o);
+    }
+    if (selectedName) savedPresetSel.value = selectedName;
+  }
+  function applySavedPresetByName(name){
+    const list=readSavedPresets();
+    const p=list.find(x=>String(x?.name||'')===String(name||''));
+    if(!p) return;
+    if (presetSel) presetSel.value = String(p.preset||'classic');
+    if (energySel) energySel.value = String(Math.max(1,Math.min(10,Number(p.energy)||6)));
+    if (motionSel) motionSel.value = String(Math.max(1,Math.min(10,Number(p.motion)||6)));
+    if (glowSel) glowSel.value = String(Math.max(1,Math.min(10,Number(p.glow)||6)));
+    applyBtn?.click();
+  }
+  refreshSavedPresetSelect();
+  savedPresetSel?.addEventListener('change', ()=>{ const n=String(savedPresetSel.value||''); if(n) applySavedPresetByName(n); });
+  savePresetBtn?.addEventListener('click', ()=>{
+    const name = String(prompt('Preset name?','') || '').trim();
+    if (!name) return;
+    const list = readSavedPresets().filter(p=>String(p?.name||'')!==name);
+    const payload = currentPresetPayload(); payload.name = name;
+    list.push(payload);
+    list.sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+    writeSavedPresets(list);
+    refreshSavedPresetSelect(name);
+    if (pushStatus) pushStatus.textContent = `Saved preset: ${name}`;
+  });
+  deletePresetBtn?.addEventListener('click', ()=>{
+    const name = String(savedPresetSel?.value || '').trim();
+    if (!name) return;
+    if (!confirm(`Delete preset "${name}"?`)) return;
+    const list = readSavedPresets().filter(p=>String(p?.name||'')!==name);
+    writeSavedPresets(list);
+    refreshSavedPresetSelect('');
+    if (pushStatus) pushStatus.textContent = `Deleted preset: ${name}`;
+  });
+  exportPresetBtn?.addEventListener('click', ()=>{
+    const name = String(savedPresetSel?.value || '').trim();
+    const list = readSavedPresets();
+    const payload = name ? list.find(p=>String(p?.name||'')===name) : currentPresetPayload();
+    if (!payload) return;
+    const data = JSON.stringify(payload, null, 2);
+    const blob = new Blob([data], { type:'application/json' });
+    const a=document.createElement('a');
+    const file = `${String(payload.name||payload.preset||'visualizer-preset').replace(/\s+/g,'-').toLowerCase()}.json`;
+    a.href = URL.createObjectURL(blob); a.download = file; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 500);
+  });
+  importPresetBtn?.addEventListener('click', ()=> importPresetFile?.click());
+  importPresetFile?.addEventListener('change', async ()=>{
+    try {
+      const f = importPresetFile.files && importPresetFile.files[0];
+      if (!f) return;
+      const txt = await f.text();
+      const j = JSON.parse(txt);
+      const name = String(j?.name || prompt('Name for imported preset?', String(j?.preset||'imported')) || '').trim();
+      if (!name) return;
+      const p = {
+        name,
+        preset: String(j?.preset || 'classic').toLowerCase(),
+        energy: Math.max(1,Math.min(10,Number(j?.energy)||6)),
+        motion: Math.max(1,Math.min(10,Number(j?.motion)||6)),
+        glow: Math.max(1,Math.min(10,Number(j?.glow)||6)),
+        ts: Date.now(),
+        version: 1,
+      };
+      const list = readSavedPresets().filter(x=>String(x?.name||'')!==name);
+      list.push(p); list.sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+      writeSavedPresets(list);
+      refreshSavedPresetSelect(name);
+      applySavedPresetByName(name);
+      if (pushStatus) pushStatus.textContent = `Imported preset: ${name}`;
+    } catch (e) {
+      if (pushStatus) pushStatus.textContent = `Import failed: ${e?.message || e}`;
+    } finally {
+      try { importPresetFile.value = ''; } catch {}
+    }
+  });
+
+  // Designer reopen persistence: if no explicit query values are provided,
+  // restore the last pushed visualizer profile from API.
+  (async ()=>{
+    try {
+      if (!uiOn) return;
+      if (hasPresetParam || hasEnergyParam || hasMotionParam || hasGlowParam) return;
+      const r = await fetch(`${api}/peppy/last-profile`, { cache:'no-store' });
+      const j = await r.json().catch(()=>({}));
+      const p = j?.profile || {};
+      if (String(p?.displayMode || '').toLowerCase() !== 'visualizer') return;
+      const v = (p && typeof p.visualizer === 'object') ? p.visualizer : null;
+      if (!v) return;
+      if (presetSel && v.preset) presetSel.value = String(v.preset).toLowerCase();
+      if (energySel && Number.isFinite(Number(v.energy))) energySel.value = String(Math.max(1,Math.min(10,Number(v.energy))));
+      if (motionSel && Number.isFinite(Number(v.motion))) motionSel.value = String(Math.max(1,Math.min(10,Number(v.motion))));
+      if (glowSel && Number.isFinite(Number(v.glow))) glowSel.value = String(Math.max(1,Math.min(10,Number(v.glow))));
+      applyDesignerSelection(true);
+    } catch {}
+  })();
+
+  function applyDesignerSelection(syncUrl=true){
     try {
       const p = String(presetSel?.value || presetKey || 'classic').toLowerCase();
       const eNum = Math.max(1, Math.min(10, Number(energySel?.value || Math.round(energyLevel)) || Math.round(energyLevel)));
@@ -216,17 +357,19 @@
       if (scene === 'magnetosphere') scene = 'sphere';
       if (scene === 'jelly') scene = 'aeon';
 
-      // keep URL in sync WITHOUT reload (avoids startup burst)
-      const url = new URL(location.href);
-      url.searchParams.set('preset', presetKey);
-      url.searchParams.set('energy', String(energyLevel));
-      url.searchParams.set('motion', String(motionLevel));
-      url.searchParams.set('glow', String(glowLevel));
-      url.searchParams.delete('scene');
-      url.searchParams.set('ui', '1');
-      history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+      if (syncUrl) {
+        const url = new URL(location.href);
+        url.searchParams.set('preset', presetKey);
+        url.searchParams.set('energy', String(energyLevel));
+        url.searchParams.set('motion', String(motionLevel));
+        url.searchParams.set('glow', String(glowLevel));
+        url.searchParams.delete('scene');
+        url.searchParams.set('ui', '1');
+        history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+      }
     } catch {}
-  });
+  }
+  applyBtn?.addEventListener('click', () => applyDesignerSelection(true));
 
   async function pushToMoode(){
     try {
@@ -241,7 +384,7 @@
       const m = String(motionSel?.value || Math.round(motionLevel));
       const g = String(glowSel?.value || Math.round(glowLevel));
       const visUrl = `${location.protocol}//${host}:8101/visualizer.html?kiosk=1&preset=${encodeURIComponent(p)}&energy=${encodeURIComponent(e)}&motion=${encodeURIComponent(m)}&glow=${encodeURIComponent(g)}`;
-      await fetch(`${api}/peppy/last-profile`, {
+      const saveResp = await fetch(`${api}/peppy/last-profile`, {
         method:'POST',
         headers:{'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})},
         body: JSON.stringify({ url: visUrl, displayMode:'visualizer', visualizer:{ preset:p, energy:Number(e), motion:Number(m), glow:Number(g) } })
@@ -253,7 +396,13 @@
       });
       const jj = await rr.json().catch(()=>({}));
       if (!rr.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${rr.status}`);
-      if (pushStatus) pushStatus.textContent = 'Pushed ✓';
+      let saved = { preset:p, energy:Number(e), motion:Number(m), glow:Number(g) };
+      try {
+        const sj = await saveResp?.json?.();
+        const sv = sj?.profile?.visualizer;
+        if (sv && typeof sv === 'object') saved = { ...saved, ...sv };
+      } catch {}
+      if (pushStatus) pushStatus.textContent = `Pushed ✓ ${saved.preset || p} E${saved.energy ?? e} M${saved.motion ?? m} G${saved.glow ?? g}`;
     } catch (e) {
       if (pushStatus) pushStatus.textContent = `Push failed: ${e?.message || e}`;
     } finally {
@@ -261,13 +410,38 @@
     }
   }
   pushMoodeBtn?.addEventListener('click', pushToMoode);
-  let bins=Array.from({length:30},()=>0),peaks=Array.from({length:30},()=>0),bass=0,mid=0,treb=0,energy=0,pulse=0;
+  let bins=Array.from({length:30},()=>0),binsFast=Array.from({length:30},()=>0),peaks=Array.from({length:30},()=>0),bass=0,mid=0,treb=0,energy=0,pulse=0;
   let lowE=0,midE=0,highE=0,onset=0,spectralFlux=0,rms=0,agc=1;
+  const spectrumSampleRate = Math.max(8000, Math.min(192000, Number(qp.get('sr') || 44100) || 44100));
+  const spectrumNyquist = spectrumSampleRate / 2;
+  // From TOP line to BOTTOM line for ambient mapping
+  const AMBIENT_LINE_BANDS_HZ = [
+    [4000, 20000],
+    [1800, 4000],
+    [1200, 1800],
+    [700, 1200],
+    [400, 700],
+    [180, 400],
+    [20, 180],
+  ];
   let energyFloor=0;
   let colorAlive=0, colorFlash=0;
   let prevBins=[];
   function mix(a,b,t){return a+(b-a)*t}
   function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function hzToIdx(hz, nBins, nyq){
+    const n=Math.max(1, Number(nBins)||1);
+    const ny=Math.max(1, Number(nyq)||22050);
+    return Math.max(0, Math.min(n-1, Math.floor((Math.max(0, hz)/ny) * (n-1))));
+  }
+  function avgRange(arr, i0, i1){
+    const a=Math.max(0, Math.min(arr.length-1, i0|0));
+    const b=Math.max(0, Math.min(arr.length-1, i1|0));
+    const lo=Math.min(a,b), hi=Math.max(a,b);
+    let s=0, c=0;
+    for(let i=lo;i<=hi;i++){ s += Number(arr[i]||0); c++; }
+    return c? (s/c) : 0;
+  }
   function splitLogBands(arr){
     const n=Math.max(1,arr.length);
     const i1=Math.max(1,Math.floor(Math.pow(n,0.58)));   // low cutoff (log-ish)
@@ -295,7 +469,9 @@
         agc = mix(agc,wanted,0.08);
         next = next.map(v=>clamp(v*agc,0,100));
 
-        if(bins.length!==n){bins=Array.from({length:n},()=>0);peaks=Array.from({length:n},()=>0); prevBins=Array.from({length:n},()=>0);}
+        if(bins.length!==n){bins=Array.from({length:n},()=>0);binsFast=Array.from({length:n},()=>0);peaks=Array.from({length:n},()=>0); prevBins=Array.from({length:n},()=>0);}
+        // Fast path for visible per-band color modulation
+        for(let i=0;i<n;i++) binsFast[i]=mix(binsFast[i], next[i], 0.65);
         // Fast attack, slower release envelope
         for(let i=0;i<n;i++){
           const atk=Math.min(0.7, Number(preset.attack||0.34) * (0.85 + (energyK-1)*0.55));
@@ -335,18 +511,23 @@
   }
 
   async function pollTrack(){
-    try{const r=await fetch(`${api}/now-playing`,{cache:'no-store'});const j=await r.json();tEl.textContent=String(j?.displayTitle||j?.title||'Visualizer');aEl.textContent=String(j?.displayArtist||j?.artist||j?.stationName||'');}catch{}
+    try{const r=await fetch(`${api}/now-playing`,{cache:'no-store'});const j=await r.json();tEl.textContent=String(j?.displayTitle||j?.title||'Visualizer');aEl.textContent=String(j?.displayArtist||j?.artist||j?.stationName||''); transportState=String(j?.state||j?.status||'').toLowerCase() || transportState;}catch{}
     setTimeout(pollTrack,1400);
   }
   pollSpectrum(); pollTrack();
 
   const particles=Array.from({length:220},()=>({x:Math.random(),y:Math.random(),z:Math.random(),vx:(Math.random()-0.5)*0.001,vy:(Math.random()-0.5)*0.001}));
+  let transportState='unknown';
   const aeonSeeds=Array.from({length:5},(_,i)=>({
     p:Math.random()*Math.PI*2,
     a:1.7 + Math.random()*2.6,
     b:2.0 + Math.random()*3.0,
     k:0.25 + i*0.12
   }));
+  const auroraLineEnv=[]; // per-line fast envelope for thickness response
+  const auroraLineBase=[]; // rolling baseline to compute dynamic deviations
+  const auroraLineFast=[]; // per-line fast color lane value
+  const auroraLineWaveEnv=[]; // per-line wave density envelope (slow return)
   const sparks=[];
   let lastEnergy=0;
   let lastBass=0;
@@ -356,7 +537,17 @@
 
   function bgAurora(){
     const g=x.createRadialGradient(W*0.5,H*0.55,20,W*0.5,H*0.55,Math.max(W,H)*0.9);
-    const hue=(180+mid*0.7+tm*4 + colorAlive*28 + colorFlash*36)%360;
+    const ambientModeBg = (String(presetKey||'').toLowerCase() === 'ambient');
+    if (ambientModeBg) {
+      // Neutral dark ambient backdrop (no green cast)
+      g.addColorStop(0,'rgba(74,84,120,0.30)');
+      g.addColorStop(0.45,'rgba(42,48,74,0.24)');
+      g.addColorStop(1,'rgba(10,14,28,0.88)');
+      x.fillStyle=g; x.fillRect(0,0,W,H);
+      return;
+    }
+    const baseDrift = tm*4;
+    const hue=(180+mid*0.7+baseDrift + colorAlive*28 + colorFlash*36)%360;
     g.addColorStop(0,`hsla(${hue},90%,${30+pulse*18}%,0.26)`);
     g.addColorStop(0.45,`hsla(${(hue+65)%360},85%,${22+bass*0.22}%,0.18)`);
     g.addColorStop(1,'rgba(2,6,14,0.92)');
@@ -369,17 +560,77 @@
     x.globalCompositeOperation='lighter';
     x.lineJoin='round';
     x.lineCap='round';
+    const ambientMode = (String(presetKey||'').toLowerCase() === 'ambient');
+    const ambientAtBaseline = ambientMode && transportState !== 'play';
     const bands=7;
     for(let k=0;k<bands;k++){
       const yBase=H*(0.2+0.1*k);
+      const linePosBase = (k + 0.5) / bands;
+      const linePosBaseInv = 1 - linePosBase;
+      const eqLine = linePosBaseInv < 0.34 ? (lowE/100) : (linePosBaseInv < 0.67 ? (midE/100) : (highE/100));
+      let bandNow = 0, bandFast = 0;
+      if (ambientMode) {
+        const row = Math.max(0, Math.min(AMBIENT_LINE_BANDS_HZ.length - 1, k)); // top->bottom
+        const [hzLo, hzHi] = AMBIENT_LINE_BANDS_HZ[row];
+        const iLo = hzToIdx(hzLo, bins.length||1, spectrumNyquist);
+        const iHi = hzToIdx(hzHi, bins.length||1, spectrumNyquist);
+        bandNow = avgRange(bins, iLo, iHi) / 100;
+        bandFast = avgRange(binsFast, iLo, iHi) / 100;
+      } else {
+        const bandIdx = Math.max(0, Math.min((bins.length||1)-1, Math.floor(linePosBaseInv * Math.max(1,(bins.length||1)-1))));
+        bandNow = ((bins[bandIdx]||0)/100);
+        bandFast = ((binsFast[bandIdx]||0)/100);
+      }
+      const prevFast = Number.isFinite(auroraLineFast[k]) ? auroraLineFast[k] : bandFast;
+      auroraLineFast[k] = bandFast;
+      const lineBandNorm = bandFast;
+      const prevEnv = Number.isFinite(auroraLineEnv[k]) ? auroraLineEnv[k] : bandNow;
+      const prevBase = Number.isFinite(auroraLineBase[k]) ? auroraLineBase[k] : bandNow;
+      const bandRise = Math.max(0, bandFast - prevFast);
+      const atk = ambientMode ? 0.90 : 0.62;   // immediate thickening on rise
+      const rel = ambientMode ? 0.04 : 0.22;   // much slower decay in ambient
+      const aEnv = bandNow > prevEnv ? atk : rel;
+      const lineEnv = prevEnv + (bandNow - prevEnv) * aEnv;
+      auroraLineEnv[k] = lineEnv;
+      const baseA = ambientMode ? 0.05 : 0.08; // very slow baseline
+      const lineBase = prevBase + (lineEnv - prevBase) * baseA;
+      auroraLineBase[k] = lineBase;
+      const lineDelta = lineEnv - lineBase;
+      const lineFastDelta = bandFast - prevFast;
       const pts=[];
       for(let i=0;i<=W;i+=10){
         const n=Math.floor((i/W)*(bins.length-1));
-        const v=bins[n]/100;
-        const yRaw=yBase + Math.sin((i*0.0105)+(tm*1.3)+(k*0.68))* (16+mid*0.45) + (0.5-v)*(34+bass*0.6);
+        const n0=Math.max(0,n-1), n1=n, n2=Math.min(bins.length-1,n+1);
+        const vLocal=((bins[n0]||0)+(bins[n1]||0)+(bins[n2]||0))/3/100;
+        // ambient: map ribbon groups to EQ ranges (low/mid/high)
+        const linePos = (k + 0.5) / bands;
+        const linePosInv = 1 - linePos;
+        const eqEnv = linePosInv < 0.34 ? (lowE/100) : (linePosInv < 0.67 ? (midE/100) : (highE/100));
+        const bandEnv = ((bins[Math.floor(((k+1)/(bands+1))*Math.max(1,bins.length-1))]||0)/100);
+        const v = ambientMode ? (0.60*eqEnv + 0.30*(bass/100) + 0.10*bandEnv) : vLocal;
+        const ambientEnergyGain = ambientMode ? (0.6 + energyK*0.75) : 1;
+        const wavAmp = ambientMode ? ((10 + eqEnv*6.0 + bandEnv*1.8) * ambientEnergyGain) : (16 + mid*0.45);
+        const binAmp = ambientMode ? ((6 + eqEnv*4.0 + bandEnv*1.6) * (0.7 + energyK*0.55)) : (34 + bass*0.6);
+        const bandPhase = ambientMode ? (k*1.25 + (linePos<0.34?0.0:(linePos<0.67?1.4:2.8)) + Math.sin(tm*0.09 + k*0.7)*0.22) : (k*0.68);
+        const baseSpeed = ambientMode ? (linePos<0.34?0.62:(linePos<0.67?1.05:1.72)) : 1.3;
+        // Keep speed mostly steady; use activity to increase wave cycles instead.
+        const bandSpeed = baseSpeed;
+        const waveCycleBoost = ambientMode ? (lineBandNorm*0.55 + Math.max(0,lineFastDelta)*1.25 + bandRise*0.85) : 0;
+        const baseWaveMul = ambientMode ? (0.78 + ((bands-1-k)/(bands-1))*0.95) : 1; // top lines = more baseline cycles
+        let energyWaveMul = ambientMode ? Math.min(1.25, 1 + waveCycleBoost*0.35) : 1; // up to 1.25x when energized
+        if (ambientMode) {
+          const prevW = Number.isFinite(auroraLineWaveEnv[k]) ? auroraLineWaveEnv[k] : energyWaveMul;
+          const wAtk = 0.72; // rise quickly
+          const wRel = 0.015; // decay much more slowly
+          const wa = energyWaveMul > prevW ? wAtk : wRel;
+          energyWaveMul = prevW + (energyWaveMul - prevW) * wa;
+          auroraLineWaveEnv[k] = energyWaveMul;
+        }
+        const waveFreq = 0.0105 * baseWaveMul * energyWaveMul;
+        const yRaw=yBase + Math.sin((i*waveFreq)+(tm*bandSpeed)+bandPhase)* wavAmp + (0.5-v)*binAmp;
         const yPrev=pts.length?pts[pts.length-1].y:yRaw;
         // low-pass per-point to reduce jagged motion
-        const y=mix(yPrev,yRaw,0.55);
+        const y=mix(yPrev,yRaw, ambientMode ? 0.24 : 0.55);
         pts.push({x:i,y});
       }
       if(pts.length>1){
@@ -393,10 +644,31 @@
         const lp=pts[pts.length-1];
         x.lineTo(lp.x, lp.y);
 
-        x.lineWidth=2.4+Math.max(0,pulse*2.2-k*0.15);
-        x.strokeStyle=`hsla(${(170+k*18+tm*6 + colorAlive*22 + colorFlash*20)%360},95%,${55+k*2 + colorFlash*10}%,${0.13+0.055*(bands-k)})`;
-        x.shadowBlur=(8 + pulse*10) * (0.7 + glowK*0.35);
-        x.shadowColor=`hsla(${(178+k*16)%360},100%,62%,${0.18 + 0.12*glowK})`;
+        const eqWidthBoost = ambientMode ? (Math.pow(eqLine, 0.8) * 1.2) : (eqLine * 0.9);
+        const dynBoost = ambientMode
+          ? (lineBandNorm * 6.5 + Math.max(0, lineFastDelta) * 18.0 + bandRise * 12.0)
+          : (lineEnv * 2.2);
+        const ambientLW = 0.14 + (eqWidthBoost*0.45) + dynBoost + Math.max(0,pulse*0.32-k*0.06);
+        let lw = ambientMode ? Math.max(0.18, Math.min(18, ambientLW)) : ((2.0 + eqWidthBoost + dynBoost + Math.max(0,pulse*1.8-k*0.12)));
+        if (ambientMode) {
+          if (ambientAtBaseline) {
+            lw = 0.24; // force idle baseline thickness while paused/stopped
+          } else {
+            // Apply strong dynamic thickness per line from band energy/rise (Peppy-like impact)
+            const dynMul = (1 + (lineBandNorm * 2.2) + (Math.max(0, lineFastDelta) * 6.0) + (bandRise * 4.0)) * (0.65 + energyK*0.55);
+            lw = Math.min(24, Math.max(0.8, lw * dynMul));
+          }
+        }
+        x.lineWidth = lw;
+        const laneHue = ambientMode ? (24 + k*44) : 0; // fixed per-line hue lanes
+        const ambientHueBoost = 0;
+        const ambientGlowGate = ambientMode ? Math.max(0, Math.min(1, (glowLevel - 1) / 9)) : 1;
+        const ambientLumBoost = ambientMode ? (ambientAtBaseline ? 0 : ((lineBandNorm*21 + Math.max(0,lineFastDelta)*42.5 + bandRise*35) * (0.6 + energyK*0.65) * ambientGlowGate)) : 0;
+        const ambientSat = ambientMode ? (8 + ambientGlowGate * (48 + lineBandNorm*12)) : 95;
+        const ambientAlpha = ambientMode ? (0.14 + lineBandNorm*0.10 + Math.max(0,lineFastDelta)*0.14 + ambientGlowGate*0.12) : (0.16+0.06*(bands-k));
+        x.strokeStyle=`hsla(${(170+k*18+tm*6 + colorAlive*22 + colorFlash*20 + laneHue + ambientHueBoost)%360},${ambientSat}%,${55+k*2 + colorFlash*10 + ambientLumBoost}%,${ambientAlpha})`;
+        x.shadowBlur=(8 + pulse*10) * (0.7 + glowK*0.35) * (ambientMode ? 0.35 : 1);
+        x.shadowColor=`hsla(${(178+k*16 + ambientHueBoost*0.35)%360},100%,62%,${0.18 + 0.12*glowK})`;
         x.stroke();
       }
     }
@@ -570,14 +842,18 @@
       x.beginPath(); x.arc(x0,y0,rr,0,Math.PI*2); x.fill();
     }
 
-    // central core glow
-    const coreR = 24 + bass*0.42 + pulse*30;
-    const g = x.createRadialGradient(0,0,2,0,0,coreR*2.7);
-    g.addColorStop(0,'rgba(210,245,255,0.8)');
-    g.addColorStop(0.35,`hsla(${hue0},100%,64%,0.26)`);
+    // central core glow + stronger size response (overall + transient)
+    const overall = (lowE*0.45 + midE*0.33 + highE*0.22);
+    const coreBase = 20 + (overall*0.26);
+    const coreBeat = pulse*24 + onset*10;
+    const coreR = Math.max(18, Math.min(92, coreBase + coreBeat));
+    const haloScale = 2.8 + (overall/100)*4.2 + pulse*1.1;
+    const g = x.createRadialGradient(0,0,2,0,0,coreR*haloScale);
+    g.addColorStop(0,'rgba(210,245,255,0.82)');
+    g.addColorStop(0.35,`hsla(${hue0},100%,${64 + colorFlash*10}%,${0.24 + colorFlash*0.12})`);
     g.addColorStop(1,'rgba(0,0,0,0)');
     x.fillStyle = g;
-    x.beginPath(); x.arc(0,0,coreR*2.0,0,Math.PI*2); x.fill();
+    x.beginPath(); x.arc(0,0,coreR*(2.2 + (overall/100)*2.0),0,Math.PI*2); x.fill();
 
     x.restore();
   }
