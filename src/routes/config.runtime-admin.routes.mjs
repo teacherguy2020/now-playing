@@ -233,6 +233,11 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
   app.post('/peppy/last-profile', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
+      const visIn = (req.body && typeof req.body.visualizer === 'object') ? req.body.visualizer : {};
+      const visPreset = String(visIn?.preset || '').trim().toLowerCase();
+      const visEnergy = Number(visIn?.energy);
+      const visMotion = Number(visIn?.motion);
+      const visGlow = Number(visIn?.glow);
       const incoming = {
         url: String(req.body?.url || '').trim(),
         skin: String(req.body?.skin || '').trim(),
@@ -252,6 +257,12 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         normalization: Number(req.body?.normalization),
         displayMode: String(req.body?.displayMode || '').trim(),
         playerSize: String(req.body?.playerSize || '').trim(),
+        visualizer: {
+          preset: visPreset || '',
+          energy: Number.isFinite(visEnergy) ? Math.max(1, Math.min(10, visEnergy)) : NaN,
+          motion: Number.isFinite(visMotion) ? Math.max(1, Math.min(10, visMotion)) : NaN,
+          glow: Number.isFinite(visGlow) ? Math.max(1, Math.min(10, visGlow)) : NaN,
+        },
       };
       let prev = {};
       try {
@@ -277,6 +288,12 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         normalization: Number.isFinite(incoming.normalization) && incoming.normalization > 0 ? incoming.normalization : (Number(prev?.normalization) > 0 ? Number(prev.normalization) : 100),
         displayMode: incoming.displayMode || String(prev?.displayMode || '').trim() || 'peppy',
         playerSize: incoming.playerSize || String(prev?.playerSize || '').trim() || '1280x400',
+        visualizer: {
+          preset: incoming.visualizer.preset || String(prev?.visualizer?.preset || '').trim() || 'classic',
+          energy: Number.isFinite(incoming.visualizer.energy) ? incoming.visualizer.energy : (Number.isFinite(Number(prev?.visualizer?.energy)) ? Math.max(1, Math.min(10, Number(prev.visualizer.energy))) : 6),
+          motion: Number.isFinite(incoming.visualizer.motion) ? incoming.visualizer.motion : (Number.isFinite(Number(prev?.visualizer?.motion)) ? Math.max(1, Math.min(10, Number(prev.visualizer.motion))) : 6),
+          glow: Number.isFinite(incoming.visualizer.glow) ? incoming.visualizer.glow : (Number.isFinite(Number(prev?.visualizer?.glow)) ? Math.max(1, Math.min(10, Number(prev.visualizer.glow))) : 6),
+        },
         ts: Date.now(),
       };
       await fs.mkdir(path.dirname(peppyLastPushPath), { recursive: true });
@@ -867,7 +884,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const sshUser = String(cfg?.moode?.sshUser || MOODE_SSH_USER || 'moode').trim();
       if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
 
-      const script = `python3 - <<'PY'\nfrom pathlib import Path\np=Path('/home/moode/.xinitrc')\nurl=${shQuoteArg(rawUrl)}\ntry:\n    s=p.read_text()\n    import re\n    s2=re.sub(r'--app="[^"]*"', f'--app="{url}"', s)\n    if s2==s and '--app=' in s:\n        s2=s.replace('--app=', f'--app="{url}"')\n    p.write_text(s2)\nexcept Exception:\n    pass\nprint('xinitrc updated')\nPY\n# Restart local display (authoritative)\nsudo -n systemctl restart localdisplay.service >/tmp/chromium-switch.log 2>&1 || true\nsleep 2\ntail -n 20 /tmp/chromium-switch.log || true`;
+      const script = `python3 - <<'PY'\nfrom pathlib import Path\nimport re\np=Path('/home/moode/.xinitrc')\nurl=${shQuoteArg(rawUrl)}\ntry:\n    s=p.read_text()\n    # Normalize any malformed/duplicated --app token to exactly one URL.\n    # Handles forms like: --app="u""u" ... and unquoted --app=u\n    s2=re.sub(r'--app="[^"]*"(?:"[^"]*")+', f'--app="{url}"', s)\n    s2=re.sub(r'--app="[^"]*"', f'--app="{url}"', s2)\n    s2=re.sub(r'--app=[^\\s\\\\]+', f'--app="{url}"', s2)\n    p.write_text(s2)\nexcept Exception:\n    pass\nprint('xinitrc updated')\nPY\n# Restart local display (authoritative)\nsudo -n systemctl restart localdisplay.service >/tmp/chromium-switch.log 2>&1 || true\nsleep 2\ntail -n 20 /tmp/chromium-switch.log || true`;
       const { stdout, stderr } = await sshBashLc({ user: sshUser, host: sshHost, script, timeoutMs: 18000 });
       const verifyScript = `APP_LINE=$(grep -E -- '--app=' /home/moode/.xinitrc | tail -n 1 || true); RUN_LINE=$(pgrep -af '/usr/lib/chromium-browser/chromium-browser .*--app=' | grep -F -- ${shQuoteArg(rawUrl)} | head -n 1 || true); echo "APP_LINE:$APP_LINE"; echo "RUN_LINE:$RUN_LINE"`;
       const v = await sshBashLc({ user: sshUser, host: sshHost, script: verifyScript, timeoutMs: 10000 }).catch(() => ({ stdout: '', stderr: '' }));
