@@ -412,7 +412,7 @@
   pushMoodeBtn?.addEventListener('click', pushToMoode);
   let bins=Array.from({length:30},()=>0),binsFast=Array.from({length:30},()=>0),peaks=Array.from({length:30},()=>0),bass=0,mid=0,treb=0,energy=0,pulse=0;
   let lowE=0,midE=0,highE=0,onset=0,spectralFlux=0,rms=0,agc=1;
-  let loudnessEnv=0, monoLevel=0, monoEnv=0;
+  let loudnessEnv=0, monoLevel=0, monoEnv=0, monoPrev=0, loudVar=0, noveltyEnv=0;
   const spectrumSampleRate = Math.max(8000, Math.min(192000, Number(qp.get('sr') || 44100) || 44100));
   const spectrumNyquist = spectrumSampleRate / 2;
   // From TOP line to BOTTOM line for ambient mapping
@@ -527,12 +527,14 @@
       const fallback = (Number.isFinite(left) && Number.isFinite(right)) ? ((left+right)/2) : 0;
       monoLevel = Math.max(0, Math.min(100, Number.isFinite(mono) ? mono : fallback));
       monoEnv = mix(monoEnv, monoLevel, 0.12);
+      loudVar = mix(loudVar, Math.abs(monoEnv - monoPrev), 0.20);
+      monoPrev = monoEnv;
     } catch {}
     setTimeout(pollMeter, 90);
   }
   pollSpectrum(); pollTrack(); pollMeter();
 
-  const particles=Array.from({length:220},()=>({x:Math.random(),y:Math.random(),z:Math.random(),vx:(Math.random()-0.5)*0.001,vy:(Math.random()-0.5)*0.001,cdx:0,cdy:0}));
+  const particles=Array.from({length:220},()=>({x:Math.random(),y:Math.random(),z:Math.random(),vx:(Math.random()-0.5)*0.001,vy:(Math.random()-0.5)*0.001,cdx:0,cdy:0,ct:0,cr:0,ca:-1,cp:0,co:0}));
   let transportState='unknown';
   const aeonSeeds=Array.from({length:5},(_,i)=>({
     p:Math.random()*Math.PI*2,
@@ -555,6 +557,10 @@
   let particleChaos=0;
   let particleSilenceEnv=0;
   let particlePanEnv=0;
+  let chaosStreakMs=0;
+  let chaosLastMs=0;
+  let vortexDwellMs=0;
+  let vortexCooldownMs=0;
   let __moireToggle = 0;
 
   function bgAurora(){
@@ -721,16 +727,16 @@
     const hyperRaw = Math.max(0, pulse - 1.35) + Math.max(0, onset - 1.05) + Math.max(0, (energy-84)/26);
     // Chaos driven by sustained VU mono loudness envelope (not contrast spikes).
     const loud = monoEnv || loudnessEnv;
-    const chaosOnThresh = 62;  // start threshold (VU mono envelope)
-    const chaosOffThresh = 54; // stop threshold (hysteresis)
+    const chaosOnThresh = 82 - (energyLevel - 1) * 3.2;
+    const chaosOffThresh = chaosOnThresh - 12;
     const chaosGate = (loud >= chaosOnThresh) ? 1 : ((loud <= chaosOffThresh) ? 0 : (particleChaos > 0.02 ? 1 : 0));
     const chaosRaw = chaosGate * Math.max(0, (loud - chaosOffThresh) / 18);
     // Ease-in drive envelope so twist initiation is gentle, not abrupt.
-    const dAtk = 0.06;
-    const dRel = 0.02;
+    const dAtk = 0.035;
+    const dRel = 0.010;
     const dA = hyperRaw > particleSpinDrive ? dAtk : dRel;
     particleSpinDrive = mix(particleSpinDrive, hyperRaw, dA);
-    const cAtk = 0.10, cRel = 0.008;
+    const cAtk = 0.06, cRel = 0.004;
     particleChaos = mix(particleChaos, chaosRaw, chaosRaw > particleChaos ? cAtk : cRel);
     // Hard loudness clamp: do not allow chaos to persist in truly soft moments.
     if (loud < 24) particleChaos *= 0.45;
@@ -738,10 +744,41 @@
     const spectralBias = clamp((highE - lowE) / 35, -1, 1); // highs vs lows decide spin direction
     if (Math.abs(spectralBias) > 0.12) particleSpinDir = spectralBias >= 0 ? 1 : -1;
     const targetSpin = Math.max(-0.6109, Math.min(0.6109, particleSpinDir * Math.sin(tm*1.25) * particleSpinDrive * 1.10));
-    const spinAtk = 0.06;
-    const spinRel = 0.010; // extra gradual settle
+    const spinAtk = 0.035;
+    const spinRel = 0.004; // very gradual settle
     const spinA = Math.abs(targetSpin) > Math.abs(particleSpin) ? spinAtk : spinRel;
     particleSpin = mix(particleSpin, targetSpin, spinA);
+    // Chaos streak timer (continuous chaos behavior tiers)
+    const nowMs = performance.now();
+    const dtMs = chaosLastMs ? Math.min(250, Math.max(0, nowMs - chaosLastMs)) : 16;
+    chaosLastMs = nowMs;
+    const chaosActive = chaosGate > 0.5;
+    if (chaosActive) chaosStreakMs += dtMs;
+    else chaosStreakMs = Math.max(0, chaosStreakMs - dtMs * 6.0);
+
+    // Novelty-driven tiering (better for compressed genres than pure time).
+    const lvNorm = clamp(loudVar / 4.5, 0, 1.6);
+    const sfNorm = clamp(spectralFlux / 6.0, 0, 1.6);
+    const onNorm = clamp(onset / 1.8, 0, 1.8);
+    const balNorm = clamp(Math.abs(highE - lowE) / 32, 0, 1.4);
+    const loudSustain = clamp((loud - 68) / 16, 0, 1.4); // helps compressed loud genres escalate
+    const noveltyRaw = (lvNorm * 0.28) + (sfNorm * 0.24) + (onNorm * 0.20) + (balNorm * 0.08) + (loudSustain * 0.32);
+    const nAtk = 0.18, nRel = 0.05;
+    noveltyEnv = mix(noveltyEnv, noveltyRaw, noveltyRaw > noveltyEnv ? nAtk : nRel);
+
+    // Energy affects how easy it is to escalate.
+    const eN = (energyLevel - 1) / 9;
+    const redThresh = 0.78 - eN * 0.34;
+    const vortexThresh = 0.98 - eN * 0.42;
+
+    // Fallback for compressed/loud genres: sustained loudness can escalate, but only after dwell.
+    const loudRed = loud >= (78 - eN * 4);
+    const loudVortex = loud >= (86 - eN * 5);
+    const loudRedReady = loudRed && chaosStreakMs >= 6000;
+    const loudVortexReady = loudVortex && chaosStreakMs >= 16000;
+
+    const chaosTierRed = chaosActive && (noveltyEnv >= redThresh || loudRedReady);
+    const chaosTierVortex = chaosActive && (noveltyEnv >= vortexThresh || loudVortexReady);
     // keep camera stable; apply twist to particle coordinates instead
 
     // Classic: map particle color lanes to spectrum ranges (same 7-band scaffold as ambient).
@@ -761,7 +798,7 @@
     for(let idx=0; idx<particles.length; idx++){
       const p = particles[idx];
       p.z-=speed + pulse*0.01;
-      if(p.z<=0.02){p.x=Math.random();p.y=Math.random();p.z=1; p.cdx=0; p.cdy=0;}
+      if(p.z<=0.02){p.x=Math.random();p.y=Math.random();p.z=1; p.cdx=0; p.cdy=0; p.ct=0; p.cr=0; p.ca=-1; p.cp=0; p.co=0;}
       p.x=(p.x+p.vx+1)%1; p.y=(p.y+p.vy+1)%1;
       if (particleChaos > 0.04) {
         if (!p.cdx && !p.cdy) {
@@ -796,7 +833,7 @@
       }
 
       // Strong per-dot chaos drift (persistent random direction per particle lifetime)
-      if (particleChaos > 0.03) {
+      if (particleChaos > 0.03 && !chaosTierVortex) {
         if (!p.cdx && !p.cdy) {
           const a = Math.random() * Math.PI * 2;
           p.cdx = Math.cos(a);
@@ -805,6 +842,54 @@
         const chaosDrift = Math.min(1.2, particleChaos * 1.1) * (0.020 + (1 - p.z) * 0.040);
         sx += p.cdx * chaosDrift;
         sy += p.cdy * chaosDrift;
+      }
+
+      // Tier-2 chaos: edge-to-center vortex rails (leader/follower trains).
+      if (chaosTierVortex) {
+        // right=high, left=low mapping already used below for lane
+        const laneTmp = Math.max(0, Math.min(6, Math.floor((1 - Math.max(0, Math.min(0.999, sx))) * 7)));
+        const bTmp = Number(bandVals[laneTmp] || 0);
+        const g = laneTmp <= 1 ? 2 : (laneTmp <= 3 ? 1 : 0); // 2=high,1=mid,0=low
+
+        const arms = (g === 2) ? 8 : (g === 1 ? 7 : 6);
+        if (p.ca < 0) p.ca = Math.floor(Math.random() * arms);
+        if (!p.cp) p.cp = Math.random() * Math.PI * 2;
+        if (!p.co) p.co = Math.random(); // follower offset along rail
+
+        // Spawn near edges, then travel inward to center and vanish.
+        if (!p.cr) p.cr = 0.42 + Math.random() * 0.10;
+
+        const armSep = (Math.PI * 2) / arms;
+        const chaosAmt = Math.min(1.5, particleChaos * 1.2);
+
+        const inwardBase = (g === 2) ? 0.0028 : (g === 1 ? 0.0023 : 0.0019);
+        const inward = (inwardBase + (1 - p.z) * inwardBase * 1.5) * (1.0 + chaosAmt * 0.7);
+        p.cr -= inward;
+        if (p.cr < 0.040) {
+          // disappear at center, then respawn near edge on a rail
+          p.cp = Math.random() * Math.PI * 2;
+          p.ca = Math.floor(Math.random() * arms);
+          p.co = Math.random();
+          p.cr = 0.42 + Math.random() * 0.10;
+          continue;
+        }
+
+        // Leader/follower: one leader phase per rail/group, particles trail via persistent offset.
+        const angBase = (g === 2) ? 0.052 : (g === 1 ? 0.040 : 0.030);
+        const leaderPhase = tm * (angBase * 20 + chaosAmt * 0.22 + bTmp * 0.14) + p.cp;
+        const trailSpan = 2.6;
+        const laneTheta = p.ca * armSep + leaderPhase - p.co * trailSpan;
+
+        const curlK = (g === 2) ? 3.8 : (g === 1 ? 3.3 : 2.9);
+        const spiralCurl = Math.log(1 + p.cr * 30) * curlK;
+        const theta = laneTheta + spiralCurl;
+
+        const squash = (g === 2) ? 0.64 : (g === 1 ? 0.60 : 0.56);
+        const vx = 0.5 + Math.cos(theta) * p.cr;
+        const vy = 0.5 + Math.sin(theta) * (p.cr * squash);
+
+        sx = vx;
+        sy = vy;
       }
       if (silence > 0.001) {
         // As silence approaches, fling particles away from center in unique directions.
@@ -820,11 +905,6 @@
       const panPx = panPxBase * (0.55 + (1-p.z)*0.9);
       const px=sx*W + panPx, py=sy*H;
       if(px<0||py<0||px>W||py>H) continue;
-      // Invisible center exclusion zone (space-travel void)
-      const cx0 = W*0.5, cy0 = H*0.5;
-      const voidR = 100;
-      if (((px-cx0)*(px-cx0) + (py-cy0)*(py-cy0)) < (voidR*voidR)) continue;
-
       // Organize band lanes spatially right -> left (high -> low)
       const xNorm = Math.max(0, Math.min(0.999, px / Math.max(1, W)));
       const lane = Math.max(0, Math.min(6, Math.floor((1 - xNorm) * 7))); // right=0 (high), left=6 (low)
@@ -836,8 +916,13 @@
       if (Math.random() > drawProb) continue;
 
       const bandSizeBoost = b * 2.6; // stronger band -> bigger dots in that lane
-      const rRaw=2 + bandSizeBoost + (1-p.z)*(3.2 + tailFromSpeed*1.8 + Math.min(1.6, particleChaos*1.2)) + pulse*3;
-      const r=Math.min(9, Math.max(1.6, rRaw));
+      let rRaw=2 + bandSizeBoost + (1-p.z)*(3.2 + tailFromSpeed*1.8 + Math.min(1.6, particleChaos*1.2)) + pulse*3;
+      if (chaosTierVortex) {
+        // In vortex mode, dots shrink as they approach center.
+        const centerScale = Math.max(0.35, Math.min(1.0, (p.cr || 0.06) / 0.42));
+        rRaw *= centerScale;
+      }
+      const r=Math.min(9, Math.max(0.8, rRaw));
       const laneHue = 20 + lane*46;
       const hue=(laneHue + t*8 + b*120 + colorFlash*20)%360;
       const chaosPop = Math.min(1.0, particleChaos * 0.75);
@@ -845,7 +930,11 @@
       const fade = 1 - (silence * 0.92);
       const lum=(52 + b*26 + colorFlash*8 + chaosPop*10) * (0.45 + fade*0.55);
       const alpha=((0.10 + b*0.18) + (1-p.z)*(0.22 + tailFromSpeed*0.34 + chaosTail*0.22) + chaosPop*0.10) * fade;
-      x.fillStyle = `hsla(${hue},95%,${lum}%,${alpha})`;
+      x.fillStyle = chaosTierVortex
+        ? `rgba(255,0,0,${Math.max(0.14, alpha)})`
+        : (chaosTierRed
+          ? `rgba(255,140,0,${Math.max(0.14, alpha)})`
+          : `hsla(${hue},95%,${lum}%,${alpha})`);
       x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill();
       if (chaosPop > 0.08) {
         const split = (0.8 + chaosPop*4.2) * (0.6 + (1-p.z));
@@ -856,7 +945,11 @@
         }
         const offX = p.cdx * split;
         const offY = p.cdy * split;
-        x.fillStyle = `hsla(${(hue+18)%360},95%,${Math.min(92, lum+6)}%,${Math.max(0.08, alpha*0.8)})`;
+        x.fillStyle = chaosTierVortex
+          ? `rgba(255,0,0,${Math.max(0.10, alpha*0.85)})`
+          : (chaosTierRed
+            ? `rgba(255,140,0,${Math.max(0.10, alpha*0.85)})`
+            : `hsla(${(hue+18)%360},95%,${Math.min(92, lum+6)}%,${Math.max(0.08, alpha*0.8)})`);
         x.beginPath(); x.arc(px+offX,py+offY,Math.max(1.2, r*0.78),0,Math.PI*2); x.fill();
       }
     }
