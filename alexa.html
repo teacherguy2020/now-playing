@@ -73,19 +73,14 @@
 <body>
   <div class="wrap">
     <div class="card">
-      <div class="row">
-        <div>
-          <label><input id="alexaEnabled" type="checkbox" /> Enable Alexa integration</label>
-        </div>
-        <div style="min-width:360px;flex:1 1 420px;">
-          <label for="publicDomain">Public domain</label>
-          <input id="publicDomain" type="text" style="width:100%" placeholder="moode.example.com" />
-        </div>
-        <div>
-          <button id="saveSettingsBtn" type="button">Save settings</button>
-        </div>
+      <div class="muted">
+        Alexa enable + public domain are managed on the <strong>Config</strong> page.
+        This page focuses on corrections and recently-heard review.
       </div>
-      <div class="muted" style="margin-top:8px;">These save into <code>config.alexa</code> in your runtime config JSON.</div>
+      <!-- Keep hidden fields for script compatibility; source of truth remains Config. -->
+      <input id="alexaEnabled" type="checkbox" hidden />
+      <input id="publicDomain" type="text" hidden />
+      <button id="saveSettingsBtn" type="button" hidden aria-hidden="true" tabindex="-1">Save settings</button>
     </div>
 
     <div class="card">

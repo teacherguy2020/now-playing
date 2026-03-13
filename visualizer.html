@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Now Playing Visualizer</title>
   <style>
-    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#02040a;color:#dbe8ff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#02040a;color:#aab7cc;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
     canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
     body.designer{background:#000 !important}
     body.designer canvas{inset:auto;top:56px;left:50%;width:100vw;height:100vh;transform:translateX(-50%) scale(.45);transform-origin:top center;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
-    .hud{position:fixed;left:12px;right:12px;bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.6);mix-blend-mode:screen}
+    .hud{position:fixed;left:12px;right:12px;bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.55);mix-blend-mode:screen;opacity:.78}
     .t{font-size:20px;font-weight:700;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .a{font-size:13px;opacity:.86;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .m{font-size:12px;opacity:.72;text-align:right}
@@ -98,7 +98,7 @@
   if (presetKey === 'jelly') presetKey = 'aeon';
   let preset=PRESETS[presetKey]||PRESETS.classic;
   const PRESET_LEVELS={
-    classic:{energy:10,motion:10,glow:10},
+    classic:{energy:5,motion:5,glow:5},
     aeon:{energy:7,motion:6,glow:8},
     fireworks:{energy:8,motion:7,glow:7},
     sphere:{energy:6,motion:5,glow:8},
@@ -557,6 +557,7 @@
   let particleChaos=0;
   let particleSilenceEnv=0;
   let particlePanEnv=0;
+  let panBiasEnv=0;
   let chaosStreakMs=0;
   let chaosLastMs=0;
   let vortexDwellMs=0;
@@ -724,7 +725,12 @@
     const sA = silenceTarget > particleSilenceEnv ? sAtk : sRel;
     particleSilenceEnv = mix(particleSilenceEnv, silenceTarget, sA);
     const silence = particleSilenceEnv;
-    const hyperRaw = Math.max(0, pulse - 1.35) + Math.max(0, onset - 1.05) + Math.max(0, (energy-84)/26);
+    const motionTwistFloor = ((motionLevel - 1) / 9) * 0.22;
+    const hyperRaw =
+      motionTwistFloor +
+      Math.max(0, pulse - 1.18) +
+      Math.max(0, onset - 0.92) +
+      Math.max(0, (energy - 80) / 24);
     // Chaos driven by sustained VU mono loudness envelope (not contrast spikes).
     const loud = monoEnv || loudnessEnv;
     const chaosOnThresh = 82 - (energyLevel - 1) * 3.2;
@@ -732,7 +738,7 @@
     const chaosGate = (loud >= chaosOnThresh) ? 1 : ((loud <= chaosOffThresh) ? 0 : (particleChaos > 0.02 ? 1 : 0));
     const chaosRaw = chaosGate * Math.max(0, (loud - chaosOffThresh) / 18);
     // Ease-in drive envelope so twist initiation is gentle, not abrupt.
-    const dAtk = 0.035;
+    const dAtk = 0.055;
     const dRel = 0.010;
     const dA = hyperRaw > particleSpinDrive ? dAtk : dRel;
     particleSpinDrive = mix(particleSpinDrive, hyperRaw, dA);
@@ -789,11 +795,15 @@
     });
 
     // Spectral pan: low-heavy drifts left, high-heavy drifts right.
-    const spectralPanRaw = clamp((highE - lowE) / 24, -1, 1);
+    // Use normalized contrast + slow bias cancellation so it doesn't sit left all the time.
+    const denom = Math.max(20, (highE + lowE) * 0.9);
+    const spectralPanRaw = clamp((highE - lowE) / denom, -1, 1);
+    panBiasEnv = mix(panBiasEnv, spectralPanRaw, 0.01); // very slow long-term center tracking
+    const spectralPanBalanced = clamp((spectralPanRaw - panBiasEnv * 0.9) * 1.35, -1, 1);
     const panAtk = 0.22, panRel = 0.08;
-    const panA = Math.abs(spectralPanRaw) > Math.abs(particlePanEnv) ? panAtk : panRel;
-    particlePanEnv = mix(particlePanEnv, spectralPanRaw, panA);
-    const panPxBase = particlePanEnv * (W * 0.22); // global visible drift
+    const panA = Math.abs(spectralPanBalanced) > Math.abs(particlePanEnv) ? panAtk : panRel;
+    particlePanEnv = mix(particlePanEnv, spectralPanBalanced, panA);
+    const panPxBase = particlePanEnv * (W * 0.33); // global visible drift
 
     for(let idx=0; idx<particles.length; idx++){
       const p = particles[idx];
