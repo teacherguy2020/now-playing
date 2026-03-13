@@ -908,8 +908,8 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
 
       const hostHeader = String(req.headers?.host || '').trim();
       const hostNoPort = hostHeader.includes(':') ? hostHeader.split(':')[0] : hostHeader;
-      const apiHost = String(cfg?.apiNodeIp || hostNoPort || req.hostname || '').trim();
-      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config.' });
+      const apiHost = String(cfg?.apiHost || cfg?.apiNodeIp || hostNoPort || req.hostname || '').trim();
+      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiHost (or apiNodeIp) in Config.' });
       const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
       const expectedTargetUrl = `http://${apiHost}:${apiPort}/peppy/vumeter`;
       const expectedUpdatePeriod = '0.033';
@@ -939,8 +939,8 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
 
       const hostHeader = String(req.headers?.host || '').trim();
       const hostNoPort = hostHeader.includes(':') ? hostHeader.split(':')[0] : hostHeader;
-      const apiHost = String(cfg?.apiNodeIp || req.body?.apiHost || hostNoPort || req.hostname || '').trim();
-      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config or pass apiHost.' });
+      const apiHost = String(req.body?.apiHost || cfg?.apiHost || cfg?.apiNodeIp || hostNoPort || req.hostname || '').trim();
+      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiHost (or apiNodeIp) in Config or pass apiHost.' });
       const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
       const updatePeriod = String(req.body?.updatePeriod || '0.033').trim() || '0.033';
       const targetUrl = `http://${apiHost}:${apiPort}/peppy/vumeter`;
@@ -965,8 +965,8 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
 
       const hostHeader = String(req.headers?.host || '').trim();
       const hostNoPort = hostHeader.includes(':') ? hostHeader.split(':')[0] : hostHeader;
-      const apiHost = String(cfg?.apiNodeIp || hostNoPort || req.hostname || '').trim();
-      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config.' });
+      const apiHost = String(cfg?.apiHost || cfg?.apiNodeIp || hostNoPort || req.hostname || '').trim();
+      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiHost (or apiNodeIp) in Config.' });
       const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
       const expectedTargetUrl = `http://${apiHost}:${apiPort}/peppy/spectrum`;
       const expectedUpdatePeriod = '0.05';
@@ -1022,8 +1022,8 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
 
       const hostHeader = String(req.headers?.host || '').trim();
       const hostNoPort = hostHeader.includes(':') ? hostHeader.split(':')[0] : hostHeader;
-      const apiHost = String(cfg?.apiNodeIp || req.body?.apiHost || hostNoPort || req.hostname || '').trim();
-      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config or pass apiHost.' });
+      const apiHost = String(req.body?.apiHost || cfg?.apiHost || cfg?.apiNodeIp || hostNoPort || req.hostname || '').trim();
+      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiHost (or apiNodeIp) in Config or pass apiHost.' });
       const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
       const updatePeriod = String(req.body?.updatePeriod || '0.05').trim() || '0.05';
       const targetUrl = `http://${apiHost}:${apiPort}/peppy/spectrum`;
@@ -1048,8 +1048,8 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
 
       const hostHeader = String(req.headers?.host || '').trim();
       const hostNoPort = hostHeader.includes(':') ? hostHeader.split(':')[0] : hostHeader;
-      const apiHost = String(cfg?.apiNodeIp || req.body?.apiHost || hostNoPort || req.hostname || '').trim();
-      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiNodeIp in Config or pass apiHost.' });
+      const apiHost = String(req.body?.apiHost || cfg?.apiHost || cfg?.apiNodeIp || hostNoPort || req.hostname || '').trim();
+      if (!apiHost) return res.status(400).json({ ok: false, error: 'Could not determine API host. Set apiHost (or apiNodeIp) in Config or pass apiHost.' });
       const apiPort = Number(cfg?.ports?.api || 3101) || 3101;
       const targetUrl = `http://${apiHost}:${apiPort}/peppy/spectrum`;
       const updatePeriod = String(req.body?.updatePeriod || '0.05').trim() || '0.05';

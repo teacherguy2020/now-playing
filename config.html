@@ -171,8 +171,8 @@
                 <div class="cfgHint" style="margin-bottom:8px;"><strong>Step 1:</strong> Fill this card, then click <strong>Check SSH + Paths</strong> to unlock the other modules.</div>
                 <div class="cfgRow" style="grid-template-columns: fit-content(220px) fit-content(130px) fit-content(130px); align-items:start; justify-content:start;">
                   <div class="cfgField">
-                    <label for="apiNodeIp">IP of Webserver and API host <span id="apiNodeIpLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
-                    <input id="apiNodeIp" class="ipField" type="text" placeholder="ex. 10.0.0.233" />
+                    <label for="apiNodeIp">API host (hostname or IP) <span id="apiNodeIpLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
+                    <input id="apiNodeIp" class="ipField" type="text" placeholder="ex. nowplaying.local or 10.0.0.4" />
                     <div class="cfgHint" id="apiNodeIpHint"></div>
                   </div>
                   <div class="cfgField narrow">
@@ -184,7 +184,7 @@
                     <input id="uiPort" type="number" min="1" max="65535" placeholder="ex. 8101" />
                   </div>
                 </div>
-                <div class="cfgHint">Defaults are API <code>3101</code>, UI <code>8101</code>, MPD port <code>6600</code>, and music library root <code>/var/lib/mpd/music</code>. Host fields are auto-prefilled conservatively and never overwrite saved values.</div>
+                <div class="cfgHint">Defaults are API <code>3101</code>, UI <code>8101</code>, MPD port <code>6600</code>, and music library root <code>/var/lib/mpd/music</code>. API host can be hostname (recommended: <code>nowplaying.local</code>) or IP. Host fields are auto-prefilled conservatively and never overwrite saved values.</div>
                 <div class="cfgRow" style="grid-template-columns: fit-content(220px) fit-content(130px) fit-content(220px) fit-content(130px); align-items:start; justify-content:start;">
                   <div class="cfgField">
                     <label for="mpdHost">MPD host <span id="mpdHostLight" title="MPD host verification" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span> <span id="mpdHostVerifyText" class="cfgHint" style="display:inline;color:#9fb3c8;">not verified</span></label>
@@ -465,7 +465,23 @@ setMpdHostLight('neutral', 'not verified');
 
 function log(x){ out.textContent = typeof x === 'string' ? x : JSON.stringify(x, null, 2); }
 
-function applyInitialNetworkPrefills(){
+async function probeApiHostReachable(host, port = 3101){
+  const h = String(host || '').trim();
+  if (!h) return false;
+  const ctl = new AbortController();
+  const t = setTimeout(() => { try { ctl.abort(); } catch {} }, 1800);
+  try {
+    // no-cors keeps this usable even when host differs from current origin
+    await fetch(`http://${h}:${Number(port)||3101}/now-playing`, { method:'GET', mode:'no-cors', cache:'no-store', signal: ctl.signal });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function applyInitialNetworkPrefills(){
   const host = location.hostname || '127.0.0.1';
 
   const apiPortEl = document.getElementById('apiPort');
@@ -481,12 +497,20 @@ function applyInitialNetworkPrefills(){
 
   if (apiPortEl && !String(apiPortEl.value || '').trim()) apiPortEl.value = '3101';
   if (uiPortEl && !String(uiPortEl.value || '').trim()) uiPortEl.value = '8101';
-  if (apiNodeIpEl && !String(apiNodeIpEl.value || '').trim()) apiNodeIpEl.value = host;
+  if (apiNodeIpEl && !String(apiNodeIpEl.value || '').trim()) {
+    const pref = (await probeApiHostReachable('nowplaying.local', Number(apiPortEl?.value || 3101))) ? 'nowplaying.local' : host;
+    apiNodeIpEl.value = pref;
+  }
   if (mpdHostEl && !String(mpdHostEl.value || '').trim()) mpdHostEl.value = '';
   if (mpdPortEl && !String(mpdPortEl.value || '').trim()) mpdPortEl.value = '6600';
   if (musicRootEl && !String(musicRootEl.value || '').trim()) musicRootEl.value = '/var/lib/mpd/music';
 
-  if (apiNodeIpHint) apiNodeIpHint.textContent = `Auto-defaulted from page host: ${host}`;
+  if (apiNodeIpHint) {
+    const chosen = String(apiNodeIpEl?.value || host);
+    apiNodeIpHint.textContent = (chosen === 'nowplaying.local')
+      ? 'Auto-defaulted to mDNS host: nowplaying.local'
+      : `Auto-defaulted from page host: ${chosen}`;
+  }
   if (mpdHostHint) mpdHostHint.textContent = 'Enter moOde player IP/hostname (example: 10.0.0.254).';
   if (mpdPortHint) mpdPortHint.textContent = 'Default is 6600 (current)';
 }
@@ -1036,12 +1060,21 @@ async function loadCfg(){
   document.getElementById('uiPort').value = Number(c.ports?.ui || full.ports?.ui || 8101);
   loadedNodes = Array.isArray(full.nodes) ? full.nodes.slice() : [];
   const node0 = loadedNodes.length ? loadedNodes[0] : {};
-  const configuredApiIp = String(node0.ip || '').trim();
-  const apiNodeAuto = (!configuredApiIp || configuredApiIp === '10.0.0.233');
-  const apiNodePrefill = apiNodeAuto ? host : configuredApiIp;
+  const configuredApiHost = String(full.apiHost || c.apiHost || node0.ip || '').trim();
+  const apiNodeAuto = (!configuredApiHost || configuredApiHost === '10.0.0.233');
+  let apiNodePrefill = configuredApiHost;
+  if (apiNodeAuto) {
+    const prefersMdns = await probeApiHostReachable('nowplaying.local', apiPortHint);
+    apiNodePrefill = prefersMdns ? 'nowplaying.local' : host;
+  }
   document.getElementById('apiNodeIp').value = apiNodePrefill;
   const apiNodeIpHint = document.getElementById('apiNodeIpHint');
-  if (apiNodeIpHint) apiNodeIpHint.textContent = apiNodeAuto ? `Auto-defaulted from page host: ${apiNodePrefill}` : `Loaded from config: ${apiNodePrefill}`;
+  if (apiNodeIpHint) {
+    if (!apiNodeAuto) apiNodeIpHint.textContent = `Loaded from config: ${apiNodePrefill}`;
+    else apiNodeIpHint.textContent = (apiNodePrefill === 'nowplaying.local')
+      ? 'Auto-defaulted to mDNS host: nowplaying.local'
+      : `Auto-defaulted from page host: ${apiNodePrefill}`;
+  }
 
   const configuredMpdHost = String(full.mpd?.host || c.mpd?.host || '').trim();
   const configuredSshHost = String(full.moode?.sshHost || c.moode?.sshHost || '').trim();
@@ -1204,6 +1237,8 @@ async function saveCfg(){
         moodeDisplayTakeover: document.getElementById('featureMoodeDisplayTakeover').checked,
       },
       trackKey: document.getElementById('configTrackKey').value.trim(),
+      apiHost: nodeIp,
+      apiNodeIp: nodeIp,
       ports: {
         api: Number(document.getElementById('apiPort').value || 3101),
         ui: Number(document.getElementById('uiPort').value || 8101),
