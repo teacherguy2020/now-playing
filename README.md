@@ -49,6 +49,10 @@ Set one of these URLs:
 - **Player / Peppy router (recommended):** `http://<WEB_HOST>:8101/display.html?kiosk=1`
 - **Kiosk runtime directly:** `http://<WEB_HOST>:8101/kiosk.html`
 
+Typical mDNS-friendly setup:
+
+- `http://nowplaying.local:8101/display.html?kiosk=1`
+
 Then use the app push actions:
 
 - **Push Player to moOde** → switches renderer to Player

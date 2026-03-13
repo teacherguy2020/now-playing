@@ -74,9 +74,9 @@ if [ "$state" = "play" ]; then
 fi
 ```
 
-## Live Environment Details
+## Live Environment Details (example)
 - moOde host: `moode@10.0.0.254`
-- External UI host: `10.0.0.233`
+- External UI host: `nowplaying.local` (or your API host/IP)
 - Display page: `:8101/display.html`
 - Playback API: `:3101/now-playing`
 

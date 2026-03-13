@@ -2993,12 +2993,14 @@
 
       async function pollMeter(){
         try {
-          const [rVu, rSpec] = await Promise.all([
+          const [rVu, rSpec, rNow] = await Promise.all([
             fetch(`${api}/peppy/vumeter`, { cache:'no-store' }).catch(() => null),
             fetch(`${api}/peppy/spectrum`, { cache:'no-store' }).catch(() => null),
+            fetch(`${api}/now-playing`, { cache:'no-store' }).catch(() => null),
           ]);
           const j = await rVu?.json?.().catch(() => ({}));
           const s = await rSpec?.json?.().catch(() => ({}));
+          const n = await rNow?.json?.().catch(() => ({}));
           const m = j?.meter || {};
           setTarget('L', m.left);
           setTarget('R', m.right);
@@ -3023,14 +3025,14 @@
             }
           }
 
+          const state = String(n?.state || n?.mpd?.state || '').trim().toLowerCase();
+          const isPlaying = (state === 'play' || state === 'playing');
           const vuFresh = !!j?.fresh;
           const spFresh = !!s?.fresh || !specBins.length; // tolerate older servers without /peppy/spectrum
-          if (!vuFresh || !spFresh) {
+          if (!isPlaying || !vuFresh || !spFresh) {
+            // Graceful zero: set targets to zero and let smoothing/animation decay.
             setTarget('L', 0); setTarget('R', 0);
             spectrumState = spectrumState.map(() => 0);
-            spectrumSmoothState = spectrumSmoothState.map(() => 0);
-            spectrumSpeedState = spectrumSpeedState.map(() => 0);
-            spectrumPeakState = spectrumPeakState.map(() => 0);
           }
         } catch {
           setTarget('L', 0); setTarget('R', 0);

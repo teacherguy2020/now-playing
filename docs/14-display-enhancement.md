@@ -130,6 +130,10 @@ So users only change moOde's target once; mode switching then happens from app p
   - `Off`, `Low`, `Medium`, `High`
   - controls motion/reactivity intensity (vintage and modern variants)
 
+- **Spectrum peak behavior** (shown when Spectrum is selected)
+  - `Off`, `Short`, `Medium`, `Long`, `Hold`
+  - controls per-band peak marker dissipation/hold behavior
+
 - **Font style**
   - `UI Sans`, `UI Sans Condensed`, `Inter Tight`, `Montserrat`, `Dot Matrix`
 
