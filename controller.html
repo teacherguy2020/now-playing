@@ -1654,6 +1654,14 @@
       loadServerProfile().catch(()=>null);
       loadHomeQuickIndex().catch(()=>null);
       loadRecentlyAdded().catch(()=>null);
+
+      // Optional deep-link: auto-open a kiosk pane page on load.
+      try {
+        const openPageParam = String(__u.searchParams.get('open') || '').trim();
+        if (IS_KIOSK_1280 && !IS_KIOSK_EDITOR && openPageParam.startsWith('kiosk-')) {
+          setTimeout(() => openPage(openPageParam), 120);
+        }
+      } catch {}
     })();
   
     // Pull-to-refresh (controller pages)
