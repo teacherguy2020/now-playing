@@ -138,9 +138,17 @@
     body.screen-480x320 .ctrlBtn .symSvg{width:24px;height:24px}
     .peppySetupCard{position:static;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;width:min(1280px,calc(100vw - 16px));padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--card),var(--card2));box-sizing:border-box;margin-bottom:6px}
     .peppySetupCard .setupTxt{font-size:12px;color:#fbbf24;white-space:nowrap}
-    .skinOps{position:static;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;width:min(1280px,calc(100vw - 16px));padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--card),var(--card2));box-sizing:border-box}
-    .skinBtn{height:26px;padding:0 10px;border:1px solid #3f4753;background:#1f2731;color:#d8e4f3;font-size:12px;cursor:pointer}
-    .skinSelect{height:26px;border:1px solid #3f4753;background:#131b24;color:#d8e4f3;font-size:12px;padding:0 6px}
+    .skinOps{position:static;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;width:min(1280px,calc(100vw - 16px));padding:5px 6px;border:1px solid var(--line);border-radius:8px;background:linear-gradient(180deg,var(--card),var(--card2));box-sizing:border-box}
+    .skinBtn{height:24px;padding:0 8px;border:1px solid #3f4753;background:#1f2731;color:#d8e4f3;font-size:11px;cursor:pointer}
+    .skinSelect{height:24px;border:1px solid #3f4753;background:#131b24;color:#d8e4f3;font-size:11px;padding:0 5px;max-width:180px}
+    #peppyPreset{width:132px}
+    #screenProfile{width:132px}
+    #themeName{width:128px}
+    #spectrumColor{width:128px}
+    #spectrumEnergy{width:110px}
+    #spectrumPeak{width:96px}
+    #needleSensitivity{width:122px}
+    #needleSmoothing{width:118px}
     .iframeScale{position:absolute;right:14px;top:10px;display:none;align-items:center;gap:8px;background:#0f1722;border:1px solid #2f3a4b;padding:4px 8px}
     .iframeScale input{width:120px}
     .iframeScale span{font-size:12px;color:#d8e4f3;min-width:42px;text-align:right}
@@ -256,6 +264,12 @@
           <option value="builtin:7">Inter Tight Studio Linear (L)</option>
           <option value="builtin:8">Montserrat Circular Clean</option>
           <option value="builtin:9">Warm Parchment Gold Circular</option>
+          <option value="builtin:10">Obsidian Mono Modern</option>
+          <option value="builtin:11">Muted Merlot Vintage Matrix</option>
+          <option value="builtin:12">Vintage Amber Hold (Smooth)</option>
+          <option value="builtin:13">Vintage Matrix Snappy</option>
+          <option value="builtin:14">Neon Cyan Peaks (Long)</option>
+          <option value="builtin:15">Mono Studio Analyzer</option>
         </select>
         <button id="pushPeppyFromTab" class="skinBtn" type="button">Push skin to moOde</button>
         <button id="showFullscreenPeppyBtn" class="skinBtn" type="button">Show Fullscreen Peppy</button>
@@ -593,7 +607,11 @@
         { name:'Montserrat Circular Clean', skin:'gold-1280', theme:'silver-black', meterType:'circular', fontMode:'montserrat', fontSize:'m', linearStyle:'continuous-theme', linearSize:'m', meterMode:'continuous', colorMode:'theme', sensitivity:'medium', smoothing:'medium', normalization:100, displayMode:'peppy' },
         { name:'Warm Parchment Gold Circular', skin:'gold-1280', theme:'warm-parchment', meterType:'circular', fontMode:'dot-matrix', fontSize:'xl', linearStyle:'cassette', linearSize:'m', meterMode:'segmented', colorMode:'classic', sensitivity:'medium', smoothing:'low', normalization:100, displayMode:'peppy' },
         { name:'Obsidian Mono Modern', skin:'black-white-1280', theme:'obsidian-black', meterType:'circular', fontMode:'montserrat', fontSize:'xl', linearStyle:'cassette', linearSize:'m', meterMode:'segmented', colorMode:'classic', sensitivity:'high', smoothing:'low', playerSize:'1280x400', normalization:100, displayMode:'peppy' },
-        { name:'Muted Merlot Vintage Matrix', skin:'black-white-1280', theme:'muted-merlot', meterType:'spectrum', fontMode:'dot-matrix', fontSize:'m', linearStyle:'continuous', linearSize:'m', meterMode:'continuous', colorMode:'classic', sensitivity:'ultra', smoothing:'medium', spectrumColor:'vintage', spectrumEnergy:'low', playerSize:'1280x400', normalization:100, displayMode:'peppy' },
+        { name:'Muted Merlot Vintage Matrix', skin:'black-white-1280', theme:'muted-merlot', meterType:'spectrum', fontMode:'dot-matrix', fontSize:'m', linearStyle:'continuous', linearSize:'m', meterMode:'continuous', colorMode:'classic', sensitivity:'ultra', smoothing:'medium', spectrumColor:'vintage', spectrumEnergy:'low', spectrumPeak:'medium', playerSize:'1280x400', normalization:100, displayMode:'peppy' },
+        { name:'Vintage Amber Hold (Smooth)', skin:'gold-1280', theme:'warm-parchment', meterType:'spectrum', fontMode:'dot-matrix', fontSize:'m', linearStyle:'continuous', linearSize:'m', meterMode:'continuous', colorMode:'classic', sensitivity:'low', smoothing:'high', spectrumColor:'vintage-smooth', spectrumEnergy:'low', spectrumPeak:'hold', playerSize:'1280x400', normalization:100, displayMode:'peppy' },
+        { name:'Vintage Matrix Snappy', skin:'emerald-1280', theme:'matrix-green', meterType:'spectrum', fontMode:'dot-matrix', fontSize:'m', linearStyle:'continuous', linearSize:'m', meterMode:'continuous', colorMode:'classic', sensitivity:'ultra', smoothing:'off', spectrumColor:'vintage', spectrumEnergy:'off', spectrumPeak:'off', playerSize:'1280x400', normalization:100, displayMode:'peppy' },
+        { name:'Neon Cyan Peaks (Long)', skin:'blue-1280', theme:'blue-neon', meterType:'spectrum', fontMode:'ui-sans-condensed', fontSize:'m', linearStyle:'continuous-theme', linearSize:'m', meterMode:'continuous', colorMode:'theme', sensitivity:'high', smoothing:'medium', spectrumColor:'cyan', spectrumEnergy:'medium', spectrumPeak:'long', playerSize:'1280x400', normalization:100, displayMode:'peppy' },
+        { name:'Mono Studio Analyzer', skin:'black-white-1280', theme:'silver-black', meterType:'spectrum', fontMode:'montserrat', fontSize:'m', linearStyle:'continuous', linearSize:'m', meterMode:'continuous', colorMode:'classic', sensitivity:'medium', smoothing:'low', spectrumColor:'mono', spectrumEnergy:'off', spectrumPeak:'off', playerSize:'1280x400', normalization:100, displayMode:'peppy' },
       ];
 
       function toLinearStyle(p = {}) {
@@ -919,17 +937,29 @@
         if (!previewStage || !wrap) return;
         if (iframeScaleEl) iframeScaleEl.style.display = 'none';
 
+        // Size stage from its live viewport position instead of subtracting
+        // guessed control-panel heights. This avoids bottom crop when extra
+        // rows (status/setup bars) are visible above the preview.
         const vw = Math.max(320, (window.innerWidth || 1280));
-        const opsH = (!kioskMode && skinOpsEl && getComputedStyle(skinOpsEl).display !== 'none')
-          ? Math.ceil((skinOpsEl.getBoundingClientRect?.().height || 0) + 10)
-          : 0;
-        const vh = Math.max(200, (window.innerHeight || 400) - opsH);
+        const stageTop = Math.max(0, Math.floor(previewStage.getBoundingClientRect?.().top || 0));
+        const vvH = Math.floor(window.visualViewport?.height || 0);
+        const docH = Math.floor(document.documentElement?.clientHeight || 0);
+        const winH = Math.floor(window.innerHeight || 0);
+        const viewportH = Math.max(200, Math.min(
+          winH || 99999,
+          docH || 99999,
+          vvH || 99999
+        ));
+        const vh = Math.max(200, viewportH - stageTop - 2);
 
         // contain: no crop (may letterbox on tall screens)
         // cover: fill viewport (may crop left/right on tall screens)
         const sd = getScreenDims();
-        const containScale = Math.min(vw / sd.w, vh / sd.h);
-        const coverScale = Math.max(vw / sd.w, vh / sd.h);
+        // Leave a tiny vertical guard band so transformed content never clips
+        // on fractional zoom / browser UI edge cases.
+        const safeVh = Math.max(120, vh - 20);
+        const containScale = Math.min(vw / sd.w, safeVh / sd.h);
+        const coverScale = Math.max(vw / sd.w, safeVh / sd.h);
         const mode = fitMode || 'contain';
         const scale = (mode === 'cover') ? coverScale : containScale;
 
@@ -1880,6 +1910,11 @@
         '9':['01110','10001','10001','01111','00001','00001','01110'],
         ' ':['00000','00000','00000','00000','00000','00000','00000'],
         '.':['00000','00000','00000','00000','00000','00110','00110'],
+        '·':['00000','00000','00000','00110','00110','00000','00000'],
+        '•':['00000','00000','00110','00110','00000','00000','00000'],
+        '…':['00000','00000','00000','00000','00000','10101','10101'],
+        '。':['00000','00000','00000','00000','00000','00110','00110'],
+        '．':['00000','00000','00000','00000','00000','00110','00110'],
         ':':['00000','00110','00110','00000','00110','00110','00000'],
         "'":['00100','00100','00000','00000','00000','00000','00000'],
         '’':['00100','00100','00000','00000','00000','00000','00000'],
@@ -1890,8 +1925,7 @@
         '&':['01100','10010','10100','01000','10101','10010','01101'],
         '(' :['00010','00100','01000','01000','01000','00100','00010'],
         ')' :['01000','00100','00010','00010','00010','00100','01000'],
-        ',':['00000','00000','00000','00000','00110','00100','01000'],
-        '•':['00000','00000','00110','00110','00000','00000','00000']
+        ',':['00000','00000','00000','00000','00110','00100','01000']
       };
       function glyph(ch){
         const c = String(ch || '');
@@ -2679,6 +2713,17 @@
         }
       }
       window.addEventListener('resize', () => { fitPreviewScale(); redrawDotCanvases(); syncProgressPlacement(); });
+      // Re-fit when top control strips reflow to extra rows (common on narrower widths).
+      try {
+        if (typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(() => {
+            fitPreviewScale();
+            syncProgressPlacement();
+          });
+          if (skinOpsEl) ro.observe(skinOpsEl);
+          if (peppySetupCardEl) ro.observe(peppySetupCardEl);
+        }
+      } catch {}
 
       function decodeEntities(s){
         try {

@@ -17,6 +17,7 @@ This docs set follows the same order as the app tabs.
 11. [moOde Remote Display Blanking Fix](./15-moode-remote-display-blanking-fix.md)
 12. [Mobile Builder + Controller Pages](./16-mobile-builder.md)
 13. [Kiosk Mode](./18-kiosk.md)
+14. [Visualizer](./19-visualizer.md)
 
 ## Cross-cutting chapters
 

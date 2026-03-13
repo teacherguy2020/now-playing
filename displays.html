@@ -50,6 +50,16 @@
           <div id="pushPeppyStatus" class="pushStatus"></div>
         </div>
         <div class="card">
+          <h3>Visualizer</h3>
+          <div class="muted">Audio-reactive visual scenes (aeon, sphere, fireworks, more).</div>
+          <div style="margin-top:6px"><span class="chip">Display</span></div>
+          <div class="actions">
+            <a class="btn primary" target="_top" href="app.html?page=visualizer.html&ui=1">Open Designer</a>
+            <button class="btn" id="pushVisualizerBtn" type="button">Push to moOde</button>
+          </div>
+          <div id="pushVisualizerStatus" class="pushStatus"></div>
+        </div>
+        <div class="card">
           <h3>Index Display</h3>
           <div class="muted">Classic now-playing display surface (`index.html`).</div>
           <div style="margin-top:6px"><span class="chip">Display</span></div>
@@ -149,6 +159,24 @@
             body: JSON.stringify({ url, displayMode:'peppy' })
           }).catch(()=>null);
           await pushUrl(url, 'displays-peppy-push', statusEl, btnEl);
+        } finally {
+          if (btnEl) btnEl.textContent='Push to moOde';
+        }
+      });
+
+      document.getElementById('pushVisualizerBtn')?.addEventListener('click', async ()=>{
+        const statusEl = document.getElementById('pushVisualizerStatus');
+        const btnEl = document.getElementById('pushVisualizerBtn');
+        const url = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+        try {
+          if (btnEl) btnEl.textContent='Pushing…';
+          await ensureKey();
+          await fetch(`${base}/peppy/last-profile`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},
+            body: JSON.stringify({ url, displayMode:'visualizer' })
+          }).catch(()=>null);
+          await pushUrl(url, 'displays-visualizer-push', statusEl, btnEl);
         } finally {
           if (btnEl) btnEl.textContent='Push to moOde';
         }

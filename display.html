@@ -17,7 +17,8 @@
       const host = location.hostname || '10.0.0.233';
       const api = `${location.protocol}//${host}:3101`;
       const fallback = 'peppy';
-      let mode = fallback;
+      const forcedMode = String(new URLSearchParams(location.search).get('mode') || '').trim().toLowerCase();
+      let mode = forcedMode || fallback;
       let skin = '';
       let theme = '';
       let profile = {};
@@ -25,7 +26,7 @@
         const r = await fetch(`${api}/peppy/last-profile`, { cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
         profile = j?.profile || {};
-        mode = String(profile?.displayMode || fallback).trim().toLowerCase();
+        if (!forcedMode) mode = String(profile?.displayMode || fallback).trim().toLowerCase();
         skin = String(profile?.skin || '').trim();
         theme = String(profile?.theme || '').trim();
       } catch {}
@@ -40,6 +41,29 @@
         q.set('size', String(profile?.playerSize || '1280x400'));
         q.set('ts', String(Date.now()));
         f.src = `player-render.html?${q.toString()}`;
+        return;
+      }
+      if (mode === 'visualizer' || mode === 'viz') {
+        // Prefer explicit pushed visualizer URL when present.
+        const pushedUrl = String(profile?.url || '').trim();
+        if (/visualizer\.html/i.test(pushedUrl)) {
+          try {
+            const u = new URL(pushedUrl, location.href);
+            u.searchParams.set('kiosk', '1');
+            u.searchParams.set('ts', String(Date.now()));
+            f.src = u.toString();
+            return;
+          } catch {}
+        }
+        const v = (profile && typeof profile.visualizer === 'object') ? profile.visualizer : {};
+        const q = new URLSearchParams();
+        q.set('kiosk', '1');
+        if (v?.preset) q.set('preset', String(v.preset));
+        if (Number.isFinite(Number(v?.energy))) q.set('energy', String(Math.max(1, Math.min(10, Number(v.energy)))));
+        if (Number.isFinite(Number(v?.motion))) q.set('motion', String(Math.max(1, Math.min(10, Number(v.motion)))));
+        if (Number.isFinite(Number(v?.glow))) q.set('glow', String(Math.max(1, Math.min(10, Number(v.glow)))));
+        q.set('ts', String(Date.now()));
+        f.src = `visualizer.html?${q.toString()}`;
         return;
       }
       if (mode === 'index' || mode === 'webui') {

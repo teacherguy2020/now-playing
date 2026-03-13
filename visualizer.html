@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Now Playing Visualizer</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#02040a;color:#dbe8ff;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+    canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+    body.designer{background:#000 !important}
+    body.designer canvas{inset:auto;top:56px;left:50%;width:100vw;height:100vh;transform:translateX(-50%) scale(.45);transform-origin:top center;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+    .hud{position:fixed;left:12px;right:12px;bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.6);mix-blend-mode:screen}
+    .t{font-size:20px;font-weight:700;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .a{font-size:13px;opacity:.86;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .m{font-size:12px;opacity:.72;text-align:right}
+    body.pure .hud{display:none !important}
+    body.pure .ctl{display:none !important}
+    .ctl{position:fixed;top:8px;left:50%;display:none;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;width:min(1280px,calc(100vw - 16px));transform:translateX(-50%);background:var(--npb-card-bg,rgba(5,10,20,.72));backdrop-filter:blur(4px);border:1px solid var(--npb-card-border,rgba(120,150,190,.35));border-radius:10px;padding:6px 8px;z-index:20;color:var(--npb-text,#dbe8ff)}
+    .ctl select,.ctl button{height:24px;background:var(--npb-tab-bg,#0f1b2f);color:var(--npb-tab-text,#dbe8ff);border:1px solid var(--npb-tab-border,#3a547a);border-radius:6px;font-size:12px}
+    .ctl select{padding:0 6px}
+    .ctl button{padding:0 8px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="ctl" class="ctl" aria-label="Visualizer controls">
+    <span style="font-size:11px;opacity:.8;">Preset</span>
+    <select id="presetSel" aria-label="Preset">
+      <option value="classic">classic</option>
+      <option value="aeon">aeon</option>
+      <option value="fireworks">fireworks</option>
+      <option value="sphere">sphere</option>
+      <option value="moire">moire</option>
+      <option value="ambient">ambient</option>
+    </select>
+    <span style="font-size:11px;opacity:.8;">Energy</span>
+    <select id="energySel" aria-label="Energy level">
+      <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+      <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+    </select>
+    <span style="font-size:11px;opacity:.8;">Motion</span>
+    <select id="motionSel" aria-label="Motion level">
+      <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+      <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+    </select>
+    <span style="font-size:11px;opacity:.8;">Glow</span>
+    <select id="glowSel" aria-label="Glow level">
+      <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+      <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+    </select>
+    <button id="applyBtn" type="button">apply</button>
+    <button id="pushMoodeBtn" type="button">Push to moOde</button>
+    <span id="pushStatus" style="font-size:11px;opacity:.8;min-width:120px;"></span>
+  </div>
+  <div class="hud"><div><div id="t" class="t">Visualizer</div><div id="a" class="a">Waiting for audio…</div></div><div id="m" class="m">aurora</div></div>
+<script>
+(()=>{
+  const qp=new URLSearchParams(location.search);
+  const host=location.hostname||'10.0.0.4';
+  const api=`${location.protocol}//${host}:3101`;
+  const c=document.getElementById('c'),x=c.getContext('2d');
+  const tEl=document.getElementById('t'),aEl=document.getElementById('a'),mEl=document.getElementById('m');
+  const ctl=document.getElementById('ctl'),presetSel=document.getElementById('presetSel'),energySel=document.getElementById('energySel'),motionSel=document.getElementById('motionSel'),glowSel=document.getElementById('glowSel'),applyBtn=document.getElementById('applyBtn'),pushMoodeBtn=document.getElementById('pushMoodeBtn'),pushStatus=document.getElementById('pushStatus');
+  let W=0,H=0,dpr=1;
+  function rs(){
+    dpr=Math.max(1,Math.min(2,devicePixelRatio||1));
+    const designerMode = (uiOn && !kioskOn);
+    W = designerMode ? 1280 : Math.max(320,innerWidth|0);
+    H = designerMode ? 400  : Math.max(180,innerHeight|0);
+    c.width=W*dpr; c.height=H*dpr;
+    c.style.width=W+'px'; c.style.height=H+'px';
+    x.setTransform(dpr,0,0,dpr,0,0);
+    try{ applyDesignerScale(); }catch{}
+  }
+  addEventListener('resize',rs);
+
+  const PRESETS={
+    classic:{scene:'particles', attack:0.38, release:0.14, onsetGain:1.0, feedback:0.09, sat:1.0},
+    aeon:{scene:'aeon', attack:0.42, release:0.16, onsetGain:1.15, feedback:0.08, sat:1.08},
+    fireworks:{scene:'fireworks', attack:0.46, release:0.16, onsetGain:1.3, feedback:0.07, sat:1.12},
+    sphere:{scene:'sphere', attack:0.30, release:0.12, onsetGain:0.75, feedback:0.11, sat:0.95},
+    moire:{scene:'moire', attack:0.34, release:0.13, onsetGain:0.9, feedback:0.1, sat:1.0},
+    ambient:{scene:'aurora', attack:0.20, release:0.09, onsetGain:0.5, feedback:0.14, sat:0.85}
+  };
+  let presetKey=String(qp.get('preset')||'classic').toLowerCase();
+  if (presetKey === 'magnetosphere') presetKey = 'sphere';
+  if (presetKey === 'jelly') presetKey = 'aeon';
+  let preset=PRESETS[presetKey]||PRESETS.classic;
+  const PRESET_LEVELS={
+    classic:{energy:6,motion:6,glow:6},
+    aeon:{energy:7,motion:6,glow:8},
+    fireworks:{energy:8,motion:7,glow:7},
+    sphere:{energy:6,motion:5,glow:8},
+    moire:{energy:5,motion:6,glow:5},
+    ambient:{energy:2,motion:2,glow:7}
+  };
+  const lv=PRESET_LEVELS[presetKey]||PRESET_LEVELS.classic;
+  let energyLevel=Math.max(1,Math.min(10,Number(qp.get('energy')||String(lv.energy))||lv.energy));
+  let motionLevel=Math.max(1,Math.min(10,Number(qp.get('motion')||String(lv.motion))||lv.motion));
+  let glowLevel=Math.max(1,Math.min(10,Number(qp.get('glow')||String(lv.glow))||lv.glow));
+  let energyK=1, motionK=1, glowK=1;
+  function recalcLevelKs(){
+    // Wider response span so 1 vs 10 is obvious.
+    energyK = 0.45 + (energyLevel-1)*(1.75/9); // 0.45..2.20
+    motionK = 0.55 + (motionLevel-1)*(1.25/9); // 0.55..1.80
+    glowK   = 0.45 + (glowLevel-1)*(1.60/9);   // 0.45..2.05
+  }
+  recalcLevelKs();
+  const sceneParamRaw=qp.get('scene');
+  const sceneExplicit=(sceneParamRaw!==null && String(sceneParamRaw).trim()!=='');
+
+  let scene=String(sceneExplicit ? sceneParamRaw : (preset.scene||'aurora')).toLowerCase(); // aurora|particles|tunnel|moire|aeon|fireworks|auto
+  let auto=(scene==='auto');
+  // aliases
+  if(scene==='classic') scene='aurora';
+  if(scene==='plasma') scene='sphere';
+  if(scene==='magnetosphere') scene='sphere';
+  if(scene==='jelly') scene='aeon';
+  if(auto) scene='aurora';
+  const scenes=['aurora','aeon','fireworks','particles','tunnel','moire','sphere'];
+  let sceneIdx=scenes.indexOf(scene); if(sceneIdx<0) sceneIdx=0;
+
+  // Designer controls should be visible by default in editor contexts.
+  // For embedded pane usage, force pure-visual mode (no HUD/controls).
+  const uiParam = String(qp.get('ui') || '').trim().toLowerCase();
+  const kioskOn = ['1','true','yes','on'].includes(String(qp.get('kiosk') || '').trim().toLowerCase());
+  const embeddedOn = ['1','true','yes','on'].includes(String(qp.get('embedded') || '').trim().toLowerCase());
+  const pureOn = embeddedOn || ['1','true','yes','on'].includes(String(qp.get('pure') || '').trim().toLowerCase());
+  const uiOn = pureOn ? false : ((uiParam === '0' || uiParam === 'false' || uiParam === 'off') ? false : !kioskOn);
+  if (ctl) ctl.style.display = uiOn ? 'flex' : 'none';
+  try { document.body.classList.toggle('designer', !!uiOn && !kioskOn); } catch {}
+  try { document.body.classList.toggle('pure', !!pureOn); } catch {}
+
+  // In embedded pane mode, a tap/click should open full-screen visualizer.
+  if (embeddedOn) {
+    const openFullscreenFromEmbedded = () => {
+      try {
+        const u = new URL(location.href);
+        u.searchParams.delete('embedded');
+        u.searchParams.delete('pure');
+        u.searchParams.set('kiosk', '1');
+        u.searchParams.set('ui', '0');
+        const target = `${u.pathname}${u.search}`;
+        if (window.top && window.top !== window) window.top.location.href = target;
+        else location.href = target;
+      } catch {}
+    };
+    let tapped = false;
+    document.addEventListener('pointerup', (ev) => {
+      if (tapped) return;
+      tapped = true;
+      openFullscreenFromEmbedded();
+    }, { passive:true });
+  }
+  function applyDesignerScale(){
+    try {
+      if (!c) return;
+      if (uiOn && !kioskOn) {
+        const top = 56;
+        const availW = Math.max(320, (window.innerWidth||1280) - 16);
+        const availH = Math.max(180, (window.innerHeight||720) - top - 8);
+        const s = Math.max(0.2, Math.min(1, availW / 1280, availH / 400));
+        c.style.position = 'fixed';
+        c.style.inset = 'auto';
+        c.style.top = `${top}px`;
+        c.style.left = '50%';
+        c.style.transform = `translateX(-50%) scale(${s})`;
+        c.style.transformOrigin = 'top center';
+      } else {
+        c.style.position = 'fixed';
+        c.style.inset = '0';
+        c.style.top = '';
+        c.style.left = '';
+        c.style.transform = '';
+        c.style.transformOrigin = '';
+      }
+    } catch {}
+  }
+  rs();
+  applyDesignerScale();
+  if (presetSel) presetSel.value = PRESETS[presetKey] ? presetKey : 'classic';
+  if (energySel) energySel.value = String(Math.round(energyLevel));
+  if (motionSel) motionSel.value = String(Math.round(motionLevel));
+  if (glowSel) glowSel.value = String(Math.round(glowLevel));
+  applyBtn?.addEventListener('click', () => {
+    try {
+      const p = String(presetSel?.value || presetKey || 'classic').toLowerCase();
+      const eNum = Math.max(1, Math.min(10, Number(energySel?.value || Math.round(energyLevel)) || Math.round(energyLevel)));
+      const mNum = Math.max(1, Math.min(10, Number(motionSel?.value || Math.round(motionLevel)) || Math.round(motionLevel)));
+      const gNum = Math.max(1, Math.min(10, Number(glowSel?.value || Math.round(glowLevel)) || Math.round(glowLevel)));
+
+      presetKey = p;
+      preset = PRESETS[presetKey] || PRESETS.classic;
+      energyLevel = eNum;
+      motionLevel = mNum;
+      glowLevel = gNum;
+      recalcLevelKs();
+
+      // scene follows preset unless explicitly provided in URL
+      scene = String(preset.scene || scene || 'aurora').toLowerCase();
+      if (scene === 'magnetosphere') scene = 'sphere';
+      if (scene === 'jelly') scene = 'aeon';
+
+      // keep URL in sync WITHOUT reload (avoids startup burst)
+      const url = new URL(location.href);
+      url.searchParams.set('preset', presetKey);
+      url.searchParams.set('energy', String(energyLevel));
+      url.searchParams.set('motion', String(motionLevel));
+      url.searchParams.set('glow', String(glowLevel));
+      url.searchParams.delete('scene');
+      url.searchParams.set('ui', '1');
+      history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    } catch {}
+  });
+
+  async function pushToMoode(){
+    try {
+      if (pushMoodeBtn) pushMoodeBtn.textContent = 'Pushing…';
+      if (pushStatus) pushStatus.textContent = '';
+      const rt = await fetch(`${api}/config/runtime`, { cache:'no-store' });
+      const rj = await rt.json().catch(()=>({}));
+      const key = String(rj?.config?.trackKey || '').trim();
+      const url = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+      const p = String(presetSel?.value || presetKey || 'classic').toLowerCase();
+      const e = String(energySel?.value || Math.round(energyLevel));
+      const m = String(motionSel?.value || Math.round(motionLevel));
+      const g = String(glowSel?.value || Math.round(glowLevel));
+      const visUrl = `${location.protocol}//${host}:8101/visualizer.html?kiosk=1&preset=${encodeURIComponent(p)}&energy=${encodeURIComponent(e)}&motion=${encodeURIComponent(m)}&glow=${encodeURIComponent(g)}`;
+      await fetch(`${api}/peppy/last-profile`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})},
+        body: JSON.stringify({ url: visUrl, displayMode:'visualizer', visualizer:{ preset:p, energy:Number(e), motion:Number(m), glow:Number(g) } })
+      }).catch(()=>null);
+      const rr = await fetch(`${api}/config/moode/browser-url`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})},
+        body: JSON.stringify({ url, reason:'visualizer-designer-push' })
+      });
+      const jj = await rr.json().catch(()=>({}));
+      if (!rr.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${rr.status}`);
+      if (pushStatus) pushStatus.textContent = 'Pushed ✓';
+    } catch (e) {
+      if (pushStatus) pushStatus.textContent = `Push failed: ${e?.message || e}`;
+    } finally {
+      if (pushMoodeBtn) pushMoodeBtn.textContent = 'Push to moOde';
+    }
+  }
+  pushMoodeBtn?.addEventListener('click', pushToMoode);
+  let bins=Array.from({length:30},()=>0),peaks=Array.from({length:30},()=>0),bass=0,mid=0,treb=0,energy=0,pulse=0;
+  let lowE=0,midE=0,highE=0,onset=0,spectralFlux=0,rms=0,agc=1;
+  let energyFloor=0;
+  let prevBins=[];
+  function mix(a,b,t){return a+(b-a)*t}
+  function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+  function splitLogBands(arr){
+    const n=Math.max(1,arr.length);
+    const i1=Math.max(1,Math.floor(Math.pow(n,0.58)));   // low cutoff (log-ish)
+    const i2=Math.max(i1+1,Math.floor(Math.pow(n,0.82))); // mid cutoff
+    const low=arr.slice(0,i1);
+    const mid=arr.slice(i1,i2);
+    const high=arr.slice(i2);
+    const avg=(a)=>a.length?a.reduce((p,v)=>p+v,0)/a.length:0;
+    return { low:avg(low), mid:avg(mid), high:avg(high) };
+  }
+
+  async function pollSpectrum(){
+    try{
+      const r=await fetch(`${api}/peppy/spectrum`,{cache:'no-store'}); const j=await r.json();
+      const arr=Array.isArray(j?.spectrum)?j.spectrum:(Array.isArray(j?.spectrum?.bins)?j.spectrum.bins:(Array.isArray(j?.bins)?j.bins:[]));
+      if(arr.length){
+        const n=Math.min(64,Math.max(24,arr.length));
+        let next=arr.slice(0,n).map(v=>clamp(Number(v)||0,0,100));
+
+        // Rolling RMS + AGC (keeps response alive across quiet/loud tracks)
+        const instRms=Math.sqrt(next.reduce((p,v)=>p+v*v,0)/Math.max(1,next.length));
+        rms = mix(rms, instRms, 0.12);
+        const target=38;
+        const wanted=clamp(target/Math.max(8,rms),0.75,2.1);
+        agc = mix(agc,wanted,0.08);
+        next = next.map(v=>clamp(v*agc,0,100));
+
+        if(bins.length!==n){bins=Array.from({length:n},()=>0);peaks=Array.from({length:n},()=>0); prevBins=Array.from({length:n},()=>0);}
+        // Fast attack, slower release envelope
+        for(let i=0;i<n;i++){
+          const atk=Math.min(0.7, Number(preset.attack||0.34) * (0.85 + (energyK-1)*0.55));
+          const rel=Math.min(0.5, Number(preset.release||0.13) * (0.9 + (energyK-1)*0.45));
+          const a=next[i] > bins[i] ? atk : rel;
+          bins[i]=mix(bins[i],next[i],a);
+        }
+
+        // Spectral flux onset detection
+        let flux=0;
+        for(let i=0;i<n;i++){ const d=bins[i]-Number(prevBins[i]||0); if(d>0) flux+=d; }
+        spectralFlux = mix(spectralFlux, flux/Math.max(1,n), 0.25);
+        prevBins = bins.slice();
+
+        // Log-ish perceptual bands
+        const band=splitLogBands(bins);
+        lowE = mix(lowE, band.low, 0.22);
+        midE = mix(midE, band.mid, 0.22);
+        highE = mix(highE, band.high, 0.22);
+
+        bass = lowE;
+        mid  = midE;
+        treb = highE;
+
+        const e=(bass*0.5 + mid*0.33 + treb*0.17);
+        const delta=Math.max(0,e-energy);
+        energy=mix(energy,e,0.2);
+        energyFloor = mix(energyFloor, energy, 0.035); // slow baseline (track loudness/context)
+        const og=Number(preset.onsetGain||1) * (0.78 + (energyK-1)*0.8);
+        onset = clamp(Math.max(0, (spectralFlux*0.42 + delta*0.36 - 0.45) * og), 0, 4);
+        pulse=clamp(Math.max(pulse*0.88, onset*0.58, delta/20),0,2.4);
+      }
+    }catch{}
+    setTimeout(pollSpectrum,42);
+  }
+
+  async function pollTrack(){
+    try{const r=await fetch(`${api}/now-playing`,{cache:'no-store'});const j=await r.json();tEl.textContent=String(j?.displayTitle||j?.title||'Visualizer');aEl.textContent=String(j?.displayArtist||j?.artist||j?.stationName||'');}catch{}
+    setTimeout(pollTrack,1400);
+  }
+  pollSpectrum(); pollTrack();
+
+  const particles=Array.from({length:220},()=>({x:Math.random(),y:Math.random(),z:Math.random(),vx:(Math.random()-0.5)*0.001,vy:(Math.random()-0.5)*0.001}));
+  const aeonSeeds=Array.from({length:5},(_,i)=>({
+    p:Math.random()*Math.PI*2,
+    a:1.7 + Math.random()*2.6,
+    b:2.0 + Math.random()*3.0,
+    k:0.25 + i*0.12
+  }));
+  const sparks=[];
+  let lastEnergy=0;
+  let lastBass=0;
+  let nextFireAt=0;
+  let t=0,tm=0,lastSwitch=performance.now();
+  let __moireToggle = 0;
+
+  function bgAurora(){
+    const g=x.createRadialGradient(W*0.5,H*0.55,20,W*0.5,H*0.55,Math.max(W,H)*0.9);
+    const hue=(180+mid*0.7+tm*4)%360;
+    g.addColorStop(0,`hsla(${hue},90%,${30+pulse*18}%,0.26)`);
+    g.addColorStop(0.45,`hsla(${(hue+65)%360},85%,${22+bass*0.22}%,0.18)`);
+    g.addColorStop(1,'rgba(2,6,14,0.92)');
+    x.fillStyle=g; x.fillRect(0,0,W,H);
+  }
+
+  function drawAurora(){
+    bgAurora();
+    x.save();
+    x.globalCompositeOperation='lighter';
+    x.lineJoin='round';
+    x.lineCap='round';
+    const bands=7;
+    for(let k=0;k<bands;k++){
+      const yBase=H*(0.2+0.1*k);
+      const pts=[];
+      for(let i=0;i<=W;i+=10){
+        const n=Math.floor((i/W)*(bins.length-1));
+        const v=bins[n]/100;
+        const yRaw=yBase + Math.sin((i*0.0105)+(tm*1.3)+(k*0.68))* (16+mid*0.45) + (0.5-v)*(34+bass*0.6);
+        const yPrev=pts.length?pts[pts.length-1].y:yRaw;
+        // low-pass per-point to reduce jagged motion
+        const y=mix(yPrev,yRaw,0.55);
+        pts.push({x:i,y});
+      }
+      if(pts.length>1){
+        x.beginPath();
+        x.moveTo(pts[0].x, pts[0].y);
+        for(let i=1;i<pts.length-1;i++){
+          const cx=(pts[i].x+pts[i+1].x)/2;
+          const cy=(pts[i].y+pts[i+1].y)/2;
+          x.quadraticCurveTo(pts[i].x, pts[i].y, cx, cy);
+        }
+        const lp=pts[pts.length-1];
+        x.lineTo(lp.x, lp.y);
+
+        x.lineWidth=2.4+Math.max(0,pulse*2.2-k*0.15);
+        x.strokeStyle=`hsla(${(170+k*18+tm*6)%360},95%,${55+k*2}%,${0.13+0.055*(bands-k)})`;
+        x.shadowBlur=(8 + pulse*10) * (0.7 + glowK*0.35);
+        x.shadowColor=`hsla(${(178+k*16)%360},100%,62%,${0.18 + 0.12*glowK})`;
+        x.stroke();
+      }
+    }
+    x.shadowBlur=0;
+    // beat orb (kept smooth/subtle)
+    const r=34 + bass*0.52 + pulse*30;
+    const g=x.createRadialGradient(W*0.5,H*0.64,2,W*0.5,H*0.64,r*2.2);
+    g.addColorStop(0,'rgba(255,255,255,0.72)');
+    g.addColorStop(0.3,`hsla(${(195+t*12)%360},100%,65%,0.24)`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle=g; x.beginPath(); x.arc(W*0.5,H*0.64,r*1.55,0,Math.PI*2); x.fill();
+    x.restore();
+  }
+
+  function drawParticles(){
+    x.fillStyle='rgba(3,6,12,0.32)'; x.fillRect(0,0,W,H);
+    x.save(); x.globalCompositeOperation='lighter';
+    const speed=0.002 + energy*0.00011;
+    for(const p of particles){
+      p.z-=speed + pulse*0.01;
+      if(p.z<=0.02){p.x=Math.random();p.y=Math.random();p.z=1;}
+      p.x=(p.x+p.vx+1)%1; p.y=(p.y+p.vy+1)%1;
+      const sx=(p.x-0.5)/(p.z)+0.5, sy=(p.y-0.5)/(p.z)+0.5;
+      const px=sx*W, py=sy*H;
+      if(px<0||py<0||px>W||py>H) continue;
+      const r=(1-p.z)*3.2 + pulse*3;
+      const hue=(200+treb*1.1+t*8)%360;
+      x.fillStyle=`hsla(${hue},95%,${60+treb*0.22}%,${0.14+(1-p.z)*0.42})`;
+      x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill();
+    }
+    x.restore();
+  }
+
+  function drawTunnel(){
+    x.fillStyle='rgba(2,4,10,0.24)'; x.fillRect(0,0,W,H);
+    x.save(); x.translate(W/2,H/2);
+    x.globalCompositeOperation='lighter';
+    const rings=42;
+    for(let i=0;i<rings;i++){
+      const p=((i*0.06)+(t*0.16)+(energy*0.01))%1;
+      const z=1-p;
+      const rr=(Math.min(W,H)*0.55) * Math.pow(z,1.2);
+      const wob=Math.sin(t*2+i*0.8)* (2+mid*0.05);
+      x.lineWidth=Math.max(1, (1-z)*3 + pulse*2);
+      const hue=(190 + i*5 + bass*0.8 + t*30)%360;
+      x.strokeStyle=`hsla(${hue},90%,${45+treb*0.2}%,${0.08 + (1-z)*0.22})`;
+      x.beginPath(); x.arc(wob,0,rr,0,Math.PI*2); x.stroke();
+    }
+    // radial spikes
+    const spikes=64;
+    for(let i=0;i<spikes;i++){
+      const a=(i/spikes)*Math.PI*2 + t*0.35;
+      const b=bins[i%bins.length]/100;
+      const r1=40+mid*0.5, r2=r1 + 60 + b*220 + pulse*90;
+      x.strokeStyle=`hsla(${(160+i*3+t*12)%360},95%,60%,0.14)`;
+      x.lineWidth=1.2;
+      x.beginPath(); x.moveTo(Math.cos(a)*r1,Math.sin(a)*r1); x.lineTo(Math.cos(a)*r2,Math.sin(a)*r2); x.stroke();
+    }
+    x.restore();
+  }
+
+  function drawMoire(){
+    const lowPowerMoire = kioskOn || embeddedOn;
+    if (lowPowerMoire) { __moireToggle = (__moireToggle + 1) % 2; if (__moireToggle) return; }
+    x.fillStyle='rgba(2,4,10,0.22)'; x.fillRect(0,0,W,H);
+    x.save();
+    x.translate(W/2,H/2);
+    x.globalCompositeOperation='lighter';
+
+    const e=energy/100;
+    const b=bass/100;
+    const m=mid/100;
+    const tr=treb/100;
+    const maxR=Math.min(W,H)*0.62;
+
+    // Knob mapping for visible differences:
+    // energy -> denser rings / stronger alpha
+    // motion -> faster phase drift / offsets
+    // glow   -> stronger line alpha + blur
+    const densityK = 0.75 + (energyK * 0.7);
+    const motionDrift = 0.6 + (motionK * 1.2);
+    const glowAlpha = 0.55 + (glowK * 0.55);
+
+    const step=Math.max(lowPowerMoire ? 10 : 8, Math.floor((18 - e*4) / densityK));
+
+    x.strokeStyle=`hsla(${(190+tm*18)%360},95%,62%,${(0.10 + 0.08*e)*glowAlpha})`;
+    x.lineWidth=(1.0 + pulse*0.9) * (0.85 + glowK*0.22);
+    x.shadowBlur = lowPowerMoire ? 0 : Math.min(8, (2 + pulse*5) * (0.45 + glowK*0.22));
+    x.shadowColor = `hsla(${(200+tm*12)%360},100%,62%,${lowPowerMoire ? 0 : (0.12 + glowK*0.12)})`;
+    let ringsA = 0;
+    for(let r=8;r<maxR;r+=step){
+      if (++ringsA > (lowPowerMoire ? 28 : 42)) break;
+      const ox=Math.sin(tm*0.9*motionDrift + r*0.02)*(16 + b*30 + pulse*30) * (0.85 + motionK*0.22);
+      const oy=Math.cos(tm*0.7*motionDrift + r*0.017)*(10 + m*26) * (0.85 + motionK*0.22);
+      x.beginPath(); x.arc(ox,oy,r,0,Math.PI*2); x.stroke();
+    }
+
+    x.strokeStyle=`hsla(${(320+tm*14)%360},90%,58%,${(0.08 + 0.07*tr)*glowAlpha})`;
+    x.lineWidth=(0.9 + e*0.8) * (0.85 + glowK*0.2);
+    const step2=Math.max(lowPowerMoire ? 10 : 8, Math.floor((16 - tr*4) / densityK));
+    let ringsB = 0;
+    for(let r=6;r<maxR;r+=step2){
+      if (++ringsB > (lowPowerMoire ? 28 : 42)) break;
+      const ox=Math.cos(tm*1.05*motionDrift + r*0.018)*(18 + m*28) * (0.82 + motionK*0.25);
+      const oy=Math.sin(tm*0.82*motionDrift + r*0.021)*(14 + tr*30 + pulse*20) * (0.82 + motionK*0.25);
+      x.beginPath(); x.arc(ox,oy,r,0,Math.PI*2); x.stroke();
+    }
+
+    x.shadowBlur = 0;
+    x.rotate(tm*0.03*motionDrift + e*0.2*(0.7 + motionK*0.35));
+    x.strokeStyle=`rgba(220,235,255,${0.04 + 0.04*glowK})`;
+    x.lineWidth=1;
+    const span=Math.max(W,H);
+    const gStep=Math.max(lowPowerMoire ? 14 : 9, Math.floor((18 - e*4) / densityK));
+    for(let yy=-span; yy<=span; yy+=gStep){ x.beginPath(); x.moveTo(-span,yy); x.lineTo(span,yy); x.stroke(); }
+
+    x.restore();
+  }
+
+  function drawMagnetosphere(){
+    x.fillStyle='rgba(2,5,12,0.20)'; x.fillRect(0,0,W,H);
+    x.save();
+    x.translate(W*0.5, H*0.52);
+    x.globalCompositeOperation='lighter';
+
+    const e = energy/100;
+    const b = bass/100;
+    const m = mid/100;
+    const tr = treb/100;
+    const hue0 = (188 + t*9 + tr*120) % 360;
+
+    // Use separate X/Y extents so 1280x400 doesn't look tiny.
+    const rxBase = (W * 0.38) * (0.84 + b*0.32 + pulse*0.12);
+    const ryBase = (H * 0.36) * (0.86 + m*0.22 + pulse*0.10);
+
+    // magnetic field lines (dipole-ish), widened for cinematic spread
+    const lines = 30;
+    for(let i=0;i<lines;i++){
+      const phase = (i/lines)*Math.PI*2;
+      const spin = t*(0.22 + m*0.35);
+      const a = phase + spin;
+      x.beginPath();
+      const steps=88;
+      for(let s=0;s<=steps;s++){
+        const u = (s/steps)*2 - 1; // -1..1
+        const env = (0.18 + 0.82*(1-u*u));
+        const twist = Math.sin(u*4 + t*1.3 + phase)* (0.20 + tr*0.24);
+        const px = Math.cos(a + twist) * rxBase * env;
+        const py = Math.sin(a + twist) * ryBase * env * 0.92 + u * (H*0.16);
+        if(s===0) x.moveTo(px,py); else x.lineTo(px,py);
+      }
+      x.lineWidth = 1.0 + e*1.8;
+      x.strokeStyle = `hsla(${(hue0 + i*3)%360},95%,${52 + m*18}%,${0.09 + e*0.20})`;
+      x.stroke();
+    }
+
+    // charged particles moving along pseudo field flow
+    const pts = 170;
+    for(let i=0;i<pts;i++){
+      const p = (i/pts);
+      const a = p*Math.PI*2 + t*(0.45 + b*0.55);
+      const rEnv = (0.24 + 0.65*Math.sin((p*9)+t*0.8)*0.5 + 0.5);
+      const x0 = Math.cos(a) * rxBase * 0.76 * rEnv;
+      const y0 = Math.sin(a*1.2) * ryBase * 0.72 * rEnv;
+      const rr = 1.0 + tr*2.2 + pulse*1.0;
+      x.fillStyle = `hsla(${(hue0 + 80 + p*90)%360},100%,72%,${0.08 + tr*0.22})`;
+      x.beginPath(); x.arc(x0,y0,rr,0,Math.PI*2); x.fill();
+    }
+
+    // central core glow
+    const coreR = 24 + bass*0.42 + pulse*30;
+    const g = x.createRadialGradient(0,0,2,0,0,coreR*2.7);
+    g.addColorStop(0,'rgba(210,245,255,0.8)');
+    g.addColorStop(0.35,`hsla(${hue0},100%,64%,0.26)`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle = g;
+    x.beginPath(); x.arc(0,0,coreR*2.0,0,Math.PI*2); x.fill();
+
+    x.restore();
+  }
+
+  function drawAeon(){
+    x.fillStyle='rgba(4,8,18,0.18)'; x.fillRect(0,0,W,H);
+    x.save();
+    x.translate(W*0.5, H*0.5);
+    x.globalCompositeOperation='lighter';
+
+    const hue0=(190 + tm*11 + treb*0.7)%360;
+    const amp=(0.55 + bass/120 + pulse*0.42);
+    const scale=Math.min(W,H)*0.28;
+
+    // layered parametric ribbons (aeon-ish)
+    for(let i=0;i<aeonSeeds.length;i++){
+      const s=aeonSeeds[i];
+      const steps=240;
+      x.beginPath();
+      for(let n=0;n<=steps;n++){
+        const u=(n/steps)*Math.PI*2;
+        const wob=1 + 0.12*Math.sin(u*7 + tm*(1.0+s.k)) + 0.06*Math.sin(u*13 - tm*0.7);
+        const x1=Math.sin(u*s.a + tm*(0.35+s.k) + s.p) * scale * wob * (0.78 + amp*0.42);
+        const y1=Math.sin(u*s.b + tm*(0.28+s.k*0.8)) * scale * 0.64 * wob * (0.82 + mid/180);
+        if(n===0) x.moveTo(x1,y1); else x.lineTo(x1,y1);
+      }
+      x.closePath();
+      x.lineWidth=1.4 + pulse*1.2;
+      x.strokeStyle=`hsla(${(hue0+i*26)%360},95%,${58+i*3}%,${0.10 + 0.07*(i+1)/aeonSeeds.length})`;
+      x.shadowBlur=(7 + pulse*10) * (0.72 + glowK*0.33);
+      x.shadowColor=`hsla(${(hue0+i*28)%360},100%,65%,${0.18 + 0.10*glowK})`;
+      x.stroke();
+    }
+
+    x.shadowBlur=0;
+    // central orbital glow
+    const core=26 + bass*0.24 + pulse*24;
+    const g=x.createRadialGradient(0,0,2,0,0,core*2.8);
+    g.addColorStop(0,'rgba(230,245,255,0.70)');
+    g.addColorStop(0.4,`hsla(${(hue0+18)%360},100%,64%,0.24)`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle=g; x.beginPath(); x.arc(0,0,core*1.9,0,Math.PI*2); x.fill();
+
+    x.restore();
+  }
+
+  function spawnFireworks(){
+    const cx=W*(0.2+Math.random()*0.6), cy=H*(0.18+Math.random()*0.42);
+    const count=26 + Math.floor(Math.random()*24);
+    const hue=(170 + bass*1.2 + Math.random()*140)%360;
+    for(let i=0;i<count;i++){
+      const a=Math.random()*Math.PI*2;
+      const sp=(1.0+Math.random()*2.6) * (0.9 + energy/120);
+      sparks.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,dec:0.012+Math.random()*0.02,h:hue+Math.random()*24});
+    }
+  }
+
+  function drawFireworks(){
+    x.fillStyle='rgba(3,5,10,0.26)'; x.fillRect(0,0,W,H);
+    const now=performance.now();
+    const eRise=Math.max(0, energy-lastEnergy);
+    const bRise=Math.max(0, bass-lastBass);
+    lastEnergy=energy;
+    lastBass=bass;
+
+    // Context-aware gating: ballads stay sparse; dense tracks can bloom.
+    const trackActivity = Math.max(0, energy - energyFloor);
+    const quietMode = (energy < 22) && (trackActivity < 8);
+
+    // Beat/transient driven with cooldown so it keeps firing without becoming spammy.
+    const onsetThresh = quietMode ? 0.50 : 0.24;
+    const pulseThresh = quietMode ? 0.58 : 0.32;
+    const strongHit = (onset>onsetThresh) || (pulse>pulseThresh) || (eRise>0.95) || (bRise>1.9);
+    const sustained = !quietMode && (energy>30 && bass>24);
+    if(now>=nextFireAt && (strongHit || sustained)){
+      spawnFireworks();
+      const cooldown = quietMode
+        ? (700 + Math.random()*900)
+        : (strongHit ? (140 + Math.random()*170) : (240 + Math.random()*260));
+      nextFireAt = now + cooldown;
+    }
+
+    // Gentle sparkle only when musically active enough.
+    if(now>=nextFireAt && !quietMode && energy>20 && Math.random()<0.02){
+      spawnFireworks();
+      nextFireAt = now + 260 + Math.random()*320;
+    }
+
+    x.save();
+    x.globalCompositeOperation='lighter';
+    for(let i=sparks.length-1;i>=0;i--){
+      const p=sparks[i];
+      p.vy += 0.012;
+      p.x += p.vx; p.y += p.vy;
+      p.vx *= 0.992; p.vy *= 0.992;
+      p.life -= p.dec;
+      if(p.life<=0 || p.x<-30 || p.x>W+30 || p.y<-30 || p.y>H+30){ sparks.splice(i,1); continue; }
+      const a=Math.max(0,p.life);
+      x.fillStyle=`hsla(${p.h%360},100%,${56+treb*0.25}%,${0.12+a*0.65})`;
+      const r=1.6 + (1-a)*2.8 + pulse*1.2;
+      x.beginPath(); x.arc(p.x,p.y,r,0,Math.PI*2); x.fill();
+    }
+    // horizon glow
+    const g=x.createLinearGradient(0,H*0.45,0,H);
+    g.addColorStop(0,'rgba(0,0,0,0)');
+    g.addColorStop(1,`hsla(${(200+t*8)%360},85%,20%,0.22)`);
+    x.fillStyle=g; x.fillRect(0,0,W,H);
+    x.restore();
+  }
+
+  function frame(ts){
+    t=ts*0.001;
+    tm=t*motionK;
+    if(auto && ts-lastSwitch>22000){ sceneIdx=(sceneIdx+1)%scenes.length; scene=scenes[sceneIdx]; lastSwitch=ts; }
+    mEl.textContent=`${scene}${auto?' · auto':''} · ${presetKey} · E${Math.round(energyLevel)} M${Math.round(motionLevel)} G${Math.round(glowLevel)}`;
+
+    // Lightweight feedback loop (render-to-self transform) for trails/depth.
+    x.save();
+    const fb = Math.max(0.03, Math.min(0.24, Number(preset.feedback||0.08) * (0.85 + (energyK-1)*0.5) * (0.82 + (glowK-1)*0.7)));
+    x.globalAlpha = fb + Math.min(0.12, pulse*0.03*(0.85+glowK*0.3));
+    x.translate(W*0.5, H*0.5);
+    const z = 1.002 + Math.min(0.012, energy/14000) * (0.7 + motionK*0.45);
+    x.scale(z, z);
+    x.rotate((mid/1000 - 0.02) * 0.002 * (0.65 + motionK*0.55));
+    x.translate(-W*0.5, -H*0.5);
+    x.drawImage(c, 0, 0, W, H);
+    x.restore();
+
+    if(scene==='aeon') drawAeon();
+    else if(scene==='fireworks') drawFireworks();
+    else if(scene==='particles') drawParticles();
+    else if(scene==='tunnel') drawTunnel();
+    else if(scene==='moire') drawMoire();
+    else if(scene==='sphere') drawMagnetosphere();
+    else drawAurora();
+
+    // faint scanlines for CRT feel
+    x.fillStyle='rgba(255,255,255,0.025)';
+    for(let y=0;y<H;y+=3) x.fillRect(0,y,W,1);
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

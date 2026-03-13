@@ -1,4 +1,4 @@
-# moOde Display Enhancement (Peppy + Player)
+# moOde Display Enhancement (Peppy + Player + Visualizer)
 
 This chapter documents the custom display flow hosted on the API/Web server (`:8101`) and pushed to moOde's Chromium target.
 
@@ -9,6 +9,7 @@ When **moOde Display Enhancement** is enabled in `config.html`, the app exposes:
 - `peppy.html` (custom peppy builder/view)
 - `player.html` (builder)
 - `player-render.html` (actual player renderer)
+- `visualizer.html` (audio-reactive visual display)
 - `display.html` (stable router URL for moOde)
 
 ### How Peppy meter + spectrum data works (ALSA -> HTTP bridge)
@@ -89,6 +90,7 @@ Then in the app:
 
 - use **Push Player to moOde** to render `player-render.html`
 - use **Push Peppy to moOde** to render `peppy.html`
+- use **Push Visualizer to moOde** to render `visualizer.html` (via router mode)
 
 So users only change moOde's target once; mode switching then happens from app push actions.
 
@@ -96,6 +98,7 @@ So users only change moOde's target once; mode switching then happens from app p
 
 - `displayMode=peppy` -> `peppy.html`
 - `displayMode=player` -> `player-render.html`
+- `displayMode=visualizer` -> `visualizer.html`
 - `displayMode=moode` -> `http://moode.local/index.php`
 
 ## Builder choices (Peppy) and what they do

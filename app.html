@@ -360,6 +360,7 @@
         <button id="pushPeppyBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Push skin to moOde</button>
         <button id="showMoodeUiBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show moOde UI</button>
         <button id="showPlayerBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Player on moOde</button>
+        <button id="showVisualizerBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Show Visualizer on moOde</button>
         <button id="refreshDisplayBtn" class="heroQueueBtn" type="button" style="display:none;margin-left:8px;">Refresh moOde Display</button>
         <span id="peppyActionAnchor" style="display:none;"></span>
         <span id="peppyTechAnchor" style="display:none;"></span>
@@ -397,7 +398,7 @@
   <script src="scripts/hero-transport.js?v=20260310-youtube-streaming-badge3"></script>
   <script>
     (() => {
-      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','youtube.html','peppy.html','player.html','mobile.html','displays.html','controller-kiosk.html','kiosk.html','kiosk-designer.html','theme.html']);
+      const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','youtube.html','peppy.html','player.html','visualizer.html','mobile.html','displays.html','controller-kiosk.html','kiosk.html','kiosk-designer.html','theme.html']);
       const frame = document.getElementById('appFrame');
       const viewWrap = document.getElementById('viewWrap');
       const shellUrl = new URL(location.href);
@@ -2588,6 +2589,7 @@
         const pillsRow = document.getElementById('peppyTechPillsRow');
         const moodeBtn = document.getElementById('showMoodeUiBtn');
         const playerBtn = document.getElementById('showPlayerBtn');
+        const vizBtn = document.getElementById('showVisualizerBtn');
         const refBtn = document.getElementById('refreshDisplayBtn');
         if (!dock || !anchor || !adv || !hint || !pills || !actionAnchor || !controlsRow || !pillsRow) return;
 
@@ -2595,6 +2597,7 @@
           dock.style.display = 'flex';
           if (moodeBtn && moodeBtn.parentElement !== controlsRow) controlsRow.appendChild(moodeBtn);
           if (playerBtn && playerBtn.parentElement !== controlsRow) controlsRow.appendChild(playerBtn);
+          if (vizBtn && vizBtn.parentElement !== controlsRow) controlsRow.appendChild(vizBtn);
           if (refBtn && refBtn.parentElement !== controlsRow) controlsRow.appendChild(refBtn);
           if (adv.parentElement !== controlsRow) controlsRow.appendChild(adv);
           if (hint.parentElement !== controlsRow) controlsRow.appendChild(hint);
@@ -2606,6 +2609,7 @@
           const parent = actionAnchor.parentElement;
           if (moodeBtn && moodeBtn.parentElement !== parent) parent.insertBefore(moodeBtn, actionAnchor);
           if (playerBtn && playerBtn.parentElement !== parent) parent.insertBefore(playerBtn, actionAnchor);
+          if (vizBtn && vizBtn.parentElement !== parent) parent.insertBefore(vizBtn, actionAnchor);
           if (refBtn && refBtn.parentElement !== parent) parent.insertBefore(refBtn, actionAnchor);
           if (adv.parentElement !== anchor.parentElement) anchor.parentElement.insertBefore(adv, anchor.nextSibling);
           if (hint.parentElement !== anchor.parentElement) anchor.parentElement.insertBefore(hint, adv.nextSibling);
@@ -2622,6 +2626,7 @@
         const btn = document.getElementById('pushPeppyBtn');
         const moodeBtn = document.getElementById('showMoodeUiBtn');
         const playerBtn = document.getElementById('showPlayerBtn');
+        const vizBtn = document.getElementById('showVisualizerBtn');
         const refBtn = document.getElementById('refreshDisplayBtn');
         const adv = document.getElementById('displayAdvanced');
         const fixBtn = document.getElementById('fixTargetBtn');
@@ -2629,6 +2634,7 @@
         if (btn) btn.style.display = 'none';
         if (moodeBtn) moodeBtn.style.display = show ? '' : 'none';
         if (playerBtn) playerBtn.style.display = 'none';
+        if (vizBtn) vizBtn.style.display = show ? '' : 'none';
         if (refBtn) refBtn.style.display = show ? '' : 'none';
         if (adv) adv.style.display = show ? '' : 'none';
         if (fixBtn) fixBtn.style.display = show ? '' : 'none';
@@ -3127,6 +3133,10 @@
       document.getElementById('showPlayerBtn')?.addEventListener('click', async (ev) => {
         ev.preventDefault();
         try { await setDisplayModeAndRefresh('player'); } catch (e) { console.warn('show player failed', e?.message || e); }
+      });
+      document.getElementById('showVisualizerBtn')?.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        try { await setDisplayModeAndRefresh('visualizer'); } catch (e) { console.warn('show visualizer failed', e?.message || e); }
       });
       document.getElementById('refreshDisplayBtn')?.addEventListener('click', async (ev) => {
         ev.preventDefault();

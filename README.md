@@ -17,15 +17,16 @@ Turbo charge your moOde experience without altering your moOde installation.
 <img src="./docs/images/mobile-builder/controller.png" alt="Controller mobile view" width="300">
 
 
-Seven ways to use:
+Eight ways to use:
 
 1. Browser toolkit/dashboard
 2. Display html page
 3. Player screen for moOde box (wth controls)
 4. Peppymeter+track info screen for moOde box (with controls)
-5. Kiosk (library navigation) for moOde box
-6. Mobile app (library and control)
-7. Alexa skill
+5. Visualizer screen for moOde box
+6. Kiosk (library navigation) for moOde box
+7. Mobile app (library and control)
+8. Alexa skill
 
 > Recommended topology: run this project on a separate Pi from your moOde host.
 
@@ -57,6 +58,7 @@ Then use the app push actions:
 
 - **Push Player to moOde** → switches renderer to Player
 - **Push Peppy to moOde** → switches renderer to Peppy
+- **Push Visualizer to moOde** → switches renderer to Visualizer
 - **Push to moOde** (from `kiosk-designer.html`) → switches renderer to Kiosk
 
 > If your moOde local display target is an external host (not moOde itself), also apply the watchdog blanking/wake compatibility patch documented in [docs/15-moode-remote-display-blanking-fix.md](./docs/15-moode-remote-display-blanking-fix.md).
