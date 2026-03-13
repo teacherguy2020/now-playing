@@ -98,7 +98,7 @@
   if (presetKey === 'jelly') presetKey = 'aeon';
   let preset=PRESETS[presetKey]||PRESETS.classic;
   const PRESET_LEVELS={
-    classic:{energy:6,motion:6,glow:6},
+    classic:{energy:10,motion:10,glow:10},
     aeon:{energy:7,motion:6,glow:8},
     fireworks:{energy:8,motion:7,glow:7},
     sphere:{energy:6,motion:5,glow:8},
@@ -412,6 +412,7 @@
   pushMoodeBtn?.addEventListener('click', pushToMoode);
   let bins=Array.from({length:30},()=>0),binsFast=Array.from({length:30},()=>0),peaks=Array.from({length:30},()=>0),bass=0,mid=0,treb=0,energy=0,pulse=0;
   let lowE=0,midE=0,highE=0,onset=0,spectralFlux=0,rms=0,agc=1;
+  let loudnessEnv=0, monoLevel=0, monoEnv=0;
   const spectrumSampleRate = Math.max(8000, Math.min(192000, Number(qp.get('sr') || 44100) || 44100));
   const spectrumNyquist = spectrumSampleRate / 2;
   // From TOP line to BOTTOM line for ambient mapping
@@ -464,6 +465,7 @@
         // Rolling RMS + AGC (keeps response alive across quiet/loud tracks)
         const instRms=Math.sqrt(next.reduce((p,v)=>p+v*v,0)/Math.max(1,next.length));
         rms = mix(rms, instRms, 0.12);
+        loudnessEnv = mix(loudnessEnv, instRms, 0.08);
         const target=38;
         const wanted=clamp(target/Math.max(8,rms),0.75,2.1);
         agc = mix(agc,wanted,0.08);
@@ -514,9 +516,23 @@
     try{const r=await fetch(`${api}/now-playing`,{cache:'no-store'});const j=await r.json();tEl.textContent=String(j?.displayTitle||j?.title||'Visualizer');aEl.textContent=String(j?.displayArtist||j?.artist||j?.stationName||''); transportState=String(j?.state||j?.status||'').toLowerCase() || transportState;}catch{}
     setTimeout(pollTrack,1400);
   }
-  pollSpectrum(); pollTrack();
+  async function pollMeter(){
+    try {
+      const r = await fetch(`${api}/peppy/vumeter`, { cache:'no-store' });
+      const j = await r.json();
+      const m = j?.meter || {};
+      const mono = Number(m?.mono);
+      const left = Number(m?.left);
+      const right = Number(m?.right);
+      const fallback = (Number.isFinite(left) && Number.isFinite(right)) ? ((left+right)/2) : 0;
+      monoLevel = Math.max(0, Math.min(100, Number.isFinite(mono) ? mono : fallback));
+      monoEnv = mix(monoEnv, monoLevel, 0.12);
+    } catch {}
+    setTimeout(pollMeter, 90);
+  }
+  pollSpectrum(); pollTrack(); pollMeter();
 
-  const particles=Array.from({length:220},()=>({x:Math.random(),y:Math.random(),z:Math.random(),vx:(Math.random()-0.5)*0.001,vy:(Math.random()-0.5)*0.001}));
+  const particles=Array.from({length:220},()=>({x:Math.random(),y:Math.random(),z:Math.random(),vx:(Math.random()-0.5)*0.001,vy:(Math.random()-0.5)*0.001,cdx:0,cdy:0}));
   let transportState='unknown';
   const aeonSeeds=Array.from({length:5},(_,i)=>({
     p:Math.random()*Math.PI*2,
@@ -533,6 +549,12 @@
   let lastBass=0;
   let nextFireAt=0;
   let t=0,tm=0,lastSwitch=performance.now();
+  let particleSpin=0;
+  let particleSpinDrive=0;
+  let particleSpinDir=1;
+  let particleChaos=0;
+  let particleSilenceEnv=0;
+  let particlePanEnv=0;
   let __moireToggle = 0;
 
   function bgAurora(){
@@ -685,19 +707,158 @@
 
   function drawParticles(){
     x.fillStyle='rgba(3,6,12,0.32)'; x.fillRect(0,0,W,H);
-    x.save(); x.globalCompositeOperation='lighter';
+    x.save();
+    x.globalCompositeOperation='lighter';
     const speed=0.002 + energy*0.00011;
-    for(const p of particles){
+    const tailFromSpeed = Math.max(0, Math.min(1, (speed - 0.002) / 0.012));
+    const silenceBase = clamp((24 - energy) / 24, 0, 1);
+    const silenceTarget = clamp(silenceBase + ((transportState !== 'play') ? 0.55 : 0), 0, 1);
+    const sAtk = 0.018; // slower ramp into silence behavior
+    const sRel = 0.010; // slower recovery out of silence behavior
+    const sA = silenceTarget > particleSilenceEnv ? sAtk : sRel;
+    particleSilenceEnv = mix(particleSilenceEnv, silenceTarget, sA);
+    const silence = particleSilenceEnv;
+    const hyperRaw = Math.max(0, pulse - 1.35) + Math.max(0, onset - 1.05) + Math.max(0, (energy-84)/26);
+    // Chaos driven by sustained VU mono loudness envelope (not contrast spikes).
+    const loud = monoEnv || loudnessEnv;
+    const chaosOnThresh = 62;  // start threshold (VU mono envelope)
+    const chaosOffThresh = 54; // stop threshold (hysteresis)
+    const chaosGate = (loud >= chaosOnThresh) ? 1 : ((loud <= chaosOffThresh) ? 0 : (particleChaos > 0.02 ? 1 : 0));
+    const chaosRaw = chaosGate * Math.max(0, (loud - chaosOffThresh) / 18);
+    // Ease-in drive envelope so twist initiation is gentle, not abrupt.
+    const dAtk = 0.06;
+    const dRel = 0.02;
+    const dA = hyperRaw > particleSpinDrive ? dAtk : dRel;
+    particleSpinDrive = mix(particleSpinDrive, hyperRaw, dA);
+    const cAtk = 0.10, cRel = 0.008;
+    particleChaos = mix(particleChaos, chaosRaw, chaosRaw > particleChaos ? cAtk : cRel);
+    // Hard loudness clamp: do not allow chaos to persist in truly soft moments.
+    if (loud < 24) particleChaos *= 0.45;
+    if (loud < 20) particleChaos *= 0.20;
+    const spectralBias = clamp((highE - lowE) / 35, -1, 1); // highs vs lows decide spin direction
+    if (Math.abs(spectralBias) > 0.12) particleSpinDir = spectralBias >= 0 ? 1 : -1;
+    const targetSpin = Math.max(-0.6109, Math.min(0.6109, particleSpinDir * Math.sin(tm*1.25) * particleSpinDrive * 1.10));
+    const spinAtk = 0.06;
+    const spinRel = 0.010; // extra gradual settle
+    const spinA = Math.abs(targetSpin) > Math.abs(particleSpin) ? spinAtk : spinRel;
+    particleSpin = mix(particleSpin, targetSpin, spinA);
+    // keep camera stable; apply twist to particle coordinates instead
+
+    // Classic: map particle color lanes to spectrum ranges (same 7-band scaffold as ambient).
+    const bandVals = AMBIENT_LINE_BANDS_HZ.map(([hzLo,hzHi]) => {
+      const iLo = hzToIdx(hzLo, binsFast.length||1, spectrumNyquist);
+      const iHi = hzToIdx(hzHi, binsFast.length||1, spectrumNyquist);
+      return avgRange(binsFast, iLo, iHi) / 100;
+    });
+
+    // Spectral pan: low-heavy drifts left, high-heavy drifts right.
+    const spectralPanRaw = clamp((highE - lowE) / 24, -1, 1);
+    const panAtk = 0.22, panRel = 0.08;
+    const panA = Math.abs(spectralPanRaw) > Math.abs(particlePanEnv) ? panAtk : panRel;
+    particlePanEnv = mix(particlePanEnv, spectralPanRaw, panA);
+    const panPxBase = particlePanEnv * (W * 0.22); // global visible drift
+
+    for(let idx=0; idx<particles.length; idx++){
+      const p = particles[idx];
       p.z-=speed + pulse*0.01;
-      if(p.z<=0.02){p.x=Math.random();p.y=Math.random();p.z=1;}
+      if(p.z<=0.02){p.x=Math.random();p.y=Math.random();p.z=1; p.cdx=0; p.cdy=0;}
       p.x=(p.x+p.vx+1)%1; p.y=(p.y+p.vy+1)%1;
-      const sx=(p.x-0.5)/(p.z)+0.5, sy=(p.y-0.5)/(p.z)+0.5;
-      const px=sx*W, py=sy*H;
+      if (particleChaos > 0.04) {
+        if (!p.cdx && !p.cdy) {
+          const a = Math.random() * Math.PI * 2;
+          p.cdx = Math.cos(a);
+          p.cdy = Math.sin(a);
+        }
+        const chaosTravel = Math.min(1.2, particleChaos) * 0.010;
+        p.x = (p.x + p.cdx * chaosTravel + 1) % 1;
+        p.y = (p.y + p.cdy * chaosTravel + 1) % 1;
+      }
+      let sx=(p.x-0.5)/(p.z)+0.5, sy=(p.y-0.5)/(p.z)+0.5;
+      if (Math.abs(particleSpin) > 0.0002 || particleChaos > 0.02) {
+        const cx = sx - 0.5;
+        const cy = sy - 0.5;
+        let localTwist = particleSpin * (0.35 + (1 - p.z) * 0.95);
+        if (particleChaos > 0.02) {
+          const chaosAmt = Math.min(1.0, particleChaos * 0.7);
+          if (!p.cdx && !p.cdy) {
+            const a = Math.random() * Math.PI * 2;
+            p.cdx = Math.cos(a);
+            p.cdy = Math.sin(a);
+          }
+          const jitter = (p.cdx * 0.07 + p.cdy * 0.05) * chaosAmt;
+          localTwist += jitter;
+        }
+        const c = Math.cos(localTwist), s = Math.sin(localTwist);
+        const rx = cx*c - cy*s;
+        const ry = cx*s + cy*c;
+        sx = rx + 0.5;
+        sy = ry + 0.5;
+      }
+
+      // Strong per-dot chaos drift (persistent random direction per particle lifetime)
+      if (particleChaos > 0.03) {
+        if (!p.cdx && !p.cdy) {
+          const a = Math.random() * Math.PI * 2;
+          p.cdx = Math.cos(a);
+          p.cdy = Math.sin(a);
+        }
+        const chaosDrift = Math.min(1.2, particleChaos * 1.1) * (0.020 + (1 - p.z) * 0.040);
+        sx += p.cdx * chaosDrift;
+        sy += p.cdy * chaosDrift;
+      }
+      if (silence > 0.001) {
+        // As silence approaches, fling particles away from center in unique directions.
+        const dx = sx - 0.5;
+        const dy = sy - 0.5;
+        const n = Math.hypot(dx, dy) || 1;
+        const ux = dx / n, uy = dy / n;
+        const chaosDir = Math.sin(idx*12.7 + tm*2.1) * 0.35;
+        const scatter = Math.pow(silence, 1.35) * (0.35 + (1-p.z)*1.55);
+        sx += (ux + chaosDir*uy) * scatter;
+        sy += (uy - chaosDir*ux) * scatter;
+      }
+      const panPx = panPxBase * (0.55 + (1-p.z)*0.9);
+      const px=sx*W + panPx, py=sy*H;
       if(px<0||py<0||px>W||py>H) continue;
-      const r=(1-p.z)*3.2 + pulse*3;
-      const hue=(200+treb*1.1+t*8 + colorAlive*34 + colorFlash*44)%360;
-      x.fillStyle=`hsla(${hue},95%,${60+treb*0.22 + colorFlash*10}%,${0.14+(1-p.z)*0.42})`;
+      // Invisible center exclusion zone (space-travel void)
+      const cx0 = W*0.5, cy0 = H*0.5;
+      const voidR = 100;
+      if (((px-cx0)*(px-cx0) + (py-cy0)*(py-cy0)) < (voidR*voidR)) continue;
+
+      // Organize band lanes spatially right -> left (high -> low)
+      const xNorm = Math.max(0, Math.min(0.999, px / Math.max(1, W)));
+      const lane = Math.max(0, Math.min(6, Math.floor((1 - xNorm) * 7))); // right=0 (high), left=6 (low)
+      const b = Number(bandVals[lane]||0);
+
+      // Quantity reacts to lane strength
+      const volumeDensity = clamp(0.55 + energy/85, 0.45, 1.9);
+      const drawProb = Math.max(0.02, Math.min(1, (0.18 + b*1.05 + colorFlash*0.10) * volumeDensity * (1 - silence*0.75)));
+      if (Math.random() > drawProb) continue;
+
+      const bandSizeBoost = b * 2.6; // stronger band -> bigger dots in that lane
+      const rRaw=2 + bandSizeBoost + (1-p.z)*(3.2 + tailFromSpeed*1.8 + Math.min(1.6, particleChaos*1.2)) + pulse*3;
+      const r=Math.min(9, Math.max(1.6, rRaw));
+      const laneHue = 20 + lane*46;
+      const hue=(laneHue + t*8 + b*120 + colorFlash*20)%360;
+      const chaosPop = Math.min(1.0, particleChaos * 0.75);
+      const chaosTail = Math.min(1.4, particleChaos * 1.1);
+      const fade = 1 - (silence * 0.92);
+      const lum=(52 + b*26 + colorFlash*8 + chaosPop*10) * (0.45 + fade*0.55);
+      const alpha=((0.10 + b*0.18) + (1-p.z)*(0.22 + tailFromSpeed*0.34 + chaosTail*0.22) + chaosPop*0.10) * fade;
+      x.fillStyle = `hsla(${hue},95%,${lum}%,${alpha})`;
       x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill();
+      if (chaosPop > 0.08) {
+        const split = (0.8 + chaosPop*4.2) * (0.6 + (1-p.z));
+        if (!p.cdx && !p.cdy) {
+          const a = Math.random() * Math.PI * 2;
+          p.cdx = Math.cos(a);
+          p.cdy = Math.sin(a);
+        }
+        const offX = p.cdx * split;
+        const offY = p.cdy * split;
+        x.fillStyle = `hsla(${(hue+18)%360},95%,${Math.min(92, lum+6)}%,${Math.max(0.08, alpha*0.8)})`;
+        x.beginPath(); x.arc(px+offX,py+offY,Math.max(1.2, r*0.78),0,Math.PI*2); x.fill();
+      }
     }
     x.restore();
   }
