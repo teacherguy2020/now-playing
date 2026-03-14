@@ -2031,8 +2031,8 @@
     const patternByLane = ['chrys','chrys','ring','fan','spiral','comet'];
     let triggerPattern = patternByLane[triggerLane] || 'ring';
     // Brocade only on meaningful low-band change (EQ low lane visibly lighting up).
-    const lowMeaningful = laneScores[0] > 8.8;
-    const lowDominant = laneScores[0] >= (Math.max(laneScores[1]||0, laneScores[2]||0) * 1.12);
+    const lowMeaningful = laneScores[0] > 10.5;
+    const lowDominant = laneScores[0] >= (Math.max(laneScores[1]||0, laneScores[2]||0) * 1.22);
     const brocadeNow = lowMeaningful && lowDominant;
     if (brocadeNow) triggerPattern = 'brocade';
     lowPrev = lowE; midPrev = midE; highPrev = highE;
