@@ -275,16 +275,41 @@
     refreshSavedPresetSelect('');
     if (pushStatus) pushStatus.textContent = `Deleted preset: ${name}`;
   });
-  exportPresetBtn?.addEventListener('click', ()=>{
+  exportPresetBtn?.addEventListener('click', async ()=>{
     const name = String(savedPresetSel?.value || '').trim();
     const list = readSavedPresets();
     const payload = name ? list.find(p=>String(p?.name||'')===name) : currentPresetPayload();
     if (!payload) return;
     const data = JSON.stringify(payload, null, 2);
+    const file = `${String(payload.name||payload.preset||'visualizer-preset').replace(/\s+/g,'-').toLowerCase()}.json`;
+
+    // Prefer native share on mobile/webviews where blob: downloads can fail.
+    try {
+      const f = new File([data], file, { type:'application/json' });
+      if (navigator.share && (!navigator.canShare || navigator.canShare({ files:[f] }))) {
+        await navigator.share({ files:[f], title:file, text:'Visualizer preset export' });
+        if (pushStatus) pushStatus.textContent = `Shared preset: ${file}`;
+        return;
+      }
+    } catch {}
+
+    // Clipboard fallback for constrained in-app browsers.
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(data);
+        if (pushStatus) pushStatus.textContent = `Copied preset JSON to clipboard (${file})`;
+        return;
+      }
+    } catch {}
+
+    // Desktop/browser default download flow.
     const blob = new Blob([data], { type:'application/json' });
     const a=document.createElement('a');
-    const file = `${String(payload.name||payload.preset||'visualizer-preset').replace(/\s+/g,'-').toLowerCase()}.json`;
-    a.href = URL.createObjectURL(blob); a.download = file; a.click();
+    a.href = URL.createObjectURL(blob);
+    a.download = file;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href), 500);
   });
   importPresetBtn?.addEventListener('click', ()=> importPresetFile?.click());
