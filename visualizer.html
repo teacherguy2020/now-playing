@@ -591,6 +591,7 @@
   const sparks=[];
   const shootingStars=[];
   const fireworkLaunches=[];
+  const activeBursts=[];
   let lastEnergy=0;
   let lastBass=0;
   let nextFireAt=0;
@@ -1922,27 +1923,37 @@
     const lowN = Math.max(0, Math.min(1, lowE/100));
     const midN = Math.max(0, Math.min(1, midE/100));
 
+    // Cap concurrent bursts by Energy (E1 ~ max 4 onscreen).
+    const eNorm = Math.max(0, Math.min(1, (Number(energyLevel||1)-1)/9));
+    const maxBurstsOnScreen = Math.max(4, Math.min(8, Math.round(4 + eNorm*4)));
+    if (activeBursts.length >= maxBurstsOnScreen) return;
+
     const cx=W*(0.18+Math.random()*0.64), cy=H*(0.16+Math.random()*0.46);
     // ENERGY => quantity
     const countBase = 11 + Math.floor(vol*22);
-    const qtyMul = 0.16 + energyK*0.18;
-    const countRaw = Math.max(8, Math.min(64, Math.round((countBase + Math.floor((opts.hit?1:0) * (7 + vol*9))) * qtyMul)));
-    const count = opts.strobe ? Math.max(12, Math.min(96, Math.round(countRaw * 2))) : (opts.tourbillon ? 6 : countRaw);
+    const countRaw = Math.max(8, Math.min(64, Math.round(countBase + Math.floor((opts.hit?1:0) * (7 + vol*9)))));
+    const count = opts.strobe
+      ? Math.max(12, Math.min(96, Math.round(countRaw * 2)))
+      : (opts.brocade ? Math.max(56, Math.min(88, Math.round(countRaw * 1.15))) : countRaw);
     const triggerHue = Number.isFinite(Number(opts.hue)) ? Number(opts.hue) : null;
     const hue=(triggerHue != null ? triggerHue : (150 + colorAlive*28 + colorFlash*26 + Math.random()*20))%360;
     // MOTION => explosion speed
     const speedBase = (0.9 + lowN*1.8 + midN*1.1) * (0.72 + motionK*0.45);
     // GLOW => tail length (lower decay = longer tail)
-    const glowTailK = 0.58 + glowK*1.75;
+    const glowTailK = 0.62 + glowK*0.78;
     const patternRoll = Math.random();
-    const pattern = opts.strobe
+    const pattern = opts.pattern || (opts.strobe
       ? 'strobe'
-      : (patternRoll < 0.28 ? 'ring' : (patternRoll < 0.52 ? 'fan' : (patternRoll < 0.72 ? 'spiral' : (patternRoll < 0.90 ? 'chrys' : 'comet'))));
+      : (opts.brocade ? 'brocade' : (patternRoll < 0.26 ? 'ring' : (patternRoll < 0.50 ? 'fan' : (patternRoll < 0.72 ? 'spiral' : (patternRoll < 0.90 ? 'chrys' : 'comet'))))));
     const fanCenter = Math.random()*Math.PI*2;
     const fanWidth = (0.55 + Math.random()*0.55) * Math.PI;
+    activeBursts.push({ life:1.0 });
     for(let i=0;i<count;i++){
       let a;
-      if (pattern === 'strobe') {
+      if (pattern === 'brocade') {
+        // Looser flower bloom around a ring (organic, not perfectly symmetric).
+        a = (i / Math.max(1, count)) * Math.PI*2 + (Math.random()-0.5)*0.30;
+      } else if (pattern === 'strobe') {
         a = (i / Math.max(1, count)) * Math.PI*2 + (Math.random()-0.5)*0.10;
       } else if (pattern === 'ring') {
         a = (i / Math.max(1, count)) * Math.PI*2 + (Math.random()-0.5)*0.20;
@@ -1959,11 +1970,16 @@
         const pet = Math.floor(Math.random()*petals);
         a = (pet / petals) * Math.PI*2 + (Math.random()-0.5)*(Math.PI/petals)*0.9;
       }
-      const patternSpeedMul = pattern === 'fan' ? 0.92 : (pattern === 'ring' ? 1.02 : (pattern === 'comet' ? 1.10 : (pattern === 'strobe' ? 0.62 : 1.0)));
-      const sp=(0.42+Math.random()*1.00) * speedBase * patternSpeedMul;
+      const patternSpeedMul = pattern === 'fan' ? 0.92 : (pattern === 'ring' ? 1.02 : (pattern === 'comet' ? 1.10 : (pattern === 'strobe' ? 0.62 : (pattern === 'brocade' ? 0.82 : 1.0))));
+      const sp=(pattern === 'brocade' ? (0.32 + Math.random()*1.05) : (0.42+Math.random()*1.00)) * speedBase * patternSpeedMul;
       const decBase = (0.010+Math.random()*0.018)/glowTailK;
-      const dec = pattern === 'comet' ? (decBase * 1.55) : (pattern === 'strobe' ? (decBase * 0.31) : decBase);
-      sparks.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,dec,h:hue+Math.random()*18,mode:pattern});
+      const dec = pattern === 'comet' ? (decBase * 1.55) : (pattern === 'strobe' ? (decBase * 0.31) : (pattern === 'brocade' ? (decBase * (0.42 + Math.random()*0.22)) : decBase));
+      let hAdj = hue+Math.random()*18;
+      if (pattern === 'brocade') {
+        // Green brocade.
+        hAdj = 118 + Math.random()*14;
+      }
+      sparks.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,dec,h:hAdj,mode:pattern});
     }
   }
 
@@ -1975,36 +1991,70 @@
     lastEnergy=energy;
     lastBass=bass;
 
+    // Decay burst-presence tracker used for concurrent-burst cap.
+    for (let i=activeBursts.length-1; i>=0; i--) {
+      activeBursts[i].life -= 0.015;
+      if (activeBursts[i].life <= 0) activeBursts.splice(i,1);
+    }
+
     const vol = Math.max(0, Math.min(1, monoEnv/100));
     const volRise = Math.max(0, (monoEnv - monoPrev) / 24);
     const spectralN = Math.max(0, Math.min(1, (0.18*(lowE/100) + 0.52*(midE/100) + 0.95*(highE/100)) / 0.95));
     const sparseMode = vol < 0.30 && Math.max(0, energy - energyFloor) < 7;
 
-    // Triggering band detection from fast rise (low/mid/high bins).
-    const riseLow = Math.max(0, lowE - lowPrev);
-    const riseMid = Math.max(0, midE - midPrev);
-    const riseHigh = Math.max(0, highE - highPrev);
-    let triggerBand = 0; // 0 low, 1 mid, 2 high
-    let triggerRise = riseLow;
-    if (riseMid > triggerRise) { triggerBand = 1; triggerRise = riseMid; }
-    if (riseHigh > triggerRise) { triggerBand = 2; triggerRise = riseHigh; }
-    const triggerHueByBand = [24, 188, 318];
-    const triggerHue = triggerHueByBand[triggerBand] + (Math.random()*10 - 5);
+    // Triggering band detection from fast rise using 6 spectral lanes.
+    const binsN = Math.max(1, Number(binsFast?.length || bins?.length || 1));
+    const laneCount = 6;
+    let triggerLane = 0;
+    let triggerScore = -1;
+    const laneScores = Array.from({length:laneCount},()=>0);
+    for (let lane=0; lane<laneCount; lane++) {
+      const i0 = Math.floor((lane / laneCount) * binsN);
+      const i1 = Math.max(i0 + 1, Math.floor(((lane + 1) / laneCount) * binsN));
+      let riseSum = 0, lvlSum = 0, cnt = 0;
+      for (let i=i0; i<i1; i++) {
+        const f = Number(binsFast?.[i] ?? bins?.[i] ?? 0);
+        const s = Number(bins?.[i] ?? f);
+        riseSum += Math.max(0, f - s);
+        lvlSum += f;
+        cnt++;
+      }
+      const riseAvg = cnt ? (riseSum / cnt) : 0;
+      const lvlAvg = cnt ? (lvlSum / cnt) : 0;
+      const score = riseAvg*2.2 + lvlAvg*0.25;
+      laneScores[lane] = score;
+      if (score > triggerScore) { triggerScore = score; triggerLane = lane; }
+    }
+    // Non-brocade lane hues avoid gold so brocade is visually distinct.
+    const triggerHueByLane = [332, 300, 205, 230, 262, 286];
+    const triggerHue = triggerHueByLane[triggerLane] + (Math.random()*10 - 5);
+    const patternByLane = ['chrys','chrys','ring','fan','spiral','comet'];
+    let triggerPattern = patternByLane[triggerLane] || 'ring';
+    // Brocade only on meaningful low-band change (EQ low lane visibly lighting up).
+    const lowMeaningful = laneScores[0] > 8.8;
+    const lowDominant = laneScores[0] >= (Math.max(laneScores[1]||0, laneScores[2]||0) * 1.12);
+    const brocadeNow = lowMeaningful && lowDominant;
+    if (brocadeNow) triggerPattern = 'brocade';
     lowPrev = lowE; midPrev = midE; highPrev = highE;
 
     // Signal-readable fire gate: spikes (onset/volume-rise) and sustained loudness.
     const hitGate = (onset > 0.26) || (pulse > 0.34) || (volRise > 0.38) || (eRise > 0.9) || (bRise > 1.6);
     const sustainGate = vol > 0.50 && energy > 28;
     if(now >= nextFireAt && (hitGate || sustainGate)){
-      const launchChanceBase = (vol > 0.42 || hitGate) ? 0.07 : 0.025;
-      const launchChance = launchChanceBase * (0.72 + energyK*0.32);
+      const launchChance = 0.05 * (0.72 + energyK*0.32);
       if (Math.random() < launchChance) {
         spawnFireworks({ vol, hit: hitGate, hue: triggerHue, launchFromGround:true });
       } else {
-        spawnFireworks({ vol, hit: hitGate, hue: triggerHue });
+        spawnFireworks({ vol, hit: hitGate, hue: triggerHue, pattern: triggerPattern });
       }
-      const rate = 340 - Math.min(180, vol*170) - Math.min(80, onset*90); // faster when louder/hittier
-      nextFireAt = now + Math.max(120, rate + Math.random()*180);
+      const rate = 560 - Math.min(240, vol*220) - Math.min(110, onset*110) - Math.min(40, energyK*65);
+      nextFireAt = now + Math.max(160, rate + Math.random()*220);
+    }
+
+    // Loud/full moments: allow occasional quick secondary burst for denser sky.
+    if (!sparseMode && energyK > 0.55 && activeBursts.length < 7 && Math.random() < 0.03) {
+      spawnFireworks({ vol, hit:false, hue: triggerHue, pattern: triggerPattern });
+      nextFireAt = Math.min(nextFireAt, now + 220 + Math.random()*190);
     }
 
     // Very occasional sparse-mode strobe glitter burst.
@@ -2022,8 +2072,8 @@
       const vx = (fromLeft ? 1 : -1) * (0.45 + Math.random()*0.45) * (0.78 + motionK*0.35);
       const vy = (0.07 + Math.random()*0.20) * (0.80 + motionK*0.28);
       const hue = 0; // white stars
-      const starLen = (34 + Math.random()*46) * (0.75 + glowK*1.10);
-      const starDec = (0.0022 + Math.random()*0.0014) / (0.75 + glowK*0.90);
+      const starLen = (34 + Math.random()*46) * (0.78 + glowK*0.42);
+      const starDec = (0.0022 + Math.random()*0.0014) / (0.80 + glowK*0.38);
       shootingStars.push({ x:sx, y:sy, vx, vy, life:1, dec:starDec, h:hue, len:starLen });
     }
 
@@ -2032,7 +2082,7 @@
     for(let i=sparks.length-1;i>=0;i--){
       const p=sparks[i];
       // Slightly stronger/earlier gravity so rays droop toward ground sooner.
-      p.vy += (p.mode === 'comet') ? 0.010 : (p.mode === 'strobe' ? 0.013 : 0.022);
+      p.vy += (p.mode === 'comet') ? 0.010 : (p.mode === 'strobe' ? 0.013 : (p.mode === 'brocade' ? 0.028 : 0.022));
       p.x += p.vx; p.y += p.vy;
       p.vx *= 0.992; p.vy *= 0.992;
       p.life -= p.dec;
@@ -2056,17 +2106,23 @@
       const age = 1 - a; // 0 at birth -> 1 near end
       const tailGate = Math.max(0, Math.min(1, (age - 0.14) / 0.44));
       if (tailGate > 0.001) {
-        const tailLen = (6 + glowK*26) * tailGate * (0.40 + a*0.7);
+        const tailLen = (p.mode === 'brocade' ? (10 + glowK*16) : (4 + glowK*10)) * tailGate * (0.40 + a*0.7);
         const tx = p.x - p.vx * tailLen;
         const ty = p.y - p.vy * tailLen;
         const lg = x.createLinearGradient(p.x, p.y, tx, ty);
         let tailAlpha = (0.08 + a*0.36) * tailGate;
+        if (p.mode === 'brocade') tailAlpha *= 1.25;
         if (p.mode === 'strobe') {
           const st = 0.45 + 0.55 * Math.max(0, Math.sin((t*24) + p.x*0.03 + p.y*0.05));
           tailAlpha *= st;
         }
-        lg.addColorStop(0, `hsla(${p.h%360},100%,70%,${tailAlpha})`);
-        lg.addColorStop(1, `hsla(${p.h%360},100%,70%,0)`);
+        if (p.mode === 'brocade' && p.h < 0) {
+          lg.addColorStop(0, `rgba(255,255,255,${tailAlpha})`);
+          lg.addColorStop(1, `rgba(255,255,255,0)`);
+        } else {
+          lg.addColorStop(0, `hsla(${p.h%360},100%,70%,${tailAlpha})`);
+          lg.addColorStop(1, `hsla(${p.h%360},100%,70%,0)`);
+        }
         x.strokeStyle = lg;
         x.lineWidth = (0.8 + glowK*1.2 + a*0.5) * tailGate;
         x.beginPath();
@@ -2078,8 +2134,14 @@
       // Head
       const headAlpha = p.mode === 'strobe'
         ? ((0.08+a*0.52) * (0.35 + 0.65*Math.max(0, Math.sin((t*28) + p.x*0.04))))
-        : (0.12+a*0.65);
-      x.fillStyle=`hsla(${p.h%360},100%,${56+treb*0.25}%,${headAlpha})`;
+        : (p.mode === 'brocade' ? (0.20 + a*0.76) : (0.12+a*0.65));
+      if (p.mode === 'brocade') {
+        const glitter = 0.55 + 0.45*Math.max(0, Math.sin((t*34) + p.x*0.05 + p.y*0.03));
+        if (p.h < 0) x.fillStyle=`rgba(255,255,255,${headAlpha*glitter})`;
+        else x.fillStyle=`hsla(${p.h%360},100%,${62+treb*0.18}%,${headAlpha*glitter})`;
+      } else {
+        x.fillStyle=`hsla(${p.h%360},100%,${56+treb*0.25}%,${headAlpha})`;
+      }
       const r=1.4 + (1-a)*2.2 + pulse*0.8;
       x.beginPath(); x.arc(p.x,p.y,r,0,Math.PI*2); x.fill();
     }
