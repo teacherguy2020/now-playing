@@ -369,6 +369,21 @@
       }
     } catch {}
   }
+  function applyPresetDefaultsFromSelection(){
+    try {
+      const p = String(presetSel?.value || presetKey || 'classic').toLowerCase();
+      const lv = PRESET_LEVELS[p] || PRESET_LEVELS.classic;
+      if (energySel) energySel.value = String(Math.max(1, Math.min(10, Number(lv.energy) || 5)));
+      if (motionSel) motionSel.value = String(Math.max(1, Math.min(10, Number(lv.motion) || 5)));
+      if (glowSel) glowSel.value = String(Math.max(1, Math.min(10, Number(lv.glow) || 5)));
+    } catch {}
+  }
+
+  presetSel?.addEventListener('change', () => {
+    applyPresetDefaultsFromSelection();
+    applyDesignerSelection(true);
+  });
+
   applyBtn?.addEventListener('click', () => applyDesignerSelection(true));
 
   async function pushToMoode(){
@@ -558,6 +573,7 @@
   let particleSilenceEnv=0;
   let particlePanEnv=0;
   let panBiasEnv=0;
+  let vortexMorph=0;
   let chaosStreakMs=0;
   let chaosLastMs=0;
   let vortexDwellMs=0;
@@ -785,6 +801,8 @@
 
     const chaosTierRed = chaosActive && (noveltyEnv >= redThresh || loudRedReady);
     const chaosTierVortex = chaosActive && (noveltyEnv >= vortexThresh || loudVortexReady);
+    const vortexTarget = chaosTierVortex ? 1 : 0;
+    vortexMorph = mix(vortexMorph, vortexTarget, vortexTarget > vortexMorph ? 0.09 : 0.035);
     // keep camera stable; apply twist to particle coordinates instead
 
     // Classic: map particle color lanes to spectrum ranges (same 7-band scaffold as ambient).
@@ -843,19 +861,19 @@
       }
 
       // Strong per-dot chaos drift (persistent random direction per particle lifetime)
-      if (particleChaos > 0.03 && !chaosTierVortex) {
+      if (particleChaos > 0.03) {
         if (!p.cdx && !p.cdy) {
           const a = Math.random() * Math.PI * 2;
           p.cdx = Math.cos(a);
           p.cdy = Math.sin(a);
         }
-        const chaosDrift = Math.min(1.2, particleChaos * 1.1) * (0.020 + (1 - p.z) * 0.040);
+        const chaosDrift = Math.min(1.2, particleChaos * 1.1) * (0.020 + (1 - p.z) * 0.040) * (1 - vortexMorph);
         sx += p.cdx * chaosDrift;
         sy += p.cdy * chaosDrift;
       }
 
-      // Tier-2 chaos: edge-to-center vortex rails (leader/follower trains).
-      if (chaosTierVortex) {
+      // Tier-2 chaos: edge-to-center vortex rails (leader/follower trains), morphed in/out.
+      if (vortexMorph > 0.001) {
         // right=high, left=low mapping already used below for lane
         const laneTmp = Math.max(0, Math.min(6, Math.floor((1 - Math.max(0, Math.min(0.999, sx))) * 7)));
         const bTmp = Number(bandVals[laneTmp] || 0);
@@ -898,8 +916,8 @@
         const vx = 0.5 + Math.cos(theta) * p.cr;
         const vy = 0.5 + Math.sin(theta) * (p.cr * squash);
 
-        sx = vx;
-        sy = vy;
+        sx = sx * (1 - vortexMorph) + vx * vortexMorph;
+        sy = sy * (1 - vortexMorph) + vy * vortexMorph;
       }
       if (silence > 0.001) {
         // As silence approaches, fling particles away from center in unique directions.
@@ -927,10 +945,10 @@
 
       const bandSizeBoost = b * 2.6; // stronger band -> bigger dots in that lane
       let rRaw=2 + bandSizeBoost + (1-p.z)*(3.2 + tailFromSpeed*1.8 + Math.min(1.6, particleChaos*1.2)) + pulse*3;
-      if (chaosTierVortex) {
-        // In vortex mode, dots shrink as they approach center.
+      if (vortexMorph > 0.001) {
+        // As vortex morphs in, dots increasingly shrink toward center.
         const centerScale = Math.max(0.35, Math.min(1.0, (p.cr || 0.06) / 0.42));
-        rRaw *= centerScale;
+        rRaw *= (1 - vortexMorph) + centerScale * vortexMorph;
       }
       const r=Math.min(9, Math.max(0.8, rRaw));
       const laneHue = 20 + lane*46;
@@ -940,11 +958,10 @@
       const fade = 1 - (silence * 0.92);
       const lum=(52 + b*26 + colorFlash*8 + chaosPop*10) * (0.45 + fade*0.55);
       const alpha=((0.10 + b*0.18) + (1-p.z)*(0.22 + tailFromSpeed*0.34 + chaosTail*0.22) + chaosPop*0.10) * fade;
-      x.fillStyle = chaosTierVortex
-        ? `rgba(255,0,0,${Math.max(0.14, alpha)})`
-        : (chaosTierRed
-          ? `rgba(255,140,0,${Math.max(0.14, alpha)})`
-          : `hsla(${hue},95%,${lum}%,${alpha})`);
+      const chaosG = Math.round(140 * (1 - vortexMorph)); // orange -> red morph
+      x.fillStyle = chaosTierRed
+        ? `rgba(255,${chaosG},0,${Math.max(0.14, alpha)})`
+        : `hsla(${hue},95%,${lum}%,${alpha})`;
       x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill();
       if (chaosPop > 0.08) {
         const split = (0.8 + chaosPop*4.2) * (0.6 + (1-p.z));
@@ -955,11 +972,9 @@
         }
         const offX = p.cdx * split;
         const offY = p.cdy * split;
-        x.fillStyle = chaosTierVortex
-          ? `rgba(255,0,0,${Math.max(0.10, alpha*0.85)})`
-          : (chaosTierRed
-            ? `rgba(255,140,0,${Math.max(0.10, alpha*0.85)})`
-            : `hsla(${(hue+18)%360},95%,${Math.min(92, lum+6)}%,${Math.max(0.08, alpha*0.8)})`);
+        x.fillStyle = chaosTierRed
+          ? `rgba(255,${chaosG},0,${Math.max(0.10, alpha*0.85)})`
+          : `hsla(${(hue+18)%360},95%,${Math.min(92, lum+6)}%,${Math.max(0.08, alpha*0.8)})`;
         x.beginPath(); x.arc(px+offX,py+offY,Math.max(1.2, r*0.78),0,Math.PI*2); x.fill();
       }
     }
