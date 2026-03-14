@@ -1252,28 +1252,53 @@
       x.stroke();
     }
 
-    // constant clean orbital stream around the core (no zig-zag meander)
-    const streamCount = 150;
-    const orbitSpeed = 0.24 + motionK*0.24 + e*0.20; // speed modulation from music
+    // Orbiting geometrics around core
+    const streamCount = 132 + Math.round(energyK*24);
+    // Keep orbital stream mostly constant/readable.
+    const orbitSpeed = 0.30;
     const head = tm * orbitSpeed;
-    const tailLen = 1.55 * Math.PI; // long visible tail
+    const tailLen = (1.25 + glowK*0.95) * Math.PI; // glow => trail length
+    const orbRadiusMul = 0.74 + b*0.20; // bass => orbit radius
+    const domBand = (b > m && b > tr) ? 0 : (m > tr ? 1 : 2); // low/mid/high dominant
     for(let i=0;i<streamCount;i++){
       const t01 = i / Math.max(1, (streamCount - 1));
       const a = head - t01 * tailLen;
-      const fade = Math.pow(1 - t01, 1.25);
-      const x0 = Math.cos(a) * rxBase * 0.79;
-      const y0 = Math.sin(a) * ryBase * 0.79;
-      const rr = (0.8 + tr*1.5 + pulse*0.6) * (0.72 + fade*0.85);
-      const hue = (hue0 + 70 + colorAlive*26 + colorFlash*24 + t01*34) % 360; // head/tail color reacts
-      x.fillStyle = `hsla(${hue},100%,${68 + fade*14 + colorFlash*6}%,${0.04 + fade*0.34})`;
-      x.beginPath(); x.arc(x0,y0,rr,0,Math.PI*2); x.fill();
+      const fade = Math.pow(1 - t01, 1.22);
+      const x0 = Math.cos(a) * rxBase * orbRadiusMul;
+      const y0 = Math.sin(a) * ryBase * orbRadiusMul;
+      const size = (0.9 + (monoEnv/100)*1.6 + pulse*0.35) * (0.70 + fade*0.82); // volume => size
+      // Volume-banded color ramp: soft blue -> loud red (7 levels)
+      const volNorm = Math.max(0, Math.min(1, monoEnv/100));
+      const volBand = Math.max(0, Math.min(6, Math.floor(volNorm * 7)));
+      const volHueLUT = [220, 205, 185, 150, 95, 38, 4];
+      const hue = volHueLUT[volBand] + (t01*6);
+      const alpha = (0.03 + fade*0.30) * (0.85 + tr*0.5 + onset*0.22); // highs/onset => brightness
+      x.fillStyle = `hsla(${hue},100%,${66 + fade*12 + colorFlash*6}%,${alpha})`;
+
+      if (domBand === 1) {
+        // mid-dominant: squares
+        const s = size*1.5;
+        x.fillRect(x0 - s*0.5, y0 - s*0.5, s, s);
+      } else if (domBand === 2) {
+        // high-dominant: triangles
+        const s = size*1.8;
+        x.beginPath();
+        x.moveTo(x0, y0 - s*0.7);
+        x.lineTo(x0 + s*0.62, y0 + s*0.5);
+        x.lineTo(x0 - s*0.62, y0 + s*0.5);
+        x.closePath();
+        x.fill();
+      } else {
+        // low-dominant: circles
+        x.beginPath(); x.arc(x0,y0,size,0,Math.PI*2); x.fill();
+      }
     }
 
     // central core glow + stronger size response (overall + transient)
     const overall = (lowE*0.45 + midE*0.33 + highE*0.22);
-    const coreBase = 20 + (overall*0.26);
-    const coreBeat = pulse*24 + onset*10;
-    const coreR = Math.max(18, Math.min(92, coreBase + coreBeat));
+    const coreBase = 18 + (overall*0.18);
+    const coreBeat = pulse*14 + onset*6;
+    const coreR = Math.max(16, Math.min(72, coreBase + coreBeat));
     const haloScale = 2.8 + (overall/100)*4.2 + pulse*1.1;
     const g = x.createRadialGradient(0,0,2,0,0,coreR*haloScale);
     g.addColorStop(0,'rgba(210,245,255,0.82)');
