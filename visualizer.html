@@ -604,6 +604,11 @@
   let vortexDwellMs=0;
   let vortexCooldownMs=0;
   let __moireToggle = 0;
+  let ambientOrbX = 0.5;
+  let ambientOrbY = 0.64;
+  let ambientOrbTX = 0.5;
+  let ambientOrbTY = 0.64;
+  let ambientOrbRetargetAt = 0;
 
   function bgAurora(){
     const g=x.createRadialGradient(W*0.5,H*0.55,20,W*0.5,H*0.55,Math.max(W,H)*0.9);
@@ -744,12 +749,33 @@
     }
     x.shadowBlur=0;
     // beat orb (kept smooth/subtle)
+    if (ambientMode) {
+      const now = performance.now();
+      if (now >= ambientOrbRetargetAt) {
+        // Gentle wandering in the lower-middle display area.
+        ambientOrbTX = 0.20 + Math.random()*0.60;
+        ambientOrbTY = 0.34 + Math.random()*0.44;
+        ambientOrbRetargetAt = now + (2200 + Math.random()*3000);
+      }
+      const drift = 0.006 + motionK*0.008;
+      ambientOrbX = mix(ambientOrbX, ambientOrbTX, drift);
+      ambientOrbY = mix(ambientOrbY, ambientOrbTY, drift);
+    } else {
+      // Nudge back to classic center when not in ambient preset.
+      ambientOrbX = mix(ambientOrbX, 0.5, 0.08);
+      ambientOrbY = mix(ambientOrbY, 0.64, 0.08);
+      ambientOrbTX = 0.5;
+      ambientOrbTY = 0.64;
+      ambientOrbRetargetAt = 0;
+    }
+    const orbX = W * ambientOrbX;
+    const orbY = H * ambientOrbY;
     const r=34 + bass*0.52 + pulse*30;
-    const g=x.createRadialGradient(W*0.5,H*0.64,2,W*0.5,H*0.64,r*2.2);
+    const g=x.createRadialGradient(orbX,orbY,2,orbX,orbY,r*2.2);
     g.addColorStop(0,'rgba(255,255,255,0.72)');
     g.addColorStop(0.3,`hsla(${(195+t*12)%360},100%,65%,0.24)`);
     g.addColorStop(1,'rgba(0,0,0,0)');
-    x.fillStyle=g; x.beginPath(); x.arc(W*0.5,H*0.64,r*1.55,0,Math.PI*2); x.fill();
+    x.fillStyle=g; x.beginPath(); x.arc(orbX,orbY,r*1.55,0,Math.PI*2); x.fill();
     x.restore();
   }
 
