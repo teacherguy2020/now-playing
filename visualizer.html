@@ -1415,8 +1415,9 @@
 
     // Intro: script "hello" drawn by orb trail on page load.
     if (aeonIntroActive) {
-      const introDur = 6934;
-      const p = Math.max(0, Math.min(1, (now - (aeonIntroStartAt + 2000)) / introDur));
+      const introDur = 5778;
+      const introLeadInMs = (String(qp.get('embedded') || '') === '1') ? 0 : 2000;
+      const p = Math.max(0, Math.min(1, (now - (aeonIntroStartAt + introLeadInMs)) / introDur));
       const hp = helloPathPoint(p);
       aeonOrbX = hp.x;
       aeonOrbY = hp.y;
