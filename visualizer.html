@@ -653,6 +653,8 @@
   let aeonSpawnVisibleAfter = 0;
   let aeonParentX = 0.5, aeonParentY = 0.5;
   let aeonParentTX = 0.5, aeonParentTY = 0.5;
+  let aeonParentPathX0 = 0.5, aeonParentPathY0 = 0.5, aeonParentPathCX = 0.5, aeonParentPathCY = 0.5, aeonParentPathX1 = 0.5, aeonParentPathY1 = 0.5, aeonParentPathT = 1;
+  let aeonChildPathX0 = 0.5, aeonChildPathY0 = 0.5, aeonChildPathCX = 0.5, aeonChildPathCY = 0.5, aeonChildPathX1 = 0.5, aeonChildPathY1 = 0.5, aeonChildPathT = 1;
   const aeonChildTail = [];
   const aeonParentTail = [];
   const aeonTrail = [];
@@ -1407,6 +1409,26 @@
   }
 
 
+  function arcControlFor(x0,y0,x1,y1){
+    const dx = x1-x0, dy = y1-y0;
+    const d = Math.max(1e-4, Math.hypot(dx,dy));
+    const nx = -dy/d, ny = dx/d;
+    const bend = Math.min(0.24, Math.max(0.07, d*0.55));
+    const s = dx < 0 ? 1 : -1;
+    return {
+      cx: Math.max(0.08, Math.min(0.92, (x0+x1)*0.5 + nx*bend*s)),
+      cy: Math.max(0.10, Math.min(0.92, (y0+y1)*0.5 + ny*bend*s)),
+    };
+  }
+
+  function quadPoint(x0,y0,cx,cy,x1,y1,t){
+    const omt = 1-t;
+    return {
+      x: (omt*omt)*x0 + 2*omt*t*cx + (t*t)*x1,
+      y: (omt*omt)*y0 + 2*omt*t*cy + (t*t)*y1,
+    };
+  }
+
   function drawAeon(){
     x.fillStyle='rgba(4,8,18,0.20)';
     x.fillRect(0,0,W,H);
@@ -1546,6 +1568,8 @@
         aeonParentY = aeonOrbY;
         aeonParentTX = Math.max(0.10, Math.min(0.90, aeonParentX + (Math.random()-0.5)*0.34));
         aeonParentTY = Math.max(0.12, Math.min(0.90, aeonParentY + (Math.random()-0.5)*0.34));
+        const pc = arcControlFor(aeonParentX, aeonParentY, aeonParentTX, aeonParentTY);
+        aeonParentPathX0 = aeonParentX; aeonParentPathY0 = aeonParentY; aeonParentPathCX = pc.cx; aeonParentPathCY = pc.cy; aeonParentPathX1 = aeonParentTX; aeonParentPathY1 = aeonParentTY; aeonParentPathT = 0;
         aeonParentTail.length = 0;
 
         aeonChildHue = (20 + aeonPendingHueBand*46) % 360;
@@ -1554,6 +1578,8 @@
         aeonChildY = aeonOrbY;
         aeonChildTX = Math.max(0.10, Math.min(0.90, aeonChildX + (Math.random()-0.5)*0.40));
         aeonChildTY = Math.max(0.12, Math.min(0.90, aeonChildY + (Math.random()-0.5)*0.40));
+        const cc = arcControlFor(aeonChildX, aeonChildY, aeonChildTX, aeonChildTY);
+        aeonChildPathX0 = aeonChildX; aeonChildPathY0 = aeonChildY; aeonChildPathCX = cc.cx; aeonChildPathCY = cc.cy; aeonChildPathX1 = aeonChildTX; aeonChildPathY1 = aeonChildTY; aeonChildPathT = 0;
         aeonSpawnVisibleAfter = now + 120;
         aeonChildTail.length = 0;
       }
@@ -1725,25 +1751,33 @@
       const childBaseA = Math.max(0.35, ease);
       childA = now >= aeonSpawnVisibleAfter ? childBaseA : 0;
 
-      // Parent keeps moving while dying out.
-      if (Math.hypot(aeonParentTX - aeonParentX, aeonParentTY - aeonParentY) < 0.05 || Math.random() < 0.01) {
+      // Parent keeps moving while dying out — on arcing paths.
+      if (aeonParentPathT >= 0.995 || Math.random() < 0.006) {
         aeonParentTX = Math.max(0.10, Math.min(0.90, 0.10 + Math.random()*0.80));
         aeonParentTY = Math.max(0.12, Math.min(0.90, 0.12 + Math.random()*0.78));
+        const pc = arcControlFor(aeonParentX, aeonParentY, aeonParentTX, aeonParentTY);
+        aeonParentPathX0 = aeonParentX; aeonParentPathY0 = aeonParentY; aeonParentPathCX = pc.cx; aeonParentPathCY = pc.cy; aeonParentPathX1 = aeonParentTX; aeonParentPathY1 = aeonParentTY; aeonParentPathT = 0;
       }
-      const pDrift = 0.0035 + motionK*0.0032;
-      aeonParentX = mix(aeonParentX, aeonParentTX, pDrift);
-      aeonParentY = mix(aeonParentY, aeonParentTY, pDrift);
+      aeonParentPathT = Math.min(1, aeonParentPathT + (0.0038 + motionK*0.0030));
+      {
+        const ppp = quadPoint(aeonParentPathX0, aeonParentPathY0, aeonParentPathCX, aeonParentPathCY, aeonParentPathX1, aeonParentPathY1, aeonParentPathT);
+        aeonParentX = ppp.x; aeonParentY = ppp.y;
+      }
       aeonParentTail.push({ x: W*aeonParentX, y: H*aeonParentY, h: aeonParentHue });
       if (aeonParentTail.length > 220) aeonParentTail.shift();
 
-      // Child moves independently with its own wandering target.
-      if (Math.hypot(aeonChildTX - aeonChildX, aeonChildTY - aeonChildY) < 0.04 || Math.random() < 0.01) {
+      // Child moves independently on arcing paths.
+      if (aeonChildPathT >= 0.995 || Math.random() < 0.006) {
         aeonChildTX = Math.max(0.10, Math.min(0.90, 0.10 + Math.random()*0.80));
         aeonChildTY = Math.max(0.12, Math.min(0.90, 0.12 + Math.random()*0.78));
+        const cc = arcControlFor(aeonChildX, aeonChildY, aeonChildTX, aeonChildTY);
+        aeonChildPathX0 = aeonChildX; aeonChildPathY0 = aeonChildY; aeonChildPathCX = cc.cx; aeonChildPathCY = cc.cy; aeonChildPathX1 = aeonChildTX; aeonChildPathY1 = aeonChildTY; aeonChildPathT = 0;
       }
-      const cDrift = 0.004 + motionK*0.004;
-      aeonChildX = mix(aeonChildX, aeonChildTX, cDrift);
-      aeonChildY = mix(aeonChildY, aeonChildTY, cDrift);
+      aeonChildPathT = Math.min(1, aeonChildPathT + (0.0042 + motionK*0.0036));
+      {
+        const ccp = quadPoint(aeonChildPathX0, aeonChildPathY0, aeonChildPathCX, aeonChildPathCY, aeonChildPathX1, aeonChildPathY1, aeonChildPathT);
+        aeonChildX = ccp.x; aeonChildY = ccp.y;
+      }
 
       aeonChildTail.push({ x: W*aeonChildX, y: H*aeonChildY, h: aeonChildHue });
       if (aeonChildTail.length > 240) aeonChildTail.shift();
