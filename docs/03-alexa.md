@@ -29,7 +29,7 @@ Use this page to manage Alexa integration and voice command behavior.
 In Alexa mode, queue behavior is different from normal playback. The UI treats queue head as queued-next.
 
 ## Public domain requirements (critical)
-Alexa cloud requests must reach your public domain (example: `moode.brianwis.com`) and then be reverse-proxied to local services.
+Alexa cloud requests must reach your public domain (example: `moode.YOURDOMAIN.com`) and then be reverse-proxied to local services.
 
 ### Required network forwards (router/eero)
 Forward these ports to the host running Caddy (current primary: `10.0.0.4`):
@@ -64,17 +64,17 @@ Use `header_down X-Upstream ...` during setup to verify which backend served eac
 ```caddy
 {
   # ACME notices
-  email you@brianwis.com
+  email you@YOURDOMAIN.com
 }
 
-moode.brianwis.com {
+moode.YOURDOMAIN.com {
   log {
     output file /var/log/caddy/moode_access.log
     format json
   }
 
   header {
-    X-Site moode.brianwis.com
+    X-Site moode.YOURDOMAIN.com
   }
 
   @moode_art {
