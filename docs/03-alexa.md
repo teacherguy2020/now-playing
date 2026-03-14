@@ -60,6 +60,61 @@ Use `header_down X-Upstream ...` during setup to verify which backend served eac
    - `curl -I https://<domain>/now-playing` -> `200`, `x-upstream: node:3101`
    - `curl -I https://<domain>/` -> `200`, `x-upstream: albumart:8101`
 
+## Example Caddyfile (copy/paste baseline)
+```caddy
+{
+  # ACME notices
+  email you@brianwis.com
+}
+
+moode.brianwis.com {
+  log {
+    output file /var/log/caddy/moode_access.log
+    format json
+  }
+
+  header {
+    X-Site moode.brianwis.com
+  }
+
+  @moode_art {
+    path /coverart.php* /images/*
+  }
+  handle @moode_art {
+    reverse_proxy 10.0.0.254:80 {
+      header_down -Set-Cookie
+      header_down X-Upstream "moode:80"
+    }
+  }
+
+  @node_api {
+    path /now-playing /next-up /favorites/toggle /queue/advance* /queue/play_item* /queue/mix* /mpd/* /track /track/* /art/* /_debug/* /alexa/* /podcasts* /rating* /config*
+  }
+  handle @node_api {
+    reverse_proxy 127.0.0.1:3101 {
+      header_down X-Upstream "node:3101"
+    }
+  }
+
+  @moode_stream {
+    path /stream*
+  }
+  handle @moode_stream {
+    reverse_proxy 10.0.0.254:8000 {
+      header_down X-Upstream "moode:8000"
+    }
+  }
+
+  handle {
+    reverse_proxy 127.0.0.1:8101 {
+      header_down X-Upstream "albumart:8101"
+    }
+  }
+}
+```
+
+> Note: Let Caddy manage automatic HTTPS/challenge handling; avoid adding a manual `:80 { redir ... }` block during initial cert bring-up.
+
 ## Common failure signatures and fixes
 - **`502` on all public URLs**
   - Caddy missing/not running on current host, or forwards still pointed at old host.
