@@ -42,8 +42,8 @@ If these are missing or pointed at an old host, domain checks fail and Alexa can
 At minimum:
 - `/now-playing`, `/alexa/*`, `/config*`, `/art/*`, etc. -> `127.0.0.1:3101` (Node API)
 - fallback `/` -> `127.0.0.1:8101` (web UI)
-- `/coverart.php*` + `/images/*` -> `10.0.0.254:80` (moOde art)
-- `/stream*` -> `10.0.0.254:8000` (moOde stream)
+- `/coverart.php*` + `/images/*` -> `IPOFYOURMOODEBOX:80` (moOde art)
+- `/stream*` -> `IPOFYOURMOODEBOX:8000` (moOde stream)
 
 Use `header_down X-Upstream ...` during setup to verify which backend served each path.
 
@@ -81,7 +81,7 @@ moode.YOURDOMAIN.com {
     path /coverart.php* /images/*
   }
   handle @moode_art {
-    reverse_proxy 10.0.0.254:80 {
+    reverse_proxy IPOFYOURMOODEBOX:80 {
       header_down -Set-Cookie
       header_down X-Upstream "moode:80"
     }
@@ -100,7 +100,7 @@ moode.YOURDOMAIN.com {
     path /stream*
   }
   handle @moode_stream {
-    reverse_proxy 10.0.0.254:8000 {
+    reverse_proxy IPOFYOURMOODEBOX:8000 {
       header_down X-Upstream "moode:8000"
     }
   }
