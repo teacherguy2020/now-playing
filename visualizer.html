@@ -609,6 +609,12 @@
   let vortexDwellMs=0;
   let vortexCooldownMs=0;
   let __moireToggle = 0;
+  let moireHueTarget = 190;
+  let moireHueNow = 190;
+  let moireBassPulse = 0;
+  let moireHitHoldMs = 0;
+  let moireLastTs = 0;
+  let moireVolSpeedEnv = 0;
   let ambientOrbX = 0.5;
   let ambientOrbY = 0.64;
   let ambientOrbTX = 0.5;
@@ -1171,37 +1177,71 @@
     const tr=treb/100;
     const maxR=Math.min(W,H)*0.62;
 
+    // Dominant spectral lane by *rise* (plus some level), so color reacts to changes.
+    const dt = moireLastTs ? Math.max(8, Math.min(40, (performance.now() - moireLastTs))) : 16;
+    moireLastTs = performance.now();
+
+    const riseLow = Math.max(0, lowE - lowPrev);
+    const riseMid = Math.max(0, midE - midPrev);
+    const riseHigh = Math.max(0, highE - highPrev);
+    const bassHit = Math.max(riseLow*0.08, onset*0.78, pulse*0.50);
+    if (bassHit > 0.30) moireHitHoldMs = 420;
+    moireHitHoldMs = Math.max(0, moireHitHoldMs - dt);
+    const holdFloor = moireHitHoldMs > 0 ? 0.20 : 0;
+    moireBassPulse = Math.max(moireBassPulse*0.90, bassHit, holdFloor);
+    const scoreLow = riseLow*2.2 + b*0.35;
+    const scoreMid = riseMid*2.2 + m*0.35;
+    const scoreHigh = riseHigh*2.2 + tr*0.40;
+    const dom = (scoreLow > scoreMid && scoreLow > scoreHigh) ? 0 : (scoreMid > scoreHigh ? 1 : 2);
+    const hueLut = [16, 210, 292]; // low=warm orange/red, mid=blue/cyan, high=violet
+    moireHueTarget = hueLut[dom];
+    // Ease color changes so they feel intentional, not jittery.
+    const dh = ((moireHueTarget - moireHueNow + 540) % 360) - 180;
+    moireHueNow = (moireHueNow + dh * 0.14 + 360) % 360;
+
+    lowPrev = lowE; midPrev = midE; highPrev = highE;
+
     // Knob mapping for visible differences:
     // energy -> denser rings / stronger alpha
     // motion -> faster phase drift / offsets
     // glow   -> stronger line alpha + blur
     const densityK = 0.75 + (energyK * 0.7);
-    const motionDrift = 0.6 + (motionK * 1.2);
+    const volNorm = Math.max(0, Math.min(1, monoEnv/100));
+    // Motion stays primary; volume only adds small smooth acceleration bumps.
+    const volRiseNorm = Math.max(0, Math.min(1, (monoEnv - monoPrev) / 22));
+    const bumpTarget = volRiseNorm;
+    const atk = 0.22, rel = 0.06;
+    moireVolSpeedEnv = moireVolSpeedEnv + (bumpTarget - moireVolSpeedEnv) * (bumpTarget > moireVolSpeedEnv ? atk : rel);
+    const motionDrift = 0.6 + (motionK * 1.2) + (moireVolSpeedEnv * 0.14);
     const glowAlpha = 0.55 + (glowK * 0.55);
+    // Stereo/phase drift disabled for A/B comparison.
+    const phaseDrift = 0;
+    const stereoShift = 0;
 
     const step=Math.max(lowPowerMoire ? 10 : 8, Math.floor((18 - e*4) / densityK));
 
-    x.strokeStyle=`hsla(${(190+tm*18)%360},95%,62%,${(0.10 + 0.08*e)*glowAlpha})`;
-    x.lineWidth=(1.0 + pulse*0.9) * (0.85 + glowK*0.22);
+    const pulseR = 1 + moireBassPulse*0.12;
+    x.strokeStyle=`hsla(${(moireHueNow + 0)%360},95%,62%,${(0.10 + 0.08*e + moireBassPulse*0.07)*glowAlpha})`;
+    x.lineWidth=(1.0 + pulse*0.9 + moireBassPulse*0.9) * (0.85 + glowK*0.22);
     x.shadowBlur = lowPowerMoire ? 0 : Math.min(8, (2 + pulse*5) * (0.45 + glowK*0.22));
-    x.shadowColor = `hsla(${(200+tm*12)%360},100%,62%,${lowPowerMoire ? 0 : (0.12 + glowK*0.12)})`;
+    x.shadowColor = `hsla(${(moireHueNow + 10)%360},100%,62%,${lowPowerMoire ? 0 : (0.12 + glowK*0.12)})`;
     let ringsA = 0;
     for(let r=8;r<maxR;r+=step){
       if (++ringsA > (lowPowerMoire ? 28 : 42)) break;
-      const ox=Math.sin(tm*0.9*motionDrift + r*0.02)*(16 + b*30 + pulse*30) * (0.85 + motionK*0.22);
-      const oy=Math.cos(tm*0.7*motionDrift + r*0.017)*(10 + m*26) * (0.85 + motionK*0.22);
-      x.beginPath(); x.arc(ox,oy,r,0,Math.PI*2); x.stroke();
+      const ox=Math.sin(tm*0.9*motionDrift + r*0.02)*(16 + b*30 + pulse*30) * (0.85 + motionK*0.22) + stereoShift;
+      const oy=Math.cos(tm*0.7*motionDrift + r*0.017)*(10 + m*26) * (0.85 + motionK*0.22) + phaseDrift*1.1;
+      x.beginPath(); x.arc(ox,oy,r*pulseR,0,Math.PI*2); x.stroke();
     }
 
-    x.strokeStyle=`hsla(${(320+tm*14)%360},90%,58%,${(0.08 + 0.07*tr)*glowAlpha})`;
+    x.strokeStyle=`hsla(${(moireHueNow + 58)%360},90%,58%,${(0.08 + 0.07*tr + moireBassPulse*0.04)*glowAlpha})`;
     x.lineWidth=(0.9 + e*0.8) * (0.85 + glowK*0.2);
     const step2=Math.max(lowPowerMoire ? 10 : 8, Math.floor((16 - tr*4) / densityK));
     let ringsB = 0;
     for(let r=6;r<maxR;r+=step2){
       if (++ringsB > (lowPowerMoire ? 28 : 42)) break;
-      const ox=Math.cos(tm*1.05*motionDrift + r*0.018)*(18 + m*28) * (0.82 + motionK*0.25);
-      const oy=Math.sin(tm*0.82*motionDrift + r*0.021)*(14 + tr*30 + pulse*20) * (0.82 + motionK*0.25);
-      x.beginPath(); x.arc(ox,oy,r,0,Math.PI*2); x.stroke();
+      const ox=Math.cos(tm*1.05*motionDrift + r*0.018)*(18 + m*28) * (0.82 + motionK*0.25) - stereoShift;
+      const oy=Math.sin(tm*0.82*motionDrift + r*0.021)*(14 + tr*30 + pulse*20) * (0.82 + motionK*0.25) - phaseDrift*1.1;
+      x.beginPath(); x.arc(ox,oy,r*(1 + moireBassPulse*0.08),0,Math.PI*2); x.stroke();
     }
 
     x.shadowBlur = 0;
