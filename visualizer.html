@@ -27,7 +27,7 @@
     <span style="font-size:11px;opacity:.8;">Preset</span>
     <select id="presetSel" aria-label="Preset">
       <option value="classic">classic</option>
-      <option value="aeon">aeon</option>
+      <option value="aeon">hello</option>
       <option value="fireworks">fireworks</option>
       <option value="sphere">sphere</option>
       <option value="moire">moire</option>
@@ -614,6 +614,52 @@
   let ambientOrbPrevY = 0.64;
   let ambientOrbSpeedEnv = 0;
   let ambientOrbLastRetargetMs = 0;
+  let aeonOrbX = 0.5;
+  let aeonOrbY = 0.5;
+  let aeonOrbRetargetAt = 0;
+  let aeonPathX0 = 0.5, aeonPathY0 = 0.5;
+  let aeonPathCX = 0.5, aeonPathCY = 0.5;
+  let aeonPathX1 = 0.5, aeonPathY1 = 0.5;
+  let aeonPathT = 1;
+  let aeonPrevDirX = 1;
+  let aeonPrevDirY = 0;
+  let aeonLastTurnMs = 0;
+  let aeonNextTurnAt = 0;
+  let aeonLoopActive = false;
+  let aeonLoopCenterX = 0.5, aeonLoopCenterY = 0.5;
+  let aeonLoopRadius = 0.08;
+  let aeonLoopTiltX = 0.40;
+  let aeonLoopTiltY = 1.00;
+  let aeonLoopStartX = 0.5, aeonLoopStartY = 0.5;
+  let aeonLoopEntryVX = 0, aeonLoopEntryVY = 0;
+  let aeonLoopAngle = 0;
+  let aeonLoopSide = 1;
+  let aeonLoopStartAt = 0;
+  let aeonLoopEndAt = 0;
+  let aeonLoopAfterX = 0.5, aeonLoopAfterY = 0.5;
+  let aeonLoopPhaseStart = 0;
+  let aeonLoopPhaseSpan = Math.PI * 2;
+  let aeonHueBand = 3;
+  let aeonHue = (20 + aeonHueBand*46) % 360;
+  let aeonPendingHueBand = aeonHueBand;
+  const aeonBandPrev = Array.from({length:7},()=>0);
+  let aeonSpawnActive = false;
+  let aeonSpawnStartAt = 0;
+  let aeonSpawnEligibleAt = performance.now() + 20000;
+  let aeonParentHue = aeonHue;
+  let aeonChildHue = aeonHue;
+  let aeonChildX = 0.5, aeonChildY = 0.5;
+  let aeonChildTX = 0.5, aeonChildTY = 0.5;
+  let aeonSpawnVisibleAfter = 0;
+  let aeonParentX = 0.5, aeonParentY = 0.5;
+  let aeonParentTX = 0.5, aeonParentTY = 0.5;
+  const aeonChildTail = [];
+  const aeonParentTail = [];
+  const aeonTrail = [];
+  let aeonIntroActive = true;
+  let aeonIntroStartAt = performance.now();
+  let aeonIntroFade = 1;
+  let aeonIntroTrail = [];
 
   function bgAurora(){
     const g=x.createRadialGradient(W*0.5,H*0.55,20,W*0.5,H*0.55,Math.max(W,H)*0.9);
@@ -1233,44 +1279,590 @@
     x.restore();
   }
 
-  function drawAeon(){
-    x.fillStyle='rgba(4,8,18,0.18)'; x.fillRect(0,0,W,H);
-    x.save();
-    x.translate(W*0.5, H*0.5);
-    x.globalCompositeOperation='lighter';
+  const HELLO2_SVG_D = `M404.707,858.314 C404.707,858.314 406.708,738.973 430.456,702.825 C454.204,666.677 478.3,656.272 514.709,661.671 C551.118,667.069 559.519,713.103 559.519,713.103 C559.519,713.103 572.526,795.307 572.526,795.307 C572.526,795.307 585.938,843.264 623.528,844.601 C661.119,845.937 684.457,827.444 684.457,827.444 L737.535,795.582 C737.535,795.582 763.002,770.665 780.627,735.388 C797.206,702.203 794.536,654.018 751.169,648.844 C683.552,640.776 672.479,698.616 672.479,698.616 C672.479,698.616 661.602,730.737 680.488,771.316 C699.374,811.895 729.008,843.354 774.928,843.675 C820.848,843.995 867.369,806.645 867.369,806.645 C867.369,806.645 957.662,718.786 982.441,660.567 C1015.735,582.343 1020.333,533.171 1020.333,533.171 C1020.333,533.171 1026.728,443.815 985.509,429.918 C953.695,419.192 929.718,445.561 915.507,473.554 C901.296,501.546 895.74,511.952 886.429,545.714 C862.885,631.089 866.543,675.107 875.927,706.7 C885.128,737.679 908.38,809.068 981.855,837.942 C1026.523,855.495 1073.785,804.717 1073.785,804.717 C1073.785,804.717 1097.078,783.775 1154.931,711.357 C1184.279,675.148 1205.666,614.02 1213.2,562.936 C1224.865,483.849 1206.923,436.991 1186.162,433.143 C1165.401,429.295 1140.78,430.269 1116.182,468.649 C1089.128,524.042 1081.058,560.06 1077.625,590.692 C1073.312,629.177 1069.908,680.459 1089.513,720.915 C1109.118,761.371 1134.18,816.149 1160.332,831.659 C1186.483,847.168 1219.493,828.52 1219.493,828.52 C1219.493,828.52 1246.167,798.345 1255.655,764.485 C1270.249,699.799 1303.573,671.387 1343.932,668.36 C1367.038,666.627 1383.211,668.224 1397.416,680.556 C1428.471,707.514 1427.495,730.773 1427.045,741.955 C1425.974,768.551 1419.563,786.661 1406.471,806.136 C1392.29,827.232 1372.045,838.847 1352.92,839.982 C1321.112,841.869 1282.842,837.469 1268.66,790.286 C1265.699,780.435 1258.076,733.239 1282.393,699.425 C1320.844,645.956 1389.182,672.213 1389.182,672.213 C1389.182,672.213 1414.797,673.758 1446.541,670.407 C1486.516,666.188 1517.618,615.943 1517.618,615.943`;
+  const HELLO_SVG_D = `M261.574,797.109 C261.574,797.109 428.78,655.268 458.151,624.886 C487.521,594.505 507.153,564.998 522.948,529.755 C538.744,494.512 545.167,446.227 545.167,446.227 C545.167,446.227 554.253,400.132 513.564,379.59 C497.245,371.352 474.08,376.322 457.174,401.908 C440.267,427.495 434.215,447.798 425.529,495.207 C416.844,542.615 404.667,867.858 404.667,867.858`;
+  let __helloPathEl = null;
+  let __helloPathLen = 0;
+  let __helloBBox = null;
+  let __hello2PathEl = null;
+  let __hello2PathLen = 0;
+  let __hello2BBox = null;
 
-    const hue0=(190 + tm*11 + treb*0.7 + colorAlive*36 + colorFlash*42)%360;
-    const amp=(0.55 + bass/120 + pulse*0.42);
-    const scale=Math.min(W,H)*0.28;
+  function ensureHelloPath(){
+    if (__helloPathEl) return;
+    try {
+      const ns = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(ns, 'svg');
+      svg.setAttribute('width','0');
+      svg.setAttribute('height','0');
+      svg.style.position='absolute';
+      svg.style.pointerEvents='none';
+      svg.style.opacity='0';
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', HELLO_SVG_D);
+      svg.appendChild(path);
+      document.body.appendChild(svg);
+      __helloPathEl = path;
+      __helloPathLen = Math.max(1, Number(path.getTotalLength()||1));
+      __helloBBox = path.getBBox();
 
-    // layered parametric ribbons (aeon-ish)
-    for(let i=0;i<aeonSeeds.length;i++){
-      const s=aeonSeeds[i];
-      const steps=240;
-      x.beginPath();
-      for(let n=0;n<=steps;n++){
-        const u=(n/steps)*Math.PI*2;
-        const wob=1 + 0.12*Math.sin(u*7 + tm*(1.0+s.k)) + 0.06*Math.sin(u*13 - tm*0.7);
-        const x1=Math.sin(u*s.a + tm*(0.35+s.k) + s.p) * scale * wob * (0.78 + amp*0.42);
-        const y1=Math.sin(u*s.b + tm*(0.28+s.k*0.8)) * scale * 0.64 * wob * (0.82 + mid/180);
-        if(n===0) x.moveTo(x1,y1); else x.lineTo(x1,y1);
+      const path2 = document.createElementNS(ns, 'path');
+      path2.setAttribute('d', HELLO2_SVG_D);
+      svg.appendChild(path2);
+      __hello2PathEl = path2;
+      __hello2PathLen = Math.max(1, Number(path2.getTotalLength()||1));
+      __hello2BBox = path2.getBBox();
+
+      // Build a one-pass "pen" centerline from filled shape via scanline midpoints.
+      const b = __helloBBox || { x:0, y:0, width:1, height:1 };
+      const bw = Math.max(1e-6, Number(b.width)||1);
+      const bh = Math.max(1e-6, Number(b.height)||1);
+      const c = document.createElement('canvas');
+      c.width = 2; c.height = 2;
+      const cx = c.getContext('2d');
+      const p2 = new Path2D(HELLO_SVG_D);
+      const pts = [];
+      let lastY = null;
+      const samplesX = 420;
+      const samplesY = 220;
+      for (let xi=0; xi<samplesX; xi++) {
+        const x = b.x + (xi/(samplesX-1))*bw;
+        const intervals = [];
+        let inRun = false, runStart = 0;
+        for (let yi=0; yi<samplesY; yi++) {
+          const y = b.y + (yi/(samplesY-1))*bh;
+          const inside = cx.isPointInPath(p2, x, y);
+          if (inside && !inRun) { inRun = true; runStart = y; }
+          if ((!inside || yi===samplesY-1) && inRun) {
+            const yEnd = inside && yi===samplesY-1 ? y : (b.y + ((yi-1)/(samplesY-1))*bh);
+            intervals.push([(runStart+yEnd)*0.5, Math.max(1e-6, yEnd-runStart)]);
+            inRun = false;
+          }
+        }
+        if (!intervals.length) continue;
+        let pick = intervals[0][0];
+        if (lastY != null) {
+          let best = 1e9;
+          for (const it of intervals) {
+            const d = Math.abs(it[0]-lastY) - it[1]*0.15;
+            if (d < best) { best = d; pick = it[0]; }
+          }
+        }
+        lastY = pick;
+        const nx = (x - b.x)/bw;
+        const ny = (pick - b.y)/bh;
+        pts.push({ x:nx, y:ny });
       }
-      x.closePath();
-      x.lineWidth=1.4 + pulse*1.2;
-      x.strokeStyle=`hsla(${(hue0+i*26)%360},95%,${58+i*3}%,${0.10 + 0.07*(i+1)/aeonSeeds.length})`;
-      x.shadowBlur=(7 + pulse*10) * (0.72 + glowK*0.33);
-      x.shadowColor=`hsla(${(hue0+i*28)%360},100%,65%,${0.18 + 0.10*glowK})`;
-      x.stroke();
+      // Monotonic cleanup + light smoothing for pen-like pass.
+      const out = [];
+      let px = -1;
+      for (const q of pts) {
+        if (q.x > px + 0.0005) { out.push(q); px = q.x; }
+      }
+      for (let i=1; i<out.length-1; i++) out[i].y = (out[i-1].y + out[i].y*2 + out[i+1].y)*0.25;
+      window.__helloStrokePts = out;
+    } catch {
+      __helloPathEl = null;
+      __helloPathLen = 1;
+      __helloBBox = { x:0, y:0, width:1, height:1 };
+      window.__helloStrokePts = null;
+    }
+  }
+
+  function cubicPt(a,b,c,d,t){
+    const mt = 1-t;
+    const mt2 = mt*mt, t2=t*t;
+    return (mt2*mt)*a + 3*(mt2)*t*b + 3*mt*t2*c + (t2*t)*d;
+  }
+
+  function helloPathPoint(t01){
+    ensureHelloPath();
+    const t = Math.max(0, Math.min(1, Number(t01)||0));
+    const split = 0.22; // first segment is h.svg
+
+    function mapPt(pathEl, pathLen, box, tt, x0, xw, y0, yw){
+      if (!pathEl) return { x:0.5, y:0.6 };
+      const pt = pathEl.getPointAtLength(tt * pathLen);
+      const b = box || { x:0, y:0, width:1, height:1 };
+      const bw = Math.max(1e-6, Number(b.width)||1);
+      const bh = Math.max(1e-6, Number(b.height)||1);
+      const nx = (pt.x - b.x) / bw;
+      const ny = (pt.y - b.y) / bh;
+      return { x: x0 + nx * xw, y: y0 + ny * yw };
     }
 
-    x.shadowBlur=0;
-    // central orbital glow
-    const core=26 + bass*0.24 + pulse*24;
-    const g=x.createRadialGradient(0,0,2,0,0,core*2.8);
-    g.addColorStop(0,'rgba(230,245,255,0.70)');
-    g.addColorStop(0.4,`hsla(${(hue0+18)%360},100%,64%,0.24)`);
-    g.addColorStop(1,'rgba(0,0,0,0)');
-    x.fillStyle=g; x.beginPath(); x.arc(0,0,core*1.9,0,Math.PI*2); x.fill();
+    if (t <= split) {
+      const u = t / split;
+      return mapPt(__helloPathEl, __helloPathLen, __helloBBox, u, 0.015, 0.20, 0.16, 0.74);
+    }
+
+    const u = (t - split) / (1 - split);
+    // Continue from end of h, then flow across added magenta path.
+    const p1End = mapPt(__helloPathEl, __helloPathLen, __helloBBox, 1, 0.015, 0.20, 0.16, 0.74);
+    const p2Start = mapPt(__hello2PathEl, __hello2PathLen, __hello2BBox, 0, 0.20, 0.72, 0.16, 0.74);
+    const p2 = mapPt(__hello2PathEl, __hello2PathLen, __hello2BBox, u, 0.20, 0.72, 0.16, 0.74);
+    const dx = p1End.x - p2Start.x;
+    const dy = p1End.y - p2Start.y;
+    return { x: p2.x + dx, y: p2.y + dy };
+  }
+
+
+  function drawAeon(){
+    x.fillStyle='rgba(4,8,18,0.20)';
+    x.fillRect(0,0,W,H);
+
+    const now = performance.now();
+
+    // Intro: script "hello" drawn by orb trail on page load.
+    if (aeonIntroActive) {
+      const introDur = 6934;
+      const p = Math.max(0, Math.min(1, (now - (aeonIntroStartAt + 2000)) / introDur));
+      const hp = helloPathPoint(p);
+      aeonOrbX = hp.x;
+      aeonOrbY = hp.y;
+      const hue = p <= 0.22 ? 2 : 316; // red h-stroke, then magenta continuation
+      aeonHue = hue;
+      aeonIntroTrail.push({ x: W*aeonOrbX, y: H*aeonOrbY, h: hue });
+      if (aeonIntroTrail.length > 900) aeonIntroTrail.shift();
+
+      // Draw intro trail + orb
+      x.save();
+      x.globalCompositeOperation='lighter';
+      // Tail-first look: draw as a smooth stroked ribbon instead of many orb dots.
+      if (aeonIntroTrail.length > 2) {
+        x.lineJoin='round';
+        x.lineCap='round';
+        for (let k=0; k<3; k++) {
+          x.beginPath();
+          for (let i=0;i<aeonIntroTrail.length;i++) {
+            const q = aeonIntroTrail[i];
+            if (i===0) x.moveTo(q.x, q.y); else x.lineTo(q.x, q.y);
+          }
+          const a = 0.10 + k*0.06;
+          x.strokeStyle = `hsla(${Number(aeonIntroTrail[aeonIntroTrail.length-1]?.h||200)},100%,60%,${a})`;
+          x.lineWidth = 31.5 - k*9.0;
+          x.stroke();
+        }
+      }
+      // No pen-tip orb during intro: render as pure stroke trail only.
+      x.restore();
+
+      if (p >= 1) {
+        aeonIntroActive = false;
+        aeonIntroFade = 1;
+        aeonSpawnEligibleAt = now + 3000; // begin cycle shortly after writing
+      }
+      return;
+    }
+
+    // Intro trail fades while normal cycle runs.
+    if (aeonIntroTrail.length && aeonIntroFade > 0.001) {
+      aeonIntroFade *= 0.992;
+      x.save();
+      x.globalCompositeOperation='lighter';
+      x.lineJoin='round';
+      x.lineCap='round';
+      for (let k=0; k<3; k++) {
+        x.beginPath();
+        for (let i=0;i<aeonIntroTrail.length;i++) {
+          const q = aeonIntroTrail[i];
+          if (i===0) x.moveTo(q.x, q.y); else x.lineTo(q.x, q.y);
+        }
+        const a = (0.07 + k*0.05) * aeonIntroFade;
+        x.strokeStyle = `hsla(${Number(aeonIntroTrail[aeonIntroTrail.length-1]?.h||200)},100%,60%,${a})`;
+        x.lineWidth = 31.5 - k*9.0;
+        x.stroke();
+      }
+      x.restore();
+      if (aeonIntroFade < 0.02) aeonIntroTrail.length = 0;
+    }
+
+    // Orb wanders around the display on explicit curved paths (quadratic Bézier).
+    // Chain curves before finishing so the orb never stalls in place.
+    const turnCooldownMs = 6500;
+
+    // Keep moving during cooldown: if current path is nearly consumed, extend a glide path
+    // in roughly the current travel direction (no new loop/direction event).
+    if (!aeonLoopActive && now < aeonNextTurnAt && aeonPathT >= 0.90) {
+      const glideLen = 0.20 + Math.random()*0.18;
+      const jx = (Math.random()-0.5) * 0.10;
+      const jy = (Math.random()-0.5) * 0.12;
+      const gx = Math.max(0.10, Math.min(0.90, aeonOrbX + aeonPrevDirX*glideLen + jx));
+      const gy = Math.max(0.12, Math.min(0.90, aeonOrbY + aeonPrevDirY*glideLen + jy));
+      const dxg = gx - aeonOrbX;
+      const dyg = gy - aeonOrbY;
+      const dg = Math.max(1e-4, Math.hypot(dxg, dyg));
+      const nxg = -dyg / dg;
+      const nyg = dxg / dg;
+      const bendg = Math.min(0.20, Math.max(0.07, dg * 0.45));
+      const sg = dxg < 0 ? 1 : -1;
+
+      aeonPathX0 = aeonOrbX; aeonPathY0 = aeonOrbY;
+      aeonPathX1 = gx; aeonPathY1 = gy;
+      aeonPathCX = Math.max(0.08, Math.min(0.92, (aeonPathX0 + aeonPathX1)*0.5 + nxg*bendg*sg));
+      aeonPathCY = Math.max(0.10, Math.min(0.92, (aeonPathY0 + aeonPathY1)*0.5 + nyg*bendg*sg));
+      aeonPathT = 0;
+    }
+
+    const readyForNextCurve = !aeonSpawnActive && !aeonLoopActive && (now >= aeonNextTurnAt) && ((aeonPathT >= 0.82) || (now >= aeonOrbRetargetAt && aeonPathT >= 0.55));
+    if (readyForNextCurve) {
+      let x1 = 0.14 + Math.random()*0.72;
+      // Verticality follows triggering band: low bands lower, high bands higher.
+      const randY = 0.16 + Math.random()*0.70;
+      let y1 = randY;
+      // Direction-change event color pick from classic 7-band lanes.
+      const bandCount = 7;
+      let hotBand = 0, hotVal = -1;
+      const binsN = Math.max(1, Number(binsFast?.length || bins?.length || 1));
+      for (let b=0; b<bandCount; b++) {
+        const i0 = Math.floor((b / bandCount) * binsN);
+        const i1 = Math.max(i0 + 1, Math.floor(((b + 1) / bandCount) * binsN));
+        let lvlSum = 0, cnt = 0;
+        for (let i=i0; i<i1; i++) {
+          const f = Number(binsFast?.[i] ?? bins?.[i] ?? 0);
+          lvlSum += f;
+          cnt++;
+        }
+        const lvlAvg = cnt ? (lvlSum / cnt) : 0;
+        const prev = Number(aeonBandPrev[b] || 0);
+        const rise = Math.max(0, lvlAvg - prev);
+        aeonBandPrev[b] = prev + (lvlAvg - prev) * 0.55;
+        // Favor fresh rises; lightly include level. Penalize staying on same band.
+        let v = rise*3.4 + lvlAvg*0.12;
+        if (b === aeonHueBand) v *= 0.72;
+        if (v > hotVal) { hotVal = v; hotBand = b; }
+      }
+      aeonPendingHueBand = hotBand;
+
+      // Spawn handoff: new orb appears, old orb fades over ~10s.
+      if (!aeonSpawnActive && now >= aeonSpawnEligibleAt) {
+        aeonSpawnActive = true;
+        aeonSpawnStartAt = now;
+        // Keep visible tails bounded to parent+child during handoff.
+        aeonTrail.length = 0;
+        aeonParentHue = aeonHue;
+        aeonParentX = aeonOrbX;
+        aeonParentY = aeonOrbY;
+        aeonParentTX = Math.max(0.10, Math.min(0.90, aeonParentX + (Math.random()-0.5)*0.34));
+        aeonParentTY = Math.max(0.12, Math.min(0.90, aeonParentY + (Math.random()-0.5)*0.34));
+        aeonParentTail.length = 0;
+
+        aeonChildHue = (20 + aeonPendingHueBand*46) % 360;
+        // Spawn starts exactly from the parent orb position.
+        aeonChildX = aeonOrbX;
+        aeonChildY = aeonOrbY;
+        aeonChildTX = Math.max(0.10, Math.min(0.90, aeonChildX + (Math.random()-0.5)*0.40));
+        aeonChildTY = Math.max(0.12, Math.min(0.90, aeonChildY + (Math.random()-0.5)*0.40));
+        aeonSpawnVisibleAfter = now + 120;
+        aeonChildTail.length = 0;
+      }
+
+      // Map triggering band to vertical destination (low->bottom, high->top).
+      const bandNorm = hotBand / Math.max(1, bandCount - 1);
+      const bandY = 0.84 - bandNorm*0.62;
+      y1 = Math.max(0.12, Math.min(0.90, mix(randY, bandY, 0.84)));
+
+      // Prefer destinations that continue forward motion (avoid "reverse" feel).
+      let bestX = x1, bestY = y1, bestDot = -2;
+      for (let tries=0; tries<6; tries++) {
+        const tx = 0.14 + Math.random()*0.72;
+        const ty = Math.max(0.12, Math.min(0.90, mix(0.16 + Math.random()*0.70, y1, 0.84)));
+        const vx = tx - aeonOrbX;
+        const vy = ty - aeonOrbY;
+        const vl = Math.max(1e-6, Math.hypot(vx, vy));
+        const ndx = vx / vl, ndy = vy / vl;
+        const dot = ndx*aeonPrevDirX + ndy*aeonPrevDirY;
+        if (dot > bestDot) { bestDot = dot; bestX = tx; bestY = ty; }
+      }
+      x1 = bestX; y1 = bestY;
+
+      const dx = x1 - aeonOrbX;
+      const dy = y1 - aeonOrbY;
+      const dist = Math.max(1e-4, Math.hypot(dx, dy));
+      const ndx = dx / dist;
+      const ndy = dy / dist;
+      const dotTurn = ndx*aeonPrevDirX + ndy*aeonPrevDirY;
+      const turnSharp = Math.max(0, Math.min(1, 1 - dotTurn));
+
+      // Perpendicular offset to force visible curvature in line of travel.
+      const nx = -dy / dist;
+      const ny = dx / dist;
+      const bendMag = Math.min(0.34, Math.max(0.14, dist * 0.78));
+      // Bend direction follows current travel heading for smoother arcs.
+      const cross = aeonPrevDirX*dy - aeonPrevDirY*dx;
+      const bendSign = cross >= 0 ? 1 : -1;
+
+      // Tight-loop flourish on sharper turns: pull control closer and add backward bias.
+      let cx = (aeonOrbX + x1) * 0.5 + nx * bendMag * bendSign;
+      let cy = (aeonOrbY + y1) * 0.5 + ny * bendMag * bendSign;
+      if (turnSharp > 0.30) {
+        const loopR = (0.08 + turnSharp*0.09);
+        const back = (0.02 + turnSharp*0.04);
+
+        // Direction-aware loop side:
+        // if new direction is left (dx<0), loop to the right; and vice versa.
+        const side = dx < 0 ? 1 : -1;
+        const ux = side * loopR;
+        const uy = 0;
+        const tilt = 0.34;
+        const tiltAng = (Math.PI/180) * 78;
+        const ca = Math.cos(tiltAng), sa = Math.sin(tiltAng);
+        const rx = (ux*ca - uy*sa) * tilt;
+        const ry = (ux*sa + uy*ca);
+
+        cx = aeonOrbX + rx - (aeonPrevDirX * back);
+        cy = aeonOrbY + ry - (aeonPrevDirY * back);
+
+        // One-loop flourish phase, sized/oriented by upcoming path.
+        aeonLoopActive = true;
+        aeonLoopSide = side;
+        aeonLoopCenterX = Math.max(0.08, Math.min(0.92, aeonOrbX + rx*0.45));
+        aeonLoopCenterY = Math.max(0.10, Math.min(0.92, aeonOrbY + ry*0.45));
+        aeonLoopStartX = aeonOrbX;
+        aeonLoopStartY = aeonOrbY;
+        aeonLoopEntryVX = aeonPrevDirX;
+        aeonLoopEntryVY = aeonPrevDirY;
+        // Variable size: depends on turn sharpness + travel distance + current energy.
+        const energyN = Math.max(0, Math.min(1, monoEnv / 100));
+        aeonLoopRadius = Math.max(0.022, Math.min(0.11, 0.020 + turnSharp*0.038 + dist*0.030 + energyN*0.018));
+        // Variable shape (ellipse) and make it track upcoming travel direction.
+        aeonLoopTiltX = Math.max(0.28, Math.min(0.70, 0.30 + (1-turnSharp)*0.28));
+        aeonLoopTiltY = Math.max(0.82, Math.min(1.20, 0.88 + turnSharp*0.22));
+
+        // Build loop phase so exit tangent points into the upcoming direction.
+        // For x=cos(a), y=sin(a), tangent is (-sin(a), cos(a)) scaled by tilts.
+        const tx = ndx;
+        const ty = ndy;
+        const exitA = Math.atan2(-tx * aeonLoopTiltX, ty * aeonLoopTiltY);
+        const phaseSpan = Math.PI * 2;
+        const startA = exitA - aeonLoopSide * phaseSpan;
+        aeonLoopPhaseStart = startA;
+        aeonLoopPhaseSpan = phaseSpan;
+        aeonLoopAngle = startA;
+
+        aeonLoopStartAt = now;
+        aeonLoopEndAt = now + (620 + turnSharp*620 + dist*280);
+        aeonLoopAfterX = x1;
+        aeonLoopAfterY = y1;
+      }
+      aeonPrevDirX = mix(aeonPrevDirX, ndx, 0.55);
+      aeonPrevDirY = mix(aeonPrevDirY, ndy, 0.55);
+
+      aeonPathX0 = aeonOrbX; aeonPathY0 = aeonOrbY;
+      aeonPathCX = Math.max(0.08, Math.min(0.92, cx));
+      aeonPathCY = Math.max(0.10, Math.min(0.92, cy));
+      aeonPathX1 = x1; aeonPathY1 = y1;
+      aeonPathT = 0;
+      aeonLastTurnMs = now;
+      aeonNextTurnAt = now + turnCooldownMs;
+      aeonOrbRetargetAt = now + (1200 + Math.random()*1800);
+    }
+
+    // Advance along curve at calm speed.
+    const tStep = 0.0030 + motionK*0.0035;
+    aeonPathT = Math.min(1, aeonPathT + tStep);
+    const tt = aeonPathT;
+    const omt = 1 - tt;
+    const pathX = (omt*omt)*aeonPathX0 + 2*omt*tt*aeonPathCX + (tt*tt)*aeonPathX1;
+    const pathY = (omt*omt)*aeonPathY0 + 2*omt*tt*aeonPathCY + (tt*tt)*aeonPathY1;
+
+    if (aeonLoopActive && now < aeonLoopEndAt) {
+      const dur = Math.max(1, aeonLoopEndAt - aeonLoopStartAt);
+      const p = Math.max(0, Math.min(1, (now - aeonLoopStartAt) / dur));
+      // Exactly one revolution, direction-aware side, with variable shape.
+      const ang = aeonLoopPhaseStart + aeonLoopSide * aeonLoopPhaseSpan * p;
+      const rNow = aeonLoopRadius * (1 - 0.14*p);
+      const lx = aeonLoopCenterX + Math.cos(ang) * rNow * aeonLoopTiltX;
+      const ly = aeonLoopCenterY + Math.sin(ang) * rNow * aeonLoopTiltY;
+      // Softer loop entry: ease from prior tangent/path into loop to hide creation moment.
+      const entryT = Math.max(0, Math.min(1, p / 0.28));
+      const entryEase = entryT * entryT * (3 - 2*entryT); // smoothstep
+      const travelLead = (0.014 + motionK*0.012) * entryT;
+      const sx = aeonLoopStartX + aeonLoopEntryVX * travelLead;
+      const sy = aeonLoopStartY + aeonLoopEntryVY * travelLead;
+      aeonOrbX = mix(sx, lx, entryEase);
+      aeonOrbY = mix(sy, ly, entryEase);
+    } else {
+      if (aeonLoopActive) {
+        // Apply direction-selected hue after loop completes (unless a spawn handoff is active).
+        if (!aeonSpawnActive) {
+          aeonHueBand = aeonPendingHueBand;
+          aeonHue = (20 + aeonHueBand*46) % 360;
+        }
+        // Use end-of-loop position as the new path start.
+        aeonLoopActive = false;
+        aeonPathX0 = aeonOrbX;
+        aeonPathY0 = aeonOrbY;
+        aeonPathX1 = aeonLoopAfterX;
+        aeonPathY1 = aeonLoopAfterY;
+        const dx2 = aeonPathX1 - aeonPathX0;
+        const dy2 = aeonPathY1 - aeonPathY0;
+        const d2 = Math.max(1e-4, Math.hypot(dx2, dy2));
+        const nx2 = -dy2 / d2;
+        const ny2 = dx2 / d2;
+        const bend2 = Math.min(0.26, Math.max(0.10, d2 * 0.62));
+        const s2 = dx2 < 0 ? 1 : -1;
+        aeonPathCX = Math.max(0.08, Math.min(0.92, (aeonPathX0 + aeonPathX1)*0.5 + nx2*bend2*s2));
+        aeonPathCY = Math.max(0.10, Math.min(0.92, (aeonPathY0 + aeonPathY1)*0.5 + ny2*bend2*s2));
+        aeonPathT = 0;
+        aeonOrbX = aeonPathX0;
+        aeonOrbY = aeonPathY0;
+      } else {
+        aeonOrbX = pathX;
+        aeonOrbY = pathY;
+      }
+    }
+
+    // Spawn handoff state
+    let parentA = 1;
+    let childA = 0;
+    if (aeonSpawnActive) {
+      const pRaw = (now - aeonSpawnStartAt) / 20000;
+      const p = Math.max(0, Math.min(1, pRaw));
+      const ease = p*p*(3-2*p);
+      parentA = 1 - ease;
+      const childBaseA = Math.max(0.35, ease);
+      childA = now >= aeonSpawnVisibleAfter ? childBaseA : 0;
+
+      // Parent keeps moving while dying out.
+      if (Math.hypot(aeonParentTX - aeonParentX, aeonParentTY - aeonParentY) < 0.05 || Math.random() < 0.01) {
+        aeonParentTX = Math.max(0.10, Math.min(0.90, 0.10 + Math.random()*0.80));
+        aeonParentTY = Math.max(0.12, Math.min(0.90, 0.12 + Math.random()*0.78));
+      }
+      const pDrift = 0.0035 + motionK*0.0032;
+      aeonParentX = mix(aeonParentX, aeonParentTX, pDrift);
+      aeonParentY = mix(aeonParentY, aeonParentTY, pDrift);
+      aeonParentTail.push({ x: W*aeonParentX, y: H*aeonParentY, h: aeonParentHue });
+      if (aeonParentTail.length > 220) aeonParentTail.shift();
+
+      // Child moves independently with its own wandering target.
+      if (Math.hypot(aeonChildTX - aeonChildX, aeonChildTY - aeonChildY) < 0.04 || Math.random() < 0.01) {
+        aeonChildTX = Math.max(0.10, Math.min(0.90, 0.10 + Math.random()*0.80));
+        aeonChildTY = Math.max(0.12, Math.min(0.90, 0.12 + Math.random()*0.78));
+      }
+      const cDrift = 0.004 + motionK*0.004;
+      aeonChildX = mix(aeonChildX, aeonChildTX, cDrift);
+      aeonChildY = mix(aeonChildY, aeonChildTY, cDrift);
+
+      aeonChildTail.push({ x: W*aeonChildX, y: H*aeonChildY, h: aeonChildHue });
+      if (aeonChildTail.length > 240) aeonChildTail.shift();
+
+      if (p >= 1) {
+        // Promote child to canonical main orb state.
+        aeonOrbX = aeonChildX;
+        aeonOrbY = aeonChildY;
+        const pvx = aeonChildTX - aeonChildX;
+        const pvy = aeonChildTY - aeonChildY;
+        const pvl = Math.max(1e-6, Math.hypot(pvx, pvy));
+        aeonPrevDirX = pvx / pvl;
+        aeonPrevDirY = pvy / pvl;
+
+        aeonPathX0 = aeonOrbX;
+        aeonPathY0 = aeonOrbY;
+        aeonPathX1 = aeonChildTX;
+        aeonPathY1 = aeonChildTY;
+        const dxm = aeonPathX1 - aeonPathX0;
+        const dym = aeonPathY1 - aeonPathY0;
+        const dm = Math.max(1e-4, Math.hypot(dxm, dym));
+        const nxm = -dym / dm;
+        const nym = dxm / dm;
+        const bm = Math.min(0.20, Math.max(0.07, dm * 0.45));
+        const sm = dxm < 0 ? 1 : -1;
+        aeonPathCX = Math.max(0.08, Math.min(0.92, (aeonPathX0 + aeonPathX1)*0.5 + nxm*bm*sm));
+        aeonPathCY = Math.max(0.10, Math.min(0.92, (aeonPathY0 + aeonPathY1)*0.5 + nym*bm*sm));
+        aeonPathT = 0;
+
+        aeonSpawnActive = false;
+        aeonHueBand = aeonPendingHueBand;
+        aeonHue = aeonChildHue;
+        aeonSpawnEligibleAt = now + 20000;
+        // Collapse back to a single canonical main tail after handoff.
+        aeonTrail.length = 0;
+        aeonParentTail.length = 0;
+        aeonChildTail.length = 0;
+      }
+    }
+
+    const px = W * aeonOrbX;
+    const py = H * aeonOrbY;
+    const ppx = W * aeonParentX;
+    const ppy = H * aeonParentY;
+    const cpx = W * aeonChildX;
+    const cpy = H * aeonChildY;
+
+    // Canonical main tail (paused during spawn handoff; parent/child tails shown instead).
+    if (!aeonSpawnActive) {
+      aeonTrail.push({ x:px, y:py, life:1, h:aeonHue });
+      if (aeonTrail.length > 420) aeonTrail.shift();
+    }
+
+    x.save();
+    x.globalCompositeOperation='lighter';
+
+    // Draw main tail only when not in spawn handoff.
+    if (!aeonSpawnActive) {
+      for (let i=0;i<aeonTrail.length;i++){
+        const p = aeonTrail[i];
+        const age = (i+1)/aeonTrail.length;
+        const a = 0.02 + age*0.20;
+        const r = 1.2 + age*9.0 + pulse*0.8;
+        x.fillStyle = `hsla(${(Number(p.h)||aeonHue)%360},100%,${52 + age*20}%,${a})`;
+        x.beginPath();
+        x.arc(p.x, p.y, r, 0, Math.PI*2);
+        x.fill();
+      }
+    }
+    // Parent tail while fading
+    if (aeonSpawnActive && aeonParentTail.length) {
+      for (let i=0;i<aeonParentTail.length;i++){
+        const p = aeonParentTail[i];
+        const age = (i+1)/aeonParentTail.length;
+        const a = (0.016 + age*0.14) * Math.max(0, parentA);
+        const r = 0.9 + age*6.2 + pulse*0.45;
+        x.fillStyle = `hsla(${(Number(p.h)||aeonParentHue)%360},100%,${49 + age*16}%,${a})`;
+        x.beginPath();
+        x.arc(p.x, p.y, r, 0, Math.PI*2);
+        x.fill();
+      }
+    }
+    // Child tail (independent)
+    if (aeonSpawnActive && aeonChildTail.length) {
+      for (let i=0;i<aeonChildTail.length;i++){
+        const p = aeonChildTail[i];
+        const age = (i+1)/aeonChildTail.length;
+        const a = (0.018 + age*0.16) * Math.max(0, childA);
+        const r = 1.0 + age*6.8 + pulse*0.5;
+        x.fillStyle = `hsla(${(Number(p.h)||aeonChildHue)%360},100%,${50 + age*18}%,${a})`;
+        x.beginPath();
+        x.arc(p.x, p.y, r, 0, Math.PI*2);
+        x.fill();
+      }
+    }
+
+    // Halo/core rendering with spawn handoff.
+    const volNorm = Math.max(0, Math.min(1, monoEnv / 100));
+    const core = 24 + volNorm*20 + pulse*8;
+
+    const drawOrb = (ox, oy, hue, alphaMul) => {
+      const gHalo=x.createRadialGradient(ox,oy,2,ox,oy,core*3.0);
+      gHalo.addColorStop(0,`rgba(255,255,255,${0.28*alphaMul})`);
+      gHalo.addColorStop(0.35,`hsla(${(hue+16)%360},100%,64%,${0.22*alphaMul})`);
+      gHalo.addColorStop(1,'rgba(0,0,0,0)');
+      x.fillStyle=gHalo; x.beginPath(); x.arc(ox,oy,core*1.9,0,Math.PI*2); x.fill();
+
+      const gCore=x.createRadialGradient(ox,oy,1,ox,oy,core*1.1);
+      gCore.addColorStop(0,`rgba(240,250,255,${0.86*alphaMul})`);
+      gCore.addColorStop(0.42,`hsla(${(hue+8)%360},100%,66%,${0.30*alphaMul})`);
+      gCore.addColorStop(1,'rgba(0,0,0,0)');
+      x.fillStyle=gCore; x.beginPath(); x.arc(ox,oy,core*0.95,0,Math.PI*2); x.fill();
+    };
+
+    if (aeonSpawnActive) {
+      drawOrb(W*aeonParentX, H*aeonParentY, aeonParentHue, Math.max(0, parentA));
+      drawOrb(cpx, cpy, aeonChildHue, Math.max(0, childA));
+    } else {
+      drawOrb(px, py, aeonHue, 1);
+    }
 
     x.restore();
   }
@@ -1343,7 +1935,9 @@
     t=ts*0.001;
     tm=t*motionK;
     if(auto && ts-lastSwitch>22000){ sceneIdx=(sceneIdx+1)%scenes.length; scene=scenes[sceneIdx]; lastSwitch=ts; }
-    mEl.textContent=`${scene}${auto?' · auto':''} · ${presetKey} · E${Math.round(energyLevel)} M${Math.round(motionLevel)} G${Math.round(glowLevel)}`;
+    const sceneLabel = scene === 'aeon' ? 'hello' : scene;
+    const presetLabel = presetKey === 'aeon' ? 'hello' : presetKey;
+    mEl.textContent=`${sceneLabel}${auto?' · auto':''} · ${presetLabel} · E${Math.round(energyLevel)} M${Math.round(motionLevel)} G${Math.round(glowLevel)}`;
 
     // Lightweight feedback loop (render-to-self transform) for trails/depth.
     x.save();
