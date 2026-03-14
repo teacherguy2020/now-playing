@@ -585,6 +585,7 @@
   const auroraLineEnv=[]; // per-line fast envelope for thickness response
   const auroraLineBase=[]; // rolling baseline to compute dynamic deviations
   const auroraLineFast=[]; // per-line fast color lane value
+  const auroraLineRise=[]; // per-line recent rise ("juice")
   const auroraLineWaveEnv=[]; // per-line wave density envelope (slow return)
   const sparks=[];
   let lastEnergy=0;
@@ -609,6 +610,10 @@
   let ambientOrbTX = 0.5;
   let ambientOrbTY = 0.64;
   let ambientOrbRetargetAt = 0;
+  let ambientOrbPrevX = 0.5;
+  let ambientOrbPrevY = 0.64;
+  let ambientOrbSpeedEnv = 0;
+  let ambientOrbLastRetargetMs = 0;
 
   function bgAurora(){
     const g=x.createRadialGradient(W*0.5,H*0.55,20,W*0.5,H*0.55,Math.max(W,H)*0.9);
@@ -662,6 +667,7 @@
       const prevEnv = Number.isFinite(auroraLineEnv[k]) ? auroraLineEnv[k] : bandNow;
       const prevBase = Number.isFinite(auroraLineBase[k]) ? auroraLineBase[k] : bandNow;
       const bandRise = Math.max(0, bandFast - prevFast);
+      auroraLineRise[k] = bandRise;
       const atk = ambientMode ? 0.90 : 0.62;   // immediate thickening on rise
       const rel = ambientMode ? 0.04 : 0.22;   // much slower decay in ambient
       const aEnv = bandNow > prevEnv ? atk : rel;
@@ -749,15 +755,33 @@
     }
     x.shadowBlur=0;
     // beat orb (kept smooth/subtle)
-    if (ambientMode) {
+    const ambientOrbActive = ambientMode || String(presetSel?.value || '').toLowerCase() === 'ambient';
+    if (ambientOrbActive) {
       const now = performance.now();
-      if (now >= ambientOrbRetargetAt) {
-        // Gentle wandering in the lower-middle display area.
-        ambientOrbTX = 0.20 + Math.random()*0.60;
-        ambientOrbTY = 0.34 + Math.random()*0.44;
-        ambientOrbRetargetAt = now + (2200 + Math.random()*3000);
+      // Event-driven retarget: only on a meaningful bump, with cooldown.
+      const cooldownMs = 3000;
+      let hotK = -1;
+      let hotRise = 0;
+      let hotScore = -1;
+      for (let k=0; k<7; k++) {
+        const rise = Number(auroraLineRise[k] || 0);
+        const env = Number(auroraLineEnv[k] || 0);
+        const fast = Number(auroraLineFast[k] || 0);
+        const score = rise*2.2 + env*0.55 + fast*0.35;
+        if (score > hotScore) { hotScore = score; hotK = k; }
+        if (rise > hotRise) hotRise = rise;
       }
-      const drift = 0.006 + motionK*0.008;
+      const bumpThresh = 0.022; // meaningful line-rise event
+      const canRetarget = (now - ambientOrbLastRetargetMs) >= cooldownMs;
+      if (canRetarget && hotK >= 0 && hotRise >= bumpThresh) {
+        const randomY = 0.20 + Math.random()*0.65;
+        const bandY = 0.20 + 0.10*hotK;
+        ambientOrbTY = Math.max(0.16, Math.min(0.90, mix(randomY, bandY, 0.72)));
+        ambientOrbTX = 0.18 + Math.random()*0.64;
+        ambientOrbLastRetargetMs = now;
+      }
+      // Slower drift: intentional, calm movement.
+      const drift = 0.0030 + motionK*0.0045;
       ambientOrbX = mix(ambientOrbX, ambientOrbTX, drift);
       ambientOrbY = mix(ambientOrbY, ambientOrbTY, drift);
     } else {
@@ -770,12 +794,33 @@
     }
     const orbX = W * ambientOrbX;
     const orbY = H * ambientOrbY;
-    const r=34 + bass*0.52 + pulse*30;
-    const g=x.createRadialGradient(orbX,orbY,2,orbX,orbY,r*2.2);
-    g.addColorStop(0,'rgba(255,255,255,0.72)');
-    g.addColorStop(0.3,`hsla(${(195+t*12)%360},100%,65%,0.24)`);
-    g.addColorStop(1,'rgba(0,0,0,0)');
-    x.fillStyle=g; x.beginPath(); x.arc(orbX,orbY,r*1.55,0,Math.PI*2); x.fill();
+
+    // Orb movement speed -> halo size coupling.
+    const dx = ambientOrbX - ambientOrbPrevX;
+    const dy = ambientOrbY - ambientOrbPrevY;
+    ambientOrbPrevX = ambientOrbX;
+    ambientOrbPrevY = ambientOrbY;
+    const speedNorm = Math.min(1, Math.hypot(dx, dy) * 180);
+    ambientOrbSpeedEnv = mix(ambientOrbSpeedEnv, speedNorm, speedNorm > ambientOrbSpeedEnv ? 0.28 : 0.08);
+
+    const volNorm = Math.max(0, Math.min(1, monoEnv / 100));
+    const r = 26 + volNorm*22 + pulse*8;
+    const haloMul = 1.00 + ambientOrbSpeedEnv*1.20;
+    const haloR = r * haloMul;
+
+    // Halo layer (speed-reactive)
+    const gHalo=x.createRadialGradient(orbX,orbY,2,orbX,orbY,haloR*2.0);
+    gHalo.addColorStop(0,'rgba(255,255,255,0.34)');
+    gHalo.addColorStop(0.28,`hsla(${(195+t*12)%360},100%,65%,${0.16 + ambientOrbSpeedEnv*0.14})`);
+    gHalo.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle=gHalo; x.beginPath(); x.arc(orbX,orbY,haloR*1.45,0,Math.PI*2); x.fill();
+
+    // Orb core layer (NOT speed-reactive)
+    const gCore=x.createRadialGradient(orbX,orbY,1,orbX,orbY,r*1.05);
+    gCore.addColorStop(0,'rgba(255,255,255,0.78)');
+    gCore.addColorStop(0.45,`hsla(${(195+t*12)%360},100%,65%,0.20)`);
+    gCore.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle=gCore; x.beginPath(); x.arc(orbX,orbY,r*0.98,0,Math.PI*2); x.fill();
     x.restore();
   }
 
