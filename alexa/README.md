@@ -159,6 +159,26 @@ moode.YOUR-PUBLIC.DOMAIN.com {
 
 Use this pattern when Alexa + browser + moOde resources must coexist under one public domain.
 
+### Critical migration checklist (new host / new Pi)
+
+When moving to a new host, all of these must be true or Alexa domain checks will fail:
+
+1. **Router forwards** target the new Caddy host:
+   - TCP 80 -> `<new-host>:80`
+   - TCP 443 -> `<new-host>:443`
+2. **Caddy is installed and running** on the new host (`systemctl status caddy`).
+3. **Caddyfile is present** at `/etc/caddy/Caddyfile` with the route blocks above.
+4. **Log path permissions** are valid if file logging is enabled:
+   - `/var/log/caddy` and configured log file writable by `caddy` user.
+5. **Cert challenges can complete** (no DNS SERVFAIL / no old forward target).
+
+Quick verification:
+
+```bash
+curl -I https://<public-domain>/now-playing  # expect 200 + X-Upstream node
+curl -I https://<public-domain>/             # expect 200 + X-Upstream web
+```
+
 ## Build upload zip (Alexa Developer Console)
 
 From repo root, build a fresh zip for the **Code** tab upload:

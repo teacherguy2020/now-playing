@@ -5,13 +5,13 @@
 Use this page to manage Alexa integration and voice command behavior.
 
 ## What this page is for
-- Enabling/disabling Alexa integration
 - Managing correction maps (artist/album/playlist spellings)
 - Reviewing recent Alexa command outcomes
+- Clearing recently heard Alexa history
+
+> **Important:** Alexa enable + public domain are configured on the **Config** page (source of truth), not this page.
 
 ## What the main controls do
-- **Enable Alexa integration**: turns Alexa handling on/off.
-- **Save settings**: saves Alexa/domain settings.
 - **Save manual JSON edits**: saves correction map edits.
 - **Clear** buttons: clear recent history lists.
 
@@ -27,6 +27,48 @@ Use this page to manage Alexa integration and voice command behavior.
 
 ## Behavior note
 In Alexa mode, queue behavior is different from normal playback. The UI treats queue head as queued-next.
+
+## Public domain requirements (critical)
+Alexa cloud requests must reach your public domain (example: `moode.brianwis.com`) and then be reverse-proxied to local services.
+
+### Required network forwards (router/eero)
+Forward these ports to the host running Caddy (current primary: `10.0.0.4`):
+- **TCP 80** -> `10.0.0.4:80`
+- **TCP 443** -> `10.0.0.4:443`
+
+If these are missing or pointed at an old host, domain checks fail and Alexa cannot connect.
+
+### Required reverse proxy routes (Caddy)
+At minimum:
+- `/now-playing`, `/alexa/*`, `/config*`, `/art/*`, etc. -> `127.0.0.1:3101` (Node API)
+- fallback `/` -> `127.0.0.1:8101` (web UI)
+- `/coverart.php*` + `/images/*` -> `10.0.0.254:80` (moOde art)
+- `/stream*` -> `10.0.0.254:8000` (moOde stream)
+
+Use `header_down X-Upstream ...` during setup to verify which backend served each path.
+
+## Caddy bring-up checklist (new host migration)
+1. Install Caddy on the new host.
+2. Install production Caddyfile.
+3. Ensure access-log path permissions are valid for user `caddy`:
+   - `/var/log/caddy` owner `caddy:caddy`
+   - `/var/log/caddy/moode_access.log` owner `caddy:caddy`
+4. Validate + restart:
+   - `sudo caddy validate --config /etc/caddy/Caddyfile`
+   - `sudo systemctl restart caddy`
+5. Verify:
+   - `curl -I https://<domain>/now-playing` -> `200`, `x-upstream: node:3101`
+   - `curl -I https://<domain>/` -> `200`, `x-upstream: albumart:8101`
+
+## Common failure signatures and fixes
+- **`502` on all public URLs**
+  - Caddy missing/not running on current host, or forwards still pointed at old host.
+- **Caddy start fails with `permission denied` on `/var/log/caddy/moode_access.log`**
+  - Fix ownership/permissions for log directory and file.
+- **ACME challenge errors (`tls-alpn-01` / `http-01`)**
+  - Ensure TCP 80/443 forward to correct host.
+  - Ensure DNS resolves to the active WAN endpoint.
+  - Avoid conflicting manual `:80` redirect blocks that can interfere with challenge flow; prefer Caddy automatic HTTPS handling.
 
 ## Full phrase coverage (from interaction model)
 Source: `alexa/interaction-model.v2.json`
