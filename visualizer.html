@@ -1066,7 +1066,7 @@
       const currentVal = vals[curIdx];
       if ((candidateTier !== rockDomTier && vals[best] > currentVal + margin && nowDom >= rockDomHoldUntil) || rockDomTier < 1 || rockDomTier > 7) {
         rockDomTier = candidateTier;
-        rockDomHoldUntil = nowDom + (candidateTier === 1 ? 980 : 520);
+        rockDomHoldUntil = nowDom + 980;
       }
     }
 
