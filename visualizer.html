@@ -13,6 +13,8 @@
     .t{font-size:20px;font-weight:700;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .a{font-size:13px;opacity:.86;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .m{font-size:12px;opacity:.72;text-align:right}
+    /* Temporary tuning mode: hide title/artist while evaluating pan motion. */
+    .hud > div:first-child{display:none}
     body.pure .hud{display:none !important}
     body.pure .ctl{display:none !important}
     .ctl{position:fixed;top:8px;left:50%;display:none;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;width:min(1280px,calc(100vw - 16px));transform:translateX(-50%);background:var(--npb-card-bg,rgba(5,10,20,.72));backdrop-filter:blur(4px);border:1px solid var(--npb-card-border,rgba(120,150,190,.35));border-radius:10px;padding:6px 8px;z-index:20;color:var(--npb-text,#dbe8ff)}
@@ -26,7 +28,7 @@
   <div id="ctl" class="ctl" aria-label="Visualizer controls">
     <span style="font-size:11px;opacity:.8;">Preset</span>
     <select id="presetSel" aria-label="Preset">
-      <option value="classic">classic</option>
+      <option value="classic">particle</option>
       <option value="aeon">hello</option>
       <option value="fireworks">fireworks</option>
       <option value="sphere">sphere</option>
@@ -98,7 +100,7 @@
   if (presetKey === 'jelly') presetKey = 'aeon';
   let preset=PRESETS[presetKey]||PRESETS.classic;
   const PRESET_LEVELS={
-    classic:{energy:5,motion:5,glow:5},
+    classic:{energy:7,motion:5,glow:8},
     aeon:{energy:7,motion:6,glow:8},
     fireworks:{energy:3,motion:4,glow:8},
     sphere:{energy:6,motion:5,glow:8},
@@ -114,7 +116,7 @@
     // Wider response span so 1 vs 10 is obvious.
     energyK = 0.45 + (energyLevel-1)*(1.75/9); // 0.45..2.20
     motionK = 0.55 + (motionLevel-1)*(1.25/9); // 0.55..1.80
-    glowK   = 0.45 + (glowLevel-1)*(1.60/9);   // 0.45..2.05
+    glowK   = 0.35 + (glowLevel-1)*(2.55/9);   // amplified glow response: 0.35..2.90
   }
   recalcLevelKs();
   const sceneParamRaw=qp.get('scene');
@@ -603,6 +605,19 @@
   let particleSilenceEnv=0;
   let particlePanEnv=0;
   let panBiasEnv=0;
+  let lookEnv=0;
+  let moveEnv=0;
+  let tiltEnv=0;
+  let tiltKickEnv=0;
+  let tiltHoldEnv=0;
+  let turnCarEnv=0;
+  // Event-style pan turn impulse for classic particles:
+  // on strong spectral tilt changes, snap toward low(left)/high(right), then decay to center.
+  let panTurnEnv=0;
+  let panTurnPrevRaw=0;
+  let panTurnLowPrev=0;
+  let panTurnHighPrev=0;
+  let panTurnCooldownUntil=0;
   let vortexMorph=0;
   let chaosStreakMs=0;
   let chaosLastMs=0;
@@ -903,7 +918,8 @@
       Math.max(0, (energy - 80) / 24);
     // Chaos driven by sustained VU mono loudness envelope (not contrast spikes).
     const loud = monoEnv || loudnessEnv;
-    const chaosOnThresh = 82 - (energyLevel - 1) * 3.2;
+    // Lower Energy setting => higher chaos threshold; higher Energy => lower threshold.
+    const chaosOnThresh = 66 + (10 - energyLevel) * 3.0;
     const chaosOffThresh = chaosOnThresh - 12;
     const chaosGate = (loud >= chaosOnThresh) ? 1 : ((loud <= chaosOffThresh) ? 0 : (particleChaos > 0.02 ? 1 : 0));
     const chaosRaw = chaosGate * Math.max(0, (loud - chaosOffThresh) / 18);
@@ -917,13 +933,34 @@
     // Hard loudness clamp: do not allow chaos to persist in truly soft moments.
     if (loud < 24) particleChaos *= 0.45;
     if (loud < 20) particleChaos *= 0.20;
-    const spectralBias = clamp((highE - lowE) / 35, -1, 1); // highs vs lows decide spin direction
-    if (Math.abs(spectralBias) > 0.12) particleSpinDir = spectralBias >= 0 ? 1 : -1;
-    const targetSpin = Math.max(-0.6109, Math.min(0.6109, particleSpinDir * Math.sin(tm*1.25) * particleSpinDrive * 1.10));
+    // Twist direction from transient spectral movement (rise), not sustained tilt.
+    const lowRiseTwist = Math.max(0, lowE - panTurnLowPrev);
+    const highRiseTwist = Math.max(0, highE - panTurnHighPrev);
+    const riseSumTwist = Math.max(0.001, lowRiseTwist + highRiseTwist);
+    const riseDomTwist = clamp((highRiseTwist - lowRiseTwist) / riseSumTwist, -1, 1);
+    const riseMagTwist = Math.max(lowRiseTwist, highRiseTwist);
+    if (riseMagTwist > 0.95 && Math.abs(riseDomTwist) > 0.28) particleSpinDir = riseDomTwist >= 0 ? 1 : -1;
+
+    // Tilt overlay: latch bank until the next strong transient updates it.
+    const transientMag = Math.max(riseMagTwist * 1.05, onset * 1.10, pulse * 0.95);
+    if (transientMag > 0.72) {
+      const kickDir = Math.abs(riseDomTwist) > 0.08 ? riseDomTwist : (lookEnv >= 0 ? 1 : -1);
+      const newHold = clamp(kickDir, -1, 1);
+      tiltHoldEnv = mix(tiltHoldEnv, newHold, 0.72);
+    }
+    // Keep a tiny amount of smoothing but no auto-return to zero.
+    const tiltTarget = clamp(tiltHoldEnv, -1.25, 1.25);
+    const tiltCrossing = (tiltEnv !== 0) && (Math.sign(tiltTarget) !== 0) && (Math.sign(tiltEnv) !== Math.sign(tiltTarget));
+    const tiltA = tiltCrossing ? 0.004 : 0.045;
+    tiltEnv = mix(tiltEnv, tiltTarget, tiltA);
+    const targetSpin = 0; // temporary: disable twist; using x-axis rotation feel instead
     const spinAtk = 0.035;
     const spinRel = 0.004; // very gradual settle
     const spinA = Math.abs(targetSpin) > Math.abs(particleSpin) ? spinAtk : spinRel;
     particleSpin = mix(particleSpin, targetSpin, spinA);
+    // Advance rise baselines after transient reads.
+    panTurnLowPrev = lowE;
+    panTurnHighPrev = highE;
     // Chaos streak timer (continuous chaos behavior tiers)
     const nowMs = performance.now();
     const dtMs = chaosLastMs ? Math.min(250, Math.max(0, nowMs - chaosLastMs)) : 16;
@@ -968,20 +1005,49 @@
 
     // Spectral pan: low-heavy drifts left, high-heavy drifts right.
     // Use normalized contrast + slow bias cancellation so it doesn't sit left all the time.
-    const denom = Math.max(20, (highE + lowE) * 0.9);
-    const spectralPanRaw = clamp((highE - lowE) / denom, -1, 1);
-    panBiasEnv = mix(panBiasEnv, spectralPanRaw, 0.01); // very slow long-term center tracking
-    const spectralPanBalanced = clamp((spectralPanRaw - panBiasEnv * 0.9) * 1.35, -1, 1);
+    const highComp = highE * 1.72;
+    const lowComp = lowE * 0.68;
+    const midComp = midE * 0.30;
+    const denom = Math.max(20, (highComp + lowComp + midComp) * 0.84);
+    const spectralPanBase = (highComp - (lowComp + midComp * 0.44)) / denom;
+    const fluteBoost = clamp((highComp - (lowComp * 0.54 + midComp * 0.34)) / Math.max(18, highComp + lowComp + midComp), -1, 1) * 0.42;
+    const spectralPanRaw = clamp(spectralPanBase + fluteBoost, -1, 1);
+    panBiasEnv = mix(panBiasEnv, spectralPanRaw, 0.045); // faster recenter so stale low-bias doesn't stick
+    const spectralPanBalanced = clamp((spectralPanRaw - panBiasEnv * 0.30) * 1.95, -1, 1);
+
+    // Split controls like a gamepad:
+    // LOOK (right stick) from sustained spectral balance, MOVE (left stick) from loudness/energy.
     const panAtk = 0.22, panRel = 0.08;
     const panA = Math.abs(spectralPanBalanced) > Math.abs(particlePanEnv) ? panAtk : panRel;
     particlePanEnv = mix(particlePanEnv, spectralPanBalanced, panA);
-    const panPxBase = particlePanEnv * (W * 0.33); // global visible drift
+    const lookTarget = clamp(particlePanEnv, -1, 1);
+    const lookA = Math.abs(lookTarget) > Math.abs(lookEnv) ? 0.06 : 0.016; // smoother transition into pan changes, gentler hold
+    lookEnv = mix(lookEnv, lookTarget, lookA);
+
+    const loudNorm = clamp((monoEnv - 28) / 58, 0, 1);
+    const moveTarget = clamp(loudNorm * 0.75 + clamp(pulse / 1.8, 0, 1) * 0.45, 0, 1.25);
+    moveEnv = mix(moveEnv, moveTarget, moveTarget > moveEnv ? 0.12 : 0.045);
+
+    panTurnPrevRaw = spectralPanRaw;
+    panTurnEnv = mix(panTurnEnv, 0, 0.08); // retired
+    const turnTarget = clamp(lookEnv * 1.15, -1, 1);
+    const turnA = Math.abs(turnTarget) > Math.abs(turnCarEnv) ? 0.12 : 0.05;
+    turnCarEnv = mix(turnCarEnv, turnTarget, turnA);
+    const panPxBase = lookEnv * (W * 0.09);
 
     for(let idx=0; idx<particles.length; idx++){
       const p = particles[idx];
-      p.z-=speed + pulse*0.01;
+      p.z -= (speed * (1 + moveEnv * 0.95)) + pulse*0.01;
       if(p.z<=0.02){p.x=Math.random();p.y=Math.random();p.z=1; p.cdx=0; p.cdy=0; p.ct=0; p.cr=0; p.ca=-1; p.cp=0; p.co=0;}
       p.x=(p.x+p.vx+1)%1; p.y=(p.y+p.vy+1)%1;
+      // Directional flow lock:
+      // small EP left => motion left->right, small EP right => right->left.
+      {
+        const lookDir = clamp(lookEnv, -1, 1);
+        const flowDir = lookDir < 0 ? 1 : (lookDir > 0 ? -1 : 0);
+        const flowMag = Math.abs(lookDir) * (0.0018 + (1 - p.z) * 0.0032);
+        if (flowDir) p.x = (p.x + flowDir * flowMag + 1) % 1;
+      }
       if (particleChaos > 0.04) {
         if (!p.cdx && !p.cdy) {
           const a = Math.random() * Math.PI * 2;
@@ -992,7 +1058,33 @@
         p.x = (p.x + p.cdx * chaosTravel + 1) % 1;
         p.y = (p.y + p.cdy * chaosTravel + 1) % 1;
       }
-      let sx=(p.x-0.5)/(p.z)+0.5, sy=(p.y-0.5)/(p.z)+0.5;
+      const panOriginX = 0.5 + clamp(lookEnv, -1, 1) * 0.30;
+      const panOriginY = 0.5;
+      let sx=(p.x-panOriginX)/(p.z)+panOriginX, sy=(p.y-panOriginY)/(p.z)+panOriginY;
+      // VP-anchored curve: bend trajectories toward the small-dot turn target by depth.
+      {
+        const turn = clamp(lookEnv, -1, 1);
+        const depth = (1 - p.z);
+        // Flip curve direction only when motion is right->left (turn > 0 with current flow lock).
+        const curveTurn = turn > 0 ? -turn : turn;
+        const vpNormX = 0.5 - curveTurn * 0.39;
+        const vpNormY = 0.5 - curveTurn * 0.14;
+        const bend = clamp(Math.abs(turn) * depth * depth * 1.45, 0, 0.97);
+        sx = sx * (1 - bend) + vpNormX * bend;
+        const bendY = bend * 0.58;
+        sy = sy * (1 - bendY) + vpNormY * bendY;
+      }
+      // Tilt overlay as airplane-style banking (roll in screen plane).
+      {
+        const dx = sx - 0.5;
+        const dy = sy - 0.5;
+        const roll = -tiltEnv * 0.65; // highs => pilot-view right-bank (right wing low)
+        const cr = Math.cos(roll), sr = Math.sin(roll);
+        const x2 = dx * cr - dy * sr;
+        const y2 = dx * sr + dy * cr;
+        sx = 0.5 + x2;
+        sy = 0.5 + y2;
+      }
       if (Math.abs(particleSpin) > 0.0002 || particleChaos > 0.02) {
         const cx = sx - 0.5;
         const cy = sy - 0.5;
@@ -1087,35 +1179,53 @@
       const panPx = panPxBase * (0.55 + (1-p.z)*0.9);
       const px=sx*W + panPx, py=sy*H;
       if(px<0||py<0||px>W||py>H) continue;
-      // Organize band lanes spatially right -> left (high -> low)
-      const xNorm = Math.max(0, Math.min(0.999, px / Math.max(1, W)));
+      // Organize band lanes from pre-pan reference x so EP shifts don't invert perceived spectrum side.
+      const laneRefPx = sx * W;
+      const xNorm = Math.max(0, Math.min(0.999, laneRefPx / Math.max(1, W)));
       const lane = Math.max(0, Math.min(6, Math.floor((1 - xNorm) * 7))); // right=0 (high), left=6 (low)
-      const b = Number(bandVals[lane]||0);
+      const bRaw = Number(bandVals[lane]||0);
+      const b = bRaw * (lane <= 2 ? 1.30 : (lane >= 5 ? 0.78 : 1.0));
 
-      // Quantity reacts to lane strength
+      // Quantity reacts to lane strength + pan-side weighting (stronger lane dominance when panned).
       const volumeDensity = clamp(0.55 + energy/85, 0.45, 1.9);
-      const drawProb = Math.max(0.02, Math.min(1, (0.18 + b*1.05 + colorFlash*0.10) * volumeDensity * (1 - silence*0.75)));
+      const laneSide = (3 - lane) / 3; // right lanes positive, left lanes negative
+      const panSide = clamp(lookEnv, -1, 1);
+      const panLaneBias = clamp(1 + (panSide * laneSide * 4.8), 0.08, 5.6);
+      const panHoldDraw = Math.abs(lookEnv);
+      const drawProb = Math.max(0.08 + panHoldDraw*0.10, Math.min(1, (0.22 + b*1.20 + colorFlash*0.12) * volumeDensity * (1 - silence*0.68) * panLaneBias));
       if (Math.random() > drawProb) continue;
 
       const bandSizeBoost = b * 2.6; // stronger band -> bigger dots in that lane
       let rRaw=2 + bandSizeBoost + (1-p.z)*(3.2 + tailFromSpeed*1.8 + Math.min(1.6, particleChaos*1.2)) + pulse*3;
+      // Size should be smallest at EP, then grow as particles move away.
+      const epDx = sx - panOriginX;
+      const epDy = sy - panOriginY;
+      const epDist = Math.hypot(epDx, epDy);
+      const epSizeScale = clamp(0.24 + epDist * 2.4, 0.22, 1.20);
+      rRaw *= epSizeScale;
       if (vortexMorph > 0.001) {
         // As vortex morphs in, dots increasingly shrink toward center.
         const centerScale = Math.max(0.35, Math.min(1.0, (p.cr || 0.06) / 0.42));
         rRaw *= (1 - vortexMorph) + centerScale * vortexMorph;
       }
-      const r=Math.min(9, Math.max(0.8, rRaw));
-      const laneHue = 20 + lane*46;
+      const r=Math.min(9, Math.max(0.45, rRaw));
+      // Keep original lane palette; replace violet lane with yellow only.
+      const laneHueLut = [20, 66, 112, 158, 204, 30, 0];
+      const laneHue = laneHueLut[lane] ?? (20 + lane*46);
       const hue=(laneHue + t*8 + b*120 + colorFlash*20)%360;
       const chaosPop = Math.min(1.0, particleChaos * 0.75);
       const chaosTail = Math.min(1.4, particleChaos * 1.1);
-      const fade = 1 - (silence * 0.92);
+      const panHold = Math.abs(lookEnv);
+      const fade = Math.max(0.42 + panHold * 0.34, 1 - (silence * 0.92));
       const lum=(52 + b*26 + colorFlash*8 + chaosPop*10) * (0.45 + fade*0.55);
-      const alpha=((0.10 + b*0.18) + (1-p.z)*(0.22 + tailFromSpeed*0.34 + chaosTail*0.22) + chaosPop*0.10) * fade;
+      const alphaRaw=((0.16 + b*0.24) + (1-p.z)*(0.34 + tailFromSpeed*0.48 + chaosTail*0.28) + chaosPop*0.13 + panHold*0.18) * fade;
+      const alpha = Math.max(0.18 + panHold*0.12, alphaRaw);
       const chaosG = Math.round(140 * (1 - vortexMorph)); // orange -> red morph
+      const sat = lane === 0 ? 0 : 95; // highest frequency lane rendered white
+      const lumAdj = lane === 0 ? Math.min(98, lum + 20) : lum;
       x.fillStyle = chaosTierRed
         ? `rgba(255,${chaosG},0,${Math.max(0.14, alpha)})`
-        : `hsla(${hue},95%,${lum}%,${alpha})`;
+        : `hsla(${hue},${sat}%,${lumAdj}%,${alpha})`;
       x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill();
       if (chaosPop > 0.08) {
         const split = (0.8 + chaosPop*4.2) * (0.6 + (1-p.z));
@@ -1132,6 +1242,8 @@
         x.beginPath(); x.arc(px+offX,py+offY,Math.max(1.2, r*0.78),0,Math.PI*2); x.fill();
       }
     }
+    // Pan diagnostics markers hidden.
+    x.shadowBlur = 0;
     x.restore();
   }
 
@@ -2268,7 +2380,7 @@
     tm=t*motionK;
     if(auto && ts-lastSwitch>22000){ sceneIdx=(sceneIdx+1)%scenes.length; scene=scenes[sceneIdx]; lastSwitch=ts; }
     const sceneLabel = scene === 'aeon' ? 'hello' : scene;
-    const presetLabel = presetKey === 'aeon' ? 'hello' : presetKey;
+    const presetLabel = presetKey === 'aeon' ? 'hello' : (presetKey === 'classic' ? 'particle' : presetKey);
     mEl.textContent=`${sceneLabel}${auto?' · auto':''} · ${presetLabel} · E${Math.round(energyLevel)} M${Math.round(motionLevel)} G${Math.round(glowLevel)}`;
 
     // Lightweight feedback loop (render-to-self transform) for trails/depth.
