@@ -370,7 +370,8 @@
       const t=String(q||'').trim().toLowerCase();
       const list = !t ? [] : quickIndex.filter(x=>String(x.search||x.value||'').toLowerCase().includes(t)).slice(0,80);
       host.innerHTML = list.map((x)=>{
-        const label = x.type==='album' && x.artist ? `${x.artist} — ${x.value}` : x.value;
+        // For album quick results, show album name only (artist is implied by context/query).
+        const label = x.value;
         return `<div class='item' data-qtype='${x.type}' data-qval='${encodeURIComponent(x.value)}' data-qartist='${encodeURIComponent(String(x.artist||''))}'><b>${x.type}</b> — ${label}</div>`;
       }).join('');
     }

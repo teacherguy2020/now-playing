@@ -2905,7 +2905,7 @@
             + rows.map((x) => {
                 return `<div style="display:flex;align-items:center;gap:6px;">`
                   + `<div style="flex:1 1 auto;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:0;background:transparent;color:var(--theme-text);text-align:left;border-radius:8px;">`
-                  + `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(x.label)}</span>`
+                  + `<span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml((()=>{ const lbl=String(x.label||''); if (x.type!=='Album') return lbl; const em=lbl.indexOf(' — '); if (em>0) return lbl.slice(em+3); const hy=lbl.indexOf(' - '); if (hy>0) return lbl.slice(hy+3); return lbl; })())}</span>`
                   + `<span style="font-size:11px;white-space:nowrap;opacity:.88;padding:1px 6px;border-radius:999px;background:${pillBg};">${escHtml(x.type)}</span>`
                   + `</div>`
                   + `<button type="button" data-hero-quick-action="play" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Replace queue and play" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(59,130,246,.18);color:#dbeafe;cursor:pointer;font-weight:700;line-height:1;">▶</button>`
