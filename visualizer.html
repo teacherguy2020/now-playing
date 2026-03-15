@@ -611,6 +611,8 @@
   let tiltHoldEnv=0;
   let transientEventEnv=0;
   let transientEventCooldownUntil=0;
+  let rockDomTier=3;
+  let rockDomHoldUntil=0;
   let turnCarEnv=0;
   // Event-style pan turn impulse for classic particles:
   // on strong spectral tilt changes, snap toward low(left)/high(right), then decay to center.
@@ -621,6 +623,7 @@
   let lowSubPrev=0.2;
   let lowSubEnv=0;
   let lowSubFlash=0;
+  let lowSubHoldUntil=0;
   let lowSubCooldownUntil=0;
   let panTurnCooldownUntil=0;
   let vortexMorph=0;
@@ -1038,6 +1041,35 @@
       return avgRange(binsFast, iLo, iHi) / 100;
     });
 
+    // Rock global dominant tier color (all dots), using custom tier ranges.
+    if (isParticleRock) {
+      const rockTierHz = [
+        [3000, 20000], // tier 1
+        [1200, 3000],  // tier 2
+        [900, 1200],   // tier 3
+        [650, 900],    // tier 4
+        [400, 650],    // tier 5
+        [180, 400],    // tier 6 (unchanged)
+        [20, 180],     // tier 7 (unchanged)
+      ];
+      const vals = rockTierHz.map(([lo, hi]) => {
+        const iLo = hzToIdx(lo, binsFast.length||1, spectrumNyquist);
+        const iHi = hzToIdx(hi, binsFast.length||1, spectrumNyquist);
+        return avgRange(binsFast, iLo, iHi) / 100;
+      });
+      let best = 0;
+      for (let i=1;i<vals.length;i++) if (vals[i] > vals[best]) best = i;
+      const candidateTier = best + 1; // 1..7 (high..low)
+      const nowDom = performance.now();
+      const margin = 0.032;
+      const curIdx = Math.max(0, Math.min(6, rockDomTier - 1));
+      const currentVal = vals[curIdx];
+      if ((candidateTier !== rockDomTier && vals[best] > currentVal + margin && nowDom >= rockDomHoldUntil) || rockDomTier < 1 || rockDomTier > 7) {
+        rockDomTier = candidateTier;
+        rockDomHoldUntil = nowDom + (candidateTier === 1 ? 980 : 520);
+      }
+    }
+
     // Sub-impact flash: weighted by sub band + overall loudness so true impacts win over soft passages.
     const subLo = hzToIdx(20, binsFast.length||1, spectrumNyquist);
     const subHi = hzToIdx(55, binsFast.length||1, spectrumNyquist);
@@ -1051,6 +1083,7 @@
     if (subGate) {
       const hit = clamp((impactScore - (isParticleRock ? 0.34 : 0.285)) * (isParticleRock ? 3.8 : 4.6), 0, 1);
       lowSubFlash = Math.min(1, Math.max(lowSubFlash, hit));
+      if (isParticleRock) lowSubHoldUntil = nowSubMs + 1000;
       transientEventEnv = Math.max(transientEventEnv, hit * 0.85);
     }
     lowSubPrev = impactScore;
@@ -1249,7 +1282,7 @@
       const panLaneBias = clamp(1 + (panSide * laneSide * (isParticleRock ? 3.4 : 2.4)), 0.42, 3.2);
       const panHoldDraw = Math.abs(lookEnv);
       const drawProb = Math.max(0.16 + panHoldDraw*0.06, Math.min(1, (0.22 + b*1.20 + colorFlash*0.12) * volumeDensity * (1 - silence*0.68) * panLaneBias));
-      const forceSubRed = lowSubFlash > 0.04;
+      const forceSubRed = (lowSubFlash > 0.04) || (isParticleRock && nowSubMs < lowSubHoldUntil);
       if (!forceSubRed && Math.random() > drawProb) continue;
 
       const bandSizeBoost = b * 2.6; // stronger band -> bigger dots in that lane
@@ -1299,7 +1332,18 @@
       } else {
         x.fillStyle = chaosTierRed
           ? `rgba(255,${chaosG},0,${Math.max(0.14, alpha)})`
-          : `hsla(${hue},${sat}%,${lumAdj}%,${alpha})`;
+          : (isParticleRock
+              ? (()=>{
+                  // Rock global dominant tier color applied to all dots.
+                  if (rockDomTier === 1) return `hsla(0,0%,${Math.min(98, lumAdj+8)}%,${alpha})`;      // white
+                  if (rockDomTier === 2) return `hsla(200,100%,${Math.min(94, lumAdj+6)}%,${alpha})`;   // light blue
+                  if (rockDomTier === 3) return `hsla(220,100%,${Math.min(90, lumAdj+3)}%,${alpha})`;   // blue
+                  if (rockDomTier === 4) return `hsla(266,88%,${Math.min(90, lumAdj+4)}%,${alpha})`;    // light purple
+                  if (rockDomTier === 5) return `hsla(286,100%,${Math.min(88, lumAdj+2)}%,${alpha})`;   // neon purple
+                  if (rockDomTier === 6) return `hsla(30,100%,${Math.min(90, lumAdj+3)}%,${alpha})`;    // orange
+                  return `hsla(0,100%,${Math.min(88, lumAdj+2)}%,${alpha})`;                              // red
+                })()
+              : `hsla(${hue},${sat}%,${lumAdj}%,${alpha})`);
       }
       x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill();
       if (chaosPop > 0.08) {
@@ -1316,7 +1360,18 @@
         } else {
           x.fillStyle = chaosTierRed
             ? `rgba(255,${chaosG},0,${Math.max(0.10, alpha*0.85)})`
-            : `hsla(${(hue+18)%360},95%,${Math.min(92, lum+6)}%,${Math.max(0.08, alpha*0.8)})`;
+            : (isParticleRock
+                ? (()=>{
+                    const a2 = Math.max(0.08, alpha*0.8);
+                    if (rockDomTier === 1) return `hsla(0,0%,${Math.min(98, lum+10)}%,${a2})`;
+                    if (rockDomTier === 2) return `hsla(202,100%,${Math.min(95, lum+8)}%,${a2})`;
+                    if (rockDomTier === 3) return `hsla(222,100%,${Math.min(91, lum+6)}%,${a2})`;
+                    if (rockDomTier === 4) return `hsla(268,88%,${Math.min(91, lum+6)}%,${a2})`;
+                    if (rockDomTier === 5) return `hsla(288,100%,${Math.min(89, lum+5)}%,${a2})`;
+                    if (rockDomTier === 6) return `hsla(30,100%,${Math.min(91, lum+6)}%,${a2})`;
+                    return `hsla(0,100%,${Math.min(89, lum+5)}%,${a2})`;
+                  })()
+                : `hsla(${(hue+18)%360},95%,${Math.min(92, lum+6)}%,${Math.max(0.08, alpha*0.8)})`);
         }
         x.beginPath(); x.arc(px+offX,py+offY,Math.max(1.2, r*0.78),0,Math.PI*2); x.fill();
       }
