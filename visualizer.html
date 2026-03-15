@@ -314,12 +314,10 @@
     a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href), 500);
   });
-  importPresetBtn?.addEventListener('click', ()=> importPresetFile?.click());
-  importPresetFile?.addEventListener('change', async ()=>{
+  importPresetBtn?.addEventListener('click', async ()=>{
     try {
-      const f = importPresetFile.files && importPresetFile.files[0];
-      if (!f) return;
-      const txt = await f.text();
+      const txt = String(prompt('Paste preset JSON') || '').trim();
+      if (!txt) return;
       const j = JSON.parse(txt);
       const name = String(j?.name || prompt('Name for imported preset?', String(j?.preset||'imported')) || '').trim();
       if (!name) return;
@@ -340,8 +338,6 @@
       if (pushStatus) pushStatus.textContent = `Imported preset: ${name}`;
     } catch (e) {
       if (pushStatus) pushStatus.textContent = `Import failed: ${e?.message || e}`;
-    } finally {
-      try { importPresetFile.value = ''; } catch {}
     }
   });
 
@@ -610,6 +606,8 @@
   let tiltEnv=0;
   let tiltKickEnv=0;
   let tiltHoldEnv=0;
+  let transientEventEnv=0;
+  let transientEventCooldownUntil=0;
   let turnCarEnv=0;
   // Event-style pan turn impulse for classic particles:
   // on strong spectral tilt changes, snap toward low(left)/high(right), then decay to center.
@@ -617,6 +615,10 @@
   let panTurnPrevRaw=0;
   let panTurnLowPrev=0;
   let panTurnHighPrev=0;
+  let lowSubPrev=0.2;
+  let lowSubEnv=0;
+  let lowSubFlash=0;
+  let lowSubCooldownUntil=0;
   let panTurnCooldownUntil=0;
   let vortexMorph=0;
   let chaosStreakMs=0;
@@ -943,6 +945,15 @@
     // Motion parameter controls response speed smoothing for pan/tilt/motion envelopes.
     const motionResp = clamp(0.70 + (motionK - 0.55) * 0.72, 0.70, 1.60);
 
+    // Shared transient event bus (used by both velocity bump and sub-impact flash timing).
+    const transientGeneral = Math.max(onset * 1.02, pulse * 0.95, riseMagTwist * 0.88);
+    const nowTransientMs = performance.now();
+    if (transientGeneral > 0.84) {
+      const evt = clamp((transientGeneral - 0.84) * 1.9, 0, 1);
+      transientEventEnv = Math.max(transientEventEnv, evt);
+    }
+    transientEventEnv = mix(transientEventEnv, 0, 0.10);
+
     // Tilt overlay: latch bank until the next strong transient updates it.
     const transientMag = Math.max(riseMagTwist * 1.05, onset * 1.10, pulse * 0.95);
     if (transientMag > 0.72) {
@@ -1008,15 +1019,32 @@
       return avgRange(binsFast, iLo, iHi) / 100;
     });
 
+    // Sub-impact flash: weighted by sub band + overall loudness so true impacts win over soft passages.
+    const subLo = hzToIdx(20, binsFast.length||1, spectrumNyquist);
+    const subHi = hzToIdx(55, binsFast.length||1, spectrumNyquist);
+    const lowSub = avgRange(binsFast, subLo, subHi) / 100;
+    const loudImpactNorm = clamp((loud - 22) / 60, 0, 1.2);
+    const impactScore = lowSub * (0.45 + loudImpactNorm * 0.95);
+    const crossedUp = (lowSubPrev < 0.33) && (impactScore > 0.285);
+    const nowSubMs = performance.now();
+    const hardFloor = 0.305;
+    const subGate = crossedUp && transientEventEnv > 0.03 && impactScore > hardFloor;
+    if (subGate) {
+      const hit = clamp((impactScore - 0.285) * 4.6, 0, 1);
+      lowSubFlash = Math.min(1, Math.max(lowSubFlash, hit));
+      transientEventEnv = Math.max(transientEventEnv, hit * 0.85);
+    }
+    lowSubPrev = impactScore;
+    lowSubFlash = mix(lowSubFlash, 0, 0.07);
+
     // Spectral pan: low-heavy drifts left, high-heavy drifts right.
     // Use normalized contrast + slow bias cancellation so it doesn't sit left all the time.
-    const highComp = highE * 1.72;
+    const highComp = highE * 1.5;
     const lowComp = lowE * 0.68;
     const midComp = midE * 0.30;
     const denom = Math.max(20, (highComp + lowComp + midComp) * 0.84);
     const spectralPanBase = (highComp - (lowComp + midComp * 0.44)) / denom;
-    const fluteBoost = clamp((highComp - (lowComp * 0.54 + midComp * 0.34)) / Math.max(18, highComp + lowComp + midComp), -1, 1) * 0.42;
-    const spectralPanRaw = clamp(spectralPanBase + fluteBoost, -1, 1);
+    const spectralPanRaw = clamp(spectralPanBase, -1, 1);
     panBiasEnv = mix(panBiasEnv, spectralPanRaw, 0.045); // faster recenter so stale low-bias doesn't stick
     const spectralPanBalanced = clamp((spectralPanRaw - panBiasEnv * 0.30) * 1.95, -1, 1);
 
@@ -1033,7 +1061,7 @@
     lookEnv = mix(lookEnv, lookTarget, lookA);
 
     const loudNorm = clamp((monoEnv - 28) / 58, 0, 1);
-    const moveTarget = clamp(loudNorm * 0.75 + clamp(pulse / 1.8, 0, 1) * 0.45, 0, 1.25);
+    const moveTarget = clamp(loudNorm * 0.75 + clamp(pulse / 1.8, 0, 1) * 0.22 + transientEventEnv * 0.42, 0, 1.25);
     moveEnv = mix(moveEnv, moveTarget, moveTarget > moveEnv ? Math.min(0.28, 0.12 * motionResp) : Math.min(0.14, 0.045 * motionResp));
 
     panTurnPrevRaw = spectralPanRaw;
@@ -1201,7 +1229,8 @@
       const panLaneBias = clamp(1 + (panSide * laneSide * 2.4), 0.42, 3.0);
       const panHoldDraw = Math.abs(lookEnv);
       const drawProb = Math.max(0.16 + panHoldDraw*0.06, Math.min(1, (0.22 + b*1.20 + colorFlash*0.12) * volumeDensity * (1 - silence*0.68) * panLaneBias));
-      if (Math.random() > drawProb) continue;
+      const forceSubRed = lowSubFlash > 0.04;
+      if (!forceSubRed && Math.random() > drawProb) continue;
 
       const bandSizeBoost = b * 2.6; // stronger band -> bigger dots in that lane
       const monoSizeK = clamp((monoEnv - 30) / 65, 0, 1.15);
@@ -1229,7 +1258,7 @@
       }
       const r=Math.min(maxR, Math.max(0.45, rRaw));
       // Keep original lane palette; replace violet lane with yellow only.
-      const laneHueLut = [20, 66, 112, 158, 204, 30, 0];
+      const laneHueLut = [20, 120, 56, 158, 300, 30, 0];
       const laneHue = laneHueLut[lane] ?? (20 + lane*46);
       const hue=(laneHue + t*8 + b*120 + colorFlash*20)%360;
       const chaosPop = Math.min(1.0, particleChaos * 0.75);
@@ -1238,13 +1267,20 @@
       const fade = Math.max(0.42 + panHold * 0.34, 1 - (silence * 0.92));
       const lum=(52 + b*26 + colorFlash*8 + chaosPop*10) * (0.45 + fade*0.55);
       const alphaRaw=((0.16 + b*0.24) + (1-p.z)*(0.34 + tailFromSpeed*0.48 + chaosTail*0.28) + chaosPop*0.13 + panHold*0.18) * fade;
-      const alpha = Math.max(0.18 + panHold*0.12, alphaRaw);
+      const alpha = forceSubRed
+        ? Math.max(0.34, alphaRaw)
+        : Math.max(0.18 + panHold*0.12, alphaRaw);
       const chaosG = Math.round(140 * (1 - vortexMorph)); // orange -> red morph
       const sat = lane === 0 ? 0 : 95; // highest frequency lane rendered white
       const lumAdj = lane === 0 ? Math.min(98, lum + 20) : lum;
-      x.fillStyle = chaosTierRed
-        ? `rgba(255,${chaosG},0,${Math.max(0.14, alpha)})`
-        : `hsla(${hue},${sat}%,${lumAdj}%,${alpha})`;
+      const subFlash = lowSubFlash;
+      if (forceSubRed) {
+        x.fillStyle = `rgba(255,0,0,${Math.max(0.38, alpha * (0.90 + subFlash*0.90))})`;
+      } else {
+        x.fillStyle = chaosTierRed
+          ? `rgba(255,${chaosG},0,${Math.max(0.14, alpha)})`
+          : `hsla(${hue},${sat}%,${lumAdj}%,${alpha})`;
+      }
       x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill();
       if (chaosPop > 0.08) {
         const split = (0.8 + chaosPop*4.2) * (0.6 + (1-p.z));
@@ -1255,9 +1291,13 @@
         }
         const offX = p.cdx * split;
         const offY = p.cdy * split;
-        x.fillStyle = chaosTierRed
-          ? `rgba(255,${chaosG},0,${Math.max(0.10, alpha*0.85)})`
-          : `hsla(${(hue+18)%360},95%,${Math.min(92, lum+6)}%,${Math.max(0.08, alpha*0.8)})`;
+        if (forceSubRed) {
+          x.fillStyle = `rgba(255,0,0,${Math.max(0.32, alpha*0.86)})`;
+        } else {
+          x.fillStyle = chaosTierRed
+            ? `rgba(255,${chaosG},0,${Math.max(0.10, alpha*0.85)})`
+            : `hsla(${(hue+18)%360},95%,${Math.min(92, lum+6)}%,${Math.max(0.08, alpha*0.8)})`;
+        }
         x.beginPath(); x.arc(px+offX,py+offY,Math.max(1.2, r*0.78),0,Math.PI*2); x.fill();
       }
     }
