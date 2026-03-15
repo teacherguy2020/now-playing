@@ -940,18 +940,22 @@
     const riseDomTwist = clamp((highRiseTwist - lowRiseTwist) / riseSumTwist, -1, 1);
     const riseMagTwist = Math.max(lowRiseTwist, highRiseTwist);
     if (riseMagTwist > 0.95 && Math.abs(riseDomTwist) > 0.28) particleSpinDir = riseDomTwist >= 0 ? 1 : -1;
+    // Motion parameter controls response speed smoothing for pan/tilt/motion envelopes.
+    const motionResp = clamp(0.70 + (motionK - 0.55) * 0.72, 0.70, 1.60);
 
     // Tilt overlay: latch bank until the next strong transient updates it.
     const transientMag = Math.max(riseMagTwist * 1.05, onset * 1.10, pulse * 0.95);
     if (transientMag > 0.72) {
       const kickDir = Math.abs(riseDomTwist) > 0.08 ? riseDomTwist : (lookEnv >= 0 ? 1 : -1);
       const newHold = clamp(kickDir, -1, 1);
-      tiltHoldEnv = mix(tiltHoldEnv, newHold, 0.72);
+      tiltHoldEnv = mix(tiltHoldEnv, newHold, Math.min(0.95, 0.72 * motionResp));
     }
     // Keep a tiny amount of smoothing but no auto-return to zero.
     const tiltTarget = clamp(tiltHoldEnv, -1.25, 1.25);
     const tiltCrossing = (tiltEnv !== 0) && (Math.sign(tiltTarget) !== 0) && (Math.sign(tiltEnv) !== Math.sign(tiltTarget));
-    const tiltA = tiltCrossing ? 0.004 : 0.045;
+    const tiltA = tiltCrossing
+      ? Math.min(0.03, 0.004 * motionResp)
+      : Math.min(0.20, 0.045 * motionResp);
     tiltEnv = mix(tiltEnv, tiltTarget, tiltA);
     const targetSpin = 0; // temporary: disable twist; using x-axis rotation feel instead
     const spinAtk = 0.035;
@@ -1017,27 +1021,32 @@
 
     // Split controls like a gamepad:
     // LOOK (right stick) from sustained spectral balance, MOVE (left stick) from loudness/energy.
-    const panAtk = 0.22, panRel = 0.08;
+    const panAtk = Math.min(0.35, 0.22 * motionResp);
+    const panRel = Math.min(0.20, 0.08 * motionResp);
     const panA = Math.abs(spectralPanBalanced) > Math.abs(particlePanEnv) ? panAtk : panRel;
     particlePanEnv = mix(particlePanEnv, spectralPanBalanced, panA);
     const lookTarget = clamp(particlePanEnv, -1, 1);
-    const lookA = Math.abs(lookTarget) > Math.abs(lookEnv) ? 0.06 : 0.016; // smoother transition into pan changes, gentler hold
+    const lookA = Math.abs(lookTarget) > Math.abs(lookEnv)
+      ? Math.min(0.18, 0.06 * motionResp)
+      : Math.min(0.08, 0.016 * motionResp); // motion controls pan transition speed
     lookEnv = mix(lookEnv, lookTarget, lookA);
 
     const loudNorm = clamp((monoEnv - 28) / 58, 0, 1);
     const moveTarget = clamp(loudNorm * 0.75 + clamp(pulse / 1.8, 0, 1) * 0.45, 0, 1.25);
-    moveEnv = mix(moveEnv, moveTarget, moveTarget > moveEnv ? 0.12 : 0.045);
+    moveEnv = mix(moveEnv, moveTarget, moveTarget > moveEnv ? Math.min(0.28, 0.12 * motionResp) : Math.min(0.14, 0.045 * motionResp));
 
     panTurnPrevRaw = spectralPanRaw;
     panTurnEnv = mix(panTurnEnv, 0, 0.08); // retired
     const turnTarget = clamp(lookEnv * 1.15, -1, 1);
-    const turnA = Math.abs(turnTarget) > Math.abs(turnCarEnv) ? 0.12 : 0.05;
+    const turnA = Math.abs(turnTarget) > Math.abs(turnCarEnv)
+      ? Math.min(0.24, 0.12 * motionResp)
+      : Math.min(0.10, 0.05 * motionResp);
     turnCarEnv = mix(turnCarEnv, turnTarget, turnA);
     const panPxBase = lookEnv * (W * 0.09);
 
     for(let idx=0; idx<particles.length; idx++){
       const p = particles[idx];
-      p.z -= (speed * (1 + moveEnv * 0.95)) + pulse*0.01;
+      p.z -= (speed * (1 + moveEnv * 1.25)) + pulse*0.01;
       if(p.z<=0.02){p.x=Math.random();p.y=Math.random();p.z=1; p.cdx=0; p.cdy=0; p.ct=0; p.cr=0; p.ca=-1; p.cp=0; p.co=0;}
       p.x=(p.x+p.vx+1)%1; p.y=(p.y+p.vy+1)%1;
       // Directional flow lock:
