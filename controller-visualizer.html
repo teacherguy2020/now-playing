@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Visualizer</title>
+  <style>
+    :root{
+      --bg:#0b1426;
+      --text:#dbe8ff;
+      --muted:#9fb1d9;
+      --tab-bg:#0f1b2f;
+      --tab-border:#3a547a;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+    .top{height:48px;display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid rgba(120,150,190,.35);background:rgba(5,10,20,.72)}
+    .back{height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--tab-border);background:var(--tab-bg);color:var(--text);cursor:pointer}
+    .title{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .wrap{height:calc(100% - 48px);width:100%}
+    iframe{border:0;width:100%;height:100%;display:block;background:#000}
+    body.embedded .top{display:none}
+    body.embedded .wrap{height:100%}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <button id="backBtn" class="back" type="button">‹ Back</button>
+    <div class="title">Visualizer</div>
+  </div>
+  <div class="wrap">
+    <iframe id="vizFrame" title="Visualizer"></iframe>
+  </div>
+
+  <script>
+  (()=>{
+    const qs = new URLSearchParams(location.search);
+    const embedded = ['1','true','yes','on'].includes(String(qs.get('embedded')||'').toLowerCase());
+    if (embedded) document.body.classList.add('embedded');
+
+    const f = document.getElementById('vizFrame');
+    const u = new URL('visualizer.html', location.href);
+
+    // Pass-through known visualizer params.
+    ['preset','energy','motion','glow','ui','kiosk','theme','colorPreset'].forEach((k)=>{
+      const v = qs.get(k);
+      if (v != null && String(v).length) u.searchParams.set(k, String(v));
+    });
+
+    // Match kiosk behavior in controller visualizer: no toolstrip + portrait sizing.
+    if (!u.searchParams.has('ui')) u.searchParams.set('ui','0');
+    if (!u.searchParams.has('kiosk')) u.searchParams.set('kiosk','1');
+
+    f.src = `${u.pathname.replace(/^\//,'')}${u.search}`;
+
+    document.getElementById('backBtn')?.addEventListener('click', ()=>{
+      location.href = 'controller.html';
+    });
+  })();
+  </script>
+</body>
+</html>
