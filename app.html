@@ -467,10 +467,11 @@
           }
           const isThemePage = pageNow === 'theme.html';
           const isPodcastsPage = pageNow === 'podcasts.html';
+          const isVisualizerPage = pageNow === 'visualizer.html';
           let st = doc.getElementById('npThemeBridge');
           if (!st) { st = doc.createElement('style'); st.id = 'npThemeBridge'; doc.head?.appendChild(st); }
           st.textContent = `
-            :root{--npb-bg:${bg};--npb-rail-bg:${railBg};--npb-frame-fill:${frameFill};--npb-text:${text};--npb-text-secondary:${textSecondary};--npb-card-bg:${cardBg};--npb-card-border:${cardBorder};--npb-card-secondary-fill:${cardSecondaryFill};--npb-tab-bg:${tabBg};--npb-tab-text:${tabText};--npb-tab-active-bg:${tabActiveBg};--npb-tab-active-text:${tabActiveText};--npb-tab-border:${tabBorder};--npb-tab-hover-bg:${tabHoverBg};--npb-star:${starColor};}
+            :root{--npb-bg:${bg};--npb-rail-bg:${railBg};--npb-frame-fill:${frameFill};--npb-text:${text};--npb-text-secondary:${textSecondary};--npb-card-bg:${isVisualizerPage ? '#000000' : cardBg};--npb-card-border:${cardBorder};--npb-card-secondary-fill:${cardSecondaryFill};--npb-tab-bg:${tabBg};--npb-tab-text:${tabText};--npb-tab-active-bg:${tabActiveBg};--npb-tab-active-text:${tabActiveText};--npb-tab-border:${tabBorder};--npb-tab-hover-bg:${tabHoverBg};--npb-star:${starColor};}
             html,body{background:${isThemePage ? 'var(--npb-rail-bg)' : 'var(--npb-bg)'} !important;color:var(--npb-text) !important;}
             .card,.panel,.cfgCard,.section,#results,#queueWrap,.heroQueueWrap,.heroQueueCard{background:var(--npb-card-bg) !important;border-color:var(--npb-card-border) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
             ${isThemePage ? '.card{background:var(--npb-rail-bg) !important;}' : ''}

@@ -948,14 +948,15 @@
     if (transientMag > 0.72) {
       const kickDir = Math.abs(riseDomTwist) > 0.08 ? riseDomTwist : (lookEnv >= 0 ? 1 : -1);
       const newHold = clamp(kickDir, -1, 1);
-      tiltHoldEnv = mix(tiltHoldEnv, newHold, Math.min(0.95, 0.72 * motionResp));
+      // Slower bank acquisition to avoid jarring snap to max.
+      tiltHoldEnv = mix(tiltHoldEnv, newHold, Math.min(0.42, 0.24 * motionResp));
     }
     // Keep a tiny amount of smoothing but no auto-return to zero.
     const tiltTarget = clamp(tiltHoldEnv, -1.25, 1.25);
     const tiltCrossing = (tiltEnv !== 0) && (Math.sign(tiltTarget) !== 0) && (Math.sign(tiltEnv) !== Math.sign(tiltTarget));
     const tiltA = tiltCrossing
-      ? Math.min(0.03, 0.004 * motionResp)
-      : Math.min(0.20, 0.045 * motionResp);
+      ? Math.min(0.02, 0.003 * motionResp)
+      : Math.min(0.10, 0.022 * motionResp);
     tiltEnv = mix(tiltEnv, tiltTarget, tiltA);
     const targetSpin = 0; // temporary: disable twist; using x-axis rotation feel instead
     const spinAtk = 0.035;
@@ -1074,10 +1075,8 @@
       {
         const turn = clamp(lookEnv, -1, 1);
         const depth = (1 - p.z);
-        // Flip curve direction only when motion is right->left (turn > 0 with current flow lock).
-        const curveTurn = turn > 0 ? -turn : turn;
-        const vpNormX = 0.5 - curveTurn * 0.39;
-        const vpNormY = 0.5 - curveTurn * 0.14;
+        const vpNormX = 0.5 - turn * 0.39;
+        const vpNormY = 0.5 - turn * 0.14;
         const bend = clamp(Math.abs(turn) * depth * depth * 1.45, 0, 0.97);
         sx = sx * (1 - bend) + vpNormX * bend;
         const bendY = bend * 0.58;
@@ -1087,7 +1086,7 @@
       {
         const dx = sx - 0.5;
         const dy = sy - 0.5;
-        const roll = -tiltEnv * 0.65; // highs => pilot-view right-bank (right wing low)
+        const roll = -tiltEnv * 0.82; // stronger eventual bank, with slower acquisition above
         const cr = Math.cos(roll), sr = Math.sin(roll);
         const x2 = dx * cr - dy * sr;
         const y2 = dx * sr + dy * cr;
@@ -1199,13 +1198,24 @@
       const volumeDensity = clamp(0.55 + energy/85, 0.45, 1.9);
       const laneSide = (3 - lane) / 3; // right lanes positive, left lanes negative
       const panSide = clamp(lookEnv, -1, 1);
-      const panLaneBias = clamp(1 + (panSide * laneSide * 4.8), 0.08, 5.6);
+      const panLaneBias = clamp(1 + (panSide * laneSide * 2.4), 0.42, 3.0);
       const panHoldDraw = Math.abs(lookEnv);
-      const drawProb = Math.max(0.08 + panHoldDraw*0.10, Math.min(1, (0.22 + b*1.20 + colorFlash*0.12) * volumeDensity * (1 - silence*0.68) * panLaneBias));
+      const drawProb = Math.max(0.16 + panHoldDraw*0.06, Math.min(1, (0.22 + b*1.20 + colorFlash*0.12) * volumeDensity * (1 - silence*0.68) * panLaneBias));
       if (Math.random() > drawProb) continue;
 
       const bandSizeBoost = b * 2.6; // stronger band -> bigger dots in that lane
-      let rRaw=2 + bandSizeBoost + (1-p.z)*(3.2 + tailFromSpeed*1.8 + Math.min(1.6, particleChaos*1.2)) + pulse*3;
+      const monoSizeK = clamp((monoEnv - 30) / 65, 0, 1.15);
+      // Tie soft-size floor to Energy (anchored at E=5).
+      // Higher Energy now keeps low-volume dots larger.
+      const energyFloor = 0.42 + (energyLevel - 5) * 0.010;
+      const energyBase = 0.44 + (energyLevel - 5) * 0.006;
+      const monoScaleRaw = clamp(energyBase + monoSizeK * 0.82, clamp(energyFloor, 0.34, 0.82), 1.40);
+      // At E=10 this effect is near-off; it scales in as Energy moves down toward 5.
+      const monoEffectAmt = clamp((10 - energyLevel) / 5, 0.06, 1.0);
+      const monoScale = mix(1.0, monoScaleRaw, monoEffectAmt);
+      const maxRRaw = 9 + monoSizeK * 3.6;
+      const maxR = mix(9.0, maxRRaw, monoEffectAmt);
+      let rRaw=(2 + bandSizeBoost + (1-p.z)*(3.2 + tailFromSpeed*1.8 + Math.min(1.6, particleChaos*1.2)) + pulse*3 + monoSizeK*1.0) * monoScale;
       // Size should be smallest at EP, then grow as particles move away.
       const epDx = sx - panOriginX;
       const epDy = sy - panOriginY;
@@ -1217,7 +1227,7 @@
         const centerScale = Math.max(0.35, Math.min(1.0, (p.cr || 0.06) / 0.42));
         rRaw *= (1 - vortexMorph) + centerScale * vortexMorph;
       }
-      const r=Math.min(9, Math.max(0.45, rRaw));
+      const r=Math.min(maxR, Math.max(0.45, rRaw));
       // Keep original lane palette; replace violet lane with yellow only.
       const laneHueLut = [20, 66, 112, 158, 204, 30, 0];
       const laneHue = laneHueLut[lane] ?? (20 + lane*46);
