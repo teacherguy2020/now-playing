@@ -1115,8 +1115,8 @@ async function loadCfg(){
   document.getElementById('featureMoodeDisplayTakeover').checked = !!(c.features?.moodeDisplayTakeover ?? true);
   syncRatingsCardVisibility();
   syncMpdscribbleUi();
-  const lastfmKey = String(full.lastfmApiKey || localStorage.getItem('nowplaying.secret.lastfmApiKey') || '');
-  document.getElementById('featureLastfm').checked = !!lastfmKey;
+  const lastfmKey = String(full.lastfm?.apiKey || localStorage.getItem('nowplaying.secret.lastfmApiKey') || '');
+  document.getElementById('featureLastfm').checked = !!(c.features?.lastfm ?? lastfmKey);
   document.getElementById('lastfmApiKey').value = lastfmKey;
   if (lastfmKey) localStorage.setItem('nowplaying.secret.lastfmApiKey', lastfmKey);
   syncLastfmCardVisibility();
@@ -1301,6 +1301,7 @@ async function saveCfg(){
         albumPersonnel: document.getElementById('featureAlbumPersonnel').checked,
         mpdscribbleControl: document.getElementById('featureMpdscribbleControl').checked,
         moodeDisplayTakeover: document.getElementById('featureMoodeDisplayTakeover').checked,
+        lastfm: document.getElementById('featureLastfm').checked,
       },
       trackKey: document.getElementById('configTrackKey').value.trim(),
       apiHost: nodeIp,
@@ -1327,7 +1328,9 @@ async function saveCfg(){
       runtime: {
       },
       nodes: nodesNext,
-      lastfmApiKey: document.getElementById('featureLastfm').checked ? document.getElementById('lastfmApiKey').value.trim() : '',
+      lastfm: {
+        apiKey: document.getElementById('featureLastfm').checked ? document.getElementById('lastfmApiKey').value.trim() : '',
+      },
     },
   };
 

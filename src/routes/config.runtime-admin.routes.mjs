@@ -13,7 +13,7 @@ function pickPublicConfig(cfg) {
   const tn = n.trackNotify || {};
   const po = n.pushover || {};
 
-  const cfgLastfm = String(c.lastfmApiKey || '').trim();
+  const cfgLastfm = String(c.lastfm?.apiKey || '').trim();
   const envLastfm = String(process.env.LASTFM_API_KEY || '').trim();
 
   return {
@@ -76,13 +76,14 @@ function pickPublicConfig(cfg) {
       albumPersonnel: Boolean(c.features?.albumPersonnel ?? true),
       mpdscribbleControl: Boolean(c.features?.mpdscribbleControl ?? false),
       moodeDisplayTakeover: Boolean(c.features?.moodeDisplayTakeover ?? true),
+      lastfm: Boolean(c.features?.lastfm ?? false),
     },
   };
 }
 
 function withEnvOverrides(cfg) {
   const out = pickPublicConfig(cfg);
-  const cfgLastfm = String((cfg || {}).lastfmApiKey || '').trim();
+  const cfgLastfm = String((cfg || {}).lastfm?.apiKey || '').trim();
   const envLastfm = String(process.env.LASTFM_API_KEY || '').trim();
 
   if (process.env.TRACK_NOTIFY_ENABLED != null) {
@@ -546,7 +547,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       await fs.writeFile(configPath, JSON.stringify(next, null, 2) + '\n', 'utf8');
       log.debug('[config/runtime] updated', { configPath });
 
-      const cfgLastfm = String(next?.lastfmApiKey || '').trim();
+      const cfgLastfm = String(next?.lastfm?.apiKey || '').trim();
       if (cfgLastfm) process.env.LASTFM_API_KEY = cfgLastfm;
 
       return res.json({

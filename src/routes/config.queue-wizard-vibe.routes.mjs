@@ -20,9 +20,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
     if (envKey) return envKey;
     try {
       const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
-      const nested = String(cfg?.lastfm?.apiKey || '').trim();
-      const legacy = String(cfg?.lastfmApiKey || '').trim();
-      return nested || legacy;
+      return String(cfg?.lastfm?.apiKey || '').trim();
     } catch {
       return '';
     }
