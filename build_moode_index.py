@@ -4,7 +4,7 @@ import os
 import re
 from mpd import MPDClient
 
-INDEX_PATH = "/home/moode/moode_library_index.json"
+INDEX_PATH = os.environ.get("INDEX_PATH", "/opt/now-playing/moode_library_index.json")
 MPD_HOST = os.environ.get("MPD_HOST", "10.0.0.254")
 MPD_PORT = int(os.environ.get("MPD_PORT", "6600"))
 
@@ -25,6 +25,12 @@ def norm(s: str) -> str:
         s = s.replace(junk, " ")
     s = re.sub(r"[^a-z0-9]+", " ", s)
     return re.sub(r"\s+", " ", s).strip()
+
+def as_str(v):
+    if isinstance(v, list):
+        return str(v[0] if v else "")
+    return str(v or "")
+
 
 def main():
     c = MPDClient()
@@ -51,8 +57,8 @@ def main():
         if not info:
             continue
         md = info[0]
-        artist = (md.get("artist") or "").strip()
-        title = (md.get("title") or "").strip()
+        artist = as_str(md.get("artist")).strip()
+        title = as_str(md.get("title")).strip()
         if not artist or not title:
             continue
         k = f"{norm(artist)}|{norm(title)}"
