@@ -491,7 +491,11 @@ async function syncVibeAvailability() {
   }
 
   function getMinRatingVibe() {
-    return ratingsEnabled ? Number($('minRatingVibe')?.value || 0) : 0;
+    return ratingsEnabled ? Number($('minRatingVibe')?.value || 2) : 0;
+  }
+
+  function getVibeExcludeGenre(){
+    return String($('vibeExcludeGenre')?.value || 'christmas').trim().toLowerCase();
   }
 
   function hasExistingPlaylistSelected() {
@@ -505,6 +509,9 @@ async function syncVibeAvailability() {
     const l2 = min2 ? min2.closest('label') : null;
     if (l1) l1.style.display = ratingsEnabled ? '' : 'none';
     if (l2) l2.style.display = ratingsEnabled ? '' : 'none';
+    if (ratingsEnabled && min2 && (!min2.value || String(min2.value) === '0')) {
+      min2.value = '2';
+    }
   }
 
   function getMode() {
@@ -1997,6 +2004,7 @@ async function doVibeBuild() {
   const key = getKey();
   const targetQueue = getVibeMaxTracks();
   const minRatingVibe = getMinRatingVibe();
+  const vibeExcludeGenre = getVibeExcludeGenre();
 
   vibeCancelled = false;
   vibeAbortController = null;
@@ -2017,7 +2025,7 @@ async function doVibeBuild() {
     const startResp = await fetch(`${apiBase}/config/queue-wizard/vibe-start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-track-key': key },
-      body: JSON.stringify({ targetQueue, minRating: minRatingVibe }),
+      body: JSON.stringify({ targetQueue, minRating: minRatingVibe, excludeGenre: vibeExcludeGenre }),
     });
     const startJson = await startResp.json().catch(() => ({}));
     if (!startResp.ok || !startJson?.ok || !startJson?.jobId) {

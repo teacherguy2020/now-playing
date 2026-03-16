@@ -47,6 +47,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const targetQueueRaw = req.body?.targetQueue;
       const targetQueue = Math.max(10, Math.min(200, Number(targetQueueRaw) || 50));
       const minRating = Math.max(0, Math.min(5, Number(req.body?.minRating || 0)));
+      const excludeGenre = String(req.body?.excludeGenre || 'christmas').trim().toLowerCase();
       const playNow = !!req.body?.playNow;
       const keepPlaying = !!req.body?.keepPlaying;
       const mpdHost = String(MPD_HOST || '10.0.0.254');
@@ -84,6 +85,8 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         '--host', mpdHost,
         '--port', '6600',
       ];
+      if (excludeGenre === 'christmas') pyArgs.push('--exclude-christmas');
+      else if (excludeGenre === 'none') pyArgs.push('--include-christmas');
       if (!playNow) {
         if (keepPlaying) {
           pyArgs.push('--crop');
