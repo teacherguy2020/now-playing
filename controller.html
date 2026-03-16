@@ -45,6 +45,8 @@
     .eq b:nth-child(2){animation-delay:.15s}.eq b:nth-child(3){animation-delay:.3s}
     @keyframes eq{0%,100%{height:4px}50%{height:10px}}
     .muted{color:var(--muted);font-size:12px}
+    #line3.linkable{cursor:pointer}
+    #line3 .share-icon{width:.9em;height:.9em;display:inline-block;vertical-align:-.12em;margin-left:.22em;fill:currentColor;opacity:.72;pointer-events:none}
 
     .quickWrap{position:relative;margin:0 0 10px}
     .quickIcon{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#8fb2df;pointer-events:none;opacity:.92}
@@ -204,8 +206,11 @@
     body.ipad11 #line3{font-size:13px;opacity:.92}
     body.ipad11 #libraryList{margin:0;overflow:auto;min-height:0}
     body.ipad11 .row{padding:9px 0}
-    body.ipad11.ipad11Landscape .row{padding:2px 0;align-self:stretch}
+    body.ipad11.ipad11Landscape .row{padding:2px 0;align-self:stretch;align-items:center}
     body.ipad11 .row .lbl{font-size:20px}
+    body.ipad11.ipad11Landscape .row .lbl{font-size:21px;line-height:1.02}
+    body.ipad11.ipad11Landscape .row .ico{width:26px;height:26px;display:flex;align-items:center;justify-content:center}
+    body.ipad11.ipad11Landscape .row .ico svg{width:26px;height:26px}
     body.ipad11 .railModeBtn, body.ipad11 #recentTitle, body.ipad11 #recentRail, body.ipad11 #recentPeekRail{display:none !important}
     body.ipad11 .recentWrap{display:flex;min-height:0;overflow:hidden}
     body.ipad11 .ipadRecentGrid{display:grid !important;grid-template-columns:1fr 1fr;gap:8px;width:100%;min-height:0;overflow:auto;padding-right:2px}
@@ -219,10 +224,14 @@
     body.ipad11.ipad11Landscape{padding-top:max(28px, env(safe-area-inset-top))}
     body.ipad11.ipad11Landscape #kioskCanvas{position:relative;grid-template-columns:minmax(320px,1fr) minmax(0,2fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:8px;max-height:calc(100dvh - 8px);box-sizing:border-box}
     body.ipad11.ipad11Landscape .npTap{grid-area:np;max-height:338px;overflow:hidden}
+    /* Col1 group 1: Art + controls + text */
+    body.ipad11.ipad11Landscape .npTap .card{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:10px}
     body.ipad11.ipad11Landscape .quickWrap{grid-area:quick;margin:12px 0 0 0}
-    body.ipad11.ipad11Landscape #libraryList{grid-area:list;margin:0;min-height:0;padding-top:0;padding-bottom:0;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+    /* Col1 group 2: Quick Search + Library links */
+    body.ipad11.ipad11Landscape .quickWrap{border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:rgba(255,255,255,.02);padding:8px 8px 6px}
+    body.ipad11.ipad11Landscape #libraryList{grid-area:list;margin:0;min-height:0;padding:8px 10px 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:rgba(255,255,255,.02)}
     body.ipad11.ipad11Landscape .recentWrap{grid-area:recent;min-height:0;display:flex;flex-direction:column}
-    body.ipad11.ipad11Landscape .npTap .card{display:flex;flex-direction:column;padding-top:0}
+    body.ipad11.ipad11Landscape .npTap .card{display:flex;flex-direction:column;padding-top:14px}
     body.ipad11.ipad11Landscape .np{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;order:1}
     body.ipad11.ipad11Landscape .artWrap, body.ipad11.ipad11Landscape .np img{width:220px;height:220px}
     body.ipad11.ipad11Landscape .artWrap{overflow:visible}
@@ -696,6 +705,7 @@
     }
 
     let npSig='';
+    let npAlbumUrl='';
     async function refreshNowPlayingCard(){
       try {
         const r = await fetch(`${base}/now-playing`,{cache:'no-store'});
@@ -747,7 +757,11 @@
           ? (String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`)
           : `/icons/icon-192.png`;
 
-        const sig = `${file}|${line1}|${line2}|${line3}|${st}|${art}`;
+        const appleMusicUrl = String(j?.radioAppleMusicUrl || j?.appleMusicUrl || '').trim();
+        const fallbackUrl = String(j?.shareUrl || j?.radioTrackUrl || j?.radioItunesUrl || j?.itunesUrl || '').trim();
+        npAlbumUrl = hasTrack ? (appleMusicUrl || fallbackUrl) : '';
+
+        const sig = `${file}|${line1}|${line2}|${line3}|${st}|${art}|${npAlbumUrl}`;
         if (sig !== npSig) {
           npSig = sig;
           const artEl = document.getElementById('art');
@@ -763,6 +777,20 @@
           const line3El = document.getElementById('line3');
           if (line3El) {
             line3El.textContent = line3;
+            if (line3 && npAlbumUrl) {
+              const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+              icon.setAttribute('class', 'share-icon');
+              icon.setAttribute('viewBox', '0 0 24 24');
+              icon.setAttribute('aria-hidden', 'true');
+              icon.setAttribute('focusable', 'false');
+              const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+              path.setAttribute('d', 'M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3.27 3.27 0 000-1.39l7.02-4.11A2.99 2.99 0 0018 7.91a3 3 0 10-3-3c0 .23.03.45.08.66L8.06 9.68a3 3 0 100 4.65l7.02 4.11c-.05.2-.08.41-.08.63a3 3 0 103-3z');
+              icon.appendChild(path);
+              line3El.appendChild(icon);
+              line3El.classList.add('linkable');
+            } else {
+              line3El.classList.remove('linkable');
+            }
             line3El.style.display = line3 ? '' : 'none';
           }
         }
@@ -1631,7 +1659,14 @@
     hqClear?.addEventListener('click', ()=>{ if(!hqs) return; hqs.value=''; renderHomeQuickResults(''); hqr?.classList.remove('open'); syncQuickClear(); try{hqs.blur();}catch{} });
     syncQuickClear();
     const npTapEl = document.querySelector('.npTap[data-href]');
+    const npLine3El = document.getElementById('line3');
     const npCtrlsEl = document.getElementById('npCtrls');
+    npLine3El?.addEventListener('click', (ev)=>{
+      if (!npAlbumUrl) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      try { window.open(npAlbumUrl, '_blank', 'noopener'); } catch {}
+    });
     npCtrlsEl?.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); }, { passive:true });
     npCtrlsEl?.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); });
     npCtrlsEl?.addEventListener('click', async (ev)=>{
@@ -1770,6 +1805,10 @@
         }
         const href = String(npTapEl.getAttribute('data-href') || '').trim();
         if (!href) return;
+        if (npAlbumUrl && !ev.target.closest('.artWrap')) {
+          ev.preventDefault();
+          return;
+        }
         ev.preventDefault();
         navigateWithSlide(href);
       });
