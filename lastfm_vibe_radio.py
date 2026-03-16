@@ -78,6 +78,19 @@ def album_key(album: str) -> str:
     return norm(album)
 
 
+def genre_tokens(genre: str) -> set[str]:
+    g = str(genre or "").strip()
+    if not g:
+      return set()
+    parts = re.split(r"[;,|/]", g)
+    out = set()
+    for p in parts:
+      n = norm(p)
+      if n:
+        out.add(n)
+    return out
+
+
 def path_score(p: str) -> tuple:
     p_l = (p or "").lower()
     return (1 if PAREN_COPY_RE.search(p_l) else 0, len(p_l))
@@ -389,12 +402,14 @@ def main():
     # last album guard (avoid immediate same-album picks)
     last_album_k = ""
     last_genre_n = ""
+    seed_genres = set()
     if cur:
         cur_a = (cur.get("artist") or "").strip()
         cur_t = (cur.get("title") or "").strip()
         if norm(cur_a) == norm(seed_artist) and norm(cur_t) == norm(seed_title):
             last_album_k = album_key((cur.get("album") or "").strip())
             last_genre_n = norm((cur.get("genre") or "").strip())
+            seed_genres = genre_tokens((cur.get("genre") or "").strip())
 
     # If explicit seed wasn't current song, try local lookup to set album context
     if not last_album_k or not last_genre_n:
@@ -405,6 +420,8 @@ def main():
                 last_album_k = album_key(alb0)
             if not last_genre_n and g0:
                 last_genre_n = norm(g0)
+            if not seed_genres and g0:
+                seed_genres = genre_tokens(g0)
 
     # Keep stable fallback seed to break dead-ends.
     original_seed = (seed_artist, seed_title)
@@ -441,7 +458,7 @@ def main():
     album_cache = {}
     bad_files = set()
     last_added_artist_n = ""
-    last_added_genre_n = last_genre_n
+    last_added_genres = set(seed_genres) if seed_genres else (set([last_genre_n]) if last_genre_n else set())
     recent_album_keys = [last_album_k] if last_album_k else []
     album_rotate_window = 3
 
@@ -494,6 +511,7 @@ def main():
         fallback_recent_album = None
         fallback_same_album = None
         fallback_cross_genre = None
+        fallback_seed_genre = None
 
         print(f"[{datetime.now().strftime('%H:%M:%S')}] pick from {len(sim)} similar", flush=True)
         for t in sim:
@@ -571,8 +589,13 @@ def main():
                     fallback_recent_album = (cand, method, rec_title, rec_artist, cand_album_k)
                 continue
 
-            cand_genre_n = norm(g_tag)
-            if last_added_genre_n and cand_genre_n and cand_genre_n != last_added_genre_n:
+            cand_genres = genre_tokens(g_tag)
+            if seed_genres and cand_genres and seed_genres.isdisjoint(cand_genres):
+                if fallback_seed_genre is None:
+                    fallback_seed_genre = (cand, method, rec_title, rec_artist, cand_album_k)
+                continue
+
+            if last_added_genres and cand_genres and last_added_genres.isdisjoint(cand_genres):
                 if fallback_cross_genre is None:
                     fallback_cross_genre = (cand, method, rec_title, rec_artist, cand_album_k)
                 continue
@@ -619,6 +642,15 @@ def main():
 
         if not chosen_file and fallback_same_album is not None:
             cand, method, rec_title, rec_artist, cand_album_k = fallback_same_album
+            chosen_file = cand
+            chosen_method = method
+            chosen_label = f"{rec_title} — {rec_artist}"
+            chosen_rec_artist = rec_artist
+            chosen_rec_title = rec_title
+            chosen_album_k = cand_album_k
+
+        if not chosen_file and fallback_seed_genre is not None:
+            cand, method, rec_title, rec_artist, cand_album_k = fallback_seed_genre
             chosen_file = cand
             chosen_method = method
             chosen_label = f"{rec_title} — {rec_artist}"
@@ -732,7 +764,9 @@ def main():
 
         last_added_artist_n = norm(a2 or chosen_rec_artist)
         if g2:
-            last_added_genre_n = norm(g2)
+            gs = genre_tokens(g2)
+            if gs:
+                last_added_genres = gs
 
         k2 = track_key(seed_artist, seed_title)
         if k2:
