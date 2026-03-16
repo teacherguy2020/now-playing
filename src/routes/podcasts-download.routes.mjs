@@ -338,143 +338,197 @@ export function registerPodcastDownloadRoutes(app, deps) {
     }
   });
 
+  const runDownloadLatestForSubscription = async (sub, requestedCount = 5) => {
+    const rss = normUrl(sub?.rss);
+    const count = Math.max(0, Math.min(50, Number(requestedCount ?? 5)));
+
+    if (!rss) throw new Error('Missing/invalid rss');
+    if (!sub?.dir || !sub?.mpdPrefix || !sub?.outM3u || !sub?.mapJson) {
+      throw new Error('Subscription missing required fields (dir/mpdPrefix/outM3u/mapJson)');
+    }
+
+    await assertPodcastRootWritable();
+    assertSubDirWithinRoot(sub.dir);
+    await fsp.mkdir(sub.dir, { recursive: true });
+
+    const limit = Number(sub.limit || 200);
+    const scanN = Math.max(count, Math.min(limit, 200));
+
+    const feed = await fetchPodcastRSS(rss, scanN);
+    await downloadCoverForSub(sub, feed);
+    const feedItems = Array.isArray(feed?.items) ? feed.items : [];
+    const episodes = feedItems.slice(0, count);
+
+    const existing = new Set();
+    try {
+      for (const f of fs.readdirSync(sub.dir)) existing.add(f);
+    } catch {}
+
+    const results = [];
+
+    for (const ep of episodes) {
+      const rawUrl = String(ep?.enclosure || '').trim();
+      if (!rawUrl) continue;
+
+      const finalUrl = await resolveFinalUrl(rawUrl);
+      const canonUrl = stripQueryHash(finalUrl || rawUrl);
+
+      const guid = String(ep?.guid || '').trim();
+      const seed = guid || canonUrl;
+      const id = crypto.createHash('sha1').update(seed).digest('hex').slice(0, 12);
+
+      let ext = '.mp3';
+      try {
+        const u = new URL(canonUrl);
+        const base = path.basename(u.pathname) || '';
+        const m = base.toLowerCase().match(/\.(mp3|m4a|aac|mp4)$/);
+        if (m) ext = `.${m[1]}`;
+      } catch {}
+
+      const filename = safeFileName(`${id}${ext}`, `episode${ext}`);
+
+      if (existing.has(filename)) {
+        results.push({ ok: true, skipped: true, id, filename });
+        continue;
+      }
+
+      const outPath = path.join(sub.dir, filename);
+      await downloadWithFetch(canonUrl, outPath);
+      existing.add(filename);
+
+      try {
+        await tagAudioFileWithFfmpeg(outPath, {
+          title: String(ep?.title || '').trim() || id,
+          album: String(sub.title || '').trim() || 'Podcast',
+          artist: String(sub.title || '').trim() || 'Podcast',
+          date: yyyyMmDd(ep?.isoDate || ep?.pubDate || ep?.published || ep?.date || ''),
+          genre: 'Podcast',
+          comment: canonUrl,
+        });
+      } catch {}
+
+      results.push({
+        ok: true,
+        skipped: false,
+        id,
+        filename,
+        saved: { path: outPath, mpdPath: `${sub.mpdPrefix}/${filename}` },
+      });
+    }
+
+    const metaByStem = Object.create(null);
+    for (const ep of feedItems) {
+      const rawUrl = String(ep?.enclosure || '').trim();
+      if (!rawUrl) continue;
+      const finalUrl = await resolveFinalUrl(rawUrl);
+      const canonUrl = stripQueryHash(finalUrl || rawUrl);
+      const guid = String(ep?.guid || '').trim();
+      const seed = guid || canonUrl;
+      const id = crypto.createHash('sha1').update(seed).digest('hex').slice(0, 12);
+      metaByStem[id] = {
+        title: String(ep?.title || '').trim(),
+        date: yyyyMmDd(ep?.isoDate || ep?.pubDate || ep?.published || ep?.date || ''),
+      };
+    }
+
+    const localItems = await getLocalItemsForSub(sub, metaByStem);
+    const mapRes = await buildPodcastMapFromLocalItems({
+      sub,
+      items: localItems,
+      outM3u: sub.outM3u,
+      mapJson: sub.mapJson,
+    });
+
+    try { await buildLocalPlaylistForRss({ rss: sub.rss }); } catch {}
+
+    return {
+      ok: true,
+      rss,
+      requested: count,
+      processed: results.length,
+      downloaded: results.filter((r) => r && r.ok && !r.skipped).length,
+      skipped: results.filter((r) => r && r.ok && r.skipped).length,
+      results,
+      map: mapRes,
+    };
+  };
+
   app.post('/podcasts/download-latest', async (req, res) => {
     try {
       const rss = normUrl(req.body?.rss);
       const count = Math.max(0, Math.min(50, Number(req.body?.count ?? 5)));
-
-      if (!rss) {
-        return res.status(400).json({ ok: false, error: 'Missing/invalid rss' });
-      }
-
+      if (!rss) return res.status(400).json({ ok: false, error: 'Missing/invalid rss' });
       const subs = readSubs();
       const sub = subs.find(it => normUrl(it?.rss) === rss);
-      if (!sub) {
-        return res.status(404).json({ ok: false, error: 'Subscription not found', rss });
-      }
+      if (!sub) return res.status(404).json({ ok: false, error: 'Subscription not found', rss });
+      const out = await runDownloadLatestForSubscription(sub, count);
+      return res.json(out);
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
 
-      if (!sub.dir || !sub.mpdPrefix || !sub.outM3u || !sub.mapJson) {
-        return res.status(400).json({
-          ok: false,
-          error: 'Subscription missing required fields (dir/mpdPrefix/outM3u/mapJson)',
-          rss,
-        });
-      }
-
-      try {
-        await assertPodcastRootWritable();
-        assertSubDirWithinRoot(sub.dir);
-      } catch (e) {
-        return res.status(500).json({ ok: false, error: e?.message || String(e), podcastRoot: configuredPodcastRoot, dir: String(sub.dir || '') });
-      }
-
-      await fsp.mkdir(sub.dir, { recursive: true });
-
-      const limit = Number(sub.limit || 200);
-      const scanN = Math.max(count, Math.min(limit, 200));
-
-      const feed = await fetchPodcastRSS(rss, scanN);
-      await downloadCoverForSub(sub, feed);
-      const feedItems = Array.isArray(feed?.items) ? feed.items : [];
-      const episodes = feedItems.slice(0, count);
-
-      const existing = new Set();
-      try {
-        for (const f of fs.readdirSync(sub.dir)) existing.add(f);
-      } catch {}
+  app.post('/podcasts/nightly-run', async (_req, res) => {
+    try {
+      const subs = readSubs();
+      const targets = subs.filter((s) => (s?.autoDownload === true) || (s?.autoLatest === true));
 
       const results = [];
+      let downloaded = 0;
+      let skipped = 0;
+      let failed = 0;
 
-      for (const ep of episodes) {
-        const rawUrl = String(ep?.enclosure || '').trim();
-        if (!rawUrl) continue;
-
-        const finalUrl = await resolveFinalUrl(rawUrl);
-        const canonUrl = stripQueryHash(finalUrl || rawUrl);
-
-        const guid = String(ep?.guid || '').trim();
-        const seed = guid || canonUrl;
-        const id = crypto.createHash('sha1').update(seed).digest('hex').slice(0, 12);
-
-        let ext = '.mp3';
+      for (const sub of targets) {
         try {
-          const u = new URL(canonUrl);
-          const base = path.basename(u.pathname) || '';
-          const m = base.toLowerCase().match(/\.(mp3|m4a|aac|mp4)$/);
-          if (m) ext = `.${m[1]}`;
-        } catch {}
-
-        const filename = safeFileName(`${id}${ext}`, `episode${ext}`);
-
-        if (existing.has(filename)) {
-          results.push({ ok: true, skipped: true, id, filename });
-          continue;
+          const count = Math.max(0, Math.min(50, Number(sub?.downloadCount ?? 5)));
+          const out = await runDownloadLatestForSubscription(sub, count);
+          downloaded += Number(out?.downloaded || 0);
+          skipped += Number(out?.skipped || 0);
+          results.push({ ok: true, rss: out?.rss || normUrl(sub?.rss), downloaded: out?.downloaded || 0, skipped: out?.skipped || 0, processed: out?.processed || 0 });
+        } catch (e) {
+          failed += 1;
+          results.push({ ok: false, rss: normUrl(sub?.rss), error: e?.message || String(e) });
         }
-
-        const outPath = path.join(sub.dir, filename);
-        await downloadWithFetch(canonUrl, outPath);
-        existing.add(filename);
-
-        try {
-          await tagAudioFileWithFfmpeg(outPath, {
-            title: String(ep?.title || '').trim() || id,
-            album: String(sub.title || '').trim() || 'Podcast',
-            artist: String(sub.title || '').trim() || 'Podcast',
-            date: yyyyMmDd(ep?.isoDate || ep?.pubDate || ep?.published || ep?.date || ''),
-            genre: 'Podcast',
-            comment: canonUrl,
-          });
-        } catch {}
-
-        results.push({
-          ok: true,
-          skipped: false,
-          id,
-          filename,
-          saved: { path: outPath, mpdPath: `${sub.mpdPrefix}/${filename}` },
-        });
       }
 
-      const metaByStem = Object.create(null);
-
-      for (const ep of feedItems) {
-        const rawUrl = String(ep?.enclosure || '').trim();
-        if (!rawUrl) continue;
-
-        const finalUrl = await resolveFinalUrl(rawUrl);
-        const canonUrl = stripQueryHash(finalUrl || rawUrl);
-
-        const guid = String(ep?.guid || '').trim();
-        const seed = guid || canonUrl;
-        const id = crypto.createHash('sha1').update(seed).digest('hex').slice(0, 12);
-
-        metaByStem[id] = {
-          title: String(ep?.title || '').trim(),
-          date: yyyyMmDd(ep?.isoDate || ep?.pubDate || ep?.published || ep?.date || ''),
-        };
+      const stateBefore = await readNightlyState();
+      let retentionDeleted = 0;
+      if (stateBefore?.retentionEnabled) {
+        const days = Math.max(1, Math.min(3650, Number(stateBefore?.retentionDays || 30)));
+        const cutoff = Date.now() - days * 86400000;
+        const exts = new Set(['.mp3', '.m4a', '.aac', '.ogg', '.flac', '.wav', '.mp4']);
+        for (const sub of subs) {
+          const dir = String(sub?.dir || '').trim();
+          if (!dir) continue;
+          let names = [];
+          try { names = await fsp.readdir(dir); } catch { continue; }
+          for (const name of names) {
+            const ext = path.extname(name).toLowerCase();
+            if (!exts.has(ext)) continue;
+            const full = path.join(dir, name);
+            try {
+              const st = await fsp.stat(full);
+              if (!st.isFile()) continue;
+              if ((st.mtimeMs || 0) < cutoff) {
+                await fsp.unlink(full).catch(() => {});
+                retentionDeleted += 1;
+              }
+            } catch {}
+          }
+        }
       }
 
-      const localItems = await getLocalItemsForSub(sub, metaByStem);
-
-      const mapRes = await buildPodcastMapFromLocalItems({
-        sub,
-        items: localItems,
-        outM3u: sub.outM3u,
-        mapJson: sub.mapJson,
+      const state = await writeNightlyState({
+        lastRunAt: new Date().toISOString(),
+        lastRunType: 'nightly-auto-download',
+        lastRunTargets: targets.length,
+        lastRunDownloaded: downloaded,
+        lastRunSkipped: skipped,
+        lastRunFailed: failed,
+        lastRunDeleted: retentionDeleted,
       });
 
-      try {
-        await buildLocalPlaylistForRss({ rss: sub.rss });
-      } catch {}
-
-      return res.json({
-        ok: true,
-        rss,
-        requested: count,
-        processed: results.length,
-        results,
-        map: mapRes,
-      });
+      return res.json({ ok: true, targets: targets.length, downloaded, skipped, failed, retentionDeleted, results, state });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
