@@ -14,6 +14,7 @@ Turbo charge your moOde experience without altering your moOde installation.
 ![Spectrum](./docs/images/readme-spectrum.jpg)
 ![Cyan Spectrum](./docs/images/readme-cyanspectrum.jpg)
 ![Kiosk](./docs/images/readme-kiosk.jpg)
+![Controller iPad view](./docs/images/readme-ipadcontroller.png)
 <img src="./docs/images/mobile-builder/controller.png" alt="Controller mobile view" width="300">
 
 
