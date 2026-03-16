@@ -41,7 +41,7 @@
     .cfgField input[type=text], .cfgField input[type=password], .cfgField input[type=number], .cfgField select { width:100%; max-width:min(100%, 360px); font-size:14px; line-height:1.2; }
     .cfgField.narrow input[type=number] { max-width: 160px; }
     .ipField { max-width: 220px !important; }
-    #alexaDomain, #moodeBaseUrl, #fallbackAlbumArt, #musicLibraryRoot, #radioStationMapFile { max-width: min(100%, 520px); }
+    #alexaDomain, #alexaRouteWebhookUrl, #moodeBaseUrl, #fallbackAlbumArt, #musicLibraryRoot, #radioStationMapFile { max-width: min(100%, 520px); }
 
     /* Network card: constrain field lengths to realistic values */
     #networkCard #apiNodeIp,
@@ -313,6 +313,12 @@
                       <button class="btn" id="checkAlexaDomainBtn" type="button">Check domain</button>
                     </div>
                     <div class="cfgHint" id="alexaDomainCheckStatus"></div>
+                  </div>
+
+                  <div class="cfgField">
+                    <label for="alexaRouteWebhookUrl">Route webhook URL</label>
+                    <input id="alexaRouteWebhookUrl" type="url" placeholder="https://api.voicemonkey.io/trigger?..." />
+                    <div class="cfgHint">Used by “Route to Alexa” buttons in Live Queue / Hero Transport.</div>
                   </div>
 
                   <div class="cfgHint" style="margin-top:10px;">
@@ -1025,6 +1031,7 @@ async function loadCfg(){
 
   document.getElementById('featureAlexaSkill').checked = !!c.alexa?.enabled;
   document.getElementById('alexaDomain').value = c.alexa?.publicDomain || '';
+  document.getElementById('alexaRouteWebhookUrl').value = c.alexa?.routeWebhookUrl || '';
   syncAlexaCardVisibility();
   syncAlexaDomainUi();
   // Auto-verify domain so the light reflects reachability (green when reachable).
@@ -1206,6 +1213,7 @@ async function saveCfg(){
       alexa: {
         enabled: document.getElementById('featureAlexaSkill').checked,
         publicDomain: document.getElementById('alexaDomain').value.trim(),
+        routeWebhookUrl: document.getElementById('alexaRouteWebhookUrl').value.trim(),
         artistAliases,
         albumAliases: albumAliasMap,
         playlistAliases: playlistAliasMap,

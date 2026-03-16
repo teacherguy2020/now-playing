@@ -439,6 +439,7 @@
           `${isAlexaMode
             ? (`<div class="heroTransportControls" style="margin-top:4px;">` +
                 `<button class="tbtn tbtnFar ${randomOn ? 'on' : ''}" data-a="shuffle" title="Random">${icon('shuffle')}</button>` +
+                `<button class="tbtn tbtnFar" data-a="routealexa" title="Route to Alexa"><span style="font-size:12px;font-weight:700;">A</span></button>` +
               `</div>`)
             : (`<div class="heroTransportControls">` +
                 (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekback15" title="Back 15 seconds"><span style="font-size:13px;font-weight:700;">↺15</span></button>` : '') +
@@ -448,6 +449,7 @@
                 `<button class="tbtn tbtnNear" data-a="next" title="Next">${icon('next')}</button>` +
                 (!isRadioOrStream ? `<button class="tbtn tbtnFar ${randomOn ? 'on' : ''}" data-a="shuffle" title="Random">${icon('shuffle')}</button>` : '') +
                 (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekfwd30" title="Forward 30 seconds"><span style="font-size:13px;font-weight:700;">30↻</span></button>` : '') +
+                `<button class="tbtn tbtnFar" data-a="routealexa" title="Route to Alexa"><span style="font-size:12px;font-weight:700;">A</span></button>` +
               `</div>` )}` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}" data-seekable="${showProgress ? '1' : '0'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div><div class="progress-handle" style="left:${progressPct}%;"></div><div class="progress-tip" style="left:${progressPct}%">Drag to seek</div></div>` +
           `${(!showProgress && (isRadioOrStream || isYoutube)) ? `<div class="heroLiveLine" style="order:5;font-size:12px;line-height:1.1;color:var(--theme-text-secondary,#9fb1d9);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:6px;">${(state === 'playing' && !isAlexaMode) ? `<span class="heroLivePulse">${isYoutube ? 'Streaming' : 'Live'}</span> • ` : ''}${escHtml(liveLabel)}${liveBadge ? ` <span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;border:1px solid rgba(251,191,36,.75);color:#fbbf24;background:rgba(251,191,36,.14);font-size:11px;font-weight:700;vertical-align:1px;">${liveBadge}</span>` : ''}</div>` : ''}` +
@@ -1755,8 +1757,13 @@
         try {
           if (action === 'seekback15') await playback('seekrel', currentKey(), { seconds: -15 });
           else if (action === 'seekfwd30') await playback('seekrel', currentKey(), { seconds: 30 });
+          else if (action === 'routealexa') await playback('routealexa', currentKey());
           else await playback(action, currentKey());
-        } catch {}
+        } catch (e) {
+          if (action === 'routealexa') {
+            try { alert(String(e?.message || e || 'Route to Alexa failed')); } catch {}
+          }
+        }
         try { await refresh(); } catch {}
       } finally {
         setBusy(false);
