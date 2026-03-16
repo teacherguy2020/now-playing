@@ -1661,11 +1661,28 @@
     const npTapEl = document.querySelector('.npTap[data-href]');
     const npLine3El = document.getElementById('line3');
     const npCtrlsEl = document.getElementById('npCtrls');
+    const isStandaloneWebApp = (()=>{
+      try {
+        return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+      } catch { return false; }
+    })();
+    const openAlbumUrl = (url)=>{
+      const u = String(url || '').trim();
+      if (!u) return;
+      try {
+        if (isStandaloneWebApp) {
+          // iOS web-app mode: avoid spawning a blank browser tab before handoff.
+          location.href = u;
+        } else {
+          window.open(u, '_blank', 'noopener');
+        }
+      } catch {}
+    };
     npLine3El?.addEventListener('click', (ev)=>{
       if (!npAlbumUrl) return;
       ev.preventDefault();
       ev.stopPropagation();
-      try { window.open(npAlbumUrl, '_blank', 'noopener'); } catch {}
+      openAlbumUrl(npAlbumUrl);
     });
     npCtrlsEl?.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); }, { passive:true });
     npCtrlsEl?.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); });
