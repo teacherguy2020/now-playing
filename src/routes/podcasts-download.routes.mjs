@@ -41,6 +41,17 @@ export function registerPodcastDownloadRoutes(app, deps) {
     buildLocalPlaylistForRss,
   } = deps;
 
+  const runMpcUpdate = async (targetPath = '') => {
+    const p = String(targetPath || '').trim();
+    if (!p) return;
+    await new Promise((resolve, reject) => {
+      execFile('mpc', ['-h', String(MPD_HOST || '10.0.0.254'), '-p', String(MPD_PORT || 6600), 'update', p], { timeout: 15000 }, (err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
+  };
+
   const configuredPodcastRoot = String(podcastRoot || process.env.PODCAST_ROOT || process.env.PODCAST_SHOWS_DIR || '').trim();
   const assertPodcastRootWritable = async () => {
     if (!configuredPodcastRoot) throw new Error('Podcast root is not configured (paths.podcastRoot).');
@@ -319,6 +330,14 @@ export function registerPodcastDownloadRoutes(app, deps) {
           playlistSync = { ok: false, error: e?.message || String(e) };
         }
 
+        let mpdUpdate = { ok: false };
+        try {
+          await runMpcUpdate(String(sub.mpdPrefix || '').trim());
+          mpdUpdate = { ok: true, path: String(sub.mpdPrefix || '').trim() };
+        } catch (e) {
+          mpdUpdate = { ok: false, error: e?.message || String(e), path: String(sub.mpdPrefix || '').trim() };
+        }
+
         return res.json({
           ok: true,
           rss,
@@ -327,6 +346,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
           mpdPath: `${sub.mpdPrefix}/${finalName}`,
           embeddedArt,
           playlistSync,
+          mpdUpdate,
         });
       } finally {
         await safeUnlink(mp3Tmp);
@@ -440,6 +460,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
     });
 
     try { await buildLocalPlaylistForRss({ rss: sub.rss }); } catch {}
+    try { await runMpcUpdate(String(sub.mpdPrefix || '').trim()); } catch {}
 
     return {
       ok: true,
