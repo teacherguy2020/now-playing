@@ -2927,7 +2927,9 @@ if (titleEl) {
 
   // Link behavior (independent of whether we show icon)
   if (albumLinkEl) {
-    const url = String(data.shareUrl || data.radioTrackUrl || data.radioItunesUrl || data.itunesUrl || '').trim();
+    const appleMusicUrl = String(data.radioAppleMusicUrl || data.appleMusicUrl || '').trim();
+    const fallbackUrl = String(data.shareUrl || data.radioTrackUrl || data.radioItunesUrl || data.itunesUrl || '').trim();
+    const url = appleMusicUrl || fallbackUrl;
     const isYoutubeShare = !!data?.isYoutube && !!url;
 
     if (url) {
@@ -2936,7 +2938,7 @@ if (titleEl) {
       albumLinkEl.rel = 'noopener';
       albumLinkEl.style.pointerEvents = 'auto';
       albumLinkEl.style.cursor = 'pointer';
-      albumLinkEl.title = isYoutubeShare ? 'Open on YouTube' : 'Open in Apple Music';
+      albumLinkEl.title = appleMusicUrl ? 'Open in Apple Music' : (isYoutubeShare ? 'Open on YouTube' : 'Open link');
     } else {
       albumLinkEl.removeAttribute('href');
       albumLinkEl.removeAttribute('target');

@@ -159,6 +159,12 @@ body.booting .fade-out {
   text-decoration: none;
 }
 
+/* Kiosk/desktop: make full album row tappable/clickable */
+body:not(.phone-ui) #album-link {
+  display: block;
+  width: 100%;
+}
+
 /* Album line: text + icon behave like one inline piece */
 #album-text .album-inline {
   display: inline;
@@ -1054,11 +1060,16 @@ body.is-radio #art-info-hotspot { display: none !important; }
 /* =========================================================
  * Share icon visibility
  * - Default: hidden
- * - Show ONLY on phone-ui + radio + valid Apple Music href
+ * - Phone: show on radio with link
+ * - Kiosk/desktop: show whenever album row has a link
  * ========================================================= */
 #album-text .share-icon { display: none !important; }
 
 body.phone-ui.is-radio #album-link[href] .share-icon {
+  display: inline-block !important;
+}
+
+body:not(.phone-ui) #album-link[href] .share-icon {
   display: inline-block !important;
 }
 
