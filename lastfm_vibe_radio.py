@@ -268,12 +268,18 @@ def read_tags(mpd_file: str):
 
     f = mpd_file.lstrip("/")
 
-    if f.startswith("USB/"):
-        tail = f[len("USB/"):]
+    if f.startswith("USB/SamsungMoode/"):
+        tail = f[len("USB/SamsungMoode/"):]
         candidates.extend([
             f"/mnt/SamsungMoode/{tail}",
-            f"/mnt/OSDISK/{tail}",
+            f"/media/SamsungMoode/{tail}",
+        ])
+    elif f.startswith("USB/"):
+        tail = f[len("USB/"):]
+        candidates.extend([
+            f"/mnt/{tail}",
             f"/media/{tail}",
+            f"/mnt/OSDISK/{tail}",
         ])
     else:
         candidates.append(f)
