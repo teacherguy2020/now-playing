@@ -113,6 +113,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         builtCount: 0,
+        rawBuiltCount: 0,
         added: [],
         tracks: [],
         logs: [],
@@ -183,6 +184,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
           const jsonOut = await fs.readFile(jsonTmp, 'utf8');
           const data = JSON.parse(jsonOut);
           const baseTracks = Array.isArray(data?.tracks) ? data.tracks : [];
+          job.rawBuiltCount = baseTracks.length;
 
           if (job.minRating > 0 && typeof getRatingForFile === 'function') {
             const kept = [];
@@ -239,6 +241,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         targetQueue: job.targetQueue,
         minRating: Number(job.minRating || 0),
         builtCount: Number(job.builtCount || 0),
+        rawBuiltCount: Number(job.rawBuiltCount || 0),
         seedArtist: job.seedArtist,
         seedTitle: job.seedTitle,
         added,

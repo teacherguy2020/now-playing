@@ -2070,9 +2070,11 @@ async function doVibeBuild() {
           const seedArtist = String(j.seedArtist || '').trim();
           const seedTitle = String(j.seedTitle || '').trim();
           const minR = Number(minRatingVibe || 0);
-          const filterMsg = minR > 0 ? ` Current rating filter is ${minR}★+.` : '';
+          const rawBuilt = Number(j.rawBuiltCount || 0);
+          const ratingFilteredOut = minR > 0 && rawBuilt > 0;
+          const filterMsg = ratingFilteredOut ? ` Current rating filter is ${minR}★+.` : '';
           setStatus(`Vibe returned 0 tracks for now playing: ${seedArtist}${seedArtist && seedTitle ? ' — ' : ''}${seedTitle}.${filterMsg} Try the next/previous track as seed.`);
-          setVibeProgress({ current: 0, total: Math.max(1, Number(j.targetQueue || targetQueue || 1)), label: 'No vibe matches found.', detail: minR > 0 ? `No tracks passed ${minR}★+ rating filter.` : 'Try a different currently playing seed track.' });
+          setVibeProgress({ current: 0, total: Math.max(1, Number(j.targetQueue || targetQueue || 1)), label: 'No vibe matches found.', detail: ratingFilteredOut ? `No tracks passed ${minR}★+ rating filter.` : 'Try a different currently playing seed track.' });
           setCancelButtonMode('none');
         } else {
           setStatus(`Vibe list built: ${tracks.length.toLocaleString()} track(s).`);
