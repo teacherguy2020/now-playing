@@ -26,9 +26,24 @@
     return `http://${host}:3101`;
   })();
   let runtimeTrackKey = '';
+  let nightlyAutomationReady = false;
+  let nightlyStatusState = {};
 
   function currentKey(){
     return String(runtimeTrackKey || '').trim();
+  }
+
+  function nightlyCronCommand(){
+    const k = currentKey() || 'YOUR_TRACK_KEY';
+    return `15 2 * * * /usr/bin/curl -fsS -m 3300 -X POST http://127.0.0.1:3101/podcasts/nightly-run -H "content-type: application/json" -H "x-track-key: ${k}" --data "{}" >> /opt/now-playing/var/podcasts/nightly-cron.log 2>&1`;
+  }
+
+  function syncRetentionUiGate(){
+    const ready = !!nightlyAutomationReady;
+    const disabled = !ready;
+    if (retentionEnabledEl) retentionEnabledEl.disabled = disabled;
+    if (retentionDaysEl) retentionDaysEl.disabled = disabled;
+    if (saveRetentionBtn) saveRetentionBtn.disabled = disabled;
   }
 
   function setPillState(pillId, state){
@@ -820,7 +835,11 @@ async function loadEpisodes() {
         try {
           setStatus('Saving auto-download preference…');
           await apiPost('/podcasts/subscription/settings', { rss, autoDownload });
-          setStatus(autoDownload ? 'Auto-download enabled.' : 'Auto-download disabled.', 'ok');
+          if (autoDownload && !nightlyAutomationReady) {
+            setStatus(`Auto-download enabled, but nightly cron has not run yet. Install cron on API host: ${nightlyCronCommand()}`, 'err');
+          } else {
+            setStatus(autoDownload ? 'Auto-download enabled.' : 'Auto-download disabled.', 'ok');
+          }
         } catch (err) {
           chk.checked = !autoDownload;
           setStatus(`Error: ${err.message || String(err)}`, 'err');
@@ -836,12 +855,21 @@ async function loadEpisodes() {
     try {
       const j = await apiGet('/podcasts/nightly-status');
       const st = j.state || {};
+      nightlyStatusState = st;
       if (retentionEnabledEl) retentionEnabledEl.checked = !!st.retentionEnabled;
       if (retentionDaysEl && Number(st.retentionDays || 0) > 0) retentionDaysEl.value = String(Number(st.retentionDays));
       const when = st.lastRunAt ? new Date(st.lastRunAt).toLocaleString() : 'never';
-      nightlyStatusEl.textContent = `Nightly cron: last run ${when}${st.lastRunType ? ` • ${st.lastRunType}` : ''}${Number.isFinite(Number(st.lastRunDeleted)) ? ` • deleted ${Number(st.lastRunDeleted)}` : ''}`;
+      nightlyAutomationReady = !!st.lastRunAt;
+      if (nightlyAutomationReady) {
+        nightlyStatusEl.textContent = `Nightly cron: last run ${when}${st.lastRunType ? ` • ${st.lastRunType}` : ''}${Number.isFinite(Number(st.lastRunDeleted)) ? ` • deleted ${Number(st.lastRunDeleted)}` : ''}`;
+      } else {
+        nightlyStatusEl.textContent = `Nightly cron: no run recorded yet. Auto-download needs cron on API host. Install:\n${nightlyCronCommand()}`;
+      }
+      syncRetentionUiGate();
     } catch (e) {
-      nightlyStatusEl.textContent = `Nightly cron status unavailable: ${e.message || e}`;
+      nightlyAutomationReady = false;
+      syncRetentionUiGate();
+      nightlyStatusEl.textContent = `Nightly cron status unavailable: ${e.message || e}. Install cron:\n${nightlyCronCommand()}`;
     }
   }
 

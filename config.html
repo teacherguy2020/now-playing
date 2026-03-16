@@ -261,6 +261,7 @@
                     <div class="cfgHint" id="podcastRootHint">Used only when Podcasts feature is enabled.</div>
                   </div>
                   <div class="cfgHint">Enable podcast pages and background download/subscription tools.</div>
+                  <div class="cfgHint" id="podcastsCronHint" style="margin-top:6px;"></div>
                 </div>
 
                 <div class="cfgCard gateCard">
@@ -829,6 +830,35 @@ function syncLastfmCardVisibility(){
   }
 }
 
+function podcastsCronCommand(){
+  const key = String(getTrackKey() || document.getElementById('configTrackKey')?.value || '').trim();
+  return `15 2 * * * /usr/bin/curl -fsS -m 3300 -X POST http://127.0.0.1:3101/podcasts/nightly-run -H "content-type: application/json" -H "x-track-key: ${key || 'YOUR_TRACK_KEY'}" --data "{}" >> /opt/now-playing/var/podcasts/nightly-cron.log 2>&1`;
+}
+
+async function refreshPodcastsCronHint(){
+  const hintEl = document.getElementById('podcastsCronHint');
+  const on = !!document.getElementById('featurePodcasts')?.checked;
+  if (!hintEl) return;
+  if (!on) {
+    hintEl.textContent = '';
+    return;
+  }
+  hintEl.textContent = 'Checking nightly podcasts automation status…';
+  try {
+    const r = await fetch(`${API_BASE}/podcasts/nightly-status`, { headers: { 'x-track-key': getTrackKey() }, cache: 'no-store' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    const st = j?.state || {};
+    if (st?.lastRunAt) {
+      hintEl.textContent = `Nightly automation active (last run: ${new Date(st.lastRunAt).toLocaleString()}).`;
+    } else {
+      hintEl.innerHTML = `Warning: No nightly run recorded yet. If users enable “Download new episodes”, install cron on API host:<br><code>${podcastsCronCommand().replace(/</g,'&lt;')}</code>`;
+    }
+  } catch (e) {
+    hintEl.innerHTML = `Could not verify nightly status (${String(e?.message || e)}). If enabling Podcasts, set cron on API host:<br><code>${podcastsCronCommand().replace(/</g,'&lt;')}</code>`;
+  }
+}
+
 function syncPodcastsUi(){
   const on = !!document.getElementById('featurePodcasts')?.checked;
   const wrap = document.getElementById('podcastRootFieldWrap');
@@ -839,6 +869,7 @@ function syncPodcastsUi(){
   if (hint) hint.textContent = on
     ? 'Used when Podcasts is enabled. Missing folder can be created on demand.'
     : 'Podcasts disabled: path is opt. (field kept visible for convenience).';
+  refreshPodcastsCronHint().catch(() => {});
 }
 
 function syncPushoverCardVisibility(){
@@ -1898,6 +1929,7 @@ document.getElementById('artistAliasesJson').addEventListener('input', () => {
 document.getElementById('featureAlexaSkill')?.addEventListener('change', () => { syncAlexaCardVisibility(); syncAlexaDomainUi(); });
 document.getElementById('featureLastfm')?.addEventListener('change', syncLastfmCardVisibility);
 document.getElementById('featurePodcasts')?.addEventListener('change', syncPodcastsUi);
+document.getElementById('configTrackKey')?.addEventListener('input', () => { refreshPodcastsCronHint().catch(() => {}); });
 document.getElementById('featurePushover')?.addEventListener('change', syncPushoverCardVisibility);
 document.getElementById('featureRatings')?.addEventListener('change', () => {
   syncRatingsCardVisibility();
