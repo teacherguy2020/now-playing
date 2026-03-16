@@ -262,6 +262,9 @@
                   </div>
                   <div class="cfgHint">Enable podcast pages and background download/subscription tools.</div>
                   <div class="cfgHint" id="podcastsCronHint" style="margin-top:6px;"></div>
+                  <div class="cfgActions" style="margin-top:8px;">
+                    <button class="btn" id="podcastsCronInstallHelpBtn" type="button">Install nightly cron…</button>
+                  </div>
                 </div>
 
                 <div class="cfgCard gateCard">
@@ -835,6 +838,28 @@ function podcastsCronCommand(){
   return `15 2 * * * /usr/bin/curl -fsS -m 3300 -X POST http://127.0.0.1:3101/podcasts/nightly-run -H "content-type: application/json" -H "x-track-key: ${key || 'YOUR_TRACK_KEY'}" --data "{}" >> /opt/now-playing/var/podcasts/nightly-cron.log 2>&1`;
 }
 
+async function showPodcastsCronInstallHelp(){
+  const line = podcastsCronCommand();
+  const block = [
+    'On API host, run:',
+    '(crontab -l 2>/dev/null | grep -v "podcasts/nightly-run"; echo \'' + line.replace(/'/g, `'"'"'`) + '\') | crontab -',
+    '',
+    'Verify:',
+    'crontab -l | grep podcasts/nightly-run',
+  ].join('\n');
+
+  try {
+    await navigator.clipboard.writeText(block);
+    log('Copied podcasts cron setup block to clipboard.');
+  } catch {}
+
+  try {
+    window.alert(block + '\n\n(Also copied to clipboard when browser allowed it.)');
+  } catch {
+    log(block);
+  }
+}
+
 async function refreshPodcastsCronHint(){
   const hintEl = document.getElementById('podcastsCronHint');
   const on = !!document.getElementById('featurePodcasts')?.checked;
@@ -864,8 +889,10 @@ function syncPodcastsUi(){
   const wrap = document.getElementById('podcastRootFieldWrap');
   const hint = document.getElementById('podcastRootHint');
   const input = document.getElementById('pathPodcastRoot');
+  const installBtn = document.getElementById('podcastsCronInstallHelpBtn');
   if (wrap) wrap.style.display = '';
   if (input) input.disabled = !on;
+  if (installBtn) installBtn.disabled = !on;
   if (hint) hint.textContent = on
     ? 'Used when Podcasts is enabled. Missing folder can be created on demand.'
     : 'Podcasts disabled: path is opt. (field kept visible for convenience).';
@@ -1930,6 +1957,7 @@ document.getElementById('featureAlexaSkill')?.addEventListener('change', () => {
 document.getElementById('featureLastfm')?.addEventListener('change', syncLastfmCardVisibility);
 document.getElementById('featurePodcasts')?.addEventListener('change', syncPodcastsUi);
 document.getElementById('configTrackKey')?.addEventListener('input', () => { refreshPodcastsCronHint().catch(() => {}); });
+document.getElementById('podcastsCronInstallHelpBtn')?.addEventListener('click', () => { showPodcastsCronInstallHelp().catch((e) => log(String(e))); });
 document.getElementById('featurePushover')?.addEventListener('change', syncPushoverCardVisibility);
 document.getElementById('featureRatings')?.addEventListener('change', () => {
   syncRatingsCardVisibility();
