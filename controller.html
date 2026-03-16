@@ -403,6 +403,18 @@
       }
     }
     let profile=parseProfile();
+
+    function decodeHtmlEntities(input){
+      const s = String(input ?? '');
+      if (!s || !/[&][a-zA-Z#0-9]+;/.test(s)) return s;
+      try {
+        const t = document.createElement('textarea');
+        t.innerHTML = s;
+        return t.value;
+      } catch {
+        return s;
+      }
+    }
     // Allow URL-driven overrides (kiosk designer preview/push)
     {
       const qDevicePreset = String(__u.searchParams.get('devicePreset') || '').trim().toLowerCase();
@@ -689,16 +701,16 @@
         const r = await fetch(`${base}/now-playing`,{cache:'no-store'});
         const j = await r.json().catch(()=>({}));
 
-        const artist = String(j?.artist || '').trim();
-        const title = String(j?.title || '').trim();
-        const album = String(j?.album || '').trim();
+        const artist = decodeHtmlEntities(String(j?.artist || '')).trim();
+        const title = decodeHtmlEntities(String(j?.title || '')).trim();
+        const album = decodeHtmlEntities(String(j?.album || '')).trim();
         const file = String(j?.file || '').trim();
         const st = String(j?.state || '').toLowerCase();
         const hasTrack = !!(title || artist || file);
 
-        let dispArtist = String(j?.displayArtist || artist || '').trim();
-        let dispTitle = String(j?.displayTitle || title || '').trim();
-        let dispLine3 = String(j?.displayLine3 || '').trim();
+        let dispArtist = decodeHtmlEntities(String(j?.displayArtist || artist || '')).trim();
+        let dispTitle = decodeHtmlEntities(String(j?.displayTitle || title || '')).trim();
+        let dispLine3 = decodeHtmlEntities(String(j?.displayLine3 || '')).trim();
 
         if (!dispArtist && dispTitle) {
           const raw = String(dispTitle || '').trim();
