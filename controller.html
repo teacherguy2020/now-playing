@@ -39,6 +39,7 @@
     .npCtrls.is-awake .ctl{background:rgba(255,255,255,.14);box-shadow:0 5px 14px rgba(0,0,0,.3)}
     .npCtrls .ctl.big{width:36px;min-width:36px;height:36px;min-height:36px}
     .npCtrls .ctl svg{width:14px;height:14px;fill:currentColor;display:block}
+    .npCtrls .ctlPause,.npCtrls .ctlPlay{display:none}
     .npCtrls .ctl.on{background:rgba(22,163,74,.50);box-shadow:0 0 0 1px rgba(34,197,94,.65),0 0 16px rgba(34,197,94,.42),0 5px 14px rgba(0,0,0,.3);color:#eaffef}
     .npCtrls .ctl.big.on{background:rgba(22,163,74,.62);box-shadow:0 0 0 1px rgba(34,197,94,.72),0 0 20px rgba(34,197,94,.50),0 5px 14px rgba(0,0,0,.34)}
     .eq b:nth-child(2){animation-delay:.15s}.eq b:nth-child(3){animation-delay:.3s}
@@ -109,9 +110,12 @@
     .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:150;align-items:center;justify-content:center}
     .albumModal.open{display:flex}
     .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(7px)}
-    body.kiosk1280 .recentWrap #recentAlbumModal{position:absolute;inset:0;z-index:165;border-radius:10px;background:rgba(0,0,0,.42);display:none;align-items:center;justify-content:center}
-    body.kiosk1280 .recentWrap #recentAlbumModal.open{display:flex}
-    body.kiosk1280 .recentWrap #recentAlbumModal .albumCard{width:calc(100% - 14px) !important;max-width:none !important;max-height:calc(100% - 12px);margin:0 auto}
+    body.kiosk1280 .recentWrap #recentAlbumModal,
+    body.ipad11.ipad11Landscape .recentWrap #recentAlbumModal{position:absolute;inset:0;z-index:165;border-radius:10px;background:rgba(0,0,0,.42);display:none;align-items:center;justify-content:center}
+    body.kiosk1280 .recentWrap #recentAlbumModal.open,
+    body.ipad11.ipad11Landscape .recentWrap #recentAlbumModal.open{display:flex}
+    body.kiosk1280 .recentWrap #recentAlbumModal .albumCard,
+    body.ipad11.ipad11Landscape .recentWrap #recentAlbumModal .albumCard{width:calc(100% - 14px) !important;max-width:none !important;max-height:calc(100% - 12px);margin:0 auto}
     .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
     .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .albumTitle{font-size:17px;font-weight:700}
@@ -151,13 +155,15 @@
     body.kiosk1280 .recentTitle{font-size:18px;margin:2px 0 8px;padding-left:5px}
     body.kiosk1280 .railModeBtn{display:none}
     body.kiosk1280 .rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 24px)/4);grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;padding:0;overflow-x:auto;overflow-y:hidden;align-content:start}
-    body.kiosk1280 .kPane{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface,#0b1324);border:1px solid var(--line,#1f2a3d);border-radius:10px;overflow:hidden;transform:translateX(108%);opacity:0;pointer-events:none;transition:transform .24s ease,opacity .2s ease}
-    body.kiosk1280 .kPane.open{transform:translateX(0);opacity:1;pointer-events:auto}
+    body.kiosk1280 .kPane, body.ipad11.ipad11Landscape .kPane{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface,#0b1324);border:1px solid var(--line,#1f2a3d);border-radius:10px;overflow:hidden;transform:translateX(108%);opacity:0;pointer-events:none;transition:transform .24s ease,opacity .2s ease}
+    body.kiosk1280 .kPane.open, body.ipad11.ipad11Landscape .kPane.open{transform:translateX(0);opacity:1;pointer-events:auto}
     body.kiosk1280 .recentWrap.paneOpen #recentTitle,
     body.kiosk1280 .recentWrap.paneOpen #recentRail,
     body.kiosk1280 .recentWrap.paneOpen #recentPeekRail,
-    body.kiosk1280 .recentWrap.paneOpen #railModeBtn{opacity:0;pointer-events:none;transition:opacity .12s ease}
-    body.kiosk1280 .kPaneIf{flex:1;width:100%;border:0;background:transparent}
+    body.kiosk1280 .recentWrap.paneOpen #railModeBtn,
+    body.ipad11.ipad11Landscape .recentWrap.paneOpen #ipadRecentGrid{opacity:0;pointer-events:none;transition:opacity .12s ease}
+    body.kiosk1280 .kPaneIf,
+    body.ipad11.ipad11Landscape .kPaneIf{flex:1;width:100%;height:100%;border:0;background:transparent}
     body.kiosk1280 .thumb{min-width:0;width:auto}
     body.kiosk1280 .thumb img, body.kiosk1280 .ph{width:90%;height:auto;aspect-ratio:1/1;display:block;margin:0 auto}
     body.kiosk1280 .thumb .cap{font-size:12px;white-space:normal;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding-left:5px}
@@ -183,8 +189,71 @@
     body.kiosk1280 .npCtrls{display:flex}
     body.kiosk1280 #line1{font-size:18px;font-weight:700;line-height:1.16;max-width:440px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
     body.kiosk1280 #line2{font-size:13px;max-width:440px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+    body.kiosk1280 #line3{font-size:12px;max-width:440px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;opacity:.9}
     body.kiosk1280 .quickIn{height:34px;font-size:15px}
     body.kiosk1280 .quickMenu{top:38px;max-height:88vh}
+
+    /* iPad Pro 11" profiles */
+    body.ipad11{padding:10px 12px 14px;height:100dvh;overflow:hidden}
+    body.ipad11 #kioskCanvas{display:grid;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) minmax(0,2fr);row-gap:8px;height:100%}
+    body.ipad11 .card{margin-bottom:0}
+    body.ipad11 .np{grid-template-columns:94px 1fr;gap:12px}
+    body.ipad11 .artWrap, body.ipad11 .np img{width:94px;height:94px}
+    body.ipad11 #line1{font-size:22px;line-height:1.1;max-width:none}
+    body.ipad11 #line2{font-size:14px}
+    body.ipad11 #line3{font-size:13px;opacity:.92}
+    body.ipad11 #libraryList{margin:0;overflow:auto;min-height:0}
+    body.ipad11 .row{padding:9px 0}
+    body.ipad11.ipad11Landscape .row{padding:2px 0;align-self:stretch}
+    body.ipad11 .row .lbl{font-size:20px}
+    body.ipad11 .railModeBtn, body.ipad11 #recentTitle, body.ipad11 #recentRail, body.ipad11 #recentPeekRail{display:none !important}
+    body.ipad11 .recentWrap{display:flex;min-height:0;overflow:hidden}
+    body.ipad11 .ipadRecentGrid{display:grid !important;grid-template-columns:1fr 1fr;gap:8px;width:100%;min-height:0;overflow:auto;padding-right:2px}
+    body.ipad11 .ipadRecentPane{min-height:0;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:8px;display:flex;flex-direction:column;gap:6px}
+    body.ipad11 .ipadRecentPane h4{margin:0;font-size:13px;letter-spacing:.02em;color:var(--muted);text-transform:uppercase}
+    body.ipad11 .ipadRecentPane .rail{padding:0;gap:8px;overflow:auto;min-height:142px}
+    body.ipad11 .ipadRecentPane .thumb{min-width:108px;width:108px}
+    body.ipad11 .ipadRecentPane .thumb img, body.ipad11 .ipadRecentPane .ph{width:108px;height:108px}
+    body.ipad11 .ipadRecentPane .thumb .cap{font-size:12px}
+
+    body.ipad11.ipad11Landscape{padding-top:max(28px, env(safe-area-inset-top))}
+    body.ipad11.ipad11Landscape #kioskCanvas{position:relative;grid-template-columns:minmax(320px,1fr) minmax(0,2fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:8px;max-height:calc(100dvh - 8px);box-sizing:border-box}
+    body.ipad11.ipad11Landscape .npTap{grid-area:np;max-height:338px;overflow:hidden}
+    body.ipad11.ipad11Landscape .quickWrap{grid-area:quick;margin:12px 0 0 0}
+    body.ipad11.ipad11Landscape #libraryList{grid-area:list;margin:0;min-height:0;padding-top:0;padding-bottom:0;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+    body.ipad11.ipad11Landscape .recentWrap{grid-area:recent;min-height:0;display:flex;flex-direction:column}
+    body.ipad11.ipad11Landscape .npTap .card{display:flex;flex-direction:column;padding-top:0}
+    body.ipad11.ipad11Landscape .np{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;order:1}
+    body.ipad11.ipad11Landscape .artWrap, body.ipad11.ipad11Landscape .np img{width:220px;height:220px}
+    body.ipad11.ipad11Landscape .artWrap{overflow:visible}
+    body.ipad11.ipad11Landscape .np > div:last-child{max-width:100%}
+    body.ipad11.ipad11Landscape .npTap .title{display:none !important}
+    body.ipad11.ipad11Landscape #line1{font-size:30px;line-height:1.08;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
+    body.ipad11.ipad11Landscape #line2{font-size:18px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
+    body.ipad11.ipad11Landscape #line3{font-size:16px;line-height:1.18;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%;opacity:.95}
+    body.ipad11.ipad11Landscape .npCtrls{display:grid !important;grid-template-columns:repeat(2,66px);gap:11px;position:absolute;left:calc(100% + 12px);top:0;transform:none;padding:0 0 0 40px;background:transparent;border:0;backdrop-filter:none;-webkit-backdrop-filter:none;opacity:.98}
+    body.ipad11.ipad11Landscape .npCtrls .ctl{width:66px;height:66px;min-width:66px;min-height:66px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:linear-gradient(180deg,rgba(56,66,86,.96),rgba(34,42,58,.96));box-shadow:0 6px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08)}
+    body.ipad11.ipad11Landscape .npCtrls .ctl.big{width:66px;min-width:66px;height:66px;min-height:66px}
+    body.ipad11.ipad11Landscape .npCtrls .ctl svg{width:22px;height:22px}
+    body.ipad11.ipad11Landscape .npCtrls .ctlPlay.is-active,
+    body.ipad11.ipad11Landscape .npCtrls .ctlPause.is-active{color:#4ade80;border-color:rgba(74,222,128,.75);box-shadow:0 0 0 1px rgba(74,222,128,.5),0 6px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08)}
+    body.ipad11.ipad11Landscape .npCtrls .ctlPause,
+    body.ipad11.ipad11Landscape .npCtrls .ctlPlay{display:grid}
+    body.ipad11.ipad11Landscape .npCtrls .ctlToggle{display:none}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="prev"]{order:1}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="next"]{order:2}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="pause"]{order:3}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="play"]{order:4}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="repeat"]{order:5}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="shuffle"]{order:6}
+    body.ipad11.ipad11Landscape #libraryList{margin-top:0}
+    body.ipad11.ipad11Landscape .ipadRecentGrid{display:flex !important;flex-direction:column;justify-content:space-between;gap:0;height:100%;min-height:0;overflow:hidden}
+    body.ipad11.ipad11Landscape .ipadRecentPane{padding:8px 10px;overflow:hidden;min-height:0;flex:0 0 auto}
+    body.ipad11.ipad11Landscape .ipadRecentPane:nth-child(-n+3){padding-bottom:10px}
+    body.ipad11.ipad11Landscape .ipadRecentPane .rail{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;overscroll-behavior-y:none;touch-action:pan-x}
+    body.ipad11.ipad11Landscape .ipadRecentPane .thumb{min-width:120px;width:120px}
+    body.ipad11.ipad11Landscape .ipadRecentPane .thumb img, body.ipad11.ipad11Landscape .ipadRecentPane .ph{width:120px;height:120px}
+
     @keyframes navForwardOut{
       from{transform:translateX(0);opacity:1}
       to{transform:translateX(-24px);opacity:.38}
@@ -221,11 +290,17 @@
             <button type="button" class="ctl" data-np-act="prev" aria-label="Previous" title="Previous">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6V5zm3.5 7 10-7v14l-10-7z"/></svg>
             </button>
-            <button type="button" class="ctl big" data-np-act="toggle" aria-label="Play/Pause" title="Play/Pause">
+            <button type="button" class="ctl big ctlToggle" data-np-act="toggle" aria-label="Play/Pause" title="Play/Pause">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path id="npPlayIcon" d="M8 5v14l11-7z"/></svg>
             </button>
             <button type="button" class="ctl" data-np-act="next" aria-label="Next" title="Next">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2V5zM4.5 19V5l10 7-10 7z"/></svg>
+            </button>
+            <button type="button" class="ctl ctlPause" data-np-act="pause" aria-label="Pause" title="Pause">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zM13 5h3v14h-3z"/></svg>
+            </button>
+            <button type="button" class="ctl ctlPlay" data-np-act="play" aria-label="Play" title="Play">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
             </button>
             <button type="button" class="ctl" data-np-act="shuffle" aria-label="Shuffle" title="Shuffle">
               <svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M24.414,16.586L30.828,23l-6.414,6.414l-2.828-2.828L23.172,25H22c-3.924,0-6.334-2.289-8.173-4.747c0.987-1.097,1.799-2.285,2.516-3.36C18.109,19.46,19.521,21,22,21h1.172l-1.586-1.586L24.414,16.586z M22,11h1.172l-1.586,1.586l2.828,2.828L30.828,9l-6.414-6.414l-2.828,2.828L23.172,7H22c-5.07,0-7.617,3.82-9.664,6.891C10.224,17.059,8.788,19,6,19H2v4h4c5.07,0,7.617-3.82,9.664-6.891C17.776,12.941,19.212,11,22,11z M10.212,15.191c0.399-0.539,1.957-2.848,2.322-3.365C10.917,10.216,8.86,9,6,9H2v4h4C7.779,13,9.007,13.797,10.212,15.191z"/></svg>
@@ -235,6 +310,7 @@
         <div>
           <div id="line1"></div>
           <div id="line2" class="muted"></div>
+          <div id="line3" class="muted"></div>
         </div>
       </div>
     </div>
@@ -267,6 +343,12 @@
     <div class="recentTitle" id="recentTitle">Recently Added <span id="railTitleSpin" class="titleSpin" hidden></span></div>
     <div class="rail" id="recentRail"></div>
     <div class="rail peekRail" id="recentPeekRail"></div>
+    <div class="ipadRecentGrid" id="ipadRecentGrid" hidden>
+      <section class="ipadRecentPane"><h4>Recent Albums</h4><div class="rail" id="ipadRailAlbums"></div></section>
+      <section class="ipadRecentPane"><h4>Recent Podcasts</h4><div class="rail" id="ipadRailPodcasts"></div></section>
+      <section class="ipadRecentPane"><h4>Recent Playlists</h4><div class="rail" id="ipadRailPlaylists"></div></section>
+      <section class="ipadRecentPane"><h4>Favorite Radio</h4><div class="rail" id="ipadRailRadio"></div></section>
+    </div>
     <div class="kPane" id="kioskPane" aria-hidden="true">
       <iframe class="kPaneIf" id="kioskPaneFrame" src="about:blank" loading="eager"></iframe>
     </div>
@@ -323,6 +405,7 @@
     let profile=parseProfile();
     // Allow URL-driven overrides (kiosk designer preview/push)
     {
+      const qDevicePreset = String(__u.searchParams.get('devicePreset') || '').trim().toLowerCase();
       const qTheme = String(__u.searchParams.get('theme') || '').trim().toLowerCase();
       const qColor = String(__u.searchParams.get('colorPreset') || '').trim().toLowerCase();
       const qRecent = String(__u.searchParams.get('recentSource') || '').trim().toLowerCase();
@@ -330,6 +413,7 @@
       const qSecondary = String(__u.searchParams.get('secondaryThemeColor') || '').trim();
       const qText = String(__u.searchParams.get('primaryTextColor') || '').trim();
       const qTextSecondary = String(__u.searchParams.get('secondaryTextColor') || '').trim();
+      if (qDevicePreset) profile.devicePreset = qDevicePreset;
       if (qTheme) profile.theme = qTheme;
       if (qColor) profile.colorPreset = qColor;
       if (qRecent) profile.recentSource = qRecent;
@@ -345,16 +429,28 @@
       // Persist effective profile so embedded controller subpages match theme/palette.
       try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile)); } catch {}
     }
+    function applyDevicePresetUi(){
+      const preset = String(profile?.devicePreset || 'iphone17').toLowerCase();
+      const isPortrait = preset === 'ipadpro11';
+      const isLandscape = preset === 'ipadpro11-landscape';
+      document.body.classList.toggle('ipad11', isPortrait || isLandscape);
+      document.body.classList.toggle('ipad11Landscape', isLandscape);
+    }
+
     function applyProfileUi(){
+      applyDevicePresetUi();
       const show = profile.showRecent !== false;
       const src = String(profile.recentSource || 'albums').toLowerCase();
       const titleBySrc = { albums:'Recently Added', podcasts:'Recent Podcasts', playlists:'Recent Playlists', radio:'Favorite Radio Stations' };
       const rt = document.getElementById('recentTitle');
       if (rt) rt.innerHTML = `${titleBySrc[src] || 'Recently Added'} <span id="railTitleSpin" class="titleSpin" hidden></span>`;
-      document.getElementById('recentTitle').style.display=show?'':'none';
-      document.getElementById('recentRail').style.display=show?'':'none';
+      const isIpad11 = document.body.classList.contains('ipad11');
+      const ipadGrid = document.getElementById('ipadRecentGrid');
+      if (ipadGrid) ipadGrid.hidden = !(show && isIpad11);
+      document.getElementById('recentTitle').style.display=(show && !isIpad11)?'':'none';
+      document.getElementById('recentRail').style.display=(show && !isIpad11)?'':'none';
       const btn = document.getElementById('railModeBtn');
-      if (btn) btn.style.display = show ? '' : 'none';
+      if (btn) btn.style.display = (show && !isIpad11) ? '' : 'none';
       document.querySelectorAll('#railModeBtn [data-rdot]').forEach((d)=>{
         d.classList.toggle('on', String(d.getAttribute('data-rdot')||'') === src);
       });
@@ -600,18 +696,42 @@
         const st = String(j?.state || '').toLowerCase();
         const hasTrack = !!(title || artist || file);
 
+        let dispArtist = String(j?.displayArtist || artist || '').trim();
+        let dispTitle = String(j?.displayTitle || title || '').trim();
+        let dispLine3 = String(j?.displayLine3 || '').trim();
+
+        if (!dispArtist && dispTitle) {
+          const raw = String(dispTitle || '').trim();
+          const m = raw.match(/^([^\-•|]+)\s*[\-•|]\s*(.+)$/);
+          if (m) {
+            dispArtist = String(m[1] || '').trim();
+            dispTitle = String(m[2] || '').trim();
+          }
+        }
+
+        const yearRaw = String(j?.year || j?.date || '').trim();
+        const yearMatch = yearRaw.match(/^(\d{4})/) || yearRaw.match(/\b(19|20)\d{2}\b/);
+        const year = yearMatch ? String(yearMatch[1] || yearMatch[0] || '').trim() : '';
+
         const line1 = hasTrack
-          ? [artist, title].filter(Boolean).join(' • ')
+          ? (dispArtist || artist || title || '(unknown artist)')
           : 'Queue is empty';
         const line2 = hasTrack
-          ? album
+          ? (dispTitle || title || '(unknown track)')
           : 'Use Queue Wizard or Recently Added to start music';
+        const baseLine3 = hasTrack
+          ? (dispLine3 || String(album || '').trim() || '')
+          : '';
+        const hasYearAlready = /\(\s*(19|20)\d{2}\s*\)/.test(baseLine3) || /\b(19|20)\d{2}\b/.test(baseLine3);
+        const line3 = hasTrack
+          ? ((baseLine3 + ((year && !hasYearAlready) ? ` (${year})` : '')).trim())
+          : '';
 
         const art = hasTrack
           ? (String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`)
           : `/icons/icon-192.png`;
 
-        const sig = `${file}|${line1}|${line2}|${st}|${art}`;
+        const sig = `${file}|${line1}|${line2}|${line3}|${st}|${art}`;
         if (sig !== npSig) {
           npSig = sig;
           const artEl = document.getElementById('art');
@@ -624,6 +744,11 @@
           }
           document.getElementById('line1').textContent = line1;
           document.getElementById('line2').textContent = line2;
+          const line3El = document.getElementById('line3');
+          if (line3El) {
+            line3El.textContent = line3;
+            line3El.style.display = line3 ? '' : 'none';
+          }
         }
         const eq = document.getElementById('eqOverlay');
         if (eq) eq.style.display = (hasTrack && (st === 'play' || st === 'playing')) ? 'inline-flex' : 'none';
@@ -634,6 +759,8 @@
         if (icon) icon.setAttribute('d', isPlaying ? 'M8 5h3v14H8zM13 5h3v14h-3z' : 'M8 5v14l11-7z');
         document.querySelectorAll('#npCtrls .ctl[data-np-act="shuffle"]').forEach((b)=>b.classList.toggle('on', shOn));
         document.querySelectorAll('#npCtrls .ctl[data-np-act="repeat"]').forEach((b)=>b.classList.toggle('on', rpOn));
+        document.querySelectorAll('#npCtrls .ctlPlay').forEach((b)=>b.classList.toggle('is-active', isPlaying));
+        document.querySelectorAll('#npCtrls .ctlPause').forEach((b)=>b.classList.toggle('is-active', !isPlaying));
       } catch {}
     }
 
@@ -652,6 +779,7 @@
     const recentLimit=()=> IS_KIOSK_1280 ? 16 : Math.max(6,Math.min(30,Number(profile.recentCount||18)));
     let recentItems=[];
     let recentActiveRadioUrl='';
+    let ipadRecentItems = { albums: [], podcasts: [], playlists: [], radio: [] };
     let recentMenuCtx={kind:'album',album:'',artist:'',art:'',playlist:'',title:'',rss:''};
     let recentModalCtx={kind:'album',album:'',artist:'',art:'',playlist:'',tracks:[]};
     let recentAlbumsCache = { ts: 0, albums: [] };
@@ -729,11 +857,114 @@
       if (sp) sp.hidden = !on;
     }
 
+    function renderIpadRail(hostId, items, rowKey){
+      const host = document.getElementById(hostId);
+      if (!host) return;
+      host.innerHTML = '';
+      const rows = Array.isArray(items) ? items : [];
+      if (!rows.length) {
+        host.innerHTML = Array.from({ length: 8 }).map(() =>
+          `<div class='thumb'><div class='thumbWrap'><div class='ph'><span class='miniSpin' aria-hidden='true'></span></div></div><div class='cap'>Loading…</div></div>`
+        ).join('');
+        return;
+      }
+      rows.forEach((it, i)=>{
+        const d = document.createElement('div');
+        d.className = `thumb${(rowKey === 'radio' && String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`;
+        const title = String(it?.title || '(item)').trim();
+        const art = String(it?.art || `${base}/art/current.jpg`).trim();
+        d.setAttribute('data-ra-row', String(rowKey || 'albums'));
+        d.setAttribute('data-ra-idx', String(i));
+        d.innerHTML = `<div class='thumbWrap'><img src='${art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-row='${String(rowKey || 'albums')}' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${title}'>${title}</div>`;
+        host.appendChild(d);
+      });
+    }
+
+    async function loadIpadRecentPanels(){
+      try {
+        const isIpad11 = document.body.classList.contains('ipad11');
+        const grid = document.getElementById('ipadRecentGrid');
+        if (!isIpad11 || !grid || grid.hidden) return;
+
+        const isIpadLandscape = document.body.classList.contains('ipad11Landscape');
+        const limit = isIpadLandscape
+          ? Math.max(12, Math.min(30, Number(profile?.recentCount || 18)))
+          : Math.max(4, Math.min(8, Number(profile?.recentCount || 18)));
+
+        renderIpadRail('ipadRailAlbums', [], 'albums');
+        renderIpadRail('ipadRailPodcasts', [], 'podcasts');
+        renderIpadRail('ipadRailPlaylists', [], 'playlists');
+        renderIpadRail('ipadRailRadio', [], 'radio');
+
+        const albumsRaw = await getRecentAlbumsForRail();
+        const albums = albumsRaw
+          .filter((a)=>{
+            const f = String(a?.folder || '').trim().toLowerCase();
+            return !(f.startsWith('usb/samsungmoode/podcasts/') || f.includes('/podcasts/'));
+          })
+          .sort((a,b)=>Number(b?.addedTs||0)-Number(a?.addedTs||0))
+          .slice(0, limit)
+          .map((a)=>({
+            title: String(a?.album || '(album)').trim(),
+            art: String(a?.thumbUrl || '').trim() ? (String(a.thumbUrl).startsWith('http') ? String(a.thumbUrl) : `${base}${String(a.thumbUrl)}`) : `${base}/art/current.jpg`
+          }));
+        ipadRecentItems.albums = albums.map((a)=>({ kind:'album', album:String(a?.title||'(album)').trim(), artist:'', art:String(a?.art||`${base}/art/current.jpg`) }));
+        renderIpadRail('ipadRailAlbums', ipadRecentItems.albums, 'albums');
+
+        const pr = await fetchJsonWithTimeout(`${base}/podcasts`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+        const podcasts = (pr.ok && pr.json?.ok && Array.isArray(pr.json.items)) ? pr.json.items.slice(0, limit).map((s)=>({
+          title: String(s?.title || s?.rss || '(podcast)').trim(),
+          art: String(s?.imageUrl || '').trim() || `${base}/art/current.jpg`
+        })) : [];
+        ipadRecentItems.podcasts = podcasts.map((p, idx)=>({ kind:'podcast', title:String(p?.title||'(podcast)').trim(), art:String(p?.art||`${base}/art/current.jpg`), rss:String((pr.json?.items||[])[idx]?.rss||'').trim() }));
+        renderIpadRail('ipadRailPodcasts', ipadRecentItems.podcasts, 'podcasts');
+
+        const pl = await fetchJsonWithTimeout(`${base}/config/queue-wizard/playlists`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+        const playlists = (pl.ok && pl.json?.ok && Array.isArray(pl.json.playlists))
+          ? pl.json.playlists.slice(0, limit).map((n)=>{
+              const title = String(n || '(playlist)').trim();
+              const safe = title.replace(/\s+/g,'_');
+              return {
+                title,
+                art:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(title)}.jpg`,
+                artAlt:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(safe)}.jpg`
+              };
+            })
+          : [];
+        ipadRecentItems.playlists = playlists.map((x)=>({ kind:'playlist', playlist:String(x?.title||'(playlist)').trim(), title:String(x?.title||'(playlist)').trim(), art:String(x?.art||`${base}/art/current.jpg`) }));
+        renderIpadRail('ipadRailPlaylists', ipadRecentItems.playlists, 'playlists');
+        document.querySelectorAll('#ipadRailPlaylists img').forEach((img)=>{
+          img.onerror = () => {
+            const cur = String(img.getAttribute('src') || '').trim();
+            const alt = String((playlists.find((x)=>String(x.art||'').trim()===cur)?.artAlt) || '').trim();
+            if (alt && cur !== alt) { img.setAttribute('src', alt); return; }
+            const ph = document.createElement('div'); ph.className = 'ph'; img.replaceWith(ph);
+          };
+        });
+
+        const rr = await fetchJsonWithTimeout(`${base}/config/queue-wizard/radio-favorites`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+        const radio = (rr.ok && rr.json?.ok && Array.isArray(rr.json.favorites))
+          ? rr.json.favorites.slice(0, limit).map((x)=>{
+              const title = String(x?.stationName || x?.file || '(station)').trim();
+              return { title, art: `${base}/art/radio-logo.jpg?name=${encodeURIComponent(title)}` };
+            })
+          : [];
+        ipadRecentItems.radio = radio.map((x, idx)=>({ kind:'radio', title:String(x?.title||'(station)').trim(), art:String(x?.art||`${base}/art/radio-logo.jpg`), url:String((rr.json?.favorites||[])[idx]?.file||'').trim() }));
+        renderIpadRail('ipadRailRadio', ipadRecentItems.radio, 'radio');
+      } catch {}
+    }
+
     async function loadRecentlyAdded(){
       if (!rail || profile.showRecent===false) return;
       await ensureKey();
       const src = String(profile.recentSource || 'albums').toLowerCase();
+      const isIpad11 = document.body.classList.contains('ipad11');
       setRailLoading(true);
+      if (isIpad11) {
+        await loadIpadRecentPanels();
+        setRailLoading(false);
+        return;
+      }
       try {
         if (src === 'podcasts') {
           const pr = await fetchJsonWithTimeout(`${base}/podcasts`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
@@ -1042,7 +1273,7 @@
       document.getElementById('recentAlbumCropBtn').style.display = (isPlaylist || isPodcast) ? 'none' : '';
       document.getElementById('recentAlbumReplaceBtn').textContent = isPlaylist ? 'Play playlist' : (isPodcast ? 'Play newest episode' : 'Replace with album');
       document.getElementById('recentAlbumTracks').innerHTML = (recentModalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); const dt=String(t.date||'').trim(); return `<li><span>${i+1}. ${nm}${dt?`<div class='albumMeta'>${dt}</div>`:''}</span><span class='trackBtns'><button data-track-action='play' data-track-file='${f}'>▶</button><button data-track-action='add' data-track-file='${f}'>＋</button></span></li>`; }).join('') || '<li>No tracks found</li>';
-      if (IS_KIOSK_1280 && recentWrap && modalEl) {
+      if ((IS_KIOSK_1280 || document.body.classList.contains('ipad11Landscape')) && recentWrap && modalEl) {
         modalEl.style.setProperty('position', 'absolute', 'important');
         modalEl.style.setProperty('inset', '0', 'important');
         modalEl.style.removeProperty('left');
@@ -1154,21 +1385,46 @@
       });
     }
 
+    function shouldOpenInRightPane(){
+      return (IS_KIOSK_1280 && !IS_KIOSK_EDITOR) || document.body.classList.contains('ipad11Landscape');
+    }
+
+    function applyIpadPaneCompaction(){
+      try {
+        if (!document.body.classList.contains('ipad11Landscape')) return;
+        const doc = kioskPaneFrame?.contentDocument;
+        if (!doc || !doc.documentElement) return;
+        if (doc.getElementById('np-ipad-pane-compact-style')) return;
+        const st = doc.createElement('style');
+        st.id = 'np-ipad-pane-compact-style';
+        st.textContent = `
+          html,body{height:100% !important;min-height:100% !important}
+          body{padding:4px 8px 8px !important;overflow:auto !important}
+          .top{margin:0 0 4px !important}
+          h1{font-size:24px !important;line-height:1.05 !important}
+          .meta,.metaInline{margin:0 0 6px !important}
+          .grid,.artistGrid,.list,#list,#host{padding-right:8px !important}
+          .row{padding:6px 0 !important}
+        `;
+        doc.head?.appendChild(st);
+      } catch {}
+    }
+
     function openPage(page){
       const p = String(page || '').trim();
       if (!p) return;
-      if (IS_KIOSK_1280 && !IS_KIOSK_EDITOR && p.startsWith('kiosk-')) {
+      if (shouldOpenInRightPane() && p.startsWith('kiosk-')) {
         const active = document.querySelector(`.row[data-page="${p}"]`);
         if (kioskPane?.classList.contains('open') && active?.classList.contains('is-open')) {
           closeKioskPane();
           return;
         }
       }
-      if (!IS_KIOSK_1280 && p.startsWith('kiosk-')) {
+      if (!shouldOpenInRightPane() && p.startsWith('kiosk-')) {
         navigateWithSlide(p.replace(/^kiosk-/, 'controller-'));
         return;
       }
-      if (IS_KIOSK_1280 && !IS_KIOSK_EDITOR && p.startsWith('kiosk-')) {
+      if (shouldOpenInRightPane() && p.startsWith('kiosk-')) {
         const map = {
           'kiosk-now-playing.html':'controller-now-playing.html',
           'kiosk-playlists.html':'controller-playlists.html',
@@ -1187,9 +1443,13 @@
         if (kioskPaneFrame) {
           const u = new URL(target, location.href);
           u.searchParams.set('embedded', '1');
+          if (document.body.classList.contains('ipad11Landscape')) u.searchParams.set('cols', '7');
           u.searchParams.set('theme', String(profile?.theme || 'dark'));
           u.searchParams.set('colorPreset', String(profile?.colorPreset || 'ocean'));
           const setPaneSrc = (urlObj) => {
+            try {
+              kioskPaneFrame.onload = () => { applyIpadPaneCompaction(); };
+            } catch {}
             kioskPaneFrame.src = `${urlObj.pathname.replace(/^\//,'')}${urlObj.search}`;
           };
           if (p === 'kiosk-visualizer.html') {
@@ -1563,6 +1823,45 @@
       if (a.kind === 'radio') {
         recentActiveRadioUrl = String(a.url||'').trim();
         rail.querySelectorAll('.thumb.is-active-radio').forEach((el)=>el.classList.remove('is-active-radio'));
+        cell.classList.add('is-active-radio');
+        await playOrAddRadio(a.url, 'replace');
+        return;
+      }
+      if (a.kind === 'album') { await openRecentAlbumFrom(a); return; }
+    });
+
+    const ipadRecentGridEl = document.getElementById('ipadRecentGrid');
+    ipadRecentGridEl?.addEventListener('click', async (ev)=>{
+      const more = ev.target.closest('button[data-ra-more="1"][data-ra-row][data-ra-idx]');
+      if (more) {
+        ev.stopPropagation();
+        const row = String(more.getAttribute('data-ra-row') || '').trim();
+        const i = Number(more.getAttribute('data-ra-idx'));
+        const arr = Array.isArray(ipadRecentItems?.[row]) ? ipadRecentItems[row] : [];
+        const a = arr[i];
+        if (!a) return;
+        recentMenuCtx = { ...a };
+        const m = openRecentMenuFor(a);
+        const r = more.getBoundingClientRect();
+        m.style.left = `${Math.max(8,Math.round(r.left))}px`;
+        m.style.top = `${Math.round(r.bottom+6)}px`;
+        m.classList.add('open');
+        return;
+      }
+
+      const cell = ev.target.closest('[data-ra-row][data-ra-idx]');
+      if (!cell) return;
+      const row = String(cell.getAttribute('data-ra-row') || '').trim();
+      const i = Number(cell.getAttribute('data-ra-idx'));
+      const arr = Array.isArray(ipadRecentItems?.[row]) ? ipadRecentItems[row] : [];
+      const a = arr[i];
+      if (!a) return;
+
+      if (a.kind === 'playlist') { await openRecentPlaylistFrom(a); return; }
+      if (a.kind === 'podcast') { await openRecentPodcastFrom(a); return; }
+      if (a.kind === 'radio') {
+        recentActiveRadioUrl = String(a.url||'').trim();
+        ipadRecentGridEl.querySelectorAll('.thumb.is-active-radio').forEach((el)=>el.classList.remove('is-active-radio'));
         cell.classList.add('is-active-radio');
         await playOrAddRadio(a.url, 'replace');
         return;
