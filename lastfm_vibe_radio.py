@@ -437,6 +437,8 @@ def main():
     album_cache = {}
     bad_files = set()
     last_added_artist_n = ""
+    recent_album_keys = [last_album_k] if last_album_k else []
+    album_rotate_window = 3
 
     print(f"Seed: {seed_title} — {seed_artist}")
     print(f"Starting queue length: {queue_len()}  (target {args.target_queue})")
@@ -484,6 +486,8 @@ def main():
         chosen_album_k = ""
         fallback_repeat = None
         fallback_seed_artist = None
+        fallback_recent_album = None
+        fallback_same_album = None
 
         print(f"[{datetime.now().strftime('%H:%M:%S')}] pick from {len(sim)} similar", flush=True)
         for t in sim:
@@ -552,6 +556,13 @@ def main():
             cand_album_k = album_cache.get(cand, "")
 
             if last_album_k and cand_album_k and cand_album_k == last_album_k:
+                if fallback_same_album is None:
+                    fallback_same_album = (cand, method, rec_title, rec_artist, cand_album_k)
+                continue
+
+            if cand_album_k and cand_album_k in recent_album_keys:
+                if fallback_recent_album is None:
+                    fallback_recent_album = (cand, method, rec_title, rec_artist, cand_album_k)
                 continue
 
             cand_artist_n = norm(a_tag or rec_artist)
@@ -578,6 +589,24 @@ def main():
 
         if not chosen_file and fallback_repeat is not None:
             cand, method, rec_title, rec_artist, cand_album_k = fallback_repeat
+            chosen_file = cand
+            chosen_method = method
+            chosen_label = f"{rec_title} — {rec_artist}"
+            chosen_rec_artist = rec_artist
+            chosen_rec_title = rec_title
+            chosen_album_k = cand_album_k
+
+        if not chosen_file and fallback_recent_album is not None:
+            cand, method, rec_title, rec_artist, cand_album_k = fallback_recent_album
+            chosen_file = cand
+            chosen_method = method
+            chosen_label = f"{rec_title} — {rec_artist}"
+            chosen_rec_artist = rec_artist
+            chosen_rec_title = rec_title
+            chosen_album_k = cand_album_k
+
+        if not chosen_file and fallback_same_album is not None:
+            cand, method, rec_title, rec_artist, cand_album_k = fallback_same_album
             chosen_file = cand
             chosen_method = method
             chosen_label = f"{rec_title} — {rec_artist}"
@@ -668,6 +697,17 @@ def main():
             last_album_k = chosen_album_k
         elif alb2:
             last_album_k = album_key(alb2)
+
+        if last_album_k:
+            recent_album_keys = [k for k in ([last_album_k] + recent_album_keys) if k]
+            dedup = []
+            seen = set()
+            for k in recent_album_keys:
+                if k in seen:
+                    continue
+                seen.add(k)
+                dedup.append(k)
+            recent_album_keys = dedup[:album_rotate_window]
 
         last_added_artist_n = norm(a2 or chosen_rec_artist)
 
