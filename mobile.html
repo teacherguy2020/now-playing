@@ -38,7 +38,7 @@
     .dot[data-preset="black"]{background:#0a0a0a !important}
     .dot[data-preset="orange"]{background:#ff7a1a !important}
     .dot.active{outline:2px solid #fff;outline-offset:2px}
-    .previewHost{display:flex;align-items:flex-start;justify-content:center}
+    .previewHost{display:flex;align-items:flex-start;justify-content:flex-start}
     .device{background:#0a0f17;border:1px solid #29364d;border-radius:28px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
     .screen{width:390px;height:844px;border-radius:22px;overflow:hidden;border:1px solid #1f2b40;background:#000}
     iframe{width:100%;height:100%;border:0;display:block}
@@ -54,7 +54,11 @@
     <div class="card">
       <h2>Mobile Builder (v1)</h2>
       <label>Device preset</label>
-      <select id="devicePreset"><option value="iphone17" selected>iPhone 17</option></select>
+      <select id="devicePreset">
+        <option value="iphone17" selected>iPhone 17</option>
+        <option value="ipadpro11">iPad Pro 11” (Portrait)</option>
+        <option value="ipadpro11-landscape">iPad Pro 11” (Landscape)</option>
+      </select>
       <label>Primary Theme Color</label><div class="colorRow"><input id="primaryThemeColor" type="color" value="#0b111c" /></div>
       <label>Secondary Theme Color</label><div class="colorRow"><input id="secondaryThemeColor" type="color" value="#1f2a3d" /></div>
       <label>Primary Text Color</label><div class="colorRow"><input id="primaryTextColor" type="color" value="#f3f6ff" /></div>
@@ -154,6 +158,38 @@
       sel.innerHTML='<option value="">(select preset)</option>' + names.map((n)=>`<option value="${n}">${n}</option>`).join('');
     }
     function syncSwatches(){}
+    function applyDeviceChrome(p){
+      const preset=String(p?.devicePreset||'iphone17').toLowerCase();
+      const screen=document.querySelector('.screen');
+      const device=document.querySelector('.device');
+      if(!screen||!device) return;
+      if(preset==='ipadpro11'){
+        screen.style.width='834px';
+        screen.style.maxWidth='none';
+        screen.style.height='1194px';
+        screen.style.borderRadius='20px';
+        device.style.borderRadius='24px';
+        device.style.transform='scale(0.6)';
+        device.style.transformOrigin='top left';
+      } else if (preset==='ipadpro11-landscape') {
+        // Calibrated to match Safari in-field layout density for current iPad landscape target.
+        screen.style.width='1366px';
+        screen.style.maxWidth='none';
+        screen.style.height='1024px';
+        screen.style.borderRadius='20px';
+        device.style.borderRadius='24px';
+        device.style.transform='scale(0.5)';
+        device.style.transformOrigin='top left';
+      } else {
+        screen.style.width='390px';
+        screen.style.maxWidth='390px';
+        screen.style.height='844px';
+        screen.style.borderRadius='22px';
+        device.style.borderRadius='28px';
+        device.style.transform='scale(1)';
+        device.style.transformOrigin='top center';
+      }
+    }
     function ui(p){
       $('devicePreset').value=p.devicePreset;
       $('recentCount').value=String(p.recentCount||18);
@@ -164,6 +200,7 @@
       $('secondaryTextColor').value=String(c.secondaryTextColor||'#9eb3d6');
       refreshPresetList();
       syncSwatches();
+      applyDeviceChrome(p);
     }
     function collect(){
       return {
@@ -215,10 +252,10 @@
       const p=collect();
       write(p);
       await saveServerProfile(p); // avoid race with controller page loading server profile
-      const q=new URLSearchParams({profile:profileToken(p)});
+      const q=new URLSearchParams({profile:profileToken(p),devicePreset:String(p.devicePreset||'iphone17')});
       const pushed=`${location.protocol}//${location.hostname||'10.0.0.4'}:8101/controller.html?${q.toString()}`;
       if ($('pushedUrl')) $('pushedUrl').value = pushed;
-      const qp=new URLSearchParams({preview:'1',profile:profileToken(p),sw:String(Date.now())});
+      const qp=new URLSearchParams({preview:'1',profile:profileToken(p),devicePreset:String(p.devicePreset||'iphone17'),sw:String(Date.now())});
       $('controllerPreview').src='controller.html?'+qp.toString();
     }
     $('applyBtn').addEventListener('click',()=>runBtnAction($('applyBtn'), apply, {busyText:'Pushing…', doneText:'✓ Pushed'}).catch(()=>null));
@@ -313,7 +350,22 @@
       const local = read();
       const server = await loadServerProfile();
       const p = server
-        ? { ...local, ...server, recentSource: (server?.recentSource ?? local?.recentSource ?? defaults.recentSource) }
+        ? {
+            ...server,
+            ...local,
+            // keep explicitly selected local preset unless missing
+            devicePreset: (local?.devicePreset ?? server?.devicePreset ?? defaults.devicePreset),
+            recentSource: (local?.recentSource ?? server?.recentSource ?? defaults.recentSource),
+          }
+        : local;
+      write(p);
+      ui(p);
+      await apply();
+    })();
+  </script>
+</body>
+</html>
+efaults.recentSource) }
         : local;
       write(p);
       ui(p);
