@@ -126,14 +126,17 @@
     body.phone-ui #next-up{grid-area:nextup;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5600 !important;pointer-events:auto !important;opacity:1 !important;visibility:visible !important;justify-self:stretch;margin-top:-10px}
     body.phone-ui #progress-bar-wrapper{grid-area:progress;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;width:min(calc(92vw - 40px), calc(var(--artSize, 640px) - 40px)) !important;justify-self:center}
     body.phone-ui #phone-controls{grid-area:controls;display:flex !important;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5590 !important;margin-top:-7px !important;justify-self:center;width:100%;gap:6px !important}
+    #phone-controls .ctl.seek-ctl{display:none !important}
+    body.is-podcast #phone-controls .ctl.seek-ctl{display:grid !important}
     body.phone-ui #phone-controls.has-podcast-seek{gap:6px !important}
     body.phone-ui #phone-controls .ctl.seek-ctl{display:none !important}
     body.phone-ui #phone-controls .ctl.big{width:calc(var(--ctlBigFinal) * 0.97) !important;height:calc(var(--ctlBigFinal) * 0.97) !important;border-radius:16px !important}
     body.phone-ui #phone-controls #btn-play{margin-left:6px !important; margin-right:6px !important;}
     body.phone-ui #phone-controls .ctl.seek-ctl .seekLbl{font-size:13px;font-weight:700;letter-spacing:.01em;line-height:1}
+    .podSeekInline{display:none !important}
     body.phone-ui .podSeekInline{display:none;align-items:center;justify-content:center;border:1px solid rgba(255,224,130,.5);background:rgba(30,20,8,.38);color:#f8e7b0;border-radius:999px;min-width:36px;height:26px;padding:0 8px;font-size:12px;font-weight:700;line-height:1;letter-spacing:.01em;vertical-align:middle}
     body.phone-ui #btn-seek-back-inline{padding-right:12px;margin-right:8px}
-    body.phone-ui.is-podcast .podSeekInline{display:inline-flex}
+    body.phone-ui.is-podcast .podSeekInline{display:inline-flex !important}
     /* Brass-ring control treatment */
     body.phone-ui #phone-controls .ctl{
       position:relative;

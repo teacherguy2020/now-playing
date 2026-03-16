@@ -2883,11 +2883,18 @@ if (titleEl) {
       ? String(data.radioYear || data.year || '').trim()
       : String(data.year || data.radioYear || '').trim();
 
-    // Alexa mode often has date but not year; derive year from date when missing.
+    // Normalize year candidates (accept YYYY, YYYY-MM-DD, or strings containing a 4-digit year).
+    const pickYear = (v) => {
+      const s = String(v || '').trim();
+      if (!s) return '';
+      const m = s.match(/\b(19|20)\d{2}\b/);
+      return m ? m[0] : '';
+    };
+    year = pickYear(year);
+
+    // Fallbacks (radio metadata can carry year/date in different fields).
     if (!year) {
-      const d = String(data.date || '').trim();
-      const m = d.match(/^(\d{4})/);
-      if (m) year = m[1];
+      year = pickYear(data?.radioDate) || pickYear(data?.date) || pickYear(data?.displayLine3) || pickYear(album);
     }
 
     // ✅ Podcast: show episode date where album would normally go
