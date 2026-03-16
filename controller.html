@@ -25,6 +25,7 @@
     .npTap #art{transition:box-shadow .16s ease, transform .12s ease}
     .npTap.togglePulse #art{box-shadow:0 0 0 2px rgba(69,178,111,.95), 0 0 18px rgba(69,178,111,.32);transform:scale(.99)}
     .np{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center}
+    .npMeta{min-width:0}
     .artWrap{position:relative;width:64px;height:64px}
     .np img{width:64px;height:64px;border-radius:10px;object-fit:cover;display:block}
     .artSpin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(7,12,20,.36);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px)}
@@ -225,7 +226,7 @@
 
     body.ipad11.ipad11Landscape{padding-top:max(28px, env(safe-area-inset-top))}
     body.ipad11.ipad11Landscape #kioskCanvas{position:relative;grid-template-columns:minmax(320px,1fr) minmax(0,2fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:8px;max-height:calc(100dvh - 8px);box-sizing:border-box}
-    body.ipad11.ipad11Landscape .npTap{grid-area:np;max-height:338px;overflow:hidden}
+    body.ipad11.ipad11Landscape .npTap{grid-area:np;max-height:none;overflow:visible}
     /* Col1 group 1: Art + controls + text */
     body.ipad11.ipad11Landscape .npTap .card{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:10px}
     body.ipad11.ipad11Landscape .quickWrap{grid-area:quick;margin:12px 0 0 0}
@@ -239,6 +240,7 @@
     body.ipad11.ipad11Landscape .artWrap{overflow:visible}
     body.ipad11.ipad11Landscape .np > div:last-child{max-width:100%}
     body.ipad11.ipad11Landscape .npTap .title{display:none !important}
+    body.ipad11.ipad11Landscape .npMeta{width:100%;border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
     body.ipad11.ipad11Landscape #line1{font-size:30px;line-height:1.08;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
     body.ipad11.ipad11Landscape #line2{font-size:18px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
     body.ipad11.ipad11Landscape #line3{font-size:16px;line-height:1.18;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%;opacity:.95}
@@ -318,7 +320,7 @@
             </button>
           </div>
         </div>
-        <div>
+        <div class="npMeta">
           <div id="line1"></div>
           <div id="line2" class="muted"></div>
           <div id="line3" class="muted"></div>
