@@ -46,6 +46,8 @@
     .eq b:nth-child(2){animation-delay:.15s}.eq b:nth-child(3){animation-delay:.3s}
     @keyframes eq{0%,100%{height:4px}50%{height:10px}}
     .muted{color:var(--muted);font-size:12px}
+    #line2Wrap{display:block}
+    #line2Stars{display:none}
     #line3.linkable{cursor:pointer}
     #line3 .share-icon{width:.9em;height:.9em;display:inline-block;vertical-align:-.12em;margin-left:.22em;fill:currentColor;opacity:.72;pointer-events:none}
 
@@ -242,7 +244,11 @@
     body.ipad11.ipad11Landscape .npTap .title{display:none !important}
     body.ipad11.ipad11Landscape .npMeta{width:100%;border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
     body.ipad11.ipad11Landscape #line1{font-size:30px;line-height:1.08;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
+    body.ipad11.ipad11Landscape #line2Wrap{display:flex;align-items:center;gap:8px;max-width:100%}
     body.ipad11.ipad11Landscape #line2{font-size:18px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
+    body.ipad11.ipad11Landscape #line2Stars{display:inline-flex;gap:2px;align-items:center;color:#d4af37;font-size:14px;line-height:1;cursor:pointer;white-space:nowrap}
+    body.ipad11.ipad11Landscape #line2Stars .star{opacity:.3}
+    body.ipad11.ipad11Landscape #line2Stars .star.on{opacity:1}
     body.ipad11.ipad11Landscape #line3{font-size:16px;line-height:1.18;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%;opacity:.95}
     body.ipad11.ipad11Landscape .npCtrls{display:grid !important;grid-template-columns:repeat(2,66px);gap:11px;position:absolute;left:calc(100% + 12px);top:0;transform:none;padding:0 0 0 40px;background:transparent;border:0;backdrop-filter:none;-webkit-backdrop-filter:none;opacity:.98}
     body.ipad11.ipad11Landscape .npCtrls .ctl{width:66px;height:66px;min-width:66px;min-height:66px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:linear-gradient(180deg,rgba(56,66,86,.96),rgba(34,42,58,.96));box-shadow:0 6px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08)}
@@ -322,7 +328,7 @@
         </div>
         <div class="npMeta">
           <div id="line1"></div>
-          <div id="line2" class="muted"></div>
+          <div id="line2Wrap" class="muted"><span id="line2"></span><span id="line2Stars" aria-label="Track rating"></span></div>
           <div id="line3" class="muted"></div>
         </div>
       </div>
@@ -721,6 +727,22 @@
 
     let npSig='';
     let npAlbumUrl='';
+    let npRating = 0;
+    let npRatingAllowed = false;
+    const renderLine2Stars = ()=>{
+      const el = document.getElementById('line2Stars');
+      if (!el) return;
+      el.innerHTML = '';
+      if (!npRatingAllowed || !document.body.classList.contains('ipad11Landscape')) return;
+      const r = Math.max(0, Math.min(5, Number(npRating) || 0));
+      for (let i=1;i<=5;i++) {
+        const s = document.createElement('span');
+        s.className = `star${i<=r?' on':''}`;
+        s.setAttribute('data-star', String(i));
+        s.textContent = '★';
+        el.appendChild(s);
+      }
+    };
     async function refreshNowPlayingCard(){
       try {
         const r = await fetch(`${base}/now-playing`,{cache:'no-store'});
@@ -776,7 +798,14 @@
         const fallbackUrl = String(j?.shareUrl || j?.radioTrackUrl || j?.radioItunesUrl || j?.itunesUrl || '').trim();
         npAlbumUrl = hasTrack ? (appleMusicUrl || fallbackUrl) : '';
 
-        const sig = `${file}|${line1}|${line2}|${line3}|${st}|${art}|${npAlbumUrl}`;
+        const genreLc = String(j?.genre || '').toLowerCase();
+        const fileLc = String(file || '').toLowerCase();
+        const isPodcast = !!j?.isPodcast || genreLc.includes('podcast') || /\/podcasts?\//.test(fileLc);
+        const isRadio = !!j?.isRadio || String(j?.service || '').toLowerCase().includes('radio') || !!j?.radioTrackUrl;
+        npRatingAllowed = !!(hasTrack && file && !isPodcast && !isRadio);
+        npRating = Math.max(0, Math.min(5, Number(j?.rating ?? j?.currentRating ?? 0) || 0));
+
+        const sig = `${file}|${line1}|${line2}|${line3}|${st}|${art}|${npAlbumUrl}|${npRating}|${npRatingAllowed ? 1 : 0}`;
         if (sig !== npSig) {
           npSig = sig;
           const artEl = document.getElementById('art');
@@ -789,6 +818,7 @@
           }
           document.getElementById('line1').textContent = line1;
           document.getElementById('line2').textContent = line2;
+          renderLine2Stars();
           const line3El = document.getElementById('line3');
           if (line3El) {
             line3El.textContent = line3;
@@ -809,6 +839,7 @@
             line3El.style.display = line3 ? '' : 'none';
           }
         }
+        renderLine2Stars();
         const eq = document.getElementById('eqOverlay');
         if (eq) eq.style.display = (hasTrack && (st === 'play' || st === 'playing')) ? 'inline-flex' : 'none';
         const shOn = String(j?.random || '').toLowerCase() === 'on';
@@ -1675,6 +1706,7 @@
     syncQuickClear();
     const npTapEl = document.querySelector('.npTap[data-href]');
     const npLine3El = document.getElementById('line3');
+    const npLine2StarsEl = document.getElementById('line2Stars');
     const npCtrlsEl = document.getElementById('npCtrls');
     const isStandaloneWebApp = (()=>{
       try {
@@ -1699,6 +1731,33 @@
       ev.stopPropagation();
       openAlbumUrl(npAlbumUrl);
     });
+    npLine2StarsEl?.addEventListener('pointerdown', async (ev)=>{
+      const star = ev.target?.closest?.('[data-star]');
+      if (!star || !npRatingAllowed) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const n = Math.max(0, Math.min(5, Number(star.getAttribute('data-star') || 0) || 0));
+      const prev = npRating;
+      const next = (n === npRating) ? 0 : n;
+
+      // Optimistic UI update
+      npRating = next;
+      renderLine2Stars();
+
+      try {
+        const r = await fetch(`${base}/rating/current`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ rating: next })
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      } catch {
+        // Revert on failure
+        npRating = prev;
+        renderLine2Stars();
+      }
+      refreshNowPlayingCard().catch(()=>null);
+    }, { passive:false });
     npCtrlsEl?.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); }, { passive:true });
     npCtrlsEl?.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); });
     npCtrlsEl?.addEventListener('click', async (ev)=>{
@@ -1837,7 +1896,7 @@
         }
         const href = String(npTapEl.getAttribute('data-href') || '').trim();
         if (!href) return;
-        if (npAlbumUrl && !ev.target.closest('.artWrap')) {
+        if (!ev.target.closest('.artWrap')) {
           ev.preventDefault();
           return;
         }
