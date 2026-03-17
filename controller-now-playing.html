@@ -448,6 +448,17 @@
     #next-up-img.nextup-loading{opacity:.18}
     #next-up-img.nextup-loading::after{content:''}
     #next-up-img-wrap{position:relative;display:inline-flex}
+
+    /* iPhone art flip: front album art / back personnel */
+    #album-art-wrapper{perspective:1200px}
+    #album-art-wrapper .artFlipCard{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .48s cubic-bezier(.22,.78,.19,1)}
+    #album-art-wrapper.is-flipped .artFlipCard{transform:rotateY(180deg)}
+    #album-art-wrapper .artFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:inherit;overflow:hidden}
+    #album-art-wrapper .artFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#101a2d,#0c1526);border:1px solid rgba(138,177,235,.32);display:flex;align-items:center;justify-content:center;padding:16px;z-index:3}
+    #album-art-wrapper.is-flipped #album-art,
+    #album-art-wrapper.is-flipped #album-art-video,
+    #album-art-wrapper.is-flipped #album-art-bg{opacity:0 !important;visibility:hidden !important}
+    #album-art-wrapper .artBackText{font-size:15px;line-height:1.35;color:#eaf2ff;white-space:pre-line;max-height:100%;overflow:auto;text-align:left;width:100%}
     #nextUpSpin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
     #nextUpSpin[hidden]{display:none !important}
     #nextUpSpin::before{content:'';width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:nextUpSpin .8s linear infinite}
@@ -548,18 +559,25 @@
     <a id="cnpBack" href="controller.html" aria-label="Back">›</a>
     <!-- Album Art -->
     <div id="album-art-wrapper" role="group" aria-label="Album art and controls">
-      <div id="album-art-bg"></div>
+      <div class="artFlipCard" id="artFlipCard">
+        <div class="artFace artFaceFront">
+          <div id="album-art-bg"></div>
 
-      <!-- Album artwork (does NOT open modal) -->
-      <img
-        id="album-art"
-        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-        alt="Album Art"
-        draggable="false"
-      />
-      <video id="album-art-video" muted loop playsinline preload="metadata" style="display:none;"></video>
+          <!-- Album artwork (does NOT open modal) -->
+          <img
+            id="album-art"
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+            alt="Album Art"
+            draggable="false"
+          />
+          <video id="album-art-video" muted loop playsinline preload="metadata" style="display:none;"></video>
+        </div>
+        <div class="artFace artFaceBack" id="artBackFace">
+          <div id="artBackText" class="artBackText">No personnel available for this track.</div>
+        </div>
+      </div>
 
-      <!-- Personnel hotspot (ONLY this opens the modal) -->
+      <!-- Personnel hotspot flips card -->
       <button
         id="art-info-hotspot"
         class="art-hotspot"
@@ -735,6 +753,7 @@
       // Controller now-playing should always use phone portrait layout.
       try {
         const __u = (()=>{ try { return new URL(location.href); } catch { return null; } })();
+        if ((__u?.searchParams.get('iphone') || '') === '1') window.NP_DISABLE_PERSONNEL_MODAL = true;
         const __navMode = (__u?.searchParams.get('nav') || '');
         const __coverNav = __navMode === 'cover';
         const __embedded = (__u?.searchParams.get('embedded') === '1');
@@ -771,6 +790,36 @@
           document.body.classList.add('cnp-ready');
         }
 
+        const artWrap = document.getElementById('album-art-wrapper');
+        const artInfoBtn = document.getElementById('art-info-hotspot');
+        const artBackText = document.getElementById('artBackText');
+        const personnelInfo = document.getElementById('personnel-info');
+        const syncArtBackText = ()=>{
+          try {
+            const t = String(personnelInfo?.textContent || '').trim();
+            if (artBackText) artBackText.textContent = t || 'No personnel available for this track.';
+          } catch {}
+        };
+        syncArtBackText();
+        try {
+          const mo = new MutationObserver(()=>syncArtBackText());
+          if (personnelInfo) mo.observe(personnelInfo, { childList:true, characterData:true, subtree:true });
+        } catch {}
+        artInfoBtn?.addEventListener('click', (ev)=>{
+          ev.preventDefault();
+          ev.stopPropagation();
+          try { ev.stopImmediatePropagation(); } catch {}
+          if (!artWrap) return;
+          artWrap.classList.toggle('is-flipped');
+        }, true);
+        artWrap?.addEventListener('click', (ev)=>{
+          if (!artWrap.classList.contains('is-flipped')) return;
+          if (ev.target?.closest?.('#art-info-hotspot') || ev.target?.closest?.('#fav-heart')) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          artWrap.classList.remove('is-flipped');
+        });
+
         const back = document.getElementById('cnpBack');
         back?.addEventListener('click', (ev) => {
           ev.preventDefault();
@@ -797,6 +846,61 @@
 
 
   <script src="scripts/index-ui.js?v=20260310-idle-overlay1"></script>
+
+  <script>
+    // Force iPhone now-playing hotspot to flip (not modal), after index-ui listeners bind.
+    (function enforceIphoneArtFlipOverride(){
+      const wrap = document.getElementById('album-art-wrapper');
+      const oldHotspot = document.getElementById('art-info-hotspot');
+      const backText = document.getElementById('artBackText');
+      const personnelInfo = document.getElementById('personnel-info');
+      if (!wrap || !oldHotspot) return;
+
+      const hotspot = oldHotspot.cloneNode(true);
+      try { oldHotspot.replaceWith(hotspot); } catch {}
+
+      const syncBack = ()=>{
+        try {
+          const d = (typeof window.lastNowPlayingData !== 'undefined' && window.lastNowPlayingData) ? window.lastNowPlayingData : {};
+          const arr = Array.isArray(d?.personnel) ? d.personnel.map((x)=>String(x||'').trim()).filter(Boolean) : [];
+          const txt = arr.length ? arr.join('\n') : String(personnelInfo?.textContent || '').trim();
+          if (backText) backText.textContent = txt || 'No personnel available for this track.';
+
+          const personnelEnabled = (typeof window.PERSONNEL_ENABLED === 'boolean') ? window.PERSONNEL_ENABLED : true;
+          const disallowMode = Boolean(d?.isStream || d?.isAirplay || d?.isUpnp || d?.isPodcast || d?.isRadio);
+          const hasPersonnel = arr.length > 0 || txt.length > 0;
+          const showInfo = personnelEnabled && !disallowMode && hasPersonnel;
+          if (hotspot) hotspot.style.display = showInfo ? '' : 'none';
+          if (!showInfo && wrap?.classList.contains('is-flipped')) wrap.classList.remove('is-flipped');
+        } catch {}
+      };
+      syncBack();
+      try {
+        const mo = new MutationObserver(()=>syncBack());
+        if (personnelInfo) mo.observe(personnelInfo, { childList:true, characterData:true, subtree:true });
+      } catch {}
+
+      hotspot.addEventListener('click', (ev)=>{
+        ev.preventDefault();
+        ev.stopPropagation();
+        try { ev.stopImmediatePropagation(); } catch {}
+        wrap.classList.toggle('is-flipped');
+        const modal = document.getElementById('artist-details-container');
+        if (modal) {
+          modal.classList.remove('open');
+          modal.style.display = 'none';
+        }
+      }, true);
+
+      wrap.addEventListener('click', (ev)=>{
+        if (!wrap.classList.contains('is-flipped')) return;
+        if (ev.target?.closest?.('#art-info-hotspot') || ev.target?.closest?.('#fav-heart')) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        wrap.classList.remove('is-flipped');
+      });
+    })();
+  </script>
 
     <script>
     // Pull-to-refresh (controller pages)

@@ -3191,6 +3191,10 @@ if (titleEl) {
  * ========================= */
 
 function attachClickEventToAlbumArt() {
+  try {
+    const u = new URL(location.href);
+    if (u.searchParams.get('iphone') === '1' || window.NP_DISABLE_PERSONNEL_MODAL === true) return;
+  } catch {}
   const modal   = document.getElementById('artist-details-container');
   const details = document.getElementById('artist-details');
   const hotspot = document.getElementById('art-info-hotspot');
@@ -3487,15 +3491,9 @@ function attachClickEventToAlbumArt() {
 
   function detectPodcastNow() {
     try {
+      if (typeof currentIsPodcast === 'boolean') return !!currentIsPodcast;
       const d = (window.lastNowPlayingData || lastNowPlayingData || {});
-      if (d?.isPodcast === true) return true;
-      const genre = String(d?.genre || '').toLowerCase();
-      const album = String(d?.album || '').toLowerCase();
-      const artist = String(d?.artist || '').toLowerCase();
-      const title = String(d?.title || '').toLowerCase();
-      const file = String(d?.file || '').toLowerCase();
-      if (genre.includes('podcast') || album.includes('podcast') || artist.includes('podcast') || title.includes('podcast')) return true;
-      if (/\/podcasts?\//.test(file)) return true;
+      return !!inferIsPodcast(d);
     } catch {}
     return false;
   }

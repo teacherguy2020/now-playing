@@ -85,7 +85,7 @@
     </div>
     <div class="card previewHost">
       <div class="device">
-        <div class="screen"><iframe id="controllerPreview" src="controller.html?preview=1"></iframe></div>
+        <div class="screen"><iframe id="controllerPreview" src="controller-iphone.html?preview=1"></iframe></div>
       </div>
     </div>
   </div>
@@ -251,12 +251,17 @@
     async function apply(){
       const p=collect();
       write(p);
-      await saveServerProfile(p); // avoid race with controller page loading server profile
-      const q=new URLSearchParams({profile:profileToken(p),devicePreset:String(p.devicePreset||'iphone17')});
-      const pushed=`${location.protocol}//${location.hostname||'10.0.0.4'}:8101/controller.html?${q.toString()}`;
-      if ($('pushedUrl')) $('pushedUrl').value = pushed;
+
+      // Update preview immediately (don't wait on API save round-trip).
       const qp=new URLSearchParams({preview:'1',profile:profileToken(p),devicePreset:String(p.devicePreset||'iphone17'),sw:String(Date.now())});
-      $('controllerPreview').src='controller.html?'+qp.toString();
+      $('controllerPreview').src='controller-iphone.html?'+qp.toString();
+
+      const q=new URLSearchParams({profile:profileToken(p),devicePreset:String(p.devicePreset||'iphone17')});
+      const pushed=`${location.protocol}//${location.hostname||'10.0.0.4'}:8101/controller-iphone.html?${q.toString()}`;
+      if ($('pushedUrl')) $('pushedUrl').value = pushed;
+
+      // Persist server-side in background.
+      await saveServerProfile(p);
     }
     $('applyBtn').addEventListener('click',()=>runBtnAction($('applyBtn'), apply, {busyText:'Pushing…', doneText:'✓ Pushed'}).catch(()=>null));
     $('copyPushedUrlBtn')?.addEventListener('click', ()=>runBtnAction($('copyPushedUrlBtn'), async ()=>{

@@ -110,6 +110,13 @@
     .thumb.is-active-radio .thumbWrap{border-radius:14px;box-shadow:inset 0 0 0 2px #45b26f}
     .thumb.is-active-radio .cap{color:#bff2cf}
     .thumbWrap{position:relative}
+    .thumbFlip{position:relative;width:128px;height:128px;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1)}
+    .thumb.is-flipped .thumbFlip{transform:rotateY(180deg)}
+    .thumbFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;overflow:hidden}
+    .thumbFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#101a2d,#0c1526);border:1px solid rgba(138,177,235,.32);display:flex;align-items:center;justify-content:center;padding:10px}
+    .thumbFlipBtns{display:flex;flex-direction:column;gap:8px;width:68%;margin:0 auto}
+    .thumbFlipBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 8px;font-size:12px;cursor:pointer}
+    .thumb.is-flipped .thumbFaceFront .thumbMore{display:none}
     .thumb img,.ph{width:128px;height:128px;border-radius:12px;object-fit:cover;background:#0a1222}
     .ph{display:flex;align-items:center;justify-content:center}
     .miniSpin{width:16px;height:16px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:npSpin .8s linear infinite}
@@ -312,7 +319,7 @@
     <span class="grow"></span>
   </div>
   <div id="kioskCanvas">
-  <a class="npTap" data-href="controller-now-playing.html" title="Open full player">
+  <a class="npTap" data-href="controller-now-playing-iphone.html" title="Open full player">
     <div class="card">
       <div class="title">Now Playing on moOde</div>
       <div class="np">
@@ -320,7 +327,6 @@
           <div class="artFlip" id="npArtFlip">
             <div class="artFace artFaceFront">
               <img id="art" src="" alt="" />
-              <button type="button" class="artHint artHintInfo" id="npFlipInfoBtn" aria-label="Show personnel">i</button>
               <span class="artSpin" id="npArtSpin" aria-hidden="true"></span>
               <span class="eq" id="eqOverlay" aria-hidden="true"><b></b><b></b><b></b></span>
             </div>
@@ -874,20 +880,7 @@
           const line3El = document.getElementById('line3');
           if (line3El) {
             line3El.textContent = line3;
-            if (line3 && npAlbumUrl) {
-              const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-              icon.setAttribute('class', 'share-icon');
-              icon.setAttribute('viewBox', '0 0 24 24');
-              icon.setAttribute('aria-hidden', 'true');
-              icon.setAttribute('focusable', 'false');
-              const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-              path.setAttribute('d', 'M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3.27 3.27 0 000-1.39l7.02-4.11A2.99 2.99 0 0018 7.91a3 3 0 10-3-3c0 .23.03.45.08.66L8.06 9.68a3 3 0 100 4.65l7.02 4.11c-.05.2-.08.41-.08.63a3 3 0 103-3z');
-              icon.appendChild(path);
-              line3El.appendChild(icon);
-              line3El.classList.add('linkable');
-            } else {
-              line3El.classList.remove('linkable');
-            }
+            line3El.classList.add('linkable');
             line3El.style.display = line3 ? '' : 'none';
           }
         }
@@ -1039,6 +1032,21 @@
     function setRailLoading(on){
       const sp = document.getElementById('railTitleSpin');
       if (sp) sp.hidden = !on;
+    }
+
+    function recentFlipButtonsHtml(kind, idx){
+      const k = String(kind || 'album').trim().toLowerCase();
+      if (k === 'radio') {
+        return `<button type='button' data-ra-flip-act='play' data-ra-idx='${idx}'>Play</button><button type='button' data-ra-flip-act='add' data-ra-idx='${idx}'>Add</button><button type='button' data-ra-flip-act='replace' data-ra-idx='${idx}'>Replace</button>`;
+      }
+      return `<button type='button' data-ra-flip-act='open' data-ra-idx='${idx}'>Open</button><button type='button' data-ra-flip-act='play' data-ra-idx='${idx}'>Play</button><button type='button' data-ra-flip-act='shuffle' data-ra-idx='${idx}'>Shuffle</button>`;
+    }
+
+    function railThumbHtml(it, i){
+      const title = String(it?.title || it?.album || it?.playlist || '(item)').trim();
+      const art = String(it?.art || `${base}/art/current.jpg`).trim();
+      const kind = String(it?.kind || 'album').trim().toLowerCase();
+      return `<div class='thumbWrap'><div class='thumbFlip'><div class='thumbFace thumbFaceFront'><img src='${art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='thumbFace thumbFaceBack'><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button><div class='thumbFlipBtns'>${recentFlipButtonsHtml(kind, i)}</div></div></div></div><div class='cap' title='${title}'>${title}</div>`;
     }
 
     function renderIpadRail(hostId, items, rowKey, loading = false){
@@ -1245,7 +1253,7 @@
           rail.innerHTML = '';
           recentItems.forEach((it,i)=>{
             const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
-            d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            d.innerHTML = railThumbHtml(it, i);
             rail.appendChild(d);
           });
           recentRenderedSource = 'podcasts';
@@ -1259,7 +1267,7 @@
               rail.innerHTML = '';
               recentItems.forEach((it,i)=>{
                 const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
-                d.innerHTML=`<div class='thumbWrap'><img class='plRailCover' src='${it.art}' data-alt='${it.artAlt||''}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+                d.innerHTML = railThumbHtml(it, i);
                 rail.appendChild(d);
               });
             }
@@ -1296,7 +1304,7 @@
           if (recentItems.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, recentItems);
           recentItems.forEach((it,i)=>{
             const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
-            d.innerHTML=`<div class='thumbWrap'><img class='plRailCover' src='${it.art}' data-alt='${it.artAlt||''}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            d.innerHTML = railThumbHtml(it, i);
             rail.appendChild(d);
           });
           rail.querySelectorAll('img.plRailCover[data-alt]').forEach((img)=>{
@@ -1321,7 +1329,7 @@
               rail.innerHTML = '';
               recentItems.forEach((it,i)=>{
                 const d=document.createElement('div'); d.className=`thumb${(String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`; d.setAttribute('data-ra-idx', String(i));
-                d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+                d.innerHTML = railThumbHtml(it, i);
                 rail.appendChild(d);
               });
             }
@@ -1340,7 +1348,7 @@
           rail.innerHTML = '';
           recentItems.forEach((it,i)=>{
             const d=document.createElement('div'); d.className=`thumb${(String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`; d.setAttribute('data-ra-idx', String(i));
-            d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            d.innerHTML = railThumbHtml(it, i);
             rail.appendChild(d);
           });
           recentRenderedSource = 'radio';
@@ -1395,38 +1403,7 @@
           const d = document.createElement('div');
           d.className = 'thumb';
           d.setAttribute('data-ra-idx', String(i));
-
-          const wrap = document.createElement('div');
-          wrap.className = 'thumbWrap';
-
-          const img = document.createElement('img');
-          img.alt = '';
-          img.src = String(a.art || '');
-          img.onerror = function () {
-            try {
-              if (this.dataset.heal) return;
-              this.dataset.heal = '1';
-              const u = String(a.art || '');
-              this.src = `${u}${u.includes('?') ? '&' : '?'}heal=1`;
-            } catch {}
-          };
-
-          const more = document.createElement('button');
-          more.type = 'button';
-          more.className = 'thumbMore';
-          more.setAttribute('data-ra-more', '1');
-          more.setAttribute('data-ra-idx', String(i));
-          more.textContent = '•••';
-
-          const cap = document.createElement('div');
-          cap.className = 'cap';
-          cap.title = `${a.artist ? `${a.artist} — ` : ''}${a.album}`;
-          cap.textContent = String(a.album || '');
-
-          wrap.appendChild(img);
-          wrap.appendChild(more);
-          d.appendChild(wrap);
-          d.appendChild(cap);
+          d.innerHTML = railThumbHtml(a, i);
           rail.appendChild(d);
         });
         recentAlbumsRenderSig = nextSig;
@@ -1900,7 +1877,6 @@
     syncQuickClear();
     const npTapEl = document.querySelector('.npTap[data-href]');
     const npArtWrapEl = document.getElementById('npArtWrap');
-    const npFlipInfoBtnEl = document.getElementById('npFlipInfoBtn');
     const npLine3El = document.getElementById('line3');
     const npLine2StarsEl = document.getElementById('line2Stars');
     const npCtrlsEl = document.getElementById('npCtrls');
@@ -1909,23 +1885,11 @@
         return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
       } catch { return false; }
     })();
-    const openAlbumUrl = (url)=>{
-      const u = String(url || '').trim();
-      if (!u) return;
-      try {
-        if (isStandaloneWebApp) {
-          // iOS web-app mode: avoid spawning a blank browser tab before handoff.
-          location.href = u;
-        } else {
-          window.open(u, '_blank', 'noopener');
-        }
-      } catch {}
-    };
     npLine3El?.addEventListener('click', (ev)=>{
-      if (!npAlbumUrl) return;
+      const href = 'controller-now-playing-iphone.html';
       ev.preventDefault();
       ev.stopPropagation();
-      openAlbumUrl(npAlbumUrl);
+      navigateWithSlide(href);
     });
     npLine2StarsEl?.addEventListener('pointerdown', async (ev)=>{
       const star = ev.target?.closest?.('[data-star]');
@@ -1954,21 +1918,6 @@
       }
       refreshNowPlayingCard().catch(()=>null);
     }, { passive:false });
-    npFlipInfoBtnEl?.addEventListener('click', (ev)=>{
-      if (!document.body.classList.contains('ipad11Landscape')) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      setArtFlip(true);
-      wakeNpCtrls(2200);
-    });
-    npArtWrapEl?.addEventListener('click', (ev)=>{
-      if (!document.body.classList.contains('ipad11Landscape')) return;
-      if (!npArtWrapEl.classList.contains('is-flipped')) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      setArtFlip(false);
-      wakeNpCtrls(1800);
-    });
     npCtrlsEl?.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); }, { passive:true });
     npCtrlsEl?.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); });
     npCtrlsEl?.addEventListener('click', async (ev)=>{
@@ -2107,10 +2056,6 @@
         }
         const href = String(npTapEl.getAttribute('data-href') || '').trim();
         if (!href) return;
-        if (!ev.target.closest('.artWrap')) {
-          ev.preventDefault();
-          return;
-        }
         ev.preventDefault();
         navigateWithSlide(href);
       });
@@ -2192,19 +2137,57 @@
     }, { passive:true });
     rail?.addEventListener('touchcancel', ()=>{ document.body.classList.remove('rail-touch-lock'); clearRailPeek(); }, { passive:true });
 
+    const closeRecentRailFlips = ()=>{ rail?.querySelectorAll('.thumb.is-flipped').forEach((el)=>el.classList.remove('is-flipped')); };
     rail?.addEventListener('click', async (ev)=>{
+      const flipAct = ev.target.closest('button[data-ra-flip-act][data-ra-idx]');
+      if (flipAct) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const i=Number(flipAct.getAttribute('data-ra-idx'));
+        const a=recentItems[i]; if(!a) return;
+        const act=String(flipAct.getAttribute('data-ra-flip-act')||'open');
+        closeRecentRailFlips();
+        if (a.kind === 'radio') {
+          if (act === 'play' || act === 'replace') { await playOrAddRadio(a.url, 'replace'); return; }
+          if (act === 'add') { await playOrAddRadio(a.url, 'append'); return; }
+          return;
+        }
+        if (a.kind === 'playlist') {
+          if (act === 'open') { await openRecentPlaylistFrom(a); return; }
+          if (act === 'play') { await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:a.playlist,mode:'replace',play:true})}).catch(()=>null); return; }
+          if (act === 'shuffle') { const tracks = await fetchPlaylistTracks(a.playlist); const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean); for (let k=files.length-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); const t=files[k]; files[k]=files[j]; files[j]=t; } await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})}).catch(()=>null); return; }
+        }
+        if (a.kind === 'podcast') {
+          if (act === 'open') return;
+          const file = await mostRecentDownloadedPodcastFile(a.rss || '');
+          if (!file) return;
+          if (act === 'play') { await sendPlayback('playfile',{file}); return; }
+          if (act === 'shuffle') { await sendPlayback('addfile',{file}); return; }
+          return;
+        }
+        if (a.kind === 'album') {
+          if (act === 'open') { await openRecentAlbumFrom(a); return; }
+          if (act === 'play') { await sendPlayback('addalbum',{mode:'replace',album:a.album,artist:a.artist||''}); return; }
+          if (act === 'shuffle') { const tracks = await fetchAlbumTracks(a.album, a.artist); const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean); for (let k=files.length-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); const t=files[k]; files[k]=files[j]; files[j]=t; } await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})}).catch(()=>null); return; }
+        }
+        return;
+      }
+
       const more = ev.target.closest('button[data-ra-more="1"][data-ra-idx]');
       if (more) {
+        ev.preventDefault();
         ev.stopPropagation();
-        const i=Number(more.getAttribute('data-ra-idx')); const a=recentItems[i]; if(!a) return;
-        recentMenuCtx = { ...a };
-        const m=openRecentMenuFor(a);
-        const r=more.getBoundingClientRect();
-        m.style.left=`${Math.max(8,Math.round(r.left))}px`; m.style.top=`${Math.round(r.bottom+6)}px`; m.classList.add('open');
+        const cell = more.closest('.thumb');
+        if (!cell) return;
+        const was = cell.classList.contains('is-flipped');
+        closeRecentRailFlips();
+        if (!was) cell.classList.add('is-flipped');
         return;
       }
       const cell = ev.target.closest('[data-ra-idx]');
       if (!cell) return;
+      if (cell.classList.contains('is-flipped')) { closeRecentRailFlips(); return; }
+      closeRecentRailFlips();
       const i=Number(cell.getAttribute('data-ra-idx')); const a=recentItems[i]; if(!a) return;
       if (a.kind === 'playlist') { await openRecentPlaylistFrom(a); return; }
       if (a.kind === 'podcast') { await openRecentPodcastFrom(a); return; }
@@ -2344,6 +2327,7 @@
     document.addEventListener('click',(ev)=>{
       const m=document.getElementById('recentAlbumMenu');
       if (m.classList.contains('open') && !ev.target.closest('#recentAlbumMenu') && !ev.target.closest('[data-ra-more="1"]')) m.classList.remove('open');
+      if (!ev.target.closest('#recentRail .thumb')) closeRecentRailFlips();
     });
 
     document.querySelectorAll('.row[data-page]').forEach((row)=>{
