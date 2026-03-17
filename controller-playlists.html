@@ -20,11 +20,19 @@
     body.embedded .metaInline{font-size:11px;max-width:40vw}
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
     body.embedded .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+    body.embedded.embeddedWide .grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:7px}
     body.embedded .more{width:30px;height:30px;font-size:14px}
     .list{display:block}
     .item{border:0;background:transparent;color:var(--text);text-align:left;padding:0;cursor:pointer}
     .coverWrap{position:relative;display:block;width:100%}
     .item .ph,.item img{width:100%;aspect-ratio:1/1;border-radius:12px;object-fit:cover;background:#0a1222;display:block}
+    .coverFlip{position:relative;width:100%;aspect-ratio:1/1;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1)}
+    .item.is-flipped .coverFlip{transform:rotateY(180deg)}
+    .coverFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;overflow:hidden}
+    .coverFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#101a2d,#0c1526);border:1px solid rgba(138,177,235,.32);display:flex;align-items:center;justify-content:center;padding:10px}
+    .coverFlipBtns{display:flex;flex-direction:column;gap:8px;width:68%;margin:0 auto}
+    .coverFlipBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 8px;font-size:12px;cursor:pointer}
+    .item.is-flipped .coverFaceFront .coverMore{display:none}
     .coverMore{position:absolute;left:6px;top:6px;width:24px;height:24px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:12px;display:flex;align-items:center;justify-content:center;z-index:2}
     .ph{position:relative;display:flex;align-items:center;justify-content:center}
     .spin{width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite}
@@ -101,8 +109,10 @@
   </div>
 
   <script>
-    const __embedded = new URL(location.href).searchParams.get('embedded') === '1';
+    const __url = new URL(location.href);
+    const __embedded = __url.searchParams.get('embedded') === '1';
     if (__embedded) document.body.classList.add('embedded');
+    if (__embedded && __url.searchParams.get('cols') === '7') document.body.classList.add('embeddedWide');
 
     // Server-backed controller palette
     const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
@@ -268,7 +278,7 @@
         const cInner = p.cover
           ? `<img class='cover' src='${p.cover}' data-name='${encodeURIComponent(p.name)}' data-alt='${p.coverAlt||''}' alt=''>`
           : `<div class='ph'><span class='spin'></span></div>`;
-        const c = `<div class='coverWrap'>${cInner}<button type='button' class='coverMore' data-a='menu' data-name='${encodeURIComponent(p.name)}'>•••</button></div>`;
+        const c = `<div class='coverWrap'><div class='coverFlip'><div class='coverFace coverFaceFront'>${cInner}<button type='button' class='coverMore' data-a='menu' data-name='${encodeURIComponent(p.name)}'>•••</button></div><div class='coverFace coverFaceBack'><button type='button' class='coverMore' data-a='menu' data-name='${encodeURIComponent(p.name)}'>•••</button><div class='coverFlipBtns'><button type='button' data-pl-flip-act='open' data-name='${encodeURIComponent(p.name)}'>Open</button><button type='button' data-pl-flip-act='play' data-name='${encodeURIComponent(p.name)}'>Play</button><button type='button' data-pl-flip-act='shuffle' data-name='${encodeURIComponent(p.name)}'>Shuffle</button></div></div></div></div>`;
         if(state.view==='list'){
           return `<div class='row item' data-name='${encodeURIComponent(p.name)}'>${c}<div><div class='title'>${p.name}</div><div class='sub'>${p.count==null?'Loading…':(p.count+' tracks')}</div></div></div>`;
         }
@@ -365,11 +375,36 @@
     }
 
     let playlistMenuTarget = '';
+    const hostEl = document.getElementById('host');
+    const closePlaylistFlips = ()=>{ hostEl.querySelectorAll('.item.is-flipped').forEach((el)=>el.classList.remove('is-flipped')); };
 
-    document.getElementById('host').addEventListener('click',(ev)=>{
+    document.getElementById('host').addEventListener('click', async (ev)=>{
+      const flipAct = ev.target.closest('button[data-pl-flip-act][data-name]');
+      if (flipAct) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        let name=''; try{name=decodeURIComponent(String(flipAct.getAttribute('data-name')||''));}catch{name=String(flipAct.getAttribute('data-name')||'')}
+        if (!name) return;
+        const act = String(flipAct.getAttribute('data-pl-flip-act') || 'open');
+        closePlaylistFlips();
+        if (act === 'open') { await openPlaylist(name); return; }
+        modalCtx.name = name;
+        if (act === 'play') await loadPlaylist('replace', true);
+        else if (act === 'shuffle') await playPlaylistShuffled(name);
+        return;
+      }
+
       const m = ev.target.closest('button.coverMore[data-a="menu"][data-name]');
       if (m) {
+        ev.preventDefault();
         ev.stopPropagation();
+        const item = m.closest('.item[data-name]');
+        if (state.view === 'grid' && item) {
+          const was = item.classList.contains('is-flipped');
+          closePlaylistFlips();
+          if (!was) item.classList.add('is-flipped');
+          return;
+        }
         const r = m.getBoundingClientRect();
         playlistMenuTarget = decodeURIComponent(String(m.getAttribute('data-name')||''));
         const pm = document.getElementById('playlistMenu');
@@ -378,7 +413,12 @@
         pm.classList.add('open');
         return;
       }
-      const el=ev.target.closest('[data-name]'); if(!el) return; let n=''; try{n=decodeURIComponent(String(el.getAttribute('data-name')||''));}catch{n=String(el.getAttribute('data-name')||'')} if(n) openPlaylist(n);
+
+      const el=ev.target.closest('[data-name]'); if(!el) return;
+      if (el.classList.contains('item') && el.classList.contains('is-flipped')) { closePlaylistFlips(); return; }
+      closePlaylistFlips();
+      let n=''; try{n=decodeURIComponent(String(el.getAttribute('data-name')||''));}catch{n=String(el.getAttribute('data-name')||'')}
+      if(n) openPlaylist(n);
     });
     document.getElementById('plCloseBtn').addEventListener('click',()=>document.getElementById('plModal').classList.remove('open'));
     document.getElementById('plModal').addEventListener('click',(ev)=>{ if(ev.target.id==='plModal') document.getElementById('plModal').classList.remove('open'); });
@@ -426,6 +466,7 @@
       if(menu.classList.contains('open') && !(ev.target.closest('#menu')||ev.target.closest('#menuBtn'))) menu.classList.remove('open');
       const pm=document.getElementById('playlistMenu');
       if(pm.classList.contains('open') && !ev.target.closest('#playlistMenu') && !ev.target.closest('.coverMore')) pm.classList.remove('open');
+      if (!ev.target.closest('#host .item')) closePlaylistFlips();
     });
 
     let __backNavBusy=false;

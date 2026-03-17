@@ -110,6 +110,14 @@
     .thumb.is-active-radio .thumbWrap{border-radius:14px;box-shadow:inset 0 0 0 2px #45b26f}
     .thumb.is-active-radio .cap{color:#bff2cf}
     .thumbWrap{position:relative}
+    .thumbFlip{position:relative;width:128px;height:128px;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1)}
+    .thumb.is-flipped .thumbFlip{transform:rotateY(180deg)}
+    .thumbFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;overflow:hidden}
+    .thumbFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#101a2d,#0c1526);border:1px solid rgba(138,177,235,.32);display:flex;align-items:center;justify-content:center;padding:10px}
+    .thumbFaceBack .thumbMore{left:6px;right:auto;transform:none}
+    .thumb.is-flipped .thumbFaceFront .thumbMore{display:none}
+    .thumbFlipBtns{display:flex;flex-direction:column;gap:8px;width:68%;margin:0 auto}
+    .thumbFlipBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 8px;font-size:12px;cursor:pointer}
     .thumb img,.ph{width:128px;height:128px;border-radius:12px;object-fit:cover;background:#0a1222}
     .ph{display:flex;align-items:center;justify-content:center}
     .miniSpin{width:16px;height:16px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:npSpin .8s linear infinite}
@@ -170,13 +178,13 @@
     body.kiosk1280 .recentTitle{font-size:18px;margin:2px 0 8px;padding-left:5px}
     body.kiosk1280 .railModeBtn{display:none}
     body.kiosk1280 .rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 24px)/4);grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;padding:0;overflow-x:auto;overflow-y:hidden;align-content:start}
-    body.kiosk1280 .kPane, body.ipad11.ipad11Landscape .kPane{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface,#0b1324);border:1px solid var(--line,#1f2a3d);border-radius:10px;overflow:hidden;transform:translateX(108%);opacity:0;pointer-events:none;transition:transform .24s ease,opacity .2s ease}
-    body.kiosk1280 .kPane.open, body.ipad11.ipad11Landscape .kPane.open{transform:translateX(0);opacity:1;pointer-events:auto}
+    body.kiosk1280 .kPane, body.ipad11.ipad11Landscape .kPane{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;background:linear-gradient(180deg,#0e1830,#0a1224);border:1px solid rgba(104,136,190,.45);border-radius:10px;overflow:hidden;clip-path:inset(0 100% 0 0);opacity:1;pointer-events:none;transition:clip-path .30s ease}
+    body.kiosk1280 .kPane.open, body.ipad11.ipad11Landscape .kPane.open{clip-path:inset(0 0 0 0);pointer-events:auto}
     body.kiosk1280 .recentWrap.paneOpen #recentTitle,
     body.kiosk1280 .recentWrap.paneOpen #recentRail,
     body.kiosk1280 .recentWrap.paneOpen #recentPeekRail,
-    body.kiosk1280 .recentWrap.paneOpen #railModeBtn,
-    body.ipad11.ipad11Landscape .recentWrap.paneOpen #ipadRecentGrid{opacity:0;pointer-events:none;transition:opacity .12s ease}
+    body.kiosk1280 .recentWrap.paneOpen #railModeBtn{opacity:0;pointer-events:none;transition:opacity .12s ease}
+    body.ipad11.ipad11Landscape .recentWrap.paneOpen #ipadRecentGrid{opacity:1;pointer-events:none}
     body.kiosk1280 .kPaneIf,
     body.ipad11.ipad11Landscape .kPaneIf{flex:1;width:100%;height:100%;border:0;background:transparent}
     body.kiosk1280 .thumb{min-width:0;width:auto}
@@ -912,7 +920,7 @@
     const recentTitleEl=document.getElementById('recentTitle');
     const railModeBtn=document.getElementById('railModeBtn');
     const kioskPane=document.getElementById('kioskPane');
-    const kioskPaneFrame=document.getElementById('kioskPaneFrame');
+    let kioskPaneFrame=document.getElementById('kioskPaneFrame');
     if (IS_KIOSK_1280 && recentWrap) {
       const recentModalEl = document.getElementById('recentAlbumModal');
       if (recentModalEl && recentModalEl.parentElement !== recentWrap) recentWrap.appendChild(recentModalEl);
@@ -933,6 +941,9 @@
     let recentAlbumsRenderSig = '';
     let recentRenderedSource = '';
     let npCtrlsAwakeTimer = 0;
+    let paneLastSrc = '';
+    const panePrefetchFrames = new Map();
+    const panePrefetchSrcToTarget = new Map();
 
     function wakeNpCtrls(ms=3200){
       const el = document.getElementById('npCtrls');
@@ -1041,6 +1052,14 @@
       if (sp) sp.hidden = !on;
     }
 
+    function railFlipButtonsHtml(rowKey, i){
+      const row = String(rowKey || 'albums').trim().toLowerCase();
+      if (row === 'radio') {
+        return `<button type='button' data-ra-flip-act='play' data-ra-row='${row}' data-ra-idx='${i}'>Play</button><button type='button' data-ra-flip-act='add' data-ra-row='${row}' data-ra-idx='${i}'>Add</button><button type='button' data-ra-flip-act='replace' data-ra-row='${row}' data-ra-idx='${i}'>Replace</button>`;
+      }
+      return `<button type='button' data-ra-flip-act='open' data-ra-row='${row}' data-ra-idx='${i}'>Open</button><button type='button' data-ra-flip-act='play' data-ra-row='${row}' data-ra-idx='${i}'>Play</button><button type='button' data-ra-flip-act='shuffle' data-ra-row='${row}' data-ra-idx='${i}'>Shuffle</button>`;
+    }
+
     function renderIpadRail(hostId, items, rowKey, loading = false){
       const host = document.getElementById(hostId);
       if (!host) return;
@@ -1063,7 +1082,7 @@
         const art = String(it?.art || `${base}/art/current.jpg`).trim();
         d.setAttribute('data-ra-row', String(rowKey || 'albums'));
         d.setAttribute('data-ra-idx', String(i));
-        d.innerHTML = `<div class='thumbWrap'><img src='${art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-row='${String(rowKey || 'albums')}' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${title}'>${title}</div>`;
+        d.innerHTML = `<div class='thumbWrap'><div class='thumbFlip'><div class='thumbFace thumbFaceFront'><img src='${art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-row='${String(rowKey || 'albums')}' data-ra-idx='${i}'>•••</button></div><div class='thumbFace thumbFaceBack'><button type='button' class='thumbMore' data-ra-more='1' data-ra-row='${String(rowKey || 'albums')}' data-ra-idx='${i}'>•••</button><div class='thumbFlipBtns'>${railFlipButtonsHtml(rowKey, i)}</div></div></div></div><div class='cap' title='${title}'>${title}</div>`;
         host.appendChild(d);
       });
     }
@@ -1761,11 +1780,48 @@
           if (document.body.classList.contains('ipad11Landscape')) u.searchParams.set('cols', '7');
           u.searchParams.set('theme', String(profile?.theme || 'dark'));
           u.searchParams.set('colorPreset', String(profile?.colorPreset || 'ocean'));
+          if (p === 'kiosk-albums.html') u.searchParams.set('cb', String(Date.now()));
           const setPaneSrc = (urlObj) => {
             try {
               kioskPaneFrame.onload = () => { applyIpadPaneCompaction(); };
             } catch {}
-            kioskPaneFrame.src = `${urlObj.pathname.replace(/^\//,'')}${urlObj.search}`;
+            const nextPath = `${urlObj.pathname.replace(/^\//,'')}`;
+            const nextSrc = `${nextPath}${urlObj.search}`;
+            if (String(paneLastSrc || '') === String(nextSrc || '')) {
+              try { applyIpadPaneCompaction(); } catch {}
+              return;
+            }
+
+            // Reuse warmed iframe when available (true first-open speedup).
+            const prefTarget = panePrefetchSrcToTarget.get(nextSrc) || nextPath;
+            const prefFrame = prefTarget ? panePrefetchFrames.get(prefTarget) : null;
+            if (prefFrame && prefFrame !== kioskPaneFrame) {
+              try {
+                const parent = kioskPaneFrame.parentElement;
+                if (parent) {
+                  prefFrame.id = kioskPaneFrame.id;
+                  prefFrame.className = kioskPaneFrame.className;
+                  prefFrame.style.position = kioskPaneFrame.style.position || '';
+                  prefFrame.style.left = kioskPaneFrame.style.left || '';
+                  prefFrame.style.top = kioskPaneFrame.style.top || '';
+                  prefFrame.style.width = kioskPaneFrame.style.width || '';
+                  prefFrame.style.height = kioskPaneFrame.style.height || '';
+                  prefFrame.style.opacity = kioskPaneFrame.style.opacity || '';
+                  prefFrame.style.pointerEvents = kioskPaneFrame.style.pointerEvents || '';
+                  parent.replaceChild(prefFrame, kioskPaneFrame);
+                  // eslint-disable-next-line no-global-assign
+                  kioskPaneFrame = prefFrame;
+                  panePrefetchFrames.delete(prefTarget);
+                  panePrefetchSrcToTarget.delete(nextSrc);
+                  paneLastSrc = nextSrc;
+                  try { applyIpadPaneCompaction(); } catch {}
+                  return;
+                }
+              } catch {}
+            }
+
+            paneLastSrc = nextSrc;
+            kioskPaneFrame.src = nextSrc;
           };
           if (p === 'kiosk-visualizer.html') {
             const vp = String(__u.searchParams.get('vpreset') || '').trim();
@@ -2219,26 +2275,81 @@
     });
 
     const ipadRecentGridEl = document.getElementById('ipadRecentGrid');
+    const closeIpadRecentFlips = ()=>{
+      ipadRecentGridEl?.querySelectorAll('.thumb.is-flipped').forEach((el)=>el.classList.remove('is-flipped'));
+    };
     ipadRecentGridEl?.addEventListener('click', async (ev)=>{
-      const more = ev.target.closest('button[data-ra-more="1"][data-ra-row][data-ra-idx]');
-      if (more) {
+      const flipAct = ev.target.closest('button[data-ra-flip-act][data-ra-row][data-ra-idx]');
+      if (flipAct) {
+        ev.preventDefault();
         ev.stopPropagation();
-        const row = String(more.getAttribute('data-ra-row') || '').trim();
-        const i = Number(more.getAttribute('data-ra-idx'));
+        const act = String(flipAct.getAttribute('data-ra-flip-act') || 'open').trim();
+        const row = String(flipAct.getAttribute('data-ra-row') || '').trim();
+        const i = Number(flipAct.getAttribute('data-ra-idx'));
         const arr = Array.isArray(ipadRecentItems?.[row]) ? ipadRecentItems[row] : [];
         const a = arr[i];
         if (!a) return;
         recentMenuCtx = { ...a };
-        const m = openRecentMenuFor(a);
-        const r = more.getBoundingClientRect();
-        m.style.left = `${Math.max(8,Math.round(r.left))}px`;
-        m.style.top = `${Math.round(r.bottom+6)}px`;
-        m.classList.add('open');
+        closeIpadRecentFlips();
+        const kind = String(recentMenuCtx?.kind || 'album');
+        if (kind === 'podcast') {
+          if (act === 'open') return;
+          const file = await mostRecentDownloadedPodcastFile(recentMenuCtx.rss || '');
+          if (!file) return;
+          if (act === 'play') { await sendPlayback('playfile',{file}); return; }
+          if (act === 'shuffle') { await sendPlayback('addfile',{file}); return; }
+          return;
+        }
+        if (kind === 'playlist') {
+          if (act==='open') { await openRecentPlaylistFrom(recentMenuCtx); return; }
+          if (act==='play') {
+            await ensureKey();
+            await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentMenuCtx.playlist,mode:'replace',play:true})}).catch(()=>null);
+            return;
+          }
+          if (act==='shuffle') {
+            const tracks = await fetchPlaylistTracks(recentMenuCtx.playlist);
+            const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean);
+            for (let k=files.length-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); const tmp=files[k]; files[k]=files[j]; files[j]=tmp; }
+            await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})}).catch(()=>null);
+            return;
+          }
+        }
+        if (kind === 'radio') {
+          if (act==='open' || act==='play' || act==='replace') { await playOrAddRadio(recentMenuCtx.url, 'replace'); return; }
+          if (act==='shuffle' || act==='add') { await playOrAddRadio(recentMenuCtx.url, 'append'); return; }
+        }
+        if (act==='open') { await openRecentAlbumFrom(recentMenuCtx); return; }
+        if (act==='play') { await sendPlayback('addalbum',{mode:'replace',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
+        if (act==='shuffle') {
+          const tracks = await fetchAlbumTracks(recentMenuCtx.album, recentMenuCtx.artist);
+          const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean);
+          for (let k=files.length-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); const tmp=files[k]; files[k]=files[j]; files[j]=tmp; }
+          await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})}).catch(()=>null);
+          return;
+        }
+        return;
+      }
+
+      const more = ev.target.closest('button[data-ra-more="1"][data-ra-row][data-ra-idx]');
+      if (more) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const cell = more.closest('.thumb');
+        if (!cell) return;
+        const was = cell.classList.contains('is-flipped');
+        closeIpadRecentFlips();
+        if (!was) cell.classList.add('is-flipped');
         return;
       }
 
       const cell = ev.target.closest('[data-ra-row][data-ra-idx]');
       if (!cell) return;
+      if (cell.classList.contains('is-flipped')) {
+        closeIpadRecentFlips();
+        return;
+      }
+      closeIpadRecentFlips();
       const row = String(cell.getAttribute('data-ra-row') || '').trim();
       const i = Number(cell.getAttribute('data-ra-idx'));
       const arr = Array.isArray(ipadRecentItems?.[row]) ? ipadRecentItems[row] : [];
@@ -2344,6 +2455,7 @@
     document.addEventListener('click',(ev)=>{
       const m=document.getElementById('recentAlbumMenu');
       if (m.classList.contains('open') && !ev.target.closest('#recentAlbumMenu') && !ev.target.closest('[data-ra-more="1"]')) m.classList.remove('open');
+      if (!ev.target.closest('#ipadRecentGrid .thumb')) closeIpadRecentFlips();
     });
 
     document.querySelectorAll('.row[data-page]').forEach((row)=>{
@@ -2355,8 +2467,63 @@
       kioskPane?.setAttribute('aria-hidden','true');
       recentWrap?.classList.remove('paneOpen');
       setOpenNavRow('');
-      setTimeout(()=>{ try { if (kioskPaneFrame) kioskPaneFrame.src = 'about:blank'; } catch {} }, 220);
+      // Keep iframe warm; do not reset to about:blank so reopen is faster.
     };
+
+    function prewarmPaneRoute(page){
+      try {
+        if (!shouldOpenInRightPane()) return;
+        const map = {
+          'kiosk-playlists.html':'controller-playlists.html',
+          'kiosk-artists.html':'controller-artists.html',
+          'kiosk-albums.html':'controller-albums.html',
+          'kiosk-genres.html':'controller-genres.html',
+          'kiosk-podcasts.html':'controller-podcasts.html',
+          'kiosk-radio.html':'controller-radio.html',
+          'kiosk-queue.html':'controller-queue.html',
+        };
+        const target = map[String(page || '').trim()];
+        if (!target) return;
+        if (panePrefetchFrames.has(target)) return;
+
+        const u = new URL(target, location.href);
+        u.searchParams.set('embedded', '1');
+        if (document.body.classList.contains('ipad11Landscape')) u.searchParams.set('cols', '7');
+        u.searchParams.set('theme', String(profile?.theme || 'dark'));
+        u.searchParams.set('colorPreset', String(profile?.colorPreset || 'ocean'));
+        u.searchParams.set('warm', '1');
+
+        const fr = document.createElement('iframe');
+        fr.setAttribute('aria-hidden', 'true');
+        fr.tabIndex = -1;
+        fr.style.position = 'fixed';
+        fr.style.left = '-220vw';
+        fr.style.top = '0';
+        fr.style.width = '100vw';
+        fr.style.height = '100vh';
+        fr.style.border = '0';
+        fr.style.opacity = '0';
+        fr.style.pointerEvents = 'none';
+        const srcRel = `${u.pathname.replace(/^\//,'')}${u.search}`;
+        fr.src = srcRel;
+        panePrefetchFrames.set(target, fr);
+        panePrefetchSrcToTarget.set(srcRel, target);
+        document.body.appendChild(fr);
+      } catch {}
+    }
+
+    function prewarmPaneData(){
+      try {
+        const h = reqHeaders(false);
+        const jobs = [
+          fetch(`${base}/config/library-health/albums`, { cache:'force-cache', headers:h }).catch(()=>null),
+          fetch(`${base}/config/queue-wizard/playlists`, { cache:'force-cache', headers:h }).catch(()=>null),
+          fetch(`${base}/config/queue-wizard/radio-favorites`, { cache:'force-cache', headers:h }).catch(()=>null),
+          fetch(`${base}/podcasts`, { cache:'force-cache', headers:h }).catch(()=>null),
+        ];
+        Promise.allSettled(jobs).catch(()=>null);
+      } catch {}
+    }
     window.addEventListener('message', (ev)=>{
       const d = ev?.data || {};
       if (!d || typeof d !== 'object') return;
@@ -2370,6 +2537,15 @@
 
     (async ()=>{
       try { ensureNowPlayingPreload(); } catch {}
+      try {
+        setTimeout(()=>{
+          prewarmPaneData();
+          // Prioritize smaller/faster pages first so first-click feels instant.
+          ['kiosk-playlists.html','kiosk-podcasts.html','kiosk-radio.html','kiosk-artists.html','kiosk-albums.html'].forEach((p, i)=>{
+            setTimeout(()=>prewarmPaneRoute(p), i * 180);
+          });
+        }, 250);
+      } catch {}
       // Prioritize Now Playing first so banner paints immediately.
       refreshNowPlayingCard();
       setInterval(refreshNowPlayingCard, 3500);

@@ -22,9 +22,17 @@
 
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-right:26px}
     body.embedded .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding-right:16px}
+    body.embedded.embeddedWide .grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;padding-right:10px}
     body.embedded .more{width:30px;height:30px;font-size:14px}
     .album{border:0;background:transparent;color:var(--text);text-align:left;padding:0;cursor:pointer}
     .coverWrap{position:relative;display:block;width:100%}
+    .coverFlip{position:relative;width:100%;aspect-ratio:1/1;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1)}
+    .album.is-flipped .coverFlip{transform:rotateY(180deg)}
+    .coverFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;overflow:hidden}
+    .coverFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#101a2d,#0c1526);border:1px solid rgba(138,177,235,.32);display:flex;align-items:center;justify-content:center;padding:10px}
+    .coverFlipBtns{display:flex;flex-direction:column;gap:8px;width:68%;margin:0 auto}
+    .coverFlipBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 8px;font-size:12px;cursor:pointer}
+    .album.is-flipped .coverFaceFront .coverMore{display:none}
     .album img,.ph{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:#0a1222}
     .coverMore{position:absolute;left:6px;top:6px;width:24px;height:24px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:12px;display:flex;align-items:center;justify-content:center;z-index:2}
     .aTitle{font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -121,8 +129,10 @@
   </div>
 
   <script>
-    const __embedded = new URL(location.href).searchParams.get('embedded') === '1';
+    const __url = new URL(location.href);
+    const __embedded = __url.searchParams.get('embedded') === '1';
     if (__embedded) document.body.classList.add('embedded');
+    if (__embedded && __url.searchParams.get('cols') === '7') document.body.classList.add('embeddedWide');
 
     // Server-backed controller palette
     const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
@@ -298,7 +308,7 @@
         if(state.view==='list'){
           return `<div class='row' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'>${artNode}<span class='coverMore' aria-hidden='true'>•••</span></div><div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div></div>`;
         }
-        return `<button class='album' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'>${artNode}<span class='coverMore' aria-hidden='true'>•••</span></div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></button>`;
+        return `<div class='album' role='button' tabindex='0' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><div class='coverFlip'><div class='coverFace coverFaceFront'>${artNode}<button type='button' class='coverMore' data-cover-more='1'>•••</button></div><div class='coverFace coverFaceBack'><button type='button' class='coverMore' data-cover-more='1'>•••</button><div class='coverFlipBtns'><button type='button' data-cover-flip-act='open'>Open</button><button type='button' data-cover-flip-act='play'>Play</button><button type='button' data-cover-flip-act='shuffle'>Shuffle</button></div></div></div></div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div>`;
       }).join('');
       host.querySelectorAll('img.lazyCover, .coverWrap > img:not(.lazyCover)').forEach((img)=>{
         img.onerror = () => {
@@ -415,18 +425,61 @@
       if (document.getElementById('albumModal').classList.contains('open')) openAlbumModal(false);
     }
 
+    const closeAlbumFlips = ()=>{
+      host.querySelectorAll('.album.is-flipped').forEach((el)=>el.classList.remove('is-flipped'));
+    };
+    const contextFromRow = (row)=>{
+      const dec=(s)=>{try{return decodeURIComponent(String(s||''));}catch{return String(s||'');}};
+      return {
+        album: dec(row.getAttribute('data-album')),
+        artist: dec(row.getAttribute('data-artist')),
+        art: dec(row.getAttribute('data-art')),
+      };
+    };
+    const runAlbumQuickAction = async (ctx, act)=>{
+      if (!ctx?.album) return;
+      if (act === 'open') { await openAlbumFromContext(ctx); return; }
+      if (act === 'play') { try { await sendPlayback('addalbum', { mode:'replace', album: ctx.album, artist: ctx.artist }); } catch {} return; }
+      if (act === 'shuffle') {
+        try {
+          const tracks = await fetchAlbumTracks(ctx.album, ctx.artist);
+          const files = tracks.map(t => String(t?.file || '').trim()).filter(Boolean);
+          if (files.length) {
+            await ensureKey();
+            await fetch(`${base}/config/queue-wizard/apply`, { method:'POST', headers:{'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})}, body: JSON.stringify({ mode:'replace', keepNowPlaying:false, tracks:files, shuffle:true, forceRandomOff:false, fastStart:true }) }).catch(()=>null);
+          }
+        } catch {}
+      }
+    };
+
     host.addEventListener('click', async (ev)=>{
+      const flipActBtn = ev.target.closest('button[data-cover-flip-act]');
+      if (flipActBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const row = flipActBtn.closest('.album[data-album][data-artist]');
+        if (!row) return;
+        const act = String(flipActBtn.getAttribute('data-cover-flip-act') || 'open');
+        const ctx = contextFromRow(row);
+        closeAlbumFlips();
+        await runAlbumQuickAction(ctx, act);
+        return;
+      }
+
       const more = ev.target.closest('.coverMore');
       if (more) {
+        ev.preventDefault();
         ev.stopPropagation();
         const row = more.closest('[data-album][data-artist]');
         if (!row) return;
-        const dec=(s)=>{try{return decodeURIComponent(String(s||''));}catch{return String(s||'');}};
-        albumMenuCtx = {
-          album: dec(row.getAttribute('data-album')),
-          artist: dec(row.getAttribute('data-artist')),
-          art: dec(row.getAttribute('data-art')),
-        };
+        if (row.classList.contains('album')) {
+          const was = row.classList.contains('is-flipped');
+          closeAlbumFlips();
+          if (!was) row.classList.add('is-flipped');
+          return;
+        }
+        const ctx = contextFromRow(row);
+        albumMenuCtx = { ...ctx };
         const m = document.getElementById('albumItemMenu');
         const r = more.getBoundingClientRect();
         m.style.left = `${Math.max(8, Math.round(r.left))}px`;
@@ -437,12 +490,9 @@
 
       const row = ev.target.closest('[data-album][data-artist]');
       if(!row) return;
-      const dec=(s)=>{try{return decodeURIComponent(String(s||''));}catch{return String(s||'');}};
-      await openAlbumFromContext({
-        album: dec(row.getAttribute('data-album')),
-        artist: dec(row.getAttribute('data-artist')),
-        art: dec(row.getAttribute('data-art')),
-      });
+      if (row.classList.contains('album') && row.classList.contains('is-flipped')) { closeAlbumFlips(); return; }
+      closeAlbumFlips();
+      await openAlbumFromContext(contextFromRow(row));
     });
 
     document.getElementById('albumCloseBtn').addEventListener('click', closeAlbumModal);
@@ -511,6 +561,7 @@
       if(menu.classList.contains('open') && !(ev.target.closest('#albumsMenu')||ev.target.closest('#albumsMenuBtn'))) menu.classList.remove('open');
       const im = document.getElementById('albumItemMenu');
       if (im.classList.contains('open') && !(ev.target.closest('#albumItemMenu') || ev.target.closest('.coverMore'))) im.classList.remove('open');
+      if (!ev.target.closest('#albumsHost .album')) closeAlbumFlips();
     });
 
     let __backNavBusy=false;
@@ -525,6 +576,10 @@
     });
 
     loadMenuState();
+    try {
+      const qp0 = new URL(location.href).searchParams;
+      if (qp0.get('embedded') === '1') state.view = 'grid';
+    } catch {}
     syncMenuState();
 
     (async ()=>{
