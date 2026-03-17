@@ -95,7 +95,7 @@
     .peekRail{display:none;position:absolute;left:0;right:0;bottom:0;z-index:1;opacity:.55;filter:saturate(.85)}
     .recentWrap.peeking .peekRail{display:flex}
     .thumb{min-width:128px;width:128px}
-    .thumb.is-active-radio .thumbWrap{outline:2px solid #45b26f;outline-offset:2px;border-radius:14px}
+    .thumb.is-active-radio .thumbWrap{border-radius:14px;box-shadow:inset 0 0 0 2px #45b26f}
     .thumb.is-active-radio .cap{color:#bff2cf}
     .thumbWrap{position:relative}
     .thumb img,.ph{width:128px;height:128px;border-radius:12px;object-fit:cover;background:#0a1222}
@@ -392,6 +392,12 @@
     const MOBILE_DEFAULT_PROFILE={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18};
     const __u = new URL(location.href);
     const IS_PREVIEW = __u.searchParams.get('preview') === '1';
+    const Q_DEVICE_PRESET = String(__u.searchParams.get('devicePreset') || '').trim().toLowerCase();
+    const FORCE_PROFILE_SYNC = __u.searchParams.get('syncProfile') === '1';
+    const IS_PHONE_VIEW = Math.min(Number(window.innerWidth||0), Number(window.innerHeight||0)) > 0
+      ? Math.min(Number(window.innerWidth||0), Number(window.innerHeight||0)) <= 900
+      : /iphone|android/i.test(String(navigator.userAgent||''));
+    const USE_LOCAL_PROFILE_ONLY = IS_PHONE_VIEW && !FORCE_PROFILE_SYNC;
     const IS_KIOSK_1280 = (__u.searchParams.get('kiosk') === '1' || __u.searchParams.get('profile') === '1280x400' || __u.searchParams.get('layout') === '1280x400');
     const IS_KIOSK_EDITOR = IS_KIOSK_1280 && (__u.searchParams.get('edit') === '1' || __u.searchParams.get('designer') === '1');
     if (IS_KIOSK_1280) {
@@ -430,7 +436,7 @@
     }
     // Allow URL-driven overrides (kiosk designer preview/push)
     {
-      const qDevicePreset = String(__u.searchParams.get('devicePreset') || '').trim().toLowerCase();
+      const qDevicePreset = Q_DEVICE_PRESET;
       const qTheme = String(__u.searchParams.get('theme') || '').trim().toLowerCase();
       const qColor = String(__u.searchParams.get('colorPreset') || '').trim().toLowerCase();
       const qRecent = String(__u.searchParams.get('recentSource') || '').trim().toLowerCase();
@@ -450,6 +456,10 @@
           ...(qText ? { primaryTextColor: qText } : {}),
           ...(qTextSecondary ? { secondaryTextColor: qTextSecondary } : {}),
         };
+      }
+      if (USE_LOCAL_PROFILE_ONLY && !qDevicePreset) {
+        const cur = String(profile?.devicePreset || '').toLowerCase();
+        if (!cur.startsWith('iphone')) profile.devicePreset = 'iphone17';
       }
       // Persist effective profile so embedded controller subpages match theme/palette.
       try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile)); } catch {}
@@ -486,6 +496,7 @@
       try {
         localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile));
       } catch {}
+      if (USE_LOCAL_PROFILE_ONLY) return;
       try {
         await ensureKey();
         await fetch(`${base}/config/controller-profile`, {
@@ -694,7 +705,7 @@
     }
 
     async function loadServerProfile(){
-      if (IS_PREVIEW) return; // preview iframe must honor explicit profile token
+      if (IS_PREVIEW || USE_LOCAL_PROFILE_ONLY) return; // preview/phone-local mode should not pull shared profile
       try {
         const r = await fetch(`${base}/config/controller-profile`, { cache:'no-store' });
         const j = await r.json().catch(()=>({}));
