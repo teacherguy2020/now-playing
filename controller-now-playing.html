@@ -17,13 +17,20 @@
   <title>Controller Now Playing</title>
   <style>
     html,body{color:#111;height:100dvh;min-height:100dvh;overflow:hidden !important;background-color:rgba(0,0,0,.56) !important;background-image:url('http://10.0.0.233:3101/art/current_bg_640_blur.jpg') !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important;background-attachment:fixed !important;background-blend-mode:multiply !important;}
+    html.nav-enter-slide body{animation:cnpEnterFromRight .23s cubic-bezier(.2,.7,.2,1) both;will-change:transform,opacity}
+    @keyframes cnpEnterFromRight{from{transform:translateX(38px);opacity:.72}to{transform:translateX(0);opacity:1}}
     body::before{content:none !important;display:none !important}
     #content{min-height:100dvh !important;}
-    /* Background layers disabled for yellow-fill debug pass */
-    #background-a,#background-b{display:none !important;opacity:0 !important}
+    /* Keep background blur layers active */
     #content{position:relative;z-index:1}
   </style>
   <script>
+    try {
+      const __navU = new URL(location.href);
+      if (__navU.searchParams.get('nav') === 'slide') {
+        document.documentElement.classList.add('nav-enter-slide');
+      }
+    } catch {}
     // Fallbacks for embedded preview mode.
     window.addEventListener('DOMContentLoaded', () => {
       try {
@@ -121,6 +128,27 @@
     body.phone-ui #ratingRow{grid-area:stars;justify-self:center;text-align:center;width:100%;margin-top:-10px;min-height:30px;display:none !important}
     body.phone-ui.show-rating-row:not(.is-podcast) #ratingRow{display:block !important}
     body.phone-ui.is-podcast #ratingRow{display:none !important}
+
+    /* iPad landscape: show clickable stars inline after title (non-podcast only) */
+    @media (orientation: landscape) and (min-width: 900px) and (max-width: 1400px) {
+      body:not(.phone-ui) #titleLine{display:inline-flex;align-items:center}
+      body:not(.phone-ui):not(.is-podcast) #ratingRow{display:inline-flex !important;align-items:center;min-height:0;margin-left:8px;vertical-align:middle}
+      body:not(.phone-ui).is-podcast #ratingRow{display:none !important}
+    }
+
+    /* iPad portrait (still phone-ui bucket): keep stars visible inline after title */
+    @media (orientation: portrait) and (min-width: 760px) and (max-width: 1100px) {
+      body.phone-ui #titleLine{display:inline-flex;align-items:center;justify-self:center;justify-content:center}
+      body.phone-ui.show-rating-row:not(.is-podcast) #ratingRow{
+        grid-area:title;
+        display:inline-flex !important;
+        align-items:center;
+        justify-self:center;
+        min-height:0;
+        margin-left:8px;
+      }
+      body.phone-ui.is-podcast #ratingRow{display:none !important}
+    }
     body.phone-ui #album-link{grid-area:album;justify-self:center;text-align:center;width:100%;margin-top:-10px}
     body.phone-ui #file-info{grid-area:file;justify-self:center;text-align:center;width:100%;margin-top:-10px}
     body.phone-ui #next-up{grid-area:nextup;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5600 !important;pointer-events:auto !important;opacity:1 !important;visibility:visible !important;justify-self:stretch;margin-top:-10px}
@@ -339,8 +367,7 @@
     }
     #ratingStars .loading{opacity:1;color:#d4af37;display:inline-block;animation:ratingSpin 1s linear infinite;transform-origin:50% 54%}
     @keyframes ratingSpin{to{transform:rotate(360deg)}}
-    /* Remove extra dim overlays for prototype */
-    #album-art-bg{display:none !important;opacity:0 !important;background:none !important}
+    /* Keep album-art/background blur visible like index.html */
     #background-overlay,.screen-dim,.dim-layer{display:none !important;opacity:0 !important}
 
     /* Personnel panel: on phone place a bit lower so top area remains tappable to dismiss */
@@ -356,6 +383,16 @@
     body.phone-ui, body.phone-ui * { -webkit-user-select:none; user-select:none; }
     /* Album line affordance: no underline, use share glyph like radio */
     body.phone-ui #album-link { text-decoration: none; }
+    /* Ensure art affordances match index.html in controller mode */
+    body.phone-ui:not(.is-radio) #art-info-hotspot{display:flex !important}
+    body.phone-ui:not(.is-radio) #art-info-hotspot{
+      background:rgba(8,14,24,.55);
+      border:1px solid rgba(255,255,255,.24);
+      color:rgba(236,243,255,.96);
+      border-radius:999px;
+      z-index:90;
+    }
+    body.phone-ui:not(.is-radio):not(.is-airplay):not(.is-upnp):not(.is-podcast):not(.pause) #fav-heart{display:inline-flex !important}
     body.phone-ui #album-link .share-icon {
       display:inline-block !important;
       width:13px;

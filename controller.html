@@ -1588,9 +1588,13 @@
 
     function navigateWithSlide(targetUrl){
       if (!targetUrl || __navBusy) return;
+      let out = String(targetUrl || '').trim();
+      if (/controller-now-playing\.html(?:$|[?#])/i.test(out) && !/[?&]nav=slide(?:&|$)/i.test(out)) {
+        out += (out.includes('?') ? '&' : '?') + 'nav=slide';
+      }
       __navBusy = true;
       document.body.classList.add('nav-forwarding');
-      setTimeout(()=>{ location.href = targetUrl; }, 170);
+      setTimeout(()=>{ location.href = out; }, 170);
     }
 
     function setOpenNavRow(page){
