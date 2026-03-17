@@ -61,8 +61,13 @@ async function sshBashLc({ user, host, script, timeoutMs = 20000, maxBuffer = 10
 }
 
 const LIB_HEALTH_CACHE_TTL_MS = 15 * 60 * 1000;
+const LIBRARY_GENRES_CACHE_TTL_MS = 15 * 60 * 1000;
+const LIBRARY_THUMBS_CACHE_DIR =
+  String(process.env.NOW_PLAYING_THUMBS_CACHE_DIR || '').trim()
+  || path.resolve(process.cwd(), '.cache/library-thumbs');
 let libraryHealthCache = null;
 let libraryHealthJob = null;
+let libraryGenresCache = null;
 
 async function computeLibraryHealthSnapshot({ sampleLimit, scanLimit, getRatingForFile, mpdStickerGetSong }) {
   const started = Date.now();
@@ -295,6 +300,42 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
     }
   });
 
+  app.get('/config/library-health/genres', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+
+      const now = Date.now();
+      if (libraryGenresCache && (now - Number(libraryGenresCache.cachedAt || 0) < LIBRARY_GENRES_CACHE_TTL_MS)) {
+        return res.json({
+          ok: true,
+          genres: libraryGenresCache.genres,
+          cache: { hit: true, ageMs: now - Number(libraryGenresCache.cachedAt || 0), ttlMs: LIBRARY_GENRES_CACHE_TTL_MS },
+        });
+      }
+
+      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, 'list', 'genre'], { maxBuffer: 8 * 1024 * 1024 });
+      const genres = Array.from(
+        new Set(
+          String(stdout || '')
+            .split(/\r?\n/)
+            .map((x) => String(x || '').trim())
+            .filter(Boolean)
+        )
+      ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+      libraryGenresCache = { genres, cachedAt: now };
+
+      return res.json({
+        ok: true,
+        genres,
+        cache: { hit: false, ageMs: 0, ttlMs: LIBRARY_GENRES_CACHE_TTL_MS },
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.get('/config/library-health/missing-artwork', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
@@ -443,7 +484,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
       const file = String(req.query?.file || '').trim();
       if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
 
-      const cacheDir = '/tmp/now-playing/library-thumbs';
+      const cacheDir = LIBRARY_THUMBS_CACHE_DIR;
       const cacheName = Buffer.from(String(folder || '')).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 64) || 'thumb';
       const outPath = path.join(cacheDir, `${cacheName}.jpg`);
       try {

@@ -802,7 +802,11 @@
         const fileLc = String(file || '').toLowerCase();
         const isPodcast = !!j?.isPodcast || genreLc.includes('podcast') || /\/podcasts?\//.test(fileLc);
         const isRadio = !!j?.isRadio || String(j?.service || '').toLowerCase().includes('radio') || !!j?.radioTrackUrl;
-        npRatingAllowed = !!(hasTrack && file && !isPodcast && !isRadio);
+        const isAirplay = !!j?.isAirplay;
+        const isUpnp = !!j?.isUpnp;
+        const isStream = !!j?.isStream;
+        const isLocalTrack = !!(hasTrack && file && !isPodcast && !isRadio && !isAirplay && !isUpnp && !isStream);
+        npRatingAllowed = isLocalTrack;
         npRating = Math.max(0, Math.min(5, Number(j?.rating ?? j?.currentRating ?? 0) || 0));
 
         const sig = `${file}|${line1}|${line2}|${line3}|${st}|${art}|${npAlbumUrl}|${npRating}|${npRatingAllowed ? 1 : 0}`;

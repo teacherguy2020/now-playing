@@ -509,6 +509,18 @@
         const panelsWrap = hub.querySelector('#libraryOpsPanels');
 
         const panels = new Map();
+        const tabButtons = new Map();
+
+        const activateTab = (key) => {
+          tabsWrap?.querySelectorAll('button[data-op-tab]').forEach((b) => {
+            b.style.background = 'rgba(255,255,255,.06)';
+          });
+          const activeBtn = tabButtons.get(String(key || ''));
+          if (activeBtn) activeBtn.style.background = 'rgba(125,211,252,.18)';
+          panels.forEach((p, k) => {
+            p.style.display = (k === key) ? 'block' : 'none';
+          });
+        };
 
         defs.forEach((d, idx) => {
           const btn = document.createElement('button');
@@ -521,6 +533,7 @@
           btn.style.background = idx === 0 ? 'rgba(125,211,252,.18)' : 'rgba(255,255,255,.06)';
           btn.style.color = '#e7eefc';
           tabsWrap?.appendChild(btn);
+          tabButtons.set(d.key, btn);
 
           const panel = document.createElement('div');
           panel.setAttribute('data-op-panel', d.key);
@@ -534,15 +547,30 @@
             if (el) panel.appendChild(el);
           });
 
-          btn.addEventListener('click', () => {
-            tabsWrap?.querySelectorAll('button[data-op-tab]').forEach((b) => {
-              b.style.background = 'rgba(255,255,255,.06)';
-            });
-            btn.style.background = 'rgba(125,211,252,.18)';
-            panels.forEach((p, k) => {
-              p.style.display = (k === d.key) ? 'block' : 'none';
-            });
-          });
+          btn.addEventListener('click', () => activateTab(d.key));
+        });
+
+        const inspectorJumpBtn = document.createElement('button');
+        inspectorJumpBtn.type = 'button';
+        inspectorJumpBtn.textContent = 'Album Metadata Inspector';
+        inspectorJumpBtn.id = 'albumMetaInspectorJumpBtn';
+        inspectorJumpBtn.style.padding = '6px 10px';
+        inspectorJumpBtn.style.borderRadius = '10px';
+        inspectorJumpBtn.style.border = '1px solid #2a3a58';
+        inspectorJumpBtn.style.background = 'rgba(255,255,255,.06)';
+        inspectorJumpBtn.style.color = '#e7eefc';
+        tabsWrap?.appendChild(inspectorJumpBtn);
+
+        inspectorJumpBtn.addEventListener('click', () => {
+          activateTab('albums');
+          const inspector = $('albumMetaInspector');
+          if (!inspector) return;
+          inspector.open = true;
+          try {
+            inspector.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } catch {
+            inspector.scrollIntoView();
+          }
         });
       }
 
@@ -639,7 +667,7 @@
                     <td>
                       <div style="display:flex;align-items:center;gap:10px;min-width:0;">
                         ${r.resolvedThumbUrl
-                          ? `<img src="${esc(String(r.resolvedThumbUrl || ''))}" alt="" loading="lazy" decoding="async" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #334;background:#0a1222;flex:0 0 auto;" onerror="this.style.visibility='hidden';" />`
+                          ? `<img data-thumb-src="${esc(String(r.resolvedThumbUrl || ''))}" alt="" loading="lazy" decoding="async" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #334;background:#0a1222;flex:0 0 auto;" onerror="this.style.visibility='hidden';" />`
                           : `<div style="width:40px;height:40px;border-radius:6px;border:1px solid #334;background:#0a1222;flex:0 0 auto;"></div>`}
                         <div style="min-width:0;">
                           <button type="button" class="albTitleBtn" data-folder="${esc(r.folder || '')}" data-album="${esc(String(r.album || '').trim())}" data-artist="${esc(String(r.artist || '').trim())}" data-art="${esc(String(r.resolvedThumbUrl || '').trim())}" style="display:block;width:100%;padding:0;margin:0;border:0;background:transparent;color:inherit;text-align:left;font:inherit;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;">${esc(mode === 'alpha' ? `${String(r.album || '').trim() || '(unknown album)'} — ${String(r.artist || '').trim() || 'Unknown Artist'}` : (r.label || r.folder || '(unknown)'))}</button>
@@ -969,6 +997,50 @@
       const agCurrent = $('agCurrent');
       const agStatus = $('agStatus');
 
+      function normalizeGenreOptions(rows) {
+        return Array.from(new Set((Array.isArray(rows) ? rows : [])
+          .map((x) => String(x || '').trim())
+          .filter(Boolean)))
+          .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+      }
+
+      function hydrateGenreSelect(selectId, genres) {
+        const sel = $(selectId);
+        if (!sel) return;
+        const prev = String(sel.value || '').trim();
+        const html = ['<option value="">Select…</option>', ...genres.map((g) => `<option>${esc(g)}</option>`)].join('');
+        sel.innerHTML = html;
+        if (prev && genres.includes(prev)) sel.value = prev;
+      }
+
+      function hydrateAllGenreSelects(genres) {
+        hydrateGenreSelect('agGenre', genres);
+        hydrateGenreSelect('gfSourceGenre', genres);
+        hydrateGenreSelect('gfTargetGenre', genres);
+        hydrateGenreSelect('mgGenre', genres);
+      }
+
+      async function loadAllLibraryGenres() {
+        try {
+          const r = await fetch(`${apiBase}/config/library-health/genres`, { headers: { 'x-track-key': key } });
+          const jj = await r.json().catch(() => ({}));
+          if (!r.ok || !jj?.ok) throw new Error(jj?.error || `HTTP ${r.status}`);
+          const list = normalizeGenreOptions(jj.genres);
+          if (list.length) hydrateAllGenreSelects(list);
+        } catch (_) {
+          // Keep UI functional with whatever options were preloaded.
+        }
+      }
+
+      {
+        const preloadedGenres = normalizeGenreOptions([
+          ...((j.genreOptions || []).map((g) => String(g || '').trim())),
+          ...((j.genreCounts || []).map((r) => String(r?.genre || '').trim())),
+        ]);
+        hydrateAllGenreSelects(preloadedGenres);
+        loadAllLibraryGenres();
+      }
+
       async function preloadAlbumAcrossModules(folder, { preloadMeta = false, preloadArt = false, preloadGenre = false } = {}) {
         const f = String(folder || '').trim();
         if (!f) return;
@@ -1090,11 +1162,42 @@
 
       }
 
+      function initAlbumThumbLazyLoad() {
+        const host = $('allAlbumsHost');
+        if (!host) return;
+        const imgs = Array.from(host.querySelectorAll('img[data-thumb-src]'));
+        if (!imgs.length) return;
+
+        const loadImg = (img) => {
+          const src = String(img?.getAttribute('data-thumb-src') || '').trim();
+          if (!src || img.getAttribute('src')) return;
+          img.setAttribute('src', src);
+        };
+
+        if (!('IntersectionObserver' in window)) {
+          imgs.forEach(loadImg);
+          return;
+        }
+
+        const scrollRoot = host.querySelector('div[style*="overflow:auto"]') || null;
+        const io = new IntersectionObserver((entries, obs) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const img = entry.target;
+            loadImg(img);
+            obs.unobserve(img);
+          });
+        }, { root: scrollRoot, rootMargin: '220px 0px 220px 0px' });
+
+        imgs.forEach((img) => io.observe(img));
+      }
+
       function refreshAllAlbumsList() {
         const host = $('allAlbumsHost');
         const q = $('allAlbumsSearch')?.value || '';
         if (!host) return;
         host.innerHTML = renderAllAlbumsList(allAlbumsRows, q);
+        initAlbumThumbLazyLoad();
         bindAllAlbumsActions();
 
         // Sanity check: show active mode + first 3 computed sort keys.
