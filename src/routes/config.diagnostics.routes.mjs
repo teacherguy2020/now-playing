@@ -583,6 +583,26 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.json({ ok: true, action, consumeOn, randomOn, repeatOn, status: String(afterStatus || '') });
       }
 
+      if (action === 'crossfade') {
+        const secRaw = Number(req.body?.seconds);
+        const seconds = Number.isFinite(secRaw) ? Math.max(0, Math.min(10, Math.round(secRaw))) : -1;
+        if (seconds < 0) return res.status(400).json({ ok: false, error: 'seconds (0..10) is required for crossfade' });
+
+        const sshHost = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local').trim();
+        const sshUser = String(MOODE_SSH_USER || 'moode').trim();
+        const remote = `mpc crossfade ${seconds} && mpc status`;
+        const { stdout: afterStatus } = await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${sshUser}@${sshHost}`, remote], { timeout: 15000, maxBuffer: 2 * 1024 * 1024 });
+        const st = String(afterStatus || '');
+        const { stdout: cfOut } = await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${sshUser}@${sshHost}`, 'mpc crossfade'], { timeout: 12000, maxBuffer: 256 * 1024 });
+        const cfText = String(cfOut || '').trim();
+        const mCf = cfText.match(/crossfade:\s*([0-9]+(?:\.[0-9]+)?)/i);
+        const crossfadeSec = mCf ? Math.max(0, Math.min(10, Math.round(Number(mCf[1] || 0)))) : seconds;
+        const randomOn = /random:\s*on/i.test(st);
+        const repeatOn = /repeat:\s*on/i.test(st);
+        const consumeOn = /consume:\s*on/i.test(st);
+        return res.json({ ok: true, action, crossfadeSec, randomOn, repeatOn, consumeOn, status: st });
+      }
+
       if (action === 'remove') {
         const posRaw = Number(req.body?.position);
         const pos = Number.isFinite(posRaw) ? Math.max(1, Math.floor(posRaw)) : 0;
@@ -1044,10 +1064,11 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const mpdHost = String(MPD_HOST || '10.0.0.254');
       const ratingsEnabled = await isRatingsEnabled();
-      const [{ stdout: qOut }, { stdout: sOut }, { stdout: cOut }] = await Promise.all([
+      const [{ stdout: qOut }, { stdout: sOut }, { stdout: cOut }, { stdout: cfOut }] = await Promise.all([
         execFileP('mpc', ['-h', mpdHost, '-f', '%position%\t%artist%\t%title%\t%album%\t%file%\t%name%', 'playlist']),
         execFileP('mpc', ['-h', mpdHost, 'status']),
         execFileP('mpc', ['-h', mpdHost, '-f', '%artist%\t%title%', 'current']),
+        execFileP('mpc', ['-h', mpdHost, 'crossfade']),
       ]);
       const st = String(sOut || '');
       const m = st.match(/#(\d+)\/(\d+)/);
@@ -1055,6 +1076,9 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const randomOn = /random:\s*on/i.test(st);
       const repeatOn = /repeat:\s*on/i.test(st);
       const consumeOn = /consume:\s*on/i.test(st);
+      const cfText = String(cfOut || '').trim();
+      const mCf = cfText.match(/crossfade:\s*([0-9]+(?:\.[0-9]+)?)/i);
+      const crossfadeSec = mCf ? Math.max(0, Math.min(10, Math.round(Number(mCf[1] || 0)))) : 0;
       const playbackState = /\[playing\]/i.test(st)
         ? 'playing'
         : (/\[paused\]/i.test(st) ? 'paused' : 'stopped');
@@ -1165,7 +1189,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           thumbUrl,
         });
       }
-      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, consumeOn, playbackState, ratingsEnabled, items });
+      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, consumeOn, crossfadeSec, playbackState, ratingsEnabled, items });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

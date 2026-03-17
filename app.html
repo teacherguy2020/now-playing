@@ -312,6 +312,14 @@
               <span>Consume</span>
             </label>
             <button id="heroQueueRouteAlexa" class="heroQueueBtn" type="button" title="Invoke configured Alexa route webhook">Route to Alexa</button>
+            <label id="heroQueueCrossfadeWrap" class="heroQueueCheckWrap">
+              <span>Crossfade</span>
+              <select id="heroQueueCrossfade" class="heroQueueBtn" style="padding:4px 8px;min-width:80px;">
+                <option value="0">Off</option>
+                <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
+              </select>
+            </label>
           </div>
           <div id="heroQueueActionsHead" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
             <label id="heroQueueMinRatingWrap" class="heroQueueCheckWrap" style="display:none;">
@@ -1219,6 +1227,9 @@
           const j = await r.json().catch(() => ({}));
           if (consumeEl && !consumeEl.disabled) {
             try { consumeEl.checked = !!j?.consumeOn; } catch {}
+          }
+          if (crossfadeEl && !crossfadeEl.disabled) {
+            try { crossfadeEl.value = String(Math.max(0, Math.min(10, Number(j?.crossfadeSec || 0) || 0))); } catch {}
           }
           if (queueMinRatingWrapEl) {
             const ratingsVisible = !!j?.ratingsEnabled;
@@ -3940,6 +3951,7 @@
       const HERO_QUEUE_MIN_RATING_KEY = 'nowplaying.app.queueMinRating';
       const arrowKeysEl = document.getElementById('heroQueueArrowKeys');
       const consumeEl = document.getElementById('heroQueueConsume');
+      const crossfadeEl = document.getElementById('heroQueueCrossfade');
       const routeAlexaEl = document.getElementById('heroQueueRouteAlexa');
       const queueMinRatingWrapEl = document.getElementById('heroQueueMinRatingWrap');
       const queueMinRatingEl = document.getElementById('heroQueueMinRating');
@@ -3993,6 +4005,23 @@
         });
       }
 
+      if (crossfadeEl) {
+        crossfadeEl.addEventListener('change', async () => {
+          const seconds = Math.max(0, Math.min(10, Number(crossfadeEl.value || 0) || 0));
+          crossfadeEl.value = String(seconds);
+          crossfadeEl.disabled = true;
+          try {
+            const j = await sendHeroPlayback('crossfade', { seconds });
+            const got = Math.max(0, Math.min(10, Number(j?.crossfadeSec ?? seconds) || 0));
+            crossfadeEl.value = String(got);
+          } catch {
+            await syncHeroQueue().catch(() => {});
+          } finally {
+            crossfadeEl.disabled = false;
+          }
+        });
+      }
+
       if (routeAlexaEl) {
         routeAlexaEl.addEventListener('click', async () => {
           const prev = routeAlexaEl.textContent || 'Route to Alexa';
@@ -4007,6 +4036,27 @@
             routeAlexaEl.textContent = prev;
           }
         });
+      }
+
+      async function syncCrossfadeControl(){
+        if (!crossfadeEl) return;
+        try {
+          const host = location.hostname || '10.0.0.233';
+          const base = `${location.protocol}//${host}:3101`;
+          if (!runtimeTrackKey) {
+            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+            const rj = await rr.json().catch(() => ({}));
+            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+          }
+          const r = await fetch(`${base}/config/diagnostics/queue`, {
+            cache:'no-store',
+            headers: runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {},
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) return;
+          const v = Math.max(0, Math.min(10, Number(j?.crossfadeSec || 0) || 0));
+          if (!crossfadeEl.disabled) crossfadeEl.value = String(v);
+        } catch {}
       }
 
       if (queueMinRatingEl) {
@@ -4243,6 +4293,8 @@
       hydratePeppyProfileFromLastPush().catch(() => {});
       navigate(getPageFromUrl(), false);
       syncPills();
+      // Verify crossfade dropdown against live MPD state immediately on load.
+      setTimeout(() => { if (!document.hidden) syncCrossfadeControl(); }, 120);
       // Prioritize transport controls/hero paint first; queue can load just after.
       setTimeout(() => { if (!document.hidden) syncHeroQueue(); }, 650);
       setInterval(() => { if (!document.hidden) syncPills(); }, 30000);
