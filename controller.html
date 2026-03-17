@@ -291,6 +291,9 @@
       from{transform:translateX(0);opacity:1}
       to{transform:translateX(-24px);opacity:.38}
     }
+    .navCover{position:fixed;inset:0;z-index:9999;background:var(--surface,#0b111c);transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.72,.2,1);will-change:transform}
+    .navCover.open{transform:translateX(0)}
+    .navCover iframe{width:100%;height:100%;border:0;display:block;background:var(--surface,#0b111c)}
 
   </style>
   <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
@@ -1589,9 +1592,35 @@
     function navigateWithSlide(targetUrl){
       if (!targetUrl || __navBusy) return;
       let out = String(targetUrl || '').trim();
-      if (/controller-now-playing\.html(?:$|[?#])/i.test(out) && !/[?&]nav=slide(?:&|$)/i.test(out)) {
-        out += (out.includes('?') ? '&' : '?') + 'nav=slide';
+
+      const isNowPlaying = /controller-now-playing\.html(?:$|[?#])/i.test(out);
+      if (isNowPlaying) {
+        __navBusy = true;
+        const finalUrl = out + (out.includes('?') ? '&' : '?') + 'nav=cover';
+
+        const cover = document.createElement('div');
+        cover.className = 'navCover';
+        const fr = document.createElement('iframe');
+        fr.setAttribute('loading', 'eager');
+        fr.setAttribute('referrerpolicy', 'no-referrer');
+        fr.src = finalUrl;
+        cover.appendChild(fr);
+        document.body.appendChild(cover);
+
+        let launched = false;
+        const launch = ()=>{
+          if (launched) return;
+          launched = true;
+          requestAnimationFrame(()=>{
+            cover.classList.add('open');
+            setTimeout(()=>{ location.href = finalUrl; }, 290);
+          });
+        };
+        fr.addEventListener('load', launch, { once:true });
+        setTimeout(launch, 120);
+        return;
       }
+
       __navBusy = true;
       document.body.classList.add('nav-forwarding');
       setTimeout(()=>{ location.href = out; }, 170);
