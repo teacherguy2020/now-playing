@@ -27,8 +27,6 @@
     .np{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center}
     .npMeta{min-width:0}
     .artWrap{position:relative;width:64px;height:64px;perspective:1000px}
-    .npArtInfoBtn{position:absolute;left:4px;top:4px;width:20px;height:20px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(8,14,24,.62);color:#e9f1ff;display:flex;align-items:center;justify-content:center;z-index:6;cursor:pointer;padding:0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-    .npArtInfoBtn svg{width:13px;height:13px;display:block;fill:currentColor}
     .artFlip{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .48s cubic-bezier(.22,.78,.19,1)}
     .artWrap.is-flipped .artFlip{transform:rotateY(180deg)}
     .artFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:10px;overflow:hidden}
@@ -310,7 +308,7 @@
     <div class="card">
       <div class="title">Now Playing on moOde</div>
       <div class="np">
-        <div class="artWrap" id="npArtWrap" aria-label="Album art (tap to open full player)">
+        <div class="artWrap" id="npArtWrap" aria-label="Album art (tap to flip)">
           <div class="artFlip" id="npArtFlip">
             <div class="artFace artFaceFront">
               <img id="art" src="" alt="" />
@@ -324,9 +322,6 @@
               </div>
             </div>
           </div>
-          <button type="button" id="npArtInfoBtn" class="npArtInfoBtn" aria-label="Show info" title="Show info">
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M11 10h2v7h-2v-7zm0-3h2v2h-2V7zm1 15C6.935 22 3 18.065 3 13S6.935 4 12 4s9 3.935 9 9-3.935 9-9 9zm0-2c3.859 0 7-3.141 7-7s-3.141-7-7-7-7 3.141-7 7 3.141 7 7 7z"/></svg>
-          </button>
           <div class="npCtrls" id="npCtrls" aria-label="Playback controls">
             <button type="button" class="ctl" data-np-act="repeat" aria-label="Repeat" title="Repeat">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 17H7v-3l-4 4 4 4v-3h10a4 4 0 004-4v-6h-2v6a2 2 0 01-2 2zM7 7h10v3l4-4-4-4v3H7a4 4 0 00-4 4v6h2V9a2 2 0 012-2z"/></svg>
@@ -1800,7 +1795,6 @@
     syncQuickClear();
     const npTapEl = document.querySelector('.npTap[data-href]');
     const npArtWrapEl = document.getElementById('npArtWrap');
-    const npArtInfoBtnEl = document.getElementById('npArtInfoBtn');
     const npLine3El = document.getElementById('line3');
     const npLine2StarsEl = document.getElementById('line2Stars');
     const npCtrlsEl = document.getElementById('npCtrls');
@@ -1854,12 +1848,11 @@
       }
       refreshNowPlayingCard().catch(()=>null);
     }, { passive:false });
-    npArtInfoBtnEl?.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); }, { passive:true });
-    npArtInfoBtnEl?.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); });
-    npArtInfoBtnEl?.addEventListener('click', (ev)=>{
+    npArtWrapEl?.addEventListener('click', (ev)=>{
+      if (!document.body.classList.contains('ipad11Landscape')) return;
       ev.preventDefault();
       ev.stopPropagation();
-      const flipped = npArtWrapEl?.classList.contains('is-flipped');
+      const flipped = npArtWrapEl.classList.contains('is-flipped');
       setArtFlip(!flipped);
       wakeNpCtrls(2200);
     });
