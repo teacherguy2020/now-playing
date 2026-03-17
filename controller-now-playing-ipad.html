@@ -737,9 +737,8 @@
         const __u = (()=>{ try { return new URL(location.href); } catch { return null; } })();
         const __navMode = (__u?.searchParams.get('nav') || '');
         const __coverNav = __navMode === 'cover';
-        const __embedded = (__u?.searchParams.get('embedded') === '1');
         const __forcePhone = (__u?.searchParams.get('phone') === '1');
-        if (__forcePhone || !__embedded) document.body.classList.add('phone-ui');
+        if (__forcePhone) document.body.classList.add('phone-ui');
         if (!__coverNav) document.body.classList.add('cnp-hidden');
 
         // Hard runtime clamp for album art size (bypasses CSS cascade/PWA viewport quirks)
