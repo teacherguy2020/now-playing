@@ -875,6 +875,8 @@
     let recentAlbumsCache = { ts: 0, albums: [] };
     let recentAlbumsRefreshInFlight = null;
     const RECENT_ALBUMS_CACHE_KEY = 'np.recent.albums.cache.v1';
+    const RECENT_PLAYLISTS_CACHE_KEY = 'np.recent.playlists.cache.v1';
+    const RECENT_RADIO_CACHE_KEY = 'np.recent.radio.cache.v1';
     let recentAlbumPrewarmSig = '';
     let recentAlbumsRenderSig = '';
     let recentRenderedSource = '';
@@ -886,6 +888,24 @@
       el.classList.add('is-awake');
       try { clearTimeout(npCtrlsAwakeTimer); } catch {}
       npCtrlsAwakeTimer = setTimeout(()=>{ try { el.classList.remove('is-awake'); } catch {} }, Math.max(800, Number(ms)||3200));
+    }
+
+    function loadRecentCache(key){
+      try {
+        const j = JSON.parse(localStorage.getItem(key) || '{}');
+        const items = Array.isArray(j?.items) ? j.items : [];
+        const ts = Number(j?.ts || 0) || 0;
+        return { ts, items };
+      } catch {
+        return { ts: 0, items: [] };
+      }
+    }
+
+    function saveRecentCache(key, items){
+      try {
+        const rows = Array.isArray(items) ? items : [];
+        localStorage.setItem(key, JSON.stringify({ ts: Date.now(), items: rows }));
+      } catch {}
     }
 
     async function prewarmRecentAlbumThumbs(albums){
@@ -1009,8 +1029,21 @@
 
         renderIpadRail('ipadRailAlbums', [], 'albums', true);
         renderIpadRail('ipadRailPodcasts', [], 'podcasts', true);
-        renderIpadRail('ipadRailPlaylists', [], 'playlists', true);
-        renderIpadRail('ipadRailRadio', [], 'radio', true);
+
+        const cachedPlaylists = loadRecentCache(RECENT_PLAYLISTS_CACHE_KEY).items;
+        const cachedRadio = loadRecentCache(RECENT_RADIO_CACHE_KEY).items;
+        if (cachedPlaylists.length) {
+          ipadRecentItems.playlists = cachedPlaylists.slice(0, limit);
+          renderIpadRail('ipadRailPlaylists', ipadRecentItems.playlists, 'playlists', false);
+        } else {
+          renderIpadRail('ipadRailPlaylists', [], 'playlists', true);
+        }
+        if (cachedRadio.length) {
+          ipadRecentItems.radio = cachedRadio.slice(0, limit);
+          renderIpadRail('ipadRailRadio', ipadRecentItems.radio, 'radio', false);
+        } else {
+          renderIpadRail('ipadRailRadio', [], 'radio', true);
+        }
 
         const albumsRaw = await getRecentAlbumsForRail();
         const albums = albumsRaw
@@ -1048,6 +1081,7 @@
             })
           : [];
         ipadRecentItems.playlists = playlists.map((x)=>({ kind:'playlist', playlist:String(x?.title||'(playlist)').trim(), title:String(x?.title||'(playlist)').trim(), art:String(x?.art||`${base}/art/current.jpg`) }));
+        if (ipadRecentItems.playlists.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, ipadRecentItems.playlists);
         renderIpadRail('ipadRailPlaylists', ipadRecentItems.playlists, 'playlists');
         document.querySelectorAll('#ipadRailPlaylists img').forEach((img)=>{
           img.onerror = () => {
@@ -1066,6 +1100,7 @@
             })
           : [];
         ipadRecentItems.radio = radio.map((x, idx)=>({ kind:'radio', title:String(x?.title||'(station)').trim(), art:String(x?.art||`${base}/art/radio-logo.jpg`), url:String((rr.json?.favorites||[])[idx]?.file||'').trim() }));
+        if (ipadRecentItems.radio.length) saveRecentCache(RECENT_RADIO_CACHE_KEY, ipadRecentItems.radio);
         renderIpadRail('ipadRailRadio', ipadRecentItems.radio, 'radio');
       } catch {
         renderIpadRail('ipadRailAlbums', ipadRecentItems.albums || [], 'albums', false);
@@ -1165,6 +1200,19 @@
           return;
         }
         if (src === 'playlists') {
+          try {
+            const cachedPl = loadRecentCache(RECENT_PLAYLISTS_CACHE_KEY).items;
+            if (Array.isArray(cachedPl) && cachedPl.length) {
+              recentItems = cachedPl.slice(0, recentLimit());
+              rail.innerHTML = '';
+              recentItems.forEach((it,i)=>{
+                const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
+                d.innerHTML=`<div class='thumbWrap'><img class='plRailCover' src='${it.art}' data-alt='${it.artAlt||''}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+                rail.appendChild(d);
+              });
+            }
+          } catch {}
+
           const pl = await fetchJsonWithTimeout(`${base}/config/queue-wizard/playlists`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
           const names = (pl.ok && pl.json?.ok && Array.isArray(pl.json.playlists)) ? pl.json.playlists : [];
           const cleaned = names
@@ -1193,6 +1241,7 @@
               artAlt:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(safe)}.jpg`
             };
           });
+          if (recentItems.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, recentItems);
           recentItems.forEach((it,i)=>{
             const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
             d.innerHTML=`<div class='thumbWrap'><img class='plRailCover' src='${it.art}' data-alt='${it.artAlt||''}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
@@ -1213,9 +1262,8 @@
         }
 
         if (src === 'radio') {
-          const RADIO_CACHE_KEY = 'np.rail.radio.cache.v1';
           try {
-            const cached = JSON.parse(localStorage.getItem(RADIO_CACHE_KEY) || '[]');
+            const cached = loadRecentCache(RECENT_RADIO_CACHE_KEY).items;
             if (Array.isArray(cached) && cached.length) {
               recentItems = cached.slice(0, recentLimit());
               rail.innerHTML = '';
@@ -1236,9 +1284,7 @@
             const url = String(x?.file || '').trim();
             return { kind:'radio', title, url, art:`${base}/art/radio-logo.jpg?name=${encodeURIComponent(title)}` };
           });
-          if (recentItems.length) {
-            try { localStorage.setItem(RADIO_CACHE_KEY, JSON.stringify(recentItems)); } catch {}
-          }
+          if (recentItems.length) saveRecentCache(RECENT_RADIO_CACHE_KEY, recentItems);
           rail.innerHTML = '';
           recentItems.forEach((it,i)=>{
             const d=document.createElement('div'); d.className=`thumb${(String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`; d.setAttribute('data-ra-idx', String(i));
