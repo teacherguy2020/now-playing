@@ -31,6 +31,9 @@
     .artWrap.is-flipped .artFlip{transform:rotateY(180deg)}
     .artFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:10px;overflow:hidden}
     .artFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#111a2d,#0b1425);border:1px solid rgba(138,177,235,.32);display:flex;align-items:stretch}
+    .artHint{position:absolute;top:7px;right:7px;width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1;pointer-events:none;user-select:none}
+    .artHintInfo{background:rgba(9,18,32,.68);border:1px solid rgba(184,207,240,.52);color:#eaf3ff}
+    .artHintBack{background:rgba(13,28,51,.75);border:1px solid rgba(167,201,248,.56);color:#eaf3ff}
     .personnelCard{width:100%;height:100%;padding:8px 9px;display:flex;flex-direction:column;gap:5px}
     .personnelTitle{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#9fc4ff;font-weight:700;opacity:.92}
     .personnelBody{font-size:11px;line-height:1.24;color:#e7efff;overflow:auto;white-space:pre-line}
@@ -250,6 +253,7 @@
     body.ipad11.ipad11Landscape .personnelCard{padding:14px}
     body.ipad11.ipad11Landscape .personnelTitle{font-size:12px}
     body.ipad11.ipad11Landscape .personnelBody{font-size:14px;line-height:1.3}
+    body.ipad11.ipad11Landscape .artHint{top:10px;right:10px;width:28px;height:28px;font-size:15px}
     body.ipad11.ipad11Landscape .np > div:last-child{max-width:100%}
     body.ipad11.ipad11Landscape .npTap .title{display:none !important}
     body.ipad11.ipad11Landscape .npMeta{width:100%;border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
@@ -312,10 +316,12 @@
           <div class="artFlip" id="npArtFlip">
             <div class="artFace artFaceFront">
               <img id="art" src="" alt="" />
+              <span class="artHint artHintInfo" aria-hidden="true">i</span>
               <span class="artSpin" id="npArtSpin" aria-hidden="true"></span>
               <span class="eq" id="eqOverlay" aria-hidden="true"><b></b><b></b><b></b></span>
             </div>
             <div class="artFace artFaceBack" id="npArtBack">
+              <span class="artHint artHintBack" aria-hidden="true">↺</span>
               <div class="personnelCard">
                 <div class="personnelTitle">Personnel</div>
                 <div class="personnelBody" id="npPersonnelBody">No personnel available for this track.</div>
