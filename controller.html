@@ -31,7 +31,7 @@
     .artWrap.is-flipped .artFlip{transform:rotateY(180deg)}
     .artFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:10px;overflow:hidden}
     .artFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#111a2d,#0b1425);border:1px solid rgba(138,177,235,.32);display:flex;align-items:stretch}
-    .artHint{position:absolute;top:7px;right:7px;width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1;pointer-events:none;user-select:none}
+    .artHint{position:absolute;top:7px;left:7px;width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1;user-select:none;z-index:7;cursor:pointer;padding:0}
     .artHintInfo{background:rgba(9,18,32,.68);border:1px solid rgba(184,207,240,.52);color:#eaf3ff}
     .artHintBack{background:rgba(13,28,51,.75);border:1px solid rgba(167,201,248,.56);color:#eaf3ff}
     .personnelCard{width:100%;height:100%;padding:8px 9px;display:flex;flex-direction:column;gap:5px}
@@ -253,7 +253,7 @@
     body.ipad11.ipad11Landscape .personnelCard{padding:14px}
     body.ipad11.ipad11Landscape .personnelTitle{font-size:12px}
     body.ipad11.ipad11Landscape .personnelBody{font-size:14px;line-height:1.3}
-    body.ipad11.ipad11Landscape .artHint{top:10px;right:10px;width:28px;height:28px;font-size:15px}
+    body.ipad11.ipad11Landscape .artHint{top:10px;left:10px;width:28px;height:28px;font-size:15px}
     body.ipad11.ipad11Landscape .np > div:last-child{max-width:100%}
     body.ipad11.ipad11Landscape .npTap .title{display:none !important}
     body.ipad11.ipad11Landscape .npMeta{width:100%;border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
@@ -316,12 +316,12 @@
           <div class="artFlip" id="npArtFlip">
             <div class="artFace artFaceFront">
               <img id="art" src="" alt="" />
-              <span class="artHint artHintInfo" aria-hidden="true">i</span>
+              <button type="button" class="artHint artHintInfo" id="npFlipInfoBtn" aria-label="Show personnel">i</button>
               <span class="artSpin" id="npArtSpin" aria-hidden="true"></span>
               <span class="eq" id="eqOverlay" aria-hidden="true"><b></b><b></b><b></b></span>
             </div>
             <div class="artFace artFaceBack" id="npArtBack">
-              <span class="artHint artHintBack" aria-hidden="true">↺</span>
+              <button type="button" class="artHint artHintBack" id="npFlipBackBtn" aria-label="Show album art">↺</button>
               <div class="personnelCard">
                 <div class="personnelTitle">Personnel</div>
                 <div class="personnelBody" id="npPersonnelBody">No personnel available for this track.</div>
@@ -1801,6 +1801,8 @@
     syncQuickClear();
     const npTapEl = document.querySelector('.npTap[data-href]');
     const npArtWrapEl = document.getElementById('npArtWrap');
+    const npFlipInfoBtnEl = document.getElementById('npFlipInfoBtn');
+    const npFlipBackBtnEl = document.getElementById('npFlipBackBtn');
     const npLine3El = document.getElementById('line3');
     const npLine2StarsEl = document.getElementById('line2Stars');
     const npCtrlsEl = document.getElementById('npCtrls');
@@ -1854,12 +1856,18 @@
       }
       refreshNowPlayingCard().catch(()=>null);
     }, { passive:false });
-    npArtWrapEl?.addEventListener('click', (ev)=>{
+    npFlipInfoBtnEl?.addEventListener('click', (ev)=>{
       if (!document.body.classList.contains('ipad11Landscape')) return;
       ev.preventDefault();
       ev.stopPropagation();
-      const flipped = npArtWrapEl.classList.contains('is-flipped');
-      setArtFlip(!flipped);
+      setArtFlip(true);
+      wakeNpCtrls(2200);
+    });
+    npFlipBackBtnEl?.addEventListener('click', (ev)=>{
+      if (!document.body.classList.contains('ipad11Landscape')) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      setArtFlip(false);
       wakeNpCtrls(2200);
     });
     npCtrlsEl?.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); }, { passive:true });
@@ -2001,10 +2009,6 @@
         const href = String(npTapEl.getAttribute('data-href') || '').trim();
         if (!href) return;
         if (!ev.target.closest('.artWrap')) {
-          ev.preventDefault();
-          return;
-        }
-        if (document.body.classList.contains('ipad11Landscape')) {
           ev.preventDefault();
           return;
         }
