@@ -60,7 +60,7 @@
     .muted{color:var(--muted);font-size:12px}
     #line2Wrap{display:block}
     #line2Stars{display:none}
-    #line3.linkable{cursor:pointer}
+    #line1.linkable,#line3.linkable{cursor:pointer}
     #line3 .share-icon{width:.9em;height:.9em;display:inline-block;vertical-align:-.12em;margin-left:.22em;fill:currentColor;opacity:.72;pointer-events:none}
 
     .quickWrap{position:relative;margin:0 0 10px}
@@ -153,6 +153,20 @@
     .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
     .modalX:active{transform:scale(.96)}
+    .artistAlbumsGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px}
+    .artistAlbCard{position:relative;perspective:1200px}
+    .artistAlbFlip{position:relative;transform-style:preserve-3d;transition:transform .28s ease}
+    .artistAlbCard.is-flipped .artistAlbFlip{transform:rotateY(180deg)}
+    .artistAlbFace{backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid #2a3a58;background:rgba(19,32,56,.45);border-radius:10px;padding:8px;color:#e6efff}
+    .artistAlbFront{cursor:pointer}
+    .artistAlbFront img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#0a1222;display:block}
+    .artistAlbFront .nm{font-size:12px;color:#dbe6ff;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .artistAlbBack{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:8px;transform:rotateY(180deg);background:rgba(10,18,34,.96)}
+    .artistAlbBack .nm{font-size:12px;color:#dbe6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+    .artistAlbBack button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:8px;padding:7px 8px;font-size:12px;cursor:pointer}
+    .artistAlbBack button.loading{opacity:.9;pointer-events:none}
+    .artistAlbBack button.done{border-color:#3fbf7f;background:#103124;color:#c8ffe0}
+    .inlineSpin{display:inline-block;width:13px;height:13px;border-radius:999px;border:2px solid rgba(255,255,255,.25);border-top-color:#9fc4ff;animation:npSpin .8s linear infinite;vertical-align:-2px;margin-left:6px}
 
     body.nav-forwarding{
       overflow:hidden;
@@ -431,6 +445,14 @@
         
       </div>
       <ul class="albumTracks" id="recentAlbumTracks"></ul>
+    </div>
+  </div>
+
+  <div class="albumModal" id="recentArtistModal" aria-hidden="true">
+    <div class="albumCard" role="dialog" aria-modal="true" aria-label="Artist albums">
+      <button id="recentArtistCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
+      <div class="albumHead"><img id="recentArtistArt" src="" alt="" /><div><div class="albumTitle" id="recentArtistTitle">Artist</div><div class="albumMeta" id="recentArtistMeta">Albums</div></div></div>
+      <div class="artistAlbumsGrid" id="recentArtistAlbumsGrid"></div>
     </div>
   </div>
 
@@ -783,6 +805,12 @@
     let npRating = 0;
     let npRatingAllowed = false;
     let npPersonnelText = '';
+    let npSeekEnabled = false;
+    let npCurrentAlbum = '';
+    let npCurrentArtist = '';
+    let npCurrentArt = '';
+    let npCurrentIsPodcast = false;
+    let npCurrentIsRadio = false;
     const setArtFlip = (flipped = false)=>{
       const wrap = document.getElementById('npArtWrap');
       if (!wrap) return;
@@ -871,6 +899,11 @@
         const isAirplay = !!j?.isAirplay;
         const isUpnp = !!j?.isUpnp;
         const isStream = !!j?.isStream;
+        npCurrentAlbum = String(album || '').trim();
+        npCurrentArtist = String(artist || '').trim();
+        npCurrentArt = String(art || '').trim();
+        npCurrentIsPodcast = !!isPodcast;
+        npCurrentIsRadio = !!isRadio;
         const isLocalTrack = !!(hasTrack && file && !isPodcast && !isRadio && !isAirplay && !isUpnp && !isStream);
         npRatingAllowed = isLocalTrack;
         npRating = Math.max(0, Math.min(5, Number(j?.rating ?? j?.currentRating ?? 0) || 0));
@@ -892,7 +925,11 @@
             artEl.onerror = ()=>{ if (spinEl) spinEl.hidden = true; artEl.src = '/icons/icon-192.png'; };
             artEl.src = art;
           }
-          document.getElementById('line1').textContent = line1;
+          const line1El = document.getElementById('line1');
+          if (line1El) {
+            line1El.textContent = line1;
+            line1El.classList.toggle('linkable', !!npCurrentArtist && !npCurrentIsPodcast && !npCurrentIsRadio);
+          }
           document.getElementById('line2').textContent = line2;
           renderLine2Stars();
           const line3El = document.getElementById('line3');
@@ -924,11 +961,16 @@
         if (progressWrap && progressFill) {
           const elapsed = Number(j?.elapsed ?? j?.elapsedSec ?? 0);
           const duration = Number(j?.duration ?? j?.durationSec ?? 0);
-          const isSeekable = hasTrack && !isPodcast && !isRadio && !isAirplay && !isUpnp && !isStream && Number.isFinite(duration) && duration > 0;
-          const pct = isSeekable ? Math.max(0, Math.min(100, (elapsed / duration) * 100)) : 0;
-          const renderPct = (isSeekable && pct > 0 && pct < 1.2) ? 1.2 : pct;
+          // Show visual progress whenever timing metadata exists (including podcasts).
+          const hasTimedProgress = hasTrack && Number.isFinite(duration) && duration > 0;
+          npSeekEnabled = !!hasTimedProgress;
+          const pct = hasTimedProgress ? Math.max(0, Math.min(100, (elapsed / duration) * 100)) : 0;
+          const renderPct = (hasTimedProgress && pct > 0 && pct < 1.2) ? 1.2 : pct;
           progressFill.style.width = `${renderPct}%`;
-          progressFill.style.opacity = isSeekable ? '0.98' : '0.20';
+          progressFill.style.opacity = hasTimedProgress ? '0.98' : '0.20';
+          progressWrap.setAttribute('data-seekable', hasTimedProgress ? '1' : '0');
+        } else {
+          npSeekEnabled = false;
         }
         const shOn = String(j?.random || '').toLowerCase() === 'on';
         const rpOn = String(j?.repeat || '').toLowerCase() === 'on';
@@ -1563,6 +1605,66 @@
       try { recentModalCtx.tracks = await fetchPlaylistTracks(recentModalCtx.playlist); } catch { recentModalCtx.tracks = []; }
       if (document.getElementById('recentAlbumModal').classList.contains('open')) openRecentAlbumModal();
     }
+    async function fetchArtistAlbumsByName(artist){
+      await ensureKey();
+      const q = new URLSearchParams({ artist: String(artist || '').trim() });
+      const r = await fetch(`${base}/config/diagnostics/artist-albums?${q.toString()}`, { cache:'no-store', headers:reqHeaders(false) });
+      const j = await r.json().catch(()=>({}));
+      return (r.ok && j?.ok && Array.isArray(j.albums)) ? j.albums : [];
+    }
+
+    function closeRecentArtistModal(){
+      const m = document.getElementById('recentArtistModal');
+      m?.classList.remove('open');
+    }
+
+    async function openRecentArtistFrom(ctx){
+      const artist = String(ctx?.artist || '').trim();
+      if (!artist) return;
+      const art = String(ctx?.art || `${base}/art/current.jpg`).trim();
+      const modal = document.getElementById('recentArtistModal');
+      const grid = document.getElementById('recentArtistAlbumsGrid');
+      const artEl = document.getElementById('recentArtistArt');
+      const titleEl = document.getElementById('recentArtistTitle');
+      const metaEl = document.getElementById('recentArtistMeta');
+      if (!modal || !grid || !artEl || !titleEl || !metaEl) return;
+
+      titleEl.textContent = artist;
+      metaEl.innerHTML = 'Loading albums… <span class="inlineSpin" aria-hidden="true"></span>';
+      artEl.src = art;
+      grid.innerHTML = '<div class="albumMeta">Loading… <span class="inlineSpin" aria-hidden="true"></span></div>';
+      modal.classList.add('open');
+
+      try {
+        const albums = await fetchArtistAlbumsByName(artist);
+        metaEl.textContent = `${albums.length} album(s)`;
+        grid.innerHTML = albums.map((a)=>{
+          const alb = String(a?.album || '').trim();
+          const sample = String(a?.sampleFile || '').trim();
+          const cover = sample ? `${base}/art/track_640.jpg?file=${encodeURIComponent(sample)}` : art;
+          const da = encodeURIComponent(alb);
+          const dr = encodeURIComponent(artist);
+          const dt = encodeURIComponent(cover);
+          return `<div class='artistAlbCard' data-album='${da}' data-artist='${dr}' data-art='${dt}'>
+            <div class='artistAlbFlip'>
+              <div class='artistAlbFace artistAlbFront' data-flip='1'>
+                <img src='${cover}' alt=''>
+                <div class='nm'>${alb || '(unknown album)'}</div>
+              </div>
+              <div class='artistAlbFace artistAlbBack'>
+                <div class='nm'>${alb || '(unknown album)'}</div>
+                <button type='button' data-artist-act='open'>Open</button>
+                <button type='button' data-artist-act='replace'>Replace</button>
+                <button type='button' data-artist-act='append'>Append</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('') || '<div class="albumMeta">No albums found</div>';
+      } catch {
+        metaEl.textContent = 'Unable to load albums';
+        grid.innerHTML = '<div class="albumMeta">Unable to load albums</div>';
+      }
+    }
     async function openRecentPodcastFrom(ctx){
       recentModalCtx = { kind:'podcast', album:'', artist:'', art:ctx.art||'', playlist:'', title:ctx.title||'(podcast)', rss:ctx.rss||'', tracks:[] };
       openRecentAlbumModal();
@@ -1988,6 +2090,8 @@
     const npLine3El = document.getElementById('line3');
     const npLine2StarsEl = document.getElementById('line2Stars');
     const npCtrlsEl = document.getElementById('npCtrls');
+    const npProgressEl = document.getElementById('npProgress');
+    const npProgressFillEl = document.getElementById('npProgressFill');
     const isStandaloneWebApp = (()=>{
       try {
         return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
@@ -2005,12 +2109,72 @@
         }
       } catch {}
     };
-    npLine3El?.addEventListener('click', (ev)=>{
-      if (!npAlbumUrl) return;
+    const npLine1El = document.getElementById('line1');
+    npLine1El?.addEventListener('click', async (ev)=>{
+      if (!npCurrentArtist || npCurrentIsPodcast || npCurrentIsRadio) return;
       ev.preventDefault();
       ev.stopPropagation();
-      openAlbumUrl(npAlbumUrl);
+      try { await openRecentArtistFrom({ artist: npCurrentArtist, art: npCurrentArt }); } catch {}
     });
+
+    npLine3El?.addEventListener('click', async (ev)=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      // Prefer in-app album modal (column 2) for local/library albums.
+      if (npCurrentAlbum && !npCurrentIsPodcast && !npCurrentIsRadio) {
+        try {
+          await openRecentAlbumFrom({ album: npCurrentAlbum, artist: npCurrentArtist, art: npCurrentArt });
+          return;
+        } catch {}
+      }
+      // Fallback to external album URL when modal context is not available.
+      if (npAlbumUrl) openAlbumUrl(npAlbumUrl);
+    });
+    let npSeeking = false;
+    let npSeekPct = 0;
+    const calcNpSeekPct = (clientX)=>{
+      const bar = npProgressEl;
+      if (!bar) return null;
+      const rect = bar.getBoundingClientRect();
+      if (!rect.width) return null;
+      const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+      return Math.max(0, Math.min(100, (x / rect.width) * 100));
+    };
+    const paintNpSeekPct = (pct)=>{
+      if (!npProgressFillEl) return;
+      npProgressFillEl.style.width = `${Math.max(0, Math.min(100, Number(pct) || 0))}%`;
+      npProgressFillEl.style.opacity = '0.98';
+    };
+
+    npProgressEl?.addEventListener('pointerdown', (ev)=>{
+      if (!npSeekEnabled) return;
+      const pct = calcNpSeekPct(ev.clientX);
+      if (pct == null) return;
+      npSeeking = true;
+      npSeekPct = pct;
+      paintNpSeekPct(pct);
+      try { npProgressEl.setPointerCapture(ev.pointerId); } catch {}
+      try { ev.preventDefault(); } catch {}
+      ev.stopPropagation();
+    }, { passive:false });
+
+    window.addEventListener('pointermove', (ev)=>{
+      if (!npSeeking) return;
+      const pct = calcNpSeekPct(ev.clientX);
+      if (pct == null) return;
+      npSeekPct = pct;
+      paintNpSeekPct(pct);
+    }, { passive:true });
+
+    window.addEventListener('pointerup', async ()=>{
+      if (!npSeeking) return;
+      npSeeking = false;
+      const pct = Math.max(0, Math.min(100, Number(npSeekPct) || 0));
+      if (!npSeekEnabled) return;
+      try { await sendPlayback('seekpct', { percent: pct }); } catch {}
+      refreshNowPlayingCard().catch(()=>null);
+    });
+
     npLine2StarsEl?.addEventListener('pointerdown', async (ev)=>{
       const star = ev.target?.closest?.('[data-star]');
       if (!star || !npRatingAllowed) return;
@@ -2479,6 +2643,52 @@
       closeRecentAlbumModal();
     });
     document.getElementById('recentAlbumTracks').addEventListener('click', async (ev)=>{ const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if(a==='play'){ await sendPlayback('playfile',{file}); closeRecentAlbumModal(); } else { await sendPlayback('addfile',{file}); } });
+
+    document.getElementById('recentArtistCloseBtn')?.addEventListener('click', closeRecentArtistModal);
+    document.getElementById('recentArtistModal')?.addEventListener('click', (ev)=>{ if(ev.target.id==='recentArtistModal') closeRecentArtistModal(); });
+    document.getElementById('recentArtistAlbumsGrid')?.addEventListener('click', async (ev)=>{
+      const dec=(s)=>{ try{return decodeURIComponent(String(s||'')); } catch { return String(s||''); } };
+      const card = ev.target.closest('.artistAlbCard[data-album]');
+      if (!card) return;
+      const album = dec(card.getAttribute('data-album') || '');
+      const artist = dec(card.getAttribute('data-artist') || '');
+      const art = dec(card.getAttribute('data-art') || '');
+      if (!album) return;
+
+      const actBtn = ev.target.closest('button[data-artist-act]');
+      if (actBtn) {
+        const act = String(actBtn.getAttribute('data-artist-act') || '').trim();
+        if (act === 'open') {
+          await openRecentAlbumFrom({ album, artist, art });
+          return;
+        }
+        if (act === 'replace' || act === 'append') {
+          const prev = actBtn.innerHTML;
+          actBtn.innerHTML = '<span class="inlineSpin" aria-hidden="true"></span>';
+          actBtn.classList.add('loading');
+          try {
+            await sendPlayback('addalbum',{ mode:act, album, artist:artist||'' });
+            actBtn.textContent = '✓';
+            actBtn.classList.remove('loading');
+            actBtn.classList.add('done');
+            setTimeout(()=>{
+              actBtn.innerHTML = prev;
+              actBtn.classList.remove('done');
+              card.classList.remove('is-flipped');
+            }, 520);
+          } catch {
+            actBtn.innerHTML = prev;
+            actBtn.classList.remove('loading');
+          }
+          return;
+        }
+      }
+
+      if (ev.target.closest('[data-flip="1"]')) {
+        document.querySelectorAll('#recentArtistAlbumsGrid .artistAlbCard.is-flipped').forEach((el)=>{ if (el !== card) el.classList.remove('is-flipped'); });
+        card.classList.toggle('is-flipped');
+      }
+    });
 
     document.addEventListener('click',(ev)=>{
       const m=document.getElementById('recentAlbumMenu');

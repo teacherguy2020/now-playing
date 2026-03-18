@@ -38,7 +38,9 @@
     .artistModal .artistControls .albumMeta,
     .artistModal .artistControls label{color:#dbe8ff}
     .artistGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-    body.embedded .artistGrid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    body.embedded .artistCard{width:min(1120px,96vw);max-height:92vh;padding:14px}
+    body.embedded .artistGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    body.embedded.embeddedWide .artistGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     .artistAlbumBtn{border:1px solid #2a3a58;background:#12203a;color:#e6efff;border-radius:10px;padding:8px;cursor:pointer;text-align:left}
     .artistAlbumBtn img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#0a1222;margin-bottom:6px}
     .artistAlbumName{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -123,8 +125,10 @@
   </div>
 
   <script>
-    const __embedded = new URL(location.href).searchParams.get('embedded') === '1';
+    const __url = new URL(location.href);
+    const __embedded = __url.searchParams.get('embedded') === '1';
     if (__embedded) document.body.classList.add('embedded');
+    if (__embedded && __url.searchParams.get('cols') === '7') document.body.classList.add('embeddedWide');
 
     // Server-backed controller palette
     const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
@@ -242,6 +246,8 @@
     const __qs = new URL(location.href).searchParams;
     const __openArtistParam = String(__qs.get('artist') || '').trim();
     const __openAlbumParam = String(__qs.get('album') || '').trim();
+    let __pendingOpenArtist = __openArtistParam;
+    let __pendingOpenAlbum = __openAlbumParam;
 
     async function ensureKey(){ if(key) return key; const r=await fetch(`${base}/config/runtime`,{cache:'no-store'}); const j=await r.json().catch(()=>({})); key=String(j?.config?.trackKey||'').trim(); return key; }
     async function sendPlayback(action, extra={}){ await ensureKey(); const r=await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify(Object.assign({action},extra||{}))}); const j=await r.json().catch(()=>({})); if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`); }
@@ -501,10 +507,27 @@
       setTimeout(()=>{ const embedded = new URL(location.href).searchParams.get('embedded') === '1'; if (embedded) { try { window.parent?.postMessage({ type:'np-kiosk-hide-pane' }, '*'); } catch {} return; } if(history.length>1) history.back(); else location.href='controller.html'; }, 170);
     });
 
+    window.addEventListener('message', async (ev)=>{
+      const d = ev?.data || {};
+      if (!d || typeof d !== 'object') return;
+      if (String(d.type || '') !== 'np-open-artist') return;
+      const artist = String(d.artist || '').trim();
+      const album = String(d.album || '').trim();
+      if (!artist) return;
+      if (!artists.length) {
+        __pendingOpenArtist = artist;
+        __pendingOpenAlbum = album;
+        return;
+      }
+      try { await openArtistByName(artist, album); } catch {}
+    });
+
     (async ()=>{
       await loadArtists();
-      if (__openArtistParam) {
-        await openArtistByName(__openArtistParam, __openAlbumParam);
+      if (__pendingOpenArtist) {
+        try { await openArtistByName(__pendingOpenArtist, __pendingOpenAlbum || ''); } catch {}
+        __pendingOpenArtist = '';
+        __pendingOpenAlbum = '';
       }
     })();
   
