@@ -55,6 +55,9 @@
     .npCtrls .ctlPause,.npCtrls .ctlPlay{display:none}
     .npCtrls .ctl.on{background:rgba(22,163,74,.50);box-shadow:0 0 0 1px rgba(34,197,94,.65),0 0 16px rgba(34,197,94,.42),0 5px 14px rgba(0,0,0,.3);color:#eaffef}
     .npCtrls .ctl.big.on{background:rgba(22,163,74,.62);box-shadow:0 0 0 1px rgba(34,197,94,.72),0 0 20px rgba(34,197,94,.50),0 5px 14px rgba(0,0,0,.34)}
+    .npCtrls .ctl.loading{position:relative;opacity:.92;pointer-events:none}
+    .npCtrls .ctl.loading::after{content:'';position:absolute;right:4px;top:4px;width:9px;height:9px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#9fd2ff;animation:npSpin .8s linear infinite}
+    .npCtrls .ctl.confirm{box-shadow:0 0 0 1px rgba(74,222,128,.65),0 0 14px rgba(74,222,128,.55),0 5px 14px rgba(0,0,0,.34)!important;background:rgba(22,163,74,.58)!important}
     .eq b:nth-child(2){animation-delay:.15s}.eq b:nth-child(3){animation-delay:.3s}
     @keyframes eq{0%,100%{height:4px}50%{height:10px}}
     .muted{color:var(--muted);font-size:12px}
@@ -1561,6 +1564,21 @@
         .map((ep)=>({ title:String(ep?.title||'(episode)').trim(), file:String(ep?.mpdPath||'').trim(), date:String(ep?.date||'').trim(), downloadedAt:Number(ep?.downloadedAt||0)||0 }));
     }
     async function sendPlayback(action, extra={}){ await ensureKey(); await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify(Object.assign({action},extra||{}))}).catch(()=>null); }
+    async function sendPlaybackDirect(action){
+      const a = String(action||'').toLowerCase();
+      const map = { prev:'previous', previous:'previous', next:'next', play:'play', pause:'pause', toggle:'toggle', stop:'stop' };
+      const cmd = map[a];
+      if (!cmd) return false;
+      await ensureKey();
+      const host = String(runtimeMoodeHost || '10.0.0.254').trim();
+      const url = `${location.protocol}//${host}/command/?cmd=${encodeURIComponent(cmd)}`;
+      try {
+        await fetch(url, { method:'GET', mode:'no-cors', cache:'no-store' });
+        return true;
+      } catch {
+        return false;
+      }
+    }
     async function playOrAddRadio(url, mode='replace'){
       const u = String(url||'').trim();
       if (!u) return;
@@ -2227,9 +2245,41 @@
       ev.stopPropagation();
       const act = String(btn.getAttribute('data-np-act') || '').trim().toLowerCase();
       if (!act) return;
+      const isFastTransport = (act === 'prev' || act === 'next' || act === 'play' || act === 'pause' || act === 'toggle');
       btn.disabled = true;
-      try { await sendPlayback(act); } catch {}
-      finally { btn.disabled = false; }
+      btn.classList.add('loading');
+
+      if (isFastTransport) {
+        // Optimistic UX for transport controls + direct moOde command path for lowest latency.
+        if (act === 'play' || act === 'pause' || act === 'toggle') {
+          const forcePlaying = (act === 'play') ? true : (act === 'pause' ? false : null);
+          let nextPlaying = forcePlaying;
+          if (nextPlaying == null) {
+            const playBtn = npCtrlsEl?.querySelector('.ctlPlay');
+            const isPlayingNow = !!playBtn?.classList.contains('is-active');
+            nextPlaying = !isPlayingNow;
+          }
+          document.querySelectorAll('#npCtrls .ctlPlay').forEach((b)=>b.classList.toggle('is-active', !!nextPlaying));
+          document.querySelectorAll('#npCtrls .ctlPause').forEach((b)=>b.classList.toggle('is-active', !nextPlaying));
+        }
+
+        btn.classList.remove('loading');
+        btn.classList.add('confirm');
+        setTimeout(()=>{ try { btn.classList.remove('confirm'); } catch {} }, 420);
+        btn.disabled = false;
+        sendPlaybackDirect(act).then((ok)=>{ if (!ok) sendPlayback(act).catch(()=>null); }).catch(()=>sendPlayback(act).catch(()=>null));
+        setTimeout(()=>{ refreshNowPlayingCard().catch(()=>null); }, 170);
+        return;
+      }
+
+      try {
+        await sendPlayback(act);
+        btn.classList.remove('loading');
+        btn.classList.add('confirm');
+        setTimeout(()=>{ try { btn.classList.remove('confirm'); } catch {} }, 560);
+      } catch {
+        btn.classList.remove('loading');
+      } finally { btn.disabled = false; }
       refreshNowPlayingCard().catch(()=>null);
     });
     wakeNpCtrls(1400);

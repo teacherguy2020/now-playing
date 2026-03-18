@@ -989,6 +989,38 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
 
       const cmd = map[action];
       if (!cmd) return res.status(400).json({ ok: false, error: 'Invalid action' });
+
+      // Fast path for core transport controls: hit moOde command endpoint directly,
+      // then fall back to mpc if direct command is unavailable.
+      const directCmdMap = {
+        play: 'play',
+        pause: 'pause',
+        toggle: 'toggle',
+        next: 'next',
+        prev: 'previous',
+        previous: 'previous',
+        stop: 'stop',
+      };
+      const directCmd = directCmdMap[action];
+      if (directCmd) {
+        try {
+          const ac = new AbortController();
+          const t = setTimeout(() => ac.abort(), 1200);
+          try {
+            await fetch(`http://${mpdHost}/command/?cmd=${encodeURIComponent(directCmd)}`, {
+              method: 'GET',
+              cache: 'no-store',
+              signal: ac.signal,
+            });
+          } finally {
+            clearTimeout(t);
+          }
+          return res.json({ ok: true, action, direct: true, command: directCmd });
+        } catch {
+          // fallback below
+        }
+      }
+
       await execFileP('mpc', ['-h', mpdHost, cmd]);
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, 'status']);
       const randomOn = /random:\s*on/i.test(String(stdout || ''));
