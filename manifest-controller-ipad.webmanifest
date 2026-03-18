@@ -1,20 +1,10 @@
 {
-  "name": "Now Playing Controller",
+  "name": "Now Playing Controller (iPad)",
   "short_name": "Controller",
-  "description": "Mobile controller for Now Playing for moOde",
-  "start_url": "/controller.html",
+  "description": "iPad controller for Now Playing for moOde",
+  "id": "/controller-ipad",
+  "start_url": "/controller-ipad.html?devicePreset=ipadpro11-landscape",
   "scope": "/",
-  "id": "/controller",
-  "shortcuts": [
-    {
-      "name": "Controller (iPad)",
-      "url": "/controller-ipad.html?devicePreset=ipadpro11-landscape"
-    },
-    {
-      "name": "Controller (Auto)",
-      "url": "/controller.html"
-    }
-  ],
   "display": "standalone",
   "background_color": "#0c1526",
   "theme_color": "#0c1526",
