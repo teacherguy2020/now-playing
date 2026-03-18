@@ -27,6 +27,7 @@
 
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-right:26px}
     body.embedded .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding-right:16px}
+    body.embedded.embeddedWide .grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;padding-right:10px}
     body.embedded .more{width:30px;height:30px;font-size:14px}
     .list{display:block;padding-right:26px}
     .genreHdr{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:8px 0 2px;color:var(--text);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
@@ -108,8 +109,10 @@
 
 
   <script>
-    const __embedded = new URL(location.href).searchParams.get('embedded') === '1';
+    const __url = new URL(location.href);
+    const __embedded = __url.searchParams.get('embedded') === '1';
     if (__embedded) document.body.classList.add('embedded');
+    if (__embedded && __url.searchParams.get('cols') === '7') document.body.classList.add('embeddedWide');
 
     // Server-backed controller palette
     const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;

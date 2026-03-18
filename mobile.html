@@ -79,9 +79,9 @@
         <button class="btn" id="applyBtn">Push</button>
         <button class="btn" id="resetBtn">Reset</button>
       </div>
-      <p style="margin-top:10px;color:var(--muted)">Push saves the current controller profile to server and generates a URL you can open on phone.</p>
+      <p style="margin-top:10px;color:var(--muted)">Push saves the current controller profile to server and generates a URL you can open on device.</p>
       <label>Pushed URL</label>
-      <div class="row"><input id="pushedUrl" type="text" readonly style="flex:1" /><button class="btn" id="copyPushedUrlBtn" type="button">Copy URL</button><button class="btn" id="copySnapshotUrlBtn" type="button">Copy Snapshot URL</button></div>
+      <div class="row"><input id="pushedUrl" type="text" readonly style="flex:1" /><button class="btn" id="copyPushedUrlBtn" type="button">Copy URL</button></div>
     </div>
     <div class="card previewHost">
       <div class="device">
@@ -248,7 +248,6 @@
       };
       try { $('controllerPreview')?.contentWindow?.postMessage({ type:'np-live-theme-update', customColors }, '*'); } catch {}
     }
-    let lastSnapshotUrl='';
     async function apply(){
       const p=collect();
       write(p);
@@ -264,10 +263,6 @@
       const pushed=`${location.protocol}//${location.hostname||'10.0.0.4'}:8101/${targetPage}?devicePreset=${encodeURIComponent(String(p.devicePreset||'iphone17'))}`;
       if ($('pushedUrl')) $('pushedUrl').value = pushed;
 
-      // Optional exact snapshot URL.
-      const q=new URLSearchParams({profile:profileToken(p),devicePreset:String(p.devicePreset||'iphone17')});
-      lastSnapshotUrl = `${location.protocol}//${location.hostname||'10.0.0.4'}:8101/${targetPage}?${q.toString()}`;
-
       // Persist server-side in background.
       await saveServerProfile(p);
     }
@@ -281,15 +276,6 @@
       }
       if (!ok) throw new Error('copy-failed');
     },{busyText:'Copying…',doneText:'✓ Copied'}).catch(()=>alert('Copy URL failed.')));
-    $('copySnapshotUrlBtn')?.addEventListener('click', ()=>runBtnAction($('copySnapshotUrlBtn'), async ()=>{
-      const txt=String(lastSnapshotUrl||''); if(!txt) throw new Error('empty');
-      let ok=false;
-      try { await navigator.clipboard.writeText(txt); ok=true; } catch {}
-      if (!ok) {
-        try { ok=!!document.execCommand('copy'); } catch {}
-      }
-      if (!ok) throw new Error('copy-failed');
-    },{busyText:'Copying…',doneText:'✓ Snapshot copied'}).catch(()=>alert('Copy Snapshot URL failed.')));
     $('resetBtn').addEventListener('click',()=>runBtnAction($('resetBtn'), async ()=>{write({...defaults});ui(defaults);await apply();},{busyText:'Resetting…',doneText:'✓ Reset'}).catch(()=>null));
     ['devicePreset','recentCount'].forEach((id)=>{
       const el=$(id); if(!el) return;

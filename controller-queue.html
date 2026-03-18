@@ -333,12 +333,22 @@
 
     async function loadQueue(){
       if (dragState) return;
-      await ensureKey();
-      const headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
-      const r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
-      const j = await r.json().catch(()=>({}));
+      let headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
+      let r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
+      let j = await r.json().catch(()=>({}));
       const list = document.getElementById('list');
       const meta = document.getElementById('meta');
+
+      // Fast-path first; if auth is required, fetch key and retry once.
+      if ((!r.ok || !j?.ok) && !runtimeTrackKey) {
+        try {
+          await ensureKey();
+          headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
+          r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
+          j = await r.json().catch(()=>({}));
+        } catch {}
+      }
+
       if (!r.ok || !j?.ok) {
         meta.textContent = 'Queue unavailable';
         list.innerHTML = '';
@@ -432,6 +442,11 @@
     }
 
     let __backNavBusy=false;
+    const clearBackNavState = ()=>{
+      __backNavBusy = false;
+      try { document.body.classList.remove('nav-backwarding'); } catch {}
+      try { document.body.style.transform = ''; document.body.style.opacity = ''; } catch {}
+    };
     const backBtn = document.getElementById('backBtn');
     const pageTitle = document.querySelector('.top h1');
     if (pageTitle) { pageTitle.style.cursor='pointer'; pageTitle.addEventListener('click', ()=> backBtn?.click()); }
@@ -441,6 +456,12 @@
       document.body.classList.add('nav-backwarding');
       setTimeout(()=>{ const embedded = new URL(location.href).searchParams.get('embedded') === '1'; if (embedded) { try { window.parent?.postMessage({ type:'np-kiosk-hide-pane' }, '*'); } catch {} return; } if (history.length > 1) history.back(); else location.href='controller.html'; }, 170);
     });
+
+    // In embedded pane mode this document can be reused; ensure we never stay dim/non-interactive.
+    window.addEventListener('pageshow', clearBackNavState);
+    window.addEventListener('focus', clearBackNavState);
+    document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) clearBackNavState(); });
+    setTimeout(clearBackNavState, 260);
 
     document.getElementById('routeAlexaBtn')?.addEventListener('click', async (ev)=>{
       const btn = ev.currentTarget;
@@ -986,6 +1007,7 @@
     window.addEventListener('touchmove', markUserScroll, { passive:true });
     window.addEventListener('scroll', markUserScroll, { passive:true });
 
+    ensureKey().catch(()=>null); // warm auth key in background; do not block first queue paint
     loadQueue().then(()=>{ maybeScrollToHead(true); }).catch(()=>null);
     // Light-touch background sync (avoid constant thumbnail churn).
     pollTimer = setInterval(loadQueue, 15000);

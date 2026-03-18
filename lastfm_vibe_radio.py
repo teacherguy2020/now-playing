@@ -338,6 +338,10 @@ def main():
                     help="Time budget for build; 0 disables")
     ap.add_argument("--json-out", default="",
                     help="Optional JSON output path")
+    ap.add_argument("--debug-trace", action="store_true",
+                    help="Emit detailed matching diagnostics for each hop")
+    ap.add_argument("--simple-seed-pass", action="store_true",
+                    help="One-pass mode: query seed once and add local matches up to target, then stop")
     ap.add_argument("--dry-run", action="store_true",
                     help="Preview tracks without touching MPD")
     ap.add_argument("--no-final-stop", action="store_true",
@@ -489,7 +493,98 @@ def main():
             return len(out_tracks) >= args.target_queue
         return queue_len() >= args.target_queue
 
-    while not have_enough():
+    if args.simple_seed_pass:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] SIMPLE mode: batched seed queries (10 per pass)", flush=True)
+        simple_batch = 10
+        simple_pass = 0
+
+        while not have_enough():
+            simple_pass += 1
+            batch_added = 0
+            pass_seed_artist, pass_seed_title = seed_artist, seed_title
+
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] SIMPLE pass {simple_pass}: seed {pass_seed_title} — {pass_seed_artist}", flush=True)
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Last.fm get similar {pass_seed_artist} - {pass_seed_title} limit {args.similar_limit}", flush=True)
+            sim = lastfm_get_similar(args.api_key, pass_seed_artist, pass_seed_title, args.similar_limit)
+            if args.shuffle_top and args.shuffle_top > 0 and sim:
+                n = min(args.shuffle_top, len(sim))
+                head = sim[:n]
+                tail = sim[n:]
+                random.shuffle(head)
+                sim = head + tail
+
+            for t in sim:
+                if have_enough() or batch_added >= simple_batch:
+                    break
+
+                rec_title = (t.get("name") or "").strip()
+                rec_artist = t.get("artist", {})
+                if isinstance(rec_artist, dict):
+                    rec_artist = (rec_artist.get("name") or "").strip()
+                else:
+                    rec_artist = str(rec_artist).strip()
+                rec_mbid = (t.get("mbid") or "").strip().lower()
+                if not rec_title or not rec_artist:
+                    continue
+
+                cand = None
+                method = ""
+                if rec_mbid and rec_mbid in mbid_map:
+                    cand = pick_best(mbid_map[rec_mbid], used_files)
+                    if cand:
+                        method = "mbid"
+                if not cand:
+                    key = f"{norm(rec_artist)}|{norm(rec_title)}"
+                    paths = text_map.get(key)
+                    if paths:
+                        cand = pick_best(paths, used_files)
+                        if cand:
+                            method = "text"
+                if not cand:
+                    paths = fuzzy_within_artist(text_map, rec_artist, rec_title)
+                    if paths:
+                        cand = pick_best(paths, used_files)
+                        if cand:
+                            method = "fuzzy"
+                if not cand:
+                    continue
+                if cand in bad_files or cand in used_files:
+                    continue
+
+                a2, t2, alb2, g2 = read_tags(cand)
+                out_tracks.append({
+                    "file": cand,
+                    "artist": a2 or rec_artist,
+                    "title": t2 or rec_title,
+                    "album": alb2 or "",
+                    "genre": g2 or "",
+                    "method": method,
+                    "rec_artist": rec_artist,
+                    "rec_title": rec_title,
+                })
+                if not args.dry_run:
+                    try:
+                        mpd.add(cand)
+                    except Exception:
+                        bad_files.add(cand)
+                        continue
+                used_files.add(cand)
+                kx = track_key(rec_artist, rec_title)
+                if kx:
+                    used_tracks.add(kx)
+
+                # Use the most recently added track as rolling seed, and especially the 10th in each pass.
+                seed_artist = a2 or rec_artist
+                seed_title = t2 or rec_title
+                batch_added += 1
+                print(f"[simple] Added: {rec_title} — {rec_artist} ({method})")
+
+            print(f"[simple] pass {simple_pass} added {batch_added} track(s)")
+            if batch_added <= 0:
+                print(f"[simple] no additions in pass {simple_pass}; stopping to avoid loop")
+                break
+
+    while not args.simple_seed_pass and not have_enough():
         if args.max_seconds > 0 and (time.time() - started) >= args.max_seconds:
             print(f"Time budget reached ({args.max_seconds}s), stopping.")
             break
@@ -520,6 +615,32 @@ def main():
         fallback_seed_genre = None
 
         print(f"[{datetime.now().strftime('%H:%M:%S')}] pick from {len(sim)} similar", flush=True)
+        if args.debug_trace:
+            sample = []
+            for tt in sim[:12]:
+                s_title = str((tt.get("name") or "")).strip()
+                s_artist_raw = tt.get("artist", {})
+                s_artist = str((s_artist_raw.get("name") if isinstance(s_artist_raw, dict) else s_artist_raw) or "").strip()
+                s_mbid = str(tt.get("mbid") or "").strip()
+                sample.append({"artist": s_artist, "title": s_title, "mbid": s_mbid})
+            print(f"[hop {hops}] similar sample: {json.dumps(sample, ensure_ascii=False)}", flush=True)
+
+        reject = {
+            "blank": 0,
+            "seasonal_rec": 0,
+            "already_used_track": 0,
+            "no_local_match": 0,
+            "bad_file": 0,
+            "seasonal_local": 0,
+            "same_album": 0,
+            "recent_album": 0,
+            "seed_genre_disjoint": 0,
+            "cross_genre_disjoint": 0,
+            "seed_artist_guard": 0,
+            "repeat_artist_guard": 0,
+        }
+        match_method_counts = {"mbid": 0, "text": 0, "fuzzy": 0}
+
         for t in sim:
             rec_title = (t.get("name") or "").strip()
             rec_artist = t.get("artist", {})
@@ -530,14 +651,17 @@ def main():
             rec_mbid = (t.get("mbid") or "").strip().lower()
 
             if not rec_title or not rec_artist:
+                reject["blank"] += 1
                 continue
 
             # Strong seasonal filter at recommendation level
             if not include_xmas and is_seasonal_text(rec_title, rec_artist):
+                reject["seasonal_rec"] += 1
                 continue
 
             rk = track_key(rec_artist, rec_title)
             if rk and rk in used_tracks:
+                reject["already_used_track"] += 1
                 continue
 
             cand = None
@@ -548,6 +672,7 @@ def main():
                 cand = pick_best(mbid_map[rec_mbid], used_files)
                 if cand:
                     method = "mbid"
+                    match_method_counts["mbid"] += 1
 
             # 2) exact text map
             if not cand:
@@ -557,6 +682,7 @@ def main():
                     cand = pick_best(paths, used_files)
                     if cand:
                         method = "text"
+                        match_method_counts["text"] += 1
 
             # 3) fuzzy within artist
             if not cand:
@@ -565,19 +691,24 @@ def main():
                     cand = pick_best(paths, used_files)
                     if cand:
                         method = "fuzzy"
+                        match_method_counts["fuzzy"] += 1
 
             if not cand:
+                reject["no_local_match"] += 1
                 continue
 
             if cand in bad_files:
+                reject["bad_file"] += 1
                 continue
 
             # Strong seasonal filter at local file/tag level
             a_tag, t_tag, alb_tag, g_tag = read_tags(cand)
             if not include_xmas:
                 if is_seasonal_text(cand):
+                    reject["seasonal_local"] += 1
                     continue
                 if is_seasonal_text(t_tag, alb_tag, a_tag, g_tag):
+                    reject["seasonal_local"] += 1
                     continue
 
             # same-album guard
@@ -588,22 +719,26 @@ def main():
             if last_album_k and cand_album_k and cand_album_k == last_album_k:
                 if fallback_same_album is None:
                     fallback_same_album = (cand, method, rec_title, rec_artist, cand_album_k)
+                reject["same_album"] += 1
                 continue
 
             if cand_album_k and cand_album_k in recent_album_keys:
                 if fallback_recent_album is None:
                     fallback_recent_album = (cand, method, rec_title, rec_artist, cand_album_k)
+                reject["recent_album"] += 1
                 continue
 
             cand_genres = genre_tokens(g_tag)
             if seed_genres and cand_genres and seed_genres.isdisjoint(cand_genres):
                 if fallback_seed_genre is None:
                     fallback_seed_genre = (cand, method, rec_title, rec_artist, cand_album_k)
+                reject["seed_genre_disjoint"] += 1
                 continue
 
             if last_added_genres and cand_genres and last_added_genres.isdisjoint(cand_genres):
                 if fallback_cross_genre is None:
                     fallback_cross_genre = (cand, method, rec_title, rec_artist, cand_album_k)
+                reject["cross_genre_disjoint"] += 1
                 continue
 
             cand_artist_n = norm(a_tag or rec_artist)
@@ -612,12 +747,14 @@ def main():
             if hops == 1 and cand_artist_n and cand_artist_n == norm(seed_artist):
                 if fallback_seed_artist is None:
                     fallback_seed_artist = (cand, method, rec_title, rec_artist, cand_album_k)
+                reject["seed_artist_guard"] += 1
                 continue
 
             if last_added_artist_n and cand_artist_n and cand_artist_n == last_added_artist_n:
                 # Soft guard: avoid back-to-back same artist when possible.
                 if fallback_repeat is None:
                     fallback_repeat = (cand, method, rec_title, rec_artist, cand_album_k)
+                reject["repeat_artist_guard"] += 1
                 continue
 
             chosen_file = cand
@@ -675,6 +812,9 @@ def main():
 
         # Intentionally do NOT fall back to same-artist on hop 1.
         # If no cross-artist candidate can be added, treat as miss and reseed.
+
+        if args.debug_trace:
+            print(f"[hop {hops}] match summary: methods={json.dumps(match_method_counts)} rejects={json.dumps(reject)} chosen={'yes' if chosen_file else 'no'}", flush=True)
 
         if not chosen_file:
             misses += 1

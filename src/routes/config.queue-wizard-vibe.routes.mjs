@@ -39,6 +39,72 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
     return path.resolve(process.cwd(), 'moode_library_index.json');
   }
 
+  const vibeLogDir = path.resolve(process.cwd(), 'logs/vibe');
+  async function appendVibeJobLog(job, event, detail = {}) {
+    try {
+      const rec = {
+        ts: new Date().toISOString(),
+        jobId: String(job?.id || ''),
+        event: String(event || 'event'),
+        detail: detail && typeof detail === 'object' ? detail : { message: String(detail || '') },
+      };
+      const line = `${JSON.stringify(rec)}\n`;
+      await fs.mkdir(vibeLogDir, { recursive: true });
+      const fp = String(job?.logPath || path.join(vibeLogDir, `${String(job?.id || 'vibe')}.jsonl`));
+      await fs.appendFile(fp, line, 'utf8');
+    } catch {}
+  }
+
+  async function ensureVibeIndexReady(job, vibeIndexPath, mpdHost) {
+    const staleMs = Number(process.env.VIBE_INDEX_MAX_AGE_MS || 12 * 60 * 60 * 1000);
+    let needsBuild = false;
+    try {
+      const st = await fs.stat(vibeIndexPath);
+      const ageMs = Date.now() - Number(st.mtimeMs || 0);
+      if (!Number.isFinite(st.size) || st.size < 256 || ageMs > staleMs) needsBuild = true;
+    } catch {
+      needsBuild = true;
+    }
+    if (!needsBuild) return true;
+
+    job.phase = 'creating index file please wait';
+    job.updatedAt = Date.now();
+    const buildPy = path.resolve(process.cwd(), 'build_moode_index.py');
+    job.logs.push(`[index] building local index: ${vibeIndexPath}`);
+    appendVibeJobLog(job, 'index-build-start', { vibeIndexPath, mpdHost, buildPy }).catch(() => {});
+
+    try {
+      const { stdout, stderr } = await execFileP('python3', [buildPy], {
+        env: {
+          ...process.env,
+          INDEX_PATH: vibeIndexPath,
+          MPD_HOST: String(mpdHost || '10.0.0.254'),
+          MPD_PORT: '6600',
+        },
+      });
+      const out = String(stdout || '').trim();
+      const err = String(stderr || '').trim();
+      if (out) {
+        out.split(/\r?\n/).forEach((ln) => { if (ln) job.logs.push(`[index] ${ln}`); });
+      }
+      if (err) {
+        err.split(/\r?\n/).forEach((ln) => { if (ln) job.logs.push(`[index][stderr] ${ln}`); });
+      }
+      appendVibeJobLog(job, 'index-build-complete', { ok: true }).catch(() => {});
+      return true;
+    } catch (e) {
+      const msg = e?.message || String(e);
+      job.error = `Index build failed: ${msg}`;
+      job.phase = 'error';
+      job.status = 'error';
+      job.done = true;
+      job.updatedAt = Date.now();
+      job.logs.push(`[index] ERROR ${msg}`);
+      appendVibeJobLog(job, 'index-build-complete', { ok: false, error: msg }).catch(() => {});
+      return false;
+    }
+  }
+
   // --- Vibe from now playing (Queue Wizard) ---
   app.post('/config/queue-wizard/vibe-start', async (req, res) => {
     try {
@@ -71,6 +137,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const jsonTmp = `/tmp/${jobId}.json`;
       const vibeIndexPath = await resolveVibeIndexPath();
 
+      const isSmallQueue = targetQueue <= 15;
       const pyArgs = [
         '--api-key', lastfmApiKey,
         '--index', vibeIndexPath,
@@ -79,11 +146,15 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         '--target-queue', String(targetQueue),
         '--json-out', jsonTmp,
         '--mode', playNow ? 'play' : 'load',
-        '--shuffle-top', '25',
+        '--similar-limit', isSmallQueue ? '80' : '150',
+        '--shuffle-top', isSmallQueue ? '15' : '25',
         '--reseed-random',
-        '--max-misses', '12',
+        '--max-misses', isSmallQueue ? '6' : '12',
+        '--max-seconds', isSmallQueue ? '18' : '45',
         '--host', mpdHost,
         '--port', '6600',
+        '--debug-trace',
+        '--simple-seed-pass',
       ];
       if (excludeGenre === 'christmas') pyArgs.push('--exclude-christmas');
       else if (excludeGenre === 'none') pyArgs.push('--include-christmas');
@@ -108,6 +179,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         phase: 'starting',
         targetQueue,
         minRating,
+        excludeGenre,
         seedArtist: artist,
         seedTitle: title,
         createdAt: Date.now(),
@@ -117,30 +189,69 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         added: [],
         tracks: [],
         logs: [],
+        debug: {
+          fallbackUsed: false,
+          fallbackCount: 0,
+          previewResponseCount: 0,
+          indexPath: vibeIndexPath,
+        },
         nextEventId: 1,
         error: '',
         done: false,
         jsonTmp,
+        logPath: path.join(vibeLogDir, `${jobId}.jsonl`),
         proc: null,
       };
+
+      vibeJobs.set(jobId, job);
+      appendVibeJobLog(job, 'start', {
+        seedArtist: artist,
+        seedTitle: title,
+        targetQueue,
+        minRating,
+        excludeGenre,
+        playNow,
+        keepPlaying,
+        mpdHost,
+        indexPath: vibeIndexPath,
+        pyPath,
+      }).catch(() => {});
+
+      const indexReady = await ensureVibeIndexReady(job, vibeIndexPath, mpdHost);
+      if (!indexReady) {
+        return res.status(500).json({ ok: false, error: job.error || 'Index build failed', jobId });
+      }
 
       const child = spawn('python3', [pyPath, ...pyArgs], {
         stdio: ['ignore', 'pipe', 'pipe'],
       });
       job.proc = child;
-      vibeJobs.set(jobId, job);
+      appendVibeJobLog(job, 'run', {
+        seedArtist: artist,
+        seedTitle: title,
+        targetQueue,
+        minRating,
+        excludeGenre,
+        playNow,
+        keepPlaying,
+        mpdHost,
+        indexPath: vibeIndexPath,
+        pyPath,
+      }).catch(() => {});
 
       const onLine = (lineIn = '') => {
         const line = String(lineIn || '').trim();
         if (!line) return;
         job.updatedAt = Date.now();
         job.logs.push(line);
-        if (job.logs.length > 100) job.logs.shift();
+        if (job.logs.length > 300) job.logs.shift();
+        appendVibeJobLog(job, 'line', { line }).catch(() => {});
 
         if (/Last\.fm get similar/i.test(line)) job.phase = 'querying last.fm';
         if (/pick from/i.test(line)) job.phase = 'matching local library';
 
-        const m = line.match(/^\[hop\s+\d+\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i);
+        const m = line.match(/^\[hop\s+\d+\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i)
+          || line.match(/^\[simple\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i);
         if (m) {
           const label = String(m[1] || '').trim();
           const method = String(m[2] || '').trim();
@@ -157,6 +268,13 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
           if (job.added.length > 500) job.added = job.added.slice(-500);
           job.builtCount += 1;
           job.phase = 'adding tracks';
+        }
+
+        const pm = line.match(/^\[simple\]\s+pass\s+(\d+)\s+added\s+(\d+)\s+track/i);
+        if (pm) {
+          const p = Number(pm[1] || 0);
+          const n = Number(pm[2] || 0);
+          job.phase = `simple pass ${p} complete (+${n})`;
         }
       };
 
@@ -201,6 +319,57 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
             job.tracks = baseTracks;
           }
 
+          // Fallback: if Last.fm vibe resolves to zero tracks, build a local seed list from current artist.
+          if (!job.tracks.length) {
+            try {
+              const body = {
+                genres: [],
+                artists: job.seedArtist ? [job.seedArtist] : [],
+                albums: [],
+                excludeGenres: [],
+                minRating: Number(job.minRating || 0),
+                maxTracks: Number(job.targetQueue || 50),
+              };
+              const resp = await fetch('http://127.0.0.1:3101/config/queue-wizard/preview', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(String(req.headers?.['x-track-key'] || '').trim() ? { 'x-track-key': String(req.headers['x-track-key']).trim() } : {}),
+                },
+                body: JSON.stringify(body),
+              });
+              const pj = await resp.json().catch(() => ({}));
+              const items = Array.isArray(pj?.tracks) ? pj.tracks : [];
+              job.debug.previewResponseCount = Number(items.length || 0);
+              if (items.length) {
+                job.tracks = items.slice(0, Number(job.targetQueue || 50)).map((t) => {
+                  if (typeof t === 'string') return { file: String(t || '').trim() };
+                  return {
+                    file: String(t?.file || '').trim(),
+                    artist: String(t?.artist || '').trim(),
+                    title: String(t?.title || '').trim(),
+                    album: String(t?.album || '').trim(),
+                    genre: String(t?.genre || '').trim(),
+                    rating: Math.max(0, Math.min(5, Number(t?.rating || 0) || 0)),
+                  };
+                }).filter((x) => x.file);
+                job.phase = 'fallback: artist local matches';
+                job.debug.fallbackUsed = true;
+                job.debug.fallbackCount = Number(job.tracks.length || 0);
+                job.logs.push(`fallback: local artist preview produced ${job.tracks.length} track(s)`);
+                appendVibeJobLog(job, 'fallback', {
+                  seedArtist: job.seedArtist,
+                  previewCount: Number(items.length || 0),
+                  keptCount: Number(job.tracks.length || 0),
+                  sample: job.tracks.slice(0, 5).map((t) => ({ artist: t.artist || '', title: t.title || '', album: t.album || '', file: t.file || '' })),
+                }).catch(() => {});
+              }
+            } catch (e2) {
+              job.logs.push(`fallback error: ${e2?.message || String(e2)}`);
+              appendVibeJobLog(job, 'fallback-error', { error: e2?.message || String(e2) }).catch(() => {});
+            }
+          }
+
           job.builtCount = job.tracks.length || 0;
           await fs.unlink(jsonTmp).catch(() => {});
         } catch (e) {
@@ -212,6 +381,17 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         job.status = job.error ? 'error' : 'done';
         job.phase = job.error ? 'error' : 'complete';
         job.updatedAt = Date.now();
+        appendVibeJobLog(job, 'complete', {
+          exitCode: Number(code || 0),
+          status: job.status,
+          phase: job.phase,
+          error: job.error || '',
+          rawBuiltCount: Number(job.rawBuiltCount || 0),
+          builtCount: Number(job.builtCount || 0),
+          fallbackUsed: !!job.debug?.fallbackUsed,
+          fallbackCount: Number(job.debug?.fallbackCount || 0),
+          sample: (Array.isArray(job.tracks) ? job.tracks : []).slice(0, 8).map((t) => ({ artist: t.artist || '', title: t.title || '', album: t.album || '', file: t.file || '' })),
+        }).catch(() => {});
       });
 
       return res.json({ ok: true, jobId, targetQueue, minRating, seedArtist: artist, seedTitle: title });
@@ -244,9 +424,52 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         rawBuiltCount: Number(job.rawBuiltCount || 0),
         seedArtist: job.seedArtist,
         seedTitle: job.seedTitle,
+        excludeGenre: String(job.excludeGenre || ''),
+        debug: job.debug || {},
+        logPath: String(job.logPath || ''),
+        logs: Array.isArray(job.logs) ? job.logs.slice(-120) : [],
         added,
         nextSince,
         tracks: job.done ? (Array.isArray(job.tracks) ? job.tracks : []) : [],
+      });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/queue-wizard/vibe-debug/:jobId', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const jobId = String(req.params?.jobId || '');
+      const job = vibeJobs.get(jobId);
+      if (!job) return res.status(404).json({ ok: false, error: 'Unknown vibe job' });
+
+      let fileLogs = [];
+      try {
+        const raw = await fs.readFile(String(job.logPath || ''), 'utf8');
+        fileLogs = String(raw || '').split(/\r?\n/).filter(Boolean).slice(-200).map((ln) => {
+          try { return JSON.parse(ln); } catch { return { raw: ln }; }
+        });
+      } catch {}
+
+      return res.json({
+        ok: true,
+        jobId,
+        status: job.status,
+        phase: job.phase,
+        done: !!job.done,
+        seedArtist: job.seedArtist,
+        seedTitle: job.seedTitle,
+        targetQueue: Number(job.targetQueue || 0),
+        minRating: Number(job.minRating || 0),
+        excludeGenre: String(job.excludeGenre || ''),
+        builtCount: Number(job.builtCount || 0),
+        rawBuiltCount: Number(job.rawBuiltCount || 0),
+        debug: job.debug || {},
+        inMemoryLogs: Array.isArray(job.logs) ? job.logs.slice(-200) : [],
+        fileLogPath: String(job.logPath || ''),
+        fileLogs,
+        sampleTracks: (Array.isArray(job.tracks) ? job.tracks : []).slice(0, 25),
       });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
@@ -292,7 +515,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
       const jsonTmp = `/tmp/vibe-np-${Date.now()}-${process.pid}.json`;
       const vibeIndexPath = await resolveVibeIndexPath();
-      await execFileP('python3', [pyPath, '--api-key', lastfmApiKey, '--index', vibeIndexPath, '--seed-artist', artist, '--seed-title', title, '--target-queue', String(targetQueue), '--json-out', jsonTmp, '--mode', 'load', '--host', mpdHost, '--port', '6600', '--dry-run']);
+      await execFileP('python3', [pyPath, '--api-key', lastfmApiKey, '--index', vibeIndexPath, '--seed-artist', artist, '--seed-title', title, '--target-queue', String(targetQueue), '--json-out', jsonTmp, '--mode', 'load', '--host', mpdHost, '--port', '6600', '--dry-run', '--debug-trace']);
       const data = JSON.parse(await fs.readFile(jsonTmp, 'utf8'));
       await fs.unlink(jsonTmp).catch(() => {});
       return res.json({ ok: true, tracks: data?.tracks || [], summary: data, targetQueue, seedArtist: artist, seedTitle: title });
@@ -315,7 +538,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
       const jsonTmp = `/tmp/vibe-np-${Date.now()}-${process.pid}.json`;
       const vibeIndexPath = await resolveVibeIndexPath();
-      await execFileP('python3', [pyPath, '--api-key', lastfmApiKey, '--index', vibeIndexPath, '--seed-artist', artist, '--seed-title', title, '--target-queue', String(targetQueue), '--json-out', jsonTmp, '--mode', 'load', '--host', mpdHost, '--port', '6600', '--dry-run']);
+      await execFileP('python3', [pyPath, '--api-key', lastfmApiKey, '--index', vibeIndexPath, '--seed-artist', artist, '--seed-title', title, '--target-queue', String(targetQueue), '--json-out', jsonTmp, '--mode', 'load', '--host', mpdHost, '--port', '6600', '--dry-run', '--debug-trace']);
       const data = JSON.parse(await fs.readFile(jsonTmp, 'utf8'));
       await fs.unlink(jsonTmp).catch(() => {});
       return res.json({ ok: true, tracks: data?.tracks || [], summary: data, targetQueue, seedArtist: artist, seedTitle: title });
@@ -362,6 +585,8 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         '--max-misses', '12',
         '--host', mpdHost,
         '--port', '6600',
+        '--debug-trace',
+        '--simple-seed-pass',
       ];
       if (playNow || keepPlaying) {
         pyArgs.push('--crop');
@@ -424,7 +649,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
       const jsonTmp = `/tmp/vibe-seed-${Date.now()}-${process.pid}.json`;
       const vibeIndexPath = await resolveVibeIndexPath();
-      await execFileP('python3', [pyPath, '--api-key', lastfmApiKey, '--index', vibeIndexPath, '--seed-artist', seedArtist, '--seed-title', seedTitle, '--target-queue', String(targetQueue), '--json-out', jsonTmp, '--mode', 'load', '--host', mpdHost, '--port', '6600', '--dry-run']);
+      await execFileP('python3', [pyPath, '--api-key', lastfmApiKey, '--index', vibeIndexPath, '--seed-artist', seedArtist, '--seed-title', seedTitle, '--target-queue', String(targetQueue), '--json-out', jsonTmp, '--mode', 'load', '--host', mpdHost, '--port', '6600', '--dry-run', '--debug-trace']);
       const data = JSON.parse(await fs.readFile(jsonTmp, 'utf8'));
       await fs.unlink(jsonTmp).catch(() => {});
       return res.json({ ok: true, tracks: data?.tracks || [], summary: data, targetQueue, seedArtist, seedTitle });

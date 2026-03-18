@@ -139,7 +139,21 @@ function hideVibeProgress() {
 }
 
 function setVibeProgress({ current = 0, total = 0, label = '', detail = '' } = {}) {
-  if (vibeProgressText) vibeProgressText.textContent = label || '';
+  if (vibeProgressText) {
+    const txt = String(label || '');
+    const lc = txt.toLowerCase();
+    const isTerminal = lc.includes('ready') || lc.includes('no vibe') || lc.includes('error') || lc.includes('cancel');
+    const isWorking = !isTerminal && (lc.includes('build') || lc.includes('start') || lc.includes('work') || (Number(total) > 0 && Number(current) < Number(total)));
+
+    vibeProgressText.innerHTML = '';
+    if (isWorking) {
+      const sp = document.createElement('span');
+      sp.className = 'spin';
+      sp.setAttribute('aria-hidden', 'true');
+      vibeProgressText.appendChild(sp);
+    }
+    vibeProgressText.appendChild(document.createTextNode(txt));
+  }
   if (vibeProgressDetail) vibeProgressDetail.textContent = detail || '';
 
   if (vibeProgressBar) {
@@ -491,11 +505,12 @@ async function syncVibeAvailability() {
   }
 
   function getMinRatingVibe() {
-    return ratingsEnabled ? Number($('minRatingVibe')?.value || 2) : 0;
+    // Default to Any (0★) for vibe so unrated libraries don't collapse to 0 matches.
+    return ratingsEnabled ? Number($('minRatingVibe')?.value || 0) : 0;
   }
 
   function getVibeExcludeGenre(){
-    return String($('vibeExcludeGenre')?.value || 'christmas').trim().toLowerCase();
+    return String($('vibeExcludeGenre')?.value || 'none').trim().toLowerCase();
   }
 
   function hasExistingPlaylistSelected() {
@@ -2003,8 +2018,8 @@ async function doVibeBuild() {
   const apiBase = getApiBase();
   const key = getKey();
   const targetQueue = getVibeMaxTracks();
-  const minRatingVibe = getMinRatingVibe();
-  const vibeExcludeGenre = getVibeExcludeGenre();
+  const minRatingVibe = 0; // TEMP rollback: ignore vibe star minimum until matching is stabilized
+  const vibeExcludeGenre = 'none'; // TEMP rollback: ignore vibe genre exclusion until matching is stabilized
 
   vibeCancelled = false;
   vibeAbortController = null;
@@ -3394,11 +3409,13 @@ function wireEvents() {
   const maybePreview = () => {
     syncCropUi();
     renderFiltersSummary();
-    if (currentListSource === 'vibe' || currentListSource === 'existing') return;
+    // Auto-preview is filters-only. Other builders should not mutate preview implicitly.
+    if (activeBuilder && activeBuilder !== 'filters') return;
+    if (currentListSource === 'vibe' || currentListSource === 'existing' || currentListSource === 'podcast' || currentListSource === 'radio') return;
     schedulePreview(300);
   };
 
-  ['genres', 'artists', 'albums', 'excludeGenres', 'minRating', 'maxTracks', 'vibeMaxTracks', 'shuffle', 'apiBase', 'key'].forEach((id) => {
+  ['genres', 'artists', 'albums', 'excludeGenres', 'minRating', 'maxTracks', 'shuffle', 'apiBase', 'key'].forEach((id) => {
     const el = $(id);
     if (!el) return;
     el.addEventListener('change', () => {
@@ -3437,6 +3454,17 @@ function wireEvents() {
     try { el?.focus(); el?.click(); } catch {}
     try { if (navigator.virtualKeyboard && typeof navigator.virtualKeyboard.show === 'function') navigator.virtualKeyboard.show(); } catch {}
   };
+
+  const vibeMaxTracksEl = $('vibeMaxTracks');
+  if (vibeMaxTracksEl) {
+    const persistVibeMaxTracks = () => {
+      localStorage.setItem(VIBE_MAX_TRACKS_STORAGE, String(getVibeMaxTracks()));
+      // Do not auto-preview or switch builders when user adjusts vibe target.
+      renderFiltersSummary();
+    };
+    vibeMaxTracksEl.addEventListener('change', persistVibeMaxTracks);
+    if (vibeMaxTracksEl.tagName === 'INPUT') vibeMaxTracksEl.addEventListener('input', persistVibeMaxTracks);
+  }
 
   filterQuickKbEl?.addEventListener('click', () => showKeyboardFor(filterQuickSearchEl));
 

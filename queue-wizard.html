@@ -389,9 +389,9 @@
           <label><input id="cropVibe" type="checkbox" checked> Crop Queue</label>
           <label>At least rating
             <select id="minRatingVibe" class="starFilter" style="width:140px;margin-left:6px">
-              <option value="0">Any</option>
+              <option value="0" selected>Any</option>
               <option value="1">★☆☆☆☆</option>
-              <option value="2" selected>★★☆☆☆</option>
+              <option value="2">★★☆☆☆</option>
               <option value="3">★★★☆☆</option>
               <option value="4">★★★★☆</option>
               <option value="5">★★★★★</option>
@@ -399,8 +399,8 @@
           </label>
           <label>Exclude genre
             <select id="vibeExcludeGenre" style="width:140px;margin-left:6px">
-              <option value="christmas" selected>Christmas</option>
-              <option value="none">None</option>
+              <option value="christmas">Christmas</option>
+              <option value="none" selected>None</option>
             </select>
           </label>
           <label>Vibe max tracks
@@ -460,7 +460,7 @@
     </div>
   </div>
 
-  <script src="scripts/queue-wizard.js?v=20260310-existing-direct-load4"></script>
+  <script src="scripts/queue-wizard.js?v=20260318-vibe-fix3"></script>
 
 <script>
 (function enhanceStarFilters(){
