@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="manifest" href="/manifest-controller.webmanifest" />
+  <link rel="manifest" href="/manifest-controller.webmanifest?v=20260318b" />
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
@@ -438,12 +438,24 @@
     const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v1';
     const MOBILE_DEFAULT_PROFILE={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18};
     const __u = new URL(location.href);
+    // Keep a stable, explicit iPad URL so iOS Add-to-Home-Screen captures the right path.
+    if (!__u.searchParams.get('devicePreset')) {
+      try {
+        __u.searchParams.set('devicePreset', 'ipadpro11-landscape');
+        history.replaceState(null, '', __u.toString());
+      } catch {}
+    }
     const IS_PREVIEW = __u.searchParams.get('preview') === '1';
     const Q_DEVICE_PRESET = String(__u.searchParams.get('devicePreset') || '').trim().toLowerCase();
     const FORCE_PROFILE_SYNC = __u.searchParams.get('syncProfile') === '1';
-    const IS_PHONE_VIEW = Math.min(Number(window.innerWidth||0), Number(window.innerHeight||0)) > 0
-      ? Math.min(Number(window.innerWidth||0), Number(window.innerHeight||0)) <= 900
-      : /iphone|android/i.test(String(navigator.userAgent||''));
+    const __minSide = Math.min(Number(window.innerWidth||0), Number(window.innerHeight||0));
+    const __ua = String(navigator.userAgent||'').toLowerCase();
+    const IS_IPAD_LIKE = /ipad/.test(__ua)
+      || (/macintosh/.test(__ua) && Number(navigator.maxTouchPoints || 0) > 1)
+      || (__minSide >= 700);
+    const IS_PHONE_VIEW = IS_IPAD_LIKE
+      ? false
+      : (__minSide > 0 ? __minSide <= 520 : /iphone|android(?!.*tablet)/i.test(__ua));
     const USE_LOCAL_PROFILE_ONLY = IS_PHONE_VIEW && !FORCE_PROFILE_SYNC;
     const IS_KIOSK_1280 = (__u.searchParams.get('kiosk') === '1' || __u.searchParams.get('profile') === '1280x400' || __u.searchParams.get('layout') === '1280x400');
     const IS_KIOSK_EDITOR = IS_KIOSK_1280 && (__u.searchParams.get('edit') === '1' || __u.searchParams.get('designer') === '1');

@@ -24,12 +24,15 @@
         const w = Math.max(0, Number(window.innerWidth || 0));
         const h = Math.max(0, Number(window.innerHeight || 0));
         const shortSide = Math.min(w, h);
-        const isLandscape = w >= h;
-        const isIpadLike = /ipad/.test(String(navigator.userAgent||'').toLowerCase()) || (shortSide >= 900 && isLandscape);
+        const ua = String(navigator.userAgent || '').toLowerCase();
+        const isIpadUA = /ipad/.test(ua);
+        const isIpadDesktopMode = /macintosh/.test(ua) && Number(navigator.maxTouchPoints || 0) > 1;
+        const isTabletViewport = shortSide >= 760;
+        const isIpadLike = isIpadUA || isIpadDesktopMode || isTabletViewport;
 
         const target = (force.includes('ipad') || force === 'landscape' || (force === '' && isIpadLike))
-          ? 'controller-ipad.html'
-          : 'controller-iphone.html';
+          ? 'controller-ipad.html?devicePreset=ipadpro11-landscape'
+          : 'controller-iphone.html?devicePreset=iphone17';
 
         u.pathname = u.pathname.replace(/\/controller\.html$/i, '/' + target);
         location.replace(u.toString());
