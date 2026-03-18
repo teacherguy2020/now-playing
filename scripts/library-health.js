@@ -272,10 +272,10 @@
 
   function defaultApiBase() {
     if (location.protocol === 'http:' || location.protocol === 'https:') {
-      const host = location.hostname || '10.0.0.233';
+      const host = location.hostname || 'nowplaying.local';
       return `${location.protocol}//${host}:3101`;
     }
-    return 'http://10.0.0.233:3101';
+    return 'http://nowplaying.local:3101';
   }
 
   function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
@@ -392,7 +392,7 @@
     const apiBaseEl = $('apiBase');
     const keyEl = $('key');
 
-    const host = location.hostname || '10.0.0.233';
+    const host = location.hostname || 'nowplaying.local';
     const guess = defaultApiBase();
     try {
       const r = await fetch(`${guess}/config/runtime`, { cache: 'no-store' });

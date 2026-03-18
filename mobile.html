@@ -115,7 +115,7 @@
       'Emerald Glass':{primaryThemeColor:'#081511',secondaryThemeColor:'#1f4a3e',primaryTextColor:'#e8fff6',secondaryTextColor:'#9ed9c3'}
     };
     const defaults={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18,customColors:{primaryThemeColor:'#0b111c',secondaryThemeColor:'#1f2a3d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}};
-    const API_BASE = (()=>{ try { const h=location.hostname||'10.0.0.233'; const p=location.protocol||'http:'; return `${p}//${h}:3101`; } catch { return 'http://10.0.0.233:3101'; } })();
+    const API_BASE = (()=>{ try { const h=location.hostname||'nowplaying.local'; const p=location.protocol||'http:'; return `${p}//${h}:3101`; } catch { return 'http://nowplaying.local:3101'; } })();
     function read(){try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...defaults}}}
     function write(p){localStorage.setItem(KEY,JSON.stringify(p));}
     async function ensureKey(){
@@ -260,7 +260,7 @@
       $('controllerPreview').src=targetPage+'?'+qp.toString();
 
       // Default pushed URL: short canonical route (+ minimal preset so layout is deterministic).
-      const pushed=`${location.protocol}//${location.hostname||'10.0.0.4'}:8101/${targetPage}?devicePreset=${encodeURIComponent(String(p.devicePreset||'iphone17'))}`;
+      const pushed=`${location.protocol}//${location.hostname||'nowplaying.local'}:8101/${targetPage}?devicePreset=${encodeURIComponent(String(p.devicePreset||'iphone17'))}`;
       if ($('pushedUrl')) $('pushedUrl').value = pushed;
 
       // Persist server-side in background.

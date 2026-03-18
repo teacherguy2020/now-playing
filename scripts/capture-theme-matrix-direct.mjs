@@ -2,8 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
-const shellBase = 'http://10.0.0.233:8101/app.html?page=';
-const pageBase = 'http://10.0.0.233:8101/';
+const shellBase = 'http://nowplaying.local:8101/app.html?page=';
+const pageBase = 'http://nowplaying.local:8101/';
 const tabs = [
   ['config', 'config.html'],
   ['diagnostics', 'diagnostics.html'],

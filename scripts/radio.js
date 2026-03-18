@@ -9,7 +9,7 @@
   const RADIO_QUEUE_PRESETS_KEY = 'nowplaying.radioQueuePresets.v1';
   const RADIO_COLLAPSED_GENRES_KEY = 'radio:collapsedGenres:v1';
 
-  function apiBaseDefault(){ return `${location.protocol}//${location.hostname || '10.0.0.233'}:3101`; }
+  function apiBaseDefault(){ return `${location.protocol}//${location.hostname || 'nowplaying.local'}:3101`; }
   function key(){ return String($('key')?.value || '').trim(); }
   function base(){ return String($('apiBase')?.value || apiBaseDefault()).replace(/\/$/, ''); }
   function mode(){ return $('modeReplace')?.checked ? 'replace' : 'append'; }
@@ -74,7 +74,7 @@
       const r = await fetch(`${apiBaseDefault()}/config/runtime`, { cache: 'no-store' });
       const j = await r.json().catch(() => ({}));
       const cfg = j?.config || {};
-      const host = location.hostname || '10.0.0.233';
+      const host = location.hostname || 'nowplaying.local';
       const apiPort = Number(cfg?.ports?.api || 3101);
       const uiPort = Number(cfg?.ports?.ui || 8101);
       const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || '').trim();
@@ -93,7 +93,7 @@
     } catch {
       $('apiBase').value = apiBaseDefault();
       if ($('apiHint')) $('apiHint').textContent = $('apiBase').value.replace(/^https?:\/\//,'');
-      if ($('webHint')) $('webHint').textContent = `${location.hostname || '10.0.0.233'}:8101`;
+      if ($('webHint')) $('webHint').textContent = `${location.hostname || 'nowplaying.local'}:8101`;
       if ($('moodeHint')) $('moodeHint').textContent = 'unknown';
       if ($('alexaHint')) $('alexaHint').textContent = 'unknown';
       setPillState('apiPill','warn');

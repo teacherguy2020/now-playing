@@ -64,7 +64,7 @@ function bindAlbumArtAppleLinkOnce() {
     try {
       const key = await ensureRuntimeTrackKey();
       const headers = { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) };
-      const host = (location.hostname || '10.0.0.233');
+      const host = (location.hostname || 'nowplaying.local');
       const targetUrl = `${location.protocol}//${host}:8101/kiosk.html`;
       await fetch(`${API_BASE}/config/moode/browser-url`, {
         method: 'POST', headers, body: JSON.stringify({ url: targetUrl, reason:'player-art-to-kiosk' })
@@ -168,10 +168,10 @@ function updatePhoneArtBottomVar() {
  *
  * Rules:
  * - When UI is served from https://moode.brianwis.com:
- *     • NEVER fetch http://10.0.0.233 (mixed content will be blocked)
+ *     • NEVER fetch http://nowplaying.local (mixed content will be blocked)
  *     • Use public HTTPS endpoints only
  *
- * - When UI is served on LAN (e.g. http://10.0.0.233:8000):
+ * - When UI is served on LAN (e.g. http://nowplaying.local:8000):
  *     • Use direct LAN endpoints for lowest latency
  */
 
@@ -245,7 +245,7 @@ const UPNP_ICON_URL = svgDataUrl(`
 </svg>`);
 
 // moOde player (LAN-only; used for pause-cover fallback image)
-const MOODE_BASE_URL = 'http://10.0.0.254';
+const MOODE_BASE_URL = 'http://moode.local';
 
 dlog('[NP] host=', location.host, 'IS_PUBLIC=', IS_PUBLIC);
 dlog('[NP] API_BASE=', API_BASE, 'STATIC_BASE=', STATIC_BASE);

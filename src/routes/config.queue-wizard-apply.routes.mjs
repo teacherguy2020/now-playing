@@ -50,7 +50,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       const playlistName = String(req.body?.playlistName || '').trim();
       if (!tracks.length) return res.status(400).json({ ok: false, error: 'tracks[] is required' });
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
 
       let didCrop = false;
       let didClear = false;
@@ -160,7 +160,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
           try {
             if (/[\/\\]/.test(String(playlistName || ''))) throw new Error('playlistName cannot contain / or \\');
             const moodeUser = String(MOODE_SSH_USER || 'moode');
-            const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+            const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local');
             const localTmp = path.join('/tmp', `qw-saveonly-${process.pid}-${Date.now()}.m3u`);
             const remoteTmp = `/tmp/qw-saveonly-${process.pid}-${Date.now()}.m3u`;
             const remoteDst = `/var/lib/mpd/playlists/${String(playlistName || '').trim()}.m3u`;
@@ -195,7 +195,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       let collageError = '';
       if (generateCollage && playlistName && playlistSaved) {
         const moodeUser = String(MOODE_SSH_USER || 'moode');
-        const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+        const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local');
         const coverDir = String(process.env.MOODE_PLAYLIST_COVER_DIR || '/var/local/www/imagesw/playlist-covers');
 
         // Prefer promoting the exact preview image the user saw.
@@ -246,7 +246,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       if (playlistName && playlistSaved && collageGenerated) {
         try {
           const moodeUser = String(MOODE_SSH_USER || 'moode');
-          const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+          const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local');
           const coverDir = String(process.env.MOODE_PLAYLIST_COVER_DIR || '/var/local/www/imagesw/playlist-covers');
           const raw = String(playlistName || '').trim();
           const exact = `${coverDir}/${raw}.jpg`;

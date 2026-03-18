@@ -45,7 +45,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
     const p = String(targetPath || '').trim();
     if (!p) return;
     await new Promise((resolve, reject) => {
-      execFile('mpc', ['-h', String(MPD_HOST || '10.0.0.254'), '-p', String(MPD_PORT || 6600), 'update', p], { timeout: 15000 }, (err) => {
+      execFile('mpc', ['-h', String(MPD_HOST || 'moode.local'), '-p', String(MPD_PORT || 6600), 'update', p], { timeout: 15000 }, (err) => {
         if (err) return reject(err);
         resolve();
       });
@@ -201,7 +201,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
       const chosen = entries.slice(0, limit);
       const lines = chosen.map(x => `${mpdPrefix}/${x.name}`).join('\n') + '\n';
 
-      const MOODE_HOST = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+      const MOODE_HOST = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local');
       const MOODE_USER = String(MOODE_SSH_USER || 'moode');
       const MPD_PORT_NUM = Number(MPD_PORT || 6600);
 

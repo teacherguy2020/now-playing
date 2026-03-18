@@ -679,9 +679,9 @@
       r.style.setProperty('--quick-line', cSecondary || t.line || '#2a3a58');
       r.style.setProperty('--quick-bg-menu', t.quickBgMenu || 'rgba(10,16,28,.94)');
     }
-    const base=`${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    const base=`${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
     let runtimeTrackKey='';
-    let runtimeMoodeHost='10.0.0.254';
+    let runtimeMoodeHost='moode.local';
     let quickIndex=[];
     async function ensureKey(){
       if (runtimeTrackKey) return runtimeTrackKey;
@@ -728,7 +728,7 @@
           if (IS_KIOSK_1280) relUrl.searchParams.set('kiosk', '1');
           const rel = `${relUrl.pathname.replace(/^\//,'')}${relUrl.search}`;
 
-          const webHost = String(location.hostname || '10.0.0.4').trim();
+          const webHost = String(location.hostname || 'nowplaying.local').trim();
           const url = `http://${webHost}:8101/${rel}`;
           const r = await fetch(`${base}/config/moode/browser-url`, {
             method:'POST', headers:reqHeaders(true), body:JSON.stringify({ url, reason:'kiosk-controls-push' })
@@ -1969,7 +1969,7 @@
         try {
           await ensureKey();
           const m = String(mode||'player').toLowerCase()==='peppy' ? 'peppy' : 'player';
-          const host = String(location.hostname || '10.0.0.4').trim();
+          const host = String(location.hostname || 'nowplaying.local').trim();
           const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
           const refreshUrl = `${targetUrl}&sw=${Date.now()}`;
           await fetch(`${base}/config/moode/display-mode`, {

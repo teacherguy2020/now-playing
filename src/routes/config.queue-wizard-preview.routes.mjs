@@ -87,7 +87,7 @@ export function registerConfigQueueWizardPreviewRoute(app, deps) {
       const maxTracks = Math.max(1, Math.min(5000, Number(req.body?.maxTracks || 250)));
       const varietyMode = req.body?.varietyMode !== false;
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const fmt = '%file%\t%artist%\t%title%\t%album%\t%albumartist%\t%genre%';
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
         maxBuffer: 64 * 1024 * 1024,

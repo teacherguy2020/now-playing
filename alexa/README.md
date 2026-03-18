@@ -118,7 +118,7 @@ moode.YOUR-PUBLIC.DOMAIN.com {
     path /coverart.php* /images/*
   }
   handle @moode_art {
-    reverse_proxy 10.0.0.254:80 {
+    reverse_proxy moode.local:80 {
       header_down -Set-Cookie
       header_down X-Upstream "moode:80"
     }
@@ -139,7 +139,7 @@ moode.YOUR-PUBLIC.DOMAIN.com {
     path /stream*
   }
   handle @moode_stream {
-    reverse_proxy 10.0.0.254:8000 {
+    reverse_proxy moode.local:8000 {
       header_down X-Upstream "moode:8000"
     }
   }

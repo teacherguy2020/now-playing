@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-MOODE_HOST="${MOODE_HOST:-10.0.0.254}"
+MOODE_HOST="${MOODE_HOST:-moode.local}"
 MOODE_USER="${MOODE_USER:-moode}"
 REMOTE_DIR="/opt/peppymeter/1280x400"
 

@@ -2,8 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
-const APP='http://10.0.0.233:8101/app.html?page=';
-const API='http://10.0.0.233:3101';
+const APP='http://nowplaying.local:8101/app.html?page=';
+const API='http://nowplaying.local:3101';
 const KEY='1029384756';
 const ROOT=path.resolve('docs/images/review-efficient-flow-20260227');
 const MASTER=path.resolve('docs/images/master-best-20260227');

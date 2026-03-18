@@ -22,7 +22,7 @@
     const override = (q.get('api') || '').trim();
     if (override) return override.replace(/\/$/, '');
 
-    const host = window.location.hostname || '10.0.0.233';
+    const host = window.location.hostname || 'nowplaying.local';
     return `http://${host}:3101`;
   })();
   let runtimeTrackKey = '';
@@ -73,7 +73,7 @@
         const apiPort = Number(j?.config?.ports?.api || 3101);
         const uiPort = Number(j?.config?.ports?.ui || 8101);
         const proto = location.protocol || 'http:';
-        const host = location.hostname || '10.0.0.233';
+        const host = location.hostname || 'nowplaying.local';
         API_BASE = `${proto}//${host}:${apiPort}`;
         if (apiHintEl) apiHintEl.textContent = `${host}:${apiPort}`;
         if (webHintEl) webHintEl.textContent = `${host}:${uiPort}`;
@@ -92,7 +92,7 @@
         return;
       }
     } catch {}
-    const host = location.hostname || '10.0.0.233';
+    const host = location.hostname || 'nowplaying.local';
     if (apiHintEl) apiHintEl.textContent = API_BASE.replace(/^https?:\/\//, '');
     if (webHintEl) webHintEl.textContent = `${host}:8101`;
     if (alexaHintEl) alexaHintEl.textContent = 'unknown';

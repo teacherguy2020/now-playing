@@ -115,7 +115,7 @@
     if (__embedded && __url.searchParams.get('cols') === '7') document.body.classList.add('embeddedWide');
 
     // Server-backed controller palette
-    const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    const __npBase = `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
     function __npApplyPalette(name, themeMode, customColors){
       const p = String(name||'ocean').toLowerCase();
       const modeRaw = String(themeMode||'auto').toLowerCase();
@@ -221,7 +221,7 @@
       } catch {}
     })();
 
-    const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    const base = `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
     let key='';
     const STATE_KEY='np.controller.radio.menu.v1';
     let state={view:'grid',sort:'az',filter:'all'};

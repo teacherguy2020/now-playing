@@ -125,7 +125,7 @@ function stationHost(raw) {
 async function loadRadioCatalogMap() {
   const now = Date.now();
   if (radioMetaByStation.size && (now - radioCatalogCacheTs) < (5 * 60 * 1000)) return radioMetaByStation;
-  const host = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+  const host = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local');
   const user = String(MOODE_SSH_USER || 'moode');
   const sql = "select station,name,genre,type from cfg_radio;";
   const { stdout } = await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${user}@${host}`, 'sqlite3', '-separator', '\t', '/var/local/www/db/moode-sqlite3.db', sql], { timeout: 12000, maxBuffer: 4 * 1024 * 1024 });
@@ -265,7 +265,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const artist = String(req.query?.artist || '').trim();
       if (!album) return res.status(400).json({ ok: false, error: 'album is required' });
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const args = ['-h', mpdHost, '-f', '%file%\t%track%\t%title%\t%artist%\t%album%', 'find', 'album', album];
       if (artist) args.push('artist', artist);
       let out = '';
@@ -306,7 +306,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const artist = String(req.query?.artist || '').trim();
       if (!artist) return res.status(400).json({ ok: false, error: 'artist is required' });
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
 
       const pull = async (field) => {
         const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%\t%genre%', 'find', field, artist], { maxBuffer: 24 * 1024 * 1024 });
@@ -498,7 +498,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
       const action = String(req.body?.action || '').trim().toLowerCase();
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const map = { play: 'play', pause: 'pause', toggle: 'toggle', next: 'next', prev: 'prev', previous: 'prev', stop: 'stop' };
 
       if (action === 'shuffle') {
@@ -1032,7 +1032,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
 
   app.get('/art/radio-logo.jpg', async (req, res) => {
     try {
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       let name = String(req.query?.name || '').trim();
       const file = String(req.query?.file || '').trim();
 
@@ -1094,7 +1094,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
   app.get('/config/diagnostics/queue', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const ratingsEnabled = await isRatingsEnabled();
       const [{ stdout: qOut }, { stdout: sOut }, { stdout: cOut }, { stdout: cfOut }] = await Promise.all([
         execFileP('mpc', ['-h', mpdHost, '-f', '%position%\t%artist%\t%title%\t%album%\t%file%\t%name%', 'playlist']),

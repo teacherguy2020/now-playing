@@ -1,13 +1,13 @@
 # 15) moOde remote display blanking fix (wake-on-play)
 
 ## Problem
-When moOde local display target URL is set to an external page (for example `http://10.0.0.233:8101/display.html?kiosk=1`), screen blanking/wake behavior can break:
+When moOde local display target URL is set to an external page (for example `http://nowplaying.local:8101/display.html?kiosk=1`), screen blanking/wake behavior can break:
 
 - Blanking appears inconsistent or immediately wakes.
 - With `wake_display=1`, display can be forced back on repeatedly.
 
 ## Root Cause
-On moOde Pi4 (`10.0.0.254`), watchdog remote wake logic in:
+On moOde Pi4 (`moode.local`), watchdog remote wake logic in:
 
 - `/var/www/daemon/watchdog.sh`
 
@@ -15,7 +15,7 @@ was checking playback via:
 
 - `http://<local_display_host>/command/?cmd=get_output_format`
 
-For host `10.0.0.233:8101`, that endpoint does not exist (`404`), causing false-positive wake decisions.
+For host `nowplaying.local:8101`, that endpoint does not exist (`404`), causing false-positive wake decisions.
 
 ## Fix Applied (2026-03-02)
 Patched `/var/www/daemon/watchdog.sh` remote branch to query:
@@ -75,7 +75,7 @@ fi
 ```
 
 ## Live Environment Details (example)
-- moOde host: `moode@10.0.0.254`
+- moOde host: `moode@moode.local`
 - External UI host: `nowplaying.local` (or your API host/IP)
 - Display page: `:8101/display.html`
 - Playback API: `:3101/now-playing`

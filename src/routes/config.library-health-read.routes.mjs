@@ -79,7 +79,7 @@ async function computeLibraryHealthSnapshot({ sampleLimit, scanLimit, getRatingF
   };
   const pick = (arr, row) => { if (arr.length < sampleLimit) arr.push(row); };
 
-  const mpdHost = String(MPD_HOST || '10.0.0.254');
+  const mpdHost = String(MPD_HOST || 'moode.local');
   const fmt = '%file%\t%artist%\t%title%\t%album%\t%genre%\t%MUSICBRAINZ_TRACKID%';
   const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], { maxBuffer: 64 * 1024 * 1024 });
   const allFiles = String(stdout || '')
@@ -313,7 +313,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
         });
       }
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, 'list', 'genre'], { maxBuffer: 8 * 1024 * 1024 });
       const genres = Array.from(
         new Set(
@@ -413,7 +413,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
 
       const onlyFolder = String(req.query?.folder || '').trim();
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const { stdout } = await execFileP(
         'mpc',
         ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%', 'listall'],
@@ -605,7 +605,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
         return i > 0 ? s.slice(0, i) : '(root)';
       };
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const { stdout } = await execFileP(
         'mpc',
         ['-h', mpdHost, '-f', '%file%\t%artist%\t%albumartist%\t%album%', 'listall'],
@@ -729,7 +729,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
         return i > 0 ? s.slice(0, i) : '(root)';
       };
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const { stdout } = await execFileP(
         'mpc',
         ['-h', mpdHost, '-f', '%file%\t%track%\t%title%\t%artist%\t%albumartist%\t%album%\t%date%\t%genre%', 'listall'],
@@ -763,7 +763,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
             const script = `if [ -f ${pQ} ]; then metaflac --export-tags-to=- ${pQ} 2>/dev/null || true; fi`;
             const { stdout: mfOut } = await sshBashLc({
               user: String(MOODE_SSH_USER || 'moode'),
-              host: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
+              host: String(MOODE_SSH_HOST || MPD_HOST || 'moode.local'),
               script,
               timeoutMs: 8000,
             });

@@ -160,7 +160,7 @@
   <script>
 
     // Server-backed controller palette
-    const __npBase = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    const __npBase = `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
     function __npApplyPalette(name, themeMode, customColors){
       const p = String(name||'ocean').toLowerCase();
       const modeRaw = String(themeMode||'auto').toLowerCase();
@@ -292,7 +292,7 @@
     const EMBEDDED = new URL(location.href).searchParams.get('embedded') === '1';
     if (EMBEDDED) document.body.classList.add('embedded');
 
-    const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    const base = `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
     let runtimeTrackKey = '';
     let pollTimer = null;
     let longPressTimer = null;

@@ -53,7 +53,7 @@
       async function ensureRuntimeKey(){
         if (runtimeTrackKey) return runtimeTrackKey;
         try {
-          const host = location.hostname || '10.0.0.4';
+          const host = location.hostname || 'nowplaying.local';
           const api = `${location.protocol}//${host}:3101`;
           const r = await fetch(`${api}/config/runtime`, { cache:'no-store' });
           const j = await r.json().catch(()=>({}));
@@ -63,7 +63,7 @@
       }
       async function refreshTargetHint(){
         if (!targetHint) return;
-        const host = location.hostname || '10.0.0.4';
+        const host = location.hostname || 'nowplaying.local';
         const api = `${location.protocol}//${host}:3101`;
         const expected = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
         try {

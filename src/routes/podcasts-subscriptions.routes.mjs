@@ -146,7 +146,7 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
         ];
 
         logp('COVER PUSH start', { srcOnMoode, dstOnMoode });
-        await execFileP('ssh', ['moode@10.0.0.254', ...cmd]);
+        await execFileP('ssh', ['moode@moode.local', ...cmd]);
         logp('COVER PUSH ok', { srcOnMoode, dstOnMoode });
 
         return { ok: true, srcOnMoode, dstOnMoode, coverName };

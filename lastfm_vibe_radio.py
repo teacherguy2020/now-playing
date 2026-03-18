@@ -111,7 +111,7 @@ def mpd_to_abs(mpd_file: str) -> str:
     """
     Convert MPD-visible paths to a local filesystem path for Mutagen reads.
 
-    On the API host (10.0.0.233), the library is typically mounted at:
+    On the API host (nowplaying.local), the library is typically mounted at:
       - /mnt/SamsungMoode/...
       - /mnt/OSDISK/...
 
@@ -307,7 +307,7 @@ def main():
     ap = argparse.ArgumentParser(description="Build a chained Last.fm-based queue in moOde/MPD.")
     ap.add_argument("--api-key", default=os.environ.get("LASTFM_API_KEY", ""))
     ap.add_argument("--index", default="/home/moode/moode_library_index.json")
-    ap.add_argument("--host", default="localhost")
+    ap.add_argument("--host", default="moode.local")
     ap.add_argument("--port", type=int, default=6600)
 
     ap.add_argument("--similar-limit", type=int, default=150)

@@ -10,7 +10,7 @@ export function registerConfigLibraryHealthArtRoutes(app, deps) {
   const { requireTrackKey } = deps;
 
   async function getAlbumSeedFromFolder(folder = '') {
-    const mpdHost = String(MPD_HOST || '10.0.0.254');
+    const mpdHost = String(MPD_HOST || 'moode.local');
     try {
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%artist%\t%albumartist%\t%album%', 'find', 'base', String(folder || '').trim()]);
       const first = String(stdout || '').split(/\r?\n/).find((ln) => String(ln || '').trim()) || '';
@@ -123,7 +123,7 @@ export function registerConfigLibraryHealthArtRoutes(app, deps) {
       // Fallback: no standalone cover file found, try embedded artwork from first track.
       if (!coverPath) {
         try {
-          const mpdHost = String(MPD_HOST || '10.0.0.254');
+          const mpdHost = String(MPD_HOST || 'moode.local');
           const { stdout: lsOut } = await execFileP('mpc', ['-h', mpdHost, 'find', 'base', folder], { maxBuffer: 16 * 1024 * 1024 });
           const firstTrack = String(lsOut || '').split(/\r?\n/).map((s) => s.trim()).find(Boolean);
           if (firstTrack) {
@@ -207,7 +207,7 @@ export function registerConfigLibraryHealthArtRoutes(app, deps) {
         // keep original
       }
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       let files = [];
       try {
         const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'find', 'base', folder]);

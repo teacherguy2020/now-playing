@@ -50,7 +50,7 @@ export function registerConfigLibraryHealthPerformersRoutes(app, deps) {
         return r.json();
       };
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%track%\t%title%\t%artist%\t%albumartist%\t%album%', 'listall'], { maxBuffer: 64 * 1024 * 1024 });
 
       const tracks = [];
@@ -190,7 +190,7 @@ export function registerConfigLibraryHealthPerformersRoutes(app, deps) {
           .trim();
       };
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const { stdout } = await execFileP(
         'mpc',
         ['-h', mpdHost, '-f', '%file%\t%artist%\t%albumartist%\t%title%', 'listall'],
@@ -251,7 +251,7 @@ export function registerConfigLibraryHealthPerformersRoutes(app, deps) {
         try {
           const { stdout: outStd } = await sshBashLc({
             user: String(MOODE_SSH_USER || 'moode'),
-            host: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
+            host: String(MOODE_SSH_HOST || MPD_HOST || 'moode.local'),
             script,
             timeoutMs: 12000,
           });
@@ -313,7 +313,7 @@ export function registerConfigLibraryHealthPerformersRoutes(app, deps) {
         return i > 0 ? s.slice(0, i) : '(root)';
       };
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'listall'], { maxBuffer: 64 * 1024 * 1024 });
       const files = String(stdout || '').split(/\r?\n/).map((x) => x.trim()).filter((f) => f && isAudio(f)).filter((f) => {
         const ff = folderOf(f);
@@ -340,7 +340,7 @@ export function registerConfigLibraryHealthPerformersRoutes(app, deps) {
         ].join('; ');
 
         try {
-          const { stdout } = await sshBashLc({ user: String(MOODE_SSH_USER || 'moode'), host: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'), script, timeoutMs: 12000 });
+          const { stdout } = await sshBashLc({ user: String(MOODE_SSH_USER || 'moode'), host: String(MOODE_SSH_HOST || MPD_HOST || 'moode.local'), script, timeoutMs: 12000 });
           const out = String(stdout || '').trim();
           if (out.includes('OK')) updated += 1;
           else {

@@ -42,7 +42,7 @@ export function registerConfigRatingsStickerRoutes(app, deps) {
         `echo "MISSING|${stickerPath}|0"`,
       ].join('; ');
 
-      const { stdout } = await sshBashLc({ user: String(MOODE_SSH_USER || 'moode'), host: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'), script, timeoutMs: 12000 });
+      const { stdout } = await sshBashLc({ user: String(MOODE_SSH_USER || 'moode'), host: String(MOODE_SSH_HOST || MPD_HOST || 'moode.local'), script, timeoutMs: 12000 });
       const raw = String(stdout || '').trim();
       const line = raw.split(/\r?\n/).map((x) => x.trim()).find((x) => x.startsWith('FOUND|') || x.startsWith('MISSING|')) || raw;
       const [state = 'MISSING', pathOut = stickerPath, sz = '0'] = String(line || '').split('|');
@@ -63,7 +63,7 @@ export function registerConfigRatingsStickerRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
 
       const sshUser = String(MOODE_SSH_USER || 'moode');
-      const sshHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+      const sshHost = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local');
       const stickerPath = String(process.env.MPD_STICKER_PATH || '/var/lib/mpd/sticker.sql');
       const backupDir = String(process.env.MPD_STICKER_BACKUP_DIR || '/home/brianwis/backups/sticker-backups');
       const ts = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
@@ -115,7 +115,7 @@ export function registerConfigRatingsStickerRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
       const sshUser = String(MOODE_SSH_USER || 'moode');
-      const sshHost = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+      const sshHost = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local');
       const stickerPath = String(process.env.MPD_STICKER_PATH || '/var/lib/mpd/sticker.sql');
       const backupPath = String(req.body?.backupPath || '').trim();
       if (!backupPath) return res.status(400).json({ ok: false, error: 'backupPath is required' });

@@ -194,7 +194,7 @@
   }
 
   function apiBaseDefault(){
-    const host = location.hostname || '10.0.0.233';
+    const host = location.hostname || 'nowplaying.local';
     return `${location.protocol}//${host}:3101`;
   }
 
@@ -245,7 +245,7 @@
 
   function refreshPreviewFrame({ name, frameId, linkId, page, uiPort = 8101, applyZoom }){
     dbg(`refresh${name}Frame(uiPort=${uiPort})`);
-    const host = location.hostname || '10.0.0.233';
+    const host = location.hostname || 'nowplaying.local';
     const proto = location.protocol || 'http:';
     const sameOriginUrl = new URL(page, location.href).toString();
     const fallbackUrl = `${proto}//${host}:${uiPort}/${String(page || '').replace(/^\/+/, '')}`;
@@ -299,7 +299,7 @@
   }
 
   async function loadRuntime(){
-    const host = location.hostname || '10.0.0.233';
+    const host = location.hostname || 'nowplaying.local';
     dbg('loadRuntime start');
     try {
       const r = await fetch(`${apiBaseDefault()}/config/runtime`, { cache: 'no-store' });

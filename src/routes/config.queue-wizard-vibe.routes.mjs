@@ -78,7 +78,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         env: {
           ...process.env,
           INDEX_PATH: vibeIndexPath,
-          MPD_HOST: String(mpdHost || '10.0.0.254'),
+          MPD_HOST: String(mpdHost || 'moode.local'),
           MPD_PORT: '6600',
         },
       });
@@ -116,7 +116,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const excludeGenre = String(req.body?.excludeGenre || 'christmas').trim().toLowerCase();
       const playNow = !!req.body?.playNow;
       const keepPlaying = !!req.body?.keepPlaying;
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
 
       let artist = '';
       let title = '';
@@ -505,7 +505,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const targetQueue = Math.max(10, Math.min(200, Number(req.query?.targetQueue) || 50));
       // Use direct invoke path by spawning inline (kept simple for compatibility)
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%artist%\t%title%', 'current']);
       const line = String(stdout || '').trim();
       const [artist = '', title = ''] = line.split('\t');
@@ -528,7 +528,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
       const targetQueue = Math.max(10, Math.min(200, Number(req.body?.targetQueue) || 50));
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%artist%\t%title%', 'current']);
       const line = String(stdout || '').trim();
       const [artist = '', title = ''] = line.split('\t');
@@ -562,7 +562,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const lastfmApiKey = await resolveLastfmApiKey();
       if (!lastfmApiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
       const jobId = makeVibeJobId();
 
@@ -645,7 +645,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const lastfmApiKey = await resolveLastfmApiKey();
       if (!lastfmApiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
       const jsonTmp = `/tmp/vibe-seed-${Date.now()}-${process.pid}.json`;
       const vibeIndexPath = await resolveVibeIndexPath();

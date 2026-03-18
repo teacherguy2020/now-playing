@@ -220,14 +220,14 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
 
   app.get('/peppy/live', async (req, res) => {
     try {
-      const hostHdr = String(req.get('host') || '').trim().replace(/:\d+$/, '') || '10.0.0.233';
+      const hostHdr = String(req.get('host') || '').trim().replace(/:\d+$/, '') || 'localhost';
       const fallback = `http://${hostHdr}:8101/display.html?kiosk=1`;
       const raw = await fs.readFile(peppyLastPushPath, 'utf8').catch(() => '');
       const j = raw ? JSON.parse(raw) : null;
       const url = String(j?.url || '').trim() || fallback;
       return res.redirect(302, url);
     } catch {
-      const hostHdr = String(req.get('host') || '').trim().replace(/:\d+$/, '') || '10.0.0.233';
+      const hostHdr = String(req.get('host') || '').trim().replace(/:\d+$/, '') || 'localhost';
       return res.redirect(302, `http://${hostHdr}:8101/display.html?kiosk=1`);
     }
   });
@@ -272,7 +272,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         prev = JSON.parse(rawPrev || '{}') || {};
       } catch {}
       const merged = {
-        url: incoming.url || String(prev?.url || '').trim() || 'http://10.0.0.233:8101/display.html?kiosk=1',
+        url: incoming.url || String(prev?.url || '').trim() || 'http://nowplaying.local:8101/display.html?kiosk=1',
         skin: incoming.skin || String(prev?.skin || '').trim() || 'blue-1280',
         theme: incoming.theme || String(prev?.theme || '').trim() || 'midnight-blue',
         meterType: incoming.meterType || String(prev?.meterType || '').trim() || 'circular',
@@ -322,9 +322,9 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
 
-      const mpdHost = String(req.body?.mpdHost || MPD_HOST || '10.0.0.254').trim();
+      const mpdHost = String(req.body?.mpdHost || MPD_HOST || 'moode.local').trim();
       const mpdPort = Math.max(1, Math.min(65535, Number(req.body?.mpdPort || 6600) || 6600));
-      const sshHost = String(req.body?.sshHost || MOODE_SSH_HOST || mpdHost || '10.0.0.254').trim();
+      const sshHost = String(req.body?.sshHost || MOODE_SSH_HOST || mpdHost || 'moode.local').trim();
       const sshUser = String(req.body?.sshUser || MOODE_SSH_USER || 'moode').trim();
       const paths = req.body?.paths || {};
 
@@ -373,7 +373,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
   app.post('/config/runtime/ensure-podcast-root', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const sshHost = String(req.body?.sshHost || MOODE_SSH_HOST || MPD_HOST || '10.0.0.254').trim();
+      const sshHost = String(req.body?.sshHost || MOODE_SSH_HOST || MPD_HOST || 'moode.local').trim();
       const sshUser = String(req.body?.sshUser || MOODE_SSH_USER || 'moode').trim();
       const podcastRoot = String(req.body?.podcastRoot || '').trim();
       if (!podcastRoot) return res.status(400).json({ ok: false, error: 'podcastRoot is required' });
@@ -726,7 +726,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
 
       const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
       const moodeBaseRaw = String(cfg?.moode?.baseUrl || '').trim();
-      const mpdHost = String(cfg?.mpd?.host || MPD_HOST || '10.0.0.254').trim();
+      const mpdHost = String(cfg?.mpd?.host || MPD_HOST || 'moode.local').trim();
       let moodeBase = moodeBaseRaw || `http://${mpdHost}`;
       if (!/^https?:\/\//i.test(moodeBase)) moodeBase = `http://${moodeBase}`;
       const cmd = encodeURIComponent(`set_display ${mode}`);
@@ -779,7 +779,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
       const moodeBaseRaw = String(cfg?.moode?.baseUrl || '').trim();
-      const mpdHost = String(cfg?.mpd?.host || MPD_HOST || '10.0.0.254').trim();
+      const mpdHost = String(cfg?.mpd?.host || MPD_HOST || 'moode.local').trim();
       let moodeBase = moodeBaseRaw || `http://${mpdHost}`;
       if (!/^https?:\/\//i.test(moodeBase)) moodeBase = `http://${moodeBase}`;
       const baseNoSlash = moodeBase.replace(/\/$/, '');
@@ -833,7 +833,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       if (!sshHost) return res.status(400).json({ ok: false, error: 'moode.sshHost or mpd.host is required in config' });
 
       const hostHdr = String(req.get('host') || '').trim();
-      const appHost = hostHdr.replace(/:\d+$/, '') || '10.0.0.233';
+      const appHost = hostHdr.replace(/:\d+$/, '') || 'localhost';
       const stamp = Date.now();
       const nowPlayingUrl = `http://${appHost}:8101/index.html?sw=${stamp}`;
       const webUiUrl = `http://localhost/?sw=${stamp}`;
@@ -1086,7 +1086,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
       const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
-      const host = String(cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '10.0.0.254').trim();
+      const host = String(cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || 'moode.local').trim();
       const port = Number(cfg?.mpd?.port || 6600) || 6600;
       const { stdout, stderr } = await execFileP('mpc', ['-h', host, '-p', String(port), 'update']);
       return res.json({ ok: true, host, port, stdout: String(stdout || '').trim(), stderr: String(stderr || '').trim() });
@@ -1120,7 +1120,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
       const moodeBaseRaw = String(cfg?.moode?.baseUrl || '').trim();
-      const mpdHost = String(cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '10.0.0.254').trim();
+      const mpdHost = String(cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || 'moode.local').trim();
       let moodeBase = moodeBaseRaw || `http://${mpdHost}`;
       if (!/^https?:\/\//i.test(moodeBase)) moodeBase = `http://${moodeBase}`;
       const url = `${moodeBase.replace(/\/$/, '')}/command/?cmd=reboot`;

@@ -16,7 +16,7 @@ export function registerConfigLibraryHealthGenreRoutes(app, deps) {
       const folder = String(req.query?.folder || '').trim();
       if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
 
       let rows = [];
       try {
@@ -79,7 +79,7 @@ export function registerConfigLibraryHealthGenreRoutes(app, deps) {
       if (!folder) return res.status(400).json({ ok: false, error: 'folder is required' });
       if (!genre) return res.status(400).json({ ok: false, error: 'genre is required' });
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
 
       let files = [];
       try {

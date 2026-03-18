@@ -5,7 +5,7 @@ import re
 from mpd import MPDClient
 
 INDEX_PATH = os.environ.get("INDEX_PATH", "/opt/now-playing/moode_library_index.json")
-MPD_HOST = os.environ.get("MPD_HOST", "10.0.0.254")
+MPD_HOST = os.environ.get("MPD_HOST", "moode.local")
 MPD_PORT = int(os.environ.get("MPD_PORT", "6600"))
 
 TITLE_JUNK = [

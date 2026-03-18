@@ -4,7 +4,7 @@ Goal: Reduce risk while splitting `moode-nowplaying-api.mjs` / `src/routes/confi
 
 Rules:
 1. Tiny changes only (one concern per step)
-2. Deploy each step to Pi (`10.0.0.233`)
+2. Deploy each step to Pi (`nowplaying.local`)
 3. Run smoke tests after each deploy
 4. No commit/push until user explicitly approves
 
@@ -93,11 +93,11 @@ Deploy + test.
 
 Use track key from `/config/runtime`.
 
-- `curl -s http://10.0.0.233:3101/config/runtime`
-- `curl -s -H 'x-track-key: <KEY>' http://10.0.0.233:3101/config/queue-wizard/options`
-- `curl -s -H 'x-track-key: <KEY>' http://10.0.0.233:3101/config/queue-wizard/playlists`
-- `curl -s -H 'x-track-key: <KEY>' http://10.0.0.233:3101/config/diagnostics/queue`
-- `curl -s -X POST -H 'Content-Type: application/json' -H 'x-track-key: <KEY>' -d '{"action":"shuffle"}' http://10.0.0.233:3101/config/diagnostics/playback`
+- `curl -s http://nowplaying.local:3101/config/runtime`
+- `curl -s -H 'x-track-key: <KEY>' http://nowplaying.local:3101/config/queue-wizard/options`
+- `curl -s -H 'x-track-key: <KEY>' http://nowplaying.local:3101/config/queue-wizard/playlists`
+- `curl -s -H 'x-track-key: <KEY>' http://nowplaying.local:3101/config/diagnostics/queue`
+- `curl -s -X POST -H 'Content-Type: application/json' -H 'x-track-key: <KEY>' -d '{"action":"shuffle"}' http://nowplaying.local:3101/config/diagnostics/playback`
 
 (Plus UI open/refresh checks)
 

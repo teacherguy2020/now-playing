@@ -4,7 +4,7 @@
   let runtimeConfig = null;
 
   function apiBaseDefault(){
-    const host = location.hostname || '10.0.0.233';
+    const host = location.hostname || 'nowplaying.local';
     return `${location.protocol}//${host}:3101`;
   }
 
@@ -29,7 +29,7 @@
 
   function updateServicePillsFromConfig(cfg){
     const c = cfg || {};
-    const host = location.hostname || '10.0.0.233';
+    const host = location.hostname || 'nowplaying.local';
     const ports = c.ports || {};
     const apiPort = Number(ports.api || 3101);
     const uiPort = Number(ports.ui || 8101);
@@ -319,7 +319,7 @@
 
   load().catch((e) => {
     if ($('apiHint')) $('apiHint').textContent = (apiBaseDefault() || '').replace(/^https?:\/\//, '');
-    if ($('webHint')) $('webHint').textContent = `${location.hostname || '10.0.0.233'}:8101`;
+    if ($('webHint')) $('webHint').textContent = `${location.hostname || 'nowplaying.local'}:8101`;
     if ($('alexaHint')) $('alexaHint').textContent = 'unknown';
     if ($('moodeHint')) $('moodeHint').textContent = 'not verified';
     setPillState('apiPill','bad');

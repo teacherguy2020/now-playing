@@ -1,7 +1,7 @@
 --- watchdog.sh.upstream-20260302.example	2026-03-12 10:58:40
 +++ watchdog.sh.patched.example	2026-03-12 10:58:39
 @@ -146,7 +146,7 @@
- 			# Remote display host (e.g. 10.0.0.233:8101) does not expose /command/.
+ 			# Remote display host (e.g. nowplaying.local:8101) does not expose /command/.
  			# Query now-playing API state instead and wake only on actual play state.
  			REMOTE_HOST=${LOCAL_DISPLAY_HOST%%:*}
 -			NP_STATE=$(curl -s --max-time 1 "http://$REMOTE_HOST:3000/now-playing" | awk -F'"state":"' '{print $2}' | awk -F'"' '{print $1}')

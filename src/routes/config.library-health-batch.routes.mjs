@@ -27,7 +27,7 @@ export function registerConfigLibraryHealthBatchRoutes(app, deps) {
         .map((x) => String(x || '').trim())
         .filter(Boolean);
 
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%genre%\t%artist%\t%albumartist%', 'listall'], { maxBuffer: 64 * 1024 * 1024 });
 
       const byFolder = new Map();
@@ -130,7 +130,7 @@ export function registerConfigLibraryHealthBatchRoutes(app, deps) {
       }
 
       try {
-        const mpdHost = String(MPD_HOST || '10.0.0.254');
+        const mpdHost = String(MPD_HOST || 'moode.local');
         await execFileP('mpc', ['-w', '-h', mpdHost, 'update']);
       } catch (_) {}
 

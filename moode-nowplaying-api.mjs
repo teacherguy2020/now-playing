@@ -1254,7 +1254,7 @@ async function pushPlaylistCoverToMoode(sub) {
 
   // Reuse whatever SSH helper you already have for Favorites (favoritesSetViaSsh etc).
   // If you DON'T have a generic helper, simplest is execFile('ssh', ...)
-  await execFileP('ssh', ['moode@10.0.0.254', cmd]);
+  await execFileP('ssh', ['moode@moode.local', cmd]);
 
   console.log('[podcast_cover] pushed playlist cover', { src, dst });
   return { ok: true, src, dst };
@@ -1673,7 +1673,7 @@ function normalizeArtKey(input) {
   // Examples:
   //  - /coverart.php/USB/...
   //  - https://npr.brightspotcdn.com/...
-  //  - http://10.0.0.254/coverart.php/...
+  //  - http://moode.local/coverart.php/...
   try {
     // If it's an absolute URL, normalize it (strip trivial differences)
     if (/^https?:\/\//i.test(s)) {

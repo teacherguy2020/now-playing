@@ -16,7 +16,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Controller Now Playing</title>
   <style>
-    html,body{color:#111;height:100dvh;min-height:100dvh;overflow:hidden !important;background-color:rgba(0,0,0,.56) !important;background-image:url('http://10.0.0.233:3101/art/current_bg_640_blur.jpg') !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important;background-attachment:fixed !important;background-blend-mode:multiply !important;}
+    html,body{color:#111;height:100dvh;min-height:100dvh;overflow:hidden !important;background-color:rgba(0,0,0,.56) !important;background-image:url('http://nowplaying.local:3101/art/current_bg_640_blur.jpg') !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important;background-attachment:fixed !important;background-blend-mode:multiply !important;}
     html.nav-enter-slide body{animation:cnpEnterFromRight .23s cubic-bezier(.2,.7,.2,1) both;will-change:transform,opacity}
     @keyframes cnpEnterFromRight{from{transform:translateX(38px);opacity:.72}to{transform:translateX(0);opacity:1}}
     body::before{content:none !important;display:none !important}
@@ -36,7 +36,7 @@
       try {
         const embedded = (window.top !== window.self);
         if (embedded) {
-          const host = location.hostname || '10.0.0.233';
+          const host = location.hostname || 'nowplaying.local';
           const proto = location.protocol || 'http:';
           const b = document.body;
           const c = document.getElementById('content');
@@ -521,7 +521,7 @@
     // Prime background immediately so top/bottom browser UI areas are covered at first paint.
     (function(){
       try {
-        const host = location.hostname || '10.0.0.233';
+        const host = location.hostname || 'nowplaying.local';
         const proto = location.protocol || 'http:';
         const applyBg = () => {
           const url = `${proto}//${host}:3101/art/current_bg_640_blur.jpg?t=${Date.now()}`;
@@ -638,7 +638,7 @@
     </div>
 
     <div id="next-up">
-      <span id="next-up-img-wrap"><img id="next-up-img" src="http://10.0.0.233:3101/art/current.jpg" alt=""><span id="nextUpSpin" aria-hidden="true"></span></span>
+      <span id="next-up-img-wrap"><img id="next-up-img" src="http://nowplaying.local:3101/art/current.jpg" alt=""><span id="nextUpSpin" aria-hidden="true"></span></span>
       <span id="next-up-text">
         <span class="marquee-track">
           <span class="marquee-copy">Loading next up…</span>
@@ -1100,7 +1100,7 @@
 
     // Local-track album tap -> same album card/actions as controller home
     (function bindAlbumCardFromAlbumLink(){
-      const base = `${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+      const base = `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
       let runtimeTrackKey='';
       let ctx={album:'',artist:'',art:'',tracks:[]};
       const albumLink=document.getElementById('album-link');

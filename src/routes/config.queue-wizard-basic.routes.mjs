@@ -349,7 +349,7 @@ async function writeRadioPresetsFile(list = []) {
 }
 
 async function queryMoodeRadioDb(sql) {
-  const host = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+  const host = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local');
   const dbPath = '/var/local/www/db/moode-sqlite3.db';
   const remoteCmd = `sqlite3 -separator ${RADIO_DB_SEP} ${dbPath} ${shQuoteArg(String(sql || ''))}`;
   const { stdout } = await execFileP('ssh', [
@@ -369,7 +369,7 @@ async function saveMoodeRadioLogo({ stationName, faviconUrl }) {
   const fav = toHttpsUrl(faviconUrl || '');
   if (!name || !fav) return { ok: false, reason: 'missing name or favicon' };
 
-  const host = String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254');
+  const host = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local');
   const localTmpDir = path.resolve(process.cwd(), 'tmp');
   await fs.mkdir(localTmpDir, { recursive: true });
 
@@ -433,7 +433,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
   app.get('/config/queue-wizard/options', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const now = Date.now();
       if (optionsCache.payload && optionsCache.host === mpdHost && (now - optionsCache.ts) < OPTIONS_CACHE_TTL_MS) {
         return res.json(optionsCache.payload);
@@ -488,7 +488,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
 
         return {
           ok: true,
-          moodeHost: String(MOODE_SSH_HOST || MPD_HOST || '10.0.0.254'),
+          moodeHost: String(MOODE_SSH_HOST || MPD_HOST || 'moode.local'),
           genres: Array.from(genres).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
           artists: Array.from(artists).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
           albums,
@@ -502,7 +502,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       return res.json(payload);
     } catch (e) {
       optionsCache.inflight = null;
-      if (optionsCache.payload && optionsCache.host === String(MPD_HOST || '10.0.0.254')) {
+      if (optionsCache.payload && optionsCache.host === String(MPD_HOST || 'moode.local')) {
         return res.json({ ...optionsCache.payload, stale: true, staleReason: e?.message || String(e) });
       }
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
@@ -512,7 +512,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
   app.get('/config/queue-wizard/playlists', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const now = Date.now();
       if (playlistsCache.payload && playlistsCache.host === mpdHost && (now - playlistsCache.ts) < PLAYLISTS_CACHE_TTL_MS) {
         return res.json(playlistsCache.payload);
@@ -584,7 +584,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
   app.post('/config/queue-wizard/load-playlist', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const playlist = String(req.body?.playlist || '').trim();
       const mode = String(req.body?.mode || 'replace').trim().toLowerCase();
       const play = req.body?.play !== false;
@@ -592,7 +592,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       if (!['replace', 'append'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode must be replace|append' });
 
       const trackKey = String(req.headers['x-track-key'] || '').trim();
-      const sshHost = String(MOODE_SSH_HOST || mpdHost || '10.0.0.254').trim();
+      const sshHost = String(MOODE_SSH_HOST || mpdHost || 'moode.local').trim();
       const manifestName = `${playlist}.youtube.json`;
       let manifest = null;
       try {
@@ -659,7 +659,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
   app.post('/config/queue-wizard/delete-playlist', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const playlist = String(req.body?.playlist || '').trim();
       if (!playlist) return res.status(400).json({ ok: false, error: 'playlist is required' });
 
@@ -675,7 +675,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
   app.get('/config/queue-wizard/playlist-preview', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       const playlist = String(req.query?.playlist || '').trim();
       if (!playlist) return res.status(400).json({ ok: false, error: 'playlist is required' });
 
@@ -862,7 +862,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const url = toHttpsUrl(req.body?.url || req.body?.file || '');
       if (!url) return res.status(400).json({ ok: false, error: 'valid url is required' });
-      const mpdHost = String(MPD_HOST || '10.0.0.254');
+      const mpdHost = String(MPD_HOST || 'moode.local');
       await execFileP('mpc', ['-h', mpdHost, 'clear']);
       await execFileP('mpc', ['-h', mpdHost, 'add', url]);
       await execFileP('mpc', ['-h', mpdHost, 'play']);

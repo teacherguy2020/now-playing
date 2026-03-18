@@ -2,8 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
-const APP = 'http://10.0.0.233:8101/app.html?page=';
-const API = 'http://10.0.0.233:3101';
+const APP = 'http://nowplaying.local:8101/app.html?page=';
+const API = 'http://nowplaying.local:3101';
 const TRACK_KEY = '1029384756';
 const OUT = path.resolve('docs/images/review-goal-checked-20260227-all-themes-5s-playfix');
 

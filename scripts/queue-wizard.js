@@ -73,7 +73,7 @@
   const COLLAGE_PREVIEW_PATH = '/config/queue-wizard/collage-preview'; // change if your route differs
   const MAX_RENDER_ROWS = 1000;
 
-  let moodeHost = '10.0.0.254';
+  let moodeHost = 'moode.local';
   let previewTimer = null;
   let runtimeLoaded = false;
 
@@ -394,7 +394,7 @@ async function syncVibeAvailability() {
     if (location.protocol === 'http:' || location.protocol === 'https:') {
       return `${location.protocol}//${location.hostname}:3101`;
     }
-    return 'http://10.0.0.233:3101';
+    return 'http://nowplaying.local:3101';
   }
 
   function getApiBase() {
@@ -473,7 +473,7 @@ async function syncVibeAvailability() {
       if ($('apiBase') && !$('apiBase').value) $('apiBase').value = apiBaseGuess;
       if (activeApiBaseEl) activeApiBaseEl.textContent = $('apiBase')?.value || apiBaseGuess;
       if (activeTrackKeyEl) activeTrackKeyEl.textContent = 'unavailable';
-      const host = location.hostname || '10.0.0.233';
+      const host = location.hostname || 'nowplaying.local';
       if (apiHintEl) apiHintEl.textContent = `${host}:3101`;
       if (webHintEl) webHintEl.textContent = `${host}:8101`;
       if (alexaHintEl) alexaHintEl.textContent = 'unknown';
@@ -1707,7 +1707,7 @@ async function forceReloadCoverUntilItLoads({ name, note = '', tries = 10 }) {
         });
       }
 
-      moodeHost = String(j.moodeHost || moodeHost || '10.0.0.254');
+      moodeHost = String(j.moodeHost || moodeHost || 'moode.local');
       rebuildFilterQuickIndex();
 
       setStatus('');

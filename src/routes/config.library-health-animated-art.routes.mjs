@@ -391,7 +391,7 @@ async function lookupMotionForAlbum(artist, album) {
 }
 
 async function listLibraryAlbums(limitAlbums = 0) {
-  const mpdHost = String(MPD_HOST || '10.0.0.254');
+  const mpdHost = String(MPD_HOST || 'moode.local');
   const fmt = '%artist%\t%album%\t%file%';
   const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], { maxBuffer: 64 * 1024 * 1024 });
   const rows = String(stdout || '').split(/\r?\n/).map((ln) => {

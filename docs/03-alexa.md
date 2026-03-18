@@ -32,9 +32,9 @@ In Alexa mode, queue behavior is different from normal playback. The UI treats q
 Alexa cloud requests must reach your public domain (example: `moode.YOURDOMAIN.com`) and then be reverse-proxied to local services.
 
 ### Required network forwards (router/eero)
-Forward these ports to the host running Caddy (current primary: `10.0.0.4`):
-- **TCP 80** -> `10.0.0.4:80`
-- **TCP 443** -> `10.0.0.4:443`
+Forward these ports to the host running Caddy (current primary: `nowplaying.local`):
+- **TCP 80** -> `nowplaying.local:80`
+- **TCP 443** -> `nowplaying.local:443`
 
 If these are missing or pointed at an old host, domain checks fail and Alexa cannot connect.
 

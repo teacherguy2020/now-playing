@@ -18,12 +18,12 @@ export const CURL = process.env.CURL || '/usr/bin/curl';
 export const MPD_PLAYLIST_DIR = '/var/lib/mpd/playlists';
 export const FAVORITES_PATH = `${MPD_PLAYLIST_DIR}/Favorites.m3u`;
 export const MOODE_SSH_USER = process.env.MOODE_SSH_USER || moodeCfg?.sshUser || 'moode';
-export const MOODE_SSH_HOST = process.env.MOODE_SSH_HOST || moodeCfg?.sshHost || mpdCfg?.host || '10.0.0.254';
+export const MOODE_SSH_HOST = process.env.MOODE_SSH_HOST || moodeCfg?.sshHost || mpdCfg?.host || 'moode.local';
 export const PORT = Number(process.env.PORT || MASTER_CONFIG?.ports?.api || '3000');
 
 export const MOODE_BASE_URL = process.env.MOODE_BASE_URL || moodeCfg?.baseUrl || `http://${MOODE_SSH_HOST}`;
 
-export const LOCAL_ADDRESS = process.env.LOCAL_ADDRESS || apiIp || '10.0.0.233';
+export const LOCAL_ADDRESS = process.env.LOCAL_ADDRESS || apiIp || 'nowplaying.local';
 
 export const PUBLIC_BASE_URL =
   process.env.PUBLIC_BASE_URL ||
@@ -31,7 +31,7 @@ export const PUBLIC_BASE_URL =
   ((alexaEnabledFromConfig ?? true) && publicDomainFromConfig ? `https://${publicDomainFromConfig}` : '') ||
   `http://${LOCAL_ADDRESS}:${PORT}`;
 
-export const MPD_HOST = process.env.MPD_HOST || mpdCfg?.host || MOODE_SSH_HOST || '10.0.0.254';
+export const MPD_HOST = process.env.MPD_HOST || mpdCfg?.host || MOODE_SSH_HOST || 'moode.local';
 export const MPD_PORT = Number(process.env.MPD_PORT || mpdCfg?.port || '6600');
 
 export const MOODE_USB_PREFIX =
