@@ -61,8 +61,12 @@
     .eq b:nth-child(2){animation-delay:.15s}.eq b:nth-child(3){animation-delay:.3s}
     @keyframes eq{0%,100%{height:4px}50%{height:10px}}
     .muted{color:var(--muted);font-size:12px}
-    #line2Wrap{display:block}
+    #line2Wrap{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;max-width:100%}
+    #line2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     #line2Stars{display:none}
+    .npSeekInline{display:none;align-items:center;gap:6px;flex:0 0 auto}
+    .npSeekInline .seekBtn{height:22px;min-width:34px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(16,24,40,.45);color:#e9eefb;font-size:11px;font-weight:700;line-height:1;letter-spacing:.2px;padding:0 8px;cursor:pointer}
+    .npSeekInline .seekBtn:active{transform:translateY(1px)}
     #line1.linkable,#line3.linkable{cursor:pointer}
     #line3 .share-icon{width:.9em;height:.9em;display:inline-block;vertical-align:-.12em;margin-left:.22em;fill:currentColor;opacity:.72;pointer-events:none}
 
@@ -386,7 +390,7 @@
         <div class="npProgress" id="npProgress" aria-hidden="true"><div class="npProgressFill" id="npProgressFill"></div></div>
         <div class="npMeta">
           <div id="line1"></div>
-          <div id="line2Wrap" class="muted"><span id="line2"></span><span id="line2Stars" aria-label="Track rating"></span></div>
+          <div id="line2Wrap" class="muted"><span id="line2"></span><span id="npSeekInline" class="npSeekInline" aria-label="Podcast seek controls"><button type="button" class="seekBtn" data-seek-rel="-15" title="Back 15 seconds">↺15</button><button type="button" class="seekBtn" data-seek-rel="30" title="Forward 30 seconds">30↻</button></span><span id="line2Stars" aria-label="Track rating"></span></div>
           <div id="line3" class="muted"></div>
         </div>
       </div>
@@ -899,6 +903,7 @@
         const fileLc = String(file || '').toLowerCase();
         const isPodcast = !!j?.isPodcast || genreLc.includes('podcast') || /\/podcasts?\//.test(fileLc);
         const isRadio = !!j?.isRadio || String(j?.service || '').toLowerCase().includes('radio') || !!j?.radioTrackUrl;
+        const npSeekInlineEl = document.getElementById('npSeekInline');
         const isAirplay = !!j?.isAirplay;
         const isUpnp = !!j?.isUpnp;
         const isStream = !!j?.isStream;
@@ -956,6 +961,7 @@
           }
         }
         renderLine2Stars();
+        if (npSeekInlineEl) npSeekInlineEl.style.display = (hasTrack && isPodcast) ? 'inline-flex' : 'none';
         const eq = document.getElementById('eqOverlay');
         if (eq) eq.style.display = (hasTrack && (st === 'play' || st === 'playing')) ? 'inline-flex' : 'none';
 
@@ -2124,6 +2130,7 @@
     const npFlipInfoBtnEl = document.getElementById('npFlipInfoBtn');
     const npLine3El = document.getElementById('line3');
     const npLine2StarsEl = document.getElementById('line2Stars');
+    const npSeekInlineEl = document.getElementById('npSeekInline');
     const npCtrlsEl = document.getElementById('npCtrls');
     const npProgressEl = document.getElementById('npProgress');
     const npProgressFillEl = document.getElementById('npProgressFill');
@@ -2207,6 +2214,22 @@
       const pct = Math.max(0, Math.min(100, Number(npSeekPct) || 0));
       if (!npSeekEnabled) return;
       try { await sendPlayback('seekpct', { percent: pct }); } catch {}
+      refreshNowPlayingCard().catch(()=>null);
+    });
+
+    npSeekInlineEl?.addEventListener('click', async (ev)=>{
+      const btn = ev.target?.closest?.('button[data-seek-rel]');
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const seconds = Number(btn.getAttribute('data-seek-rel') || 0) || 0;
+      if (!seconds) return;
+      btn.disabled = true;
+      try { await sendPlayback('seekrel', { seconds }); } catch {}
+      finally {
+        btn.disabled = false;
+        wakeNpCtrls(1600);
+      }
       refreshNowPlayingCard().catch(()=>null);
     });
 
