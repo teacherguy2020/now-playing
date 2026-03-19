@@ -156,7 +156,9 @@
     .albumTracks{list-style:none;margin:8px 0 0;padding:0}
     .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:flex;justify-content:space-between;gap:8px;font-size:14px}
     .trackBtns{display:flex;gap:6px}
-    .trackBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
+    .trackBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer;transition:transform .12s ease, background-color .16s ease, border-color .16s ease, color .16s ease}
+    .trackBtns button.busy{opacity:.78;pointer-events:none}
+    .trackBtns button.ok{background:#16a34a;border-color:#22c55e;color:#ecfdf5}
     .albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
     .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
@@ -2741,27 +2743,42 @@
       const file=String((recentModalCtx?.tracks||[])[idx]?.file || '').trim();
       if(!file) return;
 
-      if (recentModalCtx.kind === 'podcast') {
-        const mode = (a==='play') ? 'replace' : 'append';
-        let ok = false;
-        try {
-          const r = await fetch(`${base}/config/queue-wizard/apply`,{
-            method:'POST',
-            headers:reqHeaders(true),
-            body:JSON.stringify({mode,keepNowPlaying:false,tracks:[file],shuffle:false,forceRandomOff:true,fastStart:true})
-          });
-          ok = !!r.ok;
-        } catch {}
-        if (!ok) {
-          if (a==='play') await sendPlayback('playfile',{file});
-          else await sendPlayback('addfile',{file});
-        }
-        if(a==='play') closeRecentAlbumModal();
-        return;
-      }
+      const original = b.textContent;
+      const markBusy = ()=>{ b.disabled = true; b.classList.add('busy'); };
+      const markDone = ()=>{ b.classList.remove('busy'); b.classList.add('ok'); b.textContent = '✓'; };
+      const resetBtn = ()=>{ b.classList.remove('ok','busy'); b.textContent = original; b.disabled = false; };
 
-      if(a==='play'){ await sendPlayback('playfile',{file}); closeRecentAlbumModal(); }
-      else { await sendPlayback('addfile',{file}); }
+      markBusy();
+      try {
+        if (recentModalCtx.kind === 'podcast') {
+          const mode = (a==='play') ? 'replace' : 'append';
+          let ok = false;
+          try {
+            const r = await fetch(`${base}/config/queue-wizard/apply`,{
+              method:'POST',
+              headers:reqHeaders(true),
+              body:JSON.stringify({mode,keepNowPlaying:false,tracks:[file],shuffle:false,forceRandomOff:true,fastStart:true})
+            });
+            ok = !!r.ok;
+          } catch {}
+          if (!ok) {
+            if (a==='play') await sendPlayback('playfile',{file});
+            else await sendPlayback('addfile',{file});
+          }
+          markDone();
+          if(a==='play') {
+            setTimeout(()=>closeRecentAlbumModal(), 180);
+          } else {
+            setTimeout(resetBtn, 550);
+          }
+          return;
+        }
+
+        if(a==='play'){ await sendPlayback('playfile',{file}); markDone(); setTimeout(()=>closeRecentAlbumModal(), 180); }
+        else { await sendPlayback('addfile',{file}); markDone(); setTimeout(resetBtn, 550); }
+      } catch {
+        resetBtn();
+      }
     });
 
     document.getElementById('recentArtistCloseBtn')?.addEventListener('click', closeRecentArtistModal);
