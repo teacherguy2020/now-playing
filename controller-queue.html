@@ -423,7 +423,6 @@
           ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`)
           : (isStream ? (radioFallback || `${base}/art/current.jpg`) : `${base}/art/current.jpg`);
         const head = pos === headPos;
-        const file = String(x?.file || '').trim();
         return `<li class="rowWrap" data-pos="${pos}" data-file="${encodeURIComponent(file)}" data-album="${encodeURIComponent(album)}" data-artist="${encodeURIComponent(artist)}" data-title="${encodeURIComponent(title)}">
           <div class="row ${head?'head':''}" data-pos="${pos}">
             <div class="num">${pos}</div>
