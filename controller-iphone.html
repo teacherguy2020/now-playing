@@ -1695,6 +1695,21 @@
       return (IS_KIOSK_1280 && !IS_KIOSK_EDITOR) || document.body.classList.contains('ipad11Landscape');
     }
 
+    const LAST_LIBRARY_PAGE_KEY = 'np.controller.lastLibraryPage.v1';
+    const setLastLibraryPage = (p)=>{ try { const v=String(p||'').trim(); if (v.startsWith('kiosk-')) localStorage.setItem(LAST_LIBRARY_PAGE_KEY, v); } catch {} };
+    const getLastLibraryPage = ()=>{ try { const v=String(localStorage.getItem(LAST_LIBRARY_PAGE_KEY)||'').trim(); return v.startsWith('kiosk-') ? v : ''; } catch { return ''; } };
+    const restoreLastLibraryPage = ()=>{
+      try {
+        if (!shouldOpenInRightPane()) return;
+        const u = new URL(location.href);
+        const paneParam = String(u.searchParams.get('pane') || '').trim();
+        const remembered = paneParam.startsWith('kiosk-') ? paneParam : getLastLibraryPage();
+        if (!remembered) return;
+        if (kioskPane?.classList.contains('open')) return;
+        openPage(remembered);
+      } catch {}
+    };
+
     function applyIpadPaneCompaction(){
       try {
         if (!document.body.classList.contains('ipad11Landscape')) return;
@@ -1716,9 +1731,20 @@
       } catch {}
     }
 
+    function syncPaneUrlParam(p=''){
+      try {
+        const u = new URL(location.href);
+        const v = String(p || '').trim();
+        if (v && v.startsWith('kiosk-')) u.searchParams.set('pane', v);
+        else u.searchParams.delete('pane');
+        history.replaceState(history.state || {}, '', u);
+      } catch {}
+    }
+
     function openPage(page){
       const p = String(page || '').trim();
       if (!p) return;
+      if (p.startsWith('kiosk-')) { setLastLibraryPage(p); syncPaneUrlParam(p); }
       if (shouldOpenInRightPane() && p.startsWith('kiosk-')) {
         const active = document.querySelector(`.row[data-page="${p}"]`);
         if (kioskPane?.classList.contains('open') && active?.classList.contains('is-open')) {
@@ -2352,7 +2378,7 @@
       kioskPane?.classList.remove('open');
       kioskPane?.setAttribute('aria-hidden','true');
       recentWrap?.classList.remove('paneOpen');
-      setOpenNavRow('');
+      setOpenNavRow(getLastLibraryPage());
       setTimeout(()=>{ try { if (kioskPaneFrame) kioskPaneFrame.src = 'about:blank'; } catch {} }, 220);
     };
     window.addEventListener('message', (ev)=>{
@@ -2365,6 +2391,10 @@
     });
 
     initKioskControls();
+
+    window.addEventListener('pageshow', ()=>{ setTimeout(restoreLastLibraryPage, 220); setTimeout(restoreLastLibraryPage, 900); });
+    window.addEventListener('focus', ()=>{ setTimeout(restoreLastLibraryPage, 220); });
+    document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) setTimeout(restoreLastLibraryPage, 220); });
 
     (async ()=>{
       try { ensureNowPlayingPreload(); } catch {}
@@ -2382,6 +2412,9 @@
         const openPageParam = String(__u.searchParams.get('open') || '').trim();
         if (IS_KIOSK_1280 && !IS_KIOSK_EDITOR && openPageParam.startsWith('kiosk-')) {
           setTimeout(() => openPage(openPageParam), 120);
+        } else if (shouldOpenInRightPane()) {
+          const remembered = getLastLibraryPage();
+          if (remembered) setTimeout(() => openPage(remembered), 120);
         }
       } catch {}
     })();
@@ -2410,6 +2443,20 @@
 
       window.addEventListener('touchmove', (e) => {
         if (!tracking || !e.touches || e.touches.length !== 1) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy > THRESH && topScrollable()) armed = true;
+      }, { passive: true });
+
+      window.addEventListener('touchend', () => {
+        if (tracking && armed) location.reload();
+        tracking = false;
+        armed = false;
+      }, { passive: true });
+    })();
+</script>
+</body>
+</html>
+== 1) return;
         const dy = e.touches[0].clientY - startY;
         if (dy > THRESH && topScrollable()) armed = true;
       }, { passive: true });
