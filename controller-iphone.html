@@ -1811,14 +1811,14 @@
 
     async function loadHomeQuickIndex(){
       await ensureKey();
-      const [optR, plR, libR] = await Promise.all([
+      const [optR, plR, brR] = await Promise.all([
         fetch(`${base}/config/queue-wizard/options`,{cache:'no-store',headers:reqHeaders(false)}).then(r=>r.json().catch(()=>({}))),
         fetch(`${base}/config/queue-wizard/playlists`,{cache:'no-store',headers:reqHeaders(false)}).then(r=>r.json().catch(()=>({}))),
-        fetch(`${base}/config/library-health/albums`,{cache:'no-store',headers:reqHeaders(false)}).then(r=>r.json().catch(()=>({}))),
+        fetch(`${base}/config/browse/albums?limit=10000`,{cache:'no-store',headers:reqHeaders(false)}).then(r=>r.json().catch(()=>({}))),
       ]);
       const artists = Array.isArray(optR?.artists)?optR.artists:[];
       const playlists = Array.isArray(plR?.playlists)?plR.playlists:[];
-      const libAlbums = Array.isArray(libR?.albums)?libR.albums:[];
+      const libAlbums = Array.isArray(brR?.albums)?brR.albums:[];
       const seen = new Set();
       const albums=[];
       libAlbums.forEach((a)=>{
