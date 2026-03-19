@@ -31,6 +31,7 @@ Eight ways to use:
 
 > Recommended topology: run this project on a separate Pi from your moOde host.
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/teacherguy2020/now-playing)
 Deepwiki https://deepwiki.com/teacherguy2020/now-playing/
 
 ## Quick start
