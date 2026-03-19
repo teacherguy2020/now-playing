@@ -47,8 +47,11 @@
     .artSpin[hidden]{display:none !important}
     .artSpin::before{content:'';width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#ffffff;animation:npSpin .8s linear infinite}
     @keyframes npSpin{to{transform:rotate(360deg)}}
-    .eq{position:absolute;right:4px;bottom:4px;display:none;gap:2px;align-items:flex-end;padding:2px 3px;border-radius:6px;background:rgba(3,10,20,.55)}
-    .eq b{display:block;width:2px;background:#7dd3fc;border-radius:2px;animation:eq 1s ease-in-out infinite}
+    .npFavHeart{display:inline-flex;align-items:center;justify-content:center;position:absolute;right:8px;bottom:8px;width:28px;height:28px;border:0;background:transparent;padding:0;margin:0;z-index:6;opacity:.92;transition:transform 120ms ease,opacity 120ms ease;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+    .npFavHeart svg{width:100%;height:100%;display:block;fill:transparent;stroke:rgba(210,210,210,.92);stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round;transition:fill 140ms ease,stroke 140ms ease}
+    .npFavHeart.on svg{fill:rgba(210,210,210,.92);stroke:rgba(210,210,210,.92)}
+    .npFavHeart:active{transform:scale(.96)}
+    .npFavHeart.busy{opacity:.55;pointer-events:none}
     .npCtrls{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);display:none;align-items:center;gap:8px;padding:4px 8px;border-radius:999px;background:rgba(8,12,20,.26);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);z-index:5;opacity:.35;transition:opacity .2s ease, background-color .2s ease, border-color .2s ease}
     .npCtrls.is-awake{opacity:.95;background:rgba(8,12,20,.45);border:1px solid rgba(255,255,255,.16)}
     .npCtrls .ctl{display:grid;width:30px;height:30px;min-width:30px;min-height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:#fff;box-shadow:0 3px 8px rgba(0,0,0,.25);place-items:center;cursor:pointer;padding:0;transition:background-color .2s ease, box-shadow .2s ease}
@@ -58,8 +61,6 @@
     .npCtrls .ctlPause,.npCtrls .ctlPlay{display:none}
     .npCtrls .ctl.on{background:rgba(22,163,74,.50);box-shadow:0 0 0 1px rgba(34,197,94,.65),0 0 16px rgba(34,197,94,.42),0 5px 14px rgba(0,0,0,.3);color:#eaffef}
     .npCtrls .ctl.big.on{background:rgba(22,163,74,.62);box-shadow:0 0 0 1px rgba(34,197,94,.72),0 0 20px rgba(34,197,94,.50),0 5px 14px rgba(0,0,0,.34)}
-    .eq b:nth-child(2){animation-delay:.15s}.eq b:nth-child(3){animation-delay:.3s}
-    @keyframes eq{0%,100%{height:4px}50%{height:10px}}
     .muted{color:var(--muted);font-size:12px}
     #line2Wrap{display:block}
     #line2Stars{display:none}
@@ -149,6 +150,7 @@
     .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
     .albumTitle{font-size:17px;font-weight:700}
     .albumMeta{font-size:12px;color:var(--muted)}
+    .trkLink{background:none;border:0;padding:0;color:#9fc4ff;text-decoration:underline;cursor:pointer;font:inherit}
     .albumTracks{list-style:none;margin:8px 0 0;padding:0}
     .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:flex;justify-content:space-between;gap:8px;font-size:14px}
     .npArtistGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
@@ -341,7 +343,7 @@
               <img id="art" src="" alt="" />
               <button type="button" class="artHint artHintInfo" id="npFlipInfoBtn" aria-label="Show personnel">i</button>
               <span class="artSpin" id="npArtSpin" aria-hidden="true"></span>
-              <span class="eq" id="eqOverlay" aria-hidden="true"><b></b><b></b><b></b></span>
+              <button type="button" class="npFavHeart" id="npFavHeart" aria-label="Toggle favorite" title="Toggle favorite"><svg viewBox="0 0 24 24" shape-rendering="geometricPrecision" aria-hidden="true" focusable="false"><path d="M12 21 C12 21 3 14.5 3 8.5 C3 6 5 4 7.5 4 C9.24 4 10.91 5 12 6.44 C13.09 5 14.76 4 16.5 4 C19 4 21 6 21 8.5 C21 14.5 12 21 12 21Z"/></svg></button>
             </div>
             <div class="artFace artFaceBack" id="npArtBack">
               <div class="personnelCard">
@@ -789,6 +791,8 @@
     let npIsLocalTrack = false;
     let npCurrentArtist = '';
     let npCurrentAlbum = '';
+    let npCurrentFile = '';
+    let npCurrentIsFavorite = false;
     let npRating = 0;
     let npRatingAllowed = false;
     let npPersonnelText = '';
@@ -911,6 +915,8 @@
         const isRadio = !!j?.isRadio || String(j?.service || '').toLowerCase().includes('radio') || !!j?.radioTrackUrl || (!!j?.isStream && !isPodcast);
         npBackModeRadio = !!isRadio;
         if (!npBackModeRadio) npRadioBackItems = [];
+        npCurrentFile = String(file || '').trim();
+        npCurrentIsFavorite = !!j?.isFavorite;
         const isAirplay = !!j?.isAirplay;
         const isUpnp = !!j?.isUpnp;
         const isStream = !!j?.isStream;
@@ -967,8 +973,14 @@
           }
         }
         renderLine2Stars();
-        const eq = document.getElementById('eqOverlay');
-        if (eq) eq.style.display = (hasTrack && (st === 'play' || st === 'playing')) ? 'inline-flex' : 'none';
+        const fav = document.getElementById('npFavHeart');
+        if (fav) {
+          const showFav = !!(npIsLocalTrack && npCurrentFile);
+          fav.style.display = showFav ? 'inline-flex' : 'none';
+          fav.classList.toggle('on', !!npCurrentIsFavorite);
+          fav.dataset.file = npCurrentFile || '';
+          fav.dataset.isFavorite = npCurrentIsFavorite ? '1' : '0';
+        }
 
         const progressWrap = document.getElementById('npProgress');
         const progressFill = document.getElementById('npProgressFill');
@@ -1601,7 +1613,7 @@
       document.getElementById('recentAlbumAppendBtn').textContent = isPlaylist ? 'Add playlist' : (isPodcast ? 'Add newest episode' : 'Append album');
       document.getElementById('recentAlbumCropBtn').style.display = (isPlaylist || isPodcast) ? 'none' : '';
       document.getElementById('recentAlbumReplaceBtn').textContent = isPlaylist ? 'Play playlist' : (isPodcast ? 'Play newest episode' : 'Replace with album');
-      document.getElementById('recentAlbumTracks').innerHTML = (recentModalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); const dt=String(t.date||'').trim(); return `<li><span>${i+1}. ${nm}${dt?`<div class='albumMeta'>${dt}</div>`:''}</span><span class='trackBtns'><button data-track-action='play' data-track-file='${f}'>▶</button><button data-track-action='add' data-track-file='${f}'>＋</button></span></li>`; }).join('') || '<li>No tracks found</li>';
+      document.getElementById('recentAlbumTracks').innerHTML = (recentModalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); const dt=String(t.date||'').trim(); const artist=String(t.artist||'').trim(); const album=String(t.album||'').trim(); const rating=Math.max(0,Math.min(5,Number(t.rating||0)||0)); const stars=rating?` <span class='albumMeta' style='color:#d4af37'>${'★'.repeat(rating)}${'☆'.repeat(5-rating)}</span>`:''; const artRaw=String(t.thumbUrl||t.albumArtUrl||t.art||recentModalCtx.art||'').trim(); const artEnc=encodeURIComponent(artRaw); const artistBtn=artist?`<button type='button' class='trkLink' data-track-open-artist='${encodeURIComponent(artist)}' data-track-art='${artEnc}'>${artist}</button>`:''; const albumBtn=album?`<button type='button' class='trkLink' data-track-open-album='${encodeURIComponent(album)}' data-track-open-artist='${encodeURIComponent(artist)}' data-track-art='${artEnc}'>${album}</button>`:''; const meta=(artistBtn||albumBtn)?`<div class='albumMeta'>${artistBtn}${artistBtn&&albumBtn?' • ':''}${albumBtn}</div>`:''; return `<li><span>${i+1}. ${nm}${stars}${meta}${dt?`<div class='albumMeta'>${dt}</div>`:''}</span><span class='trackBtns'><button data-track-action='play' data-track-file='${f}'>▶</button><button data-track-action='add' data-track-file='${f}'>＋</button></span></li>`; }).join('') || '<li>No tracks found</li>';
       if ((IS_KIOSK_1280 || document.body.classList.contains('ipad11Landscape')) && recentWrap && modalEl) {
         modalEl.style.setProperty('position', 'absolute', 'important');
         modalEl.style.setProperty('inset', '0', 'important');
@@ -2052,6 +2064,7 @@
     const npLine3El = document.getElementById('line3');
     const npLine2StarsEl = document.getElementById('line2Stars');
     const npCtrlsEl = document.getElementById('npCtrls');
+    const npFavHeartEl = document.getElementById('npFavHeart');
     const isStandaloneWebApp = (()=>{
       try {
         return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
@@ -2129,6 +2142,38 @@
         ev.preventDefault();
         ev.stopPropagation();
         await openRecentAlbumFrom({ album: npCurrentAlbum, artist: npCurrentArtist, art: document.getElementById('art')?.getAttribute('src') || `${base}/art/current.jpg` });
+      }
+    });
+
+    npFavHeartEl?.addEventListener('click', async (ev)=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      const btn = npFavHeartEl;
+      if (!btn || btn.classList.contains('busy')) return;
+      const file = String(btn.dataset.file || '').trim();
+      if (!file || !npIsLocalTrack) return;
+      const was = btn.dataset.isFavorite === '1';
+      const want = !was;
+      btn.classList.toggle('on', want);
+      btn.dataset.isFavorite = want ? '1' : '0';
+      btn.classList.add('busy');
+      try {
+        const r = await fetch(`${base}/favorites/toggle`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ favorite: want })
+        });
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        const truth = !!j?.isFavorite;
+        btn.classList.toggle('on', truth);
+        btn.dataset.isFavorite = truth ? '1' : '0';
+        npCurrentIsFavorite = truth;
+      } catch {
+        btn.classList.toggle('on', was);
+        btn.dataset.isFavorite = was ? '1' : '0';
+      } finally {
+        btn.classList.remove('busy');
       }
     });
     npLine2StarsEl?.addEventListener('pointerdown', async (ev)=>{
@@ -2616,7 +2661,7 @@
       }
       closeRecentAlbumModal();
     });
-    document.getElementById('recentAlbumTracks').addEventListener('click', async (ev)=>{ const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if(a==='play'){ await sendPlayback('playfile',{file}); closeRecentAlbumModal(); } else { await sendPlayback('addfile',{file}); } });
+    document.getElementById('recentAlbumTracks').addEventListener('click', async (ev)=>{ const albumBtn=ev.target.closest('button[data-track-open-album]'); if(albumBtn){ let album=''; let artist=''; let art=''; try{album=decodeURIComponent(String(albumBtn.getAttribute('data-track-open-album')||''));}catch{album=String(albumBtn.getAttribute('data-track-open-album')||'')} try{artist=decodeURIComponent(String(albumBtn.getAttribute('data-track-open-artist')||''));}catch{artist=String(albumBtn.getAttribute('data-track-open-artist')||'')} try{art=decodeURIComponent(String(albumBtn.getAttribute('data-track-art')||''));}catch{art=String(albumBtn.getAttribute('data-track-art')||'')} if(album){ await openRecentAlbumFrom({ album, artist, art: art || recentModalCtx.art || `${base}/art/current.jpg` }); } return; } const artistBtn=ev.target.closest('button[data-track-open-artist]'); if(artistBtn){ let artist=''; let art=''; try{artist=decodeURIComponent(String(artistBtn.getAttribute('data-track-open-artist')||''));}catch{artist=String(artistBtn.getAttribute('data-track-open-artist')||'')} try{art=decodeURIComponent(String(artistBtn.getAttribute('data-track-art')||''));}catch{art=String(artistBtn.getAttribute('data-track-art')||'')} if(artist){ npCurrentArtist=artist; npIsLocalTrack=true; if(art){ try{document.getElementById('npArtistArt').src=art;}catch{} } await openNpArtistModal(); } return; } const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if(a==='play'){ await sendPlayback('playfile',{file}); closeRecentAlbumModal(); } else { await sendPlayback('addfile',{file}); } });
 
     document.addEventListener('click',(ev)=>{
       const m=document.getElementById('recentAlbumMenu');
