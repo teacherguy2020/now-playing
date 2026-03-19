@@ -663,7 +663,7 @@
           artist,
           folder,
           sampleFile: file,
-          addedTs: 0,
+          addedTs: Number(a?.addedTs || 0) || 0,
           // Prefer lightweight static art path from sample file.
           thumbUrl: file ? `${base}/art/track_640.jpg?file=${encodeURIComponent(file)}` : '',
         };
