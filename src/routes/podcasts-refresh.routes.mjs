@@ -68,8 +68,11 @@ export function registerPodcastRefreshRoutes(app, deps) {
         return { ...s, downloadedCount, autoDownload };
       }));
 
-      writeSubs(next);
-      res.json({ ok: true, items: next });
+      // Safety: never overwrite subscriptions with an empty array during a transient path/config issue.
+      if (next.length > 0) {
+        writeSubs(next);
+      }
+      res.json({ ok: true, items: next, persisted: next.length > 0 });
     } catch (e) {
       res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

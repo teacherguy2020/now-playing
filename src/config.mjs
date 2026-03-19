@@ -67,7 +67,7 @@ export const ART_CACHE_LIMIT = Number(process.env.ART_CACHE_LIMIT || runtimeCfg?
 
 export const ART_640_PATH = path.join(ART_CACHE_DIR, 'current_640.jpg');
 export const ART_BG_PATH = path.join(ART_CACHE_DIR, 'current_bg_640_blur.jpg');
-export const PODCAST_DL_LOG = process.env.PODCAST_DL_LOG || '/tmp/now-playing/podcasts/downloads.ndjson';
+export const PODCAST_DL_LOG = process.env.PODCAST_DL_LOG || path.resolve(process.cwd(), 'var/podcasts/downloads.ndjson');
 
 export const MOODE_SSH = process.env.MOODE_SSH || `${MOODE_SSH_USER}@${MOODE_SSH_HOST}`;
 export const FAVORITES_M3U = process.env.FAVORITES_M3U || '/var/lib/mpd/playlists/Favorites.m3u';
