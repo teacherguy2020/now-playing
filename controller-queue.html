@@ -312,6 +312,12 @@
     let lastBaseSig = '';
     let lastHeadPos = -1;
     let lastUserScrollAt = 0;
+    let radioStationByKey = new Map();
+    let radioStationByHost = new Map();
+    let radioLogoByKey = new Map();
+    let radioLogoByHost = new Map();
+    let radioHostAmbiguous = new Set();
+    let radioHostMapTs = 0;
 
     function maybeScrollToHead(force=false){
       const now = Date.now();
@@ -342,6 +348,62 @@
       return j;
     }
 
+    function streamKey(u){
+      try {
+        const x = new URL(String(u || ''));
+        const hp = `${String(x.hostname||'').toLowerCase()}${x.port ? `:${x.port}` : ''}`;
+        return `${hp}${String(x.pathname||'')}`.replace(/\/+$/, '');
+      } catch { return ''; }
+    }
+
+    async function loadRadioHostNameMap(headers = {}) {
+      const now = Date.now();
+      if (radioStationByKey.size && (now - radioHostMapTs) < (5 * 60 * 1000)) {
+        return { byKey: radioStationByKey, byHost: radioStationByHost, logoByKey: radioLogoByKey, logoByHost: radioLogoByHost, ambHosts: radioHostAmbiguous };
+      }
+      try {
+        const r = await fetch(`${base}/config/queue-wizard/radio-preview`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(headers || {}) },
+          body: JSON.stringify({ genres: [], favoritesOnly: false, hqOnly: false, favoriteStations: [], maxStations: 1000 }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j?.ok) {
+          const byKey = new Map();
+          const byHost = new Map();
+          const logoByKey = new Map();
+          const logoByHost = new Map();
+          const ambHosts = new Set();
+          for (const t of (Array.isArray(j.tracks) ? j.tracks : [])) {
+            const file = String(t?.file || '').trim();
+            const st = String(t?.stationName || t?.artist || '').trim();
+            const logoRaw = String(t?.stationLogoUrl || t?.thumbUrl || t?.artUrl || '').trim();
+            const logo = logoRaw ? (logoRaw.startsWith('http') ? logoRaw : `${base}${logoRaw}`) : '';
+            if (!file || !st) continue;
+            const k = streamKey(file);
+            if (k) {
+              byKey.set(k, st);
+              if (logo) logoByKey.set(k, logo);
+            }
+            try {
+              const h = String(new URL(file).hostname || '').toLowerCase();
+              if (h) {
+                if (!byHost.has(h)) byHost.set(h, st);
+                else if (byHost.get(h) !== st) ambHosts.add(h);
+                if (logo && !logoByHost.has(h)) logoByHost.set(h, logo);
+              }
+            } catch {}
+          }
+          radioStationByKey = byKey;
+          radioStationByHost = byHost;
+          radioLogoByKey = logoByKey;
+          radioLogoByHost = logoByHost;
+          radioHostAmbiguous = ambHosts;
+          radioHostMapTs = now;
+        }
+      } catch {}
+      return { byKey: radioStationByKey, byHost: radioStationByHost, logoByKey: radioLogoByKey, logoByHost: radioLogoByHost, ambHosts: radioHostAmbiguous };
+    }
 
     async function loadQueue(){
       if (dragState) return;
@@ -369,6 +431,7 @@
       const items = Array.isArray(j.items) ? j.items : [];
       const headPos = Number(j.headPos || -1);
       meta.textContent = `${items.length} tracks`;
+      const radioMap = await loadRadioHostNameMap(headers);
 
       const baseSig = JSON.stringify(items.map((x, idx) => [
         Number(x?._posDisplay || x?.pos || (idx + 1)),
@@ -409,18 +472,23 @@
         const stationName = String(x?.stationName || x?.name || '').trim();
         const file = String(x?.file || '').trim();
         const hostFallback = (()=>{ try { return (new URL(file).hostname || '').replace(/^www\./i,''); } catch { return ''; } })();
+        const skey = streamKey(file);
+        const mappedByKey = String(radioMap?.byKey?.get?.(skey) || '').trim();
+        const mappedByHost = String(radioMap?.byHost?.get?.(String(hostFallback || '').toLowerCase()) || '').trim();
+        const mappedLogoByKey = String(radioMap?.logoByKey?.get?.(skey) || '').trim();
+        const mappedLogoByHost = String(radioMap?.logoByHost?.get?.(String(hostFallback || '').toLowerCase()) || '').trim();
         const rawTitle = String(x?.title || '').trim();
         const titleLooksUrl = /^https?:\/\//i.test(rawTitle) || (/\./.test(rawTitle) && !/\s/.test(rawTitle) && /^[-a-z0-9.]+$/i.test(rawTitle));
-        const streamTitle = stationName || (titleLooksUrl ? hostFallback : '') || rawTitle || hostFallback || '(station)';
+        const streamTitle = stationName || mappedByKey || mappedByHost || (titleLooksUrl ? hostFallback : '') || rawTitle || hostFallback || '(station)';
         const title = isStream ? streamTitle : (rawTitle || String(x?.name || '').trim() || '(untitled)');
         const album = String(x?.album || '').trim();
         const thumbRaw = String(x?.thumbUrl || '').trim();
-        const stationLogoByName = stationName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName)}` : '';
+        const stationLogoByName = (stationName || mappedByKey || mappedByHost) ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName || mappedByKey || mappedByHost)}` : '';
         const stationLogoByFile = file ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(file)}` : '';
         const hostFavicon = hostFallback ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(hostFallback)}.ico` : '';
         const thumb = thumbRaw
           ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`)
-          : (isStream ? (stationLogoByFile || stationLogoByName || hostFavicon || `${base}/art/current.jpg`) : `${base}/art/current.jpg`);
+          : (isStream ? (mappedLogoByKey || mappedLogoByHost || stationLogoByFile || stationLogoByName || hostFavicon || `${base}/art/current.jpg`) : `${base}/art/current.jpg`);
         const head = pos === headPos;
         return `<li class="rowWrap" data-pos="${pos}" data-file="${encodeURIComponent(file)}" data-album="${encodeURIComponent(album)}" data-artist="${encodeURIComponent(artist)}" data-title="${encodeURIComponent(title)}">
           <div class="row ${head?'head':''}" data-pos="${pos}">
