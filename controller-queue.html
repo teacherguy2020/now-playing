@@ -406,22 +406,21 @@
         const pos = Number(x?._posDisplay || x?.pos || (idx + 1));
         const isStream = !!x?.isStream;
         const artist = String(x?.artist || '').trim();
-        const stationName = String(x?.stationName || '').trim();
+        const stationName = String(x?.stationName || x?.name || '').trim();
         const file = String(x?.file || '').trim();
-        const hostFallback = (()=>{ try { return new URL(file).hostname || ''; } catch { return ''; } })();
-        const title = String(x?.title || '').trim()
-          || String(x?.name || '').trim()
-          || stationName
-          || hostFallback
-          || '(untitled)';
+        const hostFallback = (()=>{ try { return (new URL(file).hostname || '').replace(/^www\./i,''); } catch { return ''; } })();
+        const rawTitle = String(x?.title || '').trim();
+        const titleLooksUrl = /^https?:\/\//i.test(rawTitle) || (/\./.test(rawTitle) && !/\s/.test(rawTitle) && /^[-a-z0-9.]+$/i.test(rawTitle));
+        const streamTitle = stationName || (titleLooksUrl ? hostFallback : '') || rawTitle || hostFallback || '(station)';
+        const title = isStream ? streamTitle : (rawTitle || String(x?.name || '').trim() || '(untitled)');
         const album = String(x?.album || '').trim();
         const thumbRaw = String(x?.thumbUrl || '').trim();
-        const radioFallback = stationName
-          ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName)}`
-          : (file ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(file)}` : '');
+        const stationLogoByName = stationName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName)}` : '';
+        const stationLogoByFile = file ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(file)}` : '';
+        const hostFavicon = hostFallback ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(hostFallback)}.ico` : '';
         const thumb = thumbRaw
           ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`)
-          : (isStream ? (radioFallback || `${base}/art/current.jpg`) : `${base}/art/current.jpg`);
+          : (isStream ? (stationLogoByFile || stationLogoByName || hostFavicon || `${base}/art/current.jpg`) : `${base}/art/current.jpg`);
         const head = pos === headPos;
         return `<li class="rowWrap" data-pos="${pos}" data-file="${encodeURIComponent(file)}" data-album="${encodeURIComponent(album)}" data-artist="${encodeURIComponent(artist)}" data-title="${encodeURIComponent(title)}">
           <div class="row ${head?'head':''}" data-pos="${pos}">
