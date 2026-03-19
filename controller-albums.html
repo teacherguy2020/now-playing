@@ -21,8 +21,8 @@
     .meta .miniSpin,.metaInline .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
 
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-right:26px}
-    body.embedded .grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding-right:16px}
-    body.embedded.embeddedWide .grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;padding-right:10px}
+    body.embedded .grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding-right:12px}
+    body.embedded.embeddedWide .grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding-right:10px}
     body.embedded .more{width:30px;height:30px;font-size:14px}
     .album{border:0;background:transparent;color:var(--text);text-align:left;padding:0;cursor:pointer}
     .coverWrap{position:relative;display:block;width:100%}
@@ -299,8 +299,8 @@
     function render(){
       const list=sorted(albums);
       host.className = state.view==='list' ? 'list' : 'grid';
-      renderAlpha(list);
-      host.innerHTML = list.map((a,i)=>{
+
+      const rowHtml = (a,i)=>{
         const artRaw=String(a.thumbUrl||'').trim();
         const art=artRaw ? (artRaw.startsWith('http')?artRaw:`${base}${artRaw}`) : `${base}/art/current.jpg`;
         const alb=String(a.album||'').trim(); const artist=String(a.artist||'').trim();
@@ -309,20 +309,43 @@
           return `<div class='row' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'>${artNode}<span class='coverMore' aria-hidden='true'>•••</span></div><div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div></div>`;
         }
         return `<div class='album' role='button' tabindex='0' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><div class='coverFlip'><div class='coverFace coverFaceFront'>${artNode}<button type='button' class='coverMore' data-cover-more='1'>•••</button></div><div class='coverFace coverFaceBack'><button type='button' class='coverMore' data-cover-more='1'>•••</button><div class='coverFlipBtns'><button type='button' data-cover-flip-act='open'>Open</button><button type='button' data-cover-flip-act='play'>Play</button><button type='button' data-cover-flip-act='shuffle'>Shuffle</button></div></div></div></div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div>`;
-      }).join('');
-      host.querySelectorAll('img.lazyCover, .coverWrap > img:not(.lazyCover)').forEach((img)=>{
-        img.onerror = () => {
-          try {
-            if (img.dataset.heal === '1') return;
-            img.dataset.heal = '1';
-            const raw = String(img.getAttribute('src') || img.getAttribute('data-src') || '').trim();
-            if (!raw) return;
-            img.setAttribute('src', `${raw}${raw.includes('?') ? '&' : '?'}heal=1`);
-          } catch {}
-        };
-      });
+      };
+
+      const bindHeal = ()=>{
+        host.querySelectorAll('img.lazyCover, .coverWrap > img:not(.lazyCover)').forEach((img)=>{
+          img.onerror = () => {
+            try {
+              if (img.dataset.heal === '1') return;
+              img.dataset.heal = '1';
+              const raw = String(img.getAttribute('src') || img.getAttribute('data-src') || '').trim();
+              if (!raw) return;
+              img.setAttribute('src', `${raw}${raw.includes('?') ? '&' : '?'}heal=1`);
+            } catch {}
+          };
+        });
+      };
+
+      const FIRST = 30;
+      host.innerHTML = list.slice(0, FIRST).map((a,i)=>rowHtml(a,i)).join('');
+      bindHeal();
       scheduleEmbeddedCovers();
-      meta.textContent = `${list.length} albums`;
+      meta.textContent = `${Math.min(FIRST, list.length)}/${list.length} albums`;
+      setTimeout(()=>{ try { renderAlpha(list); } catch {} }, 140);
+
+      let i = FIRST;
+      const step = ()=>{
+        if (i >= list.length) { meta.textContent = `${list.length} albums`; return; }
+        const next = list.slice(i, i + 120);
+        const wrap = document.createElement('div');
+        wrap.innerHTML = next.map((a,j)=>rowHtml(a, i + j)).join('');
+        while (wrap.firstChild) host.appendChild(wrap.firstChild);
+        bindHeal();
+        scheduleEmbeddedCovers();
+        i += next.length;
+        meta.textContent = `${Math.min(i, list.length)}/${list.length} albums`;
+        setTimeout(step, 0);
+      };
+      setTimeout(step, 0);
     }
 
     function scheduleEmbeddedCovers(){

@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { MPD_HOST, MOODE_SSH_HOST, MPD_PLAYLIST_DIR } from '../config.mjs';
+import { getBrowseIndex } from '../lib/browse-index.mjs';
 
 const execFileP = promisify(execFile);
 const RADIO_DB_SEP = '__NPSEP__';
@@ -445,53 +446,23 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
 
       optionsCache.host = mpdHost;
       optionsCache.inflight = (async () => {
-        const fmt = '%artist%\t%albumartist%\t%album%\t%genre%';
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
-          maxBuffer: 64 * 1024 * 1024,
-        });
-
-        const artists = new Set();
-        const albumArtistByName = new Map();
+        const idx = await getBrowseIndex(mpdHost);
         const genres = new Set();
-
-        for (const ln of String(stdout || '').split(/\r?\n/)) {
-          if (!ln) continue;
-          const [artist = '', albumArtist = '', album = '', genreRaw = ''] = ln.split('\t');
-
-          const a = String(artist || albumArtist || '').trim();
-          if (a) artists.add(a);
-
-          const alb = String(album || '').trim();
-          if (alb && !albumArtistByName.has(alb)) albumArtistByName.set(alb, a);
-
-          for (const g of String(genreRaw || '')
-            .split(/[;,|/]/)
-            .map((x) => String(x || '').trim())
-            .filter(Boolean)) {
-            genres.add(g);
-          }
+        for (const t of Array.isArray(idx?.tracks) ? idx.tracks : []) {
+          for (const g of String(t?.genre || '').split(/[;,|/]/).map((x)=>String(x||'').trim()).filter(Boolean)) genres.add(g);
         }
-
-        const albums = Array.from(albumArtistByName.entries())
-          .map(([albumName, artistName]) => ({
-            value: String(albumName || ''),
-            label: artistName ? `${String(artistName)} — ${String(albumName)}` : String(albumName || ''),
-            sortArtist: String(artistName || '').toLowerCase(),
-            sortAlbum: String(albumName || '').toLowerCase(),
-          }))
-          .sort((a, b) => {
-            const aa = a.sortArtist.localeCompare(b.sortArtist, undefined, { sensitivity: 'base' });
-            if (aa !== 0) return aa;
-            return a.sortAlbum.localeCompare(b.sortAlbum, undefined, { sensitivity: 'base' });
-          })
-          .map(({ value, label }) => ({ value, label }));
+        const albums = (Array.isArray(idx?.albums) ? idx.albums : []).map((a)=>({
+          value: String(a?.album || ''),
+          label: String(a?.artist || '').trim() ? `${String(a.artist)} — ${String(a.album || '')}` : String(a?.album || ''),
+        }));
 
         return {
           ok: true,
           moodeHost: String(MOODE_SSH_HOST || MPD_HOST || 'moode.local'),
           genres: Array.from(genres).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
-          artists: Array.from(artists).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
+          artists: (Array.isArray(idx?.artists) ? idx.artists : []).map((a)=>String(a?.name || '')).filter(Boolean),
           albums,
+          browseIndex: { builtAt: String(idx?.builtAt || ''), counts: idx?.counts || {} },
         };
       })();
 

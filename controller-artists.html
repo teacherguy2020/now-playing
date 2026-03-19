@@ -240,6 +240,10 @@
     const base = `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
     let key='';
     let artists=[];
+    let artistsTotal=0;
+    let artistsOffset=0;
+    let artistsDone=false;
+    let artistsLoading=false;
     let modalCtx={artist:'',art:'',albums:[],album:'',tracks:[]};
     let artistCoverQueuePaused = false;
     let artistCoverQueueToken = 0;
@@ -252,43 +256,66 @@
     async function ensureKey(){ if(key) return key; const r=await fetch(`${base}/config/runtime`,{cache:'no-store'}); const j=await r.json().catch(()=>({})); key=String(j?.config?.trackKey||'').trim(); return key; }
     async function sendPlayback(action, extra={}){ await ensureKey(); const r=await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify(Object.assign({action},extra||{}))}); const j=await r.json().catch(()=>({})); if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`); }
 
-    async function loadArtists(){
-      await ensureKey();
-      const r = await fetch(`${base}/config/library-health/albums`, { cache:'no-store', headers:{...(key?{'x-track-key':key}:{})} });
-      const j = await r.json().catch(()=>({}));
-      const rows = (r.ok && j?.ok && Array.isArray(j.albums)) ? j.albums : [];
-      const by = new Map();
-      rows.forEach((x)=>{
-        const artist = String(x?.artist || '').trim();
-        if (!artist) return;
-        if (!by.has(artist)) by.set(artist, { artist, count:0, art: String(x?.thumbUrl||'').trim() });
-        const o = by.get(artist); o.count += 1; if (!o.art && x?.thumbUrl) o.art = String(x.thumbUrl);
-      });
-      artists = Array.from(by.values()).sort((a,b)=>a.artist.localeCompare(b.artist, undefined, { sensitivity:'base' }));
-      render();
+    function renderArtistRows(rows, startIdx=0){
+      return rows.map((a,i)=>{
+        const idx = startIdx + i;
+        const art = a.art ? (a.art.startsWith('http') ? a.art : `${base}${a.art}`) : `${base}/art/current.jpg`;
+        return `<div class='row' data-idx='${idx}' data-artist='${encodeURIComponent(a.artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><img class='lazyArtistCover' src='${art}' alt='' loading='lazy' decoding='async'></div><div><div class='name'>${a.artist}</div><div class='sub'>${a.count} album(s)</div></div></div>`;
+      }).join('');
     }
 
-    function render(){
-      const list = document.getElementById('list');
-      const meta = document.getElementById('meta');
-      meta.textContent = `${artists.length} artists`;
-      list.innerHTML = artists.map((a,i)=>{
-        const art = a.art ? (a.art.startsWith('http') ? a.art : `${base}${a.art}`) : `${base}/art/current.jpg`;
-        return `<div class='row' data-idx='${i}' data-artist='${encodeURIComponent(a.artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><img class='lazyArtistCover' data-src='${art}' alt=''></div><div><div class='name'>${a.artist}</div><div class='sub'>${a.count} album(s)</div></div></div>`;
-      }).join('');
-      list.querySelectorAll('img.lazyArtistCover[data-src]').forEach((img)=>{
+    function bindArtistImageHeal(root=document){
+      root.querySelectorAll?.('#list img.lazyArtistCover').forEach((img)=>{
         img.onerror = () => {
           try {
             if (img.dataset.heal === '1') return;
             img.dataset.heal = '1';
-            const raw = String(img.getAttribute('src') || img.getAttribute('data-src') || '').trim();
+            const raw = String(img.getAttribute('src') || '').trim();
             if (!raw) return;
             img.setAttribute('src', `${raw}${raw.includes('?') ? '&' : '?'}heal=1`);
           } catch {}
         };
       });
-      scheduleArtistCovers();
-      renderAlpha();
+    }
+
+    async function loadArtists(){
+      await ensureKey();
+      const meta = document.getElementById('meta');
+      if (meta) meta.textContent = 'Loading artists…';
+      const r = await fetch(`${base}/config/browse/artists?offset=0&limit=5000`, { cache:'no-store', headers:{...(key?{'x-track-key':key}:{})} });
+      const j = await r.json().catch(()=>({}));
+      const rows = (r.ok && j?.ok && Array.isArray(j.artists)) ? j.artists : [];
+      artistsTotal = Number(j?.total || rows.length || 0) || 0;
+      artists = rows.map((x)=>{
+        const sf = String(x?.sampleFile || '').trim();
+        const art = sf ? `${base}/art/track_640.jpg?file=${encodeURIComponent(sf)}` : `${base}/art/current.jpg`;
+        return { artist:String(x?.name || '').trim(), count:Number(x?.albumCount || 0) || 0, art };
+      }).filter((x)=>x.artist);
+
+      const list = document.getElementById('list');
+      if (!list) return;
+      const FIRST = 25;
+      list.innerHTML = renderArtistRows(artists.slice(0, FIRST), 0);
+      bindArtistImageHeal(list);
+      if (meta) meta.textContent = artistsTotal ? `${Math.min(FIRST, artists.length)}/${artistsTotal} artists` : `${artists.length} artists`;
+      setTimeout(()=>{ try { renderAlpha(); } catch {} }, 140);
+
+      let i = FIRST;
+      const step = ()=>{
+        if (i >= artists.length) {
+          if (meta) meta.textContent = artistsTotal ? `${artists.length}/${artistsTotal} artists` : `${artists.length} artists`;
+          return;
+        }
+        const next = artists.slice(i, i + 120);
+        const wrap = document.createElement('div');
+        wrap.innerHTML = renderArtistRows(next, i);
+        while (wrap.firstChild) list.appendChild(wrap.firstChild);
+        bindArtistImageHeal(list);
+        i += next.length;
+        if (meta) meta.textContent = artistsTotal ? `${Math.min(i, artists.length)}/${artistsTotal} artists` : `${artists.length} artists`;
+        setTimeout(step, 0);
+      };
+      setTimeout(step, 0);
     }
 
     function renderAlpha(){
@@ -307,7 +334,7 @@
     async function fetchArtistAlbums(artist){
       await ensureKey();
       const q = new URLSearchParams({ artist: String(artist || '').trim() });
-      const r = await fetch(`${base}/config/diagnostics/artist-albums?${q.toString()}`, { cache:'no-store', headers:{...(key?{'x-track-key':key}:{})} });
+      const r = await fetch(`${base}/config/browse/artist-albums?${q.toString()}`, { cache:'no-store', headers:{...(key?{'x-track-key':key}:{})} });
       const j = await r.json().catch(()=>({}));
       return (r.ok && j?.ok && Array.isArray(j.albums)) ? j.albums : [];
     }
@@ -415,6 +442,15 @@
       renderArtistGrid();
 
     }
+
+    const maybeLoadMoreArtists = ()=>{
+      if (artistsDone || artistsLoading) return;
+      const doc = document.documentElement;
+      const remaining = (doc.scrollHeight - (window.scrollY + window.innerHeight));
+      if (remaining < 700) loadArtistsMore(false).catch(()=>null);
+    };
+
+    window.addEventListener('scroll', maybeLoadMoreArtists, { passive:true });
 
     document.getElementById('list').addEventListener('click', async (ev)=>{
       const row = ev.target.closest('.row[data-artist]');

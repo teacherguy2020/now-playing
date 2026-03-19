@@ -4304,6 +4304,17 @@
         refreshPeppyAlsaPill().catch(() => {});
       }, 5000);
       setInterval(() => { if (!document.hidden) syncHeroQueue(); }, 7000);
+      // Warm browse index + first artist chunk in background for faster first open of Artists view.
+      setTimeout(async () => {
+        try {
+          const rt = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+          const rj = await rt.json().catch(()=>({}));
+          const rk = String(rj?.config?.trackKey || '').trim();
+          const h = rk ? { 'x-track-key': rk } : {};
+          await fetch(`${base}/config/browse/stats`, { cache:'no-store', headers: h }).catch(()=>null);
+          await fetch(`${base}/config/browse/artists?offset=0&limit=120`, { cache:'no-store', headers: h }).catch(()=>null);
+        } catch {}
+      }, 1200);
       // Fallback safety net; primary sizing is ResizeObserver/MutationObserver based.
       if (!NO_IFRAME_MODE) setInterval(() => { if (!document.hidden) requestFrameHeightSync(); }, 8000);
     })();

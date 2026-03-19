@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
+import { getBrowseIndex } from '../lib/browse-index.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -249,6 +250,17 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     { group: 'Art', method: 'GET', path: '/art/track_640.jpg' },
   ];
 
+  app.post('/config/browse-index/rebuild', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const mpdHost = String(MPD_HOST || 'moode.local');
+      const idx = await getBrowseIndex(mpdHost, { force: true });
+      return res.json({ ok: true, builtAt: idx?.builtAt || '', counts: idx?.counts || {} });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.get('/config/diagnostics/endpoints', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
@@ -266,27 +278,20 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       if (!album) return res.status(400).json({ ok: false, error: 'album is required' });
 
       const mpdHost = String(MPD_HOST || 'moode.local');
-      const args = ['-h', mpdHost, '-f', '%file%\t%track%\t%title%\t%artist%\t%album%', 'find', 'album', album];
-      if (artist) args.push('artist', artist);
-      let out = '';
-      try {
-        const { stdout } = await execFileP('mpc', args, { maxBuffer: 16 * 1024 * 1024 });
-        out = String(stdout || '');
-      } catch {
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%track%\t%title%\t%artist%\t%album%', 'find', 'album', album], { maxBuffer: 16 * 1024 * 1024 });
-        out = String(stdout || '');
-      }
-
-      const tracks = String(out || '').split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean).map((ln) => {
-        const [file = '', track = '', title = '', rowArtist = '', rowAlbum = ''] = ln.split('\t');
-        return {
-          file: String(file || '').trim(),
-          track: String(track || '').trim(),
-          title: String(title || '').trim(),
-          artist: String(rowArtist || artist || '').trim(),
-          album: String(rowAlbum || album || '').trim(),
-        };
-      }).filter((t) => !!t.file);
+      const idx = await getBrowseIndex(mpdHost);
+      const albLc = album.toLowerCase();
+      const artLc = artist.toLowerCase();
+      const tracks = (Array.isArray(idx?.tracks) ? idx.tracks : [])
+        .filter((t) => String(t?.album || '').trim().toLowerCase() === albLc)
+        .filter((t) => !artLc || String(t?.artist || t?.albumArtist || '').trim().toLowerCase() === artLc)
+        .map((t) => ({
+          file: String(t?.file || '').trim(),
+          track: String(t?.track || '').trim(),
+          title: String(t?.title || '').trim(),
+          artist: String(t?.artist || t?.albumArtist || artist || '').trim(),
+          album: String(t?.album || album || '').trim(),
+        }))
+        .filter((t) => !!t.file);
 
       tracks.sort((a, b) => {
         const ta = Number.parseInt(String(a.track || '').replace(/[^0-9].*$/, ''), 10);
@@ -307,18 +312,15 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const artist = String(req.query?.artist || '').trim();
       if (!artist) return res.status(400).json({ ok: false, error: 'artist is required' });
       const mpdHost = String(MPD_HOST || 'moode.local');
-
-      const pull = async (field) => {
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%\t%album%\t%artist%\t%albumartist%\t%genre%', 'find', field, artist], { maxBuffer: 24 * 1024 * 1024 });
-        return String(stdout || '').split(/\r?\n/).map((ln) => ln.trim()).filter(Boolean);
-      };
-
-      const rows = [...(await pull('artist')), ...(await pull('albumartist'))];
+      const idx = await getBrowseIndex(mpdHost);
+      const artLc = artist.toLowerCase();
       const byAlbum = new Map();
-      for (const ln of rows) {
-        const [file = '', album = '', rowArtist = '', rowAlbumArtist = '', rowGenre = ''] = ln.split('\t');
-        const albumName = String(album || '').trim();
-        const fileName = String(file || '').trim();
+
+      for (const t of (Array.isArray(idx?.tracks) ? idx.tracks : [])) {
+        const rowArtist = String(t?.artist || t?.albumArtist || '').trim();
+        if (rowArtist.toLowerCase() !== artLc) continue;
+        const albumName = String(t?.album || '').trim();
+        const fileName = String(t?.file || '').trim();
         if (!albumName || !fileName) continue;
         const key = albumName.toLowerCase();
         if (!byAlbum.has(key)) {
@@ -326,8 +328,8 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           const folder = i > 0 ? fileName.slice(0, i) : '';
           byAlbum.set(key, {
             album: albumName,
-            artist: String(rowArtist || rowAlbumArtist || artist || '').trim(),
-            genre: String(rowGenre || '').trim(),
+            artist: rowArtist || artist,
+            genre: String(t?.genre || '').trim(),
             sampleFile: fileName,
             folder,
             count: 1,

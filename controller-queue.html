@@ -623,7 +623,7 @@
       try {
         await ensureKey();
         const q = new URLSearchParams({ artist: String(artist || '').trim() });
-        const r = await fetch(`${base}/config/diagnostics/artist-albums?${q.toString()}`, { cache:'no-store', headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) } });
+        const r = await fetch(`${base}/config/browse/artist-albums?${q.toString()}`, { cache:'no-store', headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) } });
         const j = await r.json().catch(()=>({}));
         if (!r.ok || !j?.ok) return [];
         return Array.isArray(j.albums) ? j.albums : [];

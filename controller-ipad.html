@@ -1483,7 +1483,7 @@
           return { kind:'album', album, artist, art };
         });
         rail.innerHTML = '';
-        recentItems.forEach((a,i)=>{
+        const makeRecentAlbumNode = (a, i) => {
           const d = document.createElement('div');
           d.className = 'thumb';
           d.setAttribute('data-ra-idx', String(i));
@@ -1494,6 +1494,8 @@
           const img = document.createElement('img');
           img.alt = '';
           img.src = String(a.art || '');
+          img.loading = 'lazy';
+          img.decoding = 'async';
           img.onerror = function () {
             try {
               if (this.dataset.heal) return;
@@ -1519,8 +1521,23 @@
           wrap.appendChild(more);
           d.appendChild(wrap);
           d.appendChild(cap);
-          rail.appendChild(d);
-        });
+          return d;
+        };
+
+        const FIRST_RECENTS = 8;
+        const first = recentItems.slice(0, FIRST_RECENTS);
+        first.forEach((a, i) => rail.appendChild(makeRecentAlbumNode(a, i)));
+
+        let ri = FIRST_RECENTS;
+        const appendMoreRecents = () => {
+          if (ri >= recentItems.length) return;
+          const end = Math.min(recentItems.length, ri + 8);
+          for (let i = ri; i < end; i++) rail.appendChild(makeRecentAlbumNode(recentItems[i], i));
+          ri = end;
+          if (ri < recentItems.length) setTimeout(appendMoreRecents, 0);
+        };
+        setTimeout(appendMoreRecents, 0);
+
         recentAlbumsRenderSig = nextSig;
         recentRenderedSource = 'albums';
       } catch {
@@ -1626,7 +1643,7 @@
     async function fetchArtistAlbumsByName(artist){
       await ensureKey();
       const q = new URLSearchParams({ artist: String(artist || '').trim() });
-      const r = await fetch(`${base}/config/diagnostics/artist-albums?${q.toString()}`, { cache:'no-store', headers:reqHeaders(false) });
+      const r = await fetch(`${base}/config/browse/artist-albums?${q.toString()}`, { cache:'no-store', headers:reqHeaders(false) });
       const j = await r.json().catch(()=>({}));
       return (r.ok && j?.ok && Array.isArray(j.albums)) ? j.albums : [];
     }
