@@ -1,0 +1,1255 @@
+<!-- index.html (canonical now-playing UI) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="manifest" href="/manifest-controller.webmanifest?v=20260318b" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+  <link rel="shortcut icon" href="/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Controller Now Playing</title>
+  <style>
+    html,body{color:#111;height:100dvh;min-height:100dvh;overflow:hidden !important;background-color:rgba(0,0,0,.56) !important;background-image:url('http://nowplaying.local:3101/art/current_bg_640_blur.jpg') !important;background-size:cover !important;background-position:center top !important;background-repeat:no-repeat !important;background-attachment:fixed !important;background-blend-mode:multiply !important;}
+    html.nav-enter-slide body{animation:cnpEnterFromRight .23s cubic-bezier(.2,.7,.2,1) both;will-change:transform,opacity}
+    @keyframes cnpEnterFromRight{from{transform:translateX(38px);opacity:.72}to{transform:translateX(0);opacity:1}}
+    body::before{content:none !important;display:none !important}
+    #content{min-height:100dvh !important;}
+    /* Keep background blur layers active */
+    #content{position:relative;z-index:1}
+  </style>
+  <script>
+    try {
+      const __navU = new URL(location.href);
+      if (__navU.searchParams.get('nav') === 'slide') {
+        document.documentElement.classList.add('nav-enter-slide');
+      }
+    } catch {}
+    // Fallbacks for embedded preview mode.
+    window.addEventListener('DOMContentLoaded', () => {
+      try {
+        const embedded = (window.top !== window.self);
+        if (embedded) {
+          const host = location.hostname || 'nowplaying.local';
+          const proto = location.protocol || 'http:';
+          const b = document.body;
+          const c = document.getElementById('content');
+          const bgA = document.getElementById('background-a');
+          const bgB = document.getElementById('background-b');
+
+          // Ensure background layers are actually visible in iframe context.
+          if (b) b.style.background = 'transparent';
+          if (c) { c.style.position = 'relative'; c.style.zIndex = '1'; }
+          if (bgA) { bgA.style.zIndex = '0'; bgA.style.opacity = '1'; }
+          if (bgB) { bgB.style.zIndex = '0'; bgB.style.opacity = '0'; }
+
+          // Use current art and let CSS blur/filter create the backdrop.
+          if (bgA && !bgA.style.backgroundImage) {
+            bgA.style.backgroundImage = `url(${proto}//${host}:3101/art/current.jpg?t=${Date.now()})`;
+          }
+        }
+      } catch (_) {}
+
+      // Ensure first paint is visible quickly.
+      try {
+        const b = document.body;
+        if (b && b.classList.contains('booting')) {
+          b.classList.remove('booting');
+          b.classList.add('ready');
+        }
+      } catch (_) {}
+
+      // If boot JS errors, don't leave preview on a blank/white boot screen.
+      setTimeout(() => {
+        try {
+          const b = document.body;
+          if (b && b.classList.contains('booting')) {
+            b.classList.remove('booting');
+            b.classList.add('ready');
+          }
+        } catch (_) {}
+      }, 1800);
+
+    });
+  </script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles/index1080.css?v=20260228-airplay-logo-sm1" />
+
+
+  <style>
+    #cnpBack{grid-area:back;position:relative;justify-self:end;align-self:start;z-index:20;border:1px solid rgba(255,255,255,.28);background:rgba(8,14,24,.66);color:#e9f1ff;border-radius:999px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:20px;text-decoration:none;backdrop-filter:blur(8px);transform:translateY(28px)}
+    @media (display-mode: standalone){
+      #cnpBack{transform:translateY(calc(env(safe-area-inset-top,0px) + 12px))}
+    }
+    /* Grid prototype: keep mobile layout in-flow (less Safari toolbar weirdness) */
+    body.phone-ui{overflow:hidden !important;-webkit-overflow-scrolling:auto;--artSize:min(85vw,420px)}
+    /* Guardrail: on narrow screens, keep art sizing capped even if phone-ui class fails to apply */
+    @media (max-width: 900px){
+      body{--artSize:min(85vw,420px)}
+      /* Match/beat base specificity so phone-ui width/height rules cannot override this */
+      body.phone-ui #album-art-wrapper,
+      body:not(.phone-ui) #album-art-wrapper{
+        width:min(85vw,420px) !important;
+        height:min(85vw,420px) !important;
+      }
+    }
+    body.phone-ui #content{
+      position:relative;
+      z-index:1;
+      min-height: calc(100dvh + 520px) !important;
+      padding-left: var(--padSide) !important;
+      padding-right: var(--padSide) !important;
+      margin-top:-20px !important;
+      display:grid;
+      grid-template-columns:minmax(0,1fr);
+      grid-template-areas:
+        "back"
+        "art"
+        "progress"
+        "artist"
+        "title"
+        "stars"
+        "album"
+        "file"
+        "controls"
+        "nextup";
+      grid-auto-rows:auto;
+      row-gap: 10px;
+      align-content:start;
+    }
+    body.phone-ui #album-art-wrapper{margin-top:22px !important}
+    @media (display-mode: standalone) {
+      body.phone-ui #album-art-wrapper{margin-top: calc(env(safe-area-inset-top, 0px) + 22px) !important;}
+    }
+    body.phone-ui #album-art-wrapper{grid-area:art;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;justify-self:center}
+    body.phone-ui .text-column{display:contents}
+    body.phone-ui #artist-name{grid-area:artist;justify-self:center;text-align:center;width:100%;margin-top:-10px}
+    body.phone-ui #titleLine{grid-area:title;justify-self:center;text-align:center;width:100%;margin-top:-10px}
+    #ratingRow{display:none !important}
+    body.phone-ui #ratingRow{grid-area:stars;justify-self:center;text-align:center;width:100%;margin-top:-10px;min-height:30px;display:none !important}
+    body.phone-ui.show-rating-row:not(.is-podcast) #ratingRow{display:block !important}
+    body.phone-ui.is-podcast #ratingRow{display:none !important}
+
+    /* iPad landscape: show clickable stars inline after title (non-podcast only) */
+    @media (orientation: landscape) and (min-width: 900px) and (max-width: 1400px) {
+      body:not(.phone-ui) #titleLine{display:inline-flex;align-items:center}
+      body:not(.phone-ui):not(.is-podcast) #ratingRow{display:inline-flex !important;align-items:center;min-height:0;margin-left:8px;vertical-align:middle}
+      body:not(.phone-ui).is-podcast #ratingRow{display:none !important}
+    }
+
+    /* iPad portrait (still phone-ui bucket): keep stars visible inline after title */
+    @media (orientation: portrait) and (min-width: 760px) and (max-width: 1100px) {
+      body.phone-ui #titleLine{display:inline-flex;align-items:center;justify-self:center;justify-content:center}
+      body.phone-ui.show-rating-row:not(.is-podcast) #ratingRow{
+        grid-area:title;
+        display:inline-flex !important;
+        align-items:center;
+        justify-self:center;
+        min-height:0;
+        margin-left:8px;
+      }
+      body.phone-ui.is-podcast #ratingRow{display:none !important}
+    }
+    body.phone-ui #album-link{grid-area:album;justify-self:center;text-align:center;width:100%;margin-top:-10px}
+    body.phone-ui #file-info{grid-area:file;justify-self:center;text-align:center;width:100%;margin-top:-10px}
+    body.phone-ui #next-up{grid-area:nextup;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5600 !important;pointer-events:auto !important;opacity:1 !important;visibility:visible !important;justify-self:stretch;margin-top:-10px}
+    body.phone-ui #progress-bar-wrapper{grid-area:progress;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;width:min(calc(92vw - 40px), calc(var(--artSize, 640px) - 40px)) !important;justify-self:center}
+    body.phone-ui #phone-controls{grid-area:controls;display:flex !important;position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;transform:none !important;z-index:5590 !important;margin-top:-7px !important;justify-self:center;width:100%;gap:6px !important}
+    #phone-controls .ctl.seek-ctl{display:none !important}
+    body.is-podcast #phone-controls .ctl.seek-ctl{display:grid !important}
+    body.phone-ui #phone-controls.has-podcast-seek{gap:6px !important}
+    body.phone-ui #phone-controls .ctl.seek-ctl{display:none !important}
+    body.phone-ui #phone-controls .ctl.big{width:calc(var(--ctlBigFinal) * 0.97) !important;height:calc(var(--ctlBigFinal) * 0.97) !important;border-radius:16px !important}
+    body.phone-ui #phone-controls #btn-play{margin-left:6px !important; margin-right:6px !important;}
+    body.phone-ui #phone-controls .ctl.seek-ctl .seekLbl{font-size:13px;font-weight:700;letter-spacing:.01em;line-height:1}
+    .podSeekInline{display:none !important}
+    body.phone-ui .podSeekInline{display:none;align-items:center;justify-content:center;border:1px solid rgba(255,224,130,.5);background:rgba(30,20,8,.38);color:#f8e7b0;border-radius:999px;min-width:36px;height:26px;padding:0 8px;font-size:12px;font-weight:700;line-height:1;letter-spacing:.01em;vertical-align:middle}
+    body.phone-ui #btn-seek-back-inline{padding-right:12px;margin-right:8px}
+    body.phone-ui.is-podcast .podSeekInline{display:inline-flex !important}
+    /* Brass-ring control treatment */
+    body.phone-ui #phone-controls .ctl{
+      position:relative;
+      flex:0 0 auto !important;
+      width:calc(var(--ctlFinal) * 0.97) !important;
+      height:calc(var(--ctlFinal) * 0.97) !important;
+      aspect-ratio:1 / 1;
+      border-radius:16px !important;
+      padding:0 !important;
+      position:relative;
+      border:2px solid transparent !important;
+      background:
+        linear-gradient(#8f6a2a, #8f6a2a) padding-box,
+        linear-gradient(135deg, rgba(255,230,150,.95) 0%, rgba(255,244,198,.82) 32%, rgba(246,194,86,.96) 60%, rgba(191,130,26,.92) 100%) border-box !important;
+      box-shadow:
+        0 0 0 1px rgba(255,241,188,.34) inset,
+        0 1px 0 rgba(255,255,255,.10) inset;
+      overflow:hidden;
+    }
+    body.phone-ui #phone-controls .ctl::before{
+      content:'';
+      position:absolute;
+      inset:2px;
+      border-radius:inherit;
+      pointer-events:none;
+      background:
+        radial-gradient(120% 80% at 18% 8%, rgba(255,255,255,.34), rgba(255,255,255,0) 44%),
+        linear-gradient(180deg, rgba(255,250,220,.10), rgba(0,0,0,0));
+      mix-blend-mode:screen;
+    }
+    body.phone-ui #phone-controls #btn-play::after{
+      content:'';
+      position:absolute;
+      inset:-2px;
+      border-radius:inherit;
+      pointer-events:none;
+      opacity:0;
+      /* ring-only sweep: transparent center so icon/body do not appear to rotate */
+      background:
+        conic-gradient(from 0deg, rgba(255,235,170,0) 0deg, rgba(255,245,210,.92) 24deg, rgba(255,235,170,0) 58deg, rgba(255,235,170,0) 360deg),
+        radial-gradient(circle at center, transparent 62%, rgba(0,0,0,.98) 63%);
+      -webkit-mask:
+        radial-gradient(circle at center, transparent 61.5%, #000 64.5%);
+      mask:
+        radial-gradient(circle at center, transparent 61.5%, #000 64.5%);
+      mix-blend-mode:screen;
+      transform-origin:50% 50%;
+    }
+    body.phone-ui #phone-controls .ctl:active{
+      box-shadow:
+        0 0 14px 3px rgba(255,193,44,.36),
+        0 0 0 1px rgba(255,243,194,.42) inset,
+        0 1px 0 rgba(255,255,255,.14) inset;
+    }
+    body.phone-ui #phone-controls .ctl.tapPulse{
+      box-shadow:
+        0 0 26px 7px rgba(255,193,44,.52),
+        0 0 0 1px rgba(255,243,194,.46) inset,
+        0 1px 0 rgba(255,255,255,.16) inset !important;
+    }
+    @media (hover:hover) {
+      body.phone-ui #phone-controls .ctl:hover{
+        box-shadow:
+          0 0 22px 5px rgba(255,193,44,.46),
+          0 0 0 1px rgba(255,243,194,.42) inset,
+          0 1px 0 rgba(255,255,255,.14) inset;
+      }
+    }
+    body.phone-ui #phone-controls .ctl:focus-visible{
+      box-shadow:
+        0 0 0 1px rgba(255,243,194,.42) inset,
+        0 1px 0 rgba(255,255,255,.14) inset;
+    }
+    /* Keep play icon green while preserving brass ring aesthetic */
+    /* Neutralize sticky .on glow from base theme; keep polished brass */
+    body.phone-ui #phone-controls .ctl.on,
+    body.phone-ui #phone-controls .ctl.big.on{
+      background:
+        linear-gradient(#8f6a2a, #8f6a2a) padding-box,
+        linear-gradient(135deg, rgba(255,230,150,.95) 0%, rgba(255,244,198,.82) 32%, rgba(246,194,86,.96) 60%, rgba(191,130,26,.92) 100%) border-box !important;
+      box-shadow:
+        0 0 0 1px rgba(255,241,188,.34) inset,
+        0 1px 0 rgba(255,255,255,.10) inset !important;
+      color:inherit;
+    }
+    body.phone-ui #phone-controls #btn-play.on{
+      color:#22c55e !important;
+      background:
+        linear-gradient(#8f6a2a, #8f6a2a) padding-box,
+        linear-gradient(135deg, rgba(255,230,150,.95) 0%, rgba(255,244,198,.82) 32%, rgba(246,194,86,.96) 60%, rgba(191,130,26,.92) 100%) border-box !important;
+      box-shadow:
+        0 0 0 1px rgba(255,241,188,.34) inset,
+        0 1px 0 rgba(255,255,255,.10) inset,
+        0 0 12px rgba(34,197,94,.22);
+    }
+    body.phone-ui #phone-controls #btn-shuffle.on{
+      color:#22c55e !important;
+    }
+    body.phone-ui #phone-controls #btn-play.on::after{
+      opacity:0;
+      animation:none;
+    }
+    @keyframes brassSweep { to { transform: rotate(360deg); } }
+
+    /* Golden active indicator ring (play/pause control lane) */
+    body.phone-ui #phone-controls{ position:relative; isolation:isolate; }
+    body.phone-ui #phone-controls::before{
+      content:''; position:absolute; inset:-10px -8px; pointer-events:none; z-index:0;
+      background:radial-gradient(65% 85% at 50% 45%, rgba(232,175,72,.12), rgba(232,175,72,0) 72%);
+      filter: blur(8px);
+    }
+    body.phone-ui #phone-controls::after{
+      content:''; position:absolute; inset:0; pointer-events:none; z-index:0; opacity:.045;
+      background-image: radial-gradient(rgba(255,255,255,.72) .45px, transparent .45px);
+      background-size: 3px 3px;
+      mix-blend-mode: soft-light;
+    }
+    body.phone-ui #phone-controls .ctl{ z-index:1; }
+    body.phone-ui #phone-controls #btn-play svg{ opacity:0; }
+    body.phone-ui #activeCtlRing{
+      position:absolute; top:0; left:0; width:0; height:0; transform:translate3d(0,0,0);
+      transition: transform 420ms cubic-bezier(0.34, 1.2, 0.64, 1), width 280ms ease, height 280ms ease;
+      pointer-events:none; z-index:4;
+    }
+    body.phone-ui #activeCtlRing .glow{
+      position:absolute; inset:0; border-radius:18px; filter:blur(8px); opacity:.15; background:#e8af48;
+    }
+    body.phone-ui #activeCtlRing .clip{
+      position:absolute; inset:0; border-radius:18px; overflow:hidden;
+      z-index:1;
+    }
+    body.phone-ui #activeCtlRing .spin{
+      position:absolute; inset:-15px;
+      border:2px solid transparent;
+      border-radius:18px;
+      box-sizing:border-box;
+      animation: goldSpin 9s linear infinite;
+      background:
+        linear-gradient(transparent, transparent) padding-box,
+        conic-gradient(
+          from 0deg,
+          #ffffff 0% 10.5%, #ddb45a 10.5% 27%, #ffeeb0 27% 35%,
+          rgba(255,255,255,.82) 35% 37%, #ffc0cb 37% 38.5%, #8ec5ff 38.5% 40%, #c49746 40% 50%,
+          #ffffff 50% 60.5%, #ddb45a 60.5% 77%, #ffeeb0 77% 85%,
+          rgba(255,255,255,.82) 85% 87%, #ffc0cb 87% 88.5%, #8ec5ff 88.5% 90%, #c49746 90% 100%
+        ) border-box;
+      background-clip: padding-box, border-box;
+      z-index:1;
+    }
+    @keyframes goldSpin { to { transform:rotate(360deg); } }
+    body.phone-ui #activeCtlRing .plate{
+      position:absolute; inset:2px; border-radius:16px;
+      background: #8f6a2a;
+      border:1px solid rgba(255,239,188,.34);
+      box-shadow: 0 1px 0 rgba(255,255,255,.14) inset;
+      z-index:2;
+    }
+    body.phone-ui #activeCtlRing .plate::after{
+      content:none;
+    }
+    body.phone-ui #activeCtlSymbol{
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+      color:#e9eef6; font-size:22px; line-height:1; font-weight:700; letter-spacing:.02em;
+      text-shadow:none;
+      transform:translateX(1px);
+      transition:opacity 180ms ease;
+      z-index:2;
+    }
+
+    body.phone-ui #mode-logo{display:none !important}
+
+    /* Landscape phone tuning: keep art anchored full-left and scale everything sanely */
+    @media (orientation: landscape) and (max-height: 520px) {
+      body.phone-ui { --artSize: min(85vw, 420px); }
+      body.phone-ui #content{
+        grid-template-columns: 48% minmax(0, 1fr);
+        grid-template-areas:
+          "back back"
+          "art artist"
+          "art title"
+          "art stars"
+          "art album"
+          "art file"
+          "art controls"
+          "art progress"
+          "art nextup";
+        column-gap: 14px;
+        row-gap: 8px;
+      }
+      body.phone-ui #album-art-wrapper{justify-self:start;margin-top:8px !important}
+      body.phone-ui #progress-bar-wrapper{justify-self:stretch;width:100% !important;margin-top:2px}
+      body.phone-ui #phone-controls{justify-self:stretch;width:100%}
+      body.phone-ui #phone-controls .ctl{flex:0 0 auto !important;width:calc(var(--ctlFinal) * 0.97) !important;height:calc(var(--ctlFinal) * 0.97) !important;border-radius:16px !important}
+      body.phone-ui #phone-controls .ctl.big{width:calc(var(--ctlBigFinal) * 0.97) !important;height:calc(var(--ctlBigFinal) * 0.97) !important;border-radius:16px !important}
+      body.phone-ui #next-up{margin-top:2px;justify-self:stretch;width:100%}
+      #cnpBack{justify-self:start;transform:none !important}
+    }
+    @media (orientation: landscape) and (max-height: 520px) and (display-mode: standalone) {
+      body.phone-ui #content{padding-left:calc(var(--padSide) + 40px) !important}
+    }
+    #ratingStars .loading{opacity:1;color:#d4af37;display:inline-block;animation:ratingSpin 1s linear infinite;transform-origin:50% 54%}
+    @keyframes ratingSpin{to{transform:rotate(360deg)}}
+    /* Keep album-art/background blur visible like index.html */
+    #background-overlay,.screen-dim,.dim-layer{display:none !important;opacity:0 !important}
+
+    /* Personnel panel: on phone place a bit lower so top area remains tappable to dismiss */
+    body.phone-ui #artist-details-container{
+      align-items:flex-start !important;
+      justify-content:center !important;
+      padding-top: calc(env(safe-area-inset-top, 0px) + 104px) !important;
+      padding-left: 12px;
+      padding-right: 12px;
+      z-index: 7000 !important; /* above phone controls lane */
+    }
+    /* prevent accidental text selection in controller-now-playing */
+    body.phone-ui, body.phone-ui * { -webkit-user-select:none; user-select:none; }
+    /* Album line affordance: no underline, use share glyph like radio */
+    body.phone-ui #album-link { text-decoration: none; }
+    /* Ensure art affordances match index.html in controller mode */
+    body.phone-ui:not(.is-radio) #art-info-hotspot{display:flex !important}
+    body.phone-ui:not(.is-radio) #art-info-hotspot{
+      background:rgba(8,14,24,.55);
+      border:1px solid rgba(255,255,255,.24);
+      color:rgba(236,243,255,.96);
+      border-radius:999px;
+      z-index:90;
+    }
+    body.phone-ui:not(.is-radio):not(.is-airplay):not(.is-upnp):not(.is-podcast):not(.pause) #fav-heart{display:inline-flex !important}
+    body.phone-ui #album-link .share-icon {
+      display:inline-block !important;
+      width:13px;
+      height:13px;
+      margin-left:6px;
+      vertical-align:-2px;
+      opacity:.92;
+      fill:currentColor;
+    }
+    /* Keep playback chrome visible; personnel panel overlays above it */
+    body.modal-open #progress-bar-wrapper,
+    body.modal-open #phone-controls,
+    body.modal-open #next-up,
+    body.modal-open #mode-logo {
+      display: revert !important;
+    }
+
+    body.cnp-exit #album-art-bg{opacity:0 !important;background-image:none !important}
+
+    /* Album modal (same interaction model as controller home) */
+    .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:9000;align-items:center;justify-content:center}
+    .albumModal.open{display:flex}
+    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px)}
+    .queueModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:9100;align-items:flex-start;justify-content:center;padding-top:calc(env(safe-area-inset-top,0px) + 150px)}
+    .queueModal.open{display:flex}
+    .queueCard{position:relative;width:min(760px,94vw);height:min(62vh,620px);background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;overflow:hidden;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+    .queueFrame{width:100%;height:100%;border:0;display:block;background:transparent}
+    .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+    .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .albumTitle{font-size:17px;font-weight:700}
+    .albumMeta{font-size:12px;color:var(--muted,#9eb3d6)}
+    .albumMeta  .trkLink{background:none;border:0;padding:0;color:#9fc4ff;text-decoration:underline;cursor:pointer;font:inherit}
+    .trkStars{font-size:12px;color:#d4af37;opacity:.95}
+    .artistLink{color:var(--accent,#4aa8ff);text-decoration:underline;text-underline-offset:2px;background:transparent;border:0;padding:0;margin:0;font:inherit;cursor:pointer}
+    .albumTracks{list-style:none;margin:8px 0 0;padding:0}
+    .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:flex;justify-content:space-between;gap:8px;font-size:14px}
+    .trackBtns{display:flex;gap:6px}
+    .trackBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
+    .albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
+    .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+    .modalX:active{transform:scale(.96)}
+
+    /* Next-up art loading spinner */
+    #next-up-img{position:relative}
+    #next-up-img.nextup-loading{opacity:.18}
+    #next-up-img.nextup-loading::after{content:''}
+    #next-up-img-wrap{position:relative;display:inline-flex}
+
+    /* iPhone art flip: front album art / back personnel */
+    #album-art-wrapper{perspective:1200px}
+    #album-art-wrapper .artFlipCard{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .48s cubic-bezier(.22,.78,.19,1)}
+    #album-art-wrapper.is-flipped .artFlipCard{transform:rotateY(180deg)}
+    #album-art-wrapper .artFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:inherit;overflow:hidden}
+    #album-art-wrapper .artFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#101a2d,#0c1526);border:1px solid rgba(138,177,235,.32);display:flex;align-items:center;justify-content:center;padding:16px;z-index:3}
+    #album-art-wrapper.is-flipped #album-art,
+    #album-art-wrapper.is-flipped #album-art-video,
+    #album-art-wrapper.is-flipped #album-art-bg{opacity:0 !important;visibility:hidden !important}
+    #album-art-wrapper .artBackText{font-size:15px;line-height:1.35;color:#eaf2ff;white-space:pre-line;max-height:100%;overflow:auto;text-align:left;width:100%}
+    #nextUpSpin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    #nextUpSpin[hidden]{display:none !important}
+    #nextUpSpin::before{content:'';width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;animation:nextUpSpin .8s linear infinite}
+    @keyframes nextUpSpin{to{transform:rotate(360deg)}}
+
+    /* Keep hidden until fully loaded, then slide in */
+    body.cnp-hidden{opacity:0;visibility:hidden}
+    body.cnp-ready{visibility:visible;animation:cnpSlideIn .22s ease-out both}
+    body.cnp-exit{animation:cnpSlideOut .2s ease-in both}
+    @keyframes cnpSlideIn{
+      from{transform:translateX(26px);opacity:.78}
+      to{transform:translateX(0);opacity:1}
+    }
+    @keyframes cnpSlideOut{
+      from{transform:translateX(0);opacity:1}
+      to{transform:translateX(46px);opacity:.5}
+    }
+
+    /* Home card reveal underlay during exit */
+    #homeRevealCard{
+      position:fixed;
+      left:14px;
+      right:14px;
+      top:calc(env(safe-area-inset-top,0px) + 10px);
+      z-index:0;
+      opacity:0;
+      transform:translateX(-14px);
+      transition:opacity .16s ease, transform .18s ease;
+      pointer-events:none;
+    }
+    body.cnp-exit #homeRevealCard{opacity:1;transform:translateX(0)}
+    .hrCard{background:transparent;border:0;padding:8px 0}
+    .hrTitle{font-weight:750;font-size:18px;margin-bottom:10px;color:#f3f6ff}
+    .hrNp{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center}
+    .hrArt{width:64px;height:64px;border-radius:10px;object-fit:cover;display:block;background:#0a1222}
+    .hrL1{color:#f3f6ff;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .hrL2{color:#9eb3d6;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  </style>
+
+  <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
+</head>
+
+<body class="booting">
+  <div id="homeRevealCard" aria-hidden="true">
+    <div class="hrCard">
+      <div class="hrTitle">Now Playing on moOde</div>
+      <div class="hrNp">
+        <img id="hrArt" class="hrArt" src="" alt="" />
+        <div>
+          <div id="hrL1" class="hrL1"></div>
+          <div id="hrL2" class="hrL2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+    <div id="background-a"></div>
+  <div id="background-b"></div>
+  <script>
+    // Prime background immediately so top/bottom browser UI areas are covered at first paint.
+    (function(){
+      try {
+        const host = location.hostname || 'nowplaying.local';
+        const proto = location.protocol || 'http:';
+        const applyBg = () => {
+          const url = `${proto}//${host}:3101/art/current_bg_640_blur.jpg?t=${Date.now()}`;
+          try {
+            const root = document.documentElement;
+            const body = document.body;
+            if (root) {
+              root.style.backgroundImage = `url(${url})`;
+              root.style.backgroundSize = 'cover';
+              root.style.backgroundPosition = 'center top';
+              root.style.backgroundRepeat = 'no-repeat';
+              root.style.backgroundAttachment = 'fixed';
+              root.style.backgroundColor = 'rgba(0,0,0,.56)';
+              root.style.backgroundBlendMode = 'multiply';
+            }
+            if (body) {
+              body.style.backgroundImage = `url(${url})`;
+              body.style.backgroundSize = 'cover';
+              body.style.backgroundPosition = 'center top';
+              body.style.backgroundRepeat = 'no-repeat';
+              body.style.backgroundAttachment = 'fixed';
+              body.style.backgroundColor = 'rgba(0,0,0,.56)';
+              body.style.backgroundBlendMode = 'multiply';
+            }
+          } catch {}
+        };
+        applyBg();
+        setInterval(applyBg, 8000);
+
+      } catch {}
+    })();
+  </script>
+
+  <div id="content">
+    <a id="cnpBack" href="controller.html" aria-label="Back">›</a>
+    <!-- Album Art -->
+    <div id="album-art-wrapper" role="group" aria-label="Album art and controls">
+      <div class="artFlipCard" id="artFlipCard">
+        <div class="artFace artFaceFront">
+          <div id="album-art-bg"></div>
+
+          <!-- Album artwork (does NOT open modal) -->
+          <img
+            id="album-art"
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+            alt="Album Art"
+            draggable="false"
+          />
+          <video id="album-art-video" muted loop playsinline preload="metadata" style="display:none;"></video>
+        </div>
+        <div class="artFace artFaceBack" id="artBackFace">
+          <div id="artBackText" class="artBackText">No personnel available for this track.</div>
+        </div>
+      </div>
+
+      <!-- Personnel hotspot flips card -->
+      <button
+        id="art-info-hotspot"
+        class="art-hotspot"
+        type="button"
+        aria-label="Show personnel"
+        title="Show personnel"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M11 10h2v7h-2v-7zm0-3h2v2h-2V7zm1 15C6.935 22 3 18.065 3 13S6.935 4 12 4s9 3.935 9 9-3.935 9-9 9zm0-2c3.859 0 7-3.141 7-7s-3.141-7-7-7-7 3.141-7 7 3.141 7 7 7z"/>
+        </svg>
+      </button>
+
+      <!-- Favorites heart (should NOT trigger modal) -->
+      <button
+        id="fav-heart"
+        type="button"
+        aria-label="Toggle favorite"
+        title="Toggle favorite"
+      >
+        <svg viewBox="0 0 24 24" shape-rendering="geometricPrecision" aria-hidden="true" focusable="false">
+          <path d="M12 21
+                   C12 21 3 14.5 3 8.5
+                   C3 6 5 4 7.5 4
+                   C9.24 4 10.91 5 12 6.44
+                   C13.09 5 14.76 4 16.5 4
+                   C19 4 21 6 21 8.5
+                   C21 14.5 12 21 12 21Z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Text -->
+    <div class="text-column">
+      <div id="artist-name"></div>
+
+      <div id="titleLine">
+        <span id="track-title"></span>
+      </div>
+      <div id="ratingRow">
+        <span id="ratingStars" class="rating-stars"></span>
+      </div>
+
+      <!-- Album + share icon live entirely inside this link -->
+      <button id="album-link" type="button" aria-label="Open album details" style="background:transparent;border:0;padding:0;margin:0;color:inherit;font:inherit;text-align:inherit;">
+        <span id="album-text"></span>
+      </button>
+
+      <div id="file-info">
+        <button class="podSeekInline" id="btn-seek-back-inline" aria-label="Back 15 seconds" title="Back 15 seconds" type="button">↺15</button>
+        <span id="file-info-text"></span>
+        <span id="hires-badge" class="hires-badge" aria-label="Audio quality"></span>
+        <span id="mode-status"></span>
+        <button class="podSeekInline" id="btn-seek-fwd-inline" aria-label="Forward 30 seconds" title="Forward 30 seconds" type="button">30↻</button>
+      </div>
+
+      <div id="personnel-info"></div>
+      <img id="mode-logo" alt="">
+    </div>
+
+    <div id="next-up">
+      <span id="next-up-img-wrap"><img id="next-up-img" src="http://nowplaying.local:3101/art/current.jpg" alt=""><span id="nextUpSpin" aria-hidden="true"></span></span>
+      <span id="next-up-text">
+        <span class="marquee-track">
+          <span class="marquee-copy">Loading next up…</span>
+          <span class="marquee-copy">Loading next up…</span>
+        </span>
+      </span>
+    </div>
+
+    <div id="progress-bar-wrapper">
+      <div id="progress-fill"></div>
+    </div>
+
+    <!-- Phone controls as its own grid cell -->
+    <div id="phone-controls" aria-label="Playback controls">
+      <div id="activeCtlRing" aria-hidden="true"><div class="glow"></div><div class="clip"><div class="spin"></div></div><div class="plate"></div><div id="activeCtlSymbol">▶</div></div>
+      <button class="ctl seek-ctl" id="btn-seek-back" aria-label="Back 15 seconds" title="Back 15 seconds" type="button">
+        <span class="seekLbl">↺15</span>
+      </button>
+
+      <button class="ctl" id="btn-repeat" aria-label="Repeat" title="Repeat" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M17 17H7v-3l-4 4 4 4v-3h10a4 4 0 004-4v-6h-2v6a2 2 0 01-2 2zM7 7h10v3l4-4-4-4v3H7a4 4 0 00-4 4v6h2V9a2 2 0 012-2z"/>
+        </svg>
+      </button>
+
+      <button class="ctl" id="btn-prev" aria-label="Previous" title="Previous" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 5h2v14H6V5zm3.5 7 10-7v14l-10-7z"/>
+        </svg>
+      </button>
+
+      <button class="ctl big" id="btn-play" aria-label="Play/Pause" title="Play/Pause" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path id="playIcon" d="M8 5v14l11-7z"/>
+        </svg>
+      </button>
+
+      <button class="ctl" id="btn-next" aria-label="Next" title="Next" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M16 5h2v14h-2V5zM4.5 19V5l10 7-10 7z"/>
+        </svg>
+      </button>
+
+      <button class="ctl" id="btn-shuffle" aria-label="Shuffle" title="Shuffle" type="button">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path fill="currentColor" d="M24.414,16.586L30.828,23l-6.414,6.414l-2.828-2.828L23.172,25H22c-3.924,0-6.334-2.289-8.173-4.747c0.987-1.097,1.799-2.285,2.516-3.36C18.109,19.46,19.521,21,22,21h1.172l-1.586-1.586L24.414,16.586z M22,11h1.172l-1.586,1.586l2.828,2.828L30.828,9l-6.414-6.414l-2.828,2.828L23.172,7H22c-5.07,0-7.617,3.82-9.664,6.891C10.224,17.059,8.788,19,6,19H2v4h4c5.07,0,7.617-3.82,9.664-6.891C17.776,12.941,19.212,11,22,11z M10.212,15.191c0.399-0.539,1.957-2.848,2.322-3.365C10.917,10.216,8.86,9,6,9H2v4h4C7.779,13,9.007,13.797,10.212,15.191z"/>
+        </svg>
+      </button>
+
+      <button class="ctl seek-ctl" id="btn-seek-fwd" aria-label="Forward 30 seconds" title="Forward 30 seconds" type="button">
+        <span class="seekLbl">30↻</span>
+      </button>
+    </div>
+      </div>
+  </div>
+
+  <div id="artist-details-container">
+    <div id="artist-details"></div>
+  </div>
+
+    <!-- Modal -->
+  <div class="modalOverlay" id="modalOverlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <div class="modalHead">
+        <img class="thumb" id="modalThumb" src="" alt="" />
+        <div class="modalTitleWrap">
+          <div class="modalTitle" id="modalTitle">Podcast</div>
+          <div class="modalSub" id="modalSub"></div>
+        </div>
+        <button class="modalClose" id="modalClose" aria-label="Close">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="tinyMuted" id="modalHint">Loading…</div>
+        <div class="epList" id="epList" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="modalActions">
+        <div class="tinyMuted" id="modalCount"></div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn" id="modalRefresh">Refresh</button>
+          <button class="btn btnDanger" id="modalDeleteSelected" disabled title="Not wired yet">Delete selected</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="albumModal" id="npAlbumModal" aria-hidden="true">
+    <div class="albumCard" role="dialog" aria-modal="true" aria-label="Album details">
+      <button id="npAlbumCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
+      <div class="albumHead"><img id="npAlbumArt" src="" alt="" /><div><div class="albumTitle" id="npAlbumTitle">Album</div><div class="albumMeta" id="npAlbumMeta"></div></div></div>
+      <div class="albumBtns">
+        <button id="npAlbumAppendBtn" type="button">Append album</button>
+        <button id="npAlbumCropBtn" type="button">Add album (crop)</button>
+        <button id="npAlbumReplaceBtn" type="button">Replace with album</button>
+        
+      </div>
+      <ul class="albumTracks" id="npAlbumTracks"></ul>
+    </div>
+  </div>
+
+  <div class="queueModal" id="npQueueModal" aria-hidden="true">
+    <div class="queueCard" role="dialog" aria-modal="true" aria-label="Live queue">
+      <button id="npQueueCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
+      <iframe id="npQueueFrame" class="queueFrame" src="about:blank" loading="eager"></iframe>
+    </div>
+  </div>
+
+    <script>
+      window.NP_DISABLE_ART_SWITCH = true;
+      window.__DISABLE_PAUSE_SCREENSAVER__ = true;
+      // Controller now-playing should always use phone portrait layout.
+      try {
+        const __u = (()=>{ try { return new URL(location.href); } catch { return null; } })();
+        if ((__u?.searchParams.get('iphone') || '') === '1') window.NP_DISABLE_PERSONNEL_MODAL = true;
+        const __navMode = (__u?.searchParams.get('nav') || '');
+        const __coverNav = __navMode === 'cover';
+        const __embedded = (__u?.searchParams.get('embedded') === '1');
+        const __forcePhone = (__u?.searchParams.get('phone') === '1');
+        if (__forcePhone || !__embedded) document.body.classList.add('phone-ui');
+        if (!__coverNav) document.body.classList.add('cnp-hidden');
+
+        // Hard runtime clamp for album art size (bypasses CSS cascade/PWA viewport quirks)
+        const forceArtSize = () => {
+          try {
+            const wrap = document.getElementById('album-art-wrapper');
+            if (!wrap) return;
+            const px = Math.min(Math.round((window.innerWidth || 0) * 0.85), 420);
+            document.documentElement.style.setProperty('--artSize', `${px}px`);
+            wrap.style.setProperty('width', `${px}px`, 'important');
+            wrap.style.setProperty('height', `${px}px`, 'important');
+            wrap.style.setProperty('max-width', `${px}px`, 'important');
+            wrap.style.setProperty('max-height', `${px}px`, 'important');
+            wrap.style.setProperty('flex', `0 0 ${px}px`, 'important');
+          } catch {}
+        };
+        forceArtSize();
+        window.addEventListener('load', forceArtSize, { once: true });
+        window.addEventListener('resize', forceArtSize);
+        window.addEventListener('orientationchange', forceArtSize);
+        window.addEventListener('pageshow', forceArtSize);
+        try { window.visualViewport?.addEventListener('resize', forceArtSize); } catch {}
+        window.addEventListener('load', () => {
+          document.body.classList.remove('cnp-hidden');
+          document.body.classList.add('cnp-ready');
+        }, { once:true });
+        if (__coverNav) {
+          document.body.classList.remove('cnp-hidden');
+          document.body.classList.add('cnp-ready');
+        }
+
+        const artWrap = document.getElementById('album-art-wrapper');
+        const artInfoBtn = document.getElementById('art-info-hotspot');
+        const artBackText = document.getElementById('artBackText');
+        const personnelInfo = document.getElementById('personnel-info');
+        const syncArtBackText = ()=>{
+          try {
+            const t = String(personnelInfo?.textContent || '').trim();
+            if (artBackText) artBackText.textContent = t || 'No personnel available for this track.';
+          } catch {}
+        };
+        syncArtBackText();
+        try {
+          const mo = new MutationObserver(()=>syncArtBackText());
+          if (personnelInfo) mo.observe(personnelInfo, { childList:true, characterData:true, subtree:true });
+        } catch {}
+        artInfoBtn?.addEventListener('click', (ev)=>{
+          ev.preventDefault();
+          ev.stopPropagation();
+          try { ev.stopImmediatePropagation(); } catch {}
+          if (!artWrap) return;
+          artWrap.classList.toggle('is-flipped');
+        }, true);
+        artWrap?.addEventListener('click', (ev)=>{
+          if (!artWrap.classList.contains('is-flipped')) return;
+          if (ev.target?.closest?.('#art-info-hotspot') || ev.target?.closest?.('#fav-heart')) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          artWrap.classList.remove('is-flipped');
+        });
+
+        const back = document.getElementById('cnpBack');
+        back?.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const href = back.getAttribute('href') || 'controller.html';
+
+          try {
+            document.getElementById('npQueueModal')?.classList.remove('open');
+            document.getElementById('npAlbumModal')?.classList.remove('open');
+            const artBg = document.getElementById('album-art-bg');
+            if (artBg) {
+              artBg.style.transition = 'opacity .12s linear';
+              artBg.style.opacity = '0';
+              artBg.style.backgroundImage = 'none';
+            }
+          } catch {}
+
+          document.body.classList.remove('cnp-ready');
+          document.body.classList.add('cnp-exit');
+          setTimeout(() => { const embedded = new URL(location.href).searchParams.get('embedded') === '1'; if (embedded) { try { window.parent?.postMessage({ type:'np-kiosk-hide-pane' }, '*'); } catch {} return; } location.href = href; }, 170);
+        });
+      } catch {}
+    </script>
+    <script src="scripts/index.js"></script>
+
+
+  <script src="scripts/index-ui.js?v=20260310-idle-overlay1"></script>
+
+  <script>
+    // Force iPhone now-playing hotspot to flip (not modal), after index-ui listeners bind.
+    (function enforceIphoneArtFlipOverride(){
+      const wrap = document.getElementById('album-art-wrapper');
+      const oldHotspot = document.getElementById('art-info-hotspot');
+      const backText = document.getElementById('artBackText');
+      const personnelInfo = document.getElementById('personnel-info');
+      if (!wrap || !oldHotspot) return;
+
+      const hotspot = oldHotspot.cloneNode(true);
+      try { oldHotspot.replaceWith(hotspot); } catch {}
+
+      const syncBack = ()=>{
+        try {
+          const d = (typeof window.lastNowPlayingData !== 'undefined' && window.lastNowPlayingData) ? window.lastNowPlayingData : {};
+          const arr = Array.isArray(d?.personnel) ? d.personnel.map((x)=>String(x||'').trim()).filter(Boolean) : [];
+          const txt = arr.length ? arr.join('\n') : String(personnelInfo?.textContent || '').trim();
+          if (backText) backText.textContent = txt || 'No personnel available for this track.';
+
+          const personnelEnabled = (typeof window.PERSONNEL_ENABLED === 'boolean') ? window.PERSONNEL_ENABLED : true;
+          const disallowMode = Boolean(d?.isStream || d?.isAirplay || d?.isUpnp || d?.isPodcast || d?.isRadio);
+          const hasPersonnel = arr.length > 0 || txt.length > 0;
+          const showInfo = personnelEnabled && !disallowMode && hasPersonnel;
+          if (hotspot) hotspot.style.display = showInfo ? '' : 'none';
+          if (!showInfo && wrap?.classList.contains('is-flipped')) wrap.classList.remove('is-flipped');
+        } catch {}
+      };
+      syncBack();
+      try {
+        const mo = new MutationObserver(()=>syncBack());
+        if (personnelInfo) mo.observe(personnelInfo, { childList:true, characterData:true, subtree:true });
+      } catch {}
+
+      hotspot.addEventListener('click', (ev)=>{
+        ev.preventDefault();
+        ev.stopPropagation();
+        try { ev.stopImmediatePropagation(); } catch {}
+        wrap.classList.toggle('is-flipped');
+        const modal = document.getElementById('artist-details-container');
+        if (modal) {
+          modal.classList.remove('open');
+          modal.style.display = 'none';
+        }
+      }, true);
+
+      wrap.addEventListener('click', (ev)=>{
+        if (!wrap.classList.contains('is-flipped')) return;
+        if (ev.target?.closest?.('#art-info-hotspot') || ev.target?.closest?.('#fav-heart')) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        wrap.classList.remove('is-flipped');
+      });
+    })();
+  </script>
+
+    <script>
+    // Pull-to-refresh (controller pages)
+    (function enablePullToRefresh(){
+      if (window.__npPullRefreshBound) return;
+      window.__npPullRefreshBound = true;
+      let startY = 0;
+      let tracking = false;
+      let armed = false;
+      const THRESH = 80;
+
+      const topScrollable = () => {
+        const el = document.scrollingElement || document.documentElement || document.body;
+        return (el?.scrollTop || window.pageYOffset || 0) <= 0;
+      };
+
+      window.addEventListener('touchstart', (e) => {
+        if (!e.touches || e.touches.length !== 1) return;
+        if (!topScrollable()) return;
+        startY = e.touches[0].clientY;
+        tracking = true;
+        armed = false;
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (!tracking || !e.touches || e.touches.length !== 1) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy > THRESH && topScrollable()) armed = true;
+      }, { passive: true });
+
+      window.addEventListener('touchend', () => {
+        if (tracking && armed) location.reload();
+        tracking = false;
+        armed = false;
+      }, { passive: true });
+    })();
+
+    // Ensure overlays don't persist when returning via history/BFCache
+    (function resetOverlaysOnReturn(){
+      function closeAll(){
+        try { document.getElementById('npAlbumModal')?.classList.remove('open'); } catch {}
+        try {
+          const qm = document.getElementById('npQueueModal');
+          qm?.classList.remove('open');
+          qm?.setAttribute('aria-hidden','true');
+          const qf = document.getElementById('npQueueFrame');
+          if (qf && String(qf.getAttribute('src')||'') !== 'about:blank') qf.setAttribute('src','about:blank');
+        } catch {}
+        try {
+          const mo = document.getElementById('modalOverlay');
+          mo?.classList.remove('open');
+          mo?.setAttribute('aria-hidden','true');
+        } catch {}
+        try {
+          const ad = document.getElementById('artist-details-container');
+          if (ad) ad.style.display = 'none';
+        } catch {}
+        try { document.body.classList.remove('modal-open'); } catch {}
+      }
+      window.addEventListener('pageshow', closeAll);
+      document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) closeAll(); });
+    })();
+
+    // Next-up art spinner until artwork is ready
+    (function bindNextUpSpinner(){
+      const img = document.getElementById('next-up-img');
+      const spin = document.getElementById('nextUpSpin');
+      if (!img || !spin) return;
+
+      function isLoadedSrc(){
+        const s = String(img.getAttribute('src') || '').trim();
+        return !!s && !/current\.jpg(?:\?|$)/.test(s) && !/data:image\//.test(s);
+      }
+      function show(){ spin.hidden = false; img.classList.add('nextup-loading'); }
+      function hide(){ spin.hidden = true; img.classList.remove('nextup-loading'); }
+      function sync(){
+        if (isLoadedSrc() && img.complete && img.naturalWidth > 1) hide();
+        else show();
+      }
+
+      img.addEventListener('load', ()=>{ hide(); });
+      img.addEventListener('error', ()=>{ show(); });
+      new MutationObserver(sync).observe(img, { attributes:true, attributeFilter:['src'] });
+      sync();
+      setInterval(sync, 1200);
+    })();
+
+    // Next-up tap -> open Live Queue modal in app shell (or queue page fallback)
+    (function bindControlTapPulse(){
+      const host = document.getElementById('phone-controls');
+      if (!host) return;
+      let tmr = 0;
+      const pulse = (btn)=>{
+        if (!(btn instanceof HTMLElement)) return;
+        btn.classList.add('tapPulse');
+        try { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); } catch {}
+        clearTimeout(tmr);
+        tmr = setTimeout(()=>{ try { btn.classList.remove('tapPulse'); } catch {} }, 240);
+      };
+      host.addEventListener('pointerdown', (ev)=>{
+        const btn = ev.target.closest('button.ctl');
+        if (!btn) return;
+        pulse(btn);
+      }, { passive:true });
+      host.addEventListener('touchend', (ev)=>{
+        const btn = ev.target.closest('button.ctl');
+        if (!btn) return;
+        pulse(btn);
+      }, { passive:true });
+    })();
+
+    (function bindActiveControlRing(){
+      const host = document.getElementById('phone-controls');
+      const ring = document.getElementById('activeCtlRing');
+      const symbol = document.getElementById('activeCtlSymbol');
+      const spin = ring?.querySelector('.spin');
+      const btnPlay = document.getElementById('btn-play');
+      if (!host || !ring) return;
+      let activeBtn = btnPlay || host.querySelector('button.ctl');
+
+      function positionRing(btn){
+        if (!(btn instanceof HTMLElement)) return;
+        const hb = host.getBoundingClientRect();
+        const bb = btn.getBoundingClientRect();
+        const grow = 6;
+        const w = Math.round(bb.width + grow);
+        const h = Math.round(bb.height + grow);
+        const x = Math.round((bb.left - hb.left) - (grow / 2));
+        const y = Math.round((bb.top - hb.top) - (grow / 2));
+        ring.style.width = `${w}px`;
+        ring.style.height = `${h}px`;
+        ring.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+      }
+
+      function syncPlaySymbol(){
+        if (!symbol || !btnPlay) return;
+        const playing = btnPlay.classList.contains('on');
+        const playIsActive = !!(activeBtn && activeBtn.id === 'btn-play');
+        symbol.textContent = playing ? '❚❚' : '▶';
+        symbol.style.transform = playing ? 'translateX(0)' : 'translateX(1px)';
+        symbol.style.color = playing ? '#22c55e' : '#e9eef6';
+        symbol.style.opacity = playIsActive ? '1' : '.0';
+        if (spin) {
+          spin.style.opacity = playIsActive ? '1' : '0';
+          spin.style.animationPlayState = (playIsActive && playing) ? 'running' : 'paused';
+        }
+      }
+
+      function setActive(btn){
+        if (!(btn instanceof HTMLElement)) return;
+        activeBtn = btn;
+        positionRing(btn);
+      }
+
+      host.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('button.ctl');
+        if (!btn) return;
+        if (btn.id === 'btn-play') setActive(btn);
+        syncPlaySymbol();
+      }, { passive:true });
+
+      if (btnPlay) {
+        new MutationObserver(() => { syncPlaySymbol(); }).observe(btnPlay, { attributes:true, attributeFilter:['class','aria-label'] });
+      }
+
+      window.addEventListener('resize', () => { if (activeBtn) positionRing(activeBtn); });
+      setTimeout(() => { if (activeBtn) positionRing(activeBtn); syncPlaySymbol(); }, 120);
+      setTimeout(() => { if (activeBtn) positionRing(activeBtn); syncPlaySymbol(); }, 700);
+    })();
+
+    (function bindNextUpOpenQueue(){
+      const nextUp = document.getElementById('next-up');
+      const modal = document.getElementById('npQueueModal');
+      const frame = document.getElementById('npQueueFrame');
+      const closeBtn = document.getElementById('npQueueCloseBtn');
+      if (!nextUp || !modal || !frame) return;
+      nextUp.style.cursor = 'pointer';
+      nextUp.title = 'Open Live Queue';
+
+      const closeQueue = ()=>{
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden','true');
+        frame.setAttribute('src','about:blank');
+      };
+
+      const openQueue = (ev)=>{
+        try { ev?.preventDefault?.(); ev?.stopPropagation?.(); if (typeof ev?.stopImmediatePropagation==='function') ev.stopImmediatePropagation(); } catch {}
+        frame.setAttribute('src', `controller-queue.html?embedded=1&ts=${Date.now()}`);
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden','false');
+      };
+
+      closeBtn?.addEventListener('click', closeQueue);
+      modal.addEventListener('click', (ev)=>{ if (ev.target === modal) closeQueue(); });
+      nextUp.addEventListener('click', openQueue, { passive:false, capture:true });
+    })();
+
+    // Local-track album tap -> same album card/actions as controller home
+    (function bindAlbumCardFromAlbumLink(){
+      const base = `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
+      let runtimeTrackKey='';
+      let ctx={album:'',artist:'',art:'',tracks:[]};
+      const albumLink=document.getElementById('album-link');
+      const modal=document.getElementById('npAlbumModal');
+      const tracksHost=document.getElementById('npAlbumTracks');
+      if(!albumLink||!modal||!tracksHost) return;
+
+      async function ensureKey(){
+        if (runtimeTrackKey) return runtimeTrackKey;
+        try { const r=await fetch(`${base}/config/runtime`,{cache:'no-store'}); const j=await r.json().catch(()=>({})); runtimeTrackKey=String(j?.config?.trackKey||'').trim(); } catch {}
+        return runtimeTrackKey;
+      }
+      function reqHeaders(json=true){ return Object.assign({}, json?{'Content-Type':'application/json'}:{}, runtimeTrackKey?{'x-track-key':runtimeTrackKey}:{}); }
+      async function sendPlayback(action, extra={}){ await ensureKey(); await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify(Object.assign({action},extra||{}))}).catch(()=>null); }
+
+      function open(){ modal.classList.add('open'); }
+      function close(){ modal.classList.remove('open'); }
+      function render(){
+        document.getElementById('npAlbumTitle').textContent = ctx.album || '(album)';
+        const metaEl = document.getElementById('npAlbumMeta');
+        if (metaEl) {
+          const a = String(ctx.artist||'').trim();
+          metaEl.innerHTML = a ? `<button type="button" class="artistLink" id="npAlbumArtistLink" title="Open artist">${a}</button>` : '';
+        }
+        document.getElementById('npAlbumArt').src = ctx.art || `${base}/art/current.jpg`;
+        tracksHost.innerHTML = (ctx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); const artist=String(t.artist||'').trim(); const album=String(t.album||'').trim(); const rating=Math.max(0,Math.min(5,Number(t.rating||0)||0)); const stars=rating?` <span class='trkStars'>${'★'.repeat(rating)}${'☆'.repeat(5-rating)}</span>`:''; const artRaw=String(t.thumbUrl||t.albumArtUrl||t.art||ctx.art||'').trim(); const artEnc=encodeURIComponent(artRaw); const artistBtn=artist?`<button type='button' class='trkLink' data-track-open-artist='${encodeURIComponent(artist)}' data-track-art='${artEnc}'>${artist}</button>`:''; const albumBtn=album?`<button type='button' class='trkLink' data-track-open-album='${encodeURIComponent(album)}' data-track-open-artist='${encodeURIComponent(artist)}' data-track-art='${artEnc}'>${album}</button>`:''; const meta=(artistBtn||albumBtn)?`<div class='albumMeta'>${artistBtn}${artistBtn&&albumBtn?' • ':''}${albumBtn}</div>`:''; return `<li><span>${i+1}. ${nm}${stars}${meta}</span><span class='trackBtns'><button title='Play now' aria-label='Play now' data-track-action='play' data-track-file='${f}'>▶</button><button title='Add to queue' aria-label='Add to queue' data-track-action='add' data-track-file='${f}'>＋</button></span></li>`; }).join('') || '<li>No tracks found</li>';
+      }
+
+      async function fetchAlbumTracks(album, artist){
+        await ensureKey();
+        async function fetchPreviewTracks(body){
+          const r=await fetch(`${base}/config/queue-wizard/preview`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify(body)});
+          const j=await r.json().catch(()=>({}));
+          return (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
+        }
+        let tracks = await fetchPreviewTracks({genres:[],artists:artist?[artist]:[],albums:album?[album]:[],excludeGenres:[],minRating:0,maxTracks:2000});
+        if (!tracks.length && album) tracks = await fetchPreviewTracks({genres:[],artists:[],albums:[album],excludeGenres:[],minRating:0,maxTracks:2000});
+        if (!tracks.length && artist) tracks = await fetchPreviewTracks({genres:[],artists:[artist],albums:[],excludeGenres:[],minRating:0,maxTracks:2000});
+        if (album && tracks.length) {
+          const aLower = album.toLowerCase();
+          const narrowed = tracks.filter((t)=>String(t?.album||'').trim().toLowerCase()===aLower);
+          if (narrowed.length) tracks = narrowed;
+        }
+        return tracks;
+      }
+
+      let __albumTapBusy = false;
+      async function onAlbumTap(ev){
+        if (__albumTapBusy) return;
+        const d = (window.lastNowPlayingData || {});
+        const streamKind = String(d?.streamKind || '').trim().toLowerCase();
+        const isYoutubeNow = d?.isYoutube === true || streamKind === 'youtube';
+        const isRadioNow = d?.isRadio === true || (d?.isStream === true && streamKind !== 'upnp' && !isYoutubeNow) || d?.isAirplay === true || d?.isUpnp === true;
+        const linkUrl = String(albumLink.getAttribute('href') || '').trim();
+        const streamUrl = String(d?.shareUrl || d?.radioTrackUrl || d?.radioAppleMusicUrl || d?.radioItunesUrl || d?.itunesUrl || '').trim();
+        const externalUrl = linkUrl || streamUrl;
+        const tapMode = String(albumLink.dataset.npTapMode || '').trim();
+
+        if (isRadioNow || externalUrl || tapMode === 'external') {
+          // If external link is present, always honor it (avoids early-load local/modal race).
+          if (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (typeof ev.stopImmediatePropagation==='function') ev.stopImmediatePropagation();
+          }
+          try {
+            const u = String(externalUrl || linkUrl || '').trim();
+            if (u) {
+              const w = window.open(u, '_blank', 'noopener,noreferrer');
+              if (!w) location.href = u;
+            }
+          } catch {}
+          return;
+        }
+
+        if (tapMode !== 'local') return;
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (typeof ev.stopImmediatePropagation==='function') ev.stopImmediatePropagation();
+        }
+        __albumTapBusy = true;
+        try {
+          ctx = { album:String(d?.album||'').trim(), artist:String(d?.artist||'').trim(), art:String(d?.albumArtUrl||d?.altArtUrl||'').trim(), tracks:[] };
+          render();
+          tracksHost.innerHTML = '<li>Loading album tracks…</li>';
+          open();
+          try { ctx.tracks = await fetchAlbumTracks(ctx.album, ctx.artist); } catch { ctx.tracks = []; }
+          if (modal.classList.contains('open')) render();
+        } finally {
+          setTimeout(()=>{ __albumTapBusy = false; }, 120);
+        }
+      }
+
+      function syncAlbumTapState(){
+        const d = (window.lastNowPlayingData || {});
+        const streamKind = String(d?.streamKind || '').trim().toLowerCase();
+        const isYoutubeNow = d?.isYoutube === true || streamKind === 'youtube';
+        const isRadioNow = d?.isRadio === true || (d?.isStream === true && streamKind !== 'upnp' && !isYoutubeNow) || d?.isAirplay === true || d?.isUpnp === true;
+        const linkUrl = String(albumLink.getAttribute('href') || '').trim();
+        const hasStreamFlags = (typeof d?.isStream === 'boolean') || (typeof d?.isAirplay === 'boolean') || (typeof d?.isUpnp === 'boolean') || (typeof d?.isRadio === 'boolean');
+        const isLocal = hasStreamFlags ? !isRadioNow : false;
+
+        if (isRadioNow || linkUrl) {
+          albumLink.dataset.npTapMode = 'external';
+          albumLink.style.pointerEvents = 'auto';
+          albumLink.style.cursor = 'pointer';
+          albumLink.title = isYoutubeNow ? 'Open on YouTube' : 'Open in Apple Music';
+          return;
+        }
+
+        if (hasStreamFlags && isLocal) {
+          albumLink.dataset.npTapMode = 'local';
+          albumLink.style.pointerEvents = 'auto';
+          albumLink.style.cursor = 'pointer';
+          albumLink.title = 'Open album details';
+          return;
+        }
+
+        // Unknown/bootstrapping state: do not allow modal misfire.
+        albumLink.dataset.npTapMode = 'unknown';
+      }
+      setInterval(syncAlbumTapState, 900);
+      syncAlbumTapState();
+
+      albumLink.addEventListener('pointerdown', onAlbumTap, {capture:true, passive:false});
+      albumLink.addEventListener('click', onAlbumTap, {capture:true, passive:false});
+
+      document.getElementById('npAlbumCloseBtn')?.addEventListener('click', close);
+      modal.addEventListener('click', (ev)=>{
+        if(ev.target===modal) { close(); return; }
+        const artistBtn = ev.target.closest('#npAlbumArtistLink');
+        if (artistBtn) {
+          const artist = String(ctx.artist||'').trim();
+          if (artist) {
+            const album = String(ctx.album||'').trim();
+            const q = new URLSearchParams({ artist });
+            if (album) q.set('album', album);
+            location.href = `controller-artists.html?${q.toString()}`;
+          }
+        }
+      });
+      document.getElementById('npAlbumAppendBtn')?.addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'append',album:ctx.album,artist:ctx.artist||''}); close(); });
+      document.getElementById('npAlbumCropBtn')?.addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'crop',album:ctx.album,artist:ctx.artist||''}); close(); });
+      document.getElementById('npAlbumReplaceBtn')?.addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'replace',album:ctx.album,artist:ctx.artist||''}); close(); });
+      tracksHost.addEventListener('click', async (ev)=>{ const albumBtn=ev.target.closest('button[data-track-open-album]'); if(albumBtn){ let album=''; let artist=''; let art=''; try{album=decodeURIComponent(String(albumBtn.getAttribute('data-track-open-album')||''));}catch{album=String(albumBtn.getAttribute('data-track-open-album')||'')} try{artist=decodeURIComponent(String(albumBtn.getAttribute('data-track-open-artist')||''));}catch{artist=String(albumBtn.getAttribute('data-track-open-artist')||'')} try{art=decodeURIComponent(String(albumBtn.getAttribute('data-track-art')||''));}catch{art=String(albumBtn.getAttribute('data-track-art')||'')} if(album){ ctx.album=album; ctx.artist=artist||ctx.artist; ctx.art=art||ctx.art; render(); tracksHost.innerHTML='<li>Loading album tracks…</li>'; try{ctx.tracks=await fetchAlbumTracks(ctx.album,ctx.artist);}catch{ctx.tracks=[];} if(modal.classList.contains('open')) render(); } return; } const artistBtn=ev.target.closest('button[data-track-open-artist]'); if(artistBtn){ let artist=''; try{artist=decodeURIComponent(String(artistBtn.getAttribute('data-track-open-artist')||''));}catch{artist=String(artistBtn.getAttribute('data-track-open-artist')||'')} if(artist){ const q=new URLSearchParams({artist}); const album=String(ctx.album||'').trim(); if(album) q.set('album',album); location.href=`controller-artists.html?${q.toString()}`; } return; } const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if(a==='play'){ await sendPlayback('playfile',{file}); close(); } else { await sendPlayback('addfile',{file}); } });
+    })();
+</script>
+</body>
+</html>
