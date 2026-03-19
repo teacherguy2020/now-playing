@@ -257,6 +257,7 @@ export function registerPodcastSubscriptionRoutes(app, deps) {
         outM3u,
         mapJson,
         limit,
+        download: Math.max(0, Math.min(50, Number(req.body?.download ?? prev?.download ?? 5))),
         imageUrl: feedImageUrl || String(prev?.imageUrl || '').trim() || '',
         autoDownload: requestedAutoDownload,
       };

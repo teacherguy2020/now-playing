@@ -31,7 +31,6 @@ export function registerPodcastDownloadRoutes(app, deps) {
     safeUnlink,
     fetchPodcastRSS,
     downloadCoverForSub,
-    resolveFinalUrl,
     stripQueryHash,
     downloadWithFetch,
     tagAudioFileWithFfmpeg,
@@ -400,8 +399,9 @@ export function registerPodcastDownloadRoutes(app, deps) {
       const rawUrl = String(ep?.enclosure || '').trim();
       if (!rawUrl) continue;
 
-      const finalUrl = await resolveFinalUrl(rawUrl);
-      const canonUrl = stripQueryHash(finalUrl || rawUrl);
+      // Keep signed query params for actual download requests.
+      // Use a normalized URL only for stable local IDs.
+      const canonUrl = stripQueryHash(rawUrl);
 
       const guid = String(ep?.guid || '').trim();
       const seed = guid || canonUrl;
@@ -409,7 +409,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
 
       let ext = '.mp3';
       try {
-        const u = new URL(canonUrl);
+        const u = new URL(rawUrl);
         const base = path.basename(u.pathname) || '';
         const m = base.toLowerCase().match(/\.(mp3|m4a|aac|mp4)$/);
         if (m) ext = `.${m[1]}`;
@@ -423,7 +423,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
       }
 
       const outPath = path.join(sub.dir, filename);
-      await downloadWithFetch(canonUrl, outPath);
+      await downloadWithFetch(rawUrl, outPath);
       existing.add(filename);
 
       try {
@@ -433,7 +433,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
           artist: String(sub.title || '').trim() || 'Podcast',
           date: yyyyMmDd(ep?.isoDate || ep?.pubDate || ep?.published || ep?.date || ''),
           genre: 'Podcast',
-          comment: canonUrl,
+          comment: rawUrl,
         });
       } catch {}
 
@@ -450,8 +450,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
     for (const ep of feedItems) {
       const rawUrl = String(ep?.enclosure || '').trim();
       if (!rawUrl) continue;
-      const finalUrl = await resolveFinalUrl(rawUrl);
-      const canonUrl = stripQueryHash(finalUrl || rawUrl);
+      const canonUrl = stripQueryHash(rawUrl);
       const guid = String(ep?.guid || '').trim();
       const seed = guid || canonUrl;
       const id = crypto.createHash('sha1').update(seed).digest('hex').slice(0, 12);
@@ -511,7 +510,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
 
       for (const sub of targets) {
         try {
-          const count = Math.max(0, Math.min(50, Number(sub?.downloadCount ?? 5)));
+          const count = Math.max(0, Math.min(50, Number(sub?.download ?? 5)));
           const out = await runDownloadLatestForSubscription(sub, count);
           downloaded += Number(out?.downloaded || 0);
           skipped += Number(out?.skipped || 0);
