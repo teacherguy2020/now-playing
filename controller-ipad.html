@@ -2766,15 +2766,11 @@
             else await sendPlayback('addfile',{file});
           }
           markDone();
-          if(a==='play') {
-            setTimeout(()=>closeRecentAlbumModal(), 180);
-          } else {
-            setTimeout(resetBtn, 550);
-          }
+          setTimeout(resetBtn, 550);
           return;
         }
 
-        if(a==='play'){ await sendPlayback('playfile',{file}); markDone(); setTimeout(()=>closeRecentAlbumModal(), 180); }
+        if(a==='play'){ await sendPlayback('playfile',{file}); markDone(); setTimeout(resetBtn, 550); }
         else { await sendPlayback('addfile',{file}); markDone(); setTimeout(resetBtn, 550); }
       } catch {
         resetBtn();
