@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 const execFileP = promisify(execFile);
 const INDEX_PATH = process.env.BROWSE_INDEX_PATH || path.resolve(process.cwd(), 'data/library-browse-index.json');
 
-let mem = { ts: 0, host: '', index: null, inflight: null };
+let mem = { ts: 0, host: '', index: null, inflight: null, dbCheckTs: 0, dbUpdateIso: '' };
 
 function norm(s = '') {
   return String(s || '').trim().toLowerCase();
@@ -17,7 +17,27 @@ function parseTrackNo(track = '') {
   return Number.isFinite(n) ? n : 0;
 }
 
+async function getMpdDbUpdateIso(mpdHost = 'moode.local') {
+  try {
+    const { stdout } = await execFileP('mpc', ['-h', String(mpdHost || 'moode.local'), 'stats'], {
+      maxBuffer: 2 * 1024 * 1024,
+      timeout: 8000,
+    });
+    const txt = String(stdout || '');
+    // mpc usually emits: "DB Updated: Fri Mar 15 12:34 :56 2026"
+    const m = txt.match(/^\s*DB Updated:\s*(.+)$/im);
+    const raw = String(m?.[1] || '').trim();
+    if (!raw) return '';
+    const d = new Date(raw);
+    if (!Number.isFinite(d.getTime())) return '';
+    return d.toISOString();
+  } catch {
+    return '';
+  }
+}
+
 export async function buildBrowseIndex(mpdHost = 'moode.local') {
+  const dbUpdateAt = await getMpdDbUpdateIso(mpdHost);
   const fmt = '%file%\t%artist%\t%albumartist%\t%album%\t%title%\t%track%\t%genre%\t%time%';
   const { stdout } = await execFileP('mpc', ['-h', String(mpdHost || 'moode.local'), '-f', fmt, 'listall'], {
     maxBuffer: 96 * 1024 * 1024,
@@ -91,6 +111,7 @@ export async function buildBrowseIndex(mpdHost = 'moode.local') {
   const index = {
     schema: 'now-playing.browse-index.v1',
     builtAt: new Date().toISOString(),
+    dbUpdateAt,
     mpdHost: String(mpdHost || ''),
     counts: { artists: artists.size, albums: albums.size, tracks: tracks.length },
     artists: Array.from(artists.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
@@ -105,24 +126,64 @@ export async function buildBrowseIndex(mpdHost = 'moode.local') {
 
 export async function getBrowseIndex(mpdHost = 'moode.local', { force = false } = {}) {
   const now = Date.now();
-  if (!force && mem.index && mem.host === mpdHost && (now - mem.ts) < 60_000) return mem.index;
+  const host = String(mpdHost || 'moode.local');
+  const sameHost = mem.host === host;
+
+  // Fast memory return unless forced. Keep this very cheap.
+  if (!force && mem.index && sameHost && (now - mem.ts) < 60_000) return mem.index;
   if (mem.inflight) return mem.inflight;
 
   mem.inflight = (async () => {
+    let idx = null;
+
     if (!force) {
-      try {
-        const raw = await fs.readFile(INDEX_PATH, 'utf8');
-        const idx = JSON.parse(raw || '{}');
-        if (idx && idx.schema === 'now-playing.browse-index.v1') {
-          mem = { ts: Date.now(), host: mpdHost, index: idx, inflight: null };
-          return idx;
-        }
-      } catch {}
+      if (mem.index && sameHost) {
+        idx = mem.index;
+      } else {
+        try {
+          const raw = await fs.readFile(INDEX_PATH, 'utf8');
+          const parsed = JSON.parse(raw || '{}');
+          if (parsed && parsed.schema === 'now-playing.browse-index.v1') idx = parsed;
+        } catch {}
+      }
     }
 
-    const built = await buildBrowseIndex(mpdHost);
-    mem = { ts: Date.now(), host: mpdHost, index: built, inflight: null };
-    return built;
+    // Lightweight staleness check against MPD DB update time every ~30s.
+    if (!force && idx) {
+      const shouldCheckDb = !sameHost || (now - Number(mem.dbCheckTs || 0)) > 30_000;
+      if (shouldCheckDb) {
+        const dbUpdateIso = await getMpdDbUpdateIso(host);
+        const idxDb = String(idx?.dbUpdateAt || '').trim();
+        const idxBuilt = String(idx?.builtAt || '').trim();
+        const marker = idxDb || idxBuilt;
+
+        if (dbUpdateIso && marker) {
+          const dbMs = Date.parse(dbUpdateIso);
+          const idxMs = Date.parse(marker);
+          if (Number.isFinite(dbMs) && Number.isFinite(idxMs) && dbMs > idxMs) {
+            idx = null; // stale; force rebuild below
+          }
+        }
+
+        mem.dbCheckTs = Date.now();
+        mem.dbUpdateIso = dbUpdateIso || mem.dbUpdateIso || '';
+      }
+    }
+
+    if (!idx) {
+      idx = await buildBrowseIndex(host);
+    }
+
+    mem = {
+      ts: Date.now(),
+      host,
+      index: idx,
+      inflight: null,
+      dbCheckTs: mem.dbCheckTs || Date.now(),
+      dbUpdateIso: mem.dbUpdateIso || String(idx?.dbUpdateAt || ''),
+    };
+
+    return idx;
   })();
 
   try {

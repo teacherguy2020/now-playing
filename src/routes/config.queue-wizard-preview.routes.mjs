@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { MPD_HOST } from '../config.mjs';
+import { getBrowseIndex } from '../lib/browse-index.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -88,29 +89,47 @@ export function registerConfigQueueWizardPreviewRoute(app, deps) {
       const varietyMode = req.body?.varietyMode !== false;
 
       const mpdHost = String(MPD_HOST || 'moode.local');
-      const fmt = '%file%\t%artist%\t%title%\t%album%\t%albumartist%\t%genre%';
-      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
-        maxBuffer: 64 * 1024 * 1024,
-      });
+
+      let rows = [];
+      try {
+        const idx = await getBrowseIndex(mpdHost);
+        rows = Array.isArray(idx?.tracks) ? idx.tracks : [];
+      } catch {
+        rows = [];
+      }
+
+      // Fallback for safety if index is unavailable.
+      if (!rows.length) {
+        const fmt = '%file%\t%artist%\t%title%\t%album%\t%albumartist%\t%genre%';
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', fmt, 'listall'], {
+          maxBuffer: 64 * 1024 * 1024,
+        });
+        rows = String(stdout || '').split(/\r?\n/).filter(Boolean).map((ln) => {
+          const [file = '', artist = '', title = '', album = '', albumartist = '', genreRaw = ''] = String(ln || '').split('\t');
+          return { file, artist, title, album, albumartist, genre: genreRaw };
+        });
+      }
 
       const candidates = [];
 
-      for (const ln of String(stdout || '').split(/\r?\n/)) {
-        if (!ln) continue;
-
-        const [file = '', artist = '', title = '', album = '', albumartist = '', genreRaw = ''] = ln.split('\t');
-
-        const f = String(file || '').trim();
+      for (const t of rows) {
+        const f = String(t?.file || '').trim();
         if (!f) continue;
 
-        const genreTokens = String(genreRaw || '')
+        const artist = String(t?.artist || '').trim();
+        const title = String(t?.title || '').trim();
+        const album = String(t?.album || '').trim();
+        const albumartist = String(t?.albumartist || t?.albumArtist || '').trim();
+        const genreRaw = String(t?.genre || '').trim();
+
+        const genreTokens = genreRaw
           .split(/[;,|/]/)
           .map((x) => String(x || '').trim().toLowerCase())
           .filter(Boolean);
 
-        const a = String(artist || '').trim().toLowerCase();
-        const aa = String(albumartist || '').trim().toLowerCase();
-        const alb = String(album || '').trim().toLowerCase();
+        const a = artist.toLowerCase();
+        const aa = albumartist.toLowerCase();
+        const alb = album.toLowerCase();
 
         if (wantedGenres.length && !wantedGenres.some((g) => genreTokens.includes(g))) continue;
         if (wantedArtists.length && !(wantedArtists.includes(a) || wantedArtists.includes(aa))) continue;
@@ -127,11 +146,11 @@ export function registerConfigQueueWizardPreviewRoute(app, deps) {
 
         candidates.push({
           file: f,
-          artist: String(artist || ''),
-          title: String(title || ''),
-          album: String(album || ''),
-          albumartist: String(albumartist || ''),
-          genre: String(genreRaw || ''),
+          artist,
+          title,
+          album,
+          albumartist,
+          genre: genreRaw,
           rating: Math.max(0, Math.min(5, Math.round(Number(rating) || 0))),
         });
       }

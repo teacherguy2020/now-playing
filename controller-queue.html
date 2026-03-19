@@ -159,8 +159,20 @@
 
   <script>
 
-    // Server-backed controller palette
-    const __npBase = `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
+    // Server-backed controller palette / API base
+    function __npResolveApiBase(){
+      try {
+        const u = new URL(location.href);
+        const q = String(u.searchParams.get('apiBase') || '').trim();
+        if (q) return q.replace(/\/$/, '');
+      } catch {}
+      try {
+        const ls = String(localStorage.getItem('nowplaying.apiBase') || '').trim();
+        if (ls) return ls.replace(/\/$/, '');
+      } catch {}
+      return `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
+    }
+    const __npBase = __npResolveApiBase();
     function __npApplyPalette(name, themeMode, customColors){
       const p = String(name||'ocean').toLowerCase();
       const modeRaw = String(themeMode||'auto').toLowerCase();
@@ -292,7 +304,7 @@
     const EMBEDDED = new URL(location.href).searchParams.get('embedded') === '1';
     if (EMBEDDED) document.body.classList.add('embedded');
 
-    const base = `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
+    const base = __npResolveApiBase();
     let runtimeTrackKey = '';
     let pollTimer = null;
     let longPressTimer = null;

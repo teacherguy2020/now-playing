@@ -3293,7 +3293,7 @@
         try {
           await ensureTrackKey(base);
           const q = new URLSearchParams({ artist: artistTxt });
-          const r = await fetch(`${base}/config/diagnostics/artist-albums?${q.toString()}`, { cache:'no-store', headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) } });
+          const r = await fetch(`${base}/config/browse/artist-albums?${q.toString()}`, { cache:'no-store', headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) } });
           const j = await r.json().catch(() => ({}));
           if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
           const albums = Array.isArray(j.albums) ? j.albums : [];
@@ -3445,7 +3445,7 @@
           await ensureTrackKey(base);
           const q = new URLSearchParams({ album: albumTxt });
           if (artistTxt) q.set('artist', artistTxt);
-          const r = await fetch(`${base}/config/diagnostics/album-tracks?${q.toString()}`, {
+          const r = await fetch(`${base}/config/browse/album-tracks?${q.toString()}`, {
             cache:'no-store',
             headers: { ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) }
           });
