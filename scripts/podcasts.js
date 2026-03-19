@@ -883,9 +883,39 @@ async function loadEpisodes() {
 
   async function runCleanupNow(){
     const days = Math.max(1, Number(retentionDaysEl?.value || 30));
-    const j = await apiPost('/podcasts/cleanup-older-than', { days });
-    await loadNightlyStatus();
-    setStatus(`Cleanup done: deleted ${Number(j.deleted || 0)} file(s).`, 'ok');
+    const prevLabel = runCleanupBtn ? runCleanupBtn.textContent : '';
+    try {
+      setBusy(true);
+      if (runCleanupBtn) {
+        runCleanupBtn.disabled = true;
+        runCleanupBtn.textContent = '⏳ Checking…';
+      }
+      setStatus(`Scanning podcast files for episodes older than ${days} days…`);
+      const preview = await apiPost('/podcasts/cleanup-older-than', { days, dryRun: true });
+      const scanned = Number(preview.scanned || 0);
+      const wouldDelete = Number(preview.wouldDelete || 0);
+      if (wouldDelete <= 0) {
+        setStatus(`Cleanup preview: 0 files to delete (scanned ${scanned}).`, 'ok');
+        return;
+      }
+
+      const ok = window.confirm(`Cleanup will delete ${wouldDelete} episode file(s) older than ${days} days (scanned ${scanned}). Continue?`);
+      if (!ok) {
+        setStatus('Cleanup cancelled.', 'muted');
+        return;
+      }
+
+      if (runCleanupBtn) runCleanupBtn.textContent = '⏳ Cleaning…';
+      const j = await apiPost('/podcasts/cleanup-older-than', { days });
+      await loadNightlyStatus();
+      setStatus(`Cleanup done: deleted ${Number(j.deleted || 0)} file(s) (scanned ${Number(j.scanned || 0)}).`, 'ok');
+    } finally {
+      setBusy(false);
+      if (runCleanupBtn) {
+        runCleanupBtn.disabled = false;
+        runCleanupBtn.textContent = prevLabel || 'Run cleanup now';
+      }
+    }
   }
 
   async function boot() {

@@ -90,10 +90,12 @@ export function registerPodcastDownloadRoutes(app, deps) {
   app.post('/podcasts/cleanup-older-than', async (req, res) => {
     try {
       const days = Math.max(1, Math.min(3650, Number(req.body?.days || 30)));
+      const dryRun = req.body?.dryRun === true;
       const cutoff = Date.now() - days * 86400000;
       const subs = readSubs();
       let scanned = 0;
       let deleted = 0;
+      let wouldDelete = 0;
       const exts = new Set(['.mp3', '.m4a', '.aac', '.ogg', '.flac', '.wav', '.mp4']);
       for (const sub of subs) {
         const dir = String(sub?.dir || '').trim();
@@ -109,12 +111,20 @@ export function registerPodcastDownloadRoutes(app, deps) {
             if (!st.isFile()) continue;
             scanned += 1;
             if ((st.mtimeMs || 0) < cutoff) {
-              await fsp.unlink(full).catch(() => {});
-              deleted += 1;
+              wouldDelete += 1;
+              if (!dryRun) {
+                await fsp.unlink(full).catch(() => {});
+                deleted += 1;
+              }
             }
           } catch {}
         }
       }
+
+      if (dryRun) {
+        return res.json({ ok: true, dryRun: true, days, scanned, wouldDelete, targets: subs.length });
+      }
+
       const state = await writeNightlyState({
         lastRunAt: new Date().toISOString(),
         lastRunType: 'cleanup-older-than',
@@ -122,7 +132,7 @@ export function registerPodcastDownloadRoutes(app, deps) {
         lastRunScanned: scanned,
         lastRunDeleted: deleted,
       });
-      return res.json({ ok: true, days, scanned, deleted, state });
+      return res.json({ ok: true, days, scanned, deleted, wouldDelete, targets: subs.length, state });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
