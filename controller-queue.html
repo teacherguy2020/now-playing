@@ -404,11 +404,24 @@
 
       const rowsHtml = items.map((x, idx)=>{
         const pos = Number(x?._posDisplay || x?.pos || (idx + 1));
+        const isStream = !!x?.isStream;
         const artist = String(x?.artist || '').trim();
-        const title = String(x?.title || '').trim() || String(x?.name || '').trim() || '(untitled)';
+        const stationName = String(x?.stationName || '').trim();
+        const file = String(x?.file || '').trim();
+        const hostFallback = (()=>{ try { return new URL(file).hostname || ''; } catch { return ''; } })();
+        const title = String(x?.title || '').trim()
+          || String(x?.name || '').trim()
+          || stationName
+          || hostFallback
+          || '(untitled)';
         const album = String(x?.album || '').trim();
         const thumbRaw = String(x?.thumbUrl || '').trim();
-        const thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : `${base}/art/current.jpg`;
+        const radioFallback = stationName
+          ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName)}`
+          : (file ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(file)}` : '');
+        const thumb = thumbRaw
+          ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`)
+          : (isStream ? (radioFallback || `${base}/art/current.jpg`) : `${base}/art/current.jpg`);
         const head = pos === headPos;
         const file = String(x?.file || '').trim();
         return `<li class="rowWrap" data-pos="${pos}" data-file="${encodeURIComponent(file)}" data-album="${encodeURIComponent(album)}" data-artist="${encodeURIComponent(artist)}" data-title="${encodeURIComponent(title)}">
