@@ -2733,7 +2733,7 @@
       }
       closeRecentAlbumModal();
     });
-    document.getElementById('recentAlbumTracks').addEventListener('click', async (ev)=>{ const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if(a==='play'){ await sendPlayback('playfile',{file}); closeRecentAlbumModal(); } else { await sendPlayback('addfile',{file}); } });
+    document.getElementById('recentAlbumTracks').addEventListener('click', async (ev)=>{ const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if (recentModalCtx.kind === 'podcast') { const mode = (a==='play') ? 'replace' : 'append'; await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({mode,keepNowPlaying:false,tracks:[file],shuffle:false,forceRandomOff:true,fastStart:true})}).catch(()=>null); if(a==='play') closeRecentAlbumModal(); return; } if(a==='play'){ await sendPlayback('playfile',{file}); closeRecentAlbumModal(); } else { await sendPlayback('addfile',{file}); } });
 
     document.getElementById('recentArtistCloseBtn')?.addEventListener('click', closeRecentArtistModal);
     document.getElementById('recentArtistModal')?.addEventListener('click', (ev)=>{ if(ev.target.id==='recentArtistModal') closeRecentArtistModal(); });
