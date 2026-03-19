@@ -63,6 +63,7 @@
     .muted{color:var(--muted);font-size:12px}
     #line2Wrap{display:block}
     #line2Stars{display:none}
+    #line1.linkable{cursor:pointer}
     #line3.linkable{cursor:pointer}
     #line3 .share-icon{width:.9em;height:.9em;display:inline-block;vertical-align:-.12em;margin-left:.22em;fill:currentColor;opacity:.72;pointer-events:none}
 
@@ -150,6 +151,10 @@
     .albumMeta{font-size:12px;color:var(--muted)}
     .albumTracks{list-style:none;margin:8px 0 0;padding:0}
     .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:flex;justify-content:space-between;gap:8px;font-size:14px}
+    .npArtistGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}
+    .npArtistCard{border:1px solid #2a3a58;background:#12203a;color:#e6efff;border-radius:10px;padding:6px;cursor:pointer;text-align:left}
+    .npArtistCard img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#0a1222;display:block;margin-bottom:6px}
+    .npArtistCard .t{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .trackBtns{display:flex;gap:6px}
     .trackBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
     .albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
@@ -421,6 +426,15 @@
     <button data-ra-act="open" id="raOpenBtn">Open</button>
     <button data-ra-act="play" id="raPlayBtn">Play</button>
     <button data-ra-act="shuffle" id="raThirdBtn">Play Shuffled</button>
+  </div>
+
+
+  <div class="albumModal" id="npArtistModal" aria-hidden="true">
+    <div class="albumCard" role="dialog" aria-modal="true" aria-label="Artist albums">
+      <button id="npArtistCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
+      <div class="albumHead"><img id="npArtistArt" src="" alt="" /><div><div class="albumTitle" id="npArtistTitle">Artist</div><div class="albumMeta" id="npArtistMeta"></div></div></div>
+      <div class="npArtistGrid" id="npArtistAlbums"></div>
+    </div>
   </div>
 
   <div class="albumModal" id="recentAlbumModal" aria-hidden="true">
@@ -771,6 +785,10 @@
 
     let npSig='';
     let npAlbumUrl='';
+    let npIsRadio = false;
+    let npIsLocalTrack = false;
+    let npCurrentArtist = '';
+    let npCurrentAlbum = '';
     let npRating = 0;
     let npRatingAllowed = false;
     let npPersonnelText = '';
@@ -897,6 +915,10 @@
         const isUpnp = !!j?.isUpnp;
         const isStream = !!j?.isStream;
         const isLocalTrack = !!(hasTrack && file && !isPodcast && !isRadio && !isAirplay && !isUpnp && !isStream);
+        npIsRadio = !!isRadio;
+        npIsLocalTrack = !!isLocalTrack;
+        npCurrentArtist = String((dispArtist || artist || '')).trim();
+        npCurrentAlbum = String((album || '')).trim();
         npRatingAllowed = isLocalTrack;
         npRating = Math.max(0, Math.min(5, Number(j?.rating ?? j?.currentRating ?? 0) || 0));
 
@@ -918,12 +940,13 @@
             artEl.src = art;
           }
           document.getElementById('line1').textContent = line1;
+          document.getElementById('line1').classList.toggle('linkable', !!(npIsLocalTrack && npCurrentArtist));
           document.getElementById('line2').textContent = line2;
           renderLine2Stars();
           const line3El = document.getElementById('line3');
           if (line3El) {
             line3El.textContent = line3;
-            if (line3 && npAlbumUrl) {
+            if (line3 && npIsRadio && npAlbumUrl) {
               const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
               icon.setAttribute('class', 'share-icon');
               icon.setAttribute('viewBox', '0 0 24 24');
@@ -936,6 +959,9 @@
               line3El.classList.add('linkable');
             } else {
               line3El.classList.remove('linkable');
+            }
+            if (line3 && npIsLocalTrack && npCurrentAlbum) {
+              line3El.classList.add('linkable');
             }
             line3El.style.display = line3 ? '' : 'none';
           }
@@ -2022,6 +2048,7 @@
     const npTapEl = document.querySelector('.npTap[data-href]');
     const npArtWrapEl = document.getElementById('npArtWrap');
     const npFlipInfoBtnEl = document.getElementById('npFlipInfoBtn');
+    const npLine1El = document.getElementById('line1');
     const npLine3El = document.getElementById('line3');
     const npLine2StarsEl = document.getElementById('line2Stars');
     const npCtrlsEl = document.getElementById('npCtrls');
@@ -2042,11 +2069,67 @@
         }
       } catch {}
     };
-    npLine3El?.addEventListener('click', (ev)=>{
-      if (!npAlbumUrl) return;
+    async function fetchArtistAlbumsForNp(artist){
+      await ensureKey();
+      const q = new URLSearchParams({ artist: String(artist || '').trim() });
+      const r = await fetch(`${base}/config/browse/artist-albums?${q.toString()}`, { cache:'no-store', headers:reqHeaders(false) });
+      const j = await r.json().catch(()=>({}));
+      return (r.ok && j?.ok && Array.isArray(j.albums)) ? j.albums : [];
+    }
+    async function openNpArtistModal(){
+      if (!npIsLocalTrack || !npCurrentArtist) return;
+      const modal = document.getElementById('npArtistModal');
+      const list = document.getElementById('npArtistAlbums');
+      const title = document.getElementById('npArtistTitle');
+      const meta = document.getElementById('npArtistMeta');
+      const art = document.getElementById('npArtistArt');
+      if (!modal || !list || !title || !meta || !art) return;
+      title.textContent = npCurrentArtist;
+      meta.textContent = 'Loading albums…';
+      art.src = document.getElementById('art')?.getAttribute('src') || `${base}/art/current.jpg`;
+      list.innerHTML = '<div class="albumMeta">Loading albums…</div>';
+      modal.classList.add('open');
+      let rows = [];
+      try { rows = await fetchArtistAlbumsForNp(npCurrentArtist); } catch {}
+      const albums = (rows||[]).map((a)=>({
+        album: String(a?.album || '').trim(),
+        artist: npCurrentArtist,
+        art: String(a?.thumbUrl || '').trim() ? (String(a.thumbUrl).startsWith('http') ? String(a.thumbUrl) : `${base}${String(a.thumbUrl)}`) : (document.getElementById('art')?.getAttribute('src') || `${base}/art/current.jpg`)
+      })).filter((x)=>x.album);
+      meta.textContent = albums.length ? `${albums.length} album(s)` : 'No albums found';
+      list.innerHTML = albums.map((a)=>`<button type='button' class='npArtistCard' data-np-artist-open='${encodeURIComponent(a.album)}' data-np-artist-art='${encodeURIComponent(a.art)}' title='${a.album.replace(/'/g, '&#39;')}'><img src='${a.art}' alt=''><div class='t'>${a.album}</div></button>`).join('') || '<div class="albumMeta">No albums found</div>';
+    }
+    document.getElementById('npArtistCloseBtn')?.addEventListener('click', ()=>{ document.getElementById('npArtistModal')?.classList.remove('open'); });
+    document.getElementById('npArtistModal')?.addEventListener('click', (ev)=>{ if (ev.target?.id === 'npArtistModal') document.getElementById('npArtistModal')?.classList.remove('open'); });
+    document.getElementById('npArtistAlbums')?.addEventListener('click', async (ev)=>{
+      const b = ev.target.closest('button[data-np-artist-open]');
+      if (!b) return;
+      let album='';
+      let art='';
+      try { album = decodeURIComponent(String(b.getAttribute('data-np-artist-open') || '')); } catch { album = String(b.getAttribute('data-np-artist-open') || ''); }
+      try { art = decodeURIComponent(String(b.getAttribute('data-np-artist-art') || '')); } catch { art = String(b.getAttribute('data-np-artist-art') || ''); }
+      if (!album) return;
+      document.getElementById('npArtistModal')?.classList.remove('open');
+      await openRecentAlbumFrom({ album, artist: npCurrentArtist, art: art || document.getElementById('art')?.getAttribute('src') || `${base}/art/current.jpg` });
+    });
+    npLine1El?.addEventListener('click', async (ev)=>{
+      if (!npIsLocalTrack || !npCurrentArtist) return;
       ev.preventDefault();
       ev.stopPropagation();
-      openAlbumUrl(npAlbumUrl);
+      await openNpArtistModal();
+    });
+    npLine3El?.addEventListener('click', async (ev)=>{
+      if (npIsRadio && npAlbumUrl) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openAlbumUrl(npAlbumUrl);
+        return;
+      }
+      if (npIsLocalTrack && npCurrentAlbum) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        await openRecentAlbumFrom({ album: npCurrentAlbum, artist: npCurrentArtist, art: document.getElementById('art')?.getAttribute('src') || `${base}/art/current.jpg` });
+      }
     });
     npLine2StarsEl?.addEventListener('pointerdown', async (ev)=>{
       const star = ev.target?.closest?.('[data-star]');
