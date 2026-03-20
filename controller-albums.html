@@ -109,7 +109,7 @@
   </div>
 
   <div class="menu" id="albumItemMenu">
-    <button data-item-action="open">Open</button>
+    <button data-item-action="open">Add</button>
     <button data-item-action="play">Play</button>
     <button data-item-action="shuffle">Play Shuffled</button>
   </div>
@@ -308,7 +308,7 @@
         if(state.view==='list'){
           return `<div class='row' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'>${artNode}<span class='coverMore' aria-hidden='true'>•••</span></div><div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div></div>`;
         }
-        return `<div class='album' role='button' tabindex='0' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><div class='coverFlip'><div class='coverFace coverFaceFront'>${artNode}<button type='button' class='coverMore' data-cover-more='1'>•••</button></div><div class='coverFace coverFaceBack'><button type='button' class='coverMore' data-cover-more='1'>•••</button><div class='coverFlipBtns'><button type='button' data-cover-flip-act='open'>Open</button><button type='button' data-cover-flip-act='play'>Play</button><button type='button' data-cover-flip-act='shuffle'>Shuffle</button></div></div></div></div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div>`;
+        return `<div class='album' role='button' tabindex='0' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><div class='coverFlip'><div class='coverFace coverFaceFront'>${artNode}<button type='button' class='coverMore' data-cover-more='1'>•••</button></div><div class='coverFace coverFaceBack'><button type='button' class='coverMore' data-cover-more='1'>•••</button><div class='coverFlipBtns'><button type='button' data-cover-flip-act='open'>Add</button><button type='button' data-cover-flip-act='play'>Play</button><button type='button' data-cover-flip-act='shuffle'>Shuffle</button></div></div></div></div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div>`;
       };
 
       const bindHeal = ()=>{
@@ -461,7 +461,7 @@
     };
     const runAlbumQuickAction = async (ctx, act)=>{
       if (!ctx?.album) return;
-      if (act === 'open') { await openAlbumFromContext(ctx); return; }
+      if (act === 'open') { try { await sendPlayback('addalbum', { mode:'append', album: ctx.album, artist: ctx.artist }); } catch {} return; }
       if (act === 'play') { try { await sendPlayback('addalbum', { mode:'replace', album: ctx.album, artist: ctx.artist }); } catch {} return; }
       if (act === 'shuffle') {
         try {
@@ -561,7 +561,7 @@
       const m = document.getElementById('albumItemMenu');
       m.classList.remove('open');
       if (act === 'open') {
-        await openAlbumFromContext(albumMenuCtx);
+        try { await sendPlayback('addalbum', { mode:'append', album: albumMenuCtx.album, artist: albumMenuCtx.artist }); } catch {}
         return;
       }
       if (act === 'play') {
@@ -609,6 +609,9 @@
       await ensureKey();
       const qp = new URL(location.href).searchParams;
       const genreFilter = String(qp.get('genre') || '').trim();
+      if (qp.get('embedded') === '1') {
+        try { window.parent?.postMessage({ type:'np-kiosk-pane-genre', pane:'kiosk-albums.html', genre: genreFilter }, '*'); } catch {}
+      }
       const isPodcastPath = (v='') => {
         const s = String(v || '').trim().toLowerCase();
         return !!s && (s.includes('/podcasts/') || s.startsWith('usb/samsungmoode/podcasts/'));

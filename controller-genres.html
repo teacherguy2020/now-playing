@@ -196,7 +196,11 @@
       row.classList.add('activating');
       const u = new URL('controller-albums.html', location.href);
       u.searchParams.set('genre', genre);
-      if (new URL(location.href).searchParams.get('embedded') === '1') u.searchParams.set('embedded','1');
+      u.searchParams.set('cb', String(Date.now()));
+      if (new URL(location.href).searchParams.get('embedded') === '1') {
+        u.searchParams.set('embedded','1');
+        try { window.parent?.postMessage({ type:'np-kiosk-pane-genre', pane:'kiosk-albums.html', genre }, '*'); } catch {}
+      }
       setTimeout(()=>{ location.href = u.toString(); }, 110);
     });
 

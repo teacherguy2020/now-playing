@@ -92,7 +92,7 @@
   <div class="menu" id="playlistMenu">
     <button data-pl-action="play">Play</button>
     <button data-pl-action="shuffle">Play Shuffled</button>
-    <button data-pl-action="open">Open</button>
+    <button data-pl-action="open">Add</button>
   </div>
 
   <div class="modal" id="plModal" aria-hidden="true">
@@ -278,7 +278,7 @@
         const cInner = p.cover
           ? `<img class='cover' src='${p.cover}' data-name='${encodeURIComponent(p.name)}' data-alt='${p.coverAlt||''}' alt=''>`
           : `<div class='ph'><span class='spin'></span></div>`;
-        const c = `<div class='coverWrap'><div class='coverFlip'><div class='coverFace coverFaceFront'>${cInner}<button type='button' class='coverMore' data-a='menu' data-name='${encodeURIComponent(p.name)}'>•••</button></div><div class='coverFace coverFaceBack'><button type='button' class='coverMore' data-a='menu' data-name='${encodeURIComponent(p.name)}'>•••</button><div class='coverFlipBtns'><button type='button' data-pl-flip-act='open' data-name='${encodeURIComponent(p.name)}'>Open</button><button type='button' data-pl-flip-act='play' data-name='${encodeURIComponent(p.name)}'>Play</button><button type='button' data-pl-flip-act='shuffle' data-name='${encodeURIComponent(p.name)}'>Shuffle</button></div></div></div></div>`;
+        const c = `<div class='coverWrap'><div class='coverFlip'><div class='coverFace coverFaceFront'>${cInner}<button type='button' class='coverMore' data-a='menu' data-name='${encodeURIComponent(p.name)}'>•••</button></div><div class='coverFace coverFaceBack'><button type='button' class='coverMore' data-a='menu' data-name='${encodeURIComponent(p.name)}'>•••</button><div class='coverFlipBtns'><button type='button' data-pl-flip-act='open' data-name='${encodeURIComponent(p.name)}'>Add</button><button type='button' data-pl-flip-act='play' data-name='${encodeURIComponent(p.name)}'>Play</button><button type='button' data-pl-flip-act='shuffle' data-name='${encodeURIComponent(p.name)}'>Shuffle</button></div></div></div></div>`;
         if(state.view==='list'){
           return `<div class='row item' data-name='${encodeURIComponent(p.name)}'>${c}<div><div class='title'>${p.name}</div><div class='sub'>${p.count==null?'Loading…':(p.count+' tracks')}</div></div></div>`;
         }
@@ -387,7 +387,7 @@
         if (!name) return;
         const act = String(flipAct.getAttribute('data-pl-flip-act') || 'open');
         closePlaylistFlips();
-        if (act === 'open') { await openPlaylist(name); return; }
+        if (act === 'open') { modalCtx.name = name; await loadPlaylist('append', false); return; }
         modalCtx.name = name;
         if (act === 'play') await loadPlaylist('replace', true);
         else if (act === 'shuffle') await playPlaylistShuffled(name);
@@ -456,7 +456,7 @@
       const name = String(playlistMenuTarget || '').trim();
       document.getElementById('playlistMenu').classList.remove('open');
       if (!name) return;
-      if (act === 'open') { await openPlaylist(name); return; }
+      if (act === 'open') { modalCtx.name = name; await loadPlaylist('append', false); return; }
       modalCtx.name = name;
       if (act === 'play') await loadPlaylist('replace', true);
       else if (act === 'shuffle') await playPlaylistShuffled(name);

@@ -439,7 +439,7 @@
   </div>
 
   <div class="miniMenu" id="recentAlbumMenu">
-    <button data-ra-act="open" id="raOpenBtn">Open</button>
+    <button data-ra-act="open" id="raOpenBtn">Add</button>
     <button data-ra-act="play" id="raPlayBtn">Play</button>
     <button data-ra-act="shuffle" id="raThirdBtn">Play Shuffled</button>
   </div>
@@ -1038,12 +1038,18 @@
         openPage(remembered);
       } catch {}
     };
-    function syncPaneUrlParam(p=''){
+    function syncPaneUrlParam(p='', opts={}){
       try {
         const u = new URL(location.href);
         const v = String(p || '').trim();
         if (v && v.startsWith('kiosk-')) u.searchParams.set('pane', v);
         else u.searchParams.delete('pane');
+
+        const gRaw = (opts && Object.prototype.hasOwnProperty.call(opts, 'genre')) ? opts.genre : undefined;
+        const g = String(gRaw || '').trim();
+        if (g) u.searchParams.set('genre', g);
+        else if (gRaw !== undefined) u.searchParams.delete('genre');
+
         history.replaceState(history.state || {}, '', u);
       } catch {}
     }
@@ -1162,7 +1168,7 @@
       if (row === 'radio') {
         return `<button type='button' data-ra-flip-act='play' data-ra-row='${row}' data-ra-idx='${i}'>Play</button><button type='button' data-ra-flip-act='add' data-ra-row='${row}' data-ra-idx='${i}'>Add</button><button type='button' data-ra-flip-act='replace' data-ra-row='${row}' data-ra-idx='${i}'>Replace</button>`;
       }
-      return `<button type='button' data-ra-flip-act='open' data-ra-row='${row}' data-ra-idx='${i}'>Open</button><button type='button' data-ra-flip-act='play' data-ra-row='${row}' data-ra-idx='${i}'>Play</button><button type='button' data-ra-flip-act='shuffle' data-ra-row='${row}' data-ra-idx='${i}'>Shuffle</button>`;
+      return `<button type='button' data-ra-flip-act='open' data-ra-row='${row}' data-ra-idx='${i}'>Add</button><button type='button' data-ra-flip-act='play' data-ra-row='${row}' data-ra-idx='${i}'>Play</button><button type='button' data-ra-flip-act='shuffle' data-ra-row='${row}' data-ra-idx='${i}'>Shuffle</button>`;
     }
 
     function renderIpadRail(hostId, items, rowKey, loading = false){
@@ -1785,13 +1791,13 @@
         bThird.textContent = 'Add station';
       } else if (kind === 'playlist') {
         bOpen.style.display = '';
-        bOpen.textContent = 'Open';
+        bOpen.textContent = 'Add';
         bPlay.textContent = 'Play';
         bThird.style.display = '';
         bThird.textContent = 'Play Shuffled';
       } else {
         bOpen.style.display = '';
-        bOpen.textContent = 'Open';
+        bOpen.textContent = 'Add';
         bPlay.textContent = 'Play';
         bThird.style.display = '';
         bThird.textContent = 'Play Shuffled';
@@ -1953,6 +1959,9 @@
         const active = document.querySelector(`.row[data-page="${p}"]`);
         if (kioskPane?.classList.contains('open') && active?.classList.contains('is-open')) {
           closeKioskPane();
+          // Defensive: ensure URL + nav highlight are fully reset when toggling closed.
+          syncPaneUrlParam('');
+          setOpenNavRow('');
           return;
         }
       }
@@ -1982,7 +1991,13 @@
           if (document.body.classList.contains('ipad11Landscape')) u.searchParams.set('cols', '7');
           u.searchParams.set('theme', String(profile?.theme || 'dark'));
           u.searchParams.set('colorPreset', String(profile?.colorPreset || 'ocean'));
-          if (p === 'kiosk-albums.html') u.searchParams.set('cb', String(Date.now()));
+          if (p === 'kiosk-albums.html') {
+            u.searchParams.set('cb', String(Date.now()));
+            try {
+              const topGenre = String(new URL(location.href).searchParams.get('genre') || '').trim();
+              if (topGenre) u.searchParams.set('genre', topGenre);
+            } catch {}
+          }
           const setPaneSrc = (urlObj) => {
             try {
               kioskPaneFrame.onload = () => { applyIpadPaneCompaction(); };
@@ -2614,7 +2629,11 @@
           return;
         }
         if (kind === 'playlist') {
-          if (act==='open') { await openRecentPlaylistFrom(recentMenuCtx); return; }
+          if (act==='open') {
+            await ensureKey();
+            await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentMenuCtx.playlist,mode:'append',play:false})}).catch(()=>null);
+            return;
+          }
           if (act==='play') {
             await ensureKey();
             await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentMenuCtx.playlist,mode:'replace',play:true})}).catch(()=>null);
@@ -2632,7 +2651,7 @@
           if (act==='open' || act==='play' || act==='replace') { await playOrAddRadio(recentMenuCtx.url, 'replace'); return; }
           if (act==='shuffle' || act==='add') { await playOrAddRadio(recentMenuCtx.url, 'append'); return; }
         }
-        if (act==='open') { await openRecentAlbumFrom(recentMenuCtx); return; }
+        if (act==='open') { await sendPlayback('addalbum',{mode:'append',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
         if (act==='play') { await sendPlayback('addalbum',{mode:'replace',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
         if (act==='shuffle') {
           const tracks = await fetchAlbumTracks(recentMenuCtx.album, recentMenuCtx.artist);
@@ -2697,7 +2716,11 @@
       }
 
       if (kind === 'playlist') {
-        if (act==='open') { await openRecentPlaylistFrom(recentMenuCtx); return; }
+        if (act==='open') {
+          await ensureKey();
+          await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentMenuCtx.playlist,mode:'append',play:false})}).catch(()=>null);
+          return;
+        }
         if (act==='play') {
           await ensureKey();
           await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentMenuCtx.playlist,mode:'replace',play:true})}).catch(()=>null);
@@ -2720,7 +2743,7 @@
         return;
       }
 
-      if (act==='open') { await openRecentAlbumFrom(recentMenuCtx); return; }
+      if (act==='open') { await sendPlayback('addalbum',{mode:'append',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
       if (act==='play') { await sendPlayback('addalbum',{mode:'replace',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
       if (act==='shuffle') {
         const tracks = await fetchAlbumTracks(recentMenuCtx.album, recentMenuCtx.artist);
@@ -2865,8 +2888,8 @@
       kioskPane?.classList.remove('open');
       kioskPane?.setAttribute('aria-hidden','true');
       recentWrap?.classList.remove('paneOpen');
-      setOpenNavRow(getLastLibraryPage());
-      syncPaneUrlParam('');
+      setOpenNavRow('');
+      syncPaneUrlParam('', { genre:'' });
       // Keep iframe warm; do not reset to about:blank so reopen is faster.
     };
 
@@ -2930,6 +2953,12 @@
       if (String(d.type || '') === 'np-kiosk-hide-pane') {
         if (__navCoverEl) { closeNavCover(); return; }
         closeKioskPane();
+        return;
+      }
+      if (String(d.type || '') === 'np-kiosk-pane-genre') {
+        const pane = String(d?.pane || '').trim();
+        const genre = String(d?.genre || '').trim();
+        if (pane.startsWith('kiosk-')) syncPaneUrlParam(pane, { genre });
       }
     });
 

@@ -409,7 +409,7 @@
   </div>
 
   <div class="miniMenu" id="recentAlbumMenu">
-    <button data-ra-act="open" id="raOpenBtn">Open</button>
+    <button data-ra-act="open" id="raOpenBtn">Add</button>
     <button data-ra-act="play" id="raPlayBtn">Play</button>
     <button data-ra-act="shuffle" id="raThirdBtn">Play Shuffled</button>
   </div>
@@ -1053,7 +1053,7 @@
       if (k === 'radio') {
         return `<button type='button' data-ra-flip-act='play' data-ra-idx='${idx}'>Play</button><button type='button' data-ra-flip-act='add' data-ra-idx='${idx}'>Add</button><button type='button' data-ra-flip-act='replace' data-ra-idx='${idx}'>Replace</button>`;
       }
-      return `<button type='button' data-ra-flip-act='open' data-ra-idx='${idx}'>Open</button><button type='button' data-ra-flip-act='play' data-ra-idx='${idx}'>Play</button><button type='button' data-ra-flip-act='shuffle' data-ra-idx='${idx}'>Shuffle</button>`;
+      return `<button type='button' data-ra-flip-act='open' data-ra-idx='${idx}'>Add</button><button type='button' data-ra-flip-act='play' data-ra-idx='${idx}'>Play</button><button type='button' data-ra-flip-act='shuffle' data-ra-idx='${idx}'>Shuffle</button>`;
     }
 
     function railThumbHtml(it, i){
@@ -1556,13 +1556,13 @@
         bThird.textContent = 'Add station';
       } else if (kind === 'playlist') {
         bOpen.style.display = '';
-        bOpen.textContent = 'Open';
+        bOpen.textContent = 'Add';
         bPlay.textContent = 'Play';
         bThird.style.display = '';
         bThird.textContent = 'Play Shuffled';
       } else {
         bOpen.style.display = '';
-        bOpen.textContent = 'Open';
+        bOpen.textContent = 'Add';
         bPlay.textContent = 'Play';
         bThird.style.display = '';
         bThird.textContent = 'Play Shuffled';
@@ -2296,7 +2296,11 @@
       }
 
       if (kind === 'playlist') {
-        if (act==='open') { await openRecentPlaylistFrom(recentMenuCtx); return; }
+        if (act==='open') {
+          await ensureKey();
+          await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentMenuCtx.playlist,mode:'append',play:false})}).catch(()=>null);
+          return;
+        }
         if (act==='play') {
           await ensureKey();
           await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentMenuCtx.playlist,mode:'replace',play:true})}).catch(()=>null);
@@ -2319,7 +2323,7 @@
         return;
       }
 
-      if (act==='open') { await openRecentAlbumFrom(recentMenuCtx); return; }
+      if (act==='open') { await sendPlayback('addalbum',{mode:'append',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
       if (act==='play') { await sendPlayback('addalbum',{mode:'replace',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
       if (act==='shuffle') {
         const tracks = await fetchAlbumTracks(recentMenuCtx.album, recentMenuCtx.artist);
