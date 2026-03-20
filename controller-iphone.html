@@ -1469,6 +1469,27 @@
       await ensureKey();
       await fetch(`${base}/config/queue-wizard/apply`, { method:'POST', headers:reqHeaders(true), body: JSON.stringify({ mode: mode==='append'?'append':'replace', keepNowPlaying:false, tracks:[u], shuffle:false, forceRandomOff:false, fastStart:true }) }).catch(()=>null);
     }
+    async function applyAlbumActionReliable(album, artist, mode='replace', shuffle=false){
+      const m = (mode==='append' || mode==='crop' || mode==='replace') ? mode : 'replace';
+      try {
+        const tracks = await fetchAlbumTracks(album, artist);
+        const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean);
+        if (files.length) {
+          if (shuffle) {
+            for (let i=files.length-1;i>0;i--){ const k=Math.floor(Math.random()*(i+1)); const tmp=files[i]; files[i]=files[k]; files[k]=tmp; }
+          }
+          await ensureKey();
+          const r = await fetch(`${base}/config/queue-wizard/apply`, {
+            method:'POST', headers:reqHeaders(true),
+            body: JSON.stringify({ mode:m, keepNowPlaying:m!=='replace', tracks:files, shuffle:false, forceRandomOff:true, fastStart:m==='replace' })
+          });
+          const j = await r.json().catch(()=>({}));
+          if (r.ok && j?.ok) return true;
+        }
+      } catch {}
+      try { await sendPlayback('addalbum',{mode:m,album,artist:artist||''}); return true; } catch {}
+      return false;
+    }
 
     function openRecentAlbumModal(){
       const isPlaylist = recentModalCtx.kind === 'playlist';
@@ -2207,8 +2228,8 @@
         }
         if (a.kind === 'album') {
           if (act === 'open') { await openRecentAlbumFrom(a); return; }
-          if (act === 'play') { await sendPlayback('addalbum',{mode:'replace',album:a.album,artist:a.artist||''}); return; }
-          if (act === 'shuffle') { const tracks = await fetchAlbumTracks(a.album, a.artist); const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean); for (let k=files.length-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); const t=files[k]; files[k]=files[j]; files[j]=t; } await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})}).catch(()=>null); return; }
+          if (act === 'play') { await applyAlbumActionReliable(a.album, a.artist, 'replace', false); return; }
+          if (act === 'shuffle') { await applyAlbumActionReliable(a.album, a.artist, 'replace', true); return; }
         }
         return;
       }
@@ -2324,12 +2345,9 @@
       }
 
       if (act==='open') { await sendPlayback('addalbum',{mode:'append',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
-      if (act==='play') { await sendPlayback('addalbum',{mode:'replace',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
+      if (act==='play') { await applyAlbumActionReliable(recentMenuCtx.album, recentMenuCtx.artist, 'replace', false); return; }
       if (act==='shuffle') {
-        const tracks = await fetchAlbumTracks(recentMenuCtx.album, recentMenuCtx.artist);
-        const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean);
-        for (let i=files.length-1;i>0;i--){ const k=Math.floor(Math.random()*(i+1)); const tmp=files[i]; files[i]=files[k]; files[k]=tmp; }
-        await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})}).catch(()=>null);
+        await applyAlbumActionReliable(recentMenuCtx.album, recentMenuCtx.artist, 'replace', true);
       }
     });
 
@@ -2349,11 +2367,11 @@
         const file = String((recentModalCtx.tracks||[])[0]?.file || '').trim();
         if (file) await sendPlayback('addfile',{file});
       } else {
-        await sendPlayback('addalbum',{mode:'append',album:recentModalCtx.album,artist:recentModalCtx.artist||''});
+        await applyAlbumActionReliable(recentModalCtx.album, recentModalCtx.artist, 'append', false);
       }
       closeRecentAlbumModal();
     });
-    document.getElementById('recentAlbumCropBtn').addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'crop',album:recentModalCtx.album,artist:recentModalCtx.artist||''}); closeRecentAlbumModal(); });
+    document.getElementById('recentAlbumCropBtn').addEventListener('click', async ()=>{ await applyAlbumActionReliable(recentModalCtx.album, recentModalCtx.artist, 'crop', false); closeRecentAlbumModal(); });
     document.getElementById('recentAlbumReplaceBtn').addEventListener('click', async ()=>{
       if (recentModalCtx.kind === 'playlist') {
         await ensureKey();
@@ -2362,7 +2380,7 @@
         const file = String((recentModalCtx.tracks||[])[0]?.file || '').trim();
         if (file) await sendPlayback('playfile',{file});
       } else {
-        await sendPlayback('addalbum',{mode:'replace',album:recentModalCtx.album,artist:recentModalCtx.artist||''});
+        await applyAlbumActionReliable(recentModalCtx.album, recentModalCtx.artist, 'replace', false);
       }
       closeRecentAlbumModal();
     });

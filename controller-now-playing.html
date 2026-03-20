@@ -1229,6 +1229,25 @@
       albumLink.addEventListener('pointerdown', onAlbumTap, {capture:true, passive:false});
       albumLink.addEventListener('click', onAlbumTap, {capture:true, passive:false});
 
+      async function runNpAlbumAction(mode){
+        const m = (mode==='append' || mode==='crop' || mode==='replace') ? mode : 'replace';
+        try {
+          const tracks = await fetchAlbumTracks(ctx.album, ctx.artist);
+          const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean);
+          if (files.length) {
+            await ensureKey();
+            const r = await fetch(`${base}/config/queue-wizard/apply`, {
+              method:'POST', headers:reqHeaders(true),
+              body: JSON.stringify({ mode:m, keepNowPlaying:m!=='replace', tracks:files, shuffle:false, forceRandomOff:true, fastStart:m==='replace' })
+            });
+            const j = await r.json().catch(()=>({}));
+            if (r.ok && j?.ok) { close(); return; }
+          }
+        } catch {}
+        try { await sendPlayback('addalbum',{mode:m,album:ctx.album,artist:ctx.artist||''}); } catch {}
+        close();
+      }
+
       document.getElementById('npAlbumCloseBtn')?.addEventListener('click', close);
       modal.addEventListener('click', (ev)=>{
         if(ev.target===modal) { close(); return; }
@@ -1243,9 +1262,9 @@
           }
         }
       });
-      document.getElementById('npAlbumAppendBtn')?.addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'append',album:ctx.album,artist:ctx.artist||''}); close(); });
-      document.getElementById('npAlbumCropBtn')?.addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'crop',album:ctx.album,artist:ctx.artist||''}); close(); });
-      document.getElementById('npAlbumReplaceBtn')?.addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'replace',album:ctx.album,artist:ctx.artist||''}); close(); });
+      document.getElementById('npAlbumAppendBtn')?.addEventListener('click', async ()=>{ await runNpAlbumAction('append'); });
+      document.getElementById('npAlbumCropBtn')?.addEventListener('click', async ()=>{ await runNpAlbumAction('crop'); });
+      document.getElementById('npAlbumReplaceBtn')?.addEventListener('click', async ()=>{ await runNpAlbumAction('replace'); });
       tracksHost.addEventListener('click', async (ev)=>{ const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if(a==='play'){ await sendPlayback('playfile',{file}); close(); } else { await sendPlayback('addfile',{file}); } });
     })();
 </script>
