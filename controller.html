@@ -3,43 +3,2354 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Controller Router</title>
+  <link rel="manifest" href="/manifest-controller.webmanifest" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
+  <link rel="shortcut icon" href="/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <title>Controller</title>
   <style>
-    html,body{margin:0;height:100%;background:#0b111c;color:#eaf1ff;font:16px/1.35 -apple-system,Inter,system-ui;display:grid;place-items:center}
-    .muted{opacity:.78;font-size:13px}
+    :root{--bg:#070b13;--surface:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--accent:#4aa8ff}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--surface);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
+    .card{background:transparent;border:0;padding:8px 0;margin-bottom:8px}
+    .title{font-weight:750;font-size:18px;margin-bottom:10px}
+
+    .npTap{display:block;text-decoration:none;color:inherit;-webkit-touch-callout:none;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+    .npTap #art{transition:box-shadow .16s ease, transform .12s ease}
+    .npTap.togglePulse #art{box-shadow:0 0 0 2px rgba(69,178,111,.95), 0 0 18px rgba(69,178,111,.32);transform:scale(.99)}
+    .np{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center}
+    .npMeta{min-width:0}
+    .artWrap{position:relative;width:64px;height:64px;perspective:1000px}
+    .artFlip{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .48s cubic-bezier(.22,.78,.19,1)}
+    .artWrap.is-flipped .artFlip{transform:rotateY(180deg)}
+    .artFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:10px;overflow:hidden}
+    .artFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#111a2d,#0b1425);border:1px solid rgba(138,177,235,.32);display:flex;align-items:stretch}
+    .artHint{position:absolute;top:7px;left:7px;width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1;user-select:none;z-index:7;cursor:pointer;padding:0}
+    .artHintInfo{background:rgba(9,18,32,.68);border:1px solid rgba(184,207,240,.52);color:#eaf3ff}
+    .artWrap.is-flipped .artHintInfo{display:none}
+    .personnelCard{width:100%;height:100%;padding:8px 9px;display:flex;flex-direction:column;gap:5px}
+    .personnelTitle{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#9fc4ff;font-weight:700;opacity:.92}
+    .personnelBody{font-size:11px;line-height:1.24;color:#e7efff;overflow:auto;white-space:pre-line}
+    .np img{width:64px;height:64px;border-radius:10px;object-fit:cover;display:block}
+    .artSpin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(7,12,20,.36);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px)}
+    .artSpin[hidden]{display:none !important}
+    .artSpin::before{content:'';width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#ffffff;animation:npSpin .8s linear infinite}
+    @keyframes npSpin{to{transform:rotate(360deg)}}
+    .eq{position:absolute;right:4px;bottom:4px;display:none;gap:2px;align-items:flex-end;padding:2px 3px;border-radius:6px;background:rgba(3,10,20,.55)}
+    .eq b{display:block;width:2px;background:#7dd3fc;border-radius:2px;animation:eq 1s ease-in-out infinite}
+    .npCtrls{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);display:none;align-items:center;gap:8px;padding:4px 8px;border-radius:999px;background:rgba(8,12,20,.26);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);z-index:5;opacity:.35;transition:opacity .2s ease, background-color .2s ease, border-color .2s ease}
+    .npCtrls.is-awake{opacity:.95;background:rgba(8,12,20,.45);border:1px solid rgba(255,255,255,.16)}
+    .npCtrls .ctl{display:grid;width:30px;height:30px;min-width:30px;min-height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:#fff;box-shadow:0 3px 8px rgba(0,0,0,.25);place-items:center;cursor:pointer;padding:0;transition:background-color .2s ease, box-shadow .2s ease}
+    .npCtrls.is-awake .ctl{background:rgba(255,255,255,.14);box-shadow:0 5px 14px rgba(0,0,0,.3)}
+    .npCtrls .ctl.big{width:36px;min-width:36px;height:36px;min-height:36px}
+    .npCtrls .ctl svg{width:14px;height:14px;fill:currentColor;display:block}
+    .npCtrls .ctlPause,.npCtrls .ctlPlay{display:none}
+    .npCtrls .ctl.on{background:rgba(22,163,74,.50);box-shadow:0 0 0 1px rgba(34,197,94,.65),0 0 16px rgba(34,197,94,.42),0 5px 14px rgba(0,0,0,.3);color:#eaffef}
+    .npCtrls .ctl.big.on{background:rgba(22,163,74,.62);box-shadow:0 0 0 1px rgba(34,197,94,.72),0 0 20px rgba(34,197,94,.50),0 5px 14px rgba(0,0,0,.34)}
+    .eq b:nth-child(2){animation-delay:.15s}.eq b:nth-child(3){animation-delay:.3s}
+    @keyframes eq{0%,100%{height:4px}50%{height:10px}}
+    .muted{color:var(--muted);font-size:12px}
+    #line2Wrap{display:block}
+    #line2Stars{display:none}
+    #line3.linkable{cursor:pointer}
+    #line3 .share-icon{width:.9em;height:.9em;display:inline-block;vertical-align:-.12em;margin-left:.22em;fill:currentColor;opacity:.72;pointer-events:none}
+
+    .quickWrap{position:relative;margin:0 0 10px}
+    .quickIcon{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#8fb2df;pointer-events:none;opacity:.92}
+    .quickIcon svg{width:16px;height:16px;display:block;fill:currentColor}
+    .quickIn{width:100%;height:38px;border-radius:12px;border:1px solid var(--quick-line,#2a3a58);background:var(--quick-bg,#121c30);color:#e6efff;padding:0 62px 0 34px;font-size:16px}
+    .quickIn::placeholder{font-size:10px;color:var(--text);opacity:.9}
+    .quickClear{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;display:none;align-items:center;justify-content:center;font-size:14px;line-height:1;cursor:pointer}
+    .quickKb{position:absolute;right:34px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1;cursor:pointer}
+    .quickWrap.hasText .quickClear{display:inline-flex}
+    .quickMenu{position:absolute;left:0;right:0;top:44px;display:none;z-index:60;max-height:44vh;overflow:auto;border:1px solid var(--quick-line,#2a3a58);border-radius:12px;background:var(--quick-bg-menu,rgba(10,16,28,.94));backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+    .quickMenu.open{display:block}
+    .qRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 10px;border-bottom:1px solid #20314b}
+    .qRow:last-child{border-bottom:0}
+    .qMeta{font-size:11px;color:#8fb2df;text-transform:uppercase;letter-spacing:.04em}
+    .qMain{min-width:0;overflow:hidden}
+    .qTxt{display:block;font-size:14px;color:#e9f1ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+    .qBtns{display:flex;gap:6px}
+    .qBtn{width:26px;height:26px;border-radius:999px;border:1px solid #35507a;background:#16253e;color:#dfeaff;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:transform .08s ease, background .18s ease, border-color .18s ease, color .18s ease}
+    .qBtn:active{transform:scale(.94)}
+    .qBtn.pending{transform:scale(1.08);background:#2b4f86;border-color:#74a8ff;color:#ffffff}
+    .qSpin{width:12px;height:12px;border:2px solid rgba(223,234,255,.45);border-top-color:#ffffff;border-radius:999px;display:block;animation:qSpin .7s linear infinite}
+    @keyframes qSpin{to{transform:rotate(360deg)}}
+    .qBtn.done{background:#1f5d33;border-color:#45b26f;color:#eafff1}
+
+    .list{margin:2px 0 14px;padding:0;list-style:none}
+    .row{display:grid;grid-template-columns:40px 1fr 20px;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+    .row .ico{font-size:24px;line-height:1;color:var(--icon,var(--accent));display:flex;align-items:center;justify-content:center;width:24px;height:24px}
+    .row .ico svg{width:24px;height:24px;display:block;fill:currentColor}
+    .row .ico.ico-mic{width:24px;height:24px;background:currentColor;-webkit-mask-image:url('assets/icons/microphone-4-svgrepo-com.svg');mask-image:url('assets/icons/microphone-4-svgrepo-com.svg');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center}
+    .row .ico.ico-radio{width:24px;height:24px;background:currentColor;-webkit-mask-image:url('assets/icons/radio-minimalistic-svgrepo-com.svg');mask-image:url('assets/icons/radio-minimalistic-svgrepo-com.svg');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center}
+    .row .ico.ico-album{width:24px;height:24px;background:currentColor;-webkit-mask-image:url('assets/icons/album-svgrepo-com.svg');mask-image:url('assets/icons/album-svgrepo-com.svg');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center}
+    .row .ico.ico-genre svg{transform:scaleX(-1) rotate(-40deg)}
+    .row .lbl{font-size:22px;line-height:1.12;font-weight:560;letter-spacing:-0.01em}
+    .row .chev{font-size:22px;line-height:1;color:#54627d;text-align:right}
+
+    .recentWrap{position:relative;overflow:hidden}
+    .kPane{display:none}
+    .kPaneIf{border:0;display:block}
+    .recentTitle{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:760;letter-spacing:-0.01em;margin:6px 0 10px;padding-left:28px;cursor:pointer}
+    .railModeBtn{position:absolute;left:0;top:-8px;width:16px;height:36px;border:0;background:transparent;color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+    .railModeDots{display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center}
+    .railModeDots b{display:block;width:4px;height:4px;border-radius:999px;background:currentColor;opacity:.35;transition:opacity .15s ease, transform .15s ease}
+    .railModeDots b.on{opacity:1;transform:scale(1.08)}
+    .rail{display:flex;gap:10px;overflow:auto;padding-top:4px;padding-bottom:6px;padding-left:28px;touch-action:pan-x;overscroll-behavior:contain;position:relative;z-index:2;transition:transform .08s linear}
+    .peekRail{display:none;position:absolute;left:0;right:0;bottom:0;z-index:1;opacity:.55;filter:saturate(.85)}
+    .recentWrap.peeking .peekRail{display:flex}
+    .thumb{min-width:128px;width:128px}
+    .thumb.is-active-radio .thumbWrap{border-radius:14px;box-shadow:inset 0 0 0 2px #45b26f}
+    .thumb.is-active-radio .cap{color:#bff2cf}
+    .thumbWrap{position:relative}
+    .thumb img,.ph{width:128px;height:128px;border-radius:12px;object-fit:cover;background:#0a1222}
+    .ph{display:flex;align-items:center;justify-content:center}
+    .miniSpin{width:16px;height:16px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:npSpin .8s linear infinite}
+    .titleSpin{width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:npSpin .8s linear infinite}
+    .titleSpin[hidden]{display:none !important}
+    .thumb .cap{font-size:14px;color:var(--text);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .thumbMore{position:absolute;left:6px;top:6px;width:22px;height:22px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:11px;display:flex;align-items:center;justify-content:center;z-index:2}
+
+    .miniMenu{position:fixed;display:none;z-index:140;min-width:180px;padding:6px;border-radius:12px;background:rgba(20,24,34,.9);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(12px)}
+    .miniMenu.open{display:block}
+    .miniMenu button{width:100%;text-align:left;border:0;background:transparent;color:#eef3ff;padding:9px;border-radius:9px}
+
+    .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:150;align-items:center;justify-content:center}
+    .albumModal.open{display:flex}
+    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(7px)}
+    body.kiosk1280 .recentWrap #recentAlbumModal,
+    body.ipad11.ipad11Landscape .recentWrap #recentAlbumModal{position:absolute;inset:0;z-index:165;border-radius:10px;background:rgba(0,0,0,.42);display:none;align-items:center;justify-content:center}
+    body.kiosk1280 .recentWrap #recentAlbumModal.open,
+    body.ipad11.ipad11Landscape .recentWrap #recentAlbumModal.open{display:flex}
+    body.kiosk1280 .recentWrap #recentAlbumModal .albumCard,
+    body.ipad11.ipad11Landscape .recentWrap #recentAlbumModal .albumCard{width:calc(100% - 14px) !important;max-width:none !important;max-height:calc(100% - 12px);margin:0 auto}
+    .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+    .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .albumTitle{font-size:17px;font-weight:700}
+    .albumMeta{font-size:12px;color:var(--muted)}
+    .albumTracks{list-style:none;margin:8px 0 0;padding:0}
+    .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:flex;justify-content:space-between;gap:8px;font-size:14px}
+    .trackBtns{display:flex;gap:6px}
+    .trackBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
+    .albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
+    .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+    .modalX:active{transform:scale(.96)}
+
+    body.nav-forwarding{
+      overflow:hidden;
+      animation:navForwardOut .18s ease forwards;
+      will-change: transform, opacity;
+    }
+    body.rail-touch-lock{overflow:hidden}
+
+    /* 1280x400 kiosk landscape profile */
+    html:has(body.kiosk1280){background:var(--surface,#060b16)}
+    body.kiosk1280{padding:8px 10px 10px;display:grid;grid-template-columns:1fr;grid-template-rows:34px 1fr;row-gap:8px;overflow:hidden;width:1280px;height:448px;max-width:1280px;max-height:448px;margin:14px auto;background:var(--surface,#060b16)}
+    body.kiosk1280 .kioskCtl{display:flex;gap:8px;align-items:center;min-height:0;padding:6px 10px;border:1px solid rgba(70,98,145,.55);border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);background:linear-gradient(180deg,#101a2f,#0d1730)}
+    body.kiosk1280:not(.kioskEditor){grid-template-rows:1fr;height:400px;max-height:400px;padding:0;margin:0 auto;background:var(--surface,#060b16);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+    body.kiosk1280:not(.kioskEditor) .kioskCtl{display:none !important}
+    body.kiosk1280:not(.kioskEditor) #kioskCanvas, body.kiosk1280:not(.kioskEditor) #kioskCanvas *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+    body.kiosk1280:not(.kioskEditor) #kioskCanvas{padding:8px 10px 10px;border:none;box-shadow:none;border-radius:0;background:var(--surface,#060b16)}
+    body.kiosk1280 .kioskCtl select, body.kiosk1280 .kioskCtl button{height:30px;border:1px solid #2b3f63;border-radius:8px;background:#0e1830;color:#e8efff;padding:0 10px;font-size:13px}
+    body.kiosk1280 .kioskCtl .grow{flex:1}
+    body.kiosk1280 .kioskCtl .stat{font-size:12px;color:#9eb0d7;max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    body.kiosk1280 #kioskCanvas{display:grid;grid-template-columns:332px 300px minmax(0,1fr);grid-template-rows:auto 1fr;grid-template-areas:'np search recent' 'np list recent';column-gap:7px;row-gap:8px;overflow:hidden;padding:8px 10px 10px;border:1px solid rgba(70,98,145,.55);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);background:linear-gradient(180deg,#0b1324,#0a1220)}
+    body.kiosk1280 .npTap{grid-area:np;min-height:0;margin-right:-8px}
+    body.kiosk1280 .quickWrap{grid-area:search;margin:0}
+    body.kiosk1280 #libraryList{grid-area:list;margin:0;overflow:auto;min-height:0;padding-right:2px}
+    body.kiosk1280 .recentWrap{grid-area:recent;display:flex;flex-direction:column;min-height:0;overflow:hidden;position:relative}
+    body.kiosk1280 .recentTitle{font-size:18px;margin:2px 0 8px;padding-left:5px}
+    body.kiosk1280 .railModeBtn{display:none}
+    body.kiosk1280 .rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 24px)/4);grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;padding:0;overflow-x:auto;overflow-y:hidden;align-content:start}
+    body.kiosk1280 .kPane, body.ipad11.ipad11Landscape .kPane{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface,#0b1324);border:1px solid var(--line,#1f2a3d);border-radius:10px;overflow:hidden;transform:translateX(108%);opacity:0;pointer-events:none;transition:transform .24s ease,opacity .2s ease}
+    body.kiosk1280 .kPane.open, body.ipad11.ipad11Landscape .kPane.open{transform:translateX(0);opacity:1;pointer-events:auto}
+    body.kiosk1280 .recentWrap.paneOpen #recentTitle,
+    body.kiosk1280 .recentWrap.paneOpen #recentRail,
+    body.kiosk1280 .recentWrap.paneOpen #recentPeekRail,
+    body.kiosk1280 .recentWrap.paneOpen #railModeBtn,
+    body.ipad11.ipad11Landscape .recentWrap.paneOpen #ipadRecentGrid{opacity:0;pointer-events:none;transition:opacity .12s ease}
+    body.kiosk1280 .kPaneIf,
+    body.ipad11.ipad11Landscape .kPaneIf{flex:1;width:100%;height:100%;border:0;background:transparent}
+    body.kiosk1280 .thumb{min-width:0;width:auto}
+    body.kiosk1280 .thumb img, body.kiosk1280 .ph{width:90%;height:auto;aspect-ratio:1/1;display:block;margin:0 auto}
+    body.kiosk1280 .thumb .cap{font-size:12px;white-space:normal;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding-left:5px}
+    body.kiosk1280 .row{padding:4px 0;grid-template-columns:36px 1fr 14px;gap:7px}
+    body.kiosk1280 .row .ico{padding-left:10px;justify-content:flex-start}
+    body.kiosk1280 .row .ico.ico-mic,
+    body.kiosk1280 .row .ico.ico-album{transform:translateX(5px)}
+    body.kiosk1280 .row .ico.ico-radio{transform:translateX(8px)}
+    body.kiosk1280 .row .ico.ico-genre,
+    body.kiosk1280 .row .ico.ico-podcast,
+    body.kiosk1280 .row .ico.ico-queuewiz{width:32px;height:32px;overflow:visible}
+    body.kiosk1280 .row .ico.ico-genre svg{width:32px;height:32px;transform:translateX(-3px) scaleX(-1) rotate(-40deg) scale(1.12)}
+    body.kiosk1280 .row .ico.ico-genre svg path{stroke:currentColor;stroke-width:1.1;paint-order:stroke fill;stroke-linejoin:round}
+    body.kiosk1280 .row .ico.ico-podcast svg{width:32px;height:32px;transform:translateX(-3px) scale(1.12)}
+    body.kiosk1280 .row .ico.ico-queuewiz svg{width:32px;height:32px;transform:scale(1.12)}
+    body.kiosk1280 .row .lbl{font-size:18px;line-height:1.06}
+    body.kiosk1280 .row.is-open .lbl,
+    body.kiosk1280 .row.is-open .chev,
+    body.ipad11.ipad11Landscape .row.is-open .lbl,
+    body.ipad11.ipad11Landscape .row.is-open .chev{color:var(--icon,var(--accent))}
+    body.kiosk1280 .title{font-size:17px;margin-bottom:6px}
+    body.kiosk1280 .npTap .title{display:none}
+    body.kiosk1280 .np{display:flex;flex-direction:column;gap:8px;align-items:flex-start;justify-content:flex-start}
+    body.kiosk1280 .np .artWrap, body.kiosk1280 .np img{width:318px;height:318px}
+    body.kiosk1280 .npCtrls{display:flex}
+    body.kiosk1280 #line1{font-size:18px;font-weight:700;line-height:1.16;max-width:440px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+    body.kiosk1280 #line2{font-size:13px;max-width:440px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+    body.kiosk1280 #line3{font-size:12px;max-width:440px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;opacity:.9}
+    body.kiosk1280 .quickIn{height:34px;font-size:15px}
+    body.kiosk1280 .quickMenu{top:38px;max-height:88vh}
+
+    /* iPad Pro 11" profiles */
+    body.ipad11{padding:10px 12px 14px;height:100dvh;overflow:hidden}
+    body.ipad11 #kioskCanvas{display:grid;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) minmax(0,2fr);row-gap:8px;height:100%}
+    body.ipad11 .card{margin-bottom:0}
+    body.ipad11 .np{grid-template-columns:94px 1fr;gap:12px}
+    body.ipad11 .artWrap, body.ipad11 .np img{width:94px;height:94px}
+    body.ipad11 #line1{font-size:22px;line-height:1.1;max-width:none}
+    body.ipad11 #line2{font-size:14px}
+    body.ipad11 #line3{font-size:13px;opacity:.92}
+    body.ipad11 #libraryList{margin:0;overflow:auto;min-height:0}
+    body.ipad11 .row{padding:9px 0}
+    body.ipad11.ipad11Landscape .row{padding:2px 0;align-self:stretch;align-items:center}
+    body.ipad11 .row .lbl{font-size:20px}
+    body.ipad11.ipad11Landscape .row .lbl{font-size:21px;line-height:1.02}
+    body.ipad11.ipad11Landscape .row .ico{width:26px;height:26px;display:flex;align-items:center;justify-content:center}
+    body.ipad11.ipad11Landscape .row .ico svg{width:26px;height:26px}
+    body.ipad11 .railModeBtn, body.ipad11 #recentTitle, body.ipad11 #recentRail, body.ipad11 #recentPeekRail{display:none !important}
+    body.ipad11 .recentWrap{display:flex;min-height:0;overflow:hidden}
+    body.ipad11 .ipadRecentGrid{display:grid !important;grid-template-columns:1fr 1fr;gap:8px;width:100%;min-height:0;overflow:auto;padding-right:2px}
+    body.ipad11 .ipadRecentPane{min-height:0;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:8px;display:flex;flex-direction:column;gap:6px}
+    body.ipad11 .ipadRecentPane h4{margin:0;font-size:13px;letter-spacing:.02em;color:var(--muted);text-transform:uppercase}
+    body.ipad11 .ipadRecentPane .rail{padding:0;gap:8px;overflow:auto;min-height:142px}
+    body.ipad11 .ipadRecentPane .thumb{min-width:108px;width:108px}
+    body.ipad11 .ipadRecentPane .thumb img, body.ipad11 .ipadRecentPane .ph{width:108px;height:108px}
+    body.ipad11 .ipadRecentPane .thumb .cap{font-size:12px}
+
+    body.ipad11.ipad11Landscape{padding-top:max(28px, env(safe-area-inset-top))}
+    body.ipad11.ipad11Landscape #kioskCanvas{position:relative;grid-template-columns:minmax(320px,1fr) minmax(0,2fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:8px;max-height:calc(100dvh - 8px);box-sizing:border-box}
+    body.ipad11.ipad11Landscape .npTap{grid-area:np;max-height:none;overflow:visible}
+    /* Col1 group 1: Art + controls + text */
+    body.ipad11.ipad11Landscape .npTap .card{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:10px}
+    body.ipad11.ipad11Landscape .quickWrap{grid-area:quick;margin:12px 0 0 0}
+    /* Col1 group 2: Quick Search + Library links */
+    body.ipad11.ipad11Landscape .quickWrap{border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:rgba(255,255,255,.02);padding:8px 8px 6px}
+    body.ipad11.ipad11Landscape #libraryList{grid-area:list;margin:0;min-height:0;padding:8px 10px 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:rgba(255,255,255,.02)}
+    body.ipad11.ipad11Landscape .recentWrap{grid-area:recent;min-height:0;display:flex;flex-direction:column}
+    body.ipad11.ipad11Landscape .npTap .card{display:flex;flex-direction:column;padding-top:14px}
+    body.ipad11.ipad11Landscape .np{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;order:1}
+    body.ipad11.ipad11Landscape .artWrap, body.ipad11.ipad11Landscape .np img{width:220px;height:220px}
+    body.ipad11.ipad11Landscape .artWrap{overflow:visible;cursor:pointer}
+    body.ipad11.ipad11Landscape .personnelCard{padding:14px}
+    body.ipad11.ipad11Landscape .personnelTitle{font-size:12px}
+    body.ipad11.ipad11Landscape .personnelBody{font-size:14px;line-height:1.3}
+    body.ipad11.ipad11Landscape .artHint{top:10px;left:10px;width:28px;height:28px;font-size:15px}
+    body.ipad11.ipad11Landscape .np > div:last-child{max-width:100%}
+    body.ipad11.ipad11Landscape .npTap .title{display:none !important}
+    body.ipad11.ipad11Landscape .npMeta{width:100%;border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
+    body.ipad11.ipad11Landscape #line1{font-size:30px;line-height:1.08;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
+    body.ipad11.ipad11Landscape #line2Wrap{display:flex;align-items:center;gap:8px;max-width:100%}
+    body.ipad11.ipad11Landscape #line2{font-size:18px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
+    body.ipad11.ipad11Landscape #line2Stars{display:inline-flex;gap:2px;align-items:center;color:#d4af37;font-size:14px;line-height:1;cursor:pointer;white-space:nowrap}
+    body.ipad11.ipad11Landscape #line2Stars .star{opacity:.3}
+    body.ipad11.ipad11Landscape #line2Stars .star.on{opacity:1}
+    body.ipad11.ipad11Landscape #line3{font-size:16px;line-height:1.18;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%;opacity:.95}
+    body.ipad11.ipad11Landscape .npCtrls{display:grid !important;grid-template-columns:repeat(2,66px);gap:11px;position:absolute;left:calc(100% + 12px);top:0;transform:none;padding:0 0 0 40px;background:transparent;border:0;backdrop-filter:none;-webkit-backdrop-filter:none;opacity:.98}
+    body.ipad11.ipad11Landscape .npCtrls .ctl{width:66px;height:66px;min-width:66px;min-height:66px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:linear-gradient(180deg,rgba(56,66,86,.96),rgba(34,42,58,.96));box-shadow:0 6px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08)}
+    body.ipad11.ipad11Landscape .npCtrls .ctl.big{width:66px;min-width:66px;height:66px;min-height:66px}
+    body.ipad11.ipad11Landscape .npCtrls .ctl svg{width:22px;height:22px}
+    body.ipad11.ipad11Landscape .npCtrls .ctlPlay.is-active,
+    body.ipad11.ipad11Landscape .npCtrls .ctlPause.is-active{color:#4ade80;border-color:rgba(74,222,128,.75);box-shadow:0 0 0 1px rgba(74,222,128,.5),0 6px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08)}
+    body.ipad11.ipad11Landscape .npCtrls .ctlPause,
+    body.ipad11.ipad11Landscape .npCtrls .ctlPlay{display:grid}
+    body.ipad11.ipad11Landscape .npCtrls .ctlToggle{display:none}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="prev"]{order:1}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="next"]{order:2}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="pause"]{order:3}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="play"]{order:4}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="repeat"]{order:5}
+    body.ipad11.ipad11Landscape .npCtrls .ctl[data-np-act="shuffle"]{order:6}
+    body.ipad11.ipad11Landscape #libraryList{margin-top:0}
+    body.ipad11.ipad11Landscape .ipadRecentGrid{display:flex !important;flex-direction:column;justify-content:space-between;gap:0;height:100%;min-height:0;overflow:hidden}
+    body.ipad11.ipad11Landscape .ipadRecentPane{padding:8px 10px;overflow:hidden;min-height:0;flex:0 0 auto}
+    body.ipad11.ipad11Landscape .ipadRecentPane:nth-child(-n+3){padding-bottom:10px}
+    body.ipad11.ipad11Landscape .ipadRecentPane .rail{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;overscroll-behavior-y:none;touch-action:pan-x}
+    body.ipad11.ipad11Landscape .ipadRecentPane .thumb{min-width:120px;width:120px}
+    body.ipad11.ipad11Landscape .ipadRecentPane .thumb img, body.ipad11.ipad11Landscape .ipadRecentPane .ph{width:120px;height:120px}
+
+    @keyframes navForwardOut{
+      from{transform:translateX(0);opacity:1}
+      to{transform:translateX(-24px);opacity:.38}
+    }
+    .navCover{position:fixed;inset:0;z-index:9999;background:var(--surface,#0b111c);transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.72,.2,1);will-change:transform}
+    .navCover.open{transform:translateX(0)}
+    .navCover iframe{width:100%;height:100%;border:0;display:block;background:var(--surface,#0b111c)}
+
   </style>
+  <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
 </head>
 <body>
-  <div>
-    <div>Routing to controller layout…</div>
-    <div class="muted">If this takes more than a second, refresh.</div>
+  <div class="kioskCtl" id="kioskCtl" style="display:none">
+    <label class="muted" for="kioskSizeSel" style="font-size:12px">Size</label>
+    <select id="kioskSizeSel">
+      <option value="controller.html?kiosk=1&edit=1">1280×400</option>
+      <option value="controller.html">Default</option>
+      <option value="controller-now-playing.html">Now Playing</option>
+    </select>
+    <button id="kioskPushBtn" type="button">Push to moOde</button>
+    <span class="stat" id="kioskPushStat"></span>
+    <span class="grow"></span>
   </div>
+  <div id="kioskCanvas">
+  <a class="npTap" data-href="controller-now-playing.html" title="Open full player">
+    <div class="card">
+      <div class="title">Now Playing on moOde</div>
+      <div class="np">
+        <div class="artWrap" id="npArtWrap" aria-label="Album art (tap to flip)">
+          <div class="artFlip" id="npArtFlip">
+            <div class="artFace artFaceFront">
+              <img id="art" src="" alt="" />
+              <button type="button" class="artHint artHintInfo" id="npFlipInfoBtn" aria-label="Show personnel">i</button>
+              <span class="artSpin" id="npArtSpin" aria-hidden="true"></span>
+              <span class="eq" id="eqOverlay" aria-hidden="true"><b></b><b></b><b></b></span>
+            </div>
+            <div class="artFace artFaceBack" id="npArtBack">
+              <div class="personnelCard">
+                <div class="personnelTitle">Personnel</div>
+                <div class="personnelBody" id="npPersonnelBody">No personnel available for this track.</div>
+              </div>
+            </div>
+          </div>
+          <div class="npCtrls" id="npCtrls" aria-label="Playback controls">
+            <button type="button" class="ctl" data-np-act="repeat" aria-label="Repeat" title="Repeat">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 17H7v-3l-4 4 4 4v-3h10a4 4 0 004-4v-6h-2v6a2 2 0 01-2 2zM7 7h10v3l4-4-4-4v3H7a4 4 0 00-4 4v6h2V9a2 2 0 012-2z"/></svg>
+            </button>
+            <button type="button" class="ctl" data-np-act="prev" aria-label="Previous" title="Previous">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6V5zm3.5 7 10-7v14l-10-7z"/></svg>
+            </button>
+            <button type="button" class="ctl big ctlToggle" data-np-act="toggle" aria-label="Play/Pause" title="Play/Pause">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path id="npPlayIcon" d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button type="button" class="ctl" data-np-act="next" aria-label="Next" title="Next">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2V5zM4.5 19V5l10 7-10 7z"/></svg>
+            </button>
+            <button type="button" class="ctl ctlPause" data-np-act="pause" aria-label="Pause" title="Pause">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zM13 5h3v14h-3z"/></svg>
+            </button>
+            <button type="button" class="ctl ctlPlay" data-np-act="play" aria-label="Play" title="Play">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button type="button" class="ctl" data-np-act="shuffle" aria-label="Shuffle" title="Shuffle">
+              <svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M24.414,16.586L30.828,23l-6.414,6.414l-2.828-2.828L23.172,25H22c-3.924,0-6.334-2.289-8.173-4.747c0.987-1.097,1.799-2.285,2.516-3.36C18.109,19.46,19.521,21,22,21h1.172l-1.586-1.586L24.414,16.586z M22,11h1.172l-1.586,1.586l2.828,2.828L30.828,9l-6.414-6.414l-2.828,2.828L23.172,7H22c-5.07,0-7.617,3.82-9.664,6.891C10.224,17.059,8.788,19,6,19H2v4h4c5.07,0,7.617-3.82,9.664-6.891C17.776,12.941,19.212,11,22,11z M10.212,15.191c0.399-0.539,1.957-2.848,2.322-3.365C10.917,10.216,8.86,9,6,9H2v4h4C7.779,13,9.007,13.797,10.212,15.191z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="npMeta">
+          <div id="line1"></div>
+          <div id="line2Wrap" class="muted"><span id="line2"></span><span id="line2Stars" aria-label="Track rating"></span></div>
+          <div id="line3" class="muted"></div>
+        </div>
+      </div>
+    </div>
+  </a>
+
+  <div class="quickWrap">
+    <span class="quickIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 2a8 8 0 1 0 5.293 14.293l4.207 4.207 1.414-1.414-4.207-4.207A8 8 0 0 0 10 2zm0 2a6 6 0 1 1 0 12a6 6 0 0 1 0-12z"/></svg></span>
+    <input id="homeQuickSearch" class="quickIn" placeholder="Quick Search: artist, album, playlist…" autocomplete="off" />
+    <button type="button" id="homeQuickKb" class="quickKb" aria-label="Show keyboard">⌨</button>
+    <button type="button" id="homeQuickClear" class="quickClear" aria-label="Clear search">×</button>
+    <div id="homeQuickResults" class="quickMenu"></div>
+  </div>
+
+  <ul class="list" id="libraryList">
+    <li class="row" data-page="kiosk-playlists.html"><span class="ico">♫</span><span class="lbl">Playlists</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-artists.html"><span class="ico ico-mic" aria-hidden="true"></span><span class="lbl">Artists</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-albums.html"><span class="ico ico-album" aria-hidden="true"></span><span class="lbl">Albums</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-genres.html"><span class="ico ico-genre" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10V4h6l12 12l-6 6L3 10zm4-2.5A1.5 1.5 0 1 0 7 10.5A1.5 1.5 0 0 0 7 7.5z"/></svg></span><span class="lbl">Genres</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-podcasts.html"><span class="ico ico-podcast"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11.5a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 0 0 0-3.4zm0-4.7a6.4 6.4 0 0 0-6.4 6.4h2.2a4.2 4.2 0 1 1 8.4 0h2.2A6.4 6.4 0 0 0 12 6.8zm0-3.6A10 10 0 0 0 2 13.2h2.2a7.8 7.8 0 0 1 15.6 0H22A10 10 0 0 0 12 3.2zM11 17h2v3h-2z"/></svg></span><span class="lbl">Podcasts</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-radio.html"><span class="ico ico-radio" aria-hidden="true"></span><span class="lbl">Radio</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-queue-wizard.html"><span class="ico ico-queuewiz" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19l10.6-10.6l1.4 1.4L6.4 20.4L5 19zm9.8-13.2l1.1-2.8l1.1 2.8l2.8 1.1l-2.8 1.1l-1.1 2.8l-1.1-2.8L12 6.9l2.8-1.1zM20 12l.8-2l.8 2l2 .8l-2 .8l-.8 2l-.8-2l-2-.8l2-.8zM10 3l.6-1.5L11.2 3l1.5.6l-1.5.6L10.6 5.8L10 4.2L8.5 3.6L10 3z"/></svg></span><span class="lbl">Queue Wizard</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-visualizer.html"><span class="ico">◉</span><span class="lbl">Visualizer</span><span class="chev">›</span></li>
+  </ul>
+
+  <div class="recentWrap">
+    <button type="button" class="railModeBtn" id="railModeBtn" aria-label="Switch recent rail source">
+      <span class="railModeDots" aria-hidden="true"><b data-rdot="albums"></b><b data-rdot="podcasts"></b><b data-rdot="playlists"></b><b data-rdot="radio"></b></span>
+    </button>
+    <div class="recentTitle" id="recentTitle">Recently Added <span id="railTitleSpin" class="titleSpin" hidden></span></div>
+    <div class="rail" id="recentRail"></div>
+    <div class="rail peekRail" id="recentPeekRail"></div>
+    <div class="ipadRecentGrid" id="ipadRecentGrid" hidden>
+      <section class="ipadRecentPane"><h4>Recent Albums</h4><div class="rail" id="ipadRailAlbums"></div></section>
+      <section class="ipadRecentPane"><h4>Recent Podcasts</h4><div class="rail" id="ipadRailPodcasts"></div></section>
+      <section class="ipadRecentPane"><h4>Recent Playlists</h4><div class="rail" id="ipadRailPlaylists"></div></section>
+      <section class="ipadRecentPane"><h4>Favorite Radio</h4><div class="rail" id="ipadRailRadio"></div></section>
+    </div>
+    <div class="kPane" id="kioskPane" aria-hidden="true">
+      <iframe class="kPaneIf" id="kioskPaneFrame" src="about:blank" loading="eager"></iframe>
+    </div>
+  </div>
+
+  <div class="miniMenu" id="recentAlbumMenu">
+    <button data-ra-act="open" id="raOpenBtn">Open</button>
+    <button data-ra-act="play" id="raPlayBtn">Play</button>
+    <button data-ra-act="shuffle" id="raThirdBtn">Play Shuffled</button>
+  </div>
+
+  <div class="albumModal" id="recentAlbumModal" aria-hidden="true">
+    <div class="albumCard" role="dialog" aria-modal="true" aria-label="Album details">
+      <button id="recentAlbumCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
+      <div class="albumHead"><img id="recentAlbumArt" src="" alt="" /><div><div class="albumTitle" id="recentAlbumTitle">Album</div><div class="albumMeta" id="recentAlbumMeta"></div></div></div>
+      <div class="albumBtns">
+        <button id="recentAlbumAppendBtn" type="button">Append album</button>
+        <button id="recentAlbumCropBtn" type="button">Add album (crop)</button>
+        <button id="recentAlbumReplaceBtn" type="button">Replace with album</button>
+        
+      </div>
+      <ul class="albumTracks" id="recentAlbumTracks"></ul>
+    </div>
+  </div>
+
   <script>
-    (function(){
-      try {
-        const u = new URL(location.href);
-        const force = String(u.searchParams.get('layout') || u.searchParams.get('devicePreset') || '').toLowerCase();
-        const w = Math.max(0, Number(window.innerWidth || 0));
-        const h = Math.max(0, Number(window.innerHeight || 0));
-        const shortSide = Math.min(w, h);
-        const ua = String(navigator.userAgent || '').toLowerCase();
-        const isIpadUA = /ipad/.test(ua);
-        const isIpadDesktopMode = /macintosh/.test(ua) && Number(navigator.maxTouchPoints || 0) > 1;
-        const isTabletViewport = shortSide >= 760;
-        const isIpadLike = isIpadUA || isIpadDesktopMode || isTabletViewport;
-
-        const target = (force.includes('ipad') || force === 'landscape' || (force === '' && isIpadLike))
-          ? 'controller-ipad.html?devicePreset=ipadpro11-landscape'
-          : 'controller-iphone.html?devicePreset=iphone17';
-
-        u.pathname = u.pathname.replace(/\/controller\.html$/i, '/' + target);
-        location.replace(u.toString());
-      } catch {
-        location.replace('controller-ipad.html');
+    const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v1';
+    const MOBILE_DEFAULT_PROFILE={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18};
+    const __u = new URL(location.href);
+    const IS_PREVIEW = __u.searchParams.get('preview') === '1';
+    const Q_DEVICE_PRESET = String(__u.searchParams.get('devicePreset') || '').trim().toLowerCase();
+    const FORCE_PROFILE_SYNC = __u.searchParams.get('syncProfile') === '1';
+    const IS_PHONE_VIEW = Math.min(Number(window.innerWidth||0), Number(window.innerHeight||0)) > 0
+      ? Math.min(Number(window.innerWidth||0), Number(window.innerHeight||0)) <= 900
+      : /iphone|android/i.test(String(navigator.userAgent||''));
+    const USE_LOCAL_PROFILE_ONLY = IS_PHONE_VIEW && !FORCE_PROFILE_SYNC;
+    const IS_KIOSK_1280 = (__u.searchParams.get('kiosk') === '1' || __u.searchParams.get('profile') === '1280x400' || __u.searchParams.get('layout') === '1280x400');
+    const IS_KIOSK_EDITOR = IS_KIOSK_1280 && (__u.searchParams.get('edit') === '1' || __u.searchParams.get('designer') === '1');
+    if (IS_KIOSK_1280) {
+      try { document.body.classList.add('kiosk1280'); } catch {}
+      if (IS_KIOSK_EDITOR) { try { document.body.classList.add('kioskEditor'); } catch {} }
+    }
+    function parseProfile(){
+      const u=new URL(location.href); const p=u.searchParams.get('profile');
+      if (p){
+        try {
+          const parsed = JSON.parse(decodeURIComponent(escape(atob(p))));
+          const merged = {...MOBILE_DEFAULT_PROFILE, ...(parsed||{})};
+          try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(merged)); } catch {}
+          return merged;
+        } catch {}
       }
+      try {
+        const fromLocal = JSON.parse(localStorage.getItem(MOBILE_PROFILE_KEY)||'{}');
+        return {...MOBILE_DEFAULT_PROFILE, ...(fromLocal||{})};
+      } catch {
+        return {...MOBILE_DEFAULT_PROFILE};
+      }
+    }
+    let profile=parseProfile();
+
+    function decodeHtmlEntities(input){
+      const s = String(input ?? '');
+      if (!s || !/[&][a-zA-Z#0-9]+;/.test(s)) return s;
+      try {
+        const t = document.createElement('textarea');
+        t.innerHTML = s;
+        return t.value;
+      } catch {
+        return s;
+      }
+    }
+    // Allow URL-driven overrides (kiosk designer preview/push)
+    {
+      const qDevicePreset = Q_DEVICE_PRESET;
+      const qTheme = String(__u.searchParams.get('theme') || '').trim().toLowerCase();
+      const qColor = String(__u.searchParams.get('colorPreset') || '').trim().toLowerCase();
+      const qRecent = String(__u.searchParams.get('recentSource') || '').trim().toLowerCase();
+      const qPrimary = String(__u.searchParams.get('primaryThemeColor') || '').trim();
+      const qSecondary = String(__u.searchParams.get('secondaryThemeColor') || '').trim();
+      const qText = String(__u.searchParams.get('primaryTextColor') || '').trim();
+      const qTextSecondary = String(__u.searchParams.get('secondaryTextColor') || '').trim();
+      if (qDevicePreset) profile.devicePreset = qDevicePreset;
+      if (qTheme) profile.theme = qTheme;
+      if (qColor) profile.colorPreset = qColor;
+      if (qRecent) profile.recentSource = qRecent;
+      if (qPrimary || qSecondary || qText || qTextSecondary) {
+        profile.customColors = {
+          ...(profile.customColors || {}),
+          ...(qPrimary ? { primaryThemeColor: qPrimary } : {}),
+          ...(qSecondary ? { secondaryThemeColor: qSecondary } : {}),
+          ...(qText ? { primaryTextColor: qText } : {}),
+          ...(qTextSecondary ? { secondaryTextColor: qTextSecondary } : {}),
+        };
+      }
+      if (USE_LOCAL_PROFILE_ONLY && !qDevicePreset) {
+        const cur = String(profile?.devicePreset || '').toLowerCase();
+        if (!cur.startsWith('iphone')) profile.devicePreset = 'iphone17';
+      }
+      // Persist effective profile so embedded controller subpages match theme/palette.
+      try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile)); } catch {}
+    }
+    function applyDevicePresetUi(){
+      const preset = String(profile?.devicePreset || 'iphone17').toLowerCase();
+      const isPortrait = preset === 'ipadpro11';
+      const isLandscape = preset === 'ipadpro11-landscape';
+      document.body.classList.toggle('ipad11', isPortrait || isLandscape);
+      document.body.classList.toggle('ipad11Landscape', isLandscape);
+    }
+
+    function applyProfileUi(){
+      applyDevicePresetUi();
+      const show = profile.showRecent !== false;
+      const src = String(profile.recentSource || 'albums').toLowerCase();
+      const titleBySrc = { albums:'Recently Added', podcasts:'Recent Podcasts', playlists:'Recent Playlists', radio:'Favorite Radio Stations' };
+      const rt = document.getElementById('recentTitle');
+      if (rt) rt.innerHTML = `${titleBySrc[src] || 'Recently Added'} <span id="railTitleSpin" class="titleSpin" hidden></span>`;
+      const isIpad11 = document.body.classList.contains('ipad11');
+      const ipadGrid = document.getElementById('ipadRecentGrid');
+      if (ipadGrid) ipadGrid.hidden = !(show && isIpad11);
+      document.getElementById('recentTitle').style.display=(show && !isIpad11)?'':'none';
+      document.getElementById('recentRail').style.display=(show && !isIpad11)?'':'none';
+      const btn = document.getElementById('railModeBtn');
+      if (btn) btn.style.display = (show && !isIpad11) ? '' : 'none';
+      document.querySelectorAll('#railModeBtn [data-rdot]').forEach((d)=>{
+        d.classList.toggle('on', String(d.getAttribute('data-rdot')||'') === src);
+      });
+      applyPalette(profile.colorPreset || 'ocean', profile.theme || 'auto', profile.customColors || null);
+    }
+
+    async function persistControllerProfile(){
+      try {
+        localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile));
+      } catch {}
+      if (USE_LOCAL_PROFILE_ONLY) return;
+      try {
+        await ensureKey();
+        await fetch(`${base}/config/controller-profile`, {
+          method:'POST',
+          headers:reqHeaders(true),
+          body: JSON.stringify({ profile })
+        });
+      } catch {}
+    }
+
+    function nextRecentSource(step=1){
+      const order = ['albums','podcasts','playlists','radio'];
+      const cur = String(profile?.recentSource || 'albums').toLowerCase();
+      const idx = Math.max(0, order.indexOf(cur));
+      return order[(idx + (step>=0?1:-1) + order.length) % order.length];
+    }
+    function cycleRecentSource(step=1){
+      const next = nextRecentSource(step);
+      profile = { ...(profile||{}), recentSource: next, showRecent: true };
+      applyProfileUi();
+      loadRecentlyAdded().catch(()=>null);
+      persistControllerProfile().catch(()=>null);
+    }
+    function renderPeekRow(step=1){
+      if (!peekRail) return;
+      const target = nextRecentSource(step);
+      const label = ({albums:'Albums',podcasts:'Podcasts',playlists:'Playlists',radio:'Radio'})[target] || 'Next';
+      peekRail.innerHTML = '';
+      for (let i=0;i<Math.min(recentLimit(),6);i++) {
+        const d=document.createElement('div'); d.className='thumb';
+        d.innerHTML = `<div class='thumbWrap'><div class='ph'></div></div><div class='cap'>${label}</div>`;
+        peekRail.appendChild(d);
+      }
+    }
+    applyProfileUi();
+
+    window.addEventListener('message', (ev)=>{
+      try {
+        const d = ev?.data || {};
+        if (d?.type !== 'np-live-theme-update') return;
+        const cc = d?.customColors && typeof d.customColors === 'object' ? d.customColors : null;
+        if (!cc) return;
+        profile = { ...(profile||{}), customColors: { ...(profile?.customColors||{}), ...cc } };
+        applyProfileUi();
+      } catch {}
+    });
+
+    function applyPalette(name, themeMode, customColors){
+      const p = String(name||'ocean').toLowerCase();
+      const modeRaw = String(themeMode||'auto').toLowerCase();
+      const isLight = modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
+      const map = {
+        ocean:    { accent:'#4aa8ff', surface:'#0b111c', line:'#1f2a3d', quickBg:'#121c30', quickBgMenu:'rgba(10,16,28,.94)' },
+        violet:   { accent:'#a78bfa', surface:'#120f1f', line:'#32284a', quickBg:'#1a1330', quickBgMenu:'rgba(23,16,38,.94)' },
+        mint:     { accent:'#34d399', surface:'#0b1514', line:'#21423f', quickBg:'#112421', quickBgMenu:'rgba(14,34,30,.94)' },
+        amber:    { accent:'#fbbf24', surface:'#171208', line:'#4a3720', quickBg:'#2a1f12', quickBgMenu:'rgba(34,25,14,.94)' },
+        black:    { accent:'#f5f5f5', surface:'#050505', line:'#222222', quickBg:'#0e0e0e', quickBgMenu:'rgba(8,8,8,.94)' },
+        orange:   { accent:'#ff7a1a', surface:'#16100a', line:'#4a2f1c', quickBg:'#24180f', quickBgMenu:'rgba(30,18,10,.94)' },
+        midnight: { accent:'#7aa2ff', surface:'#070b14', line:'#202a3f', quickBg:'#0d1322', quickBgMenu:'rgba(8,12,20,.94)' },
+        slate:    { accent:'#93a4bd', surface:'#0e131b', line:'#2f3c4d', quickBg:'#151d2a', quickBgMenu:'rgba(14,19,27,.94)' },
+        mono:     { accent:'#d8d8d8', surface:'#0b0b0b', line:'#2d2d2d', quickBg:'#141414', quickBgMenu:'rgba(12,12,12,.94)' },
+        sunset:   { accent:'#ff8f4d', surface:'#1b110d', line:'#5b3a2d', quickBg:'#2a1914', quickBgMenu:'rgba(36,22,16,.94)' },
+        sunrise:  { accent:'#ffbf47', surface:'#1a130a', line:'#5a4523', quickBg:'#2a2011', quickBgMenu:'rgba(34,26,14,.94)' },
+        rose:     { accent:'#fb7185', surface:'#1a0d14', line:'#5b2b3f', quickBg:'#2a1320', quickBgMenu:'rgba(34,16,26,.94)' },
+        lavender: { accent:'#c4b5fd', surface:'#120d1e', line:'#3d3158', quickBg:'#1b1430', quickBgMenu:'rgba(24,17,38,.94)' },
+        emerald:  { accent:'#34d399', surface:'#081511', line:'#1f4a3e', quickBg:'#0f241d', quickBgMenu:'rgba(12,34,28,.94)' },
+        forest:   { accent:'#4ade80', surface:'#0a150d', line:'#2d4f36', quickBg:'#132318', quickBgMenu:'rgba(14,31,20,.94)' },
+      };
+      const d = map[p] || map.ocean;
+      const lightMap = {
+        ocean:    { surface:'#eef5ff', line:'#c8d7ee', quickBg:'#f8fbff', quickBgMenu:'rgba(248,251,255,.96)', text:'#0b0f17', muted:'#3f5673' },
+        violet:   { surface:'#f5f0ff', line:'#d9cdf1', quickBg:'#fcf9ff', quickBgMenu:'rgba(252,249,255,.96)', text:'#0b0f17', muted:'#52436e' },
+        mint:     { surface:'#eefcf7', line:'#c7e8dd', quickBg:'#f8fffc', quickBgMenu:'rgba(248,255,252,.96)', text:'#0b0f17', muted:'#3d5f58' },
+        amber:    { surface:'#fff8ea', line:'#ead8b0', quickBg:'#fffdf6', quickBgMenu:'rgba(255,253,246,.96)', text:'#0b0f17', muted:'#65532e' },
+        black:    { surface:'#f2f4f8', line:'#d4dae4', quickBg:'#fafbfe', quickBgMenu:'rgba(250,251,254,.96)', text:'#0b0f17', muted:'#4b5567' },
+        orange:   { surface:'#fff3ea', line:'#ebcfbe', quickBg:'#fffaf6', quickBgMenu:'rgba(255,250,246,.96)', text:'#0b0f17', muted:'#684937' },
+        midnight: { surface:'#edf2ff', line:'#cbd5f1', quickBg:'#f7f9ff', quickBgMenu:'rgba(247,249,255,.96)', text:'#0b0f17', muted:'#415172' },
+        slate:    { surface:'#f1f5f9', line:'#d0d8e2', quickBg:'#f8fafc', quickBgMenu:'rgba(248,250,252,.96)', text:'#0b0f17', muted:'#4a5567' },
+        mono:     { surface:'#f4f4f5', line:'#dadade', quickBg:'#fafafa', quickBgMenu:'rgba(250,250,250,.96)', text:'#0b0f17', muted:'#52525b' },
+        sunset:   { surface:'#fff4ee', line:'#efd0c2', quickBg:'#fffaf7', quickBgMenu:'rgba(255,250,247,.96)', text:'#0b0f17', muted:'#6b4d3e' },
+        sunrise:  { surface:'#fff7ea', line:'#ecd7b0', quickBg:'#fffdf5', quickBgMenu:'rgba(255,253,245,.96)', text:'#0b0f17', muted:'#6a572f' },
+        rose:     { surface:'#fff1f5', line:'#f2cdd8', quickBg:'#fff8fa', quickBgMenu:'rgba(255,248,250,.96)', text:'#0b0f17', muted:'#6f4454' },
+        lavender: { surface:'#f6f3ff', line:'#ddd3fb', quickBg:'#fcfbff', quickBgMenu:'rgba(252,251,255,.96)', text:'#0b0f17', muted:'#534675' },
+        emerald:  { surface:'#ecfdf5', line:'#c7e9d8', quickBg:'#f7fffb', quickBgMenu:'rgba(247,255,251,.96)', text:'#0b0f17', muted:'#3f6257' },
+        forest:   { surface:'#eef9f0', line:'#cde3d0', quickBg:'#f8fdf9', quickBgMenu:'rgba(248,253,249,.96)', text:'#0b0f17', muted:'#44614a' },
+      };
+      const l = lightMap[p] || lightMap.ocean;
+      const blendHex = (base, tint, ratio=0.10)=>{
+        const b = String(base||'').trim().match(/^#([0-9a-f]{6})$/i);
+        const t = String(tint||'').trim().match(/^#([0-9a-f]{6})$/i);
+        if (!b || !t) return base;
+        const bn = parseInt(b[1],16), tn = parseInt(t[1],16);
+        let br=(bn>>16)&255, bg=(bn>>8)&255, bb=bn&255;
+        const tr=(tn>>16)&255, tg=(tn>>8)&255, tb=tn&255;
+        const k = Math.max(0, Math.min(1, ratio));
+        br = Math.round(br + (tr-br)*k);
+        bg = Math.round(bg + (tg-bg)*k);
+        bb = Math.round(bb + (tb-bb)*k);
+        return `#${br.toString(16).padStart(2,'0')}${bg.toString(16).padStart(2,'0')}${bb.toString(16).padStart(2,'0')}`;
+      };
+      const accent = (l.accent || d.accent);
+      const t = isLight
+        ? {
+            accent,
+            ...l,
+            surface: blendHex(l.surface, accent, 0.20),
+            quickBg: blendHex(l.quickBg, accent, 0.20),
+          }
+        : { ...d, text:'#f3f6ff', muted:'#9eb3d6' };
+      const hex = (v)=>/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim()) ? String(v).trim() : '';
+      const cc = customColors && typeof customColors === 'object' ? customColors : {};
+      const cPrimary = hex(cc.primaryThemeColor);
+      const cSecondary = hex(cc.secondaryThemeColor);
+      const cText = hex(cc.primaryTextColor);
+      const cText2 = hex(cc.secondaryTextColor);
+
+      const r = document.documentElement;
+      r.style.setProperty('--accent', t.accent);
+      r.style.setProperty('--surface', cPrimary || t.surface);
+      r.style.setProperty('--line', cSecondary || t.line);
+      r.style.setProperty('--icon', cSecondary || t.line);
+      r.style.setProperty('--text', cText || t.text || '#f3f6ff');
+      r.style.setProperty('--muted', cText2 || t.muted || '#9eb3d6');
+      r.style.setProperty('--quick-bg', cSecondary || t.quickBg || '#121c30');
+      r.style.setProperty('--quick-line', cSecondary || t.line || '#2a3a58');
+      r.style.setProperty('--quick-bg-menu', t.quickBgMenu || 'rgba(10,16,28,.94)');
+    }
+    const base=`${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    let runtimeTrackKey='';
+    let runtimeMoodeHost='10.0.0.254';
+    let quickIndex=[];
+    async function ensureKey(){
+      if (runtimeTrackKey) return runtimeTrackKey;
+      try {
+        const r=await fetch(`${base}/config/runtime`,{cache:'no-store'});
+        const j=await r.json().catch(()=>({}));
+        runtimeTrackKey = String(j?.config?.trackKey||'').trim();
+        runtimeMoodeHost = String(j?.config?.mpd?.host || j?.config?.nodes?.moode || j?.config?.mpd?.hostname || runtimeMoodeHost).trim() || runtimeMoodeHost;
+      } catch {}
+      return runtimeTrackKey;
+    }
+    function reqHeaders(json=true){ return Object.assign({}, json?{'Content-Type':'application/json'}:{}, runtimeTrackKey?{'x-track-key':runtimeTrackKey}:{}); }
+
+    function initKioskControls(){
+      if (!IS_KIOSK_EDITOR) return;
+      const box = document.getElementById('kioskCtl');
+      const sel = document.getElementById('kioskSizeSel');
+      const btn = document.getElementById('kioskPushBtn');
+      const stat = document.getElementById('kioskPushStat');
+      if (box) box.style.display = 'flex';
+      if (sel) {
+        const cur = `${location.pathname.split('/').pop()}${location.search||''}`;
+        const hit = [...sel.options].find((o)=>String(o.value||'').trim()===cur);
+        if (hit) sel.value = hit.value;
+        sel.addEventListener('change', ()=>{
+          const rel = String(sel.value||'').trim();
+          if (!rel) return;
+          location.href = rel.startsWith('http') ? rel : rel;
+        });
+      }
+      btn?.addEventListener('click', async ()=>{
+        try {
+          btn.disabled = true;
+          btn.textContent = 'Pushing…';
+          await ensureKey();
+          const relRaw = String(sel?.value || 'controller.html?kiosk=1').trim().replace(/^\/+/, '');
+          const relUrl = new URL(relRaw, 'http://x.local/');
+          // Mirror current designer profile styling on pushed display URL.
+          relUrl.searchParams.set('theme', String(profile.theme || 'auto'));
+          relUrl.searchParams.set('colorPreset', String(profile.colorPreset || 'ocean'));
+          relUrl.searchParams.set('recentSource', String(profile.recentSource || 'albums'));
+          relUrl.searchParams.delete('edit');
+          relUrl.searchParams.delete('designer');
+          if (IS_KIOSK_1280) relUrl.searchParams.set('kiosk', '1');
+          const rel = `${relUrl.pathname.replace(/^\//,'')}${relUrl.search}`;
+
+          const webHost = String(location.hostname || '10.0.0.4').trim();
+          const url = `http://${webHost}:8101/${rel}`;
+          const r = await fetch(`${base}/config/moode/browser-url`, {
+            method:'POST', headers:reqHeaders(true), body:JSON.stringify({ url, reason:'kiosk-controls-push' })
+          });
+          const j = await r.json().catch(()=>({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          if (stat) stat.textContent = `Pushed ${url}`;
+        } catch(e) {
+          if (stat) stat.textContent = `Push failed: ${e?.message || e}`;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Push to moOde';
+        }
+      });
+    }
+
+    async function fetchJsonWithTimeout(url, options={}, timeoutMs=3500){
+      const ctl = new AbortController();
+      const to = setTimeout(()=>{ try{ ctl.abort(); }catch{} }, timeoutMs);
+      try {
+        const r = await fetch(url, { ...(options||{}), signal: ctl.signal });
+        const j = await r.json().catch(()=>({}));
+        return { ok: r.ok, json: j, status: r.status };
+      } catch {
+        return { ok:false, json:{}, status:0 };
+      } finally {
+        clearTimeout(to);
+      }
+    }
+
+    async function loadServerProfile(){
+      if (IS_PREVIEW || USE_LOCAL_PROFILE_ONLY) return; // preview/phone-local mode should not pull shared profile
+      try {
+        const r = await fetch(`${base}/config/controller-profile`, { cache:'no-store' });
+        const j = await r.json().catch(()=>({}));
+        if (r.ok && j?.ok && j?.profile) {
+          const existing = profile || {};
+          profile = { ...MOBILE_DEFAULT_PROFILE, ...existing, ...j.profile, recentSource: (j?.profile?.recentSource ?? existing?.recentSource ?? MOBILE_DEFAULT_PROFILE.recentSource) };
+          try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile)); } catch {}
+          applyProfileUi();
+          loadRecentlyAdded().catch(()=>null);
+        }
+      } catch {}
+    }
+
+    let npSig='';
+    let npAlbumUrl='';
+    let npRating = 0;
+    let npRatingAllowed = false;
+    let npPersonnelText = '';
+    const setArtFlip = (flipped = false)=>{
+      const wrap = document.getElementById('npArtWrap');
+      if (!wrap) return;
+      wrap.classList.toggle('is-flipped', !!flipped);
+      wrap.setAttribute('aria-pressed', flipped ? 'true' : 'false');
+    };
+    const renderPersonnelBack = (text = '')=>{
+      const el = document.getElementById('npPersonnelBody');
+      if (!el) return;
+      const out = String(text || '').trim();
+      el.textContent = out || 'No personnel available for this track.';
+    };
+    const renderLine2Stars = ()=>{
+      const el = document.getElementById('line2Stars');
+      if (!el) return;
+      el.innerHTML = '';
+      if (!npRatingAllowed || !document.body.classList.contains('ipad11Landscape')) return;
+      const r = Math.max(0, Math.min(5, Number(npRating) || 0));
+      for (let i=1;i<=5;i++) {
+        const s = document.createElement('span');
+        s.className = `star${i<=r?' on':''}`;
+        s.setAttribute('data-star', String(i));
+        s.textContent = '★';
+        el.appendChild(s);
+      }
+    };
+    async function refreshNowPlayingCard(){
+      try {
+        const r = await fetch(`${base}/now-playing`,{cache:'no-store'});
+        const j = await r.json().catch(()=>({}));
+
+        const artist = decodeHtmlEntities(String(j?.artist || '')).trim();
+        const title = decodeHtmlEntities(String(j?.title || '')).trim();
+        const album = decodeHtmlEntities(String(j?.album || '')).trim();
+        const file = String(j?.file || '').trim();
+        const st = String(j?.state || '').toLowerCase();
+        const hasTrack = !!(title || artist || file);
+
+        let dispArtist = decodeHtmlEntities(String(j?.displayArtist || artist || '')).trim();
+        let dispTitle = decodeHtmlEntities(String(j?.displayTitle || title || '')).trim();
+        let dispLine3 = decodeHtmlEntities(String(j?.displayLine3 || '')).trim();
+
+        if (!dispArtist && dispTitle) {
+          const raw = String(dispTitle || '').trim();
+          const m = raw.match(/^([^\-•|]+)\s*[\-•|]\s*(.+)$/);
+          if (m) {
+            dispArtist = String(m[1] || '').trim();
+            dispTitle = String(m[2] || '').trim();
+          }
+        }
+
+        const pickYear = (v) => {
+          const s = String(v || '').trim();
+          if (!s) return '';
+          const m = s.match(/\b(19|20)\d{2}\b/);
+          return m ? m[0] : '';
+        };
+        const year = pickYear(j?.radioYear) || pickYear(j?.year) || pickYear(j?.radioDate) || pickYear(j?.date) || pickYear(j?.displayLine3) || '';
+
+        const line1 = hasTrack
+          ? (dispArtist || artist || title || '(unknown artist)')
+          : 'Queue is empty';
+        const line2 = hasTrack
+          ? (dispTitle || title || '(unknown track)')
+          : 'Use Queue Wizard or Recently Added to start music';
+        const baseLine3 = hasTrack
+          ? (dispLine3 || String(album || '').trim() || '')
+          : '';
+        const hasYearAlready = /\(\s*(19|20)\d{2}\s*\)/.test(baseLine3) || /\b(19|20)\d{2}\b/.test(baseLine3);
+        const line3 = hasTrack
+          ? ((baseLine3 + ((year && !hasYearAlready) ? ` (${year})` : '')).trim())
+          : '';
+
+        const art = hasTrack
+          ? (String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`)
+          : `/icons/icon-192.png`;
+
+        const appleMusicUrl = String(j?.radioAppleMusicUrl || j?.appleMusicUrl || '').trim();
+        const fallbackUrl = String(j?.shareUrl || j?.radioTrackUrl || j?.radioItunesUrl || j?.itunesUrl || '').trim();
+        npAlbumUrl = hasTrack ? (appleMusicUrl || fallbackUrl) : '';
+
+        const genreLc = String(j?.genre || '').toLowerCase();
+        const fileLc = String(file || '').toLowerCase();
+        const isPodcast = !!j?.isPodcast || genreLc.includes('podcast') || /\/podcasts?\//.test(fileLc);
+        const isRadio = !!j?.isRadio || String(j?.service || '').toLowerCase().includes('radio') || !!j?.radioTrackUrl;
+        const isAirplay = !!j?.isAirplay;
+        const isUpnp = !!j?.isUpnp;
+        const isStream = !!j?.isStream;
+        const isLocalTrack = !!(hasTrack && file && !isPodcast && !isRadio && !isAirplay && !isUpnp && !isStream);
+        npRatingAllowed = isLocalTrack;
+        npRating = Math.max(0, Math.min(5, Number(j?.rating ?? j?.currentRating ?? 0) || 0));
+
+        const personnelList = Array.isArray(j?.personnel) ? j.personnel.map((x)=>String(x||'').trim()).filter(Boolean) : [];
+        const radioPerf = String(j?.radioPerformers || '').trim();
+        npPersonnelText = personnelList.length ? personnelList.join('\n') : (radioPerf || '');
+
+        const sig = `${file}|${line1}|${line2}|${line3}|${st}|${art}|${npAlbumUrl}|${npRating}|${npRatingAllowed ? 1 : 0}|${npPersonnelText}`;
+        if (sig !== npSig) {
+          npSig = sig;
+          setArtFlip(false);
+          renderPersonnelBack(npPersonnelText);
+          const artEl = document.getElementById('art');
+          const spinEl = document.getElementById('npArtSpin');
+          if (artEl) {
+            if (spinEl) spinEl.hidden = false;
+            artEl.onload = ()=>{ if (spinEl) spinEl.hidden = true; };
+            artEl.onerror = ()=>{ if (spinEl) spinEl.hidden = true; artEl.src = '/icons/icon-192.png'; };
+            artEl.src = art;
+          }
+          document.getElementById('line1').textContent = line1;
+          document.getElementById('line2').textContent = line2;
+          renderLine2Stars();
+          const line3El = document.getElementById('line3');
+          if (line3El) {
+            line3El.textContent = line3;
+            if (line3 && npAlbumUrl) {
+              const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+              icon.setAttribute('class', 'share-icon');
+              icon.setAttribute('viewBox', '0 0 24 24');
+              icon.setAttribute('aria-hidden', 'true');
+              icon.setAttribute('focusable', 'false');
+              const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+              path.setAttribute('d', 'M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3.27 3.27 0 000-1.39l7.02-4.11A2.99 2.99 0 0018 7.91a3 3 0 10-3-3c0 .23.03.45.08.66L8.06 9.68a3 3 0 100 4.65l7.02 4.11c-.05.2-.08.41-.08.63a3 3 0 103-3z');
+              icon.appendChild(path);
+              line3El.appendChild(icon);
+              line3El.classList.add('linkable');
+            } else {
+              line3El.classList.remove('linkable');
+            }
+            line3El.style.display = line3 ? '' : 'none';
+          }
+        }
+        renderLine2Stars();
+        const eq = document.getElementById('eqOverlay');
+        if (eq) eq.style.display = (hasTrack && (st === 'play' || st === 'playing')) ? 'inline-flex' : 'none';
+        const shOn = String(j?.random || '').toLowerCase() === 'on';
+        const rpOn = String(j?.repeat || '').toLowerCase() === 'on';
+        const isPlaying = (st === 'play' || st === 'playing');
+        const icon = document.getElementById('npPlayIcon');
+        if (icon) icon.setAttribute('d', isPlaying ? 'M8 5h3v14H8zM13 5h3v14h-3z' : 'M8 5v14l11-7z');
+        document.querySelectorAll('#npCtrls .ctl[data-np-act="shuffle"]').forEach((b)=>b.classList.toggle('on', shOn));
+        document.querySelectorAll('#npCtrls .ctl[data-np-act="repeat"]').forEach((b)=>b.classList.toggle('on', rpOn));
+        document.querySelectorAll('#npCtrls .ctlPlay').forEach((b)=>b.classList.toggle('is-active', isPlaying));
+        document.querySelectorAll('#npCtrls .ctlPause').forEach((b)=>b.classList.toggle('is-active', !isPlaying));
+      } catch {}
+    }
+
+    const rail=document.getElementById('recentRail');
+    const peekRail=document.getElementById('recentPeekRail');
+    const recentWrap=document.querySelector('.recentWrap');
+    const recentTitleEl=document.getElementById('recentTitle');
+    const railModeBtn=document.getElementById('railModeBtn');
+    const kioskPane=document.getElementById('kioskPane');
+    const kioskPaneFrame=document.getElementById('kioskPaneFrame');
+    if (IS_KIOSK_1280 && recentWrap) {
+      const recentModalEl = document.getElementById('recentAlbumModal');
+      if (recentModalEl && recentModalEl.parentElement !== recentWrap) recentWrap.appendChild(recentModalEl);
+    }
+
+    const recentLimit=()=> IS_KIOSK_1280 ? 16 : Math.max(6,Math.min(30,Number(profile.recentCount||18)));
+    let recentItems=[];
+    let recentActiveRadioUrl='';
+    let ipadRecentItems = { albums: [], podcasts: [], playlists: [], radio: [] };
+    let recentMenuCtx={kind:'album',album:'',artist:'',art:'',playlist:'',title:'',rss:''};
+    let recentModalCtx={kind:'album',album:'',artist:'',art:'',playlist:'',tracks:[]};
+    let recentAlbumsCache = { ts: 0, albums: [] };
+    let recentAlbumsRefreshInFlight = null;
+    const RECENT_ALBUMS_CACHE_KEY = 'np.recent.albums.cache.v1';
+    const RECENT_PLAYLISTS_CACHE_KEY = 'np.recent.playlists.cache.v1';
+    const RECENT_RADIO_CACHE_KEY = 'np.recent.radio.cache.v1';
+    let recentAlbumPrewarmSig = '';
+    let recentAlbumsRenderSig = '';
+    let recentRenderedSource = '';
+    let npCtrlsAwakeTimer = 0;
+
+    function wakeNpCtrls(ms=3200){
+      const el = document.getElementById('npCtrls');
+      if (!el) return;
+      el.classList.add('is-awake');
+      try { clearTimeout(npCtrlsAwakeTimer); } catch {}
+      npCtrlsAwakeTimer = setTimeout(()=>{ try { el.classList.remove('is-awake'); } catch {} }, Math.max(800, Number(ms)||3200));
+    }
+
+    function loadRecentCache(key){
+      try {
+        const j = JSON.parse(localStorage.getItem(key) || '{}');
+        const items = Array.isArray(j?.items) ? j.items : [];
+        const ts = Number(j?.ts || 0) || 0;
+        return { ts, items };
+      } catch {
+        return { ts: 0, items: [] };
+      }
+    }
+
+    function saveRecentCache(key, items){
+      try {
+        const rows = Array.isArray(items) ? items : [];
+        localStorage.setItem(key, JSON.stringify({ ts: Date.now(), items: rows }));
+      } catch {}
+    }
+
+    async function prewarmRecentAlbumThumbs(albums){
+      try {
+        const list = Array.isArray(albums) ? albums : [];
+        if (!list.length) return;
+        const sig = list.slice(0, 12).map((a)=>String(a?.folder||a?.sampleFile||a?.album||'')).join('|');
+        if (sig && sig === recentAlbumPrewarmSig) return;
+        recentAlbumPrewarmSig = sig;
+        const urls = list.slice(0, Math.min(18, list.length)).map((a)=>{
+          const raw = String(a?.thumbUrl || '').trim();
+          if (!raw) return '';
+          return raw.startsWith('http') ? raw : `${base}${raw}`;
+        }).filter(Boolean);
+        const jobs = urls.map((u)=>fetch(u, { cache:'force-cache', headers:reqHeaders(false) }).catch(()=>null));
+        await Promise.allSettled(jobs);
+      } catch {}
+    }
+
+    async function getRecentAlbumsForRail(){
+      const now = Date.now();
+
+      if (!Array.isArray(recentAlbumsCache.albums) || !recentAlbumsCache.albums.length) {
+        try {
+          const persisted = JSON.parse(localStorage.getItem(RECENT_ALBUMS_CACHE_KEY) || '{}');
+          const pa = Array.isArray(persisted?.albums) ? persisted.albums : [];
+          const pts = Number(persisted?.ts || 0) || 0;
+          if (pa.length) recentAlbumsCache = { ts: pts || now, albums: pa };
+        } catch {}
+      }
+
+      const hasCached = Array.isArray(recentAlbumsCache.albums) && recentAlbumsCache.albums.length;
+      const isFresh = hasCached && (now - Number(recentAlbumsCache.ts || 0) < 120000);
+      if (isFresh) return recentAlbumsCache.albums;
+
+      // Fast path: return stale cache immediately; refresh in background.
+      if (hasCached) {
+        if (!recentAlbumsRefreshInFlight) {
+          recentAlbumsRefreshInFlight = (async ()=>{
+            try {
+              const ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 9000);
+              const albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
+              if (albums.length) {
+                recentAlbumsCache = { ts: Date.now(), albums };
+                try { localStorage.setItem(RECENT_ALBUMS_CACHE_KEY, JSON.stringify(recentAlbumsCache)); } catch {}
+              }
+            } catch {}
+            finally { recentAlbumsRefreshInFlight = null; }
+          })();
+        }
+        return recentAlbumsCache.albums;
+      }
+
+      // Cold-start path.
+      let ar;
+      try {
+        ar = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 9000);
+      } catch {
+        return hasCached ? recentAlbumsCache.albums : [];
+      }
+      let albums = (ar.ok && ar.json?.ok && Array.isArray(ar.json.albums)) ? ar.json.albums : [];
+
+      // First-load guard: if thumb URLs are mostly missing, retry once shortly.
+      const withThumb = albums.filter((a)=>String(a?.thumbUrl||'').trim()).length;
+      if (albums.length && withThumb < Math.max(1, Math.floor(albums.length * 0.2))) {
+        await new Promise((r)=>setTimeout(r, 220));
+        const ar2 = await fetchJsonWithTimeout(`${base}/config/library-health/albums`, { cache:'no-store', headers:reqHeaders(false) }, 9000);
+        const albums2 = (ar2.ok && ar2.json?.ok && Array.isArray(ar2.json.albums)) ? ar2.json.albums : [];
+        if (albums2.length) albums = albums2;
+      }
+
+      recentAlbumsCache = { ts: now, albums };
+      if (albums.length) {
+        try { localStorage.setItem(RECENT_ALBUMS_CACHE_KEY, JSON.stringify(recentAlbumsCache)); } catch {}
+      }
+      return albums;
+    }
+
+    function setRailLoading(on){
+      const sp = document.getElementById('railTitleSpin');
+      if (sp) sp.hidden = !on;
+    }
+
+    function renderIpadRail(hostId, items, rowKey, loading = false){
+      const host = document.getElementById(hostId);
+      if (!host) return;
+      host.innerHTML = '';
+      const rows = Array.isArray(items) ? items : [];
+      if (!rows.length) {
+        if (loading) {
+          host.innerHTML = Array.from({ length: 8 }).map(() =>
+            `<div class='thumb'><div class='thumbWrap'><div class='ph'><span class='miniSpin' aria-hidden='true'></span></div></div><div class='cap'>Loading…</div></div>`
+          ).join('');
+        } else {
+          host.innerHTML = `<div class='thumb'><div class='thumbWrap'><div class='ph'></div></div><div class='cap'>No recent items</div></div>`;
+        }
+        return;
+      }
+      rows.forEach((it, i)=>{
+        const d = document.createElement('div');
+        d.className = `thumb${(rowKey === 'radio' && String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`;
+        const title = String(it?.title || it?.album || it?.playlist || '(item)').trim();
+        const art = String(it?.art || `${base}/art/current.jpg`).trim();
+        d.setAttribute('data-ra-row', String(rowKey || 'albums'));
+        d.setAttribute('data-ra-idx', String(i));
+        d.innerHTML = `<div class='thumbWrap'><img src='${art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-row='${String(rowKey || 'albums')}' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${title}'>${title}</div>`;
+        host.appendChild(d);
+      });
+    }
+
+    async function loadIpadRecentPanels(){
+      try {
+        const isIpad11 = document.body.classList.contains('ipad11');
+        const grid = document.getElementById('ipadRecentGrid');
+        if (!isIpad11 || !grid || grid.hidden) return;
+
+        const isIpadLandscape = document.body.classList.contains('ipad11Landscape');
+        const limit = isIpadLandscape
+          ? Math.max(12, Math.min(30, Number(profile?.recentCount || 18)))
+          : Math.max(4, Math.min(8, Number(profile?.recentCount || 18)));
+
+        renderIpadRail('ipadRailAlbums', [], 'albums', true);
+        renderIpadRail('ipadRailPodcasts', [], 'podcasts', true);
+
+        const cachedPlaylists = loadRecentCache(RECENT_PLAYLISTS_CACHE_KEY).items;
+        const cachedRadio = loadRecentCache(RECENT_RADIO_CACHE_KEY).items;
+        if (cachedPlaylists.length) {
+          ipadRecentItems.playlists = cachedPlaylists.slice(0, limit);
+          renderIpadRail('ipadRailPlaylists', ipadRecentItems.playlists, 'playlists', false);
+        } else {
+          renderIpadRail('ipadRailPlaylists', [], 'playlists', true);
+        }
+        if (cachedRadio.length) {
+          ipadRecentItems.radio = cachedRadio.slice(0, limit);
+          renderIpadRail('ipadRailRadio', ipadRecentItems.radio, 'radio', false);
+        } else {
+          renderIpadRail('ipadRailRadio', [], 'radio', true);
+        }
+
+        const albumsRaw = await getRecentAlbumsForRail();
+        const albums = albumsRaw
+          .filter((a)=>{
+            const f = String(a?.folder || '').trim().toLowerCase();
+            return !(f.startsWith('usb/samsungmoode/podcasts/') || f.includes('/podcasts/'));
+          })
+          .sort((a,b)=>Number(b?.addedTs||0)-Number(a?.addedTs||0))
+          .slice(0, limit)
+          .map((a)=>({
+            title: String(a?.album || '(album)').trim(),
+            art: String(a?.thumbUrl || '').trim() ? (String(a.thumbUrl).startsWith('http') ? String(a.thumbUrl) : `${base}${String(a.thumbUrl)}`) : `${base}/art/current.jpg`
+          }));
+        ipadRecentItems.albums = albums.map((a)=>({ kind:'album', album:String(a?.title||'(album)').trim(), artist:'', art:String(a?.art||`${base}/art/current.jpg`) }));
+        renderIpadRail('ipadRailAlbums', ipadRecentItems.albums, 'albums');
+
+        const pr = await fetchJsonWithTimeout(`${base}/podcasts`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+        const podcasts = (pr.ok && pr.json?.ok && Array.isArray(pr.json.items)) ? pr.json.items.slice(0, limit).map((s)=>({
+          title: String(s?.title || s?.rss || '(podcast)').trim(),
+          art: String(s?.imageUrl || '').trim() || `${base}/art/current.jpg`
+        })) : [];
+        ipadRecentItems.podcasts = podcasts.map((p, idx)=>({ kind:'podcast', title:String(p?.title||'(podcast)').trim(), art:String(p?.art||`${base}/art/current.jpg`), rss:String((pr.json?.items||[])[idx]?.rss||'').trim() }));
+        renderIpadRail('ipadRailPodcasts', ipadRecentItems.podcasts, 'podcasts');
+
+        const pl = await fetchJsonWithTimeout(`${base}/config/queue-wizard/playlists`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+        const playlists = (pl.ok && pl.json?.ok && Array.isArray(pl.json.playlists))
+          ? pl.json.playlists.slice(0, limit).map((n)=>{
+              const title = String(n || '(playlist)').trim();
+              const safe = title.replace(/\s+/g,'_');
+              return {
+                title,
+                art:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(title)}.jpg`,
+                artAlt:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(safe)}.jpg`
+              };
+            })
+          : [];
+        ipadRecentItems.playlists = playlists.map((x)=>({ kind:'playlist', playlist:String(x?.title||'(playlist)').trim(), title:String(x?.title||'(playlist)').trim(), art:String(x?.art||`${base}/art/current.jpg`) }));
+        if (ipadRecentItems.playlists.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, ipadRecentItems.playlists);
+        renderIpadRail('ipadRailPlaylists', ipadRecentItems.playlists, 'playlists');
+        document.querySelectorAll('#ipadRailPlaylists img').forEach((img)=>{
+          img.onerror = () => {
+            const cur = String(img.getAttribute('src') || '').trim();
+            const alt = String((playlists.find((x)=>String(x.art||'').trim()===cur)?.artAlt) || '').trim();
+            if (alt && cur !== alt) { img.setAttribute('src', alt); return; }
+            const ph = document.createElement('div'); ph.className = 'ph'; img.replaceWith(ph);
+          };
+        });
+
+        const rr = await fetchJsonWithTimeout(`${base}/config/queue-wizard/radio-favorites`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+        const radio = (rr.ok && rr.json?.ok && Array.isArray(rr.json.favorites))
+          ? rr.json.favorites.slice(0, limit).map((x)=>{
+              const title = String(x?.stationName || x?.file || '(station)').trim();
+              return { title, art: `${base}/art/radio-logo.jpg?name=${encodeURIComponent(title)}` };
+            })
+          : [];
+        ipadRecentItems.radio = radio.map((x, idx)=>({ kind:'radio', title:String(x?.title||'(station)').trim(), art:String(x?.art||`${base}/art/radio-logo.jpg`), url:String((rr.json?.favorites||[])[idx]?.file||'').trim() }));
+        if (ipadRecentItems.radio.length) saveRecentCache(RECENT_RADIO_CACHE_KEY, ipadRecentItems.radio);
+        renderIpadRail('ipadRailRadio', ipadRecentItems.radio, 'radio');
+      } catch {
+        renderIpadRail('ipadRailAlbums', ipadRecentItems.albums || [], 'albums', false);
+        renderIpadRail('ipadRailPodcasts', ipadRecentItems.podcasts || [], 'podcasts', false);
+        renderIpadRail('ipadRailPlaylists', ipadRecentItems.playlists || [], 'playlists', false);
+        renderIpadRail('ipadRailRadio', ipadRecentItems.radio || [], 'radio', false);
+      }
+    }
+
+    async function loadRecentlyAdded(){
+      if (!rail || profile.showRecent===false) return;
+      await ensureKey();
+      const src = String(profile.recentSource || 'albums').toLowerCase();
+      const isIpad11 = document.body.classList.contains('ipad11');
+      setRailLoading(true);
+      if (isIpad11) {
+        await loadIpadRecentPanels();
+        setRailLoading(false);
+        return;
+      }
+      try {
+        if (src === 'podcasts') {
+          const pr = await fetchJsonWithTimeout(`${base}/podcasts`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+          const shows = (pr.ok && pr.json?.ok && Array.isArray(pr.json.items)) ? pr.json.items : [];
+
+          // Podcast ordering should mirror Recently Added date logic when available.
+          const normKey = (v='') => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+          const leaf = (p='') => {
+            const s = String(p || '').trim().replace(/\/$/, '');
+            const i = s.lastIndexOf('/');
+            return i >= 0 ? s.slice(i + 1) : s;
+          };
+
+          const addedByShow = new Map();
+          const podcastAlbums = [];
+          try {
+            const albums = await getRecentAlbumsForRail();
+            for (const a of albums) {
+              const folder = String(a?.folder || '').trim();
+              if (!/\/podcasts\//i.test(folder)) continue;
+              podcastAlbums.push(a);
+              const k = normKey(leaf(folder));
+              if (!k) continue;
+              const ts = Number(a?.addedTs || 0) || 0;
+              if (!addedByShow.has(k) || ts > Number(addedByShow.get(k) || 0)) addedByShow.set(k, ts);
+            }
+          } catch {}
+
+          const ranked = shows.map((s) => {
+            const title = String(s?.title || '').trim();
+            const k1 = normKey(leaf(String(s?.mpdPrefix || s?.dir || '')));
+            const k2 = normKey(title);
+            const ts = Math.max(Number(addedByShow.get(k1) || 0), Number(addedByShow.get(k2) || 0));
+            return { show: s, ts };
+          });
+          ranked.sort((a,b)=> (Number(b.ts||0)-Number(a.ts||0)) || String(a.show?.title||'').localeCompare(String(b.show?.title||''), undefined, { sensitivity:'base' }));
+          const seenPod = new Set();
+          const topShows = [];
+          for (const x of ranked) {
+            const s = x.show || {};
+            const k = normKey(String(s?.rss || s?.title || s?.dir || s?.mpdPrefix || ''));
+            if (!k || seenPod.has(k)) continue;
+            seenPod.add(k);
+            topShows.push(s);
+            if (topShows.length >= recentLimit()) break;
+          }
+
+          if (!topShows.length && podcastAlbums.length) {
+            const byShow = new Map();
+            for (const a of podcastAlbums) {
+              const folder = String(a?.folder || '').trim();
+              const showName = leaf(folder) || String(a?.album || '').trim() || '(podcast)';
+              const k = normKey(showName);
+              const ts = Number(a?.addedTs || 0) || 0;
+              const artRaw = String(a?.thumbUrl || '').trim();
+              const art = artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
+              const prev = byShow.get(k);
+              if (!prev || ts > prev.ts) byShow.set(k, { title: showName, ts, art });
+            }
+            recentItems = Array.from(byShow.values())
+              .sort((a,b)=> (Number(b.ts||0)-Number(a.ts||0)) || String(a.title||'').localeCompare(String(b.title||''), undefined, { sensitivity:'base' }))
+              .slice(0, recentLimit())
+              .map((x)=>({ kind:'podcast', title:String(x.title||'(podcast)').trim(), art:String(x.art||`${base}/art/current.jpg`), rss:'' }));
+          } else {
+            recentItems = topShows.map((s)=>{
+              return { kind:'podcast', title:String(s?.title||s?.rss||'(podcast)').trim(), art:String(s?.imageUrl||'').trim() || `${base}/art/current.jpg`, rss:String(s?.rss||'').trim() };
+            });
+          }
+          if (!recentItems.length) return;
+          rail.innerHTML = '';
+          recentItems.forEach((it,i)=>{
+            const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
+            d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            rail.appendChild(d);
+          });
+          recentRenderedSource = 'podcasts';
+          return;
+        }
+        if (src === 'playlists') {
+          try {
+            const cachedPl = loadRecentCache(RECENT_PLAYLISTS_CACHE_KEY).items;
+            if (Array.isArray(cachedPl) && cachedPl.length) {
+              recentItems = cachedPl.slice(0, recentLimit());
+              rail.innerHTML = '';
+              recentItems.forEach((it,i)=>{
+                const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
+                d.innerHTML=`<div class='thumbWrap'><img class='plRailCover' src='${it.art}' data-alt='${it.artAlt||''}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+                rail.appendChild(d);
+              });
+            }
+          } catch {}
+
+          const pl = await fetchJsonWithTimeout(`${base}/config/queue-wizard/playlists`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+          const names = (pl.ok && pl.json?.ok && Array.isArray(pl.json.playlists)) ? pl.json.playlists : [];
+          const cleaned = names
+            .map((n)=>String(n||'').trim())
+            .filter(Boolean)
+            .filter((n)=>!n.toLowerCase().endsWith('.youtube'))
+            .filter((n)=>!n.toLowerCase().endsWith('.youtube.json'));
+          const seenPl = new Set();
+          const top = [];
+          for (const n of cleaned) {
+            const k = n.toLowerCase();
+            if (seenPl.has(k)) continue;
+            seenPl.add(k);
+            top.push(n);
+            if (top.length >= recentLimit()) break;
+          }
+          if (!top.length) return;
+          recentItems = top.map((name)=>{
+            const n = String(name||'(playlist)').trim();
+            const safe = n.replace(/\s+/g,'_');
+            return {
+              kind:'playlist',
+              playlist:n,
+              title:n,
+              art:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(n)}.jpg`,
+              artAlt:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(safe)}.jpg`
+            };
+          });
+          if (recentItems.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, recentItems);
+          recentItems.forEach((it,i)=>{
+            const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
+            d.innerHTML=`<div class='thumbWrap'><img class='plRailCover' src='${it.art}' data-alt='${it.artAlt||''}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            rail.appendChild(d);
+          });
+          rail.querySelectorAll('img.plRailCover[data-alt]').forEach((img)=>{
+            img.onerror = () => {
+              const alt = String(img.getAttribute('data-alt') || '').trim();
+              const cur = String(img.getAttribute('src') || '').trim();
+              if (alt && cur !== alt) { img.setAttribute('src', alt); return; }
+              const ph = document.createElement('div');
+              ph.className = 'ph';
+              img.replaceWith(ph);
+            };
+          });
+          recentRenderedSource = 'playlists';
+          return;
+        }
+
+        if (src === 'radio') {
+          try {
+            const cached = loadRecentCache(RECENT_RADIO_CACHE_KEY).items;
+            if (Array.isArray(cached) && cached.length) {
+              recentItems = cached.slice(0, recentLimit());
+              rail.innerHTML = '';
+              recentItems.forEach((it,i)=>{
+                const d=document.createElement('div'); d.className=`thumb${(String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`; d.setAttribute('data-ra-idx', String(i));
+                d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+                rail.appendChild(d);
+              });
+            }
+          } catch {}
+
+          const rr = await fetchJsonWithTimeout(`${base}/config/queue-wizard/radio-favorites`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+          const rows = (rr.ok && rr.json?.ok && Array.isArray(rr.json.favorites)) ? rr.json.favorites : [];
+          const top = rows.slice(0, recentLimit());
+          if (!top.length) return;
+          recentItems = top.map((x)=>{
+            const title = String(x?.stationName || x?.file || '(station)').trim();
+            const url = String(x?.file || '').trim();
+            return { kind:'radio', title, url, art:`${base}/art/radio-logo.jpg?name=${encodeURIComponent(title)}` };
+          });
+          if (recentItems.length) saveRecentCache(RECENT_RADIO_CACHE_KEY, recentItems);
+          rail.innerHTML = '';
+          recentItems.forEach((it,i)=>{
+            const d=document.createElement('div'); d.className=`thumb${(String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`; d.setAttribute('data-ra-idx', String(i));
+            d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            rail.appendChild(d);
+          });
+          recentRenderedSource = 'radio';
+          return;
+        }
+
+        const albumsRaw = await getRecentAlbumsForRail();
+        const albums = albumsRaw.filter((a) => {
+          const f = String(a?.folder || '').trim().toLowerCase();
+          return !(f.startsWith('usb/samsungmoode/podcasts/') || f.includes('/podcasts/'));
+        });
+        albums.sort((a,b)=>Number(b?.addedTs||0)-Number(a?.addedTs||0));
+        const seen = new Set();
+        const unique = [];
+        for (const a of albums) {
+          const k = `${String(a?.artist || '').trim().toLowerCase()}|${String(a?.album || '').trim().toLowerCase()}`;
+          if (!k || seen.has(k)) continue;
+          seen.add(k);
+          unique.push(a);
+          if (unique.length >= recentLimit()) break;
+        }
+        const top = unique;
+        prewarmRecentAlbumThumbs(top).catch(()=>null);
+        const nextSig = top.map((a)=>`${String(a?.artist||'').trim()}|${String(a?.album||'').trim()}|${Number(a?.addedTs||0)}`).join('||');
+        if (nextSig && nextSig === recentAlbumsRenderSig && recentRenderedSource === 'albums') return;
+        if (!top.length) {
+          recentAlbumsRenderSig = '';
+          recentRenderedSource = 'albums';
+          rail.innerHTML = '';
+          for(let i=0;i<recentLimit();i++){
+            const d=document.createElement('div'); d.className='thumb';
+            d.innerHTML=`<div class='ph'></div><div class='cap'>Recent ${i+1}</div>`;
+            rail.appendChild(d);
+          }
+          return;
+        }
+        recentItems = top.map((a)=>{
+          const album=String(a?.album||'').trim() || '(album)';
+          const artist=String(a?.artist||'').trim();
+          const addedTs=Number(a?.addedTs||0)||0;
+          const artRaw=String(a?.thumbUrl||'').trim();
+          let art=artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
+          // New albums can briefly show stale/default art; apply bounded cache-bust only for very recent adds.
+          if (addedTs && (Date.now() - addedTs) < (20 * 60 * 1000)) {
+            const bucket = Math.floor(Date.now() / 120000); // rotates every 2 min
+            art = `${art}${art.includes('?') ? '&' : '?'}ra=${bucket}`;
+          }
+          return { kind:'album', album, artist, art };
+        });
+        rail.innerHTML = '';
+        recentItems.forEach((a,i)=>{
+          const d = document.createElement('div');
+          d.className = 'thumb';
+          d.setAttribute('data-ra-idx', String(i));
+
+          const wrap = document.createElement('div');
+          wrap.className = 'thumbWrap';
+
+          const img = document.createElement('img');
+          img.alt = '';
+          img.src = String(a.art || '');
+          img.onerror = function () {
+            try {
+              if (this.dataset.heal) return;
+              this.dataset.heal = '1';
+              const u = String(a.art || '');
+              this.src = `${u}${u.includes('?') ? '&' : '?'}heal=1`;
+            } catch {}
+          };
+
+          const more = document.createElement('button');
+          more.type = 'button';
+          more.className = 'thumbMore';
+          more.setAttribute('data-ra-more', '1');
+          more.setAttribute('data-ra-idx', String(i));
+          more.textContent = '•••';
+
+          const cap = document.createElement('div');
+          cap.className = 'cap';
+          cap.title = `${a.artist ? `${a.artist} — ` : ''}${a.album}`;
+          cap.textContent = String(a.album || '');
+
+          wrap.appendChild(img);
+          wrap.appendChild(more);
+          d.appendChild(wrap);
+          d.appendChild(cap);
+          rail.appendChild(d);
+        });
+        recentAlbumsRenderSig = nextSig;
+        recentRenderedSource = 'albums';
+      } catch {
+        recentAlbumsRenderSig = '';
+        recentRenderedSource = '';
+        rail.innerHTML = '';
+        for(let i=0;i<recentLimit();i++){
+          const d=document.createElement('div'); d.className='thumb';
+          d.innerHTML=`<div class='ph'></div><div class='cap'>Recent ${i+1}</div>`;
+          rail.appendChild(d);
+        }
+      } finally {
+        setRailLoading(false);
+      }
+    }
+
+    async function fetchAlbumTracks(album, artist){
+      await ensureKey();
+      const body={genres:[],artists:artist?[artist]:[],albums:album?[album]:[],excludeGenres:[],minRating:0,maxTracks:500};
+      const r=await fetch(`${base}/config/queue-wizard/preview`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify(body)});
+      const j=await r.json().catch(()=>({}));
+      return (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
+    }
+    async function fetchPlaylistTracks(playlist){
+      await ensureKey();
+      const r=await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(String(playlist||''))}`,{cache:'no-store',headers:reqHeaders(false)});
+      const j=await r.json().catch(()=>({}));
+      return (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
+    }
+    async function fetchPodcastEpisodeTracks(rss){
+      await ensureKey();
+      const r = await fetch(`${base}/podcasts/episodes/list`, {
+        method:'POST',
+        headers:reqHeaders(true),
+        body: JSON.stringify({ rss:String(rss||''), limit: 250 })
+      });
+      const j = await r.json().catch(()=>({}));
+      const eps = (r.ok && j?.ok && Array.isArray(j.episodes)) ? j.episodes : [];
+      return eps
+        .filter((ep)=>!!ep?.downloaded && !!ep?.mpdPath)
+        .map((ep)=>({ title:String(ep?.title||'(episode)').trim(), file:String(ep?.mpdPath||'').trim(), date:String(ep?.date||'').trim(), downloadedAt:Number(ep?.downloadedAt||0)||0 }));
+    }
+    async function sendPlayback(action, extra={}){ await ensureKey(); await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify(Object.assign({action},extra||{}))}).catch(()=>null); }
+    async function playOrAddRadio(url, mode='replace'){
+      const u = String(url||'').trim();
+      if (!u) return;
+      await ensureKey();
+      await fetch(`${base}/config/queue-wizard/apply`, { method:'POST', headers:reqHeaders(true), body: JSON.stringify({ mode: mode==='append'?'append':'replace', keepNowPlaying:false, tracks:[u], shuffle:false, forceRandomOff:false, fastStart:true }) }).catch(()=>null);
+    }
+
+    function openRecentAlbumModal(){
+      const isPlaylist = recentModalCtx.kind === 'playlist';
+      const isPodcast = recentModalCtx.kind === 'podcast';
+      const modalEl = document.getElementById('recentAlbumModal');
+      document.getElementById('recentAlbumTitle').textContent = isPlaylist
+        ? (recentModalCtx.playlist || '(playlist)')
+        : (isPodcast ? (recentModalCtx.title || '(podcast)') : (recentModalCtx.album || '(album)'));
+      document.getElementById('recentAlbumMeta').textContent = isPlaylist ? 'Playlist' : (isPodcast ? 'Downloaded episodes' : (recentModalCtx.artist || ''));
+      document.getElementById('recentAlbumArt').src = recentModalCtx.art || `${base}/art/current.jpg`;
+      document.getElementById('recentAlbumAppendBtn').textContent = isPlaylist ? 'Add playlist' : (isPodcast ? 'Add newest episode' : 'Append album');
+      document.getElementById('recentAlbumCropBtn').style.display = (isPlaylist || isPodcast) ? 'none' : '';
+      document.getElementById('recentAlbumReplaceBtn').textContent = isPlaylist ? 'Play playlist' : (isPodcast ? 'Play newest episode' : 'Replace with album');
+      document.getElementById('recentAlbumTracks').innerHTML = (recentModalCtx.tracks||[]).map((t,i)=>{ const nm=String(t.title||t.file||'').trim()||'(track)'; const f=encodeURIComponent(String(t.file||'')); const dt=String(t.date||'').trim(); return `<li><span>${i+1}. ${nm}${dt?`<div class='albumMeta'>${dt}</div>`:''}</span><span class='trackBtns'><button data-track-action='play' data-track-file='${f}'>▶</button><button data-track-action='add' data-track-file='${f}'>＋</button></span></li>`; }).join('') || '<li>No tracks found</li>';
+      if ((IS_KIOSK_1280 || document.body.classList.contains('ipad11Landscape')) && recentWrap && modalEl) {
+        modalEl.style.setProperty('position', 'absolute', 'important');
+        modalEl.style.setProperty('inset', '0', 'important');
+        modalEl.style.removeProperty('left');
+        modalEl.style.removeProperty('top');
+        modalEl.style.removeProperty('width');
+        modalEl.style.removeProperty('height');
+      }
+      modalEl?.classList.add('open');
+    }
+    async function openRecentAlbumFrom(ctx){
+      recentModalCtx = { kind:'album', album:ctx.album||'', artist:ctx.artist||'', art:ctx.art||'', playlist:'', tracks:[] };
+      openRecentAlbumModal();
+      document.getElementById('recentAlbumTracks').innerHTML = '<li>Loading album tracks…</li>';
+      try { recentModalCtx.tracks = await fetchAlbumTracks(recentModalCtx.album, recentModalCtx.artist); } catch { recentModalCtx.tracks = []; }
+      if (document.getElementById('recentAlbumModal').classList.contains('open')) openRecentAlbumModal();
+    }
+    async function openRecentPlaylistFrom(ctx){
+      recentModalCtx = { kind:'playlist', album:'', artist:'', art:ctx.art||'', playlist:ctx.playlist||ctx.title||'', tracks:[] };
+      openRecentAlbumModal();
+      document.getElementById('recentAlbumTracks').innerHTML = '<li>Loading playlist tracks…</li>';
+      try { recentModalCtx.tracks = await fetchPlaylistTracks(recentModalCtx.playlist); } catch { recentModalCtx.tracks = []; }
+      if (document.getElementById('recentAlbumModal').classList.contains('open')) openRecentAlbumModal();
+    }
+    async function openRecentPodcastFrom(ctx){
+      recentModalCtx = { kind:'podcast', album:'', artist:'', art:ctx.art||'', playlist:'', title:ctx.title||'(podcast)', rss:ctx.rss||'', tracks:[] };
+      openRecentAlbumModal();
+      document.getElementById('recentAlbumTracks').innerHTML = '<li>Loading episodes…</li>';
+      try {
+        const eps = await fetchPodcastEpisodeTracks(recentModalCtx.rss);
+        eps.sort((a,b)=>(Number(b.downloadedAt||0)-Number(a.downloadedAt||0)) || String(a.title||'').localeCompare(String(b.title||'')));
+        recentModalCtx.tracks = eps;
+      } catch { recentModalCtx.tracks = []; }
+      if (document.getElementById('recentAlbumModal').classList.contains('open')) openRecentAlbumModal();
+    }
+
+    async function mostRecentDownloadedPodcastFile(rss){
+      const r = await fetch(`${base}/podcasts/episodes/list`, {
+        method:'POST',
+        headers:reqHeaders(true),
+        body: JSON.stringify({ rss:String(rss||''), limit: 250 })
+      });
+      const j = await r.json().catch(()=>({}));
+      const eps = (r.ok && j?.ok && Array.isArray(j.episodes)) ? j.episodes : [];
+      let best = null;
+      let bestTs = -1;
+      for (const ep of eps) {
+        if (!ep?.downloaded || !ep?.mpdPath) continue;
+        const ts = Number(ep?.downloadedAt || ep?.published || 0) || 0;
+        if (ts > bestTs) { bestTs = ts; best = ep; }
+      }
+      return String(best?.mpdPath || '').trim();
+    }
+
+    function openRecentMenuFor(item){
+      const m=document.getElementById('recentAlbumMenu');
+      const bOpen=document.getElementById('raOpenBtn');
+      const bPlay=document.getElementById('raPlayBtn');
+      const bThird=document.getElementById('raThirdBtn');
+      const kind = String(item?.kind || 'album');
+      if (kind === 'podcast') {
+        bOpen.style.display = 'none';
+        bPlay.textContent = 'Play most recent episode';
+        bThird.style.display = '';
+        bThird.textContent = 'Add most recent episode';
+      } else if (kind === 'radio') {
+        bOpen.style.display = '';
+        bOpen.textContent = 'Open Radio page';
+        bPlay.textContent = 'Play station';
+        bThird.style.display = '';
+        bThird.textContent = 'Add station';
+      } else if (kind === 'playlist') {
+        bOpen.style.display = '';
+        bOpen.textContent = 'Open';
+        bPlay.textContent = 'Play';
+        bThird.style.display = '';
+        bThird.textContent = 'Play Shuffled';
+      } else {
+        bOpen.style.display = '';
+        bOpen.textContent = 'Open';
+        bPlay.textContent = 'Play';
+        bThird.style.display = '';
+        bThird.textContent = 'Play Shuffled';
+      }
+      return m;
+    }
+
+    let __navBusy = false;
+
+    function clearNavTransitionState(){
+      document.body.classList.remove('nav-forwarding','nav-backwarding');
+      document.body.style.transform = '';
+      document.body.style.opacity = '';
+      __navBusy = false;
+    }
+    window.addEventListener('pageshow', clearNavTransitionState);
+    window.addEventListener('load', clearNavTransitionState);
+
+    function navigateWithSlide(targetUrl){
+      if (!targetUrl || __navBusy) return;
+      let out = String(targetUrl || '').trim();
+
+      const isNowPlaying = /controller-now-playing\.html(?:$|[?#])/i.test(out);
+      if (isNowPlaying) {
+        __navBusy = true;
+        const finalUrl = out + (out.includes('?') ? '&' : '?') + 'nav=cover';
+
+        const cover = document.createElement('div');
+        cover.className = 'navCover';
+        const fr = document.createElement('iframe');
+        fr.setAttribute('loading', 'eager');
+        fr.setAttribute('referrerpolicy', 'no-referrer');
+        fr.src = finalUrl;
+        cover.appendChild(fr);
+        document.body.appendChild(cover);
+
+        let launched = false;
+        const launch = ()=>{
+          if (launched) return;
+          launched = true;
+          requestAnimationFrame(()=>{
+            cover.classList.add('open');
+            setTimeout(()=>{ location.href = finalUrl; }, 290);
+          });
+        };
+        fr.addEventListener('load', launch, { once:true });
+        setTimeout(launch, 120);
+        return;
+      }
+
+      __navBusy = true;
+      document.body.classList.add('nav-forwarding');
+      setTimeout(()=>{ location.href = out; }, 170);
+    }
+
+    function setOpenNavRow(page){
+      const p = String(page || '').trim();
+      document.querySelectorAll('.row[data-page]').forEach((r)=>{
+        r.classList.toggle('is-open', !!p && String(r.getAttribute('data-page')||'').trim() === p);
+      });
+    }
+
+    function shouldOpenInRightPane(){
+      return (IS_KIOSK_1280 && !IS_KIOSK_EDITOR) || document.body.classList.contains('ipad11Landscape');
+    }
+
+    function applyIpadPaneCompaction(){
+      try {
+        if (!document.body.classList.contains('ipad11Landscape')) return;
+        const doc = kioskPaneFrame?.contentDocument;
+        if (!doc || !doc.documentElement) return;
+        if (doc.getElementById('np-ipad-pane-compact-style')) return;
+        const st = doc.createElement('style');
+        st.id = 'np-ipad-pane-compact-style';
+        st.textContent = `
+          html,body{height:100% !important;min-height:100% !important}
+          body{padding:4px 8px 8px !important;overflow:auto !important}
+          .top{margin:0 0 4px !important}
+          h1{font-size:24px !important;line-height:1.05 !important}
+          .meta,.metaInline{margin:0 0 6px !important}
+          .grid,.artistGrid,.list,#list,#host{padding-right:8px !important}
+          .row{padding:6px 0 !important}
+        `;
+        doc.head?.appendChild(st);
+      } catch {}
+    }
+
+    function openPage(page){
+      const p = String(page || '').trim();
+      if (!p) return;
+      if (shouldOpenInRightPane() && p.startsWith('kiosk-')) {
+        const active = document.querySelector(`.row[data-page="${p}"]`);
+        if (kioskPane?.classList.contains('open') && active?.classList.contains('is-open')) {
+          closeKioskPane();
+          return;
+        }
+      }
+      if (!shouldOpenInRightPane() && p.startsWith('kiosk-')) {
+        navigateWithSlide(p.replace(/^kiosk-/, 'controller-'));
+        return;
+      }
+      if (shouldOpenInRightPane() && p.startsWith('kiosk-')) {
+        const map = {
+          'kiosk-now-playing.html':'controller-now-playing.html',
+          'kiosk-playlists.html':'controller-playlists.html',
+          'kiosk-artists.html':'controller-artists.html',
+          'kiosk-albums.html':'controller-albums.html',
+          'kiosk-genres.html':'controller-genres.html',
+          'kiosk-podcasts.html':'controller-podcasts.html',
+          'kiosk-radio.html':'controller-radio.html',
+          'kiosk-queue-wizard.html':'controller-queue-wizard.html',
+          'kiosk-queue.html':'controller-queue.html',
+          'kiosk-visualizer.html':'visualizer.html',
+        };
+        const target = map[p] || 'controller-playlists.html';
+        setOpenNavRow(p);
+        recentWrap?.classList.add('paneOpen');
+        if (kioskPaneFrame) {
+          const u = new URL(target, location.href);
+          u.searchParams.set('embedded', '1');
+          if (document.body.classList.contains('ipad11Landscape')) u.searchParams.set('cols', '7');
+          u.searchParams.set('theme', String(profile?.theme || 'dark'));
+          u.searchParams.set('colorPreset', String(profile?.colorPreset || 'ocean'));
+          const setPaneSrc = (urlObj) => {
+            try {
+              kioskPaneFrame.onload = () => { applyIpadPaneCompaction(); };
+            } catch {}
+            kioskPaneFrame.src = `${urlObj.pathname.replace(/^\//,'')}${urlObj.search}`;
+          };
+          if (p === 'kiosk-visualizer.html') {
+            const vp = String(__u.searchParams.get('vpreset') || '').trim();
+            const ve = String(__u.searchParams.get('venergy') || '').trim();
+            const vm = String(__u.searchParams.get('vmotion') || '').trim();
+            const vg = String(__u.searchParams.get('vglow') || '').trim();
+            if (vp) u.searchParams.set('preset', vp);
+            if (ve) u.searchParams.set('energy', ve);
+            if (vm) u.searchParams.set('motion', vm);
+            if (vg) u.searchParams.set('glow', vg);
+            // If no explicit visualizer params are in URL, use the user's current/last selected profile.
+            if (!vp && !ve && !vm && !vg) {
+              fetch(`${base}/peppy/last-profile`, { cache:'no-store', headers: reqHeaders(false) })
+                .then(r => r.json().catch(()=>({})))
+                .then(j => {
+                  const pr = j?.profile || {};
+                  const v = (pr && typeof pr.visualizer === 'object') ? pr.visualizer : null;
+                  if (String(pr?.displayMode || '').toLowerCase() === 'visualizer' && v) {
+                    if (v.preset) u.searchParams.set('preset', String(v.preset).toLowerCase());
+                    if (Number.isFinite(Number(v.energy))) u.searchParams.set('energy', String(Math.max(1, Math.min(10, Number(v.energy)))));
+                    if (Number.isFinite(Number(v.motion))) u.searchParams.set('motion', String(Math.max(1, Math.min(10, Number(v.motion)))));
+                    if (Number.isFinite(Number(v.glow))) u.searchParams.set('glow', String(Math.max(1, Math.min(10, Number(v.glow)))));
+                  }
+                })
+                .catch(()=>{})
+                .finally(() => setPaneSrc(u));
+              kioskPane?.classList.add('open');
+              kioskPane?.setAttribute('aria-hidden','false');
+              return;
+            }
+          }
+          setPaneSrc(u);
+        }
+        kioskPane?.classList.add('open');
+        kioskPane?.setAttribute('aria-hidden','false');
+        return;
+      }
+      if (p.startsWith('controller-')) {
+        navigateWithSlide(p);
+        return;
+      }
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type:'np-mobile-nav', page:p }, '*');
+          return;
+        }
+      } catch {}
+      const u = new URL('app.html', location.href);
+      u.searchParams.set('page', p);
+      navigateWithSlide(u.toString());
+    }
+
+    async function loadHomeQuickIndex(){
+      await ensureKey();
+      const [optR, plR, libR] = await Promise.all([
+        fetch(`${base}/config/queue-wizard/options`,{cache:'no-store',headers:reqHeaders(false)}).then(r=>r.json().catch(()=>({}))),
+        fetch(`${base}/config/queue-wizard/playlists`,{cache:'no-store',headers:reqHeaders(false)}).then(r=>r.json().catch(()=>({}))),
+        fetch(`${base}/config/library-health/albums`,{cache:'no-store',headers:reqHeaders(false)}).then(r=>r.json().catch(()=>({}))),
+      ]);
+      const artists = Array.isArray(optR?.artists)?optR.artists:[];
+      const playlists = Array.isArray(plR?.playlists)?plR.playlists:[];
+      const libAlbums = Array.isArray(libR?.albums)?libR.albums:[];
+      const seen = new Set();
+      const albums=[];
+      libAlbums.forEach((a)=>{
+        const album=String(a?.album||'').trim(); const artist=String(a?.artist||'').trim();
+        if(!album) return;
+        const k=`${artist.toLowerCase()}__${album.toLowerCase()}`; if(seen.has(k)) return; seen.add(k);
+        albums.push({type:'album', value:album, artist, search:`${artist} ${album}`.toLowerCase()});
+      });
+      quickIndex = [
+        ...artists.map(v=>({type:'artist', value:String(v||'').trim(), search:String(v||'').trim().toLowerCase()})),
+        ...albums,
+        ...playlists.map(v=>({type:'playlist', value:String(v||'').trim(), search:String(v||'').trim().toLowerCase()})),
+      ].filter(x=>x.value);
+    }
+
+    function renderHomeQuickResults(q){
+      const host=document.getElementById('homeQuickResults');
+      const t=String(q||'').trim().toLowerCase();
+      if(!t){ host.classList.remove('open'); host.innerHTML=''; return; }
+      const list=quickIndex.filter(x=>String(x.search||x.value||'').includes(t)).slice(0,50);
+      host.innerHTML = list.map((x)=>{
+        const label = x.type==='album' && x.artist ? `${x.artist} — ${x.value}` : x.value;
+        return `<div class='qRow' data-type='${x.type}' data-value='${encodeURIComponent(x.value)}' data-artist='${encodeURIComponent(String(x.artist||''))}'><div class='qMain'><div class='qMeta'>${x.type}</div><div class='qTxt'>${label}</div></div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>▶</button><button class='qBtn' data-act='add' title='Add'>＋</button></div></div>`;
+      }).join('') || `<div class='qRow'><div class='qTxt'>No matches</div></div>`;
+      host.classList.add('open');
+    }
+
+    async function tracksForQuick(type, value, artist=''){
+      await ensureKey();
+      if(type==='playlist'){
+        const r=await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(value)}`,{cache:'no-store',headers:reqHeaders(false)});
+        const j=await r.json().catch(()=>({}));
+        return (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks.map(t=>String(t?.file||'').trim()).filter(Boolean) : [];
+      }
+      const body={genres:[],artists:type==='artist'?[value]:(artist?[artist]:[]),albums:type==='album'?[value]:[],excludeGenres:[],minRating:0,maxTracks:1000};
+      const r=await fetch(`${base}/config/queue-wizard/preview`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify(body)});
+      const j=await r.json().catch(()=>({}));
+      return (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks.map(t=>String(t?.file||'').trim()).filter(Boolean) : [];
+    }
+
+    async function runQuickAction(type, value, artist, action){
+      let files=await tracksForQuick(type,value,artist);
+      if(!files.length) return;
+      const mode = action==='play' ? 'replace' : 'append';
+
+      // For artist quick actions, shuffle actual track order (not MPD random mode).
+      if (type === 'artist' && files.length > 1) {
+        for (let i=files.length-1; i>0; i--) {
+          const j=Math.floor(Math.random()*(i+1));
+          const tmp=files[i]; files[i]=files[j]; files[j]=tmp;
+        }
+      }
+
+      await fetch(`${base}/config/queue-wizard/apply`,{
+        method:'POST',
+        headers:reqHeaders(true),
+        body:JSON.stringify({mode,keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})
+      }).catch(()=>null);
+    }
+
+    const hqs=document.getElementById('homeQuickSearch');
+    const hqr=document.getElementById('homeQuickResults');
+    const hqKb=document.getElementById('homeQuickKb');
+    const hqClear=document.getElementById('homeQuickClear');
+    const syncQuickClear=()=>{ const has=!!String(hqs?.value||'').trim(); hqs?.closest('.quickWrap')?.classList.toggle('hasText', has); };
+    const showKeyboardFor=(el)=>{ try{ el?.focus(); el?.click(); }catch{} try{ if (navigator.virtualKeyboard && typeof navigator.virtualKeyboard.show==='function') navigator.virtualKeyboard.show(); }catch{} };
+    hqs.addEventListener('input',(ev)=>{ renderHomeQuickResults(ev.target.value||''); syncQuickClear(); });
+    hqKb?.addEventListener('click', ()=>showKeyboardFor(hqs));
+    hqClear?.addEventListener('click', ()=>{ if(!hqs) return; hqs.value=''; renderHomeQuickResults(''); hqr?.classList.remove('open'); syncQuickClear(); try{hqs.blur();}catch{} });
+    syncQuickClear();
+    const npTapEl = document.querySelector('.npTap[data-href]');
+    const npArtWrapEl = document.getElementById('npArtWrap');
+    const npFlipInfoBtnEl = document.getElementById('npFlipInfoBtn');
+    const npLine3El = document.getElementById('line3');
+    const npLine2StarsEl = document.getElementById('line2Stars');
+    const npCtrlsEl = document.getElementById('npCtrls');
+    const isStandaloneWebApp = (()=>{
+      try {
+        return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+      } catch { return false; }
     })();
-  </script>
+    const openAlbumUrl = (url)=>{
+      const u = String(url || '').trim();
+      if (!u) return;
+      try {
+        if (isStandaloneWebApp) {
+          // iOS web-app mode: avoid spawning a blank browser tab before handoff.
+          location.href = u;
+        } else {
+          window.open(u, '_blank', 'noopener');
+        }
+      } catch {}
+    };
+    npLine3El?.addEventListener('click', (ev)=>{
+      if (!npAlbumUrl) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      openAlbumUrl(npAlbumUrl);
+    });
+    npLine2StarsEl?.addEventListener('pointerdown', async (ev)=>{
+      const star = ev.target?.closest?.('[data-star]');
+      if (!star || !npRatingAllowed) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const n = Math.max(0, Math.min(5, Number(star.getAttribute('data-star') || 0) || 0));
+      const prev = npRating;
+      const next = (n === npRating) ? 0 : n;
+
+      // Optimistic UI update
+      npRating = next;
+      renderLine2Stars();
+
+      try {
+        const r = await fetch(`${base}/rating/current`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ rating: next })
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      } catch {
+        // Revert on failure
+        npRating = prev;
+        renderLine2Stars();
+      }
+      refreshNowPlayingCard().catch(()=>null);
+    }, { passive:false });
+    npFlipInfoBtnEl?.addEventListener('click', (ev)=>{
+      if (!document.body.classList.contains('ipad11Landscape')) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      setArtFlip(true);
+      wakeNpCtrls(2200);
+    });
+    npArtWrapEl?.addEventListener('click', (ev)=>{
+      if (!document.body.classList.contains('ipad11Landscape')) return;
+      if (!npArtWrapEl.classList.contains('is-flipped')) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      setArtFlip(false);
+      wakeNpCtrls(1800);
+    });
+    npCtrlsEl?.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); }, { passive:true });
+    npCtrlsEl?.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); });
+    npCtrlsEl?.addEventListener('click', async (ev)=>{
+      wakeNpCtrls(3200);
+      const btn = ev.target.closest('button[data-np-act]');
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const act = String(btn.getAttribute('data-np-act') || '').trim().toLowerCase();
+      if (!act) return;
+      btn.disabled = true;
+      try { await sendPlayback(act); } catch {}
+      finally { btn.disabled = false; }
+      refreshNowPlayingCard().catch(()=>null);
+    });
+    wakeNpCtrls(1400);
+    if (npTapEl) {
+      const NP_LONG_MS = 520;
+      const NP_MOVE_SLOP = 12;
+      const NP_DBL_MS = 280;
+      let npPressTimer = 0;
+      let npStartX = 0;
+      let npStartY = 0;
+      let npLongFired = false;
+      let npSuppressClickUntil = 0;
+      let npTapTimer = 0;
+      let npLastTouchAt = 0;
+
+      const clearNpPress = ()=>{ try { clearTimeout(npPressTimer); } catch {} npPressTimer = 0; };
+      const showTogglePulse = ()=>{
+        npTapEl.classList.add('togglePulse');
+        setTimeout(()=>{ try { npTapEl.classList.remove('togglePulse'); } catch {} }, 380);
+      };
+      const pushDisplayModeFromKiosk = async (mode='player')=>{
+        try {
+          await ensureKey();
+          const m = String(mode||'player').toLowerCase()==='peppy' ? 'peppy' : 'player';
+          const host = String(location.hostname || '10.0.0.4').trim();
+          const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
+          const refreshUrl = `${targetUrl}&sw=${Date.now()}`;
+          await fetch(`${base}/config/moode/display-mode`, {
+            method:'POST',
+            headers:reqHeaders(true),
+            body: JSON.stringify({ displayMode: m })
+          }).catch(()=>null);
+
+          // Keep display-mode state aligned with app push flow.
+          await fetch(`${base}/peppy/last-profile`, {
+            method:'POST',
+            headers:reqHeaders(true),
+            body: JSON.stringify({
+              url: targetUrl,
+              displayMode: m,
+              playerSize: '1280x400'
+            })
+          }).catch(()=>null);
+
+          if (m === 'peppy') {
+            await fetch(`${base}/config/moode/peppymeter/start`, { method:'POST', headers:reqHeaders(true), body: JSON.stringify({ reason:'kiosk-art-longpress' }) }).catch(()=>null);
+            await fetch(`${base}/config/moode/peppyalsa/ensure`, { method:'POST', headers:reqHeaders(true), body: JSON.stringify({ reason:'kiosk-art-longpress' }) }).catch(()=>null);
+          }
+          await fetch(`${base}/config/moode/browser-url`, {
+            method:'POST',
+            headers:reqHeaders(true),
+            body: JSON.stringify({ url: refreshUrl, reason: `kiosk-art-${m}` })
+          }).catch(()=>null);
+          location.href = refreshUrl;
+        } catch {}
+      };
+      const startNpPress = (x,y)=>{
+        npLongFired = false;
+        npStartX = Number(x||0);
+        npStartY = Number(y||0);
+        clearNpPress();
+        npPressTimer = setTimeout(async ()=>{
+          npLongFired = true;
+          npSuppressClickUntil = Date.now() + 900;
+          showTogglePulse();
+          if (IS_KIOSK_1280) {
+            // Kiosk mode uses tap/double-tap only (avoid long-press image-select quirks).
+            return;
+          }
+          try { await sendPlayback('toggle'); } catch {}
+        }, NP_LONG_MS);
+      };
+
+      npTapEl.addEventListener('touchstart', (ev)=>{
+        const t = ev.touches && ev.touches[0];
+        if (!t) return;
+        startNpPress(t.clientX, t.clientY);
+      }, { passive:true });
+      npTapEl.addEventListener('touchmove', (ev)=>{
+        const t = ev.touches && ev.touches[0];
+        if (!t) return;
+        const dx = Math.abs(t.clientX - npStartX);
+        const dy = Math.abs(t.clientY - npStartY);
+        if (dx > NP_MOVE_SLOP || dy > NP_MOVE_SLOP) clearNpPress();
+      }, { passive:true });
+      npTapEl.addEventListener('touchend', (ev)=>{
+        npLastTouchAt = Date.now();
+        if (npLongFired || Date.now() < npSuppressClickUntil) {
+          try { ev.preventDefault(); ev.stopPropagation(); } catch {}
+        }
+        clearNpPress();
+      }, { passive:false });
+      npTapEl.addEventListener('touchcancel', ()=>{ clearNpPress(); }, { passive:true });
+
+      npTapEl.addEventListener('mousedown', (ev)=>{ startNpPress(ev.clientX, ev.clientY); });
+      npTapEl.addEventListener('mousemove', (ev)=>{
+        if (!npPressTimer) return;
+        const dx = Math.abs(ev.clientX - npStartX);
+        const dy = Math.abs(ev.clientY - npStartY);
+        if (dx > NP_MOVE_SLOP || dy > NP_MOVE_SLOP) clearNpPress();
+      });
+      npTapEl.addEventListener('mouseup', ()=>{ clearNpPress(); });
+      npTapEl.addEventListener('mouseleave', ()=>{ clearNpPress(); });
+
+      npTapEl.addEventListener('contextmenu', (ev)=>{ ev.preventDefault(); });
+      npTapEl.addEventListener('dragstart', (ev)=>{ ev.preventDefault(); });
+
+      npTapEl.addEventListener('click', (ev)=>{
+        if (npLongFired || Date.now() < npSuppressClickUntil) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          npLongFired = false;
+          return;
+        }
+        if (IS_KIOSK_1280) {
+          ev.preventDefault();
+          try { clearTimeout(npTapTimer); } catch {}
+          npTapTimer = setTimeout(()=>{
+            npTapTimer = 0;
+            pushDisplayModeFromKiosk('player');
+          }, NP_DBL_MS);
+          return;
+        }
+        const href = String(npTapEl.getAttribute('data-href') || '').trim();
+        if (!href) return;
+        if (!ev.target.closest('.artWrap')) {
+          ev.preventDefault();
+          return;
+        }
+        ev.preventDefault();
+        navigateWithSlide(href);
+      });
+      npTapEl.addEventListener('dblclick', (ev)=>{
+        if (!IS_KIOSK_1280) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        try { clearTimeout(npTapTimer); } catch {}
+        npTapTimer = 0;
+        pushDisplayModeFromKiosk('peppy');
+      });
+    }
+    hqr.addEventListener('click', async (ev)=>{
+      const b=ev.target.closest('button.qBtn[data-act]');
+      const row=ev.target.closest('.qRow[data-type][data-value]');
+      if(!b||!row) return;
+      const act=String(b.getAttribute('data-act')||'add');
+      const type=String(row.getAttribute('data-type')||'');
+      let value=''; let artist='';
+      try{ value=decodeURIComponent(String(row.getAttribute('data-value')||'')); }catch{ value=String(row.getAttribute('data-value')||''); }
+      try{ artist=decodeURIComponent(String(row.getAttribute('data-artist')||'')); }catch{ artist=String(row.getAttribute('data-artist')||''); }
+
+      const old = b.innerHTML;
+      b.disabled = true;
+      b.classList.add('pending');
+      b.innerHTML = '<span class="qSpin" aria-hidden="true"></span>';
+      await runQuickAction(type,value,artist,act);
+      b.classList.remove('pending');
+      b.classList.add('done');
+      b.textContent = '✓';
+      setTimeout(()=>{ b.classList.remove('done'); b.innerHTML = old; b.disabled = false; }, 650);
+    });
+    document.addEventListener('click',(ev)=>{ if(!ev.target.closest('.quickWrap')){ hqr.classList.remove('open'); } });
+
+    railModeBtn?.addEventListener('click', ()=>cycleRecentSource(1));
+    recentTitleEl?.addEventListener('click', ()=>cycleRecentSource(1));
+
+    let __railTouchStartX = 0;
+    let __railTouchStartY = 0;
+    let __railPeekStep = 1;
+    function clearRailPeek(){
+      rail && (rail.style.transform = 'translateY(0px)');
+      if (recentWrap) recentWrap.classList.remove('peeking');
+    }
+    rail?.addEventListener('touchstart', (ev)=>{
+      if (!ev.touches || ev.touches.length !== 1) return;
+      __railTouchStartX = ev.touches[0].clientX;
+      __railTouchStartY = ev.touches[0].clientY;
+      __railPeekStep = 1;
+      document.body.classList.add('rail-touch-lock');
+      clearRailPeek();
+    }, { passive:true });
+    rail?.addEventListener('touchmove', (ev)=>{
+      const t = ev.touches && ev.touches[0];
+      if (!t) return;
+      const dx = t.clientX - __railTouchStartX;
+      const dy = t.clientY - __railTouchStartY;
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx) * 1.1) {
+        __railPeekStep = dy < 0 ? 1 : -1;
+        renderPeekRow(__railPeekStep);
+        if (recentWrap) recentWrap.classList.add('peeking');
+        const y = Math.max(-28, Math.min(28, dy * 0.35));
+        rail.style.transform = `translateY(${y}px)`;
+      } else {
+        clearRailPeek();
+      }
+    }, { passive:true });
+    rail?.addEventListener('touchend', (ev)=>{
+      const t = ev.changedTouches && ev.changedTouches[0];
+      if (!t) { document.body.classList.remove('rail-touch-lock'); clearRailPeek(); return; }
+      const dx = t.clientX - __railTouchStartX;
+      const dy = t.clientY - __railTouchStartY;
+      // Swipe up: next source. Swipe down: previous source.
+      if (Math.abs(dy) > 36 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+        cycleRecentSource(dy < 0 ? 1 : -1);
+      }
+      document.body.classList.remove('rail-touch-lock');
+      clearRailPeek();
+    }, { passive:true });
+    rail?.addEventListener('touchcancel', ()=>{ document.body.classList.remove('rail-touch-lock'); clearRailPeek(); }, { passive:true });
+
+    rail?.addEventListener('click', async (ev)=>{
+      const more = ev.target.closest('button[data-ra-more="1"][data-ra-idx]');
+      if (more) {
+        ev.stopPropagation();
+        const i=Number(more.getAttribute('data-ra-idx')); const a=recentItems[i]; if(!a) return;
+        recentMenuCtx = { ...a };
+        const m=openRecentMenuFor(a);
+        const r=more.getBoundingClientRect();
+        m.style.left=`${Math.max(8,Math.round(r.left))}px`; m.style.top=`${Math.round(r.bottom+6)}px`; m.classList.add('open');
+        return;
+      }
+      const cell = ev.target.closest('[data-ra-idx]');
+      if (!cell) return;
+      const i=Number(cell.getAttribute('data-ra-idx')); const a=recentItems[i]; if(!a) return;
+      if (a.kind === 'playlist') { await openRecentPlaylistFrom(a); return; }
+      if (a.kind === 'podcast') { await openRecentPodcastFrom(a); return; }
+      if (a.kind === 'radio') {
+        recentActiveRadioUrl = String(a.url||'').trim();
+        rail.querySelectorAll('.thumb.is-active-radio').forEach((el)=>el.classList.remove('is-active-radio'));
+        cell.classList.add('is-active-radio');
+        await playOrAddRadio(a.url, 'replace');
+        return;
+      }
+      if (a.kind === 'album') { await openRecentAlbumFrom(a); return; }
+    });
+
+    const ipadRecentGridEl = document.getElementById('ipadRecentGrid');
+    ipadRecentGridEl?.addEventListener('click', async (ev)=>{
+      const more = ev.target.closest('button[data-ra-more="1"][data-ra-row][data-ra-idx]');
+      if (more) {
+        ev.stopPropagation();
+        const row = String(more.getAttribute('data-ra-row') || '').trim();
+        const i = Number(more.getAttribute('data-ra-idx'));
+        const arr = Array.isArray(ipadRecentItems?.[row]) ? ipadRecentItems[row] : [];
+        const a = arr[i];
+        if (!a) return;
+        recentMenuCtx = { ...a };
+        const m = openRecentMenuFor(a);
+        const r = more.getBoundingClientRect();
+        m.style.left = `${Math.max(8,Math.round(r.left))}px`;
+        m.style.top = `${Math.round(r.bottom+6)}px`;
+        m.classList.add('open');
+        return;
+      }
+
+      const cell = ev.target.closest('[data-ra-row][data-ra-idx]');
+      if (!cell) return;
+      const row = String(cell.getAttribute('data-ra-row') || '').trim();
+      const i = Number(cell.getAttribute('data-ra-idx'));
+      const arr = Array.isArray(ipadRecentItems?.[row]) ? ipadRecentItems[row] : [];
+      const a = arr[i];
+      if (!a) return;
+
+      if (a.kind === 'playlist') { await openRecentPlaylistFrom(a); return; }
+      if (a.kind === 'podcast') { await openRecentPodcastFrom(a); return; }
+      if (a.kind === 'radio') {
+        recentActiveRadioUrl = String(a.url||'').trim();
+        ipadRecentGridEl.querySelectorAll('.thumb.is-active-radio').forEach((el)=>el.classList.remove('is-active-radio'));
+        cell.classList.add('is-active-radio');
+        await playOrAddRadio(a.url, 'replace');
+        return;
+      }
+      if (a.kind === 'album') { await openRecentAlbumFrom(a); return; }
+    });
+
+    document.getElementById('recentAlbumMenu').addEventListener('click', async (ev)=>{
+      const b=ev.target.closest('button[data-ra-act]'); if(!b) return;
+      const act=String(b.getAttribute('data-ra-act')||'open');
+      document.getElementById('recentAlbumMenu').classList.remove('open');
+      const kind = String(recentMenuCtx?.kind || 'album');
+
+      if (kind === 'podcast') {
+        if (act === 'open') return;
+        const file = await mostRecentDownloadedPodcastFile(recentMenuCtx.rss || '');
+        if (!file) return;
+        if (act === 'play') { await sendPlayback('playfile',{file}); return; }
+        if (act === 'shuffle') { await sendPlayback('addfile',{file}); return; }
+        return;
+      }
+
+      if (kind === 'playlist') {
+        if (act==='open') { await openRecentPlaylistFrom(recentMenuCtx); return; }
+        if (act==='play') {
+          await ensureKey();
+          await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentMenuCtx.playlist,mode:'replace',play:true})}).catch(()=>null);
+          return;
+        }
+        if (act==='shuffle') {
+          const tracks = await fetchPlaylistTracks(recentMenuCtx.playlist);
+          const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean);
+          for (let i=files.length-1;i>0;i--){ const k=Math.floor(Math.random()*(i+1)); const tmp=files[i]; files[i]=files[k]; files[k]=tmp; }
+          await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})}).catch(()=>null);
+          return;
+        }
+        return;
+      }
+
+      if (kind === 'radio') {
+        if (act==='open') { openPage('controller-radio.html'); return; }
+        if (act==='play') { await playOrAddRadio(recentMenuCtx.url, 'replace'); return; }
+        if (act==='shuffle') { await playOrAddRadio(recentMenuCtx.url, 'append'); return; }
+        return;
+      }
+
+      if (act==='open') { await openRecentAlbumFrom(recentMenuCtx); return; }
+      if (act==='play') { await sendPlayback('addalbum',{mode:'replace',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
+      if (act==='shuffle') {
+        const tracks = await fetchAlbumTracks(recentMenuCtx.album, recentMenuCtx.artist);
+        const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean);
+        for (let i=files.length-1;i>0;i--){ const k=Math.floor(Math.random()*(i+1)); const tmp=files[i]; files[i]=files[k]; files[k]=tmp; }
+        await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})}).catch(()=>null);
+      }
+    });
+
+    function closeRecentAlbumModal(){
+      const m = document.getElementById('recentAlbumModal');
+      if (!m) return;
+      m.classList.remove('open');
+      m.style.left=''; m.style.top=''; m.style.width=''; m.style.height=''; m.style.inset=''; m.style.position='';
+    }
+    document.getElementById('recentAlbumCloseBtn').addEventListener('click', closeRecentAlbumModal);
+    document.getElementById('recentAlbumModal').addEventListener('click', (ev)=>{ if(ev.target.id==='recentAlbumModal') closeRecentAlbumModal(); });
+    document.getElementById('recentAlbumAppendBtn').addEventListener('click', async ()=>{
+      if (recentModalCtx.kind === 'playlist') {
+        await ensureKey();
+        await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentModalCtx.playlist,mode:'append',play:false})}).catch(()=>null);
+      } else if (recentModalCtx.kind === 'podcast') {
+        const file = String((recentModalCtx.tracks||[])[0]?.file || '').trim();
+        if (file) await sendPlayback('addfile',{file});
+      } else {
+        await sendPlayback('addalbum',{mode:'append',album:recentModalCtx.album,artist:recentModalCtx.artist||''});
+      }
+      closeRecentAlbumModal();
+    });
+    document.getElementById('recentAlbumCropBtn').addEventListener('click', async ()=>{ await sendPlayback('addalbum',{mode:'crop',album:recentModalCtx.album,artist:recentModalCtx.artist||''}); closeRecentAlbumModal(); });
+    document.getElementById('recentAlbumReplaceBtn').addEventListener('click', async ()=>{
+      if (recentModalCtx.kind === 'playlist') {
+        await ensureKey();
+        await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentModalCtx.playlist,mode:'replace',play:true})}).catch(()=>null);
+      } else if (recentModalCtx.kind === 'podcast') {
+        const file = String((recentModalCtx.tracks||[])[0]?.file || '').trim();
+        if (file) await sendPlayback('playfile',{file});
+      } else {
+        await sendPlayback('addalbum',{mode:'replace',album:recentModalCtx.album,artist:recentModalCtx.artist||''});
+      }
+      closeRecentAlbumModal();
+    });
+    document.getElementById('recentAlbumTracks').addEventListener('click', async (ev)=>{ const b=ev.target.closest('button[data-track-action][data-track-file]'); if(!b) return; let file=''; try{file=decodeURIComponent(String(b.getAttribute('data-track-file')||''));}catch{file=String(b.getAttribute('data-track-file')||'')} if(!file) return; const a=String(b.getAttribute('data-track-action')||''); if(a==='play'){ await sendPlayback('playfile',{file}); closeRecentAlbumModal(); } else { await sendPlayback('addfile',{file}); } });
+
+    document.addEventListener('click',(ev)=>{
+      const m=document.getElementById('recentAlbumMenu');
+      if (m.classList.contains('open') && !ev.target.closest('#recentAlbumMenu') && !ev.target.closest('[data-ra-more="1"]')) m.classList.remove('open');
+    });
+
+    document.querySelectorAll('.row[data-page]').forEach((row)=>{
+      row.addEventListener('click', ()=>openPage(row.getAttribute('data-page') || ''));
+    });
+
+    const closeKioskPane = ()=>{
+      kioskPane?.classList.remove('open');
+      kioskPane?.setAttribute('aria-hidden','true');
+      recentWrap?.classList.remove('paneOpen');
+      setOpenNavRow('');
+      setTimeout(()=>{ try { if (kioskPaneFrame) kioskPaneFrame.src = 'about:blank'; } catch {} }, 220);
+    };
+    window.addEventListener('message', (ev)=>{
+      const d = ev?.data || {};
+      if (!d || typeof d !== 'object') return;
+      if (String(d.type || '') === 'np-kiosk-hide-pane') closeKioskPane();
+    });
+
+    initKioskControls();
+
+    (async ()=>{
+      // Prioritize Now Playing first so banner paints immediately.
+      refreshNowPlayingCard();
+      setInterval(refreshNowPlayingCard, 3500);
+
+      // Run remaining startup work in background without blocking NP render.
+      loadServerProfile().catch(()=>null);
+      loadHomeQuickIndex().catch(()=>null);
+      loadRecentlyAdded().catch(()=>null);
+
+      // Optional deep-link: auto-open a kiosk pane page on load.
+      try {
+        const openPageParam = String(__u.searchParams.get('open') || '').trim();
+        if (IS_KIOSK_1280 && !IS_KIOSK_EDITOR && openPageParam.startsWith('kiosk-')) {
+          setTimeout(() => openPage(openPageParam), 120);
+        }
+      } catch {}
+    })();
+  
+    // Pull-to-refresh (controller pages)
+    (function enablePullToRefresh(){
+      if (window.__npPullRefreshBound) return;
+      window.__npPullRefreshBound = true;
+      let startY = 0;
+      let tracking = false;
+      let armed = false;
+      const THRESH = 80;
+
+      const topScrollable = () => {
+        const el = document.scrollingElement || document.documentElement || document.body;
+        return (el?.scrollTop || window.pageYOffset || 0) <= 0;
+      };
+
+      window.addEventListener('touchstart', (e) => {
+        if (!e.touches || e.touches.length !== 1) return;
+        if (!topScrollable()) return;
+        startY = e.touches[0].clientY;
+        tracking = true;
+        armed = false;
+      }, { passive: true });
+
+      window.addEventListener('touchmove', (e) => {
+        if (!tracking || !e.touches || e.touches.length !== 1) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy > THRESH && topScrollable()) armed = true;
+      }, { passive: true });
+
+      window.addEventListener('touchend', () => {
+        if (tracking && armed) location.reload();
+        tracking = false;
+        armed = false;
+      }, { passive: true });
+    })();
+</script>
 </body>
 </html>
