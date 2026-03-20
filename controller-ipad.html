@@ -856,8 +856,11 @@
     let npCurrentArt = '';
     let npCurrentIsPodcast = false;
     let npCurrentIsRadio = false;
+    let npCurrentRadioFile = '';
+    let npCurrentRadioFavorite = false;
     let npMotionReqToken = 0;
     let npRadioGridCache = { ts: 0, html: '' };
+    let npRadioFavCache = { ts: 0, set: new Set() };
     const setArtFlip = (flipped = false)=>{
       const wrap = document.getElementById('npArtWrap');
       if (!wrap) return;
@@ -872,6 +875,22 @@
       const out = String(text || '').trim();
       el.textContent = out || 'No personnel available for this track.';
     };
+    async function refreshRadioFavoriteSet(force=false){
+      const now = Date.now();
+      if (!force && npRadioFavCache.set && (now - Number(npRadioFavCache.ts || 0) < 12000)) return npRadioFavCache.set;
+      try {
+        await ensureKey();
+        const r = await fetch(`${base}/config/queue-wizard/radio-favorites`, { cache:'no-store', headers:reqHeaders(false) });
+        const j = await r.json().catch(()=>({}));
+        const rows = (r.ok && j?.ok && Array.isArray(j.favorites)) ? j.favorites : [];
+        const s = new Set(rows.map((x)=>String(x?.file || '').trim()).filter(Boolean));
+        npRadioFavCache = { ts: now, set: s };
+        return s;
+      } catch {
+        return npRadioFavCache.set || new Set();
+      }
+    }
+
     async function renderRadioFavoritesBack(){
       const el = document.getElementById('npPersonnelBody');
       if (!el) return;
@@ -1085,10 +1104,20 @@
         if (npSeekInlineEl) npSeekInlineEl.style.display = (hasTrack && isPodcast) ? 'inline-flex' : 'none';
         const eq = document.getElementById('eqOverlay');
         if (eq) {
-          const isFav = !!j?.isFavorite;
+          const radioFile = String(j?.file || j?.radioTrackUrl || '').trim();
+          npCurrentRadioFile = isRadio ? radioFile : '';
+          let isFav = !!j?.isFavorite;
+          if (isRadio) {
+            const favSet = await refreshRadioFavoriteSet(false);
+            npCurrentRadioFavorite = !!(radioFile && favSet?.has?.(radioFile));
+            isFav = npCurrentRadioFavorite;
+          } else {
+            npCurrentRadioFavorite = false;
+          }
           eq.style.display = hasTrack ? 'inline-flex' : 'none';
           eq.textContent = isFav ? '♥' : '♡';
           eq.classList.toggle('isFav', isFav);
+          eq.title = isRadio ? (isFav ? 'Unfavorite station' : 'Favorite station') : (isFav ? 'Favorited' : 'Not favorited');
         }
 
         const progressWrap = document.getElementById('npProgress');
@@ -2443,6 +2472,49 @@
       ev.stopPropagation();
       setArtFlip(false);
       wakeNpCtrls(1800);
+    });
+
+    document.getElementById('eqOverlay')?.addEventListener('click', async (ev)=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      // In radio context, heart controls station favorite status immediately.
+      if (!npCurrentIsRadio) return;
+      const station = String(npCurrentRadioFile || '').trim();
+      if (!station) return;
+      const eq = document.getElementById('eqOverlay');
+      const nextFav = !npCurrentRadioFavorite;
+      if (eq) {
+        eq.textContent = nextFav ? '♥' : '♡';
+        eq.classList.toggle('isFav', nextFav);
+      }
+      npCurrentRadioFavorite = nextFav;
+      try {
+        await ensureKey();
+        const r = await fetch(`${base}/config/queue-wizard/radio-favorite`, {
+          method:'POST',
+          headers:reqHeaders(true),
+          body: JSON.stringify({ station, favorite: nextFav })
+        });
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        npCurrentRadioFavorite = !!j?.favorite;
+        try {
+          const s = npRadioFavCache.set || new Set();
+          if (npCurrentRadioFavorite) s.add(station); else s.delete(station);
+          npRadioFavCache = { ts: Date.now(), set: s };
+        } catch {}
+        if (eq) {
+          eq.textContent = npCurrentRadioFavorite ? '♥' : '♡';
+          eq.classList.toggle('isFav', npCurrentRadioFavorite);
+        }
+      } catch {
+        // Revert optimistic toggle on failure.
+        npCurrentRadioFavorite = !nextFav;
+        if (eq) {
+          eq.textContent = npCurrentRadioFavorite ? '♥' : '♡';
+          eq.classList.toggle('isFav', npCurrentRadioFavorite);
+        }
+      }
     });
 
     document.getElementById('npPersonnelBody')?.addEventListener('click', async (ev)=>{
