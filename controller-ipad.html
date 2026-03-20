@@ -244,7 +244,7 @@
     body.ipad11 #line3{font-size:13px;opacity:.92}
     body.ipad11 #libraryList{margin:0;overflow:auto;min-height:0}
     body.ipad11 .row{padding:9px 0}
-    body.ipad11.ipad11Landscape .row{padding:2px 0;align-self:stretch;align-items:center}
+    body.ipad11.ipad11Landscape .row{padding:2px 10px;align-self:stretch;align-items:center}
     body.ipad11 .row .lbl{font-size:20px}
     body.ipad11.ipad11Landscape .row .lbl{font-size:21px;line-height:1.02}
     body.ipad11.ipad11Landscape .row .ico{width:26px;height:26px;display:flex;align-items:center;justify-content:center}
@@ -260,14 +260,14 @@
     body.ipad11 .ipadRecentPane .thumb .cap{font-size:12px}
 
     body.ipad11.ipad11Landscape{padding-top:max(28px, env(safe-area-inset-top))}
-    body.ipad11.ipad11Landscape #kioskCanvas{position:relative;grid-template-columns:minmax(320px,1fr) minmax(0,2fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:8px;max-height:calc(100dvh - 8px);box-sizing:border-box}
+    body.ipad11.ipad11Landscape #kioskCanvas{position:relative;grid-template-columns:minmax(320px,1fr) minmax(0,2fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:0;max-height:calc(100dvh - 8px);box-sizing:border-box}
     body.ipad11.ipad11Landscape .npTap{grid-area:np;max-height:none;overflow:visible}
     /* Col1 group 1: Art + controls + text */
     body.ipad11.ipad11Landscape .npTap .card{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:10px}
     body.ipad11.ipad11Landscape .quickWrap{grid-area:quick;margin:12px 0 0 0}
     /* Col1 group 2: Quick Search + Library links */
     body.ipad11.ipad11Landscape .quickWrap{border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:rgba(255,255,255,.02);padding:8px 8px 6px}
-    body.ipad11.ipad11Landscape #libraryList{grid-area:list;margin:0;min-height:0;padding:8px 10px 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:rgba(255,255,255,.02)}
+    body.ipad11.ipad11Landscape #libraryList{grid-area:list;margin:0;min-height:0;padding:0 0 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:rgba(255,255,255,.02)}
     body.ipad11.ipad11Landscape .recentWrap{grid-area:recent;min-height:0;display:flex;flex-direction:column}
     body.ipad11.ipad11Landscape .npTap .card{display:flex;flex-direction:column;padding-top:14px}
     body.ipad11.ipad11Landscape .np{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;order:1}
@@ -1647,7 +1647,11 @@
       document.getElementById('recentAlbumTracks').innerHTML = '<li>Loading episodes…</li>';
       try {
         const eps = await fetchPodcastEpisodeTracks(recentModalCtx.rss);
-        eps.sort((a,b)=>(Number(b.downloadedAt||0)-Number(a.downloadedAt||0)) || String(a.title||'').localeCompare(String(b.title||'')));
+        const toTs = (x)=>{
+          const t = Date.parse(String(x?.date || '').trim());
+          return Number.isFinite(t) ? t : 0;
+        };
+        eps.sort((a,b)=>(toTs(b)-toTs(a)) || (Number(b.downloadedAt||0)-Number(a.downloadedAt||0)) || String(a.title||'').localeCompare(String(b.title||'')));
         recentModalCtx.tracks = eps;
       } catch { recentModalCtx.tracks = []; }
       if (document.getElementById('recentAlbumModal').classList.contains('open')) openRecentAlbumModal();

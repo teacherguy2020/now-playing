@@ -115,7 +115,7 @@ export function registerPodcastEpisodeRoutes(app, deps) {
         const names = await fsp.readdir(sub.dir);
         for (const name of names) {
           if (!AUDIO_RE.test(name)) continue;
-          const stem = String(name).replace(/\.[^.]+$/, '').trim();
+          const stem = String(name).replace(/\.[^.]+$/, '').trim().toLowerCase();
           if (!stem) continue;
           const full = path.join(sub.dir, name);
           try {
@@ -126,12 +126,33 @@ export function registerPodcastEpisodeRoutes(app, deps) {
         }
       } catch {}
 
-      function idStemForFeedItem(ep) {
+      const titleByStem = Object.create(null);
+      try {
+        const raw = await fsp.readFile(sub.mapJson, 'utf8');
+        const map = JSON.parse(raw || '{}');
+        const itemsByUrl = (map && typeof map.itemsByUrl === 'object' && map.itemsByUrl) ? map.itemsByUrl : {};
+        for (const v of Object.values(itemsByUrl)) {
+          const fn = String(v?.filename || '').trim();
+          if (!fn) continue;
+          const stem = fn.replace(/\.[^.]+$/, '').trim().toLowerCase();
+          if (!stem) continue;
+          const t = String(v?.title || '').trim();
+          if (t && !titleByStem[stem]) titleByStem[stem] = t;
+        }
+      } catch {}
+
+      async function idStemForFeedItem(ep) {
         const guid = String(ep?.guid || '').trim();
         if (guid) return crypto.createHash('sha1').update(guid).digest('hex').slice(0, 12).toLowerCase();
         const rawUrl = String(ep?.enclosure || '').trim();
         if (!rawUrl) return '';
-        const seed = stripQueryHash(rawUrl);
+        let seed = '';
+        try {
+          const finalUrl = await resolveFinalUrl(rawUrl);
+          seed = stripQueryHash(finalUrl || rawUrl);
+        } catch {
+          seed = stripQueryHash(rawUrl);
+        }
         if (!seed) return '';
         return crypto.createHash('sha1').update(seed).digest('hex').slice(0, 12).toLowerCase();
       }
@@ -148,24 +169,35 @@ export function registerPodcastEpisodeRoutes(app, deps) {
       const episodes = [];
       const seenStems = new Set();
 
+      const parsePublishedMs = (ep = {}) => {
+        if (typeof ep?.published === 'number' && Number.isFinite(ep.published)) return ep.published;
+        const d = new Date(ep?.isoDate || ep?.pubDate || ep?.date || '');
+        const t = d.getTime();
+        return Number.isFinite(t) ? t : null;
+      };
+      const cleanTitle = (v = '') => {
+        const t = String(v || '').trim();
+        if (!t) return '';
+        const n = t.toLowerCase();
+        if (n === '(untitled)' || n === 'untitled' || n === '(downloaded episode)') return '';
+        return t;
+      };
+
       for (const ep of feedItems) {
         const enclosure = String(ep?.enclosure || '').trim();
-        const stem = idStemForFeedItem(ep);
+        const stem = await idStemForFeedItem(ep);
         if (!stem) continue;
 
         seenStems.add(stem);
-        const local = localByStem[stem] || null;
-        const downloaded = !!local;
+        const local = localByStem[String(stem).toLowerCase()] || null;
+        const downloaded = !!(local && Number(local?.size || 0) > 65536);
 
-        const title = String(ep?.title || '').trim();
+        const title = cleanTitle(ep?.title) || cleanTitle(titleByStem[String(stem).toLowerCase()]) || '';
         const date = yyyyMmDd(ep?.isoDate || ep?.pubDate || ep?.published || ep?.date || '');
-        const published =
-          (typeof ep?.published === 'number') ? ep.published :
-            (() => {
-              const d = new Date(ep?.isoDate || ep?.pubDate || ep?.date || '');
-              const t = d.getTime();
-              return Number.isFinite(t) ? t : null;
-            })();
+        const published = parsePublishedMs(ep);
+
+        // Skip malformed feed rows with no usable metadata.
+        if (!title && !date) continue;
 
         const episodeImageUrl =
           (enclosure ? (epImgByEnc.get(stripQueryHash(enclosure)) || '') : '') ||
@@ -186,19 +218,39 @@ export function registerPodcastEpisodeRoutes(app, deps) {
         });
       }
 
+      const titleFromLocalFilename = (name = '') => {
+        let raw = String(name || '').trim();
+        if (!raw) return '';
+        raw = raw.replace(/\.[^.]+$/, '');
+        try { raw = decodeURIComponent(raw); } catch {}
+        raw = raw
+          .replace(/[._]+/g, ' ')
+          .replace(/\s+/g, ' ')
+          .replace(/^\d{4}[-_\s]?\d{2}[-_\s]?\d{2}[-_\s]*/i, '')
+          .replace(/^\d+[-_\s]+/, '')
+          .trim();
+        if (/^[a-f0-9]{12}$/i.test(raw)) return '';
+        return raw;
+      };
+
       for (const stem of Object.keys(localByStem)) {
         if (seenStems.has(stem)) continue;
         const local = localByStem[stem];
+        const knownTitle = cleanTitle(titleByStem[String(stem).toLowerCase()]) || '';
+
+        // Hide orphaned local files with no trustworthy metadata.
+        // These are usually stale hash files and should not appear with play buttons.
+        if (!knownTitle) continue;
 
         episodes.push({
           id: stem,
           key: `id:${stem}`,
-          title: '(downloaded — not in feed scan)',
+          title: knownTitle,
           date: '',
-          published: null,
+          published: Number(local?.mtimeMs || 0) || null,
           enclosure: '',
           imageUrl: showImageUrl || '',
-          downloaded: true,
+          downloaded: !!(local && Number(local?.size || 0) > 65536),
           filename: local.filename,
           mpdPath: `${sub.mpdPrefix}/${local.filename}`,
         });
