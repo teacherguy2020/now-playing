@@ -19,6 +19,10 @@
     *{box-sizing:border-box}
     body{margin:0;background:var(--surface);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
     .card{background:transparent;border:0;padding:8px 0;margin-bottom:8px}
+    #npCard{position:relative;overflow:hidden;border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,.10);--npBlurBg:none}
+    #npCard::before{content:'';position:absolute;inset:0;background-image:var(--npBlurBg);background-size:cover;background-position:center;opacity:.72;pointer-events:none}
+    #npCard::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,12,20,.36),rgba(7,12,20,.52));pointer-events:none}
+    #npCard > *{position:relative;z-index:1}
     .title{font-weight:750;font-size:18px;margin-bottom:10px}
 
     .npTap{display:block;text-decoration:none;color:inherit;-webkit-touch-callout:none;touch-action:manipulation;-webkit-user-select:none;user-select:none}
@@ -39,6 +43,11 @@
     .personnelCard{width:100%;height:100%;padding:8px 9px;display:flex;flex-direction:column;gap:5px}
     .personnelTitle{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#9fc4ff;font-weight:700;opacity:.92}
     .personnelBody{font-size:11px;line-height:1.24;color:#e7efff;overflow:auto;white-space:pre-line}
+    .radioGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;width:100%;height:100%}
+    .radioCellBtn{border:0;background:transparent;padding:0;margin:0;cursor:pointer}
+    .np .radioGrid img{width:100% !important;height:100% !important;min-width:0;min-height:0;aspect-ratio:1/1;object-fit:cover;border-radius:5px;background:#0a1222;border:1px solid rgba(255,255,255,.14)}
+    .radioBusy{display:flex;align-items:center;justify-content:center;gap:8px;height:100%;font-size:11px;color:#d8e7ff}
+    .radioBusy .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.28);border-top-color:#9fc4ff;animation:npSpin .8s linear infinite}
     .np img{width:64px;height:64px;border-radius:10px;object-fit:cover;display:block}
     .npArtMotion{position:absolute;inset:0;width:100%;height:100%;border-radius:10px;object-fit:cover;display:none;z-index:2;pointer-events:none}
     .npArtMotion.show{display:block}
@@ -47,13 +56,13 @@
     .artSpin[hidden]{display:none !important}
     .artSpin::before{content:'';width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#ffffff;animation:npSpin .8s linear infinite}
     @keyframes npSpin{to{transform:rotate(360deg)}}
-    .eq{position:absolute;right:4px;bottom:4px;display:none;gap:2px;align-items:flex-end;padding:2px 3px;border-radius:6px;background:rgba(3,10,20,.55)}
-    .eq b{display:block;width:2px;background:#7dd3fc;border-radius:2px;animation:eq 1s ease-in-out infinite}
+    .eq{position:absolute;right:6px;bottom:6px;display:none;align-items:center;justify-content:center;width:18px;height:18px;border-radius:999px;background:rgba(3,10,20,.62);color:#cddaf0;font-size:12px;line-height:1;border:1px solid rgba(255,255,255,.22)}
+    .eq.isFav{color:#ff6b81;border-color:rgba(255,107,129,.62)}
     .npCtrls{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);display:none;align-items:center;gap:8px;padding:4px 8px;border-radius:999px;background:rgba(8,12,20,.26);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);z-index:5;opacity:.35;transition:opacity .2s ease, background-color .2s ease, border-color .2s ease}
     .npCtrls.is-awake{opacity:.95;background:rgba(8,12,20,.45);border:1px solid rgba(255,255,255,.16)}
-    .npCtrls .ctl{display:grid;width:30px;height:30px;min-width:30px;min-height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:#fff;box-shadow:0 3px 8px rgba(0,0,0,.25);place-items:center;cursor:pointer;padding:0;transition:background-color .2s ease, box-shadow .2s ease}
-    .npCtrls.is-awake .ctl{background:rgba(255,255,255,.14);box-shadow:0 5px 14px rgba(0,0,0,.3)}
-    .npCtrls .ctl.big{width:36px;min-width:36px;height:36px;min-height:36px}
+    .npCtrls .ctl{display:grid;width:32px;height:32px;min-width:32px;min-height:32px;border-radius:999px;border:1px solid rgba(255,255,255,.26);background:linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.08));color:#fff;box-shadow:0 8px 20px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.34);backdrop-filter:blur(10px) saturate(1.15);-webkit-backdrop-filter:blur(10px) saturate(1.15);place-items:center;cursor:pointer;padding:0;transition:background-color .2s ease, box-shadow .2s ease, transform .12s ease}
+    .npCtrls.is-awake .ctl{background:linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,.12));box-shadow:0 10px 24px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.42)}
+    .npCtrls .ctl.big{width:40px;min-width:40px;height:40px;min-height:40px}
     .npCtrls .ctl svg{width:14px;height:14px;fill:currentColor;display:block}
     .npCtrls .ctlPause,.npCtrls .ctlPlay{display:none}
     .npCtrls .ctl.on{background:rgba(22,163,74,.50);box-shadow:0 0 0 1px rgba(34,197,94,.65),0 0 16px rgba(34,197,94,.42),0 5px 14px rgba(0,0,0,.3);color:#eaffef}
@@ -207,7 +216,7 @@
     body.kiosk1280 .recentTitle{font-size:18px;margin:2px 0 8px;padding-left:5px}
     body.kiosk1280 .railModeBtn{display:none}
     body.kiosk1280 .rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 24px)/4);grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;padding:0;overflow-x:auto;overflow-y:hidden;align-content:start}
-    body.kiosk1280 .kPane, body.ipad11.ipad11Landscape .kPane{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;background:linear-gradient(180deg,#0e1830,#0a1224);border:1px solid rgba(104,136,190,.45);border-radius:10px;overflow:hidden;clip-path:inset(0 100% 0 0);opacity:1;pointer-events:none;transition:clip-path .30s ease}
+    body.kiosk1280 .kPane, body.ipad11.ipad11Landscape .kPane{position:absolute;inset:0;z-index:12;display:flex;flex-direction:column;background:var(--surface,#0b1324);border:1px solid var(--line,#1f2a3d);border-radius:10px;overflow:hidden;clip-path:inset(0 100% 0 0);opacity:1;pointer-events:none;transition:clip-path .30s ease}
     body.kiosk1280 .kPane.open, body.ipad11.ipad11Landscape .kPane.open{clip-path:inset(0 0 0 0);pointer-events:auto}
     body.kiosk1280 .recentWrap.paneOpen #recentTitle,
     body.kiosk1280 .recentWrap.paneOpen #recentRail,
@@ -295,16 +304,18 @@
     body.ipad11.ipad11Landscape .npTap .title{display:none !important}
     body.ipad11.ipad11Landscape .npMeta{width:100%;padding-top:4px;margin-top:0}
     body.ipad11.ipad11Landscape .npProgress{display:block !important;height:2px !important;min-height:2px !important;flex:0 0 2px !important;margin-top:2px;margin-bottom:2px}
-    body.ipad11.ipad11Landscape #line1{font-size:30px;line-height:1.08;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
-    body.ipad11.ipad11Landscape #line2Wrap{display:flex;align-items:center;gap:8px;max-width:100%}
+    body.ipad11.ipad11Landscape #line3{transform:translateY(5px)}
+    body.ipad11.ipad11Landscape #line1{font-size:30px;line-height:1.08;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%;transform:translateY(-13px)}
+    body.ipad11.ipad11Landscape #line2Wrap{display:flex;align-items:flex-start;gap:8px;max-width:100%;transform:translateY(-13px)}
+    body.ipad11.ipad11Landscape #line2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;line-height:1.12;max-width:100%}
     body.ipad11.ipad11Landscape #line2{font-size:18px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%}
     body.ipad11.ipad11Landscape #line2Stars{display:inline-flex;gap:2px;align-items:center;color:#d4af37;font-size:14px;line-height:1;cursor:pointer;white-space:nowrap}
     body.ipad11.ipad11Landscape #line2Stars .star{opacity:.3}
     body.ipad11.ipad11Landscape #line2Stars .star.on{opacity:1}
     body.ipad11.ipad11Landscape #line3{font-size:16px;line-height:1.18;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;max-width:100%;opacity:.95}
-    body.ipad11.ipad11Landscape .npCtrls{display:grid !important;grid-template-columns:repeat(2,66px);gap:11px;position:absolute;left:calc(100% + 12px);top:0;transform:none;padding:0 0 0 40px;background:transparent;border:0;backdrop-filter:none;-webkit-backdrop-filter:none;opacity:.98}
-    body.ipad11.ipad11Landscape .npCtrls .ctl{width:66px;height:66px;min-width:66px;min-height:66px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:linear-gradient(180deg,rgba(56,66,86,.96),rgba(34,42,58,.96));box-shadow:0 6px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08)}
-    body.ipad11.ipad11Landscape .npCtrls .ctl.big{width:66px;min-width:66px;height:66px;min-height:66px}
+    body.ipad11.ipad11Landscape .npCtrls{display:grid !important;grid-template-columns:repeat(2,66px);gap:11px;position:absolute;left:calc(100% + 12px);top:2px;transform:none;padding:0;background:transparent;border:0;backdrop-filter:none;-webkit-backdrop-filter:none;opacity:.98}
+    body.ipad11.ipad11Landscape .npCtrls .ctl{width:66px;height:66px;min-width:66px;min-height:66px;border-radius:999px;border:1px solid color-mix(in oklab, var(--muted) 42%, rgba(255,255,255,.22));background:linear-gradient(180deg, color-mix(in oklab, var(--muted) 26%, rgba(255,255,255,.24)) 0%, color-mix(in oklab, var(--muted) 18%, rgba(255,255,255,.10)) 38%, color-mix(in oklab, var(--muted) 10%, rgba(255,255,255,.03)) 100%);box-shadow:0 10px 22px rgba(0,0,0,.24), inset 0 1px 0 color-mix(in oklab, var(--muted) 26%, rgba(255,255,255,.30)), inset 0 -8px 18px color-mix(in oklab, var(--muted) 14%, rgba(255,255,255,.04));backdrop-filter:blur(16px) saturate(1.18);-webkit-backdrop-filter:blur(16px) saturate(1.18)}
+    body.ipad11.ipad11Landscape .npCtrls .ctl.big{width:70px;min-width:70px;height:70px;min-height:70px}
     body.ipad11.ipad11Landscape .npCtrls .ctl svg{width:22px;height:22px}
     body.ipad11.ipad11Landscape .npCtrls .ctlPlay.is-active,
     body.ipad11.ipad11Landscape .npCtrls .ctlPause.is-active{color:#4ade80;border-color:rgba(74,222,128,.75);box-shadow:0 0 0 1px rgba(74,222,128,.5),0 6px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08)}
@@ -351,7 +362,7 @@
   </div>
   <div id="kioskCanvas">
   <a class="npTap" data-href="controller-now-playing.html" title="Open full player">
-    <div class="card">
+    <div class="card" id="npCard">
       <div class="title">Now Playing on moOde</div>
       <div class="np">
         <div class="artWrap" id="npArtWrap" aria-label="Album art (tap to flip)">
@@ -361,7 +372,7 @@
               <video id="npArtMotion" class="npArtMotion" autoplay muted loop playsinline preload="metadata"></video>
               <button type="button" class="artHint artHintInfo" id="npFlipInfoBtn" aria-label="Show personnel">i</button>
               <span class="artSpin" id="npArtSpin" aria-hidden="true"></span>
-              <span class="eq" id="eqOverlay" aria-hidden="true"><b></b><b></b><b></b></span>
+              <span class="eq" id="eqOverlay" aria-hidden="true">♥</span>
             </div>
             <div class="artFace artFaceBack" id="npArtBack">
               <div class="personnelCard">
@@ -846,6 +857,7 @@
     let npCurrentIsPodcast = false;
     let npCurrentIsRadio = false;
     let npMotionReqToken = 0;
+    let npRadioGridCache = { ts: 0, html: '' };
     const setArtFlip = (flipped = false)=>{
       const wrap = document.getElementById('npArtWrap');
       if (!wrap) return;
@@ -855,9 +867,61 @@
     const renderPersonnelBack = (text = '')=>{
       const el = document.getElementById('npPersonnelBody');
       if (!el) return;
+      const titleEl = document.querySelector('#npArtBack .personnelTitle');
+      if (titleEl) titleEl.style.display = '';
       const out = String(text || '').trim();
       el.textContent = out || 'No personnel available for this track.';
     };
+    async function renderRadioFavoritesBack(){
+      const el = document.getElementById('npPersonnelBody');
+      if (!el) return;
+      const titleEl = document.querySelector('#npArtBack .personnelTitle');
+      if (titleEl) titleEl.style.display = 'none';
+      const now = Date.now();
+      if (npRadioGridCache.html && (now - Number(npRadioGridCache.ts || 0) < 20000)) {
+        el.innerHTML = npRadioGridCache.html;
+        return;
+      }
+      try {
+        await ensureKey();
+        const rr = await fetch(`${base}/config/queue-wizard/radio-favorites`, { cache:'no-store', headers:reqHeaders(false) });
+        const rj = await rr.json().catch(()=>({}));
+        const rows = (rr.ok && rj?.ok && Array.isArray(rj.favorites)) ? rj.favorites.slice(0, 9) : [];
+        if (!rows.length) {
+          el.textContent = 'No favorite stations.';
+          return;
+        }
+        const html = `<div class='radioGrid'>${rows.map((s)=>{
+          const t = String(s?.stationName || s?.file || '(station)').trim();
+          const u = String(s?.file || '').trim();
+          const esc = t.replace(/'/g, '&#39;');
+          const src = `${base}/art/radio-logo.jpg?name=${encodeURIComponent(t)}`;
+          return `<button type='button' class='radioCellBtn' data-radio-url='${encodeURIComponent(u)}' title='Play ${esc}'><img src='${src}' alt='${esc}' title='${esc}'></button>`;
+        }).join('')}</div>`;
+        npRadioGridCache = { ts: now, html };
+        el.innerHTML = html;
+      } catch {
+        el.textContent = 'No favorite stations.';
+      }
+    }
+    async function waitForRadioTune(expectedUrl='', timeoutMs=18000){
+      const want = String(expectedUrl || '').trim();
+      const started = Date.now();
+      while (Date.now() - started < timeoutMs) {
+        try {
+          const r = await fetch(`${base}/now-playing`, { cache:'no-store' });
+          const j = await r.json().catch(()=>({}));
+          const file = String(j?.file || '').trim();
+          const isR = !!j?.isRadio || String(j?.service || '').toLowerCase().includes('radio') || !!j?.radioTrackUrl || (!!j?.isStream && !String(j?.genre||'').toLowerCase().includes('podcast'));
+          if (isR) {
+            if (!want) return true;
+            if (file && file === want) return true;
+          }
+        } catch {}
+        await new Promise((res)=>setTimeout(res, 700));
+      }
+      return false;
+    }
     const renderLine2Stars = ()=>{
       const el = document.getElementById('line2Stars');
       if (!el) return;
@@ -930,7 +994,7 @@
         const genreLc = String(j?.genre || '').toLowerCase();
         const fileLc = String(file || '').toLowerCase();
         const isPodcast = !!j?.isPodcast || genreLc.includes('podcast') || /\/podcasts?\//.test(fileLc);
-        const isRadio = !!j?.isRadio || String(j?.service || '').toLowerCase().includes('radio') || !!j?.radioTrackUrl;
+        const isRadio = !!j?.isRadio || String(j?.service || '').toLowerCase().includes('radio') || !!j?.radioTrackUrl || (!!j?.isStream && !isPodcast);
         const npSeekInlineEl = document.getElementById('npSeekInline');
         const isAirplay = !!j?.isAirplay;
         const isUpnp = !!j?.isUpnp;
@@ -952,7 +1016,8 @@
         if (sig !== npSig) {
           npSig = sig;
           setArtFlip(false);
-          renderPersonnelBack(npPersonnelText);
+          if (isRadio) renderRadioFavoritesBack().catch(()=>renderPersonnelBack(npPersonnelText));
+          else renderPersonnelBack(npPersonnelText);
           const artEl = document.getElementById('art');
           const spinEl = document.getElementById('npArtSpin');
           if (artEl) {
@@ -986,6 +1051,9 @@
               }).catch(()=>{});
             }
           }
+          const npCardEl = document.getElementById('npCard');
+          if (npCardEl) npCardEl.style.setProperty('--npBlurBg', `url("${base}/art/current_bg_640_blur.jpg?t=${Date.now()}")`);
+
           const line1El = document.getElementById('line1');
           if (line1El) {
             line1El.textContent = line1;
@@ -1016,7 +1084,12 @@
         renderLine2Stars();
         if (npSeekInlineEl) npSeekInlineEl.style.display = (hasTrack && isPodcast) ? 'inline-flex' : 'none';
         const eq = document.getElementById('eqOverlay');
-        if (eq) eq.style.display = (hasTrack && (st === 'play' || st === 'playing')) ? 'inline-flex' : 'none';
+        if (eq) {
+          const isFav = !!j?.isFavorite;
+          eq.style.display = hasTrack ? 'inline-flex' : 'none';
+          eq.textContent = isFav ? '♥' : '♡';
+          eq.classList.toggle('isFav', isFav);
+        }
 
         const progressWrap = document.getElementById('npProgress');
         const progressFill = document.getElementById('npProgressFill');
@@ -2365,10 +2438,29 @@
     npArtWrapEl?.addEventListener('click', (ev)=>{
       if (!document.body.classList.contains('ipad11Landscape')) return;
       if (!npArtWrapEl.classList.contains('is-flipped')) return;
+      if (ev.target?.closest?.('.radioCellBtn')) return;
       ev.preventDefault();
       ev.stopPropagation();
       setArtFlip(false);
       wakeNpCtrls(1800);
+    });
+
+    document.getElementById('npPersonnelBody')?.addEventListener('click', async (ev)=>{
+      const b = ev.target?.closest?.('.radioCellBtn[data-radio-url]');
+      if (!b) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const url = (()=>{ try { return decodeURIComponent(String(b.getAttribute('data-radio-url')||'')); } catch { return String(b.getAttribute('data-radio-url')||''); } })();
+      if (!url) return;
+      const body = document.getElementById('npPersonnelBody');
+      if (body) body.innerHTML = `<div class='radioBusy'><span class='miniSpin' aria-hidden='true'></span><span>Tuning station…</span></div>`;
+      try {
+        await playOrAddRadio(url, 'replace');
+        await waitForRadioTune(url, 18000);
+      } catch {}
+      setArtFlip(false);
+      wakeNpCtrls(2200);
+      refreshNowPlayingCard().catch(()=>null);
     });
     npCtrlsEl?.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); }, { passive:true });
     npCtrlsEl?.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); });
