@@ -459,20 +459,30 @@
         art: dec(row.getAttribute('data-art')),
       };
     };
+    async function playAlbumReliable(album, artist, shuffle){
+      try {
+        const tracks = await fetchAlbumTracks(album, artist);
+        const files = tracks.map(t => String(t?.file || '').trim()).filter(Boolean);
+        if (files.length) {
+          await ensureKey();
+          const r = await fetch(`${base}/config/queue-wizard/apply`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})},
+            body: JSON.stringify({ mode:'replace', keepNowPlaying:false, tracks:files, shuffle:!!shuffle, forceRandomOff:false, fastStart:true })
+          });
+          const j = await r.json().catch(()=>({}));
+          if (r.ok && j?.ok) return true;
+        }
+      } catch {}
+      try { await sendPlayback('addalbum', { mode:'replace', album, artist }); return true; } catch {}
+      return false;
+    }
+
     const runAlbumQuickAction = async (ctx, act)=>{
       if (!ctx?.album) return;
       if (act === 'open') { try { await sendPlayback('addalbum', { mode:'append', album: ctx.album, artist: ctx.artist }); } catch {} return; }
-      if (act === 'play') { try { await sendPlayback('addalbum', { mode:'replace', album: ctx.album, artist: ctx.artist }); } catch {} return; }
-      if (act === 'shuffle') {
-        try {
-          const tracks = await fetchAlbumTracks(ctx.album, ctx.artist);
-          const files = tracks.map(t => String(t?.file || '').trim()).filter(Boolean);
-          if (files.length) {
-            await ensureKey();
-            await fetch(`${base}/config/queue-wizard/apply`, { method:'POST', headers:{'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})}, body: JSON.stringify({ mode:'replace', keepNowPlaying:false, tracks:files, shuffle:true, forceRandomOff:false, fastStart:true }) }).catch(()=>null);
-          }
-        } catch {}
-      }
+      if (act === 'play') { await playAlbumReliable(ctx.album, ctx.artist, false); return; }
+      if (act === 'shuffle') { await playAlbumReliable(ctx.album, ctx.artist, true); return; }
     };
 
     host.addEventListener('click', async (ev)=>{
@@ -521,7 +531,33 @@
     document.getElementById('albumCloseBtn').addEventListener('click', closeAlbumModal);
     document.getElementById('albumModal').addEventListener('click', (ev)=>{ if(ev.target.id==='albumModal') closeAlbumModal(); });
 
-    async function runAlbumAction(mode){ if(!modalCtx.album) return; try{ await sendPlayback('addalbum',{mode,album:modalCtx.album,artist:modalCtx.artist||''}); }catch{} closeAlbumModal(); }
+    async function runAlbumAction(mode){
+      if(!modalCtx.album) return;
+      try {
+        const tracks = await fetchAlbumTracks(modalCtx.album, modalCtx.artist || '');
+        const files = tracks.map(t => String(t?.file || '').trim()).filter(Boolean);
+        if (files.length) {
+          await ensureKey();
+          const applyMode = (mode === 'replace' || mode === 'append' || mode === 'crop') ? mode : 'append';
+          const r = await fetch(`${base}/config/queue-wizard/apply`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})},
+            body: JSON.stringify({
+              mode: applyMode,
+              keepNowPlaying: applyMode !== 'replace',
+              tracks: files,
+              shuffle: false,
+              forceRandomOff: false,
+              fastStart: applyMode === 'replace'
+            })
+          });
+          const j = await r.json().catch(()=>({}));
+          if (r.ok && j?.ok) { closeAlbumModal(); return; }
+        }
+      } catch {}
+      try { await sendPlayback('addalbum',{mode,album:modalCtx.album,artist:modalCtx.artist||''}); }catch{}
+      closeAlbumModal();
+    }
     document.getElementById('albumAppendBtn').addEventListener('click', ()=>runAlbumAction('append'));
     document.getElementById('albumCropBtn').addEventListener('click', ()=>runAlbumAction('crop'));
     document.getElementById('albumReplaceBtn').addEventListener('click', ()=>runAlbumAction('replace'));
@@ -565,18 +601,11 @@
         return;
       }
       if (act === 'play') {
-        try { await sendPlayback('addalbum', { mode:'replace', album: albumMenuCtx.album, artist: albumMenuCtx.artist }); } catch {}
+        await playAlbumReliable(albumMenuCtx.album, albumMenuCtx.artist, false);
         return;
       }
       if (act === 'shuffle') {
-        try {
-          const tracks = await fetchAlbumTracks(albumMenuCtx.album, albumMenuCtx.artist);
-          const files = tracks.map(t => String(t?.file || '').trim()).filter(Boolean);
-          if (files.length) {
-            await ensureKey();
-            await fetch(`${base}/config/queue-wizard/apply`, { method:'POST', headers:{'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})}, body: JSON.stringify({ mode:'replace', keepNowPlaying:false, tracks:files, shuffle:true, forceRandomOff:false, fastStart:true }) }).catch(()=>null);
-          }
-        } catch {}
+        await playAlbumReliable(albumMenuCtx.album, albumMenuCtx.artist, true);
       }
     });
 
