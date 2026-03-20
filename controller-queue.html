@@ -20,15 +20,20 @@
     .queueTopActions button{border:1px solid var(--surface-border);background:var(--surface);color:var(--text);border-radius:9px;padding:6px 9px;font-size:12px;line-height:1.05;cursor:pointer}
     .queueTopActions button.warn{border-color:#5a3140;background:#1b0f18;color:#ffc9d5}
     .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
+    .vibeBusy{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:200;display:none;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(12,18,28,.88);border:1px solid #2a3a58;color:#e6efff;font-size:12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+    .vibeBusy.show{display:flex}
+    .vibeBusy .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite}
     .list{margin:0;padding:0;list-style:none;position:relative}
     #dropLine{position:absolute;left:0;right:0;height:3px;background:#45b26f;box-shadow:0 0 0 1px rgba(69,178,111,.18);z-index:10003;pointer-events:none;display:none}
 
     .rowWrap{position:relative;border-bottom:1px solid var(--line);overflow:hidden}
     .rowWrap.dragActive{overflow:visible;z-index:9997}
-    .deleteBtn{position:absolute;right:0;top:0;bottom:0;width:92px;border:0;background:var(--danger);color:#fff;font-weight:700;font-size:15px;opacity:0;pointer-events:none;transition:opacity .16s ease}
+    .vibeBtn,.deleteBtn{position:absolute;top:0;bottom:0;width:92px;border:0;color:#fff;font-weight:700;font-size:15px;opacity:0;pointer-events:none;transition:opacity .16s ease}
+    .vibeBtn{right:92px;background:#5b3df0}
+    .deleteBtn{right:0;background:var(--danger)}
     .row{position:relative;z-index:1;background:var(--bg);display:grid;grid-template-columns:28px 28px 1fr 30px;gap:8px;align-items:center;padding:6px 0;transform:translateX(0);transition:transform .18s ease;touch-action:pan-y}
-    .row.swiped{transform:translateX(-92px)}
-    .row.swiped ~ .deleteBtn{opacity:1;pointer-events:auto}
+    .row.swiped{transform:translateX(-184px)}
+    .row.swiped ~ .vibeBtn,.row.swiped ~ .deleteBtn{opacity:1;pointer-events:auto}
     .row.head{background:var(--row-head)}
     .row.optimisticPlay{background:rgba(69,178,111,.16);box-shadow:inset 0 0 0 2px rgba(69,178,111,.95)}
     .num{font-weight:700;color:var(--text);text-align:center}
@@ -104,6 +109,7 @@
 <body>
   <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="routeAlexaBtn" type="button" title="Invoke configured Alexa route webhook">Route to Alexa</button><button id="shuffleQueueBtn" type="button" title="Turn random off and shuffle queue">Shuffle</button><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
   <ul class="list" id="list"><li id="dropLine" aria-hidden="true"></li></ul>
+  <div class="vibeBusy" id="vibeBusy"><span class="miniSpin" aria-hidden="true"></span><span id="vibeBusyText">Building vibe queue…</span></div>
 
   <div class="menu" id="trackMenu" aria-hidden="true">
     <button id="goAlbumBtn" type="button"><span class="ico">◉</span><span>Go to Album</span></button>
@@ -318,6 +324,40 @@
     let radioLogoByHost = new Map();
     let radioHostAmbiguous = new Set();
     let radioHostMapTs = 0;
+    let vibeBusyJobId = '';
+
+    function setVibeBusy(on=false, text='Building vibe queue…'){
+      const box = document.getElementById('vibeBusy');
+      const txt = document.getElementById('vibeBusyText');
+      if (txt) txt.textContent = String(text || 'Building vibe queue…');
+      if (box) box.classList.toggle('show', !!on);
+    }
+
+    async function monitorVibeJob(jobId=''){
+      const id = String(jobId || '').trim();
+      if (!id) return;
+      vibeBusyJobId = id;
+      setVibeBusy(true, 'Building vibe queue…');
+      const started = Date.now();
+      try {
+        while (Date.now() - started < 180000) {
+          await ensureKey();
+          const r = await fetch(`${base}/config/queue-wizard/vibe-status/${encodeURIComponent(id)}`, {
+            cache:'no-store',
+            headers:{ ...(runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {}) }
+          });
+          const j = await r.json().catch(()=>({}));
+          const done = !!j?.done;
+          setVibeBusy(true, done ? 'Finalizing vibe queue…' : 'Building vibe queue…');
+          if (done) break;
+          await new Promise((res)=>setTimeout(res, 900));
+        }
+      } catch {}
+      if (vibeBusyJobId === id) {
+        setVibeBusy(false);
+        vibeBusyJobId = '';
+      }
+    }
 
     function maybeScrollToHead(force=false){
       const now = Date.now();
@@ -342,6 +382,22 @@
         method:'POST',
         headers:{'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {})},
         body: JSON.stringify(payload)
+      });
+      const j = await r.json().catch(()=>({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      return j;
+    }
+
+    async function startSeedVibeFromRowWrap(wrap){
+      const dec = (s)=>{ try{return decodeURIComponent(String(s||''));}catch{return String(s||'');} };
+      const seedArtist = String(dec(wrap?.getAttribute('data-artist')) || '').trim();
+      const seedTitle = String(dec(wrap?.getAttribute('data-title')) || '').trim();
+      if (!seedArtist || !seedTitle) throw new Error('Need artist and title for Vibe seed');
+      await ensureKey();
+      const r = await fetch(`${base}/config/queue-wizard/vibe-seed-start`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {})},
+        body: JSON.stringify({ seedArtist, seedTitle, targetQueue: 25, playNow: true })
       });
       const j = await r.json().catch(()=>({}));
       if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
@@ -496,6 +552,7 @@
             <div class="coverWrap" style="width:34px;height:34px"><img class="thumb" src="${thumb}" alt="" loading="lazy" decoding="async" /></div>
             <div><div class="title">${title}</div><div class="sub">${artist}${album ? ' • ' + album : ''}</div></div>
           </div>
+          <button type="button" class="vibeBtn" data-a="vibe" data-pos="${pos}">Vibe</button>
           <button type="button" class="deleteBtn" data-a="rm" data-pos="${pos}">Delete</button>
         </li>`;
       }).join('');
@@ -864,6 +921,29 @@
         return;
       }
 
+      const vibe = ev.target.closest('button.vibeBtn[data-a="vibe"]');
+      if (vibe) {
+        const wrap = vibe.closest('.rowWrap');
+        if (!wrap) return;
+        const prev = vibe.textContent || 'Vibe';
+        vibe.disabled = true;
+        vibe.textContent = 'Vibing…';
+        try {
+          const jr = await startSeedVibeFromRowWrap(wrap);
+          clearSwipes();
+          setTimeout(()=>{ loadQueue().catch(()=>null); }, 1200);
+          monitorVibeJob(String(jr?.jobId || '')).catch(()=>null);
+        } catch(e){
+          console.warn(e);
+          setVibeBusy(false);
+          try { alert(String(e?.message || e || 'Vibe build failed')); } catch {}
+        } finally {
+          vibe.disabled = false;
+          vibe.textContent = prev;
+        }
+        return;
+      }
+
       const del = ev.target.closest('button.deleteBtn[data-a="rm"]');
       if (del) {
         const pos = Number(del.getAttribute('data-pos')||0);
@@ -1013,6 +1093,8 @@
         if (row) row.setAttribute('data-pos', String(pos));
         const num = w.querySelector('.num');
         if (num) num.textContent = String(pos);
+        const vibe = w.querySelector('.vibeBtn[data-a="vibe"]');
+        if (vibe) vibe.setAttribute('data-pos', String(pos));
         const del = w.querySelector('.deleteBtn[data-a="rm"]');
         if (del) del.setAttribute('data-pos', String(pos));
       });
