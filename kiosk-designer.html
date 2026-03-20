@@ -123,6 +123,8 @@
       };
       const buildRel=()=>{
         const u=new URL(sizeSel.value, 'http://x.local/');
+        // Force fresh fetch on moOde Chromium after each push (avoid stale kiosk/controller JS).
+        u.searchParams.set('pushRev', String(Date.now()));
         u.searchParams.set('theme', 'auto');
         u.searchParams.set('recentSource', 'albums');
         u.searchParams.set('colorPreset', 'ocean');

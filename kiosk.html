@@ -65,6 +65,8 @@
 
       dst.searchParams.set('kiosk','1');
       dst.searchParams.set('preview','1');
+      // Cache-bust controller shell on moOde so kiosk nav fixes apply immediately.
+      dst.searchParams.set('rev','20260320-visualizer-pane-fix');
       if (resolved.theme) dst.searchParams.set('theme', resolved.theme);
       if (resolved.colorPreset) dst.searchParams.set('colorPreset', resolved.colorPreset);
       if (resolved.recentSource) dst.searchParams.set('recentSource', resolved.recentSource);

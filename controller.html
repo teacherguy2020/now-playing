@@ -1682,7 +1682,7 @@
     function openPage(page){
       const p = String(page || '').trim();
       if (!p) return;
-      if (shouldOpenInRightPane() && p.startsWith('kiosk-')) {
+      if (shouldOpenInRightPane() && (p.startsWith('kiosk-') || p === 'visualizer.html')) {
         const active = document.querySelector(`.row[data-page="${p}"]`);
         if (kioskPane?.classList.contains('open') && active?.classList.contains('is-open')) {
           closeKioskPane();
@@ -1693,7 +1693,7 @@
         navigateWithSlide(p.replace(/^kiosk-/, 'controller-'));
         return;
       }
-      if (shouldOpenInRightPane() && p.startsWith('kiosk-')) {
+      if (shouldOpenInRightPane() && (p.startsWith('kiosk-') || p === 'visualizer.html')) {
         const map = {
           'kiosk-now-playing.html':'controller-now-playing.html',
           'kiosk-playlists.html':'controller-playlists.html',
@@ -1730,31 +1730,17 @@
             if (ve) u.searchParams.set('energy', ve);
             if (vm) u.searchParams.set('motion', vm);
             if (vg) u.searchParams.set('glow', vg);
-            // If no explicit visualizer params are in URL, use the user's current/last selected profile.
-            if (!vp && !ve && !vm && !vg) {
-              fetch(`${base}/peppy/last-profile`, { cache:'no-store', headers: reqHeaders(false) })
-                .then(r => r.json().catch(()=>({})))
-                .then(j => {
-                  const pr = j?.profile || {};
-                  const v = (pr && typeof pr.visualizer === 'object') ? pr.visualizer : null;
-                  if (String(pr?.displayMode || '').toLowerCase() === 'visualizer' && v) {
-                    if (v.preset) u.searchParams.set('preset', String(v.preset).toLowerCase());
-                    if (Number.isFinite(Number(v.energy))) u.searchParams.set('energy', String(Math.max(1, Math.min(10, Number(v.energy)))));
-                    if (Number.isFinite(Number(v.motion))) u.searchParams.set('motion', String(Math.max(1, Math.min(10, Number(v.motion)))));
-                    if (Number.isFinite(Number(v.glow))) u.searchParams.set('glow', String(Math.max(1, Math.min(10, Number(v.glow)))));
-                  }
-                })
-                .catch(()=>{})
-                .finally(() => setPaneSrc(u));
-              kioskPane?.classList.add('open');
-              kioskPane?.setAttribute('aria-hidden','false');
-              return;
-            }
+            // Open instantly in Col3; do not block on profile fetch.
+            // Explicit vpreset/venergy/vmotion/vglow params above still apply when present.
           }
           setPaneSrc(u);
         }
         kioskPane?.classList.add('open');
         kioskPane?.setAttribute('aria-hidden','false');
+        return;
+      }
+      if (p === 'visualizer.html') {
+        navigateWithSlide('visualizer.html');
         return;
       }
       if (p.startsWith('controller-')) {
