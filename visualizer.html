@@ -181,7 +181,7 @@
         const e = encodeURIComponent(String(Math.round(energyLevel || 6)));
         const m = encodeURIComponent(String(Math.round(motionLevel || 6)));
         const g = encodeURIComponent(String(Math.round(glowLevel || 6)));
-        const target = `${location.protocol}//${hostPart}/controller.html?kiosk=1&preview=1&open=kiosk-visualizer.html&vpreset=${p}&venergy=${e}&vmotion=${m}&vglow=${g}`;
+        const target = `${location.protocol}//${hostPart}/controller.html?kiosk=1&preview=1&open=visualizer.html&vpreset=${p}&venergy=${e}&vmotion=${m}&vglow=${g}`;
         if (window.top && window.top !== window) window.top.location.href = target;
         else location.href = target;
       } catch {}
