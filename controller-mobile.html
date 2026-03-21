@@ -538,21 +538,20 @@
     }
     function normalizeDevicePreset(raw=''){
       const p = String(raw || '').trim().toLowerCase();
-      if (p === 'tablet') return 'ipadpro11';
-      if (p === 'tablet-landscape') return 'ipadpro11-landscape';
-      if (p === 'ipad11') return 'ipadpro11';
-      if (p === 'ipad11-landscape') return 'ipadpro11-landscape';
-      if (p === 'ipadair-landscape' || p === 'ipadair1-landscape') return 'ipadpro11-landscape';
+      if (p === 'ipadpro11' || p === 'ipad11') return 'tablet';
+      if (p === 'ipadpro11-landscape' || p === 'ipad11-landscape') return 'tablet-landscape';
+      if (p === 'ipadair-landscape' || p === 'ipadair1-landscape') return 'tablet-landscape';
       return p || 'mobile';
     }
 
     function applyDevicePresetUi(){
       const preset = normalizeDevicePreset(profile?.devicePreset || 'mobile');
       profile.devicePreset = preset;
-      const isPortrait = preset === 'ipadpro11';
-      const isLandscape = preset === 'ipadpro11-landscape';
-      document.body.classList.toggle('ipad11', isPortrait || isLandscape);
-      document.body.classList.toggle('ipad11Landscape', isLandscape);
+      const isTablet = (preset === 'tablet' || preset === 'tablet-landscape');
+      const autoLandscape = (preset === 'tablet') && (window.innerWidth > window.innerHeight);
+      const isLandscape = (preset === 'tablet-landscape') || autoLandscape;
+      document.body.classList.toggle('ipad11', isTablet);
+      document.body.classList.toggle('ipad11Landscape', isTablet && isLandscape);
     }
 
     function applyProfileUi(){
@@ -1663,7 +1662,7 @@
 
     function nowPlayingPageForCurrentLayout(){
       return document.body.classList.contains('ipad11Landscape')
-        ? 'controller-now-playing-ipad.html'
+        ? 'controller-now-playing-tablet.html'
         : 'controller-now-playing.html';
     }
 
@@ -2613,7 +2612,15 @@
     window.addEventListener('pageshow', ()=>{ setTimeout(restoreLastLibraryPage, 220); setTimeout(restoreLastLibraryPage, 900); setTimeout(syncLiveQueueRowSlot, 260); });
     window.addEventListener('focus', ()=>{ setTimeout(restoreLastLibraryPage, 220); setTimeout(syncLiveQueueRowSlot, 260); });
     document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) { setTimeout(restoreLastLibraryPage, 220); setTimeout(syncLiveQueueRowSlot, 260); } });
-    window.addEventListener('resize', ()=>{ setTimeout(syncLiveQueueRowSlot, 120); });
+
+    const rerenderForOrientation = ()=>{
+      try { applyProfileUi(); } catch {}
+      loadRecentlyAdded().catch(()=>null);
+      setTimeout(syncLiveQueueRowSlot, 140);
+    };
+
+    window.addEventListener('resize', ()=>{ rerenderForOrientation(); });
+    window.addEventListener('orientationchange', ()=>{ setTimeout(rerenderForOrientation, 120); });
 
     (async ()=>{
       try { ensureNowPlayingPreload(); } catch {}

@@ -249,11 +249,8 @@
     }
     function resolvedDevicePresetForUrl(p){
       const preset=String((p&&p.devicePreset)||'mobile').toLowerCase();
-      const po=String(($('previewOrientation')?.value||'auto')).toLowerCase();
-      if (preset === 'tablet') {
-        const isLandscape = (po === 'landscape') || (po === 'auto' && window.innerWidth > window.innerHeight);
-        return isLandscape ? 'tablet-landscape' : 'tablet';
-      }
+      // Tablet links should be adaptive across rotation.
+      if (preset === 'tablet' || preset === 'tablet-landscape') return 'tablet';
       return preset;
     }
 
@@ -262,7 +259,8 @@
       write(p);
 
       const devicePresetForUrl = resolvedDevicePresetForUrl(p);
-      const targetPage = 'controller-mobile.html';
+      const presetForTarget = String(devicePresetForUrl || '').toLowerCase();
+      const targetPage = (presetForTarget === 'tablet' || presetForTarget.startsWith('ipad')) ? 'controller-tablet.html' : 'controller-mobile.html';
 
       // Update preview frame/device chrome immediately.
       applyDeviceChrome(p);
