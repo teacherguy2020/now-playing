@@ -131,7 +131,9 @@
     .peekRail{display:none;position:absolute;left:0;right:0;bottom:0;z-index:1;opacity:.55;filter:saturate(.85)}
     .recentWrap.peeking .peekRail{display:flex}
     .thumb{min-width:128px;width:128px}
-    .thumb.is-active-radio .thumbWrap{border-radius:14px;box-shadow:inset 0 0 0 2px #45b26f}
+    .thumb.is-active-radio .thumbWrap{box-shadow:none}
+    .thumb.is-active-radio img,
+    .thumb.is-active-radio .ph{border-radius:12px;box-shadow:inset 0 0 0 2px #45b26f,0 0 0 1px rgba(69,178,111,.35)}
     .thumb.is-active-radio .cap{color:#bff2cf}
     .thumbWrap{position:relative}
     .thumbFlip{position:relative;width:128px;height:128px;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1)}
@@ -261,6 +263,11 @@
     /* iPad Pro 11" profiles */
     body.ipad11{padding:10px 12px 14px;height:100dvh;overflow:hidden}
     body.ipad11 #kioskCanvas{display:grid;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) minmax(0,2fr);row-gap:8px;height:100%}
+    body.ipad11:not(.ipad11Landscape) #kioskCanvas{grid-template-rows:auto auto minmax(0,.82fr) minmax(0,1.18fr)}
+    body.ipad11:not(.ipad11Landscape) .npTap{grid-row:1}
+    body.ipad11:not(.ipad11Landscape) .quickWrap{grid-row:2}
+    body.ipad11:not(.ipad11Landscape) #libraryList{grid-row:3}
+    body.ipad11:not(.ipad11Landscape) .recentWrap{grid-row:4;min-height:0;overflow:hidden}
     body.ipad11 .card{margin-bottom:0}
     body.ipad11 .np{grid-template-columns:94px 1fr;gap:12px}
     body.ipad11 .artWrap, body.ipad11 .np img{width:94px;height:94px}
@@ -278,7 +285,30 @@
     body.ipad11:not(.ipad11Landscape) #line1{font-size:30px;line-height:1.06}
     body.ipad11:not(.ipad11Landscape) #line2{font-size:18px;line-height:1.14}
     body.ipad11:not(.ipad11Landscape) #line3{font-size:16px;line-height:1.16}
+    body.ipad11:not(.ipad11Landscape){
+      --tablet-lib-label-size:20px;
+      --tablet-lib-icon-size:24px;
+      --tablet-lib-chev-size:20px;
+      --tablet-thumb-size:74px;
+      --tablet-pane-title-size:11px;
+    }
+    body.ipad11:not(.ipad11Landscape) .row{padding:4px 0}
+    body.ipad11:not(.ipad11Landscape) .row .lbl{font-size:var(--tablet-lib-label-size);line-height:1.02}
+    body.ipad11:not(.ipad11Landscape) .row .ico{width:var(--tablet-lib-icon-size);height:var(--tablet-lib-icon-size)}
+    body.ipad11:not(.ipad11Landscape) .row .ico svg{width:var(--tablet-lib-icon-size);height:var(--tablet-lib-icon-size)}
+    body.ipad11:not(.ipad11Landscape) .row .chev{font-size:var(--tablet-lib-chev-size)}
+    body.ipad11:not(.ipad11Landscape) .quickWrap{position:relative;margin:0 0 8px;min-height:0;height:30px;padding:0;overflow:visible}
+    body.ipad11:not(.ipad11Landscape) .quickIn{height:30px;font-size:14px;padding:0 56px 0 32px}
+    body.ipad11:not(.ipad11Landscape) .quickIcon{position:absolute !important;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px}
+    body.ipad11:not(.ipad11Landscape) .quickIcon svg{width:14px;height:14px}
+    body.ipad11:not(.ipad11Landscape) .quickKb{position:absolute !important;right:32px;top:50%;transform:translateY(-50%);width:20px;height:20px}
+    body.ipad11:not(.ipad11Landscape) .quickClear{position:absolute !important;right:8px;top:50%;transform:translateY(-50%);width:20px;height:20px}
+    body.ipad11:not(.ipad11Landscape) .quickMenu{position:absolute !important;left:0;right:0;top:34px;max-height:32vh;z-index:120}
+    body.ipad11:not(.ipad11Landscape) .quickWrap:not(.hasText) .quickMenu,
+    body.ipad11:not(.ipad11Landscape) .quickMenu:not(.open){display:none !important}
     body.ipad11 #libraryList{margin:0;overflow:auto;min-height:0}
+    body.ipad11:not(.ipad11Landscape) #libraryList{margin:0 0 4px}
+    body.ipad11:not(.ipad11Landscape) .recentWrap{margin-top:0}
     body.ipad11 .row{padding:9px 0}
     body.ipad11.ipad11Landscape .row{padding:2px 10px;align-self:stretch;align-items:center}
     body.ipad11 .row .lbl{font-size:20px}
@@ -294,6 +324,16 @@
     body.ipad11 .ipadRecentPane .thumb{min-width:108px;width:108px}
     body.ipad11 .ipadRecentPane .thumb img, body.ipad11 .ipadRecentPane .ph{width:108px;height:108px}
     body.ipad11 .ipadRecentPane .thumb .cap{font-size:12px}
+
+    /* Tablet portrait: single-column 4-row recents stack */
+    body.ipad11:not(.ipad11Landscape) .ipadRecentGrid{grid-template-columns:1fr !important;grid-template-rows:repeat(4,minmax(0,1fr));gap:6px;overflow:hidden}
+    body.ipad11:not(.ipad11Landscape) .ipadRecentPane{padding:6px;gap:4px;min-height:0;overflow:hidden}
+    body.ipad11:not(.ipad11Landscape) .ipadRecentPane h4{font-size:var(--tablet-pane-title-size)}
+    body.ipad11:not(.ipad11Landscape) .ipadRecentPane .rail{gap:6px;min-height:0}
+    body.ipad11:not(.ipad11Landscape) .ipadRecentPane .thumb{min-width:var(--tablet-thumb-size);width:var(--tablet-thumb-size)}
+    body.ipad11:not(.ipad11Landscape) .ipadRecentPane .thumb img,
+    body.ipad11:not(.ipad11Landscape) .ipadRecentPane .ph{width:var(--tablet-thumb-size);height:var(--tablet-thumb-size)}
+    body.ipad11:not(.ipad11Landscape) .ipadRecentPane .thumb .cap{font-size:10px}
 
     body.ipad11.ipad11Landscape{padding-top:max(28px, env(safe-area-inset-top))}
     body.ipad11.ipad11Landscape #kioskCanvas{position:relative;grid-template-columns:minmax(320px,1fr) minmax(0,2fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:0;max-height:calc(100dvh - 8px);box-sizing:border-box}
@@ -1547,7 +1587,7 @@
       const grid = document.getElementById("ipadRecentGrid");
       if (!isIpad11 || !grid || grid.hidden) return;
       const isIpadLandscape = document.body.classList.contains("ipad11Landscape");
-      const limit = isIpadLandscape ? Math.max(12, Math.min(30, Number(profile && profile.recentCount || 18))) : Math.max(4, Math.min(8, Number(profile && profile.recentCount || 18)));
+      const limit = isIpadLandscape ? Math.max(12, Math.min(30, Number(profile && profile.recentCount || 18))) : Math.max(10, Math.min(30, Number(profile && profile.recentCount || 18)));
       renderIpadRail("ipadRailAlbums", [], "albums", true);
       renderIpadRail("ipadRailPodcasts", [], "podcasts", true);
       const cachedPlaylists = loadRecentCache(RECENT_PLAYLISTS_CACHE_KEY).items;
@@ -2551,6 +2591,23 @@
     renderHomeQuickResults(ev.target.value || "");
     syncQuickClear();
   });
+  hqs.addEventListener("focus", () => {
+    const t = String(hqs.value || "").trim();
+    if (!t && hqr) {
+      hqr.classList.remove("open");
+      hqr.innerHTML = "";
+    }
+  });
+  hqs.addEventListener("blur", () => {
+    setTimeout(() => {
+      if (!hqs || !hqr) return;
+      const t = String(hqs.value || "").trim();
+      if (!t) {
+        hqr.classList.remove("open");
+        hqr.innerHTML = "";
+      }
+    }, 120);
+  });
   hqKb == null ? void 0 : hqKb.addEventListener("click", () => showKeyboardFor(hqs));
   hqClear == null ? void 0 : hqClear.addEventListener("click", () => {
     if (!hqs) return;
@@ -2564,6 +2621,10 @@
     }
   });
   syncQuickClear();
+  if (hqr) {
+    hqr.classList.remove("open");
+    hqr.innerHTML = "";
+  }
   const npTapEl = document.querySelector(".npTap[data-href]");
   const npArtWrapEl = document.getElementById("npArtWrap");
   const npFlipInfoBtnEl = document.getElementById("npFlipInfoBtn");
@@ -2574,6 +2635,38 @@
   const npProgressEl = document.getElementById("npProgress");
   const npProgressFillEl = document.getElementById("npProgressFill");
   const npArtImgEl = document.getElementById("art");
+  const syncTabletPortraitScale = () => {
+    try {
+      const portraitTablet = document.body.classList.contains("ipad11") && !document.body.classList.contains("ipad11Landscape");
+      if (!portraitTablet) return;
+      const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      const lerp = (a, b, x) => a + (b - a) * x;
+
+      const vh = Math.max(600, Math.min(1400, window.innerHeight || document.documentElement.clientHeight || 900));
+      const t = clamp((vh - 700) / 500, 0, 1);
+      const libLabel = Math.round(lerp(18, 22, t));
+      const libIcon = Math.round(lerp(22, 26, t));
+      const libChev = Math.round(lerp(18, 22, t));
+
+      const recentWrap = document.querySelector(".recentWrap");
+      const recH = Math.max(180, Math.round((recentWrap == null ? void 0 : recentWrap.getBoundingClientRect().height) || 0));
+      const paneH = recH / 4;
+      const paneTitle = Math.round(clamp(lerp(10, 12, t), 10, 12));
+      const panePad = 12; // top+bottom compact padding budget
+      const railGapBudget = 10;
+      const titleBudget = paneTitle + 12;
+      const thumbMaxByPane = Math.floor(paneH - panePad - railGapBudget - titleBudget);
+      const thumbByViewport = Math.round(lerp(66, 84, t));
+      const thumb = clamp(Math.min(thumbByViewport, thumbMaxByPane), 56, 84);
+
+      document.body.style.setProperty("--tablet-lib-label-size", "".concat(libLabel, "px"));
+      document.body.style.setProperty("--tablet-lib-icon-size", "".concat(libIcon, "px"));
+      document.body.style.setProperty("--tablet-lib-chev-size", "".concat(libChev, "px"));
+      document.body.style.setProperty("--tablet-thumb-size", "".concat(thumb, "px"));
+      document.body.style.setProperty("--tablet-pane-title-size", "".concat(paneTitle, "px"));
+    } catch {
+    }
+  };
   const syncNpControlScale = () => {
     try {
       if (!document.body.classList.contains("ipad11Landscape")) return;
@@ -2610,14 +2703,19 @@
   };
   window.addEventListener("resize", () => {
     applyDevicePresetUi();
+    syncTabletPortraitScale();
     syncNpControlScale();
   });
   window.addEventListener("orientationchange", () => setTimeout(() => {
     applyDevicePresetUi();
+    syncTabletPortraitScale();
     syncNpControlScale();
   }, 120));
   npArtImgEl == null ? void 0 : npArtImgEl.addEventListener("load", () => syncNpControlScale());
-  setTimeout(() => syncNpControlScale(), 60);
+  setTimeout(() => {
+    syncTabletPortraitScale();
+    syncNpControlScale();
+  }, 60);
   const npLine1El = document.getElementById("line1");
   npLine1El == null ? void 0 : npLine1El.addEventListener("click", async (ev) => {
     if (!npCurrentArtist || npCurrentIsPodcast || npCurrentIsRadio) return;
