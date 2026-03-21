@@ -83,6 +83,7 @@
     .qSpin{width:12px;height:12px;border:2px solid rgba(223,234,255,.45);border-top-color:#ffffff;border-radius:999px;display:block;animation:qSpin .7s linear infinite}
     @keyframes qSpin{to{transform:rotate(360deg)}}
     .qBtn.done{background:#1f5d33;border-color:#45b26f;color:#eafff1}
+    .qBtn.warn{background:#6b2d2d;border-color:#d67b7b;color:#fff1f1}
 
     .list{margin:2px 0 14px;padding:0;list-style:none}
     .row{display:grid;grid-template-columns:40px 1fr 20px;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
@@ -1908,7 +1909,7 @@
 
     async function runQuickAction(type, value, artist, action){
       let files=await tracksForQuick(type,value,artist);
-      if(!files.length) return;
+      if(!files.length) return false;
       const mode = action==='play' ? 'replace' : 'append';
 
       // For artist quick actions, shuffle actual track order (not MPD random mode).
@@ -1919,11 +1920,16 @@
         }
       }
 
-      await fetch(`${base}/config/queue-wizard/apply`,{
-        method:'POST',
-        headers:reqHeaders(true),
-        body:JSON.stringify({mode,keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})
-      }).catch(()=>null);
+      try {
+        const r = await fetch(`${base}/config/queue-wizard/apply`,{
+          method:'POST',
+          headers:reqHeaders(true),
+          body:JSON.stringify({mode,keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})
+        });
+        return !!r?.ok;
+      } catch {
+        return false;
+      }
     }
 
     const hqs=document.getElementById('homeQuickSearch');
@@ -2143,11 +2149,19 @@
       b.disabled = true;
       b.classList.add('pending');
       b.innerHTML = '<span class="qSpin" aria-hidden="true"></span>';
-      await runQuickAction(type,value,artist,act);
+      const ok = await runQuickAction(type,value,artist,act);
       b.classList.remove('pending');
-      b.classList.add('done');
-      b.textContent = '✓';
-      setTimeout(()=>{ b.classList.remove('done'); b.innerHTML = old; b.disabled = false; }, 650);
+      b.classList.add(ok ? 'done' : 'warn');
+      b.textContent = ok ? '✓' : '!';
+      if (ok) {
+        hqr?.classList.remove('open');
+        openPage('kiosk-queue.html');
+      }
+      setTimeout(()=>{
+        b.classList.remove('done','warn');
+        b.innerHTML = old;
+        b.disabled = false;
+      }, 650);
     });
     document.addEventListener('click',(ev)=>{ if(!ev.target.closest('.quickWrap')){ hqr.classList.remove('open'); } });
 
