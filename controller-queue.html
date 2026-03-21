@@ -631,6 +631,13 @@
     window.addEventListener('pageshow', ()=>{ clearBackNavState(); loadQueue().catch(()=>null); });
     window.addEventListener('focus', ()=>{ clearBackNavState(); loadQueue().catch(()=>null); });
     document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) { clearBackNavState(); loadQueue().catch(()=>null); } });
+    window.addEventListener('message', (ev)=>{
+      const d = ev?.data || {};
+      if (!d || typeof d !== 'object') return;
+      if (String(d.type || '') === 'np-queue-refresh') {
+        loadQueue().catch(()=>null);
+      }
+    });
     setTimeout(()=>{ clearBackNavState(); loadQueue().catch(()=>null); }, 260);
 
     document.getElementById('routeAlexaBtn')?.addEventListener('click', async (ev)=>{

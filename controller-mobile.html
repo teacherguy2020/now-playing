@@ -16,7 +16,8 @@
   <title>Controller</title>
   <style>
     :root{--bg:#070b13;--surface:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--accent:#4aa8ff}
-    *{box-sizing:border-box}
+    *{box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+    html,body{-webkit-user-select:none !important;user-select:none !important;-webkit-touch-callout:none !important}
     body{margin:0;background:var(--surface);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
     .card{background:transparent;border:0;padding:8px 0;margin-bottom:8px}
     .title{font-weight:750;font-size:18px;margin-bottom:10px}
@@ -86,12 +87,14 @@
     .qBtn.warn{background:#6b2d2d;border-color:#d67b7b;color:#fff1f1}
 
     .list{margin:2px 0 14px;padding:0;list-style:none}
-    .row{display:grid;grid-template-columns:40px 1fr 20px;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer;position:relative;z-index:2;transition:transform .18s ease}
+    .row{display:grid;grid-template-columns:40px 1fr 20px;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer;position:relative;z-index:2;transition:transform .18s ease;touch-action:pan-y}
     .rowWrap{position:relative;overflow:hidden}
-    .rowWrap .rowActions{position:absolute;right:0;top:0;bottom:0;display:flex;gap:0;z-index:1;opacity:0;pointer-events:none;transition:opacity .16s ease}
+    .rowWrap .rowActions{position:absolute;top:calc(-1 * var(--swipe-gap-top, 0px));right:0;bottom:calc(-1 * var(--swipe-gap-bottom, 0px));width:168px;display:flex;gap:0;z-index:1;opacity:0;pointer-events:none;transition:opacity .16s ease;align-items:stretch;overflow:hidden}
     .rowWrap.swiped .rowActions{opacity:1;pointer-events:auto}
     .rowWrap.swiped .row{transform:translateX(-168px)}
-    .rowActionBtn{width:84px;border:0;color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+    .rowWrap[data-row-wrap="live-queue"]{border-bottom:1px solid var(--line);overflow:visible;--swipe-gap-top:0px;--swipe-gap-bottom:0px}
+    .rowWrap[data-row-wrap="live-queue"] .row{border-bottom:0}
+    .rowActionBtn{width:84px;height:100%;border:0;color:#fff;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;border-radius:0}
     .rowActionBtn.crop{background:#3f51b5}
     .rowActionBtn.clear{background:#b4232f}
     .row .ico{font-size:24px;line-height:1;color:var(--icon,var(--accent));display:flex;align-items:center;justify-content:center;width:24px;height:24px}
@@ -533,8 +536,19 @@
       // Persist effective profile so embedded controller subpages match theme/palette.
       try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile)); } catch {}
     }
+    function normalizeDevicePreset(raw=''){
+      const p = String(raw || '').trim().toLowerCase();
+      if (p === 'tablet') return 'ipadpro11';
+      if (p === 'tablet-landscape') return 'ipadpro11-landscape';
+      if (p === 'ipad11') return 'ipadpro11';
+      if (p === 'ipad11-landscape') return 'ipadpro11-landscape';
+      if (p === 'ipadair-landscape' || p === 'ipadair1-landscape') return 'ipadpro11-landscape';
+      return p || 'mobile';
+    }
+
     function applyDevicePresetUi(){
-      const preset = String(profile?.devicePreset || 'mobile').toLowerCase();
+      const preset = normalizeDevicePreset(profile?.devicePreset || 'mobile');
+      profile.devicePreset = preset;
       const isPortrait = preset === 'ipadpro11';
       const isLandscape = preset === 'ipadpro11-landscape';
       document.body.classList.toggle('ipad11', isPortrait || isLandscape);
@@ -559,6 +573,7 @@
         d.classList.toggle('on', String(d.getAttribute('data-rdot')||'') === src);
       });
       applyPalette(profile.colorPreset || 'ocean', profile.theme || 'auto', profile.customColors || null);
+      setTimeout(syncLiveQueueRowSlot, 40);
     }
 
     async function persistControllerProfile(){
@@ -781,6 +796,8 @@
         if (r.ok && j?.ok && j?.profile) {
           const existing = profile || {};
           profile = { ...MOBILE_DEFAULT_PROFILE, ...existing, ...j.profile, recentSource: (j?.profile?.recentSource ?? existing?.recentSource ?? MOBILE_DEFAULT_PROFILE.recentSource) };
+          // URL overrides must win over server profile sync (especially devicePreset testing links).
+          if (Q_DEVICE_PRESET) profile.devicePreset = Q_DEVICE_PRESET;
           try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile)); } catch {}
           applyProfileUi();
           loadRecentlyAdded().catch(()=>null);
@@ -1477,6 +1494,24 @@
         .map((ep)=>({ title:String(ep?.title||'(episode)').trim(), file:String(ep?.mpdPath||'').trim(), date:String(ep?.date||'').trim(), downloadedAt:Number(ep?.downloadedAt||0)||0 }));
     }
     async function sendPlayback(action, extra={}){ await ensureKey(); await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify(Object.assign({action},extra||{}))}).catch(()=>null); }
+
+    async function cropQueueReliable(){
+      await ensureKey();
+      const qRes = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers:reqHeaders(false) });
+      const q = await qRes.json().catch(()=>({}));
+      const items = Array.isArray(q?.items) ? q.items : [];
+      if (!items.length) return false;
+      const headPos = Number(q?.headPos || -1);
+      const head = items.find((it)=>Number(it?._posDisplay || it?.pos || -1) === headPos) || items[0];
+      const file = String(head?.file || '').trim();
+      if (!file) return false;
+      const r = await fetch(`${base}/config/queue-wizard/apply`, {
+        method:'POST',
+        headers:reqHeaders(true),
+        body:JSON.stringify({ mode:'replace', keepNowPlaying:false, tracks:[file], shuffle:false, forceRandomOff:false, fastStart:true })
+      }).catch(()=>null);
+      return !!r?.ok;
+    }
     async function playOrAddRadio(url, mode='replace'){
       const u = String(url||'').trim();
       if (!u) return;
@@ -1738,7 +1773,11 @@
         if (!shouldOpenInRightPane()) return;
         const u = new URL(location.href);
         const paneParam = String(u.searchParams.get('pane') || '').trim();
-        const remembered = paneParam.startsWith('kiosk-') ? paneParam : getLastLibraryPage();
+        const openParam = String(u.searchParams.get('open') || '').trim();
+        const hasExplicitPane = paneParam.startsWith('kiosk-') || openParam.startsWith('kiosk-');
+        // For direct links (e.g., copied tablet URLs), do not auto-open remembered pane.
+        if (!hasExplicitPane) return;
+        const remembered = paneParam.startsWith('kiosk-') ? paneParam : (openParam.startsWith('kiosk-') ? openParam : getLastLibraryPage());
         if (!remembered) return;
         if (kioskPane?.classList.contains('open')) return;
         openPage(remembered);
@@ -1846,6 +1885,7 @@
                 .finally(() => setPaneSrc(u));
               kioskPane?.classList.add('open');
               kioskPane?.setAttribute('aria-hidden','false');
+              setTimeout(syncLiveQueueRowSlot, 260);
               return;
             }
           }
@@ -1853,6 +1893,7 @@
         }
         kioskPane?.classList.add('open');
         kioskPane?.setAttribute('aria-hidden','false');
+        setTimeout(syncLiveQueueRowSlot, 260);
         return;
       }
       if (p.startsWith('controller-')) {
@@ -2168,7 +2209,13 @@
       b.textContent = ok ? '✓' : '!';
       if (ok) {
         hqr?.classList.remove('open');
-        openPage('kiosk-queue.html');
+        const queueRowOpen = !!document.querySelector('.row[data-page="kiosk-queue.html"].is-open');
+        const paneOpen = !!kioskPane?.classList.contains('open');
+        if (act === 'add' && paneOpen && queueRowOpen) {
+          refreshLiveQueuePaneIfOpen();
+        } else {
+          openPage('kiosk-queue.html');
+        }
       }
       setTimeout(()=>{
         b.classList.remove('done','warn');
@@ -2424,27 +2471,84 @@
       document.querySelectorAll('.rowWrap.swiped').forEach((w)=>w.classList.remove('swiped'));
     };
 
+    function syncLiveQueueRowSlot(){
+      try {
+        const wrap = document.querySelector('.rowWrap[data-row-wrap="live-queue"]');
+        if (!(wrap instanceof HTMLElement)) return;
+        const prev = wrap.previousElementSibling;
+        const next = wrap.nextElementSibling;
+        const r = wrap.getBoundingClientRect();
+        let gapAbove = 0;
+        if (prev instanceof HTMLElement) {
+          const pr = prev.getBoundingClientRect();
+          gapAbove = Math.max(0, Math.round(r.top - pr.bottom));
+        }
+        // Do not bleed into the next row (Visualizer).
+        const gapBelow = 0;
+        wrap.style.setProperty('--swipe-gap-top', `${gapAbove}px`);
+        wrap.style.setProperty('--swipe-gap-bottom', `${gapBelow}px`);
+      } catch {}
+    }
+
+    const refreshLiveQueuePaneIfOpen = ()=>{
+      try {
+        if (!kioskPane?.classList.contains('open')) return;
+        const current = document.querySelector('.row[data-page="kiosk-queue.html"]');
+        if (!current?.classList.contains('is-open')) return;
+        if (!(kioskPaneFrame instanceof HTMLIFrameElement)) return;
+        const src = String(kioskPaneFrame.getAttribute('src') || '').trim();
+        if (!src || !/controller-queue\.html/i.test(src)) return;
+        kioskPaneFrame.contentWindow?.postMessage({ type:'np-queue-refresh' }, '*');
+      } catch {}
+    };
+
     const liveQueueRowWrap = document.querySelector('.rowWrap[data-row-wrap="live-queue"]');
     const liveQueueRow = liveQueueRowWrap?.querySelector('.row[data-page="kiosk-queue.html"]');
     if (liveQueueRowWrap && liveQueueRow) {
-      let sx = 0, sy = 0, swiping = false;
+      syncLiveQueueRowSlot();
+      let sx = 0, sy = 0, ex = 0, ey = 0;
+      let tracking = false;
+      let suppressClick = false;
+      const beginSwipe = (x, y)=>{ sx = x; sy = y; ex = x; ey = y; tracking = true; suppressClick = false; };
+      const updateSwipe = (x, y)=>{ if (!tracking) return; ex = x; ey = y; };
+      const endSwipe = ()=>{
+        if (!tracking) return;
+        tracking = false;
+        const dx = ex - sx;
+        const dy = ey - sy;
+        if (Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx)) return;
+        if (dx <= -26) { liveQueueRowWrap.classList.add('swiped'); suppressClick = true; return; }
+        if (dx >= 20) { liveQueueRowWrap.classList.remove('swiped'); suppressClick = true; return; }
+      };
+
       liveQueueRow.addEventListener('touchstart', (ev)=>{
         const t = ev.touches && ev.touches[0];
         if (!t) return;
-        sx = t.clientX; sy = t.clientY; swiping = true;
+        beginSwipe(t.clientX, t.clientY);
       }, { passive:true });
       liveQueueRow.addEventListener('touchmove', (ev)=>{
-        if (!swiping) return;
         const t = ev.touches && ev.touches[0];
         if (!t) return;
-        const dx = t.clientX - sx;
-        const dy = t.clientY - sy;
-        if (Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx)) { swiping = false; return; }
-        if (dx < -34) liveQueueRowWrap.classList.add('swiped');
-        else if (dx > 24) liveQueueRowWrap.classList.remove('swiped');
+        updateSwipe(t.clientX, t.clientY);
       }, { passive:true });
-      liveQueueRow.addEventListener('touchend', ()=>{ swiping = false; }, { passive:true });
-      liveQueueRow.addEventListener('touchcancel', ()=>{ swiping = false; }, { passive:true });
+      liveQueueRow.addEventListener('touchend', endSwipe, { passive:true });
+      liveQueueRow.addEventListener('touchcancel', ()=>{ tracking = false; }, { passive:true });
+
+      liveQueueRow.addEventListener('pointerdown', (ev)=>{
+        if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+        beginSwipe(ev.clientX, ev.clientY);
+      });
+      liveQueueRow.addEventListener('pointermove', (ev)=>{ updateSwipe(ev.clientX, ev.clientY); });
+      liveQueueRow.addEventListener('pointerup', endSwipe);
+      liveQueueRow.addEventListener('pointercancel', ()=>{ tracking = false; });
+
+      liveQueueRow.addEventListener('click', (ev)=>{
+        if (suppressClick) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          suppressClick = false;
+        }
+      }, true);
 
       liveQueueRowWrap.querySelectorAll('[data-queue-act]').forEach((btn)=>{
         btn.addEventListener('click', async (ev)=>{
@@ -2459,10 +2563,15 @@
             if (act === 'clear') {
               const ok = window.confirm('Clear entire queue?');
               if (!ok) return;
+              await sendPlayback('clear');
+            } else if (act === 'crop') {
+              const ok = await cropQueueReliable();
+              if (!ok) await sendPlayback('crop');
+            } else {
+              await sendPlayback(act);
             }
-            await sendPlayback(act);
             closeLibraryRowSwipes();
-            openPage('kiosk-queue.html');
+            refreshLiveQueuePaneIfOpen();
           } catch {}
           finally {
             btn.disabled = false;
@@ -2485,7 +2594,9 @@
       kioskPane?.classList.remove('open');
       kioskPane?.setAttribute('aria-hidden','true');
       recentWrap?.classList.remove('paneOpen');
-      setOpenNavRow(getLastLibraryPage());
+      setOpenNavRow('');
+      syncPaneUrlParam('');
+      setTimeout(syncLiveQueueRowSlot, 260);
       setTimeout(()=>{ try { if (kioskPaneFrame) kioskPaneFrame.src = 'about:blank'; } catch {} }, 220);
     };
     window.addEventListener('message', (ev)=>{
@@ -2499,9 +2610,10 @@
 
     initKioskControls();
 
-    window.addEventListener('pageshow', ()=>{ setTimeout(restoreLastLibraryPage, 220); setTimeout(restoreLastLibraryPage, 900); });
-    window.addEventListener('focus', ()=>{ setTimeout(restoreLastLibraryPage, 220); });
-    document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) setTimeout(restoreLastLibraryPage, 220); });
+    window.addEventListener('pageshow', ()=>{ setTimeout(restoreLastLibraryPage, 220); setTimeout(restoreLastLibraryPage, 900); setTimeout(syncLiveQueueRowSlot, 260); });
+    window.addEventListener('focus', ()=>{ setTimeout(restoreLastLibraryPage, 220); setTimeout(syncLiveQueueRowSlot, 260); });
+    document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) { setTimeout(restoreLastLibraryPage, 220); setTimeout(syncLiveQueueRowSlot, 260); } });
+    window.addEventListener('resize', ()=>{ setTimeout(syncLiveQueueRowSlot, 120); });
 
     (async ()=>{
       try { ensureNowPlayingPreload(); } catch {}
@@ -2520,8 +2632,8 @@
         if (IS_KIOSK_1280 && !IS_KIOSK_EDITOR && openPageParam.startsWith('kiosk-')) {
           setTimeout(() => openPage(openPageParam), 120);
         } else if (shouldOpenInRightPane()) {
-          const remembered = getLastLibraryPage();
-          if (remembered) setTimeout(() => openPage(remembered), 120);
+          // Do not auto-open remembered pane on plain direct links.
+          // Only explicit open/pane params should auto-open.
         }
       } catch {}
     })();
