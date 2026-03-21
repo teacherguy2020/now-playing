@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="manifest" href="/manifest-controller.webmanifest" />
+  <link rel="manifest" href="/manifest-controller-mobile.webmanifest?v=20260318c" />
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
@@ -110,6 +110,13 @@
     .thumb.is-active-radio .thumbWrap{border-radius:14px;box-shadow:inset 0 0 0 2px #45b26f}
     .thumb.is-active-radio .cap{color:#bff2cf}
     .thumbWrap{position:relative}
+    .thumbFlip{position:relative;width:128px;height:128px;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1)}
+    .thumb.is-flipped .thumbFlip{transform:rotateY(180deg)}
+    .thumbFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;overflow:hidden}
+    .thumbFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#101a2d,#0c1526);border:1px solid rgba(138,177,235,.32);display:flex;align-items:center;justify-content:center;padding:10px}
+    .thumbFlipBtns{display:flex;flex-direction:column;gap:8px;width:68%;margin:0 auto}
+    .thumbFlipBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 8px;font-size:12px;cursor:pointer}
+    .thumb.is-flipped .thumbFaceFront .thumbMore{display:none}
     .thumb img,.ph{width:128px;height:128px;border-radius:12px;object-fit:cover;background:#0a1222}
     .ph{display:flex;align-items:center;justify-content:center}
     .miniSpin{width:16px;height:16px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:npSpin .8s linear infinite}
@@ -291,9 +298,10 @@
       from{transform:translateX(0);opacity:1}
       to{transform:translateX(-24px);opacity:.38}
     }
-    .navCover{position:fixed;inset:0;z-index:9999;background:var(--surface,#0b111c);transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.72,.2,1);will-change:transform}
+    .navCover{position:fixed;inset:0;z-index:9999;background:var(--surface,#0b111c);transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.72,.2,1);will-change:transform;overflow:hidden}
     .navCover.open{transform:translateX(0)}
-    .navCover iframe{width:100%;height:100%;border:0;display:block;background:var(--surface,#0b111c)}
+    .navCover .navFallback{position:absolute;inset:0;background:var(--surface,#0b111c) center/cover no-repeat;z-index:1;opacity:1}
+    .navCover iframe{position:absolute;inset:0;width:100%;height:100%;border:0;z-index:2;background:transparent;display:block}
 
   </style>
   <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
@@ -311,7 +319,7 @@
     <span class="grow"></span>
   </div>
   <div id="kioskCanvas">
-  <a class="npTap" data-href="controller-now-playing.html" title="Open full player">
+  <a class="npTap" data-href="controller-now-playing-iphone.html" title="Open full player">
     <div class="card">
       <div class="title">Now Playing on moOde</div>
       <div class="np">
@@ -319,7 +327,6 @@
           <div class="artFlip" id="npArtFlip">
             <div class="artFace artFaceFront">
               <img id="art" src="" alt="" />
-              <button type="button" class="artHint artHintInfo" id="npFlipInfoBtn" aria-label="Show personnel">i</button>
               <span class="artSpin" id="npArtSpin" aria-hidden="true"></span>
               <span class="eq" id="eqOverlay" aria-hidden="true"><b></b><b></b><b></b></span>
             </div>
@@ -402,7 +409,7 @@
   </div>
 
   <div class="miniMenu" id="recentAlbumMenu">
-    <button data-ra-act="open" id="raOpenBtn">Open</button>
+    <button data-ra-act="open" id="raOpenBtn">Add</button>
     <button data-ra-act="play" id="raPlayBtn">Play</button>
     <button data-ra-act="shuffle" id="raThirdBtn">Play Shuffled</button>
   </div>
@@ -428,12 +435,26 @@
     const IS_PREVIEW = __u.searchParams.get('preview') === '1';
     const Q_DEVICE_PRESET = String(__u.searchParams.get('devicePreset') || '').trim().toLowerCase();
     const FORCE_PROFILE_SYNC = __u.searchParams.get('syncProfile') === '1';
-    const IS_PHONE_VIEW = Math.min(Number(window.innerWidth||0), Number(window.innerHeight||0)) > 0
-      ? Math.min(Number(window.innerWidth||0), Number(window.innerHeight||0)) <= 900
-      : /iphone|android/i.test(String(navigator.userAgent||''));
+    const __minSide = Math.min(Number(window.innerWidth||0), Number(window.innerHeight||0));
+    const __ua = String(navigator.userAgent||'').toLowerCase();
+    const IS_IPAD_LIKE = /ipad/.test(__ua)
+      || (/macintosh/.test(__ua) && Number(navigator.maxTouchPoints || 0) > 1)
+      || (__minSide >= 700);
+    const IS_PHONE_VIEW = IS_IPAD_LIKE
+      ? false
+      : (__minSide > 0 ? __minSide <= 520 : /iphone|android(?!.*tablet)/i.test(__ua));
     const USE_LOCAL_PROFILE_ONLY = IS_PHONE_VIEW && !FORCE_PROFILE_SYNC;
     const IS_KIOSK_1280 = (__u.searchParams.get('kiosk') === '1' || __u.searchParams.get('profile') === '1280x400' || __u.searchParams.get('layout') === '1280x400');
     const IS_KIOSK_EDITOR = IS_KIOSK_1280 && (__u.searchParams.get('edit') === '1' || __u.searchParams.get('designer') === '1');
+    // Safety net: if an iPad opens this phone entrypoint (cached A2HS install, old manifest),
+    // immediately route to the dedicated iPad controller.
+    if (IS_IPAD_LIKE && !IS_PREVIEW && !IS_KIOSK_1280) {
+      try {
+        const u = new URL(location.href);
+        u.pathname = u.pathname.replace(/\/controller-iphone\.html$/i, '/controller-ipad.html');
+        if (u.pathname !== location.pathname) location.replace(u.toString());
+      } catch {}
+    }
     if (IS_KIOSK_1280) {
       try { document.body.classList.add('kiosk1280'); } catch {}
       if (IS_KIOSK_EDITOR) { try { document.body.classList.add('kioskEditor'); } catch {} }
@@ -658,9 +679,9 @@
       r.style.setProperty('--quick-line', cSecondary || t.line || '#2a3a58');
       r.style.setProperty('--quick-bg-menu', t.quickBgMenu || 'rgba(10,16,28,.94)');
     }
-    const base=`${location.protocol}//${location.hostname||'10.0.0.233'}:3101`;
+    const base=`${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
     let runtimeTrackKey='';
-    let runtimeMoodeHost='10.0.0.254';
+    let runtimeMoodeHost='moode.local';
     let quickIndex=[];
     async function ensureKey(){
       if (runtimeTrackKey) return runtimeTrackKey;
@@ -707,7 +728,7 @@
           if (IS_KIOSK_1280) relUrl.searchParams.set('kiosk', '1');
           const rel = `${relUrl.pathname.replace(/^\//,'')}${relUrl.search}`;
 
-          const webHost = String(location.hostname || '10.0.0.4').trim();
+          const webHost = String(location.hostname || 'nowplaying.local').trim();
           const url = `http://${webHost}:8101/${rel}`;
           const r = await fetch(`${base}/config/moode/browser-url`, {
             method:'POST', headers:reqHeaders(true), body:JSON.stringify({ url, reason:'kiosk-controls-push' })
@@ -873,20 +894,7 @@
           const line3El = document.getElementById('line3');
           if (line3El) {
             line3El.textContent = line3;
-            if (line3 && npAlbumUrl) {
-              const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-              icon.setAttribute('class', 'share-icon');
-              icon.setAttribute('viewBox', '0 0 24 24');
-              icon.setAttribute('aria-hidden', 'true');
-              icon.setAttribute('focusable', 'false');
-              const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-              path.setAttribute('d', 'M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3.27 3.27 0 000-1.39l7.02-4.11A2.99 2.99 0 0018 7.91a3 3 0 10-3-3c0 .23.03.45.08.66L8.06 9.68a3 3 0 100 4.65l7.02 4.11c-.05.2-.08.41-.08.63a3 3 0 103-3z');
-              icon.appendChild(path);
-              line3El.appendChild(icon);
-              line3El.classList.add('linkable');
-            } else {
-              line3El.classList.remove('linkable');
-            }
+            line3El.classList.add('linkable');
             line3El.style.display = line3 ? '' : 'none';
           }
         }
@@ -1038,6 +1046,21 @@
     function setRailLoading(on){
       const sp = document.getElementById('railTitleSpin');
       if (sp) sp.hidden = !on;
+    }
+
+    function recentFlipButtonsHtml(kind, idx){
+      const k = String(kind || 'album').trim().toLowerCase();
+      if (k === 'radio') {
+        return `<button type='button' data-ra-flip-act='play' data-ra-idx='${idx}'>Play</button><button type='button' data-ra-flip-act='add' data-ra-idx='${idx}'>Add</button><button type='button' data-ra-flip-act='replace' data-ra-idx='${idx}'>Replace</button>`;
+      }
+      return `<button type='button' data-ra-flip-act='open' data-ra-idx='${idx}'>Add</button><button type='button' data-ra-flip-act='play' data-ra-idx='${idx}'>Play</button><button type='button' data-ra-flip-act='shuffle' data-ra-idx='${idx}'>Shuffle</button>`;
+    }
+
+    function railThumbHtml(it, i){
+      const title = String(it?.title || it?.album || it?.playlist || '(item)').trim();
+      const art = String(it?.art || `${base}/art/current.jpg`).trim();
+      const kind = String(it?.kind || 'album').trim().toLowerCase();
+      return `<div class='thumbWrap'><div class='thumbFlip'><div class='thumbFace thumbFaceFront'><img src='${art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='thumbFace thumbFaceBack'><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button><div class='thumbFlipBtns'>${recentFlipButtonsHtml(kind, i)}</div></div></div></div><div class='cap' title='${title}'>${title}</div>`;
     }
 
     function renderIpadRail(hostId, items, rowKey, loading = false){
@@ -1244,7 +1267,7 @@
           rail.innerHTML = '';
           recentItems.forEach((it,i)=>{
             const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
-            d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            d.innerHTML = railThumbHtml(it, i);
             rail.appendChild(d);
           });
           recentRenderedSource = 'podcasts';
@@ -1258,7 +1281,7 @@
               rail.innerHTML = '';
               recentItems.forEach((it,i)=>{
                 const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
-                d.innerHTML=`<div class='thumbWrap'><img class='plRailCover' src='${it.art}' data-alt='${it.artAlt||''}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+                d.innerHTML = railThumbHtml(it, i);
                 rail.appendChild(d);
               });
             }
@@ -1295,7 +1318,7 @@
           if (recentItems.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, recentItems);
           recentItems.forEach((it,i)=>{
             const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
-            d.innerHTML=`<div class='thumbWrap'><img class='plRailCover' src='${it.art}' data-alt='${it.artAlt||''}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            d.innerHTML = railThumbHtml(it, i);
             rail.appendChild(d);
           });
           rail.querySelectorAll('img.plRailCover[data-alt]').forEach((img)=>{
@@ -1320,7 +1343,7 @@
               rail.innerHTML = '';
               recentItems.forEach((it,i)=>{
                 const d=document.createElement('div'); d.className=`thumb${(String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`; d.setAttribute('data-ra-idx', String(i));
-                d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+                d.innerHTML = railThumbHtml(it, i);
                 rail.appendChild(d);
               });
             }
@@ -1339,7 +1362,7 @@
           rail.innerHTML = '';
           recentItems.forEach((it,i)=>{
             const d=document.createElement('div'); d.className=`thumb${(String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`; d.setAttribute('data-ra-idx', String(i));
-            d.innerHTML=`<div class='thumbWrap'><img src='${it.art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${it.title}'>${it.title}</div>`;
+            d.innerHTML = railThumbHtml(it, i);
             rail.appendChild(d);
           });
           recentRenderedSource = 'radio';
@@ -1394,38 +1417,7 @@
           const d = document.createElement('div');
           d.className = 'thumb';
           d.setAttribute('data-ra-idx', String(i));
-
-          const wrap = document.createElement('div');
-          wrap.className = 'thumbWrap';
-
-          const img = document.createElement('img');
-          img.alt = '';
-          img.src = String(a.art || '');
-          img.onerror = function () {
-            try {
-              if (this.dataset.heal) return;
-              this.dataset.heal = '1';
-              const u = String(a.art || '');
-              this.src = `${u}${u.includes('?') ? '&' : '?'}heal=1`;
-            } catch {}
-          };
-
-          const more = document.createElement('button');
-          more.type = 'button';
-          more.className = 'thumbMore';
-          more.setAttribute('data-ra-more', '1');
-          more.setAttribute('data-ra-idx', String(i));
-          more.textContent = '•••';
-
-          const cap = document.createElement('div');
-          cap.className = 'cap';
-          cap.title = `${a.artist ? `${a.artist} — ` : ''}${a.album}`;
-          cap.textContent = String(a.album || '');
-
-          wrap.appendChild(img);
-          wrap.appendChild(more);
-          d.appendChild(wrap);
-          d.appendChild(cap);
+          d.innerHTML = railThumbHtml(a, i);
           rail.appendChild(d);
         });
         recentAlbumsRenderSig = nextSig;
@@ -1585,13 +1577,13 @@
         bThird.textContent = 'Add station';
       } else if (kind === 'playlist') {
         bOpen.style.display = '';
-        bOpen.textContent = 'Open';
+        bOpen.textContent = 'Add';
         bPlay.textContent = 'Play';
         bThird.style.display = '';
         bThird.textContent = 'Play Shuffled';
       } else {
         bOpen.style.display = '';
-        bOpen.textContent = 'Open';
+        bOpen.textContent = 'Add';
         bPlay.textContent = 'Play';
         bThird.style.display = '';
         bThird.textContent = 'Play Shuffled';
@@ -1600,12 +1592,53 @@
     }
 
     let __navBusy = false;
+    let __navCoverEl = null;
+    let __npPreloadFrame = null;
+    let __npPreloadReady = false;
 
     function clearNavTransitionState(){
       document.body.classList.remove('nav-forwarding','nav-backwarding');
       document.body.style.transform = '';
       document.body.style.opacity = '';
       __navBusy = false;
+    }
+    function closeNavCover(){
+      const cover = __navCoverEl;
+      if (!cover) return;
+      cover.classList.remove('open','ready');
+      setTimeout(()=>{ try { cover.remove(); } catch {} }, 220);
+      __navCoverEl = null;
+      __navBusy = false;
+      try { ensureNowPlayingPreload(); } catch {}
+    }
+
+    function nowPlayingPageForCurrentLayout(){
+      return document.body.classList.contains('ipad11Landscape')
+        ? 'controller-now-playing-ipad.html'
+        : 'controller-now-playing.html';
+    }
+
+    function ensureNowPlayingPreload(){
+      try {
+        if (__npPreloadFrame && document.body.contains(__npPreloadFrame)) return;
+        const fr = document.createElement('iframe');
+        fr.id = 'npPreloadFrame';
+        fr.setAttribute('aria-hidden', 'true');
+        fr.tabIndex = -1;
+        fr.style.position = 'fixed';
+        fr.style.left = '-200vw';
+        fr.style.top = '0';
+        fr.style.width = '100vw';
+        fr.style.height = '100vh';
+        fr.style.border = '0';
+        fr.style.opacity = '0';
+        fr.style.pointerEvents = 'none';
+        const npPage = nowPlayingPageForCurrentLayout();
+        fr.src = `${npPage}?embedded=1&nav=cover&preload=1`;
+        fr.addEventListener('load', ()=>{ __npPreloadReady = true; }, { once:true });
+        document.body.appendChild(fr);
+        __npPreloadFrame = fr;
+      } catch {}
     }
     window.addEventListener('pageshow', clearNavTransitionState);
     window.addEventListener('load', clearNavTransitionState);
@@ -1617,28 +1650,53 @@
       const isNowPlaying = /controller-now-playing\.html(?:$|[?#])/i.test(out);
       if (isNowPlaying) {
         __navBusy = true;
-        const finalUrl = out + (out.includes('?') ? '&' : '?') + 'nav=cover';
+        const npPage = nowPlayingPageForCurrentLayout();
 
+        try { closeNavCover(); } catch {}
         const cover = document.createElement('div');
         cover.className = 'navCover';
-        const fr = document.createElement('iframe');
-        fr.setAttribute('loading', 'eager');
-        fr.setAttribute('referrerpolicy', 'no-referrer');
-        fr.src = finalUrl;
-        cover.appendChild(fr);
-        document.body.appendChild(cover);
 
-        let launched = false;
-        const launch = ()=>{
-          if (launched) return;
-          launched = true;
-          requestAnimationFrame(()=>{
-            cover.classList.add('open');
-            setTimeout(()=>{ location.href = finalUrl; }, 290);
-          });
+        const fallback = document.createElement('div');
+        fallback.className = 'navFallback';
+        const blurBg = `${base}/art/current_bg_640_blur.jpg?t=${Date.now()}`;
+        fallback.style.backgroundImage = `linear-gradient(180deg, rgba(7,12,20,.74), rgba(7,12,20,.86)), url("${blurBg}")`;
+        cover.appendChild(fallback);
+
+        let fr = null;
+        if (__npPreloadReady && __npPreloadFrame) {
+          fr = __npPreloadFrame;
+          __npPreloadFrame = null;
+          __npPreloadReady = false;
+        } else {
+          fr = document.createElement('iframe');
+          fr.src = `${npPage}?embedded=1&nav=cover`;
+        }
+        fr.style.position = 'absolute';
+        fr.style.left = '0';
+        fr.style.top = '0';
+        fr.style.width = '100%';
+        fr.style.height = '100%';
+        fr.style.border = '0';
+        fr.style.opacity = '1';
+        fr.style.pointerEvents = 'auto';
+        fr.style.zIndex = '2';
+        fr.removeAttribute('aria-hidden');
+        cover.appendChild(fr);
+
+        document.body.appendChild(cover);
+        __navCoverEl = cover;
+
+        const markReady = ()=>{
+          if (__navCoverEl !== cover) return;
+          cover.classList.add('ready');
+          __navBusy = false;
         };
-        fr.addEventListener('load', launch, { once:true });
-        setTimeout(launch, 120);
+        fr.addEventListener('load', markReady, { once:true });
+        if (__npPreloadReady === false && fr.contentWindow) {
+          setTimeout(markReady, 120);
+        }
+
+        requestAnimationFrame(()=>{ cover.classList.add('open'); });
         return;
       }
 
@@ -1657,6 +1715,21 @@
     function shouldOpenInRightPane(){
       return (IS_KIOSK_1280 && !IS_KIOSK_EDITOR) || document.body.classList.contains('ipad11Landscape');
     }
+
+    const LAST_LIBRARY_PAGE_KEY = 'np.controller.lastLibraryPage.v1';
+    const setLastLibraryPage = (p)=>{ try { const v=String(p||'').trim(); if (v.startsWith('kiosk-')) localStorage.setItem(LAST_LIBRARY_PAGE_KEY, v); } catch {} };
+    const getLastLibraryPage = ()=>{ try { const v=String(localStorage.getItem(LAST_LIBRARY_PAGE_KEY)||'').trim(); return v.startsWith('kiosk-') ? v : ''; } catch { return ''; } };
+    const restoreLastLibraryPage = ()=>{
+      try {
+        if (!shouldOpenInRightPane()) return;
+        const u = new URL(location.href);
+        const paneParam = String(u.searchParams.get('pane') || '').trim();
+        const remembered = paneParam.startsWith('kiosk-') ? paneParam : getLastLibraryPage();
+        if (!remembered) return;
+        if (kioskPane?.classList.contains('open')) return;
+        openPage(remembered);
+      } catch {}
+    };
 
     function applyIpadPaneCompaction(){
       try {
@@ -1679,10 +1752,21 @@
       } catch {}
     }
 
+    function syncPaneUrlParam(p=''){
+      try {
+        const u = new URL(location.href);
+        const v = String(p || '').trim();
+        if (v && v.startsWith('kiosk-')) u.searchParams.set('pane', v);
+        else u.searchParams.delete('pane');
+        history.replaceState(history.state || {}, '', u);
+      } catch {}
+    }
+
     function openPage(page){
       const p = String(page || '').trim();
       if (!p) return;
-      if (shouldOpenInRightPane() && (p.startsWith('kiosk-') || p === 'visualizer.html')) {
+      if (p.startsWith('kiosk-')) { setLastLibraryPage(p); syncPaneUrlParam(p); }
+      if (shouldOpenInRightPane() && p.startsWith('kiosk-')) {
         const active = document.querySelector(`.row[data-page="${p}"]`);
         if (kioskPane?.classList.contains('open') && active?.classList.contains('is-open')) {
           closeKioskPane();
@@ -1693,7 +1777,7 @@
         navigateWithSlide(p.replace(/^kiosk-/, 'controller-'));
         return;
       }
-      if (shouldOpenInRightPane() && (p.startsWith('kiosk-') || p === 'visualizer.html')) {
+      if (shouldOpenInRightPane() && p.startsWith('kiosk-')) {
         const map = {
           'kiosk-now-playing.html':'controller-now-playing.html',
           'kiosk-playlists.html':'controller-playlists.html',
@@ -1730,17 +1814,31 @@
             if (ve) u.searchParams.set('energy', ve);
             if (vm) u.searchParams.set('motion', vm);
             if (vg) u.searchParams.set('glow', vg);
-            // Open instantly in Col3; do not block on profile fetch.
-            // Explicit vpreset/venergy/vmotion/vglow params above still apply when present.
+            // If no explicit visualizer params are in URL, use the user's current/last selected profile.
+            if (!vp && !ve && !vm && !vg) {
+              fetch(`${base}/peppy/last-profile`, { cache:'no-store', headers: reqHeaders(false) })
+                .then(r => r.json().catch(()=>({})))
+                .then(j => {
+                  const pr = j?.profile || {};
+                  const v = (pr && typeof pr.visualizer === 'object') ? pr.visualizer : null;
+                  if (String(pr?.displayMode || '').toLowerCase() === 'visualizer' && v) {
+                    if (v.preset) u.searchParams.set('preset', String(v.preset).toLowerCase());
+                    if (Number.isFinite(Number(v.energy))) u.searchParams.set('energy', String(Math.max(1, Math.min(10, Number(v.energy)))));
+                    if (Number.isFinite(Number(v.motion))) u.searchParams.set('motion', String(Math.max(1, Math.min(10, Number(v.motion)))));
+                    if (Number.isFinite(Number(v.glow))) u.searchParams.set('glow', String(Math.max(1, Math.min(10, Number(v.glow)))));
+                  }
+                })
+                .catch(()=>{})
+                .finally(() => setPaneSrc(u));
+              kioskPane?.classList.add('open');
+              kioskPane?.setAttribute('aria-hidden','false');
+              return;
+            }
           }
           setPaneSrc(u);
         }
         kioskPane?.classList.add('open');
         kioskPane?.setAttribute('aria-hidden','false');
-        return;
-      }
-      if (p === 'visualizer.html') {
-        navigateWithSlide('visualizer.html');
         return;
       }
       if (p.startsWith('controller-')) {
@@ -1760,14 +1858,14 @@
 
     async function loadHomeQuickIndex(){
       await ensureKey();
-      const [optR, plR, libR] = await Promise.all([
+      const [optR, plR, brR] = await Promise.all([
         fetch(`${base}/config/queue-wizard/options`,{cache:'no-store',headers:reqHeaders(false)}).then(r=>r.json().catch(()=>({}))),
         fetch(`${base}/config/queue-wizard/playlists`,{cache:'no-store',headers:reqHeaders(false)}).then(r=>r.json().catch(()=>({}))),
-        fetch(`${base}/config/library-health/albums`,{cache:'no-store',headers:reqHeaders(false)}).then(r=>r.json().catch(()=>({}))),
+        fetch(`${base}/config/browse/albums?limit=10000`,{cache:'no-store',headers:reqHeaders(false)}).then(r=>r.json().catch(()=>({}))),
       ]);
       const artists = Array.isArray(optR?.artists)?optR.artists:[];
       const playlists = Array.isArray(plR?.playlists)?plR.playlists:[];
-      const libAlbums = Array.isArray(libR?.albums)?libR.albums:[];
+      const libAlbums = Array.isArray(brR?.albums)?brR.albums:[];
       const seen = new Set();
       const albums=[];
       libAlbums.forEach((a)=>{
@@ -1840,7 +1938,6 @@
     syncQuickClear();
     const npTapEl = document.querySelector('.npTap[data-href]');
     const npArtWrapEl = document.getElementById('npArtWrap');
-    const npFlipInfoBtnEl = document.getElementById('npFlipInfoBtn');
     const npLine3El = document.getElementById('line3');
     const npLine2StarsEl = document.getElementById('line2Stars');
     const npCtrlsEl = document.getElementById('npCtrls');
@@ -1849,23 +1946,11 @@
         return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
       } catch { return false; }
     })();
-    const openAlbumUrl = (url)=>{
-      const u = String(url || '').trim();
-      if (!u) return;
-      try {
-        if (isStandaloneWebApp) {
-          // iOS web-app mode: avoid spawning a blank browser tab before handoff.
-          location.href = u;
-        } else {
-          window.open(u, '_blank', 'noopener');
-        }
-      } catch {}
-    };
     npLine3El?.addEventListener('click', (ev)=>{
-      if (!npAlbumUrl) return;
+      const href = 'controller-now-playing-iphone.html';
       ev.preventDefault();
       ev.stopPropagation();
-      openAlbumUrl(npAlbumUrl);
+      navigateWithSlide(href);
     });
     npLine2StarsEl?.addEventListener('pointerdown', async (ev)=>{
       const star = ev.target?.closest?.('[data-star]');
@@ -1894,21 +1979,6 @@
       }
       refreshNowPlayingCard().catch(()=>null);
     }, { passive:false });
-    npFlipInfoBtnEl?.addEventListener('click', (ev)=>{
-      if (!document.body.classList.contains('ipad11Landscape')) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      setArtFlip(true);
-      wakeNpCtrls(2200);
-    });
-    npArtWrapEl?.addEventListener('click', (ev)=>{
-      if (!document.body.classList.contains('ipad11Landscape')) return;
-      if (!npArtWrapEl.classList.contains('is-flipped')) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      setArtFlip(false);
-      wakeNpCtrls(1800);
-    });
     npCtrlsEl?.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); }, { passive:true });
     npCtrlsEl?.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); });
     npCtrlsEl?.addEventListener('click', async (ev)=>{
@@ -1946,7 +2016,7 @@
         try {
           await ensureKey();
           const m = String(mode||'player').toLowerCase()==='peppy' ? 'peppy' : 'player';
-          const host = String(location.hostname || '10.0.0.4').trim();
+          const host = String(location.hostname || 'nowplaying.local').trim();
           const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
           const refreshUrl = `${targetUrl}&sw=${Date.now()}`;
           await fetch(`${base}/config/moode/display-mode`, {
@@ -2047,10 +2117,6 @@
         }
         const href = String(npTapEl.getAttribute('data-href') || '').trim();
         if (!href) return;
-        if (!ev.target.closest('.artWrap')) {
-          ev.preventDefault();
-          return;
-        }
         ev.preventDefault();
         navigateWithSlide(href);
       });
@@ -2132,19 +2198,57 @@
     }, { passive:true });
     rail?.addEventListener('touchcancel', ()=>{ document.body.classList.remove('rail-touch-lock'); clearRailPeek(); }, { passive:true });
 
+    const closeRecentRailFlips = ()=>{ rail?.querySelectorAll('.thumb.is-flipped').forEach((el)=>el.classList.remove('is-flipped')); };
     rail?.addEventListener('click', async (ev)=>{
+      const flipAct = ev.target.closest('button[data-ra-flip-act][data-ra-idx]');
+      if (flipAct) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const i=Number(flipAct.getAttribute('data-ra-idx'));
+        const a=recentItems[i]; if(!a) return;
+        const act=String(flipAct.getAttribute('data-ra-flip-act')||'open');
+        closeRecentRailFlips();
+        if (a.kind === 'radio') {
+          if (act === 'play' || act === 'replace') { await playOrAddRadio(a.url, 'replace'); return; }
+          if (act === 'add') { await playOrAddRadio(a.url, 'append'); return; }
+          return;
+        }
+        if (a.kind === 'playlist') {
+          if (act === 'open') { await openRecentPlaylistFrom(a); return; }
+          if (act === 'play') { await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:a.playlist,mode:'replace',play:true})}).catch(()=>null); return; }
+          if (act === 'shuffle') { const tracks = await fetchPlaylistTracks(a.playlist); const files = tracks.map(t=>String(t?.file||'').trim()).filter(Boolean); for (let k=files.length-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); const t=files[k]; files[k]=files[j]; files[j]=t; } await fetch(`${base}/config/queue-wizard/apply`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({mode:'replace',keepNowPlaying:false,tracks:files,shuffle:false,forceRandomOff:true,fastStart:true})}).catch(()=>null); return; }
+        }
+        if (a.kind === 'podcast') {
+          if (act === 'open') return;
+          const file = await mostRecentDownloadedPodcastFile(a.rss || '');
+          if (!file) return;
+          if (act === 'play') { await sendPlayback('playfile',{file}); return; }
+          if (act === 'shuffle') { await sendPlayback('addfile',{file}); return; }
+          return;
+        }
+        if (a.kind === 'album') {
+          if (act === 'open') { await openRecentAlbumFrom(a); return; }
+          if (act === 'play') { await applyAlbumActionReliable(a.album, a.artist, 'replace', false); return; }
+          if (act === 'shuffle') { await applyAlbumActionReliable(a.album, a.artist, 'replace', true); return; }
+        }
+        return;
+      }
+
       const more = ev.target.closest('button[data-ra-more="1"][data-ra-idx]');
       if (more) {
+        ev.preventDefault();
         ev.stopPropagation();
-        const i=Number(more.getAttribute('data-ra-idx')); const a=recentItems[i]; if(!a) return;
-        recentMenuCtx = { ...a };
-        const m=openRecentMenuFor(a);
-        const r=more.getBoundingClientRect();
-        m.style.left=`${Math.max(8,Math.round(r.left))}px`; m.style.top=`${Math.round(r.bottom+6)}px`; m.classList.add('open');
+        const cell = more.closest('.thumb');
+        if (!cell) return;
+        const was = cell.classList.contains('is-flipped');
+        closeRecentRailFlips();
+        if (!was) cell.classList.add('is-flipped');
         return;
       }
       const cell = ev.target.closest('[data-ra-idx]');
       if (!cell) return;
+      if (cell.classList.contains('is-flipped')) { closeRecentRailFlips(); return; }
+      closeRecentRailFlips();
       const i=Number(cell.getAttribute('data-ra-idx')); const a=recentItems[i]; if(!a) return;
       if (a.kind === 'playlist') { await openRecentPlaylistFrom(a); return; }
       if (a.kind === 'podcast') { await openRecentPodcastFrom(a); return; }
@@ -2213,7 +2317,11 @@
       }
 
       if (kind === 'playlist') {
-        if (act==='open') { await openRecentPlaylistFrom(recentMenuCtx); return; }
+        if (act==='open') {
+          await ensureKey();
+          await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentMenuCtx.playlist,mode:'append',play:false})}).catch(()=>null);
+          return;
+        }
         if (act==='play') {
           await ensureKey();
           await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:recentMenuCtx.playlist,mode:'replace',play:true})}).catch(()=>null);
@@ -2236,7 +2344,7 @@
         return;
       }
 
-      if (act==='open') { await openRecentAlbumFrom(recentMenuCtx); return; }
+      if (act==='open') { await sendPlayback('addalbum',{mode:'append',album:recentMenuCtx.album,artist:recentMenuCtx.artist||''}); return; }
       if (act==='play') { await applyAlbumActionReliable(recentMenuCtx.album, recentMenuCtx.artist, 'replace', false); return; }
       if (act==='shuffle') {
         await applyAlbumActionReliable(recentMenuCtx.album, recentMenuCtx.artist, 'replace', true);
@@ -2281,6 +2389,7 @@
     document.addEventListener('click',(ev)=>{
       const m=document.getElementById('recentAlbumMenu');
       if (m.classList.contains('open') && !ev.target.closest('#recentAlbumMenu') && !ev.target.closest('[data-ra-more="1"]')) m.classList.remove('open');
+      if (!ev.target.closest('#recentRail .thumb')) closeRecentRailFlips();
     });
 
     document.querySelectorAll('.row[data-page]').forEach((row)=>{
@@ -2291,18 +2400,26 @@
       kioskPane?.classList.remove('open');
       kioskPane?.setAttribute('aria-hidden','true');
       recentWrap?.classList.remove('paneOpen');
-      setOpenNavRow('');
+      setOpenNavRow(getLastLibraryPage());
       setTimeout(()=>{ try { if (kioskPaneFrame) kioskPaneFrame.src = 'about:blank'; } catch {} }, 220);
     };
     window.addEventListener('message', (ev)=>{
       const d = ev?.data || {};
       if (!d || typeof d !== 'object') return;
-      if (String(d.type || '') === 'np-kiosk-hide-pane') closeKioskPane();
+      if (String(d.type || '') === 'np-kiosk-hide-pane') {
+        if (__navCoverEl) { closeNavCover(); return; }
+        closeKioskPane();
+      }
     });
 
     initKioskControls();
 
+    window.addEventListener('pageshow', ()=>{ setTimeout(restoreLastLibraryPage, 220); setTimeout(restoreLastLibraryPage, 900); });
+    window.addEventListener('focus', ()=>{ setTimeout(restoreLastLibraryPage, 220); });
+    document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) setTimeout(restoreLastLibraryPage, 220); });
+
     (async ()=>{
+      try { ensureNowPlayingPreload(); } catch {}
       // Prioritize Now Playing first so banner paints immediately.
       refreshNowPlayingCard();
       setInterval(refreshNowPlayingCard, 3500);
@@ -2317,6 +2434,9 @@
         const openPageParam = String(__u.searchParams.get('open') || '').trim();
         if (IS_KIOSK_1280 && !IS_KIOSK_EDITOR && openPageParam.startsWith('kiosk-')) {
           setTimeout(() => openPage(openPageParam), 120);
+        } else if (shouldOpenInRightPane()) {
+          const remembered = getLastLibraryPage();
+          if (remembered) setTimeout(() => openPage(remembered), 120);
         }
       } catch {}
     })();

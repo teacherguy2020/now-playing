@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const DEFAULT_PROFILE = {
-  devicePreset: 'iphone17',
+  devicePreset: 'mobile',
   theme: 'auto',
   layout: 'home-rail',
   showRecent: true,

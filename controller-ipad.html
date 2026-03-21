@@ -720,7 +720,7 @@
     }
     if (USE_LOCAL_PROFILE_ONLY && !qDevicePreset) {
       const cur = String(profile && profile.devicePreset || "").toLowerCase();
-      if (!cur.startsWith("iphone")) profile.devicePreset = "iphone17";
+      if (!cur.startsWith("mobile") && !cur.startsWith("iphone")) profile.devicePreset = "mobile";
     }
     try {
       localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile));
@@ -728,7 +728,7 @@
     }
   }
   function applyDevicePresetUi() {
-    const preset = String(profile && profile.devicePreset || "iphone17").toLowerCase().trim();
+    const preset = String(profile && profile.devicePreset || "mobile").toLowerCase().trim();
     const isTablet = preset === "tablet";
     const autoLandscape = window.innerWidth > window.innerHeight;
     const isLegacyLandscape = preset === "tablet-landscape" || preset === "ipadpro11-landscape" || preset === "ipad-modern-landscape" || preset === "ipadlatest-landscape" || preset === "ipadair-landscape" || preset === "ipadair1-landscape" || preset.indexOf("ipad") === 0 && preset.indexOf("landscape") !== -1;

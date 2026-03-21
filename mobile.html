@@ -55,7 +55,7 @@
       <h2>Mobile Builder (v1)</h2>
       <label>Device preset</label>
       <select id="devicePreset">
-        <option value="iphone17" selected>iPhone 17</option>
+        <option value="mobile" selected>Mobile</option>
         <option value="tablet">Tablet</option>
       </select>
       <label>Preview orientation</label>
@@ -90,7 +90,7 @@
     </div>
     <div class="card previewHost">
       <div class="device">
-        <div class="screen"><iframe id="controllerPreview" src="controller-iphone.html?preview=1"></iframe></div>
+        <div class="screen"><iframe id="controllerPreview" src="controller-mobile.html?preview=1"></iframe></div>
       </div>
     </div>
   </div>
@@ -164,7 +164,7 @@
     }
     function syncSwatches(){}
     function applyDeviceChrome(p){
-      const preset=String((p&&p.devicePreset)||'iphone17').toLowerCase();
+      const preset=String((p&&p.devicePreset)||'mobile').toLowerCase();
       const po=String(($('previewOrientation')?.value||'auto')).toLowerCase();
       const screen=document.querySelector('.screen');
       const device=document.querySelector('.device');
@@ -251,18 +251,18 @@
       const p=collect();
       write(p);
 
-      const preset=String(p.devicePreset||'iphone17').toLowerCase();
-      const targetPage = (preset.startsWith('ipad') || preset.startsWith('tablet')) ? 'controller-ipad.html' : 'controller-iphone.html';
+      const preset=String(p.devicePreset||'mobile').toLowerCase();
+      const targetPage = (preset.startsWith('ipad') || preset.startsWith('tablet')) ? 'controller-ipad.html' : 'controller-mobile.html';
 
       // Update preview frame/device chrome immediately.
       applyDeviceChrome(p);
 
       // Update preview content immediately (don't wait on API save round-trip).
-      const qp=new URLSearchParams({preview:'1',profile:profileToken(p),devicePreset:String(p.devicePreset||'iphone17'),sw:String(Date.now())});
+      const qp=new URLSearchParams({preview:'1',profile:profileToken(p),devicePreset:String(p.devicePreset||'mobile'),sw:String(Date.now())});
       $('controllerPreview').src=targetPage+'?'+qp.toString();
 
       // Default pushed URL: short canonical route (+ minimal preset so layout is deterministic).
-      const pushed=`${location.protocol}//${location.hostname||'nowplaying.local'}:8101/${targetPage}?devicePreset=${encodeURIComponent(String(p.devicePreset||'iphone17'))}`;
+      const pushed=`${location.protocol}//${location.hostname||'nowplaying.local'}:8101/${targetPage}?devicePreset=${encodeURIComponent(String(p.devicePreset||'mobile'))}`;
       if ($('pushedUrl')) $('pushedUrl').value = pushed;
 
       // Persist server-side in background.
