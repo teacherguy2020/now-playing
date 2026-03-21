@@ -56,8 +56,13 @@
       <label>Device preset</label>
       <select id="devicePreset">
         <option value="iphone17" selected>iPhone 17</option>
-        <option value="ipadpro11">iPad Pro 11” (Portrait)</option>
-        <option value="ipadpro11-landscape">iPad Pro 11” (Landscape)</option>
+        <option value="tablet">Tablet</option>
+      </select>
+      <label>Preview orientation</label>
+      <select id="previewOrientation">
+        <option value="auto" selected>Auto</option>
+        <option value="portrait">Portrait</option>
+        <option value="landscape">Landscape</option>
       </select>
       <label>Primary Theme Color</label><div class="colorRow"><input id="primaryThemeColor" type="color" value="#0b111c" /></div>
       <label>Secondary Theme Color</label><div class="colorRow"><input id="secondaryThemeColor" type="color" value="#1f2a3d" /></div>
@@ -114,7 +119,7 @@
       'Lavender Mist':{primaryThemeColor:'#120d1e',secondaryThemeColor:'#3d3158',primaryTextColor:'#f2ecff',secondaryTextColor:'#c9b8f2'},
       'Emerald Glass':{primaryThemeColor:'#081511',secondaryThemeColor:'#1f4a3e',primaryTextColor:'#e8fff6',secondaryTextColor:'#9ed9c3'}
     };
-    const defaults={devicePreset:'iphone17',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18,customColors:{primaryThemeColor:'#0b111c',secondaryThemeColor:'#1f2a3d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}};
+    const defaults={devicePreset:'tablet',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18,customColors:{primaryThemeColor:'#0b111c',secondaryThemeColor:'#1f2a3d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}};
     const API_BASE = (()=>{ try { const h=location.hostname||'nowplaying.local'; const p=location.protocol||'http:'; return `${p}//${h}:3101`; } catch { return 'http://nowplaying.local:3101'; } })();
     function read(){try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...defaults}}}
     function write(p){localStorage.setItem(KEY,JSON.stringify(p));}
@@ -159,26 +164,20 @@
     }
     function syncSwatches(){}
     function applyDeviceChrome(p){
-      const preset=String(p?.devicePreset||'iphone17').toLowerCase();
+      const preset=String((p&&p.devicePreset)||'iphone17').toLowerCase();
+      const po=String(($('previewOrientation')?.value||'auto')).toLowerCase();
       const screen=document.querySelector('.screen');
       const device=document.querySelector('.device');
       if(!screen||!device) return;
-      if(preset==='ipadpro11'){
-        screen.style.width='834px';
+      const isTablet = (preset==='tablet' || preset.startsWith('ipad'));
+      if(isTablet){
+        const isLandscape = (po==='landscape') || (po==='auto' && window.innerWidth > window.innerHeight);
+        screen.style.width = isLandscape ? '1180px' : '834px';
         screen.style.maxWidth='none';
-        screen.style.height='1194px';
+        screen.style.height = isLandscape ? '820px' : '1194px';
         screen.style.borderRadius='20px';
         device.style.borderRadius='24px';
-        device.style.transform='scale(0.6)';
-        device.style.transformOrigin='top left';
-      } else if (preset==='ipadpro11-landscape') {
-        // Calibrated to match Safari in-field layout density for current iPad landscape target.
-        screen.style.width='1366px';
-        screen.style.maxWidth='none';
-        screen.style.height='1024px';
-        screen.style.borderRadius='20px';
-        device.style.borderRadius='24px';
-        device.style.transform='scale(0.5)';
+        device.style.transform = isLandscape ? 'scale(0.58)' : 'scale(0.6)';
         device.style.transformOrigin='top left';
       } else {
         screen.style.width='390px';
@@ -253,9 +252,12 @@
       write(p);
 
       const preset=String(p.devicePreset||'iphone17').toLowerCase();
-      const targetPage = preset.startsWith('ipadpro11') ? 'controller-ipad.html' : 'controller-iphone.html';
+      const targetPage = (preset.startsWith('ipad') || preset.startsWith('tablet')) ? 'controller-ipad.html' : 'controller-iphone.html';
 
-      // Update preview immediately (don't wait on API save round-trip).
+      // Update preview frame/device chrome immediately.
+      applyDeviceChrome(p);
+
+      // Update preview content immediately (don't wait on API save round-trip).
       const qp=new URLSearchParams({preview:'1',profile:profileToken(p),devicePreset:String(p.devicePreset||'iphone17'),sw:String(Date.now())});
       $('controllerPreview').src=targetPage+'?'+qp.toString();
 
@@ -277,7 +279,7 @@
       if (!ok) throw new Error('copy-failed');
     },{busyText:'Copying…',doneText:'✓ Copied'}).catch(()=>alert('Copy URL failed.')));
     $('resetBtn').addEventListener('click',()=>runBtnAction($('resetBtn'), async ()=>{write({...defaults});ui(defaults);await apply();},{busyText:'Resetting…',doneText:'✓ Reset'}).catch(()=>null));
-    ['devicePreset','recentCount'].forEach((id)=>{
+    ['devicePreset','previewOrientation','recentCount'].forEach((id)=>{
       const el=$(id); if(!el) return;
       el.addEventListener('change', ()=>{ syncSwatches(); apply(); });
       el.addEventListener('input', ()=>{ syncSwatches(); apply(); });
@@ -364,6 +366,25 @@
             // keep explicitly selected local preset unless missing
             devicePreset: (local?.devicePreset ?? server?.devicePreset ?? defaults.devicePreset),
             recentSource: (local?.recentSource ?? server?.recentSource ?? defaults.recentSource),
+          }
+        : local;
+      write(p);
+      ui(p);
+      await apply();
+    })();
+  </script>
+</body>
+</html>
+efaults.recentSource) }
+        : local;
+      write(p);
+      ui(p);
+      await apply();
+    })();
+  </script>
+</body>
+</html>
+ce ?? server?.recentSource ?? defaults.recentSource),
           }
         : local;
       write(p);
