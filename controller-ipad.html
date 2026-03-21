@@ -1404,39 +1404,39 @@
         renderIpadRail('ipadRailPodcasts', ipadRecentItems.podcasts, 'podcasts');
 
         const pl = await fetchJsonWithTimeout(`${base}/config/queue-wizard/playlists`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
-        const playlists = (pl.ok && pl.json?.ok && Array.isArray(pl.json.playlists))
-          ? pl.json.playlists.slice(0, limit).map((n)=>{
-              const title = String(n || '(playlist)').trim();
-              const safe = title.replace(/\s+/g,'_');
-              return {
-                title,
-                art:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(title)}.jpg`,
-                artAlt:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(safe)}.jpg`
-              };
-            })
-          : [];
-        ipadRecentItems.playlists = playlists.map((x)=>({ kind:'playlist', playlist:String(x?.title||'(playlist)').trim(), title:String(x?.title||'(playlist)').trim(), art:String(x?.art||`${base}/art/current.jpg`) }));
-        if (ipadRecentItems.playlists.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, ipadRecentItems.playlists);
-        renderIpadRail('ipadRailPlaylists', ipadRecentItems.playlists, 'playlists');
-        document.querySelectorAll('#ipadRailPlaylists img').forEach((img)=>{
-          img.onerror = () => {
-            const cur = String(img.getAttribute('src') || '').trim();
-            const alt = String((playlists.find((x)=>String(x.art||'').trim()===cur)?.artAlt) || '').trim();
-            if (alt && cur !== alt) { img.setAttribute('src', alt); return; }
-            const ph = document.createElement('div'); ph.className = 'ph'; img.replaceWith(ph);
-          };
-        });
+        if (pl.ok && pl.json?.ok && Array.isArray(pl.json.playlists)) {
+          const playlists = pl.json.playlists.slice(0, limit).map((n)=>{
+            const title = String(n || '(playlist)').trim();
+            const safe = title.replace(/\s+/g,'_');
+            return {
+              title,
+              art:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(title)}.jpg`,
+              artAlt:`http://${runtimeMoodeHost}/imagesw/playlist-covers/${encodeURIComponent(safe)}.jpg`
+            };
+          });
+          ipadRecentItems.playlists = playlists.map((x)=>({ kind:'playlist', playlist:String(x?.title||'(playlist)').trim(), title:String(x?.title||'(playlist)').trim(), art:String(x?.art||`${base}/art/current.jpg`) }));
+          if (ipadRecentItems.playlists.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, ipadRecentItems.playlists);
+          renderIpadRail('ipadRailPlaylists', ipadRecentItems.playlists, 'playlists');
+          document.querySelectorAll('#ipadRailPlaylists img').forEach((img)=>{
+            img.onerror = () => {
+              const cur = String(img.getAttribute('src') || '').trim();
+              const alt = String((playlists.find((x)=>String(x.art||'').trim()===cur)?.artAlt) || '').trim();
+              if (alt && cur !== alt) { img.setAttribute('src', alt); return; }
+              const ph = document.createElement('div'); ph.className = 'ph'; img.replaceWith(ph);
+            };
+          });
+        }
 
         const rr = await fetchJsonWithTimeout(`${base}/config/queue-wizard/radio-favorites`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
-        const radio = (rr.ok && rr.json?.ok && Array.isArray(rr.json.favorites))
-          ? rr.json.favorites.slice(0, limit).map((x)=>{
-              const title = String(x?.stationName || x?.file || '(station)').trim();
-              return { title, art: `${base}/art/radio-logo.jpg?name=${encodeURIComponent(title)}` };
-            })
-          : [];
-        ipadRecentItems.radio = radio.map((x, idx)=>({ kind:'radio', title:String(x?.title||'(station)').trim(), art:String(x?.art||`${base}/art/radio-logo.jpg`), url:String((rr.json?.favorites||[])[idx]?.file||'').trim() }));
-        if (ipadRecentItems.radio.length) saveRecentCache(RECENT_RADIO_CACHE_KEY, ipadRecentItems.radio);
-        renderIpadRail('ipadRailRadio', ipadRecentItems.radio, 'radio');
+        if (rr.ok && rr.json?.ok && Array.isArray(rr.json.favorites)) {
+          const radio = rr.json.favorites.slice(0, limit).map((x)=>{
+            const title = String(x?.stationName || x?.file || '(station)').trim();
+            return { title, art: `${base}/art/radio-logo.jpg?name=${encodeURIComponent(title)}` };
+          });
+          ipadRecentItems.radio = radio.map((x, idx)=>({ kind:'radio', title:String(x?.title||'(station)').trim(), art:String(x?.art||`${base}/art/radio-logo.jpg`), url:String((rr.json?.favorites||[])[idx]?.file||'').trim() }));
+          if (ipadRecentItems.radio.length) saveRecentCache(RECENT_RADIO_CACHE_KEY, ipadRecentItems.radio);
+          renderIpadRail('ipadRailRadio', ipadRecentItems.radio, 'radio');
+        }
       } catch {
         renderIpadRail('ipadRailAlbums', ipadRecentItems.albums || [], 'albums', false);
         renderIpadRail('ipadRailPodcasts', ipadRecentItems.podcasts || [], 'podcasts', false);
