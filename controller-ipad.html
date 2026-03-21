@@ -1031,7 +1031,9 @@
         const radioPerf = String(j?.radioPerformers || '').trim();
         npPersonnelText = personnelList.length ? personnelList.join('\n') : (radioPerf || '');
 
-        const sig = `${file}|${line1}|${line2}|${line3}|${st}|${art}|${npAlbumUrl}|${npRating}|${npRatingAllowed ? 1 : 0}|${npPersonnelText}`;
+        // Keep signature focused on content that should trigger art/blur rebind.
+        // Exclude rating fields so star changes don't force visible art/blur reload.
+        const sig = `${file}|${line1}|${line2}|${line3}|${st}|${art}|${npAlbumUrl}|${npPersonnelText}`;
         if (sig !== npSig) {
           npSig = sig;
           setArtFlip(false);
@@ -2470,13 +2472,16 @@
           headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ rating: next })
         });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok || !j?.ok) throw new Error(`HTTP ${r.status}`);
+        // Keep UI in sync with authoritative saved value without forcing full NP/art refresh.
+        npRating = Math.max(0, Math.min(5, Number(j?.rating ?? next) || 0));
+        renderLine2Stars();
       } catch {
         // Revert on failure
         npRating = prev;
         renderLine2Stars();
       }
-      refreshNowPlayingCard().catch(()=>null);
     }, { passive:false });
     npFlipInfoBtnEl?.addEventListener('click', (ev)=>{
       if (!document.body.classList.contains('ipad11Landscape')) return;
