@@ -327,6 +327,18 @@
     let radioHostAmbiguous = new Set();
     let radioHostMapTs = 0;
     let vibeBusyJobId = '';
+    let queueLoadingDepth = 0;
+
+    function setQueueLoading(on=false){
+      const meta = document.getElementById('meta');
+      if (on) queueLoadingDepth += 1;
+      else queueLoadingDepth = Math.max(0, queueLoadingDepth - 1);
+      const active = queueLoadingDepth > 0;
+      document.body.classList.toggle('queueLoading', active);
+      if (meta && active) {
+        meta.innerHTML = `<span class="miniSpin" aria-label="Loading"></span> Reloading…`;
+      }
+    }
 
     function setVibeBusy(on=false, text='Building vibe queue…'){
       const box = document.getElementById('vibeBusy');
@@ -465,31 +477,36 @@
 
     async function loadQueue(){
       if (dragState) return;
-      let headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
-      let r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
-      let j = await r.json().catch(()=>({}));
       const list = document.getElementById('list');
       const meta = document.getElementById('meta');
+      setQueueLoading(true);
+      try {
+        let headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
+        let r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
+        let j = await r.json().catch(()=>({}));
 
-      // Fast-path first; if auth is required, fetch key and retry once.
-      if ((!r.ok || !j?.ok) && !runtimeTrackKey) {
-        try {
-          await ensureKey();
-          headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
-          r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
-          j = await r.json().catch(()=>({}));
-        } catch {}
-      }
+        // Fast-path first; if auth is required, fetch key and retry once.
+        if ((!r.ok || !j?.ok) && !runtimeTrackKey) {
+          try {
+            await ensureKey();
+            headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
+            r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
+            j = await r.json().catch(()=>({}));
+          } catch {}
+        }
 
-      if (!r.ok || !j?.ok) {
-        meta.textContent = 'Pull to refresh queue';
-        list.innerHTML = '';
-        return;
-      }
-      const items = Array.isArray(j.items) ? j.items : [];
-      const headPos = Number(j.headPos || -1);
-      meta.textContent = `${items.length} tracks`;
-      const radioMap = await loadRadioHostNameMap(headers);
+        if (!r.ok || !j?.ok) {
+          if (meta) meta.textContent = 'Pull to refresh queue';
+          if (list) list.innerHTML = '';
+          // Reset signatures so a later successful poll always repaints rows.
+          lastBaseSig = '';
+          lastHeadPos = -1;
+          return;
+        }
+        const items = Array.isArray(j.items) ? j.items : [];
+        const headPos = Number(j.headPos || -1);
+        if (meta) meta.textContent = `${items.length} tracks`;
+        const radioMap = await loadRadioHostNameMap(headers);
 
       const baseSig = JSON.stringify(items.map((x, idx) => [
         Number(x?._posDisplay || x?.pos || (idx + 1)),
@@ -575,9 +592,12 @@
         });
       } catch {}
 
-      lastBaseSig = baseSig;
-      lastHeadPos = headPos;
-      maybeScrollToHead(false);
+        lastBaseSig = baseSig;
+        lastHeadPos = headPos;
+        maybeScrollToHead(false);
+      } finally {
+        setQueueLoading(false);
+      }
     }
 
     function clearSwipes(exceptRow=null){
@@ -608,10 +628,10 @@
     });
 
     // In embedded pane mode this document can be reused; ensure we never stay dim/non-interactive.
-    window.addEventListener('pageshow', clearBackNavState);
-    window.addEventListener('focus', clearBackNavState);
-    document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) clearBackNavState(); });
-    setTimeout(clearBackNavState, 260);
+    window.addEventListener('pageshow', ()=>{ clearBackNavState(); loadQueue().catch(()=>null); });
+    window.addEventListener('focus', ()=>{ clearBackNavState(); loadQueue().catch(()=>null); });
+    document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) { clearBackNavState(); loadQueue().catch(()=>null); } });
+    setTimeout(()=>{ clearBackNavState(); loadQueue().catch(()=>null); }, 260);
 
     document.getElementById('routeAlexaBtn')?.addEventListener('click', async (ev)=>{
       const btn = ev.currentTarget;
