@@ -86,7 +86,14 @@
     .qBtn.warn{background:#6b2d2d;border-color:#d67b7b;color:#fff1f1}
 
     .list{margin:2px 0 14px;padding:0;list-style:none}
-    .row{display:grid;grid-template-columns:40px 1fr 20px;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+    .row{display:grid;grid-template-columns:40px 1fr 20px;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer;position:relative;z-index:2;transition:transform .18s ease}
+    .rowWrap{position:relative;overflow:hidden}
+    .rowWrap .rowActions{position:absolute;right:0;top:0;bottom:0;display:flex;gap:0;z-index:1;opacity:0;pointer-events:none;transition:opacity .16s ease}
+    .rowWrap.swiped .rowActions{opacity:1;pointer-events:auto}
+    .rowWrap.swiped .row{transform:translateX(-168px)}
+    .rowActionBtn{width:84px;border:0;color:#fff;font-weight:700;font-size:14px;cursor:pointer}
+    .rowActionBtn.crop{background:#3f51b5}
+    .rowActionBtn.clear{background:#b4232f}
     .row .ico{font-size:24px;line-height:1;color:var(--icon,var(--accent));display:flex;align-items:center;justify-content:center;width:24px;height:24px}
     .row .ico svg{width:24px;height:24px;display:block;fill:currentColor}
     .row .ico.ico-mic{width:24px;height:24px;background:currentColor;-webkit-mask-image:url('assets/icons/microphone-4-svgrepo-com.svg');mask-image:url('assets/icons/microphone-4-svgrepo-com.svg');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center}
@@ -387,7 +394,13 @@
     <li class="row" data-page="kiosk-podcasts.html"><span class="ico ico-podcast"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11.5a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 0 0 0-3.4zm0-4.7a6.4 6.4 0 0 0-6.4 6.4h2.2a4.2 4.2 0 1 1 8.4 0h2.2A6.4 6.4 0 0 0 12 6.8zm0-3.6A10 10 0 0 0 2 13.2h2.2a7.8 7.8 0 0 1 15.6 0H22A10 10 0 0 0 12 3.2zM11 17h2v3h-2z"/></svg></span><span class="lbl">Podcasts</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-radio.html"><span class="ico ico-radio" aria-hidden="true"></span><span class="lbl">Radio</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-queue-wizard.html"><span class="ico ico-queuewiz" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19l10.6-10.6l1.4 1.4L6.4 20.4L5 19zm9.8-13.2l1.1-2.8l1.1 2.8l2.8 1.1l-2.8 1.1l-1.1 2.8l-1.1-2.8L12 6.9l2.8-1.1zM20 12l.8-2l.8 2l2 .8l-2 .8l-.8 2l-.8-2l-2-.8l2-.8zM10 3l.6-1.5L11.2 3l1.5.6l-1.5.6L10.6 5.8L10 4.2L8.5 3.6L10 3z"/></svg></span><span class="lbl">Queue Wizard</span><span class="chev">›</span></li>
-    <li class="row" data-page="kiosk-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue</span><span class="chev">›</span></li>
+    <li class="rowWrap" data-row-wrap="live-queue">
+      <div class="row" data-page="kiosk-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue</span><span class="chev">›</span></div>
+      <div class="rowActions" aria-hidden="true">
+        <button type="button" class="rowActionBtn crop" data-queue-act="crop" title="Keep only currently playing track">Crop</button>
+        <button type="button" class="rowActionBtn clear" data-queue-act="clear" title="Clear entire queue">Clear</button>
+      </div>
+    </li>
     <li class="row" data-page="visualizer.html"><span class="ico">◉</span><span class="lbl">Visualizer</span><span class="chev">›</span></li>
   </ul>
 
@@ -2404,10 +2417,68 @@
       const m=document.getElementById('recentAlbumMenu');
       if (m.classList.contains('open') && !ev.target.closest('#recentAlbumMenu') && !ev.target.closest('[data-ra-more="1"]')) m.classList.remove('open');
       if (!ev.target.closest('#recentRail .thumb')) closeRecentRailFlips();
+      if (!ev.target.closest('.rowWrap[data-row-wrap="live-queue"]')) closeLibraryRowSwipes();
     });
 
+    const closeLibraryRowSwipes = ()=>{
+      document.querySelectorAll('.rowWrap.swiped').forEach((w)=>w.classList.remove('swiped'));
+    };
+
+    const liveQueueRowWrap = document.querySelector('.rowWrap[data-row-wrap="live-queue"]');
+    const liveQueueRow = liveQueueRowWrap?.querySelector('.row[data-page="kiosk-queue.html"]');
+    if (liveQueueRowWrap && liveQueueRow) {
+      let sx = 0, sy = 0, swiping = false;
+      liveQueueRow.addEventListener('touchstart', (ev)=>{
+        const t = ev.touches && ev.touches[0];
+        if (!t) return;
+        sx = t.clientX; sy = t.clientY; swiping = true;
+      }, { passive:true });
+      liveQueueRow.addEventListener('touchmove', (ev)=>{
+        if (!swiping) return;
+        const t = ev.touches && ev.touches[0];
+        if (!t) return;
+        const dx = t.clientX - sx;
+        const dy = t.clientY - sy;
+        if (Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx)) { swiping = false; return; }
+        if (dx < -34) liveQueueRowWrap.classList.add('swiped');
+        else if (dx > 24) liveQueueRowWrap.classList.remove('swiped');
+      }, { passive:true });
+      liveQueueRow.addEventListener('touchend', ()=>{ swiping = false; }, { passive:true });
+      liveQueueRow.addEventListener('touchcancel', ()=>{ swiping = false; }, { passive:true });
+
+      liveQueueRowWrap.querySelectorAll('[data-queue-act]').forEach((btn)=>{
+        btn.addEventListener('click', async (ev)=>{
+          ev.preventDefault();
+          ev.stopPropagation();
+          const act = String(btn.getAttribute('data-queue-act') || '').trim().toLowerCase();
+          if (!act) return;
+          const prev = btn.textContent || '';
+          btn.disabled = true;
+          btn.textContent = '…';
+          try {
+            if (act === 'clear') {
+              const ok = window.confirm('Clear entire queue?');
+              if (!ok) return;
+            }
+            await sendPlayback(act);
+            closeLibraryRowSwipes();
+            openPage('kiosk-queue.html');
+          } catch {}
+          finally {
+            btn.disabled = false;
+            btn.textContent = prev;
+          }
+        });
+      });
+    }
+
     document.querySelectorAll('.row[data-page]').forEach((row)=>{
-      row.addEventListener('click', ()=>openPage(row.getAttribute('data-page') || ''));
+      row.addEventListener('click', ()=>{
+        const wrap = row.closest('.rowWrap');
+        if (wrap?.classList.contains('swiped')) return;
+        closeLibraryRowSwipes();
+        openPage(row.getAttribute('data-page') || '');
+      });
     });
 
     const closeKioskPane = ()=>{
