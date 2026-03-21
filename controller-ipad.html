@@ -868,6 +868,39 @@
       wrap.classList.toggle('is-flipped', !!flipped);
       wrap.setAttribute('aria-pressed', flipped ? 'true' : 'false');
     };
+    const formatEpisodeDate = (data)=>{
+      const raw = String(data?.date || data?.year || '').trim();
+      if (!raw) return '';
+
+      let y; let m; let d;
+      const iso = raw.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);
+      if (iso) {
+        y = Number(iso[1]);
+        m = Number(iso[2]);
+        d = iso[3] ? Number(iso[3]) : undefined;
+      } else {
+        const digits = raw.replace(/\D/g, '');
+        if (digits.length >= 8) {
+          y = Number(digits.slice(0, 4));
+          m = Number(digits.slice(4, 6));
+          d = Number(digits.slice(6, 8));
+        } else if (digits.length >= 6) {
+          y = Number(digits.slice(0, 4));
+          m = Number(digits.slice(4, 6));
+        } else if (digits.length === 4) {
+          y = Number(digits);
+        }
+      }
+
+      if (!Number.isFinite(y) || y <= 0) return raw;
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      if (Number.isFinite(m) && m >= 1 && m <= 12) {
+        const month = months[m - 1];
+        if (Number.isFinite(d) && d >= 1 && d <= 31) return `${month} ${d}, ${y}`;
+        return `${month}, ${y}`;
+      }
+      return String(y);
+    };
     const renderPersonnelBack = (text = '')=>{
       const el = document.getElementById('npPersonnelBody');
       if (!el) return;
@@ -988,6 +1021,10 @@
           return m ? m[0] : '';
         };
         const year = pickYear(j?.radioYear) || pickYear(j?.year) || pickYear(j?.radioDate) || pickYear(j?.date) || pickYear(j?.displayLine3) || '';
+        const genreLc = String(j?.genre || '').toLowerCase();
+        const fileLc = String(file || '').toLowerCase();
+        const isPodcast = !!j?.isPodcast || genreLc.includes('podcast') || /\/podcasts?\//.test(fileLc);
+        const isRadio = !!j?.isRadio || String(j?.service || '').toLowerCase().includes('radio') || !!j?.radioTrackUrl || (!!j?.isStream && !isPodcast);
 
         const line1 = hasTrack
           ? (dispArtist || artist || title || '(unknown artist)')
@@ -995,12 +1032,15 @@
         const line2 = hasTrack
           ? (dispTitle || title || '(unknown track)')
           : 'Use Queue Wizard or Recently Added to start music';
+        const podcastDate = hasTrack && isPodcast ? formatEpisodeDate(j) : '';
         const baseLine3 = hasTrack
-          ? (dispLine3 || String(album || '').trim() || '')
+          ? (isPodcast ? '' : (dispLine3 || String(album || '').trim() || ''))
           : '';
         const hasYearAlready = /\(\s*(19|20)\d{2}\s*\)/.test(baseLine3) || /\b(19|20)\d{2}\b/.test(baseLine3);
         const line3 = hasTrack
-          ? ((baseLine3 + ((year && !hasYearAlready) ? ` (${year})` : '')).trim())
+          ? (isPodcast
+            ? podcastDate
+            : ((baseLine3 + ((year && !hasYearAlready) ? ` (${year})` : '')).trim()))
           : '';
 
         const art = hasTrack
@@ -1010,11 +1050,6 @@
         const appleMusicUrl = String(j?.radioAppleMusicUrl || j?.appleMusicUrl || '').trim();
         const fallbackUrl = String(j?.shareUrl || j?.radioTrackUrl || j?.radioItunesUrl || j?.itunesUrl || '').trim();
         npAlbumUrl = hasTrack ? (appleMusicUrl || fallbackUrl) : '';
-
-        const genreLc = String(j?.genre || '').toLowerCase();
-        const fileLc = String(file || '').toLowerCase();
-        const isPodcast = !!j?.isPodcast || genreLc.includes('podcast') || /\/podcasts?\//.test(fileLc);
-        const isRadio = !!j?.isRadio || String(j?.service || '').toLowerCase().includes('radio') || !!j?.radioTrackUrl || (!!j?.isStream && !isPodcast);
         const npSeekInlineEl = document.getElementById('npSeekInline');
         const isAirplay = !!j?.isAirplay;
         const isUpnp = !!j?.isUpnp;
