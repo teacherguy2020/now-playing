@@ -339,7 +339,7 @@
     :is(body.ipad11, body.tablet) .tabletNextUpBar{display:none;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);padding:6px 10px;min-height:0}
     :is(body.ipad11, body.tablet) .tabletActionBar{display:none;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);padding:6px 10px;min-height:0;align-items:center;justify-content:space-between;flex-direction:row;gap:10px}
     :is(body.ipad11, body.tablet) .tabletActionBar .actionBtn{border:1px solid #2f4668;background:#16253e;color:#e6efff;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer}
-    :is(body.ipad11, body.tablet) .tabletActionBar .queuePos{font-size:14px;color:var(--text);line-height:1.2;white-space:nowrap;font-weight:650}
+    :is(body.ipad11, body.tablet) .tabletActionBar .queuePos{font-size:14px;color:var(--text);line-height:1.2;white-space:nowrap;font-weight:650;cursor:pointer}
     :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpTitle{display:none}
     :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpRow,
     :is(body.ipad11, body.tablet) .tabletNextUpInline .nextUpRow{display:flex;align-items:center;gap:10px;min-width:0}
@@ -3768,6 +3768,9 @@
   }
   document.getElementById("tabletAudioInfoBtn") == null ? void 0 : document.getElementById("tabletAudioInfoBtn").addEventListener("click", () => {
     openAudioInfoModal().catch(() => null);
+  });
+  document.getElementById("tabletQueuePos") == null ? void 0 : document.getElementById("tabletQueuePos").addEventListener("click", () => {
+    openPage("kiosk-queue.html");
   });
   document.getElementById("audioInfoCloseBtn") == null ? void 0 : document.getElementById("audioInfoCloseBtn").addEventListener("click", () => {
     const m = document.getElementById("audioInfoModal");
