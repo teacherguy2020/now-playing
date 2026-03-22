@@ -135,13 +135,15 @@
     function __npApplyPalette(name, themeMode, customColors){
       const p = String(name||'ocean').toLowerCase();
       const modeRaw = String(themeMode||'auto').toLowerCase();
-      const isLight = modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
+      const forceDarkPreset = p === 'blackred';
+      const isLight = !forceDarkPreset && (modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)));
             const map = {
         ocean:    { accent:'#4aa8ff', bg:'#0b111c', line:'#1f2a3d' },
         violet:   { accent:'#a78bfa', bg:'#120f1f', line:'#32284a' },
         mint:     { accent:'#34d399', bg:'#0b1514', line:'#21423f' },
         amber:    { accent:'#fbbf24', bg:'#171208', line:'#4a3720' },
         black:    { accent:'#f5f5f5', bg:'#050505', line:'#222222' },
+        blackred: { accent:'#ff3b47', bg:'#000000', line:'#2b0f13' },
         orange:   { accent:'#ff7a1a', bg:'#16100a', line:'#4a2f1c' },
         midnight: { accent:'#7aa2ff', bg:'#070b14', line:'#202a3f' },
         slate:    { accent:'#93a4bd', bg:'#0e131b', line:'#2f3c4d' },
@@ -160,6 +162,7 @@
         mint:     { bg:'#eefcf7', line:'#c7e8dd', text:'#0b0f17', muted:'#3d5f58' },
         amber:    { bg:'#fff8ea', line:'#ead8b0', text:'#0b0f17', muted:'#65532e' },
         black:    { bg:'#f2f4f8', line:'#d4dae4', text:'#0b0f17', muted:'#4b5567', accent:'#111111' },
+        blackred: { bg:'#ffeef0', line:'#f0c7cd', text:'#2a090d', muted:'#7a3b43' },
         orange:   { bg:'#fff3ea', line:'#ebcfbe', text:'#0b0f17', muted:'#684937' },
         midnight: { bg:'#edf2ff', line:'#cbd5f1', text:'#0b0f17', muted:'#415172' },
         slate:    { bg:'#f1f5f9', line:'#d0d8e2', text:'#0b0f17', muted:'#4a5567' },
@@ -188,13 +191,13 @@
       const accent = (l.accent || d.accent);
       const t = isLight
         ? { accent, ...l, bg: blendHex(l.bg, accent, 0.20) }
-        : { ...d, text:'#f3f6ff', muted:'#9eb3d6' };
+        : { ...d, text: p === 'blackred' ? '#ff4d57' : '#f3f6ff', muted: p === 'blackred' ? '#b33a42' : '#9eb3d6' };
       const hex = (v)=>/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim()) ? String(v).trim() : '';
       const cc = customColors && typeof customColors === 'object' ? customColors : {};
-      const cPrimary = hex(cc.primaryThemeColor);
-      const cSecondary = hex(cc.secondaryThemeColor);
-      const cText = hex(cc.primaryTextColor);
-      const cText2 = hex(cc.secondaryTextColor);
+      const cPrimary = forceDarkPreset ? '' : hex(cc.primaryThemeColor);
+      const cSecondary = forceDarkPreset ? '' : hex(cc.secondaryThemeColor);
+      const cText = forceDarkPreset ? '' : hex(cc.primaryTextColor);
+      const cText2 = forceDarkPreset ? '' : hex(cc.secondaryTextColor);
 
       const r = document.documentElement;
       r.style.setProperty('--accent', t.accent);

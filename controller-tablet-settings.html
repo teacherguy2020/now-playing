@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Controller Settings</title>
+  <style>
+    :root{color-scheme:dark}
+    *{box-sizing:border-box}
+    body{margin:0;padding:10px 12px 20px;font:14px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:transparent;color:var(--text,#f3f6ff)}
+    .top{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+    .backBtn{width:34px;height:34px;border-radius:10px;border:1px solid var(--line,rgba(255,255,255,.14));background:color-mix(in oklab,var(--surface,#0b111c) 88%, transparent);color:var(--text,#f3f6ff);display:grid;place-items:center;cursor:pointer}
+    .backBtn svg{width:18px;height:18px;display:block;fill:currentColor}
+    .topTitle{font-size:15px;font-weight:650;color:var(--text,#f3f6ff)}
+    .card{border:1px solid var(--line,rgba(255,255,255,.14));background:color-mix(in oklab,var(--surface,#0b111c) 78%, transparent);border-radius:12px;padding:12px}
+    h1{margin:0 0 4px;font-size:18px;line-height:1.15}
+    .sub{margin:0 0 12px;color:var(--muted,#9eb3d6);font-size:12px}
+    label{display:block;font-weight:620;margin:8px 0 6px}
+    select{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line,rgba(255,255,255,.16));background:rgba(255,255,255,.04);color:inherit;font-size:15px}
+    .hint{margin-top:8px;color:var(--muted,#9eb3d6);font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <button id="backBtn" class="backBtn" type="button" aria-label="Back">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+    </button>
+    <div class="topTitle">Settings</div>
+  </div>
+
+  <div class="card">
+    <h1>Settings</h1>
+    <p class="sub">Controller tablet preferences</p>
+
+    <label for="themePreset">Theme preset</label>
+    <select id="themePreset" aria-label="Controller tablet theme preset"></select>
+    <div class="hint">Applies immediately.</div>
+  </div>
+
+  <script>
+  (() => {
+    const PRESETS = [
+      ['ocean','Ocean'],['violet','Violet'],['mint','Mint'],['amber','Amber'],['black','Black'],['blackred','Black + Red Text'],
+      ['orange','Orange'],['midnight','Midnight'],['slate','Slate'],['mono','Mono'],['sunset','Sunset'],
+      ['sunrise','Sunrise'],['rose','Rose'],['lavender','Lavender'],['emerald','Emerald'],['forest','Forest']
+    ];
+    const u = new URL(location.href);
+    const themeMode = String(u.searchParams.get('theme') || 'auto').trim().toLowerCase();
+    const selected = String(u.searchParams.get('colorPreset') || 'ocean').trim().toLowerCase();
+    const sel = document.getElementById('themePreset');
+
+    const applyPalette = (name, mode) => {
+      const p = String(name || 'ocean').toLowerCase();
+      const forceDark = p === 'blackred';
+      const isLight = !forceDark && (mode === 'light' || (mode === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
+      const dark = {
+        ocean:{accent:'#4aa8ff',surface:'#0b111c',line:'#1f2a3d',text:'#f3f6ff',muted:'#9eb3d6'},
+        violet:{accent:'#a78bfa',surface:'#120f1f',line:'#32284a',text:'#f3f6ff',muted:'#9eb3d6'},
+        mint:{accent:'#34d399',surface:'#0b1514',line:'#21423f',text:'#f3f6ff',muted:'#9eb3d6'},
+        amber:{accent:'#fbbf24',surface:'#171208',line:'#4a3720',text:'#f3f6ff',muted:'#9eb3d6'},
+        black:{accent:'#f5f5f5',surface:'#050505',line:'#222222',text:'#f3f6ff',muted:'#9eb3d6'},
+        blackred:{accent:'#ff3b47',surface:'#000000',line:'#2b0f13',text:'#ff4d57',muted:'#b33a42'},
+        orange:{accent:'#ff7a1a',surface:'#16100a',line:'#4a2f1c',text:'#f3f6ff',muted:'#9eb3d6'},
+        midnight:{accent:'#7aa2ff',surface:'#070b14',line:'#202a3f',text:'#f3f6ff',muted:'#9eb3d6'},
+        slate:{accent:'#93a4bd',surface:'#0e131b',line:'#2f3c4d',text:'#f3f6ff',muted:'#9eb3d6'},
+        mono:{accent:'#d8d8d8',surface:'#0b0b0b',line:'#2d2d2d',text:'#f3f6ff',muted:'#9eb3d6'},
+        sunset:{accent:'#ff8f4d',surface:'#1b110d',line:'#5b3a2d',text:'#f3f6ff',muted:'#9eb3d6'},
+        sunrise:{accent:'#ffbf47',surface:'#1a130a',line:'#5a4523',text:'#f3f6ff',muted:'#9eb3d6'},
+        rose:{accent:'#fb7185',surface:'#1a0d14',line:'#5b2b3f',text:'#f3f6ff',muted:'#9eb3d6'},
+        lavender:{accent:'#c4b5fd',surface:'#120d1e',line:'#3d3158',text:'#f3f6ff',muted:'#9eb3d6'},
+        emerald:{accent:'#34d399',surface:'#081511',line:'#1f4a3e',text:'#f3f6ff',muted:'#9eb3d6'},
+        forest:{accent:'#4ade80',surface:'#0a150d',line:'#2d4f36',text:'#f3f6ff',muted:'#9eb3d6'}
+      };
+      const light = {
+        ocean:{surface:'#eef5ff',line:'#c8d7ee',text:'#0b0f17',muted:'#3f5673'},
+        violet:{surface:'#f5f0ff',line:'#d9cdf1',text:'#0b0f17',muted:'#52436e'},
+        mint:{surface:'#eefcf7',line:'#c7e8dd',text:'#0b0f17',muted:'#3d5f58'},
+        amber:{surface:'#fff8ea',line:'#ead8b0',text:'#0b0f17',muted:'#65532e'},
+        black:{surface:'#f2f4f8',line:'#d4dae4',text:'#0b0f17',muted:'#4b5567'}
+      };
+      const d = dark[p] || dark.ocean;
+      const l = light[p] || light.ocean;
+      const t = isLight ? {...d, ...l} : d;
+      const r = document.documentElement;
+      r.style.setProperty('--surface', t.surface);
+      r.style.setProperty('--line', t.line);
+      r.style.setProperty('--text', t.text);
+      r.style.setProperty('--muted', t.muted);
+    };
+
+    sel.innerHTML = PRESETS.map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+    sel.value = PRESETS.some(([v]) => v === selected) ? selected : 'ocean';
+    applyPalette(sel.value, themeMode);
+
+    const send = () => {
+      applyPalette(sel.value, themeMode);
+      try {
+        window.parent?.postMessage({ type: 'np-controller-settings', colorPreset: String(sel.value || 'ocean') }, '*');
+      } catch {}
+    };
+
+    sel.addEventListener('change', send);
+
+    let backBusy = false;
+    document.getElementById('backBtn')?.addEventListener('click', () => {
+      if (backBusy) return;
+      backBusy = true;
+      setTimeout(() => {
+        const embedded = new URL(location.href).searchParams.get('embedded') === '1';
+        if (embedded) {
+          try { window.parent?.postMessage({ type:'np-kiosk-hide-pane' }, '*'); } catch {}
+          return;
+        }
+        if (history.length > 1) history.back();
+        else location.href = 'controller-tablet.html';
+      }, 140);
+    });
+  })();
+  </script>
+</body>
+</html>
