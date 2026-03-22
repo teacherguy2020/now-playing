@@ -328,6 +328,8 @@
     let radioHostMapTs = 0;
     let vibeBusyJobId = '';
     let queueLoadingDepth = 0;
+    let queueFailStreak = 0;
+    let queueAutoRetryTimer = null;
 
     function setQueueLoading(on=false){
       const meta = document.getElementById('meta');
@@ -475,6 +477,11 @@
       return { byKey: radioStationByKey, byHost: radioStationByHost, logoByKey: radioLogoByKey, logoByHost: radioLogoByHost, ambHosts: radioHostAmbiguous };
     }
 
+    function scheduleQueueRetry(delayMs=1200){
+      try { clearTimeout(queueAutoRetryTimer); } catch {}
+      queueAutoRetryTimer = setTimeout(()=>{ loadQueue().catch(()=>null); }, Math.max(250, Number(delayMs)||1200));
+    }
+
     async function loadQueue(){
       if (dragState) return;
       const list = document.getElementById('list');
@@ -495,14 +502,31 @@
           } catch {}
         }
 
+        // If key is stale/expired, force refresh key and retry once.
+        if ((!r.ok || !j?.ok) && (r.status === 401 || r.status === 403)) {
+          try {
+            runtimeTrackKey = '';
+            await ensureKey();
+            headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
+            r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
+            j = await r.json().catch(()=>({}));
+          } catch {}
+        }
+
         if (!r.ok || !j?.ok) {
-          if (meta) meta.textContent = 'Pull to refresh queue';
-          if (list) list.innerHTML = '';
+          queueFailStreak += 1;
+          const hasRows = !!(list && list.querySelector('.rowWrap'));
+          if (meta) meta.textContent = hasRows ? `Queue update failed (${queueFailStreak}) — retrying…` : 'Pull to refresh queue';
+          if (!hasRows && list) list.innerHTML = '';
           // Reset signatures so a later successful poll always repaints rows.
           lastBaseSig = '';
           lastHeadPos = -1;
+          // Auto-recover without requiring manual pull-to-refresh.
+          scheduleQueueRetry(Math.min(5000, 900 + (queueFailStreak * 450)));
           return;
         }
+        queueFailStreak = 0;
+        try { clearTimeout(queueAutoRetryTimer); } catch {}
         const items = Array.isArray(j.items) ? j.items : [];
         const headPos = Number(j.headPos || -1);
         if (meta) meta.textContent = `${items.length} tracks`;
