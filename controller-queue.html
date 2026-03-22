@@ -631,11 +631,26 @@
     window.addEventListener('pageshow', ()=>{ clearBackNavState(); loadQueue().catch(()=>null); });
     window.addEventListener('focus', ()=>{ clearBackNavState(); loadQueue().catch(()=>null); });
     document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) { clearBackNavState(); loadQueue().catch(()=>null); } });
-    window.addEventListener('message', (ev)=>{
+    window.addEventListener('message', async (ev)=>{
       const d = ev?.data || {};
       if (!d || typeof d !== 'object') return;
-      if (String(d.type || '') === 'np-queue-refresh') {
+      const t = String(d.type || '');
+      if (t === 'np-queue-refresh') {
         loadQueue().catch(()=>null);
+        return;
+      }
+      if (t === 'np-queue-vibe-head') {
+        try {
+          await loadQueue();
+          const wrap = document.querySelector('.row.head[data-pos]')?.closest('.rowWrap');
+          if (!wrap) return;
+          const jr = await startSeedVibeFromRowWrap(wrap);
+          clearSwipes();
+          setTimeout(()=>{ loadQueue().catch(()=>null); }, 1200);
+          monitorVibeJob(String(jr?.jobId || '')).catch(()=>null);
+        } catch (e) {
+          console.warn(e);
+        }
       }
     });
     setTimeout(()=>{ clearBackNavState(); loadQueue().catch(()=>null); }, 260);

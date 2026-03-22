@@ -16,7 +16,8 @@
   <title>Controller</title>
   <style>
     :root{--bg:#070b13;--surface:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--accent:#4aa8ff}
-    *{box-sizing:border-box}
+    *{box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+    html,body{-webkit-user-select:none !important;user-select:none !important;-webkit-touch-callout:none !important}
     body{margin:0;background:var(--surface);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
     .card{background:transparent;border:0;padding:8px 0;margin-bottom:8px}
     #npCard{position:relative;overflow:hidden;border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,.10);--npBlurBg:none}
@@ -107,7 +108,17 @@
     .qBtn.done{background:#1f5d33;border-color:#45b26f;color:#eafff1}
 
     .list{margin:2px 0 14px;padding:0;list-style:none}
-    .row{display:grid;grid-template-columns:40px 1fr 20px;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+    .rowWrap{position:relative;overflow:hidden}
+    .row{display:grid;grid-template-columns:40px 1fr 20px;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer;position:relative;z-index:2;background:var(--surface);transition:transform .18s ease;touch-action:pan-y}
+    .rowWrap .rowActions{position:absolute;top:calc(-1 * var(--swipe-gap-top, 0px));right:0;bottom:calc(-1 * var(--swipe-gap-bottom, 0px));width:252px;display:flex;gap:0;z-index:1;opacity:0;pointer-events:none;transition:opacity .16s ease;align-items:stretch;overflow:hidden}
+    .rowWrap.swiped .rowActions{opacity:1;pointer-events:auto}
+    .rowWrap.swiped .row{transform:translateX(-252px)}
+    .rowWrap[data-row-wrap="live-queue"]{border-bottom:1px solid var(--line);overflow:visible;--swipe-gap-top:0px;--swipe-gap-bottom:0px}
+    .rowWrap[data-row-wrap="live-queue"] .row{border-bottom:0}
+    .rowActionBtn{flex:1;height:100%;border:0;color:#fff;font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;border-radius:0}
+    .rowActionBtn.vibe{background:#5b3df0}
+    .rowActionBtn.crop{background:#2b6fe6}
+    .rowActionBtn.clear{background:#a11a2e}
     .row .ico{font-size:24px;line-height:1;color:var(--icon,var(--accent));display:flex;align-items:center;justify-content:center;width:24px;height:24px}
     .row .ico svg{width:24px;height:24px;display:block;fill:currentColor}
     .row .ico.ico-mic{width:24px;height:24px;background:currentColor;-webkit-mask-image:url('assets/icons/microphone-4-svgrepo-com.svg');mask-image:url('assets/icons/microphone-4-svgrepo-com.svg');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center}
@@ -578,7 +589,14 @@
     <li class="row" data-page="kiosk-podcasts.html"><span class="ico ico-podcast"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11.5a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 0 0 0-3.4zm0-4.7a6.4 6.4 0 0 0-6.4 6.4h2.2a4.2 4.2 0 1 1 8.4 0h2.2A6.4 6.4 0 0 0 12 6.8zm0-3.6A10 10 0 0 0 2 13.2h2.2a7.8 7.8 0 0 1 15.6 0H22A10 10 0 0 0 12 3.2zM11 17h2v3h-2z"/></svg></span><span class="lbl">Podcasts</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-radio.html"><span class="ico ico-radio" aria-hidden="true"></span><span class="lbl">Radio</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-queue-wizard.html"><span class="ico ico-queuewiz" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19l10.6-10.6l1.4 1.4L6.4 20.4L5 19zm9.8-13.2l1.1-2.8l1.1 2.8l2.8 1.1l-2.8 1.1l-1.1 2.8l-1.1-2.8L12 6.9l2.8-1.1zM20 12l.8-2l.8 2l2 .8l-2 .8l-.8 2l-.8-2l-2-.8l2-.8zM10 3l.6-1.5L11.2 3l1.5.6l-1.5.6L10.6 5.8L10 4.2L8.5 3.6L10 3z"/></svg></span><span class="lbl">Queue Wizard</span><span class="chev">›</span></li>
-    <li class="row" data-page="kiosk-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue</span><span class="chev">›</span></li>
+    <li class="rowWrap" data-row-wrap="live-queue">
+      <div class="row" data-page="kiosk-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue</span><span class="chev">›</span></div>
+      <div class="rowActions" aria-hidden="true">
+        <button type="button" class="rowActionBtn vibe" data-queue-act="vibe" title="Build a Vibe queue from the currently playing track">Vibe</button>
+        <button type="button" class="rowActionBtn crop" data-queue-act="crop" title="Keep only currently playing track">Crop</button>
+        <button type="button" class="rowActionBtn clear" data-queue-act="clear" title="Clear entire queue">Clear</button>
+      </div>
+    </li>
     <li class="row" data-page="visualizer.html"><span class="ico">◉</span><span class="lbl">Visualizer</span><span class="chev">›</span></li>
   </ul>
 
@@ -3650,13 +3668,142 @@
       card.classList.toggle("is-flipped");
     }
   });
+  const closeLibraryRowSwipes = () => {
+    document.querySelectorAll(".rowWrap.swiped").forEach((w) => w.classList.remove("swiped"));
+  };
   document.addEventListener("click", (ev) => {
     const m = document.getElementById("recentAlbumMenu");
     if (m.classList.contains("open") && !ev.target.closest("#recentAlbumMenu") && !ev.target.closest('[data-ra-more="1"]')) m.classList.remove("open");
     if (!ev.target.closest("#ipadRecentGrid .thumb")) closeIpadRecentFlips();
+    if (!ev.target.closest('.rowWrap[data-row-wrap="live-queue"]')) closeLibraryRowSwipes();
   });
+  function syncLiveQueueRowSlot() {
+    try {
+      const wrap = document.querySelector('.rowWrap[data-row-wrap="live-queue"]');
+      if (!(wrap instanceof HTMLElement)) return;
+      const prev = wrap.previousElementSibling;
+      const r = wrap.getBoundingClientRect();
+      let gapAbove = 0;
+      if (prev instanceof HTMLElement) {
+        const pr = prev.getBoundingClientRect();
+        gapAbove = Math.max(0, Math.round(r.top - pr.bottom));
+      }
+      const gapBelow = 0;
+      wrap.style.setProperty('--swipe-gap-top', `${gapAbove}px`);
+      wrap.style.setProperty('--swipe-gap-bottom', `${gapBelow}px`);
+    } catch {}
+  }
+
+  const liveQueueRowWrap = document.querySelector('.rowWrap[data-row-wrap="live-queue"]');
+  const liveQueueRow = (liveQueueRowWrap == null ? void 0 : liveQueueRowWrap.querySelector('.row[data-page="kiosk-queue.html"]')) || null;
+  if (liveQueueRowWrap && liveQueueRow) {
+    syncLiveQueueRowSlot();
+    let sx = 0, sy = 0, ex = 0, ey = 0;
+    let tracking = false;
+    let suppressClick = false;
+    const beginSwipe = (x, y) => {
+      sx = x;
+      sy = y;
+      ex = x;
+      ey = y;
+      tracking = true;
+      suppressClick = false;
+    };
+    const updateSwipe = (x, y) => {
+      if (!tracking) return;
+      ex = x;
+      ey = y;
+    };
+    const endSwipe = () => {
+      if (!tracking) return;
+      tracking = false;
+      const dx = ex - sx;
+      const dy = ey - sy;
+      if (Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx)) return;
+      if (dx <= -26) {
+        liveQueueRowWrap.classList.add("swiped");
+        suppressClick = true;
+        return;
+      }
+      if (dx >= 20) {
+        liveQueueRowWrap.classList.remove("swiped");
+        suppressClick = true;
+        return;
+      }
+    };
+    liveQueueRow.addEventListener("touchstart", (ev) => {
+      const t = ev.touches && ev.touches[0];
+      if (!t) return;
+      beginSwipe(t.clientX, t.clientY);
+    }, { passive: true });
+    liveQueueRow.addEventListener("touchmove", (ev) => {
+      const t = ev.touches && ev.touches[0];
+      if (!t) return;
+      updateSwipe(t.clientX, t.clientY);
+    }, { passive: true });
+    liveQueueRow.addEventListener("touchend", endSwipe, { passive: true });
+    liveQueueRow.addEventListener("touchcancel", () => {
+      tracking = false;
+    }, { passive: true });
+    liveQueueRow.addEventListener("pointerdown", (ev) => {
+      if (ev.pointerType === "mouse" && ev.button !== 0) return;
+      beginSwipe(ev.clientX, ev.clientY);
+    });
+    liveQueueRow.addEventListener("pointermove", (ev) => {
+      updateSwipe(ev.clientX, ev.clientY);
+    });
+    liveQueueRow.addEventListener("pointerup", endSwipe);
+    liveQueueRow.addEventListener("pointercancel", () => {
+      tracking = false;
+    });
+    liveQueueRow.addEventListener("click", (ev) => {
+      if (suppressClick) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        suppressClick = false;
+      }
+    }, true);
+    liveQueueRowWrap.querySelectorAll("[data-queue-act]").forEach((btn) => {
+      btn.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const act = String(btn.getAttribute("data-queue-act") || "").trim().toLowerCase();
+        if (!act) return;
+        const prev = btn.textContent || "";
+        btn.disabled = true;
+        btn.textContent = "…";
+        try {
+          if (act === "vibe") {
+            openPage("kiosk-queue.html");
+            const pushVibe = () => {
+              try { kioskPaneFrame == null ? void 0 : kioskPaneFrame.contentWindow == null ? void 0 : kioskPaneFrame.contentWindow.postMessage({ type: "np-queue-vibe-head" }, "*"); } catch {}
+            };
+            setTimeout(pushVibe, 160);
+            setTimeout(pushVibe, 520);
+            setTimeout(pushVibe, 980);
+          } else {
+            if (act === "clear") {
+              const ok = window.confirm("Clear entire queue?");
+              if (!ok) return;
+            }
+            await sendPlayback(act);
+          }
+          closeLibraryRowSwipes();
+        } catch {
+        } finally {
+          btn.disabled = false;
+          btn.textContent = prev;
+        }
+      });
+    });
+  }
   document.querySelectorAll(".row[data-page]").forEach((row) => {
-    row.addEventListener("click", () => openPage(row.getAttribute("data-page") || ""));
+    row.addEventListener("click", () => {
+      const wrap = row.closest(".rowWrap");
+      if (wrap != null && wrap.classList.contains("swiped")) return;
+      closeLibraryRowSwipes();
+      openPage(row.getAttribute("data-page") || "");
+    });
   });
   const closeKioskPane = () => {
     kioskPane == null ? void 0 : kioskPane.classList.remove("open");
@@ -3742,12 +3889,23 @@
   window.addEventListener("pageshow", () => {
     setTimeout(restoreLastLibraryPage, 220);
     setTimeout(restoreLastLibraryPage, 900);
+    setTimeout(syncLiveQueueRowSlot, 260);
   });
   window.addEventListener("focus", () => {
     setTimeout(restoreLastLibraryPage, 220);
+    setTimeout(syncLiveQueueRowSlot, 260);
   });
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) setTimeout(restoreLastLibraryPage, 220);
+    if (!document.hidden) {
+      setTimeout(restoreLastLibraryPage, 220);
+      setTimeout(syncLiveQueueRowSlot, 260);
+    }
+  });
+  window.addEventListener("resize", () => {
+    setTimeout(syncLiveQueueRowSlot, 140);
+  });
+  window.addEventListener("orientationchange", () => {
+    setTimeout(syncLiveQueueRowSlot, 140);
   });
   (async () => {
     try {
