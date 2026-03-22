@@ -182,6 +182,13 @@
     .albumMeta{font-size:12px;color:var(--muted)}
     .albumTracks{list-style:none;margin:8px 0 0;padding:0}
     .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:flex;justify-content:space-between;gap:8px;font-size:14px}
+    #audioInfoList{list-style:none;margin:8px 0 0;padding:0}
+    #audioInfoList .aiSection{padding:4px 0 10px;border-bottom:1px solid #1f2a3d}
+    #audioInfoList .aiSectionTitle{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+    #audioInfoList .aiRow{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid #1b2638}
+    #audioInfoList .aiRow:last-child{border-bottom:0}
+    #audioInfoList .aiKey{color:#e7efff}
+    #audioInfoList .aiVal{color:#cfdcf5;text-align:right;max-width:62%}
     .trackBtns{display:flex;gap:6px}
     .trackBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer;transition:transform .12s ease, background-color .16s ease, border-color .16s ease, color .16s ease}
     .trackBtns button.busy{opacity:.78;pointer-events:none}
@@ -328,7 +335,11 @@
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .row .ico svg{width:26px;height:26px}
     :is(body.ipad11, body.tablet) .railModeBtn, :is(body.ipad11, body.tablet) #recentTitle, :is(body.ipad11, body.tablet) #recentRail, :is(body.ipad11, body.tablet) #recentPeekRail{display:none !important}
     :is(body.ipad11, body.tablet) .recentWrap{display:flex;min-height:0;overflow:hidden;flex-direction:column;gap:6px}
+    :is(body.ipad11, body.tablet) .tabletTopCards{display:none;gap:8px}
     :is(body.ipad11, body.tablet) .tabletNextUpBar{display:none;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);padding:6px 10px;min-height:0}
+    :is(body.ipad11, body.tablet) .tabletActionBar{display:none;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);padding:6px 10px;min-height:0;align-items:center;justify-content:space-between;flex-direction:row;gap:10px}
+    :is(body.ipad11, body.tablet) .tabletActionBar .actionBtn{border:1px solid #2f4668;background:#16253e;color:#e6efff;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer}
+    :is(body.ipad11, body.tablet) .tabletActionBar .queuePos{font-size:14px;color:var(--text);line-height:1.2;white-space:nowrap;font-weight:650}
     :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpTitle{display:none}
     :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpRow,
     :is(body.ipad11, body.tablet) .tabletNextUpInline .nextUpRow{display:flex;align-items:center;gap:10px;min-width:0}
@@ -345,7 +356,7 @@
     :is(body.ipad11, body.tablet) .ipadRecentPane .rail{padding:0;gap:8px;overflow:auto;min-height:142px}
     :is(body.ipad11, body.tablet) .ipadRecentPane .thumb{min-width:108px;width:108px}
     :is(body.ipad11, body.tablet) .ipadRecentPane .thumb img, :is(body.ipad11, body.tablet) .ipadRecentPane .ph{width:108px;height:108px}
-    :is(body.ipad11, body.tablet) .ipadRecentPane .thumb .cap{font-size:12px}
+    :is(body.ipad11, body.tablet) .ipadRecentPane .thumb .cap{font-size:11px;line-height:1.1;margin-top:3px}
 
     /* Tablet portrait: single-column 4-row recents stack */
     :is(body.ipad11:not(.ipad11Landscape), body.tablet:not(.tabletLandscape)) .ipadRecentGrid{grid-template-columns:1fr !important;grid-template-rows:repeat(4,minmax(0,1fr));gap:6px;overflow:hidden}
@@ -404,7 +415,9 @@
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npCtrls .ctl[data-np-act="repeat"]{order:5}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npCtrls .ctl[data-np-act="shuffle"]{order:6}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) #libraryList{margin-top:0}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletTopCards{display:grid;grid-template-columns:minmax(0,2fr) minmax(160px,1fr);align-items:stretch}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletNextUpBar{display:block}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletActionBar{display:flex}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletNextUpInline{display:none}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentGrid{display:flex !important;flex-direction:column;justify-content:space-between;gap:0;flex:1 1 auto;min-height:0;overflow:hidden}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentPane{padding:8px 10px;overflow:hidden;min-height:0;flex:0 0 auto}
@@ -412,6 +425,7 @@
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentPane .rail{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;overscroll-behavior-y:none;touch-action:pan-x}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentPane .thumb{min-width:120px;width:120px}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentPane .thumb img, :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentPane .ph{width:120px;height:120px}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentPane .thumb .cap{font-size:10px;line-height:1.05;margin-top:2px}
 
     /* iPad Modern landscape profile (1180x820 target) */
     body.ipadModern #kioskCanvas{position:relative;grid-template-columns:minmax(300px,1fr) minmax(0,2.1fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:0;max-height:calc(100vh - 8px);box-sizing:border-box}
@@ -626,10 +640,16 @@
     <div class="recentTitle" id="recentTitle">Recently Added <span id="railTitleSpin" class="titleSpin" hidden></span></div>
     <div class="rail" id="recentRail"></div>
     <div class="rail peekRail" id="recentPeekRail"></div>
-    <div class="tabletNextUpBar" id="tabletNextUpBar" aria-live="polite">
-      <div class="nextUpRow" id="tabletNextUpRow">
-        <img id="tabletNextUpArt" class="nextUpArt" src="/icons/icon-192.png" alt="" />
-        <div id="tabletNextUpText" class="nextUpText">NEXT UP: Loading…</div>
+    <div class="tabletTopCards" id="tabletTopCards">
+      <div class="tabletNextUpBar" id="tabletNextUpBar" aria-live="polite">
+        <div class="nextUpRow" id="tabletNextUpRow">
+          <img id="tabletNextUpArt" class="nextUpArt" src="/icons/icon-192.png" alt="" />
+          <div id="tabletNextUpText" class="nextUpText">NEXT UP: Loading…</div>
+        </div>
+      </div>
+      <div class="tabletActionBar" id="tabletActionBar">
+        <div class="queuePos" id="tabletQueuePos">Track — of —</div>
+        <button type="button" class="actionBtn" id="tabletAudioInfoBtn">Audio info</button>
       </div>
     </div>
     <div class="ipadRecentGrid" id="ipadRecentGrid" hidden>
@@ -647,6 +667,14 @@
     <button data-ra-act="open" id="raOpenBtn">Add</button>
     <button data-ra-act="play" id="raPlayBtn">Play</button>
     <button data-ra-act="shuffle" id="raThirdBtn">Play Shuffled</button>
+  </div>
+
+  <div class="albumModal" id="audioInfoModal" aria-hidden="true">
+    <div class="albumCard" role="dialog" aria-modal="true" aria-label="Audio info">
+      <button id="audioInfoCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
+      <div class="albumHead"><div><div class="albumTitle">Audio info</div><div class="albumMeta" id="audioInfoMeta">moOde playback chain</div></div></div>
+      <ul class="albumTracks" id="audioInfoList"><li>Loading…</li></ul>
+    </div>
   </div>
 
   <div class="albumModal" id="recentAlbumModal" aria-hidden="true">
@@ -2817,12 +2845,14 @@
     syncTabletPortraitScale();
     syncNpControlScale();
     refreshTabletNextUp().catch(() => null);
+    refreshTabletQueuePos().catch(() => null);
   });
   window.addEventListener("orientationchange", () => setTimeout(() => {
     applyDevicePresetUi();
     syncTabletPortraitScale();
     syncNpControlScale();
     refreshTabletNextUp().catch(() => null);
+    refreshTabletQueuePos().catch(() => null);
   }, 120));
   npArtImgEl == null ? void 0 : npArtImgEl.addEventListener("load", () => syncNpControlScale());
   setTimeout(() => {
@@ -3302,6 +3332,26 @@
     }
   });
   railModeBtn == null ? void 0 : railModeBtn.addEventListener("click", () => cycleRecentSource(1));
+  async function refreshTabletQueuePos() {
+    try {
+      const isTabletLike = document.body.classList.contains("tablet") || document.body.classList.contains("ipad11");
+      const isLandscape = isTabletLandscapeBody();
+      const el = document.getElementById("tabletQueuePos");
+      if (!el) return;
+      el.style.display = isTabletLike && isLandscape ? "" : "none";
+      if (!isTabletLike || !isLandscape) return;
+      await ensureKey();
+      const r = await fetch(`${base}/now-playing`, { cache: "no-store", headers: reqHeaders(false) });
+      const j = await r.json().catch(() => ({}));
+      const total = Math.max(0, Number((j == null ? void 0 : j.queueTotal) || 0) || 0);
+      const trackNum = Math.max(0, Number((j == null ? void 0 : j.queueTrack) || 0) || 0);
+      el.textContent = trackNum > 0 && total > 0 ? `Track ${trackNum} of ${total}` : "Track — of —";
+    } catch {
+      const el = document.getElementById("tabletQueuePos");
+      if (el) el.textContent = "Track — of —";
+    }
+  }
+
   async function refreshTabletNextUp() {
     const isTabletLike = document.body.classList.contains("tablet") || document.body.classList.contains("ipad11");
     const isLandscape = isTabletLandscapeBody();
@@ -3332,6 +3382,57 @@
     } catch {
       const textEls = [document.getElementById("tabletNextUpText"), document.getElementById("tabletNextUpTextInline")].filter(Boolean);
       textEls.forEach((el) => el.textContent = "NEXT UP: unavailable");
+    }
+  }
+
+  async function openAudioInfoModal() {
+    const modal = document.getElementById("audioInfoModal");
+    const list = document.getElementById("audioInfoList");
+    const meta = document.getElementById("audioInfoMeta");
+    if (!modal || !list) return;
+    modal.classList.add("open");
+    list.innerHTML = "<li>Loading…</li>";
+    if (meta) meta.textContent = "moOde playback chain";
+    try {
+      await ensureKey();
+      const r = await fetch(`${base}/config/moode/audio-info?view=rows`, { cache: "no-store", headers: reqHeaders(false) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !(j == null ? void 0 : j.ok)) throw new Error(String((j == null ? void 0 : j.error) || `HTTP ${r.status}`));
+      const rows = Array.isArray(j == null ? void 0 : j.rows) ? j.rows : [];
+      if (!rows.length) {
+        list.innerHTML = "<li>No audio info available</li>";
+        return;
+      }
+      const scoreVal = (v) => {
+        const s = String(v || "").trim().toLowerCase();
+        if (!s || s === "—") return 0;
+        if (s === "not playing") return 1;
+        return 2;
+      };
+      const best = new Map();
+      rows.forEach((x) => {
+        const sec = String((x == null ? void 0 : x.section) || "General").trim() || "General";
+        const key = String((x == null ? void 0 : x.key) || "").trim();
+        const val = String((x == null ? void 0 : x.value) || "").trim();
+        if (!key) return;
+        const k = `${sec}||${key}`;
+        const prev = best.get(k);
+        if (!prev || scoreVal(val) > scoreVal(prev.value || "")) best.set(k, { section: sec, key, value: val });
+      });
+      const finalRows = Array.from(best.values());
+      const grouped = new Map();
+      finalRows.forEach((r) => {
+        if (!grouped.has(r.section)) grouped.set(r.section, []);
+        grouped.get(r.section).push(r);
+      });
+      const html = Array.from(grouped.entries()).map(([section, items]) => {
+        const rowsHtml = items.map((x) => `<div class='aiRow'><span class='aiKey'>${x.key}</span><span class='aiVal'>${x.value}</span></div>`).join("");
+        return `<div class='aiSection'><div class='aiSectionTitle'>${section}</div>${rowsHtml}</div>`;
+      }).join("");
+      list.innerHTML = html;
+      if (meta) meta.textContent = `${finalRows.length} fields · ${grouped.size} sections`;
+    } catch (e) {
+      list.innerHTML = `<li>Audio info unavailable: ${String(e == null ? void 0 : e.message || e)}</li>`;
     }
   }
 
@@ -3639,6 +3740,19 @@
     m.style.inset = "";
     m.style.position = "";
   }
+  document.getElementById("tabletAudioInfoBtn") == null ? void 0 : document.getElementById("tabletAudioInfoBtn").addEventListener("click", () => {
+    openAudioInfoModal().catch(() => null);
+  });
+  document.getElementById("audioInfoCloseBtn") == null ? void 0 : document.getElementById("audioInfoCloseBtn").addEventListener("click", () => {
+    const m = document.getElementById("audioInfoModal");
+    m == null ? void 0 : m.classList.remove("open");
+  });
+  document.getElementById("audioInfoModal") == null ? void 0 : document.getElementById("audioInfoModal").addEventListener("click", (ev) => {
+    if (ev.target.id === "audioInfoModal") {
+      const m = document.getElementById("audioInfoModal");
+      m == null ? void 0 : m.classList.remove("open");
+    }
+  });
   document.getElementById("recentAlbumCloseBtn").addEventListener("click", closeRecentAlbumModal);
   document.getElementById("recentAlbumArtistLink") == null ? void 0 : document.getElementById("recentAlbumArtistLink").addEventListener("click", async () => {
     const artist = String(recentModalCtx.artist || "").trim();
@@ -4095,9 +4209,11 @@
     }
     refreshNowPlayingCard();
     refreshTabletNextUp().catch(() => null);
+    refreshTabletQueuePos().catch(() => null);
     setInterval(refreshNowPlayingCard, 3500);
     setInterval(() => {
       refreshTabletNextUp().catch(() => null);
+      refreshTabletQueuePos().catch(() => null);
     }, 7000);
     loadServerProfile().catch(() => null);
     loadHomeQuickIndex().catch(() => null);

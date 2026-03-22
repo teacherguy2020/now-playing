@@ -5839,6 +5839,22 @@ app.get('/now-playing', async (req, res) => {
         updateArtCacheIfNeeded(rawArtUrl).catch(e => console.warn('[art] failed', e.message));
       }
 
+      let queueTotal = Math.max(0, Number(status?.playlistlength || moodeValByKey(statusRaw, 'playlistlength') || 0) || 0);
+      let queueTrack = 0;
+      {
+        const sp = Number(songpos);
+        if (Number.isFinite(sp) && sp >= 0) queueTrack = sp + 1;
+      }
+      if (queueTotal <= 0 || queueTrack <= 0) {
+        try {
+          const stq = await mpdGetStatus();
+          const t = Math.max(0, Number(stq?.playlistlength || 0) || 0);
+          const s = Number(stq?.song);
+          if (queueTotal <= 0 && t > 0) queueTotal = t;
+          if (queueTrack <= 0 && Number.isFinite(s) && s >= 0) queueTrack = s + 1;
+        } catch {}
+      }
+
       const payload = {
         artist: artist || '',
         title: title || '',
@@ -5847,6 +5863,9 @@ app.get('/now-playing', async (req, res) => {
 
         songpos,
         songid,
+        queueTrack,
+        queueTotal,
+        queueLabel: (queueTrack > 0 && queueTotal > 0) ? `Track ${queueTrack} of ${queueTotal}` : '',
 
         albumArtUrl: primaryArtUrl || '',
         aplArtUrl,
@@ -6476,6 +6495,22 @@ app.get('/now-playing', async (req, res) => {
       debugRatingErr = rr.err || '';
     }
 
+    let queueTotal = Math.max(0, Number(status?.playlistlength || moodeValByKey(statusRaw, 'playlistlength') || 0) || 0);
+    let queueTrack = 0;
+    {
+      const sp = Number(songpos);
+      if (Number.isFinite(sp) && sp >= 0) queueTrack = sp + 1;
+    }
+    if (queueTotal <= 0 || queueTrack <= 0) {
+      try {
+        const stq = await mpdGetStatus();
+        const t = Math.max(0, Number(stq?.playlistlength || 0) || 0);
+        const s = Number(stq?.song);
+        if (queueTotal <= 0 && t > 0) queueTotal = t;
+        if (queueTrack <= 0 && Number.isFinite(s) && s >= 0) queueTrack = s + 1;
+      } catch {}
+    }
+
     const displayStationName = String(streamStationName || song?.name || '').trim();
     const radioArtistGeneric = artistLooksGeneric(artist);
     const displayMode = isRadio ? 'radio' : (stream ? 'stream' : (isPodcast ? 'podcast' : 'track'));
@@ -6496,6 +6531,9 @@ app.get('/now-playing', async (req, res) => {
 
       songpos,
       songid,
+      queueTrack,
+      queueTotal,
+      queueLabel: (queueTrack > 0 && queueTotal > 0) ? `Track ${queueTrack} of ${queueTotal}` : '',
 
       albumArtUrl: primaryArtUrl || '',
       aplArtUrl,

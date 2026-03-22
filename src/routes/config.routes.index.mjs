@@ -16,6 +16,7 @@ import { registerConfigLibraryHealthAnimatedArtRoutes } from './config.library-h
 import { registerConfigRoutes } from './config.routes.mjs';
 import { registerConfigControllerProfileRoutes } from './config.controller-profile.routes.mjs';
 import { registerConfigBrowseRoutes } from './config.browse.routes.mjs';
+import { registerConfigMoodeAudioInfoRoutes } from './config.moode-audio-info.routes.mjs';
 
 export function registerAllConfigRoutes(app, deps) {
   registerConfigQueueWizardBasicRoutes(app, {
@@ -96,6 +97,10 @@ export function registerAllConfigRoutes(app, deps) {
   });
 
   registerConfigBrowseRoutes(app, {
+    requireTrackKey: deps.requireTrackKey,
+  });
+
+  registerConfigMoodeAudioInfoRoutes(app, {
     requireTrackKey: deps.requireTrackKey,
   });
 
