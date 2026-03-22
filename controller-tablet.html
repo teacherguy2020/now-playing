@@ -327,7 +327,18 @@
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .row .ico{width:26px;height:26px;display:flex;align-items:center;justify-content:center}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .row .ico svg{width:26px;height:26px}
     :is(body.ipad11, body.tablet) .railModeBtn, :is(body.ipad11, body.tablet) #recentTitle, :is(body.ipad11, body.tablet) #recentRail, :is(body.ipad11, body.tablet) #recentPeekRail{display:none !important}
-    :is(body.ipad11, body.tablet) .recentWrap{display:flex;min-height:0;overflow:hidden}
+    :is(body.ipad11, body.tablet) .recentWrap{display:flex;min-height:0;overflow:hidden;flex-direction:column;gap:6px}
+    :is(body.ipad11, body.tablet) .tabletNextUpBar{display:none;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);padding:6px 10px;min-height:0}
+    :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpTitle{display:none}
+    :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpRow,
+    :is(body.ipad11, body.tablet) .tabletNextUpInline .nextUpRow{display:flex;align-items:center;gap:10px;min-width:0}
+    :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpArt,
+    :is(body.ipad11, body.tablet) .tabletNextUpInline .nextUpArt{width:36px;height:36px;border-radius:7px;object-fit:cover;background:#0a1222;border:1px solid #33485f;flex:0 0 auto}
+    :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpText,
+    :is(body.ipad11, body.tablet) .tabletNextUpInline .nextUpText{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;color:var(--text)}
+    :is(body.ipad11, body.tablet) .tabletNextUpInline{display:block;margin-top:10px;padding-top:8px;border-top:1px solid color-mix(in oklab, var(--line) 75%, transparent)}
+    :is(body.ipad11:not(.ipad11Landscape), body.tablet:not(.tabletLandscape)) .tabletNextUpInline .nextUpArt{width:22px;height:22px;border-radius:5px}
+    :is(body.ipad11:not(.ipad11Landscape), body.tablet:not(.tabletLandscape)) .tabletNextUpInline .nextUpText{font-size:12px}
     :is(body.ipad11, body.tablet) .ipadRecentGrid{display:grid !important;grid-template-columns:1fr 1fr;gap:8px;width:100%;min-height:0;overflow:auto;padding-right:2px}
     :is(body.ipad11, body.tablet) .ipadRecentPane{min-height:0;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:8px;display:flex;flex-direction:column;gap:6px}
     :is(body.ipad11, body.tablet) .ipadRecentPane h4{margin:0;font-size:13px;letter-spacing:.02em;color:var(--muted);text-transform:uppercase}
@@ -393,7 +404,9 @@
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npCtrls .ctl[data-np-act="repeat"]{order:5}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npCtrls .ctl[data-np-act="shuffle"]{order:6}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) #libraryList{margin-top:0}
-    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentGrid{display:flex !important;flex-direction:column;justify-content:space-between;gap:0;height:100%;min-height:0;overflow:hidden}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletNextUpBar{display:block}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletNextUpInline{display:none}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentGrid{display:flex !important;flex-direction:column;justify-content:space-between;gap:0;flex:1 1 auto;min-height:0;overflow:hidden}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentPane{padding:8px 10px;overflow:hidden;min-height:0;flex:0 0 auto}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentPane:nth-child(-n+3){padding-bottom:10px}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentPane .rail{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;overscroll-behavior-y:none;touch-action:pan-x}
@@ -568,6 +581,12 @@
           <div id="line1Wrap"><span id="line1"></span><span id="npSeekInline" class="npSeekInline" aria-label="Podcast seek controls"><button type="button" class="seekBtn" data-seek-rel="-15" title="Back 15 seconds">↺15</button><button type="button" class="seekBtn" data-seek-rel="30" title="Forward 30 seconds">30↻</button></span></div>
           <div id="line2Wrap" class="muted"><span id="line2"></span><span id="line2Stars" aria-label="Track rating"></span></div>
           <div id="line3" class="muted"></div>
+          <div class="tabletNextUpInline" id="tabletNextUpInline" aria-live="polite">
+            <div class="nextUpRow">
+              <img id="tabletNextUpArtInline" class="nextUpArt" src="/icons/icon-192.png" alt="" />
+              <div id="tabletNextUpTextInline" class="nextUpText">NEXT UP: Loading…</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -607,6 +626,12 @@
     <div class="recentTitle" id="recentTitle">Recently Added <span id="railTitleSpin" class="titleSpin" hidden></span></div>
     <div class="rail" id="recentRail"></div>
     <div class="rail peekRail" id="recentPeekRail"></div>
+    <div class="tabletNextUpBar" id="tabletNextUpBar" aria-live="polite">
+      <div class="nextUpRow" id="tabletNextUpRow">
+        <img id="tabletNextUpArt" class="nextUpArt" src="/icons/icon-192.png" alt="" />
+        <div id="tabletNextUpText" class="nextUpText">NEXT UP: Loading…</div>
+      </div>
+    </div>
     <div class="ipadRecentGrid" id="ipadRecentGrid" hidden>
       <section class="ipadRecentPane"><h4>Recent Albums</h4><div class="rail" id="ipadRailAlbums"></div></section>
       <section class="ipadRecentPane"><h4>Recent Podcasts</h4><div class="rail" id="ipadRailPodcasts"></div></section>
@@ -2732,11 +2757,13 @@
     applyDevicePresetUi();
     syncTabletPortraitScale();
     syncNpControlScale();
+    refreshTabletNextUp().catch(() => null);
   });
   window.addEventListener("orientationchange", () => setTimeout(() => {
     applyDevicePresetUi();
     syncTabletPortraitScale();
     syncNpControlScale();
+    refreshTabletNextUp().catch(() => null);
   }, 120));
   npArtImgEl == null ? void 0 : npArtImgEl.addEventListener("load", () => syncNpControlScale());
   setTimeout(() => {
@@ -3216,6 +3243,39 @@
     }
   });
   railModeBtn == null ? void 0 : railModeBtn.addEventListener("click", () => cycleRecentSource(1));
+  async function refreshTabletNextUp() {
+    const isTabletLike = document.body.classList.contains("tablet") || document.body.classList.contains("ipad11");
+    const isLandscape = isTabletLandscapeBody();
+    const bar = document.getElementById("tabletNextUpBar");
+    const inline = document.getElementById("tabletNextUpInline");
+    if (bar) bar.style.display = isTabletLike && isLandscape ? "" : "none";
+    if (inline) inline.style.display = isTabletLike && !isLandscape ? "" : "none";
+    if (!isTabletLike) return;
+    try {
+      await ensureKey();
+      const textEls = [document.getElementById("tabletNextUpText"), document.getElementById("tabletNextUpTextInline")].filter(Boolean);
+      const artEls = [document.getElementById("tabletNextUpArt"), document.getElementById("tabletNextUpArtInline")].filter(Boolean);
+      const r = await fetch(`${base}/next-up`, { cache: "no-store", headers: reqHeaders(false) });
+      const j = await r.json().catch(() => ({}));
+      const n = (j && (j.next || j.item || j.now || j)) || {};
+      const artist = decodeHtmlEntities(String(n == null ? void 0 : n.artist || "").trim());
+      const title = decodeHtmlEntities(String(n == null ? void 0 : n.title || n.file || "").trim());
+      const txt = "NEXT UP: " + ([artist, title].filter(Boolean).join(" • ") || "Nothing queued");
+      const artRaw = String(n == null ? void 0 : n.artUrl || n.thumbUrl || n.albumArtUrl || "").trim();
+      const art = artRaw ? (artRaw.startsWith("http") ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
+      textEls.forEach((el) => el.textContent = txt);
+      artEls.forEach((el) => {
+        el.src = art;
+        el.onerror = () => {
+          el.src = "/icons/icon-192.png";
+        };
+      });
+    } catch {
+      const textEls = [document.getElementById("tabletNextUpText"), document.getElementById("tabletNextUpTextInline")].filter(Boolean);
+      textEls.forEach((el) => el.textContent = "NEXT UP: unavailable");
+    }
+  }
+
   recentTitleEl == null ? void 0 : recentTitleEl.addEventListener("click", () => cycleRecentSource(1));
   let __railTouchStartX = 0;
   let __railTouchStartY = 0;
@@ -3922,7 +3982,11 @@
     } catch {
     }
     refreshNowPlayingCard();
+    refreshTabletNextUp().catch(() => null);
     setInterval(refreshNowPlayingCard, 3500);
+    setInterval(() => {
+      refreshTabletNextUp().catch(() => null);
+    }, 7000);
     loadServerProfile().catch(() => null);
     loadHomeQuickIndex().catch(() => null);
     loadRecentlyAdded().catch(() => null);
