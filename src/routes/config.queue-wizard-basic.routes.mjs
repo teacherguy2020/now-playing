@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { MPD_HOST, MOODE_SSH_HOST, MPD_PLAYLIST_DIR } from '../config.mjs';
+import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH, MPD_PLAYLIST_DIR } from '../config.mjs';
 import { getBrowseIndex } from '../lib/browse-index.mjs';
 
 const execFileP = promisify(execFile);
@@ -525,7 +525,23 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
           const filePath = path.join(MPD_PLAYLIST_DIR, `${String(name || '').trim()}.m3u`);
           try {
             const st = await fs.stat(filePath);
-            return { name, ts: Number(st?.mtimeMs || 0) || 0 };
+            const tsLocal = Number(st?.mtimeMs || 0) || 0;
+            if (tsLocal > 0) return { name, ts: tsLocal };
+          } catch {}
+
+          // Fallback: try moOde playlist-cover mtime over SSH when local m3u timestamp is unavailable.
+          // This helps Recent Playlists ordering on hosts where playlists live remotely.
+          try {
+            const sshHost = String(MOODE_SSH || MOODE_SSH_HOST || mpdHost || '').trim();
+            if (!sshHost) return { name, ts: 0 };
+            const raw = String(name || '').trim();
+            const safe = raw.replace(/\s+/g, '_');
+            const c1 = `/var/local/www/imagesw/playlist-covers/${raw}.jpg`;
+            const c2 = `/var/local/www/imagesw/playlist-covers/${safe}.jpg`;
+            const cmd = `bash -lc 'set -e; p1=${shQuoteArg(c1)}; p2=${shQuoteArg(c2)}; ts=0; if [ -f "$p1" ]; then ts=$(stat -c %Y "$p1" 2>/dev/null || stat -f %m "$p1" 2>/dev/null || echo 0); fi; if [ "$ts" = "0" ] && [ -f "$p2" ]; then ts=$(stat -c %Y "$p2" 2>/dev/null || stat -f %m "$p2" 2>/dev/null || echo 0); fi; echo "$ts"'`;
+            const r = await execFileP('ssh', ['-o', 'BatchMode=yes', sshHost, cmd], { timeout: 2200, maxBuffer: 256 * 1024 });
+            const sec = Number(String(r?.stdout || '').trim()) || 0;
+            return { name, ts: sec > 0 ? sec * 1000 : 0 };
           } catch {
             return { name, ts: 0 };
           }

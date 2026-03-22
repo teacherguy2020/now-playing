@@ -1607,6 +1607,46 @@
     }
     return "<button type='button' data-ra-flip-act='open' data-ra-row='".concat(row, "' data-ra-idx='").concat(i, "'>Add</button><button type='button' data-ra-flip-act='play' data-ra-row='").concat(row, "' data-ra-idx='").concat(i, "'>Play</button><button type='button' data-ra-flip-act='shuffle' data-ra-row='").concat(row, "' data-ra-idx='").concat(i, "'>Shuffle</button>");
   }
+  const playlistCoverDateCache = new Map();
+  async function getPlaylistCoverDateMs(artUrl, artAltUrl = "") {
+    const key = String(artUrl || "").trim() + "|" + String(artAltUrl || "").trim();
+    if (!key) return 0;
+    if (playlistCoverDateCache.has(key)) return Number(playlistCoverDateCache.get(key) || 0) || 0;
+    let ts = 0;
+    const tryHead = async (u) => {
+      const url = String(u || "").trim();
+      if (!url) return 0;
+      try {
+        const r = await fetch(url, { method: "HEAD", cache: "no-store" });
+        if (!r || !r.ok) return 0;
+        const lm = String(r.headers.get("last-modified") || "").trim();
+        const t = lm ? Date.parse(lm) : 0;
+        return Number.isFinite(t) ? Number(t) : 0;
+      } catch {
+        return 0;
+      }
+    };
+    ts = await tryHead(artUrl);
+    if (!ts) ts = await tryHead(artAltUrl);
+    playlistCoverDateCache.set(key, ts || 0);
+    return ts || 0;
+  }
+  async function sortPlaylistsByCoverDate(playlists) {
+    const rows = Array.isArray(playlists) ? playlists.slice() : [];
+    if (!rows.length) return rows;
+    const withTs = await Promise.all(rows.map(async (p, idx) => {
+      const art = String((p == null ? void 0 : p.art) || "").trim();
+      const artAlt = String((p == null ? void 0 : p.artAlt) || "").trim();
+      const ts = await getPlaylistCoverDateMs(art, artAlt);
+      return { p, idx, ts };
+    }));
+    withTs.sort((a, b) => {
+      if (b.ts !== a.ts) return b.ts - a.ts;
+      return a.idx - b.idx;
+    });
+    return withTs.map((x) => x.p);
+  }
+
   function renderIpadRail(hostId, items, rowKey, loading = false) {
     const host = document.getElementById(hostId);
     if (!host) return;
@@ -1680,7 +1720,7 @@
       renderIpadRail("ipadRailPodcasts", ipadRecentItems.podcasts, "podcasts");
       const pl = await fetchJsonWithTimeout("".concat(base, "/config/queue-wizard/playlists"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
       if (pl.ok && ((_b = pl.json) == null ? void 0 : _b.ok) && Array.isArray(pl.json.playlists)) {
-        const playlists = pl.json.playlists.slice(0, limit).map((n) => {
+        let playlists = pl.json.playlists.slice(0, limit).map((n) => {
           const title = String(n || "(playlist)").trim();
           const safe = title.replace(/\s+/g, "_");
           return {
@@ -1689,6 +1729,7 @@
             artAlt: "http://".concat(runtimeMoodeHost, "/imagesw/playlist-covers/").concat(encodeURIComponent(safe), ".jpg")
           };
         });
+        playlists = await sortPlaylistsByCoverDate(playlists);
         ipadRecentItems.playlists = playlists.map((x) => ({ kind: "playlist", playlist: String((x == null ? void 0 : x.title) || "(playlist)").trim(), title: String((x == null ? void 0 : x.title) || "(playlist)").trim(), art: String((x == null ? void 0 : x.art) || "".concat(base, "/art/current.jpg")) }));
         if (ipadRecentItems.playlists.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, ipadRecentItems.playlists);
         renderIpadRail("ipadRailPlaylists", ipadRecentItems.playlists, "playlists");
@@ -1855,6 +1896,7 @@
             artAlt: "http://".concat(runtimeMoodeHost, "/imagesw/playlist-covers/").concat(encodeURIComponent(safe), ".jpg")
           };
         });
+        recentItems = await sortPlaylistsByCoverDate(recentItems);
         if (recentItems.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, recentItems);
         recentItems.forEach((it, i) => {
           const d = document.createElement("div");
