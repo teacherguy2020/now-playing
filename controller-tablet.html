@@ -652,7 +652,7 @@
   <div class="albumModal" id="recentAlbumModal" aria-hidden="true">
     <div class="albumCard" role="dialog" aria-modal="true" aria-label="Album details">
       <button id="recentAlbumCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
-      <div class="albumHead"><img id="recentAlbumArt" src="" alt="" /><div><div class="albumTitle" id="recentAlbumTitle">Album</div><div class="albumMeta" id="recentAlbumMeta"></div></div></div>
+      <div class="albumHead"><img id="recentAlbumArt" src="" alt="" /><div><div class="albumTitle" id="recentAlbumTitle">Album</div><div class="albumMeta" id="recentAlbumMeta"></div><div class="albumMeta" id="recentAlbumArtistRow" style="display:none;">Artist: <button id="recentAlbumArtistLink" type="button" style="background:none;border:0;color:#9fc4ff;text-decoration:underline;cursor:pointer;padding:0;">(artist)</button></div></div></div>
       <div class="albumBtns">
         <button id="recentAlbumAppendBtn" type="button">Append album</button>
         <button id="recentAlbumCropBtn" type="button">Add album (crop)</button>
@@ -666,7 +666,7 @@
   <div class="albumModal" id="recentArtistModal" aria-hidden="true">
     <div class="albumCard" role="dialog" aria-modal="true" aria-label="Artist albums">
       <button id="recentArtistCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
-      <div class="albumHead"><img id="recentArtistArt" src="" alt="" /><div><div class="albumTitle" id="recentArtistTitle">Artist</div><div class="albumMeta" id="recentArtistMeta">Albums</div></div></div>
+      <div class="albumHead"><img id="recentArtistArt" src="" alt="" /><div style="min-width:0;flex:1 1 auto;padding-right:36px;"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;"><div class="albumTitle" id="recentArtistTitle">Artist</div><button id="recentArtistShuffleBtn" type="button" class="queueAlbumClose" style="white-space:nowrap;">Shuffle</button></div><div class="albumMeta" id="recentArtistMeta">Albums</div></div></div>
       <div class="artistAlbumsGrid" id="recentArtistAlbumsGrid"></div>
     </div>
   </div>
@@ -1441,6 +1441,7 @@
   let ipadRecentItems = { albums: [], podcasts: [], playlists: [], radio: [] };
   let recentMenuCtx = { kind: "album", album: "", artist: "", art: "", playlist: "", title: "", rss: "" };
   let recentModalCtx = { kind: "album", album: "", artist: "", art: "", playlist: "", tracks: [] };
+  let recentArtistCtx = { artist: "", art: "" };
   let recentAlbumsCache = { ts: 0, albums: [] };
   let recentAlbumsRefreshInFlight = null;
   const RECENT_ALBUMS_CACHE_KEY = "np.recent.albums.cache.v1";
@@ -1662,9 +1663,10 @@
         return !(f.startsWith("usb/samsungmoode/podcasts/") || f.includes("/podcasts/"));
       }).sort((a, b) => Number((b == null ? void 0 : b.addedTs) || 0) - Number((a == null ? void 0 : a.addedTs) || 0)).slice(0, limit).map((a) => ({
         title: String((a == null ? void 0 : a.album) || "(album)").trim(),
+        artist: String((a == null ? void 0 : a.artist) || (a == null ? void 0 : a.albumArtist) || "").trim(),
         art: String((a == null ? void 0 : a.thumbUrl) || "").trim() ? String(a.thumbUrl).startsWith("http") ? String(a.thumbUrl) : "".concat(base).concat(String(a.thumbUrl)) : "".concat(base, "/art/current.jpg")
       }));
-      ipadRecentItems.albums = albums.map((a) => ({ kind: "album", album: String((a == null ? void 0 : a.title) || "(album)").trim(), artist: "", art: String((a == null ? void 0 : a.art) || "".concat(base, "/art/current.jpg")) }));
+      ipadRecentItems.albums = albums.map((a) => ({ kind: "album", album: String((a == null ? void 0 : a.title) || "(album)").trim(), artist: String((a == null ? void 0 : a.artist) || "").trim(), art: String((a == null ? void 0 : a.art) || "".concat(base, "/art/current.jpg")) }));
       renderIpadRail("ipadRailAlbums", ipadRecentItems.albums, "albums");
       const pr = await fetchJsonWithTimeout("".concat(base, "/podcasts"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
       const podcasts = pr.ok && ((_a6 = pr.json) == null ? void 0 : _a6.ok) && Array.isArray(pr.json.items) ? pr.json.items.slice(0, limit).map((s) => ({
@@ -2108,7 +2110,16 @@
     const isPodcast = recentModalCtx.kind === "podcast";
     const modalEl = document.getElementById("recentAlbumModal");
     document.getElementById("recentAlbumTitle").textContent = isPlaylist ? recentModalCtx.playlist || "(playlist)" : isPodcast ? recentModalCtx.title || "(podcast)" : recentModalCtx.album || "(album)";
-    document.getElementById("recentAlbumMeta").textContent = isPlaylist ? "Playlist" : isPodcast ? "Downloaded episodes" : recentModalCtx.artist || "";
+    document.getElementById("recentAlbumMeta").textContent = isPlaylist ? "Playlist" : isPodcast ? "Downloaded episodes" : "";
+    const artistRowEl = document.getElementById("recentAlbumArtistRow");
+    const artistLinkEl = document.getElementById("recentAlbumArtistLink");
+    const albumArtist = String(recentModalCtx.artist || "").trim();
+    const showArtistLink = !isPlaylist && !isPodcast && !!albumArtist;
+    if (artistRowEl) artistRowEl.style.display = showArtistLink ? "" : "none";
+    if (artistLinkEl) {
+      artistLinkEl.textContent = albumArtist || "(unknown artist)";
+      artistLinkEl.disabled = !showArtistLink;
+    }
     document.getElementById("recentAlbumArt").src = recentModalCtx.art || "".concat(base, "/art/current.jpg");
     document.getElementById("recentAlbumAppendBtn").textContent = isPlaylist ? "Add playlist" : isPodcast ? "Add newest episode" : "Append album";
     document.getElementById("recentAlbumCropBtn").style.display = isPlaylist || isPodcast ? "none" : "";
@@ -2170,7 +2181,13 @@
     const artEl = document.getElementById("recentArtistArt");
     const titleEl = document.getElementById("recentArtistTitle");
     const metaEl = document.getElementById("recentArtistMeta");
+    const shuffleBtn = document.getElementById("recentArtistShuffleBtn");
     if (!modal || !grid || !artEl || !titleEl || !metaEl) return;
+    recentArtistCtx = { artist, art };
+    if (shuffleBtn) {
+      shuffleBtn.disabled = false;
+      shuffleBtn.textContent = "Shuffle artist (replace)";
+    }
     titleEl.textContent = artist;
     metaEl.innerHTML = 'Loading albums\u2026 <span class="inlineSpin" aria-hidden="true"></span>';
     artEl.src = art;
@@ -3581,6 +3598,12 @@
     m.style.position = "";
   }
   document.getElementById("recentAlbumCloseBtn").addEventListener("click", closeRecentAlbumModal);
+  document.getElementById("recentAlbumArtistLink") == null ? void 0 : document.getElementById("recentAlbumArtistLink").addEventListener("click", async () => {
+    const artist = String(recentModalCtx.artist || "").trim();
+    if (!artist || recentModalCtx.kind !== "album") return;
+    closeRecentAlbumModal();
+    await openRecentArtistFrom({ artist, art: recentModalCtx.art || "".concat(base, "/art/current.jpg") });
+  });
   document.getElementById("recentAlbumModal").addEventListener("click", (ev) => {
     if (ev.target.id === "recentAlbumModal") closeRecentAlbumModal();
   });
@@ -3672,6 +3695,52 @@
       resetBtn();
     }
   });
+  document.getElementById("recentArtistShuffleBtn") == null ? void 0 : document.getElementById("recentArtistShuffleBtn").addEventListener("click", async (ev) => {
+    const btn = ev.currentTarget;
+    const artist = String((recentArtistCtx == null ? void 0 : recentArtistCtx.artist) || "").trim();
+    if (!artist) return;
+    const prev = btn.textContent || "Shuffle artist (replace)";
+    btn.disabled = true;
+    btn.innerHTML = '<span class="inlineSpin" aria-hidden="true"></span> Shuffling…';
+    try {
+      const files = await tracksForQuick("artist", artist, "");
+      if (!files.length) {
+        btn.textContent = "No tracks found";
+        setTimeout(() => {
+          btn.textContent = prev;
+          btn.disabled = false;
+        }, 900);
+        return;
+      }
+      for (let i = files.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = files[i];
+        files[i] = files[j];
+        files[j] = tmp;
+      }
+      await fetch("".concat(base, "/config/queue-wizard/apply"), {
+        method: "POST",
+        headers: reqHeaders(true),
+        body: JSON.stringify({ mode: "replace", keepNowPlaying: false, tracks: files, shuffle: false, forceRandomOff: true, fastStart: true })
+      }).catch(() => null);
+      btn.textContent = "✓";
+      setTimeout(() => {
+        closeRecentArtistModal();
+        openPage("kiosk-queue.html");
+      }, 180);
+    } catch {
+      btn.textContent = "Failed";
+      setTimeout(() => {
+        btn.textContent = prev;
+        btn.disabled = false;
+      }, 900);
+      return;
+    }
+    setTimeout(() => {
+      btn.textContent = prev;
+      btn.disabled = false;
+    }, 1000);
+  });
   var _a3;
   (_a3 = document.getElementById("recentArtistCloseBtn")) == null ? void 0 : _a3.addEventListener("click", closeRecentArtistModal);
   var _a4;
@@ -3697,6 +3766,7 @@
     if (actBtn) {
       const act = String(actBtn.getAttribute("data-artist-act") || "").trim();
       if (act === "open") {
+        closeRecentArtistModal();
         await openRecentAlbumFrom({ album, artist, art });
         return;
       }
