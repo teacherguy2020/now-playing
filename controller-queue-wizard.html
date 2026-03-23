@@ -114,7 +114,8 @@
       const p = String(name||'ocean').toLowerCase();
       const modeRaw = String(themeMode||'auto').toLowerCase();
       const forceDarkPreset = p === 'blackred';
-      const isLight = !forceDarkPreset && (modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)));
+      const forceLightPreset = p === 'cloud' || p === 'sand' || p === 'blush';
+      const isLight = forceLightPreset || (!forceDarkPreset && (modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches))));
             const map = {
         ocean:    { accent:'#4aa8ff', bg:'#0b111c', line:'#1f2a3d' },
         violet:   { accent:'#a78bfa', bg:'#120f1f', line:'#32284a' },
@@ -122,6 +123,9 @@
         amber:    { accent:'#fbbf24', bg:'#171208', line:'#4a3720' },
         black:    { accent:'#f5f5f5', bg:'#050505', line:'#222222' },
         blackred: { accent:'#ff3b47', bg:'#000000', line:'#2b0f13' },
+        cloud:    { accent:'#5f8fd9', bg:'#eef4ff', line:'#c8d6ef' },
+        sand:     { accent:'#b8863b', bg:'#fff7e8', line:'#ead9b8' },
+        blush:    { accent:'#c85c78', bg:'#fff1f5', line:'#f2d0da' },
         orange:   { accent:'#ff7a1a', bg:'#16100a', line:'#4a2f1c' },
         midnight: { accent:'#7aa2ff', bg:'#070b14', line:'#202a3f' },
         slate:    { accent:'#93a4bd', bg:'#0e131b', line:'#2f3c4d' },
@@ -141,6 +145,9 @@
         amber:    { bg:'#fff8ea', line:'#ead8b0', text:'#0b0f17', muted:'#65532e' },
         black:    { bg:'#f2f4f8', line:'#d4dae4', text:'#0b0f17', muted:'#4b5567', accent:'#111111' },
         blackred: { bg:'#ffeef0', line:'#f0c7cd', text:'#2a090d', muted:'#7a3b43' },
+        cloud:    { bg:'#eef4ff', line:'#c8d6ef', text:'#132238', muted:'#425b7f', accent:'#5f8fd9' },
+        sand:     { bg:'#fff7e8', line:'#ead9b8', text:'#2a2012', muted:'#6f5737', accent:'#b8863b' },
+        blush:    { bg:'#fff1f5', line:'#f2d0da', text:'#2b1119', muted:'#7a4454', accent:'#c85c78' },
         orange:   { bg:'#fff3ea', line:'#ebcfbe', text:'#0b0f17', muted:'#684937' },
         midnight: { bg:'#edf2ff', line:'#cbd5f1', text:'#0b0f17', muted:'#415172' },
         slate:    { bg:'#f1f5f9', line:'#d0d8e2', text:'#0b0f17', muted:'#4a5567' },

@@ -42,7 +42,8 @@
     const PRESETS = [
       ['ocean','Ocean'],['violet','Violet'],['mint','Mint'],['amber','Amber'],['black','Black'],['blackred','Black + Red Text'],
       ['orange','Orange'],['midnight','Midnight'],['slate','Slate'],['mono','Mono'],['sunset','Sunset'],
-      ['sunrise','Sunrise'],['rose','Rose'],['lavender','Lavender'],['emerald','Emerald'],['forest','Forest']
+      ['sunrise','Sunrise'],['rose','Rose'],['lavender','Lavender'],['emerald','Emerald'],['forest','Forest'],
+      ['cloud','Cloud (Light)'],['sand','Sand (Light)'],['blush','Blush (Light)']
     ];
     const u = new URL(location.href);
     const themeMode = String(u.searchParams.get('theme') || 'auto').trim().toLowerCase();
@@ -52,7 +53,8 @@
     const applyPalette = (name, mode) => {
       const p = String(name || 'ocean').toLowerCase();
       const forceDark = p === 'blackred';
-      const isLight = !forceDark && (mode === 'light' || (mode === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
+      const forceLight = p === 'cloud' || p === 'sand' || p === 'blush';
+      const isLight = forceLight || (!forceDark && (mode === 'light' || (mode === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)));
       const dark = {
         ocean:{accent:'#4aa8ff',surface:'#0b111c',line:'#1f2a3d',text:'#f3f6ff',muted:'#9eb3d6'},
         violet:{accent:'#a78bfa',surface:'#120f1f',line:'#32284a',text:'#f3f6ff',muted:'#9eb3d6'},
@@ -69,7 +71,10 @@
         rose:{accent:'#fb7185',surface:'#1a0d14',line:'#5b2b3f',text:'#f3f6ff',muted:'#9eb3d6'},
         lavender:{accent:'#c4b5fd',surface:'#120d1e',line:'#3d3158',text:'#f3f6ff',muted:'#9eb3d6'},
         emerald:{accent:'#34d399',surface:'#081511',line:'#1f4a3e',text:'#f3f6ff',muted:'#9eb3d6'},
-        forest:{accent:'#4ade80',surface:'#0a150d',line:'#2d4f36',text:'#f3f6ff',muted:'#9eb3d6'}
+        forest:{accent:'#4ade80',surface:'#0a150d',line:'#2d4f36',text:'#f3f6ff',muted:'#9eb3d6'},
+        cloud:{accent:'#5f8fd9',surface:'#eef4ff',line:'#c8d6ef',text:'#132238',muted:'#425b7f'},
+        sand:{accent:'#b8863b',surface:'#fff7e8',line:'#ead9b8',text:'#2a2012',muted:'#6f5737'},
+        blush:{accent:'#c85c78',surface:'#fff1f5',line:'#f2d0da',text:'#2b1119',muted:'#7a4454'}
       };
       const light = {
         ocean:{surface:'#eef5ff',line:'#c8d7ee',text:'#0b0f17',muted:'#3f5673'},
