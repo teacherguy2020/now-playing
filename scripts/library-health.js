@@ -697,11 +697,22 @@
         const art = $('aaModule');
         const genre = $('agModule');
         const feat = $('featCleanupCard');
-        if (!inspector || !anchor) return;
+        if (!inspector) return;
 
-        if (art && art.parentElement !== inspector) inspector.insertBefore(art, anchor);
-        if (genre && genre.parentElement !== inspector) inspector.insertBefore(genre, anchor);
-        if (feat && feat.parentElement !== inspector) inspector.insertBefore(feat, anchor);
+        const safeMoveBefore = (node) => {
+          if (!node) return;
+          if (node.parentElement === inspector) return;
+          try {
+            if (anchor && anchor.parentElement === inspector) inspector.insertBefore(node, anchor);
+            else inspector.appendChild(node);
+          } catch {
+            try { inspector.appendChild(node); } catch {}
+          }
+        };
+
+        safeMoveBefore(art);
+        safeMoveBefore(genre);
+        safeMoveBefore(feat);
       }
 
       if (sections) {
