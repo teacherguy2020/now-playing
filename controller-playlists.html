@@ -119,7 +119,7 @@
     function __npApplyPalette(name, themeMode, customColors){
       const p = String(name||'ocean').toLowerCase();
       const modeRaw = String(themeMode||'auto').toLowerCase();
-      const forceDarkPreset = p === 'blackred';
+      const forceDarkPreset = p === 'blackred' || p === 'blackblue' || p === 'blackpurple' || p === 'blackgold';
       const forceLightPreset = p === 'cloud' || p === 'sand' || p === 'blush' || p === 'ivoryred';
       const isLight = forceLightPreset || (!forceDarkPreset && (modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches))));
             const map = {
@@ -129,6 +129,9 @@
         amber:    { accent:'#fbbf24', bg:'#171208', line:'#4a3720' },
         black:    { accent:'#f5f5f5', bg:'#050505', line:'#222222' },
         blackred: { accent:'#ff3b47', bg:'#000000', line:'#2b0f13' },
+        blackblue: { accent:'#3f68c9', bg:'#000000', line:'#141a2a' },
+        blackpurple: { accent:'#8b5ed4', bg:'#000000', line:'#23172f' },
+        blackgold: { accent:'#d9a441', bg:'#000000', line:'#2a2314' },
         cloud:    { accent:'#5f8fd9', bg:'#eef4ff', line:'#c8d6ef' },
         sand:     { accent:'#b8863b', bg:'#fff7e8', line:'#ead9b8' },
         blush:    { accent:'#c85c78', bg:'#fff1f5', line:'#f2d0da' },
@@ -152,6 +155,9 @@
         amber:    { bg:'#fff8ea', line:'#ead8b0', text:'#0b0f17', muted:'#65532e' },
         black:    { bg:'#f2f4f8', line:'#d4dae4', text:'#0b0f17', muted:'#4b5567', accent:'#111111' },
         blackred: { bg:'#ffeef0', line:'#f0c7cd', text:'#2a090d', muted:'#7a3b43' },
+        blackblue: { bg:'#eef2ff', line:'#cfd8f5', text:'#101735', muted:'#3f4f86' },
+        blackpurple: { bg:'#f4efff', line:'#ddd1f6', text:'#201233', muted:'#5b3d85' },
+        blackgold: { bg:'#fff7e8', line:'#ead9b8', text:'#2a2012', muted:'#6f5737' },
         cloud:    { bg:'#eef4ff', line:'#c8d6ef', text:'#132238', muted:'#425b7f', accent:'#5f8fd9' },
         sand:     { bg:'#fff7e8', line:'#ead9b8', text:'#2a2012', muted:'#6f5737', accent:'#b8863b' },
         blush:    { bg:'#fff1f5', line:'#f2d0da', text:'#2b1119', muted:'#7a4454', accent:'#c85c78' },
@@ -184,11 +190,11 @@
       const accent = (l.accent || d.accent);
       const t = isLight
         ? { accent, ...l, bg: p === 'ivoryred' ? l.bg : blendHex(l.bg, accent, 0.20) }
-        : { ...d, text: p === 'blackred' ? '#ff4d57' : '#f3f6ff', muted: p === 'blackred' ? '#b33a42' : '#9eb3d6' };
+        : { ...d, text: p === 'blackred' ? '#ff4d57' : p === 'blackblue' ? '#5f86e6' : p === 'blackpurple' ? '#b084f5' : p === 'blackgold' ? '#e0b24d' : '#f3f6ff', muted: p === 'blackred' ? '#b33a42' : p === 'blackblue' ? '#3f5ea8' : p === 'blackpurple' ? '#7a56ba' : p === 'blackgold' ? '#a67c2b' : '#9eb3d6' };
       const hex = (v)=>/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim()) ? String(v).trim() : '';
       const cc = customColors && typeof customColors === 'object' ? customColors : {};
-      const cPrimary = hex(cc.primaryThemeColor);
-      const cSecondary = hex(cc.secondaryThemeColor);
+      const cPrimary = forceDarkPreset ? '' : hex(cc.primaryThemeColor);
+      const cSecondary = forceDarkPreset ? '' : hex(cc.secondaryThemeColor);
       const cText = forceDarkPreset ? '' : hex(cc.primaryTextColor);
       const cText2 = forceDarkPreset ? '' : hex(cc.secondaryTextColor);
 

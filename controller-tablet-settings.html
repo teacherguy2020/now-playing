@@ -40,7 +40,7 @@
   <script>
   (() => {
     const PRESETS = [
-      ['ocean','Ocean'],['violet','Violet'],['mint','Mint'],['amber','Amber'],['black','Black'],['blackred','Black + Red Text'],
+      ['ocean','Ocean'],['violet','Violet'],['mint','Mint'],['amber','Amber'],['black','Black'],['blackred','Black + Red Text'],['blackblue','Black + Deep Blue'],['blackpurple','Black + Purple'],['blackgold','Black + Gold'],
       ['orange','Orange'],['midnight','Midnight'],['slate','Slate'],['mono','Mono'],['sunset','Sunset'],
       ['sunrise','Sunrise'],['rose','Rose'],['lavender','Lavender'],['emerald','Emerald'],['forest','Forest'],
       ['cloud','Cloud (Light)'],['sand','Sand (Light)'],['blush','Blush (Light)'],['ivoryred','White + Red']
@@ -52,7 +52,7 @@
 
     const applyPalette = (name, mode) => {
       const p = String(name || 'ocean').toLowerCase();
-      const forceDark = p === 'blackred';
+      const forceDark = p === 'blackred' || p === 'blackblue' || p === 'blackpurple' || p === 'blackgold';
       const forceLight = p === 'cloud' || p === 'sand' || p === 'blush' || p === 'ivoryred';
       const isLight = forceLight || (!forceDark && (mode === 'light' || (mode === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)));
       const dark = {
@@ -62,6 +62,9 @@
         amber:{accent:'#fbbf24',surface:'#171208',line:'#4a3720',text:'#f3f6ff',muted:'#9eb3d6'},
         black:{accent:'#f5f5f5',surface:'#050505',line:'#222222',text:'#f3f6ff',muted:'#9eb3d6'},
         blackred:{accent:'#ff3b47',surface:'#000000',line:'#2b0f13',text:'#ff4d57',muted:'#b33a42'},
+        blackblue:{accent:'#3f68c9',surface:'#000000',line:'#141a2a',text:'#5f86e6',muted:'#3f5ea8'},
+        blackpurple:{accent:'#8b5ed4',surface:'#000000',line:'#23172f',text:'#b084f5',muted:'#7a56ba'},
+        blackgold:{accent:'#d9a441',surface:'#000000',line:'#2a2314',text:'#e0b24d',muted:'#a67c2b'},
         orange:{accent:'#ff7a1a',surface:'#16100a',line:'#4a2f1c',text:'#f3f6ff',muted:'#9eb3d6'},
         midnight:{accent:'#7aa2ff',surface:'#070b14',line:'#202a3f',text:'#f3f6ff',muted:'#9eb3d6'},
         slate:{accent:'#93a4bd',surface:'#0e131b',line:'#2f3c4d',text:'#f3f6ff',muted:'#9eb3d6'},
