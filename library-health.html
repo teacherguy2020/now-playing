@@ -175,6 +175,15 @@
           <textarea id="performersInput" style="width:100%;min-height:90px;"></textarea>
         </label>
       </div>
+      <div class="row" style="margin-top:6px;align-items:flex-end;gap:8px;flex-wrap:wrap;">
+        <label>Tag key<br><input id="albumTagKey" type="text" placeholder="e.g. ALBUMARTIST, GENRE, DATE" style="min-width:240px;"></label>
+        <label>Album default value<br><input id="albumTagValue" type="text" placeholder="Applied to all tracks unless overridden" style="min-width:320px;"></label>
+        <label class="muted" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><input id="albumTagClearEmpty" type="checkbox"> Treat blank value as clear tag</label>
+        <button id="albumTagFillAllBtn" type="button">Fill all overrides with default</button>
+        <button id="albumTagApplyBtn" type="button">Apply tag overwrite</button>
+        <span class="muted" id="albumTagStatus"></span>
+      </div>
+      <div class="muted" style="margin-top:4px;">Hybrid mode: set album default once, then edit per-track override cells in the table before applying.</div>
       <div id="albumMetaOut" style="margin-top:8px;"></div>
     </details>
 
@@ -193,7 +202,7 @@
 
     <div id="sections"></div>
   </div>
-  <script src="scripts/library-health.js?v=20260303-14"></script>
+  <script src="scripts/library-health.js?v=20260323-01"></script>
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
 
 <script>

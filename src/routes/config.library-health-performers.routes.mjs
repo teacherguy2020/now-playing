@@ -358,4 +358,99 @@ export function registerConfigLibraryHealthPerformersRoutes(app, deps) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });
+
+  app.post('/config/library-health/album-tags-overwrite', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const folderWanted = String(req.body?.folder || '').trim();
+      const tag = String(req.body?.tag || '').trim().toUpperCase();
+      const defaultValueRaw = String(req.body?.value ?? '');
+      const clearWhenEmpty = !!req.body?.clearWhenEmpty;
+      const perTrackRaw = Array.isArray(req.body?.perTrack) ? req.body.perTrack : [];
+
+      if (!folderWanted) return res.status(400).json({ ok: false, error: 'folder is required' });
+      if (!tag) return res.status(400).json({ ok: false, error: 'tag is required' });
+      if (!/^[A-Z0-9_:-]+$/.test(tag)) return res.status(400).json({ ok: false, error: 'tag contains unsupported characters' });
+      if (!clearWhenEmpty && !String(defaultValueRaw || '').trim() && !perTrackRaw.length) {
+        return res.status(400).json({ ok: false, error: 'value or perTrack is required' });
+      }
+
+      const isAudio = (f) => /\.(flac|mp3|m4a|aac|ogg|opus|wav|aiff|alac|dsf|wv|ape)$/i.test(String(f || ''));
+      const folderOf = (file) => {
+        const s = String(file || '');
+        const i = s.lastIndexOf('/');
+        return i > 0 ? s.slice(0, i) : '(root)';
+      };
+
+      const mpdHost = String(MPD_HOST || 'moode.local');
+      const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'listall'], { maxBuffer: 64 * 1024 * 1024 });
+      const files = String(stdout || '').split(/\r?\n/).map((x) => x.trim()).filter((f) => f && isAudio(f)).filter((f) => {
+        const ff = folderOf(f);
+        return ff === folderWanted || ff.startsWith(`${folderWanted}/`);
+      });
+
+      const allowedFiles = new Set(files);
+      const perTrackMap = new Map();
+      for (const it of perTrackRaw) {
+        const f = String(it?.file || '').trim();
+        if (!f || !allowedFiles.has(f)) continue;
+        perTrackMap.set(f, String(it?.value ?? ''));
+      }
+
+      const defaultValue = String(defaultValueRaw ?? '');
+      const targets = files.map((f) => ({
+        file: f,
+        value: perTrackMap.has(f) ? String(perTrackMap.get(f) ?? '') : defaultValue,
+      }));
+
+      const musicRoot = String(process.env.MPD_MUSIC_ROOT || '/var/lib/mpd/music').replace(/\/$/, '');
+      let updated = 0;
+      let skipped = 0;
+      const errors = [];
+
+      for (const t of targets) {
+        if (!/\.flac$/i.test(t.file)) { skipped += 1; continue; }
+        const rawVal = String(t.value ?? '');
+        const val = rawVal.trim();
+        if (!val && !clearWhenEmpty) { skipped += 1; continue; }
+
+        const full = `${musicRoot}/${t.file}`;
+        const pQ = shQuoteArg(full);
+        const removeCmd = `sudo metaflac --remove-tag=${tag} ${pQ}`;
+        const setCmd = val ? `sudo metaflac --set-tag=${shQuoteArg(`${tag}=${rawVal}`)} ${pQ}` : ':';
+        const script = [
+          `if ! sudo test -f ${pQ}; then echo MISS; exit 3; fi`,
+          removeCmd,
+          setCmd,
+          'echo OK',
+        ].join('; ');
+
+        try {
+          const { stdout: outStd } = await sshBashLc({
+            user: String(MOODE_SSH_USER || 'moode'),
+            host: String(MOODE_SSH_HOST || MPD_HOST || 'moode.local'),
+            script,
+            timeoutMs: 12000,
+          });
+          const out = String(outStd || '').trim();
+          if (out.includes('OK')) updated += 1;
+          else {
+            skipped += 1;
+            if (errors.length < 40) errors.push({ file: t.file, error: out || 'apply failed' });
+          }
+        } catch (e) {
+          skipped += 1;
+          if (errors.length < 40) errors.push({ file: t.file, error: e?.message || String(e) });
+        }
+      }
+
+      if (updated > 0) {
+        try { await execFileP('mpc', ['-h', mpdHost, 'update', folderWanted]); } catch {}
+      }
+
+      return res.json({ ok: true, folder: folderWanted, tag, updated, skipped, total: targets.length, errors });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
 }

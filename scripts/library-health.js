@@ -1757,12 +1757,19 @@
     st.innerHTML = busy ? `<span class="spin"></span>${esc(msg)}` : esc(msg);
   }
 
+  let albumMetaTracks = [];
+
   function setAlbumMetaBusy(busy = false) {
-    const ids = ['albumPick', 'suggestPerformersBtn', 'applyPerformersBtn', 'inspectOpenArtBtn', 'inspectOpenGenreBtn'];
+    const ids = ['albumPick', 'suggestPerformersBtn', 'applyPerformersBtn', 'inspectOpenArtBtn', 'inspectOpenGenreBtn', 'albumTagKey', 'albumTagValue', 'albumTagFillAllBtn', 'albumTagApplyBtn', 'albumTagClearEmpty'];
     ids.forEach((id) => {
       const el = $(id);
       if (el) el.disabled = !!busy;
     });
+  }
+
+  function setAlbumTagStatus(msg) {
+    const el = $('albumTagStatus');
+    if (el) el.textContent = String(msg || '');
   }
 
   function setFeatBusy(busy = false) {
@@ -1829,6 +1836,7 @@ async function loadAlbumMetadata(){
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
     const rows = Array.isArray(j.tracks) ? j.tracks : [];
+    albumMetaTracks = rows.slice();
     const perfSet = new Set();
     rows.forEach((x) => {
       const arr = Array.isArray(x.performerCurrent) ? x.performerCurrent : [];
@@ -1839,10 +1847,11 @@ async function loadAlbumMetadata(){
 
     out.innerHTML = rows.length ? `
       <table>
-        <thead><tr><th>#</th><th>Title</th><th>Artist</th><th>Album</th><th>Date</th><th>Genre</th><th>Rating</th><th>File</th><th>Full tags</th></tr></thead>
-        <tbody>${rows.map((x)=>`<tr><td>${esc(x.track||'')}</td><td>${esc(x.title||'')}</td><td>${esc(x.artist||'')}</td><td>${esc(x.album||'')}</td><td>${esc(x.date||'')}</td><td>${esc(x.genre||'')}</td><td>${Number(x.rating||0)}</td><td>${esc(x.file||'')}</td><td>${x.metaflac ? `<details><summary>show tags</summary><pre style="white-space:pre-wrap;max-width:560px;max-height:260px;overflow:auto;">${esc(x.metaflac)}</pre></details>` : '<span class="muted">(not flac/no data)</span>'}</td></tr>`).join('')}</tbody>
+        <thead><tr><th>#</th><th>Title</th><th>Artist</th><th>Album</th><th>Date</th><th>Genre</th><th>Rating</th><th>File</th><th>Override value</th><th>Full tags</th></tr></thead>
+        <tbody>${rows.map((x)=>`<tr><td>${esc(x.track||'')}</td><td>${esc(x.title||'')}</td><td>${esc(x.artist||'')}</td><td>${esc(x.album||'')}</td><td>${esc(x.date||'')}</td><td>${esc(x.genre||'')}</td><td>${Number(x.rating||0)}</td><td>${esc(x.file||'')}</td><td><input type="text" class="albumTagOverride" data-file="${esc(x.file||'')}" placeholder="Optional per-track override"></td><td>${x.metaflac ? `<details><summary>show tags</summary><pre style="white-space:pre-wrap;max-width:560px;max-height:260px;overflow:auto;">${esc(x.metaflac)}</pre></details>` : '<span class="muted">(not flac/no data)</span>'}</td></tr>`).join('')}</tbody>
       </table>
     ` : '<div class="muted">No tracks in this album folder.</div>';
+    setAlbumTagStatus('');
     setAlbumMetaStatus(`${rows.length} track(s)`);
   } catch (e) {
     out.innerHTML = '';
@@ -1918,6 +1927,67 @@ async function applyPerformers(){
     await loadAlbumMetadata();
   } catch (e) {
     setAlbumMetaStatus(`Apply performers failed: ${e?.message || e}`);
+  } finally {
+    setAlbumMetaBusy(false);
+  }
+}
+
+function fillAlbumTagOverrides() {
+  const v = String($('albumTagValue')?.value || '');
+  document.querySelectorAll('.albumTagOverride').forEach((el) => {
+    el.value = v;
+  });
+  setAlbumTagStatus('Filled per-track overrides with album default.');
+}
+
+async function applyAlbumTagOverwrite() {
+  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+  const key = ($('key')?.value || '').trim();
+  const folder = String($('albumPick')?.value || '').trim();
+  const tag = String($('albumTagKey')?.value || '').trim();
+  const albumValue = String($('albumTagValue')?.value || '');
+  const clearWhenEmpty = !!$('albumTagClearEmpty')?.checked;
+
+  if (!folder) return;
+  if (!tag) {
+    setAlbumTagStatus('Tag key is required.');
+    return;
+  }
+
+  const perTrack = Array.from(document.querySelectorAll('.albumTagOverride[data-file]'))
+    .map((el) => ({ file: String(el.getAttribute('data-file') || '').trim(), value: String(el.value || '') }))
+    .filter((x) => x.file)
+    .filter((x) => x.value.trim().length > 0 || clearWhenEmpty);
+
+  const hasAlbumDefault = albumValue.trim().length > 0 || clearWhenEmpty;
+  if (!hasAlbumDefault && !perTrack.length) {
+    setAlbumTagStatus('Provide an album default and/or per-track override values.');
+    return;
+  }
+
+  if (!confirm(`Apply overwrite for tag "${tag}" on this album?`)) return;
+
+  setAlbumMetaBusy(true);
+  setAlbumTagStatus('Applying tag overwrite…');
+  setAlbumMetaStatus('Applying tag overwrite…', true);
+
+  try {
+    const r = await fetch(`${apiBase}/config/library-health/album-tags-overwrite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+      body: JSON.stringify({ folder, tag, value: albumValue, clearWhenEmpty, perTrack }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    const errN = Array.isArray(j.errors) ? j.errors.length : 0;
+    const msg = `Tag overwrite applied: updated ${Number(j.updated || 0)}/${Number(j.total || 0)}, skipped ${Number(j.skipped || 0)}${errN ? `, errors ${errN}` : ''}.`;
+    setAlbumTagStatus(msg);
+    setAlbumMetaStatus(msg);
+    await loadAlbumMetadata();
+  } catch (e) {
+    const msg = `Tag overwrite failed: ${e?.message || e}`;
+    setAlbumTagStatus(msg);
+    setAlbumMetaStatus(msg);
   } finally {
     setAlbumMetaBusy(false);
   }
@@ -2179,10 +2249,13 @@ $('refreshScan')?.addEventListener('click', refreshFullScan);
 $('updateMoodeLibraryBtn')?.addEventListener('click', updateMoodeLibrary);
 $('albumPick')?.addEventListener('change', () => {
   setAlbumContext($('albumPick')?.value || '');
+  setAlbumTagStatus('');
   loadAlbumMetadata();
 });
 $('suggestPerformersBtn')?.addEventListener('click', suggestPerformers);
 $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
+$('albumTagFillAllBtn')?.addEventListener('click', fillAlbumTagOverrides);
+$('albumTagApplyBtn')?.addEventListener('click', applyAlbumTagOverwrite);
 $('inspectOpenArtBtn')?.addEventListener('click', () => {
   const folder = String($('albumPick')?.value || '').trim();
   if (!folder) return;
