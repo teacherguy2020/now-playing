@@ -39,6 +39,12 @@ Important runtime note:
 - Use explicit mode switching:
   - **Skins/WebUI mode:** bridge ON, native fullscreen spectrum OFF
   - **Native fullscreen spectrum:** bridge OFF, native spectrum ON
+- Required HTTP targets for WebUI/bridge mode:
+  - Peppy VU (`/etc/peppymeter/config.txt`):
+    - `[http.interface] target.url = http://nowplaying.local:3101/peppy/vumeter`
+  - Peppy Spectrum (`/etc/peppyspectrum/config.txt`):
+    - `[http.interface] target.url = http://nowplaying.local:3101/peppy/spectrum`
+    - `[http.interface] update.period = 0.05`
 
 ## Why this is different (builder-first display design)
 
@@ -69,7 +75,11 @@ A core design goal of this project is that users can tune Peppy behavior from th
 
 In practice, that means meter/spectrum composition and behavior are exposed directly in the builder (presets, meter type, linear/circular/spectrum styling, sensitivity, smoothing, spectrum color, energy, and peak behavior), then saved/pushed as profile JSON.
 
-For normal use, there is no need to open or edit moOde-side config files manually.
+For normal day-to-day use, there is no need to open or edit moOde-side config files manually.
+
+> **Boot persistence caveat (important):**
+> Some moOde builds may reset or clear Peppy HTTP target settings on reboot, especially for spectrum.
+> If this happens, add a post-boot script (see below) that re-applies both HTTP targets automatically.
 
 ## Stable target URL (how users switch from moOde Web UI)
 
@@ -100,6 +110,31 @@ So users only change moOde's target once; mode switching then happens from app p
 - `displayMode=player` -> `player-render.html`
 - `displayMode=visualizer` -> `visualizer.html`
 - `displayMode=moode` -> `http://moode.local/index.php`
+
+## Boot persistence for HTTP targets (recommended)
+
+If spectrum works until a reboot and then falls back to VU-only behavior, moOde likely reset/cleared the spectrum target URL.
+
+Use moOde's startup hook (`/var/local/www/commandw/ready-script.sh`) to run an idempotent restore script after boot.
+
+### What the restore script should enforce
+
+- `/etc/peppyspectrum/config.txt`
+  - `[http.interface] target.url = http://nowplaying.local:3101/peppy/spectrum`
+  - `[http.interface] update.period = 0.05`
+- `/etc/peppymeter/config.txt`
+  - `[http.interface] target.url = http://nowplaying.local:3101/peppy/vumeter`
+- Ensure `/opt/peppyspectrum/config.txt` points to `/etc/peppyspectrum/config.txt`
+- Start `peppy-spectrum-bridge.service`
+
+### Quick verify after boot
+
+```bash
+curl -s http://127.0.0.1:3101/peppy/vumeter
+curl -s http://127.0.0.1:3101/peppy/spectrum
+```
+
+Expected: both return fresh data (`/peppy/spectrum` should show non-empty `bins` while audio is active).
 
 ## Builder choices (Peppy) and what they do
 

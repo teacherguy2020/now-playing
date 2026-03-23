@@ -338,7 +338,7 @@
     :is(body.ipad11, body.tablet) .tabletTopCards{display:none;gap:8px}
     :is(body.ipad11, body.tablet) .tabletNextUpBar{display:none;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);padding:6px 10px;min-height:0}
     :is(body.ipad11, body.tablet) .tabletActionBar{display:none;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);padding:6px 10px;min-height:0;align-items:center;justify-content:space-between;flex-direction:row;gap:10px}
-    :is(body.ipad11, body.tablet) .tabletActionBar .actionBtn{border:1px solid #2f4668;background:#16253e;color:#e6efff;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer}
+    :is(body.ipad11, body.tablet) .tabletActionBar .actionBtn{border:1px solid var(--line);background:color-mix(in oklab, var(--surface) 84%, var(--accent) 16%);color:var(--text);border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer}
     :is(body.ipad11, body.tablet) .tabletActionBar .queuePos{font-size:14px;color:var(--text);line-height:1.2;white-space:nowrap;font-weight:650;cursor:pointer}
     :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpTitle{display:none}
     :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpRow,
@@ -4216,17 +4216,34 @@
     }
   });
   initKioskControls();
+  const resetTransientFlipState = () => {
+    try {
+      setArtFlip(false);
+    } catch {
+    }
+    try {
+      closeIpadRecentFlips();
+    } catch {
+    }
+    try {
+      document.querySelectorAll("#recentArtistAlbumsGrid .artistAlbCard.is-flipped").forEach((el) => el.classList.remove("is-flipped"));
+    } catch {
+    }
+  };
   window.addEventListener("pageshow", () => {
+    resetTransientFlipState();
     setTimeout(restoreLastLibraryPage, 220);
     setTimeout(restoreLastLibraryPage, 900);
     setTimeout(syncLiveQueueRowSlot, 260);
   });
   window.addEventListener("focus", () => {
+    resetTransientFlipState();
     setTimeout(restoreLastLibraryPage, 220);
     setTimeout(syncLiveQueueRowSlot, 260);
   });
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
+      resetTransientFlipState();
       setTimeout(restoreLastLibraryPage, 220);
       setTimeout(syncLiveQueueRowSlot, 260);
     }

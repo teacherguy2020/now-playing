@@ -73,26 +73,28 @@ grep -E -- '--app=' /home/moode/.xinitrc
 pgrep -af "chromium-browser.*--app="
 ```
 
-### Peppy meter requirement (must configure on moOde)
+### Peppy HTTP targets requirement (VU + Spectrum)
 
-For meter needles to move, moOde PeppyMeter must post VU data to your now-playing API.
-Set the VU target in moOde’s PeppyMeter config file on the moOde box:
+For full Peppy behavior in WebUI/bridge mode, moOde must post **both** VU and spectrum data to your now-playing API:
 
-- File: `/etc/peppymeter/config.txt`
-- Target URL must point to your now-playing host:
+- VU target (`/etc/peppymeter/config.txt`):
   - `http://<your-now-playing-host>:3101/peppy/vumeter`
+- Spectrum target (`/etc/peppyspectrum/config.txt`):
+  - `http://<your-now-playing-host>:3101/peppy/spectrum`
 
-If this URL is missing or points to the wrong host, album art can still load but needles will stay still.
-
-After updating `config.txt`, restart/reboot moOde.
+If VU works but spectrum does not, check spectrum `target.url` first. Some moOde builds may clear/reset this on reboot.
 
 Quick verify on the now-playing host:
 
 ```bash
 curl -s http://127.0.0.1:3101/peppy/vumeter
+curl -s http://127.0.0.1:3101/peppy/spectrum
 ```
 
-You should see fresh timestamps (`fresh: true`) and non-zero levels while music is playing.
+You should see fresh timestamps (`fresh: true`) and non-empty `bins` while audio is active.
+
+For the full boot-persistence setup (including startup-hook restore), see:
+[docs/14-display-enhancement.md#boot-persistence-for-http-targets-recommended](./docs/14-display-enhancement.md#boot-persistence-for-http-targets-recommended)
 
 ## Docs (tab-ordered)
 
