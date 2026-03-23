@@ -696,10 +696,12 @@
         const anchor = $('albumMetaOut');
         const art = $('aaModule');
         const genre = $('agModule');
+        const feat = $('featCleanupCard');
         if (!inspector || !anchor) return;
 
         if (art && art.parentElement !== inspector) inspector.insertBefore(art, anchor);
         if (genre && genre.parentElement !== inspector) inspector.insertBefore(genre, anchor);
+        if (feat && feat.parentElement !== inspector) inspector.insertBefore(feat, anchor);
       }
 
       if (sections) {
@@ -1074,6 +1076,10 @@
           if (aaMod) aaMod.open = true;
           const agMod = $('agModule');
           if (agMod) agMod.open = true;
+          const featMod = $('featCleanupCard');
+          if (featMod) featMod.open = true;
+          const featSel = $('featAlbumPick');
+          if (featSel) featSel.value = f;
           mod?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           await preloadAlbumAcrossModules(f, { preloadMeta: true, preloadArt: true, preloadGenre: true });
         };
@@ -1760,7 +1766,7 @@
   let albumMetaTracks = [];
 
   function setAlbumMetaBusy(busy = false) {
-    const ids = ['albumPick', 'suggestPerformersBtn', 'applyPerformersBtn', 'inspectOpenArtBtn', 'inspectOpenGenreBtn', 'albumTagKey', 'albumTagValue', 'albumTagFillAllBtn', 'albumTagApplyBtn', 'albumTagClearEmpty'];
+    const ids = ['albumPick', 'inspectAlbumBtn', 'suggestPerformersBtn', 'applyPerformersBtn', 'albumTagKey', 'albumTagValue', 'albumTagFillAllBtn', 'albumTagApplyBtn', 'albumTagClearEmpty'];
     ids.forEach((id) => {
       const el = $(id);
       if (el) el.disabled = !!busy;
@@ -2256,27 +2262,27 @@ $('suggestPerformersBtn')?.addEventListener('click', suggestPerformers);
 $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
 $('albumTagFillAllBtn')?.addEventListener('click', fillAlbumTagOverrides);
 $('albumTagApplyBtn')?.addEventListener('click', applyAlbumTagOverwrite);
-$('inspectOpenArtBtn')?.addEventListener('click', () => {
+$('inspectAlbumBtn')?.addEventListener('click', async () => {
   const folder = String($('albumPick')?.value || '').trim();
   if (!folder) return;
   if ($('aaAlbum')) $('aaAlbum').value = folder;
+  if ($('agAlbum')) $('agAlbum').value = folder;
+  if ($('featAlbumPick')) $('featAlbumPick').value = folder;
   setAlbumContext(folder);
-  const mod = $('aaModule');
+  const mod = $('albumMetaInspector');
+  const aaMod = $('aaModule');
+  const agMod = $('agModule');
+  const featMod = $('featCleanupCard');
   if (mod) mod.open = true;
+  if (aaMod) aaMod.open = true;
+  if (agMod) agMod.open = true;
+  if (featMod) featMod.open = true;
   mod?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  $('aaLoad')?.click();
-});
-$('inspectOpenGenreBtn')?.addEventListener('click', () => {
-  const folder = String($('albumPick')?.value || '').trim();
-  if (!folder) return;
-  if ($('agAlbum')) {
-    $('agAlbum').value = folder;
-    $('agAlbum').dispatchEvent(new Event('change', { bubbles: true }));
-  }
-  setAlbumContext(folder);
-  const mod = $('agModule');
-  if (mod) mod.open = true;
-  mod?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  await Promise.allSettled([
+    loadAlbumMetadata(),
+    (typeof loadAlbumArt === 'function' ? loadAlbumArt(folder) : Promise.resolve()),
+    (typeof loadAlbumGenres === 'function' ? loadAlbumGenres() : Promise.resolve()),
+  ]);
 });
 $('featAlbumPick')?.addEventListener('change', () => {
   setAlbumContext($('featAlbumPick')?.value || '');
