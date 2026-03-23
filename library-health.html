@@ -169,6 +169,13 @@
         <button id="applyPerformersBtn" type="button">Apply performers</button>
         <span class="muted" id="albumMetaStatus"></span>
       </div>
+      <div class="row" id="albumInspectorTabs" style="margin-top:8px;gap:8px;flex-wrap:wrap;">
+        <button type="button" data-inspector-tab="overview">Overview</button>
+        <button type="button" data-inspector-tab="art">Artwork</button>
+        <button type="button" data-inspector-tab="genre">Genre</button>
+        <button type="button" data-inspector-tab="cleanup">Cleanup</button>
+      </div>
+      <div id="albumInspectorOverviewPane">
       <div class="row" style="margin-top:6px;align-items:flex-start;">
         <label style="min-width:300px;">Approved performers (one per line, format: PERFORMER=Name (instrument/role))
           <textarea id="performersInput" style="width:100%;min-height:90px;"></textarea>
@@ -184,6 +191,7 @@
       </div>
       <div class="muted" style="margin-top:4px;">Hybrid mode: set album default once, then edit per-track override cells in the table before applying.</div>
       <div id="albumMetaOut" style="margin-top:8px;"></div>
+      </div>
     </details>
 
     <details id="featCleanupCard">
@@ -201,7 +209,7 @@
 
     <div id="sections"></div>
   </div>
-  <script src="scripts/library-health.js?v=20260323-02"></script>
+  <script src="scripts/library-health.js?v=20260323-03"></script>
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
 
 <script>

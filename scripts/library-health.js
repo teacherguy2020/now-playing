@@ -857,6 +857,7 @@
       }
 
       mountAlbumFixersIntoInspector();
+      bindAlbumInspectorTabs();
 
       initFolderSelectionHandlers('ur');
       initFolderSelectionHandlers('mg');
@@ -1080,6 +1081,7 @@
           if (featMod) featMod.open = true;
           const featSel = $('featAlbumPick');
           if (featSel) featSel.value = f;
+          setAlbumInspectorTab('overview');
           mod?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           await preloadAlbumAcrossModules(f, { preloadMeta: true, preloadArt: true, preloadGenre: true });
         };
@@ -1778,6 +1780,36 @@
     if (el) el.textContent = String(msg || '');
   }
 
+  function setAlbumInspectorTab(tab = 'overview') {
+    const t = String(tab || 'overview').trim().toLowerCase();
+    const overview = $('albumInspectorOverviewPane');
+    const art = $('aaModule');
+    const genre = $('agModule');
+    const cleanup = $('featCleanupCard');
+
+    if (overview) overview.style.display = (t === 'overview') ? '' : 'none';
+    if (art) art.style.display = (t === 'art') ? '' : 'none';
+    if (genre) genre.style.display = (t === 'genre') ? '' : 'none';
+    if (cleanup) cleanup.style.display = (t === 'cleanup') ? '' : 'none';
+
+    document.querySelectorAll('#albumInspectorTabs [data-inspector-tab]').forEach((btn) => {
+      const on = String(btn.getAttribute('data-inspector-tab') || '').toLowerCase() === t;
+      btn.style.opacity = on ? '1' : '.72';
+      btn.style.outline = on ? '1px solid #7dd3fc' : 'none';
+    });
+  }
+
+  function bindAlbumInspectorTabs() {
+    const tabs = document.querySelectorAll('#albumInspectorTabs [data-inspector-tab]');
+    if (!tabs.length) return;
+    tabs.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        setAlbumInspectorTab(btn.getAttribute('data-inspector-tab') || 'overview');
+      });
+    });
+    setAlbumInspectorTab('overview');
+  }
+
   function setFeatBusy(busy = false) {
     const ids = ['featAlbumPick', 'featScanBtn', 'featApplyBtn'];
     ids.forEach((id) => {
@@ -2277,6 +2309,7 @@ $('inspectAlbumBtn')?.addEventListener('click', async () => {
   if (aaMod) aaMod.open = true;
   if (agMod) agMod.open = true;
   if (featMod) featMod.open = true;
+  setAlbumInspectorTab('overview');
   mod?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   await Promise.allSettled([
     loadAlbumMetadata(),
