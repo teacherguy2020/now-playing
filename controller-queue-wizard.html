@@ -114,7 +114,7 @@
       const p = String(name||'ocean').toLowerCase();
       const modeRaw = String(themeMode||'auto').toLowerCase();
       const forceDarkPreset = p === 'blackred';
-      const forceLightPreset = p === 'cloud' || p === 'sand' || p === 'blush';
+      const forceLightPreset = p === 'cloud' || p === 'sand' || p === 'blush' || p === 'ivoryred';
       const isLight = forceLightPreset || (!forceDarkPreset && (modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches))));
             const map = {
         ocean:    { accent:'#4aa8ff', bg:'#0b111c', line:'#1f2a3d' },
@@ -126,6 +126,7 @@
         cloud:    { accent:'#5f8fd9', bg:'#eef4ff', line:'#c8d6ef' },
         sand:     { accent:'#b8863b', bg:'#fff7e8', line:'#ead9b8' },
         blush:    { accent:'#c85c78', bg:'#fff1f5', line:'#f2d0da' },
+        ivoryred: { accent:'#c23b45', bg:'#ffffff', line:'#e9e9e9' },
         orange:   { accent:'#ff7a1a', bg:'#16100a', line:'#4a2f1c' },
         midnight: { accent:'#7aa2ff', bg:'#070b14', line:'#202a3f' },
         slate:    { accent:'#93a4bd', bg:'#0e131b', line:'#2f3c4d' },
@@ -148,6 +149,7 @@
         cloud:    { bg:'#eef4ff', line:'#c8d6ef', text:'#132238', muted:'#425b7f', accent:'#5f8fd9' },
         sand:     { bg:'#fff7e8', line:'#ead9b8', text:'#2a2012', muted:'#6f5737', accent:'#b8863b' },
         blush:    { bg:'#fff1f5', line:'#f2d0da', text:'#2b1119', muted:'#7a4454', accent:'#c85c78' },
+        ivoryred: { bg:'#ffffff', line:'#e9e9e9', text:'#111111', muted:'#c23b45', accent:'#c23b45' },
         orange:   { bg:'#fff3ea', line:'#ebcfbe', text:'#0b0f17', muted:'#684937' },
         midnight: { bg:'#edf2ff', line:'#cbd5f1', text:'#0b0f17', muted:'#415172' },
         slate:    { bg:'#f1f5f9', line:'#d0d8e2', text:'#0b0f17', muted:'#4a5567' },
@@ -175,7 +177,7 @@
       };
       const accent = (l.accent || d.accent);
       const t = isLight
-        ? { accent, ...l, bg: blendHex(l.bg, accent, 0.20) }
+        ? { accent, ...l, bg: p === 'ivoryred' ? l.bg : blendHex(l.bg, accent, 0.20) }
         : { ...d, text: p === 'blackred' ? '#ff4d57' : '#f3f6ff', muted: p === 'blackred' ? '#b33a42' : '#9eb3d6' };
       const hex = (v)=>/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim()) ? String(v).trim() : '';
       const cc = customColors && typeof customColors === 'object' ? customColors : {};

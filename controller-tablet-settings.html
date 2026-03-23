@@ -43,7 +43,7 @@
       ['ocean','Ocean'],['violet','Violet'],['mint','Mint'],['amber','Amber'],['black','Black'],['blackred','Black + Red Text'],
       ['orange','Orange'],['midnight','Midnight'],['slate','Slate'],['mono','Mono'],['sunset','Sunset'],
       ['sunrise','Sunrise'],['rose','Rose'],['lavender','Lavender'],['emerald','Emerald'],['forest','Forest'],
-      ['cloud','Cloud (Light)'],['sand','Sand (Light)'],['blush','Blush (Light)']
+      ['cloud','Cloud (Light)'],['sand','Sand (Light)'],['blush','Blush (Light)'],['ivoryred','White + Red']
     ];
     const u = new URL(location.href);
     const themeMode = String(u.searchParams.get('theme') || 'auto').trim().toLowerCase();
@@ -53,7 +53,7 @@
     const applyPalette = (name, mode) => {
       const p = String(name || 'ocean').toLowerCase();
       const forceDark = p === 'blackred';
-      const forceLight = p === 'cloud' || p === 'sand' || p === 'blush';
+      const forceLight = p === 'cloud' || p === 'sand' || p === 'blush' || p === 'ivoryred';
       const isLight = forceLight || (!forceDark && (mode === 'light' || (mode === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)));
       const dark = {
         ocean:{accent:'#4aa8ff',surface:'#0b111c',line:'#1f2a3d',text:'#f3f6ff',muted:'#9eb3d6'},
@@ -74,7 +74,8 @@
         forest:{accent:'#4ade80',surface:'#0a150d',line:'#2d4f36',text:'#f3f6ff',muted:'#9eb3d6'},
         cloud:{accent:'#5f8fd9',surface:'#eef4ff',line:'#c8d6ef',text:'#132238',muted:'#425b7f'},
         sand:{accent:'#b8863b',surface:'#fff7e8',line:'#ead9b8',text:'#2a2012',muted:'#6f5737'},
-        blush:{accent:'#c85c78',surface:'#fff1f5',line:'#f2d0da',text:'#2b1119',muted:'#7a4454'}
+        blush:{accent:'#c85c78',surface:'#fff1f5',line:'#f2d0da',text:'#2b1119',muted:'#7a4454'},
+        ivoryred:{accent:'#c23b45',surface:'#ffffff',line:'#e9e9e9',text:'#111111',muted:'#c23b45'}
       };
       const light = {
         ocean:{surface:'#eef5ff',line:'#c8d7ee',text:'#0b0f17',muted:'#3f5673'},
