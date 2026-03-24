@@ -147,6 +147,10 @@
     .thumb.is-active-radio .ph{border-radius:12px;box-shadow:inset 0 0 0 2px #45b26f,0 0 0 1px rgba(69,178,111,.35)}
     .thumb.is-active-radio .cap{color:#bff2cf}
     .thumbWrap{position:relative}
+    .thumbBusy{position:absolute;inset:0;display:none;align-items:center;justify-content:center;border-radius:12px;background:rgba(3,8,16,.52);z-index:6;pointer-events:none}
+    .thumb.is-busy .thumbBusy{display:flex}
+    .thumbBusy::before{content:"";width:26px;height:26px;border-radius:999px;border:3px solid rgba(220,234,255,.35);border-top-color:#eaf2ff;animation:thumbBusySpin .9s linear infinite}
+    @keyframes thumbBusySpin{to{transform:rotate(360deg)}}
     .thumbFlip{position:relative;width:128px;height:128px;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1);transform:translateZ(0);-webkit-transform:translateZ(0)}
     .thumb.is-flipped .thumbFlip{transform:rotateY(180deg)}
     .thumbFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;overflow:hidden;transform:translateZ(0);-webkit-transform:translateZ(0)}
@@ -662,7 +666,7 @@
       <section class="ipadRecentPane"><h4>Recent Albums</h4><div class="rail" id="ipadRailAlbums"></div></section>
       <section class="ipadRecentPane"><h4>Recent Podcasts</h4><div class="rail" id="ipadRailPodcasts"></div></section>
       <section class="ipadRecentPane"><h4>Recent Playlists</h4><div class="rail" id="ipadRailPlaylists"></div></section>
-      <section class="ipadRecentPane"><h4>Favorite Radio</h4><div class="rail" id="ipadRailRadio"></div></section>
+      <section class="ipadRecentPane"><h4 id="ipadRadioHeader">Favorite Radio</h4><div class="rail" id="ipadRailRadio"></div></section>
     </div>
     <div class="kPane" id="kioskPane" aria-hidden="true">
       <iframe class="kPaneIf" id="kioskPaneFrame" src="about:blank" loading="eager"></iframe>
@@ -707,7 +711,7 @@
 
   <script>
 (() => {
-  const MOBILE_PROFILE_KEY = "nowplaying.mobile.profile.v1";
+  const MOBILE_PROFILE_KEY = "nowplaying.mobile.profile.v2";
   const MOBILE_DEFAULT_PROFILE = { devicePreset: "tablet", theme: "auto", layout: "home-rail", showRecent: true, recentSource: "albums", colorPreset: "ocean", recentCount: 18 };
   const __u = new URL(location.href);
   if (!__u.searchParams.get("devicePreset")) {
@@ -831,9 +835,7 @@
     applyDevicePresetUi();
     const show = profile.showRecent !== false;
     const src = String(profile.recentSource || "albums").toLowerCase();
-    const titleBySrc = { albums: "Recently Added", podcasts: "Recent Podcasts", playlists: "Recent Playlists", radio: "Favorite Radio Stations" };
-    const rt = document.getElementById("recentTitle");
-    if (rt) rt.innerHTML = "".concat(titleBySrc[src] || "Recently Added", ' <span id="railTitleSpin" class="titleSpin" hidden></span>');
+    applyRecentHeaderLabels(recentLastfmPrefCache);
     const isIpad11 = isTabletBody();
     const ipadGrid = document.getElementById("ipadRecentGrid");
     if (ipadGrid) ipadGrid.hidden = !(show && isIpad11);
@@ -1013,6 +1015,7 @@
   const base = "".concat(location.protocol, "//").concat(location.hostname || "nowplaying.local", ":3101");
   let runtimeTrackKey = "";
   let runtimeMoodeHost = "moode.local";
+  var recentLastfmPrefCache = { ts: 0, enabled: false, mode: "toptracks" };
   let quickIndex = [];
   async function ensureKey() {
     var _a6, _b, _c, _d, _e, _f, _g;
@@ -1563,15 +1566,15 @@
   let recentArtistCtx = { artist: "", art: "" };
   let recentAlbumsCache = { ts: 0, albums: [] };
   let recentAlbumsRefreshInFlight = null;
-  const RECENT_ALBUMS_CACHE_KEY = "np.recent.albums.cache.v1";
-  const RECENT_PLAYLISTS_CACHE_KEY = "np.recent.playlists.cache.v1";
-  const RECENT_RADIO_CACHE_KEY = "np.recent.radio.cache.v1";
+  const RECENT_ALBUMS_CACHE_KEY = "np.recent.albums.cache.v2";
+  const RECENT_PLAYLISTS_CACHE_KEY = "np.recent.playlists.cache.v2";
+  const RECENT_RADIO_CACHE_KEY = "np.recent.radio.cache.v2";
   let recentAlbumPrewarmSig = "";
   let recentAlbumsRenderSig = "";
   let recentRenderedSource = "";
   let npCtrlsAwakeTimer = 0;
   let paneLastSrc = "";
-  const LAST_LIBRARY_PAGE_KEY = "np.controller.lastLibraryPage.v1";
+  const LAST_LIBRARY_PAGE_KEY = "np.controller.lastLibraryPage.v2";
   const setLastLibraryPage = (p) => {
     try {
       const v = String(p || "").trim();
@@ -1800,10 +1803,11 @@
       if (!isIpad11 || !grid || grid.hidden) return;
       const isIpadLandscape = isTabletLandscapeBody();
       const limit = isIpadLandscape ? Math.max(12, Math.min(30, Number(profile && profile.recentCount || 18))) : Math.max(10, Math.min(30, Number(profile && profile.recentCount || 18)));
+      const lastfmPref = await getLastfmRecentsPref();
       renderIpadRail("ipadRailAlbums", [], "albums", true);
       renderIpadRail("ipadRailPodcasts", [], "podcasts", true);
       const cachedPlaylists = loadRecentCache(RECENT_PLAYLISTS_CACHE_KEY).items;
-      const cachedRadio = loadRecentCache(RECENT_RADIO_CACHE_KEY).items;
+      const cachedRadio = lastfmPref.enabled ? [] : loadRecentCache(RECENT_RADIO_CACHE_KEY).items;
       if (cachedPlaylists.length) {
         ipadRecentItems.playlists = cachedPlaylists.slice(0, limit);
         renderIpadRail("ipadRailPlaylists", ipadRecentItems.playlists, "playlists", false);
@@ -1867,6 +1871,39 @@
           };
         });
       }
+      if (lastfmPref.enabled) {
+        try {
+          const mode = lastfmPref.mode === "topartists" ? "top-artists" : lastfmPref.mode === "topalbums" ? "top-albums" : lastfmPref.mode === "recenttracks" ? "recent-tracks" : "top-tracks";
+          const cacheKey = "np.recent.lastfm.".concat(String(lastfmPref.mode || "toptracks"), ".v2");
+          const cachedLf = loadRecentCache(cacheKey);
+          const maxAge = lastfmPref.mode === "recenttracks" ? 5 * 60 * 1e3 : 30 * 60 * 1e3;
+          const cacheHasTrackFile = Array.isArray(cachedLf.items) && cachedLf.items.every((it) => String((it == null ? void 0 : it.kind) || "") !== "lastfm-track" || !!String((it == null ? void 0 : it.file) || "").trim());
+          if (Array.isArray(cachedLf.items) && cachedLf.items.length && cacheHasTrackFile) {
+            ipadRecentItems.radio = cachedLf.items.slice(0, limit);
+            renderIpadRail("ipadRailRadio", ipadRecentItems.radio, "radio", false);
+            if (Date.now() - Number(cachedLf.ts || 0) < maxAge) return;
+          }
+          const lr = await fetchJsonWithTimeout("".concat(base, "/config/lastfm/").concat(mode, "?limit=").concat(limit), { cache: "no-store", headers: reqHeaders(false) }, 6e3);
+          const rows = lr.ok && (lr == null ? void 0 : lr.json) && (lr.json == null ? void 0 : lr.json.ok) && Array.isArray(lr.json.items) ? lr.json.items : [];
+          if (rows.length) {
+            ipadRecentItems.radio = rows.slice(0, limit).map((x) => ({
+              kind: String((x == null ? void 0 : x.kind) || "lastfm-track"),
+              title: String((x == null ? void 0 : x.title) || "(Last.fm)").trim(),
+              artist: String((x == null ? void 0 : x.artist) || "").trim(),
+              album: String((x == null ? void 0 : x.album) || "").trim(),
+              track: String((x == null ? void 0 : x.track) || "").trim(),
+              file: String((x == null ? void 0 : x.file) || "").trim(),
+              url: String((x == null ? void 0 : x.url) || "").trim(),
+              art: String((x == null ? void 0 : x.art) || "").trim() || "/icons/icon-192.png"
+            }));
+            saveRecentCache(cacheKey, ipadRecentItems.radio);
+            renderIpadRail("ipadRailRadio", ipadRecentItems.radio, "radio");
+            return;
+          }
+        } catch {
+        }
+      }
+
       const rr = await fetchJsonWithTimeout("".concat(base, "/config/queue-wizard/radio-favorites"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
       if (rr.ok && ((_c = rr.json) == null ? void 0 : _c.ok) && Array.isArray(rr.json.favorites)) {
         const radio = rr.json.favorites.slice(0, limit).map((x) => {
@@ -1887,8 +1924,46 @@
       renderIpadRail("ipadRailRadio", ipadRecentItems.radio || [], "radio", false);
     }
   }
+  function applyRecentHeaderLabels(lastfmPref) {
+    try {
+      const src = String(profile.recentSource || "albums").toLowerCase();
+      const rt = document.getElementById("recentTitle");
+      const mapDefault = { albums: "Recently Added", podcasts: "Recent Podcasts", playlists: "Recent Playlists", radio: "Favorite Radio Stations" };
+      let radioLabel = "Favorite Radio";
+      if (lastfmPref && lastfmPref.enabled) {
+        if (lastfmPref.mode === "topartists") radioLabel = "Last.fm Top Artists";
+        else if (lastfmPref.mode === "topalbums") radioLabel = "Last.fm Top Albums";
+        else if (lastfmPref.mode === "recenttracks") radioLabel = "Last.fm Recently Played";
+        else radioLabel = "Last.fm Top Tracks";
+      }
+      const map = { ...mapDefault, radio: radioLabel === "Favorite Radio" ? "Favorite Radio Stations" : radioLabel };
+      if (rt) rt.innerHTML = "".concat(map[src] || mapDefault[src] || "Recently Added", " <span id='railTitleSpin' class='titleSpin' hidden></span>");
+      const ipadHdr = document.getElementById("ipadRadioHeader");
+      if (ipadHdr) ipadHdr.textContent = radioLabel;
+    } catch {
+    }
+  }
+  async function getLastfmRecentsPref() {
+    const now = Date.now();
+    if (now - Number(recentLastfmPrefCache.ts || 0) < 5e3) return recentLastfmPrefCache;
+    try {
+      const rr = await fetchJsonWithTimeout("".concat(base, "/config/runtime"), { cache: "no-store", headers: reqHeaders(false) }, 2400);
+      const cfg = rr.ok && rr.json && rr.json.fullConfig ? rr.json.fullConfig : {};
+      const enabled = !!(cfg == null ? void 0 : cfg.lastfm) && !!cfg.lastfm.recentsReplaceRadio;
+      const m = String((cfg == null ? void 0 : cfg.lastfm) && cfg.lastfm.recentsMode || "toptracks").toLowerCase();
+      const mode = m === "topartists" || m === "topalbums" || m === "recenttracks" ? m : "toptracks";
+      recentLastfmPrefCache = { ts: now, enabled, mode };
+      applyRecentHeaderLabels(recentLastfmPrefCache);
+      return recentLastfmPrefCache;
+    } catch {
+      recentLastfmPrefCache = { ts: now, enabled: false, mode: "toptracks" };
+      applyRecentHeaderLabels(recentLastfmPrefCache);
+      return recentLastfmPrefCache;
+    }
+  }
   async function loadRecentlyAdded() {
     var _a6, _b, _c;
+    recentLastfmPrefCache.ts = 0;
     if (!rail || profile.showRecent === false) return;
     await ensureKey();
     const src = String(profile.recentSource || "albums").toLowerCase();
@@ -2041,6 +2116,55 @@
         return;
       }
       if (src === "radio") {
+        const lastfmPref = await getLastfmRecentsPref();
+        if (lastfmPref.enabled) {
+          try {
+            const mode = lastfmPref.mode === "topartists" ? "top-artists" : lastfmPref.mode === "topalbums" ? "top-albums" : lastfmPref.mode === "recenttracks" ? "recent-tracks" : "top-tracks";
+            const cacheKey = "np.recent.lastfm.".concat(String(lastfmPref.mode || "toptracks"), ".v2");
+            const cachedLf = loadRecentCache(cacheKey);
+            const maxAge = lastfmPref.mode === "recenttracks" ? 5 * 60 * 1e3 : 30 * 60 * 1e3;
+            const cacheHasTrackFile = Array.isArray(cachedLf.items) && cachedLf.items.every((it) => String((it == null ? void 0 : it.kind) || "") !== "lastfm-track" || !!String((it == null ? void 0 : it.file) || "").trim());
+            if (Array.isArray(cachedLf.items) && cachedLf.items.length && cacheHasTrackFile) {
+              recentItems = cachedLf.items.slice(0, recentLimit());
+              rail.innerHTML = "";
+              recentItems.forEach((it, i) => {
+                const d = document.createElement("div");
+                d.className = "thumb";
+                d.setAttribute("data-ra-idx", String(i));
+                d.innerHTML = "<div class='thumbWrap'><img src='".concat(it.art, "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>•••</button></div><div class='cap' title='").concat(it.title, "'>").concat(it.title, "</div>");
+                rail.appendChild(d);
+              });
+              recentRenderedSource = "radio";
+              if (Date.now() - Number(cachedLf.ts || 0) < maxAge) return;
+            }
+            const lr = await fetchJsonWithTimeout("".concat(base, "/config/lastfm/").concat(mode, "?limit=").concat(recentLimit()), { cache: "no-store", headers: reqHeaders(false) }, 3200);
+            const rows = lr.ok && (lr == null ? void 0 : lr.json) && (lr.json == null ? void 0 : lr.json.ok) && Array.isArray(lr.json.items) ? lr.json.items : [];
+            if (rows.length) {
+              recentItems = rows.slice(0, recentLimit()).map((x) => ({
+                kind: String((x == null ? void 0 : x.kind) || "lastfm-track"),
+                title: String((x == null ? void 0 : x.title) || "(Last.fm)").trim(),
+                artist: String((x == null ? void 0 : x.artist) || "").trim(),
+                album: String((x == null ? void 0 : x.album) || "").trim(),
+                track: String((x == null ? void 0 : x.track) || "").trim(),
+                file: String((x == null ? void 0 : x.file) || "").trim(),
+                url: String((x == null ? void 0 : x.url) || "").trim(),
+                art: String((x == null ? void 0 : x.art) || "").trim() || "/icons/icon-192.png"
+              }));
+              saveRecentCache(cacheKey, recentItems);
+              rail.innerHTML = "";
+              recentItems.forEach((it, i) => {
+                const d = document.createElement("div");
+                d.className = "thumb";
+                d.setAttribute("data-ra-idx", String(i));
+                d.innerHTML = "<div class='thumbWrap'><img src='".concat(it.art, "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>•••</button></div><div class='cap' title='").concat(it.title, "'>").concat(it.title, "</div>");
+                rail.appendChild(d);
+              });
+              recentRenderedSource = "radio";
+              return;
+            }
+          } catch {
+          }
+        }
         try {
           const cached = loadRecentCache(RECENT_RADIO_CACHE_KEY).items;
           if (Array.isArray(cached) && cached.length) {
@@ -2212,6 +2336,23 @@
   async function sendPlayback(action, extra = {}) {
     await ensureKey();
     await fetch("".concat(base, "/config/diagnostics/playback"), { method: "POST", headers: reqHeaders(true), body: JSON.stringify(Object.assign({ action }, extra || {})) }).catch(() => null);
+  }
+  async function fetchTrackMetaByFile(file) {
+    const f = String(file || "").trim();
+    if (!f) return null;
+    await ensureKey();
+    try {
+      const r = await fetch("".concat(base, "/config/diagnostics/playback"), {
+        method: "POST",
+        headers: reqHeaders(true),
+        body: JSON.stringify({ action: "trackmeta", file: f })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !(j == null ? void 0 : j.ok)) return null;
+      return j;
+    } catch {
+      return null;
+    }
   }
   async function sendPlaybackDirect(action) {
     const a = String(action || "").toLowerCase();
@@ -2431,6 +2572,24 @@
       bPlay.textContent = "Play";
       bThird.style.display = "";
       bThird.textContent = "Play Shuffled";
+    } else if (kind === "lastfm-track") {
+      bOpen.style.display = "";
+      bOpen.textContent = "Open Last.fm";
+      bPlay.textContent = "Play track";
+      bThird.style.display = "";
+      bThird.textContent = "Add track";
+    } else if (kind === "lastfm-artist") {
+      bOpen.style.display = "";
+      bOpen.textContent = "Open artist";
+      bPlay.textContent = "Play shuffled";
+      bThird.style.display = "";
+      bThird.textContent = "Add shuffled";
+    } else if (kind === "lastfm-album") {
+      bOpen.style.display = "";
+      bOpen.textContent = "Add album";
+      bPlay.textContent = "Play album";
+      bThird.style.display = "";
+      bThird.textContent = "Play shuffled";
     } else {
       bOpen.style.display = "";
       bOpen.textContent = "Add";
@@ -3600,6 +3759,27 @@
     rail && (rail.style.transform = "translateY(0px)");
     if (recentWrap) recentWrap.classList.remove("peeking");
   }
+  function setThumbBusy(cell, on) {
+    try {
+      const el = cell && cell.closest ? cell.closest('.thumb') : null;
+      if (!el) return;
+      if (on) {
+        let ov = el.querySelector('.thumbBusy');
+        if (!ov) {
+          const wrap = el.querySelector('.thumbWrap');
+          if (wrap) {
+            ov = document.createElement('div');
+            ov.className = 'thumbBusy';
+            wrap.appendChild(ov);
+          }
+        }
+        el.classList.add('is-busy');
+      } else {
+        el.classList.remove('is-busy');
+      }
+    } catch {
+    }
+  }
   rail == null ? void 0 : rail.addEventListener("touchstart", (ev) => {
     if (!ev.touches || ev.touches.length !== 1) return;
     __railTouchStartX = ev.touches[0].clientX;
@@ -3662,6 +3842,43 @@
     const i = Number(cell.getAttribute("data-ra-idx"));
     const a = recentItems[i];
     if (!a) return;
+    setThumbBusy(cell, true);
+    try {
+    if (a.kind === "lastfm-track") {
+      let album = String(a.album || "").trim();
+      let artist = String(a.artist || "").trim();
+      const file = String(a.file || "").trim();
+      if (file && !album) {
+        const m = await fetchTrackMetaByFile(file);
+        const mAlbum = String((m == null ? void 0 : m.meta) && (m.meta.album || "") || "").trim();
+        const mPerf = String((m == null ? void 0 : m.meta) && (m.meta.performer || "") || "").trim();
+        if (mAlbum) album = mAlbum;
+        if (mPerf) artist = artist || mPerf;
+      }
+      await openRecentAlbumFrom({
+        kind: "album",
+        album: String(album || a.track || a.title || "(track)").trim(),
+        artist: String(artist || a.artist || "").trim(),
+        art: String(a.art || "").trim() || "".concat(base, "/art/current.jpg")
+      });
+      return;
+    }
+    if (a.kind === "lastfm-artist") {
+      const artist = String(a.artist || a.title || "").trim();
+      if (artist) {
+        await openRecentArtistFrom({ artist, art: a.art || "".concat(base, "/art/current.jpg") });
+      }
+      return;
+    }
+    if (a.kind === "lastfm-album") {
+      await openRecentAlbumFrom({
+        kind: "album",
+        album: String(a.album || a.title || "(album)").trim(),
+        artist: String(a.artist || "").trim(),
+        art: String(a.art || "").trim() || "".concat(base, "/art/current.jpg")
+      });
+      return;
+    }
     if (a.kind === "playlist") {
       await openRecentPlaylistFrom(a);
       return;
@@ -3677,9 +3894,17 @@
       await playOrAddRadio(a.url, "replace");
       return;
     }
-    if (a.kind === "album") {
-      await openRecentAlbumFrom(a);
+    if (a.kind === "album" || a.kind === "lastfm-album") {
+      await openRecentAlbumFrom({
+        kind: "album",
+        album: String(a.album || a.title || "(album)").trim(),
+        artist: String(a.artist || "").trim(),
+        art: String(a.art || "").trim() || "".concat(base, "/art/current.jpg")
+      });
       return;
+    }
+    } finally {
+      setThumbBusy(cell, false);
     }
   });
   const ipadRecentGridEl = document.getElementById("ipadRecentGrid");
@@ -3700,6 +3925,57 @@
       recentMenuCtx = { ...a2 };
       closeIpadRecentFlips();
       const kind = String((recentMenuCtx == null ? void 0 : recentMenuCtx.kind) || "album");
+      if (kind === "lastfm-track") {
+        if (act === "open") {
+          const u = String(recentMenuCtx.url || "").trim();
+          if (u) window.open(u, "_blank", "noopener");
+          return;
+        }
+        if (act === "play") {
+          if (recentMenuCtx.file) await sendPlayback("playfile", { file: recentMenuCtx.file });
+          else await sendPlayback("playtracksearch", { track: recentMenuCtx.track || recentMenuCtx.title || "", artist: recentMenuCtx.artist || "" });
+          return;
+        }
+        if (act === "shuffle") {
+          if (recentMenuCtx.file) await sendPlayback("addfile", { file: recentMenuCtx.file });
+          else await sendPlayback("addtracksearch", { track: recentMenuCtx.track || recentMenuCtx.title || "", artist: recentMenuCtx.artist || "" });
+          return;
+        }
+        return;
+      }
+      if (kind === "lastfm-artist") {
+        if (act === "open") {
+          const artist = String(recentMenuCtx.artist || recentMenuCtx.title || "").trim();
+          if (artist) await openRecentArtistFrom({ artist, art: recentMenuCtx.art || "".concat(base, "/art/current.jpg") });
+          return;
+        }
+        if (act === "play") {
+          await sendPlayback("addartistshuffle", { mode: "replace", artist: recentMenuCtx.artist || recentMenuCtx.title || "", minRating: 0 });
+          return;
+        }
+        if (act === "shuffle") {
+          await sendPlayback("addartistshuffle", { mode: "append", artist: recentMenuCtx.artist || recentMenuCtx.title || "", minRating: 0 });
+          return;
+        }
+        return;
+      }
+      if (kind === "lastfm-album") {
+        const album = String(recentMenuCtx.album || recentMenuCtx.title || "").trim();
+        const artist = String(recentMenuCtx.artist || "").trim();
+        if (act === "open") {
+          await sendPlayback("addalbum", { mode: "append", album, artist });
+          return;
+        }
+        if (act === "play") {
+          await applyAlbumActionReliable(album, artist, "replace", false);
+          return;
+        }
+        if (act === "shuffle") {
+          await applyAlbumActionReliable(album, artist, "replace", true);
+          return;
+        }
+        return;
+      }
       if (kind === "podcast") {
         if (act === "open") return;
         const file = await mostRecentDownloadedPodcastFile(recentMenuCtx.rss || "");
@@ -3793,6 +4069,32 @@
     const arr = Array.isArray(ipadRecentItems == null ? void 0 : ipadRecentItems[row]) ? ipadRecentItems[row] : [];
     const a = arr[i];
     if (!a) return;
+    setThumbBusy(cell, true);
+    try {
+    if (a.kind === "lastfm-track") {
+      let album = String(a.album || "").trim();
+      let artist = String(a.artist || "").trim();
+      const file = String(a.file || "").trim();
+      if (file && !album) {
+        const m = await fetchTrackMetaByFile(file);
+        const mAlbum = String((m == null ? void 0 : m.meta) && (m.meta.album || "") || "").trim();
+        const mPerf = String((m == null ? void 0 : m.meta) && (m.meta.performer || "") || "").trim();
+        if (mAlbum) album = mAlbum;
+        if (mPerf) artist = artist || mPerf;
+      }
+      await openRecentAlbumFrom({
+        kind: "album",
+        album: String(album || a.track || a.title || "(track)").trim(),
+        artist: String(artist || a.artist || "").trim(),
+        art: String(a.art || "").trim() || "".concat(base, "/art/current.jpg")
+      });
+      return;
+    }
+    if (a.kind === "lastfm-artist") {
+      const artist = String(a.artist || a.title || "").trim();
+      if (artist) await openRecentArtistFrom({ artist, art: a.art || "".concat(base, "/art/current.jpg") });
+      return;
+    }
     if (a.kind === "playlist") {
       await openRecentPlaylistFrom(a);
       return;
@@ -3808,9 +4110,17 @@
       await playOrAddRadio(a.url, "replace");
       return;
     }
-    if (a.kind === "album") {
-      await openRecentAlbumFrom(a);
+    if (a.kind === "album" || a.kind === "lastfm-album") {
+      await openRecentAlbumFrom({
+        kind: "album",
+        album: String(a.album || a.title || "(album)").trim(),
+        artist: String(a.artist || "").trim(),
+        art: String(a.art || "").trim() || "".concat(base, "/art/current.jpg")
+      });
       return;
+    }
+    } finally {
+      setThumbBusy(cell, false);
     }
   });
   document.getElementById("recentAlbumMenu").addEventListener("click", async (ev) => {
@@ -3819,6 +4129,57 @@
     const act = String(b.getAttribute("data-ra-act") || "open");
     document.getElementById("recentAlbumMenu").classList.remove("open");
     const kind = String((recentMenuCtx == null ? void 0 : recentMenuCtx.kind) || "album");
+    if (kind === "lastfm-track") {
+      if (act === "open") {
+        const u = String(recentMenuCtx.url || "").trim();
+        if (u) window.open(u, "_blank", "noopener");
+        return;
+      }
+      if (act === "play") {
+        if (recentMenuCtx.file) await sendPlayback("playfile", { file: recentMenuCtx.file });
+        else await sendPlayback("playtracksearch", { track: recentMenuCtx.track || recentMenuCtx.title || "", artist: recentMenuCtx.artist || "" });
+        return;
+      }
+      if (act === "shuffle") {
+        if (recentMenuCtx.file) await sendPlayback("addfile", { file: recentMenuCtx.file });
+        else await sendPlayback("addtracksearch", { track: recentMenuCtx.track || recentMenuCtx.title || "", artist: recentMenuCtx.artist || "" });
+        return;
+      }
+      return;
+    }
+    if (kind === "lastfm-artist") {
+      if (act === "open") {
+        const artist = String(recentMenuCtx.artist || recentMenuCtx.title || "").trim();
+        if (artist) await openRecentArtistFrom({ artist, art: recentMenuCtx.art || "".concat(base, "/art/current.jpg") });
+        return;
+      }
+      if (act === "play") {
+        await sendPlayback("addartistshuffle", { mode: "replace", artist: recentMenuCtx.artist || recentMenuCtx.title || "", minRating: 0 });
+        return;
+      }
+      if (act === "shuffle") {
+        await sendPlayback("addartistshuffle", { mode: "append", artist: recentMenuCtx.artist || recentMenuCtx.title || "", minRating: 0 });
+        return;
+      }
+      return;
+    }
+    if (kind === "lastfm-album") {
+      const album = String(recentMenuCtx.album || recentMenuCtx.title || "").trim();
+      const artist = String(recentMenuCtx.artist || "").trim();
+      if (act === "open") {
+        await sendPlayback("addalbum", { mode: "append", album, artist });
+        return;
+      }
+      if (act === "play") {
+        await applyAlbumActionReliable(album, artist, "replace", false);
+        return;
+      }
+      if (act === "shuffle") {
+        await applyAlbumActionReliable(album, artist, "replace", true);
+        return;
+      }
+      return;
+    }
     if (kind === "podcast") {
       if (act === "open") return;
       const file = await mostRecentDownloadedPodcastFile(recentMenuCtx.rss || "");

@@ -693,7 +693,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       if (action === 'trackmeta') {
         const file = String(req.body?.file || '').trim();
         if (!file) return res.status(400).json({ ok: false, error: 'file is required for trackmeta' });
-        const fmt = '%file%\t%genre%\t%date%\t%track%\t%time%\t%composer%\t%performer%\t%albumartist%\t%name%\t%audio%';
+        const fmt = '%file%\t%genre%\t%date%\t%track%\t%time%\t%composer%\t%performer%\t%albumartist%\t%album%\t%name%\t%audio%';
         const basename = file.split('/').pop() || file;
 
         async function pull(args) {
@@ -785,7 +785,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           if (byPath) first = byPath;
         }
 
-        const [fileOut='', genre='', date='', track='', time='', composer='', performer='', albumartist='', name='', audio=''] = String(first || '').split('\t');
+        const [fileOut='', genre='', date='', track='', time='', composer='', performer='', albumartist='', album='', name='', audio=''] = String(first || '').split('\t');
         let audioOut = String(audio || '').trim();
         let audioInfo = { codec:'', sample_rate:'', bits:'', bit_rate:'', channels:'', human:'' };
         let personnelOut = [String(performer || '').trim(), String(composer || '').trim()].filter(Boolean).join(' • ');
@@ -820,6 +820,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
             composer: String(composer || '').trim(),
             performer: String(performer || '').trim(),
             albumartist: String(albumartist || '').trim(),
+            album: String(album || '').trim(),
             name: String(name || '').trim(),
             personnel: String(personnelOut || '').trim(),
             audio: String(audioOut || '').trim(),
@@ -859,6 +860,42 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
         return res.json({ ok: true, action, file, targetPos, randomOn, status: String(afterStatus || '') });
+      }
+
+      if (action === 'playtracksearch' || action === 'addtracksearch') {
+        const track = String(req.body?.track || req.body?.title || '').trim();
+        const artist = String(req.body?.artist || '').trim();
+        if (!track) return res.status(400).json({ ok: false, error: 'track is required for playtracksearch/addtracksearch' });
+
+        let files = [];
+        try {
+          const args = ['-h', mpdHost, '-f', '%file%', 'find', 'title', track];
+          if (artist) args.push('artist', artist);
+          const { stdout } = await execFileP('mpc', args, { maxBuffer: 16 * 1024 * 1024 });
+          files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
+        } catch {}
+
+        if (!files.length) {
+          try {
+            const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'search', 'title', track], { maxBuffer: 16 * 1024 * 1024 });
+            files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
+          } catch {}
+        }
+
+        files = Array.from(new Set(files));
+        const file = String(files[0] || '').trim();
+        if (!file) return res.status(404).json({ ok: false, error: 'No local track match found', track, artist });
+
+        if (action === 'playtracksearch') {
+          await execFileP('mpc', ['-h', mpdHost, 'clear']);
+          await execFileP('mpc', ['-h', mpdHost, 'add', file]);
+          await execFileP('mpc', ['-h', mpdHost, 'play', '1']);
+        } else {
+          await execFileP('mpc', ['-h', mpdHost, 'add', file]);
+        }
+
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        return res.json({ ok: true, action, track, artist, file, status: String(afterStatus || '') });
       }
 
       if (action === 'addalbum') {

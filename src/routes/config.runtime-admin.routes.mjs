@@ -208,6 +208,367 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  app.get('/config/lastfm/top-tracks', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const raw = await fs.readFile(configPath, 'utf8');
+      const cfg = JSON.parse(raw || '{}');
+      const apiKey = String(process.env.LASTFM_API_KEY || cfg?.lastfm?.apiKey || '').trim();
+      const username = String(cfg?.lastfm?.username || '').trim();
+      if (!apiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
+      if (!username) return res.status(400).json({ ok: false, error: 'Last.fm username is not configured' });
+
+      const period = String(req.query?.period || cfg?.lastfm?.period || '1month').trim().toLowerCase();
+      const limit = Math.max(1, Math.min(50, Number(req.query?.limit || 18) || 18));
+      const windowDaysRaw = Number(req.query?.windowDays || cfg?.lastfm?.topTracksWindowDays || 0);
+      const windowDays = Number.isFinite(windowDaysRaw) && windowDaysRaw > 0 ? Math.max(1, Math.min(60, Math.floor(windowDaysRaw))) : 0;
+
+      let items = [];
+      if (windowDays > 0) {
+        const cutoffSec = Math.floor((Date.now() - windowDays * 24 * 60 * 60 * 1000) / 1000);
+        const seenNowPlaying = new Set();
+        const agg = new Map();
+        for (let page = 1; page <= 6; page++) {
+          const ru = new URL('https://ws.audioscrobbler.com/2.0/');
+          ru.searchParams.set('method', 'user.getrecenttracks');
+          ru.searchParams.set('user', username);
+          ru.searchParams.set('api_key', apiKey);
+          ru.searchParams.set('format', 'json');
+          ru.searchParams.set('limit', '200');
+          ru.searchParams.set('page', String(page));
+          const rr = await fetch(ru.toString(), { headers: { 'accept': 'application/json' } });
+          const rj = await rr.json().catch(() => ({}));
+          const rows = Array.isArray(rj?.recenttracks?.track) ? rj.recenttracks.track : [];
+          let oldHit = false;
+          for (const x of rows) {
+            const nowPlaying = String(x?.['@attr']?.nowplaying || '').toLowerCase() === 'true';
+            const title = String(x?.name || '').trim();
+            const artist = String(x?.artist?.['#text'] || x?.artist?.name || '').trim();
+            const ts = Number(x?.date?.uts || 0) || 0;
+            if (!title || !artist) continue;
+            if (!nowPlaying && ts && ts < cutoffSec) {
+              oldHit = true;
+              continue;
+            }
+            const key = `${artist.toLowerCase()}|${title.toLowerCase()}`;
+            if (nowPlaying) {
+              if (seenNowPlaying.has(key)) continue;
+              seenNowPlaying.add(key);
+            }
+            const cur = agg.get(key) || { track: title, artist, playcount: 0, url: String(x?.url || '').trim() };
+            cur.playcount += 1;
+            if (!cur.url) cur.url = String(x?.url || '').trim();
+            agg.set(key, cur);
+          }
+          if (oldHit) break;
+        }
+        items = Array.from(agg.values()).sort((a, b) => Number(b.playcount || 0) - Number(a.playcount || 0)).slice(0, limit).map((x) => ({
+          kind: 'lastfm-track',
+          title: String(x.track || '(track)').trim(),
+          track: String(x.track || '').trim(),
+          artist: String(x.artist || '').trim(),
+          album: '',
+          playcount: Number(x.playcount || 0) || 0,
+          url: String(x.url || '').trim(),
+          art: '',
+          file: '',
+        }));
+      } else {
+        const url = new URL('https://ws.audioscrobbler.com/2.0/');
+        url.searchParams.set('method', 'user.gettoptracks');
+        url.searchParams.set('user', username);
+        url.searchParams.set('api_key', apiKey);
+        url.searchParams.set('format', 'json');
+        url.searchParams.set('period', period);
+        url.searchParams.set('limit', String(limit));
+
+        const r = await fetch(url.toString(), { headers: { 'accept': 'application/json' } });
+        const j = await r.json().catch(() => ({}));
+        const rows = Array.isArray(j?.toptracks?.track) ? j.toptracks.track : [];
+        items = rows.map((x) => {
+          const title = String(x?.name || '').trim();
+          const artist = String(x?.artist?.name || '').trim();
+          const playcount = Number(x?.playcount || 0) || 0;
+          return {
+            kind: 'lastfm-track',
+            title: title || '(track)',
+            track: title,
+            artist,
+            album: '',
+            playcount,
+            url: String(x?.url || '').trim(),
+            art: '',
+            file: '',
+          };
+        }).filter((x) => String(x.title || '').trim());
+      }
+
+      const mpdHost = String(cfg?.mpd?.host || process.env.MPD_HOST || MPD_HOST || 'localhost').trim();
+      const trackKey = String(process.env.TRACK_KEY || cfg?.trackKey || '').trim();
+      const hostHdr = String(req.get('host') || '').trim();
+      const baseUrl = hostHdr ? `${req.protocol || 'http'}://${hostHdr}` : '';
+
+      for (const it of items) {
+        try {
+          const t = String(it.track || '').trim();
+          const artist = String(it.artist || '').trim();
+          if (!t) continue;
+          const titleVariants = Array.from(new Set([
+            t,
+            t.replace(/[’`´]/g, "'"),
+            t.replace(/[’'`´]/g, ""),
+            t.normalize('NFKD').replace(/[\u0300-\u036f]/g, ''),
+          ].map((s) => String(s || '').trim()).filter(Boolean)));
+          let files = [];
+          for (const tv of titleVariants) {
+            const args = ['-h', mpdHost, '-f', '%file%', 'find', 'title', tv];
+            if (artist) args.push('artist', artist);
+            const { stdout } = await execFileP('mpc', args, { maxBuffer: 8 * 1024 * 1024 });
+            files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
+            if (files.length) break;
+          }
+          if (!files.length) {
+            for (const tv of titleVariants) {
+              const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'search', 'title', tv], { maxBuffer: 8 * 1024 * 1024 });
+              files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
+              if (artist) {
+                const al = artist.toLowerCase();
+                files = files.filter((f) => f.toLowerCase().includes(al.split(' ')[0] || al));
+              }
+              if (files.length) break;
+            }
+          }
+          const file = String(files[0] || '').trim();
+          if (file) {
+            it.file = file;
+            try {
+              const { stdout: albumOut } = await execFileP('mpc', ['-h', mpdHost, '-f', '%album%', 'find', 'file', file], { maxBuffer: 1024 * 1024 });
+              const album = String(albumOut || '').split(/\r?\n/).map((s) => String(s || '').trim()).find(Boolean) || '';
+              if (album) it.album = album;
+            } catch {}
+          }
+          if (file && baseUrl) {
+            const u = new URL('/art/track_640.jpg', baseUrl);
+            u.searchParams.set('file', file);
+            if (trackKey) u.searchParams.set('k', trackKey);
+            it.art = u.toString();
+          }
+        } catch {}
+      }
+
+      const out = items.map((x) => ({ ...x, art: String(x.art || '').trim() || '/icons/icon-192.png' }));
+      return res.json({ ok: true, username, period, items: out });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/lastfm/recent-tracks', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const raw = await fs.readFile(configPath, 'utf8');
+      const cfg = JSON.parse(raw || '{}');
+      const apiKey = String(process.env.LASTFM_API_KEY || cfg?.lastfm?.apiKey || '').trim();
+      const username = String(cfg?.lastfm?.username || '').trim();
+      if (!apiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
+      if (!username) return res.status(400).json({ ok: false, error: 'Last.fm username is not configured' });
+
+      const limit = Math.max(1, Math.min(50, Number(req.query?.limit || 18) || 18));
+      const url = new URL('https://ws.audioscrobbler.com/2.0/');
+      url.searchParams.set('method', 'user.getrecenttracks');
+      url.searchParams.set('user', username);
+      url.searchParams.set('api_key', apiKey);
+      url.searchParams.set('format', 'json');
+      url.searchParams.set('limit', String(limit));
+      url.searchParams.set('extended', '0');
+
+      const r = await fetch(url.toString(), { headers: { 'accept': 'application/json' } });
+      const j = await r.json().catch(() => ({}));
+      const rows = Array.isArray(j?.recenttracks?.track) ? j.recenttracks.track : [];
+
+      const mpdHost = String(cfg?.mpd?.host || process.env.MPD_HOST || MPD_HOST || 'localhost').trim();
+      const trackKey = String(process.env.TRACK_KEY || cfg?.trackKey || '').trim();
+      const hostHdr = String(req.get('host') || '').trim();
+      const baseUrl = hostHdr ? `${req.protocol || 'http'}://${hostHdr}` : '';
+
+      const items = [];
+      for (const x of rows) {
+        const track = String(x?.name || '').trim();
+        const artist = String(x?.artist?.['#text'] || x?.artist?.name || '').trim();
+        if (!track) continue;
+        let art = '';
+        let file = '';
+        let album = String(x?.album?.['#text'] || '').trim();
+        try {
+          const titleVariants = Array.from(new Set([
+            track,
+            track.replace(/[’`´]/g, "'"),
+            track.replace(/[’'`´]/g, ""),
+            track.normalize('NFKD').replace(/[\u0300-\u036f]/g, ''),
+          ].map((s) => String(s || '').trim()).filter(Boolean)));
+          let files = [];
+          for (const tv of titleVariants) {
+            const args = ['-h', mpdHost, '-f', '%file%', 'find', 'title', tv];
+            if (artist) args.push('artist', artist);
+            const { stdout } = await execFileP('mpc', args, { maxBuffer: 8 * 1024 * 1024 });
+            files = String(stdout || '').split(/\r?\n/).map((s) => String(s || '').trim()).filter(Boolean);
+            if (files.length) break;
+          }
+          if (!files.length) {
+            for (const tv of titleVariants) {
+              const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'search', 'title', tv], { maxBuffer: 8 * 1024 * 1024 });
+              files = String(stdout || '').split(/\r?\n/).map((s) => String(s || '').trim()).filter(Boolean);
+              if (files.length) break;
+            }
+          }
+          file = String(files[0] || '').trim();
+          if (file) {
+            try {
+              const { stdout: albumOut } = await execFileP('mpc', ['-h', mpdHost, '-f', '%album%', 'find', 'file', file], { maxBuffer: 1024 * 1024 });
+              const alb = String(albumOut || '').split(/\r?\n/).map((s) => String(s || '').trim()).find(Boolean) || '';
+              if (alb) album = alb;
+            } catch {}
+          }
+          if (file && baseUrl) {
+            const u = new URL('/art/track_640.jpg', baseUrl);
+            u.searchParams.set('file', file);
+            if (trackKey) u.searchParams.set('k', trackKey);
+            art = u.toString();
+          }
+        } catch {}
+
+        items.push({
+          kind: 'lastfm-track',
+          title: track,
+          track,
+          artist,
+          album,
+          file,
+          url: String(x?.url || '').trim(),
+          art: art || '/icons/icon-192.png',
+        });
+      }
+
+      return res.json({ ok: true, username, items });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/lastfm/top-artists', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const raw = await fs.readFile(configPath, 'utf8');
+      const cfg = JSON.parse(raw || '{}');
+      const apiKey = String(process.env.LASTFM_API_KEY || cfg?.lastfm?.apiKey || '').trim();
+      const username = String(cfg?.lastfm?.username || '').trim();
+      if (!apiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
+      if (!username) return res.status(400).json({ ok: false, error: 'Last.fm username is not configured' });
+
+      const period = String(req.query?.period || cfg?.lastfm?.period || '1month').trim().toLowerCase();
+      const limit = Math.max(1, Math.min(50, Number(req.query?.limit || 18) || 18));
+      const url = new URL('https://ws.audioscrobbler.com/2.0/');
+      url.searchParams.set('method', 'user.gettopartists');
+      url.searchParams.set('user', username);
+      url.searchParams.set('api_key', apiKey);
+      url.searchParams.set('format', 'json');
+      url.searchParams.set('period', period);
+      url.searchParams.set('limit', String(limit));
+
+      const r = await fetch(url.toString(), { headers: { 'accept': 'application/json' } });
+      const j = await r.json().catch(() => ({}));
+      const rows = Array.isArray(j?.topartists?.artist) ? j.topartists.artist : [];
+      const items = rows.map((x) => {
+        const artist = String(x?.name || '').trim();
+        const playcount = Number(x?.playcount || 0) || 0;
+        const imgs = Array.isArray(x?.image) ? x.image : [];
+        const art = String((imgs.find((i) => String(i?.size || '').toLowerCase() === 'extralarge')?.['#text']) || (imgs.find((i) => String(i?.size || '').toLowerCase() === 'large')?.['#text']) || '').trim();
+        return {
+          kind: 'lastfm-artist',
+          title: artist || '(artist)',
+          artist,
+          playcount,
+          url: String(x?.url || '').trim(),
+          art: art || '/icons/icon-192.png',
+        };
+      }).filter((x) => String(x.title || '').trim());
+
+      return res.json({ ok: true, username, period, items });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/lastfm/top-albums', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const raw = await fs.readFile(configPath, 'utf8');
+      const cfg = JSON.parse(raw || '{}');
+      const apiKey = String(process.env.LASTFM_API_KEY || cfg?.lastfm?.apiKey || '').trim();
+      const username = String(cfg?.lastfm?.username || '').trim();
+      if (!apiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
+      if (!username) return res.status(400).json({ ok: false, error: 'Last.fm username is not configured' });
+
+      const period = String(req.query?.period || cfg?.lastfm?.period || '1month').trim().toLowerCase();
+      const limit = Math.max(1, Math.min(50, Number(req.query?.limit || 18) || 18));
+      const url = new URL('https://ws.audioscrobbler.com/2.0/');
+      url.searchParams.set('method', 'user.gettopalbums');
+      url.searchParams.set('user', username);
+      url.searchParams.set('api_key', apiKey);
+      url.searchParams.set('format', 'json');
+      url.searchParams.set('period', period);
+      url.searchParams.set('limit', String(limit));
+
+      const r = await fetch(url.toString(), { headers: { 'accept': 'application/json' } });
+      const j = await r.json().catch(() => ({}));
+      const rows = Array.isArray(j?.topalbums?.album) ? j.topalbums.album : [];
+
+      const mpdHost = String(cfg?.mpd?.host || process.env.MPD_HOST || MPD_HOST || 'localhost').trim();
+      const trackKey = String(process.env.TRACK_KEY || cfg?.trackKey || '').trim();
+      const hostHdr = String(req.get('host') || '').trim();
+      const baseUrl = hostHdr ? `${req.protocol || 'http'}://${hostHdr}` : '';
+
+      const items = [];
+      for (const x of rows) {
+        const album = String(x?.name || '').trim();
+        const artist = String(x?.artist?.name || '').trim();
+        const playcount = Number(x?.playcount || 0) || 0;
+        let art = '';
+        let matched = '';
+        try {
+          if (album) {
+            const args = ['-h', mpdHost, '-f', '%file%', 'find', 'album', album];
+            if (artist) args.push('artist', artist);
+            const { stdout } = await execFileP('mpc', args, { maxBuffer: 8 * 1024 * 1024 });
+            const files = String(stdout || '').split(/\r?\n/).map((s) => String(s || '').trim()).filter(Boolean);
+            matched = String(files[0] || '').trim();
+            if (matched && baseUrl) {
+              const u = new URL('/art/track_640.jpg', baseUrl);
+              u.searchParams.set('file', matched);
+              if (trackKey) u.searchParams.set('k', trackKey);
+              art = u.toString();
+            }
+          }
+        } catch {}
+
+        items.push({
+          kind: 'lastfm-album',
+          title: album || '(album)',
+          album,
+          artist,
+          playcount,
+          url: String(x?.url || '').trim(),
+          art: art || '/icons/icon-192.png',
+          file: matched,
+        });
+      }
+
+      return res.json({ ok: true, username, period, items });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.get('/peppy/last-profile', async (_req, res) => {
     try {
       const raw = await fs.readFile(peppyLastPushPath, 'utf8');

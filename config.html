@@ -299,7 +299,22 @@
                     <label for="lastfmApiKey">Last.fm API key</label>
                     <input id="lastfmApiKey" type="password" placeholder="Enter Last.fm API key" autocomplete="off" />
                   </div>
+                  <div class="cfgField">
+                    <label for="lastfmUsername">Last.fm username</label>
+                    <input id="lastfmUsername" type="text" placeholder="e.g. RetiredTG" autocomplete="off" />
+                  </div>
+                  <div class="cfgField"><label><input id="lastfmRecentsReplaceRadio" type="checkbox" /> Replace Favorite Radio row with Last.fm</label></div>
+                  <div class="cfgField">
+                    <label for="lastfmRecentsMode">Last.fm row mode</label>
+                    <select id="lastfmRecentsMode">
+                      <option value="toptracks">Top tracks</option>
+                      <option value="recenttracks">Recently played</option>
+                      <option value="topartists">Top artists</option>
+                      <option value="topalbums">Top albums</option>
+                    </select>
+                  </div>
                   <div class="cfgHint">When enabled/configured, Vibe tools are available in Queue Wizard.</div>
+                  <div class="cfgHint">Last.fm row relies on your scrobble history (typically via mpdscribble, but any scrobble source works).</div>
                   <div class="cfgHint">Required on API host for Vibe: <code>python3-mpd</code>, <code>python3-requests</code>, <code>python3-mutagen</code>. Install (Debian/Ubuntu): <code>sudo apt install -y python3-mpd python3-requests python3-mutagen</code>.</div>
                 </div>
               </div>
@@ -1116,8 +1131,15 @@ async function loadCfg(){
   syncRatingsCardVisibility();
   syncMpdscribbleUi();
   const lastfmKey = String(full.lastfm?.apiKey || localStorage.getItem('nowplaying.secret.lastfmApiKey') || '');
+  const lastfmUsername = String(full.lastfm?.username || '');
   document.getElementById('featureLastfm').checked = !!(c.features?.lastfm ?? lastfmKey);
   document.getElementById('lastfmApiKey').value = lastfmKey;
+  document.getElementById('lastfmUsername').value = lastfmUsername;
+  document.getElementById('lastfmRecentsReplaceRadio').checked = !!(full.lastfm?.recentsReplaceRadio ?? false);
+  {
+    const m = String(full.lastfm?.recentsMode || 'toptracks').toLowerCase();
+    document.getElementById('lastfmRecentsMode').value = (m === 'topartists' || m === 'topalbums' || m === 'recenttracks') ? m : 'toptracks';
+  }
   if (lastfmKey) localStorage.setItem('nowplaying.secret.lastfmApiKey', lastfmKey);
   syncLastfmCardVisibility();
 
@@ -1330,6 +1352,12 @@ async function saveCfg(){
       nodes: nodesNext,
       lastfm: {
         apiKey: document.getElementById('featureLastfm').checked ? document.getElementById('lastfmApiKey').value.trim() : '',
+        username: document.getElementById('featureLastfm').checked ? document.getElementById('lastfmUsername').value.trim() : '',
+        recentsReplaceRadio: !!document.getElementById('lastfmRecentsReplaceRadio').checked,
+        recentsMode: (() => {
+          const m = String(document.getElementById('lastfmRecentsMode').value || 'toptracks').toLowerCase();
+          return (m === 'topartists' || m === 'topalbums' || m === 'recenttracks') ? m : 'toptracks';
+        })(),
       },
     },
   };

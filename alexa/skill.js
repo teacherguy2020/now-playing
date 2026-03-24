@@ -129,6 +129,13 @@ function buildPlayReplaceAllWithOffset(token, url, offsetMs) {
   const tok = safeStr(token);
   const u = safeStr(url);
   const off = safeNumFloat(offsetMs, 0);
+  const parsed = parseTokenB64(tok) || {};
+  const file = safeStr(parsed.file);
+  const title = safeStr(parsed.title);
+  const artist = safeStr(parsed.artist);
+  const album = safeStr(parsed.album);
+  const artUrl = file ? artUrlForFile(file) : '';
+
   return {
     type: 'AudioPlayer.Play',
     playBehavior: 'REPLACE_ALL',
@@ -137,6 +144,12 @@ function buildPlayReplaceAllWithOffset(token, url, offsetMs) {
         token: tok,
         url: u,
         offsetInMilliseconds: (Number.isFinite(off) && off > 0) ? Math.floor(off) : 0,
+      },
+      metadata: {
+        title: title || 'Now playing',
+        subtitle: (artist ? artist : '') + (album ? ' -- ' + album : ''),
+        art: buildArtSources(artUrl),
+        backgroundImage: buildArtSources(artUrl),
       },
     },
   };
