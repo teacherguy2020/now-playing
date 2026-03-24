@@ -901,31 +901,52 @@
         return;
       }
       if ((d == null ? void 0 : d.type) === "np-controller-settings") {
-        const nextPreset = String((d == null ? void 0 : d.colorPreset) || "").trim().toLowerCase();
-        const inRows = Array.isArray(d == null ? void 0 : d.recentRows) ? d.recentRows : [];
         const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks"];
-        const rows = [];
-        for (const r of inRows) {
-          const s = String(r || "").toLowerCase().trim();
-          if (!allowed.includes(s)) continue;
-          if (rows.includes(s)) continue;
-          rows.push(s);
-          if (rows.length >= 4) break;
+        const prevPreset = String((profile == null ? void 0 : profile.colorPreset) || "ocean").toLowerCase();
+        const prevRowsRaw = Array.isArray(profile == null ? void 0 : profile.recentRows) ? profile.recentRows : ["albums", "playlists", "podcasts", "radio"];
+        const prevRows = prevRowsRaw.map((x) => String(x || "").toLowerCase());
+
+        const hasPresetInput = Object.prototype.hasOwnProperty.call(d || {}, "colorPreset");
+        const hasRowsInput = Array.isArray(d == null ? void 0 : d.recentRows);
+
+        const nextPresetRaw = String((d == null ? void 0 : d.colorPreset) || "").trim().toLowerCase();
+        const nextPresetEff = hasPresetInput ? String(nextPresetRaw || prevPreset || "ocean").toLowerCase() : prevPreset;
+
+        let rowsEff = prevRows.slice(0, 4);
+        if (hasRowsInput) {
+          const inRows = d.recentRows;
+          const rows = [];
+          for (const r of inRows) {
+            const s = String(r || "").toLowerCase().trim();
+            if (!allowed.includes(s)) continue;
+            if (rows.includes(s)) continue;
+            rows.push(s);
+            if (rows.length >= 4) break;
+          }
+          for (const dflt of ["albums", "playlists", "podcasts", "radio"]) {
+            if (rows.length >= 4) break;
+            if (!rows.includes(dflt)) rows.push(dflt);
+          }
+          rowsEff = rows;
         }
-        for (const dflt of ["albums", "playlists", "podcasts", "radio"]) {
-          if (rows.length >= 4) break;
-          if (!rows.includes(dflt)) rows.push(dflt);
+
+        const sameRows = prevRows.length === rowsEff.length && prevRows.every((x, i) => x === rowsEff[i]);
+        const samePreset = prevPreset === nextPresetEff;
+        if (sameRows && samePreset) {
+          return;
         }
-        profile = { ...profile || {}, colorPreset: nextPreset || String((profile == null ? void 0 : profile.colorPreset) || "ocean"), customColors: null, recentRows: rows };
+
+        profile = { ...profile || {}, colorPreset: nextPresetEff, customColors: null, recentRows: rowsEff };
         try {
           const u2 = new URL(location.href);
-          if (nextPreset) u2.searchParams.set("colorPreset", nextPreset);
-          u2.searchParams.set("recentRows", rows.join(","));
+          if (nextPresetEff) u2.searchParams.set("colorPreset", nextPresetEff);
+          u2.searchParams.set("recentRows", rowsEff.join(","));
           history.replaceState(null, "", u2.toString());
         } catch {
         }
         applyProfileUi();
-        loadRecentlyAdded().catch(() => null);
+        // No automatic recents data refresh after initial page load.
+        // Keep recents stable unless user explicitly changes source in this UI.
         persistControllerProfile().catch(() => null);
         return;
       }
@@ -1032,17 +1053,24 @@
   let runtimeMoodeHost = "moode.local";
   var recentLastfmPrefCache = { ts: 0, enabled: false, mode: "toptracks" };
   let quickIndex = [];
+  let ensureKeyInFlight = null;
   async function ensureKey() {
     var _a6, _b, _c, _d, _e, _f, _g;
     if (runtimeTrackKey) return runtimeTrackKey;
-    try {
-      const r = await fetch("".concat(base, "/config/runtime"), { cache: "no-store" });
-      const j = await r.json().catch(() => ({}));
-      runtimeTrackKey = String(((_a6 = j == null ? void 0 : j.config) == null ? void 0 : _a6.trackKey) || "").trim();
-      runtimeMoodeHost = String(((_c = (_b = j == null ? void 0 : j.config) == null ? void 0 : _b.mpd) == null ? void 0 : _c.host) || ((_e = (_d = j == null ? void 0 : j.config) == null ? void 0 : _d.nodes) == null ? void 0 : _e.moode) || ((_g = (_f = j == null ? void 0 : j.config) == null ? void 0 : _f.mpd) == null ? void 0 : _g.hostname) || runtimeMoodeHost).trim() || runtimeMoodeHost;
-    } catch {
-    }
-    return runtimeTrackKey;
+    if (ensureKeyInFlight) return ensureKeyInFlight;
+    ensureKeyInFlight = (async () => {
+      try {
+        const rt = await fetchJsonWithTimeout("".concat(base, "/config/runtime"), { cache: "no-store" }, 3500);
+        const j = (rt == null ? void 0 : rt.ok) ? rt.json || {} : {};
+        runtimeTrackKey = String(((_a6 = j == null ? void 0 : j.config) == null ? void 0 : _a6.trackKey) || "").trim();
+        runtimeMoodeHost = String(((_c = (_b = j == null ? void 0 : j.config) == null ? void 0 : _b.mpd) == null ? void 0 : _c.host) || ((_e = (_d = j == null ? void 0 : j.config) == null ? void 0 : _d.nodes) == null ? void 0 : _e.moode) || ((_g = (_f = j == null ? void 0 : j.config) == null ? void 0 : _f.mpd) == null ? void 0 : _g.hostname) || runtimeMoodeHost).trim() || runtimeMoodeHost;
+      } catch {
+      } finally {
+        ensureKeyInFlight = null;
+      }
+      return runtimeTrackKey;
+    })();
+    return ensureKeyInFlight;
   }
   function reqHeaders(json = true) {
     return Object.assign({}, json ? { "Content-Type": "application/json" } : {}, runtimeTrackKey ? { "x-track-key": runtimeTrackKey } : {});
@@ -1158,9 +1186,9 @@
   async function loadServerProfile() {
     if (IS_PREVIEW || USE_LOCAL_PROFILE_ONLY) return;
     try {
-      const r = await fetch("".concat(base, "/config/controller-profile"), { cache: "no-store" });
-      const j = await r.json().catch(() => ({}));
-      if (r.ok && (j == null ? void 0 : j.ok) && (j == null ? void 0 : j.profile)) {
+      const r = await fetchJsonWithTimeout("".concat(base, "/config/controller-profile"), { cache: "no-store" }, 3500);
+      const j = (r == null ? void 0 : r.ok) ? r.json || {} : {};
+      if ((r == null ? void 0 : r.ok) && (j == null ? void 0 : j.ok) && (j == null ? void 0 : j.profile)) {
         const existing = profile || {};
         const serverRecent = j && j.profile ? j.profile.recentSource : void 0;
         const existingRecent = existing ? existing.recentSource : void 0;
@@ -1171,7 +1199,6 @@
         } catch {
         }
         applyProfileUi();
-        loadRecentlyAdded().catch(() => null);
       }
     } catch {
     }
@@ -1470,7 +1497,7 @@
           }
         }
         const npCardEl = document.getElementById("npCard");
-        const blurSig = "".concat(file, "|").concat(art);
+        const blurSig = "".concat(art);
         if (npCardEl && blurSig !== npBlurSig) {
           npBlurSig = blurSig;
           const blurUrl = "".concat(base, "/art/current_bg_640_blur.jpg?v=").concat(encodeURIComponent(String(art || "")), "&t=").concat(Date.now());
@@ -1576,6 +1603,22 @@
   let recentItems = [];
   let recentActiveRadioUrl = "";
   let ipadRecentItems = { albums: [], podcasts: [], playlists: [], radio: [] };
+  const stableRecentSig = (items) => {
+    try {
+      return JSON.stringify(Array.isArray(items) ? items : []);
+    } catch {
+      return "";
+    }
+  };
+  const setIpadRecentItemsIfChanged = (key, items) => {
+    const k = String(key || "").trim();
+    if (!k) return false;
+    const next = Array.isArray(items) ? items : [];
+    const prev = Array.isArray(ipadRecentItems[k]) ? ipadRecentItems[k] : [];
+    if (stableRecentSig(prev) === stableRecentSig(next)) return false;
+    ipadRecentItems[k] = next;
+    return true;
+  };
   let recentMenuCtx = { kind: "album", album: "", artist: "", art: "", playlist: "", title: "", rss: "" };
   let recentModalCtx = { kind: "album", album: "", artist: "", art: "", playlist: "", tracks: [] };
   let recentArtistCtx = { artist: "", art: "" };
@@ -1831,10 +1874,10 @@
         const cPod = loadRecentCache(RECENT_PODCASTS_CACHE_KEY).items;
         const cPl = loadRecentCache(RECENT_PLAYLISTS_CACHE_KEY).items;
         const cRa = loadRecentCache(RECENT_RADIO_CACHE_KEY).items;
-        if (Array.isArray(cAlb) && cAlb.length) ipadRecentItems.albums = cAlb.slice(0, limit);
-        if (Array.isArray(cPod) && cPod.length) ipadRecentItems.podcasts = cPod.slice(0, limit);
-        if (Array.isArray(cPl) && cPl.length) ipadRecentItems.playlists = cPl.slice(0, limit);
-        if (Array.isArray(cRa) && cRa.length) ipadRecentItems.radio = cRa.slice(0, limit);
+        if (Array.isArray(cAlb) && cAlb.length) setIpadRecentItemsIfChanged("albums", cAlb.slice(0, limit));
+        if (Array.isArray(cPod) && cPod.length) setIpadRecentItemsIfChanged("podcasts", cPod.slice(0, limit));
+        if (Array.isArray(cPl) && cPl.length) setIpadRecentItemsIfChanged("playlists", cPl.slice(0, limit));
+        if (Array.isArray(cRa) && cRa.length) setIpadRecentItemsIfChanged("radio", cRa.slice(0, limit));
         await renderConfiguredIpadRows(limit);
       } catch {
       }
@@ -1847,18 +1890,22 @@
         artist: String((a == null ? void 0 : a.artist) || (a == null ? void 0 : a.albumArtist) || "").trim(),
         art: String((a == null ? void 0 : a.thumbUrl) || "").trim() ? String(a.thumbUrl).startsWith("http") ? String(a.thumbUrl) : "".concat(base).concat(String(a.thumbUrl)) : "".concat(base, "/art/current.jpg")
       }));
-      ipadRecentItems.albums = albums.map((a) => ({ kind: "album", album: String((a == null ? void 0 : a.title) || "(album)").trim(), artist: String((a == null ? void 0 : a.artist) || "").trim(), art: String((a == null ? void 0 : a.art) || "".concat(base, "/art/current.jpg")) }));
-      if (ipadRecentItems.albums.length) saveRecentCache(RECENT_ALBUMS_CACHE_KEY, ipadRecentItems.albums);
+      const nextAlbums = albums.map((a) => ({ kind: "album", album: String((a == null ? void 0 : a.title) || "(album)").trim(), artist: String((a == null ? void 0 : a.artist) || "").trim(), art: String((a == null ? void 0 : a.art) || "".concat(base, "/art/current.jpg")) }));
+      if (nextAlbums.length) {
+        if (setIpadRecentItemsIfChanged("albums", nextAlbums)) {
+          saveRecentCache(RECENT_ALBUMS_CACHE_KEY, ipadRecentItems.albums);
+        }
+      }
       const pr = await fetchJsonWithTimeout("".concat(base, "/podcasts"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
       const podcasts = pr.ok && ((_a6 = pr.json) == null ? void 0 : _a6.ok) && Array.isArray(pr.json.items) ? pr.json.items.slice(0, limit).map((s) => ({
         title: String((s == null ? void 0 : s.title) || (s == null ? void 0 : s.rss) || "(podcast)").trim(),
         art: String((s == null ? void 0 : s.imageUrl) || "").trim() || "".concat(base, "/art/current.jpg")
       })) : [];
-      ipadRecentItems.podcasts = podcasts.map((p, idx) => {
+      const nextPodcasts = podcasts.map((p, idx) => {
         var _a7, _b2;
         return { kind: "podcast", title: String((p == null ? void 0 : p.title) || "(podcast)").trim(), art: String((p == null ? void 0 : p.art) || "".concat(base, "/art/current.jpg")), rss: String(((_b2 = (((_a7 = pr.json) == null ? void 0 : _a7.items) || [])[idx]) == null ? void 0 : _b2.rss) || "").trim() };
       });
-      if (ipadRecentItems.podcasts.length) saveRecentCache(RECENT_PODCASTS_CACHE_KEY, ipadRecentItems.podcasts);
+      if (nextPodcasts.length && setIpadRecentItemsIfChanged("podcasts", nextPodcasts)) saveRecentCache(RECENT_PODCASTS_CACHE_KEY, ipadRecentItems.podcasts);
       const pl = await fetchJsonWithTimeout("".concat(base, "/config/queue-wizard/playlists"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
       if (pl.ok && ((_b = pl.json) == null ? void 0 : _b.ok) && Array.isArray(pl.json.playlists)) {
         let playlists = pl.json.playlists.slice(0, limit).map((n) => {
@@ -1871,8 +1918,8 @@
           };
         });
         playlists = await sortPlaylistsByCoverDate(playlists);
-        ipadRecentItems.playlists = playlists.map((x) => ({ kind: "playlist", playlist: String((x == null ? void 0 : x.title) || "(playlist)").trim(), title: String((x == null ? void 0 : x.title) || "(playlist)").trim(), art: String((x == null ? void 0 : x.art) || "".concat(base, "/art/current.jpg")) }));
-        if (ipadRecentItems.playlists.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, ipadRecentItems.playlists);
+        const nextPlaylists = playlists.map((x) => ({ kind: "playlist", playlist: String((x == null ? void 0 : x.title) || "(playlist)").trim(), title: String((x == null ? void 0 : x.title) || "(playlist)").trim(), art: String((x == null ? void 0 : x.art) || "".concat(base, "/art/current.jpg")) }));
+        if (nextPlaylists.length && setIpadRecentItemsIfChanged("playlists", nextPlaylists)) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, ipadRecentItems.playlists);
         document.querySelectorAll("#ipadRailPlaylists img").forEach((img) => {
           img.onerror = () => {
             var _a7;
@@ -1897,11 +1944,11 @@
             const title = String((x == null ? void 0 : x.stationName) || (x == null ? void 0 : x.file) || "(station)").trim();
             return { title, art: "".concat(base, "/art/radio-logo.jpg?name=").concat(encodeURIComponent(title)) };
           });
-          ipadRecentItems.radio = radio.map((x, idx) => {
+          const nextRadio = radio.map((x, idx) => {
             var _a7, _b2;
             return { kind: "radio", title: String((x == null ? void 0 : x.title) || "(station)").trim(), art: String((x == null ? void 0 : x.art) || "".concat(base, "/art/radio-logo.jpg")), url: String(((_b2 = (((_a7 = rr.json) == null ? void 0 : _a7.favorites) || [])[idx]) == null ? void 0 : _b2.file) || "").trim() };
           });
-          if (ipadRecentItems.radio.length) saveRecentCache(RECENT_RADIO_CACHE_KEY, ipadRecentItems.radio);
+          if (nextRadio.length && setIpadRecentItemsIfChanged("radio", nextRadio)) saveRecentCache(RECENT_RADIO_CACHE_KEY, ipadRecentItems.radio);
         }
       } catch {
       }
@@ -2052,8 +2099,8 @@
       const rr = resolved[i] || { src: "albums", items: [] };
       const src = String(rr.src || "albums");
       const items = Array.isArray(rr.items) ? rr.items : [];
-      ipadRecentItems[src] = items;
-      renderIpadRail(railIds[i], items, src, !items.length);
+      setIpadRecentItemsIfChanged(src, items);
+      renderIpadRail(railIds[i], items, src, false);
     }
   }
   function applyRecentHeaderLabels(lastfmPref) {
@@ -2089,8 +2136,13 @@
   }
   async function loadRecentlyAdded() {
     var _a6, _b, _c;
+    if (loadRecentlyAdded._busy) return;
+    loadRecentlyAdded._busy = true;
     recentLastfmPrefCache.ts = 0;
-    if (!rail || profile.showRecent === false) return;
+    if (!rail || profile.showRecent === false) {
+      loadRecentlyAdded._busy = false;
+      return;
+    }
     await ensureKey();
     const src = String(profile.recentSource || "albums").toLowerCase();
     const isIpad11 = isTabletBody();
@@ -2440,6 +2492,7 @@
       }
     } finally {
       setRailLoading(false);
+      loadRecentlyAdded._busy = false;
     }
   }
   async function fetchAlbumTracks(album, artist) {
@@ -3758,19 +3811,17 @@
       const textEls = [document.getElementById("tabletNextUpText"), document.getElementById("tabletNextUpTextInline")].filter(Boolean);
       const artEls = [document.getElementById("tabletNextUpArt"), document.getElementById("tabletNextUpArtInline")].filter(Boolean);
 
-      // Alexa mode: keep UI wording consistent (always "NEXT UP"), switch source endpoint.
-      // Detection is intentionally broad so we don't miss active Alexa sessions.
       let alexaActive = false;
       try {
-        const npr = await fetch(`${base}/now-playing`, { cache: "no-store", headers: reqHeaders(false) });
-        const npj = await npr.json().catch(() => ({}));
+        const npr = await fetchJsonWithTimeout(`${base}/now-playing`, { cache: "no-store", headers: reqHeaders(false) }, 3200);
+        const npj = npr.ok ? npr.json || {} : {};
         alexaActive = !!(npj == null ? void 0 : npj.alexaMode);
       } catch {
       }
       if (!alexaActive) {
         try {
-          const wr = await fetch(`${base}/alexa/was-playing`, { cache: "no-store", headers: reqHeaders(false) });
-          const wj = await wr.json().catch(() => ({}));
+          const wr = await fetchJsonWithTimeout(`${base}/alexa/was-playing`, { cache: "no-store", headers: reqHeaders(false) }, 3200);
+          const wj = wr.ok ? wr.json || {} : {};
           const was = (wj == null ? void 0 : wj.wasPlaying) || {};
           alexaActive = !!(was == null ? void 0 : was.active);
         } catch {
@@ -3778,8 +3829,8 @@
       }
       if (!alexaActive) {
         try {
-          const ar = await fetch(`${base}/alexa/now-playing?maxAgeMs=21600000`, { cache: "no-store", headers: reqHeaders(false) });
-          const aj = await ar.json().catch(() => ({}));
+          const ar = await fetchJsonWithTimeout(`${base}/alexa/now-playing?maxAgeMs=21600000`, { cache: "no-store", headers: reqHeaders(false) }, 3200);
+          const aj = ar.ok ? ar.json || {} : {};
           const fresh = !!(aj == null ? void 0 : aj.fresh);
           const wp = aj == null ? void 0 : aj.wasPlaying;
           const np = aj == null ? void 0 : aj.nowPlaying;
@@ -3791,8 +3842,8 @@
 
       if (alexaActive) {
         try {
-          const nr = await fetch(`${base}/alexa/next-up`, { cache: "no-store", headers: reqHeaders(false) });
-          const nj = await nr.json().catch(() => ({}));
+          const nr = await fetchJsonWithTimeout(`${base}/alexa/next-up`, { cache: "no-store", headers: reqHeaders(false) }, 3200);
+          const nj = nr.ok ? nr.json || {} : {};
           const n = (nj && (nj.next || nj.item || nj.now || nj)) || {};
           const artist = decodeHtmlEntities(String(n == null ? void 0 : n.artist || "").trim());
           const title = decodeHtmlEntities(String(n == null ? void 0 : n.title || n.file || "").trim());
@@ -3816,8 +3867,8 @@
         }
       }
 
-      const r = await fetch(`${base}/next-up`, { cache: "no-store", headers: reqHeaders(false) });
-      const j = await r.json().catch(() => ({}));
+      const r = await fetchJsonWithTimeout(`${base}/next-up`, { cache: "no-store", headers: reqHeaders(false) }, 3200);
+      const j = r.ok ? r.json || {} : {};
       const n = (j && (j.next || j.item || j.now || j)) || {};
       const artist = decodeHtmlEntities(String(n == null ? void 0 : n.artist || "").trim());
       const title = decodeHtmlEntities(String(n == null ? void 0 : n.title || n.file || "").trim());
