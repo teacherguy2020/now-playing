@@ -34,9 +34,9 @@
     .npProgress{display:block;width:100%;height:2px;min-height:2px;flex:0 0 2px;border-radius:999px;background:rgba(255,255,255,.34);overflow:hidden;margin-top:4px;position:relative;z-index:3}
     .npProgressFill{height:100%;width:0%;background:var(--muted,#9eb3d6);opacity:1;transition:width .28s linear, opacity .2s ease;min-width:0}
     .artWrap{position:relative;width:64px;height:64px;perspective:1000px}
-    .artFlip{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .48s cubic-bezier(.22,.78,.19,1)}
+    .artFlip{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .48s cubic-bezier(.22,.78,.19,1);transform:translateZ(0);-webkit-transform:translateZ(0)}
     .artWrap.is-flipped .artFlip{transform:rotateY(180deg)}
-    .artFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:10px;overflow:hidden}
+    .artFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:10px;overflow:hidden;transform:translateZ(0);-webkit-transform:translateZ(0)}
     .artFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#111a2d,#0b1425);border:1px solid rgba(138,177,235,.32);display:flex;align-items:stretch}
     .artHint{position:absolute;top:7px;left:7px;width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1;user-select:none;z-index:7;cursor:pointer;padding:0}
     .artHintInfo{background:rgba(9,18,32,.68);border:1px solid rgba(184,207,240,.52);color:#eaf3ff}
@@ -147,9 +147,9 @@
     .thumb.is-active-radio .ph{border-radius:12px;box-shadow:inset 0 0 0 2px #45b26f,0 0 0 1px rgba(69,178,111,.35)}
     .thumb.is-active-radio .cap{color:#bff2cf}
     .thumbWrap{position:relative}
-    .thumbFlip{position:relative;width:128px;height:128px;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1)}
+    .thumbFlip{position:relative;width:128px;height:128px;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1);transform:translateZ(0);-webkit-transform:translateZ(0)}
     .thumb.is-flipped .thumbFlip{transform:rotateY(180deg)}
-    .thumbFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;overflow:hidden}
+    .thumbFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;overflow:hidden;transform:translateZ(0);-webkit-transform:translateZ(0)}
     .thumbFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#101a2d,#0c1526);border:1px solid rgba(138,177,235,.32);display:flex;align-items:center;justify-content:center;padding:10px}
     .thumbFaceBack .thumbMore{left:6px;right:auto;transform:none}
     .thumb.is-flipped .thumbFaceFront .thumbMore{display:none}
@@ -199,9 +199,9 @@
     .modalX:active{transform:scale(.96)}
     .artistAlbumsGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:10px}
     .artistAlbCard{position:relative;perspective:1200px}
-    .artistAlbFlip{position:relative;transform-style:preserve-3d;transition:transform .28s ease}
+    .artistAlbFlip{position:relative;transform-style:preserve-3d;transition:transform .28s ease;transform:translateZ(0);-webkit-transform:translateZ(0)}
     .artistAlbCard.is-flipped .artistAlbFlip{transform:rotateY(180deg)}
-    .artistAlbFace{backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid #2a3a58;background:rgba(19,32,56,.45);border-radius:10px;padding:8px;color:#e6efff}
+    .artistAlbFace{backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid #2a3a58;background:rgba(19,32,56,.45);border-radius:10px;padding:8px;color:#e6efff;transform:translateZ(0);-webkit-transform:translateZ(0)}
     .artistAlbFront{cursor:pointer}
     .artistAlbFront img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#0a1222;display:block}
     .artistAlbFront .nm{font-size:12px;color:#dbe6ff;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -528,6 +528,11 @@
     .navCover.open{transform:translateX(0)}
     .navCover .navFallback{position:absolute;inset:0;background:var(--surface,#0b111c) center/cover no-repeat;z-index:1;opacity:1}
     .navCover iframe{position:absolute;inset:0;width:100%;height:100%;border:0;z-index:2;background:transparent;display:block}
+
+    /* iPad/Safari wake-from-idle compositor guard for 3D flip cards */
+    body.flip-compositor-heal .artFlip,
+    body.flip-compositor-heal .thumbFlip,
+    body.flip-compositor-heal .artistAlbFlip{transition:none !important;transform:translateZ(0) !important;-webkit-transform:translateZ(0) !important}
 
   </style>
   <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
@@ -3456,6 +3461,65 @@
       await ensureKey();
       const textEls = [document.getElementById("tabletNextUpText"), document.getElementById("tabletNextUpTextInline")].filter(Boolean);
       const artEls = [document.getElementById("tabletNextUpArt"), document.getElementById("tabletNextUpArtInline")].filter(Boolean);
+
+      // Alexa mode: keep UI wording consistent (always "NEXT UP"), switch source endpoint.
+      // Detection is intentionally broad so we don't miss active Alexa sessions.
+      let alexaActive = false;
+      try {
+        const npr = await fetch(`${base}/now-playing`, { cache: "no-store", headers: reqHeaders(false) });
+        const npj = await npr.json().catch(() => ({}));
+        alexaActive = !!(npj == null ? void 0 : npj.alexaMode);
+      } catch {
+      }
+      if (!alexaActive) {
+        try {
+          const wr = await fetch(`${base}/alexa/was-playing`, { cache: "no-store", headers: reqHeaders(false) });
+          const wj = await wr.json().catch(() => ({}));
+          const was = (wj == null ? void 0 : wj.wasPlaying) || {};
+          alexaActive = !!(was == null ? void 0 : was.active);
+        } catch {
+        }
+      }
+      if (!alexaActive) {
+        try {
+          const ar = await fetch(`${base}/alexa/now-playing?maxAgeMs=21600000`, { cache: "no-store", headers: reqHeaders(false) });
+          const aj = await ar.json().catch(() => ({}));
+          const fresh = !!(aj == null ? void 0 : aj.fresh);
+          const wp = aj == null ? void 0 : aj.wasPlaying;
+          const np = aj == null ? void 0 : aj.nowPlaying;
+          const activePayload = wp && wp.active ? wp : np && np.active ? np : null;
+          alexaActive = !!(fresh && activePayload);
+        } catch {
+        }
+      }
+
+      if (alexaActive) {
+        try {
+          const nr = await fetch(`${base}/alexa/next-up`, { cache: "no-store", headers: reqHeaders(false) });
+          const nj = await nr.json().catch(() => ({}));
+          const n = (nj && (nj.next || nj.item || nj.now || nj)) || {};
+          const artist = decodeHtmlEntities(String(n == null ? void 0 : n.artist || "").trim());
+          const title = decodeHtmlEntities(String(n == null ? void 0 : n.title || n.file || "").trim());
+          const txt = "NEXT UP: " + ([artist, title].filter(Boolean).join(" • ") || "Nothing queued");
+          const artRaw = String(n == null ? void 0 : n.artUrl || n.thumbUrl || n.albumArtUrl || n.displayArtUrl || n.altArtUrl || "").trim();
+          const art = artRaw ? (artRaw.startsWith("http") ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
+          textEls.forEach((el) => el.textContent = txt);
+          artEls.forEach((el) => {
+            el.src = art;
+            el.onerror = () => {
+              el.src = "/icons/icon-192.png";
+            };
+          });
+          return;
+        } catch {
+          textEls.forEach((el) => el.textContent = "NEXT UP: unavailable");
+          artEls.forEach((el) => {
+            el.src = "/icons/icon-192.png";
+          });
+          return;
+        }
+      }
+
       const r = await fetch(`${base}/next-up`, { cache: "no-store", headers: reqHeaders(false) });
       const j = await r.json().catch(() => ({}));
       const n = (j && (j.next || j.item || j.now || j)) || {};
@@ -4267,7 +4331,22 @@
     }
   });
   initKioskControls();
+  const forceFlipCompositorHeal = () => {
+    try {
+      document.body.classList.add("flip-compositor-heal");
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          try {
+            document.body.classList.remove("flip-compositor-heal");
+          } catch {
+          }
+        });
+      });
+    } catch {
+    }
+  };
   const resetTransientFlipState = () => {
+    forceFlipCompositorHeal();
     try {
       setArtFlip(false);
     } catch {
