@@ -782,6 +782,7 @@
     const qTheme = String(__u.searchParams.get("theme") || "").trim().toLowerCase();
     const qColor = String(__u.searchParams.get("colorPreset") || "").trim().toLowerCase();
     const qRecent = String(__u.searchParams.get("recentSource") || "").trim().toLowerCase();
+    const qRecentRowsRaw = String(__u.searchParams.get("recentRows") || "").trim().toLowerCase();
     const qPrimary = String(__u.searchParams.get("primaryThemeColor") || "").trim();
     const qSecondary = String(__u.searchParams.get("secondaryThemeColor") || "").trim();
     const qText = String(__u.searchParams.get("primaryTextColor") || "").trim();
@@ -790,6 +791,19 @@
     if (qTheme) profile.theme = qTheme;
     if (qColor) profile.colorPreset = qColor;
     if (qRecent) profile.recentSource = qRecent;
+    if (qRecentRowsRaw) {
+      const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks"];
+      const rows = [];
+      qRecentRowsRaw.split(",").map((x) => String(x || "").trim().toLowerCase()).forEach((s) => {
+        if (!s || !allowed.includes(s) || rows.includes(s)) return;
+        if (rows.length < 4) rows.push(s);
+      });
+      for (const dflt of ["albums", "playlists", "podcasts", "radio"]) {
+        if (rows.length >= 4) break;
+        if (!rows.includes(dflt)) rows.push(dflt);
+      }
+      if (rows.length) profile.recentRows = rows;
+    }
     if (qPrimary || qSecondary || qText || qTextSecondary) {
       profile.customColors = {
         ...profile.customColors || {},
@@ -805,6 +819,19 @@
     }
     try {
       localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile));
+    } catch {
+    }
+    try {
+      const scrubKeys = ["devicePreset", "theme", "colorPreset", "recentSource", "recentRows", "primaryThemeColor", "secondaryThemeColor", "primaryTextColor", "secondaryTextColor"];
+      let changed = false;
+      const u3 = new URL(location.href);
+      scrubKeys.forEach((k) => {
+        if (u3.searchParams.has(k)) {
+          u3.searchParams.delete(k);
+          changed = true;
+        }
+      });
+      if (changed) history.replaceState(history.state || {}, "", u3.toString());
     } catch {
     }
   }
