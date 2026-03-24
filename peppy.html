@@ -2803,6 +2803,40 @@
               }
             } catch {}
           }
+          try {
+              const awr = await fetch(`${api}/alexa/now-playing?maxAgeMs=21600000`, { cache:'no-store' });
+              const awj = await awr.json().catch(() => null);
+              const fresh = !!(awj?.fresh);
+              const wp = awj?.wasPlaying || null;
+              const np = awj?.nowPlaying || null;
+              const wpHas = !!(wp && (wp.file || wp.title || wp.artist));
+              const npHas = !!(np && (np.file || np.title || np.artist));
+              const wpActive = !!(wp && wp.active);
+              const npActive = !!(np && np.active);
+              const payload = wpHas ? wp : (npHas ? np : null);
+              const active = wpHas ? wpActive : npActive;
+              if (fresh && active && payload) {
+                const pa = String(payload?.artist || '').trim();
+                const pt = String(payload?.title || '').trim();
+                const pal = String(payload?.album || '').trim();
+                const pfile = String(payload?.file || '').trim();
+                const npArt = String(np?.displayArtUrl || np?.albumArtUrl || '').trim();
+                const pArt = String(payload?.displayArtUrl || payload?.albumArtUrl || '').trim();
+                const mergedArt = pArt || npArt || (pfile ? `${api}/art/track_640.jpg?file=${encodeURIComponent(pfile)}` : '');
+                j = {
+                  ...j,
+                  ...np,
+                  ...payload,
+                  displayArtist: pa || String(payload?.displayArtist || '').trim() || String(j?.displayArtist || '').trim(),
+                  displayTitle: pt || String(payload?.displayTitle || '').trim() || String(j?.displayTitle || '').trim(),
+                  displayLine3: pal || String(payload?.displayLine3 || '').trim() || String(j?.displayLine3 || '').trim(),
+                  displayArtUrl: mergedArt || String(j?.displayArtUrl || '').trim(),
+                  albumArtUrl: mergedArt || String(j?.albumArtUrl || '').trim(),
+                  alexaMode: true,
+                };
+              }
+            } catch {}
+
           const t = decodeEntities(String(j?.displayTitle || j?.title || j?.file || 'Unknown title'));
           const a = decodeEntities(String(j?.displayArtist || j?.artist || 'Unknown artist'));
           const playbackState = String(j?.state || '').toLowerCase();
@@ -2960,10 +2994,10 @@
           const isPodcastLike = !!(j?.isPodcast || fileLooksPodcast);
           const artRaw = String(
             isPodcastLike
-              ? `${api}/art/current.jpg`
+              ? (j?.displayArtUrl || j?.albumArtUrl || `${api}/art/current.jpg`)
               : (isRadioLike
-                  ? (j?.displayArtUrl || stationLogoRaw || j?.altArtUrl || '')
-                  : `${api}/art/current.jpg`)
+                  ? (j?.displayArtUrl || j?.albumArtUrl || stationLogoRaw || j?.altArtUrl || '')
+                  : (j?.displayArtUrl || j?.albumArtUrl || `${api}/art/current.jpg`))
             || ''
           ).trim();
           const artUrl = artRaw ? (artRaw.startsWith('http') ? artRaw : `${api}${artRaw}`) : '';

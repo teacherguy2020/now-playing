@@ -1301,7 +1301,48 @@
     var _a6;
     try {
       const r = await fetch("".concat(base, "/now-playing"), { cache: "no-store" });
-      const j = await r.json().catch(() => ({}));
+      const jRaw = await r.json().catch(() => ({}));
+      let j = jRaw;
+      try {
+        {
+          const awr = await fetch("".concat(base, "/alexa/now-playing?maxAgeMs=21600000"), { cache: "no-store" });
+          const awj = await awr.json().catch(() => null);
+          const awFresh = !!(awj == null ? void 0 : awj.fresh);
+          const awWp = awj == null ? void 0 : awj.wasPlaying;
+          const awNp = awj == null ? void 0 : awj.nowPlaying;
+          const wpActive = !!(awWp == null ? void 0 : awWp.active);
+          const npActive = !!(awNp == null ? void 0 : awNp.active);
+          const wpPayload = awWp && (awWp.file || awWp.title || awWp.artist) ? awWp : null;
+          const npPayload = awNp && (awNp.file || awNp.title || awNp.artist) ? awNp : null;
+          const awPayload = wpPayload || npPayload;
+          const awActive = wpPayload ? wpActive : npActive;
+          if (awFresh && awActive && awPayload) {
+            const aArtist = String((awPayload == null ? void 0 : awPayload.artist) || "").trim();
+            const aTitle = String((awPayload == null ? void 0 : awPayload.title) || "").trim();
+            const aAlbum = String((awPayload == null ? void 0 : awPayload.album) || "").trim();
+            const aFile = String((awPayload == null ? void 0 : awPayload.file) || "").trim();
+            const aArt = String((awPayload == null ? void 0 : awPayload.albumArtUrl) || (awPayload == null ? void 0 : awPayload.displayArtUrl) || "").trim();
+            const aAltArt = String((awPayload == null ? void 0 : awPayload.altArtUrl) || "").trim();
+            const aApl = String((awPayload == null ? void 0 : awPayload.aplArtUrl) || "").trim();
+            const fileArt = aFile ? "".concat(base, "/art/track_640.jpg?file=").concat(encodeURIComponent(aFile)) : "";
+            const pickedArt = aArt || aAltArt || fileArt || aApl || String((jRaw == null ? void 0 : jRaw.albumArtUrl) || (jRaw == null ? void 0 : jRaw.altArtUrl) || "").trim();
+            j = {
+              ...jRaw,
+              ...awPayload,
+              displayArtist: aArtist || String((awPayload == null ? void 0 : awPayload.displayArtist) || "").trim() || String((jRaw == null ? void 0 : jRaw.displayArtist) || "").trim(),
+              displayTitle: aTitle || String((awPayload == null ? void 0 : awPayload.displayTitle) || "").trim() || String((jRaw == null ? void 0 : jRaw.displayTitle) || "").trim(),
+              displayLine3: aAlbum || String((awPayload == null ? void 0 : awPayload.displayLine3) || "").trim() || String((jRaw == null ? void 0 : jRaw.displayLine3) || "").trim(),
+              albumArtUrl: pickedArt,
+              altArtUrl: aAltArt || String((jRaw == null ? void 0 : jRaw.altArtUrl) || "").trim(),
+              aplArtUrl: aApl || String((jRaw == null ? void 0 : jRaw.aplArtUrl) || "").trim(),
+              displayArtUrl: pickedArt,
+              file: aFile || String((jRaw == null ? void 0 : jRaw.file) || "").trim(),
+              alexaMode: true
+            };
+          }
+        }
+      } catch {
+      }
       const artist = decodeHtmlEntities(String((j == null ? void 0 : j.artist) || "")).trim();
       const title = decodeHtmlEntities(String((j == null ? void 0 : j.title) || "")).trim();
       const album = decodeHtmlEntities(String((j == null ? void 0 : j.album) || "")).trim();
@@ -1329,6 +1370,7 @@
       const genreLc = String((j == null ? void 0 : j.genre) || "").toLowerCase();
       const fileLc = String(file || "").toLowerCase();
       const isPodcast = !!(j == null ? void 0 : j.isPodcast) || genreLc.includes("podcast") || /\/podcasts?\//.test(fileLc);
+      const isAlexaMode = !!(j == null ? void 0 : j.alexaMode);
       const isRadio = !!(j == null ? void 0 : j.isRadio) || String((j == null ? void 0 : j.service) || "").toLowerCase().includes("radio") || !!(j == null ? void 0 : j.radioTrackUrl) || !!(j == null ? void 0 : j.isStream) && !isPodcast;
       const line1 = hasTrack ? dispArtist || artist || title || "(unknown artist)" : "Queue is empty";
       const line2 = hasTrack ? dispTitle || title || "(unknown track)" : "Use Queue Wizard or Recently Added to start music";
@@ -1348,15 +1390,15 @@
       npCurrentArtist = String(artist || "").trim();
       npCurrentArt = String(art || "").trim();
       npCurrentIsPodcast = !!isPodcast;
-      npCurrentIsRadio = !!isRadio;
-      const isLocalTrack = !!(hasTrack && file && !isPodcast && !isRadio && !isAirplay && !isUpnp && !isStream);
+      npCurrentIsRadio = !!isRadio && !isAlexaMode;
+      const isLocalTrack = !!(hasTrack && file && !isPodcast && !isRadio && !isAlexaMode && !isAirplay && !isUpnp && !isStream);
       npRatingAllowed = isLocalTrack;
       const ratingRaw = j && j.rating !== void 0 && j.rating !== null ? j.rating : j && j.currentRating !== void 0 && j.currentRating !== null ? j.currentRating : 0;
       npRating = Math.max(0, Math.min(5, Number(ratingRaw) || 0));
       const personnelList = Array.isArray(j == null ? void 0 : j.personnel) ? j.personnel.map((x) => String(x || "").trim()).filter(Boolean) : [];
       const radioPerf = String((j == null ? void 0 : j.radioPerformers) || "").trim();
       npPersonnelText = personnelList.length ? personnelList.join("\n") : radioPerf || "";
-      const sig = "".concat(file, "|").concat(line1, "|").concat(line2, "|").concat(line3, "|").concat(st, "|").concat(art, "|").concat(npAlbumUrl, "|").concat(npPersonnelText);
+      const sig = "".concat(file, "|").concat(line1, "|").concat(line2, "|").concat(line3, "|").concat(st, "|").concat(art, "|").concat(npAlbumUrl, "|").concat(npPersonnelText, "|").concat(isAlexaMode ? "alexa" : "local");
       if (sig !== npSig) {
         npSig = sig;
         setArtFlip(false);
@@ -1408,7 +1450,8 @@
         const blurSig = "".concat(file, "|").concat(art);
         if (npCardEl && blurSig !== npBlurSig) {
           npBlurSig = blurSig;
-          npCardEl.style.setProperty("--npBlurBg", 'url("'.concat(base, "/art/current_bg_640_blur.jpg?t=").concat(Date.now(), '")'));
+          const blurUrl = "".concat(base, "/art/current_bg_640_blur.jpg?v=").concat(encodeURIComponent(String(art || "")), "&t=").concat(Date.now());
+          npCardEl.style.setProperty("--npBlurBg", 'url("'.concat(blurUrl, '")'));
         }
         const line1El = document.getElementById("line1");
         if (line1El) {
@@ -1438,7 +1481,7 @@
         }
       }
       renderLine2Stars();
-      if (npSeekInlineEl2) npSeekInlineEl2.style.display = hasTrack && isPodcast ? "inline-flex" : "none";
+      if (npSeekInlineEl2) npSeekInlineEl2.style.display = hasTrack && isPodcast && !isAlexaMode ? "inline-flex" : "none";
       const infoBtn = document.getElementById("npFlipInfoBtn");
       if (infoBtn) infoBtn.style.display = hasTrack && !isPodcast ? "" : "none";
       const eq = document.getElementById("eqOverlay");
@@ -1465,13 +1508,14 @@
         const durationRaw = j && j.duration !== void 0 && j.duration !== null ? j.duration : j && j.durationSec !== void 0 && j.durationSec !== null ? j.durationSec : 0;
         const elapsed = Number(elapsedRaw);
         const duration = Number(durationRaw);
-        const hasTimedProgress = hasTrack && Number.isFinite(duration) && duration > 0;
+        const hasTimedProgress = hasTrack && !isAlexaMode && Number.isFinite(duration) && duration > 0;
         npSeekEnabled = !!hasTimedProgress;
         const pct = hasTimedProgress ? Math.max(0, Math.min(100, elapsed / duration * 100)) : 0;
         const renderPct = hasTimedProgress && pct > 0 && pct < 1.2 ? 1.2 : pct;
         progressFill.style.width = "".concat(renderPct, "%");
         progressFill.style.opacity = hasTimedProgress ? "0.98" : "0.20";
         progressWrap.setAttribute("data-seekable", hasTimedProgress ? "1" : "0");
+        progressWrap.style.display = hasTimedProgress ? "block" : "none";
       } else {
         npSeekEnabled = false;
       }
@@ -1484,6 +1528,13 @@
       document.querySelectorAll('#npCtrls .ctl[data-np-act="repeat"]').forEach((b) => b.classList.toggle("on", rpOn));
       document.querySelectorAll("#npCtrls .ctlPlay").forEach((b) => b.classList.toggle("is-active", isPlaying));
       document.querySelectorAll("#npCtrls .ctlPause").forEach((b) => b.classList.toggle("is-active", !isPlaying));
+      document.querySelectorAll("#npCtrls .ctl[data-np-act]").forEach((b) => {
+        const act = String(b.getAttribute("data-np-act") || "").toLowerCase();
+        const allow = !isAlexaMode || act === "shuffle";
+        b.disabled = !allow;
+        b.style.opacity = allow ? "" : "0.35";
+        b.style.pointerEvents = allow ? "" : "none";
+      });
     } catch {
     }
   }

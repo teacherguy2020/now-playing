@@ -838,7 +838,45 @@
     async function refreshNowPlayingCard(){
       try {
         const r = await fetch(`${base}/now-playing`,{cache:'no-store'});
-        const j = await r.json().catch(()=>({}));
+        const jRaw = await r.json().catch(()=>({}));
+        let j = jRaw;
+        try {
+          {
+            const awr = await fetch(`${base}/alexa/now-playing?maxAgeMs=21600000`, { cache:'no-store' });
+            const awj = await awr.json().catch(() => null);
+            const awFresh = !!(awj?.fresh);
+            const awWp = awj?.wasPlaying;
+            const awNp = awj?.nowPlaying;
+            const wpHas = !!(awWp && (awWp.file || awWp.title || awWp.artist));
+            const npHas = !!(awNp && (awNp.file || awNp.title || awNp.artist));
+            const wpActive = !!(awWp?.active);
+            const npActive = !!(awNp?.active);
+            const awPayload = wpHas ? awWp : (npHas ? awNp : null);
+            const awActive = wpHas ? wpActive : npActive;
+            if (awFresh && awActive && awPayload) {
+              const aArtist = String(awPayload?.artist || '').trim();
+              const aTitle = String(awPayload?.title || '').trim();
+              const aAlbum = String(awPayload?.album || '').trim();
+              const aFile = String(awPayload?.file || '').trim();
+              const aArt = String(awPayload?.albumArtUrl || awPayload?.displayArtUrl || '').trim();
+              const nArt = String(awNp?.albumArtUrl || awNp?.displayArtUrl || '').trim();
+              const fileArt = aFile ? `${base}/art/track_640.jpg?file=${encodeURIComponent(aFile)}` : '';
+              const pickedArt = aArt || nArt || fileArt;
+              j = {
+                ...jRaw,
+                ...awNp,
+                ...awPayload,
+                displayArtist: aArtist || String(awPayload?.displayArtist || '').trim() || String(jRaw?.displayArtist || '').trim(),
+                displayTitle: aTitle || String(awPayload?.displayTitle || '').trim() || String(jRaw?.displayTitle || '').trim(),
+                displayLine3: aAlbum || String(awPayload?.displayLine3 || '').trim() || String(jRaw?.displayLine3 || '').trim(),
+                albumArtUrl: pickedArt || String(jRaw?.albumArtUrl || '').trim(),
+                displayArtUrl: pickedArt || String(jRaw?.displayArtUrl || '').trim(),
+                file: aFile || String(jRaw?.file || '').trim(),
+                alexaMode: true
+              };
+            }
+          }
+        } catch {}
 
         const artist = decodeHtmlEntities(String(j?.artist || '')).trim();
         const title = decodeHtmlEntities(String(j?.title || '')).trim();

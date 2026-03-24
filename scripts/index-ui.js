@@ -193,8 +193,9 @@ const STATIC_BASE = IS_PUBLIC
 
 // API endpoints
 const NOW_PLAYING_URL = `${API_BASE}/now-playing`;
-const ALEXA_WAS_PLAYING_URL = `${API_BASE}/alexa/was-playing`;
+const ALEXA_WAS_PLAYING_URL = `${API_BASE}/alexa/now-playing`;
 const NEXT_UP_URL     = `${API_BASE}/next-up`;
+const ALEXA_NEXT_UP_URL = `${API_BASE}/alexa/next-up`;
 const RATING_URL      = `${API_BASE}/rating/current`;
 const FAVORITE_URL    = `${API_BASE}/favorites/toggle`;
 
@@ -497,10 +498,41 @@ async function fetchAlexaPayload() {
     const fresh = !!wj?.fresh;
     const np = wj?.nowPlaying || null;
     const wp = wj?.wasPlaying || null;
-    const active = !!((np && np.active) || (wp && wp.active));
-    const payload = (np && np.file) ? np : ((wp && wp.file) ? wp : null);
-    if (!fresh || !active || !payload) return null;
-    return payload;
+
+    const wpHas = !!(wp && (wp.file || wp.title || wp.artist));
+    const npHas = !!(np && (np.file || np.title || np.artist));
+    const wpActive = !!(wp && wp.active);
+    const npActive = !!(np && np.active);
+
+    // Source of truth in Alexa mode: prefer wasPlaying for text identity.
+    const payload = wpHas ? wp : (npHas ? np : null);
+    const active = wpHas ? wpActive : npActive;
+
+    if (!fresh || !payload || !active) return null;
+
+    const aArtist = String(payload?.artist || '').trim();
+    const aTitle = String(payload?.title || '').trim();
+    const aAlbum = String(payload?.album || '').trim();
+    const aFile = String(payload?.file || '').trim();
+
+    // Use wasPlaying for text identity, but inherit rich art fields from nowPlaying.
+    const npArt = String(np?.displayArtUrl || np?.albumArtUrl || '').trim();
+    const wpArt = String(payload?.displayArtUrl || payload?.albumArtUrl || '').trim();
+    const mergedArt = wpArt || npArt || (aFile ? `${API_BASE}/art/track_640.jpg?file=${encodeURIComponent(aFile)}` : '');
+
+    return {
+      ...np,
+      ...payload,
+      displayArtist: aArtist || String(payload?.displayArtist || '').trim(),
+      displayTitle: aTitle || String(payload?.displayTitle || '').trim(),
+      displayLine3: aAlbum || String(payload?.displayLine3 || '').trim(),
+      displayArtUrl: mergedArt || String(payload?.displayArtUrl || '').trim(),
+      albumArtUrl: mergedArt || String(payload?.albumArtUrl || '').trim(),
+      alexaMode: true,
+      active: true,
+      fresh: true,
+      ageMs: Number(wj?.ageMs ?? payload?.ageMs ?? 0) || 0,
+    };
   } catch {
     return null;
   }
@@ -1678,24 +1710,19 @@ function updateNextUp({ isAirplay, isStream, data }) {
   // allow text even if image element is missing
   if (!wrap || !textEl) return;
 
-  // In Alexa mode, NEVER use /next-up (it is one ahead for Alexa context).
-  // Always derive Next Up from /now-playing (queue head) for correctness.
+  // In Alexa mode, NEVER use /next-up.
+  // Source of truth: MPD queue head via diagnostics queue.
   if (data && data.alexaMode) {
     const applyAlexaQueueHead = (qIn) => {
       const q = qIn || {};
       const title = String(q.title || '').trim();
       const file = String(q.file || '').trim();
       const artist = String(q.artist || '').trim();
-      const artUrlRaw = String(q.albumArtUrl || q.altArtUrl || q.artUrl || q.coverUrl || '').trim();
+      const artUrlRaw = String(q.thumbUrl || q.albumArtUrl || q.altArtUrl || q.artUrl || q.coverUrl || '').trim();
       const artUrl = artUrlRaw.startsWith('/') ? `${API_BASE}${artUrlRaw}` : artUrlRaw;
 
       const hasIdentity = !!(title || file);
-      if (!hasIdentity) {
-        // Avoid regressing to "Unknown title" during transient Alexa/random races.
-        const existing = String(textEl?.textContent || '').trim();
-        if (existing && !/unknown title/i.test(existing)) return;
-        return;
-      }
+      if (!hasIdentity) return;
 
       const showTitle = title || file.split('/').pop() || file;
       const showArtist = artist ? ` • ${artist}` : '';
@@ -1723,20 +1750,20 @@ function updateNextUp({ isAirplay, isStream, data }) {
       imgEl.style.display = 'block';
     };
 
-    // Prefer already-available queue-head snapshot to avoid transient "Unknown title"
-    // when an extra NOW_PLAYING fetch races/fails during random toggles.
-    const immediateHead = (data && (data.__queueHead || data)) || {};
-    applyAlexaQueueHead(immediateHead);
+    (async () => {
+      try {
+        const nr = await fetch(ALEXA_NEXT_UP_URL, { cache: 'no-store' });
+        const np = await nr.json().catch(() => ({}));
+        if (nr.ok && np && (String(np.title || '').trim() || String(np.file || '').trim())) {
+          applyAlexaQueueHead(np);
+          return;
+        }
+      } catch {}
 
-    // Best-effort refresh from API; only repaint if better data arrives.
-    fetch(NOW_PLAYING_URL, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((np) => {
-        const cand = np || {};
-        const hasBetter = !!String(cand.title || cand.file || '').trim();
-        if (hasBetter) applyAlexaQueueHead(cand);
-      })
-      .catch(() => {});
+      // Final fallback if alexa/next-up is unavailable.
+      const immediateHead = (data && (data.__queueHead || data)) || {};
+      applyAlexaQueueHead(immediateHead);
+    })();
     return;
   }
 
@@ -3037,9 +3064,7 @@ if (titleEl) {
   // Build URLs
   const bgArtUrl =
     (ENABLE_BACKGROUND_ART && artKey)
-      ? (data.alexaMode
-          ? rawArtUrl
-          : `${API_BASE}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(artKey)}`)
+      ? `${API_BASE}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(String(rawArtUrl || artKey || ''))}`
       : '';
 
   const fgUrl = (isAirplay && !IS_PUBLIC && rawArtUrl)

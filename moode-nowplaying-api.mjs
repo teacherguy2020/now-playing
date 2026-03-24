@@ -2737,6 +2737,43 @@ app.get('/alexa/was-playing', async (req, res) => {
   }
 });
 
+// Semantic alias: "what Alexa is playing now".
+// Keeps /alexa/was-playing for backward compatibility while exposing clearer naming.
+app.get('/alexa/now-playing', async (req, res) => {
+  try {
+    const now = Date.now();
+    const maxAgeMs = Number.parseInt(String(req.query?.maxAgeMs || '43200000').trim(), 10);
+    const ageMs = (alexaWasPlaying.updatedAt > 0) ? Math.max(0, now - alexaWasPlaying.updatedAt) : null;
+    const fresh = ageMs !== null && Number.isFinite(maxAgeMs) ? ageMs <= Math.max(0, maxAgeMs) : true;
+
+    const wp = alexaWasPlaying || {};
+    const npLike = {
+      artist: String(wp.artist || '').trim(),
+      title: String(wp.title || '').trim(),
+      album: String(wp.album || '').trim(),
+      file: String(wp.file || '').trim(),
+      active: !!wp.active,
+      state: !!wp.active ? 'play' : 'stop',
+      alexaMode: true,
+      fresh,
+      ageMs,
+      startedAt: Number(wp.startedAt || 0) || 0,
+      stoppedAt: Number(wp.stoppedAt || 0) || 0,
+      updatedAt: Number(wp.updatedAt || 0) || 0,
+    };
+
+    return res.json({ ok: true, fresh, ageMs, nowPlaying: npLike });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+// Semantic alias: Alexa "next up" is MPD head truth.
+// This endpoint intentionally aliases /now-playing semantics.
+app.get('/alexa/next-up', async (req, res) => {
+  return res.redirect(307, '/now-playing');
+});
+
 app.post('/alexa/was-playing', async (req, res) => {
   try {
     if (!requireTrackKey(req, res)) return;
@@ -5329,6 +5366,8 @@ app.get('/now-playing', async (req, res) => {
     const frac = m[3] ? `.${m[3]}` : '';
     return `${bit}-bit / ${khz}${frac} kHz`;
   }
+
+
 
   // RADIO helper: split "Artist - Title" patterns safely
   function splitArtistTitleFromTitle(rawTitle) {

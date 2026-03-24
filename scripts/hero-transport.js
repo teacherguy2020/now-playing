@@ -128,7 +128,7 @@
 
   async function loadAlexaWasPlaying() {
     try {
-      const r = await fetch(`${apiBase}/alexa/was-playing?maxAgeMs=21600000`, { cache: 'no-store' });
+      const r = await fetch(`${apiBase}/alexa/now-playing?maxAgeMs=21600000`, { cache: 'no-store' });
       if (!r.ok) return null;
       return await r.json().catch(() => null);
     } catch {
