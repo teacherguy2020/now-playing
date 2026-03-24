@@ -663,10 +663,10 @@
       </div>
     </div>
     <div class="ipadRecentGrid" id="ipadRecentGrid" hidden>
-      <section class="ipadRecentPane"><h4>Recent Albums</h4><div class="rail" id="ipadRailAlbums"></div></section>
-      <section class="ipadRecentPane"><h4>Recent Podcasts</h4><div class="rail" id="ipadRailPodcasts"></div></section>
-      <section class="ipadRecentPane"><h4>Recent Playlists</h4><div class="rail" id="ipadRailPlaylists"></div></section>
-      <section class="ipadRecentPane"><h4 id="ipadRadioHeader">Favorite Radio</h4><div class="rail" id="ipadRailRadio"></div></section>
+      <section class="ipadRecentPane"><h4 id="ipadHdr1">Recent Albums</h4><div class="rail" id="ipadRailAlbums"></div></section>
+      <section class="ipadRecentPane"><h4 id="ipadHdr2">Recent Podcasts</h4><div class="rail" id="ipadRailPodcasts"></div></section>
+      <section class="ipadRecentPane"><h4 id="ipadHdr3">Recent Playlists</h4><div class="rail" id="ipadRailPlaylists"></div></section>
+      <section class="ipadRecentPane"><h4 id="ipadHdr4">Favorite Radio</h4><div class="rail" id="ipadRailRadio"></div></section>
     </div>
     <div class="kPane" id="kioskPane" aria-hidden="true">
       <iframe class="kPaneIf" id="kioskPaneFrame" src="about:blank" loading="eager"></iframe>
@@ -712,7 +712,7 @@
   <script>
 (() => {
   const MOBILE_PROFILE_KEY = "nowplaying.mobile.profile.v2";
-  const MOBILE_DEFAULT_PROFILE = { devicePreset: "tablet", theme: "auto", layout: "home-rail", showRecent: true, recentSource: "albums", colorPreset: "ocean", recentCount: 18 };
+  const MOBILE_DEFAULT_PROFILE = { devicePreset: "tablet", theme: "auto", layout: "home-rail", showRecent: true, recentSource: "albums", recentRows: ["albums", "playlists", "podcasts", "radio"], colorPreset: "ocean", recentCount: 18 };
   const __u = new URL(location.href);
   if (!__u.searchParams.get("devicePreset")) {
     try {
@@ -902,15 +902,30 @@
       }
       if ((d == null ? void 0 : d.type) === "np-controller-settings") {
         const nextPreset = String((d == null ? void 0 : d.colorPreset) || "").trim().toLowerCase();
-        if (!nextPreset) return;
-        profile = { ...profile || {}, colorPreset: nextPreset, customColors: null };
+        const inRows = Array.isArray(d == null ? void 0 : d.recentRows) ? d.recentRows : [];
+        const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks"];
+        const rows = [];
+        for (const r of inRows) {
+          const s = String(r || "").toLowerCase().trim();
+          if (!allowed.includes(s)) continue;
+          if (rows.includes(s)) continue;
+          rows.push(s);
+          if (rows.length >= 4) break;
+        }
+        for (const dflt of ["albums", "playlists", "podcasts", "radio"]) {
+          if (rows.length >= 4) break;
+          if (!rows.includes(dflt)) rows.push(dflt);
+        }
+        profile = { ...profile || {}, colorPreset: nextPreset || String((profile == null ? void 0 : profile.colorPreset) || "ocean"), customColors: null, recentRows: rows };
         try {
           const u2 = new URL(location.href);
-          u2.searchParams.set("colorPreset", nextPreset);
+          if (nextPreset) u2.searchParams.set("colorPreset", nextPreset);
+          u2.searchParams.set("recentRows", rows.join(","));
           history.replaceState(null, "", u2.toString());
         } catch {
         }
         applyProfileUi();
+        loadRecentlyAdded().catch(() => null);
         persistControllerProfile().catch(() => null);
         return;
       }
@@ -1568,6 +1583,7 @@
   let recentAlbumsRefreshInFlight = null;
   const RECENT_ALBUMS_CACHE_KEY = "np.recent.albums.cache.v2";
   const RECENT_PLAYLISTS_CACHE_KEY = "np.recent.playlists.cache.v2";
+  const RECENT_PODCASTS_CACHE_KEY = "np.recent.podcasts.cache.v1";
   const RECENT_RADIO_CACHE_KEY = "np.recent.radio.cache.v2";
   let recentAlbumPrewarmSig = "";
   let recentAlbumsRenderSig = "";
@@ -1806,19 +1822,21 @@
       const lastfmPref = await getLastfmRecentsPref();
       renderIpadRail("ipadRailAlbums", [], "albums", true);
       renderIpadRail("ipadRailPodcasts", [], "podcasts", true);
-      const cachedPlaylists = loadRecentCache(RECENT_PLAYLISTS_CACHE_KEY).items;
-      const cachedRadio = lastfmPref.enabled ? [] : loadRecentCache(RECENT_RADIO_CACHE_KEY).items;
-      if (cachedPlaylists.length) {
-        ipadRecentItems.playlists = cachedPlaylists.slice(0, limit);
-        renderIpadRail("ipadRailPlaylists", ipadRecentItems.playlists, "playlists", false);
-      } else {
-        renderIpadRail("ipadRailPlaylists", [], "playlists", true);
-      }
-      if (cachedRadio.length) {
-        ipadRecentItems.radio = cachedRadio.slice(0, limit);
-        renderIpadRail("ipadRailRadio", ipadRecentItems.radio, "radio", false);
-      } else {
-        renderIpadRail("ipadRailRadio", [], "radio", true);
+      renderIpadRail("ipadRailPlaylists", [], "playlists", true);
+      renderIpadRail("ipadRailRadio", [], "radio", true);
+
+      // Fast bootstrap: paint from local caches first, then refresh in background.
+      try {
+        const cAlb = loadRecentCache(RECENT_ALBUMS_CACHE_KEY).items;
+        const cPod = loadRecentCache(RECENT_PODCASTS_CACHE_KEY).items;
+        const cPl = loadRecentCache(RECENT_PLAYLISTS_CACHE_KEY).items;
+        const cRa = loadRecentCache(RECENT_RADIO_CACHE_KEY).items;
+        if (Array.isArray(cAlb) && cAlb.length) ipadRecentItems.albums = cAlb.slice(0, limit);
+        if (Array.isArray(cPod) && cPod.length) ipadRecentItems.podcasts = cPod.slice(0, limit);
+        if (Array.isArray(cPl) && cPl.length) ipadRecentItems.playlists = cPl.slice(0, limit);
+        if (Array.isArray(cRa) && cRa.length) ipadRecentItems.radio = cRa.slice(0, limit);
+        await renderConfiguredIpadRows(limit);
+      } catch {
       }
       const albumsRaw = await getRecentAlbumsForRail();
       const albums = albumsRaw.filter((a) => {
@@ -1830,7 +1848,7 @@
         art: String((a == null ? void 0 : a.thumbUrl) || "").trim() ? String(a.thumbUrl).startsWith("http") ? String(a.thumbUrl) : "".concat(base).concat(String(a.thumbUrl)) : "".concat(base, "/art/current.jpg")
       }));
       ipadRecentItems.albums = albums.map((a) => ({ kind: "album", album: String((a == null ? void 0 : a.title) || "(album)").trim(), artist: String((a == null ? void 0 : a.artist) || "").trim(), art: String((a == null ? void 0 : a.art) || "".concat(base, "/art/current.jpg")) }));
-      renderIpadRail("ipadRailAlbums", ipadRecentItems.albums, "albums");
+      if (ipadRecentItems.albums.length) saveRecentCache(RECENT_ALBUMS_CACHE_KEY, ipadRecentItems.albums);
       const pr = await fetchJsonWithTimeout("".concat(base, "/podcasts"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
       const podcasts = pr.ok && ((_a6 = pr.json) == null ? void 0 : _a6.ok) && Array.isArray(pr.json.items) ? pr.json.items.slice(0, limit).map((s) => ({
         title: String((s == null ? void 0 : s.title) || (s == null ? void 0 : s.rss) || "(podcast)").trim(),
@@ -1840,7 +1858,7 @@
         var _a7, _b2;
         return { kind: "podcast", title: String((p == null ? void 0 : p.title) || "(podcast)").trim(), art: String((p == null ? void 0 : p.art) || "".concat(base, "/art/current.jpg")), rss: String(((_b2 = (((_a7 = pr.json) == null ? void 0 : _a7.items) || [])[idx]) == null ? void 0 : _b2.rss) || "").trim() };
       });
-      renderIpadRail("ipadRailPodcasts", ipadRecentItems.podcasts, "podcasts");
+      if (ipadRecentItems.podcasts.length) saveRecentCache(RECENT_PODCASTS_CACHE_KEY, ipadRecentItems.podcasts);
       const pl = await fetchJsonWithTimeout("".concat(base, "/config/queue-wizard/playlists"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
       if (pl.ok && ((_b = pl.json) == null ? void 0 : _b.ok) && Array.isArray(pl.json.playlists)) {
         let playlists = pl.json.playlists.slice(0, limit).map((n) => {
@@ -1855,7 +1873,6 @@
         playlists = await sortPlaylistsByCoverDate(playlists);
         ipadRecentItems.playlists = playlists.map((x) => ({ kind: "playlist", playlist: String((x == null ? void 0 : x.title) || "(playlist)").trim(), title: String((x == null ? void 0 : x.title) || "(playlist)").trim(), art: String((x == null ? void 0 : x.art) || "".concat(base, "/art/current.jpg")) }));
         if (ipadRecentItems.playlists.length) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, ipadRecentItems.playlists);
-        renderIpadRail("ipadRailPlaylists", ipadRecentItems.playlists, "playlists");
         document.querySelectorAll("#ipadRailPlaylists img").forEach((img) => {
           img.onerror = () => {
             var _a7;
@@ -1871,19 +1888,40 @@
           };
         });
       }
+
+      // Unified row-source renderer (uses profile.recentRows mapping for all 4 rows)
+      try {
+        const rr = await fetchJsonWithTimeout("".concat(base, "/config/queue-wizard/radio-favorites"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
+        if (rr.ok && ((_c = rr.json) == null ? void 0 : _c.ok) && Array.isArray(rr.json.favorites)) {
+          const radio = rr.json.favorites.slice(0, limit).map((x) => {
+            const title = String((x == null ? void 0 : x.stationName) || (x == null ? void 0 : x.file) || "(station)").trim();
+            return { title, art: "".concat(base, "/art/radio-logo.jpg?name=").concat(encodeURIComponent(title)) };
+          });
+          ipadRecentItems.radio = radio.map((x, idx) => {
+            var _a7, _b2;
+            return { kind: "radio", title: String((x == null ? void 0 : x.title) || "(station)").trim(), art: String((x == null ? void 0 : x.art) || "".concat(base, "/art/radio-logo.jpg")), url: String(((_b2 = (((_a7 = rr.json) == null ? void 0 : _a7.favorites) || [])[idx]) == null ? void 0 : _b2.file) || "").trim() };
+          });
+          if (ipadRecentItems.radio.length) saveRecentCache(RECENT_RADIO_CACHE_KEY, ipadRecentItems.radio);
+        }
+      } catch {
+      }
+      await renderConfiguredIpadRows(limit);
+      return;
+
       if (lastfmPref.enabled) {
         try {
           const mode = lastfmPref.mode === "topartists" ? "top-artists" : lastfmPref.mode === "topalbums" ? "top-albums" : lastfmPref.mode === "recenttracks" ? "recent-tracks" : "top-tracks";
-          const cacheKey = "np.recent.lastfm.".concat(String(lastfmPref.mode || "toptracks"), ".v2");
+          const cacheKey = "np.recent.lastfm.".concat(String(lastfmPref.mode || "toptracks"), ".v3");
           const cachedLf = loadRecentCache(cacheKey);
           const maxAge = lastfmPref.mode === "recenttracks" ? 5 * 60 * 1e3 : 30 * 60 * 1e3;
+          const lfTimeout = lastfmPref.mode === "topalbums" ? 12e3 : 6e3;
           const cacheHasTrackFile = Array.isArray(cachedLf.items) && cachedLf.items.every((it) => String((it == null ? void 0 : it.kind) || "") !== "lastfm-track" || !!String((it == null ? void 0 : it.file) || "").trim());
           if (Array.isArray(cachedLf.items) && cachedLf.items.length && cacheHasTrackFile) {
             ipadRecentItems.radio = cachedLf.items.slice(0, limit);
             renderIpadRail("ipadRailRadio", ipadRecentItems.radio, "radio", false);
             if (Date.now() - Number(cachedLf.ts || 0) < maxAge) return;
           }
-          const lr = await fetchJsonWithTimeout("".concat(base, "/config/lastfm/").concat(mode, "?limit=").concat(limit), { cache: "no-store", headers: reqHeaders(false) }, 6e3);
+          const lr = await fetchJsonWithTimeout("".concat(base, "/config/lastfm/").concat(mode, "?limit=").concat(limit), { cache: "no-store", headers: reqHeaders(false) }, lfTimeout);
           const rows = lr.ok && (lr == null ? void 0 : lr.json) && (lr.json == null ? void 0 : lr.json.ok) && Array.isArray(lr.json.items) ? lr.json.items : [];
           if (rows.length) {
             ipadRecentItems.radio = rows.slice(0, limit).map((x) => ({
@@ -1902,6 +1940,11 @@
           }
         } catch {
         }
+        // Last.fm mode is explicit: do not silently fall back to Favorite Radio.
+        if (!Array.isArray(ipadRecentItems.radio) || !ipadRecentItems.radio.length) {
+          renderIpadRail("ipadRailRadio", [], "radio", true);
+        }
+        return;
       }
 
       const rr = await fetchJsonWithTimeout("".concat(base, "/config/queue-wizard/radio-favorites"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
@@ -1917,29 +1960,112 @@
         if (ipadRecentItems.radio.length) saveRecentCache(RECENT_RADIO_CACHE_KEY, ipadRecentItems.radio);
         renderIpadRail("ipadRailRadio", ipadRecentItems.radio, "radio");
       }
+      await renderConfiguredIpadRows(limit);
     } catch {
       renderIpadRail("ipadRailAlbums", ipadRecentItems.albums || [], "albums", false);
       renderIpadRail("ipadRailPodcasts", ipadRecentItems.podcasts || [], "podcasts", false);
       renderIpadRail("ipadRailPlaylists", ipadRecentItems.playlists || [], "playlists", false);
       renderIpadRail("ipadRailRadio", ipadRecentItems.radio || [], "radio", false);
+      try {
+        const limit = isTabletLandscapeBody() ? Math.max(12, Math.min(30, Number(profile && profile.recentCount || 18))) : Math.max(10, Math.min(30, Number(profile && profile.recentCount || 18)));
+        await renderConfiguredIpadRows(limit);
+      } catch {
+      }
+    }
+  }
+  function getRecentRowsConfig() {
+    const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks"];
+    const inRows = Array.isArray(profile == null ? void 0 : profile.recentRows) ? profile.recentRows : [];
+    const out = [];
+    for (const r of inRows) {
+      const s = String(r || "").toLowerCase().trim();
+      if (!allowed.includes(s)) continue;
+      if (out.includes(s)) continue;
+      out.push(s);
+      if (out.length >= 4) break;
+    }
+    for (const d of ["albums", "playlists", "podcasts", "radio"]) {
+      if (out.length >= 4) break;
+      if (!out.includes(d)) out.push(d);
+    }
+    return out;
+  }
+  function labelForRecentSource(src) {
+    const m = {
+      albums: "Recently Added",
+      playlists: "Recent Playlists",
+      podcasts: "Recent Podcasts",
+      radio: "Favorite Radio Stations",
+      "lastfm-topalbums": "Last.fm Top Albums",
+      "lastfm-topartists": "Last.fm Top Artists",
+      "lastfm-toptracks": "Last.fm Top Tracks",
+      "lastfm-recenttracks": "Last.fm Recently Played"
+    };
+    return m[String(src || "").toLowerCase()] || "Recently Added";
+  }
+  async function fetchLastfmItemsForSource(source, limit) {
+    const src = String(source || "").toLowerCase();
+    const mode = src === "lastfm-topartists" ? "top-artists" : src === "lastfm-topalbums" ? "top-albums" : src === "lastfm-recenttracks" ? "recent-tracks" : "top-tracks";
+    const modeKey = src.replace(/^lastfm-/, "") || "toptracks";
+    const cacheKey = "np.recent.lastfm.".concat(modeKey, ".v3");
+    const cached = loadRecentCache(cacheKey);
+    const maxAge = src === "lastfm-recenttracks" ? 5 * 60 * 1e3 : 30 * 60 * 1e3;
+    const cacheHasTrackFile = Array.isArray(cached.items) && cached.items.every((it) => String((it == null ? void 0 : it.kind) || "") !== "lastfm-track" || !!String((it == null ? void 0 : it.file) || "").trim());
+    if (cacheHasTrackFile && Array.isArray(cached.items) && cached.items.length && Date.now() - Number(cached.ts || 0) < maxAge) {
+      return cached.items.slice(0, limit);
+    }
+    try {
+      const timeout = src === "lastfm-topalbums" ? 12e3 : 6e3;
+      const lr = await fetchJsonWithTimeout("".concat(base, "/config/lastfm/").concat(mode, "?limit=").concat(limit), { cache: "no-store", headers: reqHeaders(false) }, timeout);
+      const rows = lr.ok && (lr == null ? void 0 : lr.json) && (lr.json == null ? void 0 : lr.json.ok) && Array.isArray(lr.json.items) ? lr.json.items : [];
+      if (!rows.length) return cacheHasTrackFile ? (cached.items || []).slice(0, limit) : [];
+      const items = rows.slice(0, limit).map((x) => ({
+        kind: String((x == null ? void 0 : x.kind) || "lastfm-track"),
+        title: String((x == null ? void 0 : x.title) || "(Last.fm)").trim(),
+        artist: String((x == null ? void 0 : x.artist) || "").trim(),
+        album: String((x == null ? void 0 : x.album) || "").trim(),
+        track: String((x == null ? void 0 : x.track) || "").trim(),
+        file: String((x == null ? void 0 : x.file) || "").trim(),
+        url: String((x == null ? void 0 : x.url) || "").trim(),
+        art: String((x == null ? void 0 : x.art) || "").trim() || "/icons/icon-192.png"
+      }));
+      saveRecentCache(cacheKey, items);
+      return items;
+    } catch {
+      return cacheHasTrackFile ? (cached.items || []).slice(0, limit) : [];
+    }
+  }
+  async function renderConfiguredIpadRows(limit) {
+    const rows = getRecentRowsConfig();
+    const railIds = ["ipadRailAlbums", "ipadRailPodcasts", "ipadRailPlaylists", "ipadRailRadio"];
+    const jobs = rows.slice(0, 4).map(async (srcRaw) => {
+      const src = srcRaw || "albums";
+      if (src === "albums") return { src, items: (ipadRecentItems.albums || []).slice(0, limit) };
+      if (src === "podcasts") return { src, items: (ipadRecentItems.podcasts || []).slice(0, limit) };
+      if (src === "playlists") return { src, items: (ipadRecentItems.playlists || []).slice(0, limit) };
+      if (src === "radio") return { src, items: (ipadRecentItems.radio || []).slice(0, limit) };
+      if (src.startsWith("lastfm-")) return { src, items: await fetchLastfmItemsForSource(src, limit) };
+      return { src: "albums", items: (ipadRecentItems.albums || []).slice(0, limit) };
+    });
+    const resolved = await Promise.all(jobs);
+    for (let i = 0; i < 4; i++) {
+      const rr = resolved[i] || { src: "albums", items: [] };
+      const src = String(rr.src || "albums");
+      const items = Array.isArray(rr.items) ? rr.items : [];
+      ipadRecentItems[src] = items;
+      renderIpadRail(railIds[i], items, src, !items.length);
     }
   }
   function applyRecentHeaderLabels(lastfmPref) {
     try {
       const src = String(profile.recentSource || "albums").toLowerCase();
       const rt = document.getElementById("recentTitle");
-      const mapDefault = { albums: "Recently Added", podcasts: "Recent Podcasts", playlists: "Recent Playlists", radio: "Favorite Radio Stations" };
-      let radioLabel = "Favorite Radio";
-      if (lastfmPref && lastfmPref.enabled) {
-        if (lastfmPref.mode === "topartists") radioLabel = "Last.fm Top Artists";
-        else if (lastfmPref.mode === "topalbums") radioLabel = "Last.fm Top Albums";
-        else if (lastfmPref.mode === "recenttracks") radioLabel = "Last.fm Recently Played";
-        else radioLabel = "Last.fm Top Tracks";
-      }
-      const map = { ...mapDefault, radio: radioLabel === "Favorite Radio" ? "Favorite Radio Stations" : radioLabel };
-      if (rt) rt.innerHTML = "".concat(map[src] || mapDefault[src] || "Recently Added", " <span id='railTitleSpin' class='titleSpin' hidden></span>");
-      const ipadHdr = document.getElementById("ipadRadioHeader");
-      if (ipadHdr) ipadHdr.textContent = radioLabel;
+      if (rt) rt.innerHTML = "".concat(labelForRecentSource(src), " <span id='railTitleSpin' class='titleSpin' hidden></span>");
+      const rows = getRecentRowsConfig();
+      ["ipadHdr1", "ipadHdr2", "ipadHdr3", "ipadHdr4"].forEach((id, i) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = labelForRecentSource(rows[i] || "albums");
+      });
     } catch {
     }
   }
@@ -2120,9 +2246,10 @@
         if (lastfmPref.enabled) {
           try {
             const mode = lastfmPref.mode === "topartists" ? "top-artists" : lastfmPref.mode === "topalbums" ? "top-albums" : lastfmPref.mode === "recenttracks" ? "recent-tracks" : "top-tracks";
-            const cacheKey = "np.recent.lastfm.".concat(String(lastfmPref.mode || "toptracks"), ".v2");
+            const cacheKey = "np.recent.lastfm.".concat(String(lastfmPref.mode || "toptracks"), ".v3");
             const cachedLf = loadRecentCache(cacheKey);
             const maxAge = lastfmPref.mode === "recenttracks" ? 5 * 60 * 1e3 : 30 * 60 * 1e3;
+            const lfTimeout = lastfmPref.mode === "topalbums" ? 12e3 : 3200;
             const cacheHasTrackFile = Array.isArray(cachedLf.items) && cachedLf.items.every((it) => String((it == null ? void 0 : it.kind) || "") !== "lastfm-track" || !!String((it == null ? void 0 : it.file) || "").trim());
             if (Array.isArray(cachedLf.items) && cachedLf.items.length && cacheHasTrackFile) {
               recentItems = cachedLf.items.slice(0, recentLimit());
@@ -2137,7 +2264,7 @@
               recentRenderedSource = "radio";
               if (Date.now() - Number(cachedLf.ts || 0) < maxAge) return;
             }
-            const lr = await fetchJsonWithTimeout("".concat(base, "/config/lastfm/").concat(mode, "?limit=").concat(recentLimit()), { cache: "no-store", headers: reqHeaders(false) }, 3200);
+            const lr = await fetchJsonWithTimeout("".concat(base, "/config/lastfm/").concat(mode, "?limit=").concat(recentLimit()), { cache: "no-store", headers: reqHeaders(false) }, lfTimeout);
             const rows = lr.ok && (lr == null ? void 0 : lr.json) && (lr.json == null ? void 0 : lr.json.ok) && Array.isArray(lr.json.items) ? lr.json.items : [];
             if (rows.length) {
               recentItems = rows.slice(0, recentLimit()).map((x) => ({
@@ -2164,6 +2291,12 @@
             }
           } catch {
           }
+          // Last.fm mode is explicit: do not silently fall back to Favorite Radio.
+          if (!Array.isArray(recentItems) || !recentItems.length) {
+            rail.innerHTML = "<div class='thumb'><div class='thumbWrap'><div class='ph'></div></div><div class='cap'>No Last.fm items</div></div>";
+          }
+          recentRenderedSource = "radio";
+          return;
         }
         try {
           const cached = loadRecentCache(RECENT_RADIO_CACHE_KEY).items;
@@ -2787,6 +2920,10 @@
         if (isTabletLandscapeBody()) u2.searchParams.set("cols", "7");
         u2.searchParams.set("theme", String(profile && profile.theme || "dark"));
         u2.searchParams.set("colorPreset", String(profile && profile.colorPreset || "ocean"));
+        if (target === "controller-tablet-settings.html") {
+          const rows = Array.isArray(profile == null ? void 0 : profile.recentRows) ? profile.recentRows : ["albums", "playlists", "podcasts", "radio"];
+          u2.searchParams.set("recentRows", rows.join(","));
+        }
         if (p === "kiosk-albums.html") {
           u2.searchParams.set("cb", String(Date.now()));
           try {

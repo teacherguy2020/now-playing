@@ -35,6 +35,16 @@
     <label for="themePreset">Theme preset</label>
     <select id="themePreset" aria-label="Controller tablet theme preset"></select>
     <div class="hint">Applies immediately.</div>
+
+    <label for="row1">Row 1 source</label>
+    <select id="row1"></select>
+    <label for="row2">Row 2 source</label>
+    <select id="row2"></select>
+    <label for="row3">Row 3 source</label>
+    <select id="row3"></select>
+    <label for="row4">Row 4 source</label>
+    <select id="row4"></select>
+    <div class="hint">Rows must be unique (no duplicates).</div>
   </div>
 
   <script>
@@ -49,6 +59,18 @@
     const themeMode = String(u.searchParams.get('theme') || 'auto').trim().toLowerCase();
     const selected = String(u.searchParams.get('colorPreset') || 'ocean').trim().toLowerCase();
     const sel = document.getElementById('themePreset');
+    const rowIds = ['row1','row2','row3','row4'];
+    const rowSelects = rowIds.map((id) => document.getElementById(id));
+    const ROW_OPTIONS = [
+      ['albums','Recently added albums'],
+      ['playlists','Recently created playlists'],
+      ['podcasts','Recently downloaded podcasts'],
+      ['radio','Favorite Radio Stations'],
+      ['lastfm-topalbums','Top Albums'],
+      ['lastfm-topartists','Top Artists'],
+      ['lastfm-toptracks','Top Tracks'],
+      ['lastfm-recenttracks','Recently Played']
+    ];
 
     const applyPalette = (name, mode) => {
       const p = String(name || 'ocean').toLowerCase();
@@ -101,14 +123,43 @@
     sel.value = PRESETS.some(([v]) => v === selected) ? selected : 'ocean';
     applyPalette(sel.value, themeMode);
 
-    const send = () => {
+    const defaults = ['albums','playlists','podcasts','radio'];
+    const fromQ = String(u.searchParams.get('recentRows') || '').split(',').map((s)=>String(s||'').trim().toLowerCase()).filter(Boolean);
+    const rows = [];
+    for (const r of [...fromQ, ...defaults]) {
+      if (!ROW_OPTIONS.some(([v]) => v===r)) continue;
+      if (rows.includes(r)) continue;
+      rows.push(r);
+      if (rows.length >= 4) break;
+    }
+    rowSelects.forEach((s, i) => {
+      s.innerHTML = ROW_OPTIONS.map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+      s.value = rows[i] || defaults[i];
+    });
+
+    const send = (changedIdx = -1) => {
       applyPalette(sel.value, themeMode);
+      const vals = rowSelects.map((s) => String(s.value || '').toLowerCase());
+      if (changedIdx >= 0) {
+        const used = new Set();
+        for (let i = 0; i < vals.length; i++) {
+          let v = vals[i];
+          if (!used.has(v)) { used.add(v); continue; }
+          const alt = ROW_OPTIONS.map(([x]) => x).find((x) => !used.has(x));
+          if (alt) {
+            vals[i] = alt;
+            rowSelects[i].value = alt;
+            used.add(alt);
+          }
+        }
+      }
       try {
-        window.parent?.postMessage({ type: 'np-controller-settings', colorPreset: String(sel.value || 'ocean') }, '*');
+        window.parent?.postMessage({ type: 'np-controller-settings', colorPreset: String(sel.value || 'ocean'), recentRows: vals }, '*');
       } catch {}
     };
 
-    sel.addEventListener('change', send);
+    sel.addEventListener('change', () => send(-1));
+    rowSelects.forEach((s, i) => s.addEventListener('change', () => send(i)));
 
     let backBusy = false;
     document.getElementById('backBtn')?.addEventListener('click', () => {

@@ -7,6 +7,7 @@ const DEFAULT_PROFILE = {
   layout: 'home-rail',
   showRecent: true,
   recentSource: 'albums',
+  recentRows: ['albums', 'playlists', 'podcasts', 'radio'],
   colorPreset: 'ocean',
   recentCount: 18,
   customColors: {
@@ -32,12 +33,27 @@ function sanitizeProfile(input = {}) {
     primaryTextColor: hex(ccIn.primaryTextColor, DEFAULT_PROFILE.customColors.primaryTextColor),
     secondaryTextColor: hex(ccIn.secondaryTextColor, DEFAULT_PROFILE.customColors.secondaryTextColor),
   };
+  const allowedRows = ['albums','playlists','podcasts','radio','lastfm-topalbums','lastfm-topartists','lastfm-toptracks','lastfm-recenttracks'];
+  const inRows = Array.isArray(p.recentRows) ? p.recentRows.map((x) => String(x || '').toLowerCase().trim()) : [];
+  const dedup = [];
+  for (const r of inRows) {
+    if (!allowedRows.includes(r)) continue;
+    if (dedup.includes(r)) continue;
+    dedup.push(r);
+    if (dedup.length >= 4) break;
+  }
+  for (const r of DEFAULT_PROFILE.recentRows) {
+    if (dedup.length >= 4) break;
+    if (!dedup.includes(r)) dedup.push(r);
+  }
+
   return {
     devicePreset: String(p.devicePreset || DEFAULT_PROFILE.devicePreset),
     theme: String(p.theme || DEFAULT_PROFILE.theme),
     layout: String(p.layout || DEFAULT_PROFILE.layout),
     showRecent: Boolean(p.showRecent ?? DEFAULT_PROFILE.showRecent),
     recentSource: ['albums','podcasts','playlists','radio'].includes(recentSource) ? recentSource : DEFAULT_PROFILE.recentSource,
+    recentRows: dedup,
     colorPreset: String(colorPreset || DEFAULT_PROFILE.colorPreset),
     recentCount: Math.max(6, Math.min(30, Number(p.recentCount || DEFAULT_PROFILE.recentCount) || DEFAULT_PROFILE.recentCount)),
     customColors,

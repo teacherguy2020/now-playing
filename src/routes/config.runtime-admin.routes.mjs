@@ -478,20 +478,43 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const r = await fetch(url.toString(), { headers: { 'accept': 'application/json' } });
       const j = await r.json().catch(() => ({}));
       const rows = Array.isArray(j?.topartists?.artist) ? j.topartists.artist : [];
-      const items = rows.map((x) => {
+      const mpdHost = String(cfg?.mpd?.host || process.env.MPD_HOST || MPD_HOST || 'localhost').trim();
+      const trackKey = String(process.env.TRACK_KEY || cfg?.trackKey || '').trim();
+      const hostHdr = String(req.get('host') || '').trim();
+      const baseUrl = hostHdr ? `${req.protocol || 'http'}://${hostHdr}` : '';
+
+      const items = [];
+      for (const x of rows) {
         const artist = String(x?.name || '').trim();
         const playcount = Number(x?.playcount || 0) || 0;
-        const imgs = Array.isArray(x?.image) ? x.image : [];
-        const art = String((imgs.find((i) => String(i?.size || '').toLowerCase() === 'extralarge')?.['#text']) || (imgs.find((i) => String(i?.size || '').toLowerCase() === 'large')?.['#text']) || '').trim();
-        return {
+        let art = '';
+        try {
+          if (artist) {
+            const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'find', 'artist', artist], { maxBuffer: 8 * 1024 * 1024 });
+            let files = String(stdout || '').split(/\r?\n/).map((s) => String(s || '').trim()).filter(Boolean);
+            if (!files.length) {
+              const { stdout: so } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'search', 'artist', artist], { maxBuffer: 8 * 1024 * 1024 });
+              files = String(so || '').split(/\r?\n/).map((s) => String(s || '').trim()).filter(Boolean);
+            }
+            const file = String(files[0] || '').trim();
+            if (file && baseUrl) {
+              const u = new URL('/art/track_640.jpg', baseUrl);
+              u.searchParams.set('file', file);
+              if (trackKey) u.searchParams.set('k', trackKey);
+              art = u.toString();
+            }
+          }
+        } catch {}
+
+        items.push({
           kind: 'lastfm-artist',
           title: artist || '(artist)',
           artist,
           playcount,
           url: String(x?.url || '').trim(),
           art: art || '/icons/icon-192.png',
-        };
-      }).filter((x) => String(x.title || '').trim());
+        });
+      }
 
       return res.json({ ok: true, username, period, items });
     } catch (e) {
