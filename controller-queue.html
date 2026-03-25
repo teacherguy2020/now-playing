@@ -44,6 +44,7 @@
     .coverMore{position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:9px;display:flex;align-items:center;justify-content:center;z-index:2}
     .title{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .sub{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .sub .stars{margin-left:6px;letter-spacing:.3px;color:#ffd76a;font-weight:700}
 
     .row.dragging{opacity:.96;z-index:9999;box-shadow:0 16px 34px rgba(0,0,0,.52);transform:scale(1.03)}
     .rowWrap.dropTarget{outline:none}
@@ -401,10 +402,22 @@
       try { headRow.scrollIntoView({ block:'center', inline:'nearest', behavior: force ? 'auto' : 'smooth' }); } catch {}
     }
 
+    async function fetchJsonWithTimeout(url, opts = {}, timeoutMs = 6500){
+      const ac = new AbortController();
+      const t = setTimeout(() => { try { ac.abort(); } catch {} }, Math.max(500, Number(timeoutMs) || 6500));
+      try {
+        const r = await fetch(url, { ...(opts || {}), signal: ac.signal });
+        const j = await r.json().catch(()=>({}));
+        return { r, j };
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
     async function ensureKey(){
       if (runtimeTrackKey) return runtimeTrackKey;
-      const r = await fetch(`${base}/config/runtime`, { cache:'no-store' });
-      const j = await r.json().catch(()=>({}));
+      const { r, j } = await fetchJsonWithTimeout(`${base}/config/runtime`, { cache:'no-store' }, 4500);
+      if (!r.ok) return '';
       runtimeTrackKey = String(j?.config?.trackKey || '').trim();
       return runtimeTrackKey;
     }
@@ -452,12 +465,11 @@
         return { byKey: radioStationByKey, byHost: radioStationByHost, logoByKey: radioLogoByKey, logoByHost: radioLogoByHost, ambHosts: radioHostAmbiguous };
       }
       try {
-        const r = await fetch(`${base}/config/queue-wizard/radio-preview`, {
+        const { r, j } = await fetchJsonWithTimeout(`${base}/config/queue-wizard/radio-preview`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(headers || {}) },
           body: JSON.stringify({ genres: [], favoritesOnly: false, hqOnly: false, favoriteStations: [], maxStations: 1000 }),
-        });
-        const j = await r.json().catch(() => ({}));
+        }, 2200);
         if (r.ok && j?.ok) {
           const byKey = new Map();
           const byHost = new Map();
@@ -507,16 +519,18 @@
       setQueueLoading(true);
       try {
         let headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
-        let r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
-        let j = await r.json().catch(()=>({}));
+        let q0 = await fetchJsonWithTimeout(`${base}/config/diagnostics/queue`, { cache:'no-store', headers }, 5000);
+        let r = q0.r;
+        let j = q0.j;
 
         // Fast-path first; if auth is required, fetch key and retry once.
         if ((!r.ok || !j?.ok) && !runtimeTrackKey) {
           try {
             await ensureKey();
             headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
-            r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
-            j = await r.json().catch(()=>({}));
+            const q1 = await fetchJsonWithTimeout(`${base}/config/diagnostics/queue`, { cache:'no-store', headers }, 5000);
+            r = q1.r;
+            j = q1.j;
           } catch {}
         }
 
@@ -526,8 +540,9 @@
             runtimeTrackKey = '';
             await ensureKey();
             headers = runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {};
-            r = await fetch(`${base}/config/diagnostics/queue`, { cache:'no-store', headers });
-            j = await r.json().catch(()=>({}));
+            const q2 = await fetchJsonWithTimeout(`${base}/config/diagnostics/queue`, { cache:'no-store', headers }, 5000);
+            r = q2.r;
+            j = q2.j;
           } catch {}
         }
 
@@ -599,6 +614,11 @@
         const streamTitle = stationName || mappedByKey || mappedByHost || (titleLooksUrl ? hostFallback : '') || rawTitle || hostFallback || '(station)';
         const title = isStream ? streamTitle : (rawTitle || String(x?.name || '').trim() || '(untitled)');
         const album = String(x?.album || '').trim();
+        const ratingsEnabled = !!j?.ratingsEnabled;
+        const ratingNumRaw = Number(x?.rating || 0);
+        const rating = Number.isFinite(ratingNumRaw) ? Math.max(0, Math.min(5, Math.round(ratingNumRaw))) : 0;
+        const stars = ratingsEnabled ? ('★'.repeat(rating) + '☆'.repeat(Math.max(0, 5 - rating))) : '';
+        const starsHtml = stars ? ('<span class="stars">' + stars + '</span> ') : '';
         const thumbRaw = String(x?.thumbUrl || '').trim();
         const stationLogoByName = (stationName || mappedByKey || mappedByHost) ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName || mappedByKey || mappedByHost)}` : '';
         const stationLogoByFile = file ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(file)}` : '';
@@ -611,7 +631,7 @@
           <div class="row ${head?'head':''}" data-pos="${pos}">
             <div class="num">${pos}</div>
             <div class="coverWrap" style="width:34px;height:34px"><img class="thumb" src="${thumb}" alt="" loading="lazy" decoding="async" /></div>
-            <div><div class="title">${title}</div><div class="sub">${artist}${album ? ' • ' + album : ''}</div></div>
+            <div><div class="title">${title}</div><div class="sub">${starsHtml}${artist}${album ? ' • ' + album : ''}</div></div>
           </div>
           <button type="button" class="vibeBtn" data-a="vibe" data-pos="${pos}">Vibe</button>
           <button type="button" class="deleteBtn" data-a="rm" data-pos="${pos}">Delete</button>
@@ -637,6 +657,10 @@
         lastBaseSig = baseSig;
         lastHeadPos = headPos;
         maybeScrollToHead(false);
+      } catch (e) {
+        queueFailStreak += 1;
+        if (meta) meta.textContent = `Queue request timeout/error (${queueFailStreak}) — retrying…`;
+        scheduleQueueRetry(Math.min(5000, 900 + (queueFailStreak * 450)));
       } finally {
         setQueueLoading(false);
       }

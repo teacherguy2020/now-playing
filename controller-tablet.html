@@ -3000,12 +3000,15 @@
         if (isTabletLandscapeBody()) u2.searchParams.set("cols", "7");
         u2.searchParams.set("theme", String(profile && profile.theme || "dark"));
         u2.searchParams.set("colorPreset", String(profile && profile.colorPreset || "ocean"));
+        u2.searchParams.set("apiBase", String(base || ""));
         if (target === "controller-tablet-settings.html") {
           const rows = Array.isArray(profile == null ? void 0 : profile.recentRows) ? profile.recentRows : ["albums", "playlists", "podcasts", "radio"];
           u2.searchParams.set("recentRows", rows.join(","));
         }
-        if (p === "kiosk-albums.html") {
+        if (p === "kiosk-albums.html" || p === "kiosk-queue.html") {
           u2.searchParams.set("cb", String(Date.now()));
+        }
+        if (p === "kiosk-albums.html") {
           try {
             const topGenre = String(new URL(location.href).searchParams.get("genre") || "").trim();
             if (topGenre) u2.searchParams.set("genre", topGenre);
