@@ -1195,13 +1195,47 @@
 
             if (hqNextUp) {
               try {
-                const rLite = await fetch(`${base}/next-up`, { cache:'no-store', headers });
+                const [rLite, npLiteRes, awLiteRes] = await Promise.all([
+                  fetch(`${base}/next-up`, { cache:'no-store', headers }),
+                  fetch(`${base}/now-playing`, { cache:'no-store', headers }).catch(() => null),
+                  fetch(`${base}/alexa/was-playing`, { cache:'no-store', headers }).catch(() => null),
+                ]);
                 const jLite = await rLite.json().catch(() => ({}));
+                const npLite = npLiteRes ? await npLiteRes.json().catch(() => ({})) : {};
+                const awLite = awLiteRes ? await awLiteRes.json().catch(() => ({})) : {};
                 const n = (rLite.ok && jLite?.ok) ? (jLite.next || null) : null;
-                const txt = n ? [String(n.artist || '').trim(), String(n.title || n.file || '').trim()].filter(Boolean).join(' • ') : 'none';
-                const artRaw = String(n?.artUrl || '').trim();
-                const art = artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : '';
-                const nextHtml = `${art ? `<img src="${art}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${txt || 'none'}</div>`;
+
+                const awNp = awLite?.nowPlaying || null;
+                const awWp = awLite?.wasPlaying || null;
+                const awFresh = !!awLite?.fresh;
+                const awActive = !!((awNp && awNp.active) || (awWp && awWp.active));
+                const awPayload = (awNp && awNp.file) ? awNp : ((awWp && awWp.file) ? awWp : null);
+                const npMerged = (awFresh && awActive && awPayload) ? { ...npLite, ...awPayload, alexaMode: true } : npLite;
+
+                const alexaHintText = String(npMerged?.subline || npMerged?.liveLabel || '').toLowerCase();
+                const heroAlexaText = String(document.getElementById('heroTransport')?.textContent || '').toLowerCase();
+                const isAlexaModeLite = !!npMerged?.alexaMode || !!jLite?.alexaMode || alexaHintText.includes('alexa mode') || heroAlexaText.includes('alexa mode');
+
+                let nextHtml = '';
+                if (isAlexaModeLite) {
+                  const qhTitle = String(npLite?.title || '').trim();
+                  const qhFile = String(npLite?.file || '').trim();
+                  const qhArtist = String(npLite?.artist || '').trim();
+                  const qhArtRaw = String(npLite?.albumArtUrl || npLite?.altArtUrl || '').trim();
+                  const qhArt = qhArtRaw ? (qhArtRaw.startsWith('http') ? qhArtRaw : `${base}${qhArtRaw}`) : '';
+                  const showTitle = qhTitle || (qhFile ? String(qhFile).split('/').pop() : '') || qhFile;
+                  if (showTitle || qhArtist) {
+                    nextHtml = `${qhArt ? `<img src="${qhArt}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${showTitle || '(unknown)'}${qhArtist ? ` • ${qhArtist}` : ''}</div>`;
+                  }
+                }
+
+                if (!nextHtml) {
+                  const txt = n ? [String(n.artist || '').trim(), String(n.title || n.file || '').trim()].filter(Boolean).join(' • ') : 'none';
+                  const artRaw = String(n?.artUrl || '').trim();
+                  const art = artRaw ? (artRaw.startsWith('http') ? artRaw : `${base}${artRaw}`) : '';
+                  nextHtml = `${art ? `<img src="${art}" alt="">` : ''}<div class="heroQueueMeta">Next-up: ${txt || 'none'}</div>`;
+                }
+
                 if (globalThis.lastHeroNextUpSignature !== nextHtml) {
                   hqNextUp.innerHTML = nextHtml;
                   globalThis.lastHeroNextUpSignature = nextHtml;

@@ -223,23 +223,55 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     { group: 'Runtime/Admin', method: 'POST', path: '/config/runtime/resolve-host', body: { host: '' } },
     { group: 'Runtime/Admin', method: 'POST', path: '/config/restart-api', body: {} },
     { group: 'Runtime/Admin', method: 'POST', path: '/config/restart-services', body: {} },
+    { group: 'Runtime/Admin', method: 'GET', path: '/config/services/mpdscribble/status' },
+    { group: 'Runtime/Admin', method: 'POST', path: '/config/services/mpdscribble/action', body: { action: 'restart' } },
+
+    { group: 'Last.fm', method: 'GET', path: '/config/lastfm/top-tracks', query: { period: '1month', limit: 18 } },
+    { group: 'Last.fm', method: 'GET', path: '/config/lastfm/recent-tracks', query: { limit: 18 } },
+    { group: 'Last.fm', method: 'GET', path: '/config/lastfm/top-artists', query: { period: '1month', limit: 18 } },
+    { group: 'Last.fm', method: 'GET', path: '/config/lastfm/top-albums', query: { period: '1month', limit: 18 } },
 
     { group: 'Queue Wizard', method: 'GET', path: '/config/queue-wizard/options' },
     { group: 'Queue Wizard', method: 'GET', path: '/config/queue-wizard/playlists' },
+    { group: 'Browse', method: 'GET', path: '/config/browse/stats' },
+    { group: 'Browse', method: 'GET', path: '/config/browse/artists', query: { q: '', limit: 50 } },
+    { group: 'Browse', method: 'GET', path: '/config/browse/albums', query: { artist: '', q: '', limit: 100 } },
+    { group: 'Browse', method: 'GET', path: '/config/browse/artist-albums', query: { artist: '' } },
+    { group: 'Browse', method: 'GET', path: '/config/browse/album-tracks', query: { album: '', artist: '' } },
+    { group: 'Browse', method: 'POST', path: '/config/browse/rebuild', body: { force: true } },
     { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/preview', body: { genres: [], artists: [], albums: [], excludeGenres: [], minRating: 0, maxTracks: 25 } },
     { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/apply', body: { mode: 'append', keepNowPlaying: false, tracks: [''], shuffle: false } },
     { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/vibe-start', body: { targetQueue: 50, minRating: 0 } },
     { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/vibe-seed-start', body: { seedArtist: 'John Mayer', seedTitle: 'Gravity', targetQueue: 12 } },
+    { group: 'Queue Wizard', method: 'GET', path: '/config/queue-wizard/radio-options' },
+    { group: 'Queue Wizard', method: 'GET', path: '/config/queue-wizard/radio-favorites' },
+    { group: 'Queue Wizard', method: 'GET', path: '/config/radio-browser/search', query: { q: 'jazz', limit: 25 } },
+    { group: 'Queue Wizard', method: 'POST', path: '/config/radio-browser/preview', body: { url: '' } },
+    { group: 'Queue Wizard', method: 'POST', path: '/config/radio-browser/add', body: { station: '', name: '', genre: '' } },
 
     { group: 'Library Health', method: 'GET', path: '/config/library-health' },
     { group: 'Library Health', method: 'GET', path: '/config/library-health/missing-artwork' },
     { group: 'Library Health', method: 'GET', path: '/config/library-health/album-tracks' },
     { group: 'Library Health', method: 'POST', path: '/config/library-health/album-artist-cleanup', body: { folder: '' } },
     { group: 'Library Health', method: 'GET', path: '/config/library-health/album-genre' },
-    { group: 'Library Health', method: 'GET', path: '/config/library-health/album-art-search', body: { folder: '' } },
-    { group: 'Library Health', method: 'GET', path: '/config/library-health/album-art-fetch', body: { url: '' } },
+    { group: 'Library Health', method: 'GET', path: '/config/library-health/album-art-search', query: { folder: '' } },
+    { group: 'Library Health', method: 'GET', path: '/config/library-health/album-art-fetch', query: { url: '' } },
     { group: 'Library Health', method: 'POST', path: '/config/library-health/album-genre', body: { folder: '', genre: '' } },
     { group: 'Library Health', method: 'POST', path: '/config/library-health/rating-batch', body: { files: [], rating: 3 } },
+    { group: 'Library Health', method: 'GET', path: '/config/library-health/animated-art/discovery', query: { page: 1, pageSize: 25 } },
+    { group: 'Library Health', method: 'GET', path: '/config/library-health/animated-art/lookup', query: { album: '', artist: '' } },
+    { group: 'Library Health', method: 'GET', path: '/config/library-health/animated-art/job', query: { id: '' } },
+    { group: 'Library Health', method: 'POST', path: '/config/library-health/animated-art/discover', body: { force: false } },
+    { group: 'Library Health', method: 'POST', path: '/config/library-health/animated-art/build', body: { album: '', artist: '', sourceUrl: '' } },
+    { group: 'Library Health', method: 'POST', path: '/config/library-health/animated-art/suppress', body: { album: '', artist: '', suppressed: true } },
+    { group: 'Library Health', method: 'POST', path: '/config/library-health/animated-art/clear', body: { album: '', artist: '' } },
+
+    { group: 'Moode/Peppy', method: 'GET', path: '/config/moode/display/status' },
+    { group: 'Moode/Peppy', method: 'POST', path: '/config/moode/display', body: { mode: 'on' } },
+    { group: 'Moode/Peppy', method: 'GET', path: '/config/moode/browser-url/status' },
+    { group: 'Moode/Peppy', method: 'POST', path: '/config/moode/browser-url', body: { url: 'http://nowplaying.local:8101/display.html' } },
+    { group: 'Moode/Peppy', method: 'GET', path: '/peppy/last-profile' },
+    { group: 'Moode/Peppy', method: 'POST', path: '/peppy/last-profile', body: { displayMode: 'peppy' } },
 
     { group: 'Ratings Stickers', method: 'GET', path: '/config/ratings/sticker-status' },
     { group: 'Ratings Stickers', method: 'GET', path: '/config/ratings/sticker-backups' },
@@ -261,10 +293,101 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     }
   });
 
+  function inferEndpointGroup(pathname = '') {
+    const p = String(pathname || '');
+    if (p.startsWith('/config/lastfm/')) return 'Last.fm';
+    if (p.startsWith('/config/diagnostics/')) return 'Diagnostics';
+    if (p.startsWith('/config/queue-wizard/') || p.startsWith('/config/radio-browser/')) return 'Queue Wizard';
+    if (p.startsWith('/config/browse/')) return 'Browse';
+    if (p.startsWith('/config/library-health/')) return 'Library Health';
+    if (p.startsWith('/config/runtime') || p.startsWith('/config/restart-') || p.startsWith('/config/services/')) return 'Runtime/Admin';
+    if (p.startsWith('/config/moode/') || p.startsWith('/peppy/')) return 'Moode/Peppy';
+    if (p.startsWith('/config/ratings/')) return 'Ratings Stickers';
+    if (p.startsWith('/podcasts')) return 'Podcasts';
+    if (p.startsWith('/queue/')) return 'Queue';
+    if (p.startsWith('/rating')) return 'Ratings';
+    if (p.startsWith('/art/')) return 'Art';
+    if (p === '/now-playing' || p === '/next-up' || p === '/track') return 'Now Playing';
+    return 'Other';
+  }
+
+  function discoverAppRoutes() {
+    const stack = app?._router?.stack || app?.router?.stack || [];
+    const out = [];
+    const walk = (layers = [], prefix = '') => {
+      for (const layer of layers) {
+        if (layer?.route?.path) {
+          const routePath = `${prefix}${layer.route.path}`;
+          const methods = Object.keys(layer.route.methods || {})
+            .filter((k) => layer.route.methods[k])
+            .map((k) => k.toUpperCase());
+          for (const method of methods) out.push({ method, path: routePath });
+          continue;
+        }
+        if (layer?.name === 'router' && Array.isArray(layer?.handle?.stack)) {
+          // Nested routers are uncommon here in this project; recurse without extra prefix.
+          walk(layer.handle.stack, prefix);
+        }
+      }
+    };
+    walk(stack);
+    return out;
+  }
+
   app.get('/config/diagnostics/endpoints', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
-      return res.json({ ok: true, count: endpointCatalog.length, endpoints: endpointCatalog });
+
+      const metaByKey = new Map();
+      for (const e of endpointCatalog) {
+        const method = String(e?.method || 'GET').toUpperCase();
+        const path = String(e?.path || '').trim();
+        if (!path) continue;
+        metaByKey.set(`${method} ${path}`, {
+          group: String(e?.group || inferEndpointGroup(path)).trim(),
+          body: (e && typeof e.body === 'object') ? e.body : undefined,
+          query: (e && typeof e.query === 'object') ? e.query : undefined,
+          name: String(e?.name || path).trim(),
+        });
+      }
+
+      const discovered = discoverAppRoutes();
+      for (const r of discovered) {
+        const method = String(r?.method || 'GET').toUpperCase();
+        const path = String(r?.path || '').trim();
+        if (!path) continue;
+        const k = `${method} ${path}`;
+        if (!metaByKey.has(k)) {
+          metaByKey.set(k, {
+            group: inferEndpointGroup(path),
+            name: path,
+          });
+        }
+      }
+
+      const endpoints = Array.from(metaByKey.entries())
+        .map(([k, meta]) => {
+          const i = k.indexOf(' ');
+          const method = k.slice(0, i);
+          const path = k.slice(i + 1);
+          return {
+            group: String(meta?.group || inferEndpointGroup(path)).trim(),
+            method,
+            path,
+            name: String(meta?.name || path).trim(),
+            ...(meta?.query ? { query: meta.query } : {}),
+            ...(meta?.body ? { body: meta.body } : {}),
+          };
+        })
+        .sort((a, b) => {
+          const g = String(a.group || '').localeCompare(String(b.group || ''));
+          if (g) return g;
+          const p = String(a.path || '').localeCompare(String(b.path || ''));
+          if (p) return p;
+          return String(a.method || '').localeCompare(String(b.method || ''));
+        });
+
+      return res.json({ ok: true, count: endpoints.length, endpoints });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
