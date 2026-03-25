@@ -349,6 +349,9 @@
     let queueLoadingDepth = 0;
     let queueFailStreak = 0;
     let queueAutoRetryTimer = null;
+    let queueLoadPromise = null;
+    let queueLoadQueued = false;
+    const thumbCacheByFile = new Map();
 
     function setQueueLoading(on=false){
       const meta = document.getElementById('meta');
@@ -507,13 +510,25 @@
       return { byKey: radioStationByKey, byHost: radioStationByHost, logoByKey: radioLogoByKey, logoByHost: radioLogoByHost, ambHosts: radioHostAmbiguous };
     }
 
+    function requestQueueLoad(delayMs=0){
+      const run = ()=>{ loadQueue().catch(()=>null); };
+      if (delayMs > 0) return setTimeout(run, delayMs);
+      run();
+      return null;
+    }
+
     function scheduleQueueRetry(delayMs=1200){
       try { clearTimeout(queueAutoRetryTimer); } catch {}
-      queueAutoRetryTimer = setTimeout(()=>{ loadQueue().catch(()=>null); }, Math.max(250, Number(delayMs)||1200));
+      queueAutoRetryTimer = setTimeout(()=>{ requestQueueLoad(); }, Math.max(250, Number(delayMs)||1200));
     }
 
     async function loadQueue(){
       if (dragState) return;
+      if (queueLoadPromise) {
+        queueLoadQueued = true;
+        return queueLoadPromise;
+      }
+      queueLoadPromise = (async () => {
       const list = document.getElementById('list');
       const meta = document.getElementById('meta');
       setQueueLoading(true);
@@ -550,7 +565,6 @@
           queueFailStreak += 1;
           const hasRows = !!(list && list.querySelector('.rowWrap'));
           if (meta) meta.textContent = hasRows ? `Queue update failed (${queueFailStreak}) — retrying…` : 'Pull to refresh queue';
-          if (!hasRows && list) list.innerHTML = '';
           // Reset signatures so a later successful poll always repaints rows.
           lastBaseSig = '';
           lastHeadPos = -1;
@@ -563,7 +577,15 @@
         const items = Array.isArray(j.items) ? j.items : [];
         const headPos = Number(j.headPos || -1);
         if (meta) meta.textContent = `${items.length} tracks`;
-        const radioMap = await loadRadioHostNameMap(headers);
+        const radioMap = {
+          byKey: radioStationByKey,
+          byHost: radioStationByHost,
+          logoByKey: radioLogoByKey,
+          logoByHost: radioLogoByHost,
+          ambHosts: radioHostAmbiguous,
+        };
+        // Warm/refresh radio mapping in background; never block queue paint.
+        loadRadioHostNameMap(headers).catch(() => null);
 
       const baseSig = JSON.stringify(items.map((x, idx) => [
         Number(x?._posDisplay || x?.pos || (idx + 1)),
@@ -620,12 +642,13 @@
         const stars = ratingsEnabled ? ('★'.repeat(rating) + '☆'.repeat(Math.max(0, 5 - rating))) : '';
         const starsHtml = stars ? ('<span class="stars">' + stars + '</span> ') : '';
         const thumbRaw = String(x?.thumbUrl || '').trim();
+        const cachedThumb = file ? String(thumbCacheByFile.get(file) || '').trim() : '';
         const stationLogoByName = (stationName || mappedByKey || mappedByHost) ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName || mappedByKey || mappedByHost)}` : '';
         const stationLogoByFile = file ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(file)}` : '';
         const hostFavicon = hostFallback ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(hostFallback)}.ico` : '';
-        const thumb = thumbRaw
-          ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`)
-          : (isStream ? (mappedLogoByKey || mappedLogoByHost || stationLogoByFile || stationLogoByName || hostFavicon || `${base}/art/current.jpg`) : `${base}/art/current.jpg`);
+        const thumbFromApi = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
+        const thumb = thumbFromApi || cachedThumb || (isStream ? (mappedLogoByKey || mappedLogoByHost || stationLogoByFile || stationLogoByName || hostFavicon || `${base}/art/current.jpg`) : `${base}/art/current.jpg`);
+        if (file && thumb) thumbCacheByFile.set(file, thumb);
         const head = pos === headPos;
         return `<li class="rowWrap ${isStream?'onlyDelete':''}" data-pos="${pos}" data-file="${encodeURIComponent(file)}" data-album="${encodeURIComponent(album)}" data-artist="${encodeURIComponent(artist)}" data-title="${encodeURIComponent(title)}" data-is-stream="${isStream?'1':'0'}">
           <div class="row ${head?'head':''}" data-pos="${pos}">
@@ -664,6 +687,16 @@
       } finally {
         setQueueLoading(false);
       }
+      })();
+      try {
+        return await queueLoadPromise;
+      } finally {
+        queueLoadPromise = null;
+        if (queueLoadQueued) {
+          queueLoadQueued = false;
+          requestQueueLoad(120);
+        }
+      }
     }
 
     function clearSwipes(exceptRow=null){
@@ -694,15 +727,15 @@
     });
 
     // In embedded pane mode this document can be reused; ensure we never stay dim/non-interactive.
-    window.addEventListener('pageshow', ()=>{ clearBackNavState(); loadQueue().catch(()=>null); });
-    window.addEventListener('focus', ()=>{ clearBackNavState(); loadQueue().catch(()=>null); });
-    document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) { clearBackNavState(); loadQueue().catch(()=>null); } });
+    window.addEventListener('pageshow', ()=>{ clearBackNavState(); requestQueueLoad(); });
+    window.addEventListener('focus', ()=>{ clearBackNavState(); requestQueueLoad(); });
+    document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) { clearBackNavState(); requestQueueLoad(); } });
     window.addEventListener('message', async (ev)=>{
       const d = ev?.data || {};
       if (!d || typeof d !== 'object') return;
       const t = String(d.type || '');
       if (t === 'np-queue-refresh') {
-        loadQueue().catch(()=>null);
+        requestQueueLoad();
         return;
       }
       if (t === 'np-queue-vibe-head') {
@@ -719,7 +752,7 @@
         }
       }
     });
-    setTimeout(()=>{ clearBackNavState(); loadQueue().catch(()=>null); }, 260);
+    setTimeout(()=>{ clearBackNavState(); requestQueueLoad(); }, 260);
 
     document.getElementById('routeAlexaBtn')?.addEventListener('click', async (ev)=>{
       const btn = ev.currentTarget;
@@ -1291,9 +1324,10 @@
     window.addEventListener('scroll', markUserScroll, { passive:true });
 
     ensureKey().catch(()=>null); // warm auth key in background; do not block first queue paint
-    loadQueue().then(()=>{ maybeScrollToHead(true); }).catch(()=>null);
+    requestQueueLoad();
+    setTimeout(()=>{ maybeScrollToHead(true); }, 450);
     // Light-touch background sync (avoid constant thumbnail churn).
-    pollTimer = setInterval(loadQueue, 15000);
+    pollTimer = setInterval(()=>{ requestQueueLoad(); }, 15000);
   
     // Pull-to-refresh (controller pages)
     (function enablePullToRefresh(){
