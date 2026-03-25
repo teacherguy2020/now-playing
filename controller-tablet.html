@@ -1747,6 +1747,35 @@
   async function getRecentAlbumsForRail() {
     var _a6, _b;
     const now = Date.now();
+    const fetchAlbumsOnce = async () => {
+      // Fast/public route first for Safari standalone compatibility.
+      const pub = await fetchJsonWithTimeout("".concat(base, "/recent/albums?limit=").concat(Math.max(18, Number(profile && profile.recentCount || 18) || 18)), { cache: "no-store" }, 6e3);
+      const pubItems = pub.ok && (pub == null ? void 0 : pub.json) && pub.json.ok && Array.isArray(pub.json.items) ? pub.json.items : [];
+      if (pubItems.length) {
+        const mapped = pubItems.map((x) => ({
+          album: String((x == null ? void 0 : x.album) || "").trim(),
+          artist: String((x == null ? void 0 : x.artist) || "").trim(),
+          thumbUrl: String((x == null ? void 0 : x.art) || "").trim(),
+          addedTs: Number((x == null ? void 0 : x.maxId) || 0) || 0,
+          folder: String((x == null ? void 0 : x.folder) || "").trim()
+        }));
+        return { ar: pub, albums: mapped };
+      }
+
+      // Fallback to legacy protected endpoint.
+      let ar0 = await fetchJsonWithTimeout("".concat(base, "/config/library-health/albums"), { cache: "no-store" }, 22e3);
+      if (!ar0.ok || !(ar0 == null ? void 0 : ar0.json) || !ar0.json.ok) {
+        await ensureKey().catch(() => null);
+        ar0 = await fetchJsonWithTimeout("".concat(base, "/config/library-health/albums"), { cache: "no-store", headers: reqHeaders(false) }, 22e3);
+      }
+      if ((!ar0.ok || !(ar0 == null ? void 0 : ar0.json) || !ar0.json.ok) && (Number(ar0 == null ? void 0 : ar0.status) === 401 || Number(ar0 == null ? void 0 : ar0.status) === 403)) {
+        runtimeTrackKey = "";
+        await ensureKey().catch(() => null);
+        ar0 = await fetchJsonWithTimeout("".concat(base, "/config/library-health/albums"), { cache: "no-store", headers: reqHeaders(false) }, 22e3);
+      }
+      const albums0 = ar0.ok && (ar0 == null ? void 0 : ar0.json) && ar0.json.ok && Array.isArray(ar0.json.albums) ? ar0.json.albums : [];
+      return { ar: ar0, albums: albums0 };
+    };
     if (!Array.isArray(recentAlbumsCache.albums) || !recentAlbumsCache.albums.length) {
       try {
         const persisted = JSON.parse(localStorage.getItem(RECENT_ALBUMS_CACHE_KEY) || "{}");
@@ -1764,8 +1793,8 @@
         recentAlbumsRefreshInFlight = (async () => {
           var _a7;
           try {
-            const ar2 = await fetchJsonWithTimeout("".concat(base, "/config/library-health/albums"), { cache: "no-store", headers: reqHeaders(false) }, 9e3);
-            const albums2 = ar2.ok && ((_a7 = ar2.json) == null ? void 0 : _a7.ok) && Array.isArray(ar2.json.albums) ? ar2.json.albums : [];
+            const r2 = await fetchAlbumsOnce();
+            const albums2 = Array.isArray(r2 == null ? void 0 : r2.albums) ? r2.albums : [];
             if (albums2.length) {
               recentAlbumsCache = { ts: Date.now(), albums: albums2 };
               try {
@@ -1782,17 +1811,19 @@
       return recentAlbumsCache.albums;
     }
     let ar;
+    let albums = [];
     try {
-      ar = await fetchJsonWithTimeout("".concat(base, "/config/library-health/albums"), { cache: "no-store", headers: reqHeaders(false) }, 9e3);
+      const r0 = await fetchAlbumsOnce();
+      ar = r0 == null ? void 0 : r0.ar;
+      albums = Array.isArray(r0 == null ? void 0 : r0.albums) ? r0.albums : [];
     } catch {
       return hasCached ? recentAlbumsCache.albums : [];
     }
-    let albums = ar.ok && ((_a6 = ar.json) == null ? void 0 : _a6.ok) && Array.isArray(ar.json.albums) ? ar.json.albums : [];
     const withThumb = albums.filter((a) => String((a == null ? void 0 : a.thumbUrl) || "").trim()).length;
     if (albums.length && withThumb < Math.max(1, Math.floor(albums.length * 0.2))) {
       await new Promise((r) => setTimeout(r, 220));
-      const ar2 = await fetchJsonWithTimeout("".concat(base, "/config/library-health/albums"), { cache: "no-store", headers: reqHeaders(false) }, 9e3);
-      const albums2 = ar2.ok && ((_b = ar2.json) == null ? void 0 : _b.ok) && Array.isArray(ar2.json.albums) ? ar2.json.albums : [];
+      const r2 = await fetchAlbumsOnce();
+      const albums2 = Array.isArray(r2 == null ? void 0 : r2.albums) ? r2.albums : [];
       if (albums2.length) albums = albums2;
     }
     recentAlbumsCache = { ts: now, albums };
@@ -1908,7 +1939,11 @@
         await renderConfiguredIpadRows(limit);
       } catch {
       }
-      const albumsRaw = await getRecentAlbumsForRail();
+      let albumsRaw = await getRecentAlbumsForRail();
+      if (!Array.isArray(albumsRaw) || !albumsRaw.length) {
+        await new Promise((r) => setTimeout(r, 650));
+        albumsRaw = await getRecentAlbumsForRail();
+      }
       const albums = albumsRaw.filter((a) => {
         const f = String((a == null ? void 0 : a.folder) || "").trim().toLowerCase();
         return !(f.startsWith("usb/samsungmoode/podcasts/") || f.includes("/podcasts/"));
@@ -1923,35 +1958,27 @@
           saveRecentCache(RECENT_ALBUMS_CACHE_KEY, ipadRecentItems.albums);
         }
       }
-      const pr = await fetchJsonWithTimeout("".concat(base, "/podcasts"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
-      const podcasts = pr.ok && ((_a6 = pr.json) == null ? void 0 : _a6.ok) && Array.isArray(pr.json.items) ? pr.json.items.slice(0, limit).map((s) => ({
-        title: String((s == null ? void 0 : s.title) || (s == null ? void 0 : s.rss) || "(podcast)").trim(),
-        art: String((s == null ? void 0 : s.imageUrl) || "").trim() || "".concat(base, "/art/current.jpg")
+      const pr = await fetchJsonWithTimeout("".concat(base, "/recent/podcasts?limit=").concat(limit), { cache: "no-store" }, 3200);
+      const nextPodcasts = pr.ok && ((_a6 = pr.json) == null ? void 0 : _a6.ok) && Array.isArray(pr.json.items) ? pr.json.items.slice(0, limit).map((p) => ({
+        kind: "podcast",
+        title: String((p == null ? void 0 : p.title) || "(podcast)").trim(),
+        art: String((p == null ? void 0 : p.art) || "").trim().startsWith("http") ? String(p == null ? void 0 : p.art) : "".concat(base).concat(String((p == null ? void 0 : p.art) || "/art/current.jpg")),
+        rss: String((p == null ? void 0 : p.rss) || "").trim()
       })) : [];
-      const nextPodcasts = podcasts.map((p, idx) => {
-        var _a7, _b2;
-        return { kind: "podcast", title: String((p == null ? void 0 : p.title) || "(podcast)").trim(), art: String((p == null ? void 0 : p.art) || "".concat(base, "/art/current.jpg")), rss: String(((_b2 = (((_a7 = pr.json) == null ? void 0 : _a7.items) || [])[idx]) == null ? void 0 : _b2.rss) || "").trim() };
-      });
       if (nextPodcasts.length && setIpadRecentItemsIfChanged("podcasts", nextPodcasts)) saveRecentCache(RECENT_PODCASTS_CACHE_KEY, ipadRecentItems.podcasts);
-      const pl = await fetchJsonWithTimeout("".concat(base, "/config/queue-wizard/playlists"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
-      if (pl.ok && ((_b = pl.json) == null ? void 0 : _b.ok) && Array.isArray(pl.json.playlists)) {
-        let playlists = pl.json.playlists.slice(0, limit).map((n) => {
-          const title = String(n || "(playlist)").trim();
-          const safe = title.replace(/\s+/g, "_");
-          return {
-            title,
-            art: "http://".concat(runtimeMoodeHost, "/imagesw/playlist-covers/").concat(encodeURIComponent(title), ".jpg"),
-            artAlt: "http://".concat(runtimeMoodeHost, "/imagesw/playlist-covers/").concat(encodeURIComponent(safe), ".jpg")
-          };
-        });
-        playlists = await sortPlaylistsByCoverDate(playlists);
+      const pl = await fetchJsonWithTimeout("".concat(base, "/recent/playlists?limit=").concat(limit), { cache: "no-store" }, 3200);
+      if (pl.ok && ((_b = pl.json) == null ? void 0 : _b.ok) && Array.isArray(pl.json.items)) {
+        const playlists = pl.json.items.slice(0, limit).map((x) => ({
+          title: String((x == null ? void 0 : x.title) || (x == null ? void 0 : x.playlist) || "(playlist)").trim(),
+          art: String((x == null ? void 0 : x.art) || "").trim(),
+          artAlt: String((x == null ? void 0 : x.artAlt) || "").trim()
+        }));
         const nextPlaylists = playlists.map((x) => ({ kind: "playlist", playlist: String((x == null ? void 0 : x.title) || "(playlist)").trim(), title: String((x == null ? void 0 : x.title) || "(playlist)").trim(), art: String((x == null ? void 0 : x.art) || "".concat(base, "/art/current.jpg")) }));
         if (nextPlaylists.length && setIpadRecentItemsIfChanged("playlists", nextPlaylists)) saveRecentCache(RECENT_PLAYLISTS_CACHE_KEY, ipadRecentItems.playlists);
         document.querySelectorAll("#ipadRailPlaylists img").forEach((img) => {
           img.onerror = () => {
-            var _a7;
             const cur = String(img.getAttribute("src") || "").trim();
-            const alt = String(((_a7 = playlists.find((x) => String(x.art || "").trim() === cur)) == null ? void 0 : _a7.artAlt) || "").trim();
+            const alt = String((playlists.find((x) => String(x.art || "").trim() === cur) || {}).artAlt || "").trim();
             if (alt && cur !== alt) {
               img.setAttribute("src", alt);
               return;
@@ -1965,16 +1992,14 @@
 
       // Unified row-source renderer (uses profile.recentRows mapping for all 4 rows)
       try {
-        const rr = await fetchJsonWithTimeout("".concat(base, "/config/queue-wizard/radio-favorites"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
-        if (rr.ok && ((_c = rr.json) == null ? void 0 : _c.ok) && Array.isArray(rr.json.favorites)) {
-          const radio = rr.json.favorites.slice(0, limit).map((x) => {
-            const title = String((x == null ? void 0 : x.stationName) || (x == null ? void 0 : x.file) || "(station)").trim();
-            return { title, art: "".concat(base, "/art/radio-logo.jpg?name=").concat(encodeURIComponent(title)) };
-          });
-          const nextRadio = radio.map((x, idx) => {
-            var _a7, _b2;
-            return { kind: "radio", title: String((x == null ? void 0 : x.title) || "(station)").trim(), art: String((x == null ? void 0 : x.art) || "".concat(base, "/art/radio-logo.jpg")), url: String(((_b2 = (((_a7 = rr.json) == null ? void 0 : _a7.favorites) || [])[idx]) == null ? void 0 : _b2.file) || "").trim() };
-          });
+        const rr = await fetchJsonWithTimeout("".concat(base, "/recent/radio-favorites?limit=").concat(limit), { cache: "no-store" }, 3200);
+        if (rr.ok && ((_c = rr.json) == null ? void 0 : _c.ok) && Array.isArray(rr.json.items)) {
+          const nextRadio = rr.json.items.slice(0, limit).map((x) => ({
+            kind: "radio",
+            title: String((x == null ? void 0 : x.title) || "(station)").trim(),
+            art: String((x == null ? void 0 : x.art) || "").trim().startsWith("http") ? String(x == null ? void 0 : x.art) : "".concat(base).concat(String((x == null ? void 0 : x.art) || "/art/radio-logo.jpg")),
+            url: String((x == null ? void 0 : x.url) || "").trim()
+          }));
           if (nextRadio.length && setIpadRecentItemsIfChanged("radio", nextRadio)) saveRecentCache(RECENT_RADIO_CACHE_KEY, ipadRecentItems.radio);
         }
       } catch {
@@ -2413,7 +2438,11 @@
         recentRenderedSource = "radio";
         return;
       }
-      const albumsRaw = await getRecentAlbumsForRail();
+      let albumsRaw = await getRecentAlbumsForRail();
+      if (!Array.isArray(albumsRaw) || !albumsRaw.length) {
+        await new Promise((r) => setTimeout(r, 650));
+        albumsRaw = await getRecentAlbumsForRail();
+      }
       const albums = albumsRaw.filter((a) => {
         const f = String((a == null ? void 0 : a.folder) || "").trim().toLowerCase();
         return !(f.startsWith("usb/samsungmoode/podcasts/") || f.includes("/podcasts/"));
