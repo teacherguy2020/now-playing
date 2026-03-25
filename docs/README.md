@@ -18,6 +18,7 @@ This docs set follows the same order as the app tabs.
 12. [Mobile Builder + Controller Pages](./16-mobile-builder.md)
 13. [Kiosk Mode](./18-kiosk.md)
 14. [Visualizer](./19-visualizer.md)
+15. [Controller Recents + Last.fm (Tablet)](./20-controller-recents-lastfm.md)
 
 ## Cross-cutting chapters
 

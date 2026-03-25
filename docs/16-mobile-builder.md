@@ -49,3 +49,7 @@ Color dots in `mobile.html` now drive controller visual tokens (icon accent and 
 - Quick Search interactions in `controller.html` include instant actions (play/add) for artist/album/playlist.
 - Recently Added rail is sourced from album inventory and sorted newest → oldest.
 - `controller-now-playing.html` is currently based on portrait `index.html` behavior with controller-specific navigation transitions.
+
+## See also
+
+- [Controller Recents + Last.fm (Tablet)](./20-controller-recents-lastfm.md) for row-source customization, Last.fm modes, URL one-time seeding, and recents stability guardrails.
