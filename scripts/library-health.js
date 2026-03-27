@@ -2326,7 +2326,8 @@ $('albumMetaOut')?.addEventListener('change', async (ev) => {
   if (!sel) return;
   const file = String(sel.getAttribute('data-file') || '').trim();
   const next = Math.max(0, Math.min(5, Number(sel.value || 0) || 0));
-  const prev = Number(sel.dataset.prevRating ?? sel.getAttribute('data-prev-rating') ?? sel.value || 0) || 0;
+  const prevRaw = (sel.dataset.prevRating ?? sel.getAttribute('data-prev-rating') ?? sel.value ?? 0);
+  const prev = Number(prevRaw) || 0;
   sel.disabled = true;
   setAlbumMetaStatus(`Setting rating ${next}…`, true);
   try {
