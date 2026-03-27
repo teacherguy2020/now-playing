@@ -41,9 +41,18 @@
     body.embedded .artistCard{width:min(1120px,96vw);max-height:92vh;padding:14px}
     body.embedded .artistGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
     body.embedded.embeddedWide .artistGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-    .artistAlbumBtn{border:1px solid #2a3a58;background:#12203a;color:#e6efff;border-radius:10px;padding:8px;cursor:pointer;text-align:left}
-    .artistAlbumBtn img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#0a1222;margin-bottom:6px}
+    .artistAlbumTile{border:1px solid #2a3a58;background:#12203a;color:#e6efff;border-radius:10px;padding:8px;cursor:pointer;text-align:left}
     .artistAlbumName{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .artistCoverWrap{position:relative;width:100%;aspect-ratio:1/1}
+    .artistCoverFlip{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1)}
+    .artistAlbumTile.is-flipped .artistCoverFlip{transform:rotateY(180deg)}
+    .artistCoverFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:8px;overflow:hidden}
+    .artistCoverFace img{width:100%;height:100%;object-fit:cover;background:#0a1222}
+    .artistCoverBack{transform:rotateY(180deg);display:flex;align-items:center;justify-content:center;background:#0f1b30;border:1px solid #2a3a58}
+    .artistFlipBtns{display:flex;flex-direction:column;gap:8px;width:68%;margin:0 auto}
+    .artistFlipBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 8px;font-size:12px;cursor:pointer}
+    .artistMore{position:absolute;top:6px;left:6px;width:30px;height:30px;border:1px solid #2a3a58;background:rgba(19,32,56,.9);color:#e6efff;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;line-height:1;z-index:2}
+    .artistAlbumTile.is-flipped .artistCoverFront .artistMore{display:none}
     .loadingRow{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:8px 2px}
     .spin{width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
@@ -396,7 +405,8 @@
         const alb = String(a?.album || '').trim();
         const sf = String(a?.sampleFile || '').trim();
         const art = sf ? `${base}/art/track_640.jpg?file=${encodeURIComponent(sf)}` : (modalCtx.art || `${base}/art/current.jpg`);
-        return `<button type='button' class='artistAlbumBtn' data-album='${encodeURIComponent(alb)}' data-art='${encodeURIComponent(art)}' data-folder='${encodeURIComponent(String(a?.folder||''))}'><img class='lazyArtistCover' data-src='${art}' alt=''><div class='artistAlbumName'>${alb || '(unknown album)'}</div></button>`;
+        const folder = encodeURIComponent(String(a?.folder||''));
+        return `<div class='artistAlbumTile' role='button' tabindex='0' data-album='${encodeURIComponent(alb)}' data-art='${encodeURIComponent(art)}' data-folder='${folder}'><div class='artistCoverWrap'><div class='artistCoverFlip'><div class='artistCoverFace artistCoverFront'><img class='lazyArtistCover' data-src='${art}' alt=''><button type='button' class='artistMore' data-artist-more='1' aria-label='More'>•••</button></div><div class='artistCoverFace artistCoverBack'><button type='button' class='artistMore' data-artist-more='1' aria-label='More'>•••</button><div class='artistFlipBtns'><button type='button' data-artist-flip-act='append'>Append</button><button type='button' data-artist-flip-act='play'>Play</button><button type='button' data-artist-flip-act='shuffle'>Shuffle</button></div></div></div></div><div class='artistAlbumName'>${alb || '(unknown album)'}</div></div>`;
       }).join('') || `<div class='loadingRow'><span class='spin'></span><span>Loading albums…</span></div>`;
       grid.querySelectorAll('img.lazyArtistCover[data-src]').forEach((img)=>{
         img.onerror = () => {
@@ -486,6 +496,11 @@
 
     document.getElementById('artistCloseBtn').addEventListener('click', closeArtistModal);
     document.getElementById('artistModal').addEventListener('click', (ev)=>{ if(ev.target.id==='artistModal') closeArtistModal(); });
+    document.addEventListener('click', (ev)=>{
+      if (!ev.target.closest('#artistGrid .artistAlbumTile')) {
+        document.querySelectorAll('#artistGrid .artistAlbumTile.is-flipped').forEach((el)=>el.classList.remove('is-flipped'));
+      }
+    });
     document.getElementById('excludeOn').addEventListener('change', renderArtistGrid);
     document.getElementById('excludeText').addEventListener('input', renderArtistGrid);
 
@@ -520,24 +535,32 @@
     }
     function closeAlbumModal(){ document.getElementById('albumModal').classList.remove('open'); artistCoverQueuePaused = false; scheduleArtistCovers(); }
 
-    async function runAlbumAction(mode){
-      if(!modalCtx.album) return;
+    async function applyAlbumActionDirect(album, artist, folder, mode, shuffle=false){
+      if(!album) return;
       try {
-        const tracks = await fetchAlbumTracks(modalCtx.album, modalCtx.artist || '');
+        const tracks = await fetchAlbumTracks(album, artist || '', folder || '');
         const files = tracks.map(t => String(t?.file || '').trim()).filter(Boolean);
         if (files.length) {
           await ensureKey();
           const applyMode = (mode === 'replace' || mode === 'append' || mode === 'crop') ? mode : 'append';
+          const doShuffle = !!shuffle;
           const r = await fetch(`${base}/config/queue-wizard/apply`, {
             method:'POST',
             headers:{'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})},
-            body: JSON.stringify({ mode: applyMode, keepNowPlaying: applyMode !== 'replace', tracks: files, shuffle:false, forceRandomOff:false, fastStart: applyMode === 'replace' })
+            body: JSON.stringify({ mode: applyMode, keepNowPlaying: applyMode !== 'replace', tracks: files, shuffle: doShuffle, forceRandomOff: !doShuffle, fastStart: applyMode === 'replace' })
           });
           const j = await r.json().catch(()=>({}));
-          if (r.ok && j?.ok) { closeAlbumModal(); return; }
+          if (r.ok && j?.ok) return;
         }
       } catch {}
-      try{ await sendPlayback('addalbum',{mode,album:modalCtx.album,artist:modalCtx.artist||''}); }catch{}
+      const playbackMode = shuffle ? 'replace' : mode;
+      try{ await sendPlayback('addalbum',{mode: playbackMode, album, artist:artist||''}); }catch{}
+      if (shuffle) { try { await sendPlayback('shuffle-on', {}); } catch {} }
+    }
+
+    async function runAlbumAction(mode){
+      if(!modalCtx.album) return;
+      await applyAlbumActionDirect(modalCtx.album, modalCtx.artist || '', '', mode);
       closeAlbumModal();
     }
     document.getElementById('albumAppendBtn').addEventListener('click', ()=>runAlbumAction('append'));
@@ -555,13 +578,42 @@
       openArtistModal();
     });
 
+    const closeArtistAlbumFlips = ()=>{ document.querySelectorAll('#artistGrid .artistAlbumTile.is-flipped').forEach((el)=>el.classList.remove('is-flipped')); };
+
     document.getElementById('artistGrid').addEventListener('click', async (ev)=>{
-      const btn = ev.target.closest('.artistAlbumBtn[data-album]');
-      if (!btn) return;
       const dec=(s)=>{try{return decodeURIComponent(String(s||''));}catch{return String(s||'');}};
-      modalCtx.album = dec(btn.getAttribute('data-album') || '');
-      modalCtx.art = dec(btn.getAttribute('data-art') || '') || modalCtx.art;
-      const folder = dec(btn.getAttribute('data-folder') || '');
+      const tile = ev.target.closest('.artistAlbumTile[data-album]');
+      if (!tile) return;
+
+      const flipBtn = ev.target.closest('button[data-artist-flip-act]');
+      if (flipBtn) {
+        ev.stopPropagation();
+        const album = dec(tile.getAttribute('data-album') || '');
+        const folder = dec(tile.getAttribute('data-folder') || '');
+        const action = String(flipBtn.getAttribute('data-artist-flip-act') || 'append');
+        closeArtistAlbumFlips();
+        if (action === 'shuffle') {
+          await applyAlbumActionDirect(album, modalCtx.artist || '', folder, 'replace', true);
+        } else {
+          await applyAlbumActionDirect(album, modalCtx.artist || '', folder, action === 'play' ? 'replace' : 'append', false);
+        }
+        closeArtistModal();
+        return;
+      }
+
+      if (ev.target.closest('button[data-artist-more]')) {
+        ev.stopPropagation();
+        const was = tile.classList.contains('is-flipped');
+        closeArtistAlbumFlips();
+        if (!was) tile.classList.add('is-flipped');
+        return;
+      }
+
+      if (tile.classList.contains('is-flipped')) { closeArtistAlbumFlips(); return; }
+      closeArtistAlbumFlips();
+      modalCtx.album = dec(tile.getAttribute('data-album') || '');
+      modalCtx.art = dec(tile.getAttribute('data-art') || '') || modalCtx.art;
+      const folder = dec(tile.getAttribute('data-folder') || '');
       modalCtx.tracks = [];
       openAlbumModal();
       document.getElementById('albumTracks').innerHTML = `<li class='loadingRow'><span class='spin'></span><span>Loading album tracks…</span></li>`;

@@ -523,6 +523,8 @@
     :is(body.ipad11Landscape, body.tabletLandscape) .npCtrls .ctl{width:var(--np-ctl-size-live,var(--np-ctl-size)) !important;min-width:var(--np-ctl-size-live,var(--np-ctl-size)) !important;height:var(--np-ctl-size-live,var(--np-ctl-size)) !important;min-height:var(--np-ctl-size-live,var(--np-ctl-size)) !important;border-radius:999px !important}
     :is(body.ipad11Landscape, body.tabletLandscape) .npCtrls .ctl.big{width:var(--np-ctl-size-live,var(--np-ctl-size-big)) !important;min-width:var(--np-ctl-size-live,var(--np-ctl-size-big)) !important;height:var(--np-ctl-size-live,var(--np-ctl-size-big)) !important;min-height:var(--np-ctl-size-live,var(--np-ctl-size-big)) !important}
     :is(body.ipad11Landscape, body.tabletLandscape) .npCtrls .ctl svg{width:var(--np-ctl-icon) !important;height:var(--np-ctl-icon) !important}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape, body.ipad11Landscape, body.tabletLandscape, body.ipadModern, body.ipadAir) .npCtrls .ctl.on{background:rgba(22,163,74,.62)!important;box-shadow:0 0 0 1px rgba(34,197,94,.72),0 0 20px rgba(34,197,94,.50),0 5px 14px rgba(0,0,0,.34)!important;color:#eaffef!important;border-color:rgba(74,222,128,.78)!important}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape, body.ipad11Landscape, body.tabletLandscape, body.ipadModern, body.ipadAir) .npCtrls .ctl.confirm{background:rgba(22,163,74,.68)!important;box-shadow:0 0 0 1px rgba(74,222,128,.80),0 0 22px rgba(74,222,128,.58),0 6px 16px rgba(0,0,0,.34)!important}
 
     @keyframes navForwardOut{
       from{transform:translateX(0);opacity:1}
@@ -1596,8 +1598,10 @@
       } else {
         npSeekEnabled = false;
       }
-      const shOn = String((j == null ? void 0 : j.random) || "").toLowerCase() === "on";
-      const rpOn = String((j == null ? void 0 : j.repeat) || "").toLowerCase() === "on";
+      const shRaw = String((j == null ? void 0 : j.random) || "").trim().toLowerCase();
+      const rpRaw = String((j == null ? void 0 : j.repeat) || "").trim().toLowerCase();
+      const shOn = shRaw === "on" || shRaw === "1" || shRaw === "true";
+      const rpOn = rpRaw === "on" || rpRaw === "1" || rpRaw === "true";
       const isPlaying = st === "play" || st === "playing";
       const icon = document.getElementById("npPlayIcon");
       if (icon) icon.setAttribute("d", isPlaying ? "M8 5h3v14H8zM13 5h3v14h-3z" : "M8 5v14l11-7z");
@@ -2578,6 +2582,16 @@
   async function sendPlayback(action, extra = {}) {
     await ensureKey();
     await fetch("".concat(base, "/config/diagnostics/playback"), { method: "POST", headers: reqHeaders(true), body: JSON.stringify(Object.assign({ action }, extra || {})) }).catch(() => null);
+  }
+  async function sendPlaybackChecked(action, extra = {}) {
+    await ensureKey();
+    try {
+      const r = await fetch("".concat(base, "/config/diagnostics/playback"), { method: "POST", headers: reqHeaders(true), body: JSON.stringify(Object.assign({ action }, extra || {})) });
+      const j = await r.json().catch(() => ({}));
+      return { ok: !!(r.ok && (j == null ? void 0 : j.ok)), status: r.status, data: j || {} };
+    } catch (e) {
+      return { ok: false, status: 0, data: { error: (e == null ? void 0 : e.message) || String(e || "") } };
+    }
   }
   async function fetchTrackMetaByFile(file) {
     const f = String(file || "").trim();
@@ -3585,8 +3599,8 @@
     if (!act) return;
     const isFastTransport = act === "prev" || act === "next" || act === "play" || act === "pause" || act === "toggle";
     btn.disabled = true;
-    btn.classList.add("loading");
     if (isFastTransport) {
+      btn.classList.add("loading");
       if (act === "play" || act === "pause" || act === "toggle") {
         const forcePlaying = act === "play" ? true : act === "pause" ? false : null;
         let nextPlaying = forcePlaying;
@@ -3616,21 +3630,46 @@
       return;
     }
     try {
-      await sendPlayback(act);
-      btn.classList.remove("loading");
-      btn.classList.add("confirm");
-      setTimeout(() => {
-        try {
-          btn.classList.remove("confirm");
-        } catch {
+      if (act === "shuffle") {
+        const wasOn = btn.classList.contains("on");
+        const optimistic = !wasOn;
+        document.querySelectorAll('#npCtrls .ctl[data-np-act="shuffle"]').forEach((b) => b.classList.toggle("on", optimistic));
+        const out = await sendPlaybackChecked(act);
+        if (out.ok) {
+          if (typeof (out == null ? void 0 : out.data.randomOn) === "boolean") {
+            document.querySelectorAll('#npCtrls .ctl[data-np-act="shuffle"]').forEach((b) => b.classList.toggle("on", !!out.data.randomOn));
+          }
+          btn.classList.add("confirm");
+          setTimeout(() => {
+            try {
+              btn.classList.remove("confirm");
+            } catch {
+            }
+          }, 560);
+        } else {
+          document.querySelectorAll('#npCtrls .ctl[data-np-act="shuffle"]').forEach((b) => b.classList.toggle("on", wasOn));
         }
-      }, 560);
+      } else {
+        const useSpinner = act !== "repeat";
+        if (useSpinner) btn.classList.add("loading");
+        await sendPlayback(act);
+        if (useSpinner) btn.classList.remove("loading");
+        btn.classList.add("confirm");
+        setTimeout(() => {
+          try {
+            btn.classList.remove("confirm");
+          } catch {
+          }
+        }, 560);
+      }
     } catch {
-      btn.classList.remove("loading");
+      if (act !== "shuffle" && act !== "repeat") btn.classList.remove("loading");
     } finally {
       btn.disabled = false;
     }
-    refreshNowPlayingCard().catch(() => null);
+    setTimeout(() => {
+      refreshNowPlayingCard().catch(() => null);
+    }, act === "shuffle" ? 260 : 0);
   });
   wakeNpCtrls(1400);
   if (npTapEl) {
