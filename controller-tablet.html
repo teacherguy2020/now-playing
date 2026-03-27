@@ -2112,6 +2112,7 @@
     return m[String(src || "").toLowerCase()] || "Recently Added";
   }
   async function fetchLastfmItemsForSource(source, limit) {
+    await ensureKey();
     const src = String(source || "").toLowerCase();
     const mode = src === "lastfm-topartists" ? "top-artists" : src === "lastfm-topalbums" ? "top-albums" : src === "lastfm-recenttracks" ? "recent-tracks" : "top-tracks";
     const modeKey = src.replace(/^lastfm-/, "") || "toptracks";
@@ -2358,6 +2359,7 @@
         const lastfmPref = await getLastfmRecentsPref();
         if (lastfmPref.enabled) {
           try {
+            await ensureKey();
             const mode = lastfmPref.mode === "topartists" ? "top-artists" : lastfmPref.mode === "topalbums" ? "top-albums" : lastfmPref.mode === "recenttracks" ? "recent-tracks" : "top-tracks";
             const cacheKey = "np.recent.lastfm.".concat(String(lastfmPref.mode || "toptracks"), ".v3");
             const cachedLf = loadRecentCache(cacheKey);
@@ -4244,8 +4246,8 @@
       const kind = String((recentMenuCtx == null ? void 0 : recentMenuCtx.kind) || "album");
       if (kind === "lastfm-track") {
         if (act === "open") {
-          const u = String(recentMenuCtx.url || "").trim();
-          if (u) window.open(u, "_blank", "noopener");
+          if (recentMenuCtx.file) await sendPlayback("addfile", { file: recentMenuCtx.file });
+          else await sendPlayback("addtracksearch", { track: recentMenuCtx.track || recentMenuCtx.title || "", artist: recentMenuCtx.artist || "" });
           return;
         }
         if (act === "play") {
@@ -4448,8 +4450,8 @@
     const kind = String((recentMenuCtx == null ? void 0 : recentMenuCtx.kind) || "album");
     if (kind === "lastfm-track") {
       if (act === "open") {
-        const u = String(recentMenuCtx.url || "").trim();
-        if (u) window.open(u, "_blank", "noopener");
+        if (recentMenuCtx.file) await sendPlayback("addfile", { file: recentMenuCtx.file });
+        else await sendPlayback("addtracksearch", { track: recentMenuCtx.track || recentMenuCtx.title || "", artist: recentMenuCtx.artist || "" });
         return;
       }
       if (act === "play") {
