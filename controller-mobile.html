@@ -1115,6 +1115,9 @@
       const sp = document.getElementById('railTitleSpin');
       if (sp) sp.hidden = !on;
     }
+    const escAttr = (v)=>String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const escHtml = (v)=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const normalizeThumbUrl = (u)=>{ const v=String(u||'').trim(); return v ? v.replace(/[\u2019']/g,'%27').replace(/#/g,'%23') : v; };
 
     function recentFlipButtonsHtml(kind, idx){
       const k = String(kind || 'album').trim().toLowerCase();
@@ -1126,9 +1129,9 @@
 
     function railThumbHtml(it, i){
       const title = String(it?.title || it?.album || it?.playlist || '(item)').trim();
-      const art = String(it?.art || `${base}/art/current.jpg`).trim();
+      const art = normalizeThumbUrl(String(it?.art || `${base}/art/current.jpg`).trim());
       const kind = String(it?.kind || 'album').trim().toLowerCase();
-      return `<div class='thumbWrap'><div class='thumbFlip'><div class='thumbFace thumbFaceFront'><img src='${art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='thumbFace thumbFaceBack'><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button><div class='thumbFlipBtns'>${recentFlipButtonsHtml(kind, i)}</div></div></div></div><div class='cap' title='${title}'>${title}</div>`;
+      return `<div class='thumbWrap'><div class='thumbFlip'><div class='thumbFace thumbFaceFront'><img src='${escAttr(art)}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button></div><div class='thumbFace thumbFaceBack'><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='${i}'>•••</button><div class='thumbFlipBtns'>${recentFlipButtonsHtml(kind, i)}</div></div></div></div><div class='cap' title='${escAttr(title)}'>${escHtml(title)}</div>`;
     }
 
     function renderIpadRail(hostId, items, rowKey, loading = false){
@@ -1150,10 +1153,10 @@
         const d = document.createElement('div');
         d.className = `thumb${(rowKey === 'radio' && String(it?.url||'').trim() && String(it.url).trim()===String(recentActiveRadioUrl||'').trim())?' is-active-radio':''}`;
         const title = String(it?.title || it?.album || it?.playlist || '(item)').trim();
-        const art = String(it?.art || `${base}/art/current.jpg`).trim();
+        const art = normalizeThumbUrl(String(it?.art || `${base}/art/current.jpg`).trim());
         d.setAttribute('data-ra-row', String(rowKey || 'albums'));
         d.setAttribute('data-ra-idx', String(i));
-        d.innerHTML = `<div class='thumbWrap'><img src='${art}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-row='${String(rowKey || 'albums')}' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${title}'>${title}</div>`;
+        d.innerHTML = `<div class='thumbWrap'><img src='${escAttr(art)}' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-row='${String(rowKey || 'albums')}' data-ra-idx='${i}'>•••</button></div><div class='cap' title='${escAttr(title)}'>${escHtml(title)}</div>`;
         host.appendChild(d);
       });
     }

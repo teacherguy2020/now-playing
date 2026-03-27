@@ -40,7 +40,7 @@ async function refreshRecentAlbumsFastCache() {
           file: String(a?.sampleFile || '').trim(),
           folder: String(a?.folder || '').trim(),
           maxId: Number(a?.addedTs || 0) || 0,
-          art: String(a?.thumbUrl || '').trim() || `/art/track_640.jpg?file=${encodeURIComponent(String(a?.sampleFile || ''))}`,
+          art: String(a?.thumbUrl || '').trim() || `/art/track_640.jpg?file=${encodeURIComponent(String(a?.sampleFile || '')).replace(/'/g,'%27')}`,
         }));
       if (items.length) {
         recentAlbumsFastCache.ts = Date.now();

@@ -1897,7 +1897,7 @@ async function loadAlbumMetadata(){
     out.innerHTML = rows.length ? `
       <table>
         <thead><tr><th>#</th><th>Title</th><th>Artist</th><th>Album</th><th>Date</th><th>Genre</th><th>Rating</th><th>File</th><th>Override value</th><th>Full tags</th></tr></thead>
-        <tbody>${rows.map((x)=>`<tr><td>${esc(x.track||'')}</td><td>${esc(x.title||'')}</td><td>${esc(x.artist||'')}</td><td>${esc(x.album||'')}</td><td>${esc(x.date||'')}</td><td>${esc(x.genre||'')}</td><td>${Number(x.rating||0)}</td><td>${esc(x.file||'')}</td><td><input type="text" class="albumTagOverride" data-file="${esc(x.file||'')}" placeholder="Optional per-track override"></td><td>${x.metaflac ? `<details><summary>show tags</summary><pre style="white-space:pre-wrap;max-width:560px;max-height:260px;overflow:auto;">${esc(x.metaflac)}</pre></details>` : '<span class="muted">(not flac/no data)</span>'}</td></tr>`).join('')}</tbody>
+        <tbody>${rows.map((x)=>`<tr><td>${esc(x.track||'')}</td><td>${esc(x.title||'')}</td><td>${esc(x.artist||'')}</td><td>${esc(x.album||'')}</td><td>${esc(x.date||'')}</td><td>${esc(x.genre||'')}</td><td><select class="albumTrackRating" data-file="${esc(x.file||'')}" data-prev-rating="${Number(x.rating||0)}" style="min-width:64px;"><option value="0" ${Number(x.rating||0)===0?'selected':''}>0</option><option value="1" ${Number(x.rating||0)===1?'selected':''}>1</option><option value="2" ${Number(x.rating||0)===2?'selected':''}>2</option><option value="3" ${Number(x.rating||0)===3?'selected':''}>3</option><option value="4" ${Number(x.rating||0)===4?'selected':''}>4</option><option value="5" ${Number(x.rating||0)===5?'selected':''}>5</option></select></td><td>${esc(x.file||'')}</td><td><input type="text" class="albumTagOverride" data-file="${esc(x.file||'')}" placeholder="Optional per-track override"></td><td>${x.metaflac ? `<details><summary>show tags</summary><pre style="white-space:pre-wrap;max-width:560px;max-height:260px;overflow:auto;">${esc(x.metaflac)}</pre></details>` : '<span class="muted">(not flac/no data)</span>'}</td></tr>`).join('')}</tbody>
       </table>
     ` : '<div class="muted">No tracks in this album folder.</div>';
     setAlbumTagStatus('');
@@ -1908,6 +1908,22 @@ async function loadAlbumMetadata(){
   } finally {
     setAlbumMetaBusy(false);
   }
+}
+
+async function updateAlbumTrackRating(file, rating){
+  const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
+  const key = ($('key')?.value || '').trim();
+  const f = String(file || '').trim();
+  const r = Math.max(0, Math.min(5, Number(rating) || 0));
+  if (!f) throw new Error('Missing file for rating update');
+  const resp = await fetch(`${apiBase}/config/library-health/rating-batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-track-key': key },
+    body: JSON.stringify({ files: [f], rating: r }),
+  });
+  const j = await resp.json().catch(() => ({}));
+  if (!resp.ok || !j?.ok) throw new Error(j?.error || `HTTP ${resp.status}`);
+  return j;
 }
 
 async function suggestPerformers(){
@@ -2305,6 +2321,26 @@ $('suggestPerformersBtn')?.addEventListener('click', suggestPerformers);
 $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
 $('albumTagFillAllBtn')?.addEventListener('click', fillAlbumTagOverrides);
 $('albumTagApplyBtn')?.addEventListener('click', applyAlbumTagOverwrite);
+$('albumMetaOut')?.addEventListener('change', async (ev) => {
+  const sel = ev?.target?.closest?.('select.albumTrackRating[data-file]');
+  if (!sel) return;
+  const file = String(sel.getAttribute('data-file') || '').trim();
+  const next = Math.max(0, Math.min(5, Number(sel.value || 0) || 0));
+  const prev = Number(sel.dataset.prevRating ?? sel.getAttribute('data-prev-rating') ?? sel.value || 0) || 0;
+  sel.disabled = true;
+  setAlbumMetaStatus(`Setting rating ${next}…`, true);
+  try {
+    await updateAlbumTrackRating(file, next);
+    sel.dataset.prevRating = String(next);
+    sel.setAttribute('data-prev-rating', String(next));
+    setAlbumMetaStatus(`Rating updated → ${next}`);
+  } catch (e) {
+    sel.value = String(prev);
+    setAlbumMetaStatus(`Rating update failed: ${e?.message || e}`);
+  } finally {
+    sel.disabled = false;
+  }
+});
 $('inspectAlbumBtn')?.addEventListener('click', async () => {
   const folder = String($('albumPick')?.value || '').trim();
   if (!folder) return;

@@ -1212,6 +1212,9 @@
       clearTimeout(to);
     }
   }
+  const escAttr = (v) => String(v || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const escHtml = (v) => String(v || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const normalizeThumbUrl = (u) => { const v = String(u || '').trim(); return v ? v.replace(/'/g, '%27').replace(/#/g, '%23') : v; };
   async function loadServerProfile() {
     if (IS_PREVIEW || USE_LOCAL_PROFILE_ONLY) return;
     try {
@@ -1910,9 +1913,11 @@
       d.className = "thumb".concat(rowKey === "radio" && String((it == null ? void 0 : it.url) || "").trim() && String(it.url).trim() === String(recentActiveRadioUrl || "").trim() ? " is-active-radio" : "");
       const title = String((it == null ? void 0 : it.title) || (it == null ? void 0 : it.album) || (it == null ? void 0 : it.playlist) || "(item)").trim();
       const art = String((it == null ? void 0 : it.art) || "".concat(base, "/art/current.jpg")).trim();
+      const escAttr = (v) => String(v || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const escHtml = (v) => String(v || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       d.setAttribute("data-ra-row", String(rowKey || "albums"));
       d.setAttribute("data-ra-idx", String(i));
-      d.innerHTML = "<div class='thumbWrap'><div class='thumbFlip'><div class='thumbFace thumbFaceFront'><img src='".concat(art, "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-row='").concat(String(rowKey || "albums"), "' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='thumbFace thumbFaceBack'><button type='button' class='thumbMore' data-ra-more='1' data-ra-row='").concat(String(rowKey || "albums"), "' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button><div class='thumbFlipBtns'>").concat(railFlipButtonsHtml(rowKey, i), "</div></div></div></div><div class='cap' title='").concat(title, "'>").concat(title, "</div>");
+      d.innerHTML = "<div class='thumbWrap'><div class='thumbFlip'><div class='thumbFace thumbFaceFront'><img src='".concat(escAttr(normalizeThumbUrl(art)), "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-row='").concat(String(rowKey || "albums"), "' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='thumbFace thumbFaceBack'><button type='button' class='thumbMore' data-ra-more='1' data-ra-row='").concat(String(rowKey || "albums"), "' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button><div class='thumbFlipBtns'>").concat(railFlipButtonsHtml(rowKey, i), "</div></div></div></div><div class='cap' title='").concat(escAttr(title), "'>").concat(escHtml(title), "</div>");
       host.appendChild(d);
     });
   }
@@ -2278,7 +2283,7 @@
           const d = document.createElement("div");
           d.className = "thumb";
           d.setAttribute("data-ra-idx", String(i));
-          d.innerHTML = "<div class='thumbWrap'><img src='".concat(it.art, "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='cap' title='").concat(it.title, "'>").concat(it.title, "</div>");
+          d.innerHTML = "<div class='thumbWrap'><img src='".concat(escAttr(normalizeThumbUrl(it.art)), "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='cap' title='").concat(escAttr(it.title), "'>").concat(escHtml(it.title), "</div>");
           rail.appendChild(d);
         });
         recentRenderedSource = "podcasts";
@@ -2294,7 +2299,7 @@
               const d = document.createElement("div");
               d.className = "thumb";
               d.setAttribute("data-ra-idx", String(i));
-              d.innerHTML = "<div class='thumbWrap'><img class='plRailCover' src='".concat(it.art, "' data-alt='").concat(it.artAlt || "", "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='cap' title='").concat(it.title, "'>").concat(it.title, "</div>");
+              d.innerHTML = "<div class='thumbWrap'><img class='plRailCover' src='".concat(escAttr(normalizeThumbUrl(it.art)), "' data-alt='").concat(escAttr(normalizeThumbUrl(it.artAlt || "")), "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='cap' title='").concat(escAttr(it.title), "'>").concat(escHtml(it.title), "</div>");
               rail.appendChild(d);
             });
           }
@@ -2330,7 +2335,7 @@
           const d = document.createElement("div");
           d.className = "thumb";
           d.setAttribute("data-ra-idx", String(i));
-          d.innerHTML = "<div class='thumbWrap'><img class='plRailCover' src='".concat(it.art, "' data-alt='").concat(it.artAlt || "", "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='cap' title='").concat(it.title, "'>").concat(it.title, "</div>");
+          d.innerHTML = "<div class='thumbWrap'><img class='plRailCover' src='".concat(escAttr(normalizeThumbUrl(it.art)), "' data-alt='").concat(escAttr(normalizeThumbUrl(it.artAlt || "")), "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='cap' title='").concat(escAttr(it.title), "'>").concat(escHtml(it.title), "</div>");
           rail.appendChild(d);
         });
         rail.querySelectorAll("img.plRailCover[data-alt]").forEach((img) => {
@@ -2366,7 +2371,7 @@
                 const d = document.createElement("div");
                 d.className = "thumb";
                 d.setAttribute("data-ra-idx", String(i));
-                d.innerHTML = "<div class='thumbWrap'><img src='".concat(it.art, "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>•••</button></div><div class='cap' title='").concat(it.title, "'>").concat(it.title, "</div>");
+                d.innerHTML = "<div class='thumbWrap'><img src='".concat(escAttr(normalizeThumbUrl(it.art)), "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>•••</button></div><div class='cap' title='").concat(escAttr(it.title), "'>").concat(escHtml(it.title), "</div>");
                 rail.appendChild(d);
               });
               recentRenderedSource = "radio";
@@ -2391,7 +2396,7 @@
                 const d = document.createElement("div");
                 d.className = "thumb";
                 d.setAttribute("data-ra-idx", String(i));
-                d.innerHTML = "<div class='thumbWrap'><img src='".concat(it.art, "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>•••</button></div><div class='cap' title='").concat(it.title, "'>").concat(it.title, "</div>");
+                d.innerHTML = "<div class='thumbWrap'><img src='".concat(escAttr(normalizeThumbUrl(it.art)), "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>•••</button></div><div class='cap' title='").concat(escAttr(it.title), "'>").concat(escHtml(it.title), "</div>");
                 rail.appendChild(d);
               });
               recentRenderedSource = "radio";
@@ -2415,7 +2420,7 @@
               const d = document.createElement("div");
               d.className = "thumb".concat(String((it == null ? void 0 : it.url) || "").trim() && String(it.url).trim() === String(recentActiveRadioUrl || "").trim() ? " is-active-radio" : "");
               d.setAttribute("data-ra-idx", String(i));
-              d.innerHTML = "<div class='thumbWrap'><img src='".concat(it.art, "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='cap' title='").concat(it.title, "'>").concat(it.title, "</div>");
+              d.innerHTML = "<div class='thumbWrap'><img src='".concat(escAttr(normalizeThumbUrl(it.art)), "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='cap' title='").concat(escAttr(it.title), "'>").concat(escHtml(it.title), "</div>");
               rail.appendChild(d);
             });
           }
@@ -2436,7 +2441,7 @@
           const d = document.createElement("div");
           d.className = "thumb".concat(String((it == null ? void 0 : it.url) || "").trim() && String(it.url).trim() === String(recentActiveRadioUrl || "").trim() ? " is-active-radio" : "");
           d.setAttribute("data-ra-idx", String(i));
-          d.innerHTML = "<div class='thumbWrap'><img src='".concat(it.art, "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='cap' title='").concat(it.title, "'>").concat(it.title, "</div>");
+          d.innerHTML = "<div class='thumbWrap'><img src='".concat(escAttr(normalizeThumbUrl(it.art)), "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>\u2022\u2022\u2022</button></div><div class='cap' title='").concat(escAttr(it.title), "'>").concat(escHtml(it.title), "</div>");
           rail.appendChild(d);
         });
         recentRenderedSource = "radio";
@@ -2498,7 +2503,7 @@
         wrap.className = "thumbWrap";
         const img = document.createElement("img");
         img.alt = "";
-        img.src = String(a.art || "");
+        img.src = normalizeThumbUrl(String(a.art || ""));
         img.loading = "lazy";
         img.decoding = "async";
         img.onerror = function() {

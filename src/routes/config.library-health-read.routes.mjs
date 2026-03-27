@@ -705,7 +705,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
           trackCount: Number(row.trackCount || 0),
           addedTs,
           // Canonical local-cache-first album thumbnail endpoint.
-          thumbUrl: `/config/library-health/album-thumb?folder=${encodeURIComponent(String(row.folder || ''))}&file=${encodeURIComponent(String(row.sampleFile || ''))}`,
+          thumbUrl: `/config/library-health/album-thumb?folder=${encodeURIComponent(String(row.folder || '')).replace(/'/g,'%27')}&file=${encodeURIComponent(String(row.sampleFile || '')).replace(/'/g,'%27')}`,
         };
       }));
 
