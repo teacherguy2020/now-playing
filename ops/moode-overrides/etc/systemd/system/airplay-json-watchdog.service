@@ -1,0 +1,7 @@
+[Unit]
+Description=Watchdog for AirPlay metadata pipeline CPU
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/airplay-json-watchdog.sh

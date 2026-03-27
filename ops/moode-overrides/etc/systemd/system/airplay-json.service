@@ -1,0 +1,13 @@
+[Unit]
+Description=AirPlay Metadata JSON Export (shairport-sync)
+After=network.target
+
+[Service]
+Type=simple
+User=moode
+Restart=always
+RestartSec=2
+ExecStart=/var/www/daemon/aplmeta-reader.sh
+
+[Install]
+WantedBy=multi-user.target

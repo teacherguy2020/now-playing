@@ -1,0 +1,11 @@
+[Unit]
+Description=Run AirPlay metadata watchdog every 30s
+
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec=30s
+Unit=airplay-json-watchdog.service
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

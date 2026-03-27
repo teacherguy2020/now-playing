@@ -215,6 +215,7 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
           ? Math.max(100, Math.min(200000, Number(req.query.scanLimit || 100)))
           : Number.MAX_SAFE_INTEGER;
       const forceRefresh = ['1', 'true', 'yes'].includes(String(req.query?.refresh || '').toLowerCase());
+      const cacheOnly = ['1', 'true', 'yes'].includes(String(req.query?.cacheOnly || '').toLowerCase());
       const now = Date.now();
 
       if (!forceRefresh && libraryHealthCache && (now - Number(libraryHealthCache.cachedAt || 0) < LIB_HEALTH_CACHE_TTL_MS)) {
@@ -235,6 +236,29 @@ export function registerConfigLibraryHealthReadRoutes(app, deps) {
             : { hit: false, ttlMs: LIB_HEALTH_CACHE_TTL_MS },
           job: { running: true, startedAt: libraryHealthJob.startedAt },
           ...(libraryHealthCache?.payload || {}),
+        });
+      }
+
+      if (cacheOnly) {
+        return res.json({
+          ok: true,
+          cacheOnly: true,
+          generatedAt: null,
+          elapsedMs: 0,
+          scannedTracks: 0,
+          summary: {
+            totalTracks: 0, totalAlbums: 0, missingArtwork: 0, unrated: 0, lowRated1: 0, missingMbid: 0, missingGenre: 0, christmasGenre: 0, podcastGenre: 0,
+          },
+          samples: { unrated: [], lowRated1: [], missingMbid: [], missingGenre: [] },
+          genreCounts: [],
+          ratingCounts: [0, 1, 2, 3, 4, 5].map((r) => ({ rating: r, count: 0 })),
+          genreOptions: [],
+          sampleLimit,
+          scanLimit,
+          cache: libraryHealthCache
+            ? { hit: true, ageMs: now - Number(libraryHealthCache.cachedAt || 0), ttlMs: LIB_HEALTH_CACHE_TTL_MS, stale: true }
+            : { hit: false, ttlMs: LIB_HEALTH_CACHE_TTL_MS },
+          job: { running: !!libraryHealthJob, startedAt: libraryHealthJob?.startedAt || null },
         });
       }
 

@@ -432,7 +432,7 @@
     setPillState('moodePill','warn');
   }
 
-  async function run({ refresh = false, scanLimit = null } = {}) {
+  async function run({ refresh = false, scanLimit = null, cacheOnly = false } = {}) {
     const key = ($('key')?.value || '').trim();
     const sample = 100;
     const apiBase = (($('apiBase')?.value || defaultApiBase()).trim()).replace(/\/$/, '');
@@ -441,15 +441,14 @@
     if (runBtn) runBtn.disabled = true;
     const refreshBtn = $('refreshScan');
     if (refreshBtn) refreshBtn.disabled = true;
-    if (status) status.innerHTML = `<span class="spin" aria-hidden="true"></span>${refresh ? 'Refreshing full scan…' : 'Scanning, please wait'}`;
-    if (cards) cards.innerHTML = '';
-    if (sections) sections.innerHTML = '';
+    if (status) status.innerHTML = `<span class="spin" aria-hidden="true"></span>${refresh ? 'Refreshing full scan…' : 'Loading library health snapshot…'}`;
+    // Keep existing UI mounted during scan transitions to avoid card flicker/disappearing modules.
 
     try {
       const limitPart = Number.isFinite(Number(scanLimit)) && Number(scanLimit) > 0
         ? `&scanLimit=${encodeURIComponent(Number(scanLimit))}`
         : '';
-      const url = `${apiBase}/config/library-health?sampleLimit=${encodeURIComponent(sample)}${refresh ? '&refresh=1' : ''}${limitPart}`;
+      const url = `${apiBase}/config/library-health?sampleLimit=${encodeURIComponent(sample)}${refresh ? '&refresh=1' : ''}${cacheOnly ? '&cacheOnly=1' : ''}${limitPart}`;
       const res = await fetchWithTimeout(url, { headers: { 'x-track-key': key } }, refresh ? 45000 : 12000);
 
       const raw = await res.text();
@@ -462,19 +461,8 @@
       }
 
       const s = j.summary || {};
-      const items = [
-        ['Total Audio Tracks Scanned', s.totalTracks],
-        ['Total Albums', s.totalAlbums],
-        ['Unrated (0/missing)', s.unrated],
-        ['Missing MBID', s.missingMbid],
-        ['Missing Genre', s.missingGenre],
-      ];
-
-      if (cards) {
-        cards.innerHTML = items.map(([k, v]) =>
-          `<div class="card"><div class="k">${esc(k)}</div><div class="v">${Number(v || 0).toLocaleString()}</div></div>`
-        ).join('');
-      }
+      // Keep layout stable: suppress transient summary cards entirely.
+      if (cards) cards.innerHTML = '';
 
       const sampleMap = j.samples || {};
       let missingRows = sampleMap.missingGenre || [];
@@ -715,7 +703,7 @@
         safeMoveBefore(feat);
       }
 
-      if (sections) {
+      if (sections && !$('mawModule')) {
         sections.innerHTML = `
           <details id="mawModule">
             <summary>Missing artwork albums</summary>
@@ -1721,15 +1709,20 @@
         });
       }
 
-      buildOperationsHub();
+      // Keep one stable layout model; do not re-parent modules into Library Operations hub at runtime.
+      // buildOperationsHub();
 
       if (status) {
         const cacheNote = j?.cache?.hit
           ? ` · cache ${Math.round(Number(j.cache.ageMs || 0) / 1000)}s old`
           : '';
         const pendingNote = j?.pending ? ' · refresh running in background' : '';
-        status.textContent =
-          `Done in ${j.elapsedMs} ms · scanned ${j.scannedTracks || s.totalTracks || 0} tracks · ${j.generatedAt}${cacheNote}${pendingNote}`;
+        if (j?.cacheOnly) {
+          status.textContent = `Loaded controls in manual mode${cacheNote}${pendingNote}. Click Run or Refresh full scan to populate metrics.`;
+        } else {
+          status.textContent =
+            `Done in ${j.elapsedMs} ms · scanned ${j.scannedTracks || s.totalTracks || 0} tracks · ${j.generatedAt}${cacheNote}${pendingNote}`;
+        }
       }
       requestAnimationFrame(() => {
         window.dispatchEvent(new Event('resize'));
@@ -2444,7 +2437,8 @@ window.addEventListener('storage', (ev) => {
 });
 
 loadRuntimeMeta().finally(() => {
-  run();
+  // Render full controls immediately without triggering a fresh scan.
+  run({ cacheOnly: true });
   loadAlbumOptions().then(() => loadAlbumMetadata());
   refreshAnimatedArtSummary().catch(() => {});
 });
