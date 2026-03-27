@@ -15,9 +15,11 @@ Use this page to audit, fix, and queue library content without re-selecting albu
 Album context is shared across these modules so you don’t have to find the same album repeatedly.
 
 ## Scan behavior
-- A scan runs automatically when the page loads.
-- Results are cached (fast reopen/refresh).
-- Use **Refresh full scan** when you want a full rebuild.
+- Page load is **manual-first**: controls render without forcing a fresh heavy scan.
+- The UI requests cache-only snapshot data on open; if cache exists, it is shown.
+- If no cache exists, controls still render and status explains manual mode.
+- Use **Run** / **Refresh full scan** when you explicitly want recompute.
+- Results are cached for fast reopen.
 
 ## Album inventory features
 - Filter by artist/album/folder text.
