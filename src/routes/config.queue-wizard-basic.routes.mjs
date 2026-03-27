@@ -8,11 +8,12 @@ import { getBrowseIndex } from '../lib/browse-index.mjs';
 const execFileP = promisify(execFile);
 const RADIO_DB_SEP = '__NPSEP__';
 const RADIO_PRESETS_PATH = path.resolve(process.cwd(), 'data/radio-queue-presets.json');
+const PLAYLISTS_CACHE_PATH = path.resolve(process.cwd(), 'data/playlists-index.json');
 
 const OPTIONS_CACHE_TTL_MS = 5 * 60_000;
 const PLAYLISTS_CACHE_TTL_MS = 45_000;
 let optionsCache = { ts: 0, host: '', payload: null, inflight: null };
-let playlistsCache = { ts: 0, host: '', payload: null, inflight: null };
+let playlistsCache = { ts: 0, host: '', payload: null, inflight: null, diskLoaded: false };
 
 function sqlQuoteLike(v = '') {
   const s = String(v || '').replace(/'/g, "''");
@@ -22,6 +23,28 @@ function sqlQuoteLike(v = '') {
 function shQuoteArg(s) {
   const v = String(s ?? '');
   return `'${v.replace(/'/g, `'"'"'`)}'`;
+}
+
+async function loadPlaylistsCacheFromDisk() {
+  if (playlistsCache.diskLoaded) return;
+  playlistsCache.diskLoaded = true;
+  try {
+    const raw = await fs.readFile(PLAYLISTS_CACHE_PATH, 'utf8');
+    const parsed = JSON.parse(String(raw || '{}'));
+    const ts = Number(parsed?.ts || 0) || 0;
+    const payload = parsed?.payload;
+    if (ts > 0 && payload?.ok && Array.isArray(payload?.playlists)) {
+      playlistsCache.ts = ts;
+      playlistsCache.payload = payload;
+    }
+  } catch {}
+}
+
+async function savePlaylistsCacheToDisk(payload) {
+  try {
+    await fs.mkdir(path.dirname(PLAYLISTS_CACHE_PATH), { recursive: true });
+    await fs.writeFile(PLAYLISTS_CACHE_PATH, JSON.stringify({ ts: Date.now(), payload }), 'utf8');
+  } catch {}
 }
 
 function stationKey(raw) {
@@ -484,6 +507,8 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
       const mpdHost = String(MPD_HOST || 'moode.local');
+      await loadPlaylistsCacheFromDisk();
+      if (!playlistsCache.host) playlistsCache.host = mpdHost;
       const now = Date.now();
       if (playlistsCache.payload && playlistsCache.host === mpdHost && (now - playlistsCache.ts) < PLAYLISTS_CACHE_TTL_MS) {
         return res.json(playlistsCache.payload);
@@ -561,9 +586,13 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       playlistsCache.payload = payload;
       playlistsCache.ts = Date.now();
       playlistsCache.inflight = null;
+      await savePlaylistsCacheToDisk(payload);
       return res.json(payload);
     } catch (e) {
       playlistsCache.inflight = null;
+      if (playlistsCache.payload && playlistsCache.host === String(MPD_HOST || 'moode.local')) {
+        return res.json({ ...playlistsCache.payload, stale: true, staleReason: e?.message || String(e) });
+      }
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });

@@ -38,7 +38,7 @@ async function getMpdDbUpdateIso(mpdHost = 'moode.local') {
 
 export async function buildBrowseIndex(mpdHost = 'moode.local') {
   const dbUpdateAt = await getMpdDbUpdateIso(mpdHost);
-  const fmt = '%file%\t%artist%\t%albumartist%\t%album%\t%title%\t%track%\t%genre%\t%time%';
+  const fmt = '%file%\t%artist%\t%albumartist%\t%album%\t%title%\t%track%\t%genre%\t%time%\t%MUSICBRAINZ_TRACKID%\t%MUSICBRAINZ_ALBUMID%\t%MUSICBRAINZ_ARTISTID%';
   const { stdout } = await execFileP('mpc', ['-h', String(mpdHost || 'moode.local'), '-f', fmt, 'listall'], {
     maxBuffer: 96 * 1024 * 1024,
   });
@@ -50,7 +50,7 @@ export async function buildBrowseIndex(mpdHost = 'moode.local') {
 
   for (const ln of String(stdout || '').split(/\r?\n/)) {
     if (!ln) continue;
-    const [file = '', artistRaw = '', albumArtistRaw = '', albumRaw = '', titleRaw = '', trackRaw = '', genreRaw = '', timeRaw = ''] = ln.split('\t');
+    const [file = '', artistRaw = '', albumArtistRaw = '', albumRaw = '', titleRaw = '', trackRaw = '', genreRaw = '', timeRaw = '', mbTrackRaw = '', mbAlbumRaw = '', mbArtistRaw = ''] = ln.split('\t');
     const filePath = String(file || '').trim();
     if (!filePath) continue;
 
@@ -104,12 +104,15 @@ export async function buildBrowseIndex(mpdHost = 'moode.local') {
       durationSec,
       albumKey,
       artistKey,
+      mbTrackId: String(mbTrackRaw || '').trim(),
+      mbAlbumId: String(mbAlbumRaw || '').trim(),
+      mbArtistId: String(mbArtistRaw || '').trim(),
       rating: 0,
     });
   }
 
   const index = {
-    schema: 'now-playing.browse-index.v1',
+    schema: 'now-playing.browse-index.v2',
     builtAt: new Date().toISOString(),
     dbUpdateAt,
     mpdHost: String(mpdHost || ''),
@@ -143,7 +146,7 @@ export async function getBrowseIndex(mpdHost = 'moode.local', { force = false } 
         try {
           const raw = await fs.readFile(INDEX_PATH, 'utf8');
           const parsed = JSON.parse(raw || '{}');
-          if (parsed && parsed.schema === 'now-playing.browse-index.v1') idx = parsed;
+          if (parsed && (parsed.schema === 'now-playing.browse-index.v1' || parsed.schema === 'now-playing.browse-index.v2')) idx = parsed;
         } catch {}
       }
     }

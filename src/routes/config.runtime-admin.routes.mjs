@@ -4,6 +4,7 @@ import { lookup as dnsLookup } from 'node:dns/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
+import { createLastfmIndexResolver } from '../lib/lastfm-library-match.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -307,53 +308,17 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const trackKey = String(process.env.TRACK_KEY || cfg?.trackKey || '').trim();
       const hostHdr = String(req.get('host') || '').trim();
       const baseUrl = hostHdr ? `${req.protocol || 'http'}://${hostHdr}` : '';
+      const resolver = await createLastfmIndexResolver({ mpdHost, baseUrl, trackKey });
 
       for (const it of items) {
-        try {
-          const t = String(it.track || '').trim();
-          const artist = String(it.artist || '').trim();
-          if (!t) continue;
-          const titleVariants = Array.from(new Set([
-            t,
-            t.replace(/[’`´]/g, "'"),
-            t.replace(/[’'`´]/g, ""),
-            t.normalize('NFKD').replace(/[\u0300-\u036f]/g, ''),
-          ].map((s) => String(s || '').trim()).filter(Boolean)));
-          let files = [];
-          for (const tv of titleVariants) {
-            const args = ['-h', mpdHost, '-f', '%file%', 'find', 'title', tv];
-            if (artist) args.push('artist', artist);
-            const { stdout } = await execFileP('mpc', args, { maxBuffer: 8 * 1024 * 1024 });
-            files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
-            if (files.length) break;
-          }
-          if (!files.length) {
-            for (const tv of titleVariants) {
-              const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'search', 'title', tv], { maxBuffer: 8 * 1024 * 1024 });
-              files = String(stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
-              if (artist) {
-                const al = artist.toLowerCase();
-                files = files.filter((f) => f.toLowerCase().includes(al.split(' ')[0] || al));
-              }
-              if (files.length) break;
-            }
-          }
-          const file = String(files[0] || '').trim();
-          if (file) {
-            it.file = file;
-            try {
-              const { stdout: albumOut } = await execFileP('mpc', ['-h', mpdHost, '-f', '%album%', 'find', 'file', file], { maxBuffer: 1024 * 1024 });
-              const album = String(albumOut || '').split(/\r?\n/).map((s) => String(s || '').trim()).find(Boolean) || '';
-              if (album) it.album = album;
-            } catch {}
-          }
-          if (file && baseUrl) {
-            const u = new URL('/art/track_640.jpg', baseUrl);
-            u.searchParams.set('file', file);
-            if (trackKey) u.searchParams.set('k', trackKey);
-            it.art = u.toString();
-          }
-        } catch {}
+        const hit = resolver.resolveTrack({ track: String(it.track || '').trim(), artist: String(it.artist || '').trim() });
+        if (!hit) continue;
+        it.file = String(hit.file || '').trim();
+        if (String(hit.album || '').trim()) it.album = String(hit.album || '').trim();
+        it.mbTrackId = String(hit.mbTrackId || '').trim();
+        it.mbAlbumId = String(hit.mbAlbumId || '').trim();
+        it.mbArtistId = String(hit.mbArtistId || '').trim();
+        it.art = String(hit.art || '').trim() || it.art;
       }
 
       const out = items.map((x) => ({ ...x, art: String(x.art || '').trim() || '/icons/icon-192.png' }));
@@ -391,61 +356,25 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const hostHdr = String(req.get('host') || '').trim();
       const baseUrl = hostHdr ? `${req.protocol || 'http'}://${hostHdr}` : '';
 
+      const resolver = await createLastfmIndexResolver({ mpdHost, baseUrl, trackKey });
       const items = [];
       for (const x of rows) {
         const track = String(x?.name || '').trim();
         const artist = String(x?.artist?.['#text'] || x?.artist?.name || '').trim();
         if (!track) continue;
-        let art = '';
-        let file = '';
-        let album = String(x?.album?.['#text'] || '').trim();
-        try {
-          const titleVariants = Array.from(new Set([
-            track,
-            track.replace(/[’`´]/g, "'"),
-            track.replace(/[’'`´]/g, ""),
-            track.normalize('NFKD').replace(/[\u0300-\u036f]/g, ''),
-          ].map((s) => String(s || '').trim()).filter(Boolean)));
-          let files = [];
-          for (const tv of titleVariants) {
-            const args = ['-h', mpdHost, '-f', '%file%', 'find', 'title', tv];
-            if (artist) args.push('artist', artist);
-            const { stdout } = await execFileP('mpc', args, { maxBuffer: 8 * 1024 * 1024 });
-            files = String(stdout || '').split(/\r?\n/).map((s) => String(s || '').trim()).filter(Boolean);
-            if (files.length) break;
-          }
-          if (!files.length) {
-            for (const tv of titleVariants) {
-              const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'search', 'title', tv], { maxBuffer: 8 * 1024 * 1024 });
-              files = String(stdout || '').split(/\r?\n/).map((s) => String(s || '').trim()).filter(Boolean);
-              if (files.length) break;
-            }
-          }
-          file = String(files[0] || '').trim();
-          if (file) {
-            try {
-              const { stdout: albumOut } = await execFileP('mpc', ['-h', mpdHost, '-f', '%album%', 'find', 'file', file], { maxBuffer: 1024 * 1024 });
-              const alb = String(albumOut || '').split(/\r?\n/).map((s) => String(s || '').trim()).find(Boolean) || '';
-              if (alb) album = alb;
-            } catch {}
-          }
-          if (file && baseUrl) {
-            const u = new URL('/art/track_640.jpg', baseUrl);
-            u.searchParams.set('file', file);
-            if (trackKey) u.searchParams.set('k', trackKey);
-            art = u.toString();
-          }
-        } catch {}
-
+        const hit = resolver.resolveTrack({ track, artist });
         items.push({
           kind: 'lastfm-track',
           title: track,
           track,
           artist,
-          album,
-          file,
+          album: String(hit?.album || x?.album?.['#text'] || '').trim(),
+          file: String(hit?.file || '').trim(),
+          mbTrackId: String(hit?.mbTrackId || '').trim(),
+          mbAlbumId: String(hit?.mbAlbumId || '').trim(),
+          mbArtistId: String(hit?.mbArtistId || '').trim(),
           url: String(x?.url || '').trim(),
-          art: art || '/icons/icon-192.png',
+          art: String(hit?.art || '').trim() || '/icons/icon-192.png',
         });
       }
 
@@ -483,36 +412,23 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const hostHdr = String(req.get('host') || '').trim();
       const baseUrl = hostHdr ? `${req.protocol || 'http'}://${hostHdr}` : '';
 
+      const resolver = await createLastfmIndexResolver({ mpdHost, baseUrl, trackKey });
       const items = [];
       for (const x of rows) {
         const artist = String(x?.name || '').trim();
         const playcount = Number(x?.playcount || 0) || 0;
-        let art = '';
-        try {
-          if (artist) {
-            const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'find', 'artist', artist], { maxBuffer: 8 * 1024 * 1024 });
-            let files = String(stdout || '').split(/\r?\n/).map((s) => String(s || '').trim()).filter(Boolean);
-            if (!files.length) {
-              const { stdout: so } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'search', 'artist', artist], { maxBuffer: 8 * 1024 * 1024 });
-              files = String(so || '').split(/\r?\n/).map((s) => String(s || '').trim()).filter(Boolean);
-            }
-            const file = String(files[0] || '').trim();
-            if (file && baseUrl) {
-              const u = new URL('/art/track_640.jpg', baseUrl);
-              u.searchParams.set('file', file);
-              if (trackKey) u.searchParams.set('k', trackKey);
-              art = u.toString();
-            }
-          }
-        } catch {}
-
+        const hit = resolver.resolveArtist({ artist });
         items.push({
           kind: 'lastfm-artist',
           title: artist || '(artist)',
           artist,
           playcount,
+          file: String(hit?.file || '').trim(),
+          mbTrackId: String(hit?.mbTrackId || '').trim(),
+          mbAlbumId: String(hit?.mbAlbumId || '').trim(),
+          mbArtistId: String(hit?.mbArtistId || '').trim(),
           url: String(x?.url || '').trim(),
-          art: art || '/icons/icon-192.png',
+          art: String(hit?.art || '').trim() || '/icons/icon-192.png',
         });
       }
 
@@ -551,38 +467,25 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const hostHdr = String(req.get('host') || '').trim();
       const baseUrl = hostHdr ? `${req.protocol || 'http'}://${hostHdr}` : '';
 
+      const resolver = await createLastfmIndexResolver({ mpdHost, baseUrl, trackKey });
       const items = [];
       for (const x of rows) {
         const album = String(x?.name || '').trim();
         const artist = String(x?.artist?.name || '').trim();
         const playcount = Number(x?.playcount || 0) || 0;
-        let art = '';
-        let matched = '';
-        try {
-          if (album) {
-            const args = ['-h', mpdHost, '-f', '%file%', 'find', 'album', album];
-            if (artist) args.push('artist', artist);
-            const { stdout } = await execFileP('mpc', args, { maxBuffer: 8 * 1024 * 1024 });
-            const files = String(stdout || '').split(/\r?\n/).map((s) => String(s || '').trim()).filter(Boolean);
-            matched = String(files[0] || '').trim();
-            if (matched && baseUrl) {
-              const u = new URL('/art/track_640.jpg', baseUrl);
-              u.searchParams.set('file', matched);
-              if (trackKey) u.searchParams.set('k', trackKey);
-              art = u.toString();
-            }
-          }
-        } catch {}
-
+        const hit = resolver.resolveAlbum({ album, artist });
         items.push({
           kind: 'lastfm-album',
           title: album || '(album)',
           album,
           artist,
           playcount,
+          file: String(hit?.file || '').trim(),
+          mbTrackId: String(hit?.mbTrackId || '').trim(),
+          mbAlbumId: String(hit?.mbAlbumId || '').trim(),
+          mbArtistId: String(hit?.mbArtistId || '').trim(),
           url: String(x?.url || '').trim(),
-          art: art || '/icons/icon-192.png',
-          file: matched,
+          art: String(hit?.art || '').trim() || '/icons/icon-192.png',
         });
       }
 
