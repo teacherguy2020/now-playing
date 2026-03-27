@@ -2322,22 +2322,27 @@ $('applyPerformersBtn')?.addEventListener('click', applyPerformers);
 $('albumTagFillAllBtn')?.addEventListener('click', fillAlbumTagOverrides);
 $('albumTagApplyBtn')?.addEventListener('click', applyAlbumTagOverwrite);
 $('albumMetaOut')?.addEventListener('change', async (ev) => {
-  const sel = ev?.target?.closest?.('select.albumTrackRating[data-file]');
+  const target = ev && ev.target ? ev.target : null;
+  const sel = target && typeof target.closest === 'function'
+    ? target.closest('select.albumTrackRating[data-file]')
+    : null;
   if (!sel) return;
   const file = String(sel.getAttribute('data-file') || '').trim();
   const next = Math.max(0, Math.min(5, Number(sel.value || 0) || 0));
-  const prevRaw = (sel.dataset.prevRating ?? sel.getAttribute('data-prev-rating') ?? sel.value ?? 0);
-  const prev = Number(prevRaw) || 0;
+  const prevRaw = (sel.dataset && sel.dataset.prevRating != null)
+    ? sel.dataset.prevRating
+    : (sel.getAttribute('data-prev-rating') != null ? sel.getAttribute('data-prev-rating') : sel.value);
+  const prev = Number(prevRaw || 0) || 0;
   sel.disabled = true;
   setAlbumMetaStatus(`Setting rating ${next}…`, true);
   try {
     await updateAlbumTrackRating(file, next);
-    sel.dataset.prevRating = String(next);
+    if (sel.dataset) sel.dataset.prevRating = String(next);
     sel.setAttribute('data-prev-rating', String(next));
     setAlbumMetaStatus(`Rating updated → ${next}`);
   } catch (e) {
     sel.value = String(prev);
-    setAlbumMetaStatus(`Rating update failed: ${e?.message || e}`);
+    setAlbumMetaStatus(`Rating update failed: ${e && e.message ? e.message : e}`);
   } finally {
     sel.disabled = false;
   }
