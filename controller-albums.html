@@ -264,7 +264,7 @@
     const STATE_KEY='np.controller.albums.menu.v1';
     let state={view:'grid',sort:'az'};
     let albums=[];
-    let modalCtx={album:'',artist:'',art:'',tracks:[]};
+    let modalCtx={album:'',artist:'',art:'',folder:'',tracks:[]};
     let albumLoadToken=0;
     let coverQueuePaused = false;
     let coverQueueToken = 0;
@@ -318,15 +318,19 @@
       const list=sorted(albums);
       host.className = state.view==='list' ? 'list' : 'grid';
 
+      const encAttr = (v)=>encodeURIComponent(String(v||'')).replace(/[!'()*]/g, (c)=>`%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+
       const rowHtml = (a,i)=>{
         const artRaw=String(a.thumbUrl||'').trim();
         const art=artRaw ? (artRaw.startsWith('http')?artRaw:`${base}${artRaw}`) : `${base}/art/current.jpg`;
         const alb=String(a.album||'').trim(); const artist=String(a.artist||'').trim();
+        const sf = String(a.sampleFile || a.file || '').trim();
+        const folder = String(a.folder || (sf.includes('/') ? sf.slice(0, sf.lastIndexOf('/')) : '')).trim();
         const artNode = `<img class='lazyCover' data-src='${art}' alt=''>`;
         if(state.view==='list'){
-          return `<div class='row' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'>${artNode}<span class='coverMore' aria-hidden='true'>•••</span></div><div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div></div>`;
+          return `<div class='row' data-idx='${i}' data-album='${encAttr(alb)}' data-artist='${encAttr(artist)}' data-art='${encAttr(art)}' data-folder='${encAttr(folder)}'><div class='coverWrap'>${artNode}<span class='coverMore' aria-hidden='true'>•••</span></div><div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div></div>`;
         }
-        return `<div class='album' role='button' tabindex='0' data-idx='${i}' data-album='${encodeURIComponent(alb)}' data-artist='${encodeURIComponent(artist)}' data-art='${encodeURIComponent(art)}'><div class='coverWrap'><div class='coverFlip'><div class='coverFace coverFaceFront'>${artNode}<button type='button' class='coverMore' data-cover-more='1'>•••</button></div><div class='coverFace coverFaceBack'><button type='button' class='coverMore' data-cover-more='1'>•••</button><div class='coverFlipBtns'><button type='button' data-cover-flip-act='open'>Add</button><button type='button' data-cover-flip-act='play'>Play</button><button type='button' data-cover-flip-act='shuffle'>Shuffle</button></div></div></div></div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div>`;
+        return `<div class='album' role='button' tabindex='0' data-idx='${i}' data-album='${encAttr(alb)}' data-artist='${encAttr(artist)}' data-art='${encAttr(art)}' data-folder='${encAttr(folder)}'><div class='coverWrap'><div class='coverFlip'><div class='coverFace coverFaceFront'>${artNode}<button type='button' class='coverMore' data-cover-more='1'>•••</button></div><div class='coverFace coverFaceBack'><button type='button' class='coverMore' data-cover-more='1'>•••</button><div class='coverFlipBtns'><button type='button' data-cover-flip-act='open'>Add</button><button type='button' data-cover-flip-act='play'>Play</button><button type='button' data-cover-flip-act='shuffle'>Shuffle</button></div></div></div></div><div class='aTitle'>${alb||'(album)'}</div><div class='aSub'>${artist||''}</div></div>`;
       };
 
       const bindHeal = ()=>{
@@ -388,14 +392,36 @@
       pump();
     }
 
-    async function fetchAlbumTracks(album, artist){
+    async function fetchAlbumTracks(album, artist, folder=''){
       await ensureKey();
       const headers={'Content-Type':'application/json', ...(key?{'x-track-key':key}:{})};
+
+      const albumName = String(album||'').trim();
+      const artistName = String(artist||'').trim();
+
+      // Fast + deterministic: browse-index backed album track resolver
+      if (albumName) {
+        try {
+          const q = new URLSearchParams({ album: albumName });
+          if (artistName) q.set('artist', artistName);
+          const r = await fetch(`${base}/config/browse/album-tracks?${q.toString()}`, { cache:'no-store', headers:{...(key?{'x-track-key':key}:{})} });
+          const j = await r.json().catch(()=>({}));
+          const rows = (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
+          if (rows.length) return rows;
+
+          if (artistName) {
+            const r2 = await fetch(`${base}/config/browse/album-tracks?album=${encodeURIComponent(albumName)}`, { cache:'no-store', headers:{...(key?{'x-track-key':key}:{})} });
+            const j2 = await r2.json().catch(()=>({}));
+            const rows2 = (r2.ok && j2?.ok && Array.isArray(j2.tracks)) ? j2.tracks : [];
+            if (rows2.length) return rows2;
+          }
+        } catch {}
+      }
 
       async function previewOnce(body){
         try {
           const ctl = new AbortController();
-          const to = setTimeout(()=>{ try{ ctl.abort(); }catch{} }, 15000);
+          const to = setTimeout(()=>{ try{ ctl.abort(); }catch{} }, 6500);
           const r=await fetch(`${base}/config/queue-wizard/preview`,{method:'POST',headers,body:JSON.stringify(body),signal:ctl.signal});
           clearTimeout(to);
           const j=await r.json().catch(()=>({}));
@@ -405,19 +431,27 @@
         }
       }
 
-      const baseBody = { genres:[], albums:album?[album]:[], excludeGenres:[], minRating:0, maxTracks:1200 };
+      const maxTracks = 1200;
 
-      // First try: strict artist+album
-      let tracks = await previewOnce({ ...baseBody, artists: artist?[artist]:[] });
+      // Fast path: strict match
+      let tracks = await previewOnce({ genres:[], artists: artistName?[artistName]:[], albums: albumName?[albumName]:[], excludeGenres:[], minRating:0, maxTracks });
       if (tracks.length) return tracks;
 
-      // Second try: album-only fallback (artist metadata can be inconsistent in library rows)
-      tracks = await previewOnce({ ...baseBody, artists:[] });
+      // Fallback: album-only for metadata mismatches
+      tracks = await previewOnce({ genres:[], artists:[], albums: albumName?[albumName]:[], excludeGenres:[], minRating:0, maxTracks });
       if (tracks.length) return tracks;
 
-      // Final retry once more (transient backend hiccups do happen)
-      tracks = await previewOnce({ ...baseBody, artists: artist?[artist]:[] });
-      return tracks;
+      // Last fallback: folder-based resolver (can be slower on some paths)
+      const folderWanted = String(folder || '').trim();
+      if (folderWanted) {
+        try {
+          const r = await fetch(`${base}/config/library-health/album-tracks?folder=${encodeURIComponent(folderWanted)}`, { cache:'no-store', headers:{...(key?{'x-track-key':key}:{})} });
+          const j = await r.json().catch(()=>({}));
+          const rows = (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks : [];
+          if (rows.length) return rows;
+        } catch {}
+      }
+      return [];
     }
     async function sendPlayback(action, extra={}){ await ensureKey(); const r=await fetch(`${base}/config/diagnostics/playback`,{method:'POST',headers:{'Content-Type':'application/json',...(key?{'x-track-key':key}:{})},body:JSON.stringify(Object.assign({action},extra||{}))}); const j=await r.json().catch(()=>({})); if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`); }
 
@@ -452,10 +486,11 @@
       modalCtx.album = ctx.album || '';
       modalCtx.artist = ctx.artist || '';
       modalCtx.art = ctx.art || '';
+      modalCtx.folder = ctx.folder || '';
       modalCtx.tracks = [];
       openAlbumModal(true);
       try {
-        const tracks = await fetchAlbumTracks(modalCtx.album, modalCtx.artist);
+        const tracks = await fetchAlbumTracks(modalCtx.album, modalCtx.artist, modalCtx.folder || '');
         if (myToken !== albumLoadToken) return;
         modalCtx.tracks = tracks;
       } catch {
@@ -475,11 +510,12 @@
         album: dec(row.getAttribute('data-album')),
         artist: dec(row.getAttribute('data-artist')),
         art: dec(row.getAttribute('data-art')),
+        folder: dec(row.getAttribute('data-folder')),
       };
     };
-    async function playAlbumReliable(album, artist, shuffle){
+    async function playAlbumReliable(album, artist, shuffle, folder=''){
       try {
-        const tracks = await fetchAlbumTracks(album, artist);
+        const tracks = await fetchAlbumTracks(album, artist, folder);
         const files = tracks.map(t => String(t?.file || '').trim()).filter(Boolean);
         if (files.length) {
           await ensureKey();
@@ -499,8 +535,8 @@
     const runAlbumQuickAction = async (ctx, act)=>{
       if (!ctx?.album) return;
       if (act === 'open') { try { await sendPlayback('addalbum', { mode:'append', album: ctx.album, artist: ctx.artist }); } catch {} return; }
-      if (act === 'play') { await playAlbumReliable(ctx.album, ctx.artist, false); return; }
-      if (act === 'shuffle') { await playAlbumReliable(ctx.album, ctx.artist, true); return; }
+      if (act === 'play') { await playAlbumReliable(ctx.album, ctx.artist, false, ctx.folder || ''); return; }
+      if (act === 'shuffle') { await playAlbumReliable(ctx.album, ctx.artist, true, ctx.folder || ''); return; }
     };
 
     host.addEventListener('click', async (ev)=>{
@@ -552,7 +588,7 @@
     async function runAlbumAction(mode){
       if(!modalCtx.album) return;
       try {
-        const tracks = await fetchAlbumTracks(modalCtx.album, modalCtx.artist || '');
+        const tracks = await fetchAlbumTracks(modalCtx.album, modalCtx.artist || '', modalCtx.folder || '');
         const files = tracks.map(t => String(t?.file || '').trim()).filter(Boolean);
         if (files.length) {
           await ensureKey();

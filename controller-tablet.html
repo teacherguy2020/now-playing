@@ -2562,10 +2562,36 @@
   }
   async function fetchAlbumTracks(album, artist) {
     await ensureKey();
-    const body = { genres: [], artists: artist ? [artist] : [], albums: album ? [album] : [], excludeGenres: [], minRating: 0, maxTracks: 500 };
-    const r = await fetch("".concat(base, "/config/queue-wizard/preview"), { method: "POST", headers: reqHeaders(true), body: JSON.stringify(body) });
-    const j = await r.json().catch(() => ({}));
-    return r.ok && (j == null ? void 0 : j.ok) && Array.isArray(j.tracks) ? j.tracks : [];
+    const qv = (s) => {
+      const raw = String(s || "").trim();
+      if (!raw) return [""];
+      const out = [raw];
+      const v1 = raw.replace(/[\u2018\u2019]/g, "'");
+      const v2 = raw.replace(/'/g, "\u2019");
+      [v1, v2].forEach((v) => {
+        if (v && !out.includes(v)) out.push(v);
+      });
+      return out;
+    };
+    const albums = qv(album).filter(Boolean);
+    const artists = qv(artist).filter(Boolean);
+    const run = async (alb, art) => {
+      const body = { genres: [], artists: art ? [art] : [], albums: alb ? [alb] : [], excludeGenres: [], minRating: 0, maxTracks: 500 };
+      const r = await fetch("".concat(base, "/config/queue-wizard/preview"), { method: "POST", headers: reqHeaders(true), body: JSON.stringify(body) });
+      const j = await r.json().catch(() => ({}));
+      return r.ok && (j == null ? void 0 : j.ok) && Array.isArray(j.tracks) ? j.tracks : [];
+    };
+    for (const a of albums.length ? albums : [String(album || "").trim()]) {
+      for (const ar of artists.length ? artists : [""]) {
+        const t = await run(a, ar);
+        if (t.length) return t;
+      }
+    }
+    for (const a of albums.length ? albums : [String(album || "").trim()]) {
+      const t = await run(a, "");
+      if (t.length) return t;
+    }
+    return [];
   }
   async function fetchPlaylistTracks(playlist) {
     await ensureKey();

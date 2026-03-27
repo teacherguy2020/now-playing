@@ -417,6 +417,11 @@ async function fetchMotherEarthMeta(entry) {
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+// Serve controller/static UI assets from repo root on the same API port.
+app.use(express.static(path.resolve('.')));
+app.get('/', (_req, res) => {
+  res.sendFile(path.resolve('controller.html'));
+});
 
 // PeppyMeter bridge (HTTP level data -> app API)
 let peppyMeterLast = { left: 0, right: 0, mono: 0, spectrum: [], ts: 0, source: 'init' };
