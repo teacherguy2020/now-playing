@@ -35,6 +35,8 @@
       <option value="sphere">sphere</option>
       <option value="moire">moire</option>
       <option value="ambient">ambient</option>
+      <option value="mobius">mobius swarm</option>
+      <option value="orb">emergent orb</option>
     </select>
     <span style="font-size:11px;opacity:.8;">Saved</span>
     <select id="savedPresetSel" aria-label="Saved visualizer presets"><option value="">(none)</option></select>
@@ -91,7 +93,9 @@
     fireworks:{scene:'fireworks', attack:0.46, release:0.16, onsetGain:1.3, feedback:0.07, sat:1.12},
     sphere:{scene:'sphere', attack:0.30, release:0.12, onsetGain:0.75, feedback:0.11, sat:0.95},
     moire:{scene:'moire', attack:0.34, release:0.13, onsetGain:0.9, feedback:0.1, sat:1.0},
-    ambient:{scene:'aurora', attack:0.20, release:0.09, onsetGain:0.5, feedback:0.14, sat:0.85}
+    ambient:{scene:'aurora', attack:0.20, release:0.09, onsetGain:0.5, feedback:0.14, sat:0.85},
+    mobius:{scene:'mobius', attack:0.36, release:0.13, onsetGain:1.05, feedback:0.04, sat:1.1},
+    orb:{scene:'orb', attack:0.30, release:0.12, onsetGain:0.95, feedback:0.06, sat:1.05}
   };
   const hasPresetParam = qp.has('preset');
   const hasEnergyParam = qp.has('energy');
@@ -108,7 +112,9 @@
     fireworks:{energy:3,motion:4,glow:8},
     sphere:{energy:6,motion:5,glow:8},
     moire:{energy:5,motion:6,glow:5},
-    ambient:{energy:5,motion:10,glow:5}
+    ambient:{energy:5,motion:10,glow:5},
+    mobius:{energy:7,motion:6,glow:8},
+    orb:{energy:6,motion:5,glow:7}
   };
   const lv=PRESET_LEVELS[presetKey]||PRESET_LEVELS.classic;
   let energyLevel=Math.max(1,Math.min(10,Number(qp.get('energy')||String(lv.energy))||lv.energy));
@@ -133,7 +139,7 @@
   if(scene==='magnetosphere') scene='sphere';
   if(scene==='jelly') scene='aeon';
   if(auto) scene='aurora';
-  const scenes=['aurora','aeon','fireworks','particles','tunnel','moire','sphere'];
+  const scenes=['aurora','aeon','fireworks','particles','tunnel','moire','sphere','mobius','orb'];
   let sceneIdx=scenes.indexOf(scene); if(sceneIdx<0) sceneIdx=0;
 
   // Designer controls should be visible by default in editor contexts.
@@ -2509,6 +2515,315 @@
     x.restore();
   }
 
+
+  const mobiusPts = Array.from({length: 1800}, (_,i)=>({
+    i,
+    x: (Math.random()-0.5)*W,
+    y: (Math.random()-0.5)*H,
+    z: (Math.random()-0.5)*220,
+    ox: Math.random()*Math.PI*2,
+  }));
+  let mobiusAxisX = 0, mobiusAxisY = 0;
+  let mobiusAxisVX = 0, mobiusAxisVY = 0;
+  let mobiusLowPrev = 0, mobiusMidPrev = 0, mobiusHighPrev = 0;
+  let mobiusVolSpeedEnv = 0;
+
+  function drawMobius(){
+    x.fillStyle='rgba(2,5,12,0.24)';
+    x.fillRect(0,0,W,H);
+    x.save();
+    x.translate(W*0.5, H*0.5);
+    x.globalCompositeOperation='lighter';
+
+    const count = mobiusPts.length;
+    const segCount = 200;
+    const ringsPerSeg = Math.max(1, Math.floor(count / segCount));
+    const eNorm = Math.max(0, Math.min(1, (energyLevel - 1) / 9));
+    const subtleK = 1 - eNorm;
+    const punchK = eNorm;
+
+    // Map your reference controls into this engine, with Energy blending subtle↔punchy.
+    const flowSpeedBase = 2.03;
+    const loopSizeBase = 30;
+    const thicknessBase = 21.25;
+    const twistBase = 5.0;
+    const pulseSpeedBase = 6.3;
+
+    // Motion = primary speed control (clear low/high spread), Energy adds response punch only.
+    const motionNorm = Math.max(0, Math.min(1, (motionLevel - 1) / 9));
+    const volNorm = Math.max(0, Math.min(1, monoEnv / 100));
+    // Heavily smoothed loudness influence to avoid jumpy speed.
+    mobiusVolSpeedEnv = mix(mobiusVolSpeedEnv, volNorm, volNorm > mobiusVolSpeedEnv ? 0.06 : 0.025);
+    const volSpeedK = 0.92 + mobiusVolSpeedEnv*0.42; // tighter range than before
+
+    const flowSpeed = flowSpeedBase * (0.35 + motionNorm*2.05) * (0.88 + punchK*0.28) * volSpeedK;
+    const loopSize = Math.min(W,H) * ((loopSizeBase/100) * (0.82 + punchK*0.42));
+    const thickness = Math.min(W,H) * ((thicknessBase/100) * (0.45 + glowK*0.30)) * (0.72 + punchK*0.62);
+    const twist = twistBase * (0.42 + motionK*0.22) * (0.65 + punchK*0.65) * (0.95 + mobiusVolSpeedEnv*0.18);
+    const pulseSpeed = pulseSpeedBase * (0.28 + motionNorm*1.45) * (0.72 + punchK*0.48) * (0.94 + mobiusVolSpeedEnv*0.30);
+
+    const time = t * flowSpeed;
+    const b = bass/100, m = mid/100, h = treb/100;
+
+    // Sudden spectrum-energy changes kick the Mobius axis (smoothed impulse steering).
+    const lowRise = Math.max(0, lowE - mobiusLowPrev);
+    const midRise = Math.max(0, midE - mobiusMidPrev);
+    const highRise = Math.max(0, highE - mobiusHighPrev);
+    mobiusLowPrev = lowE; mobiusMidPrev = midE; mobiusHighPrev = highE;
+
+    const transient = Math.max(lowRise*0.7, midRise*0.9, highRise*1.05, onset*0.9, pulse*0.75);
+    if (transient > 0.22) {
+      const steerX = ((highRise - lowRise) / Math.max(1, lowRise + highRise + 0.001));
+      const steerY = ((midRise - ((lowRise+highRise)*0.5)) / Math.max(1, midRise + lowRise + highRise + 0.001));
+      const kick = (transient - 0.22) * (0.002 + punchK*0.006);
+      mobiusAxisVX += steerX * kick;
+      mobiusAxisVY += steerY * kick;
+    }
+    mobiusAxisVX *= 0.94;
+    mobiusAxisVY *= 0.94;
+    mobiusAxisX = Math.max(-0.48, Math.min(0.48, mobiusAxisX + mobiusAxisVX));
+    mobiusAxisY = Math.max(-0.38, Math.min(0.38, mobiusAxisY + mobiusAxisVY));
+    mobiusAxisX *= 0.992;
+    mobiusAxisY *= 0.992;
+
+    for(let idx=0; idx<count; idx++){
+      const p = mobiusPts[idx];
+      const segmentIndex = Math.floor(idx / ringsPerSeg) % segCount;
+      const ringIndex = idx % ringsPerSeg;
+
+      const tt = (segmentIndex / segCount) * Math.PI * 2;
+      const animatedT = tt + time;
+
+      const loopX = Math.cos(animatedT) * (loopSize * (0.95 + b*0.25));
+      const loopY = Math.sin(animatedT * 2.0) * (loopSize * 0.42 * (0.9 + m*0.35));
+      const loopZ = Math.sin(animatedT) * (loopSize * (0.9 + h*0.28));
+
+      const ringAngle = (ringIndex / ringsPerSeg) * Math.PI * 2;
+      const twistAngle = ringAngle + segmentIndex * twist * 0.1 + time*0.5 + p.ox*0.18;
+
+      const nx = Math.cos(animatedT + Math.PI*0.5);
+      const ny = Math.cos(animatedT * 2) * 0.5;
+      const nz = Math.sin(animatedT + Math.PI*0.5);
+
+      const bx = -Math.sin(animatedT);
+      const by = Math.sin(animatedT * 2) * 2;
+      const bz = Math.cos(animatedT);
+
+      const pulseBand = Math.sin(segmentIndex * 0.2 + time * pulseSpeed) * 0.30 + 1.0;
+      const beatKick = (pulse*0.20 + onset*0.16) * (0.35 + punchK*1.25);
+      const radiusOffset = thickness * (pulseBand + beatKick);
+
+      const tx = loopX + (Math.cos(twistAngle)*nx + Math.sin(twistAngle)*bx) * radiusOffset;
+      const ty = loopY + (Math.cos(twistAngle)*ny + Math.sin(twistAngle)*by) * radiusOffset;
+      const tz = loopZ + (Math.cos(twistAngle)*nz + Math.sin(twistAngle)*bz) * radiusOffset;
+
+      // smooth follow: lower energy = smoother glide, higher = snappier response
+      const follow = 0.065 + punchK*0.12;
+      p.x = mix(p.x, tx, follow);
+      p.y = mix(p.y, ty, follow);
+      p.z = mix(p.z, tz, follow);
+
+      // camera-ish projection + slow orbit + transient-driven axis tilt
+      const camRot = tm*0.23;
+      const yaw = camRot + mobiusAxisX;
+      const pitch = mobiusAxisY;
+
+      // yaw around Y
+      const x1 = p.x*Math.cos(yaw) - p.z*Math.sin(yaw);
+      const z1 = p.x*Math.sin(yaw) + p.z*Math.cos(yaw);
+      // pitch around X
+      const y1 = p.y*Math.cos(pitch) - z1*Math.sin(pitch);
+      const z2 = p.y*Math.sin(pitch) + z1*Math.cos(pitch);
+
+      const depth = 300 + z2;
+      if (depth < 24) continue;
+      const pr = 360 / depth;
+      const sx = x1 * pr;
+      const sy = y1 * pr;
+
+      const hueBase = (segmentIndex/segCount + time*0.05) % 1;
+      const hueVar = Math.sin(ringAngle + time*2) * 0.10;
+      const hue = (((hueBase + hueVar + 1)%1) * 360 + colorFlash*18) % 360;
+      const sat = 70 + Math.sin(animatedT*3)*10 + glowK*7 + punchK*12;
+      const lum = 44 + pulseBand*11 + Math.sin(twistAngle*2)*6 + onset*(3 + punchK*6);
+
+      const r = Math.max(0.55, Math.min(3.0, (0.65 + pr*78) * (0.56 + glowK*0.20 + punchK*0.12)));
+      const a = Math.max(0.18, Math.min(0.96, 0.34 + pr*38 + pulse*(0.03 + punchK*0.09) + onset*(0.03 + punchK*0.08)));
+
+      // Crisp particle: tiny bright core + restrained outer halo.
+      const coreR = Math.max(0.45, r * 0.48);
+      x.fillStyle = `hsla(${hue},${Math.min(100,sat+6)}%,${Math.min(96,lum+10)}%,${Math.min(1,a*0.96)})`;
+      x.beginPath();
+      x.arc(sx, sy, coreR, 0, Math.PI*2);
+      x.fill();
+
+      x.fillStyle = `hsla(${hue},${sat}%,${lum}%,${Math.max(0.08,a*0.36)})`;
+      x.beginPath();
+      x.arc(sx, sy, r, 0, Math.PI*2);
+      x.fill();
+    }
+
+    // center annotation nod to source concept
+    if ((tm|0) % 8 === 0){
+      x.fillStyle='rgba(255,255,255,0.06)';
+      x.beginPath(); x.arc(0,0,4 + pulse*2.4,0,Math.PI*2); x.fill();
+    }
+
+    x.restore();
+  }
+
+
+  const ORB_COLS = 110;
+  const ORB_ROWS = 48;
+  const orbPts = Array.from({length: ORB_COLS*ORB_ROWS}, (_,i)=>({
+    x:(Math.random()-0.5)*220,
+    y:(Math.random()-0.5)*220,
+    z:(Math.random()-0.5)*220,
+    col: i % ORB_COLS,
+    row: Math.floor(i / ORB_COLS),
+  }));
+  let orbLowPrev = 0, orbMidPrev = 0, orbHighPrev = 0;
+  let orbHueShift = 0;
+  let orbPhase = 0;
+  let orbSpeedEnv = 1.0;
+  let orbLastMs = 0;
+  let orbPresenceEnv = 1.0;
+
+  function drawOrbScene(){
+    x.fillStyle='rgba(2,4,10,0.26)';
+    x.fillRect(0,0,W,H);
+    x.save();
+    x.translate(W*0.5,H*0.5);
+    x.globalCompositeOperation='lighter';
+
+    const eNorm = Math.max(0, Math.min(1, (energyLevel-1)/9));
+    const motionNorm = Math.max(0, Math.min(1, (motionLevel-1)/9));
+    const glowNorm = Math.max(0, Math.min(1, (glowLevel-1)/9));
+    const vol = Math.max(0, Math.min(1, monoEnv/100));
+
+    // Volume gate: silence => no motion, dots fade out.
+    const isPlaying = String(transportState || '').toLowerCase() === 'play';
+    const volGate = Math.max(0, Math.min(1, (monoEnv - 4) / 14));
+    const presenceTarget = isPlaying ? volGate : 0;
+    orbPresenceEnv = mix(orbPresenceEnv, presenceTarget, presenceTarget > orbPresenceEnv ? 0.10 : 0.035);
+
+    // Map toward your reference controls.
+    const emergence = 0.38 + eNorm*0.45;
+    const scale = Math.min(W,H) * (0.19 + eNorm*0.07);
+    const wideK = Math.max(1.0, Math.min(1.75, W / Math.max(1,H) * 0.62));
+    // Constant baseline motion with persistent phase accumulator.
+    const baseSpeed = 0.90 + motionNorm*2.25;
+    const speedTarget = (baseSpeed * (0.97 + vol*0.05 + pulse*0.01)) * orbPresenceEnv; // gated by presence
+    orbSpeedEnv = mix(orbSpeedEnv, speedTarget, speedTarget > orbSpeedEnv ? 0.03 : 0.018);
+
+    const nowMs = performance.now();
+    const dt = orbLastMs ? Math.min(40, Math.max(8, nowMs - orbLastMs)) : 16;
+    orbLastMs = nowMs;
+    orbPhase += orbSpeedEnv * (dt / 1000);
+
+    const detail = 2.3 + eNorm*3.6;
+    const brt = 0.55 + glowNorm*0.35;
+
+    const st = orbPhase;
+
+    if (orbPresenceEnv < 0.02) {
+      x.restore();
+      return;
+    }
+
+    // Spectral-shift color steering (low/mid/high rise drives warm↔cool hue drift).
+    const lowRise = Math.max(0, lowE - orbLowPrev);
+    const midRise = Math.max(0, midE - orbMidPrev);
+    const highRise = Math.max(0, highE - orbHighPrev);
+    orbLowPrev = lowE; orbMidPrev = midE; orbHighPrev = highE;
+
+    const lowScore = lowRise*1.15 + (lowE*0.05);
+    const midScore = midRise*1.10 + (midE*0.05);
+    const highScore = highRise*1.25 + (highE*0.05);
+
+    // low -> warmer, high -> cooler/more magenta drift
+    let targetShift = 0;
+    if (lowScore > midScore && lowScore > highScore) targetShift = -26;
+    else if (highScore > lowScore && highScore > midScore) targetShift = 28;
+    else targetShift = 6;
+
+    // Smooth so shifts feel musical, not flickery.
+    orbHueShift = mix(orbHueShift, targetShift, 0.08);
+
+    for(let i=0;i<orbPts.length;i++){
+      const p = orbPts[i];
+      const u01 = p.col / Math.max(1, ORB_COLS-1);
+      const v01 = p.row / Math.max(1, ORB_ROWS-1);
+      const u = (u01 - 0.5) * Math.PI * 2;
+      const v = (v01 - 0.5) * Math.PI;
+
+      const cu=Math.cos(u), su=Math.sin(u), cv=Math.cos(v), sv=Math.sin(v);
+      const ux = cv*cu;
+      const uy = sv;
+      const uz = cv*su;
+
+      const f = detail;
+      const n1 = Math.sin(ux*f + st*0.7) * Math.sin(uz*f*1.3 + st*0.5) * Math.sin(uy*f*0.9 + st*0.9);
+      const n2 = Math.sin(ux*f*2.1 + uy*f*1.7 + st*1.1) * 0.5;
+      const n3 = Math.sin(uz*f*2.7 + ux*f*1.4 + st*0.6) * 0.25;
+      const noise = (n1+n2+n3) * emergence;
+
+      // tendrily shell, not a rigid sphere
+      const tendrilPhase = Math.sin(u*3.0 + st*0.3) * Math.sin(v*5.0 + st*0.4);
+      const tendril = Math.pow(Math.max(0, tendrilPhase), 5.6) * emergence;
+      const radius = scale * (1.0 + noise*0.42 + tendril*0.65);
+
+      let px = ux * radius;
+      let py = uy * radius;
+      let pz = uz * radius;
+
+      const r1 = st*0.12, r2 = st*0.08;
+      const c1=Math.cos(r1), s1=Math.sin(r1), c2=Math.cos(r2), s2=Math.sin(r2);
+      const rx = px*c1 - pz*s1;
+      const rz1 = px*s1 + pz*c1;
+      const ry = py*c2 - rz1*s2;
+      const rz = py*s2 + rz1*c2;
+
+      const breath = 1.0 + (0.022 + eNorm*0.022)*Math.sin(st*0.35 + v*2.0);
+      const tx = rx*breath*wideK, ty=ry*breath, tz=rz*breath;
+
+      // Higher inertia to prevent jitter.
+      const follow = 0.075 + motionNorm*0.045;
+      p.x = mix(p.x, tx, follow);
+      p.y = mix(p.y, ty, follow);
+      p.z = mix(p.z, tz, follow);
+
+      const depth = 330 + p.z;
+      if(depth < 26) continue;
+      const pr = (360 + (wideK-1)*55) / depth;
+      const sx = p.x * pr;
+      const sy = p.y * pr;
+
+      // Warm neon palette like the reference (magenta -> orange/yellow -> lime).
+      const hue = (328 + u01*132 + noise*22 + st*1.4 + orbHueShift) % 360;
+      const sat = 84 + Math.abs(Math.sin(v01*10 + st*0.8))*16 + Math.max(0, highRise*0.08);
+      const lum = (28 + 46*(0.5 + 0.5*Math.sin(v*4 + st*0.8 + noise*3.0))) * brt * (0.96 + Math.max(lowRise,midRise,highRise)*0.0025);
+
+      const r = Math.max(0.5, Math.min(2.1, (0.55 + pr*62) * (0.72 + glowNorm*0.28)));
+      const a = Math.max(0.12, Math.min(0.92, 0.28 + pr*34 + pulse*0.02 + onset*0.03)) * orbPresenceEnv;
+
+      // tiny halo
+      x.fillStyle = `hsla(${hue},${Math.min(100,sat)}%,${Math.min(95,lum)}%,${Math.max(0.07,a*0.28)})`;
+      x.beginPath(); x.arc(sx,sy,r,0,Math.PI*2); x.fill();
+      // crisp core dot
+      x.fillStyle = `hsla(${hue},${Math.min(100,sat+4)}%,${Math.min(98,lum+10)}%,${Math.min(1,a*0.98)})`;
+      x.beginPath(); x.arc(sx,sy,Math.max(0.36,r*0.44),0,Math.PI*2); x.fill();
+    }
+
+    // ambient warm center glow
+    const cg = x.createRadialGradient(0,0,2,0,0,scale*(0.95 + glowNorm*0.45));
+    cg.addColorStop(0,`hsla(${40 + colorFlash*8},100%,70%,${(0.12 + glowNorm*0.16) * orbPresenceEnv})`);
+    cg.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle=cg; x.beginPath(); x.arc(0,0,scale*(0.78 + glowNorm*0.22),0,Math.PI*2); x.fill();
+
+    x.restore();
+  }
+
   function frame(ts){
     t=ts*0.001;
     tm=t*motionK;
@@ -2535,6 +2850,8 @@
     else if(scene==='tunnel') drawTunnel();
     else if(scene==='moire') drawMoire();
     else if(scene==='sphere') drawMagnetosphere();
+    else if(scene==='mobius') drawMobius();
+    else if(scene==='orb') drawOrbScene();
     else drawAurora();
 
     // faint scanlines for CRT feel
