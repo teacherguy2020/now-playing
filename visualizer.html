@@ -37,6 +37,7 @@
       <option value="ambient">ambient</option>
       <option value="mobius">mobius swarm</option>
       <option value="orb">emergent orb</option>
+      <option value="cube">cube lattice</option>
     </select>
     <span style="font-size:11px;opacity:.8;">Saved</span>
     <select id="savedPresetSel" aria-label="Saved visualizer presets"><option value="">(none)</option></select>
@@ -95,7 +96,8 @@
     moire:{scene:'moire', attack:0.34, release:0.13, onsetGain:0.9, feedback:0.1, sat:1.0},
     ambient:{scene:'aurora', attack:0.20, release:0.09, onsetGain:0.5, feedback:0.14, sat:0.85},
     mobius:{scene:'mobius', attack:0.36, release:0.13, onsetGain:1.05, feedback:0.04, sat:1.1},
-    orb:{scene:'orb', attack:0.30, release:0.12, onsetGain:0.95, feedback:0.06, sat:1.05}
+    orb:{scene:'orb', attack:0.30, release:0.12, onsetGain:0.95, feedback:0.06, sat:1.05},
+    cube:{scene:'cube', attack:0.34, release:0.13, onsetGain:1.0, feedback:0.05, sat:1.08}
   };
   const hasPresetParam = qp.has('preset');
   const hasEnergyParam = qp.has('energy');
@@ -114,7 +116,8 @@
     moire:{energy:5,motion:6,glow:5},
     ambient:{energy:5,motion:10,glow:5},
     mobius:{energy:7,motion:6,glow:8},
-    orb:{energy:6,motion:5,glow:7}
+    orb:{energy:6,motion:5,glow:7},
+    cube:{energy:7,motion:6,glow:8}
   };
   const lv=PRESET_LEVELS[presetKey]||PRESET_LEVELS.classic;
   let energyLevel=Math.max(1,Math.min(10,Number(qp.get('energy')||String(lv.energy))||lv.energy));
@@ -139,7 +142,7 @@
   if(scene==='magnetosphere') scene='sphere';
   if(scene==='jelly') scene='aeon';
   if(auto) scene='aurora';
-  const scenes=['aurora','aeon','fireworks','particles','tunnel','moire','sphere','mobius','orb'];
+  const scenes=['aurora','aeon','fireworks','particles','tunnel','moire','sphere','mobius','orb','cube'];
   let sceneIdx=scenes.indexOf(scene); if(sceneIdx<0) sceneIdx=0;
 
   // Designer controls should be visible by default in editor contexts.
@@ -2699,21 +2702,26 @@
     const eNorm = Math.max(0, Math.min(1, (energyLevel-1)/9));
     const motionNorm = Math.max(0, Math.min(1, (motionLevel-1)/9));
     const glowNorm = Math.max(0, Math.min(1, (glowLevel-1)/9));
+    const b = Math.max(0, Math.min(1, bass/100));
+    const m = Math.max(0, Math.min(1, mid/100));
+    const h = Math.max(0, Math.min(1, treb/100));
     const vol = Math.max(0, Math.min(1, monoEnv/100));
 
-    // Volume gate: silence => no motion, dots fade out.
-    const isPlaying = String(transportState || '').toLowerCase() === 'play';
+    // Keep orb visible; scale intensity with transport + volume.
+    const transport = String(transportState || '').toLowerCase();
+    const isPlaying = (transport === 'play' || transport === 'playing');
     const volGate = Math.max(0, Math.min(1, (monoEnv - 4) / 14));
-    const presenceTarget = isPlaying ? volGate : 0;
+    const spectrumPresence = Math.max(b*0.8, m*0.75, h*0.7, pulse*0.9, onset*0.85);
+    const presenceTarget = isPlaying ? Math.max(0.24, volGate, spectrumPresence) : Math.max(0.16, spectrumPresence*0.65);
     orbPresenceEnv = mix(orbPresenceEnv, presenceTarget, presenceTarget > orbPresenceEnv ? 0.10 : 0.035);
 
     // Map toward your reference controls.
-    const emergence = 0.38 + eNorm*0.45;
-    const scale = Math.min(W,H) * (0.19 + eNorm*0.07);
-    const wideK = Math.max(1.0, Math.min(1.75, W / Math.max(1,H) * 0.62));
+    const emergence = 0.34 + eNorm*0.44 + m*0.20 + h*0.12;
+    const scale = Math.min(W,H) * (0.18 + eNorm*0.06 + b*0.09);
+    const wideK = Math.max(1.0, Math.min(1.9, W / Math.max(1,H) * 0.62 + b*0.22));
     // Constant baseline motion with persistent phase accumulator.
-    const baseSpeed = 0.90 + motionNorm*2.25;
-    const speedTarget = (baseSpeed * (0.97 + vol*0.05 + pulse*0.01)) * orbPresenceEnv; // gated by presence
+    const baseSpeed = 0.85 + motionNorm*2.2 + m*0.55 + h*0.35;
+    const speedTarget = (baseSpeed * (0.95 + vol*0.08 + pulse*0.10 + onset*0.08)) * orbPresenceEnv; // gated by presence
     orbSpeedEnv = mix(orbSpeedEnv, speedTarget, speedTarget > orbSpeedEnv ? 0.03 : 0.018);
 
     const nowMs = performance.now();
@@ -2721,8 +2729,8 @@
     orbLastMs = nowMs;
     orbPhase += orbSpeedEnv * (dt / 1000);
 
-    const detail = 2.3 + eNorm*3.6;
-    const brt = 0.55 + glowNorm*0.35;
+    const detail = 2.2 + eNorm*3.4 + h*1.1;
+    const brt = 0.50 + glowNorm*0.34 + h*0.16 + b*0.12;
 
     const st = orbPhase;
 
@@ -2800,12 +2808,12 @@
       const sy = p.y * pr;
 
       // Warm neon palette like the reference (magenta -> orange/yellow -> lime).
-      const hue = (328 + u01*132 + noise*22 + st*1.4 + orbHueShift) % 360;
-      const sat = 84 + Math.abs(Math.sin(v01*10 + st*0.8))*16 + Math.max(0, highRise*0.08);
-      const lum = (28 + 46*(0.5 + 0.5*Math.sin(v*4 + st*0.8 + noise*3.0))) * brt * (0.96 + Math.max(lowRise,midRise,highRise)*0.0025);
+      const hue = (320 + u01*140 + noise*24 + st*2.2 + orbHueShift + h*36 - b*18) % 360;
+      const sat = 84 + Math.abs(Math.sin(v01*10 + st*0.8))*16 + Math.max(0, highRise*0.08) + h*10;
+      const lum = (26 + 50*(0.5 + 0.5*Math.sin(v*4 + st*0.8 + noise*3.0))) * brt * (0.94 + Math.max(lowRise,midRise,highRise)*0.0032 + b*0.24 + h*0.28);
 
-      const r = Math.max(0.5, Math.min(2.1, (0.55 + pr*62) * (0.72 + glowNorm*0.28)));
-      const a = Math.max(0.12, Math.min(0.92, 0.28 + pr*34 + pulse*0.02 + onset*0.03)) * orbPresenceEnv;
+      const r = Math.max(0.5, Math.min(2.7, (0.55 + pr*64) * (0.72 + glowNorm*0.30 + b*0.26)));
+      const a = Math.max(0.12, Math.min(0.96, 0.28 + pr*34 + pulse*0.08 + onset*0.10 + h*0.12 + b*0.10)) * orbPresenceEnv;
 
       // tiny halo
       x.fillStyle = `hsla(${hue},${Math.min(100,sat)}%,${Math.min(95,lum)}%,${Math.max(0.07,a*0.28)})`;
@@ -2823,6 +2831,109 @@
 
     x.restore();
   }
+
+  const CUBE_COUNT = 3600;
+  const CUBE_DIM = Math.ceil(Math.cbrt(CUBE_COUNT));
+  const cubePts = Array.from({length:CUBE_COUNT}, ()=>({
+    x:(Math.random()-0.5)*220,
+    y:(Math.random()-0.5)*220,
+    z:(Math.random()-0.5)*220,
+    rx:Math.random()*Math.PI*2,
+    ry:Math.random()*Math.PI*2,
+  }));
+
+  let cubeKickEnv = 0;
+  let cubeSnapEnv = 0;
+
+  function drawCubeScene(){
+    x.fillStyle='rgba(1,4,10,0.24)';
+    x.fillRect(0,0,W,H);
+    x.save();
+    x.translate(W*0.5,H*0.5);
+    x.globalCompositeOperation='lighter';
+
+    const b = Math.max(0,Math.min(1,bass/100));
+    const m = Math.max(0,Math.min(1,mid/100));
+    const h = Math.max(0,Math.min(1,treb/100));
+    const eNorm = Math.max(0, Math.min(1, (energyLevel-1)/9));
+    const motionNorm = Math.max(0, Math.min(1, (motionLevel-1)/9));
+    const glowNorm = Math.max(0, Math.min(1, (glowLevel-1)/9));
+    // Scale from subtle->full with E10 as the existing max behavior.
+    const energyDrive = 0.12 + Math.pow(eNorm, 1.35) * 0.88;
+
+    // Stronger beat coupling: kick = low+onset, snap = high+onset
+    const kickRaw = Math.max(0, Math.min(1, (b*1.05 + onset*1.8 + pulse*1.15)));
+    const snapRaw = Math.max(0, Math.min(1, (h*1.0 + onset*1.25 + pulse*0.45)));
+    const kick = kickRaw * energyDrive;
+    const snap = snapRaw * energyDrive;
+    cubeKickEnv = mix(cubeKickEnv, kick, kick > cubeKickEnv ? (0.16 + energyDrive*0.36) : (0.06 + energyDrive*0.03));
+    cubeSnapEnv = mix(cubeSnapEnv, snap, snap > cubeSnapEnv ? (0.14 + energyDrive*0.34) : (0.07 + energyDrive*0.03));
+
+    const sep = (8 + eNorm*5) + cubeKickEnv*42;
+    const half = (CUBE_DIM*sep)*0.5;
+    const wobble = (2.2 + motionNorm*6.2) * (0.45 + m*1.7 + cubeSnapEnv*1.2);
+    const rotY = tm*(0.18 + motionNorm*0.9) + cubeKickEnv*1.45;
+    const rotX = Math.sin(tm*0.6)*0.24 + cubeSnapEnv*0.9;
+    const cx=Math.cos(rotX), sxr=Math.sin(rotX), cy=Math.cos(rotY), sy=Math.sin(rotY);
+
+    for(let i=0;i<CUBE_COUNT;i++){
+      const p = cubePts[i];
+      const z0 = Math.floor(i / (CUBE_DIM*CUBE_DIM));
+      const y0 = Math.floor((i % (CUBE_DIM*CUBE_DIM)) / CUBE_DIM);
+      const x0 = i % CUBE_DIM;
+
+      let tx = x0*sep - half;
+      let ty = y0*sep - half;
+      let tz = z0*sep - half;
+
+      const n = i*0.013;
+      tx += Math.sin(tm*1.9 + n) * wobble;
+      ty += Math.cos(tm*1.55 + n*1.2) * wobble;
+      tz += Math.sin(tm*1.32 + n*0.9) * wobble;
+
+      const follow = 0.08 + m*0.26 + cubeKickEnv*0.24;
+      p.x = mix(p.x, tx, follow);
+      p.y = mix(p.y, ty, follow);
+      p.z = mix(p.z, tz, follow);
+
+      const x1 = p.x*cy - p.z*sy;
+      const z1 = p.x*sy + p.z*cy;
+      const y1 = p.y*cx - z1*sxr;
+      const z2 = p.y*sxr + z1*cx;
+
+      const depth = 420 + z2;
+      if(depth < 24) continue;
+      const pr = (420 + W*0.08) / depth;
+      const sx = x1 * pr;
+      const sy2 = y1 * pr;
+
+      const hue = (192 + cubeSnapEnv*150 - cubeKickEnv*58 + tm*14 + (i%97)*0.3) % 360;
+      const sat = 86 + glowNorm*18 + cubeSnapEnv*16;
+      const lum = Math.min(96, 44 + cubeSnapEnv*34 + cubeKickEnv*28);
+      const glowT = Math.pow(glowNorm, 1.5);
+      const r = Math.max(0.42, Math.min(4.6, (0.48 + pr*56) * (0.78 + glowT*0.45 + cubeKickEnv*1.10)));
+      const a = Math.max(0.12, Math.min(1.0, 0.16 + pr*34 + cubeSnapEnv*0.34 + cubeKickEnv*0.30));
+
+      // Halo is tightly controlled by Glow so Glow=1 stays crisp.
+      const haloAlpha = Math.max(0.015, a * (0.06 + glowT*0.34));
+      const haloR = r * (0.62 + glowT*0.60);
+      x.fillStyle = `hsla(${hue},${sat}%,${lum}%,${haloAlpha})`;
+      x.beginPath(); x.arc(sx, sy2, haloR, 0, Math.PI*2); x.fill();
+
+      const coreR = Math.max(0.30, r * (0.38 + cubeSnapEnv*0.16 + glowT*0.14));
+      x.fillStyle = `hsla(${hue},${Math.min(100,sat+6)}%,${Math.min(98,lum+12)}%,${Math.min(1,a)})`;
+      x.beginPath(); x.arc(sx, sy2, coreR, 0, Math.PI*2); x.fill();
+    }
+
+    const pulseR = Math.min(W,H) * (0.07 + cubeKickEnv*0.24 + glowNorm*0.08);
+    const g = x.createRadialGradient(0,0,2,0,0,pulseR);
+    g.addColorStop(0,`hsla(${206 + cubeSnapEnv*120},100%,72%,${0.20 + cubeSnapEnv*0.34 + cubeKickEnv*0.34})`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle=g; x.beginPath(); x.arc(0,0,pulseR,0,Math.PI*2); x.fill();
+
+    x.restore();
+  }
+
 
   function frame(ts){
     t=ts*0.001;
@@ -2852,6 +2963,7 @@
     else if(scene==='sphere') drawMagnetosphere();
     else if(scene==='mobius') drawMobius();
     else if(scene==='orb') drawOrbScene();
+    else if(scene==='cube') drawCubeScene();
     else drawAurora();
 
     // faint scanlines for CRT feel
