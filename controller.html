@@ -1856,7 +1856,31 @@
         return;
       }
       if (p === 'visualizer.html') {
-        navigateWithSlide('visualizer.html');
+        const u = new URL('visualizer.html', location.href);
+        const vp = String(__u.searchParams.get('vpreset') || '').trim();
+        const ve = String(__u.searchParams.get('venergy') || '').trim();
+        const vm = String(__u.searchParams.get('vmotion') || '').trim();
+        const vg = String(__u.searchParams.get('vglow') || '').trim();
+        if (vp) u.searchParams.set('preset', vp);
+        if (ve) u.searchParams.set('energy', ve);
+        if (vm) u.searchParams.set('motion', vm);
+        if (vg) u.searchParams.set('glow', vg);
+        try {
+          const lr = await fetchJsonWithTimeout(`${base}/peppy/last-profile`, { cache:'no-store', headers:reqHeaders(false) }, 1800);
+          const lp = lr?.ok ? (lr.json?.profile || {}) : {};
+          const lv = (lp && typeof lp.visualizer === 'object') ? lp.visualizer : null;
+          if (String(lp?.displayMode || '').toLowerCase() === 'visualizer' && lv) {
+            const p2 = String(lv?.preset || '').trim().toLowerCase();
+            const e2 = Number(lv?.energy);
+            const m2 = Number(lv?.motion);
+            const g2 = Number(lv?.glow);
+            if (p2) u.searchParams.set('preset', p2);
+            if (Number.isFinite(e2)) u.searchParams.set('energy', String(Math.max(1, Math.min(10, e2))));
+            if (Number.isFinite(m2)) u.searchParams.set('motion', String(Math.max(1, Math.min(10, m2))));
+            if (Number.isFinite(g2)) u.searchParams.set('glow', String(Math.max(1, Math.min(10, g2))));
+          }
+        } catch {}
+        navigateWithSlide(`${u.pathname.replace(/^\//,'')}${u.search}`);
         return;
       }
       if (p.startsWith('controller-')) {

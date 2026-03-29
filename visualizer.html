@@ -155,6 +155,11 @@
   const embeddedOn = ['1','true','yes','on'].includes(String(qp.get('embedded') || '').trim().toLowerCase());
   const pureOn = embeddedOn || ['1','true','yes','on'].includes(String(qp.get('pure') || '').trim().toLowerCase());
   const uiOn = pureOn ? false : ((uiParam === '0' || uiParam === 'false' || uiParam === 'off') ? false : !kioskOn);
+  const perfParam = String(qp.get('perf') || '').trim().toLowerCase();
+  const autoLowPower = kioskOn && /^(nowplaying\.local|10\.0\.0\.254)$/i.test(String(location.hostname || ''));
+  const lowPowerMode = (perfParam === 'pi' || perfParam === 'low' || perfParam === '1') || (perfParam !== 'high' && autoLowPower);
+  const perfPointStep = lowPowerMode ? 2 : 1;
+  const perfFeedbackMul = lowPowerMode ? 0.68 : 1;
   if (ctl) ctl.style.display = uiOn ? 'flex' : 'none';
   try { document.body.classList.toggle('designer', !!uiOn && !kioskOn); } catch {}
   try { document.body.classList.toggle('pure', !!pureOn); } catch {}
@@ -2879,7 +2884,7 @@
     const rotX = Math.sin(tm*0.6)*0.24 + cubeSnapEnv*0.9;
     const cx=Math.cos(rotX), sxr=Math.sin(rotX), cy=Math.cos(rotY), sy=Math.sin(rotY);
 
-    for(let i=0;i<CUBE_COUNT;i++){
+    for(let i=0;i<CUBE_COUNT;i+=perfPointStep){
       const p = cubePts[i];
       const z0 = Math.floor(i / (CUBE_DIM*CUBE_DIM));
       const y0 = Math.floor((i % (CUBE_DIM*CUBE_DIM)) / CUBE_DIM);
@@ -3020,7 +3025,7 @@
     const hueFollow = 0.10 + eqTransient * 0.28;
     bloomHueEnv = mix(bloomHueEnv, targetHueBase, hueFollow);
 
-    for(let i=0;i<BLOOM_COUNT;i++){
+    for(let i=0;i<BLOOM_COUNT;i+=perfPointStep){
       const p = bloomPts[i];
       const fi = i / BLOOM_COUNT;
       const theta = i * ga;
@@ -3091,8 +3096,8 @@
 
     // Lightweight feedback loop (render-to-self transform) for trails/depth.
     x.save();
-    const fb = Math.max(0.03, Math.min(0.24, Number(preset.feedback||0.08) * (0.85 + (energyK-1)*0.5) * (0.82 + (glowK-1)*0.7)));
-    x.globalAlpha = fb + Math.min(0.12, pulse*0.03*(0.85+glowK*0.3));
+    const fb = Math.max(0.03, Math.min(0.24, Number(preset.feedback||0.08) * (0.85 + (energyK-1)*0.5) * (0.82 + (glowK-1)*0.7))) * perfFeedbackMul;
+    x.globalAlpha = fb + Math.min(0.12, pulse*0.03*(0.85+glowK*0.3)) * perfFeedbackMul;
     x.translate(W*0.5, H*0.5);
     const z = 1.002 + Math.min(0.012, energy/14000) * (0.7 + motionK*0.45);
     x.scale(z, z);
