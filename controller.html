@@ -38,6 +38,9 @@
     .personnelTitle{font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:#9fc4ff;font-weight:700;opacity:.92}
     .personnelBody{font-size:11px;line-height:1.24;color:#e7efff;overflow:auto;white-space:pre-line}
     .np img{width:64px;height:64px;border-radius:10px;object-fit:cover;display:block}
+    .artFaceFront.hasMotion #art{opacity:0}
+    .npArtMotion{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;background:transparent;border-radius:10px;pointer-events:none}
+    .npArtMotion.show{display:block}
     .artSpin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:10px;background:rgba(7,12,20,.36);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px)}
     .artSpin[hidden]{display:none !important}
     .artSpin::before{content:'';width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#ffffff;animation:npSpin .8s linear infinite}
@@ -326,6 +329,7 @@
           <div class="artFlip" id="npArtFlip">
             <div class="artFace artFaceFront">
               <img id="art" src="" alt="" />
+              <video id="npArtMotion" class="npArtMotion" autoplay muted loop playsinline preload="metadata"></video>
               <button type="button" class="artHint artHintInfo" id="npFlipInfoBtn" aria-label="Show personnel">i</button>
               <span class="artSpin" id="npArtSpin" aria-hidden="true"></span>
               <span class="eq" id="eqOverlay" aria-hidden="true"><b></b><b></b><b></b></span>
@@ -686,6 +690,27 @@
       return runtimeTrackKey;
     }
     function reqHeaders(json=true){ return Object.assign({}, json?{'Content-Type':'application/json'}:{}, runtimeTrackKey?{'x-track-key':runtimeTrackKey}:{}); }
+    const npMotionCache = new Map();
+    let npMotionReqToken = 0;
+    async function resolveLocalMotionMp4(artist = '', album = ''){
+      const a = String(artist || '').trim();
+      const b = String(album || '').trim();
+      if (!a || !b) return '';
+      const k = `${a.toLowerCase()}|${b.toLowerCase()}`;
+      if (npMotionCache.has(k)) return String(npMotionCache.get(k) || '');
+      try {
+        await ensureKey();
+        const url = `${base}/config/library-health/animated-art/lookup?artist=${encodeURIComponent(a)}&album=${encodeURIComponent(b)}`;
+        const r = await fetch(url, { headers: reqHeaders(false) });
+        const j = await r.json().catch(() => ({}));
+        const mp4 = String((j?.hit?.mp4) || '').trim();
+        npMotionCache.set(k, mp4);
+        return mp4;
+      } catch {
+        npMotionCache.set(k, '');
+        return '';
+      }
+    }
 
     function initKioskControls(){
       if (!IS_KIOSK_EDITOR) return;
@@ -715,6 +740,7 @@
           relUrl.searchParams.set('theme', String(profile.theme || 'auto'));
           relUrl.searchParams.set('colorPreset', String(profile.colorPreset || 'ocean'));
           relUrl.searchParams.set('recentSource', String(profile.recentSource || 'albums'));
+          relUrl.searchParams.set('rev', '20260329-motion-art-fix');
           relUrl.searchParams.delete('edit');
           relUrl.searchParams.delete('designer');
           if (IS_KIOSK_1280) relUrl.searchParams.set('kiosk', '1');
@@ -917,6 +943,31 @@
             artEl.onload = ()=>{ if (spinEl) spinEl.hidden = true; };
             artEl.onerror = ()=>{ if (spinEl) spinEl.hidden = true; artEl.src = '/icons/icon-192.png'; };
             artEl.src = art;
+
+            const motionEl = document.getElementById('npArtMotion');
+            const artFaceFront = artEl.closest('.artFaceFront');
+            const myToken = ++npMotionReqToken;
+            if (motionEl) {
+              try { motionEl.pause(); } catch {}
+              motionEl.classList.remove('show');
+              motionEl.removeAttribute('src');
+              motionEl.load();
+            }
+            if (artFaceFront) artFaceFront.classList.remove('hasMotion');
+            if (hasTrack && !isPodcast && !isRadio) {
+              resolveLocalMotionMp4(artist || dispArtist || '', String(album || '').trim()).then((mp4)=>{
+                if (myToken !== npMotionReqToken) return;
+                const m = String(mp4 || '').trim();
+                const v = document.getElementById('npArtMotion');
+                if (!v || !m) return;
+                v.src = m;
+                v.classList.add('show');
+                const face = artEl.closest('.artFaceFront');
+                if (face) face.classList.add('hasMotion');
+                const p = v.play();
+                if (p && typeof p.catch === 'function') p.catch(()=>{});
+              }).catch(()=>{});
+            }
           }
           document.getElementById('line1').textContent = line1;
           document.getElementById('line2').textContent = line2;
