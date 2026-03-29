@@ -1529,10 +1529,21 @@
           }
         }
         const npCardEl = document.getElementById("npCard");
-        const blurSig = "".concat(art);
+        let blurSig = "".concat(String(album || "").trim().toLowerCase(), "|").concat(String(artist || "").trim().toLowerCase());
+        let blurSrc = "";
+        try {
+          const au = new URL(String(art || ""), location.href);
+          const p = new URLSearchParams(au.search || "");
+          ["t", "ts", "v", "cache", "cacheBust", "_"].forEach((k) => p.delete(k));
+          au.search = p.toString() ? "?".concat(p.toString()) : "";
+          blurSrc = au.toString();
+        } catch {
+          blurSrc = String(art || "");
+        }
+        if (!String(blurSig || "").replace("|", "").trim()) blurSig = blurSrc;
         if (npCardEl && blurSig !== npBlurSig) {
           npBlurSig = blurSig;
-          const blurUrl = "".concat(base, "/art/current_bg_640_blur.jpg?v=").concat(encodeURIComponent(String(art || "")), "&t=").concat(Date.now());
+          const blurUrl = "".concat(base, "/art/current_bg_640_blur.jpg?v=").concat(encodeURIComponent(String(blurSrc || art || "")), "&t=").concat(Date.now());
           npCardEl.style.setProperty("--npBlurBg", 'url("'.concat(blurUrl, '")'));
         }
         const line1El = document.getElementById("line1");
