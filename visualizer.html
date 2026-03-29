@@ -2933,12 +2933,6 @@
       x.beginPath(); x.arc(sx, sy2, coreR, 0, Math.PI*2); x.fill();
     }
 
-    const pulseR = Math.min(W,H) * (0.07 + cubeKickEnv*0.24 + glowNorm*0.08);
-    const g = x.createRadialGradient(0,0,2,0,0,pulseR);
-    g.addColorStop(0,`hsla(${206 + cubeSnapEnv*120},100%,72%,${0.20 + cubeSnapEnv*0.34 + cubeKickEnv*0.34})`);
-    g.addColorStop(1,'rgba(0,0,0,0)');
-    x.fillStyle=g; x.beginPath(); x.arc(0,0,pulseR,0,Math.PI*2); x.fill();
-
     x.restore();
   }
 
