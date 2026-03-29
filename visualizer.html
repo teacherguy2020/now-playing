@@ -38,6 +38,7 @@
       <option value="mobius">mobius swarm</option>
       <option value="orb">emergent orb</option>
       <option value="cube">cube lattice</option>
+      <option value="bloom-field">bloom field</option>
     </select>
     <span style="font-size:11px;opacity:.8;">Saved</span>
     <select id="savedPresetSel" aria-label="Saved visualizer presets"><option value="">(none)</option></select>
@@ -97,7 +98,8 @@
     ambient:{scene:'aurora', attack:0.20, release:0.09, onsetGain:0.5, feedback:0.14, sat:0.85},
     mobius:{scene:'mobius', attack:0.36, release:0.13, onsetGain:1.05, feedback:0.04, sat:1.1},
     orb:{scene:'orb', attack:0.30, release:0.12, onsetGain:0.95, feedback:0.06, sat:1.05},
-    cube:{scene:'cube', attack:0.34, release:0.13, onsetGain:1.0, feedback:0.05, sat:1.08}
+    cube:{scene:'cube', attack:0.34, release:0.13, onsetGain:1.0, feedback:0.05, sat:1.08},
+    'bloom-field':{scene:'bloom-field', attack:0.34, release:0.13, onsetGain:1.05, feedback:0.05, sat:1.12}
   };
   const hasPresetParam = qp.has('preset');
   const hasEnergyParam = qp.has('energy');
@@ -117,7 +119,8 @@
     ambient:{energy:5,motion:10,glow:5},
     mobius:{energy:7,motion:6,glow:8},
     orb:{energy:6,motion:5,glow:7},
-    cube:{energy:7,motion:6,glow:8}
+    cube:{energy:7,motion:6,glow:8},
+    'bloom-field':{energy:7,motion:6,glow:8}
   };
   const lv=PRESET_LEVELS[presetKey]||PRESET_LEVELS.classic;
   let energyLevel=Math.max(1,Math.min(10,Number(qp.get('energy')||String(lv.energy))||lv.energy));
@@ -142,7 +145,7 @@
   if(scene==='magnetosphere') scene='sphere';
   if(scene==='jelly') scene='aeon';
   if(auto) scene='aurora';
-  const scenes=['aurora','aeon','fireworks','particles','tunnel','moire','sphere','mobius','orb','cube'];
+  const scenes=['aurora','aeon','fireworks','particles','tunnel','moire','sphere','mobius','orb','cube','bloom-field'];
   let sceneIdx=scenes.indexOf(scene); if(sceneIdx<0) sceneIdx=0;
 
   // Designer controls should be visible by default in editor contexts.
@@ -2935,6 +2938,149 @@
   }
 
 
+  const BLOOM_COUNT = 4200;
+  const bloomPts = Array.from({length:BLOOM_COUNT}, (_,i)=>({
+    i,
+    x:(Math.random()-0.5)*220,
+    y:(Math.random()-0.5)*220,
+    z:(Math.random()-0.5)*220,
+    ph:Math.random()*Math.PI*2,
+  }));
+  let bloomTwistEnv = 0;
+  let bloomLowPrev = 0, bloomMidPrev = 0, bloomHighPrev = 0;
+  let bloomHueEnv = 0;
+  let bloomVolEnv = 0;
+  let bloomVolBase = 0;
+  let bloomDomBand = 1;
+  let bloomSpeedEnv = 0;
+
+  function drawBloomFieldScene(){
+    x.fillStyle='rgba(2,4,10,0.18)';
+    x.fillRect(0,0,W,H);
+    x.save();
+    x.translate(W*0.5,H*0.5);
+    x.globalCompositeOperation='lighter';
+
+    // Near-verbatim baseline + volume-mapped core radius
+    const meterVol = Math.max(0, Math.min(1, monoEnv/100));
+    const specVol = Math.max(0, Math.min(1, (bass*0.5 + mid*0.33 + treb*0.17)/100));
+    const transport = String(transportState || '').toLowerCase();
+    const isPlaying = (transport === 'play' || transport === 'playing');
+    const motionBlend = Math.max(0, Math.min(1, (motionLevel - 1) / 9)); // M1=no audio influence, M10=current behavior
+
+    // Make loudness response obvious and ensure pause visibly shrinks radius.
+    const volRaw = isPlaying ? Math.max(meterVol, specVol) : 0;
+    bloomVolEnv = mix(bloomVolEnv, volRaw, volRaw > bloomVolEnv ? 0.32 : 0.10);
+
+    // Transient kick for extra visible radius variance on hits.
+    const trans = Math.max(0, Math.min(1, onset*0.55 + pulse*0.40 + Math.max(0, (specVol - meterVol))*0.35));
+    const radiusDriveReactive = Math.max(0, Math.min(1, bloomVolEnv + trans*0.42));
+
+    // Transients are now subtler; overall volume contributes more to speed.
+    // Slower release so impact lingers a bit.
+    const speedHit = Math.max(0, Math.min(1, onset*0.20 + pulse*0.15));
+    bloomSpeedEnv = mix(bloomSpeedEnv, speedHit, speedHit > bloomSpeedEnv ? 0.11 : 0.035);
+
+    const eNorm = Math.max(0, Math.min(1, (energyLevel - 1) / 9));
+    const energyScale = 0.42 + eNorm * 0.58; // E1 small, E10 full viewport scale
+
+    const minR = 26 * energyScale;
+    const maxR = Math.min(W,H) * (0.62 + eNorm * 0.38); // E10 => 1.00 * min(W,H)
+    const radiusDefault = 60 * energyScale;
+    const radiusReactive = minR + Math.pow(radiusDriveReactive, 0.72) * (maxR - minR);
+    const radiusCtrl = mix(radiusDefault, radiusReactive, motionBlend); // M1 default, M10 reactive
+    const twistCtrl = 3.0;
+    const noiseCtrl = 1.5;
+    const speedCtrl = 1.2;
+
+    const volSpeed = isPlaying ? (0.48 + bloomVolEnv * 1.04) : 0.0;
+    const transSpeed = isPlaying ? (bloomSpeedEnv * 0.34) : 0.0;
+    const speedBurstReactive = isPlaying ? (1.22 + volSpeed + transSpeed) : 0.0;
+    const speedBurstDefault = isPlaying ? 1.0 : 0.0;
+    const speedBurst = mix(speedBurstDefault, speedBurstReactive, motionBlend);
+    const tBloom = tm * speedCtrl * speedBurst;
+    const ga = 2.399963229728653;
+
+    // EQ-driven palette selection from predominant band (smoothed).
+    const lowRise = Math.max(0, bass - bloomLowPrev);
+    const midRise = Math.max(0, mid - bloomMidPrev);
+    const highRise = Math.max(0, treb - bloomHighPrev);
+    const lowScore = bass*1.00 + lowRise*1.25;
+    const midScore = mid*1.00 + midRise*1.45;
+    const highScore = treb*1.00 + highRise*1.70;
+    bloomLowPrev = bass; bloomMidPrev = mid; bloomHighPrev = treb;
+
+    const eqTransient = Math.max(lowRise*0.9, midRise*1.0, highRise*1.15, onset*0.22, pulse*0.18);
+
+    const dom = (highScore > midScore && highScore > lowScore) ? 2 : ((midScore > lowScore) ? 1 : 0);
+    if (dom !== bloomDomBand) bloomDomBand = dom;
+
+    const targetHueBaseReactive = bloomDomBand === 0 ? 205 : (bloomDomBand === 1 ? 120 : 315);
+    const targetHueBase = mix(190, targetHueBaseReactive, motionBlend);
+    const hueFollow = 0.10 + eqTransient * 0.28;
+    bloomHueEnv = mix(bloomHueEnv, targetHueBase, hueFollow);
+
+    for(let i=0;i<BLOOM_COUNT;i++){
+      const p = bloomPts[i];
+      const fi = i / BLOOM_COUNT;
+      const theta = i * ga;
+      const layer = Math.sqrt(fi);
+      const baseR = radiusCtrl * layer;
+
+      const wave = Math.sin(theta * twistCtrl + tBloom) * noiseCtrl;
+      const r = baseR + wave * 10.0;
+      const phi = Math.acos(1.0 - 2.0 * fi);
+      const twist = tBloom * 0.5 + layer * twistCtrl;
+
+      let tx = r * Math.sin(phi) * Math.cos(theta + twist);
+      let ty = r * Math.sin(phi) * Math.sin(theta + twist);
+      let tz = r * Math.cos(phi + wave * 0.2);
+
+      if(!Number.isFinite(tx)) tx = 0;
+      if(!Number.isFinite(ty)) ty = 0;
+      if(!Number.isFinite(tz)) tz = 0;
+
+      p.x = mix(p.x, tx, 0.10);
+      p.y = mix(p.y, ty, 0.10);
+      p.z = mix(p.z, tz, 0.10);
+
+      // gentle global spin to mimic camera auto-rotate feel
+      const yaw = tm * 0.22;
+      const cy=Math.cos(yaw), sy=Math.sin(yaw);
+      const x1 = p.x*cy - p.z*sy;
+      const z1 = p.x*sy + p.z*cy;
+      const depth = 360 + z1;
+      if(depth < 24) continue;
+      const pr = 360 / depth;
+      const sx = x1 * pr;
+      const sy2 = p.y * pr;
+
+      const bandLift = (Math.max(bass, mid, treb) / 100) * motionBlend;
+      const transLift = Math.max(0, Math.min(1, eqTransient / 26)) * motionBlend;
+      const hueDefault = ((fi + tBloom * 0.05 + wave * 0.02) % 1) * 360;
+      const hueReactive = (bloomHueEnv + fi*84 + tBloom*(8 + transLift*6) + wave*(5 + transLift*4)) % 360;
+      const hue = mix(hueDefault, hueReactive, motionBlend);
+      const sat = Math.max(0, Math.min(1, 0.62 + 0.28 * Math.sin(layer * 10.0 + tBloom) + bandLift*0.20 + transLift*0.18));
+      const light = Math.max(0, Math.min(1, 0.46 + 0.20 * Math.cos(theta * 0.3 + tBloom) + bandLift*0.18 + transLift*0.16));
+
+      const glowNorm = Math.max(0, Math.min(1, (glowLevel-1)/9));
+      const glowT = Math.pow(glowNorm, 1.4);
+      const rad = Math.max(0.34, Math.min(2.6, (0.44 + pr*46) * (0.75 + glowT*0.36)));
+      const alpha = Math.max(0.10, Math.min(0.90, 0.20 + pr*24));
+
+      // restrained halo
+      x.fillStyle = `hsla(${hue},${sat*100}%,${light*100}%,${Math.max(0.01,alpha*(0.04 + glowT*0.18))})`;
+      x.beginPath(); x.arc(sx, sy2, rad*(0.60 + glowT*0.38), 0, Math.PI*2); x.fill();
+
+      // core
+      x.fillStyle = `hsla(${hue},${Math.min(100,sat*100+8)}%,${Math.min(98,light*100+10)}%,${alpha})`;
+      x.beginPath(); x.arc(sx, sy2, Math.max(0.26, rad*(0.36 + glowT*0.08)), 0, Math.PI*2); x.fill();
+    }
+
+    x.restore();
+  }
+
+
   function frame(ts){
     t=ts*0.001;
     tm=t*motionK;
@@ -2964,6 +3110,7 @@
     else if(scene==='mobius') drawMobius();
     else if(scene==='orb') drawOrbScene();
     else if(scene==='cube') drawCubeScene();
+    else if(scene==='bloom-field') drawBloomFieldScene();
     else drawAurora();
 
     // faint scanlines for CRT feel
