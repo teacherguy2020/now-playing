@@ -937,9 +937,12 @@
 
         const hasPresetInput = Object.prototype.hasOwnProperty.call(d || {}, "colorPreset");
         const hasRowsInput = Array.isArray(d == null ? void 0 : d.recentRows);
+        const hasVizPresetInput = Object.prototype.hasOwnProperty.call(d || {}, "visualizerPreset");
 
         const nextPresetRaw = String((d == null ? void 0 : d.colorPreset) || "").trim().toLowerCase();
         const nextPresetEff = hasPresetInput ? String(nextPresetRaw || prevPreset || "ocean").toLowerCase() : prevPreset;
+        const prevVizPreset = String((profile == null ? void 0 : profile.visualizerPreset) || __u.searchParams.get("vpreset") || "classic").trim().toLowerCase();
+        const nextVizPreset = hasVizPresetInput ? String((d == null ? void 0 : d.visualizerPreset) || "").trim().toLowerCase() || prevVizPreset || "classic" : prevVizPreset;
 
         let rowsEff = prevRows.slice(0, 4);
         if (hasRowsInput) {
@@ -961,19 +964,47 @@
 
         const sameRows = prevRows.length === rowsEff.length && prevRows.every((x, i) => x === rowsEff[i]);
         const samePreset = prevPreset === nextPresetEff;
-        if (sameRows && samePreset) {
+        const sameVizPreset = prevVizPreset === nextVizPreset;
+        if (sameRows && samePreset && sameVizPreset) {
           return;
         }
 
-        profile = { ...profile || {}, colorPreset: nextPresetEff, customColors: null, recentRows: rowsEff };
+        profile = { ...profile || {}, colorPreset: nextPresetEff, customColors: null, recentRows: rowsEff, visualizerPreset: nextVizPreset };
         try {
           const u2 = new URL(location.href);
           if (nextPresetEff) u2.searchParams.set("colorPreset", nextPresetEff);
+          if (nextVizPreset) u2.searchParams.set("vpreset", nextVizPreset);
           u2.searchParams.set("recentRows", rowsEff.join(","));
           history.replaceState(null, "", u2.toString());
         } catch {
         }
         applyProfileUi();
+        if (!sameVizPreset) {
+          (async () => {
+            try {
+              await ensureKey();
+              const rr = await fetch("".concat(base, "/peppy/last-profile"), { cache: "no-store", headers: reqHeaders(false) });
+              const rj = await rr.json().catch(() => ({}));
+              const pr = (rj == null ? void 0 : rj.profile) || {};
+              const v0 = pr && typeof pr.visualizer === "object" ? pr.visualizer : {};
+              const e0 = Number(v0.energy);
+              const m0 = Number(v0.motion);
+              const g0 = Number(v0.glow);
+              const payload = {
+                ...pr,
+                displayMode: "visualizer",
+                visualizer: {
+                  preset: nextVizPreset,
+                  energy: Number.isFinite(e0) ? Math.max(1, Math.min(10, e0)) : 6,
+                  motion: Number.isFinite(m0) ? Math.max(1, Math.min(10, m0)) : 6,
+                  glow: Number.isFinite(g0) ? Math.max(1, Math.min(10, g0)) : 6
+                }
+              };
+              await fetch("".concat(base, "/peppy/last-profile"), { method: "POST", headers: reqHeaders(true), body: JSON.stringify(payload) }).catch(() => null);
+            } catch {
+            }
+          })();
+        }
         // No automatic recents data refresh after initial page load.
         // Keep recents stable unless user explicitly changes source in this UI.
         persistControllerProfile().catch(() => null);
@@ -3061,7 +3092,26 @@
       return;
     }
     if (!shouldOpenInRightPane() && p === "visualizer.html") {
-      navigateWithSlide("visualizer.html");
+      const u2 = new URL("visualizer.html", location.href);
+      const vp = String(__u.searchParams.get("vpreset") || "").trim();
+      const ve = String(__u.searchParams.get("venergy") || "").trim();
+      const vm = String(__u.searchParams.get("vmotion") || "").trim();
+      const vg = String(__u.searchParams.get("vglow") || "").trim();
+      if (vp) u2.searchParams.set("preset", vp);
+      if (ve) u2.searchParams.set("energy", ve);
+      if (vm) u2.searchParams.set("motion", vm);
+      if (vg) u2.searchParams.set("glow", vg);
+      fetch("".concat(base, "/peppy/last-profile"), { cache: "no-store", headers: reqHeaders(false) }).then((r) => r.json().catch(() => ({}))).then((j) => {
+        const pr = (j == null ? void 0 : j.profile) || {};
+        const v = pr && typeof pr.visualizer === "object" ? pr.visualizer : null;
+        if (String((pr == null ? void 0 : pr.displayMode) || "").toLowerCase() === "visualizer" && v) {
+          if (v.preset) u2.searchParams.set("preset", String(v.preset).toLowerCase());
+          if (Number.isFinite(Number(v.energy))) u2.searchParams.set("energy", String(Math.max(1, Math.min(10, Number(v.energy)))));
+          if (Number.isFinite(Number(v.motion))) u2.searchParams.set("motion", String(Math.max(1, Math.min(10, Number(v.motion)))));
+          if (Number.isFinite(Number(v.glow))) u2.searchParams.set("glow", String(Math.max(1, Math.min(10, Number(v.glow)))));
+        }
+      }).catch(() => {
+      }).finally(() => navigateWithSlide("".concat(u2.pathname.replace(/^\//, "")).concat(u2.search)));
       return;
     }
     if (shouldOpenInRightPane() && isPanePage) {
@@ -3091,6 +3141,8 @@
         if (target === "controller-tablet-settings.html") {
           const rows = Array.isArray(profile == null ? void 0 : profile.recentRows) ? profile.recentRows : ["albums", "playlists", "podcasts", "radio"];
           u2.searchParams.set("recentRows", rows.join(","));
+          const vp = String((profile == null ? void 0 : profile.visualizerPreset) || __u.searchParams.get("vpreset") || "classic").trim().toLowerCase();
+          u2.searchParams.set("vizPreset", vp || "classic");
         }
         if (p === "kiosk-albums.html" || p === "kiosk-queue.html") {
           u2.searchParams.set("cb", String(Date.now()));

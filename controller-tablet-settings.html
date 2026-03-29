@@ -36,6 +36,10 @@
     <select id="themePreset" aria-label="Controller tablet theme preset"></select>
     <div class="hint">Applies immediately.</div>
 
+    <label for="vizPreset">Visualizer preset</label>
+    <select id="vizPreset" aria-label="Controller tablet visualizer preset"></select>
+    <div class="hint">Sets the Visualizer used when opening the Visualizer row.</div>
+
     <label for="row1">Row 1 source</label>
     <select id="row1"></select>
     <label for="row2">Row 2 source</label>
@@ -59,6 +63,7 @@
     const themeMode = String(u.searchParams.get('theme') || 'auto').trim().toLowerCase();
     const selected = String(u.searchParams.get('colorPreset') || 'ocean').trim().toLowerCase();
     const sel = document.getElementById('themePreset');
+    const vizSel = document.getElementById('vizPreset');
     const rowIds = ['row1','row2','row3','row4'];
     const rowSelects = rowIds.map((id) => document.getElementById(id));
     const ROW_OPTIONS = [
@@ -70,6 +75,11 @@
       ['lastfm-topartists','Top Artists'],
       ['lastfm-toptracks','Top Tracks'],
       ['lastfm-recenttracks','Recently Played']
+    ];
+    const VIZ_PRESETS = [
+      ['classic','Particle Classical'],['particle-rock','Particle Rock'],['aurora','Aurora'],['aeon','Hello'],['fireworks','Fireworks'],
+      ['particles','Particles'],['tunnel','Tunnel'],['moire','Moire'],['sphere','Sphere'],['mobius','Mobius'],
+      ['orb','Emergent Orb'],['cube','Cube Lattice'],['bloom-field','Bloom Field']
     ];
 
     const applyPalette = (name, mode) => {
@@ -123,6 +133,10 @@
     sel.value = PRESETS.some(([v]) => v === selected) ? selected : 'ocean';
     applyPalette(sel.value, themeMode);
 
+    const vizFromQ = String(u.searchParams.get('vizPreset') || 'classic').trim().toLowerCase();
+    vizSel.innerHTML = VIZ_PRESETS.map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+    vizSel.value = VIZ_PRESETS.some(([v]) => v === vizFromQ) ? vizFromQ : 'classic';
+
     const defaults = ['albums','playlists','podcasts','radio'];
     const fromQ = String(u.searchParams.get('recentRows') || '').split(',').map((s)=>String(s||'').trim().toLowerCase()).filter(Boolean);
     const rows = [];
@@ -154,11 +168,12 @@
         }
       }
       try {
-        window.parent?.postMessage({ type: 'np-controller-settings', colorPreset: String(sel.value || 'ocean'), recentRows: vals }, '*');
+        window.parent?.postMessage({ type: 'np-controller-settings', colorPreset: String(sel.value || 'ocean'), recentRows: vals, visualizerPreset: String(vizSel?.value || 'classic').toLowerCase() }, '*');
       } catch {}
     };
 
     sel.addEventListener('change', () => send(-1));
+    vizSel.addEventListener('change', () => send(-1));
     rowSelects.forEach((s, i) => s.addEventListener('change', () => send(i)));
 
     let backBusy = false;
