@@ -1781,7 +1781,7 @@
       } catch {}
     }
 
-    function openPage(page){
+    async function openPage(page){
       const p = String(page || '').trim();
       if (!p) return;
       if (shouldOpenInRightPane() && (p.startsWith('kiosk-') || p === 'visualizer.html')) {
@@ -1824,6 +1824,7 @@
             kioskPaneFrame.src = `${urlObj.pathname.replace(/^\//,'')}${urlObj.search}`;
           };
           if (p === 'visualizer.html') {
+            // Prefer latest designer-applied visualizer profile over stale URL params.
             const vp = String(__u.searchParams.get('vpreset') || '').trim();
             const ve = String(__u.searchParams.get('venergy') || '').trim();
             const vm = String(__u.searchParams.get('vmotion') || '').trim();
@@ -1832,8 +1833,21 @@
             if (ve) u.searchParams.set('energy', ve);
             if (vm) u.searchParams.set('motion', vm);
             if (vg) u.searchParams.set('glow', vg);
-            // Open instantly in Col3; do not block on profile fetch.
-            // Explicit vpreset/venergy/vmotion/vglow params above still apply when present.
+            try {
+              const lr = await fetchJsonWithTimeout(`${base}/peppy/last-profile`, { cache:'no-store', headers:reqHeaders(false) }, 1800);
+              const lp = lr?.ok ? (lr.json?.profile || {}) : {};
+              const lv = (lp && typeof lp.visualizer === 'object') ? lp.visualizer : null;
+              if (String(lp?.displayMode || '').toLowerCase() === 'visualizer' && lv) {
+                const p2 = String(lv?.preset || '').trim().toLowerCase();
+                const e2 = Number(lv?.energy);
+                const m2 = Number(lv?.motion);
+                const g2 = Number(lv?.glow);
+                if (p2) u.searchParams.set('preset', p2);
+                if (Number.isFinite(e2)) u.searchParams.set('energy', String(Math.max(1, Math.min(10, e2))));
+                if (Number.isFinite(m2)) u.searchParams.set('motion', String(Math.max(1, Math.min(10, m2))));
+                if (Number.isFinite(g2)) u.searchParams.set('glow', String(Math.max(1, Math.min(10, g2))));
+              }
+            } catch {}
           }
           setPaneSrc(u);
         }
