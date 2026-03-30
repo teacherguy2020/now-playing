@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Queue Wizard</title>
   <style>
-    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--accent:#4aa8ff;--panel:color-mix(in oklab,var(--bg) 82%, var(--line) 18%);--panel-strong:color-mix(in oklab,var(--bg) 72%, var(--line) 28%);--overlay:color-mix(in oklab,var(--bg) 58%, transparent);--overlay-line:color-mix(in oklab,var(--line) 82%, transparent);--card-bg:var(--overlay);--control-bg:var(--panel);--preview-bg:var(--panel);--button-bg:var(--panel);--button-primary-bg:color-mix(in oklab,var(--panel) 72%, var(--accent) 28%);--button-primary-line:color-mix(in oklab,var(--accent) 42%, var(--line) 58%);--button-warn-bg:color-mix(in oklab,var(--panel) 74%, #7a3a3a 26%);--button-warn-line:color-mix(in oklab,#7a3a3a 58%, var(--line) 42%)}
+    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--accent:#4aa8ff;--card-bg:var(--line);--control-bg:var(--line);--preview-bg:var(--line);--button-bg:var(--line);--button-primary-bg:var(--line);--button-primary-line:var(--line);--button-warn-bg:var(--line);--button-warn-line:var(--line)}
     *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
     body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
     body.embedded{background:transparent}
@@ -14,7 +14,7 @@
     .back{border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer;padding:6px}
     h1{margin:0;font-size:30px;letter-spacing:-.01em}
     .meta{color:var(--muted);font-size:13px;margin:0 0 10px}
-    .card{background:var(--card-bg);border:1px solid var(--line);border-radius:14px;padding:12px;margin:0 0 10px}
+    .card{background:transparent;border:1px solid var(--line);border-radius:14px;padding:12px;margin:0 0 10px}
     .h{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
     .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .inp,.sel{height:36px;border-radius:10px;border:1px solid var(--line);background:var(--control-bg);color:var(--text);padding:0 10px;min-width:0}
@@ -26,7 +26,9 @@
     .checks{display:flex;gap:12px;flex-wrap:wrap}
     .checks label{display:flex;gap:6px;align-items:center;color:var(--text);font-size:14px}
     .small{font-size:12px;color:var(--muted)}
-    .preview{max-height:38vh;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--preview-bg)}
+    .preview{max-height:38vh;overflow:auto;border:1px solid var(--line);border-radius:10px;background:transparent}
+    body.embedded .card{background:transparent}
+    body.embedded .preview{background:transparent}
     #quickResults:empty{display:none}
     .collage{width:120px;height:120px;border-radius:10px;border:1px solid var(--line);object-fit:cover;background:var(--panel)}
     .item{padding:8px 10px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:center}
@@ -174,7 +176,8 @@
         ? { accent, ...l, bg: l.bg }
         : { ...d, text: p === 'blackred' ? '#ff4d57' : p === 'blackblue' ? '#5f86e6' : p === 'blackpurple' ? '#b084f5' : p === 'blackgold' ? '#e0b24d' : '#f3f6ff', muted: p === 'blackred' ? '#b33a42' : p === 'blackblue' ? '#3f5ea8' : p === 'blackpurple' ? '#7a56ba' : p === 'blackgold' ? '#a67c2b' : '#9eb3d6' };
       const hex = (v)=>/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim()) ? String(v).trim() : '';
-      const cc = customColors && typeof customColors === 'object' ? customColors : {};
+      const allowCustomThemeOverride = !!(new URL(location.href).searchParams.get('primaryThemeColor') || new URL(location.href).searchParams.get('secondaryThemeColor') || new URL(location.href).searchParams.get('primaryTextColor') || new URL(location.href).searchParams.get('secondaryTextColor'));
+      const cc = allowCustomThemeOverride && customColors && typeof customColors === 'object' ? customColors : {};
       const cPrimary = forceDarkPreset ? '' : hex(cc.primaryThemeColor);
       const cSecondary = forceDarkPreset ? '' : hex(cc.secondaryThemeColor);
       const cText = forceDarkPreset ? '' : hex(cc.primaryTextColor);
@@ -186,14 +189,14 @@
       r.style.setProperty('--line', cSecondary || t.line);
       r.style.setProperty('--text', cText || t.text || '#f3f6ff');
       r.style.setProperty('--muted', cText2 || t.muted || '#9eb3d6');
-      r.style.setProperty('--card-bg', 'var(--overlay)');
-      r.style.setProperty('--control-bg', 'var(--panel)');
-      r.style.setProperty('--preview-bg', 'var(--panel)');
-      r.style.setProperty('--button-bg', 'var(--panel)');
-      r.style.setProperty('--button-primary-bg', 'color-mix(in oklab,var(--panel) 72%, var(--accent) 28%)');
-      r.style.setProperty('--button-primary-line', 'color-mix(in oklab,var(--accent) 42%, var(--line) 58%)');
-      r.style.setProperty('--button-warn-bg', 'color-mix(in oklab,var(--panel) 74%, #7a3a3a 26%)');
-      r.style.setProperty('--button-warn-line', 'color-mix(in oklab,#7a3a3a 58%, var(--line) 42%)');
+      r.style.setProperty('--card-bg', 'var(--line)');
+      r.style.setProperty('--control-bg', 'var(--line)');
+      r.style.setProperty('--preview-bg', 'var(--line)');
+      r.style.setProperty('--button-bg', 'var(--line)');
+      r.style.setProperty('--button-primary-bg', 'var(--line)');
+      r.style.setProperty('--button-primary-line', 'var(--line)');
+      r.style.setProperty('--button-warn-bg', 'var(--line)');
+      r.style.setProperty('--button-warn-line', 'var(--line)');
     }
     (async ()=>{
       const __u = new URL(location.href);

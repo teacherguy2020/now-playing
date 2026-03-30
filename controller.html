@@ -74,13 +74,13 @@
     .quickWrap.hasText .quickClear{display:inline-flex}
     .quickMenu{position:absolute;left:0;right:0;top:44px;display:none;z-index:60;max-height:44vh;overflow:auto;border:1px solid var(--quick-line,#2a3a58);border-radius:12px;background:var(--quick-bg-menu,rgba(10,16,28,.94));backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
     .quickMenu.open{display:block}
-    .qRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 10px;border-bottom:1px solid #20314b}
+    .qRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 10px;border-bottom:1px solid var(--quick-line,var(--line))}
     .qRow:last-child{border-bottom:0}
-    .qMeta{font-size:11px;color:#8fb2df;text-transform:uppercase;letter-spacing:.04em}
+    .qMeta{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
     .qMain{min-width:0;overflow:hidden}
-    .qTxt{display:block;font-size:14px;color:#e9f1ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+    .qTxt{display:block;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
     .qBtns{display:flex;gap:6px}
-    .qBtn{width:26px;height:26px;border-radius:999px;border:1px solid #35507a;background:#16253e;color:#dfeaff;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:transform .08s ease, background .18s ease, border-color .18s ease, color .18s ease}
+    .qBtn{width:26px;height:26px;border-radius:999px;border:1px solid var(--quick-line,var(--line));background:var(--quick-line,var(--line));color:var(--text);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:transform .08s ease, background .18s ease, border-color .18s ease, color .18s ease}
     .qBtn:active{transform:scale(.94)}
     .qBtn.pending{transform:scale(1.08);background:#2b4f86;border-color:#74a8ff;color:#ffffff}
     .qSpin{width:12px;height:12px;border:2px solid rgba(223,234,255,.45);border-top-color:#ffffff;border-radius:999px;display:block;animation:qSpin .7s linear infinite}
@@ -180,7 +180,7 @@
     body.kiosk1280 .recentTitle{font-size:18px;margin:2px 0 8px;padding-left:5px}
     body.kiosk1280 .railModeBtn{display:none}
     body.kiosk1280 .rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 24px)/4);grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;padding:0;overflow-x:auto;overflow-y:hidden;align-content:start}
-    body.kiosk1280 .kPane, body.ipad11.ipad11Landscape .kPane{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--surface,#0b1324);border:1px solid var(--line,#1f2a3d);border-radius:10px;overflow:hidden;transform:translateX(108%);opacity:0;pointer-events:none;transition:transform .24s ease,opacity .2s ease}
+    body.kiosk1280 .kPane, body.ipad11.ipad11Landscape .kPane{position:absolute;inset:0;display:flex;flex-direction:column;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%);border:1px solid var(--line,#1f2a3d);border-radius:10px;overflow:hidden;transform:translateX(108%);opacity:0;pointer-events:none;transition:transform .24s ease,opacity .2s ease}
     body.kiosk1280 .kPane.open, body.ipad11.ipad11Landscape .kPane.open{transform:translateX(0);opacity:1;pointer-events:auto}
     body.kiosk1280 .recentWrap.paneOpen #recentTitle,
     body.kiosk1280 .recentWrap.paneOpen #recentRail,
@@ -239,7 +239,7 @@
     body.ipad11 .railModeBtn, body.ipad11 #recentTitle, body.ipad11 #recentRail, body.ipad11 #recentPeekRail{display:none !important}
     body.ipad11 .recentWrap{display:flex;min-height:0;overflow:hidden}
     body.ipad11 .ipadRecentGrid{display:grid !important;grid-template-columns:1fr 1fr;gap:8px;width:100%;min-height:0;overflow:auto;padding-right:2px}
-    body.ipad11 .ipadRecentPane{min-height:0;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:8px;display:flex;flex-direction:column;gap:6px}
+    body.ipad11 .ipadRecentPane{min-height:0;border:1px solid var(--line);border-radius:12px;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%);padding:8px;display:flex;flex-direction:column;gap:6px}
     body.ipad11 .ipadRecentPane h4{margin:0;font-size:13px;letter-spacing:.02em;color:var(--muted);text-transform:uppercase}
     body.ipad11 .ipadRecentPane .rail{padding:0;gap:8px;overflow:auto;min-height:142px}
     body.ipad11 .ipadRecentPane .thumb{min-width:108px;width:108px}
@@ -250,11 +250,11 @@
     body.ipad11.ipad11Landscape #kioskCanvas{position:relative;grid-template-columns:minmax(320px,1fr) minmax(0,2fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:8px;max-height:calc(100dvh - 8px);box-sizing:border-box}
     body.ipad11.ipad11Landscape .npTap{grid-area:np;max-height:none;overflow:visible}
     /* Col1 group 1: Art + controls + text */
-    body.ipad11.ipad11Landscape .npTap .card{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:10px}
+    body.ipad11.ipad11Landscape .npTap .card{border:1px solid var(--line);border-radius:12px;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%);padding:10px}
     body.ipad11.ipad11Landscape .quickWrap{grid-area:quick;margin:12px 0 0 0}
     /* Col1 group 2: Quick Search + Library links */
-    body.ipad11.ipad11Landscape .quickWrap{border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:rgba(255,255,255,.02);padding:8px 8px 6px}
-    body.ipad11.ipad11Landscape #libraryList{grid-area:list;margin:0;min-height:0;padding:8px 10px 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:rgba(255,255,255,.02)}
+    body.ipad11.ipad11Landscape .quickWrap{border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%);padding:8px 8px 6px}
+    body.ipad11.ipad11Landscape #libraryList{grid-area:list;margin:0;min-height:0;padding:8px 10px 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%)}
     body.ipad11.ipad11Landscape .recentWrap{grid-area:recent;min-height:0;display:flex;flex-direction:column}
     body.ipad11.ipad11Landscape .npTap .card{display:flex;flex-direction:column;padding-top:14px}
     body.ipad11.ipad11Landscape .np{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;order:1}
@@ -439,7 +439,7 @@
   </div>
 
   <script>
-    const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v1';
+    const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v2';
     const MOBILE_DEFAULT_PROFILE={devicePreset:'mobile',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18};
     const __u = new URL(location.href);
     const IS_PREVIEW = __u.searchParams.get('preview') === '1';
@@ -598,13 +598,23 @@
     function applyPalette(name, themeMode, customColors){
       const p = String(name||'ocean').toLowerCase();
       const modeRaw = String(themeMode||'auto').toLowerCase();
-      const isLight = modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches));
+      const forceDarkPreset = p === 'blackred' || p === 'blackblue' || p === 'blackpurple' || p === 'blackgold';
+      const forceLightPreset = p === 'cloud' || p === 'sand' || p === 'blush' || p === 'ivoryred';
+      const isLight = forceLightPreset;
       const map = {
         ocean:    { accent:'#4aa8ff', surface:'#0b111c', line:'#1f2a3d', quickBg:'#121c30', quickBgMenu:'rgba(10,16,28,.94)' },
         violet:   { accent:'#a78bfa', surface:'#120f1f', line:'#32284a', quickBg:'#1a1330', quickBgMenu:'rgba(23,16,38,.94)' },
         mint:     { accent:'#34d399', surface:'#0b1514', line:'#21423f', quickBg:'#112421', quickBgMenu:'rgba(14,34,30,.94)' },
         amber:    { accent:'#fbbf24', surface:'#171208', line:'#4a3720', quickBg:'#2a1f12', quickBgMenu:'rgba(34,25,14,.94)' },
         black:    { accent:'#f5f5f5', surface:'#050505', line:'#222222', quickBg:'#0e0e0e', quickBgMenu:'rgba(8,8,8,.94)' },
+        blackred: { accent:'#ff3b47', surface:'#000000', line:'#2b0f13', quickBg:'#070707', quickBgMenu:'rgba(5,5,5,.95)' },
+        blackblue: { accent:'#3f68c9', surface:'#000000', line:'#141a2a', quickBg:'#070707', quickBgMenu:'rgba(5,5,5,.95)' },
+        blackpurple: { accent:'#8b5ed4', surface:'#000000', line:'#23172f', quickBg:'#070707', quickBgMenu:'rgba(5,5,5,.95)' },
+        blackgold: { accent:'#d9a441', surface:'#000000', line:'#2a2314', quickBg:'#070707', quickBgMenu:'rgba(5,5,5,.95)' },
+        cloud:    { accent:'#5f8fd9', surface:'#eef4ff', line:'#c8d6ef', quickBg:'#f6f9ff', quickBgMenu:'rgba(246,249,255,.96)' },
+        sand:     { accent:'#b8863b', surface:'#fff7e8', line:'#ead9b8', quickBg:'#fffbf2', quickBgMenu:'rgba(255,251,242,.96)' },
+        blush:    { accent:'#c85c78', surface:'#fff1f5', line:'#f2d0da', quickBg:'#fff7fa', quickBgMenu:'rgba(255,247,250,.96)' },
+        ivoryred: { accent:'#c23b45', surface:'#ffffff', line:'#e9e9e9', quickBg:'#ffffff', quickBgMenu:'rgba(255,255,255,.98)' },
         orange:   { accent:'#ff7a1a', surface:'#16100a', line:'#4a2f1c', quickBg:'#24180f', quickBgMenu:'rgba(30,18,10,.94)' },
         midnight: { accent:'#7aa2ff', surface:'#070b14', line:'#202a3f', quickBg:'#0d1322', quickBgMenu:'rgba(8,12,20,.94)' },
         slate:    { accent:'#93a4bd', surface:'#0e131b', line:'#2f3c4d', quickBg:'#151d2a', quickBgMenu:'rgba(14,19,27,.94)' },
@@ -623,6 +633,14 @@
         mint:     { surface:'#eefcf7', line:'#c7e8dd', quickBg:'#f8fffc', quickBgMenu:'rgba(248,255,252,.96)', text:'#0b0f17', muted:'#3d5f58' },
         amber:    { surface:'#fff8ea', line:'#ead8b0', quickBg:'#fffdf6', quickBgMenu:'rgba(255,253,246,.96)', text:'#0b0f17', muted:'#65532e' },
         black:    { surface:'#f2f4f8', line:'#d4dae4', quickBg:'#fafbfe', quickBgMenu:'rgba(250,251,254,.96)', text:'#0b0f17', muted:'#4b5567' },
+        blackred: { surface:'#ffeef0', line:'#f0c7cd', quickBg:'#fff7f8', quickBgMenu:'rgba(255,247,248,.96)', text:'#2a090d', muted:'#7a3b43' },
+        blackblue: { surface:'#eef2ff', line:'#cfd8f5', quickBg:'#f7f9ff', quickBgMenu:'rgba(247,249,255,.96)', text:'#101735', muted:'#3f4f86' },
+        blackpurple: { surface:'#f4efff', line:'#ddd1f6', quickBg:'#fbf8ff', quickBgMenu:'rgba(251,248,255,.96)', text:'#201233', muted:'#5b3d85' },
+        blackgold: { surface:'#fff7e8', line:'#ead9b8', quickBg:'#fffbf2', quickBgMenu:'rgba(255,251,242,.96)', text:'#2a2012', muted:'#6f5737' },
+        cloud:    { surface:'#eef4ff', line:'#c8d6ef', quickBg:'#f6f9ff', quickBgMenu:'rgba(246,249,255,.96)', text:'#132238', muted:'#425b7f' },
+        sand:     { surface:'#fff7e8', line:'#ead9b8', quickBg:'#fffbf2', quickBgMenu:'rgba(255,251,242,.96)', text:'#2a2012', muted:'#6f5737' },
+        blush:    { surface:'#fff1f5', line:'#f2d0da', quickBg:'#fff7fa', quickBgMenu:'rgba(255,247,250,.96)', text:'#2b1119', muted:'#7a4454' },
+        ivoryred: { surface:'#ffffff', line:'#e9e9e9', quickBg:'#ffffff', quickBgMenu:'rgba(255,255,255,.98)', text:'#111111', muted:'#c23b45' },
         orange:   { surface:'#fff3ea', line:'#ebcfbe', quickBg:'#fffaf6', quickBgMenu:'rgba(255,250,246,.96)', text:'#0b0f17', muted:'#684937' },
         midnight: { surface:'#edf2ff', line:'#cbd5f1', quickBg:'#f7f9ff', quickBgMenu:'rgba(247,249,255,.96)', text:'#0b0f17', muted:'#415172' },
         slate:    { surface:'#f1f5f9', line:'#d0d8e2', quickBg:'#f8fafc', quickBgMenu:'rgba(248,250,252,.96)', text:'#0b0f17', muted:'#4a5567' },
@@ -653,16 +671,17 @@
         ? {
             accent,
             ...l,
-            surface: blendHex(l.surface, accent, 0.20),
-            quickBg: blendHex(l.quickBg, accent, 0.20),
+            surface: l.surface,
+            quickBg: l.quickBg,
           }
-        : { ...d, text:'#f3f6ff', muted:'#9eb3d6' };
+        : { ...d, text: p === 'blackred' ? '#ff4d57' : p === 'blackblue' ? '#5f86e6' : p === 'blackpurple' ? '#b084f5' : p === 'blackgold' ? '#e0b24d' : '#f3f6ff', muted: p === 'blackred' ? '#b33a42' : p === 'blackblue' ? '#3f5ea8' : p === 'blackpurple' ? '#7a56ba' : p === 'blackgold' ? '#a67c2b' : '#9eb3d6' };
       const hex = (v)=>/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim()) ? String(v).trim() : '';
-      const cc = customColors && typeof customColors === 'object' ? customColors : {};
-      const cPrimary = hex(cc.primaryThemeColor);
-      const cSecondary = hex(cc.secondaryThemeColor);
-      const cText = hex(cc.primaryTextColor);
-      const cText2 = hex(cc.secondaryTextColor);
+      const allowCustomThemeOverride = IS_PREVIEW || !!__u.searchParams.get('profile') || !!__u.searchParams.get('primaryThemeColor') || !!__u.searchParams.get('secondaryThemeColor') || !!__u.searchParams.get('primaryTextColor') || !!__u.searchParams.get('secondaryTextColor');
+      const cc = allowCustomThemeOverride && customColors && typeof customColors === 'object' ? customColors : {};
+      const cPrimary = forceDarkPreset ? '' : hex(cc.primaryThemeColor);
+      const cSecondary = forceDarkPreset ? '' : hex(cc.secondaryThemeColor);
+      const cText = forceDarkPreset ? '' : hex(cc.primaryTextColor);
+      const cText2 = forceDarkPreset ? '' : hex(cc.secondaryTextColor);
 
       const r = document.documentElement;
       r.style.setProperty('--accent', t.accent);

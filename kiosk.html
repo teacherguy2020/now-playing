@@ -12,6 +12,7 @@
       const src = new URL(location.href);
       const dst = new URL('controller.html', location.href);
       const KIOSK_PROFILE_KEY = 'nowplaying.kiosk.profile.v1';
+      const CONTROLLER_PROFILE_KEY = 'nowplaying.mobile.profile.v2';
 
       const incoming = {
         theme: String(src.searchParams.get('theme') || '').trim(),
@@ -37,21 +38,22 @@
       };
 
       try {
+        const hasExplicitCustomColors = !!(resolved.primaryThemeColor || resolved.secondaryThemeColor || resolved.primaryTextColor || resolved.secondaryTextColor);
         const effective = {
           theme: resolved.theme || 'dark',
           colorPreset: resolved.colorPreset || 'ocean',
           recentSource: resolved.recentSource || 'albums',
-          customColors: {
-            primaryThemeColor: resolved.primaryThemeColor || '#0b111c',
-            secondaryThemeColor: resolved.secondaryThemeColor || '#1f2a3d',
-            primaryTextColor: resolved.primaryTextColor || '#f3f6ff',
-            secondaryTextColor: resolved.secondaryTextColor || '#9eb3d6',
-          },
+          customColors: hasExplicitCustomColors ? {
+            ...(resolved.primaryThemeColor ? { primaryThemeColor: resolved.primaryThemeColor } : {}),
+            ...(resolved.secondaryThemeColor ? { secondaryThemeColor: resolved.secondaryThemeColor } : {}),
+            ...(resolved.primaryTextColor ? { primaryTextColor: resolved.primaryTextColor } : {}),
+            ...(resolved.secondaryTextColor ? { secondaryTextColor: resolved.secondaryTextColor } : {}),
+          } : null,
           ts: Date.now(),
         };
         localStorage.setItem(KIOSK_PROFILE_KEY, JSON.stringify(effective));
-        // Keep controller/mobile profile in sync so all kiosk internal pages inherit theme/palette.
-        localStorage.setItem('nowplaying.mobile.profile.v1', JSON.stringify({
+        // Keep controller profile in sync without forcing stale/default custom colors.
+        localStorage.setItem(CONTROLLER_PROFILE_KEY, JSON.stringify({
           devicePreset:'mobile',
           theme: effective.theme,
           layout:'home-rail',
@@ -59,7 +61,7 @@
           recentSource: effective.recentSource,
           colorPreset: effective.colorPreset,
           recentCount:18,
-          customColors: effective.customColors
+          customColors: effective.customColors,
         }));
       } catch {}
 
