@@ -3178,7 +3178,7 @@
           const vp = String((profile == null ? void 0 : profile.visualizerPreset) || __u.searchParams.get("vpreset") || "classic").trim().toLowerCase();
           u2.searchParams.set("vizPreset", vp || "classic");
         }
-        if (p === "kiosk-albums.html" || p === "kiosk-queue.html") {
+        if (p.startsWith("kiosk-") || p === "visualizer.html") {
           u2.searchParams.set("cb", String(Date.now()));
         }
         if (p === "kiosk-albums.html") {

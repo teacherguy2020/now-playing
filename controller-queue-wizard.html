@@ -5,16 +5,17 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Queue Wizard</title>
   <style>
-    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--card-bg:rgba(10,18,34,.52);--control-bg:#121c30;--preview-bg:#0d1628;--button-bg:#132038;--button-primary-bg:#20406f;--button-primary-line:#3e6aa5;--button-warn-bg:#452020;--button-warn-line:#7a3a3a}
+    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--accent:#4aa8ff;--panel:color-mix(in oklab,var(--bg) 82%, var(--line) 18%);--panel-strong:color-mix(in oklab,var(--bg) 72%, var(--line) 28%);--overlay:color-mix(in oklab,var(--bg) 58%, transparent);--overlay-line:color-mix(in oklab,var(--line) 82%, transparent);--card-bg:var(--overlay);--control-bg:var(--panel);--preview-bg:var(--panel);--button-bg:var(--panel);--button-primary-bg:color-mix(in oklab,var(--panel) 72%, var(--accent) 28%);--button-primary-line:color-mix(in oklab,var(--accent) 42%, var(--line) 58%);--button-warn-bg:color-mix(in oklab,var(--panel) 74%, #7a3a3a 26%);--button-warn-line:color-mix(in oklab,#7a3a3a 58%, var(--line) 42%)}
     *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
     body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
+    body.embedded{background:transparent}
     .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 10px}
     .left{display:flex;align-items:center;gap:10px}
-    .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
+    .back{border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer;padding:6px}
     h1{margin:0;font-size:30px;letter-spacing:-.01em}
     .meta{color:var(--muted);font-size:13px;margin:0 0 10px}
     .card{background:var(--card-bg);border:1px solid var(--line);border-radius:14px;padding:12px;margin:0 0 10px}
-    .h{font-size:13px;font-weight:700;color:#cfe0ff;text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+    .h{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
     .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .inp,.sel{height:36px;border-radius:10px;border:1px solid var(--line);background:var(--control-bg);color:var(--text);padding:0 10px;min-width:0}
     .inp{width:100%}
@@ -23,14 +24,14 @@
     .btn.primary{background:var(--button-primary-bg);border-color:var(--button-primary-line)}
     .btn.warn{background:var(--button-warn-bg);border-color:var(--button-warn-line)}
     .checks{display:flex;gap:12px;flex-wrap:wrap}
-    .checks label{display:flex;gap:6px;align-items:center;color:#d7e4ff;font-size:14px}
+    .checks label{display:flex;gap:6px;align-items:center;color:var(--text);font-size:14px}
     .small{font-size:12px;color:var(--muted)}
     .preview{max-height:38vh;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--preview-bg)}
     #quickResults:empty{display:none}
-    .collage{width:120px;height:120px;border-radius:10px;border:1px solid #2a3a58;object-fit:cover;background:#0a1222}
-    .item{padding:8px 10px;border-bottom:1px solid #1d2a40;display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:center}
+    .collage{width:120px;height:120px;border-radius:10px;border:1px solid var(--line);object-fit:cover;background:var(--panel)}
+    .item{padding:8px 10px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:center}
     .item:last-child{border-bottom:0}
-    .thumb{width:34px;height:34px;border-radius:7px;object-fit:cover;background:#0a1222;border:1px solid #2a3a58}
+    .thumb{width:34px;height:34px;border-radius:7px;object-fit:cover;background:var(--panel);border:1px solid var(--line)}
   
 
     body.nav-backwarding{
@@ -115,7 +116,7 @@
       const modeRaw = String(themeMode||'auto').toLowerCase();
       const forceDarkPreset = p === 'blackred' || p === 'blackblue' || p === 'blackpurple' || p === 'blackgold';
       const forceLightPreset = p === 'cloud' || p === 'sand' || p === 'blush' || p === 'ivoryred';
-      const isLight = forceLightPreset || (!forceDarkPreset && (modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches))));
+      const isLight = forceLightPreset;
             const map = {
         ocean:    { accent:'#4aa8ff', bg:'#0b111c', line:'#1f2a3d' },
         violet:   { accent:'#a78bfa', bg:'#120f1f', line:'#32284a' },
@@ -168,22 +169,9 @@
         forest:   { bg:'#eef9f0', line:'#cde3d0', text:'#0b0f17', muted:'#44614a' },
       };
             const l = lightMap[p] || lightMap.ocean;
-      const blendHex = (base, tint, ratio=0.20)=>{
-        const b = String(base||'').trim().match(/^#([0-9a-f]{6})$/i);
-        const t = String(tint||'').trim().match(/^#([0-9a-f]{6})$/i);
-        if (!b || !t) return base;
-        const bn = parseInt(b[1],16), tn = parseInt(t[1],16);
-        let br=(bn>>16)&255, bg=(bn>>8)&255, bb=bn&255;
-        const tr=(tn>>16)&255, tg=(tn>>8)&255, tb=tn&255;
-        const k = Math.max(0, Math.min(1, ratio));
-        br = Math.round(br + (tr-br)*k);
-        bg = Math.round(bg + (tg-bg)*k);
-        bb = Math.round(bb + (tb-bb)*k);
-        return `#${br.toString(16).padStart(2,'0')}${bg.toString(16).padStart(2,'0')}${bb.toString(16).padStart(2,'0')}`;
-      };
       const accent = (l.accent || d.accent);
       const t = isLight
-        ? { accent, ...l, bg: p === 'ivoryred' ? l.bg : blendHex(l.bg, accent, 0.20) }
+        ? { accent, ...l, bg: l.bg }
         : { ...d, text: p === 'blackred' ? '#ff4d57' : p === 'blackblue' ? '#5f86e6' : p === 'blackpurple' ? '#b084f5' : p === 'blackgold' ? '#e0b24d' : '#f3f6ff', muted: p === 'blackred' ? '#b33a42' : p === 'blackblue' ? '#3f5ea8' : p === 'blackpurple' ? '#7a56ba' : p === 'blackgold' ? '#a67c2b' : '#9eb3d6' };
       const hex = (v)=>/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim()) ? String(v).trim() : '';
       const cc = customColors && typeof customColors === 'object' ? customColors : {};
@@ -198,25 +186,14 @@
       r.style.setProperty('--line', cSecondary || t.line);
       r.style.setProperty('--text', cText || t.text || '#f3f6ff');
       r.style.setProperty('--muted', cText2 || t.muted || '#9eb3d6');
-      if (isLight) {
-        r.style.setProperty('--card-bg', 'rgba(255,255,255,.78)');
-        r.style.setProperty('--control-bg', '#ffffff');
-        r.style.setProperty('--preview-bg', '#ffffff');
-        r.style.setProperty('--button-bg', '#ffffff');
-        r.style.setProperty('--button-primary-bg', '#e9f2ff');
-        r.style.setProperty('--button-primary-line', t.accent || '#4aa8ff');
-        r.style.setProperty('--button-warn-bg', '#fff2f2');
-        r.style.setProperty('--button-warn-line', '#e2b8b8');
-      } else {
-        r.style.setProperty('--card-bg', 'rgba(10,18,34,.52)');
-        r.style.setProperty('--control-bg', '#121c30');
-        r.style.setProperty('--preview-bg', '#0d1628');
-        r.style.setProperty('--button-bg', '#132038');
-        r.style.setProperty('--button-primary-bg', '#20406f');
-        r.style.setProperty('--button-primary-line', '#3e6aa5');
-        r.style.setProperty('--button-warn-bg', '#452020');
-        r.style.setProperty('--button-warn-line', '#7a3a3a');
-      }
+      r.style.setProperty('--card-bg', 'var(--overlay)');
+      r.style.setProperty('--control-bg', 'var(--panel)');
+      r.style.setProperty('--preview-bg', 'var(--panel)');
+      r.style.setProperty('--button-bg', 'var(--panel)');
+      r.style.setProperty('--button-primary-bg', 'color-mix(in oklab,var(--panel) 72%, var(--accent) 28%)');
+      r.style.setProperty('--button-primary-line', 'color-mix(in oklab,var(--accent) 42%, var(--line) 58%)');
+      r.style.setProperty('--button-warn-bg', 'color-mix(in oklab,var(--panel) 74%, #7a3a3a 26%)');
+      r.style.setProperty('--button-warn-line', 'color-mix(in oklab,#7a3a3a 58%, var(--line) 42%)');
     }
     (async ()=>{
       const __u = new URL(location.href);
@@ -226,29 +203,19 @@
       const qSecondary = String(__u.searchParams.get('secondaryThemeColor') || '').trim();
       const qText = String(__u.searchParams.get('primaryTextColor') || '').trim();
       const qText2 = String(__u.searchParams.get('secondaryTextColor') || '').trim();
-      let lsColor = '';
-      let lsTheme = '';
-      let lsCustom = null;
-      try {
-        const p = JSON.parse(localStorage.getItem('nowplaying.mobile.profile.v1') || '{}') || {};
-        lsColor = String(p?.colorPreset || '').trim().toLowerCase();
-        lsTheme = String(p?.theme || '').trim().toLowerCase();
-        lsCustom = p?.customColors || null;
-      } catch {}
       const qCustom = (qPrimary || qSecondary || qText || qText2) ? {
         ...(qPrimary ? { primaryThemeColor:qPrimary } : {}),
         ...(qSecondary ? { secondaryThemeColor:qSecondary } : {}),
         ...(qText ? { primaryTextColor:qText } : {}),
         ...(qText2 ? { secondaryTextColor:qText2 } : {}),
       } : null;
-      __npApplyPalette(qColor || lsColor || 'ocean', qTheme || lsTheme || 'dark', qCustom || lsCustom || null);
+      __npApplyPalette(qColor || 'ocean', qTheme || 'dark', qCustom || null);
       try {
         const r = await fetch(`${__npBase}/config/controller-profile`, { cache:'no-store' });
         const j = await r.json().catch(()=>({}));
         const sColor = String(j?.profile?.colorPreset || 'ocean').trim().toLowerCase();
         const sTheme = String(j?.profile?.theme || 'dark').trim().toLowerCase();
-        const sCustom = j?.profile?.customColors || null;
-        __npApplyPalette(qColor || lsColor || sColor || 'ocean', qTheme || lsTheme || sTheme || 'dark', qCustom || lsCustom || sCustom || null);
+        __npApplyPalette(qColor || sColor || 'ocean', qTheme || sTheme || 'dark', qCustom || null);
       } catch {}
     })();
 

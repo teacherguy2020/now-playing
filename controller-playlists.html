@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Playlists</title>
   <style>
-    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d}
+    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--accent:#4aa8ff;--panel:color-mix(in oklab,var(--bg) 82%, var(--line) 18%);--panel-strong:color-mix(in oklab,var(--bg) 72%, var(--line) 28%);--overlay:color-mix(in oklab,var(--bg) 58%, transparent);--overlay-line:color-mix(in oklab,var(--line) 82%, transparent)}
     *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
     body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
-    body.embedded{padding:4px 10px 8px}
+    body.embedded{padding:4px 10px 8px;background:transparent}
     .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 4px}
     .left{display:flex;align-items:center;gap:10px;min-width:0}
-    .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
+    .back{border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer;padding:6px}
     h1{margin:0;font-size:30px;letter-spacing:-.01em}
     body.embedded h1{font-size:26px;line-height:1.04}
-    .more{width:32px;height:32px;border-radius:999px;border:1px solid #2a3a58;background:#121c30;color:#dfeaff;font-size:16px;display:flex;align-items:center;justify-content:center}
+    .more{width:32px;height:32px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:16px;display:flex;align-items:center;justify-content:center}
     .meta{color:var(--muted);font-size:13px;margin:0 0 10px}
     .metaInline{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
     body.embedded .metaInline{font-size:11px;max-width:40vw}
@@ -25,43 +25,43 @@
     .list{display:block}
     .item{border:0;background:transparent;color:var(--text);text-align:left;padding:0;cursor:pointer}
     .coverWrap{position:relative;display:block;width:100%}
-    .item .ph,.item img{width:100%;aspect-ratio:1/1;border-radius:12px;object-fit:cover;background:#0a1222;display:block}
+    .item .ph,.item img{width:100%;aspect-ratio:1/1;border-radius:12px;object-fit:cover;background:var(--panel);display:block}
     .coverFlip{position:relative;width:100%;aspect-ratio:1/1;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1)}
     .item.is-flipped .coverFlip{transform:rotateY(180deg)}
     .coverFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;overflow:hidden}
-    .coverFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#101a2d,#0c1526);border:1px solid rgba(138,177,235,.32);display:flex;align-items:center;justify-content:center;padding:10px}
+    .coverFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,color-mix(in oklab,var(--panel) 92%, white 8%),var(--panel));border:1px solid color-mix(in oklab,var(--line) 74%, var(--accent) 26%);display:flex;align-items:center;justify-content:center;padding:10px}
     .coverFlipBtns{display:flex;flex-direction:column;gap:8px;width:68%;margin:0 auto}
-    .coverFlipBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 8px;font-size:12px;cursor:pointer}
+    .coverFlipBtns button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:6px 8px;font-size:12px;cursor:pointer}
     .item.is-flipped .coverFaceFront .coverMore{display:none}
-    .coverMore{position:absolute;left:6px;top:6px;width:24px;height:24px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:12px;display:flex;align-items:center;justify-content:center;z-index:2}
+    .coverMore{position:absolute;left:6px;top:6px;width:24px;height:24px;border-radius:999px;border:1px solid color-mix(in oklab,var(--line) 80%, transparent);background:var(--overlay);color:var(--text);font-size:12px;display:flex;align-items:center;justify-content:center;z-index:2}
     .ph{position:relative;display:flex;align-items:center;justify-content:center}
-    .spin{width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite}
+    .spin{width:18px;height:18px;border-radius:999px;border:2px solid color-mix(in oklab,var(--line) 70%, transparent);border-top-color:var(--accent);animation:spin .8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
     .title{font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .row{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
     .row .coverWrap{width:52px;height:52px}
-    .row .ph,.row img{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .row .ph,.row img{width:52px;height:52px;border-radius:8px;object-fit:cover;background:var(--panel)}
     .row .coverMore{left:4px;top:4px;width:20px;height:20px;font-size:11px}
 
-    .menu{position:fixed;display:none;z-index:120;min-width:220px;padding:6px;border-radius:14px;background:rgba(20,24,34,.82);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 14px 30px rgba(0,0,0,.4)}
+    .menu{position:fixed;display:none;z-index:120;min-width:220px;padding:6px;border-radius:14px;background:var(--overlay);border:1px solid var(--overlay-line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 14px 30px rgba(0,0,0,.4)}
     .menu.open{display:block}
-    .menu button{width:100%;text-align:left;border:0;background:transparent;color:#eef3ff;padding:10px;border-radius:10px}
-    .menu button.active{background:rgba(255,255,255,.08)}
-    .menu .sep{height:1px;background:rgba(255,255,255,.14);margin:4px 8px}
+    .menu button{width:100%;text-align:left;border:0;background:transparent;color:var(--text);padding:10px;border-radius:10px}
+    .menu button.active{background:color-mix(in oklab,var(--panel) 82%, var(--accent) 18%)}
+    .menu .sep{height:1px;background:var(--overlay-line);margin:4px 8px}
 
     .modal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:130;align-items:center;justify-content:center}
     .modal.open{display:flex}
-    .card{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+    .card{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:var(--overlay);border:1px solid var(--overlay-line);border-radius:14px;padding:12px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
     .head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-    .head img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .head img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:var(--panel)}
     .hTitle{font-size:17px;font-weight:700}
     .hMeta{font-size:12px;color:var(--muted)}
     .tracks{list-style:none;margin:8px 0 0;padding:0}
-    .tracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;font-size:14px}
+    .tracks li{padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
     .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-    .btns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:8px 10px;cursor:pointer}
-    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+    .btns button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:8px 10px;cursor:pointer}
+    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid var(--line);background:var(--panel-strong);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
     .modalX:active{transform:scale(.96)}
   
 
@@ -119,9 +119,8 @@
     function __npApplyPalette(name, themeMode, customColors){
       const p = String(name||'ocean').toLowerCase();
       const modeRaw = String(themeMode||'auto').toLowerCase();
-      const forceDarkPreset = p === 'blackred' || p === 'blackblue' || p === 'blackpurple' || p === 'blackgold';
       const forceLightPreset = p === 'cloud' || p === 'sand' || p === 'blush' || p === 'ivoryred';
-      const isLight = forceLightPreset || (!forceDarkPreset && (modeRaw === 'light' || (modeRaw === 'auto' && !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches))));
+      const isLight = forceLightPreset;
             const map = {
         ocean:    { accent:'#4aa8ff', bg:'#0b111c', line:'#1f2a3d' },
         violet:   { accent:'#a78bfa', bg:'#120f1f', line:'#32284a' },
@@ -174,36 +173,17 @@
         forest:   { bg:'#eef9f0', line:'#cde3d0', text:'#0b0f17', muted:'#44614a' },
       };
             const l = lightMap[p] || lightMap.ocean;
-      const blendHex = (base, tint, ratio=0.20)=>{
-        const b = String(base||'').trim().match(/^#([0-9a-f]{6})$/i);
-        const t = String(tint||'').trim().match(/^#([0-9a-f]{6})$/i);
-        if (!b || !t) return base;
-        const bn = parseInt(b[1],16), tn = parseInt(t[1],16);
-        let br=(bn>>16)&255, bg=(bn>>8)&255, bb=bn&255;
-        const tr=(tn>>16)&255, tg=(tn>>8)&255, tb=tn&255;
-        const k = Math.max(0, Math.min(1, ratio));
-        br = Math.round(br + (tr-br)*k);
-        bg = Math.round(bg + (tg-bg)*k);
-        bb = Math.round(bb + (tb-bb)*k);
-        return `#${br.toString(16).padStart(2,'0')}${bg.toString(16).padStart(2,'0')}${bb.toString(16).padStart(2,'0')}`;
-      };
       const accent = (l.accent || d.accent);
       const t = isLight
-        ? { accent, ...l, bg: p === 'ivoryred' ? l.bg : blendHex(l.bg, accent, 0.20) }
+        ? { accent, ...l, bg: l.bg }
         : { ...d, text: p === 'blackred' ? '#ff4d57' : p === 'blackblue' ? '#5f86e6' : p === 'blackpurple' ? '#b084f5' : p === 'blackgold' ? '#e0b24d' : '#f3f6ff', muted: p === 'blackred' ? '#b33a42' : p === 'blackblue' ? '#3f5ea8' : p === 'blackpurple' ? '#7a56ba' : p === 'blackgold' ? '#a67c2b' : '#9eb3d6' };
-      const hex = (v)=>/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v||'').trim()) ? String(v).trim() : '';
-      const cc = customColors && typeof customColors === 'object' ? customColors : {};
-      const cPrimary = forceDarkPreset ? '' : hex(cc.primaryThemeColor);
-      const cSecondary = forceDarkPreset ? '' : hex(cc.secondaryThemeColor);
-      const cText = forceDarkPreset ? '' : hex(cc.primaryTextColor);
-      const cText2 = forceDarkPreset ? '' : hex(cc.secondaryTextColor);
 
       const r = document.documentElement;
       r.style.setProperty('--accent', t.accent);
-      r.style.setProperty('--bg', cPrimary || t.bg);
-      r.style.setProperty('--line', cSecondary || t.line);
-      r.style.setProperty('--text', cText || t.text || '#f3f6ff');
-      r.style.setProperty('--muted', cText2 || t.muted || '#9eb3d6');
+      r.style.setProperty('--bg', t.bg);
+      r.style.setProperty('--line', t.line);
+      r.style.setProperty('--text', t.text || '#f3f6ff');
+      r.style.setProperty('--muted', t.muted || '#9eb3d6');
     }
     (async ()=>{
       const __u = new URL(location.href);
@@ -215,27 +195,19 @@
       const qText2 = String(__u.searchParams.get('secondaryTextColor') || '').trim();
       let lsColor = '';
       let lsTheme = '';
-      let lsCustom = null;
-      try {
-        const p = JSON.parse(localStorage.getItem('nowplaying.mobile.profile.v1') || '{}') || {};
-        lsColor = String(p?.colorPreset || '').trim().toLowerCase();
-        lsTheme = String(p?.theme || '').trim().toLowerCase();
-        lsCustom = p?.customColors || null;
-      } catch {}
       const qCustom = (qPrimary || qSecondary || qText || qText2) ? {
         ...(qPrimary ? { primaryThemeColor:qPrimary } : {}),
         ...(qSecondary ? { secondaryThemeColor:qSecondary } : {}),
         ...(qText ? { primaryTextColor:qText } : {}),
         ...(qText2 ? { secondaryTextColor:qText2 } : {}),
       } : null;
-      __npApplyPalette(qColor || lsColor || 'ocean', qTheme || lsTheme || 'dark', qCustom || lsCustom || null);
+      __npApplyPalette(qColor || 'ocean', qTheme || 'dark', qCustom || null);
       try {
         const r = await fetch(`${__npBase}/config/controller-profile`, { cache:'no-store' });
         const j = await r.json().catch(()=>({}));
         const sColor = String(j?.profile?.colorPreset || 'ocean').trim().toLowerCase();
         const sTheme = String(j?.profile?.theme || 'dark').trim().toLowerCase();
-        const sCustom = j?.profile?.customColors || null;
-        __npApplyPalette(qColor || lsColor || sColor || 'ocean', qTheme || lsTheme || sTheme || 'dark', qCustom || lsCustom || sCustom || null);
+        __npApplyPalette(qColor || sColor || 'ocean', qTheme || sTheme || 'dark', qCustom || null);
       } catch {}
     })();
 

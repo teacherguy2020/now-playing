@@ -424,23 +424,23 @@
     /* Album modal (same interaction model as controller home) */
     .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.46);z-index:9000;align-items:center;justify-content:center}
     .albumModal.open{display:flex}
-    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(10px)}
+    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:color-mix(in oklab,var(--bg,#0b111c) 58%, transparent);border:1px solid var(--line,#1f2a3d);border-radius:14px;padding:12px;backdrop-filter:blur(10px)}
     .queueModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:9100;align-items:flex-start;justify-content:center;padding-top:calc(env(safe-area-inset-top,0px) + 150px)}
     .queueModal.open{display:flex}
-    .queueCard{position:relative;width:min(760px,94vw);height:min(62vh,620px);background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;overflow:hidden;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+    .queueCard{position:relative;width:min(760px,94vw);height:min(62vh,620px);background:color-mix(in oklab,var(--bg,#0b111c) 58%, transparent);border:1px solid var(--line,#1f2a3d);border-radius:14px;overflow:hidden;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
     .queueFrame{width:100%;height:100%;border:0;display:block;background:transparent}
     .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
-    .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:var(--bg,#0b111c)}
     .albumTitle{font-size:17px;font-weight:700}
     .albumMeta{font-size:12px;color:var(--muted,#9eb3d6)}
     .albumMeta .artistLink{color:var(--accent,#4aa8ff);text-decoration:underline;text-underline-offset:2px;background:transparent;border:0;padding:0;margin:0;font:inherit;cursor:pointer}
     .albumTracks{list-style:none;margin:8px 0 0;padding:0}
-    .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:flex;justify-content:space-between;gap:8px;font-size:14px}
+    .albumTracks li{padding:8px 0;border-bottom:1px solid var(--line,#1f2a3d);display:flex;justify-content:space-between;gap:8px;font-size:14px}
     .trackBtns{display:flex;gap:6px}
-    .trackBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
-    .albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
+    .trackBtns button{border:1px solid var(--line,#1f2a3d);background:var(--line,#1f2a3d);color:var(--text,#f3f6ff);width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
+    .albumBtns button{border:1px solid var(--line,#1f2a3d);background:var(--line,#1f2a3d);color:var(--text,#f3f6ff);border-radius:10px;padding:6px 9px;cursor:pointer}
     .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid var(--line,#1f2a3d);background:var(--line,#1f2a3d);color:var(--text,#f3f6ff);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
     .modalX:active{transform:scale(.96)}
 
     /* Next-up art loading spinner */
