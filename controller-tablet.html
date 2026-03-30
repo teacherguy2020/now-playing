@@ -15,14 +15,14 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <title>Controller</title>
   <style>
-    :root{--bg:#070b13;--surface:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--accent:#4aa8ff}
+    :root{--bg:#070b13;--surface:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--accent:#4aa8ff;--np-blur-overlay:linear-gradient(180deg,rgba(7,12,20,.36),rgba(7,12,20,.52));--np-blur-overlay-strong:linear-gradient(180deg,rgba(7,12,20,.74),rgba(7,12,20,.86))}
     *{box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
     html,body{-webkit-user-select:none !important;user-select:none !important;-webkit-touch-callout:none !important}
     body{margin:0;background:var(--surface);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
     .card{background:transparent;border:0;padding:8px 0;margin-bottom:8px}
     #npCard{position:relative;overflow:hidden;border-radius:12px;padding:10px;border:1px solid rgba(255,255,255,.10);--npBlurBg:none}
     #npCard::before{content:'';position:absolute;inset:0;background-image:var(--npBlurBg);background-size:cover;background-position:center;opacity:.72;pointer-events:none}
-    #npCard::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,12,20,.36),rgba(7,12,20,.52));pointer-events:none}
+    #npCard::after{content:'';position:absolute;inset:0;background:var(--np-blur-overlay);pointer-events:none}
     #npCard > *{position:relative;z-index:1}
     .title{font-weight:750;font-size:18px;margin-bottom:10px}
 
@@ -952,6 +952,7 @@
         const hasPresetInput = Object.prototype.hasOwnProperty.call(d || {}, "colorPreset");
         const hasRowsInput = Array.isArray(d == null ? void 0 : d.recentRows);
         const hasVizPresetInput = Object.prototype.hasOwnProperty.call(d || {}, "visualizerPreset");
+        const persistNow = !!(d && d.persistNow);
 
         const nextPresetRaw = String((d == null ? void 0 : d.colorPreset) || "").trim().toLowerCase();
         const nextPresetEff = hasPresetInput ? String(nextPresetRaw || prevPreset || "ocean").toLowerCase() : prevPreset;
@@ -1021,7 +1022,11 @@
         }
         // No automatic recents data refresh after initial page load.
         // Keep recents stable unless user explicitly changes source in this UI.
-        persistControllerProfile().catch(() => null);
+        if (persistNow) {
+          persistControllerProfile().catch(() => null);
+        } else {
+          persistControllerProfile().catch(() => null);
+        }
         return;
       }
     } catch {
@@ -1106,7 +1111,8 @@
       quickBg: l.quickBg
     } : { ...d, text: p === "blackred" ? "#ff4d57" : p === "blackblue" ? "#5f86e6" : p === "blackpurple" ? "#b084f5" : p === "blackgold" ? "#e0b24d" : "#f3f6ff", muted: p === "blackred" ? "#b33a42" : p === "blackblue" ? "#3f5ea8" : p === "blackpurple" ? "#7a56ba" : p === "blackgold" ? "#a67c2b" : "#9eb3d6" };
     const hex = (v) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v || "").trim()) ? String(v).trim() : "";
-    const cc = customColors && typeof customColors === "object" ? customColors : {};
+    const allowCustomThemeOverride = IS_PREVIEW || !!__u.searchParams.get("profile") || !!__u.searchParams.get("primaryThemeColor") || !!__u.searchParams.get("secondaryThemeColor") || !!__u.searchParams.get("primaryTextColor") || !!__u.searchParams.get("secondaryTextColor");
+    const cc = allowCustomThemeOverride && customColors && typeof customColors === "object" ? customColors : {};
     const cPrimary = forceDarkPreset ? '' : hex(cc.primaryThemeColor);
     const cSecondary = forceDarkPreset ? '' : hex(cc.secondaryThemeColor);
     const cText = forceDarkPreset ? "" : hex(cc.primaryTextColor);
@@ -1121,6 +1127,8 @@
     r.style.setProperty("--quick-bg", cSecondary || t.quickBg || "#121c30");
     r.style.setProperty("--quick-line", cSecondary || t.line || "#2a3a58");
     r.style.setProperty("--quick-bg-menu", t.quickBgMenu || "rgba(10,16,28,.94)");
+    r.style.setProperty("--np-blur-overlay", isLight ? "linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.42))" : "linear-gradient(180deg, rgba(7,12,20,.36), rgba(7,12,20,.52))");
+    r.style.setProperty("--np-blur-overlay-strong", isLight ? "linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,.78))" : "linear-gradient(180deg, rgba(7,12,20,.74), rgba(7,12,20,.86))");
   }
   const base = "".concat(location.protocol, "//").concat(location.hostname || "nowplaying.local", ":3101");
   let runtimeTrackKey = "";
@@ -1269,7 +1277,19 @@
         const existing = profile || {};
         const serverRecent = j && j.profile ? j.profile.recentSource : void 0;
         const existingRecent = existing ? existing.recentSource : void 0;
-        profile = { ...MOBILE_DEFAULT_PROFILE, ...existing, ...j.profile, recentSource: serverRecent !== void 0 && serverRecent !== null ? serverRecent : existingRecent !== void 0 && existingRecent !== null ? existingRecent : MOBILE_DEFAULT_PROFILE.recentSource };
+        const serverColorPreset = j && j.profile ? j.profile.colorPreset : void 0;
+        const existingColorPreset = existing ? existing.colorPreset : void 0;
+        profile = {
+          ...MOBILE_DEFAULT_PROFILE,
+          ...existing,
+          ...j.profile,
+          colorPreset: serverColorPreset !== void 0 && serverColorPreset !== null && String(serverColorPreset).trim() !== ''
+            ? serverColorPreset
+            : existingColorPreset !== void 0 && existingColorPreset !== null && String(existingColorPreset).trim() !== ''
+              ? existingColorPreset
+              : MOBILE_DEFAULT_PROFILE.colorPreset,
+          recentSource: serverRecent !== void 0 && serverRecent !== null ? serverRecent : existingRecent !== void 0 && existingRecent !== null ? existingRecent : MOBILE_DEFAULT_PROFILE.recentSource
+        };
         if (Q_DEVICE_PRESET) profile.devicePreset = Q_DEVICE_PRESET;
         try {
           localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile));
@@ -3017,7 +3037,7 @@
       const fallback = document.createElement("div");
       fallback.className = "navFallback";
       const blurBg = "".concat(base, "/art/current_bg_640_blur.jpg?t=").concat(Date.now());
-      fallback.style.backgroundImage = 'linear-gradient(180deg, rgba(7,12,20,.74), rgba(7,12,20,.86)), url("'.concat(blurBg, '")');
+      fallback.style.backgroundImage = ''.concat(getComputedStyle(document.documentElement).getPropertyValue("--np-blur-overlay-strong").trim() || 'linear-gradient(180deg, rgba(7,12,20,.74), rgba(7,12,20,.86))', ', url("').concat(blurBg, '")');
       cover.appendChild(fallback);
       let fr = null;
       if (__npPreloadReady && __npPreloadFrame) {
@@ -5163,9 +5183,12 @@
       refreshTabletNextUp().catch(() => null);
       refreshTabletQueuePos().catch(() => null);
     }, 7000);
-    loadServerProfile().catch(() => null);
-    loadHomeQuickIndex().catch(() => null);
-    loadRecentlyAdded().catch(() => null);
+    (async () => {
+      await loadServerProfile().catch(() => null);
+      applyProfileUi();
+      await loadHomeQuickIndex().catch(() => null);
+      await loadRecentlyAdded().catch(() => null);
+    })();
     try {
       const paneParam = String(__u.searchParams.get("pane") || "").trim();
       const openPageParam = String(__u.searchParams.get("open") || "").trim();

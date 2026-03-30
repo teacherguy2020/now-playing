@@ -52,6 +52,7 @@
     <label for="row4">Row 4 source</label>
     <select id="row4"></select>
     <div class="hint">Rows must be unique (no duplicates).</div>
+
   </div>
 
   <script>
@@ -170,7 +171,7 @@
       s.value = rows[i] || defaults[i];
     });
 
-    const send = (changedIdx = -1) => {
+    const collectPayload = (changedIdx = -1) => {
       applyPalette(sel.value, themeMode);
       const vals = rowSelects.map((s) => String(s.value || '').toLowerCase());
       if (changedIdx >= 0) {
@@ -186,8 +187,13 @@
           }
         }
       }
+      return { colorPreset: String(sel.value || 'ocean'), recentRows: vals, visualizerPreset: String(vizSel?.value || 'classic').toLowerCase() };
+    };
+
+    const send = (changedIdx = -1) => {
+      const payload = collectPayload(changedIdx);
       try {
-        window.parent?.postMessage({ type: 'np-controller-settings', colorPreset: String(sel.value || 'ocean'), recentRows: vals, visualizerPreset: String(vizSel?.value || 'classic').toLowerCase() }, '*');
+        window.parent?.postMessage({ type: 'np-controller-settings', ...payload, persistNow: true }, '*');
       } catch {}
     };
 
