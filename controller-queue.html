@@ -17,8 +17,8 @@
     h1{margin:0;font-size:28px;letter-spacing:-.01em}
     .meta{color:var(--muted);font-size:12px;margin:0}
     .queueTopActions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0}
-    .queueTopActions button{border:1px solid var(--surface-border);background:var(--surface);color:var(--text);border-radius:9px;padding:6px 9px;font-size:12px;line-height:1.05;cursor:pointer}
-    .queueTopActions button.warn{border-color:#5a3140;background:#1b0f18;color:#ffc9d5}
+    .queueTopActions button{border:1px solid var(--line);background:var(--line);color:var(--text);border-radius:9px;padding:6px 9px;font-size:12px;line-height:1.05;cursor:pointer}
+    .queueTopActions button.warn{border-color:var(--line);background:var(--line);color:var(--text)}
     .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
     .vibeBusy{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:200;display:none;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(12,18,28,.88);border:1px solid #2a3a58;color:#e6efff;font-size:12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
     .vibeBusy.show{display:flex}
@@ -75,20 +75,20 @@
     .albumTracks{list-style:none;margin:8px 0 0;padding:0}
     .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
     .trackBtns{display:flex;gap:6px}
-    .trackBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
+    .trackBtns button{border:1px solid var(--line);background:var(--line);color:var(--text);width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
     .albumBtns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-    .albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:9px 10px;cursor:pointer}
+    .albumBtns button{border:1px solid var(--line);background:var(--line);color:var(--text);border-radius:10px;padding:9px 10px;cursor:pointer}
     .albumBtns button.is-busy,.trackBtns button.is-busy{opacity:.88;filter:saturate(1.15);box-shadow:0 0 0 2px rgba(159,196,255,.28) inset,0 0 0 1px rgba(159,196,255,.45);transform:scale(.98)}
     .albumBtns button.is-done,.trackBtns button.is-done{box-shadow:0 0 0 2px rgba(69,178,111,.28) inset,0 0 0 1px rgba(69,178,111,.62)}
-    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid var(--line);background:var(--line);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
     .modalX:active{transform:scale(.96)}
     .artistControls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 10px}
-    .artistControls button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:8px 10px;cursor:pointer}
-    .artistControls select,.artistControls input[type='text']{border:1px solid #2a3a58;background:#0d1628;color:#e6efff;border-radius:8px;padding:6px 8px}
+    .artistControls button{border:1px solid var(--line);background:var(--line);color:var(--text);border-radius:10px;padding:8px 10px;cursor:pointer}
+    .artistControls select,.artistControls input[type='text']{border:1px solid var(--line);background:var(--line);color:var(--text);border-radius:8px;padding:6px 8px}
     .artistModal .artistControls .albumMeta,
-    .artistModal .artistControls label{color:#dbe8ff}
+    .artistModal .artistControls label{color:var(--text)}
     .artistGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-    .artistAlbumBtn{border:1px solid #2a3a58;background:#12203a;color:#e6efff;border-radius:10px;padding:8px;cursor:pointer;text-align:left}
+    .artistAlbumBtn{border:1px solid var(--line);background:var(--line);color:var(--text);border-radius:10px;padding:8px;cursor:pointer;text-align:left}
     .artistAlbumBtn img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#0a1222;margin-bottom:6px}
     .artistAlbumName{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .loadingRow{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:8px 2px}
