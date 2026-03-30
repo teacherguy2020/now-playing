@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Albums</title>
   <style>
-    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d}
+    :root{--bg:#0b111c;--text:#f3f6ff;--muted:#9eb3d6;--line:#1f2a3d;--accent:#4aa8ff;--panel:color-mix(in oklab,var(--bg) 82%, var(--line) 18%);--panel-strong:color-mix(in oklab,var(--bg) 72%, var(--line) 28%);--overlay:color-mix(in oklab,var(--bg) 58%, transparent);--overlay-line:color-mix(in oklab,var(--line) 82%, transparent)}
     *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
     body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 Inter,system-ui;padding:max(10px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom));}
     body.embedded{padding:4px 10px 8px}
     .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 4px}
     .left{display:flex;align-items:center;gap:10px;min-width:0}
-    .back{border:0;background:transparent;color:#c8d8f5;font-size:20px;cursor:pointer;padding:6px}
+    .back{border:0;background:transparent;color:var(--muted);font-size:20px;cursor:pointer;padding:6px}
     h1{margin:0;font-size:30px;letter-spacing:-.01em}
     body.embedded h1{font-size:26px;line-height:1.04}
-    .more{width:32px;height:32px;border-radius:999px;border:1px solid #2a3a58;background:#121c30;color:#dfeaff;font-size:16px;display:flex;align-items:center;justify-content:center}
+    .more{width:32px;height:32px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:16px;display:flex;align-items:center;justify-content:center}
     .meta{color:var(--muted);font-size:13px;margin:0 0 10px}
     .metaInline{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
     body.embedded .metaInline{font-size:11px;max-width:40vw}
-    .meta .miniSpin,.metaInline .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
+    .meta .miniSpin,.metaInline .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid color-mix(in oklab,var(--line) 70%, transparent);border-top-color:var(--accent);animation:spin .8s linear infinite;vertical-align:-2px}
 
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-right:26px}
     body.embedded .grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding-right:12px}
@@ -29,49 +29,49 @@
     .coverFlip{position:relative;width:100%;aspect-ratio:1/1;transform-style:preserve-3d;transition:transform .42s cubic-bezier(.22,.78,.19,1)}
     .album.is-flipped .coverFlip{transform:rotateY(180deg)}
     .coverFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;overflow:hidden}
-    .coverFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#101a2d,#0c1526);border:1px solid rgba(138,177,235,.32);display:flex;align-items:center;justify-content:center;padding:10px}
+    .coverFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,color-mix(in oklab,var(--panel) 92%, white 8%),var(--panel));border:1px solid color-mix(in oklab,var(--line) 74%, var(--accent) 26%);display:flex;align-items:center;justify-content:center;padding:10px}
     .coverFlipBtns{display:flex;flex-direction:column;gap:8px;width:68%;margin:0 auto}
-    .coverFlipBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 8px;font-size:12px;cursor:pointer}
+    .coverFlipBtns button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:6px 8px;font-size:12px;cursor:pointer}
     .album.is-flipped .coverFaceFront .coverMore{display:none}
-    .album img,.ph{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:#0a1222}
-    .coverMore{position:absolute;left:6px;top:6px;width:24px;height:24px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:12px;display:flex;align-items:center;justify-content:center;z-index:2}
+    .album img,.ph{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:var(--panel)}
+    .coverMore{position:absolute;left:6px;top:6px;width:24px;height:24px;border-radius:999px;border:1px solid color-mix(in oklab,var(--line) 80%, transparent);background:var(--overlay);color:var(--text);font-size:12px;display:flex;align-items:center;justify-content:center;z-index:2}
     .aTitle{font-size:13px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .aSub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
     .list{padding-right:26px}
     .row{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
     .row .coverWrap{width:52px;height:52px}
-    .row img,.row .ph{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .row img,.row .ph{width:52px;height:52px;border-radius:8px;object-fit:cover;background:var(--panel)}
     .row .coverMore{left:4px;top:4px;width:20px;height:20px;font-size:11px}
 
     .alpha{position:fixed;right:4px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:2px;z-index:10}
-    .alpha button{border:0;background:transparent;color:#8ea7ce;font-size:11px;line-height:1;padding:1px 2px}
+    .alpha button{border:0;background:transparent;color:var(--muted);font-size:11px;line-height:1;padding:1px 2px}
     body.embedded .alpha{right:2px;top:64px;bottom:8px;transform:none;justify-content:space-between;gap:0}
     body.embedded .alpha button{font-size:10px;padding:0 1px;line-height:1}
 
-    .menu{position:fixed;display:none;z-index:120;min-width:220px;padding:6px;border-radius:14px;background:rgba(20,24,34,.82);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 14px 30px rgba(0,0,0,.4)}
+    .menu{position:fixed;display:none;z-index:120;min-width:220px;padding:6px;border-radius:14px;background:var(--overlay);border:1px solid var(--overlay-line);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 14px 30px rgba(0,0,0,.4)}
     .menu.open{display:block}
-    .menu button{width:100%;text-align:left;border:0;background:transparent;color:#eef3ff;padding:10px;border-radius:10px}
-    .menu button.active{background:rgba(255,255,255,.08)}
-    .menu .sep{height:1px;background:rgba(255,255,255,.14);margin:4px 8px}
+    .menu button{width:100%;text-align:left;border:0;background:transparent;color:var(--text);padding:10px;border-radius:10px}
+    .menu button.active{background:color-mix(in oklab,var(--panel) 82%, var(--accent) 18%)}
+    .menu .sep{height:1px;background:var(--overlay-line);margin:4px 8px}
 
     .albumModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:130;align-items:center;justify-content:center}
     .albumModal.open{display:flex}
-    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:rgba(0,0,0,.58);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+    .albumCard{position:relative;width:min(680px,94vw);max-height:88vh;overflow:auto;background:var(--overlay);border:1px solid var(--overlay-line);border-radius:14px;padding:12px;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
     .albumHead{display:flex;gap:10px;align-items:center;margin-bottom:10px}
-    .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a1222}
+    .albumHead img{width:54px;height:54px;border-radius:8px;object-fit:cover;background:var(--panel)}
     .albumTitle{font-size:17px;font-weight:700}
     .albumMeta{font-size:12px;color:var(--muted)}
     .albumTracks{list-style:none;margin:8px 0 0;padding:0}
-    .albumTracks li{padding:8px 0;border-bottom:1px solid #1f2a3d;display:flex;justify-content:space-between;gap:8px;font-size:14px}
+    .albumTracks li{padding:8px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;font-size:14px}
     .loadingRow{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:10px 2px}
-    .spin{width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite}
+    .spin{width:14px;height:14px;border-radius:999px;border:2px solid color-mix(in oklab,var(--line) 70%, transparent);border-top-color:var(--accent);animation:spin .8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
     .trackBtns{display:flex;gap:6px}
-    .trackBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
-    .albumBtns button{border:1px solid #2a3a58;background:#132038;color:#e6efff;border-radius:10px;padding:6px 9px;cursor:pointer}
+    .trackBtns button{border:1px solid var(--line);background:var(--panel);color:var(--text);width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
+    .albumBtns button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:6px 9px;cursor:pointer}
     .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid #2a3a58;background:rgba(19,32,56,.95);color:#e6efff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+    .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid var(--line);background:var(--panel-strong);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
     .modalX:active{transform:scale(.96)}
   
 

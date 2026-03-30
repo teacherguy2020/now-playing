@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="manifest" href="/manifest-controller-tablet.webmanifest?v=20260318c" />
+  <link rel="manifest" href="/manifest-controller-tablet.webmanifest?v=20260330-hoverrows1" />
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon-180.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
@@ -126,9 +126,21 @@
     .row .ico.ico-album{width:24px;height:24px;background:currentColor;-webkit-mask-image:url('assets/icons/album-svgrepo-com.svg');mask-image:url('assets/icons/album-svgrepo-com.svg');-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-position:center;mask-position:center}
     .row .ico.ico-genre svg{transform:scaleX(-1) rotate(-40deg)}
     .row .lbl{font-size:22px;line-height:1.12;font-weight:560;letter-spacing:-0.01em}
+    #libraryList .row .ico,
+    #libraryList .row .lbl,
+    #libraryList .row .chev{transition:color .16s ease, opacity .16s ease, transform .16s ease}
     #libraryList .row .ico{color:var(--muted)}
     #libraryList .row .lbl{color:var(--muted)}
-    .row .chev{font-size:22px;line-height:1;color:#54627d;text-align:right}
+    #libraryList .row .chev{font-size:22px;line-height:1;color:#54627d;text-align:right}
+    #libraryList .row:hover{
+      box-shadow:inset 3px 0 0 var(--muted);
+    }
+    #libraryList .row:hover .ico,
+    #libraryList .row:hover .chev,
+    #libraryList .row.is-open .ico,
+    #libraryList .row.is-open .chev{color:var(--muted);transform:translateX(1px)}
+    #libraryList .row:hover .lbl,
+    #libraryList .row.is-open .lbl{color:var(--muted)}
 
     .recentWrap{position:relative;overflow:hidden}
     .kPane{display:none}
@@ -269,8 +281,10 @@
     body.kiosk1280 .row .lbl{font-size:18px;line-height:1.06}
     body.kiosk1280 .row.is-open .lbl,
     body.kiosk1280 .row.is-open .chev,
+    body.kiosk1280 .row.is-open .ico,
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .row.is-open .lbl,
-    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .row.is-open .chev{color:var(--icon,var(--accent))}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .row.is-open .chev,
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .row.is-open .ico{color:var(--icon,var(--accent))}
     body.kiosk1280 .title{font-size:17px;margin-bottom:6px}
     body.kiosk1280 .npTap .title{display:none}
     body.kiosk1280 .np{display:flex;flex-direction:column;gap:8px;align-items:flex-start;justify-content:flex-start}
@@ -340,8 +354,8 @@
     :is(body.ipad11, body.tablet) .railModeBtn, :is(body.ipad11, body.tablet) #recentTitle, :is(body.ipad11, body.tablet) #recentRail, :is(body.ipad11, body.tablet) #recentPeekRail{display:none !important}
     :is(body.ipad11, body.tablet) .recentWrap{display:flex;min-height:0;overflow:hidden;flex-direction:column;gap:6px}
     :is(body.ipad11, body.tablet) .tabletTopCards{display:none;gap:8px}
-    :is(body.ipad11, body.tablet) .tabletNextUpBar{display:none;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);padding:6px 10px;min-height:0}
-    :is(body.ipad11, body.tablet) .tabletActionBar{display:none;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);padding:6px 10px;min-height:0;align-items:center;justify-content:space-between;flex-direction:row;gap:10px}
+    :is(body.ipad11, body.tablet) .tabletNextUpBar{display:none;border:1px solid var(--line);border-radius:10px;background:color-mix(in oklab,var(--surface) 84%, var(--line) 16%);padding:6px 10px;min-height:0}
+    :is(body.ipad11, body.tablet) .tabletActionBar{display:none;border:1px solid var(--line);border-radius:10px;background:color-mix(in oklab,var(--surface) 84%, var(--line) 16%);padding:6px 10px;min-height:0;align-items:center;justify-content:space-between;flex-direction:row;gap:10px}
     :is(body.ipad11, body.tablet) .tabletActionBar .actionBtn{border:1px solid var(--line);background:color-mix(in oklab, var(--surface) 84%, var(--accent) 16%);color:var(--text);border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer}
     :is(body.ipad11, body.tablet) .tabletActionBar .queuePos{font-size:14px;color:var(--text);line-height:1.2;white-space:nowrap;font-weight:650;cursor:pointer}
     :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpTitle{display:none}
@@ -355,7 +369,7 @@
     :is(body.ipad11:not(.ipad11Landscape), body.tablet:not(.tabletLandscape)) .tabletNextUpInline .nextUpArt{width:22px;height:22px;border-radius:5px}
     :is(body.ipad11:not(.ipad11Landscape), body.tablet:not(.tabletLandscape)) .tabletNextUpInline .nextUpText{font-size:12px}
     :is(body.ipad11, body.tablet) .ipadRecentGrid{display:grid !important;grid-template-columns:1fr 1fr;gap:8px;width:100%;min-height:0;overflow:auto;padding-right:2px}
-    :is(body.ipad11, body.tablet) .ipadRecentPane{min-height:0;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:8px;display:flex;flex-direction:column;gap:6px}
+    :is(body.ipad11, body.tablet) .ipadRecentPane{min-height:0;border:1px solid var(--line);border-radius:12px;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%);padding:8px;display:flex;flex-direction:column;gap:6px}
     :is(body.ipad11, body.tablet) .ipadRecentPane h4{margin:0;font-size:13px;letter-spacing:.02em;color:var(--muted);text-transform:uppercase}
     :is(body.ipad11, body.tablet) .ipadRecentPane .rail{padding:0;gap:8px;overflow:auto;min-height:142px}
     :is(body.ipad11, body.tablet) .ipadRecentPane .thumb{min-width:108px;width:108px}
@@ -376,11 +390,11 @@
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) #kioskCanvas{position:relative;grid-template-columns:minmax(320px,1fr) minmax(0,2fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:0;max-height:calc(100dvh - 8px);box-sizing:border-box}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npTap{grid-area:np;max-height:none;overflow:visible}
     /* Col1 group 1: Art + controls + text */
-    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npTap .card{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:10px}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npTap .card{border:1px solid var(--line);border-radius:12px;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%);padding:10px}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .quickWrap{grid-area:quick;margin:12px 0 0 0}
     /* Col1 group 2: Quick Search + Library links */
-    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .quickWrap{border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:rgba(255,255,255,.02);padding:8px 8px 6px}
-    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) #libraryList{grid-area:list;margin:0;min-height:0;padding:0 0 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:rgba(255,255,255,.02)}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .quickWrap{border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%);padding:8px 8px 6px}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) #libraryList{grid-area:list;margin:0;min-height:0;padding:0 0 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%)}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .recentWrap{grid-area:recent;min-height:0;display:flex;flex-direction:column}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npTap .card{display:flex;flex-direction:column;padding-top:14px}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .np{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;order:1}
@@ -434,8 +448,8 @@
     /* iPad Modern landscape profile (1180x820 target) */
     body.ipadModern #kioskCanvas{position:relative;grid-template-columns:minmax(300px,1fr) minmax(0,2.1fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:0;max-height:calc(100vh - 8px);box-sizing:border-box}
     body.ipadModern .npTap{grid-area:np;max-height:none;overflow:visible}
-    body.ipadModern .quickWrap{grid-area:quick;margin:10px 0 0 0;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:rgba(255,255,255,.02);padding:8px 8px 6px}
-    body.ipadModern #libraryList{grid-area:list;margin:0;min-height:0;padding:0 0 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:rgba(255,255,255,.02)}
+    body.ipadModern .quickWrap{grid-area:quick;margin:10px 0 0 0;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%);padding:8px 8px 6px}
+    body.ipadModern #libraryList{grid-area:list;margin:0;min-height:0;padding:0 0 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%)}
     body.ipadModern .recentWrap{grid-area:recent;min-height:0;display:flex;flex-direction:column}
     body.ipadModern .npTap .card{padding:10px;display:flex;flex-direction:column;padding-top:12px}
     body.ipadModern .np{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:8px;order:1}
@@ -456,8 +470,8 @@
     /* iPad Air (MD786LL/A) landscape profile (1024x768 CSS) */
     body.ipadAir #kioskCanvas{position:relative;grid-template-columns:minmax(280px,1fr) minmax(0,1.9fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:'np recent' 'quick recent' 'list recent';column-gap:10px;row-gap:0;max-height:calc(100vh - 8px);box-sizing:border-box}
     body.ipadAir .npTap{grid-area:np;max-height:none;overflow:visible}
-    body.ipadAir .quickWrap{grid-area:quick;margin:10px 0 0 0;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:rgba(255,255,255,.02);padding:8px 8px 6px}
-    body.ipadAir #libraryList{grid-area:list;margin:0;min-height:0;padding:0 0 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:rgba(255,255,255,.02)}
+    body.ipadAir .quickWrap{grid-area:quick;margin:10px 0 0 0;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%);padding:8px 8px 6px}
+    body.ipadAir #libraryList{grid-area:list;margin:0;min-height:0;padding:0 0 10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:color-mix(in oklab,var(--surface) 88%, var(--line) 12%)}
     body.ipadAir .recentWrap{grid-area:recent;min-height:0;display:flex;flex-direction:column}
     body.ipadAir .npTap .card{padding:10px;display:flex;flex-direction:column;padding-top:12px}
     body.ipadAir .np{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:8px;order:1}
@@ -1018,7 +1032,7 @@
     const modeRaw = String(themeMode || "auto").toLowerCase();
     const forceDarkPreset = p === "blackred" || p === "blackblue" || p === "blackpurple" || p === "blackgold";
     const forceLightPreset = p === "cloud" || p === "sand" || p === "blush" || p === "ivoryred";
-    const isLight = forceLightPreset || (!forceDarkPreset && (modeRaw === "light" || modeRaw === "auto" && !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches)));
+    const isLight = forceLightPreset;
     const map = {
       ocean: { accent: "#4aa8ff", surface: "#0b111c", line: "#1f2a3d", quickBg: "#121c30", quickBgMenu: "rgba(10,16,28,.94)" },
       violet: { accent: "#a78bfa", surface: "#120f1f", line: "#32284a", quickBg: "#1a1330", quickBgMenu: "rgba(23,16,38,.94)" },
@@ -1088,8 +1102,8 @@
     const t = isLight ? {
       accent,
       ...l,
-      surface: p === "ivoryred" ? l.surface : blendHex(l.surface, accent, 0.2),
-      quickBg: p === "ivoryred" ? l.quickBg : blendHex(l.quickBg, accent, 0.2)
+      surface: l.surface,
+      quickBg: l.quickBg
     } : { ...d, text: p === "blackred" ? "#ff4d57" : p === "blackblue" ? "#5f86e6" : p === "blackpurple" ? "#b084f5" : p === "blackgold" ? "#e0b24d" : "#f3f6ff", muted: p === "blackred" ? "#b33a42" : p === "blackblue" ? "#3f5ea8" : p === "blackpurple" ? "#7a56ba" : p === "blackgold" ? "#a67c2b" : "#9eb3d6" };
     const hex = (v) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v || "").trim()) ? String(v).trim() : "";
     const cc = customColors && typeof customColors === "object" ? customColors : {};

@@ -68,15 +68,9 @@
       <label>Secondary Theme Color</label><div class="colorRow"><input id="secondaryThemeColor" type="color" value="#1f2a3d" /></div>
       <label>Primary Text Color</label><div class="colorRow"><input id="primaryTextColor" type="color" value="#f3f6ff" /></div>
       <label>Secondary Text Color</label><div class="colorRow"><input id="secondaryTextColor" type="color" value="#9eb3d6" /></div>
-      <label>JSON Presets</label>
+      <label>Theme preset</label>
       <div class="row">
         <select id="presetSel" style="flex:1"></select>
-        <button class="btn" id="savePresetBtn" type="button">Save</button>
-        <button class="btn" id="deletePresetBtn" type="button">Delete</button>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <button class="btn" id="exportPresetBtn" type="button">Export</button>
-        <button class="btn" id="importPresetBtn" type="button">Import</button>
       </div>
       <label>Recent card count</label>
       <input id="recentCount" type="number" min="6" max="30" value="18" />
@@ -108,17 +102,31 @@
   <script>
     const $ = (id)=>document.getElementById(id);
     const KEY='nowplaying.mobile.profile.v1';
-    const PRESETS_KEY='nowplaying.mobile.custom-presets.v1';
-    const BUILTIN_PRESETS={
-      'Deep Ocean':{primaryThemeColor:'#0b111c',secondaryThemeColor:'#1f2a3d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'},
-      'Blue Horizon':{primaryThemeColor:'#0b1730',secondaryThemeColor:'#1d4ed8',primaryTextColor:'#eaf2ff',secondaryTextColor:'#a9c2ff'},
-      'Sunset Glow':{primaryThemeColor:'#1b110d',secondaryThemeColor:'#5b3a2d',primaryTextColor:'#fff1e8',secondaryTextColor:'#f0b089'},
-      'Crimson Bloom':{primaryThemeColor:'#fffbfa',secondaryThemeColor:'#fa233b',primaryTextColor:'#4d0200',secondaryTextColor:'#ff9aa1'},
-      'Rose Noir':{primaryThemeColor:'#1a0d14',secondaryThemeColor:'#5b2b3f',primaryTextColor:'#ffeef5',secondaryTextColor:'#d9a8bc'},
-      'Mono Contrast':{primaryThemeColor:'#0b0b0b',secondaryThemeColor:'#2d2d2d',primaryTextColor:'#f2f2f2',secondaryTextColor:'#b8b8b8'},
-      'Lavender Mist':{primaryThemeColor:'#120d1e',secondaryThemeColor:'#3d3158',primaryTextColor:'#f2ecff',secondaryTextColor:'#c9b8f2'},
-      'Emerald Glass':{primaryThemeColor:'#081511',secondaryThemeColor:'#1f4a3e',primaryTextColor:'#e8fff6',secondaryTextColor:'#9ed9c3'}
-    };
+    const THEME_PRESETS=[
+      ['ocean','Ocean',{primaryThemeColor:'#0b111c',secondaryThemeColor:'#1f2a3d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['violet','Violet',{primaryThemeColor:'#120f1f',secondaryThemeColor:'#32284a',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['mint','Mint',{primaryThemeColor:'#0b1514',secondaryThemeColor:'#21423f',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['amber','Amber',{primaryThemeColor:'#171208',secondaryThemeColor:'#4a3720',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['black','Black',{primaryThemeColor:'#050505',secondaryThemeColor:'#222222',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['blackred','Black + Red Text',{primaryThemeColor:'#000000',secondaryThemeColor:'#2b0f13',primaryTextColor:'#ff4d57',secondaryTextColor:'#b33a42'}],
+      ['blackblue','Black + Deep Blue',{primaryThemeColor:'#000000',secondaryThemeColor:'#141a2a',primaryTextColor:'#5f86e6',secondaryTextColor:'#3f5ea8'}],
+      ['blackpurple','Black + Purple',{primaryThemeColor:'#000000',secondaryThemeColor:'#23172f',primaryTextColor:'#b084f5',secondaryTextColor:'#7a56ba'}],
+      ['blackgold','Black + Gold',{primaryThemeColor:'#000000',secondaryThemeColor:'#2a2314',primaryTextColor:'#e0b24d',secondaryTextColor:'#a67c2b'}],
+      ['orange','Orange',{primaryThemeColor:'#16100a',secondaryThemeColor:'#4a2f1c',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['midnight','Midnight',{primaryThemeColor:'#070b14',secondaryThemeColor:'#202a3f',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['slate','Slate',{primaryThemeColor:'#0e131b',secondaryThemeColor:'#2f3c4d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['mono','Mono',{primaryThemeColor:'#0b0b0b',secondaryThemeColor:'#2d2d2d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['sunset','Sunset',{primaryThemeColor:'#1b110d',secondaryThemeColor:'#5b3a2d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['sunrise','Sunrise',{primaryThemeColor:'#1a130a',secondaryThemeColor:'#5a4523',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['rose','Rose',{primaryThemeColor:'#1a0d14',secondaryThemeColor:'#5b2b3f',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['lavender','Lavender',{primaryThemeColor:'#120d1e',secondaryThemeColor:'#3d3158',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['emerald','Emerald',{primaryThemeColor:'#081511',secondaryThemeColor:'#1f4a3e',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['forest','Forest',{primaryThemeColor:'#0a150d',secondaryThemeColor:'#2d4f36',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}],
+      ['cloud','Cloud (Light)',{primaryThemeColor:'#eef4ff',secondaryThemeColor:'#c8d6ef',primaryTextColor:'#132238',secondaryTextColor:'#425b7f'}],
+      ['sand','Sand (Light)',{primaryThemeColor:'#fff7e8',secondaryThemeColor:'#ead9b8',primaryTextColor:'#2a2012',secondaryTextColor:'#6f5737'}],
+      ['blush','Blush (Light)',{primaryThemeColor:'#fff1f5',secondaryThemeColor:'#f2d0da',primaryTextColor:'#2b1119',secondaryTextColor:'#7a4454'}],
+      ['ivoryred','White + Red',{primaryThemeColor:'#ffffff',secondaryThemeColor:'#e9e9e9',primaryTextColor:'#111111',secondaryTextColor:'#c23b45'}]
+    ];
     const defaults={devicePreset:'tablet',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18,customColors:{primaryThemeColor:'#0b111c',secondaryThemeColor:'#1f2a3d',primaryTextColor:'#f3f6ff',secondaryTextColor:'#9eb3d6'}};
     const API_BASE = (()=>{ try { const h=location.hostname||'nowplaying.local'; const p=location.protocol||'http:'; return `${p}//${h}:3101`; } catch { return 'http://nowplaying.local:3101'; } })();
     function read(){try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...defaults}}}
@@ -149,18 +157,9 @@
         return !!r.ok;
       } catch { return false; }
     }
-    function getPresets(){
-      try {
-        const custom = JSON.parse(localStorage.getItem(PRESETS_KEY) || '{}') || {};
-        return {...BUILTIN_PRESETS, ...custom};
-      } catch { return {...BUILTIN_PRESETS}; }
-    }
-    function setPresets(v){ try { localStorage.setItem(PRESETS_KEY, JSON.stringify(v||{})); } catch {} }
     function refreshPresetList(){
       const sel=$('presetSel'); if(!sel) return;
-      const map=getPresets();
-      const names=Object.keys(map).sort((a,b)=>a.localeCompare(b));
-      sel.innerHTML='<option value="">(select preset)</option>' + names.map((n)=>`<option value="${n}">${n}</option>`).join('');
+      sel.innerHTML = THEME_PRESETS.map(([value,label]) => `<option value="${value}">${label}</option>`).join('');
     }
     function syncSwatches(){}
     function applyDeviceChrome(p){
@@ -198,6 +197,7 @@
       $('primaryTextColor').value=String(c.primaryTextColor||'#f3f6ff');
       $('secondaryTextColor').value=String(c.secondaryTextColor||'#9eb3d6');
       refreshPresetList();
+      $('presetSel').value = THEME_PRESETS.some(([value]) => value === String(p.colorPreset||'ocean')) ? String(p.colorPreset||'ocean') : 'ocean';
       syncSwatches();
       applyDeviceChrome(p);
     }
@@ -208,7 +208,7 @@
         layout:'home-rail',
         showRecent:true,
         recentSource:'albums',
-        colorPreset:'ocean',
+        colorPreset:String($('presetSel')?.value || 'ocean'),
         recentCount:Number($('recentCount').value||18),
         customColors:{
           primaryThemeColor:String($('primaryThemeColor').value||'#0b111c'),
@@ -298,22 +298,11 @@
       el.addEventListener('change', onLive);
       el.addEventListener('input', onLive);
     });
-    $('savePresetBtn')?.addEventListener('click', ()=>runBtnAction($('savePresetBtn'), async ()=>{
-      const name=prompt('Preset name?');
-      if(!name) return;
-      const map=getPresets();
-      map[String(name).trim()]=collect().customColors;
-      setPresets(map); refreshPresetList(); $('presetSel').value=String(name).trim();
-    },{busyText:'Saving…',doneText:'✓ Saved'}).catch(()=>null));
-    $('deletePresetBtn')?.addEventListener('click', ()=>runBtnAction($('deletePresetBtn'), async ()=>{
-      const sel=$('presetSel'); const n=String(sel?.value||'').trim(); if(!n) return;
-      if (Object.prototype.hasOwnProperty.call(BUILTIN_PRESETS, n)) { alert('Built-in presets cannot be deleted.'); return; }
-      let custom={}; try{ custom=JSON.parse(localStorage.getItem(PRESETS_KEY)||'{}')||{}; }catch{}
-      delete custom[n]; setPresets(custom); refreshPresetList(); await apply();
-    },{busyText:'Deleting…',doneText:'✓ Deleted'}).catch(()=>null));
     $('presetSel')?.addEventListener('change', async ()=>{
-      const n=String($('presetSel').value||'').trim(); if(!n) return;
-      const map=getPresets(); const c=map[n]; if(!c) return;
+      const n=String($('presetSel').value||'ocean').trim().toLowerCase();
+      const preset=THEME_PRESETS.find(([value]) => value === n);
+      if(!preset) return;
+      const c=preset[2]||{};
       $('primaryThemeColor').value=String(c.primaryThemeColor||'#0b111c');
       $('secondaryThemeColor').value=String(c.secondaryThemeColor||'#1f2a3d');
       $('primaryTextColor').value=String(c.primaryTextColor||'#f3f6ff');
@@ -321,49 +310,6 @@
       syncSwatches();
       const p=collect(); write(p); await saveServerProfile(p); postLiveTheme();
     });
-    const exportModal=$('exportModal');
-    const exportJson=$('exportJson');
-    $('exportPresetBtn')?.addEventListener('click', ()=>runBtnAction($('exportPresetBtn'), async ()=>{
-      const presetName=String($('presetSel')?.value||'').trim() || 'Custom';
-      const payload=JSON.stringify({name:presetName,customColors:collect().customColors},null,2);
-      if (exportJson) exportJson.value=payload;
-      exportModal?.classList.add('open');
-      setTimeout(()=>{ try { const txt=String(exportJson?.value||''); exportJson?.focus(); exportJson?.select(); exportJson?.setSelectionRange(0, txt.length); } catch {} }, 0);
-    },{busyText:'Opening…',doneText:'✓ Ready'}).catch(()=>null));
-    const selectExportAll=()=>{
-      try {
-        const txt=String(exportJson?.value||'');
-        exportJson?.focus();
-        exportJson?.select();
-        exportJson?.setSelectionRange(0, txt.length);
-        return true;
-      } catch { return false; }
-    };
-    $('selectExportBtn')?.addEventListener('click', ()=>{ selectExportAll(); });
-    $('copyExportBtn')?.addEventListener('click', ()=>runBtnAction($('copyExportBtn'), async ()=>{
-      const txt=String(exportJson?.value||'');
-      selectExportAll();
-      let ok=false;
-      try { await navigator.clipboard.writeText(txt); ok=true; } catch {}
-      if (!ok) {
-        try { ok = !!document.execCommand('copy'); } catch {}
-      }
-      if (!ok) throw new Error('copy-failed');
-    },{busyText:'Copying…',doneText:'✓ Copied'}).catch(()=>alert('Copy failed. Use Select All then Copy (⌘C / Ctrl+C).')));
-    $('closeExportBtn')?.addEventListener('click', ()=>exportModal?.classList.remove('open'));
-    exportModal?.addEventListener('click',(ev)=>{ if(ev.target===exportModal) exportModal.classList.remove('open'); });
-    $('importPresetBtn')?.addEventListener('click', ()=>runBtnAction($('importPresetBtn'), async ()=>{
-      const txt=prompt('Paste preset JSON'); if(!txt) throw new Error('cancel');
-      try {
-        const j=JSON.parse(txt); const c=j?.customColors||j;
-        $('primaryThemeColor').value=String(c.primaryThemeColor||'#0b111c');
-        $('secondaryThemeColor').value=String(c.secondaryThemeColor||'#1f2a3d');
-        $('primaryTextColor').value=String(c.primaryTextColor||'#f3f6ff');
-        $('secondaryTextColor').value=String(c.secondaryTextColor||'#9eb3d6');
-        syncSwatches();
-        const p=collect(); write(p); await saveServerProfile(p); postLiveTheme();
-      } catch { throw new Error('invalid-json'); }
-    },{busyText:'Importing…',doneText:'✓ Imported'}).catch((e)=>{ if(!String(e?.message||'').includes('cancel')) alert('Invalid JSON'); }));
     (async ()=>{
       const local = read();
       const server = await loadServerProfile();
