@@ -79,6 +79,9 @@
     .qMeta{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
     .qMain{min-width:0;overflow:hidden}
     .qTxt{display:block;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+    .qTxtBtn{appearance:none;-webkit-appearance:none;border:0;background:none;padding:0;margin:0;font:inherit;color:inherit;cursor:pointer;text-align:left;display:block;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .qTxtBtn:hover{text-decoration:underline;text-underline-offset:2px}
+    .qTxtBtn:focus-visible{outline:2px solid color-mix(in oklab,var(--accent,#74a8ff) 72%, white 28%);outline-offset:2px;border-radius:6px}
     .qBtns{display:flex;gap:6px}
     .qBtn{width:26px;height:26px;border-radius:999px;border:1px solid var(--quick-line,var(--line));background:var(--quick-line,var(--line));color:var(--text);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:transform .08s ease, background .18s ease, border-color .18s ease, color .18s ease}
     .qBtn:active{transform:scale(.94)}
@@ -1949,7 +1952,12 @@
       const list=quickIndex.filter(x=>String(x.search||x.value||'').includes(t)).slice(0,50);
       host.innerHTML = list.map((x)=>{
         const label = x.type==='album' && x.artist ? `${x.artist} — ${x.value}` : x.value;
-        return `<div class='qRow' data-type='${x.type}' data-value='${encodeURIComponent(x.value)}' data-artist='${encodeURIComponent(String(x.artist||''))}'><div class='qMain'><div class='qMeta'>${x.type}</div><div class='qTxt'>${label}</div></div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>▶</button><button class='qBtn' data-act='add' title='Add'>＋</button></div></div>`;
+        const safeTitle = String(x.value || '').replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const safeText = String(x.value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const textHtml = x.type==='artist'
+          ? `<button type='button' class='qTxt qTxtBtn' data-act='open-artist' title='Show albums by ${safeTitle}'>${safeText}</button>`
+          : `<div class='qTxt'>${label}</div>`;
+        return `<div class='qRow' data-type='${x.type}' data-value='${encodeURIComponent(x.value)}' data-artist='${encodeURIComponent(String(x.artist||''))}'><div class='qMain'><div class='qMeta'>${x.type}</div>${textHtml}</div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>▶</button><button class='qBtn' data-act='add' title='Add'>＋</button></div></div>`;
       }).join('') || `<div class='qRow'><div class='qTxt'>No matches</div></div>`;
       host.classList.add('open');
     }
@@ -2223,14 +2231,33 @@
       });
     }
     hqr.addEventListener('click', async (ev)=>{
-      const b=ev.target.closest('button.qBtn[data-act]');
       const row=ev.target.closest('.qRow[data-type][data-value]');
-      if(!b||!row) return;
-      const act=String(b.getAttribute('data-act')||'add');
+      if(!row) return;
+      const openArtistBtn = ev.target.closest('.qTxtBtn[data-act="open-artist"]');
       const type=String(row.getAttribute('data-type')||'');
       let value=''; let artist='';
       try{ value=decodeURIComponent(String(row.getAttribute('data-value')||'')); }catch{ value=String(row.getAttribute('data-value')||''); }
       try{ artist=decodeURIComponent(String(row.getAttribute('data-artist')||'')); }catch{ artist=String(row.getAttribute('data-artist')||''); }
+      if (openArtistBtn && type === 'artist' && value) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        await openPage('kiosk-artists.html');
+        setTimeout(()=>{
+          try {
+            kioskPaneFrame?.contentWindow?.postMessage({ type:'np-open-artist-by-name', artist:value }, '*');
+          } catch {}
+        }, 260);
+        setTimeout(()=>{
+          try {
+            kioskPaneFrame?.contentWindow?.postMessage({ type:'np-open-artist-by-name', artist:value }, '*');
+          } catch {}
+        }, 700);
+        return;
+      }
+
+      const b=ev.target.closest('button.qBtn[data-act]');
+      if(!b) return;
+      const act=String(b.getAttribute('data-act')||'add');
 
       const old = b.innerHTML;
       b.disabled = true;

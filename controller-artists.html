@@ -425,7 +425,8 @@
     }
     function closeArtistModal(){ document.getElementById('artistModal').classList.remove('open'); }
 
-    async function openArtistByName(artistName, albumName=''){
+    async function openArtistByName(artistName, albumName='', opts={}){
+      const { scrollIntoView: shouldScrollIntoView = true } = (opts && typeof opts === 'object') ? opts : {};
       const want = String(artistName||'').trim().toLowerCase();
       if (!want) return;
       const i = artists.findIndex((a)=>String(a?.artist||'').trim().toLowerCase()===want);
@@ -436,7 +437,9 @@
       modalCtx.art = art;
       modalCtx.albums = [];
       openArtistModal();
-      try { document.querySelector(`.row[data-idx='${i}']`)?.scrollIntoView({behavior:'smooth',block:'center'}); } catch {}
+      if (shouldScrollIntoView) {
+        try { document.querySelector(`.row[data-idx='${i}']`)?.scrollIntoView({behavior:'smooth',block:'center'}); } catch {}
+      }
       artistCoverQueuePaused = true;
       modalCtx.albums = await fetchArtistAlbums(modalCtx.artist);
       artistCoverQueuePaused = false;
@@ -452,6 +455,14 @@
     };
 
     window.addEventListener('scroll', maybeLoadMoreArtists, { passive:true });
+
+    window.addEventListener('message', async (ev) => {
+      const d = ev?.data || {};
+      if (String(d.type || '') !== 'np-open-artist-by-name') return;
+      const artist = String(d.artist || '').trim();
+      if (!artist) return;
+      try { await openArtistByName(artist, '', { scrollIntoView:false }); } catch {}
+    });
 
     document.getElementById('list').addEventListener('click', async (ev)=>{
       const row = ev.target.closest('.row[data-artist]');
