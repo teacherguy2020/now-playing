@@ -1,0 +1,8 @@
+.DS_Store
+.secrets/
+.tmp/
+_local-trash/
+.openclaw/
+.deepwiki-export/
+.deepwiki-export-page/
+.dw-test/
