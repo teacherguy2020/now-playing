@@ -35,3 +35,12 @@ agents/
 
 # Common local/editor/system clutter
 *.tmp
+
+# One-off local scratch / junk
+\"UPDATE
+*.live
+theme_snip.txt
+rename_somewhere.sh
+reset_aplmeta_remote.sh
+sticker-*.sql
+watchdog.sh.moode
