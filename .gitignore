@@ -6,3 +6,17 @@ _local-trash/
 .deepwiki-export/
 .deepwiki-export-page/
 .dw-test/
+
+# Local notes / generated exports
+.local-notes/
+archive/
+backup/
+backup-nowplaying.sh.tmp
+
+# Generated reports / indexes / scratch
+reports/
+moode_library_index.json
+tmp_*
+
+# Common local/editor/system clutter
+*.tmp
