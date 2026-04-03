@@ -18,5 +18,20 @@ reports/
 moode_library_index.json
 tmp_*
 
+# Local knowledge / memory / assistant state
+AGENTS.md
+BOOTSTRAP.md
+HEARTBEAT.md
+IDENTITY.md
+MEMORY.md
+SOUL.md
+TOOLS.md
+USER.md
+memory/
+notes/
+agent-queue/
+agent-reports/
+agents/
+
 # Common local/editor/system clutter
 *.tmp
