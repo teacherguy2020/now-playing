@@ -119,6 +119,7 @@ Especially relevant when the question is about:
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
 - `workflows.md` — common ways work tends to happen in this project
 - `display-interface.md` — map of the display-oriented surfaces, modes, and runtime-sensitive presentation paths
+- `kiosk-interface.md` — kiosk-style display usage as a presentation mode with host/runtime/display-state dependencies
 - `integrations.md` — MPD, moOde, YouTube, request flows, and integration-side cautions
 - `deployment-and-ops.md` — runtime, verification, configuration, and operational themes
 - `local-environment.md` — Brian-specific hosts, deploy targets, and local overrides

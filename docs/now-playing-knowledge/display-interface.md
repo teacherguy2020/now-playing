@@ -43,6 +43,9 @@ This likely includes:
 Planned deeper drill-down:
 - `kiosk-interface.md`
 
+Current anchor page:
+- `kiosk-interface.md`
+
 ### moOde-hosted render/display modes
 These are important because they are not just pages, but visual/display modes experienced through moOde-hosted or moOde-adjacent display paths.
 
@@ -157,7 +160,9 @@ Should eventually cover:
 - visual asset dependencies used by display surfaces
 
 ### `kiosk-interface.md`
-Should eventually cover:
+Now serves as the first kiosk-specific branch page.
+
+It should continue expanding to cover:
 - kiosk-style usage and host/display assumptions
 - moOde-hosted presentation context
 - operational/display wake interactions

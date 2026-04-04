@@ -51,6 +51,9 @@ Planned drill-down pages:
 Current anchor page:
 - `display-interface.md`
 
+Current sub-branch in progress:
+- `kiosk-interface.md`
+
 This family should eventually cover things like:
 - browser/TV display surfaces such as `display.html`
 - kiosk-oriented display behavior
