@@ -98,10 +98,94 @@
 <li>how the live host environment changes the practical behavior of kiosk presentation</li>
 </ul>
 <p>This is why kiosk documentation should not stop at “what page is shown.” It should also explain the host/runtime assumptions that make kiosk work in practice.</p>
-<h2>Likely implementation dimensions</h2>
-<p>This page does not yet attempt to map all implementation files exhaustively, but kiosk behavior likely depends on a combination of:</p>
+<h2>Important kiosk-facing files and entrypoints</h2>
+<p>Kiosk is not represented by only one HTML file. There is a broader kiosk family in the live <code>now-playing</code> app.</p>
+<p>Current repo-visible kiosk-facing HTML entrypoints include:</p>
 <ul>
-<li>HTML display entrypoints</li>
+<li><code>now-playing/kiosk.html</code></li>
+<li><code>now-playing/controller-kiosk.html</code></li>
+<li><code>now-playing/kiosk-now-playing.html</code></li>
+<li><code>now-playing/kiosk-albums.html</code></li>
+<li><code>now-playing/kiosk-artists.html</code></li>
+<li><code>now-playing/kiosk-playlists.html</code></li>
+<li><code>now-playing/kiosk-radio.html</code></li>
+<li><code>now-playing/kiosk-podcasts.html</code></li>
+<li><code>now-playing/kiosk-genres.html</code></li>
+<li><code>now-playing/kiosk-queue.html</code></li>
+<li><code>now-playing/kiosk-queue-wizard.html</code></li>
+<li><code>now-playing/kiosk-designer.html</code></li>
+</ul>
+<p>This means the kiosk branch should be understood as a family of presentation-oriented surfaces, not a single page.</p>
+<h2>First classification of kiosk files</h2>
+<p>Based on direct repo inspection, the kiosk family already falls into a few distinct roles.</p>
+<h3><code>now-playing/kiosk.html</code> — primary kiosk launcher/bridge</h3>
+<p>This currently looks like the main kiosk entrypoint.</p>
+<p>What it does:</p>
+<ul>
+<li>reads incoming theme/color/recent-source query parameters</li>
+<li>merges them with a saved kiosk profile from localStorage (<code>nowplaying.kiosk.profile.v1</code>)</li>
+<li>keeps a controller profile in sync (<code>nowplaying.mobile.profile.v2</code>)</li>
+<li>redirects into <code>controller.html</code> with kiosk-related query parameters such as:
+<ul>
+<li><code>kiosk=1</code></li>
+<li><code>preview=1</code></li>
+<li><code>rev=20260329-motion-art-fix</code></li>
+<li>theme/color/recent-source settings</li>
+</ul>
+</li>
+</ul>
+<p>This is important because it means <code>kiosk.html</code> is not mainly the final rendered kiosk UI. It is a launcher/profile handoff layer that boots kiosk-flavored controller behavior.</p>
+<h3><code>now-playing/kiosk-designer.html</code> — kiosk preview/designer/push tool</h3>
+<p>This is not the kiosk display itself. It is a support surface for designing and pushing kiosk presentation settings.</p>
+<p>Repo-visible behavior includes:</p>
+<ul>
+<li>iframe preview of <code>kiosk.html</code></li>
+<li>theme/color preset controls</li>
+<li>preset save/export/import controls</li>
+<li>runtime API calls via the <code>:3101</code> app host</li>
+<li>moOde browser URL status checks</li>
+<li>push-to-moOde behavior via config endpoints</li>
+</ul>
+<p>So this page belongs in the kiosk branch, but more as an authoring/configuration tool for kiosk presentation than as the kiosk display surface itself.</p>
+<h3><code>now-playing/controller-kiosk.html</code> — separate kiosk scaffold/prototype</h3>
+<p>This appears to be a direct, custom kiosk/controller scaffold rather than a simple redirect shim.</p>
+<p>Repo-visible characteristics:</p>
+<ul>
+<li>fixed 1280×400 layout</li>
+<li>three-pane design (sources, list, now playing)</li>
+<li>direct fetches to app-host APIs on <code>:3101</code></li>
+<li>pulls runtime config, now-playing state, queue diagnostics, and playlists</li>
+<li>appears to be a more explicit standalone kiosk/controller experiment or scaffold</li>
+</ul>
+<p>This looks different in nature from <code>kiosk.html</code>, which acts mainly as a launcher into <code>controller.html</code> kiosk mode.</p>
+<h3>Specialized <code>kiosk-*.html</code> files — redirect shims into controller pages</h3>
+<p>Several kiosk-named files are currently very thin wrappers that just redirect to controller-family pages with the same query string preserved.</p>
+<p>Observed examples:</p>
+<ul>
+<li><code>kiosk-albums.html</code> → <code>controller-albums.html</code></li>
+<li><code>kiosk-artists.html</code> → <code>controller-artists.html</code></li>
+<li><code>kiosk-playlists.html</code> → <code>controller-playlists.html</code></li>
+<li><code>kiosk-radio.html</code> → <code>controller-radio.html</code></li>
+<li><code>kiosk-podcasts.html</code> → <code>controller-podcasts.html</code></li>
+<li><code>kiosk-genres.html</code> → <code>controller-genres.html</code></li>
+<li><code>kiosk-queue.html</code> → <code>controller-queue.html</code></li>
+<li><code>kiosk-queue-wizard.html</code> → <code>controller-queue-wizard.html</code></li>
+<li><code>kiosk-now-playing.html</code> → <code>controller-now-playing.html</code></li>
+</ul>
+<p>This suggests that much of the kiosk family is currently implemented as a kiosk-branded routing layer into controller surfaces, rather than a fully separate kiosk-only codebase for every view.</p>
+<h2>Working interpretation</h2>
+<p>A stronger current interpretation is:</p>
+<ul>
+<li><code>kiosk.html</code> is the main kiosk launch/profile bridge</li>
+<li><code>kiosk-designer.html</code> is the configuration/preview/push tool for kiosk presentation</li>
+<li><code>controller-kiosk.html</code> is a separate standalone kiosk scaffold/prototype</li>
+<li>many of the other <code>kiosk-*.html</code> pages are redirect aliases into controller surfaces</li>
+</ul>
+<p>That is a much more useful starting model than treating the kiosk branch as one file or one monolithic surface.</p>
+<h2>Likely implementation dimensions</h2>
+<p>Kiosk behavior likely depends on a combination of:</p>
+<ul>
+<li>kiosk-family HTML entrypoints</li>
 <li>display/router-related scripts</li>
 <li>visual/render mode logic</li>
 <li>playback-state and metadata inputs</li>
@@ -111,11 +195,11 @@
 </ul>
 <p>When this branch is expanded, it should move toward explicit coverage of:</p>
 <ul>
-<li>relevant HTML pages</li>
-<li>relevant JS and CSS</li>
-<li>relevant routes/APIs</li>
-<li>relevant host/runtime control paths</li>
-<li>relevant local-environment-specific realities</li>
+<li>what each kiosk-family HTML page is for</li>
+<li>which JS and CSS each one relies on</li>
+<li>which routes/APIs feed each kiosk surface</li>
+<li>which host/runtime control paths affect them</li>
+<li>which local-environment-specific realities materially change kiosk behavior</li>
 </ul>
 <h2>Kiosk-specific questions future documentation should answer</h2>
 <p>A mature kiosk page should eventually answer questions like:</p>
