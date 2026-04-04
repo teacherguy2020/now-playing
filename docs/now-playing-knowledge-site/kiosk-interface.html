@@ -1,0 +1,157 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>kiosk-interface</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>kiosk interface</h1>
+<h2>Purpose</h2>
+<p>This page describes kiosk-style presentation in the <code>now-playing</code> ecosystem.</p>
+<p>The kiosk interface is part of the display family, but it deserves its own page because it is not just a visual layout. It also depends on host behavior, display wake/display state assumptions, moOde-side presentation context, and the operational realities of an unattended or semi-unattended screen.</p>
+<p>In other words, kiosk behavior sits at the intersection of:</p>
+<ul>
+<li>display and presentation</li>
+<li>runtime and host state</li>
+<li>moOde/display-host coordination</li>
+<li>visual/render mode selection</li>
+</ul>
+<h2>What “kiosk” means here</h2>
+<p>In this project, kiosk should be understood as a display-oriented usage mode where the system is expected to present useful playback information continuously or reliably on a dedicated screen or display context.</p>
+<p>That usually implies some combination of:</p>
+<ul>
+<li>presentation-first behavior rather than full browsing/control</li>
+<li>reduced need for direct interaction</li>
+<li>a persistent or semi-persistent screen</li>
+<li>dependencies on display routing, wake state, or host-side display assumptions</li>
+<li>tighter coupling to the live runtime environment than a casual browser tab would have</li>
+</ul>
+<p>Kiosk is therefore not only a UI description. It is also an operational mode.</p>
+<h2>Why kiosk belongs in its own branch</h2>
+<p>Kiosk deserves dedicated documentation because kiosk-related behavior can fail in ways that ordinary browser/controller surfaces do not.</p>
+<p>Examples of kiosk-specific concerns include:</p>
+<ul>
+<li>whether the correct display surface is being shown continuously</li>
+<li>whether the display wakes or stays awake as expected</li>
+<li>whether the browser/display host is showing the intended routed surface</li>
+<li>whether moOde-side display control and app-host-side display control are aligned</li>
+<li>whether visual/render mode choices behave correctly in the intended kiosk context</li>
+<li>whether local overrides or host-specific patches materially alter behavior</li>
+</ul>
+<p>This makes kiosk a good example of a surface that must be documented as both:</p>
+<ul>
+<li>a visible interface</li>
+<li>a runtime/environment-dependent operating mode</li>
+</ul>
+<h2>Kiosk within the display family</h2>
+<p>Kiosk is closely related to the broader display branch documented in <code>display-interface.md</code>.</p>
+<p>It overlaps with:</p>
+<ul>
+<li>browser/TV display surfaces</li>
+<li>moOde-hosted presentation and renderer modes</li>
+<li>artwork and visual presentation behavior</li>
+<li>runtime-admin and host/display control behavior</li>
+</ul>
+<p>But kiosk is distinct because it emphasizes:</p>
+<ul>
+<li>persistence</li>
+<li>unattended presentation</li>
+<li>display-host behavior</li>
+<li>operational stability over time</li>
+</ul>
+<p>Related pages:</p>
+<ul>
+<li><code>display-interface.md</code></li>
+<li><code>display-surface-troubleshooting.md</code></li>
+<li><code>deployment-and-ops.md</code></li>
+<li><code>local-environment.md</code></li>
+</ul>
+<h2>Likely kiosk contexts to document more deeply</h2>
+<p>The kiosk branch should eventually distinguish between different kiosk-like contexts, because they may not all behave the same way.</p>
+<p>Likely contexts include:</p>
+<ul>
+<li>browser-based kiosk presentation on a dedicated display</li>
+<li>moOde-hosted kiosk-style presentation</li>
+<li>display-router-driven kiosk behavior</li>
+<li>kiosk behavior that depends on specific renderers or visual modes</li>
+<li>kiosk behavior shaped by wake/display-state logic or local overrides</li>
+</ul>
+<p>These may or may not ultimately map to separate pages, but they should at least become separate subsections if they prove materially different.</p>
+<h2>Kiosk and moOde-host reality</h2>
+<p>Kiosk behavior appears especially likely to depend on moOde-host reality.</p>
+<p>That may include:</p>
+<ul>
+<li>what the moOde-attached display is expected to show</li>
+<li>how the display is routed or switched</li>
+<li>how moOde-side display control interacts with the app-host/runtime side</li>
+<li>whether local patches or watchdog logic affect what is shown and when</li>
+<li>how the live host environment changes the practical behavior of kiosk presentation</li>
+</ul>
+<p>This is why kiosk documentation should not stop at “what page is shown.” It should also explain the host/runtime assumptions that make kiosk work in practice.</p>
+<h2>Likely implementation dimensions</h2>
+<p>This page does not yet attempt to map all implementation files exhaustively, but kiosk behavior likely depends on a combination of:</p>
+<ul>
+<li>HTML display entrypoints</li>
+<li>display/router-related scripts</li>
+<li>visual/render mode logic</li>
+<li>playback-state and metadata inputs</li>
+<li>artwork and derivative/cache behavior</li>
+<li>runtime-admin and host/display control routes or workflows</li>
+<li>local environment patches, overrides, or host-specific assumptions</li>
+</ul>
+<p>When this branch is expanded, it should move toward explicit coverage of:</p>
+<ul>
+<li>relevant HTML pages</li>
+<li>relevant JS and CSS</li>
+<li>relevant routes/APIs</li>
+<li>relevant host/runtime control paths</li>
+<li>relevant local-environment-specific realities</li>
+</ul>
+<h2>Kiosk-specific questions future documentation should answer</h2>
+<p>A mature kiosk page should eventually answer questions like:</p>
+<ul>
+<li>what surface is actually shown in kiosk mode?</li>
+<li>what host is responsible for showing it?</li>
+<li>how does kiosk differ from ordinary browser display usage?</li>
+<li>what role does moOde play in kiosk presentation?</li>
+<li>what visual modes/renderers can appear in kiosk contexts?</li>
+<li>what causes kiosk to show the wrong thing, go stale, or fail to wake/update?</li>
+<li>what files, routes, and host/runtime controls are responsible?</li>
+</ul>
+<h2>Planned sub-branches</h2>
+<h3><code>kiosk-browser-surface.md</code></h3>
+<p>For kiosk behavior centered on browser-rendered display surfaces.</p>
+<h3><code>kiosk-on-moode.md</code></h3>
+<p>For kiosk behavior specifically tied to moOde-hosted presentation and display context.</p>
+<h3><code>display-renderers-and-visual-modes.md</code></h3>
+<p>For the renderer/style choices that may appear within kiosk usage, such as peppy, player, and visualizer modes.</p>
+<h3><code>artwork-and-visual-assets.md</code></h3>
+<p>For artwork/animation/cached visual dependencies that strongly affect kiosk presentation quality and stability.</p>
+<h2>Relationship to troubleshooting and ops</h2>
+<p>Kiosk documentation should remain tightly linked to troubleshooting and operations pages because kiosk issues are likely to cross from visible symptoms into host/runtime causes.</p>
+<p>Especially relevant pages:</p>
+<ul>
+<li><code>display-surface-troubleshooting.md</code></li>
+<li><code>deployment-and-ops.md</code></li>
+<li><code>local-environment.md</code></li>
+<li><code>restart-and-runtime-admin-troubleshooting.md</code></li>
+</ul>
+<p>In this area especially, theory and live behavior may diverge.</p>
+<h2>Current status</h2>
+<p>At the moment, this page is a structural drill-down from the display branch, not a completed kiosk implementation guide.</p>
+<p>Its purpose is to establish kiosk as:</p>
+<ul>
+<li>a first-class visible interface/mode</li>
+<li>an operationally sensitive display context</li>
+<li>a branch that should eventually be documented with explicit pages, scripts, routes, host behavior, and local-environment realities</li>
+</ul></article></body></html>
