@@ -64,6 +64,8 @@ Then use:
 
 ### UI and display work
 Start with:
+- `user-interfaces.md`
+- `display-interface.md`
 - `workflows.md`
 - `source-map.md`
 - `display-surface-troubleshooting.md`
@@ -116,6 +118,7 @@ Especially relevant when the question is about:
 - `user-interfaces.md` — human-visible and operator-visible interface families, organized by how the system is actually used
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
 - `workflows.md` — common ways work tends to happen in this project
+- `display-interface.md` — map of the display-oriented surfaces, modes, and runtime-sensitive presentation paths
 - `integrations.md` — MPD, moOde, YouTube, request flows, and integration-side cautions
 - `deployment-and-ops.md` — runtime, verification, configuration, and operational themes
 - `local-environment.md` — Brian-specific hosts, deploy targets, and local overrides
@@ -149,7 +152,7 @@ Go here first based on the problem you have:
 - **What is this system and how is it structured?** → `system-overview.md`, then `architecture.md`, then `user-interfaces.md`
 - **Is this a runtime/live-behavior issue?** → `local-environment.md`, then `deployment-and-ops.md`, then `restart-and-runtime-admin-troubleshooting.md`
 - **Is this an integration or authority-path issue?** → `integrations.md`, then `playback-mode-troubleshooting.md`, then `workflows.md`
-- **Is this a display/UI issue?** → `display-surface-troubleshooting.md`, then `workflows.md`, then `source-map.md`
+- **Is this a display/UI issue?** → `user-interfaces.md`, then `display-interface.md`, then `display-surface-troubleshooting.md`, then `workflows.md`, then `source-map.md`
 - **Do I need prior lessons or rationale?** → `decisions-and-history.md`, then `gotchas-and-lessons.md`
 - **Is this still unresolved or poorly mapped?** → `open-questions.md`
 
