@@ -212,6 +212,14 @@ A mature kiosk page should eventually answer questions like:
 
 Kiosk may eventually need further drill-down pages such as:
 
+### `kiosk-launch-and-routing.md`
+Now serves as the first routing-focused drill-down beneath this page.
+
+It should continue expanding around:
+- `kiosk.html` as the launch/profile bridge
+- the redirect relationship between kiosk-named pages and controller pages
+- profile handoff into kiosk-flavored controller behavior
+
 ### `kiosk-browser-surface.md`
 For kiosk behavior centered on browser-rendered display surfaces.
 
