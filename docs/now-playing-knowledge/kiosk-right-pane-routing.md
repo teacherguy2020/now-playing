@@ -162,6 +162,7 @@ This page should stay linked with:
 - `controller-kiosk-mode.md`
 - `kiosk-launch-and-routing.md`
 - `kiosk-interface.md`
+- `embedded-pane-contracts.md`
 - future detailed pages for `controller-now-playing`, queue, artists, albums, and visualizer behavior
 
 ## Things still to verify

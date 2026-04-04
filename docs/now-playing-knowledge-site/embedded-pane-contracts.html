@@ -1,0 +1,198 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>embedded-pane-contracts</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="embedded-pane-contracts.html">embedded-pane-contracts</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>embedded pane contracts</h1>
+<h2>Purpose</h2>
+<p>This page describes the practical contract between controller-side kiosk right-pane routing and the child pages loaded inside that pane.</p>
+<p>It exists because right-pane routing is not just an iframe trick. The embedded child pages appear to cooperate with the parent shell through:</p>
+<ul>
+<li>query parameters</li>
+<li>embedded-specific CSS/layout behavior</li>
+<li>postMessage signals</li>
+<li>theme/color/profile propagation</li>
+</ul>
+<p>That means there is a real interface contract here, even if it is informal.</p>
+<h2>Parent-side setup</h2>
+<p>From controller-side kiosk routing, embedded pane pages are typically loaded with query parameters such as:</p>
+<ul>
+<li><code>embedded=1</code></li>
+<li><code>theme=&lt;theme&gt;</code></li>
+<li><code>colorPreset=&lt;preset&gt;</code></li>
+<li><code>cols=7</code> in some iPad-landscape contexts</li>
+</ul>
+<p>This suggests the parent shell expects child pages to:</p>
+<ul>
+<li>recognize embedded mode</li>
+<li>compact their layout appropriately</li>
+<li>adopt the intended theme/palette</li>
+<li>behave differently from full-page navigation mode</li>
+</ul>
+<h2>Common embedded-mode pattern in child pages</h2>
+<p>Direct repo inspection shows that many controller-family pages do in fact respond to <code>embedded=1</code>.</p>
+<p>Observed examples include:</p>
+<ul>
+<li><code>controller-playlists.html</code></li>
+<li><code>controller-artists.html</code></li>
+<li><code>controller-albums.html</code></li>
+<li><code>controller-genres.html</code></li>
+<li><code>controller-podcasts.html</code></li>
+<li><code>controller-radio.html</code></li>
+<li><code>controller-queue-wizard.html</code></li>
+<li><code>controller-queue.html</code></li>
+<li><code>controller-now-playing.html</code></li>
+<li><code>visualizer.html</code></li>
+</ul>
+<h2>Embedded layout adaptation</h2>
+<p>A common pattern is:</p>
+<ul>
+<li>detect <code>embedded=1</code></li>
+<li>add <code>body.embedded</code></li>
+<li>optionally add <code>embeddedWide</code> when <code>cols=7</code></li>
+</ul>
+<p>This gives the child page a mode switch for compact rendering.</p>
+<p>Observed effects include:</p>
+<ul>
+<li>transparent backgrounds</li>
+<li>reduced padding</li>
+<li>smaller title/meta text</li>
+<li>tighter grids</li>
+<li>hidden or reduced controls in some views</li>
+<li>pane-friendly dimensions and spacing</li>
+</ul>
+<p>So one major contract is:</p>
+<blockquote>
+<p>when loaded with <code>embedded=1</code>, child pages should render like pane content rather than like full standalone pages.</p>
+</blockquote>
+<h2>Theme and color propagation</h2>
+<p>Many of the embedded-capable child pages also read query parameters such as:</p>
+<ul>
+<li><code>theme</code></li>
+<li><code>colorPreset</code></li>
+</ul>
+<p>And some also reconcile those with stored/shared profile state.</p>
+<p>This implies another contract:</p>
+<blockquote>
+<p>the parent shell owns the pane’s intended look-and-feel, and child pages should honor that look by applying the incoming theme/palette settings.</p>
+</blockquote>
+<p>This is visible across pages such as playlists, artists, albums, podcasts, radio, queue-wizard, and queue.</p>
+<h2>Close-the-pane contract</h2>
+<p>A very common embedded behavior is:</p>
+<ul>
+<li>when a child page would normally go “back” or finish navigation, it posts:
+<ul>
+<li><code>window.parent?.postMessage({ type:'np-kiosk-hide-pane' }, '*')</code></li>
+</ul>
+</li>
+</ul>
+<p>This appears in multiple controller-family pages.</p>
+<p>That means a core contract is:</p>
+<blockquote>
+<p>embedded child pages should ask the parent kiosk shell to close the pane instead of navigating the whole page away.</p>
+</blockquote>
+<p>This is one of the clearest signs that the embedded pane system is an intentional architecture, not an accidental embedding.</p>
+<h2>Richer child-to-parent messages</h2>
+<p>Some embedded pages send messages beyond simple close requests.</p>
+<p>Observed examples include:</p>
+<ul>
+<li><code>controller-genres.html</code></li>
+<li><code>controller-albums.html</code></li>
+</ul>
+<p>These can post messages such as:</p>
+<ul>
+<li><code>np-kiosk-pane-genre</code></li>
+</ul>
+<p>This suggests the parent/child relationship may support pane-internal drill-down coordination, not just open/close behavior.</p>
+<p>A good working interpretation is:</p>
+<ul>
+<li>some child pages can tell the parent shell to refine or redirect pane content based on a selected entity such as genre</li>
+</ul>
+<p>That should be explored further later.</p>
+<h2><code>controller-now-playing.html</code> special behavior</h2>
+<p><code>controller-now-playing.html</code> shows a slightly different embedded pattern.</p>
+<p>Observed clues include:</p>
+<ul>
+<li>embedded checks in its own UI mode logic</li>
+<li>a back/close path that posts <code>np-kiosk-hide-pane</code> when embedded</li>
+<li>an internal iframe load of <code>controller-queue.html?embedded=1</code></li>
+</ul>
+<p>This suggests that some child pages are themselves capable of embedding other child pages, or at least reusing the same embedded contract for subviews.</p>
+<h2><code>visualizer.html</code> special behavior</h2>
+<p><code>visualizer.html</code> has distinct embedded handling.</p>
+<p>Observed behavior includes:</p>
+<ul>
+<li>treating <code>embedded=1</code> as a force-pure-visual mode trigger</li>
+<li>reducing or changing HUD/controls behavior in embedded mode</li>
+<li>using embedded mode as part of kiosk/display logic</li>
+<li>allowing a click/tap in embedded mode to open the full-screen visualizer</li>
+</ul>
+<p>So visualizer participates in the embedded contract, but with a more display-specific interpretation than the controller list/grid pages.</p>
+<h2>Working embedded-pane contract</h2>
+<p>A useful current summary of the contract is:</p>
+<h3>Parent shell responsibilities</h3>
+<ul>
+<li>decide when pane mode is active</li>
+<li>map kiosk pages to child targets</li>
+<li>load child targets with <code>embedded=1</code></li>
+<li>pass along theme/color/layout hints</li>
+<li>listen for child messages such as <code>np-kiosk-hide-pane</code></li>
+</ul>
+<h3>Child page responsibilities</h3>
+<ul>
+<li>detect <code>embedded=1</code></li>
+<li>switch to pane-appropriate layout/styling</li>
+<li>honor theme/color/layout hints</li>
+<li>avoid full-page back navigation when embedded</li>
+<li>notify the parent when the pane should close</li>
+<li>in some cases, send richer pane-control messages</li>
+</ul>
+<h2>Why this matters</h2>
+<p>This page matters because it changes how the kiosk system should be understood.</p>
+<p>The right-pane flow is not just:</p>
+<ul>
+<li>parent opens iframe</li>
+</ul>
+<p>It is more like:</p>
+<ul>
+<li>parent and child pages participate in a lightweight embedded-surface protocol</li>
+</ul>
+<p>That makes the embedded contract one of the more important hidden architectural layers in kiosk mode.</p>
+<h2>Relationship to other pages</h2>
+<p>This page should stay linked with:</p>
+<ul>
+<li><code>kiosk-right-pane-routing.md</code></li>
+<li><code>controller-kiosk-mode.md</code></li>
+<li><code>kiosk-interface.md</code></li>
+<li>future page-specific drill-down docs for child pages loaded in the pane</li>
+</ul>
+<h2>Things still to verify</h2>
+<p>Future deeper verification should clarify:</p>
+<ul>
+<li>whether all embedded-capable pages implement the same close/navigation rules</li>
+<li>whether there are more parent/child message types beyond the ones already observed</li>
+<li>whether embedded mode affects data loading semantics, not just layout</li>
+<li>whether embedded child pages expect more parent-side CSS or post-load DOM mutation than currently documented</li>
+<li>whether there is a stable enough pattern to formalize this as a reusable interface guideline</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page establishes that kiosk pane embedding already behaves like a real cross-page contract.</p>
+<p>That is a useful architectural insight because it means future changes to kiosk mode should be evaluated not only page-by-page, but also in terms of whether they preserve the parent/child pane contract.</p></article></body></html>

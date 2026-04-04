@@ -125,6 +125,7 @@ Especially relevant when the question is about:
 - `controller-kiosk-scaffold.md` — the separate standalone `controller-kiosk.html` scaffold path
 - `controller-kiosk-mode.md` — controller-side behavior when kiosk mode is active
 - `kiosk-right-pane-routing.md` — right-pane embedded kiosk/controller subview loading inside controller kiosk mode
+- `embedded-pane-contracts.md` — parent/child contract for embedded kiosk pane pages
 - `integrations.md` — MPD, moOde, YouTube, request flows, and integration-side cautions
 - `deployment-and-ops.md` — runtime, verification, configuration, and operational themes
 - `local-environment.md` — Brian-specific hosts, deploy targets, and local overrides
