@@ -109,12 +109,75 @@ Current repo-visible kiosk-facing HTML entrypoints include:
 
 This means the kiosk branch should be understood as a family of presentation-oriented surfaces, not a single page.
 
-A first working distinction:
-- `kiosk.html` appears to be the generic/top-level kiosk entrypoint
-- `controller-kiosk.html` appears to be kiosk behavior tied more explicitly to the controller family
-- the specialized `kiosk-*.html` pages appear to break kiosk usage into distinct content or workflow views
+## First classification of kiosk files
 
-This distinction should be verified in later drill-down pages, but it is already important enough to name here.
+Based on direct repo inspection, the kiosk family already falls into a few distinct roles.
+
+### `now-playing/kiosk.html` — primary kiosk launcher/bridge
+This currently looks like the main kiosk entrypoint.
+
+What it does:
+- reads incoming theme/color/recent-source query parameters
+- merges them with a saved kiosk profile from localStorage (`nowplaying.kiosk.profile.v1`)
+- keeps a controller profile in sync (`nowplaying.mobile.profile.v2`)
+- redirects into `controller.html` with kiosk-related query parameters such as:
+  - `kiosk=1`
+  - `preview=1`
+  - `rev=20260329-motion-art-fix`
+  - theme/color/recent-source settings
+
+This is important because it means `kiosk.html` is not mainly the final rendered kiosk UI. It is a launcher/profile handoff layer that boots kiosk-flavored controller behavior.
+
+### `now-playing/kiosk-designer.html` — kiosk preview/designer/push tool
+This is not the kiosk display itself. It is a support surface for designing and pushing kiosk presentation settings.
+
+Repo-visible behavior includes:
+- iframe preview of `kiosk.html`
+- theme/color preset controls
+- preset save/export/import controls
+- runtime API calls via the `:3101` app host
+- moOde browser URL status checks
+- push-to-moOde behavior via config endpoints
+
+So this page belongs in the kiosk branch, but more as an authoring/configuration tool for kiosk presentation than as the kiosk display surface itself.
+
+### `now-playing/controller-kiosk.html` — separate kiosk scaffold/prototype
+This appears to be a direct, custom kiosk/controller scaffold rather than a simple redirect shim.
+
+Repo-visible characteristics:
+- fixed 1280×400 layout
+- three-pane design (sources, list, now playing)
+- direct fetches to app-host APIs on `:3101`
+- pulls runtime config, now-playing state, queue diagnostics, and playlists
+- appears to be a more explicit standalone kiosk/controller experiment or scaffold
+
+This looks different in nature from `kiosk.html`, which acts mainly as a launcher into `controller.html` kiosk mode.
+
+### Specialized `kiosk-*.html` files — redirect shims into controller pages
+Several kiosk-named files are currently very thin wrappers that just redirect to controller-family pages with the same query string preserved.
+
+Observed examples:
+- `kiosk-albums.html` → `controller-albums.html`
+- `kiosk-artists.html` → `controller-artists.html`
+- `kiosk-playlists.html` → `controller-playlists.html`
+- `kiosk-radio.html` → `controller-radio.html`
+- `kiosk-podcasts.html` → `controller-podcasts.html`
+- `kiosk-genres.html` → `controller-genres.html`
+- `kiosk-queue.html` → `controller-queue.html`
+- `kiosk-queue-wizard.html` → `controller-queue-wizard.html`
+- `kiosk-now-playing.html` → `controller-now-playing.html`
+
+This suggests that much of the kiosk family is currently implemented as a kiosk-branded routing layer into controller surfaces, rather than a fully separate kiosk-only codebase for every view.
+
+## Working interpretation
+
+A stronger current interpretation is:
+- `kiosk.html` is the main kiosk launch/profile bridge
+- `kiosk-designer.html` is the configuration/preview/push tool for kiosk presentation
+- `controller-kiosk.html` is a separate standalone kiosk scaffold/prototype
+- many of the other `kiosk-*.html` pages are redirect aliases into controller surfaces
+
+That is a much more useful starting model than treating the kiosk branch as one file or one monolithic surface.
 
 ## Likely implementation dimensions
 
