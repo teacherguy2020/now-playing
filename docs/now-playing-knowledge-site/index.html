@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>README</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>now-playing knowledge base</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
 <li><a href="architecture.html">architecture</a></li>
 <li><a href="decisions-and-history.html">decisions-and-history</a></li>
 <li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
@@ -15,7 +15,7 @@
 <li><a href="system-overview.html">system-overview</a></li>
 <li><a href="user-interfaces.html">user-interfaces</a></li>
 <li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>now-playing project knowledge base</h1>
-<p>This wiki tracks the architecture, history, and operational realities of the <code>now-playing</code> project — a moOde Audio Player add-on and extension ecosystem for richer playback state, metadata, displays, controls, and surrounding operational glue.</p>
+<p>This wiki tracks the architecture, history, and operational realities of the <code>now-playing</code> project.</p>
 <h2>What this is</h2>
 <p>This directory is the local wiki and knowledge base for the <code>now-playing</code> project.</p>
 <p>It is meant to help Brian and future agents:</p>
@@ -43,17 +43,15 @@
 <p>If you want the fastest orientation path, read in this order:</p>
 <p>1. **Context** → <code>system-overview.md</code></p>
 <p>2. **Structure** → <code>architecture.md</code></p>
-<p>3. **Interfaces / how the system is actually used** → <code>user-interfaces.md</code></p>
-<p>4. **Action / where things live** → <code>source-map.md</code></p>
-<p>5. **Reality check for the live setup** → <code>local-environment.md</code></p>
-<p>6. **Known traps and prior lessons** → <code>gotchas-and-lessons.md</code></p>
+<p>3. **Action / where things live** → <code>source-map.md</code></p>
+<p>4. **Reality check for the live setup** → <code>local-environment.md</code></p>
+<p>5. **Known traps and prior lessons** → <code>gotchas-and-lessons.md</code></p>
 <p>Then use <code>decisions-and-history.md</code> when you need rationale or historical context.</p>
 <h2>Read by task</h2>
 <h3>Understanding the project</h3>
 <ul>
 <li><code>system-overview.md</code></li>
 <li><code>architecture.md</code></li>
-<li><code>user-interfaces.md</code></li>
 <li><code>glossary.md</code></li>
 </ul>
 <h3>Finding code</h3>
@@ -69,8 +67,6 @@
 <h3>UI and display work</h3>
 <p>Start with:</p>
 <ul>
-<li><code>user-interfaces.md</code></li>
-<li><code>display-interface.md</code></li>
 <li><code>workflows.md</code></li>
 <li><code>source-map.md</code></li>
 <li><code>display-surface-troubleshooting.md</code></li>
@@ -128,10 +124,8 @@
 <ul>
 <li><code>system-overview.md</code> — broad overview of the project, feature areas, and system purpose</li>
 <li><code>architecture.md</code> — major layers, boundaries, and structural relationships</li>
-<li><code>user-interfaces.md</code> — human-visible and operator-visible interface families, organized by how the system is actually used</li>
 <li><code>source-map.md</code> — directory-oriented navigation map for where important code and assets live</li>
 <li><code>workflows.md</code> — common ways work tends to happen in this project</li>
-<li><code>display-interface.md</code> — map of the display-oriented surfaces, modes, and runtime-sensitive presentation paths</li>
 <li><code>integrations.md</code> — MPD, moOde, YouTube, request flows, and integration-side cautions</li>
 <li><code>deployment-and-ops.md</code> — runtime, verification, configuration, and operational themes</li>
 <li><code>local-environment.md</code> — Brian-specific hosts, deploy targets, and local overrides</li>
@@ -159,10 +153,10 @@
 <p>Go here first based on the problem you have:</p>
 <ul>
 <li>**Where does the code live?** → <code>source-map.md</code></li>
-<li>**What is this system and how is it structured?** → <code>system-overview.md</code>, then <code>architecture.md</code>, then <code>user-interfaces.md</code></li>
+<li>**What is this system and how is it structured?** → <code>system-overview.md</code>, then <code>architecture.md</code></li>
 <li>**Is this a runtime/live-behavior issue?** → <code>local-environment.md</code>, then <code>deployment-and-ops.md</code>, then <code>restart-and-runtime-admin-troubleshooting.md</code></li>
 <li>**Is this an integration or authority-path issue?** → <code>integrations.md</code>, then <code>playback-mode-troubleshooting.md</code>, then <code>workflows.md</code></li>
-<li>**Is this a display/UI issue?** → <code>user-interfaces.md</code>, then <code>display-interface.md</code>, then <code>display-surface-troubleshooting.md</code>, then <code>workflows.md</code>, then <code>source-map.md</code></li>
+<li>**Is this a display/UI issue?** → <code>display-surface-troubleshooting.md</code>, then <code>workflows.md</code>, then <code>source-map.md</code></li>
 <li>**Do I need prior lessons or rationale?** → <code>decisions-and-history.md</code>, then <code>gotchas-and-lessons.md</code></li>
 <li>**Is this still unresolved or poorly mapped?** → <code>open-questions.md</code></li>
 </ul>

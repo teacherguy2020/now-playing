@@ -1,0 +1,220 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>display-interface</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>display interface</h1>
+<h2>Purpose</h2>
+<p>This page describes the major display-oriented surfaces of the <code>now-playing</code> ecosystem.</p>
+<p>It is focused on <strong>what can be looked at as a display or presentation surface</strong>, how those surfaces relate to each other, and what kinds of implementation and runtime dependencies support them.</p>
+<p>This page is not yet an exhaustive file-by-file implementation map. Its role is to define the display family clearly enough that later drill-down pages can become more precise and exhaustive.</p>
+<h2>What belongs in the display family</h2>
+<p>The display family includes the surfaces whose primary role is to present playback state, artwork, metadata, animations, skins, or display-oriented layouts.</p>
+<p>This family is broader than a single HTML page. It includes:</p>
+<ul>
+<li>browser-based display surfaces</li>
+<li>TV/external-browser display usage</li>
+<li>moOde-hosted display modes</li>
+<li>kiosk-like presentation behavior</li>
+<li>renderer/style modes such as peppy/player/visualizer</li>
+</ul>
+<h2>Core display-oriented surfaces</h2>
+<h3>Browser/TV display surface</h3>
+<p>This includes the browser-facing display surface used on TVs or other browsers, likely centered around <code>display.html</code> and related display-routing behavior.</p>
+<p>This surface should eventually be documented in more detail in a dedicated page because it likely acts as a major architectural entrypoint for presentation-first usage.</p>
+<p>Planned deeper drill-down:</p>
+<ul>
+<li><code>display-browser-surface.md</code></li>
+</ul>
+<h3>Kiosk-style display behavior</h3>
+<p>Kiosk behavior belongs in the display family because it is presentation-first, but it also overlaps with operational/runtime concerns and moOde-host behavior.</p>
+<p>This likely includes:</p>
+<ul>
+<li>unattended or semi-unattended presentation</li>
+<li>wake/display-state assumptions</li>
+<li>display loops and display-host behavior</li>
+<li>interactions between browser-rendered output and moOde-side display control</li>
+</ul>
+<p>Planned deeper drill-down:</p>
+<ul>
+<li><code>kiosk-interface.md</code></li>
+</ul>
+<h3>moOde-hosted render/display modes</h3>
+<p>These are important because they are not just pages, but visual/display modes experienced through moOde-hosted or moOde-adjacent display paths.</p>
+<p>Important examples include:</p>
+<ul>
+<li>peppy on moOde</li>
+<li>player on moOde</li>
+<li>visualizer on moOde</li>
+</ul>
+<p>These modes deserve to be treated as first-class display experiences, not only as implementation details.</p>
+<p>Planned deeper drill-down:</p>
+<ul>
+<li><code>display-renderers-and-visual-modes.md</code></li>
+</ul>
+<h3>Display behavior embedded in controller-oriented surfaces</h3>
+<p>Some display-like behavior appears outside pure display pages.</p>
+<p>For example:</p>
+<ul>
+<li>visualizer behavior may also appear in controller-tablet or related controller surfaces</li>
+<li>controller surfaces may expose artwork, presentation, or mini-display behavior that overlaps with the display family</li>
+</ul>
+<p>This matters because the display family cannot be documented in total isolation from controller/tablet/mobile surfaces.</p>
+<p>Related pages:</p>
+<ul>
+<li><code>tablet-interface.md</code></li>
+<li><code>phone-interface.md</code></li>
+</ul>
+<h2>What display surfaces are for</h2>
+<p>Across the ecosystem, display-oriented surfaces appear to serve several purposes:</p>
+<ul>
+<li>showing what is currently playing</li>
+<li>emphasizing artwork, metadata, and visual state</li>
+<li>providing a “now playing” presentation for a room, TV, or remote browser</li>
+<li>supporting style-specific renderers and skins</li>
+<li>acting as the presentation endpoint for state determined elsewhere in the system</li>
+</ul>
+<p>Display surfaces are usually downstream of other architectural areas:</p>
+<ul>
+<li>playback state determines much of what is shown</li>
+<li>integrations may determine which metadata and artwork are available</li>
+<li>local caches/derived state may determine whether display is responsive or stable</li>
+<li>runtime or host/display state may affect whether the surface behaves as expected in a live deployment</li>
+</ul>
+<h2>Important cross-layer relationships</h2>
+<p>Display behavior in this project should not be treated as purely visual.</p>
+<p>Display surfaces depend heavily on:</p>
+<ul>
+<li><strong>playback/control logic</strong>
+<ul>
+<li>transport state</li>
+<li>queue changes</li>
+<li>authority rules about what source currently “owns” playback state</li>
+</ul>
+</li>
+<li><strong>integration behavior</strong>
+<ul>
+<li>MPD/moOde metadata</li>
+<li>source-specific artwork and metadata enrichment</li>
+<li>stream/radio-specific differences</li>
+</ul>
+</li>
+<li><strong>local derived-state and caches</strong>
+<ul>
+<li>art derivatives</li>
+<li>locally served/cache-backed representations used for stability or speed</li>
+</ul>
+</li>
+<li><strong>runtime and local environment reality</strong>
+<ul>
+<li>moOde host behavior</li>
+<li>display host behavior</li>
+<li>wake/display routing assumptions</li>
+<li>local overrides and host-specific patches</li>
+</ul>
+</li>
+</ul>
+<p>This means a display bug may actually originate in:</p>
+<ul>
+<li>playback authority logic</li>
+<li>integration behavior</li>
+<li>cached/derived state</li>
+<li>runtime-admin behavior</li>
+<li>local environment differences</li>
+</ul>
+<h2>Relationship to other wiki pages</h2>
+<p>This page should stay closely linked with:</p>
+<ul>
+<li><code>architecture.md</code> — for the layer/boundary view of display behavior</li>
+<li><code>user-interfaces.md</code> — for the top-level interface family map</li>
+<li><code>display-surface-troubleshooting.md</code> — for debugging-oriented guidance</li>
+<li><code>deployment-and-ops.md</code> — when display behavior depends on runtime/admin concerns</li>
+<li><code>local-environment.md</code> — when host roles or local overrides affect display reality</li>
+<li><code>source-map.md</code> — when moving from surface understanding into actual implementation files</li>
+</ul>
+<p>This page will also likely link outward over time to more specialized drill-down pages such as:</p>
+<ul>
+<li><code>display-browser-surface.md</code></li>
+<li><code>display-renderers-and-visual-modes.md</code></li>
+<li><code>kiosk-interface.md</code></li>
+<li><code>artwork-and-visual-assets.md</code></li>
+</ul>
+<h2>Planned drill-down branches</h2>
+<p>The display family is probably too broad to keep on one page forever. The likely next branch pages are:</p>
+<h3><code>display-browser-surface.md</code></h3>
+<p>Should eventually cover:</p>
+<ul>
+<li>browser/TV display usage</li>
+<li><code>display.html</code></li>
+<li>display-router behavior</li>
+<li>embedded vs top-level behavior where relevant</li>
+<li>related scripts, styles, API routes, and dependencies</li>
+</ul>
+<h3><code>display-renderers-and-visual-modes.md</code></h3>
+<p>Should eventually cover:</p>
+<ul>
+<li>peppy presentation</li>
+<li>player presentation</li>
+<li>visualizer presentation</li>
+<li>how visual/render modes are selected or routed</li>
+<li>files, assets, scripts, and generated artifacts that support these modes</li>
+</ul>
+<h3><code>artwork-and-visual-assets.md</code></h3>
+<p>Should eventually cover:</p>
+<ul>
+<li>artwork source handling</li>
+<li>cached/resized/blurred derivatives</li>
+<li>animated art behavior</li>
+<li>visual asset dependencies used by display surfaces</li>
+</ul>
+<h3><code>kiosk-interface.md</code></h3>
+<p>Should eventually cover:</p>
+<ul>
+<li>kiosk-style usage and host/display assumptions</li>
+<li>moOde-hosted presentation context</li>
+<li>operational/display wake interactions</li>
+<li>how kiosk behavior differs from general browser display usage</li>
+</ul>
+<h2>Coverage philosophy for future expansion</h2>
+<p>When this display family is expanded, each drill-down page should eventually answer:</p>
+<ul>
+<li>what visible surface or mode is being discussed</li>
+<li>where it is actually experienced</li>
+<li>what state/data/artwork it depends on</li>
+<li>what files and routes implement it</li>
+<li>what host/runtime realities affect it</li>
+<li>what related display or controller surfaces differ from it</li>
+<li>what known gotchas matter in practice</li>
+</ul>
+<p>In other words, the display branch of the wiki should eventually let a reader move from:</p>
+<ul>
+<li>“the thing I can see on the TV / browser / moOde display”</li>
+</ul>
+<p>…to:</p>
+<ul>
+<li>the responsible pages</li>
+<li>the supporting scripts and assets</li>
+<li>the routes and state sources behind it</li>
+<li>the runtime/environment conditions that can change how it behaves</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page is best understood as a display-family map, not a completed implementation guide.</p>
+<p>Its main job is to define the display category clearly enough that deeper pages can be created without losing the relationship between:</p>
+<ul>
+<li>browser display surfaces</li>
+<li>kiosk behavior</li>
+<li>moOde-hosted render modes</li>
+<li>controller-embedded visual behavior</li>
+<li>runtime/environment-sensitive presentation behavior</li>
+</ul></article></body></html>
