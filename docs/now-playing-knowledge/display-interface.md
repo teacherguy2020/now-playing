@@ -41,10 +41,10 @@ This likely includes:
 - interactions between browser-rendered output and moOde-side display control
 
 Planned deeper drill-down:
-- `kiosk-interface.md`
+- [`kiosk-interface.md`](kiosk-interface.md)
 
 Current anchor page:
-- `kiosk-interface.md`
+- [`kiosk-interface.md`](kiosk-interface.md)
 
 ### moOde-hosted render/display modes
 These are important because they are not just pages, but visual/display modes experienced through moOde-hosted or moOde-adjacent display paths.
@@ -129,7 +129,7 @@ This page should stay closely linked with:
 This page will also likely link outward over time to more specialized drill-down pages such as:
 - `display-browser-surface.md`
 - `display-renderers-and-visual-modes.md`
-- `kiosk-interface.md`
+- [`kiosk-interface.md`](kiosk-interface.md)
 - `artwork-and-visual-assets.md`
 
 ## Planned drill-down branches
