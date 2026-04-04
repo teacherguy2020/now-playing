@@ -89,10 +89,37 @@ That may include:
 
 This is why kiosk documentation should not stop at “what page is shown.” It should also explain the host/runtime assumptions that make kiosk work in practice.
 
+## Important kiosk-facing files and entrypoints
+
+Kiosk is not represented by only one HTML file. There is a broader kiosk family in the live `now-playing` app.
+
+Current repo-visible kiosk-facing HTML entrypoints include:
+- `now-playing/kiosk.html`
+- `now-playing/controller-kiosk.html`
+- `now-playing/kiosk-now-playing.html`
+- `now-playing/kiosk-albums.html`
+- `now-playing/kiosk-artists.html`
+- `now-playing/kiosk-playlists.html`
+- `now-playing/kiosk-radio.html`
+- `now-playing/kiosk-podcasts.html`
+- `now-playing/kiosk-genres.html`
+- `now-playing/kiosk-queue.html`
+- `now-playing/kiosk-queue-wizard.html`
+- `now-playing/kiosk-designer.html`
+
+This means the kiosk branch should be understood as a family of presentation-oriented surfaces, not a single page.
+
+A first working distinction:
+- `kiosk.html` appears to be the generic/top-level kiosk entrypoint
+- `controller-kiosk.html` appears to be kiosk behavior tied more explicitly to the controller family
+- the specialized `kiosk-*.html` pages appear to break kiosk usage into distinct content or workflow views
+
+This distinction should be verified in later drill-down pages, but it is already important enough to name here.
+
 ## Likely implementation dimensions
 
-This page does not yet attempt to map all implementation files exhaustively, but kiosk behavior likely depends on a combination of:
-- HTML display entrypoints
+Kiosk behavior likely depends on a combination of:
+- kiosk-family HTML entrypoints
 - display/router-related scripts
 - visual/render mode logic
 - playback-state and metadata inputs
@@ -101,11 +128,11 @@ This page does not yet attempt to map all implementation files exhaustively, but
 - local environment patches, overrides, or host-specific assumptions
 
 When this branch is expanded, it should move toward explicit coverage of:
-- relevant HTML pages
-- relevant JS and CSS
-- relevant routes/APIs
-- relevant host/runtime control paths
-- relevant local-environment-specific realities
+- what each kiosk-family HTML page is for
+- which JS and CSS each one relies on
+- which routes/APIs feed each kiosk surface
+- which host/runtime control paths affect them
+- which local-environment-specific realities materially change kiosk behavior
 
 ## Kiosk-specific questions future documentation should answer
 
