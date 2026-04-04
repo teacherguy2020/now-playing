@@ -1,0 +1,139 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>controller-kiosk-scaffold</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>controller kiosk scaffold</h1>
+<h2>Purpose</h2>
+<p>This page describes <code>now-playing/controller-kiosk.html</code>, which appears to be a separate kiosk/controller scaffold rather than the main kiosk launch path.</p>
+<p>Unlike <code>kiosk.html</code>, which behaves as a launcher/profile bridge into <code>controller.html</code>, <code>controller-kiosk.html</code> appears to implement its own direct layout and API interactions.</p>
+<p>That makes it important to document separately.</p>
+<h2>Why this page exists</h2>
+<p>Repo inspection suggests that <code>controller-kiosk.html</code> is architecturally different from both:</p>
+<ul>
+<li><code>kiosk.html</code></li>
+<li>the thin <code>kiosk-*.html</code> redirect shims</li>
+</ul>
+<p>It looks more like a standalone or prototype kiosk/controller surface with its own fixed layout and direct runtime calls.</p>
+<h2>Observed structure</h2>
+<p>Repo-visible characteristics include:</p>
+<ul>
+<li>fixed <code>1280×400</code> layout</li>
+<li>three-pane design
+<ul>
+<li>sources pane</li>
+<li>list pane</li>
+<li>now playing pane</li>
+</ul>
+</li>
+<li>direct styling in the page</li>
+<li>direct JavaScript embedded in the page</li>
+<li>direct calls to app-host APIs on <code>:3101</code></li>
+</ul>
+<p>This is a different implementation style from a simple redirect or thin launcher page.</p>
+<h2>Observed responsibilities</h2>
+<h3>Source selection</h3>
+<p>The page visibly includes source buttons such as:</p>
+<ul>
+<li>library</li>
+<li>playlists</li>
+<li>radio</li>
+<li>podcasts</li>
+<li>YouTube</li>
+<li>queue</li>
+</ul>
+<p>This suggests it is trying to present a compact kiosk/controller browsing shell.</p>
+<h3>List loading</h3>
+<p>Repo inspection shows that it updates a central list area and currently handles at least:</p>
+<ul>
+<li>queue data</li>
+<li>playlists data</li>
+</ul>
+<p>with placeholder text suggesting additional browsing wiring was intended or expected later.</p>
+<h3>Now playing display</h3>
+<p>The page fetches now-playing information and displays:</p>
+<ul>
+<li>title</li>
+<li>artist</li>
+<li>album</li>
+<li>artwork</li>
+</ul>
+<p>This makes it both a browse/control surface and a now-playing surface.</p>
+<h3>Queue actions</h3>
+<p>The page visibly includes action buttons such as:</p>
+<ul>
+<li>Append</li>
+<li>Crop</li>
+<li>Replace</li>
+</ul>
+<p>That suggests a queue-manipulation role as well, though more verification is needed around the actual button behavior and completeness.</p>
+<h2>Observed API usage</h2>
+<p>Repo inspection shows direct calls to endpoints including:</p>
+<ul>
+<li><code>/config/runtime</code></li>
+<li><code>/now-playing</code></li>
+<li><code>/config/diagnostics/queue</code></li>
+<li><code>/config/queue-wizard/playlists</code></li>
+</ul>
+<p>This is significant because it means the page talks directly to app-host APIs instead of merely routing elsewhere.</p>
+<h2>Architectural interpretation</h2>
+<p>A useful current interpretation is:</p>
+<ul>
+<li><code>controller-kiosk.html</code> is a direct kiosk/controller scaffold or experiment</li>
+<li>it is not the same thing as the main <code>kiosk.html</code> launch path</li>
+<li>it may represent either:
+<ul>
+<li>a prototype/phase implementation</li>
+<li>a specialized alternative kiosk/controller surface</li>
+<li>a legacy path that still documents important intent</li>
+</ul>
+</li>
+</ul>
+<p>The page itself even labels part of the UI as:</p>
+<ul>
+<li><code>1280x400 kiosk scaffold (phase 1)</code></li>
+</ul>
+<p>which strongly suggests prototype or scaffold status.</p>
+<h2>Relationship to the rest of the kiosk branch</h2>
+<p>This page should stay linked with:</p>
+<ul>
+<li><code>kiosk-interface.md</code></li>
+<li><code>kiosk-launch-and-routing.md</code></li>
+<li>future controller-side kiosk behavior documentation</li>
+</ul>
+<p>because it helps distinguish:</p>
+<ul>
+<li>launch/routing-based kiosk behavior</li>
+</ul>
+<p>from</p>
+<ul>
+<li>direct standalone kiosk/controller implementation</li>
+</ul>
+<h2>Things still to verify</h2>
+<p>Future deeper documentation should verify:</p>
+<ul>
+<li>whether <code>controller-kiosk.html</code> is active in the current live workflow</li>
+<li>how complete the source browsing behavior really is</li>
+<li>whether the append/crop/replace actions are fully wired</li>
+<li>whether this scaffold is still evolving, deprecated, or partially superseded by <code>kiosk.html</code> + controller routing</li>
+<li>what scripts/routes or future pages replaced or absorbed its intended responsibilities</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page establishes <code>controller-kiosk.html</code> as a distinct kiosk/controller scaffold with direct layout and API behavior.</p>
+<p>That distinction matters because otherwise the kiosk branch looks more uniform than it really is.</p></article></body></html>

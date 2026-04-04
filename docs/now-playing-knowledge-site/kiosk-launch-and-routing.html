@@ -1,0 +1,152 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>kiosk-launch-and-routing</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>kiosk launch and routing</h1>
+<h2>Purpose</h2>
+<p>This page describes how kiosk mode is entered, routed, and handed off between kiosk-branded entrypoints and controller-family surfaces.</p>
+<p>This is the next drill-down beneath <code>kiosk-interface.md</code> because repo inspection shows that kiosk is not implemented as one standalone page. Instead, kiosk behavior is substantially shaped by:</p>
+<ul>
+<li>launch/redirect behavior</li>
+<li>local profile handoff</li>
+<li>kiosk-flavored controller routing</li>
+<li>kiosk-branded alias pages that often redirect into controller views</li>
+</ul>
+<h2>Why this page exists</h2>
+<p>The kiosk family can be confusing if it is treated as a flat list of HTML files.</p>
+<p>Some kiosk files are:</p>
+<ul>
+<li>actual launch/bridge layers</li>
+<li>support tools</li>
+<li>standalone scaffold/prototype pages</li>
+<li>thin redirect shims into controller pages</li>
+</ul>
+<p>This page focuses specifically on the launch/routing part of that picture.</p>
+<h2>Primary entrypoint: <code>now-playing/kiosk.html</code></h2>
+<p>At the moment, <code>now-playing/kiosk.html</code> appears to be the main kiosk launcher/bridge.</p>
+<p>Repo-visible behavior includes:</p>
+<ul>
+<li>reading incoming query parameters for things like theme/color/recent-source</li>
+<li>reading a saved kiosk profile from localStorage</li>
+<li>resolving an effective kiosk configuration from URL + saved profile</li>
+<li>syncing a controller-facing profile in localStorage</li>
+<li>redirecting into <code>controller.html</code> with kiosk-related query parameters</li>
+</ul>
+<p>This means <code>kiosk.html</code> is important less as a final rendered surface and more as a handoff/orchestration entrypoint.</p>
+<h2>Local profile handoff</h2>
+<p><code>kiosk.html</code> currently appears to use two key localStorage profiles:</p>
+<ul>
+<li><code>nowplaying.kiosk.profile.v1</code></li>
+<li><code>nowplaying.mobile.profile.v2</code></li>
+</ul>
+<p>Current working interpretation:</p>
+<ul>
+<li>the kiosk profile stores kiosk-oriented preferences/state</li>
+<li>the mobile/controller profile is kept in sync so that kiosk-flavored controller behavior inherits the intended presentation settings</li>
+</ul>
+<p>This is an important architectural clue:</p>
+<ul>
+<li>kiosk is not isolated from controller behavior</li>
+<li>it appears to reuse controller-family presentation/control machinery via profile synchronization and redirected launch</li>
+</ul>
+<h2>Redirect target: <code>controller.html</code></h2>
+<p>Repo-visible behavior indicates that <code>kiosk.html</code> redirects into <code>controller.html</code> with kiosk-related query parameters.</p>
+<p>Observed parameters include:</p>
+<ul>
+<li><code>kiosk=1</code></li>
+<li><code>preview=1</code></li>
+<li><code>rev=20260329-motion-art-fix</code></li>
+<li>theme/color/recent-source settings</li>
+</ul>
+<p>This strongly suggests that the practical kiosk experience is often delivered by a kiosk-flavored controller route/state rather than by a kiosk-only rendering shell.</p>
+<p>That is a major insight for future documentation and debugging.</p>
+<h2>Kiosk-branded redirect shims</h2>
+<p>Several <code>kiosk-*.html</code> pages are currently very thin redirect wrappers into controller-family pages.</p>
+<p>Observed mappings include:</p>
+<ul>
+<li><code>kiosk-albums.html</code> → <code>controller-albums.html</code></li>
+<li><code>kiosk-artists.html</code> → <code>controller-artists.html</code></li>
+<li><code>kiosk-playlists.html</code> → <code>controller-playlists.html</code></li>
+<li><code>kiosk-radio.html</code> → <code>controller-radio.html</code></li>
+<li><code>kiosk-podcasts.html</code> → <code>controller-podcasts.html</code></li>
+<li><code>kiosk-genres.html</code> → <code>controller-genres.html</code></li>
+<li><code>kiosk-queue.html</code> → <code>controller-queue.html</code></li>
+<li><code>kiosk-queue-wizard.html</code> → <code>controller-queue-wizard.html</code></li>
+<li><code>kiosk-now-playing.html</code> → <code>controller-now-playing.html</code></li>
+</ul>
+<p>This suggests that kiosk naming often acts as:</p>
+<ul>
+<li>a routing alias</li>
+<li>a presentation-mode entry path</li>
+<li>a convenience naming layer over controller-oriented surfaces</li>
+</ul>
+<p>Rather than implying a wholly separate kiosk implementation for every view.</p>
+<h2>Working routing model</h2>
+<p>A useful current model is:</p>
+<ol>
+<li>A kiosk-oriented entrypoint is opened</li>
+<li>Kiosk-specific preferences are resolved</li>
+<li>Those preferences are persisted/synchronized into local profile state</li>
+<li>The user/host is redirected into controller-family surfaces with kiosk-flavored parameters or aliases</li>
+<li>The visible kiosk experience is therefore often controller-backed, even when entered through kiosk-named files</li>
+</ol>
+<p>This model should be treated as provisional but already useful.</p>
+<h2>Why this matters architecturally</h2>
+<p>This launch/routing behavior means:</p>
+<ul>
+<li>kiosk and controller families are more entangled than their filenames initially suggest</li>
+<li>debugging kiosk behavior may require looking at controller pages and controller-state assumptions</li>
+<li>kiosk-specific bugs may actually live in routing, profile sync, or controller rendering behavior rather than in a kiosk-only file</li>
+<li>future documentation should distinguish between:
+<ul>
+<li>kiosk entrypoints</li>
+<li>kiosk support tools</li>
+<li>controller-backed kiosk destinations</li>
+<li>standalone kiosk-specific implementations</li>
+</ul>
+</li>
+</ul>
+<h2>Relationship to other kiosk pages</h2>
+<p>This page should stay linked with:</p>
+<ul>
+<li><code>kiosk-interface.md</code> — broader kiosk branch and operational framing</li>
+<li><code>display-interface.md</code> — parent display branch</li>
+<li>future <code>kiosk-designer.md</code> — for the preview/push/config side of kiosk work</li>
+<li>future <code>controller-kiosk-scaffold.md</code> — for the separate fixed-layout scaffold path</li>
+</ul>
+<h2>Things still to verify</h2>
+<p>This routing model should eventually be tightened with more explicit verification of:</p>
+<ul>
+<li>how <code>controller.html</code> interprets <code>kiosk=1</code></li>
+<li>what <code>preview=1</code> changes in practice</li>
+<li>whether all kiosk-branded redirect pages are still active/used in the live system</li>
+<li>whether kiosk aliases exist mainly for moOde/browser URL entry, user convenience, or internal structure</li>
+<li>how much of kiosk behavior is ultimately implemented in controller scripts and styles</li>
+</ul>
+<h2>Immediate follow-up candidates</h2>
+<p>The next drill-down pages from here now include:</p>
+<ul>
+<li><code>kiosk-designer.md</code></li>
+<li><code>controller-kiosk-scaffold.md</code></li>
+<li><code>controller-kiosk-mode.md</code></li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page provides a working routing model rather than a finished implementation reference.</p>
+<p>Its main value is making clear that kiosk mode is currently best understood as a launch/routing/profile layer sitting on top of controller-family behavior, rather than as one isolated kiosk-only interface.</p></article></body></html>
