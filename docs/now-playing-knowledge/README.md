@@ -1,6 +1,6 @@
 # now-playing project knowledge base
 
-This wiki tracks the architecture, history, and operational realities of the `now-playing` project.
+This wiki tracks the architecture, history, and operational realities of the `now-playing` project — a moOde Audio Player add-on and extension ecosystem for richer playback state, metadata, displays, controls, and surrounding operational glue.
 
 `now-playing` should be understood first as a **moOde-centered enhancement and companion system**, not as a generic media platform. It extends a moOde-based playback setup with richer now-playing state, metadata handling, artwork/display surfaces, control flows, and operational glue across the live environment.
 
