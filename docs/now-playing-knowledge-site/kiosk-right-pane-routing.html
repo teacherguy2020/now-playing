@@ -1,0 +1,189 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>kiosk-right-pane-routing</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>kiosk right-pane routing</h1>
+<h2>Purpose</h2>
+<p>This page describes the right-pane kiosk routing behavior inside <code>now-playing/controller.html</code>.</p>
+<p>This is an important drill-down because controller-side kiosk mode does not simply navigate away to every destination. In at least some contexts, it opens kiosk-related subviews inside an embedded right-side pane.</p>
+<p>That makes right-pane routing a core part of how kiosk mode actually works in practice.</p>
+<h2>Why this page matters</h2>
+<p>Without this page, it is easy to think kiosk navigation is just:</p>
+<ul>
+<li>open kiosk page</li>
+<li>redirect to controller page</li>
+<li>done</li>
+</ul>
+<p>But repo inspection shows a more nuanced behavior:</p>
+<ul>
+<li>some kiosk targets open in a dedicated right-side pane</li>
+<li>some remap to controller pages before loading</li>
+<li>some navigate directly instead</li>
+<li>behavior depends on kiosk mode and device/layout context</li>
+</ul>
+<h2>Core decision: open in right pane or not</h2>
+<p><code>controller.html</code> defines:</p>
+<ul>
+<li><code>shouldOpenInRightPane()</code></li>
+</ul>
+<p>Current repo-visible behavior:</p>
+<ul>
+<li>returns true when:
+<ul>
+<li><code>IS_KIOSK_1280 &amp;&amp; !IS_KIOSK_EDITOR</code>, or</li>
+<li><code>document.body.classList.contains('ipad11Landscape')</code></li>
+</ul>
+</li>
+</ul>
+<p>This means right-pane routing is specifically associated with:</p>
+<ul>
+<li>active 1280×400 kiosk mode outside editor mode</li>
+<li>iPad 11 landscape behavior</li>
+</ul>
+<p>So the right pane is not a universal controller behavior. It is a mode-sensitive layout behavior.</p>
+<h2>Main entrypoint: <code>openPage(page)</code></h2>
+<p>The central logic appears to live in:</p>
+<ul>
+<li><code>openPage(page)</code></li>
+</ul>
+<p>This function governs what happens when a row with a <code>data-page</code> target is activated.</p>
+<h2>Toggle behavior</h2>
+<p>If right-pane mode is active and the same kiosk row is clicked again:</p>
+<ul>
+<li>the pane closes instead of reloading the same content</li>
+</ul>
+<p>This is implemented by checking whether:</p>
+<ul>
+<li>the pane is already open</li>
+<li>the clicked row is already marked as open</li>
+</ul>
+<p>That means kiosk right-pane navigation acts partly like a toggleable side panel.</p>
+<h2>Behavior when right-pane mode is NOT active</h2>
+<p>If right-pane mode is not active and the target page starts with <code>kiosk-</code>:</p>
+<ul>
+<li>the code navigates with slide transition to the corresponding controller page</li>
+<li>using a <code>kiosk-</code> → <code>controller-</code> filename rewrite</li>
+</ul>
+<p>So outside right-pane contexts, kiosk pages behave more like navigation aliases than embedded panes.</p>
+<h2>Behavior when right-pane mode IS active</h2>
+<p>If right-pane mode is active and the page starts with <code>kiosk-</code> — or is <code>visualizer.html</code> — controller mode loads content into the right pane.</p>
+<p>Observed mapping table includes:</p>
+<ul>
+<li><code>kiosk-now-playing.html</code> → <code>controller-now-playing.html</code></li>
+<li><code>kiosk-playlists.html</code> → <code>controller-playlists.html</code></li>
+<li><code>kiosk-artists.html</code> → <code>controller-artists.html</code></li>
+<li><code>kiosk-albums.html</code> → <code>controller-albums.html</code></li>
+<li><code>kiosk-genres.html</code> → <code>controller-genres.html</code></li>
+<li><code>kiosk-podcasts.html</code> → <code>controller-podcasts.html</code></li>
+<li><code>kiosk-radio.html</code> → <code>controller-radio.html</code></li>
+<li><code>kiosk-queue-wizard.html</code> → <code>controller-queue-wizard.html</code></li>
+<li><code>kiosk-queue.html</code> → <code>controller-queue.html</code></li>
+<li><code>visualizer.html</code> → <code>visualizer.html</code></li>
+</ul>
+<p>This confirms that the right pane is largely controller-backed, even when the user interacts with kiosk-named rows.</p>
+<h2>Right-pane loading mechanism</h2>
+<p>The pane appears to use:</p>
+<ul>
+<li><code>#kioskPane</code></li>
+<li><code>#kioskPaneFrame</code></li>
+</ul>
+<p>Controller builds a URL for the mapped target and then adds query parameters such as:</p>
+<ul>
+<li><code>embedded=1</code></li>
+<li><code>cols=7</code> for iPad landscape</li>
+<li><code>theme=&lt;profile theme&gt;</code></li>
+<li><code>colorPreset=&lt;profile color preset&gt;</code></li>
+</ul>
+<p>Then it loads the resulting URL into <code>#kioskPaneFrame</code>.</p>
+<p>This is important because it shows the pane is not just generic navigation. It is embedding a presentation-configured subview.</p>
+<h2>Special handling for visualizer</h2>
+<p><code>visualizer.html</code> gets special treatment.</p>
+<p>Controller-side logic attempts to populate visualizer parameters such as:</p>
+<ul>
+<li><code>preset</code></li>
+<li><code>energy</code></li>
+<li><code>motion</code></li>
+<li><code>glow</code></li>
+</ul>
+<p>And it may prefer the latest designer-applied profile from:</p>
+<ul>
+<li><code>/peppy/last-profile</code></li>
+</ul>
+<p>This makes the right pane not only a navigation container, but also a place where display-mode-specific state is injected into embedded content.</p>
+<h2>Pane-open state management</h2>
+<p>When opening a right-pane target, controller-side logic also:</p>
+<ul>
+<li>marks the relevant nav row as open</li>
+<li>adds <code>paneOpen</code> to <code>recentWrap</code></li>
+<li>opens <code>#kioskPane</code></li>
+<li>sets <code>aria-hidden="false"</code></li>
+</ul>
+<p>When closing the pane, it:</p>
+<ul>
+<li>removes the <code>open</code> class</li>
+<li>restores <code>aria-hidden="true"</code></li>
+<li>removes <code>paneOpen</code> from <code>recentWrap</code></li>
+<li>clears the open-row state</li>
+<li>resets the iframe to <code>about:blank</code> after a short delay</li>
+</ul>
+<p>So the right pane has a distinct UI lifecycle, not just a one-off iframe load.</p>
+<h2>Message-based pane closing</h2>
+<p><code>controller.html</code> also listens for window messages and closes the pane when it receives:</p>
+<ul>
+<li><code>type: 'np-kiosk-hide-pane'</code></li>
+</ul>
+<p>This suggests embedded pane content can request that the outer kiosk shell close the pane.</p>
+<p>That is a meaningful integration contract between controller-shell kiosk mode and embedded subviews.</p>
+<h2>Deep-linking behavior</h2>
+<p>On startup, controller-side code also checks for:</p>
+<ul>
+<li><code>open=&lt;kiosk-page&gt;</code></li>
+</ul>
+<p>If kiosk 1280 mode is active and not in editor mode, it can auto-open a kiosk pane page shortly after load.</p>
+<p>This means right-pane routing is also part of deep-link and startup behavior, not only click navigation.</p>
+<h2>Working interpretation</h2>
+<p>A good current interpretation is:</p>
+<ul>
+<li>the right pane is one of the main ways kiosk mode composes subviews</li>
+<li>kiosk-named rows often become embedded controller-backed subpages</li>
+<li>the controller shell manages pane lifecycle, row state, theming, and embedding parameters</li>
+<li>this is one of the clearest places where kiosk mode becomes a true controller-shell experience rather than a simple redirect workflow</li>
+</ul>
+<h2>Relationship to other pages</h2>
+<p>This page should stay linked with:</p>
+<ul>
+<li><code>controller-kiosk-mode.md</code></li>
+<li><code>kiosk-launch-and-routing.md</code></li>
+<li><code>kiosk-interface.md</code></li>
+<li>future detailed pages for <code>controller-now-playing</code>, queue, artists, albums, and visualizer behavior</li>
+</ul>
+<h2>Things still to verify</h2>
+<p>Future deeper verification should clarify:</p>
+<ul>
+<li>exactly which contexts prefer full navigation over pane embedding</li>
+<li>how embedded child pages react to <code>embedded=1</code></li>
+<li>whether all mapped controller pages are designed equally well for pane mode</li>
+<li>how much styling/layout compaction comes from the parent shell versus the embedded child page</li>
+<li>whether the right-pane model is central to the live workflow or only one of several kiosk interaction patterns</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page establishes the right-pane flow as a first-class part of kiosk-mode architecture.</p>
+<p>That matters because it shows that kiosk navigation is not merely a list of redirects — it is also a pane-based controller shell with embedded subviews and mode-aware routing.</p></article></body></html>

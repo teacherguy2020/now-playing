@@ -136,6 +136,7 @@ This page should stay linked with:
 - `kiosk-interface.md`
 - `kiosk-launch-and-routing.md`
 - `controller-kiosk-scaffold.md`
+- `kiosk-right-pane-routing.md`
 - future controller-family pages such as tablet/mobile/desktop controller documentation
 
 ## Things still to verify
