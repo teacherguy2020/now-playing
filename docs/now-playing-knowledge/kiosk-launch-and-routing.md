@@ -128,10 +128,10 @@ This routing model should eventually be tightened with more explicit verificatio
 
 ## Immediate follow-up candidates
 
-The most logical next drill-down pages from here are:
+The next drill-down pages from here now include:
 - `kiosk-designer.md`
 - `controller-kiosk-scaffold.md`
-- a future controller-side page documenting how `controller.html` behaves in kiosk mode
+- `controller-kiosk-mode.md`
 
 ## Current status
 

@@ -220,6 +220,15 @@ It should continue expanding around:
 - the redirect relationship between kiosk-named pages and controller pages
 - profile handoff into kiosk-flavored controller behavior
 
+### `kiosk-designer.md`
+Now serves as the design/preview/push-tool branch for kiosk presentation.
+
+### `controller-kiosk-scaffold.md`
+Now serves as the branch for the standalone `controller-kiosk.html` scaffold path.
+
+### `controller-kiosk-mode.md`
+Now serves as the controller-side kiosk behavior branch.
+
 ### `kiosk-browser-surface.md`
 For kiosk behavior centered on browser-rendered display surfaces.
 
