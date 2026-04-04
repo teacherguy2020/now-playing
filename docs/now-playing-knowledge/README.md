@@ -51,6 +51,7 @@ Then use `decisions-and-history.md` when you need rationale or historical contex
 ### Understanding the project
 - `system-overview.md`
 - `architecture.md`
+- `user-interfaces.md`
 - `glossary.md`
 
 ### Finding code
@@ -112,6 +113,7 @@ Especially relevant when the question is about:
 
 - `system-overview.md` — broad overview of the project, feature areas, and system purpose
 - `architecture.md` — major layers, boundaries, and structural relationships
+- `user-interfaces.md` — human-visible and operator-visible interface families, organized by how the system is actually used
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
 - `workflows.md` — common ways work tends to happen in this project
 - `integrations.md` — MPD, moOde, YouTube, request flows, and integration-side cautions
@@ -144,7 +146,7 @@ In this project, local runtime behavior may differ from generic expectations bec
 
 Go here first based on the problem you have:
 - **Where does the code live?** → `source-map.md`
-- **What is this system and how is it structured?** → `system-overview.md`, then `architecture.md`
+- **What is this system and how is it structured?** → `system-overview.md`, then `architecture.md`, then `user-interfaces.md`
 - **Is this a runtime/live-behavior issue?** → `local-environment.md`, then `deployment-and-ops.md`, then `restart-and-runtime-admin-troubleshooting.md`
 - **Is this an integration or authority-path issue?** → `integrations.md`, then `playback-mode-troubleshooting.md`, then `workflows.md`
 - **Is this a display/UI issue?** → `display-surface-troubleshooting.md`, then `workflows.md`, then `source-map.md`
