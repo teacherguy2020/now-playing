@@ -89,7 +89,9 @@ It is centered on:
 - maintenance or verification-oriented workflows
 
 ### `theme-interface.md`
-Likely centered on:
+Now serves as the shell-theme editor drill-down in this branch.
+
+It is centered on:
 - `theme.html`
 - theme/palette customization or inspection
 - how visual configuration is exposed operationally
