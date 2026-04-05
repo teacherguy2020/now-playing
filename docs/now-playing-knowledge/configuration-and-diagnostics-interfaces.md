@@ -72,6 +72,18 @@ It is centered on:
 - what can be changed from the UI
 - what config/API calls it drives
 
+### `config-feature-breakdown.md`
+Now serves as the feature-level decomposition of the main Config page.
+
+It is centered on major Config modules such as:
+- runtime/network setup
+- Last.fm / scrobbling
+- Alexa setup
+- ratings DB management
+- Pushover track notifications
+- animated art
+- advanced JSON editing
+
 ### `diagnostics-interface.md`
 Now serves as the diagnostics/live-inspection drill-down in this branch.
 
