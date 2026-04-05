@@ -121,6 +121,7 @@ Especially relevant when the question is about:
 - `diagnostics-interface.md` — implementation-aware drill-down for the live diagnostics and inspection console
 - `library-health-interface.md` — implementation-aware drill-down for library audit and maintenance workflows
 - `theme-interface.md` — implementation-aware drill-down for the shell-theme editor and preset system
+- `now-playing-surface-variants.md` — grouped map of the `controller-now-playing*` family, including variants and redirect shims
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
 - `workflows.md` — common ways work tends to happen in this project
 - `display-interface.md` — map of the display-oriented surfaces, modes, and runtime-sensitive presentation paths
