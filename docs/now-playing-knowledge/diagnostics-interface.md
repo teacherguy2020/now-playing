@@ -203,8 +203,10 @@ Even from the current light inspection, we can already see:
 - `diagnostics.html` fetches runtime config from `/config/runtime`
 - it conditionally hides/shows some navigation based on runtime config (for example podcasts visibility)
 - it is designed to execute arbitrary configured diagnostic requests through the request-runner UI
+- `scripts/diagnostics.js` fetches `/config/diagnostics/endpoints` to populate a server-backed endpoint list for the request runner
+- `scripts/diagnostics.js` also keeps an `ENDPOINTS_FALLBACK` catalog, which means Diagnostics acts partly as an in-browser endpoint search/catalog surface
 
-A deeper script-level inspection will almost certainly reveal a broader endpoint list and more concrete request logic.
+That makes `diagnostics.html` useful not only for live request execution, but also as an operator-facing API discovery aid.
 
 ## Architectural interpretation
 

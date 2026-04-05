@@ -119,12 +119,16 @@ This region allows operators to:
 - filter the available list
 - mark favorites
 - quickly return to common debug paths
+- use a server-backed endpoint catalog populated from `/config/diagnostics/endpoints`
+- fall back to a built-in endpoint list maintained in `scripts/diagnostics.js`
 
 ### Why it matters
 This is one of the most operator-productivity-sensitive parts of the page.
+It also means Diagnostics functions partly as an in-browser endpoint search/catalog surface.
 
 ### Companion pages
 - `api-service-overview.md`
+- `api-endpoint-catalog.md`
 - `route-ownership-map.md`
 
 ## 5. Track-key-aware execution controls

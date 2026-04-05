@@ -57,6 +57,11 @@ Then use the family pages for explanation:
 - `api-youtube-radio-and-integration-endpoints.md`
 - `api-playback-and-queue-endpoints.md`
 
+Also note:
+- `diagnostics.html` has an endpoint-search/request-runner surface backed by `scripts/diagnostics.js`
+- that script maintains an endpoint fallback catalog and also fetches a server-side endpoint list from `GET /config/diagnostics/endpoints`
+- so `diagnostics.html` is a useful operator-facing companion to this catalog page
+
 ## Family: root / now-playing / state surfaces
 
 - `GET /`
@@ -188,6 +193,10 @@ Endpoints found:
 - `POST /config/diagnostics/playback`
 - `GET /config/diagnostics/queue`
 - `GET /art/radio-logo.jpg`
+
+Useful companion fact:
+- `scripts/diagnostics.js` fetches `GET /config/diagnostics/endpoints` to populate a server-backed endpoint list for the diagnostics request runner
+- the same script also contains an `ENDPOINTS_FALLBACK` list, so the diagnostics UI doubles as an operator-facing endpoint search/catalog surface
 
 Additional debug family from `moode-nowplaying-api.mjs`:
 - `GET /debug/radio-metadata-log`
