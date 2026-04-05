@@ -186,7 +186,7 @@ Start with the user-facing surface first:
 - **Desktop app shell** → `app.html`
 - **Tablet controller** → `controller-tablet.html`
 - **Phone controller** → `controller-mobile.html`
-- **moOde box display surfaces** → `kiosk.html`, `peppy.html`, `player.html`
+- **moOde box display surfaces** → `kiosk.html`, `peppy.html`, `player.html` / `player-render.html`
 - **display/router/classic now-playing layer** → `display.html`, `index.html`
 
 Then check:
@@ -317,7 +317,7 @@ This section reflects the strongest current Phase 1 takeaways: verified starting
   - verified support/endpoints used directly from `controller-mobile.html` include `config/runtime`, `config/controller-profile`, `config/library-health/albums`, `config/queue-wizard/*`, `config/diagnostics/playback`, `config/diagnostics/queue`, `config/moode/browser-url`, `config/moode/display-mode`, `config/moode/peppymeter/start`, `config/moode/peppyalsa/ensure`, `rating/current`, `peppy/last-profile`, `now-playing`, `alexa/now-playing`, `podcasts`, `podcasts/episodes/list`, and multiple `art/*` endpoints
   - `controller-mobile.html` also owns mobile-specific recent-rail/swipe behavior, compact queue/recent interactions, kiosk 1280 preview/push controls, and personnel/flip-card now-playing interactions
 - **Shared/generic controller base** is concretely anchored in `controller.html`, which also carries kiosk-oriented layout modes
-- **moOde box display surfaces** are primarily routed via `display.html`, with concrete mode surfaces including `peppy.html`, `player-render.html`/`player.html`, `index.html`, and a kiosk flow anchored by `kiosk.html`
+- **moOde box display surfaces** are primarily routed via `display.html`, with concrete display/render modes including Peppy (`peppy.html`), Player (`player-render.html` with `player.html` as its designer/preview surface), classic/index display (`index.html`), and a kiosk presentation flow anchored by `kiosk.html`
   - verified support/endpoints used directly across this routed surface family include `peppy/last-profile`, `peppy/vumeter`, `peppy/spectrum`, `config/runtime`, `config/moode/browser-url`, `config/moode/browser-url/status`, `config/moode/display`, `config/moode/display-mode`, `config/moode/peppymeter/start`, `config/moode/peppy-vumeter-target/status`, `config/moode/peppy-spectrum-target/status`, `config/moode/peppy-spectrum-target`, `config/diagnostics/playback`, `config/diagnostics/queue`, `config/library-health/animated-art/lookup`, `config/queue-wizard/radio-preview`, `now-playing`, `alexa/now-playing`, `favorites/toggle`, and multiple `art/*` endpoints
   - `display.html` owns mode routing into `player-render.html`, `index.html`, `peppy.html`, or a pushed visualizer URL; `player-render.html` is an embedded render target with iframe-specific fallback/background behavior; `peppy.html` is both a runtime display surface and a moOde/Peppy readiness + push/configuration control surface
 - **display/router/classic now-playing layer** is concretely anchored in `display.html` and `index.html`
@@ -325,7 +325,7 @@ This section reflects the strongest current Phase 1 takeaways: verified starting
 - `styles/`, `skins/`, and `assets/` remain strong candidates for visual/theming/presentation ownership
 - service/integration layers become relevant when these surfaces are strongly state-driven rather than purely presentational
 - observed support-layer evidence: `src/routes/config.controller-profile.routes.mjs` backs saved controller/mobile profile state, `src/routes/config.runtime-admin.routes.mjs` backs display/moOde/browser-url/runtime flows, and `src/routes/config.diagnostics.routes.mjs` catalogs and exposes many live endpoints used to inspect or exercise page-supporting behavior
-- observed repo nuance: `display.html` is the actual display router, `kiosk.html` redirects into a controller-based kiosk preview flow, `peppy.html` is a dedicated peppy bridge/runtime surface, and `player.html` is a builder/preview surface for `player-render.html`
+- observed repo nuance: `display.html` is the actual display router, `kiosk.html` redirects into a controller-based kiosk preview flow, `peppy.html` is a dedicated Peppy display/config surface, and `player.html` is a Player designer/preview surface for `player-render.html`
 
 Practical visual-layer ownership assumption:
 - `styles/` is the strongest candidate for global visual rules and presentation definitions

@@ -16,7 +16,7 @@ These pages are related because they act less like primary content surfaces and 
 
 ## Why this page matters
 
-The display branch is not only composed of core rendering pages like `display.html`, `player.html`, `peppy.html`, or `visualizer.html`.
+The display branch is not only composed of core rendering pages and mode-specific surfaces like `display.html`, `player-render.html`, `peppy.html`, or `visualizer.html`.
 
 There are also helper surfaces that determine:
 - how an operator chooses a display mode
@@ -54,18 +54,18 @@ A good current interpretation is:
 
 ### Important actions
 Observed actions include:
-- “Open Designer” links for:
-  - `player.html`
-  - `peppy.html`
-  - `visualizer.html&ui=1`
+- “Open Designer” or helper links for:
+  - `player.html` — Player designer / preview surface
+  - `peppy.html` — Peppy-facing display/config surface
+  - `visualizer.html&ui=1` — Visualizer UI/config view
   - `index.html`
   - `mobile.html`
-  - `kiosk-designer.html`
+  - `kiosk-designer.html` — Kiosk designer / preview / push surface
 - “Push to moOde” actions for:
-  - Player
-  - Peppy
-  - Visualizer
-  - Kiosk Controller
+  - Player display mode
+  - Peppy display mode
+  - Visualizer display mode
+  - Kiosk Controller / kiosk mode
 
 ### Important functions / logic
 Observed client-side logic includes:
@@ -149,6 +149,12 @@ A good current family model is:
 
 ### Redirect shim
 - `index1080.html`
+
+### Terminology note
+Within this family, it helps to distinguish:
+- **display modes**: Player, Peppy, Visualizer
+- **presentation/shell mode**: Kiosk
+- **designer/helper surfaces**: `player.html`, `kiosk-designer.html`, `displays.html`, wrapper hosts
 
 That distinction is useful because it prevents the wiki from overvaluing thin wrappers and redirects while still acknowledging their operational role.
 

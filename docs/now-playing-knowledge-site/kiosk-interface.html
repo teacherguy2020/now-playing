@@ -37,6 +37,13 @@
 <li>tighter coupling to the live runtime environment than a casual browser tab would have</li>
 </ul>
 <p>Kiosk is therefore not only a UI description. It is also an operational mode.</p>
+<p>A useful terminology distinction for the wiki is:</p>
+<ul>
+<li><strong>display/render modes</strong>: Player, Peppy, Visualizer</li>
+<li><strong>presentation/shell mode</strong>: Kiosk</li>
+<li><strong>designer/helper surfaces</strong>: pages such as <code>kiosk-designer.html</code>, <code>player.html</code>, and <code>displays.html</code></li>
+</ul>
+<p>That helps separate Kiosk from the renderer-style modes.</p>
 <h2>Why kiosk belongs in its own branch</h2>
 <p>Kiosk deserves dedicated documentation because kiosk-related behavior can fail in ways that ordinary browser/controller surfaces do not.</p>
 <p>Examples of kiosk-specific concerns include:</p>
@@ -135,7 +142,7 @@
 </li>
 </ul>
 <p>This is important because it means <code>kiosk.html</code> is not mainly the final rendered kiosk UI. It is a launcher/profile handoff layer that boots kiosk-flavored controller behavior.</p>
-<h3><code>now-playing/kiosk-designer.html</code> — kiosk preview/designer/push tool</h3>
+<h3><code>now-playing/kiosk-designer.html</code> — kiosk designer / preview / push tool</h3>
 <p>This is not the kiosk display itself. It is a support surface for designing and pushing kiosk presentation settings.</p>
 <p>Repo-visible behavior includes:</p>
 <ul>
@@ -218,7 +225,7 @@
 <h3><code>kiosk-on-moode.md</code></h3>
 <p>For kiosk behavior specifically tied to moOde-hosted presentation and display context.</p>
 <h3><code>display-renderers-and-visual-modes.md</code></h3>
-<p>For the renderer/style choices that may appear within kiosk usage, such as peppy, player, and visualizer modes.</p>
+<p>For the display/render modes that may appear within kiosk usage, such as Player, Peppy, and Visualizer.</p>
 <h3><code>artwork-and-visual-assets.md</code></h3>
 <p>For artwork/animation/cached visual dependencies that strongly affect kiosk presentation quality and stability.</p>
 <h2>Relationship to troubleshooting and ops</h2>

@@ -51,7 +51,7 @@
 <li>compatibility/redirect entrypoints</li>
 </ul>
 <h2>Why this page matters</h2>
-<p>The display branch is not only composed of core rendering pages like <code>display.html</code>, <code>player.html</code>, <code>peppy.html</code>, or <code>visualizer.html</code>.</p>
+<p>The display branch is not only composed of core rendering pages and mode-specific surfaces like <code>display.html</code>, <code>player-render.html</code>, <code>peppy.html</code>, or <code>visualizer.html</code>.</p>
 <p>There are also helper surfaces that determine:</p>
 <ul>
 <li>how an operator chooses a display mode</li>
@@ -92,22 +92,22 @@
 <h3>Important actions</h3>
 <p>Observed actions include:</p>
 <ul>
-<li>“Open Designer” links for:
+<li>“Open Designer” or helper links for:
 <ul>
-<li><code>player.html</code></li>
-<li><code>peppy.html</code></li>
-<li><code>visualizer.html&amp;ui=1</code></li>
+<li><code>player.html</code> — Player designer / preview surface</li>
+<li><code>peppy.html</code> — Peppy-facing display/config surface</li>
+<li><code>visualizer.html&amp;ui=1</code> — Visualizer UI/config view</li>
 <li><code>index.html</code></li>
 <li><code>mobile.html</code></li>
-<li><code>kiosk-designer.html</code></li>
+<li><code>kiosk-designer.html</code> — Kiosk designer / preview / push surface</li>
 </ul>
 </li>
 <li>“Push to moOde” actions for:
 <ul>
-<li>Player</li>
-<li>Peppy</li>
-<li>Visualizer</li>
-<li>Kiosk Controller</li>
+<li>Player display mode</li>
+<li>Peppy display mode</li>
+<li>Visualizer display mode</li>
+<li>Kiosk Controller / kiosk mode</li>
 </ul>
 </li>
 </ul>
@@ -208,6 +208,12 @@ It is a small hosting/adapter surface that frames <code>visualizer.html</code> f
 <h3>Redirect shim</h3>
 <ul>
 <li><code>index1080.html</code></li>
+</ul>
+<p>A terminology note that helps in this family:</p>
+<ul>
+<li><strong>display modes</strong>: Player, Peppy, Visualizer</li>
+<li><strong>presentation/shell mode</strong>: Kiosk</li>
+<li><strong>designer/helper surfaces</strong>: <code>player.html</code>, <code>kiosk-designer.html</code>, <code>displays.html</code>, wrapper hosts</li>
 </ul>
 <p>That distinction is useful because it prevents the wiki from overvaluing thin wrappers and redirects while still acknowledging their operational role.</p>
 <h2>Relationship to the broader display branch</h2>

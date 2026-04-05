@@ -4,6 +4,8 @@
 
 This page describes `now-playing/kiosk-designer.html`, which appears to be a support and authoring tool for kiosk presentation rather than the kiosk display surface itself.
 
+In the wiki’s terminology, this page should be treated as a **designer/helper surface** for Kiosk rather than as a display/render mode of its own.
+
 Its role is important because it sits between:
 - kiosk presentation design
 - live preview
@@ -31,6 +33,8 @@ Based on direct repo inspection, `kiosk-designer.html` provides:
 - moOde target URL verification/status feedback
 
 This means the page functions as a kiosk design/configuration console.
+
+That distinction matters because Kiosk itself is better treated as a presentation/shell mode, while `kiosk-designer.html` is the authoring and push tool for that mode.
 
 ## Why it matters
 
@@ -215,6 +219,7 @@ Why:
 A good current interpretation is:
 - `kiosk-designer.html` is not the kiosk experience itself
 - it is the design/preview/configuration console for kiosk presentation
+- it is the kiosk-side counterpart to other display-mode helper surfaces such as `player.html`
 - it bridges browser-side preview with moOde-targeted deployment/control
 - it also acts as a synchronization point between kiosk profile state and controller-facing profile state
 

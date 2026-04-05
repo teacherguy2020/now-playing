@@ -25,6 +25,7 @@
 <li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>kiosk designer</h1>
 <h2>Purpose</h2>
 <p>This page describes <code>now-playing/kiosk-designer.html</code>, which appears to be a support and authoring tool for kiosk presentation rather than the kiosk display surface itself.</p>
+<p>In the wiki’s terminology, this page should be treated as a <strong>designer/helper surface</strong> for Kiosk rather than as a display/render mode of its own.</p>
 <p>Its role is important because it sits between:</p>
 <ul>
 <li>kiosk presentation design</li>
@@ -53,6 +54,7 @@
 <li>moOde target URL verification/status feedback</li>
 </ul>
 <p>This means the page functions as a kiosk design/configuration console.</p>
+<p>That distinction matters because Kiosk itself is better treated as a presentation/shell mode, while <code>kiosk-designer.html</code> is the authoring and push tool for that mode.</p>
 <h2>Why it matters</h2>
 <p><code>kiosk-designer.html</code> is important because it reveals that kiosk presentation is not only a runtime display concern. It is also something the system expects to:</p>
 <ul>
@@ -237,6 +239,7 @@
 <ul>
 <li><code>kiosk-designer.html</code> is not the kiosk experience itself</li>
 <li>it is the design/preview/configuration console for kiosk presentation</li>
+<li>it is the kiosk-side counterpart to other display-mode helper surfaces such as <code>player.html</code></li>
 <li>it bridges browser-side preview with moOde-targeted deployment/control</li>
 <li>it also acts as a synchronization point between kiosk profile state and controller-facing profile state</li>
 </ul>

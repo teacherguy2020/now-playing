@@ -25,6 +25,13 @@ That usually implies some combination of:
 
 Kiosk is therefore not only a UI description. It is also an operational mode.
 
+A useful terminology distinction for the wiki is:
+- **display/render modes**: Player, Peppy, Visualizer
+- **presentation/shell mode**: Kiosk
+- **designer/helper surfaces**: pages such as `kiosk-designer.html`, `player.html`, and `displays.html`
+
+That helps separate Kiosk from the renderer-style modes.
+
 ## Why kiosk belongs in its own branch
 
 Kiosk deserves dedicated documentation because kiosk-related behavior can fail in ways that ordinary browser/controller surfaces do not.
@@ -128,7 +135,7 @@ What it does:
 
 This is important because it means `kiosk.html` is not mainly the final rendered kiosk UI. It is a launcher/profile handoff layer that boots kiosk-flavored controller behavior.
 
-### `now-playing/kiosk-designer.html` — kiosk preview/designer/push tool
+### `now-playing/kiosk-designer.html` — kiosk designer / preview / push tool
 This is not the kiosk display itself. It is a support surface for designing and pushing kiosk presentation settings.
 
 Repo-visible behavior includes:
@@ -236,7 +243,7 @@ For kiosk behavior centered on browser-rendered display surfaces.
 For kiosk behavior specifically tied to moOde-hosted presentation and display context.
 
 ### `display-renderers-and-visual-modes.md`
-For the renderer/style choices that may appear within kiosk usage, such as peppy, player, and visualizer modes.
+For the display/render modes that may appear within kiosk usage, such as Player, Peppy, and Visualizer.
 
 ### `artwork-and-visual-assets.md`
 For artwork/animation/cached visual dependencies that strongly affect kiosk presentation quality and stability.

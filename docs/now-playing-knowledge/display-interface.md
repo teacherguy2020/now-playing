@@ -17,7 +17,12 @@ This family is broader than a single HTML page. It includes:
 - TV/external-browser display usage
 - moOde-hosted display modes
 - kiosk-like presentation behavior
-- renderer/style modes such as peppy/player/visualizer
+- renderer/display modes such as Player, Peppy, and Visualizer
+
+A useful terminology split for this branch is:
+- **display mode / renderer** = Player, Peppy, Visualizer
+- **presentation/shell mode** = Kiosk
+- **designer/helper surface** = pages such as `player.html`, `kiosk-designer.html`, `displays.html`, and wrapper hosts
 
 In practice, display-oriented behavior can still overlap with control logic, playback authority, integration state, and runtime/display-host behavior.
 
@@ -50,11 +55,17 @@ Current anchor page:
 These are important because they are not just pages, but visual/display modes experienced through moOde-hosted or moOde-adjacent display paths.
 
 Important examples include:
-- peppy on moOde
-- player on moOde
-- visualizer on moOde
+- Player on moOde
+- Peppy on moOde
+- Visualizer on moOde
 
 These modes deserve to be treated as first-class display experiences, not only as implementation details.
+
+Important terminology note:
+- `player.html` is better understood as a Player designer/preview surface
+- `player-render.html` is the Player render surface
+- `peppy.html` is a Peppy-facing display/config surface
+- Kiosk should be treated separately as a presentation/shell mode rather than just another renderer
 
 Planned deeper drill-down:
 - `display-renderers-and-visual-modes.md`
@@ -161,10 +172,11 @@ Also intersects where display push behavior and presentation routing overlap wit
 
 ### `display-renderers-and-visual-modes.md`
 Should eventually cover:
-- peppy presentation
-- player presentation
-- visualizer presentation
-- how visual/render modes are selected or routed
+- Player display mode / presentation
+- Peppy display mode / presentation
+- Visualizer display mode / presentation
+- how these render/display modes are selected or routed
+- which pages act as designers, render targets, wrappers, or push helpers for those modes
 - files, assets, scripts, and generated artifacts that support these modes
 
 ### `artwork-and-visual-assets.md`
