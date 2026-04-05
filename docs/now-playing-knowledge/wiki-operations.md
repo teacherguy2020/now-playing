@@ -175,6 +175,8 @@ Recent good examples:
 This page should stay linked with:
 - `wiki-structure-notes.md`
 - `repo-coverage-notes.md`
+- `index.md`
+- `log.md`
 - `README.md`
 - `agent-start` / `search-and-navigation` in the rendered wiki
 
