@@ -6,12 +6,14 @@
 <li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
 <li><a href="display-interface.html">display-interface</a></li>
 <li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="embedded-pane-contracts.html">embedded-pane-contracts</a></li>
 <li><a href="glossary.html">glossary</a></li>
 <li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
 <li><a href="integrations.html">integrations</a></li>
 <li><a href="kiosk-designer.html">kiosk-designer</a></li>
 <li><a href="kiosk-interface.html">kiosk-interface</a></li>
 <li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
 <li><a href="local-environment.html">local-environment</a></li>
 <li><a href="open-questions.html">open-questions</a></li>
 <li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
@@ -19,6 +21,7 @@
 <li><a href="source-map.html">source-map</a></li>
 <li><a href="system-overview.html">system-overview</a></li>
 <li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="visualizer-in-embedded-mode.html">visualizer-in-embedded-mode</a></li>
 <li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>kiosk designer</h1>
 <h2>Purpose</h2>
 <p>This page describes <code>now-playing/kiosk-designer.html</code>, which appears to be a support and authoring tool for kiosk presentation rather than the kiosk display surface itself.</p>
@@ -30,12 +33,22 @@
 <li>moOde-targeted push/config behavior</li>
 </ul>
 <p>That makes it part of the kiosk branch, but on the authoring/operations side rather than the final display side.</p>
+<h2>Important file</h2>
+<p>Primary file:</p>
+<ul>
+<li><code>now-playing/kiosk-designer.html</code></li>
+</ul>
+<p>Primary preview target:</p>
+<ul>
+<li><code>now-playing/kiosk.html</code></li>
+</ul>
 <h2>What <code>kiosk-designer.html</code> appears to do</h2>
-<p>Based on direct repo inspection, <code>kiosk-designer.html</code> appears to provide:</p>
+<p>Based on direct repo inspection, <code>kiosk-designer.html</code> provides:</p>
 <ul>
 <li>a live iframe preview of <code>kiosk.html</code></li>
 <li>color/theme controls</li>
-<li>preset selection and preset save/delete/export/import actions</li>
+<li>preset selection</li>
+<li>export/import actions for preset JSON</li>
 <li>push-to-moOde behavior</li>
 <li>moOde target URL verification/status feedback</li>
 </ul>
@@ -58,7 +71,76 @@
 <li>JSON export/import modal behavior</li>
 <li>a push button for updating moOde browser URL state</li>
 </ul>
+<p>Important DOM elements include:</p>
+<ul>
+<li><code>#sizeSel</code></li>
+<li><code>#presetSel</code></li>
+<li><code>#primaryThemeColor</code></li>
+<li><code>#secondaryThemeColor</code></li>
+<li><code>#primaryTextColor</code></li>
+<li><code>#secondaryTextColor</code></li>
+<li><code>#pushBtn</code></li>
+<li><code>#targetHint</code></li>
+<li><code>#stat</code></li>
+<li><code>#preview</code></li>
+</ul>
 <p>The preview relationship matters because it suggests that <code>kiosk.html</code> is the canonical render target being tuned by the designer.</p>
+<h2>Key functions and logic blocks</h2>
+<p>Direct repo inspection shows several important functions/logic blocks inside <code>kiosk-designer.html</code>.</p>
+<h3><code>persistProfile()</code></h3>
+<p>Persists the current kiosk design state into localStorage keys:</p>
+<ul>
+<li><code>nowplaying.kiosk.profile.v1</code></li>
+<li><code>nowplaying.mobile.profile.v2</code></li>
+</ul>
+<p>Stored values include:</p>
+<ul>
+<li><code>colorPreset</code></li>
+<li><code>recentSource</code></li>
+<li>custom theme/text colors</li>
+<li>controller-facing profile fields like <code>devicePreset</code>, <code>layout</code>, and <code>recentCount</code></li>
+</ul>
+<p>This is important because it keeps kiosk design choices and controller-facing profile state aligned.</p>
+<h3><code>buildRel()</code></h3>
+<p>Builds the relative kiosk preview/target URL.</p>
+<p>Observed behavior includes:</p>
+<ul>
+<li>starting from the currently selected size entry (currently <code>kiosk.html</code>)</li>
+<li>adding a cache-busting <code>pushRev</code></li>
+<li>forcing <code>theme=auto</code></li>
+<li>forcing <code>recentSource=albums</code></li>
+<li>applying <code>colorPreset</code> and custom color query parameters</li>
+</ul>
+<p>This function is central because both preview refresh and push-to-moOde behavior rely on the generated URL.</p>
+<h3><code>postLiveTheme()</code></h3>
+<p>Posts a message into the preview iframe:</p>
+<ul>
+<li><code>type: 'np-live-theme-update'</code></li>
+</ul>
+<p>with custom color data.</p>
+<p>This suggests a live-preview contract between the designer and the preview target.</p>
+<h3><code>refreshPreview()</code></h3>
+<p>Rebuilds the preview URL and reloads the iframe.</p>
+<p>This is triggered by:</p>
+<ul>
+<li>size changes</li>
+<li>color input changes</li>
+<li>preset changes</li>
+</ul>
+<h3><code>ensureKey()</code></h3>
+<p>Fetches runtime config from:</p>
+<ul>
+<li><code>/config/runtime</code></li>
+</ul>
+<p>and extracts the runtime track key.</p>
+<p>This is used before privileged config operations.</p>
+<h3><code>refreshTargetHint()</code></h3>
+<p>Checks:</p>
+<ul>
+<li><code>/config/moode/browser-url/status</code></li>
+</ul>
+<p>and compares the current configured moOde browser target with the expected kiosk target.</p>
+<p>It updates <code>#targetHint</code> with success/warning text and color.</p>
 <h2>Observed kiosk-designer responsibilities</h2>
 <h3>Previewing kiosk presentation</h3>
 <p>The page embeds:</p>
@@ -70,12 +152,20 @@
 <p>The page appears to support:</p>
 <ul>
 <li>selecting presets</li>
-<li>saving presets</li>
-<li>deleting presets</li>
 <li>exporting preset JSON</li>
 <li>importing preset JSON</li>
 </ul>
-<p>That indicates kiosk appearance/settings are intended to be reusable and portable, at least within this workflow.</p>
+<p>Notably, direct repo inspection currently shows:</p>
+<ul>
+<li>save/delete preset buttons exist in the markup</li>
+<li>but those buttons are explicitly hidden in script</li>
+</ul>
+<p>So the current live behavior appears to emphasize:</p>
+<ul>
+<li>choosing from built-in theme presets</li>
+<li>exporting/importing JSON</li>
+</ul>
+<p>rather than maintaining a larger editable saved-preset system directly in this page.</p>
 <h3>Managing theme and color settings</h3>
 <p>Repo-visible controls include:</p>
 <ul>
@@ -98,14 +188,35 @@
 <li>kiosk design intent</li>
 <li>actual moOde display target configuration</li>
 </ul>
+<h2>Push-to-moOde action flow</h2>
+<p>One of the most concrete action flows in this page is the Push button.</p>
+<p>Observed behavior when <code>#pushBtn</code> is pressed:</p>
+<ol>
+<li>disable the button and show <code>Pushing…</code></li>
+<li>ensure the runtime track key via <code>/config/runtime</code></li>
+<li>build the kiosk target URL with <code>buildRel()</code></li>
+<li>POST that URL to:
+<ul>
+<li><code>/config/moode/browser-url</code></li>
+</ul>
+</li>
+<li>use reason:
+<ul>
+<li><code>kiosk-designer-push</code></li>
+</ul>
+</li>
+<li>persist the current profile to localStorage</li>
+<li>update status text in <code>#stat</code></li>
+</ol>
+<p>This is a good example of the richer wiki style we should keep using: user action → code path → API call → resulting system effect.</p>
 <h2>Observed API/config interactions</h2>
-<p>From repo inspection, <code>kiosk-designer.html</code> appears to use app-host APIs around:</p>
+<p>From repo inspection, <code>kiosk-designer.html</code> uses app-host APIs around:</p>
 <ul>
 <li>runtime config lookup (<code>/config/runtime</code>)</li>
 <li>moOde browser URL status (<code>/config/moode/browser-url/status</code>)</li>
 <li>moOde browser URL update (<code>/config/moode/browser-url</code>)</li>
 </ul>
-<p>This should be verified further later, but it is already enough to place the page architecturally.</p>
+<p>These are not incidental. They are central to the page’s operational role.</p>
 <h2>Relationship to other kiosk pages</h2>
 <p>This page should stay linked with:</p>
 <ul>
@@ -127,6 +238,7 @@
 <li><code>kiosk-designer.html</code> is not the kiosk experience itself</li>
 <li>it is the design/preview/configuration console for kiosk presentation</li>
 <li>it bridges browser-side preview with moOde-targeted deployment/control</li>
+<li>it also acts as a synchronization point between kiosk profile state and controller-facing profile state</li>
 </ul>
 <p>That makes it one of the most operationally meaningful pages in the kiosk branch.</p>
 <h2>Things still to verify</h2>
@@ -139,5 +251,14 @@
 <li>whether the page is actively used in the live workflow or partly transitional</li>
 </ul>
 <h2>Current status</h2>
-<p>At the moment, this page establishes <code>kiosk-designer.html</code> as a first-class kiosk support tool with preview, preset, and moOde push responsibilities.</p>
-<p>It should later be expanded into a more explicit implementation and workflow reference.</p></article></body></html>
+<p>At the moment, this page has moved beyond a purely structural description.</p>
+<p>It now establishes <code>kiosk-designer.html</code> as a first-class kiosk support tool with:</p>
+<ul>
+<li>concrete DOM controls</li>
+<li>identifiable functions</li>
+<li>localStorage profile writes</li>
+<li>preview refresh behavior</li>
+<li>explicit config/API calls</li>
+<li>a real push-to-moOde action flow</li>
+</ul>
+<p>It can still be expanded further, but it is already in the richer implementation-aware style that future drill-down pages should increasingly use.</p></article></body></html>
