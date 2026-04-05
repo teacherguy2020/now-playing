@@ -73,7 +73,9 @@ It is centered on:
 - what config/API calls it drives
 
 ### `diagnostics-interface.md`
-Likely centered on:
+Now serves as the diagnostics/live-inspection drill-down in this branch.
+
+It is centered on:
 - `diagnostics.html`
 - runtime inspection and debugging views
 - diagnostic actions and what they reveal

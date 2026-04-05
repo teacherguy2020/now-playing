@@ -118,6 +118,7 @@ Especially relevant when the question is about:
 - `user-interfaces.md` — human-visible and operator-visible interface families, organized by how the system is actually used
 - `configuration-and-diagnostics-interfaces.md` — operator-facing config, diagnostics, and health/inspection surfaces
 - `config-interface.md` — implementation-aware drill-down for the main runtime configuration console
+- `diagnostics-interface.md` — implementation-aware drill-down for the live diagnostics and inspection console
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
 - `workflows.md` — common ways work tends to happen in this project
 - `display-interface.md` — map of the display-oriented surfaces, modes, and runtime-sensitive presentation paths

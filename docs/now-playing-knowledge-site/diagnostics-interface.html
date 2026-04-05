@@ -1,0 +1,264 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>diagnostics-interface</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="config-interface.html">config-interface</a></li>
+<li><a href="configuration-and-diagnostics-interfaces.html">configuration-and-diagnostics-interfaces</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="desktop-browser-interface.html">desktop-browser-interface</a></li>
+<li><a href="diagnostics-interface.html">diagnostics-interface</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="embedded-pane-contracts.html">embedded-pane-contracts</a></li>
+<li><a href="genre-pane-messaging.html">genre-pane-messaging</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-editor-mode.html">kiosk-editor-mode</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="phone-interface.html">phone-interface</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="tablet-interface.html">tablet-interface</a></li>
+<li><a href="tablet-kiosk-shell-differences.html">tablet-kiosk-shell-differences</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="visualizer-in-embedded-mode.html">visualizer-in-embedded-mode</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>diagnostics interface</h1>
+<h2>Purpose</h2>
+<p>This page documents <code>now-playing/diagnostics.html</code>, the diagnostics and live-inspection console in the <code>now-playing</code> ecosystem.</p>
+<p>This page is intentionally implementation-aware, because <code>diagnostics.html</code> is clearly not just a passive status screen. It acts as a multi-purpose operator console for:</p>
+<ul>
+<li>making direct API requests</li>
+<li>inspecting responses</li>
+<li>testing endpoints with or without <code>x-track-key</code></li>
+<li>viewing live embedded UI surfaces side-by-side</li>
+<li>navigating operational/debug workflows through a browser UI</li>
+</ul>
+<h2>Why this page matters</h2>
+<p><code>diagnostics.html</code> appears to be one of the strongest operator-facing truth surfaces in the project.</p>
+<p>It matters because it combines:</p>
+<ul>
+<li>direct endpoint execution</li>
+<li>live embedded views of multiple UI surfaces</li>
+<li>clipboard/curl-oriented debugging helpers</li>
+<li>quick comparison between API behavior and rendered UI behavior</li>
+</ul>
+<p>That makes it extremely valuable when the question is:</p>
+<ul>
+<li>what is the system doing right now?</li>
+<li>what does the API say?</li>
+<li>what does the rendered UI show?</li>
+<li>do those things agree?</li>
+</ul>
+<h2>Important files</h2>
+<p>Primary page:</p>
+<ul>
+<li><code>now-playing/diagnostics.html</code></li>
+</ul>
+<p>Important supporting script:</p>
+<ul>
+<li><code>now-playing/scripts/diagnostics.js</code></li>
+</ul>
+<p>Related pages:</p>
+<ul>
+<li><code>configuration-and-diagnostics-interfaces.md</code></li>
+<li><code>config-interface.md</code></li>
+<li><code>display-surface-troubleshooting.md</code></li>
+<li><code>deployment-and-ops.md</code></li>
+</ul>
+<h2>High-level role</h2>
+<p>A good current interpretation is:</p>
+<ul>
+<li><code>diagnostics.html</code> is a browser-based operator/debug console</li>
+<li>it helps bridge raw API behavior and visible UI behavior</li>
+<li>it is one of the most practical pages for side-by-side inspection and debugging</li>
+</ul>
+<p>This means it is not only about diagnostics in the abstract. It is also about comparative observation.</p>
+<h2>Shell / entry behavior</h2>
+<p>Like <code>config.html</code>, <code>diagnostics.html</code> contains shell-redirect behavior.</p>
+<p>Observed logic:</p>
+<ul>
+<li>if <code>standalone=1</code>, remain standalone</li>
+<li>if top-level without standalone, redirect into:
+<ul>
+<li><code>app.html?page=diagnostics.html</code></li>
+</ul>
+</li>
+<li>if embedded in another shell already, do not redirect</li>
+</ul>
+<p>So <code>diagnostics.html</code> is designed for both:</p>
+<ul>
+<li>standalone operator use</li>
+<li>embedded/shell-hosted use inside the broader app</li>
+</ul>
+<h2>Major UI areas visible in the page</h2>
+<p>Repo-visible structure shows several major diagnostics areas.</p>
+<h2>1. Request runner / endpoint console</h2>
+<p>This top card includes:</p>
+<ul>
+<li>endpoint filter input</li>
+<li>endpoint selector</li>
+<li>method selector (<code>GET</code> / <code>POST</code>)</li>
+<li>path field</li>
+<li>JSON body field for POST</li>
+<li>run button</li>
+<li>favorite toggle</li>
+<li>copy-as-curl button</li>
+<li>copy-response button</li>
+<li>optional <code>send x-track-key</code> checkbox</li>
+<li>status area</li>
+</ul>
+<p>This is one of the clearest operator/debugging surfaces in the system.</p>
+<h2>2. Live embedded view cards</h2>
+<p>The page includes multiple live embedded-view cards for direct UI inspection, including:</p>
+<ul>
+<li>live now-playing view (<code>index.html</code>)</li>
+<li>live player view (<code>player.html</code>)</li>
+<li>live peppy skin view (<code>peppy.html</code>)</li>
+<li>live controller view (<code>controller.html</code>)</li>
+<li>live kiosk view (<code>kiosk.html</code>)</li>
+</ul>
+<p>Each has controls such as:</p>
+<ul>
+<li>collapse/expand</li>
+<li>reload</li>
+<li>zoom</li>
+<li>open in new tab</li>
+</ul>
+<p>This is a very important design choice.</p>
+<p>It means diagnostics is not only about raw responses — it is also about quickly inspecting multiple rendered surfaces from one operator page.</p>
+<h2>Important DOM/action centers</h2>
+<p>Observed important elements include:</p>
+<ul>
+<li><code>#endpointFilter</code></li>
+<li><code>#endpoint</code></li>
+<li><code>#method</code></li>
+<li><code>#path</code></li>
+<li><code>#body</code></li>
+<li><code>#runBtn</code></li>
+<li><code>#favBtn</code></li>
+<li><code>#copyCurlBtn</code></li>
+<li><code>#useTrackKey</code></li>
+<li><code>#copyBtn</code></li>
+<li><code>#status</code></li>
+</ul>
+<p>And for live views:</p>
+<ul>
+<li><code>#liveFrame</code></li>
+<li><code>#playerFrame</code></li>
+<li><code>#peppyFrame</code></li>
+<li><code>#mobileFrame</code></li>
+<li><code>#kioskFrame</code></li>
+<li>their corresponding reload/toggle/zoom controls</li>
+</ul>
+<p>This is enough to treat the page as an active workbench rather than a static inspector.</p>
+<h2>Diagnostics script as the logic center</h2>
+<p>The main page includes:</p>
+<ul>
+<li><code>scripts/diagnostics.js</code></li>
+</ul>
+<p>That strongly suggests most of the request-running, favorites, frame-management, and interaction logic lives in that script rather than inline.</p>
+<p>So a deeper future pass should likely inspect:</p>
+<ul>
+<li><code>now-playing/scripts/diagnostics.js</code></li>
+</ul>
+<p>in detail.</p>
+<h2>Request-runner behavior</h2>
+<p>Based on visible structure, the request runner supports:</p>
+<ul>
+<li>selecting or filtering known endpoints</li>
+<li>choosing method</li>
+<li>editing path manually</li>
+<li>submitting JSON for POST requests</li>
+<li>optionally attaching <code>x-track-key</code></li>
+<li>copying equivalent curl</li>
+<li>favoriting endpoints</li>
+</ul>
+<p>This is architecturally important because it turns diagnostics into a lightweight in-browser API console.</p>
+<p>That can be extremely useful when debugging runtime/admin behavior without leaving the browser UI.</p>
+<h2>Track-key-aware diagnostics</h2>
+<p>The diagnostics page includes:</p>
+<ul>
+<li><code>#useTrackKey</code></li>
+</ul>
+<p>This is a meaningful operator affordance.</p>
+<p>It implies the diagnostics console is designed to test both:</p>
+<ul>
+<li>open/unprotected behavior</li>
+<li>protected/track-key-backed behavior</li>
+</ul>
+<p>That is exactly the sort of thing a real maintenance/debug console should support.</p>
+<h2>Live embedded-surface inspection</h2>
+<p>One of the strongest and most distinctive aspects of <code>diagnostics.html</code> is the set of embedded live views.</p>
+<p>Observed cards include:</p>
+<ul>
+<li><code>index.html</code> at desktop-style viewport size</li>
+<li><code>player.html</code> at 1280×400</li>
+<li><code>peppy.html</code> at 1280×400</li>
+<li><code>controller.html</code> at mobile-ish viewport size</li>
+<li><code>kiosk.html</code></li>
+</ul>
+<p>This means the page supports a workflow like:</p>
+<ol>
+<li>run or inspect an endpoint</li>
+<li>observe the live rendered result in one or more surfaces</li>
+<li>compare whether the API and the UI agree</li>
+<li>reload/reopen affected views quickly</li>
+</ol>
+<p>That is a very powerful debugging pattern.</p>
+<h2>Relationship to display and controller debugging</h2>
+<p>Because diagnostics embeds multiple live UI surfaces, it sits at the junction of several wiki branches:</p>
+<ul>
+<li>config/diagnostics/admin</li>
+<li>display surfaces</li>
+<li>controller surfaces</li>
+<li>kiosk behavior</li>
+<li>peppy/player render behavior</li>
+</ul>
+<p>That means <code>diagnostics.html</code> may often be a better starting point than a purely conceptual doc when someone is actively debugging a live symptom.</p>
+<h2>Current observed API/config contact</h2>
+<p>Even from the current light inspection, we can already see:</p>
+<ul>
+<li><code>diagnostics.html</code> fetches runtime config from <code>/config/runtime</code></li>
+<li>it conditionally hides/shows some navigation based on runtime config (for example podcasts visibility)</li>
+<li>it is designed to execute arbitrary configured diagnostic requests through the request-runner UI</li>
+</ul>
+<p>A deeper script-level inspection will almost certainly reveal a broader endpoint list and more concrete request logic.</p>
+<h2>Architectural interpretation</h2>
+<p>A good current interpretation is:</p>
+<ul>
+<li><code>diagnostics.html</code> is the browser operator’s live debugging dashboard</li>
+<li>it combines API-console behavior with live surface monitoring</li>
+<li>it is one of the most direct pages for checking whether data flow and rendered UI are aligned</li>
+</ul>
+<p>That makes it one of the highest-value pages in the diagnostics/admin branch.</p>
+<h2>Relationship to other pages</h2>
+<p>This page should stay linked with:</p>
+<ul>
+<li><code>configuration-and-diagnostics-interfaces.md</code></li>
+<li><code>config-interface.md</code></li>
+<li><code>display-surface-troubleshooting.md</code></li>
+<li><code>deployment-and-ops.md</code></li>
+<li>future pages for specific live-surface diagnostics or request-runner details</li>
+</ul>
+<h2>Things still to verify</h2>
+<p>Future deeper verification should clarify:</p>
+<ul>
+<li>the exact endpoint catalog and grouping inside <code>scripts/diagnostics.js</code></li>
+<li>how favorites are stored and restored</li>
+<li>how curl-copy generation is implemented</li>
+<li>whether the request runner can safely target all important protected endpoints</li>
+<li>how the live embedded cards are initialized and refreshed</li>
+<li>whether diagnostics includes hidden/advanced features not visible from markup alone</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page already has enough evidence to be treated as one of the project’s core operator/debugging surfaces.</p>
+<p>It is not just a diagnostics readout. It is a live API console plus multi-surface inspection dashboard, which makes it especially valuable for real troubleshooting work.</p></article></body></html>
