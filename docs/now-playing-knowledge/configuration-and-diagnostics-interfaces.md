@@ -64,7 +64,9 @@ This branch should also act as the bridge between:
 The most likely next drill-down pages from here are:
 
 ### `config-interface.md`
-Likely centered on:
+Now serves as the first implementation-aware drill-down in this branch.
+
+It is centered on:
 - `config.html`
 - configuration controls
 - what can be changed from the UI
