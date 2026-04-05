@@ -29,8 +29,11 @@ The DeepWiki material explicitly documents or strongly centers these integration
 ## Related integration surfaces
 
 - `youtube-interface.md`
+- `radio-metadata-eval-interface.md`
 
-This is the most direct current wiki page for the repo-visible YouTube ingress surface.
+`youtube-interface.md` is the most direct current wiki page for the repo-visible YouTube ingress surface.
+
+`radio-metadata-eval-interface.md` is the most direct current wiki page for inspecting radio metadata parsing and enrichment quality.
 
 ## Request and API patterns
 

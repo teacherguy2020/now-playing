@@ -125,6 +125,7 @@ Especially relevant when the question is about:
 - `controller-device-alias-pages.md` — grouped map of thin iPad/iPhone controller alias and redirect entry pages
 - `display-launch-and-wrapper-surfaces.md` — grouped map of display launcher, wrapper, and redirect helper pages
 - `youtube-interface.md` — implementation-aware drill-down for the YouTube search, resolve, playlist-expand, and queue bridge surface
+- `radio-metadata-eval-interface.md` — implementation-aware drill-down for the radio metadata QA and enrichment-evaluation console
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
 - `workflows.md` — common ways work tends to happen in this project
 - `display-interface.md` — map of the display-oriented surfaces, modes, and runtime-sensitive presentation paths

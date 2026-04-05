@@ -215,6 +215,12 @@ A good current interpretation is:
 
 That makes it one of the highest-value pages in the diagnostics/admin branch.
 
+## Related branch pages
+
+- `radio-metadata-eval-interface.md`
+
+This is the most direct current wiki page for the dedicated radio metadata QA/evaluation console.
+
 ## Relationship to other pages
 
 This page should stay linked with:
