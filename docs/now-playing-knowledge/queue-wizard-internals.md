@@ -1,3 +1,14 @@
+---
+title: queue-wizard-internals
+page_type: companion
+topics:
+  - queue
+  - playback
+  - controller
+  - integration
+confidence: medium
+---
+
 # queue-wizard internals
 
 ## Purpose

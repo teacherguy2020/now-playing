@@ -1,3 +1,13 @@
+---
+title: README
+page_type: hub
+topics:
+  - metadata
+  - ops
+  - environment
+confidence: high
+---
+
 # now-playing project knowledge base
 
 This wiki tracks the architecture, history, and operational realities of the `now-playing` project — a moOde Audio Player add-on and extension ecosystem for richer playback state, metadata, displays, controls, and surrounding operational glue.

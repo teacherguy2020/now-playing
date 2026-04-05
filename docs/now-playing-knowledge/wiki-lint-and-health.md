@@ -1,3 +1,13 @@
+---
+title: wiki-lint-and-health
+page_type: support
+topics:
+  - ops
+  - metadata
+  - runtime
+confidence: high
+---
+
 # wiki lint and health
 
 ## Purpose

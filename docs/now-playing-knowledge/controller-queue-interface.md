@@ -1,3 +1,14 @@
+---
+title: controller-queue-interface
+page_type: child
+topics:
+  - queue
+  - playback
+  - controller
+  - runtime
+confidence: medium
+---
+
 # controller queue interface
 
 ## Purpose

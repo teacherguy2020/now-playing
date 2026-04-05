@@ -1,3 +1,14 @@
+---
+title: queue-and-playback-model
+page_type: parent
+topics:
+  - queue
+  - playback
+  - api
+  - controller
+confidence: high
+---
+
 # queue and playback model
 
 ## Purpose

@@ -1,3 +1,14 @@
+---
+title: kiosk-right-pane-routing
+page_type: child
+topics:
+  - kiosk
+  - display
+  - controller
+  - runtime
+confidence: high
+---
+
 # kiosk right-pane routing
 
 ## Purpose

@@ -1,3 +1,13 @@
+---
+title: wiki-operations
+page_type: support
+topics:
+  - ops
+  - metadata
+  - runtime
+confidence: high
+---
+
 # wiki operations
 
 ## Purpose
@@ -171,6 +181,55 @@ Create a synthesis page when:
 Recent good examples:
 - `kiosk-queue-shell-vs-content-owner.md`
 - `queue-interface-vs-queue-wizard.md`
+
+## Metadata pilot schema
+
+A useful minimal metadata schema for this wiki is YAML frontmatter with:
+- `title`
+- `page_type`
+- `topics`
+- `confidence`
+
+### `page_type` vocabulary
+Use a small fixed vocabulary:
+- `hub`
+- `parent`
+- `child`
+- `companion`
+- `runbook`
+- `anatomy`
+- `synthesis`
+- `support`
+
+### `topics` vocabulary
+Use a small controlled list, not free-form tag sprawl.
+
+Useful current topic labels include:
+- `queue`
+- `playback`
+- `display`
+- `kiosk`
+- `config`
+- `diagnostics`
+- `theme`
+- `library`
+- `api`
+- `integration`
+- `controller`
+- `runtime`
+- `ops`
+- `environment`
+- `metadata`
+
+### `confidence` vocabulary
+Use a small fixed vocabulary:
+- `high`
+- `medium`
+- `provisional`
+
+### Metadata rule
+Metadata should stay lightweight and structured.
+The goal is retrieval help, not decorative tagging.
 
 ## Relationship to other wiki-maintenance pages
 

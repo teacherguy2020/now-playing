@@ -1,3 +1,13 @@
+---
+title: log
+page_type: support
+topics:
+  - metadata
+  - ops
+  - runtime
+confidence: medium
+---
+
 # log
 
 ## Purpose
