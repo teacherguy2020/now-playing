@@ -186,7 +186,7 @@ Now serves as the API-centered drill-down for:
 For playback-control and queue-shaping actions used by controller and now-playing surfaces.
 
 ### `api-youtube-radio-and-integration-endpoints.md`
-For:
+Now serves as the API-centered drill-down for:
 - `/youtube/*`
 - radio debug/eval endpoints
 - related feature-specific integration families
