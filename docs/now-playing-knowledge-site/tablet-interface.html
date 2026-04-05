@@ -1,0 +1,175 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>tablet-interface</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="embedded-pane-contracts.html">embedded-pane-contracts</a></li>
+<li><a href="genre-pane-messaging.html">genre-pane-messaging</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-editor-mode.html">kiosk-editor-mode</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="tablet-interface.html">tablet-interface</a></li>
+<li><a href="tablet-kiosk-shell-differences.html">tablet-kiosk-shell-differences</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="visualizer-in-embedded-mode.html">visualizer-in-embedded-mode</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>tablet interface</h1>
+<h2>Purpose</h2>
+<p>This page describes the tablet-oriented interface family in the <code>now-playing</code> ecosystem.</p>
+<p>It exists because tablet usage is not just a resized desktop or mobile experience. The tablet branch appears to be one of the richest controller-facing surfaces in the system, combining:</p>
+<ul>
+<li>browse and discovery flows</li>
+<li>queue and playback control</li>
+<li>pane-embedded subviews</li>
+<li>kiosk-style display behavior</li>
+<li>settings/configuration affordances</li>
+</ul>
+<p>That makes the tablet interface one of the most important surfaces to document in depth.</p>
+<h2>Why the tablet interface matters</h2>
+<p>From the work so far, tablet-related surfaces appear to be a major convergence point for:</p>
+<ul>
+<li>controller-family interaction</li>
+<li>media-library browsing</li>
+<li>kiosk pane routing</li>
+<li>visualizer integration</li>
+<li>settings and presentation customization</li>
+</ul>
+<p>The tablet shell also appears to clarify some architectural behaviors more explicitly than the main controller shell, especially around pane messaging and pane state.</p>
+<p>So this page should serve as a major tablet-oriented hub, not just a device-size note.</p>
+<h2>Important file</h2>
+<p>Primary file:</p>
+<ul>
+<li><code>now-playing/controller-tablet.html</code></li>
+</ul>
+<p>Related pages already documented:</p>
+<ul>
+<li><code>tablet-kiosk-shell-differences.md</code></li>
+<li><code>kiosk-right-pane-routing.md</code></li>
+<li><code>embedded-pane-contracts.md</code></li>
+<li><code>genre-pane-messaging.md</code></li>
+<li><code>visualizer-in-embedded-mode.md</code></li>
+</ul>
+<h2>What the tablet interface appears to include</h2>
+<p>Based on current repo inspection and kiosk-branch work, the tablet interface appears to include at least:</p>
+<ul>
+<li>browse and category surfaces such as playlists, artists, albums, genres, podcasts, and radio</li>
+<li>queue access and queue-wizard-related flows</li>
+<li>recent-content rails and pane-open interactions</li>
+<li>right-pane embedded subviews in landscape or kiosk-like contexts</li>
+<li>visualizer access and visualizer-related state handoff</li>
+<li>tablet-specific settings surfaces</li>
+<li>kiosk-like display behavior when tablet shell is used in kiosk-oriented contexts</li>
+</ul>
+<p>This means the tablet interface should be understood as a controller-and-presentation hybrid surface, not just a controller skin.</p>
+<h2>Current architectural role</h2>
+<p>A useful current interpretation is:</p>
+<ul>
+<li><code>controller-tablet.html</code> is one of the central orchestration shells of the UI</li>
+<li>it combines navigation, recent-content browsing, pane hosting, and profile-aware presentation</li>
+<li>it appears to support both ordinary tablet control usage and kiosk/presentation-adjacent usage</li>
+</ul>
+<p>That gives it a broader role than a simple “tablet page.”</p>
+<h2>Strongly related drill-down areas</h2>
+<p>The tablet interface already has several obvious branch areas.</p>
+<h3>Tablet kiosk shell behavior</h3>
+<p>Current best page:</p>
+<ul>
+<li><code>tablet-kiosk-shell-differences.md</code></li>
+</ul>
+<p>Use this when the question is about:</p>
+<ul>
+<li>pane routing</li>
+<li>pane message handling</li>
+<li>prewarming</li>
+<li>kiosk-shell differences from the main controller shell</li>
+</ul>
+<h3>Embedded pane contracts</h3>
+<p>Current best page:</p>
+<ul>
+<li><code>embedded-pane-contracts.md</code></li>
+</ul>
+<p>Use this when the question is about:</p>
+<ul>
+<li>embedded child behavior</li>
+<li><code>embedded=1</code></li>
+<li>parent/child pane messaging</li>
+<li>pane close or semantic pane communication</li>
+</ul>
+<h3>Genre/albums semantic pane drill-down</h3>
+<p>Current best page:</p>
+<ul>
+<li><code>genre-pane-messaging.md</code></li>
+</ul>
+<p>Use this when the question is about:</p>
+<ul>
+<li>genre selection</li>
+<li>album drill-down from genre</li>
+<li>queue-wizard-backed filtered album loading</li>
+</ul>
+<h3>Visualizer behavior within tablet shell contexts</h3>
+<p>Current best page:</p>
+<ul>
+<li><code>visualizer-in-embedded-mode.md</code></li>
+</ul>
+<p>Use this when the question is about:</p>
+<ul>
+<li>visualizer pane behavior</li>
+<li>visualizer fullscreen handoff</li>
+<li>preset/energy/motion/glow handoff</li>
+<li>moOde push behavior tied to visualizer mode</li>
+</ul>
+<h2>Likely implementation dimensions</h2>
+<p>The tablet interface likely spans several implementation dimensions:</p>
+<ul>
+<li>main shell HTML in <code>controller-tablet.html</code></li>
+<li>embedded child controller pages</li>
+<li>pane-routing logic</li>
+<li>profile/theme/color handling</li>
+<li>recent-content rails and content panes</li>
+<li>queue and browse data-loading calls</li>
+<li>tablet settings subviews</li>
+<li>visualizer and display-mode handoffs</li>
+</ul>
+<p>So documenting the tablet interface fully will likely require both:</p>
+<ul>
+<li>shell-level documentation</li>
+<li>branch pages for major child flows</li>
+</ul>
+<h2>What this page should eventually explain in more detail</h2>
+<p>A mature tablet interface page should eventually explain:</p>
+<ul>
+<li>what the main regions of the tablet shell are</li>
+<li>what actions users take there most often</li>
+<li>what pane-capable subviews exist</li>
+<li>how recent rails, library views, and queue views interact</li>
+<li>what settings/configuration features are tablet-specific</li>
+<li>how the tablet shell differs from desktop and mobile controller shells</li>
+<li>what files, functions, and API routes matter most in the tablet shell</li>
+</ul>
+<h2>Relationship to the rest of the wiki</h2>
+<p>This page should remain closely linked with:</p>
+<ul>
+<li><code>user-interfaces.md</code> — top-level interface-family navigation</li>
+<li><code>display-interface.md</code> — where tablet overlaps with display/presentation behavior</li>
+<li><code>media-library.md</code> (future/expanding) — where tablet browse surfaces are likely central</li>
+<li><code>queue-and-playback-control.md</code> (future/expanding) — where tablet queue/control flows are likely central</li>
+<li><code>source-map.md</code> — when transitioning from interface understanding into files</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page is a tablet-oriented hub page rather than a fully exhaustive implementation guide.</p>
+<p>That is intentional.</p>
+<p>Its role is to establish the tablet interface as a first-class branch of the knowledge base and to connect it to the richer drill-down pages that already exist.</p>
+<p>As the wiki grows, this page should become one of the main starting points for understanding how humans actually interact with the system in a controller-heavy, pane-rich, tablet-sized context.</p></article></body></html>
