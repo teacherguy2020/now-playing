@@ -20,6 +20,10 @@ Related API branch pages:
 - `api-youtube-radio-and-integration-endpoints.md`
 - `api-playback-and-queue-endpoints.md`
 
+Related nearby branch pages:
+- `integrations.md`
+- `source-map.md`
+
 Observed repo evidence:
 - creates the Express app
 - registers `registerArtRoutes`, `registerRatingRoutes`, `registerQueueRoutes`, `registerAllConfigRoutes`, and `registerTrackRoutes`
@@ -30,6 +34,13 @@ Practical implication:
 
 ### `src/`
 Primary application source tree.
+
+Related branch pages for this area:
+- `api-service-overview.md`
+- `api-config-and-runtime-endpoints.md`
+- `api-youtube-radio-and-integration-endpoints.md`
+- `api-playback-and-queue-endpoints.md`
+- `config-interface.md`
 
 Important subareas visible from the repo layout:
 - `src/config/`
@@ -74,6 +85,13 @@ Use this area for icons, fonts, imagery, or display-supporting assets.
 ### `integrations/`
 Integration-specific code and support files.
 
+Related branch pages for this area:
+- `integrations.md`
+- `api-service-overview.md`
+- `api-youtube-radio-and-integration-endpoints.md`
+- `config-lastfm-and-scrobbling.md`
+- `config-alexa-setup.md`
+
 Visible subareas include:
 - `integrations/moode/`
 
@@ -92,6 +110,16 @@ Observed refinement:
 
 ### `config/`
 Configuration material outside the main source tree.
+
+Related branch pages for this area:
+- `config-interface.md`
+- `config-feature-breakdown.md`
+- `config-network-and-runtime.md`
+- `config-ratings.md`
+- `config-lastfm-and-scrobbling.md`
+- `config-notifications.md`
+- `config-alexa-setup.md`
+- `config-advanced-json.md`
 
 Check here when the task is about environment settings, configuration behavior, or top-level configuration support.
 
@@ -117,6 +145,12 @@ Observed refinement:
 
 ### `alexa/`, `lambda_bundle/`, `lambda_upload/`
 Alexa/Lambda-related integration and deployment material.
+
+Related branch pages for this area:
+- `alexa-interface.md`
+- `config-alexa-setup.md`
+- `api-service-overview.md`
+- `integrations.md`
 
 Observed refinement:
 - `alexa/` is the primary candidate for Alexa skill/voice logic
