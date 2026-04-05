@@ -320,7 +320,13 @@ So ratings should be treated as a substantive feature subsystem.
 This page likely justifies several future config-focused child pages.
 
 ### `config-network-and-runtime.md`
-For the host/path/runtime bootstrap card.
+Now serves as the dedicated drill-down for the host/path/runtime bootstrap and environment-verification card inside Config.
+
+### `config-podcasts-and-library-paths.md`
+Now serves as the dedicated drill-down for Podcasts enablement, podcast-root paths, nightly automation, and podcast-root repair flows.
+
+### `config-display-and-render-features.md`
+Now serves as the dedicated drill-down for Radio Artwork, moOde Display Enhancement, Animated Art, and Album Personnel.
 
 ### `config-lastfm-and-scrobbling.md`
 Now serves as the dedicated drill-down for mpdscribble, Last.fm, and Vibe-related Config behavior.
@@ -333,6 +339,9 @@ Now serves as the dedicated drill-down for ratings DB verification, backup, and 
 
 ### `config-alexa-setup.md`
 Now serves as the dedicated drill-down for Alexa enablement, public-domain setup, route webhook configuration, and reachability checks inside Config.
+
+### `config-advanced-json.md`
+Now serves as the dedicated drill-down for raw full-config editing, formatting, and save behavior.
 
 ## Architectural interpretation
 

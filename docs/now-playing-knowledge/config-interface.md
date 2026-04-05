@@ -290,13 +290,23 @@ This makes it one of the most important pages in the operator/admin branch.
 ## Related branch pages
 
 - `config-feature-breakdown.md`
+- `config-network-and-runtime.md`
+- `config-podcasts-and-library-paths.md`
+- `config-display-and-render-features.md`
 - `config-ratings.md`
 - `config-lastfm-and-scrobbling.md`
 - `config-notifications.md`
 - `config-alexa-setup.md`
+- `config-advanced-json.md`
 - `alexa-interface.md`
 
 `config-feature-breakdown.md` is the current feature-level decomposition of the major modules inside `config.html`.
+
+`config-network-and-runtime.md` is the dedicated drill-down for the host/path/runtime bootstrap and environment-verification card inside Config.
+
+`config-podcasts-and-library-paths.md` is the dedicated drill-down for Podcasts enablement, podcast-root paths, nightly automation, and podcast-root repair flows.
+
+`config-display-and-render-features.md` is the dedicated drill-down for the smaller display/presentation feature cards inside Config.
 
 `config-ratings.md` is the dedicated drill-down for the ratings setup and sticker-DB maintenance block inside Config.
 
@@ -305,6 +315,8 @@ This makes it one of the most important pages in the operator/admin branch.
 `config-notifications.md` is the dedicated drill-down for the Pushover-backed track notifications block and its monitor/timing controls.
 
 `config-alexa-setup.md` is the dedicated drill-down for Alexa enablement, domain setup, route webhook configuration, and domain reachability checks inside Config.
+
+`config-advanced-json.md` is the dedicated drill-down for raw full-config editing, formatting, and full-save behavior.
 
 This is the most direct current wiki page for the Alexa corrections/review surface that complements the main Config page.
 
