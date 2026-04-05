@@ -55,6 +55,8 @@ Current related drill-down pages include:
 - `youtube-interface.md`
 - `radio-metadata-eval-interface.md`
 - `alexa-interface.md`
+- `config-feature-breakdown.md`
+- `api-service-overview.md`
 
 The system is better understood by the major surfaces people actually use:
 - **Desktop app shell**

@@ -128,6 +128,18 @@ Especially relevant when the question is about:
 - `radio-metadata-eval-interface.md` — implementation-aware drill-down for the radio metadata QA and enrichment-evaluation console
 - `alexa-interface.md` — implementation-aware drill-down for the Alexa corrections, recently-heard review, and voice-command guidance surface
 - `config-feature-breakdown.md` — feature-level decomposition of the major modules inside `config.html`
+- `config-network-and-runtime.md` — detailed drill-down for Config's host/path/runtime bootstrap and environment verification layer
+- `config-podcasts-and-library-paths.md` — podcast enablement, path ownership, nightly automation, and podcast-root repair flows
+- `config-display-and-render-features.md` — grouped drill-down for Radio Artwork, moOde Display Enhancement, Animated Art, and Album Personnel
+- `config-ratings.md` — ratings feature enablement plus sticker-DB verification, backup, and restore flows
+- `config-lastfm-and-scrobbling.md` — mpdscribble control plus Last.fm/Vibe setup and row-behavior options
+- `config-notifications.md` — Pushover-backed track notifications and monitor/timing controls
+- `config-alexa-setup.md` — Alexa enablement, public-domain setup, route webhook configuration, and reachability checks
+- `config-advanced-json.md` — raw full-config editing, formatting, and full-save behavior
+- `api-service-overview.md` — API-centered parent page for the app-host service and route families
+- `api-config-and-runtime-endpoints.md` — config/runtime control-plane routes and maintenance/verification endpoint families
+- `api-youtube-radio-and-integration-endpoints.md` — YouTube, radio debug/eval, and adjacent integration-feature endpoint families
+- `api-playback-and-queue-endpoints.md` — playback-control and queue-shaping endpoint families documented so far
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
 - `workflows.md` — common ways work tends to happen in this project
 - `display-interface.md` — map of the display-oriented surfaces, modes, and runtime-sensitive presentation paths

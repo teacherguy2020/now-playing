@@ -29,11 +29,16 @@ The DeepWiki material explicitly documents or strongly centers these integration
 ## Related integration surfaces
 
 - `api-service-overview.md`
+- `api-config-and-runtime-endpoints.md`
+- `api-youtube-radio-and-integration-endpoints.md`
+- `api-playback-and-queue-endpoints.md`
 - `youtube-interface.md`
 - `radio-metadata-eval-interface.md`
 - `alexa-interface.md`
 
 `api-service-overview.md` is the API-centered parent page for the app-host service and its route families.
+
+`api-config-and-runtime-endpoints.md`, `api-youtube-radio-and-integration-endpoints.md`, and `api-playback-and-queue-endpoints.md` are the first API-family drill-downs beneath that branch.
 
 `youtube-interface.md` is the most direct current wiki page for the repo-visible YouTube ingress surface.
 

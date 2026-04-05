@@ -84,6 +84,16 @@ It is centered on major Config modules such as:
 - animated art
 - advanced JSON editing
 
+Related child pages now available beneath this branch include:
+- `config-network-and-runtime.md`
+- `config-podcasts-and-library-paths.md`
+- `config-display-and-render-features.md`
+- `config-ratings.md`
+- `config-lastfm-and-scrobbling.md`
+- `config-notifications.md`
+- `config-alexa-setup.md`
+- `config-advanced-json.md`
+
 ### `diagnostics-interface.md`
 Now serves as the diagnostics/live-inspection drill-down in this branch.
 

@@ -159,6 +159,12 @@ Related drill-down pages now available:
 - `youtube-interface.md`
 - `radio-metadata-eval-interface.md`
 - `alexa-interface.md`
+- `config-feature-breakdown.md`
+- `config-network-and-runtime.md`
+- `api-service-overview.md`
+- `api-config-and-runtime-endpoints.md`
+- `api-youtube-radio-and-integration-endpoints.md`
+- `api-playback-and-queue-endpoints.md`
 
 Signs a problem should be treated as architecture-plus-environment, not architecture alone:
 - the symptom appears to cross display, control, playback, and runtime boundaries

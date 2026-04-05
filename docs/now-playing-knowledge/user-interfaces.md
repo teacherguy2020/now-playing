@@ -114,6 +114,15 @@ Current anchor page:
 
 Current drill-downs in this family:
 - `config-interface.md`
+- `config-feature-breakdown.md`
+- `config-network-and-runtime.md`
+- `config-podcasts-and-library-paths.md`
+- `config-display-and-render-features.md`
+- `config-ratings.md`
+- `config-lastfm-and-scrobbling.md`
+- `config-notifications.md`
+- `config-alexa-setup.md`
+- `config-advanced-json.md`
 - `diagnostics-interface.md`
 - `library-health-interface.md`
 - `theme-interface.md`
