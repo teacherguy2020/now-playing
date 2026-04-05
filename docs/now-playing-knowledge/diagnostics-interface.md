@@ -100,7 +100,7 @@ Each has controls such as:
 
 This is a very important design choice.
 
-It means diagnostics is not only about raw responses — it is also about quickly inspecting multiple rendered surfaces from one operator page.
+It means diagnostics is not only about raw responses - it is also about quickly inspecting multiple rendered surfaces from one operator page.
 
 ## Important DOM/action centers
 
@@ -209,7 +209,7 @@ A deeper script-level inspection will almost certainly reveal a broader endpoint
 ## Architectural interpretation
 
 A good current interpretation is:
-- `diagnostics.html` is the browser operator’s live debugging dashboard
+- `diagnostics.html` is the browser operator's live debugging dashboard
 - it combines API-console behavior with live surface monitoring
 - it is one of the most direct pages for checking whether data flow and rendered UI are aligned
 
@@ -221,6 +221,13 @@ That makes it one of the highest-value pages in the diagnostics/admin branch.
 
 This is the most direct current wiki page for the dedicated radio metadata QA/evaluation console.
 
+## Anatomy companion page
+
+- `diagnostics-page-anatomy.md`
+
+This is the anatomy-style companion page for `diagnostics.html`.
+Use it when the task is not just about Diagnostics as a surface, but about a specific region such as the request runner, favorites/endpoint selector, track-key toggle, curl/response helper layer, or embedded live-surface cards.
+
 ## Relationship to other pages
 
 This page should stay linked with:
@@ -228,6 +235,7 @@ This page should stay linked with:
 - `config-interface.md`
 - `display-surface-troubleshooting.md`
 - `deployment-and-ops.md`
+- `diagnostics-page-anatomy.md`
 - future pages for specific live-surface diagnostics or request-runner details
 
 ## Things still to verify
@@ -240,8 +248,10 @@ Future deeper verification should clarify:
 - how the live embedded cards are initialized and refreshed
 - whether diagnostics includes hidden/advanced features not visible from markup alone
 
+`diagnostics-page-anatomy.md` matters when the real question is not only “what is `diagnostics.html`?” but “which region inside `diagnostics.html` actually owns the thing I need to change?”
+
 ## Current status
 
-At the moment, this page already has enough evidence to be treated as one of the project’s core operator/debugging surfaces.
+At the moment, this page already has enough evidence to be treated as one of the project's core operator/debugging surfaces.
 
 It is not just a diagnostics readout. It is a live API console plus multi-surface inspection dashboard, which makes it especially valuable for real troubleshooting work.
