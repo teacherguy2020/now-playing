@@ -155,6 +155,7 @@ That still needs deeper code-first route tracing.
 ## Relationship to existing wiki pages
 
 This page should stay linked with:
+- `queue-and-playback-model.md`
 - `api-service-overview.md`
 - `api-config-and-runtime-endpoints.md`
 - `api-youtube-radio-and-integration-endpoints.md`
