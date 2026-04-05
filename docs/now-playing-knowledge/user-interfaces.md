@@ -37,6 +37,7 @@ Planned drill-down pages:
 - `phone-interface.md`
 
 Current anchor pages:
+- `desktop-browser-interface.md`
 - `tablet-interface.md`
 - `phone-interface.md`
 

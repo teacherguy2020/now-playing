@@ -1,0 +1,132 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>desktop-browser-interface</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="desktop-browser-interface.html">desktop-browser-interface</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="embedded-pane-contracts.html">embedded-pane-contracts</a></li>
+<li><a href="genre-pane-messaging.html">genre-pane-messaging</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-editor-mode.html">kiosk-editor-mode</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="phone-interface.html">phone-interface</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="tablet-interface.html">tablet-interface</a></li>
+<li><a href="tablet-kiosk-shell-differences.html">tablet-kiosk-shell-differences</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="visualizer-in-embedded-mode.html">visualizer-in-embedded-mode</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>desktop browser interface</h1>
+<h2>Purpose</h2>
+<p>This page describes the desktop/browser-oriented interface family in the <code>now-playing</code> ecosystem.</p>
+<p>It exists because desktop browser usage is likely where the system can afford broader simultaneous visibility, richer layouts, and more exploratory interaction than on phone. At the same time, it may differ from tablet-oriented shells that use pane-rich controller logic or kiosk-adjacent behavior.</p>
+<p>So the desktop browser branch deserves its own page rather than being treated as a default catch-all.</p>
+<h2>Why the desktop browser interface matters</h2>
+<p>Desktop browser usage is often where users and operators can:</p>
+<ul>
+<li>see more of the system at once</li>
+<li>tolerate denser controls and richer navigation</li>
+<li>compare views more easily</li>
+<li>perform broader browsing, searching, or management tasks</li>
+<li>use configuration or diagnostics surfaces more comfortably</li>
+</ul>
+<p>That means the desktop branch may be one of the best places to understand the system as a broad interactive environment rather than only a compact remote control.</p>
+<h2>Important files</h2>
+<p>Likely important files include:</p>
+<ul>
+<li><code>now-playing/app.html</code></li>
+<li><code>now-playing/controller.html</code></li>
+</ul>
+<p>Potentially related files over time:</p>
+<ul>
+<li>desktop-accessible controller child pages</li>
+<li>configuration/diagnostics surfaces</li>
+<li>display-adjacent pages when opened in general browsers</li>
+</ul>
+<h2>Current working interpretation</h2>
+<p>At this stage, a good working interpretation is:</p>
+<ul>
+<li>the desktop/browser branch is a broad, flexible access path into the ecosystem</li>
+<li>it may overlap with controller-family logic, but it should not be assumed to behave exactly like tablet or phone shells</li>
+<li>desktop browser usage likely exposes more of the system’s breadth at once than smaller-device branches do</li>
+</ul>
+<h2>Likely responsibilities of the desktop browser interface</h2>
+<p>The desktop branch is likely to be important for:</p>
+<ul>
+<li>broad browsing and orientation</li>
+<li>queue and playback management</li>
+<li>richer visibility into current state</li>
+<li>more spacious library/discovery workflows</li>
+<li>easier access to admin/config/diagnostic surfaces</li>
+<li>opening display-oriented or controller-oriented pages directly in a general browser context</li>
+</ul>
+<h2>Relationship to other interface pages</h2>
+<p>This page should be read alongside:</p>
+<ul>
+<li><code>tablet-interface.md</code></li>
+<li><code>phone-interface.md</code></li>
+<li><code>display-interface.md</code></li>
+<li><code>user-interfaces.md</code></li>
+</ul>
+<p>A useful current distinction is:</p>
+<ul>
+<li>desktop browser = spacious, broad, flexible browser access</li>
+<li>tablet = pane-rich controller shell</li>
+<li>phone = compact controller-first shell</li>
+<li>display = presentation-first surfaces</li>
+</ul>
+<p>That distinction will need deeper verification later, but it is a strong starting frame.</p>
+<h2>Likely implementation dimensions</h2>
+<p>The desktop browser branch will likely eventually need documentation for:</p>
+<ul>
+<li><code>app.html</code> and its role</li>
+<li>how desktop browser usage overlaps with <code>controller.html</code></li>
+<li>whether desktop-specific layout behavior is explicit or mostly emergent from responsive design</li>
+<li>which views are most naturally used on larger screens</li>
+<li>what control, browse, queue, search, and diagnostics affordances become more practical on desktop</li>
+<li>how browser-opened display or controller pages differ from dedicated kiosk/display deployments</li>
+</ul>
+<h2>What this page should eventually explain in more detail</h2>
+<p>A mature desktop browser page should eventually explain:</p>
+<ul>
+<li>what the main desktop-facing entrypoints are</li>
+<li>how <code>app.html</code> relates to controller-family pages</li>
+<li>what larger-screen affordances materially change usage</li>
+<li>what tasks are easiest or most natural on desktop</li>
+<li>what files/functions/API routes matter most in desktop usage</li>
+<li>how desktop browser usage overlaps with admin/config surfaces</li>
+</ul>
+<h2>Immediate follow-up questions for future drill-down</h2>
+<p>This page suggests several future verification tasks:</p>
+<ul>
+<li>what <code>app.html</code> actually does architecturally relative to <code>controller.html</code></li>
+<li>whether desktop browser usage is the main home for any features that are awkward on phone/tablet</li>
+<li>how desktop usage interacts with display-oriented pages like <code>display.html</code></li>
+<li>whether there are desktop-specific shell behaviors worth documenting apart from responsive layout</li>
+<li>which admin/diagnostic surfaces are most naturally part of the desktop branch</li>
+</ul>
+<h2>Relationship to the rest of the wiki</h2>
+<p>This page should remain linked with:</p>
+<ul>
+<li><code>user-interfaces.md</code></li>
+<li><code>architecture.md</code></li>
+<li><code>source-map.md</code></li>
+<li>future pages for <code>app.html</code></li>
+<li>future pages for config/diagnostics surfaces</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page is a structural hub for the desktop browser branch rather than a code-heavy implementation guide.</p>
+<p>That is intentional.</p>
+<p>Its role right now is to give the browser/desktop family an explicit place in the interface map so that future documentation can branch into <code>app.html</code>, controller overlap, and larger-screen workflows in an organized way.</p></article></body></html>

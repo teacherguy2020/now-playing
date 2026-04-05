@@ -124,6 +124,7 @@ Especially relevant when the question is about:
 - `kiosk-designer.md` — preview, preset, and moOde push workflow for kiosk presentation
 - `controller-kiosk-scaffold.md` — the separate standalone `controller-kiosk.html` scaffold path
 - `controller-kiosk-mode.md` — controller-side behavior when kiosk mode is active
+- `desktop-browser-interface.md` — desktop/browser-oriented interface hub for larger-screen flexible access
 - `tablet-interface.md` — tablet-oriented controller/interface hub tying together pane-rich and kiosk-adjacent behavior
 - `phone-interface.md` — phone-oriented controller/interface hub for compact direct interaction
 - `kiosk-right-pane-routing.md` — right-pane embedded kiosk/controller subview loading inside controller kiosk mode
