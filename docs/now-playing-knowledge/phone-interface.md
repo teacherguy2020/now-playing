@@ -115,6 +115,7 @@ This page should remain linked with:
 
 - `tablet-interface.md`
 - `desktop-browser-interface.md`
+- `controller-device-alias-pages.md`
 - `youtube-interface.md`
 - `user-interfaces.md`
 

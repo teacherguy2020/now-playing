@@ -130,6 +130,12 @@ A mature tablet interface page should eventually explain:
 - how the tablet shell differs from desktop and mobile controller shells
 - what files, functions, and API routes matter most in the tablet shell
 
+## Related branch pages
+
+- `controller-device-alias-pages.md`
+
+This is relevant when the tablet question starts from the device-named `controller-ipad.html` entrypoint rather than the real tablet shell.
+
 ## Relationship to the rest of the wiki
 
 This page should remain closely linked with:

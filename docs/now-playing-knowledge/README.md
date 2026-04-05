@@ -122,6 +122,7 @@ Especially relevant when the question is about:
 - `library-health-interface.md` — implementation-aware drill-down for library audit and maintenance workflows
 - `theme-interface.md` — implementation-aware drill-down for the shell-theme editor and preset system
 - `now-playing-surface-variants.md` — grouped map of the `controller-now-playing*` family, including variants and redirect shims
+- `controller-device-alias-pages.md` — grouped map of thin iPad/iPhone controller alias and redirect entry pages
 - `display-launch-and-wrapper-surfaces.md` — grouped map of display launcher, wrapper, and redirect helper pages
 - `youtube-interface.md` — implementation-aware drill-down for the YouTube search, resolve, playlist-expand, and queue bridge surface
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
