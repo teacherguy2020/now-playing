@@ -81,7 +81,9 @@ It is centered on:
 - diagnostic actions and what they reveal
 
 ### `library-health-interface.md`
-Likely centered on:
+Now serves as the library audit and maintenance drill-down in this branch.
+
+It is centered on:
 - `library-health.html`
 - library/art/cache/index health information
 - maintenance or verification-oriented workflows
