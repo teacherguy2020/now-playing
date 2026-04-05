@@ -323,7 +323,7 @@ This page likely justifies several future config-focused child pages.
 For the host/path/runtime bootstrap card.
 
 ### `config-lastfm-and-scrobbling.md`
-For mpdscribble + Last.fm + Vibe.
+Now serves as the dedicated drill-down for mpdscribble, Last.fm, and Vibe-related Config behavior.
 
 ### `config-notifications.md`
 For Pushover + track notifications.
