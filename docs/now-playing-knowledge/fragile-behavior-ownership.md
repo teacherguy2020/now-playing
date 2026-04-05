@@ -381,6 +381,8 @@ The next natural follow-up pages are:
 
 `display-issue-triage-runbook.md` now serves as the display-side triage companion.
 
+`playback-issue-triage-runbook.md` now serves as the playback-side triage companion.
+
 Those runbooks can turn the fragile-behavior ownership map into explicit operational checklists.
 
 ## Current status
