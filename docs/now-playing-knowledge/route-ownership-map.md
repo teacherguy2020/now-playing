@@ -407,6 +407,7 @@ This page should stay linked with:
 - `api-playback-and-queue-endpoints.md`
 - `queue-wizard-internals.md`
 - `controller-queue-interface.md`
+- `fragile-behavior-ownership.md`
 
 ## Current status
 
