@@ -144,6 +144,12 @@ Should eventually cover:
 - embedded vs top-level behavior where relevant
 - related scripts, styles, API routes, and dependencies
 
+### `display-launch-and-wrapper-surfaces.md`
+Now serves as the grouped page for helper display surfaces such as:
+- `displays.html`
+- `controller-visualizer.html`
+- `index1080.html`
+
 ### `display-renderers-and-visual-modes.md`
 Should eventually cover:
 - peppy presentation

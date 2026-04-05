@@ -1,0 +1,268 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>display-launch-and-wrapper-surfaces</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="config-interface.html">config-interface</a></li>
+<li><a href="configuration-and-diagnostics-interfaces.html">configuration-and-diagnostics-interfaces</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="desktop-browser-interface.html">desktop-browser-interface</a></li>
+<li><a href="diagnostics-interface.html">diagnostics-interface</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-launch-and-wrapper-surfaces.html">display-launch-and-wrapper-surfaces</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="embedded-pane-contracts.html">embedded-pane-contracts</a></li>
+<li><a href="genre-pane-messaging.html">genre-pane-messaging</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-editor-mode.html">kiosk-editor-mode</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
+<li><a href="library-health-interface.html">library-health-interface</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="now-playing-surface-variants.html">now-playing-surface-variants</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="phone-interface.html">phone-interface</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="tablet-interface.html">tablet-interface</a></li>
+<li><a href="tablet-kiosk-shell-differences.html">tablet-kiosk-shell-differences</a></li>
+<li><a href="theme-interface.html">theme-interface</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="visualizer-in-embedded-mode.html">visualizer-in-embedded-mode</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>display launch and wrapper surfaces</h1>
+<h2>Purpose</h2>
+<p>This page documents a small but important family of display-oriented helper pages that are not the core display renderers themselves, but still shape how display surfaces are launched, wrapped, or pushed into live use.</p>
+<p>Current pages in this family include:</p>
+<ul>
+<li><code>displays.html</code></li>
+<li><code>controller-visualizer.html</code></li>
+<li><code>index1080.html</code></li>
+</ul>
+<p>These pages are related because they act less like primary content surfaces and more like:</p>
+<ul>
+<li>launch consoles</li>
+<li>wrapper hosts</li>
+<li>compatibility/redirect entrypoints</li>
+</ul>
+<h2>Why this page matters</h2>
+<p>The display branch is not only composed of core rendering pages like <code>display.html</code>, <code>player.html</code>, <code>peppy.html</code>, or <code>visualizer.html</code>.</p>
+<p>There are also helper surfaces that determine:</p>
+<ul>
+<li>how an operator chooses a display mode</li>
+<li>how a display mode gets pushed to moOde</li>
+<li>how an embedded wrapper hosts a display page</li>
+<li>how legacy/resolution-specific entrypoints are normalized</li>
+</ul>
+<p>Those are worth documenting because they affect real workflows even if they are not the “main” display implementations.</p>
+<h2>Family classification</h2>
+<h2>1. <code>displays.html</code> — display launcher and push console</h2>
+<p>This is the strongest and most important page in this family.</p>
+<p><code>displays.html</code> appears to be an operator-facing selection and push surface for choosing among display and control outputs.</p>
+<p>Observed groups include:</p>
+<ul>
+<li>now playing displays
+<ul>
+<li>Player</li>
+<li>Peppy</li>
+<li>Visualizer</li>
+<li>Index Display</li>
+</ul>
+</li>
+<li>control displays
+<ul>
+<li>Mobile Controller</li>
+<li>Kiosk Controller 1280×400</li>
+</ul>
+</li>
+</ul>
+<p>This page is clearly more than a static menu.</p>
+<h3>Key role</h3>
+<p>A good current interpretation is:</p>
+<ul>
+<li><code>displays.html</code> is a display-mode launcher and push console</li>
+<li>it helps bridge UI selection into moOde display target updates</li>
+<li>it is one of the most operator-friendly pages for switching what the moOde/browser display should show</li>
+</ul>
+<h3>Important actions</h3>
+<p>Observed actions include:</p>
+<ul>
+<li>“Open Designer” links for:
+<ul>
+<li><code>player.html</code></li>
+<li><code>peppy.html</code></li>
+<li><code>visualizer.html&amp;ui=1</code></li>
+<li><code>index.html</code></li>
+<li><code>mobile.html</code></li>
+<li><code>kiosk-designer.html</code></li>
+</ul>
+</li>
+<li>“Push to moOde” actions for:
+<ul>
+<li>Player</li>
+<li>Peppy</li>
+<li>Visualizer</li>
+<li>Kiosk Controller</li>
+</ul>
+</li>
+</ul>
+<h3>Important functions / logic</h3>
+<p>Observed client-side logic includes:</p>
+<ul>
+<li><code>ensureKey()</code>
+<ul>
+<li>fetches runtime config from <code>/config/runtime</code></li>
+<li>extracts track key</li>
+</ul>
+</li>
+<li><code>pushUrl(url, reason, statusEl, btnEl)</code>
+<ul>
+<li>POSTs to <code>/config/moode/browser-url</code></li>
+</ul>
+</li>
+<li>Player/Peppy/Visualizer push handlers
+<ul>
+<li>also POST to <code>/peppy/last-profile</code></li>
+<li>set <code>displayMode</code> appropriately</li>
+</ul>
+</li>
+<li>kiosk push handler
+<ul>
+<li>pushes <code>/kiosk.html</code> directly with reason <code>displays-kiosk-push</code></li>
+</ul>
+</li>
+</ul>
+<h3>Important API calls</h3>
+<p>Observed endpoints include:</p>
+<ul>
+<li><code>GET /config/runtime</code></li>
+<li><code>POST /config/moode/browser-url</code></li>
+<li><code>POST /peppy/last-profile</code></li>
+</ul>
+<p>That makes <code>displays.html</code> one of the more operationally meaningful display-side pages.</p>
+<h2>2. <code>controller-visualizer.html</code> — visualizer wrapper host</h2>
+<p>This page appears to be a wrapper/host around <code>visualizer.html</code>, not the visualizer implementation itself.</p>
+<h3>Key role</h3>
+<p>A good current interpretation is:</p>
+<ul>
+<li><code>controller-visualizer.html</code> is a framing shell for <code>visualizer.html</code></li>
+<li>it adds a small top bar/back button in standalone mode</li>
+<li>it hides the top bar in <code>embedded=1</code> mode</li>
+<li>it passes through key visualizer query params to the real visualizer page</li>
+</ul>
+<h3>Important behavior</h3>
+<p>Observed logic includes:</p>
+<ul>
+<li>read <code>embedded</code> from query params</li>
+<li>add <code>body.embedded</code> when appropriate</li>
+<li>construct a URL to <code>visualizer.html</code></li>
+<li>pass through:
+<ul>
+<li><code>preset</code></li>
+<li><code>energy</code></li>
+<li><code>motion</code></li>
+<li><code>glow</code></li>
+<li><code>ui</code></li>
+<li><code>kiosk</code></li>
+<li><code>theme</code></li>
+<li><code>colorPreset</code></li>
+</ul>
+</li>
+<li>force defaults when absent:
+<ul>
+<li><code>ui=0</code></li>
+<li><code>kiosk=1</code></li>
+</ul>
+</li>
+<li>load the result in <code>#vizFrame</code></li>
+<li>back button navigates to <code>controller.html</code></li>
+</ul>
+<h3>Architectural interpretation</h3>
+<p>This is not the visualizer itself.
+It is a small hosting/adapter surface that frames <code>visualizer.html</code> for controller-oriented use.</p>
+<p>That means it should be understood as a wrapper page, not as the main home of visualizer logic.</p>
+<h2>3. <code>index1080.html</code> — redirect/compatibility shim</h2>
+<p>This page appears to be a very thin redirect shim.</p>
+<p>Observed behavior:</p>
+<ul>
+<li>meta refresh to <code>/index.html</code></li>
+<li>body fallback link to <code>/index.html</code></li>
+</ul>
+<p>This suggests <code>index1080.html</code> is a legacy or compatibility entrypoint rather than a substantive display implementation.</p>
+<p>So it should be documented, but only lightly.</p>
+<h2>Working family model</h2>
+<p>A good current family model is:</p>
+<h3>Substantive operator helper page</h3>
+<ul>
+<li><code>displays.html</code></li>
+</ul>
+<h3>Wrapper host page</h3>
+<ul>
+<li><code>controller-visualizer.html</code></li>
+</ul>
+<h3>Redirect shim</h3>
+<ul>
+<li><code>index1080.html</code></li>
+</ul>
+<p>That distinction is useful because it prevents the wiki from overvaluing thin wrappers and redirects while still acknowledging their operational role.</p>
+<h2>Relationship to the broader display branch</h2>
+<p>This family should stay linked with:</p>
+<ul>
+<li><code>display-interface.md</code></li>
+<li>future <code>display-browser-surface.md</code></li>
+<li><code>visualizer-in-embedded-mode.md</code></li>
+<li><code>kiosk-designer.md</code></li>
+</ul>
+<p>Because these pages influence how display surfaces are:</p>
+<ul>
+<li>selected</li>
+<li>launched</li>
+<li>pushed</li>
+<li>hosted</li>
+</ul>
+<p>rather than how they render internally.</p>
+<h2>Candidate future drill-down pages</h2>
+<p>The most likely next drill-down pages from this family are:</p>
+<h3><code>displays-launch-console.md</code></h3>
+<p>For <code>displays.html</code> specifically, especially the push flows and display-mode mapping.</p>
+<h3><code>controller-visualizer-wrapper.md</code></h3>
+<p>For the wrapper/adapter role of <code>controller-visualizer.html</code>.</p>
+<p><code>index1080.html</code> probably does not need its own dedicated page unless legacy/resolution-specific behavior turns out more important than it currently looks.</p>
+<h2>Architectural interpretation</h2>
+<p>A good current interpretation is:</p>
+<ul>
+<li>this family is made of helper surfaces around the display branch</li>
+<li>they are operationally important even when they are not the core display implementation pages</li>
+<li>they shape real workflows for choosing, pushing, and hosting display content</li>
+</ul>
+<p>This makes them worth grouping together instead of leaving them as isolated oddities.</p>
+<h2>Relationship to other pages</h2>
+<p>This page should stay linked with:</p>
+<ul>
+<li><code>display-interface.md</code></li>
+<li><code>desktop-browser-interface.md</code></li>
+<li><code>configuration-and-diagnostics-interfaces.md</code></li>
+<li><code>visualizer-in-embedded-mode.md</code></li>
+<li>future display-browser-surface documentation</li>
+</ul>
+<h2>Things still to verify</h2>
+<p>Future deeper verification should clarify:</p>
+<ul>
+<li>whether <code>displays.html</code> is the primary live operator console for choosing moOde display targets</li>
+<li>whether <code>controller-visualizer.html</code> is actively used in current workflows or mostly transitional</li>
+<li>whether <code>index1080.html</code> exists only for backward compatibility or still matters for deployed callers</li>
+<li>how these helper pages interact with any broader display-router logic not yet fully mapped</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page gives the display helper surfaces a clean structural home.</p>
+<p>That matters because it turns what would otherwise look like random miscellaneous pages into a coherent subfamily:</p>
+<ul>
+<li>one launcher/push console</li>
+<li>one wrapper host</li>
+<li>one redirect shim</li>
+</ul></article></body></html>
