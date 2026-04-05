@@ -277,6 +277,8 @@ The next highest-value companion pages are:
 
 `queue-wizard-internals.md` now serves as the sharper internal model page for Queue Wizard as the queue-shaping and preview/apply layer.
 
+`controller-queue-interface.md` now serves as the dedicated queue-surface page for standalone and embedded queue UI behavior.
+
 Those would turn this conceptual model into a much stronger engineering map.
 
 ## Current status
