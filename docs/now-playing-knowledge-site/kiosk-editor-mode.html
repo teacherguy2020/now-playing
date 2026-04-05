@@ -1,0 +1,264 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>kiosk-editor-mode</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="embedded-pane-contracts.html">embedded-pane-contracts</a></li>
+<li><a href="genre-pane-messaging.html">genre-pane-messaging</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-editor-mode.html">kiosk-editor-mode</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="visualizer-in-embedded-mode.html">visualizer-in-embedded-mode</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>kiosk editor mode</h1>
+<h2>Purpose</h2>
+<p>This page documents the editor/designer branch of controller-side kiosk mode.</p>
+<p>It exists because <code>controller.html</code> does not treat all kiosk mode the same way. There is a meaningful split between:</p>
+<ul>
+<li>normal kiosk runtime mode</li>
+<li>kiosk editor mode</li>
+</ul>
+<p>That split changes:</p>
+<ul>
+<li>layout behavior</li>
+<li>control visibility</li>
+<li>right-pane behavior</li>
+<li>push-to-moOde interactions</li>
+</ul>
+<h2>Why this page matters</h2>
+<p>Without this page, it is easy to think <code>kiosk=1</code> is a single mode.</p>
+<p>But repo inspection shows that controller-side kiosk behavior is explicitly divided into:</p>
+<ul>
+<li><code>IS_KIOSK_1280</code></li>
+<li><code>IS_KIOSK_EDITOR</code></li>
+</ul>
+<p>And editor mode materially changes how the page behaves.</p>
+<h2>Important file</h2>
+<p>Primary file:</p>
+<ul>
+<li><code>now-playing/controller.html</code></li>
+</ul>
+<p>Related pages:</p>
+<ul>
+<li><code>controller-kiosk-mode.md</code></li>
+<li><code>kiosk-designer.md</code></li>
+<li><code>kiosk-right-pane-routing.md</code></li>
+</ul>
+<h2>Key mode detection</h2>
+<p>Current repo-visible logic in <code>controller.html</code> defines:</p>
+<ul>
+<li><code>IS_KIOSK_1280</code> when:
+<ul>
+<li><code>kiosk=1</code>, or</li>
+<li><code>profile=1280x400</code>, or</li>
+<li><code>layout=1280x400</code></li>
+</ul>
+</li>
+<li><code>IS_KIOSK_EDITOR</code> when kiosk mode is active and either:
+<ul>
+<li><code>edit=1</code>, or</li>
+<li><code>designer=1</code></li>
+</ul>
+</li>
+</ul>
+<p>So editor mode is not a separate page. It is a specialized branch of controller kiosk mode.</p>
+<h2>Body classes</h2>
+<p>When kiosk mode is active, controller adds:</p>
+<ul>
+<li><code>kiosk1280</code></li>
+</ul>
+<p>When editor mode is also active, controller additionally adds:</p>
+<ul>
+<li><code>kioskEditor</code></li>
+</ul>
+<p>This matters because the CSS differentiates strongly between:</p>
+<ul>
+<li><code>body.kiosk1280</code></li>
+<li><code>body.kiosk1280:not(.kioskEditor)</code></li>
+</ul>
+<h2>Layout difference between runtime kiosk and editor kiosk</h2>
+<h3>Runtime kiosk mode</h3>
+<p>When kiosk mode is active but editor mode is not:</p>
+<ul>
+<li>the page collapses to a tighter runtime display form</li>
+<li><code>.kioskCtl</code> is hidden</li>
+<li><code>#kioskCanvas</code> becomes the main full display area</li>
+<li>user selection/touch-callout is suppressed more aggressively</li>
+</ul>
+<h3>Editor kiosk mode</h3>
+<p>When editor mode is active:</p>
+<ul>
+<li><code>.kioskCtl</code> remains visible</li>
+<li>the page keeps the extra control/header row</li>
+<li>the kiosk canvas is shown below the controls</li>
+<li>the page behaves more like a configurable staging surface than a pure runtime display surface</li>
+</ul>
+<p>So a good summary is:</p>
+<blockquote>
+<p>runtime kiosk mode is presentation-first; editor kiosk mode is configuration-and-preview-first.</p>
+</blockquote>
+<h2>Important DOM elements in editor mode</h2>
+<p>Current repo-visible editor controls include:</p>
+<ul>
+<li><code>#kioskCtl</code></li>
+<li><code>#kioskSizeSel</code></li>
+<li><code>#kioskPushBtn</code></li>
+<li><code>#kioskPushStat</code></li>
+<li><code>#kioskCanvas</code></li>
+</ul>
+<p>The size selector currently includes options such as:</p>
+<ul>
+<li><code>controller.html?kiosk=1&amp;edit=1</code> → <code>1280×400</code></li>
+<li><code>controller.html</code> → <code>Default</code></li>
+<li><code>controller-now-playing.html</code> → <code>Now Playing</code></li>
+</ul>
+<p>This means editor mode is not only a visual variant; it is also a control surface for selecting and pushing kiosk-related targets.</p>
+<h2>Key function: <code>initKioskControls()</code></h2>
+<p>The main editor-specific logic is concentrated in:</p>
+<ul>
+<li><code>initKioskControls()</code></li>
+</ul>
+<p>Current repo-visible behavior:</p>
+<ul>
+<li>it exits immediately unless <code>IS_KIOSK_EDITOR</code> is true</li>
+<li>it makes <code>#kioskCtl</code> visible</li>
+<li>it synchronizes <code>#kioskSizeSel</code> with the current page URL</li>
+<li>it wires size changes to navigation</li>
+<li>it wires the Push button to moOde target update behavior</li>
+</ul>
+<p>This makes <code>initKioskControls()</code> one of the clearest implementation centers for the editor branch.</p>
+<h2>Size selection behavior</h2>
+<p>Inside editor mode:</p>
+<ul>
+<li>changing <code>#kioskSizeSel</code> navigates directly to the selected relative URL</li>
+</ul>
+<p>That means editor mode can act as a launcher between different display/controller variants while keeping the operator inside the controller surface family.</p>
+<h2>Push-to-moOde behavior in editor mode</h2>
+<p>The editor branch has its own push flow via:</p>
+<ul>
+<li><code>#kioskPushBtn</code></li>
+</ul>
+<p>Observed behavior when the Push button is pressed:</p>
+<ol>
+<li>disable the button and show <code>Pushing…</code></li>
+<li>ensure runtime key/config through <code>ensureKey()</code></li>
+<li>read the selected target from <code>#kioskSizeSel</code></li>
+<li>build a URL from that target</li>
+<li>mirror current profile styling into query params:
+<ul>
+<li><code>theme</code></li>
+<li><code>colorPreset</code></li>
+<li><code>recentSource</code></li>
+<li><code>rev=20260329-motion-art-fix</code></li>
+</ul>
+</li>
+<li>remove editor-specific query params:
+<ul>
+<li><code>edit</code></li>
+<li><code>designer</code></li>
+</ul>
+</li>
+<li>preserve <code>kiosk=1</code> when relevant</li>
+<li>POST the final URL to:
+<ul>
+<li><code>/config/moode/browser-url</code></li>
+</ul>
+</li>
+<li>use reason:
+<ul>
+<li><code>kiosk-controls-push</code></li>
+</ul>
+</li>
+<li>update <code>#kioskPushStat</code></li>
+</ol>
+<p>This is a very important distinction from ordinary runtime kiosk behavior.</p>
+<p>Editor mode is not just for looking. It is a live control surface for selecting what moOde should display.</p>
+<h2>Relationship to right-pane behavior</h2>
+<p>Current repo-visible right-pane logic in <code>controller.html</code> uses:</p>
+<ul>
+<li><code>shouldOpenInRightPane()</code></li>
+</ul>
+<p>and returns true for kiosk mode only when:</p>
+<ul>
+<li><code>IS_KIOSK_1280 &amp;&amp; !IS_KIOSK_EDITOR</code></li>
+</ul>
+<p>This is critical.</p>
+<p>It means:</p>
+<ul>
+<li>normal kiosk runtime mode uses the right-pane model</li>
+<li>editor kiosk mode explicitly does not</li>
+</ul>
+<p>So editor mode suppresses one of the main kiosk runtime interaction patterns.</p>
+<p>This makes sense: while editing or configuring kiosk state, the page should behave more like a configuration shell than like the final kiosk runtime shell.</p>
+<h2>Relationship to auto-open behavior</h2>
+<p>Controller startup logic also checks:</p>
+<ul>
+<li><code>open=&lt;kiosk-page&gt;</code></li>
+</ul>
+<p>But auto-open of kiosk pane pages happens only when:</p>
+<ul>
+<li><code>IS_KIOSK_1280 &amp;&amp; !IS_KIOSK_EDITOR</code></li>
+</ul>
+<p>So editor mode also disables kiosk-pane auto-opening behavior on startup.</p>
+<p>Again, that reinforces the separation between:</p>
+<ul>
+<li>runtime kiosk shell behavior</li>
+<li>editor/configuration behavior</li>
+</ul>
+<h2>Relationship to kiosk designer</h2>
+<p><code>kiosk-editor-mode</code> and <code>kiosk-designer.html</code> are related, but not identical.</p>
+<p>A useful distinction is:</p>
+<ul>
+<li><code>kiosk-designer.html</code> is a dedicated kiosk preview/preset/push console centered around <code>kiosk.html</code></li>
+<li>controller-side kiosk editor mode is an in-controller editing/configuration branch of <code>controller.html</code></li>
+</ul>
+<p>They overlap in purpose, especially around pushing targets and previewing kiosk-oriented presentation, but they are different implementation paths.</p>
+<h2>Architectural interpretation</h2>
+<p>A good current interpretation is:</p>
+<ul>
+<li>editor mode is the operator-facing branch of controller kiosk mode</li>
+<li>runtime kiosk mode is the display-facing branch</li>
+<li>both live in <code>controller.html</code>, but they differ materially in layout, controls, and navigation behavior</li>
+</ul>
+<p>So <code>edit=1</code> / <code>designer=1</code> are not cosmetic toggles. They mark a real operational mode split.</p>
+<h2>Relationship to other pages</h2>
+<p>This page should stay linked with:</p>
+<ul>
+<li><code>controller-kiosk-mode.md</code></li>
+<li><code>kiosk-designer.md</code></li>
+<li><code>kiosk-right-pane-routing.md</code></li>
+<li>future pages about controller-shell push/config workflows</li>
+</ul>
+<h2>Things still to verify</h2>
+<p>Future deeper verification should clarify:</p>
+<ul>
+<li>whether <code>edit=1</code> and <code>designer=1</code> are fully equivalent in live use or only mostly equivalent</li>
+<li>how frequently editor mode is used compared to <code>kiosk-designer.html</code></li>
+<li>whether there are controller-side editing affordances beyond size selection and push behavior</li>
+<li>whether editor mode is intended as a durable operator workflow or partly a development scaffold</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page establishes kiosk editor mode as a real controller-side operational branch with:</p>
+<ul>
+<li>explicit mode detection</li>
+<li>distinct layout rules</li>
+<li>visible control chrome</li>
+<li>target selection</li>
+<li>push-to-moOde behavior</li>
+<li>right-pane suppression</li>
+</ul>
+<p>That makes it an important part of the kiosk architecture rather than a side note.</p></article></body></html>
