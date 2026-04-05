@@ -486,6 +486,14 @@ Observed repo evidence from deeper route inspection:
 - current route-registration inventory also shows many focused registrars such as `registerQueueRoutes`, `registerRatingRoutes`, `registerArtRoutes`, podcast route registrars, and many config/library-health/runtime registrars rather than a small set of giant surface-named route files
 - practical implication: some named features and config-facing behaviors are concretely implemented in route files, not only delegated to service-layer modules, and the current repo favors many focused route modules plus a config registration hub rather than one-file-per-surface naming
 
+## Related drill-down page
+
+- `route-ownership-map.md`
+
+This page is the cleaner companion when the question shifts from broad codebase navigation to:
+- which route module likely owns a feature
+- where to start tracing a behavior from concept into implementation
+
 ## Next improvements for this page
 
 This page is still not a full file-level map. It should later be expanded with:
