@@ -41,6 +41,11 @@ Current anchor pages:
 - `tablet-interface.md`
 - `phone-interface.md`
 
+Current drill-downs in this family:
+- `now-playing-surface-variants.md`
+- `controller-device-alias-pages.md`
+- `youtube-interface.md`
+
 Likely major surfaces in this family include:
 - desktop browser usage around `app.html`
 - tablet-oriented controller surfaces
@@ -56,8 +61,9 @@ Planned drill-down pages:
 Current anchor page:
 - `display-interface.md`
 
-Current sub-branch in progress:
+Current sub-branches in this family:
 - `kiosk-interface.md`
+- `display-launch-and-wrapper-surfaces.md`
 
 This family should eventually cover things like:
 - browser/TV display surfaces such as `display.html`
@@ -105,6 +111,14 @@ Planned drill-down pages:
 
 Current anchor page:
 - `configuration-and-diagnostics-interfaces.md`
+
+Current drill-downs in this family:
+- `config-interface.md`
+- `diagnostics-interface.md`
+- `library-health-interface.md`
+- `theme-interface.md`
+- `radio-metadata-eval-interface.md`
+- `alexa-interface.md`
 
 This family should eventually cover:
 - configuration interfaces

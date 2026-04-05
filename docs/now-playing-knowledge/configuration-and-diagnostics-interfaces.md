@@ -96,6 +96,24 @@ It is centered on:
 - theme/palette customization or inspection
 - how visual configuration is exposed operationally
 
+### `radio-metadata-eval-interface.md`
+Now serves as the radio metadata QA/evaluation drill-down in this branch.
+
+It is centered on:
+- `radio-eval.html`
+- radio metadata logs
+- parsing/enrichment verdict review
+- live debugging and cleanup workflows
+
+### `alexa-interface.md`
+Now serves as the Alexa corrections/review drill-down in this branch.
+
+It is centered on:
+- `alexa.html`
+- alias/correction editing
+- recently-heard review
+- operator guidance for Alexa voice commands
+
 ## Relationship to other interface pages
 
 This page should be read alongside:

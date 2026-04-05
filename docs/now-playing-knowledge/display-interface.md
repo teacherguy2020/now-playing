@@ -150,6 +150,9 @@ Now serves as the grouped page for helper display surfaces such as:
 - `controller-visualizer.html`
 - `index1080.html`
 
+### `now-playing-surface-variants.md`
+Also intersects with the display branch where controller-side now-playing surfaces overlap with presentation behavior, artwork emphasis, and embedded/visualizer usage.
+
 ### `display-renderers-and-visual-modes.md`
 Should eventually cover:
 - peppy presentation
