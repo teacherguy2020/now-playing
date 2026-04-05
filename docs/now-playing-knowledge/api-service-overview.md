@@ -183,7 +183,7 @@ Now serves as the API-centered drill-down for:
 - moOde/browser-url endpoints
 
 ### `api-playback-and-queue-endpoints.md`
-For playback-control and queue-shaping actions used by controller and now-playing surfaces.
+Now serves as the API-centered drill-down for playback-control and queue-shaping actions used by controller and now-playing surfaces.
 
 ### `api-youtube-radio-and-integration-endpoints.md`
 Now serves as the API-centered drill-down for:
