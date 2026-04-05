@@ -141,6 +141,7 @@ Especially relevant when the question is about:
 - `api-youtube-radio-and-integration-endpoints.md` — YouTube, radio debug/eval, and adjacent integration-feature endpoint families
 - `api-playback-and-queue-endpoints.md` — playback-control and queue-shaping endpoint families documented so far
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
+- `repo-coverage-notes.md` — audit of what the wiki covers strongly, strategically, lightly, or intentionally not at all across the repo
 - `workflows.md` — common ways work tends to happen in this project
 - `display-interface.md` — map of the display-oriented surfaces, modes, and runtime-sensitive presentation paths
 - `kiosk-interface.md` — kiosk-style display usage as a presentation mode with host/runtime/display-state dependencies
@@ -204,3 +205,4 @@ Go here first based on the problem you have:
 - Update this wiki when major behavior changes, important lessons are learned, or file ownership becomes clearer.
 - Let the homepage point toward future expansion, but keep the actual source of truth in the individual pages.
 - Use `wiki-structure-notes.md` for the explicit rules around hub pages, parent/child/companion relationships, runbooks, reachability, and page-splitting discipline.
+- Use `repo-coverage-notes.md` when you need to know how complete the wiki is by repo area before assuming a directory is already deeply mapped.
