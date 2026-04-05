@@ -12,6 +12,15 @@ It is meant to help future agents and humans approach tasks in a way that matche
 
 ## Common workflow types
 
+Useful companion pages for this workflow guide:
+- `user-interfaces.md`
+- `integrations.md`
+- `api-service-overview.md`
+- `deployment-and-ops.md`
+- `source-map.md`
+- `playback-mode-troubleshooting.md`
+- `display-surface-troubleshooting.md`
+
 The documentation implies several recurring workflow categories:
 
 - **Media and queue management**
@@ -47,6 +56,13 @@ Important workflow distinctions to keep explicit:
 
 ## UI and display changes
 
+Useful references for this branch:
+- `user-interfaces.md`
+- `display-interface.md`
+- `display-surface-troubleshooting.md`
+- `config-display-and-render-features.md`
+- `now-playing-surface-variants.md`
+
 When the task is about visible behavior, the docs suggest this general pattern:
 
 - identify the specific surface first
@@ -66,6 +82,15 @@ Inferred but strongly supported by the project shape:
 - some "UI" changes may actually depend on integration state, display state, or host/runtime conditions
 
 ## Integration and runtime debugging
+
+Useful references for this branch:
+- `integrations.md`
+- `api-service-overview.md`
+- `api-config-and-runtime-endpoints.md`
+- `api-youtube-radio-and-integration-endpoints.md`
+- `api-playback-and-queue-endpoints.md`
+- `local-environment.md`
+- `deployment-and-ops.md`
 
 When behavior looks wrong, the docs suggest treating debugging as cross-cutting work:
 
@@ -128,12 +153,20 @@ Likely first references:
 - `api-config-and-runtime-endpoints.md`
 - `api-youtube-radio-and-integration-endpoints.md`
 - `api-playback-and-queue-endpoints.md`
+- `playback-mode-troubleshooting.md`
 - `deployment-and-ops.md`
 - `local-environment.md`
 - `gotchas-and-lessons.md`
 - `source-map.md`
 
 ## Operational verification habits
+
+Useful references for this branch:
+- `deployment-and-ops.md`
+- `local-environment.md`
+- `config-network-and-runtime.md`
+- `restart-and-runtime-admin-troubleshooting.md`
+- `source-map.md`
 
 The DeepWiki material strongly implies that verification is part of normal work.
 
