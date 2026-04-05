@@ -253,6 +253,16 @@ Especially relevant pages:
 
 In this area especially, theory and live behavior may diverge.
 
+## See also
+
+- `kiosk-launch-and-routing.md`
+- `kiosk-designer.md`
+- `controller-kiosk-mode.md`
+- `controller-kiosk-scaffold.md`
+- `kiosk-right-pane-routing.md`
+- `embedded-pane-contracts.md`
+- `kiosk-editor-mode.md`
+
 ## Current status
 
 At the moment, this page is a structural drill-down from the display branch, not a completed kiosk implementation guide.

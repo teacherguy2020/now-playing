@@ -66,7 +66,7 @@ The tablet interface already has several obvious branch areas.
 
 ### Tablet kiosk shell behavior
 Current best page:
-- `tablet-kiosk-shell-differences.md`
+- [`tablet-kiosk-shell-differences.md`](tablet-kiosk-shell-differences.md)
 
 Use this when the question is about:
 - pane routing
@@ -76,7 +76,7 @@ Use this when the question is about:
 
 ### Embedded pane contracts
 Current best page:
-- `embedded-pane-contracts.md`
+- [`embedded-pane-contracts.md`](embedded-pane-contracts.md)
 
 Use this when the question is about:
 - embedded child behavior
@@ -86,7 +86,7 @@ Use this when the question is about:
 
 ### Genre/albums semantic pane drill-down
 Current best page:
-- `genre-pane-messaging.md`
+- [`genre-pane-messaging.md`](genre-pane-messaging.md)
 
 Use this when the question is about:
 - genre selection
@@ -95,7 +95,7 @@ Use this when the question is about:
 
 ### Visualizer behavior within tablet shell contexts
 Current best page:
-- `visualizer-in-embedded-mode.md`
+- [`visualizer-in-embedded-mode.md`](visualizer-in-embedded-mode.md)
 
 Use this when the question is about:
 - visualizer pane behavior
@@ -138,6 +138,15 @@ This page should remain closely linked with:
 - `media-library.md` (future/expanding) — where tablet browse surfaces are likely central
 - `queue-and-playback-control.md` (future/expanding) — where tablet queue/control flows are likely central
 - `source-map.md` — when transitioning from interface understanding into files
+
+## See also
+
+- `tablet-kiosk-shell-differences.md`
+- `embedded-pane-contracts.md`
+- `genre-pane-messaging.md`
+- `visualizer-in-embedded-mode.md`
+- `phone-interface.md`
+- `desktop-browser-interface.md`
 
 ## Current status
 

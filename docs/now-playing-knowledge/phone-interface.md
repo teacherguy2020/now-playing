@@ -111,6 +111,12 @@ This page should remain linked with:
 - future media-library pages
 - future controller-family comparison pages
 
+## See also
+
+- `tablet-interface.md`
+- `desktop-browser-interface.md`
+- `user-interfaces.md`
+
 ## Current status
 
 At the moment, this page is a structural hub for the phone branch rather than a code-heavy implementation guide.

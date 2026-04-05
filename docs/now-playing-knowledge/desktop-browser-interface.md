@@ -101,6 +101,13 @@ This page should remain linked with:
 - future pages for `app.html`
 - future pages for config/diagnostics surfaces
 
+## See also
+
+- `tablet-interface.md`
+- `phone-interface.md`
+- `display-interface.md`
+- `user-interfaces.md`
+
 ## Current status
 
 At the moment, this page is a structural hub for the desktop browser branch rather than a code-heavy implementation guide.
