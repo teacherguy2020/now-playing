@@ -203,3 +203,4 @@ Go here first based on the problem you have:
 - If something is uncertain, put it in `open-questions.md` instead of presenting it as settled fact.
 - Update this wiki when major behavior changes, important lessons are learned, or file ownership becomes clearer.
 - Let the homepage point toward future expansion, but keep the actual source of truth in the individual pages.
+- Use `wiki-structure-notes.md` for the explicit rules around hub pages, parent/child/companion relationships, runbooks, reachability, and page-splitting discipline.
