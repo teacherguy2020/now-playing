@@ -103,6 +103,13 @@ Use this when the question is about:
 - preset/energy/motion/glow handoff
 - moOde push behavior tied to visualizer mode
 
+## Anatomy companion page
+
+- `controller-tablet-anatomy.md`
+
+This is the anatomy-style companion page for the tablet branch.
+Use it when the task is not just about the tablet interface in general, but about a specific region inside `controller-tablet.html` such as the now-playing header, transport controls, quick search strip, library/category list, recent rails, tablet next-up/action bars, kiosk pane, or modal family.
+
 ## Likely implementation dimensions
 
 The tablet interface likely spans several implementation dimensions:
@@ -135,12 +142,15 @@ A mature tablet interface page should eventually explain:
 - `controller-device-alias-pages.md`
 - `now-playing-surface-variants.md`
 - `api-playback-and-queue-endpoints.md`
+- `controller-tablet-anatomy.md`
 
 This is relevant when the tablet question starts from the device-named `controller-ipad.html` entrypoint rather than the real tablet shell.
 
 `now-playing-surface-variants.md` is relevant when tablet investigation overlaps with the substantive `controller-now-playing*` family and its layout/device variants.
 
 `api-playback-and-queue-endpoints.md` is relevant when the real question is about the control-plane routes behind tablet-side playback, queue, and queue-wizard actions.
+
+`controller-tablet-anatomy.md` is relevant when the real question is not only “what is the tablet shell?” but “which region inside `controller-tablet.html` actually owns the thing I need to change?”
 
 ## Relationship to the rest of the wiki
 
