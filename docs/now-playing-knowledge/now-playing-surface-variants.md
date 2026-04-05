@@ -195,6 +195,13 @@ That means they should eventually cross-link with future pages on:
 - media library / album drill-down
 - controller child page relationships
 
+## Anatomy companion page
+
+- `controller-now-playing-anatomy.md`
+
+This is the anatomy-style companion page for the main now-playing surface.
+Use it when the task is not just about the now-playing family in general, but about a specific region inside `controller-now-playing.html` such as the art/flip area, next-up bar, progress bar, integrated controls, album modal, or embedded queue modal.
+
 ## Candidate future drill-down pages
 
 The next likely branch pages from this family are:
@@ -228,6 +235,7 @@ This page should stay linked with:
 - `phone-interface.md`
 - `embedded-pane-contracts.md`
 - `kiosk-right-pane-routing.md`
+- `controller-now-playing-anatomy.md`
 - future queue/control pages
 - future media-library pages
 
@@ -239,6 +247,8 @@ Future deeper verification should clarify:
 - whether `controller-now-playing-grid.html` is actively used in live workflows or more experimental
 - whether `controller-now-playing-tablet.html` is the main tablet now-playing path in practice
 - how much of the iPhone behavior should be documented as part of `controller-now-playing.html` versus split into its own page
+
+`controller-now-playing-anatomy.md` is relevant when the real question is not only “which now-playing variant is this?” but “which region inside `controller-now-playing.html` actually owns the thing I need to change?”
 
 ## Current status
 
