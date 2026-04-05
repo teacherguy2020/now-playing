@@ -158,6 +158,7 @@ This page should stay linked with:
 - `queue-and-playback-model.md`
 - `api-service-overview.md`
 - `api-endpoint-catalog.md`
+- `api-state-truth-endpoints.md`
 - `api-config-and-runtime-endpoints.md`
 - `api-youtube-radio-and-integration-endpoints.md`
 - `now-playing-surface-variants.md`

@@ -89,6 +89,8 @@ Also note:
   - owner: `src/routes/rating.routes.mjs`
   - likely role: current-track rating mutation
 
+For the stronger explanation of why `/now-playing` and `/next-up` are central truth surfaces instead of just inventory entries, see `api-state-truth-endpoints.md`.
+
 ## Family: Alexa / current voice-state helpers
 
 - `GET /alexa/was-playing`

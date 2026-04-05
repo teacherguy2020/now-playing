@@ -188,6 +188,9 @@ Now serves as the API-centered drill-down for playback-control and queue-shaping
 ### `api-endpoint-catalog.md`
 Now serves as the source-driven inventory page for concrete endpoints found directly in source files, grouped by family with owner-file visibility and explicit proof limits.
 
+### `api-state-truth-endpoints.md`
+Now serves as the focused explanation page for the most important state/truth surfaces such as `/now-playing`, `/next-up`, and Alexa-adjacent visible-state helpers.
+
 ### `api-youtube-radio-and-integration-endpoints.md`
 Now serves as the API-centered drill-down for:
 - `/youtube/*`
