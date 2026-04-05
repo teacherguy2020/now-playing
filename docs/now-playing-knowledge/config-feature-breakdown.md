@@ -326,7 +326,7 @@ For the host/path/runtime bootstrap card.
 Now serves as the dedicated drill-down for mpdscribble, Last.fm, and Vibe-related Config behavior.
 
 ### `config-notifications.md`
-For Pushover + track notifications.
+Now serves as the dedicated drill-down for Pushover-backed track notifications and monitor tuning inside Config.
 
 ### `config-ratings.md`
 Now serves as the dedicated drill-down for ratings DB verification, backup, and restore.
