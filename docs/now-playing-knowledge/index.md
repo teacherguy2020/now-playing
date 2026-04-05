@@ -27,6 +27,7 @@ For the maintenance workflow, use `wiki-operations.md`.
 ## Start / retrieval surfaces
 
 - `README.md` — primary overview and broad orientation page
+- `api-state-truth-endpoints.md` — central state hinge page for `/now-playing`, `/next-up`, and other visible-truth surfaces
 - `agent-start.md` *(rendered-only entry today)* — question-first front door for agents using the rendered wiki
 - `search-and-navigation.md` *(rendered-only entry today)* — page-first browse/search entry point in the rendered wiki
 - `index.md` — content-oriented catalog of pages and branches
@@ -88,6 +89,7 @@ For the maintenance workflow, use `wiki-operations.md`.
 - `route-ownership-map.md` — route-family ownership reference
 - `fragile-behavior-ownership.md` — fragile path ownership and guardrails
 - `api-service-overview.md` — API-centered architectural parent page
+- `api-state-truth-endpoints.md` — central visible-state truth surfaces, especially `/now-playing` and `/next-up`
 - `api-config-and-runtime-endpoints.md` — config/runtime route families
 - `api-youtube-radio-and-integration-endpoints.md` — YouTube/radio/integration route families
 - `api-playback-and-queue-endpoints.md` — playback and queue route families documented so far
@@ -133,6 +135,7 @@ At the moment, this page is the catalog layer of the wiki.
 
 A useful current split is:
 - `README.md` = broad overview
+- `api-state-truth-endpoints.md` = central `/now-playing`-anchored state hinge
 - `index.md` = page catalog
 - `log.md` = chronology
 - `wiki-operations.md` = maintenance workflow

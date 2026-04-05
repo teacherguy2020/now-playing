@@ -16,6 +16,8 @@ This wiki tracks the architecture, history, and operational realities of the `no
 
 moOde is the anchor. Other inputs, protocols, and display paths matter, but they should be understood in relation to that moOde-centered runtime rather than treated as peers in a generic orchestration layer.
 
+One especially important architectural fact is that the independent display/controller system branches outward from the app-host’s `/now-playing` state surface. That endpoint is one of the project’s central visible-truth hinges: many richer controller, display, kiosk, and metadata behaviors make the most sense only after understanding how `/now-playing` turns playback/mode/runtime state into the payload the UI consumes.
+
 ## What this is
 
 This directory is the local wiki and knowledge base for the `now-playing` project.
@@ -50,9 +52,10 @@ If you want the fastest orientation path, read in this order:
 
 1. **Context** → `system-overview.md`
 2. **Structure** → `architecture.md`
-3. **Action / where things live** → `source-map.md`
-4. **Reality check for the live setup** → `local-environment.md`
-5. **Known traps and prior lessons** → `gotchas-and-lessons.md`
+3. **Central state hinge** → `api-state-truth-endpoints.md` (especially `/now-playing` and `/next-up`)
+4. **Action / where things live** → `source-map.md`
+5. **Reality check for the live setup** → `local-environment.md`
+6. **Known traps and prior lessons** → `gotchas-and-lessons.md`
 
 Then use `decisions-and-history.md` when you need rationale or historical context.
 
@@ -147,6 +150,7 @@ Especially relevant when the question is about:
 - `config-alexa-setup.md` — Alexa enablement, public-domain setup, route webhook configuration, and reachability checks
 - `config-advanced-json.md` — raw full-config editing, formatting, and full-save behavior
 - `api-service-overview.md` — API-centered parent page for the app-host service and route families
+- `api-state-truth-endpoints.md` — focused explanation of `/now-playing`, `/next-up`, Alexa now-playing helpers, and other central visible-state surfaces
 - `api-config-and-runtime-endpoints.md` — config/runtime control-plane routes and maintenance/verification endpoint families
 - `api-youtube-radio-and-integration-endpoints.md` — YouTube, radio debug/eval, and adjacent integration-feature endpoint families
 - `api-playback-and-queue-endpoints.md` — playback-control and queue-shaping endpoint families documented so far
