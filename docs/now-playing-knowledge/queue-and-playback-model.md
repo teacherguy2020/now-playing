@@ -273,6 +273,8 @@ The next highest-value companion pages are:
 - `queue-wizard-internals.md`
 - `controller-queue-interface.md`
 
+`playback-authority-by-mode.md` now serves as the companion page for mode-specific playback/art/status authority.
+
 Those would turn this conceptual model into a much stronger engineering map.
 
 ## Current status
