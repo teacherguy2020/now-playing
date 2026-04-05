@@ -248,6 +248,18 @@ For the display/render modes that may appear within kiosk usage, such as Player,
 ### `artwork-and-visual-assets.md`
 For artwork/animation/cached visual dependencies that strongly affect kiosk presentation quality and stability.
 
+## Anatomy companion page
+
+- `kiosk-shell-anatomy.md`
+
+This is the anatomy-style companion page for the live kiosk shell path.
+Use it when the task is not just about kiosk as a branch, but about a specific kiosk-layer question such as:
+- launcher/profile bridge behavior
+- right-pane ownership
+- live shell versus designer behavior
+- kiosk-branded child aliases
+- scaffold/prototype path versus real live path
+
 ## Relationship to troubleshooting and ops
 
 Kiosk documentation should remain tightly linked to troubleshooting and operations pages because kiosk issues are likely to cross from visible symptoms into host/runtime causes.
@@ -269,6 +281,9 @@ In this area especially, theory and live behavior may diverge.
 - `kiosk-right-pane-routing.md`
 - `embedded-pane-contracts.md`
 - `kiosk-editor-mode.md`
+- `kiosk-shell-anatomy.md`
+
+`kiosk-shell-anatomy.md` matters when the question is not only “what is the kiosk branch?” but “which kiosk layer actually owns the thing I need to change?”
 
 ## Current status
 
