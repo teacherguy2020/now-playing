@@ -173,7 +173,7 @@ That should happen in dedicated child pages.
 The next sensible API-centered child pages are:
 
 ### `api-config-and-runtime-endpoints.md`
-For:
+Now serves as the API-centered drill-down for:
 - `/config/runtime`
 - `/config/runtime/check-env`
 - `/config/runtime/ensure-podcast-root`
