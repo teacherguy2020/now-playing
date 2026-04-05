@@ -1,223 +1,346 @@
+---
+title: display-launch-and-wrapper-surfaces
+page_type: child
+topics:
+  - display
+  - kiosk
+  - controller
+  - runtime
+confidence: high
+---
+
 # display launch and wrapper surfaces
 
 ## Purpose
 
-This page documents a small but important family of display-oriented helper pages that are not the core display renderers themselves, but still shape how display surfaces are launched, wrapped, or pushed into live use.
+This page documents a small but important family of display-oriented helper pages that are not the core renderers themselves, but still control how display surfaces are launched, wrapped, or redirected.
 
-Current pages in this family include:
+Current pages in this family:
 - `displays.html`
 - `controller-visualizer.html`
 - `index1080.html`
 
-These pages are related because they act less like primary content surfaces and more like:
-- launch consoles
-- wrapper hosts
-- compatibility/redirect entrypoints
+These pages matter because they sit one layer above the actual display implementations.
+They are about:
+- selecting a display target
+- pushing a browser URL into moOde
+- wrapping a child display page in a controller-friendly host
+- preserving a legacy entrypoint
 
 ## Why this page matters
 
-The display branch is not only composed of core rendering pages and mode-specific surfaces like `display.html`, `player-render.html`, `peppy.html`, or `visualizer.html`.
+This family is operationally important even though it is not where most visual rendering logic lives.
 
-There are also helper surfaces that determine:
-- how an operator chooses a display mode
-- how a display mode gets pushed to moOde
-- how an embedded wrapper hosts a display page
-- how legacy/resolution-specific entrypoints are normalized
+The strongest example is `displays.html`, which is a real operator console for pushing browser-display targets into moOde.
+`controller-visualizer.html` is a real adapter shell for `visualizer.html`.
+`index1080.html` is only a redirect shim.
 
-Those are worth documenting because they affect real workflows even if they are not the “main” display implementations.
+Those are three very different roles, and the wiki should keep them distinct.
 
-## Family classification
+## 1. `displays.html` — display target launcher and moOde push console
 
-## 1. `displays.html` — display launcher and push console
+This is the most important page in the family.
 
-This is the strongest and most important page in this family.
+### What it actually is
+Direct file inspection shows that `displays.html` is a small operator console with two card groups:
 
-`displays.html` appears to be an operator-facing selection and push surface for choosing among display and control outputs.
+#### Now Playing Displays
+- Player
+- Peppy
+- Visualizer
+- Index Display
 
-Observed groups include:
-- now playing displays
-  - Player
-  - Peppy
-  - Visualizer
-  - Index Display
-- control displays
-  - Mobile Controller
-  - Kiosk Controller 1280×400
+#### Control Displays
+- Mobile Controller
+- Kiosk Controller 1280×400
 
-This page is clearly more than a static menu.
+Each card provides either:
+- an **Open Designer** link
+- a **Push to moOde** action
+- or both
 
-### Key role
-A good current interpretation is:
-- `displays.html` is a display-mode launcher and push console
-- it helps bridge UI selection into moOde display target updates
-- it is one of the most operator-friendly pages for switching what the moOde/browser display should show
+So this is not a passive menu.
+It is a live launcher/push surface.
 
-### Important actions
-Observed actions include:
-- “Open Designer” or helper links for:
-  - `player.html` — Player designer / preview surface
-  - `peppy.html` — Peppy-facing display/config surface, including Peppy skin selection/config behavior
-  - `visualizer.html&ui=1` — Visualizer UI/config view
-  - `index.html`
-  - `mobile.html`
-  - `kiosk-designer.html` — Kiosk designer / preview / push surface
-- “Push to moOde” actions for:
-  - Player display mode
-  - Peppy display mode
-  - Visualizer display mode
-  - Kiosk Controller / kiosk mode
+### Open Designer links
+The page links directly to:
+- `app.html?page=player.html`
+- `app.html?page=peppy.html`
+- `app.html?page=visualizer.html&ui=1`
+- `index.html`
+- `app.html?page=mobile.html`
+- `app.html?page=kiosk-designer.html`
 
-### Important functions / logic
-Observed client-side logic includes:
+That means `displays.html` is effectively a curated jump surface into the design/configuration pages for major display/control targets.
+
+### Runtime host model
+The page computes:
+- `host = location.hostname || 'nowplaying.local'`
+- `base = ${location.protocol}//${host}:3101`
+
+So its control-plane API target is always the app-host on port `3101` for the current hostname.
+
+### Track-key bootstrap
+The page has an inline helper:
 - `ensureKey()`
-  - fetches runtime config from `/config/runtime`
-  - extracts track key
-- `pushUrl(url, reason, statusEl, btnEl)`
-  - POSTs to `/config/moode/browser-url`
-- Player/Peppy/Visualizer push handlers
-  - also POST to `/peppy/last-profile`
-  - set `displayMode` appropriately
-- kiosk push handler
-  - pushes `/kiosk.html` directly with reason `displays-kiosk-push`
 
-### Important API calls
-Observed endpoints include:
+What it does:
+- `GET ${base}/config/runtime`
+- extracts `config.trackKey`
+- caches it in local script state
+
+That track key is then used as `x-track-key` for privileged POST requests.
+
+So `displays.html` is tightly coupled to runtime config and app-host authorization.
+
+### Core push helper
+The main operational helper is:
+- `pushUrl(url, reason, statusEl, btnEl)`
+
+What it does:
+- POSTs to `${base}/config/moode/browser-url`
+- sends JSON `{ url, reason }`
+- includes `x-track-key` when available
+- updates a per-card status element on success/failure
+- temporarily changes button text to `Pushing…`
+
+This is the main reason the page matters: it is a UI wrapper around changing moOde’s browser target.
+
+### Player / Peppy / Visualizer push behavior
+The three display-mode push buttons do more than just call `pushUrl(...)`.
+
+Before pushing, they also POST to:
+- `${base}/peppy/last-profile`
+
+Observed payloads:
+- Player push:
+  - `{ url, displayMode: 'player', playerSize }`
+- Peppy push:
+  - `{ url, displayMode: 'peppy' }`
+- Visualizer push:
+  - `{ url, displayMode: 'visualizer' }`
+
+Then all three push the same browser target:
+- `${location.protocol}//${host}:8101/display.html?kiosk=1`
+
+with different `reason` values:
+- `displays-player-push`
+- `displays-peppy-push`
+- `displays-visualizer-push`
+
+That means the selected render mode is not encoded in the pushed browser URL itself.
+Instead, the page updates `peppy/last-profile`, then points moOde’s browser at the common `display.html?kiosk=1` entrypoint.
+
+That is a very important architectural fact.
+
+### Player-specific size behavior
+Player push has one extra behavior:
+- reads `localStorage['player.profile.v2']`
+- parses `size`
+- falls back to `1280x400`
+- includes that as `playerSize` when POSTing `/peppy/last-profile`
+
+So `displays.html` is also part of the path that bridges saved designer state into live moOde display activation.
+
+### Kiosk push behavior
+The kiosk control card behaves differently.
+
+It pushes:
+- `${location.protocol}//${host}:8101/kiosk.html`
+
+with reason:
+- `displays-kiosk-push`
+
+It does **not** update `/peppy/last-profile` first.
+
+That makes sense because kiosk is a shell/presentation mode, not one of the display modes routed through the `display.html` + `peppy/last-profile` mechanism.
+
+### Index Display behavior
+The Index Display card has only:
+- `Open Designer` → `index.html`
+
+There is no push button.
+
+So in the current file, `index.html` is treated as directly openable, but not as one of the push-to-moOde targets wired through this console.
+That is worth preserving explicitly in the docs.
+
+### What `displays.html` is not
+It is not:
+- the main display renderer
+- the place where Player/Peppy/Visualizer visuals are implemented
+- a generic routing shell
+
+It is specifically:
+- a launch console
+- a browser-target pusher
+- a mode-selection bridge into `display.html` / `kiosk.html`
+
+### Most important API calls
+Direct file inspection confirms:
 - `GET /config/runtime`
 - `POST /config/moode/browser-url`
 - `POST /peppy/last-profile`
 
-That makes `displays.html` one of the more operationally meaningful display-side pages.
+### Best current interpretation
+A better, less speculative interpretation is:
+- `displays.html` is the operator-facing launcher for live display target selection on the moOde browser display
+- it chooses between common display/control targets
+- for Player/Peppy/Visualizer, it records mode/profile state through `/peppy/last-profile` and then pushes a shared `display.html?kiosk=1` URL
+- for kiosk, it pushes `kiosk.html` directly
 
-## 2. `controller-visualizer.html` — visualizer wrapper host
+That is much more precise than just calling it a “display launcher.”
 
-This page appears to be a wrapper/host around `visualizer.html`, not the visualizer implementation itself.
+## 2. `controller-visualizer.html` — thin wrapper host for `visualizer.html`
 
-### Key role
-A good current interpretation is:
-- `controller-visualizer.html` is a framing shell for `visualizer.html`
-- it adds a small top bar/back button in standalone mode
-- it hides the top bar in `embedded=1` mode
-- it passes through key visualizer query params to the real visualizer page
+### What it actually is
+Direct file inspection shows that `controller-visualizer.html` is a very small wrapper page around an iframe:
+- top bar with back button and title
+- iframe `#vizFrame`
+- a short inline script that builds the visualizer child URL
 
-### Important behavior
-Observed logic includes:
-- read `embedded` from query params
-- add `body.embedded` when appropriate
-- construct a URL to `visualizer.html`
-- pass through:
-  - `preset`
-  - `energy`
-  - `motion`
-  - `glow`
-  - `ui`
-  - `kiosk`
-  - `theme`
-  - `colorPreset`
-- force defaults when absent:
-  - `ui=0`
-  - `kiosk=1`
-- load the result in `#vizFrame`
-- back button navigates to `controller.html`
+This is a host shell, not a visualizer implementation page.
 
-### Architectural interpretation
-This is not the visualizer itself.
-It is a small hosting/adapter surface that frames `visualizer.html` for controller-oriented use.
+### Standalone vs embedded behavior
+The page reads:
+- `embedded` from query params
 
-That means it should be understood as a wrapper page, not as the main home of visualizer logic.
+If truthy (`1/true/yes/on`):
+- adds `body.embedded`
+- hides the top bar
+- makes the iframe fill the full page height
 
-## 3. `index1080.html` — redirect/compatibility shim
+Otherwise:
+- shows the top bar
+- keeps a back button that returns to `controller.html`
 
-This page appears to be a very thin redirect shim.
+So this file exists to adapt `visualizer.html` into controller-style navigation contexts.
 
-Observed behavior:
-- meta refresh to `/index.html`
-- body fallback link to `/index.html`
+### Child URL construction
+The script creates:
+- `new URL('visualizer.html', location.href)`
 
-This suggests `index1080.html` is a legacy or compatibility entrypoint rather than a substantive display implementation.
+Then it passes through only a known param set:
+- `preset`
+- `energy`
+- `motion`
+- `glow`
+- `ui`
+- `kiosk`
+- `theme`
+- `colorPreset`
 
-So it should be documented, but only lightly.
+So it is not a fully generic pass-through wrapper.
+It is a curated adapter for specific visualizer controls.
+
+### Default overrides
+If absent, it forces:
+- `ui=0`
+- `kiosk=1`
+
+That means `controller-visualizer.html` intentionally normalizes the visualizer into a no-toolstrip, kiosk-style child display by default.
+
+### Frame loading behavior
+It finally sets:
+- `vizFrame.src = visualizerChildUrl`
+
+So the page’s center of gravity is simply:
+- construct normalized `visualizer.html?...`
+- host it in an iframe
+- optionally provide controller back-navigation
+
+### Best current interpretation
+A precise interpretation is:
+- `controller-visualizer.html` is a controller-friendly host shell for `visualizer.html`
+- it normalizes query params for kiosk-style usage
+- it supports both standalone and embedded framing modes
+- it is a wrapper/adaptor page, not a visualizer logic page
+
+## 3. `index1080.html` — pure redirect shim
+
+### What it actually is
+Direct file inspection shows:
+- a meta refresh to `/index.html`
+- a fallback body link to `/index.html`
+
+There is no logic beyond redirecting.
+No scripts.
+No display-specific adaptation.
+
+### Best current interpretation
+This page is just:
+- a compatibility / legacy entrypoint
+- a resolution-named shim that now redirects to `index.html`
+
+It should be documented lightly and not overinterpreted.
 
 ## Working family model
 
-A good current family model is:
+A more source-grounded family model is:
 
-### Substantive operator helper page
+### Real operator console
 - `displays.html`
+  - chooses target surfaces
+  - fetches track key
+  - updates browser-target URL in moOde
+  - updates peppy/display profile state
 
-### Wrapper host page
+### Real wrapper/adaptor page
 - `controller-visualizer.html`
+  - hosts `visualizer.html` in controller contexts
+  - normalizes params
+  - supports embedded and standalone framing
 
-### Redirect shim
+### Pure redirect shim
 - `index1080.html`
+  - redirects to `index.html`
 
-### Terminology note
-Within this family, it helps to distinguish:
-- **display modes**: Player, Peppy, Visualizer
-- **presentation/shell mode**: Kiosk
-- **designer/helper surfaces**: `player.html`, `kiosk-designer.html`, `displays.html`, wrapper hosts
-- **skin**: especially useful for Peppy visual/theme variants inside the Peppy display mode
+## Key distinctions to preserve
 
-That distinction is useful because it prevents the wiki from overvaluing thin wrappers and redirects while still acknowledging their operational role.
+### `displays.html` vs `display.html`
+- `displays.html` = operator launch/push console
+- `display.html` = actual shared display target entrypoint pushed into moOde for Player/Peppy/Visualizer flows
+
+### `controller-visualizer.html` vs `visualizer.html`
+- `controller-visualizer.html` = host shell / iframe wrapper
+- `visualizer.html` = actual visualizer implementation
+
+### `index1080.html` vs `index.html`
+- `index1080.html` = redirect shim
+- `index.html` = real page
 
 ## Relationship to the broader display branch
 
-This family should stay linked with:
-- `display-interface.md`
-- future `display-browser-surface.md`
-- `visualizer-in-embedded-mode.md`
-- `kiosk-designer.md`
-
-Because these pages influence how display surfaces are:
-- selected
-- launched
-- pushed
-- hosted
-
-rather than how they render internally.
-
-## Candidate future drill-down pages
-
-The most likely next drill-down pages from this family are:
-
-### `displays-launch-console.md`
-For `displays.html` specifically, especially the push flows and display-mode mapping.
-
-### `controller-visualizer-wrapper.md`
-For the wrapper/adapter role of `controller-visualizer.html`.
-
-`index1080.html` probably does not need its own dedicated page unless legacy/resolution-specific behavior turns out more important than it currently looks.
-
-## Architectural interpretation
-
-A good current interpretation is:
-- this family is made of helper surfaces around the display branch
-- they are operationally important even when they are not the core display implementation pages
-- they shape real workflows for choosing, pushing, and hosting display content
-
-This makes them worth grouping together instead of leaving them as isolated oddities.
-
-## Relationship to other pages
-
 This page should stay linked with:
 - `display-interface.md`
-- `desktop-browser-interface.md`
-- `configuration-and-diagnostics-interfaces.md`
 - `visualizer-in-embedded-mode.md`
-- future display-browser-surface documentation
+- `kiosk-designer.md`
+- `controller-kiosk-mode.md`
+- `api-config-and-runtime-endpoints.md`
+- `api-state-truth-endpoints.md`
 
-## Things still to verify
+Because this family is part of the workflow for:
+- taking visible state from app-host truth surfaces
+- choosing a presentation target
+- pushing a browser display target into moOde
+- wrapping child display surfaces in controller-friendly shells
 
-Future deeper verification should clarify:
-- whether `displays.html` is the primary live operator console for choosing moOde display targets
-- whether `controller-visualizer.html` is actively used in current workflows or mostly transitional
-- whether `index1080.html` exists only for backward compatibility or still matters for deployed callers
-- how these helper pages interact with any broader display-router logic not yet fully mapped
+## Things now much less speculative
+
+Direct file inspection now supports these stronger claims:
+- `displays.html` really is a live moOde browser-target push console
+- Player/Peppy/Visualizer pushes all target the shared `display.html?kiosk=1` entrypoint
+- the selected render mode is carried through `/peppy/last-profile`, not by unique pushed URLs
+- kiosk push is distinct and goes directly to `kiosk.html`
+- `controller-visualizer.html` really is just a thin host around `visualizer.html`
+- `index1080.html` really is just a redirect shim
 
 ## Current status
 
-At the moment, this page gives the display helper surfaces a clean structural home.
+At the moment, this page is much less inferential than before.
 
-That matters because it turns what would otherwise look like random miscellaneous pages into a coherent subfamily:
-- one launcher/push console
-- one wrapper host
+It now describes this family as:
+- one concrete operator launch/push console
+- one concrete wrapper host
 - one redirect shim
+
+That is a cleaner and more source-grounded explanation of what these files are doing in the display branch.
