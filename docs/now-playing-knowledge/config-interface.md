@@ -290,9 +290,12 @@ This makes it one of the most important pages in the operator/admin branch.
 ## Related branch pages
 
 - `config-feature-breakdown.md`
+- `config-ratings.md`
 - `alexa-interface.md`
 
 `config-feature-breakdown.md` is the current feature-level decomposition of the major modules inside `config.html`.
+
+`config-ratings.md` is the dedicated drill-down for the ratings setup and sticker-DB maintenance block inside Config.
 
 This is the most direct current wiki page for the Alexa corrections/review surface that complements the main Config page.
 

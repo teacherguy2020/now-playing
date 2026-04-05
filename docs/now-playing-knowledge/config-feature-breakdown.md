@@ -329,7 +329,7 @@ For mpdscribble + Last.fm + Vibe.
 For Pushover + track notifications.
 
 ### `config-ratings.md`
-For ratings DB verification, backup, and restore.
+Now serves as the dedicated drill-down for ratings DB verification, backup, and restore.
 
 ### `config-alexa-setup.md`
 For Alexa enablement/domain/webhook setup, distinct from the correction page.
