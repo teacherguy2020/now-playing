@@ -123,6 +123,7 @@ Especially relevant when the question is about:
 - `theme-interface.md` — implementation-aware drill-down for the shell-theme editor and preset system
 - `now-playing-surface-variants.md` — grouped map of the `controller-now-playing*` family, including variants and redirect shims
 - `display-launch-and-wrapper-surfaces.md` — grouped map of display launcher, wrapper, and redirect helper pages
+- `youtube-interface.md` — implementation-aware drill-down for the YouTube search, resolve, playlist-expand, and queue bridge surface
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
 - `workflows.md` — common ways work tends to happen in this project
 - `display-interface.md` — map of the display-oriented surfaces, modes, and runtime-sensitive presentation paths

@@ -115,6 +115,7 @@ This page should remain linked with:
 
 - `tablet-interface.md`
 - `desktop-browser-interface.md`
+- `youtube-interface.md`
 - `user-interfaces.md`
 
 ## Current status

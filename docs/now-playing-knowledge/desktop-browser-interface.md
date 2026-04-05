@@ -111,8 +111,11 @@ This page should remain linked with:
 ## Related branch pages
 
 - `now-playing-surface-variants.md`
+- `youtube-interface.md`
 
 This is especially relevant when the desktop/browser question is really about the `controller-now-playing*` family rather than the broader browser shell.
+
+`youtube-interface.md` is relevant when the browser task is specifically about YouTube search, playlist expansion, or queue ingestion rather than the broader shell.
 
 ## Current status
 

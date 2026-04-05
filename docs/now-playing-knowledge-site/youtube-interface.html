@@ -1,0 +1,341 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>youtube-interface</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="config-interface.html">config-interface</a></li>
+<li><a href="configuration-and-diagnostics-interfaces.html">configuration-and-diagnostics-interfaces</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="desktop-browser-interface.html">desktop-browser-interface</a></li>
+<li><a href="diagnostics-interface.html">diagnostics-interface</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-launch-and-wrapper-surfaces.html">display-launch-and-wrapper-surfaces</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="embedded-pane-contracts.html">embedded-pane-contracts</a></li>
+<li><a href="genre-pane-messaging.html">genre-pane-messaging</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-editor-mode.html">kiosk-editor-mode</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
+<li><a href="library-health-interface.html">library-health-interface</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="now-playing-surface-variants.html">now-playing-surface-variants</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="phone-interface.html">phone-interface</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="tablet-interface.html">tablet-interface</a></li>
+<li><a href="tablet-kiosk-shell-differences.html">tablet-kiosk-shell-differences</a></li>
+<li><a href="theme-interface.html">theme-interface</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="visualizer-in-embedded-mode.html">visualizer-in-embedded-mode</a></li>
+<li><a href="workflows.html">workflows</a></li>
+<li><a href="youtube-interface.html">youtube-interface</a></li></ul></nav><article><h1>youtube interface</h1>
+<h2>Purpose</h2>
+<p>This page documents <code>now-playing/youtube.html</code>, the YouTube bridge surface in the <code>now-playing</code> ecosystem.</p>
+<p>This page is intentionally implementation-aware, because <code>youtube.html</code> is not just a link-entry form. It is a focused operator/user bridge for:</p>
+<ul>
+<li>searching YouTube</li>
+<li>selecting search results</li>
+<li>expanding playlist URLs into individual items</li>
+<li>resolving a URL into canonical metadata</li>
+<li>queueing one or many items into moOde/MPD workflows</li>
+</ul>
+<h2>Why this page matters</h2>
+<p><code>youtube.html</code> is important because it exposes a concrete content-ingestion pathway into the system.</p>
+<p>It matters because it bridges:</p>
+<ul>
+<li>external YouTube content</li>
+<li>queueing workflows</li>
+<li>track-key-protected API operations</li>
+<li>user selection of search results and playlist items</li>
+</ul>
+<p>That makes it a strong example of a feature-specific intake surface rather than a generic controller or display page.</p>
+<h2>Important file</h2>
+<p>Primary file:</p>
+<ul>
+<li><code>now-playing/youtube.html</code></li>
+</ul>
+<p>Related pages:</p>
+<ul>
+<li><code>integrations.md</code></li>
+<li><code>queue-and-playback-control.md</code> (future/expanding)</li>
+<li><code>desktop-browser-interface.md</code></li>
+<li><code>phone-interface.md</code></li>
+</ul>
+<h2>High-level role</h2>
+<p>A good current interpretation is:</p>
+<ul>
+<li><code>youtube.html</code> is a focused YouTube intake and queueing console</li>
+<li>it is designed to help an operator or user turn YouTube URLs/searches/playlists into queue actions quickly</li>
+<li>it is narrower than broad controller pages, but highly operational within its feature area</li>
+</ul>
+<h2>Major UI areas visible in the page</h2>
+<p>Repo-visible structure shows four major workflow areas.</p>
+<h2>1. Search area</h2>
+<p>Observed elements include:</p>
+<ul>
+<li><code>#ytSearch</code></li>
+<li><code>#ytPlaylistsOnly</code></li>
+<li><code>#ytSearchBtn</code></li>
+<li><code>#results</code></li>
+</ul>
+<p>This supports searching YouTube directly from the page.</p>
+<h2>2. Playlist expansion / multi-select area</h2>
+<p>Observed elements include:</p>
+<ul>
+<li><code>#ytSelectAll</code></li>
+<li><code>#playlistRows</code></li>
+</ul>
+<p>This supports expanding playlist URLs and selecting multiple items at once.</p>
+<h2>3. URL and queue-mode area</h2>
+<p>Observed elements include:</p>
+<ul>
+<li><code>#ytUrl</code></li>
+<li><code>#ytMode</code></li>
+<li>queue modes:
+<ul>
+<li><code>append</code></li>
+<li><code>crop</code></li>
+<li><code>replace</code></li>
+</ul>
+</li>
+</ul>
+<p>This is the core action area for sending selected YouTube content into the queue.</p>
+<h2>4. Action/status area</h2>
+<p>Observed action controls include:</p>
+<ul>
+<li><code>#ytResolve</code></li>
+<li><code>#ytExpandUrl</code></li>
+<li><code>#ytSend</code></li>
+<li><code>#status</code></li>
+<li><code>#meta</code></li>
+</ul>
+<p>This means the page supports several distinct operator actions, not just one “send” button.</p>
+<h2>Core supporting state</h2>
+<p>The page builds an app-host API base as:</p>
+<ul>
+<li><code>${location.protocol}//${location.hostname||'nowplaying.local'}:3101</code></li>
+</ul>
+<p>It also caches the runtime track key in local state via:</p>
+<ul>
+<li><code>key</code></li>
+</ul>
+<p>This means the page depends on the normal app-host API surface, not on a separate provider-side integration path.</p>
+<h2>Key functions / logic blocks</h2>
+<h2><code>ensureKey()</code></h2>
+<p>This function is one of the most important building blocks.</p>
+<p>Observed behavior includes:</p>
+<ul>
+<li>fetch runtime config from <code>/config/runtime</code></li>
+<li>extract <code>config.trackKey</code></li>
+<li>cache it locally</li>
+</ul>
+<p>This is important because most write or protected YouTube operations depend on having a track key available.</p>
+<h2><code>resolveOnly()</code></h2>
+<p>This is the URL-resolution workflow.</p>
+<p>Observed behavior includes:</p>
+<ul>
+<li>require a pasted URL</li>
+<li>ensure the track key</li>
+<li>POST to:
+<ul>
+<li><code>/youtube/resolve</code></li>
+</ul>
+</li>
+<li>include body:
+<ul>
+<li><code>{ url }</code></li>
+</ul>
+</li>
+<li>render metadata such as:
+<ul>
+<li>title</li>
+<li>channel</li>
+<li>duration</li>
+<li>source link</li>
+</ul>
+</li>
+</ul>
+<p>This is effectively the metadata-confirmation step for a direct YouTube URL.</p>
+<h2><code>doSearch()</code></h2>
+<p>This is the search workflow.</p>
+<p>Observed behavior includes:</p>
+<ul>
+<li>require a search query</li>
+<li>ensure the track key</li>
+<li>POST to:
+<ul>
+<li><code>/youtube/search</code></li>
+</ul>
+</li>
+<li>include body:
+<ul>
+<li><code>{ query, limit:12, playlistsOnly:&lt;bool&gt; }</code></li>
+</ul>
+</li>
+<li>render result rows with:
+<ul>
+<li>title</li>
+<li>channel</li>
+<li>duration</li>
+<li>“Use” button</li>
+<li>“Expand” button</li>
+</ul>
+</li>
+</ul>
+<p>This makes the page a real search-driven intake surface, not only a URL resolver.</p>
+<h2><code>loadPlaylist(urlOverride='')</code></h2>
+<p>This is the playlist expansion workflow.</p>
+<p>Observed behavior includes:</p>
+<ul>
+<li>determine playlist URL from override or main URL field</li>
+<li>ensure the track key</li>
+<li>POST to:
+<ul>
+<li><code>/youtube/playlist</code></li>
+</ul>
+</li>
+<li>include body:
+<ul>
+<li><code>{ url, limit:150 }</code></li>
+</ul>
+</li>
+<li>render selectable rows in <code>#playlistRows</code></li>
+<li>skip or disable items that are:
+<ul>
+<li><code>[Deleted video]</code></li>
+<li><code>[Private video]</code></li>
+</ul>
+</li>
+<li>set “Select all” checked by default</li>
+</ul>
+<p>This is one of the page’s most important workflows because it turns one playlist URL into an editable multi-item selection set.</p>
+<h2><code>sendNow()</code></h2>
+<p>This is the main queueing action.</p>
+<p>Observed behavior includes:</p>
+<ul>
+<li>gather selected playlist item URLs if present</li>
+<li>otherwise use the single pasted URL</li>
+<li>ensure the track key</li>
+<li>read queue mode from <code>#ytMode</code></li>
+<li>POST to:
+<ul>
+<li><code>/youtube/queue</code></li>
+</ul>
+</li>
+<li>include body shaped like:
+<ul>
+<li><code>{ url:urls[0], urls, mode }</code></li>
+</ul>
+</li>
+<li>report queued count and first item metadata</li>
+</ul>
+<p>This is the main bridge from YouTube content into the now-playing/moOde queue path.</p>
+<h2>Important API calls</h2>
+<p>Based on current inspection, important endpoints include:</p>
+<h3>Runtime</h3>
+<ul>
+<li><code>GET /config/runtime</code></li>
+</ul>
+<h3>YouTube feature endpoints</h3>
+<ul>
+<li><code>POST /youtube/search</code></li>
+<li><code>POST /youtube/playlist</code></li>
+<li><code>POST /youtube/resolve</code></li>
+<li><code>POST /youtube/queue</code></li>
+</ul>
+<p>These are clearly the core contract of the page.</p>
+<h2>Queue-mode semantics</h2>
+<p>The page exposes three queue modes:</p>
+<ul>
+<li><code>append</code></li>
+<li><code>crop</code></li>
+<li><code>replace</code></li>
+</ul>
+<p>Even without tracing backend code yet, this is an important operator-facing contract.</p>
+<p>It suggests the page is not just adding content — it is explicitly controlling how YouTube content merges with or replaces the existing queue.</p>
+<h2>Search-result behavior</h2>
+<p>Search results support two key actions:</p>
+<ul>
+<li><code>Use</code></li>
+<li><code>Expand</code></li>
+</ul>
+<p>Current working interpretation:</p>
+<ul>
+<li><code>Use</code> populates the URL field and resolves metadata</li>
+<li><code>Expand</code> loads playlist contents if the result is a playlist-like URL and scrolls the playlist selection area into view</li>
+</ul>
+<p>So the page supports both:</p>
+<ul>
+<li>fast single-item selection</li>
+<li>deeper playlist expansion and curation</li>
+</ul>
+<h2>Playlist-selection behavior</h2>
+<p>Once a playlist is expanded:</p>
+<ul>
+<li>rows are rendered with checkboxes</li>
+<li><code>#ytSelectAll</code> can bulk toggle selection</li>
+<li>disabled rows are used for deleted/private videos</li>
+</ul>
+<p>This is an example of the page becoming a lightweight playlist curation interface before queue submission.</p>
+<h2>User workflow model</h2>
+<p>A useful current operator/user workflow model is:</p>
+<h3>Direct URL workflow</h3>
+<ol>
+<li>paste a YouTube URL</li>
+<li>optionally resolve metadata</li>
+<li>choose queue mode</li>
+<li>send to moOde</li>
+</ol>
+<h3>Search workflow</h3>
+<ol>
+<li>search by artist/song/query</li>
+<li>use a result directly, or expand it if it is a playlist</li>
+<li>choose queue mode</li>
+<li>send to moOde</li>
+</ol>
+<h3>Playlist workflow</h3>
+<ol>
+<li>paste or select a playlist URL</li>
+<li>expand playlist contents</li>
+<li>select desired items</li>
+<li>choose queue mode</li>
+<li>send selected items to moOde</li>
+</ol>
+<p>That makes the page more capable than its simple appearance suggests.</p>
+<h2>Architectural interpretation</h2>
+<p>A good current interpretation is:</p>
+<ul>
+<li><code>youtube.html</code> is the dedicated YouTube ingress surface for the system</li>
+<li>it combines search, resolution, playlist expansion, and queue submission into one focused tool</li>
+<li>it is one of the clearest feature-specific bridges between external content and internal playback workflows</li>
+</ul>
+<p>That makes it an important feature page even if it is not a large shell.</p>
+<h2>Relationship to other pages</h2>
+<p>This page should stay linked with:</p>
+<ul>
+<li><code>integrations.md</code></li>
+<li><code>desktop-browser-interface.md</code></li>
+<li><code>phone-interface.md</code></li>
+<li>future queue/playback-control pages</li>
+<li>future YouTube-specific integration notes</li>
+</ul>
+<h2>Things still to verify</h2>
+<p>Future deeper verification should clarify:</p>
+<ul>
+<li>how <code>/youtube/queue</code> maps onto downstream MPD/moOde queue actions</li>
+<li>how <code>crop</code> is implemented backend-side compared with <code>append</code> and <code>replace</code></li>
+<li>whether search and playlist expansion rely on the same backend extractor path as resolve</li>
+<li>whether there are additional backend validation or rate-limit behaviors not visible from the page alone</li>
+<li>whether this page is primarily desktop-used or also important on smaller devices</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page already has enough evidence to be treated as the main YouTube intake surface in the project.</p>
+<p>It is not just a URL form. It is a compact search, curation, resolution, and queueing console for bringing YouTube content into the live system.</p></article></body></html>
