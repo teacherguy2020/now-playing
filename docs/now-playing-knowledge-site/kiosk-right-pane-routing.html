@@ -167,12 +167,21 @@
 <li>the controller shell manages pane lifecycle, row state, theming, and embedding parameters</li>
 <li>this is one of the clearest places where kiosk mode becomes a true controller-shell experience rather than a simple redirect workflow</li>
 </ul>
+<h2>Kiosk queue owner split</h2>
+<p>For the specific question “who owns the kiosk/right-pane queue UI?”, use <a href="kiosk-queue-shell-vs-content-owner.html"><code>kiosk-queue-shell-vs-content-owner</code></a>.</p>
+<p>The short version is:</p>
+<ul>
+<li><strong>pane shell owner</strong> = controller-side kiosk routing and pane lifecycle</li>
+<li><strong>queue content owner</strong> = <code>controller-queue.html</code> as the actual embedded queue surface</li>
+<li><strong>embedded-mode behavior</strong> = parent/child pane contract</li>
+</ul>
 <h2>Relationship to other pages</h2>
 <p>This page should stay linked with:</p>
 <ul>
 <li><code>controller-kiosk-mode.md</code></li>
 <li><code>kiosk-launch-and-routing.md</code></li>
 <li><code>kiosk-interface.md</code></li>
+<li><code>kiosk-queue-shell-vs-content-owner.md</code></li>
 <li>future detailed pages for <code>controller-now-playing</code>, queue, artists, albums, and visualizer behavior</li>
 </ul>
 <h2>Things still to verify</h2>
