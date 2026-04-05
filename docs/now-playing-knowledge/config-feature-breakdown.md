@@ -332,7 +332,7 @@ Now serves as the dedicated drill-down for Pushover-backed track notifications a
 Now serves as the dedicated drill-down for ratings DB verification, backup, and restore.
 
 ### `config-alexa-setup.md`
-For Alexa enablement/domain/webhook setup, distinct from the correction page.
+Now serves as the dedicated drill-down for Alexa enablement, public-domain setup, route webhook configuration, and reachability checks inside Config.
 
 ## Architectural interpretation
 

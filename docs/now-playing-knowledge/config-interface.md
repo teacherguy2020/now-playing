@@ -293,6 +293,7 @@ This makes it one of the most important pages in the operator/admin branch.
 - `config-ratings.md`
 - `config-lastfm-and-scrobbling.md`
 - `config-notifications.md`
+- `config-alexa-setup.md`
 - `alexa-interface.md`
 
 `config-feature-breakdown.md` is the current feature-level decomposition of the major modules inside `config.html`.
@@ -302,6 +303,8 @@ This makes it one of the most important pages in the operator/admin branch.
 `config-lastfm-and-scrobbling.md` is the dedicated drill-down for mpdscribble, Last.fm, and Vibe-related Config behavior.
 
 `config-notifications.md` is the dedicated drill-down for the Pushover-backed track notifications block and its monitor/timing controls.
+
+`config-alexa-setup.md` is the dedicated drill-down for Alexa enablement, domain setup, route webhook configuration, and domain reachability checks inside Config.
 
 This is the most direct current wiki page for the Alexa corrections/review surface that complements the main Config page.
 
