@@ -251,12 +251,20 @@ A good current interpretation is:
 
 That makes it a distinctive page in the operator branch: design/configuration-oriented, but not runtime-API-centric.
 
+## Anatomy companion page
+
+- `theme-page-anatomy.md`
+
+This is the anatomy-style companion page for `theme.html`.
+Use it when the task is not just about Theme as a surface, but about a specific region such as the token grid, preset controls, import/export tools, save/reset strip, export modal, localStorage persistence layer, shell sync layer, or editor self-theming behavior.
+
 ## Relationship to other pages
 
 This page should stay linked with:
 - `configuration-and-diagnostics-interfaces.md`
 - `desktop-browser-interface.md`
 - `display-interface.md`
+- `theme-page-anatomy.md`
 - future pages about app shell behavior and tokenized theming
 
 ## Things still to verify
@@ -267,6 +275,8 @@ Future deeper verification should clarify:
 - whether any theme state is ever mirrored into backend/runtime config
 - how theme sync behaves across tabs, if at all
 - whether some tokens are legacy, duplicated, or partially unused
+
+`theme-page-anatomy.md` matters when the real question is not only “what is `theme.html`?” but “which region inside `theme.html` actually owns the thing I need to change?”
 
 ## Current status
 
