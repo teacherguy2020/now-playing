@@ -15,6 +15,8 @@ The goal is to prevent drift such as:
 
 This page is the maintenance/governance layer for the wiki.
 
+For the operating workflow of maintaining the wiki through ingest, query, and lint work, see `wiki-operations.md`.
+
 ## Why this page matters
 
 Phase 1 built broad coverage.
