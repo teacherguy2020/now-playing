@@ -125,6 +125,7 @@ Especially relevant when the question is about:
 - `controller-kiosk-scaffold.md` — the separate standalone `controller-kiosk.html` scaffold path
 - `controller-kiosk-mode.md` — controller-side behavior when kiosk mode is active
 - `tablet-interface.md` — tablet-oriented controller/interface hub tying together pane-rich and kiosk-adjacent behavior
+- `phone-interface.md` — phone-oriented controller/interface hub for compact direct interaction
 - `kiosk-right-pane-routing.md` — right-pane embedded kiosk/controller subview loading inside controller kiosk mode
 - `embedded-pane-contracts.md` — parent/child contract for embedded kiosk pane pages
 - `visualizer-in-embedded-mode.md` — code-aware drill-down for embedded/fullscreen/designer visualizer behavior

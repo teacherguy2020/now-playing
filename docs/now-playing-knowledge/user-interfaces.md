@@ -36,8 +36,9 @@ Planned drill-down pages:
 - `tablet-interface.md`
 - `phone-interface.md`
 
-Current anchor page:
+Current anchor pages:
 - `tablet-interface.md`
+- `phone-interface.md`
 
 Likely major surfaces in this family include:
 - desktop browser usage around `app.html`
