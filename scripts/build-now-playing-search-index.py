@@ -45,19 +45,40 @@ def normalize_text(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
 
-def extract_markdown(path: Path) -> tuple[str, list[str], list[str], str]:
+def slugify(text: str) -> str:
+    text = text.lower()
+    text = re.sub(r'[^a-z0-9\s-]', '', text)
+    text = re.sub(r'\s+', '-', text.strip())
+    text = re.sub(r'-+', '-', text)
+    return text or 'section'
+
+
+def extract_markdown(path: Path) -> tuple[str, list[str], list[dict[str, str]], list[str], str]:
     lines = path.read_text(encoding='utf-8').splitlines()
     title = ''
     headings: list[str] = []
+    heading_targets: list[dict[str, str]] = []
     body_lines: list[str] = []
+    used_ids: set[str] = set()
     for line in lines:
         if not title and line.startswith('# '):
             title = line[2:].strip()
             continue
+        heading_text = ''
         if line.startswith('## '):
-            headings.append(line[3:].strip())
+            heading_text = line[3:].strip()
         elif line.startswith('### '):
-            headings.append(line[4:].strip())
+            heading_text = line[4:].strip()
+        if heading_text:
+            headings.append(heading_text)
+            slug = slugify(heading_text)
+            base = slug
+            n = 2
+            while slug in used_ids:
+                slug = f"{base}-{n}"
+                n += 1
+            used_ids.add(slug)
+            heading_targets.append({"id": slug, "text": heading_text})
         body_lines.append(line)
 
     summary = ''
@@ -86,15 +107,16 @@ def extract_markdown(path: Path) -> tuple[str, list[str], list[str], str]:
             seen.add(word)
             deduped_keywords.append(word)
 
-    return title or path.stem, headings, deduped_keywords, summary
+    return title or path.stem, headings, heading_targets, deduped_keywords, summary
 
 
 index: dict[str, str] = {}
 summaries: dict[str, str] = {}
 heading_map: dict[str, str] = {}
+heading_targets_map: dict[str, list[dict[str, str]]] = {}
 
 for md in sorted(SOURCE_DIR.glob('*.md')):
-    title, headings, keywords, summary = extract_markdown(md)
+    title, headings, heading_targets, keywords, summary = extract_markdown(md)
     html_name = md.with_suffix('.html').name
     combined_index = ' '.join(filter(None, [title, md.stem.replace('-', ' '), ' '.join(keywords), ' '.join(headings)]))
     index[html_name] = normalize_text(combined_index).lower()
@@ -102,11 +124,13 @@ for md in sorted(SOURCE_DIR.glob('*.md')):
         summaries[html_name] = summary
     if headings:
         heading_map[html_name] = normalize_text(' '.join(headings)).lower()
+        heading_targets_map[html_name] = heading_targets
 
 content = (
     'window.NP_KNOWLEDGE_SEARCH_INDEX = ' + json.dumps(index, indent=2, ensure_ascii=False) + ';\n\n'
     'window.NP_KNOWLEDGE_SEARCH_SUMMARIES = ' + json.dumps(summaries, indent=2, ensure_ascii=False) + ';\n\n'
-    'window.NP_KNOWLEDGE_SEARCH_HEADINGS = ' + json.dumps(heading_map, indent=2, ensure_ascii=False) + ';\n'
+    'window.NP_KNOWLEDGE_SEARCH_HEADINGS = ' + json.dumps(heading_map, indent=2, ensure_ascii=False) + ';\n\n'
+    'window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = ' + json.dumps(heading_targets_map, indent=2, ensure_ascii=False) + ';\n'
 )
 OUT_FILE.write_text(content, encoding='utf-8')
 print(f'wrote {OUT_FILE}')
