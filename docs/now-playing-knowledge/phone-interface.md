@@ -71,6 +71,13 @@ A useful conceptual distinction is:
 
 That distinction should be verified in more detail later, but it is a good starting hypothesis.
 
+## Anatomy companion page
+
+- `controller-mobile-anatomy.md`
+
+This is the anatomy-style companion page for the phone branch.
+Use it when the task is not just about the phone interface in general, but about a specific region inside `controller-mobile.html` such as the compact now-playing block, transport controls, quick search strip, category rows, recent-content region, queue entrypoints, or modal/workflow behavior.
+
 ## Likely implementation dimensions
 
 The phone interface will likely eventually need documentation for:
@@ -119,7 +126,10 @@ This page should remain linked with:
 - `now-playing-surface-variants.md`
 - `youtube-interface.md`
 - `api-playback-and-queue-endpoints.md`
+- `controller-mobile-anatomy.md`
 - `user-interfaces.md`
+
+`controller-mobile-anatomy.md` is relevant when the phone question is not only “what is the phone shell?” but “which region inside `controller-mobile.html` actually owns the thing I need to change?”
 
 ## Current status
 
