@@ -108,6 +108,12 @@ This page should remain linked with:
 - `display-interface.md`
 - `user-interfaces.md`
 
+## Related branch pages
+
+- `now-playing-surface-variants.md`
+
+This is especially relevant when the desktop/browser question is really about the `controller-now-playing*` family rather than the broader browser shell.
+
 ## Current status
 
 At the moment, this page is a structural hub for the desktop browser branch rather than a code-heavy implementation guide.
