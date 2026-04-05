@@ -1,0 +1,232 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>genre-pane-messaging</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="embedded-pane-contracts.html">embedded-pane-contracts</a></li>
+<li><a href="genre-pane-messaging.html">genre-pane-messaging</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="visualizer-in-embedded-mode.html">visualizer-in-embedded-mode</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>genre pane messaging</h1>
+<h2>Purpose</h2>
+<p>This page documents the genre-specific parent/child messaging flow used in kiosk-style embedded pane navigation.</p>
+<p>It exists because <code>np-kiosk-pane-genre</code> is one of the first clear examples of a richer pane message beyond simple close behavior.</p>
+<p>That makes it a useful case study for how pane drill-down coordination works in practice.</p>
+<h2>Why this page matters</h2>
+<p>Earlier embedded-pane documentation established that child pages can ask the parent shell to close the pane.</p>
+<p>Genre messaging goes further:</p>
+<ul>
+<li>a child page communicates semantic navigation context (<code>genre</code>)</li>
+<li>the embedded navigation flow continues into another child page</li>
+<li>the next page can reassert or propagate the genre context</li>
+<li>album content is then derived from an API call keyed by that genre</li>
+</ul>
+<p>So this is a concrete example of pane-aware semantic drill-down.</p>
+<h2>Important files</h2>
+<p>Primary files involved:</p>
+<ul>
+<li><code>now-playing/controller-genres.html</code></li>
+<li><code>now-playing/controller-albums.html</code></li>
+<li><code>now-playing/controller.html</code></li>
+</ul>
+<p>Related pages:</p>
+<ul>
+<li><code>embedded-pane-contracts.md</code></li>
+<li><code>kiosk-right-pane-routing.md</code></li>
+<li><code>controller-kiosk-mode.md</code></li>
+</ul>
+<h2>Key message type</h2>
+<p>Observed message type:</p>
+<ul>
+<li><code>np-kiosk-pane-genre</code></li>
+</ul>
+<p>Observed payload shape includes fields such as:</p>
+<ul>
+<li><code>type: 'np-kiosk-pane-genre'</code></li>
+<li><code>pane: 'kiosk-albums.html'</code></li>
+<li><code>genre: &lt;selected genre&gt;</code></li>
+</ul>
+<p>This suggests the parent shell is intended to know:</p>
+<ul>
+<li>which pane target should become active</li>
+<li>which genre context should be carried forward</li>
+</ul>
+<h2>Source page: <code>controller-genres.html</code></h2>
+<h3>User action</h3>
+<p>The key user action is clicking a genre row in:</p>
+<ul>
+<li><code>#list .row[data-genre]</code></li>
+</ul>
+<h3>What the code does</h3>
+<p>Current repo-visible flow in <code>controller-genres.html</code>:</p>
+<ol>
+<li>detect clicked genre row</li>
+<li>decode the <code>data-genre</code> value</li>
+<li>build a URL to:
+<ul>
+<li><code>controller-albums.html</code></li>
+</ul>
+</li>
+<li>attach query params:
+<ul>
+<li><code>genre=&lt;selected genre&gt;</code></li>
+<li><code>cb=&lt;timestamp&gt;</code></li>
+</ul>
+</li>
+<li>if the current page is embedded:
+<ul>
+<li>also set <code>embedded=1</code></li>
+<li>post <code>np-kiosk-pane-genre</code> to the parent</li>
+</ul>
+</li>
+<li>navigate to the albums page after a short delay</li>
+</ol>
+<p>So the embedded genres page does two things at once:</p>
+<ul>
+<li>navigates itself to the album view</li>
+<li>informs the parent shell about the pane/genre transition</li>
+</ul>
+<h2>Message emission in <code>controller-genres.html</code></h2>
+<p>Observed embedded-mode message:</p>
+<ul>
+<li><code>window.parent?.postMessage({ type:'np-kiosk-pane-genre', pane:'kiosk-albums.html', genre }, '*')</code></li>
+</ul>
+<p>This is important because it means the genre selection is not only local page state. It is explicitly elevated to the parent-shell level.</p>
+<h2>Destination page: <code>controller-albums.html</code></h2>
+<h3>Genre-aware load behavior</h3>
+<p><code>controller-albums.html</code> reads:</p>
+<ul>
+<li><code>genre</code> from query params</li>
+</ul>
+<p>When embedded mode is active, it also posts:</p>
+<ul>
+<li><code>np-kiosk-pane-genre</code></li>
+</ul>
+<p>again to the parent shell, including:</p>
+<ul>
+<li><code>pane:'kiosk-albums.html'</code></li>
+<li><code>genre:&lt;resolved genreFilter&gt;</code></li>
+</ul>
+<p>So the albums page appears to reassert the genre state when it loads in embedded mode.</p>
+<p>That implies a stronger contract than a one-time click notification.</p>
+<h2>Album data loading for a genre</h2>
+<p>Once <code>controller-albums.html</code> has the <code>genre</code> value, current repo-visible behavior includes:</p>
+<ul>
+<li>updating the page title to:
+<ul>
+<li><code>Albums · &lt;genre&gt;</code></li>
+</ul>
+</li>
+<li>making a POST request to:
+<ul>
+<li><code>/config/queue-wizard/preview</code></li>
+</ul>
+</li>
+<li>sending a body shaped around:
+<ul>
+<li><code>genres:[genreFilter]</code></li>
+<li>empty artists/albums/exclusions</li>
+<li><code>minRating:0</code></li>
+<li><code>maxTracks:4000</code></li>
+</ul>
+</li>
+</ul>
+<p>The response is then used to build the album view for that genre.</p>
+<p>This is especially valuable because it ties together:</p>
+<ul>
+<li>child-page messaging</li>
+<li>embedded navigation</li>
+<li>filtered album computation through an API route</li>
+</ul>
+<h2>Concrete action flow</h2>
+<p>A useful concrete summary is:</p>
+<ol>
+<li>User clicks a genre in <code>controller-genres.html</code></li>
+<li>Page posts:
+<ul>
+<li><code>np-kiosk-pane-genre</code></li>
+</ul>
+</li>
+<li>Page navigates to:
+<ul>
+<li><code>controller-albums.html?genre=&lt;genre&gt;&amp;embedded=1&amp;cb=&lt;ts&gt;</code></li>
+</ul>
+</li>
+<li>Albums page loads in embedded mode</li>
+<li>Albums page posts <code>np-kiosk-pane-genre</code> again with the resolved genre</li>
+<li>Albums page calls:
+<ul>
+<li><code>POST /config/queue-wizard/preview</code></li>
+</ul>
+</li>
+<li>Filtered album content is rendered for that genre</li>
+</ol>
+<p>This is one of the clearest semantic drill-down flows in the kiosk pane architecture so far.</p>
+<h2>Parent-shell handling status</h2>
+<p>One interesting detail from current repo inspection:</p>
+<ul>
+<li><code>controller.html</code> clearly listens for <code>np-kiosk-hide-pane</code></li>
+<li>but the currently inspected main-session code path does not yet show explicit handling for <code>np-kiosk-pane-genre</code></li>
+</ul>
+<p>However:</p>
+<ul>
+<li><code>controller-tablet.html</code> does contain references to <code>np-kiosk-pane-genre</code></li>
+</ul>
+<p>So the current interpretation is:</p>
+<ul>
+<li>this message is definitely part of the ecosystem’s pane contract</li>
+<li>its handling may be implemented more fully in some controller variants than others</li>
+<li>or the message may be partly anticipatory/diagnostic in some paths</li>
+</ul>
+<p>This is a good reminder that the wiki should document both:</p>
+<ul>
+<li>confirmed message emission</li>
+<li>confirmed message handling</li>
+</ul>
+<p>and note where one is clearer than the other.</p>
+<h2>Architectural interpretation</h2>
+<p>A useful current interpretation is:</p>
+<ul>
+<li>genre pane messaging is a semantic coordination layer for embedded pane drill-down</li>
+<li>it helps keep the parent shell aware of the pane’s conceptual state</li>
+<li>it complements URL-based navigation rather than replacing it</li>
+<li>it connects UI drill-down to a queue-wizard-backed filtered album computation</li>
+</ul>
+<p>So this is not just “click genre, go somewhere.”
+It is a small but meaningful cross-layer contract.</p>
+<h2>Relationship to other pages</h2>
+<p>This page should stay linked with:</p>
+<ul>
+<li><code>embedded-pane-contracts.md</code></li>
+<li><code>kiosk-right-pane-routing.md</code></li>
+<li><code>controller-kiosk-mode.md</code></li>
+<li>future pages about albums, genres, and queue-wizard-backed browse flows</li>
+</ul>
+<h2>Things still to verify</h2>
+<p>Future deeper verification should clarify:</p>
+<ul>
+<li>exactly where and how <code>np-kiosk-pane-genre</code> is consumed in each parent shell variant</li>
+<li>whether the message drives visible parent-shell UI state, analytics, or future pane routing behavior</li>
+<li>whether similar semantic messages exist for artists, podcasts, playlists, or radio</li>
+<li>whether the genre flow behaves differently across controller, tablet, and mobile variants</li>
+<li>whether the duplicate message emission from genres and albums is essential, defensive, or transitional</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page establishes genre pane messaging as one of the first strong examples of semantic child-to-parent pane communication tied to a real API-backed content drill-down.</p>
+<p>That makes it a useful model for documenting similar message-driven flows elsewhere in the kiosk/controller system.</p></article></body></html>

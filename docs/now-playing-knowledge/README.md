@@ -127,6 +127,7 @@ Especially relevant when the question is about:
 - `kiosk-right-pane-routing.md` — right-pane embedded kiosk/controller subview loading inside controller kiosk mode
 - `embedded-pane-contracts.md` — parent/child contract for embedded kiosk pane pages
 - `visualizer-in-embedded-mode.md` — code-aware drill-down for embedded/fullscreen/designer visualizer behavior
+- `genre-pane-messaging.md` — semantic pane messaging flow from genres into genre-filtered albums
 - `integrations.md` — MPD, moOde, YouTube, request flows, and integration-side cautions
 - `deployment-and-ops.md` — runtime, verification, configuration, and operational themes
 - `local-environment.md` — Brian-specific hosts, deploy targets, and local overrides
