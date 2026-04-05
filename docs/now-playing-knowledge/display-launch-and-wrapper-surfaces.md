@@ -56,7 +56,7 @@ A good current interpretation is:
 Observed actions include:
 - “Open Designer” or helper links for:
   - `player.html` — Player designer / preview surface
-  - `peppy.html` — Peppy-facing display/config surface
+  - `peppy.html` — Peppy-facing display/config surface, including Peppy skin selection/config behavior
   - `visualizer.html&ui=1` — Visualizer UI/config view
   - `index.html`
   - `mobile.html`
@@ -155,6 +155,7 @@ Within this family, it helps to distinguish:
 - **display modes**: Player, Peppy, Visualizer
 - **presentation/shell mode**: Kiosk
 - **designer/helper surfaces**: `player.html`, `kiosk-designer.html`, `displays.html`, wrapper hosts
+- **skin**: especially useful for Peppy visual/theme variants inside the Peppy display mode
 
 That distinction is useful because it prevents the wiki from overvaluing thin wrappers and redirects while still acknowledging their operational role.
 

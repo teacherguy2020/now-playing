@@ -54,6 +54,10 @@ The UI describes this as:
 - making Peppy/Player display tools available
 - allowing moOde target URL to be set to this server
 
+In the wiki’s terminology, this feature block helps expose:
+- Player display-mode tooling
+- Peppy display-mode tooling, including Peppy skin-oriented tooling where relevant
+
 ### Important active verification
 Observed helper includes:
 - `checkDisplayTakeoverTargetNow()`

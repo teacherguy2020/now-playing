@@ -23,6 +23,7 @@ A useful terminology split for this branch is:
 - **display mode / renderer** = Player, Peppy, Visualizer
 - **presentation/shell mode** = Kiosk
 - **designer/helper surface** = pages such as `player.html`, `kiosk-designer.html`, `displays.html`, and wrapper hosts
+- **skin** = a visual/theme variant within a display mode, especially natural for Peppy
 
 In practice, display-oriented behavior can still overlap with control logic, playback authority, integration state, and runtime/display-host behavior.
 
@@ -65,6 +66,7 @@ Important terminology note:
 - `player.html` is better understood as a Player designer/preview surface
 - `player-render.html` is the Player render surface
 - `peppy.html` is a Peppy-facing display/config surface
+- “Peppy skin” is a useful term for the specific visual/meter-style variant within the broader Peppy display mode
 - Kiosk should be treated separately as a presentation/shell mode rather than just another renderer
 
 Planned deeper drill-down:
@@ -174,6 +176,7 @@ Also intersects where display push behavior and presentation routing overlap wit
 Should eventually cover:
 - Player display mode / presentation
 - Peppy display mode / presentation
+- Peppy skin variants within that mode
 - Visualizer display mode / presentation
 - how these render/display modes are selected or routed
 - which pages act as designers, render targets, wrappers, or push helpers for those modes
