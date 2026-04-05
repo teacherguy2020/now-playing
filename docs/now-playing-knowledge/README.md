@@ -129,6 +129,7 @@ Especially relevant when the question is about:
 - `visualizer-in-embedded-mode.md` — code-aware drill-down for embedded/fullscreen/designer visualizer behavior
 - `genre-pane-messaging.md` — semantic pane messaging flow from genres into genre-filtered albums
 - `kiosk-editor-mode.md` — controller-side editor/designer branch of kiosk mode
+- `tablet-kiosk-shell-differences.md` — where the tablet shell implements richer kiosk-pane behavior than the main controller shell
 - `integrations.md` — MPD, moOde, YouTube, request flows, and integration-side cautions
 - `deployment-and-ops.md` — runtime, verification, configuration, and operational themes
 - `local-environment.md` — Brian-specific hosts, deploy targets, and local overrides

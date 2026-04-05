@@ -1,0 +1,231 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>tablet-kiosk-shell-differences</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="embedded-pane-contracts.html">embedded-pane-contracts</a></li>
+<li><a href="genre-pane-messaging.html">genre-pane-messaging</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-editor-mode.html">kiosk-editor-mode</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="tablet-kiosk-shell-differences.html">tablet-kiosk-shell-differences</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="visualizer-in-embedded-mode.html">visualizer-in-embedded-mode</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>tablet kiosk shell differences</h1>
+<h2>Purpose</h2>
+<p>This page documents the ways <code>now-playing/controller-tablet.html</code> appears to differ from the main <code>controller.html</code> kiosk shell.</p>
+<p>It exists because code inspection shows that the tablet shell is not merely a resized variant. In several important areas, it appears to implement a richer or more explicit kiosk-pane architecture.</p>
+<h2>Why this page matters</h2>
+<p>Earlier drill-down pages uncovered some ambiguity in the kiosk pane contract:</p>
+<ul>
+<li>some messages were clearly emitted by child pages</li>
+<li>but the main controller shell did not always show equally clear handling for those messages</li>
+</ul>
+<p>Inspection of <code>controller-tablet.html</code> helps resolve some of that ambiguity.</p>
+<p>The tablet shell appears to be a more feature-complete or more explicit implementation in several kiosk-pane areas, including:</p>
+<ul>
+<li>pane message handling</li>
+<li>pane URL synchronization</li>
+<li>pane prewarming</li>
+<li>tablet-specific embedded child parameters</li>
+<li>tablet settings pane support</li>
+</ul>
+<h2>Important file</h2>
+<p>Primary file:</p>
+<ul>
+<li><code>now-playing/controller-tablet.html</code></li>
+</ul>
+<p>Related pages:</p>
+<ul>
+<li><code>controller-kiosk-mode.md</code></li>
+<li><code>kiosk-right-pane-routing.md</code></li>
+<li><code>embedded-pane-contracts.md</code></li>
+<li><code>genre-pane-messaging.md</code></li>
+</ul>
+<h2>Shared foundations with <code>controller.html</code></h2>
+<p>The tablet shell still shares a lot with the main controller shell.</p>
+<p>Observed similarities include:</p>
+<ul>
+<li><code>IS_KIOSK_1280</code></li>
+<li><code>IS_KIOSK_EDITOR</code></li>
+<li><code>kiosk1280</code> / <code>kioskEditor</code> body-class split</li>
+<li><code>#kioskPane</code> and <code>#kioskPaneFrame</code></li>
+<li><code>openPage()</code> right-pane routing</li>
+<li>editor-mode push controls</li>
+<li>suppression of right-pane behavior when editor mode is active</li>
+</ul>
+<p>So this is not a different architecture from scratch.
+It is better understood as a tablet-specialized branch of the same general shell concept.</p>
+<h2>Important differences</h2>
+<h2>1. Explicit handling of <code>np-kiosk-pane-genre</code></h2>
+<p>This is one of the clearest differences.</p>
+<p>In <code>controller-tablet.html</code>, the window message handler explicitly handles:</p>
+<ul>
+<li><code>np-kiosk-pane-genre</code></li>
+</ul>
+<p>Observed behavior:</p>
+<ul>
+<li>confirm the message came from the active pane iframe</li>
+<li>confirm the pane is currently open</li>
+<li>if the pane value starts with <code>kiosk-</code>, call:
+<ul>
+<li><code>syncPaneUrlParam(pane, { genre })</code></li>
+</ul>
+</li>
+</ul>
+<p>This is important because it gives us a confirmed parent-side consumer for the semantic genre message.</p>
+<p>That makes the tablet shell a key reference point for understanding how pane messages are intended to work.</p>
+<h2>2. Pane URL synchronization</h2>
+<p>The tablet shell uses:</p>
+<ul>
+<li><code>syncPaneUrlParam(...)</code></li>
+</ul>
+<p>Observed uses include:</p>
+<ul>
+<li>syncing genre context from pane messages</li>
+<li>clearing pane-related URL state when the pane closes</li>
+</ul>
+<p>This suggests the tablet shell treats the pane not only as an iframe, but also as part of the top-level navigable application state.</p>
+<p>That is a stronger shell model than “just open a child page.”</p>
+<h2>3. Explicit pane close cleanup</h2>
+<p>When closing the pane, <code>controller-tablet.html</code> does more than hide the iframe.</p>
+<p>Observed behavior includes:</p>
+<ul>
+<li>removing the pane open class/state</li>
+<li>clearing nav open state</li>
+<li>calling:
+<ul>
+<li><code>syncPaneUrlParam("", { genre: "" })</code></li>
+</ul>
+</li>
+</ul>
+<p>So the tablet shell actively resets pane-related URL state on close.</p>
+<h2>4. Additional embedded child parameters</h2>
+<p>When loading pane content, the tablet shell passes more context than the main controller shell.</p>
+<p>Observed pane query parameters include:</p>
+<ul>
+<li><code>embedded=1</code></li>
+<li><code>cols=7</code> in tablet-landscape contexts</li>
+<li><code>theme</code></li>
+<li><code>colorPreset</code></li>
+<li><code>apiBase</code></li>
+</ul>
+<p>The <code>apiBase</code> parameter is especially notable.</p>
+<p>It suggests embedded children in the tablet shell may rely on an explicitly injected API base rather than always deriving it implicitly.</p>
+<p>That is a meaningful shell-level enhancement.</p>
+<h2>5. Tablet settings pane support</h2>
+<p>The tablet shell includes an additional pane mapping:</p>
+<ul>
+<li><code>kiosk-settings.html</code> → <code>controller-tablet-settings.html</code></li>
+</ul>
+<p>It also passes extra settings-oriented query parameters such as:</p>
+<ul>
+<li><code>recentRows</code></li>
+<li><code>vizPreset</code></li>
+</ul>
+<p>This suggests the tablet shell has a broader concept of pane-embedded settings/configuration views than the main controller shell path we inspected.</p>
+<h2>6. Pane prewarming</h2>
+<p>The tablet shell contains explicit prewarming helpers such as:</p>
+<ul>
+<li><code>prewarmPaneRoute(page)</code></li>
+<li><code>prewarmPaneData()</code></li>
+</ul>
+<p>Observed prewarming behavior includes:</p>
+<ul>
+<li>creating hidden offscreen iframes for pane routes</li>
+<li>prefetching data from endpoints such as:
+<ul>
+<li><code>/config/library-health/albums</code></li>
+<li><code>/config/queue-wizard/playlists</code></li>
+<li><code>/config/queue-wizard/radio-favorites</code></li>
+<li><code>/podcasts</code></li>
+</ul>
+</li>
+</ul>
+<p>This is a major difference.</p>
+<p>It means the tablet shell is more proactive about perceived speed and responsiveness in pane-based workflows.</p>
+<h2>7. Broader pane routing model</h2>
+<p>The tablet shell still uses a map from kiosk pages to controller pages, but it appears a bit broader and more mature.</p>
+<p>Observed pane mappings include:</p>
+<ul>
+<li><code>kiosk-now-playing.html</code> → <code>controller-now-playing.html</code></li>
+<li><code>kiosk-playlists.html</code> → <code>controller-playlists.html</code></li>
+<li><code>kiosk-artists.html</code> → <code>controller-artists.html</code></li>
+<li><code>kiosk-albums.html</code> → <code>controller-albums.html</code></li>
+<li><code>kiosk-genres.html</code> → <code>controller-genres.html</code></li>
+<li><code>kiosk-podcasts.html</code> → <code>controller-podcasts.html</code></li>
+<li><code>kiosk-radio.html</code> → <code>controller-radio.html</code></li>
+<li><code>kiosk-queue-wizard.html</code> → <code>controller-queue-wizard.html</code></li>
+<li><code>kiosk-queue.html</code> → <code>controller-queue.html</code></li>
+<li><code>kiosk-settings.html</code> → <code>controller-tablet-settings.html</code></li>
+<li><code>visualizer.html</code> → <code>visualizer.html</code></li>
+</ul>
+<p>That <code>kiosk-settings</code> path is one of the clearest hints that the tablet shell is more operationally expansive.</p>
+<h2>8. Visualizer handling remains rich</h2>
+<p>As with the main controller shell, the tablet shell includes special visualizer handling.</p>
+<p>Observed behavior includes:</p>
+<ul>
+<li>consulting <code>/peppy/last-profile</code></li>
+<li>overriding visualizer params when display mode is <code>visualizer</code></li>
+<li>routing back through pane-aware navigation behavior</li>
+</ul>
+<p>So the tablet shell preserves the same visualizer sophistication while adding stronger shell coordination around it.</p>
+<h2>Working interpretation</h2>
+<p>A good current interpretation is:</p>
+<ul>
+<li><code>controller-tablet.html</code> is not just a tablet layout variant</li>
+<li>it appears to be a more explicit or more evolved kiosk-pane shell in some areas</li>
+<li>it provides clearer evidence for how semantic pane messaging is meant to be handled</li>
+<li>it adds shell-level capabilities like prewarming, URL-state sync, and settings-pane support</li>
+</ul>
+<p>This makes it a particularly valuable reference file when documenting the kiosk/controller architecture.</p>
+<h2>Concrete example: genre pane flow on tablet shell</h2>
+<p>The tablet shell helps clarify the genre message flow:</p>
+<ol>
+<li>embedded child emits <code>np-kiosk-pane-genre</code></li>
+<li>tablet shell verifies the message came from the active pane iframe</li>
+<li>tablet shell updates pane URL state via <code>syncPaneUrlParam(...)</code></li>
+<li>pane state therefore becomes more durable/inspectable at the shell level</li>
+</ol>
+<p>That is much clearer than the more ambiguous handling in the main controller shell snippet we inspected earlier.</p>
+<h2>Architectural implication</h2>
+<p>This suggests an important documentation rule going forward:</p>
+<blockquote>
+<p>when documenting kiosk/controller behavior, do not assume <code>controller.html</code> and <code>controller-tablet.html</code> are interchangeable.</p>
+</blockquote>
+<p>They overlap heavily, but the tablet shell may be the better source of truth for some pane-contract features.</p>
+<h2>Relationship to other pages</h2>
+<p>This page should stay linked with:</p>
+<ul>
+<li><code>genre-pane-messaging.md</code></li>
+<li><code>embedded-pane-contracts.md</code></li>
+<li><code>kiosk-right-pane-routing.md</code></li>
+<li><code>controller-kiosk-mode.md</code></li>
+<li>future tablet-interface documentation</li>
+</ul>
+<h2>Things still to verify</h2>
+<p>Future deeper verification should clarify:</p>
+<ul>
+<li>whether the tablet shell is the primary live kiosk shell in current practice</li>
+<li>whether the main controller shell should eventually gain all of the tablet shell’s pane-state behavior</li>
+<li>whether pane prewarming is tablet-only for performance reasons or just implemented there first</li>
+<li>whether <code>apiBase</code> is required for only some child pages or is part of a broader tablet-shell contract</li>
+<li>how much the tablet shell differs from <code>controller-mobile.html</code> in kiosk/pane behavior</li>
+</ul>
+<h2>Current status</h2>
+<p>At the moment, this page establishes <code>controller-tablet.html</code> as an especially important shell variant for understanding advanced kiosk-pane behavior.</p>
+<p>That is useful because it gives the wiki a sharper answer when message handling or pane coordination looks ambiguous in the main controller shell: sometimes the tablet shell is where the behavior is currently clearest.</p></article></body></html>
