@@ -379,6 +379,8 @@ The next natural follow-up pages are:
 
 `backend-change-verification-runbook.md` now serves as the first explicit operational follow-up.
 
+`display-issue-triage-runbook.md` now serves as the display-side triage companion.
+
 Those runbooks can turn the fragile-behavior ownership map into explicit operational checklists.
 
 ## Current status
