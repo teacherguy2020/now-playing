@@ -171,6 +171,35 @@ Endpoints found:
 - `POST /config/queue-wizard/vibe-seed-start`
 - `POST /config/queue-wizard/vibe-seed`
 
+Observed request-shape examples with high confidence:
+- `POST /config/queue-wizard/preview`
+  - request body seen in `config.queue-wizard-preview.routes.mjs` and diagnostics catalog:
+    - `genres: []`
+    - `artists: []`
+    - `albums: []`
+    - `excludeGenres: []`
+    - `minRating: 0`
+    - `maxTracks: 25` *(diagnostics example; route allows larger upper bound)*
+    - optional/related behavior flags include `varietyMode`
+  - likely role: generate preview candidates before queue mutation
+- `POST /config/queue-wizard/apply`
+  - request body seen in `config.queue-wizard-apply.routes.mjs` and diagnostics catalog:
+    - `mode: 'append' | 'replace'`
+    - `keepNowPlaying: false`
+    - `tracks: ['...']`
+    - `shuffle: false`
+    - related flags in route include `saveOnly`, `forceRandomOff`, `fastStart`, `generateCollage`, `previewCoverBase64`, `previewCoverMimeType`, `crop`
+  - likely role: apply a previously planned queue payload into MPD/runtime state
+- `POST /config/queue-wizard/vibe-start`
+  - diagnostics example body includes:
+    - `targetQueue: 50`
+    - `minRating: 0`
+- `POST /config/queue-wizard/vibe-seed-start`
+  - diagnostics example body includes:
+    - `seedArtist: 'John Mayer'`
+    - `seedTitle: 'Gravity'`
+    - `targetQueue: 12`
+
 Related browse endpoints often used nearby:
 - `GET /config/browse/artists`
 - `GET /config/browse/albums`
@@ -197,6 +226,26 @@ Endpoints found:
 Useful companion fact:
 - `scripts/diagnostics.js` fetches `GET /config/diagnostics/endpoints` to populate a server-backed endpoint list for the diagnostics request runner
 - the same script also contains an `ENDPOINTS_FALLBACK` list, so the diagnostics UI doubles as an operator-facing endpoint search/catalog surface
+- `config.diagnostics.routes.mjs` builds the endpoint response by combining a curated `endpointCatalog` with discovered app routes, adding metadata such as `group`, `body`, `query`, and `name`
+
+Observed request-shape examples with high confidence:
+- `GET /config/diagnostics/endpoints`
+  - track-key protected
+  - likely response includes endpoint metadata records with fields like `group`, `name`, `method`, `path`, and optional `body` / `query` examples
+- `POST /config/diagnostics/playback`
+  - diagnostics catalog example body:
+    - `action: 'play'`
+- `POST /config/diagnostics/queue/save-playlist`
+  - diagnostics catalog example body:
+    - `playlistName: 'My Queue'`
+    - `generateCollage: true`
+- `GET /config/diagnostics/album-tracks`
+  - diagnostics catalog query example:
+    - `album`
+    - `artist`
+- `GET /config/diagnostics/artist-albums`
+  - diagnostics catalog query example:
+    - `artist`
 
 Additional debug family from `moode-nowplaying-api.mjs`:
 - `GET /debug/radio-metadata-log`
@@ -216,9 +265,49 @@ Endpoints found:
 - `POST /config/restart-api`
 - `POST /config/restart-services`
 
+Observed request/response-shape examples with high confidence:
+- `GET /config/runtime`
+  - route returns JSON including:
+    - `ok`
+    - `configPath`
+    - `config` *(with env overrides applied)*
+    - `fullConfig`
+- `POST /config/runtime/check-env`
+  - route body fields seen directly in source:
+    - `mpdHost`
+    - `mpdPort`
+    - `sshHost`
+    - `sshUser`
+    - `paths`
+  - route response includes fields such as:
+    - `ok`
+    - `sshOk`
+    - `mpdOk`
+    - `sshError`
+    - `mpdError`
+    - `pathChecks`
+    - `mpdHost`
+    - `mpdPort`
+    - `sshHost`
+    - `sshUser`
+- `POST /config/runtime/ensure-podcast-root`
+  - route body fields seen directly in source:
+    - `sshHost`
+    - `sshUser`
+    - `podcastRoot`
+  - returns fields including:
+    - `ok`
+    - `podcastRoot`
+    - `created`
+- `POST /config/runtime/resolve-host`
+  - diagnostics catalog example body:
+    - `host: ''`
+
 Service-control family:
 - `GET /config/services/mpdscribble/status`
 - `POST /config/services/mpdscribble/action`
+  - diagnostics catalog example body:
+    - `action: 'restart'`
 
 Alexa runtime check:
 - `POST /config/alexa/check-domain`
@@ -369,6 +458,27 @@ Endpoints found:
 - `POST /youtube/playlist`
 - `GET /youtube/proxy/:id`
 - `POST /youtube/queue`
+
+Observed request-shape examples with high confidence:
+- `POST /youtube/resolve`
+  - route body field:
+    - `url`
+  - returns `{ ok: true, ...resolvedPayload }` on success and a 400 if `url` is missing
+- `POST /youtube/search`
+  - route body fields:
+    - `query`
+    - `limit`
+    - `playlistsOnly`
+- `POST /youtube/playlist`
+  - route body fields include:
+    - `url`
+    - `limit`
+- `POST /youtube/queue`
+  - route body fields seen directly in source:
+    - `mode` (`append` | `replace` | `crop`)
+    - `url`
+    - or `urls[]`
+  - route behavior clears/crops queue depending on mode before queueing resolved items
 
 ## Family: favorites / recents / browse helpers
 
