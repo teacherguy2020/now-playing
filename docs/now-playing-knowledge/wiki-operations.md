@@ -132,6 +132,8 @@ A useful lint pass should look for:
 - weak browse entry points
 - places where confidence is still low but the prose sounds too settled
 
+For the explicit lint checklist and quality-control lens, see `wiki-lint-and-health.md`.
+
 ### Lint rule
 A lint pass should improve retrieval, not just cleanliness.
 
@@ -177,6 +179,7 @@ This page should stay linked with:
 - `repo-coverage-notes.md`
 - `index.md`
 - `log.md`
+- `wiki-lint-and-health.md`
 - `README.md`
 - `agent-start` / `search-and-navigation` in the rendered wiki
 

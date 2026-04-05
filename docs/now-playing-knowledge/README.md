@@ -143,6 +143,7 @@ Especially relevant when the question is about:
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
 - `repo-coverage-notes.md` — audit of what the wiki covers strongly, strategically, lightly, or intentionally not at all across the repo
 - `wiki-operations.md` — operating model for maintaining the wiki through ingest, query, and lint work
+- `wiki-lint-and-health.md` — quality-control checklist for reachability, drift, duplication, retrieval quality, and confidence hygiene
 - `index.md` — content-oriented catalog of pages and branches in the wiki
 - `log.md` — chronological record of major wiki evolution milestones
 - `workflows.md` — common ways work tends to happen in this project
@@ -210,5 +211,6 @@ Go here first based on the problem you have:
 - Use `wiki-structure-notes.md` for the explicit rules around hub pages, parent/child/companion relationships, runbooks, reachability, and page-splitting discipline.
 - Use `repo-coverage-notes.md` when you need to know how complete the wiki is by repo area before assuming a directory is already deeply mapped.
 - Use `wiki-operations.md` when the real question is how to maintain the wiki itself: ingesting new truth, querying effectively, or linting for health and retrieval quality.
+- Use `wiki-lint-and-health.md` when the real question is what a good health-check pass should inspect and fix.
 - Use `index.md` when the real question is “what pages exist here, and what branch should I open first?”
 - Use `log.md` when the real question is how the wiki reached its current shape over time.
