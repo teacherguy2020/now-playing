@@ -103,6 +103,9 @@ Planned drill-down pages:
 - `configuration-and-diagnostics-interfaces.md`
 - `runtime-admin-and-config-surfaces.md`
 
+Current anchor page:
+- `configuration-and-diagnostics-interfaces.md`
+
 This family should eventually cover:
 - configuration interfaces
 - diagnostics interfaces

@@ -1,0 +1,168 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>configuration-and-diagnostics-interfaces</title><link rel="stylesheet" href="style.css"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="configuration-and-diagnostics-interfaces.html">configuration-and-diagnostics-interfaces</a></li>
+<li><a href="controller-kiosk-mode.html">controller-kiosk-mode</a></li>
+<li><a href="controller-kiosk-scaffold.html">controller-kiosk-scaffold</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="desktop-browser-interface.html">desktop-browser-interface</a></li>
+<li><a href="display-interface.html">display-interface</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="embedded-pane-contracts.html">embedded-pane-contracts</a></li>
+<li><a href="genre-pane-messaging.html">genre-pane-messaging</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="kiosk-designer.html">kiosk-designer</a></li>
+<li><a href="kiosk-editor-mode.html">kiosk-editor-mode</a></li>
+<li><a href="kiosk-interface.html">kiosk-interface</a></li>
+<li><a href="kiosk-launch-and-routing.html">kiosk-launch-and-routing</a></li>
+<li><a href="kiosk-right-pane-routing.html">kiosk-right-pane-routing</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="phone-interface.html">phone-interface</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="tablet-interface.html">tablet-interface</a></li>
+<li><a href="tablet-kiosk-shell-differences.html">tablet-kiosk-shell-differences</a></li>
+<li><a href="user-interfaces.html">user-interfaces</a></li>
+<li><a href="visualizer-in-embedded-mode.html">visualizer-in-embedded-mode</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>configuration and diagnostics interfaces</h1>
+<h2>Purpose</h2>
+<p>This page describes the operator-facing configuration, diagnostics, and inspection surfaces in the <code>now-playing</code> ecosystem.</p>
+<p>It exists because these interfaces are not side trivia. They are a core part of how the live system is understood, verified, and adjusted.</p>
+<p>If the user-facing branches explain how humans interact with playback and browsing, this branch explains how operators interact with:</p>
+<ul>
+<li>configuration</li>
+<li>runtime state</li>
+<li>diagnostics</li>
+<li>health and maintenance views</li>
+<li>troubleshooting-oriented UI surfaces</li>
+</ul>
+<h2>Why this page matters</h2>
+<p>A system like <code>now-playing</code> is not only experienced through controller and display pages.</p>
+<p>It is also experienced through:</p>
+<ul>
+<li>config surfaces</li>
+<li>diagnostics surfaces</li>
+<li>health-check views</li>
+<li>operational/admin pages that explain what the live system is actually doing</li>
+</ul>
+<p>These pages are especially important because they often provide:</p>
+<ul>
+<li>sharper ground truth than the main UI surfaces</li>
+<li>operator-facing controls or visibility</li>
+<li>clues for debugging difficult cross-layer behavior</li>
+</ul>
+<h2>Important current files</h2>
+<p>Based on the current repo scan, likely important pages in this branch include:</p>
+<ul>
+<li><code>config.html</code></li>
+<li><code>diagnostics.html</code></li>
+<li><code>library-health.html</code></li>
+<li><code>theme.html</code></li>
+</ul>
+<p>These should be treated as the current core operator/admin surface set until deeper inspection proves otherwise.</p>
+<h2>Current working interpretation</h2>
+<p>At this stage, a good working interpretation is:</p>
+<ul>
+<li>this branch covers the pages used to inspect, configure, validate, and troubleshoot the system</li>
+<li>these pages may overlap with desktop/browser usage more than with phone-oriented usage</li>
+<li>they likely represent one of the best views into operational truth and maintenance workflows</li>
+</ul>
+<h2>Likely responsibilities of this branch</h2>
+<p>The configuration/diagnostics branch is likely to include some combination of:</p>
+<ul>
+<li>system/runtime configuration</li>
+<li>diagnostics and troubleshooting output</li>
+<li>health-state reporting</li>
+<li>theme/config customization support</li>
+<li>operational guidance for fixing or verifying live behavior</li>
+</ul>
+<p>This branch should also act as the bridge between:</p>
+<ul>
+<li>interface-level understanding</li>
+<li>runtime/ops understanding</li>
+<li>underlying API/config responsibilities</li>
+</ul>
+<h2>Candidate subpages</h2>
+<p>The most likely next drill-down pages from here are:</p>
+<h3><code>config-interface.md</code></h3>
+<p>Likely centered on:</p>
+<ul>
+<li><code>config.html</code></li>
+<li>configuration controls</li>
+<li>what can be changed from the UI</li>
+<li>what config/API calls it drives</li>
+</ul>
+<h3><code>diagnostics-interface.md</code></h3>
+<p>Likely centered on:</p>
+<ul>
+<li><code>diagnostics.html</code></li>
+<li>runtime inspection and debugging views</li>
+<li>diagnostic actions and what they reveal</li>
+</ul>
+<h3><code>library-health-interface.md</code></h3>
+<p>Likely centered on:</p>
+<ul>
+<li><code>library-health.html</code></li>
+<li>library/art/cache/index health information</li>
+<li>maintenance or verification-oriented workflows</li>
+</ul>
+<h3><code>theme-interface.md</code></h3>
+<p>Likely centered on:</p>
+<ul>
+<li><code>theme.html</code></li>
+<li>theme/palette customization or inspection</li>
+<li>how visual configuration is exposed operationally</li>
+</ul>
+<h2>Relationship to other interface pages</h2>
+<p>This page should be read alongside:</p>
+<ul>
+<li><code>desktop-browser-interface.md</code></li>
+<li><code>user-interfaces.md</code></li>
+<li><code>deployment-and-ops.md</code></li>
+<li><code>local-environment.md</code></li>
+</ul>
+<p>A useful current distinction is:</p>
+<ul>
+<li>desktop/tablet/phone/display pages are how the system is used</li>
+<li>configuration/diagnostics pages are how the system is inspected and steered</li>
+</ul>
+<p>That distinction is not perfect, but it is a useful organizing principle.</p>
+<h2>Likely implementation dimensions</h2>
+<p>This branch will likely eventually need documentation for:</p>
+<ul>
+<li>which operator pages exist and why</li>
+<li>what APIs they call</li>
+<li>what state they reveal</li>
+<li>what actions/buttons they expose</li>
+<li>what runtime/config boundaries they cross</li>
+<li>what local-environment realities or permissions they assume</li>
+</ul>
+<p>In other words, this branch is likely to become one of the more code-aware and API-aware parts of the wiki.</p>
+<h2>What this page should eventually explain in more detail</h2>
+<p>A mature configuration/diagnostics page should eventually explain:</p>
+<ul>
+<li>what the main admin/operator entrypoints are</li>
+<li>which pages are for configuration versus inspection versus maintenance</li>
+<li>how those pages relate to runtime and deployment workflows</li>
+<li>which files/functions/API routes matter most in each one</li>
+<li>which pages are safest for observation versus which ones can change live state</li>
+</ul>
+<h2>Relationship to the rest of the wiki</h2>
+<p>This page should remain closely linked with:</p>
+<ul>
+<li><code>user-interfaces.md</code></li>
+<li><code>deployment-and-ops.md</code></li>
+<li><code>local-environment.md</code></li>
+<li><code>restart-and-runtime-admin-troubleshooting.md</code></li>
+<li><code>source-map.md</code></li>
+</ul>
+<p>This branch is especially important for connecting UI-facing understanding to real operational behavior.</p>
+<h2>Current status</h2>
+<p>At the moment, this page is a structural hub rather than a code-heavy implementation guide.</p>
+<p>That is intentional.</p>
+<p>Its job is to establish operator/admin surfaces as a first-class part of the interface map and to give the wiki a clean place to branch into <code>config.html</code>, <code>diagnostics.html</code>, <code>library-health.html</code>, and <code>theme.html</code> next.</p></article></body></html>
