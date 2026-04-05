@@ -73,6 +73,16 @@ The desktop browser branch will likely eventually need documentation for:
 - what control, browse, queue, search, and diagnostics affordances become more practical on desktop
 - how browser-opened display or controller pages differ from dedicated kiosk/display deployments
 
+## Anatomy companion page
+
+- `app-shell-anatomy.md`
+
+This is the first anatomy-style companion page for the desktop/browser branch.
+It exists for the practical question:
+- “if I need to change something inside `app.html`, where do I start?”
+
+Use it when the task is not just about the desktop branch in general, but about a specific shell region such as the hero queue card, transport strip, status pills, tabs, iframe-hosted content region, or shell-owned modals.
+
 ## What this page should eventually explain in more detail
 
 A mature desktop browser page should eventually explain:
@@ -114,6 +124,7 @@ This page should remain linked with:
 - `controller-device-alias-pages.md`
 - `youtube-interface.md`
 - `api-playback-and-queue-endpoints.md`
+- `app-shell-anatomy.md`
 
 This is especially relevant when the desktop/browser question is really about the `controller-now-playing*` family rather than the broader browser shell.
 
@@ -122,6 +133,8 @@ This is especially relevant when the desktop/browser question is really about th
 `youtube-interface.md` is relevant when the browser task is specifically about YouTube search, playlist expansion, or queue ingestion rather than the broader shell.
 
 `api-playback-and-queue-endpoints.md` is relevant when the browser question is really about the control-plane routes behind queue and playback actions rather than only about the shell itself.
+
+`app-shell-anatomy.md` is relevant when the browser question is not only “what is `app.html`?” but “which card/region inside `app.html` actually owns the thing I need to change?”
 
 ## Current status
 
