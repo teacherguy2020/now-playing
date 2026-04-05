@@ -116,7 +116,9 @@ This page should remain linked with:
 - `tablet-interface.md`
 - `desktop-browser-interface.md`
 - `controller-device-alias-pages.md`
+- `now-playing-surface-variants.md`
 - `youtube-interface.md`
+- `api-playback-and-queue-endpoints.md`
 - `user-interfaces.md`
 
 ## Current status

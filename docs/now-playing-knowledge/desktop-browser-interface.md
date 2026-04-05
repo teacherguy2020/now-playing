@@ -111,11 +111,17 @@ This page should remain linked with:
 ## Related branch pages
 
 - `now-playing-surface-variants.md`
+- `controller-device-alias-pages.md`
 - `youtube-interface.md`
+- `api-playback-and-queue-endpoints.md`
 
 This is especially relevant when the desktop/browser question is really about the `controller-now-playing*` family rather than the broader browser shell.
 
+`controller-device-alias-pages.md` is relevant when desktop/browser investigation overlaps with the device-named controller entry shims and how they normalize onto real controller shells.
+
 `youtube-interface.md` is relevant when the browser task is specifically about YouTube search, playlist expansion, or queue ingestion rather than the broader shell.
+
+`api-playback-and-queue-endpoints.md` is relevant when the browser question is really about the control-plane routes behind queue and playback actions rather than only about the shell itself.
 
 ## Current status
 

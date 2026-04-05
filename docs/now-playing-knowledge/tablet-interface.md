@@ -133,8 +133,14 @@ A mature tablet interface page should eventually explain:
 ## Related branch pages
 
 - `controller-device-alias-pages.md`
+- `now-playing-surface-variants.md`
+- `api-playback-and-queue-endpoints.md`
 
 This is relevant when the tablet question starts from the device-named `controller-ipad.html` entrypoint rather than the real tablet shell.
+
+`now-playing-surface-variants.md` is relevant when tablet investigation overlaps with the substantive `controller-now-playing*` family and its layout/device variants.
+
+`api-playback-and-queue-endpoints.md` is relevant when the real question is about the control-plane routes behind tablet-side playback, queue, and queue-wizard actions.
 
 ## Relationship to the rest of the wiki
 

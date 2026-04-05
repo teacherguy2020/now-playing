@@ -153,6 +153,12 @@ Now serves as the grouped page for helper display surfaces such as:
 ### `now-playing-surface-variants.md`
 Also intersects with the display branch where controller-side now-playing surfaces overlap with presentation behavior, artwork emphasis, and embedded/visualizer usage.
 
+### `config-display-and-render-features.md`
+Also intersects with the display branch where Config-owned presentation toggles shape radio artwork, moOde display enhancement, animated art, and personnel visibility.
+
+### `api-playback-and-queue-endpoints.md`
+Also intersects where display push behavior and presentation routing overlap with operational playback/control API routes.
+
 ### `display-renderers-and-visual-modes.md`
 Should eventually cover:
 - peppy presentation
