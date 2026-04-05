@@ -185,6 +185,9 @@ Now serves as the API-centered drill-down for:
 ### `api-playback-and-queue-endpoints.md`
 Now serves as the API-centered drill-down for playback-control and queue-shaping actions used by controller and now-playing surfaces.
 
+### `api-endpoint-catalog.md`
+Now serves as the source-driven inventory page for concrete endpoints found directly in source files, grouped by family with owner-file visibility and explicit proof limits.
+
 ### `api-youtube-radio-and-integration-endpoints.md`
 Now serves as the API-centered drill-down for:
 - `/youtube/*`
