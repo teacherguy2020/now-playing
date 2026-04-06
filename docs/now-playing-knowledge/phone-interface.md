@@ -13,6 +13,14 @@ It exists because phone usage should not be treated as just a smaller tablet or 
 
 So the phone branch deserves its own interface page even before all implementation details are mapped exhaustively.
 
+## Relevant source files
+
+This page is interface-oriented rather than file-complete, but these files are especially relevant to the current phone branch:
+- `now-playing/controller-mobile.html`
+- `now-playing/controller-now-playing.html`
+- `now-playing/controller-queue.html`
+- related controller child pages for albums, artists, playlists, radio, podcasts, and queue-wizard flows
+
 ## Why the phone interface matters
 
 Phone usage is often the most immediate and practical control path in a live system.
@@ -33,6 +41,14 @@ Likely primary file(s):
 Related controller-family files likely relevant over time:
 - `controller.html`
 - shared controller child pages such as queue, albums, artists, playlists, radio, podcasts, and now-playing views
+
+## Mobile controller at a glance
+
+If you need the compressed version first, use this model:
+- the phone branch is a **controller-first mobile shell**
+- it prioritizes direct control, compact now-playing visibility, queue access, and fast browse entry points
+- it reuses controller-family concepts, but should not be assumed to expose the same pane-rich behavior as tablet or kiosk flows
+- it is the branch where compactness and quick control matter most
 
 ## Current working interpretation
 
@@ -61,9 +77,9 @@ It may still overlap with kiosk/controller architecture, but probably with fewer
 ## Relationship to other interface pages
 
 This page should be read alongside:
-- `tablet-interface.md`
-- `user-interfaces.md`
-- future `desktop-browser-interface.md`
+- [tablet-interface.md](tablet-interface.md)
+- [user-interfaces.md](user-interfaces.md)
+- [desktop-browser-interface.md](desktop-browser-interface.md)
 
 A useful conceptual distinction is:
 - tablet = pane-rich, broader orchestration shell
@@ -71,9 +87,16 @@ A useful conceptual distinction is:
 
 That distinction should be verified in more detail later, but it is a good starting hypothesis.
 
+## Read this branch in this order
+
+If the question is about the phone branch as a user-facing system, read in this order:
+1. [phone-interface.md](phone-interface.md)
+2. [controller-mobile-anatomy.md](controller-mobile-anatomy.md)
+3. [controller-now-playing-anatomy.md](controller-now-playing-anatomy.md) when the issue is specifically about the now-playing surface
+
 ## Anatomy companion page
 
-- `controller-mobile-anatomy.md`
+- [controller-mobile-anatomy.md](controller-mobile-anatomy.md)
 
 This is the anatomy-style companion page for the phone branch.
 Use it when the task is not just about the phone interface in general, but about a specific region inside `controller-mobile.html` such as the compact now-playing block, transport controls, quick search strip, category rows, recent-content region, queue entrypoints, or modal/workflow behavior.
@@ -112,29 +135,33 @@ This page suggests several future verification tasks:
 ## Relationship to the rest of the wiki
 
 This page should remain linked with:
-- `user-interfaces.md`
-- `source-map.md`
-- future queue/playback-control pages
-- future media-library pages
-- future controller-family comparison pages
+- [user-interfaces.md](user-interfaces.md)
+- [source-map.md](source-map.md)
+- queue/playback-control pages
+- media-library pages
+- controller-family comparison pages
 
 ## See also
 
-- `tablet-interface.md`
-- `desktop-browser-interface.md`
-- `controller-device-alias-pages.md`
-- `now-playing-surface-variants.md`
-- `youtube-interface.md`
-- `api-playback-and-queue-endpoints.md`
-- `controller-mobile-anatomy.md`
-- `user-interfaces.md`
+- [tablet-interface.md](tablet-interface.md)
+- [desktop-browser-interface.md](desktop-browser-interface.md)
+- [controller-device-alias-pages.md](controller-device-alias-pages.md)
+- [now-playing-surface-variants.md](now-playing-surface-variants.md)
+- [youtube-interface.md](youtube-interface.md)
+- [api-playback-and-queue-endpoints.md](api-playback-and-queue-endpoints.md)
+- [controller-mobile-anatomy.md](controller-mobile-anatomy.md)
+- [user-interfaces.md](user-interfaces.md)
 
 `controller-mobile-anatomy.md` is relevant when the phone question is not only “what is the phone shell?” but “which region inside `controller-mobile.html` actually owns the thing I need to change?”
 
 ## Current status
 
-At the moment, this page is a structural hub for the phone branch rather than a code-heavy implementation guide.
+At the moment, this page is the conceptual front page for the phone branch rather than a code-heavy implementation guide.
 
 That is intentional.
 
 Its role right now is to establish the phone interface as a first-class part of the interface map, so that future work can drill into it with the same seriousness we have started applying to the tablet and kiosk branches.
+
+## Timestamp
+
+Last updated: 2026-04-06 05:59 America/Chicago
