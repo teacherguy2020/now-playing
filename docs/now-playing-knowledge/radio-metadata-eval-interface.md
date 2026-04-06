@@ -12,6 +12,9 @@ Important historical note:
 
 It is best understood as a diagnostics-oriented quality-evaluation tool for the radio metadata pipeline.
 
+Current important field expectation:
+- the table should show the exact raw full metadata string emitted by the station, not only split artist/title/album fields
+
 ## Why this page matters
 
 Radio metadata is one of the most fragile parts of the broader `now-playing` system.
@@ -244,4 +247,4 @@ That is the right framing for now:
 
 ## Timestamp
 
-Last updated: 2026-04-06 07:31 America/Chicago
+Last updated: 2026-04-06 07:41 America/Chicago
