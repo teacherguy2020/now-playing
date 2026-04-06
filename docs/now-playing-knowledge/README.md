@@ -44,54 +44,54 @@ Current state:
 
 If you are new to the project or returning after a gap, use this reading order first:
 
-1. **What this system is** → `system-overview.md`
-2. **How the system is structured** → `architecture.md`
-3. **Where visible truth comes from** → `api-state-truth-endpoints.md` (especially `/now-playing` and `/next-up`)
-4. **Where code and assets live** → `source-map.md`
-5. **What is true in Brian's live setup** → `local-environment.md`
-6. **What tends to go wrong** → `gotchas-and-lessons.md`
+1. **What this system is** → [system-overview.md](system-overview.md)
+2. **How the system is structured** → [architecture.md](architecture.md)
+3. **Where visible truth comes from** → [api-state-truth-endpoints.md](api-state-truth-endpoints.md) (especially `/now-playing` and `/next-up`)
+4. **Where code and assets live** → [source-map.md](source-map.md)
+5. **What is true in Brian's live setup** → [local-environment.md](local-environment.md)
+6. **What tends to go wrong** → [gotchas-and-lessons.md](gotchas-and-lessons.md)
 
-Then use `decisions-and-history.md` when you need rationale or historical context.
+Then use [decisions-and-history.md](decisions-and-history.md) when you need rationale or historical context.
 
 ## Read by goal
 
 ### Understand the system
 Start with:
-- `system-overview.md`
-- `architecture.md`
-- `user-interfaces.md`
-- `glossary.md`
+- [system-overview.md](system-overview.md)
+- [architecture.md](architecture.md)
+- [user-interfaces.md](user-interfaces.md)
+- [glossary.md](glossary.md)
 
 ### Work on the system
 Start with:
-- `source-map.md`
-- `architecture.md`
-- `integrations.md`
-- `workflows.md`
+- [source-map.md](source-map.md)
+- [architecture.md](architecture.md)
+- [integrations.md](integrations.md)
+- [workflows.md](workflows.md)
 
 ### Work on UI and display behavior
 Start with:
-- `user-interfaces.md`
-- `display-interface.md`
-- `workflows.md`
-- `source-map.md`
+- [user-interfaces.md](user-interfaces.md)
+- [display-interface.md](display-interface.md)
+- [workflows.md](workflows.md)
+- [source-map.md](source-map.md)
 
 Then reality-check with:
-- `display-surface-troubleshooting.md`
-- `gotchas-and-lessons.md`
-- `local-environment.md` when runtime/display state may matter
+- [display-surface-troubleshooting.md](display-surface-troubleshooting.md)
+- [gotchas-and-lessons.md](gotchas-and-lessons.md)
+- [local-environment.md](local-environment.md) when runtime/display state may matter
 
 ### Debug runtime, playback, or integration behavior
 Start with:
-- `local-environment.md`
-- `deployment-and-ops.md`
-- `integrations.md`
+- [local-environment.md](local-environment.md)
+- [deployment-and-ops.md](deployment-and-ops.md)
+- [integrations.md](integrations.md)
 
 Then check:
-- `workflows.md`
-- `playback-mode-troubleshooting.md`
-- `restart-and-runtime-admin-troubleshooting.md`
-- `gotchas-and-lessons.md`
+- [workflows.md](workflows.md)
+- [playback-mode-troubleshooting.md](playback-mode-troubleshooting.md)
+- [restart-and-runtime-admin-troubleshooting.md](restart-and-runtime-admin-troubleshooting.md)
+- [gotchas-and-lessons.md](gotchas-and-lessons.md)
 
 Especially relevant when the question is about:
 - app-host vs moOde-host behavior
@@ -100,14 +100,14 @@ Especially relevant when the question is about:
 
 ### Deploy or operate the system
 Start with:
-- `deployment-and-ops.md`
-- `install-and-validation.md`
-- `local-environment.md`
+- [deployment-and-ops.md](deployment-and-ops.md)
+- [install-and-validation.md](install-and-validation.md)
+- [local-environment.md](local-environment.md)
 
 Then check:
-- `workflows.md`
-- `decisions-and-history.md`
-- `gotchas-and-lessons.md`
+- [workflows.md](workflows.md)
+- [decisions-and-history.md](decisions-and-history.md)
+- [gotchas-and-lessons.md](gotchas-and-lessons.md)
 
 Especially relevant when the question is about:
 - restart-sensitive vs live-applied config/runtime changes
@@ -115,9 +115,9 @@ Especially relevant when the question is about:
 - host-side runtime-admin or override effects
 
 ### Look up terms, history, or prior decisions
-- `glossary.md`
-- `decisions-and-history.md`
-- `gotchas-and-lessons.md`
+- [glossary.md](glossary.md)
+- [decisions-and-history.md](decisions-and-history.md)
+- [gotchas-and-lessons.md](gotchas-and-lessons.md)
 
 ## How to use this wiki
 

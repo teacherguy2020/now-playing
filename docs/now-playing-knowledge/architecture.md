@@ -72,7 +72,7 @@ These are not trivial pass-through routes.
 They are part of the architecture because they normalize mode-aware playback state into the payload consumed by controller/display surfaces.
 
 Best companion page:
-- `api-state-truth-endpoints.md`
+- [api-state-truth-endpoints.md](api-state-truth-endpoints.md)
 
 ### 2. App-host control plane
 The app-host API is one of the project’s main architectural surfaces.
@@ -83,8 +83,8 @@ It owns:
 - bridge logic into moOde, MPD, YouTube, Alexa, podcasts, and other integrations
 
 Best companion pages:
-- `api-service-overview.md`
-- `api-endpoint-catalog.md`
+- [api-service-overview.md](api-service-overview.md)
+- [api-endpoint-catalog.md](api-endpoint-catalog.md)
 
 ### 3. Presentation and controller shell layer
 The controller/browser family is a major UI layer, not a thin wrapper.
@@ -96,11 +96,11 @@ It owns:
 - embedded child-page hosting and pane logic
 
 Best companion pages:
-- `desktop-browser-interface.md`
-- `tablet-interface.md`
-- `phone-interface.md`
-- `app-shell-anatomy.md`
-- `controller-tablet-anatomy.md`
+- [desktop-browser-interface.md](desktop-browser-interface.md)
+- [tablet-interface.md](tablet-interface.md)
+- [phone-interface.md](phone-interface.md)
+- [app-shell-anatomy.md](app-shell-anatomy.md)
+- [controller-tablet-anatomy.md](controller-tablet-anatomy.md)
 
 ### 4. Display / renderer layer
 The display branch turns app-host truth into room-facing/browser-facing presentation.
@@ -111,10 +111,10 @@ It includes:
 - embedded visual behavior in controller-hosted contexts
 
 Best companion pages:
-- `display-interface.md`
-- `display-launch-and-wrapper-surfaces.md`
-- `visualizer-in-embedded-mode.md`
-- `kiosk-interface.md`
+- [display-interface.md](display-interface.md)
+- [display-launch-and-wrapper-surfaces.md](display-launch-and-wrapper-surfaces.md)
+- [visualizer-in-embedded-mode.md](visualizer-in-embedded-mode.md)
+- [kiosk-interface.md](kiosk-interface.md)
 
 ### 5. Playback and queue mediation layer
 Queue and playback are not one flat thing.
@@ -126,10 +126,10 @@ The architecture separates:
 This is important because the queue surface, Queue Wizard, and playback authority are related but not interchangeable.
 
 Best companion pages:
-- `queue-and-playback-model.md`
-- `playback-authority-by-mode.md`
-- `controller-queue-interface.md`
-- `queue-wizard-internals.md`
+- [queue-and-playback-model.md](queue-and-playback-model.md)
+- [playback-authority-by-mode.md](playback-authority-by-mode.md)
+- [controller-queue-interface.md](controller-queue-interface.md)
+- [queue-wizard-internals.md](queue-wizard-internals.md)
 
 ### 6. Integration boundary layer
 The project continuously translates between:
@@ -145,7 +145,7 @@ This is architectural, not incidental.
 A lot of bugs only make sense at these boundaries.
 
 Best companion page:
-- `integrations.md`
+- [integrations.md](integrations.md)
 
 ### 7. Runtime / host / environment layer
 The project’s real behavior depends on host/runtime reality.
@@ -155,9 +155,9 @@ Important distinctions include:
 - normal app files vs host override material
 
 Best companion pages:
-- `deployment-and-ops.md`
-- `local-environment.md`
-- `config-network-and-runtime.md`
+- [deployment-and-ops.md](deployment-and-ops.md)
+- [local-environment.md](local-environment.md)
+- [config-network-and-runtime.md](config-network-and-runtime.md)
 
 ## Architectural boundaries that matter
 
@@ -200,26 +200,26 @@ The current repo and wiki support these stronger claims:
 
 ### “Where does visible truth come from?”
 Use:
-- `api-state-truth-endpoints.md`
-- `playback-authority-by-mode.md`
+- [api-state-truth-endpoints.md](api-state-truth-endpoints.md)
+- [playback-authority-by-mode.md](playback-authority-by-mode.md)
 
 ### “Where does controller/display behavior actually live?”
 Use:
-- `display-interface.md`
-- `app-shell-anatomy.md`
-- `controller-kiosk-mode.md`
+- [display-interface.md](display-interface.md)
+- [app-shell-anatomy.md](app-shell-anatomy.md)
+- [controller-kiosk-mode.md](controller-kiosk-mode.md)
 
 ### “Where is queue/playback behavior split?”
 Use:
-- `queue-and-playback-model.md`
-- `controller-queue-interface.md`
-- `queue-wizard-internals.md`
+- [queue-and-playback-model.md](queue-and-playback-model.md)
+- [controller-queue-interface.md](controller-queue-interface.md)
+- [queue-wizard-internals.md](queue-wizard-internals.md)
 
 ### “Which external/runtime boundary matters here?”
 Use:
-- `integrations.md`
-- `deployment-and-ops.md`
-- `local-environment.md`
+- [integrations.md](integrations.md)
+- [deployment-and-ops.md](deployment-and-ops.md)
+- [local-environment.md](local-environment.md)
 
 ## Timestamp
 
@@ -228,13 +228,13 @@ Last updated: 2026-04-06 05:46 America/Chicago
 ## Relationship to other pages
 
 This page should stay linked with:
-- `system-overview.md`
-- `api-service-overview.md`
-- `api-state-truth-endpoints.md`
-- `display-interface.md`
-- `integrations.md`
-- `source-map.md`
-- `queue-and-playback-model.md`
+- [system-overview.md](system-overview.md)
+- [api-service-overview.md](api-service-overview.md)
+- [api-state-truth-endpoints.md](api-state-truth-endpoints.md)
+- [display-interface.md](display-interface.md)
+- [integrations.md](integrations.md)
+- [source-map.md](source-map.md)
+- [queue-and-playback-model.md](queue-and-playback-model.md)
 
 ## Current status
 
