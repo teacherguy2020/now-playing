@@ -6,6 +6,10 @@ This page documents `now-playing/radio-eval.html`, the radio metadata evaluation
 
 This page exists because `radio-eval.html` is not a listener-facing playback UI. It is an operator/developer inspection surface for evaluating how radio stream metadata is being parsed, enriched, and judged.
 
+Important historical note:
+- this page was also created as a live debugging surface at `http://10.0.0.4:8101/radio-eval.html`
+- its practical purpose was to track iTunes lookup success and failure during radio listening, using radio station metadata as the enrichment input
+
 It is best understood as a diagnostics-oriented quality-evaluation tool for the radio metadata pipeline.
 
 ## Why this page matters
@@ -236,3 +240,8 @@ That is the right framing for now:
 - it exposes the radio metadata pipeline
 - it reveals parsing versus lookup outcomes
 - it helps judge whether radio metadata is usable, questionable, or broken
+- it preserves the original operational purpose of checking iTunes lookup success/problems during live radio listening
+
+## Timestamp
+
+Last updated: 2026-04-06 07:31 America/Chicago
