@@ -23,12 +23,12 @@ One especially important architectural fact is that the independent display/cont
 This directory is the local wiki and knowledge base for the `now-playing` project.
 
 It is meant to help Brian and future agents:
-- understand the project quickly
-- navigate to the right code or documentation area
+- understand the system quickly
+- form the right mental model before diving into files
 - distinguish project-wide structure from Brian-specific local reality
 - preserve durable lessons, decisions, and operational knowledge
 
-This wiki is not just a summary. It is meant to become the working reference for real maintenance and future changes.
+This wiki is not just a summary. It is the working reference for real maintenance and future changes.
 
 ## What this is not
 
@@ -40,60 +40,54 @@ Current state:
 - stronger operational boundary guidance around playback modes, runtime/admin behavior, and restart-sensitive changes
 - still improving toward a more exhaustive operational reference
 
-## How to use this wiki
+## Start here
 
-- Use the **knowledge pages** to understand structure, ownership, environment reality, and historical context.
-- Use the **runbooks** when you already have a concrete live problem and need a practical troubleshooting path.
-- When in doubt, start with the knowledge pages, then drop into the most relevant runbook.
+If you are new to the project or returning after a gap, use this reading order first:
 
-## Read this first
-
-If you want the fastest orientation path, read in this order:
-
-1. **Context** → `system-overview.md`
-2. **Structure** → `architecture.md`
-3. **Central state hinge** → `api-state-truth-endpoints.md` (especially `/now-playing` and `/next-up`)
-4. **Action / where things live** → `source-map.md`
-5. **Reality check for the live setup** → `local-environment.md`
-6. **Known traps and prior lessons** → `gotchas-and-lessons.md`
+1. **What this system is** → `system-overview.md`
+2. **How the system is structured** → `architecture.md`
+3. **Where visible truth comes from** → `api-state-truth-endpoints.md` (especially `/now-playing` and `/next-up`)
+4. **Where code and assets live** → `source-map.md`
+5. **What is true in Brian's live setup** → `local-environment.md`
+6. **What tends to go wrong** → `gotchas-and-lessons.md`
 
 Then use `decisions-and-history.md` when you need rationale or historical context.
 
-## Read by task
+## Read by goal
 
-### Understanding the project
+### Understand the system
+Start with:
 - `system-overview.md`
 - `architecture.md`
 - `user-interfaces.md`
 - `glossary.md`
 
-### Finding code
+### Work on the system
 Start with:
 - `source-map.md`
-
-Then use:
 - `architecture.md`
 - `integrations.md`
+- `workflows.md`
 
-### UI and display work
+### Work on UI and display behavior
 Start with:
 - `user-interfaces.md`
 - `display-interface.md`
 - `workflows.md`
 - `source-map.md`
-- `display-surface-troubleshooting.md`
 
 Then reality-check with:
+- `display-surface-troubleshooting.md`
 - `gotchas-and-lessons.md`
-- `local-environment.md` (if runtime/display state may matter)
+- `local-environment.md` when runtime/display state may matter
 
-### Runtime and integration debugging
+### Debug runtime, playback, or integration behavior
 Start with:
 - `local-environment.md`
 - `deployment-and-ops.md`
+- `integrations.md`
 
 Then check:
-- `integrations.md`
 - `workflows.md`
 - `playback-mode-troubleshooting.md`
 - `restart-and-runtime-admin-troubleshooting.md`
@@ -104,9 +98,10 @@ Especially relevant when the question is about:
 - restart-sensitive vs live-applied changes
 - current-song / art / status authority by playback mode
 
-### Deploy and ops work
+### Deploy or operate the system
 Start with:
 - `deployment-and-ops.md`
+- `install-and-validation.md`
 - `local-environment.md`
 
 Then check:
@@ -119,10 +114,16 @@ Especially relevant when the question is about:
 - app-host vs moOde-host control boundaries
 - host-side runtime-admin or override effects
 
-### Vocabulary and history
+### Look up terms, history, or prior decisions
 - `glossary.md`
 - `decisions-and-history.md`
 - `gotchas-and-lessons.md`
+
+## How to use this wiki
+
+- Use the **knowledge pages** to understand structure, ownership, environment reality, and historical context.
+- Use the **runbooks** when you already have a concrete live problem and need a practical troubleshooting path.
+- When in doubt, start with the knowledge pages, then drop into the most relevant runbook.
 
 ## Knowledge pages
 
