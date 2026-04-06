@@ -1,230 +1,230 @@
+---
+title: display-interface
+page_type: parent
+topics:
+  - display
+  - kiosk
+  - playback
+  - runtime
+confidence: high
+---
+
 # display interface
 
 ## Purpose
 
-This page describes the major display-oriented surfaces of the `now-playing` ecosystem.
+This page documents the display branch of the `now-playing` ecosystem.
 
-It is focused on **what can be looked at as a display or presentation surface**, how those surfaces relate to each other, and what kinds of implementation and runtime dependencies support them.
+A better current interpretation than the older version is:
+- the display branch is not just “things that look visual”
+- it is the family of surfaces that turn app-host state into room-facing/browser-facing presentation
+- much of that presentation branches outward from `/now-playing` as a central visible-truth hinge
+- the branch already has real file-backed subpages for launch surfaces, kiosk shell behavior, wrappers, embedded display behavior, and controller-adjacent visual surfaces
 
-This page is not yet an exhaustive file-by-file implementation map. Its role is to define the display family clearly enough that later drill-down pages can become more precise and exhaustive.
+So this page should now act as a **display branch hub**, not a placeholder taxonomy page.
 
-## What belongs in the display family
+## Why this page matters
 
-The display family includes the surfaces whose primary role is to present playback state, artwork, metadata, animations, skins, or display-oriented layouts.
+Display behavior is one of the easiest places for agents to make wrong assumptions.
 
-This family is broader than a single HTML page. It includes:
-- browser-based display surfaces
-- TV/external-browser display usage
-- moOde-hosted display modes
-- kiosk-like presentation behavior
-- renderer/display modes such as Player, Peppy, and Visualizer
+A display problem might actually belong to:
+- state truth (`/now-playing`, `/next-up`)
+- kiosk shell routing
+- embedded child-page behavior
+- moOde browser-target selection
+- display-mode selection via `peppy/last-profile`
+- runtime or host-specific display behavior
 
-A useful terminology split for this branch is:
+That means the display branch has to do more than name pages.
+It has to preserve the relationships between:
+- central truth surfaces
+- display modes/renderers
+- kiosk shell mode
+- launch/push helper pages
+- controller-backed embedded visual behavior
+- runtime/display-host dependencies
+
+## Central display truth starts from `/now-playing`
+
+One of the most important current architectural facts is:
+- the independent display/controller system branches outward from the app-host’s `/now-playing` state surface
+
+That endpoint is one of the project’s central visible-truth hinges.
+It is where mode-aware playback state becomes the payload that display/controller surfaces consume.
+
+That means the display branch should not be read in isolation from:
+- `api-state-truth-endpoints.md`
+- `playback-authority-by-mode.md`
+
+If the visible display is wrong, the problem may be upstream of the display page itself.
+
+## What belongs in the display branch
+
+The display branch includes surfaces whose primary job is presenting playback state, artwork, metadata, skins, motion, or room-facing visual behavior.
+
+A useful terminology split is:
 - **display mode / renderer** = Player, Peppy, Visualizer
 - **presentation/shell mode** = Kiosk
-- **designer/helper surface** = pages such as `player.html`, `kiosk-designer.html`, `displays.html`, and wrapper hosts
-- **skin** = a visual/theme variant within a display mode, especially natural for Peppy
+- **launch/helper surface** = pages such as `displays.html`, `controller-visualizer.html`, `index1080.html`
+- **designer surface** = pages such as `player.html`, `peppy.html`, `kiosk-designer.html`
+- **embedded visual surface** = controller-hosted child pages and iframe-driven visual behavior
+- **skin** = a visual/theme variant within a broader display mode, especially useful for Peppy
 
-In practice, display-oriented behavior can still overlap with control logic, playback authority, integration state, and runtime/display-host behavior.
+That split is now important enough to treat as branch truth, not optional terminology.
 
-## Core display-oriented surfaces
+## Strong current branch map
 
-### Browser/TV display surface
-This includes the browser-facing display surface used on TVs or other browsers, likely centered around `display.html` and related display-routing behavior.
+## 1. Central visible-state truth surfaces
 
-This surface should eventually be documented in more detail in a dedicated page because it likely acts as a major architectural entrypoint for presentation-first usage.
+These are not “display pages,” but they are upstream of much of the display branch.
 
-Planned deeper drill-down:
-- `display-browser-surface.md`
+Start with:
+- `api-state-truth-endpoints.md`
+  - especially `/now-playing`
+  - and `/next-up`
+- `playback-authority-by-mode.md`
 
-### Kiosk-style display behavior
-Kiosk behavior belongs in the display family because it is presentation-first, but it also overlaps with operational/runtime concerns and moOde-host behavior.
+Why:
+- display surfaces usually consume normalized visible truth rather than raw playback internals
+- mode-specific truth differences can make a display bug look like a rendering bug when it is really a state-truth bug
 
-This likely includes:
-- unattended or semi-unattended presentation
-- wake/display-state assumptions
-- display loops and display-host behavior
-- interactions between browser-rendered output and moOde-side display control
+## 2. Display-mode / renderer flows
 
-Planned deeper drill-down:
-- [`kiosk-interface.md`](kiosk-interface.md)
+Current major renderer-style modes are:
+- Player
+- Peppy
+- Visualizer
 
-Current anchor page:
-- [`kiosk-interface.md`](kiosk-interface.md)
+A stronger current branch truth is:
+- these modes are distinct from kiosk shell mode
+- Player/Peppy/Visualizer selection is materially tied to the moOde browser-target workflow documented in `display-launch-and-wrapper-surfaces.md`
+- `displays.html` pushes a shared `display.html?kiosk=1` target for Player/Peppy/Visualizer and records the chosen mode through `/peppy/last-profile`
 
-### moOde-hosted render/display modes
-These are important because they are not just pages, but visual/display modes experienced through moOde-hosted or moOde-adjacent display paths.
+That means the display-mode branch is not just “which page looks pretty.”
+It includes live mode selection and push behavior.
 
-Important examples include:
-- Player on moOde
-- Peppy on moOde
-- Visualizer on moOde
+Current best anchor page:
+- `display-launch-and-wrapper-surfaces.md`
 
-These modes deserve to be treated as first-class display experiences, not only as implementation details.
+## 3. Kiosk as presentation/shell mode
 
-Important terminology note:
-- `player.html` is better understood as a Player designer/preview surface
-- `player-render.html` is the Player render surface
-- `peppy.html` is a Peppy-facing display/config surface
-- “Peppy skin” is a useful term for the specific visual/meter-style variant within the broader Peppy display mode
-- Kiosk should be treated separately as a presentation/shell mode rather than just another renderer
+Kiosk belongs in the display branch, but it should now be treated explicitly as:
+- a shell/presentation mode
+- not just another renderer
 
-Planned deeper drill-down:
-- `display-renderers-and-visual-modes.md`
+Strong current file-backed truths include:
+- `kiosk.html` is a profile-sync + redirect bridge
+- `controller.html` is a real kiosk-mode implementation surface
+- many `kiosk-*.html` pages are redirect aliases into controller-family pages
+- `controller-kiosk.html` is a separate scaffold/prototype path
 
-### Display behavior embedded in controller-oriented surfaces
-Some display-like behavior appears outside pure display pages.
+Current best anchor pages:
+- `kiosk-interface.md`
+- `kiosk-launch-and-routing.md`
+- `controller-kiosk-mode.md`
 
-For example:
-- visualizer behavior may also appear in controller-tablet or related controller surfaces
-- controller surfaces may expose artwork, presentation, or mini-display behavior that overlaps with the display family
+## 4. Launch / wrapper / adapter surfaces
 
-This matters because the display family cannot be documented in total isolation from controller/tablet/mobile surfaces.
+This is now a real documented subfamily, not a vague future branch.
 
-Related pages:
-- `tablet-interface.md`
-- `phone-interface.md`
+Current strong anchor page:
+- `display-launch-and-wrapper-surfaces.md`
 
-## What display surfaces are for
+What it currently proves:
+- `displays.html` = operator-facing moOde browser-target push console
+- `controller-visualizer.html` = thin host/adaptor for `visualizer.html`
+- `index1080.html` = redirect shim
 
-Across the ecosystem, display-oriented surfaces appear to serve several purposes:
-- showing what is currently playing
-- emphasizing artwork, metadata, and visual state
-- providing a “now playing” presentation for a room, TV, or remote browser
-- supporting style-specific renderers and skins
-- acting as the presentation endpoint for state determined elsewhere in the system
+This is one of the most concrete branch pages now and should be treated that way.
 
-Display surfaces are usually downstream of other architectural areas:
-- playback state determines much of what is shown
-- integrations may determine which metadata and artwork are available
-- local caches/derived state may determine whether display is responsive or stable
-- runtime or host/display state may affect whether the surface behaves as expected in a live deployment
+## 5. Embedded visual behavior inside controller flows
 
-## Important cross-layer relationships
+Display behavior is not confined to dedicated display pages.
+Some visual/presentation logic also appears in controller-hosted contexts.
 
-Display behavior in this project should not be treated as purely visual.
+Current strong anchor pages:
+- `visualizer-in-embedded-mode.md`
+- `embedded-pane-contracts.md`
+- `now-playing-surface-variants.md`
+- `controller-now-playing-anatomy.md`
 
-Display surfaces depend heavily on:
-- **playback/control logic**
-  - transport state
-  - queue changes
-  - authority rules about what source currently “owns” playback state
-- **integration behavior**
-  - MPD/moOde metadata
-  - source-specific artwork and metadata enrichment
-  - stream/radio-specific differences
-- **local derived-state and caches**
-  - art derivatives
-  - locally served/cache-backed representations used for stability or speed
-- **runtime and local environment reality**
-  - moOde host behavior
-  - display host behavior
-  - wake/display routing assumptions
-  - local overrides and host-specific patches
+Why this matters:
+- a visual issue may belong to an embedded controller child page, not the main display target
+- visualizer behavior can appear in controller-backed contexts
+- kiosk right-pane behavior often hosts controller-family child pages that still have strong visual/presentation roles
 
-This means a display bug may actually originate in:
-- playback authority logic
-- integration behavior
-- cached/derived state
-- runtime-admin behavior
-- local environment differences
+## 6. Runtime / host / display-target behavior
+
+Display behavior in this project is inseparable from host/runtime reality.
+
+Current strong examples:
+- `displays.html` pushes browser targets into moOde
+- display target choice depends on app-host runtime access and track-key authorization
+- local environment and moOde-host behavior can materially change what appears on the real display
+
+Current best companion pages:
+- `api-config-and-runtime-endpoints.md`
+- `deployment-and-ops.md`
+- `local-environment.md`
+
+## What this branch is now confident about
+
+A stronger current branch summary is:
+- `/now-playing` is the central state hinge for much of the visible display ecosystem
+- display modes (Player/Peppy/Visualizer) are distinct from kiosk shell mode
+- `displays.html` is a real launch/push console for live display target selection
+- `controller-visualizer.html` is a wrapper host, not a renderer implementation
+- `kiosk.html` is not the live kiosk shell; it is a profile-sync + redirect bridge
+- `controller.html` owns real kiosk shell behavior
+- many kiosk child routes are aliases into controller-family pages
+- display behavior is often downstream of playback truth, embedded-pane rules, and runtime host behavior
+
+That is much more concrete than the older “display-family map” language.
+
+## High-value starting paths
+
+### If the visible display content is wrong
+Start with:
+1. `api-state-truth-endpoints.md`
+2. `playback-authority-by-mode.md`
+3. the relevant display/kiosk child page
+
+### If the wrong display target is being shown on moOde
+Start with:
+1. `display-launch-and-wrapper-surfaces.md`
+2. `api-config-and-runtime-endpoints.md`
+3. `local-environment.md`
+
+### If kiosk presentation behavior is wrong
+Start with:
+1. `kiosk-launch-and-routing.md`
+2. `controller-kiosk-mode.md`
+3. `kiosk-right-pane-routing.md`
+
+### If embedded visual behavior is wrong
+Start with:
+1. `embedded-pane-contracts.md`
+2. `visualizer-in-embedded-mode.md`
+3. `controller-now-playing-anatomy.md`
 
 ## Relationship to other wiki pages
 
 This page should stay closely linked with:
-- `architecture.md` — for the layer/boundary view of display behavior
-- `user-interfaces.md` — for the top-level interface family map
-- `display-surface-troubleshooting.md` — for debugging-oriented guidance
-- `deployment-and-ops.md` — when display behavior depends on runtime/admin concerns
-- `local-environment.md` — when host roles or local overrides affect display reality
-- `source-map.md` — when moving from surface understanding into actual implementation files
-
-This page will also likely link outward over time to more specialized drill-down pages such as:
-- `display-browser-surface.md`
-- `display-renderers-and-visual-modes.md`
-- [`kiosk-interface.md`](kiosk-interface.md)
-- `artwork-and-visual-assets.md`
-
-## Planned drill-down branches
-
-The display family is probably too broad to keep on one page forever. The likely next branch pages are:
-
-### `display-browser-surface.md`
-Should eventually cover:
-- browser/TV display usage
-- `display.html`
-- display-router behavior
-- embedded vs top-level behavior where relevant
-- related scripts, styles, API routes, and dependencies
-
-### `display-launch-and-wrapper-surfaces.md`
-Now serves as the grouped page for helper display surfaces such as:
-- `displays.html`
-- `controller-visualizer.html`
-- `index1080.html`
-
-### `now-playing-surface-variants.md`
-Also intersects with the display branch where controller-side now-playing surfaces overlap with presentation behavior, artwork emphasis, and embedded/visualizer usage.
-
-### `config-display-and-render-features.md`
-Also intersects with the display branch where Config-owned presentation toggles shape radio artwork, moOde display enhancement, animated art, and personnel visibility.
-
-### `api-playback-and-queue-endpoints.md`
-Also intersects where display push behavior and presentation routing overlap with operational playback/control API routes.
-
-### `display-renderers-and-visual-modes.md`
-Should eventually cover:
-- Player display mode / presentation
-- Peppy display mode / presentation
-- Peppy skin variants within that mode
-- Visualizer display mode / presentation
-- how these render/display modes are selected or routed
-- which pages act as designers, render targets, wrappers, or push helpers for those modes
-- files, assets, scripts, and generated artifacts that support these modes
-
-### `artwork-and-visual-assets.md`
-Should eventually cover:
-- artwork source handling
-- cached/resized/blurred derivatives
-- animated art behavior
-- visual asset dependencies used by display surfaces
-
-### `kiosk-interface.md`
-Now serves as the first kiosk-specific branch page.
-
-It should continue expanding to cover:
-- kiosk-style usage and host/display assumptions
-- moOde-hosted presentation context
-- operational/display wake interactions
-- how kiosk behavior differs from general browser display usage
-
-## Coverage philosophy for future expansion
-
-When this display family is expanded, each drill-down page should eventually answer:
-- what visible surface or mode is being discussed
-- where it is actually experienced
-- what state/data/artwork it depends on
-- what files and routes implement it
-- what host/runtime realities affect it
-- what related display or controller surfaces differ from it
-- what known gotchas matter in practice
-
-In other words, the display branch of the wiki should eventually let a reader move from:
-- “the thing I can see on the TV / browser / moOde display”
-
-…to:
-- the responsible pages
-- the supporting scripts and assets
-- the routes and state sources behind it
-- the runtime/environment conditions that can change how it behaves
+- `api-state-truth-endpoints.md`
+- `playback-authority-by-mode.md`
+- `display-launch-and-wrapper-surfaces.md`
+- `kiosk-interface.md`
+- `display-surface-troubleshooting.md`
+- `deployment-and-ops.md`
+- `local-environment.md`
+- `source-map.md`
 
 ## Current status
 
-At the moment, this page is best understood as a display-family map, not a completed implementation guide.
+At the moment, this page is best understood as the **display branch hub**.
 
-Its main job is to define the display category clearly enough that deeper pages can be created without losing the relationship between:
-- browser display surfaces
-- kiosk behavior
-- moOde-hosted render modes
-- controller-embedded visual behavior
-- runtime/environment-sensitive presentation behavior
+It is no longer just a placeholder map for future drill-downs.
+The current wiki already supports a stronger claim:
+- the display branch has real file-backed subpages
+- the central visible-state hinge is `/now-playing`
+- and the main branch split is now explicit between state truth, display modes, kiosk shell mode, launch/wrapper surfaces, embedded visual behavior, and runtime/display-host behavior.
