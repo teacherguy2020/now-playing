@@ -1,120 +1,200 @@
+---
+title: controller-kiosk-scaffold
+page_type: child
+topics:
+  - kiosk
+  - controller
+  - playback
+  - runtime
+confidence: high
+---
+
 # controller kiosk scaffold
 
 ## Purpose
 
-This page describes `now-playing/controller-kiosk.html`, which appears to be a separate kiosk/controller scaffold rather than the main kiosk launch path.
+This page documents `now-playing/controller-kiosk.html`.
 
-Unlike `kiosk.html`, which behaves as a launcher/profile bridge into `controller.html`, `controller-kiosk.html` appears to implement its own direct layout and API interactions.
+`controller-kiosk.html` is a direct standalone kiosk/controller scaffold page.
+It is not the main kiosk launch path.
 
-That makes it important to document separately.
+Current file-backed repo truth is:
+- it implements its own fixed `1280×400` layout
+- it contains its own inline CSS and inline JavaScript
+- it talks directly to the app-host API on port `3101`
+- it includes real now-playing refresh behavior
+- it includes partially wired source/list browsing behavior
+- it still labels itself in-page as `1280x400 kiosk scaffold (phase 1)`
 
-## Why this page exists
+So this page should be treated as a separate scaffold/prototype implementation path inside the kiosk branch, not as the main live kiosk runtime.
 
-Repo inspection suggests that `controller-kiosk.html` is architecturally different from both:
-- `kiosk.html`
-- the thin `kiosk-*.html` redirect shims
+## Important file
 
-It looks more like a standalone or prototype kiosk/controller surface with its own fixed layout and direct runtime calls.
+Primary file:
+- `now-playing/controller-kiosk.html`
 
-## Observed structure
+Direct API endpoints used by the page:
+- `GET /config/runtime`
+- `GET /now-playing`
+- `GET /config/diagnostics/queue`
+- `GET /config/queue-wizard/playlists`
 
-Repo-visible characteristics include:
-- fixed `1280×400` layout
-- three-pane design
-  - sources pane
-  - list pane
-  - now playing pane
-- direct styling in the page
-- direct JavaScript embedded in the page
-- direct calls to app-host APIs on `:3101`
+## Why this page matters
 
-This is a different implementation style from a simple redirect or thin launcher page.
+This page matters because the kiosk branch is not uniform.
 
-## Observed responsibilities
+There are several distinct kiosk-family realities in the repo:
+- `kiosk.html` as profile-sync and redirect bridge
+- `controller.html` as the main live kiosk-backed shell
+- `kiosk-*.html` alias pages as redirects into controller-family pages
+- `controller-kiosk.html` as a direct self-contained scaffold page
 
-### Source selection
-The page visibly includes source buttons such as:
-- library
-- playlists
-- radio
-- podcasts
-- YouTube
-- queue
+Without this page, an agent can easily blur those paths together.
 
-This suggests it is trying to present a compact kiosk/controller browsing shell.
+## What the page actually contains
 
-### List loading
-Repo inspection shows that it updates a central list area and currently handles at least:
-- queue data
-- playlists data
+Direct file inspection shows a fixed three-pane layout:
+- Sources pane (`320px`)
+- List pane (`560px`)
+- Now Playing pane (`400px`)
 
-with placeholder text suggesting additional browsing wiring was intended or expected later.
+The page root is:
+- `#app`
 
-### Now playing display
-The page fetches now-playing information and displays:
-- title
-- artist
-- album
-- artwork
+with explicit grid sizing:
+- `grid-template-columns: 320px 560px 400px`
 
-This makes it both a browse/control surface and a now-playing surface.
+This is a self-contained kiosk-sized controller composition, not a redirect or wrapper.
 
-### Queue actions
-The page visibly includes action buttons such as:
-- Append
-- Crop
-- Replace
+## Sources pane
 
-That suggests a queue-manipulation role as well, though more verification is needed around the actual button behavior and completeness.
+The Sources pane contains buttons under `#sources` for:
+- `library`
+- `playlists`
+- `radio`
+- `podcasts`
+- `youtube`
+- `queue`
 
-## Observed API usage
-
-Repo inspection shows direct calls to endpoints including:
-- `/config/runtime`
-- `/now-playing`
-- `/config/diagnostics/queue`
-- `/config/queue-wizard/playlists`
-
-This is significant because it means the page talks directly to app-host APIs instead of merely routing elsewhere.
-
-## Architectural interpretation
-
-A useful current interpretation is:
-- `controller-kiosk.html` is a direct kiosk/controller scaffold or experiment
-- it is not the same thing as the main `kiosk.html` launch path
-- it may represent either:
-  - a prototype/phase implementation
-  - a specialized alternative kiosk/controller surface
-  - a legacy path that still documents important intent
-
-The page itself even labels part of the UI as:
+The pane also contains explicit in-page status text:
 - `1280x400 kiosk scaffold (phase 1)`
 
-which strongly suggests prototype or scaffold status.
+That string is strong evidence for the page’s scaffold/prototype role.
+
+## List pane
+
+The List pane is anchored by:
+- `#listTitle`
+- `#listBody`
+
+### `loadList(src)`
+This function drives the list content.
+
+Its current behavior is concrete and limited:
+- if `src === 'queue'`, it fetches `GET /config/diagnostics/queue`
+- if `src === 'playlists'`, it fetches `GET /config/queue-wizard/playlists`
+- for other sources, it renders placeholder text:
+  - `<source> browsing wiring next.`
+
+That means the page is partially wired.
+It is not a fully implemented controller shell.
+
+Current strong statement:
+- queue and playlists have direct working fetch paths
+- library/radio/podcasts/youtube are still scaffold placeholders in this file
+
+## Now Playing pane
+
+The Now Playing pane contains:
+- `#art`
+- `#title`
+- `#artist`
+- `#album`
+
+### `refreshNowPlaying()`
+This function:
+1. ensures a track key via `GET /config/runtime`
+2. fetches `GET /now-playing`
+3. maps returned fields into visible text using values such as:
+   - `title` / `displayTitle`
+   - `artist` / `displayArtist`
+   - `album`
+4. resolves artwork from:
+   - `albumArtUrl`
+   - `displayArtUrl`
+   - fallback `/art/current.jpg`
+5. refreshes every 5 seconds via `setInterval(refreshNowPlaying, 5000)`
+
+So this page includes a real live now-playing polling loop, not just a static layout mockup.
+
+## Action buttons
+
+The page includes action buttons:
+- `#btnAppend`
+- `#btnCrop`
+- `#btnReplace`
+
+But direct file inspection shows these are not fully wired queue mutations.
+Their current handlers are:
+- `alert('Append action wiring in phase 2')`
+- `alert('Crop action wiring in phase 2')`
+- `alert('Replace action wiring in phase 2')`
+
+That matters a lot.
+
+The right current statement is:
+- the page exposes intended queue-action slots
+- those actions are still placeholder handlers in this file
+
+So this is a scaffold with real read-side behavior and placeholder write-side behavior.
+
+## Runtime key and API behavior
+
+### `ensureKey()`
+This function calls:
+- `GET /config/runtime`
+
+and extracts:
+- `config.trackKey`
+
+That key is then used in protected follow-up requests.
+
+This is the same general runtime-key acquisition pattern seen in other operational/controller pages.
+
+## What this page is
+
+`controller-kiosk.html` is:
+- a direct standalone kiosk/controller scaffold page
+- a self-contained `1280×400` three-pane prototype layout
+- a partial browser-side implementation with real now-playing and list-loading behavior
+- a useful evidence page for earlier kiosk-controller design intent
+
+## What this page is not
+
+`controller-kiosk.html` is not:
+- the main kiosk launch bridge (`kiosk.html`)
+- the main live kiosk shell owner (`controller.html` in kiosk mode)
+- a thin redirect alias page
+- a fully completed kiosk controller in its current file state
 
 ## Relationship to the rest of the kiosk branch
 
 This page should stay linked with:
 - `kiosk-interface.md`
 - `kiosk-launch-and-routing.md`
-- future controller-side kiosk behavior documentation
+- `controller-kiosk-mode.md`
+- `kiosk-shell-anatomy.md`
 
-because it helps distinguish:
-- launch/routing-based kiosk behavior
-from
-- direct standalone kiosk/controller implementation
-
-## Things still to verify
-
-Future deeper documentation should verify:
-- whether `controller-kiosk.html` is active in the current live workflow
-- how complete the source browsing behavior really is
-- whether the append/crop/replace actions are fully wired
-- whether this scaffold is still evolving, deprecated, or partially superseded by `kiosk.html` + controller routing
-- what scripts/routes or future pages replaced or absorbed its intended responsibilities
+The branch distinction should remain explicit:
+- `kiosk.html` = launcher/profile bridge
+- `controller.html` = main live kiosk shell
+- `controller-kiosk.html` = separate direct scaffold/prototype path
 
 ## Current status
 
-At the moment, this page establishes `controller-kiosk.html` as a distinct kiosk/controller scaffold with direct layout and API behavior.
-
-That distinction matters because otherwise the kiosk branch looks more uniform than it really is.
+This page now has a firmer repo-backed definition:
+- `controller-kiosk.html` is a self-contained kiosk/controller scaffold
+- it has real now-playing polling and partial list loading
+- it directly calls app-host API routes
+- it still contains explicit phase-1 scaffold labeling and placeholder action wiring
+- it should be treated as a distinct prototype path, not as the main kiosk runtime

@@ -1,249 +1,270 @@
+---
+title: kiosk-designer
+page_type: child
+topics:
+  - kiosk
+  - display
+  - runtime
+  - controller
+confidence: high
+---
+
 # kiosk designer
 
 ## Purpose
 
-This page describes `now-playing/kiosk-designer.html`, which appears to be a support and authoring tool for kiosk presentation rather than the kiosk display surface itself.
+This page documents `now-playing/kiosk-designer.html`.
 
-In the wiki’s terminology, this page should be treated as a **designer/helper surface** for Kiosk rather than as a display/render mode of its own.
+`kiosk-designer.html` is the kiosk authoring, preview, and push console.
+It is not the live kiosk shell itself.
 
-Its role is important because it sits between:
-- kiosk presentation design
-- live preview
-- preset management
-- moOde-targeted push/config behavior
+Current file-backed repo truth is:
+- the page hosts a live iframe preview of `kiosk.html`
+- it persists kiosk profile state into localStorage
+- it can export and import theme/preset JSON
+- it checks moOde browser-target status
+- it pushes a kiosk URL into moOde through the app-host API
 
-That makes it part of the kiosk branch, but on the authoring/operations side rather than the final display side.
+So this page belongs in the kiosk branch as a designer/helper and deployment surface, not as the kiosk runtime surface.
 
-## Important file
+## Important files
 
 Primary file:
 - `now-playing/kiosk-designer.html`
 
-Primary preview target:
+Primary preview/push target:
 - `now-playing/kiosk.html`
 
-## What `kiosk-designer.html` appears to do
+Key API endpoints used directly by the page:
+- `GET /config/runtime`
+- `GET /config/moode/browser-url/status`
+- `POST /config/moode/browser-url`
 
-Based on direct repo inspection, `kiosk-designer.html` provides:
-- a live iframe preview of `kiosk.html`
-- color/theme controls
-- preset selection
-- export/import actions for preset JSON
-- push-to-moOde behavior
-- moOde target URL verification/status feedback
+## Why this page matters
 
-This means the page functions as a kiosk design/configuration console.
+`kiosk-designer.html` shows that kiosk behavior is not only a runtime display problem.
+The project includes a dedicated browser-side workflow for:
+- previewing kiosk presentation
+- choosing colors/presets
+- synchronizing profile state
+- checking current moOde browser-target configuration
+- pushing the intended kiosk URL into moOde
 
-That distinction matters because Kiosk itself is better treated as a presentation/shell mode, while `kiosk-designer.html` is the authoring and push tool for that mode.
+That makes this page an operational bridge between kiosk design intent and live moOde display behavior.
 
-## Why it matters
+## What the page actually contains
 
-`kiosk-designer.html` is important because it reveals that kiosk presentation is not only a runtime display concern. It is also something the system expects to:
-- configure
-- preview
-- persist
-- push into a moOde display target workflow
-
-So this page helps explain how kiosk presentation is authored and deployed in practice.
-
-## Observed structure
-
-Repo-visible structure includes:
-- top-level control panel/card UI
-- an iframe preview pointing at `kiosk.html`
-- preset-oriented controls
-- JSON export/import modal behavior
-- a push button for updating moOde browser URL state
-
-Important DOM elements include:
+Direct file inspection shows these main UI elements:
 - `#sizeSel`
 - `#presetSel`
+- `#savePresetBtn`
+- `#deletePresetBtn`
+- `#exportPresetBtn`
+- `#importPresetBtn`
+- `#pushBtn`
+- `#targetHint`
+- `#stat`
 - `#primaryThemeColor`
 - `#secondaryThemeColor`
 - `#primaryTextColor`
 - `#secondaryTextColor`
-- `#pushBtn`
-- `#targetHint`
-- `#stat`
 - `#preview`
 
-The preview relationship matters because it suggests that `kiosk.html` is the canonical render target being tuned by the designer.
+Important visible structural facts:
+- `#sizeSel` currently offers only `kiosk.html` at `1280×400`
+- `#preview` is an iframe with `src="kiosk.html"`
+- the page includes export modal UI for preset JSON
+- Save/Delete preset buttons exist in markup but are hidden in script
 
-## Key functions and logic blocks
+That last point matters.
+The current page is not acting like a full CRUD preset manager.
+Its live behavior is centered on:
+- built-in theme presets
+- import/export JSON
+- local profile persistence
+- preview and push behavior
 
-Direct repo inspection shows several important functions/logic blocks inside `kiosk-designer.html`.
+## Key state and storage behavior
 
 ### `persistProfile()`
-Persists the current kiosk design state into localStorage keys:
+This function writes kiosk design state into localStorage keys:
 - `nowplaying.kiosk.profile.v1`
 - `nowplaying.mobile.profile.v2`
 
-Stored values include:
+The stored state includes:
+- `theme: 'auto'`
 - `colorPreset`
-- `recentSource`
-- custom theme/text colors
-- controller-facing profile fields like `devicePreset`, `layout`, and `recentCount`
+- `recentSource: 'albums'`
+- `customColors`
 
-This is important because it keeps kiosk design choices and controller-facing profile state aligned.
+The mobile profile write also includes controller-facing fields such as:
+- `devicePreset: 'mobile'`
+- `layout: 'home-rail'`
+- `showRecent: true`
+- `recentCount: 18`
+
+That means `kiosk-designer.html` is not only styling a preview.
+It also synchronizes kiosk design choices into the controller/mobile-profile vocabulary used elsewhere in the system.
+
+## Preview URL construction
 
 ### `buildRel()`
-Builds the relative kiosk preview/target URL.
+This function builds the relative kiosk preview/push URL.
 
-Observed behavior includes:
-- starting from the currently selected size entry (currently `kiosk.html`)
-- adding a cache-busting `pushRev`
+Direct file-backed behavior includes:
+- starting from the selected size target, which currently resolves to `kiosk.html`
+- forcing a cache-busting `pushRev=<timestamp>`
 - forcing `theme=auto`
 - forcing `recentSource=albums`
-- applying `colorPreset` and custom color query parameters
+- appending `colorPreset`
+- appending all custom color query parameters
 
-This function is central because both preview refresh and push-to-moOde behavior rely on the generated URL.
+The returned value is a relative path like:
+- `kiosk.html?pushRev=...&theme=auto&recentSource=albums&colorPreset=...&primaryThemeColor=...`
 
-### `postLiveTheme()`
-Posts a message into the preview iframe:
-- `type: 'np-live-theme-update'`
+This function is central because both preview reload and moOde push behavior depend on it.
 
-with custom color data.
-
-This suggests a live-preview contract between the designer and the preview target.
+## Preview update contract
 
 ### `refreshPreview()`
-Rebuilds the preview URL and reloads the iframe.
+This function rebuilds the preview URL and reloads the iframe.
 
-This is triggered by:
+It is triggered by:
 - size changes
-- color input changes
 - preset changes
+- theme/text color input changes
+
+### `postLiveTheme()`
+This function posts a message into the preview iframe with:
+- `type: 'np-live-theme-update'`
+- `customColors`
+
+That means the designer uses both:
+- full iframe reloads through `refreshPreview()`
+- message-based live-theme updates through `postLiveTheme()`
+
+So the relationship to `kiosk.html` is a real preview contract, not just a static embed.
+
+## Built-in preset behavior
+
+The page defines a large `THEME_PRESETS` array directly in the file.
+Examples include:
+- `ocean`
+- `violet`
+- `mint`
+- `amber`
+- `black`
+- `midnight`
+- `slate`
+- `sunset`
+- `rose`
+- `emerald`
+- light variants such as `cloud`, `sand`, and `blush`
+
+The current behavior is:
+- `refreshPresetList()` populates `#presetSel` from this in-file preset table
+- choosing a preset copies its colors into the live color inputs
+- choosing a preset persists profile state and refreshes preview
+
+This is built-in preset selection, not a generalized saved-preset subsystem.
+
+## Export/import behavior
+
+The page includes real export/import flows.
+
+### Export
+Clicking `#exportPresetBtn`:
+- serializes the current preset name and color values into JSON
+- places that JSON into `#exportJson`
+- opens `#exportModal`
+- supports Select All and Copy actions
+
+### Import
+Clicking `#importPresetBtn`:
+- prompts for pasted preset JSON
+- parses color values from that JSON
+- updates live inputs
+- persists profile state
+- posts live theme updates into the preview iframe
+
+So import/export is a real current workflow, not a placeholder.
+
+## moOde target check behavior
 
 ### `ensureKey()`
-Fetches runtime config from:
-- `/config/runtime`
+This function calls:
+- `GET /config/runtime`
 
-and extracts the runtime track key.
+and extracts:
+- `config.trackKey`
 
-This is used before privileged config operations.
+That track key is then reused for later protected runtime/config calls.
 
 ### `refreshTargetHint()`
-Checks:
-- `/config/moode/browser-url/status`
+This function calls:
+- `GET /config/moode/browser-url/status`
 
-and compares the current configured moOde browser target with the expected kiosk target.
+It computes the expected target as:
+- `http(s)://<host>:8101/kiosk.html`
 
-It updates `#targetHint` with success/warning text and color.
+Then it compares the current moOde browser target (`appUrl` or `runUrl`) against that expectation and updates `#targetHint`.
 
-## Observed kiosk-designer responsibilities
-
-### Previewing kiosk presentation
-The page embeds:
-- `kiosk.html`
-
-inside an iframe, which strongly suggests that designer changes are intended to be seen against the real kiosk launch path rather than only mocked locally.
-
-### Managing preset state
-The page appears to support:
-- selecting presets
-- exporting preset JSON
-- importing preset JSON
-
-Notably, direct repo inspection currently shows:
-- save/delete preset buttons exist in the markup
-- but those buttons are explicitly hidden in script
-
-So the current live behavior appears to emphasize:
-- choosing from built-in theme presets
-- exporting/importing JSON
-
-rather than maintaining a larger editable saved-preset system directly in this page.
-
-### Managing theme and color settings
-Repo-visible controls include:
-- primary theme color
-- secondary theme color
-- primary text color
-- secondary text color
-- named theme presets
-
-That suggests kiosk presentation is expected to be customized with a fairly direct color/preset workflow.
-
-### Checking/pushing moOde target configuration
-The page appears to call app-host APIs that:
-- inspect moOde browser URL status
-- compare the configured target URL to an expected URL
-- push the expected URL into moOde configuration
-
-This is especially important because it makes the page an operational bridge between:
-- kiosk design intent
-- actual moOde display target configuration
+So this page does not blindly push.
+It first checks and explains whether moOde is currently pointed at the right display target family.
 
 ## Push-to-moOde action flow
 
-One of the most concrete action flows in this page is the Push button.
+The Push button is one of the clearest file-backed action flows in the kiosk branch.
 
-Observed behavior when `#pushBtn` is pressed:
-1. disable the button and show `Pushing…`
-2. ensure the runtime track key via `/config/runtime`
-3. build the kiosk target URL with `buildRel()`
-4. POST that URL to:
-   - `/config/moode/browser-url`
-5. use reason:
-   - `kiosk-designer-push`
-6. persist the current profile to localStorage
-7. update status text in `#stat`
+When `#pushBtn` is clicked, the page:
+1. disables the button and changes its label to `Pushing…`
+2. ensures the runtime track key via `GET /config/runtime`
+3. builds the relative kiosk target with `buildRel()`
+4. converts that into a full moOde URL:
+   - `http://<host>:8101/<relative-target>`
+5. POSTs that URL to:
+   - `POST /config/moode/browser-url`
+6. sends payload fields:
+   - `url`
+   - `reason: 'kiosk-designer-push'`
+7. persists the kiosk profile locally
+8. updates `#stat` with success or failure text
 
-This is a good example of the richer wiki style we should keep using: user action → code path → API call → resulting system effect.
+This is the important operational truth:
+`kiosk-designer.html` is a real deployment/control surface for kiosk presentation on moOde.
 
-## Observed API/config interactions
+## What this page is
 
-From repo inspection, `kiosk-designer.html` uses app-host APIs around:
-- runtime config lookup (`/config/runtime`)
-- moOde browser URL status (`/config/moode/browser-url/status`)
-- moOde browser URL update (`/config/moode/browser-url`)
+`kiosk-designer.html` is:
+- the kiosk preview console
+- the kiosk theme/color authoring surface
+- the local profile sync point for kiosk-related state
+- the moOde target verification surface
+- the push-to-moOde control page for kiosk browser-target updates
 
-These are not incidental. They are central to the page’s operational role.
+## What this page is not
 
-## Relationship to other kiosk pages
+`kiosk-designer.html` is not:
+- the live kiosk shell
+- the controller-backed kiosk runtime page
+- a generic display-render mode
+- a full saved-preset management system in its current live behavior
+
+## Relationship to other pages
 
 This page should stay linked with:
 - `kiosk-interface.md`
 - `kiosk-launch-and-routing.md`
-- a future `kiosk-on-moode.md`
-- `local-environment.md`
+- `controller-kiosk-mode.md`
 - `deployment-and-ops.md`
-
-Why:
-- it previews `kiosk.html`
-- it pushes settings toward moOde-targeted display behavior
-- it depends on runtime config and host-side assumptions
-
-## Working interpretation
-
-A good current interpretation is:
-- `kiosk-designer.html` is not the kiosk experience itself
-- it is the design/preview/configuration console for kiosk presentation
-- it is the kiosk-side counterpart to other display-mode helper surfaces such as `player.html`
-- it bridges browser-side preview with moOde-targeted deployment/control
-- it also acts as a synchronization point between kiosk profile state and controller-facing profile state
-
-That makes it one of the most operationally meaningful pages in the kiosk branch.
-
-## Things still to verify
-
-Future deeper documentation should verify:
-- how presets are stored and named
-- what exact expected moOde target URL is enforced
-- whether preset state is purely localStorage-based or also persisted elsewhere
-- what exact contract exists between the designer and `kiosk.html`
-- whether the page is actively used in the live workflow or partly transitional
+- `local-environment.md`
+- `display-launch-and-wrapper-surfaces.md`
 
 ## Current status
 
-At the moment, this page has moved beyond a purely structural description.
-
-It now establishes `kiosk-designer.html` as a first-class kiosk support tool with:
-- concrete DOM controls
-- identifiable functions
-- localStorage profile writes
-- preview refresh behavior
-- explicit config/API calls
-- a real push-to-moOde action flow
-
-It can still be expanded further, but it is already in the richer implementation-aware style that future drill-down pages should increasingly use.
+This page now has a firm repo-backed definition:
+- `kiosk-designer.html` is the authoring, preview, verification, and push surface for kiosk presentation
+- it previews `kiosk.html`
+- it persists kiosk/controller-facing profile state
+- it checks moOde browser-target status
+- it pushes live kiosk URLs into moOde through the app-host API
