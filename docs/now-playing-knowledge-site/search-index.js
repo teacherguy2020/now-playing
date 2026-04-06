@@ -1,15 +1,12 @@
 window.NP_KNOWLEDGE_SEARCH_INDEX = {
   "README.html": "now playing project knowledge base readme readme what wiki read first task understanding project finding code ui display screen visualizer player peppy work what this is what this is not how to use this wiki read this first read by task understanding the project finding code ui and display work runtime and integration debugging deploy and ops work vocabulary and history knowledge pages runbooks local environment and reality checks where to go next how to maintain this wiki",
-  "airplay-metadata-hardening.html": "airplay metadata hardening airplay metadata hardening airplay metadata hardening purpose why page matters problem observed changes applied 1 hardened reader wrapper 2 cpu watchdog runaway behavior verification checks purpose why this page matters problem observed hardening changes applied 1 hardened metadata reader wrapper 2 cpu watchdog for metadata reader runaway behavior watchdog behavior verification checks source of truth and mirrored repo material app host vs moode host ownership when to suspect this branch first recovery interpretation best companion pages current status",
   "alexa-interface.html": "alexa interface alexa interface alexa interface purpose why page matters important files high level role shell routing behavior working interpretation main visible sections 1 config settings runtime configuration handoff scope note purpose why this page matters important files high level role shell routing behavior working interpretation main visible sections 1 config handoff scope note 2 corrections alias json editors 3 recently heard review 4 spoken command help examples important script logic in scripts alexa js runtime config loading load runtime config writing postruntime nextalexa alias editing flow savealiases recently heard rendering renderheard inline correction flow clearing recently heard lists clearheard kind important helper behaviors aliaskey s parsejsonfield id withbuttonfeedback important api calls service pill hint behavior command model guidance embedded in the page user operator workflow model correction workflow cleanup workflow reference workflow architectural interpretation relationship to other pages things still to verify current status",
   "api-config-and-runtime-endpoints.html": "api config and runtime endpoints api config and runtime endpoints api config and runtime endpoints routes http service settings configuration purpose why page matters auth protection model route ownership handler path family overview 1 load save observed usage common patterns purpose why this page matters auth protection model route family overview 1 runtime config load save observed usage common patterns why it matters 2 runtime environment verification observed purpose observed input shape observed output role why it matters 3 runtime repair podcast root creation observed purpose observed input shape why it matters 4 alexa provisioning check observed purpose observed input shape observed behavior why it matters 5 ratings maintenance family observed purpose why it matters 6 service control family observed purpose why it matters 7 moode browser target display control family observed purpose why it matters 8 podcast automation family that overlaps config runtime use why it belongs near this page relationship between these endpoint groups common endpoint traits in this family relationship to existing wiki pages things still to verify later current status",
-  "api-endpoint-catalog.html": "api endpoint catalog api endpoint catalog api endpoint catalog routes http endpoints service purpose scope proof model page family root now playing state surfaces alexa current voice helpers mpd direct action queue next up playlist curation shaping purpose scope and proof model how to use this page family root now playing state surfaces family alexa current voice state helpers family mpd direct action endpoints family queue and queue shaping endpoints direct queue endpoints queue wizard family family diagnostics debug browse index family config runtime services moode control family moode display peppy browser target control family library health metadata cleanup family ratings sticker maintenance family podcasts family youtube family favorites recents browse helpers relationships to existing api pages important current limits current status",
   "api-playback-and-queue-endpoints.html": "api playback and queue endpoints api playback and queue endpoints api playback and queue endpoints routes http service transport playing player next up playlist curation purpose important scope note why page matters auth request model 1 direct control family where shows up current role purpose important scope note why this page matters auth request model 1 direct playback control family where it shows up current role why it matters 2 queue wizard preview apply family where it shows up current role why it matters important note 3 youtube queue submission family current role documented request shape why it matters 4 embedded queue loading patterns what this tells us why it matters 5 display push routes that overlap playback presentation control why these belong here at all relationship between these families what this page is not yet relationship to existing wiki pages things still to verify later current status",
-  "api-service-overview.html": "api service overview api service overview api service overview routes http endpoints purpose why page matters high level role what appears own relationship rest system 1 ui surface layer 2 integration 3 operational runtime purpose why this page matters high level role of the api service what the api service appears to own relationship to the rest of the system 1 ui surface layer 2 integration layer 3 operational runtime layer request model why this matters current route family map config runtime family playback queue control family youtube integration family radio debug evaluation family podcast automation family architectural interpretation what this page is not yet candidate child pages api config and runtime endpoints md api playback and queue endpoints md api endpoint catalog md api state truth endpoints md api youtube radio and integration endpoints md api diagnostics and maintenance endpoints md relationship to existing wiki pages current status",
-  "api-state-truth-endpoints.html": "api state truth endpoints api state truth endpoints api state truth endpoints routes http service purpose why page matters primary owner endpoint get now playing important strong current evidence source practical behaviors what assume purpose why this page matters primary owner endpoint get now playing why it is important strong current evidence from source important practical behaviors what not to assume best companion pages endpoint get next up why it is important strong current evidence from source important practical behaviors what not to assume best companion pages endpoint get alexa now playing why it is important strong current evidence from source current interpretation endpoint get alexa next up why it is important strong current evidence from source current interpretation endpoint get track why it is important current interpretation core distinctions to preserve now playing vs track now playing vs next up alexa helper routes vs normal playback routes suggested starting paths by question if the visible current song art status looks wrong if next up behavior looks wrong if alexa visible state looks wrong relationship to existing api pages current status",
+  "api-service-overview.html": "api service overview api service overview api service overview routes http endpoints purpose why page matters high level role what appears own relationship rest system 1 ui surface layer 2 integration 3 operational runtime purpose why this page matters high level role of the api service what the api service appears to own relationship to the rest of the system 1 ui surface layer 2 integration layer 3 operational runtime layer request model why this matters current route family map config runtime family playback queue control family youtube integration family radio debug evaluation family podcast automation family architectural interpretation what this page is not yet candidate child pages api config and runtime endpoints md api playback and queue endpoints md api youtube radio and integration endpoints md api diagnostics and maintenance endpoints md relationship to existing wiki pages current status",
   "api-youtube-radio-and-integration-endpoints.html": "api youtube radio and integration endpoints api youtube radio and integration endpoints api youtube radio and integration endpoints routes http service purpose why page matters auth protection model 1 endpoint family documented what they do 2 metadata debug evaluation purpose why this page matters auth protection model 1 youtube endpoint family documented endpoints what they do why this family matters 2 radio metadata debug evaluation family documented endpoints what they do why this family matters 3 podcast automation routes adjacent to integration work documented endpoints what they do why this family matters relationship between these route families relationship to existing wiki pages things still to verify later current status",
   "app-shell-anatomy.html": "app shell anatomy app shell anatomy app shell anatomy purpose why matters here high level role html main anatomical regions 1 hero transport strip what appears do purpose why anatomy matters here high level role of app html main anatomical regions 1 hero transport strip what it is what it appears to do why it matters key ownership anchors 2 hero queue card what it is main dom anchors main logic center what syncheroqueue does important implication related modals and drill down flows why this matters companion pages if asked to improve the queue card 3 top tabs page routing bar what it is what it does why it matters key ownership anchors 4 display peppy moode action controls what it is what it appears to do why it matters companion pages 5 status pill strip what it is what it does why it matters companion pages 6 iframe hosted child surface appframe what it is what it does why it matters key ownership distinction 7 queue modal family what it is what it does why it matters 8 shell to frame theme normalization sizing logic what it is why it matters important functions areas companion pages practical where do i start map if asked to improve the queue card if asked to improve the transport strip if asked to improve the status pills if asked to improve tab page behavior if asked to improve moode peppy display actions anatomy rule for future agents relationship to other pages current status",
-  "architecture.html": "architecture architecture architecture purpose why page matters current structural shape 1 central state truth layer 2 app host control plane 3 controller browser shell 4 display screen visualizer player peppy presentation 5 queue next up playlist curation playback transport playing mediation purpose why this page matters the current structural shape 1 central state truth layer 2 app host control plane 3 controller browser shell layer 4 display presentation layer 5 queue playback mediation layer 6 integration boundary layer 7 runtime host environment layer architectural boundaries that matter api vs ui state truth vs presentation shell mode vs content surface renderer vs shell mode what this architecture is now confident about best next pages by architectural question where does visible truth come from where does controller display behavior actually live where is queue playback behavior split which external runtime boundary matters here relationship to other pages current status",
+  "architecture.html": "architecture architecture architecture purpose major architectural areas relationships between display screen visualizer player peppy control playback transport playing layers integration boundaries operational dependencies cautions purpose major architectural areas relationships between areas display control and playback layers integration boundaries operational dependencies architectural cautions",
   "backend-change-verification-runbook.html": "backend change verification runbook backend change verification runbook backend change verification runbook troubleshooting checklist purpose why page matters core rule step 1 classify frontend style b route ownership handler path service config settings runtime configuration consuming logic c admin host control behavior d override changes purpose why this page matters core rule step 1 classify the change a frontend page style only b route service config consuming backend logic c runtime admin or host control behavior d host override changes step 2 decide whether restart is likely cases that often do not require restart cases that often do require restart important current clue practical restart rule step 3 identify where the real effect should happen app host 10 0 0 4 moode host 10 0 0 254 practical guardrail step 4 verify the endpoint or direct backend contract for route service changes for runtime admin changes important guardrail step 5 verify the user facing surface anyway common affected surface families why this matters step 6 verify the historically fragile areas when relevant if the change touched display runtime behavior if the change touched playback art status logic if the change touched next up queue alexa related behavior if the change touched radio metadata enrichment behavior step 7 choose the minimum required verification set change type frontend only page style change change type backend route service change change type runtime admin host control change change type host override change step 8 declare success only when the right layer agrees strong verification patterns good enough for simple frontend change good enough for ordinary backend change good enough for runtime admin host control change not good enough practical examples example 1 route logic changed in src routes art routes mjs example 2 change in config runtime admin routes mjs example 3 change in queue playback route logic best companion pages current status",
   "config-advanced-json.html": "config advanced json config advanced json config advanced json settings runtime configuration purpose why page matters important file main visible controls 1 full textarea 2 formatting helper purpose why this page matters important file main visible controls 1 full config textarea why it matters 2 json formatting helper why it matters 3 full save path why it matters relationship to structured save flow working interpretation risk profile user operator workflow model safe advanced edit workflow when to prefer this path when not to prefer this path architectural interpretation current status",
   "config-alexa-setup.html": "config alexa setup config alexa setup config alexa setup settings runtime configuration purpose why page matters important file high level role main visible controls 1 enablement 2 public domain purpose why this page matters important file high level role main visible controls 1 alexa enablement why it matters 2 public domain configuration why it matters health state behavior from config load 3 route webhook url why it matters 4 domain reachability check observed behavior why it matters 5 setup state ui helpers working interpretation automatic verification behavior why it matters explicit handoff to the dedicated alexa page why it matters hidden compatibility elements working interpretation important api surface user operator workflow model initial provisioning workflow verification workflow ongoing maintenance workflow architectural interpretation relationship to other pages things still to verify current status",
@@ -24,82 +21,70 @@ window.NP_KNOWLEDGE_SEARCH_INDEX = {
   "config-ratings.html": "config ratings config ratings config ratings settings runtime configuration purpose why page matters important file high level role main visible controls 1 feature enablement 2 db status check purpose why this page matters important file high level role main visible controls 1 ratings feature enablement why it matters 2 ratings db status check observed behavior important interpretation 3 ratings backup listing observed behavior why it matters 4 ratings backup creation observed behavior why it matters 5 ratings restore workflow observed behavior why it matters track key protection why it matters ratings card visibility gating working interpretation important api endpoints user operator workflow model first time verification workflow protective maintenance workflow recovery workflow architectural interpretation relationship to other pages things still to verify current status",
   "configuration-and-diagnostics-interfaces.html": "configuration and diagnostics interfaces configuration and diagnostics interfaces configuration and diagnostics interfaces debug inspection checks purpose why page matters important current files working interpretation likely responsibilities branch candidate subpages config settings runtime interface md feature breakdown purpose why this page matters important current files current working interpretation likely responsibilities of this branch candidate subpages config interface md config feature breakdown md diagnostics interface md library health interface md theme interface md radio metadata eval interface md alexa interface md relationship to other interface pages likely implementation dimensions what this page should eventually explain in more detail relationship to the rest of the wiki current status",
   "controller-device-alias-pages.html": "controller device alias pages controller device alias pages controller device alias pages purpose why page matters files family classification 1 ipad html observed behavior working interpretation 2 iphone purpose why this page matters files in this family family classification 1 controller ipad html observed behavior working interpretation 2 controller iphone html observed behavior working interpretation shared behavior pattern why the query param preservation matters relationship to the real controller shells working family model thin alias redirect pages real implementation targets architectural interpretation relationship to other pages things still to verify current status",
-  "controller-kiosk-mode.html": "controller kiosk mode controller kiosk mode controller kiosk mode presentation shell purpose why page matters 1 explicit html query param detection body classes 2 contains layout itself css embedded directly what implies concretely purpose why this page matters 1 kiosk mode is explicit in controller html query param detection body classes 2 controller html contains the kiosk layout itself kiosk layout css is embedded directly in the page what the css implies concretely 3 kiosk dom is built directly into controller html concrete kiosk dom anchors why this matters 4 kiosk editor mode is real and separate from live kiosk mode initkioskcontrols what the kiosk controls do 5 kiosk mode reuses controller profile machinery controller profile key url driven override behavior server profile loading 6 kiosk right pane behavior is implemented inside controller html concrete pane infrastructure concrete right pane routing behavior 7 preview 1 matters operationally strong current evidence what that means practically what controller html is not best current interpretation relationship to other pages current status",
-  "controller-kiosk-scaffold.html": "controller kiosk scaffold controller kiosk scaffold controller kiosk scaffold presentation shell purpose important file why page matters what actually contains sources pane list loadlist src now playing purpose important file why this page matters what the page actually contains sources pane list pane loadlist src now playing pane refreshnowplaying action buttons runtime key and api behavior ensurekey what this page is what this page is not relationship to the rest of the kiosk branch current status",
+  "controller-kiosk-mode.html": "controller kiosk mode controller kiosk mode controller kiosk mode presentation shell purpose why page exists current evidence verified side handling query parameter driven body classes layout profile integration controls inside html purpose why this page exists current evidence verified controller side kiosk handling query parameter driven kiosk mode body classes and layout mode controller profile integration kiosk controls inside controller html kiosk page routing inside controller mode moode display target behavior from controller mode what this page should eventually explain current working interpretation relationship to other pages things still to verify current status",
+  "controller-kiosk-scaffold.html": "controller kiosk scaffold controller kiosk scaffold controller kiosk scaffold presentation shell purpose why page exists observed structure responsibilities source selection list loading now playing display screen visualizer player peppy queue next up playlist curation actions purpose why this page exists observed structure observed responsibilities source selection list loading now playing display queue actions observed api usage architectural interpretation relationship to the rest of the kiosk branch things still to verify current status",
   "controller-mobile-anatomy.html": "controller mobile anatomy controller mobile anatomy controller mobile anatomy purpose why matters here high level role html main anatomical regions 1 compact now playing header region what purpose why anatomy matters here high level role of controller mobile html main anatomical regions 1 compact now playing header region what it is what it does why it matters companion pages 2 integrated transport controls what they are what they do why they matter companion pages 3 quick search strip what it is what it does why it matters companion pages 4 library category list what it is what it does why it matters companion pages 5 recent content region what it is what it does why it matters companion pages 6 queue and queue adjacent entrypoints what they are what they do why they matter companion pages 7 modal workflow regions what they are what they do why they matter 8 mobile layout state orchestration what it is why it matters practical where do i start map if asked to improve the compact now playing area if asked to improve mobile transport controls if asked to improve quick search if asked to improve category row navigation if asked to improve recent content scanning if asked to improve mobile queue behavior anatomy rule for future agents relationship to other pages current status",
   "controller-now-playing-anatomy.html": "controller now playing anatomy controller now playing anatomy controller now playing anatomy purpose why matters here high level role html main anatomical regions 1 album art flip favorite hotspot region what purpose why anatomy matters here high level role of controller now playing html main anatomical regions 1 album art art flip favorite hotspot region what it is what it does why it matters important behavioral notes companion pages 2 title artist album file info text stack what it is what it does why it matters companion pages 3 next up bar what it is what it does why it matters important behavioral note companion pages if asked to improve the next up bar 4 progress bar what it is what it does why it matters 5 integrated phone style transport controls what it is what it does why it matters important behavioral notes companion pages 6 artist details personnel overlay region what it is what it does why it matters 7 podcast modal family what it is what it does why it matters 8 album modal family what it is what it does important behavioral notes why it matters companion pages 9 embedded queue modal family what it is what it does why it matters important implication 10 embedded top level back navigation logic what it is what it does why it matters companion pages practical where do i start map if asked to improve album art flip behavior if asked to improve title artist album info if asked to improve the next up bar if asked to improve progress or controls if asked to improve album queue actions if asked to improve queue opening behavior anatomy rule for future agents relationship to other pages current status",
-  "controller-queue-interface.html": "controller queue interface controller queue interface controller queue interface next up playlist curation purpose scope why page matters high level role versus wizard html evidence established elsewhere purpose scope why this page matters high level role queue interface versus queue wizard controller queue html queue wizard evidence already established elsewhere 1 embedded queue modal in substantive now playing pages 2 embedded pane contract participation 3 kiosk right pane routing target standalone versus embedded role standalone mode embedded mode queue interface in the broader queue playback model layer 3 queue inspection direct queue ui relationship to now playing surfaces relationship to kiosk mode relationship to backend api proofing what this page clarifies 1 queue ui is a real surface 2 queue ui is not queue wizard 3 queue ui is part of the kiosk embedded ecosystem 4 queue ui deserves deeper backend proofing relationship to other pages current status",
+  "controller-queue-interface.html": "controller queue interface controller queue interface controller queue interface next up playlist curation purpose important scope note why page matters high level role versus wizard html distinction purpose important scope note why this page matters high level role queue interface versus queue wizard controller queue html queue wizard why this distinction matters evidence from current surface work 1 embedded queue modal in substantive now playing pages working interpretation 2 embedded pane contract participation working interpretation 3 kiosk right pane routing target working interpretation standalone versus embedded role standalone mode embedded mode queue interface in the broader queue playback model layer 3 queue inspection direct queue ui why this matters relationship to now playing surfaces practical implication relationship to kiosk mode relationship to backend api proofing current best interpretation things this page helps clarify 1 queue ui is a real surface 2 queue ui is not queue wizard 3 queue ui is part of the kiosk embedded ecosystem 4 queue ui is important enough to deserve backend route proofing later relationship to other pages what should follow this page current status",
   "controller-tablet-anatomy.html": "controller tablet anatomy controller tablet anatomy controller tablet anatomy purpose why matters here high level role html main anatomical regions 1 kiosk presentation shell editor control strip what purpose why anatomy matters here high level role of controller tablet html main anatomical regions 1 kiosk editor control strip what it is what it does why it matters companion pages 2 now playing header card what it is what it does why it matters key ownership anchors 3 integrated transport controls what it is what it does why it matters companion pages 4 quick search strip what it is what it does why it matters companion pages 5 library category list what it is special row behavior why it matters companion pages 6 recent content region what it is what it does why it matters companion pages 7 tablet next up action bars what they are what they do why they matter companion pages 8 kiosk pane iframe region what it is what it does why it matters companion pages 9 album artist audio info modal family what it is what they do why they matter 10 device preset and layout profile logic what it is what it does why it matters companion pages practical where do i start map if asked to improve the tablet now playing header if asked to improve the tablet next up area if asked to improve quick search if asked to improve the library category list if asked to improve recent rails or recents layout if asked to improve right pane embedded behavior if asked to improve album artist audio info modal behavior anatomy rule for future agents relationship to other pages current status",
   "decisions-and-history.html": "decisions and history decisions and history decisions and history purpose confirmed durable historical lessons current default assumptions things changed over time phase 1 trust hardening milestone 2 operational boundary open questions purpose confirmed durable decisions confirmed historical lessons current default assumptions things that changed over time phase 1 trust hardening milestone phase 2 operational boundary milestone open questions",
-  "deployment-and-ops.html": "deployment and ops deployment and ops deployment and ops purpose main operational lesson system has plane 1 app host 2 moode effect 3 override change type verify you changed browser page frontend asset purpose the main operational lesson the system has more than one operational plane 1 app host plane 2 moode host effect plane 3 host override plane change type effect verify 1 if you changed a browser page or frontend only asset what that usually means what usually becomes live what to verify real lesson 2 if you changed route logic or service logic what that usually means what usually becomes live what to verify real lesson 3 if you changed runtime admin behavior what that usually means what usually becomes live what to verify real lesson 4 if you changed a state truth endpoint what that usually means what usually becomes live what to verify real lesson 5 if you changed a host override or host side patch what that usually means what to verify real lesson app host vs moode host the key question which machine should have changed restart reality often restart is not the first question often restart becomes part of the question what to verify after common change types example changed controller html example changed visualizer html example changed moode nowplaying api mjs example changed config runtime admin routes mjs example changed moode side override material best companion pages by question what does brian s real setup look like do i need restart or only verification how do i verify a display side change how do i verify playback state truth changes what this page is now really teaching relationship to other pages current status",
+  "deployment-and-ops.html": "deployment and ops deployment and ops deployment and ops purpose documented operational areas related themes change classes what they usually imply frontend page style changes route ownership handler path service config settings runtime configuration admin host control actions override purpose documented operational areas deployment related themes change classes and what they usually imply frontend page style changes route service config runtime admin changes runtime admin or host control actions host override changes runtime verification and service control local environment dependence operational cautions open questions",
   "desktop-browser-interface.html": "desktop browser interface desktop browser interface desktop browser interface purpose why matters important files current working interpretation likely responsibilities relationship other pages implementation dimensions anatomy companion page purpose why the desktop browser interface matters important files current working interpretation likely responsibilities of the desktop browser interface relationship to other interface pages likely implementation dimensions anatomy companion page what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also related branch pages current status",
   "diagnostics-interface.html": "diagnostics interface diagnostics interface diagnostics interface debug inspection checks purpose why page matters important files high level role shell entry behavior major ui areas visible 1 request runner endpoint console 2 live embedded view cards purpose why this page matters important files high level role shell entry behavior major ui areas visible in the page 1 request runner endpoint console 2 live embedded view cards important dom action centers diagnostics script as the logic center request runner behavior track key aware diagnostics live embedded surface inspection relationship to display and controller debugging current observed api config contact architectural interpretation related branch pages anatomy companion page relationship to other pages things still to verify current status",
   "diagnostics-page-anatomy.html": "diagnostics page anatomy diagnostics page anatomy diagnostics page anatomy debug inspection checks purpose why matters here high level role html main anatomical regions 1 shell redirect header layer what 2 request runner card purpose why anatomy matters here high level role of diagnostics html main anatomical regions 1 shell redirect page header layer what it is why it matters 2 request runner card what it is what it does why it matters 3 request body method path controls what they are what they do why they matter 4 favorites and endpoint selection layer what it is what it does why it matters companion pages 5 track key aware execution controls what they are what they do why it matters companion pages 6 response copy curl helper layer what it is what it does why it matters 7 live embedded surface card grid what it is what they do why they matter companion pages 8 diagnostics script orchestration layer what it is what it does why it matters practical where do i start map if asked to improve endpoint execution flow if asked to improve favorites if asked to improve track key testing if asked to improve curl copy or response copy behavior if asked to improve the embedded live cards anatomy rule for future agents relationship to other pages current status",
-  "display-enhancement-peppy-player-flow.html": "display enhancement peppy and player flow display enhancement peppy player flow display enhancement peppy player flow screen visualizer purpose why page matters what branch includes relationship config settings runtime configuration feature stable target url model router behavior kiosk presentation shell same thing builder first design purpose why this page matters what this branch includes relationship to the config feature stable target url model router behavior why kiosk is not the same thing as peppy or player builder first display design peppy data pipeline vu and spectrum 1 vu feed 2 spectrum feed bridge mode exclusivity rule required http targets in bridge mode boot persistence caveat recommended mitigation quick verify after boot peppy builder model meter type interpretation save vs push distinction save as preset push to moode push flow summary player branch visualizer branch within display enhancement verification points router target check runtime mode check feed check boot persistence check exclusivity check best companion pages current status",
-  "display-interface.html": "display interface display interface display interface screen visualizer player peppy purpose why page matters central truth starts now playing what belongs branch strong current map 1 visible state surfaces 2 mode renderer flows 3 kiosk presentation shell purpose why this page matters central display truth starts from now playing what belongs in the display branch strong current branch map 1 central visible state truth surfaces 2 display mode renderer flows 3 kiosk as presentation shell mode 4 launch wrapper adapter surfaces 5 embedded visual behavior inside controller flows 6 runtime host display target behavior what this branch is now confident about high value starting paths if the visible display content is wrong if the wrong display target is being shown on moode if kiosk presentation behavior is wrong if embedded visual behavior is wrong relationship to other wiki pages current status",
+  "display-interface.html": "display interface display interface display interface screen visualizer player peppy purpose what belongs family core oriented surfaces browser tv surface kiosk presentation shell style behavior moode hosted render modes embedded controller purpose what belongs in the display family core display oriented surfaces browser tv display surface kiosk style display behavior moode hosted render display modes display behavior embedded in controller oriented surfaces what display surfaces are for important cross layer relationships relationship to other wiki pages planned drill down branches display browser surface md display launch and wrapper surfaces md now playing surface variants md config display and render features md api playback and queue endpoints md display renderers and visual modes md artwork and visual assets md kiosk interface md coverage philosophy for future expansion current status",
   "display-issue-triage-runbook.html": "display issue triage runbook display issue triage runbook display issue triage runbook screen visualizer player peppy troubleshooting checklist purpose why page matters core rule step 1 identify actual surface mode browser tv b c d purpose why this page matters core rule step 1 identify the actual display surface or mode a browser tv display surface b player display mode c peppy display mode d visualizer display mode e kiosk presentation shell mode important guardrail step 2 identify the primary page owner if the issue is classic display routing or browser display behavior if the issue is player mode if the issue is peppy mode if the issue is kiosk presentation behavior if the issue is controller embedded display behavior step 3 decide what layer most likely owns the symptom a page owned symptom b route backed support data symptom c host runtime owned symptom important guardrail step 4 check the historically fragile display paths fragile path a iframe vs top level rendering fragile path b routed page vs final render target confusion fragile path c app host vs moode host mismatch fragile path d mode sensitive art display truth step 5 decide which host to verify verify on app host first when verify on moode host first when practical host rule step 6 use the minimum verification set that matches the symptom symptom type wrong mode or wrong page showing symptom type art text looks wrong but page structure is fine symptom type preview designer differs from live target symptom type runtime admin display push looks ineffective step 7 declare success only when the visible destination is correct quick heuristics best companion pages current status",
-  "display-launch-and-wrapper-surfaces.html": "display launch and wrapper surfaces display launch and wrapper surfaces display launch and wrapper surfaces screen visualizer player peppy purpose why page matters 1 displays html target launcher moode push console what actually open designer links runtime host model track key bootstrap core helper purpose why this page matters 1 displays html display target launcher and moode push console what it actually is open designer links runtime host model track key bootstrap core push helper player peppy visualizer push behavior player specific size behavior kiosk push behavior index display behavior what displays html is not most important api calls best current interpretation 2 controller visualizer html thin wrapper host for visualizer html what it actually is standalone vs embedded behavior child url construction default overrides frame loading behavior best current interpretation 3 index1080 html pure redirect shim what it actually is best current interpretation working family model real operator console real wrapper adaptor page pure redirect shim key distinctions to preserve displays html vs display html controller visualizer html vs visualizer html index1080 html vs index html relationship to the broader display branch things now much less speculative current status",
+  "display-launch-and-wrapper-surfaces.html": "display launch and wrapper surfaces display launch and wrapper surfaces display launch and wrapper surfaces screen visualizer player peppy purpose why page matters family classification 1 displays html launcher push console key role important actions functions logic api routes http endpoints service calls purpose why this page matters family classification 1 displays html display launcher and push console key role important actions important functions logic important api calls 2 controller visualizer html visualizer wrapper host key role important behavior architectural interpretation 3 index1080 html redirect compatibility shim working family model substantive operator helper page wrapper host page redirect shim terminology note relationship to the broader display branch candidate future drill down pages displays launch console md controller visualizer wrapper md architectural interpretation relationship to other pages things still to verify current status",
   "display-surface-troubleshooting.html": "display surface troubleshooting display surface troubleshooting display surface troubleshooting screen visualizer player peppy purpose step 1 identify which you actually looking 2 choose primary page owner desktop app shell tablet controller phone shared generic base router classic now playing layer purpose step 1 identify which surface you are actually looking at step 2 choose the primary page owner desktop app shell tablet controller phone controller shared generic controller base display router classic now playing layer moode box display surfaces step 3 decide whether the issue is page owned route owned or host runtime owned page owned symptoms route owned support behavior host runtime owned symptoms step 4 handle iframe vs top level differences explicitly step 5 classify whether the display problem is app host side or moode host side more likely app host side more likely moode host side step 6 choose verification based on change class quick heuristics best companion pages",
   "embedded-pane-contracts.html": "embedded pane contracts embedded pane contracts embedded pane contracts purpose parent side setup common mode pattern child pages layout adaptation theme tokens presets colors editor color propagation close contract richer messages controller now playing html special behavior purpose parent side setup common embedded mode pattern in child pages embedded layout adaptation theme and color propagation close the pane contract richer child to parent messages controller now playing html special behavior visualizer html special behavior working embedded pane contract parent shell responsibilities child page responsibilities why this matters relationship to other pages things still to verify current status",
   "fragile-behavior-ownership.html": "fragile behavior ownership fragile behavior ownership fragile behavior ownership purpose important scope note why page matters 1 iframe vs top level rendering main anchors owners runtime script purpose important scope note why this page matters fragile behavior 1 iframe vs top level rendering why this is fragile main ownership anchors page owners runtime script owners styling owners typical failure shapes practical guardrails why this belongs here fragile behavior 2 next up alexa mode path why this is fragile main ownership anchors api bootstrap owners route owners service support owners alexa side ownership areas surface owners typical failure shapes practical guardrails why this belongs here fragile behavior 3 last good render preservation why this is fragile main ownership anchors page runtime owners route support owners conceptual ownership companion typical failure shapes practical guardrails why this belongs here fragile behavior 4 display wake runtime admin moode host interaction why this is fragile main ownership anchors route owners bootstrap owner local environment override owners surface owners typical failure shapes practical guardrails why this belongs here fragile behavior 5 radio metadata guardrails and enrichment suppression why this is fragile main ownership anchors route owners conceptual behavior companions surface owners typical failure shapes practical guardrails why this belongs here fragile behavior 6 mode sensitive art current song status truth why this is fragile main ownership anchors route owners service support owners conceptual owner page typical failure shapes practical guardrails why this belongs here ownership pattern across fragile behaviors 1 fragility is often cross layer 2 route modules often own more than expected 3 local runtime reality matters practical what to inspect first map if the symptom is embedded vs top level rendering if the symptom is next up alexa mode weirdness if the symptom is stale but stable display behavior if the symptom is display wake moode mismatch if the symptom is weird radio metadata art behavior relationship to other pages what should follow this page current status",
   "genre-pane-messaging.html": "genre pane messaging genre pane messaging genre pane messaging purpose why page matters important files key message type source controller genres html user action what code emission purpose why this page matters important files key message type source page controller genres html user action what the code does message emission in controller genres html destination page controller albums html genre aware load behavior album data loading for a genre concrete action flow parent shell handling status architectural interpretation relationship to other pages things still to verify current status",
   "glossary.html": "glossary glossary glossary purpose core project terms interfaces surfaces integrations external systems operational vocabulary needing clarification purpose core project terms interfaces and surfaces integrations and external systems operational vocabulary terms needing clarification",
   "gotchas-and-lessons.html": "gotchas and lessons gotchas and lessons gotchas and lessons purpose confirmed local memory likely operational integration ui display screen visualizer player peppy things future agents should check first open questions purpose confirmed lessons from local memory likely operational gotchas likely integration gotchas likely ui display gotchas things future agents should check first open questions",
-  "index.html": "index index index purpose start retrieval surfaces core orientation interface hubs config settings runtime configuration diagnostics debug inspection checks operator branch playback transport playing player queue next up playlist curation engineering reference helpers display screen visualizer peppy kiosk presentation shell embedded purpose start retrieval surfaces core orientation interface hubs config diagnostics operator branch playback queue engineering reference branch retrieval helpers in this branch display kiosk embedded branch supporting environment operations pages current status",
-  "install-and-validation.html": "install and validation install and validation install and validation purpose why page matters scope baseline test environment installer invocation paths validate 1 local script 2 public curl style 3 explicit branch ref purpose why this page matters scope of this page baseline test environment installer invocation paths to validate 1 local script invocation 2 public curl style invocation 3 explicit branch or ref invocation expected result service and process validation endpoint smoke tests environment file behavior re run and idempotency check upgrade path validation ownership and permission validation negative tests invalid ref invalid port rollback drill final public ready gate relationship to ordinary deploy work best companion pages current status",
-  "integrations.html": "integrations integrations integrations purpose why page matters what belongs integration layer strong current map 1 moode 2 mpd 3 youtube 4 alexa purpose why this page matters what belongs in the integration layer strong current integration map 1 moode 2 mpd 3 youtube 4 alexa 5 radio metadata and enrichment boundaries 6 last fm scrobbling vibe adjacent integrations 7 podcasts what this branch is now confident about high value starting paths if the bug smells like a boundary source of truth problem if the bug smells like youtube or radio behavior if the bug smells like alexa visible state or setup if the bug smells like podcast runtime integration relationship to other pages current status",
-  "kiosk-designer.html": "kiosk designer kiosk designer kiosk designer presentation shell purpose important files why page matters what actually contains key state storage behavior persistprofile preview url construction buildrel purpose important files why this page matters what the page actually contains key state and storage behavior persistprofile preview url construction buildrel preview update contract refreshpreview postlivetheme built in preset behavior export import behavior export import moode target check behavior ensurekey refreshtargethint push to moode action flow what this page is what this page is not relationship to other pages current status",
+  "integrations.html": "integrations integrations integrations purpose documented related integration surfaces request api routes http endpoints service patterns display screen visualizer player peppy playback transport playing ecosystem operational cautions open questions purpose documented integrations related integration surfaces request and api patterns display and playback ecosystem operational cautions open questions",
+  "kiosk-designer.html": "kiosk designer kiosk designer kiosk designer presentation shell purpose important file what html appears do why matters observed structure key functions logic blocks persistprofile buildrel purpose important file what kiosk designer html appears to do why it matters observed structure key functions and logic blocks persistprofile buildrel postlivetheme refreshpreview ensurekey refreshtargethint observed kiosk designer responsibilities previewing kiosk presentation managing preset state managing theme and color settings checking pushing moode target configuration push to moode action flow observed api config interactions relationship to other kiosk pages working interpretation things still to verify current status",
   "kiosk-editor-mode.html": "kiosk editor mode kiosk editor mode kiosk editor mode presentation shell purpose why page matters important file key detection body classes layout difference between runtime purpose why this page matters important file key mode detection body classes layout difference between runtime kiosk and editor kiosk runtime kiosk mode editor kiosk mode important dom elements in editor mode key function initkioskcontrols size selection behavior push to moode behavior in editor mode relationship to right pane behavior relationship to auto open behavior relationship to kiosk designer architectural interpretation relationship to other pages things still to verify current status",
-  "kiosk-interface.html": "kiosk interface kiosk interface kiosk interface presentation shell purpose why page matters what current repo strong branch map 1 entry redirect handoff 2 controller backed live 3 child route ownership handler path alias layer 4 right pane embedded behavior purpose why this page matters what kiosk is in the current repo strong current branch map 1 kiosk entry and redirect handoff 2 controller backed live kiosk shell 3 kiosk child route alias layer 4 right pane and embedded child behavior 5 kiosk editor designer paths 6 kiosk anatomy as a shell path what this branch is now confident about high value starting paths if kiosk launch behavior is wrong if kiosk pane behavior or child page routing is wrong if the question is is this really a kiosk page or just a controller alias if the question is about kiosk designer editor behavior relationship to other pages current status",
-  "kiosk-launch-and-routing.html": "kiosk launch and routing kiosk launch and routing kiosk launch and routing presentation shell purpose why page matters 1 html profile sync redirect bridge what actually local storage keys uses query params reads resolution model writes back localstorage purpose why this page matters 1 kiosk html profile sync and redirect bridge what it actually is local storage keys it uses what query params it reads resolution model what it writes back to localstorage redirect target and params what rev 20260329 motion art fix means in practice best current interpretation 2 controller html actual kiosk backed destination what direct file inspection confirms what this means 3 kiosk alias pages pure redirect shims into controller surfaces 4 controller kiosk html separate scaffold prototype path working routing model key distinctions to preserve kiosk html vs controller html kiosk alias pages vs real kiosk implementations controller kiosk html vs main kiosk path what this page is now confident about relationship to other pages current status",
+  "kiosk-interface.html": "kiosk interface kiosk interface kiosk interface presentation shell purpose what means here why belongs own branch within display screen visualizer player peppy family likely contexts document deeply moode host reality important facing files entrypoints first classification purpose what kiosk means here why kiosk belongs in its own branch kiosk within the display family likely kiosk contexts to document more deeply kiosk and moode host reality important kiosk facing files and entrypoints first classification of kiosk files now playing kiosk html primary kiosk launcher bridge now playing kiosk designer html kiosk designer preview push tool now playing controller kiosk html separate kiosk scaffold prototype specialized kiosk html files redirect shims into controller pages working interpretation likely implementation dimensions kiosk specific questions future documentation should answer planned sub branches kiosk launch and routing md kiosk designer md controller kiosk scaffold md controller kiosk mode md kiosk browser surface md kiosk on moode md display renderers and visual modes md artwork and visual assets md anatomy companion page relationship to troubleshooting and ops see also current status",
+  "kiosk-launch-and-routing.html": "kiosk launch and routing kiosk launch and routing kiosk launch and routing presentation shell purpose why page exists primary entrypoint now playing html local profile handoff redirect target controller branded shims working model matters architecturally purpose why this page exists primary entrypoint now playing kiosk html local profile handoff redirect target controller html kiosk branded redirect shims working routing model why this matters architecturally relationship to other kiosk pages things still to verify immediate follow up candidates current status",
   "kiosk-right-pane-routing.html": "kiosk right pane routing kiosk right pane routing kiosk right pane routing presentation shell purpose why page matters core decision open main entrypoint openpage toggle behavior mode active loading mechanism purpose why this page matters core decision open in right pane or not main entrypoint openpage page toggle behavior behavior when right pane mode is not active behavior when right pane mode is active right pane loading mechanism special handling for visualizer pane open state management message based pane closing deep linking behavior working interpretation relationship to other pages things still to verify current status",
   "kiosk-shell-anatomy.html": "kiosk shell anatomy kiosk shell anatomy kiosk shell anatomy presentation purpose why matters here most important structural fact main anatomical regions path 1 launcher profile bridge html what purpose why anatomy matters here the most important structural fact main anatomical regions of the kiosk shell path 1 launcher profile bridge kiosk html what it is what it does why it matters if asked to improve kiosk launch behavior 2 controller backed live kiosk shell what it is what it does why it matters companion pages 3 right pane embedded child region what it is what it does why it matters companion pages if asked to improve right pane behavior 4 kiosk branded child route aliases what they are why they matter if asked to improve a kiosk branded child page 5 kiosk designer preview push tool what it is what it does why it matters important rule companion pages 6 separate scaffold prototype path controller kiosk html what it is what it does why it matters important rule companion pages 7 runtime display host sensitive push and target behavior what it is what it includes why it matters companion pages practical where do i start map if asked to improve kiosk launch profile behavior if asked to improve the live kiosk shell if asked to improve the right pane if asked to improve kiosk preview push tooling if asked to improve the 1280 400 scaffold prototype if asked to debug kiosk shows the wrong thing on the real display anatomy rule for future agents relationship to other pages current status",
   "library-health-interface.html": "library health interface library health interface library health interface albums metadata scan purpose why page matters important files high level role shell entry behavior major ui areas visible 1 summary area 2 animated art cache section purpose why this page matters important files high level role shell entry behavior major ui areas visible in the page 1 library scan summary area 2 animated art cache section 3 album metadata inspector 4 tag overwrite workflow 5 featured artist cleanup workflow key dom action centers supporting script as the likely logic center relationship to the media library and artwork branches moode library update role album inspection workflow model architectural interpretation relationship to other pages things still to verify current status",
   "library-health-page-anatomy.html": "library health page anatomy library health page anatomy library health page anatomy albums metadata scan purpose why matters here high level role html main anatomical regions 1 shell redirect header layer what 2 summary region purpose why anatomy matters here high level role of library health html main anatomical regions 1 shell redirect page header layer what it is why it matters 2 library scan summary region what it is what it does why it matters 3 animated art cache audit region what it is what it does why it matters companion pages 4 album metadata inspector what it is what it does why it matters 5 performer suggestion apply workflow what it is what it does why it matters 6 album tag overwrite tool what it is what it does why it matters 7 feat collaboration cleanup workflow what it is what it does why it matters 8 moode library update action what it is what it does why it matters companion pages 9 library health script orchestration layer what it is what it does why it matters practical where do i start map if asked to improve the scan summary if asked to improve animated art cache behavior if asked to improve album metadata inspection if asked to improve performer application if asked to improve tag overwrite if asked to improve feat cleanup if asked to improve moode library update behavior anatomy rule for future agents relationship to other pages current status",
   "local-environment.html": "local environment local environment local environment purpose current known hosts roles deployment assumptions patches overrides operational guardrails app host vs moode control boundary open questions purpose current known hosts and roles current deployment assumptions local patches and overrides operational guardrails app host vs moode host control boundary open questions",
-  "log.html": "log log log purpose major milestones 2026 04 06 source doc gap fill phase 05 start search retrieval system anatomy layer playback transport playing player queue next up playlist curation route ownership handler path proofing rendered wiki usability config settings runtime configuration api routes http endpoints service branch expansion purpose major milestones 2026 04 06 source doc gap fill phase 2026 04 05 start search and retrieval system phase 2026 04 05 anatomy layer phase 2026 04 05 playback queue and route proofing phase 2026 04 05 rendered wiki usability phase 2026 04 05 config and api branch expansion phase 2026 04 05 interface and surface coverage phase 2026 04 05 framing and recovery phase current status",
-  "now-playing-surface-variants.html": "now playing surface variants now playing surface variants now playing surface variants purpose why page matters files family classification 1 main implementation controller html 2 tablet variant 3 grid 4 ipad redirect shim purpose why this page matters files in the family family classification 1 main implementation page controller now playing html 2 tablet implementation variant controller now playing tablet html 3 grid implementation variant controller now playing grid html 4 ipad redirect shim controller now playing ipad html 5 iphone redirect shim controller now playing iphone html 6 alias shim controller nowplaying iphone html working family model substantive implementation pages redirect alias pages shared behaviors across the substantive variants important variant differences controller now playing html controller now playing tablet html controller now playing grid html relationship to kiosk and embedded behavior relationship to queue and album drill down behavior anatomy companion page what this page is now confident about relationship to other pages current status",
+  "now-playing-surface-variants.html": "now playing surface variants now playing surface variants now playing surface variants purpose why page matters files currently family classification 1 core controller html 2 tablet variant 3 grid 4 redirect shim ipad purpose why this page matters files currently in the family family classification 1 core page controller now playing html 2 tablet variant controller now playing tablet html 3 grid variant controller now playing grid html 4 redirect shim controller now playing ipad html 5 redirect shim controller now playing iphone html 6 alias typo shim controller nowplaying iphone html working family model real substantive pages redirect alias pages important shared behaviors across substantive variants important variant differences controller now playing html controller now playing tablet html controller now playing grid html relationship to kiosk and embedded behavior relationship to queue and album drill down behavior anatomy companion page candidate future drill down pages controller now playing core md controller now playing tablet variant md controller now playing grid variant md controller now playing iphone mode md architectural interpretation relationship to other pages things still to verify current status",
   "open-questions.html": "open questions open questions open questions purpose really mapping todos true runtime behavior uncertainties depend brian specific local reality should probably become runbooks later purpose questions that are really mapping todos questions that are true runtime or behavior uncertainties questions that depend on brian specific local reality questions that should probably become runbooks later",
   "phone-interface.html": "phone interface phone interface phone interface purpose why matters important files current working interpretation likely responsibilities relationship other pages anatomy companion page implementation dimensions purpose why the phone interface matters important files current working interpretation likely responsibilities of the phone interface relationship to other interface pages anatomy companion page likely implementation dimensions what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also current status",
-  "playback-authority-by-mode.html": "playback authority by mode playback authority by mode playback authority by mode transport playing player purpose why page matters core model 1 local file what means practically common failure shapes 2 airplay purpose why this page matters core model mode 1 local file playback authority model what that means practically common failure shapes mode 2 airplay authority model what that means practically common failure shapes important local environment note mode 3 upnp authority model what that means practically common failure shapes mode 4 radio stream authority model what that means practically common failure shapes important principle mode 5 unresolved fallback driven case authority model what that means practically common failure shapes cross mode principles 1 do not assume one universal authority 2 visible truth is often app mediated 3 art authority is especially mode sensitive 4 troubleshooting should start with mode classification suggested troubleshooting order by mode if local file if airplay if upnp if radio stream if unresolved fallback driven relationship to other pages current status",
+  "playback-authority-by-mode.html": "playback authority by mode playback authority by mode playback authority by mode transport playing player purpose why page matters core model 1 local file current what means practically common failure shapes 2 airplay purpose why this page matters core model mode 1 local file playback current authority model what that means practically common failure shapes mode 2 airplay current authority model what that means practically common failure shapes important local environment note mode 3 upnp current authority model what that means practically common failure shapes mode 4 radio stream current authority model what that means practically common failure shapes important principle mode 5 unresolved fallback driven case current authority model what that means practically common failure shapes cross mode principles 1 do not assume one universal authority 2 visible truth is often app mediated 3 art authority is especially mode sensitive 4 troubleshooting should start with mode classification suggested troubleshooting order by mode if local file if airplay if upnp if radio stream if unresolved fallback driven relationship to other pages what should follow this page current status",
   "playback-issue-triage-runbook.html": "playback issue triage runbook playback issue triage runbook playback issue triage runbook transport playing player troubleshooting checklist purpose why page matters core rule step 1 classify mode first local file b airplay c upnp d radio stream purpose why this page matters core rule step 1 classify the playback mode first a local file playback b airplay c upnp d radio stream e unresolved fallback driven case important guardrail step 2 choose the matching authority chain if local file if airplay if upnp if radio stream if unresolved fallback driven step 3 decide what kind of playback symptom this is a transport truth problem b queue truth problem c art metadata truth problem d presentation interpretation problem important guardrail step 4 check the historically fragile playback paths fragile path a next up alexa mode behavior fragile path b mode sensitive art current song status truth fragile path c radio metadata guardrails fragile path d last good fallback preservation behavior fragile path e airplay local override reality step 5 decide which layer to inspect first route bootstrap layer service layer page runtime layer local runtime override layer step 6 use the minimum verification set that matches the symptom symptom type transport control wrong symptom type queue head next up wrong symptom type art metadata wrong symptom type degraded or stale looking output step 7 declare success only when the right truth source and visible result agree quick heuristics best companion pages current status",
   "playback-mode-troubleshooting.html": "playback mode troubleshooting playback mode troubleshooting playback mode troubleshooting transport playing player purpose step 1 classify 2 choose matching authority path local file airplay upnp radio stream unresolved fallback driven case purpose step 1 classify the playback mode step 2 choose the matching authority path local file airplay upnp radio stream unresolved fallback driven case step 3 choose the code layer to inspect page runtime layer route layer mpd service helper layer runtime admin local override layer step 4 choose verification based on change type quick heuristics best companion pages",
   "queue-and-playback-model.html": "queue and playback model queue and playback model queue and playback model next up playlist curation transport playing player purpose why page matters high level core distinction vs control working interpretation purpose why this page matters high level model core distinction playback vs queue playback control working interpretation queue control working interpretation queue shaping curation why this matters current actor model 1 user facing surfaces initiate intent 2 app host routes mediate the action 3 mpd remains an important underlying truth source 4 visible surfaces re render from resulting state current known playback queue route families direct playback family queue wizard family youtube queue family embedded queue surface display presentation overlap family mpd versus app side mediation practical implication relation to playback mode why it matters here relation to display and controller surfaces practical implication current known queue mutation patterns direct append replace crop preview apply embedded queue inspection what this page does not yet claim relationship to other pages what should follow this page current status",
-  "queue-wizard-internals.html": "queue wizard internals queue wizard internals queue wizard internals next up playlist curation purpose scope why matters high level role versus raw mutation current known semantics purpose scope why queue wizard matters high level role queue wizard versus raw queue mutation raw queue mutation queue wizard current known semantics 1 preview apply pattern 2 album level queue actions 3 feature driven queue shaping current known caller surfaces 1 substantive controller now playing pages 2 controller side queue and now playing interactions more broadly 3 last fm vibe discovery tooling queue wizard in the overall playback model layer 1 transport layer 2 raw queue mutation layer 3 queue inspection layer 4 queue shaping curation current route knowledge relationship to youtube queueing relationship to embedded queue surfaces what still needs proof relationship to other pages current status",
+  "queue-wizard-internals.html": "queue wizard internals queue wizard internals queue wizard internals next up playlist curation purpose important scope note why matters high level role versus raw mutation distinction purpose important scope note why queue wizard matters high level role queue wizard versus raw queue mutation raw queue mutation queue wizard why this distinction matters current known semantics 1 preview apply pattern working interpretation 2 album level queue actions working interpretation 3 feature driven queue shaping working interpretation current known caller surfaces 1 substantive controller now playing pages 2 controller side queue and now playing interactions more broadly 3 last fm vibe discovery tooling queue wizard in the overall playback model layer 1 transport layer 2 raw queue mutation layer 3 queue inspection layer 4 queue shaping curation why this matters current route knowledge current best interpretation relationship to youtube queueing important distinction relationship to embedded queue surfaces important distinction what still needs proof relationship to other pages current status",
   "radio-metadata-eval-interface.html": "radio metadata eval interface radio metadata eval interface radio metadata eval interface purpose why page matters important file high level role major visible ui areas core controls functions logic blocks defaultapibase purpose why this page matters important file high level role major visible ui areas core controls important functions logic blocks defaultapibase load verdict r clear action auto action what each row shows important api calls relationship to radio stream handling user operator workflow model review workflow testing workflow architectural interpretation relationship to other pages things still to verify current status",
-  "repo-coverage-notes.html": "repo coverage notes repo coverage notes repo coverage notes purpose why page matters current overall assessment strongly covered areas 1 top level html surface layer 2 config settings runtime configuration 3 api routes http endpoints service playback transport playing player queue next up playlist curation ownership branch 4 ops local environment purpose why this page matters current overall assessment strongly covered areas 1 top level html surface layer 2 config 3 api playback queue ownership branch 4 runtime ops local environment branch strategically covered areas 1 src 2 integrations 3 ops 4 alexa 5 scripts lightly covered areas 1 styles 2 skins 3 assets 4 lambda bundle and lambda upload 5 notes exports icons intentionally low value or uncovered areas 1 node modules 2 packaging artifacts archives and incidental assets 3 miscellaneous top level support files practical interpretation of the audit recently improved gap areas highest value future repo coverage expansions 1 src deeper mapping 2 scripts mapping 3 styles skins display asset branch what this page should prevent relationship to other pages current status",
+  "repo-coverage-notes.html": "repo coverage notes repo coverage notes repo coverage notes purpose why page matters current overall assessment strongly covered areas 1 top level html surface layer 2 config settings runtime configuration 3 api routes http endpoints service playback transport playing player queue next up playlist curation ownership branch 4 ops local environment purpose why this page matters current overall assessment strongly covered areas 1 top level html surface layer 2 config 3 api playback queue ownership branch 4 runtime ops local environment branch strategically covered areas 1 src 2 integrations 3 ops 4 alexa 5 scripts lightly covered areas 1 styles 2 skins 3 assets 4 lambda bundle and lambda upload 5 notes exports icons intentionally low value or uncovered areas 1 node modules 2 packaging artifacts archives and incidental assets 3 miscellaneous top level support files practical interpretation of the audit highest value future repo coverage expansions 1 src deeper mapping 2 scripts mapping 3 styles skins display asset branch what this page should prevent relationship to other pages current status",
   "restart-and-runtime-admin-troubleshooting.html": "restart and runtime admin troubleshooting restart and runtime admin troubleshooting restart and runtime admin troubleshooting purpose step 1 classify kind change frontend page style changes route ownership handler path service config settings configuration host control actions override 2 decide setting applied per request disk read purpose step 1 classify the kind of change frontend page style changes route service config runtime admin changes runtime admin or host control actions host override changes step 2 decide how the setting is applied per request disk read immediate runtime env patch startup captured value step 3 decide where the effect should happen app host moode host step 4 choose the verification path for frontend page style changes for route service config changes for runtime admin actions for host override changes step 5 use the current restart path correctly quick heuristics best companion pages",
   "route-ownership-map.html": "route ownership map route ownership map route ownership map handler path purpose important scope note why page matters model glance 1 top level files own user facing surface behavior 2 moode nowplaying api routes http endpoints service mjs owns server bootstrap assembly 3 focused modules often real feature 4 services shared libs support layers always main owners purpose important scope note why this page matters ownership model at a glance 1 top level page files own user facing surface behavior 2 moode nowplaying api mjs owns server bootstrap assembly 3 focused route modules often own real feature behavior 4 services and shared libs are support layers not always the main owners strong current ownership anchors api bootstrap and registration moode nowplaying api mjs why it matters queue and queue advance ownership src routes queue routes mjs related conceptual pages important nuance queue wizard ownership src routes config queue wizard basic routes mjs src routes config queue wizard preview routes mjs src routes config queue wizard apply routes mjs src routes config queue wizard vibe routes mjs shared support layer related conceptual pages important nuance browse and recent library ownership src routes config browse routes mjs shared support layer related conceptual pages important nuance runtime admin and moode display control ownership src routes config runtime admin routes mjs related conceptual pages important nuance diagnostics playback test ownership src routes config diagnostics routes mjs related conceptual pages important nuance art ownership src routes art routes mjs related conceptual pages important nuance ratings ownership src routes rating routes mjs related conceptual pages track serving ownership src routes track routes mjs related conceptual pages controller profile ownership src routes config controller profile routes mjs related conceptual pages config aggregation ownership src routes config routes index mjs why it matters supporting service and library ownership src services mpd service mjs important nuance src lib browse index mjs important nuance ownership by behavior family if the issue is direct playback controls if the issue is queue advance next up queue head behavior if the issue is queue wizard preview apply behavior if the issue is controller queue ui backing if the issue is browse recent library drill down data if the issue is moode display runtime browser target behavior if the issue is art current art blurred background behavior if the issue is ratings or current song rating what is still open not yet fully proven practical guidance for future agents relationship to other pages current status",
   "source-map.html": "source map source map source map purpose high level repository areas moode nowplaying api routes http endpoints service mjs src scripts styles assets integrations purpose high level repository areas moode nowplaying api mjs src scripts styles assets integrations ops config docs notes alexa lambda bundle lambda upload skins exports first places to look by task ui or visual behavior playback or control behavior integration behavior deployment runtime issues alexa or voice related work documentation or project understanding areas future agents should usually avoid editing first special cautions verified ownership guidance user facing surfaces playback control ownership integration ownership runtime ops sensitive ownership observed architectural patterns highest value remaining unknowns best next verification targets related drill down pages next improvements for this page",
-  "style-token-and-surface-naming.html": "style token and surface naming style token and surface naming style token and surface naming purpose why page matters canonical vocabulary 1 shell rail 2 content wrapper 3 4 panel card 5 section container purpose why this page matters canonical surface vocabulary 1 shell rail surface 2 shell content wrapper 3 page wrapper 4 panel or card surface 5 section container naming interpretation rule canonical theme token vocabulary core shell background tokens core text tokens tab family tokens hero card tokens pill chip tokens ownership rule background invariants 1 herorail uses app background 2 herowrap must not use app background 3 appframe base background uses app background unless explicitly overridden 4 app background picker controls only the backmost app shell and iframe base planes 5 do not reintroduce herorail before underlay backgrounds practical consequence of the invariants compatibility and alias decisions migration strategy phase 1 semantic normalization without visual change phase 2 gradual markup class migration existing page inventory examples recommended non breaking alias direction best companion pages current status",
   "system-overview.html": "system overview system overview system overview purpose major feature areas user facing surfaces integrations external systems operational themes boundaries cautions purpose of the system major feature areas user facing surfaces major integrations and external systems operational themes boundaries and cautions",
   "tablet-interface.html": "tablet interface tablet interface tablet interface purpose why matters important file what appears include current architectural role strongly related drill down areas kiosk presentation shell behavior embedded pane contracts purpose why the tablet interface matters important file what the tablet interface appears to include current architectural role strongly related drill down areas tablet kiosk shell behavior embedded pane contracts genre albums semantic pane drill down visualizer behavior within tablet shell contexts anatomy companion page likely implementation dimensions what this page should eventually explain in more detail related branch pages relationship to the rest of the wiki see also current status",
   "tablet-kiosk-shell-differences.html": "tablet kiosk shell differences tablet kiosk shell differences tablet kiosk shell differences presentation purpose why page matters important file shared foundations controller html 1 explicit handling np pane genre 2 url synchronization 3 close cleanup purpose why this page matters important file shared foundations with controller html important differences 1 explicit handling of np kiosk pane genre 2 pane url synchronization 3 explicit pane close cleanup 4 additional embedded child parameters 5 tablet settings pane support 6 pane prewarming 7 broader pane routing model 8 visualizer handling remains rich working interpretation concrete example genre pane flow on tablet shell architectural implication relationship to other pages things still to verify current status",
-  "tablet-recents-and-lastfm.html": "tablet recents and last fm tablet recents and lastfm tablet recents and lastfm purpose why page matters primary surface row model allowed values structural rules last fm source mapping url seeding behavior purpose why this page matters primary surface recents row model allowed row values structural rules last fm row source mapping url seeding behavior refresh and stability guardrails 1 do not auto refresh recents on a timer 2 do not reload recents from unrelated events when row config has not changed 3 do not overwrite non empty rendered rows with empty live results 4 do not replace row datasets unless incoming data is meaningfully different stability interpretation adding a new row source type relationship to last fm configuration branch best companion pages current status",
   "theme-interface.html": "theme interface theme interface theme interface tokens presets colors editor purpose why page matters important file high level role major ui areas visible 1 token grid color picker cards 2 preset controls 3 import export purpose why this page matters important file high level role major ui areas visible in the page 1 token grid color picker cards 2 preset controls 3 import export controls 4 save reset controls core storage model theme token model key functions logic blocks load loadpresets savepresets render push applythemeeditorzones and applypickertilebg preset selection behavior import export behavior live shell synchronization reset behavior starter presets architectural interpretation anatomy companion page relationship to other pages things still to verify current status",
   "theme-page-anatomy.html": "theme page anatomy theme page anatomy theme page anatomy tokens presets colors editor purpose why matters here high level role html main anatomical regions 1 shell header container what 2 token grid card region purpose why anatomy matters here high level role of theme html main anatomical regions 1 shell editor header and container what it is why it matters 2 token grid token card region what it is what it does why it matters logic center 3 preset workflow region what it is what it does why it matters logic center 4 import export region what it is what it does why it matters logic center 5 save reset status region what it is what it does why it matters 6 export modal region what it is what it does why it matters 7 localstorage persistence layer what it is what it does why it matters logic center 8 live shell synchronization layer what it is what it does why it matters logic center 9 editor self theming layer what it is what it does why it matters practical where do i start map if asked to change token card layout or controls if asked to change preset behavior if asked to change import export behavior if asked to change save reset behavior if asked to fix shell sync if asked to fix how the editor itself looks anatomy rule for future agents relationship to other pages current status",
   "user-interfaces.html": "user interfaces user interfaces user interfaces purpose page interface families general browser controller surfaces display screen visualizer player peppy oriented media library albums metadata scan browse queue next up playlist curation playback transport playing operator admin purpose how to use this page interface families general browser controller surfaces display oriented surfaces media library and browse surfaces queue playback and curation surfaces operator admin surfaces coverage philosophy relationship to other pages initial branch candidates notes for future expansion",
-  "visualizer-in-embedded-mode.html": "visualizer in embedded mode visualizer in embedded mode visualizer in embedded mode purpose what html actually core reactive model scene family preset control layer query parameter inputs changes purpose what visualizer html actually is core reactive model scene model family preset control layer query parameter inputs what embedded mode changes embedded mode the important behavioral change embedded visualizer fullscreen kiosk handoff fullscreen kiosk visualizer controller return path preserved visual state across the round trip push to moode behavior relevant api calls read write special embedded mode rendering differences relationship to controller kiosk pages what this page is now confident about relationship to other pages current status",
-  "wiki-gap-review-2026-04-06.html": "wiki gap review 2026 04 06 wiki gap review 2026 04 06 wiki gap review 2026 04 06 purpose current overall assessment high value gaps identified 1 install validation workflow 2 style token naming canon background invariants 3 display screen visualizer player peppy enhancement builder first system 4 deploy runtime operator checklists compact operational form 5 cross surface parity behavior contracts purpose current overall assessment high value gaps identified 1 install and validation workflow 2 style token naming canon and background invariants 3 display enhancement as a builder first peppy player system 4 deploy runtime operator checklists in compact operational form 5 cross surface parity and behavior contracts 6 tablet recents and last fm behavior contract 7 airplay metadata hardening as an ops recipe areas already covered strongly enough recommended next additions recommended integration points current status",
-  "wiki-lint-and-health.html": "wiki lint and health wiki lint and health wiki lint and health purpose why page matters core question what check during pass 1 reachability navigation fix patterns 2 source render consistency purpose why this page matters core lint question what to check during a lint pass 1 reachability and navigation fix patterns 2 source render consistency fix patterns 3 scope clarity and duplication fix patterns 4 retrieval quality fix patterns 5 confidence and proof hygiene fix patterns 6 search usefulness fix patterns 7 coverage health fix patterns suggested lint cadence lightweight lint branch lint periodic wiki lint good outcomes from a lint pass relationship to other maintenance pages current status",
-  "wiki-operations.html": "wiki operations wiki operations wiki operations purpose why page matters layer mental model 1 ingest what means here should produce rule examples purpose why this page matters three layer mental model 1 ingest what ingest means here what ingest should produce ingest rule ingest examples in this wiki 2 query what query means here query rule query outputs should sometimes become wiki pages 3 lint what lint means here what lint should look for lint rule suggested operating cadence during active work after answering an important recurring question periodically when to create a synthesis page metadata pilot schema page type vocabulary topics vocabulary confidence vocabulary metadata rule relationship to other wiki maintenance pages current status",
+  "visualizer-in-embedded-mode.html": "visualizer in embedded mode visualizer in embedded mode visualizer in embedded mode purpose why page matters important file core query parameter inputs key logic pure ui purpose why this page matters important file core query parameter inputs key mode logic embedded mode pure mode ui mode embedded fullscreen handoff fullscreen kiosk visualizer controller return path important state values preserved across the round trip designer preset behavior in visualizer html push to moode behavior relevant api calls read write special embedded mode rendering differences relationship to controller side kiosk routing working interpretation relationship to other pages things still to verify current status",
   "wiki-structure-notes.html": "wiki structure notes wiki structure notes wiki structure notes purpose why page matters core model 1 hub pages what should do 2 parent purpose why this page matters core structure model 1 hub pages what hub pages should do what hub pages should not do 2 parent pages what parent pages should do what parent pages should not do 3 child pages a page deserves to become a child page when a page does not deserve to become a child page just because 4 companion pages companion pages should do companion pages should not do 5 runbook pages what makes a runbook different runbook rule concept page rule 6 reference support pages what support pages should do what support pages should not do parent child versus see also links use parent child style when use companion sibling links when use see also links when anti pattern to avoid reachability rule for source markdown for rendered html source truth versus rendered truth naming conventions for page types good naming patterns use caution with vague names when to split a page when not to split a page update policy when splitting confidence language rule prefer strong language when supported keep cautious language when needed anti pattern to avoid branch growth rule for future work recommended maintenance checklist for new pages relationship to other pages current status",
   "workflows.html": "workflows workflows workflows purpose common workflow types ui display screen visualizer player peppy changes integration runtime debugging mode first playback transport playing current song art status issues operational verification habits restart boundary config settings configuration admin boundaries cautions purpose common workflow types ui and display changes integration and runtime debugging mode first workflow for playback current song art status issues operational verification habits restart boundary workflow for config runtime admin changes boundaries and cautions open questions",
   "youtube-interface.html": "youtube interface youtube interface youtube interface purpose why page matters important file high level role major ui areas visible 1 search area 2 playlist expansion multi select 3 url queue next up curation mode purpose why this page matters important file high level role major ui areas visible in the page 1 search area 2 playlist expansion multi select area 3 url and queue mode area 4 action status area core supporting state key functions logic blocks ensurekey resolveonly dosearch loadplaylist urloverride sendnow important api calls runtime youtube feature endpoints queue mode semantics search result behavior playlist selection behavior user workflow model direct url workflow search workflow playlist workflow architectural interpretation relationship to other pages things still to verify current status"
 };
 
 window.NP_KNOWLEDGE_SEARCH_SUMMARIES = {
-  "README.html": "title README page type hub topics metadata ops environment confidence high",
-  "airplay-metadata-hardening.html": "title airplay metadata hardening page type support topics airplay moode ops overrides confidence high",
+  "README.html": "This wiki tracks the architecture history and operational realities of the now playing project a moOde Audio Player add on and extension ecosystem for richer playback state metadata displays controls and surrounding operational glue",
   "alexa-interface.html": "Purpose",
   "api-config-and-runtime-endpoints.html": "Purpose",
-  "api-endpoint-catalog.html": "title api endpoint catalog page type child topics api runtime controller diagnostics confidence high",
   "api-playback-and-queue-endpoints.html": "Purpose",
   "api-service-overview.html": "Purpose",
-  "api-state-truth-endpoints.html": "title api state truth endpoints page type child topics api playback queue runtime confidence high",
   "api-youtube-radio-and-integration-endpoints.html": "Purpose",
   "app-shell-anatomy.html": "Purpose",
-  "architecture.html": "title architecture page type hub topics runtime api controller integration confidence medium",
+  "architecture.html": "Purpose",
   "backend-change-verification-runbook.html": "Purpose",
   "config-advanced-json.html": "Purpose",
   "config-alexa-setup.html": "Purpose",
@@ -114,65 +99,56 @@ window.NP_KNOWLEDGE_SEARCH_SUMMARIES = {
   "config-ratings.html": "Purpose",
   "configuration-and-diagnostics-interfaces.html": "Purpose",
   "controller-device-alias-pages.html": "Purpose",
-  "controller-kiosk-mode.html": "title controller kiosk mode page type child topics kiosk controller display runtime confidence high",
-  "controller-kiosk-scaffold.html": "title controller kiosk scaffold page type child topics kiosk controller playback runtime confidence high",
+  "controller-kiosk-mode.html": "Purpose",
+  "controller-kiosk-scaffold.html": "Purpose",
   "controller-mobile-anatomy.html": "Purpose",
   "controller-now-playing-anatomy.html": "Purpose",
-  "controller-queue-interface.html": "title controller queue interface page type child topics queue playback controller runtime confidence high",
+  "controller-queue-interface.html": "Purpose",
   "controller-tablet-anatomy.html": "Purpose",
   "decisions-and-history.html": "Purpose",
-  "deployment-and-ops.html": "title deployment and ops page type support topics ops runtime environment controller confidence high",
+  "deployment-and-ops.html": "Purpose",
   "desktop-browser-interface.html": "Purpose",
   "diagnostics-interface.html": "Purpose",
   "diagnostics-page-anatomy.html": "Purpose",
-  "display-enhancement-peppy-player-flow.html": "title display enhancement peppy player flow page type child topics display peppy player moode confidence high",
-  "display-interface.html": "title display interface page type parent topics display kiosk playback runtime confidence high",
+  "display-interface.html": "Purpose",
   "display-issue-triage-runbook.html": "Purpose",
-  "display-launch-and-wrapper-surfaces.html": "title display launch and wrapper surfaces page type child topics display kiosk controller runtime confidence high",
+  "display-launch-and-wrapper-surfaces.html": "Purpose",
   "display-surface-troubleshooting.html": "Purpose",
   "embedded-pane-contracts.html": "Purpose",
   "fragile-behavior-ownership.html": "Purpose",
   "genre-pane-messaging.html": "Purpose",
   "glossary.html": "Purpose",
   "gotchas-and-lessons.html": "Purpose",
-  "index.html": "title index page type support topics metadata ops runtime confidence high",
-  "install-and-validation.html": "title install and validation page type support topics ops install validation runtime confidence high",
-  "integrations.html": "title integrations page type parent topics integration api playback runtime confidence medium",
-  "kiosk-designer.html": "title kiosk designer page type child topics kiosk display runtime controller confidence high",
+  "integrations.html": "Purpose",
+  "kiosk-designer.html": "Purpose",
   "kiosk-editor-mode.html": "Purpose",
-  "kiosk-interface.html": "title kiosk interface page type parent topics kiosk display controller runtime confidence high",
-  "kiosk-launch-and-routing.html": "title kiosk launch and routing page type child topics kiosk display controller runtime confidence high",
-  "kiosk-right-pane-routing.html": "title kiosk right pane routing page type child topics kiosk display controller runtime confidence high",
+  "kiosk-interface.html": "Purpose",
+  "kiosk-launch-and-routing.html": "Purpose",
+  "kiosk-right-pane-routing.html": "Purpose",
   "kiosk-shell-anatomy.html": "Purpose",
   "library-health-interface.html": "Purpose",
   "library-health-page-anatomy.html": "Purpose",
   "local-environment.html": "Purpose",
-  "log.html": "title log page type support topics metadata ops runtime confidence medium",
-  "now-playing-surface-variants.html": "title now playing surface variants page type parent topics controller playback display queue confidence high",
+  "now-playing-surface-variants.html": "Purpose",
   "open-questions.html": "Purpose",
   "phone-interface.html": "Purpose",
-  "playback-authority-by-mode.html": "title playback authority by mode page type companion topics playback runtime integration api confidence high",
+  "playback-authority-by-mode.html": "Purpose",
   "playback-issue-triage-runbook.html": "Purpose",
   "playback-mode-troubleshooting.html": "Purpose",
-  "queue-and-playback-model.html": "title queue and playback model page type parent topics queue playback api controller confidence high",
-  "queue-wizard-internals.html": "title queue wizard internals page type companion topics queue playback controller integration confidence high",
+  "queue-and-playback-model.html": "Purpose",
+  "queue-wizard-internals.html": "Purpose",
   "radio-metadata-eval-interface.html": "Purpose",
   "repo-coverage-notes.html": "Purpose",
   "restart-and-runtime-admin-troubleshooting.html": "Purpose",
   "route-ownership-map.html": "Purpose",
   "source-map.html": "Purpose",
-  "style-token-and-surface-naming.html": "title style token and surface naming page type support topics ui theme styling invariants confidence high",
   "system-overview.html": "Purpose of the system",
   "tablet-interface.html": "Purpose",
   "tablet-kiosk-shell-differences.html": "Purpose",
-  "tablet-recents-and-lastfm.html": "title tablet recents and lastfm page type child topics tablet controller lastfm recents confidence high",
   "theme-interface.html": "Purpose",
   "theme-page-anatomy.html": "Purpose",
   "user-interfaces.html": "Purpose",
-  "visualizer-in-embedded-mode.html": "title visualizer in embedded mode page type child topics display kiosk controller playback confidence high",
-  "wiki-gap-review-2026-04-06.html": "title wiki gap review 2026 04 06 page type support topics metadata ops display documentation confidence high",
-  "wiki-lint-and-health.html": "title wiki lint and health page type support topics ops metadata runtime confidence high",
-  "wiki-operations.html": "title wiki operations page type support topics ops metadata runtime confidence high",
+  "visualizer-in-embedded-mode.html": "Purpose",
   "wiki-structure-notes.html": "Purpose",
   "workflows.html": "Purpose",
   "youtube-interface.html": "Purpose"
@@ -180,16 +156,13 @@ window.NP_KNOWLEDGE_SEARCH_SUMMARIES = {
 
 window.NP_KNOWLEDGE_SEARCH_HEADINGS = {
   "README.html": "what this is what this is not how to use this wiki read this first read by task understanding the project finding code ui and display work runtime and integration debugging deploy and ops work vocabulary and history knowledge pages runbooks local environment and reality checks where to go next how to maintain this wiki",
-  "airplay-metadata-hardening.html": "purpose why this page matters problem observed hardening changes applied 1 hardened metadata reader wrapper 2 cpu watchdog for metadata reader runaway behavior watchdog behavior verification checks source of truth and mirrored repo material app host vs moode host ownership when to suspect this branch first recovery interpretation best companion pages current status",
   "alexa-interface.html": "purpose why this page matters important files high level role shell routing behavior working interpretation main visible sections 1 config handoff scope note 2 corrections alias json editors 3 recently heard review 4 spoken command help examples important script logic in scripts alexa js runtime config loading load runtime config writing postruntime nextalexa alias editing flow savealiases recently heard rendering renderheard inline correction flow clearing recently heard lists clearheard kind important helper behaviors aliaskey s parsejsonfield id withbuttonfeedback important api calls service pill hint behavior command model guidance embedded in the page user operator workflow model correction workflow cleanup workflow reference workflow architectural interpretation relationship to other pages things still to verify current status",
   "api-config-and-runtime-endpoints.html": "purpose why this page matters auth protection model route family overview 1 runtime config load save observed usage common patterns why it matters 2 runtime environment verification observed purpose observed input shape observed output role why it matters 3 runtime repair podcast root creation observed purpose observed input shape why it matters 4 alexa provisioning check observed purpose observed input shape observed behavior why it matters 5 ratings maintenance family observed purpose why it matters 6 service control family observed purpose why it matters 7 moode browser target display control family observed purpose why it matters 8 podcast automation family that overlaps config runtime use why it belongs near this page relationship between these endpoint groups common endpoint traits in this family relationship to existing wiki pages things still to verify later current status",
-  "api-endpoint-catalog.html": "purpose scope and proof model how to use this page family root now playing state surfaces family alexa current voice state helpers family mpd direct action endpoints family queue and queue shaping endpoints direct queue endpoints queue wizard family family diagnostics debug browse index family config runtime services moode control family moode display peppy browser target control family library health metadata cleanup family ratings sticker maintenance family podcasts family youtube family favorites recents browse helpers relationships to existing api pages important current limits current status",
   "api-playback-and-queue-endpoints.html": "purpose important scope note why this page matters auth request model 1 direct playback control family where it shows up current role why it matters 2 queue wizard preview apply family where it shows up current role why it matters important note 3 youtube queue submission family current role documented request shape why it matters 4 embedded queue loading patterns what this tells us why it matters 5 display push routes that overlap playback presentation control why these belong here at all relationship between these families what this page is not yet relationship to existing wiki pages things still to verify later current status",
-  "api-service-overview.html": "purpose why this page matters high level role of the api service what the api service appears to own relationship to the rest of the system 1 ui surface layer 2 integration layer 3 operational runtime layer request model why this matters current route family map config runtime family playback queue control family youtube integration family radio debug evaluation family podcast automation family architectural interpretation what this page is not yet candidate child pages api config and runtime endpoints md api playback and queue endpoints md api endpoint catalog md api state truth endpoints md api youtube radio and integration endpoints md api diagnostics and maintenance endpoints md relationship to existing wiki pages current status",
-  "api-state-truth-endpoints.html": "purpose why this page matters primary owner endpoint get now playing why it is important strong current evidence from source important practical behaviors what not to assume best companion pages endpoint get next up why it is important strong current evidence from source important practical behaviors what not to assume best companion pages endpoint get alexa now playing why it is important strong current evidence from source current interpretation endpoint get alexa next up why it is important strong current evidence from source current interpretation endpoint get track why it is important current interpretation core distinctions to preserve now playing vs track now playing vs next up alexa helper routes vs normal playback routes suggested starting paths by question if the visible current song art status looks wrong if next up behavior looks wrong if alexa visible state looks wrong relationship to existing api pages current status",
+  "api-service-overview.html": "purpose why this page matters high level role of the api service what the api service appears to own relationship to the rest of the system 1 ui surface layer 2 integration layer 3 operational runtime layer request model why this matters current route family map config runtime family playback queue control family youtube integration family radio debug evaluation family podcast automation family architectural interpretation what this page is not yet candidate child pages api config and runtime endpoints md api playback and queue endpoints md api youtube radio and integration endpoints md api diagnostics and maintenance endpoints md relationship to existing wiki pages current status",
   "api-youtube-radio-and-integration-endpoints.html": "purpose why this page matters auth protection model 1 youtube endpoint family documented endpoints what they do why this family matters 2 radio metadata debug evaluation family documented endpoints what they do why this family matters 3 podcast automation routes adjacent to integration work documented endpoints what they do why this family matters relationship between these route families relationship to existing wiki pages things still to verify later current status",
   "app-shell-anatomy.html": "purpose why anatomy matters here high level role of app html main anatomical regions 1 hero transport strip what it is what it appears to do why it matters key ownership anchors 2 hero queue card what it is main dom anchors main logic center what syncheroqueue does important implication related modals and drill down flows why this matters companion pages if asked to improve the queue card 3 top tabs page routing bar what it is what it does why it matters key ownership anchors 4 display peppy moode action controls what it is what it appears to do why it matters companion pages 5 status pill strip what it is what it does why it matters companion pages 6 iframe hosted child surface appframe what it is what it does why it matters key ownership distinction 7 queue modal family what it is what it does why it matters 8 shell to frame theme normalization sizing logic what it is why it matters important functions areas companion pages practical where do i start map if asked to improve the queue card if asked to improve the transport strip if asked to improve the status pills if asked to improve tab page behavior if asked to improve moode peppy display actions anatomy rule for future agents relationship to other pages current status",
-  "architecture.html": "purpose why this page matters the current structural shape 1 central state truth layer 2 app host control plane 3 controller browser shell layer 4 display presentation layer 5 queue playback mediation layer 6 integration boundary layer 7 runtime host environment layer architectural boundaries that matter api vs ui state truth vs presentation shell mode vs content surface renderer vs shell mode what this architecture is now confident about best next pages by architectural question where does visible truth come from where does controller display behavior actually live where is queue playback behavior split which external runtime boundary matters here relationship to other pages current status",
+  "architecture.html": "purpose major architectural areas relationships between areas display control and playback layers integration boundaries operational dependencies architectural cautions",
   "backend-change-verification-runbook.html": "purpose why this page matters core rule step 1 classify the change a frontend page style only b route service config consuming backend logic c runtime admin or host control behavior d host override changes step 2 decide whether restart is likely cases that often do not require restart cases that often do require restart important current clue practical restart rule step 3 identify where the real effect should happen app host 10 0 0 4 moode host 10 0 0 254 practical guardrail step 4 verify the endpoint or direct backend contract for route service changes for runtime admin changes important guardrail step 5 verify the user facing surface anyway common affected surface families why this matters step 6 verify the historically fragile areas when relevant if the change touched display runtime behavior if the change touched playback art status logic if the change touched next up queue alexa related behavior if the change touched radio metadata enrichment behavior step 7 choose the minimum required verification set change type frontend only page style change change type backend route service change change type runtime admin host control change change type host override change step 8 declare success only when the right layer agrees strong verification patterns good enough for simple frontend change good enough for ordinary backend change good enough for runtime admin host control change not good enough practical examples example 1 route logic changed in src routes art routes mjs example 2 change in config runtime admin routes mjs example 3 change in queue playback route logic best companion pages current status",
   "config-advanced-json.html": "purpose why this page matters important file main visible controls 1 full config textarea why it matters 2 json formatting helper why it matters 3 full save path why it matters relationship to structured save flow working interpretation risk profile user operator workflow model safe advanced edit workflow when to prefer this path when not to prefer this path architectural interpretation current status",
   "config-alexa-setup.html": "purpose why this page matters important file high level role main visible controls 1 alexa enablement why it matters 2 public domain configuration why it matters health state behavior from config load 3 route webhook url why it matters 4 domain reachability check observed behavior why it matters 5 setup state ui helpers working interpretation automatic verification behavior why it matters explicit handoff to the dedicated alexa page why it matters hidden compatibility elements working interpretation important api surface user operator workflow model initial provisioning workflow verification workflow ongoing maintenance workflow architectural interpretation relationship to other pages things still to verify current status",
@@ -204,65 +177,56 @@ window.NP_KNOWLEDGE_SEARCH_HEADINGS = {
   "config-ratings.html": "purpose why this page matters important file high level role main visible controls 1 ratings feature enablement why it matters 2 ratings db status check observed behavior important interpretation 3 ratings backup listing observed behavior why it matters 4 ratings backup creation observed behavior why it matters 5 ratings restore workflow observed behavior why it matters track key protection why it matters ratings card visibility gating working interpretation important api endpoints user operator workflow model first time verification workflow protective maintenance workflow recovery workflow architectural interpretation relationship to other pages things still to verify current status",
   "configuration-and-diagnostics-interfaces.html": "purpose why this page matters important current files current working interpretation likely responsibilities of this branch candidate subpages config interface md config feature breakdown md diagnostics interface md library health interface md theme interface md radio metadata eval interface md alexa interface md relationship to other interface pages likely implementation dimensions what this page should eventually explain in more detail relationship to the rest of the wiki current status",
   "controller-device-alias-pages.html": "purpose why this page matters files in this family family classification 1 controller ipad html observed behavior working interpretation 2 controller iphone html observed behavior working interpretation shared behavior pattern why the query param preservation matters relationship to the real controller shells working family model thin alias redirect pages real implementation targets architectural interpretation relationship to other pages things still to verify current status",
-  "controller-kiosk-mode.html": "purpose why this page matters 1 kiosk mode is explicit in controller html query param detection body classes 2 controller html contains the kiosk layout itself kiosk layout css is embedded directly in the page what the css implies concretely 3 kiosk dom is built directly into controller html concrete kiosk dom anchors why this matters 4 kiosk editor mode is real and separate from live kiosk mode initkioskcontrols what the kiosk controls do 5 kiosk mode reuses controller profile machinery controller profile key url driven override behavior server profile loading 6 kiosk right pane behavior is implemented inside controller html concrete pane infrastructure concrete right pane routing behavior 7 preview 1 matters operationally strong current evidence what that means practically what controller html is not best current interpretation relationship to other pages current status",
-  "controller-kiosk-scaffold.html": "purpose important file why this page matters what the page actually contains sources pane list pane loadlist src now playing pane refreshnowplaying action buttons runtime key and api behavior ensurekey what this page is what this page is not relationship to the rest of the kiosk branch current status",
+  "controller-kiosk-mode.html": "purpose why this page exists current evidence verified controller side kiosk handling query parameter driven kiosk mode body classes and layout mode controller profile integration kiosk controls inside controller html kiosk page routing inside controller mode moode display target behavior from controller mode what this page should eventually explain current working interpretation relationship to other pages things still to verify current status",
+  "controller-kiosk-scaffold.html": "purpose why this page exists observed structure observed responsibilities source selection list loading now playing display queue actions observed api usage architectural interpretation relationship to the rest of the kiosk branch things still to verify current status",
   "controller-mobile-anatomy.html": "purpose why anatomy matters here high level role of controller mobile html main anatomical regions 1 compact now playing header region what it is what it does why it matters companion pages 2 integrated transport controls what they are what they do why they matter companion pages 3 quick search strip what it is what it does why it matters companion pages 4 library category list what it is what it does why it matters companion pages 5 recent content region what it is what it does why it matters companion pages 6 queue and queue adjacent entrypoints what they are what they do why they matter companion pages 7 modal workflow regions what they are what they do why they matter 8 mobile layout state orchestration what it is why it matters practical where do i start map if asked to improve the compact now playing area if asked to improve mobile transport controls if asked to improve quick search if asked to improve category row navigation if asked to improve recent content scanning if asked to improve mobile queue behavior anatomy rule for future agents relationship to other pages current status",
   "controller-now-playing-anatomy.html": "purpose why anatomy matters here high level role of controller now playing html main anatomical regions 1 album art art flip favorite hotspot region what it is what it does why it matters important behavioral notes companion pages 2 title artist album file info text stack what it is what it does why it matters companion pages 3 next up bar what it is what it does why it matters important behavioral note companion pages if asked to improve the next up bar 4 progress bar what it is what it does why it matters 5 integrated phone style transport controls what it is what it does why it matters important behavioral notes companion pages 6 artist details personnel overlay region what it is what it does why it matters 7 podcast modal family what it is what it does why it matters 8 album modal family what it is what it does important behavioral notes why it matters companion pages 9 embedded queue modal family what it is what it does why it matters important implication 10 embedded top level back navigation logic what it is what it does why it matters companion pages practical where do i start map if asked to improve album art flip behavior if asked to improve title artist album info if asked to improve the next up bar if asked to improve progress or controls if asked to improve album queue actions if asked to improve queue opening behavior anatomy rule for future agents relationship to other pages current status",
-  "controller-queue-interface.html": "purpose scope why this page matters high level role queue interface versus queue wizard controller queue html queue wizard evidence already established elsewhere 1 embedded queue modal in substantive now playing pages 2 embedded pane contract participation 3 kiosk right pane routing target standalone versus embedded role standalone mode embedded mode queue interface in the broader queue playback model layer 3 queue inspection direct queue ui relationship to now playing surfaces relationship to kiosk mode relationship to backend api proofing what this page clarifies 1 queue ui is a real surface 2 queue ui is not queue wizard 3 queue ui is part of the kiosk embedded ecosystem 4 queue ui deserves deeper backend proofing relationship to other pages current status",
+  "controller-queue-interface.html": "purpose important scope note why this page matters high level role queue interface versus queue wizard controller queue html queue wizard why this distinction matters evidence from current surface work 1 embedded queue modal in substantive now playing pages working interpretation 2 embedded pane contract participation working interpretation 3 kiosk right pane routing target working interpretation standalone versus embedded role standalone mode embedded mode queue interface in the broader queue playback model layer 3 queue inspection direct queue ui why this matters relationship to now playing surfaces practical implication relationship to kiosk mode relationship to backend api proofing current best interpretation things this page helps clarify 1 queue ui is a real surface 2 queue ui is not queue wizard 3 queue ui is part of the kiosk embedded ecosystem 4 queue ui is important enough to deserve backend route proofing later relationship to other pages what should follow this page current status",
   "controller-tablet-anatomy.html": "purpose why anatomy matters here high level role of controller tablet html main anatomical regions 1 kiosk editor control strip what it is what it does why it matters companion pages 2 now playing header card what it is what it does why it matters key ownership anchors 3 integrated transport controls what it is what it does why it matters companion pages 4 quick search strip what it is what it does why it matters companion pages 5 library category list what it is special row behavior why it matters companion pages 6 recent content region what it is what it does why it matters companion pages 7 tablet next up action bars what they are what they do why they matter companion pages 8 kiosk pane iframe region what it is what it does why it matters companion pages 9 album artist audio info modal family what it is what they do why they matter 10 device preset and layout profile logic what it is what it does why it matters companion pages practical where do i start map if asked to improve the tablet now playing header if asked to improve the tablet next up area if asked to improve quick search if asked to improve the library category list if asked to improve recent rails or recents layout if asked to improve right pane embedded behavior if asked to improve album artist audio info modal behavior anatomy rule for future agents relationship to other pages current status",
   "decisions-and-history.html": "purpose confirmed durable decisions confirmed historical lessons current default assumptions things that changed over time phase 1 trust hardening milestone phase 2 operational boundary milestone open questions",
-  "deployment-and-ops.html": "purpose the main operational lesson the system has more than one operational plane 1 app host plane 2 moode host effect plane 3 host override plane change type effect verify 1 if you changed a browser page or frontend only asset what that usually means what usually becomes live what to verify real lesson 2 if you changed route logic or service logic what that usually means what usually becomes live what to verify real lesson 3 if you changed runtime admin behavior what that usually means what usually becomes live what to verify real lesson 4 if you changed a state truth endpoint what that usually means what usually becomes live what to verify real lesson 5 if you changed a host override or host side patch what that usually means what to verify real lesson app host vs moode host the key question which machine should have changed restart reality often restart is not the first question often restart becomes part of the question what to verify after common change types example changed controller html example changed visualizer html example changed moode nowplaying api mjs example changed config runtime admin routes mjs example changed moode side override material best companion pages by question what does brian s real setup look like do i need restart or only verification how do i verify a display side change how do i verify playback state truth changes what this page is now really teaching relationship to other pages current status",
+  "deployment-and-ops.html": "purpose documented operational areas deployment related themes change classes and what they usually imply frontend page style changes route service config runtime admin changes runtime admin or host control actions host override changes runtime verification and service control local environment dependence operational cautions open questions",
   "desktop-browser-interface.html": "purpose why the desktop browser interface matters important files current working interpretation likely responsibilities of the desktop browser interface relationship to other interface pages likely implementation dimensions anatomy companion page what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also related branch pages current status",
   "diagnostics-interface.html": "purpose why this page matters important files high level role shell entry behavior major ui areas visible in the page 1 request runner endpoint console 2 live embedded view cards important dom action centers diagnostics script as the logic center request runner behavior track key aware diagnostics live embedded surface inspection relationship to display and controller debugging current observed api config contact architectural interpretation related branch pages anatomy companion page relationship to other pages things still to verify current status",
   "diagnostics-page-anatomy.html": "purpose why anatomy matters here high level role of diagnostics html main anatomical regions 1 shell redirect page header layer what it is why it matters 2 request runner card what it is what it does why it matters 3 request body method path controls what they are what they do why they matter 4 favorites and endpoint selection layer what it is what it does why it matters companion pages 5 track key aware execution controls what they are what they do why it matters companion pages 6 response copy curl helper layer what it is what it does why it matters 7 live embedded surface card grid what it is what they do why they matter companion pages 8 diagnostics script orchestration layer what it is what it does why it matters practical where do i start map if asked to improve endpoint execution flow if asked to improve favorites if asked to improve track key testing if asked to improve curl copy or response copy behavior if asked to improve the embedded live cards anatomy rule for future agents relationship to other pages current status",
-  "display-enhancement-peppy-player-flow.html": "purpose why this page matters what this branch includes relationship to the config feature stable target url model router behavior why kiosk is not the same thing as peppy or player builder first display design peppy data pipeline vu and spectrum 1 vu feed 2 spectrum feed bridge mode exclusivity rule required http targets in bridge mode boot persistence caveat recommended mitigation quick verify after boot peppy builder model meter type interpretation save vs push distinction save as preset push to moode push flow summary player branch visualizer branch within display enhancement verification points router target check runtime mode check feed check boot persistence check exclusivity check best companion pages current status",
-  "display-interface.html": "purpose why this page matters central display truth starts from now playing what belongs in the display branch strong current branch map 1 central visible state truth surfaces 2 display mode renderer flows 3 kiosk as presentation shell mode 4 launch wrapper adapter surfaces 5 embedded visual behavior inside controller flows 6 runtime host display target behavior what this branch is now confident about high value starting paths if the visible display content is wrong if the wrong display target is being shown on moode if kiosk presentation behavior is wrong if embedded visual behavior is wrong relationship to other wiki pages current status",
+  "display-interface.html": "purpose what belongs in the display family core display oriented surfaces browser tv display surface kiosk style display behavior moode hosted render display modes display behavior embedded in controller oriented surfaces what display surfaces are for important cross layer relationships relationship to other wiki pages planned drill down branches display browser surface md display launch and wrapper surfaces md now playing surface variants md config display and render features md api playback and queue endpoints md display renderers and visual modes md artwork and visual assets md kiosk interface md coverage philosophy for future expansion current status",
   "display-issue-triage-runbook.html": "purpose why this page matters core rule step 1 identify the actual display surface or mode a browser tv display surface b player display mode c peppy display mode d visualizer display mode e kiosk presentation shell mode important guardrail step 2 identify the primary page owner if the issue is classic display routing or browser display behavior if the issue is player mode if the issue is peppy mode if the issue is kiosk presentation behavior if the issue is controller embedded display behavior step 3 decide what layer most likely owns the symptom a page owned symptom b route backed support data symptom c host runtime owned symptom important guardrail step 4 check the historically fragile display paths fragile path a iframe vs top level rendering fragile path b routed page vs final render target confusion fragile path c app host vs moode host mismatch fragile path d mode sensitive art display truth step 5 decide which host to verify verify on app host first when verify on moode host first when practical host rule step 6 use the minimum verification set that matches the symptom symptom type wrong mode or wrong page showing symptom type art text looks wrong but page structure is fine symptom type preview designer differs from live target symptom type runtime admin display push looks ineffective step 7 declare success only when the visible destination is correct quick heuristics best companion pages current status",
-  "display-launch-and-wrapper-surfaces.html": "purpose why this page matters 1 displays html display target launcher and moode push console what it actually is open designer links runtime host model track key bootstrap core push helper player peppy visualizer push behavior player specific size behavior kiosk push behavior index display behavior what displays html is not most important api calls best current interpretation 2 controller visualizer html thin wrapper host for visualizer html what it actually is standalone vs embedded behavior child url construction default overrides frame loading behavior best current interpretation 3 index1080 html pure redirect shim what it actually is best current interpretation working family model real operator console real wrapper adaptor page pure redirect shim key distinctions to preserve displays html vs display html controller visualizer html vs visualizer html index1080 html vs index html relationship to the broader display branch things now much less speculative current status",
+  "display-launch-and-wrapper-surfaces.html": "purpose why this page matters family classification 1 displays html display launcher and push console key role important actions important functions logic important api calls 2 controller visualizer html visualizer wrapper host key role important behavior architectural interpretation 3 index1080 html redirect compatibility shim working family model substantive operator helper page wrapper host page redirect shim terminology note relationship to the broader display branch candidate future drill down pages displays launch console md controller visualizer wrapper md architectural interpretation relationship to other pages things still to verify current status",
   "display-surface-troubleshooting.html": "purpose step 1 identify which surface you are actually looking at step 2 choose the primary page owner desktop app shell tablet controller phone controller shared generic controller base display router classic now playing layer moode box display surfaces step 3 decide whether the issue is page owned route owned or host runtime owned page owned symptoms route owned support behavior host runtime owned symptoms step 4 handle iframe vs top level differences explicitly step 5 classify whether the display problem is app host side or moode host side more likely app host side more likely moode host side step 6 choose verification based on change class quick heuristics best companion pages",
   "embedded-pane-contracts.html": "purpose parent side setup common embedded mode pattern in child pages embedded layout adaptation theme and color propagation close the pane contract richer child to parent messages controller now playing html special behavior visualizer html special behavior working embedded pane contract parent shell responsibilities child page responsibilities why this matters relationship to other pages things still to verify current status",
   "fragile-behavior-ownership.html": "purpose important scope note why this page matters fragile behavior 1 iframe vs top level rendering why this is fragile main ownership anchors page owners runtime script owners styling owners typical failure shapes practical guardrails why this belongs here fragile behavior 2 next up alexa mode path why this is fragile main ownership anchors api bootstrap owners route owners service support owners alexa side ownership areas surface owners typical failure shapes practical guardrails why this belongs here fragile behavior 3 last good render preservation why this is fragile main ownership anchors page runtime owners route support owners conceptual ownership companion typical failure shapes practical guardrails why this belongs here fragile behavior 4 display wake runtime admin moode host interaction why this is fragile main ownership anchors route owners bootstrap owner local environment override owners surface owners typical failure shapes practical guardrails why this belongs here fragile behavior 5 radio metadata guardrails and enrichment suppression why this is fragile main ownership anchors route owners conceptual behavior companions surface owners typical failure shapes practical guardrails why this belongs here fragile behavior 6 mode sensitive art current song status truth why this is fragile main ownership anchors route owners service support owners conceptual owner page typical failure shapes practical guardrails why this belongs here ownership pattern across fragile behaviors 1 fragility is often cross layer 2 route modules often own more than expected 3 local runtime reality matters practical what to inspect first map if the symptom is embedded vs top level rendering if the symptom is next up alexa mode weirdness if the symptom is stale but stable display behavior if the symptom is display wake moode mismatch if the symptom is weird radio metadata art behavior relationship to other pages what should follow this page current status",
   "genre-pane-messaging.html": "purpose why this page matters important files key message type source page controller genres html user action what the code does message emission in controller genres html destination page controller albums html genre aware load behavior album data loading for a genre concrete action flow parent shell handling status architectural interpretation relationship to other pages things still to verify current status",
   "glossary.html": "purpose core project terms interfaces and surfaces integrations and external systems operational vocabulary terms needing clarification",
   "gotchas-and-lessons.html": "purpose confirmed lessons from local memory likely operational gotchas likely integration gotchas likely ui display gotchas things future agents should check first open questions",
-  "index.html": "purpose start retrieval surfaces core orientation interface hubs config diagnostics operator branch playback queue engineering reference branch retrieval helpers in this branch display kiosk embedded branch supporting environment operations pages current status",
-  "install-and-validation.html": "purpose why this page matters scope of this page baseline test environment installer invocation paths to validate 1 local script invocation 2 public curl style invocation 3 explicit branch or ref invocation expected result service and process validation endpoint smoke tests environment file behavior re run and idempotency check upgrade path validation ownership and permission validation negative tests invalid ref invalid port rollback drill final public ready gate relationship to ordinary deploy work best companion pages current status",
-  "integrations.html": "purpose why this page matters what belongs in the integration layer strong current integration map 1 moode 2 mpd 3 youtube 4 alexa 5 radio metadata and enrichment boundaries 6 last fm scrobbling vibe adjacent integrations 7 podcasts what this branch is now confident about high value starting paths if the bug smells like a boundary source of truth problem if the bug smells like youtube or radio behavior if the bug smells like alexa visible state or setup if the bug smells like podcast runtime integration relationship to other pages current status",
-  "kiosk-designer.html": "purpose important files why this page matters what the page actually contains key state and storage behavior persistprofile preview url construction buildrel preview update contract refreshpreview postlivetheme built in preset behavior export import behavior export import moode target check behavior ensurekey refreshtargethint push to moode action flow what this page is what this page is not relationship to other pages current status",
+  "integrations.html": "purpose documented integrations related integration surfaces request and api patterns display and playback ecosystem operational cautions open questions",
+  "kiosk-designer.html": "purpose important file what kiosk designer html appears to do why it matters observed structure key functions and logic blocks persistprofile buildrel postlivetheme refreshpreview ensurekey refreshtargethint observed kiosk designer responsibilities previewing kiosk presentation managing preset state managing theme and color settings checking pushing moode target configuration push to moode action flow observed api config interactions relationship to other kiosk pages working interpretation things still to verify current status",
   "kiosk-editor-mode.html": "purpose why this page matters important file key mode detection body classes layout difference between runtime kiosk and editor kiosk runtime kiosk mode editor kiosk mode important dom elements in editor mode key function initkioskcontrols size selection behavior push to moode behavior in editor mode relationship to right pane behavior relationship to auto open behavior relationship to kiosk designer architectural interpretation relationship to other pages things still to verify current status",
-  "kiosk-interface.html": "purpose why this page matters what kiosk is in the current repo strong current branch map 1 kiosk entry and redirect handoff 2 controller backed live kiosk shell 3 kiosk child route alias layer 4 right pane and embedded child behavior 5 kiosk editor designer paths 6 kiosk anatomy as a shell path what this branch is now confident about high value starting paths if kiosk launch behavior is wrong if kiosk pane behavior or child page routing is wrong if the question is is this really a kiosk page or just a controller alias if the question is about kiosk designer editor behavior relationship to other pages current status",
-  "kiosk-launch-and-routing.html": "purpose why this page matters 1 kiosk html profile sync and redirect bridge what it actually is local storage keys it uses what query params it reads resolution model what it writes back to localstorage redirect target and params what rev 20260329 motion art fix means in practice best current interpretation 2 controller html actual kiosk backed destination what direct file inspection confirms what this means 3 kiosk alias pages pure redirect shims into controller surfaces 4 controller kiosk html separate scaffold prototype path working routing model key distinctions to preserve kiosk html vs controller html kiosk alias pages vs real kiosk implementations controller kiosk html vs main kiosk path what this page is now confident about relationship to other pages current status",
+  "kiosk-interface.html": "purpose what kiosk means here why kiosk belongs in its own branch kiosk within the display family likely kiosk contexts to document more deeply kiosk and moode host reality important kiosk facing files and entrypoints first classification of kiosk files now playing kiosk html primary kiosk launcher bridge now playing kiosk designer html kiosk designer preview push tool now playing controller kiosk html separate kiosk scaffold prototype specialized kiosk html files redirect shims into controller pages working interpretation likely implementation dimensions kiosk specific questions future documentation should answer planned sub branches kiosk launch and routing md kiosk designer md controller kiosk scaffold md controller kiosk mode md kiosk browser surface md kiosk on moode md display renderers and visual modes md artwork and visual assets md anatomy companion page relationship to troubleshooting and ops see also current status",
+  "kiosk-launch-and-routing.html": "purpose why this page exists primary entrypoint now playing kiosk html local profile handoff redirect target controller html kiosk branded redirect shims working routing model why this matters architecturally relationship to other kiosk pages things still to verify immediate follow up candidates current status",
   "kiosk-right-pane-routing.html": "purpose why this page matters core decision open in right pane or not main entrypoint openpage page toggle behavior behavior when right pane mode is not active behavior when right pane mode is active right pane loading mechanism special handling for visualizer pane open state management message based pane closing deep linking behavior working interpretation relationship to other pages things still to verify current status",
   "kiosk-shell-anatomy.html": "purpose why anatomy matters here the most important structural fact main anatomical regions of the kiosk shell path 1 launcher profile bridge kiosk html what it is what it does why it matters if asked to improve kiosk launch behavior 2 controller backed live kiosk shell what it is what it does why it matters companion pages 3 right pane embedded child region what it is what it does why it matters companion pages if asked to improve right pane behavior 4 kiosk branded child route aliases what they are why they matter if asked to improve a kiosk branded child page 5 kiosk designer preview push tool what it is what it does why it matters important rule companion pages 6 separate scaffold prototype path controller kiosk html what it is what it does why it matters important rule companion pages 7 runtime display host sensitive push and target behavior what it is what it includes why it matters companion pages practical where do i start map if asked to improve kiosk launch profile behavior if asked to improve the live kiosk shell if asked to improve the right pane if asked to improve kiosk preview push tooling if asked to improve the 1280 400 scaffold prototype if asked to debug kiosk shows the wrong thing on the real display anatomy rule for future agents relationship to other pages current status",
   "library-health-interface.html": "purpose why this page matters important files high level role shell entry behavior major ui areas visible in the page 1 library scan summary area 2 animated art cache section 3 album metadata inspector 4 tag overwrite workflow 5 featured artist cleanup workflow key dom action centers supporting script as the likely logic center relationship to the media library and artwork branches moode library update role album inspection workflow model architectural interpretation relationship to other pages things still to verify current status",
   "library-health-page-anatomy.html": "purpose why anatomy matters here high level role of library health html main anatomical regions 1 shell redirect page header layer what it is why it matters 2 library scan summary region what it is what it does why it matters 3 animated art cache audit region what it is what it does why it matters companion pages 4 album metadata inspector what it is what it does why it matters 5 performer suggestion apply workflow what it is what it does why it matters 6 album tag overwrite tool what it is what it does why it matters 7 feat collaboration cleanup workflow what it is what it does why it matters 8 moode library update action what it is what it does why it matters companion pages 9 library health script orchestration layer what it is what it does why it matters practical where do i start map if asked to improve the scan summary if asked to improve animated art cache behavior if asked to improve album metadata inspection if asked to improve performer application if asked to improve tag overwrite if asked to improve feat cleanup if asked to improve moode library update behavior anatomy rule for future agents relationship to other pages current status",
   "local-environment.html": "purpose current known hosts and roles current deployment assumptions local patches and overrides operational guardrails app host vs moode host control boundary open questions",
-  "log.html": "purpose major milestones 2026 04 06 source doc gap fill phase 2026 04 05 start search and retrieval system phase 2026 04 05 anatomy layer phase 2026 04 05 playback queue and route proofing phase 2026 04 05 rendered wiki usability phase 2026 04 05 config and api branch expansion phase 2026 04 05 interface and surface coverage phase 2026 04 05 framing and recovery phase current status",
-  "now-playing-surface-variants.html": "purpose why this page matters files in the family family classification 1 main implementation page controller now playing html 2 tablet implementation variant controller now playing tablet html 3 grid implementation variant controller now playing grid html 4 ipad redirect shim controller now playing ipad html 5 iphone redirect shim controller now playing iphone html 6 alias shim controller nowplaying iphone html working family model substantive implementation pages redirect alias pages shared behaviors across the substantive variants important variant differences controller now playing html controller now playing tablet html controller now playing grid html relationship to kiosk and embedded behavior relationship to queue and album drill down behavior anatomy companion page what this page is now confident about relationship to other pages current status",
+  "now-playing-surface-variants.html": "purpose why this page matters files currently in the family family classification 1 core page controller now playing html 2 tablet variant controller now playing tablet html 3 grid variant controller now playing grid html 4 redirect shim controller now playing ipad html 5 redirect shim controller now playing iphone html 6 alias typo shim controller nowplaying iphone html working family model real substantive pages redirect alias pages important shared behaviors across substantive variants important variant differences controller now playing html controller now playing tablet html controller now playing grid html relationship to kiosk and embedded behavior relationship to queue and album drill down behavior anatomy companion page candidate future drill down pages controller now playing core md controller now playing tablet variant md controller now playing grid variant md controller now playing iphone mode md architectural interpretation relationship to other pages things still to verify current status",
   "open-questions.html": "purpose questions that are really mapping todos questions that are true runtime or behavior uncertainties questions that depend on brian specific local reality questions that should probably become runbooks later",
   "phone-interface.html": "purpose why the phone interface matters important files current working interpretation likely responsibilities of the phone interface relationship to other interface pages anatomy companion page likely implementation dimensions what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also current status",
-  "playback-authority-by-mode.html": "purpose why this page matters core model mode 1 local file playback authority model what that means practically common failure shapes mode 2 airplay authority model what that means practically common failure shapes important local environment note mode 3 upnp authority model what that means practically common failure shapes mode 4 radio stream authority model what that means practically common failure shapes important principle mode 5 unresolved fallback driven case authority model what that means practically common failure shapes cross mode principles 1 do not assume one universal authority 2 visible truth is often app mediated 3 art authority is especially mode sensitive 4 troubleshooting should start with mode classification suggested troubleshooting order by mode if local file if airplay if upnp if radio stream if unresolved fallback driven relationship to other pages current status",
+  "playback-authority-by-mode.html": "purpose why this page matters core model mode 1 local file playback current authority model what that means practically common failure shapes mode 2 airplay current authority model what that means practically common failure shapes important local environment note mode 3 upnp current authority model what that means practically common failure shapes mode 4 radio stream current authority model what that means practically common failure shapes important principle mode 5 unresolved fallback driven case current authority model what that means practically common failure shapes cross mode principles 1 do not assume one universal authority 2 visible truth is often app mediated 3 art authority is especially mode sensitive 4 troubleshooting should start with mode classification suggested troubleshooting order by mode if local file if airplay if upnp if radio stream if unresolved fallback driven relationship to other pages what should follow this page current status",
   "playback-issue-triage-runbook.html": "purpose why this page matters core rule step 1 classify the playback mode first a local file playback b airplay c upnp d radio stream e unresolved fallback driven case important guardrail step 2 choose the matching authority chain if local file if airplay if upnp if radio stream if unresolved fallback driven step 3 decide what kind of playback symptom this is a transport truth problem b queue truth problem c art metadata truth problem d presentation interpretation problem important guardrail step 4 check the historically fragile playback paths fragile path a next up alexa mode behavior fragile path b mode sensitive art current song status truth fragile path c radio metadata guardrails fragile path d last good fallback preservation behavior fragile path e airplay local override reality step 5 decide which layer to inspect first route bootstrap layer service layer page runtime layer local runtime override layer step 6 use the minimum verification set that matches the symptom symptom type transport control wrong symptom type queue head next up wrong symptom type art metadata wrong symptom type degraded or stale looking output step 7 declare success only when the right truth source and visible result agree quick heuristics best companion pages current status",
   "playback-mode-troubleshooting.html": "purpose step 1 classify the playback mode step 2 choose the matching authority path local file airplay upnp radio stream unresolved fallback driven case step 3 choose the code layer to inspect page runtime layer route layer mpd service helper layer runtime admin local override layer step 4 choose verification based on change type quick heuristics best companion pages",
   "queue-and-playback-model.html": "purpose why this page matters high level model core distinction playback vs queue playback control working interpretation queue control working interpretation queue shaping curation why this matters current actor model 1 user facing surfaces initiate intent 2 app host routes mediate the action 3 mpd remains an important underlying truth source 4 visible surfaces re render from resulting state current known playback queue route families direct playback family queue wizard family youtube queue family embedded queue surface display presentation overlap family mpd versus app side mediation practical implication relation to playback mode why it matters here relation to display and controller surfaces practical implication current known queue mutation patterns direct append replace crop preview apply embedded queue inspection what this page does not yet claim relationship to other pages what should follow this page current status",
-  "queue-wizard-internals.html": "purpose scope why queue wizard matters high level role queue wizard versus raw queue mutation raw queue mutation queue wizard current known semantics 1 preview apply pattern 2 album level queue actions 3 feature driven queue shaping current known caller surfaces 1 substantive controller now playing pages 2 controller side queue and now playing interactions more broadly 3 last fm vibe discovery tooling queue wizard in the overall playback model layer 1 transport layer 2 raw queue mutation layer 3 queue inspection layer 4 queue shaping curation current route knowledge relationship to youtube queueing relationship to embedded queue surfaces what still needs proof relationship to other pages current status",
+  "queue-wizard-internals.html": "purpose important scope note why queue wizard matters high level role queue wizard versus raw queue mutation raw queue mutation queue wizard why this distinction matters current known semantics 1 preview apply pattern working interpretation 2 album level queue actions working interpretation 3 feature driven queue shaping working interpretation current known caller surfaces 1 substantive controller now playing pages 2 controller side queue and now playing interactions more broadly 3 last fm vibe discovery tooling queue wizard in the overall playback model layer 1 transport layer 2 raw queue mutation layer 3 queue inspection layer 4 queue shaping curation why this matters current route knowledge current best interpretation relationship to youtube queueing important distinction relationship to embedded queue surfaces important distinction what still needs proof relationship to other pages current status",
   "radio-metadata-eval-interface.html": "purpose why this page matters important file high level role major visible ui areas core controls important functions logic blocks defaultapibase load verdict r clear action auto action what each row shows important api calls relationship to radio stream handling user operator workflow model review workflow testing workflow architectural interpretation relationship to other pages things still to verify current status",
-  "repo-coverage-notes.html": "purpose why this page matters current overall assessment strongly covered areas 1 top level html surface layer 2 config 3 api playback queue ownership branch 4 runtime ops local environment branch strategically covered areas 1 src 2 integrations 3 ops 4 alexa 5 scripts lightly covered areas 1 styles 2 skins 3 assets 4 lambda bundle and lambda upload 5 notes exports icons intentionally low value or uncovered areas 1 node modules 2 packaging artifacts archives and incidental assets 3 miscellaneous top level support files practical interpretation of the audit recently improved gap areas highest value future repo coverage expansions 1 src deeper mapping 2 scripts mapping 3 styles skins display asset branch what this page should prevent relationship to other pages current status",
+  "repo-coverage-notes.html": "purpose why this page matters current overall assessment strongly covered areas 1 top level html surface layer 2 config 3 api playback queue ownership branch 4 runtime ops local environment branch strategically covered areas 1 src 2 integrations 3 ops 4 alexa 5 scripts lightly covered areas 1 styles 2 skins 3 assets 4 lambda bundle and lambda upload 5 notes exports icons intentionally low value or uncovered areas 1 node modules 2 packaging artifacts archives and incidental assets 3 miscellaneous top level support files practical interpretation of the audit highest value future repo coverage expansions 1 src deeper mapping 2 scripts mapping 3 styles skins display asset branch what this page should prevent relationship to other pages current status",
   "restart-and-runtime-admin-troubleshooting.html": "purpose step 1 classify the kind of change frontend page style changes route service config runtime admin changes runtime admin or host control actions host override changes step 2 decide how the setting is applied per request disk read immediate runtime env patch startup captured value step 3 decide where the effect should happen app host moode host step 4 choose the verification path for frontend page style changes for route service config changes for runtime admin actions for host override changes step 5 use the current restart path correctly quick heuristics best companion pages",
   "route-ownership-map.html": "purpose important scope note why this page matters ownership model at a glance 1 top level page files own user facing surface behavior 2 moode nowplaying api mjs owns server bootstrap assembly 3 focused route modules often own real feature behavior 4 services and shared libs are support layers not always the main owners strong current ownership anchors api bootstrap and registration moode nowplaying api mjs why it matters queue and queue advance ownership src routes queue routes mjs related conceptual pages important nuance queue wizard ownership src routes config queue wizard basic routes mjs src routes config queue wizard preview routes mjs src routes config queue wizard apply routes mjs src routes config queue wizard vibe routes mjs shared support layer related conceptual pages important nuance browse and recent library ownership src routes config browse routes mjs shared support layer related conceptual pages important nuance runtime admin and moode display control ownership src routes config runtime admin routes mjs related conceptual pages important nuance diagnostics playback test ownership src routes config diagnostics routes mjs related conceptual pages important nuance art ownership src routes art routes mjs related conceptual pages important nuance ratings ownership src routes rating routes mjs related conceptual pages track serving ownership src routes track routes mjs related conceptual pages controller profile ownership src routes config controller profile routes mjs related conceptual pages config aggregation ownership src routes config routes index mjs why it matters supporting service and library ownership src services mpd service mjs important nuance src lib browse index mjs important nuance ownership by behavior family if the issue is direct playback controls if the issue is queue advance next up queue head behavior if the issue is queue wizard preview apply behavior if the issue is controller queue ui backing if the issue is browse recent library drill down data if the issue is moode display runtime browser target behavior if the issue is art current art blurred background behavior if the issue is ratings or current song rating what is still open not yet fully proven practical guidance for future agents relationship to other pages current status",
   "source-map.html": "purpose high level repository areas moode nowplaying api mjs src scripts styles assets integrations ops config docs notes alexa lambda bundle lambda upload skins exports first places to look by task ui or visual behavior playback or control behavior integration behavior deployment runtime issues alexa or voice related work documentation or project understanding areas future agents should usually avoid editing first special cautions verified ownership guidance user facing surfaces playback control ownership integration ownership runtime ops sensitive ownership observed architectural patterns highest value remaining unknowns best next verification targets related drill down pages next improvements for this page",
-  "style-token-and-surface-naming.html": "purpose why this page matters canonical surface vocabulary 1 shell rail surface 2 shell content wrapper 3 page wrapper 4 panel or card surface 5 section container naming interpretation rule canonical theme token vocabulary core shell background tokens core text tokens tab family tokens hero card tokens pill chip tokens ownership rule background invariants 1 herorail uses app background 2 herowrap must not use app background 3 appframe base background uses app background unless explicitly overridden 4 app background picker controls only the backmost app shell and iframe base planes 5 do not reintroduce herorail before underlay backgrounds practical consequence of the invariants compatibility and alias decisions migration strategy phase 1 semantic normalization without visual change phase 2 gradual markup class migration existing page inventory examples recommended non breaking alias direction best companion pages current status",
   "system-overview.html": "purpose of the system major feature areas user facing surfaces major integrations and external systems operational themes boundaries and cautions",
   "tablet-interface.html": "purpose why the tablet interface matters important file what the tablet interface appears to include current architectural role strongly related drill down areas tablet kiosk shell behavior embedded pane contracts genre albums semantic pane drill down visualizer behavior within tablet shell contexts anatomy companion page likely implementation dimensions what this page should eventually explain in more detail related branch pages relationship to the rest of the wiki see also current status",
   "tablet-kiosk-shell-differences.html": "purpose why this page matters important file shared foundations with controller html important differences 1 explicit handling of np kiosk pane genre 2 pane url synchronization 3 explicit pane close cleanup 4 additional embedded child parameters 5 tablet settings pane support 6 pane prewarming 7 broader pane routing model 8 visualizer handling remains rich working interpretation concrete example genre pane flow on tablet shell architectural implication relationship to other pages things still to verify current status",
-  "tablet-recents-and-lastfm.html": "purpose why this page matters primary surface recents row model allowed row values structural rules last fm row source mapping url seeding behavior refresh and stability guardrails 1 do not auto refresh recents on a timer 2 do not reload recents from unrelated events when row config has not changed 3 do not overwrite non empty rendered rows with empty live results 4 do not replace row datasets unless incoming data is meaningfully different stability interpretation adding a new row source type relationship to last fm configuration branch best companion pages current status",
   "theme-interface.html": "purpose why this page matters important file high level role major ui areas visible in the page 1 token grid color picker cards 2 preset controls 3 import export controls 4 save reset controls core storage model theme token model key functions logic blocks load loadpresets savepresets render push applythemeeditorzones and applypickertilebg preset selection behavior import export behavior live shell synchronization reset behavior starter presets architectural interpretation anatomy companion page relationship to other pages things still to verify current status",
   "theme-page-anatomy.html": "purpose why anatomy matters here high level role of theme html main anatomical regions 1 shell editor header and container what it is why it matters 2 token grid token card region what it is what it does why it matters logic center 3 preset workflow region what it is what it does why it matters logic center 4 import export region what it is what it does why it matters logic center 5 save reset status region what it is what it does why it matters 6 export modal region what it is what it does why it matters 7 localstorage persistence layer what it is what it does why it matters logic center 8 live shell synchronization layer what it is what it does why it matters logic center 9 editor self theming layer what it is what it does why it matters practical where do i start map if asked to change token card layout or controls if asked to change preset behavior if asked to change import export behavior if asked to change save reset behavior if asked to fix shell sync if asked to fix how the editor itself looks anatomy rule for future agents relationship to other pages current status",
   "user-interfaces.html": "purpose how to use this page interface families general browser controller surfaces display oriented surfaces media library and browse surfaces queue playback and curation surfaces operator admin surfaces coverage philosophy relationship to other pages initial branch candidates notes for future expansion",
-  "visualizer-in-embedded-mode.html": "purpose what visualizer html actually is core reactive model scene model family preset control layer query parameter inputs what embedded mode changes embedded mode the important behavioral change embedded visualizer fullscreen kiosk handoff fullscreen kiosk visualizer controller return path preserved visual state across the round trip push to moode behavior relevant api calls read write special embedded mode rendering differences relationship to controller kiosk pages what this page is now confident about relationship to other pages current status",
-  "wiki-gap-review-2026-04-06.html": "purpose current overall assessment high value gaps identified 1 install and validation workflow 2 style token naming canon and background invariants 3 display enhancement as a builder first peppy player system 4 deploy runtime operator checklists in compact operational form 5 cross surface parity and behavior contracts 6 tablet recents and last fm behavior contract 7 airplay metadata hardening as an ops recipe areas already covered strongly enough recommended next additions recommended integration points current status",
-  "wiki-lint-and-health.html": "purpose why this page matters core lint question what to check during a lint pass 1 reachability and navigation fix patterns 2 source render consistency fix patterns 3 scope clarity and duplication fix patterns 4 retrieval quality fix patterns 5 confidence and proof hygiene fix patterns 6 search usefulness fix patterns 7 coverage health fix patterns suggested lint cadence lightweight lint branch lint periodic wiki lint good outcomes from a lint pass relationship to other maintenance pages current status",
-  "wiki-operations.html": "purpose why this page matters three layer mental model 1 ingest what ingest means here what ingest should produce ingest rule ingest examples in this wiki 2 query what query means here query rule query outputs should sometimes become wiki pages 3 lint what lint means here what lint should look for lint rule suggested operating cadence during active work after answering an important recurring question periodically when to create a synthesis page metadata pilot schema page type vocabulary topics vocabulary confidence vocabulary metadata rule relationship to other wiki maintenance pages current status",
+  "visualizer-in-embedded-mode.html": "purpose why this page matters important file core query parameter inputs key mode logic embedded mode pure mode ui mode embedded fullscreen handoff fullscreen kiosk visualizer controller return path important state values preserved across the round trip designer preset behavior in visualizer html push to moode behavior relevant api calls read write special embedded mode rendering differences relationship to controller side kiosk routing working interpretation relationship to other pages things still to verify current status",
   "wiki-structure-notes.html": "purpose why this page matters core structure model 1 hub pages what hub pages should do what hub pages should not do 2 parent pages what parent pages should do what parent pages should not do 3 child pages a page deserves to become a child page when a page does not deserve to become a child page just because 4 companion pages companion pages should do companion pages should not do 5 runbook pages what makes a runbook different runbook rule concept page rule 6 reference support pages what support pages should do what support pages should not do parent child versus see also links use parent child style when use companion sibling links when use see also links when anti pattern to avoid reachability rule for source markdown for rendered html source truth versus rendered truth naming conventions for page types good naming patterns use caution with vague names when to split a page when not to split a page update policy when splitting confidence language rule prefer strong language when supported keep cautious language when needed anti pattern to avoid branch growth rule for future work recommended maintenance checklist for new pages relationship to other pages current status",
   "workflows.html": "purpose common workflow types ui and display changes integration and runtime debugging mode first workflow for playback current song art status issues operational verification habits restart boundary workflow for config runtime admin changes boundaries and cautions open questions",
   "youtube-interface.html": "purpose why this page matters important file high level role major ui areas visible in the page 1 search area 2 playlist expansion multi select area 3 url and queue mode area 4 action status area core supporting state key functions logic blocks ensurekey resolveonly dosearch loadplaylist urloverride sendnow important api calls runtime youtube feature endpoints queue mode semantics search result behavior playlist selection behavior user workflow model direct url workflow search workflow playlist workflow architectural interpretation relationship to other pages things still to verify current status"
@@ -333,64 +297,6 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
     {
       "id": "how-to-maintain-this-wiki",
       "text": "How to maintain this wiki"
-    }
-  ],
-  "airplay-metadata-hardening.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
-    },
-    {
-      "id": "problem-observed",
-      "text": "Problem observed"
-    },
-    {
-      "id": "hardening-changes-applied",
-      "text": "Hardening changes applied"
-    },
-    {
-      "id": "1-hardened-metadata-reader-wrapper",
-      "text": "1. Hardened metadata reader wrapper"
-    },
-    {
-      "id": "2-cpu-watchdog-for-metadata-reader-runaway-behavior",
-      "text": "2. CPU watchdog for metadata-reader runaway behavior"
-    },
-    {
-      "id": "watchdog-behavior",
-      "text": "Watchdog behavior"
-    },
-    {
-      "id": "verification-checks",
-      "text": "Verification checks"
-    },
-    {
-      "id": "source-of-truth-and-mirrored-repo-material",
-      "text": "Source-of-truth and mirrored repo material"
-    },
-    {
-      "id": "app-host-vs-moode-host-ownership",
-      "text": "App-host vs moOde-host ownership"
-    },
-    {
-      "id": "when-to-suspect-this-branch-first",
-      "text": "When to suspect this branch first"
-    },
-    {
-      "id": "recovery-interpretation",
-      "text": "Recovery interpretation"
-    },
-    {
-      "id": "best-companion-pages",
-      "text": "Best companion pages"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
     }
   ],
   "alexa-interface.html": [
@@ -681,88 +587,6 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Current status"
     }
   ],
-  "api-endpoint-catalog.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "scope-and-proof-model",
-      "text": "Scope and proof model"
-    },
-    {
-      "id": "how-to-use-this-page",
-      "text": "How to use this page"
-    },
-    {
-      "id": "family-root-now-playing-state-surfaces",
-      "text": "Family: root / now-playing / state surfaces"
-    },
-    {
-      "id": "family-alexa-current-voice-state-helpers",
-      "text": "Family: Alexa / current voice-state helpers"
-    },
-    {
-      "id": "family-mpd-direct-action-endpoints",
-      "text": "Family: MPD direct action endpoints"
-    },
-    {
-      "id": "family-queue-and-queue-shaping-endpoints",
-      "text": "Family: queue and queue-shaping endpoints"
-    },
-    {
-      "id": "direct-queue-endpoints",
-      "text": "Direct queue endpoints"
-    },
-    {
-      "id": "queue-wizard-family",
-      "text": "Queue Wizard family"
-    },
-    {
-      "id": "family-diagnostics-debug-browse-index",
-      "text": "Family: diagnostics / debug / browse-index"
-    },
-    {
-      "id": "family-config-runtime-services-moode-control",
-      "text": "Family: config runtime / services / moOde control"
-    },
-    {
-      "id": "family-moode-display-peppy-browser-target-control",
-      "text": "Family: moOde display / peppy / browser target control"
-    },
-    {
-      "id": "family-library-health-metadata-cleanup",
-      "text": "Family: library health / metadata cleanup"
-    },
-    {
-      "id": "family-ratings-sticker-maintenance",
-      "text": "Family: ratings sticker maintenance"
-    },
-    {
-      "id": "family-podcasts",
-      "text": "Family: podcasts"
-    },
-    {
-      "id": "family-youtube",
-      "text": "Family: YouTube"
-    },
-    {
-      "id": "family-favorites-recents-browse-helpers",
-      "text": "Family: favorites / recents / browse helpers"
-    },
-    {
-      "id": "relationships-to-existing-api-pages",
-      "text": "Relationships to existing API pages"
-    },
-    {
-      "id": "important-current-limits",
-      "text": "Important current limits"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
-    }
-  ],
   "api-playback-and-queue-endpoints.html": [
     {
       "id": "purpose",
@@ -959,14 +783,6 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "`api-playback-and-queue-endpoints.md`"
     },
     {
-      "id": "api-endpoint-catalogmd",
-      "text": "`api-endpoint-catalog.md`"
-    },
-    {
-      "id": "api-state-truth-endpointsmd",
-      "text": "`api-state-truth-endpoints.md`"
-    },
-    {
       "id": "api-youtube-radio-and-integration-endpointsmd",
       "text": "`api-youtube-radio-and-integration-endpoints.md`"
     },
@@ -977,152 +793,6 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
     {
       "id": "relationship-to-existing-wiki-pages",
       "text": "Relationship to existing wiki pages"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
-    }
-  ],
-  "api-state-truth-endpoints.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
-    },
-    {
-      "id": "primary-owner",
-      "text": "Primary owner"
-    },
-    {
-      "id": "endpoint-get-now-playing",
-      "text": "Endpoint: `GET /now-playing`"
-    },
-    {
-      "id": "why-it-is-important",
-      "text": "Why it is important"
-    },
-    {
-      "id": "strong-current-evidence-from-source",
-      "text": "Strong current evidence from source"
-    },
-    {
-      "id": "important-practical-behaviors",
-      "text": "Important practical behaviors"
-    },
-    {
-      "id": "what-not-to-assume",
-      "text": "What not to assume"
-    },
-    {
-      "id": "best-companion-pages",
-      "text": "Best companion pages"
-    },
-    {
-      "id": "endpoint-get-next-up",
-      "text": "Endpoint: `GET /next-up`"
-    },
-    {
-      "id": "why-it-is-important-2",
-      "text": "Why it is important"
-    },
-    {
-      "id": "strong-current-evidence-from-source-2",
-      "text": "Strong current evidence from source"
-    },
-    {
-      "id": "important-practical-behaviors-2",
-      "text": "Important practical behaviors"
-    },
-    {
-      "id": "what-not-to-assume-2",
-      "text": "What not to assume"
-    },
-    {
-      "id": "best-companion-pages-2",
-      "text": "Best companion pages"
-    },
-    {
-      "id": "endpoint-get-alexanow-playing",
-      "text": "Endpoint: `GET /alexa/now-playing`"
-    },
-    {
-      "id": "why-it-is-important-3",
-      "text": "Why it is important"
-    },
-    {
-      "id": "strong-current-evidence-from-source-3",
-      "text": "Strong current evidence from source"
-    },
-    {
-      "id": "current-interpretation",
-      "text": "Current interpretation"
-    },
-    {
-      "id": "endpoint-get-alexanext-up",
-      "text": "Endpoint: `GET /alexa/next-up`"
-    },
-    {
-      "id": "why-it-is-important-4",
-      "text": "Why it is important"
-    },
-    {
-      "id": "strong-current-evidence-from-source-4",
-      "text": "Strong current evidence from source"
-    },
-    {
-      "id": "current-interpretation-2",
-      "text": "Current interpretation"
-    },
-    {
-      "id": "endpoint-get-track",
-      "text": "Endpoint: `GET /track`"
-    },
-    {
-      "id": "why-it-is-important-5",
-      "text": "Why it is important"
-    },
-    {
-      "id": "current-interpretation-3",
-      "text": "Current interpretation"
-    },
-    {
-      "id": "core-distinctions-to-preserve",
-      "text": "Core distinctions to preserve"
-    },
-    {
-      "id": "now-playing-vs-track",
-      "text": "`/now-playing` vs `/track`"
-    },
-    {
-      "id": "now-playing-vs-next-up",
-      "text": "`/now-playing` vs `/next-up`"
-    },
-    {
-      "id": "alexa-helper-routes-vs-normal-playback-routes",
-      "text": "Alexa helper routes vs normal playback routes"
-    },
-    {
-      "id": "suggested-starting-paths-by-question",
-      "text": "Suggested starting paths by question"
-    },
-    {
-      "id": "if-the-visible-current-songartstatus-looks-wrong",
-      "text": "If the visible current song/art/status looks wrong"
-    },
-    {
-      "id": "if-next-up-behavior-looks-wrong",
-      "text": "If next-up behavior looks wrong"
-    },
-    {
-      "id": "if-alexa-visible-state-looks-wrong",
-      "text": "If Alexa-visible state looks wrong"
-    },
-    {
-      "id": "relationship-to-existing-api-pages",
-      "text": "Relationship to existing API pages"
     },
     {
       "id": "current-status",
@@ -1443,92 +1113,28 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Purpose"
     },
     {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
+      "id": "major-architectural-areas",
+      "text": "Major architectural areas"
     },
     {
-      "id": "the-current-structural-shape",
-      "text": "The current structural shape"
+      "id": "relationships-between-areas",
+      "text": "Relationships between areas"
     },
     {
-      "id": "1-central-state-truth-layer",
-      "text": "1. Central state-truth layer"
+      "id": "display-control-and-playback-layers",
+      "text": "Display, control, and playback layers"
     },
     {
-      "id": "2-app-host-control-plane",
-      "text": "2. App-host control plane"
+      "id": "integration-boundaries",
+      "text": "Integration boundaries"
     },
     {
-      "id": "3-controller-browser-shell-layer",
-      "text": "3. Controller / browser shell layer"
+      "id": "operational-dependencies",
+      "text": "Operational dependencies"
     },
     {
-      "id": "4-display-presentation-layer",
-      "text": "4. Display / presentation layer"
-    },
-    {
-      "id": "5-queue-playback-mediation-layer",
-      "text": "5. Queue / playback mediation layer"
-    },
-    {
-      "id": "6-integration-boundary-layer",
-      "text": "6. Integration boundary layer"
-    },
-    {
-      "id": "7-runtime-host-environment-layer",
-      "text": "7. Runtime / host / environment layer"
-    },
-    {
-      "id": "architectural-boundaries-that-matter",
-      "text": "Architectural boundaries that matter"
-    },
-    {
-      "id": "api-vs-ui",
-      "text": "API vs UI"
-    },
-    {
-      "id": "state-truth-vs-presentation",
-      "text": "State truth vs presentation"
-    },
-    {
-      "id": "shell-mode-vs-content-surface",
-      "text": "Shell mode vs content surface"
-    },
-    {
-      "id": "renderer-vs-shell-mode",
-      "text": "Renderer vs shell mode"
-    },
-    {
-      "id": "what-this-architecture-is-now-confident-about",
-      "text": "What this architecture is now confident about"
-    },
-    {
-      "id": "best-next-pages-by-architectural-question",
-      "text": "Best next pages by architectural question"
-    },
-    {
-      "id": "where-does-visible-truth-come-from",
-      "text": "“Where does visible truth come from?”"
-    },
-    {
-      "id": "where-does-controllerdisplay-behavior-actually-live",
-      "text": "“Where does controller/display behavior actually live?”"
-    },
-    {
-      "id": "where-is-queueplayback-behavior-split",
-      "text": "“Where is queue/playback behavior split?”"
-    },
-    {
-      "id": "which-externalruntime-boundary-matters-here",
-      "text": "“Which external/runtime boundary matters here?”"
-    },
-    {
-      "id": "relationship-to-other-pages",
-      "text": "Relationship to other pages"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
+      "id": "architectural-cautions",
+      "text": "Architectural cautions"
     }
   ],
   "backend-change-verification-runbook.html": [
@@ -3437,108 +3043,56 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Purpose"
     },
     {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
+      "id": "why-this-page-exists",
+      "text": "Why this page exists"
     },
     {
-      "id": "1-kiosk-mode-is-explicit-in-controllerhtml",
-      "text": "1. Kiosk mode is explicit in `controller.html`"
+      "id": "current-evidence",
+      "text": "Current evidence"
     },
     {
-      "id": "query-param-detection",
-      "text": "Query-param detection"
+      "id": "verified-controller-side-kiosk-handling",
+      "text": "Verified controller-side kiosk handling"
     },
     {
-      "id": "body-classes",
-      "text": "Body classes"
+      "id": "query-parameter-driven-kiosk-mode",
+      "text": "Query-parameter-driven kiosk mode"
     },
     {
-      "id": "2-controllerhtml-contains-the-kiosk-layout-itself",
-      "text": "2. `controller.html` contains the kiosk layout itself"
+      "id": "body-classes-and-layout-mode",
+      "text": "Body classes and layout mode"
     },
     {
-      "id": "kiosk-layout-css-is-embedded-directly-in-the-page",
-      "text": "Kiosk layout CSS is embedded directly in the page"
+      "id": "controller-profile-integration",
+      "text": "Controller profile integration"
     },
     {
-      "id": "what-the-css-implies-concretely",
-      "text": "What the CSS implies concretely"
+      "id": "kiosk-controls-inside-controllerhtml",
+      "text": "Kiosk controls inside `controller.html`"
     },
     {
-      "id": "3-kiosk-dom-is-built-directly-into-controllerhtml",
-      "text": "3. Kiosk DOM is built directly into `controller.html`"
+      "id": "kiosk-page-routing-inside-controller-mode",
+      "text": "Kiosk page routing inside controller mode"
     },
     {
-      "id": "concrete-kiosk-dom-anchors",
-      "text": "Concrete kiosk DOM anchors"
+      "id": "moodedisplay-target-behavior-from-controller-mode",
+      "text": "moOde/display-target behavior from controller mode"
     },
     {
-      "id": "why-this-matters",
-      "text": "Why this matters"
+      "id": "what-this-page-should-eventually-explain",
+      "text": "What this page should eventually explain"
     },
     {
-      "id": "4-kiosk-editor-mode-is-real-and-separate-from-live-kiosk-mode",
-      "text": "4. Kiosk editor mode is real and separate from live kiosk mode"
-    },
-    {
-      "id": "initkioskcontrols",
-      "text": "`initKioskControls()`"
-    },
-    {
-      "id": "what-the-kiosk-controls-do",
-      "text": "What the kiosk controls do"
-    },
-    {
-      "id": "5-kiosk-mode-reuses-controller-profile-machinery",
-      "text": "5. Kiosk mode reuses controller profile machinery"
-    },
-    {
-      "id": "controller-profile-key",
-      "text": "Controller profile key"
-    },
-    {
-      "id": "url-driven-override-behavior",
-      "text": "URL-driven override behavior"
-    },
-    {
-      "id": "server-profile-loading",
-      "text": "Server-profile loading"
-    },
-    {
-      "id": "6-kiosk-right-pane-behavior-is-implemented-inside-controllerhtml",
-      "text": "6. Kiosk right-pane behavior is implemented inside `controller.html`"
-    },
-    {
-      "id": "concrete-pane-infrastructure",
-      "text": "Concrete pane infrastructure"
-    },
-    {
-      "id": "concrete-right-pane-routing-behavior",
-      "text": "Concrete right-pane routing behavior"
-    },
-    {
-      "id": "7-preview1-matters-operationally",
-      "text": "7. `preview=1` matters operationally"
-    },
-    {
-      "id": "strong-current-evidence",
-      "text": "Strong current evidence"
-    },
-    {
-      "id": "what-that-means-practically",
-      "text": "What that means practically"
-    },
-    {
-      "id": "what-controllerhtml-is-not",
-      "text": "What `controller.html` is not"
-    },
-    {
-      "id": "best-current-interpretation",
-      "text": "Best current interpretation"
+      "id": "current-working-interpretation",
+      "text": "Current working interpretation"
     },
     {
       "id": "relationship-to-other-pages",
       "text": "Relationship to other pages"
+    },
+    {
+      "id": "things-still-to-verify",
+      "text": "Things still to verify"
     },
     {
       "id": "current-status",
@@ -3551,60 +3105,48 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Purpose"
     },
     {
-      "id": "important-file",
-      "text": "Important file"
+      "id": "why-this-page-exists",
+      "text": "Why this page exists"
     },
     {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
+      "id": "observed-structure",
+      "text": "Observed structure"
     },
     {
-      "id": "what-the-page-actually-contains",
-      "text": "What the page actually contains"
+      "id": "observed-responsibilities",
+      "text": "Observed responsibilities"
     },
     {
-      "id": "sources-pane",
-      "text": "Sources pane"
+      "id": "source-selection",
+      "text": "Source selection"
     },
     {
-      "id": "list-pane",
-      "text": "List pane"
+      "id": "list-loading",
+      "text": "List loading"
     },
     {
-      "id": "loadlistsrc",
-      "text": "`loadList(src)`"
+      "id": "now-playing-display",
+      "text": "Now playing display"
     },
     {
-      "id": "now-playing-pane",
-      "text": "Now Playing pane"
+      "id": "queue-actions",
+      "text": "Queue actions"
     },
     {
-      "id": "refreshnowplaying",
-      "text": "`refreshNowPlaying()`"
+      "id": "observed-api-usage",
+      "text": "Observed API usage"
     },
     {
-      "id": "action-buttons",
-      "text": "Action buttons"
-    },
-    {
-      "id": "runtime-key-and-api-behavior",
-      "text": "Runtime key and API behavior"
-    },
-    {
-      "id": "ensurekey",
-      "text": "`ensureKey()`"
-    },
-    {
-      "id": "what-this-page-is",
-      "text": "What this page is"
-    },
-    {
-      "id": "what-this-page-is-not",
-      "text": "What this page is not"
+      "id": "architectural-interpretation",
+      "text": "Architectural interpretation"
     },
     {
       "id": "relationship-to-the-rest-of-the-kiosk-branch",
       "text": "Relationship to the rest of the kiosk branch"
+    },
+    {
+      "id": "things-still-to-verify",
+      "text": "Things still to verify"
     },
     {
       "id": "current-status",
@@ -4089,8 +3631,8 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Purpose"
     },
     {
-      "id": "scope",
-      "text": "Scope"
+      "id": "important-scope-note",
+      "text": "Important scope note"
     },
     {
       "id": "why-this-page-matters",
@@ -4113,20 +3655,36 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Queue Wizard"
     },
     {
-      "id": "evidence-already-established-elsewhere",
-      "text": "Evidence already established elsewhere"
+      "id": "why-this-distinction-matters",
+      "text": "Why this distinction matters"
+    },
+    {
+      "id": "evidence-from-current-surface-work",
+      "text": "Evidence from current surface work"
     },
     {
       "id": "1-embedded-queue-modal-in-substantive-now-playing-pages",
       "text": "1. Embedded queue modal in substantive now-playing pages"
     },
     {
+      "id": "working-interpretation",
+      "text": "Working interpretation"
+    },
+    {
       "id": "2-embedded-pane-contract-participation",
       "text": "2. Embedded-pane contract participation"
     },
     {
+      "id": "working-interpretation-2",
+      "text": "Working interpretation"
+    },
+    {
       "id": "3-kiosk-right-pane-routing-target",
       "text": "3. Kiosk right-pane routing target"
+    },
+    {
+      "id": "working-interpretation-3",
+      "text": "Working interpretation"
     },
     {
       "id": "standalone-versus-embedded-role",
@@ -4149,8 +3707,16 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Layer 3: queue inspection / direct queue UI"
     },
     {
+      "id": "why-this-matters",
+      "text": "Why this matters"
+    },
+    {
       "id": "relationship-to-now-playing-surfaces",
       "text": "Relationship to now-playing surfaces"
+    },
+    {
+      "id": "practical-implication",
+      "text": "Practical implication"
     },
     {
       "id": "relationship-to-kiosk-mode",
@@ -4161,8 +3727,12 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Relationship to backend/API proofing"
     },
     {
-      "id": "what-this-page-clarifies",
-      "text": "What this page clarifies"
+      "id": "current-best-interpretation",
+      "text": "Current best interpretation"
+    },
+    {
+      "id": "things-this-page-helps-clarify",
+      "text": "Things this page helps clarify"
     },
     {
       "id": "1-queue-ui-is-a-real-surface",
@@ -4177,12 +3747,16 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "3. Queue UI is part of the kiosk embedded ecosystem"
     },
     {
-      "id": "4-queue-ui-deserves-deeper-backend-proofing",
-      "text": "4. Queue UI deserves deeper backend proofing"
+      "id": "4-queue-ui-is-important-enough-to-deserve-backend-route-proofing-later",
+      "text": "4. Queue UI is important enough to deserve backend route proofing later"
     },
     {
       "id": "relationship-to-other-pages",
       "text": "Relationship to other pages"
+    },
+    {
+      "id": "what-should-follow-this-page",
+      "text": "What should follow this page"
     },
     {
       "id": "current-status",
@@ -4487,200 +4061,48 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Purpose"
     },
     {
-      "id": "the-main-operational-lesson",
-      "text": "The main operational lesson"
+      "id": "documented-operational-areas",
+      "text": "Documented operational areas"
     },
     {
-      "id": "the-system-has-more-than-one-operational-plane",
-      "text": "The system has more than one operational plane"
+      "id": "deployment-related-themes",
+      "text": "Deployment-related themes"
     },
     {
-      "id": "1-app-host-plane",
-      "text": "1. App host plane"
+      "id": "change-classes-and-what-they-usually-imply",
+      "text": "Change classes and what they usually imply"
     },
     {
-      "id": "2-moode-host-effect-plane",
-      "text": "2. moOde host effect plane"
+      "id": "frontend-page-style-changes",
+      "text": "Frontend / page / style changes"
     },
     {
-      "id": "3-host-override-plane",
-      "text": "3. Host override plane"
+      "id": "route-service-config-runtime-admin-changes",
+      "text": "Route / service / config / runtime-admin changes"
     },
     {
-      "id": "change-type-effect-verify",
-      "text": "Change type → effect → verify"
+      "id": "runtime-admin-or-host-control-actions",
+      "text": "Runtime-admin or host-control actions"
     },
     {
-      "id": "1-if-you-changed-a-browser-page-or-frontend-only-asset",
-      "text": "1. If you changed a browser page or frontend-only asset"
+      "id": "host-override-changes",
+      "text": "Host override changes"
     },
     {
-      "id": "what-that-usually-means",
-      "text": "What that usually means"
+      "id": "runtime-verification-and-service-control",
+      "text": "Runtime verification and service control"
     },
     {
-      "id": "what-usually-becomes-live",
-      "text": "What usually becomes live"
+      "id": "local-environment-dependence",
+      "text": "Local-environment dependence"
     },
     {
-      "id": "what-to-verify",
-      "text": "What to verify"
+      "id": "operational-cautions",
+      "text": "Operational cautions"
     },
     {
-      "id": "real-lesson",
-      "text": "Real lesson"
-    },
-    {
-      "id": "2-if-you-changed-route-logic-or-service-logic",
-      "text": "2. If you changed route logic or service logic"
-    },
-    {
-      "id": "what-that-usually-means-2",
-      "text": "What that usually means"
-    },
-    {
-      "id": "what-usually-becomes-live-2",
-      "text": "What usually becomes live"
-    },
-    {
-      "id": "what-to-verify-2",
-      "text": "What to verify"
-    },
-    {
-      "id": "real-lesson-2",
-      "text": "Real lesson"
-    },
-    {
-      "id": "3-if-you-changed-runtime-admin-behavior",
-      "text": "3. If you changed runtime-admin behavior"
-    },
-    {
-      "id": "what-that-usually-means-3",
-      "text": "What that usually means"
-    },
-    {
-      "id": "what-usually-becomes-live-3",
-      "text": "What usually becomes live"
-    },
-    {
-      "id": "what-to-verify-3",
-      "text": "What to verify"
-    },
-    {
-      "id": "real-lesson-3",
-      "text": "Real lesson"
-    },
-    {
-      "id": "4-if-you-changed-a-state-truth-endpoint",
-      "text": "4. If you changed a state-truth endpoint"
-    },
-    {
-      "id": "what-that-usually-means-4",
-      "text": "What that usually means"
-    },
-    {
-      "id": "what-usually-becomes-live-4",
-      "text": "What usually becomes live"
-    },
-    {
-      "id": "what-to-verify-4",
-      "text": "What to verify"
-    },
-    {
-      "id": "real-lesson-4",
-      "text": "Real lesson"
-    },
-    {
-      "id": "5-if-you-changed-a-host-override-or-host-side-patch",
-      "text": "5. If you changed a host override or host-side patch"
-    },
-    {
-      "id": "what-that-usually-means-5",
-      "text": "What that usually means"
-    },
-    {
-      "id": "what-to-verify-5",
-      "text": "What to verify"
-    },
-    {
-      "id": "real-lesson-5",
-      "text": "Real lesson"
-    },
-    {
-      "id": "app-host-vs-moode-host-the-key-question",
-      "text": "App host vs moOde host: the key question"
-    },
-    {
-      "id": "which-machine-should-have-changed",
-      "text": "“Which machine should have changed?”"
-    },
-    {
-      "id": "restart-reality",
-      "text": "Restart reality"
-    },
-    {
-      "id": "often-restart-is-not-the-first-question",
-      "text": "Often restart is not the first question"
-    },
-    {
-      "id": "often-restart-becomes-part-of-the-question",
-      "text": "Often restart becomes part of the question"
-    },
-    {
-      "id": "what-to-verify-after-common-change-types",
-      "text": "What to verify after common change types"
-    },
-    {
-      "id": "example-changed-controllerhtml",
-      "text": "Example: changed `controller.html`"
-    },
-    {
-      "id": "example-changed-visualizerhtml",
-      "text": "Example: changed `visualizer.html`"
-    },
-    {
-      "id": "example-changed-moode-nowplaying-apimjs",
-      "text": "Example: changed `moode-nowplaying-api.mjs`"
-    },
-    {
-      "id": "example-changed-configruntime-adminroutesmjs",
-      "text": "Example: changed `config.runtime-admin.routes.mjs`"
-    },
-    {
-      "id": "example-changed-moode-side-override-material",
-      "text": "Example: changed moOde-side override material"
-    },
-    {
-      "id": "best-companion-pages-by-question",
-      "text": "Best companion pages by question"
-    },
-    {
-      "id": "what-does-brians-real-setup-look-like",
-      "text": "“What does Brian’s real setup look like?”"
-    },
-    {
-      "id": "do-i-need-restart-or-only-verification",
-      "text": "“Do I need restart or only verification?”"
-    },
-    {
-      "id": "how-do-i-verify-a-display-side-change",
-      "text": "“How do I verify a display-side change?”"
-    },
-    {
-      "id": "how-do-i-verify-playbackstate-truth-changes",
-      "text": "“How do I verify playback/state truth changes?”"
-    },
-    {
-      "id": "what-this-page-is-now-really-teaching",
-      "text": "What this page is now really teaching"
-    },
-    {
-      "id": "relationship-to-other-pages",
-      "text": "Relationship to other pages"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
+      "id": "open-questions",
+      "text": "Open questions"
     }
   ],
   "desktop-browser-interface.html": [
@@ -5017,208 +4439,86 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Current status"
     }
   ],
-  "display-enhancement-peppy-player-flow.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
-    },
-    {
-      "id": "what-this-branch-includes",
-      "text": "What this branch includes"
-    },
-    {
-      "id": "relationship-to-the-config-feature",
-      "text": "Relationship to the config feature"
-    },
-    {
-      "id": "stable-target-url-model",
-      "text": "Stable target URL model"
-    },
-    {
-      "id": "router-behavior",
-      "text": "Router behavior"
-    },
-    {
-      "id": "why-kiosk-is-not-the-same-thing-as-peppy-or-player",
-      "text": "Why kiosk is not the same thing as Peppy or Player"
-    },
-    {
-      "id": "builder-first-display-design",
-      "text": "Builder-first display design"
-    },
-    {
-      "id": "peppy-data-pipeline-vu-and-spectrum",
-      "text": "Peppy data pipeline: VU and spectrum"
-    },
-    {
-      "id": "1-vu-feed",
-      "text": "1. VU feed"
-    },
-    {
-      "id": "2-spectrum-feed",
-      "text": "2. Spectrum feed"
-    },
-    {
-      "id": "bridge-mode-exclusivity-rule",
-      "text": "Bridge-mode exclusivity rule"
-    },
-    {
-      "id": "required-http-targets-in-bridge-mode",
-      "text": "Required HTTP targets in bridge mode"
-    },
-    {
-      "id": "boot-persistence-caveat",
-      "text": "Boot-persistence caveat"
-    },
-    {
-      "id": "recommended-mitigation",
-      "text": "Recommended mitigation"
-    },
-    {
-      "id": "quick-verify-after-boot",
-      "text": "Quick verify after boot"
-    },
-    {
-      "id": "peppy-builder-model",
-      "text": "Peppy builder model"
-    },
-    {
-      "id": "meter-type-interpretation",
-      "text": "Meter-type interpretation"
-    },
-    {
-      "id": "save-vs-push-distinction",
-      "text": "Save vs push distinction"
-    },
-    {
-      "id": "save-as-preset",
-      "text": "Save as preset"
-    },
-    {
-      "id": "push-to-moode",
-      "text": "Push to moOde"
-    },
-    {
-      "id": "push-flow-summary",
-      "text": "Push flow summary"
-    },
-    {
-      "id": "player-branch",
-      "text": "Player branch"
-    },
-    {
-      "id": "visualizer-branch-within-display-enhancement",
-      "text": "Visualizer branch within display enhancement"
-    },
-    {
-      "id": "verification-points",
-      "text": "Verification points"
-    },
-    {
-      "id": "router-target-check",
-      "text": "Router-target check"
-    },
-    {
-      "id": "runtime-mode-check",
-      "text": "Runtime mode check"
-    },
-    {
-      "id": "feed-check",
-      "text": "Feed check"
-    },
-    {
-      "id": "boot-persistence-check",
-      "text": "Boot-persistence check"
-    },
-    {
-      "id": "exclusivity-check",
-      "text": "Exclusivity check"
-    },
-    {
-      "id": "best-companion-pages",
-      "text": "Best companion pages"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
-    }
-  ],
   "display-interface.html": [
     {
       "id": "purpose",
       "text": "Purpose"
     },
     {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
+      "id": "what-belongs-in-the-display-family",
+      "text": "What belongs in the display family"
     },
     {
-      "id": "central-display-truth-starts-from-now-playing",
-      "text": "Central display truth starts from `/now-playing`"
+      "id": "core-display-oriented-surfaces",
+      "text": "Core display-oriented surfaces"
     },
     {
-      "id": "what-belongs-in-the-display-branch",
-      "text": "What belongs in the display branch"
+      "id": "browsertv-display-surface",
+      "text": "Browser/TV display surface"
     },
     {
-      "id": "strong-current-branch-map",
-      "text": "Strong current branch map"
+      "id": "kiosk-style-display-behavior",
+      "text": "Kiosk-style display behavior"
     },
     {
-      "id": "1-central-visible-state-truth-surfaces",
-      "text": "1. Central visible-state truth surfaces"
+      "id": "moode-hosted-renderdisplay-modes",
+      "text": "moOde-hosted render/display modes"
     },
     {
-      "id": "2-display-mode-renderer-flows",
-      "text": "2. Display-mode / renderer flows"
+      "id": "display-behavior-embedded-in-controller-oriented-surfaces",
+      "text": "Display behavior embedded in controller-oriented surfaces"
     },
     {
-      "id": "3-kiosk-as-presentationshell-mode",
-      "text": "3. Kiosk as presentation/shell mode"
+      "id": "what-display-surfaces-are-for",
+      "text": "What display surfaces are for"
     },
     {
-      "id": "4-launch-wrapper-adapter-surfaces",
-      "text": "4. Launch / wrapper / adapter surfaces"
-    },
-    {
-      "id": "5-embedded-visual-behavior-inside-controller-flows",
-      "text": "5. Embedded visual behavior inside controller flows"
-    },
-    {
-      "id": "6-runtime-host-display-target-behavior",
-      "text": "6. Runtime / host / display-target behavior"
-    },
-    {
-      "id": "what-this-branch-is-now-confident-about",
-      "text": "What this branch is now confident about"
-    },
-    {
-      "id": "high-value-starting-paths",
-      "text": "High-value starting paths"
-    },
-    {
-      "id": "if-the-visible-display-content-is-wrong",
-      "text": "If the visible display content is wrong"
-    },
-    {
-      "id": "if-the-wrong-display-target-is-being-shown-on-moode",
-      "text": "If the wrong display target is being shown on moOde"
-    },
-    {
-      "id": "if-kiosk-presentation-behavior-is-wrong",
-      "text": "If kiosk presentation behavior is wrong"
-    },
-    {
-      "id": "if-embedded-visual-behavior-is-wrong",
-      "text": "If embedded visual behavior is wrong"
+      "id": "important-cross-layer-relationships",
+      "text": "Important cross-layer relationships"
     },
     {
       "id": "relationship-to-other-wiki-pages",
       "text": "Relationship to other wiki pages"
+    },
+    {
+      "id": "planned-drill-down-branches",
+      "text": "Planned drill-down branches"
+    },
+    {
+      "id": "display-browser-surfacemd",
+      "text": "`display-browser-surface.md`"
+    },
+    {
+      "id": "display-launch-and-wrapper-surfacesmd",
+      "text": "`display-launch-and-wrapper-surfaces.md`"
+    },
+    {
+      "id": "now-playing-surface-variantsmd",
+      "text": "`now-playing-surface-variants.md`"
+    },
+    {
+      "id": "config-display-and-render-featuresmd",
+      "text": "`config-display-and-render-features.md`"
+    },
+    {
+      "id": "api-playback-and-queue-endpointsmd",
+      "text": "`api-playback-and-queue-endpoints.md`"
+    },
+    {
+      "id": "display-renderers-and-visual-modesmd",
+      "text": "`display-renderers-and-visual-modes.md`"
+    },
+    {
+      "id": "artwork-and-visual-assetsmd",
+      "text": "`artwork-and-visual-assets.md`"
+    },
+    {
+      "id": "kiosk-interfacemd",
+      "text": "`kiosk-interface.md`"
+    },
+    {
+      "id": "coverage-philosophy-for-future-expansion",
+      "text": "Coverage philosophy for future expansion"
     },
     {
       "id": "current-status",
@@ -5393,136 +4693,96 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Why this page matters"
     },
     {
-      "id": "1-displayshtml-display-target-launcher-and-moode-push-console",
-      "text": "1. `displays.html` — display target launcher and moOde push console"
+      "id": "family-classification",
+      "text": "Family classification"
     },
     {
-      "id": "what-it-actually-is",
-      "text": "What it actually is"
+      "id": "1-displayshtml-display-launcher-and-push-console",
+      "text": "1. `displays.html` — display launcher and push console"
     },
     {
-      "id": "open-designer-links",
-      "text": "Open Designer links"
+      "id": "key-role",
+      "text": "Key role"
     },
     {
-      "id": "runtime-host-model",
-      "text": "Runtime host model"
+      "id": "important-actions",
+      "text": "Important actions"
     },
     {
-      "id": "track-key-bootstrap",
-      "text": "Track-key bootstrap"
+      "id": "important-functions-logic",
+      "text": "Important functions / logic"
     },
     {
-      "id": "core-push-helper",
-      "text": "Core push helper"
+      "id": "important-api-calls",
+      "text": "Important API calls"
     },
     {
-      "id": "player-peppy-visualizer-push-behavior",
-      "text": "Player / Peppy / Visualizer push behavior"
+      "id": "2-controller-visualizerhtml-visualizer-wrapper-host",
+      "text": "2. `controller-visualizer.html` — visualizer wrapper host"
     },
     {
-      "id": "player-specific-size-behavior",
-      "text": "Player-specific size behavior"
+      "id": "key-role-2",
+      "text": "Key role"
     },
     {
-      "id": "kiosk-push-behavior",
-      "text": "Kiosk push behavior"
+      "id": "important-behavior",
+      "text": "Important behavior"
     },
     {
-      "id": "index-display-behavior",
-      "text": "Index Display behavior"
+      "id": "architectural-interpretation",
+      "text": "Architectural interpretation"
     },
     {
-      "id": "what-displayshtml-is-not",
-      "text": "What `displays.html` is not"
-    },
-    {
-      "id": "most-important-api-calls",
-      "text": "Most important API calls"
-    },
-    {
-      "id": "best-current-interpretation",
-      "text": "Best current interpretation"
-    },
-    {
-      "id": "2-controller-visualizerhtml-thin-wrapper-host-for-visualizerhtml",
-      "text": "2. `controller-visualizer.html` — thin wrapper host for `visualizer.html`"
-    },
-    {
-      "id": "what-it-actually-is-2",
-      "text": "What it actually is"
-    },
-    {
-      "id": "standalone-vs-embedded-behavior",
-      "text": "Standalone vs embedded behavior"
-    },
-    {
-      "id": "child-url-construction",
-      "text": "Child URL construction"
-    },
-    {
-      "id": "default-overrides",
-      "text": "Default overrides"
-    },
-    {
-      "id": "frame-loading-behavior",
-      "text": "Frame loading behavior"
-    },
-    {
-      "id": "best-current-interpretation-2",
-      "text": "Best current interpretation"
-    },
-    {
-      "id": "3-index1080html-pure-redirect-shim",
-      "text": "3. `index1080.html` — pure redirect shim"
-    },
-    {
-      "id": "what-it-actually-is-3",
-      "text": "What it actually is"
-    },
-    {
-      "id": "best-current-interpretation-3",
-      "text": "Best current interpretation"
+      "id": "3-index1080html-redirectcompatibility-shim",
+      "text": "3. `index1080.html` — redirect/compatibility shim"
     },
     {
       "id": "working-family-model",
       "text": "Working family model"
     },
     {
-      "id": "real-operator-console",
-      "text": "Real operator console"
+      "id": "substantive-operator-helper-page",
+      "text": "Substantive operator helper page"
     },
     {
-      "id": "real-wrapperadaptor-page",
-      "text": "Real wrapper/adaptor page"
+      "id": "wrapper-host-page",
+      "text": "Wrapper host page"
     },
     {
-      "id": "pure-redirect-shim",
-      "text": "Pure redirect shim"
+      "id": "redirect-shim",
+      "text": "Redirect shim"
     },
     {
-      "id": "key-distinctions-to-preserve",
-      "text": "Key distinctions to preserve"
-    },
-    {
-      "id": "displayshtml-vs-displayhtml",
-      "text": "`displays.html` vs `display.html`"
-    },
-    {
-      "id": "controller-visualizerhtml-vs-visualizerhtml",
-      "text": "`controller-visualizer.html` vs `visualizer.html`"
-    },
-    {
-      "id": "index1080html-vs-indexhtml",
-      "text": "`index1080.html` vs `index.html`"
+      "id": "terminology-note",
+      "text": "Terminology note"
     },
     {
       "id": "relationship-to-the-broader-display-branch",
       "text": "Relationship to the broader display branch"
     },
     {
-      "id": "things-now-much-less-speculative",
-      "text": "Things now much less speculative"
+      "id": "candidate-future-drill-down-pages",
+      "text": "Candidate future drill-down pages"
+    },
+    {
+      "id": "displays-launch-consolemd",
+      "text": "`displays-launch-console.md`"
+    },
+    {
+      "id": "controller-visualizer-wrappermd",
+      "text": "`controller-visualizer-wrapper.md`"
+    },
+    {
+      "id": "architectural-interpretation-2",
+      "text": "Architectural interpretation"
+    },
+    {
+      "id": "relationship-to-other-pages",
+      "text": "Relationship to other pages"
+    },
+    {
+      "id": "things-still-to-verify",
+      "text": "Things still to verify"
     },
     {
       "id": "current-status",
@@ -6097,218 +5357,34 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Open questions"
     }
   ],
-  "index.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "start-retrieval-surfaces",
-      "text": "Start / retrieval surfaces"
-    },
-    {
-      "id": "core-orientation",
-      "text": "Core orientation"
-    },
-    {
-      "id": "interface-hubs",
-      "text": "Interface hubs"
-    },
-    {
-      "id": "config-diagnostics-operator-branch",
-      "text": "Config / diagnostics / operator branch"
-    },
-    {
-      "id": "playback-queue-engineering-reference-branch",
-      "text": "Playback / queue / engineering-reference branch"
-    },
-    {
-      "id": "retrieval-helpers-in-this-branch",
-      "text": "Retrieval helpers in this branch"
-    },
-    {
-      "id": "display-kiosk-embedded-branch",
-      "text": "Display / kiosk / embedded branch"
-    },
-    {
-      "id": "supporting-environment-operations-pages",
-      "text": "Supporting / environment / operations pages"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
-    }
-  ],
-  "install-and-validation.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
-    },
-    {
-      "id": "scope-of-this-page",
-      "text": "Scope of this page"
-    },
-    {
-      "id": "baseline-test-environment",
-      "text": "Baseline test environment"
-    },
-    {
-      "id": "installer-invocation-paths-to-validate",
-      "text": "Installer invocation paths to validate"
-    },
-    {
-      "id": "1-local-script-invocation",
-      "text": "1. Local script invocation"
-    },
-    {
-      "id": "2-public-curl-style-invocation",
-      "text": "2. Public curl-style invocation"
-    },
-    {
-      "id": "3-explicit-branch-or-ref-invocation",
-      "text": "3. Explicit branch or ref invocation"
-    },
-    {
-      "id": "expected-result",
-      "text": "Expected result"
-    },
-    {
-      "id": "service-and-process-validation",
-      "text": "Service and process validation"
-    },
-    {
-      "id": "endpoint-smoke-tests",
-      "text": "Endpoint smoke tests"
-    },
-    {
-      "id": "environment-file-behavior",
-      "text": "Environment file behavior"
-    },
-    {
-      "id": "re-run-and-idempotency-check",
-      "text": "Re-run and idempotency check"
-    },
-    {
-      "id": "upgrade-path-validation",
-      "text": "Upgrade-path validation"
-    },
-    {
-      "id": "ownership-and-permission-validation",
-      "text": "Ownership and permission validation"
-    },
-    {
-      "id": "negative-tests",
-      "text": "Negative tests"
-    },
-    {
-      "id": "invalid-ref",
-      "text": "Invalid ref"
-    },
-    {
-      "id": "invalid-port",
-      "text": "Invalid port"
-    },
-    {
-      "id": "rollback-drill",
-      "text": "Rollback drill"
-    },
-    {
-      "id": "final-public-ready-gate",
-      "text": "Final public-ready gate"
-    },
-    {
-      "id": "relationship-to-ordinary-deploy-work",
-      "text": "Relationship to ordinary deploy work"
-    },
-    {
-      "id": "best-companion-pages",
-      "text": "Best companion pages"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
-    }
-  ],
   "integrations.html": [
     {
       "id": "purpose",
       "text": "Purpose"
     },
     {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
+      "id": "documented-integrations",
+      "text": "Documented integrations"
     },
     {
-      "id": "what-belongs-in-the-integration-layer",
-      "text": "What belongs in the integration layer"
+      "id": "related-integration-surfaces",
+      "text": "Related integration surfaces"
     },
     {
-      "id": "strong-current-integration-map",
-      "text": "Strong current integration map"
+      "id": "request-and-api-patterns",
+      "text": "Request and API patterns"
     },
     {
-      "id": "1-moode",
-      "text": "1. moOde"
+      "id": "display-and-playback-ecosystem",
+      "text": "Display and playback ecosystem"
     },
     {
-      "id": "2-mpd",
-      "text": "2. MPD"
+      "id": "operational-cautions",
+      "text": "Operational cautions"
     },
     {
-      "id": "3-youtube",
-      "text": "3. YouTube"
-    },
-    {
-      "id": "4-alexa",
-      "text": "4. Alexa"
-    },
-    {
-      "id": "5-radio-metadata-and-enrichment-boundaries",
-      "text": "5. Radio metadata and enrichment boundaries"
-    },
-    {
-      "id": "6-lastfm-scrobbling-vibe-adjacent-integrations",
-      "text": "6. Last.fm / scrobbling / vibe-adjacent integrations"
-    },
-    {
-      "id": "7-podcasts",
-      "text": "7. Podcasts"
-    },
-    {
-      "id": "what-this-branch-is-now-confident-about",
-      "text": "What this branch is now confident about"
-    },
-    {
-      "id": "high-value-starting-paths",
-      "text": "High-value starting paths"
-    },
-    {
-      "id": "if-the-bug-smells-like-a-boundarysource-of-truth-problem",
-      "text": "If the bug smells like a boundary/source-of-truth problem"
-    },
-    {
-      "id": "if-the-bug-smells-like-youtube-or-radio-behavior",
-      "text": "If the bug smells like YouTube or radio behavior"
-    },
-    {
-      "id": "if-the-bug-smells-like-alexa-visible-state-or-setup",
-      "text": "If the bug smells like Alexa-visible state or setup"
-    },
-    {
-      "id": "if-the-bug-smells-like-podcastruntime-integration",
-      "text": "If the bug smells like podcast/runtime integration"
-    },
-    {
-      "id": "relationship-to-other-pages",
-      "text": "Relationship to other pages"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
+      "id": "open-questions",
+      "text": "Open questions"
     }
   ],
   "kiosk-designer.html": [
@@ -6317,64 +5393,40 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Purpose"
     },
     {
-      "id": "important-files",
-      "text": "Important files"
+      "id": "important-file",
+      "text": "Important file"
     },
     {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
+      "id": "what-kiosk-designerhtml-appears-to-do",
+      "text": "What `kiosk-designer.html` appears to do"
     },
     {
-      "id": "what-the-page-actually-contains",
-      "text": "What the page actually contains"
+      "id": "why-it-matters",
+      "text": "Why it matters"
     },
     {
-      "id": "key-state-and-storage-behavior",
-      "text": "Key state and storage behavior"
+      "id": "observed-structure",
+      "text": "Observed structure"
+    },
+    {
+      "id": "key-functions-and-logic-blocks",
+      "text": "Key functions and logic blocks"
     },
     {
       "id": "persistprofile",
       "text": "`persistProfile()`"
     },
     {
-      "id": "preview-url-construction",
-      "text": "Preview URL construction"
-    },
-    {
       "id": "buildrel",
       "text": "`buildRel()`"
-    },
-    {
-      "id": "preview-update-contract",
-      "text": "Preview update contract"
-    },
-    {
-      "id": "refreshpreview",
-      "text": "`refreshPreview()`"
     },
     {
       "id": "postlivetheme",
       "text": "`postLiveTheme()`"
     },
     {
-      "id": "built-in-preset-behavior",
-      "text": "Built-in preset behavior"
-    },
-    {
-      "id": "exportimport-behavior",
-      "text": "Export/import behavior"
-    },
-    {
-      "id": "export",
-      "text": "Export"
-    },
-    {
-      "id": "import",
-      "text": "Import"
-    },
-    {
-      "id": "moode-target-check-behavior",
-      "text": "moOde target check behavior"
+      "id": "refreshpreview",
+      "text": "`refreshPreview()`"
     },
     {
       "id": "ensurekey",
@@ -6385,20 +5437,44 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "`refreshTargetHint()`"
     },
     {
+      "id": "observed-kiosk-designer-responsibilities",
+      "text": "Observed kiosk-designer responsibilities"
+    },
+    {
+      "id": "previewing-kiosk-presentation",
+      "text": "Previewing kiosk presentation"
+    },
+    {
+      "id": "managing-preset-state",
+      "text": "Managing preset state"
+    },
+    {
+      "id": "managing-theme-and-color-settings",
+      "text": "Managing theme and color settings"
+    },
+    {
+      "id": "checkingpushing-moode-target-configuration",
+      "text": "Checking/pushing moOde target configuration"
+    },
+    {
       "id": "push-to-moode-action-flow",
       "text": "Push-to-moOde action flow"
     },
     {
-      "id": "what-this-page-is",
-      "text": "What this page is"
+      "id": "observed-apiconfig-interactions",
+      "text": "Observed API/config interactions"
     },
     {
-      "id": "what-this-page-is-not",
-      "text": "What this page is not"
+      "id": "relationship-to-other-kiosk-pages",
+      "text": "Relationship to other kiosk pages"
     },
     {
-      "id": "relationship-to-other-pages",
-      "text": "Relationship to other pages"
+      "id": "working-interpretation",
+      "text": "Working interpretation"
+    },
+    {
+      "id": "things-still-to-verify",
+      "text": "Things still to verify"
     },
     {
       "id": "current-status",
@@ -6489,68 +5565,108 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Purpose"
     },
     {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
+      "id": "what-kiosk-means-here",
+      "text": "What “kiosk” means here"
     },
     {
-      "id": "what-kiosk-is-in-the-current-repo",
-      "text": "What kiosk is in the current repo"
+      "id": "why-kiosk-belongs-in-its-own-branch",
+      "text": "Why kiosk belongs in its own branch"
     },
     {
-      "id": "strong-current-branch-map",
-      "text": "Strong current branch map"
+      "id": "kiosk-within-the-display-family",
+      "text": "Kiosk within the display family"
     },
     {
-      "id": "1-kiosk-entry-and-redirect-handoff",
-      "text": "1. Kiosk entry and redirect handoff"
+      "id": "likely-kiosk-contexts-to-document-more-deeply",
+      "text": "Likely kiosk contexts to document more deeply"
     },
     {
-      "id": "2-controller-backed-live-kiosk-shell",
-      "text": "2. Controller-backed live kiosk shell"
+      "id": "kiosk-and-moode-host-reality",
+      "text": "Kiosk and moOde-host reality"
     },
     {
-      "id": "3-kiosk-child-route-alias-layer",
-      "text": "3. Kiosk child-route alias layer"
+      "id": "important-kiosk-facing-files-and-entrypoints",
+      "text": "Important kiosk-facing files and entrypoints"
     },
     {
-      "id": "4-right-pane-and-embedded-child-behavior",
-      "text": "4. Right-pane and embedded child behavior"
+      "id": "first-classification-of-kiosk-files",
+      "text": "First classification of kiosk files"
     },
     {
-      "id": "5-kiosk-editordesigner-paths",
-      "text": "5. Kiosk editor/designer paths"
+      "id": "now-playingkioskhtml-primary-kiosk-launcherbridge",
+      "text": "`now-playing/kiosk.html` — primary kiosk launcher/bridge"
     },
     {
-      "id": "6-kiosk-anatomy-as-a-shell-path",
-      "text": "6. Kiosk anatomy as a shell path"
+      "id": "now-playingkiosk-designerhtml-kiosk-designer-preview-push-tool",
+      "text": "`now-playing/kiosk-designer.html` — kiosk designer / preview / push tool"
     },
     {
-      "id": "what-this-branch-is-now-confident-about",
-      "text": "What this branch is now confident about"
+      "id": "now-playingcontroller-kioskhtml-separate-kiosk-scaffoldprototype",
+      "text": "`now-playing/controller-kiosk.html` — separate kiosk scaffold/prototype"
     },
     {
-      "id": "high-value-starting-paths",
-      "text": "High-value starting paths"
+      "id": "specialized-kiosk-html-files-redirect-shims-into-controller-pages",
+      "text": "Specialized `kiosk-*.html` files — redirect shims into controller pages"
     },
     {
-      "id": "if-kiosk-launch-behavior-is-wrong",
-      "text": "If kiosk launch behavior is wrong"
+      "id": "working-interpretation",
+      "text": "Working interpretation"
     },
     {
-      "id": "if-kiosk-pane-behavior-or-child-page-routing-is-wrong",
-      "text": "If kiosk pane behavior or child-page routing is wrong"
+      "id": "likely-implementation-dimensions",
+      "text": "Likely implementation dimensions"
     },
     {
-      "id": "if-the-question-is-is-this-really-a-kiosk-page-or-just-a-controller-alias",
-      "text": "If the question is “is this really a kiosk page or just a controller alias?”"
+      "id": "kiosk-specific-questions-future-documentation-should-answer",
+      "text": "Kiosk-specific questions future documentation should answer"
     },
     {
-      "id": "if-the-question-is-about-kiosk-designereditor-behavior",
-      "text": "If the question is about kiosk designer/editor behavior"
+      "id": "planned-sub-branches",
+      "text": "Planned sub-branches"
     },
     {
-      "id": "relationship-to-other-pages",
-      "text": "Relationship to other pages"
+      "id": "kiosk-launch-and-routingmd",
+      "text": "`kiosk-launch-and-routing.md`"
+    },
+    {
+      "id": "kiosk-designermd",
+      "text": "`kiosk-designer.md`"
+    },
+    {
+      "id": "controller-kiosk-scaffoldmd",
+      "text": "`controller-kiosk-scaffold.md`"
+    },
+    {
+      "id": "controller-kiosk-modemd",
+      "text": "`controller-kiosk-mode.md`"
+    },
+    {
+      "id": "kiosk-browser-surfacemd",
+      "text": "`kiosk-browser-surface.md`"
+    },
+    {
+      "id": "kiosk-on-moodemd",
+      "text": "`kiosk-on-moode.md`"
+    },
+    {
+      "id": "display-renderers-and-visual-modesmd",
+      "text": "`display-renderers-and-visual-modes.md`"
+    },
+    {
+      "id": "artwork-and-visual-assetsmd",
+      "text": "`artwork-and-visual-assets.md`"
+    },
+    {
+      "id": "anatomy-companion-page",
+      "text": "Anatomy companion page"
+    },
+    {
+      "id": "relationship-to-troubleshooting-and-ops",
+      "text": "Relationship to troubleshooting and ops"
+    },
+    {
+      "id": "see-also",
+      "text": "See also"
     },
     {
       "id": "current-status",
@@ -6563,92 +5679,44 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Purpose"
     },
     {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
+      "id": "why-this-page-exists",
+      "text": "Why this page exists"
     },
     {
-      "id": "1-kioskhtml-profile-sync-and-redirect-bridge",
-      "text": "1. `kiosk.html` — profile-sync and redirect bridge"
+      "id": "primary-entrypoint-now-playingkioskhtml",
+      "text": "Primary entrypoint: `now-playing/kiosk.html`"
     },
     {
-      "id": "what-it-actually-is",
-      "text": "What it actually is"
+      "id": "local-profile-handoff",
+      "text": "Local profile handoff"
     },
     {
-      "id": "local-storage-keys-it-uses",
-      "text": "Local storage keys it uses"
+      "id": "redirect-target-controllerhtml",
+      "text": "Redirect target: `controller.html`"
     },
     {
-      "id": "what-query-params-it-reads",
-      "text": "What query params it reads"
-    },
-    {
-      "id": "resolution-model",
-      "text": "Resolution model"
-    },
-    {
-      "id": "what-it-writes-back-to-localstorage",
-      "text": "What it writes back to localStorage"
-    },
-    {
-      "id": "redirect-target-and-params",
-      "text": "Redirect target and params"
-    },
-    {
-      "id": "what-rev20260329-motion-art-fix-means-in-practice",
-      "text": "What `rev=20260329-motion-art-fix` means in practice"
-    },
-    {
-      "id": "best-current-interpretation",
-      "text": "Best current interpretation"
-    },
-    {
-      "id": "2-controllerhtml-actual-kiosk-backed-destination",
-      "text": "2. `controller.html` — actual kiosk-backed destination"
-    },
-    {
-      "id": "what-direct-file-inspection-confirms",
-      "text": "What direct file inspection confirms"
-    },
-    {
-      "id": "what-this-means",
-      "text": "What this means"
-    },
-    {
-      "id": "3-kiosk-alias-pages-pure-redirect-shims-into-controller-surfaces",
-      "text": "3. Kiosk alias pages — pure redirect shims into controller surfaces"
-    },
-    {
-      "id": "4-controller-kioskhtml-separate-scaffoldprototype-path",
-      "text": "4. `controller-kiosk.html` — separate scaffold/prototype path"
+      "id": "kiosk-branded-redirect-shims",
+      "text": "Kiosk-branded redirect shims"
     },
     {
       "id": "working-routing-model",
       "text": "Working routing model"
     },
     {
-      "id": "key-distinctions-to-preserve",
-      "text": "Key distinctions to preserve"
+      "id": "why-this-matters-architecturally",
+      "text": "Why this matters architecturally"
     },
     {
-      "id": "kioskhtml-vs-controllerhtml",
-      "text": "`kiosk.html` vs `controller.html`"
+      "id": "relationship-to-other-kiosk-pages",
+      "text": "Relationship to other kiosk pages"
     },
     {
-      "id": "kiosk-alias-pages-vs-real-kiosk-implementations",
-      "text": "kiosk alias pages vs real kiosk implementations"
+      "id": "things-still-to-verify",
+      "text": "Things still to verify"
     },
     {
-      "id": "controller-kioskhtml-vs-main-kiosk-path",
-      "text": "`controller-kiosk.html` vs main kiosk path"
-    },
-    {
-      "id": "what-this-page-is-now-confident-about",
-      "text": "What this page is now confident about"
-    },
-    {
-      "id": "relationship-to-other-pages",
-      "text": "Relationship to other pages"
+      "id": "immediate-follow-up-candidates",
+      "text": "Immediate follow-up candidates"
     },
     {
       "id": "current-status",
@@ -7249,52 +6317,6 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Open questions"
     }
   ],
-  "log.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "major-milestones",
-      "text": "Major milestones"
-    },
-    {
-      "id": "2026-04-06-source-doc-gap-fill-phase",
-      "text": "[2026-04-06] source-doc gap fill phase"
-    },
-    {
-      "id": "2026-04-05-startsearch-and-retrieval-system-phase",
-      "text": "[2026-04-05] start/search and retrieval-system phase"
-    },
-    {
-      "id": "2026-04-05-anatomy-layer-phase",
-      "text": "[2026-04-05] anatomy-layer phase"
-    },
-    {
-      "id": "2026-04-05-playbackqueue-and-route-proofing-phase",
-      "text": "[2026-04-05] playback/queue and route-proofing phase"
-    },
-    {
-      "id": "2026-04-05-rendered-wiki-usability-phase",
-      "text": "[2026-04-05] rendered-wiki usability phase"
-    },
-    {
-      "id": "2026-04-05-config-and-api-branch-expansion-phase",
-      "text": "[2026-04-05] config and API branch expansion phase"
-    },
-    {
-      "id": "2026-04-05-interface-and-surface-coverage-phase",
-      "text": "[2026-04-05] interface and surface coverage phase"
-    },
-    {
-      "id": "2026-04-05-framing-and-recovery-phase",
-      "text": "[2026-04-05] framing and recovery phase"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
-    }
-  ],
   "now-playing-surface-variants.html": [
     {
       "id": "purpose",
@@ -7305,52 +6327,52 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Why this page matters"
     },
     {
-      "id": "files-in-the-family",
-      "text": "Files in the family"
+      "id": "files-currently-in-the-family",
+      "text": "Files currently in the family"
     },
     {
       "id": "family-classification",
       "text": "Family classification"
     },
     {
-      "id": "1-main-implementation-page-controller-now-playinghtml",
-      "text": "1. Main implementation page: `controller-now-playing.html`"
+      "id": "1-core-page-controller-now-playinghtml",
+      "text": "1. Core page: `controller-now-playing.html`"
     },
     {
-      "id": "2-tablet-implementation-variant-controller-now-playing-tablethtml",
-      "text": "2. Tablet implementation variant: `controller-now-playing-tablet.html`"
+      "id": "2-tablet-variant-controller-now-playing-tablethtml",
+      "text": "2. Tablet variant: `controller-now-playing-tablet.html`"
     },
     {
-      "id": "3-grid-implementation-variant-controller-now-playing-gridhtml",
-      "text": "3. Grid implementation variant: `controller-now-playing-grid.html`"
+      "id": "3-grid-variant-controller-now-playing-gridhtml",
+      "text": "3. Grid variant: `controller-now-playing-grid.html`"
     },
     {
-      "id": "4-ipad-redirect-shim-controller-now-playing-ipadhtml",
-      "text": "4. iPad redirect shim: `controller-now-playing-ipad.html`"
+      "id": "4-redirect-shim-controller-now-playing-ipadhtml",
+      "text": "4. Redirect shim: `controller-now-playing-ipad.html`"
     },
     {
-      "id": "5-iphone-redirect-shim-controller-now-playing-iphonehtml",
-      "text": "5. iPhone redirect shim: `controller-now-playing-iphone.html`"
+      "id": "5-redirect-shim-controller-now-playing-iphonehtml",
+      "text": "5. Redirect shim: `controller-now-playing-iphone.html`"
     },
     {
-      "id": "6-alias-shim-controller-nowplaying-iphonehtml",
-      "text": "6. Alias shim: `controller-nowplaying-iphone.html`"
+      "id": "6-aliastypo-shim-controller-nowplaying-iphonehtml",
+      "text": "6. Alias/typo shim: `controller-nowplaying-iphone.html`"
     },
     {
       "id": "working-family-model",
       "text": "Working family model"
     },
     {
-      "id": "substantive-implementation-pages",
-      "text": "Substantive implementation pages"
+      "id": "real-substantive-pages",
+      "text": "Real substantive pages"
     },
     {
-      "id": "redirect-alias-pages",
-      "text": "Redirect / alias pages"
+      "id": "redirectalias-pages",
+      "text": "Redirect/alias pages"
     },
     {
-      "id": "shared-behaviors-across-the-substantive-variants",
-      "text": "Shared behaviors across the substantive variants"
+      "id": "important-shared-behaviors-across-substantive-variants",
+      "text": "Important shared behaviors across substantive variants"
     },
     {
       "id": "important-variant-differences",
@@ -7381,12 +6403,36 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Anatomy companion page"
     },
     {
-      "id": "what-this-page-is-now-confident-about",
-      "text": "What this page is now confident about"
+      "id": "candidate-future-drill-down-pages",
+      "text": "Candidate future drill-down pages"
+    },
+    {
+      "id": "controller-now-playing-coremd",
+      "text": "`controller-now-playing-core.md`"
+    },
+    {
+      "id": "controller-now-playing-tablet-variantmd",
+      "text": "`controller-now-playing-tablet-variant.md`"
+    },
+    {
+      "id": "controller-now-playing-grid-variantmd",
+      "text": "`controller-now-playing-grid-variant.md`"
+    },
+    {
+      "id": "controller-now-playing-iphone-modemd",
+      "text": "`controller-now-playing-iphone-mode.md`"
+    },
+    {
+      "id": "architectural-interpretation",
+      "text": "Architectural interpretation"
     },
     {
       "id": "relationship-to-other-pages",
       "text": "Relationship to other pages"
+    },
+    {
+      "id": "things-still-to-verify",
+      "text": "Things still to verify"
     },
     {
       "id": "current-status",
@@ -7487,8 +6533,8 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Mode 1: local file playback"
     },
     {
-      "id": "authority-model",
-      "text": "Authority model"
+      "id": "current-authority-model",
+      "text": "Current authority model"
     },
     {
       "id": "what-that-means-practically",
@@ -7503,8 +6549,8 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Mode 2: AirPlay"
     },
     {
-      "id": "authority-model-2",
-      "text": "Authority model"
+      "id": "current-authority-model-2",
+      "text": "Current authority model"
     },
     {
       "id": "what-that-means-practically-2",
@@ -7523,8 +6569,8 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Mode 3: UPnP"
     },
     {
-      "id": "authority-model-3",
-      "text": "Authority model"
+      "id": "current-authority-model-3",
+      "text": "Current authority model"
     },
     {
       "id": "what-that-means-practically-3",
@@ -7539,8 +6585,8 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Mode 4: radio / stream"
     },
     {
-      "id": "authority-model-4",
-      "text": "Authority model"
+      "id": "current-authority-model-4",
+      "text": "Current authority model"
     },
     {
       "id": "what-that-means-practically-4",
@@ -7559,8 +6605,8 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Mode 5: unresolved / fallback-driven case"
     },
     {
-      "id": "authority-model-5",
-      "text": "Authority model"
+      "id": "current-authority-model-5",
+      "text": "Current authority model"
     },
     {
       "id": "what-that-means-practically-5",
@@ -7617,6 +6663,10 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
     {
       "id": "relationship-to-other-pages",
       "text": "Relationship to other pages"
+    },
+    {
+      "id": "what-should-follow-this-page",
+      "text": "What should follow this page"
     },
     {
       "id": "current-status",
@@ -8015,8 +7065,8 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Purpose"
     },
     {
-      "id": "scope",
-      "text": "Scope"
+      "id": "important-scope-note",
+      "text": "Important scope note"
     },
     {
       "id": "why-queue-wizard-matters",
@@ -8039,6 +7089,10 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Queue Wizard"
     },
     {
+      "id": "why-this-distinction-matters",
+      "text": "Why this distinction matters"
+    },
+    {
       "id": "current-known-semantics",
       "text": "Current known semantics"
     },
@@ -8047,12 +7101,24 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "1. Preview / apply pattern"
     },
     {
+      "id": "working-interpretation",
+      "text": "Working interpretation"
+    },
+    {
       "id": "2-album-level-queue-actions",
       "text": "2. Album-level queue actions"
     },
     {
+      "id": "working-interpretation-2",
+      "text": "Working interpretation"
+    },
+    {
       "id": "3-feature-driven-queue-shaping",
       "text": "3. Feature-driven queue shaping"
+    },
+    {
+      "id": "working-interpretation-3",
+      "text": "Working interpretation"
     },
     {
       "id": "current-known-caller-surfaces",
@@ -8091,16 +7157,32 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Layer 4: queue shaping / curation"
     },
     {
+      "id": "why-this-matters",
+      "text": "Why this matters"
+    },
+    {
       "id": "current-route-knowledge",
       "text": "Current route knowledge"
+    },
+    {
+      "id": "current-best-interpretation",
+      "text": "Current best interpretation"
     },
     {
       "id": "relationship-to-youtube-queueing",
       "text": "Relationship to YouTube queueing"
     },
     {
+      "id": "important-distinction",
+      "text": "Important distinction"
+    },
+    {
       "id": "relationship-to-embedded-queue-surfaces",
       "text": "Relationship to embedded queue surfaces"
+    },
+    {
+      "id": "important-distinction-2",
+      "text": "Important distinction"
     },
     {
       "id": "what-still-needs-proof",
@@ -8305,10 +7387,6 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
     {
       "id": "practical-interpretation-of-the-audit",
       "text": "Practical interpretation of the audit"
-    },
-    {
-      "id": "recently-improved-gap-areas",
-      "text": "Recently improved gap areas"
     },
     {
       "id": "highest-value-future-repo-coverage-expansions",
@@ -8849,132 +7927,6 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Next improvements for this page"
     }
   ],
-  "style-token-and-surface-naming.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
-    },
-    {
-      "id": "canonical-surface-vocabulary",
-      "text": "Canonical surface vocabulary"
-    },
-    {
-      "id": "1-shell-rail-surface",
-      "text": "1. Shell rail surface"
-    },
-    {
-      "id": "2-shell-content-wrapper",
-      "text": "2. Shell content wrapper"
-    },
-    {
-      "id": "3-page-wrapper",
-      "text": "3. Page wrapper"
-    },
-    {
-      "id": "4-panel-or-card-surface",
-      "text": "4. Panel or card surface"
-    },
-    {
-      "id": "5-section-container",
-      "text": "5. Section container"
-    },
-    {
-      "id": "naming-interpretation-rule",
-      "text": "Naming interpretation rule"
-    },
-    {
-      "id": "canonical-theme-token-vocabulary",
-      "text": "Canonical theme-token vocabulary"
-    },
-    {
-      "id": "core-shellbackground-tokens",
-      "text": "Core shell/background tokens"
-    },
-    {
-      "id": "core-text-tokens",
-      "text": "Core text tokens"
-    },
-    {
-      "id": "tab-family-tokens",
-      "text": "Tab-family tokens"
-    },
-    {
-      "id": "herocard-tokens",
-      "text": "Hero/card tokens"
-    },
-    {
-      "id": "pillchip-tokens",
-      "text": "Pill/chip tokens"
-    },
-    {
-      "id": "ownership-rule",
-      "text": "Ownership rule"
-    },
-    {
-      "id": "background-invariants",
-      "text": "Background invariants"
-    },
-    {
-      "id": "1-herorail-uses-app-background",
-      "text": "1. `.heroRail` uses app background"
-    },
-    {
-      "id": "2-herowrap-must-not-use-app-background",
-      "text": "2. `.heroWrap` must not use app background"
-    },
-    {
-      "id": "3-appframe-base-background-uses-app-background-unless-explicitly-overridden",
-      "text": "3. `#appFrame` base background uses app background unless explicitly overridden"
-    },
-    {
-      "id": "4-app-background-picker-controls-only-the-backmost-appshell-and-iframe-base-planes",
-      "text": "4. App background picker controls only the backmost app/shell and iframe base planes"
-    },
-    {
-      "id": "5-do-not-reintroduce-herorailbefore-underlay-backgrounds",
-      "text": "5. Do not reintroduce `.heroRail::before` underlay backgrounds"
-    },
-    {
-      "id": "practical-consequence-of-the-invariants",
-      "text": "Practical consequence of the invariants"
-    },
-    {
-      "id": "compatibility-and-alias-decisions",
-      "text": "Compatibility and alias decisions"
-    },
-    {
-      "id": "migration-strategy",
-      "text": "Migration strategy"
-    },
-    {
-      "id": "phase-1-semantic-normalization-without-visual-change",
-      "text": "Phase 1: semantic normalization without visual change"
-    },
-    {
-      "id": "phase-2-gradual-markupclass-migration",
-      "text": "Phase 2: gradual markup/class migration"
-    },
-    {
-      "id": "existing-page-inventory-examples",
-      "text": "Existing page inventory examples"
-    },
-    {
-      "id": "recommended-non-breaking-alias-direction",
-      "text": "Recommended non-breaking alias direction"
-    },
-    {
-      "id": "best-companion-pages",
-      "text": "Best companion pages"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
-    }
-  ],
   "system-overview.html": [
     {
       "id": "purpose-of-the-system",
@@ -9143,80 +8095,6 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
     {
       "id": "things-still-to-verify",
       "text": "Things still to verify"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
-    }
-  ],
-  "tablet-recents-and-lastfm.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
-    },
-    {
-      "id": "primary-surface",
-      "text": "Primary surface"
-    },
-    {
-      "id": "recents-row-model",
-      "text": "Recents row model"
-    },
-    {
-      "id": "allowed-row-values",
-      "text": "Allowed row values"
-    },
-    {
-      "id": "structural-rules",
-      "text": "Structural rules"
-    },
-    {
-      "id": "lastfm-row-source-mapping",
-      "text": "Last.fm row-source mapping"
-    },
-    {
-      "id": "url-seeding-behavior",
-      "text": "URL seeding behavior"
-    },
-    {
-      "id": "refresh-and-stability-guardrails",
-      "text": "Refresh and stability guardrails"
-    },
-    {
-      "id": "1-do-not-auto-refresh-recents-on-a-timer",
-      "text": "1. Do not auto-refresh recents on a timer"
-    },
-    {
-      "id": "2-do-not-reload-recents-from-unrelated-events-when-row-config-has-not-changed",
-      "text": "2. Do not reload recents from unrelated events when row config has not changed"
-    },
-    {
-      "id": "3-do-not-overwrite-non-empty-rendered-rows-with-empty-live-results",
-      "text": "3. Do not overwrite non-empty rendered rows with empty live results"
-    },
-    {
-      "id": "4-do-not-replace-row-datasets-unless-incoming-data-is-meaningfully-different",
-      "text": "4. Do not replace row datasets unless incoming data is meaningfully different"
-    },
-    {
-      "id": "stability-interpretation",
-      "text": "Stability interpretation"
-    },
-    {
-      "id": "adding-a-new-row-source-type",
-      "text": "Adding a new row-source type"
-    },
-    {
-      "id": "relationship-to-lastfm-configuration-branch",
-      "text": "Relationship to Last.fm configuration branch"
-    },
-    {
-      "id": "best-companion-pages",
-      "text": "Best companion pages"
     },
     {
       "id": "current-status",
@@ -9607,48 +8485,48 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Purpose"
     },
     {
-      "id": "what-visualizerhtml-actually-is",
-      "text": "What `visualizer.html` actually is"
+      "id": "why-this-page-matters",
+      "text": "Why this page matters"
     },
     {
-      "id": "core-reactive-model",
-      "text": "Core reactive model"
+      "id": "important-file",
+      "text": "Important file"
     },
     {
-      "id": "scene-model-family",
-      "text": "Scene / model family"
+      "id": "core-query-parameter-inputs",
+      "text": "Core query-parameter inputs"
     },
     {
-      "id": "preset-control-layer",
-      "text": "Preset / control layer"
-    },
-    {
-      "id": "query-parameter-inputs",
-      "text": "Query-parameter inputs"
-    },
-    {
-      "id": "what-embedded-mode-changes",
-      "text": "What embedded mode changes"
+      "id": "key-mode-logic",
+      "text": "Key mode logic"
     },
     {
       "id": "embedded-mode",
       "text": "Embedded mode"
     },
     {
-      "id": "the-important-behavioral-change",
-      "text": "The important behavioral change"
+      "id": "pure-mode",
+      "text": "Pure mode"
     },
     {
-      "id": "embedded-visualizer-fullscreen-kiosk-handoff",
-      "text": "Embedded visualizer → fullscreen kiosk handoff"
+      "id": "ui-mode",
+      "text": "UI mode"
+    },
+    {
+      "id": "embedded-fullscreen-handoff",
+      "text": "Embedded → fullscreen handoff"
     },
     {
       "id": "fullscreen-kiosk-visualizer-controller-return-path",
       "text": "Fullscreen kiosk visualizer → controller return path"
     },
     {
-      "id": "preserved-visual-state-across-the-round-trip",
-      "text": "Preserved visual state across the round trip"
+      "id": "important-state-values-preserved-across-the-round-trip",
+      "text": "Important state values preserved across the round trip"
+    },
+    {
+      "id": "designerpreset-behavior-in-visualizerhtml",
+      "text": "Designer/preset behavior in `visualizer.html`"
     },
     {
       "id": "push-to-moode-behavior",
@@ -9671,290 +8549,20 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
       "text": "Special embedded-mode rendering differences"
     },
     {
-      "id": "relationship-to-controllerkiosk-pages",
-      "text": "Relationship to controller/kiosk pages"
+      "id": "relationship-to-controller-side-kiosk-routing",
+      "text": "Relationship to controller-side kiosk routing"
     },
     {
-      "id": "what-this-page-is-now-confident-about",
-      "text": "What this page is now confident about"
+      "id": "working-interpretation",
+      "text": "Working interpretation"
     },
     {
       "id": "relationship-to-other-pages",
       "text": "Relationship to other pages"
     },
     {
-      "id": "current-status",
-      "text": "Current status"
-    }
-  ],
-  "wiki-gap-review-2026-04-06.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "current-overall-assessment",
-      "text": "Current overall assessment"
-    },
-    {
-      "id": "high-value-gaps-identified",
-      "text": "High-value gaps identified"
-    },
-    {
-      "id": "1-install-and-validation-workflow",
-      "text": "1. Install and validation workflow"
-    },
-    {
-      "id": "2-styletoken-naming-canon-and-background-invariants",
-      "text": "2. Style/token naming canon and background invariants"
-    },
-    {
-      "id": "3-display-enhancement-as-a-builder-first-peppyplayer-system",
-      "text": "3. Display enhancement as a builder-first Peppy/Player system"
-    },
-    {
-      "id": "4-deployruntime-operator-checklists-in-compact-operational-form",
-      "text": "4. Deploy/runtime operator checklists in compact operational form"
-    },
-    {
-      "id": "5-cross-surface-parity-and-behavior-contracts",
-      "text": "5. Cross-surface parity and behavior contracts"
-    },
-    {
-      "id": "6-tablet-recents-and-lastfm-behavior-contract",
-      "text": "6. Tablet recents and Last.fm behavior contract"
-    },
-    {
-      "id": "7-airplay-metadata-hardening-as-an-ops-recipe",
-      "text": "7. AirPlay metadata hardening as an ops recipe"
-    },
-    {
-      "id": "areas-already-covered-strongly-enough",
-      "text": "Areas already covered strongly enough"
-    },
-    {
-      "id": "recommended-next-additions",
-      "text": "Recommended next additions"
-    },
-    {
-      "id": "recommended-integration-points",
-      "text": "Recommended integration points"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
-    }
-  ],
-  "wiki-lint-and-health.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
-    },
-    {
-      "id": "core-lint-question",
-      "text": "Core lint question"
-    },
-    {
-      "id": "what-to-check-during-a-lint-pass",
-      "text": "What to check during a lint pass"
-    },
-    {
-      "id": "1-reachability-and-navigation",
-      "text": "1. Reachability and navigation"
-    },
-    {
-      "id": "fix-patterns",
-      "text": "Fix patterns"
-    },
-    {
-      "id": "2-sourcerender-consistency",
-      "text": "2. Source/render consistency"
-    },
-    {
-      "id": "fix-patterns-2",
-      "text": "Fix patterns"
-    },
-    {
-      "id": "3-scope-clarity-and-duplication",
-      "text": "3. Scope clarity and duplication"
-    },
-    {
-      "id": "fix-patterns-3",
-      "text": "Fix patterns"
-    },
-    {
-      "id": "4-retrieval-quality",
-      "text": "4. Retrieval quality"
-    },
-    {
-      "id": "fix-patterns-4",
-      "text": "Fix patterns"
-    },
-    {
-      "id": "5-confidence-and-proof-hygiene",
-      "text": "5. Confidence and proof hygiene"
-    },
-    {
-      "id": "fix-patterns-5",
-      "text": "Fix patterns"
-    },
-    {
-      "id": "6-search-usefulness",
-      "text": "6. Search usefulness"
-    },
-    {
-      "id": "fix-patterns-6",
-      "text": "Fix patterns"
-    },
-    {
-      "id": "7-coverage-health",
-      "text": "7. Coverage health"
-    },
-    {
-      "id": "fix-patterns-7",
-      "text": "Fix patterns"
-    },
-    {
-      "id": "suggested-lint-cadence",
-      "text": "Suggested lint cadence"
-    },
-    {
-      "id": "lightweight-lint",
-      "text": "Lightweight lint"
-    },
-    {
-      "id": "branch-lint",
-      "text": "Branch lint"
-    },
-    {
-      "id": "periodic-wiki-lint",
-      "text": "Periodic wiki lint"
-    },
-    {
-      "id": "good-outcomes-from-a-lint-pass",
-      "text": "Good outcomes from a lint pass"
-    },
-    {
-      "id": "relationship-to-other-maintenance-pages",
-      "text": "Relationship to other maintenance pages"
-    },
-    {
-      "id": "current-status",
-      "text": "Current status"
-    }
-  ],
-  "wiki-operations.html": [
-    {
-      "id": "purpose",
-      "text": "Purpose"
-    },
-    {
-      "id": "why-this-page-matters",
-      "text": "Why this page matters"
-    },
-    {
-      "id": "three-layer-mental-model",
-      "text": "Three-layer mental model"
-    },
-    {
-      "id": "1-ingest",
-      "text": "1. Ingest"
-    },
-    {
-      "id": "what-ingest-means-here",
-      "text": "What ingest means here"
-    },
-    {
-      "id": "what-ingest-should-produce",
-      "text": "What ingest should produce"
-    },
-    {
-      "id": "ingest-rule",
-      "text": "Ingest rule"
-    },
-    {
-      "id": "ingest-examples-in-this-wiki",
-      "text": "Ingest examples in this wiki"
-    },
-    {
-      "id": "2-query",
-      "text": "2. Query"
-    },
-    {
-      "id": "what-query-means-here",
-      "text": "What query means here"
-    },
-    {
-      "id": "query-rule",
-      "text": "Query rule"
-    },
-    {
-      "id": "query-outputs-should-sometimes-become-wiki-pages",
-      "text": "Query outputs should sometimes become wiki pages"
-    },
-    {
-      "id": "3-lint",
-      "text": "3. Lint"
-    },
-    {
-      "id": "what-lint-means-here",
-      "text": "What lint means here"
-    },
-    {
-      "id": "what-lint-should-look-for",
-      "text": "What lint should look for"
-    },
-    {
-      "id": "lint-rule",
-      "text": "Lint rule"
-    },
-    {
-      "id": "suggested-operating-cadence",
-      "text": "Suggested operating cadence"
-    },
-    {
-      "id": "during-active-work",
-      "text": "During active work"
-    },
-    {
-      "id": "after-answering-an-important-recurring-question",
-      "text": "After answering an important recurring question"
-    },
-    {
-      "id": "periodically",
-      "text": "Periodically"
-    },
-    {
-      "id": "when-to-create-a-synthesis-page",
-      "text": "When to create a synthesis page"
-    },
-    {
-      "id": "metadata-pilot-schema",
-      "text": "Metadata pilot schema"
-    },
-    {
-      "id": "pagetype-vocabulary",
-      "text": "`page_type` vocabulary"
-    },
-    {
-      "id": "topics-vocabulary",
-      "text": "`topics` vocabulary"
-    },
-    {
-      "id": "confidence-vocabulary",
-      "text": "`confidence` vocabulary"
-    },
-    {
-      "id": "metadata-rule",
-      "text": "Metadata rule"
-    },
-    {
-      "id": "relationship-to-other-wiki-maintenance-pages",
-      "text": "Relationship to other wiki-maintenance pages"
+      "id": "things-still-to-verify",
+      "text": "Things still to verify"
     },
     {
       "id": "current-status",
