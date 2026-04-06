@@ -8,6 +8,29 @@ It is organized by **how the system is actually used and viewed**, not only by f
 
 This is not meant to be a user manual. It is a structural index of the major visible and interactive surfaces of the system.
 
+## Relevant source files
+
+This page is branch-oriented rather than file-complete, but these files are especially relevant when grounding the interface families below:
+- `app.html`
+- `controller.html`
+- `controller-mobile.html`
+- `controller-tablet.html`
+- `kiosk.html`
+- `display.html`
+- `config.html`
+- `diagnostics.html`
+
+## User interfaces at a glance
+
+If you need the compressed interface model first, use this:
+- **desktop/browser** = broad browser-oriented access to the system
+- **tablet** = pane-rich controller shell with broader orchestration behavior
+- **phone** = compact controller-first shell optimized for direct interaction
+- **display/kiosk** = room-facing presentation and controller-adjacent display behavior
+- **configuration/diagnostics** = operator-facing setup, inspection, and maintenance surfaces
+
+That top-level split is the main reason this page should exist as an umbrella branch page.
+
 ## How to use this page
 
 Use this page when you know one of the following:
@@ -18,11 +41,19 @@ Use this page when you know one of the following:
 
 Then follow the links into the more specific interface or feature pages.
 
+If you are trying to understand the interface layer as a system, read in this order:
+1. [user-interfaces.md](user-interfaces.md)
+2. [desktop-browser-interface.md](desktop-browser-interface.md)
+3. [tablet-interface.md](tablet-interface.md)
+4. [phone-interface.md](phone-interface.md)
+5. [display-interface.md](display-interface.md)
+6. [configuration-and-diagnostics-interfaces.md](configuration-and-diagnostics-interfaces.md)
+
 Cross-check with:
-- `architecture.md` when the question is mainly about system layers or boundaries
-- `source-map.md` when the question is mainly about where implementation files live
-- `display-surface-troubleshooting.md` when the issue is already known to be display/surface-specific
-- `deployment-and-ops.md` and `local-environment.md` when live behavior may depend on host/runtime reality
+- [architecture.md](architecture.md) when the question is mainly about system layers or boundaries
+- [source-map.md](source-map.md) when the question is mainly about where implementation files live
+- [display-surface-troubleshooting.md](display-surface-troubleshooting.md) when the issue is already known to be display/surface-specific
+- [deployment-and-ops.md](deployment-and-ops.md) and [local-environment.md](local-environment.md) when live behavior may depend on host/runtime reality
 
 ## Interface families
 
@@ -160,9 +191,9 @@ In other words, the wiki should support multiple ways of “looking at” the sy
 
 This page is intended to sit alongside, not replace, the rest of the wiki:
 
-- `README.md` — broad orientation and entry path into the knowledge base
-- `architecture.md` — conceptual and layer-based system structure
-- `source-map.md` — file/directory-oriented navigation
+- [README.md](README.md) — broad orientation and entry path into the knowledge base
+- [architecture.md](architecture.md) — conceptual and layer-based system structure
+- [source-map.md](source-map.md) — file/directory-oriented navigation
 - feature pages — capability-oriented drill-downs such as media library, display modes, queues, or integrations
 - troubleshooting/runbook pages — debugging-oriented views of known classes of problems
 
@@ -188,3 +219,7 @@ As this page grows, prefer:
 - including explicit implementation file paths once those are verified
 
 The long-term aim is not just orientation, but a knowledge structure that lets someone move from a visible surface or discussed feature to the exact implementation and operational reality behind it.
+
+## Timestamp
+
+Last updated: 2026-04-06 06:15 America/Chicago
