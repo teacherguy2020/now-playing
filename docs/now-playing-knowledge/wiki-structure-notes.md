@@ -308,6 +308,17 @@ Future growth should avoid:
 - duplicate pages with marginal scope differences
 - adding pages that are not linked into the hierarchy properly
 
+## Page timestamp rule
+
+Every wiki page should include a timestamp line at the bottom of the page when it is created or edited.
+
+This rule exists so future readers can quickly see recency without relying only on git history.
+
+Practical rule:
+- when adding a new wiki page, include a bottom-of-page timestamp
+- when materially editing an existing wiki page, update the bottom-of-page timestamp
+- keep the timestamp visually small and consistent so it helps orientation without becoming noisy
+
 ## Recommended maintenance checklist for new pages
 
 Before considering a new page done, verify:
@@ -318,6 +329,7 @@ Before considering a new page done, verify:
 5. the rendered page is also reachable from a sensible higher-level rendered page
 6. any parent page has been trimmed or updated if the child absorbed its detail
 7. the page’s confidence language matches the actual proof level
+8. the page has an updated bottom-of-page timestamp
 
 ## Relationship to other pages
 
