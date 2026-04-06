@@ -59,6 +59,7 @@ window.NP_KNOWLEDGE_SEARCH_INDEX = {
   "library-health-page-anatomy.html": "library health page anatomy library health page anatomy library health page anatomy albums metadata scan purpose why matters here high level role html main anatomical regions 1 shell redirect header layer what 2 summary region purpose why anatomy matters here high level role of library health html main anatomical regions 1 shell redirect page header layer what it is why it matters 2 library scan summary region what it is what it does why it matters 3 animated art cache audit region what it is what it does why it matters companion pages 4 album metadata inspector what it is what it does why it matters 5 performer suggestion apply workflow what it is what it does why it matters 6 album tag overwrite tool what it is what it does why it matters 7 feat collaboration cleanup workflow what it is what it does why it matters 8 moode library update action what it is what it does why it matters companion pages 9 library health script orchestration layer what it is what it does why it matters practical where do i start map if asked to improve the scan summary if asked to improve animated art cache behavior if asked to improve album metadata inspection if asked to improve performer application if asked to improve tag overwrite if asked to improve feat cleanup if asked to improve moode library update behavior anatomy rule for future agents relationship to other pages current status",
   "local-environment.html": "local environment local environment local environment purpose current known hosts roles deployment assumptions patches overrides operational guardrails app host vs moode control boundary open questions purpose current known hosts and roles current deployment assumptions local patches and overrides operational guardrails app host vs moode host control boundary open questions",
   "log.html": "log log log purpose major milestones 2026 04 06 source doc gap fill phase 05 start search retrieval system anatomy layer playback transport playing player queue next up playlist curation route ownership handler path proofing rendered wiki usability config settings runtime configuration api routes http endpoints service branch expansion purpose major milestones 2026 04 06 source doc gap fill phase 2026 04 05 start search and retrieval system phase 2026 04 05 anatomy layer phase 2026 04 05 playback queue and route proofing phase 2026 04 05 rendered wiki usability phase 2026 04 05 config and api branch expansion phase 2026 04 05 interface and surface coverage phase 2026 04 05 framing and recovery phase current status",
+  "media-library.html": "media library media library media library albums metadata scan purpose relevant source files glance why page matters read branch order strong current sub branches 1 health audit 2 browse relationship purpose relevant source files media library at a glance why this page matters read this branch in this order strong current sub branches 1 library health and audit branch 2 browse relationship branch 3 code ownership and adjacent implementation branch what this branch still needs later relationship to other pages current status timestamp",
   "now-playing-surface-variants.html": "now playing surface variants now playing surface variants now playing surface variants purpose why page matters files family classification 1 main implementation controller html 2 tablet variant 3 grid 4 ipad redirect shim purpose why this page matters files in the family family classification 1 main implementation page controller now playing html 2 tablet implementation variant controller now playing tablet html 3 grid implementation variant controller now playing grid html 4 ipad redirect shim controller now playing ipad html 5 iphone redirect shim controller now playing iphone html 6 alias shim controller nowplaying iphone html working family model substantive implementation pages redirect alias pages shared behaviors across the substantive variants important variant differences controller now playing html controller now playing tablet html controller now playing grid html relationship to kiosk and embedded behavior relationship to queue and album drill down behavior anatomy companion page what this page is now confident about relationship to other pages current status",
   "open-questions.html": "open questions open questions open questions purpose really mapping todos true runtime behavior uncertainties depend brian specific local reality should probably become runbooks later purpose questions that are really mapping todos questions that are true runtime or behavior uncertainties questions that depend on brian specific local reality questions that should probably become runbooks later",
   "phone-interface.html": "phone interface phone interface phone interface purpose relevant source files why matters important mobile controller glance current working interpretation likely responsibilities relationship other pages purpose relevant source files why the phone interface matters important files mobile controller at a glance current working interpretation likely responsibilities of the phone interface relationship to other interface pages read this branch in this order anatomy companion page likely implementation dimensions what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also current status timestamp",
@@ -150,6 +151,7 @@ window.NP_KNOWLEDGE_SEARCH_SUMMARIES = {
   "library-health-page-anatomy.html": "Purpose",
   "local-environment.html": "Purpose",
   "log.html": "title log page type support topics metadata ops runtime confidence medium",
+  "media-library.html": "title media library page type parent topics library browsing inventory health confidence medium",
   "now-playing-surface-variants.html": "title now playing surface variants page type parent topics controller playback display queue confidence high",
   "open-questions.html": "Purpose",
   "phone-interface.html": "Purpose",
@@ -241,6 +243,7 @@ window.NP_KNOWLEDGE_SEARCH_HEADINGS = {
   "library-health-page-anatomy.html": "purpose why anatomy matters here high level role of library health html main anatomical regions 1 shell redirect page header layer what it is why it matters 2 library scan summary region what it is what it does why it matters 3 animated art cache audit region what it is what it does why it matters companion pages 4 album metadata inspector what it is what it does why it matters 5 performer suggestion apply workflow what it is what it does why it matters 6 album tag overwrite tool what it is what it does why it matters 7 feat collaboration cleanup workflow what it is what it does why it matters 8 moode library update action what it is what it does why it matters companion pages 9 library health script orchestration layer what it is what it does why it matters practical where do i start map if asked to improve the scan summary if asked to improve animated art cache behavior if asked to improve album metadata inspection if asked to improve performer application if asked to improve tag overwrite if asked to improve feat cleanup if asked to improve moode library update behavior anatomy rule for future agents relationship to other pages current status",
   "local-environment.html": "purpose current known hosts and roles current deployment assumptions local patches and overrides operational guardrails app host vs moode host control boundary open questions",
   "log.html": "purpose major milestones 2026 04 06 source doc gap fill phase 2026 04 05 start search and retrieval system phase 2026 04 05 anatomy layer phase 2026 04 05 playback queue and route proofing phase 2026 04 05 rendered wiki usability phase 2026 04 05 config and api branch expansion phase 2026 04 05 interface and surface coverage phase 2026 04 05 framing and recovery phase current status",
+  "media-library.html": "purpose relevant source files media library at a glance why this page matters read this branch in this order strong current sub branches 1 library health and audit branch 2 browse relationship branch 3 code ownership and adjacent implementation branch what this branch still needs later relationship to other pages current status timestamp",
   "now-playing-surface-variants.html": "purpose why this page matters files in the family family classification 1 main implementation page controller now playing html 2 tablet implementation variant controller now playing tablet html 3 grid implementation variant controller now playing grid html 4 ipad redirect shim controller now playing ipad html 5 iphone redirect shim controller now playing iphone html 6 alias shim controller nowplaying iphone html working family model substantive implementation pages redirect alias pages shared behaviors across the substantive variants important variant differences controller now playing html controller now playing tablet html controller now playing grid html relationship to kiosk and embedded behavior relationship to queue and album drill down behavior anatomy companion page what this page is now confident about relationship to other pages current status",
   "open-questions.html": "purpose questions that are really mapping todos questions that are true runtime or behavior uncertainties questions that depend on brian specific local reality questions that should probably become runbooks later",
   "phone-interface.html": "purpose relevant source files why the phone interface matters important files mobile controller at a glance current working interpretation likely responsibilities of the phone interface relationship to other interface pages read this branch in this order anatomy companion page likely implementation dimensions what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also current status timestamp",
@@ -7618,6 +7621,60 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
     {
       "id": "current-status",
       "text": "Current status"
+    }
+  ],
+  "media-library.html": [
+    {
+      "id": "purpose",
+      "text": "Purpose"
+    },
+    {
+      "id": "relevant-source-files",
+      "text": "Relevant source files"
+    },
+    {
+      "id": "media-library-at-a-glance",
+      "text": "Media library at a glance"
+    },
+    {
+      "id": "why-this-page-matters",
+      "text": "Why this page matters"
+    },
+    {
+      "id": "read-this-branch-in-this-order",
+      "text": "Read this branch in this order"
+    },
+    {
+      "id": "strong-current-sub-branches",
+      "text": "Strong current sub-branches"
+    },
+    {
+      "id": "1-library-health-and-audit-branch",
+      "text": "1. Library health and audit branch"
+    },
+    {
+      "id": "2-browse-relationship-branch",
+      "text": "2. Browse relationship branch"
+    },
+    {
+      "id": "3-code-ownership-and-adjacent-implementation-branch",
+      "text": "3. Code ownership and adjacent implementation branch"
+    },
+    {
+      "id": "what-this-branch-still-needs-later",
+      "text": "What this branch still needs later"
+    },
+    {
+      "id": "relationship-to-other-pages",
+      "text": "Relationship to other pages"
+    },
+    {
+      "id": "current-status",
+      "text": "Current status"
+    },
+    {
+      "id": "timestamp",
+      "text": "Timestamp"
     }
   ],
   "now-playing-surface-variants.html": [
