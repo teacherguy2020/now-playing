@@ -22,6 +22,18 @@ A stronger current interpretation is:
 
 So this page should act as the structural hub for the project, not as a loose conceptual overview.
 
+## Relevant source files
+
+This page is architectural rather than file-by-file, but these source areas are especially relevant when validating the architectural claims below:
+- `moode-nowplaying-api.mjs`
+- `src/routes/`
+- `src/services/`
+- `app.html`
+- `controller.html`
+- `display.html`
+- `visualizer.html`
+- `kiosk.html`
+
 ## Why this page matters
 
 Agents tend to make the wrong architectural guess first.
@@ -34,6 +46,18 @@ Typical wrong guesses are:
 - treating display bugs as purely visual when they may start in state truth or runtime boundaries
 
 This page exists to keep the high-level structure explicit before drilling into files.
+
+## Architecture at a glance
+
+If you only need the compressed structural model, use this:
+
+- **Central truth hinge**: `/now-playing` and related visible-state endpoints
+- **Primary control plane**: app-host API routes and route-owned behavior
+- **Primary presentation layer**: controller, kiosk, and display-mode surfaces
+- **Primary playback/queue layer**: playback truth, queue control, and queue shaping
+- **Primary integration anchor**: moOde plus MPD, with adjacent YouTube, Alexa, radio, podcast, and Last.fm boundaries
+- **Primary runtime split**: app host versus moOde host
+- **Reality modifier**: local overrides and host-side patch material can materially change live behavior
 
 ## The current structural shape
 
@@ -62,7 +86,7 @@ Best companion pages:
 - `api-service-overview.md`
 - `api-endpoint-catalog.md`
 
-### 3. Controller / browser shell layer
+### 3. Presentation and controller shell layer
 The controller/browser family is a major UI layer, not a thin wrapper.
 It owns:
 - app shell behavior
@@ -78,7 +102,7 @@ Best companion pages:
 - `app-shell-anatomy.md`
 - `controller-tablet-anatomy.md`
 
-### 4. Display / presentation layer
+### 4. Display / renderer layer
 The display branch turns app-host truth into room-facing/browser-facing presentation.
 It includes:
 - display modes such as Player / Peppy / Visualizer
@@ -92,7 +116,7 @@ Best companion pages:
 - `visualizer-in-embedded-mode.md`
 - `kiosk-interface.md`
 
-### 5. Queue / playback mediation layer
+### 5. Playback and queue mediation layer
 Queue and playback are not one flat thing.
 The architecture separates:
 - playback truth
@@ -196,6 +220,10 @@ Use:
 - `integrations.md`
 - `deployment-and-ops.md`
 - `local-environment.md`
+
+## Timestamp
+
+Last updated: 2026-04-06 05:46 America/Chicago
 
 ## Relationship to other pages
 
