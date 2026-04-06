@@ -23,6 +23,7 @@ Use this page when the question is:
 - what should be validated before making install flow public?
 - what should be smoke-tested after install or upgrade?
 - what should happen on reinstall, rollback, or invalid input?
+- where does install stop and runtime/config reality begin?
 
 ## Why this page matters
 
@@ -39,15 +40,38 @@ A project can work after hand-tuned setup while still failing in one of these im
 
 That means install validation needs its own durable checklist.
 
+## Install vs setup vs runtime
+
+A useful way to read this branch is:
+
+- **install** = getting the system onto a machine and starting its service/process shape successfully
+- **setup** = making sure the machine, service model, config files, and environment assumptions are in place
+- **runtime** = what the already-installed system does in live use, especially once host boundaries, integrations, and local overrides matter
+
+This page is strongest on **install** and **install lifecycle validation**.
+It overlaps slightly with setup, but it is not the main page for live runtime behavior.
+
+Use companion pages for the rest of the story:
+- [deployment-and-ops.md](deployment-and-ops.md) for live-change verification and effect-layer reasoning
+- [config-network-and-runtime.md](config-network-and-runtime.md) for network/runtime bootstrap and environment assumptions
+- [backend-change-verification-runbook.md](backend-change-verification-runbook.md) for backend verification after changes
+- [local-environment.md](local-environment.md) for Brian's actual host reality and local overrides
+
 ## Scope of this page
 
 This page is about validating installer behavior and install lifecycle behavior.
 It is not the same as normal day-to-day deploy verification in Brian's current live environment.
 
-For ordinary live-change verification, also use:
-- `deployment-and-ops.md`
-- `backend-change-verification-runbook.md`
-- `local-environment.md`
+## Setup assumptions this page is testing
+
+At a practical level, this page is testing whether the project can reliably establish these baseline assumptions:
+- code is placed in the expected install location
+- service ownership and process model are coherent
+- environment/config bootstrap is safe
+- the app starts and exposes its baseline health endpoints
+- rerun, upgrade, and rollback behavior are not destructive
+
+That is why this page reads like a lifecycle checklist rather than a feature walkthrough.
 
 ## Baseline test environment
 
@@ -276,4 +300,8 @@ At the moment, this page preserves the install-validation contract as a first-cl
 
 The important practical truth is:
 - a working local environment does not prove a working install story
-- install, rerun, upgrade, rollback, and invalid-input behavior all need to be treated as part of real system quality
+- install, setup assumptions, rerun, upgrade, rollback, and invalid-input behavior all need to be treated as part of real system quality
+
+## Timestamp
+
+Last updated: 2026-04-06 05:55 America/Chicago
