@@ -13,6 +13,24 @@ If the user-facing branches explain how humans interact with playback and browsi
 - health and maintenance views
 - troubleshooting-oriented UI surfaces
 
+## Relevant source files
+
+This page is branch-oriented rather than file-complete, but these files are especially relevant when grounding Configuration and Administration behavior:
+- `config.html`
+- `diagnostics.html`
+- config-related helper logic and route integrations
+- runtime-admin and maintenance-related route surfaces
+
+## Configuration and administration at a glance
+
+If you need the compressed branch model first, use this:
+- **configuration** = feature setup, environment bootstrap, path/runtime assumptions, persistence, and operator-controlled feature state
+- **administration** = diagnostics, runtime checks, maintenance actions, and operational inspection
+- **config and diagnostics are closely related**, but they are not the same job
+- this branch is the main operator-facing control plane of the project
+
+That is why this branch should be read as Configuration and Administration, not only as two adjacent pages.
+
 ## Why this page matters
 
 A system like `now-playing` is not only experienced through controller and display pages.
@@ -58,6 +76,19 @@ This branch should also act as the bridge between:
 - interface-level understanding
 - runtime/ops understanding
 - underlying API/config responsibilities
+
+## Read this branch in this order
+
+If you are trying to understand Configuration and Administration as a system, read in this order:
+1. [configuration-and-diagnostics-interfaces.md](configuration-and-diagnostics-interfaces.md)
+2. [config-interface.md](config-interface.md)
+3. [config-network-and-runtime.md](config-network-and-runtime.md)
+4. [config-feature-breakdown.md](config-feature-breakdown.md)
+5. [diagnostics-interface.md](diagnostics-interface.md)
+6. [backend-change-verification-runbook.md](backend-change-verification-runbook.md)
+7. [install-and-validation.md](install-and-validation.md)
+
+Then move into feature-specific config pages or troubleshooting pages when the question becomes narrower.
 
 ## Candidate subpages
 
@@ -139,10 +170,10 @@ It is centered on:
 ## Relationship to other interface pages
 
 This page should be read alongside:
-- `desktop-browser-interface.md`
-- `user-interfaces.md`
-- `deployment-and-ops.md`
-- `local-environment.md`
+- [desktop-browser-interface.md](desktop-browser-interface.md)
+- [user-interfaces.md](user-interfaces.md)
+- [deployment-and-ops.md](deployment-and-ops.md)
+- [local-environment.md](local-environment.md)
 
 A useful current distinction is:
 - desktop/tablet/phone/display pages are how the system is used
@@ -174,11 +205,11 @@ A mature configuration/diagnostics page should eventually explain:
 ## Relationship to the rest of the wiki
 
 This page should remain closely linked with:
-- `user-interfaces.md`
-- `deployment-and-ops.md`
-- `local-environment.md`
-- `restart-and-runtime-admin-troubleshooting.md`
-- `source-map.md`
+- [user-interfaces.md](user-interfaces.md)
+- [deployment-and-ops.md](deployment-and-ops.md)
+- [local-environment.md](local-environment.md)
+- [restart-and-runtime-admin-troubleshooting.md](restart-and-runtime-admin-troubleshooting.md)
+- [source-map.md](source-map.md)
 
 This branch is especially important for connecting UI-facing understanding to real operational behavior.
 
@@ -189,3 +220,7 @@ At the moment, this page is a structural hub rather than a code-heavy implementa
 That is intentional.
 
 Its job is to establish operator/admin surfaces as a first-class part of the interface map and to give the wiki a clean place to branch into `config.html`, `diagnostics.html`, `library-health.html`, and `theme.html` next.
+
+## Timestamp
+
+Last updated: 2026-04-06 06:39 America/Chicago
