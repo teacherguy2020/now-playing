@@ -1,295 +1,179 @@
+---
+title: kiosk-interface
+page_type: parent
+topics:
+  - kiosk
+  - display
+  - controller
+  - runtime
+confidence: high
+---
+
 # kiosk interface
 
 ## Purpose
 
-This page describes kiosk-style presentation in the `now-playing` ecosystem.
-
-The kiosk interface is part of the display family, but it deserves its own page because it is not just a visual layout. It also depends on host behavior, display wake/display state assumptions, moOde-side presentation context, and the operational realities of an unattended or semi-unattended screen.
-
-In other words, kiosk behavior sits at the intersection of:
-- display and presentation
-- runtime and host state
-- moOde/display-host coordination
-- visual/render mode selection
-
-## What “kiosk” means here
-
-In this project, kiosk should be understood as a display-oriented usage mode where the system is expected to present useful playback information continuously or reliably on a dedicated screen or display context.
-
-That usually implies some combination of:
-- presentation-first behavior rather than full browsing/control
-- reduced need for direct interaction
-- a persistent or semi-persistent screen
-- dependencies on display routing, wake state, or host-side display assumptions
-- tighter coupling to the live runtime environment than a casual browser tab would have
-
-Kiosk is therefore not only a UI description. It is also an operational mode.
-
-A useful terminology distinction for the wiki is:
-- **display/render modes**: Player, Peppy, Visualizer
-- **presentation/shell mode**: Kiosk
-- **designer/helper surfaces**: pages such as `kiosk-designer.html`, `player.html`, and `displays.html`
-
-That helps separate Kiosk from the renderer-style modes.
-
-## Why kiosk belongs in its own branch
-
-Kiosk deserves dedicated documentation because kiosk-related behavior can fail in ways that ordinary browser/controller surfaces do not.
-
-Examples of kiosk-specific concerns include:
-- whether the correct display surface is being shown continuously
-- whether the display wakes or stays awake as expected
-- whether the browser/display host is showing the intended routed surface
-- whether moOde-side display control and app-host-side display control are aligned
-- whether visual/render mode choices behave correctly in the intended kiosk context
-- whether local overrides or host-specific patches materially alter behavior
-
-This makes kiosk a good example of a surface that must be documented as both:
-- a visible interface
-- a runtime/environment-dependent operating mode
-
-## Kiosk within the display family
-
-Kiosk is closely related to the broader display branch documented in `display-interface.md`.
-
-It overlaps with:
-- browser/TV display surfaces
-- moOde-hosted presentation and renderer modes
-- artwork and visual presentation behavior
-- runtime-admin and host/display control behavior
-
-But kiosk is distinct because it emphasizes:
-- persistence
-- unattended presentation
-- display-host behavior
-- operational stability over time
-
-Related pages:
-- `display-interface.md`
-- `display-surface-troubleshooting.md`
-- `deployment-and-ops.md`
-- `local-environment.md`
-
-## Likely kiosk contexts to document more deeply
-
-The kiosk branch should eventually distinguish between different kiosk-like contexts, because they may not all behave the same way.
-
-Likely contexts include:
-- browser-based kiosk presentation on a dedicated display
-- moOde-hosted kiosk-style presentation
-- display-router-driven kiosk behavior
-- kiosk behavior that depends on specific renderers or visual modes
-- kiosk behavior shaped by wake/display-state logic or local overrides
-
-These may or may not ultimately map to separate pages, but they should at least become separate subsections if they prove materially different.
-
-## Kiosk and moOde-host reality
-
-Kiosk behavior appears especially likely to depend on moOde-host reality.
-
-That may include:
-- what the moOde-attached display is expected to show
-- how the display is routed or switched
-- how moOde-side display control interacts with the app-host/runtime side
-- whether local patches or watchdog logic affect what is shown and when
-- how the live host environment changes the practical behavior of kiosk presentation
-
-This is why kiosk documentation should not stop at “what page is shown.” It should also explain the host/runtime assumptions that make kiosk work in practice.
-
-## Important kiosk-facing files and entrypoints
-
-Kiosk is not represented by only one HTML file. There is a broader kiosk family in the live `now-playing` app.
-
-Current repo-visible kiosk-facing HTML entrypoints include:
-- `now-playing/kiosk.html`
-- `now-playing/controller-kiosk.html`
-- `now-playing/kiosk-now-playing.html`
-- `now-playing/kiosk-albums.html`
-- `now-playing/kiosk-artists.html`
-- `now-playing/kiosk-playlists.html`
-- `now-playing/kiosk-radio.html`
-- `now-playing/kiosk-podcasts.html`
-- `now-playing/kiosk-genres.html`
-- `now-playing/kiosk-queue.html`
-- `now-playing/kiosk-queue-wizard.html`
-- `now-playing/kiosk-designer.html`
-
-This means the kiosk branch should be understood as a family of presentation-oriented surfaces, not a single page.
-
-## First classification of kiosk files
-
-Based on direct repo inspection, the kiosk family already falls into a few distinct roles.
-
-### `now-playing/kiosk.html` — primary kiosk launcher/bridge
-This currently looks like the main kiosk entrypoint.
-
-What it does:
-- reads incoming theme/color/recent-source query parameters
-- merges them with a saved kiosk profile from localStorage (`nowplaying.kiosk.profile.v1`)
-- keeps a controller profile in sync (`nowplaying.mobile.profile.v2`)
-- redirects into `controller.html` with kiosk-related query parameters such as:
-  - `kiosk=1`
-  - `preview=1`
-  - `rev=20260329-motion-art-fix`
-  - theme/color/recent-source settings
-
-This is important because it means `kiosk.html` is not mainly the final rendered kiosk UI. It is a launcher/profile handoff layer that boots kiosk-flavored controller behavior.
-
-### `now-playing/kiosk-designer.html` — kiosk designer / preview / push tool
-This is not the kiosk display itself. It is a support surface for designing and pushing kiosk presentation settings.
-
-Repo-visible behavior includes:
-- iframe preview of `kiosk.html`
-- theme/color preset controls
-- preset save/export/import controls
-- runtime API calls via the `:3101` app host
-- moOde browser URL status checks
-- push-to-moOde behavior via config endpoints
-
-So this page belongs in the kiosk branch, but more as an authoring/configuration tool for kiosk presentation than as the kiosk display surface itself.
-
-### `now-playing/controller-kiosk.html` — separate kiosk scaffold/prototype
-This appears to be a direct, custom kiosk/controller scaffold rather than a simple redirect shim.
-
-Repo-visible characteristics:
-- fixed 1280×400 layout
-- three-pane design (sources, list, now playing)
-- direct fetches to app-host APIs on `:3101`
-- pulls runtime config, now-playing state, queue diagnostics, and playlists
-- appears to be a more explicit standalone kiosk/controller experiment or scaffold
-
-This looks different in nature from `kiosk.html`, which acts mainly as a launcher into `controller.html` kiosk mode.
-
-### Specialized `kiosk-*.html` files — redirect shims into controller pages
-Several kiosk-named files are currently very thin wrappers that just redirect to controller-family pages with the same query string preserved.
-
-Observed examples:
-- `kiosk-albums.html` → `controller-albums.html`
-- `kiosk-artists.html` → `controller-artists.html`
-- `kiosk-playlists.html` → `controller-playlists.html`
-- `kiosk-radio.html` → `controller-radio.html`
-- `kiosk-podcasts.html` → `controller-podcasts.html`
-- `kiosk-genres.html` → `controller-genres.html`
-- `kiosk-queue.html` → `controller-queue.html`
-- `kiosk-queue-wizard.html` → `controller-queue-wizard.html`
-- `kiosk-now-playing.html` → `controller-now-playing.html`
-
-This suggests that much of the kiosk family is currently implemented as a kiosk-branded routing layer into controller surfaces, rather than a fully separate kiosk-only codebase for every view.
-
-## Working interpretation
+This page documents the kiosk branch of the `now-playing` ecosystem.
 
 A stronger current interpretation is:
-- `kiosk.html` is the main kiosk launch/profile bridge
-- `kiosk-designer.html` is the configuration/preview/push tool for kiosk presentation
-- `controller-kiosk.html` is a separate standalone kiosk scaffold/prototype
-- many of the other `kiosk-*.html` pages are redirect aliases into controller surfaces
+- kiosk is a presentation/shell mode
+- it is not just another renderer alongside Player/Peppy/Visualizer
+- the live kiosk path is largely controller-backed
+- `kiosk.html` is an entry bridge, not the live shell
+- many `kiosk-*.html` pages are redirect aliases into controller-family pages
+- `controller-kiosk.html` is a separate scaffold/prototype path
 
-That is a much more useful starting model than treating the kiosk branch as one file or one monolithic surface.
+So this page should now act as the parent hub for the kiosk branch, not as a tentative first-pass category page.
 
-## Likely implementation dimensions
+## Why this page matters
 
-Kiosk behavior likely depends on a combination of:
-- kiosk-family HTML entrypoints
-- display/router-related scripts
-- visual/render mode logic
-- playback-state and metadata inputs
-- artwork and derivative/cache behavior
-- runtime-admin and host/display control routes or workflows
-- local environment patches, overrides, or host-specific assumptions
+Kiosk is one of the easiest branches to misunderstand.
 
-When this branch is expanded, it should move toward explicit coverage of:
-- what each kiosk-family HTML page is for
-- which JS and CSS each one relies on
-- which routes/APIs feed each kiosk surface
-- which host/runtime control paths affect them
-- which local-environment-specific realities materially change kiosk behavior
+A wrong first guess usually looks like one of these:
+- treating kiosk as a renderer instead of a shell mode
+- treating `kiosk.html` as the live kiosk implementation
+- treating kiosk-named child pages as independent kiosk UIs
+- missing that the real shell behavior lives in `controller.html`
+- missing that right-pane behavior and embedded child surfaces are central to kiosk behavior
 
-## Kiosk-specific questions future documentation should answer
+This page exists to keep those distinctions explicit.
 
-A mature kiosk page should eventually answer questions like:
-- what surface is actually shown in kiosk mode?
-- what host is responsible for showing it?
-- how does kiosk differ from ordinary browser display usage?
-- what role does moOde play in kiosk presentation?
-- what visual modes/renderers can appear in kiosk contexts?
-- what causes kiosk to show the wrong thing, go stale, or fail to wake/update?
-- what files, routes, and host/runtime controls are responsible?
+## What kiosk is in the current repo
 
-## Planned sub-branches
+A better current branch definition is:
+- kiosk is the presentation shell built around a controller-backed 1280×400-style experience
+- the entry path resolves profile/theme/recent-source settings and hands off into `controller.html`
+- the shell then hosts controller-family child pages, especially through the kiosk right pane
+- kiosk designer/editor behavior is a distinct subpath, not the same thing as the live shell
 
-Kiosk may eventually need further drill-down pages such as:
+That is the current repo reality.
 
-### `kiosk-launch-and-routing.md`
-Now serves as the first routing-focused drill-down beneath this page.
+## Strong current branch map
 
-It should continue expanding around:
-- `kiosk.html` as the launch/profile bridge
-- the redirect relationship between kiosk-named pages and controller pages
-- profile handoff into kiosk-flavored controller behavior
+## 1. Kiosk entry and redirect handoff
 
-### `kiosk-designer.md`
-Now serves as the design/preview/push-tool branch for kiosk presentation.
-
-### `controller-kiosk-scaffold.md`
-Now serves as the branch for the standalone `controller-kiosk.html` scaffold path.
-
-### `controller-kiosk-mode.md`
-Now serves as the controller-side kiosk behavior branch.
-
-### `kiosk-browser-surface.md`
-For kiosk behavior centered on browser-rendered display surfaces.
-
-### `kiosk-on-moode.md`
-For kiosk behavior specifically tied to moOde-hosted presentation and display context.
-
-### `display-renderers-and-visual-modes.md`
-For the display/render modes that may appear within kiosk usage, such as Player, Peppy, and Visualizer.
-
-### `artwork-and-visual-assets.md`
-For artwork/animation/cached visual dependencies that strongly affect kiosk presentation quality and stability.
-
-## Anatomy companion page
-
-- `kiosk-shell-anatomy.md`
-
-This is the anatomy-style companion page for the live kiosk shell path.
-Use it when the task is not just about kiosk as a branch, but about a specific kiosk-layer question such as:
-- launcher/profile bridge behavior
-- right-pane ownership
-- live shell versus designer behavior
-- kiosk-branded child aliases
-- scaffold/prototype path versus real live path
-
-## Relationship to troubleshooting and ops
-
-Kiosk documentation should remain tightly linked to troubleshooting and operations pages because kiosk issues are likely to cross from visible symptoms into host/runtime causes.
-
-Especially relevant pages:
-- `display-surface-troubleshooting.md`
-- `deployment-and-ops.md`
-- `local-environment.md`
-- `restart-and-runtime-admin-troubleshooting.md`
-
-In this area especially, theory and live behavior may diverge.
-
-## See also
-
+Current best anchor page:
 - `kiosk-launch-and-routing.md`
-- `kiosk-designer.md`
+
+What it now proves directly from file inspection:
+- `kiosk.html` is a script-only profile-sync + redirect bridge
+- it reads and writes kiosk/controller profile state in localStorage
+- it redirects into `controller.html?kiosk=1&preview=1&rev=...`
+- it forwards theme/recent-source/custom-color settings into the controller-backed destination
+
+That means kiosk launch is a handoff path, not the shell itself.
+
+## 2. Controller-backed live kiosk shell
+
+Current best anchor page:
 - `controller-kiosk-mode.md`
-- `controller-kiosk-scaffold.md`
+
+What it now proves directly from file inspection:
+- `controller.html` explicitly detects kiosk mode and kiosk editor mode
+- it owns the kiosk layout shell
+- it owns the kiosk right-pane iframe and child-route remapping
+- it applies controller-profile/query-driven state during kiosk use
+
+That means the live kiosk shell is materially implemented in `controller.html`.
+
+## 3. Kiosk child-route alias layer
+
+Current best anchor pages:
+- `kiosk-launch-and-routing.md`
+- `kiosk-right-pane-routing.md`
+
+Current direct file-backed truth:
+- many `kiosk-*.html` pages are pure redirect aliases into controller pages
+- examples include queue, queue wizard, now playing, artists, albums, genres, podcasts, radio, and playlists
+
+This is an important branch truth.
+Kiosk-named route does not imply independent kiosk implementation.
+
+## 4. Right-pane and embedded child behavior
+
+Current best anchor pages:
 - `kiosk-right-pane-routing.md`
 - `embedded-pane-contracts.md`
+
+Current branch truth:
+- the kiosk shell uses a controller-owned right pane
+- child pages are often hosted in an embedded iframe context
+- pane open/close behavior, child-route remapping, and parent/child message behavior are all important to kiosk operation
+
+So kiosk is not only a shell theme.
+It is also a parent/child navigation system.
+
+## 5. Kiosk editor/designer paths
+
+Current best anchor pages:
+- `kiosk-designer.md`
 - `kiosk-editor-mode.md`
+- `controller-kiosk-mode.md`
+
+Current branch truth:
+- kiosk editor/designer behavior is real and distinct
+- `controller.html` has a dedicated kiosk-editor branch
+- `controller-kiosk.html` remains a separate scaffold/prototype page and should not be confused with the main live kiosk path
+
+## 6. Kiosk anatomy as a shell path
+
+Current best anchor page:
 - `kiosk-shell-anatomy.md`
 
-`kiosk-shell-anatomy.md` matters when the question is not only “what is the kiosk branch?” but “which kiosk layer actually owns the thing I need to change?”
+Current branch truth:
+- kiosk should be understood anatomically as a shell path, not as a single page
+- entry bridge, live shell, right-pane child surfaces, and designer/scaffold paths all need to stay separate mentally
+
+## What this branch is now confident about
+
+The current repo and wiki support these stronger claims:
+- kiosk is a presentation/shell mode, not a display renderer
+- `kiosk.html` is a profile-sync + redirect bridge into `controller.html`
+- `controller.html` owns real kiosk shell behavior
+- many kiosk-named child pages are redirect aliases into controller-family pages
+- right-pane and embedded child-page behavior are core kiosk mechanics, not incidental details
+- `controller-kiosk.html` is a scaffold/prototype path, not the main live kiosk entry
+
+## High-value starting paths
+
+### If kiosk launch behavior is wrong
+Start with:
+1. `kiosk-launch-and-routing.md`
+2. `controller-kiosk-mode.md`
+
+### If kiosk pane behavior or child-page routing is wrong
+Start with:
+1. `kiosk-right-pane-routing.md`
+2. `embedded-pane-contracts.md`
+3. `controller-kiosk-mode.md`
+
+### If the question is “is this really a kiosk page or just a controller alias?”
+Start with:
+1. `kiosk-launch-and-routing.md`
+2. `kiosk-shell-anatomy.md`
+
+### If the question is about kiosk designer/editor behavior
+Start with:
+1. `kiosk-designer.md`
+2. `kiosk-editor-mode.md`
+3. `controller-kiosk-mode.md`
+
+## Relationship to other pages
+
+This page should stay linked with:
+- `display-interface.md`
+- `kiosk-launch-and-routing.md`
+- `controller-kiosk-mode.md`
+- `kiosk-right-pane-routing.md`
+- `embedded-pane-contracts.md`
+- `kiosk-shell-anatomy.md`
+- `controller-kiosk-scaffold.md`
 
 ## Current status
 
-At the moment, this page is a structural drill-down from the display branch, not a completed kiosk implementation guide.
+At the moment, this page should be read as the parent hub for the kiosk branch.
 
-Its purpose is to establish kiosk as:
-- a first-class visible interface/mode
-- an operationally sensitive display context
-- a branch that should eventually be documented with explicit pages, scripts, routes, host behavior, and local-environment realities
+It is no longer just a broad “kiosk category” page.
+The current wiki already supports a much stronger model:
+- kiosk is a controller-backed shell mode
+- the entry bridge, live shell, right-pane behavior, alias pages, and scaffold path are now explicitly separated.

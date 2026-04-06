@@ -1,136 +1,211 @@
+---
+title: integrations
+page_type: parent
+topics:
+  - integration
+  - api
+  - playback
+  - runtime
+confidence: medium
+---
+
 # integrations
 
 ## Purpose
 
-This page records the major external systems and integration patterns documented for the `now-playing` project.
+This page documents the external-system and cross-boundary integration layer in the `now-playing` project.
 
-It is meant to help future agents answer questions like:
-- what outside systems does this project depend on?
-- what protocols or request patterns show up repeatedly?
-- where should I look first when debugging integration behavior?
+A stronger current interpretation is:
+- integrations are not a side topic
+- they are one of the main reasons the project is operationally complex
+- the project continuously translates between app-host truth, playback/runtime state, metadata enrichment, and external systems such as moOde, MPD, YouTube, Alexa, Last.fm, and podcast feeds
 
-## Documented integrations
+So this page should act as the integration branch hub, not as a loose list of outside services.
 
-The DeepWiki material explicitly documents or strongly centers these integration areas:
+## Why this page matters
 
-- **MPD**
-  - documented via `MPD_Integration.md`
-  - likely central to playback/control behavior
-- **YouTube**
-  - documented via `YouTube_Integration.md`
-  - relevant where remote/online content sources are involved
-- **moOde**
-  - documented via `moOde_Display_Control.md`
-  - important for display behavior and local playback/display ecosystem coordination
-- **HTTP/API request flows**
-  - documented via `GET_request.md`, `POST_request.md`, and `Using_header_auth_instead_of_query_param.md`
-  - important wherever the system talks to external or adjacent services
+Many of the hardest bugs are integration bugs.
 
-## Related integration surfaces
+They often involve wrong assumptions about:
+- which system is the source of truth
+- where a piece of metadata came from
+- whether a route is mediating behavior versus passing it through
+- whether a visible result belongs to the app host, moOde, MPD, or an external service
 
-- `api-service-overview.md`
+This page exists to keep those boundaries explicit.
+
+## What belongs in the integration layer
+
+A useful branch definition is:
+- systems that `now-playing` reads from, writes to, mediates, or translates between
+- routes and surfaces that bridge into those systems
+- operator/debug pages that exist mainly because those boundaries are real and important
+
+That means the integration branch includes both:
+- external services
+- and the internal bridging logic that makes those services useful to the UI/runtime
+
+## Strong current integration map
+
+## 1. moOde
+
+moOde is not just one integration among many.
+It is the anchor runtime around which the project is organized.
+
+Current strong truths include:
+- browser-target control for display surfaces
+- status and playback context used in visible-state interpretation
+- display/runtime actions initiated through config/runtime-admin routes
+- local-host/browser-display behavior that matters operationally
+
+Best companion pages:
 - `api-config-and-runtime-endpoints.md`
-- `api-youtube-radio-and-integration-endpoints.md`
+- `display-launch-and-wrapper-surfaces.md`
+- `local-environment.md`
+- `deployment-and-ops.md`
+
+## 2. MPD
+
+MPD is still foundational to playback and queue behavior even when app-host routes mediate the visible behavior.
+
+Current strong truths include:
+- direct `/mpd/*` action routes exist
+- queue and playback routes often mediate or enrich visible behavior instead of exposing raw MPD state directly
+- mode-specific truth can diverge from simplistic “just ask MPD” assumptions
+
+Best companion pages:
 - `api-playback-and-queue-endpoints.md`
+- `queue-and-playback-model.md`
+- `playback-authority-by-mode.md`
+
+## 3. YouTube
+
+YouTube is a first-class integration family with direct route support.
+
+Current strong truths include source-visible endpoints for:
+- `/youtube/resolve`
+- `/youtube/search`
+- `/youtube/playlist`
+- `/youtube/proxy/:id`
+- `/youtube/queue`
+
+And concrete request-shape notes now exist in:
+- `api-endpoint-catalog.md`
+
+Best companion pages:
 - `youtube-interface.md`
-- `radio-metadata-eval-interface.md`
+- `api-youtube-radio-and-integration-endpoints.md`
+- `api-endpoint-catalog.md`
+
+## 4. Alexa
+
+Alexa is not just a setup story.
+It also has state-truth and correction/review implications.
+
+Current strong truths include:
+- setup/provisioning paths in the config branch
+- correction/review behavior in `alexa.html`
+- helper state endpoints such as `/alexa/now-playing`, `/alexa/next-up`, and `/alexa/was-playing`
+
+Best companion pages:
+- `config-alexa-setup.md`
 - `alexa-interface.md`
+- `api-state-truth-endpoints.md`
+- `playback-authority-by-mode.md`
 
-`api-service-overview.md` is the API-centered parent page for the app-host service and its route families.
+## 5. Radio metadata and enrichment boundaries
 
-`api-config-and-runtime-endpoints.md`, `api-youtube-radio-and-integration-endpoints.md`, and `api-playback-and-queue-endpoints.md` are the first API-family drill-downs beneath that branch.
+Radio is important because it makes metadata-truth mistakes easy.
 
-`youtube-interface.md` is the most direct current wiki page for the repo-visible YouTube ingress surface.
+Current strong truths include:
+- dedicated eval/debug surface in `radio-metadata-eval-interface.md`
+- debug endpoints for radio metadata logs
+- explicit caution that enrichment should stay conservative and not treat talk/news/sports streams like normal music metadata sources
 
-`radio-metadata-eval-interface.md` is the most direct current wiki page for inspecting radio metadata parsing and enrichment quality.
+Best companion pages:
+- `radio-metadata-eval-interface.md`
+- `api-youtube-radio-and-integration-endpoints.md`
+- `fragile-behavior-ownership.md`
 
-`alexa-interface.md` is the most direct current wiki page for Alexa correction, recently-heard review, and voice-command guidance.
+## 6. Last.fm / scrobbling / vibe-adjacent integrations
 
-## Request and API patterns
+Current strong truths include:
+- explicit config branch coverage for Last.fm and scrobbling
+- route-family visibility in config/runtime and queue-wizard/vibe paths
+- these are not generic decoration; they affect queue generation and external activity recording
 
-The docs explicitly indicate these request/interaction patterns:
+Best companion pages:
+- `config-lastfm-and-scrobbling.md`
+- `api-config-and-runtime-endpoints.md`
+- `api-endpoint-catalog.md`
 
-- HTTP GET request flows are documented
-- HTTP POST request flows are documented
-- header-based authentication is documented as an alternative to query-parameter auth
-- API-host-related behavior is important enough to have dedicated operational documentation
+## 7. Podcasts
 
-Implication for future work:
-- request behavior is part of the project’s operating surface, not just an implementation detail
-- changes to routes, request auth, or external calls should be treated as integration work, not purely local code changes
+Podcast support is a real integration/runtime family with concrete routes and operational paths.
 
-## Display and playback ecosystem
+Current strong truths include source-visible endpoints for:
+- subscription management
+- refresh flows
+- nightly status/run paths
+- episode listing/deletion
+- playlist-building/download workflows
 
-The documented ecosystem connects playback, display, and control concerns:
+Best companion pages:
+- `config-podcasts-and-library-paths.md`
+- `api-endpoint-catalog.md`
+- `api-config-and-runtime-endpoints.md`
 
-- **MPD** is part of the playback/control side
-- **moOde** is part of the display/runtime side
-- **YouTube** is part of the external content side
-- **Display Pages**, **Mobile Controller**, **Transport Controls**, and related surfaces sit on top of these lower-level integrations
+## What this branch is now confident about
 
-Integration distinctions that should stay explicit:
-- playback integration is not the same thing as display/runtime integration
-- request/API flows are not the same thing as user-facing control surfaces
-- some integration behavior is likely static/documented, while some is clearly runtime- and environment-dependent
-- the live MPD/moOde boundary is mixed rather than cleanly layered
+The current repo and wiki support these stronger claims:
+- moOde is the central runtime anchor, not just one integration among peers
+- MPD remains foundational, but app-host logic frequently mediates visible behavior
+- YouTube, Alexa, radio, podcasts, and Last.fm each have real route families and surface-level branch pages now
+- many “display” or “playback” problems are actually integration-boundary problems
+- the important operational question is often “which boundary is responsible?” not just “which page looks wrong?”
 
-Repo-verified refinement:
-- MPD primitives are exposed through reusable app-side helpers like `src/services/mpd.service.mjs`
-- some route modules mix MPD-side and moOde-side truth directly (for example queue, rating, and art/current-song behavior)
-- runtime-admin routes separately own SSH-backed moOde/display/browser/peppy host control
-- host overrides remain a distinct layer: documented as manual/opt-in under `integrations/moode/` and mirrored as tracked live-system overrides under `ops/moode-overrides/`
-- current-song / art / status authority depends on playback mode rather than one universal source:
-  - local file playback tends to resolve art via moOde `coverart.php`
-  - AirPlay tends to resolve art via `aplmeta.txt` / AirPlay-cover logic
-  - UPnP has its own branch: moOde current-song/status plus UPnP-specific resolution logic that may try to resolve stream-like items back to local-file cover/art truth when possible
-  - radio/stream behavior may prefer station-logo or enrichment-driven fallbacks
-  - unresolved cases may fall back through cache-backed `/art/current.jpg` behavior
+## High-value starting paths
 
-Practical implication:
-- future agents should ask which content mode is active before deciding what the authoritative playback/art/status source is
-- radio/stream handling is its own nuanced branch, not just a generic fallback bucket:
-  - strict stations can apply metadata holdback to avoid flashing stale track info
-  - lookup guardrails can intentionally suppress enrichment when metadata looks too weak or misleading
-  - station-logo, iHeart cleanup, Mother Earth metadata, iTunes/Apple-style enrichment, and final cache/coverurl fallbacks all participate in the live result
-- the project is not just a static UI; it coordinates live playback state, display state, request/API flows, and external/media-system behavior
-- display and playback behavior may be tightly coupled in real deployments
+### If the bug smells like a boundary/source-of-truth problem
+Start with:
+1. `integrations.md`
+2. `api-state-truth-endpoints.md`
+3. `playback-authority-by-mode.md`
 
-## Operational cautions
+### If the bug smells like YouTube or radio behavior
+Start with:
+1. `api-youtube-radio-and-integration-endpoints.md`
+2. `api-endpoint-catalog.md`
+3. the relevant surface page (`youtube-interface.md` or `radio-metadata-eval-interface.md`)
 
-- integration behavior may depend on local environment details, not only generic project docs
-- request/auth behavior should be treated carefully, especially where header-auth and endpoint behavior are involved
-- moOde-related runtime behavior may be affected by local patches and overrides; check `local-environment.md`
-- when playback/display behavior looks wrong, the issue may live in the integration boundary rather than only in frontend code
-- changes to integration logic should be verified against runtime behavior, not only code review
+### If the bug smells like Alexa-visible state or setup
+Start with:
+1. `alexa-interface.md`
+2. `config-alexa-setup.md`
+3. `api-state-truth-endpoints.md`
 
-Triage distinctions that should stay explicit:
-- playback integration is distinct from display/runtime integration
-- request/API flows are distinct from user-facing control surfaces
-- some integration issues are mostly app-side, some are mostly request/contract-side, and some are mostly environment/override-side
+### If the bug smells like podcast/runtime integration
+Start with:
+1. `config-podcasts-and-library-paths.md`
+2. `api-endpoint-catalog.md`
+3. `deployment-and-ops.md`
 
-Checks future agents should make when touching integrations:
-- verify whether the behavior belongs primarily to playback, display/runtime, request/API flow, or a combination
-- check `local-environment.md` before assuming generic integration behavior holds in Brian’s setup
-- check `source-map.md` before making file-level assumptions about where the integration logic lives
-- verify auth/request expectations before changing request-facing behavior
+## Relationship to other pages
 
-Signals an integration issue is probably app-side:
-- the failure looks like app-side coordination or state-handling logic
-- the symptom appears in how the system handles or propagates external state, not just in the external call itself
+This page should stay linked with:
+- `api-service-overview.md`
+- `api-endpoint-catalog.md`
+- `api-state-truth-endpoints.md`
+- `api-youtube-radio-and-integration-endpoints.md`
+- `playback-authority-by-mode.md`
+- `local-environment.md`
+- `deployment-and-ops.md`
 
-Signals an integration issue is probably request/contract-side:
-- the issue looks tied to request formatting, auth style, or request/response expectations
-- the problem appears at the boundary between an external service and the local app
+## Current status
 
-Signals an integration issue is probably environment/override-side:
-- behavior differs across hosts or environments
-- local overrides, watchdog behavior, runtime-admin side effects, or runtime state could plausibly explain the symptom
-- the same code appears to behave differently under Brian’s specific setup
+At the moment, this page should be read as the parent hub for integration-boundary reasoning.
 
-## Open questions
-
-- Which repo files and services map most directly to each documented integration area?
-- Which integration paths are most active in current real-world use versus only historically documented?
-- Which moOde- and MPD-related behaviors are local-environment-specific versus project-wide?
-- What are the most important request endpoints or routes future agents should know first?
-- Which integration areas deserve dedicated mapping tables or runbooks later?
+It is no longer just a list of outside systems.
+The current wiki already supports a stronger truth:
+- integration boundaries are one of the main structural and operational realities of the project,
+- and many hard bugs only make sense when those boundaries are made explicit.
