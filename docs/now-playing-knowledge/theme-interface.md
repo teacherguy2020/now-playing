@@ -21,16 +21,44 @@ This page is intentionally implementation-aware, because `theme.html` appears to
 
 That makes it one of the clearest examples of the system exposing a design/configuration surface directly in the browser.
 
+## Relevant source files
+
+This page is branch-oriented rather than file-complete, but these files are especially relevant when grounding Theme & Customization behavior:
+- `now-playing/theme.html`
+- app-shell pages that consume theme tokens
+- styling files and shell token definitions
+- kiosk-designer-related pages where customization overlaps display presentation
+
+## Theme and customization at a glance
+
+If you need the compressed branch model first, use this:
+- **theme editing** = tokenized shell styling, preset management, import/export, and local persistence
+- **style-token ownership** matters because theme regressions often come from semantic layer drift, not only from bad colors
+- **customization** extends beyond the shell theme editor into kiosk/display presentation workflows
+- **live shell behavior** depends on both theme state and how the rest of the UI consumes those tokens
+
+That is why this branch should be read as Theme & Customization, not only as the `theme.html` editor page.
+
 ## Important file
 
 Primary file:
 - `now-playing/theme.html`
 
 Related pages:
-- `configuration-and-diagnostics-interfaces.md`
-- `desktop-browser-interface.md`
-- `display-interface.md`
-- `config-interface.md`
+- [configuration-and-diagnostics-interfaces.md](configuration-and-diagnostics-interfaces.md)
+- [desktop-browser-interface.md](desktop-browser-interface.md)
+- [display-interface.md](display-interface.md)
+- [config-interface.md](config-interface.md)
+
+## Read this branch in this order
+
+If you are trying to understand Theme & Customization as a system, read in this order:
+1. [theme-interface.md](theme-interface.md)
+2. [theme-page-anatomy.md](theme-page-anatomy.md)
+3. [style-token-and-surface-naming.md](style-token-and-surface-naming.md)
+4. [kiosk-designer.md](kiosk-designer.md)
+
+Then move into page-specific or renderer-specific pages when the question becomes implementation-specific.
 
 ## High-level role
 
@@ -261,10 +289,12 @@ Use it when the task is not just about Theme as a surface, but about a specific 
 ## Relationship to other pages
 
 This page should stay linked with:
-- `configuration-and-diagnostics-interfaces.md`
-- `desktop-browser-interface.md`
-- `display-interface.md`
-- `theme-page-anatomy.md`
+- [configuration-and-diagnostics-interfaces.md](configuration-and-diagnostics-interfaces.md)
+- [desktop-browser-interface.md](desktop-browser-interface.md)
+- [display-interface.md](display-interface.md)
+- [theme-page-anatomy.md](theme-page-anatomy.md)
+- [style-token-and-surface-naming.md](style-token-and-surface-naming.md)
+- [kiosk-designer.md](kiosk-designer.md)
 - future pages about app shell behavior and tokenized theming
 
 ## Things still to verify
@@ -276,10 +306,14 @@ Future deeper verification should clarify:
 - how theme sync behaves across tabs, if at all
 - whether some tokens are legacy, duplicated, or partially unused
 
-`theme-page-anatomy.md` matters when the real question is not only “what is `theme.html`?” but “which region inside `theme.html` actually owns the thing I need to change?”
+[theme-page-anatomy.md](theme-page-anatomy.md) matters when the real question is not only “what is `theme.html`?” but “which region inside `theme.html` actually owns the thing I need to change?”
 
 ## Current status
 
-At the moment, this page already has enough evidence to be treated as the main shell-theme editing surface in the project.
+At the moment, this page already has enough evidence to be treated as the main Theme & Customization branch surface in the project.
 
-It is not just a color picker. It is a local preset system, token editor, export/import tool, and live shell synchronization surface.
+It is not just a color picker. It is a local preset system, token editor, export/import tool, live shell synchronization surface, and the clearest current root for broader customization work.
+
+## Timestamp
+
+Last updated: 2026-04-06 06:34 America/Chicago
