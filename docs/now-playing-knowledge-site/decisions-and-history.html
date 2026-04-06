@@ -1,0 +1,108 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>decisions-and-history</title><link rel="stylesheet" href="style.css?v=20260406-0535"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><div class="meta"><a href="README.html">Home</a> · <a href="index.html">Catalog</a></div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>decisions and history</h1>
+<h2>Purpose</h2>
+<p>This page records durable project decisions, historically important lessons, and current default assumptions for the <code>now-playing</code> project.</p>
+<p>It is meant to preserve context that should survive beyond individual chats or one-off fixes.</p>
+<p>Important distinction:</p>
+<ul>
+<li>some items here are current working defaults</li>
+<li>some are lessons learned from prior failures or fixes</li>
+<li>some describe changes over time that matter operationally</li>
+</ul>
+<h2>Confirmed durable decisions</h2>
+<ul>
+<li>Primary deploy target for active <code>now-playing</code> work is the Pi5 at <code>brianwis@10.0.0.4:/opt/now-playing/</code>.</li>
+<li>Pi4 / <code>server-pi</code> (<code>10.0.0.233</code>) is non-primary unless explicitly requested.</li>
+<li>Frontend-only file changes can often be deployed without an API restart.</li>
+<li>Backend route changes may require a service restart.</li>
+<li>Metadata enrichment for likely talk/news/sports streams should be conservative to avoid bogus album/year/link data.</li>
+<li>When transient refresh errors occur, the system should preserve the last-good render rather than collapsing into an unusable state.</li>
+<li>Local moOde watchdog/display-wake and <code>airplay-json</code> hardening overrides exist and matter enough to be mirrored in <code>now-playing/ops/moode-overrides/</code>.</li>
+</ul>
+<h2>Confirmed historical lessons</h2>
+<ul>
+<li>Iframe-vs-top-level rendering differences have mattered in real behavior; a display bug was previously traced to differences in body/background handling between embedded and top-level contexts.</li>
+<li>Alexa-mode / Next Up reliability has required specific handling, including not clearing Next Up too aggressively and handling art URLs/fallbacks robustly.</li>
+<li>Preserving last-good render on transient refresh failures is an important reliability lesson.</li>
+<li>Local hardening/override work has been part of the real operational history, not just a theoretical concern.</li>
+</ul>
+<h2>Current default assumptions</h2>
+<ul>
+<li>Pi5 is the default primary host for active deploy work.</li>
+<li><code>/home/brianwis/apps/now-playing-next</code> should not be used unless explicitly requested.</li>
+<li>Local runtime behavior may reflect local overrides instead of stock/default project behavior.</li>
+<li>Display/runtime bugs should be treated as potentially cross-layer: UI, integration, runtime state, and host-specific behavior may all matter.</li>
+<li>These are current working defaults, not eternal guarantees; they should change only when there is evidence that the operational reality changed.</li>
+</ul>
+<h2>Things that changed over time</h2>
+<ul>
+<li>The preferred deploy target shifted toward the Pi5 (<code>10.0.0.4</code>) and away from Pi4 as the default push target.</li>
+<li>Local operational behavior diverged from stock assumptions as moOde watchdog/display-wake and <code>airplay-json</code> hardening overrides were introduced.</li>
+<li>Specific reliability lessons were learned over time around iframe/top-level rendering differences, Alexa-mode / Next Up behavior, and transient refresh handling.</li>
+<li>Phase 1 knowledge-base trust-hardening substantially changed the wiki’s model of the current repo:</li>
+</ul>
+<p>  - several previously assumed files were re-checked and found not to exist at the cited paths</p>
+<p>  - <code>moode-nowplaying-api.mjs</code> was verified as the real API/bootstrap assembly point, while root <code>index.js</code> was confirmed to be an Alexa export shim</p>
+<p>  - top-level HTML entrypoints were verified as first-class ownership points for user-facing surfaces</p>
+<p>  - the project was verified to be more route-heavy than a clean “thin routes, fat services” architecture would suggest</p>
+<p>  - representative endpoint-family traces (queue/playback, display/runtime, browse/queue-wizard) made the route/service/helper split more concrete and trustworthy</p>
+<h2>Phase 1 trust-hardening milestone</h2>
+<p>What this milestone accomplished:</p>
+<ul>
+<li>reduced false confidence in the source map by removing or softening stale/nonexistent file claims</li>
+<li>replaced several inferred ownership assumptions with current repo-grounded evidence</li>
+<li>established a stronger user-surface model across desktop, tablet, phone, moOde-box display surfaces, and the display/router/classic now-playing layer</li>
+<li>propagated the strongest findings into <code>source-map.md</code>, <code>architecture.md</code>, <code>system-overview.md</code>, <code>gotchas-and-lessons.md</code>, and <code>open-questions.md</code></li>
+</ul>
+<p>What it did **not** finish:</p>
+<ul>
+<li>the exact MPD/moOde synchronization boundary</li>
+<li>every remaining route/service/helper handoff example</li>
+<li>the full remaining proofing of transport/radio/playlist ownership details</li>
+</ul>
+<p>Practical implication:</p>
+<ul>
+<li>after Phase 1, the wiki is materially more trustworthy as a current source of truth, but it is still improving from “strong orientation + strong source map” toward a more exhaustive operational reference</li>
+</ul>
+<h2>Phase 2 operational-boundary milestone</h2>
+<p>What this milestone accomplished:</p>
+<ul>
+<li>clarified that the MPD/moOde boundary is mixed rather than cleanly layered</li>
+<li>documented that current-song / art / status authority is playback-mode-dependent rather than universal</li>
+<li>elevated UPnP into a distinct bridge mode rather than burying it under generic stream handling</li>
+<li>documented radio/stream metadata handling as an enrichment pipeline with holdback, guardrails, cleanup, station-logo preference, and fallback behavior</li>
+<li>clarified the deploy/restart-sensitive boundary around config writes, env overrides, runtime-admin changes, and API restart behavior</li>
+<li>made the app-host vs moOde-host control boundary explicit in the local environment model</li>
+<li>propagated these operational truths into <code>integrations.md</code>, <code>workflows.md</code>, <code>deployment-and-ops.md</code>, <code>local-environment.md</code>, <code>gotchas-and-lessons.md</code>, and <code>open-questions.md</code></li>
+</ul>
+<p>What it did **not** finish:</p>
+<ul>
+<li>every remaining MPD/moOde edge case</li>
+<li>all remaining route/service/helper handoff examples</li>
+<li>the final proofing of every transport/radio/playlist ownership detail</li>
+<li>the live-role split between <code>lambda_bundle/</code> and <code>lambda_upload/</code></li>
+</ul>
+<p>Practical implication:</p>
+<ul>
+<li>after Phase 2, the wiki is no longer just stronger at code/source navigation; it is also substantially better at explaining how live behavior, host control, playback modes, and restart-sensitive changes actually work in practice</li>
+</ul>
+<h2>Open questions</h2>
+<ul>
+<li>Which repo files should be linked here as the most important implementation locations for the confirmed lessons above?</li>
+<li>Which additional historically important fixes deserve promotion from <code>gotchas-and-lessons.md</code> into this page over time?</li>
+<li>Which local runtime assumptions are still current versus historical?</li>
+<li>Which entries here still need tighter dating or explicit sourcing later?</li>
+</ul></article></body></html>

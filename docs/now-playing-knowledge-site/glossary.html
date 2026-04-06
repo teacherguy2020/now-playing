@@ -1,0 +1,82 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>glossary</title><link rel="stylesheet" href="style.css?v=20260406-0535"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><div class="meta"><a href="README.html">Home</a> · <a href="index.html">Catalog</a></div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>glossary</h1>
+<h2>Purpose</h2>
+<p>This page defines project-specific terms and names used across the <code>now-playing</code> system and this knowledge base.</p>
+<p>It is meant to reduce ambiguity for future agents and for Brian when discussing:</p>
+<ul>
+<li>subsystems</li>
+<li>interfaces</li>
+<li>integrations</li>
+<li>operational concepts</li>
+</ul>
+<h2>Core project terms</h2>
+<ul>
+<li>**now-playing** — the overall project/system described by this wiki; a media-control and presentation system with UI, playback, display, integration, and operational concerns.</li>
+<li>**media library** — the area of the system concerned with browsing and managing available media content.</li>
+<li>**playlist management** — the feature area concerned with organizing and controlling playlists.</li>
+<li>**queue wizard** — a documented interface/feature area for managing queue-oriented playback flow.</li>
+<li>**filter builder** — a documented interface/feature area for filtering or shaping content selection.</li>
+<li>**transport controls** — playback-control actions and surfaces.</li>
+<li>**ratings / favorites** — the feature area for user curation and preference marking.</li>
+<li>**animated art system** — the feature area concerned with animated visual art presentation.</li>
+<li>**art caching system** — the subsystem for caching artwork or presentation assets.</li>
+<li>**kiosk mode** — a display-oriented operating mode focused on a dedicated presentation surface.</li>
+</ul>
+<h2>Interfaces and surfaces</h2>
+<ul>
+<li>**display pages** — documented display-oriented pages/surfaces used for showing project output.</li>
+<li>**mobile controller** — the mobile-facing control surface for interacting with the system remotely.</li>
+<li>**queue wizard interface** — the queue-specific user-facing interface.</li>
+<li>**filter builder** — both a feature area and a user-facing interface for selection/filter logic.</li>
+<li>**radio stations** — the user-facing area for station-oriented playback sources.</li>
+<li>**media library view** — the browsing surface for available content.</li>
+</ul>
+<h2>Integrations and external systems</h2>
+<ul>
+<li>**MPD** — Music Player Daemon integration used by the project’s playback/control ecosystem.</li>
+<li>**moOde** — an important display/runtime-side external system in this project’s environment and integration model.</li>
+<li>**YouTube** — an external content/integration source documented in the project.</li>
+<li>**GET / POST request flows** — documented request patterns used where the system interacts through HTTP/API-style operations.</li>
+<li>**header auth** — documented request/auth pattern using headers instead of query parameters.</li>
+</ul>
+<h2>Operational vocabulary</h2>
+<ul>
+<li>**runtime verification** — the practice of checking what is actually running and whether the system is behaving correctly.</li>
+<li>**service control** — starting, stopping, or otherwise managing the runtime services/processes behind the system.</li>
+<li>**configuration management** — the operational/configuration layer for system behavior and setup.</li>
+<li>**API host / webAPI machine** — the host or machine context used for API-side operation in the docs.</li>
+<li>**Chromium process** — a runtime/browser-process concept important enough to have dedicated checks in the documentation.</li>
+<li>**wake display configuration** — configuration related to waking or controlling display state.</li>
+</ul>
+<h2>Terms needing clarification</h2>
+<p>These terms are already useful, but still need tighter definitions over time:</p>
+<ul>
+<li>some documented surfaces still need precise file/service ownership mapping in <code>source-map.md</code></li>
+<li>some feature-area terms still need deeper behavioral definitions from repo reality, not only doc titles</li>
+<li><code>moOde</code> and <code>MPD</code> are clearly important, but later versions of this page should explain more precisely how each one participates in current live operation</li>
+</ul>
+<p>Distinctions future agents should not blur:</p>
+<ul>
+<li>a documented feature area is not automatically the same thing as its implementation ownership</li>
+<li>system-level/runtime configuration is not the same thing as application-level state or UI behavior</li>
+<li>project-wide terminology is not the same thing as Brian-specific local-environment terminology</li>
+</ul>
+<p>Good follow-up glossary targets:</p>
+<ul>
+<li>tighter definitions for terms whose behavior is still only partially mapped</li>
+<li>a later mapping-oriented glossary layer for file/service ownership if that becomes useful</li>
+<li>deeper integration vocabulary once MPD/moOde/request-flow ownership is mapped more precisely</li>
+</ul></article></body></html>

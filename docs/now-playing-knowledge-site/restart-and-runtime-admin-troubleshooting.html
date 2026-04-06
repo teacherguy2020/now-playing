@@ -1,0 +1,216 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>restart-and-runtime-admin-troubleshooting</title><link rel="stylesheet" href="style.css?v=20260406-0535"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><div class="meta"><a href="README.html">Home</a> · <a href="index.html">Catalog</a></div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>restart and runtime-admin troubleshooting</h1>
+<h2>Purpose</h2>
+<p>This runbook helps future agents decide:</p>
+<ul>
+<li>whether a change likely needs only verification or also an API restart</li>
+<li>whether the effect should happen on the app host or the moOde host</li>
+<li>whether a runtime-admin action is a passive config change or an immediate host-side control action</li>
+</ul>
+<p>The key lesson: not all config/runtime changes become live the same way.</p>
+<h2>Step 1: classify the kind of change</h2>
+<p>Start by deciding which class of change you are dealing with.</p>
+<h3>Frontend / page / style changes</h3>
+<p>Typical examples:</p>
+<ul>
+<li>top-level HTML changes</li>
+<li>CSS changes</li>
+<li>visual/layout-only JS changes</li>
+</ul>
+<p>Usually means:</p>
+<ul>
+<li>often no API restart</li>
+<li>verify the visible result on the relevant surface</li>
+<li>still watch for iframe/runtime/display-state interactions</li>
+</ul>
+<h3>Route / service / config / runtime-admin changes</h3>
+<p>Typical examples:</p>
+<ul>
+<li>route logic changes</li>
+<li>service/helper changes affecting live endpoints</li>
+<li>config shape or config-consuming behavior changes</li>
+<li>runtime-admin endpoint behavior changes</li>
+</ul>
+<p>Usually means:</p>
+<ul>
+<li>likely API restart or explicit runtime verification</li>
+<li>verify the relevant endpoints after the change</li>
+<li>verify affected user-facing surfaces too</li>
+</ul>
+<h3>Runtime-admin or host-control actions</h3>
+<p>Typical examples:</p>
+<ul>
+<li>moOde display-mode changes</li>
+<li>browser URL changes</li>
+<li>PeppyMeter / PeppyALSA actions</li>
+<li>mpdscribble control</li>
+<li>host/service checks triggered through runtime-admin routes</li>
+</ul>
+<p>Usually means:</p>
+<ul>
+<li>immediate host-side effects are possible</li>
+<li>verify host/service/process state, not just endpoint responses</li>
+<li>treat these as live operational actions</li>
+</ul>
+<h3>Host override changes</h3>
+<p>Typical examples:</p>
+<ul>
+<li>moOde-side override scripts/configs</li>
+<li>material mirrored under <code>ops/moode-overrides/</code></li>
+<li>manual host patches under <code>integrations/moode/</code></li>
+</ul>
+<p>Usually means:</p>
+<ul>
+<li>separate host-side apply path</li>
+<li>normal app deploy assumptions do not fully cover these changes</li>
+<li>verify on the real moOde host after applying</li>
+</ul>
+<h2>Step 2: decide how the setting is applied</h2>
+<p>When config or runtime-admin behavior is involved, ask how the changed value becomes active.</p>
+<h3>Per-request / disk-read</h3>
+<p>Signs:</p>
+<ul>
+<li>the handler re-reads config from disk</li>
+<li>the value is interpreted dynamically on each request</li>
+</ul>
+<p>Likely action:</p>
+<ul>
+<li>endpoint verification may be enough</li>
+<li>UI verification may still be needed if the change affects visible behavior</li>
+</ul>
+<h3>Immediate runtime/env patch</h3>
+<p>Signs:</p>
+<ul>
+<li>the route updates selected process/runtime state directly</li>
+<li>the route explicitly patches a value into <code>process.env</code> or equivalent live state</li>
+</ul>
+<p>Likely action:</p>
+<ul>
+<li>verify the affected endpoint/behavior live</li>
+<li>restart may not be necessary for that specific value</li>
+</ul>
+<h3>Startup-captured value</h3>
+<p>Signs:</p>
+<ul>
+<li>the value is derived at boot from module-level config or env initialization</li>
+<li>the route warns that env-overridden values need restart to apply</li>
+</ul>
+<p>Likely action:</p>
+<ul>
+<li>plan for API restart plus post-restart verification</li>
+</ul>
+<p>Important repo-verified clue:</p>
+<ul>
+<li><code>/config/runtime</code> writes config to disk but warns:</li>
+</ul>
+<p>  - **Restart api with --update-env to apply env-overridden values.**</p>
+<h2>Step 3: decide where the effect should happen</h2>
+<h3>App host</h3>
+<p>In Brian’s current setup, this usually means the primary now-playing app host (<code>10.0.0.4</code>).</p>
+<p>Typical effects:</p>
+<ul>
+<li>route/service/runtime behavior</li>
+<li>API restart-sensitive changes</li>
+<li>config writes and app-side endpoint behavior</li>
+</ul>
+<p>Check first:</p>
+<ul>
+<li><code>local-environment.md</code></li>
+<li><code>deployment-and-ops.md</code></li>
+<li><code>src/routes/config.runtime-admin.routes.mjs</code></li>
+<li><code>src/config/load-config.mjs</code></li>
+</ul>
+<h3>moOde host</h3>
+<p>In Brian’s current setup, this usually means <code>moode@10.0.0.254</code>.</p>
+<p>Typical effects:</p>
+<ul>
+<li>display mode changes</li>
+<li>browser URL changes</li>
+<li>PeppyMeter / PeppyALSA behavior</li>
+<li>service/process state changes on the display host</li>
+</ul>
+<p>Check first:</p>
+<ul>
+<li>runtime-admin route behavior</li>
+<li><code>local-environment.md</code></li>
+<li><code>integrations/moode/README.md</code></li>
+<li><code>ops/moode-overrides/README.md</code></li>
+</ul>
+<p>Important caution:</p>
+<ul>
+<li>not all “runtime changes” happen on the same machine</li>
+<li>some are app-host/API-side only</li>
+<li>some are immediate SSH-backed moOde host actions</li>
+</ul>
+<h2>Step 4: choose the verification path</h2>
+<h3>For frontend/page/style changes</h3>
+<p>Verify:</p>
+<ul>
+<li>the relevant surface visually</li>
+<li>any visible iframe/top-level differences</li>
+<li>any mode-specific display behavior if affected</li>
+</ul>
+<h3>For route/service/config changes</h3>
+<p>Verify:</p>
+<ul>
+<li>the changed endpoint directly</li>
+<li>the affected user-facing surface</li>
+<li>whether the change behaves live without restart</li>
+<li>whether restart is needed to see the intended effect</li>
+</ul>
+<h3>For runtime-admin actions</h3>
+<p>Verify:</p>
+<ul>
+<li>endpoint response</li>
+<li>host-side state or service/process condition</li>
+<li>user-visible effect on the relevant moOde/display surface</li>
+</ul>
+<h3>For host override changes</h3>
+<p>Verify:</p>
+<ul>
+<li>that the override was actually applied on the real host</li>
+<li>that live behavior matches the intended host-side modification</li>
+<li>that you are not confusing mirrored repo material with already-applied host state</li>
+</ul>
+<h2>Step 5: use the current restart path correctly</h2>
+<p>Repo-verified current restart path:</p>
+<ul>
+<li><code>/config/restart-api</code> attempts:</li>
+</ul>
+<p>  - <code>pm2 restart api --update-env</code></p>
+<p>  - then falls back to restarting <code>now-playing.service</code> via systemd</p>
+<p>Practical implication:</p>
+<ul>
+<li>if the change is startup-captured or env-sensitive, use the restart path that refreshes env-backed runtime state</li>
+<li>do not assume writing config alone was sufficient</li>
+</ul>
+<h2>Quick heuristics</h2>
+<ul>
+<li>If the value is env-overridden, assume restart sensitivity until proven otherwise.</li>
+<li>If the route performs SSH-backed host control, verify the host effect directly.</li>
+<li>If the change touched runtime-admin behavior, do not treat it like a passive config edit.</li>
+<li>If the symptom changed in the UI but the endpoint seems correct, check whether the app surface needs refresh or whether another host is the real effect target.</li>
+<li>If the repo contains mirrored override docs/scripts, do not assume the real host is already in that exact state without checking.</li>
+</ul>
+<h2>Best companion pages</h2>
+<ul>
+<li><code>deployment-and-ops.md</code></li>
+<li><code>workflows.md</code></li>
+<li><code>local-environment.md</code></li>
+<li><code>integrations.md</code></li>
+<li><code>source-map.md</code></li>
+<li><code>gotchas-and-lessons.md</code></li>
+</ul></article></body></html>

@@ -1,0 +1,243 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>playback-mode-troubleshooting</title><link rel="stylesheet" href="style.css?v=20260406-0535"></head><body><nav><h1>now-playing knowledge base</h1><div class="meta">Browseable export generated from markdown sources.</div><div class="meta"><a href="README.html">Home</a> · <a href="index.html">Catalog</a></div><ul><li><a href="README.html">README</a></li>
+<li><a href="architecture.html">architecture</a></li>
+<li><a href="decisions-and-history.html">decisions-and-history</a></li>
+<li><a href="deployment-and-ops.html">deployment-and-ops</a></li>
+<li><a href="display-surface-troubleshooting.html">display-surface-troubleshooting</a></li>
+<li><a href="glossary.html">glossary</a></li>
+<li><a href="gotchas-and-lessons.html">gotchas-and-lessons</a></li>
+<li><a href="integrations.html">integrations</a></li>
+<li><a href="local-environment.html">local-environment</a></li>
+<li><a href="open-questions.html">open-questions</a></li>
+<li><a href="playback-mode-troubleshooting.html">playback-mode-troubleshooting</a></li>
+<li><a href="restart-and-runtime-admin-troubleshooting.html">restart-and-runtime-admin-troubleshooting</a></li>
+<li><a href="source-map.html">source-map</a></li>
+<li><a href="system-overview.html">system-overview</a></li>
+<li><a href="workflows.html">workflows</a></li></ul></nav><article><h1>playback-mode troubleshooting</h1>
+<h2>Purpose</h2>
+<p>This runbook helps future agents debug issues involving:</p>
+<ul>
+<li>what is currently playing</li>
+<li>what art should show</li>
+<li>what metadata should appear</li>
+<li>which source of truth should be trusted first</li>
+</ul>
+<p>The key lesson: there is **not one universal authority path** for playback, current-song, art, and status in this project.</p>
+<p>Start by identifying the playback mode.</p>
+<h2>Step 1: classify the playback mode</h2>
+<p>Use the current playback context to decide which mode you are in:</p>
+<ul>
+<li>**local file**</li>
+<li>**AirPlay**</li>
+<li>**UPnP**</li>
+<li>**radio / stream**</li>
+<li>**unresolved / fallback-driven case**</li>
+</ul>
+<p>If you misclassify the mode, you will often debug the wrong authority path.</p>
+<h2>Step 2: choose the matching authority path</h2>
+<h3>Local file</h3>
+<p>Likely truth sources:</p>
+<ul>
+<li>MPD playback state</li>
+<li>moOde current-song/status</li>
+<li>moOde <code>coverart.php</code> for art</li>
+</ul>
+<p>Typical shape:</p>
+<ul>
+<li>strongest path for library-file truth</li>
+<li>often the cleanest case</li>
+<li>good first comparison point when other modes behave strangely</li>
+</ul>
+<p>Check first:</p>
+<ul>
+<li><code>src/services/mpd.service.mjs</code></li>
+<li>current now-playing flow in <code>moode-nowplaying-api.mjs</code></li>
+<li><code>src/routes/art.routes.mjs</code></li>
+</ul>
+<h3>AirPlay</h3>
+<p>Likely truth sources:</p>
+<ul>
+<li>moOde current-song/status</li>
+<li><code>aplmeta.txt</code> / AirPlay-cover logic</li>
+<li>AirPlay-specific metadata fallback behavior</li>
+</ul>
+<p>Typical shape:</p>
+<ul>
+<li>art and metadata may not behave like local-file playback</li>
+<li>fresh AirPlay metadata may override simpler cover fallback assumptions</li>
+</ul>
+<p>Check first:</p>
+<ul>
+<li>current now-playing flow in <code>moode-nowplaying-api.mjs</code></li>
+<li>AirPlay metadata handling / <code>aplmeta</code> references</li>
+<li><code>src/routes/art.routes.mjs</code></li>
+<li>local override notes if <code>airplay-json</code> behavior is involved</li>
+</ul>
+<h3>UPnP</h3>
+<p>Likely truth sources:</p>
+<ul>
+<li>moOde current-song/status as the immediate input</li>
+<li>UPnP-specific resolution logic that may bridge back to local-library truth</li>
+</ul>
+<p>Typical shape:</p>
+<ul>
+<li>starts stream-like</li>
+<li>may try to recover a real local-library file</li>
+<li>art may upgrade from generic/stream-like behavior back to local <code>coverart.php</code> if resolution succeeds</li>
+</ul>
+<p>Check first:</p>
+<ul>
+<li><code>moode-nowplaying-api.mjs</code></li>
+</ul>
+<p>  - <code>getStreamKind(...)</code></p>
+<p>  - <code>resolveLibraryFileForStream(...)</code></p>
+<ul>
+<li>current-song/art flow that upgrades UPnP cases into local-file cover truth when possible</li>
+</ul>
+<p>Important caution:</p>
+<ul>
+<li>do **not** treat UPnP as interchangeable with generic radio/stream playback</li>
+</ul>
+<h3>Radio / stream</h3>
+<p>Likely truth sources:</p>
+<ul>
+<li>moOde current-song/status as base input</li>
+<li>station logo</li>
+<li>cleanup/normalization logic</li>
+<li>enrichment logic</li>
+<li>fallback/cache behavior</li>
+</ul>
+<p>Typical shape:</p>
+<ul>
+<li>most nuanced metadata pipeline</li>
+<li>displayed metadata may be intentionally non-literal</li>
+<li>enrichment may be intentionally suppressed in some cases</li>
+</ul>
+<p>Check these layers in order:</p>
+<p>1. **holdback policy**</p>
+<p>   - some strict stations intentionally delay promotion of new metadata</p>
+<p>2. **lookup guardrails**</p>
+<p>   - enrichment may be skipped if metadata quality is too weak or misleading</p>
+<p>3. **cleanup / normalization**</p>
+<p>   - iHeart blobs, classical formatting, and program/station text may be normalized before display</p>
+<p>4. **art / enrichment source order**</p>
+<p>   - station logo</p>
+<p>   - Mother Earth metadata</p>
+<p>   - iTunes / Apple-style enrichment</p>
+<p>   - cache-backed or <code>coverurl</code> fallback</p>
+<p>Check first:</p>
+<ul>
+<li>radio handling in <code>moode-nowplaying-api.mjs</code></li>
+<li><code>config/radio-logo-aliases.json</code></li>
+<li><code>src/routes/config.diagnostics.routes.mjs</code></li>
+<li><code>src/routes/art.routes.mjs</code></li>
+</ul>
+<p>Important caution:</p>
+<ul>
+<li>if radio metadata looks wrong, ask whether it is being held, suppressed, cleaned, or intentionally de-bogused before assuming the system is broken</li>
+</ul>
+<h3>Unresolved / fallback-driven case</h3>
+<p>Likely truth sources:</p>
+<ul>
+<li>cache-backed <code>/art/current.jpg</code></li>
+<li>generic fallback state</li>
+<li>whatever minimal current-song/status information still survives</li>
+</ul>
+<p>Typical shape:</p>
+<ul>
+<li>incomplete metadata</li>
+<li>weak or missing art authority</li>
+<li>often a symptom of another branch failing to resolve cleanly</li>
+</ul>
+<p>Check first:</p>
+<ul>
+<li>fallback logic in <code>moode-nowplaying-api.mjs</code></li>
+<li><code>src/routes/art.routes.mjs</code></li>
+<li>runtime/integration conditions that may have prevented the stronger branch from winning</li>
+</ul>
+<h2>Step 3: choose the code layer to inspect</h2>
+<p>After you identify the playback mode, inspect the matching layer:</p>
+<h3>Page/runtime layer</h3>
+<p>Use when:</p>
+<ul>
+<li>the symptom is primarily visual</li>
+<li>the wrong text/art is rendered even though backend data may already be correct</li>
+</ul>
+<p>Check:</p>
+<ul>
+<li>top-level HTML entrypoints</li>
+<li><code>scripts/index-ui.js</code></li>
+<li>relevant page-specific runtime logic</li>
+</ul>
+<h3>Route layer</h3>
+<p>Use when:</p>
+<ul>
+<li>the symptom depends on <code>/art/*</code>, <code>/now-playing</code>, <code>/next-up</code>, diagnostics, queue, or ratings endpoints</li>
+<li>mixed authority or fallback behavior is suspected</li>
+</ul>
+<p>Check:</p>
+<ul>
+<li><code>src/routes/art.routes.mjs</code></li>
+<li><code>src/routes/queue.routes.mjs</code></li>
+<li><code>src/routes/rating.routes.mjs</code></li>
+<li><code>src/routes/config.diagnostics.routes.mjs</code></li>
+<li><code>src/routes/config.runtime-admin.routes.mjs</code> when host/runtime behavior matters</li>
+</ul>
+<h3>MPD service/helper layer</h3>
+<p>Use when:</p>
+<ul>
+<li>the issue looks like low-level playback truth or command/state mismatch</li>
+</ul>
+<p>Check:</p>
+<ul>
+<li><code>src/services/mpd.service.mjs</code></li>
+</ul>
+<h3>Runtime-admin / local-override layer</h3>
+<p>Use when:</p>
+<ul>
+<li>moOde display/browser/Peppy/service behavior may be involved</li>
+<li>host-side state appears out of sync with app expectations</li>
+</ul>
+<p>Check:</p>
+<ul>
+<li><code>src/routes/config.runtime-admin.routes.mjs</code></li>
+<li><code>integrations/moode/README.md</code></li>
+<li><code>ops/moode-overrides/README.md</code></li>
+<li><code>local-environment.md</code></li>
+</ul>
+<h2>Step 4: choose verification based on change type</h2>
+<p>If you change behavior while debugging, decide whether the change is:</p>
+<ul>
+<li>frontend/page/style only</li>
+<li>route/service/config/runtime-admin behavior</li>
+<li>immediate host-side control action</li>
+<li>host override change</li>
+</ul>
+<p>Then use:</p>
+<ul>
+<li><code>deployment-and-ops.md</code></li>
+<li><code>workflows.md</code></li>
+</ul>
+<p>to decide whether you need:</p>
+<ul>
+<li>UI refresh only</li>
+<li>endpoint verification</li>
+<li>API restart</li>
+<li>host-side verification</li>
+</ul>
+<h2>Quick heuristics</h2>
+<ul>
+<li>If the mode is unclear, determine that before doing anything else.</li>
+<li>If the symptom is radio/stream-related, assume the metadata may be intentionally processed before display.</li>
+<li>If the symptom is UPnP-related, check whether the system is trying to recover local-library truth.</li>
+<li>If the symptom is AirPlay-related, inspect <code>aplmeta</code>/AirPlay cover handling before assuming art fallback is broken.</li>
+<li>If the symptom is visible/UI-facing, do not assume it is frontend-only; this project often crosses page, route, integration, and host/runtime layers.</li>
+</ul>
+<h2>Best companion pages</h2>
+<ul>
+<li><code>source-map.md</code></li>
+<li><code>integrations.md</code></li>
+<li><code>workflows.md</code></li>
+<li><code>deployment-and-ops.md</code></li>
+<li><code>local-environment.md</code></li>
+<li><code>gotchas-and-lessons.md</code></li>
+</ul></article></body></html>
