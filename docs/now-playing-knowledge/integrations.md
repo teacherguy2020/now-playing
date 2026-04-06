@@ -22,6 +22,27 @@ A stronger current interpretation is:
 
 So this page should act as the integration branch hub, not as a loose list of outside services.
 
+## Relevant source files
+
+This page is branch-oriented rather than file-complete, but these areas are especially relevant when grounding integration behavior:
+- `moode-nowplaying-api.mjs`
+- integration-facing routes under `src/routes/`
+- `alexa.html`
+- `youtube.html`
+- radio-related routes and eval surfaces
+- host-side moOde override material under `ops/`
+
+## External integrations at a glance
+
+If you need the compressed branch model first, use this:
+- **moOde + MPD** remain the primary integration anchor
+- **YouTube, Alexa, radio metadata, Last.fm, podcasts, and AirPlay-related behavior** are important secondary integration branches
+- some integration truth is route-side and app-host-owned
+- some integration truth is host-side or override-sensitive
+- many failures that look like UI bugs are really integration-boundary problems
+
+That is why the integrations branch should be read as a system of external boundaries, not just a list of features.
+
 ## Why this page matters
 
 Many of the hardest bugs are integration bugs.
@@ -45,6 +66,18 @@ That means the integration branch includes both:
 - external services
 - and the internal bridging logic that makes those services useful to the UI/runtime
 
+## Read this branch in this order
+
+If you are trying to understand the integrations branch as a system, read in this order:
+1. [integrations.md](integrations.md)
+2. [youtube-interface.md](youtube-interface.md)
+3. [alexa-interface.md](alexa-interface.md)
+4. [radio-metadata-eval-interface.md](radio-metadata-eval-interface.md)
+5. [config-lastfm-and-scrobbling.md](config-lastfm-and-scrobbling.md)
+6. [airplay-metadata-hardening.md](airplay-metadata-hardening.md)
+
+Then move into runtime or host-specific pages when the issue becomes override-sensitive or environment-specific.
+
 ## Strong current integration map
 
 ## 1. moOde
@@ -59,10 +92,10 @@ Current strong truths include:
 - local-host/browser-display behavior that matters operationally
 
 Best companion pages:
-- `api-config-and-runtime-endpoints.md`
-- `display-launch-and-wrapper-surfaces.md`
-- `local-environment.md`
-- `deployment-and-ops.md`
+- [api-config-and-runtime-endpoints.md](api-config-and-runtime-endpoints.md)
+- [display-launch-and-wrapper-surfaces.md](display-launch-and-wrapper-surfaces.md)
+- [local-environment.md](local-environment.md)
+- [deployment-and-ops.md](deployment-and-ops.md)
 
 ## 2. MPD
 
@@ -74,9 +107,9 @@ Current strong truths include:
 - mode-specific truth can diverge from simplistic “just ask MPD” assumptions
 
 Best companion pages:
-- `api-playback-and-queue-endpoints.md`
-- `queue-and-playback-model.md`
-- `playback-authority-by-mode.md`
+- [api-playback-and-queue-endpoints.md](api-playback-and-queue-endpoints.md)
+- [queue-and-playback-model.md](queue-and-playback-model.md)
+- [playback-authority-by-mode.md](playback-authority-by-mode.md)
 
 ## 3. YouTube
 
@@ -93,9 +126,9 @@ And concrete request-shape notes now exist in:
 - `api-endpoint-catalog.md`
 
 Best companion pages:
-- `youtube-interface.md`
-- `api-youtube-radio-and-integration-endpoints.md`
-- `api-endpoint-catalog.md`
+- [youtube-interface.md](youtube-interface.md)
+- [api-youtube-radio-and-integration-endpoints.md](api-youtube-radio-and-integration-endpoints.md)
+- [api-endpoint-catalog.md](api-endpoint-catalog.md)
 
 ## 4. Alexa
 
@@ -108,10 +141,10 @@ Current strong truths include:
 - helper state endpoints such as `/alexa/now-playing`, `/alexa/next-up`, and `/alexa/was-playing`
 
 Best companion pages:
-- `config-alexa-setup.md`
-- `alexa-interface.md`
-- `api-state-truth-endpoints.md`
-- `playback-authority-by-mode.md`
+- [config-alexa-setup.md](config-alexa-setup.md)
+- [alexa-interface.md](alexa-interface.md)
+- [api-state-truth-endpoints.md](api-state-truth-endpoints.md)
+- [playback-authority-by-mode.md](playback-authority-by-mode.md)
 
 ## 5. Radio metadata and enrichment boundaries
 
@@ -123,9 +156,9 @@ Current strong truths include:
 - explicit caution that enrichment should stay conservative and not treat talk/news/sports streams like normal music metadata sources
 
 Best companion pages:
-- `radio-metadata-eval-interface.md`
-- `api-youtube-radio-and-integration-endpoints.md`
-- `fragile-behavior-ownership.md`
+- [radio-metadata-eval-interface.md](radio-metadata-eval-interface.md)
+- [api-youtube-radio-and-integration-endpoints.md](api-youtube-radio-and-integration-endpoints.md)
+- [fragile-behavior-ownership.md](fragile-behavior-ownership.md)
 
 ## 6. Last.fm / scrobbling / vibe-adjacent integrations
 
@@ -135,9 +168,9 @@ Current strong truths include:
 - these are not generic decoration; they affect queue generation and external activity recording
 
 Best companion pages:
-- `config-lastfm-and-scrobbling.md`
-- `api-config-and-runtime-endpoints.md`
-- `api-endpoint-catalog.md`
+- [config-lastfm-and-scrobbling.md](config-lastfm-and-scrobbling.md)
+- [api-config-and-runtime-endpoints.md](api-config-and-runtime-endpoints.md)
+- [api-endpoint-catalog.md](api-endpoint-catalog.md)
 
 ## 7. Podcasts
 
@@ -151,9 +184,9 @@ Current strong truths include source-visible endpoints for:
 - playlist-building/download workflows
 
 Best companion pages:
-- `config-podcasts-and-library-paths.md`
-- `api-endpoint-catalog.md`
-- `api-config-and-runtime-endpoints.md`
+- [config-podcasts-and-library-paths.md](config-podcasts-and-library-paths.md)
+- [api-endpoint-catalog.md](api-endpoint-catalog.md)
+- [api-config-and-runtime-endpoints.md](api-config-and-runtime-endpoints.md)
 
 ## What this branch is now confident about
 
@@ -168,38 +201,38 @@ The current repo and wiki support these stronger claims:
 
 ### If the bug smells like a boundary/source-of-truth problem
 Start with:
-1. `integrations.md`
-2. `api-state-truth-endpoints.md`
-3. `playback-authority-by-mode.md`
+1. [integrations.md](integrations.md)
+2. [api-state-truth-endpoints.md](api-state-truth-endpoints.md)
+3. [playback-authority-by-mode.md](playback-authority-by-mode.md)
 
 ### If the bug smells like YouTube or radio behavior
 Start with:
-1. `api-youtube-radio-and-integration-endpoints.md`
-2. `api-endpoint-catalog.md`
-3. the relevant surface page (`youtube-interface.md` or `radio-metadata-eval-interface.md`)
+1. [api-youtube-radio-and-integration-endpoints.md](api-youtube-radio-and-integration-endpoints.md)
+2. [api-endpoint-catalog.md](api-endpoint-catalog.md)
+3. the relevant surface page ([youtube-interface.md](youtube-interface.md) or [radio-metadata-eval-interface.md](radio-metadata-eval-interface.md))
 
 ### If the bug smells like Alexa-visible state or setup
 Start with:
-1. `alexa-interface.md`
-2. `config-alexa-setup.md`
-3. `api-state-truth-endpoints.md`
+1. [alexa-interface.md](alexa-interface.md)
+2. [config-alexa-setup.md](config-alexa-setup.md)
+3. [api-state-truth-endpoints.md](api-state-truth-endpoints.md)
 
 ### If the bug smells like podcast/runtime integration
 Start with:
-1. `config-podcasts-and-library-paths.md`
-2. `api-endpoint-catalog.md`
-3. `deployment-and-ops.md`
+1. [config-podcasts-and-library-paths.md](config-podcasts-and-library-paths.md)
+2. [api-endpoint-catalog.md](api-endpoint-catalog.md)
+3. [deployment-and-ops.md](deployment-and-ops.md)
 
 ## Relationship to other pages
 
 This page should stay linked with:
-- `api-service-overview.md`
-- `api-endpoint-catalog.md`
-- `api-state-truth-endpoints.md`
-- `api-youtube-radio-and-integration-endpoints.md`
-- `playback-authority-by-mode.md`
-- `local-environment.md`
-- `deployment-and-ops.md`
+- [api-service-overview.md](api-service-overview.md)
+- [api-endpoint-catalog.md](api-endpoint-catalog.md)
+- [api-state-truth-endpoints.md](api-state-truth-endpoints.md)
+- [api-youtube-radio-and-integration-endpoints.md](api-youtube-radio-and-integration-endpoints.md)
+- [playback-authority-by-mode.md](playback-authority-by-mode.md)
+- [local-environment.md](local-environment.md)
+- [deployment-and-ops.md](deployment-and-ops.md)
 
 ## Current status
 
@@ -209,3 +242,7 @@ It is no longer just a list of outside systems.
 The current wiki already supports a stronger truth:
 - integration boundaries are one of the main structural and operational realities of the project,
 - and many hard bugs only make sense when those boundaries are made explicit.
+
+## Timestamp
+
+Last updated: 2026-04-06 06:31 America/Chicago
