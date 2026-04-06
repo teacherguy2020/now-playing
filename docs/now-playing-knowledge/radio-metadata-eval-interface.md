@@ -15,6 +15,7 @@ It is best understood as a diagnostics-oriented quality-evaluation tool for the 
 Current important field expectation:
 - the table should show the exact raw full metadata string emitted by the station, not only split artist/title/album fields
 - in current practice, that raw full value may come from the same original station metadata string currently represented in the raw title field, so the UI should prefer the exact original raw string instead of leaving `Full` blank
+- for classical/WFMT-style metadata, false-positive iTunes matches should be treated conservatively; if the matched work title does not meaningfully overlap the original raw station string, the match should be rejected rather than labeled `GOOD`
 
 ## Why this page matters
 
@@ -248,4 +249,4 @@ That is the right framing for now:
 
 ## Timestamp
 
-Last updated: 2026-04-06 07:49 America/Chicago
+Last updated: 2026-04-06 07:52 America/Chicago
