@@ -148,6 +148,7 @@ Coverage level: **strategically covered**
 Why:
 - operational importance and local override relevance are documented
 - host-side override reality is represented in the wiki
+- AirPlay metadata hardening now has a dedicated operational page
 - but the directory is not deeply enumerated
 
 ## 4. `alexa/`
@@ -171,12 +172,12 @@ Why:
 These directories or repo areas are represented only lightly or indirectly.
 
 ## 1. `styles/`
-Coverage level: **lightly covered**
+Coverage level: **strategically covered**
 
 Why:
-- styling ownership is mentioned where it matters
-- especially in display/embed/troubleshooting paths
-- but there is no CSS-by-file branch
+- styling ownership is now documented more explicitly through canonical surface vocabulary, token ownership, and background invariants
+- especially where shell/background regressions have mattered historically
+- the wiki still does not provide CSS-by-file coverage, but it now preserves the higher-value naming and ownership contracts
 
 ## 2. `skins/`
 Coverage level: **lightly covered**
@@ -243,6 +244,17 @@ The best practical summary is:
 - the remaining deeper gaps are mostly in subdirectory/file-level implementation mapping, not in top-level system comprehension
 
 That is the right balance for a living internal engineering wiki.
+
+## Recently improved gap areas
+
+Recent additions strengthened coverage for source-doc areas that were previously underrepresented:
+- install and validation workflow now has a dedicated support page
+- style/token naming and background invariants now have a dedicated support page
+- display enhancement now has a concrete Peppy/Player operational page
+- tablet recents and Last.fm row-source behavior now have a dedicated child page
+- AirPlay metadata hardening now has a dedicated support page
+
+These additions improve preservation of operational contracts and fragile design-system rules without trying to turn the wiki into a file-by-file encyclopedia.
 
 ## Highest-value future repo-coverage expansions
 

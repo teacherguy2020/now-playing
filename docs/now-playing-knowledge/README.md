@@ -134,6 +134,7 @@ Especially relevant when the question is about:
 - `diagnostics-interface.md` — implementation-aware drill-down for the live diagnostics and inspection console
 - `library-health-interface.md` — implementation-aware drill-down for library audit and maintenance workflows
 - `theme-interface.md` — implementation-aware drill-down for the shell-theme editor and preset system
+- `style-token-and-surface-naming.md` — canonical UI surface vocabulary, token ownership rules, and background invariants
 - `now-playing-surface-variants.md` — grouped map of the `controller-now-playing*` family, including variants and redirect shims
 - `controller-device-alias-pages.md` — grouped map of thin iPad/iPhone controller alias and redirect entry pages
 - `display-launch-and-wrapper-surfaces.md` — grouped map of display launcher, wrapper, and redirect helper pages
@@ -156,12 +157,14 @@ Especially relevant when the question is about:
 - `api-playback-and-queue-endpoints.md` — playback-control and queue-shaping endpoint families documented so far
 - `source-map.md` — directory-oriented navigation map for where important code and assets live
 - `repo-coverage-notes.md` — audit of what the wiki covers strongly, strategically, lightly, or intentionally not at all across the repo
+- `wiki-gap-review-2026-04-06.md` — focused comparison of source docs versus wiki coverage and the high-value remaining gaps identified during that review
 - `wiki-operations.md` — operating model for maintaining the wiki through ingest, query, and lint work
 - `wiki-lint-and-health.md` — quality-control checklist for reachability, drift, duplication, retrieval quality, and confidence hygiene
 - `index.md` — content-oriented catalog of pages and branches in the wiki
 - `log.md` — chronological record of major wiki evolution milestones
 - `workflows.md` — common ways work tends to happen in this project
 - `display-interface.md` — map of the display-oriented surfaces, modes, and runtime-sensitive presentation paths
+- `display-enhancement-peppy-player-flow.md` — concrete operational reference for builder-first Peppy/Player/Visualizer display-enhancement flow
 - `kiosk-interface.md` — kiosk-style display usage as a presentation mode with host/runtime/display-state dependencies
 - `kiosk-launch-and-routing.md` — how kiosk entrypoints hand off into controller-backed kiosk behavior
 - `kiosk-designer.md` — preview, preset, and moOde push workflow for kiosk presentation
@@ -169,6 +172,7 @@ Especially relevant when the question is about:
 - `controller-kiosk-mode.md` — controller-side behavior when kiosk mode is active
 - `desktop-browser-interface.md` — desktop/browser-oriented interface hub for larger-screen flexible access
 - `tablet-interface.md` — tablet-oriented controller/interface hub tying together pane-rich and kiosk-adjacent behavior
+- `tablet-recents-and-lastfm.md` — recents-row customization, Last.fm row-source mapping, URL seeding, and stability guardrails in tablet controller flows
 - `phone-interface.md` — phone-oriented controller/interface hub for compact direct interaction
 - `kiosk-right-pane-routing.md` — right-pane embedded kiosk/controller subview loading inside controller kiosk mode
 - `embedded-pane-contracts.md` — parent/child contract for embedded kiosk pane pages
@@ -178,7 +182,9 @@ Especially relevant when the question is about:
 - `tablet-kiosk-shell-differences.md` — where the tablet shell implements richer kiosk-pane behavior than the main controller shell
 - `integrations.md` — MPD, moOde, YouTube, request flows, and integration-side cautions
 - `deployment-and-ops.md` — runtime, verification, configuration, and operational themes
+- `install-and-validation.md` — clean-machine installer validation, idempotency, upgrade, rollback, and public-ready gate
 - `local-environment.md` — Brian-specific hosts, deploy targets, and local overrides
+- `airplay-metadata-hardening.md` — moOde-side AirPlay metadata CPU/runaway hardening, watchdog behavior, and recovery guidance
 - `glossary.md` — project-specific terms, names, and vocabulary
 - `decisions-and-history.md` — durable decisions and historically important lessons
 - `gotchas-and-lessons.md` — sharp edges, fragile areas, and high-value lessons

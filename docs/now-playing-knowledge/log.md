@@ -27,6 +27,17 @@ For the maintenance workflow, use `wiki-operations.md`.
 
 ## Major milestones
 
+## [2026-04-06] source-doc gap fill phase
+
+- Added `wiki-gap-review-2026-04-06.md` to record the comparison between `now-playing/docs/` and the current wiki, with prioritized remaining gaps.
+- Added `install-and-validation.md` to preserve clean-machine installer validation, idempotency, upgrade, rollback, and public-ready checks.
+- Added `style-token-and-surface-naming.md` to preserve canonical UI surface vocabulary, token ownership, and historically fragile background invariants.
+- Added `display-enhancement-peppy-player-flow.md` to preserve the builder-first Peppy/Player/Visualizer display-enhancement model, stable router target, HTTP bridge flow, and boot/bridge guardrails.
+- Added `tablet-recents-and-lastfm.md` to preserve tablet recents-row rules, Last.fm row-source mapping, URL seeding behavior, and recents stability guardrails.
+- Added `airplay-metadata-hardening.md` to preserve moOde-side AirPlay metadata hardening, watchdog behavior, and recovery/verification guidance.
+- Wired the new pages into `README.md` and `index.md` so they are part of the reachable source hierarchy.
+- Updated `repo-coverage-notes.md` to reflect the improved coverage of source-doc operational/design-contract areas.
+
 ## [2026-04-05] start/search and retrieval-system phase
 
 - Added `theme-page-anatomy.md` and its rendered companion.

@@ -77,6 +77,7 @@ For the maintenance workflow, use `wiki-operations.md`.
 - `library-health-page-anatomy.md` — region/module map of `library-health.html`
 - `theme-interface.md` — client-side theme token editor and preset system
 - `theme-page-anatomy.md` — region/module map of `theme.html`
+- `style-token-and-surface-naming.md` — canonical UI surface vocabulary, token ownership, and fragile background invariants
 - `radio-metadata-eval-interface.md` — radio metadata QA/evaluation surface
 - `alexa-interface.md` — Alexa corrections and voice-command review surface
 
@@ -105,6 +106,7 @@ For the maintenance workflow, use `wiki-operations.md`.
 - `controller-now-playing-anatomy.md` — region/module map for controller now-playing surface
 - `controller-device-alias-pages.md` — iPad/iPhone alias and redirect pages
 - `display-launch-and-wrapper-surfaces.md` — display launcher and wrapper/helper surfaces
+- `display-enhancement-peppy-player-flow.md` — builder-first Peppy/Player/Visualizer flow, stable router target, and bridge-mode operational rules
 - `controller-kiosk-scaffold.md` — separate `controller-kiosk.html` scaffold path
 - `controller-kiosk-mode.md` — controller behavior when kiosk mode is active
 - `kiosk-launch-and-routing.md` — kiosk entrypoints and redirects into controller-backed behavior
@@ -115,6 +117,7 @@ For the maintenance workflow, use `wiki-operations.md`.
 - `kiosk-designer.md` — kiosk authoring/preview/push tool
 - `kiosk-editor-mode.md` — controller-side designer/editor branch of kiosk mode
 - `tablet-kiosk-shell-differences.md` — richer kiosk-pane behavior in tablet shell
+- `tablet-recents-and-lastfm.md` — tablet recents-row configuration, Last.fm row sources, URL seeding, and stability guardrails
 - `kiosk-shell-anatomy.md` — anatomy map of kiosk shell path
 - `app-shell-anatomy.md` — anatomy map of app shell / hero cards / queue card
 - `controller-tablet-anatomy.md` — anatomy map of tablet controller shell
@@ -123,8 +126,11 @@ For the maintenance workflow, use `wiki-operations.md`.
 ## Supporting / environment / operations pages
 
 - `deployment-and-ops.md` — deployment/runtime/verification themes
+- `install-and-validation.md` — installer validation, clean-machine checks, idempotency, upgrade, rollback, and public-ready gate
 - `local-environment.md` — Brian-specific live environment truth
+- `airplay-metadata-hardening.md` — moOde-side AirPlay metadata hardening, watchdog supervision, and verification
 - `repo-coverage-notes.md` — coverage self-audit
+- `wiki-gap-review-2026-04-06.md` — focused source-doc vs wiki gap review and next recommended additions
 - `wiki-structure-notes.md` — page-structure and hierarchy rules
 - `wiki-operations.md` — ingest/query/lint model
 - `log.md` — chronological major milestones for the wiki itself
