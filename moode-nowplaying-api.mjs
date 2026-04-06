@@ -6235,6 +6235,15 @@ app.get('/now-playing', async (req, res) => {
             });
 
         let itResolved = it;
+        if (likelyClassical && String(itResolved?.matchedTitle || '').trim()) {
+          const classicalRaw = String(song.title || lookupTitle || title || '').trim();
+          const classicalMatched = String(itResolved.matchedTitle || '').trim();
+          if (classicalRaw && classicalMatched && !shouldAcceptMatchedTitle(classicalRaw, classicalMatched)) {
+            itResolved = {
+              url: '', album: '', year: '', trackUrl: '', albumUrl: '', matchedArtist: '', matchedTitle: '', reason: 'classical-title-mismatch'
+            };
+          }
+        }
         if (!String(itResolved?.url || itResolved?.trackUrl || itResolved?.albumUrl || '').trim() && /no-artist-match/i.test(String(itResolved?.reason || ''))) {
           const aTry = String(lookupArtist || '').trim();
           const tTry = String(lookupTitle || '').trim();
@@ -6306,7 +6315,7 @@ app.get('/now-playing', async (req, res) => {
           const s2Title = String(s2.title || '').trim();
           const likelyClassical2 = /\b(op\.?|concerto|symphony|quartet|sonata|andante|allegro|adagio|lento|presto)\b/i.test(s2Title);
           const classicalContextOk2 = !!String(albumForLookup || '').trim();
-          const it = (likelyClassical2 && !classicalContextOk2)
+          let it = (likelyClassical2 && !classicalContextOk2)
             ? { url:'', album:'', year:'', trackUrl:'', albumUrl:'', matchedArtist:'', matchedTitle:'', reason:'insufficient-metadata' }
             : await lookupItunesFirst(String(s2.artist || '').trim(), s2Title, debug, {
                 radioAlbum: albumForLookup,
@@ -6316,6 +6325,13 @@ app.get('/now-playing', async (req, res) => {
                 soloistHint: '',
                 strictArtist: !likelyClassical2,
               });
+          if (likelyClassical2 && String(it?.matchedTitle || '').trim()) {
+            const classicalRaw2 = String(song.title || s2Title || '').trim();
+            const classicalMatched2 = String(it.matchedTitle || '').trim();
+            if (classicalRaw2 && classicalMatched2 && !shouldAcceptMatchedTitle(classicalRaw2, classicalMatched2)) {
+              it = { url:'', album:'', year:'', trackUrl:'', albumUrl:'', matchedArtist:'', matchedTitle:'', reason:'classical-title-mismatch' };
+            }
+          }
           if (it.url) primaryArtUrl = it.url;
 
           {

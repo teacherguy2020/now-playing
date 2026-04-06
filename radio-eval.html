@@ -83,6 +83,7 @@ async function load(){
       <td class='mono'>${esc(String(x.ts || ''))}</td>
       <td>${esc(x.stationName || '')}<div class='muted mono'>${esc(x.streamUrl || '')}</div></td>
       <td>
+        <div class='mono'><b>Full:</b> ${esc(x.raw?.full || x.raw?.title || x.raw?.name || '')}</div>
         <div><b>A:</b> ${esc(x.raw?.artist || '')}</div>
         <div><b>T:</b> ${esc(x.raw?.title || '')}</div>
         <div><b>Al:</b> ${esc(x.raw?.album || '')}</div>
