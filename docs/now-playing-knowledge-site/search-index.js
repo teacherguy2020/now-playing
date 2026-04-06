@@ -34,6 +34,7 @@ window.NP_KNOWLEDGE_SEARCH_INDEX = {
   "deepwiki-structure-mapping.html": "deepwiki structure mapping deepwiki structure mapping deepwiki structure mapping purpose target top level summary 1 overview current closest pages problem recommended restructuring move status purpose target top level structure mapping summary 1 overview current closest pages current problem recommended restructuring move status 2 user interfaces current closest pages current problem recommended restructuring move status 3 display enhancement system current closest pages current problem recommended restructuring move status 4 queue management current closest pages current problem recommended restructuring move status 5 media library current closest pages current problem recommended restructuring move status 6 playback features current closest pages current problem recommended restructuring move status 7 external integrations current closest pages current problem recommended restructuring move status 8 theme customization current closest pages current problem recommended restructuring move status 9 backend api current closest pages current problem recommended restructuring move status 10 configuration and administration current closest pages current problem recommended restructuring move status 11 development current closest pages current problem recommended restructuring move status 12 glossary current closest pages current problem recommended restructuring move status high level conclusions best existing structural fits branches that likely need stronger parent pages branches that mostly need presentation cleanup rather than brand new content recommended restructuring order how to use this page timestamp",
   "deployment-and-ops.html": "deployment and ops deployment and ops deployment and ops purpose main operational lesson system has plane 1 app host 2 moode effect 3 override change type verify you changed browser page frontend asset purpose the main operational lesson the system has more than one operational plane 1 app host plane 2 moode host effect plane 3 host override plane change type effect verify 1 if you changed a browser page or frontend only asset what that usually means what usually becomes live what to verify real lesson 2 if you changed route logic or service logic what that usually means what usually becomes live what to verify real lesson 3 if you changed runtime admin behavior what that usually means what usually becomes live what to verify real lesson 4 if you changed a state truth endpoint what that usually means what usually becomes live what to verify real lesson 5 if you changed a host override or host side patch what that usually means what to verify real lesson app host vs moode host the key question which machine should have changed restart reality often restart is not the first question often restart becomes part of the question what to verify after common change types example changed controller html example changed visualizer html example changed moode nowplaying api mjs example changed config runtime admin routes mjs example changed moode side override material best companion pages by question what does brian s real setup look like do i need restart or only verification how do i verify a display side change how do i verify playback state truth changes what this page is now really teaching relationship to other pages current status",
   "desktop-browser-interface.html": "desktop browser interface desktop browser interface desktop browser interface purpose why matters important files current working interpretation likely responsibilities relationship other pages implementation dimensions anatomy companion page purpose why the desktop browser interface matters important files current working interpretation likely responsibilities of the desktop browser interface relationship to other interface pages likely implementation dimensions anatomy companion page what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also related branch pages current status",
+  "development.html": "development development development purpose relevant source files glance why page matters read branch order strong current sub branches 1 navigation 2 workflow purpose relevant source files development at a glance why this page matters read this branch in this order strong current sub branches 1 source navigation branch 2 workflow branch 3 verification branch 4 wiki maintenance branch what this branch still needs later relationship to other pages current status timestamp",
   "diagnostics-interface.html": "diagnostics interface diagnostics interface diagnostics interface debug inspection checks purpose why page matters important files high level role shell entry behavior major ui areas visible 1 request runner endpoint console 2 live embedded view cards purpose why this page matters important files high level role shell entry behavior major ui areas visible in the page 1 request runner endpoint console 2 live embedded view cards important dom action centers diagnostics script as the logic center request runner behavior track key aware diagnostics live embedded surface inspection relationship to display and controller debugging current observed api config contact architectural interpretation related branch pages anatomy companion page relationship to other pages things still to verify current status",
   "diagnostics-page-anatomy.html": "diagnostics page anatomy diagnostics page anatomy diagnostics page anatomy debug inspection checks purpose why matters here high level role html main anatomical regions 1 shell redirect header layer what 2 request runner card purpose why anatomy matters here high level role of diagnostics html main anatomical regions 1 shell redirect page header layer what it is why it matters 2 request runner card what it is what it does why it matters 3 request body method path controls what they are what they do why they matter 4 favorites and endpoint selection layer what it is what it does why it matters companion pages 5 track key aware execution controls what they are what they do why it matters companion pages 6 response copy curl helper layer what it is what it does why it matters 7 live embedded surface card grid what it is what they do why they matter companion pages 8 diagnostics script orchestration layer what it is what it does why it matters practical where do i start map if asked to improve endpoint execution flow if asked to improve favorites if asked to improve track key testing if asked to improve curl copy or response copy behavior if asked to improve the embedded live cards anatomy rule for future agents relationship to other pages current status",
   "display-enhancement-peppy-player-flow.html": "display enhancement peppy and player flow display enhancement peppy player flow display enhancement peppy player flow screen visualizer purpose why page matters what branch includes relationship config settings runtime configuration feature stable target url model router behavior kiosk presentation shell same thing builder first design purpose why this page matters what this branch includes relationship to the config feature stable target url model router behavior why kiosk is not the same thing as peppy or player builder first display design peppy data pipeline vu and spectrum 1 vu feed 2 spectrum feed bridge mode exclusivity rule required http targets in bridge mode boot persistence caveat recommended mitigation quick verify after boot peppy builder model meter type interpretation save vs push distinction save as preset push to moode push flow summary player branch visualizer branch within display enhancement verification points router target check runtime mode check feed check boot persistence check exclusivity check best companion pages current status",
@@ -127,6 +128,7 @@ window.NP_KNOWLEDGE_SEARCH_SUMMARIES = {
   "deepwiki-structure-mapping.html": "title deepwiki structure mapping page type support topics metadata structure planning documentation confidence high",
   "deployment-and-ops.html": "title deployment and ops page type support topics ops runtime environment controller confidence high",
   "desktop-browser-interface.html": "Purpose",
+  "development.html": "title development page type parent topics development workflows source map wiki confidence medium",
   "diagnostics-interface.html": "Purpose",
   "diagnostics-page-anatomy.html": "Purpose",
   "display-enhancement-peppy-player-flow.html": "title display enhancement peppy player flow page type child topics display peppy player moode confidence high",
@@ -220,6 +222,7 @@ window.NP_KNOWLEDGE_SEARCH_HEADINGS = {
   "deepwiki-structure-mapping.html": "purpose target top level structure mapping summary 1 overview current closest pages current problem recommended restructuring move status 2 user interfaces current closest pages current problem recommended restructuring move status 3 display enhancement system current closest pages current problem recommended restructuring move status 4 queue management current closest pages current problem recommended restructuring move status 5 media library current closest pages current problem recommended restructuring move status 6 playback features current closest pages current problem recommended restructuring move status 7 external integrations current closest pages current problem recommended restructuring move status 8 theme customization current closest pages current problem recommended restructuring move status 9 backend api current closest pages current problem recommended restructuring move status 10 configuration and administration current closest pages current problem recommended restructuring move status 11 development current closest pages current problem recommended restructuring move status 12 glossary current closest pages current problem recommended restructuring move status high level conclusions best existing structural fits branches that likely need stronger parent pages branches that mostly need presentation cleanup rather than brand new content recommended restructuring order how to use this page timestamp",
   "deployment-and-ops.html": "purpose the main operational lesson the system has more than one operational plane 1 app host plane 2 moode host effect plane 3 host override plane change type effect verify 1 if you changed a browser page or frontend only asset what that usually means what usually becomes live what to verify real lesson 2 if you changed route logic or service logic what that usually means what usually becomes live what to verify real lesson 3 if you changed runtime admin behavior what that usually means what usually becomes live what to verify real lesson 4 if you changed a state truth endpoint what that usually means what usually becomes live what to verify real lesson 5 if you changed a host override or host side patch what that usually means what to verify real lesson app host vs moode host the key question which machine should have changed restart reality often restart is not the first question often restart becomes part of the question what to verify after common change types example changed controller html example changed visualizer html example changed moode nowplaying api mjs example changed config runtime admin routes mjs example changed moode side override material best companion pages by question what does brian s real setup look like do i need restart or only verification how do i verify a display side change how do i verify playback state truth changes what this page is now really teaching relationship to other pages current status",
   "desktop-browser-interface.html": "purpose why the desktop browser interface matters important files current working interpretation likely responsibilities of the desktop browser interface relationship to other interface pages likely implementation dimensions anatomy companion page what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also related branch pages current status",
+  "development.html": "purpose relevant source files development at a glance why this page matters read this branch in this order strong current sub branches 1 source navigation branch 2 workflow branch 3 verification branch 4 wiki maintenance branch what this branch still needs later relationship to other pages current status timestamp",
   "diagnostics-interface.html": "purpose why this page matters important files high level role shell entry behavior major ui areas visible in the page 1 request runner endpoint console 2 live embedded view cards important dom action centers diagnostics script as the logic center request runner behavior track key aware diagnostics live embedded surface inspection relationship to display and controller debugging current observed api config contact architectural interpretation related branch pages anatomy companion page relationship to other pages things still to verify current status",
   "diagnostics-page-anatomy.html": "purpose why anatomy matters here high level role of diagnostics html main anatomical regions 1 shell redirect page header layer what it is why it matters 2 request runner card what it is what it does why it matters 3 request body method path controls what they are what they do why they matter 4 favorites and endpoint selection layer what it is what it does why it matters companion pages 5 track key aware execution controls what they are what they do why it matters companion pages 6 response copy curl helper layer what it is what it does why it matters 7 live embedded surface card grid what it is what they do why they matter companion pages 8 diagnostics script orchestration layer what it is what it does why it matters practical where do i start map if asked to improve endpoint execution flow if asked to improve favorites if asked to improve track key testing if asked to improve curl copy or response copy behavior if asked to improve the embedded live cards anatomy rule for future agents relationship to other pages current status",
   "display-enhancement-peppy-player-flow.html": "purpose why this page matters what this branch includes relationship to the config feature stable target url model router behavior why kiosk is not the same thing as peppy or player builder first display design peppy data pipeline vu and spectrum 1 vu feed 2 spectrum feed bridge mode exclusivity rule required http targets in bridge mode boot persistence caveat recommended mitigation quick verify after boot peppy builder model meter type interpretation save vs push distinction save as preset push to moode push flow summary player branch visualizer branch within display enhancement verification points router target check runtime mode check feed check boot persistence check exclusivity check best companion pages current status",
@@ -5074,6 +5077,64 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
     {
       "id": "current-status",
       "text": "Current status"
+    }
+  ],
+  "development.html": [
+    {
+      "id": "purpose",
+      "text": "Purpose"
+    },
+    {
+      "id": "relevant-source-files",
+      "text": "Relevant source files"
+    },
+    {
+      "id": "development-at-a-glance",
+      "text": "Development at a glance"
+    },
+    {
+      "id": "why-this-page-matters",
+      "text": "Why this page matters"
+    },
+    {
+      "id": "read-this-branch-in-this-order",
+      "text": "Read this branch in this order"
+    },
+    {
+      "id": "strong-current-sub-branches",
+      "text": "Strong current sub-branches"
+    },
+    {
+      "id": "1-source-navigation-branch",
+      "text": "1. Source navigation branch"
+    },
+    {
+      "id": "2-workflow-branch",
+      "text": "2. Workflow branch"
+    },
+    {
+      "id": "3-verification-branch",
+      "text": "3. Verification branch"
+    },
+    {
+      "id": "4-wiki-maintenance-branch",
+      "text": "4. Wiki maintenance branch"
+    },
+    {
+      "id": "what-this-branch-still-needs-later",
+      "text": "What this branch still needs later"
+    },
+    {
+      "id": "relationship-to-other-pages",
+      "text": "Relationship to other pages"
+    },
+    {
+      "id": "current-status",
+      "text": "Current status"
+    },
+    {
+      "id": "timestamp",
+      "text": "Timestamp"
     }
   ],
   "diagnostics-interface.html": [
