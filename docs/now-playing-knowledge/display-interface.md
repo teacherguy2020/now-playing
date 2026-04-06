@@ -23,6 +23,29 @@ A better current interpretation than the older version is:
 
 So this page should now act as a **display branch hub**, not a placeholder taxonomy page.
 
+## Relevant source files
+
+This page is branch-oriented rather than file-complete, but these files are especially relevant when grounding the display branch:
+- `display.html`
+- `peppy.html`
+- `player.html`
+- `player-render.html`
+- `visualizer.html`
+- `kiosk.html`
+- `controller.html`
+- `controller-kiosk.html`
+
+## Display enhancement system at a glance
+
+If you need the compressed display model first, use this:
+- **display enhancement** = the builder-first display system around Peppy, Player, Visualizer, and the stable router target
+- **display modes / renderers** are not the same thing as kiosk shell mode
+- **display launch surfaces** and wrapper pages exist to push, route, or host those renderer modes
+- **embedded visual behavior** is a real sub-branch, especially where controller and kiosk flows host display-oriented child pages
+- **runtime truth still starts upstream** at app-host state surfaces such as `/now-playing`
+
+This is why the display branch should be read as a system, not just a pile of visual pages.
+
 ## Why this page matters
 
 Display behavior is one of the easiest places for agents to make wrong assumptions.
@@ -71,6 +94,18 @@ A useful terminology split is:
 - **skin** = a visual/theme variant within a broader display mode, especially useful for Peppy
 
 That split is now important enough to treat as branch truth, not optional terminology.
+
+## Read this branch in this order
+
+If you are trying to understand the display branch as a system, read in this order:
+1. [display-interface.md](display-interface.md)
+2. [display-enhancement-peppy-player-flow.md](display-enhancement-peppy-player-flow.md)
+3. [display-launch-and-wrapper-surfaces.md](display-launch-and-wrapper-surfaces.md)
+4. [visualizer-in-embedded-mode.md](visualizer-in-embedded-mode.md)
+5. [kiosk-interface.md](kiosk-interface.md)
+6. [kiosk-launch-and-routing.md](kiosk-launch-and-routing.md)
+
+Then drop into more specialized child pages when the question becomes mode-specific or implementation-specific.
 
 ## Strong current branch map
 
@@ -210,14 +245,14 @@ Start with:
 ## Relationship to other wiki pages
 
 This page should stay closely linked with:
-- `api-state-truth-endpoints.md`
-- `playback-authority-by-mode.md`
-- `display-launch-and-wrapper-surfaces.md`
-- `kiosk-interface.md`
-- `display-surface-troubleshooting.md`
-- `deployment-and-ops.md`
-- `local-environment.md`
-- `source-map.md`
+- [api-state-truth-endpoints.md](api-state-truth-endpoints.md)
+- [playback-authority-by-mode.md](playback-authority-by-mode.md)
+- [display-launch-and-wrapper-surfaces.md](display-launch-and-wrapper-surfaces.md)
+- [kiosk-interface.md](kiosk-interface.md)
+- [display-surface-troubleshooting.md](display-surface-troubleshooting.md)
+- [deployment-and-ops.md](deployment-and-ops.md)
+- [local-environment.md](local-environment.md)
+- [source-map.md](source-map.md)
 
 ## Current status
 
@@ -228,3 +263,7 @@ The current wiki already supports a stronger claim:
 - the display branch has real file-backed subpages
 - the central visible-state hinge is `/now-playing`
 - and the main branch split is now explicit between state truth, display modes, kiosk shell mode, launch/wrapper surfaces, embedded visual behavior, and runtime/display-host behavior.
+
+## Timestamp
+
+Last updated: 2026-04-06 06:18 America/Chicago
