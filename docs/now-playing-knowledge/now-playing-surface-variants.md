@@ -1,35 +1,48 @@
+---
+title: now-playing-surface-variants
+page_type: parent
+topics:
+  - controller
+  - playback
+  - display
+  - queue
+confidence: high
+---
+
 # now-playing surface variants
 
 ## Purpose
 
-This page documents the family of `controller-now-playing*` HTML surfaces in the `now-playing` ecosystem.
+This page documents the `controller-now-playing*` family of HTML surfaces in the `now-playing` ecosystem.
 
-It exists because these files are clearly related, but they are not all equal in role. Repo inspection shows a mix of:
-- core now-playing surfaces
-- layout/device variants
-- redirect shims
-- alias/legacy-like wrappers
+This family is not a pile of equal peers.
+Current file-backed repo truth shows a mix of:
+- substantive implementation pages
+- device/layout variants
+- thin redirect shims
+- one alias compatibility shim
 
-So this branch is best documented as a family first, rather than as a pile of separate unrelated pages.
+So the right mental model is a family with clear implementation centers and clear wrapper pages.
 
 ## Why this page matters
 
-The now-playing family appears to be one of the most visible surface clusters in the system.
+The now-playing family is one of the most visible controller surface clusters in the system.
 
-These pages likely shape what users actually see when they focus on:
-- album art
-- title/artist/album identity
+These pages own or expose:
+- current track identity
+- album art and background presentation
 - next-up state
+- transport controls
 - queue access
-- playback controls
 - album/artist drill-down
-- contextual artwork/personnel presentation
+- embedded-pane behavior
+- iPhone-specific interaction behavior in one major branch
 
-That makes this a high-value family to map clearly.
+That makes this a high-value family to classify cleanly.
 
-## Files currently in the family
+## Files in the family
 
-Repo-visible files in this family include:
+Current repo-visible files in this family are:
 - `controller-now-playing.html`
 - `controller-now-playing-tablet.html`
 - `controller-now-playing-grid.html`
@@ -39,222 +52,185 @@ Repo-visible files in this family include:
 
 ## Family classification
 
-## 1. Core page: `controller-now-playing.html`
+## 1. Main implementation page: `controller-now-playing.html`
 
-This currently appears to be the main canonical controller-now-playing surface.
+`controller-now-playing.html` is one of the main now-playing implementation centers in the repo.
 
-Observed characteristics include:
+Direct file-backed characteristics include:
 - large integrated now-playing UI
-- album art, artist, title, album, next-up, progress, controls
-- embedded-mode handling via `embedded=1`
-- queue modal with embedded `controller-queue.html`
-- queue-wizard preview/apply calls for album actions
-- direct playback control calls via `/config/diagnostics/playback`
-- album/artist drill-down behavior
-- iPhone-specific behavior when `iphone=1`
-- art flip/personnel behavior in the iPhone-specific mode
+- embedded preview/iframe guardrails
+- background art layering and blur behavior
+- queue modal infrastructure
+- album modal infrastructure
+- transport controls
+- next-up UI
+- phone-oriented layout branches
+- `iphone=1` behavior inside the same file
 
-This is clearly a real, substantial surface rather than a thin wrapper.
+This is not a wrapper or alias page.
+It is a large substantive controller surface.
 
-## 2. Tablet variant: `controller-now-playing-tablet.html`
+## 2. Tablet implementation variant: `controller-now-playing-tablet.html`
 
-This appears to be a device/layout variant of the same conceptual surface.
+`controller-now-playing-tablet.html` is also a substantive implementation page.
 
-Observed characteristics include:
-- very similar core structure and behavior to `controller-now-playing.html`
-- queue modal with embedded `controller-queue.html`
-- runtime config reads
-- queue-wizard preview/apply calls
-- album/artist drill-down behavior
-- embedded pane close behavior via `np-kiosk-hide-pane`
+It is not a redirect shim.
 
-But also:
-- stronger larger-screen layout assumptions
-- a more tablet-oriented presentation footprint
-- less obvious iPhone-specific art-flip specialization than the iPhone path
+Direct file-backed evidence:
+- it is a full HTML document with extensive inline styles and logic
+- it loads shared controller CSS such as `styles/index1080.css` and `styles/controller-modals.css`
+- it contains the same broad class of now-playing UI concerns as the main page
+- it includes explicit embedded-mode fallback behavior
+- it contains queue and album modal structures in-file
 
-So this looks like a true variant, not a redirect shim.
+So this is a real tablet-oriented implementation variant, not just a name alias.
 
-## 3. Grid variant: `controller-now-playing-grid.html`
+## 3. Grid implementation variant: `controller-now-playing-grid.html`
 
-This appears to be another substantive surface, not just a redirect.
+`controller-now-playing-grid.html` is also a substantive implementation page.
 
-Observed characteristics include:
-- a now-playing surface with grid-like phone-layout logic
-- queue modal and embedded queue loading
-- runtime config read for track key
-- playback and queue-wizard interactions
-- album/artist drill-down behavior
-- embedded mode awareness
+Direct file-backed evidence:
+- it is a full HTML document with large inline style and behavior blocks
+- it contains a phone/grid-oriented composition branch
+- it includes queue modal infrastructure and album modal infrastructure
+- it includes embedded-mode fallback behavior
+- it includes now-playing art/title/artist/album rendering behavior
 
-This likely represents a layout/interaction variant rather than a separate conceptual feature.
+So this is another real implementation variant, not a redirect or thin wrapper.
 
-## 4. Redirect shim: `controller-now-playing-ipad.html`
+## 4. iPad redirect shim: `controller-now-playing-ipad.html`
 
-This file appears to be a thin redirect page.
+`controller-now-playing-ipad.html` is a pure redirect shim.
 
-Observed behavior:
-- meta refresh to `controller-now-playing-tablet.html`
-- JS redirect to the same target
+Direct file-backed behavior:
+- meta refresh to `/controller-now-playing-tablet.html`
+- JavaScript redirect that preserves query parameters and redirects to `/controller-now-playing-tablet.html`
 
-So this is best treated as a compatibility/device-alias shim, not a primary implementation page.
+So the iPad path is implemented in `controller-now-playing-tablet.html`, not in this file.
 
-## 5. Redirect shim: `controller-now-playing-iphone.html`
+## 5. iPhone redirect shim: `controller-now-playing-iphone.html`
 
-This file also appears to be a thin redirect page.
+`controller-now-playing-iphone.html` is also a pure redirect shim.
 
-Observed behavior:
+Direct file-backed behavior:
 - meta refresh to `controller-now-playing.html?iphone=1`
-- JS redirect to the same target
+- JavaScript redirect to the same target
 
-So the iPhone-specific now-playing experience is not implemented in this file directly.
-Instead, it appears to be implemented as a mode of `controller-now-playing.html`.
+So the iPhone-specific now-playing experience is implemented as a mode of `controller-now-playing.html`, not as a separate file implementation here.
 
-## 6. Alias/typo shim: `controller-nowplaying-iphone.html`
+## 6. Alias shim: `controller-nowplaying-iphone.html`
 
-This file appears to be a simple redirect alias.
+`controller-nowplaying-iphone.html` is a simple alias redirect.
 
-Observed behavior:
-- redirects to `controller-now-playing-iphone.html`
+Direct file-backed behavior:
+- meta refresh to `controller-now-playing-iphone.html`
+- JavaScript redirect to the same target
 
-This is likely a spelling/backward-compatibility shim for callers using the older or alternate filename.
+So this is a compatibility/alternate-name shim, not an implementation page.
 
 ## Working family model
 
-A good current interpretation is:
+The current family model is:
 
-### Real substantive pages
+### Substantive implementation pages
 - `controller-now-playing.html`
 - `controller-now-playing-tablet.html`
 - `controller-now-playing-grid.html`
 
-### Redirect/alias pages
+### Redirect / alias pages
 - `controller-now-playing-ipad.html`
 - `controller-now-playing-iphone.html`
 - `controller-nowplaying-iphone.html`
 
-That distinction is useful because it prevents the wiki from over-documenting thin wrappers as if they were main implementation centers.
+That distinction should stay explicit so the wiki does not over-document wrappers as if they were implementation centers.
 
-## Important shared behaviors across substantive variants
+## Shared behaviors across the substantive variants
 
-Across the substantive now-playing pages, repo inspection shows recurring patterns such as:
-- album art and background art layering
-- embedded mode handling
-- queue modal with embedded `controller-queue.html?embedded=1`
-- runtime config fetch for track key
-- queue-wizard preview/apply flows for album-level actions
-- direct playback control through `/config/diagnostics/playback`
-- artist drill-down into `controller-artists.html`
-- close-back behavior that posts `np-kiosk-hide-pane` when embedded
+Across the three substantive pages, the repo shows recurring patterns such as:
+- background art / blur presentation
+- now-playing text and art rendering
+- embedded-mode fallback handling when loaded in iframes
+- queue modal infrastructure
+- album modal infrastructure
+- close/back behavior for embedded contexts
+- controller-style CSS/shared visual language
 
-This suggests the family shares a lot of behavior even when layout differs.
+This family clearly shares a large behavioral cluster even though the layouts differ.
 
 ## Important variant differences
 
-### `controller-now-playing.html`
-This appears to contain the richest iPhone-specific branch.
+## `controller-now-playing.html`
+This page is the strongest mainline implementation and also carries the iPhone-specialized path through `iphone=1`.
 
-Observed clues include:
-- `iphone=1` handling
-- art flip card behavior
-- personnel/back-face presentation in place of modal-heavy interaction
+That means it does double duty as:
+- a main controller now-playing surface
+- the iPhone-mode implementation target
 
-So this page may be doing double duty as:
-- the main now-playing page
-- the iPhone-specialized now-playing page via query-param mode
+## `controller-now-playing-tablet.html`
+This page is the tablet-oriented substantive variant.
 
-### `controller-now-playing-tablet.html`
-This appears to be a larger-screen/device-specific adaptation with similar core interactions but more tablet-oriented layout assumptions.
+Its existence, plus the dedicated iPad redirect shim, makes the tablet role explicit rather than inferred.
 
-### `controller-now-playing-grid.html`
-This appears to emphasize a grid-style composition variant while still keeping much of the same underlying operational behavior.
+## `controller-now-playing-grid.html`
+This page is the grid/phone-oriented substantive variant.
+
+It is not just a visual skin.
+It is its own implementation page with its own layout branch.
 
 ## Relationship to kiosk and embedded behavior
 
-This family intersects directly with the kiosk/embedded branch because:
-- substantive now-playing pages honor `embedded=1`
-- embedded close behavior uses `np-kiosk-hide-pane`
-- queue access can happen inside an embedded modal/iframe flow
-- these pages may be opened inside right-pane kiosk workflows
+This family intersects directly with the kiosk/embedded branch because the substantive now-playing pages include embedded-mode handling and modal/child-surface behavior that can be used in controller-hosted or kiosk-hosted flows.
 
-So this family should stay linked to:
+This page should stay linked with:
 - `embedded-pane-contracts.md`
 - `kiosk-right-pane-routing.md`
 - `controller-kiosk-mode.md`
 
 ## Relationship to queue and album drill-down behavior
 
-These now-playing surfaces also intersect with:
-- queue flows
-- album-level track fetching
-- album queue application
+These now-playing surfaces intersect directly with:
+- queue access
+- album modal behavior
 - artist navigation
+- playback control behavior
 
-That means they should eventually cross-link with future pages on:
-- queue and playback control
-- media library / album drill-down
-- controller child page relationships
+So this branch should stay linked with:
+- `controller-queue-interface.md`
+- `queue-wizard-internals.md`
+- `api-playback-and-queue-endpoints.md`
 
 ## Anatomy companion page
 
+Companion anatomy page:
 - `controller-now-playing-anatomy.md`
 
-This is the anatomy-style companion page for the main now-playing surface.
-Use it when the task is not just about the now-playing family in general, but about a specific region inside `controller-now-playing.html` such as the art/flip area, next-up bar, progress bar, integrated controls, album modal, or embedded queue modal.
+Use that page when the real question is not “which now-playing variant is this?” but:
+- which region inside `controller-now-playing.html` owns the thing I need to change?
 
-## Candidate future drill-down pages
+## What this page is now confident about
 
-The next likely branch pages from this family are:
-
-### `controller-now-playing-core.md`
-For the main substantive logic in:
-- `controller-now-playing.html`
-
-### `controller-now-playing-tablet-variant.md`
-For tablet-specific layout and behavior differences.
-
-### `controller-now-playing-grid-variant.md`
-For the grid-specific layout variant.
-
-### `controller-now-playing-iphone-mode.md`
-For the `iphone=1` path inside `controller-now-playing.html`, especially the art-flip/personnel behavior.
-
-## Architectural interpretation
-
-A good current interpretation is:
-- the `controller-now-playing*` family is a substantial, shared behavioral cluster with multiple presentation variants
-- some filenames are implementation centers, while others are only routing aliases
-- the family is tightly tied to queue access, embedded behavior, and album/artist drill-down flows
-
-This makes it one of the more important families to keep organized as a group.
+The current repo supports these stronger statements:
+- the now-playing family has three substantive implementation pages
+- the iPad and iPhone named pages are redirect shims, not main implementation pages
+- `controller-now-playing.html` carries the iPhone mode through `?iphone=1`
+- `controller-nowplaying-iphone.html` is just an alias shim
+- the family shares real behavioral DNA around art, modals, embedded handling, and controller-side now-playing presentation
 
 ## Relationship to other pages
 
 This page should stay linked with:
 - `tablet-interface.md`
 - `phone-interface.md`
+- `desktop-browser-interface.md`
+- `controller-now-playing-anatomy.md`
 - `embedded-pane-contracts.md`
 - `kiosk-right-pane-routing.md`
-- `controller-now-playing-anatomy.md`
-- future queue/control pages
-- future media-library pages
-
-## Things still to verify
-
-Future deeper verification should clarify:
-- the exact behavioral delta between the main, tablet, and grid variants
-- how much code is duplicated versus intentionally specialized across these files
-- whether `controller-now-playing-grid.html` is actively used in live workflows or more experimental
-- whether `controller-now-playing-tablet.html` is the main tablet now-playing path in practice
-- how much of the iPhone behavior should be documented as part of `controller-now-playing.html` versus split into its own page
-
-`controller-now-playing-anatomy.md` is relevant when the real question is not only “which now-playing variant is this?” but “which region inside `controller-now-playing.html` actually owns the thing I need to change?”
+- `controller-queue-interface.md`
 
 ## Current status
 
-At the moment, this page gives the now-playing family a clear structural map:
-- substantive pages versus shims
-- shared behaviors versus variant-specific behavior
-- likely next drill-down pages
-
-That is already enough to make the family much less confusing than a raw filename list.
+This page now gives the now-playing family a firmer structural map:
+- substantive implementation pages versus shims
+- main page versus tablet/grid variants
+- iPhone mode as a query-param branch of `controller-now-playing.html`
+- alias pages as actual redirects rather than pseudo-surfaces
