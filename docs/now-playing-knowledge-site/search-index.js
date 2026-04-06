@@ -64,6 +64,7 @@ window.NP_KNOWLEDGE_SEARCH_INDEX = {
   "open-questions.html": "open questions open questions open questions purpose really mapping todos true runtime behavior uncertainties depend brian specific local reality should probably become runbooks later purpose questions that are really mapping todos questions that are true runtime or behavior uncertainties questions that depend on brian specific local reality questions that should probably become runbooks later",
   "phone-interface.html": "phone interface phone interface phone interface purpose relevant source files why matters important mobile controller glance current working interpretation likely responsibilities relationship other pages purpose relevant source files why the phone interface matters important files mobile controller at a glance current working interpretation likely responsibilities of the phone interface relationship to other interface pages read this branch in this order anatomy companion page likely implementation dimensions what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also current status timestamp",
   "playback-authority-by-mode.html": "playback authority by mode playback authority by mode playback authority by mode transport playing player purpose why page matters core model 1 local file what means practically common failure shapes 2 airplay purpose why this page matters core model mode 1 local file playback authority model what that means practically common failure shapes mode 2 airplay authority model what that means practically common failure shapes important local environment note mode 3 upnp authority model what that means practically common failure shapes mode 4 radio stream authority model what that means practically common failure shapes important principle mode 5 unresolved fallback driven case authority model what that means practically common failure shapes cross mode principles 1 do not assume one universal authority 2 visible truth is often app mediated 3 art authority is especially mode sensitive 4 troubleshooting should start with mode classification suggested troubleshooting order by mode if local file if airplay if upnp if radio stream if unresolved fallback driven relationship to other pages current status",
+  "playback-features.html": "playback features playback features playback features transport playing player purpose relevant source files glance why page matters read branch order strong current sub branches 1 authority 2 troubleshooting purpose relevant source files playback features at a glance why this page matters read this branch in this order strong current sub branches 1 playback authority branch 2 playback troubleshooting branch 3 playback triage branch 4 queue overlap branch what this branch still needs later relationship to other pages current status timestamp",
   "playback-issue-triage-runbook.html": "playback issue triage runbook playback issue triage runbook playback issue triage runbook transport playing player troubleshooting checklist purpose why page matters core rule step 1 classify mode first local file b airplay c upnp d radio stream purpose why this page matters core rule step 1 classify the playback mode first a local file playback b airplay c upnp d radio stream e unresolved fallback driven case important guardrail step 2 choose the matching authority chain if local file if airplay if upnp if radio stream if unresolved fallback driven step 3 decide what kind of playback symptom this is a transport truth problem b queue truth problem c art metadata truth problem d presentation interpretation problem important guardrail step 4 check the historically fragile playback paths fragile path a next up alexa mode behavior fragile path b mode sensitive art current song status truth fragile path c radio metadata guardrails fragile path d last good fallback preservation behavior fragile path e airplay local override reality step 5 decide which layer to inspect first route bootstrap layer service layer page runtime layer local runtime override layer step 6 use the minimum verification set that matches the symptom symptom type transport control wrong symptom type queue head next up wrong symptom type art metadata wrong symptom type degraded or stale looking output step 7 declare success only when the right truth source and visible result agree quick heuristics best companion pages current status",
   "playback-mode-troubleshooting.html": "playback mode troubleshooting playback mode troubleshooting playback mode troubleshooting transport playing player purpose step 1 classify 2 choose matching authority path local file airplay upnp radio stream unresolved fallback driven case purpose step 1 classify the playback mode step 2 choose the matching authority path local file airplay upnp radio stream unresolved fallback driven case step 3 choose the code layer to inspect page runtime layer route layer mpd service helper layer runtime admin local override layer step 4 choose verification based on change type quick heuristics best companion pages",
   "queue-and-playback-model.html": "queue and playback model queue and playback model queue and playback model next up playlist curation transport playing player purpose relevant source files management glance why page matters read branch order high level core distinction vs control purpose relevant source files queue management at a glance why this page matters read this branch in this order high level model core distinction playback vs queue playback control working interpretation queue control working interpretation queue shaping curation why this matters current actor model 1 user facing surfaces initiate intent 2 app host routes mediate the action 3 mpd remains an important underlying truth source 4 visible surfaces re render from resulting state current known playback queue route families direct playback family queue wizard family youtube queue family embedded queue surface display presentation overlap family mpd versus app side mediation practical implication relation to playback mode why it matters here relation to display and controller surfaces practical implication current known queue mutation patterns direct append replace crop preview apply embedded queue inspection what this page does not yet claim relationship to other pages what should follow this page timestamp current status",
@@ -156,6 +157,7 @@ window.NP_KNOWLEDGE_SEARCH_SUMMARIES = {
   "open-questions.html": "Purpose",
   "phone-interface.html": "Purpose",
   "playback-authority-by-mode.html": "title playback authority by mode page type companion topics playback runtime integration api confidence high",
+  "playback-features.html": "title playback features page type parent topics playback transport modes troubleshooting confidence medium",
   "playback-issue-triage-runbook.html": "Purpose",
   "playback-mode-troubleshooting.html": "Purpose",
   "queue-and-playback-model.html": "title queue and playback model page type parent topics queue playback api controller confidence high",
@@ -248,6 +250,7 @@ window.NP_KNOWLEDGE_SEARCH_HEADINGS = {
   "open-questions.html": "purpose questions that are really mapping todos questions that are true runtime or behavior uncertainties questions that depend on brian specific local reality questions that should probably become runbooks later",
   "phone-interface.html": "purpose relevant source files why the phone interface matters important files mobile controller at a glance current working interpretation likely responsibilities of the phone interface relationship to other interface pages read this branch in this order anatomy companion page likely implementation dimensions what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also current status timestamp",
   "playback-authority-by-mode.html": "purpose why this page matters core model mode 1 local file playback authority model what that means practically common failure shapes mode 2 airplay authority model what that means practically common failure shapes important local environment note mode 3 upnp authority model what that means practically common failure shapes mode 4 radio stream authority model what that means practically common failure shapes important principle mode 5 unresolved fallback driven case authority model what that means practically common failure shapes cross mode principles 1 do not assume one universal authority 2 visible truth is often app mediated 3 art authority is especially mode sensitive 4 troubleshooting should start with mode classification suggested troubleshooting order by mode if local file if airplay if upnp if radio stream if unresolved fallback driven relationship to other pages current status",
+  "playback-features.html": "purpose relevant source files playback features at a glance why this page matters read this branch in this order strong current sub branches 1 playback authority branch 2 playback troubleshooting branch 3 playback triage branch 4 queue overlap branch what this branch still needs later relationship to other pages current status timestamp",
   "playback-issue-triage-runbook.html": "purpose why this page matters core rule step 1 classify the playback mode first a local file playback b airplay c upnp d radio stream e unresolved fallback driven case important guardrail step 2 choose the matching authority chain if local file if airplay if upnp if radio stream if unresolved fallback driven step 3 decide what kind of playback symptom this is a transport truth problem b queue truth problem c art metadata truth problem d presentation interpretation problem important guardrail step 4 check the historically fragile playback paths fragile path a next up alexa mode behavior fragile path b mode sensitive art current song status truth fragile path c radio metadata guardrails fragile path d last good fallback preservation behavior fragile path e airplay local override reality step 5 decide which layer to inspect first route bootstrap layer service layer page runtime layer local runtime override layer step 6 use the minimum verification set that matches the symptom symptom type transport control wrong symptom type queue head next up wrong symptom type art metadata wrong symptom type degraded or stale looking output step 7 declare success only when the right truth source and visible result agree quick heuristics best companion pages current status",
   "playback-mode-troubleshooting.html": "purpose step 1 classify the playback mode step 2 choose the matching authority path local file airplay upnp radio stream unresolved fallback driven case step 3 choose the code layer to inspect page runtime layer route layer mpd service helper layer runtime admin local override layer step 4 choose verification based on change type quick heuristics best companion pages",
   "queue-and-playback-model.html": "purpose relevant source files queue management at a glance why this page matters read this branch in this order high level model core distinction playback vs queue playback control working interpretation queue control working interpretation queue shaping curation why this matters current actor model 1 user facing surfaces initiate intent 2 app host routes mediate the action 3 mpd remains an important underlying truth source 4 visible surfaces re render from resulting state current known playback queue route families direct playback family queue wizard family youtube queue family embedded queue surface display presentation overlap family mpd versus app side mediation practical implication relation to playback mode why it matters here relation to display and controller surfaces practical implication current known queue mutation patterns direct append replace crop preview apply embedded queue inspection what this page does not yet claim relationship to other pages what should follow this page timestamp current status",
@@ -8019,6 +8022,64 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
     {
       "id": "current-status",
       "text": "Current status"
+    }
+  ],
+  "playback-features.html": [
+    {
+      "id": "purpose",
+      "text": "Purpose"
+    },
+    {
+      "id": "relevant-source-files",
+      "text": "Relevant source files"
+    },
+    {
+      "id": "playback-features-at-a-glance",
+      "text": "Playback features at a glance"
+    },
+    {
+      "id": "why-this-page-matters",
+      "text": "Why this page matters"
+    },
+    {
+      "id": "read-this-branch-in-this-order",
+      "text": "Read this branch in this order"
+    },
+    {
+      "id": "strong-current-sub-branches",
+      "text": "Strong current sub-branches"
+    },
+    {
+      "id": "1-playback-authority-branch",
+      "text": "1. Playback authority branch"
+    },
+    {
+      "id": "2-playback-troubleshooting-branch",
+      "text": "2. Playback troubleshooting branch"
+    },
+    {
+      "id": "3-playback-triage-branch",
+      "text": "3. Playback triage branch"
+    },
+    {
+      "id": "4-queue-overlap-branch",
+      "text": "4. Queue overlap branch"
+    },
+    {
+      "id": "what-this-branch-still-needs-later",
+      "text": "What this branch still needs later"
+    },
+    {
+      "id": "relationship-to-other-pages",
+      "text": "Relationship to other pages"
+    },
+    {
+      "id": "current-status",
+      "text": "Current status"
+    },
+    {
+      "id": "timestamp",
+      "text": "Timestamp"
     }
   ],
   "playback-issue-triage-runbook.html": [
