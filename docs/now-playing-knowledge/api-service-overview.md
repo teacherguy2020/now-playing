@@ -8,6 +8,25 @@ It exists because the wiki already documents many API calls indirectly through i
 
 This page is meant to be that parent page.
 
+## Relevant source files
+
+This page is branch-oriented rather than file-complete, but these areas are especially relevant when grounding the Backend API branch:
+- `moode-nowplaying-api.mjs`
+- `src/routes/`
+- `src/services/`
+- route and service helpers that shape `/now-playing`, queue, config/runtime, and integration behavior
+
+## Backend API at a glance
+
+If you need the compressed branch model first, use this:
+- **state truth endpoints** shape the visible current-state contract
+- **playback and queue endpoints** control and mutate active playback state
+- **config and runtime endpoints** expose the operational control plane
+- **integration endpoints** bridge external systems such as YouTube, radio, Alexa, and adjacent integration flows
+- **the API branch is not generic plumbing**; it is one of the main behavior-ownership surfaces in the project
+
+That is why this branch should be read as a true top-level system branch.
+
 ## Why this page matters
 
 A lot of the system’s real behavior is not owned only by HTML pages or frontend scripts.
@@ -19,6 +38,18 @@ It is mediated through an app-host API service that:
 - coordinates with MPD, moOde, and other runtime-adjacent services
 
 Without an API-centered page, the wiki stays too UI-centric.
+
+## Read this branch in this order
+
+If you are trying to understand the Backend API as a system, read in this order:
+1. [api-service-overview.md](api-service-overview.md)
+2. [api-state-truth-endpoints.md](api-state-truth-endpoints.md)
+3. [api-playback-and-queue-endpoints.md](api-playback-and-queue-endpoints.md)
+4. [api-config-and-runtime-endpoints.md](api-config-and-runtime-endpoints.md)
+5. [api-youtube-radio-and-integration-endpoints.md](api-youtube-radio-and-integration-endpoints.md)
+6. [api-endpoint-catalog.md](api-endpoint-catalog.md)
+
+Then move into route ownership or troubleshooting pages when the question becomes service-specific or bug-specific.
 
 ## High-level role of the API service
 
@@ -203,11 +234,11 @@ For diagnostics- and maintenance-heavy route families that cut across features.
 ## Relationship to existing wiki pages
 
 This page should stay linked with:
-- `integrations.md`
-- `architecture.md`
-- `config-interface.md`
-- `youtube-interface.md`
-- `radio-metadata-eval-interface.md`
+- [integrations.md](integrations.md)
+- [architecture.md](architecture.md)
+- [config-interface.md](config-interface.md)
+- [youtube-interface.md](youtube-interface.md)
+- [radio-metadata-eval-interface.md](radio-metadata-eval-interface.md)
 - config child pages that already document endpoint families indirectly
 
 ## Current status
@@ -219,3 +250,7 @@ That matters because the project is not only:
 - or a collection of integration notes
 
 It is also an API-driven app-host service whose route families are one of the main ways the system actually works.
+
+## Timestamp
+
+Last updated: 2026-04-06 06:37 America/Chicago
