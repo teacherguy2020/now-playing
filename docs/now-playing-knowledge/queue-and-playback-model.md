@@ -32,6 +32,25 @@ But we do not yet have one page that says plainly:
 
 This page is that foundation.
 
+## Relevant source files
+
+This page is branch-oriented rather than file-complete, but these areas are especially relevant when grounding queue-management behavior:
+- `controller-queue.html`
+- `queue-wizard.html`
+- `src/routes/` queue and playback routes
+- queue-affecting controller actions in controller-family pages
+- backend queue/playback services and route ownership material
+
+## Queue management at a glance
+
+If you need the compressed branch model first, use this:
+- **queue management** is about shaping, preserving, replacing, cropping, and navigating queued playback state
+- **playback behavior** overlaps heavily with queue behavior, but they are not identical concepts
+- the queue branch includes both direct queue control and wizard-style queue construction flows
+- many apparent queue bugs are really mode/authority/ownership issues upstream of the visible queue surface
+
+That is why this branch should be read as a management system, not just a list of queue UI pages.
+
 ## Why this page matters
 
 A lot of practical confusion in this project comes from mixing together several things that are related but not identical:
@@ -43,6 +62,17 @@ A lot of practical confusion in this project comes from mixing together several 
 - display/presentation side effects
 
 Without a model page, those concepts stay scattered across pages and are easy to blur together.
+
+## Read this branch in this order
+
+If you are trying to understand the queue branch as a system, read in this order:
+1. [queue-and-playback-model.md](queue-and-playback-model.md)
+2. [controller-queue-interface.md](controller-queue-interface.md)
+3. [queue-wizard-internals.md](queue-wizard-internals.md)
+4. [api-playback-and-queue-endpoints.md](api-playback-and-queue-endpoints.md)
+5. [playback-authority-by-mode.md](playback-authority-by-mode.md)
+
+Then move into troubleshooting or ownership pages when the issue becomes mode-specific or backend-specific.
 
 ## High-level model
 
@@ -270,27 +300,31 @@ Those are the next-level proofing tasks.
 ## Relationship to other pages
 
 This page should stay linked with:
-- `api-playback-and-queue-endpoints.md`
-- `api-service-overview.md`
-- `now-playing-surface-variants.md`
-- `youtube-interface.md`
-- `playback-mode-troubleshooting.md`
-- `integrations.md`
+- [api-playback-and-queue-endpoints.md](api-playback-and-queue-endpoints.md)
+- [api-service-overview.md](api-service-overview.md)
+- [now-playing-surface-variants.md](now-playing-surface-variants.md)
+- [youtube-interface.md](youtube-interface.md)
+- [playback-mode-troubleshooting.md](playback-mode-troubleshooting.md)
+- [integrations.md](integrations.md)
 
 ## What should follow this page
 
 The next highest-value companion pages are:
-- `playback-authority-by-mode.md`
-- `queue-wizard-internals.md`
-- `controller-queue-interface.md`
+- [playback-authority-by-mode.md](playback-authority-by-mode.md)
+- [queue-wizard-internals.md](queue-wizard-internals.md)
+- [controller-queue-interface.md](controller-queue-interface.md)
 
-`playback-authority-by-mode.md` now serves as the companion page for mode-specific playback/art/status authority.
+[playback-authority-by-mode.md](playback-authority-by-mode.md) now serves as the companion page for mode-specific playback/art/status authority.
 
-`queue-wizard-internals.md` now serves as the sharper internal model page for Queue Wizard as the queue-shaping and preview/apply layer.
+[queue-wizard-internals.md](queue-wizard-internals.md) now serves as the sharper internal model page for Queue Wizard as the queue-shaping and preview/apply layer.
 
-`controller-queue-interface.md` now serves as the dedicated queue-surface page for standalone and embedded queue UI behavior.
+[controller-queue-interface.md](controller-queue-interface.md) now serves as the dedicated queue-surface page for standalone and embedded queue UI behavior.
 
 Those would turn this conceptual model into a much stronger engineering map.
+
+## Timestamp
+
+Last updated: 2026-04-06 06:21 America/Chicago
 
 ## Current status
 
