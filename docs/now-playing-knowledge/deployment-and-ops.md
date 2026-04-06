@@ -13,291 +13,356 @@ confidence: high
 
 ## Purpose
 
-This page explains what “deployment and operations” concretely means for the `now-playing` project.
+This page explains how changes in `now-playing` actually become live.
 
-The older version was too abstract.
-A better current interpretation is:
-- deployment = getting changed code/config/runtime behavior onto the actual app host and, when relevant, the moOde host
-- ops = understanding which machine or service a change affects, how that effect becomes live, and what must be verified afterward
+A better way to think about this page is:
+- not “what are the operational themes?”
+- but “if I change **this kind of thing**, what actually happens next?”
 
-So this page should answer questions like:
-- what am I actually deploying?
-- where does it run?
-- when does a change need only refresh/verification versus API restart?
-- when is the real effect on the app host versus the moOde host?
-- what pages should I read next for specific operational scenarios?
+So the point of this page is to help answer:
+- what did I actually change?
+- which machine or process does that affect?
+- does the change usually need only refresh/verification, or also restart?
+- what should I verify afterward?
 
-## Why this page matters
+## The main operational lesson
 
-This project is operationally easy to misunderstand because the visible system spans more than one runtime surface.
-A change may affect:
-- static/browser-facing files
-- app-host route or service logic
-- runtime-admin control paths
-- moOde-host browser-target behavior
-- host-specific overrides outside the main app tree
+The most important thing to learn from this system is:
 
-That means “deploy the change” is not a single action category.
-It depends on what changed.
+> a change can succeed at one layer and still fail to produce the effect you actually care about.
 
-## Concrete operational model
-
-A useful current model is:
-
-### 1. App-host code and static pages
-This includes things like:
-- HTML pages under `now-playing/`
-- JS/CSS used by those pages
-- route files under `src/routes/`
-- services/helpers used by the API
-- app-host entry logic like `moode-nowplaying-api.mjs`
-
-These changes primarily affect the app host.
-In Brian’s current setup, the main live app target is documented in `local-environment.md`.
-
-### 2. moOde-host display/runtime effects
-This includes things like:
-- browser target changes pushed into moOde
-- display mode selection behavior
-- Peppy/PeppyMeter/browser-target actions
-- host-side display/runtime results triggered through runtime-admin routes
-
-These changes may be *initiated* from the app-host API but their visible effect happens on the moOde host.
-
-### 3. Host override material
-This includes things like:
-- moOde-side override scripts/configs
-- mirrored recovery/audit material under ops/integrations docs
-- local host patches that are not automatically implied by app deploys
-
-These require separate host awareness and should not be treated like ordinary app-file deploys.
-
-## What usually gets deployed
-
-## Frontend/static surface changes
 Examples:
-- `app.html`
+- an endpoint can return success, but the moOde display target still may not have changed
+- a UI file can look correct in a normal browser, but still be wrong in kiosk or embedded mode
+- config can be written successfully, but startup-captured behavior may not change until restart
+- app-host logic can be correct while the visible result is still wrong on the moOde host
+
+That is the real operational shape of the project.
+
+## The system has more than one operational plane
+
+A useful concrete split is:
+
+### 1. App host plane
+This is where the app-host API and served UI live.
+Typical examples:
+- `moode-nowplaying-api.mjs`
+- `src/routes/*.mjs`
+- `app.html`, `controller.html`, `kiosk.html`, `visualizer.html`
+- browser JS/CSS under the app tree
+
+This plane owns things like:
+- `/now-playing`
+- `/next-up`
+- controller/kiosk/display page serving
+- queue/playback mediation logic
+- config/runtime-admin routes
+
+### 2. moOde host effect plane
+This is where some display/runtime effects become visibly real.
+Typical examples:
+- browser target changes
+- display target switching
+- peppy/browser-mode effects
+- some runtime-admin actions that reach across to the moOde host
+
+This means an app-host route can be correct while the real display effect is still wrong.
+
+### 3. Host override plane
+This includes manual or mirrored host-side override material.
+Typical examples:
+- moOde-side override scripts
+- host patches documented in `local-environment.md` or mirrored under ops/integrations material
+
+This is separate from normal app-file deployment and should not be mentally collapsed into it.
+
+## Change type → effect → verify
+
+This is the most useful part of the page.
+
+## 1. If you changed a browser page or frontend-only asset
+
+Typical examples:
 - `controller.html`
+- `app.html`
 - `kiosk.html`
 - `visualizer.html`
-- CSS or browser-side JS changes
+- CSS
+- browser-side JS used by those pages
 
-Practical meaning:
-- the changed files need to be present on the app host
-- visible behavior may change immediately once the host serves the new files
-- API restart is often unnecessary if the change is truly frontend-only
+### What that usually means
+You changed what the app host serves to the browser.
 
-But you still need to verify the relevant surface in its real operating context:
-- standalone
-- embedded
-- kiosk
-- moOde-pushed browser target
+### What usually becomes live
+- the new file content becomes live when the updated file is served
+- a page refresh is often enough
+- API restart is often unnecessary **if the change is truly frontend-only**
 
-## Backend / route / service changes
+### What to verify
+Verify the page in the real context that matters.
+
 Examples:
+- `controller.html` change → verify normal controller and kiosk/controller-backed behavior if relevant
+- `visualizer.html` change → verify both fullscreen visualizer behavior and embedded pane behavior if relevant
+- `kiosk.html` change → verify the redirect handoff path into `controller.html`, not just the standalone file
+
+### Real lesson
+Frontend-only does **not** mean “check in one browser tab and declare victory.”
+It means “the server process may not need restart, but the real operating context still matters.”
+
+## 2. If you changed route logic or service logic
+
+Typical examples:
 - `src/routes/*.mjs`
-- service helpers
-- config/runtime-admin route logic
-- app-host state-truth endpoints like `/now-playing`
+- service/helper code used by routes
+- `moode-nowplaying-api.mjs`
 
-Practical meaning:
-- changed code must be present on the app host
-- the running API/service process may need restart to pick up the change
-- route behavior should be verified directly, not only through a UI
+### What that usually means
+You changed app-host behavior, not just presentation.
 
-## Runtime-admin changes
+### What usually becomes live
+- the changed code must be loaded by the app-host process
+- process restart may be needed, depending on how the runtime currently loads that code
+
+### What to verify
+First verify the route directly.
+Then verify the surface that depends on it.
+
 Examples:
+- changed `/now-playing` logic in `moode-nowplaying-api.mjs`
+  - verify `/now-playing` directly
+  - then verify controller/display/kiosk surfaces that consume it
+- changed queue route logic
+  - verify the route first
+  - then verify queue UI / next-up / playback behavior
+
+### Real lesson
+If the route is wrong, UI verification alone is too indirect.
+If the route is right, UI verification still matters because some bugs are downstream of a correct route.
+
+## 3. If you changed runtime-admin behavior
+
+Typical examples:
+- `src/routes/config.runtime-admin.routes.mjs`
 - `/config/runtime/*`
 - `/config/moode/*`
 - `/config/services/*`
 - `/config/restart-*`
 
-Practical meaning:
-- these are not passive docs/settings concepts
-- they can trigger immediate live actions
-- some effects are on the app host, some on the moOde host, some on both
+### What that usually means
+You changed control-plane behavior, not just config text.
 
-## What “ops” concretely means in this project
+### What usually becomes live
+One of three things may be true:
+- the route writes config only
+- the route changes live app-host behavior immediately
+- the route triggers host-side behavior on the moOde host or service layer
 
-In this project, ops usually means one or more of:
-- deciding which host a change really affects
-- deciding whether restart is needed
-- deciding whether a browser refresh is enough
-- deciding whether the moOde host should visibly change
-- verifying the correct endpoint and the correct surface after the change
-- distinguishing mirrored repo material from real host state
+### What to verify
+You must verify the correct effect layer.
 
-So “ops” is not a vague umbrella. It is the practical question of how a change becomes live and how to verify it.
+Examples:
+- `/config/runtime/check-env`
+  - verify returned checks/results
+- `/config/moode/browser-url`
+  - verify that the real moOde display target changed
+- `/config/services/mpdscribble/action`
+  - verify service status, not just response JSON
 
-## Concrete decision rules
+### Real lesson
+A successful runtime-admin response does not automatically prove the intended host/runtime effect happened.
 
-## If the change is frontend-only
+## 4. If you changed a state-truth endpoint
+
 Typical examples:
-- HTML/CSS changes
-- browser-side JS changes
-- purely visual/layout changes
+- `/now-playing`
+- `/next-up`
+- Alexa state helpers
+- nearby payload-normalization logic
 
-Usually means:
-- deploy/update the app-host files
-- API restart often not required
-- verify in the real affected surface
+### What that usually means
+You changed one of the system’s central truth surfaces.
 
-But do not stop at a local browser check if the change is meant for:
-- embedded mode
-- kiosk mode
-- moOde browser target
-- controller-right-pane behavior
+### What usually becomes live
+- the app-host endpoint behavior changes
+- every dependent surface may shift with it
 
-## If the change is route/service logic
+### What to verify
+Always verify the endpoint itself first.
+Then verify the highest-value dependent surfaces.
+
+Example:
+- changed `/now-playing`
+  - verify `/now-playing`
+  - then verify controller shell, display target, and kiosk-visible now-playing behavior
+
+### Real lesson
+These are high-blast-radius changes.
+They are not “just another backend route.”
+
+## 5. If you changed a host override or host-side patch
+
 Typical examples:
-- route handlers
-- API behavior
-- service/helper changes
-- state-truth changes
+- moOde-side patch material
+- host override scripts
+- documented live patches in `local-environment.md`
 
-Usually means:
-- deploy/update the app-host code
-- likely restart or at least explicit runtime verification
-- verify the endpoint directly
-- then verify affected surfaces
+### What that usually means
+Normal app deploy assumptions are not enough.
 
-## If the change is config/runtime-admin logic
-Typical examples:
-- runtime-config behavior
-- display push actions
-- service-control behavior
-- moOde host actions
+### What to verify
+- verify the real host state
+- verify the real live effect on that host
+- do not confuse mirrored repo material with already-applied host state
 
-Usually means:
-- verify which machine is the real effect target
-- verify endpoint response
-- verify host-side visible effect or service/process condition
-- do not assume config write alone means live behavior changed
+### Real lesson
+The repo may document the override, but that does not guarantee the live machine is in sync.
 
-## If the change is host override material
-Typical examples:
-- moOde-side override scripts
-- mirrored recovery docs/scripts
-- manual patches on the live moOde host
+## App host vs moOde host: the key question
 
-Usually means:
-- normal app deploy assumptions are not sufficient
-- check `local-environment.md`
-- verify the real host state explicitly
+When something changed and the visible system still looks wrong, ask:
 
-## App host vs moOde host
+### “Which machine should have changed?”
 
-This distinction is one of the most important operational facts in the project.
+#### App host answers questions like:
+- did the route change?
+- did the served page change?
+- did `/now-playing` output change?
+- did controller/kiosk page logic change?
 
-## App host
-The app host primarily owns:
-- API routes
-- controller/display page serving
-- config/runtime state handling
-- state-truth endpoints like `/now-playing`
-- queue/playback mediation logic
+#### moOde host answers questions like:
+- did the browser target change?
+- did the actual room-facing display switch?
+- did a host-side display/runtime action take effect?
 
-If you changed:
-- page files
-- route files
-- services
-- API handlers
-
-start by thinking about the app host.
-
-## moOde host
-The moOde host is where display-target actions often become visibly real.
-It is the practical target for things like:
-- browser URL changes
-- display-mode target switching
-- host-side display behavior
-- some service/process actions initiated through runtime-admin routes
-
-If the endpoint says success but the real screen still looks wrong, do not stop at the app host.
-Ask whether the real effect should have occurred on the moOde host.
+This distinction explains a lot of false positives and false negatives during verification.
 
 ## Restart reality
 
-A useful current operational truth is:
-- not all changes become live the same way
+A useful concrete rule is:
+- not every change needs restart
+- but route/service/startup-captured behavior is more restart-sensitive than page-only changes
 
-### Often no restart needed
-- frontend-only page/style changes
-- some browser-side logic changes once the new files are served/refreshed
-
-### Often restart-sensitive
-- route logic
-- service helpers
-- startup-captured config/env behavior
-- API-process changes
-
-The exact restart details are covered more concretely in:
-- `restart-and-runtime-admin-troubleshooting.md`
-- `backend-change-verification-runbook.md`
-
-This page should stay at the level of:
-- what kinds of changes usually imply restart-sensitive behavior
-- and which operational question to ask next
-
-## Verification model after deployment
-
-A useful concrete verification pattern is:
-
-### 1. Verify the correct layer
-- endpoint if backend/route logic changed
-- page/surface if frontend logic changed
-- host-side visible effect if runtime-admin or moOde-target behavior changed
-
-### 2. Verify the correct context
-- standalone
-- embedded
-- kiosk
-- moOde browser target
-- local file playback vs AirPlay/radio/stream mode when relevant
-
-### 3. Verify the real symptom, not just a nearby symptom
+### Often restart is not the first question
 Examples:
-- endpoint correct but visible display wrong
-- page looks correct locally but wrong on moOde host
-- queue truth fixed but Next Up still wrong
-- config saved but runtime behavior unchanged until restart
+- page markup or CSS changed
+- browser-side JS changed
 
-## Best companion pages by operational question
-
-### If the question is “do I need restart or only verification?”
 Start with:
+- file served?
+- page refreshed?
+- correct real surface verified?
+
+### Often restart becomes part of the question
+Examples:
+- route logic changed
+- runtime behavior depends on startup-captured values
+- env-backed config behavior changed
+
+Start with:
+- direct route verification
+- then restart-sensitive reasoning if the live behavior didn’t change
+
+For the more detailed restart reasoning, use:
 - `restart-and-runtime-admin-troubleshooting.md`
 - `backend-change-verification-runbook.md`
 
-### If the question is “which host actually owns the live effect?”
-Start with:
-- `local-environment.md`
-- `config-network-and-runtime.md`
-- `restart-and-runtime-admin-troubleshooting.md`
+## What to verify after common change types
 
-### If the question is “how do I verify a display-side change?”
-Start with:
+## Example: changed `controller.html`
+
+Likely effect:
+- app-host-served UI changed
+
+Usually verify:
+- normal controller view if relevant
+- kiosk/controller-backed path if relevant
+- embedded child interactions if relevant
+
+Usually first question:
+- did the new file get served and loaded in the real context?
+
+## Example: changed `visualizer.html`
+
+Likely effect:
+- app-host-served visualizer behavior changed
+
+Usually verify:
+- fullscreen visualizer
+- embedded visualizer if used in pane mode
+- push-to-moOde behavior if relevant
+
+Usually first question:
+- is the visualizer wrong in the engine itself, or only in embedded/kiosk hosting?
+
+## Example: changed `moode-nowplaying-api.mjs`
+
+Likely effect:
+- state-truth endpoint behavior changed
+- visible downstream surfaces may also change
+
+Usually verify:
+- `/now-playing`, `/next-up`, or the specific endpoint directly
+- then controller/display surfaces that consume the payload
+
+Usually first question:
+- did the central truth surface change as expected?
+
+## Example: changed `config.runtime-admin.routes.mjs`
+
+Likely effect:
+- runtime-admin/control-plane behavior changed
+- may affect app host, moOde host, or both
+
+Usually verify:
+- endpoint response
+- actual target effect (service state, browser target, host result)
+
+Usually first question:
+- which machine or process was supposed to change?
+
+## Example: changed moOde-side override material
+
+Likely effect:
+- real host behavior changed outside the normal app tree
+
+Usually verify:
+- live host state
+- live effect on that host
+
+Usually first question:
+- am I verifying the real host, or just the mirrored repo copy?
+
+## Best companion pages by question
+
+### “What does Brian’s real setup look like?”
+Use:
+- `local-environment.md`
+
+### “Do I need restart or only verification?”
+Use:
+- `restart-and-runtime-admin-troubleshooting.md`
+- `backend-change-verification-runbook.md`
+
+### “How do I verify a display-side change?”
+Use:
 - `display-issue-triage-runbook.md`
 - `display-surface-troubleshooting.md`
 
-### If the question is “how do I verify playback-side truth after a change?”
-Start with:
+### “How do I verify playback/state truth changes?”
+Use:
 - `playback-issue-triage-runbook.md`
 - `playback-authority-by-mode.md`
 - `api-state-truth-endpoints.md`
 
-### If the question is “what is real in Brian’s live environment?”
-Start with:
-- `local-environment.md`
+## What this page is now really teaching
 
-## What this page is now confident about
-
-A stronger current operational summary is:
-- deployment in this project is not one thing
-- app-host changes, moOde-host effects, and host-override work are distinct categories
-- frontend-only changes often differ operationally from route/service/runtime-admin changes
-- runtime-admin routes can produce immediate live effects and must be verified as operations, not just config writes
-- the app host and moOde host should be kept separate mentally when triaging live behavior
+The page is trying to teach these system truths:
+- there is more than one operational plane in the project
+- the app host and moOde host should not be collapsed mentally
+- different change types become live in different ways
+- the first verification question is often “what layer should have changed?”
+- successful response, served file, and visible effect are three different things
 
 ## Relationship to other pages
 
@@ -308,16 +373,14 @@ This page should stay linked with:
 - `restart-and-runtime-admin-troubleshooting.md`
 - `display-issue-triage-runbook.md`
 - `playback-issue-triage-runbook.md`
-- `deployment-and-ops.html` rendered companion
 
 ## Current status
 
-At the moment, this page should be read as the concrete operational map for the project.
+At the moment, this page should be read as a practical change-type → effect → verify guide.
 
-Its job is no longer to gesture at “operational themes.”
-Its job is to explain:
-- what gets deployed
-- where it runs
-- what kind of change you are making
-- which host should visibly change
-- and which verification path should follow.
+Its job is not to sound operational.
+Its job is to help an agent decide:
+- what kind of change was made
+- which machine/process should actually be affected
+- what must be checked next
+- and why a “successful” result at one layer may still not mean the system changed in the way you intended.
