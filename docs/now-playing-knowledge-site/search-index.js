@@ -31,6 +31,7 @@ window.NP_KNOWLEDGE_SEARCH_INDEX = {
   "controller-queue-interface.html": "controller queue interface controller queue interface controller queue interface next up playlist curation purpose scope why page matters high level role versus wizard html evidence established elsewhere purpose scope why this page matters high level role queue interface versus queue wizard controller queue html queue wizard evidence already established elsewhere 1 embedded queue modal in substantive now playing pages 2 embedded pane contract participation 3 kiosk right pane routing target standalone versus embedded role standalone mode embedded mode queue interface in the broader queue playback model layer 3 queue inspection direct queue ui relationship to now playing surfaces relationship to kiosk mode relationship to backend api proofing what this page clarifies 1 queue ui is a real surface 2 queue ui is not queue wizard 3 queue ui is part of the kiosk embedded ecosystem 4 queue ui deserves deeper backend proofing relationship to other pages current status",
   "controller-tablet-anatomy.html": "controller tablet anatomy controller tablet anatomy controller tablet anatomy purpose why matters here high level role html main anatomical regions 1 kiosk presentation shell editor control strip what purpose why anatomy matters here high level role of controller tablet html main anatomical regions 1 kiosk editor control strip what it is what it does why it matters companion pages 2 now playing header card what it is what it does why it matters key ownership anchors 3 integrated transport controls what it is what it does why it matters companion pages 4 quick search strip what it is what it does why it matters companion pages 5 library category list what it is special row behavior why it matters companion pages 6 recent content region what it is what it does why it matters companion pages 7 tablet next up action bars what they are what they do why they matter companion pages 8 kiosk pane iframe region what it is what it does why it matters companion pages 9 album artist audio info modal family what it is what they do why they matter 10 device preset and layout profile logic what it is what it does why it matters companion pages practical where do i start map if asked to improve the tablet now playing header if asked to improve the tablet next up area if asked to improve quick search if asked to improve the library category list if asked to improve recent rails or recents layout if asked to improve right pane embedded behavior if asked to improve album artist audio info modal behavior anatomy rule for future agents relationship to other pages current status",
   "decisions-and-history.html": "decisions and history decisions and history decisions and history purpose confirmed durable historical lessons current default assumptions things changed over time phase 1 trust hardening milestone 2 operational boundary open questions purpose confirmed durable decisions confirmed historical lessons current default assumptions things that changed over time phase 1 trust hardening milestone phase 2 operational boundary milestone open questions",
+  "deepwiki-structure-mapping.html": "deepwiki structure mapping deepwiki structure mapping deepwiki structure mapping purpose target top level summary 1 overview current closest pages problem recommended restructuring move status purpose target top level structure mapping summary 1 overview current closest pages current problem recommended restructuring move status 2 user interfaces current closest pages current problem recommended restructuring move status 3 display enhancement system current closest pages current problem recommended restructuring move status 4 queue management current closest pages current problem recommended restructuring move status 5 media library current closest pages current problem recommended restructuring move status 6 playback features current closest pages current problem recommended restructuring move status 7 external integrations current closest pages current problem recommended restructuring move status 8 theme customization current closest pages current problem recommended restructuring move status 9 backend api current closest pages current problem recommended restructuring move status 10 configuration and administration current closest pages current problem recommended restructuring move status 11 development current closest pages current problem recommended restructuring move status 12 glossary current closest pages current problem recommended restructuring move status high level conclusions best existing structural fits branches that likely need stronger parent pages branches that mostly need presentation cleanup rather than brand new content recommended restructuring order how to use this page timestamp",
   "deployment-and-ops.html": "deployment and ops deployment and ops deployment and ops purpose main operational lesson system has plane 1 app host 2 moode effect 3 override change type verify you changed browser page frontend asset purpose the main operational lesson the system has more than one operational plane 1 app host plane 2 moode host effect plane 3 host override plane change type effect verify 1 if you changed a browser page or frontend only asset what that usually means what usually becomes live what to verify real lesson 2 if you changed route logic or service logic what that usually means what usually becomes live what to verify real lesson 3 if you changed runtime admin behavior what that usually means what usually becomes live what to verify real lesson 4 if you changed a state truth endpoint what that usually means what usually becomes live what to verify real lesson 5 if you changed a host override or host side patch what that usually means what to verify real lesson app host vs moode host the key question which machine should have changed restart reality often restart is not the first question often restart becomes part of the question what to verify after common change types example changed controller html example changed visualizer html example changed moode nowplaying api mjs example changed config runtime admin routes mjs example changed moode side override material best companion pages by question what does brian s real setup look like do i need restart or only verification how do i verify a display side change how do i verify playback state truth changes what this page is now really teaching relationship to other pages current status",
   "desktop-browser-interface.html": "desktop browser interface desktop browser interface desktop browser interface purpose why matters important files current working interpretation likely responsibilities relationship other pages implementation dimensions anatomy companion page purpose why the desktop browser interface matters important files current working interpretation likely responsibilities of the desktop browser interface relationship to other interface pages likely implementation dimensions anatomy companion page what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also related branch pages current status",
   "diagnostics-interface.html": "diagnostics interface diagnostics interface diagnostics interface debug inspection checks purpose why page matters important files high level role shell entry behavior major ui areas visible 1 request runner endpoint console 2 live embedded view cards purpose why this page matters important files high level role shell entry behavior major ui areas visible in the page 1 request runner endpoint console 2 live embedded view cards important dom action centers diagnostics script as the logic center request runner behavior track key aware diagnostics live embedded surface inspection relationship to display and controller debugging current observed api config contact architectural interpretation related branch pages anatomy companion page relationship to other pages things still to verify current status",
@@ -121,6 +122,7 @@ window.NP_KNOWLEDGE_SEARCH_SUMMARIES = {
   "controller-queue-interface.html": "title controller queue interface page type child topics queue playback controller runtime confidence high",
   "controller-tablet-anatomy.html": "Purpose",
   "decisions-and-history.html": "Purpose",
+  "deepwiki-structure-mapping.html": "title deepwiki structure mapping page type support topics metadata structure planning documentation confidence high",
   "deployment-and-ops.html": "title deployment and ops page type support topics ops runtime environment controller confidence high",
   "desktop-browser-interface.html": "Purpose",
   "diagnostics-interface.html": "Purpose",
@@ -211,6 +213,7 @@ window.NP_KNOWLEDGE_SEARCH_HEADINGS = {
   "controller-queue-interface.html": "purpose scope why this page matters high level role queue interface versus queue wizard controller queue html queue wizard evidence already established elsewhere 1 embedded queue modal in substantive now playing pages 2 embedded pane contract participation 3 kiosk right pane routing target standalone versus embedded role standalone mode embedded mode queue interface in the broader queue playback model layer 3 queue inspection direct queue ui relationship to now playing surfaces relationship to kiosk mode relationship to backend api proofing what this page clarifies 1 queue ui is a real surface 2 queue ui is not queue wizard 3 queue ui is part of the kiosk embedded ecosystem 4 queue ui deserves deeper backend proofing relationship to other pages current status",
   "controller-tablet-anatomy.html": "purpose why anatomy matters here high level role of controller tablet html main anatomical regions 1 kiosk editor control strip what it is what it does why it matters companion pages 2 now playing header card what it is what it does why it matters key ownership anchors 3 integrated transport controls what it is what it does why it matters companion pages 4 quick search strip what it is what it does why it matters companion pages 5 library category list what it is special row behavior why it matters companion pages 6 recent content region what it is what it does why it matters companion pages 7 tablet next up action bars what they are what they do why they matter companion pages 8 kiosk pane iframe region what it is what it does why it matters companion pages 9 album artist audio info modal family what it is what they do why they matter 10 device preset and layout profile logic what it is what it does why it matters companion pages practical where do i start map if asked to improve the tablet now playing header if asked to improve the tablet next up area if asked to improve quick search if asked to improve the library category list if asked to improve recent rails or recents layout if asked to improve right pane embedded behavior if asked to improve album artist audio info modal behavior anatomy rule for future agents relationship to other pages current status",
   "decisions-and-history.html": "purpose confirmed durable decisions confirmed historical lessons current default assumptions things that changed over time phase 1 trust hardening milestone phase 2 operational boundary milestone open questions",
+  "deepwiki-structure-mapping.html": "purpose target top level structure mapping summary 1 overview current closest pages current problem recommended restructuring move status 2 user interfaces current closest pages current problem recommended restructuring move status 3 display enhancement system current closest pages current problem recommended restructuring move status 4 queue management current closest pages current problem recommended restructuring move status 5 media library current closest pages current problem recommended restructuring move status 6 playback features current closest pages current problem recommended restructuring move status 7 external integrations current closest pages current problem recommended restructuring move status 8 theme customization current closest pages current problem recommended restructuring move status 9 backend api current closest pages current problem recommended restructuring move status 10 configuration and administration current closest pages current problem recommended restructuring move status 11 development current closest pages current problem recommended restructuring move status 12 glossary current closest pages current problem recommended restructuring move status high level conclusions best existing structural fits branches that likely need stronger parent pages branches that mostly need presentation cleanup rather than brand new content recommended restructuring order how to use this page timestamp",
   "deployment-and-ops.html": "purpose the main operational lesson the system has more than one operational plane 1 app host plane 2 moode host effect plane 3 host override plane change type effect verify 1 if you changed a browser page or frontend only asset what that usually means what usually becomes live what to verify real lesson 2 if you changed route logic or service logic what that usually means what usually becomes live what to verify real lesson 3 if you changed runtime admin behavior what that usually means what usually becomes live what to verify real lesson 4 if you changed a state truth endpoint what that usually means what usually becomes live what to verify real lesson 5 if you changed a host override or host side patch what that usually means what to verify real lesson app host vs moode host the key question which machine should have changed restart reality often restart is not the first question often restart becomes part of the question what to verify after common change types example changed controller html example changed visualizer html example changed moode nowplaying api mjs example changed config runtime admin routes mjs example changed moode side override material best companion pages by question what does brian s real setup look like do i need restart or only verification how do i verify a display side change how do i verify playback state truth changes what this page is now really teaching relationship to other pages current status",
   "desktop-browser-interface.html": "purpose why the desktop browser interface matters important files current working interpretation likely responsibilities of the desktop browser interface relationship to other interface pages likely implementation dimensions anatomy companion page what this page should eventually explain in more detail immediate follow up questions for future drill down relationship to the rest of the wiki see also related branch pages current status",
   "diagnostics-interface.html": "purpose why this page matters important files high level role shell entry behavior major ui areas visible in the page 1 request runner endpoint console 2 live embedded view cards important dom action centers diagnostics script as the logic center request runner behavior track key aware diagnostics live embedded surface inspection relationship to display and controller debugging current observed api config contact architectural interpretation related branch pages anatomy companion page relationship to other pages things still to verify current status",
@@ -4491,6 +4494,288 @@ window.NP_KNOWLEDGE_SEARCH_HEADING_TARGETS = {
     {
       "id": "open-questions",
       "text": "Open questions"
+    }
+  ],
+  "deepwiki-structure-mapping.html": [
+    {
+      "id": "purpose",
+      "text": "Purpose"
+    },
+    {
+      "id": "target-top-level-structure",
+      "text": "Target top-level structure"
+    },
+    {
+      "id": "mapping-summary",
+      "text": "Mapping summary"
+    },
+    {
+      "id": "1-overview",
+      "text": "1. Overview"
+    },
+    {
+      "id": "current-closest-pages",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status",
+      "text": "Status"
+    },
+    {
+      "id": "2-user-interfaces",
+      "text": "2. User Interfaces"
+    },
+    {
+      "id": "current-closest-pages-2",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem-2",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move-2",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status-2",
+      "text": "Status"
+    },
+    {
+      "id": "3-display-enhancement-system",
+      "text": "3. Display Enhancement System"
+    },
+    {
+      "id": "current-closest-pages-3",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem-3",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move-3",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status-3",
+      "text": "Status"
+    },
+    {
+      "id": "4-queue-management",
+      "text": "4. Queue Management"
+    },
+    {
+      "id": "current-closest-pages-4",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem-4",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move-4",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status-4",
+      "text": "Status"
+    },
+    {
+      "id": "5-media-library",
+      "text": "5. Media Library"
+    },
+    {
+      "id": "current-closest-pages-5",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem-5",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move-5",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status-5",
+      "text": "Status"
+    },
+    {
+      "id": "6-playback-features",
+      "text": "6. Playback Features"
+    },
+    {
+      "id": "current-closest-pages-6",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem-6",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move-6",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status-6",
+      "text": "Status"
+    },
+    {
+      "id": "7-external-integrations",
+      "text": "7. External Integrations"
+    },
+    {
+      "id": "current-closest-pages-7",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem-7",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move-7",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status-7",
+      "text": "Status"
+    },
+    {
+      "id": "8-theme-customization",
+      "text": "8. Theme & Customization"
+    },
+    {
+      "id": "current-closest-pages-8",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem-8",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move-8",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status-8",
+      "text": "Status"
+    },
+    {
+      "id": "9-backend-api",
+      "text": "9. Backend API"
+    },
+    {
+      "id": "current-closest-pages-9",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem-9",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move-9",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status-9",
+      "text": "Status"
+    },
+    {
+      "id": "10-configuration-and-administration",
+      "text": "10. Configuration and Administration"
+    },
+    {
+      "id": "current-closest-pages-10",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem-10",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move-10",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status-10",
+      "text": "Status"
+    },
+    {
+      "id": "11-development",
+      "text": "11. Development"
+    },
+    {
+      "id": "current-closest-pages-11",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem-11",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move-11",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status-11",
+      "text": "Status"
+    },
+    {
+      "id": "12-glossary",
+      "text": "12. Glossary"
+    },
+    {
+      "id": "current-closest-pages-12",
+      "text": "Current closest pages"
+    },
+    {
+      "id": "current-problem-12",
+      "text": "Current problem"
+    },
+    {
+      "id": "recommended-restructuring-move-12",
+      "text": "Recommended restructuring move"
+    },
+    {
+      "id": "status-12",
+      "text": "Status"
+    },
+    {
+      "id": "high-level-conclusions",
+      "text": "High-level conclusions"
+    },
+    {
+      "id": "best-existing-structural-fits",
+      "text": "Best existing structural fits"
+    },
+    {
+      "id": "branches-that-likely-need-stronger-parent-pages",
+      "text": "Branches that likely need stronger parent pages"
+    },
+    {
+      "id": "branches-that-mostly-need-presentation-cleanup-rather-than-brand-new-content",
+      "text": "Branches that mostly need presentation cleanup rather than brand-new content"
+    },
+    {
+      "id": "recommended-restructuring-order",
+      "text": "Recommended restructuring order"
+    },
+    {
+      "id": "how-to-use-this-page",
+      "text": "How to use this page"
+    },
+    {
+      "id": "timestamp",
+      "text": "Timestamp"
     }
   ],
   "deployment-and-ops.html": [

@@ -131,6 +131,7 @@ For the maintenance workflow, use `wiki-operations.md`.
 - `airplay-metadata-hardening.md` — moOde-side AirPlay metadata hardening, watchdog supervision, and verification
 - `repo-coverage-notes.md` — coverage self-audit
 - `wiki-gap-review-2026-04-06.md` — focused source-doc vs wiki gap review and next recommended additions
+- `deepwiki-structure-mapping.md` — target top-level structure map from DeepWiki sections to the current local wiki, including restructuring recommendations
 - `wiki-structure-notes.md` — page-structure and hierarchy rules
 - `wiki-operations.md` — ingest/query/lint model
 - `log.md` — chronological major milestones for the wiki itself

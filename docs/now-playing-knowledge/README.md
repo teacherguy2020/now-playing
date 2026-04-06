@@ -53,6 +53,8 @@ If you are new to the project or returning after a gap, use this reading order f
 
 Then use [decisions-and-history.md](decisions-and-history.md) when you need rationale or historical context.
 
+If the question is how the local wiki should evolve toward a clearer DeepWiki-style top-level structure, use [deepwiki-structure-mapping.md](deepwiki-structure-mapping.md).
+
 ## Read by goal
 
 ### Understand the system
