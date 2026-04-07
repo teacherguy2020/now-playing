@@ -253,6 +253,19 @@
       if (preset === 'tablet' || preset === 'tablet-landscape') return 'tablet';
       return preset;
     }
+    function buildPushedUrl(p){
+      const devicePresetForUrl = resolvedDevicePresetForUrl(p);
+      const presetForTarget = String(devicePresetForUrl || '').toLowerCase();
+      const targetPage = (presetForTarget === 'tablet' || presetForTarget.startsWith('ipad')) ? 'controller-tablet.html' : 'controller-mobile.html';
+      const qp = new URLSearchParams({
+        devicePreset: devicePresetForUrl,
+        profile: profileToken(p),
+      });
+      return `${location.protocol}//${location.hostname||'nowplaying.local'}:8101/${targetPage}?${qp.toString()}`;
+    }
+    function refreshPushedUrl(p){
+      if ($('pushedUrl')) $('pushedUrl').value = buildPushedUrl(p);
+    }
 
     async function apply(){
       const p=collect();
@@ -269,9 +282,7 @@
       const qp=new URLSearchParams({preview:'1',profile:profileToken(p),devicePreset:devicePresetForUrl,sw:String(Date.now())});
       $('controllerPreview').src=targetPage+'?'+qp.toString();
 
-      // Default pushed URL: short canonical route (+ minimal preset so layout is deterministic).
-      const pushed=`${location.protocol}//${location.hostname||'nowplaying.local'}:8101/${targetPage}?devicePreset=${encodeURIComponent(devicePresetForUrl)}`;
-      if ($('pushedUrl')) $('pushedUrl').value = pushed;
+      refreshPushedUrl(p);
 
       // Persist server-side in background.
       await saveServerProfile(p);
@@ -294,7 +305,7 @@
     });
     ['primaryThemeColor','secondaryThemeColor','primaryTextColor','secondaryTextColor'].forEach((id)=>{
       const el=$(id); if(!el) return;
-      const onLive=async()=>{ syncSwatches(); const p=collect(); write(p); await saveServerProfile(p); postLiveTheme(); };
+      const onLive=async()=>{ syncSwatches(); const p=collect(); write(p); refreshPushedUrl(p); await saveServerProfile(p); postLiveTheme(); };
       el.addEventListener('change', onLive);
       el.addEventListener('input', onLive);
     });
@@ -308,7 +319,7 @@
       $('primaryTextColor').value=String(c.primaryTextColor||'#f3f6ff');
       $('secondaryTextColor').value=String(c.secondaryTextColor||'#9eb3d6');
       syncSwatches();
-      const p=collect(); write(p); await saveServerProfile(p); postLiveTheme();
+      const p=collect(); write(p); refreshPushedUrl(p); await saveServerProfile(p); postLiveTheme();
     });
     (async ()=>{
       const local = read();
