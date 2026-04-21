@@ -548,7 +548,8 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
   });
 
   // Fire-and-forget seeded start for Alexa "vibe here" mode.
-  // Returns immediately after spawning the builder process.
+  // Returns immediately after spawning the builder process, but now also registers
+  // a status/debug job so controller UI can surface progress and failures.
   app.post('/config/queue-wizard/vibe-seed-start', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
@@ -572,6 +573,56 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       }
 
       const vibeIndexPath = await resolveVibeIndexPath();
+      const job = {
+        id: jobId,
+        status: 'running',
+        phase: 'starting',
+        targetQueue,
+        minRating: 0,
+        excludeGenre: 'none',
+        seedArtist,
+        seedTitle,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        builtCount: 0,
+        rawBuiltCount: 0,
+        added: [],
+        tracks: [],
+        logs: [],
+        debug: {
+          fallbackUsed: false,
+          fallbackCount: 0,
+          previewResponseCount: 0,
+          indexPath: vibeIndexPath,
+          seededStart: true,
+          playNow: !!playNow,
+          keepPlaying: !!keepPlaying,
+        },
+        nextEventId: 1,
+        error: '',
+        done: false,
+        jsonTmp: '',
+        logPath: path.join(vibeLogDir, `${jobId}.jsonl`),
+        proc: null,
+      };
+      vibeJobs.set(jobId, job);
+      appendVibeJobLog(job, 'start', {
+        seedArtist,
+        seedTitle,
+        targetQueue,
+        playNow,
+        keepPlaying,
+        mpdHost,
+        indexPath: vibeIndexPath,
+        pyPath,
+        seededStart: true,
+      }).catch(() => {});
+
+      const indexReady = await ensureVibeIndexReady(job, vibeIndexPath, mpdHost);
+      if (!indexReady) {
+        return res.status(500).json({ ok: false, error: job.error || 'Index build failed', jobId });
+      }
+
       const pyArgs = [
         pyPath,
         '--api-key', lastfmApiKey,
@@ -599,6 +650,56 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: false,
       });
+      job.proc = child;
+      appendVibeJobLog(job, 'run', {
+        seedArtist,
+        seedTitle,
+        targetQueue,
+        playNow,
+        keepPlaying,
+        mpdHost,
+        indexPath: vibeIndexPath,
+        pyPath,
+        seededStart: true,
+      }).catch(() => {});
+
+      const onLine = (lineIn = '') => {
+        const line = String(lineIn || '').trim();
+        if (!line) return;
+        job.updatedAt = Date.now();
+        job.logs.push(line);
+        if (job.logs.length > 300) job.logs.shift();
+        appendVibeJobLog(job, 'line', { line }).catch(() => {});
+
+        if (/Last\.fm get similar/i.test(line)) job.phase = 'querying last.fm';
+        if (/pick from/i.test(line)) job.phase = 'matching local library';
+
+        const m = line.match(/^\[hop\s+\d+\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i)
+          || line.match(/^\[simple\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i);
+        if (m) {
+          const label = String(m[1] || '').trim();
+          const method = String(m[2] || '').trim();
+          const parts = label.split(' — ');
+          const titleX = parts[0] || label;
+          const artistX = parts.length > 1 ? parts.slice(1).join(' — ') : '';
+          job.added.push({
+            eventId: job.nextEventId++,
+            artist: artistX,
+            title: titleX,
+            method,
+          });
+          if (job.added.length > 500) job.added = job.added.slice(-500);
+          job.builtCount += 1;
+          job.phase = 'adding tracks';
+        }
+
+        const pm = line.match(/^\[simple\]\s+pass\s+(\d+)\s+added\s+(\d+)\s+track/i);
+        if (pm) {
+          const p = Number(pm[1] || 0);
+          const n = Number(pm[2] || 0);
+          job.phase = `simple pass ${p} complete (+${n})`;
+        }
+      };
 
       let outBuf = '';
       let errBuf = '';
@@ -606,18 +707,30 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         outBuf += String(buf || '');
         const lines = outBuf.split(/\r?\n/);
         outBuf = lines.pop() || '';
-        lines.filter(Boolean).forEach((ln) => console.log(`[vibe-seed-start:${jobId}] ${ln}`));
+        lines.filter(Boolean).forEach(onLine);
       });
       child.stderr.on('data', (buf) => {
         errBuf += String(buf || '');
         const lines = errBuf.split(/\r?\n/);
         errBuf = lines.pop() || '';
-        lines.filter(Boolean).forEach((ln) => console.log(`[vibe-seed-start:${jobId}] stderr: ${ln}`));
+        lines.filter(Boolean).forEach((ln) => onLine(`stderr: ${ln}`));
       });
       child.on('close', (code) => {
-        if (outBuf.trim()) console.log(`[vibe-seed-start:${jobId}] ${outBuf.trim()}`);
-        if (errBuf.trim()) console.log(`[vibe-seed-start:${jobId}] stderr: ${errBuf.trim()}`);
-        console.log(`[vibe-seed-start:${jobId}] exited code=${code}`);
+        if (outBuf.trim()) onLine(outBuf.trim());
+        if (errBuf.trim()) onLine(`stderr: ${errBuf.trim()}`);
+        if (code !== 0 && !job.error) job.error = `vibe builder exited with code ${code}`;
+        job.done = true;
+        job.status = job.error ? 'error' : 'done';
+        job.phase = job.error ? 'error' : 'complete';
+        job.updatedAt = Date.now();
+        appendVibeJobLog(job, 'complete', {
+          exitCode: Number(code || 0),
+          status: job.status,
+          phase: job.phase,
+          error: job.error || '',
+          builtCount: Number(job.builtCount || 0),
+          seededStart: true,
+        }).catch(() => {});
       });
 
       return res.status(202).json({
