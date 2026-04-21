@@ -48,11 +48,27 @@ def is_seasonal_text(*parts: str) -> bool:
 
 def log_exc(prefix: str = "TRACEBACK"):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(LOG_PATH, "a", encoding="utf-8") as f:
-        f.write("\n" + "=" * 72 + "\n")
-        f.write(f"{ts} {prefix}\n")
-        f.write(traceback.format_exc())
+    try:
+        log_dir = os.path.dirname(LOG_PATH)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+        with open(LOG_PATH, "a", encoding="utf-8") as f:
+            f.write("\n" + "=" * 72 + "\n")
+            f.write(f"{ts} {prefix}\n")
+            f.write(traceback.format_exc())
+    except Exception:
+        pass
     print(f"{prefix}: crashed. See log: {LOG_PATH}", flush=True)
+
+
+def first_str(value) -> str:
+    if isinstance(value, list):
+        for item in value:
+            s = str(item or "").strip()
+            if s:
+                return s
+        return ""
+    return str(value or "").strip()
 
 
 def norm(s: str) -> str:
@@ -414,12 +430,13 @@ def main():
     last_genre_n = ""
     seed_genres = set()
     if cur:
-        cur_a = (cur.get("artist") or "").strip()
-        cur_t = (cur.get("title") or "").strip()
+        cur_a = first_str(cur.get("artist"))
+        cur_t = first_str(cur.get("title"))
         if norm(cur_a) == norm(seed_artist) and norm(cur_t) == norm(seed_title):
-            last_album_k = album_key((cur.get("album") or "").strip())
-            last_genre_n = norm((cur.get("genre") or "").strip())
-            seed_genres = genre_tokens((cur.get("genre") or "").strip())
+            last_album_k = album_key(first_str(cur.get("album")))
+            cur_genre = first_str(cur.get("genre"))
+            last_genre_n = norm(cur_genre)
+            seed_genres = genre_tokens(cur_genre)
 
     # If explicit seed wasn't current song, try local lookup to set album context
     if not last_album_k or not last_genre_n:
