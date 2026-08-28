@@ -15,6 +15,7 @@
     "undici": "5.28.5"
   },
   "scripts": {
+    "test": "node --test test/*.test.mjs",
     "peppy:export": "node scripts/export-peppymeter-skins.mjs",
     "peppy:deploy": "scripts/deploy-peppy-skins-to-moode.sh"
   },

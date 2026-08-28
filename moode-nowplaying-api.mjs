@@ -201,6 +201,7 @@ import {
   ITUNES_TIMEOUT_MS, ITUNES_TTL_HIT_MS, ITUNES_TTL_MISS_MS, ART_CACHE_DIR, ART_CACHE_LIMIT,
   ART_640_PATH, ART_BG_PATH, PODCAST_DL_LOG, MOODE_SSH, FAVORITES_M3U, MUSIC_LIBRARY_ROOT, PODCAST_ROOT,
   TRACK_NOTIFY_ENABLED, TRACK_NOTIFY_POLL_MS, TRACK_NOTIFY_DEDUPE_MS, TRACK_NOTIFY_ALEXA_MAX_AGE_MS,
+  SEEBURG_PLAYLIST_NAME,
   PUSHOVER_TOKEN, PUSHOVER_USER_KEY
 } from './src/config.mjs';
 import { log } from './src/lib/log.mjs';
@@ -218,6 +219,7 @@ import { registerPodcastSubscriptionRoutes } from './src/routes/podcasts-subscri
 import { registerPodcastRefreshRoutes } from './src/routes/podcasts-refresh.routes.mjs';
 import { registerPodcastEpisodeRoutes } from './src/routes/podcasts-episodes.routes.mjs';
 import { registerPodcastDownloadRoutes } from './src/routes/podcasts-download.routes.mjs';
+import { registerSeeburgRoutes } from './src/routes/seeburg.routes.mjs';
 
 async function downloadLatestForRss({ rss, count = 10 }) {
   const items = readSubs();
@@ -7043,6 +7045,15 @@ registerQueueRoutes(app, {
   log,
   execFileP,
   MPD_HOST,
+});
+
+registerSeeburgRoutes(app, {
+  requireTrackKey,
+  mpdQueryRaw,
+  mpdEscapeValue,
+  mpdHasACK,
+  parseMpdFirstBlock,
+  seeburgPlaylistName: SEEBURG_PLAYLIST_NAME,
 });
 
 registerAllConfigRoutes(app, {
