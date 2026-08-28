@@ -100,6 +100,10 @@ For the full boot-persistence setup (including startup-hook restore), see:
 
 👉 **Start here for full documentation:** [docs/README.md](./docs/README.md)
 
+The source-driven project knowledge base is also included at
+[docs/now-playing-knowledge/](./docs/now-playing-knowledge/), with a rendered
+HTML site in [docs/now-playing-knowledge-site/](./docs/now-playing-knowledge-site/).
+
 - Config
 - Diagnostics
 - Alexa
