@@ -104,6 +104,14 @@ The source-driven project knowledge base is also included at
 [docs/now-playing-knowledge/](./docs/now-playing-knowledge/), with a rendered
 HTML site in [docs/now-playing-knowledge-site/](./docs/now-playing-knowledge-site/).
 
+### Seeburg wallbox integration
+
+The Seeburg/Pico hardware client is maintained in the public
+[`seeburg-nowplaying-pico`](https://github.com/teacherguy2020/seeburg-nowplaying-pico)
+repository. The Now Playing API integration and its selection protocol are
+documented in [integrations.md](./docs/now-playing-knowledge/integrations.md)
+and the [API endpoint catalog](./docs/now-playing-knowledge/api-endpoint-catalog.md).
+
 - Config
 - Diagnostics
 - Alexa
