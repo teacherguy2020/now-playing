@@ -54,7 +54,9 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       const mpdHost = String(MPD_HOST || 'moode.local');
       let existing = [];
       try {
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file', 'playlist', playlistName]);
+        // `playlist` reads the live queue; `listplaylist` reads the saved playlist.
+        // Using the former silently replaced saved contents with whatever was queued.
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, 'listplaylist', playlistName]);
         existing = String(stdout || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
       } catch (_) {
         // A missing playlist is a valid create operation.

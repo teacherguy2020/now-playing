@@ -232,7 +232,7 @@ Observed request-shape examples with high confidence:
   - likely role: apply a previously planned queue payload into MPD/runtime state
 - `POST /config/queue-wizard/add-to-playlist`
   - request body: `playlistName`, `tracks[]`
-  - behavior: preserves existing playlist entries and appends the supplied tracks; creates the playlist when it does not exist
+  - behavior: reads the saved playlist with MPD `listplaylist`, preserves its existing entries in order, and appends the supplied tracks; creates the playlist when it does not exist
   - track-key protected; owner: `src/routes/config.queue-wizard-apply.routes.mjs`
 - `POST /config/queue-wizard/vibe-start`
   - diagnostics example body includes:
