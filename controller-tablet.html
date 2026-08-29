@@ -114,6 +114,16 @@
     .qSpin{width:12px;height:12px;border:2px solid rgba(223,234,255,.45);border-top-color:#ffffff;border-radius:999px;display:block;animation:qSpin .7s linear infinite}
     @keyframes qSpin{to{transform:rotate(360deg)}}
     .qBtn.done{background:#1f5d33;border-color:#45b26f;color:#eafff1}
+    .mobilePlaylistModal{display:none;position:fixed;inset:0;z-index:1000;align-items:center;justify-content:center;background:rgba(0,0,0,.62);padding:18px}
+    .mobilePlaylistModal.open{display:flex}
+    .mobilePlaylistCard{width:min(420px,100%);max-height:calc(100dvh - 36px);overflow:auto;border:1px solid #35507a;border-radius:14px;background:#0b1425;color:#e9f1ff;padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+    .mobilePlaylistCard h2{margin:0 0 12px;font-size:18px}
+    .mobilePlaylistList{max-height:240px;overflow:auto;display:grid;gap:6px;margin:10px 0}
+    .mobilePlaylistList button,.mobilePlaylistCreate button{width:100%;padding:10px;border:1px solid #35507a;border-radius:8px;background:#16253e;color:#e9f1ff;text-align:left;cursor:pointer}
+    .mobilePlaylistCreate{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}
+    .mobilePlaylistCreate input{min-width:0;padding:10px;border:1px solid #35507a;border-radius:8px;background:#121c30;color:#e9f1ff;font:inherit}
+    .mobilePlaylistCreate button{width:auto;text-align:center}
+    .mobilePlaylistClose{float:right;border:0;background:transparent;color:#e9f1ff;font-size:18px;cursor:pointer}
 
     .list{margin:2px 0 14px;padding:0;list-style:none}
     .rowWrap{position:relative;overflow:hidden}
@@ -667,6 +677,19 @@
     <button type="button" id="homeQuickKb" class="quickKb" aria-label="Show keyboard">⌨</button>
     <button type="button" id="homeQuickClear" class="quickClear" aria-label="Clear search">×</button>
     <div id="homeQuickResults" class="quickMenu"></div>
+  </div>
+
+  <div id="mobilePlaylistModal" class="mobilePlaylistModal" aria-hidden="true">
+    <div class="mobilePlaylistCard" role="dialog" aria-modal="true" aria-labelledby="mobilePlaylistTitle">
+      <button id="mobilePlaylistClose" class="mobilePlaylistClose" type="button" aria-label="Close">✕</button>
+      <h2 id="mobilePlaylistTitle">Add to playlist</h2>
+      <div id="mobilePlaylistStatus" class="muted">Choose an existing playlist or create a new one.</div>
+      <div id="mobilePlaylistList" class="mobilePlaylistList"></div>
+      <div class="mobilePlaylistCreate">
+        <input id="mobilePlaylistNewName" type="text" placeholder="New playlist name" maxlength="120" autocomplete="off" />
+        <button id="mobilePlaylistCreateBtn" type="button">Create</button>
+      </div>
+    </div>
   </div>
 
   <ul class="list" id="libraryList">
@@ -3364,7 +3387,7 @@
       const safeText = escQuick(x.value || "");
       const context = x.type === "track" ? [x.artist, x.album].filter(Boolean).join(" \u00b7 ") : "";
       const textHtml = x.type === "artist" ? "<button type='button' class='qTxt qTxtBtn' data-act='open-artist' title='Show albums by ".concat(safeTitle, "'>").concat(safeText, "</button>") : x.type === "track" ? "<span class='qTrackLabelWrap' tabindex='0' aria-label='".concat(escQuick([x.title, context].filter(Boolean).join(" \u2014 ")), "'><span class='qTrackLabel'>").concat(escQuick(x.title), "</span>").concat(x.artist ? "<span class='qTrackArtist'>".concat(escQuick(x.artist), "</span>") : "", "<span class='qTrackTooltip' role='tooltip'>").concat(escQuick([x.title, context].filter(Boolean).join(" \u2014 ")), "</span></span>") : "<div class='qTxt'>".concat(escQuick(label), "</div>");
-      return "<div class='qRow' data-type='".concat(x.type, "' data-value='").concat(encodeURIComponent(x.value), "' data-artist='").concat(encodeURIComponent(String(x.artist || "")), "'><div class='qMain'><div class='qMeta'>").concat(x.type, "</div>").concat(textHtml, "</div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>\u25B6</button><button class='qBtn' data-act='add' title='Add'>\uFF0B</button></div></div>");
+      return "<div class='qRow' data-type='".concat(x.type, "' data-value='").concat(encodeURIComponent(x.value), "' data-artist='").concat(encodeURIComponent(String(x.artist || "")), "'><div class='qMain'><div class='qMeta'>").concat(x.type, "</div>").concat(textHtml, "</div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>\u25B6</button><button class='qBtn' data-act='add' title='Add'>\uFF0B</button><button class='qBtn' data-act='playlist' title='Add to playlist'>\u266B</button></div></div>");
     }).join("") || "<div class='qRow'><div class='qTxt'>No matches</div></div>";
     host.classList.add("open");
   }
@@ -3380,6 +3403,50 @@
     const r = await fetch("".concat(base, "/config/queue-wizard/preview"), { method: "POST", headers: reqHeaders(true), body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
     return r.ok && (j == null ? void 0 : j.ok) && Array.isArray(j.tracks) ? j.tracks.map((t) => String((t == null ? void 0 : t.file) || "").trim()).filter(Boolean) : [];
+  }
+  async function openTabletPlaylistModal(type, value, artist = "") {
+    const modal = document.getElementById("mobilePlaylistModal");
+    const list = document.getElementById("mobilePlaylistList");
+    const status = document.getElementById("mobilePlaylistStatus");
+    if (!modal || !list || !status) return;
+    modal._tracks = [];
+    list.innerHTML = "<div class='muted'>Loading selection and playlists...</div>";
+    status.textContent = "Choose an existing playlist or create a new one.";
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    try {
+      modal._tracks = await tracksForQuick(type, value, artist);
+      const names = quickIndex.filter((x) => x.type === "playlist").map((x) => x.value);
+      list.innerHTML = names.length ? names.map((n) => "<button type='button' data-playlist-name='".concat(escQuick(n), "'>").concat(escQuick(n), "</button>")).join("") : "<div class='muted'>No existing playlists.</div>";
+    } catch (e) {
+      status.textContent = (e == null ? void 0 : e.message) || "Could not load tracks.";
+      list.innerHTML = "";
+    }
+  }
+  async function addTabletTracksToPlaylist(name) {
+    const modal = document.getElementById("mobilePlaylistModal");
+    const status = document.getElementById("mobilePlaylistStatus");
+    const playlistName = String(name || "").trim();
+    const tracks = Array.isArray(modal == null ? void 0 : modal._tracks) ? modal._tracks : [];
+    if (!playlistName || !tracks.length) return;
+    status.textContent = "Adding ".concat(tracks.length, " track").concat(tracks.length === 1 ? "" : "s", "...");
+    try {
+      const r = await fetch("".concat(base, "/config/queue-wizard/add-to-playlist"), { method: "POST", headers: reqHeaders(true), body: JSON.stringify({ playlistName, tracks }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !(j == null ? void 0 : j.ok)) throw new Error((j == null ? void 0 : j.error) || "HTTP ".concat(r.status));
+      status.textContent = "Added to \u201c".concat(playlistName, "\u201d.");
+      await loadHomeQuickIndex();
+      setTimeout(closeTabletPlaylistModal, 700);
+    } catch (e) {
+      status.textContent = (e == null ? void 0 : e.message) || "Could not save playlist.";
+    }
+  }
+  function closeTabletPlaylistModal() {
+    const modal = document.getElementById("mobilePlaylistModal");
+    if (!modal) return;
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+    modal._tracks = [];
   }
   async function runQuickAction(type, value, artist, action) {
     let files = await tracksForQuick(type, value, artist);
@@ -4015,6 +4082,23 @@
   hqr.addEventListener("click", async (ev) => {
     const row = ev.target.closest(".qRow[data-type][data-value]");
     if (!row) return;
+    const playlistBtn = ev.target.closest("button.qBtn[data-act='playlist']");
+    if (playlistBtn) {
+      let value = "";
+      let artist = "";
+      try {
+        value = decodeURIComponent(String(row.getAttribute("data-value") || ""));
+      } catch {
+        value = String(row.getAttribute("data-value") || "");
+      }
+      try {
+        artist = decodeURIComponent(String(row.getAttribute("data-artist") || ""));
+      } catch {
+        artist = String(row.getAttribute("data-artist") || "");
+      }
+      await openTabletPlaylistModal(String(row.getAttribute("data-type") || ""), value, artist);
+      return;
+    }
     const openArtistBtn = ev.target.closest(".qTxtBtn[data-act='open-artist']");
     const type = String(row.getAttribute("data-type") || "");
     let value = "";
@@ -4051,6 +4135,20 @@
       b.innerHTML = old;
       b.disabled = false;
     }, 650);
+  });
+  document.getElementById("mobilePlaylistList") == null ? void 0 : document.getElementById("mobilePlaylistList").addEventListener("click", (ev) => {
+    const btn = ev.target.closest("button[data-playlist-name]");
+    if (btn) addTabletTracksToPlaylist(btn.getAttribute("data-playlist-name") || "");
+  });
+  document.getElementById("mobilePlaylistCreateBtn") == null ? void 0 : document.getElementById("mobilePlaylistCreateBtn").addEventListener("click", () => {
+    addTabletTracksToPlaylist(document.getElementById("mobilePlaylistNewName").value || "");
+  });
+  document.getElementById("mobilePlaylistNewName") == null ? void 0 : document.getElementById("mobilePlaylistNewName").addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") addTabletTracksToPlaylist(ev.target.value || "");
+  });
+  document.getElementById("mobilePlaylistClose") == null ? void 0 : document.getElementById("mobilePlaylistClose").addEventListener("click", closeTabletPlaylistModal);
+  document.getElementById("mobilePlaylistModal") == null ? void 0 : document.getElementById("mobilePlaylistModal").addEventListener("click", (ev) => {
+    if (ev.target == null ? void 0 : ev.target.id === "mobilePlaylistModal") closeTabletPlaylistModal();
   });
   document.addEventListener("click", (ev) => {
     if (!ev.target.closest(".quickWrap")) {
