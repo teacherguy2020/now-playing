@@ -90,6 +90,10 @@
     .heroQuickSearchWrap{position:relative;display:flex;align-items:center}
     .heroQuickSearch{min-width:220px;max-width:360px;width:min(42vw,340px);padding:5px 9px;border-radius:9px;border:1px solid var(--theme-tab-border);background:var(--theme-tab-bg);color:var(--theme-text);font-size:12px;opacity:.18;filter:brightness(.82);transition:opacity .14s ease,filter .14s ease}
     .heroQuickSearchResults{display:none;position:fixed;left:0;top:0;max-height:320px;overflow:auto;z-index:2147483647;background:var(--theme-rail-bg);border:1px solid var(--theme-rail-border);border-radius:10px;padding:6px;box-shadow:0 12px 24px rgba(0,0,0,.34)}
+    .heroQuickTrackLabelWrap{position:relative;min-width:0;flex:1 1 auto;align-self:stretch;display:flex;align-items:center}
+    .heroQuickTrackLabel{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .heroQuickTrackTooltip{display:none;position:absolute;left:0;top:calc(100% + 3px);z-index:3;width:max-content;max-width:min(340px,calc(100vw - 32px));max-height:120px;overflow-y:auto;overflow-x:hidden;padding:8px 10px;border:1px solid var(--theme-rail-border);border-radius:8px;background:var(--theme-rail-bg);color:var(--theme-text);box-shadow:0 10px 22px rgba(0,0,0,.42);font-size:12px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;cursor:default}
+    .heroQuickTrackLabelWrap:hover .heroQuickTrackTooltip,.heroQuickTrackLabelWrap:focus-within .heroQuickTrackTooltip{display:block}
     .heroPlaylistModal{display:none;position:fixed;inset:0;z-index:2147483648;align-items:center;justify-content:center;background:rgba(0,0,0,.58);padding:18px}
     .heroPlaylistModal.open{display:flex}
     .heroPlaylistCard{width:min(420px,100%);border:1px solid var(--theme-rail-border);border-radius:14px;background:var(--theme-rail-bg);color:var(--theme-text);padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
@@ -3050,7 +3054,7 @@
                   : displayLabel;
                 return `<div style="display:flex;align-items:center;gap:6px;">`
                   + `<div style="flex:1 1 auto;min-width:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border:0;background:transparent;color:var(--theme-text);text-align:left;border-radius:8px;">`
-                  + `<span title="${escHtml(labelTitle)}" aria-label="${escHtml(labelTitle)}" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(visibleLabel)}</span>`
+                  + `<span class="heroQuickTrackLabelWrap" tabindex="0" aria-label="${escHtml(labelTitle)}"><span class="heroQuickTrackLabel">${escHtml(visibleLabel)}</span><span class="heroQuickTrackTooltip" role="tooltip">${escHtml(labelTitle)}</span></span>`
                   + `<span style="font-size:11px;white-space:nowrap;opacity:.88;padding:1px 6px;border-radius:999px;background:${pillBg};">${escHtml(x.type)}</span>`
                   + `</div>`
                   + `<button type="button" data-hero-quick-action="play" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Replace queue and play" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(59,130,246,.18);color:#dbeafe;cursor:pointer;font-weight:700;line-height:1;">▶</button>`
