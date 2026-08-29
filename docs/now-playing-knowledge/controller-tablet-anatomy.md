@@ -442,6 +442,8 @@ It is a multi-region orchestration shell with:
 - modal workflows
 - and heavy device-preset/layout logic.
 
+Quick Search track results retain artist and album metadata in the result title tooltip and accessible label, which helps distinguish duplicate track titles without expanding the compact result row.
+
 ## Timestamp
 
 Last updated: 2026-08-29 America/Chicago
