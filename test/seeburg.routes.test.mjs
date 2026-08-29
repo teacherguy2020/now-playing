@@ -60,7 +60,9 @@ test('clears the idle queue, plays the selected track, and reports the new state
     mpdHasACK: (raw) => String(raw).includes('ACK'),
     parseMpdFirstBlock: (raw) => ({
       state: raw.includes('state: play') ? 'play' : 'stop',
-      playlistlength: raw.includes('playlistlength: 1') ? '1' : '0',
+      playlistlength: raw.includes('playlistlength: 1')
+        ? '1'
+        : raw.includes('playlistlength: 4') ? '4' : '0',
     }),
     mpdQueryRaw: async (command) => {
       calls.push(command);

@@ -104,7 +104,10 @@ export function registerSeeburgRoutes(app, deps) {
       if (mpdHasACK(after)) throw new Error('MPD status failed after queueing');
 
       const afterStatus = parseMpdFirstBlock(after);
-      const queued = Number(afterStatus.playlistlength) === Number(beforeStatus.playlistlength) + 1;
+      const expectedQueueLength = queueWasCleared
+        ? 1
+        : Number(beforeStatus.playlistlength) + 1;
+      const queued = Number(afterStatus.playlistlength) === expectedQueueLength;
       if (!queued) throw new Error('MPD did not report the selected track as queued');
 
       return res.json({
