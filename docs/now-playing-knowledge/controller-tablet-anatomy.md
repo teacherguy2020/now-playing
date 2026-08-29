@@ -159,7 +159,7 @@ This is the tablet shell’s quick entrypoint for search and jump-to behavior.
 ### Why it matters
 Quick search is one of the highest-value action areas on a tablet shell. It is also likely to interact with browse-index/local derived-state behavior rather than only raw live queries.
 
-The persistent app-shell hero search (`#heroQuickSearch`) searches genres, artists, albums, track titles, and playlists. It exposes three actions for each result: play (replace and start), add (append to the live queue), and add to playlist (open a modal to append to an existing playlist or create a new one). Track results carry their library file as the action value, so duplicate title tags remain distinct. The playlist action resolves the selection through the same preview paths used by play/add, then calls `POST /config/queue-wizard/add-to-playlist`, which uses MPD's `addplaylist` command to append directly to the saved playlist.
+The tablet quick search (`#homeQuickSearch`) searches artists, albums, track titles, and playlists. Track results include artist/album context and carry their exact library file as the action value, so duplicate title tags remain distinct. The persistent app-shell hero search (`#heroQuickSearch`) also searches genres and exposes three actions for each result: play (replace and start), add (append to the live queue), and add to playlist (open a modal to append to an existing playlist or create a new one). Its playlist action calls `POST /config/queue-wizard/add-to-playlist`, which uses MPD's `addplaylist` command to append directly to the saved playlist.
 
 ### Companion pages
 - `queue-and-playback-model.md`

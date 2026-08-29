@@ -102,6 +102,11 @@
     .qTxtBtn{appearance:none;-webkit-appearance:none;border:0;background:none;padding:0;margin:0;font:inherit;color:inherit;cursor:pointer;text-align:left;display:block;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .qTxtBtn:hover{text-decoration:underline;text-underline-offset:2px}
     .qTxtBtn:focus-visible{outline:2px solid color-mix(in oklab,var(--accent,#74a8ff) 72%, white 28%);outline-offset:2px;border-radius:6px}
+    .qTrackLabelWrap{position:relative;display:block;min-width:0;max-width:100%;cursor:default}
+    .qTrackLabel{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px;color:var(--text)}
+    .qTrackArtist{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--muted,#9aa4b2)}
+    .qTrackTooltip{position:fixed;display:none;max-width:min(420px,calc(100vw - 32px));max-height:4.5em;overflow:auto;padding:7px 9px;border:1px solid var(--quick-line,var(--line));border-radius:7px;background:var(--panel,#20252d);color:var(--text);box-shadow:0 8px 22px rgba(0,0,0,.35);font-size:12px;line-height:1.5;white-space:normal;z-index:30}
+    .qTrackLabelWrap:hover .qTrackTooltip,.qTrackLabelWrap:focus-within .qTrackTooltip{display:block}
     .qBtns{display:flex;gap:6px}
     .qBtn{width:26px;height:26px;border-radius:999px;border:1px solid var(--quick-line,var(--line));background:var(--quick-line,var(--line));color:var(--text);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:transform .08s ease, background .18s ease, border-color .18s ease, color .18s ease}
     .qBtn:active{transform:scale(.94)}
@@ -3329,12 +3334,21 @@
       seen.add(k);
       albums.push({ type: "album", value: album, artist, search: "".concat(artist, " ").concat(album).toLowerCase() });
     });
+    const tracks = (Array.isArray(optR == null ? void 0 : optR.tracks) ? optR.tracks : []).map((t) => ({
+      type: "track",
+      value: String((t == null ? void 0 : t.value) || "").trim(),
+      title: String((t == null ? void 0 : t.label) || "").trim(),
+      artist: String((t == null ? void 0 : t.artist) || "").trim(),
+      album: String((t == null ? void 0 : t.album) || "").trim()
+    })).filter((t) => t.value && t.title).map((t) => ({ ...t, search: [t.title, t.artist, t.album].filter(Boolean).join(" ").toLowerCase() }));
     quickIndex = [
       ...artists.map((v) => ({ type: "artist", value: String(v || "").trim(), search: String(v || "").trim().toLowerCase() })),
       ...albums,
+      ...tracks,
       ...playlists.map((v) => ({ type: "playlist", value: String(v || "").trim(), search: String(v || "").trim().toLowerCase() }))
     ].filter((x) => x.value);
   }
+  const escQuick = (s = "") => String(s).replace(/[&<>\'\"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c] || c));
   function renderHomeQuickResults(q) {
     const host = document.getElementById("homeQuickResults");
     const t = String(q || "").trim().toLowerCase();
@@ -3345,16 +3359,18 @@
     }
     const list = quickIndex.filter((x) => String(x.search || x.value || "").includes(t)).slice(0, 50);
     host.innerHTML = list.map((x) => {
-      const label = x.type === "album" && x.artist ? "".concat(x.artist, " \u2014 ").concat(x.value) : x.value;
-      const safeTitle = String(x.value || "").replace(/&/g, "&amp;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const safeText = String(x.value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const textHtml = x.type === "artist" ? "<button type='button' class='qTxt qTxtBtn' data-act='open-artist' title='Show albums by ".concat(safeTitle, "'>").concat(safeText, "</button>") : "<div class='qTxt'>".concat(label, "</div>");
+      const label = x.type === "album" && x.artist ? "".concat(x.artist, " \u2014 ").concat(x.value) : x.type === "track" ? x.title : x.value;
+      const safeTitle = escQuick(x.value || "");
+      const safeText = escQuick(x.value || "");
+      const context = x.type === "track" ? [x.artist, x.album].filter(Boolean).join(" \u00b7 ") : "";
+      const textHtml = x.type === "artist" ? "<button type='button' class='qTxt qTxtBtn' data-act='open-artist' title='Show albums by ".concat(safeTitle, "'>").concat(safeText, "</button>") : x.type === "track" ? "<span class='qTrackLabelWrap' tabindex='0' aria-label='".concat(escQuick([x.title, context].filter(Boolean).join(" \u2014 ")), "'><span class='qTrackLabel'>").concat(escQuick(x.title), "</span>").concat(x.artist ? "<span class='qTrackArtist'>".concat(escQuick(x.artist), "</span>") : "", "<span class='qTrackTooltip' role='tooltip'>").concat(escQuick([x.title, context].filter(Boolean).join(" \u2014 ")), "</span></span>") : "<div class='qTxt'>".concat(escQuick(label), "</div>");
       return "<div class='qRow' data-type='".concat(x.type, "' data-value='").concat(encodeURIComponent(x.value), "' data-artist='").concat(encodeURIComponent(String(x.artist || "")), "'><div class='qMain'><div class='qMeta'>").concat(x.type, "</div>").concat(textHtml, "</div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>\u25B6</button><button class='qBtn' data-act='add' title='Add'>\uFF0B</button></div></div>");
     }).join("") || "<div class='qRow'><div class='qTxt'>No matches</div></div>";
     host.classList.add("open");
   }
   async function tracksForQuick(type, value, artist = "") {
     await ensureKey();
+    if (type === "track") return [String(value || "").trim()].filter(Boolean);
     if (type === "playlist") {
       const r2 = await fetch("".concat(base, "/config/queue-wizard/playlist-preview?playlist=").concat(encodeURIComponent(value)), { cache: "no-store", headers: reqHeaders(false) });
       const j2 = await r2.json().catch(() => ({}));
