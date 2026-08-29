@@ -12,29 +12,6 @@ function safePlaylistName(name = '') {
     .trim();
 }
 
-async function writePlaylistFile({ playlistName, lines, moodeUser, moodeHost }) {
-  const localTmp = path.join('/tmp', `qw-playlist-${process.pid}-${Date.now()}.m3u`);
-  const remoteTmp = `/tmp/qw-playlist-${process.pid}-${Date.now()}.m3u`;
-  const remoteDst = `/var/lib/mpd/playlists/${playlistName}.m3u`;
-  try {
-    await fs.writeFile(localTmp, `${lines.join('\n')}\n`, 'utf8');
-    await execFileP('scp', [
-      '-q', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6',
-      localTmp, `${moodeUser}@${moodeHost}:${remoteTmp}`,
-    ], { timeout: 20000 });
-    const sudoCmd = `sudo -n bash -lc 'set -euo pipefail; mkdir -p /var/lib/mpd/playlists; mv -f -- ${JSON.stringify(remoteTmp)} ${JSON.stringify(remoteDst)}; chown mpd:audio -- ${JSON.stringify(remoteDst)} 2>/dev/null || true; chmod 0664 -- ${JSON.stringify(remoteDst)} 2>/dev/null || true'`;
-    const nonSudoCmd = `bash -lc 'set -euo pipefail; mkdir -p /var/lib/mpd/playlists; mv -f -- ${JSON.stringify(remoteTmp)} ${JSON.stringify(remoteDst)}; chmod 0664 -- ${JSON.stringify(remoteDst)} 2>/dev/null || true'`;
-    try {
-      await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, sudoCmd], { timeout: 20000 });
-    } catch {
-      await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, nonSudoCmd], { timeout: 20000 });
-    }
-  } finally {
-    await fs.unlink(localTmp).catch(() => {});
-    await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, `rm -f -- ${JSON.stringify(remoteTmp)} >/dev/null 2>&1 || true`], { timeout: 10000 }).catch(() => {});
-  }
-}
-
 export function registerConfigQueueWizardApplyRoute(app, deps) {
   const { requireTrackKey } = deps;
 
@@ -52,20 +29,16 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       if (!tracks.length) return res.status(400).json({ ok: false, error: 'tracks[] is required' });
 
       const mpdHost = String(MPD_HOST || 'moode.local');
-      let existing = [];
-      try {
-        // `playlist` reads the live queue; `listplaylist` reads the saved playlist.
-        // Using the former silently replaced saved contents with whatever was queued.
-        const { stdout } = await execFileP('mpc', ['-h', mpdHost, 'listplaylist', playlistName]);
-        existing = String(stdout || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-      } catch (_) {
-        // A missing playlist is a valid create operation.
+
+      // Add directly to MPD's saved playlist. Reading and rewriting the m3u
+      // file is racy and, on moOde, can replace the playlist when the read
+      // command is unsupported. MPD's addplaylist command appends each entry
+      // to an existing playlist and creates it when needed.
+      for (const track of tracks) {
+        await execFileP('mpc', ['-h', mpdHost, 'addplaylist', playlistName, track], { timeout: 15000 });
       }
 
-      const moodeUser = String(MOODE_SSH_USER || 'moode');
-      const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local');
-      await writePlaylistFile({ playlistName, lines: [...existing, ...tracks], moodeUser, moodeHost });
-      return res.json({ ok: true, playlistName, created: existing.length === 0, added: tracks.length, total: existing.length + tracks.length });
+      return res.json({ ok: true, playlistName, added: tracks.length });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
