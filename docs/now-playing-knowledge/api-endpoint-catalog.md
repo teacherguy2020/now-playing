@@ -154,6 +154,11 @@ Endpoints:
 The Seeburg wallbox/Pico sends only the selection number. Playlist order on moOde is
 the catalog, so adding or reordering tracks does not require changing the API code.
 
+The Pico implementation is maintained separately in the
+[`seeburg-nowplaying-pico`](https://github.com/teacherguy2020/seeburg-nowplaying-pico)
+repository. It is a client of this API rather than a second playlist or playback
+authority.
+
 Commissioning example:
 
 ```bash

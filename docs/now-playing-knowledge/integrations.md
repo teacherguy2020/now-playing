@@ -99,7 +99,9 @@ Best companion pages:
 
 ### Seeburg wallbox selection bridge
 
-The Seeburg wallbox integration is app-host route logic backed by moOde's MPD playlist:
+The Seeburg wallbox is a hardware client of the app-host API. The Pico firmware
+decodes the wallbox selection and sends only the numeric selection, while the
+Now Playing API resolves that number against moOde's saved MPD playlist:
 - `POST /integrations/seeburg/selection` accepts a number from `1` through `100`
 - the number selects that position in the saved `Seeburg Playlist` by default
 - when nothing is playing, the queue is cleared, the selected file is added, and playback starts
@@ -107,13 +109,21 @@ The Seeburg wallbox integration is app-host route logic backed by moOde's MPD pl
 - `dryRun: true` and `GET /integrations/seeburg/playlist` support commissioning before the full 100-track catalog exists
 - `SEEBURG_PLAYLIST_NAME` can override the playlist name via the API environment
 
+The firmware and hardware documentation live in the separate
+[`seeburg-nowplaying-pico`](https://github.com/teacherguy2020/seeburg-nowplaying-pico)
+repository; the project notes are mirrored locally under `seeburg-wallbox/`.
+This is intentionally a playlist-position protocol: changing the catalog is a
+moOde/MPD playlist operation and does not require changing the Pico firmware or
+the API route.
+
 The current hardware-side project is documented in `seeburg-wallbox/wiki/software-integration.md`.
 
 Live deployment status:
 - API host: `10.0.0.4` (`/opt/now-playing`)
 - service: `now-playing.service`
 - playlist observed during commissioning: 36 tracks
-- production route behavior: append-only; it does not start playback
+- production route behavior: starts a selected track from a stopped/paused state,
+  and appends without interruption while already playing
 
 ## 2. MPD
 
@@ -263,4 +273,4 @@ The current wiki already supports a stronger truth:
 
 ## Timestamp
 
-Last updated: 2026-08-28 America/Chicago
+Last updated: 2026-08-29 America/Chicago
