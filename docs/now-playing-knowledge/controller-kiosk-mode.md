@@ -233,6 +233,21 @@ This page should stay linked with:
 - `controller-kiosk-scaffold.md`
 - `kiosk-shell-anatomy.md`
 
+## Quick Search in the legacy controller shell
+
+The live `controller.html` shell now has the same Quick Search behavior as the mobile and tablet controller views. The `#homeQuickSearch` index includes artists, albums, track titles, and playlists.
+
+Track entries preserve the exact library file in their action value, so duplicate titles remain distinct. The compact result shows the track title and artist; hover or keyboard focus exposes the full title, artist, and album context in a scrollable tooltip.
+
+Each result provides three actions:
+- play now
+- add to the live queue
+- add to playlist
+
+The playlist action opens the controller playlist modal, where the user can select an existing playlist or create a new one. It submits to `POST /config/queue-wizard/add-to-playlist`, whose MPD implementation appends with `addplaylist`.
+
+This parity applies to the normal controller shell and its kiosk-backed use. `controller-kiosk.html` remains a separate scaffold and does not inherit this implementation.
+
 ## Current status
 
 At the moment, this page is much less abstract than before.
@@ -240,3 +255,7 @@ At the moment, this page is much less abstract than before.
 The current code strongly supports treating `controller.html` as:
 - a real kiosk-mode implementation surface
 - not just a place kiosk happens to land after redirect
+
+## Timestamp
+
+Last updated: 2026-08-29 America/Chicago

@@ -82,6 +82,11 @@
     .qTxtBtn{appearance:none;-webkit-appearance:none;border:0;background:none;padding:0;margin:0;font:inherit;color:inherit;cursor:pointer;text-align:left;display:block;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .qTxtBtn:hover{text-decoration:underline;text-underline-offset:2px}
     .qTxtBtn:focus-visible{outline:2px solid color-mix(in oklab,var(--accent,#74a8ff) 72%, white 28%);outline-offset:2px;border-radius:6px}
+    .qTrackLabelWrap{position:relative;display:block;min-width:0;max-width:100%;cursor:default}
+    .qTrackLabel{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .qTrackTooltip{display:none;position:absolute;left:0;top:calc(100% + 4px);z-index:4;width:max-content;max-width:min(340px,calc(100vw - 32px));max-height:120px;overflow:auto;padding:8px 10px;border:1px solid #35507a;border-radius:8px;background:#0b1425;color:#e9f1ff;box-shadow:0 10px 22px rgba(0,0,0,.42);font-size:12px;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+    .qTrackLabelWrap:hover .qTrackTooltip,.qTrackLabelWrap:focus-within .qTrackTooltip{display:block}
+    .qTrackArtist{display:block;font-size:12px;color:#9eb3d6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .qBtns{display:flex;gap:6px}
     .qBtn{width:26px;height:26px;border-radius:999px;border:1px solid var(--quick-line,var(--line));background:var(--quick-line,var(--line));color:var(--text);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:transform .08s ease, background .18s ease, border-color .18s ease, color .18s ease}
     .qBtn:active{transform:scale(.94)}
@@ -89,6 +94,16 @@
     .qSpin{width:12px;height:12px;border:2px solid rgba(223,234,255,.45);border-top-color:#ffffff;border-radius:999px;display:block;animation:qSpin .7s linear infinite}
     @keyframes qSpin{to{transform:rotate(360deg)}}
     .qBtn.done{background:#1f5d33;border-color:#45b26f;color:#eafff1}
+    .mobilePlaylistModal{display:none;position:fixed;inset:0;z-index:1000;align-items:center;justify-content:center;background:rgba(0,0,0,.62);padding:18px}
+    .mobilePlaylistModal.open{display:flex}
+    .mobilePlaylistCard{width:min(420px,100%);max-height:calc(100dvh - 36px);overflow:auto;border:1px solid #35507a;border-radius:14px;background:#0b1425;color:#e9f1ff;padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+    .mobilePlaylistCard h2{margin:0 0 12px;font-size:18px}
+    .mobilePlaylistList{max-height:240px;overflow:auto;display:grid;gap:6px;margin:10px 0}
+    .mobilePlaylistList button,.mobilePlaylistCreate button{width:100%;padding:10px;border:1px solid #35507a;border-radius:8px;background:#16253e;color:#e9f1ff;text-align:left;cursor:pointer}
+    .mobilePlaylistCreate{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}
+    .mobilePlaylistCreate input{min-width:0;padding:10px;border:1px solid #35507a;border-radius:8px;background:#121c30;color:#e9f1ff;font:inherit}
+    .mobilePlaylistCreate button{width:auto;text-align:center}
+    .mobilePlaylistClose{float:right;border:0;background:transparent;color:#e9f1ff;font-size:18px;cursor:pointer}
 
     .list{margin:2px 0 14px;padding:0;list-style:none}
     .rowWrap{position:relative;overflow:hidden}
@@ -438,6 +453,19 @@
         
       </div>
       <ul class="albumTracks" id="recentAlbumTracks"></ul>
+    </div>
+  </div>
+
+  <div id="mobilePlaylistModal" class="mobilePlaylistModal" aria-hidden="true">
+    <div class="mobilePlaylistCard" role="dialog" aria-modal="true" aria-labelledby="mobilePlaylistTitle">
+      <button id="mobilePlaylistClose" class="mobilePlaylistClose" type="button" aria-label="Close">✕</button>
+      <h2 id="mobilePlaylistTitle">Add to playlist</h2>
+      <div id="mobilePlaylistStatus" class="muted">Choose an existing playlist or create a new one.</div>
+      <div id="mobilePlaylistList" class="mobilePlaylistList"></div>
+      <div class="mobilePlaylistCreate">
+        <input id="mobilePlaylistNewName" type="text" placeholder="New playlist name" maxlength="120" autocomplete="off" />
+        <button id="mobilePlaylistCreateBtn" type="button">Create</button>
+      </div>
     </div>
   </div>
 
@@ -1938,9 +1966,14 @@
         const k=`${artist.toLowerCase()}__${album.toLowerCase()}`; if(seen.has(k)) return; seen.add(k);
         albums.push({type:'album', value:album, artist, search:`${artist} ${album}`.toLowerCase()});
       });
+      const tracks = (Array.isArray(optR?.tracks)?optR.tracks:[]).map((t)=>({
+        type:'track', value:String(t?.value||'').trim(), title:String(t?.label||'').trim(),
+        artist:String(t?.artist||'').trim(), album:String(t?.album||'').trim()
+      })).filter(t=>t.value&&t.title).map(t=>({...t, search:[t.title,t.artist,t.album].filter(Boolean).join(' ').toLowerCase()}));
       quickIndex = [
         ...artists.map(v=>({type:'artist', value:String(v||'').trim(), search:String(v||'').trim().toLowerCase()})),
         ...albums,
+        ...tracks,
         ...playlists.map(v=>({type:'playlist', value:String(v||'').trim(), search:String(v||'').trim().toLowerCase()})),
       ].filter(x=>x.value);
     }
@@ -1951,19 +1984,23 @@
       if(!t){ host.classList.remove('open'); host.innerHTML=''; return; }
       const list=quickIndex.filter(x=>String(x.search||x.value||'').includes(t)).slice(0,50);
       host.innerHTML = list.map((x)=>{
-        const label = x.type==='album' && x.artist ? `${x.artist} — ${x.value}` : x.value;
-        const safeTitle = String(x.value || '').replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const safeText = String(x.value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const label = x.type==='album' && x.artist ? `${x.artist} — ${x.value}` : (x.type==='track' ? x.title : x.value);
+        const esc = (s='')=>String(s).replace(/[&<>\'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]||c));
+        const safeTitle = esc(x.value || '');
+        const safeText = esc(x.value || '');
+        const context = x.type==='track' ? [x.artist,x.album].filter(Boolean).join(' · ') : '';
         const textHtml = x.type==='artist'
           ? `<button type='button' class='qTxt qTxtBtn' data-act='open-artist' title='Show albums by ${safeTitle}'>${safeText}</button>`
-          : `<div class='qTxt'>${label}</div>`;
-        return `<div class='qRow' data-type='${x.type}' data-value='${encodeURIComponent(x.value)}' data-artist='${encodeURIComponent(String(x.artist||''))}'><div class='qMain'><div class='qMeta'>${x.type}</div>${textHtml}</div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>▶</button><button class='qBtn' data-act='add' title='Add'>＋</button></div></div>`;
+          : x.type==='track' ? `<span class='qTrackLabelWrap' tabindex='0' aria-label='${esc([x.title,context].filter(Boolean).join(' — '))}'><span class='qTrackLabel'>${esc(x.title)}</span>${x.artist?`<span class='qTrackArtist'>${esc(x.artist)}</span>`:''}<span class='qTrackTooltip' role='tooltip'>${esc([x.title,context].filter(Boolean).join(' — '))}</span></span>`
+          : `<div class='qTxt'>${esc(label)}</div>`;
+        return `<div class='qRow' data-type='${x.type}' data-value='${encodeURIComponent(x.value)}' data-artist='${encodeURIComponent(String(x.artist||''))}'><div class='qMain'><div class='qMeta'>${esc(x.type)}</div>${textHtml}</div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>▶</button><button class='qBtn' data-act='add' title='Add'>＋</button><button class='qBtn' data-act='playlist' title='Add to playlist'>♫</button></div></div>`;
       }).join('') || `<div class='qRow'><div class='qTxt'>No matches</div></div>`;
       host.classList.add('open');
     }
 
     async function tracksForQuick(type, value, artist=''){
       await ensureKey();
+      if(type==='track') return [String(value||'').trim()].filter(Boolean);
       if(type==='playlist'){
         const r=await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(value)}`,{cache:'no-store',headers:reqHeaders(false)});
         const j=await r.json().catch(()=>({}));
@@ -1974,6 +2011,30 @@
       const j=await r.json().catch(()=>({}));
       return (r.ok && j?.ok && Array.isArray(j.tracks)) ? j.tracks.map(t=>String(t?.file||'').trim()).filter(Boolean) : [];
     }
+
+    async function openMobilePlaylistModal(type,value,artist=''){
+      const modal=document.getElementById('mobilePlaylistModal');
+      const list=document.getElementById('mobilePlaylistList');
+      const status=document.getElementById('mobilePlaylistStatus');
+      if(!modal||!list||!status) return;
+      modal._tracks=[]; list.innerHTML='<div class="muted">Loading selection and playlists…</div>';
+      status.textContent='Choose an existing playlist or create a new one.';
+      modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
+      try{
+        modal._tracks=await tracksForQuick(type,value,artist);
+        const names=quickIndex.filter(x=>x.type==='playlist').map(x=>x.value);
+        list.innerHTML=names.length?names.map(n=>`<button type="button" data-playlist-name="${String(n).replace(/[&<>\'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]||c))}">${String(n).replace(/[&<>\'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]||c))}</button>`).join(''):'<div class="muted">No existing playlists.</div>';
+      }catch(e){ status.textContent=e?.message||'Could not load tracks.'; list.innerHTML=''; }
+    }
+    async function addMobileTracksToPlaylist(name){
+      const modal=document.getElementById('mobilePlaylistModal'); const status=document.getElementById('mobilePlaylistStatus');
+      const playlistName=String(name||'').trim(); const tracks=Array.isArray(modal?._tracks)?modal._tracks:[];
+      if(!playlistName||!tracks.length) return;
+      status.textContent=`Adding ${tracks.length} track${tracks.length===1?'':'s'}…`;
+      try{ const r=await fetch(`${base}/config/queue-wizard/add-to-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlistName,tracks})}); const j=await r.json().catch(()=>({})); if(!r.ok||!j?.ok) throw new Error(j?.error||`HTTP ${r.status}`); status.textContent=`Added to “${playlistName}”.`; await loadHomeQuickIndex(); setTimeout(closeMobilePlaylistModal,700); }
+      catch(e){ status.textContent=e?.message||'Could not save playlist.'; }
+    }
+    function closeMobilePlaylistModal(){ const modal=document.getElementById('mobilePlaylistModal'); if(!modal)return; modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); modal._tracks=[]; }
 
     async function runQuickAction(type, value, artist, action){
       let files=await tracksForQuick(type,value,artist);
@@ -2238,6 +2299,8 @@
       let value=''; let artist='';
       try{ value=decodeURIComponent(String(row.getAttribute('data-value')||'')); }catch{ value=String(row.getAttribute('data-value')||''); }
       try{ artist=decodeURIComponent(String(row.getAttribute('data-artist')||'')); }catch{ artist=String(row.getAttribute('data-artist')||''); }
+      const playlistBtn=ev.target.closest('button.qBtn[data-act="playlist"]');
+      if(playlistBtn){ await openMobilePlaylistModal(type,value,artist); return; }
       if (openArtistBtn && type === 'artist' && value) {
         ev.preventDefault();
         ev.stopPropagation();
@@ -2269,6 +2332,11 @@
       b.textContent = '✓';
       setTimeout(()=>{ b.classList.remove('done'); b.innerHTML = old; b.disabled = false; }, 650);
     });
+    document.getElementById('mobilePlaylistList')?.addEventListener('click',(ev)=>{ const btn=ev.target.closest('button[data-playlist-name]'); if(btn) addMobileTracksToPlaylist(btn.getAttribute('data-playlist-name')||''); });
+    document.getElementById('mobilePlaylistCreateBtn')?.addEventListener('click',()=>addMobileTracksToPlaylist(document.getElementById('mobilePlaylistNewName')?.value||''));
+    document.getElementById('mobilePlaylistNewName')?.addEventListener('keydown',(ev)=>{ if(ev.key==='Enter') addMobileTracksToPlaylist(ev.target.value||''); });
+    document.getElementById('mobilePlaylistClose')?.addEventListener('click',closeMobilePlaylistModal);
+    document.getElementById('mobilePlaylistModal')?.addEventListener('click',(ev)=>{ if(ev.target?.id==='mobilePlaylistModal') closeMobilePlaylistModal(); });
     document.addEventListener('click',(ev)=>{ if(!ev.target.closest('.quickWrap')){ hqr.classList.remove('open'); } });
 
     railModeBtn?.addEventListener('click', ()=>cycleRecentSource(1));
