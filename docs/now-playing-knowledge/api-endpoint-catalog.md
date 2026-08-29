@@ -188,6 +188,7 @@ Endpoints found:
 - `POST /config/queue-wizard/apply`
 - `POST /config/queue-wizard/add-to-playlist`
 - `GET /config/queue-wizard/options`
+  - returns the searchable library option sets, including `tracks[]` with `value` (library file), `label` (track title), `artist`, and `album`
 - `GET /config/queue-wizard/playlists`
 - `POST /config/queue-wizard/load-playlist`
 - `POST /config/queue-wizard/delete-playlist`

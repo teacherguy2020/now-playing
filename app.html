@@ -2783,6 +2783,12 @@
             ...pack(optJ.genres, 'Genre'),
             ...pack(optJ.artists, 'Artist'),
             ...pack(optJ.albums, 'Album'),
+            ...(Array.isArray(optJ.tracks) ? optJ.tracks : []).map((v) => {
+              const value = String(v?.value || '').trim();
+              const title = String(v?.label || '').trim();
+              const artist = String(v?.artist || '').trim();
+              return { type:'Track', value, label:title, artist, album:String(v?.album || '').trim(), lower:title.toLowerCase() };
+            }).filter((x) => x.value && x.label),
             ...pack(optJ.genres, 'Exclude genre'),
             ...pack(plJ.playlists, 'Playlist'),
           ];
@@ -2890,7 +2896,9 @@
           runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
         }
         let tracks = [];
-        if (String(type || '') === 'Playlist') {
+        if (String(type || '') === 'Track') {
+          tracks = [String(value || '').trim()].filter(Boolean);
+        } else if (String(type || '') === 'Playlist') {
           const pr = await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(String(value || ''))}`, { headers: runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}, cache:'no-store' });
           const pj = await pr.json().catch(() => ({}));
           if (!pr.ok || !pj?.ok) throw new Error(pj?.error || `HTTP ${pr.status}`);
@@ -2994,11 +3002,12 @@
         const q = String(qRaw || '').trim().toLowerCase();
         if (!q) { hideHeroQuickResults(); return; }
 
-        const typeOrder = ['Genre', 'Artist', 'Album', 'Playlist', 'Exclude genre'];
+        const typeOrder = ['Genre', 'Artist', 'Album', 'Track', 'Playlist', 'Exclude genre'];
         const typeColor = {
           'Genre': 'rgba(56,189,248,.20)',
           'Artist': 'rgba(34,197,94,.20)',
           'Album': 'rgba(168,85,247,.22)',
+          'Track': 'rgba(251,191,36,.22)',
           'Playlist': 'rgba(244,114,182,.22)',
           'Exclude genre': 'rgba(245,158,11,.20)',
         };

@@ -478,6 +478,13 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
           value: String(a?.album || ''),
           label: String(a?.artist || '').trim() ? `${String(a.artist)} — ${String(a.album || '')}` : String(a?.album || ''),
         }));
+        const tracks = (Array.isArray(idx?.tracks) ? idx.tracks : []).map((t)=>({
+          // Use the file as the value so identical title tags remain distinct and actionable.
+          value: String(t?.file || ''),
+          label: String(t?.title || '').trim(),
+          artist: String(t?.artist || t?.albumArtist || '').trim(),
+          album: String(t?.album || '').trim(),
+        })).filter((t)=>t.value && t.label);
 
         return {
           ok: true,
@@ -485,6 +492,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
           genres: Array.from(genres).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })),
           artists: (Array.isArray(idx?.artists) ? idx.artists : []).map((a)=>String(a?.name || '')).filter(Boolean),
           albums,
+          tracks,
           browseIndex: { builtAt: String(idx?.builtAt || ''), counts: idx?.counts || {} },
         };
       })();
