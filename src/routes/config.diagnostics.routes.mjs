@@ -241,6 +241,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     { group: 'Browse', method: 'POST', path: '/config/browse/rebuild', body: { force: true } },
     { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/preview', body: { genres: [], artists: [], albums: [], excludeGenres: [], minRating: 0, maxTracks: 25 } },
     { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/apply', body: { mode: 'append', keepNowPlaying: false, tracks: [''], shuffle: false } },
+    { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/add-to-playlist', body: { playlistName: 'My Playlist', tracks: [''] } },
     { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/vibe-start', body: { targetQueue: 50, minRating: 0 } },
     { group: 'Queue Wizard', method: 'POST', path: '/config/queue-wizard/vibe-seed-start', body: { seedArtist: 'John Mayer', seedTitle: 'Gravity', targetQueue: 12 } },
     { group: 'Queue Wizard', method: 'GET', path: '/config/queue-wizard/radio-options' },

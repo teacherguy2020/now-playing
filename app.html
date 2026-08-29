@@ -90,6 +90,15 @@
     .heroQuickSearchWrap{position:relative;display:flex;align-items:center}
     .heroQuickSearch{min-width:220px;max-width:360px;width:min(42vw,340px);padding:5px 9px;border-radius:9px;border:1px solid var(--theme-tab-border);background:var(--theme-tab-bg);color:var(--theme-text);font-size:12px;opacity:.18;filter:brightness(.82);transition:opacity .14s ease,filter .14s ease}
     .heroQuickSearchResults{display:none;position:fixed;left:0;top:0;max-height:320px;overflow:auto;z-index:2147483647;background:var(--theme-rail-bg);border:1px solid var(--theme-rail-border);border-radius:10px;padding:6px;box-shadow:0 12px 24px rgba(0,0,0,.34)}
+    .heroPlaylistModal{display:none;position:fixed;inset:0;z-index:2147483648;align-items:center;justify-content:center;background:rgba(0,0,0,.58);padding:18px}
+    .heroPlaylistModal.open{display:flex}
+    .heroPlaylistCard{width:min(420px,100%);border:1px solid var(--theme-rail-border);border-radius:14px;background:var(--theme-rail-bg);color:var(--theme-text);padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+    .heroPlaylistCard h2{margin:0 0 12px;font-size:18px}
+    .heroPlaylistList{max-height:240px;overflow:auto;display:grid;gap:6px;margin:10px 0}
+    .heroPlaylistList button,.heroPlaylistCreate button{width:100%;padding:9px 10px;border:1px solid var(--theme-rail-border);border-radius:8px;background:var(--theme-tab-bg);color:var(--theme-text);text-align:left;cursor:pointer}
+    .heroPlaylistCreate{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:12px}
+    .heroPlaylistCreate input{min-width:0;padding:9px 10px;border:1px solid var(--theme-rail-border);border-radius:8px;background:var(--theme-tab-bg);color:var(--theme-text)}
+    .heroPlaylistClose{float:right;border:0;background:transparent;color:var(--theme-text);font-size:18px;cursor:pointer}
     .quickThemeSelect:hover,.quickThemeSelect:focus,.heroQuickSearch:hover,.heroQuickSearch:focus{opacity:.96;filter:brightness(1.05)}
     @media (hover:none){.quickThemeSelect,.heroQuickSearch{opacity:.26;filter:brightness(.9)}}
     .heroQueueCard{margin-top:10px;border:1px solid var(--theme-hero-card-border);border-radius:14px;padding:10px;background:var(--theme-hero-card-bg)}
@@ -347,6 +356,18 @@
         <div id="heroQueueBusyOverlay" class="heroQueueBusyOverlay" aria-hidden="true">
           <div class="heroQueueBusyCard"><span class="heroQueueBusySpin" aria-hidden="true"></span><span id="heroQueueBusyLabel">Updating queue…</span></div>
         </div>
+      </div>
+    </div>
+  </div>
+  <div id="heroPlaylistModal" class="heroPlaylistModal" aria-hidden="true">
+    <div class="heroPlaylistCard" role="dialog" aria-modal="true" aria-labelledby="heroPlaylistTitle">
+      <button id="heroPlaylistClose" class="heroPlaylistClose" type="button" aria-label="Close">✕</button>
+      <h2 id="heroPlaylistTitle">Add to playlist</h2>
+      <div id="heroPlaylistStatus" class="muted">Choose an existing playlist or create a new one.</div>
+      <div id="heroPlaylistList" class="heroPlaylistList"></div>
+      <div class="heroPlaylistCreate">
+        <input id="heroPlaylistNewName" type="text" placeholder="New playlist name" maxlength="120" autocomplete="off" />
+        <button id="heroPlaylistCreateBtn" type="button">Create</button>
       </div>
     </div>
   </div>
@@ -2860,6 +2881,31 @@
         return body;
       }
 
+      async function resolveHeroQuickTracks(type, value) {
+        const host = location.hostname || 'nowplaying.local';
+        const base = `${location.protocol}//${host}:3101`;
+        if (!runtimeTrackKey) {
+          const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
+          const rj = await rr.json().catch(() => ({}));
+          runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
+        }
+        let tracks = [];
+        if (String(type || '') === 'Playlist') {
+          const pr = await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(String(value || ''))}`, { headers: runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}, cache:'no-store' });
+          const pj = await pr.json().catch(() => ({}));
+          if (!pr.ok || !pj?.ok) throw new Error(pj?.error || `HTTP ${pr.status}`);
+          tracks = Array.isArray(pj.tracks) ? pj.tracks : [];
+        } else {
+          const headers = { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) };
+          const pr = await fetch(`${base}/config/queue-wizard/preview`, { method:'POST', headers, body: JSON.stringify(heroQuickPreviewBody(type, value)) });
+          const pj = await pr.json().catch(() => ({}));
+          if (!pr.ok || !pj?.ok) throw new Error(pj?.error || `HTTP ${pr.status}`);
+          tracks = Array.isArray(pj.tracks) ? pj.tracks.map((t) => String(t?.file || '').trim()).filter(Boolean) : [];
+        }
+        if (!tracks.length) throw new Error('No tracks found');
+        return tracks;
+      }
+
       async function runHeroQuickAction(type, value, action = 'add') {
         const host = location.hostname || 'nowplaying.local';
         const base = `${location.protocol}//${host}:3101`;
@@ -2870,21 +2916,7 @@
             runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
           }
           const headers = { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) };
-
-          let tracks = [];
-          if (String(type || '') === 'Playlist') {
-            const pr = await fetch(`${base}/config/queue-wizard/playlist-preview?playlist=${encodeURIComponent(String(value || ''))}`, { headers: runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}, cache:'no-store' });
-            const pj = await pr.json().catch(() => ({}));
-            if (!pr.ok || !pj?.ok) throw new Error(pj?.error || `HTTP ${pr.status}`);
-            tracks = Array.isArray(pj.tracks) ? pj.tracks : [];
-          } else {
-            const previewBody = heroQuickPreviewBody(type, value);
-            const pr = await fetch(`${base}/config/queue-wizard/preview`, { method:'POST', headers, body: JSON.stringify(previewBody) });
-            const pj = await pr.json().catch(() => ({}));
-            if (!pr.ok || !pj?.ok) throw new Error(pj?.error || `HTTP ${pr.status}`);
-            tracks = Array.isArray(pj.tracks) ? pj.tracks.map((t) => String(t?.file || '').trim()).filter(Boolean) : [];
-          }
-          if (!tracks.length) throw new Error('No tracks found');
+          const tracks = await resolveHeroQuickTracks(type, value);
 
           const replace = String(action) === 'play';
           const ar = await fetch(`${base}/config/queue-wizard/apply`, {
@@ -2905,6 +2937,56 @@
         } catch (e) {
           console.warn('hero quick action failed', e?.message || e);
         }
+      }
+
+      async function openHeroPlaylistModal(type, value) {
+        const modal = document.getElementById('heroPlaylistModal');
+        const list = document.getElementById('heroPlaylistList');
+        const status = document.getElementById('heroPlaylistStatus');
+        if (!modal || !list) return;
+        modal.dataset.type = String(type || '');
+        modal.dataset.value = String(value || '');
+        list.innerHTML = '<div class="muted">Loading selection and playlists…</div>';
+        status.textContent = 'Choose an existing playlist or create a new one.';
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        try {
+          const tracks = await resolveHeroQuickTracks(type, value);
+          modal._tracks = tracks;
+          const names = heroQuickIndex.filter((x) => x.type === 'Playlist').map((x) => x.value);
+          list.innerHTML = names.length ? names.map((name) => `<button type="button" data-playlist-name="${escHtml(name)}">${escHtml(name)}</button>`).join('') : '<div class="muted">No existing playlists.</div>';
+        } catch (e) {
+          modal._tracks = [];
+          status.textContent = e?.message || 'Could not load tracks.';
+          list.innerHTML = '';
+        }
+      }
+
+      async function addHeroTracksToPlaylist(name) {
+        const modal = document.getElementById('heroPlaylistModal');
+        const status = document.getElementById('heroPlaylistStatus');
+        const tracks = Array.isArray(modal?._tracks) ? modal._tracks : [];
+        const playlistName = String(name || '').trim();
+        if (!playlistName || !tracks.length) return;
+        status.textContent = `Adding ${tracks.length} track${tracks.length === 1 ? '' : 's'}…`;
+        const host = location.hostname || 'nowplaying.local';
+        const base = `${location.protocol}//${host}:3101`;
+        try {
+          const r = await fetch(`${base}/config/queue-wizard/add-to-playlist`, { method:'POST', headers:{'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key':runtimeTrackKey} : {})}, body:JSON.stringify({ playlistName, tracks }) });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          status.textContent = `Added to “${playlistName}”.`;
+          await loadHeroQuickIndex(true);
+          setTimeout(closeHeroPlaylistModal, 700);
+        } catch (e) { status.textContent = e?.message || 'Could not save playlist.'; }
+      }
+
+      function closeHeroPlaylistModal() {
+        const modal = document.getElementById('heroPlaylistModal');
+        if (!modal) return;
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        modal._tracks = [];
       }
 
       function renderHeroQuickResults(qRaw = '') {
@@ -2956,6 +3038,7 @@
                   + `</div>`
                   + `<button type="button" data-hero-quick-action="play" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Replace queue and play" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(59,130,246,.18);color:#dbeafe;cursor:pointer;font-weight:700;line-height:1;">▶</button>`
                   + `<button type="button" data-hero-quick-action="add" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add to queue" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(34,197,94,.18);color:#dcfce7;cursor:pointer;font-weight:700;line-height:1;">＋</button>`
+                  + `<button type="button" data-hero-quick-action="playlist" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add to playlist" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(244,114,182,.18);color:#fce7f3;cursor:pointer;font-weight:700;line-height:1;">♫</button>`
                 + `</div>`;
               }).join('')
             + `</div>`);
@@ -3048,10 +3131,28 @@
         const action = String(btn.getAttribute('data-hero-quick-action') || '').trim().toLowerCase();
         if (heroQuickSearch) heroQuickSearch.value = value;
 
-        if (action === 'play' || action === 'add') {
+        if (action === 'playlist') {
+          openHeroPlaylistModal(type, value);
+        } else if (action === 'play' || action === 'add') {
           runHeroQuickAction(type, value, action);
           renderHeroQuickResults(String(heroQuickSearch?.value || ''));
         }
+      });
+
+      document.getElementById('heroPlaylistList')?.addEventListener('click', (ev) => {
+        const btn = ev.target instanceof Element ? ev.target.closest('button[data-playlist-name]') : null;
+        if (btn) addHeroTracksToPlaylist(btn.getAttribute('data-playlist-name') || '');
+      });
+      document.getElementById('heroPlaylistCreateBtn')?.addEventListener('click', () => {
+        const input = document.getElementById('heroPlaylistNewName');
+        addHeroTracksToPlaylist(input?.value || '');
+      });
+      document.getElementById('heroPlaylistNewName')?.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') addHeroTracksToPlaylist(ev.target.value || '');
+      });
+      document.getElementById('heroPlaylistClose')?.addEventListener('click', closeHeroPlaylistModal);
+      document.getElementById('heroPlaylistModal')?.addEventListener('click', (ev) => {
+        if (ev.target?.id === 'heroPlaylistModal') closeHeroPlaylistModal();
       });
 
       document.addEventListener('click', (ev) => {

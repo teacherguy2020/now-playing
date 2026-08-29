@@ -159,6 +159,8 @@ This is the tablet shell’s quick entrypoint for search and jump-to behavior.
 ### Why it matters
 Quick search is one of the highest-value action areas on a tablet shell. It is also likely to interact with browse-index/local derived-state behavior rather than only raw live queries.
 
+The persistent app-shell hero search (`#heroQuickSearch`) exposes three actions for each result: play (replace and start), add (append to the live queue), and add to playlist (open a modal to append to an existing playlist or create a new one). The playlist action resolves the selection through the same preview paths used by play/add, then calls `POST /config/queue-wizard/add-to-playlist`.
+
 ### Companion pages
 - `queue-and-playback-model.md`
 - `source-map.md`
@@ -439,3 +441,7 @@ It is a multi-region orchestration shell with:
 - pane embedding
 - modal workflows
 - and heavy device-preset/layout logic.
+
+## Timestamp
+
+Last updated: 2026-08-29 America/Chicago

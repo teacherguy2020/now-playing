@@ -12,8 +12,62 @@ function safePlaylistName(name = '') {
     .trim();
 }
 
+async function writePlaylistFile({ playlistName, lines, moodeUser, moodeHost }) {
+  const localTmp = path.join('/tmp', `qw-playlist-${process.pid}-${Date.now()}.m3u`);
+  const remoteTmp = `/tmp/qw-playlist-${process.pid}-${Date.now()}.m3u`;
+  const remoteDst = `/var/lib/mpd/playlists/${playlistName}.m3u`;
+  try {
+    await fs.writeFile(localTmp, `${lines.join('\n')}\n`, 'utf8');
+    await execFileP('scp', [
+      '-q', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6',
+      localTmp, `${moodeUser}@${moodeHost}:${remoteTmp}`,
+    ], { timeout: 20000 });
+    const sudoCmd = `sudo -n bash -lc 'set -euo pipefail; mkdir -p /var/lib/mpd/playlists; mv -f -- ${JSON.stringify(remoteTmp)} ${JSON.stringify(remoteDst)}; chown mpd:audio -- ${JSON.stringify(remoteDst)} 2>/dev/null || true; chmod 0664 -- ${JSON.stringify(remoteDst)} 2>/dev/null || true'`;
+    const nonSudoCmd = `bash -lc 'set -euo pipefail; mkdir -p /var/lib/mpd/playlists; mv -f -- ${JSON.stringify(remoteTmp)} ${JSON.stringify(remoteDst)}; chmod 0664 -- ${JSON.stringify(remoteDst)} 2>/dev/null || true'`;
+    try {
+      await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, sudoCmd], { timeout: 20000 });
+    } catch {
+      await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, nonSudoCmd], { timeout: 20000 });
+    }
+  } finally {
+    await fs.unlink(localTmp).catch(() => {});
+    await execFileP('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=6', `${moodeUser}@${moodeHost}`, `rm -f -- ${JSON.stringify(remoteTmp)} >/dev/null 2>&1 || true`], { timeout: 10000 }).catch(() => {});
+  }
+}
+
 export function registerConfigQueueWizardApplyRoute(app, deps) {
   const { requireTrackKey } = deps;
+
+  app.post('/config/queue-wizard/add-to-playlist', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const rawName = String(req.body?.playlistName || '').trim();
+      const playlistName = safePlaylistName(rawName);
+      if (!playlistName || playlistName !== rawName) {
+        return res.status(400).json({ ok: false, error: 'playlistName is required and may contain only letters, numbers, spaces, _, ., or -' });
+      }
+      const tracks = Array.isArray(req.body?.tracks)
+        ? req.body.tracks.map((x) => String(x || '').trim().replace(/[\\/]+$/g, '')).filter(Boolean)
+        : [];
+      if (!tracks.length) return res.status(400).json({ ok: false, error: 'tracks[] is required' });
+
+      const mpdHost = String(MPD_HOST || 'moode.local');
+      let existing = [];
+      try {
+        const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file', 'playlist', playlistName]);
+        existing = String(stdout || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+      } catch (_) {
+        // A missing playlist is a valid create operation.
+      }
+
+      const moodeUser = String(MOODE_SSH_USER || 'moode');
+      const moodeHost = String(MOODE_SSH_HOST || MPD_HOST || 'moode.local');
+      await writePlaylistFile({ playlistName, lines: [...existing, ...tracks], moodeUser, moodeHost });
+      return res.json({ ok: true, playlistName, created: existing.length === 0, added: tracks.length, total: existing.length + tracks.length });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
 
   // --- apply route ---
   app.post('/config/queue-wizard/apply', async (req, res) => {

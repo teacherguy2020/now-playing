@@ -186,6 +186,7 @@ Owners include:
 
 Endpoints found:
 - `POST /config/queue-wizard/apply`
+- `POST /config/queue-wizard/add-to-playlist`
 - `GET /config/queue-wizard/options`
 - `GET /config/queue-wizard/playlists`
 - `POST /config/queue-wizard/load-playlist`
@@ -228,6 +229,10 @@ Observed request-shape examples with high confidence:
     - `shuffle: false`
     - related flags in route include `saveOnly`, `forceRandomOff`, `fastStart`, `generateCollage`, `previewCoverBase64`, `previewCoverMimeType`, `crop`
   - likely role: apply a previously planned queue payload into MPD/runtime state
+- `POST /config/queue-wizard/add-to-playlist`
+  - request body: `playlistName`, `tracks[]`
+  - behavior: preserves existing playlist entries and appends the supplied tracks; creates the playlist when it does not exist
+  - track-key protected; owner: `src/routes/config.queue-wizard-apply.routes.mjs`
 - `POST /config/queue-wizard/vibe-start`
   - diagnostics example body includes:
     - `targetQueue: 50`
@@ -555,4 +560,4 @@ That should make the API branch more useful for onboarding, debugging, and safer
 
 ## Timestamp
 
-Last updated: 2026-08-28 America/Chicago
+Last updated: 2026-08-29 America/Chicago
