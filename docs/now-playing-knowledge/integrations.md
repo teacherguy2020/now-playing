@@ -102,7 +102,8 @@ Best companion pages:
 The Seeburg wallbox integration is app-host route logic backed by moOde's MPD playlist:
 - `POST /integrations/seeburg/selection` accepts a number from `1` through `100`
 - the number selects that position in the saved `Seeburg Playlist` by default
-- the selected file is appended to the MPD queue without starting playback
+- when nothing is playing, the queue is cleared, the selected file is added, and playback starts
+- when music is already playing, the selected file is appended without interrupting playback
 - `dryRun: true` and `GET /integrations/seeburg/playlist` support commissioning before the full 100-track catalog exists
 - `SEEBURG_PLAYLIST_NAME` can override the playlist name via the API environment
 

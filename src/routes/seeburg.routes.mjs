@@ -81,8 +81,24 @@ export function registerSeeburgRoutes(app, deps) {
       if (mpdHasACK(before)) throw new Error('MPD status failed');
 
       const beforeStatus = parseMpdFirstBlock(before);
+      const wasPlaying = String(beforeStatus.state || '').trim().toLowerCase() === 'play';
+      let queueWasCleared = false;
+
+      if (!wasPlaying) {
+        const clearResult = await mpdQueryRaw('clear');
+        if (mpdHasACK(clearResult)) throw new Error('MPD rejected clearing the queue');
+        queueWasCleared = true;
+      }
+
       const addResult = await mpdQueryRaw(`add ${mpdEscapeValue(resolved.file)}`);
       if (!addResult || mpdHasACK(addResult)) throw new Error('MPD rejected the selected track');
+
+      let playbackStarted = false;
+      if (queueWasCleared) {
+        const playResult = await mpdQueryRaw('play 0');
+        if (mpdHasACK(playResult)) throw new Error('MPD rejected starting the selected track');
+        playbackStarted = true;
+      }
 
       const after = await mpdQueryRaw('status');
       if (mpdHasACK(after)) throw new Error('MPD status failed after queueing');
@@ -95,7 +111,8 @@ export function registerSeeburgRoutes(app, deps) {
         ...result,
         queued: true,
         queueLength: Number(afterStatus.playlistlength),
-        playbackStarted: false,
+        playbackStarted,
+        queueWasCleared,
       });
     } catch (e) {
       const status = Number.isInteger(e?.statusCode) ? e.statusCode : 500;

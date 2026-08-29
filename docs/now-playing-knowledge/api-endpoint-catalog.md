@@ -144,7 +144,8 @@ Endpoints:
   - accepts selections `1` through `100`
   - resolves the number against `SEEBURG_PLAYLIST_NAME` in saved playlist order
   - defaults to playlist name `Seeburg Playlist`
-  - appends exactly the selected file to the MPD queue; it does not start playback
+  - when MPD is not actively playing, clears the queue, adds the selected file, and starts it with `play 0`
+  - when MPD is actively playing, appends the selected file without interrupting playback
   - `{ "number": 1, "dryRun": true }` resolves without changing the queue
 - `GET /integrations/seeburg/playlist`
   - key-protected read-only commissioning endpoint

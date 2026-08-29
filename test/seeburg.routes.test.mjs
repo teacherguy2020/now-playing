@@ -50,7 +50,7 @@ test('dry-run resolves the selected track without adding or starting playback', 
   assert.deepEqual(calls, ['listplaylist "Seeburg Playlist"']);
 });
 
-test('queues one selected track and leaves playback stopped', async () => {
+test('clears the idle queue, plays the selected track, and reports the new state', async () => {
   const calls = [];
   const app = makeApp();
   let statusCalls = 0;
@@ -58,12 +58,58 @@ test('queues one selected track and leaves playback stopped', async () => {
     requireTrackKey: () => true,
     mpdEscapeValue: (v) => JSON.stringify(String(v)),
     mpdHasACK: (raw) => String(raw).includes('ACK'),
-    parseMpdFirstBlock: (raw) => ({ playlistlength: raw.includes('playlistlength: 1') ? '1' : '0' }),
+    parseMpdFirstBlock: (raw) => ({
+      state: raw.includes('state: play') ? 'play' : 'stop',
+      playlistlength: raw.includes('playlistlength: 1') ? '1' : '0',
+    }),
     mpdQueryRaw: async (command) => {
       calls.push(command);
       if (command === 'status') {
         statusCalls += 1;
-        return statusCalls === 1 ? 'state: stop\nplaylistlength: 0\nOK\n' : 'state: stop\nplaylistlength: 1\nOK\n';
+        return statusCalls === 1 ? 'state: stop\nplaylistlength: 4\nOK\n' : 'state: play\nplaylistlength: 1\nOK\n';
+      }
+      if (command.startsWith('listplaylist')) return 'file: selected.flac\nOK\n';
+      if (command === 'clear') return 'OK\n';
+      if (command.startsWith('add ')) return 'OK\n';
+      if (command === 'play 0') return 'OK\n';
+      throw new Error(`unexpected command: ${command}`);
+    },
+    seeburgPlaylistName: 'Seeburg Playlist',
+  });
+
+  const res = makeResponse();
+  await app.routes['POST /integrations/seeburg/selection']({ body: { number: 1 } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.queued, true);
+  assert.equal(res.body.playbackStarted, true);
+  assert.equal(res.body.queueWasCleared, true);
+  assert.deepEqual(calls, [
+    'listplaylist "Seeburg Playlist"',
+    'status',
+    'clear',
+    'add "selected.flac"',
+    'play 0',
+    'status',
+  ]);
+});
+
+test('appends a selection without interrupting active playback', async () => {
+  const calls = [];
+  const app = makeApp();
+  let statusCalls = 0;
+  registerSeeburgRoutes(app, {
+    requireTrackKey: () => true,
+    mpdEscapeValue: (v) => JSON.stringify(String(v)),
+    mpdHasACK: (raw) => String(raw).includes('ACK'),
+    parseMpdFirstBlock: (raw) => ({
+      state: 'play',
+      playlistlength: raw.includes('playlistlength: 3') ? '3' : '2',
+    }),
+    mpdQueryRaw: async (command) => {
+      calls.push(command);
+      if (command === 'status') {
+        statusCalls += 1;
+        return statusCalls === 1 ? 'state: play\nplaylistlength: 2\nOK\n' : 'state: play\nplaylistlength: 3\nOK\n';
       }
       if (command.startsWith('listplaylist')) return 'file: selected.flac\nOK\n';
       if (command.startsWith('add ')) return 'OK\n';
@@ -75,8 +121,8 @@ test('queues one selected track and leaves playback stopped', async () => {
   const res = makeResponse();
   await app.routes['POST /integrations/seeburg/selection']({ body: { number: 1 } }, res);
   assert.equal(res.statusCode, 200);
-  assert.equal(res.body.queued, true);
   assert.equal(res.body.playbackStarted, false);
+  assert.equal(res.body.queueWasCleared, false);
   assert.deepEqual(calls, [
     'listplaylist "Seeburg Playlist"',
     'status',
