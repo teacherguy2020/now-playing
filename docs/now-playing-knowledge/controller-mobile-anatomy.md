@@ -116,6 +116,15 @@ This region is the mobile shell’s fast entrypoint into browse/search/jump beha
 ### Why it matters
 On mobile, quick search is often more important than broad simultaneous browsing. So changes here can materially alter the usability of the whole shell.
 
+The current Quick Search index includes artists, albums, track titles, and playlists. Track results retain the exact library file as their action value, so duplicate titles remain distinct; the compact row shows the title and artist, while keyboard focus or hover reveals the full title, artist, and album context in a scrollable tooltip.
+
+Each result provides three actions:
+- play: replace the live queue and start playback
+- add: append the selection to the live queue
+- add to playlist: open a mobile-friendly modal to append the selection to an existing playlist or create a new playlist
+
+The playlist action resolves the selected tracks through the same preview path used by playback actions and calls `POST /config/queue-wizard/add-to-playlist`. That endpoint appends directly to the saved MPD playlist. The implementation lives in `controller-mobile.html` around `loadHomeQuickIndex()`, `renderHomeQuickResults()`, and the mobile playlist modal helpers.
+
 ### Companion pages
 - `source-map.md`
 - future search/browse deeper mapping if added later
