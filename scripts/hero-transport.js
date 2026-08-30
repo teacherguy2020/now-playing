@@ -382,8 +382,11 @@
     const canOpenAlbumModal = !appleUrl && isLibraryTrack && !isRadioOrStream && !!modalAlbum;
     const rating = Math.max(0, Math.min(5, Number(np?.rating ?? head?.rating ?? 0) || 0));
     const ratingFile = String(np?.ratingFile || np?.file || head?.file || '').trim();
+    const currentPlaylistBtn = (isLibraryTrack && ratingFile)
+      ? `<button type="button" class="heroCurrentPlaylistBtn" data-hero-current-playlist="1" data-hero-current-playlist-file="${encodeURIComponent(ratingFile)}" title="Add currently playing track to playlist" aria-label="Add currently playing track to playlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button>`
+      : '';
     const starsRow = (isLibraryTrack && ratingFile)
-      ? `<div class="heroRating" aria-label="Rating">${[1,2,3,4,5].map((i)=>`<button type="button" class="heroRateStar ${i<=rating?'on':'off'}" data-hero-rate-file="${encodeURIComponent(ratingFile)}" data-hero-rate-val="${i}" title="Rate ${i} star${i>1?'s':''}">★</button>`).join('')}</div>`
+      ? `<div class="heroRating" aria-label="Rating">${[1,2,3,4,5].map((i)=>`<button type="button" class="heroRateStar ${i<=rating?'on':'off'}" data-hero-rate-file="${encodeURIComponent(ratingFile)}" data-hero-rate-val="${i}" title="Rate ${i} star${i>1?'s':''}">★</button>`).join('')}${currentPlaylistBtn}</div>`
       : '';
 
     const radioAlbum = String(np?.radioAlbum || np?.album || '').trim();
@@ -402,7 +405,9 @@
     const albumYearText = radioAlbum
       ? `${radioAlbum}${radioYear ? ` (${radioYear})` : ''}`
       : '';
-    const metaRow = starsRow || (albumYearText ? `<div class="heroSubline" style="color:var(--theme-text-secondary,#9fb1d9)">${albumYearText}</div>` : '');
+    const metaRow = starsRow
+      ? starsRow
+      : (albumYearText ? `<div class="heroSubline" style="color:var(--theme-text-secondary,#9fb1d9)">${albumYearText}</div>` : '');
 
     const fmt = String(np?.encoded || np?.format || '').toUpperCase();
     const brRaw = String(np?.bitrate || '').trim();
@@ -421,7 +426,6 @@
     const spinPeriodMs = 5600;
     const spinDelayStyle = state === 'playing' ? ` style="--spin-delay:-${Date.now() % spinPeriodMs}ms;"` : '';
     const artTrackKey = String(np?.songid || np?.file || `${displayArtist}|${displayTitle}` || '').trim();
-
     el.innerHTML =
       `${appleUrl
         ? `<a class="heroArt heroArtLink" data-track-key="${escHtml(artTrackKey)}" data-album-key="${escHtml(artAlbumKey)}" data-art-src="${escHtml(thumb || '')}" href="${escHtml(appleUrl)}" target="_blank" rel="noopener noreferrer" title="Open in Apple Music">${motionMp4

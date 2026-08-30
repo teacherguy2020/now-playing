@@ -852,6 +852,7 @@ window.addEventListener('load', () => {
     try { if (typeof bindFavoriteUIOnce === 'function') bindFavoriteUIOnce(); } catch (e) { console.warn('favorites init failed', e); }
     try { if (typeof bindAlbumArtAppleLinkOnce === 'function') bindAlbumArtAppleLinkOnce(); } catch (e) { console.warn('album apple-link init failed', e); }
     try { if (typeof attachRatingsClickHandler === 'function') attachRatingsClickHandler(); } catch (e) { console.warn('ratings init failed', e); }
+    try { ensureCurrentPlaylistAction(); } catch (e) { console.warn('playlist action init failed', e); }
 
     // One authoritative place to keep UI + artBottom updated
     schedulePhoneUIUpdate();
@@ -1214,6 +1215,130 @@ function attachRatingsClickHandler() {
 
     setCurrentRating(n === currentRating ? 0 : n);
   }, { passive: false });
+}
+
+/* =========================
+ * Currently playing playlist action
+ * ========================= */
+
+let currentPlaylistModal = null;
+let currentPlaylistKey = '';
+
+function currentTrackCanBeAddedToPlaylist() {
+  return !!String(currentFile || '').trim() && !currentIsPodcast && !currentIsAirplay && (!currentIsStream || currentAlexaMode);
+}
+
+function ensureCurrentPlaylistAction() {
+  if (!document.getElementById('currentPlaylistActionStyles')) {
+    const style = document.createElement('style');
+    style.id = 'currentPlaylistActionStyles';
+    style.textContent = 'body.show-playlist-row #ratingRow{display:inline-flex !important;align-items:center;min-height:0;margin-left:8px;vertical-align:middle}body.phone-ui.show-playlist-row #ratingRow{display:block !important;margin-left:0}.npPlaylistBtn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;margin-left:8px;padding:0;border:1px solid rgba(255,255,255,.28);border-radius:7px;background:rgba(8,14,24,.66);color:#dbeafe;vertical-align:middle;cursor:pointer}.npPlaylistBtn:hover,.npPlaylistBtn:focus-visible{color:#fff;border-color:#74a8ff;outline:none}.npPlaylistBtn svg{width:16px;height:16px;display:block;fill:currentColor}.npPlaylistBtn[hidden]{display:none}body.pause .npPlaylistBtn{display:none !important}';
+    document.head.appendChild(style);
+  }
+  const row = document.getElementById('ratingRow');
+  const stars = document.getElementById('ratingStars');
+  if (!row || !stars) return;
+
+  if (!document.getElementById('npPlaylistBtn')) {
+    const btn = document.createElement('button');
+    btn.id = 'npPlaylistBtn';
+    btn.className = 'npPlaylistBtn';
+    btn.type = 'button';
+    btn.title = 'Add currently playing track to playlist';
+    btn.setAttribute('aria-label', 'Add currently playing track to playlist');
+    btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg>';
+    btn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      openCurrentPlaylistModal().catch((e) => console.warn('[playlist] open failed:', e));
+    });
+    row.appendChild(btn);
+  }
+
+  if (!currentPlaylistModal) {
+    currentPlaylistModal = document.createElement('div');
+    currentPlaylistModal.className = 'currentPlaylistModal';
+    currentPlaylistModal.id = 'currentPlaylistModal';
+    currentPlaylistModal.setAttribute('aria-hidden', 'true');
+    currentPlaylistModal.innerHTML = '<div class="currentPlaylistCard" role="dialog" aria-modal="true" aria-labelledby="currentPlaylistTitle"><button class="currentPlaylistClose" type="button" aria-label="Close">✕</button><h2 id="currentPlaylistTitle">Add to playlist</h2><div class="currentPlaylistStatus">Choose an existing playlist or create a new one.</div><div class="currentPlaylistList"></div><div class="currentPlaylistCreate"><input type="text" placeholder="New playlist name" maxlength="120" autocomplete="off"><button type="button">Create</button></div></div>';
+    document.body.appendChild(currentPlaylistModal);
+    currentPlaylistModal.querySelector('.currentPlaylistClose')?.addEventListener('click', closeCurrentPlaylistModal);
+    currentPlaylistModal.addEventListener('click', (ev) => { if (ev.target === currentPlaylistModal) closeCurrentPlaylistModal(); });
+    currentPlaylistModal.querySelector('.currentPlaylistCreate button')?.addEventListener('click', () => {
+      const input = currentPlaylistModal.querySelector('.currentPlaylistCreate input');
+      addCurrentTrackToPlaylist(input?.value || '').catch((e) => console.warn('[playlist] add failed:', e));
+    });
+    currentPlaylistModal.querySelector('.currentPlaylistCreate input')?.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') addCurrentTrackToPlaylist(ev.target.value || '').catch((e) => console.warn('[playlist] add failed:', e));
+    });
+  }
+  syncCurrentPlaylistAction();
+}
+
+function syncCurrentPlaylistAction() {
+  const btn = document.getElementById('npPlaylistBtn');
+  if (!btn) return;
+  const visible = currentTrackCanBeAddedToPlaylist();
+  btn.hidden = !visible;
+  document.body?.classList.toggle('show-playlist-row', visible);
+}
+
+async function currentPlaylistHeaders(json = false) {
+  if (!currentPlaylistKey) {
+    try {
+      const r = await fetch(`${API_BASE}/config/runtime`, { cache: 'no-store' });
+      const j = await r.json().catch(() => ({}));
+      currentPlaylistKey = String(j?.config?.trackKey || '').trim();
+    } catch {}
+  }
+  return Object.assign(json ? { 'Content-Type': 'application/json' } : {}, currentPlaylistKey ? { 'x-track-key': currentPlaylistKey } : {});
+}
+
+async function openCurrentPlaylistModal() {
+  if (!currentTrackCanBeAddedToPlaylist() || !currentPlaylistModal) return;
+  const status = currentPlaylistModal.querySelector('.currentPlaylistStatus');
+  const list = currentPlaylistModal.querySelector('.currentPlaylistList');
+  currentPlaylistModal.classList.add('open');
+  currentPlaylistModal.setAttribute('aria-hidden', 'false');
+  status.textContent = 'Loading playlists…';
+  list.innerHTML = '';
+  try {
+    const r = await fetch(`${API_BASE}/config/queue-wizard/playlists`, { cache: 'no-store', headers: await currentPlaylistHeaders() });
+    const j = await r.json().catch(() => ({}));
+    const names = r.ok && j?.ok && Array.isArray(j.playlists) ? j.playlists : [];
+    status.textContent = 'Choose an existing playlist or create a new one.';
+    if (!names.length) { list.innerHTML = '<div class="currentPlaylistStatus">No existing playlists.</div>'; return; }
+    names.forEach((name) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = String(name || '').trim();
+      btn.addEventListener('click', () => addCurrentTrackToPlaylist(btn.textContent).catch((e) => console.warn('[playlist] add failed:', e)));
+      list.appendChild(btn);
+    });
+  } catch (e) {
+    status.textContent = e?.message || 'Could not load playlists.';
+  }
+}
+
+async function addCurrentTrackToPlaylist(name) {
+  const playlistName = String(name || '').trim();
+  if (!playlistName || !currentTrackCanBeAddedToPlaylist()) return;
+  const status = currentPlaylistModal?.querySelector('.currentPlaylistStatus');
+  status.textContent = 'Adding track…';
+  const r = await fetch(`${API_BASE}/config/queue-wizard/add-to-playlist`, {
+    method: 'POST', headers: await currentPlaylistHeaders(true),
+    body: JSON.stringify({ playlistName, tracks: [String(currentFile || '').trim()] }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+  status.textContent = `Added to “${playlistName}”.`;
+  setTimeout(closeCurrentPlaylistModal, 700);
+}
+
+function closeCurrentPlaylistModal() {
+  if (!currentPlaylistModal) return;
+  currentPlaylistModal.classList.remove('open');
+  currentPlaylistModal.setAttribute('aria-hidden', 'true');
 }
 
 
@@ -2778,6 +2903,7 @@ function updateUI(data) {
   try {
     document.body?.classList.toggle('is-podcast', !!currentIsPodcast);
     document.body?.classList.toggle('show-rating-row', !currentIsPodcast);
+    syncCurrentPlaylistAction();
   } catch {}
 
   if (DEBUG) {

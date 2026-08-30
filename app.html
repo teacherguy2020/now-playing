@@ -19,7 +19,7 @@
   <title>Now Playing</title>
   <link rel="stylesheet" href="styles/podcasts.css?v=20260224-no-rail-before" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260224-no-rail-before" />
-  <link rel="stylesheet" href="styles/hero.css?v=20260224-no-halfmode" />
+  <link rel="stylesheet" href="styles/hero.css?v=20260830-current-playlist2" />
   <style>
     :root{
       --app-shell-max:min(2200px, calc(100dvw - 12px));
@@ -122,6 +122,8 @@
     .heroQueueFavBtn.disabled{opacity:.35;cursor:not-allowed}
     #heroQueueNextUp .heroQueueMeta{font-size:13px;font-weight:560;line-height:1.2}
     .heroQueueActions{display:flex;gap:4px;margin-left:auto}
+    .heroQueuePlaylistBtn{display:inline-flex;align-items:center;justify-content:center;width:30px;min-width:30px;padding:4px 6px !important}
+    .heroQueuePlaylistBtn svg{width:16px;height:16px;display:block;fill:currentColor}
     .heroQueueNextUp{display:none;margin-bottom:8px;border:1px solid var(--theme-rail-border);border-radius:10px;padding:8px;background:var(--theme-rail-bg);align-items:center;gap:8px}
     .heroQueueNextUp img{width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222}
     .heroQueueBtn,
@@ -429,7 +431,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260317-no-transport-alexa-a"></script>
+  <script src="scripts/hero-transport.js?v=20260830-current-playlist3"></script>
   <script>
     (() => {
       const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','youtube.html','peppy.html','player.html','visualizer.html','mobile.html','displays.html','controller-kiosk.html','kiosk.html','kiosk-designer.html','theme.html']);
@@ -1650,7 +1652,6 @@
             const thumbHtml = thumb
               ? `<img loading="lazy" decoding="async" fetchpriority="low" src="${thumb}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`
               : `<img loading="lazy" decoding="async" fetchpriority="low" src="${directLogo || stationLogoByFile || stationLogoByDisplay || stationLogoByDisplayAlt || hostFavicon || hostFaviconAlt || fallbackIcon}" alt="" onerror="${fallbackJs}" style="width:34px;height:34px;border-radius:7px;object-fit:cover;border:1px solid #334;background:#0a1222;" />`;
-            const actions = `<div class="heroQueueActions"><button type="button" data-play-pos-btn="${pos}" title="Play now">▶</button><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button><button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
             const albumTxt = String(x?.album || '').trim();
             const yearTxt = String(x?.year || x?.date || '').trim();
             const albumWithYear = albumTxt ? `${albumTxt}${yearTxt ? ` (${yearTxt})` : ''}` : '';
@@ -1665,6 +1666,10 @@
             const starsInline = (isStreamish || isPodcastItem)
               ? ''
               : `<span class="heroQueueStars heroQueueStarsCtl" data-rating="${rating}" data-file="${encodeURIComponent(fileRaw)}">${[1,2,3,4,5].map((n)=>`<button type="button" class="heroQueueStarBtn ${n<=rating?'on':'off'}" data-rate-file="${encodeURIComponent(fileRaw)}" data-rate-value="${n}" title="Set rating ${n}★">★</button>`).join('')}</span>`;
+            const playlistInline = (!isStreamish && !isPodcastItem && fileRaw)
+              ? `<button type="button" class="heroQueuePlaylistBtn" data-hero-current-playlist="1" data-hero-current-playlist-file="${encodeURIComponent(fileRaw)}" title="Add to playlist" aria-label="Add to playlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button>`
+              : '';
+            const actions = `<div class="heroQueueActions"><button type="button" data-play-pos-btn="${pos}" title="Play now">▶</button><button type="button" data-move-pos="${pos}" data-move-dir="up" title="Move up">↑</button><button type="button" data-move-pos="${pos}" data-move-dir="down" title="Move down">↓</button>${playlistInline}<button type="button" data-remove-pos="${pos}" title="Remove">Remove</button></div>`;
             const line1 = isStreamish
               ? (isYoutubeStream ? (title || artist || 'YouTube Audio Stream') : (artist || '(station)'))
               : (title || '(unknown title)');
@@ -2963,6 +2968,7 @@
         modal.classList.add('open');
         modal.setAttribute('aria-hidden', 'false');
         try {
+          if (!heroQuickIndex.length) await loadHeroQuickIndex(false);
           const tracks = await resolveHeroQuickTracks(type, value);
           modal._tracks = tracks;
           const names = heroQuickIndex.filter((x) => x.type === 'Playlist').map((x) => x.value);
@@ -3059,7 +3065,7 @@
                   + `</div>`
                   + `<button type="button" data-hero-quick-action="play" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Replace queue and play" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(59,130,246,.18);color:#dbeafe;cursor:pointer;font-weight:700;line-height:1;">▶</button>`
                   + `<button type="button" data-hero-quick-action="add" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add to queue" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(34,197,94,.18);color:#dcfce7;cursor:pointer;font-weight:700;line-height:1;">＋</button>`
-                  + `<button type="button" data-hero-quick-action="playlist" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add to playlist" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(244,114,182,.18);color:#fce7f3;cursor:pointer;font-weight:700;line-height:1;">♫</button>`
+                  + `<button type="button" data-hero-quick-action="playlist" data-hero-quick-type="${escHtml(x.type)}" data-hero-quick-value="${escHtml(x.value)}" title="Add to playlist" style="flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid #2a3a58;background:rgba(244,114,182,.18);color:#fce7f3;cursor:pointer;font-weight:700;line-height:1;"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;display:block;fill:currentColor;margin:auto;"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button>`
                 + `</div>`;
               }).join('')
             + `</div>`);
@@ -3158,6 +3164,15 @@
           runHeroQuickAction(type, value, action);
           renderHeroQuickResults(String(heroQuickSearch?.value || ''));
         }
+      });
+
+      document.addEventListener('click', (ev) => {
+        const btn = ev.target instanceof Element ? ev.target.closest('button[data-hero-current-playlist="1"]') : null;
+        if (!btn) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const file = decodeURIComponent(String(btn.getAttribute('data-hero-current-playlist-file') || ''));
+        if (file) openHeroPlaylistModal('Track', file);
       });
 
       document.getElementById('heroPlaylistList')?.addEventListener('click', (ev) => {

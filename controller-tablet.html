@@ -78,6 +78,10 @@
     #line1{flex:1 1 auto;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.1}
     #line2Wrap{display:block}
     #line2Stars{display:none}
+    .npPlaylistBtn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-left:6px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--muted);vertical-align:middle;cursor:pointer}
+    .npPlaylistBtn:hover,.npPlaylistBtn:focus-visible{color:var(--text);border-color:var(--accent);outline:none}
+    .npPlaylistBtn svg{width:15px;height:15px;display:block;fill:currentColor}
+    .npPlaylistBtn[hidden]{display:none}
     .npSeekInline{display:none;align-items:center;gap:6px;flex:0 0 auto;position:relative;top:-10px}
     .npSeekInline .seekBtn{height:22px;min-width:34px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(16,24,40,.45);color:#e9eefb;font-size:11px;font-weight:700;line-height:1;letter-spacing:.2px;padding:0 8px;cursor:pointer}
     .npSeekInline .seekBtn:active{transform:translateY(1px)}
@@ -109,6 +113,7 @@
     .qTrackLabelWrap:hover .qTrackTooltip,.qTrackLabelWrap:focus-within .qTrackTooltip{display:block}
     .qBtns{display:flex;gap:6px}
     .qBtn{width:26px;height:26px;border-radius:999px;border:1px solid var(--quick-line,var(--line));background:var(--quick-line,var(--line));color:var(--text);display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:transform .08s ease, background .18s ease, border-color .18s ease, color .18s ease}
+    .qBtnIcon{width:14px;height:14px;display:block;fill:currentColor}
     .qBtn:active{transform:scale(.94)}
     .qBtn.pending{transform:scale(1.08);background:#2b4f86;border-color:#74a8ff;color:#ffffff}
     .qSpin{width:12px;height:12px;border:2px solid rgba(223,234,255,.45);border-top-color:#ffffff;border-radius:999px;display:block;animation:qSpin .7s linear infinite}
@@ -658,7 +663,7 @@
         <div class="npProgress" id="npProgress" aria-hidden="true"><div class="npProgressFill" id="npProgressFill"></div></div>
         <div class="npMeta">
           <div id="line1Wrap"><span id="line1"></span><span id="npSeekInline" class="npSeekInline" aria-label="Podcast seek controls"><button type="button" class="seekBtn" data-seek-rel="-15" title="Back 15 seconds">↺15</button><button type="button" class="seekBtn" data-seek-rel="30" title="Forward 30 seconds">30↻</button></span></div>
-          <div id="line2Wrap" class="muted"><span id="line2"></span><span id="line2Stars" aria-label="Track rating"></span></div>
+          <div id="line2Wrap" class="muted"><span id="line2"></span><span id="line2Stars" aria-label="Track rating"></span><button id="npPlaylistBtn" class="npPlaylistBtn" type="button" aria-label="Add currently playing track to playlist" title="Add currently playing track to playlist" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button></div>
           <div id="line3" class="muted"></div>
           <div class="tabletNextUpInline" id="tabletNextUpInline" aria-live="polite">
             <div class="nextUpRow">
@@ -1362,6 +1367,7 @@
   let npSeekEnabled = false;
   let npCurrentAlbum = "";
   let npCurrentArtist = "";
+  let npCurrentFile = "";
   let npCurrentArt = "";
   let npCurrentIsPodcast = false;
   let npCurrentIsRadio = false;
@@ -1487,6 +1493,8 @@
     const el = document.getElementById("line2Stars");
     if (!el) return;
     el.innerHTML = "";
+    const playlistBtn = document.getElementById("npPlaylistBtn");
+    if (playlistBtn) playlistBtn.hidden = !npCurrentFile;
     if (!npRatingAllowed || !isTabletLandscapeBody()) return;
     const r = Math.max(0, Math.min(5, Number(npRating) || 0));
     for (let i = 1; i <= 5; i++) {
@@ -1592,6 +1600,7 @@
       npCurrentIsPodcast = !!isPodcast;
       npCurrentIsRadio = !!isRadio && !isAlexaMode;
       const isLocalTrack = !!(hasTrack && file && !isPodcast && !isRadio && !isAlexaMode && !isAirplay && !isUpnp && !isStream);
+      npCurrentFile = isLocalTrack ? file : "";
       npRatingAllowed = isLocalTrack;
       const ratingRaw = j && j.rating !== void 0 && j.rating !== null ? j.rating : j && j.currentRating !== void 0 && j.currentRating !== null ? j.currentRating : 0;
       npRating = Math.max(0, Math.min(5, Number(ratingRaw) || 0));
@@ -3387,7 +3396,7 @@
       const safeText = escQuick(x.value || "");
       const context = x.type === "track" ? [x.artist, x.album].filter(Boolean).join(" \u00b7 ") : "";
       const textHtml = x.type === "artist" ? "<button type='button' class='qTxt qTxtBtn' data-act='open-artist' title='Show albums by ".concat(safeTitle, "'>").concat(safeText, "</button>") : x.type === "track" ? "<span class='qTrackLabelWrap' tabindex='0' aria-label='".concat(escQuick([x.title, context].filter(Boolean).join(" \u2014 ")), "'><span class='qTrackLabel'>").concat(escQuick(x.title), "</span>").concat(x.artist ? "<span class='qTrackArtist'>".concat(escQuick(x.artist), "</span>") : "", "<span class='qTrackTooltip' role='tooltip'>").concat(escQuick([x.title, context].filter(Boolean).join(" \u2014 ")), "</span></span>") : "<div class='qTxt'>".concat(escQuick(label), "</div>");
-      return "<div class='qRow' data-type='".concat(x.type, "' data-value='").concat(encodeURIComponent(x.value), "' data-artist='").concat(encodeURIComponent(String(x.artist || "")), "'><div class='qMain'><div class='qMeta'>").concat(x.type, "</div>").concat(textHtml, "</div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>\u25B6</button><button class='qBtn' data-act='add' title='Add'>\uFF0B</button><button class='qBtn' data-act='playlist' title='Add to playlist'>\u266B</button></div></div>");
+      return "<div class='qRow' data-type='".concat(x.type, "' data-value='").concat(encodeURIComponent(x.value), "' data-artist='").concat(encodeURIComponent(String(x.artist || "")), "'><div class='qMain'><div class='qMeta'>").concat(x.type, "</div>").concat(textHtml, "</div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>\u25B6</button><button class='qBtn' data-act='add' title='Add'>\uFF0B</button><button class='qBtn' data-act='playlist' title='Add to playlist'><svg class='qBtnIcon' viewBox='0 0 24 24' aria-hidden='true'><path d='M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z'/></svg></button></div></div>");
     }).join("") || "<div class='qRow'><div class='qTxt'>No matches</div></div>";
     host.classList.add("open");
   }
@@ -3736,6 +3745,11 @@
       renderLine2Stars();
     }
   }, { passive: false });
+  document.getElementById("npPlaylistBtn") == null ? void 0 : document.getElementById("npPlaylistBtn").addEventListener("click", async (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (npCurrentFile) await openTabletPlaylistModal("track", npCurrentFile, npCurrentArtist);
+  });
   npFlipInfoBtnEl == null ? void 0 : npFlipInfoBtnEl.addEventListener("click", (ev) => {
     if (!isTabletLandscapeBody()) return;
     ev.preventDefault();

@@ -189,6 +189,10 @@ Current visible structure shows:
 - `queue-and-playback-model.md`
 - `playback-issue-triage-runbook.md`
 
+## Quick Search playlist action
+
+Quick Search result rows and the currently playing track expose an `Add to playlist` action across the desktop, phone, tablet, and app surfaces. The currently playing action sits beside the rating stars when those are shown, uses the shared list-with-add glyph, and supports choosing or creating a playlist. The separate Playlists navigation item retains its own navigation icon.
+
 ## 6. Artist-details / personnel overlay region
 
 ### What it is
@@ -384,3 +388,7 @@ It is a multi-region controller surface with:
 - podcast/album modal workflows
 - embedded queue modal behavior
 - and embedded-vs-top-level navigation logic.
+
+## Timestamp
+
+Last updated: 2026-08-30 00:29 America/Chicago

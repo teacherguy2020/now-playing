@@ -59,6 +59,10 @@
     .muted{color:var(--muted);font-size:12px}
     #line2Wrap{display:block}
     #line2Stars{display:none}
+    .npPlaylistBtn{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-left:6px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--muted);vertical-align:middle;cursor:pointer}
+    .npPlaylistBtn:hover,.npPlaylistBtn:focus-visible{color:var(--text);border-color:var(--accent);outline:none}
+    .npPlaylistBtn svg{width:15px;height:15px;display:block;fill:currentColor}
+    .npPlaylistBtn[hidden]{display:none}
     #line3.linkable{cursor:pointer}
     #line3 .share-icon{width:.9em;height:.9em;display:inline-block;vertical-align:-.12em;margin-left:.22em;fill:currentColor;opacity:.72;pointer-events:none}
 
@@ -84,6 +88,7 @@
     .qTrackArtist{display:block;font-size:12px;color:#9eb3d6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .qBtns{display:flex;gap:6px}
     .qBtn{width:26px;height:26px;border-radius:999px;border:1px solid #35507a;background:#16253e;color:#dfeaff;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;transition:transform .08s ease, background .18s ease, border-color .18s ease, color .18s ease}
+    .qBtnIcon{width:14px;height:14px;display:block;fill:currentColor}
     .qBtn:active{transform:scale(.94)}
     .qBtn.pending{transform:scale(1.08);background:#2b4f86;border-color:#74a8ff;color:#ffffff}
     .qSpin{width:12px;height:12px;border:2px solid rgba(223,234,255,.45);border-top-color:#ffffff;border-radius:999px;display:block;animation:qSpin .7s linear infinite}
@@ -389,7 +394,7 @@
         </div>
         <div class="npMeta">
           <div id="line1"></div>
-          <div id="line2Wrap" class="muted"><span id="line2"></span><span id="line2Stars" aria-label="Track rating"></span></div>
+          <div id="line2Wrap" class="muted"><span id="line2"></span><span id="line2Stars" aria-label="Track rating"></span><button id="npPlaylistBtn" class="npPlaylistBtn" type="button" aria-label="Add currently playing track to playlist" title="Add currently playing track to playlist" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button></div>
           <div id="line3" class="muted"></div>
         </div>
       </div>
@@ -836,6 +841,8 @@
     let npAlbumUrl='';
     let npRating = 0;
     let npRatingAllowed = false;
+    let npCurrentFile = '';
+    let npCurrentArtist = '';
     let npPersonnelText = '';
     const setArtFlip = (flipped = false)=>{
       const wrap = document.getElementById('npArtWrap');
@@ -853,6 +860,8 @@
       const el = document.getElementById('line2Stars');
       if (!el) return;
       el.innerHTML = '';
+      const playlistBtn = document.getElementById('npPlaylistBtn');
+      if (playlistBtn) playlistBtn.hidden = !npCurrentFile;
       if (!npRatingAllowed || !document.body.classList.contains('ipad11Landscape')) return;
       const r = Math.max(0, Math.min(5, Number(npRating) || 0));
       for (let i=1;i<=5;i++) {
@@ -964,6 +973,8 @@
         const isUpnp = !!j?.isUpnp;
         const isStream = !!j?.isStream;
         const isLocalTrack = !!(hasTrack && file && !isPodcast && !isRadio && !isAirplay && !isUpnp && !isStream);
+        npCurrentFile = isLocalTrack ? file : '';
+        npCurrentArtist = isLocalTrack ? (artist || dispArtist) : '';
         npRatingAllowed = isLocalTrack;
         npRating = Math.max(0, Math.min(5, Number(j?.rating ?? j?.currentRating ?? 0) || 0));
 
@@ -2025,7 +2036,7 @@
         const textHtml = x.type==='track'
           ? `<span class='qTrackLabelWrap' tabindex='0' aria-label='${escQuick([x.title,context].filter(Boolean).join(' — '))}'><span class='qTrackLabel'>${escQuick(x.title)}</span>${x.artist ? `<span class='qTrackArtist'>${escQuick(x.artist)}</span>` : ''}<span class='qTrackTooltip' role='tooltip'>${escQuick([x.title,context].filter(Boolean).join(' — '))}</span></span>`
           : `<div class='qTxt'>${escQuick(label)}</div>`;
-        return `<div class='qRow' data-type='${x.type}' data-value='${encodeURIComponent(x.value)}' data-artist='${encodeURIComponent(String(x.artist||''))}'><div class='qMain'><div class='qMeta'>${escQuick(x.type)}</div>${textHtml}</div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>▶</button><button class='qBtn' data-act='add' title='Add'>＋</button><button class='qBtn' data-act='playlist' title='Add to playlist'>♫</button></div></div>`;
+        return `<div class='qRow' data-type='${x.type}' data-value='${encodeURIComponent(x.value)}' data-artist='${encodeURIComponent(String(x.artist||''))}'><div class='qMain'><div class='qMeta'>${escQuick(x.type)}</div>${textHtml}</div><div class='qBtns'><button class='qBtn' data-act='play' title='Play now'>▶</button><button class='qBtn' data-act='add' title='Add'>＋</button><button class='qBtn' data-act='playlist' title='Add to playlist'><svg class='qBtnIcon' viewBox='0 0 24 24' aria-hidden='true'><path d='M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z'/></svg></button></div></div>`;
       }).join('') || `<div class='qRow'><div class='qTxt'>No matches</div></div>`;
       host.classList.add('open');
     }
@@ -2161,6 +2172,11 @@
       }
       refreshNowPlayingCard().catch(()=>null);
     }, { passive:false });
+    document.getElementById('npPlaylistBtn')?.addEventListener('click', async (ev)=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (npCurrentFile) await openMobilePlaylistModal('track', npCurrentFile, npCurrentArtist);
+    });
     npCtrlsEl?.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); }, { passive:true });
     npCtrlsEl?.addEventListener('mousedown', (ev)=>{ ev.stopPropagation(); wakeNpCtrls(3200); });
     npCtrlsEl?.addEventListener('click', async (ev)=>{

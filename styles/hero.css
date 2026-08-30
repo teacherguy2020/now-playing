@@ -13,6 +13,28 @@
   #heroTransport .np .progress-bar-wrapper{margin-top:auto;margin-bottom:2px}
 }
 
+.heroTransport .heroCurrentPlaylistBtn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:28px;
+  height:28px;
+  margin-left:8px;
+  padding:0;
+  border:1px solid var(--theme-tab-border, rgba(255,255,255,.28));
+  border-radius:7px;
+  background:var(--theme-tab-bg, rgba(8,14,24,.66));
+  color:var(--theme-text, #dbeafe);
+  vertical-align:middle;
+  cursor:pointer;
+}
+.heroTransport .heroCurrentPlaylistBtn:hover,
+.heroTransport .heroCurrentPlaylistBtn:focus-visible{
+  color:var(--theme-text-bright, #fff);
+  border-color:var(--theme-accent, #74a8ff);
+  outline:none;
+}
+.heroTransport .heroCurrentPlaylistBtn svg{width:16px;height:16px;display:block;fill:currentColor}
 /* Narrow/tablet only */
 @media (max-width: 980px){
   .heroTransport{

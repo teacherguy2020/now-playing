@@ -31,7 +31,7 @@
     .vibeBtn,.deleteBtn{position:absolute;top:0;bottom:0;width:92px;border:0;color:#fff;font-weight:700;font-size:15px;opacity:0;pointer-events:none;transition:opacity .16s ease}
     .vibeBtn{right:92px;background:#5b3df0}
     .deleteBtn{right:0;background:var(--danger)}
-    .row{position:relative;z-index:1;background:var(--bg);display:grid;grid-template-columns:28px 28px 1fr 30px;gap:8px;align-items:center;padding:6px 0;transform:translateX(0);transition:transform .18s ease;touch-action:pan-y}
+    .row{position:relative;z-index:1;background:var(--bg);display:grid;grid-template-columns:28px 34px 1fr 30px;gap:8px;align-items:center;padding:6px 0;transform:translateX(0);transition:transform .18s ease;touch-action:pan-y}
     .row.swiped{transform:translateX(-184px)}
     .rowWrap.onlyDelete .row.swiped{transform:translateX(-92px)}
     .row.swiped ~ .vibeBtn,.row.swiped ~ .deleteBtn{opacity:1;pointer-events:auto}
@@ -40,9 +40,12 @@
     .row.optimisticPlay{background:rgba(69,178,111,.16);box-shadow:inset 0 0 0 2px rgba(69,178,111,.95)}
     .num{font-weight:700;color:var(--text);text-align:center}
     .coverWrap{position:relative;display:block}
-    .thumb{width:28px;height:28px;border-radius:6px;object-fit:cover;background:#0a1222;border:1px solid #33485f}
+    .thumb{width:34px;height:34px;border-radius:6px;object-fit:cover;background:#0a1222;border:1px solid #33485f}
     .coverMore{position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(12,18,28,.72);color:#e8f0ff;font-size:9px;display:flex;align-items:center;justify-content:center;z-index:2}
-    .title{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .title{font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .queuePlaylistBtn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-left:8px;padding:0;border:1px solid var(--line);border-radius:5px;background:var(--surface);color:var(--muted);vertical-align:-1px;cursor:pointer}
+    .queuePlaylistBtn:hover,.queuePlaylistBtn:focus-visible{color:var(--text);border-color:var(--accent);outline:none}
+    .queuePlaylistBtn svg{width:14px;height:14px;display:block;fill:currentColor}
     .sub{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .sub .stars{margin-left:6px;letter-spacing:.3px;color:#ffd76a;font-weight:700}
 
@@ -91,6 +94,16 @@
     .artistAlbumBtn{border:1px solid var(--line);background:var(--line);color:var(--text);border-radius:10px;padding:8px;cursor:pointer;text-align:left}
     .artistAlbumBtn img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;background:#0a1222;margin-bottom:6px}
     .artistAlbumName{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .playlistModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:140;align-items:center;justify-content:center}
+    .playlistModal.open{display:flex}
+    .playlistCard{position:relative;width:min(420px,92vw);max-height:82vh;overflow:auto;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+    .playlistCard h2{margin:0 36px 6px 0;font-size:19px}
+    .playlistStatus{color:var(--muted);font-size:13px;margin-bottom:10px}
+    .playlistList{display:grid;gap:6px}
+    .playlistList button{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:8px 10px;text-align:left;cursor:pointer}
+    .playlistCreate{display:flex;gap:6px;margin-top:12px}
+    .playlistCreate input{min-width:0;flex:1;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:8px 9px}
+    .playlistCreate button{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:8px 10px;cursor:pointer}
     .loadingRow{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:8px 2px}
     .spin{width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
@@ -117,6 +130,16 @@
   <div class="menu" id="trackMenu" aria-hidden="true">
     <button id="goAlbumBtn" type="button"><span class="ico">◉</span><span>Go to Album</span></button>
     <button id="goArtistBtn" type="button"><span class="ico">🎤</span><span>Go to Artist</span></button>
+  </div>
+
+  <div class="playlistModal" id="playlistModal" aria-hidden="true">
+    <div class="playlistCard" role="dialog" aria-modal="true" aria-labelledby="playlistTitle">
+      <button id="playlistCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
+      <h2 id="playlistTitle">Add to playlist</h2>
+      <div id="playlistStatus" class="playlistStatus">Choose an existing playlist or create a new one.</div>
+      <div id="playlistList" class="playlistList"></div>
+      <div class="playlistCreate"><input id="playlistNewName" type="text" placeholder="New playlist name" maxlength="120" autocomplete="off"><button id="playlistCreateBtn" type="button">Create</button></div>
+    </div>
   </div>
 
   <div class="albumModal" id="albumModal" aria-hidden="true">
@@ -410,6 +433,60 @@
       return j;
     }
 
+    let queuePlaylistFile = '';
+    const playlistModal = document.getElementById('playlistModal');
+    const playlistStatus = document.getElementById('playlistStatus');
+    const playlistList = document.getElementById('playlistList');
+    const playlistNewName = document.getElementById('playlistNewName');
+    function closePlaylistModal(){
+      playlistModal?.classList.remove('open');
+      playlistModal?.setAttribute('aria-hidden','true');
+      queuePlaylistFile = '';
+    }
+    async function addQueueTrackToPlaylist(name){
+      const playlistName = String(name || '').trim();
+      if (!playlistName || !queuePlaylistFile) return;
+      playlistStatus.textContent = `Adding to “${playlistName}”…`;
+      try {
+        await ensureKey();
+        const r = await fetch(`${base}/config/queue-wizard/add-to-playlist`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key':runtimeTrackKey} : {})},
+          body:JSON.stringify({ playlistName, tracks:[queuePlaylistFile] })
+        });
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        playlistStatus.textContent = `Added to “${playlistName}”.`;
+        setTimeout(closePlaylistModal, 700);
+      } catch (e) { playlistStatus.textContent = e?.message || 'Could not save playlist.'; }
+    }
+    async function openPlaylistModal(file, title){
+      queuePlaylistFile = String(file || '').trim();
+      if (!queuePlaylistFile || !playlistModal) return;
+      document.getElementById('playlistTitle').textContent = `Add “${String(title || 'track').trim()}” to playlist`;
+      playlistStatus.textContent = 'Loading playlists…';
+      playlistList.innerHTML = '';
+      playlistNewName.value = '';
+      playlistModal.classList.add('open');
+      playlistModal.setAttribute('aria-hidden','false');
+      try {
+        await ensureKey();
+        const r = await fetch(`${base}/config/queue-wizard/playlists`, { cache:'no-store', headers:runtimeTrackKey ? {'x-track-key':runtimeTrackKey} : {} });
+        const j = await r.json().catch(()=>({}));
+        const names = r.ok && j?.ok && Array.isArray(j.playlists) ? j.playlists : [];
+        playlistStatus.textContent = 'Choose an existing playlist or create a new one.';
+        playlistList.innerHTML = names.length ? names.map((name)=>`<button type="button" data-playlist-name="${String(name).replace(/[&<>\'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;',"\"":'&quot;'}[c]||c))}">${String(name).replace(/[&<>\'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;',"\"":'&quot;'}[c]||c))}</button>`).join('') : '<div class="playlistStatus">No existing playlists.</div>';
+      } catch (e) { playlistStatus.textContent = e?.message || 'Could not load playlists.'; }
+    }
+    document.getElementById('playlistCloseBtn')?.addEventListener('click', closePlaylistModal);
+    playlistModal?.addEventListener('click', (ev)=>{ if (ev.target === playlistModal) closePlaylistModal(); });
+    playlistList?.addEventListener('click', (ev)=>{
+      const btn = ev.target.closest('button[data-playlist-name]');
+      if (btn) addQueueTrackToPlaylist(btn.getAttribute('data-playlist-name') || '');
+    });
+    document.getElementById('playlistCreateBtn')?.addEventListener('click', ()=>addQueueTrackToPlaylist(playlistNewName?.value || ''));
+    playlistNewName?.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter') addQueueTrackToPlaylist(ev.target.value || ''); });
+
     async function startSeedVibeFromRowWrap(wrap){
       const dec = (s)=>{ try{return decodeURIComponent(String(s||''));}catch{return String(s||'');} };
       const seedArtist = String(dec(wrap?.getAttribute('data-artist')) || '').trim();
@@ -607,6 +684,10 @@
         const titleLooksUrl = /^https?:\/\//i.test(rawTitle) || (/\./.test(rawTitle) && !/\s/.test(rawTitle) && /^[-a-z0-9.]+$/i.test(rawTitle));
         const streamTitle = stationName || mappedByKey || mappedByHost || (titleLooksUrl ? hostFallback : '') || rawTitle || hostFallback || '(station)';
         const title = isStream ? streamTitle : (rawTitle || String(x?.name || '').trim() || '(untitled)');
+        const isPodcast = !!x?.isPodcast || /\/(podcasts?|podcast)\//i.test(file);
+        const playlistBtn = (!isStream && !isPodcast && file)
+          ? `<button type="button" class="queuePlaylistBtn" data-a="playlist" data-file="${encodeURIComponent(file)}" data-title="${encodeURIComponent(title)}" title="Add to playlist" aria-label="Add to playlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button>`
+          : '';
         const album = String(x?.album || '').trim();
         const ratingsEnabled = !!j?.ratingsEnabled;
         const ratingNumRaw = Number(x?.rating || 0);
@@ -626,7 +707,7 @@
           <div class="row ${head?'head':''}" data-pos="${pos}">
             <div class="num">${pos}</div>
             <div class="coverWrap" style="width:34px;height:34px"><img class="thumb" src="${thumb}" alt="" loading="lazy" decoding="async" /></div>
-            <div><div class="title">${title}</div><div class="sub">${starsHtml}${artist}${album ? ' • ' + album : ''}</div></div>
+            <div><div class="title">${title}${playlistBtn}</div><div class="sub">${starsHtml}${artist}${album ? ' • ' + album : ''}</div></div>
           </div>
           <button type="button" class="vibeBtn" data-a="vibe" data-pos="${pos}">Vibe</button>
           <button type="button" class="deleteBtn" data-a="rm" data-pos="${pos}">Delete</button>
@@ -1021,6 +1102,14 @@
     });
 
     document.getElementById('list').addEventListener('click', async (ev)=>{
+      const playlist = ev.target.closest('button.queuePlaylistBtn[data-a="playlist"]');
+      if (playlist) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const dec = (s)=>{ try{return decodeURIComponent(String(s||''));}catch{return String(s||'');} };
+        await openPlaylistModal(dec(playlist.getAttribute('data-file')), dec(playlist.getAttribute('data-title')));
+        return;
+      }
       const more = ev.target.closest('button.more[data-a="more"][data-pos]');
       if (more) {
         ev.stopPropagation();
