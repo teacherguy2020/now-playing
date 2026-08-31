@@ -104,8 +104,13 @@ decodes the wallbox selection and sends only the numeric selection, while the
 Now Playing API resolves that number against moOde's saved MPD playlist:
 - `POST /integrations/seeburg/selection` accepts a number from `1` through `100`
 - the number selects that position in the saved `Seeburg Playlist` by default
-- when nothing is playing, the queue is cleared, the selected file is added, and playback starts
-- when music is already playing, the selected file is appended without interrupting playback
+- selected tracks are classified as `source: "seeburg"` / `priority: "jukebox"`
+- if ordinary music is playing, the selected file is inserted immediately after
+  the current track and starts; the ordinary queue remains behind it
+- if a Seeburg track is already playing, later selections are inserted
+  immediately behind the current and pending Seeburg tracks in FIFO order
+- once those priority tracks finish, playback naturally returns to the preserved
+  ordinary queue
 - `dryRun: true` and `GET /integrations/seeburg/playlist` support commissioning before the full 100-track catalog exists
 - `SEEBURG_PLAYLIST_NAME` can override the playlist name via the API environment
 

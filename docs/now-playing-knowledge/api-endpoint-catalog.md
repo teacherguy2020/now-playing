@@ -144,8 +144,14 @@ Endpoints:
   - accepts selections `1` through `100`
   - resolves the number against `SEEBURG_PLAYLIST_NAME` in saved playlist order
   - defaults to playlist name `Seeburg Playlist`
-  - when MPD is not actively playing, clears the queue, adds the selected file, and starts it with `play 0`
-  - when MPD is actively playing, appends the selected file without interrupting playback
+  - classifies the selected track as `source: "seeburg"` / `priority: "jukebox"`
+  - if ordinary music is playing, inserts the selected file immediately after
+    the current track and starts it, preserving the ordinary queued tracks
+  - if a Seeburg track is already playing, inserts the new selection immediately
+    behind the current and pending Seeburg selections, FIFO, without interrupting
+    the active jukebox track
+  - after the jukebox-priority tracks finish, playback continues into the
+    preserved ordinary queue
   - `{ "number": 1, "dryRun": true }` resolves without changing the queue
 - `GET /integrations/seeburg/playlist`
   - key-protected read-only commissioning endpoint

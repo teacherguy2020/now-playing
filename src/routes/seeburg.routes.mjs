@@ -20,6 +20,23 @@ export function parseSelectionNumber(value) {
     : null;
 }
 
+function parseMpdBlocks(raw) {
+  return String(raw || '').split(/\r?\n\r?\n/).map((block) => {
+    const out = {};
+    String(block).split(/\r?\n/).forEach((line) => {
+      const i = line.indexOf(':');
+      if (i < 0) return;
+      out[line.slice(0, i).trim().toLowerCase()] = line.slice(i + 1).trim();
+    });
+    return out;
+  }).filter((x) => x.file || x.id || x.pos);
+}
+
+function parseMpdId(raw) {
+  const match = String(raw || '').match(/(?:^|\n)Id:\s*(\d+)/i);
+  return match ? Number(match[1]) : 0;
+}
+
 export function registerSeeburgRoutes(app, deps) {
   const {
     requireTrackKey,
@@ -29,6 +46,8 @@ export function registerSeeburgRoutes(app, deps) {
     parseMpdFirstBlock,
     seeburgPlaylistName = 'Seeburg Playlist',
   } = deps;
+  const seeburgEntries = new Map();
+  let seeburgSequence = 0;
 
   async function resolveSelection(number) {
     const playlist = String(seeburgPlaylistName || 'Seeburg Playlist').trim();
@@ -82,20 +101,37 @@ export function registerSeeburgRoutes(app, deps) {
 
       const beforeStatus = parseMpdFirstBlock(before);
       const wasPlaying = String(beforeStatus.state || '').trim().toLowerCase() === 'play';
-      let queueWasCleared = false;
+      const beforeItems = parseMpdBlocks(await mpdQueryRaw('playlistinfo'));
+      const currentSongId = Number(beforeStatus.songid || 0) || 0;
+      const currentPos = Number(beforeStatus.song || -1);
+      const currentIsJukebox = currentSongId > 0 && seeburgEntries.has(currentSongId);
+      const pendingJukebox = beforeItems
+        .filter((item) => Number(item.id || 0) > 0 && Number(item.pos || -1) > currentPos && seeburgEntries.has(Number(item.id)))
+        .sort((a, b) => Number(seeburgEntries.get(Number(a.id))?.sequence || 0) - Number(seeburgEntries.get(Number(b.id))?.sequence || 0));
 
-      if (!wasPlaying) {
-        const clearResult = await mpdQueryRaw('clear');
-        if (mpdHasACK(clearResult)) throw new Error('MPD rejected clearing the queue');
-        queueWasCleared = true;
-      }
-
-      const addResult = await mpdQueryRaw(`add ${mpdEscapeValue(resolved.file)}`);
+      const addResult = await mpdQueryRaw(`addid ${mpdEscapeValue(resolved.file)}`);
       if (!addResult || mpdHasACK(addResult)) throw new Error('MPD rejected the selected track');
+      const insertedSongId = parseMpdId(addResult);
+      if (!insertedSongId) throw new Error('MPD did not return a song ID for the selected track');
+
+      // Insert directly after the current track and any already-pending
+      // jukebox selections. MPD positions are zero-based.
+      const insertionPos = currentPos >= 0
+        ? currentPos + pendingJukebox.length + 1
+        : 0;
+      const moveResult = await mpdQueryRaw(`moveid ${insertedSongId} ${insertionPos}`);
+      if (mpdHasACK(moveResult)) throw new Error('MPD rejected positioning the selected track');
+      const sequence = ++seeburgSequence;
+      seeburgEntries.set(insertedSongId, {
+        source: 'seeburg',
+        priority: 'jukebox',
+        sequence,
+        file: resolved.file,
+      });
 
       let playbackStarted = false;
-      if (queueWasCleared) {
-        const playResult = await mpdQueryRaw('play 0');
+      if (!currentIsJukebox) {
+        const playResult = await mpdQueryRaw(`play ${insertionPos}`);
         if (mpdHasACK(playResult)) throw new Error('MPD rejected starting the selected track');
         playbackStarted = true;
       }
@@ -104,9 +140,7 @@ export function registerSeeburgRoutes(app, deps) {
       if (mpdHasACK(after)) throw new Error('MPD status failed after queueing');
 
       const afterStatus = parseMpdFirstBlock(after);
-      const expectedQueueLength = queueWasCleared
-        ? 1
-        : Number(beforeStatus.playlistlength) + 1;
+      const expectedQueueLength = Number(beforeStatus.playlistlength) + 1;
       const queued = Number(afterStatus.playlistlength) === expectedQueueLength;
       if (!queued) throw new Error('MPD did not report the selected track as queued');
 
@@ -115,7 +149,12 @@ export function registerSeeburgRoutes(app, deps) {
         queued: true,
         queueLength: Number(afterStatus.playlistlength),
         playbackStarted,
-        queueWasCleared,
+        queueWasCleared: false,
+        source: 'seeburg',
+        priority: 'jukebox',
+        interruptedNormalPlayback: !currentIsJukebox && wasPlaying,
+        queuedBehindJukebox: currentIsJukebox,
+        mpdSongId: insertedSongId,
       });
     } catch (e) {
       const status = Number.isInteger(e?.statusCode) ? e.statusCode : 500;
