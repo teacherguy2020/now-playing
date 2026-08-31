@@ -18,6 +18,7 @@
     .meta{color:var(--muted);font-size:12px;margin:0}
     .queueTopActions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0}
     .queueTopActions button{border:1px solid var(--line);background:var(--line);color:var(--text);border-radius:9px;padding:6px 9px;font-size:12px;line-height:1.05;cursor:pointer}
+    .queueTopActions button.endlessVibeOn{border-color:#5b3df0;background:#5b3df0;color:#fff}
     .queueTopActions button.warn{border-color:var(--line);background:var(--line);color:var(--text)}
     .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
     .vibeBusy{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:200;display:none;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(12,18,28,.88);border:1px solid #2a3a58;color:#e6efff;font-size:12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -123,7 +124,7 @@
   <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
 </head>
 <body>
-  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="routeAlexaBtn" type="button" title="Invoke configured Alexa route webhook">Route to Alexa</button><button id="shuffleQueueBtn" type="button" title="Turn random off and shuffle queue">Shuffle</button><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
+  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="routeAlexaBtn" type="button" title="Invoke configured Alexa route webhook">Route to Alexa</button><button id="endlessVibeBtn" type="button" aria-pressed="false" title="Automatically extend the queue with Vibe">Endless Vibe: Off</button><button id="shuffleQueueBtn" type="button" title="Turn random off and shuffle queue">Shuffle</button><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
   <ul class="list" id="list"><li id="dropLine" aria-hidden="true"></li></ul>
   <div class="vibeBusy" id="vibeBusy"><span class="miniSpin" aria-hidden="true"></span><span id="vibeBusyText">Building vibe queue…</span></div>
 
@@ -346,7 +347,22 @@
     let queueAutoRetryTimer = null;
     let queueLoadPromise = null;
     let queueLoadQueued = false;
+    let endlessVibeEnabled = false;
+    let endlessVibeJobId = '';
+    let endlessVibeStarting = false;
+    let endlessVibeSeedKey = '';
     const thumbCacheByFile = new Map();
+
+    function syncEndlessVibeButton(){
+      const btn = document.getElementById('endlessVibeBtn');
+      if (!btn) return;
+      btn.classList.toggle('endlessVibeOn', endlessVibeEnabled);
+      btn.setAttribute('aria-pressed', endlessVibeEnabled ? 'true' : 'false');
+      btn.textContent = `Endless Vibe: ${endlessVibeEnabled ? 'On' : 'Off'}`;
+    }
+
+    try { endlessVibeEnabled = localStorage.getItem('nowplaying.endlessVibe') === '1'; } catch {}
+    syncEndlessVibeButton();
 
     function setQueueLoading(on=false){
       const meta = document.getElementById('meta');
@@ -503,6 +519,47 @@
       return j;
     }
 
+    async function maybeStartEndlessVibe(items=[], headPos=-1){
+      if (!endlessVibeEnabled || endlessVibeJobId || endlessVibeStarting || vibeBusyJobId) return;
+      const rows = Array.isArray(items) ? items : [];
+      if (!rows.length || !Number.isFinite(Number(headPos)) || Number(headPos) < 0) return;
+      const lastPos = Math.max(...rows.map((x, idx) => Number(x?._posDisplay || x?.pos || (idx + 1)) || 0));
+      if (!lastPos || Number(headPos) !== lastPos) return;
+      const current = rows.find((x, idx) => Number(x?._posDisplay || x?.pos || (idx + 1)) === Number(headPos));
+      if (!current) return;
+      const file = String(current?.file || '').trim();
+      const artist = String(current?.artist || '').trim();
+      const title = String(current?.title || current?.name || '').trim();
+      if (!file || !artist || !title || current?.isStream || current?.isPodcast) return;
+      const seedKey = `${file}|${artist}|${title}`;
+      if (seedKey === endlessVibeSeedKey) return;
+      endlessVibeSeedKey = seedKey;
+      endlessVibeStarting = true;
+      try {
+        await ensureKey();
+        const r = await fetch(`${base}/config/queue-wizard/vibe-seed-start`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {})},
+          body: JSON.stringify({ seedArtist: artist, seedTitle: title, targetQueue: 25, playNow: false, keepPlaying: true, endless: true })
+        });
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        const id = String(j?.jobId || '').trim();
+        if (!id) throw new Error('Vibe did not return a job ID');
+        endlessVibeJobId = id;
+        setVibeBusy(true, 'Extending queue with Vibe…');
+        monitorVibeJob(id).finally(() => {
+          if (endlessVibeJobId === id) endlessVibeJobId = '';
+          requestQueueLoad(350);
+        });
+      } catch (e) {
+        endlessVibeSeedKey = '';
+        console.warn('Endless Vibe failed', e);
+      } finally {
+        endlessVibeStarting = false;
+      }
+    }
+
     function streamKey(u){
       try {
         const x = new URL(String(u || ''));
@@ -626,6 +683,7 @@
         const items = Array.isArray(j.items) ? j.items : [];
         const headPos = Number(j.headPos || -1);
         if (meta) meta.textContent = `${items.length} tracks`;
+        maybeStartEndlessVibe(items, headPos).catch(()=>null);
         const radioMap = {
           byKey: radioStationByKey,
           byHost: radioStationByHost,
@@ -822,6 +880,19 @@
         btn.disabled = false;
         btn.textContent = prev;
       }
+    });
+
+    document.getElementById('endlessVibeBtn')?.addEventListener('click', (ev)=>{
+      const btn = ev.currentTarget;
+      if (!(btn instanceof HTMLButtonElement)) return;
+      endlessVibeEnabled = !endlessVibeEnabled;
+      try { localStorage.setItem('nowplaying.endlessVibe', endlessVibeEnabled ? '1' : '0'); } catch {}
+      if (!endlessVibeEnabled) {
+        endlessVibeSeedKey = '';
+        setVibeBusy(false);
+      }
+      syncEndlessVibeButton();
+      requestQueueLoad();
     });
 
     document.getElementById('shuffleQueueBtn')?.addEventListener('click', async (ev)=>{

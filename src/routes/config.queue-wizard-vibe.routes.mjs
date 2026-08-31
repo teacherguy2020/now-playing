@@ -556,6 +556,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const targetQueue = Math.max(1, Math.min(200, Number(req.body?.targetQueue) || 12));
       const playNow = !!req.body?.playNow;
       const keepPlaying = !!req.body?.keepPlaying;
+      const endless = !!req.body?.endless;
       const seedArtist = String(req.body?.seedArtist || '').trim();
       const seedTitle = String(req.body?.seedTitle || '').trim();
       if (!seedArtist || !seedTitle) return res.status(400).json({ ok: false, error: 'Missing seedArtist/seedTitle' });
@@ -637,11 +638,11 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         '--host', mpdHost,
         '--port', '6600',
         '--debug-trace',
-        '--simple-seed-pass',
       ];
-      if (playNow || keepPlaying) {
+      if (playNow || keepPlaying || endless) {
         pyArgs.push('--crop');
       }
+      if (endless) pyArgs.push('--endless');
       if (keepPlaying && !playNow) {
         pyArgs.push('--no-final-stop');
       }

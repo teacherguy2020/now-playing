@@ -46,3 +46,13 @@ Also ensure `moode_library_index.json` is present on the API host (project root 
 1. Click **Build vibe queue from now playing**
 2. Review
 3. Send to moOde
+
+### Use Endless Vibe from Live Queue
+The tablet controller's **Live Queue** page has an **Endless Vibe** toggle beside **Route to Alexa**.
+When enabled, it watches for the currently playing track to become the final item in the queue. It then:
+
+1. Crops the queue to the playing track, preserving its playback position.
+2. Uses that track as the new Last.fm Vibe seed.
+3. Builds and appends a new queue without intentionally interrupting playback.
+
+The toggle is off by default and is remembered by that browser. Endless Vibe ignores radio, podcast, and other stream entries. If Last.fm cannot produce usable local matches, the seed remains in place rather than being discarded.

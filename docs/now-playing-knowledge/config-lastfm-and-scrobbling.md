@@ -137,6 +137,12 @@ The Config page explicitly notes:
   - `python3-requests`
   - `python3-mutagen`
 
+### Endless Vibe
+
+Endless Vibe is a Live Queue mode in the tablet controller that uses this same Last.fm/Vibe configuration. When enabled, it automatically extends playback whenever the currently playing local track becomes the final queue item. The track is cropped as the active seed, Last.fm is queried for related material, and locally matched tracks are appended while playback is preserved.
+
+The mode is deliberately more resilient than a one-shot Vibe action: it uses chained generation, allows same-artist fallback matching when Last.fm metadata is sparse, suppresses duplicate refresh jobs, and retains the active seed if no usable local matches are found. Its browser-local toggle is off by default and does not change the global Last.fm feature setting.
+
 That makes this section both a feature setup surface and a documentation surface for prerequisites.
 
 ## Save/load behavior

@@ -362,6 +362,8 @@ def main():
                     help="Preview tracks without touching MPD")
     ap.add_argument("--no-final-stop", action="store_true",
                     help="When mode=load, do not send a final stop command")
+    ap.add_argument("--endless", action="store_true",
+                    help="Keep the current seed queued and allow resilient fallback matching")
 
     args = ap.parse_args()
 
@@ -413,6 +415,11 @@ def main():
         return
 
     cur = mpd.currentsong()
+    was_playing = False
+    try:
+        was_playing = str(mpd.status().get("state", "")).strip().lower() == "play"
+    except Exception:
+        pass
     if not seed_artist and not seed_title:
         if not cur:
             mpd.disconnect()
@@ -453,6 +460,17 @@ def main():
     # Keep stable fallback seed to break dead-ends.
     original_seed = (seed_artist, seed_title)
 
+    def resume_endless_playback():
+        """Keep an active Endless Vibe session playing through queue extension."""
+        if not args.endless or not was_playing or args.dry_run:
+            return
+        try:
+            if str(mpd.status().get("state", "")).strip().lower() != "play":
+                mpd.play()
+                print("[endless] resumed playback after queue extension", flush=True)
+        except Exception:
+            pass
+
     # -----------------------------
     # Queue handling (ONLY when not dry-run)
     # -----------------------------
@@ -460,6 +478,7 @@ def main():
         # Prefer crop (keep now playing) if requested, else clear.
         if args.crop:
             subprocess.run(["mpc", "-h", args.host, "-p", str(args.port), "crop"], check=False)
+            resume_endless_playback()
         else:
             try:
                 mpd.clear()
@@ -827,7 +846,19 @@ def main():
             chosen_rec_title = rec_title
             chosen_album_k = cand_album_k
 
-        # Intentionally do NOT fall back to same-artist on hop 1.
+        # Normal Vibe prefers a cross-artist first hop. Endless Vibe must keep
+        # moving when Last.fm has sparse/obscure metadata, so accept a local
+        # same-artist fallback rather than declaring the queue exhausted.
+        if args.endless and not chosen_file and fallback_seed_artist is not None:
+            cand, method, rec_title, rec_artist, cand_album_k = fallback_seed_artist
+            chosen_file = cand
+            chosen_method = method
+            chosen_label = f"{rec_title} — {rec_artist}"
+            chosen_rec_artist = rec_artist
+            chosen_rec_title = rec_title
+            chosen_album_k = cand_album_k
+
+        # In normal mode, do not fall back to same-artist on hop 1.
         # If no cross-artist candidate can be added, treat as miss and reseed.
 
         if args.debug_trace:
@@ -887,6 +918,7 @@ def main():
             try:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] added {chosen_label} ({chosen_method}) file {chosen_file}", flush=True)
                 mpd.add(chosen_file)
+                resume_endless_playback()
             except CommandError as e:
                 msg = str(e)
                 if "No such directory" in msg or "Not found" in msg:
@@ -966,6 +998,8 @@ def main():
                 mpd.stop()
             except Exception:
                 pass
+        else:
+            resume_endless_playback()
 
     summary = {
         "seed_artist": seed_artist,

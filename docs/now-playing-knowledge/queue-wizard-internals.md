@@ -223,6 +223,22 @@ Important operational note from live code tracing:
 - seeded Vibe starts should also run the same vibe-index readiness check used by the now-playing Vibe builder path
 - without those two pieces, the UI can look like “nothing happened” even when a seed request was accepted, because the controller gets a `jobId` but has no status object to poll and no surfaced error if index prep fails
 
+## Endless Vibe behavior
+
+The tablet controller's Live Queue surface also supports an **Endless Vibe** toggle in the queue header. This is a continuous queue-extension mode built on the seeded Vibe route rather than a separate Last.fm integration.
+
+Current behavior:
+- the browser-local toggle is off by default and persists in local storage
+- the controller polls the live queue and triggers only when the current track is the final queue item
+- radio, podcast, and stream entries are excluded
+- the current track's artist, title, and file become the next seed
+- the seeded route runs with `keepPlaying: true` and `endless: true`
+- the builder crops to the current seed, then appends generated local tracks while preserving playback
+- playback state is guarded before and after queue extension so natural queue exhaustion does not leave an active session stopped
+- duplicate requests are suppressed while a Vibe job is starting or running
+
+Endless Vibe intentionally differs from a one-shot seeded Vibe start. It uses the chained builder path, permits resilient same-artist fallback matching for sparse Last.fm metadata, and avoids treating an empty Last.fm/local-library match as permission to discard the active seed.
+
 ## Relationship to other pages
 
 This page should stay linked with:
