@@ -2,6 +2,26 @@
 
 This docs set follows the same order as the app tabs.
 
+## Documentation layout
+
+There are two complementary documentation layers in this repository:
+
+- **Project guides** — the numbered Markdown chapters in this directory
+  (`01-config.md` through `21-moode-airplay-metadata-hardening.md`). These are
+  concise, GitHub-friendly feature and operations guides.
+- **Wiki source** — [`wiki-source/`](./wiki-source/), the canonical editable
+  Markdown knowledge base containing architecture, API, ownership, history,
+  and troubleshooting pages.
+- **Wiki site** — [`wiki-site/`](./wiki-site/), the generated static HTML
+  rendering of `wiki-source/`. Do not edit these HTML files directly; update
+  the Markdown in `wiki-source/` and regenerate the site.
+- **References** — [`references/`](./references/), supporting upstream files,
+  patches, and provenance material. These are not wiki pages.
+
+The numbered guides and the wiki source intentionally overlap at a high level,
+but they serve different audiences: the guides are the quick project overview,
+while the wiki is the deeper maintainer reference.
+
 ## Tab-ordered chapters
 
 1. [Config](./01-config.md)

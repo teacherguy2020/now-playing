@@ -101,16 +101,16 @@ For the full boot-persistence setup (including startup-hook restore), see:
 👉 **Start here for full documentation:** [docs/README.md](./docs/README.md)
 
 The source-driven project knowledge base is also included at
-[docs/now-playing-knowledge/](./docs/now-playing-knowledge/), with a rendered
-HTML site in [docs/now-playing-knowledge-site/](./docs/now-playing-knowledge-site/).
+[docs/wiki-source/](./docs/wiki-source/), with a rendered
+HTML site in [docs/wiki-site/](./docs/wiki-site/).
 
 ### Seeburg wallbox integration
 
 The Seeburg/Pico hardware client is maintained in the public
 [`seeburg-nowplaying-pico`](https://github.com/teacherguy2020/seeburg-nowplaying-pico)
 repository. The Now Playing API integration and its selection protocol are
-documented in [integrations.md](./docs/now-playing-knowledge/integrations.md)
-and the [API endpoint catalog](./docs/now-playing-knowledge/api-endpoint-catalog.md).
+documented in [integrations.md](./docs/wiki-source/integrations.md)
+and the [API endpoint catalog](./docs/wiki-source/api-endpoint-catalog.md).
 
 - Config
 - Diagnostics
