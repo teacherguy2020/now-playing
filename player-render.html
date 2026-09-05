@@ -47,8 +47,83 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="styles/index1080.css?v=20260228-airplay-logo-sm1" />
+  <link rel="stylesheet" href="styles/index1080.css?v=20260905-album-personnel-audio-up4" />
   <style>
+    /* Deliberate physical-display idle state. moOde still blanks this page
+       through X11/DPMS after its normal timeout. */
+    body.np-idle-mode {
+      background: #090b0d !important;
+    }
+    body.np-idle-mode > #background-a,
+    body.np-idle-mode > #background-b,
+    body.np-idle-mode #content,
+    body.np-idle-mode #artist-details-container,
+    body.np-idle-mode #phone-controls {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    body.np-idle-mode #content,
+    body.np-idle-mode #artist-details-container,
+    body.np-idle-mode #phone-controls {
+      display: none !important;
+    }
+    body.np-idle-mode #np-idle-overlay {
+      display: flex !important;
+      background:
+        radial-gradient(ellipse at 50% 42%, rgba(104, 77, 33, .22), transparent 52%),
+        linear-gradient(145deg, #171719 0%, #08090b 72%);
+    }
+    .np-idle-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: min(70vw, 760px);
+      padding: clamp(18px, 3vw, 38px) clamp(28px, 5vw, 72px);
+      border: 1px solid rgba(214, 170, 83, .28);
+      border-radius: 18px;
+      background: rgba(12, 13, 16, .34);
+      box-shadow: 0 16px 60px rgba(0, 0, 0, .28), inset 0 1px rgba(255,255,255,.04);
+    }
+    .np-idle-brand {
+      color: #d9b46a;
+      font: 600 clamp(18px, 2.6vw, 34px)/1 Georgia, serif;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .np-idle-rule {
+      width: clamp(110px, 18vw, 220px);
+      height: 1px;
+      margin: clamp(12px, 2vw, 22px) 0 clamp(10px, 1.5vw, 16px);
+      background: linear-gradient(90deg, transparent, rgba(217,180,106,.75), transparent);
+    }
+    #np-idle-clock {
+      color: #f7f1e5;
+      font: 700 clamp(64px, 13vw, 154px)/.88 Inter, sans-serif;
+      letter-spacing: .025em;
+      text-shadow: 0 3px 24px rgba(0,0,0,.45);
+    }
+    .np-idle-status {
+      margin-top: clamp(14px, 2vw, 24px);
+      color: rgba(246,240,223,.88);
+      font: 500 clamp(13px, 1.7vw, 22px)/1.2 Inter, sans-serif;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .np-idle-hint {
+      margin-top: 8px;
+      color: rgba(246,240,223,.48);
+      font: 400 clamp(11px, 1.25vw, 16px)/1.2 Inter, sans-serif;
+      letter-spacing: .04em;
+    }
+    @media (max-height: 430px) {
+      .np-idle-card { padding-top: 14px; padding-bottom: 14px; }
+      .np-idle-rule { margin-top: 9px; margin-bottom: 8px; }
+      .np-idle-status { margin-top: 10px; }
+      .np-idle-hint { margin-top: 5px; }
+    }
+
     /* Size-profile pass 1: keep 1280x400 composition, fit into target panel */
     body.player-size-800x480 #content{
       width:800px;
@@ -551,7 +626,7 @@
     window.__DISABLE_PAUSE_SCREENSAVER__ = true;
     window.__DISABLE_CONTROLS_AWAKE__ = true;
   </script>
-  <script src="scripts/index-ui.js?v=20260310-idle-overlay3"></script>
+  <script src="scripts/index-ui.js?v=20260905-idle-screen3"></script>
 <script>
 (function(){
   try {

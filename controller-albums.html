@@ -72,8 +72,21 @@
     .trackBtns button{border:1px solid var(--line);background:var(--panel);color:var(--text);width:30px;height:30px;border-radius:999px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;cursor:pointer}
     .albumBtns button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:6px 9px;cursor:pointer}
     .albumBtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .playlistIconBtn{width:32px;height:32px;padding:6px !important;display:inline-flex;align-items:center;justify-content:center}
+    .playlistIconBtn svg{width:17px;height:17px;display:block;fill:currentColor}
+    .playlistIconBtn:disabled{opacity:.48;cursor:not-allowed}
     .modalX{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:999px;border:1px solid var(--line);background:var(--panel-strong);color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
     .modalX:active{transform:scale(.96)}
+    .albumPlaylistModal{position:fixed;inset:0;display:none;background:rgba(0,0,0,.28);z-index:140;align-items:center;justify-content:center}
+    .albumPlaylistModal.open{display:flex}
+    .albumPlaylistCard{position:relative;width:min(420px,92vw);max-height:82vh;overflow:auto;background:var(--overlay);border:1px solid var(--overlay-line);border-radius:14px;padding:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+    .albumPlaylistCard h2{margin:0 36px 6px 0;font-size:19px}
+    .albumPlaylistStatus{color:var(--muted);font-size:13px;margin-bottom:10px}
+    .albumPlaylistList{display:grid;gap:6px}
+    .albumPlaylistList button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:8px 10px;text-align:left;cursor:pointer}
+    .albumPlaylistCreate{display:flex;gap:6px;margin-top:12px}
+    .albumPlaylistCreate input{min-width:0;flex:1;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:8px 9px}
+    .albumPlaylistCreate button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:8px 10px;cursor:pointer}
   
 
     body.nav-backwarding{
@@ -120,12 +133,23 @@
       <button id="albumCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
       <div class="albumHead"><img id="albumArt" src="" alt="" /><div><div class="albumTitle" id="albumTitle">Album</div><div class="albumMeta" id="albumMeta"></div><div class="albumMeta">Artist: <button id="albumArtistLink" type="button" style="background:none;border:0;color:#9fc4ff;text-decoration:underline;cursor:pointer;padding:0;">(artist)</button></div></div></div>
       <div class="albumBtns">
+        <button id="albumPlaylistBtn" class="playlistIconBtn" type="button" title="Add entire album to a playlist" aria-label="Add entire album to a playlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button>
         <button id="albumAppendBtn" type="button">Append album</button>
         <button id="albumCropBtn" type="button">Add album (crop)</button>
         <button id="albumReplaceBtn" type="button">Replace with album</button>
         
       </div>
       <ul class="albumTracks" id="albumTracks"></ul>
+    </div>
+  </div>
+
+  <div class="albumPlaylistModal" id="albumPlaylistModal" aria-hidden="true">
+    <div class="albumPlaylistCard" role="dialog" aria-modal="true" aria-labelledby="albumPlaylistTitle">
+      <button id="albumPlaylistCloseBtn" class="modalX" type="button" aria-label="Close">✕</button>
+      <h2 id="albumPlaylistTitle">Add album to playlist</h2>
+      <div id="albumPlaylistStatus" class="albumPlaylistStatus">Choose an existing playlist or create a new one.</div>
+      <div id="albumPlaylistList" class="albumPlaylistList"></div>
+      <div class="albumPlaylistCreate"><input id="albumPlaylistNewName" type="text" placeholder="New playlist name" maxlength="120" autocomplete="off"><button id="albumPlaylistCreateBtn" type="button">Create</button></div>
     </div>
   </div>
 
@@ -238,6 +262,7 @@
     let state={view:'grid',sort:'az'};
     let albums=[];
     let modalCtx={album:'',artist:'',art:'',folder:'',tracks:[]};
+    let albumPlaylistFiles=[];
     let albumLoadToken=0;
     let coverQueuePaused = false;
     let coverQueueToken = 0;
@@ -445,6 +470,8 @@
       document.getElementById('albumMeta').textContent = modalCtx.artist || '';
       document.getElementById('albumArtistLink').textContent = modalCtx.artist || '(unknown artist)';
       document.getElementById('albumArt').src = modalCtx.art || `${base}/art/current.jpg`;
+      const playlistBtn = document.getElementById('albumPlaylistBtn');
+      if (playlistBtn) playlistBtn.disabled = isLoading || !(Array.isArray(modalCtx.tracks) && modalCtx.tracks.some((t)=>String(t?.file || '').trim()));
       if (isLoading) {
         document.getElementById('albumTracks').innerHTML = `<li class='loadingRow'><span class='spin'></span><span>Loading album tracks…</span></li>`;
       } else {
@@ -453,6 +480,73 @@
       document.getElementById('albumModal').classList.add('open');
     }
     function closeAlbumModal(){ albumLoadToken += 1; document.getElementById('albumModal').classList.remove('open'); coverQueuePaused = false; scheduleEmbeddedCovers(); }
+
+    function closeAlbumPlaylistModal(){
+      const modal = document.getElementById('albumPlaylistModal');
+      if (!modal) return;
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden','true');
+      albumPlaylistFiles = [];
+    }
+
+    function escapeAlbumPlaylistHtml(value){
+      return String(value ?? '').replace(/[&<>"']/g, (c)=>({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c] || c));
+    }
+
+    async function addAlbumTracksToPlaylist(name){
+      const playlistName = String(name || '').trim();
+      const tracks = albumPlaylistFiles.filter(Boolean);
+      const status = document.getElementById('albumPlaylistStatus');
+      if (!playlistName || !tracks.length) return;
+      if (status) status.textContent = `Adding ${tracks.length} track${tracks.length === 1 ? '' : 's'} to “${playlistName}”…`;
+      try {
+        await ensureKey();
+        const r = await fetch(`${base}/config/queue-wizard/add-to-playlist`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json', ...(key ? {'x-track-key':key} : {})},
+          body:JSON.stringify({ playlistName, tracks })
+        });
+        const j = await r.json().catch(()=>({}));
+        if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+        if (status) status.textContent = `Added to “${playlistName}”.`;
+        setTimeout(closeAlbumPlaylistModal, 700);
+      } catch (e) {
+        if (status) status.textContent = e?.message || 'Could not save playlist.';
+      }
+    }
+
+    async function openAlbumPlaylistModal(){
+      const tracks = (Array.isArray(modalCtx.tracks) ? modalCtx.tracks : [])
+        .map((t)=>String(t?.file || '').trim())
+        .filter(Boolean);
+      const modal = document.getElementById('albumPlaylistModal');
+      const list = document.getElementById('albumPlaylistList');
+      const status = document.getElementById('albumPlaylistStatus');
+      if (!tracks.length || !modal || !list) return;
+      albumPlaylistFiles = tracks;
+      document.getElementById('albumPlaylistTitle').textContent = `Add “${modalCtx.album || 'album'}” to playlist`;
+      if (status) status.textContent = `Choose an existing playlist or create a new one. (${tracks.length} tracks)`;
+      list.innerHTML = '<div class="albumPlaylistStatus">Loading playlists…</div>';
+      document.getElementById('albumPlaylistNewName').value = '';
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden','false');
+      try {
+        const names = await (async ()=>{
+          await ensureKey();
+          const r = await fetch(`${base}/config/queue-wizard/playlists`, { cache:'no-store', headers:key ? {'x-track-key':key} : {} });
+          const j = await r.json().catch(()=>({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          return Array.isArray(j.playlists) ? j.playlists : [];
+        })();
+        if (status) status.textContent = `Choose an existing playlist or create a new one. (${tracks.length} tracks)`;
+        list.innerHTML = names.length
+          ? names.map((name)=>`<button type="button" data-playlist-name="${escapeAlbumPlaylistHtml(name)}">${escapeAlbumPlaylistHtml(name)}</button>`).join('')
+          : '<div class="albumPlaylistStatus">No existing playlists.</div>';
+      } catch (e) {
+        if (status) status.textContent = e?.message || 'Could not load playlists.';
+        list.innerHTML = '';
+      }
+    }
 
     async function openAlbumFromContext(ctx){
       const myToken = ++albumLoadToken;
@@ -557,6 +651,15 @@
 
     document.getElementById('albumCloseBtn').addEventListener('click', closeAlbumModal);
     document.getElementById('albumModal').addEventListener('click', (ev)=>{ if(ev.target.id==='albumModal') closeAlbumModal(); });
+    document.getElementById('albumPlaylistBtn')?.addEventListener('click', ()=>openAlbumPlaylistModal().catch((e)=>{ try { alert(e?.message || e || 'Could not open playlist dialog.'); } catch {} }));
+    document.getElementById('albumPlaylistCloseBtn')?.addEventListener('click', closeAlbumPlaylistModal);
+    document.getElementById('albumPlaylistModal')?.addEventListener('click', (ev)=>{ if (ev.target.id === 'albumPlaylistModal') closeAlbumPlaylistModal(); });
+    document.getElementById('albumPlaylistList')?.addEventListener('click', (ev)=>{
+      const btn = ev.target.closest('button[data-playlist-name]');
+      if (btn) addAlbumTracksToPlaylist(btn.getAttribute('data-playlist-name') || '');
+    });
+    document.getElementById('albumPlaylistCreateBtn')?.addEventListener('click', ()=>addAlbumTracksToPlaylist(document.getElementById('albumPlaylistNewName')?.value || ''));
+    document.getElementById('albumPlaylistNewName')?.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter') addAlbumTracksToPlaylist(ev.target.value || ''); });
 
     async function runAlbumAction(mode){
       if(!modalCtx.album) return;

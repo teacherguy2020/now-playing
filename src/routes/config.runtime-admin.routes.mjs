@@ -70,6 +70,10 @@ function pickPublicConfig(cfg) {
       artCacheDir: String(c.runtime?.artCacheDir || ''),
       artCacheLimit: Number(c.runtime?.artCacheLimit || 0),
     },
+    display: {
+      idleBrandLine: String(c.display?.idleBrandLine || '').trim() || 'Clem’s Place',
+      idleMessageLine: String(c.display?.idleMessageLine || '').trim() || 'The record room is quiet',
+    },
     features: {
       podcasts: Boolean(c.features?.podcasts ?? true),
       ratings: Boolean(c.features?.ratings ?? true),
@@ -814,6 +818,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
             },
             ports: { ...(current.ports || {}), ...(incoming.ports || {}) },
             paths: { ...(current.paths || {}), ...(incoming.paths || {}) },
+            display: { ...(current.display || {}), ...(incoming.display || {}) },
             notifications: {
               ...(current.notifications || {}),
               ...(incoming.notifications || {}),

@@ -56,6 +56,7 @@ export const TRACK_CACHE_DIR = process.env.TRACK_CACHE_DIR || runtimeCfg?.trackC
 export const FAVORITES_PLAYLIST_NAME = process.env.FAVORITES_PLAYLIST_NAME || 'Favorites';
 export const FAVORITES_REFRESH_MS = Number(process.env.FAVORITES_REFRESH_MS || '3000');
 export const SEEBURG_PLAYLIST_NAME = process.env.SEEBURG_PLAYLIST_NAME || 'Seeburg Playlist';
+export const MULTIPHONE_PLAYLIST_NAME = process.env.MULTIPHONE_PLAYLIST_NAME || 'Multiphone Playlist';
 
 export const ITUNES_SEARCH_URL = 'https://itunes.apple.com/search';
 export const ITUNES_COUNTRY = 'us';

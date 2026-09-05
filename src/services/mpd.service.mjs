@@ -123,7 +123,11 @@ export function mpdQueryRaw(command, timeoutMs = 3000) {
 
       if (!commandSent) {
         commandSent = true;
-        sock.write(`${command}\nclose\n`);
+        // Let MPD finish sending the command response before disconnecting.
+        // Pipelining `close` here can truncate large find/search responses
+        // (MPD was returning exactly one 16 KiB chunk for large artist
+        // queries, which made otherwise valid artists appear incomplete).
+        sock.write(`${command}\n`);
         return;
       }
 

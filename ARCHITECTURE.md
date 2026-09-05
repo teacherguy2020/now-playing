@@ -83,3 +83,21 @@ These are configurable via runtime config (`ports.api`, `ports.ui`).
 - API host mediates queue coordination
 - MPD remains authoritative
 - Queue alignment and metadata consistency are preserved
+
+## Mabel and VIP integration boundary
+
+The Multiphone project's Mabel agent is an external client of this API. Its
+normal numbered requests use the dedicated Multiphone integration and jukebox
+priority rules. Its VIP/off-script music requests reuse bounded Now Playing
+actions such as album, artist, playlist, mix, and now-playing operations.
+
+The Mac-side Mabel bridge is the orchestration and credential boundary. Mabel
+must not receive unrestricted HTTP or MPD access, and the iPad handset must not
+receive permanent API credentials. VIP requests should carry explicit options
+when behavior matters, including artist limits, physical queue shuffle, and
+the rating filter that excludes one-star tracks.
+
+Future lighting, Harmony Hub, and room-ambience controls belong in a separate
+allow-listed VIP action layer rather than in core MPD routes. Each adapter
+should have a named action, validated arguments, bounded execution, and a
+defined cleanup/restore policy. See `docs/23-mabel-vip.md`.

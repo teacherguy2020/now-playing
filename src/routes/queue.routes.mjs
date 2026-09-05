@@ -254,6 +254,7 @@ export function registerQueueRoutes(app, deps) {
       const excludeHoliday = req?.body?.excludeHoliday !== false;
       const clearFirst = req?.body?.clearFirst !== false;
       const randomOn = req?.body?.random !== false;
+      const shuffleQueue = req?.body?.shuffle === true;
       const startPlayback = req?.body?.startPlayback === true;
       const maxTracks = Math.max(1, Math.min(5000, Number(req?.body?.maxTracks || 300)));
 
@@ -265,8 +266,13 @@ export function registerQueueRoutes(app, deps) {
       const ratingCache = new Map();
       let added = 0;
 
-      for (const artist of artists) {
+      for (const [artistIndex, artist] of artists.entries()) {
         byArtist[artist] = 0;
+        // Reserve an even share for each requested artist before allowing
+        // earlier artists to consume the global mix cap. Any unused share is
+        // naturally available to later artists through the remaining budget.
+        const artistsRemaining = artists.length - artistIndex;
+        const artistBudget = Math.max(1, Math.ceil((maxTracks - added) / artistsRemaining));
 
         // Use mpc CLI queries (matches what user sees in moOde UI much more closely)
         const noSpace = artist.replace(/\s+/g, '');
@@ -319,7 +325,7 @@ export function registerQueueRoutes(app, deps) {
         const candidateCount = byFile.size;
 
         for (const song of byFile.values()) {
-          if (added >= maxTracks) break;
+          if (added >= maxTracks || byArtist[artist] >= artistBudget) break;
           const file = String(song.file || '').trim();
           if (!file) continue;
           if (seen.has(file)) {
@@ -369,10 +375,21 @@ export function registerQueueRoutes(app, deps) {
         };
       }
 
-      await mpdCmdOk(`random ${randomOn ? 1 : 0}`);
+      // `random` changes MPD's playback selection mode; it does not reorder
+      // the queue.  A mix may explicitly request a physical shuffle so the
+      // requested artists are interleaved and then played sequentially.
+      await mpdCmdOk(`random ${shuffleQueue ? 0 : (randomOn ? 1 : 0)}`);
 
       let randomizedHeadFromPos = null;
-      if (randomOn && added > 1) {
+      let shuffled = false;
+      if (shuffleQueue && added > 1) {
+        try {
+          await mpdCmdOk('shuffle');
+          shuffled = true;
+        } catch (e) {
+          log.debug('[queue/mix] queue shuffle failed:', e?.message || String(e));
+        }
+      } else if (randomOn && added > 1) {
         try {
           const fromPos = Math.floor(Math.random() * added);
           if (fromPos > 0) {
@@ -426,6 +443,7 @@ export function registerQueueRoutes(app, deps) {
         excludeHoliday,
         clearFirst,
         random: random === '1',
+        shuffle: shuffled,
         randomizedHeadFromPos,
         startPlayback,
         startedPlayback,

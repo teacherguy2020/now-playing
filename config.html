@@ -280,6 +280,19 @@
                   <div class="cfgHint" id="displayTakeoverTargetHint" style="margin-top:6px;"></div>
                 </div>
 
+                <div class="cfgCard gateCard" id="idleDisplayBrandingCard">
+                  <h3>Idle Display Branding</h3>
+                  <div class="cfgField">
+                    <label for="idleBrandLine">Brand line</label>
+                    <input id="idleBrandLine" type="text" maxlength="80" placeholder="Clem’s Place" />
+                  </div>
+                  <div class="cfgField">
+                    <label for="idleMessageLine">Message line</label>
+                    <input id="idleMessageLine" type="text" maxlength="120" placeholder="The record room is quiet" />
+                  </div>
+                  <div class="cfgHint">Shown on the physical player display when playback is stopped and the queue is empty. Leave either field blank to use its default.</div>
+                </div>
+
                 <div class="cfgCard gateCard" id="mpdscribbleCard">
                   <h3>mpdscribble</h3>
                   <div class="cfgField"><label><input id="featureMpdscribbleControl" type="checkbox" /> Enable controls</label></div>
@@ -1128,6 +1141,8 @@ async function loadCfg(){
   document.getElementById('featureAlbumPersonnel').checked = !!(c.features?.albumPersonnel ?? true);
   document.getElementById('featureMpdscribbleControl').checked = !!(c.features?.mpdscribbleControl ?? false);
   document.getElementById('featureMoodeDisplayTakeover').checked = !!(c.features?.moodeDisplayTakeover ?? true);
+  document.getElementById('idleBrandLine').value = String(c.display?.idleBrandLine || full.display?.idleBrandLine || 'Clem’s Place');
+  document.getElementById('idleMessageLine').value = String(c.display?.idleMessageLine || full.display?.idleMessageLine || 'The record room is quiet');
   syncRatingsCardVisibility();
   syncMpdscribbleUi();
   const lastfmKey = String(full.lastfm?.apiKey || localStorage.getItem('nowplaying.secret.lastfmApiKey') || '');
@@ -1348,6 +1363,10 @@ async function saveCfg(){
         podcastRoot: document.getElementById('pathPodcastRoot').value.trim(),
       },
       runtime: {
+      },
+      display: {
+        idleBrandLine: document.getElementById('idleBrandLine').value.trim(),
+        idleMessageLine: document.getElementById('idleMessageLine').value.trim(),
       },
       nodes: nodesNext,
       lastfm: {

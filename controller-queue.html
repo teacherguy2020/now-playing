@@ -18,6 +18,8 @@
     .meta{color:var(--muted);font-size:12px;margin:0}
     .queueTopActions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0}
     .queueTopActions button{border:1px solid var(--line);background:var(--line);color:var(--text);border-radius:9px;padding:6px 9px;font-size:12px;line-height:1.05;cursor:pointer}
+    .queueTopActions button.iconBtn{width:30px;height:28px;padding:5px;display:inline-flex;align-items:center;justify-content:center}
+    .queueTopActions button.iconBtn svg{width:16px;height:16px;display:block;fill:currentColor}
     .queueTopActions button.endlessVibeOn{border-color:#5b3df0;background:#5b3df0;color:#fff}
     .queueTopActions button.warn{border-color:var(--line);background:var(--line);color:var(--text)}
     .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
@@ -124,7 +126,7 @@
   <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
 </head>
 <body>
-  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="routeAlexaBtn" type="button" title="Invoke configured Alexa route webhook">Route to Alexa</button><button id="endlessVibeBtn" type="button" aria-pressed="false" title="Automatically extend the queue with Vibe">Endless Vibe: Off</button><button id="shuffleQueueBtn" type="button" title="Turn random off and shuffle queue">Shuffle</button><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
+  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="routeAlexaBtn" type="button" title="Invoke configured Alexa route webhook">Route to Alexa</button><button id="saveQueuePlaylistBtn" class="iconBtn" type="button" title="Add entire Live Queue to a playlist" aria-label="Add entire Live Queue to a playlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button><button id="endlessVibeBtn" type="button" aria-pressed="false" title="Automatically extend the queue with Vibe">Endless Vibe: Off</button><button id="shuffleQueueBtn" type="button" title="Turn random off and shuffle queue">Shuffle</button><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
   <ul class="list" id="list"><li id="dropLine" aria-hidden="true"></li></ul>
   <div class="vibeBusy" id="vibeBusy"><span class="miniSpin" aria-hidden="true"></span><span id="vibeBusyText">Building vibe queue…</span></div>
 
@@ -449,7 +451,8 @@
       return j;
     }
 
-    let queuePlaylistFile = '';
+    let queuePlaylistFiles = [];
+    let liveQueueItems = [];
     const playlistModal = document.getElementById('playlistModal');
     const playlistStatus = document.getElementById('playlistStatus');
     const playlistList = document.getElementById('playlistList');
@@ -457,18 +460,19 @@
     function closePlaylistModal(){
       playlistModal?.classList.remove('open');
       playlistModal?.setAttribute('aria-hidden','true');
-      queuePlaylistFile = '';
+      queuePlaylistFiles = [];
     }
-    async function addQueueTrackToPlaylist(name){
+    async function addQueueTracksToPlaylist(name){
       const playlistName = String(name || '').trim();
-      if (!playlistName || !queuePlaylistFile) return;
-      playlistStatus.textContent = `Adding to “${playlistName}”…`;
+      const tracks = queuePlaylistFiles.filter(Boolean);
+      if (!playlistName || !tracks.length) return;
+      playlistStatus.textContent = `Adding ${tracks.length} track${tracks.length === 1 ? '' : 's'} to “${playlistName}”…`;
       try {
         await ensureKey();
         const r = await fetch(`${base}/config/queue-wizard/add-to-playlist`, {
           method:'POST',
           headers:{'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key':runtimeTrackKey} : {})},
-          body:JSON.stringify({ playlistName, tracks:[queuePlaylistFile] })
+          body:JSON.stringify({ playlistName, tracks })
         });
         const j = await r.json().catch(()=>({}));
         if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
@@ -476,9 +480,16 @@
         setTimeout(closePlaylistModal, 700);
       } catch (e) { playlistStatus.textContent = e?.message || 'Could not save playlist.'; }
     }
-    async function openPlaylistModal(file, title){
-      queuePlaylistFile = String(file || '').trim();
-      if (!queuePlaylistFile || !playlistModal) return;
+    async function loadPlaylistChoices(){
+      await ensureKey();
+      const r = await fetch(`${base}/config/queue-wizard/playlists`, { cache:'no-store', headers:runtimeTrackKey ? {'x-track-key':runtimeTrackKey} : {} });
+      const j = await r.json().catch(()=>({}));
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      return Array.isArray(j.playlists) ? j.playlists : [];
+    }
+    async function openPlaylistModalForTracks(tracks, title){
+      queuePlaylistFiles = (Array.isArray(tracks) ? tracks : [tracks]).map((x)=>String(x || '').trim()).filter(Boolean);
+      if (!queuePlaylistFiles.length || !playlistModal) return;
       document.getElementById('playlistTitle').textContent = `Add “${String(title || 'track').trim()}” to playlist`;
       playlistStatus.textContent = 'Loading playlists…';
       playlistList.innerHTML = '';
@@ -486,22 +497,32 @@
       playlistModal.classList.add('open');
       playlistModal.setAttribute('aria-hidden','false');
       try {
-        await ensureKey();
-        const r = await fetch(`${base}/config/queue-wizard/playlists`, { cache:'no-store', headers:runtimeTrackKey ? {'x-track-key':runtimeTrackKey} : {} });
-        const j = await r.json().catch(()=>({}));
-        const names = r.ok && j?.ok && Array.isArray(j.playlists) ? j.playlists : [];
+        const names = await loadPlaylistChoices();
         playlistStatus.textContent = 'Choose an existing playlist or create a new one.';
         playlistList.innerHTML = names.length ? names.map((name)=>`<button type="button" data-playlist-name="${String(name).replace(/[&<>\'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;',"\"":'&quot;'}[c]||c))}">${String(name).replace(/[&<>\'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;',"\"":'&quot;'}[c]||c))}</button>`).join('') : '<div class="playlistStatus">No existing playlists.</div>';
       } catch (e) { playlistStatus.textContent = e?.message || 'Could not load playlists.'; }
+    }
+    async function openPlaylistModal(file, title){
+      return openPlaylistModalForTracks([file], title);
+    }
+    async function openQueuePlaylistModal(){
+      try { await loadQueue(); } catch {}
+      const tracks = liveQueueItems.map((x)=>String(x?.file || '').trim()).filter(Boolean);
+      if (!tracks.length) {
+        try { alert('Live Queue is empty.'); } catch {}
+        return;
+      }
+      await openPlaylistModalForTracks(tracks, `Live Queue (${tracks.length} tracks)`);
     }
     document.getElementById('playlistCloseBtn')?.addEventListener('click', closePlaylistModal);
     playlistModal?.addEventListener('click', (ev)=>{ if (ev.target === playlistModal) closePlaylistModal(); });
     playlistList?.addEventListener('click', (ev)=>{
       const btn = ev.target.closest('button[data-playlist-name]');
-      if (btn) addQueueTrackToPlaylist(btn.getAttribute('data-playlist-name') || '');
+      if (btn) addQueueTracksToPlaylist(btn.getAttribute('data-playlist-name') || '');
     });
-    document.getElementById('playlistCreateBtn')?.addEventListener('click', ()=>addQueueTrackToPlaylist(playlistNewName?.value || ''));
-    playlistNewName?.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter') addQueueTrackToPlaylist(ev.target.value || ''); });
+    document.getElementById('playlistCreateBtn')?.addEventListener('click', ()=>addQueueTracksToPlaylist(playlistNewName?.value || ''));
+    playlistNewName?.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter') addQueueTracksToPlaylist(ev.target.value || ''); });
+    document.getElementById('saveQueuePlaylistBtn')?.addEventListener('click', ()=>openQueuePlaylistModal().catch((e)=>{ try { alert(e?.message || e || 'Could not open playlist dialog.'); } catch {} }));
 
     async function startSeedVibeFromRowWrap(wrap){
       const dec = (s)=>{ try{return decodeURIComponent(String(s||''));}catch{return String(s||'');} };
@@ -681,6 +702,7 @@
         queueFailStreak = 0;
         try { clearTimeout(queueAutoRetryTimer); } catch {}
         const items = Array.isArray(j.items) ? j.items : [];
+        liveQueueItems = items;
         const headPos = Number(j.headPos || -1);
         if (meta) meta.textContent = `${items.length} tracks`;
         maybeStartEndlessVibe(items, headPos).catch(()=>null);

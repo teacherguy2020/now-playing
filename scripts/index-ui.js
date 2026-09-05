@@ -25,6 +25,10 @@ let fgLoadingKey = '';
 let fgLoadingUrl = '';
 let radioFooterActive = false;
 let idleClockTimer = 0;
+let idleBrandingLastFetch = 0;
+let idleBrandingFetchPromise = null;
+let idleBrandLine = 'Clem’s Place';
+let idleMessageLine = 'The record room is quiet';
 let fgReqToken = 0;     // monotonically increasing request id
 let motionReqToken = 0;
 const PODCAST_GENRES = new Set([
@@ -99,10 +103,55 @@ function ensureIdleOverlay() {
   if (el) return el;
   el = document.createElement('div');
   el.id = 'np-idle-overlay';
-  el.style.cssText = 'position:fixed;inset:0;display:none;z-index:60;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(circle at 50% 35%, rgba(44,70,110,.45), rgba(6,10,18,.88));backdrop-filter:blur(4px);text-align:center;color:#eaf2ff;';
-  el.innerHTML = '<div id="np-idle-clock" style="font-size:clamp(42px,8vw,88px);font-weight:800;letter-spacing:.02em;">--:--</div><div style="margin-top:10px;font-size:15px;opacity:.85;">Queue is empty</div><div style="margin-top:6px;font-size:12px;opacity:.65;">Open Queue Wizard or YouTube to start playback</div>';
+  el.style.cssText = 'position:fixed;inset:0;display:none;z-index:60;align-items:center;justify-content:center;flex-direction:column;text-align:center;color:#f6f0df;';
+  const brand = document.createElement('div');
+  brand.className = 'np-idle-brand';
+  brand.textContent = idleBrandLine;
+  const rule = document.createElement('div');
+  rule.className = 'np-idle-rule';
+  rule.setAttribute('aria-hidden', 'true');
+  const clock = document.createElement('div');
+  clock.id = 'np-idle-clock';
+  clock.setAttribute('aria-label', 'Current time');
+  clock.textContent = '--:--';
+  const message = document.createElement('div');
+  message.className = 'np-idle-status';
+  message.textContent = idleMessageLine;
+  const hint = document.createElement('div');
+  hint.className = 'np-idle-hint';
+  hint.textContent = 'Ready for the next tune';
+  const card = document.createElement('div');
+  card.className = 'np-idle-card';
+  card.append(brand, rule, clock, message, hint);
+  el.appendChild(card);
   document.body.appendChild(el);
   return el;
+}
+
+async function refreshIdleBranding(force = false) {
+  const now = Date.now();
+  if (!force && (now - idleBrandingLastFetch) < 5000) return;
+  if (idleBrandingFetchPromise) return idleBrandingFetchPromise;
+  idleBrandingFetchPromise = (async () => {
+    try {
+      const r = await fetch(`${API_BASE}/config/runtime`, { cache: 'no-store' });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j?.ok) {
+        idleBrandLine = String(j?.config?.display?.idleBrandLine || idleBrandLine).trim() || 'Clem’s Place';
+        idleMessageLine = String(j?.config?.display?.idleMessageLine || idleMessageLine).trim() || 'The record room is quiet';
+        const brand = document.querySelector('#np-idle-overlay .np-idle-brand');
+        const message = document.querySelector('#np-idle-overlay .np-idle-status');
+        if (brand) brand.textContent = idleBrandLine;
+        if (message) message.textContent = idleMessageLine;
+      }
+    } catch (_) {
+      // Keep the last known branding if the API is temporarily unavailable.
+    } finally {
+      idleBrandingLastFetch = Date.now();
+      idleBrandingFetchPromise = null;
+    }
+  })();
+  return idleBrandingFetchPromise;
 }
 
 function setIdleOverlayVisible(on) {
@@ -119,11 +168,14 @@ function setIdleOverlayVisible(on) {
     clock.textContent = `${h12}:${p(d.getMinutes())} ${ap}`;
   };
   if (on) {
+    refreshIdleBranding().catch(() => {});
     tick();
+    document.body.classList.add('np-idle-mode');
     el.style.display = 'flex';
     if (stars) stars.style.display = 'none';
     if (!idleClockTimer) idleClockTimer = setInterval(tick, 15000);
   } else {
+    document.body.classList.remove('np-idle-mode');
     el.style.display = 'none';
     if (stars) stars.style.display = '';
     if (idleClockTimer) { clearInterval(idleClockTimer); idleClockTimer = 0; }
@@ -206,6 +258,8 @@ async function loadRatingsFeatureFlag() {
     if (r.ok && j?.ok) {
       RATINGS_ENABLED = Boolean(j?.config?.features?.ratings ?? true);
       PERSONNEL_ENABLED = Boolean(j?.config?.features?.albumPersonnel ?? true);
+      idleBrandLine = String(j?.config?.display?.idleBrandLine || idleBrandLine).trim() || 'Clem’s Place';
+      idleMessageLine = String(j?.config?.display?.idleMessageLine || idleMessageLine).trim() || 'The record room is quiet';
       if (!RATINGS_ENABLED) {
         ratingDisabled = true;
         renderStars(0);
@@ -2950,7 +3004,11 @@ function updateUI(data) {
     const page = String(location.pathname || '').toLowerCase();
     const playerLike = page.endsWith('/player-render.html') || page.endsWith('player-render.html') || page.endsWith('/player.html') || page.endsWith('player.html');
     const hasPlayable = !!String(data?.file || '').trim() || !!String(data?.title || '').trim() || !!String(data?.artist || '').trim() || !!data?.isStream;
-    setIdleOverlayVisible(playerLike && !hasPlayable);
+    // The physical moOde display is blanked by X11/DPMS and woken by the
+    // moOde watchdog. While awake, show a deliberate idle screen instead of
+    // exposing empty artwork, rating, and transport placeholders.
+    const stopped = isPauseOrStopState(data);
+    setIdleOverlayVisible(playerLike && stopped && !hasPlayable);
   } catch {}
 
   // Alexa mode: brute-force art refresh by file, independent of art cache/crossfade logic.

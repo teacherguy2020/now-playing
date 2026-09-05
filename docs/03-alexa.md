@@ -28,6 +28,22 @@ Use this page to manage Alexa integration and voice command behavior.
 ## Behavior note
 In Alexa mode, queue behavior is different from normal playback. The UI treats queue head as queued-next.
 
+## Mabel VIP relationship
+
+The Multiphone project's Mabel agent reuses the same bounded music capabilities
+as Alexa, but the Mac-side bridge owns the conversation and invokes the API on
+Mabel's behalf. The iPad handset never receives the permanent track key.
+
+Current VIP music actions include album, artist, playlist, multi-artist mix,
+and now-playing lookup. Artist requests are capped by Mabel, mixes use a
+physical MPD shuffle rather than leaving Random mode enabled, and VIP playback
+requests exclude tracks rated one star. These are Mabel-specific request
+options; existing Alexa behavior remains unchanged.
+
+Future lighting and Harmony Hub controls should be implemented as separate,
+allow-listed VIP adapters rather than arbitrary Alexa/API endpoint access. See
+`docs/23-mabel-vip.md`.
+
 ## Public domain requirements (critical)
 Alexa cloud requests must reach your public domain (example: `moode.YOURDOMAIN.com`) and then be reverse-proxied to local services.
 

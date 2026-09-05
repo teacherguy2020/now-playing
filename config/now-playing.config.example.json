@@ -24,7 +24,11 @@
     "skillId": "",
     "webhookPath": "/alexa",
     "routeWebhookUrl": ""
-  }
+  },
+  "display": {
+    "idleBrandLine": "Clem’s Place",
+    "idleMessageLine": "The record room is quiet"
+  },
   "paths": {
     "musicLibraryRoot": "/var/lib/mpd/music",
     "moodeUsbMount": "/media/SamsungMoode",

@@ -157,11 +157,19 @@ body.booting .fade-out {
   font-size: clamp(22px, calc(var(--artSize) * var(--fs-album)), 48px);
   color: #ccc;
   text-decoration: none;
+  line-height: 1.18;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  max-height: calc(2 * 1.18em);
 }
 
 /* Kiosk/desktop: make full album row tappable/clickable */
 body:not(.phone-ui) #album-link {
-  display: block;
+  display: -webkit-box;
   width: 100%;
 }
 
@@ -413,8 +421,8 @@ body.pause      #fav-heart {
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 6;
-  line-clamp: 6;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 /* =========================================================
@@ -925,6 +933,7 @@ body.phone-ui #phone-controls .ctl.big.on {
 
   body:not(.phone-ui) #file-info {
     font-size: clamp(20px, calc(var(--artSize) * 0.056), 40px);
+    transform: translateY(-10px);
   }
 
   body:not(.phone-ui) #personnel-info {
