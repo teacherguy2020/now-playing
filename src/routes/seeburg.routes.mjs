@@ -93,14 +93,11 @@ export function recoverJukeboxEntries(items, statePath, entries = jukeboxEntries
 
 export function isJukeboxCurrent(item, items, entries = jukeboxEntries) {
   const id = Number(item?.id || 0);
-  if (isJukeboxItem(item, entries)) return true;
-  if (!jukeboxSession?.active || !jukeboxSession.fresh || !jukeboxSession.files?.includes(item?.file)) return false;
-  // During a fresh session, the presence of any known jukebox entry is
-  // sufficient to protect a playlist track. An individual MPD ID may have
-  // been missed during an earlier request, but the session still proves the
-  // caller is building the jukebox segment. This closes the gap where every
-  // other rapid request could otherwise interrupt playback.
-  return items.some((candidate) => entries.has(Number(candidate.id || 0)));
+  // Current-track priority must be based on the stable MPD song ID recorded
+  // when Mabel or Seeburg inserted the item. A session-level filename match
+  // is useful for recovering pending queue entries, but it can misclassify
+  // unrelated house music that happens to use the same file.
+  return id > 0 && entries.has(id);
 }
 
 export function isJukeboxItem(item, entries = jukeboxEntries) {
@@ -237,11 +234,12 @@ export function registerSeeburgRoutes(app, deps) {
         beforeItems.unshift(...currentInfo.filter((item) => !beforeItems.some((existing) => Number(existing.id || 0) === Number(item.id || 0))));
       }
       reconcileJukeboxState(beforeItems, jukeboxStatePath, entries);
+      const currentWasKnownJukebox = currentSongId > 0 && entries.has(currentSongId);
       // A paused/stopped session is idle for selection purposes. Only an
       // actively playing jukebox track should protect the pending segment.
       recoverJukeboxEntries(beforeItems, jukeboxStatePath, entries);
       const currentItem = beforeItems.find((item) => Number(item.id || 0) === currentSongId);
-      const currentIsJukebox = wasPlaying && isJukeboxCurrent(currentItem, beforeItems, entries);
+      const currentIsJukebox = wasPlaying && currentWasKnownJukebox && isJukeboxCurrent(currentItem, beforeItems, entries);
       const pendingJukebox = beforeItems
         .filter((item) => Number(item.id || 0) > 0 && Number(item.pos || -1) > currentPos && isJukeboxItem(item, entries))
         .sort((a, b) => Number(entries.get(Number(a.id))?.sequence || Number(a.pos) || 0) - Number(entries.get(Number(b.id))?.sequence || Number(b.pos) || 0));

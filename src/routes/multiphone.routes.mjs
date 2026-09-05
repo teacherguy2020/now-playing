@@ -89,11 +89,12 @@ export function registerMultiphoneRoutes(app, deps) {
         items.unshift(...currentInfo.filter((item) => !items.some((existing) => Number(existing.id || 0) === Number(item.id || 0))));
       }
       reconcileJukeboxState(items, jukeboxStatePath, entries);
+      const currentWasKnownJukebox = currentId > 0 && entries.has(currentId);
       recoverJukeboxEntries(items, jukeboxStatePath, entries);
       // A paused/stopped session is idle for selection purposes. Only an
       // actively playing jukebox track should protect the pending segment.
       const currentItem = items.find((item) => Number(item.id || 0) === currentId);
-      const currentIsJukebox = wasPlaying && isJukeboxCurrent(currentItem, items, entries);
+      const currentIsJukebox = wasPlaying && currentWasKnownJukebox && isJukeboxCurrent(currentItem, items, entries);
       const queueWasCleared = !wasPlaying && !currentIsJukebox;
       if (queueWasCleared) {
         beginJukeboxSession({ source: 'multiphone', files: resolved.files, fresh: true });
@@ -165,6 +166,7 @@ export function registerMultiphoneRoutes(app, deps) {
         queueWasCleared, source: 'multiphone', priority: 'jukebox', mpdSongId: id,
         artist: trackInfo.artist || '', title: trackInfo.title || '',
         queuedBehindJukebox: currentIsJukebox,
+        interruptedNormalPlayback: wasPlaying && !currentIsJukebox,
         jukeboxQueueLength: currentIsJukebox ? pending.length + 2 : 1,
         playbackDeferred,
         decision: { currentSongId: currentId, currentPos, currentIsJukebox, pendingJukeboxCount: pending.length },

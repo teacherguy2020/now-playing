@@ -113,3 +113,46 @@ test('can reserve a selection without starting it for a synchronized voice hando
   assert.equal(res.body.mpdSongId, 42);
   assert.equal(calls.includes('play 0'), false);
 });
+
+test('pre-empts actively playing ordinary house music', async () => {
+  const calls = [];
+  const instance = app();
+  let statusCalls = 0;
+  registerMultiphoneRoutes(instance, {
+    requireTrackKey: () => true,
+    mpdEscapeValue: (v) => JSON.stringify(String(v)),
+    mpdHasACK: (raw) => String(raw).includes('ACK'),
+    parseMpdFirstBlock: (raw) => ({
+      state: 'play',
+      song: '0',
+      songid: raw.includes('songid: 42') ? '42' : '41',
+      playlistlength: raw.includes('playlistlength: 4') ? '4' : '3',
+    }),
+    mpdQueryRaw: async (command) => {
+      calls.push(command);
+      if (command === 'listplaylist "Multiphone Playlist"') return 'file: selected.flac\nOK\n';
+      if (command === 'status') {
+        statusCalls += 1;
+        return statusCalls === 1
+          ? 'state: play\nsong: 0\nsongid: 41\nplaylistlength: 3\nOK\n'
+          : 'state: play\nsong: 1\nsongid: 42\nplaylistlength: 4\nOK\n';
+      }
+      if (command === 'playlistinfo') return 'file: house-music.flac\npos: 0\nId: 41\n\nfile: next.flac\npos: 1\nId: 43\nOK\n';
+      if (command === 'addid "selected.flac"') return 'Id: 42\nOK\n';
+      if (command === 'moveid 42 1') return 'OK\n';
+      if (command === 'playlistid 42') return 'file: selected.flac\nArtist: Test Artist\nTitle: Test Title\nId: 42\nOK\n';
+      if (command === 'play 1') return 'OK\n';
+      throw new Error(`unexpected command: ${command}`);
+    },
+    multiphonePlaylistName: 'Multiphone Playlist',
+  });
+
+  const res = response();
+  await instance.routes['POST /integrations/multiphone/selection']({ body: { number: 1 } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.playbackStarted, true);
+  assert.equal(res.body.queueWasCleared, false);
+  assert.equal(res.body.queuedBehindJukebox, false);
+  assert.equal(res.body.interruptedNormalPlayback, true);
+  assert.ok(calls.includes('play 1'));
+});
