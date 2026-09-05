@@ -219,7 +219,12 @@ import { registerPodcastSubscriptionRoutes } from './src/routes/podcasts-subscri
 import { registerPodcastRefreshRoutes } from './src/routes/podcasts-refresh.routes.mjs';
 import { registerPodcastEpisodeRoutes } from './src/routes/podcasts-episodes.routes.mjs';
 import { registerPodcastDownloadRoutes } from './src/routes/podcasts-download.routes.mjs';
-import { registerSeeburgRoutes, removeJukeboxEntry } from './src/routes/seeburg.routes.mjs';
+import {
+  registerSeeburgRoutes,
+  jukeboxEntries,
+  removeJukeboxEntry,
+  withJukeboxMutation,
+} from './src/routes/seeburg.routes.mjs';
 import { registerMultiphoneRoutes } from './src/routes/multiphone.routes.mjs';
 
 async function downloadLatestForRss({ rss, count = 10 }) {
@@ -7195,6 +7200,67 @@ registerMultiphoneRoutes(app, {
   parseMpdFirstBlock,
   multiphonePlaylistName: MULTIPHONE_PLAYLIST_NAME,
 });
+
+// MPD normally keeps completed playlist items unless `consume` is enabled.
+// Do not enable consume globally: house queues should retain their existing
+// behavior. Instead, consume only paid Seeburg/Multiphone items when MPD
+// advances away from them (or stops after their final play).
+const PRIORITY_COMPLETION_POLL_MS = 1500;
+let priorityCompletionBusy = false;
+let lastObservedPlayback = null;
+
+async function consumeCompletedPriorityTrack(previous) {
+  const previousId = Number(previous?.songid || 0);
+  if (!Number.isSafeInteger(previousId) || previousId <= 0 || !jukeboxEntries.has(previousId)) return;
+
+  await withJukeboxMutation(async () => {
+    // A selection can race the poller. Recheck that MPD has moved away from
+    // the previous item before deleting it by stable ID.
+    const currentRaw = await mpdQueryRaw('status');
+    if (!currentRaw || mpdHasACK(currentRaw)) return;
+    const current = parseMpdKeyVals(currentRaw);
+    const currentId = Number(current.songid || 0);
+    const currentState = String(current.state || '').trim().toLowerCase();
+    if (currentId === previousId && currentState === 'play') return;
+    if (currentId === previousId && currentState !== 'stop') return;
+
+    try {
+      await mpdDeleteId(previousId);
+    } finally {
+      // Cleanup is safe even if queue/advance already removed the MPD item;
+      // this makes the operation idempotent across Alexa and local playback.
+      if (removeJukeboxEntry(previousId)) {
+        log.debug('[jukebox] consumed completed priority track', { songid: previousId });
+      }
+    }
+  });
+}
+
+async function priorityCompletionTick() {
+  if (priorityCompletionBusy) return;
+  priorityCompletionBusy = true;
+  try {
+    const raw = await mpdQueryRaw('status');
+    if (!raw || mpdHasACK(raw)) return;
+    const status = parseMpdKeyVals(raw);
+    const current = {
+      songid: Number(status.songid || 0),
+      state: String(status.state || '').trim().toLowerCase(),
+    };
+    const previous = lastObservedPlayback;
+    const movedAway = previous
+      && previous.state === 'play'
+      && (current.songid !== previous.songid || current.state === 'stop');
+    if (movedAway) await consumeCompletedPriorityTrack(previous);
+    lastObservedPlayback = current;
+  } catch (error) {
+    log.debug('[jukebox] completion watcher failed:', error?.message || String(error));
+  } finally {
+    priorityCompletionBusy = false;
+  }
+}
+
+setInterval(() => { priorityCompletionTick().catch(() => {}); }, PRIORITY_COMPLETION_POLL_MS);
 
 registerAllConfigRoutes(app, {
   requireTrackKey,
