@@ -74,8 +74,8 @@ The runtime exports `harmony_command(device_id, command, status)`,
 variants for use by other local Node tools. The permanent WebSocket URL is
 `ws://10.0.0.21:8088/?domain=svcs.myharmony.com&hubId=3871019`.
 
-Terminal Mabel uses `harmony_press_many()` to lower the Denon by 20
-`VolumeDown` presses during a call and restores the successfully sent presses
+Terminal Mabel uses `harmony_press_many()` to lower the Denon by 30
+`VolumeDown` presses rapidly during a call and restores the successfully sent presses
 with matching `VolumeUp` presses four seconds after her final wrap-up begins. Override with
 `--duck-steps N`, or disable for a test with `--duck-steps 0`.
 

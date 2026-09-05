@@ -34,13 +34,13 @@ const vadSilenceMs = Math.max(50, Number(vadSilenceValue === undefined ? 150 : v
 // longer to avoid clipping compound numbers in the noisy record room.
 const confirmationVadSilenceValue = args.get('confirmation-vad-silence-ms');
 const confirmationVadSilenceMs = Math.max(50, Number(
-  confirmationVadSilenceValue === undefined ? 50 : confirmationVadSilenceValue,
+  confirmationVadSilenceValue === undefined ? 250 : confirmationVadSilenceValue,
 ));
 const voicePlaybackRate = 1.1;
 const confirmationPlaybackRate = 1.2;
-const duckSteps = Math.max(0, Math.min(100, Number(args.get('duck-steps') === undefined ? 20 : args.get('duck-steps'))));
+const duckSteps = Math.max(0, Math.min(100, Number(args.get('duck-steps') === undefined ? 30 : args.get('duck-steps'))));
 const duckInterPressValue = args.get('duck-inter-press-ms');
-const duckInterPressMs = Math.max(0, Number(duckInterPressValue === undefined ? 15 : duckInterPressValue));
+const duckInterPressMs = Math.max(0, Number(duckInterPressValue === undefined ? 5 : duckInterPressValue));
 const soundsDir = args.get('sounds-dir') || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../sounds');
 const soundFiles = {
   ringback: 'phone-ringback-answer-click.m4a',
@@ -152,10 +152,10 @@ let earlyAnswerTimer = null;
 // the microphone for the entire greeting and risking Mabel's own voice being
 // transcribed as the caller.
 const earlyAnswerWindowMs = 1400;
-// Confirmation replies are usually just “yes” or a short correction. Capture
-// the tail of Mabel's confirmation prompt so an immediate answer is not lost,
-// while keeping the overlap shorter than the opening-greeting buffer.
-const confirmationAnswerWindowMs = 900;
+// Never feed microphone audio from while Mabel is speaking back into Realtime:
+// her digit-by-digit confirmation can otherwise be transcribed as the caller's
+// correction. Open the confirmation mic immediately after her audio drains.
+const confirmationAnswerWindowMs = 0;
 const earlyAnswerMaxBytes = 24000 * 2 * 1.6;
 const goodbyeLines = [
   'Thanks a lot, bye!',
@@ -554,15 +554,30 @@ async function requestRetrievalAcknowledgment(number, prompt = retrievalAcknowle
     send({ type: 'response.create', response: { tool_choice: 'none', instructions: prompt } });
   });
 }
+function normalizeConfirmationText(text) {
+  return String(text || '')
+    .replace(/[’‘]/g, "'")
+    .replace(/[.!?,;:…]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 function isAffirmative(text) {
   // Keep short confirmation replies local. In particular, “OK” and “K”
   // are ordinary affirmative answers in a telephone exchange; if they fall
   // through to the general Realtime response they can produce an unrelated
   // assistant reply and leave the confirmation nudge running.
-  return /\b(?:yes|yeah|yep|yup|y|ok|okay|k|correct|right|exactly|affirmative|that's right|that is right|you got it|you got that right)\b/i.test(String(text || ''));
+  const value = normalizeConfirmationText(text);
+  return /^(?:(?:yes|yeah|yep|yup|y|ok|okay|k|correct|right|exactly|affirmative)(?: (?:that's (?:right|it|the one)|that is (?:right|it|the one)))?|(?:that's (?:right|it|the one)|that is (?:right|it|the one)|you got it|you got that right))$/i.test(value);
 }
 function isNegative(text) {
-  return /\b(?:no|nope|wrong|incorrect|not right|that's not right|that is not right)\b/i.test(String(text || ''));
+  const value = normalizeConfirmationText(text);
+  return /^(?:(?:no|nope)(?: (?:wrong|incorrect|that's not right|that is not right))?|wrong|incorrect|not right|that's not right|that is not right)$/i.test(value);
+}
+function isConfirmationFragment(text) {
+  const value = normalizeConfirmationText(text);
+  // Short VAD splits such as “What's” are not answers. Leave the local
+  // confirmation state listening for the rest of the caller's sentence.
+  return /^(?:what|what's|what is|huh|pardon|wait|hold on)$/i.test(value);
 }
 async function requestNumberConfirmation(number, correction = false) {
   numberAcknowledgmentRequested = true;
@@ -604,6 +619,7 @@ function handleNumberConfirmation(text) {
     requestNumberConfirmation(pendingNumber, true);
     return true;
   }
+  if (isConfirmationFragment(value)) return true;
   // Keep the confirmation loop deterministic for unrelated replies such as
   // “what's the song number?”—never fall through to the general assistant.
   requestNumberConfirmation(pendingNumber);
@@ -866,7 +882,7 @@ ws.on('open', () => {
     // initial normal session prevents the model from inventing a second number
     // or bypassing the spoken-confirmation gate.
     tools: startOffScript ? [tool, goOffScriptTool, playNowTool, ...offscriptTools] : [], tool_choice: startOffScript ? 'auto' : 'none',
-    audio: { input: { format: { type: 'audio/pcm', rate: 24000 }, transcription: { model: 'gpt-4o-transcribe', language: 'en', prompt: 'The caller speaks American English. Recognize Multiphone, Mabel, song number, off script, I’m a VIP, album, artist, playlist, and mix. Preserve every leading digit in a song number; carefully distinguish 56 from 156 and 100 from 1.' }, turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 500, silence_duration_ms: vadSilenceMs, create_response: false } }, output: { format: { type: 'audio/pcm', rate: 24000 }, voice: 'sage' } },
+    audio: { input: { format: { type: 'audio/pcm', rate: 24000 }, transcription: { model: 'gpt-4o-transcribe', language: 'en', prompt: 'Transcribe only the caller’s American English audio; never repeat or invent these instructions. Pay special attention to spoken song numbers and the phrases off script and I’m a VIP. Preserve every leading digit in a song number; carefully distinguish 56 from 156 and 100 from 1.' }, turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 500, silence_duration_ms: vadSilenceMs, create_response: false } }, output: { format: { type: 'audio/pcm', rate: 24000 }, voice: 'sage' } },
   } });
 });
 recorder.stdout.on('data', (chunk) => {
@@ -1167,8 +1183,13 @@ ws.on('message', async (raw) => {
       ending = true;
       const goodbye = goodbyeLines[Math.floor(Math.random() * goodbyeLines.length)];
       send({ type: 'response.create', response: { instructions: `Reply with exactly this brief, warm goodbye in kind: "${goodbye}". Do not ask a question or call a tool; this is the final response.` } });
-    } else if ((numberConfirmationListening || (pendingNumber !== null && !numberAcknowledgmentRequested)) && handleNumberConfirmation(lastCallerText)) {
-      // The caller confirmed or corrected the number.
+    } else if (!offScript && pendingNumber !== null) {
+      // A confirmation transcript must never fall through to a free-form
+      // Realtime reply. During prompt playback, keep the utterance buffered;
+      // once the confirmation state is listening, classify it locally.
+      if (numberConfirmationListening || !numberAcknowledgmentRequested) {
+        handleNumberConfirmation(lastCallerText);
+      }
     } else if (numberSelectionInProgress || ending) {
       // A duplicate/late transcription can arrive after confirmation has
       // already started the local retrieval sequence. Never let it fall

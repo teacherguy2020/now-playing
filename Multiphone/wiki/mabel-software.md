@@ -128,10 +128,14 @@ I heard you say one-five-eight?
 
 The confirmation is instructed to use rising question intonation on the final
 digit, with no trailing “okay?”, “right?”, or “yeah?” and no pauses between the
-digits. A short affirmative—yes, yeah, yep, right, OK, okay, K, “that’s right,”
-and similar explicit confirmations—starts retrieval. Anything else stays in
-the confirmation loop. A correction is briefly embarrassed and then repeated
-in the same digit-by-digit form; no heels or playback begin before confirmation.
+digits. A short affirmative—yes, yup, yeah, yep, right, correct, exactly,
+affirmative, “you got it,” “that’s right,” “that’s it,” or “that’s the one”—starts
+retrieval. Punctuation and trailing ellipses are normalized, but the match stays
+strict so unrelated sentences do not confirm accidentally. Anything else stays
+in the confirmation loop. A correction is briefly embarrassed and then
+repeated in the same digit-by-digit form; no heels or playback begin before
+confirmation. Short VAD fragments such as “what’s,” “wait,” or “hold on” are
+held without starting another model reply.
 
 Numbers above 170 are rejected before confirmation with a redirect to a valid
 number from 1 through 170. They are never silently reduced to a nearby record.
@@ -142,8 +146,9 @@ Once a number is confirmed, the microphone stays closed until the call ends.
 The initial greeting-to-listening delay is effectively 0 ms after local audio
 drains. A 1.4-second early-answer buffer can preserve an answer that starts
 while the greeting is finishing, forwarding up to 1.6 seconds once listening
-opens. Confirmation prompts have a shorter tail buffer of about 900 ms for the
-same reason.
+opens. Confirmation prompts use no tail buffer: the microphone opens only after
+Mabel's confirmation audio drains, preventing her spoken digits from being
+re-transcribed as the caller's correction.
 
 If Mabel is waiting and hears nothing, she uses a strict two-second escalation:
 
@@ -305,14 +310,14 @@ or prevent a later call from opening its microphone. Use `--sounds-dir` to point
 the client at another asset directory and `--ambience-volume` to adjust the
 office bed.
 
-When the terminal call starts, Mabel ducks the Denon AVR4520CI by 20 discrete
-`VolumeDown` presses through the generic Harmony Hub client. The WebSocket
+When the terminal call starts, Mabel ducks the Denon AVR4520CI by 30 discrete
+`VolumeDown` presses rapidly through the generic Harmony Hub client. The WebSocket
 client reconnects or retries if needed, and the number of successfully sent
 presses is restored with matching `VolumeUp` presses four seconds after Mabel
 begins her final spoken wrap-up; shutdown retains a fallback restore if final
 audio is missing.
 Use `--duck-steps 0` to disable ducking for a test call, or change the default
-with `--duck-steps N`. The default inter-press spacing is 45 ms and can be
+with `--duck-steps N`. The default inter-press spacing is 5 ms and can be
 adjusted with `--duck-inter-press-ms N`.
 
 ## Fallback and operational recovery
