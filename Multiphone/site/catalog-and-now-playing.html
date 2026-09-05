@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Catalog And Now Playing — Shyvers Multiphone</title><link rel="stylesheet" href="style.css"></head>
+<body><header><a href="index.html">Shyvers Multiphone Project</a><span>Historical reconstruction + reversible modernization</span></header>
+<div class="layout"><nav><strong>Wiki</strong><ul><li><a href="catalog-and-now-playing.html">Catalog And Now Playing</a></li><li><a href="hardware-examination.html">Hardware Examination</a></li><li><a href="historical-operating-model.html">Historical Operating Model</a></li><li><a href="mabel-software.html">Mabel Software</a></li><li><a href="open-questions.html">Open Questions</a></li><li><a href="operations-and-testing.html">Operations And Testing</a></li><li><a href="project-overview.html">Project Overview</a></li></ul><p><a href="../README.md">Project README</a></p></nav><main><h1>Catalog and Now Playing integration</h1>
+<h2>Current catalog</h2>
+<p>The initial test catalog is the Now Playing playlist named:</p>
+<pre><code>
+Multiphone Playlist
+
+</code></pre>
+<p>It currently contains 170 tracks, so the software vertical slice accepts playlist</p>
+<p>positions 1 through 170. The historical machine's three-digit selections are</p>
+<p>different: values such as <code>298</code> are catalog keys, not necessarily positions in a</p>
+<p>modern playlist. A deterministic mapping layer will be added when the physical</p>
+<p>catalog is established.</p>
+<p>Mabel must never infer a title or artist from a number. The Now Playing service is</p>
+<p>the authority for resolution and returns the selected file and metadata.</p>
+<h2>Selection endpoint</h2>
+<p>The physical cylinder's three-digit numbers are keys, not sequential positions</p>
+<p>in a modern playlist. For example:</p>
+<pre><code>
+298 → Elvis Presley → Jailhouse Rock
+
+222 → Chuck Berry   → Johnny B. Goode
+
+225 → The Virtues   → Guitar Boogie Shuffle
+
+</code></pre>
+<p>The mapping must come from deterministic catalog data. Mabel must never invent a</p>
+<p>mapping from memory.</p>
+<pre><code>
+POST /integrations/multiphone/selection
+
+Content-Type: application/json
+
+
+
+X-Track-Key: &lt;protected key&gt;
+
+
+
+{&quot;number&quot;: 7}
+
+</code></pre>
+<p>The read-only commissioning route is:</p>
+<pre><code>
+GET /integrations/multiphone/playlist
+
+</code></pre>
+<p>The endpoint uses the configured <code>Multiphone Playlist</code> and shares the server-side</p>
+<p>jukebox classification with Seeburg.</p>
+<h2>Jukebox-priority FIFO behavior</h2>
+<p>Every integration selection is marked server-side as:</p>
+<pre><code>
+{&quot;source&quot;:&quot;multiphone&quot;,&quot;priority&quot;:&quot;jukebox&quot;}
+
+</code></pre>
+<p>Seeburg uses the same priority class. The service tracks MPD <code>songid</code> values and</p>
+<p>persists metadata in <code>data/jukebox-entries.json</code>; it does not identify provenance</p>
+<p>from filenames alone.</p>
+<h3>First selection</h3>
+<p>If an ordinary track is playing, the first Multiphone request is inserted ahead of</p>
+<p>the ordinary queued tracks and starts immediately. The interrupted ordinary track</p>
+<p>is not resumed separately; the remaining normal queue stays behind the jukebox</p>
+<p>segment.</p>
+<p>If ordinary playback is paused or stopped, the service clears the ordinary queue,</p>
+<p>adds the selection, and starts it immediately.</p>
+<h3>Later selections</h3>
+<p>If a jukebox track is actively playing, later selections are inserted immediately</p>
+<p>after the current and already-pending jukebox tracks. They do not interrupt the</p>
+<p>current record and retain strict FIFO order:</p>
+<pre><code>
+D6 [playing] → A4 → K7 → normal queue...
+
+</code></pre>
+<p>After the jukebox segment finishes, MPD naturally continues into the preserved</p>
+<p>normal queue.</p>
+<p>An explicit <code>play_multiphone_now</code> request is the exception. It promotes the</p>
+<p>already-selected record immediately only when the caller clearly asks for it;</p>
+<p>ordinary requests always append.</p>
+<h2>Reliability details</h2>
+<ul>
+<li>Seeburg and Multiphone mutations share a transaction lock.</li>
+<li>Metadata is loaded at service startup and reconciled against live MPD state.</li>
+<li>A persisted session marker and playlist-based recovery protect against a missing</li>
+<p>  individual MPD metadata entry during a fresh Multiphone session.</p>
+<li>The MPD parser recognizes queue records even when blank separators are omitted.</li>
+<li>The service reports whether playback started, whether the queue was cleared, and</li>
+<p>  whether the request joined a jukebox stack.</p>
+<li>The service fails safely rather than starting an unverified stale queue.</li>
+</ul>
+<p>These safeguards matter because MPD <code>songid</code>/position data is the playback state,</p>
+<p>while the source/priority classification is Now Playing application metadata.</p></main></div>
+</body></html>

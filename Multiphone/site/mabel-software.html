@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mabel Software — Shyvers Multiphone</title><link rel="stylesheet" href="style.css"></head>
+<body><header><a href="index.html">Shyvers Multiphone Project</a><span>Historical reconstruction + reversible modernization</span></header>
+<div class="layout"><nav><strong>Wiki</strong><ul><li><a href="catalog-and-now-playing.html">Catalog And Now Playing</a></li><li><a href="hardware-examination.html">Hardware Examination</a></li><li><a href="historical-operating-model.html">Historical Operating Model</a></li><li><a href="mabel-software.html">Mabel Software</a></li><li><a href="open-questions.html">Open Questions</a></li><li><a href="operations-and-testing.html">Operations And Testing</a></li><li><a href="project-overview.html">Project Overview</a></li></ul><p><a href="../README.md">Project README</a></p></nav><main><h1>Mabel and software architecture</h1>
+<h2>Current role</h2>
+<p>Mabel is the modern central operator and record-room attendant for the Shyvers</p>
+<p>Multiphone at Clem's Place in Seattle. She is a 22-year-old 1940s telephone</p>
+<p>operator and record spinner: brisk, urgent, bright, lightly sassy, playful, and</p>
+<p>professionally demure. The telephone-era style is flavor, not a switchboard</p>
+<p>simulation. The caller is already connected; Mabel retrieves a real record from</p>
+<p>the Multiphone library.</p>
+<p>She speaks American English only and uses intelligible 1940s vernacular. Her</p>
+<p>delivery is currently about 10% faster than ordinary conversation, while</p>
+<p>confirmation digits are played separately at 1.2x so they sound like a quick</p>
+<p>operator exchange rather than slow, robotic recitation. Affectionate forms of</p>
+<p>address—honey, sugar, sweetheart, doll, sport, dear, kiddo, boss, champ, and</p>
+<p>similar terms—are occasional seasoning, not a feature of every line.</p>
+<p>Mabel must say <strong>record</strong>, <strong>song</strong>, or <strong>tune</strong>, never “selection.” She must</p>
+<p>never say “dialing,” “connecting,” “transferring,” “routing,” or “putting you</p>
+<p>through.” Clem's Place is the direct song-line destination/bar; when she says</p>
+<p>“Clem's Place,” the intended emphasis is on <strong>Clem's</strong>, with “Place” lighter.</p>
+<h2>System architecture</h2>
+<pre><code>
+coin event, terminal launch, or iPad handset
+
+             ↓
+
+Mac Mabel bridge :8788
+
+             ↓
+
+OpenAI Realtime or Responses session
+
+       ├─ SSL 2 / browser microphone input
+
+       ├─ generated Mabel audio
+
+       └─ bounded, validated music actions
+
+             ↓
+
+Now Playing API :3101
+
+             ↓
+
+MPD/moOde queue and room playback
+
+</code></pre>
+<p>The Mac owns the OpenAI credential and session orchestration. Now Playing owns</p>
+<p>catalog resolution, durable jukebox state, queue mutation, playback priority,</p>
+<p>and MPD state. Mabel never receives unrestricted shell, HTTP, or MPD access.</p>
+<h2>Local services</h2>
+<p><code>operator/mabel_service.py</code> is the local bridge. Its current routes are:</p>
+<table><tr><th>Route</th><th>Purpose</th></tr>
+<tr><td><code>POST /shyvers/call</code></td><td>Create a coin/call session.</td></tr>
+<tr><td><code>POST /shyvers/response</code></td><td>Validate and queue a numbered Multiphone record.</td></tr>
+<tr><td><code>POST /shyvers/surprise</code></td><td>Choose a real numbered record privately for a surprise request.</td></tr>
+<table><tr><th><code>POST /shyvers/start-song</code></th><th>Start a previously reserved MPD song after the heels handoff.</th></tr>
+<tr><td><code>POST /shyvers/offscript</code></td><td>Execute one bounded VIP music or now-playing action.</td></tr>
+<tr><td><code>POST /shyvers/start</code></td><td>Launch one iPad-Shortcut off-script Realtime process.</td></tr>
+<tr><td><code>POST /shyvers/start-normal</code></td><td>Launch one iPad-Shortcut normal numbered Realtime process.</td></tr>
+<tr><td><code>POST /shyvers/speak</code></td><td>Speak a bridge-generated message through fallback TTS.</td></tr>
+<table><tr><th><code>POST /shyvers/end</code></th><th>Release a session.</th></tr>
+<tr><td><code>GET /health</code></td><td>Bridge health check.</td></tr>
+<p>The bridge validates the numbered range again even when the caller-side client</p>
+<p>has already validated it. The current valid range is <strong>1 through 170</strong>. The</p>
+<p>bridge retrieves protected Now Playing credentials from macOS Keychain. It also</p>
+<p>has a <code>curl</code> retry path for transient launchd/network-route failures and avoids</p>
+<p>redundant playback-start requests when Now Playing already reports playback.</p>
+<p>The bridge and handset have persistent user LaunchAgents:</p>
+<ul>
+<li><code>com.brianwis.mabel-service</code> on <code>127.0.0.1:8788</code>;</li>
+<li><code>com.brianwis.mabel-handset</code> on HTTPS port <code>8790</code>.</li>
+</ul>
+<p>After a reboot, verify <code>/health</code> on both services before testing. The Realtime</p>
+<p>client still depends on the bridge being available first.</p>
+<h2>Authoritative Mac terminal flow</h2>
+<p><code>operator/mabel_realtime.mjs</code> is the reference experience for normal calls.</p>
+<p>Start it with:</p>
+<pre><code>
+node operator/mabel_realtime.mjs --input :0
+
+</code></pre>
+<p>The current input is an SSL 2 at AVFoundation device <code>:0</code>. The client uses the</p>
+<p>GA Realtime WebSocket API with 24 kHz PCM input/output and the <code>sage</code> voice.</p>
+<p>Mabel response PCM is buffered into temporary WAV files and played locally with</p>
+<p>macOS <code>afplay</code>; this is more reliable than leaving a raw streaming player open</p>
+<p>between turns. The OpenAI key is read from Keychain, never from the command</p>
+<p>line.</p>
+<h3>Deterministic normal-line state machine</h3>
+<p>Normal numbered calls are deliberately handled locally rather than allowing</p>
+<p>the model to invent a second number or bypass confirmation:</p>
+<pre><code>
+greeting
+
+  → completed caller transcript
+
+  → digit-by-digit confirmation
+
+  → explicit yes/right/OK, or correction and reconfirmation
+
+  → short retrieval acknowledgment
+
+  → heels
+
+  → record reservation and playback handoff
+
+  → title/artist announcement and optional reaction
+
+  → goodbye and hang-up
+
+</code></pre>
+<p>The terminal prints completed caller transcription as <code>You: ...</code>. It waits for</p>
+<p>the completed utterance before deciding a number, so a partial “one” cannot</p>
+<p>prematurely replace “one twenty.” It understands digits, spoken digits, and</p>
+<p>compound forms such as:</p>
+<ul>
+<li>“one fifty-five” → <code>155</code>;</li>
+<li>“one sixty-two” → <code>162</code>;</li>
+<li>“one hundred fifty” → <code>150</code>;</li>
+<li>“one eleven” → <code>111</code>.</li>
+</ul>
+<p>After recognizing a possible number, Mabel repeats each digit as one connected</p>
+<p>phrase and asks a real yes-or-no question with the digits last, for example:</p>
+<pre><code>
+You’re requesting one-five-eight?
+
+Just confirming one-five-eight?
+
+That’s number one-five-eight?
+
+I heard you say one-five-eight?
+
+</code></pre>
+<p>The confirmation is instructed to use rising question intonation on the final</p>
+<p>digit, with no trailing “okay?”, “right?”, or “yeah?” and no pauses between the</p>
+<p>digits. A short affirmative—yes, yeah, yep, right, OK, okay, K, “that’s right,”</p>
+<p>and similar explicit confirmations—starts retrieval. Anything else stays in</p>
+<p>the confirmation loop. A correction is briefly embarrassed and then repeated</p>
+<p>in the same digit-by-digit form; no heels or playback begin before confirmation.</p>
+<p>Numbers above 170 are rejected before confirmation with a redirect to a valid</p>
+<p>number from 1 through 170. They are never silently reduced to a nearby record.</p>
+<p>Once a number is confirmed, the microphone stays closed until the call ends.</p>
+<h3>Timing and no-response behavior</h3>
+<p>The initial greeting-to-listening delay is effectively 0 ms after local audio</p>
+<p>drains. A 1.4-second early-answer buffer can preserve an answer that starts</p>
+<p>while the greeting is finishing, forwarding up to 1.6 seconds once listening</p>
+<p>opens. Confirmation prompts have a shorter tail buffer of about 900 ms for the</p>
+<p>same reason.</p>
+<p>If Mabel is waiting and hears nothing, she uses a strict two-second escalation:</p>
+<ol>
+<li>“What number, please?”</li>
+<li>An increasingly concerned “Are you there?” reminder, sometimes using</li>
+<p>   buddy, pal, sailor, sweetie, honey, or another approved address.</p>
+<li>Microphone guidance: “Just talk into the top of the Multiphone…”</li>
+<li>A final bad-connection warning.</li>
+</ol>
+<p>Each reminder is fully spoken, cannot say “You got it,” “Sure thing,” or any</p>
+<p>switchboard phrase, and cannot invent a device or phone number. After the final</p>
+<p>two-second window, the call exits cleanly.</p>
+<h3>Retrieval and playback handoff</h3>
+<p>After confirmation Mabel gives one short, businesslike acknowledgment, such as</p>
+<p>“Lemme grab that off the shelf.” The line is clipped, urgent, slangy, and</p>
+<p>unexcited: no exclamation point, pet name, joke, question, or goodbye.</p>
+<p>The client then starts the heels cue and reserves the record while the heels</p>
+<p>play. It waits for the heels to finish, starts the reserved record through</p>
+<p><code>/shyvers/start-song</code>, and only then requests Mabel's final announcement. This</p>
+<p>keeps the record from starting before the footsteps and minimizes the pause</p>
+<p>after the acknowledgment. A queued record is described as waiting on Mabel's</p>
+<p>desk <strong>for Clem's Place</strong>, with the service-supplied number of spins ahead:</p>
+<blockquote>“I added your record to the others waiting here on my desk for Clem's Place.</blockquote>
+<blockquote>It'll be coming up in five spins or so.”</blockquote>
+<p>The service's title and artist are authoritative. Mabel may add at most one</p>
+<p>short subjective reaction—“Great choice,” “One of my faves,” or “Love this</p>
+<p>one”—but she must not invent chart status, request counts, biographical facts,</p>
+<p>or musical qualities.</p>
+<p>Every successful numbered request is a one-call transaction: announce the</p>
+<p>record, give one configured goodbye, play the hang-up click, release the</p>
+<p>session, and exit. Mabel does not reopen listening for another request.</p>
+<h2>Surprise picks</h2>
+<p>The terminal has a separate deterministic surprise route for requests such as:</p>
+<ul>
+<li>“You pick”;</li>
+<li>“You pick one for me”;</li>
+<li>“Surprise me”;</li>
+<li>“You choose”;</li>
+<li>“It's up to you”;</li>
+<li>“Your choice,” “you decide,” “dealer's choice,” “whatever you like,” or</li>
+<p>  “I'll leave it to you.”</p>
+</ul>
+<p>Artist-constrained forms such as “Pick me one by Frank Sinatra” are supported.</p>
+<p>Mabel acts pleasantly surprised or flattered, says a brief hold line, and</p>
+<p>chooses privately from real catalog data. She does not ask the caller to</p>
+<p>confirm or disclose the number before returning. Surprise picks use the same</p>
+<p>1–170 ceiling as ordinary calls; records above 170 remain available to other</p>
+<p>catalog/controller workflows but are never selected by Mabel.</p>
+<p>The surprise sequence is:</p>
+<pre><code>
+flattered acknowledgment
+
+  → heels
+
+  → private catalog choice
+
+  → reserved-record playback handoff
+
+  → “I picked number …” plus title/artist
+
+  → one-favorite opinion and optional factual nugget
+
+  → goodbye and hang-up
+
+</code></pre>
+<p>During the heels, <code>mabel_service.py</code> may perform a short Wikipedia lookup for a</p>
+<p>song-specific factual note. Notes are cached in</p>
+<p><code>state/mabel-song-facts.json</code>, accepted only when the candidate is a reliable</p>
+<p>song/tune/recording match, and omitted when lookup is slow or uncertain. The</p>
+<p>note is limited to a concise extract; Mabel is forbidden to guess if no note</p>
+<p>is supplied.</p>
+<h2>VIP and off-script music</h2>
+<p>The caller can say “off script” or “I'm a VIP” during a terminal call, or start directly in</p>
+<p>VIP mode from the iPad. Mabel acknowledges the private line briefly and asks</p>
+<p>“Whaddya wanna hear?” without explaining the categories to an advanced caller.</p>
+<p>The bounded VIP actions are:</p>
+<ul>
+<li>play an album;</li>
+<li>play an artist, shuffled and capped at 50 tracks;</li>
+<li>play a saved playlist;</li>
+<li>build a multi-artist mix;</li>
+<li>report what is currently playing.</li>
+</ul>
+<p>Album, artist, playlist, and mix actions are final transactions: Mabel confirms</p>
+<p>the result, says goodbye, and ends the call. A now-playing query may continue</p>
+<p>the conversation. All VIP playback actions set <code>excludeRating1</code>, treating</p>
+<p>one-star tracks as the user's omission tool. Mixes also exclude holiday/</p>
+<p>Christmas material by default, physically shuffle the combined queue with MPD</p>
+<p><code>shuffle</code>, disable MPD Random mode, and allocate capacity fairly so one artist</p>
+<p>cannot consume the entire mix before later requested artists contribute.</p>
+<p>The post-confirmation record-retrieval language remains separate from VIP</p>
+<p>language. In particular, neither mode may describe a library action as dialing</p>
+<p>or connecting a caller.</p>
+<h2>iPad handset</h2>
+<p><code>operator/mabel_web.py</code> serves the HTTPS browser handset at:</p>
+<pre><code>
+https://10.0.0.210:8790/
+
+</code></pre>
+<p>The page provides three controls:</p>
+<ul>
+<li><strong>Call Mabel</strong>: VIP/off-script voice mode;</li>
+<li><strong>Call Normal Mabel</strong>: normal numbered mode for testing the 1–170 playlist;</li>
+<li><strong>Text Mabel</strong>: VIP text mode.</li>
+</ul>
+<p>For voice calls, Safari owns the iPad microphone and speaker, so a Bose or</p>
+<p>Bluetooth microphone/speaker can travel with the caller. The Mac mints a</p>
+<p>short-lived Realtime client secret and proxies bounded music actions; the</p>
+<p>permanent OpenAI key never enters the browser. The VIP greeting is deterministic:</p>
+<blockquote>“Thanks for calling the VIP line—Mabel here at Multiphone! Whaddya wanna hear?”</blockquote>
+<p>VIP calls skip the public ringback. Normal web calls use the normal greeting,</p>
+<p>ringback, number confirmation, heels, record result, goodbye, and hang-up</p>
+<p>behavior as far as the browser audio path permits. The terminal remains the</p>
+<p>authoritative normal-mode reference; the web normal path is a useful secondary</p>
+<p>test surface because Safari has stricter audio-playback and WebRTC timing rules.</p>
+<p>Text Mabel uses a server-side Responses API conversation. It does not request</p>
+<p>microphone permission or play voice audio; typed messages and Mabel's replies</p>
+<p>appear in the page. It uses the same bounded VIP music tools and closes after a</p>
+<p>successful music-load transaction.</p>
+<p>The handset uses a local self-signed certificate under <code>state/</code>; Safari may</p>
+<p>require one-time certificate approval. Its automatic goodbye handling waits for</p>
+<p>the final audio before calling <code>/shyvers/end</code> and closing a voice call.</p>
+<h2>Audio design</h2>
+<p>The terminal client uses these local assets in <code>sounds/</code>:</p>
+<table><tr><th>File</th><th>Use</th><th>Current level</th></tr>
+<tr><td><code>phone-ringback-answer-click.m4a</code></td><td>Public-line ringback and answer</td><td>12.5%</td></tr>
+<tr><td><code>high-heels-walk-2s.m4a</code></td><td>Mabel walking to retrieve a record</td><td>25%</td></tr>
+<tr><td><code>phone-hangup-click.m4a</code></td><td>Call termination</td><td>50%</td></tr>
+<table><tr><th><code>shyvers-office-ambiance.mp3</code></th><th>Quiet looping room bed</th><th>8%</th></tr>
+<p>The office bed suggests a busy room of operators and loops beneath normal calls;</p>
+<p>it stops before the hang-up click. VIP calls skip the public ringback but still</p>
+<p>use the call's other applicable effects. Mabel's voice plays at 1.1x; confirmation</p>
+<p>responses play at 1.2x. Effects retain their natural speed.</p>
+<p>All local effects and voice playback use a serialized audio path. Microphone</p>
+<p>input is suppressed during Mabel's speech and effects to prevent SoundSource,</p>
+<p>Bose, or other routing from feeding Mabel back into OpenAI. <code>afplay</code> operations</p>
+<p>have timeouts and shutdown cleanup so a stuck sound cannot strand FFmpeg capture</p>
+<p>or prevent a later call from opening its microphone. Use <code>--sounds-dir</code> to point</p>
+<p>the client at another asset directory and <code>--ambience-volume</code> to adjust the</p>
+<p>office bed.</p>
+<p>When the terminal call starts, Mabel ducks the Denon AVR4520CI by 20 discrete</p>
+<p><code>VolumeDown</code> presses through the generic Harmony Hub client. The WebSocket</p>
+<p>client reconnects or retries if needed, and the number of successfully sent</p>
+<p>presses is restored with matching <code>VolumeUp</code> presses four seconds after Mabel</p>
+<p>begins her final spoken wrap-up; shutdown retains a fallback restore if final</p>
+<p>audio is missing.</p>
+<p>Use <code>--duck-steps 0</code> to disable ducking for a test call, or change the default</p>
+<p>with <code>--duck-steps N</code>. The default inter-press spacing is 45 ms and can be</p>
+<p>adjusted with <code>--duck-inter-press-ms N</code>.</p>
+<h2>Fallback and operational recovery</h2>
+<p><code>operator/mabel_voice.py</code> remains a fixed-window fallback. It records short</p>
+<p>turns with FFmpeg, retries transient AVFoundation failures, transcribes with</p>
+<p>OpenAI, uses a bounded conversation, and speaks through the local bridge. Its</p>
+<p>normal capture window is three seconds and can be changed with <code>--seconds</code>.</p>
+<p>For a normal terminal call after a reboot:</p>
+<pre><code>
+curl http://127.0.0.1:8788/health
+
+node operator/mabel_realtime.mjs --input :0
+
+</code></pre>
+<p>If the bridge is absent, start it directly:</p>
+<pre><code>
+python3 operator/mabel_service.py --voice nova
+
+</code></pre>
+<p>The persistent LaunchAgents should normally restart the bridge and handset.</p>
+<p>When audio is unresponsive, stop only stale Multiphone <code>ffmpeg</code>/<code>afplay</code></p>
+<p>processes first; if macOS Core Audio itself is frozen, a user-level Core Audio</p>
+<p>restart or Mac reboot may be required.</p>
+<h2>Hardware boundary and future automation</h2>
+<p>The eventual Pico/AS6500/magnet interface should report physical events or</p>
+<p>state; it should not own conversation or playback control. Future VIP actions</p>
+<p>such as lighting scenes, Harmony Hub activities, and room ambience belong behind</p>
+<p>named, validated, reversible adapters. Mabel should never receive arbitrary</p>
+<p>device or shell access.</p>
+<p>The Mills Throne of Music is a separate display-only idea: a magnet on the</p>
+<p>mechanical selector wheel can report the stack position to a Pico. An identical</p>
+<p>moOde playlist can map that position to digital duplicate metadata and artwork</p>
+<p>for bar TVs. The mechanical selection switches remain purely physical; Now</p>
+<p>Playing must not attempt to control them.</p>
+</table></main></div>
+</body></html>

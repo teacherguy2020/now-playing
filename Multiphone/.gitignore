@@ -1,0 +1,7 @@
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Local certificates and generated runtime state.
+state/*.pem
+state/mabel-song-facts.json

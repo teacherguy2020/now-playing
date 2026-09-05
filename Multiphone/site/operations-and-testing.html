@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Operations And Testing — Shyvers Multiphone</title><link rel="stylesheet" href="style.css"></head>
+<body><header><a href="index.html">Shyvers Multiphone Project</a><span>Historical reconstruction + reversible modernization</span></header>
+<div class="layout"><nav><strong>Wiki</strong><ul><li><a href="catalog-and-now-playing.html">Catalog And Now Playing</a></li><li><a href="hardware-examination.html">Hardware Examination</a></li><li><a href="historical-operating-model.html">Historical Operating Model</a></li><li><a href="mabel-software.html">Mabel Software</a></li><li><a href="open-questions.html">Open Questions</a></li><li><a href="operations-and-testing.html">Operations And Testing</a></li><li><a href="project-overview.html">Project Overview</a></li></ul><p><a href="../README.md">Project README</a></p></nav><main><h1>Operations and testing</h1>
+<h2>Project layout</h2>
+<pre><code>
+Multiphone/
+
+├── operator/
+
+│   ├── main.py              # keyboard numbered-selection client
+
+│   ├── mabel_console.py     # keyboard conversation driver
+
+│   ├── mabel_service.py     # local HTTP/session/TTS bridge
+
+│   ├── mabel_voice.py       # fixed-window microphone fallback
+
+│   └── mabel_realtime.mjs   # live Realtime agent
+
+├── sounds/                  # local call and record-retrieval effects
+
+├── wiki/                    # editable Markdown source
+
+├── site/                    # generated HTML
+
+└── web/
+
+    ├── build-wiki.py
+
+    └── wiki-server.py
+
+</code></pre>
+<h2>Keychain credentials</h2>
+<p>There are two separate credentials:</p>
+<table><tr><th>Credential</th><th>Keychain service</th><th>Account</th><th>Used by</th></tr>
+<tr><td>Now Playing track key</td><td><code>Shyvers Multiphone / Now Playing</code></td><td><code>multiphone-operator</code></td><td><code>main.py</code>, <code>mabel_service.py</code></td></tr>
+<tr><td>OpenAI API key</td><td><code>Shyvers Multiphone / OpenAI</code></td><td><code>mabel-voice</code></td><td><code>mabel_voice.py</code>, Realtime client</td></tr>
+<p>Set them up with the corresponding <code>--setup-keychain</code> or</p>
+<p><code>--setup-openai-key</code> command. Keys must not be placed in source files, URLs, or</p>
+<p>command examples.</p>
+<h2>Safe test sequence</h2>
+<p>From the project directory:</p>
+<pre><code>
+cd /Users/brianwis/.openclaw/workspace/Multiphone
+
+python3 operator/main.py --number 1 --dry-run
+
+</code></pre>
+<p>For a real numbered selection, omit <code>--dry-run</code>. For a keyboard loop, omit</p>
+<p><code>--number</code>.</p>
+<p>For the local Mabel bridge and Realtime voice agent, use two terminals:</p>
+<pre><code>
+# Terminal 1
+
+python3 operator/mabel_service.py --voice nova
+
+
+
+# Terminal 2
+
+node operator/mabel_realtime.mjs --input :0
+
+</code></pre>
+<p>The SSL 2 is currently input <code>:0</code>. Confirm available AVFoundation devices with:</p>
+<pre><code>
+ffmpeg -hide_banner -f avfoundation -list_devices true -i &quot;&quot;
+
+</code></pre>
+<p>Realtime call effects are stored locally as:</p>
+<pre><code>
+sounds/
+
+├── phone-ringback-answer-click.m4a
+
+├── high-heels-walk-2s.m4a
+
+└── phone-hangup-click.m4a
+
+</code></pre>
+<p>They play through the Mac's default output with <code>afplay</code>. Mabel's microphone</p>
+<p>input is suppressed while an effect or response is playing. The heels effect is</p>
+<p>triggered after Mabel's brief retrieval acknowledgment for a valid numbered</p>
+<p>selection; it is not played for conversational or off-script turns. Mabel's reply waits</p>
+<p>for the effect to finish, and playback does not begin until the effect is done.</p>
+<p>If the files are stored elsewhere, start Realtime</p>
+<p>with <code>--sounds-dir /path/to/sounds</code>.</p>
+<p>The <code>mabel_voice.py</code> fallback can be tested with <code>--seconds 5</code> when a longer</p>
+<p>capture window is needed.</p>
+<h2>Audio routing</h2>
+<p>Mabel's Realtime audio is played through the Mac's default output. The SSL 2 is</p>
+<p>the current microphone interface. SoundSource may be used to apply a telephone</p>
+<p>effect to Mabel's output; keep the microphone input pointed at the SSL 2 and</p>
+<p>avoid routing Mabel's output back into that input. A practical starting point is</p>
+<p>a band-limited telephone sound, but the EQ is an external audio choice rather</p>
+<p>than part of the Mabel service.</p>
+<h2>Now Playing deployment</h2>
+<p>The Now Playing API is deployed on the Pi at <code>10.0.0.4</code> on port <code>3101</code>; it</p>
+<p>controls the configured MPD/moOde host. Changes to the Now Playing routes require</p>
+<p>restarting the managed <code>now-playing.service</code> and verifying that exactly one</p>
+<p>current process owns port 3101.</p>
+<p>An orphaned old process once held the port while systemd repeatedly restarted the</p>
+<p>service. The resulting symptoms included stale route behavior, wrong queue heads,</p>
+<p>and apparent queue overflows. When behavior contradicts the deployed source,</p>
+<p>check service status, process start time/restart count, listener ownership, and</p>
+<p>the actual configured MPD host before changing queue logic.</p>
+<p>An alert-only health watcher now checks service status, port ownership, listener</p>
+<p>PID, and restart churn every 15 minutes. It does not auto-restart the service or</p>
+<p>interrupt playback.</p>
+<h2>VIP automation roadmap</h2>
+<p>VIP mode currently means expanded Mabel music controls from the iPad voice/text</p>
+<p>handset. Lighting scenes, Harmony Hub activities, and other room automation</p>
+<p>are future integrations. When implemented, test each as a named action with:</p>
+<ol>
+<li>a validated allow-listed action name;</li>
+<li>an explicit target/argument schema;</li>
+<li>a bounded timeout and useful result;</li>
+<li>a defined cleanup or restore behavior when the session ends.</li>
+</ol>
+<p>Keep these actions on the Mac-side bridge. Do not send device credentials to</p>
+<p>the iPad or expose the VIP start endpoint beyond the trusted LAN.</p>
+<h2>Documentation build</h2>
+<p>Edit Markdown under <code>wiki/</code>, then regenerate the HTML site:</p>
+<pre><code>
+python3 web/build-wiki.py
+
+python3 -m py_compile web/build-wiki.py web/wiki-server.py operator/*.py
+
+node --check operator/mabel_realtime.mjs
+
+</code></pre>
+<p>The shared LAN wiki server serves this project at:</p>
+<pre><code>
+http://&lt;Mac-LAN-IP&gt;:8765/multiphone/
+
+</code></pre>
+<p>The Seeburg wiki remains at <code>/wiki/</code> on the same server.</p>
+</table></main></div>
+</body></html>

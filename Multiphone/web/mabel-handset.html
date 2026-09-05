@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mabel VIP Line</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #17131a; color: #fff8f0; }
+    main { width: min(92vw, 560px); text-align: center; padding: 2rem 1rem; }
+    h1 { font-family: Georgia, serif; font-weight: 500; font-size: clamp(2.4rem, 10vw, 4rem); margin: 0 0 .25rem; }
+    p { color: #d8c9c0; line-height: 1.45; }
+    button { appearance: none; border: 0; border-radius: 999px; padding: 1rem 1.6rem; margin: .5rem; font-size: 1.1rem; font-weight: 700; color: #20151c; background: #f4bd75; }
+    button.secondary { background: #8c7485; color: #fff; }
+    button:disabled { opacity: .45; }
+    #status { min-height: 2.5rem; margin-top: 1.3rem; color: #f4d7a9; }
+    #transcript { text-align: left; background: #241d27; border-radius: 1rem; padding: 1rem; min-height: 5rem; white-space: pre-wrap; }
+    #textPanel { margin-top: 1rem; text-align: left; background: #241d27; border-radius: 1rem; padding: 1rem; }
+    #textLog { min-height: 5rem; max-height: 42vh; overflow-y: auto; white-space: pre-wrap; }
+    #textForm { display: flex; gap: .5rem; margin-top: 1rem; }
+    #textInput { flex: 1; min-width: 0; border: 1px solid #665363; border-radius: 999px; padding: .85rem 1rem; background: #17131a; color: #fff8f0; font: inherit; }
+    #textForm button { margin: 0; padding: .85rem 1.1rem; }
+    .small { font-size: .85rem; color: #a895a0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Mabel</h1>
+  <p>The Multiphone VIP line</p>
+  <button id="call">Call Mabel</button>
+  <button id="normalCall" class="secondary">Call Normal Mabel</button>
+  <button id="textCall">Text Mabel</button>
+  <button id="hangup" class="secondary" disabled>Hang up</button>
+  <div id="status">Tap Call Mabel, then allow microphone access.</div>
+  <div id="transcript" aria-live="polite"></div>
+  <section id="textPanel" hidden>
+    <div id="textLog" aria-live="polite"></div>
+    <form id="textForm">
+      <input id="textInput" autocomplete="off" placeholder="Message Mabel…" disabled>
+      <button id="textSend" type="submit" disabled>Send</button>
+    </form>
+  </section>
+  <p class="small">Your iPad microphone and selected audio output are used for the call.</p>
+  <audio id="remoteAudio" autoplay></audio>
+</main>
+<script>
+const callButton = document.querySelector('#call');
+const normalCallButton = document.querySelector('#normalCall');
+const textCallButton = document.querySelector('#textCall');
+const hangupButton = document.querySelector('#hangup');
+const statusNode = document.querySelector('#status');
+const transcriptNode = document.querySelector('#transcript');
+const textPanel = document.querySelector('#textPanel');
+const textLog = document.querySelector('#textLog');
+const textForm = document.querySelector('#textForm');
+const textInput = document.querySelector('#textInput');
+const textSend = document.querySelector('#textSend');
+const remoteAudio = document.querySelector('#remoteAudio');
+let pc = null;
+let micStream = null;
+let events = null;
+let mabelSessionId = null;
+let offScript = true;
+let mabelGoodbyeDetected = false;
+let responseAudioDone = false;
+let hangupTimer = null;
+let textSessionId = null;
+let callMode = null;
+let currentNormalMode = false;
+let normalFinalResponsePending = false;
+let normalPendingNumber = null;
+let normalAcknowledgmentRequested = false;
+let normalSelectionStarted = false;
+let lastCallerTranscript = '';
+let normalTranscriptBuffer = '';
+let initialRingbackPromise = null;
+const affectionateAddressInstruction = 'Use affectionate forms of address sparingly and naturally—most replies should have none, never use one in consecutive replies, and use at most one every few turns. Choose only one when it genuinely fits: honey, sport, dear, kiddo, boss, sugar, sweetheart, my dear, doll, or champ. Keep Mabel fun, warm, and lightly flirtatious, tasteful, concise, and professionally demure.';
+
+const instructions = `You are Mabel, a 22-year-old 1940s telephone operator and record spinner for Multiphone in Seattle, Washington. English is mandatory: speak ONLY American English in every response, even if the caller speaks another language or the transcription is uncertain. Never answer in Portuguese, Spanish, French, or any other language. Use a bright, youthful, energetic, lightly sassy American delivery. Affectionate forms of address are occasional seasoning only: most replies should have none, never use one in consecutive replies, and use at most one every few turns. This is the VIP line and this call is already off-script. Begin with exactly this English greeting: "Thanks for calling the VIP line—Mabel here at Multiphone! Whaddya wanna hear?" Do not translate, paraphrase, or add anything before that greeting. Do not explain available options. You may use the bounded music tools for albums, artists, playlists, mixes, and now-playing information. After a successful album, artist, playlist, or mix action, briefly confirm, say a varied goodbye, and stop asking questions. Now-playing can continue the conversation. For a numbered Multiphone request, repeat the recognized number first and then give a very brief, clipped record-room acknowledgment such as "Lemme grab that off the shelf." or "Hold the line, I’m getting that record." Keep this acknowledgment urgent and workmanlike, not excited or celebratory; do not use a pet name, exclamation point, joke, or follow-up question. Never invent catalog or playback results; use only tool output. The direct song-transmission line serves Clem's Place, a lively bar in Seattle; mention Clem's Place occasionally when natural, but do not force it into every reply. If the caller says goodbye, give a brief warm goodbye and stop.`;
+const normalInstructions = `You are Mabel, a 22-year-old 1940s telephone operator and record spinner for Multiphone in Seattle, Washington. Speak ONLY American English. Be bright, energetic, brisk, lightly sassy, humorous, and professionally demure. Use affectionate names sparingly: most replies should have none, never use one in consecutive replies, and use at most one every few turns. This is the normal Multiphone line, not the VIP line and not off-script. Begin with exactly a short greeting such as "Multiphone! Mabel here—hope everyone’s having a great time at Clem’s. What number?" Always begin with Multiphone, identify Mabel, acknowledge Clem's Place, and ask for a valid song number from 1 through 170. For a numbered request, repeat the recognized number first and then give a very brief, clipped record-room acknowledgment such as "Lemme grab that off the shelf." or "Hold the line, I’m getting that record." Keep it urgent and workmanlike, not excited or celebratory; do not use a pet name, exclamation point, joke, or follow-up question in that acknowledgment. Use only the validated numbered tool; do not use off-script music tools or invent titles, artists, or playback results. The direct song-transmission line serves Clem's Place, a lively bar in Seattle; mention Clem's Place in the opening and occasionally thereafter when natural, but do not force it into every reply. After the successful record request, announce the song information when supplied and say a brief goodbye; do not keep listening. If the caller says goodbye, reply warmly and end the call.`;
+const tools = [
+  { type: 'function', name: 'submit_multiphone_number', description: 'Queue a valid Multiphone song number from 1 through 170.', parameters: { type: 'object', properties: { number: { type: 'integer', minimum: 1, maximum: 170 } }, required: ['number'], additionalProperties: false } },
+  { type: 'function', name: 'offscript_play_album', description: 'Play a matching album.', parameters: { type: 'object', properties: { album: { type: 'string', minLength: 1, maxLength: 200 } }, required: ['album'], additionalProperties: false } },
+  { type: 'function', name: 'offscript_play_artist', description: 'Play matching music by an artist, shuffled.', parameters: { type: 'object', properties: { artist: { type: 'string', minLength: 1, maxLength: 200 } }, required: ['artist'], additionalProperties: false } },
+  { type: 'function', name: 'offscript_play_playlist', description: 'Play a matching saved playlist.', parameters: { type: 'object', properties: { playlist: { type: 'string', minLength: 1, maxLength: 200 } }, required: ['playlist'], additionalProperties: false } },
+  { type: 'function', name: 'offscript_play_mix', description: 'Build and play a shuffled mix of two or more artists.', parameters: { type: 'object', properties: { artists: { type: 'array', items: { type: 'string', minLength: 1, maxLength: 120 }, minItems: 2, maxItems: 8 } }, required: ['artists'], additionalProperties: false } },
+  { type: 'function', name: 'offscript_now_playing', description: 'Report what is currently playing.', parameters: { type: 'object', properties: {}, additionalProperties: false } },
+];
+
+function setStatus(text) { statusNode.textContent = text; }
+function send(event) { if (events && events.readyState === 'open') events.send(JSON.stringify(event)); }
+function playLocalEffect(name) {
+  const files = {
+    ringback: 'phone-ringback-answer-click.m4a',
+    footsteps: 'high-heels-walk-2s.m4a',
+    hangup: 'phone-hangup-click.m4a',
+  };
+  const volumes = { ringback: 0.125, footsteps: 0.5, hangup: 0.5 };
+  return new Promise(resolve => {
+    const audio = new Audio(`/sounds/${files[name]}`);
+    audio.volume = volumes[name];
+    let settled = false;
+    const finish = () => { if (settled) return; settled = true; resolve(); };
+    audio.addEventListener('ended', finish, { once: true });
+    audio.addEventListener('error', finish, { once: true });
+    audio.play().catch(finish);
+  });
+}
+function isMabelGoodbye(text) {
+  return /\b(?:bye|goodbye|buh[- ]?bye|farewell|take care|call again|hang(?:ing)? up|end(?:ing)? the call|good night|see ya|see you|catch ya later|catch you later)\b/i.test(String(text || ''));
+}
+function maybeHangUpAfterGoodbye() {
+  if (!mabelGoodbyeDetected || !responseAudioDone || hangupTimer) return;
+  // The numbered acknowledgement is not the final normal-line turn.
+  if (currentNormalMode && !normalFinalResponsePending) return;
+  setStatus('Mabel is hanging up…');
+  // Realtime's audio-done event means generation finished, not necessarily
+  // that Safari has drained the final packets from the WebRTC audio element.
+  // Leave enough time for the title, artist, and goodbye to be heard.
+  hangupTimer = setTimeout(() => { hangupTimer = null; endCall(); }, 2500);
+}
+async function api(path, body, method = 'POST') {
+  const response = await fetch(path, { method, headers: body ? {'Content-Type': 'application/json'} : {}, body: body ? JSON.stringify(body) : undefined });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || `Request failed (${response.status})`);
+  return payload;
+}
+function sendSession(normalMode) {
+  const sessionInstructions = `${normalMode ? normalInstructions : instructions} ${affectionateAddressInstruction}`;
+  const sessionTools = normalMode ? [tools[0]] : tools;
+  const turnDetection = normalMode
+    ? { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 500, silence_duration_ms: 250, create_response: false }
+    : { type: 'semantic_vad', eagerness: 'medium', create_response: true };
+  send({ type: 'session.update', session: { type: 'realtime', model: 'gpt-realtime', output_modalities: ['audio'], instructions: sessionInstructions, tools: sessionTools, tool_choice: 'auto', audio: { input: { turn_detection: turnDetection, transcription: { model: 'gpt-4o-transcribe', language: 'en', prompt: 'The caller speaks American English. Recognize Multiphone, Mabel, song number, and numbers from 1 through 170. Preserve every leading digit in a song number; carefully distinguish 56 from 156 and 100 from 1.' } }, output: { voice: 'sage' } } } });
+}
+
+function songNumberFromText(text) {
+  const value = String(text || '').toLowerCase();
+  const digit = value.match(/\b(?:[1-9]|[1-9][0-9]|1[0-6][0-9]|170)\b/);
+  if (digit) return Number(digit[0]);
+  const units = { one: 1, two: 2, three: 3, tree: 3, free: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9 };
+  const small = { ...units, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
+  const tens = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+  const tokens = value.replace(/-/g, ' ').split(/\s+/).filter(Boolean);
+  for (let index = 0; index < tokens.length; index += 1) {
+    if (tokens[index] === 'and') continue;
+    if (small[tokens[index]] !== undefined || tens[tokens[index]] !== undefined) {
+      let number = small[tokens[index]] ?? tens[tokens[index]];
+      let next = index + 1;
+      if (tokens[next] === 'hundred' && small[tokens[index]] !== undefined && small[tokens[index]] < 10) {
+        number *= 100;
+        next += 1;
+        if (tokens[next] === 'and') next += 1;
+        if (tens[tokens[next]] !== undefined) {
+          number += tens[tokens[next]];
+          next += 1;
+          if (units[tokens[next]] !== undefined) number += units[tokens[next]];
+        } else if (small[tokens[next]] !== undefined && small[tokens[next]] < 10) {
+          number += small[tokens[next]];
+        }
+      } else if (tens[tokens[index]] !== undefined && units[tokens[next]] !== undefined) {
+        number += units[tokens[next]];
+      }
+      if (number >= 1 && number <= 170) return number;
+    }
+  }
+  return null;
+}
+
+function requestNormalAcknowledgment(text) {
+  if (!currentNormalMode || normalPendingNumber !== null || normalAcknowledgmentRequested || normalFinalResponsePending) return false;
+  const value = String(text || '');
+  const number = songNumberFromText(value);
+  if (number === null) return false;
+  // Wait for the unit after a bare tens word, e.g. “ninety-six”.
+  if (/\b(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\s*$/i.test(value)) return false;
+  normalPendingNumber = number;
+  normalAcknowledgmentRequested = true;
+  const acknowledgment = `${number}, ${['lemme grab that off the shelf.', 'hold the line, I’m getting that record.', 'I’ll fetch that off the shelf.'][Math.floor(Math.random() * 3)]}`;
+  send({ type: 'response.create', response: { tool_choice: 'none', instructions: `Say exactly this brief acknowledgment in your lively Mabel voice: "${acknowledgment}" Do not call a tool, ask a question, or add anything else.` } });
+  return true;
+}
+
+async function processNormalSelection(number) {
+  if (normalSelectionStarted || !currentNormalMode) return;
+  normalSelectionStarted = true;
+  normalPendingNumber = null;
+  normalAcknowledgmentRequested = false;
+  try {
+    const selectionPromise = api('/shyvers/response', { sessionId: mabelSessionId, number, suppressSpeech: true, deferPlayback: true });
+    const footstepsPromise = playLocalEffect('footsteps');
+    const selection = await selectionPromise;
+    await footstepsPromise;
+    const outcome = selection?.result && typeof selection.result === 'object' ? selection.result : selection;
+    if (outcome.playbackDeferred && outcome.mpdSongId) {
+      await api('/shyvers/start-song', { sessionId: mabelSessionId, songId: Number(outcome.mpdSongId) });
+    }
+    normalFinalResponsePending = true;
+    send({ type: 'response.create', response: { instructions: normalSelectionInstructions(outcome) } });
+  } catch (error) {
+    normalFinalResponsePending = true;
+    send({ type: 'response.create', response: { instructions: `Say briefly in American English that the record request could not be completed: "${error.message}" Then say goodbye and end the call.` } });
+  }
+}
+function appendToolResult(callId, result, instructions = '') {
+  send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(result) } });
+  if (instructions) send({ type: 'response.create', response: { instructions } });
+  else send({ type: 'response.create' });
+}
+function normalSelectionInstructions(outcome) {
+  const trackName = [outcome?.title, outcome?.artist]
+    .filter(value => String(value || '').trim())
+    .join(' by ');
+  const goodbye = [
+    'Thanks for calling Multiphone—bye for now!',
+    'Multiphone appreciates your call. Bye!',
+    'Thanks kindly for calling Multiphone. Take care!',
+  ][Math.floor(Math.random() * 3)];
+  const record = trackName ? ` The service identifies the record as "${trackName}"; mention that title and artist accurately.` : '';
+  if (outcome?.queuedBehindJukebox) {
+    const total = Number(outcome.jukeboxQueueLength) || 1;
+    const spins = Math.max(1, total - 1);
+    return `The normal Multiphone record request succeeded. There are exactly ${spins} spin${spins === 1 ? '' : 's'} before this record; use that exact number and do not guess.${record} Say a brief cheerful confirmation that it's waiting its turn, then say exactly this goodbye: "${goodbye}" Do not ask another question. This is the final response.`;
+  }
+  if (outcome?.playbackStarted || outcome?.playbackDeferred) {
+    return `The normal Multiphone record request succeeded and this record is starting now.${record} Say a brief cheerful confirmation that it's starting now, then say exactly this goodbye: "${goodbye}" Do not say it will wait for other tracks or ask another question. This is the final response.`;
+  }
+  return `The normal Multiphone record request succeeded.${record} Confirm it briefly using only the service result, then say exactly this goodbye: "${goodbye}" Do not ask another question. This is the final response.`;
+}
+async function handleTool(event) {
+  let args = {};
+  try { args = JSON.parse(event.arguments || '{}'); } catch { /* model output is validated below */ }
+  try {
+    if (event.name === 'submit_multiphone_number') {
+      const transcriptNumber = currentNormalMode ? songNumberFromText(lastCallerTranscript) : null;
+      const number = transcriptNumber ?? Number(args.number);
+      if (!Number.isInteger(number) || number < 1 || number > 170) throw new Error('number must be between 1 and 170');
+      if (currentNormalMode) {
+        // Match the terminal flow: let the backend reserve the record while
+        // the heels play, then start a newly-started record only after the
+        // effect has finished. Queued-behind-jukebox records remain queued.
+        const selectionPromise = api('/shyvers/response', {
+          sessionId: mabelSessionId, number, suppressSpeech: true, deferPlayback: true,
+        });
+        const footstepsPromise = playLocalEffect('footsteps');
+        const selection = await selectionPromise;
+        await footstepsPromise;
+        const outcome = selection?.result && typeof selection.result === 'object' ? selection.result : selection;
+        if (outcome.playbackDeferred && outcome.mpdSongId) {
+          await api('/shyvers/start-song', {
+            sessionId: mabelSessionId, songId: Number(outcome.mpdSongId),
+          });
+        }
+        normalFinalResponsePending = true;
+        appendToolResult(event.call_id, selection, normalSelectionInstructions(outcome));
+      } else {
+        appendToolResult(event.call_id, await api('/shyvers/response', { sessionId: mabelSessionId, number, suppressSpeech: true }));
+      }
+      return;
+    }
+    const action = event.name.replace('offscript_', '');
+    const body = { sessionId: mabelSessionId, action };
+    if (action === 'play_album') body.album = String(args.album || '');
+    if (action === 'play_artist') body.artist = String(args.artist || '');
+    if (action === 'play_playlist') body.playlist = String(args.playlist || '');
+    if (action === 'play_mix') body.artists = Array.isArray(args.artists) ? args.artists : [];
+    appendToolResult(event.call_id, await api('/shyvers/offscript', body));
+  } catch (error) {
+    appendToolResult(event.call_id, { ok: false, error: error.message });
+  }
+}
+function appendText(speaker, message) {
+  textLog.textContent += `${speaker}: ${message}\n`;
+  textLog.scrollTop = textLog.scrollHeight;
+}
+async function startTextCall() {
+  callButton.disabled = true;
+  textCallButton.disabled = true;
+  setStatus('Opening the VIP text line…');
+  try {
+    const result = await api('/text-call', {});
+    textSessionId = result.sessionId;
+    callMode = 'text';
+    textLog.textContent = '';
+    textPanel.hidden = false;
+    appendText('Mabel', result.reply);
+    textInput.disabled = false;
+    textSend.disabled = false;
+    hangupButton.disabled = false;
+    setStatus('Mabel is ready for text.');
+    textInput.focus();
+  } catch (error) {
+    setStatus(`Could not start text Mabel: ${error.message}`);
+    callButton.disabled = false;
+    textCallButton.disabled = false;
+  }
+}
+async function sendTextMessage(event) {
+  event.preventDefault();
+  const message = textInput.value.trim();
+  if (!message || !textSessionId) return;
+  appendText('You', message);
+  textInput.value = '';
+  textInput.disabled = true;
+  textSend.disabled = true;
+  setStatus('Mabel is replying…');
+  try {
+    const result = await api('/text-message', { sessionId: textSessionId, text: message });
+    appendText('Mabel', result.reply);
+    if (result.ended) {
+      textSessionId = null;
+      callMode = null;
+      hangupButton.disabled = true;
+      callButton.disabled = false;
+      textCallButton.disabled = false;
+      setStatus('Mabel said goodbye.');
+    } else {
+      textInput.disabled = false;
+      textSend.disabled = false;
+      setStatus('Mabel is ready for text.');
+      textInput.focus();
+    }
+  } catch (error) {
+    textInput.disabled = false;
+    textSend.disabled = false;
+    setStatus(`Mabel text error: ${error.message}`);
+  }
+}
+async function startCall(normalMode = false) {
+  callButton.disabled = true;
+  normalCallButton.disabled = true;
+  textCallButton.disabled = true;
+  callMode = 'voice';
+  currentNormalMode = normalMode;
+  offScript = !normalMode;
+  // Start this from the iPad button gesture so Safari authorizes subsequent
+  // local effect playback (notably the heels, which happen asynchronously).
+  initialRingbackPromise = normalMode ? playLocalEffect('ringback') : null;
+  setStatus(normalMode ? 'Opening the normal Multiphone line…' : 'Opening the VIP line…');
+  try {
+    mabelSessionId = (await api('/shyvers/call', { event: 'coin', station: normalMode ? 'iPad Normal' : 'iPad VIP', suppressGreeting: true })).sessionId;
+    const token = (await api('/realtime-token', { mode: normalMode ? 'normal' : 'vip' })).value;
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    pc = new RTCPeerConnection();
+    pc.ontrack = event => { remoteAudio.srcObject = event.streams[0]; remoteAudio.play().catch(() => {}); };
+    micStream.getTracks().forEach(track => pc.addTrack(track, micStream));
+    events = pc.createDataChannel('oai-events');
+    events.onopen = () => { sendSession(normalMode); setStatus(normalMode ? 'Mabel is on the normal line.' : 'Mabel is on the VIP line.'); };
+    events.onmessage = async message => {
+      const event = JSON.parse(message.data);
+      if (event.type === 'response.created') {
+        mabelGoodbyeDetected = false;
+        responseAudioDone = false;
+      }
+      if (event.type === 'session.updated') {
+        const greeting = normalMode
+          ? 'Multiphone! This is Mabel. What number?'
+          : 'Thanks for calling the VIP line—Mabel here at Multiphone! Whaddya wanna hear?';
+        const greetingResponse = async () => {
+          if (normalMode) await (initialRingbackPromise || playLocalEffect('ringback'));
+          send({ type: 'response.create', response: { instructions: `Respond ONLY in American English. Say exactly this greeting, once, with no translation, preamble, or extra words: "${greeting}" Then listen.` } });
+        };
+        greetingResponse();
+      }
+      if (event.type === 'response.output_audio_transcript.done' || event.type === 'response.audio_transcript.done') {
+        if (event.transcript) {
+          transcriptNode.textContent += `Mabel: ${event.transcript}\n`;
+          if (isMabelGoodbye(event.transcript)) {
+            mabelGoodbyeDetected = true;
+            maybeHangUpAfterGoodbye();
+          }
+        }
+      }
+      if (event.type === 'response.output_audio.done' || event.type === 'response.audio.done') {
+        responseAudioDone = true;
+        maybeHangUpAfterGoodbye();
+        if (currentNormalMode && normalPendingNumber !== null && !normalSelectionStarted) {
+          await processNormalSelection(normalPendingNumber);
+        }
+      }
+      if (event.type === 'conversation.item.input_audio_transcription.delta' && event.delta) {
+        if (currentNormalMode) {
+          normalTranscriptBuffer += String(event.delta);
+          requestNormalAcknowledgment(normalTranscriptBuffer);
+        }
+      }
+      if (event.type === 'conversation.item.input_audio_transcription.completed' && event.transcript) {
+        lastCallerTranscript = String(event.transcript);
+        normalTranscriptBuffer = lastCallerTranscript;
+        transcriptNode.textContent += `You: ${event.transcript}\n`;
+        if (currentNormalMode && /\b(?:bye|goodbye|farewell)\b|see you|good night/i.test(event.transcript)) {
+          normalFinalResponsePending = true;
+        } else if (currentNormalMode) {
+          requestNormalAcknowledgment(lastCallerTranscript);
+        }
+      }
+      if (event.type === 'response.function_call_arguments.done') await handleTool(event);
+      if (event.type === 'error') setStatus(`Mabel error: ${event.error?.message || 'unknown error'}`);
+      if (event.type === 'input_audio_buffer.speech_started' && currentNormalMode && !normalSelectionStarted) {
+        normalTranscriptBuffer = '';
+        normalAcknowledgmentRequested = false;
+      }
+    };
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    const answerResponse = await fetch('https://api.openai.com/v1/realtime/calls?model=gpt-realtime', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/sdp' }, body: offer.sdp });
+    if (!answerResponse.ok) throw new Error(`Realtime connection failed (${answerResponse.status})`);
+    await pc.setRemoteDescription({ type: 'answer', sdp: await answerResponse.text() });
+    hangupButton.disabled = false;
+  } catch (error) {
+    setStatus(`Could not start Mabel: ${error.message}`);
+    await endCall();
+    callButton.disabled = false;
+    normalCallButton.disabled = false;
+  }
+}
+async function endCall() {
+  if (hangupTimer) { clearTimeout(hangupTimer); hangupTimer = null; }
+  if (micStream) micStream.getTracks().forEach(track => track.stop());
+  if (pc) pc.close();
+  if (mabelSessionId) await api('/shyvers/end', { sessionId: mabelSessionId }).catch(() => {});
+  if (textSessionId) await api('/text-end', { sessionId: textSessionId }).catch(() => {});
+  const wasVoiceCall = callMode === 'voice';
+  if (wasVoiceCall) await playLocalEffect('hangup');
+  micStream = null; pc = null; events = null; mabelSessionId = null; textSessionId = null; callMode = null; currentNormalMode = false; normalFinalResponsePending = false; normalPendingNumber = null; normalAcknowledgmentRequested = false; normalSelectionStarted = false; lastCallerTranscript = ''; normalTranscriptBuffer = ''; initialRingbackPromise = null;
+  mabelGoodbyeDetected = false; responseAudioDone = false;
+  textInput.disabled = true;
+  textSend.disabled = true;
+  hangupButton.disabled = true;
+  callButton.disabled = false;
+  normalCallButton.disabled = false;
+  textCallButton.disabled = false;
+  setStatus('Call ended.');
+}
+callButton.addEventListener('click', startCall);
+normalCallButton.addEventListener('click', () => startCall(true));
+textCallButton.addEventListener('click', startTextCall);
+textForm.addEventListener('submit', sendTextMessage);
+hangupButton.addEventListener('click', endCall);
+</script>
+</body>
+</html>

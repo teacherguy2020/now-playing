@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Historical Operating Model — Shyvers Multiphone</title><link rel="stylesheet" href="style.css"></head>
+<body><header><a href="index.html">Shyvers Multiphone Project</a><span>Historical reconstruction + reversible modernization</span></header>
+<div class="layout"><nav><strong>Wiki</strong><ul><li><a href="catalog-and-now-playing.html">Catalog And Now Playing</a></li><li><a href="hardware-examination.html">Hardware Examination</a></li><li><a href="historical-operating-model.html">Historical Operating Model</a></li><li><a href="mabel-software.html">Mabel Software</a></li><li><a href="open-questions.html">Open Questions</a></li><li><a href="operations-and-testing.html">Operations And Testing</a></li><li><a href="project-overview.html">Project Overview</a></li></ul><p><a href="../README.md">Project README</a></p></nav><main><h1>Historical operating model</h1>
+<h2>What the Multiphone was</h2>
+<p>Kenneth C. Shyvers' 1941 utility patent, US 2,264,911, describes a telephonic</p>
+<p>music selector apparatus. The customer station was primarily a paid request</p>
+<p>terminal: it displayed selections, accepted payment, signaled a central</p>
+<p>operator, connected the customer's microphone, and allowed a spoken request.</p>
+<p>The records were located at a central Shyvers studio. The customer was therefore</p>
+<p>placing a short, coin-paid call to a music operator rather than directly</p>
+<p>operating a local phonograph.</p>
+<h2>Shared request line</h2>
+<p>Multiple customer stations could share a common line. A station's microphone was</p>
+<p>normally disconnected and became active after its coin event. The patent also</p>
+<p>anticipates near-simultaneous customers and multiple coin impulses.</p>
+<h2>Request versus program traffic</h2>
+<p>The request conversation lasted seconds, while the requested record played for</p>
+<p>minutes. This separated intermittent control traffic from continuous program</p>
+<p>audio and made a per-establishment playback queue necessary.</p>
+<h2>Modern correspondence</h2>
+<table><tr><th>Historical system</th><th>Modern equivalent</th></tr>
+<tr><td>Coin</td><td>Original coin mechanism with isolated sensing</td></tr>
+<tr><td>Multiphone</td><td>Original customer unit</td></tr>
+<tr><td>Telephone request path</td><td>Network/API path</td></tr>
+<table><tr><th>Shyvers operator</th><th>Mabel AI operator</th></tr>
+<tr><td>Printed catalog</td><td>Digital catalog mapping</td></tr>
+<tr><td>Operator queue</td><td>Now Playing jukebox-priority FIFO queue</td></tr>
+<tr><td>Record library/turntable</td><td>Digital library and MPD/moOde</td></tr>
+<table><tr><th>Program line/speakers</th><th>Existing room audio system</th></tr>
+<p>Later installations may have used different wiring arrangements, including</p>
+<p>separate request and program circuits. Do not assume every generation shared the</p>
+<p>same physical implementation.</p>
+</table></main></div>
+</body></html>

@@ -1,0 +1,6909 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-04T10:10:18.712Z",
+  "source": "Jarvis - Harmony config.md",
+  "hub": {
+    "id": "3871019",
+    "host": "10.0.0.21",
+    "port": 8088,
+    "domain": "svcs.myharmony.com",
+    "websocketUrl": "ws://10.0.0.21:8088/?domain=svcs.myharmony.com&hubId=3871019"
+  },
+  "devices": [
+    {
+      "id": "59931681",
+      "name": "Apple TV 4K",
+      "manufacturer": "Harmony Beta",
+      "type": "AppleTV",
+      "commands": [
+        {
+          "command": "Back",
+          "name": "Back",
+          "label": "Back",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "FastForward",
+          "name": "FastForward",
+          "label": "Fast Forward",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "Home",
+          "name": "Home",
+          "label": "Home",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "Menu",
+          "name": "Menu",
+          "label": "Menu",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "Pair",
+          "name": "Pair",
+          "label": "Pair",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "Pause",
+          "name": "Pause",
+          "label": "Pause",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "Play",
+          "name": "Play",
+          "label": "Play",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "Reboot",
+          "name": "Reboot",
+          "label": "Reboot",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "Rewind",
+          "name": "Rewind",
+          "label": "Rewind",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "Select",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "SkipBack",
+          "name": "SkipBackward",
+          "label": "Skip Backward",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "SkipForward",
+          "name": "SkipForward",
+          "label": "Skip Forward",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "Stop",
+          "name": "Stop",
+          "label": "Stop",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "UnPair",
+          "name": "UnPair",
+          "label": "UnPair",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "VideoMode",
+          "name": "VideoMode",
+          "label": "VideoMode",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "VolumeDown",
+          "name": "VolumeDown",
+          "label": "Volume Down",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        },
+        {
+          "command": "VolumeUp",
+          "name": "VolumeUp",
+          "label": "Volume Up",
+          "type": "IRCommand",
+          "deviceId": "59931681"
+        }
+      ]
+    },
+    {
+      "id": "60607563",
+      "name": "Theater TiVo",
+      "manufacturer": "TiVo",
+      "type": "PVR",
+      "commands": [
+        {
+          "command": "-",
+          "name": "Hyphen",
+          "label": "-",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "0",
+          "name": "Number0",
+          "label": "0",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "1",
+          "name": "Number1",
+          "label": "1",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "2",
+          "name": "Number2",
+          "label": "2",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "3",
+          "name": "Number3",
+          "label": "3",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "4",
+          "name": "Number4",
+          "label": "4",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "5",
+          "name": "Number5",
+          "label": "5",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "6",
+          "name": "Number6",
+          "label": "6",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "7",
+          "name": "Number7",
+          "label": "7",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "8",
+          "name": "Number8",
+          "label": "8",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "9",
+          "name": "Number9",
+          "label": "9",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "A",
+          "name": "A",
+          "label": "A",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "B",
+          "name": "B",
+          "label": "B",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Back",
+          "name": "Back",
+          "label": "Back",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Blue",
+          "name": "Blue",
+          "label": "Blue",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "C",
+          "name": "C",
+          "label": "C",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "ChannelDown",
+          "name": "ChannelDown",
+          "label": "Channel Down",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "ChannelUp",
+          "name": "ChannelUp",
+          "label": "Channel Up",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Clear",
+          "name": "Clear",
+          "label": "Clear",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "D",
+          "name": "D",
+          "label": "D",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "FastForward",
+          "name": "FastForward",
+          "label": "Fast Forward",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Green",
+          "name": "Green",
+          "label": "Green",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Guide",
+          "name": "Guide",
+          "label": "Guide",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Info",
+          "name": "Info",
+          "label": "Info",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Input",
+          "name": "Input",
+          "label": "Input",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Last",
+          "name": "PrevChannel",
+          "label": "Prev Channel",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "List",
+          "name": "List",
+          "label": "List",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Live",
+          "name": "Live",
+          "label": "Live",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Mute",
+          "name": "Mute",
+          "label": "Mute",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "NumberEnter",
+          "name": "NumberEnter",
+          "label": "Number Enter",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "OnDemand",
+          "name": "OnDemand",
+          "label": "OnDemand",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Pause",
+          "name": "Pause",
+          "label": "Pause",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Play",
+          "name": "Play",
+          "label": "Play",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "PowerToggle",
+          "name": "PowerToggle",
+          "label": "Power Toggle",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Record",
+          "name": "Record",
+          "label": "Record",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Red",
+          "name": "Red",
+          "label": "Red",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Rewind",
+          "name": "Rewind",
+          "label": "Rewind",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Select",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "SkipBack",
+          "name": "SkipBackward",
+          "label": "Skip Backward",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "SkipForward",
+          "name": "SkipForward",
+          "label": "Skip Forward",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Slow",
+          "name": "FrameAdvance",
+          "label": "Frame Advance",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Swap",
+          "name": "Swap",
+          "label": "Swap",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "ThumbsDown",
+          "name": "ThumbsDown",
+          "label": "Thumbs Down",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "ThumbsUp",
+          "name": "ThumbsUp",
+          "label": "Thumbs Up",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "TiVo",
+          "name": "TiVo",
+          "label": "TiVo",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "VolumeDown",
+          "name": "VolumeDown",
+          "label": "Volume Down",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "VolumeUp",
+          "name": "VolumeUp",
+          "label": "Volume Up",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Yellow",
+          "name": "Yellow",
+          "label": "Yellow",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        },
+        {
+          "command": "Zoom",
+          "name": "Zoom",
+          "label": "Zoom",
+          "type": "IRCommand",
+          "deviceId": "60607563"
+        }
+      ]
+    },
+    {
+      "id": "51061215",
+      "name": "Vizio TV",
+      "manufacturer": "Vizio",
+      "type": "Television",
+      "commands": [
+        {
+          "command": "-",
+          "name": "Hyphen",
+          "label": "-",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "0",
+          "name": "Number0",
+          "label": "0",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "1",
+          "name": "Number1",
+          "label": "1",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "2",
+          "name": "Number2",
+          "label": "2",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "3",
+          "name": "Number3",
+          "label": "3",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "4",
+          "name": "Number4",
+          "label": "4",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "5",
+          "name": "Number5",
+          "label": "5",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "6",
+          "name": "Number6",
+          "label": "6",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "7",
+          "name": "Number7",
+          "label": "7",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "8",
+          "name": "Number8",
+          "label": "8",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "9",
+          "name": "Number9",
+          "label": "9",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "Back",
+          "name": "Back",
+          "label": "Back",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "ChannelDown",
+          "name": "ChannelDown",
+          "label": "Channel Down",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "ChannelPrev ",
+          "name": "ChannelPrev",
+          "label": "ChannelPrev",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "ChannelUp",
+          "name": "ChannelUp",
+          "label": "Channel Up",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "ClosedCaption",
+          "name": "ClosedCaption",
+          "label": "ClosedCaption",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "Exit",
+          "name": "Exit",
+          "label": "Exit",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "Guide ",
+          "name": "Guide",
+          "label": "Guide",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "iHeartRadio",
+          "name": "iHeartRadio",
+          "label": "iHeartRadio",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "Info",
+          "name": "Info",
+          "label": "Info",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "InputAv",
+          "name": "InputAv",
+          "label": "InputAv",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "InputCast",
+          "name": "InputCast",
+          "label": "InputCast",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "InputComponent",
+          "name": "InputComponent",
+          "label": "InputComponent",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "InputHdmi1",
+          "name": "InputHdmi1",
+          "label": "InputHdmi1",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "InputHdmi2",
+          "name": "InputHdmi2",
+          "label": "InputHdmi2",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "InputHdmi3",
+          "name": "InputHdmi3",
+          "label": "InputHdmi3",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "InputHdmi4",
+          "name": "InputHdmi4",
+          "label": "InputHdmi4",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "InputHdmi5",
+          "name": "InputHdmi5",
+          "label": "InputHdmi5",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "InputNext",
+          "name": "InputNext",
+          "label": "InputNext",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "InputTv",
+          "name": "InputTv",
+          "label": "InputTv",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "Link",
+          "name": "Link",
+          "label": "Link",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "Menu",
+          "name": "Menu",
+          "label": "Menu",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "Mute",
+          "name": "Mute",
+          "label": "Mute",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "Netflix",
+          "name": "Netflix",
+          "label": "Netflix",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "OK",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "PictureMode",
+          "name": "PictureMode",
+          "label": "Picture Mode",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "PowerOff",
+          "name": "PowerOff",
+          "label": "Power Off",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "PowerOn",
+          "name": "PowerOn",
+          "label": "Power On",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "PowerToggle",
+          "name": "PowerToggle",
+          "label": "Power Toggle",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "VolumeDown",
+          "name": "VolumeDown",
+          "label": "Volume Down",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "VolumeUp",
+          "name": "VolumeUp",
+          "label": "Volume Up",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "Vudu",
+          "name": "Vudu",
+          "label": "Vudu",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        },
+        {
+          "command": "Wide",
+          "name": "Aspect",
+          "label": "Aspect",
+          "type": "IRCommand",
+          "deviceId": "51061215"
+        }
+      ]
+    },
+    {
+      "id": "79266760",
+      "name": "Mac Computer",
+      "manufacturer": "LogitechHarmony",
+      "type": "Laptop",
+      "commands": [
+        {
+          "command": "_",
+          "name": "_",
+          "label": "_",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "-",
+          "name": "Hyphen",
+          "label": "-",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": ",",
+          "name": ",",
+          "label": ",",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": ":",
+          "name": ":",
+          "label": ":",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "!",
+          "name": "!",
+          "label": "!",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "?",
+          "name": "?",
+          "label": "?",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": ".",
+          "name": "Dot",
+          "label": ".",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "'",
+          "name": "'",
+          "label": "'",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "(",
+          "name": "(",
+          "label": "(",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": ")",
+          "name": ")",
+          "label": ")",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "[",
+          "name": "[",
+          "label": "[",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "]",
+          "name": "]",
+          "label": "]",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "{",
+          "name": "{",
+          "label": "{",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "}",
+          "name": "}",
+          "label": "}",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "@",
+          "name": "@",
+          "label": "@",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "*",
+          "name": "Star",
+          "label": "*",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "/",
+          "name": "/",
+          "label": "/",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "\\\\",
+          "name": "\\\\",
+          "label": "\\\\",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "&",
+          "name": "&",
+          "label": "&",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "#",
+          "name": "#",
+          "label": "#",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "%",
+          "name": "%",
+          "label": "%",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "^",
+          "name": "^",
+          "label": "^",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "+",
+          "name": "Plus",
+          "label": "+",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "<",
+          "name": "<",
+          "label": "<",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "=",
+          "name": "=",
+          "label": "=",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": ">",
+          "name": ">",
+          "label": ">",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "|",
+          "name": "|",
+          "label": "|",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "$",
+          "name": "$",
+          "label": "$",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "0",
+          "name": "Number0",
+          "label": "0",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "1",
+          "name": "Number1",
+          "label": "1",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "2",
+          "name": "Number2",
+          "label": "2",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "3",
+          "name": "Number3",
+          "label": "3",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "4",
+          "name": "Number4",
+          "label": "4",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "5",
+          "name": "Number5",
+          "label": "5",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "6",
+          "name": "Number6",
+          "label": "6",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "7",
+          "name": "Number7",
+          "label": "7",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "8",
+          "name": "Number8",
+          "label": "8",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "9",
+          "name": "Number9",
+          "label": "9",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "A",
+          "name": "A",
+          "label": "A",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "a.",
+          "name": "a.",
+          "label": "a.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "B",
+          "name": "B",
+          "label": "B",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "b.",
+          "name": "b.",
+          "label": "b.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Back",
+          "name": "Back",
+          "label": "Back",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "C",
+          "name": "C",
+          "label": "C",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "c.",
+          "name": "c.",
+          "label": "c.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "ChannelDown",
+          "name": "ChannelDown",
+          "label": "Channel Down",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "ChannelUp",
+          "name": "ChannelUp",
+          "label": "Channel Up",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "CloseProgram",
+          "name": "CloseProgram",
+          "label": "CloseProgram",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "CloseWindow",
+          "name": "CloseWindow",
+          "label": "CloseWindow",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command",
+          "name": "Command",
+          "label": "Command",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+1",
+          "name": "Command+1",
+          "label": "Command+1",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+2",
+          "name": "Command+2",
+          "label": "Command+2",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+3",
+          "name": "Command+3",
+          "label": "Command+3",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+A",
+          "name": "Command+A",
+          "label": "Command+A",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+B",
+          "name": "Command+B",
+          "label": "Command+B",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+C",
+          "name": "Command+C",
+          "label": "Command+C",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+D",
+          "name": "Command+D",
+          "label": "Command+D",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+E",
+          "name": "Command+E",
+          "label": "Command+E",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+F",
+          "name": "Command+F",
+          "label": "Command+F",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+F1",
+          "name": "Command+F1",
+          "label": "Command+F1",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+G",
+          "name": "Command+G",
+          "label": "Command+G",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+H",
+          "name": "Command+H",
+          "label": "Command+H",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+I",
+          "name": "Command+I",
+          "label": "Command+I",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+J",
+          "name": "Command+J",
+          "label": "Command+J",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+K",
+          "name": "Command+K",
+          "label": "Command+K",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+L",
+          "name": "Command+L",
+          "label": "Command+L",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+M",
+          "name": "Command+M",
+          "label": "Command+M",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+N",
+          "name": "Command+N",
+          "label": "Command+N",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+O",
+          "name": "Command+O",
+          "label": "Command+O",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+P",
+          "name": "Command+P",
+          "label": "Command+P",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+Q",
+          "name": "Command+Q",
+          "label": "Command+Q",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+R",
+          "name": "Command+R",
+          "label": "Command+R",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+S",
+          "name": "Command+S",
+          "label": "Command+S",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+space",
+          "name": "Command+space",
+          "label": "Command+space",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+T",
+          "name": "Command+T",
+          "label": "Command+T",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+U",
+          "name": "Command+U",
+          "label": "Command+U",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+V",
+          "name": "Command+V",
+          "label": "Command+V",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+W",
+          "name": "Command+W",
+          "label": "Command+W",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+X",
+          "name": "Command+X",
+          "label": "Command+X",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+Y",
+          "name": "Command+Y",
+          "label": "Command+Y",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Command+Z",
+          "name": "Command+Z",
+          "label": "Command+Z",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Control+Command+F",
+          "name": "Control+Command+F",
+          "label": "Control+Command+F",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Ctrl",
+          "name": "Ctrl",
+          "label": "Ctrl",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Ctrl+⌘+S",
+          "name": "Ctrl+⌘+S",
+          "label": "Ctrl+⌘+S",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Ctrl+⌘+W",
+          "name": "Ctrl+⌘+W",
+          "label": "Ctrl+⌘+W",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Ctrl+⌘+Z",
+          "name": "Ctrl+⌘+Z",
+          "label": "Ctrl+⌘+Z",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "CTRL+S",
+          "name": "CTRL+S",
+          "label": "CTRL+S",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "CTRL+W",
+          "name": "CTRL+W",
+          "label": "CTRL+W",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "CTRL+Z",
+          "name": "CTRL+Z",
+          "label": "CTRL+Z",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "D",
+          "name": "D",
+          "label": "D",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "d.",
+          "name": "d.",
+          "label": "d.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Delete",
+          "name": "Delete",
+          "label": "Backspace",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Desktop",
+          "name": "Desktop",
+          "label": "Desktop",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Desktop1",
+          "name": "Desktop1",
+          "label": "Desktop1",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Desktop2",
+          "name": "Desktop2",
+          "label": "Desktop2",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Desktop3",
+          "name": "Desktop3",
+          "label": "Desktop3",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "E",
+          "name": "E",
+          "label": "E",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "e.",
+          "name": "e.",
+          "label": "e.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Escape",
+          "name": "Escape",
+          "label": "Escape",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F",
+          "name": "F",
+          "label": "F",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "f.",
+          "name": "f.",
+          "label": "f.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F1",
+          "name": "F1",
+          "label": "F1",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F10",
+          "name": "F10",
+          "label": "F10",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F11",
+          "name": "F11",
+          "label": "F11",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F12",
+          "name": "F12",
+          "label": "F12",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F2",
+          "name": "F2",
+          "label": "F2",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F3",
+          "name": "F3",
+          "label": "F3",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F4",
+          "name": "F4",
+          "label": "F4",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F5",
+          "name": "F5",
+          "label": "F5",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F6",
+          "name": "F6",
+          "label": "F6",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F7",
+          "name": "F7",
+          "label": "F7",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F8",
+          "name": "F8",
+          "label": "F8",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "F9",
+          "name": "F9",
+          "label": "F9",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "FastForward",
+          "name": "FastForward",
+          "label": "Fast Forward",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "FullscreenOn/Off",
+          "name": "FullscreenOn/Off",
+          "label": "FullscreenOn/Off",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "G",
+          "name": "G",
+          "label": "G",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "g.",
+          "name": "g.",
+          "label": "g.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "H",
+          "name": "H",
+          "label": "H",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "h.",
+          "name": "h.",
+          "label": "h.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "I",
+          "name": "I",
+          "label": "I",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "i.",
+          "name": "i.",
+          "label": "i.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Info",
+          "name": "Info",
+          "label": "Info",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "J",
+          "name": "J",
+          "label": "J",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "j.",
+          "name": "j.",
+          "label": "j.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "K",
+          "name": "K",
+          "label": "K",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "k.",
+          "name": "k.",
+          "label": "k.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "L",
+          "name": "L",
+          "label": "L",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "l.",
+          "name": "l.",
+          "label": "l.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "LeftClick",
+          "name": "LeftClick",
+          "label": "LeftClick",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "M",
+          "name": "M",
+          "label": "M",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "m.",
+          "name": "m.",
+          "label": "m.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Menu",
+          "name": "Menu",
+          "label": "Menu",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "MinimizeAllWindows",
+          "name": "MinimizeAllWindows",
+          "label": "MinimizeAllWindows",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Mute",
+          "name": "Mute",
+          "label": "Mute",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "N",
+          "name": "N",
+          "label": "N",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "n.",
+          "name": "n.",
+          "label": "n.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "O",
+          "name": "O",
+          "label": "O",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "o.",
+          "name": "o.",
+          "label": "o.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "OK",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Option",
+          "name": "Option",
+          "label": "Option",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "P",
+          "name": "P",
+          "label": "P",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "p.",
+          "name": "p.",
+          "label": "p.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "PageDown",
+          "name": "PageDown",
+          "label": "Page Down",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "PageUp",
+          "name": "PageUp",
+          "label": "Page Up",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Pause",
+          "name": "Pause",
+          "label": "Pause",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Play",
+          "name": "Play",
+          "label": "Play",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Q",
+          "name": "Q",
+          "label": "Q",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "q.",
+          "name": "q.",
+          "label": "q.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "R",
+          "name": "R",
+          "label": "R",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "r.",
+          "name": "r.",
+          "label": "r.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Rewind",
+          "name": "Rewind",
+          "label": "Rewind",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "RightClick",
+          "name": "RightClick",
+          "label": "RightClick",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "S",
+          "name": "S",
+          "label": "S",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "s.",
+          "name": "s.",
+          "label": "s.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "ShowDock",
+          "name": "ShowDock",
+          "label": "ShowDock",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Sleep",
+          "name": "Sleep",
+          "label": "Sleep",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Space",
+          "name": "Space",
+          "label": "Space",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Stop",
+          "name": "Stop",
+          "label": "Stop",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "T",
+          "name": "T",
+          "label": "T",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "t.",
+          "name": "t.",
+          "label": "t.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Tab",
+          "name": "Tab",
+          "label": "Tab",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "U",
+          "name": "U",
+          "label": "U",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "u.",
+          "name": "u.",
+          "label": "u.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "V",
+          "name": "V",
+          "label": "V",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "v.",
+          "name": "v.",
+          "label": "v.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "VolumeDown",
+          "name": "VolumeDown",
+          "label": "Volume Down",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "VolumeUp",
+          "name": "VolumeUp",
+          "label": "Volume Up",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "W",
+          "name": "W",
+          "label": "W",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "w.",
+          "name": "w.",
+          "label": "w.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "X",
+          "name": "X",
+          "label": "X",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "x.",
+          "name": "x.",
+          "label": "x.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Y",
+          "name": "Y",
+          "label": "Y",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "y.",
+          "name": "y.",
+          "label": "y.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "Z",
+          "name": "Z",
+          "label": "Z",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "z.",
+          "name": "z.",
+          "label": "z.",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "ZoomIn",
+          "name": "ZoomIn",
+          "label": "ZoomIn",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        },
+        {
+          "command": "ZoomOut",
+          "name": "ZoomOut",
+          "label": "ZoomOut",
+          "type": "IRCommand",
+          "deviceId": "79266760"
+        }
+      ]
+    },
+    {
+      "id": "83820938",
+      "name": "Denon AV Receiver (2)",
+      "manufacturer": "Denon",
+      "type": "StereoReceiver",
+      "commands": [
+        {
+          "command": "0",
+          "name": "Number0",
+          "label": "0",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "1",
+          "name": "Number1",
+          "label": "1",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "2",
+          "name": "Number2",
+          "label": "2",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "3",
+          "name": "Number3",
+          "label": "3",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "4",
+          "name": "Number4",
+          "label": "4",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "5",
+          "name": "Number5",
+          "label": "5",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "6",
+          "name": "Number6",
+          "label": "6",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "7",
+          "name": "Number7",
+          "label": "7",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "8",
+          "name": "Number8",
+          "label": "8",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "9",
+          "name": "Number9",
+          "label": "9",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "Back",
+          "name": "Back",
+          "label": "Back",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "Enter",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "FavoriteStation1",
+          "name": "FavoriteStation1",
+          "label": "FavoriteStation1",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "FavoriteStation2",
+          "name": "FavoriteStation2",
+          "label": "FavoriteStation2",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "FavoriteStation3",
+          "name": "FavoriteStation3",
+          "label": "FavoriteStation3",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "FavoriteStation4",
+          "name": "FavoriteStation4",
+          "label": "FavoriteStation4",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputAux1",
+          "name": "InputAux1",
+          "label": "InputAux1",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputAux2",
+          "name": "InputAux2",
+          "label": "InputAux2",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputBluray",
+          "name": "InputBluray",
+          "label": "InputBluray",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputCbl/Sat",
+          "name": "InputCbl/Sat",
+          "label": "InputCbl/Sat",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputCd",
+          "name": "InputCd",
+          "label": "InputCd",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputDvd",
+          "name": "InputDvd",
+          "label": "InputDvd",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputGame",
+          "name": "InputGame",
+          "label": "InputGame",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputInternetRadio",
+          "name": "InputInternetRadio",
+          "label": "InputInternetRadio",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputiPod/Usb",
+          "name": "InputiPod/Usb",
+          "label": "InputiPod/Usb",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputMediaPlayer",
+          "name": "InputMediaPlayer",
+          "label": "InputMediaPlayer",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputNetwork",
+          "name": "InputNetwork",
+          "label": "InputNetwork",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputPhono",
+          "name": "InputPhono",
+          "label": "InputPhono",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputTuner",
+          "name": "InputTuner",
+          "label": "InputTuner",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "InputTvAudio",
+          "name": "InputTvAudio",
+          "label": "InputTvAudio",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "Mute",
+          "name": "Mute",
+          "label": "Mute",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "PageDown",
+          "name": "PageDown",
+          "label": "Page Down",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "PageUp",
+          "name": "PageUp",
+          "label": "Page Up",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "PowerOff",
+          "name": "PowerOff",
+          "label": "Power Off",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "PowerOn",
+          "name": "PowerOn",
+          "label": "Power On",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "PowerToggle",
+          "name": "PowerToggle",
+          "label": "Power Toggle",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "PresetNext",
+          "name": "NextPreset",
+          "label": "Next Preset",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "PresetPrev",
+          "name": "PrevPreset",
+          "label": "Prev Preset",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "Sleep",
+          "name": "Sleep",
+          "label": "Sleep",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "TuneDown",
+          "name": "ScanDown",
+          "label": "Scan Down",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "TuneUp",
+          "name": "ScanUp",
+          "label": "Scan Up",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "VolumeDown",
+          "name": "VolumeDown",
+          "label": "Volume Down",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        },
+        {
+          "command": "VolumeUp",
+          "name": "VolumeUp",
+          "label": "Volume Up",
+          "type": "IRCommand",
+          "deviceId": "83820938"
+        }
+      ]
+    },
+    {
+      "id": "77674834",
+      "name": "Sony SACD Player",
+      "manufacturer": "Sony",
+      "type": "DVD",
+      "commands": [
+        {
+          "command": "0",
+          "name": "Number0",
+          "label": "0",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "1",
+          "name": "Number1",
+          "label": "1",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "2",
+          "name": "Number2",
+          "label": "2",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "3",
+          "name": "Number3",
+          "label": "3",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "4",
+          "name": "Number4",
+          "label": "4",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "5",
+          "name": "Number5",
+          "label": "5",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "6",
+          "name": "Number6",
+          "label": "6",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "7",
+          "name": "Number7",
+          "label": "7",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "8",
+          "name": "Number8",
+          "label": "8",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "9",
+          "name": "Number9",
+          "label": "9",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Angle",
+          "name": "Angle",
+          "label": "Angle",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Audio",
+          "name": "Audio",
+          "label": "Audio",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "ChapterNext",
+          "name": "SkipForward",
+          "label": "Skip Forward",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "ChapterPrev",
+          "name": "SkipBackward",
+          "label": "Skip Backward",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Clear",
+          "name": "Clear",
+          "label": "Clear",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Display",
+          "name": "Display",
+          "label": "Display",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Eject",
+          "name": "Eject",
+          "label": "Eject",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "FastForward",
+          "name": "FastForward",
+          "label": "Fast Forward",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "InstantReplay",
+          "name": "InstantReplay",
+          "label": "InstantReplay",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Menu",
+          "name": "Menu",
+          "label": "Menu",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Pause",
+          "name": "Pause",
+          "label": "Pause",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "PictureMode",
+          "name": "PictureMode",
+          "label": "Picture Mode",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "PictureNavi",
+          "name": "PictureNavi",
+          "label": "PictureNavi",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Play",
+          "name": "Play",
+          "label": "Play",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "PowerToggle",
+          "name": "PowerToggle",
+          "label": "Power Toggle",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Repeat",
+          "name": "Repeat",
+          "label": "Repeat",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "RepeatA-B",
+          "name": "RepeatAB",
+          "label": "Repeat A-B",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Return",
+          "name": "Return",
+          "label": "Return",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Rewind",
+          "name": "Rewind",
+          "label": "Rewind",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "SACD-Multi/2Ch",
+          "name": "SACD-Multi/2Ch",
+          "label": "SACD-Multi/2Ch",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "SACD/CD",
+          "name": "SACD/CD",
+          "label": "SACD/CD",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "ScanForward",
+          "name": "ScanForward",
+          "label": "ScanForward",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "ScanReverse",
+          "name": "ScanReverse",
+          "label": "ScanReverse",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "SearchMode",
+          "name": "SearchMode",
+          "label": "SearchMode",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Select",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Shuffle",
+          "name": "Shuffle",
+          "label": "Shuffle",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Stop",
+          "name": "Stop",
+          "label": "Stop",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Subtitle",
+          "name": "Subtitle",
+          "label": "Subtitle",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Surround",
+          "name": "Surround",
+          "label": "Surround",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "Time/Text",
+          "name": "Time/Text",
+          "label": "Time/Text",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        },
+        {
+          "command": "TopMenu",
+          "name": "TopMenu",
+          "label": "Top Menu",
+          "type": "IRCommand",
+          "deviceId": "77674834"
+        }
+      ]
+    },
+    {
+      "id": "77455769",
+      "name": "Harmony Pro BT Apple TV 4",
+      "manufacturer": "Harmony Pro",
+      "type": "AppleTV",
+      "commands": [
+        {
+          "command": "0",
+          "name": "0",
+          "label": "0",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "1",
+          "name": "1",
+          "label": "1",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "2",
+          "name": "2",
+          "label": "2",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "3",
+          "name": "3",
+          "label": "3",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "4",
+          "name": "4",
+          "label": "4",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "5",
+          "name": "5",
+          "label": "5",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "6",
+          "name": "6",
+          "label": "6",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "7",
+          "name": "7",
+          "label": "7",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "8",
+          "name": "8",
+          "label": "8",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "9",
+          "name": "9",
+          "label": "9",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "Back",
+          "name": "Back",
+          "label": "Back",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "FastForward",
+          "name": "FastForward",
+          "label": "Fast Forward",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "Home",
+          "name": "Home",
+          "label": "Home",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "Menu",
+          "name": "Menu",
+          "label": "Menu",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "Pair",
+          "name": "Pair",
+          "label": "Pair",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "Pause",
+          "name": "Pause",
+          "label": "Pause",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "Play",
+          "name": "Play",
+          "label": "Play",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "Reboot",
+          "name": "Reboot",
+          "label": "Reboot",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "Rewind",
+          "name": "Rewind",
+          "label": "Rewind",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "Select",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "SkipBack",
+          "name": "SkipBackward",
+          "label": "Skip Backward",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "SkipForward",
+          "name": "SkipForward",
+          "label": "Skip Forward",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "Stop",
+          "name": "Stop",
+          "label": "Stop",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "UnPair",
+          "name": "UnPair",
+          "label": "UnPair",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        },
+        {
+          "command": "VideoMode",
+          "name": "VideoMode",
+          "label": "VideoMode",
+          "type": "IRCommand",
+          "deviceId": "77455769"
+        }
+      ]
+    },
+    {
+      "id": "77322697",
+      "name": "Sony DVD/Blu-ray Player",
+      "manufacturer": "Sony",
+      "type": "DVD",
+      "commands": [
+        {
+          "command": "Advance",
+          "name": "Advance",
+          "label": "Advance",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Audio",
+          "name": "Audio",
+          "label": "Audio",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Blue",
+          "name": "Blue",
+          "label": "Blue",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "ChapterNext",
+          "name": "SkipForward",
+          "label": "Skip Forward",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "ChapterPrev",
+          "name": "SkipBackward",
+          "label": "Skip Backward",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Display",
+          "name": "Display",
+          "label": "Display",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Eject",
+          "name": "Eject",
+          "label": "Eject",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "FastForward",
+          "name": "FastForward",
+          "label": "Fast Forward",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Favorite",
+          "name": "Favorite",
+          "label": "Favorite",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Green",
+          "name": "Green",
+          "label": "Green",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Home",
+          "name": "Home",
+          "label": "Home",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Mute",
+          "name": "Mute",
+          "label": "Mute",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Netflix",
+          "name": "Netflix",
+          "label": "Netflix",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Options",
+          "name": "Options",
+          "label": "Options",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Pause",
+          "name": "Pause",
+          "label": "Pause",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Play",
+          "name": "Play",
+          "label": "Play",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "PopUp",
+          "name": "PopUp",
+          "label": "PopUp",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "PowerOff",
+          "name": "PowerOff",
+          "label": "Power Off",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "PowerOn",
+          "name": "PowerOn",
+          "label": "Power On",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "PowerToggle",
+          "name": "PowerToggle",
+          "label": "Power Toggle",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Red",
+          "name": "Red",
+          "label": "Red",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Return",
+          "name": "Return",
+          "label": "Return",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Rewind",
+          "name": "Rewind",
+          "label": "Rewind",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Select",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Stop",
+          "name": "Stop",
+          "label": "Stop",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Subtitle",
+          "name": "Subtitle",
+          "label": "Subtitle",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "TopMenu",
+          "name": "TopMenu",
+          "label": "Top Menu",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        },
+        {
+          "command": "Yellow",
+          "name": "Yellow",
+          "label": "Yellow",
+          "type": "IRCommand",
+          "deviceId": "77322697"
+        }
+      ]
+    },
+    {
+      "id": "60195531",
+      "name": "Living room tivo",
+      "manufacturer": "TiVo",
+      "type": "PVR",
+      "commands": [
+        {
+          "command": "-",
+          "name": "Hyphen",
+          "label": "-",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "0",
+          "name": "Number0",
+          "label": "0",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "1",
+          "name": "Number1",
+          "label": "1",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "2",
+          "name": "Number2",
+          "label": "2",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "3",
+          "name": "Number3",
+          "label": "3",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "4",
+          "name": "Number4",
+          "label": "4",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "5",
+          "name": "Number5",
+          "label": "5",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "6",
+          "name": "Number6",
+          "label": "6",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "7",
+          "name": "Number7",
+          "label": "7",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "8",
+          "name": "Number8",
+          "label": "8",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "9",
+          "name": "Number9",
+          "label": "9",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "A",
+          "name": "A",
+          "label": "A",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "B",
+          "name": "B",
+          "label": "B",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Back",
+          "name": "Back",
+          "label": "Back",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Blue",
+          "name": "Blue",
+          "label": "Blue",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "C",
+          "name": "C",
+          "label": "C",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "ChannelDown",
+          "name": "ChannelDown",
+          "label": "Channel Down",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "ChannelUp",
+          "name": "ChannelUp",
+          "label": "Channel Up",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Clear",
+          "name": "Clear",
+          "label": "Clear",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "D",
+          "name": "D",
+          "label": "D",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "FastForward",
+          "name": "FastForward",
+          "label": "Fast Forward",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Green",
+          "name": "Green",
+          "label": "Green",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Guide",
+          "name": "Guide",
+          "label": "Guide",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Info",
+          "name": "Info",
+          "label": "Info",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Input",
+          "name": "Input",
+          "label": "Input",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Last",
+          "name": "PrevChannel",
+          "label": "Prev Channel",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "List",
+          "name": "List",
+          "label": "List",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Live",
+          "name": "Live",
+          "label": "Live",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Mute",
+          "name": "Mute",
+          "label": "Mute",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "NumberEnter",
+          "name": "NumberEnter",
+          "label": "Number Enter",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "OnDemand",
+          "name": "OnDemand",
+          "label": "OnDemand",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Pause",
+          "name": "Pause",
+          "label": "Pause",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Play",
+          "name": "Play",
+          "label": "Play",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "PowerToggle",
+          "name": "PowerToggle",
+          "label": "Power Toggle",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Record",
+          "name": "Record",
+          "label": "Record",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Red",
+          "name": "Red",
+          "label": "Red",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Rewind",
+          "name": "Rewind",
+          "label": "Rewind",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Select",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "SkipBack",
+          "name": "SkipBackward",
+          "label": "Skip Backward",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "SkipForward",
+          "name": "SkipForward",
+          "label": "Skip Forward",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Slow",
+          "name": "FrameAdvance",
+          "label": "Frame Advance",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Swap",
+          "name": "Swap",
+          "label": "Swap",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "ThumbsDown",
+          "name": "ThumbsDown",
+          "label": "Thumbs Down",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "ThumbsUp",
+          "name": "ThumbsUp",
+          "label": "Thumbs Up",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "TiVo",
+          "name": "TiVo",
+          "label": "TiVo",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "VolumeDown",
+          "name": "VolumeDown",
+          "label": "Volume Down",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "VolumeUp",
+          "name": "VolumeUp",
+          "label": "Volume Up",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Yellow",
+          "name": "Yellow",
+          "label": "Yellow",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        },
+        {
+          "command": "Zoom",
+          "name": "Zoom",
+          "label": "Zoom",
+          "type": "IRCommand",
+          "deviceId": "60195531"
+        }
+      ]
+    },
+    {
+      "id": "60153938",
+      "name": "Panasonic TV",
+      "manufacturer": "Panasonic",
+      "type": "Television",
+      "commands": [
+        {
+          "command": "-",
+          "name": "Star",
+          "label": "*",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "0",
+          "name": "Number0",
+          "label": "0",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "1",
+          "name": "Number1",
+          "label": "1",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "2",
+          "name": "Number2",
+          "label": "2",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "3",
+          "name": "Number3",
+          "label": "3",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "4",
+          "name": "Number4",
+          "label": "4",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "5",
+          "name": "Number5",
+          "label": "5",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "6",
+          "name": "Number6",
+          "label": "6",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "7",
+          "name": "Number7",
+          "label": "7",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "8",
+          "name": "Number8",
+          "label": "8",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "9",
+          "name": "Number9",
+          "label": "9",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Aspect",
+          "name": "Aspect",
+          "label": "Aspect",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Blue",
+          "name": "Blue",
+          "label": "Blue",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "ChannelDown",
+          "name": "ChannelDown",
+          "label": "Channel Down",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "ChannelPrev",
+          "name": "PrevChannel",
+          "label": "Prev Channel",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "ChannelUp",
+          "name": "ChannelUp",
+          "label": "Channel Up",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "ChapterNext",
+          "name": "SkipForward",
+          "label": "Skip Forward",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "ChapterPrev",
+          "name": "SkipBackward",
+          "label": "Skip Backward",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "ClosedCaption",
+          "name": "ClosedCaption",
+          "label": "ClosedCaption",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Exit",
+          "name": "Exit",
+          "label": "Exit",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "FastForward",
+          "name": "FastForward",
+          "label": "Fast Forward",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Favorite",
+          "name": "Favorite",
+          "label": "Favorite",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Green",
+          "name": "Green",
+          "label": "Green",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Info",
+          "name": "Info",
+          "label": "Info",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "InputAnt/CableIn",
+          "name": "InputAnt/CableIn",
+          "label": "InputAnt/CableIn",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "InputComponent",
+          "name": "InputComponent",
+          "label": "InputComponent",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "InputHdmi1",
+          "name": "InputHdmi1",
+          "label": "InputHdmi1",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "InputHdmi2",
+          "name": "InputHdmi2",
+          "label": "InputHdmi2",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "InputHdmi3",
+          "name": "InputHdmi3",
+          "label": "InputHdmi3",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "InputNext",
+          "name": "InputNext",
+          "label": "InputNext",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "InputPc",
+          "name": "InputPc",
+          "label": "InputPc",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "InputVideo",
+          "name": "InputVideo",
+          "label": "InputVideo",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Menu",
+          "name": "Menu",
+          "label": "Menu",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Mute",
+          "name": "Mute",
+          "label": "Mute",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Pause",
+          "name": "Pause",
+          "label": "Pause",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Play",
+          "name": "Play",
+          "label": "Play",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "PowerOff",
+          "name": "PowerOff",
+          "label": "Power Off",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "PowerOn",
+          "name": "PowerOn",
+          "label": "Power On",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "PowerToggle",
+          "name": "PowerToggle",
+          "label": "Power Toggle",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Red",
+          "name": "Red",
+          "label": "Red",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Return",
+          "name": "Return",
+          "label": "Return",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Rewind",
+          "name": "Rewind",
+          "label": "Rewind",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "SAP",
+          "name": "SAP",
+          "label": "SAP",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "SdCard",
+          "name": "SdCard",
+          "label": "SdCard",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Select",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Stop",
+          "name": "Stop",
+          "label": "Stop",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "SubMenu",
+          "name": "SubMenu",
+          "label": "SubMenu",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "VieraLink",
+          "name": "VieraLink",
+          "label": "VieraLink",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "VieraTools",
+          "name": "VieraTools",
+          "label": "VieraTools",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Volume Down",
+          "name": "Volume Down",
+          "label": "Volume Down",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Volume Up",
+          "name": "Volume Up",
+          "label": "Volume Up",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "VolumeDown",
+          "name": "VolumeDown",
+          "label": "Volume Down",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "VolumeUp",
+          "name": "VolumeUp",
+          "label": "Volume Up",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        },
+        {
+          "command": "Yellow",
+          "name": "Yellow",
+          "label": "Yellow",
+          "type": "IRCommand",
+          "deviceId": "60153938"
+        }
+      ]
+    },
+    {
+      "id": "77453184",
+      "name": "HDFury AV Switch",
+      "manufacturer": "HDFury",
+      "type": "AudioVideoSwitch",
+      "commands": [
+        {
+          "command": "Amutetx0off",
+          "name": "Amutetx0off",
+          "label": "Amutetx0off",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Amutetx0on",
+          "name": "Amutetx0on",
+          "label": "Amutetx0on",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Amutetx1off",
+          "name": "Amutetx1off",
+          "label": "Amutetx1off",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Amutetx1on",
+          "name": "Amutetx1on",
+          "label": "Amutetx1on",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "ArcForceArc",
+          "name": "ArcForceArc",
+          "label": "ArcForceArc",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "ArcForceAuto",
+          "name": "ArcForceAuto",
+          "label": "ArcForceAuto",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "ArcForceHdmi",
+          "name": "ArcForceHdmi",
+          "label": "ArcForceHdmi",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Archbroff",
+          "name": "Archbroff",
+          "label": "Archbroff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Archbron",
+          "name": "Archbron",
+          "label": "Archbron",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Autonoupscaleoff",
+          "name": "Autonoupscaleoff",
+          "label": "Autonoupscaleoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Autonoupscaleon",
+          "name": "Autonoupscaleon",
+          "label": "Autonoupscaleon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Autoswoff",
+          "name": "Autoswoff",
+          "label": "Autoswoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Autoswon",
+          "name": "Autoswon",
+          "label": "Autoswon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Autoswpriooff",
+          "name": "Autoswpriooff",
+          "label": "Autoswpriooff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Autoswprioon",
+          "name": "Autoswprioon",
+          "label": "Autoswprioon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Avicustomoff",
+          "name": "Avicustomoff",
+          "label": "Avicustomoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Avicustomon",
+          "name": "Avicustomon",
+          "label": "Avicustomon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Avidisableoff",
+          "name": "Avidisableoff",
+          "label": "Avidisableoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Avidisableon",
+          "name": "Avidisableon",
+          "label": "Avidisableon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Ceclaaudioproc",
+          "name": "Ceclaaudioproc",
+          "label": "Ceclaaudioproc",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Ceclavideoproc",
+          "name": "Ceclavideoproc",
+          "label": "Ceclavideoproc",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Cecoff",
+          "name": "Cecoff",
+          "label": "Cecoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "CecOn",
+          "name": "CecOn",
+          "label": "CecOn",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EarcForcearc",
+          "name": "EarcForcearc",
+          "label": "EarcForcearc",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EarcForceauto",
+          "name": "EarcForceauto",
+          "label": "EarcForceauto",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EarcForceHdmi",
+          "name": "EarcForceHdmi",
+          "label": "EarcForceHdmi",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edid3dremoveoff",
+          "name": "Edid3dremoveoff",
+          "label": "Edid3dremoveoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edid3dremoveon",
+          "name": "Edid3dremoveon",
+          "label": "Edid3dremoveon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidalgo0",
+          "name": "Edidalgo0",
+          "label": "Edidalgo0",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidalgo1",
+          "name": "Edidalgo1",
+          "label": "Edidalgo1",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidalgo2",
+          "name": "Edidalgo2",
+          "label": "Edidalgo2",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidalgo3",
+          "name": "Edidalgo3",
+          "label": "Edidalgo3",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidalgo4",
+          "name": "Edidalgo4",
+          "label": "Edidalgo4",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDAudio2Ch",
+          "name": "EDIDAudio2Ch",
+          "label": "EDIDAudio2Ch",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDAudio51Ch",
+          "name": "EDIDAudio51Ch",
+          "label": "EDIDAudio51Ch",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDAudio71Ch",
+          "name": "EDIDAudio71Ch",
+          "label": "EDIDAudio71Ch",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDAudioOut",
+          "name": "EDIDAudioOut",
+          "label": "EDIDAudioOut",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDAudioTX0",
+          "name": "EDIDAudioTX0",
+          "label": "EDIDAudioTX0",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDAudioTX1",
+          "name": "EDIDAudioTX1",
+          "label": "EDIDAudioTX1",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDAutoMix",
+          "name": "EDIDAutoMix",
+          "label": "EDIDAutoMix",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidbt2020off",
+          "name": "Edidbt2020off",
+          "label": "Edidbt2020off",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidbt2020on",
+          "name": "Edidbt2020on",
+          "label": "Edidbt2020on",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcopyTx0",
+          "name": "EDIDcopyTx0",
+          "label": "EDIDcopyTx0",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcopyTx1",
+          "name": "EDIDcopyTx1",
+          "label": "EDIDcopyTx1",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDCustom",
+          "name": "EDIDCustom",
+          "label": "EDIDCustom",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable1",
+          "name": "EDIDcustomTable1",
+          "label": "EDIDcustomTable1",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable10",
+          "name": "EDIDcustomTable10",
+          "label": "EDIDcustomTable10",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable100",
+          "name": "EDIDcustomTable100",
+          "label": "EDIDcustomTable100",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable11",
+          "name": "EDIDcustomTable11",
+          "label": "EDIDcustomTable11",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable12",
+          "name": "EDIDcustomTable12",
+          "label": "EDIDcustomTable12",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable13",
+          "name": "EDIDcustomTable13",
+          "label": "EDIDcustomTable13",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable14",
+          "name": "EDIDcustomTable14",
+          "label": "EDIDcustomTable14",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable15",
+          "name": "EDIDcustomTable15",
+          "label": "EDIDcustomTable15",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable16",
+          "name": "EDIDcustomTable16",
+          "label": "EDIDcustomTable16",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable17",
+          "name": "EDIDcustomTable17",
+          "label": "EDIDcustomTable17",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable18",
+          "name": "EDIDcustomTable18",
+          "label": "EDIDcustomTable18",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable19",
+          "name": "EDIDcustomTable19",
+          "label": "EDIDcustomTable19",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable2",
+          "name": "EDIDcustomTable2",
+          "label": "EDIDcustomTable2",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable20",
+          "name": "EDIDcustomTable20",
+          "label": "EDIDcustomTable20",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable21",
+          "name": "EDIDcustomTable21",
+          "label": "EDIDcustomTable21",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable22",
+          "name": "EDIDcustomTable22",
+          "label": "EDIDcustomTable22",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable23",
+          "name": "EDIDcustomTable23",
+          "label": "EDIDcustomTable23",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable24",
+          "name": "EDIDcustomTable24",
+          "label": "EDIDcustomTable24",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable25",
+          "name": "EDIDcustomTable25",
+          "label": "EDIDcustomTable25",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable26",
+          "name": "EDIDcustomTable26",
+          "label": "EDIDcustomTable26",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable27",
+          "name": "EDIDcustomTable27",
+          "label": "EDIDcustomTable27",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable28",
+          "name": "EDIDcustomTable28",
+          "label": "EDIDcustomTable28",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable29",
+          "name": "EDIDcustomTable29",
+          "label": "EDIDcustomTable29",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable3",
+          "name": "EDIDcustomTable3",
+          "label": "EDIDcustomTable3",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable30",
+          "name": "EDIDcustomTable30",
+          "label": "EDIDcustomTable30",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable31",
+          "name": "EDIDcustomTable31",
+          "label": "EDIDcustomTable31",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable32",
+          "name": "EDIDcustomTable32",
+          "label": "EDIDcustomTable32",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable33",
+          "name": "EDIDcustomTable33",
+          "label": "EDIDcustomTable33",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable34",
+          "name": "EDIDcustomTable34",
+          "label": "EDIDcustomTable34",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable35",
+          "name": "EDIDcustomTable35",
+          "label": "EDIDcustomTable35",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable36",
+          "name": "EDIDcustomTable36",
+          "label": "EDIDcustomTable36",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable37",
+          "name": "EDIDcustomTable37",
+          "label": "EDIDcustomTable37",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable38",
+          "name": "EDIDcustomTable38",
+          "label": "EDIDcustomTable38",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable39",
+          "name": "EDIDcustomTable39",
+          "label": "EDIDcustomTable39",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable4",
+          "name": "EDIDcustomTable4",
+          "label": "EDIDcustomTable4",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable40",
+          "name": "EDIDcustomTable40",
+          "label": "EDIDcustomTable40",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable41",
+          "name": "EDIDcustomTable41",
+          "label": "EDIDcustomTable41",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable42",
+          "name": "EDIDcustomTable42",
+          "label": "EDIDcustomTable42",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable43",
+          "name": "EDIDcustomTable43",
+          "label": "EDIDcustomTable43",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable44",
+          "name": "EDIDcustomTable44",
+          "label": "EDIDcustomTable44",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable45",
+          "name": "EDIDcustomTable45",
+          "label": "EDIDcustomTable45",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable46",
+          "name": "EDIDcustomTable46",
+          "label": "EDIDcustomTable46",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable47",
+          "name": "EDIDcustomTable47",
+          "label": "EDIDcustomTable47",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable48",
+          "name": "EDIDcustomTable48",
+          "label": "EDIDcustomTable48",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable49",
+          "name": "EDIDcustomTable49",
+          "label": "EDIDcustomTable49",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable5",
+          "name": "EDIDcustomTable5",
+          "label": "EDIDcustomTable5",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable50",
+          "name": "EDIDcustomTable50",
+          "label": "EDIDcustomTable50",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable51",
+          "name": "EDIDcustomTable51",
+          "label": "EDIDcustomTable51",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable52",
+          "name": "EDIDcustomTable52",
+          "label": "EDIDcustomTable52",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable53",
+          "name": "EDIDcustomTable53",
+          "label": "EDIDcustomTable53",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable54",
+          "name": "EDIDcustomTable54",
+          "label": "EDIDcustomTable54",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable55",
+          "name": "EDIDcustomTable55",
+          "label": "EDIDcustomTable55",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable56",
+          "name": "EDIDcustomTable56",
+          "label": "EDIDcustomTable56",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable57",
+          "name": "EDIDcustomTable57",
+          "label": "EDIDcustomTable57",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable58",
+          "name": "EDIDcustomTable58",
+          "label": "EDIDcustomTable58",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable59",
+          "name": "EDIDcustomTable59",
+          "label": "EDIDcustomTable59",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable6",
+          "name": "EDIDcustomTable6",
+          "label": "EDIDcustomTable6",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable60",
+          "name": "EDIDcustomTable60",
+          "label": "EDIDcustomTable60",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable61",
+          "name": "EDIDcustomTable61",
+          "label": "EDIDcustomTable61",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable62",
+          "name": "EDIDcustomTable62",
+          "label": "EDIDcustomTable62",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable63",
+          "name": "EDIDcustomTable63",
+          "label": "EDIDcustomTable63",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable64",
+          "name": "EDIDcustomTable64",
+          "label": "EDIDcustomTable64",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable65",
+          "name": "EDIDcustomTable65",
+          "label": "EDIDcustomTable65",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable66",
+          "name": "EDIDcustomTable66",
+          "label": "EDIDcustomTable66",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable67",
+          "name": "EDIDcustomTable67",
+          "label": "EDIDcustomTable67",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable68",
+          "name": "EDIDcustomTable68",
+          "label": "EDIDcustomTable68",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable69",
+          "name": "EDIDcustomTable69",
+          "label": "EDIDcustomTable69",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable7",
+          "name": "EDIDcustomTable7",
+          "label": "EDIDcustomTable7",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable70",
+          "name": "EDIDcustomTable70",
+          "label": "EDIDcustomTable70",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable71",
+          "name": "EDIDcustomTable71",
+          "label": "EDIDcustomTable71",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable72",
+          "name": "EDIDcustomTable72",
+          "label": "EDIDcustomTable72",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable73",
+          "name": "EDIDcustomTable73",
+          "label": "EDIDcustomTable73",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable74",
+          "name": "EDIDcustomTable74",
+          "label": "EDIDcustomTable74",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable75",
+          "name": "EDIDcustomTable75",
+          "label": "EDIDcustomTable75",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable76",
+          "name": "EDIDcustomTable76",
+          "label": "EDIDcustomTable76",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable77",
+          "name": "EDIDcustomTable77",
+          "label": "EDIDcustomTable77",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable78",
+          "name": "EDIDcustomTable78",
+          "label": "EDIDcustomTable78",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable79",
+          "name": "EDIDcustomTable79",
+          "label": "EDIDcustomTable79",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable8",
+          "name": "EDIDcustomTable8",
+          "label": "EDIDcustomTable8",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable80",
+          "name": "EDIDcustomTable80",
+          "label": "EDIDcustomTable80",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable81",
+          "name": "EDIDcustomTable81",
+          "label": "EDIDcustomTable81",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable82",
+          "name": "EDIDcustomTable82",
+          "label": "EDIDcustomTable82",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable83",
+          "name": "EDIDcustomTable83",
+          "label": "EDIDcustomTable83",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable84",
+          "name": "EDIDcustomTable84",
+          "label": "EDIDcustomTable84",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable85",
+          "name": "EDIDcustomTable85",
+          "label": "EDIDcustomTable85",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable86",
+          "name": "EDIDcustomTable86",
+          "label": "EDIDcustomTable86",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable87",
+          "name": "EDIDcustomTable87",
+          "label": "EDIDcustomTable87",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable88",
+          "name": "EDIDcustomTable88",
+          "label": "EDIDcustomTable88",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable89",
+          "name": "EDIDcustomTable89",
+          "label": "EDIDcustomTable89",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable9",
+          "name": "EDIDcustomTable9",
+          "label": "EDIDcustomTable9",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable90",
+          "name": "EDIDcustomTable90",
+          "label": "EDIDcustomTable90",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable91",
+          "name": "EDIDcustomTable91",
+          "label": "EDIDcustomTable91",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable92",
+          "name": "EDIDcustomTable92",
+          "label": "EDIDcustomTable92",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable93",
+          "name": "EDIDcustomTable93",
+          "label": "EDIDcustomTable93",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable94",
+          "name": "EDIDcustomTable94",
+          "label": "EDIDcustomTable94",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable95",
+          "name": "EDIDcustomTable95",
+          "label": "EDIDcustomTable95",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable96",
+          "name": "EDIDcustomTable96",
+          "label": "EDIDcustomTable96",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable97",
+          "name": "EDIDcustomTable97",
+          "label": "EDIDcustomTable97",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable98",
+          "name": "EDIDcustomTable98",
+          "label": "EDIDcustomTable98",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDcustomTable99",
+          "name": "EDIDcustomTable99",
+          "label": "EDIDcustomTable99",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Ediddvlimitoff",
+          "name": "Ediddvlimitoff",
+          "label": "Ediddvlimitoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Ediddvlimiton",
+          "name": "Ediddvlimiton",
+          "label": "Ediddvlimiton",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Ediddvoff",
+          "name": "Ediddvoff",
+          "label": "Ediddvoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Ediddvon",
+          "name": "Ediddvon",
+          "label": "Ediddvon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Ediddvremoveoff",
+          "name": "Ediddvremoveoff",
+          "label": "Ediddvremoveoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Ediddvremoveon",
+          "name": "Ediddvremoveon",
+          "label": "Ediddvremoveon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidfixed",
+          "name": "Edidfixed",
+          "label": "Edidfixed",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidhdr10off",
+          "name": "Edidhdr10off",
+          "label": "Edidhdr10off",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidhdr10on",
+          "name": "Edidhdr10on",
+          "label": "Edidhdr10on",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidhlgoff",
+          "name": "Edidhlgoff",
+          "label": "Edidhlgoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidhlgon",
+          "name": "Edidhlgon",
+          "label": "Edidhlgon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDrx1Follow",
+          "name": "EDIDrx1Follow",
+          "label": "EDIDrx1Follow",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDrx2Follow",
+          "name": "EDIDrx2Follow",
+          "label": "EDIDrx2Follow",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "EDIDrx3Follow",
+          "name": "EDIDrx3Follow",
+          "label": "EDIDrx3Follow",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidyuvremoveoff",
+          "name": "Edidyuvremoveoff",
+          "label": "Edidyuvremoveoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Edidyuvremoveon",
+          "name": "Edidyuvremoveon",
+          "label": "Edidyuvremoveon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Hdcp14",
+          "name": "Hdcp14",
+          "label": "Hdcp14",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Hdcpauto",
+          "name": "Hdcpauto",
+          "label": "Hdcpauto",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Hdrcustomoff",
+          "name": "Hdrcustomoff",
+          "label": "Hdrcustomoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Hdrcustomon",
+          "name": "Hdrcustomon",
+          "label": "Hdrcustomon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Hdrdisableoff",
+          "name": "Hdrdisableoff",
+          "label": "Hdrdisableoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Hdrdisableon",
+          "name": "Hdrdisableon",
+          "label": "Hdrdisableon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "HotPlug",
+          "name": "HotPlug",
+          "label": "HotPlug",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Inputsel0",
+          "name": "Inputsel0",
+          "label": "Inputsel0",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "inputsel0x",
+          "name": "inputsel0x",
+          "label": "inputsel0x",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Inputsel1",
+          "name": "Inputsel1",
+          "label": "Inputsel1",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "inputsel1x",
+          "name": "inputsel1x",
+          "label": "inputsel1x",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Inputsel2",
+          "name": "Inputsel2",
+          "label": "Inputsel2",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "inputsel2x",
+          "name": "inputsel2x",
+          "label": "inputsel2x",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Inputsel3",
+          "name": "Inputsel3",
+          "label": "Inputsel3",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "inputsel3x",
+          "name": "inputsel3x",
+          "label": "inputsel3x",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "inputselx0",
+          "name": "inputselx0",
+          "label": "inputselx0",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "inputselx1",
+          "name": "inputselx1",
+          "label": "inputselx1",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "inputselx2",
+          "name": "inputselx2",
+          "label": "inputselx2",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "inputselx3",
+          "name": "inputselx3",
+          "label": "inputselx3",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Jvcmacromode0",
+          "name": "Jvcmacromode0",
+          "label": "Jvcmacromode0",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Jvcmacromode1",
+          "name": "Jvcmacromode1",
+          "label": "Jvcmacromode1",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Jvcmacromode2",
+          "name": "Jvcmacromode2",
+          "label": "Jvcmacromode2",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Jvcmacromode3",
+          "name": "Jvcmacromode3",
+          "label": "Jvcmacromode3",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Jvcmacrooff",
+          "name": "Jvcmacrooff",
+          "label": "Jvcmacrooff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Jvcmacroon",
+          "name": "Jvcmacroon",
+          "label": "Jvcmacroon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledfade0",
+          "name": "Oledfade0",
+          "label": "Oledfade0",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledfade30",
+          "name": "Oledfade30",
+          "label": "Oledfade30",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledoff",
+          "name": "Oledoff",
+          "label": "Oledoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledon",
+          "name": "Oledon",
+          "label": "Oledon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledpage0",
+          "name": "Oledpage0",
+          "label": "Oledpage0",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledpage1",
+          "name": "Oledpage1",
+          "label": "Oledpage1",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledpage2",
+          "name": "Oledpage2",
+          "label": "Oledpage2",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledpage3",
+          "name": "Oledpage3",
+          "label": "Oledpage3",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledpage4",
+          "name": "Oledpage4",
+          "label": "Oledpage4",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledpage5",
+          "name": "Oledpage5",
+          "label": "Oledpage5",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledrevoff",
+          "name": "Oledrevoff",
+          "label": "Oledrevoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledrevon",
+          "name": "Oledrevon",
+          "label": "Oledrevon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledrotateoff",
+          "name": "Oledrotateoff",
+          "label": "Oledrotateoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Oledrotateon",
+          "name": "Oledrotateon",
+          "label": "Oledrotateon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdaudiooff",
+          "name": "Osdaudiooff",
+          "label": "Osdaudiooff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdaudioon",
+          "name": "Osdaudioon",
+          "label": "Osdaudioon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdcustomtextoff",
+          "name": "Osdcustomtextoff",
+          "label": "Osdcustomtextoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdcustomtexton",
+          "name": "Osdcustomtexton",
+          "label": "Osdcustomtexton",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdfade0",
+          "name": "Osdfade0",
+          "label": "Osdfade0",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdfade15",
+          "name": "Osdfade15",
+          "label": "Osdfade15",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdhdrdetailoff",
+          "name": "Osdhdrdetailoff",
+          "label": "Osdhdrdetailoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdhdrdetailon",
+          "name": "Osdhdrdetailon",
+          "label": "Osdhdrdetailon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdhdrifoff",
+          "name": "Osdhdrifoff",
+          "label": "Osdhdrifoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdhdrifon",
+          "name": "Osdhdrifon",
+          "label": "Osdhdrifon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdhdrrxonlyoff",
+          "name": "Osdhdrrxonlyoff",
+          "label": "Osdhdrrxonlyoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdhdrrxonlyon",
+          "name": "Osdhdrrxonlyon",
+          "label": "Osdhdrrxonlyon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdignoremetadataoff",
+          "name": "Osdignoremetadataoff",
+          "label": "Osdignoremetadataoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdignoremetadataon",
+          "name": "Osdignoremetadataon",
+          "label": "Osdignoremetadataon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdmaskoff",
+          "name": "Osdmaskoff",
+          "label": "Osdmaskoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdmaskon",
+          "name": "Osdmaskon",
+          "label": "Osdmaskon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "OsdOff",
+          "name": "OsdOff",
+          "label": "OsdOff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "OsdOn",
+          "name": "OsdOn",
+          "label": "OsdOn",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdrxvideoonlyoff",
+          "name": "Osdrxvideoonlyoff",
+          "label": "Osdrxvideoonlyoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdrxvideoonlyon",
+          "name": "Osdrxvideoonlyon",
+          "label": "Osdrxvideoonlyon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdsourcenameoff",
+          "name": "Osdsourcenameoff",
+          "label": "Osdsourcenameoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdsourcenameon",
+          "name": "Osdsourcenameon",
+          "label": "Osdsourcenameon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdtoggle",
+          "name": "Osdtoggle",
+          "label": "Osdtoggle",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdvideofieldoff",
+          "name": "Osdvideofieldoff",
+          "label": "Osdvideofieldoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdvideofieldon",
+          "name": "Osdvideofieldon",
+          "label": "Osdvideofieldon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdvideoifoff",
+          "name": "Osdvideoifoff",
+          "label": "Osdvideoifoff",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Osdvideoifon",
+          "name": "Osdvideoifon",
+          "label": "Osdvideoifon",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Reboot",
+          "name": "Reboot",
+          "label": "Reboot",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Scaleauto",
+          "name": "Scaleauto",
+          "label": "Scaleauto",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Scalecustom",
+          "name": "Scalecustom",
+          "label": "Scalecustom",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "Scalenone",
+          "name": "Scalenone",
+          "label": "Scalenone",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "TX0Plus5Off",
+          "name": "TX0Plus5Off",
+          "label": "TX0Plus5Off",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "TX0Plus5On",
+          "name": "TX0Plus5On",
+          "label": "TX0Plus5On",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "TX1Plus5Off",
+          "name": "TX1Plus5Off",
+          "label": "TX1Plus5Off",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        },
+        {
+          "command": "TX1Plus5On",
+          "name": "TX1Plus5On",
+          "label": "TX1Plus5On",
+          "type": "IRCommand",
+          "deviceId": "77453184"
+        }
+      ]
+    },
+    {
+      "id": "79266637",
+      "name": "Seiki TV",
+      "manufacturer": "Seiki",
+      "type": "Television",
+      "commands": [
+        {
+          "command": "-",
+          "name": "Star",
+          "label": "*",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "0",
+          "name": "Number0",
+          "label": "0",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "1",
+          "name": "Number1",
+          "label": "1",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "2",
+          "name": "Number2",
+          "label": "2",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "3",
+          "name": "Number3",
+          "label": "3",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "4",
+          "name": "Number4",
+          "label": "4",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "5",
+          "name": "Number5",
+          "label": "5",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "6",
+          "name": "Number6",
+          "label": "6",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "7",
+          "name": "Number7",
+          "label": "7",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "8",
+          "name": "Number8",
+          "label": "8",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "9",
+          "name": "Number9",
+          "label": "9",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Add/Erase",
+          "name": "Add/Erase",
+          "label": "Add/Erase",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Aspect",
+          "name": "Aspect",
+          "label": "Aspect",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Auto",
+          "name": "Auto",
+          "label": "Auto",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Ch.List",
+          "name": "Ch.List",
+          "label": "Ch.List",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "ChannelDown",
+          "name": "ChannelDown",
+          "label": "Channel Down",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "ChannelPrev",
+          "name": "PrevChannel",
+          "label": "Prev Channel",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "ChannelUp",
+          "name": "ChannelUp",
+          "label": "Channel Up",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "ClosedCaption",
+          "name": "ClosedCaption",
+          "label": "ClosedCaption",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Display",
+          "name": "Display",
+          "label": "Display",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Exit",
+          "name": "Exit",
+          "label": "Exit",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Favorite",
+          "name": "Favorite",
+          "label": "Favorite",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "InputHdmi",
+          "name": "InputHdmi",
+          "label": "InputHdmi",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Menu",
+          "name": "Menu",
+          "label": "Menu",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Mts",
+          "name": "Mts",
+          "label": "Mts",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Mute",
+          "name": "Mute",
+          "label": "Mute",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "PictureMode",
+          "name": "PictureMode",
+          "label": "Picture Mode",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "PowerToggle",
+          "name": "PowerToggle",
+          "label": "Power Toggle",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Select",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Sleep",
+          "name": "Sleep",
+          "label": "Sleep",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "SoundMode",
+          "name": "SoundMode",
+          "label": "Sound Mode",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "Source",
+          "name": "Source",
+          "label": "Source",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "V.Chip",
+          "name": "V.Chip",
+          "label": "V.Chip",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "VolumeDown",
+          "name": "VolumeDown",
+          "label": "Volume Down",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        },
+        {
+          "command": "VolumeUp",
+          "name": "VolumeUp",
+          "label": "Volume Up",
+          "type": "IRCommand",
+          "deviceId": "79266637"
+        }
+      ]
+    },
+    {
+      "id": "60202883",
+      "name": "Vizio Soundbar",
+      "manufacturer": "Vizio",
+      "type": "Amplifier",
+      "commands": [
+        {
+          "command": "Bass",
+          "name": "Bass",
+          "label": "Bass",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "Bluetooth",
+          "name": "Bluetooth",
+          "label": "Bluetooth",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "Input",
+          "name": "Input",
+          "label": "Input",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "Mute",
+          "name": "Mute",
+          "label": "Mute",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "Pause",
+          "name": "Pause",
+          "label": "Pause",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "Play",
+          "name": "Play",
+          "label": "Play",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "PowerToggle",
+          "name": "PowerToggle",
+          "label": "Power Toggle",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "Select",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "SkipBack",
+          "name": "SkipBackward",
+          "label": "Skip Backward",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "SkipForward",
+          "name": "SkipForward",
+          "label": "Skip Forward",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "Treble",
+          "name": "Treble",
+          "label": "Treble",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "TSHD",
+          "name": "TSHD",
+          "label": "TSHD",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "TVOL",
+          "name": "TVOL",
+          "label": "TVOL",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "VolumeDown",
+          "name": "VolumeDown",
+          "label": "Volume Down",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        },
+        {
+          "command": "VolumeUp",
+          "name": "VolumeUp",
+          "label": "Volume Up",
+          "type": "IRCommand",
+          "deviceId": "60202883"
+        }
+      ]
+    },
+    {
+      "id": "33760171",
+      "name": "Denon AV Receiver",
+      "manufacturer": "Denon",
+      "type": "StereoReceiver",
+      "commands": [
+        {
+          "command": "+10",
+          "name": "Greater10",
+          "label": "Greater 10",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "0",
+          "name": "Number0",
+          "label": "0",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "1",
+          "name": "Number1",
+          "label": "1",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "2",
+          "name": "Number2",
+          "label": "2",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "3",
+          "name": "Number3",
+          "label": "3",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "4",
+          "name": "Number4",
+          "label": "4",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "5",
+          "name": "Number5",
+          "label": "5",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "6",
+          "name": "Number6",
+          "label": "6",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "7",
+          "name": "Number7",
+          "label": "7",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "8",
+          "name": "Number8",
+          "label": "8",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "9",
+          "name": "Number9",
+          "label": "9",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "AudysseyDSX",
+          "name": "AudysseyDSX",
+          "label": "AudysseyDSX",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "AudysseyEq",
+          "name": "AudysseyEq",
+          "label": "AudysseyEq",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "AudysseyLFC",
+          "name": "AudysseyLFC",
+          "label": "AudysseyLFC",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Back",
+          "name": "Back",
+          "label": "Back",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Dimmer",
+          "name": "Dimmer",
+          "label": "Dimmer",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "DirectionDown",
+          "name": "DirectionDown",
+          "label": "Direction Down",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "DirectionLeft",
+          "name": "DirectionLeft",
+          "label": "Direction Left",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "DirectionRight",
+          "name": "DirectionRight",
+          "label": "Direction Right",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "DirectionUp",
+          "name": "DirectionUp",
+          "label": "Direction Up",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "DynamicEq",
+          "name": "DynamicEq",
+          "label": "DynamicEq",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "DynamicEqVolOff",
+          "name": "DynamicEqVolOff",
+          "label": "DynamicEqVolOff",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "DynamicEqVolOn",
+          "name": "DynamicEqVolOn",
+          "label": "DynamicEqVolOn",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "DynamicVolume",
+          "name": "DynamicVolume",
+          "label": "DynamicVolume",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "FavoriteStation1",
+          "name": "FavoriteStation1",
+          "label": "FavoriteStation1",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "FavoriteStation2",
+          "name": "FavoriteStation2",
+          "label": "FavoriteStation2",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "FavoriteStation3",
+          "name": "FavoriteStation3",
+          "label": "FavoriteStation3",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "FavoriteStation4",
+          "name": "FavoriteStation4",
+          "label": "FavoriteStation4",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Info",
+          "name": "Info",
+          "label": "Info",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputAux1",
+          "name": "InputAux1",
+          "label": "InputAux1",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputAux2",
+          "name": "InputAux2",
+          "label": "InputAux2",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputBluray",
+          "name": "InputBluray",
+          "label": "InputBluray",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputCbl/Sat",
+          "name": "InputCbl/Sat",
+          "label": "InputCbl/Sat",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputCd",
+          "name": "InputCd",
+          "label": "InputCd",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputDvd",
+          "name": "InputDvd",
+          "label": "InputDvd",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputGame",
+          "name": "InputGame",
+          "label": "InputGame",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputInternetRadio",
+          "name": "InputInternetRadio",
+          "label": "InputInternetRadio",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputiPod/Usb",
+          "name": "InputiPod/Usb",
+          "label": "InputiPod/Usb",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputMediaPlayer",
+          "name": "InputMediaPlayer",
+          "label": "InputMediaPlayer",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputNetwork",
+          "name": "InputNetwork",
+          "label": "InputNetwork",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputPhono",
+          "name": "InputPhono",
+          "label": "InputPhono",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputTuner",
+          "name": "InputTuner",
+          "label": "InputTuner",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InputTvAudio",
+          "name": "InputTvAudio",
+          "label": "InputTvAudio",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "InstaPrevue",
+          "name": "InstaPrevue",
+          "label": "InstaPrevue",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "iPodFastForward",
+          "name": "FastForward",
+          "label": "Fast Forward",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "iPodNextTrack",
+          "name": "SkipForward",
+          "label": "Skip Forward",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "iPodPause",
+          "name": "Pause",
+          "label": "Pause",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "iPodPlay",
+          "name": "Play",
+          "label": "Play",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "iPodPreviousTrack",
+          "name": "SkipBackward",
+          "label": "Skip Backward",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "iPodRewind",
+          "name": "Rewind",
+          "label": "Rewind",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "iPodStop",
+          "name": "Stop",
+          "label": "Stop",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Mode5Ch/7ChStereo",
+          "name": "Mode5Ch/7ChStereo",
+          "label": "Mode5Ch/7ChStereo",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModeClassicConcert",
+          "name": "ModeClassicConcert",
+          "label": "ModeClassicConcert",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModeDirect",
+          "name": "ModeDirect",
+          "label": "ModeDirect",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModeDirect/Stereo",
+          "name": "ModeDirect/Stereo",
+          "label": "ModeDirect/Stereo",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModeDspSimulation",
+          "name": "ModeDspSimulation",
+          "label": "ModeDspSimulation",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModeGame",
+          "name": "ModeGame",
+          "label": "ModeGame",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModeMovie",
+          "name": "ModeMovie",
+          "label": "ModeMovie",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModeMultiChStereo",
+          "name": "ModeMultiChStereo",
+          "label": "ModeMultiChStereo",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModeMusic",
+          "name": "ModeMusic",
+          "label": "ModeMusic",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModePure",
+          "name": "ModePure",
+          "label": "ModePure",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModeRockArena",
+          "name": "ModeRockArena",
+          "label": "ModeRockArena",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModeStandard",
+          "name": "ModeStandard",
+          "label": "ModeStandard",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "ModeStereo",
+          "name": "ModeStereo",
+          "label": "ModeStereo",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "MonitorSelect",
+          "name": "MonitorSelect",
+          "label": "MonitorSelect",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "MultiEq",
+          "name": "MultiEq",
+          "label": "MultiEq",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Mute",
+          "name": "Mute",
+          "label": "Mute",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Option",
+          "name": "Option",
+          "label": "Option",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "PageDown",
+          "name": "PageDown",
+          "label": "Page Down",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "PageUp",
+          "name": "PageUp",
+          "label": "Page Up",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Pandora",
+          "name": "Pandora",
+          "label": "Pandora",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "PowerOff",
+          "name": "PowerOff",
+          "label": "Power Off",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "PowerOff-All",
+          "name": "PowerOff-All",
+          "label": "PowerOff-All",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "PowerOn",
+          "name": "PowerOn",
+          "label": "Power On",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "PowerOn-All",
+          "name": "PowerOn-All",
+          "label": "PowerOn-All",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "PowerToggle",
+          "name": "PowerToggle",
+          "label": "Power Toggle",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "PresetNext",
+          "name": "NextPreset",
+          "label": "Next Preset",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "PresetPrev",
+          "name": "PrevPreset",
+          "label": "Prev Preset",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "QuickSelect1",
+          "name": "QuickSelect1",
+          "label": "QuickSelect1",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "QuickSelect2",
+          "name": "QuickSelect2",
+          "label": "QuickSelect2",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "QuickSelect3",
+          "name": "QuickSelect3",
+          "label": "QuickSelect3",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "QuickSelect4",
+          "name": "QuickSelect4",
+          "label": "QuickSelect4",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "RestorerMode",
+          "name": "RestorerMode",
+          "label": "RestorerMode",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Select",
+          "name": "Select",
+          "label": "Select",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Setup",
+          "name": "Setup",
+          "label": "Setup",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Sirius",
+          "name": "Sirius",
+          "label": "Sirius",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Sleep",
+          "name": "Sleep",
+          "label": "Sleep",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "Spotify",
+          "name": "Spotify",
+          "label": "Spotify",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "TuneDown",
+          "name": "ScanDown",
+          "label": "Scan Down",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "TuneUp",
+          "name": "ScanUp",
+          "label": "Scan Up",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "VolumeDown",
+          "name": "VolumeDown",
+          "label": "Volume Down",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        },
+        {
+          "command": "VolumeUp",
+          "name": "VolumeUp",
+          "label": "Volume Up",
+          "type": "IRCommand",
+          "deviceId": "33760171"
+        }
+      ]
+    }
+  ],
+  "activities": [
+    {
+      "id": "37433142",
+      "name": "Theater Apple TV",
+      "order": 0,
+      "type": "VirtualGeneric",
+      "suggestedDisplay": "WatchAppleTV",
+      "deviceIds": [
+        "77455769",
+        "33760171",
+        "51061215",
+        "79266637",
+        "77453184"
+      ]
+    },
+    {
+      "id": "49769300",
+      "name": "Network Music",
+      "order": 1,
+      "type": "VirtualCdMulti",
+      "suggestedDisplay": "ListenToMusic",
+      "deviceIds": [
+        "33760171"
+      ]
+    },
+    {
+      "id": "50103013",
+      "name": "4K Sony Movie",
+      "order": 2,
+      "type": "VirtualDvd",
+      "suggestedDisplay": "WatchDvd",
+      "deviceIds": [
+        "77322697",
+        "51061215",
+        "33760171",
+        "77453184"
+      ]
+    },
+    {
+      "id": "37945401",
+      "name": "TiVoTheater",
+      "order": 3,
+      "type": "VirtualTelevisionN",
+      "suggestedDisplay": "WatchTV",
+      "deviceIds": [
+        "33760171",
+        "60607563",
+        "51061215",
+        "79266637",
+        "77453184"
+      ]
+    },
+    {
+      "id": "30959269",
+      "name": "VizioCast",
+      "order": 4,
+      "type": "VirtualTelevisionN",
+      "suggestedDisplay": "WatchTV",
+      "deviceIds": [
+        "33760171",
+        "51061215"
+      ]
+    },
+    {
+      "id": "49815602",
+      "name": "moOde Streamer",
+      "order": 5,
+      "type": "VirtualCdMulti",
+      "suggestedDisplay": "ListenToMusic",
+      "deviceIds": [
+        "33760171"
+      ]
+    },
+    {
+      "id": "48120116",
+      "name": "The Upstairs TV",
+      "order": 6,
+      "type": "VirtualTelevisionN",
+      "suggestedDisplay": "WatchTV",
+      "deviceIds": [
+        "60202883",
+        "60195531",
+        "60153938"
+      ]
+    },
+    {
+      "id": "50233671",
+      "name": "The Upstairs AppleTV",
+      "order": 7,
+      "type": "VirtualTelevisionN",
+      "suggestedDisplay": "WatchTV",
+      "deviceIds": [
+        "60153938",
+        "60202883"
+      ]
+    },
+    {
+      "id": "50349758",
+      "name": "SuperAudio CD",
+      "order": 8,
+      "type": "VirtualCdMulti",
+      "suggestedDisplay": "ListenToMusic",
+      "deviceIds": [
+        "77674834",
+        "33760171"
+      ]
+    },
+    {
+      "id": "52367352",
+      "name": "BlueTooth LR",
+      "order": 9,
+      "type": "VirtualCdMulti",
+      "suggestedDisplay": "ListenToMusic",
+      "deviceIds": [
+        "60202883"
+      ]
+    },
+    {
+      "id": "-1",
+      "name": "PowerOff",
+      "order": null,
+      "type": "PowerOff",
+      "suggestedDisplay": "Default",
+      "deviceIds": []
+    }
+  ]
+}

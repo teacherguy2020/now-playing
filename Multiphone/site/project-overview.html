@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Overview — Shyvers Multiphone</title><link rel="stylesheet" href="style.css"></head>
+<body><header><a href="index.html">Shyvers Multiphone Project</a><span>Historical reconstruction + reversible modernization</span></header>
+<div class="layout"><nav><strong>Wiki</strong><ul><li><a href="catalog-and-now-playing.html">Catalog And Now Playing</a></li><li><a href="hardware-examination.html">Hardware Examination</a></li><li><a href="historical-operating-model.html">Historical Operating Model</a></li><li><a href="mabel-software.html">Mabel Software</a></li><li><a href="open-questions.html">Open Questions</a></li><li><a href="operations-and-testing.html">Operations And Testing</a></li><li><a href="project-overview.html">Project Overview</a></li></ul><p><a href="../README.md">Project README</a></p></nav><main><h1>Project overview</h1>
+<h2>Objective</h2>
+<p>Restore and preserve an original Shyvers Multiphone while creating a reversible</p>
+<p>modern equivalent of the central music service it originally accessed.</p>
+<p>The intended experience is:</p>
+<pre><code>
+customer inserts nickel
+
+        ↓
+
+Multiphone signals the service
+
+        ↓
+
+Mabel answers and accepts a request
+
+        ↓
+
+catalog number resolves deterministically
+
+        ↓
+
+Now Playing receives a jukebox-priority selection
+
+        ↓
+
+MPD/moOde plays it through the room system
+
+</code></pre>
+<h2>Design boundaries</h2>
+<ul>
+<li>The antique unit remains the customer-facing Multiphone.</li>
+<li>The Pico, if used, is an isolated coin-event detector, not the central queue</li>
+<p>  manager.</p>
+<li>Mabel must not invent catalog-number mappings.</li>
+<li>The request conversation should be brief; playback continues independently.</li>
+<li>Modern additions should be removable without drilling, cutting, or permanently</li>
+<p>  altering original wiring.</p>
+</ul>
+<h2>Current state</h2>
+<p>The Multiphone has been purchased but has not yet arrived. Hardware-dependent</p>
+<p>decisions are intentionally deferred. The Mac-side software vertical slice is</p>
+<p>working with keyboard and voice simulation:</p>
+<ul>
+<li>A 170-track <code>Multiphone Playlist</code> is available in Now Playing.</li>
+<li>The Mac operator can submit numbered selections through a Keychain-authenticated</li>
+<p>  client.</p>
+<li>Mabel can run as a local HTTP bridge, use OpenAI Realtime for live conversation,</li>
+<p>  and send validated selections to Now Playing.</p>
+<li>A Pico is not required for development. The eventual hardware controller may</li>
+<p>  POST a coin event to the Mac at <code>/shyvers/call</code>.</p>
+</ul>
+<p>The antique unit remains awaiting delivery. Its coin circuit, microphone, speaker,</p>
+<p>lamps, and wiring are still unexamined.</p></main></div>
+</body></html>
