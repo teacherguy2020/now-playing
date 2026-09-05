@@ -219,7 +219,7 @@ import { registerPodcastSubscriptionRoutes } from './src/routes/podcasts-subscri
 import { registerPodcastRefreshRoutes } from './src/routes/podcasts-refresh.routes.mjs';
 import { registerPodcastEpisodeRoutes } from './src/routes/podcasts-episodes.routes.mjs';
 import { registerPodcastDownloadRoutes } from './src/routes/podcasts-download.routes.mjs';
-import { registerSeeburgRoutes } from './src/routes/seeburg.routes.mjs';
+import { registerSeeburgRoutes, removeJukeboxEntry } from './src/routes/seeburg.routes.mjs';
 import { registerMultiphoneRoutes } from './src/routes/multiphone.routes.mjs';
 
 async function downloadLatestForRss({ rss, count = 10 }) {
@@ -7175,6 +7175,7 @@ registerQueueRoutes(app, {
   log,
   execFileP,
   MPD_HOST,
+  onQueueItemRemoved: ({ songid }) => ({ removed: removeJukeboxEntry(songid) }),
 });
 
 registerSeeburgRoutes(app, {

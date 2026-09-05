@@ -15,6 +15,7 @@ export function registerQueueRoutes(app, deps) {
     log,
     execFileP,
     MPD_HOST,
+    onQueueItemRemoved,
   } = deps;
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -167,6 +168,7 @@ export function registerQueueRoutes(app, deps) {
 
       let skippedDelete = false;
       let reason = '';
+      let removedSongId = haveSongId ? songid : null;
 
       if (file && haveSongId) {
         try {
@@ -187,11 +189,35 @@ export function registerQueueRoutes(app, deps) {
         }
       }
 
+      // The position form is a compatibility fallback. Resolve its stable
+      // MPD ID before deletion so priority metadata can be consumed too.
+      if (!skippedDelete && !haveSongId && havePos0 && typeof onQueueItemRemoved === 'function') {
+        try {
+          const info = parseMpdFirstBlock(await mpdQueryRaw(`playlistinfo ${pos0}:${pos0 + 1}`));
+          const id = Number(info?.id);
+          if (Number.isSafeInteger(id) && id > 0) removedSongId = id;
+        } catch (e) {
+          log.debug('[queue/advance] unable to resolve fallback song id:', e?.message || String(e));
+        }
+      }
+
       if (!skippedDelete) {
         if (haveSongId) {
           await mpdDeleteId(songid);
         } else {
           await mpdDeletePos0(pos0);
+        }
+      }
+
+      let consumedPriority = false;
+      if (!skippedDelete && typeof onQueueItemRemoved === 'function') {
+        try {
+          const result = await onQueueItemRemoved({ songid: removedSongId, pos0, file });
+          consumedPriority = Boolean(result?.removed || result?.priority === 'jukebox');
+        } catch (e) {
+          // Metadata cleanup must not prevent the next ordinary track from
+          // being resolved after MPD has already advanced.
+          log.debug('[queue/advance] priority metadata cleanup failed:', e?.message || String(e));
         }
       }
 
@@ -229,6 +255,7 @@ export function registerQueueRoutes(app, deps) {
       return res.json({
         ok: true,
         skippedDelete,
+        consumedPriority,
         reason: reason || 'advanced',
         nowPlaying,
       });

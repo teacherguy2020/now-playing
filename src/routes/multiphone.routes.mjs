@@ -143,7 +143,15 @@ export function registerMultiphoneRoutes(app, deps) {
       if (!add || mpdHasACK(add)) throw new Error('MPD rejected the selected track');
       const id = parseMpdId(add);
       if (!id) throw new Error('MPD did not return a song ID for the selected track');
-      const position = queueWasCleared ? 0 : (currentPos >= 0 ? currentPos + pending.length + 1 : 0);
+      // A new customer selection pre-empts ordinary playback by going
+      // immediately before the current song. Once a jukebox song is active,
+      // keep the customer selections together as a mini-queue immediately
+      // behind the current priority song and ahead of ordinary playback.
+      const position = queueWasCleared || currentPos < 0
+        ? 0
+        : currentIsJukebox
+          ? currentPos + pending.length + 1
+          : currentPos;
       const move = await mpdQueryRaw(`moveid ${id} ${position}`);
       if (mpdHasACK(move)) throw new Error('MPD rejected positioning the selected track');
       // playlistinfo takes a queue position/range; playlistid takes an MPD

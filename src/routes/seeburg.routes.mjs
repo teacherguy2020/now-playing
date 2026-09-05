@@ -10,6 +10,17 @@ export const jukeboxEntries = new Map();
 let jukeboxSequence = 0;
 export function nextJukeboxSequence() { return ++jukeboxSequence; }
 
+// A completed paid request is consumed from the active MPD queue. Keep the
+// source playlist intact, but remove the matching priority marker immediately
+// so it cannot be mistaken for a still-active customer track after completion.
+export function removeJukeboxEntry(mpdSongId, statePath = loadedStatePath) {
+  const id = Number(mpdSongId);
+  if (!Number.isSafeInteger(id) || id <= 0) return false;
+  const removed = jukeboxEntries.delete(id);
+  if (removed) persistJukeboxState(statePath || undefined);
+  return removed;
+}
+
 let loadedStatePath = '';
 let jukeboxMutation = Promise.resolve();
 let jukeboxSession = null;
@@ -249,11 +260,15 @@ export function registerSeeburgRoutes(app, deps) {
       const insertedSongId = parseMpdId(addResult);
       if (!insertedSongId) throw new Error('MPD did not return a song ID for the selected track');
 
-      // Insert directly after the current track and any already-pending
-      // jukebox selections. MPD positions are zero-based.
-      const insertionPos = currentPos >= 0
-        ? currentPos + pendingJukebox.length + 1
-        : 0;
+      // Pre-empt ordinary playback by inserting immediately before the
+      // current track. Once a customer-priority track is active, keep new
+      // selections together behind it and ahead of ordinary playback.
+      // MPD positions are zero-based.
+      const insertionPos = currentPos < 0
+        ? 0
+        : currentIsJukebox
+          ? currentPos + pendingJukebox.length + 1
+          : currentPos;
       const moveResult = await mpdQueryRaw(`moveid ${insertedSongId} ${insertionPos}`);
       if (mpdHasACK(moveResult)) throw new Error('MPD rejected positioning the selected track');
       const sequence = nextJukeboxSequence();

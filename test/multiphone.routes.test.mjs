@@ -135,13 +135,13 @@ test('pre-empts actively playing ordinary house music', async () => {
         statusCalls += 1;
         return statusCalls === 1
           ? 'state: play\nsong: 0\nsongid: 41\nplaylistlength: 3\nOK\n'
-          : 'state: play\nsong: 1\nsongid: 42\nplaylistlength: 4\nOK\n';
+          : 'state: play\nsong: 0\nsongid: 42\nplaylistlength: 4\nOK\n';
       }
       if (command === 'playlistinfo') return 'file: house-music.flac\npos: 0\nId: 41\n\nfile: next.flac\npos: 1\nId: 43\nOK\n';
       if (command === 'addid "selected.flac"') return 'Id: 42\nOK\n';
-      if (command === 'moveid 42 1') return 'OK\n';
+      if (command === 'moveid 42 0') return 'OK\n';
       if (command === 'playlistid 42') return 'file: selected.flac\nArtist: Test Artist\nTitle: Test Title\nId: 42\nOK\n';
-      if (command === 'play 1') return 'OK\n';
+      if (command === 'play 0') return 'OK\n';
       throw new Error(`unexpected command: ${command}`);
     },
     multiphonePlaylistName: 'Multiphone Playlist',
@@ -154,5 +154,6 @@ test('pre-empts actively playing ordinary house music', async () => {
   assert.equal(res.body.queueWasCleared, false);
   assert.equal(res.body.queuedBehindJukebox, false);
   assert.equal(res.body.interruptedNormalPlayback, true);
-  assert.ok(calls.includes('play 1'));
+  assert.ok(calls.includes('moveid 42 0'));
+  assert.ok(calls.includes('play 0'));
 });

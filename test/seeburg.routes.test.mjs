@@ -99,7 +99,7 @@ test('inserts the first selection ahead of the ordinary queue and starts it', as
   ]);
 });
 
-test('inserts a first selection after the active ordinary track and starts it', async () => {
+test('pre-empts the active ordinary track and starts the selection', async () => {
   const calls = [];
   const app = makeApp();
   let statusCalls = 0;
@@ -117,13 +117,13 @@ test('inserts a first selection after the active ordinary track and starts it', 
       calls.push(command);
       if (command === 'status') {
         statusCalls += 1;
-        return statusCalls === 1 ? 'state: play\nsong: 0\nsongid: 20\nplaylistlength: 2\nOK\n' : 'state: play\nsong: 1\nsongid: 22\nplaylistlength: 3\nOK\n';
+        return statusCalls === 1 ? 'state: play\nsong: 0\nsongid: 20\nplaylistlength: 2\nOK\n' : 'state: play\nsong: 0\nsongid: 22\nplaylistlength: 3\nOK\n';
       }
       if (command.startsWith('listplaylist')) return 'file: selected.flac\nOK\n';
       if (command === 'playlistinfo') return 'file: current.flac\npos: 0\nId: 20\n\nfile: normal.flac\npos: 1\nId: 21\nOK\n';
       if (command.startsWith('addid ')) return 'Id: 22\nOK\n';
-      if (command === 'moveid 22 1') return 'OK\n';
-      if (command === 'play 1') return 'OK\n';
+      if (command === 'moveid 22 0') return 'OK\n';
+      if (command === 'play 0') return 'OK\n';
       throw new Error(`unexpected command: ${command}`);
     },
     seeburgPlaylistName: 'Seeburg Playlist',
@@ -139,13 +139,13 @@ test('inserts a first selection after the active ordinary track and starts it', 
     'status',
     'playlistinfo',
     'addid "selected.flac"',
-    'moveid 22 1',
-    'play 1',
+    'moveid 22 0',
+    'play 0',
     'status',
   ]);
 });
 
-test('stacks subsequent Seeburg selections immediately behind the active jukebox track', async () => {
+test('pre-empts ordinary playback, then stacks selections behind the active jukebox track', async () => {
   const app = makeApp();
   const queue = [
     { file: 'normal-current.flac', id: 30 },
@@ -190,7 +190,7 @@ test('stacks subsequent Seeburg selections immediately behind the active jukebox
   let res = makeResponse();
   await app.routes['POST /integrations/seeburg/selection']({ body: { number: 1 } }, res);
   assert.equal(res.body.playbackStarted, true);
-  assert.deepEqual(queue.map((x) => x.file), ['normal-current.flac', 'd6.flac', 'normal.flac']);
+  assert.deepEqual(queue.map((x) => x.file), ['d6.flac', 'normal-current.flac', 'normal.flac']);
 
   res = makeResponse();
   await app.routes['POST /integrations/seeburg/selection']({ body: { number: 2 } }, res);
@@ -198,11 +198,11 @@ test('stacks subsequent Seeburg selections immediately behind the active jukebox
   assert.equal(res.body.queuedBehindJukebox, true);
   assert.equal(res.body.source, 'seeburg');
   assert.equal(res.body.priority, 'jukebox');
-  assert.deepEqual(queue.map((x) => x.file), ['normal-current.flac', 'd6.flac', 'a4.flac', 'normal.flac']);
+  assert.deepEqual(queue.map((x) => x.file), ['d6.flac', 'a4.flac', 'normal-current.flac', 'normal.flac']);
 
   res = makeResponse();
   await app.routes['POST /integrations/seeburg/selection']({ body: { number: 3 } }, res);
   assert.equal(res.body.playbackStarted, false);
-  assert.deepEqual(queue.map((x) => x.file), ['normal-current.flac', 'd6.flac', 'a4.flac', 'k7.flac', 'normal.flac']);
-  assert.equal(calls.filter((x) => x.startsWith('moveid')).at(-1), 'moveid 34 3');
+  assert.deepEqual(queue.map((x) => x.file), ['d6.flac', 'a4.flac', 'k7.flac', 'normal-current.flac', 'normal.flac']);
+  assert.equal(calls.filter((x) => x.startsWith('moveid')).at(-1), 'moveid 34 2');
 });
