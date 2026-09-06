@@ -8,6 +8,7 @@ Turbo charge your moOde experience without altering your moOde installation.
 
 
 ![Now Playing index view](./docs/images/readme-index.jpg)
+![Now Playing index view](./docs/images/controller.jpeg)
 ![Now Playing promo collage](./docs/images/master-best-20260227/_collages/collage-promo-mixed-tabs-themes-normalized.jpg)
 
 ![Peppy preset example: Warm Parchment Gold Circular](./docs/images/peppy-presets/10-warm-parchment-gold-circular.jpg)
