@@ -11,7 +11,7 @@ the Multiphone library.
 
 She speaks American English only and uses intelligible 1940s vernacular. Her
 delivery is currently about 10% faster than ordinary conversation, while
-confirmation digits are played separately at 1.2x so they sound like a quick
+confirmation digits play at 1.2x so they sound like a quick operator exchange.
 operator exchange rather than slow, robotic recitation. Affectionate forms of
 address—honey, sugar, sweetheart, doll, sport, dear, kiddo, boss, champ, and
 similar terms—are occasional seasoning, not a feature of every line.
@@ -89,6 +89,12 @@ macOS `afplay`; this is more reliable than leaving a raw streaming player open
 between turns. The OpenAI key is read from Keychain, never from the command
 line.
 
+Before a number is supplied, work-related questions such as “How's it going?”
+receive one brief, period-style joke about Mabel's busy record-room shift,
+followed immediately by a clear “Number, please,” “What number, please,” or
+“Which number, please?” redirect. Other casual conversation gets the shorter
+number redirect without the joke.
+
 ### Deterministic normal-line state machine
 
 Normal numbered calls are deliberately handled locally rather than allowing
@@ -98,7 +104,7 @@ the model to invent a second number or bypass confirmation:
 greeting
   → completed caller transcript
   → digit-by-digit confirmation
-  → explicit yes/right/OK, or correction and reconfirmation
+  → affirmative signal, or correction and reconfirmation
   → short retrieval acknowledgment
   → heels
   → record reservation and playback handoff
@@ -116,6 +122,11 @@ compound forms such as:
 - “one hundred fifty” → `150`;
 - “one eleven” → `111`.
 
+Explicit request phrasing is recognized locally as well, including “Play me
+122,” “I'd like to hear 143,” and “How about number one twenty-nine?” These
+forms always enter digit-by-digit confirmation; Mabel must never say that she
+is connecting, routing, or putting the caller through before confirmation.
+
 After recognizing a possible number, Mabel repeats each digit as one connected
 phrase and asks a real yes-or-no question with the digits last, for example:
 
@@ -123,19 +134,24 @@ phrase and asks a real yes-or-no question with the digits last, for example:
 You’re requesting one-five-eight?
 Just confirming one-five-eight?
 That’s number one-five-eight?
-I heard you say one-five-eight?
 ```
 
-The confirmation is instructed to use rising question intonation on the final
-digit, with no trailing “okay?”, “right?”, or “yeah?” and no pauses between the
-digits. A short affirmative—yes, yup, yeah, yep, right, correct, exactly,
-affirmative, “you got it,” “that’s right,” “that’s it,” or “that’s the one”—starts
-retrieval. Punctuation and trailing ellipses are normalized, but the match stays
-strict so unrelated sentences do not confirm accidentally. Anything else stays
-in the confirmation loop. A correction is briefly embarrassed and then
-repeated in the same digit-by-digit form; no heels or playback begin before
-confirmation. Short VAD fragments such as “what’s,” “wait,” or “hold on” are
-held without starting another model reply.
+The confirmation must always end with a clearly audible high-rising question
+intonation on the final digit, followed by a tiny beat so the caller can hear
+that Mabel is waiting for a reply. It must never fall into a statement or
+directive. There are no trailing “okay?”, “right?”, or “yeah?” and no pauses
+between the digits. A clear affirmative signal—“yes,” “yeah,” “yep,” “yup,”
+“sure,” “sure am,” “that’s what I said,” “that’s the one,” “that’s it,”
+“correct,” “affirmative,” or “uh-huh”—anywhere in the caller's confirmation
+turn starts retrieval. A bare
+“please” is also treated as an affirmative fallback in confirmation mode, to
+recover a clipped “yes, please.” An
+explicit “no”/“nope,” a correction, or a different number takes precedence if
+both appear in one transcript; a repeated pending number with an affirmative
+still confirms. Anything else stays in the confirmation loop. A correction is
+briefly embarrassed and then repeated in the same digit-by-digit form; no heels
+or playback begin before confirmation. Short VAD fragments such as “what’s,”
+“wait,” or “hold on” are held without starting another model reply.
 
 Numbers above 170 are rejected before confirmation with a redirect to a valid
 number from 1 through 170. They are never silently reduced to a nearby record.
@@ -152,7 +168,7 @@ re-transcribed as the caller's correction.
 
 If Mabel is waiting and hears nothing, she uses a strict two-second escalation:
 
-1. “What number, please?”
+1. “Number, please,” “What number, please?” or “Which number, please?”
 2. An increasingly concerned “Are you there?” reminder, sometimes using
    buddy, pal, sailor, sweetie, honey, or another approved address.
 3. Microphone guidance: “Just talk into the top of the Multiphone…”
@@ -164,9 +180,14 @@ two-second window, the call exits cleanly.
 
 ### Retrieval and playback handoff
 
-After confirmation Mabel gives one short, businesslike acknowledgment, such as
-“Lemme grab that off the shelf.” The line is clipped, urgent, slangy, and
-unexcited: no exclamation point, pet name, joke, question, or goodbye.
+After confirmation Mabel generates one brief, businesslike acknowledgment in
+the voice of an operator fetching the exact record from the shelf. The prompt
+allows natural variation, but tightly limits the role: she may say she is
+fetching, grabbing, or taking the record from the shelf. She must not describe
+or imply a connection, transfer, routing, dialing, or putting anyone through;
+ask whether the caller wants anything else; introduce a new topic; mention
+record facts; or say goodbye. The local client owns the subsequent effects,
+record reservation, and service result.
 
 The client then starts the heels cue and reserves the record while the heels
 play. It waits for the heels to finish, starts the reserved record through
@@ -214,16 +235,14 @@ flattered acknowledgment
   → private catalog choice
   → reserved-record playback handoff
   → “I picked number …” plus title/artist
-  → one-favorite opinion and optional factual nugget
+  → one-favorite opinion based only on the local catalog result
   → goodbye and hang-up
 ```
 
-During the heels, `mabel_service.py` may perform a short Wikipedia lookup for a
-song-specific factual note. Notes are cached in
-`state/mabel-song-facts.json`, accepted only when the candidate is a reliable
-song/tune/recording match, and omitted when lookup is slow or uncertain. The
-note is limited to a concise extract; Mabel is forbidden to guess if no note
-is supplied.
+Surprise announcements use only the local Multiphone catalog result for the
+number, title, and artist, plus one brief subjective reaction. Mabel does not
+perform external song lookups or add outside biographical, chart, popularity,
+or musical facts.
 
 ## VIP and off-script music
 
@@ -299,8 +318,22 @@ The terminal client uses these local assets in `sounds/`:
 
 The office bed suggests a busy room of operators and loops beneath normal calls;
 it stops before the hang-up click. VIP calls skip the public ringback but still
-use the call's other applicable effects. Mabel's voice plays at 1.1x; confirmation
-responses play at 1.2x. Effects retain their natural speed.
+use the call's other applicable effects. Mabel's voice plays at 1.1x and
+confirmation responses at 1.2x. Effects retain their natural speed.
+
+### Realtime cost controls
+
+The client deliberately leaves `max_output_tokens` unset. Artificially small
+caps previously cut generated audio off mid-sentence. Affordability comes from
+keeping number parsing, confirmation state, queueing, playback handoff, and
+call termination local; closing the microphone while Mabel speaks; using local
+effects; and ending the session promptly. Realtime is used for brief
+personality-rich phrasing, while code remains authoritative for numbers,
+catalog facts, queue positions, and service results. Stable tone and safety
+rules live in the session instructions so they can benefit from cached input.
+At shutdown, the terminal prints the aggregate usage reported by Realtime,
+including response count, input/output/total tokens, cached input tokens, and
+audio-token subtotals when the API supplies them.
 
 All local effects and voice playback use a serialized audio path. Microphone
 input is suppressed during Mabel's speech and effects to prevent SoundSource,
@@ -310,15 +343,16 @@ or prevent a later call from opening its microphone. Use `--sounds-dir` to point
 the client at another asset directory and `--ambience-volume` to adjust the
 office bed.
 
-When the terminal call starts, Mabel ducks the Denon AVR4520CI by 30 discrete
+When the terminal call starts, Mabel ducks the Denon AVR4520CI by 40 discrete
 `VolumeDown` presses rapidly through the generic Harmony Hub client. The WebSocket
 client reconnects or retries if needed, and the number of successfully sent
 presses is restored with matching `VolumeUp` presses four seconds after Mabel
 begins her final spoken wrap-up; shutdown retains a fallback restore if final
 audio is missing.
 Use `--duck-steps 0` to disable ducking for a test call, or change the default
-with `--duck-steps N`. The default inter-press spacing is 5 ms and can be
-adjusted with `--duck-inter-press-ms N`.
+with `--duck-steps N`. Ducking uses a zero-delay burst by default and can be
+slowed with `--duck-inter-press-ms N`. Fade-up restoration remains 5 ms by
+default and can be adjusted independently with `--restore-inter-press-ms N`.
 
 ## Fallback and operational recovery
 

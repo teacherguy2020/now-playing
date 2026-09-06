@@ -38,30 +38,35 @@ const confirmationVadSilenceMs = Math.max(50, Number(
 ));
 const voicePlaybackRate = 1.1;
 const confirmationPlaybackRate = 1.2;
-const duckSteps = Math.max(0, Math.min(100, Number(args.get('duck-steps') === undefined ? 30 : args.get('duck-steps'))));
+const retrievalAudioTailGraceMs = 750;
+const duckSteps = Math.max(0, Math.min(100, Number(args.get('duck-steps') === undefined ? 40 : args.get('duck-steps'))));
 const duckInterPressValue = args.get('duck-inter-press-ms');
-const duckInterPressMs = Math.max(0, Number(duckInterPressValue === undefined ? 5 : duckInterPressValue));
+const duckInterPressMs = Math.max(0, Number(duckInterPressValue === undefined ? 0 : duckInterPressValue));
+const restoreInterPressValue = args.get('restore-inter-press-ms');
+const restoreInterPressMs = Math.max(0, Number(restoreInterPressValue === undefined ? 5 : restoreInterPressValue));
 const soundsDir = args.get('sounds-dir') || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../sounds');
 const soundFiles = {
   ringback: 'phone-ringback-answer-click.m4a',
   footsteps: 'high-heels-walk-2s.m4a',
   hangup: 'phone-hangup-click.m4a',
 };
+const footstepsEnabled = args.get('footsteps') !== 'off';
 const ambienceFile = path.join(soundsDir, 'shyvers-office-ambiance.mp3');
 const ambienceVolume = String(Math.min(1, Math.max(0, Number(args.get('ambience-volume') || 0.08))));
 const apiKey = execFileSync('/usr/bin/security', ['find-generic-password', '-s', 'Shyvers Multiphone / OpenAI', '-a', 'mabel-voice', '-w'], { encoding: 'utf8' }).trim();
 if (!apiKey) throw new Error('OpenAI API key is not configured; run mabel_voice.py --setup-openai-key first');
 
-const instructions = `You are Mabel, a 22-year-old 1940s telephone operator and record spinner for Multiphone in Seattle, Washington. Speak ONLY English, regardless of the caller's language, and use an American English accent. Use authentic but intelligible 1940s American telephone vernacular: brisk period phrases such as “well now,” “all right,” “one moment,” “hold the line,” and “thanks kindly,” with occasional light slang like “doll” or “my dear” when it fits. Avoid modern assistant language and never improvise a generic assistant answer during a scripted line. Speak briskly and efficiently because you are busy, with a noticeably higher, brighter vocal register and youthful energy. Be genuinely lively and exuberant: sound as though you are smiling, use punchy upbeat phrasing, strong but natural emphasis, expressive pitch movement, and quick animated reactions. Keep the energy consistently high—not bored, flat, sleepy, or monotone—while remaining warm, lightly sassy, concise, and professionally demure. Give your delivery a touch of theatrical flair and dramatic emphasis, but keep it natural and fast. Sprinkle in occasional gentle humor when it fits; never let jokes delay or obscure the music service. Every opening greeting must begin with 'Multiphone', immediately identify Mabel in two or three words such as 'This is Mabel' or 'Mabel here', and then ask for the number. Keep it short, for example: 'Multiphone! This is Mabel. What number?' or 'Multiphone! Mabel here. Gimme your song number.' Do not begin the greeting with anything else. You may answer personal questions pleasantly but briefly, without discussing a private life, personal opinions, relationships, or intimate details; then redirect naturally to asking what song number the caller would like. Valid song numbers are 1 through ${MAX_MULTIPHONE_NUMBER}; numbers above ${MAX_MULTIPHONE_NUMBER} are invalid and must be redirected, never confirmed or retrieved. Never invent titles or catalog details. When a caller gives a possible song number, repeat every digit separately in spoken form and ask for confirmation with only a short tag such as 'right?' or 'yeah?'; do not say 'I heard' or 'correct?'. For example, 158 must be spoken as 'one five eight', never as 'one hundred fifty-eight' or '158'. If the caller corrects it, repeat every corrected digit separately and ask again. Only after the caller confirms should the client submit the record request. After the service succeeds, announce the actual record result, then give a brief goodbye and end the call. Do not say 'selection' aloud; say record, song, or tune. Mabel retrieves records from the library; she never connects, puts through, transfers, routes, or dials a caller. In off-script mode, after a successful album, artist, playlist, or mix playback action, confirm it, say a brief goodbye, and end the call; do not keep listening. The now-playing information action may continue the conversation. If the caller says goodbye, bye, farewell, or says they are leaving, reply warmly in kind and then end the call; do not ask another question or call a tool.`;
+const instructions = `You are Mabel, a lively 22-year-old 1940s telephone operator and record spinner for Multiphone in Seattle. Speak only clear American English in brisk, warm, youthful 1940s telephone vernacular. Use light period humor and occasional tasteful affection, but stay concise and never sound like a modern assistant. The caller is already connected to Mabel; she retrieves records from the Multiphone library and never connects, transfers, routes, dials, or “puts through” anyone. Never invent titles, artists, numbers, queue positions, or service results. Valid numbered records are 1 through ${MAX_MULTIPHONE_NUMBER}; larger numbers are invalid. Normal mode is a deterministic numbered-request flow: acknowledge a possible number only with a digit-by-digit confirmation question, wait for explicit caller confirmation, then let the client retrieve it. Never retrieve, announce success, or imply completion before confirmation. If the caller corrects the number, repeat the corrected digits and ask again. After a successful request, accurately announce the service result, give a brief warm goodbye, and end the call. If the caller says goodbye, respond briefly and end. Keep scripted prompts exact when the client supplies wording. In off-script mode, handle only the enabled music actions, then confirm and end after a successful playback action; now-playing may continue the conversation.`;
 const finalSelectionInstruction = 'Important current call behavior: after every successful numbered selection, announce the result, give a brief goodbye, and end the call after speaking. Do not keep listening for another request.';
 const recordReactionInstruction = 'After naming a supplied title and artist, usually add exactly one short personal reaction, unless the announcement needs to stay especially brisk. Keep it subjective and playful, such as “great choice,” “one of my faves,” “love this one,” “you clearly have great taste,” “this is a real honey,” or “that one has plenty of pep.” Use at most one reaction, with no long commentary. Do not invent biographical or catalog facts. Do not claim that a record gets lots of requests or is topping the charts unless the service explicitly provides that fact; those are factual claims, not personal opinions.';
-const retrievalInstruction = 'For a numbered request, repeat every digit separately in spoken form and ask one brief confirmation, such as “one zero zero, right?” or “one five eight, yeah?” Do not say “I heard” or “correct?”. Do not retrieve the record until the caller confirms. If the caller corrects the number, repeat every corrected digit separately and ask again. Once confirmed, give one very brief, businesslike retrieval acknowledgment such as “Lemme grab that off the shelf,” “Hold the line, I’m getting that record,” “I’ll fetch that off the shelf,” or “Right. I’m on it.” Keep it urgent and workmanlike, not excited; no exclamation point, pet name, joke, explanation, question, or goodbye. If the caller asks Mabel to surprise them, pick one real record from the Multiphone library privately; do not ask for or confirm a number, and do not disclose the number until returning with the record. If the caller asks you to pick one by a named artist, honor that artist constraint and choose privately from that artist’s real Multiphone records. Be mildly surprised or flattered to be asked, then return with the chosen number, title, artist, and one brief subjective reason why it’s one of your faves. Mabel is retrieving a record from the Multiphone library—not connecting, dialing, routing, transferring, or putting the caller through to anyone.';
+const retrievalInstruction = 'For numbered requests, say each digit separately in one brief confirmation question and wait for confirmation. Never say “I heard” or “correct?”, and never retrieve before confirmation. A corrected number replaces the old one and must be confirmed again. After confirmation, give only a short businesslike retrieval acknowledgment. A surprise request is a separate local flow: choose privately from the real Multiphone library, do not ask for or confirm a number, and return only with the service-provided record facts.';
 const speedInstruction = 'Speak about 10% faster than ordinary conversation while remaining crisp and intelligible—brisk, but never rushed.';
 const affectionateAddressInstruction = 'Use the approved affectionate forms of address sparingly and naturally—at most once every few turns, and usually not at all in a short scripted exchange. Keep most replies free of pet names. When one fits, choose only one: honey, sport, dear, kiddo, boss, sugar, sweetheart, my dear, doll, or champ. Keep Mabel fun, warm, and lightly flirtatious, tasteful, concise, and professionally demure; never stack multiple terms in one reply or force one into every stage.';
-const libraryRetrievalBoundary = 'The caller is already connected to Mabel. Mabel is a record-room operator retrieving a 78 from the Multiphone record library—not a telephone switchboard operator making a connection. After confirmation, the only job is to retrieve the requested library item. Never say “connect,” “connecting,” “dial,” “dialing,” “put you through,” “putting you through,” “route the call,” “transfer,” or “send you to” anyone. Those words are forbidden in every reply. Never call it a selection; say record, song, or tune instead. Use “retrieve,” “grab,” “fetch,” or “get the record” instead.';
+const libraryRetrievalBoundary = 'The caller is already connected. Mabel retrieves a 78 from the Multiphone library. Before confirmation, ask only the brief digit-by-digit question. Never say connect, connecting, dial, dialing, transfer, route, put through, or imply that a request is complete. Say record, song, or tune—not selection—and use retrieve, grab, fetch, or get the record.';
 const clemsPlaceContext = 'The direct song-transmission line serves Clem’s Place, a lively bar in Seattle. Mention Clem’s Place occasionally and naturally—especially when referring to records waiting there—but do not force it into every reply or imply that you are connecting the caller to the bar. When saying “Clem’s Place,” put the vocal emphasis on “Clem’s” and say “Place” more lightly: “CLEM’s place.”';
-const normalGreetingInstruction = 'Say exactly one of these brief greetings, with no improvisation: “Multiphone! Mabel here—hello to Clem’s Place. What number?” or “Multiphone! Mabel here—hope everyone’s having a great time at Clem’s. What number?” Begin with Multiphone, identify Mabel, acknowledge Clem’s Place, and ask for the song number. The caller is already connected; Mabel retrieves a record. Do not describe the request as dialing, connecting, transferring, routing, or putting anyone through. Use an affectionate name only occasionally, not in this greeting every time.';
-const confirmationStyleInstruction = 'For every number confirmation, make it an unmistakable yes-or-no question with a natural rising intonation on the final digit. The pitch must rise rather than fall into a directive or statement. Keep the digit-by-digit number at the very end: “You’re requesting one-four-eight?”, “Just confirming one-four-eight?”, “That’s number one-four-eight?”, or “I heard you say one-four-eight?”. Never put the number first with a trailing “okay?”, “right?”, or “yeah?”.';
+const normalGreetingInstruction = 'Say exactly one of these brief greetings, with no improvisation: “Multiphone! Mabel here—hello to Clem’s Place. Number, please.”, “Multiphone! Mabel here—hope everyone’s having a great time at Clem’s. What number, please?”, or “Multiphone! Mabel here—hello to Clem’s Place. Which number, please?” Begin with Multiphone, identify Mabel, acknowledge Clem’s Place, and ask for the song number. The caller is already connected; Mabel retrieves a record. Do not describe the request as dialing, connecting, transferring, routing, or putting anyone through. Use an affectionate name only occasionally, not in this greeting every time.';
+const confirmationQuestionDeliveryInstruction = 'This is a turn-taking question, not a statement: ALWAYS finish with a clearly audible high-rising question contour. Lift the pitch on the final syllable of the final digit and leave a tiny beat afterward so the caller hears that Mabel is waiting for an immediate yes-or-no reply. Never let the pitch fall on the final digit, even after an apology. Never deliver the confirmation as a directive, announcement, or flat statement.';
+const confirmationStyleInstruction = `For every number confirmation, make it an unmistakable yes-or-no question. ${confirmationQuestionDeliveryInstruction} Keep the digit-by-digit number at the very end: “You’re requesting one-four-eight?”, “Just confirming one-four-eight?”, or “That’s number one-four-eight?”. Never put the number first with a trailing “okay?”, “right?”, or “yeah?”.`;
 const offScriptTriggerPattern = /\boff[ -]?script\b|\bi(?:['’]m| am)\s+a\s+v(?:\.?i\.?p\.?)\b/i;
 const sessionInstructions = startOffScript
   ? `${instructions} ${speedInstruction} ${affectionateAddressInstruction} ${retrievalInstruction} ${confirmationStyleInstruction} ${libraryRetrievalBoundary} ${clemsPlaceContext} ${finalSelectionInstruction} This is a VIP-line call started by the iPad Shortcut. It's already off-script; do not treat it as a normal numbered Multiphone call. The opening must acknowledge the VIP line and ask what the caller wants to hear.`
@@ -140,7 +145,21 @@ const handledAudioResponseIds = new Set();
 let activeResponseId = null;
 let retrievalAcknowledgmentResolver = null;
 let responseInProgress = false;
+let responseFinalized = false;
+let responseAudioStarted = false;
+let responseAudioFinished = false;
 const responseIdleWaiters = [];
+let responseCreateChain = Promise.resolve();
+let confirmationPromptGeneration = 0;
+const usageTotals = {
+  responses: 0,
+  input_tokens: 0,
+  output_tokens: 0,
+  total_tokens: 0,
+  cached_input_tokens: 0,
+  input_audio_tokens: 0,
+  output_audio_tokens: 0,
+};
 let listeningNudgeTimer = null;
 let listeningNudgeCount = 0;
 let initialGreetingAudioPending = false;
@@ -154,8 +173,8 @@ let earlyAnswerTimer = null;
 const earlyAnswerWindowMs = 1400;
 // Never feed microphone audio from while Mabel is speaking back into Realtime:
 // her digit-by-digit confirmation can otherwise be transcribed as the caller's
-// correction. Open the confirmation mic immediately after her audio drains.
-const confirmationAnswerWindowMs = 0;
+// correction. Confirmation turns use no tail buffer at all; the mic opens only
+// after local playback has fully drained.
 const earlyAnswerMaxBytes = 24000 * 2 * 1.6;
 const goodbyeLines = [
   'Thanks a lot, bye!',
@@ -177,24 +196,12 @@ const confirmationTemplates = [
   'You’re requesting {digits}?',
   'Just confirming {digits}?',
   'That’s number {digits}?',
-  'I heard you say {digits}?',
 ];
-const correctionApologies = [
-  "Sorry, it's pretty loud in here tonight—",
-  "Sorry about that, the room's buzzing tonight—",
-  "My apologies, it's awfully noisy in here—",
-  "Sorry, the operators are making quite a racket tonight—",
-  "Sorry, the connection is a little scratchy tonight—",
-  "Oops, sorry for mishearing—",
-  "Apologies, you said—",
-  "Oh dear, sorry about that—",
-  "Oh, what a blunder—my apologies—",
-  "Well, egg on my face—sorry about that—",
-  "Oh honey, sorry—I must've misheard you—",
-  "Oops, sweetheart, that's my mistake—",
-  "My apologies, dear—the room is awfully noisy—",
-  "Oh doll, egg on my face—",
-  "Sorry, sugar—I got that one crossed up—",
+const correctionTemplates = [
+  "Sorry about that—just confirming {digits}?",
+  "Oops, my mistake—just confirming {digits}?",
+  "Sorry, I misheard you—just confirming {digits}?",
+  "My apologies—just confirming {digits}?",
 ];
 const spokenDigits = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
 function digitsForSpeech(number, separator = ' ') {
@@ -204,17 +211,17 @@ function digitsForSpeech(number, separator = ' ') {
     .join(separator);
 }
 const noResponseSecondNudges = [
-  'Are you putting one over on me? I know you’re there… what number, buddy?',
-  'Are you putting one over on me? I know you’re there… what number, pal?',
-  'Are you putting one over on me? I know you’re there… what number, sailor?',
-  'Are you putting one over on me? I know you’re there… what number, sweetie?',
-  'Are you putting one over on me? I know you’re there… what number, honey?',
-  'Are you putting one over on me? I know you’re there… what number, sugar?',
-  'Are you putting one over on me? I know you’re there… what number, doll?',
-  'Are you putting one over on me? I know you’re there… what number, champ?',
-  'Are you putting one over on me? I know you’re there… what number, kiddo?',
-  'Are you putting one over on me? I know you’re there… what number, boss?',
-  'Are you putting one over on me? I know you’re there… what number, my dear?',
+  'Are you putting one over on me? I know you’re there… which number, please, buddy?',
+  'Are you putting one over on me? I know you’re there… which number, please, pal?',
+  'Are you putting one over on me? I know you’re there… which number, please, sailor?',
+  'Are you putting one over on me? I know you’re there… which number, please, sweetie?',
+  'Are you putting one over on me? I know you’re there… which number, please, honey?',
+  'Are you putting one over on me? I know you’re there… which number, please, sugar?',
+  'Are you putting one over on me? I know you’re there… which number, please, doll?',
+  'Are you putting one over on me? I know you’re there… which number, please, champ?',
+  'Are you putting one over on me? I know you’re there… which number, please, kiddo?',
+  'Are you putting one over on me? I know you’re there… which number, please, boss?',
+  'Are you putting one over on me? I know you’re there… which number, please, my dear?',
 ];
 
 function sanitizeMabelInstructions(text) {
@@ -270,9 +277,52 @@ function markResponseIdle() {
   const waiters = responseIdleWaiters.splice(0);
   for (const resolve of waiters) resolve();
 }
+function maybeMarkResponseIdle() {
+  if (!responseFinalized || (responseAudioStarted && !responseAudioFinished)) return;
+  markResponseIdle();
+}
+function queueResponse(response, isStillRelevant = () => true) {
+  const run = responseCreateChain.then(async () => {
+    // Realtime accepts only one response at a time. This local queue also
+    // covers the small interval before response.created arrives, when a
+    // second event could otherwise observe responseInProgress === false.
+    if (!isStillRelevant()) return false;
+    if (!await waitForResponseIdle()) return false;
+    if (!isStillRelevant()) return false;
+    responseInProgress = true;
+    activeResponseId = null;
+    audioDoneHandled = false;
+    send({ type: 'response.create', ...(response ? { response } : {}) });
+    await waitForResponseIdle();
+    return true;
+  });
+  responseCreateChain = run.catch(() => {});
+  return run;
+}
 function cancelActiveResponse() {
   if (!responseInProgress || ws.readyState !== WebSocket.OPEN) return;
   send({ type: 'response.cancel', ...(activeResponseId ? { response_id: activeResponseId } : {}) });
+}
+function recordResponseUsage(event) {
+  const usage = event.response?.usage || event.usage;
+  if (!usage) return;
+  usageTotals.responses += 1;
+  usageTotals.input_tokens += Number(usage.input_tokens) || 0;
+  usageTotals.output_tokens += Number(usage.output_tokens) || 0;
+  usageTotals.total_tokens += Number(usage.total_tokens) ||
+    (Number(usage.input_tokens) || 0) + (Number(usage.output_tokens) || 0);
+  const inputDetails = usage.input_token_details || {};
+  const outputDetails = usage.output_token_details || {};
+  usageTotals.cached_input_tokens += Number(inputDetails.cached_tokens ?? inputDetails.cached_input_tokens) || 0;
+  usageTotals.input_audio_tokens += Number(inputDetails.audio_tokens) || 0;
+  usageTotals.output_audio_tokens += Number(outputDetails.audio_tokens) || 0;
+}
+function logUsageSummary() {
+  if (usageTotals.total_tokens <= 0 && usageTotals.input_tokens <= 0 && usageTotals.output_tokens <= 0) {
+    console.log('Mabel usage: no token usage was reported by Realtime.');
+    return;
+  }
+  console.log(`Mabel usage: ${JSON.stringify(usageTotals)}`);
 }
 function clearListeningNudge() {
   if (listeningNudgeTimer) clearTimeout(listeningNudgeTimer);
@@ -283,6 +333,18 @@ function clearEarlyAnswerBuffer() {
   earlyAnswerTimer = null;
   earlyAnswerBuffering = false;
   earlyAnswerBuffer = [];
+}
+function finishRetrievalAcknowledgmentPlayback() {
+  if (!retrievalAcknowledgmentResolver) return;
+  const resolveAcknowledgment = retrievalAcknowledgmentResolver;
+  retrievalAcknowledgmentResolver = null;
+  const pcm = Buffer.concat(audioChunks);
+  audioChunks = [];
+  const playback = pcm.length ? enqueueAudio(() => playWavNow(pcm, voicePlaybackRate, 'retrieval-ack')) : Promise.resolve();
+  playback.then(async () => {
+    await new Promise((resolve) => setTimeout(resolve, retrievalAudioTailGraceMs));
+    resolveAcknowledgment();
+  }, resolveAcknowledgment);
 }
 function flushEarlyAnswerBuffer() {
   if (!earlyAnswerBuffer.length || ws.readyState !== WebSocket.OPEN) {
@@ -311,9 +373,9 @@ function armListeningNudge(mode) {
           () => 'Hm, seems like we might have a bad connection. Last chance—yes, or give me the song number again.',
         ]
       : [
-          () => 'What number, please?',
+          () => 'Number, please.',
           () => noResponseSecondNudges[Math.floor(Math.random() * noResponseSecondNudges.length)],
-          () => 'Just talk into the top of the Multiphone—there’s a microphone there. What song number?',
+          () => 'Just talk into the top of the Multiphone—there’s a microphone there. Which number, please?',
           () => 'Hm, seems like we might have a bad connection. Last chance for a song number, please.',
         ];
     if (listeningNudgeCount >= nudgeLines.length) {
@@ -323,20 +385,16 @@ function armListeningNudge(mode) {
     const nudge = nudgeLines[listeningNudgeCount]();
     listeningNudgeCount += 1;
     if (mode === 'confirmation' && pendingNumber !== null) {
-      send({ type: 'response.create', response: {
+      queueResponse({
         tool_choice: 'none',
-        // Realtime audio consumes more output tokens than the visible words
-        // suggest; 24 was truncating reminders mid-sentence.
-        max_output_tokens: 128,
-        instructions: `Say exactly this brief confirmation reminder in lively 1940s Mabel style: “${nudge}” If digits are included, say them as one brisk, nearly continuous operator phrase with only tiny natural gaps; do not over-enunciate or add dramatic pauses. Make it unmistakably a genuine question: use a natural rising question intonation, with the pitch rising on the final digit. Do not deliver it as a falling statement or a directive. Do not add any other text, explanation, thanks, or goodbye. Do not call a tool.`,
-      } });
+        instructions: `Say exactly this brief confirmation reminder in lively 1940s Mabel style: “${nudge}” If digits are included, say them as one brisk, nearly continuous operator phrase with only tiny natural gaps; do not over-enunciate or add dramatic pauses. ${confirmationQuestionDeliveryInstruction} Do not add any other text, explanation, thanks, or goodbye. Do not call a tool.`,
+      });
       return;
     }
-    send({ type: 'response.create', response: {
+    queueResponse({
         tool_choice: 'none',
-        max_output_tokens: 128,
         instructions: `The caller has not given a song number and has said nothing. Say only this exact brief reminder in lively 1940s Mabel style: “${nudge}” Copy it word for word. Do not improvise, answer a question, infer any device or phone number, mention a number other than the quoted words, or add an explanation. Do not say “You got it,” “Got it,” “Sure thing,” “Putting you through,” “Connecting,” “Dialing,” “Thanks,” or any goodbye. Do not mention Clem’s Place. Do not call a tool.`,
-      } });
+      });
   }, 2000);
   listeningNudgeTimer.unref();
 }
@@ -487,13 +545,12 @@ function requestTooHighNumberRedirect(text) {
   return true;
 }
 function redirectTooHighNumber() {
-  send({ type: 'response.create', response: {
+  queueResponse({
     tool_choice: 'none',
-    max_output_tokens: 24,
-    instructions: `Say exactly this brief redirect in your lively but businesslike Mabel voice: "That number is too high. I can take a song number from 1 through ${MAX_MULTIPHONE_NUMBER}. What number, please?" Do not confirm, retrieve, or invent a record number. Do not say “dialing,” “connecting,” or “selection.”`,
-  } });
+    instructions: `Say exactly this brief redirect in your lively but businesslike Mabel voice: "That number is too high. I can take a song number from 1 through ${MAX_MULTIPHONE_NUMBER}. Which number, please?" Do not confirm, retrieve, or invent a record number. Do not say “dialing,” “connecting,” or “selection.”`,
+  });
 }
-function requestFastNumberAcknowledgment(text) {
+async function requestFastNumberAcknowledgment(text) {
   if (offScript || ending || pendingNumber !== null || numberAcknowledgmentRequested || numberConfirmationListening) return false;
   const value = String(text || '');
   // numberCandidateFromText intentionally understands words such as “one,”
@@ -507,36 +564,27 @@ function requestFastNumberAcknowledgment(text) {
   pendingNumber = number;
   normalNumberFlow = true;
   numberAcknowledgmentRequested = true;
-  send({ type: 'response.create', response: { tool_choice: 'none', instructions: confirmationPrompt(number) } });
+  const generation = ++confirmationPromptGeneration;
+  await queueResponse(
+    { tool_choice: 'none', instructions: confirmationPrompt(number) },
+    () => !ending && pendingNumber === number && numberAcknowledgmentRequested && confirmationPromptGeneration === generation,
+  );
   return true;
 }
 function confirmationPrompt(number, correction = false) {
   const digits = digitsForSpeech(number, '-');
-  const line = confirmationTemplates[Math.floor(Math.random() * confirmationTemplates.length)]
-    .replace('{digits}', digits);
-  const apology = correction ? correctionApologies[Math.floor(Math.random() * correctionApologies.length)] : '';
-  return `Say exactly this brief confirmation in your lively Mabel voice: "${apology}${line}" Spell out every digit separately as one connected hyphenated phrase with no pauses between digits—“one-six-three,” not “one … six … three.” The digits must be the final words of the question. Make it unmistakably a genuine yes-or-no question: use a natural rising question intonation, with the pitch rising on the final digit. Do not deliver it as a falling statement, a command, or a directive. Do not over-enunciate or add dramatic pauses. Do not say the number as a single cardinal number. ${correction ? 'The caller just corrected you, so include the brief apology exactly as provided before reconfirming the digits. ' : ''}Do not append “okay?”, “right?”, or “yeah?” after the digits, call a tool, add anything else, or ask a different question.`;
+  const template = correction
+    ? correctionTemplates[Math.floor(Math.random() * correctionTemplates.length)]
+    : confirmationTemplates[Math.floor(Math.random() * confirmationTemplates.length)];
+  const line = template.replace('{digits}', digits);
+  return `Say exactly one brief confirmation in your lively Mabel voice: "${line}" This is one uninterrupted sentence. Spell out every digit separately as one connected hyphenated phrase with no pauses between digits. The digits must be the final words of the question. ${confirmationQuestionDeliveryInstruction} Do not change, invent, or reorder any digit. Do not say the number as a single cardinal number. Ignore the caller’s other conversation and do not answer it. Do not say you are playing, connecting, fetching, or looking at a shelf. Do not append “okay?”, “right?”, or “yeah?” after the digits, call a tool, add anything else, or ask a different question.`;
 }
 function retrievalAcknowledgmentPrompt(number) {
-  const lines = [
-    'Lemme grab that off the shelf.',
-    'Hold the line, I’m getting that record.',
-    'I’ll fetch that off the shelf.',
-    'Right. I’m on it.',
-  ];
-  const line = lines[Math.floor(Math.random() * lines.length)];
-  return `Say exactly this brief, businesslike record-retrieval acknowledgment in your lively but urgent Mabel voice: "${line}" Then stop speaking. Do not sound excited, add a pet name, joke, exclamation, explanation, question, or goodbye, and do not call a tool. This is not a phone connection. The words connect, connecting, dial, dialing, transfer, route, or put you through are forbidden.`;
+  return `The caller has already confirmed the record request. Give one natural, brief retrieval acknowledgment in lively 1940s Mabel style, as an operator physically fetching that exact record from the shelf. Keep the response focused only on getting the record off the shelf. You may say that you are fetching, grabbing, or taking the record from the shelf. Do not describe or imply a telephone connection, transfer, routing, dialing, or putting anyone through. Do not ask whether the caller wants anything else. Do not mention another number, title, artist, queue position, tool, service result, or goodbye. Do not introduce a new topic or handle any caller intent. Finish the acknowledgment and stop so the local retrieval effects can begin.`;
 }
 function surpriseAcknowledgmentPrompt(artist = null) {
   const constraint = artist ? ` by ${artist}` : '';
-  const lines = [
-    `Well now, you want me to choose a record${constraint}? That's flattering. Hold on.`,
-    `A record${constraint}, picked by me? I'm flattered. One moment.`,
-    `You're leaving a record${constraint} to me? All right. Hold on.`,
-    `You'd like my pick${constraint}? Very well. I'll find you a good one. Hold on.`,
-  ];
-  const line = lines[Math.floor(Math.random() * lines.length)];
-  return `Say exactly this brief, surprised and mildly flattered acknowledgment in your lively but urgent Mabel voice: "${line}" Then stop speaking. Do not mention a number, title, tool, or confirmation. Do not add a pet name, exclamation, joke, explanation, question, or goodbye. Mabel is choosing a real record privately${constraint} and will announce it only when she returns.`;
+  return `Give a natural, concise surprise acknowledgment in lively 1940s Mabel style${constraint}. Vary the wording naturally and sound pleasantly flattered that the caller wants Mabel to choose. End by indicating that Mabel will find one now, such as “Hold on” or “One moment.” Do not mention a number, title, tool, or confirmation. Do not add a second question, goodbye, or outside facts.`;
 }
 async function requestRetrievalAcknowledgment(number, prompt = retrievalAcknowledgmentPrompt(number)) {
   if (!await waitForResponseIdle()) return false;
@@ -549,9 +597,9 @@ async function requestRetrievalAcknowledgment(number, prompt = retrievalAcknowle
       resolve(true);
     };
     retrievalAcknowledgmentResolver = finish;
-    const timeout = setTimeout(finish, 6000);
+    const timeout = setTimeout(finish, 15000);
     timeout.unref();
-    send({ type: 'response.create', response: { tool_choice: 'none', instructions: prompt } });
+    queueResponse({ tool_choice: 'none', instructions: prompt });
   });
 }
 function normalizeConfirmationText(text) {
@@ -562,16 +610,21 @@ function normalizeConfirmationText(text) {
     .trim();
 }
 function isAffirmative(text) {
-  // Keep short confirmation replies local. In particular, “OK” and “K”
-  // are ordinary affirmative answers in a telephone exchange; if they fall
-  // through to the general Realtime response they can produce an unrelated
-  // assistant reply and leave the confirmation nudge running.
+  // Realtime transcripts often include extra conversational words, so accept
+  // a clear affirmative signal anywhere in the turn. Explicit negatives and
+  // different number corrections are checked before this function is used.
   const value = normalizeConfirmationText(text);
-  return /^(?:(?:yes|yeah|yep|yup|y|ok|okay|k|correct|right|exactly|affirmative)(?: (?:that's (?:right|it|the one)|that is (?:right|it|the one)))?|(?:that's (?:right|it|the one)|that is (?:right|it|the one)|you got it|you got that right))$/i.test(value);
+  // A clipped "yes, please" is sometimes transcribed as just "please".
+  // In the closed confirmation state, a standalone please is a reasonable
+  // affirmative fallback; explicit negatives and corrections still win.
+  return /\b(?:yes|yeah|yep|yup|sure(?: am)?|right|exactly|correct|affirmative)\b|\buh[- ]huh\b|\b(?:you got it)\b|\b(?:that's|that is) (?:right|what i said|the (?:one|number)|it)\b/i.test(value) || value === 'please';
+}
+function goodbyePrompt(context = 'The caller is ending the call.') {
+  return `Give one very brief 1940s-style goodbye as Mabel. ${context} Use 3 to 8 words. Be warm, brisk, and youthful. Vary the wording naturally from recent replies. You may use at most one approved affectionate address, but do not force one. Do not ask a question. Do not mention a record, number, connection, tool, or another request. Do not add anything after the goodbye; this is the final response.`;
 }
 function isNegative(text) {
   const value = normalizeConfirmationText(text);
-  return /^(?:(?:no|nope)(?: (?:wrong|incorrect|that's not right|that is not right))?|wrong|incorrect|not right|that's not right|that is not right)$/i.test(value);
+  return /\b(?:no|nope)\b|\b(?:wrong|incorrect)\b|\bnot right\b|\b(?:that's|that is) not right\b/i.test(value);
 }
 function isConfirmationFragment(text) {
   const value = normalizeConfirmationText(text);
@@ -582,8 +635,12 @@ function isConfirmationFragment(text) {
 async function requestNumberConfirmation(number, correction = false) {
   numberAcknowledgmentRequested = true;
   numberConfirmationListening = false;
+  const generation = ++confirmationPromptGeneration;
   if (!await waitForResponseIdle()) return;
-  send({ type: 'response.create', response: { tool_choice: 'none', instructions: confirmationPrompt(number, correction) } });
+  await queueResponse(
+    { tool_choice: 'none', instructions: confirmationPrompt(number, correction) },
+    () => !ending && pendingNumber === number && numberAcknowledgmentRequested && confirmationPromptGeneration === generation,
+  );
 }
 function handleNumberConfirmation(text) {
   // numberConfirmationListening is the normal marker, but derive the state
@@ -594,10 +651,44 @@ function handleNumberConfirmation(text) {
   if (!confirmationTurn || ending) return false;
   numberConfirmationListening = true;
   const value = String(text || '');
-  if (isAffirmative(value)) {
+  if (/\b(?:bye|goodbye|farewell)\b|never mind|good night|i(?:'m| am) leaving/i.test(value)) {
+    cancelActiveResponse();
+    confirmationPromptGeneration += 1;
+    pendingNumber = null;
+    numberAcknowledgmentRequested = false;
+    numberConfirmationListening = false;
+    ending = true;
+    queueResponse({ instructions: goodbyePrompt('The caller said goodbye or indicated they are leaving.') });
+    return true;
+  }
+  if (isSurpriseRequest(value)) {
+    cancelActiveResponse();
+    confirmationPromptGeneration += 1;
+    pendingNumber = null;
+    numberAcknowledgmentRequested = false;
+    numberConfirmationListening = false;
+    processSurpriseSelection(surpriseArtistFromText(value)).catch((error) => console.error(`Mabel surprise: ${error.message}`));
+    return true;
+  }
+  // A caller's confirmation turn is closed locally. Cancel any response that
+  // may have started from the same audio before the transcript completed.
+  cancelActiveResponse();
+  const correctedNumber = songNumberFromText(value);
+  const tooHighNumber = numberCandidateFromText(value);
+  const affirmative = isAffirmative(value);
+  const negative = isNegative(value);
+  // Rejection or a different number wins over an affirmative in the same
+  // transcript. A repeated pending number plus “yes” still confirms.
+  if (negative || (correctedNumber !== null && correctedNumber !== pendingNumber)) {
+    if (correctedNumber !== null) pendingNumber = correctedNumber;
+    requestNumberConfirmation(pendingNumber, true);
+    return true;
+  }
+  if (affirmative) {
     // Prevent a stale model response from leaking between confirmation and
     // the deterministic local retrieval sequence.
     cancelActiveResponse();
+    confirmationPromptGeneration += 1;
     const number = pendingNumber;
     pendingNumber = null;
     numberConfirmationListening = false;
@@ -605,8 +696,6 @@ function handleNumberConfirmation(text) {
     processNumberSelection(number);
     return true;
   }
-  const correctedNumber = songNumberFromText(value);
-  const tooHighNumber = numberCandidateFromText(value);
   if (Number.isInteger(tooHighNumber) && tooHighNumber > MAX_MULTIPHONE_NUMBER) {
     pendingNumber = null;
     numberAcknowledgmentRequested = false;
@@ -614,8 +703,8 @@ function handleNumberConfirmation(text) {
     redirectTooHighNumber();
     return true;
   }
-  if (isNegative(value) || correctedNumber !== null) {
-    if (correctedNumber !== null) pendingNumber = correctedNumber;
+  if (correctedNumber !== null) {
+    pendingNumber = correctedNumber;
     requestNumberConfirmation(pendingNumber, true);
     return true;
   }
@@ -631,9 +720,12 @@ function surpriseArtistFromText(text) {
     .replace(/[.!?,]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  const match = value.match(/\b(?:pick|choose)(?:\s+me)?\s+(?:one|something|a\s+(?:record|song|tune))(?:\s+for\s+me)?\s+by\s+(.+?)\s*$/i)
-    || value.match(/\b(?:you pick|you choose)\s+(?:one|something|a\s+(?:record|song|tune))(?:\s+for\s+me)?\s+by\s+(.+?)\s*$/i)
-    || value.match(/\b(?:surprise me|give me a surprise)(?:\s+with)?\s+(?:one|something|a\s+(?:record|song|tune))(?:\s+for\s+me)?\s+by\s+(.+?)\s*$/i);
+  // Artist-constrained surprise requests must be the caller's complete
+  // utterance. Matching a phrase inside ordinary conversation can turn a
+  // harmless remark into an unsolicited record pick.
+  const match = value.match(/^(?:pick|choose)(?:\s+me)?\s+(?:one|something|a\s+(?:record|song|tune))(?:\s+for\s+me)?\s+by\s+(.+?)\s*$/i)
+    || value.match(/^(?:you pick|you choose)\s+(?:one|something|a\s+(?:record|song|tune))(?:\s+for\s+me)?\s+by\s+(.+?)\s*$/i)
+    || value.match(/^(?:surprise me|give me a surprise)(?:\s+with)?\s+(?:one|something|a\s+(?:record|song|tune))(?:\s+for\s+me)?\s+by\s+(.+?)\s*$/i);
   if (!match) return null;
   const artist = String(match[1] || '')
     .replace(/\b(?:please|tonight|if you can|for me|would you)\s*$/i, '')
@@ -647,26 +739,51 @@ function isSurpriseRequest(text) {
     .replace(/[.!?,]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  return (
-    Boolean(surpriseArtistFromText(value)) ||
-    /\bsurprise(?: me| us)?\b/.test(value) ||
-    /\byou pick(?: one(?: for me)?| something(?: for me)?| a (?:record|song|tune)| for me)?$/.test(value) ||
-    /\byou choose(?: one(?: for me)?| something(?: for me)?| a (?:record|song|tune)| for me)?$/.test(value) ||
-    /\b(?:it's|it is) up to you\b/.test(value) ||
-    /\byour choice\b|\byou decide\b|\bdealer's choice\b/.test(value) ||
-    /\b(?:whatever|anything) you (?:like|want)\b/.test(value) ||
-    /\b(?:pick|choose) (?:one|something) (?:you like|for me)\b/.test(value) ||
-    /\b(?:make it|give me) a surprise\b/.test(value) ||
-    /\b(?:i'll|i will) leave it to you\b/
-  );
+  return Boolean(surpriseArtistFromText(value)) || /^(?:surprise(?: me| us)?|prize me|give me a surprise|(?:how about |why don't you )?you pick(?: one(?: for me)?| something(?: for me)?| a (?:record|song|tune)| for me)?|(?:how about |why don't you )?you choose(?: one(?: for me)?| something(?: for me)?| a (?:record|song|tune)| for me)?|(?:it's|it is) up to you|your choice|you decide|dealer's choice|(?:whatever|anything) you (?:like|want)|(?:pick|choose) (?:one|something) (?:you like|for me)|(?:make it|give me) a surprise|(?:i'll|i will) leave it to you|pick (?:a|one) (?:record|song|tune) for me|choose (?:a|one) (?:record|song|tune) for me)$/i.test(value);
+}
+
+function isWorkQuestion(text) {
+  const value = String(text || '')
+    .toLowerCase()
+    .replace(/[’‘]/g, "'")
+    .replace(/[.!?,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return /^(?:how(?:'s| is) (?:it going|it going at work|work going|the work going|work|the work|the shift|things at work|things going)|how are (?:things|you doing|things at work|things going at work)|how(?:'s| is) (?:everything|business)|busy (?:night|today|at work|tonight)|what(?:'s| is) it like at work|how(?:'s| is) (?:the )?(?:shop|place) tonight|are you getting (?:a lot of|many|lots of) calls tonight|are (?:the )?calls (?:busy|coming in) tonight|how many calls (?:are you getting|do you have) tonight)$/.test(value);
+}
+
+function redirectToNumberRequest(workQuestion = false) {
+  if (workQuestion) {
+    const workLines = [
+      'Busy as a one-armed paperhanger. Number, please?',
+      'Ringing off the hook. Which number, please?',
+      'Swell and busy here. What number, please?',
+    ];
+    const line = workLines[Math.floor(Math.random() * workLines.length)];
+    queueResponse({
+      tool_choice: 'none',
+      instructions: `Say exactly this brief reply in lively 1940s Mabel style: “${line}” Do not add anything before or after it, choose a record, offer a surprise pick, mention a title or artist, or ask another question. Do not call a tool.`,
+    });
+    return;
+  }
+  queueResponse({
+    tool_choice: 'none',
+    instructions: 'Give one brief, natural social reply in lively 1940s Mabel style, then ask for the song number. End exactly with “Number, please,” “What number, please?” or “Which number, please?” Do not choose a record, offer a surprise pick, mention a title or artist, or ask any other question. Keep the whole reply under 14 words. Do not call a tool.',
+  });
 }
 function looksLikeNumberUtterance(text) {
   const value = String(text || '').toLowerCase().replace(/[’‘]/g, "'").trim();
   if (/\d/.test(value)) return true;
   if (/^(?:number|song number|record number)\b/.test(value)) return true;
+  // Natural requests often put the number after a short request phrase,
+  // such as “play me one twenty two” or “I'd like to hear 143”. Keep these
+  // local so the model cannot improvise a connection or playback response.
+  if (/^(?:play|put on|give me|give us|let(?:'s| us) hear|let me hear|i(?:'d| would) like(?: to hear)?|i want(?: to hear)?|can i get|can i hear|i'll take|how about)\b/.test(value)) {
+    return numberCandidateFromText(value) !== null;
+  }
   return /^(?:zero|oh|one|two|three|tree|free|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|a hundred|one hundred)\b/.test(value);
 }
-function playWavNow(pcm, playbackRate = voicePlaybackRate) {
+function playWavNow(pcm, playbackRate = voicePlaybackRate, label = 'mabel') {
   const wav = Buffer.alloc(44 + pcm.length);
   wav.write('RIFF', 0); wav.writeUInt32LE(36 + pcm.length, 4); wav.write('WAVE', 8);
   wav.write('fmt ', 12); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20);
@@ -679,16 +796,22 @@ function playWavNow(pcm, playbackRate = voicePlaybackRate) {
       if (error) { resolve(); return; }
       let settled = false;
       let timeout;
-      const finish = () => {
+      const expectedDurationMs = (pcm.length / 48000) * 1000 / playbackRate;
+      const startedAt = Date.now();
+      const finish = (exitCode = null, signal = null) => {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
+        const elapsedMs = Date.now() - startedAt;
+        if (elapsedMs + 250 < expectedDurationMs || signal || (exitCode !== null && exitCode !== 0)) {
+          console.warn(`Mabel audio playback ended early: ${label}; expected ${Math.round(expectedDurationMs)} ms, got ${elapsedMs} ms, exit=${exitCode ?? 'n/a'}, signal=${signal ?? 'none'}, pcm=${pcm.length} bytes`);
+        }
         unlink(file, () => {});
         resolve();
       };
       const playback = spawn('afplay', ['-r', String(playbackRate), '-q', '1', file], { stdio: 'ignore' });
       playback.once('error', finish);
-      playback.once('close', finish);
+      playback.once('close', (exitCode, signal) => finish(exitCode, signal));
       const maxDurationMs = Math.max(3000, Math.ceil((pcm.length / 48000) * 1000) + 3000);
       timeout = setTimeout(() => {
         playback.kill('SIGTERM');
@@ -707,7 +830,7 @@ async function restoreMusicVolume(delayMs = 0) {
     try {
       await harmony_press_many('33760171', 'VolumeUp', duckResult.sent, {
         client: harmonyClient,
-        interPressMs: duckInterPressMs,
+        interPressMs: restoreInterPressMs,
       });
       console.log(`Mabel volume restored: ${duckResult.sent} steps.`);
     } catch (error) {
@@ -729,6 +852,7 @@ function stop(code = 0) {
     await restoreMusicVolume();
     ws.close();
     await post('/shyvers/end', { sessionId: session.sessionId }).catch(() => {});
+    logUsageSummary();
     clearTimeout(forceExit);
     process.exit(code);
   })();
@@ -739,8 +863,7 @@ function armIdleTimer() {
   idleTimer = setTimeout(() => {
     if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
     ending = true;
-    const goodbye = goodbyeLines[Math.floor(Math.random() * goodbyeLines.length)];
-    send({ type: 'response.create', response: { instructions: `The caller has been quiet. Say exactly this brief goodbye in your lively Mabel voice, with no question or additional text: "${goodbye}"` } });
+    queueResponse({ instructions: goodbyePrompt('The caller has been quiet and the call is ending.') });
   }, idleSeconds * 1000);
 }
 
@@ -752,7 +875,7 @@ async function processNumberSelection(number) {
   // complete; the acknowledgment must finish before the heels begin.
   await requestRetrievalAcknowledgment(number);
   console.log('Mabel: retrieval acknowledgment finished; fetching the record.');
-  footstepsPromise = enqueueEffect('footsteps');
+  footstepsPromise = footstepsEnabled ? enqueueEffect('footsteps') : Promise.resolve();
   let result;
   try {
     result = await post('/shyvers/response', {
@@ -804,7 +927,7 @@ async function processNumberSelection(number) {
   } else if (deferredPlaybackSucceeded || outcome.playbackStarted) {
       followup = `The service reports that this record started playing immediately. ${trackName ? `It identifies the record as "${trackName}"; mention that title and artist accurately. ${recordReactionInstruction} ` : ''}Say that clearly in a brief, cheerful confirmation. Then say exactly this brief goodbye: "${goodbye}". Do not ask another question; this is the final response and end the call after speaking.`;
   }
-  send({ type: 'response.create', response: { instructions: followup } });
+  queueResponse({ instructions: followup });
 }
 
 async function processSurpriseSelection(artist = null) {
@@ -815,7 +938,7 @@ async function processSurpriseSelection(artist = null) {
   // number and record details only in the final announcement.
   await requestRetrievalAcknowledgment(null, surpriseAcknowledgmentPrompt(artist));
   console.log('Mabel: surprise acknowledgment finished; choosing a record.');
-  footstepsPromise = enqueueEffect('footsteps');
+  footstepsPromise = footstepsEnabled ? enqueueEffect('footsteps') : Promise.resolve();
   const surprisePayload = { sessionId: session.sessionId, deferPlayback: true };
   if (artist) {
     surprisePayload.artist = artist;
@@ -830,9 +953,9 @@ async function processSurpriseSelection(artist = null) {
     ending = true;
     const goodbye = goodbyeLines[Math.floor(Math.random() * goodbyeLines.length)];
     await waitForResponseIdle();
-    send({ type: 'response.create', response: {
+    queueResponse({
       instructions: `The surprise record could not be retrieved. Say briefly that the record room could not fetch a surprise record, then say exactly this goodbye: "${goodbye}". Do not ask another question; this is the final response and end the call after speaking.`,
-    } });
+    });
     return;
   }
 
@@ -856,12 +979,11 @@ async function processSurpriseSelection(artist = null) {
   const number = Number(outcome?.surpriseNumber ?? outcome?.number ?? envelope?.number);
   const trackName = [outcome?.title, outcome?.artist]
     .filter((value) => String(value || '').trim()).join(' by ');
-  const songFact = String(outcome?.songFact?.text || '').trim().replace(/\s+/g, ' ');
   const goodbye = goodbyeLines[Math.floor(Math.random() * goodbyeLines.length)];
   const announcement = Number.isInteger(number)
     ? `I picked number ${number}${trackName ? `, ${trackName}` : ''}.`
     : `I picked this record${trackName ? `, ${trackName}` : ''}.`;
-  let followup = `The caller asked you to pick a surprise record${artist ? ` by ${artist}` : ''}. The service honored that constraint and chose a real Multiphone record privately. When you return, say exactly one concise announcement: "${announcement}" Then say that it's one of your favorites.${songFact ? ` Add one brief factual nugget based only on this verified note: "${songFact}" Keep the fact accurate and concise.` : ' If no factual note is supplied, simply say “It’s one of my faves” and do not invent a reason.'} Do not mention the number before this return announcement, and do not ask another question. Do not invent chart positions, request counts, popularity, biography, musical qualities, or any other factual claims beyond the supplied note.`;
+  let followup = `The caller asked you to pick a surprise record${artist ? ` by ${artist}` : ''}. The service honored that constraint and chose a real Multiphone record privately. When you return, say exactly one concise announcement: "${announcement}" Then say that it's one of your favorites. Do not add outside facts or commentary about the song, artist, chart positions, request counts, popularity, biography, or musical qualities. Do not mention the number before this return announcement, and do not ask another question.`;
   if (outcome?.queuedBehindJukebox) {
     const totalJukeboxRecords = Number(outcome.jukeboxQueueLength) || 1;
     const spinsAway = Math.max(1, totalJukeboxRecords - 1);
@@ -870,7 +992,7 @@ async function processSurpriseSelection(artist = null) {
     followup += 'Then add: "It\'s playing now." ';
   }
   followup += `Then say exactly this goodbye: "${goodbye}" This is the final response and end the call after speaking.`;
-  send({ type: 'response.create', response: { instructions: followup } });
+  queueResponse({ instructions: followup });
 }
 
 ws.on('open', () => {
@@ -882,7 +1004,7 @@ ws.on('open', () => {
     // initial normal session prevents the model from inventing a second number
     // or bypassing the spoken-confirmation gate.
     tools: startOffScript ? [tool, goOffScriptTool, playNowTool, ...offscriptTools] : [], tool_choice: startOffScript ? 'auto' : 'none',
-    audio: { input: { format: { type: 'audio/pcm', rate: 24000 }, transcription: { model: 'gpt-4o-transcribe', language: 'en', prompt: 'Transcribe only the caller’s American English audio; never repeat or invent these instructions. Pay special attention to spoken song numbers and the phrases off script and I’m a VIP. Preserve every leading digit in a song number; carefully distinguish 56 from 156 and 100 from 1.' }, turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 500, silence_duration_ms: vadSilenceMs, create_response: false } }, output: { format: { type: 'audio/pcm', rate: 24000 }, voice: 'sage' } },
+    audio: { input: { format: { type: 'audio/pcm', rate: 24000 }, transcription: { model: 'gpt-4o-transcribe', language: 'en', prompt: 'Transcribe only intelligible caller speech in American English. If the caller is silent or the audio is unintelligible, return no words; never guess a phrase from this prompt. Preserve every leading digit in a song number; carefully distinguish 56 from 156 and 100 from 1.' }, turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 500, silence_duration_ms: vadSilenceMs, create_response: false } }, output: { format: { type: 'audio/pcm', rate: 24000 }, voice: 'sage' } },
   } });
 });
 recorder.stdout.on('data', (chunk) => {
@@ -910,6 +1032,9 @@ ws.on('message', async (raw) => {
   const event = JSON.parse(raw.toString());
   if (event.type === 'response.created') {
     responseInProgress = true;
+    responseFinalized = false;
+    responseAudioStarted = false;
+    responseAudioFinished = false;
     activeResponseId = event.response?.id || null;
     // Each response has its own audio-done event. Reset here rather than only
     // on caller speech, because the final selection response is created after
@@ -917,19 +1042,24 @@ ws.on('message', async (raw) => {
     audioDoneHandled = false;
   }
   if (event.type === 'response.done' || event.type === 'response.failed' || event.type === 'response.cancelled' || event.type === 'response.canceled') {
-    // Some Realtime responses have delivered their transcript and PCM but do
-    // not emit response.output_audio.done before response.done. Complete the
-    // retrieval acknowledgment from the buffered PCM in that case so the
-    // heels/fetch sequence cannot stall after “one sec.”
+    if (event.type === 'response.done') recordResponseUsage(event);
+    // Wait for the audio-drain event before starting playback. response.done
+    // can arrive while the final PCM is still being delivered; playing the
+    // buffer here can truncate a generated acknowledgment mid-sentence.
     if (retrievalAcknowledgmentResolver) {
-      const resolveAcknowledgment = retrievalAcknowledgmentResolver;
-      retrievalAcknowledgmentResolver = null;
-      const pcm = Buffer.concat(audioChunks);
-      audioChunks = [];
-      const playback = pcm.length ? enqueueAudio(() => playWavNow(pcm)) : Promise.resolve();
-      playback.then(resolveAcknowledgment, resolveAcknowledgment);
+      if (event.type !== 'response.done') {
+        finishRetrievalAcknowledgmentPlayback();
+      }
     }
-    markResponseIdle();
+    responseFinalized = true;
+    // response.done can arrive before the final PCM drain event. Keep the
+    // serialized response queue closed until output_audio.done as well, or a
+    // retry/confirmation response can be created while the prior question is
+    // still playing and get truncated or interleaved.
+    if (event.type !== 'response.done') {
+      responseAudioFinished = true;
+    }
+    maybeMarkResponseIdle();
   }
   if (event.type === 'session.updated') {
     if (greetingStarted) return;
@@ -949,15 +1079,18 @@ ws.on('message', async (raw) => {
       const greeting = startOffScript
         ? "Say exactly this brief greeting in English: 'Thanks for calling the VIP line—Mabel here at Multiphone! Whaddya wanna hear?' Do not add a normal song-number prompt or explain the available options."
         : normalGreetingInstruction;
-      send({ type: 'response.create', response: { instructions: greeting } });
+      queueResponse({ instructions: greeting });
     }
   }
   if (event.type === 'response.output_audio.delta' || event.type === 'response.audio.delta') {
     if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
     assistantSpeaking = true;
+    responseAudioStarted = true;
+    responseAudioFinished = false;
     audioChunks.push(Buffer.from(event.delta, 'base64'));
   }
   if (event.type === 'response.output_audio.done' || event.type === 'response.audio.done') {
+    responseAudioFinished = true;
     const responseId = event.response_id || activeResponseId;
     if (responseId) {
       if (handledAudioResponseIds.has(responseId)) return;
@@ -969,13 +1102,14 @@ ws.on('message', async (raw) => {
     }
     const pcm = Buffer.concat(audioChunks);
     audioChunks = [];
+    maybeMarkResponseIdle();
     const primeEarlyAnswer = initialGreetingAudioPending && pendingNumber === null && !startOffScript;
     if (primeEarlyAnswer) initialGreetingAudioPending = false;
     if (retrievalAcknowledgmentResolver) {
-      const resolveAcknowledgment = retrievalAcknowledgmentResolver;
-      retrievalAcknowledgmentResolver = null;
-      const playback = pcm.length ? enqueueAudio(() => playWavNow(pcm)) : Promise.resolve();
-      playback.then(resolveAcknowledgment, resolveAcknowledgment);
+      // The complete PCM buffer is now available; only this path may hand
+      // the acknowledgment to afplay.
+      audioChunks = [pcm];
+      finishRetrievalAcknowledgmentPlayback();
       return;
     }
     const confirmationNumber = pendingNumber;
@@ -992,21 +1126,11 @@ ws.on('message', async (raw) => {
       };
       if (pcm.length) {
         enqueueAudio(async () => {
-          // Keep the final tail of the confirmation prompt in a local buffer.
-          // This catches a caller who starts answering on “right?”/“yeah?”
-          // without sending Mabel's complete prompt into Realtime as caller
-          // audio. The buffered frames are released only after playback ends.
+          // Do not buffer or flush any microphone audio during the prompt.
+          // Even a zero-length tail window can capture Mabel's final digits
+          // and feed them back as a phantom caller correction.
           clearEarlyAnswerBuffer();
-          const playbackMs = Math.ceil((pcm.length / 48000) * 1000 / confirmationPlaybackRate);
-          earlyAnswerTimer = setTimeout(() => {
-            earlyAnswerTimer = null;
-            earlyAnswerBuffering = true;
-          }, Math.max(0, playbackMs - confirmationAnswerWindowMs));
-          await playWavNow(pcm, confirmationPlaybackRate);
-          if (earlyAnswerTimer) clearTimeout(earlyAnswerTimer);
-          earlyAnswerTimer = null;
-          earlyAnswerBuffering = false;
-          flushEarlyAnswerBuffer();
+          await playWavNow(pcm, confirmationPlaybackRate, 'confirmation');
           listenAfterConfirmation();
         });
       } else {
@@ -1076,7 +1200,7 @@ ws.on('message', async (raw) => {
       offScript = true;
       send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: event.call_id, output: JSON.stringify({ ok: true, mode: 'off-script' }) } });
       send({ type: 'session.update', session: { type: 'realtime', tools: [tool, goOffScriptTool, playNowTool, ...offscriptTools], tool_choice: 'auto' } });
-      send({ type: 'response.create', response: { instructions: "Reply with a short conspiratorial, cheerful aside such as 'Uh-huh… but don't tell Shyvers!' or 'Well… okay, but don't tell the boss!' Then ask briefly what the caller wants to hear, such as 'Whaddya wanna hear?' Stay in off-script mode." } });
+      queueResponse({ instructions: "Reply with a short conspiratorial, cheerful aside such as 'Uh-huh… but don't tell Shyvers!' or 'Well… okay, but don't tell the boss!' Then ask briefly what the caller wants to hear, such as 'Whaddya wanna hear?' Stay in off-script mode." });
       return;
     }
     if (!String(event.name || '').startsWith('offscript_')) {
@@ -1097,7 +1221,7 @@ ws.on('message', async (raw) => {
     if (!Number.isInteger(number) || number < 1 || number > MAX_MULTIPHONE_NUMBER) return;
     if (event.name === 'play_multiphone_now' && (!allowPlayNow || !/\b(play|put|start).{0,30}\b(now|immediately|next|on)\b|\bright now\b|\bcome on\b/i.test(lastCallerText))) {
       send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: event.call_id, output: JSON.stringify({ ok: false, error: 'The caller did not explicitly ask to play it immediately; leave it queued.' }) } });
-      send({ type: 'response.create' });
+      queueResponse();
       return;
     }
     if (event.name === 'play_multiphone_now') playNow = true;
@@ -1105,7 +1229,7 @@ ws.on('message', async (raw) => {
     // numbered selection. Reserve the record at the same time, but defer its
     // actual playback until the final Mabel response begins after the heels.
     if (event.name === 'submit_multiphone_number' && !footstepsPromise) {
-      footstepsPromise = enqueueEffect('footsteps');
+      footstepsPromise = footstepsEnabled ? enqueueEffect('footsteps') : Promise.resolve();
     }
     const result = await post('/shyvers/response', {
       sessionId: session.sessionId, number, playNow, suppressSpeech: true,
@@ -1138,7 +1262,7 @@ ws.on('message', async (raw) => {
       const trackName = [outcome.title, outcome.artist].filter((value) => String(value || '').trim()).join(' by ');
       followup = `The service reports that this record started playing immediately. ${trackName ? `It identifies the record as "${trackName}"; mention that title and artist accurately. ${recordReactionInstruction} ` : ''}Say that clearly in a brief, cheerful confirmation; do not say it will wait for other tracks. Then say exactly this brief goodbye: "${goodbye}". Do not ask another question; this is the final response and end the call after speaking.`;
     }
-    send({ type: 'response.create', response: { instructions: followup } });
+    queueResponse({ instructions: followup });
     return;
     }
     const action = event.name.slice('offscript_'.length);
@@ -1159,20 +1283,30 @@ ws.on('message', async (raw) => {
       const goodbye = goodbyeLines[Math.floor(Math.random() * goodbyeLines.length)];
       followup += ` Then say exactly this brief goodbye: "${goodbye}". Do not ask another question; this is the final response and end the call after speaking.`;
     }
-    send({ type: 'response.create', response: { instructions: followup } });
+    queueResponse({ instructions: followup });
   }
   if (event.type === 'conversation.item.input_audio_transcription.completed' && event.transcript) {
     lastCallerText = String(event.transcript);
     callerTranscriptBuffer = lastCallerText;
     console.log(`You: ${lastCallerText}`);
-    if (!offScript && offScriptTriggerPattern.test(lastCallerText)) {
+    // Confirmation is a closed local state. Nothing the caller says during
+    // it may enter off-script mode, trigger a surprise pick, or fall through
+    // to a model-generated reply. This guard must precede every other intent.
+    const confirmationTurn = !offScript && pendingNumber !== null &&
+      (numberConfirmationListening || !numberAcknowledgmentRequested);
+    if (confirmationTurn) {
+      handleNumberConfirmation(lastCallerText);
+    } else if (!offScript && pendingNumber !== null) {
+      // The confirmation prompt is still being played. Ignore any transcript
+      // captured during that protected interval; it may be Mabel's own voice.
+    } else if (!offScript && offScriptTriggerPattern.test(lastCallerText)) {
       offScript = true;
       if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
       send({ type: 'session.update', session: { type: 'realtime', tools: [tool, goOffScriptTool, playNowTool, ...offscriptTools] } });
-      send({ type: 'response.create', response: { instructions: "The caller explicitly invoked off-script mode. Reply with a short, conspiratorial, cheerful aside such as 'Uh-huh… but don't tell Shyvers!' or 'Well… okay, but don't tell the boss!' Then ask briefly what the caller wants to hear, such as 'Whaddya wanna hear?' Stay in off-script mode." } });
+      queueResponse({ instructions: "The caller explicitly invoked off-script mode. Reply with a short, conspiratorial, cheerful aside such as 'Uh-huh… but don't tell Shyvers!' or 'Well… okay, but don't tell the boss!' Then ask briefly what the caller wants to hear, such as 'Whaddya wanna hear?' Stay in off-script mode." });
     } else if (!offScript && requestTooHighNumberRedirect(lastCallerText)) {
       // Numeric input gets first refusal, including values above the limit.
-    } else if (!offScript && requestFastNumberAcknowledgment(lastCallerText)) {
+    } else if (!offScript && await requestFastNumberAcknowledgment(lastCallerText)) {
       // Numeric input must never be interpreted as a surprise request.
     } else if (!offScript && !normalNumberFlow && !looksLikeNumberUtterance(lastCallerText) &&
         (surpriseArtistFromText(lastCallerText) || isSurpriseRequest(lastCallerText))) {
@@ -1181,23 +1315,20 @@ ws.on('message', async (raw) => {
     } else if (/\b(bye|goodbye|farewell)\b|see you|good night|i(?:'m| am) leaving/i.test(lastCallerText)) {
       if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
       ending = true;
-      const goodbye = goodbyeLines[Math.floor(Math.random() * goodbyeLines.length)];
-      send({ type: 'response.create', response: { instructions: `Reply with exactly this brief, warm goodbye in kind: "${goodbye}". Do not ask a question or call a tool; this is the final response.` } });
-    } else if (!offScript && pendingNumber !== null) {
-      // A confirmation transcript must never fall through to a free-form
-      // Realtime reply. During prompt playback, keep the utterance buffered;
-      // once the confirmation state is listening, classify it locally.
-      if (numberConfirmationListening || !numberAcknowledgmentRequested) {
-        handleNumberConfirmation(lastCallerText);
-      }
+    queueResponse({ instructions: goodbyePrompt('The caller said goodbye or indicated they are leaving.') });
     } else if (numberSelectionInProgress || ending) {
       // A duplicate/late transcription can arrive after confirmation has
       // already started the local retrieval sequence. Never let it fall
       // through to a generic Realtime response such as “Got it, dialing...”.
     } else if (pendingNumber !== null || numberAcknowledgmentRequested) {
       // The number confirmation was already requested from a partial transcript.
+    } else if (!offScript && !normalNumberFlow && !looksLikeNumberUtterance(lastCallerText)) {
+      // Ordinary conversation before a number is not permission to improvise
+      // a record choice. Keep this redirect deterministic so the model cannot
+      // reinterpret a social remark as a surprise request.
+      redirectToNumberRequest(isWorkQuestion(lastCallerText));
     } else {
-      send({ type: 'response.create' });
+      queueResponse();
     }
   }
   if (event.type === 'conversation.item.input_audio_transcription.delta' && event.delta) {
@@ -1210,10 +1341,16 @@ ws.on('message', async (raw) => {
     idleTimer = null;
   }
   if (event.type === 'input_audio_buffer.speech_started') {
-    // A caller may answer while a confirmation reminder is still being
-    // finalized. Cancel that response before handling the new utterance so
-    // it cannot leak a generic assistant reply into the confirmation loop.
-    if (!offScript && pendingNumber !== null && !numberSelectionInProgress) cancelActiveResponse();
+    // A caller may speak while any scripted response is still being
+    // finalized. Cancel it before handling the new utterance; otherwise the
+    // old response can finish alongside the queued redirect/confirmation and
+    // leak a generic reply into the closed local state machine.
+    if (!offScript && !ending && !numberSelectionInProgress && responseInProgress) cancelActiveResponse();
+    if (!offScript && !ending && !numberSelectionInProgress && pendingNumber !== null) {
+      // Any new caller turn supersedes a confirmation response that may still
+      // be queued behind a canceled one.
+      confirmationPromptGeneration += 1;
+    }
     clearListeningNudge();
     listeningNudgeCount = 0;
     audioDoneHandled = false;
