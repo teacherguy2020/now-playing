@@ -19,7 +19,7 @@ def main():
     parser.add_argument("--station", default="bar")
     args = parser.parse_args()
     call = post(f"{args.url}/shyvers/call", {"event": "coin", "station": args.station})
-    print("Mabel: Thanks for calling Multiphone! This is Mabel! What song number?")
+    print("Mabel: Thanks for calling Multiphone! This is Mabel! Which number, please?")
     print(f"Session: {call['sessionId']}")
     while True:
         raw = input("Number (q to quit)> ").strip()

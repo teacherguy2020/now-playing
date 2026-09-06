@@ -250,7 +250,7 @@ def main():
         if call_item:
             item, number = call_item
             if not 1 <= number <= MAX_MULTIPHONE_NUMBER:
-                reply = f"Our records run from number 1 through {MAX_MULTIPHONE_NUMBER}. Which number would you like?"
+                reply = f"Our records run from number 1 through {MAX_MULTIPHONE_NUMBER}. Which number, please?"
                 post_json(f"{args.mabel_url}/shyvers/speak", {"sessionId": call["sessionId"],
                                                                "message": reply, "waitForPlayback": True})
                 time.sleep(0.3)

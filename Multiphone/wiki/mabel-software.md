@@ -11,8 +11,8 @@ the Multiphone library.
 
 She speaks American English only and uses intelligible 1940s vernacular. Her
 delivery is currently about 10% faster than ordinary conversation, while
-confirmation digits play at 1.2x so they sound like a quick operator exchange.
-operator exchange rather than slow, robotic recitation. Affectionate forms of
+confirmation digits play at 1.2x so they sound like a quick operator exchange
+rather than slow, robotic recitation. Affectionate forms of
 address—honey, sugar, sweetheart, doll, sport, dear, kiddo, boss, champ, and
 similar terms—are occasional seasoning, not a feature of every line.
 
@@ -64,6 +64,11 @@ has already validated it. The current valid range is **1 through 170**. The
 bridge retrieves protected Now Playing credentials from macOS Keychain. It also
 has a `curl` retry path for transient launchd/network-route failures and avoids
 redundant playback-start requests when Now Playing already reports playback.
+
+The bridge persists the completion time of the last call in the user's local
+Mabel state file. If a new call begins within five minutes, the Realtime client
+uses one of five brief “back so soon?” greetings. The elapsed time is calculated locally;
+it is not sent to the model as a separate lookup or exposed as a timestamp.
 
 The bridge and handset have persistent user LaunchAgents:
 
@@ -126,6 +131,10 @@ Explicit request phrasing is recognized locally as well, including “Play me
 122,” “I'd like to hear 143,” and “How about number one twenty-nine?” These
 forms always enter digit-by-digit confirmation; Mabel must never say that she
 is connecting, routing, or putting the caller through before confirmation.
+Before a number is selected, any clear utterance containing “choose” or
+“surprise” enters the local surprise flow, with a small guard for explicit
+negation such as “I don't want a surprise.” Numeric requests are evaluated
+first, so a number-containing request cannot be mistaken for a surprise pick.
 
 After recognizing a possible number, Mabel repeats each digit as one connected
 phrase and asks a real yes-or-no question with the digits last, for example:
@@ -204,6 +213,12 @@ short subjective reaction—“Great choice,” “One of my faves,” or “Lov
 one”—but she must not invent chart status, request counts, biographical facts,
 or musical qualities.
 
+When the service reports that a record started immediately, Mabel varies only
+the approved playback wording: “It's playing now,” “It's spinning now,” “I
+just dropped the needle on it,” “That one's on the turntable now,” “Your record
+is spinning,” or “The music is underway.” The code owns the playback fact; the
+phrasing cannot change it.
+
 Every successful numbered request is a one-call transaction: announce the
 record, give one configured goodbye, play the hang-up click, release the
 session, and exit. Mabel does not reopen listening for another request.
@@ -215,12 +230,17 @@ The terminal has a separate deterministic surprise route for requests such as:
 - “You pick”;
 - “You pick one for me”;
 - “Surprise me”;
+- “I'll let you surprise me”;
+- “I'll let you choose” or “I'll let you pick one”;
 - “You choose”;
 - “It's up to you”;
 - “Your choice,” “you decide,” “dealer's choice,” “whatever you like,” or
   “I'll leave it to you.”
 
 Artist-constrained forms such as “Pick me one by Frank Sinatra” are supported.
+Before a number is selected, any clear utterance containing “choose” or
+“surprise” enters the deterministic surprise route, with a small negation guard
+for phrases such as “I don't want a surprise.”
 Mabel acts pleasantly surprised or flattered, says a brief hold line, and
 chooses privately from real catalog data. She does not ask the caller to
 confirm or disclose the number before returning. Surprise picks use the same
@@ -319,7 +339,11 @@ The terminal client uses these local assets in `sounds/`:
 The office bed suggests a busy room of operators and loops beneath normal calls;
 it stops before the hang-up click. VIP calls skip the public ringback but still
 use the call's other applicable effects. Mabel's voice plays at 1.1x and
-confirmation responses at 1.2x. Effects retain their natural speed.
+confirmation responses at 1.2x. Effects retain their natural speed. The
+terminal ducks the Denon with 40 rapid `VolumeDown` presses at 0 ms spacing,
+then restores the exact successfully sent count at 5 ms spacing, beginning
+four seconds after final wrap-up starts; shutdown restoration remains the
+fallback.
 
 ### Realtime cost controls
 
@@ -334,6 +358,12 @@ rules live in the session instructions so they can benefit from cached input.
 At shutdown, the terminal prints the aggregate usage reported by Realtime,
 including response count, input/output/total tokens, cached input tokens, and
 audio-token subtotals when the API supplies them.
+
+During recent audio debugging, disabling heels, SoundSource processing, and
+alternate `ffplay` playback did not resolve truncation; removing the explicit
+output-token caps did. Keep `afplay` as the active player unless new evidence
+shows a regression. The optional `--footsteps off` flag remains useful for
+isolating future tests.
 
 All local effects and voice playback use a serialized audio path. Microphone
 input is suppressed during Mabel's speech and effects to prevent SoundSource,

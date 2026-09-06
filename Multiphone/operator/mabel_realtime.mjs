@@ -102,6 +102,10 @@ async function post(path, body) {
 }
 
 const session = await post('/shyvers/call', { event: 'coin', station: "Clem's Place", suppressGreeting: true });
+const secondsSinceLastCall = Number.isFinite(Number(session.secondsSinceLastCall))
+  ? Number(session.secondsSinceLastCall)
+  : null;
+const recentCaller = secondsSinceLastCall !== null && secondsSinceLastCall <= 300;
 let duckPromise = Promise.resolve({ sent: 0 });
 let duckRestored = false;
 if (duckSteps > 0) {
@@ -192,6 +196,14 @@ const goodbyeLines = [
   'I’m on to other calls, dear—take care!',
   'Gotta run, my dear—thanks for calling!',
 ];
+const immediatePlaybackLines = [
+  'It’s playing now.',
+  'It’s spinning now.',
+  'I just dropped the needle on it.',
+  'That one’s on the turntable now.',
+  'Your record is spinning.',
+  'The music is underway.',
+];
 const confirmationTemplates = [
   'You’re requesting {digits}?',
   'Just confirming {digits}?',
@@ -209,6 +221,9 @@ function digitsForSpeech(number, separator = ' ') {
     .split('')
     .map((digit) => spokenDigits[Number(digit)] || digit)
     .join(separator);
+}
+function immediatePlaybackLine() {
+  return immediatePlaybackLines[Math.floor(Math.random() * immediatePlaybackLines.length)];
 }
 const noResponseSecondNudges = [
   'Are you putting one over on me? I know you’re there… which number, please, buddy?',
@@ -739,7 +754,12 @@ function isSurpriseRequest(text) {
     .replace(/[.!?,]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  return Boolean(surpriseArtistFromText(value)) || /^(?:surprise(?: me| us)?|prize me|give me a surprise|(?:how about |why don't you )?you pick(?: one(?: for me)?| something(?: for me)?| a (?:record|song|tune)| for me)?|(?:how about |why don't you )?you choose(?: one(?: for me)?| something(?: for me)?| a (?:record|song|tune)| for me)?|(?:it's|it is) up to you|your choice|you decide|dealer's choice|(?:whatever|anything) you (?:like|want)|(?:pick|choose) (?:one|something) (?:you like|for me)|(?:make it|give me) a surprise|(?:i'll|i will) leave it to you|pick (?:a|one) (?:record|song|tune) for me|choose (?:a|one) (?:record|song|tune) for me)$/i.test(value);
+  if (Boolean(surpriseArtistFromText(value))) return true;
+  // Choice language is an explicit surprise signal in the pre-number funnel.
+  // Keep only a small negation guard so ordinary phrases such as “I don't
+  // want a surprise” do not accidentally start a pick.
+  if (/\b(?:don't|do not|never|not)\b.{0,24}\b(?:choose|surprise)\b/.test(value)) return false;
+  return /\b(?:choose|surprise)\b/.test(value);
 }
 
 function isWorkQuestion(text) {
@@ -918,6 +938,7 @@ async function processNumberSelection(number) {
   ending = true;
   await waitForResponseIdle();
   const goodbye = goodbyeLines[Math.floor(Math.random() * goodbyeLines.length)];
+  const playbackLine = immediatePlaybackLine();
   const trackName = [outcome.title, outcome.artist].filter((value) => String(value || '').trim()).join(' by ');
   let followup = `The caller confirmed Multiphone number ${number}. The service completed that exact numbered record request. ${trackName ? `It identifies the record as "${trackName}"; mention that title and artist accurately. ${recordReactionInstruction} ` : ''}If playback started, say so clearly; otherwise state the exact number of spins before the record using the service result. Do not invent or change the number. Then say exactly this brief goodbye: "${goodbye}". Do not ask another question; this is the final response and end the call after speaking.`;
   if (outcome.queuedBehindJukebox) {
@@ -925,7 +946,7 @@ async function processNumberSelection(number) {
     const spinsAway = Math.max(1, totalJukeboxRecords - 1);
     followup = `The service reports exactly ${spinsAway} spin${spinsAway === 1 ? '' : 's'} before this newly requested record. Use that exact number; do not guess. ${trackName ? `The authoritative catalog result is exactly “${trackName}”. Say exactly this sentence, once, with no substitutions: “I've got your record: ${trackName}.” Do not invent or replace the title or artist with another name. ${recordReactionInstruction} ` : ''}Then say that the record was added to the others waiting here on my desk for Clem's Place. You must mention Clem's Place and use “for Clem's Place,” not “at Clem's Place.” Do not repeat the title or artist in that sentence. It'll be coming up in ${spinsAway} spin${spinsAway === 1 ? '' : 's'} or so. Then say exactly this brief goodbye: "${goodbye}". Do not ask another question; this is the final response and end the call after speaking.`;
   } else if (deferredPlaybackSucceeded || outcome.playbackStarted) {
-      followup = `The service reports that this record started playing immediately. ${trackName ? `It identifies the record as "${trackName}"; mention that title and artist accurately. ${recordReactionInstruction} ` : ''}Say that clearly in a brief, cheerful confirmation. Then say exactly this brief goodbye: "${goodbye}". Do not ask another question; this is the final response and end the call after speaking.`;
+      followup = `The service reports that this record started playing immediately. ${trackName ? `It identifies the record as "${trackName}"; mention that title and artist accurately. ${recordReactionInstruction} ` : ''}Say exactly this approved playback line: "${playbackLine}" Then say exactly this brief goodbye: "${goodbye}". Do not ask another question; this is the final response and end the call after speaking.`;
   }
   queueResponse({ instructions: followup });
 }
@@ -980,6 +1001,7 @@ async function processSurpriseSelection(artist = null) {
   const trackName = [outcome?.title, outcome?.artist]
     .filter((value) => String(value || '').trim()).join(' by ');
   const goodbye = goodbyeLines[Math.floor(Math.random() * goodbyeLines.length)];
+  const playbackLine = immediatePlaybackLine();
   const announcement = Number.isInteger(number)
     ? `I picked number ${number}${trackName ? `, ${trackName}` : ''}.`
     : `I picked this record${trackName ? `, ${trackName}` : ''}.`;
@@ -987,9 +1009,9 @@ async function processSurpriseSelection(artist = null) {
   if (outcome?.queuedBehindJukebox) {
     const totalJukeboxRecords = Number(outcome.jukeboxQueueLength) || 1;
     const spinsAway = Math.max(1, totalJukeboxRecords - 1);
-    followup += `After that, add: "It'll be coming up in exactly ${spinsAway} spin${spinsAway === 1 ? '' : 's'} or so." `;
+    followup += `After that, add: "It'll be coming up in ${spinsAway} spin${spinsAway === 1 ? '' : 's'} or so." `;
   } else if (surprisePlaybackStarted) {
-    followup += 'Then add: "It\'s playing now." ';
+    followup += `Then add exactly: "${playbackLine}" `;
   }
   followup += `Then say exactly this goodbye: "${goodbye}" This is the final response and end the call after speaking.`;
   queueResponse({ instructions: followup });
@@ -1078,7 +1100,9 @@ ws.on('message', async (raw) => {
       await duckPromise;
       const greeting = startOffScript
         ? "Say exactly this brief greeting in English: 'Thanks for calling the VIP line—Mabel here at Multiphone! Whaddya wanna hear?' Do not add a normal song-number prompt or explain the available options."
-        : normalGreetingInstruction;
+        : recentCaller
+          ? 'Say exactly one brief greeting in lively 1940s Mabel style, choosing one: “Multiphone! Mabel here—back so soon? Which number, please?”, “Multiphone! Mabel here—well, look who’s back! What number, please?”, “Multiphone! Mabel here—you again? Which number, please?”, “Multiphone! Mabel here—I knew you’d be back soon. What number, please?”, or “Multiphone! Mabel here—back again, you rascal? Which number, please?” Do not add anything before or after it. The caller is already connected; Mabel retrieves a record. Do not describe the request as dialing, connecting, transferring, routing, or putting anyone through.'
+          : normalGreetingInstruction;
       queueResponse({ instructions: greeting });
     }
   }
@@ -1251,8 +1275,9 @@ ws.on('message', async (raw) => {
     const goodbye = goodbyeLines[Math.floor(Math.random() * goodbyeLines.length)];
     let followup = `Give a brief cheerful confirmation, then say exactly this brief goodbye: "${goodbye}". Do not ask another question; this is the final response and end the call after speaking.`;
     if (playNow) {
+      const playbackLine = immediatePlaybackLine();
       const trackName = [outcome.title, outcome.artist].filter((value) => String(value || '').trim()).join(' by ');
-      followup = `The immediate-play request succeeded. ${trackName ? `The service identifies the record as "${trackName}"; mention that title and artist accurately. ${recordReactionInstruction} ` : ''}Say a playful, cheerful line that makes clear the selected record is starting right now, then say exactly this brief goodbye: "${goodbye}". Do not ask another question; this is the final response and end the call after speaking.`;
+      followup = `The immediate-play request succeeded. ${trackName ? `The service identifies the record as "${trackName}"; mention that title and artist accurately. ${recordReactionInstruction} ` : ''}Say exactly this approved playback line: "${playbackLine}" Then say exactly this brief goodbye: "${goodbye}". Do not ask another question; this is the final response and end the call after speaking.`;
     } else if (outcome.queuedBehindJukebox) {
       const totalJukeboxRecords = Number(outcome.jukeboxQueueLength) || 1;
       const spinsAway = Math.max(1, totalJukeboxRecords - 1);

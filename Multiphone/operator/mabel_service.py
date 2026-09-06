@@ -2,20 +2,19 @@
 """Mabel v0.1: local session service for the Shyvers Multiphone."""
 
 import argparse
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 import json
 import os
 import random
-import re
 import shutil
 import tempfile
 import threading
 import subprocess
+import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import urllib.error
 import urllib.request
-from urllib.parse import quote, urlencode, urlsplit, urlunsplit
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from main import keychain_key, submit
 from mabel_voice import keychain_value, OPENAI_ACCOUNT, OPENAI_SERVICE
@@ -24,12 +23,12 @@ from mabel_voice import keychain_value, OPENAI_ACCOUNT, OPENAI_SERVICE
 SESSIONS = {}
 LOCK = threading.Lock()
 REALTIME_PROCESS = None
+LAST_CALL_STATE_FILE = os.environ.get(
+    "MABEL_LAST_CALL_STATE_FILE",
+    os.path.expanduser("~/.mabel_multiphone_state.json"),
+)
 MAX_MULTIPHONE_NUMBER = 170
 MAX_SURPRISE_NUMBER = MAX_MULTIPHONE_NUMBER
-SONG_FACT_CACHE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "state", "mabel-song-facts.json")
-SONG_FACT_CACHE_LOCK = threading.Lock()
-SONG_FACT_CACHE = None
-SONG_FACT_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="mabel-song-fact")
 CHOICE_CONFIRMATIONS = (
     "Great choice! Number {number}, coming right up, thanks.",
     "Wonderful pick! Number {number}, coming right up, thanks.",
@@ -37,6 +36,25 @@ CHOICE_CONFIRMATIONS = (
     "You got it! Number {number}, coming right up, thanks.",
     "Oh, I like that one! Number {number}, coming right up, thanks.",
 )
+
+
+def load_last_call_time():
+    try:
+        with open(LAST_CALL_STATE_FILE, "r", encoding="utf-8") as state_file:
+            value = json.load(state_file).get("lastCompletedCallAt")
+        return float(value) if value is not None else None
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def save_last_call_time(timestamp):
+    state_dir = os.path.dirname(LAST_CALL_STATE_FILE)
+    if state_dir:
+        os.makedirs(state_dir, exist_ok=True)
+    temporary = f"{LAST_CALL_STATE_FILE}.tmp"
+    with open(temporary, "w", encoding="utf-8") as state_file:
+        json.dump({"lastCompletedCallAt": timestamp}, state_file)
+    os.replace(temporary, LAST_CALL_STATE_FILE)
 
 
 def find_node_binary():
@@ -266,119 +284,6 @@ def get_now_playing_json(server, path, *, timeout=30):
         raise RuntimeError(f"Could not read the Now Playing catalog: {error.reason}") from error
 
 
-def _load_song_fact_cache():
-    global SONG_FACT_CACHE
-    with SONG_FACT_CACHE_LOCK:
-        if SONG_FACT_CACHE is not None:
-            return SONG_FACT_CACHE
-        try:
-            with open(SONG_FACT_CACHE_PATH, encoding="utf-8") as handle:
-                loaded = json.load(handle)
-            SONG_FACT_CACHE = loaded if isinstance(loaded, dict) else {}
-        except (OSError, ValueError):
-            SONG_FACT_CACHE = {}
-        return SONG_FACT_CACHE
-
-
-def _save_song_fact_cache():
-    cache_dir = os.path.dirname(SONG_FACT_CACHE_PATH)
-    os.makedirs(cache_dir, exist_ok=True)
-    temporary = tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=cache_dir,
-                                            prefix="mabel-song-facts-", delete=False)
-    try:
-        json.dump(SONG_FACT_CACHE or {}, temporary, ensure_ascii=False, indent=2)
-        temporary.write("\n")
-        temporary.close()
-        os.replace(temporary.name, SONG_FACT_CACHE_PATH)
-    finally:
-        try:
-            os.unlink(temporary.name)
-        except OSError:
-            pass
-
-
-def _song_fact_key(title, artist):
-    return " ".join(f"{artist or ''} {title or ''}".casefold().split())
-
-
-def _fact_search_text(value):
-    return re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).strip()
-
-
-def lookup_song_fact(title, artist):
-    """Return one short, song-specific fact from Wikipedia, or None.
-
-    This is deliberately conservative: the search result must contain the
-    song title, and only the first one or two sentences of its summary are
-    returned. The cache avoids repeating lookups during later surprise calls.
-    """
-    title = str(title or "").strip()
-    artist = str(artist or "").strip()
-    if not title or not artist:
-        return None
-    key = _song_fact_key(title, artist)
-    cache = _load_song_fact_cache()
-    with SONG_FACT_CACHE_LOCK:
-        if key in cache:
-            return cache[key] or None
-
-    headers = {"User-Agent": "Multiphone-Mabel/0.1 (local song-fact lookup)"}
-    search_params = urlencode({
-        "action": "query", "list": "search",
-        "srsearch": f'intitle:"{title}" "{artist}"',
-        "format": "json", "utf8": "1", "srlimit": "5",
-    })
-    try:
-        request = urllib.request.Request(
-            f"https://en.wikipedia.org/w/api.php?{search_params}", headers=headers)
-        with urllib.request.urlopen(request, timeout=2.0) as response:
-            search = json.loads(response.read().decode() or "{}")
-        normalized_title = _fact_search_text(title)
-        title_words = set(normalized_title.split())
-        candidates = (search.get("query") or {}).get("search") or []
-        ranked_candidates = []
-        for row in candidates:
-            candidate_title = str(row.get("title") or "").strip()
-            normalized_candidate = _fact_search_text(candidate_title)
-            if not title_words or not title_words.issubset(set(normalized_candidate.split())):
-                continue
-            suffix = normalized_candidate[len(normalized_title):].strip() \
-                if normalized_candidate.startswith(normalized_title) else normalized_candidate
-            score = 10
-            if normalized_candidate == normalized_title:
-                score = 100
-            elif suffix.startswith(("song", "tune", "single", "composition")) \
-                    or " song" in suffix or " tune" in suffix \
-                    or (suffix.startswith("(") and any(word in suffix for word in ("song", "tune", "single"))):
-                score = 90
-            ranked_candidates.append((score, candidate_title))
-        page_title = max(ranked_candidates, default=(0, None))[1]
-        if not page_title:
-            fact = None
-        else:
-            page_url = "https://en.wikipedia.org/api/rest_v1/page/summary/" + quote(page_title, safe="")
-            request = urllib.request.Request(page_url, headers=headers)
-            with urllib.request.urlopen(request, timeout=2.0) as response:
-                summary = json.loads(response.read().decode() or "{}")
-            extract = str(summary.get("extract") or "").strip()
-            sentences = re.split(r"(?<=[.!?])\s+", extract)
-            short_extract = " ".join(sentences[:2]).strip()[:420]
-            fact = {"text": short_extract, "source": str(summary.get("content_urls", {}).get("desktop", {}).get("page") or "")}
-            if not fact["text"]:
-                fact = None
-    except (OSError, ValueError, KeyError, TypeError):
-        fact = None
-
-    if fact:
-        with SONG_FACT_CACHE_LOCK:
-            cache[key] = fact
-            try:
-                _save_song_fact_cache()
-            except OSError:
-                pass
-    return fact
-
-
 def choose_surprise_record(server, *, artist=None, exclude_holiday=False, defer_playback=False):
     """Choose a real Multiphone playlist position without revealing it first.
 
@@ -450,25 +355,12 @@ def choose_surprise_record(server, *, artist=None, exclude_holiday=False, defer_
         raise RuntimeError(f"The Multiphone playlist has no eligible records{suffix}")
     chosen = random.choice(eligible)
     number = int(chosen["number"])
-    fact_future = SONG_FACT_EXECUTOR.submit(
-        lookup_song_fact,
-        chosen.get("title", ""),
-        chosen.get("artist") or artist_name,
-    )
     result = submit(number, endpoint=server.now_playing_endpoint,
                     track_key=server.track_key, defer_playback=defer_playback)
-    try:
-        song_fact = fact_future.result(timeout=3.0)
-    except FutureTimeoutError:
-        fact_future.cancel()
-        song_fact = None
-    except Exception:
-        song_fact = None
     return {**result, "surprise": True, "surpriseNumber": number,
             "surpriseArtist": artist_name or None,
             "title": result.get("title") or chosen.get("title", ""),
-            "artist": result.get("artist") or chosen.get("artist", ""),
-            "songFact": song_fact}
+            "artist": result.get("artist") or chosen.get("artist", "")}
 
 
 class MabelHandler(BaseHTTPRequestHandler):
@@ -506,14 +398,22 @@ class MabelHandler(BaseHTTPRequestHandler):
                 return self.send_json(400, {"ok": False, "error": "event must be coin"})
             station = str(data.get("station") or "bar").strip()[:80]
             session_id = uuid.uuid4().hex
+            now = time.time()
             with LOCK:
-                SESSIONS[session_id] = {"station": station}
+                last_call_at = load_last_call_time()
+                SESSIONS[session_id] = {"station": station, "startedAt": now}
+            seconds_since_last_call = None
+            if last_call_at is not None and now >= last_call_at:
+                seconds_since_last_call = round(now - last_call_at)
             # Do not open the microphone while the greeting is still playing;
             # SoundSource or another audio router may otherwise feed Mabel's
             # own voice back into the next recording.
             if data.get("suppressGreeting") is not True:
-                speak("Multiphone! This is Mabel. What number?", self.server, True)
-            return self.send_json(201, {"ok": True, "sessionId": session_id, "station": station, "state": "awaiting-number"})
+                speak("Multiphone! This is Mabel. Number, please.", self.server, True)
+            return self.send_json(201, {
+                "ok": True, "sessionId": session_id, "station": station,
+                "state": "awaiting-number", "secondsSinceLastCall": seconds_since_last_call,
+            })
 
         if self.path in ("/shyvers/start", "/shyvers/start-normal"):
             # LAN trigger for an iPad Shortcut. The iPad starts the call; the
@@ -662,6 +562,7 @@ class MabelHandler(BaseHTTPRequestHandler):
             session_id = str(data.get("sessionId") or "")
             with LOCK:
                 SESSIONS.pop(session_id, None)
+                save_last_call_time(time.time())
             return self.send_json(200, {"ok": True})
 
         self.send_json(404, {"ok": False, "error": "not found"})

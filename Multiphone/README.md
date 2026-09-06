@@ -74,10 +74,13 @@ The runtime exports `harmony_command(device_id, command, status)`,
 variants for use by other local Node tools. The permanent WebSocket URL is
 `ws://10.0.0.21:8088/?domain=svcs.myharmony.com&hubId=3871019`.
 
-Terminal Mabel uses `harmony_press_many()` to lower the Denon by 30
+Terminal Mabel uses `harmony_press_many()` to lower the Denon by 40
 `VolumeDown` presses rapidly during a call and restores the successfully sent presses
 with matching `VolumeUp` presses four seconds after her final wrap-up begins. Override with
-`--duck-steps N`, or disable for a test with `--duck-steps 0`.
+`--duck-steps N`, or disable for a test with `--duck-steps 0`. Ducking defaults to a
+zero-delay burst; use `--duck-inter-press-ms N` to add spacing. Fade-up restoration
+defaults to 5 ms between presses and can be adjusted independently with
+`--restore-inter-press-ms N`.
 
 ## Keyboard prototype
 
@@ -196,7 +199,7 @@ The SSL 2 microphone is currently `:0`. Realtime streams microphone audio to
 OpenAI and buffers Mabel's response audio for playback through the Mac's default
 output. The current Realtime voice is `sage`; `--voice` on the bridge affects
 fallback TTS, not Realtime. The model can only submit a validated number from 1
-through 25 in normal mode. Stop with Ctrl-C.
+through 170 in normal mode. Stop with Ctrl-C.
 
 The call also uses local effects in `sounds/`: `phone-ringback-answer-click.m4a`
 plays before the greeting, `high-heels-walk-2s.m4a` plays only after Realtime
@@ -207,6 +210,12 @@ finished. Effects are played with `afplay`, serialized with Mabel's voice audio,
 and microphone input is suppressed while they play. Override the directory with
 `--sounds-dir /path/to/sounds`.
 
+Mabel's generated responses intentionally have no artificial output-token cap:
+small caps previously truncated otherwise complete audio. Cost is controlled by
+local number/confirmation state, suppressed microphone input during playback,
+local effects, concise stable instructions, and prompt termination after the
+record result.
+
 After each reply, Mabel waits for another caller utterance. After 15 seconds of
 silence she exits without a spoken goodbye; `--idle-seconds 20` changes that
 window. If the caller says goodbye, she replies in kind and exits immediately.
@@ -214,8 +223,12 @@ The eventual Pico/light controller can watch the clean session exit or the
 `/shyvers/end` lifecycle to release the Shyvers indicators.
 
 When a numbered selection joins records already waiting, Mabel gives the desk
-announcement with the exact approximate number of spins ahead, then ends that
+announcement with the approximate number of spins ahead, then ends that
 call after speaking. A new coin starts the next session.
+
+For records that start immediately, Mabel uses varied approved wording such as
+“It's playing now,” “It's spinning now,” or “I just dropped the needle on it.”
+The service result remains authoritative; only the phrasing varies.
 
 ### Off-script mode
 
