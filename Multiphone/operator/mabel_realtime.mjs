@@ -15,6 +15,10 @@ for (let i = 2; i < process.argv.length; i += 1) {
   if (process.argv[i].startsWith('--')) args.set(process.argv[i].slice(2), process.argv[i + 1] || '');
 }
 const input = args.get('input') || ':0';
+// launchd does not reliably inherit the interactive shell PATH. Resolve the
+// capture binary explicitly so endpoint-launched calls use the same ffmpeg as
+// terminal-launched calls.
+const ffmpegBinary = ['/opt/homebrew/bin/ffmpeg', '/usr/local/bin/ffmpeg'].find((candidate) => existsSync(candidate)) || 'ffmpeg';
 const model = args.get('model') || 'gpt-realtime';
 const mabelUrl = args.get('mabel-url') || 'http://127.0.0.1:8788';
 const startOffScript = args.has('off-script');
@@ -120,7 +124,7 @@ if (duckSteps > 0) {
 const ws = new WebSocket(`wss://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`, {
   headers: { Authorization: `Bearer ${apiKey}` },
 });
-const recorder = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 'avfoundation', '-i', input, '-ac', '1', '-ar', '24000', '-f', 's16le', '-'], { stdio: ['ignore', 'pipe', 'inherit'] });
+const recorder = spawn(ffmpegBinary, ['-hide_banner', '-loglevel', 'error', '-f', 'avfoundation', '-i', input, '-ac', '1', '-ar', '24000', '-f', 's16le', '-'], { stdio: ['ignore', 'pipe', 'inherit'] });
 let audioChunks = [];
 let assistantSpeaking = false;
 let ending = false;
@@ -170,11 +174,10 @@ let initialGreetingAudioPending = false;
 let earlyAnswerBuffering = false;
 let earlyAnswerBuffer = [];
 let earlyAnswerTimer = null;
-// Keep the tail of the caller's answer while the greeting is still draining.
-// This catches a number spoken immediately after the greeting without opening
-// the microphone for the entire greeting and risking Mabel's own voice being
-// transcribed as the caller.
-const earlyAnswerWindowMs = 1400;
+// Keep only a short tail of caller audio while a normal prompt is finishing.
+// This makes interruption feel natural without reopening the old 1.4-second
+// buffer that caused Mabel's own spoken digits to become phantom numbers.
+const earlyAnswerWindowMs = 200;
 // Never feed microphone audio from while Mabel is speaking back into Realtime:
 // her digit-by-digit confirmation can otherwise be transcribed as the caller's
 // correction. Confirmation turns use no tail buffer at all; the mic opens only
@@ -595,14 +598,13 @@ function confirmationPrompt(number, correction = false) {
   return `Say exactly one brief confirmation in your lively Mabel voice: "${line}" This is one uninterrupted sentence. Spell out every digit separately as one connected hyphenated phrase with no pauses between digits. The digits must be the final words of the question. ${confirmationQuestionDeliveryInstruction} Do not change, invent, or reorder any digit. Do not say the number as a single cardinal number. Ignore the caller’s other conversation and do not answer it. Do not say you are playing, connecting, fetching, or looking at a shelf. Do not append “okay?”, “right?”, or “yeah?” after the digits, call a tool, add anything else, or ask a different question.`;
 }
 function retrievalAcknowledgmentPrompt(number) {
-  return `The caller has already confirmed the record request. Give one natural, brief retrieval acknowledgment in lively 1940s Mabel style, as an operator physically fetching that exact record from the shelf. Keep the response focused only on getting the record off the shelf. You may say that you are fetching, grabbing, or taking the record from the shelf. Do not describe or imply a telephone connection, transfer, routing, dialing, or putting anyone through. Do not ask whether the caller wants anything else. Do not mention another number, title, artist, queue position, tool, service result, or goodbye. Do not introduce a new topic or handle any caller intent. Finish the acknowledgment and stop so the local retrieval effects can begin.`;
+  return 'The caller confirmed the record. Give one quick, natural 1940s-style acknowledgment that you are fetching the record from the shelf. No question, connection language, new topic, facts, or goodbye. Finish and stop.';
 }
 function surpriseAcknowledgmentPrompt(artist = null) {
   const constraint = artist ? ` by ${artist}` : '';
   return `Give a natural, concise surprise acknowledgment in lively 1940s Mabel style${constraint}. Vary the wording naturally and sound pleasantly flattered that the caller wants Mabel to choose. End by indicating that Mabel will find one now, such as “Hold on” or “One moment.” Do not mention a number, title, tool, or confirmation. Do not add a second question, goodbye, or outside facts.`;
 }
 async function requestRetrievalAcknowledgment(number, prompt = retrievalAcknowledgmentPrompt(number)) {
-  if (!await waitForResponseIdle()) return false;
   return new Promise((resolve) => {
     let settled = false;
     const finish = () => {
@@ -1026,7 +1028,7 @@ ws.on('open', () => {
     // initial normal session prevents the model from inventing a second number
     // or bypassing the spoken-confirmation gate.
     tools: startOffScript ? [tool, goOffScriptTool, playNowTool, ...offscriptTools] : [], tool_choice: startOffScript ? 'auto' : 'none',
-    audio: { input: { format: { type: 'audio/pcm', rate: 24000 }, transcription: { model: 'gpt-4o-transcribe', language: 'en', prompt: 'Transcribe only intelligible caller speech in American English. If the caller is silent or the audio is unintelligible, return no words; never guess a phrase from this prompt. Preserve every leading digit in a song number; carefully distinguish 56 from 156 and 100 from 1.' }, turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 500, silence_duration_ms: vadSilenceMs, create_response: false } }, output: { format: { type: 'audio/pcm', rate: 24000 }, voice: 'sage' } },
+    audio: { input: { format: { type: 'audio/pcm', rate: 24000 }, transcription: { model: 'gpt-4o-transcribe', language: 'en', prompt: 'Transcribe only intelligible caller speech in American English. If the caller is silent or the audio is unintelligible, return no words; never guess a phrase from this prompt. Preserve every leading digit in a song number exactly as spoken.' }, turn_detection: { type: 'server_vad', threshold: 0.5, prefix_padding_ms: 500, silence_duration_ms: vadSilenceMs, create_response: false } }, output: { format: { type: 'audio/pcm', rate: 24000 }, voice: 'sage' } },
   } });
 });
 recorder.stdout.on('data', (chunk) => {
@@ -1127,7 +1129,8 @@ ws.on('message', async (raw) => {
     const pcm = Buffer.concat(audioChunks);
     audioChunks = [];
     maybeMarkResponseIdle();
-    const primeEarlyAnswer = initialGreetingAudioPending && pendingNumber === null && !startOffScript;
+    const primeEarlyAnswer = !startOffScript && pendingNumber === null &&
+      !numberAcknowledgmentRequested && !numberConfirmationListening;
     if (primeEarlyAnswer) initialGreetingAudioPending = false;
     if (retrievalAcknowledgmentResolver) {
       // The complete PCM buffer is now available; only this path may hand

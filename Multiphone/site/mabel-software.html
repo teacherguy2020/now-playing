@@ -72,7 +72,9 @@ MPD/moOde queue and room playback
 <p>Mabel state file. If a new call begins within five minutes, the Realtime client</p>
 <p>uses one of five brief “back so soon?” greetings. The elapsed time is calculated locally;</p>
 <p>it is not sent to the model as a separate lookup or exposed as a timestamp.</p>
-<p>The bridge and handset have persistent user LaunchAgents:</p>
+<p>The bridge and handset have persistent user LaunchAgents. The Mabel bridge is
+configured as an interactive Aqua-session job so endpoint-launched capture
+receives the SSL 2 signal just as the terminal process does:</p>
 <ul>
 <li><code>com.brianwis.mabel-service</code> on <code>127.0.0.1:8788</code>;</li>
 <li><code>com.brianwis.mabel-handset</code> on HTTPS port <code>8790</code>.</li>
@@ -169,11 +171,11 @@ That’s number one-five-eight?
 <p>Once a number is confirmed, the microphone stays closed until the call ends.</p>
 <h3>Timing and no-response behavior</h3>
 <p>The initial greeting-to-listening delay is effectively 0 ms after local audio</p>
-<p>drains. A 1.4-second early-answer buffer can preserve an answer that starts</p>
-<p>while the greeting is finishing, forwarding up to 1.6 seconds once listening</p>
-<p>opens. Confirmation prompts use no tail buffer: the microphone opens only after</p>
-<p>Mabel's confirmation audio drains, preventing her spoken digits from being</p>
-<p>re-transcribed as the caller's correction.</p>
+<p>drains. Normal prompts use a short 200 ms early-answer tail so a caller can</p>
+<p>begin naturally as Mabel finishes speaking. Confirmation prompts use no tail</p>
+<p>buffer: the microphone opens only after Mabel's confirmation audio drains,</p>
+<p>preventing her spoken digits from being re-transcribed as the caller's</p>
+<p>correction.</p>
 <p>If Mabel is waiting and hears nothing, she uses a strict two-second escalation:</p>
 <ol>
 <li>“Number, please,” “What number, please?” or “Which number, please?”</li>

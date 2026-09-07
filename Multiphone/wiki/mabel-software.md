@@ -70,7 +70,9 @@ Mabel state file. If a new call begins within five minutes, the Realtime client
 uses one of five brief “back so soon?” greetings. The elapsed time is calculated locally;
 it is not sent to the model as a separate lookup or exposed as a timestamp.
 
-The bridge and handset have persistent user LaunchAgents:
+The bridge and handset have persistent user LaunchAgents. The Mabel bridge is
+configured as an interactive Aqua-session job so endpoint-launched capture
+receives the SSL 2 signal just as the terminal process does:
 
 - `com.brianwis.mabel-service` on `127.0.0.1:8788`;
 - `com.brianwis.mabel-handset` on HTTPS port `8790`.
@@ -87,8 +89,9 @@ Start it with:
 node operator/mabel_realtime.mjs --input :0
 ```
 
-The current input is an SSL 2 at AVFoundation device `:0`. The client uses the
-GA Realtime WebSocket API with 24 kHz PCM input/output and the `sage` voice.
+The current input is an SSL 2 at AVFoundation device `:0`. The client converts
+the capture stream to mono 24 kHz PCM and uses the GA Realtime WebSocket API
+with 24 kHz PCM input/output and the `sage` voice.
 Mabel response PCM is buffered into temporary WAV files and played locally with
 macOS `afplay`; this is more reliable than leaving a raw streaming player open
 between turns. The OpenAI key is read from Keychain, never from the command
@@ -169,11 +172,11 @@ Once a number is confirmed, the microphone stays closed until the call ends.
 ### Timing and no-response behavior
 
 The initial greeting-to-listening delay is effectively 0 ms after local audio
-drains. A 1.4-second early-answer buffer can preserve an answer that starts
-while the greeting is finishing, forwarding up to 1.6 seconds once listening
-opens. Confirmation prompts use no tail buffer: the microphone opens only after
-Mabel's confirmation audio drains, preventing her spoken digits from being
-re-transcribed as the caller's correction.
+drains. Normal prompts use a short 200 ms early-answer tail so a caller can
+begin naturally as Mabel finishes speaking. Confirmation prompts use no tail
+buffer: the microphone opens only after Mabel's confirmation audio drains,
+preventing her spoken digits from being re-transcribed as the caller's
+correction.
 
 If Mabel is waiting and hears nothing, she uses a strict two-second escalation:
 

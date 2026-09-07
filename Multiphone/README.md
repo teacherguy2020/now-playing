@@ -134,9 +134,10 @@ An iPad Shortcut can start a VIP/off-script Realtime call by POSTing to
 `/shyvers/start` on the Mac, or a normal numbered call by POSTing to
 `/shyvers/start-normal`. The bridge launches one Realtime process; a second
 request while Mabel is active returns HTTP 409. Both endpoints use the
-configured `--realtime-input` device (default `:0`), so select the Bluetooth
-microphone as the Mac input or set a different AVFoundation selector when
-starting the bridge.
+configured `--realtime-input` device (default `:0`), which currently maps to
+the SSL 2 at AVFoundation device `:0`. The bridge LaunchAgent must run as an
+interactive Aqua user-session process so endpoint-launched Realtime capture
+receives the same Core Audio signal as the terminal flow.
 
 ## Mabel fixed-window microphone fallback
 
@@ -195,9 +196,9 @@ fixed recording-window prototype. With `mabel_service.py` running, start:
 node operator/mabel_realtime.mjs --input :0
 ```
 
-The SSL 2 microphone is currently `:0`. Realtime streams microphone audio to
-OpenAI and buffers Mabel's response audio for playback through the Mac's default
-output. The current Realtime voice is `sage`; `--voice` on the bridge affects
+The SSL 2 microphone is currently `:0`. Realtime converts the capture stream to
+mono 24 kHz PCM, streams it to OpenAI, and buffers Mabel's response audio for
+playback through the Mac's default output. The current Realtime voice is `sage`; `--voice` on the bridge affects
 fallback TTS, not Realtime. The model can only submit a validated number from 1
 through 170 in normal mode. Stop with Ctrl-C.
 
