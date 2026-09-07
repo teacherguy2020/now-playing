@@ -6,6 +6,14 @@ A moOde-focused now-playing API + UI stack with optional Alexa integration.
 
 Turbo charge your moOde experience without altering your moOde installation.
 
+## Related Shyvers project
+
+The Shyvers Multiphone/Mabel runtime, Harmony integration, Pico credit trigger,
+sounds, and project wiki now live in the separate
+[`shyvers-multiplayer`](https://github.com/teacherguy2020/shyvers-multiplayer)
+repository. This repository remains the Now Playing service and queue
+integration used by that project.
+
 
 ![Now Playing index view](./docs/images/readme-index.jpg)
 ![Now Playing index view](./docs/images/controller.jpeg)
