@@ -1,5 +1,14 @@
 # Shyvers Multiphone Project
 
+## Related project
+
+Shyvers Multiplayer has its own repository:
+
+<https://github.com/teacherguy2020/shyvers-multiplayer>
+
+Keep Multiplayer-specific source and deployment files there. This project
+contains the Multiphone/Mabel runtime, Mac bridge, and Pico credit trigger.
+
 Historical reconstruction and reversible modernization of a Shyvers Multiphone.
 
 ## Project idea
