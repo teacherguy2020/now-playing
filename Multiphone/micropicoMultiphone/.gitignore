@@ -1,4 +1,5 @@
 secrets.py
 secrets*.py
+!secrets.example.py
 *.pyc
 __pycache__/
