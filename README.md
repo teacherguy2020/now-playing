@@ -10,7 +10,7 @@ Turbo charge your moOde experience without altering your moOde installation.
 
 The Shyvers Multiphone/Mabel runtime, Harmony integration, Pico credit trigger,
 sounds, and project wiki now live in the separate
-[`shyvers-multiplayer`](https://github.com/teacherguy2020/shyvers-multiplayer)
+[`shyvers-multiphone-mabel`](https://github.com/teacherguy2020/shyvers-multiphone-mabel)
 repository. This repository remains the Now Playing service and queue
 integration used by that project.
 
