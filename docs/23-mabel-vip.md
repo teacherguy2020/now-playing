@@ -93,4 +93,4 @@ letting Mabel manipulate individual bulbs or raw Harmony Hub endpoints.
 
 - `ARCHITECTURE.md` — system boundaries and API ownership
 - `docs/03-alexa.md` — Alexa capabilities and “play here” behavior
-- [`shyvers-multiplayer` Mabel documentation](https://github.com/teacherguy2020/shyvers-multiplayer/tree/main/wiki) — Mabel session and VIP behavior
+- [`shyvers-multiphone-mabel` Mabel documentation](https://github.com/teacherguy2020/shyvers-multiphone-mabel/tree/main/wiki) — Mabel session and VIP behavior

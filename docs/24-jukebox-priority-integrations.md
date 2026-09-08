@@ -43,6 +43,6 @@ customer-priority segment.
 ## Ownership boundary
 
 The Shyvers Multiphone/Mabel conversation and hardware live in the separate
-[`shyvers-multiplayer`](https://github.com/teacherguy2020/shyvers-multiplayer)
+[`shyvers-multiphone-mabel`](https://github.com/teacherguy2020/shyvers-multiphone-mabel)
 repository. This repository owns the validated selection endpoints and the
 queue/playback behavior described here.
