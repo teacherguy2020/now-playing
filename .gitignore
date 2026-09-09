@@ -7,6 +7,13 @@ src/private/*.local.mjs
 # Runtime/install artifacts
 node_modules/
 npm-debug.log*
+.cache/
+/data/
+/logs/
+/var/
+.env
+/config/now-playing.config.json
+/moode_library_index.json
 
 # Local packaging/deploy artifacts
 /*.zip

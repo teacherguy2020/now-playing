@@ -6,9 +6,19 @@ Kiosk mode is the 1280×400 control surface optimized for always-on display use.
 
 ## Switching moOde to Kiosk
 
-To run kiosk on moOde local display, set moOde Web UI target URL to:
+To run kiosk on the moOde local display, set moOde Web UI target URL to the
+portless LAN-proxy URL. This is required by moOde r1034 and later, whose
+Target URL validation rejects an explicit port:
 
-- `http://<WEB_HOST>:8101/kiosk.html`
+- `http://<WEB_HOST>/kiosk.html`
+
+For this installation, the URL is:
+
+- `http://nowplaying.local/kiosk.html`
+
+Do not use `http://<WEB_HOST>:8101/kiosk.html` in moOde's Target URL field.
+The LAN proxy serves the public display route on HTTP port 80 and forwards it
+to the Now-Playing web service.
 
 Path in moOde:
 

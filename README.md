@@ -57,14 +57,20 @@ In moOde, open:
 
 - **Configure -> Peripherals -> Local display -> Web UI target URL**
 
-Set one of these URLs:
+For moOde r1034 and later, use the portless LAN-proxy URL. Newer moOde
+Target URL validation rejects URLs containing an explicit port.
 
-- **Player / Peppy router (recommended):** `http://<WEB_HOST>:8101/display.html?kiosk=1`
-- **Kiosk runtime directly:** `http://<WEB_HOST>:8101/kiosk.html`
+- **Player / Peppy router (recommended):** `http://<WEB_HOST>/display.html?kiosk=1`
+- **Kiosk runtime directly:** `http://<WEB_HOST>/kiosk.html`
+
+Do not add `:8101` to these moOde Target URLs. The standard LAN proxy exposes
+the display routes on HTTP port 80 and forwards them to the Now-Playing web
+service. See [docs/22-moode-upgrade-runbook.md](./docs/22-moode-upgrade-runbook.md)
+for the post-upgrade moOde checklist.
 
 Typical mDNS-friendly setup:
 
-- `http://nowplaying.local:8101/display.html?kiosk=1`
+- `http://nowplaying.local/display.html?kiosk=1`
 
 Then use the app push actions:
 

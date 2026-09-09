@@ -105,8 +105,12 @@ One of the most important operational facts is:
 Recommended target:
 
 ```text
-http://<WEB_HOST>:8101/display.html?kiosk=1
+http://<WEB_HOST>/display.html?kiosk=1
 ```
+
+For moOde r1034 and later, this Target URL must be portless. The LAN proxy
+serves the display route on HTTP port 80 and forwards it to the Now-Playing
+web service; do not use `:8101` in moOde's Target URL field.
 
 Why this matters:
 - users should not have to keep changing the moOde Web UI target URL whenever they switch among Peppy, Player, and Visualizer

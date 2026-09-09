@@ -87,9 +87,19 @@ In moOde, go to:
 
 - **Configure -> Peripherals -> Local display -> Web UI target URL**
 
-Set it to:
+For moOde r1034 and later, set it to the portless LAN-proxy URL:
 
-- `http://<WEB_HOST>:8101/display.html?kiosk=1`
+- `http://<WEB_HOST>/display.html?kiosk=1`
+
+For example:
+
+- `http://nowplaying.local/display.html?kiosk=1`
+
+Do not use `http://<WEB_HOST>:8101/display.html?kiosk=1` as the moOde Target
+URL. r1034's dual-display validation rejects an explicit port, while the
+standard LAN proxy serves this route on HTTP port 80 and forwards it to the
+Now-Playing web service. The `:8101` address may still be appropriate for
+direct service access and internal Chromium launch commands documented below.
 
 This is the recommended handoff URL for the display system in this project.
 
@@ -304,7 +314,7 @@ grep -E -- '--app=' /home/moode/.xinitrc
 Expected:
 
 ```bash
---app="http://<WEB_HOST>:8101/display.html?kiosk=1"
+--app="http://<WEB_HOST>/display.html?kiosk=1"
 ```
 
 Optional runtime check:

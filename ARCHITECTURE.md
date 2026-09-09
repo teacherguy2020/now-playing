@@ -35,7 +35,8 @@ These are configurable via runtime config (`ports.api`, `ports.ui`).
 
 3. **Display/Kiosk (optional)**
    - Chromium kiosk or browser device
-   - Recommended stable target: `http://<WEB_HOST>:8101/display.html?kiosk=1`
+   - Recommended moOde Target URL (r1034+): `http://<WEB_HOST>/display.html?kiosk=1`
+   - The portless URL uses the LAN proxy; do not put `:8101` in moOde's Target URL field
    - `display.html` routes to custom Peppy/Player/moOde UI modes from saved profile state
    - No metadata/control logic on device
 

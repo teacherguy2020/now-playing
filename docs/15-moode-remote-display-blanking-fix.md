@@ -1,7 +1,9 @@
 # 15) moOde remote display blanking fix (wake-on-play)
 
 ## Problem
-When moOde local display target URL is set to an external page (for example `http://nowplaying.local:8101/display.html?kiosk=1`), screen blanking/wake behavior can break:
+When moOde local display target URL is set to an external page (for example
+`http://nowplaying.local/display.html?kiosk=1`), screen blanking/wake behavior
+can break:
 
 - Blanking appears inconsistent or immediately wakes.
 - With `wake_display=1`, display can be forced back on repeatedly.
@@ -30,7 +32,10 @@ This preserves wake-on-play while using external target URL control.
 
 ## How to apply on a new moOde host
 
-> Use this only when local display target URL points to an external host (`http://<other-host>:8101/...`).
+> Use this only when local display target URL points to an external host
+> (`http://<other-host>/...`). For moOde r1034+, use the portless LAN-proxy
+> URL in the Target URL field; the `:3101` API port below is a separate
+> playback-state endpoint used by the watchdog patch.
 
 1. Backup watchdog file:
 
@@ -54,15 +59,20 @@ and gate wake on JSON playback state:
 
 - wake only if `state == "play"`.
 
-3. Restart the watchdog path (or reboot moOde):
+3. Reload the watchdog process after patching:
 
 ```bash
-sudo systemctl restart php8.2-fpm || true
-sudo systemctl restart nginx || true
-# or simply reboot
+sudo killall -s 9 watchdog.sh || true
+sudo bash -c '/var/www/daemon/watchdog.sh 3 >/dev/null 2>&1 &'
 ```
 
-If your moOde image uses different service names, reboot is the safest universal option.
+Restart the local display as well if Chromium still has the old target in
+`/home/moode/.xinitrc`:
+
+```bash
+grep -- '--app=' /home/moode/.xinitrc
+sudo systemctl restart localdisplay
+```
 
 ### Reference logic (shell sketch)
 
@@ -84,9 +94,9 @@ fi
 1. Confirm local display URL:
    - `sqlite3 /var/local/www/db/moode-sqlite3.db "select value from cfg_system where param='local_display_url';"`
 2. Confirm patched line exists:
-   - `grep -n "now-playing" /var/www/daemon/watchdog.sh`
+   - `grep -n "External Now-Playing targets" /var/www/daemon/watchdog.sh`
 3. Confirm behavior:
-   - With `wake_display=1`, screen wakes on active play state and no longer false-wakes from 8101 `/command/` 404s.
+   - With `wake_display=1`, screen wakes on active play state and no longer false-wakes from `/command/` 404s.
 
 ## Reference files in this repo (drop-in + patch)
 
