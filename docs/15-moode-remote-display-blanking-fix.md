@@ -24,11 +24,12 @@ Patched `/var/www/daemon/watchdog.sh` remote branch to query:
 
 - `http://<host>:3101/now-playing`
 
-and wake only when:
+and wake when either:
 
-- `state == "play"`
+- `state == "play"` for ordinary Now-Playing playback, or
+- `isAirplay == true` for AirPlay playback (MPD reports `stop` because AirPlay owns the audio path).
 
-This preserves wake-on-play while using external target URL control.
+This preserves wake-on-play while using external target URL control and keeps the display awake during AirPlay.
 
 ## How to apply on a new moOde host
 

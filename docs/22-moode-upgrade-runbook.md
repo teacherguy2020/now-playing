@@ -75,7 +75,9 @@ The resulting remote branch must query:
 http://<NOW_PLAYING_HOST>:3101/now-playing
 ```
 
-and wake only when JSON `state` is `play`. Back up the new moOde file first;
+and wake when JSON `state` is `play` **or** `isAirplay` is `true`. AirPlay
+owns the audio path directly, so MPD may report `stop` while audio is playing.
+Back up the new moOde file first;
 do not blindly replace the entire watchdog because upstream releases change
 surrounding logic.
 

@@ -146,8 +146,10 @@ while true; do
 			# Remote display host (e.g. nowplaying.local:8101) does not expose /command/.
 			# Query now-playing API state instead and wake only on actual play state.
 			REMOTE_HOST=${LOCAL_DISPLAY_HOST%%:*}
-			NP_STATE=$(curl -s --max-time 1 "http://$REMOTE_HOST:3101/now-playing" | awk -F'"state":"' '{print $2}' | awk -F'"' '{print $1}')
-			[ "$NP_STATE" = "play" ] && HW_PARAMS="playing" || HW_PARAMS="closed"
+			NP_JSON=$(curl -s --max-time 1 "http://$REMOTE_HOST:3101/now-playing")
+			NP_STATE=$(printf '%s' "$NP_JSON" | awk -F'"state":"' '{print $2}' | awk -F'"' '{print $1}')
+			NP_AIRPLAY=$(printf '%s' "$NP_JSON" | grep -c '"isAirplay":true')
+			[ "$NP_STATE" = "play" ] || [ "$NP_AIRPLAY" != "0" ] && HW_PARAMS="playing" || HW_PARAMS="closed"
 		fi
 
 		if [[ $HW_PARAMS = "closed" || $HW_PARAMS = "" ]]; then
