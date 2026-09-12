@@ -84,6 +84,10 @@ A good current interpretation is:
 - **app-host API routes** are usually the control plane through which those actions become real
 - **MPD** remains a core playback/queue truth source, but the app frequently mediates, enriches, or translates what that truth means for visible behavior
 
+Alexa-originated controller requests are an important exception to Alexa-mode
+queue behavior: `in the theater` requests fill and play the normal moOde/MPD
+queue, while Echo-targeted requests retain Alexa-specific queue handling.
+
 That is the model the rest of this page tries to preserve.
 
 ## Core distinction: playback vs queue

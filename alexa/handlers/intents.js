@@ -37,7 +37,21 @@ function createIntentHandlers(deps) {
     apiQueueWizardApply,
     apiGetWasPlaying,
     apiGetRuntimeConfig,
+    apiSetWasPlaying,
   } = deps;
+
+  async function markMoodeControllerPlayback() {
+    try {
+      await apiSetWasPlaying({
+        active: false,
+        playbackTarget: 'moode',
+        playbackMode: 'normal',
+        stoppedAt: Date.now(),
+      });
+    } catch (_) {
+      // Controller playback must proceed if the marker is unavailable.
+    }
+  }
 
   function markAwaitingQueueConfirmation(handlerInput, value) {
     try {
@@ -484,6 +498,7 @@ function createIntentHandlers(deps) {
     },
     async handle(handlerInput) {
       const rawQuery = safeStr(handlerInput?.requestEnvelope?.request?.intent?.slots?.query?.value);
+      await markMoodeControllerPlayback();
       return runPlayAnything(handlerInput, rawQuery, true);
     },
   };
@@ -549,6 +564,7 @@ function createIntentHandlers(deps) {
         && Alexa.getIntentName(handlerInput.requestEnvelope) === 'VibeThisSongHereIntent';
     },
     async handle(handlerInput) {
+      await markMoodeControllerPlayback();
       return runVibeFromCurrent(handlerInput, true);
     },
   };

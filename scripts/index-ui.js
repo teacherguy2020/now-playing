@@ -557,12 +557,13 @@ async function fetchAlexaPayload() {
     const npHas = !!(np && (np.file || np.title || np.artist));
     const wpActive = !!(wp && wp.active);
     const npActive = !!(np && np.active);
+    const playbackTarget = String(wp?.playbackTarget || np?.playbackTarget || '').trim().toLowerCase();
 
     // Source of truth in Alexa mode: prefer wasPlaying for text identity.
     const payload = wpHas ? wp : (npHas ? np : null);
     const active = wpHas ? wpActive : npActive;
 
-    if (!fresh || !payload || !active) return null;
+    if (!fresh || !payload || !active || (playbackTarget && playbackTarget !== 'echo')) return null;
 
     const aArtist = String(payload?.artist || '').trim();
     const aTitle = String(payload?.title || '').trim();

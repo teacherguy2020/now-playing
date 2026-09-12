@@ -220,6 +220,8 @@ function createAudioHandlers(deps) {
               title: decodeHtmlEntities(safeStr(p.title || '')),
               artist: decodeHtmlEntities(safeStr(p.artist || '')),
               album: decodeHtmlEntities(safeStr(p.album || '')),
+              playbackTarget: 'echo',
+              playbackMode: 'alexa',
               startedAt: Date.now(),
               active: true,
             }, 'PlaybackStarted:');

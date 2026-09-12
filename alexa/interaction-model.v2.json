@@ -132,20 +132,35 @@
           ],
           "samples": [
             "play {query} here",
+            "in the theater play {query}",
             "start {query} here",
+            "in the theater start {query}",
             "queue {query} here",
+            "in the theater queue {query}",
             "play artist {query} here",
+            "in the theater play artist {query}",
             "start artist {query} here",
+            "in the theater start artist {query}",
             "queue artist {query} here",
+            "in the theater queue artist {query}",
             "play album {query} here",
+            "in the theater play album {query}",
             "start album {query} here",
+            "in the theater start album {query}",
             "queue album {query} here",
+            "in the theater queue album {query}",
             "play playlist {query} here",
+            "in the theater play playlist {query}",
             "start playlist {query} here",
+            "in the theater start playlist {query}",
             "queue playlist {query} here",
+            "in the theater queue playlist {query}",
             "play song {query} here",
+            "in the theater play song {query}",
             "play track {query} here",
-            "play music by {query} here"
+            "in the theater play track {query}",
+            "play music by {query} here",
+            "in the theater play music by {query}"
           ]
         },
         {
@@ -167,9 +182,13 @@
           "slots": [],
           "samples": [
             "vibe this song here",
+            "in the theater vibe this song",
             "vibe this track here",
+            "in the theater vibe this track",
             "make a vibe from this song here",
-            "build a vibe from this song here"
+            "in the theater make a vibe from this song",
+            "build a vibe from this song here",
+            "in the theater build a vibe from this song"
           ]
         },
         {

@@ -28,6 +28,23 @@ Use this page to manage Alexa integration and voice command behavior.
 ## Behavior note
 In Alexa mode, queue behavior is different from normal playback. The UI treats queue head as queued-next.
 
+### Alexa as a moOde controller
+
+Use a leading destination phrase when Alexa should control moOde instead of
+streaming through an Echo:
+
+- In the theater, play Miles Davis
+- In the theater, play the album Kind of Blue
+- In the theater, play my Dinner playlist
+- In the theater, queue jazz
+- In the theater, vibe this song
+
+These requests use normal moOde/MPD playback and queue semantics. Displays show
+ordinary Now Playing and Next Up rather than Alexa Mode. Alexa remains the
+request origin for diagnostics, but moOde is the playback authority.
+
+The older trailing here forms remain supported for compatibility.
+
 ## Mabel VIP relationship
 
 The Multiphone project's Mabel agent reuses the same bounded music capabilities

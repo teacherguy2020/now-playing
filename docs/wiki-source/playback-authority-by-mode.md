@@ -49,6 +49,19 @@ The strong current model is:
 
 This page is the companion to `queue-and-playback-model.md`.
 
+## Alexa request origin versus playback target
+
+Alexa is a request origin, not necessarily the playback authority. Requests
+using the leading `in the theater` routing phrase target moOde/MPD and use
+normal queue semantics:
+
+- `requestOrigin: alexa`
+- `playbackTarget: moode`
+- `playbackMode: normal`
+
+Only Echo-targeted Alexa playback should use Alexa remembered-track state,
+synthetic queue handling, or Alexa-specific display treatment.
+
 ## Mode 1: local file playback
 
 ## Authority model
