@@ -62,6 +62,8 @@
     });
 
     let statusTimer = 0;
+    let connectTimer = 0;
+    let playResolved = false;
     const setStatus = (message = '') => {
       let status = document.getElementById('webStreamStatus');
       if (!message) {
@@ -105,6 +107,7 @@
     };
 
     audio.addEventListener('playing', () => {
+      clearTimeout(connectTimer);
       paint('on');
       setStatus('Playing on this device');
     });
@@ -115,6 +118,7 @@
     button.addEventListener('click', () => {
       if (!audio.paused) {
         log('STOP requested');
+        clearTimeout(connectTimer);
         audio.pause();
         audio.removeAttribute('src');
         audio.load();
@@ -123,16 +127,31 @@
       }
 
       // Critical diagnostic path: no async work before play().
+      clearTimeout(connectTimer);
+      playResolved = false;
       paint('busy');
       log('CLICK; assigning direct source', STREAM_URL);
       audio.src = STREAM_URL;
       const playPromise = audio.play();
       log('play() returned', playPromise);
+      connectTimer = setTimeout(() => {
+        if (audio.paused || playResolved) return;
+        log('CONNECTION TIMEOUT', { readyState: audio.readyState, networkState: audio.networkState });
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+        paint('off');
+        setStatus('Webstream unavailable');
+        showErrorModal('The webstream did not begin playing within 12 seconds. Check that moOde HTTP Server output is enabled.');
+      }, 12000);
       playPromise.then(() => {
+        playResolved = true;
+        clearTimeout(connectTimer);
         log('play() RESOLVED');
         paint('on');
         setStatus('Playing on Device');
       }).catch((error) => {
+        clearTimeout(connectTimer);
         log('play() REJECTED', error.name, error.message, error);
         paint('off');
         const detail = [error?.name, error?.message].filter(Boolean).join(': ');
