@@ -41,6 +41,7 @@ while the wiki is the deeper maintainer reference.
 15. [Controller Recents + Last.fm (Tablet)](./20-controller-recents-lastfm.md)
 16. [moOde AirPlay Metadata Hardening](./21-moode-airplay-metadata-hardening.md)
 17. [moOde Upgrade Runbook](./22-moode-upgrade-runbook.md)
+18. [Webstream Listener](./25-webstream-listener.md)
 
 ## Cross-cutting chapters
 
