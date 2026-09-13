@@ -397,8 +397,8 @@ function createIntentHandlers(deps) {
     markAwaitingQueueConfirmation(handlerInput, false);
     if (!rawQuery) return speak(handlerInput, 'Tell me what you want to hear.', false);
 
-    const playHere = forceHere || /\bhere\b\s*$/i.test(rawQuery);
-    const query = rawQuery.replace(/\bhere\b\s*$/i, '').trim() || rawQuery;
+    const playHere = forceHere || /\b(?:here|locally)\b\s*$/i.test(rawQuery);
+    const query = rawQuery.replace(/\b(?:here|locally)\b\s*$/i, '').trim() || rawQuery;
 
     const tryStartFromResp = async (resp) => {
       const snap = extractSnapFromApi(resp);

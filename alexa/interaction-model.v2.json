@@ -160,7 +160,19 @@
             "play track {query} here",
             "in the theater play track {query}",
             "play music by {query} here",
-            "in the theater play music by {query}"
+            "in the theater play music by {query}",
+            "play {query} locally",
+            "start {query} locally",
+            "queue {query} locally",
+            "play artist {query} locally",
+            "start artist {query} locally",
+            "queue artist {query} locally",
+            "play album {query} locally",
+            "start album {query} locally",
+            "queue album {query} locally",
+            "play playlist {query} locally",
+            "start playlist {query} locally",
+            "queue playlist {query} locally"
           ]
         },
         {
