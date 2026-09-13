@@ -123,7 +123,9 @@
         localOutputButton.title = 'Local output status unavailable';
         log('LOCAL OUTPUT STATUS FAILED', error?.message || error);
       });
-      localOutputButton.addEventListener('click', async () => {
+      localOutputButton.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         if (localOutputEnabled === null) return;
         const previous = localOutputEnabled;
         localOutputButton.disabled = true;
