@@ -93,6 +93,50 @@
       modal.querySelector('button')?.addEventListener('click', close);
       modal.addEventListener('click', (event) => { if (event.target === modal) close(); });
     };
+    const localOutputButton = document.getElementById('npLocalOutputBtn');
+    if (localOutputButton) {
+      const speakerOn = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.1-3.8v7.6a4.5 4.5 0 0 0 2.1-3.8zm0-8.5v2.1A8 8 0 0 1 20.5 12a8 8 0 0 1-4 6.4v2.1A10 10 0 0 0 22.5 12a10 10 0 0 0-6-8.5z"/></svg>';
+      const speakerMuted = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3zm14.7 3 3.3-3.3-1.4-1.4-3.3 3.3-3.3-3.3-1.4 1.4 3.3 3.3-3.3 3.3 1.4 1.4 3.3-3.3 3.3 3.3 1.4-1.4-3.3-3.3z"/></svg>';
+      let localOutputEnabled = null;
+      const paintLocalOutput = (enabled) => {
+        localOutputEnabled = !!enabled;
+        localOutputButton.innerHTML = localOutputEnabled ? speakerOn : speakerMuted;
+        localOutputButton.setAttribute('aria-label', localOutputEnabled ? 'Mute local moOde output' : 'Unmute local moOde output');
+        localOutputButton.title = localOutputEnabled ? 'Mute local moOde output' : 'Unmute local moOde output';
+        localOutputButton.setAttribute('aria-pressed', localOutputEnabled ? 'false' : 'true');
+      };
+      const outputRequest = async (method, body) => {
+        const runtime = await fetch('/config/runtime', { cache: 'no-store' });
+        const runtimeJson = await runtime.json().catch(() => ({}));
+        const key = String(runtimeJson?.config?.trackKey || '').trim();
+        const response = await fetch('/mpd/local-output', {
+          method,
+          headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
+          ...(body ? { body: JSON.stringify(body) } : {}),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
+        return result;
+      };
+      outputRequest('GET').then((result) => paintLocalOutput(result?.output?.enabled)).catch((error) => {
+        localOutputButton.disabled = true;
+        localOutputButton.title = 'Local output status unavailable';
+        log('LOCAL OUTPUT STATUS FAILED', error?.message || error);
+      });
+      localOutputButton.addEventListener('click', async () => {
+        if (localOutputEnabled === null) return;
+        const previous = localOutputEnabled;
+        localOutputButton.disabled = true;
+        try {
+          const result = await outputRequest('POST', { enabled: !previous });
+          paintLocalOutput(result?.output?.enabled ?? !previous);
+        } catch (error) {
+          showErrorModal(String(error?.message || error || 'Could not change local moOde output.'));
+        } finally {
+          localOutputButton.disabled = false;
+        }
+      });
+    }
     const paint = (state = 'off') => {
       const on = state === 'on';
       const busy = state === 'busy';

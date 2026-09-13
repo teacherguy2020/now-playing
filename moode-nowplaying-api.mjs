@@ -4587,6 +4587,56 @@ app.post('/mpd/reset-playback-state', async (req, res) => {
   }
 });
 
+function parseMpdOutputs(raw) {
+  const outputs = [];
+  let current = null;
+  for (const line of String(raw || '').split(/\r?\n/)) {
+    if (line === 'OK' || line.startsWith('ACK')) break;
+    const i = line.indexOf(':');
+    if (i <= 0) continue;
+    const key = line.slice(0, i).trim().toLowerCase();
+    const value = line.slice(i + 1).trim();
+    if (key === 'outputid') {
+      if (current) outputs.push(current);
+      current = { id: Number(value), name: '', plugin: '', enabled: false };
+    } else if (current) {
+      if (key === 'outputname') current.name = value;
+      else if (key === 'plugin') current.plugin = value;
+      else if (key === 'outputenabled') current.enabled = value === '1';
+    }
+  }
+  if (current) outputs.push(current);
+  return outputs.filter((x) => Number.isInteger(x.id));
+}
+
+app.get('/mpd/local-output', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    const outputs = parseMpdOutputs(await mpdQueryRaw('outputs'));
+    const local = outputs.find((x) => x.id === 0) || null;
+    if (!local) return res.status(404).json({ ok: false, error: 'Local ALSA output not found' });
+    return res.json({ ok: true, output: local, outputs });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
+app.post('/mpd/local-output', async (req, res) => {
+  try {
+    if (!requireTrackKey(req, res)) return;
+    if (typeof req.body?.enabled !== 'boolean') {
+      return res.status(400).json({ ok: false, error: 'enabled must be boolean' });
+    }
+    const raw = await mpdQueryRaw(req.body.enabled ? 'enableoutput 0' : 'disableoutput 0');
+    if (mpdHasACK(raw)) return res.status(409).json({ ok: false, error: 'MPD rejected local output change' });
+    const outputs = parseMpdOutputs(await mpdQueryRaw('outputs'));
+    const local = outputs.find((x) => x.id === 0) || null;
+    return res.json({ ok: true, output: local, outputs });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message || String(e) });
+  }
+});
+
 app.post('/mpd/start-queue', async (req, res) => {
   try {
     if (!requireTrackKey(req, res)) return;
