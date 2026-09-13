@@ -14,8 +14,10 @@ headphones or AirPods.
 - A same-origin /stream Caddy proxy is also supported for testing and future
   configuration-driven use; it proxies to moOde's MPD HTTP output on port
   8000.
-- The browser listener does not change MPD playback, queue state, volume, or
-  the physical moOde output.
+- The browser listener does not change MPD playback, queue state, or volume.
+- Controller surfaces also provide a speaker toggle beside the current-track
+  rating and playlist controls. It enables/disables moOde's local ALSA output
+  only; the HTTP webstream remains enabled.
 - A browser user gesture is required by iPadOS/Safari before audio can start.
 - MP3 320 is the recommended format. It is reliably playable by Safari and is
   appropriate for AirPods.
@@ -72,9 +74,15 @@ sudo systemctl reload caddy
 
 ## UI behavior
 
-The control is available on the tablet, phone, and computer controller
+The controls are available on the tablet, phone, and computer controller
 surfaces. **Listen on Device** means the device running that browser—not the
-moOde player. Turning it off stops only that browser's listener.
+moOde player. Turning it off stops only that browser's listener. The speaker
+toggle is independent of Listen on Device and can mute or restore the local
+moOde output without starting a browser stream.
+
+The non-editor 1280×400 kiosk display intentionally hides Listen on Device,
+Route to Alexa, playlist-add, and local-output controls. Those are controller
+actions and are not needed on the moOde-attached display.
 
 If the button reports that the stream is unavailable, check the MPD HTTP
 output first. For the optional proxy path, confirm that Caddy returns

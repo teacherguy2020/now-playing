@@ -58,6 +58,15 @@ That is concrete file behavior, not a documentation guess.
 
 ## 2. `controller.html` contains the kiosk layout itself
 
+### Controller-only actions are hidden in the live kiosk
+
+The non-editor `1280×400` kiosk profile hides the controller action row and
+the current-track playlist-add and local-output controls. This keeps
+**Listen on Device**, **Route to Alexa**, playlist mutation, and speaker-output
+controls on the tablet/phone/computer controller surfaces, rather than on the
+moOde-attached display. Kiosk editor mode retains the underlying controls for
+design and testing.
+
 ### Kiosk layout CSS is embedded directly in the page
 Direct file inspection shows extensive CSS for:
 - `body.kiosk1280`
