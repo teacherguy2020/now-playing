@@ -9,18 +9,18 @@
     const style = document.createElement('style');
     style.id = 'webStreamStyles';
     style.textContent = `
-      .webStreamToggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+      .webStreamToggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:145px;min-width:145px;white-space:nowrap}
       .webStreamToggle .webStreamIcon{font-size:15px;line-height:1}
       .webStreamToggle.is-on{border-color:#55c98a !important;box-shadow:0 0 0 1px rgba(85,201,138,.28) inset;color:#b9ffd8 !important}
       .webStreamToggle.is-busy{opacity:.72;cursor:wait}
       .webStreamSpinner{width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:webStreamSpin .7s linear infinite}
       @keyframes webStreamSpin{to{transform:rotate(360deg)}}
-      .webStreamMobileAction,.webStreamComputerAction{position:relative;display:flex;justify-content:center;margin:8px 0}
+      .webStreamMobileAction,.webStreamComputerAction{position:relative;display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:8px 0}
       .webStreamMobileAction .webStreamToggle,.webStreamComputerAction .webStreamToggle{border:1px solid rgba(160,180,220,.35);border-radius:8px;padding:7px 12px;background:rgba(12,22,40,.78);color:#dbe7ff;font:inherit;cursor:pointer}
       .tabletActionBar{gap:6px !important;justify-content:flex-end !important}
-      .tabletTopCards{grid-template-columns:minmax(0,1.15fr) minmax(240px,1fr) !important}
+      .tabletTopCards{grid-template-columns:minmax(0,1fr) minmax(300px,1.1fr) !important}
       .tabletActionBar .queuePos{min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis}
-      .tabletActionBar .webStreamToggle{padding:5px 7px;font-size:12px;flex:0 1 auto}
+      .tabletActionBar .webStreamToggle{padding:5px 7px;font-size:12px;flex:0 0 145px}
       .tabletActionBar #tabletAudioInfoBtn{padding:5px 7px;font-size:12px;flex:0 0 auto}
       .webStreamDebugAudio{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
       .webStreamStatus{position:absolute;left:0;top:calc(100% + 4px);z-index:20;max-width:min(360px,calc(100vw - 28px));padding:5px 8px;border:1px solid rgba(160,180,220,.35);border-radius:7px;background:rgba(8,14,26,.94);color:#dbe7ff;font-size:12px;line-height:1.25;white-space:normal;box-shadow:0 6px 18px rgba(0,0,0,.35)}
@@ -138,6 +138,32 @@
         const detail = [error?.name, error?.message].filter(Boolean).join(': ');
         setStatus(`Webstream unavailable${detail ? ` (${detail})` : ''}`);
         showErrorModal(`play() rejected${detail ? `: ${detail}` : ''}. See Safari Web Inspector console.`);
+      });
+    });
+    document.querySelectorAll('[data-route-alexa]').forEach((routeButton) => {
+      if (routeButton.dataset.routeAlexaBound === '1') return;
+      routeButton.dataset.routeAlexaBound = '1';
+      routeButton.addEventListener('click', async () => {
+        const previous = routeButton.textContent || 'Route to Alexa';
+        routeButton.disabled = true;
+        routeButton.textContent = 'Routing…';
+        try {
+          const runtime = await fetch('/config/runtime', { cache: 'no-store' });
+          const runtimeJson = await runtime.json().catch(() => ({}));
+          const key = String(runtimeJson?.config?.trackKey || '').trim();
+          const response = await fetch('/config/diagnostics/playback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
+            body: JSON.stringify({ action: 'routealexa' }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
+        } catch (error) {
+          showErrorModal(String(error?.message || error || 'Route to Alexa failed.'));
+        } finally {
+          routeButton.disabled = false;
+          routeButton.textContent = previous;
+        }
       });
     });
     paint('off');
