@@ -244,6 +244,7 @@ Examples documented in the page include:
 - “play songs by …”
 - direct artist name requests
 - `here` variants that target moOde playback locally
+- trailing `locally` variants that target moOde playback locally
 - leading `in the theater` variants that target moOde playback locally
 - vibe commands
 - transport/control phrases
@@ -251,12 +252,13 @@ Examples documented in the page include:
 Two especially important clarifications encoded in the page are:
 - invocation name is `mood audio`
 - `here` means local moOde playback, not playback on Echo speakers
+- `locally` means the same thing and may be used at the end of a play request
 
 ### Alexa-originated moOde controller playback
 
 Alexa request origin and playback mode are separate concepts. A request
-beginning with `in the theater` targets moOde/MPD and uses normal queue and
-display semantics. The remembered Alexa/Echo track is cleared or marked
+beginning with `in the theater`, or ending with `locally`, targets moOde/MPD
+and uses normal queue and display semantics. The remembered Alexa/Echo track is cleared or marked
 inactive so Now Playing does not overlay stale Echo state or show Alexa Mode.
 Ordinary requests that stream through an Echo retain Alexa queue behavior.
 

@@ -52,7 +52,8 @@ This page is the companion to `queue-and-playback-model.md`.
 ## Alexa request origin versus playback target
 
 Alexa is a request origin, not necessarily the playback authority. Requests
-using the leading `in the theater` routing phrase target moOde/MPD and use
+using the leading `in the theater` routing phrase or trailing `locally` target
+moOde/MPD and use
 normal queue semantics:
 
 - `requestOrigin: alexa`

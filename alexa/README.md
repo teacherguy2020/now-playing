@@ -203,6 +203,28 @@ Important: zip root must contain `lambda/` (not loose files).
 
 ## How Alexa playback works with moOde
 
+### Use Alexa as a local moOde controller
+
+Alexa can be used as a voice controller for the moOde player instead of as
+the audio destination. Add `locally` to the end of a play request, or use the
+leading `in the theater` form:
+
+- “Alexa, open Mood Box.”
+- “Play John Mayer locally.”
+- “Play the album Piano Man locally.”
+- “Play my playlist Dinner locally.”
+- “In the theater, play John Mayer.”
+
+These requests build or replace the normal moOde/MPD queue and start playback
+on moOde. The Echo does not stream the selected music. Now Playing should
+display the normal moOde playback state; this is not Echo/Alexa playback
+mode.
+
+For reliable routing, keep `locally` out of generic play utterances and put it
+only in `PlayHereIntent`. After changing the interaction model, build/deploy
+the model in the Alexa Developer Console. If Lambda code also changed, upload
+the fresh Lambda ZIP and click **Deploy** there as well.
+
 High-level flow:
 
 - Alexa intent handlers call the now-playing API (`API_BASE`) with your `TRACK_KEY`.
