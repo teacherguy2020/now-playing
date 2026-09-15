@@ -130,6 +130,18 @@ Live deployment status:
 - production route behavior: starts a selected track from a stopped/paused state,
   and appends without interruption while already playing
 
+### Mills Throne of Music
+
+The Mills Throne integration is an observation-first bridge for a 1939 mechanical jukebox:
+- the original Mills mechanism remains authoritative for selection order and audio
+- an AS5600 on a Pico 2 W observes the selector shaft and will eventually report calibrated physical slots 1–20
+- the Mills REST gap between positions 20 and 1 must be distinguished from an actual slot-20 selection using movement/phase context
+- a Shelly 1PM Gen4 provides power measurement, activity/idle confirmation, and local webhooks
+- Now-Playing owns the Mills session, MPD display surrogate, Harmony/Denon source switching, and restoration of the pre-Mills playback state
+- the Pico has authenticated local OTA updating so a mounted/calibrated sensor assembly need not be disturbed for firmware changes
+
+See [mills-throne-integration.md](mills-throne-integration.md) for the current architecture, observed power profile, wiring, OTA workflow, and open calibration work.
+
 ## 2. MPD
 
 MPD is still foundational to playback and queue behavior even when app-host routes mediate the visible behavior.
