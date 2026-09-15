@@ -42,6 +42,7 @@ test('Mills start and stop switch Denon once and ignore duplicates', async () =>
   assert.equal(res.body.switched, true);
   assert.equal(res.body.surrogateStarted, true);
   assert.equal(res.body.file, 'Mills/One.flac');
+  assert.equal(commands[0], 'listplaylist "Mills Playlist"');
   assert.equal(commands.filter((command) => command.startsWith('addid')).length, 1);
 
   res = makeResponse();

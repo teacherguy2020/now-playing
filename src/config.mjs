@@ -57,6 +57,7 @@ export const FAVORITES_PLAYLIST_NAME = process.env.FAVORITES_PLAYLIST_NAME || 'F
 export const FAVORITES_REFRESH_MS = Number(process.env.FAVORITES_REFRESH_MS || '3000');
 export const SEEBURG_PLAYLIST_NAME = process.env.SEEBURG_PLAYLIST_NAME || 'Seeburg Playlist';
 export const MULTIPHONE_PLAYLIST_NAME = process.env.MULTIPHONE_PLAYLIST_NAME || 'Multiphone Playlist';
+export const MILLS_PLAYLIST_NAME = process.env.MILLS_PLAYLIST_NAME || 'Mills Playlist';
 
 // Optional Mills source-switching integration. Leave unset until Harmony is
 // intentionally enabled on the Now-Playing host.

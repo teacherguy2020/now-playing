@@ -35,7 +35,7 @@ export function registerMillsRoutes(app, deps) {
     mpdEscapeValue,
     mpdHasACK,
     parseMpdFirstBlock,
-    millsPlaylistName = 'Mills-Playlist',
+    millsPlaylistName = 'Mills Playlist',
   } = deps;
 
   function parseMpdId(raw) {
@@ -49,7 +49,7 @@ export function registerMillsRoutes(app, deps) {
     }
     if (millsSession?.surrogateStarted) return millsSession;
 
-    const playlist = String(millsPlaylistName || 'Mills-Playlist').trim();
+    const playlist = String(millsPlaylistName || 'Mills Playlist').trim();
     const rawPlaylist = await mpdQueryRaw(`listplaylist ${mpdEscapeValue(playlist)}`);
     if (!rawPlaylist || mpdHasACK(rawPlaylist)) {
       const error = new Error(`Playlist not found or unavailable: ${playlist}`);

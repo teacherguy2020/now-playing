@@ -162,7 +162,7 @@ is not a stop; idle means the whole Mills session has returned to its true idle
 power range.
 
 For the initial surrogate-playback test, the first entry in the MPD playlist
-`Mills-Playlist` is added through the shared jukebox-priority insertion and
+`Mills Playlist` is added through the shared jukebox-priority insertion and
 bookkeeping path, then immediately promoted with normal MPD playback after
 the Denon switches to Phono. Mills is not queued digitally: the physical
 mechanism has already selected the record, so its surrogate must become the
