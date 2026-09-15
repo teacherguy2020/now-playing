@@ -8,6 +8,10 @@ can break:
 - Blanking appears inconsistent or immediately wakes.
 - With `wake_display=1`, display can be forced back on repeatedly.
 
+This applies to all attached-display presentations: Player, Peppy, and the
+Now-Playing/Kiosk display. Kiosk is a presentation mode, but it still uses
+the local display path and must not be excluded from blanking.
+
 ## Root Cause
 On moOde Pi4 (`moode.local`), watchdog remote wake logic in:
 
@@ -31,6 +35,24 @@ and wake when either:
 - `isUpnp == true` for UPnP playback (MPD may not own the active audio path).
 
 This preserves wake-on-play while using external target URL control and keeps the display awake during AirPlay and UPnP playback.
+
+### Attached-display blanking (moOde r1034+)
+
+The external watchdog controls wake-on-play, but it does not start the
+blanking countdown. In r1034, `worker.php` invokes the blanking routine only
+when `peppy_display=1`. If the attached display is Player or an external
+Now-Playing/Kiosk page (`local_display=1`, `peppy_display=0`), paused playback
+therefore never reaches the blanking routine.
+
+Extend the worker's display condition to include `local_display`, and make
+the routine evaluate the authoritative source. For an external target,
+query `http://<now-playing-host>:3101/now-playing`; treat `state=play`,
+`isAirplay=true`, and `isUpnp=true` as active. Treat `pause` and `stop` as
+inactive so the configured blank timeout can expire.
+
+This is a version-sensitive moOde core-file change. Back up and syntax-check
+`/var/www/daemon/worker.php` after every moOde upgrade; do not copy an old
+worker wholesale over a new release.
 
 ## How to apply on a new moOde host
 
@@ -67,6 +89,10 @@ and gate wake on JSON playback state:
 sudo killall -s 9 watchdog.sh || true
 sudo bash -c '/var/www/daemon/watchdog.sh 3 >/dev/null 2>&1 &'
 ```
+
+4. Apply the attached-display worker change described above, then restart
+the worker using the release-appropriate method. Confirm Player, Peppy, and
+Kiosk behavior separately; allow the configured blank interval to elapse.
 
 Restart the local display as well if Chromium still has the old target in
 `/home/moode/.xinitrc`:

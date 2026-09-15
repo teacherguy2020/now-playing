@@ -58,7 +58,38 @@ If the UI restore path is unavailable, identify the sticker database location
 for that exact moOde release before restoring. Verify the resulting row count
 and a sample rating; do not overwrite an unknown live database blindly.
 
-### 3. Reapply the external-display watchdog patch
+### 3. Restore generalized attached-display blanking
+
+The moOde worker's stock screen-blank loop is gated only by
+`peppy_display=1`. That means a local WebUI/Player or Now-Playing/Kiosk
+display can remain on indefinitely when the player is paused, even though
+the configured blank timeout is set. Extend the worker so the blanking loop
+runs when either `local_display` or `peppy_display` is enabled.
+
+The blanking decision must use the authoritative playback source:
+
+- local Player/Peppy: MPD `state=play` means active playback;
+- external Now-Playing/Kiosk: query `/now-playing` on port `3101`;
+- `state=play`, `isAirplay=true`, or `isUpnp=true` means active playback;
+- paused/stopped means the attached display may blank.
+
+Back up `/var/www/daemon/worker.php` before applying the version-appropriate
+change. Validate and restart the worker after patching:
+
+```bash
+sudo cp -a /var/www/daemon/worker.php \
+  /var/www/daemon/worker.php.bak.general-display.$(date +%Y%m%d-%H%M%S)
+sudo php -l /var/www/daemon/worker.php
+sudo kill "$(cat /run/worker.pid)" 2>/dev/null || true
+sudo rm -f /run/worker.pid
+sudo /usr/bin/php /var/www/daemon/worker.php
+```
+
+The worker daemonizes itself. Confirm that `/run/worker.pid` contains a live
+worker PID and that `php -l` reports no syntax errors. Do not enable the
+Peppy-specific branch merely to obtain blanking for Player or Kiosk.
+
+### 4. Reapply the external-display watchdog patch
 
 The stock r1034 watchdog probes moOde’s `/command/` endpoint on the target
 host. Now-Playing does not provide that endpoint, so the probe returns 404 and
@@ -89,7 +120,7 @@ sudo killall -s 9 watchdog.sh || true
 sudo bash -c '/var/www/daemon/watchdog.sh 3 >/dev/null 2>&1 &'
 ```
 
-### 4. Refresh the local display target
+### 5. Refresh the local display target
 
 The moOde database and Chromium launch command can temporarily disagree after
 changing Target URL. Confirm both:
@@ -110,7 +141,7 @@ sudo systemctl restart localdisplay
 
 A full reboot is not normally required.
 
-### 5. Reapply AirPlay and Peppy customizations
+### 6. Reapply AirPlay and Peppy customizations
 
 Check the host-side overrides that the upgrade may have replaced:
 
