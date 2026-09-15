@@ -58,6 +58,16 @@ export const FAVORITES_REFRESH_MS = Number(process.env.FAVORITES_REFRESH_MS || '
 export const SEEBURG_PLAYLIST_NAME = process.env.SEEBURG_PLAYLIST_NAME || 'Seeburg Playlist';
 export const MULTIPHONE_PLAYLIST_NAME = process.env.MULTIPHONE_PLAYLIST_NAME || 'Multiphone Playlist';
 
+// Optional Mills source-switching integration. Leave unset until Harmony is
+// intentionally enabled on the Now-Playing host.
+export const HARMONY_HOST = String(process.env.HARMONY_HOST || '').trim();
+export const HARMONY_PORT = Number(process.env.HARMONY_PORT || '8088');
+export const HARMONY_DOMAIN = String(process.env.HARMONY_DOMAIN || 'svcs.myharmony.com').trim();
+export const HARMONY_HUB_ID = String(process.env.HARMONY_HUB_ID || '').trim();
+export const HARMONY_DENON_DEVICE_ID = String(process.env.HARMONY_DENON_DEVICE_ID || '').trim();
+export const HARMONY_INPUT_PHONO = String(process.env.HARMONY_INPUT_PHONO || 'InputPhono').trim();
+export const HARMONY_INPUT_AUX1 = String(process.env.HARMONY_INPUT_AUX1 || 'InputAux1').trim();
+
 export const ITUNES_SEARCH_URL = 'https://itunes.apple.com/search';
 export const ITUNES_COUNTRY = 'us';
 export const ITUNES_TIMEOUT_MS = Number(process.env.ITUNES_TIMEOUT_MS || '2500');

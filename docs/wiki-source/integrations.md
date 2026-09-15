@@ -142,6 +142,40 @@ The Mills Throne integration is an observation-first bridge for a 1939 mechanica
 
 See [mills-throne-integration.md](mills-throne-integration.md) for the current architecture, observed power profile, wiring, OTA workflow, and open calibration work.
 
+### Mills Throne source-switching bridge
+
+The Mills integration initially uses the Pico as a transition gateway for
+Shelly power/activity events. The Pico forwards only the first active and the
+confirmed final idle transition during a Mills session:
+
+- `POST /integrations/mills/start` switches the Denon from `Aux 1` to `Phono`
+  through the local Harmony Hub WebSocket.
+- `POST /integrations/mills/stop` switches the Denon from `Phono` back to
+  `Aux 1`.
+- `GET /integrations/mills/status` exposes the integration latch and surrogate
+  track details for diagnostics.
+
+The routes are authenticated with the existing `TRACK_KEY`, idempotent, and
+serialize transitions so repeated Shelly actions cannot issue duplicate source
+changes. A drop from mechanism power to the approximate record-playing level
+is not a stop; idle means the whole Mills session has returned to its true idle
+power range.
+
+For the initial surrogate-playback test, the first entry in the MPD playlist
+`Mills-Playlist` is added through the shared jukebox-priority queue path and
+started with normal MPD playback after the Denon switches to Phono. This is
+intentional: the Denon is listening to the physical Mills on Phono, while the
+inaudible MPD track keeps Now-Playing metadata, artwork, progress, and clients
+updated naturally. Duplicate start events do not add another surrogate.
+
+AS5600 selection mapping, exact pre-Mills MPD snapshot/restoration, and final
+session-end confirmation remain later phases.
+
+Harmony configuration is installation-specific and supplied to the
+Now-Playing service through `HARMONY_HOST`, `HARMONY_PORT`,
+`HARMONY_DOMAIN`, `HARMONY_HUB_ID`, and `HARMONY_DENON_DEVICE_ID`. The IR
+command names default to `InputPhono` and `InputAux1`.
+
 ## 2. MPD
 
 MPD is still foundational to playback and queue behavior even when app-host routes mediate the visible behavior.
@@ -290,4 +324,4 @@ The current wiki already supports a stronger truth:
 
 ## Timestamp
 
-Last updated: 2026-08-29 America/Chicago
+Last updated: 2026-09-15 America/Chicago

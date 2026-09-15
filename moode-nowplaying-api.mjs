@@ -202,7 +202,9 @@ import {
   ART_640_PATH, ART_BG_PATH, PODCAST_DL_LOG, MOODE_SSH, FAVORITES_M3U, MUSIC_LIBRARY_ROOT, PODCAST_ROOT,
   TRACK_NOTIFY_ENABLED, TRACK_NOTIFY_POLL_MS, TRACK_NOTIFY_DEDUPE_MS, TRACK_NOTIFY_ALEXA_MAX_AGE_MS,
   SEEBURG_PLAYLIST_NAME, MULTIPHONE_PLAYLIST_NAME,
-  PUSHOVER_TOKEN, PUSHOVER_USER_KEY
+  PUSHOVER_TOKEN, PUSHOVER_USER_KEY,
+  HARMONY_HOST, HARMONY_PORT, HARMONY_DOMAIN, HARMONY_HUB_ID,
+  HARMONY_DENON_DEVICE_ID, HARMONY_INPUT_PHONO, HARMONY_INPUT_AUX1
 } from './src/config.mjs';
 import { log } from './src/lib/log.mjs';
 import { execFileStrict } from './src/lib/exec.mjs';
@@ -226,6 +228,20 @@ import {
   withJukeboxMutation,
 } from './src/routes/seeburg.routes.mjs';
 import { registerMultiphoneRoutes } from './src/routes/multiphone.routes.mjs';
+import { registerMillsRoutes } from './src/routes/mills.routes.mjs';
+import { HarmonyHubClient, sendHarmonyIrCommand } from './src/services/harmony.service.mjs';
+
+const millsHarmonyClient = new HarmonyHubClient({
+  host: HARMONY_HOST,
+  port: HARMONY_PORT,
+  domain: HARMONY_DOMAIN,
+  hubId: HARMONY_HUB_ID,
+});
+
+async function switchDenonInput(input) {
+  const command = input === 'phono' ? HARMONY_INPUT_PHONO : HARMONY_INPUT_AUX1;
+  return sendHarmonyIrCommand(millsHarmonyClient, HARMONY_DENON_DEVICE_ID, command);
+}
 
 async function downloadLatestForRss({ rss, count = 10 }) {
   const items = readSubs();
@@ -7255,6 +7271,15 @@ registerMultiphoneRoutes(app, {
   mpdHasACK,
   parseMpdFirstBlock,
   multiphonePlaylistName: MULTIPHONE_PLAYLIST_NAME,
+});
+
+registerMillsRoutes(app, {
+  requireTrackKey,
+  switchDenonInput,
+  mpdQueryRaw,
+  mpdEscapeValue,
+  mpdHasACK,
+  parseMpdFirstBlock,
 });
 
 // MPD normally keeps completed playlist items unless `consume` is enabled.
