@@ -162,11 +162,14 @@ is not a stop; idle means the whole Mills session has returned to its true idle
 power range.
 
 For the initial surrogate-playback test, the first entry in the MPD playlist
-`Mills-Playlist` is added through the shared jukebox-priority queue path and
-started with normal MPD playback after the Denon switches to Phono. This is
-intentional: the Denon is listening to the physical Mills on Phono, while the
-inaudible MPD track keeps Now-Playing metadata, artwork, progress, and clients
-updated naturally. Duplicate start events do not add another surrogate.
+`Mills-Playlist` is added through the shared jukebox-priority insertion and
+bookkeeping path, then immediately promoted with normal MPD playback after
+the Denon switches to Phono. Mills is not queued digitally: the physical
+mechanism has already selected the record, so its surrogate must become the
+current track even if another priority item was previously playing. The Denon
+is listening to the physical Mills on Phono, while the inaudible MPD track
+keeps Now-Playing metadata, artwork, progress, and clients updated naturally.
+Duplicate start events do not add another surrogate.
 
 AS5600 selection mapping, exact pre-Mills MPD snapshot/restoration, and final
 session-end confirmation remain later phases.

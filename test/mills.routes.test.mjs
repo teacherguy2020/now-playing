@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { registerMillsRoutes } from '../src/routes/mills.routes.mjs';
-import { jukeboxEntries } from '../src/routes/seeburg.routes.mjs';
 
 function makeApp() {
   return {
@@ -86,34 +85,4 @@ test('Mills stop remains retryable when Aux 1 switching fails', async () => {
   await app.routes['POST /integrations/mills/stop']({ body: {} }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.switched, true);
-});
-
-test('Mills surrogate waits behind an already-playing jukebox track', async () => {
-  const app = makeApp();
-  const commands = [];
-  jukeboxEntries.set(77, { source: 'seeburg', priority: 'jukebox', sequence: 1, file: 'Seeburg/Current.flac' });
-  jukeboxEntries.set(78, { source: 'seeburg', priority: 'jukebox', sequence: 2, file: 'Seeburg/Pending.flac' });
-  registerMillsRoutes(app, {
-    requireTrackKey: () => true,
-    switchDenonInput: async () => {},
-    mpdEscapeValue: (value) => JSON.stringify(value),
-    mpdHasACK: (raw) => String(raw).includes('ACK'),
-    parseMpdFirstBlock: () => ({ song: 0, songid: 77, state: 'play' }),
-    mpdQueryRaw: async (command) => {
-      commands.push(command);
-      if (command.startsWith('listplaylist')) return 'file: Mills/One.flac\n';
-      if (command === 'playlistinfo') return 'file: Seeburg/Current.flac\npos: 0\nId: 77\nfile: Seeburg/Pending.flac\npos: 1\nId: 78\n';
-      if (command.startsWith('addid')) return 'Id: 79\n';
-      return 'OK\n';
-    },
-  });
-
-  const res = makeResponse();
-  await app.routes['POST /integrations/mills/start']({ body: {} }, res);
-  assert.equal(res.body.surrogateStarted, true);
-  assert.equal(res.body.playbackStarted, false);
-  assert.equal(commands.includes('moveid 79 2'), true);
-  assert.equal(commands.some((command) => command.startsWith('play ')), false);
-  jukeboxEntries.delete(77);
-  jukeboxEntries.delete(78);
 });
