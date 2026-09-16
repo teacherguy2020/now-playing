@@ -87,3 +87,59 @@ test('Mills stop remains retryable when Aux 1 switching fails', async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.switched, true);
 });
+
+test('Mills physical selection immediately plays the requested playlist entry and ignores duplicates', async () => {
+  const app = makeApp();
+  const inputs = [];
+  const commands = [];
+  let nextId = 50;
+  registerMillsRoutes(app, {
+    requireTrackKey: () => true,
+    switchDenonInput: async (input) => { inputs.push(input); },
+    mpdEscapeValue: (value) => JSON.stringify(value),
+    mpdHasACK: (raw) => String(raw).includes('ACK'),
+    parseMpdFirstBlock: () => ({ song: -1, state: 'stop' }),
+    mpdQueryRaw: async (command) => {
+      commands.push(command);
+      if (command.startsWith('listplaylist')) {
+        return 'file: Mills/One.flac\nfile: Mills/Two.flac\nfile: Mills/Three.flac\n';
+      }
+      if (command.startsWith('addid')) return `Id: ${nextId++}\n`;
+      return 'OK\n';
+    },
+  });
+
+  let res = makeResponse();
+  await app.routes['POST /integrations/mills/start']({ body: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(inputs, ['phono']);
+
+  res = makeResponse();
+  await app.routes['POST /integrations/mills/selection']({ body: { slot: 3 } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.slot, 3);
+  assert.equal(res.body.file, 'Mills/Three.flac');
+  assert.equal(res.body.playbackStarted, true);
+  assert.equal(res.body.priority, 'jukebox');
+  assert.deepEqual(inputs, ['phono']);
+  assert.ok(commands.includes('play 0'));
+  assert.ok(commands.includes('deleteid 50'));
+
+  res = makeResponse();
+  await app.routes['POST /integrations/mills/selection']({ body: { slot: 3 } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.duplicate, true);
+  assert.equal(commands.filter((command) => command.startsWith('addid')).length, 2);
+
+  res = makeResponse();
+  await app.routes['POST /integrations/mills/selection']({ body: { slot: 21 } }, res);
+  assert.equal(res.statusCode, 400);
+
+  res = makeResponse();
+  await app.routes['POST /integrations/mills/stop']({ body: {} }, res);
+  assert.equal(res.statusCode, 200);
+
+  res = makeResponse();
+  await app.routes['POST /integrations/mills/selection']({ body: { slot: 1 } }, res);
+  assert.equal(res.statusCode, 409);
+});

@@ -150,6 +150,8 @@ confirmed final idle transition during a Mills session:
 
 - `POST /integrations/mills/start` switches the Denon from `Aux 1` to `Phono`
   through the local Harmony Hub WebSocket.
+- `POST /integrations/mills/selection` accepts a `slot` from `1` through `20`
+  and immediately plays that position from the `Mills Playlist` surrogate.
 - `POST /integrations/mills/stop` switches the Denon from `Phono` back to
   `Aux 1`.
 - `GET /integrations/mills/status` exposes the integration latch and surrogate
@@ -170,6 +172,13 @@ current track even if another priority item was previously playing. The Denon
 is listening to the physical Mills on Phono, while the inaudible MPD track
 keeps Now-Playing metadata, artwork, progress, and clients updated naturally.
 Duplicate start events do not add another surrogate.
+
+Selection reports are accepted only while the Mills session is active. Each
+new physical slot immediately replaces the prior Mills surrogate as the MPD
+current track; Mills records are not digitally queueable. Duplicate reports
+for the same slot are ignored, and stale Mills surrogate entries are removed
+from MPD after the new selection starts. Denon remains on Phono throughout the
+session.
 
 AS5600 selection mapping, exact pre-Mills MPD snapshot/restoration, and final
 session-end confirmation remain later phases.

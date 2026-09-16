@@ -1,4 +1,4 @@
-# Seeburg and Multiphone priority selections
+# Seeburg, Multiphone, and Mills priority selections
 
 Now Playing treats Seeburg wallbox selections and Multiphone selections as one
 shared customer-request queue. Both integration routes mark inserted tracks as
@@ -10,10 +10,19 @@ shared customer-request queue. Both integration routes mark inserted tracks as
 | --- | --- | --- |
 | Seeburg | `POST /integrations/seeburg/selection` | `Seeburg Playlist` |
 | Multiphone | `POST /integrations/multiphone/selection` | `Multiphone Playlist` |
+| Mills | `POST /integrations/mills/selection` | `Mills Playlist` |
 
-Both routes require the Now Playing track key and accept a numbered selection.
-Both also expose a read-only playlist mapping endpoint for commissioning and
-verification.
+Seeburg and Multiphone routes require the Now Playing track key and accept a
+numbered selection. They also expose a read-only playlist mapping endpoint for
+commissioning and verification. The Mills route requires the same track key,
+but accepts only physical selections during an active Mills session.
+
+Mills selection requests are accepted only during an active Mills session and
+use a `slot` from `1` through `20`. The physical Mills mechanism is the source
+of truth, so each new selection immediately becomes the current surrogate;
+Mills selections are not digitally queued. Repeated reports for the same slot
+in the same session are ignored, and older Mills surrogate entries are removed
+so MPD cannot play stale physical-record surrogates later.
 
 ## Priority behavior
 
