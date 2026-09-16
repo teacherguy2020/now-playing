@@ -15,7 +15,7 @@ confidence: medium
 
 ## Purpose and authority
 
-This page documents the planned integration between the 1939 Mills Throne of Music jukebox and Now-Playing/moOde. The original Mills mechanism remains completely authoritative: software observes the machine and makes the modern display/playback system follow what the mechanism physically does.
+This page documents the integration between the 1939 Mills Throne of Music jukebox and Now-Playing/moOde. The original Mills mechanism remains completely authoritative: software observes the machine and makes the modern display/playback system follow what the mechanism physically does.
 
 Source basis: Brian's Mills Throne integration-flow specification and bench-test results, 2026-09-15. The physical selector shaft has not yet been mounted, measured, or calibrated; all angles, tolerances, timing, and final state rules remain experimental.
 
@@ -85,15 +85,34 @@ If the mechanism passes through or rests at 20 more than once during reset/searc
 
 When the selector leaves REST and a genuine search/play cycle is established, the Pico reports `MILLS ACTIVE` to Now-Playing. This begins one Mills session that remains active across multiple records.
 
-During a search, transient angles are ignored. Once the wheel stops inside a calibrated position window for the settle interval, the Pico reports a physical slot, for example:
+During a search, transient angles are ignored. Once the wheel stops inside a calibrated position window for the settle interval, the Pico will report a physical slot, for example:
 
 ```json
 {"slot": 7}
 ```
 
-Now-Playing maps that slot to a dedicated 20-entry Mills playlist and can place the digital counterpart into MPD as a display surrogate. The Denon remains on Phono, so the physical Mills remains the audible source while MPD supplies artist/title/album/artwork/progress data to the Now-Playing clients.
+Now-Playing accepts that report at the authenticated endpoint:
 
-When the selector returns to the calibrated REST sector and remains stable, Now-Playing ends the session, switches Denon to Aux 1, and restores the pre-Mills MPD state. The exact queue/current-track/position snapshot requirements must be designed before destructive MPD queue changes are implemented.
+```text
+POST /integrations/mills/selection
+X-Track-Key: <track key>
+Content-Type: application/json
+
+{"slot": 7}
+```
+
+The API maps the slot to the matching entry in the `Mills Playlist`, inserts
+the surrogate through the shared jukebox-priority bookkeeping path, and starts
+it immediately. Mills selections are not digitally queued: a new physical
+selection replaces the prior Mills surrogate, while duplicate reports for the
+same slot in one session are ignored. The Denon remains on Phono, so the
+physical Mills remains the audible source while MPD supplies
+artist/title/album/artwork/progress data to the Now-Playing clients.
+
+The intended final behavior is for a stable return to the calibrated REST sector
+to end the session, switch Denon to Aux 1, and restore the pre-Mills MPD state.
+Currently the stop route switches Denon to Aux 1, but exact
+queue/current-track/position snapshot and restoration remain future work.
 
 ## Shelly role
 
@@ -113,7 +132,10 @@ record playing         ~70 W
 record stack/motor     >200 W
 ```
 
-These suggest provisional test thresholds around `>150 W` for activity and `<60 W` for idle, but they are not production values. Hysteresis, debounce, lighting state, and multi-record behavior must be measured over complete cycles.
+For the current commissioning test, the Shelly thresholds are temporarily
+`>55 W` for activity and `<50 W` for idle, with a 20-second idle debounce in
+the Pico. These are not production values; hysteresis, lighting state, and
+multi-record behavior must be measured over complete cycles.
 
 The Shelly can webhook the Pico at `http://10.0.0.7/integrations/mills/stack-moving` and reset it at `/integrations/mills/idle`. The Pico treats repeated active webhooks idempotently. Shelly events should remain observations; they must not contain Harmony, MPD, or Mills-selection logic.
 
@@ -137,6 +159,7 @@ The updater stages `main.new.py`, validates syntax, preserves `main.backup.py`, 
 4. Capture movement direction, repeated passes through 20, and stable durations.
 5. Log Shelly power alongside AS5600 data for single- and multiple-record sessions.
 6. Decide whether AS5600 alone or AS5600 plus Shelly confirms session start/end.
-7. Implement calibrated selection events and the Now-Playing Mills playlist only after those observations.
+7. Implement calibrated Pico-side slot detection and send slots 1–20 to the
+   Now-Playing selection endpoint.
 
-<!-- Last updated: 2026-09-15 -->
+<!-- Last updated: 2026-09-16 -->
