@@ -121,33 +121,34 @@ export function registerMillsRoutes(app, deps) {
     });
   }
 
-  async function startSurrogate() {
-    if (!mpdQueryRaw || !mpdEscapeValue || !mpdHasACK || !parseMpdFirstBlock) {
-      throw new Error('Mills surrogate playback dependencies are not configured');
-    }
-    if (millsSession?.surrogateStarted) return millsSession;
-
-    const { files } = await resolveMillsPlaylist();
-    return await playMillsSelection(1, files[0]);
-  }
-
   app.post('/integrations/mills/start', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
       return await withMillsTransition(async () => {
         if (millsActive) {
-          if (millsSession?.surrogateStarted) {
-            return res.json({ ok: true, active: true, duplicate: true, switched: false, surrogateStarted: true });
-          }
-          const surrogate = await startSurrogate();
-          return res.json({ ok: true, active: true, duplicate: true, switched: false, surrogateStarted: true, file: surrogate.file, mpdSongId: surrogate.mpdSongId });
+          return res.json({
+            ok: true,
+            active: true,
+            duplicate: true,
+            switched: false,
+            surrogateStarted: Boolean(millsSession?.surrogateStarted),
+            awaitingSelection: !millsSession?.surrogateStarted,
+          });
         }
         await switchDenonInput('phono');
         millsActive = true;
         millsSession = { active: true, surrogateStarted: false };
-        const surrogate = await startSurrogate();
         lastTransition = { state: 'active', at: new Date().toISOString(), input: 'Phono' };
-        return res.json({ ok: true, active: true, duplicate: false, switched: true, input: 'Phono', surrogateStarted: true, playbackStarted: surrogate.playbackStarted, file: surrogate.file, mpdSongId: surrogate.mpdSongId });
+        return res.json({
+          ok: true,
+          active: true,
+          duplicate: false,
+          switched: true,
+          input: 'Phono',
+          surrogateStarted: false,
+          playbackStarted: false,
+          awaitingSelection: true,
+        });
       });
     } catch (error) {
       return res.status(502).json({ ok: false, error: error?.message || String(error) });

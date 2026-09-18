@@ -40,16 +40,17 @@ test('Mills start and stop switch Denon once and ignore duplicates', async () =>
   await app.routes['POST /integrations/mills/start']({ body: {} }, res);
   assert.deepEqual(inputs, ['phono']);
   assert.equal(res.body.switched, true);
-  assert.equal(res.body.surrogateStarted, true);
-  assert.equal(res.body.file, 'Mills/One.flac');
-  assert.equal(commands[0], 'listplaylist "Mills Playlist"');
-  assert.equal(commands.filter((command) => command.startsWith('addid')).length, 1);
+  assert.equal(res.body.surrogateStarted, false);
+  assert.equal(res.body.awaitingSelection, true);
+  assert.equal(commands.length, 0);
 
   res = makeResponse();
   await app.routes['POST /integrations/mills/start']({ body: {} }, res);
   assert.deepEqual(inputs, ['phono']);
   assert.equal(res.body.duplicate, true);
-  assert.equal(commands.filter((command) => command.startsWith('addid')).length, 1);
+  assert.equal(res.body.surrogateStarted, false);
+  assert.equal(res.body.awaitingSelection, true);
+  assert.equal(commands.length, 0);
 
   res = makeResponse();
   await app.routes['POST /integrations/mills/stop']({ body: {} }, res);
@@ -123,13 +124,13 @@ test('Mills physical selection immediately plays the requested playlist entry an
   assert.equal(res.body.priority, 'jukebox');
   assert.deepEqual(inputs, ['phono']);
   assert.ok(commands.includes('play 0'));
-  assert.ok(commands.includes('deleteid 50'));
+  assert.equal(commands.filter((command) => command.startsWith('deleteid')).length, 0);
 
   res = makeResponse();
   await app.routes['POST /integrations/mills/selection']({ body: { slot: 3 } }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.duplicate, true);
-  assert.equal(commands.filter((command) => command.startsWith('addid')).length, 2);
+  assert.equal(commands.filter((command) => command.startsWith('addid')).length, 1);
 
   res = makeResponse();
   await app.routes['POST /integrations/mills/selection']({ body: { slot: 21 } }, res);

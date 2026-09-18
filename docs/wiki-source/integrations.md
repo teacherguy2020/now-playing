@@ -163,15 +163,18 @@ changes. A drop from mechanism power to the approximate record-playing level
 is not a stop; idle means the whole Mills session has returned to its true idle
 power range.
 
-For the initial surrogate-playback test, the first entry in the MPD playlist
-`Mills Playlist` is added through the shared jukebox-priority insertion and
-bookkeeping path, then immediately promoted with normal MPD playback after
-the Denon switches to Phono. Mills is not queued digitally: the physical
-mechanism has already selected the record, so its surrogate must become the
-current track even if another priority item was previously playing. The Denon
-is listening to the physical Mills on Phono, while the inaudible MPD track
-keeps Now-Playing metadata, artwork, progress, and clients updated naturally.
-Duplicate start events do not add another surrogate.
+On Mills start, the Denon switches to Phono and Now-Playing opens an active
+session, but it does not start a default surrogate. It waits for the Pico's
+first settled physical slot report, then adds the corresponding entry from the
+MPD playlist `Mills Playlist` through the shared jukebox-priority insertion and
+bookkeeping path and immediately starts it. This avoids briefly displaying
+playlist entry 1 when the Mills actually selected another record. Mills is not
+queued digitally: the physical mechanism has already selected the record, so
+its surrogate must become the current track even if another priority item was
+previously playing. The Denon is listening to the physical Mills on Phono,
+while the inaudible MPD track keeps Now-Playing metadata, artwork, progress,
+and clients updated naturally. Duplicate start events do not add a surrogate
+or restart playback while the session is awaiting its first selection.
 
 Selection reports are accepted only while the Mills session is active. Each
 new physical slot immediately replaces the prior Mills surrogate as the MPD
@@ -336,4 +339,4 @@ The current wiki already supports a stronger truth:
 
 ## Timestamp
 
-Last updated: 2026-09-15 America/Chicago
+Last updated: 2026-09-18 America/Chicago

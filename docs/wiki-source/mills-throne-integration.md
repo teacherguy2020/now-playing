@@ -101,12 +101,15 @@ Content-Type: application/json
 {"slot": 7}
 ```
 
-The API maps the slot to the matching entry in the `Mills Playlist`, inserts
-the surrogate through the shared jukebox-priority bookkeeping path, and starts
-it immediately. Mills selections are not digitally queued: a new physical
-selection replaces the prior Mills surrogate, while duplicate reports for the
-same slot in one session are ignored. The Denon remains on Phono, so the
-physical Mills remains the audible source while MPD supplies
+On Mills start, the API switches the Denon to Phono and waits for the first
+settled physical slot report; it does not launch a default playlist entry.
+The API then maps the slot to the matching entry in the `Mills Playlist`,
+inserts the surrogate through the shared jukebox-priority bookkeeping path,
+and starts it immediately. This prevents a brief entry-1 display when the
+Mills selected another record. Mills selections are not digitally queued: a
+new physical selection replaces the prior Mills surrogate, while duplicate
+reports for the same slot in one session are ignored. The Denon remains on
+Phono, so the physical Mills remains the audible source while MPD supplies
 artist/title/album/artwork/progress data to the Now-Playing clients.
 
 The intended final behavior is for a stable return to the calibrated REST sector
@@ -133,7 +136,7 @@ record stack/motor     >200 W
 ```
 
 For the current commissioning test, the Shelly thresholds are temporarily
-`>55 W` for activity and `<50 W` for idle, with a 20-second idle debounce in
+`>55 W` for activity and `<50 W` for idle, with a 5-second idle debounce in
 the Pico. These are not production values; hysteresis, lighting state, and
 multi-record behavior must be measured over complete cycles.
 
@@ -162,4 +165,4 @@ The updater stages `main.new.py`, validates syntax, preserves `main.backup.py`, 
 7. Implement calibrated Pico-side slot detection and send slots 1–20 to the
    Now-Playing selection endpoint.
 
-<!-- Last updated: 2026-09-16 -->
+<!-- Last updated: 2026-09-18 -->
