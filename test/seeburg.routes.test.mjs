@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePlaylistFiles, parseSelectionNumber, registerSeeburgRoutes } from '../src/routes/seeburg.routes.mjs';
+import { isJukeboxItem, parsePlaylistFiles, parseSelectionNumber, registerSeeburgRoutes } from '../src/routes/seeburg.routes.mjs';
+
+test('does not classify an ordinary queue item as jukebox by matching a session file', () => {
+  const entries = new Map();
+  const item = { id: 42, file: 'shared-source-file.flac' };
+
+  assert.equal(isJukeboxItem(item, entries), false);
+  entries.set(42, { source: 'multiphone', priority: 'jukebox', sequence: 1, file: item.file });
+  assert.equal(isJukeboxItem(item, entries), true);
+});
 
 test('parses MPD playlist files in order', () => {
   assert.deepEqual(parsePlaylistFiles('OK MPD 0.23.5\nfile: one.flac\nTitle: ignored\nfile: two.flac\nOK\n'), ['one.flac', 'two.flac']);

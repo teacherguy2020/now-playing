@@ -113,8 +113,11 @@ export function isJukeboxCurrent(item, items, entries = jukeboxEntries) {
 
 export function isJukeboxItem(item, entries = jukeboxEntries) {
   const id = Number(item?.id || 0);
-  return (id > 0 && entries.has(id))
-    || Boolean(jukeboxSession?.active && jukeboxSession.fresh && jukeboxSession.files?.includes(item?.file));
+  // Pending priority status must be based on the stable MPD song ID recorded
+  // when the integration inserted the item. A session's source-file list is
+  // only a recovery aid; ordinary queue tracks can legitimately use the same
+  // files and must not be counted as pending jukebox entries.
+  return id > 0 && entries.has(id);
 }
 
 export function reconcileJukeboxState(items, statePath, entries = jukeboxEntries) {
