@@ -6,14 +6,6 @@ A moOde-focused now-playing API + UI stack with optional Alexa integration.
 
 Turbo charge your moOde experience without altering your moOde installation.
 
-## Related Shyvers project
-
-The Shyvers Multiphone/Mabel runtime, Harmony integration, Pico credit trigger,
-sounds, and project wiki now live in the separate
-[`shyvers-multiphone-mabel`](https://github.com/teacherguy2020/shyvers-multiphone-mabel)
-repository. This repository remains the Now Playing service and queue
-integration used by that project.
-
 
 ![Now Playing index view](./docs/images/readme-index.jpg)
 ![Now Playing index view](./docs/images/controller.jpeg)
@@ -140,6 +132,14 @@ and the [API endpoint catalog](./docs/wiki-source/api-endpoint-catalog.md).
 - Mobile Builder + Controller pages
 
 Plus cross-cutting chapters for hero shell, index-vs-app parity, random-vs-shuffle, deploy/rollback, and troubleshooting.
+
+## Related Shyvers project
+
+The Shyvers Multiphone/Mabel runtime, Harmony integration, Pico credit trigger,
+sounds, and project wiki now live in the separate
+[`shyvers-multiphone-mabel`](https://github.com/teacherguy2020/shyvers-multiphone-mabel)
+repository. This repository remains the Now Playing service and queue
+integration used by that project.
 
 ## Licensing
 
