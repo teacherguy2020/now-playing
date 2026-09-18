@@ -144,3 +144,42 @@ test('Mills physical selection immediately plays the requested playlist entry an
   await app.routes['POST /integrations/mills/selection']({ body: { slot: 1 } }, res);
   assert.equal(res.statusCode, 409);
 });
+
+test('Mills allows the same slot again after the duplicate-report window', async () => {
+  const app = makeApp();
+  const commands = [];
+  let nextId = 60;
+  const realNow = Date.now;
+  let now = 1000;
+  Date.now = () => now;
+
+  try {
+    registerMillsRoutes(app, {
+      requireTrackKey: () => true,
+      switchDenonInput: async () => {},
+      mpdEscapeValue: (value) => JSON.stringify(value),
+      mpdHasACK: (raw) => String(raw).includes('ACK'),
+      parseMpdFirstBlock: () => ({ song: -1, state: 'stop' }),
+      mpdQueryRaw: async (command) => {
+        commands.push(command);
+        if (command.startsWith('listplaylist')) return 'file: Mills/One.flac\n';
+        if (command.startsWith('addid')) return `Id: ${nextId++}\n`;
+        return 'OK\n';
+      },
+    });
+
+    let res = makeResponse();
+    await app.routes['POST /integrations/mills/start']({ body: {} }, res);
+    res = makeResponse();
+    await app.routes['POST /integrations/mills/selection']({ body: { slot: 1 } }, res);
+    assert.equal(res.body.duplicate, false);
+
+    now += 5001;
+    res = makeResponse();
+    await app.routes['POST /integrations/mills/selection']({ body: { slot: 1 } }, res);
+    assert.equal(res.body.duplicate, false);
+    assert.equal(commands.filter((command) => command.startsWith('addid')).length, 2);
+  } finally {
+    Date.now = realNow;
+  }
+});

@@ -10,11 +10,20 @@ let millsActive = false;
 let lastTransition = null;
 let transitionQueue = Promise.resolve();
 let millsSession = null;
+const MILLS_SELECTION_DEDUPE_MS = 5000;
 
 function withMillsTransition(task) {
   const run = transitionQueue.then(task, task);
   transitionQueue = run.catch(() => {});
   return run;
+}
+
+function isDuplicateMillsSelection(slot) {
+  const lastSelectionAt = Number(millsSession?.selectionAtMs || 0);
+  return millsSession?.selectionSlot === slot
+    && millsSession?.surrogateStarted
+    && Number.isFinite(lastSelectionAt)
+    && Date.now() - lastSelectionAt < MILLS_SELECTION_DEDUPE_MS;
 }
 
 export function getMillsIntegrationState() {
@@ -70,7 +79,7 @@ export function registerMillsRoutes(app, deps) {
 
   async function playMillsSelection(slot, file) {
     return await withJukeboxMutation(async () => {
-      if (millsSession?.selectionSlot === slot && millsSession?.surrogateStarted) {
+      if (isDuplicateMillsSelection(slot)) {
         return { ...millsSession, duplicate: true, playbackStarted: false };
       }
 
@@ -114,6 +123,7 @@ export function registerMillsRoutes(app, deps) {
         file,
         mpdSongId,
         selectionSlot: slot,
+        selectionAtMs: Date.now(),
         surrogateStarted: true,
         playbackStarted: true,
       };
@@ -187,7 +197,7 @@ export function registerMillsRoutes(app, deps) {
       }
 
       return await withMillsTransition(async () => {
-        if (millsSession?.selectionSlot === slot && millsSession?.surrogateStarted) {
+        if (isDuplicateMillsSelection(slot)) {
           return res.json({
             ok: true,
             active: true,

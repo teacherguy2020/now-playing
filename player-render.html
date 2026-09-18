@@ -49,6 +49,30 @@
 
   <link rel="stylesheet" href="styles/index1080.css?v=20260905-album-personnel-audio-up4" />
   <style>
+    /* Player display: raise only the track title by 10px. */
+    #track-title {
+      transform: translateY(-10px);
+      margin-bottom: 0 !important;
+    }
+    /* Player display: raise the artist name by 20px. */
+    #artist-name {
+      transform: translateY(-20px);
+    }
+    /* Player display: tighten the space around the rating stars. */
+    #titleLine .rating-stars {
+      margin-top: -2px !important;
+      margin-bottom: -8px !important;
+    }
+    /* Player display: raise the album title without moving the rest of the column. */
+    #album-link {
+      transform: translateY(-15px);
+      max-height: calc(2 * 1.18em + 0.3em);
+      padding-bottom: 0.3em;
+      overflow: hidden;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+    }
+
     /* Deliberate physical-display idle state. moOde still blanks this page
        through X11/DPMS after its normal timeout. */
     body.np-idle-mode {
