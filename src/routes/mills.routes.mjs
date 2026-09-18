@@ -169,7 +169,7 @@ export function registerMillsRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
       return await withMillsTransition(async () => {
-        if (!millsActive) {
+        if (!millsActive && lastTransition?.state === 'idle' && lastTransition?.input === 'Aux 1') {
           return res.json({ ok: true, active: false, duplicate: true, switched: false });
         }
         await switchDenonInput('aux1');

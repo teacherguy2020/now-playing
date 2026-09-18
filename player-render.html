@@ -49,28 +49,53 @@
 
   <link rel="stylesheet" href="styles/index1080.css?v=20260905-album-personnel-audio-up4" />
   <style>
-    /* Player display: raise only the track title by 10px. */
+    /* Player display: raise only the track title by 25px. */
     #track-title {
-      transform: translateY(-10px);
+      transform: translateY(-25px);
       margin-bottom: 0 !important;
     }
     /* Player display: raise the artist name by 20px. */
-    #artist-name {
+    body:not(.phone-ui) #artist-name {
       transform: translateY(-20px);
+      max-height: calc(2 * 1.14em + 0.3em);
+      min-height: calc(2 * 1.14em + 0.3em);
+      padding-bottom: 0.3em;
+      box-sizing: border-box;
+      flex-shrink: 0;
+      overflow: hidden;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
     }
     /* Player display: tighten the space around the rating stars. */
     #titleLine .rating-stars {
       margin-top: -2px !important;
       margin-bottom: -8px !important;
+      transform: translateY(-15px);
     }
     /* Player display: raise the album title without moving the rest of the column. */
-    #album-link {
+    body:not(.phone-ui) #album-link {
       transform: translateY(-15px);
       max-height: calc(2 * 1.18em + 0.3em);
+      min-height: calc(2 * 1.18em + 0.3em);
       padding-bottom: 0.3em;
+      box-sizing: border-box;
+      flex-shrink: 0;
       overflow: hidden;
       -webkit-line-clamp: 2;
       line-clamp: 2;
+    }
+    /* Clamp the actual album text node as well, so a third line cannot leak
+       outside the clickable album wrapper. */
+    body:not(.phone-ui) #album-text {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
+    }
+    /* Player display: raise the audio-format line by 30px more. */
+    body:not(.phone-ui) #file-info {
+      transform: translateY(-40px) !important;
     }
 
     /* Deliberate physical-display idle state. moOde still blanks this page
