@@ -3051,6 +3051,8 @@ function updateUI(data) {
     // mobile/tablet idle behavior and must not show the clock overlay.
     const pagePath = String(location.pathname || '').toLowerCase();
     const idleClockSurface =
+      pagePath === '/' ||
+      pagePath === '' ||
       pagePath.endsWith('/index.html') ||
       pagePath.endsWith('index.html') ||
       pagePath.endsWith('/player-render.html') ||
