@@ -8,7 +8,19 @@ export function registerRatingRoutes(app, deps) {
     fetchJson,
     MOODE_BASE_URL,
     bumpRatingCache,
+    getMillsIntegrationState,
   } = deps;
+
+  function millsSelectedFile() {
+    try {
+      const state = typeof getMillsIntegrationState === 'function'
+        ? getMillsIntegrationState()
+        : null;
+      return state?.active ? String(state?.metadata?.file || '').trim() : '';
+    } catch {
+      return '';
+    }
+  }
 
   app.get('/rating', async (req, res) => {
     try {
@@ -48,7 +60,7 @@ export function registerRatingRoutes(app, deps) {
   app.get('/rating/current', async (req, res) => {
     try {
       const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-      const file = String(song.file || '').trim();
+      const file = millsSelectedFile() || String(song.file || '').trim();
 
       if (!file || isStreamPath(file) || isAirplayFile(file)) {
         return res.json({ ok: true, file: file || '', rating: 0, disabled: true });
@@ -80,7 +92,7 @@ export function registerRatingRoutes(app, deps) {
         });
       }
 
-      const file = String(song?.file || '').trim();
+      const file = millsSelectedFile() || String(song?.file || '').trim();
       const disabled = !file || isStreamPath(file) || isAirplayFile(file);
       if (disabled) {
         try { bumpRatingCache(file || '', 0); } catch {}

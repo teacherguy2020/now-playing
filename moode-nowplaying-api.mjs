@@ -6939,6 +6939,13 @@ app.get('/now-playing', async (req, res) => {
         payload.bitrate = metadata.bitrate || '';
         payload.outrate = metadata.outrate || '';
         payload.track = metadata.track || '';
+
+        // The physical record is represented by MPD pause, but its selected
+        // playlist entry still has normal local-track rating metadata.
+        const millsRating = await getRatingForFileCached(millsFile);
+        payload.rating = Number(millsRating?.rating) || 0;
+        payload.ratingDisabled = !!millsRating?.disabled;
+        payload.ratingFile = millsFile;
       } else {
         payload.artist = '';
         payload.title = '';
@@ -7296,6 +7303,7 @@ registerRatingRoutes(app, {
   fetchJson,
   MOODE_BASE_URL,
   bumpRatingCache,
+  getMillsIntegrationState,
 });
 
 registerQueueRoutes(app, {
