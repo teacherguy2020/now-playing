@@ -18,6 +18,92 @@ function makeResponse() {
   };
 }
 
+function makeMpdFixture({ state = 'stop', song = -1, elapsed = 0, queue = [] } = {}) {
+  const commands = [];
+  const items = queue.map((item, index) => ({ file: item.file, id: item.id || index + 1 }));
+  let currentState = state;
+  let currentPos = song;
+  let currentElapsed = elapsed;
+  let nextId = Math.max(100, ...items.map((item) => item.id)) + 1;
+
+  const status = () => ({
+    state: currentState,
+    song: currentPos,
+    songid: currentPos >= 0 ? Number(items[currentPos]?.id || 0) : 0,
+    elapsed: currentElapsed,
+  });
+
+  const playlistInfo = () => items
+    .map((item, pos) => `file: ${item.file}\nPos: ${pos}\nId: ${item.id}\n`)
+    .join('\n');
+
+  const mpdQueryRaw = async (command) => {
+    commands.push(command);
+    if (command === 'playlistinfo') return `${playlistInfo()}OK\n`;
+    if (command.startsWith('listplaylist')) return 'file: Mills/One.flac\nfile: Mills/Two.flac\nfile: Mills/Three.flac\n';
+    if (command.startsWith('addid ')) {
+      const file = JSON.parse(command.slice(6));
+      const id = nextId++;
+      items.push({ file, id });
+      return `Id: ${id}\nOK\n`;
+    }
+    if (command.startsWith('moveid ')) {
+      const [, rawId, rawPosition] = command.split(/\s+/);
+      const index = items.findIndex((item) => item.id === Number(rawId));
+      if (index >= 0) {
+        const [item] = items.splice(index, 1);
+        items.splice(Number(rawPosition), 0, item);
+        if (currentPos >= 0) currentPos = items.findIndex((entry) => entry.id === status().songid);
+      }
+      return 'OK\n';
+    }
+    if (command.startsWith('deleteid ')) {
+      const id = Number(command.slice(8));
+      const index = items.findIndex((item) => item.id === id);
+      if (index >= 0) items.splice(index, 1);
+      if (currentPos >= items.length) currentPos = items.length - 1;
+      return 'OK\n';
+    }
+    if (command === 'clear') {
+      items.length = 0;
+      currentPos = -1;
+      currentState = 'stop';
+      return 'OK\n';
+    }
+    if (command.startsWith('playid ')) {
+      const id = Number(command.slice(7));
+      currentPos = items.findIndex((item) => item.id === id);
+      currentState = 'play';
+      return 'OK\n';
+    }
+    if (command.startsWith('play ')) {
+      currentPos = Number(command.slice(5));
+      currentState = 'play';
+      return 'OK\n';
+    }
+    if (command.startsWith('seekid ')) {
+      currentElapsed = Number(command.split(/\s+/)[2]);
+      return 'OK\n';
+    }
+    if (command === 'pause 1') {
+      currentState = 'pause';
+      return 'OK\n';
+    }
+    if (command === 'stop') {
+      currentState = 'stop';
+      return 'OK\n';
+    }
+    return 'OK\n';
+  };
+
+  return {
+    commands,
+    getStatus: status,
+    getQueue: () => items.map((item) => item.file),
+    mpdQueryRaw,
+  };
+}
+
 test('Mills start and stop switch Denon once and ignore duplicates', async () => {
   const app = makeApp();
   const inputs = [];
@@ -42,7 +128,7 @@ test('Mills start and stop switch Denon once and ignore duplicates', async () =>
   assert.equal(res.body.switched, true);
   assert.equal(res.body.surrogateStarted, false);
   assert.equal(res.body.awaitingSelection, true);
-  assert.equal(commands.length, 0);
+  assert.deepEqual(commands.slice(0, 2), ['status', 'playlistinfo']);
 
   res = makeResponse();
   await app.routes['POST /integrations/mills/start']({ body: {} }, res);
@@ -50,7 +136,7 @@ test('Mills start and stop switch Denon once and ignore duplicates', async () =>
   assert.equal(res.body.duplicate, true);
   assert.equal(res.body.surrogateStarted, false);
   assert.equal(res.body.awaitingSelection, true);
-  assert.equal(commands.length, 0);
+  assert.equal(commands.length, 2);
 
   res = makeResponse();
   await app.routes['POST /integrations/mills/stop']({ body: {} }, res);
@@ -89,7 +175,7 @@ test('Mills stop remains retryable when Aux 1 switching fails', async () => {
   assert.equal(res.body.switched, true);
 });
 
-test('Mills physical selection immediately plays the requested playlist entry and ignores duplicates', async () => {
+test('Mills physical selection displays the requested playlist entry without digital playback', async () => {
   const app = makeApp();
   const inputs = [];
   const commands = [];
@@ -106,6 +192,7 @@ test('Mills physical selection immediately plays the requested playlist entry an
         return 'file: Mills/One.flac\nfile: Mills/Two.flac\nfile: Mills/Three.flac\n';
       }
       if (command.startsWith('addid')) return `Id: ${nextId++}\n`;
+      if (command.startsWith('playlistid')) return 'file: Mills/Three.flac\nTitle: Three\nArtist: Mills Artist\nAlbum: Mills Album\nDate: 1975\nEncoded: FLAC\n';
       return 'OK\n';
     },
   });
@@ -120,11 +207,13 @@ test('Mills physical selection immediately plays the requested playlist entry an
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.slot, 3);
   assert.equal(res.body.file, 'Mills/Three.flac');
-  assert.equal(res.body.playbackStarted, true);
-  assert.equal(res.body.priority, 'jukebox');
+  assert.equal(res.body.playbackStarted, false);
+  assert.equal(res.body.displayOnly, true);
+  assert.equal(res.body.metadata.title, 'Three');
+  assert.equal(res.body.metadata.artist, 'Mills Artist');
   assert.deepEqual(inputs, ['phono']);
-  assert.ok(commands.includes('play 0'));
-  assert.equal(commands.filter((command) => command.startsWith('deleteid')).length, 0);
+  assert.equal(commands.some((command) => /^play(?: |id )/.test(command)), false);
+  assert.equal(commands.filter((command) => command.startsWith('deleteid')).length, 1);
 
   res = makeResponse();
   await app.routes['POST /integrations/mills/selection']({ body: { slot: 3 } }, res);
@@ -179,7 +268,141 @@ test('Mills allows the same slot again after the duplicate-report window', async
     await app.routes['POST /integrations/mills/selection']({ body: { slot: 1 } }, res);
     assert.equal(res.body.duplicate, false);
     assert.equal(commands.filter((command) => command.startsWith('addid')).length, 2);
+
+    res = makeResponse();
+    await app.routes['POST /integrations/mills/stop']({ body: {} }, res);
+    assert.equal(res.statusCode, 200);
   } finally {
     Date.now = realNow;
   }
+});
+
+test('Mills snapshots and pauses playback, waits for slots, and restores the playing session', async () => {
+  const app = makeApp();
+  const inputs = [];
+  const fixture = makeMpdFixture({
+    state: 'play',
+    song: 1,
+    elapsed: 42.5,
+    queue: [
+      { file: 'House/Before.flac', id: 10 },
+      { file: 'House/Current.flac', id: 11 },
+      { file: 'House/After.flac', id: 12 },
+    ],
+  });
+  registerMillsRoutes(app, {
+    requireTrackKey: () => true,
+    switchDenonInput: async (input) => { inputs.push(input); },
+    mpdEscapeValue: (value) => JSON.stringify(value),
+    mpdHasACK: (raw) => String(raw).includes('ACK'),
+    parseMpdFirstBlock: () => fixture.getStatus(),
+    mpdQueryRaw: fixture.mpdQueryRaw,
+  });
+
+  let res = makeResponse();
+  await app.routes['POST /integrations/mills/start']({ body: {} }, res);
+  assert.equal(res.body.awaitingSelection, true);
+  assert.equal(fixture.commands.filter((command) => command.startsWith('addid')).length, 0);
+  assert.ok(fixture.commands.includes('pause 1'));
+  assert.deepEqual(inputs, ['phono']);
+
+  res = makeResponse();
+  await app.routes['POST /integrations/mills/selection']({ body: { slot: 1 } }, res);
+  assert.equal(res.body.playbackStarted, false);
+  assert.equal(res.body.displayOnly, true);
+  assert.equal(fixture.commands.some((command) => /^play(?: |id )/.test(command)), false);
+  assert.equal(fixture.getQueue().includes('Mills/One.flac'), false);
+
+  const originalNow = Date.now;
+  Date.now = () => originalNow() + 6000;
+  try {
+    res = makeResponse();
+    await app.routes['POST /integrations/mills/selection']({ body: { slot: 2 } }, res);
+  } finally {
+    Date.now = originalNow;
+  }
+  assert.equal(res.body.playbackStarted, false);
+  assert.ok(fixture.commands.filter((command) => command.startsWith('deleteid')).length >= 2);
+
+  res = makeResponse();
+  await app.routes['POST /integrations/mills/stop']({ body: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(inputs, ['phono', 'aux1']);
+  assert.deepEqual(fixture.getQueue(), ['House/Before.flac', 'House/Current.flac', 'House/After.flac']);
+  assert.ok(fixture.commands.some((command) => command.startsWith('playid')));
+  assert.ok(fixture.commands.includes('seekid 105 42.500') || fixture.commands.some((command) => command.startsWith('seekid ')));
+});
+
+test('Mills restores paused and stopped sessions without a physical selection', async () => {
+  for (const initialState of ['pause', 'stop']) {
+    const app = makeApp();
+    const fixture = makeMpdFixture({
+      state: initialState,
+      song: 0,
+      elapsed: 17,
+      queue: [{ file: `House/${initialState}.flac`, id: 20 }],
+    });
+    registerMillsRoutes(app, {
+      requireTrackKey: () => true,
+      switchDenonInput: async () => {},
+      mpdEscapeValue: (value) => JSON.stringify(value),
+      mpdHasACK: (raw) => String(raw).includes('ACK'),
+      parseMpdFirstBlock: () => fixture.getStatus(),
+      mpdQueryRaw: fixture.mpdQueryRaw,
+    });
+
+    let res = makeResponse();
+    await app.routes['POST /integrations/mills/start']({ body: {} }, res);
+    res = makeResponse();
+    await app.routes['POST /integrations/mills/stop']({ body: {} }, res);
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(fixture.getQueue(), [`House/${initialState}.flac`]);
+    if (initialState === 'pause') {
+      assert.ok(fixture.commands.some((command) => command.startsWith('playid')));
+      assert.ok(fixture.commands.includes('pause 1'));
+    } else {
+      assert.ok(fixture.commands.includes('stop'));
+      assert.equal(fixture.commands.some((command) => command.startsWith('playid')), false);
+    }
+  }
+});
+
+test('Mills stop remains retryable when MPD cleanup or restoration fails', async () => {
+  const app = makeApp();
+  const inputs = [];
+  const fixture = makeMpdFixture({
+    state: 'play',
+    song: 0,
+    elapsed: 8,
+    queue: [{ file: 'House/BeforeRetry.flac', id: 30 }],
+  });
+  let failClear = true;
+  registerMillsRoutes(app, {
+    requireTrackKey: () => true,
+    switchDenonInput: async (input) => { inputs.push(input); },
+    mpdEscapeValue: (value) => JSON.stringify(value),
+    mpdHasACK: (raw) => String(raw).includes('ACK'),
+    parseMpdFirstBlock: () => fixture.getStatus(),
+    mpdQueryRaw: async (command) => {
+      if (command === 'clear' && failClear) {
+        failClear = false;
+        fixture.commands.push(command);
+        return 'ACK [50@0] {clear} forced test failure\n';
+      }
+      return fixture.mpdQueryRaw(command);
+    },
+  });
+
+  let res = makeResponse();
+  await app.routes['POST /integrations/mills/start']({ body: {} }, res);
+  res = makeResponse();
+  await app.routes['POST /integrations/mills/stop']({ body: {} }, res);
+  assert.equal(res.statusCode, 502);
+  assert.deepEqual(inputs, ['phono', 'aux1']);
+
+  res = makeResponse();
+  await app.routes['POST /integrations/mills/stop']({ body: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(inputs, ['phono', 'aux1', 'aux1']);
+  assert.deepEqual(fixture.getQueue(), ['House/BeforeRetry.flac']);
 });

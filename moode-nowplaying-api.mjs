@@ -228,7 +228,7 @@ import {
   withJukeboxMutation,
 } from './src/routes/seeburg.routes.mjs';
 import { registerMultiphoneRoutes } from './src/routes/multiphone.routes.mjs';
-import { registerMillsRoutes } from './src/routes/mills.routes.mjs';
+import { getMillsIntegrationState, registerMillsRoutes } from './src/routes/mills.routes.mjs';
 import { HarmonyHubClient, sendHarmonyIrCommand } from './src/services/harmony.service.mjs';
 
 const millsHarmonyClient = new HarmonyHubClient({
@@ -6890,6 +6890,68 @@ app.get('/now-playing', async (req, res) => {
         ...(debugAppleLookup ? { debugAppleLookup } : {}),
       } : {}),
     };
+
+    // Mills is a physical record source. Keep the normal display payload and
+    // artwork path, but overlay the selected record without allowing its
+    // digital file to play or contribute progress.
+    const millsState = getMillsIntegrationState();
+    if (millsState.active) {
+      const metadata = millsState.metadata || null;
+      const millsFile = String(metadata?.file || '').trim();
+      const millsArtUrl = millsFile
+        ? `${MOODE_BASE_URL}/coverart.php/${encodeURIComponent(millsFile)}`
+        : '';
+
+      payload.millsMode = true;
+      payload.displayOnly = true;
+      payload.showProgress = false;
+      payload.displayMode = 'mills';
+      payload.state = 'pause';
+      payload.elapsed = 0;
+      payload.duration = 0;
+      payload.percent = 0;
+      payload.playbackUrl = '';
+      payload.isStream = false;
+      payload.isAirplay = false;
+      payload.isPodcast = false;
+      payload.songpos = -1;
+      payload.songid = 0;
+      payload.queueTrack = 0;
+      payload.queueTotal = 0;
+      payload.queueLabel = '';
+      payload.rating = 0;
+      payload.ratingDisabled = true;
+      payload.ratingFile = '';
+
+      if (metadata) {
+        payload.artist = metadata.artist || '';
+        payload.title = metadata.title || '';
+        payload.album = metadata.album || '';
+        payload.file = millsFile;
+        payload.displayArtist = payload.artist;
+        payload.displayTitle = payload.title;
+        payload.displayLine3 = payload.album;
+        payload.albumArtUrl = millsArtUrl;
+        payload.displayArtUrl = millsArtUrl;
+        payload.displayConfidence = 'track';
+        payload.year = metadata.date || '';
+        payload.encoded = metadata.encoded || '';
+        payload.bitrate = metadata.bitrate || '';
+        payload.outrate = metadata.outrate || '';
+        payload.track = metadata.track || '';
+      } else {
+        payload.artist = '';
+        payload.title = '';
+        payload.album = '';
+        payload.file = '';
+        payload.displayArtist = '';
+        payload.displayTitle = '';
+        payload.displayLine3 = '';
+        payload.albumArtUrl = '';
+        payload.displayArtUrl = '';
+        payload.displayConfidence = 'physical';
+      }
+    }
 
     if (isRadio) {
       appendRadioMetaEval({

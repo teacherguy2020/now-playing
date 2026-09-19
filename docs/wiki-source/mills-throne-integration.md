@@ -101,21 +101,26 @@ Content-Type: application/json
 {"slot": 7}
 ```
 
-On Mills start, the API switches the Denon to Phono and waits for the first
-settled physical slot report; it does not launch a default playlist entry.
-The API then maps the slot to the matching entry in the `Mills Playlist`,
-inserts the surrogate through the shared jukebox-priority bookkeeping path,
-and starts it immediately. This prevents a brief entry-1 display when the
-Mills selected another record. Mills selections are not digitally queued: a
-new physical selection replaces the prior Mills surrogate, while duplicate
-reports for the same slot in one session are ignored. The Denon remains on
-Phono, so the physical Mills remains the audible source while MPD supplies
-artist/title/album/artwork/progress data to the Now-Playing clients.
+On Mills start, the API snapshots the MPD queue/current track/position/state,
+switches the Denon to Phono, and pauses MPD if it was playing. It waits for the
+first settled physical slot report; it does not launch a default playlist entry.
+The API maps each slot to the matching entry in the exact `Mills Playlist`
+playlist, briefly reads that file's MPD tags, and removes the temporary MPD
+entry immediately. The digital file is never played or left in the queue.
 
-The intended final behavior is for a stable return to the calibrated REST sector
-to end the session, switch Denon to Aux 1, and restore the pre-Mills MPD state.
-Currently the stop route switches Denon to Aux 1, but exact
-queue/current-track/position snapshot and restoration remain future work.
+While Mills is active, Now-Playing exposes the selected record's
+artist/title/album/artwork to every display in a display-only `mills` mode. The
+normal layout remains unchanged, but the progress bar and time are hidden. The
+moOde hardware LED uses a slow-pulsing white indication; it remains visible
+even when the display is DPMS-blanked. Duplicate reports for the same slot in
+one session are ignored. The Denon remains on Phono, so the physical Mills is
+the only audible source.
+
+At a confirmed return to REST, the API switches the Denon to Aux 1 first,
+defensively removes any stale Mills entries, and restores the pre-Mills MPD
+queue/current track/position/state. A previously playing session resumes,
+paused remains paused, and stopped remains stopped. Stop is idempotent and
+retryable if the Denon or MPD transition fails.
 
 ## Shelly role
 

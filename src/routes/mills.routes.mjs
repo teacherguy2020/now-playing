@@ -1,6 +1,5 @@
 import {
   jukeboxEntries,
-  nextJukeboxSequence,
   parsePlaylistFiles,
   persistJukeboxState,
   withJukeboxMutation,
@@ -18,22 +17,47 @@ function withMillsTransition(task) {
   return run;
 }
 
+function parseMpdBlocks(raw) {
+  return String(raw || '')
+    .split(/\r?\n(?=file:\s*)/i)
+    .map((block) => {
+      const out = {};
+      String(block).split(/\r?\n/).forEach((line) => {
+        const i = line.indexOf(':');
+        if (i >= 0) out[line.slice(0, i).trim().toLowerCase()] = line.slice(i + 1).trim();
+      });
+      return out;
+    })
+    .filter((item) => item.file || item.id || item.pos);
+}
+
+function parseMpdNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
 function isDuplicateMillsSelection(slot) {
   const lastSelectionAt = Number(millsSession?.selectionAtMs || 0);
   return millsSession?.selectionSlot === slot
-    && millsSession?.surrogateStarted
+    && millsSession?.displaySelected
     && Number.isFinite(lastSelectionAt)
     && Date.now() - lastSelectionAt < MILLS_SELECTION_DEDUPE_MS;
 }
 
 export function getMillsIntegrationState() {
+  const metadata = millsSession?.metadata || null;
   return {
     active: millsActive,
     lastTransition,
-    surrogateStarted: Boolean(millsSession?.surrogateStarted),
-    surrogateFile: millsSession?.file || null,
-    mpdSongId: millsSession?.mpdSongId || null,
+    displayOnly: Boolean(millsActive),
+    displayMode: millsActive ? 'mills' : null,
+    showProgress: millsActive ? false : true,
+    surrogateStarted: false,
+    surrogateFile: null,
+    mpdSongId: null,
     selectionSlot: millsSession?.selectionSlot || null,
+    selectedFile: metadata?.file || null,
+    metadata,
   };
 }
 
@@ -60,6 +84,103 @@ export function registerMillsRoutes(app, deps) {
     return Number.isSafeInteger(slot) && slot >= 1 && slot <= 20 ? slot : null;
   }
 
+  async function snapshotMpdSession() {
+    const statusRaw = await mpdQueryRaw('status');
+    if (!statusRaw || mpdHasACK(statusRaw)) throw new Error('MPD status snapshot failed');
+    const status = parseMpdFirstBlock(statusRaw);
+    const queueRaw = await mpdQueryRaw('playlistinfo');
+    if (mpdHasACK(queueRaw)) throw new Error('MPD queue snapshot failed');
+    const queue = parseMpdBlocks(queueRaw)
+      .filter((item) => String(item.file || '').trim())
+      .map((item) => ({
+        file: String(item.file).trim(),
+        mpdSongId: Number(item.id || 0) || 0,
+        position: Number(item.pos || 0) || 0,
+      }));
+    const currentPos = Number(status.song ?? -1);
+    const currentSongId = Number(status.songid || 0) || 0;
+    const current = queue.find((item) => item.mpdSongId === currentSongId)
+      || queue.find((item) => item.position === currentPos);
+    return {
+      state: String(status.state || 'stop').trim().toLowerCase() || 'stop',
+      currentFile: current?.file || '',
+      currentPos,
+      currentSongId,
+      elapsed: Math.max(0, parseMpdNumber(status.elapsed, 0)),
+      queue,
+    };
+  }
+
+  async function removeMillsSurrogates() {
+    const queueRaw = await mpdQueryRaw('playlistinfo');
+    if (mpdHasACK(queueRaw)) throw new Error('MPD queue inspection failed during Mills cleanup');
+    const liveItems = parseMpdBlocks(queueRaw);
+    const knownMillsIds = new Set(
+      [...jukeboxEntries.entries()]
+        .filter(([, entry]) => entry?.source === 'mills')
+        .map(([id]) => Number(id)),
+    );
+    if (millsSession?.mpdSongId) knownMillsIds.add(Number(millsSession.mpdSongId));
+    for (const item of liveItems) {
+      const id = Number(item.id || 0);
+      if (!knownMillsIds.has(id)) continue;
+      const result = await mpdQueryRaw(`deleteid ${id}`);
+      if (mpdHasACK(result)) throw new Error(`MPD rejected removing Mills surrogate ${id}`);
+    }
+    let metadataChanged = false;
+    for (const [id, entry] of jukeboxEntries.entries()) {
+      if (entry?.source !== 'mills') continue;
+      jukeboxEntries.delete(id);
+      metadataChanged = true;
+    }
+    if (metadataChanged || knownMillsIds.size) persistJukeboxState();
+  }
+
+  async function restoreMpdSession(snapshot) {
+    if (!snapshot) return;
+    const clear = await mpdQueryRaw('clear');
+    if (mpdHasACK(clear)) throw new Error('MPD rejected clearing the Mills queue');
+
+    const restoredIds = [];
+    for (const item of snapshot.queue) {
+      const add = await mpdQueryRaw(`addid ${mpdEscapeValue(item.file)}`);
+      if (!add || mpdHasACK(add)) throw new Error(`MPD rejected restoring ${item.file}`);
+      const id = parseMpdId(add);
+      if (!id) throw new Error(`MPD did not return an ID while restoring ${item.file}`);
+      restoredIds.push(id);
+    }
+
+    if (snapshot.state === 'stop' || !restoredIds.length) {
+      const stop = await mpdQueryRaw('stop');
+      if (mpdHasACK(stop)) throw new Error('MPD rejected restoring stopped state');
+      return;
+    }
+
+    let restoreIndex = Number.isInteger(snapshot.currentPos) ? snapshot.currentPos : -1;
+    if (restoreIndex < 0 || restoreIndex >= restoredIds.length) {
+      restoreIndex = snapshot.currentFile
+        ? snapshot.queue.findIndex((item) => item.file === snapshot.currentFile)
+        : -1;
+    }
+    if (restoreIndex < 0 || restoreIndex >= restoredIds.length) {
+      const stop = await mpdQueryRaw('stop');
+      if (mpdHasACK(stop)) throw new Error('MPD rejected restoring state without a current track');
+      return;
+    }
+
+    const currentId = restoredIds[restoreIndex];
+    const play = await mpdQueryRaw(`playid ${currentId}`);
+    if (mpdHasACK(play)) throw new Error('MPD rejected restoring the previous track');
+    if (snapshot.elapsed > 0) {
+      const seek = await mpdQueryRaw(`seekid ${currentId} ${snapshot.elapsed.toFixed(3)}`);
+      if (mpdHasACK(seek)) throw new Error('MPD rejected restoring the previous position');
+    }
+    if (snapshot.state === 'pause') {
+      const pause = await mpdQueryRaw('pause 1');
+      if (mpdHasACK(pause)) throw new Error('MPD rejected restoring paused state');
+    }
+  }
+
   async function resolveMillsPlaylist() {
     const playlist = String(millsPlaylistName || 'Mills Playlist').trim();
     const rawPlaylist = await mpdQueryRaw(`listplaylist ${mpdEscapeValue(playlist)}`);
@@ -77,58 +198,79 @@ export function registerMillsRoutes(app, deps) {
     return { playlist, files };
   }
 
-  async function playMillsSelection(slot, file) {
-    return await withJukeboxMutation(async () => {
-      if (isDuplicateMillsSelection(slot)) {
-        return { ...millsSession, duplicate: true, playbackStarted: false };
-      }
+  function parseMillsMetadata(raw, file) {
+    const item = parseMpdBlocks(raw)[0] || {};
+    const text = (key) => String(item[key] || '').trim();
+    return {
+      file,
+      title: text('title'),
+      artist: text('artist'),
+      album: text('album'),
+      date: text('date') || text('originaldate'),
+      encoded: text('encoded'),
+      bitrate: text('bitrate'),
+      outrate: text('outrate'),
+      track: text('track'),
+    };
+  }
 
-      const before = await mpdQueryRaw('status');
-      if (mpdHasACK(before)) throw new Error('MPD status failed');
-      const status = parseMpdFirstBlock(before);
-      const currentPos = Number(status.song ?? -1);
+  async function loadMillsDisplaySelection(slot, file) {
+    if (isDuplicateMillsSelection(slot)) {
+      return { ...millsSession, duplicate: true, playbackStarted: false };
+    }
+
+    // Add only long enough to ask MPD for the selected file's tags. The
+    // physical record is authoritative, so the digital file must never stay
+    // in the queue or begin playback.
       const add = await mpdQueryRaw(`addid ${mpdEscapeValue(file)}`);
-      if (!add || mpdHasACK(add)) throw new Error('MPD rejected the Mills selection');
+      if (!add || mpdHasACK(add)) throw new Error('MPD rejected the Mills display selection');
       const mpdSongId = parseMpdId(add);
-      if (!mpdSongId) throw new Error('MPD did not return a song ID for the Mills selection');
-      const position = currentPos < 0 ? 0 : currentPos;
-      const move = await mpdQueryRaw(`moveid ${mpdSongId} ${position}`);
-      if (mpdHasACK(move)) throw new Error('MPD rejected positioning the Mills selection');
+      if (!mpdSongId) throw new Error('MPD did not return a song ID for the Mills display selection');
 
-      jukeboxEntries.set(mpdSongId, {
-        source: 'mills',
-        priority: 'jukebox',
-        sequence: nextJukeboxSequence(),
-        file,
-      });
-      persistJukeboxState();
-
-      const play = await mpdQueryRaw(`play ${position}`);
-      if (mpdHasACK(play)) throw new Error('MPD rejected starting the Mills selection');
-
-      // Mills is a physical source, not a digitally queueable source. Once the
-      // new physical selection is authoritative, remove older Mills
-      // surrogates so MPD cannot play stale records after this one finishes.
-      const staleIds = [...jukeboxEntries.entries()]
-        .filter(([id, entry]) => Number(id) !== mpdSongId && entry?.source === 'mills')
-        .map(([id]) => Number(id));
-      for (const staleId of staleIds) {
-        await mpdQueryRaw(`deleteid ${staleId}`);
-        jukeboxEntries.delete(staleId);
+      let metadataRaw;
+      let operationError = null;
+      try {
+        metadataRaw = await mpdQueryRaw(`playlistid ${mpdSongId}`);
+        if (!metadataRaw || mpdHasACK(metadataRaw)) {
+          throw new Error('MPD metadata lookup failed for the Mills selection');
+        }
+      } catch (error) {
+        operationError = error;
       }
-      if (staleIds.length) persistJukeboxState();
 
+      const remove = await mpdQueryRaw(`deleteid ${mpdSongId}`);
+      if (mpdHasACK(remove)) {
+        throw new Error(`MPD rejected removing temporary Mills selection ${mpdSongId}`);
+      }
+      if (operationError) throw operationError;
+
+      const metadata = parseMillsMetadata(metadataRaw, file);
       millsSession = {
         ...(millsSession || {}),
-        file,
-        mpdSongId,
+        metadata,
         selectionSlot: slot,
         selectionAtMs: Date.now(),
-        surrogateStarted: true,
-        playbackStarted: true,
+        displaySelected: true,
+        surrogateStarted: false,
+        playbackStarted: false,
       };
-      return { ...millsSession, duplicate: false, playbackStarted: true };
-    });
+      return { ...millsSession, duplicate: false, playbackStarted: false, displayOnly: true };
+  }
+
+  async function pauseMpdForMills(snapshot) {
+    if (snapshot?.state !== 'play') return;
+    const pause = await mpdQueryRaw('pause 1');
+    if (mpdHasACK(pause)) throw new Error('MPD rejected pausing for Mills display mode');
+  }
+
+  async function switchToMills(snapshot) {
+    await switchDenonInput('phono');
+    try {
+      await pauseMpdForMills(snapshot);
+    } catch (error) {
+      await switchDenonInput('aux1').catch(() => {});
+      throw error;
+    }
   }
 
   app.post('/integrations/mills/start', async (req, res) => {
@@ -141,13 +283,16 @@ export function registerMillsRoutes(app, deps) {
             active: true,
             duplicate: true,
             switched: false,
-            surrogateStarted: Boolean(millsSession?.surrogateStarted),
-            awaitingSelection: !millsSession?.surrogateStarted,
+            surrogateStarted: false,
+            displayOnly: true,
+            showProgress: false,
+            awaitingSelection: !millsSession?.displaySelected,
           });
         }
-        await switchDenonInput('phono');
+        const snapshot = await snapshotMpdSession();
+        await switchToMills(snapshot);
         millsActive = true;
-        millsSession = { active: true, surrogateStarted: false };
+        millsSession = { active: true, snapshot, displaySelected: false, surrogateStarted: false };
         lastTransition = { state: 'active', at: new Date().toISOString(), input: 'Phono' };
         return res.json({
           ok: true,
@@ -157,6 +302,8 @@ export function registerMillsRoutes(app, deps) {
           input: 'Phono',
           surrogateStarted: false,
           playbackStarted: false,
+          displayOnly: true,
+          showProgress: false,
           awaitingSelection: true,
         });
       });
@@ -173,6 +320,13 @@ export function registerMillsRoutes(app, deps) {
           return res.json({ ok: true, active: false, duplicate: true, switched: false });
         }
         await switchDenonInput('aux1');
+        const hasPersistedMillsEntries = [...jukeboxEntries.values()].some((entry) => entry?.source === 'mills');
+        if (millsActive || hasPersistedMillsEntries) {
+          await withJukeboxMutation(async () => {
+            await removeMillsSurrogates();
+            await restoreMpdSession(millsSession?.snapshot);
+          });
+        }
         millsActive = false;
         millsSession = null;
         lastTransition = { state: 'idle', at: new Date().toISOString(), input: 'Aux 1' };
@@ -204,10 +358,13 @@ export function registerMillsRoutes(app, deps) {
             duplicate: true,
             switched: false,
             slot,
-            file: millsSession.file,
-            mpdSongId: millsSession.mpdSongId,
-            surrogateStarted: true,
+            file: millsSession.metadata?.file || null,
+            mpdSongId: null,
+            surrogateStarted: false,
             playbackStarted: false,
+            displayOnly: true,
+            showProgress: false,
+            metadata: millsSession.metadata || null,
           });
         }
         const { files } = await resolveMillsPlaylist();
@@ -220,19 +377,20 @@ export function registerMillsRoutes(app, deps) {
             playlistLength: files.length,
           });
         }
-        const selection = await playMillsSelection(slot, file);
+        const selection = await loadMillsDisplaySelection(slot, file);
         return res.json({
           ok: true,
           active: true,
           duplicate: false,
           switched: false,
           slot,
-          file: selection.file,
-          mpdSongId: selection.mpdSongId,
-          surrogateStarted: true,
-          playbackStarted: selection.playbackStarted,
-          source: 'mills',
-          priority: 'jukebox',
+          file: selection.metadata?.file || null,
+          mpdSongId: null,
+          surrogateStarted: false,
+          playbackStarted: false,
+          displayOnly: true,
+          showProgress: false,
+          metadata: selection.metadata,
         });
       });
     } catch (error) {

@@ -1625,10 +1625,18 @@ function fetchNowPlaying() {
        * Pause / screensaver logic
        * ========================= */
 
+      const isMillsMode = data?.millsMode === true || data?.displayMode === 'mills';
+      if (isMillsMode && pauseMode) {
+        // Mills uses MPD pause as a transport safety state, not the normal
+        // pause screensaver. Keep the selected physical record visible.
+        setPausedScreensaver(false);
+        justResumedFromPause = true;
+      }
+
       const pauseOrStop = isPauseOrStopState(data);
       const screensaverEligible = !isAirplay && !isMobileEnv();
 
-      if (pauseOrStop && screensaverEligible) {
+      if (pauseOrStop && screensaverEligible && !isMillsMode) {
         if (!pauseOrStopSinceTs) pauseOrStopSinceTs = Date.now();
 
         const elapsed = Date.now() - pauseOrStopSinceTs;
@@ -1665,16 +1673,16 @@ function fetchNowPlaying() {
       // Hide progress for radio/stream that has no duration.
       const isPodcast = currentIsPodcast;  // support either field name
       const dur = Number(data.duration || 0);
-      const showProgress = isPodcast || dur > 0;
+      const showProgress = !isMillsMode && (isPodcast || dur > 0);
 
       setProgressVisibility(!showProgress);
-      if (isStream || isAirplay) stopProgressAnimator();
+      if (isStream || isAirplay || isMillsMode) stopProgressAnimator();
 
       /* =========================
        * Local-file progress animator
        * ========================= */
 
-      if (!isStream && !isAirplay) {
+      if (!isStream && !isAirplay && !isMillsMode) {
         let el  = Number(data.elapsed);
         let dur = Number(data.duration);
 

@@ -2840,6 +2840,7 @@
           const t = decodeEntities(String(j?.displayTitle || j?.title || j?.file || 'Unknown title'));
           const a = decodeEntities(String(j?.displayArtist || j?.artist || 'Unknown artist'));
           const playbackState = String(j?.state || '').toLowerCase();
+          const isMillsMode = j?.millsMode === true || j?.displayMode === 'mills';
           const hasPlayableNow = !!String(j?.file || '').trim() || !!String(j?.title || j?.displayTitle || '').trim() || !!String(j?.artist || j?.displayArtist || '').trim() || !!(j?.isStream);
           setPeppyIdleOverlayVisible(!hasPlayableNow);
           try {
@@ -2848,6 +2849,7 @@
             document.body.classList.toggle('is-airplay', !!j?.isAirplay);
             document.body.classList.toggle('is-upnp', !!j?.isUpnp);
             document.body.classList.toggle('is-podcast', !!j?.isPodcast);
+            document.body.classList.toggle('is-mills', isMillsMode);
             document.body.classList.toggle('pause', playbackState === 'pause' || playbackState === 'paused');
           } catch {}
           setControlLights(j);
@@ -2979,8 +2981,8 @@
             : ((Number.isFinite(elapsed) && Number.isFinite(total) && total > 0)
                 ? Math.max(0, Math.min(100, (elapsed / total) * 100))
                 : 0);
-          if (progressEl) progressEl.style.display = isRadioLike ? 'none' : '';
-          lastProgressPct = isRadioLike ? 0 : p;
+          if (progressEl) progressEl.style.display = (isRadioLike || isMillsMode) ? 'none' : '';
+          lastProgressPct = (isRadioLike || isMillsMode) ? 0 : p;
           paintSegments(pseg, lastProgressPct);
 
           const pausedLike = (playbackState === 'pause' || playbackState === 'paused');

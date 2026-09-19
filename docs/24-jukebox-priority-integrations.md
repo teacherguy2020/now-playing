@@ -19,10 +19,11 @@ but accepts only physical selections during an active Mills session.
 
 Mills selection requests are accepted only during an active Mills session and
 use a `slot` from `1` through `20`. The physical Mills mechanism is the source
-of truth, so each new selection immediately becomes the current surrogate;
-Mills selections are not digitally queued. Repeated reports for the same slot
-in the same session are ignored, and older Mills surrogate entries are removed
-so MPD cannot play stale physical-record surrogates later.
+of truth. Mills therefore runs in display-only mode: the selected entry is
+looked up in `Mills Playlist` for metadata and artwork, but the digital file is
+never played or left in the MPD queue. Repeated reports for the same slot in
+the same session are ignored. Mills does not participate in the shared
+jukebox-priority queue because the physical record is already playing.
 
 ## Priority behavior
 
