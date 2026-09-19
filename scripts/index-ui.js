@@ -164,10 +164,22 @@ function setIdleOverlayVisible(on) {
   const alreadyIdle = document.body.classList.contains('np-idle-mode');
   const positions = [
     [0, 0],
-    [3.5, -2],
-    [-3, 2.5],
-    [2, 2],
-    [-2.5, -1.5],
+    [14, -10],
+    [-16, 8],
+    [11, 13],
+    [-12, -12],
+    [20, 2],
+    [-20, -4],
+    [5, 15],
+    [-5, -15],
+    [17, 11],
+    [-18, -11],
+    [0, 10],
+    [0, -10],
+    [12, -2],
+    [-13, 3],
+    [7, -14],
+    [-8, 14],
   ];
   const moveClock = () => {
     if (!card) return;
