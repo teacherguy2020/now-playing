@@ -688,8 +688,13 @@ function isYouTubeStreamMode(data) {
 }
 
 function ratingsAllowedNow() {
-  // ratings for local music and Alexa mode; still disabled for pause/airplay/podcast.
-  return !pauseMode && !currentIsAirplay && !currentIsPodcast && (!currentIsStream || currentAlexaMode);
+  // Mills is deliberately represented as MPD pause, but remains a live
+  // display-only record selection. Keep its rating visible even when the
+  // normal pause screensaver state is still being unwound.
+  const millsMode = lastNowPlayingData?.millsMode === true || lastNowPlayingData?.displayMode === 'mills';
+  // ratings for local music and Alexa mode; still disabled for ordinary
+  // pause/airplay/podcast states.
+  return (millsMode || !pauseMode) && !currentIsAirplay && !currentIsPodcast && (!currentIsStream || currentAlexaMode);
 }
 
 /* =========================
