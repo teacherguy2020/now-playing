@@ -112,9 +112,11 @@ While Mills is active, Now-Playing exposes the selected record's
 artist/title/album/artwork to every display in a display-only `mills` mode. The
 normal layout remains unchanged, but the progress bar and time are hidden. The
 moOde hardware LED uses a slow-pulsing white indication; it remains visible
-even when the display is DPMS-blanked. Duplicate reports for the same slot in
-one session are ignored. The Denon remains on Phono, so the physical Mills is
-the only audible source.
+even when the display is DPMS-blanked. The moOde LED service also periodically
+wakes/resets DPMS while Mills is active so the artwork display remains visible
+despite MPD being paused. Duplicate reports for the same slot in one session
+are ignored. The Denon remains on Phono, so the physical Mills is the only
+audible source.
 
 At a confirmed return to REST, the API switches the Denon to Aux 1 first,
 defensively removes any stale Mills entries, and restores the pre-Mills MPD
