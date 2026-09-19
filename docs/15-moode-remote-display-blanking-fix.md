@@ -50,6 +50,11 @@ query `http://<now-playing-host>:3101/now-playing`; treat `state=play`,
 `isAirplay=true`, and `isUpnp=true` as active. Treat `pause` and `stop` as
 inactive so the configured blank timeout can expire.
 
+The watchdog wake branch must also treat an active `local_display` the same
+as `peppy_display` when `peppy_scn_blank_active=1`: clear that flag and restart
+`localdisplay`. Sending only `xset dpms force on` is insufficient after the
+worker has turned the HDMI output off with `xrandr --off`.
+
 This is a version-sensitive moOde core-file change. Back up and syntax-check
 `/var/www/daemon/worker.php` after every moOde upgrade; do not copy an old
 worker wholesale over a new release.
