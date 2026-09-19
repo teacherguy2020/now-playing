@@ -120,6 +120,24 @@ export function isJukeboxItem(item, entries = jukeboxEntries) {
   return id > 0 && entries.has(id);
 }
 
+// Return the insertion point for a new Seeburg/Multiphone selection.
+// Ordinary playback is pre-empted at the current position. Once a priority
+// item is active, new selections go after the entire live priority block,
+// regardless of which integration created the earlier items.
+export function getJukeboxInsertionPosition({
+  currentPos = -1,
+  currentIsJukebox = false,
+  priorityItems = [],
+  queueWasCleared = false,
+} = {}) {
+  if (queueWasCleared || currentPos < 0) return 0;
+  if (!currentIsJukebox) return currentPos;
+  const livePositions = priorityItems
+    .map((item) => Number(item?.pos))
+    .filter((position) => Number.isSafeInteger(position) && position >= currentPos);
+  return Math.max(currentPos, ...livePositions) + 1;
+}
+
 export function reconcileJukeboxState(items, statePath, entries = jukeboxEntries) {
   const liveIds = new Set(items.map((item) => Number(item.id || 0)).filter((id) => id > 0));
   let changed = false;
@@ -248,12 +266,12 @@ export function registerSeeburgRoutes(app, deps) {
         beforeItems.unshift(...currentInfo.filter((item) => !beforeItems.some((existing) => Number(existing.id || 0) === Number(item.id || 0))));
       }
       reconcileJukeboxState(beforeItems, jukeboxStatePath, entries);
-      const currentWasKnownJukebox = currentSongId > 0 && entries.has(currentSongId);
       // A paused/stopped session is idle for selection purposes. Only an
       // actively playing jukebox track should protect the pending segment.
       recoverJukeboxEntries(beforeItems, jukeboxStatePath, entries);
       const currentItem = beforeItems.find((item) => Number(item.id || 0) === currentSongId);
-      const currentIsJukebox = wasPlaying && currentWasKnownJukebox && isJukeboxCurrent(currentItem, beforeItems, entries);
+      const currentIsJukebox = wasPlaying && isJukeboxCurrent(currentItem, beforeItems, entries);
+      const priorityItems = beforeItems.filter((item) => isJukeboxItem(item, entries));
       const pendingJukebox = beforeItems
         .filter((item) => Number(item.id || 0) > 0 && Number(item.pos || -1) > currentPos && isJukeboxItem(item, entries))
         .sort((a, b) => Number(entries.get(Number(a.id))?.sequence || Number(a.pos) || 0) - Number(entries.get(Number(b.id))?.sequence || Number(b.pos) || 0));
@@ -267,11 +285,11 @@ export function registerSeeburgRoutes(app, deps) {
       // current track. Once a customer-priority track is active, keep new
       // selections together behind it and ahead of ordinary playback.
       // MPD positions are zero-based.
-      const insertionPos = currentPos < 0
-        ? 0
-        : currentIsJukebox
-          ? currentPos + pendingJukebox.length + 1
-          : currentPos;
+      const insertionPos = getJukeboxInsertionPosition({
+        currentPos,
+        currentIsJukebox,
+        priorityItems,
+      });
       const moveResult = await mpdQueryRaw(`moveid ${insertedSongId} ${insertionPos}`);
       if (mpdHasACK(moveResult)) throw new Error('MPD rejected positioning the selected track');
       const sequence = nextJukeboxSequence();

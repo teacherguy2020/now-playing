@@ -157,3 +157,74 @@ test('pre-empts actively playing ordinary house music', async () => {
   assert.ok(calls.includes('moveid 42 0'));
   assert.ok(calls.includes('play 0'));
 });
+
+test('stacks later Multiphone selections below earlier priority selections', async () => {
+  const calls = [];
+  const instance = app();
+  const queue = [
+    { file: 'house-current.flac', id: 41 },
+    { file: 'house-next.flac', id: 43 },
+  ];
+  let currentId = 41;
+  let nextId = 44;
+
+  registerMultiphoneRoutes(instance, {
+    requireTrackKey: () => true,
+    mpdEscapeValue: (v) => JSON.stringify(String(v)),
+    mpdHasACK: (raw) => String(raw).includes('ACK'),
+    parseMpdFirstBlock: () => ({
+      state: 'play',
+      song: String(queue.findIndex((item) => item.id === currentId)),
+      songid: String(currentId),
+      playlistlength: String(queue.length),
+    }),
+    mpdQueryRaw: async (command) => {
+      calls.push(command);
+      if (command === 'listplaylist "Multiphone Playlist"') {
+        return 'file: first.flac\nfile: second.flac\nfile: third.flac\nOK\n';
+      }
+      if (command === 'status') {
+        return `state: play\nsong: ${queue.findIndex((item) => item.id === currentId)}\nsongid: ${currentId}\nplaylistlength: ${queue.length}\nOK\n`;
+      }
+      if (command === 'playlistinfo') {
+        return `${queue.map((item, pos) => `file: ${item.file}\npos: ${pos}\nId: ${item.id}`).join('\n\n')}\nOK\n`;
+      }
+      if (command.startsWith('addid ')) {
+        const file = JSON.parse(command.slice(6));
+        const id = nextId++;
+        queue.push({ file, id });
+        return `Id: ${id}\nOK\n`;
+      }
+      const move = command.match(/^moveid (\d+) (\d+)$/);
+      if (move) {
+        const from = queue.findIndex((item) => item.id === Number(move[1]));
+        const [item] = queue.splice(from, 1);
+        queue.splice(Number(move[2]), 0, item);
+        return 'OK\n';
+      }
+      const playlistId = command.match(/^playlistid (\d+)$/);
+      if (playlistId) return `file: ${queue.find((item) => item.id === Number(playlistId[1]))?.file}\nId: ${playlistId[1]}\nOK\n`;
+      const play = command.match(/^play (\d+)$/);
+      if (play) { currentId = queue[Number(play[1])].id; return 'OK\n'; }
+      throw new Error(`unexpected command: ${command}`);
+    },
+    multiphonePlaylistName: 'Multiphone Playlist',
+  });
+
+  let res = response();
+  await instance.routes['POST /integrations/multiphone/selection']({ body: { number: 1 } }, res);
+  assert.equal(res.body.playbackStarted, true);
+  assert.deepEqual(queue.map((item) => item.file), ['first.flac', 'house-current.flac', 'house-next.flac']);
+
+  res = response();
+  await instance.routes['POST /integrations/multiphone/selection']({ body: { number: 2 } }, res);
+  assert.equal(res.body.playbackStarted, false);
+  assert.equal(res.body.queuedBehindJukebox, true);
+  assert.deepEqual(queue.map((item) => item.file), ['first.flac', 'second.flac', 'house-current.flac', 'house-next.flac']);
+
+  res = response();
+  await instance.routes['POST /integrations/multiphone/selection']({ body: { number: 3 } }, res);
+  assert.equal(res.body.playbackStarted, false);
+  assert.deepEqual(queue.map((item) => item.file), ['first.flac', 'second.flac', 'third.flac', 'house-current.flac', 'house-next.flac']);
+  assert.equal(calls.filter((command) => command.startsWith('moveid')).at(-1), 'moveid 46 2');
+});

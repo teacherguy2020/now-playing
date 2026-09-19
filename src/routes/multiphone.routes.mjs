@@ -2,6 +2,7 @@ import path from 'node:path';
 import {
   jukeboxEntries,
   beginJukeboxSession,
+  getJukeboxInsertionPosition,
   loadJukeboxState,
   isJukeboxCurrent,
   isJukeboxItem,
@@ -89,12 +90,11 @@ export function registerMultiphoneRoutes(app, deps) {
         items.unshift(...currentInfo.filter((item) => !items.some((existing) => Number(existing.id || 0) === Number(item.id || 0))));
       }
       reconcileJukeboxState(items, jukeboxStatePath, entries);
-      const currentWasKnownJukebox = currentId > 0 && entries.has(currentId);
       recoverJukeboxEntries(items, jukeboxStatePath, entries);
       // A paused/stopped session is idle for selection purposes. Only an
       // actively playing jukebox track should protect the pending segment.
       const currentItem = items.find((item) => Number(item.id || 0) === currentId);
-      const currentIsJukebox = wasPlaying && currentWasKnownJukebox && isJukeboxCurrent(currentItem, items, entries);
+      const currentIsJukebox = wasPlaying && isJukeboxCurrent(currentItem, items, entries);
       const queueWasCleared = !wasPlaying && !currentIsJukebox;
       if (queueWasCleared) {
         beginJukeboxSession({ source: 'multiphone', files: resolved.files, fresh: true });
@@ -106,6 +106,7 @@ export function registerMultiphoneRoutes(app, deps) {
       }
       const pending = items.filter((item) => Number(item.pos || -1) > currentPos && isJukeboxItem(item, entries))
         .sort((a, b) => (entries.get(Number(a.id))?.sequence || Number(a.pos) || 0) - (entries.get(Number(b.id))?.sequence || Number(b.pos) || 0));
+      const priorityItems = items.filter((item) => isJukeboxItem(item, entries));
       console.info(`[multiphone] selection=${number} currentId=${currentId} currentPos=${currentPos} state=${status.state || ''} currentIsJukebox=${currentIsJukebox} pending=${pending.length} playNow=${playNow}`);
 
       // A caller may explicitly promote the selection they just made. Reuse
@@ -147,11 +148,12 @@ export function registerMultiphoneRoutes(app, deps) {
       // immediately before the current song. Once a jukebox song is active,
       // keep the customer selections together as a mini-queue immediately
       // behind the current priority song and ahead of ordinary playback.
-      const position = queueWasCleared || currentPos < 0
-        ? 0
-        : currentIsJukebox
-          ? currentPos + pending.length + 1
-          : currentPos;
+      const position = getJukeboxInsertionPosition({
+        currentPos,
+        currentIsJukebox,
+        priorityItems,
+        queueWasCleared,
+      });
       const move = await mpdQueryRaw(`moveid ${id} ${position}`);
       if (mpdHasACK(move)) throw new Error('MPD rejected positioning the selected track');
       // playlistinfo takes a queue position/range; playlistid takes an MPD

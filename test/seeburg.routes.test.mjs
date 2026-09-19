@@ -1,6 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isJukeboxItem, parsePlaylistFiles, parseSelectionNumber, registerSeeburgRoutes } from '../src/routes/seeburg.routes.mjs';
+import { getJukeboxInsertionPosition, isJukeboxItem, parsePlaylistFiles, parseSelectionNumber, registerSeeburgRoutes } from '../src/routes/seeburg.routes.mjs';
+
+test('priority insertion pre-empts ordinary playback and FIFO-stacks mixed sources', () => {
+  assert.equal(getJukeboxInsertionPosition({ currentPos: 4, currentIsJukebox: false }), 4);
+  assert.equal(getJukeboxInsertionPosition({
+    currentPos: 4,
+    currentIsJukebox: true,
+    priorityItems: [
+      { pos: 4 },
+      { pos: 5 },
+      { pos: 6 },
+    ],
+  }), 7);
+  assert.equal(getJukeboxInsertionPosition({ currentPos: -1, queueWasCleared: true }), 0);
+});
 
 test('does not classify an ordinary queue item as jukebox by matching a session file', () => {
   const entries = new Map();
