@@ -3046,10 +3046,18 @@ function updateUI(data) {
     // moOde watchdog. While awake, show a deliberate idle screen instead of
     // exposing empty artwork, rating, and transport placeholders.
     const stopped = isPauseOrStopState(data);
-    // Empty queue should enter the deliberate idle view immediately on both
-    // the Player surface and the standalone index surface. Do not expose the
-    // transient empty artwork/rating placeholders while the pause delay runs.
-    setIdleOverlayVisible(stopped && !hasPlayable && !isMobileEnv());
+    // Empty queue should enter the deliberate idle view immediately only on
+    // the static Player/index surfaces. Controller pages retain their own
+    // mobile/tablet idle behavior and must not show the clock overlay.
+    const pagePath = String(location.pathname || '').toLowerCase();
+    const idleClockSurface =
+      pagePath.endsWith('/index.html') ||
+      pagePath.endsWith('index.html') ||
+      pagePath.endsWith('/player-render.html') ||
+      pagePath.endsWith('player-render.html') ||
+      pagePath.endsWith('/player.html') ||
+      pagePath.endsWith('player.html');
+    setIdleOverlayVisible(idleClockSurface && stopped && !hasPlayable);
   } catch {}
 
   // Alexa mode: brute-force art refresh by file, independent of art cache/crossfade logic.
