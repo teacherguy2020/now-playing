@@ -3022,7 +3022,10 @@ function updateUI(data) {
     // moOde watchdog. While awake, show a deliberate idle screen instead of
     // exposing empty artwork, rating, and transport placeholders.
     const stopped = isPauseOrStopState(data);
-    setIdleOverlayVisible(playerLike && stopped && !hasPlayable);
+    // Empty queue should enter the deliberate idle view immediately on both
+    // the Player surface and the standalone index surface. Do not expose the
+    // transient empty artwork/rating placeholders while the pause delay runs.
+    setIdleOverlayVisible(stopped && !hasPlayable && !isMobileEnv());
   } catch {}
 
   // Alexa mode: brute-force art refresh by file, independent of art cache/crossfade logic.
