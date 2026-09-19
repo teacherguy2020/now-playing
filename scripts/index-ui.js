@@ -1672,6 +1672,8 @@ function fetchNowPlaying() {
        * ========================= */
 
       const isMillsMode = data?.millsMode === true || data?.displayMode === 'mills';
+      const millsMessage = document.getElementById('mills-mode-message');
+      if (millsMessage) millsMessage.style.display = isMillsMode ? 'block' : 'none';
       if (isMillsMode && pauseMode) {
         // Mills uses MPD pause as a transport safety state, not the normal
         // pause screensaver. Keep the selected physical record visible.
