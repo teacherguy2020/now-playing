@@ -3274,7 +3274,7 @@ if (titleEl) {
     const showMultiphoneSelection = source === 'multiphone'
       && Number.isSafeInteger(selectionNumber)
       && selectionNumber > 0;
-    multiphoneSelectionEl.textContent = showMultiphoneSelection ? `Mabel #${selectionNumber}` : '';
+    multiphoneSelectionEl.textContent = showMultiphoneSelection ? `Multiphone #${selectionNumber}` : '';
     multiphoneSelectionEl.title = showMultiphoneSelection ? `Multiphone selection ${selectionNumber}` : '';
     multiphoneSelectionEl.style.display = showMultiphoneSelection ? 'inline-flex' : 'none';
   }
