@@ -238,9 +238,29 @@ const millsHarmonyClient = new HarmonyHubClient({
   hubId: HARMONY_HUB_ID,
 });
 
+const HARMONY_SOURCE_RETRY_DELAY_MS = 900;
+
 async function switchDenonInput(input) {
   const command = input === 'phono' ? HARMONY_INPUT_PHONO : HARMONY_INPUT_AUX1;
-  return sendHarmonyIrCommand(millsHarmonyClient, HARMONY_DENON_DEVICE_ID, command);
+  let firstResult;
+  let firstError;
+
+  try {
+    firstResult = await sendHarmonyIrCommand(millsHarmonyClient, HARMONY_DENON_DEVICE_ID, command);
+  } catch (error) {
+    firstError = error;
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, HARMONY_SOURCE_RETRY_DELAY_MS));
+
+  try {
+    // Harmony accepts the IR command without confirming Denon received it.
+    // Repeat once after the receiver has had time to process the first send.
+    return await sendHarmonyIrCommand(millsHarmonyClient, HARMONY_DENON_DEVICE_ID, command);
+  } catch (secondError) {
+    if (firstResult) return firstResult;
+    throw secondError || firstError;
+  }
 }
 
 async function downloadLatestForRss({ rss, count = 10 }) {
