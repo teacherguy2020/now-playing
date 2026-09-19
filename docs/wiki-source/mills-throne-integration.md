@@ -117,8 +117,10 @@ wakes/resets DPMS only while Mills is active, so the artwork display remains
 visible despite MPD being paused. During ordinary stopped/idle playback, it
 does not wake the display; moOde's configured five-minute blank timeout is
 allowed to expire, after which the LED reports the blanked state in dim amber.
-Duplicate reports for the same slot in one session are ignored. The Denon
-remains on Phono, so the physical Mills is the only audible source.
+When Mills ends, the LED service resets that timeout so the full configured
+interval begins at the end of the physical session. Duplicate reports for the
+same slot in one session are ignored. The Denon remains on Phono, so the
+physical Mills is the only audible source.
 
 At a confirmed return to REST, the API switches the Denon to Aux 1 first,
 defensively removes any stale Mills entries, and restores the pre-Mills MPD
