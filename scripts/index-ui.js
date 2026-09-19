@@ -171,9 +171,18 @@ function setIdleOverlayVisible(on) {
   ];
   const moveClock = () => {
     if (!card) return;
-    const [x, y] = positions[idleClockMoveIndex % positions.length];
-    idleClockMoveIndex += 1;
-    card.style.transform = 'translate3d(' + x + 'vw, ' + y + 'vh, 0)';
+    card.style.opacity = '0';
+    setTimeout(() => {
+      if (!document.body.classList.contains('np-idle-mode')) return;
+      const [x, y] = positions[idleClockMoveIndex % positions.length];
+      idleClockMoveIndex += 1;
+      card.style.transition = 'none';
+      card.style.transform = 'translate3d(' + x + 'vw, ' + y + 'vh, 0)';
+      requestAnimationFrame(() => {
+        card.style.transition = 'opacity 1.2s ease-in-out';
+        card.style.opacity = '1';
+      });
+    }, 1200);
   };
   const tick = () => {
     if (!clock) return;
@@ -190,8 +199,9 @@ function setIdleOverlayVisible(on) {
     if (!alreadyIdle) {
       idleClockMoveIndex = 0;
       if (card) {
-        card.style.transition = 'transform 2.4s ease-in-out';
+        card.style.transition = 'opacity 1.2s ease-in-out';
         card.style.transform = 'translate3d(0, 0, 0)';
+        card.style.opacity = '1';
       }
       document.body.classList.add('np-idle-mode');
     }
@@ -205,7 +215,11 @@ function setIdleOverlayVisible(on) {
     if (stars) stars.style.display = '';
     if (idleClockTimer) { clearInterval(idleClockTimer); idleClockTimer = 0; }
     if (idleClockMoveTimer) { clearInterval(idleClockMoveTimer); idleClockMoveTimer = 0; }
-    if (card) card.style.transform = '';
+    if (card) {
+      card.style.transform = '';
+      card.style.opacity = '';
+      card.style.transition = '';
+    }
   }
 }
 
