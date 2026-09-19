@@ -32,7 +32,9 @@ and wake when either:
 
 - `state == "play"` for ordinary Now-Playing playback, or
 - `isAirplay == true` for AirPlay playback, or
-- `isUpnp == true` for UPnP playback (MPD may not own the active audio path).
+- `isUpnp == true` for UPnP playback (MPD may not own the active audio path), or
+- `millsMode == true` / `displayMode == "mills"` for display-only Mills playback
+  (MPD intentionally reports `pause` while the physical record is playing).
 
 This preserves wake-on-play while using external target URL control and keeps the display awake during AirPlay and UPnP playback.
 
