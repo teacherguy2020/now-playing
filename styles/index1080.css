@@ -411,7 +411,7 @@ body.pause      #fav-heart {
   filter: drop-shadow(0 0 1px rgba(0,0,0,0.98)) drop-shadow(0 0 2px rgba(0,0,0,0.95));
 }
 
-.multiphone-selection {
+.jukebox-selection {
   display: none;
   align-items: center;
   margin-left: 10px;

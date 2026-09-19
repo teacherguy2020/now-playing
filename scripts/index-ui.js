@@ -3059,7 +3059,7 @@ function updateUI(data) {
   const albumTextEl = document.getElementById('album-text');
   const fileInfoEl  = document.getElementById('file-info-text');
   const hiresBadge  = document.getElementById('hires-badge');
-  const multiphoneSelectionEl = document.getElementById('multiphone-selection');
+  const jukeboxSelectionEl = document.getElementById('jukebox-selection');
   const personnelEl = document.getElementById('personnel-info');
   const artEl       = document.getElementById('album-art');
   const artBgEl     = document.getElementById('album-art-bg');
@@ -3268,15 +3268,22 @@ if (titleEl) {
     }
   }
 
-  if (multiphoneSelectionEl) {
+  if (jukeboxSelectionEl) {
     const source = String(data?.jukeboxSource || '').trim().toLowerCase();
     const selectionNumber = Number(data?.jukeboxSelectionNumber);
-    const showMultiphoneSelection = source === 'multiphone'
-      && Number.isSafeInteger(selectionNumber)
-      && selectionNumber > 0;
-    multiphoneSelectionEl.textContent = showMultiphoneSelection ? `Multiphone #${selectionNumber}` : '';
-    multiphoneSelectionEl.title = showMultiphoneSelection ? `Multiphone selection ${selectionNumber}` : '';
-    multiphoneSelectionEl.style.display = showMultiphoneSelection ? 'inline-flex' : 'none';
+    const seeburgLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
+    const validSelection = Number.isSafeInteger(selectionNumber) && selectionNumber > 0;
+    let label = '';
+    if (validSelection && source === 'multiphone') {
+      label = `Multiphone #${selectionNumber}`;
+    } else if (validSelection && source === 'seeburg' && selectionNumber <= 100) {
+      const letter = seeburgLetters[Math.floor((selectionNumber - 1) / 10)];
+      const button = ((selectionNumber - 1) % 10) + 1;
+      if (letter) label = `Seeburg ${letter}${button}`;
+    }
+    jukeboxSelectionEl.textContent = label;
+    jukeboxSelectionEl.title = label;
+    jukeboxSelectionEl.style.display = label ? 'inline-flex' : 'none';
   }
 
   // =========================
