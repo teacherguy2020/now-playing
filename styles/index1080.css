@@ -425,6 +425,16 @@ body.pause      #fav-heart {
   line-clamp: 2;
 }
 
+/* The TV-facing index display has room for the complete personnel line. */
+body.index-display #personnel-info {
+  display: block;
+  overflow: visible;
+  text-overflow: clip;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  max-height: none;
+}
+
 /* =========================================================
  * Next Up (desktop/tablet)
  * ========================================================= */
