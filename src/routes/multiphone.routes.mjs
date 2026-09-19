@@ -127,7 +127,13 @@ export function registerMultiphoneRoutes(app, deps) {
           if (!entries.has(Number(existing.id))) {
             entries.set(Number(existing.id), {
               source: 'multiphone', priority: 'jukebox', sequence: nextJukeboxSequence(), file: existing.file,
+              selectionNumber: number,
             });
+          } else {
+            const existingEntry = entries.get(Number(existing.id));
+            entries.set(Number(existing.id), { ...existingEntry, selectionNumber: number });
+          }
+          {
             persistJukeboxState(jukeboxStatePath);
           }
           const after = await mpdQueryRaw('status');
@@ -159,7 +165,13 @@ export function registerMultiphoneRoutes(app, deps) {
       // playlistinfo takes a queue position/range; playlistid takes an MPD
       // song ID, which is what addid returned above.
       const trackInfo = parseMpdBlocks(await mpdQueryRaw(`playlistid ${id}`))[0] || {};
-      entries.set(id, { source: 'multiphone', priority: 'jukebox', sequence: nextJukeboxSequence(), file: resolved.file });
+      entries.set(id, {
+        source: 'multiphone',
+        priority: 'jukebox',
+        sequence: nextJukeboxSequence(),
+        file: resolved.file,
+        selectionNumber: number,
+      });
       persistJukeboxState(jukeboxStatePath);
       let playbackStarted = false;
       const playbackDeferred = deferPlayback && (queueWasCleared || !currentIsJukebox);

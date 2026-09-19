@@ -411,6 +411,18 @@ body.pause      #fav-heart {
   filter: drop-shadow(0 0 1px rgba(0,0,0,0.98)) drop-shadow(0 0 2px rgba(0,0,0,0.95));
 }
 
+.multiphone-selection {
+  display: none;
+  align-items: center;
+  margin-left: 10px;
+  color: rgba(255,255,255,.72);
+  font-size: .78em;
+  font-weight: 600;
+  letter-spacing: .02em;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
 #personnel-info {
   font-size: 18px;
   color: #ccc;

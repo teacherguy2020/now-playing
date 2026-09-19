@@ -5856,6 +5856,9 @@ app.get('/now-playing', async (req, res) => {
 
     const songpos = String(moodeValByKey(statusRaw, 'song') || '').trim();
     const songid  = String(moodeValByKey(statusRaw, 'songid') || '').trim();
+    const currentJukeboxEntry = jukeboxEntries.get(Number(songid));
+    const jukeboxSource = String(currentJukeboxEntry?.source || '').trim();
+    const jukeboxSelectionNumber = Number(currentJukeboxEntry?.selectionNumber);
     const randomState = String(moodeValByKey(statusRaw, 'random') || '').trim();
     const repeatState = String(moodeValByKey(statusRaw, 'repeat') || '').trim();
 
@@ -6890,6 +6893,8 @@ app.get('/now-playing', async (req, res) => {
       rating,
       ratingDisabled,
       ratingFile,
+      jukeboxSource,
+      jukeboxSelectionNumber: Number.isSafeInteger(jukeboxSelectionNumber) ? jukeboxSelectionNumber : null,
 
       ...(debug ? {
         debugArtUpgraded,

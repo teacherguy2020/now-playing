@@ -55,6 +55,9 @@ export function loadJukeboxState(statePath = path.resolve(process.cwd(), 'data/j
         priority: String(entry.priority || 'jukebox'),
         sequence,
         file: String(entry.file),
+        selectionNumber: Number.isSafeInteger(Number(entry.selectionNumber))
+          ? Number(entry.selectionNumber)
+          : null,
       });
       jukeboxSequence = Math.max(jukeboxSequence, sequence);
     }
@@ -298,6 +301,7 @@ export function registerSeeburgRoutes(app, deps) {
         priority: 'jukebox',
         sequence,
         file: resolved.file,
+        selectionNumber: number,
       });
       persistJukeboxState(jukeboxStatePath);
 

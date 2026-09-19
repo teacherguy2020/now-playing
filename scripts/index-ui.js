@@ -3059,6 +3059,7 @@ function updateUI(data) {
   const albumTextEl = document.getElementById('album-text');
   const fileInfoEl  = document.getElementById('file-info-text');
   const hiresBadge  = document.getElementById('hires-badge');
+  const multiphoneSelectionEl = document.getElementById('multiphone-selection');
   const personnelEl = document.getElementById('personnel-info');
   const artEl       = document.getElementById('album-art');
   const artBgEl     = document.getElementById('album-art-bg');
@@ -3265,6 +3266,17 @@ if (titleEl) {
       hiresBadge.textContent = '';
       hiresBadge.style.display = 'none';
     }
+  }
+
+  if (multiphoneSelectionEl) {
+    const source = String(data?.jukeboxSource || '').trim().toLowerCase();
+    const selectionNumber = Number(data?.jukeboxSelectionNumber);
+    const showMultiphoneSelection = source === 'multiphone'
+      && Number.isSafeInteger(selectionNumber)
+      && selectionNumber > 0;
+    multiphoneSelectionEl.textContent = showMultiphoneSelection ? `Mabel #${selectionNumber}` : '';
+    multiphoneSelectionEl.title = showMultiphoneSelection ? `Multiphone selection ${selectionNumber}` : '';
+    multiphoneSelectionEl.style.display = showMultiphoneSelection ? 'inline-flex' : 'none';
   }
 
   // =========================
