@@ -25,6 +25,8 @@ let fgLoadingKey = '';
 let fgLoadingUrl = '';
 let radioFooterActive = false;
 let idleClockTimer = 0;
+let idleClockMoveTimer = 0;
+let idleClockMoveIndex = 0;
 let idleBrandingLastFetch = 0;
 let idleBrandingFetchPromise = null;
 let idleBrandLine = 'Clem’s Place';
@@ -158,6 +160,20 @@ function setIdleOverlayVisible(on) {
   const el = ensureIdleOverlay();
   const clock = document.getElementById('np-idle-clock');
   const stars = document.getElementById('star-row');
+  const card = el.querySelector('.np-idle-card');
+  const positions = [
+    [0, 0],
+    [3.5, -2],
+    [-3, 2.5],
+    [2, 2],
+    [-2.5, -1.5],
+  ];
+  const moveClock = () => {
+    if (!card) return;
+    const [x, y] = positions[idleClockMoveIndex % positions.length];
+    idleClockMoveIndex += 1;
+    card.style.transform = 'translate3d(' + x + 'vw, ' + y + 'vh, 0)';
+  };
   const tick = () => {
     if (!clock) return;
     const d = new Date();
@@ -170,15 +186,23 @@ function setIdleOverlayVisible(on) {
   if (on) {
     refreshIdleBranding().catch(() => {});
     tick();
+    idleClockMoveIndex = 0;
+    if (card) {
+      card.style.transition = 'transform 2.4s ease-in-out';
+      card.style.transform = 'translate3d(0, 0, 0)';
+    }
     document.body.classList.add('np-idle-mode');
     el.style.display = 'flex';
     if (stars) stars.style.display = 'none';
     if (!idleClockTimer) idleClockTimer = setInterval(tick, 15000);
+    if (!idleClockMoveTimer) idleClockMoveTimer = setInterval(moveClock, 90000);
   } else {
     document.body.classList.remove('np-idle-mode');
     el.style.display = 'none';
     if (stars) stars.style.display = '';
     if (idleClockTimer) { clearInterval(idleClockTimer); idleClockTimer = 0; }
+    if (idleClockMoveTimer) { clearInterval(idleClockMoveTimer); idleClockMoveTimer = 0; }
+    if (card) card.style.transform = '';
   }
 }
 
