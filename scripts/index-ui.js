@@ -161,6 +161,7 @@ function setIdleOverlayVisible(on) {
   const clock = document.getElementById('np-idle-clock');
   const stars = document.getElementById('star-row');
   const card = el.querySelector('.np-idle-card');
+  const alreadyIdle = document.body.classList.contains('np-idle-mode');
   const positions = [
     [0, 0],
     [3.5, -2],
@@ -186,12 +187,14 @@ function setIdleOverlayVisible(on) {
   if (on) {
     refreshIdleBranding().catch(() => {});
     tick();
-    idleClockMoveIndex = 0;
-    if (card) {
-      card.style.transition = 'transform 2.4s ease-in-out';
-      card.style.transform = 'translate3d(0, 0, 0)';
+    if (!alreadyIdle) {
+      idleClockMoveIndex = 0;
+      if (card) {
+        card.style.transition = 'transform 2.4s ease-in-out';
+        card.style.transform = 'translate3d(0, 0, 0)';
+      }
+      document.body.classList.add('np-idle-mode');
     }
-    document.body.classList.add('np-idle-mode');
     el.style.display = 'flex';
     if (stars) stars.style.display = 'none';
     if (!idleClockTimer) idleClockTimer = setInterval(tick, 15000);
