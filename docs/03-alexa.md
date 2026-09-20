@@ -69,6 +69,20 @@ stop webhook call clears the remembered Alexa playback state and its UI overlay;
 it does not stop or alter moOde/MPD playback. This is intended for Homebridge
 virtual buttons and other authenticated LAN controls.
 
+For the Homebridge Alexa Mode switch, use the state-only integration endpoint
+instead of either webhook action:
+
+```http
+POST /integrations/alexa/state
+x-track-key: YOUR_TRACK_KEY
+Content-Type: application/json
+
+{"state":"on"}
+```
+
+Send `{"state":"off"}` to clear Alexa mode. This endpoint is idempotent,
+does not invoke either webhook, and does not alter MPD/moOde playback.
+
 The older trailing here forms remain supported for compatibility.
 
 ## Mabel VIP relationship

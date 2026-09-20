@@ -2642,6 +2642,60 @@ function clearAlexaWasPlayingState() {
   return alexaWasPlaying;
 }
 
+function setAlexaModeState(active) {
+  const nextActive = !!active;
+  if (!nextActive) {
+    const nowTs = Date.now();
+    alexaWasPlaying = {
+      ...alexaWasPlaying,
+      token: '',
+      file: '',
+      title: '',
+      artist: '',
+      album: '',
+      year: '',
+      date: '',
+      personnel: [],
+      rating: 0,
+      ratingFile: '',
+      ratingDisabled: false,
+      active: false,
+      stoppedAt: nowTs,
+      updatedAt: nowTs,
+      playbackTarget: '',
+      playbackMode: '',
+    };
+    return alexaWasPlaying;
+  }
+
+  if (alexaWasPlaying.active && alexaWasPlaying.playbackMode === 'alexa') {
+    return alexaWasPlaying;
+  }
+
+  const nowTs = Date.now();
+  alexaWasPlaying = {
+    ...alexaWasPlaying,
+    token: '',
+    file: '',
+    title: '',
+    artist: '',
+    album: '',
+    year: '',
+    date: '',
+    personnel: [],
+    rating: 0,
+    ratingFile: '',
+    ratingDisabled: false,
+    active: true,
+    startedAt: nowTs,
+    stoppedAt: 0,
+    updatedAt: nowTs,
+    playbackTarget: 'echo',
+    playbackMode: 'alexa',
+  };
+  return alexaWasPlaying;
+}
+
 app.get('/alexa/was-playing', async (req, res) => {
   try {
     const now = Date.now();
@@ -7461,6 +7515,7 @@ registerAllConfigRoutes(app, {
   mpdStickerGetSong,
   getAlexaWasPlaying: () => alexaWasPlaying,
   clearAlexaWasPlayingState,
+  setAlexaModeState,
   getYoutubeNowPlayingHint: () => youtubeNowPlayingHint,
   getYoutubeQueueHint,
 });

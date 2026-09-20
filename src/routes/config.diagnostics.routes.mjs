@@ -169,7 +169,7 @@ function splitArtistDashTitle(line) {
 }
 
 export function registerConfigDiagnosticsRoutes(app, deps) {
-  const { requireTrackKey, getRatingForFile, setRatingForFile, getAlexaWasPlaying, clearAlexaWasPlayingState, getYoutubeNowPlayingHint, getYoutubeQueueHint } = deps;
+  const { requireTrackKey, getRatingForFile, setRatingForFile, getAlexaWasPlaying, clearAlexaWasPlayingState, setAlexaModeState, getYoutubeNowPlayingHint, getYoutubeQueueHint } = deps;
   const configPath = process.env.NOW_PLAYING_CONFIG_PATH || `${process.cwd()}/config/now-playing.config.json`;
 
   function pos0FromAlexaToken(tokenRaw) {
@@ -218,6 +218,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
   }
 
   const endpointCatalog = [
+    { group: 'Integrations', method: 'POST', path: '/integrations/alexa/state', body: { state: 'on|off' } },
     { group: 'Now Playing', method: 'GET', path: '/now-playing' },
     { group: 'Now Playing', method: 'GET', path: '/next-up' },
     { group: 'Now Playing', method: 'GET', path: '/track' },
@@ -625,6 +626,31 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       }
 
       return res.json({ ok: true, playlistName: safeName, playlistSaved: true, trackCount, m3uRewritten, m3uRewriteError, manifestSaved, manifestError, collageGenerated, collageError });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.post('/integrations/alexa/state', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const state = String(req.body?.state || '').trim().toLowerCase();
+      if (state !== 'on' && state !== 'off') {
+        return res.status(400).json({ ok: false, error: 'state must be on or off' });
+      }
+      if (typeof setAlexaModeState !== 'function') {
+        return res.status(500).json({ ok: false, error: 'Alexa state handler is unavailable' });
+      }
+
+      const mode = setAlexaModeState(state === 'on');
+      return res.json({
+        ok: true,
+        state,
+        alexaMode: state === 'on',
+        active: !!mode?.active,
+        playbackTarget: String(mode?.playbackTarget || ''),
+        playbackMode: String(mode?.playbackMode || ''),
+      });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

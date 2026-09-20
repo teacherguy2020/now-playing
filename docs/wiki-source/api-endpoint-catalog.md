@@ -104,6 +104,10 @@ the Alexa lifecycle actions `routealexa` and `stopalexa` (also accepted as
 the configured Alexa stop webhook and clears remembered Alexa state after a
 successful webhook response.
 
+`POST /integrations/alexa/state` is the state-only Homebridge integration. It
+accepts `{"state":"on"}` or `{"state":"off"}`, requires the track key, is
+idempotent, and does not invoke webhooks or alter MPD/moOde playback.
+
 Owner:
 - `moode-nowplaying-api.mjs`
 
