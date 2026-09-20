@@ -1,21 +1,19 @@
 # Alexa Integration
 
-The current Alexa playback solution is Homebridge/Matter-based. VoiceMonkey is
-not used, and no custom Alexa skill is required for the Homebridge playback
-flow. The API remains the source of truth for Now-Playing state.
+The current Alexa playback solution is hybrid. Homebridge/Matter provides the
+local start/stop triggers and Alexa Mode status, while the custom Alexa skill
+in this directory remains the active Echo playback/routing integration.
+VoiceMonkey is no longer used. The API remains the source of truth for
+Now-Playing state.
 
-The code in this directory is retained as an optional legacy/direct Alexa skill
-integration for voice commands and compatibility; it is not required by the
-current Homebridge Alexa Mode routines.
-
-> Legacy integration note: the current Homebridge/Matter flow does not use this
-> skill package. If you intentionally use the optional direct Alexa skill below,
-> you must package and import its code into the Developer Console yourself.
+> The skill package is still required for Echo playback. Homebridge/Matter
+> triggers the Alexa routine/control path; it does not replace the skill.
 
 ## Prerequisites
 
-1. Public HTTPS endpoint for any legacy/direct Alexa skill use
-2. Valid `TRACK_KEY` shared between the legacy Alexa runtime and API
+1. Amazon Developer account and custom Alexa skill
+2. Public HTTPS endpoint for the Alexa skill/API
+3. Valid `TRACK_KEY` shared between the Alexa runtime and API
 
 ## Key files
 
@@ -44,7 +42,7 @@ Optional:
 
 Use `alexa/interaction-model.v2.json` as the current model source.
 
-## Optional legacy/direct skill setup
+## Alexa skill setup
 
 If you are starting from scratch, do this once before uploading code:
 

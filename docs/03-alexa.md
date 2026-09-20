@@ -6,22 +6,25 @@ Use this page to manage Alexa integration and voice command behavior.
 
 ## Current Alexa architecture
 
-The current playback path is Homebridge/Matter-based; VoiceMonkey is no longer
-part of the system, and no custom Alexa skill is required for this flow.
+The current playback path is hybrid. VoiceMonkey is no longer used, but the
+custom Alexa skill remains active: it is the component that routes and plays
+audio on the Echo. Homebridge/Matter supplies the local start/stop triggers and
+reports Alexa Mode status; it does not replace the skill.
 
 ```text
 Start on Alexa button
   → Now-Playing routealexa
   → Homebridge /api/v1/actions/alexa-start
   → Matter trigger switch
-  → Alexa routine starts playback
+  → Alexa routine/skill starts Echo playback
   → Homebridge reports Alexa Mode on
   → Now-Playing /integrations/alexa/state
 ```
 
 Stopping follows the same pattern through Homebridge
-`/api/v1/actions/alexa-stop`. Alexa Mode is a separate Matter status switch
-and does not itself trigger either routine. Homebridge reports its status with
+`/api/v1/actions/alexa-stop`, while the Alexa skill handles the Echo playback
+side. Alexa Mode is a separate Matter status switch and does not itself trigger
+either routine. Homebridge reports its status with
 the authenticated state-only endpoint:
 
 ```http
