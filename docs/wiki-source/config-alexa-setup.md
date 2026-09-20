@@ -97,17 +97,20 @@ Observed behavior includes:
 
 This means the Config page is actively interpreting Alexa setup state, not merely storing values.
 
-## 3. Alexa Mode control
+## 3. Homebridge Alexa actions and state
 
-The Config page no longer exposes the legacy route/stop webhook fields.
-Alexa Mode is now controlled by Homebridge through the authenticated:
+The Config page retains two webhook fields:
 
-- `POST /integrations/alexa/state`
+- `alexa.routeWebhookUrl` → Homebridge `/api/v1/actions/alexa-start`
+- `alexa.stopWebhookUrl` → Homebridge `/api/v1/actions/alexa-stop`
 
-The endpoint accepts `{"state":"on"}` and `{"state":"off"}`, is
-idempotent, and does not alter MPD/moOde playback. The older
-`routealexa`/`stopalexa` webhook actions remain available in the backend for
-compatibility, but are not part of the current Homebridge flow.
+These actions trigger Matter switches that Alexa routines use to start or stop
+Alexa playback. Alexa Mode itself is a separate Matter status switch. Homebridge
+reports that status to the authenticated `POST /integrations/alexa/state`
+endpoint with `{"state":"on"}` or `{"state":"off"}`.
+
+The state endpoint is idempotent and does not invoke either webhook or alter
+MPD/moOde playback.
 
 ## 4. Domain reachability check
 
@@ -236,7 +239,7 @@ This page should stay linked with:
 ## Things still to verify
 
 Future deeper verification should clarify:
-- the legacy webhook actions are compatibility-only and are no longer configured in the UI
+- the webhook actions trigger Homebridge/Matter routines, while the state endpoint receives status feedback
 - what URL/path the domain checker probes behind the scenes
 - whether additional Alexa provisioning requirements exist outside what Config currently exposes
 - whether the hidden legacy Alexa DOM elements can eventually be removed or are still functionally required
@@ -249,6 +252,6 @@ It is not the corrections page.
 It is the provisioning page for:
 - enablement
 - public domain
-- Homebridge Alexa Mode integration
+- Homebridge webhook actions and Alexa Mode integration
 - reachability verification
 - setup-state feedback

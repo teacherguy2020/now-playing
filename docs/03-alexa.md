@@ -64,9 +64,9 @@ Content-Type: application/json
 The equivalent hyphenated form is also accepted for integrations that use
 `{"action":"stop-alexa"}`.
 
-These legacy webhook actions are retained for compatibility, but their webhook
-fields are no longer shown in Config. The current Homebridge Alexa Mode switch
-uses the state-only integration endpoint below.
+Configure these webhook URLs to point to Homebridge’s local Alexa action
+endpoints. Homebridge turns the corresponding Matter trigger switch on briefly;
+Alexa routines respond to those switches and control Alexa playback.
 
 For the Homebridge Alexa Mode switch, use the state-only integration endpoint
 instead of either webhook action:
