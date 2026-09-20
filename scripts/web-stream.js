@@ -217,6 +217,10 @@
       let alexaActive = false;
       let alexaPendingTarget = null;
       let alexaPendingTimer = 0;
+      const isAlexaModeConfirmed = (value) => !!value && (
+        value.alexaMode === true
+        || (value.active === true && value.playbackTarget === 'echo' && value.playbackMode === 'alexa')
+      );
       const paintAlexa = (active, busy = false) => {
         alexaActive = !!active;
         if (alexaPendingTarget !== null) {
@@ -242,7 +246,7 @@
         try {
           const response = await fetch('/alexa/was-playing', { cache: 'no-store' });
           const result = await response.json().catch(() => ({}));
-          const active = !!(result?.wasPlaying?.active || result?.nowPlaying?.active);
+          const active = isAlexaModeConfirmed(result?.wasPlaying) || isAlexaModeConfirmed(result?.nowPlaying);
           paintAlexa(active);
         } catch {}
       };

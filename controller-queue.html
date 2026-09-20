@@ -895,6 +895,10 @@
     let alexaPendingTarget = null;
     let alexaPendingTimer = 0;
     const routeAlexaButton = document.getElementById('routeAlexaBtn');
+    const isAlexaModeConfirmed = (value) => !!value && (
+      value.alexaMode === true
+      || (value.active === true && value.playbackTarget === 'echo' && value.playbackMode === 'alexa')
+    );
     function paintAlexaButton(active, busy = false){
       alexaActive = !!active;
       if (!routeAlexaButton) return;
@@ -918,7 +922,7 @@
       try {
         const r = await fetch(`${base}/alexa/was-playing`, { cache:'no-store' });
         const j = await r.json().catch(()=>({}));
-        paintAlexaButton(!!(j?.wasPlaying?.active || j?.nowPlaying?.active));
+        paintAlexaButton(isAlexaModeConfirmed(j?.wasPlaying) || isAlexaModeConfirmed(j?.nowPlaying));
       } catch {}
     }
     syncAlexaButton().catch(()=>null);

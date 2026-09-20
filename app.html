@@ -1236,7 +1236,7 @@
                 const awNp = awLite?.nowPlaying || null;
                 const awWp = awLite?.wasPlaying || null;
                 const awFresh = !!awLite?.fresh;
-                const awActive = !!((awNp && awNp.active) || (awWp && awWp.active));
+                const awActive = isAlexaModeConfirmed(awNp) || isAlexaModeConfirmed(awWp);
                 paintHeroAlexaButton(awActive);
                 const awPayload = (awNp && awNp.file) ? awNp : ((awWp && awWp.file) ? awWp : null);
                 const npMerged = (awFresh && awActive && awPayload) ? { ...npLite, ...awPayload, alexaMode: true } : npLite;
@@ -1314,7 +1314,7 @@
             const awNp = aw?.nowPlaying || null;
             const awWp = aw?.wasPlaying || null;
             const awFresh = !!aw?.fresh;
-            const awActive = !!((awNp && awNp.active) || (awWp && awWp.active));
+            const awActive = isAlexaModeConfirmed(awNp) || isAlexaModeConfirmed(awWp);
             paintHeroAlexaButton(awActive);
             const awPayload = (awNp && awNp.file) ? awNp : ((awWp && awWp.file) ? awWp : null);
             if (awFresh && awActive && awPayload) {
@@ -4130,6 +4130,12 @@
       let heroAlexaActive = false;
       let heroAlexaPendingTarget = null;
       let heroAlexaPendingTimer = 0;
+      function isAlexaModeConfirmed(value){
+        return !!value && (
+          value.alexaMode === true
+          || (value.active === true && value.playbackTarget === 'echo' && value.playbackMode === 'alexa')
+        );
+      }
       function paintHeroAlexaButton(active, busy = false){
         heroAlexaActive = !!active;
         if (!routeAlexaEl) return;
