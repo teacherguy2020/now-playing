@@ -94,6 +94,8 @@ function buildPlayReplaceAll(track, spokenTitle) {
   const album = safeStr(track.album);
 
   // Token carries identity + lightweight metadata for launch announcements.
+  // The nonce is diagnostic-only: lifecycle consumers continue using file,
+  // songid, and pos0 from the decoded payload.
   const token = makeToken({
     file: file,
     songid: songid,
@@ -101,6 +103,7 @@ function buildPlayReplaceAll(track, spokenTitle) {
     title: title,
     artist: artist,
     album: album,
+    playbackNonce: `${nowMs()}-${Math.random().toString(36).slice(2, 10)}`,
   });
 
   const artUrl = artUrlForFile(file);

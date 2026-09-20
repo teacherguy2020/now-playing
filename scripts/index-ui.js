@@ -608,15 +608,19 @@ async function fetchAlexaPayload() {
 
     const wpHas = !!(wp && (wp.file || wp.title || wp.artist));
     const npHas = !!(np && (np.file || np.title || np.artist));
-    const wpActive = !!(wp && wp.active);
-    const npActive = !!(np && np.active);
-    const playbackTarget = String(wp?.playbackTarget || np?.playbackTarget || '').trim().toLowerCase();
+    const isActiveAlexaState = (state) => (
+      !!state?.active &&
+      String(state?.playbackTarget || '').trim().toLowerCase() === 'echo' &&
+      String(state?.playbackMode || '').trim().toLowerCase() === 'alexa'
+    );
+    const activeState = isActiveAlexaState(wp) ? wp : (isActiveAlexaState(np) ? np : null);
 
-    // Source of truth in Alexa mode: prefer wasPlaying for text identity.
-    const payload = wpHas ? wp : (npHas ? np : null);
-    const active = wpHas ? wpActive : npActive;
+    // Homebridge's Alexa Mode state is authoritative even before Alexa has
+    // reported the first track. Prefer was-playing for track identity once it
+    // exists, but allow the explicit active mode marker with empty metadata.
+    const payload = wpHas ? wp : (npHas ? np : (activeState || {}));
 
-    if (!fresh || !payload || !active || (playbackTarget && playbackTarget !== 'echo')) return null;
+    if (!fresh || !activeState) return null;
 
     const aArtist = String(payload?.artist || '').trim();
     const aTitle = String(payload?.title || '').trim();

@@ -1,6 +1,63 @@
 'use strict';
 
 const Alexa = require('ask-sdk-core');
+const crypto = require('crypto');
+
+function shortSha256(value) {
+  return crypto.createHash('sha256').update(String(value || ''), 'utf8').digest('hex').slice(0, 16);
+}
+
+function sanitizeUrlForAlexaLog(value) {
+  const raw = String(value || '');
+  if (!raw) return raw;
+  try {
+    const url = new URL(raw);
+    for (const name of ['k', 'key', 'track_key', 'trackKey', 'token']) {
+      if (url.searchParams.has(name)) url.searchParams.set(name, '[redacted]');
+    }
+    return url.toString();
+  } catch (_) {
+    return '[unparseable-url]';
+  }
+}
+
+function sanitizeAudioItemForAlexaLog(audioItem) {
+  const item = JSON.parse(JSON.stringify(audioItem || {}));
+  const stream = item.stream || {};
+  if (Object.prototype.hasOwnProperty.call(stream, 'token')) {
+    stream.token = `[sha256:${shortSha256(stream.token)}]`;
+  }
+  if (Object.prototype.hasOwnProperty.call(stream, 'expectedPreviousToken')) {
+    stream.expectedPreviousToken = stream.expectedPreviousToken
+      ? `[sha256:${shortSha256(stream.expectedPreviousToken)}]`
+      : stream.expectedPreviousToken;
+  }
+  if (Object.prototype.hasOwnProperty.call(stream, 'url')) {
+    stream.url = sanitizeUrlForAlexaLog(stream.url);
+  }
+  for (const imageName of ['art', 'backgroundImage']) {
+    const image = item.metadata && item.metadata[imageName];
+    if (!image || !Array.isArray(image.sources)) continue;
+    image.sources = image.sources.map((source) => ({
+      ...source,
+      url: sanitizeUrlForAlexaLog(source && source.url),
+    }));
+  }
+  return item;
+}
+
+function audioItemMetadataChecks(audioItem) {
+  const metadata = audioItem && audioItem.metadata;
+  const sources = (name) => metadata && metadata[name] && Array.isArray(metadata[name].sources)
+    ? metadata[name].sources
+    : [];
+  return {
+    titleNonempty: !!(metadata && String(metadata.title || '').trim()),
+    subtitleNonempty: !!(metadata && String(metadata.subtitle || '').trim()),
+    artSourcesNonempty: sources('art').length > 0,
+    backgroundImageSourcesNonempty: sources('backgroundImage').length > 0,
+  };
+}
 
 function createIntentHandlers(deps) {
   const {
@@ -382,6 +439,14 @@ function createIntentHandlers(deps) {
         }
         const directive = buildPlayReplaceAll(snap, 'Starting your queue');
         rememberIssuedStream(directive.audioItem.stream.token, directive.audioItem.stream.url, 0);
+        console.log('[PlayQueueIntent] AudioPlayer.Play audioItem (sanitized):', JSON.stringify(
+          sanitizeAudioItemForAlexaLog(directive.audioItem),
+          null,
+          2,
+        ));
+        console.log('[PlayQueueIntent] AudioPlayer.Play metadata checks:', JSON.stringify(
+          audioItemMetadataChecks(directive.audioItem),
+        ));
         return handlerInput.responseBuilder
           .speak('Starting your queue.')
           .withShouldEndSession(true)
