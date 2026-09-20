@@ -129,6 +129,7 @@
     .heroQueueBtn,
     .heroQueueActions button{padding:4px 8px;border-radius:7px;border:1px solid #334;background:#0a1222;color:#eef;cursor:pointer;transition:all .12s ease}
     .heroQueueBtn{padding:6px 10px;border-radius:8px}
+    .heroQueueBtn.alexa-active{border-color:#55c98a !important;background:#153d2b !important;color:#b9ffd8 !important;box-shadow:0 0 0 1px rgba(85,201,138,.28) inset}
     .heroQueueBtn.isLoading{position:relative;padding-left:30px;pointer-events:none;opacity:.9}
     .heroQueueBtn.isLoading::before{content:'';position:absolute;left:10px;top:50%;width:12px;height:12px;margin-top:-7px;border:2px solid rgba(191,219,254,.35);border-top-color:#bfdbfe;border-radius:50%;animation:hqSpin .75s linear infinite}
     @keyframes hqSpin{to{transform:rotate(360deg)}}
@@ -326,7 +327,7 @@
               <input id="heroQueueConsume" type="checkbox" />
               <span>Consume</span>
             </label>
-            <button id="heroQueueRouteAlexa" class="heroQueueBtn" type="button" title="Invoke configured Alexa route webhook">Route to Alexa</button>
+            <button id="heroQueueRouteAlexa" class="heroQueueBtn" type="button" title="Start playback on Alexa" aria-pressed="false">Start on Alexa</button>
             <label id="heroQueueCrossfadeWrap" class="heroQueueCheckWrap">
               <span>Crossfade</span>
               <select id="heroQueueCrossfade" class="heroQueueBtn" style="padding:4px 8px;min-width:80px;">
@@ -1236,6 +1237,7 @@
                 const awWp = awLite?.wasPlaying || null;
                 const awFresh = !!awLite?.fresh;
                 const awActive = !!((awNp && awNp.active) || (awWp && awWp.active));
+                paintHeroAlexaButton(awActive);
                 const awPayload = (awNp && awNp.file) ? awNp : ((awWp && awWp.file) ? awWp : null);
                 const npMerged = (awFresh && awActive && awPayload) ? { ...npLite, ...awPayload, alexaMode: true } : npLite;
 
@@ -1313,6 +1315,7 @@
             const awWp = aw?.wasPlaying || null;
             const awFresh = !!aw?.fresh;
             const awActive = !!((awNp && awNp.active) || (awWp && awWp.active));
+            paintHeroAlexaButton(awActive);
             const awPayload = (awNp && awNp.file) ? awNp : ((awWp && awWp.file) ? awWp : null);
             if (awFresh && awActive && awPayload) {
               np = { ...np, ...awPayload, alexaMode: true };
@@ -4124,6 +4127,16 @@
       const consumeEl = document.getElementById('heroQueueConsume');
       const crossfadeEl = document.getElementById('heroQueueCrossfade');
       const routeAlexaEl = document.getElementById('heroQueueRouteAlexa');
+      let heroAlexaActive = false;
+      function paintHeroAlexaButton(active, busy = false){
+        heroAlexaActive = !!active;
+        if (!routeAlexaEl) return;
+        routeAlexaEl.classList.toggle('alexa-active', heroAlexaActive);
+        routeAlexaEl.disabled = !!busy;
+        routeAlexaEl.setAttribute('aria-pressed', heroAlexaActive ? 'true' : 'false');
+        routeAlexaEl.textContent = busy ? (heroAlexaActive ? 'Stopping…' : 'Starting…') : (heroAlexaActive ? 'Stop on Alexa' : 'Start on Alexa');
+        routeAlexaEl.title = heroAlexaActive ? 'Stop Alexa playback' : 'Start playback on Alexa';
+      }
       const queueMinRatingWrapEl = document.getElementById('heroQueueMinRatingWrap');
       const queueMinRatingEl = document.getElementById('heroQueueMinRating');
       let queueRatingFilterWasVisible = false;
@@ -4195,16 +4208,14 @@
 
       if (routeAlexaEl) {
         routeAlexaEl.addEventListener('click', async () => {
-          const prev = routeAlexaEl.textContent || 'Route to Alexa';
-          routeAlexaEl.disabled = true;
-          routeAlexaEl.textContent = 'Routing…';
+          const action = heroAlexaActive ? 'stopalexa' : 'routealexa';
+          paintHeroAlexaButton(heroAlexaActive, true);
           try {
-            await sendHeroPlayback('routealexa');
+            await sendHeroPlayback(action);
           } catch (e) {
-            try { alert(String(e?.message || e || 'Route to Alexa failed')); } catch {}
+            try { alert(String(e?.message || e || `${action} failed`)); } catch {}
           } finally {
-            routeAlexaEl.disabled = false;
-            routeAlexaEl.textContent = prev;
+            await syncHeroQueue().catch(() => {});
           }
         });
       }

@@ -11,7 +11,7 @@
     style.textContent = `
       .webStreamToggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:145px;min-width:145px;white-space:nowrap}
       .webStreamToggle .webStreamIcon{font-size:15px;line-height:1}
-      .webStreamToggle.is-on{border-color:#55c98a !important;box-shadow:0 0 0 1px rgba(85,201,138,.28) inset;color:#b9ffd8 !important}
+      .webStreamToggle.is-on,.alexaRouteButton.is-on{border-color:#55c98a !important;box-shadow:0 0 0 1px rgba(85,201,138,.28) inset;color:#b9ffd8 !important}
       .webStreamToggle.is-busy{opacity:.72;cursor:wait}
       .webStreamSpinner{width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:webStreamSpin .7s linear infinite}
       @keyframes webStreamSpin{to{transform:rotate(360deg)}}
@@ -214,10 +214,33 @@
     document.querySelectorAll('[data-route-alexa]').forEach((routeButton) => {
       if (routeButton.dataset.routeAlexaBound === '1') return;
       routeButton.dataset.routeAlexaBound = '1';
+      let alexaActive = false;
+      const paintAlexa = (active, busy = false) => {
+        alexaActive = !!active;
+        routeButton.classList.toggle('is-on', alexaActive);
+        routeButton.classList.toggle('is-busy', busy);
+        routeButton.disabled = !!busy;
+        routeButton.setAttribute('aria-pressed', alexaActive ? 'true' : 'false');
+        routeButton.setAttribute('aria-busy', busy ? 'true' : 'false');
+        routeButton.title = alexaActive ? 'Stop Alexa playback' : 'Start playback on Alexa';
+        routeButton.textContent = busy ? (alexaActive ? 'Stopping…' : 'Starting…') : (alexaActive ? 'Stop on Alexa' : 'Start on Alexa');
+      };
+      const refreshAlexa = async () => {
+        try {
+          const response = await fetch('/alexa/was-playing', { cache: 'no-store' });
+          const result = await response.json().catch(() => ({}));
+          const active = !!(result?.wasPlaying?.active || result?.nowPlaying?.active);
+          paintAlexa(active);
+        } catch {}
+      };
+      paintAlexa(false);
+      refreshAlexa();
+      const alexaTimer = setInterval(() => { if (!document.hidden) refreshAlexa(); }, 3000);
+      window.addEventListener('pagehide', () => clearInterval(alexaTimer), { once: true });
       routeButton.addEventListener('click', async () => {
-        const previous = routeButton.textContent || 'Route to Alexa';
         routeButton.disabled = true;
-        routeButton.textContent = 'Routing…';
+        const action = alexaActive ? 'stopalexa' : 'routealexa';
+        paintAlexa(alexaActive, true);
         try {
           const runtime = await fetch('/config/runtime', { cache: 'no-store' });
           const runtimeJson = await runtime.json().catch(() => ({}));
@@ -225,15 +248,15 @@
           const response = await fetch('/config/diagnostics/playback', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
-            body: JSON.stringify({ action: 'routealexa' }),
+            body: JSON.stringify({ action }),
           });
           const result = await response.json().catch(() => ({}));
           if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
         } catch (error) {
-          showErrorModal(String(error?.message || error || 'Route to Alexa failed.'));
+          showErrorModal(String(error?.message || error || `${action} failed.`));
         } finally {
           routeButton.disabled = false;
-          routeButton.textContent = previous;
+          await refreshAlexa();
         }
       });
     });

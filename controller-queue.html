@@ -21,6 +21,7 @@
     .queueTopActions button.iconBtn{width:30px;height:28px;padding:5px;display:inline-flex;align-items:center;justify-content:center}
     .queueTopActions button.iconBtn svg{width:16px;height:16px;display:block;fill:currentColor}
     .queueTopActions button.endlessVibeOn{border-color:#5b3df0;background:#5b3df0;color:#fff}
+    .queueTopActions button.alexa-active{border-color:#55c98a;background:#153d2b;color:#b9ffd8;box-shadow:0 0 0 1px rgba(85,201,138,.28) inset}
     .queueTopActions button.warn{border-color:var(--line);background:var(--line);color:var(--text)}
     .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
     .vibeBusy{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:200;display:none;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(12,18,28,.88);border:1px solid #2a3a58;color:#e6efff;font-size:12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -126,7 +127,7 @@
   <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
 </head>
 <body>
-  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="routeAlexaBtn" type="button" title="Invoke configured Alexa route webhook">Route to Alexa</button><button id="saveQueuePlaylistBtn" class="iconBtn" type="button" title="Add entire Live Queue to a playlist" aria-label="Add entire Live Queue to a playlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button><button id="endlessVibeBtn" type="button" aria-pressed="false" title="Automatically extend the queue with Vibe">Endless Vibe: Off</button><button id="shuffleQueueBtn" type="button" title="Turn random off and shuffle queue">Shuffle</button><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
+  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="routeAlexaBtn" type="button" title="Start playback on Alexa" aria-pressed="false">Start on Alexa</button><button id="saveQueuePlaylistBtn" class="iconBtn" type="button" title="Add entire Live Queue to a playlist" aria-label="Add entire Live Queue to a playlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button><button id="endlessVibeBtn" type="button" aria-pressed="false" title="Automatically extend the queue with Vibe">Endless Vibe: Off</button><button id="shuffleQueueBtn" type="button" title="Turn random off and shuffle queue">Shuffle</button><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
   <ul class="list" id="list"><li id="dropLine" aria-hidden="true"></li></ul>
   <div class="vibeBusy" id="vibeBusy"><span class="miniSpin" aria-hidden="true"></span><span id="vibeBusyText">Building vibe queue…</span></div>
 
@@ -887,20 +888,39 @@
     });
     setTimeout(()=>{ clearBackNavState(); requestQueueLoad(); }, 260);
 
-    document.getElementById('routeAlexaBtn')?.addEventListener('click', async (ev)=>{
+    let alexaActive = false;
+    const routeAlexaButton = document.getElementById('routeAlexaBtn');
+    function paintAlexaButton(active, busy = false){
+      alexaActive = !!active;
+      if (!routeAlexaButton) return;
+      routeAlexaButton.classList.toggle('alexa-active', alexaActive);
+      routeAlexaButton.disabled = !!busy;
+      routeAlexaButton.setAttribute('aria-pressed', alexaActive ? 'true' : 'false');
+      routeAlexaButton.textContent = busy ? (alexaActive ? 'Stopping…' : 'Starting…') : (alexaActive ? 'Stop on Alexa' : 'Start on Alexa');
+      routeAlexaButton.title = alexaActive ? 'Stop Alexa playback' : 'Start playback on Alexa';
+    }
+    async function syncAlexaButton(){
+      try {
+        const r = await fetch(`${base}/alexa/was-playing`, { cache:'no-store' });
+        const j = await r.json().catch(()=>({}));
+        paintAlexaButton(!!(j?.wasPlaying?.active || j?.nowPlaying?.active));
+      } catch {}
+    }
+    syncAlexaButton().catch(()=>null);
+    setInterval(()=>{ if (!document.hidden) syncAlexaButton().catch(()=>null); }, 3000);
+
+    routeAlexaButton?.addEventListener('click', async (ev)=>{
       const btn = ev.currentTarget;
       if (!(btn instanceof HTMLButtonElement)) return;
-      const prev = btn.textContent || 'Route to Alexa';
-      btn.disabled = true;
-      btn.textContent = 'Routing…';
+      const action = alexaActive ? 'stopalexa' : 'routealexa';
+      paintAlexaButton(alexaActive, true);
       try {
-        await sendPlayback('routealexa');
+        await sendPlayback(action);
       } catch (e) {
         console.warn(e);
-        try { alert(String(e?.message || e || 'Route to Alexa failed')); } catch {}
+        try { alert(String(e?.message || e || `${action} failed`)); } catch {}
       } finally {
-        btn.disabled = false;
-        btn.textContent = prev;
+        await syncAlexaButton();
       }
     });
 
