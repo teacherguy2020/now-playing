@@ -22,6 +22,9 @@
     .queueTopActions button.iconBtn svg{width:16px;height:16px;display:block;fill:currentColor}
     .queueTopActions button.endlessVibeOn{border-color:#5b3df0;background:#5b3df0;color:#fff}
     .queueTopActions button.alexa-active{border-color:#55c98a;background:#153d2b;color:#b9ffd8;box-shadow:0 0 0 1px rgba(85,201,138,.28) inset}
+    .queueTopActions button.alexa-busy{opacity:.72;cursor:wait}
+    .queueTopActions button.alexa-busy::before{content:'';display:inline-block;width:11px;height:11px;margin-right:6px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-2px;animation:queueAlexaSpin .7s linear infinite}
+    @keyframes queueAlexaSpin{to{transform:rotate(360deg)}}
     .queueTopActions button.warn{border-color:var(--line);background:var(--line);color:var(--text)}
     .meta .miniSpin{display:inline-block;width:14px;height:14px;border-radius:999px;border:2px solid rgba(255,255,255,.22);border-top-color:#9fc4ff;animation:spin .8s linear infinite;vertical-align:-2px}
     .vibeBusy{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:200;display:none;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(12,18,28,.88);border:1px solid #2a3a58;color:#e6efff;font-size:12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -889,11 +892,23 @@
     setTimeout(()=>{ clearBackNavState(); requestQueueLoad(); }, 260);
 
     let alexaActive = false;
+    let alexaPendingTarget = null;
+    let alexaPendingTimer = 0;
     const routeAlexaButton = document.getElementById('routeAlexaBtn');
     function paintAlexaButton(active, busy = false){
       alexaActive = !!active;
       if (!routeAlexaButton) return;
+      if (alexaPendingTarget !== null) {
+        if (alexaActive === alexaPendingTarget) {
+          alexaPendingTarget = null;
+          clearTimeout(alexaPendingTimer);
+          alexaPendingTimer = 0;
+        } else {
+          busy = true;
+        }
+      }
       routeAlexaButton.classList.toggle('alexa-active', alexaActive);
+      routeAlexaButton.classList.toggle('alexa-busy', !!busy);
       routeAlexaButton.disabled = !!busy;
       routeAlexaButton.setAttribute('aria-pressed', alexaActive ? 'true' : 'false');
       routeAlexaButton.textContent = busy ? (alexaActive ? 'Stopping…' : 'Starting…') : (alexaActive ? 'Stop on Alexa' : 'Start on Alexa');
@@ -913,10 +928,22 @@
       const btn = ev.currentTarget;
       if (!(btn instanceof HTMLButtonElement)) return;
       const action = alexaActive ? 'stopalexa' : 'routealexa';
+      alexaPendingTarget = !alexaActive;
+      clearTimeout(alexaPendingTimer);
+      alexaPendingTimer = setTimeout(() => {
+        if (alexaPendingTarget === null) return;
+        alexaPendingTarget = null;
+        paintAlexaButton(alexaActive);
+        try { alert('Alexa did not confirm the requested state change.'); } catch {}
+      }, 20000);
       paintAlexaButton(alexaActive, true);
       try {
         await sendPlayback(action);
       } catch (e) {
+        alexaPendingTarget = null;
+        clearTimeout(alexaPendingTimer);
+        alexaPendingTimer = 0;
+        paintAlexaButton(alexaActive);
         console.warn(e);
         try { alert(String(e?.message || e || `${action} failed`)); } catch {}
       } finally {

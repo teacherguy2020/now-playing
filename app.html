@@ -4128,10 +4128,22 @@
       const crossfadeEl = document.getElementById('heroQueueCrossfade');
       const routeAlexaEl = document.getElementById('heroQueueRouteAlexa');
       let heroAlexaActive = false;
+      let heroAlexaPendingTarget = null;
+      let heroAlexaPendingTimer = 0;
       function paintHeroAlexaButton(active, busy = false){
         heroAlexaActive = !!active;
         if (!routeAlexaEl) return;
+        if (heroAlexaPendingTarget !== null) {
+          if (heroAlexaActive === heroAlexaPendingTarget) {
+            heroAlexaPendingTarget = null;
+            clearTimeout(heroAlexaPendingTimer);
+            heroAlexaPendingTimer = 0;
+          } else {
+            busy = true;
+          }
+        }
         routeAlexaEl.classList.toggle('alexa-active', heroAlexaActive);
+        routeAlexaEl.classList.toggle('isLoading', !!busy);
         routeAlexaEl.disabled = !!busy;
         routeAlexaEl.setAttribute('aria-pressed', heroAlexaActive ? 'true' : 'false');
         routeAlexaEl.textContent = busy ? (heroAlexaActive ? 'Stopping…' : 'Starting…') : (heroAlexaActive ? 'Stop on Alexa' : 'Start on Alexa');
@@ -4209,10 +4221,22 @@
       if (routeAlexaEl) {
         routeAlexaEl.addEventListener('click', async () => {
           const action = heroAlexaActive ? 'stopalexa' : 'routealexa';
+          heroAlexaPendingTarget = !heroAlexaActive;
+          clearTimeout(heroAlexaPendingTimer);
+          heroAlexaPendingTimer = setTimeout(() => {
+            if (heroAlexaPendingTarget === null) return;
+            heroAlexaPendingTarget = null;
+            paintHeroAlexaButton(heroAlexaActive);
+            try { alert('Alexa did not confirm the requested state change.'); } catch {}
+          }, 20000);
           paintHeroAlexaButton(heroAlexaActive, true);
           try {
             await sendHeroPlayback(action);
           } catch (e) {
+            heroAlexaPendingTarget = null;
+            clearTimeout(heroAlexaPendingTimer);
+            heroAlexaPendingTimer = 0;
+            paintHeroAlexaButton(heroAlexaActive);
             try { alert(String(e?.message || e || `${action} failed`)); } catch {}
           } finally {
             await syncHeroQueue().catch(() => {});

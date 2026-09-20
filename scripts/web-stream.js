@@ -215,15 +215,28 @@
       if (routeButton.dataset.routeAlexaBound === '1') return;
       routeButton.dataset.routeAlexaBound = '1';
       let alexaActive = false;
+      let alexaPendingTarget = null;
+      let alexaPendingTimer = 0;
       const paintAlexa = (active, busy = false) => {
         alexaActive = !!active;
+        if (alexaPendingTarget !== null) {
+          if (alexaActive === alexaPendingTarget) {
+            alexaPendingTarget = null;
+            clearTimeout(alexaPendingTimer);
+            alexaPendingTimer = 0;
+          } else {
+            busy = true;
+          }
+        }
         routeButton.classList.toggle('is-on', alexaActive);
         routeButton.classList.toggle('is-busy', busy);
         routeButton.disabled = !!busy;
         routeButton.setAttribute('aria-pressed', alexaActive ? 'true' : 'false');
         routeButton.setAttribute('aria-busy', busy ? 'true' : 'false');
         routeButton.title = alexaActive ? 'Stop Alexa playback' : 'Start playback on Alexa';
-        routeButton.textContent = busy ? (alexaActive ? 'Stopping…' : 'Starting…') : (alexaActive ? 'Stop on Alexa' : 'Start on Alexa');
+        routeButton.innerHTML = busy
+          ? `<span class="webStreamSpinner" aria-hidden="true"></span><span>${alexaActive ? 'Stopping…' : 'Starting…'}</span>`
+          : `<span>${alexaActive ? 'Stop on Alexa' : 'Start on Alexa'}</span>`;
       };
       const refreshAlexa = async () => {
         try {
@@ -238,8 +251,15 @@
       const alexaTimer = setInterval(() => { if (!document.hidden) refreshAlexa(); }, 3000);
       window.addEventListener('pagehide', () => clearInterval(alexaTimer), { once: true });
       routeButton.addEventListener('click', async () => {
-        routeButton.disabled = true;
         const action = alexaActive ? 'stopalexa' : 'routealexa';
+        alexaPendingTarget = !alexaActive;
+        clearTimeout(alexaPendingTimer);
+        alexaPendingTimer = setTimeout(() => {
+          if (alexaPendingTarget === null) return;
+          alexaPendingTarget = null;
+          paintAlexa(alexaActive);
+          showErrorModal('Alexa did not confirm the requested state change.');
+        }, 20000);
         paintAlexa(alexaActive, true);
         try {
           const runtime = await fetch('/config/runtime', { cache: 'no-store' });
@@ -253,9 +273,12 @@
           const result = await response.json().catch(() => ({}));
           if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
         } catch (error) {
+          alexaPendingTarget = null;
+          clearTimeout(alexaPendingTimer);
+          alexaPendingTimer = 0;
+          paintAlexa(alexaActive);
           showErrorModal(String(error?.message || error || `${action} failed.`));
         } finally {
-          routeButton.disabled = false;
           await refreshAlexa();
         }
       });
