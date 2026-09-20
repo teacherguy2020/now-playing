@@ -32,6 +32,7 @@ function pickPublicConfig(cfg) {
       skillId: String(c.alexa?.skillId || ''),
       webhookPath: String(c.alexa?.webhookPath || '/alexa'),
       routeWebhookUrl: String(c.alexa?.routeWebhookUrl || ''),
+      stopWebhookUrl: String(c.alexa?.stopWebhookUrl || ''),
       artistAliases: c.alexa?.artistAliases || {},
       albumAliases: c.alexa?.albumAliases || {},
       playlistAliases: c.alexa?.playlistAliases || {},

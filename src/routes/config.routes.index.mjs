@@ -46,6 +46,7 @@ export function registerAllConfigRoutes(app, deps) {
     getRatingForFile: deps.getRatingForFile,
     setRatingForFile: deps.setRatingForFile,
     getAlexaWasPlaying: deps.getAlexaWasPlaying,
+    clearAlexaWasPlayingState: deps.clearAlexaWasPlayingState,
     getYoutubeNowPlayingHint: deps.getYoutubeNowPlayingHint,
     getYoutubeQueueHint: deps.getYoutubeQueueHint,
   });

@@ -2629,6 +2629,19 @@ let alexaWasPlaying = {
   updatedAt: 0,
 };
 
+function clearAlexaWasPlayingState() {
+  const nowTs = Date.now();
+  alexaWasPlaying = {
+    ...alexaWasPlaying,
+    active: false,
+    stoppedAt: nowTs,
+    updatedAt: nowTs,
+    playbackTarget: '',
+    playbackMode: '',
+  };
+  return alexaWasPlaying;
+}
+
 app.get('/alexa/was-playing', async (req, res) => {
   try {
     const now = Date.now();
@@ -7447,6 +7460,7 @@ registerAllConfigRoutes(app, {
   setRatingForFile,
   mpdStickerGetSong,
   getAlexaWasPlaying: () => alexaWasPlaying,
+  clearAlexaWasPlayingState,
   getYoutubeNowPlayingHint: () => youtubeNowPlayingHint,
   getYoutubeQueueHint,
 });

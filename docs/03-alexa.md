@@ -43,6 +43,32 @@ These requests use normal moOde/MPD playback and queue semantics. Displays show
 ordinary Now Playing and Next Up rather than Alexa Mode. Alexa remains the
 request origin for diagnostics, but moOde is the playback authority.
 
+### Routing and stopping Alexa playback from external controls
+
+The authenticated diagnostics playback endpoint supports two Alexa actions:
+
+```http
+POST /config/diagnostics/playback
+x-track-key: YOUR_TRACK_KEY
+Content-Type: application/json
+
+{"action":"routealexa"}
+```
+
+`routealexa` invokes the configured Route webhook. The reverse action is:
+
+```http
+{"action":"stopalexa"}
+```
+
+The equivalent hyphenated form is also accepted for integrations that use
+`{"action":"stop-alexa"}`.
+
+Configure a separate Stop webhook URL on the Config → Alexa card. A successful
+stop webhook call clears the remembered Alexa playback state and its UI overlay;
+it does not stop or alter moOde/MPD playback. This is intended for Homebridge
+virtual buttons and other authenticated LAN controls.
+
 The older trailing here forms remain supported for compatibility.
 
 ## Mabel VIP relationship

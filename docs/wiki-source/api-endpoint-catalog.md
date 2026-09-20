@@ -98,6 +98,12 @@ For the stronger explanation of why `/now-playing` and `/next-up` are central tr
 - `GET /alexa/now-playing`
 - `GET /alexa/next-up`
 
+The authenticated `POST /config/diagnostics/playback` endpoint also supports
+the Alexa lifecycle actions `routealexa` and `stopalexa` (also accepted as
+`stop-alexa`). `stopalexa` invokes
+the configured Alexa stop webhook and clears remembered Alexa state after a
+successful webhook response.
+
 Owner:
 - `moode-nowplaying-api.mjs`
 

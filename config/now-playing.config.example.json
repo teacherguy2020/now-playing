@@ -23,7 +23,8 @@
     "publicDomain": "",
     "skillId": "",
     "webhookPath": "/alexa",
-    "routeWebhookUrl": ""
+    "routeWebhookUrl": "",
+    "stopWebhookUrl": ""
   },
   "display": {
     "idleBrandLine": "Clem’s Place",

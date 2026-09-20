@@ -113,6 +113,11 @@ The UI hint explicitly says this value is:
 So this field is not abstract setup metadata.
 It is a live integration endpoint used by user-facing route-to-Alexa actions elsewhere in the system.
 
+The Alexa card also supports a separate `stopWebhookUrl`. It is invoked by the
+authenticated `stopalexa` action on `POST /config/diagnostics/playback`. The
+stop action clears the remembered Alexa overlay only after the webhook succeeds;
+it does not stop normal moOde/MPD playback.
+
 ## 4. Domain reachability check
 
 This is one of the most important active setup workflows in the Config page.

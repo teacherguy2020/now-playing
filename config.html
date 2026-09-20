@@ -353,6 +353,12 @@
                     <div class="cfgHint">Used by “Route to Alexa” buttons in Live Queue / Hero Transport.</div>
                   </div>
 
+                  <div class="cfgField">
+                    <label for="alexaStopWebhookUrl">Stop webhook URL</label>
+                    <input id="alexaStopWebhookUrl" type="url" placeholder="https://api.voicemonkey.io/trigger?..." />
+                    <div class="cfgHint">Used by “Stop Alexa” actions to stop Echo playback and clear Alexa mode.</div>
+                  </div>
+
                   <div class="cfgHint" style="margin-top:10px;">
                     Alexa corrections and misheard review moved to the dedicated <a href="alexa.html">Alexa page</a>.
                     Config is the source of truth for enable/domain setup; the Alexa page focuses on corrections and misheard review.
@@ -1118,6 +1124,7 @@ async function loadCfg(){
   document.getElementById('featureAlexaSkill').checked = !!c.alexa?.enabled;
   document.getElementById('alexaDomain').value = c.alexa?.publicDomain || '';
   document.getElementById('alexaRouteWebhookUrl').value = c.alexa?.routeWebhookUrl || '';
+  document.getElementById('alexaStopWebhookUrl').value = c.alexa?.stopWebhookUrl || '';
   syncAlexaCardVisibility();
   syncAlexaDomainUi();
   // Auto-verify domain so the light reflects reachability (green when reachable).
@@ -1309,6 +1316,7 @@ async function saveCfg(){
         enabled: document.getElementById('featureAlexaSkill').checked,
         publicDomain: document.getElementById('alexaDomain').value.trim(),
         routeWebhookUrl: document.getElementById('alexaRouteWebhookUrl').value.trim(),
+        stopWebhookUrl: document.getElementById('alexaStopWebhookUrl').value.trim(),
         artistAliases,
         albumAliases: albumAliasMap,
         playlistAliases: playlistAliasMap,

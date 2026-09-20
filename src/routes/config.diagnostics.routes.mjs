@@ -169,7 +169,7 @@ function splitArtistDashTitle(line) {
 }
 
 export function registerConfigDiagnosticsRoutes(app, deps) {
-  const { requireTrackKey, getRatingForFile, setRatingForFile, getAlexaWasPlaying, getYoutubeNowPlayingHint, getYoutubeQueueHint } = deps;
+  const { requireTrackKey, getRatingForFile, setRatingForFile, getAlexaWasPlaying, clearAlexaWasPlayingState, getYoutubeNowPlayingHint, getYoutubeQueueHint } = deps;
   const configPath = process.env.NOW_PLAYING_CONFIG_PATH || `${process.cwd()}/config/now-playing.config.json`;
 
   function pos0FromAlexaToken(tokenRaw) {
@@ -202,6 +202,16 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const raw = await fs.readFile(configPath, 'utf8');
       const cfg = JSON.parse(raw || '{}');
       return String(cfg?.alexa?.routeWebhookUrl || '').trim();
+    } catch {
+      return '';
+    }
+  }
+
+  async function getAlexaStopWebhookUrl() {
+    try {
+      const raw = await fs.readFile(configPath, 'utf8');
+      const cfg = JSON.parse(raw || '{}');
+      return String(cfg?.alexa?.stopWebhookUrl || '').trim();
     } catch {
       return '';
     }
@@ -781,6 +791,39 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         }
 
         return res.json({ ok: true, action, webhookUrl: parsed.toString(), statusCode: response.status, body: bodyPreview });
+      }
+
+      if (action === 'stopalexa' || action === 'stop-alexa') {
+        const url = await getAlexaStopWebhookUrl();
+        if (!url) return res.status(400).json({ ok: false, error: 'Alexa stop webhook URL is not configured' });
+        let parsed;
+        try {
+          parsed = new URL(url);
+        } catch {
+          return res.status(400).json({ ok: false, error: 'Alexa stop webhook URL is invalid' });
+        }
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          return res.status(400).json({ ok: false, error: 'Alexa stop webhook URL must be http(s)' });
+        }
+
+        const methodRaw = String(req.body?.method || '').trim().toUpperCase();
+        const method = (methodRaw === 'POST' || methodRaw === 'GET') ? methodRaw : 'POST';
+        const response = await fetch(parsed.toString(), {
+          method,
+          headers: method === 'POST' ? { 'content-type': 'application/json' } : undefined,
+          body: method === 'POST' ? JSON.stringify({ source: 'now-playing-next', action: 'stop-alexa', ts: Date.now() }) : undefined,
+        });
+
+        let bodyPreview = '';
+        try { bodyPreview = String(await response.text()).slice(0, 240); } catch {}
+        if (!response.ok) {
+          return res.status(502).json({ ok: false, error: `Webhook returned HTTP ${response.status}`, statusCode: response.status, body: bodyPreview });
+        }
+
+        const alexaCleared = typeof clearAlexaWasPlayingState === 'function';
+        if (alexaCleared) clearAlexaWasPlayingState();
+
+        return res.json({ ok: true, action, webhookUrl: parsed.toString(), statusCode: response.status, body: bodyPreview, alexaCleared });
       }
 
       if (action === 'playpos') {

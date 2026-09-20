@@ -23,8 +23,9 @@
     "publicDomain": "",
     "skillId": "",
     "webhookPath": "/alexa",
-    "routeWebhookUrl": ""
-  }
+    "routeWebhookUrl": "",
+    "stopWebhookUrl": ""
+  },
   "paths": {
     "musicLibraryRoot": "/var/lib/mpd/music",
     "moodeUsbMount": "/media/SamsungMoode",
