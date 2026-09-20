@@ -248,6 +248,7 @@ Key anchors include:
 - `#alexaPublicDomain`
 - `#checkAlexaDomainBtn`
 - `#alexaRouteWebhookUrl`
+- `#alexaStopWebhookUrl`
 
 ### What it does
 This card governs Alexa enablement, public-domain assumptions, route/webhook setup, and domain health verification.

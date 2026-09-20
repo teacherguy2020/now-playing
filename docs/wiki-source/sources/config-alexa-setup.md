@@ -30,7 +30,7 @@ It exists because the Config page owns the provisioning/setup side of the Alexa 
 This page is about the setup layer:
 - enablement
 - public domain
-- route webhook URL
+- Homebridge start/stop action webhook URLs
 - domain reachability checks
 - setup-state visual feedback
 
@@ -41,7 +41,7 @@ It also depends on:
 - whether Alexa support is enabled
 - whether a public domain is configured
 - whether that public domain is actually reachable
-- whether route-to-Alexa actions know what webhook URL to use
+- whether start/stop Alexa actions have the correct Homebridge webhook URLs
 
 That makes the Config page the provisioning/control-plane side of Alexa.
 
@@ -73,6 +73,7 @@ Observed Alexa setup UI elements include:
 - `checkAlexaDomainBtn`
 - `alexaDomainCheckStatus`
 - `alexaRouteWebhookUrl`
+- `alexaStopWebhookUrl`
 - `alexaDomainLight`
 
 There is also wider shell-level health feedback through:
@@ -119,20 +120,20 @@ Observed behavior includes:
 
 This means the Config page is actively interpreting Alexa setup state, not merely storing values.
 
-## 3. Route webhook URL
+## 3. Homebridge Alexa actions and state
 
-Observed field includes:
-- `alexaRouteWebhookUrl`
+The Alexa card exposes two webhook fields:
 
-Observed save behavior persists this to:
-- `alexa.routeWebhookUrl`
+- `alexa.routeWebhookUrl` → Homebridge `/api/v1/actions/alexa-start`
+- `alexa.stopWebhookUrl` → Homebridge `/api/v1/actions/alexa-stop`
 
-### Why it matters
-The UI hint explicitly says this value is:
-- used by “Route to Alexa” buttons in Live Queue / Hero Transport
+These actions trigger Matter switches that Alexa routines use to start or stop
+Alexa playback. Alexa Mode is a separate Matter status switch. Homebridge
+reports that status to `POST /integrations/alexa/state` with `{"state":"on"}`
+or `{"state":"off"}`.
 
-So this field is not abstract setup metadata.
-It is a live integration endpoint used by user-facing route-to-Alexa actions elsewhere in the system.
+The state endpoint is idempotent and does not invoke either webhook or alter
+MPD/moOde playback.
 
 ## 4. Domain reachability check
 
@@ -229,7 +230,7 @@ A useful current setup workflow is:
 ### Initial provisioning workflow
 1. enable Alexa support
 2. enter public domain
-3. enter route webhook URL if route-to-Alexa actions are needed
+3. enter the Homebridge start and stop action webhook URLs if Alexa controls are needed
 4. save config
 5. verify domain reachability
 
@@ -261,7 +262,7 @@ This page should stay linked with:
 ## Things still to verify
 
 Future deeper verification should clarify:
-- exactly how the backend uses `routeWebhookUrl` for route-to-Alexa actions
+- whether the configured start/stop URLs match the Homebridge action endpoints
 - what URL/path the domain checker probes behind the scenes
 - whether additional Alexa provisioning requirements exist outside what Config currently exposes
 - whether the hidden legacy Alexa DOM elements can eventually be removed or are still functionally required
@@ -274,7 +275,7 @@ It is not the corrections page.
 It is the provisioning page for:
 - enablement
 - public domain
-- route webhook setup
+- Homebridge Alexa action webhook setup and state reporting
 - reachability verification
 - setup-state feedback
 

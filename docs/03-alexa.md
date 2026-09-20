@@ -4,6 +4,38 @@
 
 Use this page to manage Alexa integration and voice command behavior.
 
+## Current Alexa architecture
+
+The current playback path is Homebridge/Matter-based; VoiceMonkey is no longer
+part of the system, and no custom Alexa skill is required for this flow.
+
+```text
+Start on Alexa button
+  → Now-Playing routealexa
+  → Homebridge /api/v1/actions/alexa-start
+  → Matter trigger switch
+  → Alexa routine starts playback
+  → Homebridge reports Alexa Mode on
+  → Now-Playing /integrations/alexa/state
+```
+
+Stopping follows the same pattern through Homebridge
+`/api/v1/actions/alexa-stop`. Alexa Mode is a separate Matter status switch
+and does not itself trigger either routine. Homebridge reports its status with
+the authenticated state-only endpoint:
+
+```http
+POST /integrations/alexa/state
+x-track-key: YOUR_TRACK_KEY
+Content-Type: application/json
+
+{"state":"on"}
+```
+
+Use `{"state":"off"}` when Alexa playback stops. These state updates are
+idempotent, do not call the start/stop webhooks, and do not change MPD/moOde
+playback.
+
 ## What this page is for
 - Managing correction maps (artist/album/playlist spellings)
 - Reviewing recent Alexa command outcomes
@@ -64,9 +96,10 @@ Content-Type: application/json
 The equivalent hyphenated form is also accepted for integrations that use
 `{"action":"stop-alexa"}`.
 
-Configure these webhook URLs to point to Homebridge’s local Alexa action
-endpoints. Homebridge turns the corresponding Matter trigger switch on briefly;
-Alexa routines respond to those switches and control Alexa playback.
+Configure the Route and Stop webhook fields to point to Homebridge’s local
+Alexa action endpoints. Homebridge turns the corresponding Matter trigger
+switch on briefly; Alexa routines respond to those switches and control Alexa
+playback.
 
 For the Homebridge Alexa Mode switch, use the state-only integration endpoint
 instead of either webhook action:

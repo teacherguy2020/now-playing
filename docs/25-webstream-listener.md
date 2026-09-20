@@ -81,7 +81,7 @@ toggle is independent of Listen on Device and can mute or restore the local
 moOde output without starting a browser stream.
 
 The non-editor 1280×400 kiosk display intentionally hides Listen on Device,
-Route to Alexa, playlist-add, and local-output controls. Those are controller
+Start on Alexa/Stop on Alexa, playlist-add, and local-output controls. Those are controller
 actions and are not needed on the moOde-attached display.
 
 If the button reports that the stream is unavailable, check the MPD HTTP

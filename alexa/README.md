@@ -1,15 +1,21 @@
 # Alexa Integration
 
-Alexa support is optional. The API remains the source of truth; Alexa clients call your public API domain.
+The current Alexa playback solution is Homebridge/Matter-based. VoiceMonkey is
+not used, and no custom Alexa skill is required for the Homebridge playback
+flow. The API remains the source of truth for Now-Playing state.
 
-> Important: enabling Alexa in `config.html` does **not** automatically build/upload/deploy the Alexa zip. You must still package and import the skill code into the Developer Console.
+The code in this directory is retained as an optional legacy/direct Alexa skill
+integration for voice commands and compatibility; it is not required by the
+current Homebridge Alexa Mode routines.
+
+> Legacy integration note: the current Homebridge/Matter flow does not use this
+> skill package. If you intentionally use the optional direct Alexa skill below,
+> you must package and import its code into the Developer Console yourself.
 
 ## Prerequisites
 
-1. Amazon Developer account
-2. Alexa custom skill (create in Alexa Developer Console). Skill does NOT need to be published in order to work.
-3. Public HTTPS endpoint for this API
-4. Valid `TRACK_KEY` shared between Alexa runtime and API
+1. Public HTTPS endpoint for any legacy/direct Alexa skill use
+2. Valid `TRACK_KEY` shared between the legacy Alexa runtime and API
 
 ## Key files
 
@@ -38,7 +44,7 @@ Optional:
 
 Use `alexa/interaction-model.v2.json` as the current model source.
 
-## First-time: create the skill in Developer Console
+## Optional legacy/direct skill setup
 
 If you are starting from scratch, do this once before uploading code:
 

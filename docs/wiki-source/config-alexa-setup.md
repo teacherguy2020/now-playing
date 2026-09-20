@@ -9,7 +9,7 @@ It exists because the Config page owns the provisioning/setup side of the Alexa 
 This page is about the setup layer:
 - enablement
 - public domain
-- route webhook URL
+- Homebridge start/stop action webhook URLs
 - domain reachability checks
 - setup-state visual feedback
 
@@ -20,7 +20,7 @@ It also depends on:
 - whether Alexa support is enabled
 - whether a public domain is configured
 - whether that public domain is actually reachable
-- whether route-to-Alexa actions know what webhook URL to use
+- whether start/stop Alexa actions have the correct Homebridge webhook URLs
 
 That makes the Config page the provisioning/control-plane side of Alexa.
 
@@ -207,7 +207,7 @@ A useful current setup workflow is:
 ### Initial provisioning workflow
 1. enable Alexa support
 2. enter public domain
-3. enter route webhook URL if route-to-Alexa actions are needed
+3. enter the Homebridge start and stop action webhook URLs if Alexa controls are needed
 4. save config
 5. verify domain reachability
 

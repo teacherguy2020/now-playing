@@ -227,6 +227,10 @@ Key anchors include:
 - `#alexaPublicDomain`
 - `#checkAlexaDomainBtn`
 - `#alexaRouteWebhookUrl`
+- `#alexaStopWebhookUrl`
+
+These webhook fields target Homebridge action endpoints; Alexa Mode status is
+reported separately through `POST /integrations/alexa/state`.
 
 ### What it does
 This card governs Alexa enablement, public-domain assumptions, route/webhook setup, and domain health verification.

@@ -62,7 +62,7 @@ That is concrete file behavior, not a documentation guess.
 
 The non-editor `1280×400` kiosk profile hides the controller action row and
 the current-track playlist-add and local-output controls. This keeps
-**Listen on Device**, **Route to Alexa**, playlist mutation, and speaker-output
+**Listen on Device**, **Start on Alexa/Stop on Alexa**, playlist mutation, and speaker-output
 controls on the tablet/phone/computer controller surfaces, rather than on the
 moOde-attached display. Kiosk editor mode retains the underlying controls for
 design and testing.

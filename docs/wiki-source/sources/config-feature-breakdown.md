@@ -179,7 +179,7 @@ Observed elements include:
 This section appears to own:
 - whether Alexa skill support is enabled
 - what public domain the skill uses
-- what webhook URL is used for route-to-Alexa actions
+- what Homebridge webhook URLs are used for Start on Alexa and Stop on Alexa actions
 
 ### Important boundary
 The page explicitly says:

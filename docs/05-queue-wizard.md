@@ -48,7 +48,7 @@ Also ensure `moode_library_index.json` is present on the API host (project root 
 3. Send to moOde
 
 ### Use Endless Vibe from Live Queue
-The tablet controller's **Live Queue** page has an **Endless Vibe** toggle beside **Route to Alexa**.
+The tablet controller's **Live Queue** page has an **Endless Vibe** toggle beside **Start on Alexa**. Once Alexa Mode is confirmed active, the button becomes **Stop on Alexa**.
 When enabled, it watches for the currently playing track to become the final item in the queue. It then:
 
 1. Crops the queue to the playing track, preserving its playback position.
