@@ -64,10 +64,9 @@ Content-Type: application/json
 The equivalent hyphenated form is also accepted for integrations that use
 `{"action":"stop-alexa"}`.
 
-Configure a separate Stop webhook URL on the Config → Alexa card. A successful
-stop webhook call clears the remembered Alexa playback state and its UI overlay;
-it does not stop or alter moOde/MPD playback. This is intended for Homebridge
-virtual buttons and other authenticated LAN controls.
+These legacy webhook actions are retained for compatibility, but their webhook
+fields are no longer shown in Config. The current Homebridge Alexa Mode switch
+uses the state-only integration endpoint below.
 
 For the Homebridge Alexa Mode switch, use the state-only integration endpoint
 instead of either webhook action:

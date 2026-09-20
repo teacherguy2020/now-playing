@@ -51,7 +51,6 @@ Observed Alexa setup UI elements include:
 - `alexaDomain`
 - `checkAlexaDomainBtn`
 - `alexaDomainCheckStatus`
-- `alexaRouteWebhookUrl`
 - `alexaDomainLight`
 
 There is also wider shell-level health feedback through:
@@ -98,25 +97,17 @@ Observed behavior includes:
 
 This means the Config page is actively interpreting Alexa setup state, not merely storing values.
 
-## 3. Route webhook URL
+## 3. Alexa Mode control
 
-Observed field includes:
-- `alexaRouteWebhookUrl`
+The Config page no longer exposes the legacy route/stop webhook fields.
+Alexa Mode is now controlled by Homebridge through the authenticated:
 
-Observed save behavior persists this to:
-- `alexa.routeWebhookUrl`
+- `POST /integrations/alexa/state`
 
-### Why it matters
-The UI hint explicitly says this value is:
-- used by “Route to Alexa” buttons in Live Queue / Hero Transport
-
-So this field is not abstract setup metadata.
-It is a live integration endpoint used by user-facing route-to-Alexa actions elsewhere in the system.
-
-The Alexa card also supports a separate `stopWebhookUrl`. It is invoked by the
-authenticated `stopalexa` action on `POST /config/diagnostics/playback`. The
-stop action clears the remembered Alexa overlay only after the webhook succeeds;
-it does not stop normal moOde/MPD playback.
+The endpoint accepts `{"state":"on"}` and `{"state":"off"}`, is
+idempotent, and does not alter MPD/moOde playback. The older
+`routealexa`/`stopalexa` webhook actions remain available in the backend for
+compatibility, but are not part of the current Homebridge flow.
 
 ## 4. Domain reachability check
 
@@ -245,7 +236,7 @@ This page should stay linked with:
 ## Things still to verify
 
 Future deeper verification should clarify:
-- exactly how the backend uses `routeWebhookUrl` for route-to-Alexa actions
+- the legacy webhook actions are compatibility-only and are no longer configured in the UI
 - what URL/path the domain checker probes behind the scenes
 - whether additional Alexa provisioning requirements exist outside what Config currently exposes
 - whether the hidden legacy Alexa DOM elements can eventually be removed or are still functionally required
@@ -258,6 +249,6 @@ It is not the corrections page.
 It is the provisioning page for:
 - enablement
 - public domain
-- route webhook setup
+- Homebridge Alexa Mode integration
 - reachability verification
 - setup-state feedback

@@ -41,7 +41,7 @@
     .cfgField input[type=text], .cfgField input[type=password], .cfgField input[type=number], .cfgField select { width:100%; max-width:min(100%, 360px); font-size:14px; line-height:1.2; }
     .cfgField.narrow input[type=number] { max-width: 160px; }
     .ipField { max-width: 220px !important; }
-    #alexaDomain, #alexaRouteWebhookUrl, #moodeBaseUrl, #fallbackAlbumArt, #musicLibraryRoot, #radioStationMapFile { max-width: min(100%, 520px); }
+    #alexaDomain, #moodeBaseUrl, #fallbackAlbumArt, #musicLibraryRoot, #radioStationMapFile { max-width: min(100%, 520px); }
 
     /* Network card: constrain field lengths to realistic values */
     #networkCard #apiNodeIp,
@@ -347,17 +347,7 @@
                     <div class="cfgHint" id="alexaDomainCheckStatus"></div>
                   </div>
 
-                  <div class="cfgField">
-                    <label for="alexaRouteWebhookUrl">Route webhook URL</label>
-                    <input id="alexaRouteWebhookUrl" type="url" placeholder="https://api.voicemonkey.io/trigger?..." />
-                    <div class="cfgHint">Used by “Route to Alexa” buttons in Live Queue / Hero Transport.</div>
-                  </div>
-
-                  <div class="cfgField">
-                    <label for="alexaStopWebhookUrl">Stop webhook URL</label>
-                    <input id="alexaStopWebhookUrl" type="url" placeholder="https://api.voicemonkey.io/trigger?..." />
-                    <div class="cfgHint">Used by “Stop Alexa” actions to stop Echo playback and clear Alexa mode.</div>
-                  </div>
+                  <div class="cfgHint">Alexa Mode is controlled by the authenticated Homebridge integration endpoint. Legacy webhook actions remain available for compatibility but are no longer configured here.</div>
 
                   <div class="cfgHint" style="margin-top:10px;">
                     Alexa corrections and misheard review moved to the dedicated <a href="alexa.html">Alexa page</a>.
@@ -1123,8 +1113,6 @@ async function loadCfg(){
 
   document.getElementById('featureAlexaSkill').checked = !!c.alexa?.enabled;
   document.getElementById('alexaDomain').value = c.alexa?.publicDomain || '';
-  document.getElementById('alexaRouteWebhookUrl').value = c.alexa?.routeWebhookUrl || '';
-  document.getElementById('alexaStopWebhookUrl').value = c.alexa?.stopWebhookUrl || '';
   syncAlexaCardVisibility();
   syncAlexaDomainUi();
   // Auto-verify domain so the light reflects reachability (green when reachable).
@@ -1315,8 +1303,6 @@ async function saveCfg(){
       alexa: {
         enabled: document.getElementById('featureAlexaSkill').checked,
         publicDomain: document.getElementById('alexaDomain').value.trim(),
-        routeWebhookUrl: document.getElementById('alexaRouteWebhookUrl').value.trim(),
-        stopWebhookUrl: document.getElementById('alexaStopWebhookUrl').value.trim(),
         artistAliases,
         albumAliases: albumAliasMap,
         playlistAliases: playlistAliasMap,
