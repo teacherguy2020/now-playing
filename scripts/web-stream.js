@@ -38,6 +38,7 @@
     const localOutputButton = document.getElementById('npLocalOutputBtn');
     if (!button && !localOutputButton) return;
     installStyles();
+    const controlOrigin = `${location.protocol}//${location.hostname || 'nowplaying.local'}:3101`;
 
     const audio = document.createElement('audio');
     audio.id = 'webStreamAudio';
@@ -218,8 +219,7 @@
       let alexaPendingTarget = null;
       let alexaPendingTimer = 0;
       const isAlexaModeConfirmed = (value) => !!value && (
-        value.alexaMode === true
-        || (value.active === true && value.playbackTarget === 'echo' && value.playbackMode === 'alexa')
+        value.modeActive === true
       );
       const paintAlexa = (active, busy = false) => {
         alexaActive = !!active;
@@ -244,7 +244,7 @@
       };
       const refreshAlexa = async () => {
         try {
-          const response = await fetch('/alexa/was-playing', { cache: 'no-store' });
+          const response = await fetch(`${controlOrigin}/alexa/was-playing`, { cache: 'no-store' });
           const result = await response.json().catch(() => ({}));
           const active = isAlexaModeConfirmed(result?.wasPlaying) || isAlexaModeConfirmed(result?.nowPlaying);
           paintAlexa(active);
@@ -266,10 +266,10 @@
         }, 20000);
         paintAlexa(alexaActive, true);
         try {
-          const runtime = await fetch('/config/runtime', { cache: 'no-store' });
+          const runtime = await fetch(`${controlOrigin}/config/runtime`, { cache: 'no-store' });
           const runtimeJson = await runtime.json().catch(() => ({}));
           const key = String(runtimeJson?.config?.trackKey || '').trim();
-          const response = await fetch('/config/diagnostics/playback', {
+          const response = await fetch(`${controlOrigin}/config/diagnostics/playback`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
             body: JSON.stringify({ action }),

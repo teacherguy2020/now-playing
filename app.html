@@ -432,7 +432,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260830-current-playlist3"></script>
+  <script src="scripts/hero-transport.js?v=20260921-alexa-art4"></script>
   <script>
     (() => {
       const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','youtube.html','peppy.html','player.html','visualizer.html','mobile.html','displays.html','controller-kiosk.html','kiosk.html','kiosk-designer.html','theme.html']);
@@ -4132,8 +4132,7 @@
       let heroAlexaPendingTimer = 0;
       function isAlexaModeConfirmed(value){
         return !!value && (
-          value.alexaMode === true
-          || (value.active === true && value.playbackTarget === 'echo' && value.playbackMode === 'alexa')
+          value.modeActive === true
         );
       }
       function paintHeroAlexaButton(active, busy = false){

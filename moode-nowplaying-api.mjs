@@ -2625,12 +2625,18 @@ let alexaWasPlaying = {
   stoppedAt: 0,
   playbackTarget: '',
   playbackMode: '',
+  modeActive: false,
   active: false,
   updatedAt: 0,
 };
 
+// Homebridge/Matter Alexa Mode is independent from the Alexa AudioPlayer
+// lifecycle. A track can finish while Alexa Mode remains enabled.
+let alexaModeActive = false;
+
 function clearAlexaWasPlayingState() {
   const nowTs = Date.now();
+  alexaModeActive = false;
   alexaWasPlaying = {
     ...alexaWasPlaying,
     active: false,
@@ -2638,12 +2644,14 @@ function clearAlexaWasPlayingState() {
     updatedAt: nowTs,
     playbackTarget: '',
     playbackMode: '',
+    modeActive: false,
   };
   return alexaWasPlaying;
 }
 
 function setAlexaModeState(active) {
   const nextActive = !!active;
+  alexaModeActive = nextActive;
   if (!nextActive) {
     const nowTs = Date.now();
     alexaWasPlaying = {
@@ -2664,11 +2672,12 @@ function setAlexaModeState(active) {
       updatedAt: nowTs,
       playbackTarget: '',
       playbackMode: '',
+      modeActive: false,
     };
     return alexaWasPlaying;
   }
 
-  if (alexaWasPlaying.active && alexaWasPlaying.playbackMode === 'alexa') {
+  if (alexaWasPlaying.modeActive && alexaWasPlaying.playbackMode === 'alexa') {
     return alexaWasPlaying;
   }
 
@@ -2692,6 +2701,7 @@ function setAlexaModeState(active) {
     updatedAt: nowTs,
     playbackTarget: 'echo',
     playbackMode: 'alexa',
+    modeActive: true,
   };
   return alexaWasPlaying;
 }
@@ -2842,7 +2852,8 @@ app.get('/alexa/was-playing', async (req, res) => {
       state: (fresh && !!wp.active) ? 'play' : 'stop',
       playbackTarget: String(wp.playbackTarget || '').trim(),
       playbackMode: String(wp.playbackMode || '').trim(),
-      alexaMode: true,
+      modeActive: !!alexaModeActive,
+      alexaMode: !!alexaModeActive,
       fresh,
       ageMs,
       active: !!wp.active,
@@ -2876,7 +2887,8 @@ app.get('/alexa/now-playing', async (req, res) => {
       state: !!wp.active ? 'play' : 'stop',
       playbackTarget: String(wp.playbackTarget || '').trim(),
       playbackMode: String(wp.playbackMode || '').trim(),
-      alexaMode: true,
+      modeActive: !!alexaModeActive,
+      alexaMode: !!alexaModeActive,
       fresh,
       ageMs,
       startedAt: Number(wp.startedAt || 0) || 0,
@@ -2944,6 +2956,7 @@ app.post('/alexa/was-playing', async (req, res) => {
       ratingDisabled: (typeof incoming?.ratingDisabled === 'boolean') ? !!incoming.ratingDisabled : ((typeof merged.ratingDisabled === 'boolean') ? !!merged.ratingDisabled : false),
       removedPos0: Number.isFinite(removedPos0Resolved) ? removedPos0Resolved : null,
       removedPos1: Number.isFinite(removedPos1Resolved) ? Math.max(1, Math.floor(removedPos1Resolved)) : null,
+      modeActive: alexaModeActive,
       startedAt: Number.parseInt(String(incoming?.startedAt || merged.startedAt || nowTs).trim(), 10) || nowTs,
       stoppedAt: active ? 0 : (Number.parseInt(String(incoming?.stoppedAt || nowTs).trim(), 10) || nowTs),
       active,
@@ -7014,6 +7027,10 @@ app.get('/now-playing', async (req, res) => {
       payload.rating = 0;
       payload.ratingDisabled = true;
       payload.ratingFile = '';
+      // Mills metadata is selected independently of the paused MPD track.
+      // Never let the previous digital track's personnel leak into the
+      // physical-record display when the selected Mills entry has none.
+      payload.personnel = [];
 
       if (metadata) {
         payload.artist = metadata.artist || '';

@@ -609,9 +609,7 @@ async function fetchAlexaPayload() {
     const wpHas = !!(wp && (wp.file || wp.title || wp.artist));
     const npHas = !!(np && (np.file || np.title || np.artist));
     const isActiveAlexaState = (state) => (
-      !!state?.active &&
-      String(state?.playbackTarget || '').trim().toLowerCase() === 'echo' &&
-      String(state?.playbackMode || '').trim().toLowerCase() === 'alexa'
+      state?.modeActive === true
     );
     const activeState = isActiveAlexaState(wp) ? wp : (isActiveAlexaState(np) ? np : null);
 

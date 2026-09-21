@@ -647,7 +647,8 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         ok: true,
         state,
         alexaMode: state === 'on',
-        active: !!mode?.active,
+        modeActive: !!mode?.modeActive,
+        active: !!mode?.modeActive,
         playbackTarget: String(mode?.playbackTarget || ''),
         playbackMode: String(mode?.playbackMode || ''),
       });

@@ -4212,7 +4212,7 @@
       try {
         const npr = await fetchJsonWithTimeout(`${base}/now-playing`, { cache: "no-store", headers: reqHeaders(false) }, 3200);
         const npj = npr.ok ? npr.json || {} : {};
-        alexaActive = !!(npj == null ? void 0 : npj.alexaMode);
+        alexaActive = !!(npj == null ? void 0 : npj.modeActive);
       } catch {
       }
       if (!alexaActive) {
@@ -4220,7 +4220,7 @@
           const wr = await fetchJsonWithTimeout(`${base}/alexa/was-playing`, { cache: "no-store", headers: reqHeaders(false) }, 3200);
           const wj = wr.ok ? wr.json || {} : {};
           const was = (wj == null ? void 0 : wj.wasPlaying) || {};
-          alexaActive = !!(was == null ? void 0 : was.active);
+          alexaActive = !!(was == null ? void 0 : was.modeActive);
         } catch {
         }
       }
@@ -4231,7 +4231,7 @@
           const fresh = !!(aj == null ? void 0 : aj.fresh);
           const wp = aj == null ? void 0 : aj.wasPlaying;
           const np = aj == null ? void 0 : aj.nowPlaying;
-          const activePayload = wp && wp.active ? wp : np && np.active ? np : null;
+          const activePayload = wp && wp.modeActive ? wp : np && np.modeActive ? np : null;
           alexaActive = !!(fresh && activePayload);
         } catch {
         }
@@ -5401,6 +5401,6 @@
 })();
 
   </script>
-  <script src="/scripts/web-stream.js?v=20260920-alexa-confirm1"></script>
+  <script src="/scripts/web-stream.js?v=20260921-alexa-state3"></script>
 </body>
 </html>

@@ -62,7 +62,7 @@
   let heroArtBgEnabled = (() => {
     try { return String(localStorage.getItem(HERO_ART_BG_STORAGE_KEY) || '0') === '1'; } catch { return false; }
   })();
-  function applyHeroArtBackground(trackKey = '', artSource = '') {
+  function applyHeroArtBackground(trackKey = '', artSource = '', isAlexaMode = false) {
     const hostEl = document.getElementById('heroTransport');
     if (!hostEl) return;
     if (!heroArtBgEnabled) {
@@ -74,7 +74,16 @@
       } catch {}
       return;
     }
-    const artKey = canonicalMediaSrc(String(artSource || '').trim()) || String(trackKey || '').trim() || String(Date.now());
+    const source = String(artSource || '').trim();
+    // Controller pages preserve Alexa's full art URL, including its file
+    // query, because the blur route needs that identity to resolve the art.
+    // Normalizing it here would strip the query and lose the Alexa image.
+    const artKey = (isAlexaMode && source)
+      ? source
+      : (canonicalMediaSrc(source) || String(trackKey || '').trim() || String(Date.now()));
+    // Use the supplied art key for both normal and Alexa playback. The API
+    // blurs that source server-side; this keeps Alexa's background artwork
+    // correct without losing the hero's softened treatment.
     const artUrl = `${apiBase}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(artKey)}`;
     try {
       hostEl.style.setProperty('background-image', `linear-gradient(rgba(5,10,18,0.28), rgba(5,10,18,0.28)), url("${artUrl}")`, 'important');
@@ -128,7 +137,9 @@
 
   async function loadAlexaWasPlaying() {
     try {
-      const r = await fetch(`${apiBase}/alexa/now-playing?maxAgeMs=21600000`, { cache: 'no-store' });
+      // Use the rich lifecycle payload here: the semantic alias is intentionally
+      // lightweight and does not carry albumArtUrl/displayArtUrl.
+      const r = await fetch(`${apiBase}/alexa/was-playing?maxAgeMs=21600000`, { cache: 'no-store' });
       if (!r.ok) return null;
       return await r.json().catch(() => null);
     } catch {
@@ -458,7 +469,7 @@
         `</div>` +
       `</div>`;
 
-    applyHeroArtBackground(artTrackKey, thumb);
+    applyHeroArtBackground(artTrackKey, thumb, isAlexaMode);
     pruneHeroTransportDuplicates(el);
 
     // Preserve already-loaded art node when source is effectively unchanged
@@ -1475,10 +1486,10 @@
         const aw = alexaWas || null;
         const awNp = aw?.nowPlaying || null;
         const awWp = aw?.wasPlaying || null;
-        const awActive = !!((awNp && awNp.active) || (awWp && awWp.active));
+        const awModeActive = !!((awNp && awNp.modeActive) || (awWp && awWp.modeActive));
         const awFresh = !!aw?.fresh;
         const awPayload = (awNp && awNp.file) ? awNp : ((awWp && awWp.file) ? awWp : null);
-        if (awFresh && awActive && awPayload) {
+        if (awFresh && awModeActive && awPayload) {
           const baseNp = np;
           np = { ...np, ...awPayload, alexaMode: true };
           // Preserve rating context from primary now-playing when Alexa payload lacks it.
