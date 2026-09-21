@@ -69,6 +69,13 @@ export const HARMONY_DENON_DEVICE_ID = String(process.env.HARMONY_DENON_DEVICE_I
 export const HARMONY_INPUT_PHONO = String(process.env.HARMONY_INPUT_PHONO || 'InputPhono').trim();
 export const HARMONY_INPUT_AUX1 = String(process.env.HARMONY_INPUT_AUX1 || 'InputAux1').trim();
 
+// Optional Main Floor Echo Link volume sidecar. The sidecar owns Alexa
+// credentials; these values only describe its loopback endpoint and target.
+export const ECHO_LINK_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.ECHO_LINK_ENABLED || '').trim());
+export const ECHO_LINK_HOST = String(process.env.ECHO_LINK_HOST || '127.0.0.1').trim();
+export const ECHO_LINK_PORT = Number(process.env.ECHO_LINK_PORT || '8765');
+export const ECHO_LINK_TIMEOUT_MS = Number(process.env.ECHO_LINK_TIMEOUT_MS || '8000');
+
 export const ITUNES_SEARCH_URL = 'https://itunes.apple.com/search';
 export const ITUNES_COUNTRY = 'us';
 export const ITUNES_TIMEOUT_MS = Number(process.env.ITUNES_TIMEOUT_MS || '2500');

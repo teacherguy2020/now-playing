@@ -141,6 +141,7 @@
     .rowWrap.swiped .row{transform:translateX(-252px)}
     .rowWrap[data-row-wrap="live-queue"]{border-bottom:1px solid var(--line);overflow:visible;--swipe-gap-top:0px;--swipe-gap-bottom:0px}
     .rowWrap[data-row-wrap="live-queue"] .row{border-bottom:0}
+    .tabletQueuePosAfterLive{display:none}
     .rowActionBtn,
     .rowActions .rowActionBtn,
     .liveQueueRowWrap .rowActionBtn{flex:1;height:100%;border:1px solid var(--line) !important;background:var(--line) !important;color:var(--text) !important;font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;border-radius:0}
@@ -402,18 +403,31 @@
     :is(body.ipad11, body.tablet) .railModeBtn, :is(body.ipad11, body.tablet) #recentTitle, :is(body.ipad11, body.tablet) #recentRail, :is(body.ipad11, body.tablet) #recentPeekRail{display:none !important}
     :is(body.ipad11, body.tablet) .recentWrap{display:flex;min-height:0;overflow:hidden;flex-direction:column;gap:6px}
     :is(body.ipad11, body.tablet) .tabletTopCards{display:none;gap:8px}
-    :is(body.ipad11, body.tablet) .tabletNextUpBar{display:none;border:1px solid var(--line);border-radius:10px;background:color-mix(in oklab,var(--surface) 84%, var(--line) 16%);padding:6px 10px;min-height:0}
-    :is(body.ipad11, body.tablet) .tabletActionBar{display:none;border:1px solid var(--line);border-radius:10px;background:color-mix(in oklab,var(--surface) 84%, var(--line) 16%);padding:6px 10px;min-height:0;align-items:center;justify-content:space-between;flex-direction:row;gap:10px}
-    :is(body.ipad11, body.tablet) .tabletActionBar .actionBtn{border:1px solid var(--line);background:color-mix(in oklab, var(--surface) 84%, var(--accent) 16%);color:var(--text);border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer}
+    :is(body.ipad11, body.tablet) .tabletNextUpBar{display:none;width:85%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;background:color-mix(in oklab,var(--surface) 84%, var(--line) 16%);padding:4px 10px;min-height:0}
+    :is(body.ipad11, body.tablet) .tabletActionBar{display:none;border:1px solid var(--line);border-radius:10px;background:color-mix(in oklab,var(--surface) 84%, var(--line) 16%);padding:4px 10px;min-height:0;align-items:center;justify-content:flex-start;flex-direction:row;gap:8px;min-width:0;overflow:hidden}
+    :is(body.ipad11, body.tablet) .tabletActionBar .actionBtn{flex:0 0 auto;height:38px;min-height:38px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:color-mix(in oklab, var(--surface) 84%, var(--accent) 16%);color:var(--text);border-radius:8px;padding:0 10px;font-size:13px;cursor:pointer}
+    :is(body.ipad11, body.tablet) .tabletActionBar .alexaRouteButton{min-width:122px;white-space:nowrap}
+    :is(body.ipad11, body.tablet) #tabletActionBar .echoLinkVolumeControl{flex:1 1 auto;height:38px;min-height:38px;box-sizing:border-box;min-width:0;max-width:none;margin-top:0;margin-bottom:0}
+    :is(body.ipad11, body.tablet) #tabletActionBar .echoLinkVolumeControl input[type=range]{flex:1 1 90px;width:clamp(76px,10vw,116px);min-width:76px}
     :is(body.ipad11, body.tablet) .tabletActionBar .queuePos{font-size:14px;color:var(--text);line-height:1.2;white-space:nowrap;font-weight:650;cursor:pointer}
+    :is(body.ipad11, body.tablet) .tabletQueuePosAfterLive{display:inline-block;margin-left:7px;padding-left:7px;border-left:1px solid color-mix(in oklab, var(--line) 75%, transparent);color:var(--muted);font-size:12px;line-height:1.2;white-space:nowrap;font-weight:650;cursor:pointer;vertical-align:baseline}
     :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpTitle{display:none}
     :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpRow,
     :is(body.ipad11, body.tablet) .tabletNextUpInline .nextUpRow{display:flex;align-items:center;gap:10px;min-width:0}
     :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpArt,
-    :is(body.ipad11, body.tablet) .tabletNextUpInline .nextUpArt{width:36px;height:36px;border-radius:7px;object-fit:cover;background:#0a1222;border:1px solid #33485f;flex:0 0 auto}
+    :is(body.ipad11, body.tablet) .tabletNextUpInline .nextUpArt{width:28px;height:28px;border-radius:6px;object-fit:cover;background:#0a1222;border:1px solid #33485f;flex:0 0 auto}
     :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpText,
     :is(body.ipad11, body.tablet) .tabletNextUpInline .nextUpText{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;color:var(--text)}
-    :is(body.ipad11, body.tablet) .tabletNextUpInline{display:block;margin-top:10px;padding-top:8px;border-top:1px solid color-mix(in oklab, var(--line) 75%, transparent)}
+    :is(body.ipad11, body.tablet) .nextUpText{display:flex;align-items:center;gap:6px}
+    :is(body.ipad11, body.tablet) .nextUpPrefix{flex:0 0 auto}
+    :is(body.ipad11, body.tablet) .nextUpMarqueeViewport{display:block;min-width:0;overflow:hidden;white-space:nowrap}
+    :is(body.ipad11, body.tablet) .nextUpMarqueeTrack{display:inline-flex;gap:48px;white-space:nowrap;will-change:transform}
+    :is(body.ipad11, body.tablet) .nextUpMarqueeSegment{display:inline-block;white-space:nowrap}
+    :is(body.ipad11, body.tablet) .nextUpText.is-marquee .nextUpMarqueeTrack{animation:tabletNextUpMarquee 13s ease-in-out infinite alternate}
+    :is(body.ipad11, body.tablet) .nextUpText.is-marquee .nextUpMarqueeTrack{animation:tabletNextUpMarquee 16s linear infinite}
+    @keyframes tabletNextUpMarquee{from{transform:translateX(0)}to{transform:translateX(var(--next-up-shift,0px))}}
+    :is(body.ipad11, body.tablet) .tabletNextUpBar .nextUpText{flex:1 1 auto}
+    :is(body.ipad11, body.tablet) .tabletNextUpInline{display:block;width:85%;box-sizing:border-box;margin-top:10px;padding-top:8px;border-top:1px solid color-mix(in oklab, var(--line) 75%, transparent)}
     :is(body.ipad11:not(.ipad11Landscape), body.tablet:not(.tabletLandscape)) .tabletNextUpInline .nextUpArt{width:22px;height:22px;border-radius:5px}
     :is(body.ipad11:not(.ipad11Landscape), body.tablet:not(.tabletLandscape)) .tabletNextUpInline .nextUpText{font-size:12px}
     :is(body.ipad11, body.tablet) .ipadRecentGrid{display:grid !important;grid-template-columns:1fr 1fr;gap:8px;width:100%;min-height:0;overflow:auto;padding-right:2px}
@@ -481,9 +495,10 @@
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npCtrls .ctl[data-np-act="repeat"]{order:5}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npCtrls .ctl[data-np-act="shuffle"]{order:6}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) #libraryList{margin-top:0}
-    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletTopCards{display:grid;grid-template-columns:minmax(0,2fr) minmax(160px,1fr);align-items:stretch}
-    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletNextUpBar{display:block}
-    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletActionBar{display:flex}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletTopCards{display:grid;grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);align-items:center}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletNextUpBar{display:flex;align-items:center;height:48px;align-self:center}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletNextUpBar .nextUpRow{width:100%}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletActionBar{display:flex;height:48px;box-sizing:border-box;align-self:center;margin-left:-48px;width:calc(100% + 48px)}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .tabletNextUpInline{display:none}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentGrid{display:flex !important;flex-direction:column;justify-content:space-between;gap:0;flex:1 1 auto;min-height:0;overflow:hidden}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .ipadRecentPane{padding:8px 10px;overflow:hidden;min-height:0;flex:0 0 auto}
@@ -671,7 +686,7 @@
           <div class="tabletNextUpInline" id="tabletNextUpInline" aria-live="polite">
             <div class="nextUpRow">
               <img id="tabletNextUpArtInline" class="nextUpArt" src="/icons/icon-192.png" alt="" />
-              <div id="tabletNextUpTextInline" class="nextUpText">NEXT UP: Loading…</div>
+              <div id="tabletNextUpTextInline" class="nextUpText"><span class="nextUpPrefix">NEXT UP:</span><span class="nextUpMarqueeViewport"><span class="nextUpMarqueeTrack">Loading…</span></span></div>
             </div>
           </div>
         </div>
@@ -709,7 +724,7 @@
     <li class="row" data-page="kiosk-radio.html"><span class="ico ico-radio" aria-hidden="true"></span><span class="lbl">Radio</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-queue-wizard.html"><span class="ico ico-queuewiz" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19l10.6-10.6l1.4 1.4L6.4 20.4L5 19zm9.8-13.2l1.1-2.8l1.1 2.8l2.8 1.1l-2.8 1.1l-1.1 2.8l-1.1-2.8L12 6.9l2.8-1.1zM20 12l.8-2l.8 2l2 .8l-2 .8l-.8 2l-.8-2l-2-.8l2-.8zM10 3l.6-1.5L11.2 3l1.5.6l-1.5.6L10.6 5.8L10 4.2L8.5 3.6L10 3z"/></svg></span><span class="lbl">Queue Wizard</span><span class="chev">›</span></li>
     <li class="rowWrap" data-row-wrap="live-queue">
-      <div class="row" data-page="kiosk-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue</span><span class="chev">›</span></div>
+      <div class="row" data-page="kiosk-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue<span class="tabletQueuePosAfterLive" id="tabletQueuePos">Track — of —</span></span><span class="chev">›</span></div>
       <div class="rowActions" aria-hidden="true">
         <button type="button" class="rowActionBtn vibe" data-queue-act="vibe" title="Build a Vibe queue from the currently playing track">Vibe</button>
         <button type="button" class="rowActionBtn crop" data-queue-act="crop" title="Keep only currently playing track">Crop</button>
@@ -731,11 +746,10 @@
       <div class="tabletNextUpBar" id="tabletNextUpBar" aria-live="polite">
         <div class="nextUpRow" id="tabletNextUpRow">
           <img id="tabletNextUpArt" class="nextUpArt" src="/icons/icon-192.png" alt="" />
-          <div id="tabletNextUpText" class="nextUpText">NEXT UP: Loading…</div>
+          <div id="tabletNextUpText" class="nextUpText"><span class="nextUpPrefix">NEXT UP:</span><span class="nextUpMarqueeViewport"><span class="nextUpMarqueeTrack">Loading…</span></span></div>
         </div>
       </div>
       <div class="tabletActionBar" id="tabletActionBar">
-        <div class="queuePos" id="tabletQueuePos">Track — of —</div>
         <button type="button" class="actionBtn webStreamToggle" id="webStreamToggle" aria-pressed="false" title="Listen to moOde on this device"><span class="webStreamIcon" aria-hidden="true">🎧</span><span>Listen on Device</span></button>
         <button type="button" class="actionBtn alexaRouteButton" data-route-alexa title="Start playback on Alexa">Start on Alexa</button>
         <button type="button" class="actionBtn" id="tabletAudioInfoBtn">Audio info</button>
@@ -4178,11 +4192,10 @@
   async function refreshTabletQueuePos() {
     try {
       const isTabletLike = document.body.classList.contains("tablet") || document.body.classList.contains("ipad11");
-      const isLandscape = isTabletLandscapeBody();
       const el = document.getElementById("tabletQueuePos");
       if (!el) return;
-      el.style.display = isTabletLike && isLandscape ? "" : "none";
-      if (!isTabletLike || !isLandscape) return;
+      el.style.display = isTabletLike ? "" : "none";
+      if (!isTabletLike) return;
       await ensureKey();
       const r = await fetch(`${base}/now-playing`, { cache: "no-store", headers: reqHeaders(false) });
       const j = await r.json().catch(() => ({}));
@@ -4193,6 +4206,38 @@
       const el = document.getElementById("tabletQueuePos");
       if (el) el.textContent = "Track — of —";
     }
+  }
+
+  function setTabletNextUpText(textEls, detail) {
+    const value = String(detail || "").trim() || "Nothing queued";
+    textEls.forEach((el) => {
+      if (el.dataset.nextUpDetail === value && el.querySelector(".nextUpMarqueeTrack")) return;
+      el.dataset.nextUpDetail = value;
+      const prefix = document.createElement("span");
+      prefix.className = "nextUpPrefix";
+      prefix.textContent = "NEXT UP:";
+      const viewport = document.createElement("span");
+      viewport.className = "nextUpMarqueeViewport";
+      const track = document.createElement("span");
+      track.className = "nextUpMarqueeTrack";
+      const segment = document.createElement("span");
+      segment.className = "nextUpMarqueeSegment";
+      segment.textContent = value;
+      track.appendChild(segment);
+      viewport.appendChild(track);
+      el.replaceChildren(prefix, viewport);
+      el.classList.remove("is-marquee");
+      el.style.removeProperty("--next-up-shift");
+      requestAnimationFrame(() => {
+        const overflow = segment.getBoundingClientRect().width - viewport.clientWidth;
+        if (overflow > 1) {
+          track.appendChild(segment.cloneNode(true));
+          const gap = 48;
+          el.style.setProperty("--next-up-shift", `${-(segment.getBoundingClientRect().width + gap)}px`);
+          el.classList.add("is-marquee");
+        }
+      });
+    });
   }
 
   async function refreshTabletNextUp() {
@@ -4244,10 +4289,10 @@
           const n = (nj && (nj.next || nj.item || nj.now || nj)) || {};
           const artist = decodeHtmlEntities(String(n == null ? void 0 : n.artist || "").trim());
           const title = decodeHtmlEntities(String(n == null ? void 0 : n.title || n.file || "").trim());
-          const txt = "NEXT UP: " + ([artist, title].filter(Boolean).join(" • ") || "Nothing queued");
+          const detail = [artist, title].filter(Boolean).join(" • ") || "Nothing queued";
           const artRaw = String(n == null ? void 0 : n.artUrl || n.thumbUrl || n.albumArtUrl || n.displayArtUrl || n.altArtUrl || "").trim();
           const art = artRaw ? (artRaw.startsWith("http") ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
-          textEls.forEach((el) => el.textContent = txt);
+          setTabletNextUpText(textEls, detail);
           artEls.forEach((el) => {
             el.src = art;
             el.onerror = () => {
@@ -4256,7 +4301,7 @@
           });
           return;
         } catch {
-          textEls.forEach((el) => el.textContent = "NEXT UP: unavailable");
+          setTabletNextUpText(textEls, "unavailable");
           artEls.forEach((el) => {
             el.src = "/icons/icon-192.png";
           });
@@ -4269,10 +4314,10 @@
       const n = (j && (j.next || j.item || j.now || j)) || {};
       const artist = decodeHtmlEntities(String(n == null ? void 0 : n.artist || "").trim());
       const title = decodeHtmlEntities(String(n == null ? void 0 : n.title || n.file || "").trim());
-      const txt = "NEXT UP: " + ([artist, title].filter(Boolean).join(" • ") || "Nothing queued");
+      const detail = [artist, title].filter(Boolean).join(" • ") || "Nothing queued";
       const artRaw = String(n == null ? void 0 : n.artUrl || n.thumbUrl || n.albumArtUrl || "").trim();
       const art = artRaw ? (artRaw.startsWith("http") ? artRaw : `${base}${artRaw}`) : `${base}/art/current.jpg`;
-      textEls.forEach((el) => el.textContent = txt);
+      setTabletNextUpText(textEls, detail);
       artEls.forEach((el) => {
         el.src = art;
         el.onerror = () => {
@@ -4281,7 +4326,7 @@
       });
     } catch {
       const textEls = [document.getElementById("tabletNextUpText"), document.getElementById("tabletNextUpTextInline")].filter(Boolean);
-      textEls.forEach((el) => el.textContent = "NEXT UP: unavailable");
+      setTabletNextUpText(textEls, "unavailable");
     }
   }
 
@@ -5402,5 +5447,6 @@
 
   </script>
   <script src="/scripts/web-stream.js?v=20260921-alexa-controls2"></script>
+  <script src="/scripts/echo-link-volume.js?v=20260921-echo-link7"></script>
 </body>
 </html>

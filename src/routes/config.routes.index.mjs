@@ -17,8 +17,13 @@ import { registerConfigRoutes } from './config.routes.mjs';
 import { registerConfigControllerProfileRoutes } from './config.controller-profile.routes.mjs';
 import { registerConfigBrowseRoutes } from './config.browse.routes.mjs';
 import { registerConfigMoodeAudioInfoRoutes } from './config.moode-audio-info.routes.mjs';
+import { registerEchoLinkRoutes } from './echo-link.routes.mjs';
 
 export function registerAllConfigRoutes(app, deps) {
+  registerEchoLinkRoutes(app, {
+    requireTrackKey: deps.requireTrackKey,
+  });
+
   registerConfigQueueWizardBasicRoutes(app, {
     requireTrackKey: deps.requireTrackKey,
   });
