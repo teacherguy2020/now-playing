@@ -43,6 +43,7 @@ const {
   apiGetWasPlaying,
   apiGetRuntimeConfig,
   apiSetWasPlaying,
+  apiAlexaNaturalFinish,
   apiQueueMix,
   apiVibeStart,
   apiVibeSeedStart,
@@ -496,6 +497,8 @@ const { PlaybackControllerEventHandler, AudioPlayerEventHandler } = createAudioH
   buildPlayEnqueue,
   buildPlayReplaceAll,
   apiSetWasPlaying,
+  apiGetWasPlaying,
+  apiAlexaNaturalFinish,
   apiVibeNowPlaying,
   apiQueueWizardApply,
 });

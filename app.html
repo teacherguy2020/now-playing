@@ -432,7 +432,7 @@
     </div>
   </div>
 
-  <script src="scripts/hero-transport.js?v=20260921-alexa-art4"></script>
+  <script src="scripts/hero-transport.js?v=20260921-alexa-controls1"></script>
   <script>
     (() => {
       const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','youtube.html','peppy.html','player.html','visualizer.html','mobile.html','displays.html','controller-kiosk.html','kiosk.html','kiosk-designer.html','theme.html']);
@@ -1066,7 +1066,9 @@
 
       async function sendHeroPlayback(action, extra = null){
         const host = location.hostname || 'nowplaying.local';
-        const base = `${location.protocol}//${host}:3101`;
+        const base = (!location.port || location.port === '80' || location.port === '443')
+          ? location.origin
+          : `${location.protocol}//${host}:3101`;
         if (!runtimeTrackKey) {
           const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
           const rj = await rr.json().catch(() => ({}));

@@ -112,6 +112,27 @@ endpoint with `{"state":"on"}` or `{"state":"off"}`.
 The state endpoint is idempotent and does not invoke either webhook or alter
 MPD/moOde playback.
 
+The Homebridge VirtualControls plugin also provides these Alexa actions:
+
+- `/api/v1/actions/alexa-start` → Alexa Start Trigger
+- `/api/v1/actions/alexa-stop` → Alexa Stop Trigger
+- `/api/v1/actions/alexa-pause` → Alexa Pause Trigger
+- `/api/v1/actions/alexa-resume` → Alexa Resume Trigger
+- `/api/v1/actions/alexa-next` → Alexa Next Trigger
+- `/api/v1/actions/alexa-finished` → Alexa Mode OFF after natural completion
+
+The first five action switches are momentary routine triggers. The final
+action is an idempotent state action: it turns only the Alexa Mode status
+switch off and does not stop MPD or invoke the Alexa Stop Trigger.
+
+Natural Alexa completion is determined by the skill, not by MPD queue length.
+When `PlaybackNearlyFinished` finds no successor, the skill persists the
+current token as a final-track candidate. A matching `PlaybackFinished` event
+then calls the authenticated `POST /alexa/natural-finish` endpoint. This
+endpoint derives the sibling `/api/v1/actions/alexa-finished` URL from the
+configured Alexa start webhook and clears Now Playing Alexa state only after
+the Homebridge action succeeds.
+
 ## 4. Domain reachability check
 
 This is one of the most important active setup workflows in the Config page.

@@ -200,6 +200,11 @@
 
     // Server-backed controller palette / API base
     function __npResolveApiBase(){
+      // Portless HTTPS is served through the LAN/public reverse proxy. Never
+      // let an old saved :3101 override strand this page on an unreachable
+      // browser origin.
+      const pageIsPortless = !location.port || location.port === '80' || location.port === '443';
+      if (pageIsPortless) return location.origin;
       try {
         const u = new URL(location.href);
         const q = String(u.searchParams.get('apiBase') || '').trim();
@@ -209,6 +214,11 @@
         const ls = String(localStorage.getItem('nowplaying.apiBase') || '').trim();
         if (ls) return ls.replace(/\/$/, '');
       } catch {}
+      // Public HTTPS pages use the same-origin API proxy. Direct pages served
+      // from :8101 continue to address the API on :3101.
+      if (!location.port || location.port === '80' || location.port === '443') {
+        return location.origin;
+      }
       return `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
     }
     const __npBase = __npResolveApiBase();

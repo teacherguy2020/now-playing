@@ -2,7 +2,9 @@
   const $ = (id) => document.getElementById(id);
   const host = location.hostname;
   const apiPort = (location.port === '8101') ? '3101' : '3000';
-  const apiBase = `${location.protocol}//${host}:${apiPort}`;
+  const apiBase = (!location.port || location.port === '80' || location.port === '443')
+    ? location.origin
+    : `${location.protocol}//${host}:${apiPort}`;
 
   function escHtml(v = '') {
     return String(v || '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -145,6 +147,33 @@
     } catch {
       return null;
     }
+  }
+
+  async function readAlexaControlSnapshot() {
+    const result = await loadAlexaWasPlaying();
+    const nowPlaying = result?.nowPlaying || {};
+    const wasPlaying = result?.wasPlaying || {};
+    const payload = nowPlaying.file ? nowPlaying : wasPlaying;
+    return {
+      modeActive: !!(nowPlaying.modeActive || wasPlaying.modeActive),
+      active: !!payload?.active,
+      file: String(payload?.file || '').trim(),
+      updatedAt: Number(payload?.updatedAt || wasPlaying?.updatedAt || nowPlaying?.updatedAt || 0) || 0,
+    };
+  }
+
+  async function waitForAlexaControl(control, before) {
+    const started = Date.now();
+    while ((Date.now() - started) < 20000) {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      const current = await readAlexaControlSnapshot();
+      if (!current.modeActive) throw new Error('Alexa Mode is no longer active.');
+      const changed = current.updatedAt > before.updatedAt || current.file !== before.file;
+      if (control === 'pause' && !current.active && (changed || !before.active)) return current;
+      if (control === 'resume' && current.active && (changed || !before.active)) return current;
+      if (control === 'next' && current.active && changed) return current;
+    }
+    throw new Error('Alexa did not confirm ' + control + '.');
   }
 
   function normalizeAppleMusicUrl(raw) {
@@ -306,6 +335,16 @@
     }
   }
 
+  function renderAlexaTransportControls(np, randomOn) {
+    const alexaPlaying = np?.active !== false;
+    const alexaAction = alexaPlaying ? 'pause' : 'play';
+    return '<div class="heroTransportControls alexaTransportControls" style="margin-top:4px;">' +
+      '<button class="tbtn tbtnFar ' + (randomOn ? 'on' : '') + '" data-a="shuffle" title="Random">' + icon('shuffle') + '</button>' +
+      '<button class="tbtn tbtnBig ' + (alexaPlaying ? 'on' : '') + '" data-a="' + alexaAction + '" title="' + alexaAction + '">' + icon(alexaAction) + '</button>' +
+      '<button class="tbtn tbtnNear" data-a="next" title="Next">' + icon('next') + '</button>' +
+      '</div>';
+  }
+
   function render(el, q, np = {}) {
     const prevVid = el.querySelector('.heroArtVid');
     const prevVidSrc = prevVid ? String(prevVid.currentSrc || prevVid.src || '').trim() : '';
@@ -452,9 +491,7 @@
             : `<div class="txt"${canOpenAlbumModal ? ` data-hero-open-album="1" data-hero-album="${encodeURIComponent(modalAlbum)}" data-hero-artist="${encodeURIComponent(modalArtist)}" data-hero-art="${encodeURIComponent(modalArt)}" title="Open album" style="cursor:pointer;"` : ''}>${text}</div>`) +
           `${metaRow}` +
           `${isAlexaMode
-            ? (`<div class="heroTransportControls" style="margin-top:4px;">` +
-                `<button class="tbtn tbtnFar ${randomOn ? 'on' : ''}" data-a="shuffle" title="Random">${icon('shuffle')}</button>` +
-              `</div>`)
+            ? renderAlexaTransportControls(np, randomOn)
             : (`<div class="heroTransportControls">` +
                 (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekback15" title="Back 15 seconds"><span style="font-size:13px;font-weight:700;">↺15</span></button>` : '') +
                 (!isRadioOrStream ? `<button class="tbtn tbtnFar ${repeatOn ? 'on' : ''}" data-a="repeat" title="Repeat">${icon('repeat')}</button>` : '') +
@@ -658,6 +695,8 @@
 @keyframes heroTileSpin{to{transform:rotate(360deg)}}
 #heroTransport .heroMain{transform:none !important;padding-right:0 !important}
 #heroTransport .heroLivePulse{color:#ef4444;animation:heroLivePulse 2.2s ease-in-out infinite}
+#heroTransport button.alexa-control-loading{position:relative;opacity:.72;cursor:wait;pointer-events:none}
+#heroTransport button.alexa-control-loading::after{content:'';position:absolute;right:2px;top:2px;width:8px;height:8px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#9fd2ff;animation:heroTileSpin .8s linear infinite}
 
 /* legacy half-width mode removed; dynamic art-relative scaling is source-of-truth */
 
@@ -1762,6 +1801,34 @@
         setHeroDrawerOpen(!heroDrawerOpen);
         syncDrawerOpenState();
         if (heroDrawerOpen) openRadioDrawer().catch(() => {});
+        return;
+      }
+      const alexaModeActive = !!lastNp?.alexaMode;
+      const alexaControl = action === 'play' ? 'resume' : action;
+      if (alexaModeActive && ['pause', 'resume', 'next'].includes(alexaControl)) {
+        ev.preventDefault();
+        const before = await readAlexaControlSnapshot().catch(() => null);
+        if (!before?.modeActive) {
+          try { alert('Alexa Mode is not confirmed active.'); } catch {}
+          return;
+        }
+        btn.classList.add('alexa-control-loading');
+        btn.disabled = true;
+        setBusy(true);
+        try {
+          await ensureRuntimeKey();
+          await playback(alexaControl + 'alexa', currentKey());
+          await waitForAlexaControl(alexaControl, before);
+          btn.classList.add('confirm');
+          setTimeout(() => btn.classList.remove('confirm'), 560);
+        } catch (e) {
+          try { alert(String(e?.message || e || 'Alexa control was not confirmed.')); } catch {}
+        } finally {
+          btn.classList.remove('alexa-control-loading');
+          btn.disabled = false;
+          setBusy(false);
+          try { await refresh(); } catch {}
+        }
         return;
       }
       renderOptimistic(action);

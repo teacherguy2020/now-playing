@@ -104,6 +104,31 @@ Alexa action endpoints. Homebridge turns the corresponding Matter trigger
 switch on briefly; Alexa routines respond to those switches and control Alexa
 playback.
 
+### Alexa transport controls from the controllers
+
+When Alexa Mode is active, the controller transport buttons route through the
+same Homebridge-to-Alexa routine bridge instead of sending MPD commands:
+
+```text
+Pause/Play or Resume button
+  → /api/v1/actions/alexa-pause or alexa-resume
+  → Alexa routine
+  → Mood Box AMAZON.PauseIntent or AMAZON.ResumeIntent
+
+Next button
+  → /api/v1/actions/alexa-next
+  → Alexa routine
+  → Mood Box AMAZON.NextIntent
+```
+
+Now Playing exposes these through the authenticated diagnostics relay using
+`pausealexa`, `resumealexa`, and `nextalexa`. Their URLs are derived from the
+configured `alexa-start` Homebridge URL, so a start URL such as
+`http://10.0.0.5:8787/api/v1/actions/alexa-start` automatically maps to the
+corresponding sibling actions. These controls do not alter MPD/moOde or Alexa
+Mode state. The controller keeps a spinner visible until Alexa playback state
+confirms the requested operation.
+
 For the Homebridge Alexa Mode switch, use the state-only integration endpoint
 instead of either webhook action:
 
@@ -117,6 +142,30 @@ Content-Type: application/json
 
 Send `{"state":"off"}` to clear Alexa mode. This endpoint is idempotent,
 does not invoke either webhook, and does not alter MPD/moOde playback.
+
+### Natural end of an Alexa queue
+
+Alexa Mode is not turned off merely because the Live Queue becomes empty: the
+track currently playing on the Echo has already been removed from that queue.
+The Alexa skill therefore uses the AudioPlayer lifecycle as the authority:
+
+```text
+PlaybackNearlyFinished
+  → no successor is available
+  → persist final-track candidate
+
+PlaybackFinished
+  → confirm the same token
+  → POST /alexa/natural-finish
+  → Homebridge /api/v1/actions/alexa-finished
+  → Alexa Mode switch OFF
+```
+
+`POST /alexa/natural-finish` requires the track key and relays to the
+Homebridge `alexa-finished` action. Now Playing clears its remembered Alexa
+state only after Homebridge returns HTTP 2xx. The Homebridge action is
+idempotent, does not invoke the Alexa Stop Trigger, and does not alter
+MPD/moOde playback. Explicit Stop remains a separate, immediate path.
 
 The older trailing here forms remain supported for compatibility.
 

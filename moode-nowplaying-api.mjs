@@ -2626,6 +2626,8 @@ let alexaWasPlaying = {
   playbackTarget: '',
   playbackMode: '',
   modeActive: false,
+  pendingNaturalFinishToken: '',
+  pendingNaturalFinishAt: 0,
   active: false,
   updatedAt: 0,
 };
@@ -2645,6 +2647,8 @@ function clearAlexaWasPlayingState() {
     playbackTarget: '',
     playbackMode: '',
     modeActive: false,
+    pendingNaturalFinishToken: '',
+    pendingNaturalFinishAt: 0,
   };
   return alexaWasPlaying;
 }
@@ -2673,6 +2677,8 @@ function setAlexaModeState(active) {
       playbackTarget: '',
       playbackMode: '',
       modeActive: false,
+      pendingNaturalFinishToken: '',
+      pendingNaturalFinishAt: 0,
     };
     return alexaWasPlaying;
   }
@@ -2702,6 +2708,8 @@ function setAlexaModeState(active) {
     playbackTarget: 'echo',
     playbackMode: 'alexa',
     modeActive: true,
+    pendingNaturalFinishToken: '',
+    pendingNaturalFinishAt: 0,
   };
   return alexaWasPlaying;
 }
@@ -2957,6 +2965,8 @@ app.post('/alexa/was-playing', async (req, res) => {
       removedPos0: Number.isFinite(removedPos0Resolved) ? removedPos0Resolved : null,
       removedPos1: Number.isFinite(removedPos1Resolved) ? Math.max(1, Math.floor(removedPos1Resolved)) : null,
       modeActive: alexaModeActive,
+      pendingNaturalFinishToken: String(incoming?.pendingNaturalFinishToken ?? merged.pendingNaturalFinishToken ?? '').trim(),
+      pendingNaturalFinishAt: Number.parseInt(String(incoming?.pendingNaturalFinishAt ?? merged.pendingNaturalFinishAt ?? 0).trim(), 10) || 0,
       startedAt: Number.parseInt(String(incoming?.startedAt || merged.startedAt || nowTs).trim(), 10) || nowTs,
       stoppedAt: active ? 0 : (Number.parseInt(String(incoming?.stoppedAt || nowTs).trim(), 10) || nowTs),
       active,

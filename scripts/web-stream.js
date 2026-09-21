@@ -14,6 +14,8 @@
       .webStreamToggle.is-on,.alexaRouteButton.is-on{border-color:#55c98a !important;box-shadow:0 0 0 1px rgba(85,201,138,.28) inset;color:#b9ffd8 !important}
       .webStreamToggle.is-busy{opacity:.72;cursor:wait}
       .webStreamSpinner{width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:webStreamSpin .7s linear infinite}
+      #npCtrls button.alexa-control-loading{position:relative;opacity:.72;cursor:wait;pointer-events:none}
+      #npCtrls button.alexa-control-loading::after{content:'';position:absolute;right:4px;top:4px;width:9px;height:9px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#9fd2ff;animation:webStreamSpin .8s linear infinite}
       @keyframes webStreamSpin{to{transform:rotate(360deg)}}
       .webStreamMobileAction,.webStreamComputerAction{position:relative;display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:8px 0}
       .webStreamMobileAction .webStreamToggle,.webStreamComputerAction .webStreamToggle{border:1px solid rgba(160,180,220,.35);border-radius:8px;padding:7px 12px;background:rgba(12,22,40,.78);color:#dbe7ff;font:inherit;cursor:pointer}
@@ -38,7 +40,13 @@
     const localOutputButton = document.getElementById('npLocalOutputBtn');
     if (!button && !localOutputButton) return;
     installStyles();
-    const controlOrigin = `${location.protocol}//${location.hostname || 'nowplaying.local'}:3101`;
+    // The public HTTPS host proxies the API on the same origin. Direct UI
+    // pages served from :8101 still need to address the API on :3101.
+    const controlOrigin = (!location.port || location.port === '80' || location.port === '443')
+      ? location.origin
+      : `${location.protocol}//${location.hostname || 'nowplaying.local'}:3101`;
+    let alexaModeActive = false;
+    let alexaControlBusy = false;
 
     const audio = document.createElement('audio');
     audio.id = 'webStreamAudio';
@@ -223,6 +231,7 @@
       );
       const paintAlexa = (active, busy = false) => {
         alexaActive = !!active;
+        alexaModeActive = alexaActive;
         if (alexaPendingTarget !== null) {
           if (alexaActive === alexaPendingTarget) {
             alexaPendingTarget = null;
@@ -287,6 +296,73 @@
         }
       });
     });
+
+    const readAlexaSnapshot = async () => {
+      const response = await fetch(`${controlOrigin}/alexa/was-playing`, { cache: 'no-store' });
+      const result = await response.json().catch(() => ({}));
+      const nowPlaying = result?.nowPlaying || {};
+      const wasPlaying = result?.wasPlaying || {};
+      const payload = nowPlaying.file ? nowPlaying : wasPlaying;
+      return {
+        modeActive: !!(nowPlaying.modeActive || wasPlaying.modeActive),
+        active: !!payload?.active,
+        file: String(payload?.file || '').trim(),
+        updatedAt: Number(payload?.updatedAt || wasPlaying?.updatedAt || nowPlaying?.updatedAt || 0) || 0,
+      };
+    };
+
+    const waitForAlexaControl = async (control, before) => {
+      const started = Date.now();
+      while ((Date.now() - started) < 20000) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        const current = await readAlexaSnapshot();
+        if (!current.modeActive) throw new Error('Alexa Mode is no longer active.');
+        const changed = current.updatedAt > before.updatedAt || current.file !== before.file;
+        if (control === 'pause' && !current.active && (changed || !before.active)) return current;
+        if (control === 'resume' && current.active && (changed || !before.active)) return current;
+        if (control === 'next' && current.active && changed) return current;
+      }
+      throw new Error(`Alexa did not confirm ${control}.`);
+    };
+
+    // In Alexa Mode, redirect transport buttons to the Homebridge → Alexa
+    // routine bridge. Capture the click before each page's normal MPD handler.
+    document.addEventListener('click', async (event) => {
+      const btn = event.target?.closest?.('#npCtrls button[data-np-act]');
+      if (!btn || !alexaModeActive || alexaControlBusy) return;
+      const act = String(btn.getAttribute('data-np-act') || '').trim().toLowerCase();
+      if (!['toggle', 'play', 'pause', 'next'].includes(act)) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      alexaControlBusy = true;
+      btn.disabled = true;
+      btn.classList.add('alexa-control-loading');
+      try {
+        const before = await readAlexaSnapshot();
+        const control = act === 'toggle' ? (before.active ? 'pause' : 'resume') : (act === 'play' ? 'resume' : act);
+        const runtime = await fetch(`${controlOrigin}/config/runtime`, { cache: 'no-store' });
+        const runtimeJson = await runtime.json().catch(() => ({}));
+        const key = String(runtimeJson?.config?.trackKey || '').trim();
+        const response = await fetch(`${controlOrigin}/config/diagnostics/playback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
+          body: JSON.stringify({ action: `${control}alexa` }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
+        await waitForAlexaControl(control, before);
+        btn.classList.add('confirm');
+        setTimeout(() => btn.classList.remove('confirm'), 560);
+        window.dispatchEvent(new CustomEvent('np-alexa-control-confirmed', { detail: { control } }));
+      } catch (error) {
+        showErrorModal(String(error?.message || error || 'Alexa control was not confirmed.'));
+      } finally {
+        btn.classList.remove('alexa-control-loading');
+        btn.disabled = false;
+        alexaControlBusy = false;
+      }
+    }, true);
     paint('off');
   }
 

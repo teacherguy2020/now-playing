@@ -26,6 +26,8 @@ function createAudioHandlers(deps) {
     buildPlayEnqueue,
     buildPlayReplaceAll,
     apiSetWasPlaying,
+    apiGetWasPlaying,
+    apiAlexaNaturalFinish,
     apiVibeNowPlaying,
     apiQueueWizardApply,
   } = deps;
@@ -56,12 +58,12 @@ function createAudioHandlers(deps) {
 
     if (!prevToken) {
       console.log(logPrefix, 'missing previous token; cannot ENQUEUE');
-      return null;
+      return { directive: null, reason: 'missing-token' };
     }
 
     if (enqueueAlreadyIssuedForPrevToken(prevToken)) {
       console.log(logPrefix, 'enqueue already issued for previous token; no action');
-      return null;
+      return { directive: null, reason: 'already-enqueued' };
     }
 
     let advancedNowPlaying = null;
@@ -87,7 +89,7 @@ function createAudioHandlers(deps) {
 
     if (!snap || !snap.file) {
       console.log(logPrefix, 'no next from /now-playing; skipping ENQUEUE');
-      return null;
+      return { directive: null, reason: 'no-next' };
     }
 
     const nextFile = safeStr(snap.file);
@@ -96,7 +98,7 @@ function createAudioHandlers(deps) {
 
     if (!nextFile || nextPos0 === null) {
       console.log(logPrefix, 'invalid next candidate; skipping ENQUEUE');
-      return null;
+      return { directive: null, reason: 'invalid-next' };
     }
 
     const candidateToken = makeToken({ file: nextFile, songid: nextSongId, pos0: nextPos0 });
@@ -122,7 +124,7 @@ function createAudioHandlers(deps) {
 
     if (!enq) {
       console.log(logPrefix, 'could not build ENQUEUE directive');
-      return null;
+      return { directive: null, reason: 'build-failed' };
     }
 
     try {
@@ -143,7 +145,7 @@ function createAudioHandlers(deps) {
     console.log(logPrefix, 'ENQUEUE next:', nextFile, 'pos0=', nextPos0, 'songid=', nextSongId);
     console.log(logPrefix, 'enqueue directive:', JSON.stringify(enq, null, 2));
 
-    return enq;
+    return { directive: enq, reason: 'enqueued' };
   }
 
   async function maybeTopUpVibeQueueFromToken(token, logPrefix) {
@@ -224,6 +226,8 @@ function createAudioHandlers(deps) {
               playbackMode: 'alexa',
               startedAt: Date.now(),
               active: true,
+              pendingNaturalFinishToken: '',
+              pendingNaturalFinishAt: 0,
             }, 'PlaybackStarted:');
             if (ok) console.log('PlaybackStarted: set was-playing ok for file:', safeStr(p.file));
           } catch (e) {
@@ -274,8 +278,23 @@ function createAudioHandlers(deps) {
           console.log('NearlyFinished: token prefix:', finishedToken.slice(0, 160));
 
           await maybeTopUpVibeQueueFromToken(finishedToken, 'NearlyFinished:');
-          const enq = await ensureHeadReady(finishedToken, 'NearlyFinished:', { advanceFromPrevious: true });
-          if (enq) return handlerInput.responseBuilder.addDirective(enq).getResponse();
+          const result = await ensureHeadReady(finishedToken, 'NearlyFinished:', { advanceFromPrevious: true });
+          if (result && result.directive) {
+            return handlerInput.responseBuilder.addDirective(result.directive).getResponse();
+          }
+
+          // A missing successor is only a candidate final track. PlaybackFinished
+          // is the authoritative confirmation, and may arrive in another Lambda
+          // invocation, so persist the candidate through Now Playing.
+          if (result && result.reason === 'no-next') {
+            await postWasPlaying({
+              token: finishedToken,
+              active: true,
+              pendingNaturalFinishToken: finishedToken,
+              pendingNaturalFinishAt: Date.now(),
+            }, 'NearlyFinished:');
+            console.log('NearlyFinished: persisted final-track candidate');
+          }
 
           return handlerInput.responseBuilder.getResponse();
 
@@ -288,9 +307,41 @@ function createAudioHandlers(deps) {
       if (eventType === 'AudioPlayer.PlaybackFinished') {
         try {
           console.log('AudioPlayer event:', eventType);
-          await postWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() }, 'PlaybackFinished:');
+          const finishedToken = safeStr(token);
+          let isFinalTrack = false;
+          let finalCandidateRead = false;
+          try {
+            const state = await apiGetWasPlaying();
+            const wasPlaying = state && state.wasPlaying ? state.wasPlaying : state;
+            finalCandidateRead = true;
+            isFinalTrack = !!finishedToken
+              && safeStr(wasPlaying && wasPlaying.pendingNaturalFinishToken) === finishedToken;
+          } catch (e) {
+            console.log('PlaybackFinished: could not read final-track candidate:', e && e.message ? e.message : String(e));
+          }
+
+          await postWasPlaying({
+            token: finishedToken,
+            active: false,
+            stoppedAt: Date.now(),
+            ...(!finalCandidateRead || isFinalTrack ? {} : { pendingNaturalFinishToken: '', pendingNaturalFinishAt: 0 }),
+          }, 'PlaybackFinished:');
+
+          if (isFinalTrack && typeof apiAlexaNaturalFinish === 'function') {
+            let acknowledged = false;
+            for (let attempt = 1; attempt <= 2 && !acknowledged; attempt += 1) {
+              try {
+                await apiAlexaNaturalFinish({ source: 'alexa-skill', reason: 'playback-finished' });
+                acknowledged = true;
+                console.log('PlaybackFinished: natural Alexa completion acknowledged');
+              } catch (e) {
+                console.log('PlaybackFinished: natural Alexa completion attempt', attempt, 'failed:', e && e.message ? e.message : String(e));
+                if (attempt < 2) await new Promise((r) => setTimeout(r, 200));
+              }
+            }
+          }
           // Alexa does not allow AudioPlayer.Play directives in PlaybackFinished responses.
-          console.log('PlaybackFinished: no directives allowed; no action');
+          console.log('PlaybackFinished: no directives allowed; finalTrack=', isFinalTrack);
           return handlerInput.responseBuilder.getResponse();
         } catch (e) {
           console.log('PlaybackFinished handler failed:', e && e.message ? e.message : String(e));

@@ -97,6 +97,7 @@ For the stronger explanation of why `/now-playing` and `/next-up` are central tr
 - `POST /alexa/was-playing`
 - `GET /alexa/now-playing`
 - `GET /alexa/next-up`
+- `POST /alexa/natural-finish`
 
 The authenticated `POST /config/diagnostics/playback` endpoint also supports
 the Alexa lifecycle actions `routealexa` and `stopalexa` (also accepted as
@@ -107,6 +108,13 @@ successful webhook response.
 `POST /integrations/alexa/state` is the state-only Homebridge integration. It
 accepts `{"state":"on"}` or `{"state":"off"}`, requires the track key, is
 idempotent, and does not invoke webhooks or alter MPD/moOde playback.
+
+`POST /alexa/natural-finish` is the authenticated Alexa-skill lifecycle relay.
+The skill calls it only after `PlaybackNearlyFinished` found no successor and
+the matching `PlaybackFinished` event arrived. It invokes the configured
+Homebridge `alexa-finished` action; after a successful 2xx response, Now
+Playing clears Alexa Mode and remembered Echo state. It does not alter
+MPD/moOde playback or invoke the Alexa Stop Trigger.
 
 Owner:
 - `moode-nowplaying-api.mjs`

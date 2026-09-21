@@ -328,6 +328,16 @@ function createApiClient(config) {
     });
   }
 
+  async function apiAlexaNaturalFinish(payload) {
+    const url = API_BASE + '/alexa/natural-finish';
+    const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
+    return httpRequestJson('POST', url, {
+      headers,
+      bodyObj: payload || {},
+      timeoutMs: HTTP_TIMEOUT_MS,
+    });
+  }
+
   return {
     httpRequestJson,
     apiNowPlaying,
@@ -355,6 +365,7 @@ function createApiClient(config) {
     apiGetWasPlaying,
     apiGetRuntimeConfig,
     apiSetWasPlaying,
+    apiAlexaNaturalFinish,
   };
 }
 

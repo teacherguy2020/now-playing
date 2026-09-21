@@ -217,8 +217,33 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     }
   }
 
+  async function getAlexaControlWebhookUrl(control) {
+    try {
+      const raw = await fs.readFile(configPath, 'utf8');
+      const cfg = JSON.parse(raw || '{}');
+      const name = String(control || '').trim().toLowerCase();
+      const explicit = String(cfg?.alexa?.[`${name}WebhookUrl`] || '').trim();
+      if (explicit) return explicit;
+
+      // Derive the sibling Homebridge action from the configured start URL.
+      // This keeps the new controls aligned with the existing Homebridge host
+      // and port without adding another required config field.
+      const route = String(cfg?.alexa?.routeWebhookUrl || '').trim();
+      if (!route) return '';
+      const parsed = new URL(route);
+      if (/\/alexa-start\/?$/i.test(parsed.pathname)) {
+        parsed.pathname = parsed.pathname.replace(/alexa-start\/?$/i, `alexa-${name}`);
+        return parsed.toString();
+      }
+      return '';
+    } catch {
+      return '';
+    }
+  }
+
   const endpointCatalog = [
     { group: 'Integrations', method: 'POST', path: '/integrations/alexa/state', body: { state: 'on|off' } },
+    { group: 'Integrations', method: 'POST', path: '/alexa/natural-finish' },
     { group: 'Now Playing', method: 'GET', path: '/now-playing' },
     { group: 'Now Playing', method: 'GET', path: '/next-up' },
     { group: 'Now Playing', method: 'GET', path: '/track' },
@@ -657,6 +682,40 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
     }
   });
 
+  app.post('/alexa/natural-finish', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const url = await getAlexaControlWebhookUrl('finished');
+      if (!url) return res.status(400).json({ ok: false, error: 'Alexa natural-finish webhook URL is not configured' });
+
+      let parsed;
+      try {
+        parsed = new URL(url);
+      } catch {
+        return res.status(400).json({ ok: false, error: 'Alexa natural-finish webhook URL is invalid' });
+      }
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return res.status(400).json({ ok: false, error: 'Alexa natural-finish webhook URL must be http(s)' });
+      }
+
+      const response = await fetch(parsed.toString(), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ source: 'now-playing-next', action: 'alexa-finished', ts: Date.now() }),
+      });
+      let bodyPreview = '';
+      try { bodyPreview = String(await response.text()).slice(0, 240); } catch {}
+      if (!response.ok) {
+        return res.status(502).json({ ok: false, error: `Webhook returned HTTP ${response.status}`, statusCode: response.status, body: bodyPreview });
+      }
+
+      const mode = typeof setAlexaModeState === 'function' ? setAlexaModeState(false) : null;
+      return res.json({ ok: true, action: 'alexa-finished', statusCode: response.status, body: bodyPreview, alexaCleared: !!mode });
+    } catch (e) {
+      return res.status(502).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.post('/config/diagnostics/playback', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
@@ -788,6 +847,44 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
         return res.json({ ok: true, action, randomOn, status: String(afterStatus || '') });
+      }
+
+      const alexaControl = ({
+        pausealexa: 'pause',
+        'pause-alexa': 'pause',
+        'alexa-pause': 'pause',
+        resumealexa: 'resume',
+        'resume-alexa': 'resume',
+        'alexa-resume': 'resume',
+        nextalexa: 'next',
+        'next-alexa': 'next',
+        'alexa-next': 'next',
+      })[action];
+      if (alexaControl) {
+        const url = await getAlexaControlWebhookUrl(alexaControl);
+        if (!url) return res.status(400).json({ ok: false, error: `Alexa ${alexaControl} webhook URL is not configured` });
+        let parsed;
+        try {
+          parsed = new URL(url);
+        } catch {
+          return res.status(400).json({ ok: false, error: `Alexa ${alexaControl} webhook URL is invalid` });
+        }
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          return res.status(400).json({ ok: false, error: `Alexa ${alexaControl} webhook URL must be http(s)` });
+        }
+
+        const response = await fetch(parsed.toString(), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ source: 'now-playing-next', action: `alexa-${alexaControl}`, ts: Date.now() }),
+        });
+        let bodyPreview = '';
+        try { bodyPreview = String(await response.text()).slice(0, 240); } catch {}
+        if (!response.ok) {
+          return res.status(502).json({ ok: false, error: `Webhook returned HTTP ${response.status}`, statusCode: response.status, body: bodyPreview });
+        }
+
+        return res.json({ ok: true, action, alexaControl, webhookUrl: parsed.toString(), statusCode: response.status, body: bodyPreview });
       }
 
       if (action === 'routealexa') {

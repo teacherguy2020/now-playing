@@ -906,10 +906,10 @@
             const awNp = awj?.nowPlaying;
             const wpHas = !!(awWp && (awWp.file || awWp.title || awWp.artist));
             const npHas = !!(awNp && (awNp.file || awNp.title || awNp.artist));
-            const wpActive = !!(awWp?.active);
-            const npActive = !!(awNp?.active);
+            const wpModeActive = !!(awWp?.modeActive);
+            const npModeActive = !!(awNp?.modeActive);
             const awPayload = wpHas ? awWp : (npHas ? awNp : null);
-            const awActive = wpHas ? wpActive : npActive;
+            const awActive = wpHas ? wpModeActive : npModeActive;
             if (awFresh && awActive && awPayload) {
               const aArtist = String(awPayload?.artist || '').trim();
               const aTitle = String(awPayload?.title || '').trim();
@@ -1075,6 +1075,13 @@
         document.querySelectorAll('#npCtrls .ctl[data-np-act="repeat"]').forEach((b)=>b.classList.toggle('on', rpOn));
         document.querySelectorAll('#npCtrls .ctlPlay').forEach((b)=>b.classList.toggle('is-active', isPlaying));
         document.querySelectorAll('#npCtrls .ctlPause').forEach((b)=>b.classList.toggle('is-active', !isPlaying));
+        document.querySelectorAll('#npCtrls .ctl[data-np-act]').forEach((b)=>{
+          const act = String(b.getAttribute('data-np-act') || '').toLowerCase();
+          const allow = !isAlexaMode || ['shuffle','toggle','play','pause','next'].includes(act);
+          b.disabled = !allow;
+          b.style.opacity = allow ? '' : '0.35';
+          b.style.pointerEvents = allow ? '' : 'none';
+        });
       } catch {}
     }
 
@@ -2718,6 +2725,6 @@
       }, { passive: true });
     })();
 </script>
-  <script src="/scripts/web-stream.js?v=20260921-alexa-state3"></script>
+  <script src="/scripts/web-stream.js?v=20260921-alexa-controls2"></script>
 </body>
 </html>
