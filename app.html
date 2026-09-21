@@ -185,6 +185,8 @@
     .queueArtistAlbumName{font-size:13px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .heroQueueCheckWrap{display:inline-flex;align-items:center;gap:6px;color:var(--theme-text-secondary);font-size:12px;white-space:nowrap}
     .heroQueueCheckWrap input[type="checkbox"]{accent-color:var(--theme-transport-active)}
+    .appEchoLinkVolumeMount{display:inline-flex;align-items:center;min-width:0}
+    .appEchoLinkVolumeMount .echoLinkVolumeControl{margin:0;padding-top:2px;padding-bottom:2px}
 
     /* Liquid glass pass (hero) */
     .heroWrap{
@@ -321,7 +323,7 @@
             <div class="heroQueueTitle">Current Queue</div>
             <label id="heroQueueArrowKeysWrap" class="heroQueueCheckWrap">
               <input id="heroQueueArrowKeys" type="checkbox" />
-              <span>activate keyboard arrow keys</span>
+              <span>Arrow keys</span>
             </label>
             <label id="heroQueueConsumeWrap" class="heroQueueCheckWrap">
               <input id="heroQueueConsume" type="checkbox" />
@@ -336,6 +338,7 @@
                 <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option>
               </select>
             </label>
+            <div id="appEchoLinkVolumeMount" class="appEchoLinkVolumeMount" aria-label="Echo Link volume"></div>
           </div>
           <div id="heroQueueActionsHead" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
             <label id="heroQueueMinRatingWrap" class="heroQueueCheckWrap" style="display:none;">
@@ -433,7 +436,7 @@
   </div>
 
   <script src="scripts/hero-transport.js?v=20260921-alexa-controls1"></script>
-  <script src="scripts/echo-link-volume.js?v=20260921-echo-link7"></script>
+  <script src="scripts/echo-link-volume.js?v=20260921-echo-link9"></script>
   <script>
     (() => {
       const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','youtube.html','peppy.html','player.html','visualizer.html','mobile.html','displays.html','controller-kiosk.html','kiosk.html','kiosk-designer.html','theme.html']);

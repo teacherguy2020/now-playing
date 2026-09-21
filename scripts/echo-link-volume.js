@@ -24,23 +24,23 @@
     const style = document.createElement('style');
     style.id = 'echoLinkVolumeStyles';
     style.textContent = `
-      .echoLinkVolumeControl{display:inline-flex;align-items:center;gap:7px;margin:7px 0;padding:5px 8px;border:1px solid color-mix(in srgb,var(--line,#1f2a3d) 85%,var(--text,#f3f6ff) 15%);border-radius:9px;background:color-mix(in srgb,var(--surface,#0b111c) 84%,var(--line,#1f2a3d) 16%);color:var(--text,#f3f6ff);font-size:12px;line-height:1.1}
+      .echoLinkVolumeControl{display:inline-flex;align-items:center;gap:7px;margin:7px 0;padding:5px 8px;border:1px solid color-mix(in srgb,var(--theme-tab-border,var(--line,#1f2a3d)) 85%,var(--theme-tab-text,var(--text,#f3f6ff)) 15%);border-radius:9px;background:color-mix(in srgb,var(--theme-tab-bg,var(--surface,#0b111c)) 84%,var(--theme-tab-border,var(--line,#1f2a3d)) 16%);color:var(--theme-tab-text,var(--text,#f3f6ff));font-size:12px;line-height:1.1}
       .echoLinkVolumeControl[hidden],#webStreamToggle[hidden]{display:none !important}
       .echoLinkVolumeControl .echoLinkLabel{font-weight:650;white-space:nowrap}
       .echoLinkVolumeControl input[type=range]{width:116px;height:16px;appearance:none;-webkit-appearance:none;background:transparent;cursor:pointer}
-      .echoLinkVolumeControl input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:999px;background:color-mix(in srgb,var(--accent,#4aa8ff) 58%,transparent)}
-      .echoLinkVolumeControl input[type=range]::-moz-range-track{height:3px;border-radius:999px;background:color-mix(in srgb,var(--accent,#4aa8ff) 58%,transparent)}
-      .echoLinkVolumeControl input[type=range]::-webkit-slider-thumb{width:14px;height:14px;margin-top:-5.5px;border:1px solid var(--accent,#4aa8ff);border-radius:50%;background:var(--text,#f3f6ff);box-shadow:0 1px 4px color-mix(in srgb,var(--surface,#0b111c) 70%,transparent);appearance:none;-webkit-appearance:none}
-      .echoLinkVolumeControl input[type=range]::-moz-range-thumb{width:14px;height:14px;border:1px solid var(--accent,#4aa8ff);border-radius:50%;background:var(--text,#f3f6ff);box-shadow:0 1px 4px color-mix(in srgb,var(--surface,#0b111c) 70%,transparent)}
-      .echoLinkVolumeControl .echoLinkValue{min-width:34px;text-align:right;color:var(--muted,#9eb3d6);font-variant-numeric:tabular-nums}
-      .echoLinkVolumeControl button{border:1px solid color-mix(in srgb,var(--line,#1f2a3d) 85%,var(--text,#f3f6ff) 15%);border-radius:6px;padding:3px 6px;background:color-mix(in srgb,var(--surface,#0b111c) 80%,var(--line,#1f2a3d) 20%);color:inherit;cursor:pointer;font:inherit}
+      .echoLinkVolumeControl input[type=range]::-webkit-slider-runnable-track{height:3px;border-radius:999px;background:color-mix(in srgb,var(--theme-tab-active-bg,var(--accent,#4aa8ff)) 58%,transparent)}
+      .echoLinkVolumeControl input[type=range]::-moz-range-track{height:3px;border-radius:999px;background:color-mix(in srgb,var(--theme-tab-active-bg,var(--accent,#4aa8ff)) 58%,transparent)}
+      .echoLinkVolumeControl input[type=range]::-webkit-slider-thumb{width:14px;height:14px;margin-top:-5.5px;border:1px solid var(--theme-tab-active-bg,var(--accent,#4aa8ff));border-radius:50%;background:var(--theme-tab-text,var(--text,#f3f6ff));box-shadow:0 1px 4px color-mix(in srgb,var(--theme-rail-bg,var(--surface,#0b111c)) 70%,transparent);appearance:none;-webkit-appearance:none}
+      .echoLinkVolumeControl input[type=range]::-moz-range-thumb{width:14px;height:14px;border:1px solid var(--theme-tab-active-bg,var(--accent,#4aa8ff));border-radius:50%;background:var(--theme-tab-text,var(--text,#f3f6ff));box-shadow:0 1px 4px color-mix(in srgb,var(--theme-rail-bg,var(--surface,#0b111c)) 70%,transparent)}
+      .echoLinkVolumeControl .echoLinkValue{min-width:34px;text-align:right;color:var(--theme-text-secondary,var(--muted,#9eb3d6));font-variant-numeric:tabular-nums}
+      .echoLinkVolumeControl button{border:1px solid color-mix(in srgb,var(--theme-tab-border,var(--line,#1f2a3d)) 85%,var(--theme-tab-text,var(--text,#f3f6ff)) 15%);border-radius:6px;padding:3px 6px;background:color-mix(in srgb,var(--theme-tab-bg,var(--surface,#0b111c)) 80%,var(--theme-tab-border,var(--line,#1f2a3d)) 20%);color:inherit;cursor:pointer;font:inherit}
       .echoLinkVolumeControl .echoLinkMute{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:3px}
       .echoLinkVolumeControl .echoLinkMute svg{display:block;width:15px;height:15px;fill:currentColor}
       .echoLinkVolumeControl button:disabled,.echoLinkVolumeControl input:disabled{cursor:not-allowed}
       .echoLinkVolumeControl.is-outside-mode{opacity:.54}
       .echoLinkVolumeControl.is-unavailable{opacity:.48}
       .echoLinkVolumeControl.is-busy{cursor:wait}
-      .echoLinkVolumeControl .echoLinkState{min-width:0;max-width:96px;color:var(--muted,#9eb3d6);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .echoLinkVolumeControl .echoLinkState{min-width:0;max-width:96px;color:var(--theme-text-secondary,var(--muted,#9eb3d6));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .echoLinkVolumeControl .echoLinkSpinner{display:inline-block;width:10px;height:10px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:echoLinkSpin .7s linear infinite}
       .echoLinkVolumeControl .echoLinkError{color:#f6b4b4}
       @keyframes echoLinkSpin{to{transform:rotate(360deg)}}
@@ -84,6 +84,8 @@
   }
 
   function findMount() {
+    const appMount = document.getElementById('appEchoLinkVolumeMount');
+    if (appMount) return { parent: appMount, before: null };
     const hero = document.getElementById('heroTransport');
     if (hero) {
       const controls = hero.querySelector('.alexaTransportControls');
