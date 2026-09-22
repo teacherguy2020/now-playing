@@ -207,7 +207,7 @@ This list is not just navigation. At least some rows expose richer action behavi
 
 ### Settings child pane
 
-The Settings row opens `controller-tablet-settings.html` inside the tablet shell. In addition to theme, visualizer, and recent-row preferences, it contains the local **Keep display awake** toggle. The toggle is stored through `scripts/client-preferences.js` in the versioned `nowplaying.clientSettings.v1` origin-local object and sends an `np-controller-wake-lock` message to the parent shell.
+The Settings row opens `controller-tablet-settings.html` inside the tablet shell. In addition to theme, visualizer, and recent-row preferences, it contains the local **Keep display awake** toggle and the Listen on Device playback options. The playback options can mute moOde's local ALSA output while the browser stream is active, restore ALSA on stop, and optionally send `mpc stop` when the browser listener stops. They are stored through `scripts/client-preferences.js` in the versioned `nowplaying.clientSettings.v1` origin-local object under `webStreamAutoMuteAlsa` and `webStreamStopMpd`, and the Settings pane's **Apply** button sends the values to the parent tablet shell.
 
 `controller-tablet.html` owns the actual Screen Wake Lock lifecycle. It requests a screen lock only while the preference is enabled and the page is visible, releases it when the page is hidden or the preference is disabled, and retries after pageshow, focus, visibility, and orientation changes. The preference is deliberately not part of the shared server controller profile because it is device/display-specific.
 

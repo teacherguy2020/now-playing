@@ -52,6 +52,7 @@ Client-local web-app behavior is documented in the implementation pages and incl
 - versioned `nowplaying.clientSettings.v1` storage with a local client ID;
 - display-specific **Keep display awake** preference, with Screen Wake Lock enabled only when the browser provides a secure context;
 - metadata-only MediaSession support for Listen on Device, using current Now-Playing title, artist, album, and artwork; and
+- device-local Listen on Device options that resume paused MPD after gesture-safe stream startup, optionally mute/restore moOde's ALSA output, optionally stop MPD when the browser listener stops, and keep the controller speaker icon synchronized with local-output changes; and
 - the existing gesture-sensitive persistent audio element and direct MPD HTTP stream.
 
 The live queue and control plane remain network-first. There is no service-worker cache for live playback, queue, control, or MPD traffic.

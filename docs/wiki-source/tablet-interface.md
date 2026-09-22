@@ -44,7 +44,7 @@ Related pages already documented:
 
 The page retains `viewport-fit=cover` and safe-area handling, but uses opaque `black` status-bar treatment. This is important: the prior `black-translucent` setting caused iPadOS to add a dark upper-edge vignette in the installed app, clouding the first action row. The `black` setting removed that effect in a newly created Home Screen app without moving the controller geometry.
 
-The Settings row opens `controller-tablet-settings.html`, where the device-local **Keep display awake** preference is exposed. The parent tablet shell owns the secure-context-gated Screen Wake Lock lifecycle and releases/reacquires it across visibility, focus, pageshow, and orientation changes.
+The Settings row opens `controller-tablet-settings.html`, where the device-local **Keep display awake** preference and the Listen on Device preferences are exposed. The playback options can automatically mute moOde's local ALSA output while this browser is listening, restore ALSA when listening stops, and send `mpc stop` when the browser listener stops. They are stored in the versioned `nowplaying.clientSettings.v1` origin-local object and require the Settings pane's **Apply** button. The parent tablet shell owns the secure-context-gated Screen Wake Lock lifecycle and releases/reacquires it across visibility, focus, pageshow, and orientation changes.
 
 The tablet shell also participates in metadata-only MediaSession support for Listen on Device. Current Now-Playing state supplies title, artist, album, and artwork after the existing gesture-safe persistent audio stream starts. No seek/playback action handlers are added for the continuous MPD stream.
 

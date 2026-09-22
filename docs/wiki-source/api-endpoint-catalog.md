@@ -281,6 +281,12 @@ Related browse endpoints often used nearby:
 - `GET /config/browse/stats`
 - `POST /config/browse/rebuild`
 
+The authenticated `GET /mpd/local-output` and `POST /mpd/local-output`
+endpoints provide local-output state/control for the controller's optional
+Listen on Device ALSA mute-and-restore behavior. They change the MPD ALSA
+output only; they do not disable the HTTP Server output used by the browser
+stream.
+
 ## Family: diagnostics / debug / browse-index
 
 Owner:
@@ -308,6 +314,9 @@ Observed request-shape examples with high confidence:
 - `POST /config/diagnostics/playback`
   - diagnostics catalog example body:
     - `action: 'play'`
+  - browser Listen on Device uses `action: 'play'` after local audio startup
+    and may use `action: 'stop'` when the device-local stop preference is
+    enabled
 - `POST /config/diagnostics/queue/save-playlist`
   - diagnostics catalog example body:
     - `playlistName: 'My Queue'`

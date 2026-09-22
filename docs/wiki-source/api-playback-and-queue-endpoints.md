@@ -58,6 +58,24 @@ A good current interpretation is:
 ### Why it matters
 This is one of the clearest examples of controller-side UI actions mapping directly into a route family that changes active playback behavior.
 
+### Browser Listen on Device bridge
+
+The shared `scripts/web-stream.js` helper uses the same authenticated control
+plane for browser-local listening:
+
+- after the existing direct `audio.play()` call, it sends
+  `POST /config/diagnostics/playback` with `{"action":"play"}` so a paused
+  moOde stream resumes;
+- when the device-local stop preference is enabled, stopping the browser
+  listener sends the same endpoint with `{"action":"stop"}`; and
+- when the device-local ALSA preference is enabled, it uses
+  `GET`/`POST /mpd/local-output` to mute ALSA while listening and restore it on
+  stop. The HTTP Server output used by the browser stream is not disabled.
+
+These requests occur after playback startup; they are not prerequisites for the
+gesture-sensitive `audio.play()` call. The webstream itself remains a direct
+MPD HTTP stream and is not cached by a service worker.
+
 ## 2. Queue-wizard preview/apply family
 
 Current wiki work repeatedly references:

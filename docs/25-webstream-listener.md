@@ -14,11 +14,28 @@ headphones or AirPods.
 - A same-origin /stream Caddy proxy is also supported for testing and future
   configuration-driven use; it proxies to moOde's MPD HTTP output on port
   8000.
-- The browser listener does not change MPD playback, queue state, or volume.
+- The browser listener does not change queue state or volume by default. After
+  the browser's gesture-sensitive `audio.play()` call starts, the controller
+  also requests MPD `play` so a paused moOde stream resumes for Listen on
+  Device.
 - Controller surfaces also provide a speaker toggle beside the current-track
   rating and playlist controls. It enables/disables moOde's local ALSA output
   only; the HTTP webstream remains enabled.
+- Controller Settings provides two optional, device-local webstream behaviors:
+  - **Mute moOde local ALSA output while playing on this device** disables the
+    ALSA output after the webstream starts and restores it when Listen on
+    Device stops. The HTTP Server output remains enabled, and the controller's
+    speaker icon follows the resulting local-output state.
+  - **Stop moOde playback when stopping Listen on Device** sends the
+    authenticated playback `stop` action (`mpc stop`) when the browser listener
+    stops.
+- These options are stored in the versioned
+  `nowplaying.clientSettings.v1` browser/install-local preferences and are off
+  by default. The Settings pane requires **Apply** before changed checkbox
+  values are saved.
 - A browser user gesture is required by iPadOS/Safari before audio can start.
+- No metadata, output-control, or MPD-control request is awaited before the
+  initial `audio.play()` call.
 - MP3 320 is the recommended format. It is reliably playable by Safari and is
   appropriate for AirPods.
 
@@ -76,9 +93,11 @@ sudo systemctl reload caddy
 
 The controls are available on the tablet, phone, and computer controller
 surfaces. **Listen on Device** means the device running that browser—not the
-moOde player. Turning it off stops only that browser's listener. The speaker
-toggle is independent of Listen on Device and can mute or restore the local
-moOde output without starting a browser stream.
+moOde player. Starting it resumes MPD after the local audio element has been
+started. Turning it off stops that browser's listener; it also restores ALSA
+and/or stops MPD when the corresponding Settings options are enabled. The
+speaker toggle remains independently available for manual local-output
+control.
 
 The non-editor 1280×400 kiosk display intentionally hides Listen on Device,
 Start on Alexa/Stop on Alexa, playlist-add, and local-output controls. Those are controller
