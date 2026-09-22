@@ -8,7 +8,7 @@
   "shortcuts": [
     {
       "name": "Controller (iPad)",
-      "url": "/controller-ipad.html?devicePreset=ipadpro11-landscape"
+      "url": "/controller-tablet.html?devicePreset=ipadpro11-landscape"
     },
     {
       "name": "Controller (Auto)",

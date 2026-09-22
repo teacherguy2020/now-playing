@@ -3,7 +3,7 @@
   "short_name": "Controller",
   "description": "iPad controller for Now Playing for moOde",
   "id": "/controller-ipad",
-  "start_url": "/controller-ipad.html?devicePreset=ipadpro11-landscape",
+  "start_url": "/controller-tablet.html?devicePreset=ipadpro11-landscape",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0c1526",
