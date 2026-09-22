@@ -667,7 +667,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.status(500).json({ ok: false, error: 'Alexa state handler is unavailable' });
       }
 
-      const mode = setAlexaModeState(state === 'on');
+      const mode = await setAlexaModeState(state === 'on');
       return res.json({
         ok: true,
         state,
@@ -709,7 +709,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         return res.status(502).json({ ok: false, error: `Webhook returned HTTP ${response.status}`, statusCode: response.status, body: bodyPreview });
       }
 
-      const mode = typeof setAlexaModeState === 'function' ? setAlexaModeState(false) : null;
+      const mode = typeof setAlexaModeState === 'function' ? await setAlexaModeState(false) : null;
       return res.json({ ok: true, action: 'alexa-finished', statusCode: response.status, body: bodyPreview, alexaCleared: !!mode });
     } catch (e) {
       return res.status(502).json({ ok: false, error: e?.message || String(e) });
@@ -945,7 +945,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         }
 
         const alexaCleared = typeof clearAlexaWasPlayingState === 'function';
-        if (alexaCleared) clearAlexaWasPlayingState();
+        if (alexaCleared) await clearAlexaWasPlayingState();
 
         return res.json({ ok: true, action, webhookUrl: parsed.toString(), statusCode: response.status, body: bodyPreview, alexaCleared });
       }

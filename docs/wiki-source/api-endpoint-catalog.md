@@ -106,15 +106,19 @@ the configured Alexa stop webhook and clears remembered Alexa state after a
 successful webhook response.
 
 `POST /integrations/alexa/state` is the state-only Homebridge integration. It
-accepts `{"state":"on"}` or `{"state":"off"}`, requires the track key, is
-idempotent, and does not invoke webhooks or alter MPD/moOde playback.
+accepts `{"state":"on"}` or `{"state":"off"}`, requires the track key, and
+is idempotent. It does not invoke webhooks or start, stop, or change the MPD
+queue. It does synchronize the local MPD ALSA output: `on` disables output 0
+to suppress audible priming, and `off` enables it again. The HTTP Server
+output used by Listen on Device remains enabled.
 
 `POST /alexa/natural-finish` is the authenticated Alexa-skill lifecycle relay.
 The skill calls it only after `PlaybackNearlyFinished` found no successor and
 the matching `PlaybackFinished` event arrived. It invokes the configured
 Homebridge `alexa-finished` action; after a successful 2xx response, Now
-Playing clears Alexa Mode and remembered Echo state. It does not alter
-MPD/moOde playback or invoke the Alexa Stop Trigger.
+Playing clears Alexa Mode and remembered Echo state. It does not start, stop,
+or change the MPD queue or invoke the Alexa Stop Trigger, but clearing Alexa
+Mode re-enables the local ALSA output.
 
 Owner:
 - `moode-nowplaying-api.mjs`
@@ -282,10 +286,12 @@ Related browse endpoints often used nearby:
 - `POST /config/browse/rebuild`
 
 The authenticated `GET /mpd/local-output` and `POST /mpd/local-output`
-endpoints provide local-output state/control for the controller's optional
-Listen on Device ALSA mute-and-restore behavior. They change the MPD ALSA
-output only; they do not disable the HTTP Server output used by the browser
-stream.
+endpoints provide local-output state/control for Listen on Device and Alexa
+Mode. They change the MPD ALSA output only; they do not disable the HTTP
+Server output used by the browser stream. While Alexa Mode is active, an
+attempt to enable output 0 is rejected so a controller cannot accidentally
+undo the Alexa mute. Controllers poll this shared state so their speaker
+icons reflect Alexa Mode changes made by another client or by Homebridge.
 
 ## Family: diagnostics / debug / browse-index
 

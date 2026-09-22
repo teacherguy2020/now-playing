@@ -91,6 +91,11 @@ The shared `scripts/web-stream.js` helper uses authenticated control requests:
 - optional `POST /config/diagnostics/playback {"action":"stop"}` on stop; and
 - `GET`/`POST /mpd/local-output` for optional ALSA mute/restore.
 
+The speaker icon reflects the shared MPD output-0 state and is refreshed
+periodically, so it also shows the automatic mute applied while Alexa Mode is
+active. Listen on Device's optional browser-side ALSA restore cannot override
+that Alexa Mode mute; output 0 is re-enabled when Alexa Mode is turned off.
+
 The HTTP Server output remains enabled for the browser stream. The non-editor
 1280×400 kiosk display intentionally hides these controller actions.
 

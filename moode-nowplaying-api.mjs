@@ -2653,10 +2653,34 @@ let alexaWasPlaying = {
 // Homebridge/Matter Alexa Mode is independent from the Alexa AudioPlayer
 // lifecycle. A track can finish while Alexa Mode remains enabled.
 let alexaModeActive = false;
+let alexaModeOutputSync = Promise.resolve();
 
-function clearAlexaWasPlayingState() {
+async function setAlexaModeLocalOutput(modeActive) {
+  const enabled = !modeActive;
+  const command = enabled ? 'enableoutput 0' : 'disableoutput 0';
+  const raw = await mpdQueryRaw(command);
+  if (mpdHasACK(raw)) throw new Error(`MPD rejected Alexa Mode local output change: ${command}`);
+
+  const outputs = parseMpdOutputs(await mpdQueryRaw('outputs'));
+  const local = outputs.find((x) => x.id === 0) || null;
+  if (!local) throw new Error('Local ALSA output not found after Alexa Mode change');
+  if (local.enabled !== enabled) throw new Error(`Local ALSA output did not become ${enabled ? 'enabled' : 'muted'}`);
+
+  log.info('[alexa] local ALSA output synchronized', { modeActive: !!modeActive, enabled: local.enabled });
+  return local;
+}
+
+function queueAlexaModeLocalOutputSync(modeActive) {
+  alexaModeOutputSync = alexaModeOutputSync
+    .catch(() => {})
+    .then(() => setAlexaModeLocalOutput(modeActive));
+  return alexaModeOutputSync;
+}
+
+async function clearAlexaWasPlayingState() {
   const nowTs = Date.now();
   alexaModeActive = false;
+  const outputSync = queueAlexaModeLocalOutputSync(false);
   alexaWasPlaying = {
     ...alexaWasPlaying,
     active: false,
@@ -2668,12 +2692,14 @@ function clearAlexaWasPlayingState() {
     pendingNaturalFinishToken: '',
     pendingNaturalFinishAt: 0,
   };
+  await outputSync;
   return alexaWasPlaying;
 }
 
-function setAlexaModeState(active) {
+async function setAlexaModeState(active) {
   const nextActive = !!active;
   alexaModeActive = nextActive;
+  const outputSync = queueAlexaModeLocalOutputSync(nextActive);
   if (!nextActive) {
     const nowTs = Date.now();
     alexaWasPlaying = {
@@ -2698,10 +2724,12 @@ function setAlexaModeState(active) {
       pendingNaturalFinishToken: '',
       pendingNaturalFinishAt: 0,
     };
+    await outputSync;
     return alexaWasPlaying;
   }
 
   if (alexaWasPlaying.modeActive && alexaWasPlaying.playbackMode === 'alexa') {
+    await outputSync;
     return alexaWasPlaying;
   }
 
@@ -2729,6 +2757,7 @@ function setAlexaModeState(active) {
     pendingNaturalFinishToken: '',
     pendingNaturalFinishAt: 0,
   };
+  await outputSync;
   return alexaWasPlaying;
 }
 
@@ -4776,6 +4805,11 @@ app.post('/mpd/local-output', async (req, res) => {
     if (!requireTrackKey(req, res)) return;
     if (typeof req.body?.enabled !== 'boolean') {
       return res.status(400).json({ ok: false, error: 'enabled must be boolean' });
+    }
+    if (req.body.enabled === true && alexaModeActive) {
+      const outputs = parseMpdOutputs(await mpdQueryRaw('outputs'));
+      const local = outputs.find((x) => x.id === 0) || null;
+      return res.status(409).json({ ok: false, error: 'Local ALSA output is muted while Alexa Mode is active', output: local, outputs, alexaMode: true });
     }
     const raw = await mpdQueryRaw(req.body.enabled ? 'enableoutput 0' : 'disableoutput 0');
     if (mpdHasACK(raw)) return res.status(409).json({ ok: false, error: 'MPD rejected local output change' });

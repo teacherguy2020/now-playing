@@ -123,6 +123,7 @@
       return result;
     };
     const outputRequest = (method, body) => controlRequest('/mpd/local-output', method, body);
+    let refreshLocalOutputStatus = () => Promise.resolve();
     const playbackRequest = (action) => controlRequest('/config/diagnostics/playback', 'POST', { action });
     const notifyLocalOutputState = (enabled) => {
       try {
@@ -244,13 +245,32 @@
       window.addEventListener('np-local-output-change', (event) => {
         paintLocalOutput(event?.detail?.enabled === true);
       });
-      outputRequest('GET').then((result) => paintLocalOutput(result?.output?.enabled)).catch((error) => {
-        console.error('[Local Output] initial status failed', error?.message || error);
-        localOutputEnabled = true;
-        paintLocalOutput(true);
-        localOutputButton.disabled = false;
-        localOutputButton.title = 'Local output status unavailable; tap to retry';
-      });
+      let localOutputRefreshInFlight = false;
+      const refreshLocalOutput = async (initial = false) => {
+        if (localOutputRefreshInFlight) return;
+        localOutputRefreshInFlight = true;
+        try {
+          const result = await outputRequest('GET');
+          paintLocalOutput(result?.output?.enabled);
+          localOutputButton.disabled = false;
+        } catch (error) {
+          if (initial) {
+            console.error('[Local Output] initial status failed', error?.message || error);
+            localOutputEnabled = true;
+            paintLocalOutput(true);
+            localOutputButton.disabled = false;
+            localOutputButton.title = 'Local output status unavailable; tap to retry';
+          }
+        } finally {
+          localOutputRefreshInFlight = false;
+        }
+      };
+      refreshLocalOutputStatus = refreshLocalOutput;
+      void refreshLocalOutput(true);
+      const localOutputTimer = setInterval(() => {
+        if (!document.hidden) void refreshLocalOutput();
+      }, 3000);
+      window.addEventListener('pagehide', () => clearInterval(localOutputTimer), { once: true });
       localOutputButton.addEventListener('click', async (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -400,6 +420,7 @@
           const result = await response.json().catch(() => ({}));
           const active = isAlexaModeConfirmed(result?.wasPlaying) || isAlexaModeConfirmed(result?.nowPlaying);
           paintAlexa(active);
+          void refreshLocalOutputStatus();
         } catch {}
       };
       paintAlexa(false);

@@ -36,8 +36,11 @@ Content-Type: application/json
 ```
 
 Use `{"state":"off"}` when Alexa playback stops. These state updates are
-idempotent, do not call the start/stop webhooks, and do not change MPD/moOde
-playback.
+idempotent, do not call the start/stop webhooks, and do not start, stop, or
+change the MPD queue. They synchronize the local MPD ALSA output: Alexa Mode
+`on` disables output 0 to prevent an audible priming blip, and Alexa Mode
+`off` enables it again. The HTTP Server output used by Listen on Device
+remains enabled.
 
 ## What this page is for
 - Managing correction maps (artist/album/playlist spellings)
@@ -140,8 +143,9 @@ Content-Type: application/json
 {"state":"on"}
 ```
 
-Send `{"state":"off"}` to clear Alexa mode. This endpoint is idempotent,
-does not invoke either webhook, and does not alter MPD/moOde playback.
+Send `{"state":"off"}` to clear Alexa mode. This endpoint is idempotent and
+does not invoke either webhook. It does not start, stop, or change the MPD
+queue, but it synchronizes the local ALSA output as described above.
 
 ### Natural end of an Alexa queue
 
@@ -164,8 +168,9 @@ PlaybackFinished
 `POST /alexa/natural-finish` requires the track key and relays to the
 Homebridge `alexa-finished` action. Now Playing clears its remembered Alexa
 state only after Homebridge returns HTTP 2xx. The Homebridge action is
-idempotent, does not invoke the Alexa Stop Trigger, and does not alter
-MPD/moOde playback. Explicit Stop remains a separate, immediate path.
+idempotent, does not invoke the Alexa Stop Trigger, and does not start, stop,
+or change the MPD queue. Turning Alexa Mode off also re-enables the local ALSA
+output. Explicit Stop remains a separate, immediate path.
 
 The older trailing here forms remain supported for compatibility.
 
