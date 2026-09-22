@@ -5,6 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
 import { createLastfmIndexResolver } from '../lib/lastfm-library-match.mjs';
+import { normalizeMoodeBaseUrl } from '../lib/moode-url.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -16,6 +17,8 @@ function pickPublicConfig(cfg) {
 
   const cfgLastfm = String(c.lastfm?.apiKey || '').trim();
   const envLastfm = String(process.env.LASTFM_API_KEY || '').trim();
+  const moodeHost = String(c.moode?.sshHost || c.mpd?.host || MOODE_SSH_HOST || MPD_HOST || 'moode.local').trim();
+  const moodeBaseRaw = String(c.moode?.baseUrl || '').trim();
 
   return {
     projectName: c.projectName || 'now-playing',
@@ -63,7 +66,7 @@ function pickPublicConfig(cfg) {
     moode: {
       sshHost: String(c.moode?.sshHost || ''),
       sshUser: String(c.moode?.sshUser || ''),
-      baseUrl: String(c.moode?.baseUrl || ''),
+      baseUrl: moodeBaseRaw ? normalizeMoodeBaseUrl(moodeBaseRaw, moodeHost) : '',
     },
     runtime: {
       publicBaseUrl: String(c.runtime?.publicBaseUrl || ''),
@@ -115,7 +118,12 @@ function withEnvOverrides(cfg) {
   if (process.env.MPD_PORT) out.mpd.port = Number(process.env.MPD_PORT) || out.mpd.port;
   if (process.env.MOODE_SSH_HOST) out.moode.sshHost = String(process.env.MOODE_SSH_HOST);
   if (process.env.MOODE_SSH_USER) out.moode.sshUser = String(process.env.MOODE_SSH_USER);
-  if (process.env.MOODE_BASE_URL) out.moode.baseUrl = String(process.env.MOODE_BASE_URL);
+  if (process.env.MOODE_BASE_URL) {
+    out.moode.baseUrl = normalizeMoodeBaseUrl(
+      process.env.MOODE_BASE_URL,
+      out.moode.sshHost || out.mpd.host || MOODE_SSH_HOST || MPD_HOST || 'moode.local',
+    );
+  }
   if (process.env.PUBLIC_BASE_URL) out.runtime.publicBaseUrl = String(process.env.PUBLIC_BASE_URL);
 
   out.lastfm = { configured: Boolean(envLastfm || cfgLastfm) };
@@ -834,6 +842,15 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
             },
           };
 
+      if (next.moode && typeof next.moode === 'object') {
+        const moodeHost = String(next.moode.sshHost || next.mpd?.host || next.mpd?.hostname || MOODE_SSH_HOST || MPD_HOST || 'moode.local').trim();
+        const moodeBaseRaw = String(next.moode.baseUrl || '').trim();
+        next.moode = {
+          ...next.moode,
+          baseUrl: moodeBaseRaw ? normalizeMoodeBaseUrl(moodeBaseRaw, moodeHost) : '',
+        };
+      }
+
       const errs = validateConfigShape(next);
       if (errs.length) return res.status(400).json({ ok: false, error: errs.join('; ') });
 
@@ -1020,8 +1037,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
       const moodeBaseRaw = String(cfg?.moode?.baseUrl || '').trim();
       const mpdHost = String(cfg?.mpd?.host || MPD_HOST || 'moode.local').trim();
-      let moodeBase = moodeBaseRaw || `http://${mpdHost}`;
-      if (!/^https?:\/\//i.test(moodeBase)) moodeBase = `http://${moodeBase}`;
+      const moodeBase = normalizeMoodeBaseUrl(moodeBaseRaw, mpdHost);
       const cmd = encodeURIComponent(`set_display ${mode}`);
       const baseNoSlash = moodeBase.replace(/\/$/, '');
       const urls = [
@@ -1073,8 +1089,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
       const moodeBaseRaw = String(cfg?.moode?.baseUrl || '').trim();
       const mpdHost = String(cfg?.mpd?.host || MPD_HOST || 'moode.local').trim();
-      let moodeBase = moodeBaseRaw || `http://${mpdHost}`;
-      if (!/^https?:\/\//i.test(moodeBase)) moodeBase = `http://${moodeBase}`;
+      const moodeBase = normalizeMoodeBaseUrl(moodeBaseRaw, mpdHost);
       const baseNoSlash = moodeBase.replace(/\/$/, '');
 
       const sshHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || '').trim();
@@ -1414,9 +1429,8 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const cfg = JSON.parse(await fs.readFile(configPath, 'utf8'));
       const moodeBaseRaw = String(cfg?.moode?.baseUrl || '').trim();
       const mpdHost = String(cfg?.mpd?.host || MOODE_SSH_HOST || MPD_HOST || 'moode.local').trim();
-      let moodeBase = moodeBaseRaw || `http://${mpdHost}`;
-      if (!/^https?:\/\//i.test(moodeBase)) moodeBase = `http://${moodeBase}`;
-      const url = `${moodeBase.replace(/\/$/, '')}/command/?cmd=reboot`;
+      const moodeBase = normalizeMoodeBaseUrl(moodeBaseRaw, mpdHost);
+      const url = `${moodeBase}/command/?cmd=reboot`;
 
       const r = await fetch(url, { method: 'GET' });
       const txt = await r.text().catch(() => '');

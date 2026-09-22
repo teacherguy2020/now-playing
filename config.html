@@ -218,7 +218,7 @@
                   <div class="cfgField">
                     <label for="moodeBaseUrl">moOde base URL (opt. override)</label>
                     <input id="moodeBaseUrl" type="text" placeholder="ex. http://moode.local" />
-                    <div class="cfgHint">Leave blank to derive from SSH/MPD host.</div>
+                    <div class="cfgHint">Leave blank to derive from SSH/MPD host. moOde is HTTP-only; an HTTPS value is saved as HTTP.</div>
                   </div>
                   <div class="cfgField">
                     <label for="configTrackKey">Track Key</label>
@@ -508,6 +508,22 @@ const moodeHintEl = document.getElementById('moodeHint');
 if (moodeHintEl) moodeHintEl.textContent = 'not verified';
 setPillState('moodePill', 'neutral');
 setMpdHostLight('neutral', 'not verified');
+
+function normalizeMoodeBaseUrl(raw, fallbackHost = 'moode.local') {
+  const configured = String(raw || '').trim();
+  const host = String(fallbackHost || 'moode.local').trim() || 'moode.local';
+  const candidate = configured
+    ? (/^[a-z][a-z\d+.-]*:\/\//i.test(configured) ? configured : `http://${configured}`)
+    : `http://${host}`;
+  try {
+    const u = new URL(candidate);
+    if (!u.hostname) throw new Error('moOde URL has no hostname');
+    u.protocol = 'http:';
+    return u.toString().replace(/\/+$/, '');
+  } catch {
+    return `http://${host}`;
+  }
+}
 
 function log(x){ out.textContent = typeof x === 'string' ? x : JSON.stringify(x, null, 2); }
 
@@ -1201,7 +1217,10 @@ async function loadCfg(){
   if (mpdPortHint) mpdPortHint.textContent = `Default is 6600${mpdPortValue === 6600 ? ' (current)' : ` (current: ${mpdPortValue})`}`;
   document.getElementById('moodeSshUser').value = String(full.moode?.sshUser || c.moode?.sshUser || 'moode');
   refreshSshSetupHelp();
-  document.getElementById('moodeBaseUrl').value = String(full.moode?.baseUrl || c.moode?.baseUrl || '');
+  const moodeBaseRaw = String(full.moode?.baseUrl || c.moode?.baseUrl || '').trim();
+  document.getElementById('moodeBaseUrl').value = moodeBaseRaw
+    ? normalizeMoodeBaseUrl(moodeBaseRaw, sshHostPrefill || mpdHostPrefill || 'moode.local')
+    : '';
   const loadedTrackKey = String(full.trackKey || c.trackKey || localStorage.getItem('nowplaying.secret.trackKey') || '');
   document.getElementById('configTrackKey').value = loadedTrackKey;
   if (loadedTrackKey) localStorage.setItem('nowplaying.secret.trackKey', loadedTrackKey);
@@ -1364,7 +1383,10 @@ async function saveCfg(){
       moode: {
         sshHost: document.getElementById('moodeSshHost').value.trim(),
         sshUser: document.getElementById('moodeSshUser').value.trim(),
-        baseUrl: document.getElementById('moodeBaseUrl').value.trim(),
+        baseUrl: (() => {
+          const raw = document.getElementById('moodeBaseUrl').value.trim();
+          return raw ? normalizeMoodeBaseUrl(raw, mpdHostVal || 'moode.local') : '';
+        })(),
       },
       paths: {
         musicLibraryRoot: document.getElementById('pathMusicLibraryRoot').value.trim(),

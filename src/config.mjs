@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { loadConfigOrNull } from './config/load-config.mjs';
+import { normalizeMoodeBaseUrl } from './lib/moode-url.mjs';
 
 export const MASTER_CONFIG = loadConfigOrNull();
 
@@ -21,7 +22,10 @@ export const MOODE_SSH_USER = process.env.MOODE_SSH_USER || moodeCfg?.sshUser ||
 export const MOODE_SSH_HOST = process.env.MOODE_SSH_HOST || moodeCfg?.sshHost || mpdCfg?.host || 'moode.local';
 export const PORT = Number(process.env.PORT || MASTER_CONFIG?.ports?.api || '3000');
 
-export const MOODE_BASE_URL = process.env.MOODE_BASE_URL || moodeCfg?.baseUrl || `http://${MOODE_SSH_HOST}`;
+export const MOODE_BASE_URL = normalizeMoodeBaseUrl(
+  process.env.MOODE_BASE_URL || moodeCfg?.baseUrl,
+  MOODE_SSH_HOST,
+);
 
 export const LOCAL_ADDRESS = process.env.LOCAL_ADDRESS || apiIp || 'nowplaying.local';
 

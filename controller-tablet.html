@@ -2893,7 +2893,7 @@
     if (!cmd) return false;
     await ensureKey();
     const host = String(runtimeMoodeHost || "moode.local").trim();
-    const url = "".concat(location.protocol, "//").concat(host, "/command/?cmd=").concat(encodeURIComponent(cmd));
+    const url = "http://".concat(host, "/command/?cmd=").concat(encodeURIComponent(cmd));
     try {
       await fetch(url, { method: "GET", mode: "no-cors", cache: "no-store" });
       return true;
