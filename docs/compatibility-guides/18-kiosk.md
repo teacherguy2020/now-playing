@@ -25,7 +25,7 @@ Path in moOde:
 - **Configure -> Peripherals -> Local display -> Web UI target URL**
 
 > **Important (moOde blanking/wake compatibility):**
-> For external kiosk targets, apply the watchdog remote-display patch in [Chapter 15](./15-moode-remote-display-blanking-fix.md) to avoid false wakes / blanking issues.
+> For external kiosk targets, apply the watchdog remote-display patch in [Chapter 15](../runbooks/15-moode-remote-display-blanking-fix.md) to avoid false wakes / blanking issues.
 
 Verification on moOde host:
 
@@ -127,7 +127,7 @@ This keeps kiosk theming fully builder-driven: tune visually, save, and push —
 
 ### Example: red kiosk theme
 
-![Kiosk Red Theme](./images/kioskred.jpg)
+![Kiosk Red Theme](../images/kioskred.jpg)
 
 ---
 

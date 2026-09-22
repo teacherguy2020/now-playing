@@ -42,11 +42,11 @@ Color dots in `mobile.html` now drive controller visual tokens (icon accent and 
 
 ### Mobile Builder
 
-![Mobile Builder](./images/mobile-builder/builder.jpeg)
+![Mobile Builder](../images/mobile-builder/builder.jpeg)
 
 ### Controller Now Playing / Mobile Surface
 
-![Controller Now Playing](./images/mobile-builder/now-playing.png)
+![Controller Now Playing](../images/mobile-builder/now-playing.png)
 
 ## Notes
 

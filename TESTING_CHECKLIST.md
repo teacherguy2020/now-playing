@@ -47,7 +47,7 @@ Use this before merging major changes to `main`.
 - [ ] smoke endpoints respond after install
 - [ ] re-run is idempotent
 
-See: `docs/INSTALL_VALIDATION.md` for full installer validation gate.
+See: `docs/runbooks/INSTALL_VALIDATION.md` for the full installer validation gate.
 
 ## Regression hotspots
 

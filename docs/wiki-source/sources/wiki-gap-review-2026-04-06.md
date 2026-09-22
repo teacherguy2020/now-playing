@@ -64,7 +64,7 @@ That means the next wiki-expansion phase should favor:
 ## 1. Install and validation workflow
 
 Primary source:
-- `now-playing/docs/INSTALL_VALIDATION.md`
+- `now-playing/docs/runbooks/INSTALL_VALIDATION.md`
 
 Current wiki state:
 - deployment and ops are covered well in principle
@@ -83,7 +83,7 @@ Current gap summary:
 ## 2. Style/token naming canon and background invariants
 
 Primary source:
-- `now-playing/docs/style-naming-map.md`
+- `now-playing/docs/references/style-naming-map.md`
 
 Current wiki state:
 - theme and interface structure are documented
@@ -101,7 +101,7 @@ Current gap summary:
 ## 3. Display enhancement as a builder-first Peppy/Player system
 
 Primary source:
-- `now-playing/docs/14-display-enhancement.md`
+- `now-playing/docs/runbooks/14-display-enhancement.md`
 
 Current wiki state:
 - display branch, visualizer, kiosk, and moOde target routing are covered strongly
@@ -123,8 +123,8 @@ Current gap summary:
 ## 4. Deploy/runtime operator checklists in compact operational form
 
 Primary sources:
-- `now-playing/docs/11-deploy-pm2-rollback.md`
-- `now-playing/docs/12-troubleshooting.md`
+- `now-playing/docs/runbooks/11-deploy-pm2-rollback.md`
+- `now-playing/docs/compatibility-guides/12-troubleshooting.md`
 
 Current wiki state:
 - deployment and troubleshooting are already strong branches
@@ -145,9 +145,9 @@ Current gap summary:
 ## 5. Cross-surface parity and behavior contracts
 
 Primary sources:
-- `now-playing/docs/08-hero-shell.md`
-- `now-playing/docs/09-index-vs-app.md`
-- `now-playing/docs/10-random-vs-shuffle.md`
+- `now-playing/docs/compatibility-guides/08-hero-shell.md`
+- `now-playing/docs/compatibility-guides/09-index-vs-app.md`
+- `now-playing/docs/compatibility-guides/10-random-vs-shuffle.md`
 
 Current wiki state:
 - related themes appear across app-shell, playback, and display pages
@@ -167,7 +167,7 @@ Current gap summary:
 ## 6. Tablet recents and Last.fm behavior contract
 
 Primary source:
-- `now-playing/docs/20-controller-recents-lastfm.md`
+- `now-playing/docs/compatibility-guides/20-controller-recents-lastfm.md`
 
 Current wiki state:
 - tablet branch exists
@@ -188,7 +188,7 @@ Current gap summary:
 ## 7. AirPlay metadata hardening as an ops recipe
 
 Primary source:
-- `now-playing/docs/21-moode-airplay-metadata-hardening.md`
+- `now-playing/docs/runbooks/21-moode-airplay-metadata-hardening.md`
 
 Current wiki state:
 - local-environment notes mention the override

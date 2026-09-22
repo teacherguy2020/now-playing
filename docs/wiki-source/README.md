@@ -102,8 +102,11 @@ substantive Now Playing documentation.
   intentionally excludes installation-local host maps such as
   `local-environment.md` and redacts known installation-specific host/path
   values in public operational copies.
-- Numbered files directly under `docs/` are stable compatibility guides and
-  selected runbooks. They are not the documentation hierarchy for new work.
+- `docs/compatibility-guides/` contains retained numbered compatibility and
+  feature guides. `docs/runbooks/` contains selected standalone operational
+  and recovery procedures. Neither directory is the documentation hierarchy
+  for new work.
+- `docs/references/` contains provenance and supporting reference material.
 - `docs/wiki-source/sources/`, `reports/`, and structured metadata folders are
   support material for the wiki tooling, not alternate authoring locations.
 

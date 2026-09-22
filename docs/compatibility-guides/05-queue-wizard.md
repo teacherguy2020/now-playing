@@ -1,6 +1,6 @@
 # Queue Wizard
 
-![Queue Wizard tab](./images/05-queue-wizard.jpg)
+![Queue Wizard tab](../images/05-queue-wizard.jpg)
 
 Use this page to build and send queues fast.
 

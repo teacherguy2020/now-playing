@@ -33,12 +33,12 @@ technical note explains why a stable workaround exists.
 - Display issue triage → [display-issue-triage-runbook.md](display-issue-triage-runbook.md)
 - Restart/runtime-admin issues → [restart-and-runtime-admin-troubleshooting.md](restart-and-runtime-admin-troubleshooting.md)
 - Backend change verification → [backend-change-verification-runbook.md](backend-change-verification-runbook.md)
-- moOde upgrade recovery → the retained [moOde upgrade runbook](https://github.com/teacherguy2020/now-playing/blob/main/docs/22-moode-upgrade-runbook.md)
+- moOde upgrade recovery → the retained [moOde upgrade runbook](https://github.com/teacherguy2020/now-playing/blob/main/docs/runbooks/22-moode-upgrade-runbook.md)
 
 ## Technical notes
 
 - AirPlay metadata CPU/watchdog hardening → [airplay-metadata-hardening.md](airplay-metadata-hardening.md)
-- External display blanking/wake compatibility → the retained [moOde remote-display note](https://github.com/teacherguy2020/now-playing/blob/main/docs/15-moode-remote-display-blanking-fix.md)
+- External display blanking/wake compatibility → the retained [moOde remote-display note](https://github.com/teacherguy2020/now-playing/blob/main/docs/runbooks/15-moode-remote-display-blanking-fix.md)
 - Durable project traps and lessons → [gotchas-and-lessons.md](gotchas-and-lessons.md)
 - Rationale and settled decisions → [decisions-and-history.md](decisions-and-history.md)
 

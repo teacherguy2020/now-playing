@@ -1,6 +1,6 @@
 # Podcasts
 
-![Podcasts tab](./images/07-podcasts.jpg)
+![Podcasts tab](../images/07-podcasts.jpg)
 
 Use this page to manage podcast subscriptions and episode downloads.
 

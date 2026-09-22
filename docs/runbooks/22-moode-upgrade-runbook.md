@@ -97,8 +97,8 @@ can falsely wake the display while paused or stopped.
 
 Apply the version-appropriate patch from:
 
-- [`docs/references/moode/watchdog-remote-display.patch`](./references/moode/watchdog-remote-display.patch)
-- [`docs/15-moode-remote-display-blanking-fix.md`](./15-moode-remote-display-blanking-fix.md)
+- [`docs/references/moode/watchdog-remote-display.patch`](../references/moode/watchdog-remote-display.patch)
+- [`docs/runbooks/15-moode-remote-display-blanking-fix.md`](./15-moode-remote-display-blanking-fix.md)
 
 The resulting remote branch must query:
 

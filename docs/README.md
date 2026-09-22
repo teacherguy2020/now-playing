@@ -23,10 +23,12 @@ application tabs.
   `scripts/publish_github_wiki.py`; do not maintain a second copy by hand.
   Installation-local host maps remain repository-only and are not published;
   known host/path values in public operational copies are redacted.
-- **Numbered files in `docs/`** — stable compatibility guides and selected
-  operational runbooks retained for existing links. New substantive material
-  belongs in `wiki-source/`.
-- **`docs/references/`** — upstream patches, provenance, and supporting files.
+- **`docs/compatibility-guides/`** — retained numbered feature and
+  compatibility guides for existing links, bookmarks, and concise references.
+- **`docs/runbooks/`** — standalone deployment, upgrade, display-recovery, and
+  validation procedures that remain useful outside the canonical narrative.
+- **`docs/references/`** — upstream files, provenance, and supporting reference
+  material.
 
 The source relationship and migration decisions are recorded in
 [documentation-sources-audit.md](./wiki-source/documentation-sources-audit.md).

@@ -241,43 +241,43 @@ Current built-in presets are documented below with captured screenshots from the
 
 ### 1) Modern Blue Circular
 
-![Modern Blue Circular](./images/peppy-presets/01-modern-blue-circular.jpg)
+![Modern Blue Circular](../images/peppy-presets/01-modern-blue-circular.jpg)
 
 ### 2) Matrix Classic Needle
 
-![Matrix Classic Needle](./images/peppy-presets/02-matrix-classic-needle.jpg)
+![Matrix Classic Needle](../images/peppy-presets/02-matrix-classic-needle.jpg)
 
 ### 3) Red Neon Studio
 
-![Red Neon Studio](./images/peppy-presets/03-red-neon-studio.jpg)
+![Red Neon Studio](../images/peppy-presets/03-red-neon-studio.jpg)
 
 ### 4) Cassette Linear Classic
 
-![Cassette Linear Classic](./images/peppy-presets/04-cassette-linear-classic.jpg)
+![Cassette Linear Classic](../images/peppy-presets/04-cassette-linear-classic.jpg)
 
 ### 5) Obsidian Ember Matrix
 
-![Obsidian Ember Matrix](./images/peppy-presets/05-obsidian-ember-matrix.jpg)
+![Obsidian Ember Matrix](../images/peppy-presets/05-obsidian-ember-matrix.jpg)
 
 ### 6) Gray Ghost
 
-![Gray Ghost](./images/peppy-presets/06-gray-ghost.jpg)
+![Gray Ghost](../images/peppy-presets/06-gray-ghost.jpg)
 
 ### 7) Modern Condensed Linear Theme (S)
 
-![Modern Condensed Linear Theme (S)](./images/peppy-presets/07-modern-condensed-linear-theme-s.jpg)
+![Modern Condensed Linear Theme (S)](../images/peppy-presets/07-modern-condensed-linear-theme-s.jpg)
 
 ### 8) Inter Tight Studio Linear (L)
 
-![Inter Tight Studio Linear (L)](./images/peppy-presets/08-inter-tight-studio-linear-l.jpg)
+![Inter Tight Studio Linear (L)](../images/peppy-presets/08-inter-tight-studio-linear-l.jpg)
 
 ### 9) Montserrat Circular Clean
 
-![Montserrat Circular Clean](./images/peppy-presets/09-montserrat-circular-clean.jpg)
+![Montserrat Circular Clean](../images/peppy-presets/09-montserrat-circular-clean.jpg)
 
 ### 10) Warm Parchment Gold Circular
 
-![Warm Parchment Gold Circular](./images/peppy-presets/10-warm-parchment-gold-circular.jpg)
+![Warm Parchment Gold Circular](../images/peppy-presets/10-warm-parchment-gold-circular.jpg)
 
 ## Player screen size gallery
 
@@ -285,23 +285,23 @@ The Player builder supports the following target sizes:
 
 ### 1) 1280x400
 
-![Player 1280x400](./images/player-sizes/01-player-1280x400.jpg)
+![Player 1280x400](../images/player-sizes/01-player-1280x400.jpg)
 
 ### 2) 1024x600
 
-![Player 1024x600](./images/player-sizes/02-player-1024x600.jpg)
+![Player 1024x600](../images/player-sizes/02-player-1024x600.jpg)
 
 ### 3) 800x480
 
-![Player 800x480](./images/player-sizes/03-player-800x480.jpg)
+![Player 800x480](../images/player-sizes/03-player-800x480.jpg)
 
 ### 4) 480x320
 
-![Player 480x320](./images/player-sizes/04-player-480x320.jpg)
+![Player 480x320](../images/player-sizes/04-player-480x320.jpg)
 
 ### 5) 320x240
 
-![Player 320x240](./images/player-sizes/05-player-320x240.jpg)
+![Player 320x240](../images/player-sizes/05-player-320x240.jpg)
 
 ## Verification
 

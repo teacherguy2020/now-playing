@@ -24,6 +24,17 @@ Use this page when the question is:
 For the chronological evolution of the wiki, use `log.md`.
 For the maintenance workflow, use `wiki-operations.md`.
 
+## How to use this index
+
+- `README.md` is the human front door: start there when learning the system
+  or choosing a documentation branch.
+- `index.md` is the detailed catalog and retrieval index: use it when you need
+  to locate a particular page family or implementation topic.
+- The large `openclaw:wiki:index` managed section later in this file is a
+  generated source inventory for agents and documentation tooling. Preserve it
+  when updating the wiki; the generated human-facing site intentionally omits
+  that inventory from the rendered page.
+
 ## Canonical audience map
 
 The documentation is organized by audience and concept rather than historical

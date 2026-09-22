@@ -101,4 +101,4 @@ the rating filter that excludes one-star tracks.
 Future lighting, Harmony Hub, and room-ambience controls belong in a separate
 allow-listed VIP action layer rather than in core MPD routes. Each adapter
 should have a named action, validated arguments, bounded execution, and a
-defined cleanup/restore policy. See `docs/23-mabel-vip.md`.
+defined cleanup/restore policy. See `docs/compatibility-guides/23-mabel-vip.md`.

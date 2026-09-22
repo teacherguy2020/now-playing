@@ -41,7 +41,7 @@ playback path.
 - Deployment, PM2/systemd, and verification → [deployment-and-ops.md](deployment-and-ops.md)
 - Backend change verification → [backend-change-verification-runbook.md](backend-change-verification-runbook.md)
 - Live environment assumptions → [local-environment.md](local-environment.md)
-- moOde upgrade recovery → the retained [moOde upgrade runbook](https://github.com/teacherguy2020/now-playing/blob/main/docs/22-moode-upgrade-runbook.md)
+- moOde upgrade recovery → the retained [moOde upgrade runbook](https://github.com/teacherguy2020/now-playing/blob/main/docs/runbooks/22-moode-upgrade-runbook.md)
 
 Configuration changes can require different restart scopes. Always verify
 whether a change is browser-local, API-runtime, service, or moOde-host state

@@ -6,7 +6,7 @@ The installer is now implemented at:
 
 Validation gate is tracked at:
 
-- `docs/INSTALL_VALIDATION.md`
+- `docs/runbooks/INSTALL_VALIDATION.md`
 
 ## Current state (implemented)
 
@@ -41,6 +41,6 @@ Validation gate is tracked at:
 
 Before major public promotion, ensure:
 
-- `docs/INSTALL_VALIDATION.md` passes on at least one fresh VM
+- `docs/runbooks/INSTALL_VALIDATION.md` passes on at least one fresh VM
 - README installer section matches actual script flags/behavior
 - Known limitations remain clearly documented

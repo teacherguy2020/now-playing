@@ -1,6 +1,6 @@
 # Alexa
 
-![Alexa tab](./images/03-alexa.jpg)
+![Alexa tab](../images/03-alexa.jpg)
 
 Use this page to manage Alexa integration and voice command behavior.
 
@@ -183,7 +183,7 @@ options; existing Alexa behavior remains unchanged.
 
 Future lighting and Harmony Hub controls should be implemented as separate,
 allow-listed VIP adapters rather than arbitrary Alexa/API endpoint access. See
-`docs/23-mabel-vip.md`.
+`docs/compatibility-guides/23-mabel-vip.md`.
 
 ## Public domain requirements (critical)
 Alexa cloud requests must reach your public domain (example: `moode.YOURDOMAIN.com`) and then be reverse-proxied to local services.

@@ -1,6 +1,6 @@
 # Config
 
-![Config tab](./images/01-config.jpg)
+![Config tab](../images/01-config.jpg)
 
 Use this page to set up how the app connects to your system.
 

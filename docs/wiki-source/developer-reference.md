@@ -30,7 +30,7 @@ visible symptom into source code, routes, runtime state, or host integration.
 - Mobile controller → [controller-mobile-anatomy.md](controller-mobile-anatomy.md)
 - Now Playing variants → [now-playing-surface-variants.md](now-playing-surface-variants.md)
 - Embedded pane contracts → [embedded-pane-contracts.md](embedded-pane-contracts.md)
-- `index.html` versus `app.html` and transport concepts → the retained [index/app note](https://github.com/teacherguy2020/now-playing/blob/main/docs/09-index-vs-app.md) and [hero-shell note](https://github.com/teacherguy2020/now-playing/blob/main/docs/08-hero-shell.md)
+- `index.html` versus `app.html` and transport concepts → the retained [index/app note](https://github.com/teacherguy2020/now-playing/blob/main/docs/compatibility-guides/09-index-vs-app.md) and [hero-shell note](https://github.com/teacherguy2020/now-playing/blob/main/docs/compatibility-guides/08-hero-shell.md)
 
 ## API reference
 
@@ -47,7 +47,7 @@ Read API pages in this order:
 
 - Queue control versus queue shaping → [queue-and-playback-model.md](queue-and-playback-model.md)
 - Queue Wizard internals → [queue-wizard-internals.md](queue-wizard-internals.md)
-- Random versus shuffle → the retained [random/shuffle note](https://github.com/teacherguy2020/now-playing/blob/main/docs/10-random-vs-shuffle.md)
+- Random versus shuffle → the retained [random/shuffle note](https://github.com/teacherguy2020/now-playing/blob/main/docs/compatibility-guides/10-random-vs-shuffle.md)
 - Verification and change workflow → [workflows.md](workflows.md) and [backend-change-verification-runbook.md](backend-change-verification-runbook.md)
 
 ## Development workflow

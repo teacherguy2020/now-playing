@@ -83,7 +83,7 @@ URL persistence, blanking/wake compatibility, and rollback:
 
 - [Displays](./docs/wiki-source/displays.md)
 - [Display enhancement flow](./docs/wiki-source/display-enhancement-peppy-player-flow.md)
-- [moOde upgrade runbook](./docs/22-moode-upgrade-runbook.md)
+- [moOde upgrade runbook](./docs/runbooks/22-moode-upgrade-runbook.md)
 
 ## Supported integration boundaries
 

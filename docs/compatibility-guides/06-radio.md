@@ -1,6 +1,6 @@
 # Radio
 
-![Radio tab](./images/06-radio.jpg)
+![Radio tab](../images/06-radio.jpg)
 
 Use this page to browse stations and queue them to moOde.
 

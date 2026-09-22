@@ -1,6 +1,6 @@
 # Diagnostics
 
-![Diagnostics tab](./images/02-diagnostics.jpg)
+![Diagnostics tab](../images/02-diagnostics.jpg)
 
 Use this page to test endpoints and see live JSON/output quickly.
 

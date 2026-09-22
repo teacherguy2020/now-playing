@@ -1,7 +1,7 @@
 # Listen on Device
 
 This stable numbered path remains for existing bookmarks. The canonical
-documentation is [Listen on Device](./wiki-source/listen-on-device.md).
+documentation is [Listen on Device](../wiki-source/listen-on-device.md).
 
 ## Quick use
 
@@ -28,4 +28,4 @@ X-Upstream: moode:8000
 For the complete setup, Safari/iPadOS constraints, API bridge, Caddy example,
 speaker icon behavior, and troubleshooting, read the canonical page:
 
-[docs/wiki-source/listen-on-device.md](./wiki-source/listen-on-device.md)
+[docs/wiki-source/listen-on-device.md](../wiki-source/listen-on-device.md)

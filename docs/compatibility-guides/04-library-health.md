@@ -1,6 +1,6 @@
 # Library Health
 
-![Library Health tab](./images/04-library-health.jpg)
+![Library Health tab](../images/04-library-health.jpg)
 
 Use this page to audit, fix, and queue library content without re-selecting albums.
 

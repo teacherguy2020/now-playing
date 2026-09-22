@@ -64,8 +64,21 @@ def main() -> int:
     parser.add_argument("--wiki-dir", type=Path, help="also check the canonical pages in a Wiki checkout")
     args = parser.parse_args()
     errors: list[str] = []
-    markdown_files = [ROOT / "README.md", *sorted((ROOT / "docs").glob("*.md"))]
-    markdown_files.extend(sorted((ROOT / "docs" / "wiki-source").glob("*.md")))
+    docs_dir = ROOT / "docs"
+    markdown_files = [ROOT / "README.md"]
+    # Check the human-facing repository Markdown recursively so moved
+    # compatibility guides, runbooks, and reference pages are covered too.
+    # Keep the canonical wiki source limited to its published top-level pages;
+    # its nested reports/sources trees contain ingestion and provenance data
+    # rather than the navigable documentation set.
+    markdown_files.extend(
+        sorted(
+            path
+            for path in docs_dir.rglob("*.md")
+            if "wiki-site" not in path.parts
+            and not ("wiki-source" in path.parts and path.parent.name != "wiki-source")
+        )
+    )
     for path in markdown_files:
         errors.extend(check_file(path, MARKDOWN_LINK))
     for path in sorted(SITE_DIR.glob("*.html")):
