@@ -175,6 +175,15 @@
       }
       await Promise.all(actions);
     };
+    const startMpdForWebStream = async (session) => {
+      if (session !== streamSession) return;
+      try {
+        await playbackRequest('play');
+        log('MPD play requested for Listen on Device');
+      } catch (error) {
+        log('automatic MPD play failed', error?.message || error);
+      }
+    };
     ['loadstart', 'loadedmetadata', 'canplay', 'playing', 'waiting', 'stalled'].forEach((eventName) => {
       audio.addEventListener(eventName, () => log(`AUDIO ${eventName}`, {
         readyState: audio.readyState,
@@ -317,6 +326,7 @@
       // Start the optional control request only after play() has been invoked.
       // This preserves the iOS user-gesture path while not depending on a
       // delayed continuous-stream playing/play-promise callback.
+      void startMpdForWebStream(session);
       void muteLocalOutputForSession(session);
       log('play() returned', playPromise);
       connectTimer = setTimeout(() => {
