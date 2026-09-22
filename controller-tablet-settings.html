@@ -21,6 +21,9 @@
     select:focus,.backBtn:focus{outline:2px solid color-mix(in oklab,var(--accent,#4aa8ff) 72%, white 28%);outline-offset:2px}
     option{background:var(--surface,#0b111c);color:var(--text,#f3f6ff)}
     .hint{margin-top:8px;color:var(--muted,#9eb3d6);font-size:12px}
+    .settingActions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 2px}
+    .applyBtn{border:1px solid var(--field-border);border-radius:9px;padding:8px 12px;background:var(--surface-2,var(--line));color:var(--field-text);font:inherit;font-weight:620;cursor:pointer}
+    .applyBtn:focus-visible{outline:2px solid color-mix(in oklab,var(--accent,#4aa8ff) 72%, white 28%);outline-offset:2px}
     .toggleRow{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin:14px 0 4px}
     .toggleCopy{min-width:0}
     .toggleLabel{display:block;margin:0 0 4px;font-weight:620}
@@ -63,6 +66,11 @@
       <input id="webStreamStopMpd" class="toggleInput" type="checkbox" role="switch" aria-label="Stop moOde playback when stopping Listen on Device" />
     </div>
 
+    <div class="settingActions">
+      <button id="applyPlaybackSettings" class="applyBtn" type="button">Apply playback settings</button>
+      <span id="playbackSettingsStatus" class="hint" role="status" aria-live="polite"></span>
+    </div>
+
     <label for="themePreset">Theme preset</label>
     <select id="themePreset" aria-label="Controller tablet theme preset"></select>
     <div class="hint">Applies immediately.</div>
@@ -83,7 +91,7 @@
 
   </div>
 
-  <script src="/scripts/client-preferences.js?v=20260922-preferences1"></script>
+  <script src="/scripts/client-preferences.js?v=20260922-preferences2"></script>
   <script>
   (() => {
     const PRESETS = [
@@ -103,6 +111,8 @@
     const wakeLockHint = document.getElementById('wakeLockHint');
     const webStreamAutoMuteAlsa = document.getElementById('webStreamAutoMuteAlsa');
     const webStreamStopMpd = document.getElementById('webStreamStopMpd');
+    const applyPlaybackSettings = document.getElementById('applyPlaybackSettings');
+    const playbackSettingsStatus = document.getElementById('playbackSettingsStatus');
     const rowIds = ['row1','row2','row3','row4'];
     const rowSelects = rowIds.map((id) => document.getElementById(id));
     const ROW_OPTIONS = [
@@ -255,12 +265,29 @@
       try { window.parent?.postMessage({ type: 'np-controller-wake-lock', enabled }, '*'); } catch {}
     });
 
-    webStreamAutoMuteAlsa.addEventListener('change', () => {
-      try { NP_PREFS?.set?.('webStreamAutoMuteAlsa', !!webStreamAutoMuteAlsa.checked); } catch {}
-    });
-    webStreamStopMpd.addEventListener('change', () => {
-      try { NP_PREFS?.set?.('webStreamStopMpd', !!webStreamStopMpd.checked); } catch {}
-    });
+    const markPlaybackSettingsPending = () => {
+      if (playbackSettingsStatus) playbackSettingsStatus.textContent = 'Changes not applied';
+    };
+    const applyPlaybackSettingsNow = () => {
+      const values = {
+        webStreamAutoMuteAlsa: !!webStreamAutoMuteAlsa.checked,
+        webStreamStopMpd: !!webStreamStopMpd.checked,
+      };
+      let localSaved = false;
+      try {
+        if (NP_PREFS?.update) {
+          NP_PREFS.update(values);
+          localSaved = true;
+        }
+      } catch {}
+      try {
+        window.parent?.postMessage({ type: 'np-controller-webstream-settings', ...values }, '*');
+      } catch {}
+      if (playbackSettingsStatus) playbackSettingsStatus.textContent = localSaved ? 'Saved' : 'Sent to controller';
+    };
+    webStreamAutoMuteAlsa.addEventListener('change', markPlaybackSettingsPending);
+    webStreamStopMpd.addEventListener('change', markPlaybackSettingsPending);
+    applyPlaybackSettings.addEventListener('click', applyPlaybackSettingsNow);
 
     let backBusy = false;
     document.getElementById('backBtn')?.addEventListener('click', () => {

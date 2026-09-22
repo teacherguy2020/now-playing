@@ -802,7 +802,7 @@
     </div>
   </div>
 
-  <script src="/scripts/client-preferences.js?v=20260922-preferences1"></script>
+  <script src="/scripts/client-preferences.js?v=20260922-preferences2"></script>
   <script>
 (() => {
   const NP_PREFS = window.NPClientPreferences;
@@ -1087,6 +1087,16 @@
       const d = (ev == null ? void 0 : ev.data) || {};
       if ((d == null ? void 0 : d.type) === "np-controller-wake-lock") {
         setKeepDisplayAwake(!!(d == null ? void 0 : d.enabled));
+        return;
+      }
+      if ((d == null ? void 0 : d.type) === "np-controller-webstream-settings") {
+        try {
+          NP_PREFS?.update?.({
+            webStreamAutoMuteAlsa: d.webStreamAutoMuteAlsa === true,
+            webStreamStopMpd: d.webStreamStopMpd === true,
+          });
+        } catch {
+        }
         return;
       }
       if ((d == null ? void 0 : d.type) === "np-live-theme-update") {
