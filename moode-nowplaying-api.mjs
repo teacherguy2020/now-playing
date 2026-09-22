@@ -3544,49 +3544,55 @@ async function buildArtDerivatives(rawUrl) {
 
 
 async function updateArtCacheIfNeeded(rawArtUrl) {
-  const key = normalizeArtKey(rawArtUrl);
-  if (!key) return;
+  try {
+    const key = normalizeArtKey(rawArtUrl);
+    if (!key) return false;
 
-  await ensureDir(ART_CACHE_DIR);
+    await ensureDir(ART_CACHE_DIR);
 
-  const p640 = artPath640ForKey(key);
-  const pbg  = artPathBgForKey(key);
+    const p640 = artPath640ForKey(key);
+    const pbg  = artPathBgForKey(key);
 
-  // If cached, refresh the "current_*" pointers when the key changes
-  if (safeIsFile(p640) && safeIsFile(pbg)) {
-    if (key !== lastArtKeyBuilt) {
-      try {
-        const [buf640, bufBG] = await Promise.all([
-          fs.promises.readFile(p640),
-          fs.promises.readFile(pbg),
-        ]);
+    // If cached, refresh the "current_*" pointers when the key changes
+    if (safeIsFile(p640) && safeIsFile(pbg)) {
+      if (key !== lastArtKeyBuilt) {
+        try {
+          const [buf640, bufBG] = await Promise.all([
+            fs.promises.readFile(p640),
+            fs.promises.readFile(pbg),
+          ]);
 
-        await Promise.all([
-          writeFileAtomic(ART_640_PATH, buf640),
-          writeFileAtomic(ART_BG_PATH,  bufBG),
-        ]);
+          await Promise.all([
+            writeFileAtomic(ART_640_PATH, buf640),
+            writeFileAtomic(ART_BG_PATH,  bufBG),
+          ]);
 
-        lastArtKeyBuilt = key;
-      } catch {
-        // ignore; caller will fall back to direct fetch/resize
+          lastArtKeyBuilt = key;
+        } catch {
+          // ignore; caller will fall back to direct fetch/resize
+        }
       }
+      return true;
     }
-    return;
+
+    // Not cached yet → build derivatives from the provided URL
+    const { out640, outBG } = await buildArtDerivatives(rawArtUrl);
+
+    // Persist keyed cache + update "current_*" pointers
+    await Promise.all([
+      writeFileAtomic(p640, out640),
+      writeFileAtomic(pbg,  outBG),
+      writeFileAtomic(ART_640_PATH, out640),
+      writeFileAtomic(ART_BG_PATH,  outBG),
+    ]);
+
+    lastArtKeyBuilt = key;
+    log.debug('[art] rebuilt', { key, p640, pbg });
+    return true;
+  } catch (e) {
+    log.debug('[art] cache build skipped:', e?.message || String(e));
+    return false;
   }
-
-  // Not cached yet → build derivatives from the provided URL
-  const { out640, outBG } = await buildArtDerivatives(rawArtUrl);
-
-  // Persist keyed cache + update "current_*" pointers
-  await Promise.all([
-    writeFileAtomic(p640, out640),
-    writeFileAtomic(pbg,  outBG),
-    writeFileAtomic(ART_640_PATH, out640),
-    writeFileAtomic(ART_BG_PATH,  outBG),
-  ]);
-
-  lastArtKeyBuilt = key;
-  log.debug('[art] rebuilt', { key, p640, pbg });
 }
 
 // =========================
