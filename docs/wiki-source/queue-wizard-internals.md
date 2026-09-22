@@ -230,7 +230,8 @@ The tablet controller's Live Queue surface also supports an **Endless Vibe** tog
 Current behavior:
 - the shared Now-Playing setting is off by default and persists server-side in `data/endless-vibe.json`; legacy browser-local values are migrated when the queue surface first loads
 - the toggle is shared across controllers that use the same Now-Playing instance
-- the controller polls the live queue and triggers only when the current track is the final queue item
+- the Now-Playing backend polls MPD while the setting is enabled and triggers only when a local music track is playing as the final queue item
+- controller surfaces only read and change the shared setting; an open controller page is not required for monitoring or queue extension
 - radio, podcast, and stream entries are excluded
 - the current track's artist, title, and file become the next seed
 - the seeded route runs with `keepPlaying: true` and `endless: true`
@@ -260,4 +261,4 @@ This page now gives the wiki a sharper internal model of Queue Wizard:
 - it intersects with discovery/curation features like Last.fm / Vibe
 - its exact route/file contract is the next deeper proofing target, not a vague open question about what Queue Wizard is
 
-_Last updated: 2026-09-22 09:45 CDT (America/Chicago)_
+_Last updated: 2026-09-22 10:18 CDT (America/Chicago)_

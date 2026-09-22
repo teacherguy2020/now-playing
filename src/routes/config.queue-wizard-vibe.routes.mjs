@@ -11,9 +11,25 @@ function makeVibeJobId() {
 }
 
 export function registerConfigQueueWizardVibeRoutes(app, deps) {
-  const { requireTrackKey, getRatingForFile } = deps;
+  const {
+    requireTrackKey,
+    getRatingForFile,
+    mpdQueryRaw,
+    mpdHasACK,
+    parseMpdKeyVals,
+    parseMpdFirstBlock,
+    log,
+  } = deps;
   const vibeJobs = new Map();
   const configPath = process.env.NOW_PLAYING_CONFIG_PATH || path.resolve(process.cwd(), 'config/now-playing.config.json');
+  const endlessVibeSettingsPath = process.env.NOW_PLAYING_ENDLESS_VIBE_PATH
+    || path.resolve(process.cwd(), 'data/endless-vibe.json');
+  const endlessVibePollMs = Math.max(5000, Number(process.env.ENDLESS_VIBE_POLL_MS || 15000) || 15000);
+  const endlessVibeRetryMs = Math.max(endlessVibePollMs, Number(process.env.ENDLESS_VIBE_RETRY_MS || 60000) || 60000);
+  let endlessVibeTickBusy = false;
+  let endlessVibeActiveJobId = '';
+  let endlessVibeLastSeedKey = '';
+  let endlessVibeLastAttemptAt = 0;
 
   async function resolveLastfmApiKey() {
     const envKey = String(process.env.LASTFM_API_KEY || '').trim();
@@ -103,6 +119,53 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       appendVibeJobLog(job, 'index-build-complete', { ok: false, error: msg }).catch(() => {});
       return false;
     }
+  }
+
+  async function readEndlessVibeEnabled() {
+    try {
+      const raw = await fs.readFile(endlessVibeSettingsPath, 'utf8');
+      return JSON.parse(raw || '{}')?.enabled === true;
+    } catch {
+      return false;
+    }
+  }
+
+  function isPodcastLikeSong(song = {}) {
+    const blob = [song.file, song.genre, song.album, song.artist, song.title]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return /(?:^|[\\/])podcasts?(?:[\\/]|$)/i.test(String(song.file || '')) || /\bpodcasts?\b/i.test(blob);
+  }
+
+  async function getEndlessVibeSeed() {
+    if (typeof mpdQueryRaw !== 'function' || typeof parseMpdKeyVals !== 'function' || typeof parseMpdFirstBlock !== 'function') return null;
+
+    const statusRaw = await mpdQueryRaw('status');
+    if (!statusRaw || (typeof mpdHasACK === 'function' && mpdHasACK(statusRaw))) return null;
+    const status = parseMpdKeyVals(statusRaw);
+    const state = String(status?.state || '').trim().toLowerCase();
+    const songPos = Number(status?.song);
+    const playlistLength = Number(status?.playlistlength);
+    if (state !== 'play' || !Number.isInteger(songPos) || songPos < 0 || !Number.isInteger(playlistLength) || playlistLength <= 0) return null;
+    if (songPos !== playlistLength - 1) return null;
+
+    const currentRaw = await mpdQueryRaw('currentsong');
+    if (!currentRaw || (typeof mpdHasACK === 'function' && mpdHasACK(currentRaw))) return null;
+    const song = parseMpdFirstBlock(currentRaw) || {};
+    const file = String(song.file || '').trim();
+    const artist = String(song.artist || '').trim();
+    const title = String(song.title || song.name || '').trim();
+    if (!file || !artist || !title || file.includes('://') || isPodcastLikeSong(song)) return null;
+
+    return { file, artist, title, seedKey: `${file}|${artist}|${title}` };
+  }
+
+  function hasActiveVibeJob() {
+    for (const job of vibeJobs.values()) {
+      if (job && !job.done && job.status === 'running') return true;
+    }
+    return false;
   }
 
   // --- Vibe from now playing (Queue Wizard) ---
@@ -547,205 +610,291 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
     }
   });
 
-  // Fire-and-forget seeded start for Alexa "vibe here" mode.
-  // Returns immediately after spawning the builder process, but now also registers
-  // a status/debug job so controller UI can surface progress and failures.
-  app.post('/config/queue-wizard/vibe-seed-start', async (req, res) => {
-    try {
-      if (!requireTrackKey(req, res)) return;
-      const targetQueue = Math.max(1, Math.min(200, Number(req.body?.targetQueue) || 12));
-      const playNow = !!req.body?.playNow;
-      const keepPlaying = !!req.body?.keepPlaying;
-      const endless = !!req.body?.endless;
-      const seedArtist = String(req.body?.seedArtist || '').trim();
-      const seedTitle = String(req.body?.seedTitle || '').trim();
-      if (!seedArtist || !seedTitle) return res.status(400).json({ ok: false, error: 'Missing seedArtist/seedTitle' });
+  async function startSeededVibeJob({ targetQueue: targetQueueRaw, playNow = false, keepPlaying = false, endless = false, seedArtist: seedArtistRaw, seedTitle: seedTitleRaw }) {
+    const targetQueue = Math.max(1, Math.min(200, Number(targetQueueRaw) || 12));
+    const seedArtist = String(seedArtistRaw || '').trim();
+    const seedTitle = String(seedTitleRaw || '').trim();
+    if (!seedArtist || !seedTitle) throw new Error('Missing seedArtist/seedTitle');
 
-      const lastfmApiKey = await resolveLastfmApiKey();
-      if (!lastfmApiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
+    const lastfmApiKey = await resolveLastfmApiKey();
+    if (!lastfmApiKey) throw new Error('Last.fm API key is not configured');
 
-      const mpdHost = String(MPD_HOST || 'moode.local');
-      const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
-      const jobId = makeVibeJobId();
+    const mpdHost = String(MPD_HOST || 'moode.local');
+    const pyPath = path.resolve(process.cwd(), 'lastfm_vibe_radio.py');
+    const jobId = makeVibeJobId();
 
-      // Ensure deterministic queue order for seeded vibe starts.
-      if (playNow || keepPlaying) {
-        try { await execFileP('mpc', ['-h', mpdHost, '-p', '6600', 'random', 'off']); } catch (_) {}
-      }
+    // Ensure deterministic queue order for seeded vibe starts.
+    if (playNow || keepPlaying) {
+      try { await execFileP('mpc', ['-h', mpdHost, '-p', '6600', 'random', 'off']); } catch (_) {}
+    }
 
-      const vibeIndexPath = await resolveVibeIndexPath();
-      const job = {
-        id: jobId,
-        status: 'running',
-        phase: 'starting',
-        targetQueue,
-        minRating: 0,
-        excludeGenre: 'none',
-        seedArtist,
-        seedTitle,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        builtCount: 0,
-        rawBuiltCount: 0,
-        added: [],
-        tracks: [],
-        logs: [],
-        debug: {
-          fallbackUsed: false,
-          fallbackCount: 0,
-          previewResponseCount: 0,
-          indexPath: vibeIndexPath,
-          seededStart: true,
-          playNow: !!playNow,
-          keepPlaying: !!keepPlaying,
-        },
-        nextEventId: 1,
-        error: '',
-        done: false,
-        jsonTmp: '',
-        logPath: path.join(vibeLogDir, `${jobId}.jsonl`),
-        proc: null,
-      };
-      vibeJobs.set(jobId, job);
-      appendVibeJobLog(job, 'start', {
-        seedArtist,
-        seedTitle,
-        targetQueue,
-        playNow,
-        keepPlaying,
-        mpdHost,
+    const vibeIndexPath = await resolveVibeIndexPath();
+    const job = {
+      id: jobId,
+      status: 'running',
+      phase: 'starting',
+      targetQueue,
+      minRating: 0,
+      excludeGenre: 'none',
+      seedArtist,
+      seedTitle,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      builtCount: 0,
+      rawBuiltCount: 0,
+      added: [],
+      tracks: [],
+      logs: [],
+      debug: {
+        fallbackUsed: false,
+        fallbackCount: 0,
+        previewResponseCount: 0,
         indexPath: vibeIndexPath,
-        pyPath,
         seededStart: true,
-      }).catch(() => {});
+        playNow: !!playNow,
+        keepPlaying: !!keepPlaying,
+        endless: !!endless,
+      },
+      nextEventId: 1,
+      error: '',
+      done: false,
+      jsonTmp: '',
+      logPath: path.join(vibeLogDir, `${jobId}.jsonl`),
+      proc: null,
+    };
+    vibeJobs.set(jobId, job);
+    appendVibeJobLog(job, 'start', {
+      seedArtist,
+      seedTitle,
+      targetQueue,
+      playNow,
+      keepPlaying,
+      endless,
+      mpdHost,
+      indexPath: vibeIndexPath,
+      pyPath,
+      seededStart: true,
+    }).catch(() => {});
 
-      const indexReady = await ensureVibeIndexReady(job, vibeIndexPath, mpdHost);
-      if (!indexReady) {
-        return res.status(500).json({ ok: false, error: job.error || 'Index build failed', jobId });
-      }
+    const indexReady = await ensureVibeIndexReady(job, vibeIndexPath, mpdHost);
+    if (!indexReady) return { ok: false, error: job.error || 'Index build failed', jobId, job };
 
-      const pyArgs = [
-        pyPath,
-        '--api-key', lastfmApiKey,
-        '--index', vibeIndexPath,
-        '--seed-artist', seedArtist,
-        '--seed-title', seedTitle,
-        '--target-queue', String(targetQueue),
-        '--mode', playNow ? 'play' : 'load',
-        '--shuffle-top', '25',
-        '--reseed-random',
-        '--max-misses', '12',
-        '--host', mpdHost,
-        '--port', '6600',
-        '--debug-trace',
-      ];
-      if (playNow || keepPlaying || endless) {
-        pyArgs.push('--crop');
-      }
-      if (endless) pyArgs.push('--endless');
-      if (keepPlaying && !playNow) {
-        pyArgs.push('--no-final-stop');
-      }
+    const pyArgs = [
+      pyPath,
+      '--api-key', lastfmApiKey,
+      '--index', vibeIndexPath,
+      '--seed-artist', seedArtist,
+      '--seed-title', seedTitle,
+      '--target-queue', String(targetQueue),
+      '--mode', playNow ? 'play' : 'load',
+      '--shuffle-top', '25',
+      '--reseed-random',
+      '--max-misses', '12',
+      '--host', mpdHost,
+      '--port', '6600',
+      '--debug-trace',
+    ];
+    if (playNow || keepPlaying || endless) pyArgs.push('--crop');
+    if (endless) pyArgs.push('--endless');
+    if (keepPlaying && !playNow) pyArgs.push('--no-final-stop');
 
-      const child = spawn('python3', pyArgs, {
+    let child;
+    try {
+      child = spawn('python3', pyArgs, {
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: false,
       });
-      job.proc = child;
-      appendVibeJobLog(job, 'run', {
+    } catch (error) {
+      const message = error?.message || String(error);
+      job.error = message;
+      job.done = true;
+      job.status = 'error';
+      job.phase = 'error';
+      job.updatedAt = Date.now();
+      job.logs.push(`spawn error: ${message}`);
+      appendVibeJobLog(job, 'spawn-error', { error: message }).catch(() => {});
+      throw error;
+    }
+    job.proc = child;
+    appendVibeJobLog(job, 'run', {
+      seedArtist,
+      seedTitle,
+      targetQueue,
+      playNow,
+      keepPlaying,
+      endless,
+      mpdHost,
+      indexPath: vibeIndexPath,
+      pyPath,
+      seededStart: true,
+    }).catch(() => {});
+
+    const onLine = (lineIn = '') => {
+      const line = String(lineIn || '').trim();
+      if (!line) return;
+      job.updatedAt = Date.now();
+      job.logs.push(line);
+      if (job.logs.length > 300) job.logs.shift();
+      appendVibeJobLog(job, 'line', { line }).catch(() => {});
+
+      if (/Last\.fm get similar/i.test(line)) job.phase = 'querying last.fm';
+      if (/pick from/i.test(line)) job.phase = 'matching local library';
+
+      const m = line.match(/^\[hop\s+\d+\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i)
+        || line.match(/^\[simple\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i);
+      if (m) {
+        const label = String(m[1] || '').trim();
+        const method = String(m[2] || '').trim();
+        const parts = label.split(' — ');
+        const titleX = parts[0] || label;
+        const artistX = parts.length > 1 ? parts.slice(1).join(' — ') : '';
+        job.added.push({
+          eventId: job.nextEventId++,
+          artist: artistX,
+          title: titleX,
+          method,
+        });
+        if (job.added.length > 500) job.added = job.added.slice(-500);
+        job.builtCount += 1;
+        job.phase = 'adding tracks';
+      }
+
+      const pm = line.match(/^\[simple\]\s+pass\s+(\d+)\s+added\s+(\d+)\s+track/i);
+      if (pm) {
+        const p = Number(pm[1] || 0);
+        const n = Number(pm[2] || 0);
+        job.phase = `simple pass ${p} complete (+${n})`;
+      }
+    };
+
+    let outBuf = '';
+    let errBuf = '';
+    child.stdout.on('data', (buf) => {
+      outBuf += String(buf || '');
+      const lines = outBuf.split(/\r?\n/);
+      outBuf = lines.pop() || '';
+      lines.filter(Boolean).forEach(onLine);
+    });
+    child.stderr.on('data', (buf) => {
+      errBuf += String(buf || '');
+      const lines = errBuf.split(/\r?\n/);
+      errBuf = lines.pop() || '';
+      lines.filter(Boolean).forEach((ln) => onLine(`stderr: ${ln}`));
+    });
+    child.on('close', (code) => {
+      if (outBuf.trim()) onLine(outBuf.trim());
+      if (errBuf.trim()) onLine(`stderr: ${errBuf.trim()}`);
+      if (code !== 0 && !job.error) job.error = `vibe builder exited with code ${code}`;
+      job.done = true;
+      job.status = job.error ? 'error' : 'done';
+      job.phase = job.error ? 'error' : 'complete';
+      job.updatedAt = Date.now();
+      appendVibeJobLog(job, 'complete', {
+        exitCode: Number(code || 0),
+        status: job.status,
+        phase: job.phase,
+        error: job.error || '',
+        builtCount: Number(job.builtCount || 0),
+        seededStart: true,
+        endless: !!endless,
+      }).catch(() => {});
+    });
+
+    return { ok: true, jobId, targetQueue, seedArtist, seedTitle, job };
+  }
+
+  // Fire-and-forget seeded start for Alexa "vibe here" mode and backend Endless Vibe.
+  // Returns immediately after spawning the builder process, but also registers a
+  // status/debug job so controller UI can surface progress and failures.
+  app.post('/config/queue-wizard/vibe-seed-start', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const seedArtist = String(req.body?.seedArtist || '').trim();
+      const seedTitle = String(req.body?.seedTitle || '').trim();
+      if (!seedArtist || !seedTitle) return res.status(400).json({ ok: false, error: 'Missing seedArtist/seedTitle' });
+      if (!await resolveLastfmApiKey()) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
+
+      const result = await startSeededVibeJob({
+        targetQueue: req.body?.targetQueue,
+        playNow: !!req.body?.playNow,
+        keepPlaying: !!req.body?.keepPlaying,
+        endless: !!req.body?.endless,
         seedArtist,
         seedTitle,
-        targetQueue,
-        playNow,
-        keepPlaying,
-        mpdHost,
-        indexPath: vibeIndexPath,
-        pyPath,
-        seededStart: true,
-      }).catch(() => {});
-
-      const onLine = (lineIn = '') => {
-        const line = String(lineIn || '').trim();
-        if (!line) return;
-        job.updatedAt = Date.now();
-        job.logs.push(line);
-        if (job.logs.length > 300) job.logs.shift();
-        appendVibeJobLog(job, 'line', { line }).catch(() => {});
-
-        if (/Last\.fm get similar/i.test(line)) job.phase = 'querying last.fm';
-        if (/pick from/i.test(line)) job.phase = 'matching local library';
-
-        const m = line.match(/^\[hop\s+\d+\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i)
-          || line.match(/^\[simple\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i);
-        if (m) {
-          const label = String(m[1] || '').trim();
-          const method = String(m[2] || '').trim();
-          const parts = label.split(' — ');
-          const titleX = parts[0] || label;
-          const artistX = parts.length > 1 ? parts.slice(1).join(' — ') : '';
-          job.added.push({
-            eventId: job.nextEventId++,
-            artist: artistX,
-            title: titleX,
-            method,
-          });
-          if (job.added.length > 500) job.added = job.added.slice(-500);
-          job.builtCount += 1;
-          job.phase = 'adding tracks';
-        }
-
-        const pm = line.match(/^\[simple\]\s+pass\s+(\d+)\s+added\s+(\d+)\s+track/i);
-        if (pm) {
-          const p = Number(pm[1] || 0);
-          const n = Number(pm[2] || 0);
-          job.phase = `simple pass ${p} complete (+${n})`;
-        }
-      };
-
-      let outBuf = '';
-      let errBuf = '';
-      child.stdout.on('data', (buf) => {
-        outBuf += String(buf || '');
-        const lines = outBuf.split(/\r?\n/);
-        outBuf = lines.pop() || '';
-        lines.filter(Boolean).forEach(onLine);
       });
-      child.stderr.on('data', (buf) => {
-        errBuf += String(buf || '');
-        const lines = errBuf.split(/\r?\n/);
-        errBuf = lines.pop() || '';
-        lines.filter(Boolean).forEach((ln) => onLine(`stderr: ${ln}`));
-      });
-      child.on('close', (code) => {
-        if (outBuf.trim()) onLine(outBuf.trim());
-        if (errBuf.trim()) onLine(`stderr: ${errBuf.trim()}`);
-        if (code !== 0 && !job.error) job.error = `vibe builder exited with code ${code}`;
-        job.done = true;
-        job.status = job.error ? 'error' : 'done';
-        job.phase = job.error ? 'error' : 'complete';
-        job.updatedAt = Date.now();
-        appendVibeJobLog(job, 'complete', {
-          exitCode: Number(code || 0),
-          status: job.status,
-          phase: job.phase,
-          error: job.error || '',
-          builtCount: Number(job.builtCount || 0),
-          seededStart: true,
-        }).catch(() => {});
-      });
-
+      if (!result.ok) return res.status(500).json({ ok: false, error: result.error, jobId: result.jobId });
       return res.status(202).json({
         ok: true,
         accepted: true,
-        jobId,
-        targetQueue,
-        seedArtist,
-        seedTitle,
+        jobId: result.jobId,
+        targetQueue: result.targetQueue,
+        seedArtist: result.seedArtist,
+        seedTitle: result.seedTitle,
       });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });
+
+  async function endlessVibeTick() {
+    if (endlessVibeTickBusy) return;
+    endlessVibeTickBusy = true;
+    try {
+      if (endlessVibeActiveJobId) {
+        const active = vibeJobs.get(endlessVibeActiveJobId);
+        if (active && !active.done) return;
+        endlessVibeActiveJobId = '';
+      }
+
+      if (hasActiveVibeJob()) return;
+
+      const enabled = await readEndlessVibeEnabled();
+      if (!enabled) {
+        endlessVibeLastSeedKey = '';
+        endlessVibeLastAttemptAt = 0;
+        return;
+      }
+
+      const seed = await getEndlessVibeSeed();
+      if (!seed) return;
+
+      const now = Date.now();
+      if (seed.seedKey === endlessVibeLastSeedKey && (now - endlessVibeLastAttemptAt) < endlessVibeRetryMs) return;
+      endlessVibeLastSeedKey = seed.seedKey;
+      endlessVibeLastAttemptAt = now;
+
+      const result = await startSeededVibeJob({
+        targetQueue: 25,
+        playNow: false,
+        keepPlaying: true,
+        endless: true,
+        seedArtist: seed.artist,
+        seedTitle: seed.title,
+      });
+      if (!result.ok) {
+        log?.warn?.('[endless-vibe] start failed:', result.error || 'unknown error');
+        return;
+      }
+
+      endlessVibeActiveJobId = result.jobId;
+      log?.info?.('[endless-vibe] extending queue', {
+        jobId: result.jobId,
+        seedArtist: seed.artist,
+        seedTitle: seed.title,
+      });
+    } catch (error) {
+      log?.debug?.('[endless-vibe] watcher failed:', error?.message || String(error));
+    } finally {
+      endlessVibeTickBusy = false;
+    }
+  }
+
+  if (typeof mpdQueryRaw === 'function') {
+    const initialTick = setTimeout(() => { endlessVibeTick().catch(() => {}); }, 2000);
+    initialTick.unref?.();
+    const endlessVibeTimer = setInterval(() => { endlessVibeTick().catch(() => {}); }, endlessVibePollMs);
+    endlessVibeTimer.unref?.();
+  }
 
   // Seeded one-shot endpoint for Alexa/Echo mode (when MPD current is not the Echo track)
   app.post('/config/queue-wizard/vibe-seed', async (req, res) => {

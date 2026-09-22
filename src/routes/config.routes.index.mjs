@@ -45,6 +45,11 @@ export function registerAllConfigRoutes(app, deps) {
   registerConfigQueueWizardVibeRoutes(app, {
     requireTrackKey: deps.requireTrackKey,
     getRatingForFile: deps.getRatingForFile,
+    mpdQueryRaw: deps.mpdQueryRaw,
+    mpdHasACK: deps.mpdHasACK,
+    parseMpdKeyVals: deps.parseMpdKeyVals,
+    parseMpdFirstBlock: deps.parseMpdFirstBlock,
+    log: deps.log,
   });
 
   registerConfigDiagnosticsRoutes(app, {
