@@ -2068,6 +2068,9 @@ function moodeValByKey(raw, keyOrIndex) {
     return i >= 0 ? s.slice(i + 1).trim() : s.trim();
   }
 
+  const direct = raw?.[String(keyOrIndex).toLowerCase().trim()];
+  if (typeof direct === 'string' || typeof direct === 'number') return String(direct).trim();
+
   const want = String(keyOrIndex).toLowerCase().trim() + ':';
   for (const v of Object.values(raw)) {
     if (typeof v !== 'string') continue;
@@ -2078,6 +2081,21 @@ function moodeValByKey(raw, keyOrIndex) {
     }
   }
   return '';
+}
+
+async function fetchCurrentSong() {
+  const raw = await mpdQueryRaw('currentsong');
+  if (!raw || mpdHasACK(raw)) throw new Error('mpd currentsong failed');
+
+  const song = parseMpdFirstBlock(raw);
+  if (!String(song?.file || '').trim()) throw new Error('mpd currentsong returned no file');
+  return song;
+}
+
+async function fetchCurrentStatus() {
+  const raw = await mpdQueryRaw('status');
+  if (!raw || mpdHasACK(raw)) throw new Error('mpd status failed');
+  return parseMpdKeyVals(raw);
 }
 
 function normalizeMoodeStatus(raw) {
@@ -3032,8 +3050,8 @@ async function selectNotificationTrack() {
   }
 
   try {
-    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
+    const song = await fetchCurrentSong();
+    const statusRaw = await fetchCurrentStatus();
     const state = String(moodeValByKey(statusRaw, 'state') || '').trim().toLowerCase();
     const file = String(song?.file || '').trim();
     if (state !== 'play' || !file) return null;
@@ -5633,7 +5651,7 @@ async function favoriteHandler(req, res) {
 
     let file = requestedFile;
     if (!file) {
-      const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
+      const song = await fetchCurrentSong();
       file = String(song?.file || '').trim();
     }
 
@@ -5931,13 +5949,13 @@ app.get('/now-playing', async (req, res) => {
     // 1) Fetch moOde/MPD snapshots
     let song, statusRaw;
     try {
-      song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
+      song = await fetchCurrentSong();
     } catch (e) {
-      return serveCached('get_currentsong_failed', e?.message || String(e));
+      return serveCached('mpd_currentsong_failed', e?.message || String(e));
     }
 
     try {
-      statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
+      statusRaw = await fetchCurrentStatus();
     } catch (e) {
       return serveCached('status_failed', e?.message || String(e));
     }
@@ -6020,6 +6038,9 @@ app.get('/now-playing', async (req, res) => {
     // Default art scaffolding
     if (stream) {
       stationLogoUrl = song.coverurl ? normalizeCoverUrl(song.coverurl, MOODE_BASE_URL) : '';
+      if (!stationLogoUrl && isRadio && streamStationName) {
+        stationLogoUrl = `${MOODE_BASE_URL}/imagesw/radio-logos/thumbs/${encodeURIComponent(streamStationName)}.jpg`;
+      }
       primaryArtUrl = stationLogoUrl || '';
     } else if (!airplay && file) {
       primaryArtUrl = `${MOODE_BASE_URL}/coverart.php/${encodeURIComponent(file)}`;
@@ -6502,7 +6523,7 @@ app.get('/now-playing', async (req, res) => {
           title,
           album: radioAlbum || album || '',
           encoded: song.encoded || '',
-          stationName: song.name || '',
+          stationName: streamStationName || song.name || '',
         })
       : { allow: true, reason: 'not-radio' };
 
@@ -7159,8 +7180,8 @@ app.get('/next-up', async (req, res) => {
   };
 
   try {
-    const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-    const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
+    const song = await fetchCurrentSong();
+    const statusRaw = await fetchCurrentStatus();
 
     const file = String(song.file || '').trim();
     const isStream = isStreamPath(file);
@@ -7345,7 +7366,15 @@ async function resolveBestArtForCurrentSong(song, statusRaw) {
     }
   }
 
-  // 4) Final fallback: moOde coverurl (station logo, etc.)
+  // 4) Radio station logo fallback when direct MPD has no moOde-only coverurl.
+  if (!best && stream && getStreamKind(file) === 'radio') {
+    const stationName = String(song?.name || song?.album || '').trim();
+    if (stationName) {
+      best = `${MOODE_BASE_URL}/imagesw/radio-logos/thumbs/${encodeURIComponent(stationName)}.jpg`;
+    }
+  }
+
+  // 5) Final fallback: moOde coverurl (station logo, etc.)
   if (!best && song?.coverurl) best = normalizeCoverUrl(song.coverurl, MOODE_BASE_URL);
 
   return best;
@@ -7402,6 +7431,8 @@ async function getAirplayCoverUrlFromAplmeta(MOODE_BASE_URL) {
 registerArtRoutes(app, {
   MOODE_BASE_URL,
   fetchJson,
+  fetchCurrentSong,
+  fetchCurrentStatus,
   resolveBestArtForCurrentSong,
   normalizeArtKey,
   updateArtCacheIfNeeded,

@@ -88,6 +88,8 @@ export function registerArtRoutes(app, deps) {
   const {
     MOODE_BASE_URL,
     fetchJson,
+    fetchCurrentSong,
+    fetchCurrentStatus,
     resolveBestArtForCurrentSong,
     normalizeArtKey,
     updateArtCacheIfNeeded,
@@ -156,8 +158,12 @@ export function registerArtRoutes(app, deps) {
       } catch (_) {
         // Global self-heal fallback: if direct file art misses, use current-resolved art,
         // cache it, then return it so UI surfaces don't show blanks.
-        const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`).catch(() => null);
-        const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`).catch(() => null);
+        const song = await (typeof fetchCurrentSong === 'function'
+          ? fetchCurrentSong()
+          : fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`)).catch(() => null);
+        const statusRaw = await (typeof fetchCurrentStatus === 'function'
+          ? fetchCurrentStatus()
+          : fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`)).catch(() => null);
         const best = song ? await resolveBestArtForCurrentSong(song, statusRaw) : '';
         if (best) {
           await updateArtCacheIfNeeded(best).catch(() => {});
@@ -191,8 +197,12 @@ export function registerArtRoutes(app, deps) {
         return sendJpeg(res, buf, 640);
       }
 
-      const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-      const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
+      const song = await (typeof fetchCurrentSong === 'function'
+        ? fetchCurrentSong()
+        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`));
+      const statusRaw = await (typeof fetchCurrentStatus === 'function'
+        ? fetchCurrentStatus()
+        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`));
       const best = await resolveBestArtForCurrentSong(song, statusRaw);
       if (!best) return res.status(404).end();
 
@@ -208,8 +218,12 @@ export function registerArtRoutes(app, deps) {
 
   app.get('/art/current_640.jpg', async (req, res) => {
     try {
-      const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-      const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
+      const song = await (typeof fetchCurrentSong === 'function'
+        ? fetchCurrentSong()
+        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`));
+      const statusRaw = await (typeof fetchCurrentStatus === 'function'
+        ? fetchCurrentStatus()
+        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`));
       const best = await resolveBestArtForCurrentSong(song, statusRaw);
       if (!best) return res.status(404).end();
 
@@ -259,8 +273,12 @@ export function registerArtRoutes(app, deps) {
         return serveCachedOrBlurredBg(res, key, 640, artPathBgForKey, deps);
       }
 
-      const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
-      const statusRaw = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`);
+      const song = await (typeof fetchCurrentSong === 'function'
+        ? fetchCurrentSong()
+        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`));
+      const statusRaw = await (typeof fetchCurrentStatus === 'function'
+        ? fetchCurrentStatus()
+        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`));
       const best = await resolveBestArtForCurrentSong(song, statusRaw);
       if (!best) return res.status(404).end();
 
