@@ -155,8 +155,8 @@
         autoMuteInFlight = false;
       }
     };
-    const restoreLocalOutput = async () => {
-      if (!autoMutedLocalOutput) return;
+    const restoreLocalOutput = async (force = false) => {
+      if (!force && !autoMutedLocalOutput) return;
       autoMutedLocalOutput = false;
       try {
         const result = await outputRequest('POST', { enabled: true });
@@ -166,7 +166,10 @@
       }
     };
     const runStopActions = async () => {
-      const actions = [restoreLocalOutput()];
+      const actions = [];
+      if (preferenceEnabled('webStreamAutoMuteAlsa') || autoMutedLocalOutput) {
+        actions.push(restoreLocalOutput(true));
+      }
       if (preferenceEnabled('webStreamStopMpd')) {
         actions.push(playbackRequest('stop').catch((error) => log('automatic mpc stop failed', error?.message || error)));
       }
