@@ -205,6 +205,12 @@ This list is not just navigation. At least some rows expose richer action behavi
 - `kiosk-right-pane-routing.md`
 - `embedded-pane-contracts.md`
 
+### Settings child pane
+
+The Settings row opens `controller-tablet-settings.html` inside the tablet shell. In addition to theme, visualizer, and recent-row preferences, it contains the local **Keep display awake** toggle. The toggle stores `nowplaying.keepDisplayAwake.v1` in origin-local storage and sends an `np-controller-wake-lock` message to the parent shell.
+
+`controller-tablet.html` owns the actual Screen Wake Lock lifecycle. It requests a screen lock only while the preference is enabled and the page is visible, releases it when the page is hidden or the preference is disabled, and retries after pageshow, focus, visibility, and orientation changes. The preference is deliberately not part of the shared server controller profile because it is device/display-specific.
+
 ## 6. Recent-content region
 
 ### What it is
@@ -446,4 +452,4 @@ Quick Search track results retain artist and album metadata in the result title 
 
 ## Timestamp
 
-Last updated: 2026-08-29 America/Chicago
+Last updated: 2026-09-22 America/Chicago

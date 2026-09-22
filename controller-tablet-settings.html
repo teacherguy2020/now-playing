@@ -21,6 +21,10 @@
     select:focus,.backBtn:focus{outline:2px solid color-mix(in oklab,var(--accent,#4aa8ff) 72%, white 28%);outline-offset:2px}
     option{background:var(--surface,#0b111c);color:var(--text,#f3f6ff)}
     .hint{margin-top:8px;color:var(--muted,#9eb3d6);font-size:12px}
+    .toggleRow{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin:14px 0 4px}
+    .toggleCopy{min-width:0}
+    .toggleLabel{display:block;margin:0 0 4px;font-weight:620}
+    .toggleInput{width:22px;height:22px;flex:0 0 auto;margin:1px 0 0;accent-color:var(--accent,#4aa8ff)}
   </style>
 </head>
 <body>
@@ -34,6 +38,14 @@
   <div class="card">
     <h1>Settings</h1>
     <p class="sub">Controller tablet preferences</p>
+
+    <div class="toggleRow">
+      <div class="toggleCopy">
+        <label class="toggleLabel" for="keepDisplayAwake">Keep display awake</label>
+        <div id="wakeLockHint" class="hint">Prevent the display from sleeping while this controller is visible.</div>
+      </div>
+      <input id="keepDisplayAwake" class="toggleInput" type="checkbox" role="switch" aria-label="Keep display awake" />
+    </div>
 
     <label for="themePreset">Theme preset</label>
     <select id="themePreset" aria-label="Controller tablet theme preset"></select>
@@ -64,10 +76,13 @@
       ['cloud','Cloud (Light)'],['sand','Sand (Light)'],['blush','Blush (Light)'],['ivoryred','White + Red']
     ];
     const u = new URL(location.href);
+    const KEEP_DISPLAY_AWAKE_KEY = 'nowplaying.keepDisplayAwake.v1';
     const themeMode = String(u.searchParams.get('theme') || 'auto').trim().toLowerCase();
     const selected = String(u.searchParams.get('colorPreset') || 'ocean').trim().toLowerCase();
     const sel = document.getElementById('themePreset');
     const vizSel = document.getElementById('vizPreset');
+    const keepDisplayAwake = document.getElementById('keepDisplayAwake');
+    const wakeLockHint = document.getElementById('wakeLockHint');
     const rowIds = ['row1','row2','row3','row4'];
     const rowSelects = rowIds.map((id) => document.getElementById(id));
     const ROW_OPTIONS = [
@@ -200,6 +215,20 @@
     sel.addEventListener('change', () => send(-1));
     vizSel.addEventListener('change', () => send(-1));
     rowSelects.forEach((s, i) => s.addEventListener('change', () => send(i)));
+
+    try {
+      keepDisplayAwake.checked = localStorage.getItem(KEEP_DISPLAY_AWAKE_KEY) === '1';
+    } catch {}
+    const wakeLockSupported = !!window.isSecureContext && !!navigator.wakeLock?.request;
+    if (!wakeLockSupported) {
+      keepDisplayAwake.disabled = true;
+      wakeLockHint.textContent = 'Unavailable here: Screen Wake Lock requires a secure (HTTPS) connection and browser support.';
+    }
+    keepDisplayAwake.addEventListener('change', () => {
+      const enabled = !!keepDisplayAwake.checked;
+      try { localStorage.setItem(KEEP_DISPLAY_AWAKE_KEY, enabled ? '1' : '0'); } catch {}
+      try { window.parent?.postMessage({ type: 'np-controller-wake-lock', enabled }, '*'); } catch {}
+    });
 
     let backBusy = false;
     document.getElementById('backBtn')?.addEventListener('click', () => {

@@ -859,6 +859,69 @@
     }
   }
   let profile = parseProfile();
+  const KEEP_DISPLAY_AWAKE_KEY = "nowplaying.keepDisplayAwake.v1";
+  let keepDisplayAwake = false;
+  let screenWakeLock = null;
+  let screenWakeLockRequest = null;
+  try {
+    keepDisplayAwake = localStorage.getItem(KEEP_DISPLAY_AWAKE_KEY) === "1";
+  } catch {
+  }
+  async function releaseScreenWakeLock() {
+    const sentinel = screenWakeLock;
+    screenWakeLock = null;
+    if (!sentinel) return;
+    try {
+      await sentinel.release();
+    } catch {
+    }
+  }
+  async function requestScreenWakeLock() {
+    if (!keepDisplayAwake || document.hidden || !window.isSecureContext || !navigator.wakeLock || typeof navigator.wakeLock.request !== "function") return false;
+    if (screenWakeLock && !screenWakeLock.released) return true;
+    if (screenWakeLockRequest) return screenWakeLockRequest;
+    screenWakeLockRequest = (async () => {
+      try {
+        const sentinel = await navigator.wakeLock.request("screen");
+        if (!keepDisplayAwake || document.hidden) {
+          try {
+            await sentinel.release();
+          } catch {
+          }
+          return false;
+        }
+        screenWakeLock = sentinel;
+        sentinel.addEventListener("release", () => {
+          if (screenWakeLock === sentinel) screenWakeLock = null;
+        });
+        return true;
+      } catch {
+        return false;
+      } finally {
+        screenWakeLockRequest = null;
+      }
+    })();
+    return screenWakeLockRequest;
+  }
+  function setKeepDisplayAwake(enabled) {
+    keepDisplayAwake = !!enabled;
+    try {
+      localStorage.setItem(KEEP_DISPLAY_AWAKE_KEY, keepDisplayAwake ? "1" : "0");
+    } catch {
+    }
+    if (keepDisplayAwake) {
+      requestScreenWakeLock().catch(() => null);
+    } else {
+      releaseScreenWakeLock().catch(() => null);
+    }
+  }
+  function syncScreenWakeLock() {
+    if (keepDisplayAwake && !document.hidden) {
+      requestScreenWakeLock().catch(() => null);
+    } else {
+      releaseScreenWakeLock().catch(() => null);
+    }
+  }
   function decodeHtmlEntities(input) {
     const s = String(input === void 0 || input === null ? "" : input);
     if (!s || !/[&][a-zA-Z#0-9]+;/.test(s)) return s;
@@ -1010,9 +1073,14 @@
     }
   }
   applyProfileUi();
+  syncScreenWakeLock();
   window.addEventListener("message", (ev) => {
     try {
       const d = (ev == null ? void 0 : ev.data) || {};
+      if ((d == null ? void 0 : d.type) === "np-controller-wake-lock") {
+        setKeepDisplayAwake(!!(d == null ? void 0 : d.enabled));
+        return;
+      }
       if ((d == null ? void 0 : d.type) === "np-live-theme-update") {
         const cc = (d == null ? void 0 : d.customColors) && typeof d.customColors === "object" ? d.customColors : null;
         if (!cc) return;
@@ -5352,17 +5420,20 @@
     }
   };
   window.addEventListener("pageshow", () => {
+    syncScreenWakeLock();
     resetTransientFlipState();
     setTimeout(restoreLastLibraryPage, 220);
     setTimeout(restoreLastLibraryPage, 900);
     setTimeout(syncLiveQueueRowSlot, 260);
   });
   window.addEventListener("focus", () => {
+    syncScreenWakeLock();
     resetTransientFlipState();
     setTimeout(restoreLastLibraryPage, 220);
     setTimeout(syncLiveQueueRowSlot, 260);
   });
   document.addEventListener("visibilitychange", () => {
+    syncScreenWakeLock();
     if (!document.hidden) {
       resetTransientFlipState();
       setTimeout(restoreLastLibraryPage, 220);
@@ -5373,6 +5444,7 @@
     setTimeout(syncLiveQueueRowSlot, 140);
   });
   window.addEventListener("orientationchange", () => {
+    setTimeout(syncScreenWakeLock, 140);
     setTimeout(syncLiveQueueRowSlot, 140);
   });
   (async () => {
