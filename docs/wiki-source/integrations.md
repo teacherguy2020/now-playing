@@ -75,6 +75,9 @@ If you are trying to understand the integrations branch as a system, read in thi
 4. [radio-metadata-eval-interface.md](radio-metadata-eval-interface.md)
 5. [config-lastfm-and-scrobbling.md](config-lastfm-and-scrobbling.md)
 6. [airplay-metadata-hardening.md](airplay-metadata-hardening.md)
+7. [mabel-integration.md](mabel-integration.md)
+8. [jukebox-priority-model.md](jukebox-priority-model.md)
+9. [mills-throne-integration.md](mills-throne-integration.md)
 
 Then move into runtime or host-specific pages when the issue becomes override-sensitive or environment-specific.
 
@@ -339,4 +342,4 @@ The current wiki already supports a stronger truth:
 
 ## Timestamp
 
-Last updated: 2026-09-18 America/Chicago
+Last updated: 2026-09-22 America/Chicago

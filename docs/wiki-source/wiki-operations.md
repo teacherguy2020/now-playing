@@ -251,3 +251,31 @@ It is a maintained knowledge system with three core operations:
 - ingest new truth
 - query for answers
 - lint for health and retrieval quality
+
+## Publishing the canonical source
+
+The repository source is the authoring location. After editing
+`docs/wiki-source/`:
+
+1. Regenerate the browseable HTML with:
+
+   ```sh
+   python3 scripts/build_wiki_site.py
+   ```
+
+2. Review the generated `docs/wiki-site/` diff. It is a generated artifact;
+   do not hand-edit its pages.
+3. Publish the public GitHub Wiki from a checked-out
+   `teacherguy2020/now-playing.wiki` repository:
+
+   ```sh
+   python3 scripts/publish_github_wiki.py --wiki-dir /path/to/now-playing.wiki
+   python3 scripts/publish_github_wiki.py --wiki-dir /path/to/now-playing.wiki --push
+   ```
+
+The publisher uses the operator's existing Git/SSH authentication, stores no
+credentials, updates `Home.md` and canonical pages, and retains legacy Wiki
+pages by default. The installation-local `local-environment.md` page is kept
+in the repository source but intentionally excluded from the public Wiki.
+
+*Last reviewed: 2026-09-22 America/Chicago*

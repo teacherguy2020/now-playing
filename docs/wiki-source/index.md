@@ -24,6 +24,28 @@ Use this page when the question is:
 For the chronological evolution of the wiki, use `log.md`.
 For the maintenance workflow, use `wiki-operations.md`.
 
+## Canonical audience map
+
+The documentation is organized by audience and concept rather than historical
+feature/tab order:
+
+- [Getting Started](getting-started.md) — installation, first configuration, and verification
+- [Using Now Playing](using-now-playing.md) — user-facing playback, queue, library, and integration features
+- [Displays](displays.md) — display, kiosk, Peppy, Player, Visualizer, and installed controller presentation
+- [Integrations](integrations.md) — moOde/MPD, Alexa, radio, YouTube, Last.fm, jukebox, and external boundaries
+- [Configuration and Administration](configuration-and-administration.md) — config, diagnostics, deployment, updates, and rollback
+- [Developer Reference](developer-reference.md) — architecture, APIs, ownership, source map, and workflows
+- [Troubleshooting and Technical Notes](troubleshooting-and-technical-notes.md) — symptom-driven runbooks and compatibility notes
+
+Feature entry pages:
+
+- [Listen on Device](listen-on-device.md)
+- [Radio Interface](radio-interface.md)
+- [Podcasts Interface](podcasts-interface.md)
+- [Mabel Integration](mabel-integration.md)
+- [Jukebox Priority Model](jukebox-priority-model.md)
+- [Documentation Sources Audit](documentation-sources-audit.md)
+
 ## Start / retrieval surfaces
 
 - `README.md` — primary overview and broad orientation page
@@ -265,3 +287,5 @@ A useful current split is:
 ### Reports
 - [Lint Report](reports/lint.md)
 <!-- openclaw:wiki:index:end -->
+
+*Last reviewed: 2026-09-22 America/Chicago*

@@ -1,201 +1,108 @@
-# now-playing
+# Now Playing for moOde
 
-<p align="left"><strong>Now Playing for moOde</strong></p>
-
-A moOde-focused now-playing API + UI stack with optional Alexa integration.
-
-Turbo charge your moOde experience without altering your moOde installation.
-
+Now Playing is a moOde-focused enhancement stack for richer playback state,
+metadata, queue control, displays, controllers, and integrations. It runs a
+web UI and API on an app host and communicates with a moOde/MPD player over the
+LAN.
 
 ![Now Playing index view](./docs/images/readme-index.jpg)
-![Now Playing index view](./docs/images/controller.jpeg)
-![Now Playing promo collage](./docs/images/master-best-20260227/_collages/collage-promo-mixed-tabs-themes-normalized.jpg)
+![Now Playing controller](./docs/images/controller.jpeg)
+![Now Playing iPad controller](./docs/images/readme-ipadcontroller.png)
 
-![Peppy preset example: Warm Parchment Gold Circular](./docs/images/peppy-presets/10-warm-parchment-gold-circular.jpg)
-![Spectrum](./docs/images/readme-spectrum.jpg)
-![Cyan Spectrum](./docs/images/readme-cyanspectrum.jpg)
-![Kiosk](./docs/images/readme-kiosk.jpg)
-![Controller iPad view](./docs/images/readme-ipadcontroller.png)
-<img src="./docs/images/mobile-builder/controller.png" alt="Controller mobile view" width="300">
+## What it provides
 
+- Browser dashboard and phone/tablet/computer controllers
+- Now Playing, Player, Peppy, Visualizer, and Kiosk display paths
+- Queue management, Queue Wizard/Vibe Radio, playlists, ratings, and library health
+- Radio, podcasts, YouTube audio, and Listen on Device webstream playback
+- Alexa control and validated Seeburg, Multiphone/Mabel, and Mills integrations
+- Theme/customization tools and operator diagnostics
 
-Eight ways to use:
+## Architecture at a glance
 
-1. Browser toolkit/dashboard
-2. Display html page
-3. Player screen for moOde box (wth controls)
-4. Peppymeter+track info screen for moOde box (with controls)
-5. Visualizer screen for moOde box
-6. Kiosk (library navigation) for moOde box
-7. Mobile app (library and control)
-8. Alexa skill
+The recommended topology runs Now Playing on a separate host from moOde:
 
-> Recommended topology: run this project on a separate Pi from your moOde host.
+```text
+Browser / display clients
+          ↓
+Now Playing UI :8101  ↔  Now Playing API :3101
+                              ↓ MPD / SSH / HTTP
+                         moOde player host
+```
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/teacherguy2020/now-playing)
-
-Deepwiki analysis: https://deepwiki.com/teacherguy2020/now-playing/
+The API host owns Now Playing state normalization, routes, queue integration,
+display/control bridges, and the web UI. MPD/moOde remains the playback
+authority unless a documented physical or external mode owns the audio path.
 
 ## Quick start
 
-1. Install on API/UI host.
-2. Open `config.html` and set core fields (`trackKey`, `mpd.host`, `moode.baseUrl`, SSH settings).
-3. Run **Check SSH + Paths**.
-4. Open `app.html` (shell) or `index.html` (display view) or `player.html` (player view) `controller.html` (mobile view).
+1. Install Node.js, npm, `mpc`, and PM2 on the Now Playing host.
+2. Install the project:
 
-## Switch moOde local display to this system (Player / Peppy / Kiosk)
+   ```sh
+   curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/install.sh | bash -s -- --ref main
+   ```
 
-In moOde, open:
+3. Open `config.html`, set the moOde/MPD connection, paths, SSH access, and a
+   strong `trackKey`.
+4. Run **Check SSH + Paths**, save, and verify `/now-playing` and a controller
+   page.
 
-- **Configure -> Peripherals -> Local display -> Web UI target URL**
+The full first-run path is in [Getting Started](./docs/wiki-source/getting-started.md).
 
-For moOde r1034 and later, use the portless LAN-proxy URL. Newer moOde
-Target URL validation rejects URLs containing an explicit port.
+## Documentation
 
-- **Player / Peppy router (recommended):** `http://<WEB_HOST>/display.html?kiosk=1`
-- **Kiosk runtime directly:** `http://<WEB_HOST>/kiosk.html`
+Start with the canonical documentation landing page:
 
-Do not add `:8101` to these moOde Target URLs. The standard LAN proxy exposes
-the display routes on HTTP port 80 and forwards them to the Now-Playing web
-service. See [docs/22-moode-upgrade-runbook.md](./docs/22-moode-upgrade-runbook.md)
-for the post-upgrade moOde checklist.
+**[docs/wiki-source/README.md](./docs/wiki-source/README.md)**
 
-Typical mDNS-friendly setup:
+Audience entry points:
 
-- `http://nowplaying.local/display.html?kiosk=1`
+- [Getting Started](./docs/wiki-source/getting-started.md)
+- [Using Now Playing](./docs/wiki-source/using-now-playing.md)
+- [Displays](./docs/wiki-source/displays.md)
+- [Integrations](./docs/wiki-source/integrations.md)
+- [Configuration and Administration](./docs/wiki-source/configuration-and-administration.md)
+- [Developer Reference](./docs/wiki-source/developer-reference.md)
+- [Troubleshooting and Technical Notes](./docs/wiki-source/troubleshooting-and-technical-notes.md)
 
-Then use the app push actions:
+The editable source is `docs/wiki-source/`. `docs/wiki-site/` and the
+GitHub-hosted Wiki are published outputs; do not edit those copies directly.
 
-- **Push Player to moOde** → switches renderer to Player
-- **Push Peppy to moOde** → switches renderer to Peppy
-- **Push Visualizer to moOde** → switches renderer to Visualizer
-- **Push to moOde** (from `kiosk-designer.html`) → switches renderer to Kiosk
+## moOde display integration
 
-> If your moOde local display target is an external host (not moOde itself), also apply the watchdog blanking/wake compatibility patch documented in [docs/15-moode-remote-display-blanking-fix.md](./docs/15-moode-remote-display-blanking-fix.md).
+For moOde's local display target, use the LAN proxy URL without an explicit
+`:8101` port on current moOde releases:
 
-Quick verify (on moOde):
-
-```bash
-grep -E -- '--app=' /home/moode/.xinitrc
-pgrep -af "chromium-browser.*--app="
+```text
+http://<now-playing-host>/display.html?kiosk=1
 ```
 
-### Peppy HTTP targets requirement (VU + Spectrum)
+The display and upgrade runbooks cover Peppy/Player/Visualizer setup, target
+URL persistence, blanking/wake compatibility, and rollback:
 
-For full Peppy behavior in WebUI/bridge mode, moOde must post **both** VU and spectrum data to your now-playing API:
+- [Displays](./docs/wiki-source/displays.md)
+- [Display enhancement flow](./docs/wiki-source/display-enhancement-peppy-player-flow.md)
+- [moOde upgrade runbook](./docs/22-moode-upgrade-runbook.md)
 
-- VU target (`/etc/peppymeter/config.txt`):
-  - `http://<your-now-playing-host>:3101/peppy/vumeter`
-- Spectrum target (`/etc/peppyspectrum/config.txt`):
-  - `http://<your-now-playing-host>:3101/peppy/spectrum`
+## Supported integration boundaries
 
-If VU works but spectrum does not, check spectrum `target.url` first. Some moOde builds may clear/reset this on reboot.
+- **moOde/MPD** — primary playback runtime
+- **Alexa** — custom skill plus Homebridge/Matter lifecycle bridge
+- **Last.fm** — scrobbling and Vibe/queue enrichment
+- **Seeburg wallbox** — separate Pico project with Now Playing selection API
+- **Shyvers Multiphone/Mabel** — separate repository for conversation/hardware;
+  this repository owns bounded integration endpoints
+- **Mills Throne of Music** — physical jukebox observation/display bridge
 
-Quick verify on the now-playing host:
+See [Integrations](./docs/wiki-source/integrations.md) for ownership and
+authority boundaries.
 
-```bash
-curl -s http://127.0.0.1:3101/peppy/vumeter
-curl -s http://127.0.0.1:3101/peppy/spectrum
-```
+## Related projects and licensing
 
-You should see fresh timestamps (`fresh: true`) and non-empty `bins` while audio is active.
+- [Seeburg Now Playing Pico](https://github.com/teacherguy2020/seeburg-nowplaying-pico)
+- [Shyvers Multiphone/Mabel](https://github.com/teacherguy2020/shyvers-multiphone-mabel)
+- [Unlicense](./LICENSE), with third-party notices in
+  [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)
 
-For the full boot-persistence setup (including startup-hook restore), see:
-[docs/14-display-enhancement.md#boot-persistence-for-http-targets-recommended](./docs/14-display-enhancement.md#boot-persistence-for-http-targets-recommended)
-
-## Docs (tab-ordered)
-
-👉 **Start here for full documentation:** [docs/README.md](./docs/README.md)
-
-The source-driven project knowledge base is also included at
-[docs/wiki-source/](./docs/wiki-source/), with a rendered
-HTML site in [docs/wiki-site/](./docs/wiki-site/).
-
-### Seeburg wallbox integration
-
-The Seeburg/Pico hardware client is maintained in the public
-[`seeburg-nowplaying-pico`](https://github.com/teacherguy2020/seeburg-nowplaying-pico)
-repository. The Now Playing API integration and its selection protocol are
-documented in [integrations.md](./docs/wiki-source/integrations.md)
-and the [API endpoint catalog](./docs/wiki-source/api-endpoint-catalog.md).
-
-- Config
-- Diagnostics
-- Alexa
-- Library Health (Album Workbench flow, cached scans + full refresh, inventory sort modes, album-row queue/play actions)
-- Queue Wizard (includes Last.fm Vibe; API host requires `python3-mpd`, `python3-requests`, `python3-mutagen`)
-- Radio
-- Podcasts
-- YouTube
-- Theme (for desktop)
-- moOde Display Enhancement (custom Peppy/Player push flow)
-- Mobile Builder + Controller pages
-
-Plus cross-cutting chapters for hero shell, index-vs-app parity, random-vs-shuffle, deploy/rollback, and troubleshooting.
-
-## Related Shyvers project
-
-The Shyvers Multiphone/Mabel runtime, Harmony integration, Pico credit trigger,
-sounds, and project wiki now live in the separate
-[`shyvers-multiphone-mabel`](https://github.com/teacherguy2020/shyvers-multiphone-mabel)
-repository. This repository remains the Now Playing service and queue
-integration used by that project.
-
-## Licensing
-
-- Project root license: [Unlicense](./LICENSE), unless otherwise noted.
-- Third-party license notices: [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)
-- `integrations/moode/aplmeta.py` is moOde-derived and remains licensed under GPL-3.0-or-later (per file header/SPDX).
-
-## Install (systemd Linux)
-
-Prerequisites:
-- Node.js must be installed on the target machine (`node` and `npm` available in PATH).
-- `mpc` (MPD client) must be installed on the target machine.
-- PM2 is strongly recommended for process management and auto-restart.
-
-Quick check:
-
-```bash
-node -v && npm -v
-mpc --version
-pm2 -v
-```
-
-If `mpc` is missing (Debian/Raspberry Pi OS):
-
-```bash
-sudo apt update
-sudo apt install -y mpc
-```
-
-If PM2 is missing:
-
-```bash
-sudo npm install -g pm2
-```
-
-If Node.js is missing (Debian/Raspberry Pi OS), install Node.js first, then run:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/install.sh | bash -s -- --ref main
-```
-
-Useful flags:
-- `--ref <branch|tag|sha>`
-- `--repo <url>`
-- `--install-dir <path>`
-- `--port <number>`
-- `--mode <split|single-box>`
-
-## Uninstall
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/uninstall.sh | bash
-```
-
-Purge:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/uninstall.sh | bash -s -- --purge -y
-```
+`integrations/moode/aplmeta.py` remains GPL-3.0-or-later per its file header.
