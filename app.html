@@ -435,10 +435,57 @@
     </div>
   </div>
 
+  <script src="/scripts/client-preferences.js?v=20260922-preferences2"></script>
   <script src="scripts/hero-transport.js?v=20260921-alexa-controls1"></script>
   <script src="scripts/echo-link-volume.js?v=20260921-echo-link9"></script>
   <script>
     (() => {
+      const NP_PREFS = window.NPClientPreferences;
+      const LEGACY_APP_KEYS = {
+        themeMode: 'np-theme',
+        themeTokens: 'nowplaying.themeTokens.v1',
+        themePresets: 'nowplaying.themePresets.v1',
+        themeActivePreset: 'nowplaying.themeActivePreset.v1',
+        peppySkin: 'peppy.skin',
+        peppyTheme: 'peppy.theme',
+        playerSize: 'player.profile.size',
+        heroQueueCollapsed: 'nowplaying.app.heroQueueCollapsed',
+        heroArrowKeys: 'nowplaying.app.arrowKeysEnabled',
+        heroQueueMinRating: 'nowplaying.app.queueMinRating',
+      };
+      function readAppPreference(name, fallback = '') {
+        try {
+          if (name === 'playerMode') return NP_PREFS?.get?.('playerMode', fallback) ?? fallback;
+          if (name === 'displayMode') return NP_PREFS?.get?.('displayMode', fallback) ?? fallback;
+          if (NP_PREFS?.getApp) {
+            const value = NP_PREFS.getApp(name, undefined);
+            if (value !== undefined && value !== null && value !== '') return value;
+          }
+        } catch {}
+        const legacyKey = LEGACY_APP_KEYS[name];
+        if (!legacyKey) return fallback;
+        try {
+          const raw = localStorage.getItem(legacyKey);
+          if (raw == null) return fallback;
+          if (name === 'themeTokens' || name === 'themePresets') return JSON.parse(raw || '{}') || {};
+          return String(raw);
+        } catch { return fallback; }
+      }
+      function writeAppPreference(name, value) {
+        try {
+          if (name === 'playerMode') NP_PREFS?.set?.('playerMode', String(value ?? ''));
+          else if (name === 'displayMode') NP_PREFS?.set?.('displayMode', String(value ?? ''));
+          else NP_PREFS?.setApp?.(name, value);
+        } catch {}
+        // Keep the embedded theme editor and older cached pages in sync while
+        // the versioned store becomes the authoritative app-shell preference.
+        const legacyKey = LEGACY_APP_KEYS[name];
+        if (!legacyKey) return;
+        try {
+          if (name === 'themeTokens' || name === 'themePresets') localStorage.setItem(legacyKey, JSON.stringify(value || {}));
+          else localStorage.setItem(legacyKey, String(value ?? ''));
+        } catch {}
+      }
       const VALID = new Set(['config.html','diagnostics.html','alexa.html','library-health.html','queue-wizard.html','radio.html','podcasts.html','youtube.html','peppy.html','player.html','visualizer.html','mobile.html','displays.html','controller-kiosk.html','kiosk.html','kiosk-designer.html','theme.html']);
       const frame = document.getElementById('appFrame');
       const viewWrap = document.getElementById('viewWrap');
@@ -694,6 +741,7 @@
             doc.documentElement.style.background = appBg;
             if (frame) frame.style.background = isThemePageNow ? railBg : appBg;
           }
+          writeAppPreference('themeMode', t);
           try { win.localStorage.setItem('np-theme', t); } catch {}
           try { win.postMessage({ type: 'np-theme-sync', theme: t }, '*'); } catch {}
           applyThemeBridgeToFrame();
@@ -714,11 +762,11 @@
       let scrobbleRunning = null;
       let notifyConfigured = false;
       let notifyEnabled = null;
-      let peppyModeState = (() => { try { return String(localStorage.getItem('np.peppyMode') || 'webui'); } catch { return 'webui'; } })();
+      let peppyModeState = String(readAppPreference('playerMode', 'webui') || 'webui');
       let lastPeppyProfile = { skin:'', theme:'', meterType:'', fontMode:'', fontSize:'', linearStyle:'', linearSize:'', meterMode:'', colorMode:'', normalization:100, displayMode:'peppy', ts:0 };
       let peppyHealLastAt = 0;
       let moodeDisplayTakeoverEnabled = true;
-      let screenModeState = (() => { try { return String(localStorage.getItem('np.screenMode') || 'nowplaying'); } catch { return 'nowplaying'; } })();
+      let screenModeState = String(readAppPreference('displayMode', 'nowplaying') || 'nowplaying');
       let alexaEnabledState = null;
       let alexaDomainState = '';
       let collapsedQueueLastLiteSyncAt = 0;
@@ -748,9 +796,6 @@
       let suppressThemeUpdateUntil = 0;
       let lastRadioPresetStations = [];
       const RADIO_QUEUE_PRESETS_KEY = 'nowplaying.radioQueuePresets.v1';
-      const THEME_TOKENS_KEY = 'nowplaying.themeTokens.v1';
-      const THEME_PRESETS_KEY = 'nowplaying.themePresets.v1';
-      const THEME_ACTIVE_PRESET_KEY = 'nowplaying.themeActivePreset.v1';
       const THEME_DEFAULTS = {
         '--theme-bg': '#0c1526',
         '--theme-text': '#e7eefc',
@@ -818,8 +863,7 @@
 
       function loadThemeTokens() {
         try {
-          const raw = localStorage.getItem(THEME_TOKENS_KEY);
-          const parsed = raw ? JSON.parse(raw) : {};
+          const parsed = readAppPreference('themeTokens', {});
           applyThemeTokens(parsed || {});
         } catch {
           applyThemeTokens({});
@@ -828,26 +872,24 @@
 
       function applyThemeModeFromActivePreset(){
         try {
-          const activeName = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
+          const activeName = String(readAppPreference('themeActivePreset', '') || '').trim();
           if (!activeName) return false;
-          const presetsRaw = localStorage.getItem(THEME_PRESETS_KEY);
-          const presets = presetsRaw ? JSON.parse(presetsRaw) : {};
+          const presets = readAppPreference('themePresets', {}) || {};
           const active = normalizeThemePreset(presets[activeName]);
           if (!active) return false;
           const mode = effectivePresetMode(activeName, active);
           const isLight = mode === 'light';
           document.body.classList.toggle('theme-light', isLight);
-          try { localStorage.setItem('np-theme', isLight ? 'light' : 'dark'); } catch {}
+          writeAppPreference('themeMode', isLight ? 'light' : 'dark');
           return true;
         } catch { return false; }
       }
 
       function tryApplyOppositeThemePreset(){
         try {
-          const activeName = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
+          const activeName = String(readAppPreference('themeActivePreset', '') || '').trim();
           if (!activeName) return false;
-          const presetsRaw = localStorage.getItem(THEME_PRESETS_KEY);
-          const presets = presetsRaw ? JSON.parse(presetsRaw) : {};
+          const presets = readAppPreference('themePresets', {}) || {};
           const active = normalizeThemePreset(presets[activeName]);
           if (!active) return false;
 
@@ -876,11 +918,11 @@
 
           const selected = normalizeThemePreset(presets[selectedName]);
           if (!selected?.tokens) return false;
-          localStorage.setItem(THEME_ACTIVE_PRESET_KEY, selectedName);
-          localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(selected.tokens));
+          writeAppPreference('themeActivePreset', selectedName);
+          writeAppPreference('themeTokens', selected.tokens);
           applyThemeTokens(selected.tokens);
           document.body.classList.toggle('theme-light', targetMode === 'light');
-          try { localStorage.setItem('np-theme', targetMode === 'light' ? 'light' : 'dark'); } catch {}
+          writeAppPreference('themeMode', targetMode === 'light' ? 'light' : 'dark');
           // Keep Theme editor iframe state in lockstep with shell toggle selection.
           try { frame?.contentWindow?.postMessage({ type:'np-theme-load-preset', name:selectedName }, '*'); } catch {}
           syncThemeToFrame();
@@ -904,7 +946,7 @@
       const MATRIX_CHARS = 'アァカサタナハマヤャラワ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
       function activePresetName(){
-        try { return String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim(); } catch { return ''; }
+        try { return String(readAppPreference('themeActivePreset', '') || '').trim(); } catch { return ''; }
       }
 
       function shouldEnableMatrixFx(){
@@ -1013,13 +1055,12 @@
           'Red Neon': { tokens: { '--theme-bg':'#000000','--theme-text':'#ff8a8a','--theme-text-secondary':'#d86b6b','--theme-rail-bg':'#0d0101','--theme-frame-fill':'#000000','--theme-rail-border':'#7a1f1f','--theme-tab-bg':'#260303','--theme-tab-text':'#ff8a8a','--theme-tab-border':'#b62f2f','--theme-tab-hover-bg':'#400b0b','--theme-tab-active-bg':'#7a1414','--theme-tab-active-text':'#ffdede','--theme-hero-card-bg':'#2f0404','--theme-hero-card-border':'#b62f2f','--theme-picker-card-bg':'#3f0707','--theme-pill-border':'#ff8a8a','--theme-pill-glow':'#ff2d2d','--theme-card-secondary-fill':'#4d0e0e','--theme-progress-fill':'#ff2d2d','--theme-frame-border':'#7a1f1f' } }
         };
         try {
-          const raw = localStorage.getItem(THEME_PRESETS_KEY);
-          const obj = raw ? JSON.parse(raw) : {};
+          const obj = readAppPreference('themePresets', {}) || {};
           const user = (obj && typeof obj === 'object') ? obj : {};
           const merged = { ...STARTER, ...user };
           try {
             if (Object.keys(merged).length !== Object.keys(user).length) {
-              localStorage.setItem(THEME_PRESETS_KEY, JSON.stringify(merged));
+              writeAppPreference('themePresets', merged);
             }
           } catch {}
           return merged;
@@ -1033,8 +1074,8 @@
           const presets = listThemePresets();
           const p = normalizeThemePreset(presets[n]);
           if (!p?.tokens) return false;
-          localStorage.setItem(THEME_ACTIVE_PRESET_KEY, n);
-          localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(p.tokens));
+          writeAppPreference('themeActivePreset', n);
+          writeAppPreference('themeTokens', p.tokens);
           applyThemeTokens(p.tokens);
 
           // App theme preset is now independent from Peppy skin/theme.
@@ -1049,7 +1090,7 @@
         const presets = listThemePresets();
         const names = Object.keys(presets).sort((a,b)=>a.localeCompare(b));
         quickThemeSelect.innerHTML = '<option value="">Theme preset…</option>' + names.map((n)=>`<option value="${String(n).replace(/"/g,'&quot;')}">${n}</option>`).join('');
-        const active = String(preferred || localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
+        const active = String(preferred || readAppPreference('themeActivePreset', '') || '').trim();
         if (active && presets[active]) quickThemeSelect.value = active;
       }
 
@@ -1063,7 +1104,7 @@
       loadThemeTokens();
       refreshQuickThemeSelect();
       try {
-        const activePreset = String(localStorage.getItem(THEME_ACTIVE_PRESET_KEY) || '').trim();
+        const activePreset = String(readAppPreference('themeActivePreset', '') || '').trim();
         if (activePreset) applyThemePresetByName(activePreset);
       } catch {}
       syncMatrixFx();
@@ -1305,7 +1346,7 @@
             queueMinRatingWrapEl.style.display = ratingsVisible ? 'inline-flex' : 'none';
             if (ratingsVisible && !queueRatingFilterWasVisible && queueMinRatingEl) {
               queueMinRatingEl.value = '0';
-              try { localStorage.setItem(HERO_QUEUE_MIN_RATING_KEY, '0'); } catch {}
+              writeAppPreference('heroQueueMinRating', '0');
             }
             queueRatingFilterWasVisible = ratingsVisible;
           }
@@ -1929,7 +1970,7 @@
           }, 9000);
           if (r.ok && j?.ok) {
             peppyModeState = String(j.mode || 'webui').toLowerCase() === 'peppy' ? 'peppy' : 'webui';
-            try { localStorage.setItem('np.peppyMode', peppyModeState); } catch {}
+            writeAppPreference('playerMode', peppyModeState);
           }
         } catch {}
         const on = String(peppyModeState || 'webui') === 'peppy';
@@ -2030,7 +2071,7 @@
             throw new Error(j?.error || `HTTP ${r.status}`);
           }
           peppyModeState = nextMode;
-          try { localStorage.setItem('np.peppyMode', peppyModeState); } catch {}
+          writeAppPreference('playerMode', peppyModeState);
           try {
             await fetchJsonWithTimeout(`${base}/peppy/last-profile`, {
               method: 'POST',
@@ -2080,7 +2121,7 @@
           }, 12000);
           if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
           screenModeState = next;
-          try { localStorage.setItem('np.screenMode', screenModeState); } catch {}
+          writeAppPreference('displayMode', screenModeState);
           refreshScreenPill();
         } catch (e) {
           console.warn('screen toggle failed', e?.message || e);
@@ -2125,10 +2166,8 @@
           if (Number.isFinite(normalization) && normalization > 0) lastPeppyProfile.normalization = normalization;
           if (displayMode) lastPeppyProfile.displayMode = displayMode;
           lastPeppyProfile.ts = Date.now();
-          try {
-            if (skin) localStorage.setItem('peppy.skin', skin);
-            if (theme) localStorage.setItem('peppy.theme', theme);
-          } catch {}
+          if (skin) writeAppPreference('peppySkin', skin);
+          if (theme) writeAppPreference('peppyTheme', theme);
         } catch {}
       }
 
@@ -2219,8 +2258,8 @@
           if (b.sens) sens = b.sens;
           if (b.smooth) smooth = b.smooth;
           const ls = b.w?.localStorage || a.w?.localStorage;
-          if (!s) s = String(ls?.getItem('peppy.skin') || '').trim();
-          if (!t) t = String(ls?.getItem('peppy.theme') || '').trim();
+          if (!s) s = String(readAppPreference('peppySkin', '') || '').trim();
+          if (!t) t = String(readAppPreference('peppyTheme', '') || '').trim();
           if (!mt) mt = String(ls?.getItem('peppy.meterType') || '').trim();
           if (!fm) fm = String(ls?.getItem('peppy.fontMode') || '').trim();
           if (!fz) fz = String(ls?.getItem('peppy.fontSize') || '').trim();
@@ -2279,7 +2318,7 @@
               smoothing: smooth,
               normalization: Number(lastPeppyProfile?.normalization || 100) || 100,
               displayMode: 'peppy',
-              playerSize: String(localStorage.getItem('player.profile.size') || '1280x400').trim() || '1280x400',
+              playerSize: String(readAppPreference('playerSize', '1280x400') || '1280x400').trim() || '1280x400',
             }),
           }, 8000).catch(() => null);
 
@@ -2389,7 +2428,7 @@
           body: JSON.stringify({
             url: targetUrl,
             displayMode: String(mode || 'peppy'),
-            playerSize: String(localStorage.getItem('player.profile.size') || '1280x400').trim() || '1280x400',
+            playerSize: String(readAppPreference('playerSize', '1280x400') || '1280x400').trim() || '1280x400',
             normalization: Number(lastPeppyProfile?.normalization || 100) || 100,
           }),
         }, 8000);
@@ -2658,8 +2697,8 @@
       function peppyProfileFromActivePreset(){
         try {
           return {
-            skin: String(localStorage.getItem('peppy.skin') || '').trim(),
-            theme: String(localStorage.getItem('peppy.theme') || '').trim(),
+            skin: String(readAppPreference('peppySkin', '') || '').trim(),
+            theme: String(readAppPreference('peppyTheme', '') || '').trim(),
           };
         } catch { return { skin:'', theme:'' }; }
       }
@@ -3769,7 +3808,6 @@
           alb.removeAttribute('disabled');
         }
       });
-      const HERO_QUEUE_COLLAPSED_KEY = 'nowplaying.app.heroQueueCollapsed';
       let queueCollapsed = false;
       let queueExpandLoading = false;
 
@@ -3834,7 +3872,7 @@
       if (hqBtn && hqWrap) {
         let collapsed = false;
         try {
-          const saved = String(localStorage.getItem(HERO_QUEUE_COLLAPSED_KEY) || '').trim().toLowerCase();
+          const saved = String(readAppPreference('heroQueueCollapsed', '') || '').trim().toLowerCase();
           collapsed = (saved === '1' || saved === 'true' || saved === 'yes' || saved === 'on');
         } catch {}
         queueCollapsed = collapsed;
@@ -3847,7 +3885,7 @@
           queueCollapsed = collapsed;
           updateQueueCollapsedUi();
           updateSavePresetsButtonVisibility();
-          try { localStorage.setItem(HERO_QUEUE_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch {}
+          writeAppPreference('heroQueueCollapsed', collapsed ? '1' : '0');
 
           // Never block expand on network.
           if (wasCollapsed && !collapsed) {
@@ -4128,7 +4166,6 @@
       }
 
       const HERO_ARROW_KEYS_ENABLED_KEY = 'nowplaying.app.arrowKeysEnabled';
-      const HERO_QUEUE_MIN_RATING_KEY = 'nowplaying.app.queueMinRating';
       const arrowKeysEl = document.getElementById('heroQueueArrowKeys');
       const consumeEl = document.getElementById('heroQueueConsume');
       const crossfadeEl = document.getElementById('heroQueueCrossfade');
@@ -4167,7 +4204,7 @@
       function readArrowPref(){
         const isOn = (v) => ['1','true','yes','on'].includes(String(v || '').trim().toLowerCase());
         try {
-          const v = localStorage.getItem(HERO_ARROW_KEYS_ENABLED_KEY);
+          const v = readAppPreference('heroArrowKeys', '');
           if (v != null && String(v).trim() !== '') return isOn(v);
         } catch {}
         try {
@@ -4183,7 +4220,7 @@
 
       function writeArrowPref(on){
         const v = on ? '1' : '0';
-        try { localStorage.setItem(HERO_ARROW_KEYS_ENABLED_KEY, v); } catch {}
+        writeAppPreference('heroArrowKeys', v);
         try { sessionStorage.setItem(HERO_ARROW_KEYS_ENABLED_KEY, v); } catch {}
         try { document.cookie = `${HERO_ARROW_KEYS_ENABLED_KEY}=${encodeURIComponent(v)}; path=/; max-age=${60*60*24*365}`; } catch {}
       }
@@ -4278,12 +4315,12 @@
 
       if (queueMinRatingEl) {
         let r0 = 0;
-        try { r0 = Math.max(0, Math.min(5, Number(localStorage.getItem(HERO_QUEUE_MIN_RATING_KEY) || 0) || 0)); } catch {}
+        try { r0 = Math.max(0, Math.min(5, Number(readAppPreference('heroQueueMinRating', 0) || 0) || 0)); } catch {}
         queueMinRatingEl.value = String(r0);
         queueMinRatingEl.addEventListener('change', () => {
           const v = Math.max(0, Math.min(5, Number(queueMinRatingEl.value || 0) || 0));
           queueMinRatingEl.value = String(v);
-          try { localStorage.setItem(HERO_QUEUE_MIN_RATING_KEY, String(v)); } catch {}
+          writeAppPreference('heroQueueMinRating', String(v));
           syncHeroQueue().catch(() => {});
         });
       }
@@ -4408,10 +4445,8 @@
           if (!linearStyle && colorMode) lastPeppyProfile.colorMode = colorMode;
           if (Number.isFinite(normalization) && normalization > 0) lastPeppyProfile.normalization = normalization;
           lastPeppyProfile.ts = Number(d.ts || Date.now()) || Date.now();
-          try {
-            if (skin) localStorage.setItem('peppy.skin', skin);
-            if (theme) localStorage.setItem('peppy.theme', theme);
-          } catch {}
+          if (skin) writeAppPreference('peppySkin', skin);
+          if (theme) writeAppPreference('peppyTheme', theme);
           return;
         }
 
@@ -4430,7 +4465,7 @@
             queueCollapsed = false;
             updateQueueCollapsedUi();
             updateSavePresetsButtonVisibility();
-            try { localStorage.setItem(HERO_QUEUE_COLLAPSED_KEY, '0'); } catch {}
+            writeAppPreference('heroQueueCollapsed', '0');
             setQueueExpandLoading(true);
             setTimeout(() => setQueueExpandLoading(false), 650);
             setTimeout(() => { try { syncHeroQueue(); } catch {} }, 0);
@@ -4479,7 +4514,7 @@
           try {
             if (Date.now() < suppressThemeUpdateUntil) return;
             const tokens = d.tokens && typeof d.tokens === 'object' ? d.tokens : {};
-            localStorage.setItem(THEME_TOKENS_KEY, JSON.stringify(tokens));
+            writeAppPreference('themeTokens', tokens);
             applyThemeTokens(tokens);
             refreshQuickThemeSelect();
             syncMatrixFx();
@@ -4487,7 +4522,7 @@
             if (m === 'light' || m === 'dark') {
               const isLight = (m === 'light');
               document.body.classList.toggle('theme-light', isLight);
-              try { localStorage.setItem('np-theme', isLight ? 'light' : 'dark'); } catch {}
+              writeAppPreference('themeMode', isLight ? 'light' : 'dark');
             }
             syncThemeToFrame();
           } catch {}

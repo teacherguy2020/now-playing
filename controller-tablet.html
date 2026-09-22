@@ -802,10 +802,36 @@
     </div>
   </div>
 
+  <script src="/scripts/client-preferences.js?v=20260922-preferences1"></script>
   <script>
 (() => {
+  const NP_PREFS = window.NPClientPreferences;
   const MOBILE_PROFILE_KEY = "nowplaying.mobile.profile.v2";
   const MOBILE_DEFAULT_PROFILE = { devicePreset: "tablet", theme: "auto", layout: "home-rail", showRecent: true, recentSource: "albums", recentRows: ["albums", "playlists", "podcasts", "radio"], colorPreset: "ocean", recentCount: 18 };
+  function readLocalControllerProfile() {
+    try {
+      if (NP_PREFS?.getControllerProfile) return NP_PREFS.getControllerProfile({});
+    } catch {
+    }
+    try {
+      return JSON.parse(localStorage.getItem(MOBILE_PROFILE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  }
+  function writeLocalControllerProfile(value) {
+    try {
+      if (NP_PREFS?.setControllerProfile) {
+        NP_PREFS.setControllerProfile(value);
+        return;
+      }
+    } catch {
+    }
+    try {
+      localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(value));
+    } catch {
+    }
+  }
   const __u = new URL(location.href);
   if (!__u.searchParams.get("devicePreset")) {
     try {
@@ -844,29 +870,20 @@
         const parsed = JSON.parse(decodeURIComponent(escape(atob(p))));
         const merged = { ...MOBILE_DEFAULT_PROFILE, ...parsed || {} };
         try {
-          localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(merged));
+          writeLocalControllerProfile(merged);
         } catch {
         }
         return merged;
       } catch {
       }
     }
-    try {
-      const fromLocal = JSON.parse(localStorage.getItem(MOBILE_PROFILE_KEY) || "{}");
-      return { ...MOBILE_DEFAULT_PROFILE, ...fromLocal || {} };
-    } catch {
-      return { ...MOBILE_DEFAULT_PROFILE };
-    }
+    return { ...MOBILE_DEFAULT_PROFILE, ...readLocalControllerProfile() };
   }
   let profile = parseProfile();
-  const KEEP_DISPLAY_AWAKE_KEY = "nowplaying.keepDisplayAwake.v1";
   let keepDisplayAwake = false;
   let screenWakeLock = null;
   let screenWakeLockRequest = null;
-  try {
-    keepDisplayAwake = localStorage.getItem(KEEP_DISPLAY_AWAKE_KEY) === "1";
-  } catch {
-  }
+  try { keepDisplayAwake = NP_PREFS?.get?.("wakeLock", false) === true; } catch {}
   async function releaseScreenWakeLock() {
     const sentinel = screenWakeLock;
     screenWakeLock = null;
@@ -905,10 +922,7 @@
   }
   function setKeepDisplayAwake(enabled) {
     keepDisplayAwake = !!enabled;
-    try {
-      localStorage.setItem(KEEP_DISPLAY_AWAKE_KEY, keepDisplayAwake ? "1" : "0");
-    } catch {
-    }
+    try { NP_PREFS?.set?.("wakeLock", keepDisplayAwake); } catch {}
     if (keepDisplayAwake) {
       requestScreenWakeLock().catch(() => null);
     } else {
@@ -973,10 +987,7 @@
       const cur = String(profile && profile.devicePreset || "").toLowerCase();
       if (!cur.startsWith("mobile") && !cur.startsWith("iphone")) profile.devicePreset = "mobile";
     }
-    try {
-      localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile));
-    } catch {
-    }
+    writeLocalControllerProfile(profile);
     try {
       const scrubKeys = ["devicePreset", "theme", "colorPreset", "recentSource", "recentRows", "primaryThemeColor", "secondaryThemeColor", "primaryTextColor", "secondaryTextColor"];
       let changed = false;
@@ -1032,10 +1043,7 @@
     applyPalette(profile.colorPreset || "ocean", profile.theme || "auto", profile.customColors || null);
   }
   async function persistControllerProfile() {
-    try {
-      localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile));
-    } catch {
-    }
+    writeLocalControllerProfile(profile);
     if (USE_LOCAL_PROFILE_ONLY) return;
     try {
       await ensureKey();
@@ -1436,10 +1444,7 @@
           recentSource: serverRecent !== void 0 && serverRecent !== null ? serverRecent : existingRecent !== void 0 && existingRecent !== null ? existingRecent : MOBILE_DEFAULT_PROFILE.recentSource
         };
         if (Q_DEVICE_PRESET) profile.devicePreset = Q_DEVICE_PRESET;
-        try {
-          localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile));
-        } catch {
-        }
+        writeLocalControllerProfile(profile);
         applyProfileUi();
       }
     } catch {
@@ -1674,6 +1679,16 @@
       const hasYearAlready = /\(\s*(19|20)\d{2}\s*\)/.test(baseLine3) || /\b(19|20)\d{2}\b/.test(baseLine3);
       const line3 = hasTrack ? isPodcast ? podcastDate : (baseLine3 + (year && !hasYearAlready ? " (".concat(year, ")") : "")).trim() : "";
       const art = hasTrack ? String((j == null ? void 0 : j.albumArtUrl) || (j == null ? void 0 : j.altArtUrl) || "").trim() || "".concat(base, "/art/current.jpg") : "/icons/icon-192.png";
+      const mediaTrack = hasTrack ? {
+        title: String(dispTitle || title || "").trim(),
+        artist: String(dispArtist || artist || "").trim(),
+        album: String(album || "").trim(),
+        artwork: String(art || "").trim()
+      } : null;
+      try {
+        window.__npCurrentTrack = mediaTrack;
+      } catch {
+      }
       const appleMusicUrl = String((j == null ? void 0 : j.radioAppleMusicUrl) || (j == null ? void 0 : j.appleMusicUrl) || "").trim();
       const fallbackUrl = String((j == null ? void 0 : j.shareUrl) || (j == null ? void 0 : j.radioTrackUrl) || (j == null ? void 0 : j.radioItunesUrl) || (j == null ? void 0 : j.itunesUrl) || "").trim();
       npAlbumUrl = hasTrack ? appleMusicUrl || fallbackUrl : "";
@@ -1697,6 +1712,10 @@
       const sig = "".concat(file, "|").concat(line1, "|").concat(line2, "|").concat(line3, "|").concat(st, "|").concat(art, "|").concat(npAlbumUrl, "|").concat(npPersonnelText, "|").concat(isAlexaMode ? "alexa" : "local");
       if (sig !== npSig) {
         npSig = sig;
+        try {
+          window.dispatchEvent(new CustomEvent("np-current-track-change", { detail: mediaTrack }));
+        } catch {
+        }
         setArtFlip(false);
         if (isRadio) renderRadioFavoritesBack().catch(() => renderPersonnelBack(npPersonnelText));
         else renderPersonnelBack(npPersonnelText);
@@ -1892,11 +1911,10 @@
   let recentRenderedSource = "";
   let npCtrlsAwakeTimer = 0;
   let paneLastSrc = "";
-  const LAST_LIBRARY_PAGE_KEY = "np.controller.lastLibraryPage.v2";
   const setLastLibraryPage = (p) => {
     try {
       const v = String(p || "").trim();
-      if (v.startsWith("kiosk-")) localStorage.setItem(LAST_LIBRARY_PAGE_KEY, v);
+      if (v.startsWith("kiosk-")) NP_PREFS?.set?.("lastLibraryPage", v);
     } catch {
     }
   };
@@ -5518,7 +5536,7 @@
 })();
 
   </script>
-  <script src="/scripts/web-stream.js?v=20260921-alexa-controls2"></script>
+  <script src="/scripts/web-stream.js?v=20260922-mediasession1"></script>
   <script src="/scripts/echo-link-volume.js?v=20260921-echo-link9"></script>
 </body>
 </html>

@@ -58,6 +58,50 @@
     document.body.appendChild(audio);
 
     const log = (...args) => console.log('[Listen on Device]', ...args);
+    let streamActive = false;
+    let currentTrack = null;
+    const mediaSessionSupported = () => 'mediaSession' in navigator && typeof window.MediaMetadata === 'function';
+    const normalizeCurrentTrack = (value) => {
+      if (!value || typeof value !== 'object') return null;
+      const track = {
+        title: String(value.title || '').trim(),
+        artist: String(value.artist || '').trim(),
+        album: String(value.album || '').trim(),
+        artwork: String(value.artwork || '').trim(),
+      };
+      return track.title || track.artist || track.album || track.artwork ? track : null;
+    };
+    const clearMediaSessionMetadata = () => {
+      if (!mediaSessionSupported()) return;
+      try { navigator.mediaSession.metadata = null; } catch {}
+    };
+    const updateMediaSessionMetadata = () => {
+      if (!streamActive || !mediaSessionSupported()) return;
+      if (!currentTrack) {
+        clearMediaSessionMetadata();
+        return;
+      }
+      let artworkSrc = '';
+      try {
+        artworkSrc = currentTrack.artwork ? new URL(currentTrack.artwork, location.href).href : '';
+      } catch {}
+      try {
+        navigator.mediaSession.metadata = new window.MediaMetadata({
+          title: currentTrack.title || '(unknown track)',
+          artist: currentTrack.artist,
+          album: currentTrack.album,
+          artwork: artworkSrc ? [{ src: artworkSrc, sizes: '512x512' }] : [],
+        });
+      } catch (error) {
+        log('MediaSession metadata update failed', error?.message || error);
+      }
+    };
+    const setCurrentTrack = (value) => {
+      currentTrack = normalizeCurrentTrack(value);
+      updateMediaSessionMetadata();
+    };
+    setCurrentTrack(window.__npCurrentTrack);
+    window.addEventListener('np-current-track-change', (event) => setCurrentTrack(event.detail));
     ['loadstart', 'loadedmetadata', 'canplay', 'playing', 'waiting', 'stalled'].forEach((eventName) => {
       audio.addEventListener(eventName, () => log(`AUDIO ${eventName}`, {
         readyState: audio.readyState,
@@ -67,6 +111,8 @@
     });
     audio.addEventListener('error', () => {
       log('AUDIO error', audio.error);
+      streamActive = false;
+      clearMediaSessionMetadata();
       showErrorModal(`AUDIO error${audio.error?.code ? ` (code ${audio.error.code})` : ''}. See Safari Web Inspector console.`);
     });
 
@@ -169,11 +215,17 @@
 
     audio.addEventListener('playing', () => {
       clearTimeout(connectTimer);
+      streamActive = true;
+      updateMediaSessionMetadata();
       paint('on');
       setStatus('Playing on this device');
     });
     audio.addEventListener('pause', () => {
-      if (!audio.currentSrc) paint('off');
+      if (!audio.currentSrc) {
+        streamActive = false;
+        clearMediaSessionMetadata();
+        paint('off');
+      }
     });
 
     button.addEventListener('click', () => {
@@ -183,6 +235,8 @@
         audio.pause();
         audio.removeAttribute('src');
         audio.load();
+        streamActive = false;
+        clearMediaSessionMetadata();
         paint('off');
         return;
       }
@@ -201,6 +255,8 @@
         audio.pause();
         audio.removeAttribute('src');
         audio.load();
+        streamActive = false;
+        clearMediaSessionMetadata();
         paint('off');
         setStatus('Webstream unavailable');
         showErrorModal('The webstream did not begin playing within 12 seconds. Check that moOde HTTP Server output is enabled.');
@@ -209,11 +265,15 @@
         playResolved = true;
         clearTimeout(connectTimer);
         log('play() RESOLVED');
+        streamActive = true;
+        updateMediaSessionMetadata();
         paint('on');
         setStatus('Playing on Device');
       }).catch((error) => {
         clearTimeout(connectTimer);
         log('play() REJECTED', error.name, error.message, error);
+        streamActive = false;
+        clearMediaSessionMetadata();
         paint('off');
         const detail = [error?.name, error?.message].filter(Boolean).join(': ');
         setStatus(`Webstream unavailable${detail ? ` (${detail})` : ''}`);

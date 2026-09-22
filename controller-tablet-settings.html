@@ -67,6 +67,7 @@
 
   </div>
 
+  <script src="/scripts/client-preferences.js?v=20260922-preferences1"></script>
   <script>
   (() => {
     const PRESETS = [
@@ -77,6 +78,7 @@
     ];
     const u = new URL(location.href);
     const KEEP_DISPLAY_AWAKE_KEY = 'nowplaying.keepDisplayAwake.v1';
+    const NP_PREFS = window.NPClientPreferences;
     const themeMode = String(u.searchParams.get('theme') || 'auto').trim().toLowerCase();
     const selected = String(u.searchParams.get('colorPreset') || 'ocean').trim().toLowerCase();
     const sel = document.getElementById('themePreset');
@@ -217,7 +219,7 @@
     rowSelects.forEach((s, i) => s.addEventListener('change', () => send(i)));
 
     try {
-      keepDisplayAwake.checked = localStorage.getItem(KEEP_DISPLAY_AWAKE_KEY) === '1';
+      keepDisplayAwake.checked = NP_PREFS?.get?.('wakeLock', false) === true;
     } catch {}
     const wakeLockSupported = !!window.isSecureContext && !!navigator.wakeLock?.request;
     if (!wakeLockSupported) {
@@ -226,7 +228,10 @@
     }
     keepDisplayAwake.addEventListener('change', () => {
       const enabled = !!keepDisplayAwake.checked;
-      try { localStorage.setItem(KEEP_DISPLAY_AWAKE_KEY, enabled ? '1' : '0'); } catch {}
+      try {
+        if (NP_PREFS?.set) NP_PREFS.set('wakeLock', enabled);
+        else localStorage.setItem(KEEP_DISPLAY_AWAKE_KEY, enabled ? '1' : '0');
+      } catch {}
       try { window.parent?.postMessage({ type: 'np-controller-wake-lock', enabled }, '*'); } catch {}
     });
 

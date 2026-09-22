@@ -484,9 +484,23 @@
     </div>
   </div>
 
+  <script src="/scripts/client-preferences.js?v=20260922-preferences1"></script>
   <script>
     const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v2';
+    const NP_PREFS = window.NPClientPreferences;
     const MOBILE_DEFAULT_PROFILE={devicePreset:'mobile',theme:'auto',layout:'home-rail',showRecent:true,recentSource:'albums',colorPreset:'ocean',recentCount:18};
+    function readLocalControllerProfile(){
+      try {
+        if (NP_PREFS?.getControllerProfile) return NP_PREFS.getControllerProfile({});
+      } catch {}
+      try { return JSON.parse(localStorage.getItem(MOBILE_PROFILE_KEY)||'{}'); } catch { return {}; }
+    }
+    function writeLocalControllerProfile(value){
+      try {
+        if (NP_PREFS?.setControllerProfile) { NP_PREFS.setControllerProfile(value); return; }
+      } catch {}
+      try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(value)); } catch {}
+    }
     const __u = new URL(location.href);
     const IS_PREVIEW = __u.searchParams.get('preview') === '1';
     const Q_DEVICE_PRESET = String(__u.searchParams.get('devicePreset') || '').trim().toLowerCase();
@@ -507,16 +521,11 @@
         try {
           const parsed = JSON.parse(decodeURIComponent(escape(atob(p))));
           const merged = {...MOBILE_DEFAULT_PROFILE, ...(parsed||{})};
-          try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(merged)); } catch {}
+          writeLocalControllerProfile(merged);
           return merged;
         } catch {}
       }
-      try {
-        const fromLocal = JSON.parse(localStorage.getItem(MOBILE_PROFILE_KEY)||'{}');
-        return {...MOBILE_DEFAULT_PROFILE, ...(fromLocal||{})};
-      } catch {
-        return {...MOBILE_DEFAULT_PROFILE};
-      }
+      return {...MOBILE_DEFAULT_PROFILE, ...readLocalControllerProfile()};
     }
     let profile=parseProfile();
 
@@ -559,7 +568,7 @@
         if (!cur.startsWith('mobile') && !cur.startsWith('iphone')) profile.devicePreset = 'mobile';
       }
       // Persist effective profile so embedded controller subpages match theme/palette.
-      try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile)); } catch {}
+      writeLocalControllerProfile(profile);
     }
     function applyDevicePresetUi(){
       const preset = String(profile?.devicePreset || 'mobile').toLowerCase();
@@ -590,9 +599,7 @@
     }
 
     async function persistControllerProfile(){
-      try {
-        localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile));
-      } catch {}
+      writeLocalControllerProfile(profile);
       if (USE_LOCAL_PROFILE_ONLY) return;
       try {
         await ensureKey();
@@ -850,7 +857,7 @@
         if (r.ok && j?.ok && j?.profile) {
           const existing = profile || {};
           profile = { ...MOBILE_DEFAULT_PROFILE, ...existing, ...j.profile, recentSource: (j?.profile?.recentSource ?? existing?.recentSource ?? MOBILE_DEFAULT_PROFILE.recentSource) };
-          try { localStorage.setItem(MOBILE_PROFILE_KEY, JSON.stringify(profile)); } catch {}
+          writeLocalControllerProfile(profile);
           applyProfileUi();
           loadRecentlyAdded().catch(()=>null);
         }
@@ -980,6 +987,13 @@
         const art = hasTrack
           ? (String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`)
           : `/icons/icon-192.png`;
+        const mediaTrack = hasTrack ? {
+          title: String(dispTitle || title || '').trim(),
+          artist: String(dispArtist || artist || '').trim(),
+          album: String(album || '').trim(),
+          artwork: String(art || '').trim(),
+        } : null;
+        try { window.__npCurrentTrack = mediaTrack; } catch {}
 
         const appleMusicUrl = String(j?.radioAppleMusicUrl || j?.appleMusicUrl || '').trim();
         const fallbackUrl = String(j?.shareUrl || j?.radioTrackUrl || j?.radioItunesUrl || j?.itunesUrl || '').trim();
@@ -1005,6 +1019,7 @@
         const sig = `${file}|${line1}|${line2}|${line3}|${st}|${art}|${npAlbumUrl}|${npRating}|${npRatingAllowed ? 1 : 0}|${npPersonnelText}`;
         if (sig !== npSig) {
           npSig = sig;
+          try { window.dispatchEvent(new CustomEvent('np-current-track-change', { detail: mediaTrack })); } catch {}
           setArtFlip(false);
           renderPersonnelBack(npPersonnelText);
           const artEl = document.getElementById('art');
@@ -2725,7 +2740,7 @@
       }, { passive: true });
     })();
 </script>
-  <script src="/scripts/web-stream.js?v=20260921-alexa-controls2"></script>
+  <script src="/scripts/web-stream.js?v=20260922-mediasession1"></script>
   <script src="/scripts/echo-link-volume.js?v=20260921-echo-link9"></script>
 </body>
 </html>
