@@ -6861,15 +6861,6 @@ app.get('/now-playing', async (req, res) => {
       if ((sameAsArt || looksTrackArt) && streamStationName) {
         stationLogoUrl = `${MOODE_BASE_URL}/imagesw/radio-logos/thumbs/${encodeURIComponent(streamStationName)}.jpg`;
       }
-
-      // If the radio metadata guard rejected this item (for example an empty
-      // title from a talk/news/sports stream), never let moOde's generic
-      // coverurl remain as the primary album art. The station logo is the
-      // authoritative art for non-track radio state.
-      if (!radioLookupGuard.allow && stationLogoUrl) {
-        primaryArtUrl = stationLogoUrl;
-        altArtUrl = stationLogoUrl;
-      }
     }
 
     // ✅ rating (piggybacked) for local files only
