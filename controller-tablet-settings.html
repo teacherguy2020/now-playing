@@ -47,6 +47,22 @@
       <input id="keepDisplayAwake" class="toggleInput" type="checkbox" role="switch" aria-label="Keep display awake" />
     </div>
 
+    <div class="toggleRow">
+      <div class="toggleCopy">
+        <label class="toggleLabel" for="webStreamAutoMuteAlsa">Mute moOde local ALSA output while playing on this device</label>
+        <div class="hint">Restores the local output when Listen on Device is stopped. This does not change the webstream audio path.</div>
+      </div>
+      <input id="webStreamAutoMuteAlsa" class="toggleInput" type="checkbox" role="switch" aria-label="Mute moOde local ALSA output while playing on this device" />
+    </div>
+
+    <div class="toggleRow">
+      <div class="toggleCopy">
+        <label class="toggleLabel" for="webStreamStopMpd">Stop moOde playback when stopping Listen on Device</label>
+        <div class="hint">Sends <code>mpc stop</code> to moOde when local webstream playback is stopped.</div>
+      </div>
+      <input id="webStreamStopMpd" class="toggleInput" type="checkbox" role="switch" aria-label="Stop moOde playback when stopping Listen on Device" />
+    </div>
+
     <label for="themePreset">Theme preset</label>
     <select id="themePreset" aria-label="Controller tablet theme preset"></select>
     <div class="hint">Applies immediately.</div>
@@ -85,6 +101,8 @@
     const vizSel = document.getElementById('vizPreset');
     const keepDisplayAwake = document.getElementById('keepDisplayAwake');
     const wakeLockHint = document.getElementById('wakeLockHint');
+    const webStreamAutoMuteAlsa = document.getElementById('webStreamAutoMuteAlsa');
+    const webStreamStopMpd = document.getElementById('webStreamStopMpd');
     const rowIds = ['row1','row2','row3','row4'];
     const rowSelects = rowIds.map((id) => document.getElementById(id));
     const ROW_OPTIONS = [
@@ -220,6 +238,8 @@
 
     try {
       keepDisplayAwake.checked = NP_PREFS?.get?.('wakeLock', false) === true;
+      webStreamAutoMuteAlsa.checked = NP_PREFS?.get?.('webStreamAutoMuteAlsa', false) === true;
+      webStreamStopMpd.checked = NP_PREFS?.get?.('webStreamStopMpd', false) === true;
     } catch {}
     const wakeLockSupported = !!window.isSecureContext && !!navigator.wakeLock?.request;
     if (!wakeLockSupported) {
@@ -233,6 +253,13 @@
         else localStorage.setItem(KEEP_DISPLAY_AWAKE_KEY, enabled ? '1' : '0');
       } catch {}
       try { window.parent?.postMessage({ type: 'np-controller-wake-lock', enabled }, '*'); } catch {}
+    });
+
+    webStreamAutoMuteAlsa.addEventListener('change', () => {
+      try { NP_PREFS?.set?.('webStreamAutoMuteAlsa', !!webStreamAutoMuteAlsa.checked); } catch {}
+    });
+    webStreamStopMpd.addEventListener('change', () => {
+      try { NP_PREFS?.set?.('webStreamStopMpd', !!webStreamStopMpd.checked); } catch {}
     });
 
     let backBusy = false;

@@ -47,6 +47,9 @@
       : `${location.protocol}//${location.hostname || 'nowplaying.local'}:3101`;
     let alexaModeActive = false;
     let alexaControlBusy = false;
+    let autoMutedLocalOutput = false;
+    let autoMuteInFlight = false;
+    let streamSession = 0;
 
     const audio = document.createElement('audio');
     audio.id = 'webStreamAudio';
@@ -102,6 +105,60 @@
     };
     setCurrentTrack(window.__npCurrentTrack);
     window.addEventListener('np-current-track-change', (event) => setCurrentTrack(event.detail));
+
+    const getTrackKey = async () => {
+      const runtime = await fetch(`${controlOrigin}/config/runtime`, { cache: 'no-store' });
+      const runtimeJson = await runtime.json().catch(() => ({}));
+      return String(runtimeJson?.config?.trackKey || '').trim();
+    };
+    const controlRequest = async (path, method = 'GET', body = undefined) => {
+      const key = await getTrackKey();
+      const response = await fetch(`${controlOrigin}${path}`, {
+        method,
+        headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(key ? { 'x-track-key': key } : {}) },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
+      return result;
+    };
+    const outputRequest = (method, body) => controlRequest('/mpd/local-output', method, body);
+    const playbackRequest = (action) => controlRequest('/config/diagnostics/playback', 'POST', { action });
+    const preferenceEnabled = (key) => window.NPClientPreferences?.get?.(key, false) === true;
+
+    const muteLocalOutputForSession = async (session) => {
+      if (!preferenceEnabled('webStreamAutoMuteAlsa') || autoMutedLocalOutput || autoMuteInFlight) return;
+      if (session !== streamSession || audio.paused || !audio.currentSrc) return;
+      autoMuteInFlight = true;
+      try {
+        const status = await outputRequest('GET');
+        if (session !== streamSession || audio.paused || !audio.currentSrc) return;
+        if (status?.output?.enabled) {
+          await outputRequest('POST', { enabled: false });
+          if (session === streamSession && !audio.paused && audio.currentSrc) autoMutedLocalOutput = true;
+        }
+      } catch (error) {
+        log('automatic local ALSA mute failed', error?.message || error);
+      } finally {
+        autoMuteInFlight = false;
+      }
+    };
+    const restoreLocalOutput = async () => {
+      if (!autoMutedLocalOutput) return;
+      autoMutedLocalOutput = false;
+      try {
+        await outputRequest('POST', { enabled: true });
+      } catch (error) {
+        log('automatic local ALSA unmute failed', error?.message || error);
+      }
+    };
+    const runStopActions = async () => {
+      const actions = [restoreLocalOutput()];
+      if (preferenceEnabled('webStreamStopMpd')) {
+        actions.push(playbackRequest('stop').catch((error) => log('automatic mpc stop failed', error?.message || error)));
+      }
+      await Promise.all(actions);
+    };
     ['loadstart', 'loadedmetadata', 'canplay', 'playing', 'waiting', 'stalled'].forEach((eventName) => {
       audio.addEventListener(eventName, () => log(`AUDIO ${eventName}`, {
         readyState: audio.readyState,
@@ -159,20 +216,6 @@
         localOutputButton.title = localOutputEnabled ? 'Mute local moOde output' : 'Unmute local moOde output';
         localOutputButton.setAttribute('aria-pressed', localOutputEnabled ? 'false' : 'true');
       };
-      const outputRequest = async (method, body) => {
-        const controlOrigin = `${location.protocol}//${location.hostname}:3101`;
-        const runtime = await fetch(`${controlOrigin}/config/runtime`, { cache: 'no-store' });
-        const runtimeJson = await runtime.json().catch(() => ({}));
-        const key = String(runtimeJson?.config?.trackKey || '').trim();
-        const response = await fetch(`${controlOrigin}/mpd/local-output`, {
-          method,
-          headers: { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) },
-          ...(body ? { body: JSON.stringify(body) } : {}),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
-        return result;
-      };
       outputRequest('GET').then((result) => paintLocalOutput(result?.output?.enabled)).catch((error) => {
         console.error('[Local Output] initial status failed', error?.message || error);
         localOutputEnabled = true;
@@ -219,6 +262,7 @@
       updateMediaSessionMetadata();
       paint('on');
       setStatus('Playing on this device');
+      void muteLocalOutputForSession(streamSession);
     });
     audio.addEventListener('pause', () => {
       if (!audio.currentSrc) {
@@ -235,14 +279,17 @@
         audio.pause();
         audio.removeAttribute('src');
         audio.load();
+        streamSession += 1;
         streamActive = false;
         clearMediaSessionMetadata();
         paint('off');
+        void runStopActions();
         return;
       }
 
       // Critical diagnostic path: no async work before play().
       clearTimeout(connectTimer);
+      const session = ++streamSession;
       playResolved = false;
       paint('busy');
       log('CLICK; assigning direct source', STREAM_URL);
@@ -255,6 +302,7 @@
         audio.pause();
         audio.removeAttribute('src');
         audio.load();
+        streamSession += 1;
         streamActive = false;
         clearMediaSessionMetadata();
         paint('off');
@@ -269,8 +317,10 @@
         updateMediaSessionMetadata();
         paint('on');
         setStatus('Playing on Device');
+        void muteLocalOutputForSession(session);
       }).catch((error) => {
         clearTimeout(connectTimer);
+        streamSession += 1;
         log('play() REJECTED', error.name, error.message, error);
         streamActive = false;
         clearMediaSessionMetadata();
