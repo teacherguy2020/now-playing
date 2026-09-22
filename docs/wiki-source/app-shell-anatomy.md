@@ -51,6 +51,14 @@ So `app.html` should be understood as both:
 - a shell/container page
 - and a page with its own first-class behavior
 
+## Web-app identity and client-local preferences
+
+`app.html` is the implementation page for the dashboard web app. Its `/app` manifest identity starts directly at `/app.html` and uses the dashboard-specific icon family (`icons/app-180.png`, `app-192.png`, `app-512.png`, and the maskable 512px variant).
+
+The shell loads `scripts/client-preferences.js` and stores its display/player/theme-related preferences in the versioned origin-local `nowplaying.clientSettings.v1` object. A local client ID allows the browser installation to remain distinct without turning the shared server controller profile into a per-device store.
+
+This web-app support does not make the shell offline-first. Live queue, playback, control, and API requests remain network-first, and no service worker is used to cache them.
+
 ## Main anatomical regions
 
 The current page anatomy is best understood as these major regions:

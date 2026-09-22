@@ -42,6 +42,12 @@ Related controller-family files likely relevant over time:
 - `controller.html`
 - shared controller child pages such as queue, albums, artists, playlists, radio, podcasts, and now-playing views
 
+## Installed iPhone web-app behavior
+
+`controller-mobile.html` is the direct implementation page for the mobile/iPhone Home Screen surface. Its manifest uses a stable mobile controller identity, a direct mobile start URL, and the phone-specific icon family. The Apple touch icon and manifest icons are intentionally separate from the dashboard, generic controller, and tablet families so installed surfaces are visually distinguishable.
+
+Mobile/controller preferences use the shared versioned `nowplaying.clientSettings.v1` origin-local store through `scripts/client-preferences.js`, with legacy preference migration retained for cached clients. The mobile page can also use the shared Listen on Device stream script; the persistent audio element and immediate user-gesture startup path remain unchanged by the web-app work.
+
 ## Mobile controller at a glance
 
 If you need the compressed version first, use this model:

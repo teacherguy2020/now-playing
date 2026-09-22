@@ -38,6 +38,16 @@ Related pages already documented:
 - `genre-pane-messaging.md`
 - `visualizer-in-embedded-mode.md`
 
+## Installed iPad web-app behavior
+
+`controller-tablet.html` is the direct implementation page for the iPad/tablet Home Screen app. The tablet and iPad manifests intentionally share the stable `/controller-ipad` identity, direct `controller-tablet.html?devicePreset=ipadpro11-landscape` start URL, and tablet-specific icon family.
+
+The page retains `viewport-fit=cover` and safe-area handling, but uses opaque `black` status-bar treatment. This is important: the prior `black-translucent` setting caused iPadOS to add a dark upper-edge vignette in the installed app, clouding the first action row. The `black` setting removed that effect in a newly created Home Screen app without moving the controller geometry.
+
+The Settings row opens `controller-tablet-settings.html`, where the device-local **Keep display awake** preference is exposed. The parent tablet shell owns the secure-context-gated Screen Wake Lock lifecycle and releases/reacquires it across visibility, focus, pageshow, and orientation changes.
+
+The tablet shell also participates in metadata-only MediaSession support for Listen on Device. Current Now-Playing state supplies title, artist, album, and artwork after the existing gesture-safe persistent audio stream starts. No seek/playback action handlers are added for the continuous MPD stream.
+
 ## What the tablet interface appears to include
 
 Based on current repo inspection and kiosk-branch work, the tablet interface appears to include at least:

@@ -207,9 +207,11 @@ This list is not just navigation. At least some rows expose richer action behavi
 
 ### Settings child pane
 
-The Settings row opens `controller-tablet-settings.html` inside the tablet shell. In addition to theme, visualizer, and recent-row preferences, it contains the local **Keep display awake** toggle. The toggle stores `nowplaying.keepDisplayAwake.v1` in origin-local storage and sends an `np-controller-wake-lock` message to the parent shell.
+The Settings row opens `controller-tablet-settings.html` inside the tablet shell. In addition to theme, visualizer, and recent-row preferences, it contains the local **Keep display awake** toggle. The toggle is stored through `scripts/client-preferences.js` in the versioned `nowplaying.clientSettings.v1` origin-local object and sends an `np-controller-wake-lock` message to the parent shell.
 
 `controller-tablet.html` owns the actual Screen Wake Lock lifecycle. It requests a screen lock only while the preference is enabled and the page is visible, releases it when the page is hidden or the preference is disabled, and retries after pageshow, focus, visibility, and orientation changes. The preference is deliberately not part of the shared server controller profile because it is device/display-specific.
+
+The tablet page is also the direct implementation target for the `/controller-ipad` installed web-app identity. Its manifest uses the tablet icon family, and its opaque `black` status-bar treatment avoids the iPadOS installed-app vignette that appeared with `black-translucent` while retaining `viewport-fit=cover` and the existing safe-area geometry.
 
 ## 6. Recent-content region
 

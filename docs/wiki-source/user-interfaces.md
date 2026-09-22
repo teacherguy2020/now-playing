@@ -15,6 +15,9 @@ This page is branch-oriented rather than file-complete, but these files are espe
 - `controller.html`
 - `controller-mobile.html`
 - `controller-tablet.html`
+- `manifest.webmanifest` and the controller manifest variants
+- `scripts/client-preferences.js`
+- `scripts/web-stream.js`
 - `kiosk.html`
 - `display.html`
 - `config.html`
@@ -30,6 +33,28 @@ If you need the compressed interface model first, use this:
 - **configuration/diagnostics** = operator-facing setup, inspection, and maintenance surfaces
 
 That top-level split is the main reason this page should exist as an umbrella branch page.
+
+## Web-app and Home Screen behavior
+
+The browser-facing surfaces are also installable web apps on iPhone and iPad. The installed-app layer is part of the interface model, not a separate native wrapper:
+
+- `app.html` uses `/app` identity and the dashboard icon family.
+- `controller.html` uses `/controller` identity and the controller icon family.
+- `controller-tablet.html` uses the `/controller-ipad` identity and the tablet icon family.
+- `controller-mobile.html` uses the mobile controller identity and the phone icon family.
+- The iPad/tablet and iPhone/mobile compatibility manifests point directly at their real implementation pages rather than redirect shims.
+- Each installed family has matching Apple touch and manifest PNG assets; existing Home Screen apps may need to be removed and re-added for iPadOS to refresh cached icons or presentation metadata.
+
+The tablet app uses opaque `black` status-bar treatment with `viewport-fit=cover`. This removes the top-edge vignette that iPadOS displayed for the prior `black-translucent` configuration while retaining the installed-app experience and existing safe-area layout.
+
+Client-local web-app behavior is documented in the implementation pages and includes:
+
+- versioned `nowplaying.clientSettings.v1` storage with a local client ID;
+- display-specific **Keep display awake** preference, with Screen Wake Lock enabled only when the browser provides a secure context;
+- metadata-only MediaSession support for Listen on Device, using current Now-Playing title, artist, album, and artwork; and
+- the existing gesture-sensitive persistent audio element and direct MPD HTTP stream.
+
+The live queue and control plane remain network-first. There is no service-worker cache for live playback, queue, control, or MPD traffic.
 
 ## How to use this page
 

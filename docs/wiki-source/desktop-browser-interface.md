@@ -30,6 +30,14 @@ Potentially related files over time:
 - configuration/diagnostics surfaces
 - display-adjacent pages when opened in general browsers
 
+## Web-app behavior
+
+`app.html` is also the dashboard Home Screen web-app entrypoint. Its manifest has the stable `/app` identity, direct `/app.html` start URL, root scope, and a dashboard-specific icon family. The active page links the matching Apple touch icon and 192px/512px manifest icons.
+
+The app shell uses `scripts/client-preferences.js` for versioned origin-local preferences, including theme/display/player settings, queue presentation choices, and a local client identifier. These settings are intentionally client-local; they are not a replacement for the shared server controller profile.
+
+The dashboard remains a live network-first surface. No service worker intercepts queue, playback-control, API, or audio traffic, and no change to the persistent Listen on Device audio path is implied by the Home Screen support.
+
 ## Current working interpretation
 
 At this stage, a good working interpretation is:
