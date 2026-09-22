@@ -6872,6 +6872,21 @@ app.get('/now-playing', async (req, res) => {
       }
     } catch {}
 
+    // Non-track radio (talk/news/sports or incomplete station metadata)
+    // should use station branding before derivatives are cached, never a
+    // generic or stale track cover. The current MPD file is authoritative,
+    // so ordinary local tracks cannot enter this branch.
+    if (isRadio && !radioLookupGuard.allow) {
+      const fallbackLogoUrl = streamStationName
+        ? `${MOODE_BASE_URL}/imagesw/radio-logos/thumbs/${encodeURIComponent(streamStationName)}.jpg`
+        : (file ? `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}` : '');
+      if (fallbackLogoUrl) {
+        stationLogoUrl = fallbackLogoUrl;
+        primaryArtUrl = fallbackLogoUrl;
+        altArtUrl = fallbackLogoUrl;
+      }
+    }
+
     // Build/cache art derivatives based on PRIMARY art (what the UI uses)
     const rawArtUrl = String(primaryArtUrl || '').trim();
     if (rawArtUrl) {
@@ -7377,6 +7392,10 @@ async function resolveBestArtForCurrentSong(song, statusRaw) {
     const stationName = String(song?.name || song?.album || '').trim();
     if (stationName) {
       best = `${MOODE_BASE_URL}/imagesw/radio-logos/thumbs/${encodeURIComponent(stationName)}.jpg`;
+    } else {
+      // Direct MPD streams may not include moOde's station name. Let the
+      // file-aware route resolve configured URL aliases and fetch the logo.
+      best = `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}`;
     }
   }
 
