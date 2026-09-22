@@ -124,7 +124,13 @@
     };
     const outputRequest = (method, body) => controlRequest('/mpd/local-output', method, body);
     const playbackRequest = (action) => controlRequest('/config/diagnostics/playback', 'POST', { action });
-    const preferenceEnabled = (key) => window.NPClientPreferences?.get?.(key, false) === true;
+    const preferenceEnabled = (key) => {
+      try {
+        const stored = JSON.parse(localStorage.getItem('nowplaying.clientSettings.v1') || 'null');
+        if (stored && Object.prototype.hasOwnProperty.call(stored, key)) return stored[key] === true;
+      } catch {}
+      return window.NPClientPreferences?.get?.(key, false) === true;
+    };
 
     const muteLocalOutputForSession = async (session) => {
       if (!preferenceEnabled('webStreamAutoMuteAlsa') || autoMutedLocalOutput || autoMuteInFlight) return;
@@ -295,6 +301,10 @@
       log('CLICK; assigning direct source', STREAM_URL);
       audio.src = STREAM_URL;
       const playPromise = audio.play();
+      // Start the optional control request only after play() has been invoked.
+      // This preserves the iOS user-gesture path while not depending on a
+      // delayed continuous-stream playing/play-promise callback.
+      void muteLocalOutputForSession(session);
       log('play() returned', playPromise);
       connectTimer = setTimeout(() => {
         if (audio.paused || playResolved) return;
