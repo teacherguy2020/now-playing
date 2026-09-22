@@ -55,7 +55,7 @@ When enabled, it watches for the currently playing track to become the final ite
 2. Uses that track as the new Last.fm Vibe seed.
 3. Builds and appends a new queue without intentionally interrupting playback.
 
-The toggle is off by default and is remembered by that browser. Endless Vibe ignores radio, podcast, and other stream entries. If Last.fm cannot produce usable local matches, the seed remains in place rather than being discarded.
+The toggle is off by default and is saved by the Now-Playing server, so it is shared by controllers using that instance. Existing browser-local values are migrated when the queue surface first loads. Endless Vibe ignores radio, podcast, and other stream entries. If Last.fm cannot produce usable local matches, the seed remains in place rather than being discarded.
 
 Endless Vibe is a continuing queue-refresh mode: while the final queued local
 track is playing, it crops the queue to that seed and appends the next

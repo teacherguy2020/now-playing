@@ -15,6 +15,7 @@ import { registerConfigLibraryHealthReadRoutes } from './config.library-health-r
 import { registerConfigLibraryHealthAnimatedArtRoutes } from './config.library-health-animated-art.routes.mjs';
 import { registerConfigRoutes } from './config.routes.mjs';
 import { registerConfigControllerProfileRoutes } from './config.controller-profile.routes.mjs';
+import { registerConfigEndlessVibeRoutes } from './config.endless-vibe.routes.mjs';
 import { registerConfigBrowseRoutes } from './config.browse.routes.mjs';
 import { registerConfigMoodeAudioInfoRoutes } from './config.moode-audio-info.routes.mjs';
 import { registerEchoLinkRoutes } from './echo-link.routes.mjs';
@@ -100,6 +101,10 @@ export function registerAllConfigRoutes(app, deps) {
   });
 
   registerConfigControllerProfileRoutes(app, {
+    requireTrackKey: deps.requireTrackKey,
+  });
+
+  registerConfigEndlessVibeRoutes(app, {
     requireTrackKey: deps.requireTrackKey,
   });
 

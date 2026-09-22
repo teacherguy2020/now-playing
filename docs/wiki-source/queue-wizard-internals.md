@@ -228,7 +228,8 @@ Important operational note from live code tracing:
 The tablet controller's Live Queue surface also supports an **Endless Vibe** toggle in the queue header. This is a continuous queue-extension mode built on the seeded Vibe route rather than a separate Last.fm integration.
 
 Current behavior:
-- the browser-local toggle is off by default and persists in local storage
+- the shared Now-Playing setting is off by default and persists server-side in `data/endless-vibe.json`; legacy browser-local values are migrated when the queue surface first loads
+- the toggle is shared across controllers that use the same Now-Playing instance
 - the controller polls the live queue and triggers only when the current track is the final queue item
 - radio, podcast, and stream entries are excluded
 - the current track's artist, title, and file become the next seed
@@ -259,4 +260,4 @@ This page now gives the wiki a sharper internal model of Queue Wizard:
 - it intersects with discovery/curation features like Last.fm / Vibe
 - its exact route/file contract is the next deeper proofing target, not a vague open question about what Queue Wizard is
 
-_Last updated: 2026-04-21 16:47 CDT (America/Chicago)_
+_Last updated: 2026-09-22 09:45 CDT (America/Chicago)_

@@ -394,9 +394,11 @@ Service-control family:
 Alexa runtime check:
 - `POST /config/alexa/check-domain`
 
-Controller profile:
+Controller profile and shared controller settings:
 - `GET /config/controller-profile`
 - `POST /config/controller-profile`
+- `GET /config/endless-vibe`
+- `POST /config/endless-vibe`
 
 Last.fm helper reads:
 - `GET /config/lastfm/top-tracks`

@@ -364,6 +364,8 @@
     let queueLoadPromise = null;
     let queueLoadQueued = false;
     let endlessVibeEnabled = false;
+    let endlessVibeSettingReady = false;
+    let endlessVibeSettingLoadPromise = null;
     let endlessVibeJobId = '';
     let endlessVibeStarting = false;
     let endlessVibeSeedKey = '';
@@ -372,12 +374,14 @@
     function syncEndlessVibeButton(){
       const btn = document.getElementById('endlessVibeBtn');
       if (!btn) return;
+      btn.disabled = !endlessVibeSettingReady;
       btn.classList.toggle('endlessVibeOn', endlessVibeEnabled);
       btn.setAttribute('aria-pressed', endlessVibeEnabled ? 'true' : 'false');
-      btn.textContent = `Endless Vibe: ${endlessVibeEnabled ? 'On' : 'Off'}`;
+      btn.textContent = endlessVibeSettingReady
+        ? `Endless Vibe: ${endlessVibeEnabled ? 'On' : 'Off'}`
+        : 'Endless Vibe: Loading…';
     }
 
-    try { endlessVibeEnabled = localStorage.getItem('nowplaying.endlessVibe') === '1'; } catch {}
     syncEndlessVibeButton();
 
     function setQueueLoading(on=false){
@@ -450,6 +454,40 @@
       if (!r.ok) return '';
       runtimeTrackKey = String(j?.config?.trackKey || '').trim();
       return runtimeTrackKey;
+    }
+
+    async function loadEndlessVibeSetting({ migrateLegacy = false } = {}){
+      const { r, j } = await fetchJsonWithTimeout(`${base}/config/endless-vibe`, { cache:'no-store' }, 4500);
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+      let enabled = j.enabled === true;
+      if (migrateLegacy && j.configured !== true) {
+        let legacy = null;
+        try {
+          const raw = localStorage.getItem('nowplaying.endlessVibe');
+          if (raw === '1' || raw === '0') legacy = raw === '1';
+        } catch {}
+
+        if (legacy !== null) {
+          await ensureKey();
+          const saved = await fetch(`${base}/config/endless-vibe`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {})},
+            body: JSON.stringify({ enabled: legacy }),
+          });
+          const savedJson = await saved.json().catch(()=>({}));
+          if (saved.ok && savedJson?.ok) {
+            enabled = savedJson.enabled === true;
+            try { localStorage.removeItem('nowplaying.endlessVibe'); } catch {}
+          }
+        }
+      } else if (j.configured === true) {
+        try { localStorage.removeItem('nowplaying.endlessVibe'); } catch {}
+      }
+
+      endlessVibeEnabled = enabled;
+      endlessVibeSettingReady = true;
+      syncEndlessVibeButton();
     }
 
     async function sendPlayback(action, extra={}){
@@ -967,14 +1005,33 @@
     document.getElementById('endlessVibeBtn')?.addEventListener('click', (ev)=>{
       const btn = ev.currentTarget;
       if (!(btn instanceof HTMLButtonElement)) return;
-      endlessVibeEnabled = !endlessVibeEnabled;
-      try { localStorage.setItem('nowplaying.endlessVibe', endlessVibeEnabled ? '1' : '0'); } catch {}
-      if (!endlessVibeEnabled) {
-        endlessVibeSeedKey = '';
-        setVibeBusy(false);
-      }
-      syncEndlessVibeButton();
-      requestQueueLoad();
+      (async ()=>{
+        if (endlessVibeSettingLoadPromise) await endlessVibeSettingLoadPromise.catch(()=>null);
+        const next = !endlessVibeEnabled;
+        btn.disabled = true;
+        try {
+          await ensureKey();
+          const r = await fetch(`${base}/config/endless-vibe`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key': runtimeTrackKey} : {})},
+            body: JSON.stringify({ enabled: next }),
+          });
+          const j = await r.json().catch(()=>({}));
+          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+          endlessVibeEnabled = j.enabled === true;
+          endlessVibeSettingReady = true;
+          if (!endlessVibeEnabled) {
+            endlessVibeSeedKey = '';
+            setVibeBusy(false);
+          }
+          syncEndlessVibeButton();
+          requestQueueLoad();
+        } catch (error) {
+          endlessVibeSettingReady = true;
+          syncEndlessVibeButton();
+          console.warn('Could not save Endless Vibe setting', error);
+        }
+      })().catch(()=>null);
     });
 
     document.getElementById('shuffleQueueBtn')?.addEventListener('click', async (ev)=>{
@@ -1539,9 +1596,18 @@
 
     ensureKey().catch(()=>null); // warm auth key in background; do not block first queue paint
     requestQueueLoad();
+    endlessVibeSettingLoadPromise = loadEndlessVibeSetting({ migrateLegacy: true })
+      .then(()=>requestQueueLoad())
+      .catch(()=>{
+        endlessVibeSettingReady = true;
+        syncEndlessVibeButton();
+      });
     setTimeout(()=>{ maybeScrollToHead(true); }, 450);
     // Light-touch background sync (avoid constant thumbnail churn).
-    pollTimer = setInterval(()=>{ requestQueueLoad(); }, 15000);
+    pollTimer = setInterval(()=>{
+      requestQueueLoad();
+      loadEndlessVibeSetting().catch(()=>null);
+    }, 15000);
   
     // Pull-to-refresh (controller pages)
     (function enablePullToRefresh(){
