@@ -206,7 +206,7 @@ export function registerArtRoutes(app, deps) {
       const best = await resolveBestArtForCurrentSong(song, statusRaw);
       if (!best) return res.status(404).end();
 
-      return serveCachedOrResizedSquare(res, best, 640, artPath640ForKey, deps);
+      return await serveCachedOrResizedSquare(res, best, 640, artPath640ForKey, deps);
     } catch (e) {
       console.warn('[art/current] failed:', e?.message || String(e));
       return res.status(404).end();
@@ -270,7 +270,7 @@ export function registerArtRoutes(app, deps) {
           return res.status(200).send(await fs.promises.readFile(pbg));
         }
 
-        return serveCachedOrBlurredBg(res, key, 640, artPathBgForKey, deps);
+        return await serveCachedOrBlurredBg(res, key, 640, artPathBgForKey, deps);
       }
 
       const song = await (typeof fetchCurrentSong === 'function'
@@ -282,7 +282,7 @@ export function registerArtRoutes(app, deps) {
       const best = await resolveBestArtForCurrentSong(song, statusRaw);
       if (!best) return res.status(404).end();
 
-      return serveCachedOrBlurredBg(res, best, 640, artPathBgForKey, deps);
+      return await serveCachedOrBlurredBg(res, best, 640, artPathBgForKey, deps);
     } catch (e) {
       console.warn('[art/current_bg] failed:', e?.message || String(e));
       return res.status(404).end();
