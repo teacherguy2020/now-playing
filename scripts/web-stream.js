@@ -124,6 +124,11 @@
     };
     const outputRequest = (method, body) => controlRequest('/mpd/local-output', method, body);
     const playbackRequest = (action) => controlRequest('/config/diagnostics/playback', 'POST', { action });
+    const notifyLocalOutputState = (enabled) => {
+      try {
+        window.dispatchEvent(new CustomEvent('np-local-output-change', { detail: { enabled: enabled === true } }));
+      } catch {}
+    };
     const preferenceEnabled = (key) => {
       try {
         const stored = JSON.parse(localStorage.getItem('nowplaying.clientSettings.v1') || 'null');
@@ -140,7 +145,8 @@
         const status = await outputRequest('GET');
         if (session !== streamSession || audio.paused || !audio.currentSrc) return;
         if (status?.output?.enabled) {
-          await outputRequest('POST', { enabled: false });
+          const result = await outputRequest('POST', { enabled: false });
+          notifyLocalOutputState(result?.output?.enabled === true);
           if (session === streamSession && !audio.paused && audio.currentSrc) autoMutedLocalOutput = true;
         }
       } catch (error) {
@@ -153,7 +159,8 @@
       if (!autoMutedLocalOutput) return;
       autoMutedLocalOutput = false;
       try {
-        await outputRequest('POST', { enabled: true });
+        const result = await outputRequest('POST', { enabled: true });
+        notifyLocalOutputState(result?.output?.enabled === true);
       } catch (error) {
         log('automatic local ALSA unmute failed', error?.message || error);
       }
@@ -222,6 +229,9 @@
         localOutputButton.title = localOutputEnabled ? 'Mute local moOde output' : 'Unmute local moOde output';
         localOutputButton.setAttribute('aria-pressed', localOutputEnabled ? 'false' : 'true');
       };
+      window.addEventListener('np-local-output-change', (event) => {
+        paintLocalOutput(event?.detail?.enabled === true);
+      });
       outputRequest('GET').then((result) => paintLocalOutput(result?.output?.enabled)).catch((error) => {
         console.error('[Local Output] initial status failed', error?.message || error);
         localOutputEnabled = true;
