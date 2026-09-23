@@ -26,8 +26,7 @@ metadata, queue control, displays, controllers, integrations, and operations.
 
 ### Existing user
 
-- Playback, queue, library, radio, podcasts, YouTube, Alexa, and Listen on
-  Device → [Using Now Playing](using-now-playing.md)
+- Playback, queue, library, radio, podcasts, YouTube, Alexa, and Listen on Device → [Using Now Playing](using-now-playing.md)
 - Controller/tablet/phone surfaces → [User Interfaces](user-interfaces.md)
 - Displays, kiosk, Peppy, Player, and Visualizer → [Displays](displays.md)
 - Configuration and maintenance → [Configuration and Administration](configuration-and-administration.md)
@@ -74,22 +73,10 @@ metadata, queue control, displays, controllers, integrations, and operations.
 
 ## Developer and operator branches
 
-- API: [api-service-overview.md](api-service-overview.md),
-  [api-state-truth-endpoints.md](api-state-truth-endpoints.md),
-  [api-playback-and-queue-endpoints.md](api-playback-and-queue-endpoints.md),
-  [api-config-and-runtime-endpoints.md](api-config-and-runtime-endpoints.md),
-  [api-endpoint-catalog.md](api-endpoint-catalog.md)
-- Configuration: [config-interface.md](config-interface.md),
-  [config-feature-breakdown.md](config-feature-breakdown.md),
-  [diagnostics-interface.md](diagnostics-interface.md),
-  [install-and-validation.md](install-and-validation.md)
-- Frontend anatomy: [app-shell-anatomy.md](app-shell-anatomy.md),
-  [controller-tablet-anatomy.md](controller-tablet-anatomy.md),
-  [controller-mobile-anatomy.md](controller-mobile-anatomy.md),
-  [now-playing-surface-variants.md](now-playing-surface-variants.md)
-- Operations: [deployment-and-ops.md](deployment-and-ops.md),
-  [local-environment.md](local-environment.md),
-  [backend-change-verification-runbook.md](backend-change-verification-runbook.md)
+- API: [api-service-overview.md](api-service-overview.md), [api-state-truth-endpoints.md](api-state-truth-endpoints.md), [api-playback-and-queue-endpoints.md](api-playback-and-queue-endpoints.md), [api-config-and-runtime-endpoints.md](api-config-and-runtime-endpoints.md), [api-endpoint-catalog.md](api-endpoint-catalog.md)
+- Configuration: [config-interface.md](config-interface.md), [config-feature-breakdown.md](config-feature-breakdown.md), [diagnostics-interface.md](diagnostics-interface.md), [install-and-validation.md](install-and-validation.md)
+- Frontend anatomy: [app-shell-anatomy.md](app-shell-anatomy.md), [controller-tablet-anatomy.md](controller-tablet-anatomy.md), [controller-mobile-anatomy.md](controller-mobile-anatomy.md), [now-playing-surface-variants.md](now-playing-surface-variants.md)
+- Operations: [deployment-and-ops.md](deployment-and-ops.md), [local-environment.md](local-environment.md), [backend-change-verification-runbook.md](backend-change-verification-runbook.md)
 
 ## Documentation source and publication rules
 
@@ -97,21 +84,13 @@ Edit `docs/wiki-source/`. It is the only authoritative editable source for
 substantive Now Playing documentation.
 
 - `docs/wiki-site/` is generated browseable HTML. Do not hand-edit it.
-- The GitHub Wiki is a published copy. Do not author feature documentation
-  directly there; use `scripts/publish_github_wiki.py`. The publisher
-  intentionally excludes installation-local host maps such as
-  `local-environment.md` and redacts known installation-specific host/path
-  values in public operational copies.
-- `docs/compatibility-guides/` contains retained numbered compatibility and
-  feature guides. `docs/runbooks/` contains selected standalone operational
-  and recovery procedures. Neither directory is the documentation hierarchy
-  for new work.
+- The GitHub Wiki is a published copy. Do not author feature documentation directly there; use `scripts/publish_github_wiki.py`. The publisher intentionally excludes installation-local host maps such as `local-environment.md` and redacts known installation-specific host/path values in public operational copies.
+- `docs/compatibility-guides/` contains retained numbered compatibility and feature guides for old links, bookmarks, and concise feature references. `docs/runbooks/` contains standalone deployment, upgrade, display-recovery, and validation procedures. Both are secondary to `docs/wiki-source/`; new substantive documentation belongs in the canonical source.
 - `docs/references/` contains provenance and supporting reference material.
-- `docs/wiki-source/sources/`, `reports/`, and structured metadata folders are
-  support material for the wiki tooling, not alternate authoring locations.
+- `docs/wiki-source/sources/`, `reports/`, and structured metadata folders are support material for the wiki tooling, not alternate authoring locations.
 
 See [documentation-sources-audit.md](documentation-sources-audit.md) for the
-source comparison and numbered-guide disposition.
+source comparison and secondary-guide disposition.
 
 ## Wiki maintenance
 
