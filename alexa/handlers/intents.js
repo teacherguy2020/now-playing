@@ -310,7 +310,40 @@ function createIntentHandlers(deps) {
     },
     async handle(handlerInput) {
       try {
-        const snap = await getStableNowPlayingSnapshot();
+        let snap = null;
+
+        // NearlyFinished advances MPD past the track it has just ENQUEUED so
+        // the live queue stays primed. In that state /now-playing is the
+        // *following* live-queue item, not necessarily Alexa's immediate
+        // successor. Prefer the successor marker when it belongs to the
+        // track Alexa is currently playing; fall back to MPD head otherwise.
+        try {
+          const state = await apiGetWasPlaying();
+          const wasPlaying = state && state.wasPlaying ? state.wasPlaying : state;
+          const contextToken = safeStr(handlerInput?.requestEnvelope?.context?.AudioPlayer?.token);
+          const currentToken = contextToken || safeStr(wasPlaying?.token);
+          const queuedToken = safeStr(wasPlaying?.queuedNextToken);
+          const queuedForToken = safeStr(wasPlaying?.queuedNextForToken);
+          const queued = queuedToken && typeof parseTokenB64 === 'function'
+            ? parseTokenB64(queuedToken)
+            : null;
+
+          if (currentToken && queuedForToken === currentToken && queued && queued.file) {
+            snap = {
+              file: safeStr(queued.file),
+              songpos: safeStr(queued.pos0),
+              songid: safeStr(queued.songid),
+              title: decodeHtmlEntities(safeStr(queued.title)),
+              artist: decodeHtmlEntities(safeStr(queued.artist)),
+              album: decodeHtmlEntities(safeStr(queued.album)),
+            };
+            console.log('NextIntent: using recorded Alexa successor:', snap.file);
+          }
+        } catch (e) {
+          console.log('NextIntent: successor marker unavailable:', e && e.message ? e.message : String(e));
+        }
+
+        if (!snap) snap = await getStableNowPlayingSnapshot();
         if (!snap || !snap.file) {
           return speak(handlerInput, 'I cannot skip right now.', false);
         }

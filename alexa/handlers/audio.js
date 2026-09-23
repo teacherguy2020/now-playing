@@ -127,9 +127,14 @@ function createAudioHandlers(deps) {
       return { directive: null, reason: 'build-failed' };
     }
 
+    let successorToken = candidateToken;
     try {
       const enqToken = enq.audioItem && enq.audioItem.stream ? enq.audioItem.stream.token : '';
       const enqUrl = enq.audioItem && enq.audioItem.stream ? enq.audioItem.stream.url : '';
+      // Keep the exact token Alexa will receive so Skip can honor an already
+      // queued successor instead of selecting the next MPD head after this
+      // track has been removed from the live queue.
+      if (enqToken) successorToken = enqToken;
       if (enqToken && enqUrl) rememberIssuedStream(enqToken, enqUrl, 0);
     } catch (e) {}
 
@@ -141,6 +146,21 @@ function createAudioHandlers(deps) {
     }
 
     markEnqueuedToken(candidateToken, prevToken);
+
+    // Record the successor before Alexa receives the directive. If Alexa sends
+    // PlaybackFinished for the previous track before PlaybackStarted for the
+    // successor, this marker prevents the final-track fallback from ending
+    // Alexa Mode during a normal transition.
+    try {
+      const marked = await postWasPlaying({
+        active: true,
+        queuedNextToken: successorToken,
+        queuedNextForToken: prevToken,
+      }, `${logPrefix} successor:`);
+      if (!marked) console.log(logPrefix, 'successor marker was not persisted');
+    } catch (e) {
+      console.log(logPrefix, 'successor marker failed:', e && e.message ? e.message : String(e));
+    }
 
     console.log(logPrefix, 'ENQUEUE next:', nextFile, 'pos0=', nextPos0, 'songid=', nextSongId);
     console.log(logPrefix, 'enqueue directive:', JSON.stringify(enq, null, 2));
@@ -197,7 +217,15 @@ function createAudioHandlers(deps) {
           console.log('AudioPlayer event:', eventType);
           console.log('PlaybackStopped: token prefix:', safeStr(token).slice(0, 160), 'offsetMs=', off);
           rememberStop(token, off);
-          await postWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() }, 'PlaybackStopped:');
+          await postWasPlaying({
+            token: safeStr(token),
+            active: false,
+            stoppedAt: Date.now(),
+            pendingNaturalFinishToken: '',
+            pendingNaturalFinishAt: 0,
+            queuedNextToken: '',
+            queuedNextForToken: '',
+          }, 'PlaybackStopped:');
         } catch (e) {
           console.log('PlaybackStopped handler failed:', e && e.message ? e.message : String(e));
         }
@@ -228,6 +256,8 @@ function createAudioHandlers(deps) {
               active: true,
               pendingNaturalFinishToken: '',
               pendingNaturalFinishAt: 0,
+              queuedNextToken: '',
+              queuedNextForToken: '',
             }, 'PlaybackStarted:');
             if (ok) console.log('PlaybackStarted: set was-playing ok for file:', safeStr(p.file));
           } catch (e) {
@@ -257,7 +287,15 @@ function createAudioHandlers(deps) {
       if (eventType === 'AudioPlayer.PlaybackFailed') {
         try {
           console.log('AudioPlayer event:', eventType);
-          await postWasPlaying({ token: safeStr(token), active: false, stoppedAt: Date.now() }, 'PlaybackFailed:');
+          await postWasPlaying({
+            token: safeStr(token),
+            active: false,
+            stoppedAt: Date.now(),
+            pendingNaturalFinishToken: '',
+            pendingNaturalFinishAt: 0,
+            queuedNextToken: '',
+            queuedNextForToken: '',
+          }, 'PlaybackFailed:');
           return handlerInput.responseBuilder.getResponse();
         } catch (e) {
           console.log('PlaybackFailed handler failed:', e && e.message ? e.message : String(e));
@@ -292,6 +330,8 @@ function createAudioHandlers(deps) {
               active: true,
               pendingNaturalFinishToken: finishedToken,
               pendingNaturalFinishAt: Date.now(),
+              queuedNextToken: '',
+              queuedNextForToken: '',
             }, 'NearlyFinished:');
             console.log('NearlyFinished: persisted final-track candidate');
           }
@@ -311,11 +351,51 @@ function createAudioHandlers(deps) {
           let isFinalTrack = false;
           let finalCandidateRead = false;
           try {
-            const state = await apiGetWasPlaying();
-            const wasPlaying = state && state.wasPlaying ? state.wasPlaying : state;
+            const inspectFinalState = (state) => {
+              const wasPlaying = state && state.wasPlaying ? state.wasPlaying : state;
+              const pendingFinalToken = safeStr(wasPlaying && wasPlaying.pendingNaturalFinishToken);
+              const currentToken = safeStr(wasPlaying && wasPlaying.token);
+              const queuedNextToken = safeStr(wasPlaying && wasPlaying.queuedNextToken);
+              const queuedNextForToken = safeStr(wasPlaying && wasPlaying.queuedNextForToken);
+              const hasQueuedSuccessor = !!finishedToken
+                && queuedNextForToken === finishedToken
+                && !!queuedNextToken;
+              const modeIsActive = !!(wasPlaying?.modeActive || state?.nowPlaying?.modeActive);
+              const pendingFinalMatch = modeIsActive && !!finishedToken && pendingFinalToken === finishedToken;
+              const activeTokenFallback = !!finishedToken
+                && modeIsActive
+                && !!wasPlaying?.active
+                && currentToken === finishedToken
+                && !hasQueuedSuccessor;
+
+              return {
+                isFinalTrack: pendingFinalMatch || activeTokenFallback,
+                pendingFinalMatch,
+                activeTokenFallback,
+              };
+            };
+
+            let state = await apiGetWasPlaying();
             finalCandidateRead = true;
-            isFinalTrack = !!finishedToken
-              && safeStr(wasPlaying && wasPlaying.pendingNaturalFinishToken) === finishedToken;
+
+            let inspected = inspectFinalState(state);
+            // PlaybackFinished can race PlaybackNearlyFinished for the same
+            // track. Give the queue handoff time to persist its successor
+            // marker before treating an active token as the final track.
+            if (inspected.activeTokenFallback && !inspected.pendingFinalMatch) {
+              await new Promise((resolve) => setTimeout(resolve, 1500));
+              try {
+                state = await apiGetWasPlaying();
+                inspected = inspectFinalState(state);
+              } catch (e) {
+                console.log('PlaybackFinished: final-track grace recheck failed:', e && e.message ? e.message : String(e));
+              }
+            }
+
+            isFinalTrack = inspected.isFinalTrack;
+            if (inspected.activeTokenFallback && !inspected.pendingFinalMatch) {
+              console.log('PlaybackFinished: using active-token final-track fallback');
+            }
           } catch (e) {
             console.log('PlaybackFinished: could not read final-track candidate:', e && e.message ? e.message : String(e));
           }
@@ -324,6 +404,8 @@ function createAudioHandlers(deps) {
             token: finishedToken,
             active: false,
             stoppedAt: Date.now(),
+            queuedNextToken: '',
+            queuedNextForToken: '',
             ...(!finalCandidateRead || isFinalTrack ? {} : { pendingNaturalFinishToken: '', pendingNaturalFinishAt: 0 }),
           }, 'PlaybackFinished:');
 

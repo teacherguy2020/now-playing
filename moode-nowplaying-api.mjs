@@ -210,7 +210,7 @@ import { log } from './src/lib/log.mjs';
 import { execFileStrict } from './src/lib/exec.mjs';
 import {
   mpdEscapeValue, mpdHasACK, parseMpdFirstBlock, parseMpdKeyVals,
-  mpdGetStatus, mpdPlay, mpdPause, mpdStop, mpdQueryRaw
+  mpdGetStatus, mpdPlay, mpdPlayId, mpdPause, mpdStop, mpdQueryRaw
 } from './src/services/mpd.service.mjs';
 import { registerRatingRoutes } from './src/routes/rating.routes.mjs';
 import { registerQueueRoutes } from './src/routes/queue.routes.mjs';
@@ -2646,6 +2646,8 @@ let alexaWasPlaying = {
   modeActive: false,
   pendingNaturalFinishToken: '',
   pendingNaturalFinishAt: 0,
+  queuedNextToken: '',
+  queuedNextForToken: '',
   active: false,
   updatedAt: 0,
 };
@@ -2691,6 +2693,8 @@ async function clearAlexaWasPlayingState() {
     modeActive: false,
     pendingNaturalFinishToken: '',
     pendingNaturalFinishAt: 0,
+    queuedNextToken: '',
+    queuedNextForToken: '',
   };
   await outputSync;
   return alexaWasPlaying;
@@ -2723,6 +2727,8 @@ async function setAlexaModeState(active) {
       modeActive: false,
       pendingNaturalFinishToken: '',
       pendingNaturalFinishAt: 0,
+      queuedNextToken: '',
+      queuedNextForToken: '',
     };
     await outputSync;
     return alexaWasPlaying;
@@ -2756,6 +2762,8 @@ async function setAlexaModeState(active) {
     modeActive: true,
     pendingNaturalFinishToken: '',
     pendingNaturalFinishAt: 0,
+    queuedNextToken: '',
+    queuedNextForToken: '',
   };
   await outputSync;
   return alexaWasPlaying;
@@ -2971,6 +2979,21 @@ app.post('/alexa/was-playing', async (req, res) => {
     const nowTs = Date.now();
 
     const incoming = (req.body && typeof req.body === 'object') ? req.body : {};
+
+    // Alexa can deliver a previous track's PlaybackFinished after the
+    // successor's PlaybackStarted. Do not let that stale inactive event
+    // overwrite the currently active successor; the real successor finish
+    // must remain eligible for natural Alexa-mode cleanup.
+    const incomingToken = String(incoming?.token || '').trim();
+    const currentToken = String(alexaWasPlaying?.token || '').trim();
+    if (!active
+      && alexaWasPlaying?.active
+      && incomingToken
+      && currentToken
+      && incomingToken !== currentToken) {
+      return res.json({ ok: true, ignoredStaleInactive: true, wasPlaying: alexaWasPlaying });
+    }
+
     const merged = { ...alexaWasPlaying };
     for (const [k, v] of Object.entries(incoming)) {
       if (['active', 'startedAt', 'stoppedAt', 'updatedAt'].includes(k)) continue;
@@ -3014,6 +3037,8 @@ app.post('/alexa/was-playing', async (req, res) => {
       modeActive: alexaModeActive,
       pendingNaturalFinishToken: String(incoming?.pendingNaturalFinishToken ?? merged.pendingNaturalFinishToken ?? '').trim(),
       pendingNaturalFinishAt: Number.parseInt(String(incoming?.pendingNaturalFinishAt ?? merged.pendingNaturalFinishAt ?? 0).trim(), 10) || 0,
+      queuedNextToken: String(incoming?.queuedNextToken ?? merged.queuedNextToken ?? '').trim(),
+      queuedNextForToken: String(incoming?.queuedNextForToken ?? merged.queuedNextForToken ?? '').trim(),
       startedAt: Number.parseInt(String(incoming?.startedAt || merged.startedAt || nowTs).trim(), 10) || nowTs,
       stoppedAt: active ? 0 : (Number.parseInt(String(incoming?.stoppedAt || nowTs).trim(), 10) || nowTs),
       active,
@@ -3315,12 +3340,82 @@ async function mpdPrimeIfIdle() {
     return { primed: false, skipped: true, reason: 'empty_playlist', state: state };
   }
 
-  // 4) Only now do we "manufacture" a current song
-  await mpdPlay();          // or mpdPlay(0)
-  await sleep(850);         // IMPORTANT: give moOde time to form currentsong/status JSON
-  await mpdPause(true);     // or await mpdStop();
+  // 4) When MPD random mode is enabled, physically shuffle the remaining
+  // queue before choosing its head. `playid` intentionally selects an exact
+  // ID, so it would otherwise bypass MPD's random-selection behavior.
+  const statusRaw = await mpdQueryRaw('status');
+  const randomOn = String(parseMpdKeyVals(statusRaw)?.random || '0').trim() === '1';
+  let shuffled = false;
+  if (randomOn && playlistlength > 1) {
+    const shuffleRaw = await mpdQueryRaw('shuffle');
+    if (mpdHasACK(shuffleRaw)) {
+      throw new Error('MPD rejected queue shuffle during prime');
+    }
+    shuffled = true;
+  }
 
-  return { primed: true, skipped: false, reason: 'idle_primed', state_before: state };
+  // 5) Select the queue head by stable MPD song ID, not by position. A
+  // positional `play` can race with queue edits while the prime is settling.
+  const head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1', 10000));
+  const songId = Number.parseInt(String(head?.id ?? '').trim(), 10);
+  if (!Number.isSafeInteger(songId) || songId < 0) {
+    return {
+      primed: false,
+      skipped: true,
+      reason: 'queue_head_missing_songid',
+      state: state,
+      random: randomOn,
+      shuffled,
+    };
+  }
+
+  let playidSent = false;
+  try {
+    await mpdPlayId(songId);
+    playidSent = true;
+
+    // Wait for both status and currentsong to identify the exact stable song
+    // before pausing. This keeps the prime useful to callers that immediately
+    // inspect the selected/current track.
+    const waitStartedAt = Date.now();
+    let ready = null;
+    for (let i = 0; i < 30; i++) {
+      const status = parseMpdKeyVals(await mpdQueryRaw('status'));
+      const statusSongId = Number.parseInt(String(status?.songid ?? '').trim(), 10);
+      if (statusSongId === songId) {
+        const current = parseMpdFirstBlock(await mpdQueryRaw('currentsong'));
+        const currentSongId = Number.parseInt(String(current?.id ?? '').trim(), 10);
+        if (currentSongId === songId) {
+          ready = { status, current };
+          break;
+        }
+      }
+      await sleep(50);
+    }
+
+    if (!ready) {
+      throw new Error(`MPD did not select queue head songid ${songId}`);
+    }
+
+    await mpdPause(true);
+    return {
+      primed: true,
+      skipped: false,
+      reason: 'idle_primed',
+      state_before: state,
+      random: randomOn,
+      shuffled,
+      songId,
+      song: Number.parseInt(String(ready.status?.song ?? '').trim(), 10),
+      waitMs: Date.now() - waitStartedAt,
+    };
+  } catch (e) {
+    // Never leave audible playback running if the readiness check fails.
+    if (playidSent) {
+      try { await mpdPause(true); } catch {}
+    }
+    throw e;
+  }
 }
 
 /* =========================

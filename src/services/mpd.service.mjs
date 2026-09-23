@@ -80,6 +80,19 @@ export async function mpdPlay(pos) {
   return true;
 }
 
+export async function mpdPlayId(songId) {
+  const id = Number(songId);
+  if (!Number.isSafeInteger(id) || id < 0) {
+    throw new Error('invalid MPD song id');
+  }
+
+  const raw = await mpdQueryRaw(`playid ${id}`);
+  if (mpdHasACK(raw)) {
+    throw new Error(`MPD rejected playid ${id}`);
+  }
+  return true;
+}
+
 export async function mpdPause(on) {
   const v = on ? 1 : 0;
   await mpdQueryRaw(`pause ${v}`);
