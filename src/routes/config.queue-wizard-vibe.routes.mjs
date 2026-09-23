@@ -144,10 +144,9 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
     const statusRaw = await mpdQueryRaw('status');
     if (!statusRaw || (typeof mpdHasACK === 'function' && mpdHasACK(statusRaw))) return null;
     const status = parseMpdKeyVals(statusRaw);
-    const state = String(status?.state || '').trim().toLowerCase();
     const songPos = Number(status?.song);
     const playlistLength = Number(status?.playlistlength);
-    if (state !== 'play' || !Number.isInteger(songPos) || songPos < 0 || !Number.isInteger(playlistLength) || playlistLength <= 0) return null;
+    if (!Number.isInteger(songPos) || songPos < 0 || !Number.isInteger(playlistLength) || playlistLength <= 0) return null;
     if (songPos !== playlistLength - 1) return null;
 
     const currentRaw = await mpdQueryRaw('currentsong');
@@ -158,7 +157,13 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
     const title = String(song.title || song.name || '').trim();
     if (!file || !artist || !title || file.includes('://') || isPodcastLikeSong(song)) return null;
 
-    return { file, artist, title, seedKey: `${file}|${artist}|${title}` };
+    return {
+      file,
+      artist,
+      title,
+      seedKey: `${file}|${artist}|${title}`,
+      mpdState: String(status?.state || '').trim().toLowerCase(),
+    };
   }
 
   function hasActiveVibeJob() {
@@ -881,6 +886,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         jobId: result.jobId,
         seedArtist: seed.artist,
         seedTitle: seed.title,
+        mpdState: seed.mpdState,
       });
     } catch (error) {
       log?.debug?.('[endless-vibe] watcher failed:', error?.message || String(error));
