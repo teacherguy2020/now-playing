@@ -17,6 +17,15 @@ function withMillsTransition(task) {
   return run;
 }
 
+function unescapeMpdValue(value) {
+  return String(value ?? '').replace(/\\([\\"]|n|r|t)/g, (_, token) => {
+    if (token === 'n') return '\n';
+    if (token === 'r') return '\r';
+    if (token === 't') return '\t';
+    return token;
+  });
+}
+
 function parseMpdBlocks(raw) {
   return String(raw || '')
     .split(/\r?\n(?=file:\s*)/i)
@@ -24,7 +33,7 @@ function parseMpdBlocks(raw) {
       const out = {};
       String(block).split(/\r?\n/).forEach((line) => {
         const i = line.indexOf(':');
-        if (i >= 0) out[line.slice(0, i).trim().toLowerCase()] = line.slice(i + 1).trim();
+        if (i >= 0) out[line.slice(0, i).trim().toLowerCase()] = unescapeMpdValue(line.slice(i + 1).trim());
       });
       return out;
     })

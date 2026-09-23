@@ -192,7 +192,7 @@ test('Mills physical selection displays the requested playlist entry without dig
         return 'file: Mills/One.flac\nfile: Mills/Two.flac\nfile: Mills/Three.flac\n';
       }
       if (command.startsWith('addid')) return `Id: ${nextId++}\n`;
-      if (command.startsWith('playlistid')) return 'file: Mills/Three.flac\nTitle: Three\nArtist: Mills Artist\nAlbum: Mills Album\nDate: 1975\nEncoded: FLAC\n';
+      if (command.startsWith('playlistid')) return 'file: Mills/Three.flac\nTitle: Three\nArtist: Mills \\\"Artist\\\"\nAlbum: Mills Album\nDate: 1975\nEncoded: FLAC\n';
       return 'OK\n';
     },
   });
@@ -210,7 +210,7 @@ test('Mills physical selection displays the requested playlist entry without dig
   assert.equal(res.body.playbackStarted, false);
   assert.equal(res.body.displayOnly, true);
   assert.equal(res.body.metadata.title, 'Three');
-  assert.equal(res.body.metadata.artist, 'Mills Artist');
+  assert.equal(res.body.metadata.artist, 'Mills "Artist"');
   assert.deepEqual(inputs, ['phono']);
   assert.equal(commands.some((command) => /^play(?: |id )/.test(command)), false);
   assert.equal(commands.filter((command) => command.startsWith('deleteid')).length, 1);
