@@ -7168,6 +7168,15 @@ app.get('/now-playing', async (req, res) => {
         const aUrl = String(ap?.albumUrl || '').trim();
         const best = aUrl || tUrl;
 
+        // The second-pass lookup can be the branch that supplies the valid
+        // Apple link (especially after a cache hit). Promote its artwork too;
+        // otherwise the link is correct while the foreground remains on the
+        // station logo from the initial radio fallback.
+        const matchedArtUrl = String(ap?.url || '').trim();
+        if (matchedArtUrl && (!String(primaryArtUrl || '').trim() || primaryArtUrl === stationLogoUrl)) {
+          primaryArtUrl = matchedArtUrl;
+        }
+
         if (!radioTrackUrl && tUrl) radioTrackUrl = tUrl;
         if (!radioAlbumUrl && aUrl) radioAlbumUrl = aUrl;
         if (!radioItunesUrl && best) radioItunesUrl = best;
