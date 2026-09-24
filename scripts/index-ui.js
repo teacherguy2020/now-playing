@@ -1613,7 +1613,9 @@ function fetchNowPlaying() {
         if (looksLikeStationName(sn)) radioState.stationName = sn;
       }
       // Station logo (radio only)
-      const radioLogoUrl = isRadio ? String(data.stationLogoUrl || '').trim() : '';
+      const radioLogoUrl = isRadio
+        ? String(window.NPArt?.stationLogo?.(data) || data.stationLogoUrl || '').trim()
+        : '';
 
       // Let CSS react
       document.body.classList.toggle('is-radio', isRadio);

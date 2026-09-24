@@ -7282,10 +7282,13 @@ app.get('/now-playing', async (req, res) => {
     // based logo endpoint can resolve a station even when moOde supplies no
     // station name in its current-song payload.
     const radioHasItunesMatch = !!(radioItunesUrl || radioTrackUrl || radioAlbumUrl);
+    const radioLogoProxyUrl = isRadio && file
+      ? `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-iheart-map1`
+      : '';
     if (isRadio && !radioHasItunesMatch) {
-      const fallbackLogoUrl = streamStationName
+      const fallbackLogoUrl = radioLogoProxyUrl || (streamStationName
         ? `${MOODE_BASE_URL}/imagesw/radio-logos/thumbs/${encodeURIComponent(streamStationName)}.jpg`
-        : (file ? `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-iheart-map1` : '');
+        : '');
       if (fallbackLogoUrl) {
         stationLogoUrl = fallbackLogoUrl;
         primaryArtUrl = fallbackLogoUrl;
@@ -7307,9 +7310,10 @@ app.get('/now-playing', async (req, res) => {
       const sameAsArt = !!stLogo && !!artUrl && stripQ(stLogo) === stripQ(artUrl);
       const looksTrackArt = /mzstatic|itunes\.apple\.com|coverart\.php|ytimg|googleusercontent/i.test(stLogo);
       if ((sameAsArt || looksTrackArt) && streamStationName) {
-        stationLogoUrl = `${MOODE_BASE_URL}/imagesw/radio-logos/thumbs/${encodeURIComponent(streamStationName)}.jpg`;
+        stationLogoUrl = radioLogoProxyUrl || `${MOODE_BASE_URL}/imagesw/radio-logos/thumbs/${encodeURIComponent(streamStationName)}.jpg`;
       }
     }
+    if (radioLogoProxyUrl) stationLogoUrl = radioLogoProxyUrl;
 
     // ✅ rating (piggybacked) for local files only
     let rating = 0;
