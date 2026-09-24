@@ -1,0 +1,13 @@
+[Unit]
+Description=Restore Now Playing Peppy HTTP targets
+After=network-online.target
+Wants=network-online.target
+Before=peppy-spectrum-bridge.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/nowplaying-peppy-targets.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

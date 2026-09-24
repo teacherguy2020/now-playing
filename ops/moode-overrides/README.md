@@ -12,6 +12,8 @@ These files are live-system overrides on `moode@10.0.0.254` and are mirrored her
 - `etc/systemd/system/moode-worker-watchdog.service`
 - `etc/systemd/system/moode-worker-watchdog.timer`
 - `usr/local/bin/moode-worker-watchdog.sh`
+- `etc/systemd/system/nowplaying-peppy-targets.service`
+- `usr/local/bin/nowplaying-peppy-targets.sh`
 
 ## Why
 
@@ -28,6 +30,8 @@ These files are live-system overrides on `moode@10.0.0.254` and are mirrored her
   AirPlay receiver every 30s. It recovers a dead worker even when inherited
   helper locks remain, and uses moOde's renderer restart path for a failed
   `shairport-sync` service.
+- `nowplaying-peppy-targets.service` restores the VU target, spectrum
+  target, and shared spectrum FIFO after moOde boot or upgrade.
 
 ## Deploy from repo to moOde
 
@@ -37,6 +41,8 @@ scp ops/moode-overrides/etc/systemd/system/airplay-json-watchdog.service moode@1
 scp ops/moode-overrides/etc/systemd/system/airplay-json-watchdog.timer moode@10.0.0.254:/tmp/
 scp ops/moode-overrides/usr/local/bin/airplay-json-watchdog.sh moode@10.0.0.254:/tmp/
 scp ops/moode-overrides/var/www/daemon/aplmeta-reader.sh moode@10.0.0.254:/tmp/
+scp ops/moode-overrides/etc/systemd/system/nowplaying-peppy-targets.service moode@10.0.0.254:/tmp/
+scp ops/moode-overrides/usr/local/bin/nowplaying-peppy-targets.sh moode@10.0.0.254:/tmp/
 
 ssh moode@10.0.0.254 '
   sudo install -m 644 /tmp/airplay-json.service /etc/systemd/system/airplay-json.service &&
@@ -47,9 +53,14 @@ ssh moode@10.0.0.254 '
   sudo install -m 755 /tmp/airplay-json-watchdog.sh /usr/local/bin/airplay-json-watchdog.sh &&
   sudo install -m 755 /tmp/moode-worker-watchdog.sh /usr/local/bin/moode-worker-watchdog.sh &&
   sudo install -m 755 /tmp/aplmeta-reader.sh /var/www/daemon/aplmeta-reader.sh &&
+  sudo install -m 644 /tmp/nowplaying-peppy-targets.service /etc/systemd/system/nowplaying-peppy-targets.service &&
+  sudo install -m 755 /tmp/nowplaying-peppy-targets.sh /usr/local/bin/nowplaying-peppy-targets.sh &&
   sudo systemctl daemon-reload &&
   sudo systemctl enable --now airplay-json-watchdog.timer &&
   sudo systemctl enable --now moode-worker-watchdog.timer &&
+  sudo systemctl enable --now nowplaying-peppy-targets.service &&
+  sudo systemctl restart peppymeter.service &&
+  sudo systemctl restart peppy-spectrum-bridge.service &&
   sudo systemctl restart airplay-json.service
 '
 ```
