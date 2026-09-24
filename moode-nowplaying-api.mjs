@@ -1930,7 +1930,10 @@ function splitTitlePerformersProgram(titleLine) {
     if (looksPerfBlock(third) && !looksPerfBlock(fourth)) {
       const work = looksComposer ? second : `${first} - ${second}`;
       const personnel = parsePersonnel(third);
-      const program = fourth;
+      const programParts = parts.slice(3);
+      const program = programParts.length > 1
+        ? programParts.slice(0, -1).join(' - ')
+        : fourth;
       return { composer: looksComposer ? first : '', work, personnel, program };
     }
 
@@ -4747,6 +4750,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     let matchedArtist = '';
     let matchedTitle = '';
     let strictRejected = 0;
+    let filteredTitle = 0;
     let matchReason = '';
     let webFallback = null;
 
@@ -4775,6 +4779,11 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       const matchedArtistCandidate = String(item?.artistName || '').trim();
       const collectionName = String(item?.collectionName || '').trim();
       const trackName = String(item?.trackName || '').trim();
+
+      if (opts?.strictTitle && !shouldAcceptMatchedTitle(t, trackName)) {
+        filteredTitle += 1;
+        continue;
+      }
 
       if (opts?.strictArtist && !artistMatchStrict(a, matchedArtistCandidate)) {
         const hint = String(opts?.albumHint || '').trim();
@@ -4973,6 +4982,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
           filteredStrict,
           filteredEnsemble,
           filteredSoloist,
+          filteredTitle,
           filteredNoArt,
           bestScore,
           bestTrack: String(bestItem?.trackName || ''),
@@ -6979,6 +6989,7 @@ app.get('/now-playing', async (req, res) => {
               labelHint,
               soloistHint: lookupCtx.soloistHint || soloistHintRaw || '',
               strictArtist: !likelyClassical,
+              strictTitle: likelyClassical,
             });
 
         let itResolved = it;
@@ -7071,6 +7082,7 @@ app.get('/now-playing', async (req, res) => {
                 labelHint,
                 soloistHint: '',
                 strictArtist: !likelyClassical2,
+                strictTitle: likelyClassical2,
               });
           if (likelyClassical2 && String(it?.matchedTitle || '').trim()) {
             const classicalRaw2 = String(song.title || s2Title || '').trim();
@@ -7155,7 +7167,7 @@ app.get('/now-playing', async (req, res) => {
         const s3Title = String(s3.lookupTitle || '').trim();
         const likelyClassical3 = /\b(op\.?|concerto|symphony|quartet|sonata|andante|allegro|adagio|lento|presto)\b/i.test(s3Title);
         const classicalContextOk3 = !!String(s3.ensembleHint || s3.conductorHint || s3.soloistHint || soloistHint2 || '').trim() || !!String(albumForTerm || '').trim();
-        const ap = (likelyClassical3 && !classicalContextOk3)
+        let ap = (likelyClassical3 && !classicalContextOk3)
           ? { url:'', album:'', year:'', trackUrl:'', albumUrl:'', matchedArtist:'', matchedTitle:'', reason:'insufficient-metadata' }
           : await lookupItunesFirst(String(s3.lookupArtist || '').trim(), s3Title, debug, {
               radioAlbum: albumForTerm,
@@ -7166,7 +7178,30 @@ app.get('/now-playing', async (req, res) => {
               labelHint: labelHint2,
               soloistHint: String(s3.soloistHint || soloistHint2 || '').trim(),
               strictArtist: !likelyClassical3,
+              strictTitle: likelyClassical3,
             });
+
+        // Do not let a plausible ensemble match supply album/art/link data
+        // when Apple matched the wrong classical work (for example Bruckner
+        // Symphony No. 4 resolving to Beethoven Symphony No. 3). The first
+        // lookup pass already applies this guard; the second pass must too.
+        if (likelyClassical3 && String(ap?.matchedTitle || '').trim()) {
+          const classicalRaw3 = String(song.title || s3Title || title || '').trim();
+          const classicalMatched3 = String(ap.matchedTitle || '').trim();
+          if (classicalRaw3 && !shouldAcceptMatchedTitle(classicalRaw3, classicalMatched3)) {
+            ap = {
+              ...ap,
+              url: '',
+              album: '',
+              year: '',
+              trackUrl: '',
+              albumUrl: '',
+              matchedArtist: '',
+              matchedTitle: '',
+              reason: 'classical-title-mismatch',
+            };
+          }
+        }
 
         const tUrl = String(ap?.trackUrl || '').trim();
         const aUrl = String(ap?.albumUrl || '').trim();
