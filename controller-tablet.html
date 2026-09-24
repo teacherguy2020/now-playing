@@ -803,7 +803,7 @@
   </div>
 
   <script src="/scripts/client-preferences.js?v=20260922-preferences2"></script>
-  <script src="/scripts/now-playing-art.js?v=20260924-art-contract2"></script>
+  <script src="/scripts/now-playing-art.js?v=20260924-art-contract3"></script>
   <script>
 (() => {
   const NP_PREFS = window.NPClientPreferences;
@@ -1666,6 +1666,7 @@
       let dispArtist = decodeHtmlEntities(String((j == null ? void 0 : j.displayArtist) || artist || "")).trim();
       let dispTitle = decodeHtmlEntities(String((j == null ? void 0 : j.displayTitle) || title || "")).trim();
       let dispLine3 = decodeHtmlEntities(String((j == null ? void 0 : j.displayLine3) || "")).trim();
+      dispArtist = globalThis.NPArt?.titleCaseArtist ? globalThis.NPArt.titleCaseArtist(dispArtist) : dispArtist;
       if (!dispArtist && dispTitle) {
         const raw = String(dispTitle || "").trim();
         const m = raw.match(/^([^\-•|]+)\s*[\-•|]\s*(.+)$/);

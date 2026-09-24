@@ -386,7 +386,7 @@
     const isAlexaMode = !!np?.alexaMode;
     const isYoutube = !!(np?.isYoutube || head?.isYoutube || /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(String(np?.file || head?.file || '')));
     const isRadioOrStream = !!np?.isRadio || (!!np?.isStream && !isYoutube) || (!!head?.isStream && !isYoutube) || isAlexaMode;
-    let displayArtist = String(np?._radioDisplay?.artist || np?.radioArtist || np?.artist || head?.artist || '').trim();
+    let displayArtist = String(np?._radioDisplay?.artist || np?.displayArtist || np?.radioArtist || np?.artist || head?.artist || '').trim();
     let displayTitle = String(np?._radioDisplay?.title || np?.radioTitle || np?.title || head?.title || '').trim();
     if (!displayTitle) {
       const fileRaw = String(np?.file || head?.file || '').trim();
@@ -423,6 +423,9 @@
 
     displayArtist = expandInstrumentAbbrevs(displayArtist);
     displayTitle = expandInstrumentAbbrevs(displayTitle);
+    displayArtist = globalThis.NPArt?.titleCaseArtist
+      ? globalThis.NPArt.titleCaseArtist(displayArtist)
+      : displayArtist;
 
     const appleUrl = globalThis.NPArt?.appleMusicUrl(np) || String(np?.shareUrl || np?.radioTrackUrl || np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
     const isPodcast = !!np?.isPodcast;

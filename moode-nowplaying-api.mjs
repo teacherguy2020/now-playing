@@ -4211,6 +4211,34 @@ function decodeHtmlEntities(str) {
     .replace(/&gt;/g, '>');
 }
 
+function titleCaseArtistName(input) {
+  const value = decodeHtmlEntities(String(input || '').replace(/\s+/g, ' ').trim());
+  if (!value) return '';
+
+  const preserve = new Set([
+    'AC/DC', 'ABBA', 'BTS', 'DJ', 'MC', 'M.C.', 'R.E.M.', 'SZA', 'U2', 'UB40',
+    'NPR', 'BBC', 'PBS', 'CBS', 'NBC', 'ABC', 'CNN', 'ESPN', 'MLB', 'NFL', 'NBA',
+  ]);
+  const words = value.split(/(\s+)/);
+  const needsNormalization = !(/[a-zà-öø-ÿ]/.test(value) && /[A-ZÀ-ÖØ-Þ]/.test(value)) ||
+    !(/[A-ZÀ-ÖØ-Þ]/.test(value) && /[a-zà-öø-ÿ]/.test(value)) ||
+    words.some((word) => /^[A-ZÀ-ÖØ-Þ][A-ZÀ-ÖØ-Þ'’.-]{2,}$/.test(word));
+  if (!needsNormalization) return value;
+
+  const titleWord = (word) => {
+    if (!word) return word;
+    if (preserve.has(word.toUpperCase())) return word.toUpperCase();
+    if (/^(?:[A-ZÀ-ÖØ-Þ]\.){2,}$/i.test(word)) return word.toUpperCase();
+
+    const lower = word.toLocaleLowerCase();
+    const cased = lower.replace(/(^|[-–—'’])([a-zà-öø-ÿ])/gi, (_, prefix, ch) => `${prefix}${ch.toLocaleUpperCase()}`);
+    const digitLead = cased.replace(/^(\d+)([a-zà-öø-ÿ])/, (_, digits, ch) => `${digits}${ch.toLocaleUpperCase()}`);
+    return digitLead.replace(/^mc([a-zà-öø-ÿ])/i, (_, ch) => `Mc${ch.toLocaleUpperCase()}`);
+  };
+
+  return words.map((word) => /^\s+$/.test(word) ? word : titleWord(word)).join('');
+}
+
 function looksLikeEnsembleOrConductor(s) {
   const t = String(s || '').toLowerCase();
 
@@ -7288,7 +7316,7 @@ app.get('/now-playing', async (req, res) => {
     const displayStationName = String(streamStationName || song?.name || '').trim();
     const radioArtistGeneric = artistLooksGeneric(artist);
     const displayMode = isRadio ? 'radio' : (stream ? 'stream' : (isPodcast ? 'podcast' : 'track'));
-    const displayArtist = isRadio ? (radioArtistGeneric ? (displayStationName || 'Radio') : String(artist || '').trim()) : String(artist || '').trim();
+    const displayArtist = titleCaseArtistName(isRadio ? (radioArtistGeneric ? (displayStationName || 'Radio') : String(artist || '').trim()) : String(artist || '').trim());
     const displayTitle = isRadio ? (String(title || '').trim() || displayStationName || 'Live Radio') : String(title || '').trim();
     const displayLine3 = isRadio
       ? String(radioAlbum || album || displayStationName || '').trim()

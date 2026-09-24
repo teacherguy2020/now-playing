@@ -96,6 +96,44 @@
     ).trim();
   }
 
+  // Display-only normalization. Keep raw artist metadata untouched for
+  // lookup/search purposes, but make all current-track surfaces agree when a
+  // provider sends an all-caps or all-lowercase artist name.
+  function titleCaseArtist(input) {
+    const value = String(input || '')
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!value) return '';
+
+    const preserve = new Set([
+      'AC/DC', 'ABBA', 'BTS', 'DJ', 'MC', 'M.C.', 'R.E.M.', 'SZA', 'U2', 'UB40',
+      'NPR', 'BBC', 'PBS', 'CBS', 'NBC', 'ABC', 'CNN', 'ESPN', 'MLB', 'NFL', 'NBA',
+    ]);
+    const words = value.split(/(\s+)/);
+    const needsNormalization = !(/[a-zà-öø-ÿ]/.test(value) && /[A-ZÀ-ÖØ-Þ]/.test(value)) ||
+      !(/[A-ZÀ-ÖØ-Þ]/.test(value) && /[a-zà-öø-ÿ]/.test(value)) ||
+      words.some((word) => /^[A-ZÀ-ÖØ-Þ][A-ZÀ-ÖØ-Þ'’.-]{2,}$/.test(word));
+    if (!needsNormalization) return value;
+
+    const titleWord = (word) => {
+      if (!word) return word;
+      if (preserve.has(word.toUpperCase())) return word.toUpperCase();
+      if (/^(?:[A-ZÀ-ÖØ-Þ]\.){2,}$/i.test(word)) return word.toUpperCase();
+
+      const lower = word.toLocaleLowerCase();
+      const cased = lower.replace(/(^|[-–—'’])([a-zà-öø-ÿ])/gi, (_, prefix, ch) => `${prefix}${ch.toLocaleUpperCase()}`);
+      const digitLead = cased.replace(/^(\d+)([a-zà-öø-ÿ])/, (_, digits, ch) => `${digits}${ch.toLocaleUpperCase()}`);
+      return digitLead.replace(/^mc([a-zà-öø-ÿ])/i, (_, ch) => `Mc${ch.toLocaleUpperCase()}`);
+    };
+
+    return words.map((word) => /^\s+$/.test(word) ? word : titleWord(word)).join('');
+  }
+
   function motionArtEnabled() {
     try {
       const v = String(localStorage.getItem(MOTION_ART_STORAGE_KEY) || '').trim().toLowerCase();
@@ -252,6 +290,7 @@
     isRadio,
     motionArtEnabled,
     normalizeAppleMusicUrl,
+    titleCaseArtist,
     resolveLocalMotionMp4,
     resolveMotionFor,
     resolveMotionMp4,

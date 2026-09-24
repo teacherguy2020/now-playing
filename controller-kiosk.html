@@ -61,7 +61,7 @@
     </section>
   </div>
 
-  <script src="/scripts/now-playing-art.js?v=20260924-art-contract2"></script>
+  <script src="/scripts/now-playing-art.js?v=20260924-art-contract3"></script>
   <script>
   (async()=>{
     const host=location.hostname||'10.0.0.4';
@@ -83,7 +83,10 @@
         const r=await fetch(`${api}/now-playing`,{cache:'no-store',headers:key?{'x-track-key':key}:{}});
         const j=await r.json().catch(()=>({}));
         document.getElementById('title').textContent=j?.title||j?.displayTitle||'—';
-        document.getElementById('artist').textContent=j?.artist||j?.displayArtist||'—';
+        const artist = String(j?.displayArtist || j?.artist || '').trim();
+        document.getElementById('artist').textContent=globalThis.NPArt?.titleCaseArtist
+          ? globalThis.NPArt.titleCaseArtist(artist)
+          : (artist || '—');
         document.getElementById('album').textContent=j?.album||'—';
         const art = globalThis.NPArt?.foreground(j, { base: api }) || String(j?.albumArtUrl||j?.displayArtUrl||'').trim();
         document.getElementById('art').src = art || `${api}/art/current.jpg`;

@@ -33,6 +33,11 @@ build a foreground URL from one payload field and a blur URL from another.
 This is especially important for radio: when an iTunes/Apple match is absent,
 the station logo remains the visible and blurred fallback.
 
+Current-track display metadata follows the same surface contract: `displayArtist`
+is the display-safe, title-cased form of the source artist, while raw `artist`
+metadata remains available unchanged for lookups, diagnostics, and
+Alexa-specific synchronization. Known stylized acronyms are preserved.
+
 ### Alexa exception
 
 Alexa playback is intentionally not synchronized to the MPD queue. During

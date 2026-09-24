@@ -3171,6 +3171,9 @@ function updateUI(data) {
 
   displayArtist = expandInstrumentAbbrevs(displayArtist);
   displayTitle  = expandInstrumentAbbrevs(displayTitle);
+  displayArtist = globalThis.NPArt?.titleCaseArtist
+    ? globalThis.NPArt.titleCaseArtist(displayArtist)
+    : displayArtist;
 
 if (artistEl) artistEl.textContent = decodeHtmlEntities(displayArtist);
 if (titleEl) {
