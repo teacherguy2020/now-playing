@@ -36,7 +36,10 @@ the station logo remains the visible and blurred fallback.
 Current-track display metadata follows the same surface contract: `displayArtist`
 is the display-safe, title-cased form of the source artist, while raw `artist`
 metadata remains available unchanged for lookups, diagnostics, and
-Alexa-specific synchronization. Known stylized acronyms are preserved.
+Alexa-specific synchronization. Known stylized acronyms are preserved. Radio
+station display names also omit a leading provider prefix such as `iHeart`;
+the configured name and stream URL remain unchanged for identity and logo
+resolution.
 
 ### Alexa exception
 

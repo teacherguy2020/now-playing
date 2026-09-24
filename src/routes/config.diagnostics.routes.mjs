@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
 import { getBrowseIndex } from '../lib/browse-index.mjs';
+import { radioDisplayName } from '../lib/radio-display.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -1578,7 +1579,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           artist: artistTxt,
           title: titleTxt,
           album: albumTxt,
-          stationName: stationNameTxt,
+          stationName: radioDisplayName(stationNameTxt),
           stationGenre: stationGenreTxt,
           isFavoriteStation: stationFavorite,
           file: f,

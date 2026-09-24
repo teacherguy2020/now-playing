@@ -208,6 +208,7 @@ import {
 } from './src/config.mjs';
 import { log } from './src/lib/log.mjs';
 import { execFileStrict } from './src/lib/exec.mjs';
+import { radioDisplayName } from './src/lib/radio-display.mjs';
 import {
   mpdEscapeValue, mpdHasACK, parseMpdFirstBlock, parseMpdKeyVals,
   mpdGetStatus, mpdPlay, mpdPlayId, mpdPause, mpdStop, mpdQueryRaw
@@ -7313,7 +7314,7 @@ app.get('/now-playing', async (req, res) => {
       } catch {}
     }
 
-    const displayStationName = String(streamStationName || song?.name || '').trim();
+    const displayStationName = radioDisplayName(streamStationName || song?.name || '');
     const radioArtistGeneric = artistLooksGeneric(artist);
     const displayMode = isRadio ? 'radio' : (stream ? 'stream' : (isPodcast ? 'podcast' : 'track'));
     const displayArtist = titleCaseArtistName(isRadio ? (radioArtistGeneric ? (displayStationName || 'Radio') : String(artist || '').trim()) : String(artist || '').trim());
@@ -7342,8 +7343,8 @@ app.get('/now-playing', async (req, res) => {
 
       altArtUrl: altArtUrl || '',
       stationLogoUrl: stationLogoUrl || '',
-      stationName: streamStationName || '',
-      radioStationName: streamStationName || '',
+      stationName: displayStationName,
+      radioStationName: displayStationName,
 
       // Canonical display fields (single source of truth for UIs)
       displayMode,

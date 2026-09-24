@@ -4,6 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH, MPD_PLAYLIST_DIR } from '../config.mjs';
 import { getBrowseIndex } from '../lib/browse-index.mjs';
+import { radioDisplayName } from '../lib/radio-display.mjs';
 
 const execFileP = promisify(execFile);
 const RADIO_DB_SEP = '__NPSEP__';
@@ -1020,7 +1021,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
         const [station='', name='', genre='', bitrate='', format='', type=''] = ln.split(RADIO_DB_SEP);
         return {
           file: String(station || '').trim(),
-          stationName: String(name || '').trim(),
+          stationName: radioDisplayName(name),
           genre: String(genre || '').trim(),
           bitrate: String(bitrate || '').trim(),
           format: String(format || '').trim(),
@@ -1148,7 +1149,7 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       const out = await queryMoodeRadioDb(sql);
       const tracks = String(out || '').split(/\r?\n/).map((ln)=>String(ln||'').trim()).filter(Boolean).map((ln)=>{
         const [station='', name='', genre='', bitrate='', format='', type=''] = ln.split(RADIO_DB_SEP);
-        const stationName = String(name || '').trim() || 'Radio Station';
+        const stationName = radioDisplayName(name) || 'Radio Station';
         const file = String(station || '').trim();
         return {
           artist: stationName,
