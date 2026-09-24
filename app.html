@@ -436,7 +436,8 @@
   </div>
 
   <script src="/scripts/client-preferences.js?v=20260922-preferences2"></script>
-  <script src="scripts/hero-transport.js?v=20260921-alexa-controls1"></script>
+  <script src="scripts/now-playing-art.js?v=20260924-art-contract1"></script>
+  <script src="scripts/hero-transport.js?v=20260924-art-contract2"></script>
   <script src="scripts/echo-link-volume.js?v=20260921-echo-link9"></script>
   <script>
     (() => {
@@ -1297,7 +1298,7 @@
                   const qhTitle = String(npLite?.title || '').trim();
                   const qhFile = String(npLite?.file || '').trim();
                   const qhArtist = String(npLite?.artist || '').trim();
-                  const qhArtRaw = String(npLite?.albumArtUrl || npLite?.altArtUrl || '').trim();
+                  const qhArtRaw = String(globalThis.NPArt?.foreground?.(npLite) || npLite?.albumArtUrl || npLite?.altArtUrl || '').trim();
                   const qhArt = qhArtRaw ? (qhArtRaw.startsWith('http') ? qhArtRaw : `${base}${qhArtRaw}`) : '';
                   const showTitle = qhTitle || (qhFile ? String(qhFile).split('/').pop() : '') || qhFile;
                   if (showTitle || qhArtist) {
@@ -1370,7 +1371,7 @@
           } catch {}
 
           const fallbackStation = String(np?.stationName || np?._stationName || np?.radioStationName || '').trim();
-          const fallbackNowArtRaw = String(np?.albumArtUrl || np?.altArtUrl || '').trim();
+          const fallbackNowArtRaw = String(globalThis.NPArt?.foreground?.(np) || np?.albumArtUrl || np?.altArtUrl || '').trim();
           const fallbackNowArt = fallbackNowArtRaw ? (fallbackNowArtRaw.startsWith('http') ? fallbackNowArtRaw : `${base}${fallbackNowArtRaw}`) : '';
           const alexaHintText = String(np?.subline || np?.liveLabel || '').toLowerCase();
           const heroAlexaText = String(document.getElementById('heroTransport')?.textContent || '').toLowerCase();
@@ -1448,7 +1449,7 @@
               const qhTitle = String(npQueueHead?.title || '').trim();
               const qhFile = String(npQueueHead?.file || '').trim();
               const qhArtist = String(npQueueHead?.artist || '').trim();
-              const qhArtRaw = String(npQueueHead?.albumArtUrl || npQueueHead?.altArtUrl || '').trim();
+              const qhArtRaw = String(globalThis.NPArt?.foreground?.(npQueueHead) || npQueueHead?.albumArtUrl || npQueueHead?.altArtUrl || '').trim();
               const qhArt = qhArtRaw ? (qhArtRaw.startsWith('http') ? qhArtRaw : `${base}${qhArtRaw}`) : fallbackNowArt;
 
               if (qhTitle || qhFile || qhArtist) {
@@ -1682,7 +1683,7 @@
             if (isStreamish) {
               if (isYoutubeStream) {
                 thumb = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
-                if (!thumb && head && npQueueHead?.albumArtUrl) thumb = String(npQueueHead.albumArtUrl || '').trim();
+                if (!thumb && head && npQueueHead) thumb = String(globalThis.NPArt?.foreground?.(npQueueHead) || npQueueHead.albumArtUrl || '').trim();
                 if (!thumb) thumb = `${base}/art/current.jpg`;
               } else {
                 // Queue card policy: for stream/radio rows, always use station branding (never album art).

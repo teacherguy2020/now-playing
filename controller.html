@@ -485,6 +485,7 @@
   </div>
 
   <script src="/scripts/client-preferences.js?v=20260922-preferences2"></script>
+  <script src="/scripts/now-playing-art.js?v=20260924-art-contract1"></script>
   <script>
     const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v2';
     const NP_PREFS = window.NPClientPreferences;
@@ -765,6 +766,9 @@
     const npMotionCache = new Map();
     let npMotionReqToken = 0;
     async function resolveLocalMotionMp4(artist = '', album = ''){
+      if (globalThis.NPArt?.resolveLocalMotionMp4) {
+        return globalThis.NPArt.resolveLocalMotionMp4(artist, album, base);
+      }
       const a = String(artist || '').trim();
       const b = String(album || '').trim();
       if (!a || !b) return '';
@@ -985,7 +989,7 @@
           : '';
 
         const art = hasTrack
-          ? (String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`)
+          ? (globalThis.NPArt?.foreground(j, { base }) || String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`)
           : `/icons/icon-192.png`;
         const mediaTrack = hasTrack ? {
           title: String(dispTitle || title || '').trim(),
@@ -995,7 +999,7 @@
         } : null;
         try { window.__npCurrentTrack = mediaTrack; } catch {}
 
-        const appleMusicUrl = String(j?.radioAppleMusicUrl || j?.appleMusicUrl || '').trim();
+        const appleMusicUrl = globalThis.NPArt?.appleMusicUrl(j) || String(j?.radioAppleMusicUrl || j?.appleMusicUrl || '').trim();
         const fallbackUrl = String(j?.shareUrl || j?.radioTrackUrl || j?.radioItunesUrl || j?.itunesUrl || '').trim();
         npAlbumUrl = hasTrack ? (appleMusicUrl || fallbackUrl) : '';
 
@@ -1040,8 +1044,13 @@
               motionEl.load();
             }
             if (artFaceFront) artFaceFront.classList.remove('hasMotion');
-            if (hasTrack && !isPodcast && !isRadio) {
-              resolveLocalMotionMp4(artist || dispArtist || '', String(album || '').trim()).then((mp4)=>{
+            if (hasTrack) {
+              const motionPromise = isRadio
+                ? (globalThis.NPArt?.resolveMotionMp4 ? globalThis.NPArt.resolveMotionMp4(appleMusicUrl) : Promise.resolve(''))
+                : (!isPodcast && !isAirplay && !isUpnp && !isStream
+                    ? resolveLocalMotionMp4(artist || dispArtist || '', String(album || '').trim())
+                    : Promise.resolve(''));
+              motionPromise.then((mp4)=>{
                 if (myToken !== npMotionReqToken) return;
                 const m = String(mp4 || '').trim();
                 const v = document.getElementById('npArtMotion');

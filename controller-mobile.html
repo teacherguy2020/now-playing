@@ -486,6 +486,7 @@
   </div>
 
   <script src="/scripts/client-preferences.js?v=20260922-preferences2"></script>
+  <script src="/scripts/now-playing-art.js?v=20260924-art-contract1"></script>
   <script>
     const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v1';
     const NP_PREFS = window.NPClientPreferences;
@@ -972,10 +973,10 @@
           : '';
 
         const art = hasTrack
-          ? (String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`)
+          ? (globalThis.NPArt?.foreground(j, { base }) || String(j?.albumArtUrl||j?.altArtUrl||'').trim() || `${base}/art/current.jpg`)
           : `/icons/icon-192.png`;
 
-        const appleMusicUrl = String(j?.radioAppleMusicUrl || j?.appleMusicUrl || '').trim();
+        const appleMusicUrl = globalThis.NPArt?.appleMusicUrl(j) || String(j?.radioAppleMusicUrl || j?.appleMusicUrl || '').trim();
         const fallbackUrl = String(j?.shareUrl || j?.radioTrackUrl || j?.radioItunesUrl || j?.itunesUrl || '').trim();
         npAlbumUrl = hasTrack ? (appleMusicUrl || fallbackUrl) : '';
 

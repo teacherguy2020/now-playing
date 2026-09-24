@@ -803,6 +803,7 @@
   </div>
 
   <script src="/scripts/client-preferences.js?v=20260922-preferences2"></script>
+  <script src="/scripts/now-playing-art.js?v=20260924-art-contract1"></script>
   <script>
 (() => {
   const NP_PREFS = window.NPClientPreferences;
@@ -1322,6 +1323,9 @@
   }
   const npMotionCache = /* @__PURE__ */ new Map();
   async function resolveLocalMotionMp4(artist = "", album = "") {
+    if (globalThis.NPArt?.resolveLocalMotionMp4) {
+      return globalThis.NPArt.resolveLocalMotionMp4(artist, album, base);
+    }
     var _a6;
     const a = String(artist || "").trim();
     const b = String(album || "").trim();
@@ -1688,7 +1692,7 @@
       const baseLine3 = hasTrack ? isPodcast ? "" : dispLine3 || String(album || "").trim() || "" : "";
       const hasYearAlready = /\(\s*(19|20)\d{2}\s*\)/.test(baseLine3) || /\b(19|20)\d{2}\b/.test(baseLine3);
       const line3 = hasTrack ? isPodcast ? podcastDate : (baseLine3 + (year && !hasYearAlready ? " (".concat(year, ")") : "")).trim() : "";
-      const art = hasTrack ? String((j == null ? void 0 : j.albumArtUrl) || (j == null ? void 0 : j.altArtUrl) || "").trim() || "".concat(base, "/art/current.jpg") : "/icons/icon-192.png";
+      const art = hasTrack ? (globalThis.NPArt?.foreground(j, { base }) || String((j == null ? void 0 : j.albumArtUrl) || (j == null ? void 0 : j.altArtUrl) || "").trim() || "".concat(base, "/art/current.jpg")) : "/icons/icon-192.png";
       const mediaTrack = hasTrack ? {
         title: String(dispTitle || title || "").trim(),
         artist: String(dispArtist || artist || "").trim(),
@@ -1699,7 +1703,7 @@
         window.__npCurrentTrack = mediaTrack;
       } catch {
       }
-      const appleMusicUrl = String((j == null ? void 0 : j.radioAppleMusicUrl) || (j == null ? void 0 : j.appleMusicUrl) || "").trim();
+      const appleMusicUrl = globalThis.NPArt?.appleMusicUrl(j) || String((j == null ? void 0 : j.radioAppleMusicUrl) || (j == null ? void 0 : j.appleMusicUrl) || "").trim();
       const fallbackUrl = String((j == null ? void 0 : j.shareUrl) || (j == null ? void 0 : j.radioTrackUrl) || (j == null ? void 0 : j.radioItunesUrl) || (j == null ? void 0 : j.itunesUrl) || "").trim();
       npAlbumUrl = hasTrack ? appleMusicUrl || fallbackUrl : "";
       const npSeekInlineEl2 = document.getElementById("npSeekInline");
@@ -1754,8 +1758,13 @@
             motionEl.load();
           }
           if (artFaceFront) artFaceFront.classList.remove("hasMotion");
-          if (hasTrack && !isPodcast && !isRadio) {
-            resolveLocalMotionMp4(dispArtist || artist || "", String(album || "").trim()).then((mp4) => {
+          if (hasTrack) {
+            const motionPromise = isRadio
+              ? (globalThis.NPArt?.resolveMotionMp4 ? globalThis.NPArt.resolveMotionMp4(appleMusicUrl) : Promise.resolve(""))
+              : (!isPodcast && !isAirplay && !isUpnp && !isStream
+                  ? resolveLocalMotionMp4(dispArtist || artist || "", String(album || "").trim())
+                  : Promise.resolve(""));
+            motionPromise.then((mp4) => {
               if (myToken !== npMotionReqToken) return;
               const m = String(mp4 || "").trim();
               const v = document.getElementById("npArtMotion");
@@ -1772,7 +1781,7 @@
           }
         }
         const npCardEl = document.getElementById("npCard");
-        let blurSig = "".concat(String(album || "").trim().toLowerCase(), "|").concat(String(artist || "").trim().toLowerCase());
+        let blurSig = "".concat(String(album || "").trim().toLowerCase(), "|").concat(String(artist || "").trim().toLowerCase(), "|").concat(String(globalThis.NPArt?.source(j) || art || ""));
         let blurSrc = "";
         try {
           const au = new URL(String(art || ""), location.href);
@@ -1786,7 +1795,7 @@
         if (!String(blurSig || "").replace("|", "").trim()) blurSig = blurSrc;
         if (npCardEl && blurSig !== npBlurSig) {
           npBlurSig = blurSig;
-          const blurUrl = "".concat(base, "/art/current_bg_640_blur.jpg?v=").concat(encodeURIComponent(String(blurSrc || art || "")), "&t=").concat(Date.now());
+          const blurUrl = globalThis.NPArt?.background(j, { base }) || "".concat(base, "/art/current_bg_640_blur.jpg?v=").concat(encodeURIComponent(String(blurSrc || art || "")), "&t=").concat(Date.now());
           npCardEl.style.setProperty("--npBlurBg", 'url("'.concat(blurUrl, '")'));
         }
         const line1El = document.getElementById("line1");

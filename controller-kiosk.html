@@ -61,6 +61,7 @@
     </section>
   </div>
 
+  <script src="/scripts/now-playing-art.js?v=20260924-art-contract1"></script>
   <script>
   (async()=>{
     const host=location.hostname||'10.0.0.4';
@@ -84,8 +85,8 @@
         document.getElementById('title').textContent=j?.title||j?.displayTitle||'—';
         document.getElementById('artist').textContent=j?.artist||j?.displayArtist||'—';
         document.getElementById('album').textContent=j?.album||'—';
-        const art=String(j?.albumArtUrl||j?.displayArtUrl||'').trim();
-        document.getElementById('art').src = art ? (art.startsWith('http')?art:`${api}${art}`) : `${api}/art/current.jpg`;
+        const art = globalThis.NPArt?.foreground(j, { base: api }) || String(j?.albumArtUrl||j?.displayArtUrl||'').trim();
+        document.getElementById('art').src = art || `${api}/art/current.jpg`;
       }catch{}
     }
 

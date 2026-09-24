@@ -86,7 +86,8 @@
     // Use the supplied art key for both normal and Alexa playback. The API
     // blurs that source server-side; this keeps Alexa's background artwork
     // correct without losing the hero's softened treatment.
-    const artUrl = `${apiBase}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(artKey)}`;
+    const artUrl = globalThis.NPArt?.background({ displayArtUrl: source }, { base: apiBase }) ||
+      `${apiBase}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(artKey)}`;
     try {
       hostEl.style.setProperty('background-image', `linear-gradient(rgba(5,10,18,0.28), rgba(5,10,18,0.28)), url("${artUrl}")`, 'important');
       hostEl.style.setProperty('background-size', 'cover', 'important');
@@ -231,6 +232,9 @@
   }
 
   async function resolveLocalMotionMp4(artist, album, key) {
+    if (globalThis.NPArt?.resolveLocalMotionMp4) {
+      return globalThis.NPArt.resolveLocalMotionMp4(artist, album, apiBase);
+    }
     const a = String(artist || '').trim();
     const b = String(album || '').trim();
     const k = `${a.toLowerCase()}|${b.toLowerCase()}`;
@@ -250,6 +254,9 @@
   }
 
   async function resolveMotionMp4(appleUrl) {
+    if (globalThis.NPArt?.resolveMotionMp4) {
+      return globalThis.NPArt.resolveMotionMp4(appleUrl);
+    }
     const normalized = normalizeAppleMusicUrl(appleUrl);
     if (!normalized) return '';
     const cached = motionArtCache.get(normalized);
@@ -362,12 +369,15 @@
     const randomOn = !!q?.randomOn;
     const repeatOn = !!q?.repeatOn;
 
-    const npArt = String(np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || '').trim();
+    const npArt = globalThis.NPArt?.source(np, { head }) ||
+      String(np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || '').trim();
     const headArt = String(head?.thumbUrl || '').trim();
     const rawThumb = npArt || headArt;
     const incomingTrackKey = String(np?.songid || np?.file || head?.file || '').trim();
     const thumb = rawThumb
-      ? (rawThumb.startsWith('http') ? rawThumb : `${apiBase}${rawThumb}`)
+      ? (npArt
+          ? (globalThis.NPArt?.foreground(np, { base: apiBase, head }) || (rawThumb.startsWith('http') ? rawThumb : `${apiBase}${rawThumb}`))
+          : (rawThumb.startsWith('http') ? rawThumb : `${apiBase}${rawThumb}`))
       : ((incomingTrackKey && prevArtTrackKey && incomingTrackKey === prevArtTrackKey && prevArtSrc)
           ? prevArtSrc
           : '');
@@ -414,7 +424,7 @@
     displayArtist = expandInstrumentAbbrevs(displayArtist);
     displayTitle = expandInstrumentAbbrevs(displayTitle);
 
-    const appleUrl = String(np?.shareUrl || np?.radioTrackUrl || np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
+    const appleUrl = globalThis.NPArt?.appleMusicUrl(np) || String(np?.shareUrl || np?.radioTrackUrl || np?.radioItunesUrl || np?.itunesUrl || np?.radioAppleMusicUrl || '').trim();
     const isPodcast = !!np?.isPodcast;
     const text = isPodcast
       ? (displayTitle || displayArtist || 'Nothing playing')
@@ -427,8 +437,11 @@
     const artAlbumKey = (!isRadioOrStream && modalAlbum)
       ? `${String(modalArtist || '').trim().toLowerCase()}|${String(modalAlbum || '').trim().toLowerCase()}`
       : '';
-    const modalArtRaw = String(np?.albumArtUrl || np?.altArtUrl || head?.thumbUrl || '').trim();
-    const modalArt = modalArtRaw ? (modalArtRaw.startsWith('http') ? modalArtRaw : `${apiBase}${modalArtRaw}`) : '';
+    const modalArtRaw = globalThis.NPArt?.source(np, { head }) ||
+      String(np?.albumArtUrl || np?.altArtUrl || head?.thumbUrl || '').trim();
+    const modalArt = modalArtRaw
+      ? (globalThis.NPArt?.foreground(np, { base: apiBase, head }) || (modalArtRaw.startsWith('http') ? modalArtRaw : `${apiBase}${modalArtRaw}`))
+      : '';
     const canOpenAlbumModal = !appleUrl && isLibraryTrack && !isRadioOrStream && !!modalAlbum;
     const rating = Math.max(0, Math.min(5, Number(np?.rating ?? head?.rating ?? 0) || 0));
     const ratingFile = String(np?.ratingFile || np?.file || head?.file || '').trim();
@@ -1603,7 +1616,7 @@
           t: sigIsRadio ? String(np?.title || np?.radioTitle || head?.title || '') : '',
           a: sigIsRadio ? String(np?.artist || np?.radioArtist || head?.artist || '') : '',
           al: sigIsRadio ? String(np?.album || np?.radioAlbum || '') : '',
-          art: canonicalMediaSrc(String(motionLockedForTrack ? '' : (np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || head?.thumbUrl || ''))),
+          art: canonicalMediaSrc(String(motionLockedForTrack ? '' : (globalThis.NPArt?.source(np, { head }) || np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || head?.thumbUrl || ''))),
           m: String(motionMp4 || ''),
           r: sigIsRadio,
           p: !!np?.isPodcast,
@@ -1696,7 +1709,7 @@
           t: sig2IsRadio ? String(npResolved?.title || npResolved?.radioTitle || head2?.title || '') : '',
           a: sig2IsRadio ? String(npResolved?.artist || npResolved?.radioArtist || head2?.artist || '') : '',
           al: sig2IsRadio ? String(npResolved?.album || npResolved?.radioAlbum || '') : '',
-          art: canonicalMediaSrc(String(npResolved?.albumArtUrl || npResolved?.altArtUrl || npResolved?.stationLogoUrl || head2?.thumbUrl || '')),
+          art: canonicalMediaSrc(String(globalThis.NPArt?.source(npResolved, { head: head2 }) || npResolved?.albumArtUrl || npResolved?.altArtUrl || npResolved?.stationLogoUrl || head2?.thumbUrl || '')),
           m: String(resolved || ''),
           r: sig2IsRadio,
           p: !!npResolved?.isPodcast,

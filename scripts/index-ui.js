@@ -410,6 +410,9 @@ function normalizeAppleMusicUrl(raw) {
 }
 
 async function resolveLocalMotionMp4(artist, album) {
+  if (globalThis.NPArt?.resolveLocalMotionMp4) {
+    return globalThis.NPArt.resolveLocalMotionMp4(artist, album, API_BASE);
+  }
   const a = String(artist || '').trim();
   const b = String(album || '').trim();
   const k = `${a.toLowerCase()}|${b.toLowerCase()}`;
@@ -456,6 +459,9 @@ async function getPodcastHeadThumbForFile(file) {
 }
 
 async function resolveMotionMp4(appleUrl) {
+  if (globalThis.NPArt?.resolveMotionMp4) {
+    return globalThis.NPArt.resolveMotionMp4(appleUrl);
+  }
   const normalized = normalizeAppleMusicUrl(appleUrl);
   if (!normalized) return '';
   const cached = motionArtCache.get(normalized);
@@ -1033,18 +1039,18 @@ async function bootThenStart() {
     return;
   }
 
-  const firstArtUrl =
-    (data.albumArtUrl && String(data.albumArtUrl).trim())
+  const firstArtUrl = globalThis.NPArt?.source(data, { head: data.__queueHead }) ||
+    ((data.albumArtUrl && String(data.albumArtUrl).trim())
       ? String(data.albumArtUrl).trim()
-      : (String(data.altArtUrl || '').trim() || '');
+      : (String(data.altArtUrl || '').trim() || ''));
 
   const firstKey = normalizeArtKey(firstArtUrl);
-  const firstBgUrl =
-    (ENABLE_BACKGROUND_ART && firstKey)
-      ? (data.alexaMode
-          ? firstArtUrl
-          : `${API_BASE}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(firstKey)}`)
-      : '';
+  const firstBgUrl = ENABLE_BACKGROUND_ART && firstKey
+    ? (globalThis.NPArt?.background(data, { base: API_BASE, head: data.__queueHead }) ||
+      (data.alexaMode
+        ? firstArtUrl
+        : `${API_BASE}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(firstKey)}`))
+    : '';
 
   if (ENABLE_BACKGROUND_ART && firstKey) {
     // don’t let a stuck image block boot
@@ -1078,9 +1084,10 @@ async function bootThenStart() {
 
     const artBgEl = document.getElementById('album-art-bg');
     if (artBgEl) {
-      const firstFgUrl = data.alexaMode
-        ? firstArtUrl
-        : `${API_BASE}/art/current.jpg?v=${encodeURIComponent(firstKey)}`;
+      const firstFgUrl = globalThis.NPArt?.foreground(data, { base: API_BASE, head: data.__queueHead }) ||
+        (data.alexaMode
+          ? firstArtUrl
+          : `${API_BASE}/art/current.jpg?v=${encodeURIComponent(firstKey)}`);
       artBgEl.style.backgroundImage = `url("${firstFgUrl}")`;
       artBgEl.style.backgroundSize = 'cover';
       artBgEl.style.backgroundPosition = 'center';
@@ -3333,10 +3340,10 @@ if (titleEl) {
     : String(data.displayArtUrl || data.albumArtUrl || '').trim();
 
   // Prefer real cover art first; only fall back to alt art (station logo, etc.)
-  const rawArtUrl = (primary || alt);
+  const rawArtUrl = globalThis.NPArt?.source(data, { head: data.__queueHead }) || (primary || alt);
   // In Alexa mode, keep full URL (including file query) so art changes per track are detected.
   const artKey = data.alexaMode ? String(rawArtUrl || '').trim() : normalizeArtKey(rawArtUrl);
-  const appleUrl = String(data.radioItunesUrl || data.itunesUrl || data.radioAppleMusicUrl || '').trim();
+  const appleUrl = globalThis.NPArt?.appleMusicUrl(data) || String(data.radioItunesUrl || data.itunesUrl || data.radioAppleMusicUrl || '').trim();
   const directRadioFallback = isRadio && !appleUrl && /^https?:\/\//i.test(rawArtUrl)
     ? rawArtUrl
     : '';
@@ -3357,18 +3364,19 @@ if (titleEl) {
     );
 
   // Build URLs
-  const bgArtUrl =
-    (ENABLE_BACKGROUND_ART && artKey)
-      ? `${API_BASE}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(String(rawArtUrl || artKey || ''))}`
-      : '';
+  const bgArtUrl = ENABLE_BACKGROUND_ART && artKey
+    ? (globalThis.NPArt?.background(data, { base: API_BASE, head: data.__queueHead }) ||
+      `${API_BASE}/art/current_bg_640_blur.jpg?v=${encodeURIComponent(String(rawArtUrl || artKey || ''))}`)
+    : '';
 
-  const fgUrl = (isAirplay && !IS_PUBLIC && rawArtUrl)
-    ? rawArtUrl
-    : (data.alexaMode
-        ? rawArtUrl
-        : (podcastTrack && rawArtUrl)
-            ? rawArtUrl
-            : (directRadioFallback || (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : '')));
+  const fgUrl = globalThis.NPArt?.foreground(data, { base: API_BASE, head: data.__queueHead }) ||
+    ((isAirplay && !IS_PUBLIC && rawArtUrl)
+      ? rawArtUrl
+      : (data.alexaMode
+          ? rawArtUrl
+          : (podcastTrack && rawArtUrl)
+              ? rawArtUrl
+              : (directRadioFallback || (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : ''))));
 
   // Keep existing art/background stable for consecutive tracks from same album.
   const effectiveArtKey = sameAlbumRun ? String(lastAlbumArtKey || artKey) : artKey;
