@@ -4335,6 +4335,9 @@ function buildItunesTerm(artist, title, opts = {}) {
   const aRaw = String(artist || '').trim();
   const tRaw = String(title || '').trim();
   const album = String(opts.radioAlbum || '').trim();
+  const explicitComposer = String(opts.composer || '').trim();
+  const ensembleHint = String(opts.ensembleHint || '').trim();
+  const conductorHint = String(opts.conductorHint || '').trim();
 
   // If title is clearly a “metadata soup” classic pattern, try teasing it.
   const teased = teaseWorkAndComposerFromTitle(tRaw, album);
@@ -4361,7 +4364,20 @@ function buildItunesTerm(artist, title, opts = {}) {
   // - Otherwise keep artist if present.
   const finalArtist = composer || aRaw;
 
-  const term = `${finalArtist} ${finalTitle}`.trim();
+  const termParts = [];
+  const addTermPart = (value) => {
+    const part = String(value || '').trim();
+    if (!part) return;
+    const lower = part.toLowerCase();
+    if (termParts.some((existing) => existing.toLowerCase() === lower)) return;
+    termParts.push(part);
+  };
+  addTermPart(explicitComposer);
+  addTermPart(finalTitle);
+  addTermPart(finalArtist);
+  addTermPart(ensembleHint);
+  addTermPart(conductorHint);
+  const term = termParts.join(' ').trim();
 
   return {
     term,
@@ -4369,6 +4385,9 @@ function buildItunesTerm(artist, title, opts = {}) {
       aRaw,
       tRaw,
       album,
+      explicitComposer,
+      ensembleHint,
+      conductorHint,
       composer,
       work,
       useTeased,
@@ -4881,8 +4900,13 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     // performer/ensemble + program hint often works better than composer+movement song search.
     if (!url && String(opts?.albumHint || '').trim() && String(a || '').trim()) {
       const shortComposer = String(opts?.composerShort || '').trim();
+      const composer = String(opts?.composer || '').trim();
+      const ensemble = String(opts?.ensembleHint || a || '').trim();
+      const conductor = String(opts?.conductorHint || '').trim();
       const albumTerms = [
-        `${a} ${opts.albumHint}`,
+        [composer, opts.albumHint, ensemble, conductor].filter(Boolean).join(' '),
+        [ensemble, opts.albumHint, conductor].filter(Boolean).join(' '),
+        composer ? `${composer} ${opts.albumHint}` : '',
         shortComposer ? `${shortComposer} ${opts.albumHint}` : '',
       ].filter(Boolean);
 
@@ -6282,15 +6306,21 @@ app.get('/now-playing', async (req, res) => {
     return false;
   }
 
-  function buildAppleLookupTerm({ artist, title, album }) {
+  function buildAppleLookupTerm({ artist, title, album, composer = '', ensemble = '', conductor = '' }) {
     const s = sanitizeRadioLookupInputs({ artist, title });
     const a = String(s.artist || '').trim();
     const t = String(s.title || '').trim();
     const al = String(album || '').trim();
+    const c = String(composer || '').trim();
+    const e = String(ensemble || '').trim();
+    const d = String(conductor || '').trim();
 
     const parts = [];
-    if (a) parts.push(a);
+    if (c) parts.push(c);
     if (t) parts.push(t);
+    if (a) parts.push(a);
+    if (e && e.toLowerCase() !== a.toLowerCase()) parts.push(e);
+    if (d) parts.push(d);
     if (al) parts.push(al);
     return parts.join(' ').replace(/\s{2,}/g, ' ').trim();
   }
@@ -6335,7 +6365,7 @@ app.get('/now-playing', async (req, res) => {
 
     const ensemble = cleaned.find((p) => /orchestra|symphony|philharmonic|camerata|ensemble|chamber\s+orchestra/i.test(p));
     if (ensemble) lookupArtist = ensemble;
-    const conductorRaw = cleaned.find((p) => /\(conductor\)/i.test(p)) || '';
+    const conductorRaw = pList.find((p) => /\(conductor\)/i.test(p)) || '';
     const conductor = String(conductorRaw).replace(/\s*\(conductor\)\s*/i, '').trim();
     const soloistRaw = cleaned.find((p) => !/\(conductor\)|orchestra|symphony|philharmonic|ensemble|camerata/i.test(p)) || '';
     const soloist = String(soloistRaw || '').replace(/\s*\([^)]*\)\s*/g, '').trim();
@@ -6352,6 +6382,7 @@ app.get('/now-playing', async (req, res) => {
       lookupArtist,
       lookupTitle,
       lookupAlbumHint: String(albumHint || '').trim(),
+      composer: composerDisplay,
       composerShort,
       ensembleHint: String(ensemble || '').trim(),
       conductorHint: String(conductor || '').trim(),
@@ -6988,6 +7019,7 @@ app.get('/now-playing', async (req, res) => {
               conductorHint: lookupCtx.conductorHint || '',
               labelHint,
               soloistHint: lookupCtx.soloistHint || soloistHintRaw || '',
+              composer: lookupCtx.composer || '',
               strictArtist: !likelyClassical,
               strictTitle: likelyClassical,
             });
@@ -7014,6 +7046,7 @@ app.get('/now-playing', async (req, res) => {
               conductorHint: lookupCtx.conductorHint || '',
               labelHint,
               soloistHint: lookupCtx.soloistHint || soloistHintRaw || '',
+              composer: lookupCtx.composer || '',
               strictArtist: false,
             });
             if (String(swapped?.url || swapped?.trackUrl || swapped?.albumUrl || '').trim()) {
@@ -7079,6 +7112,7 @@ app.get('/now-playing', async (req, res) => {
                 radioAlbum: albumForLookup,
                 albumHint: albumForLookup,
                 composerShort: '',
+                composer: String(s2.artist || '').trim(),
                 labelHint,
                 soloistHint: '',
                 strictArtist: !likelyClassical2,
@@ -7161,7 +7195,14 @@ app.get('/now-playing', async (req, res) => {
         });
         const labelHint2 = extractLabelHintFromRawTitle(song.title || title || '');
         const soloistHint2 = decodeHtmlEntities(String(radioPerformers || '').trim()).split(',')[0]?.trim() || '';
-        radioLookupTerm = buildAppleLookupTerm({ artist: s3.lookupArtist, title: s3.lookupTitle, album: albumForTerm });
+        radioLookupTerm = buildAppleLookupTerm({
+          artist: s3.lookupArtist,
+          composer: s3.composer,
+          ensemble: s3.ensembleHint,
+          conductor: s3.conductorHint,
+          title: s3.lookupTitle,
+          album: albumForTerm,
+        });
 
         // Reuse existing iTunes lookup (it already returns trackUrl/albumUrl)
         const s3Title = String(s3.lookupTitle || '').trim();
@@ -7177,6 +7218,7 @@ app.get('/now-playing', async (req, res) => {
               conductorHint: String(s3.conductorHint || '').trim(),
               labelHint: labelHint2,
               soloistHint: String(s3.soloistHint || soloistHint2 || '').trim(),
+              composer: String(s3.composer || '').trim(),
               strictArtist: !likelyClassical3,
               strictTitle: likelyClassical3,
             });
