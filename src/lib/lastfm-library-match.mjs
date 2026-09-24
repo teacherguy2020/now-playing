@@ -9,24 +9,35 @@ export async function createLastfmIndexResolver({ mpdHost = 'moode.local', baseU
   const tracks = Array.isArray(idx?.tracks) ? idx.tracks : [];
 
   const byTrackArtist = new Map();
+  const byTrackAlbumArtist = new Map();
   const byArtist = new Map();
+  const byAlbumTrackArtist = new Map();
   const byAlbumArtist = new Map();
 
   for (const t of tracks) {
     const file = String(t?.file || '').trim();
     if (!file) continue;
-    const artist = String(t?.albumArtist || t?.artist || '').trim();
+    const trackArtist = String(t?.artist || '').trim();
+    const albumArtist = String(t?.albumArtist || t?.artist || '').trim();
     const title = String(t?.title || '').trim();
     const album = String(t?.album || '').trim();
 
-    const ak = norm(artist);
-    if (ak && !byArtist.has(ak)) byArtist.set(ak, t);
+    const trackArtistKey = norm(trackArtist);
+    const albumArtistKey = norm(albumArtist);
+    if (trackArtistKey && !byArtist.has(trackArtistKey)) byArtist.set(trackArtistKey, t);
+    if (albumArtistKey && !byArtist.has(albumArtistKey)) byArtist.set(albumArtistKey, t);
 
-    const tk = `${norm(title)}|${ak}`;
-    if (title && ak && !byTrackArtist.has(tk)) byTrackArtist.set(tk, t);
+    const trackKey = `${norm(title)}|${trackArtistKey}`;
+    if (title && trackArtistKey && !byTrackArtist.has(trackKey)) byTrackArtist.set(trackKey, t);
 
-    const albk = `${norm(album)}|${ak}`;
-    if (album && ak && !byAlbumArtist.has(albk)) byAlbumArtist.set(albk, t);
+    const albumArtistTrackKey = `${norm(title)}|${albumArtistKey}`;
+    if (title && albumArtistKey && !byTrackAlbumArtist.has(albumArtistTrackKey)) byTrackAlbumArtist.set(albumArtistTrackKey, t);
+
+    const albumTrackKey = `${norm(album)}|${trackArtistKey}`;
+    if (album && trackArtistKey && !byAlbumTrackArtist.has(albumTrackKey)) byAlbumTrackArtist.set(albumTrackKey, t);
+
+    const albk = `${norm(album)}|${albumArtistKey}`;
+    if (album && albumArtistKey && !byAlbumArtist.has(albk)) byAlbumArtist.set(albk, t);
   }
 
   const artFor = (file) => {
@@ -40,7 +51,8 @@ export async function createLastfmIndexResolver({ mpdHost = 'moode.local', baseU
 
   return {
     resolveTrack({ track = '', artist = '' } = {}) {
-      const hit = byTrackArtist.get(`${norm(track)}|${norm(artist)}`);
+      const key = `${norm(track)}|${norm(artist)}`;
+      const hit = byTrackArtist.get(key) || byTrackAlbumArtist.get(key);
       if (!hit) return null;
       return {
         file: String(hit.file || '').trim(),
@@ -53,7 +65,8 @@ export async function createLastfmIndexResolver({ mpdHost = 'moode.local', baseU
       };
     },
     resolveAlbum({ album = '', artist = '' } = {}) {
-      const hit = byAlbumArtist.get(`${norm(album)}|${norm(artist)}`);
+      const key = `${norm(album)}|${norm(artist)}`;
+      const hit = byAlbumTrackArtist.get(key) || byAlbumArtist.get(key);
       if (!hit) return null;
       return {
         file: String(hit.file || '').trim(),

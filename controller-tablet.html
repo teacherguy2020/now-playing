@@ -2276,7 +2276,7 @@
           const cachedLf = loadRecentCache(cacheKey);
           const maxAge = lastfmPref.mode === "recenttracks" ? 5 * 60 * 1e3 : 30 * 60 * 1e3;
           const lfTimeout = lastfmPref.mode === "topalbums" ? 12e3 : 6e3;
-          const cacheHasTrackFile = Array.isArray(cachedLf.items) && cachedLf.items.every((it) => String((it == null ? void 0 : it.kind) || "") !== "lastfm-track" || !!String((it == null ? void 0 : it.file) || "").trim());
+          const cacheHasTrackFile = Array.isArray(cachedLf.items) && cachedLf.items.every((it) => !["lastfm-track", "lastfm-album", "lastfm-artist"].includes(String((it == null ? void 0 : it.kind) || "")) || !!String((it == null ? void 0 : it.file) || "").trim());
           if (Array.isArray(cachedLf.items) && cachedLf.items.length && cacheHasTrackFile) {
             ipadRecentItems.radio = cachedLf.items.slice(0, limit);
             renderIpadRail("ipadRailRadio", ipadRecentItems.radio, "radio", false);
@@ -2372,7 +2372,7 @@
     const cacheKey = "np.recent.lastfm.".concat(modeKey, ".v3");
     const cached = loadRecentCache(cacheKey);
     const maxAge = src === "lastfm-recenttracks" ? 5 * 60 * 1e3 : 30 * 60 * 1e3;
-    const cacheHasTrackFile = Array.isArray(cached.items) && cached.items.every((it) => String((it == null ? void 0 : it.kind) || "") !== "lastfm-track" || !!String((it == null ? void 0 : it.file) || "").trim());
+    const cacheHasTrackFile = Array.isArray(cached.items) && cached.items.every((it) => !["lastfm-track", "lastfm-album", "lastfm-artist"].includes(String((it == null ? void 0 : it.kind) || "")) || !!String((it == null ? void 0 : it.file) || "").trim());
     if (cacheHasTrackFile && Array.isArray(cached.items) && cached.items.length && Date.now() - Number(cached.ts || 0) < maxAge) {
       return cached.items.slice(0, limit);
     }
@@ -2618,7 +2618,7 @@
             const cachedLf = loadRecentCache(cacheKey);
             const maxAge = lastfmPref.mode === "recenttracks" ? 5 * 60 * 1e3 : 30 * 60 * 1e3;
             const lfTimeout = lastfmPref.mode === "topalbums" ? 12e3 : 3200;
-            const cacheHasTrackFile = Array.isArray(cachedLf.items) && cachedLf.items.every((it) => String((it == null ? void 0 : it.kind) || "") !== "lastfm-track" || !!String((it == null ? void 0 : it.file) || "").trim());
+            const cacheHasTrackFile = Array.isArray(cachedLf.items) && cachedLf.items.every((it) => !["lastfm-track", "lastfm-album", "lastfm-artist"].includes(String((it == null ? void 0 : it.kind) || "")) || !!String((it == null ? void 0 : it.file) || "").trim());
             if (Array.isArray(cachedLf.items) && cachedLf.items.length && cacheHasTrackFile) {
               recentItems = cachedLf.items.slice(0, recentLimit());
               rail.innerHTML = "";
