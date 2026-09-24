@@ -176,33 +176,59 @@
     return promise;
   }
 
-  async function resolveMotionMp4(appleUrl) {
+  async function resolveMotionMp4(appleUrl, base = '') {
     const normalized = normalizeAppleMusicUrl(appleUrl);
     if (!normalized) return '';
     const cached = cachedMotion(motionCache.apple, normalized);
     if (cached !== null) return cached;
 
     const promise = (async () => {
+      let centralLookupFailed = false;
       try {
-        const endpoint = `https://api.aritra.ovh/v1/covers?url=${encodeURIComponent(normalized)}`;
-        const r = await fetch(endpoint, { cache: 'force-cache' });
+        const api = apiBase(base);
+        const keyHeader = await runtimeKey(api);
+        const headers = keyHeader ? { 'x-track-key': keyHeader } : {};
+        const endpoint = `${api}/config/library-health/animated-art/radio-lookup?url=${encodeURIComponent(normalized)}`;
+        const r = await fetch(endpoint, { headers, cache: 'no-store' });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const j = await r.json().catch(() => ({}));
-        const square = Array.isArray(j?.master_Streams?.square) ? j.master_Streams.square : [];
-        const list = square.filter((x) => String(x?.uri || '').includes('.m3u8'));
-        const preferred = list
-          .map((x) => ({ uri: String(x?.uri || ''), width: Number(x?.width || 0), bw: Number(x?.bandwidth || 0) }))
-          .filter((x) => x.uri)
-          .sort((a, b) => (a.width - b.width) || (a.bw - b.bw));
-        const choice = preferred.filter((x) => x.width >= 700 && x.width <= 1200).slice(-1)[0] || preferred.slice(-1)[0];
-        const mp4 = String(choice?.uri || '').replace(/\.m3u8(?:\?.*)?$/i, '-.mp4');
-        if (!mp4 || mp4 === choice?.uri) throw new Error('no motion stream');
-        motionCache.apple.set(normalized, { state: 'ready', value: mp4 });
-        return mp4;
-      } catch {
+        const mp4 = String(j?.hit?.mp4 || '').trim();
+        if (mp4) {
+          motionCache.apple.set(normalized, { state: 'ready', value: mp4 });
+          return mp4;
+        }
         motionCache.apple.set(normalized, { state: 'none', retryAt: Date.now() + 30000 });
         return '';
+      } catch {
+        centralLookupFailed = true;
       }
+
+      // Compatibility fallback for an unavailable/older API deployment. The
+      // Pi-owned lookup remains the normal path; this prevents a transient
+      // route failure from removing motion art while static art still works.
+      if (centralLookupFailed) {
+        try {
+          const endpoint = `https://api.aritra.ovh/v1/covers?url=${encodeURIComponent(normalized)}`;
+          const r = await fetch(endpoint, { cache: 'force-cache' });
+          if (r.ok) {
+            const j = await r.json().catch(() => ({}));
+            const square = Array.isArray(j?.master_Streams?.square) ? j.master_Streams.square : [];
+            const list = square.filter((x) => String(x?.uri || '').includes('.m3u8'));
+            const preferred = list
+              .map((x) => ({ uri: String(x?.uri || ''), width: Number(x?.width || 0), bw: Number(x?.bandwidth || 0) }))
+              .filter((x) => x.uri)
+              .sort((a, b) => (a.width - b.width) || (a.bw - b.bw));
+            const choice = preferred.filter((x) => x.width >= 700 && x.width <= 1200).slice(-1)[0] || preferred.slice(-1)[0];
+            const mp4 = String(choice?.uri || '').replace(/\.m3u8(?:\?.*)?$/i, '-.mp4');
+            if (mp4 && mp4 !== choice?.uri) {
+              motionCache.apple.set(normalized, { state: 'ready', value: mp4 });
+              return mp4;
+            }
+          }
+        } catch {}
+      }
+      motionCache.apple.set(normalized, { state: 'none', retryAt: Date.now() + 30000 });
+      return '';
     })();
     motionCache.apple.set(normalized, { state: 'pending', promise });
     return promise;
@@ -212,7 +238,7 @@
     if (!motionArtEnabled()) return '';
     const radio = isRadio(data);
     const podcast = !!data?.isPodcast || /\/podcasts?\//i.test(String(data?.file || ''));
-    if (radio) return resolveMotionMp4(appleMusicUrl(data));
+    if (radio) return resolveMotionMp4(appleMusicUrl(data), options.base);
     if (podcast || data?.isAirplay || data?.isUpnp || data?.isStream) return '';
     return resolveLocalMotionMp4(data?.artist || data?.displayArtist, data?.album, options.base);
   }

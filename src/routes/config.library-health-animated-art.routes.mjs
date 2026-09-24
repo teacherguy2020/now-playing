@@ -45,7 +45,9 @@ let discoverJob = null;
 let appleLookupBackoffUntil = 0;
 let appleItunesNextAllowedTs = 0;
 const runtimeLookupInFlight = new Map();
+const radioMotionLookupInFlight = new Map();
 const h264TranscodeInFlight = new Map();
+let cacheWriteChain = Promise.resolve();
 
 async function fetchJsonWithTimeout(url, ms = 12000, init = {}) {
   const controller = new AbortController();
@@ -169,6 +171,18 @@ async function writeCache(cache) {
   await fs.writeFile(CACHE_FILE, JSON.stringify(cache, null, 2));
 }
 
+async function updateCacheFile(mutator) {
+  const run = cacheWriteChain.then(async () => {
+    const cache = await readCache();
+    await mutator(cache);
+    cache.updatedAt = new Date().toISOString();
+    await writeCache(cache);
+    return cache;
+  });
+  cacheWriteChain = run.catch(() => {});
+  return run;
+}
+
 async function readDiscovery() {
   return readJsonFile(DISCOVERY_FILE, { updatedAt: new Date().toISOString(), entries: {} });
 }
@@ -187,6 +201,23 @@ function normText(s) {
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function normalizeAppleMotionUrl(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  try {
+    const u = new URL(value);
+    const host = String(u.hostname || '').toLowerCase();
+    const allowed = host === 'music.apple.com' || host.endsWith('.music.apple.com') ||
+      host === 'itunes.apple.com' || host.endsWith('.itunes.apple.com');
+    if (u.protocol !== 'https:' || !allowed) return '';
+    u.search = '';
+    u.hash = '';
+    return u.toString();
+  } catch {
+    return '';
+  }
 }
 
 function primaryArtistPart(s) {
@@ -309,6 +340,32 @@ function pickMp4FromCovers(covers) {
   if (!list.length) return '';
   const choice = list.filter((x) => x.width >= 700 && x.width <= 1200).slice(-1)[0] || list.slice(-1)[0];
   return String(choice.uri || '').replace(/\.m3u8(?:\?.*)?$/i, '-.mp4');
+}
+
+async function lookupMotionForAppleUrl(appleUrl) {
+  const normalized = normalizeAppleMotionUrl(appleUrl);
+  if (!normalized) return { ok: false, reason: 'invalid-apple-url' };
+  if (appleLookupBackoffUntil && Date.now() < appleLookupBackoffUntil) {
+    return { ok: false, appleUrl: normalized, reason: 'backoff-active' };
+  }
+
+  const endpoint = `https://api.aritra.ovh/v1/covers?url=${encodeURIComponent(normalized)}`;
+  let lastReason = 'no-motion';
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const out = await fetchJsonWithTimeout(endpoint, 20000, { cache: 'no-store' }).catch(() => null);
+    const r = out?.response || null;
+    const j = out?.json || {};
+    if (r?.ok) {
+      const mp4 = pickMp4FromCovers(j);
+      if (mp4) return { ok: true, appleUrl: normalized, mp4, matchDebug: { source: 'radio-apple-url' } };
+      return { ok: false, appleUrl: normalized, reason: 'no-motion' };
+    }
+    lastReason = `covers-http-${r?.status || 0}`;
+    if (r?.status !== 429) break;
+    appleLookupBackoffUntil = Math.max(appleLookupBackoffUntil || 0, Date.now() + (45 * 60 * 1000));
+    await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+  }
+  return { ok: false, appleUrl: normalized, reason: lastReason };
 }
 
 async function lookupMotionForAlbum(artist, album) {
@@ -590,6 +647,71 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
     try {
       if (!requireTrackKey(req, res)) return;
       return res.json({ ok: true, job: discoverJob || { status: 'idle' } });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
+  app.get('/config/library-health/animated-art/radio-lookup', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const appleUrl = String(req.query?.url || req.query?.appleUrl || '').trim();
+      const resolveOnMiss = String(req.query?.resolve || '1').trim().toLowerCase() !== '0';
+      const normalized = normalizeAppleMotionUrl(appleUrl);
+      if (!normalized) return res.status(400).json({ ok: false, error: 'a valid Apple Music URL is required' });
+
+      const key = `radio:${hashUrl(normalized)}`;
+      const cache = await readCache();
+      const radioEntries = cache.radioEntries || {};
+      const existing = radioEntries[key] || null;
+
+      if (existing?.hasMotion && existing?.mp4) {
+        return res.json({ ok: true, key, hit: existing, source: 'cache-hit' });
+      }
+
+      const retryAt = Number(existing?.retryAt || 0);
+      if (!resolveOnMiss || (retryAt > Date.now())) {
+        return res.json({ ok: true, key, hit: existing, source: 'cache-miss-no-resolve' });
+      }
+
+      let p = radioMotionLookupInFlight.get(key);
+      if (!p) {
+        p = (async () => {
+          const hit = await lookupMotionForAppleUrl(normalized);
+          let nextEntry = {
+            key,
+            appleUrl: normalized,
+            mp4: String(hit?.mp4 || ''),
+            hasMotion: !!hit?.ok,
+            matchDebug: hit?.matchDebug || null,
+            reason: String(hit?.reason || ''),
+            retryAt: hit?.ok ? 0 : Date.now() + (10 * 60 * 1000),
+            updatedAt: new Date().toISOString(),
+          };
+
+          try {
+            await updateCacheFile(async (liveCache) => {
+              liveCache.radioEntries = liveCache.radioEntries || {};
+              const prior = liveCache.radioEntries[key] || null;
+              // Never replace a known hit with a transient provider miss.
+              if (prior?.hasMotion && prior?.mp4 && !nextEntry.hasMotion) {
+                nextEntry = prior;
+                return;
+              }
+              liveCache.radioEntries[key] = nextEntry;
+            });
+          } catch (e) {
+            console.warn('[animated-art] radio cache write failed:', e?.message || e);
+          }
+          return nextEntry;
+        })().finally(() => {
+          radioMotionLookupInFlight.delete(key);
+        });
+        radioMotionLookupInFlight.set(key, p);
+      }
+
+      const resolved = await p;
+      return res.json({ ok: true, key, hit: resolved, source: resolved?.hasMotion ? 'resolved-hit' : 'resolved-miss' });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

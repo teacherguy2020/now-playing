@@ -78,13 +78,18 @@ Animated art is a separate enhancement layered over the same resolved static
 art:
 
 - local tracks use
-  `/config/library-health/animated-art/lookup?artist=&album=`;
-- radio tracks use the verified Apple/iTunes URL through
-  `https://api.aritra.ovh/v1/covers?url=...`;
+  `/config/library-health/animated-art/lookup?artist=&album=`; the Pi
+  persists the album match and can serve a local H.264 copy from
+  `data/animated-art-h264/`;
+- radio tracks use the verified Apple/iTunes URL through the Pi-owned
+  `/config/library-health/animated-art/radio-lookup?url=...` route; the Pi
+  persists the resolved remote motion URL in `data/animated-art-cache.json`
+  and asks `api.aritra.ovh` only on a cache miss. Radio video remains remote
+  by default so transient radio tracks do not force Pi-side transcoding;
 - podcasts, AirPlay, UPnP, and other stream-only items do not request local
   motion art;
-- motion lookups are coalesced and cached, with a short retry window for
-  transient misses;
+- motion lookups are coalesced and cached on the Pi and in each browser, with
+  a short retry window for transient misses;
 - the browser preference is `nowplaying.ui.motionArtEnabled`.
 
 If motion art is unavailable, the resolved static foreground and blur must
