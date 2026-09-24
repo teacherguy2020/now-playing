@@ -6120,6 +6120,23 @@ app.get('/now-playing', async (req, res) => {
     return false;
   }
 
+  // Radio feeds sometimes publish only a shortened artist token (for example
+  // "WAYNE") while a verified Apple/iTunes match gives us the full performer
+  // name ("Wayne Shorter"). Promote only a clear prefix match so personnel
+  // lists or unrelated enrichment cannot overwrite the feed's artist.
+  function fullerRadioArtistName(currentArtist, performers, { verified = false } = {}) {
+    const current = String(currentArtist || '').trim();
+    const candidate = decodeHtmlEntities(String(performers || '').trim())
+      .split(/\s*[,;|]\s*/)[0]
+      .replace(/\s*\([^)]*\)\s*$/, '')
+      .trim();
+    if (!candidate) return '';
+    if (artistLooksGeneric(current)) return verified ? candidate : '';
+    const currentLower = current.toLocaleLowerCase();
+    const candidateLower = candidate.toLocaleLowerCase();
+    return candidateLower.startsWith(`${currentLower} `) ? candidate : '';
+  }
+
   // Guard iTunes lookups for non-music radio (talk/news/sports, etc.)
   function getRadioLookupGuard({ artist, title, album, encoded = '', stationName = '' }) {
     const a = String(artist || '').trim();
@@ -7248,6 +7265,16 @@ app.get('/now-playing', async (req, res) => {
         if (hThumb) primaryArtUrl = hThumb;
       }
     } catch {}
+
+    // Use a verified fuller performer name when the radio feed's artist is a
+    // shortened prefix. This keeps the ordinary current-track surfaces and
+    // their title-cased display field consistent with the matched artwork.
+    if (isRadio) {
+      const fullerArtist = fullerRadioArtistName(artist, radioPerformers, {
+        verified: !!(radioItunesUrl || radioTrackUrl || radioAlbumUrl),
+      });
+      if (fullerArtist) artist = fullerArtist;
+    }
 
     // Radio without a verified iTunes match must always retain station
     // branding. This includes ordinary music rows whose lookup simply missed,

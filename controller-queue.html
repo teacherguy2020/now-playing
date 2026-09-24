@@ -810,6 +810,7 @@
       const rowsHtml = items.map((x, idx)=>{
         const pos = Number(x?._posDisplay || x?.pos || (idx + 1));
         const isStream = !!x?.isStream;
+        const isRadio = isStream && !x?.isYoutube && !x?.isUpnp && !x?.isAirplay;
         const artist = String(x?.artist || '').trim();
         const stationName = String(x?.stationName || x?.name || '').trim();
         const file = String(x?.file || '').trim();
@@ -832,7 +833,8 @@
         const ratingNumRaw = Number(x?.rating || 0);
         const rating = Number.isFinite(ratingNumRaw) ? Math.max(0, Math.min(5, Math.round(ratingNumRaw))) : 0;
         const stars = ratingsEnabled ? ('★'.repeat(rating) + '☆'.repeat(Math.max(0, 5 - rating))) : '';
-        const starsHtml = stars ? ('<span class="stars">' + stars + '</span> ') : '';
+        const starsHtml = !isRadio && stars ? ('<span class="stars">' + stars + '</span> ') : '';
+        const subHtml = isRadio ? '' : `<div class="sub">${starsHtml}${artist}${album ? ' • ' + album : ''}</div>`;
         const thumbRaw = String(x?.thumbUrl || '').trim();
         const cachedThumb = file ? String(thumbCacheByFile.get(file) || '').trim() : '';
         const stationLogoByName = (stationName || mappedByKey || mappedByHost) ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName || mappedByKey || mappedByHost)}` : '';
@@ -846,7 +848,7 @@
           <div class="row ${head?'head':''}" data-pos="${pos}">
             <div class="num">${pos}</div>
             <div class="coverWrap" style="width:34px;height:34px"><img class="thumb" src="${thumb}" alt="" loading="lazy" decoding="async" /></div>
-            <div><div class="title">${title}</div><div class="sub">${starsHtml}${artist}${album ? ' • ' + album : ''}</div></div>
+            <div><div class="title">${title}</div>${subHtml}</div>
           </div>
           <button type="button" class="vibeBtn" data-a="vibe" data-pos="${pos}">Vibe</button>
           ${playlistAction}
