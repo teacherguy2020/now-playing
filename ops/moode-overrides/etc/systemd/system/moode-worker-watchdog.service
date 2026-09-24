@@ -1,0 +1,8 @@
+[Unit]
+Description=Check and recover the moOde worker daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/moode-worker-watchdog.sh

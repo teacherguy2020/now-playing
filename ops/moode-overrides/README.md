@@ -9,6 +9,9 @@ These files are live-system overrides on `moode@10.0.0.254` and are mirrored her
 - `usr/local/bin/airplay-json-watchdog.sh`
 - `etc/systemd/system/airplay-json-watchdog.service`
 - `etc/systemd/system/airplay-json-watchdog.timer`
+- `etc/systemd/system/moode-worker-watchdog.service`
+- `etc/systemd/system/moode-worker-watchdog.timer`
+- `usr/local/bin/moode-worker-watchdog.sh`
 
 ## Why
 
@@ -21,6 +24,10 @@ These files are live-system overrides on `moode@10.0.0.254` and are mirrored her
 - `airplay-json.service` runs `/var/www/daemon/aplmeta-reader.sh`.
 - `airplay-json-watchdog.timer` runs every 30s.
 - Watchdog restarts `airplay-json.service` after sustained metadata-reader CPU > 40%.
+- `moode-worker-watchdog.timer` checks the stock moOde worker and configured
+  AirPlay receiver every 30s. It recovers a dead worker even when inherited
+  helper locks remain, and uses moOde's renderer restart path for a failed
+  `shairport-sync` service.
 
 ## Deploy from repo to moOde
 
@@ -35,10 +42,14 @@ ssh moode@10.0.0.254 '
   sudo install -m 644 /tmp/airplay-json.service /etc/systemd/system/airplay-json.service &&
   sudo install -m 644 /tmp/airplay-json-watchdog.service /etc/systemd/system/airplay-json-watchdog.service &&
   sudo install -m 644 /tmp/airplay-json-watchdog.timer /etc/systemd/system/airplay-json-watchdog.timer &&
+  sudo install -m 644 /tmp/moode-worker-watchdog.service /etc/systemd/system/moode-worker-watchdog.service &&
+  sudo install -m 644 /tmp/moode-worker-watchdog.timer /etc/systemd/system/moode-worker-watchdog.timer &&
   sudo install -m 755 /tmp/airplay-json-watchdog.sh /usr/local/bin/airplay-json-watchdog.sh &&
+  sudo install -m 755 /tmp/moode-worker-watchdog.sh /usr/local/bin/moode-worker-watchdog.sh &&
   sudo install -m 755 /tmp/aplmeta-reader.sh /var/www/daemon/aplmeta-reader.sh &&
   sudo systemctl daemon-reload &&
   sudo systemctl enable --now airplay-json-watchdog.timer &&
+  sudo systemctl enable --now moode-worker-watchdog.timer &&
   sudo systemctl restart airplay-json.service
 '
 ```
