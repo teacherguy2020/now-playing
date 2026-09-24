@@ -2965,9 +2965,77 @@ app.get('/alexa/now-playing', async (req, res) => {
   }
 });
 
-// Semantic alias: Alexa "next up" is MPD head truth.
-// This endpoint intentionally aliases /now-playing semantics.
+// Decode the exact Alexa stream token recorded when NearlyFinished enqueues a
+// successor. MPD has already advanced past that item by the time clients poll
+// /alexa/next-up, so the token is the only reliable immediate-successor source.
+function parseAlexaTrackToken(token) {
+  const value = String(token || '').trim();
+  if (!value.startsWith('moode-track:')) return null;
+
+  try {
+    const raw = value.slice('moode-track:'.length);
+    const normalized = raw.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    const parsed = JSON.parse(Buffer.from(padded, 'base64').toString('utf8') || '{}');
+    const file = String(parsed?.file || '').trim();
+    if (!file) return null;
+    return {
+      file,
+      title: decodeHtmlEntities(String(parsed?.title || '').trim()),
+      artist: decodeHtmlEntities(String(parsed?.artist || '').trim()),
+      album: decodeHtmlEntities(String(parsed?.album || '').trim()),
+      songid: String(parsed?.songid ?? '').trim(),
+      songpos: String(parsed?.pos0 ?? '').trim(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Semantic alias: Alexa "next up" is the recorded ENQUEUE successor while
+// one is pending; once Alexa starts it, the marker is cleared and this falls
+// back to the MPD live head as before.
 app.get('/alexa/next-up', async (req, res) => {
+  const wp = alexaWasPlaying || {};
+  const currentToken = String(wp.token || '').trim();
+  const queuedForToken = String(wp.queuedNextForToken || '').trim();
+  const queuedNextToken = String(wp.queuedNextToken || '').trim();
+  const successor = (
+    alexaModeActive
+    && !!wp.active
+    && !!wp.modeActive
+    && currentToken
+    && queuedForToken === currentToken
+    && queuedNextToken
+  ) ? parseAlexaTrackToken(queuedNextToken) : null;
+
+  if (successor) {
+    const isStream = isStreamPath(successor.file);
+    const isYoutube = isStream && /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(successor.file);
+    const item = {
+      songid: successor.songid,
+      songpos: successor.songpos,
+      title: successor.title,
+      artist: successor.artist,
+      album: successor.album,
+      file: successor.file,
+      isStream,
+      isYoutube,
+      artUrl: isStream ? `${PUBLIC_BASE_URL}/art/current.jpg` : buildArtUrlForFile(successor.file),
+      currentArtUrl: `${PUBLIC_BASE_URL}/art/current.jpg`,
+      stationLogoUrl: '',
+    };
+
+    // Keep both the legacy top-level fields and the nested `next` shape so
+    // existing tablet and full-controller clients can consume this endpoint.
+    return res.json({
+      ok: true,
+      source: 'alexa-enqueue',
+      ...item,
+      next: item,
+    });
+  }
+
   return res.redirect(307, '/now-playing');
 });
 
