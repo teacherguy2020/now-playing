@@ -37,6 +37,27 @@ Useful references for this branch:
 - Do **not** use `/home/brianwis/apps/now-playing-next` unless explicitly requested
 - Current host preference is Pi5 first, not Pi4
 
+## OpenClaw Pi5 deployment procedure
+
+When deployment runs inside the OpenClaw main Docker sandbox, use the
+repository helper rather than bare `ssh`, `scp`, or `rsync`:
+
+```text
+scripts/deploy-pi5-files.sh relative/path [relative/path ...]
+```
+
+The helper uses the read-only mounted key
+`/home/sandbox/.ssh/nowplaying_ed25519`, pins the verified Pi5 ED25519 host
+key, stages files through `/tmp`, and installs them into the root-owned
+`/opt/now-playing/` tree with the existing passwordless sudo allowance. It
+restarts `now-playing.service` automatically when a backend source path is
+included. Frontend-only deployments do not restart the service.
+
+The reason this is explicit is operational: the sandbox mounts the three
+dedicated keys but does not mount an SSH config file, and `nowplaying_ed25519`
+is not a default OpenSSH identity filename. The primary target remains
+`brianwis@10.0.0.4`; do not substitute the legacy Pi4 path.
+
 These assumptions should stay prominent because deploying to the wrong host/path is an easy way to create confusion.
 
 ## Local patches and overrides
