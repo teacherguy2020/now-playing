@@ -1122,6 +1122,13 @@ body:not(.phone-ui) #album-link[href] .share-icon {
   display: inline-block !important;
 }
 
+/* The wall/display surface is not a touch target. Keep the Apple Music
+ * destination available to controller surfaces without showing its affordance
+ * on canonical index.html. */
+body.index-display #album-text .share-icon {
+  display: none !important;
+}
+
 body.is-airplay #album-text .share-icon,
 body.is-upnp    #album-text .share-icon,
 body.is-podcast #album-text .share-icon {
