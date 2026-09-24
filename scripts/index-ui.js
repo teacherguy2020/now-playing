@@ -2394,8 +2394,12 @@ function getDisplayRate(data) {
 function normalizeArtKey(url) {
   const s = String(url || '').trim();
   if (!s) return '';
-  // ignore cache-busters and fragments so equality is stable
-  return s.split('#')[0].split('?')[0];
+  const withoutFragment = s.split('#')[0];
+  // The file query is part of the identity for the station-logo resolver;
+  // dropping it makes every station look like the same cached image.
+  if (/\/art\/radio-logo\.jpg(?:\?|$)/i.test(withoutFragment)) return withoutFragment;
+  // Ignore ordinary cache-busters and fragments so equality is stable.
+  return withoutFragment.split('?')[0];
 }
  
 
@@ -3332,6 +3336,10 @@ if (titleEl) {
   const rawArtUrl = (primary || alt);
   // In Alexa mode, keep full URL (including file query) so art changes per track are detected.
   const artKey = data.alexaMode ? String(rawArtUrl || '').trim() : normalizeArtKey(rawArtUrl);
+  const appleUrl = String(data.radioItunesUrl || data.itunesUrl || data.radioAppleMusicUrl || '').trim();
+  const directRadioFallback = isRadio && !appleUrl && /^https?:\/\//i.test(rawArtUrl)
+    ? rawArtUrl
+    : '';
 
   const continuityArtist = String(data.albumartist || data.artist || '').trim().toLowerCase();
   const continuityAlbum  = String(data.album || '').trim().toLowerCase();
@@ -3360,7 +3368,7 @@ if (titleEl) {
         ? rawArtUrl
         : (podcastTrack && rawArtUrl)
             ? rawArtUrl
-            : (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : ''));
+            : (directRadioFallback || (artKey ? `${API_BASE}/art/current.jpg?v=${encodeURIComponent(artKey)}` : '')));
 
   // Keep existing art/background stable for consecutive tracks from same album.
   const effectiveArtKey = sameAlbumRun ? String(lastAlbumArtKey || artKey) : artKey;
@@ -3371,7 +3379,6 @@ if (titleEl) {
         : '')
     : bgArtUrl;
 
-  const appleUrl = String(data.radioItunesUrl || data.itunesUrl || data.radioAppleMusicUrl || '').trim();
   setAlbumArtAppleLink((isRadio && appleUrl) ? appleUrl : '');
   const trackKey = (isRadio)
     ? `radio|${String(appleUrl || '').trim().toLowerCase()}|${String(data.artist || '').trim().toLowerCase()}|${String(data.album || '').trim().toLowerCase()}|${String(data.title || data.radioTitle || '').trim().toLowerCase()}`

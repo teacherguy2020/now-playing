@@ -4162,6 +4162,8 @@ async function resolveLibraryFileForStream(inputs, debugLog = null) {
  * ========================= */
 
 const itunesArtCache = new Map();
+const appleMusicWebCache = new Map();
+const APPLE_MUSIC_WEB_TTL_MS = 1000 * 60 * 10;
 let itunesBackoffUntil = 0;
 let itunesBackoffReason = '';
 let itunesNextAllowedTs = 0;
@@ -4478,6 +4480,113 @@ function shouldAcceptMatchedTitle(rawTitle = '', matchedTitle = '') {
   return ratio >= 0.5;
 }
 
+async function lookupAppleMusicWebFallback(artist, title, opts = {}) {
+  const a = String(artist || '').trim();
+  const t = String(title || '').trim();
+  if (!a || !t) return null;
+
+  const cacheKey = `${normLoose(a)}|${normLoose(t)}`;
+  const now = Date.now();
+  const cached = appleMusicWebCache.get(cacheKey);
+  if (cached && !opts.debug && (now - Number(cached.ts || 0)) < APPLE_MUSIC_WEB_TTL_MS) {
+    return cached.result || null;
+  }
+
+  const terms = Array.from(new Set([
+    String(opts.searchTerm || '').trim(),
+    `${a} ${t}`.trim(),
+    `${t} ${a}`.trim(),
+  ].filter(Boolean)));
+
+  const readAttr = (tag, name) => {
+    const re = new RegExp(`${name}\\s*=\\s*["']([^"']*)["']`, 'i');
+    return decodeHtmlEntities(String(tag.match(re)?.[1] || '').trim());
+  };
+
+  let found = null;
+  try {
+    for (const term of terms) {
+      const searchUrl = `https://music.apple.com/${encodeURIComponent(ITUNES_COUNTRY)}/search?term=${encodeURIComponent(term)}`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), ITUNES_TIMEOUT_MS);
+      let html = '';
+      try {
+        const response = await fetch(searchUrl, {
+          headers: {
+            Accept: 'text/html',
+            'User-Agent': 'now-playing-next/1.0 (+https://moode.brianwis.com)',
+          },
+          agent: agentForUrl(searchUrl),
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        html = await response.text();
+        if (!response.ok) continue;
+      } finally {
+        clearTimeout(timer);
+      }
+
+      const titleNeedle = normLoose(t);
+      const artistNeedle = normLoose(a);
+      const anchorRe = /<a\b[^>]*>/gi;
+      let match;
+      while ((match = anchorRe.exec(html))) {
+        const tag = match[0];
+        if (!/data-testid\s*=\s*["']click-action["']/i.test(tag)) continue;
+        const href = readAttr(tag, 'href');
+        const label = readAttr(tag, 'aria-label');
+        const trackId = String(href.match(/[?&]i=(\d+)/i)?.[1] || '').trim();
+        if (!trackId || !href) continue;
+
+        const labelNorm = normLoose(label);
+        if (!labelNorm.includes(titleNeedle) || !labelNorm.includes(artistNeedle)) continue;
+
+        found = { trackId, href, label, searchUrl };
+        break;
+      }
+      if (found) break;
+    }
+
+    if (found) {
+      const lookupBase = String(ITUNES_SEARCH_URL).replace(/\/search\/?$/i, '/lookup');
+      const lookupUrl = `${lookupBase}?id=${encodeURIComponent(found.trackId)}&entity=song`;
+      const data = await fetchJsonWithTimeout(lookupUrl, ITUNES_TIMEOUT_MS);
+      const item = (Array.isArray(data?.results) ? data.results : [])
+        .find((row) => String(row?.trackId || '') === found.trackId);
+      const matchedArtist = String(item?.artistName || '').trim();
+      const matchedTitle = String(item?.trackName || '').trim();
+      const art = pickArtFromItunesItem(item);
+
+      if (
+        item && art &&
+        artistMatchStrict(a, matchedArtist) &&
+        shouldAcceptMatchedTitle(t, matchedTitle)
+      ) {
+        const picked = pickAlbumAndYearFromItunesItem(item) || {};
+        const result = {
+          url: art,
+          album: String(picked.album || ''),
+          year: String(picked.year || ''),
+          trackUrl: String(item?.trackViewUrl || found.href || ''),
+          albumUrl: String(item?.collectionViewUrl || ''),
+          matchedArtist,
+          matchedTitle,
+          reason: 'ok:web-search',
+          webSearchUrl: found.searchUrl,
+          webLookupUrl: lookupUrl,
+        };
+        appleMusicWebCache.set(cacheKey, { ts: now, result });
+        return result;
+      }
+    }
+  } catch {
+    // Keep the normal iTunes miss behavior if Apple's web surface is unavailable.
+  }
+
+  appleMusicWebCache.set(cacheKey, { ts: now, result: null });
+  return null;
+}
+
 async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
   const a = sanitizeLookupArtistForItunes(String(artist || '').trim());
   const t = String(title || '').trim();
@@ -4533,6 +4642,23 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     const ttl = cached.url ? ITUNES_TTL_HIT_MS : ITUNES_TTL_MISS_MS;
     const allowEmptyCache = !(opts?.albumHint && !cached.url);
     if ((now - (cached.ts || 0)) < ttl && allowEmptyCache) {
+      if (!cached.url) {
+        const web = await lookupAppleMusicWebFallback(a, t, { searchTerm: termStr });
+        if (web?.url) {
+          const webCached = {
+            url: web.url || '',
+            album: web.album || '',
+            year: web.year || '',
+            trackUrl: web.trackUrl || '',
+            albumUrl: web.albumUrl || '',
+            matchedArtist: web.matchedArtist || '',
+            matchedTitle: web.matchedTitle || '',
+            ts: now,
+          };
+          itunesArtCache.set(cacheKey, webCached);
+          return { ...webCached, reason: 'ok:web-search' };
+        }
+      }
       return {
         url: cached.url || '',
         album: cached.album || '',
@@ -4588,6 +4714,8 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     let matchedArtist = '';
     let matchedTitle = '';
     let strictRejected = 0;
+    let matchReason = '';
+    let webFallback = null;
 
     const queryOpus = extractOpusNums(t);
     const queryWork = String(t || '')
@@ -4757,6 +4885,28 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       }
     }
 
+    // The iTunes Search API does not index every Apple Music track. If the
+    // normal API and album-tier searches miss, use Apple's web search to find
+    // the track URL, then validate/fetch its canonical iTunes record by ID.
+    if (!url) {
+      const web = await lookupAppleMusicWebFallback(a, t, { searchTerm: termStr, debug });
+      if (web?.url) {
+        url = web.url;
+        album = web.album || '';
+        year = web.year || '';
+        trackUrl = web.trackUrl || '';
+        albumUrl = web.albumUrl || '';
+        matchedArtist = web.matchedArtist || '';
+        matchedTitle = web.matchedTitle || '';
+        matchReason = 'ok:web-search';
+        webFallback = {
+          reason: web.reason || 'ok:web-search',
+          searchUrl: web.webSearchUrl || '',
+          lookupUrl: web.webLookupUrl || '',
+        };
+      }
+    }
+
     // ✅ Cache both hits and misses, including URLs if present
     itunesArtCache.set(cacheKey, {
       url,
@@ -4769,7 +4919,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       ts: now,
     });
 
-    const reason = url ? (trackUrl ? 'ok:bestMatch' : 'ok:albumFallback') : ((opts?.strictArtist && strictRejected > 0) ? 'no-artist-match' : 'no-art');
+    const reason = url ? (matchReason || (trackUrl ? 'ok:bestMatch' : 'ok:albumFallback')) : ((opts?.strictArtist && strictRejected > 0) ? 'no-artist-match' : 'no-art');
 
     if (debug) {
       return {
@@ -4795,6 +4945,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
           bestTrack: String(bestItem?.trackName || ''),
           bestArtist: String(bestItem?.artistName || ''),
           bestAlbum: String(bestItem?.collectionName || ''),
+          webFallback,
         },
       };
     }
@@ -7069,11 +7220,13 @@ app.get('/now-playing', async (req, res) => {
       }
     } catch {}
 
-    // Non-track radio (talk/news/sports or incomplete station metadata)
-    // should use station branding before derivatives are cached, never a
-    // generic or stale track cover. The current MPD file is authoritative,
-    // so ordinary local tracks cannot enter this branch.
-    if (isRadio && !radioLookupGuard.allow) {
+    // Radio without a verified iTunes match must always retain station
+    // branding. This includes ordinary music rows whose lookup simply missed,
+    // not only talk/news/sports rows rejected by the lookup guard. The file
+    // based logo endpoint can resolve a station even when moOde supplies no
+    // station name in its current-song payload.
+    const radioHasItunesMatch = !!(radioItunesUrl || radioTrackUrl || radioAlbumUrl);
+    if (isRadio && !radioHasItunesMatch) {
       const fallbackLogoUrl = streamStationName
         ? `${MOODE_BASE_URL}/imagesw/radio-logos/thumbs/${encodeURIComponent(streamStationName)}.jpg`
         : (file ? `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}` : '');

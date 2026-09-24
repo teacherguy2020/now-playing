@@ -98,6 +98,16 @@ export function registerArtRoutes(app, deps) {
     safeIsFile,
   } = deps;
 
+  const resolveCurrentBestArt = async () => {
+    const song = await (typeof fetchCurrentSong === 'function'
+      ? fetchCurrentSong()
+      : fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`));
+    const statusRaw = await (typeof fetchCurrentStatus === 'function'
+      ? fetchCurrentStatus()
+      : fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`));
+    return song ? await resolveBestArtForCurrentSong(song, statusRaw) : '';
+  };
+
   app.get('/art/thumb.jpg', async (req, res) => {
     try {
       const folder = String(req.query.folder || '').trim();
@@ -184,6 +194,16 @@ export function registerArtRoutes(app, deps) {
         const key = normalizeArtKey(v);
         if (!key) return res.status(404).end();
 
+        // Older index/player clients stripped the file query from the
+        // file-aware station-logo URL. Resolve that generic key against the
+        // current song instead of returning a stale/shared logo or 404.
+        if (/\/art\/radio-logo\.jpg$/i.test(key)) {
+          const best = await resolveCurrentBestArt();
+          if (best && normalizeArtKey(best) !== key) {
+            return await serveCachedOrResizedSquare(res, best, 640, artPath640ForKey, deps);
+          }
+        }
+
         await updateArtCacheIfNeeded(v);
 
         const p640 = artPath640ForKey(key);
@@ -260,6 +280,13 @@ export function registerArtRoutes(app, deps) {
       if (v) {
         const key = normalizeArtKey(v);
         if (!key) return res.status(404).end();
+
+        if (/\/art\/radio-logo\.jpg$/i.test(key)) {
+          const best = await resolveCurrentBestArt();
+          if (best && normalizeArtKey(best) !== key) {
+            return await serveCachedOrBlurredBg(res, best, 640, artPathBgForKey, deps);
+          }
+        }
 
         await updateArtCacheIfNeeded(v);
 
