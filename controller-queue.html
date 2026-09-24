@@ -836,7 +836,7 @@
         const thumbRaw = String(x?.thumbUrl || '').trim();
         const cachedThumb = file ? String(thumbCacheByFile.get(file) || '').trim() : '';
         const stationLogoByName = (stationName || mappedByKey || mappedByHost) ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(stationName || mappedByKey || mappedByHost)}` : '';
-        const stationLogoByFile = file ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(file)}` : '';
+        const stationLogoByFile = file ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-iheart-map1` : '';
         const hostFavicon = hostFallback ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(hostFallback)}.ico` : '';
         const thumbFromApi = thumbRaw ? (thumbRaw.startsWith('http') ? thumbRaw : `${base}${thumbRaw}`) : '';
         const thumb = thumbFromApi || cachedThumb || (isStream ? (mappedLogoByKey || mappedLogoByHost || stationLogoByFile || stationLogoByName || hostFavicon || `${base}/art/current.jpg`) : `${base}/art/current.jpg`);

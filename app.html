@@ -1674,7 +1674,7 @@
             const stationLogoByDisplay = logoName ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoName)}` : '';
             const stationLogoByDisplayAlt = (logoNameAlt && logoNameAlt !== logoName) ? `${base}/art/radio-logo.jpg?name=${encodeURIComponent(logoNameAlt)}` : '';
             // Prefer direct moOde logo URLs first; fallback to backend lookup only when needed.
-            const stationLogoByFile = fileRaw ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(fileRaw)}` : '';
+            const stationLogoByFile = fileRaw ? `${base}/art/radio-logo.jpg?file=${encodeURIComponent(fileRaw)}&v=20260924-iheart-map1` : '';
             const npDirectLogo = (fileRaw && String(npQueueHead?.file || '').trim() === fileRaw)
               ? String(npQueueHead?.stationLogoUrl || npQueueHead?.altArtUrl || '').trim()
               : '';

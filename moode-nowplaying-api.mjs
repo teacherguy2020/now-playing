@@ -3196,7 +3196,7 @@ async function selectNotificationTrack() {
       album: decodeHtmlEntities(String(song?.album || '').trim()),
       artUrl: buildArtUrlForFile(file),
       stationLogoUrl: isStreamLike
-        ? (lnpStationLogo || `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}`)
+        ? (lnpStationLogo || `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-iheart-map1${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}`)
         : '',
       key: `np|${file}|${cleaned.title}|${cleaned.artist}`,
     };
@@ -7257,7 +7257,7 @@ app.get('/now-playing', async (req, res) => {
     if (isRadio && !radioHasItunesMatch) {
       const fallbackLogoUrl = streamStationName
         ? `${MOODE_BASE_URL}/imagesw/radio-logos/thumbs/${encodeURIComponent(streamStationName)}.jpg`
-        : (file ? `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}` : '');
+        : (file ? `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-iheart-map1` : '');
       if (fallbackLogoUrl) {
         stationLogoUrl = fallbackLogoUrl;
         primaryArtUrl = fallbackLogoUrl;
@@ -7773,7 +7773,7 @@ async function resolveBestArtForCurrentSong(song, statusRaw) {
     } else {
       // Direct MPD streams may not include moOde's station name. Let the
       // file-aware route resolve configured URL aliases and fetch the logo.
-      best = `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}`;
+      best = `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-iheart-map1`;
     }
   }
 

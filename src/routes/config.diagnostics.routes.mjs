@@ -1415,7 +1415,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const c1 = stationMap.get(file) || {};
         const c2 = stationMap.get(fKey) || {};
         const c3 = stationMap.get(`host:${fHost}`) || {};
-        const aliasName = String(aliases?.[fHost] || aliases?.[fKey] || '').trim();
+        const aliasName = String(aliases?.[fKey] || aliases?.[fHost] || '').trim();
         name = String(q.stationName || c1.stationName || c2.stationName || c3.stationName || aliasName || fHost || '').trim();
       }
 
@@ -1518,7 +1518,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const catMetaKey = stationMap.get(fKey) || {};
         const catMetaHost = stationMap.get(`host:${fHost}`) || {};
 
-        const aliasName = String(logoAliases?.[fHost] || logoAliases?.[fKey] || '').trim();
+        const aliasName = String(logoAliases?.[fKey] || logoAliases?.[fHost] || '').trim();
         let stationNameTxt = String(name || '').trim()
           || String(queueMeta.stationName || '').trim()
           || String(catMetaDirect.stationName || '').trim()
@@ -1552,7 +1552,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const logoLooksHost = !!streamLogoName && /\./.test(streamLogoName) && !/\s/.test(streamLogoName);
         const stationLogo = (streamLogoName && !logoLooksHost)
           ? stationLogoUrlFromAlbum(streamLogoName)
-          : (f ? `/art/radio-logo.jpg?file=${encodeURIComponent(f)}` : '');
+          : (f ? `/art/radio-logo.jpg?file=${encodeURIComponent(f)}&v=20260924-iheart-map1` : '');
         const streamArtFallback = String(cleaned.artUrl || '').trim();
         const isHead = Number.isFinite(pos) && pos === headPos;
         const ytStream = !!(isStream && /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(f));
