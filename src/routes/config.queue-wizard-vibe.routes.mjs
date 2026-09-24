@@ -173,6 +173,36 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
     return false;
   }
 
+  function getEndlessVibeJob() {
+    const active = endlessVibeActiveJobId ? vibeJobs.get(endlessVibeActiveJobId) : null;
+    if (active?.debug?.endless) return active;
+    const jobs = Array.from(vibeJobs.values()).reverse();
+    return jobs.find((job) => job?.debug?.endless && !job.done) || null;
+  }
+
+  function summarizeEndlessVibeJob(job) {
+    const latest = Array.isArray(job?.added) && job.added.length
+      ? job.added[job.added.length - 1]
+      : null;
+    return {
+      ok: true,
+      active: !!job && !job.done,
+      done: !!job?.done,
+      jobId: String(job?.id || ''),
+      status: String(job?.status || ''),
+      phase: String(job?.phase || ''),
+      error: String(job?.error || ''),
+      targetQueue: Number(job?.targetQueue || 0),
+      builtCount: Number(job?.builtCount || 0),
+      rawBuiltCount: Number(job?.rawBuiltCount || 0),
+      seedArtist: String(job?.seedArtist || ''),
+      seedTitle: String(job?.seedTitle || ''),
+      latest,
+      lastLine: String(job?.lastLine || ''),
+      updatedAt: Number(job?.updatedAt || 0),
+    };
+  }
+
   // --- Vibe from now playing (Queue Wizard) ---
   app.post('/config/queue-wizard/vibe-start', async (req, res) => {
     try {
@@ -311,12 +341,14 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
         const line = String(lineIn || '').trim();
         if (!line) return;
         job.updatedAt = Date.now();
+        job.lastLine = line;
         job.logs.push(line);
         if (job.logs.length > 300) job.logs.shift();
         appendVibeJobLog(job, 'line', { line }).catch(() => {});
 
         if (/Last\.fm get similar/i.test(line)) job.phase = 'querying last.fm';
-        if (/pick from/i.test(line)) job.phase = 'matching local library';
+        const candidateMatch = line.match(/pick from\s+(\d+)\s+similar/i);
+        if (candidateMatch) job.phase = `matching local library (${candidateMatch[1]} Last.fm candidates)`;
 
         const m = line.match(/^\[hop\s+\d+\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i)
           || line.match(/^\[simple\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i);
@@ -505,6 +537,20 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
     }
   });
 
+  // Endless Vibe is started by the backend watcher, so a controller does not
+  // have a job ID to poll. Expose the current backend-owned job separately so
+  // the Live Queue surface can show what the Last.fm/local-library worker is
+  // doing without taking ownership of the job lifecycle.
+  app.get('/config/queue-wizard/endless-vibe-status', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const job = getEndlessVibeJob();
+      return res.json(job ? summarizeEndlessVibeJob(job) : { ok: true, active: false, done: false });
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+  });
+
   app.get('/config/queue-wizard/vibe-debug/:jobId', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
@@ -668,6 +714,7 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       proc: null,
     };
     vibeJobs.set(jobId, job);
+    if (endless) endlessVibeActiveJobId = jobId;
     appendVibeJobLog(job, 'start', {
       seedArtist,
       seedTitle,
@@ -738,12 +785,14 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       const line = String(lineIn || '').trim();
       if (!line) return;
       job.updatedAt = Date.now();
+      job.lastLine = line;
       job.logs.push(line);
       if (job.logs.length > 300) job.logs.shift();
       appendVibeJobLog(job, 'line', { line }).catch(() => {});
 
       if (/Last\.fm get similar/i.test(line)) job.phase = 'querying last.fm';
-      if (/pick from/i.test(line)) job.phase = 'matching local library';
+      const candidateMatch = line.match(/pick from\s+(\d+)\s+similar/i);
+      if (candidateMatch) job.phase = `matching local library (${candidateMatch[1]} Last.fm candidates)`;
 
       const m = line.match(/^\[hop\s+\d+\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i)
         || line.match(/^\[simple\]\s+Added:\s+(.+?)\s+\(([^)]+)\)/i);
