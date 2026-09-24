@@ -44,6 +44,7 @@ const RADIO_META_EVAL_MIN_INTERVAL_MS = Math.max(5000, Number(process.env.RADIO_
 
 const RADIO_META_HOLDBACK_ENABLED = String(process.env.RADIO_META_HOLDBACK_ENABLED || '1').trim() !== '0';
 const RADIO_META_HOLDBACK_MS = Math.max(0, Number(process.env.RADIO_META_HOLDBACK_MS || '6000') || 6000);
+const RADIO_META_HOLDBACK_MS_WFMT = Math.max(0, Number(process.env.RADIO_META_HOLDBACK_MS_WFMT || '45000') || 45000);
 const RADIO_META_HOLDBACK_MS_NORMAL = Math.max(0, Number(process.env.RADIO_META_HOLDBACK_MS_NORMAL || '1500') || 1500);
 const RADIO_META_NEW_STREAM_RESET_DELTA_S = Math.max(2, Number(process.env.RADIO_META_NEW_STREAM_RESET_DELTA_S || '3') || 3);
 const radioMetaHoldbackState = new Map();
@@ -58,13 +59,16 @@ function toNum(v, fallback = 0) {
 
 function radioHoldbackPolicy(stationName = '', stationKey = '') {
   const s = `${String(stationName || '')} ${String(stationKey || '')}`.toLowerCase();
+  const wfmt = /\bwfmt\b/.test(s);
   const strictPatterns = [
     /\bwfmt\b/, /\bclassical\b/, /\bking\s*fm\b/, /\bkusc\b/, /\bkdfc\b/, /\bbc\s*radio\s*3\b/,
   ];
   const strict = strictPatterns.some((re) => re.test(s));
   return {
     mode: strict ? 'strict' : 'normal',
-    holdbackMs: strict ? RADIO_META_HOLDBACK_MS : RADIO_META_HOLDBACK_MS_NORMAL,
+    holdbackMs: strict
+      ? (wfmt ? RADIO_META_HOLDBACK_MS_WFMT : RADIO_META_HOLDBACK_MS)
+      : RADIO_META_HOLDBACK_MS_NORMAL,
   };
 }
 
