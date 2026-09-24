@@ -5,6 +5,10 @@ Now-Playing display and uses Now-Playing for playback metadata, ratings, or
 AirPlay integration. moOde upgrades can replace files under `/var/www`, reset
 database content, and regenerate the local-display launch command.
 
+For the failure chain behind the display, worker, AirPlay, and Peppy symptoms,
+read the consolidated [`moOde upgrade failure chain and recovery map`](25-moode-upgrade-failure-chain.md)
+alongside this checklist.
+
 ## Before upgrading
 
 Create and verify all of these recovery layers:
@@ -154,6 +158,12 @@ grep -n 'target.url' /etc/peppymeter/config.txt /etc/peppyspectrum/config.txt
 Restore the hardened AirPlay metadata wrapper/watchdog and Peppy HTTP targets
 from the matching repository references when absent. Confirm AirPlay starts,
 metadata remains stable, and CPU does not run away before declaring success.
+
+The current Peppy restoration is automated by
+`nowplaying-peppy-targets.service`; the current worker/AirPlay process
+supervision is automated by `moode-worker-watchdog.timer`. Verify both units,
+then follow the consolidated runbook's fresh-data checks rather than relying
+only on `systemctl is-active`.
 
 ## Functional verification
 

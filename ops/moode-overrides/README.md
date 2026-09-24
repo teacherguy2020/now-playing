@@ -21,6 +21,9 @@ These files are live-system overrides on `moode@10.0.0.254` and are mirrored her
 - Auto-heal high CPU runaway in `shairport-sync-metadata-reader`.
 - Ensure local moOde edits are not lost and are auditable in git.
 
+The broader upgrade failure chain and recovery order are documented in
+[`docs/runbooks/25-moode-upgrade-failure-chain.md`](../../docs/runbooks/25-moode-upgrade-failure-chain.md).
+
 ## Current behavior
 
 - `airplay-json.service` runs `/var/www/daemon/aplmeta-reader.sh`.
