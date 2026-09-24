@@ -843,10 +843,46 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       }
 
       if (action === 'crop') {
-        await execFileP('mpc', ['-h', mpdHost, 'crop']);
+        let cropFallback = '';
+        const keepQueueHead = async () => {
+          const { stdout: queueOut } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'playlist']);
+          const firstFile = String(queueOut || '')
+            .split(/\r?\n/)
+            .map((line) => String(line || '').trim())
+            .find(Boolean);
+          if (!firstFile) return false;
+
+          await execFileP('mpc', ['-h', mpdHost, 'clear']);
+          await execFileP('mpc', ['-h', mpdHost, 'add', firstFile]);
+          return true;
+        };
+
+        // MPD's crop command requires a current song. During Alexa playback,
+        // or after a stop, the queue can still exist while MPD has no current
+        // song. Check first so that state produces a clean queue-head fallback
+        // instead of a raw command error in the controller.
+        const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const hasCurrentSong = /#\d+\/\d+/.test(String(beforeStatus || ''));
+        if (!hasCurrentSong) {
+          if (!(await keepQueueHead())) {
+            return res.status(409).json({ ok: false, action, error: 'Cannot crop an empty queue because there is no current song' });
+          }
+          cropFallback = 'queue-head';
+        } else {
+          try {
+            await execFileP('mpc', ['-h', mpdHost, 'crop']);
+          } catch (e) {
+            const cropError = String(e?.stderr || e?.message || e || '');
+            if (!/no\s+(?:current\s+)?song|not\s+playing|current\s+song/i.test(cropError)) throw e;
+            if (!(await keepQueueHead())) {
+              return res.status(409).json({ ok: false, action, error: 'Cannot crop an empty queue because there is no current song' });
+            }
+            cropFallback = 'queue-head';
+          }
+        }
         const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
-        return res.json({ ok: true, action, randomOn, status: String(afterStatus || '') });
+        return res.json({ ok: true, action, randomOn, cropFallback, status: String(afterStatus || '') });
       }
 
       const alexaControl = ({
