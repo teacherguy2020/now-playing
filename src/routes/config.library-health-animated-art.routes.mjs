@@ -10,6 +10,8 @@ const execFileP = promisify(execFile);
 const CACHE_FILE = path.resolve(process.cwd(), 'data', 'animated-art-cache.json');
 const DISCOVERY_FILE = path.resolve(process.cwd(), 'data', 'animated-art-discovery.json');
 const H264_DIR = path.resolve(process.cwd(), 'data', 'animated-art-h264');
+const H264_MAX_FILES = Math.max(1, Number(process.env.ANIMATED_ART_H264_MAX_FILES || '250'));
+const H264_MAX_BYTES = Math.max(1, Number(process.env.ANIMATED_ART_H264_MAX_BYTES || String(2 * 1024 * 1024 * 1024)));
 
 const KNOWN_APPLE_URL_OVERRIDES = {
   'john mayer|sob rock': 'https://music.apple.com/us/album/sob-rock/1568819304',
@@ -86,6 +88,31 @@ async function h264PublicUrlExists(url) {
   try { await fs.access(p); return true; } catch { return false; }
 }
 
+async function trimH264Cache() {
+  const entries = await fs.readdir(H264_DIR, { withFileTypes: true }).catch(() => []);
+  const files = [];
+  for (const entry of entries) {
+    const name = String(entry?.name || '');
+    if (!entry.isFile() || !/^[a-f0-9]{40}\.mp4$/i.test(name)) continue;
+    const file = path.join(H264_DIR, name);
+    const stat = await fs.stat(file).catch(() => null);
+    if (stat) files.push({ file, bytes: Number(stat.size || 0), mtimeMs: Number(stat.mtimeMs || 0) });
+  }
+
+  files.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  let keptFiles = 0;
+  let keptBytes = 0;
+  for (const item of files) {
+    const overLimit = keptFiles >= H264_MAX_FILES || (keptFiles > 0 && keptBytes + item.bytes > H264_MAX_BYTES);
+    if (overLimit) {
+      await fs.unlink(item.file).catch(() => {});
+      continue;
+    }
+    keptFiles += 1;
+    keptBytes += item.bytes;
+  }
+}
+
 async function ensureH264ForSource(sourceUrl) {
   const src = String(sourceUrl || '').trim();
   if (!src) return '';
@@ -119,6 +146,7 @@ async function ensureH264ForSource(sourceUrl) {
         tmpPath,
       ], { timeout: 180000, maxBuffer: 4 * 1024 * 1024 });
       await fs.rename(tmpPath, outPath);
+      await trimH264Cache();
       return outPath;
     })().finally(async () => {
       h264TranscodeInFlight.delete(src);
@@ -366,6 +394,45 @@ async function lookupMotionForAppleUrl(appleUrl) {
     await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
   }
   return { ok: false, appleUrl: normalized, reason: lastReason };
+}
+
+async function materializeRadioMotion(req, entry) {
+  const current = { ...(entry || {}) };
+  if (!current.hasMotion || !current.mp4) return current;
+
+  if (current.sourceCodec === 'h264' && current.mp4H264) {
+    if (await h264PublicUrlExists(current.mp4H264)) {
+      return { ...current, mp4: String(current.mp4H264) };
+    }
+  }
+
+  if (Number(current.h264RetryAt || 0) > Date.now()) return current;
+  const source = String(current.mp4Source || (current.sourceCodec === 'h264' ? '' : current.mp4)).trim();
+  if (!source) return current;
+
+  try {
+    const outPath = await ensureH264ForSource(source);
+    if (!outPath) return current;
+    const localUrl = h264PublicUrlForSource(req, source);
+    return {
+      ...current,
+      mp4Source: source,
+      mp4H264: localUrl,
+      mp4: localUrl,
+      sourceCodec: 'h264',
+      h264RetryAt: 0,
+      h264Reason: '',
+      updatedAt: new Date().toISOString(),
+    };
+  } catch (e) {
+    console.warn('[animated-art] radio h264 transcode failed:', e?.message || e);
+    return {
+      ...current,
+      h264RetryAt: Date.now() + (10 * 60 * 1000),
+      h264Reason: 'h264-transcode-failed',
+      updatedAt: new Date().toISOString(),
+    };
+  }
 }
 
 async function lookupMotionForAlbum(artist, album) {
@@ -657,6 +724,7 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const appleUrl = String(req.query?.url || req.query?.appleUrl || '').trim();
       const resolveOnMiss = String(req.query?.resolve || '1').trim().toLowerCase() !== '0';
+      const wantH264 = String(req.query?.h264 || '1').trim().toLowerCase() !== '0';
       const normalized = normalizeAppleMotionUrl(appleUrl);
       if (!normalized) return res.status(400).json({ ok: false, error: 'a valid Apple Music URL is required' });
 
@@ -666,7 +734,23 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
       const existing = radioEntries[key] || null;
 
       if (existing?.hasMotion && existing?.mp4) {
-        return res.json({ ok: true, key, hit: existing, source: 'cache-hit' });
+        let hit = existing;
+        if (wantH264) {
+          hit = await materializeRadioMotion(req, existing);
+        } else if (existing.sourceCodec === 'h264' && existing.mp4Source) {
+          hit = { ...existing, mp4: String(existing.mp4Source) };
+        }
+        if (hit.mp4 !== existing.mp4 || hit.sourceCodec !== existing.sourceCodec || hit.h264RetryAt !== existing.h264RetryAt) {
+          try {
+            await updateCacheFile(async (liveCache) => {
+              liveCache.radioEntries = liveCache.radioEntries || {};
+              liveCache.radioEntries[key] = hit;
+            });
+          } catch (e) {
+            console.warn('[animated-art] radio cache update failed:', e?.message || e);
+          }
+        }
+        return res.json({ ok: true, key, hit, source: hit.sourceCodec === 'h264' ? 'cache-hit-local' : 'cache-hit' });
       }
 
       const retryAt = Number(existing?.retryAt || 0);
@@ -688,6 +772,10 @@ export function registerConfigLibraryHealthAnimatedArtRoutes(app, deps) {
             retryAt: hit?.ok ? 0 : Date.now() + (10 * 60 * 1000),
             updatedAt: new Date().toISOString(),
           };
+
+          if (wantH264 && nextEntry.hasMotion) {
+            nextEntry = await materializeRadioMotion(req, nextEntry);
+          }
 
           try {
             await updateCacheFile(async (liveCache) => {

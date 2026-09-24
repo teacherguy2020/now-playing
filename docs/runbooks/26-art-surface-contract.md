@@ -83,13 +83,16 @@ art:
   `data/animated-art-h264/`;
 - radio tracks use the verified Apple/iTunes URL through the Pi-owned
   `/config/library-health/animated-art/radio-lookup?url=...` route; the Pi
-  persists the resolved remote motion URL in `data/animated-art-cache.json`
-  and asks `api.aritra.ovh` only on a cache miss. Radio video remains remote
-  by default so transient radio tracks do not force Pi-side transcoding;
+  persists the resolved source in `data/animated-art-cache.json`, asks
+  `api.aritra.ovh` only on a cache miss, and transcodes the motion video into
+  the Pi's local `data/animated-art-h264/` cache. A remote URL is retained as
+  a fallback if transcoding fails;
 - podcasts, AirPlay, UPnP, and other stream-only items do not request local
   motion art;
 - motion lookups are coalesced and cached on the Pi and in each browser, with
   a short retry window for transient misses;
+- local H.264 motion files share a bounded cache (250 files / 2 GiB by
+  default) so radio listening cannot grow the cache without limit;
 - the browser preference is `nowplaying.ui.motionArtEnabled`.
 
 If motion art is unavailable, the resolved static foreground and blur must
