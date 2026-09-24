@@ -32,6 +32,9 @@ FIFO:    /tmp/peppyspectrum
 It also enables peppymeter's HTTP output. The target can be correct while the
 VU feed remains empty if moOde has reset output.http to False.
 
+The VU input under the data.source section must also remain pointed at
+/tmp/peppymeter, the FIFO produced by moOde's peppyalsa ALSA scope.
+
 The first run preserves each original config as
 config.txt.bak.nowplaying-peppy.
 

@@ -48,6 +48,30 @@ def update_section(text, section_name, updates):
     return ''.join(lines[:start + 1] + body + lines[end:])
 
 
+def remove_key(text, section_name, key):
+    lines = text.splitlines(keepends=True)
+    wanted = f'[{section_name.lower()}]'
+    start = None
+    end = len(lines)
+
+    for index, line in enumerate(lines):
+        if line.strip().lower() == wanted:
+            start = index
+            break
+    if start is None:
+        return text
+
+    for index in range(start + 1, len(lines)):
+        stripped = lines[index].strip()
+        if stripped.startswith('[') and stripped.endswith(']'):
+            end = index
+            break
+
+    pattern = re.compile(rf'^\s*{re.escape(key)}\s*=.*$', re.IGNORECASE)
+    body = [line for line in lines[start + 1:end] if not pattern.match(line.rstrip('\n'))]
+    return ''.join(lines[:start + 1] + body + lines[end:])
+
+
 def update_file(path_text, sections):
     path = Path(path_text)
     if not path.exists():
@@ -58,6 +82,8 @@ def update_file(path_text, sections):
         backup.write_bytes(path.read_bytes())
 
     text = path.read_text()
+    if path_text == '/etc/peppymeter/config.txt':
+        text = remove_key(text, 'current', 'pipe.name')
     for section, updates in sections:
         text = update_section(text, section, updates)
     path.write_text(text)
@@ -67,6 +93,9 @@ def update_file(path_text, sections):
 update_file('/etc/peppymeter/config.txt', [
     ('current', {
         'output.http': 'True',
+    }),
+    ('data.source', {
+        'pipe.name': '/tmp/peppymeter',
     }),
     ('http.interface', {
         'target.url': VUMETER_TARGET,
