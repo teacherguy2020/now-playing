@@ -4379,6 +4379,7 @@ function buildItunesTerm(artist, title, opts = {}) {
   const explicitComposer = String(opts.composer || '').trim();
   const ensembleHint = String(opts.ensembleHint || '').trim();
   const conductorHint = String(opts.conductorHint || '').trim();
+  const preserveTitle = !!opts.preserveTitle;
 
   // If title is clearly a “metadata soup” classic pattern, try teasing it.
   const teased = teaseWorkAndComposerFromTitle(tRaw, album);
@@ -4391,6 +4392,7 @@ function buildItunesTerm(artist, title, opts = {}) {
 
   // Heuristic: if teased work is materially shorter than raw and not ensemble-ish, use it.
   const useTeased =
+    !preserveTitle &&
     !!work &&
     work.length >= 3 &&
     work.length <= 80 &&
@@ -4429,6 +4431,7 @@ function buildItunesTerm(artist, title, opts = {}) {
       explicitComposer,
       ensembleHint,
       conductorHint,
+      preserveTitle,
       composer,
       work,
       useTeased,
@@ -4729,6 +4732,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     String(opts?.soloistHint || '').toLowerCase(),
     String(opts?.labelHint || '').toLowerCase(),
     opts?.classicalAlbumSearch ? 'classical-album-profile2' : '',
+    String(opts?.programHint || '').toLowerCase(),
   ].join('|');
   const cacheKey = `song|${cacheScope}|${termStr.toLowerCase()}`;
   const now = Date.now();
@@ -4946,6 +4950,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     // Apple-searchable album title, so also allow a performer-only search.
     const albumHintValue = String(opts?.albumHint || '').trim();
     const classicalAlbumSearch = !!opts?.classicalAlbumSearch;
+    const programHint = String(opts?.programHint || '').trim();
     if (!url && String(a || '').trim() && (albumHintValue || classicalAlbumSearch)) {
       const shortComposer = String(opts?.composerShort || '').trim();
       const composer = String(opts?.composer || '').trim();
@@ -4953,11 +4958,11 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       const conductor = String(opts?.conductorHint || '').trim();
       const soloist = String(opts?.soloistHint || '').trim();
       const albumTerms = [
-        [composer, t, albumHintValue, ensemble, conductor, soloist].filter(Boolean).join(' '),
-        [composer, t, albumHintValue, ensemble, conductor].filter(Boolean).join(' '),
+        [composer, t, albumHintValue, programHint, ensemble, conductor, soloist].filter(Boolean).join(' '),
+        [composer, t, albumHintValue, programHint, ensemble, conductor].filter(Boolean).join(' '),
+        [composer, t, programHint, ensemble, conductor, soloist].filter(Boolean).join(' '),
+        [composer, t, programHint, ensemble, conductor].filter(Boolean).join(' '),
         [composer, t, ensemble, conductor, soloist].filter(Boolean).join(' '),
-        [composer, t, ensemble, conductor].filter(Boolean).join(' '),
-        [composer, t, ensemble, soloist].filter(Boolean).join(' '),
         composer && albumHintValue ? `${composer} ${albumHintValue}` : '',
         shortComposer && albumHintValue ? `${shortComposer} ${albumHintValue}` : '',
       ].filter((term, index, all) => term && all.findIndex((candidate) => candidate.toLowerCase() === term.toLowerCase()) === index);
@@ -6425,6 +6430,7 @@ app.get('/now-playing', async (req, res) => {
     const s = sanitizeRadioLookupInputs({ artist, title });
     const composerDisplay = String(artist || '').trim();
     let lookupArtist = String(s.artist || '').trim();
+    const lookupTitleFull = String(s.title || '').trim();
     let lookupTitle = String(s.title || '').trim();
 
     const perf = decodeHtmlEntities(String(radioPerformers || '').trim());
@@ -6459,6 +6465,7 @@ app.get('/now-playing', async (req, res) => {
     return {
       lookupArtist,
       lookupTitle,
+      lookupTitleFull,
       lookupAlbumHint: String(albumHint || '').trim(),
       composer: composerDisplay,
       composerShort,
@@ -7063,6 +7070,11 @@ app.get('/now-playing', async (req, res) => {
 
     if (isRadio && radioLookupGuard.allow && (!primaryArtUrl || primaryArtUrl === stationLogoUrl)) {
       let albumForLookup = String(radioAlbum || album || '').trim();
+      // MIMIC's "Live in ..." value is useful search context even though it
+      // is usually a broadcast/program label rather than an Apple album.
+      const programHint = radioMetadataProfileName === 'davide-mimic'
+        ? String(radioAlbum || album || '').trim()
+        : '';
       const stName0 = String(song?.name || '').trim();
       if (albumForLookup && stName0 && albumForLookup.toLowerCase() === stName0.toLowerCase()) albumForLookup = '';
       if (/\bwfmt\b|\bclassical\b|\bradio\b|\bstream\b|\bmimic\b|\berato\b|\blaserlight\b/i.test(albumForLookup)) albumForLookup = '';
@@ -7085,7 +7097,10 @@ app.get('/now-playing', async (req, res) => {
       });
       const soloistHintRaw = decodeHtmlEntities(String(radioPerformers || '').trim()).split(',')[0]?.trim() || '';
       lookupArtist = String(lookupCtx.lookupArtist || lookupArtist || '').trim();
-      lookupTitle = String(lookupCtx.lookupTitle || lookupTitle || '').trim();
+      const exactLookupTitle = radioMetadataProfileName === 'davide-mimic'
+        ? (lookupCtx.lookupTitleFull || lookupCtx.lookupTitle)
+        : lookupCtx.lookupTitle;
+      lookupTitle = String(exactLookupTitle || lookupTitle || '').trim();
 
       if (lookupArtist && lookupTitle) {
         const likelyClassical = /\b(op\.?|concerto|symphony|quartet|sonata|andante|allegro|adagio|lento|presto)\b/i.test(`${lookupTitle} ${title}`);
@@ -7101,6 +7116,8 @@ app.get('/now-playing', async (req, res) => {
               labelHint,
               soloistHint: lookupCtx.soloistHint || soloistHintRaw || '',
               composer: lookupCtx.composer || '',
+              preserveTitle: radioMetadataProfileName === 'davide-mimic',
+              programHint,
               classicalAlbumSearch: radioMetadataProfileName === 'davide-mimic',
               strictArtist: !likelyClassical,
               strictTitle: likelyClassical,
@@ -7129,6 +7146,8 @@ app.get('/now-playing', async (req, res) => {
               labelHint,
               soloistHint: lookupCtx.soloistHint || soloistHintRaw || '',
               composer: lookupCtx.composer || '',
+              preserveTitle: radioMetadataProfileName === 'davide-mimic',
+              programHint,
               classicalAlbumSearch: radioMetadataProfileName === 'davide-mimic',
               strictArtist: false,
             });
@@ -7302,6 +7321,9 @@ app.get('/now-playing', async (req, res) => {
               labelHint: labelHint2,
               soloistHint: String(s3.soloistHint || soloistHint2 || '').trim(),
               composer: String(s3.composer || '').trim(),
+              programHint: radioMetadataProfileName === 'davide-mimic'
+                ? String(radioAlbum || album || '').trim()
+                : '',
               classicalAlbumSearch: radioMetadataProfileName === 'davide-mimic',
               strictArtist: !likelyClassical3,
               strictTitle: likelyClassical3,
