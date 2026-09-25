@@ -82,7 +82,7 @@
     const api = apiBase(options.base);
     const file = String(data?.file || '').trim();
     if (isRadio(data) && file) {
-      return `${api}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-iheart-map1`;
+      return `${api}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-radio-art2`;
     }
     const value = String(data?.stationLogoUrl || (isRadio(data) ? data?.altArtUrl : '') || '').trim();
     return absolute(value, options.base);

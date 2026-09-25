@@ -2035,6 +2035,47 @@ function splitTitlePerformersProgram(titleLine) {
   return null;
 }
 
+// Davide of MIMIC publishes classical metadata as:
+// Composer - Work - Movement - Movement - Soloist, Conductor, Ensemble - Program
+// The generic parser assumes the third/fourth segment is the performer block,
+// so it mistakes a movement such as "Allegro" for personnel. Keep this
+// station-specific shape isolated while preserving the generic/WFMT parser.
+function splitDavideMimicTitlePerformersProgram(titleLine) {
+  const raw = String(titleLine || '').trim();
+  if (!raw) return null;
+
+  const parts = raw.split(/\s+-\s+/).map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 5) return null;
+
+  const normalize = (s) => String(s || '').replace(/\s{2,}/g, ' ').trim();
+  const looksEnsemble = (s) => /orchester|orchestra|symphonie|symphony|philharmonic|ensemble|sinfon|choir|chor|camerata/i.test(String(s || ''));
+  const performerIndex = parts.findIndex((part, index) => index >= 2 && looksEnsemble(part));
+  if (performerIndex < 0) return null;
+
+  const composer = normalize(parts[0]);
+  const work = parts.slice(1, performerIndex).map(normalize).filter(Boolean).join(' - ');
+  const performerParts = parts[performerIndex].split(/\s*,\s*/).map(normalize).filter(Boolean);
+  if (!composer || !work || !performerParts.length) return null;
+
+  const ensembleIndex = performerParts.findIndex(looksEnsemble);
+  const personnel = performerParts.map((person, index) => {
+    // MIMIC's concerto form places the conductor immediately before the
+    // orchestra after the soloist: Soloist, Conductor, Orchestra.
+    if (ensembleIndex >= 2 && index === ensembleIndex - 1) return `${person} (conductor)`;
+    if (performerParts.length === 2 && ensembleIndex === 1 && index === 0) return `${person} (conductor)`;
+    return person;
+  });
+  const program = parts.slice(performerIndex + 1).map(normalize).filter(Boolean).join(' - ');
+
+  return { composer, work, personnel, program };
+}
+
+function radioMetadataProfile(stationName, file) {
+  const s = `${String(stationName || '')} ${String(file || '')}`.toLowerCase();
+  if (/\bdavide(?:\s+of)?\b|\bmimic\b|liveboxstream\.uk\/proxy\/davideof/i.test(s)) return 'davide-mimic';
+  return 'generic';
+}
+
 function clampRating(v) {
   // Accept number or numeric string; return integer 0..5, or null if invalid
   if (v === null || v === undefined) return null;
@@ -3204,7 +3245,7 @@ async function selectNotificationTrack() {
       album: decodeHtmlEntities(String(song?.album || '').trim()),
       artUrl: buildArtUrlForFile(file),
       stationLogoUrl: isStreamLike
-        ? (lnpStationLogo || `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-iheart-map1${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}`)
+        ? (lnpStationLogo || `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-radio-art2${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}`)
         : '',
       key: `np|${file}|${cleaned.title}|${cleaned.artist}`,
     };
@@ -6329,6 +6370,9 @@ app.get('/now-playing', async (req, res) => {
     let t = decodeHtmlEntities(String(s || '').trim());
     t = t.replace(/,\s*\d+(?:st|nd|rd|th)\s+tableau\s*:\s*.*/i, '');
     t = t.replace(/:\s*[IVXLC]+\.?\s+.*$/i, '');
+    // Keep movement detail in the display title, but remove it from Apple
+    // lookup terms (e.g. "Work - I. Andantino - Allegro").
+    t = t.replace(/\s+-\s+[IVXLC]+\.?\s+.*$/i, '');
     t = t.replace(/\s{2,}/g, ' ').trim();
     return t;
   }
@@ -6342,7 +6386,7 @@ app.get('/now-playing', async (req, res) => {
     const prev = String(parts[parts.length - 2] || '').trim();
     if (!last) return '';
 
-    const prevLooksPerformer = /orch|orchestra|symphony|philharmonic|ensemble|\/|,/.test(prev.toLowerCase());
+    const prevLooksPerformer = /orch|orchestra|orchester|symphony|symphonie|philharmonic|ensemble|\/|,/.test(prev.toLowerCase());
     const lastLooksAlbum = /:/.test(last) || /\b(op\.?|concerto|symphony|quartet|sonata|metamorphoses?)\b/i.test(last);
     if (prevLooksPerformer && lastLooksAlbum) return last;
     return '';
@@ -6363,11 +6407,16 @@ app.get('/now-playing', async (req, res) => {
       .map((p) => p.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s{2,}/g, ' ').trim())
       .filter(Boolean);
 
-    const ensemble = cleaned.find((p) => /orchestra|symphony|philharmonic|camerata|ensemble|chamber\s+orchestra/i.test(p));
+    const ensemble = cleaned.find((p) => /orchestra|orchester|symphony|symphonie|philharmonic|camerata|ensemble|chamber\s+orchestra/i.test(p));
     if (ensemble) lookupArtist = ensemble;
     const conductorRaw = pList.find((p) => /\(conductor\)/i.test(p)) || '';
     const conductor = String(conductorRaw).replace(/\s*\(conductor\)\s*/i, '').trim();
-    const soloistRaw = cleaned.find((p) => !/\(conductor\)|orchestra|symphony|philharmonic|ensemble|camerata/i.test(p)) || '';
+    const conductorNames = new Set(
+      pList
+        .filter((p) => /\(conductor\)/i.test(p))
+        .map((p) => String(p).replace(/\s*\(conductor\)\s*/i, '').trim().toLowerCase())
+    );
+    const soloistRaw = cleaned.find((p) => !conductorNames.has(String(p).toLowerCase()) && !/orchestra|orchester|symphony|symphonie|philharmonic|ensemble|camerata/i.test(p)) || '';
     const soloist = String(soloistRaw || '').replace(/\s*\([^)]*\)\s*/g, '').trim();
 
     // For classical, movement-heavy titles over-constrain iTunes query.
@@ -6471,6 +6520,7 @@ app.get('/now-playing', async (req, res) => {
     let stationLogoUrl = '';
     let primaryArtUrl = '';
     let streamStationName = String(song?.name || song?.album || '').trim();
+    const radioMetadataProfileName = isRadio ? radioMetadataProfile(streamStationName, file) : 'generic';
 
     // ✅ Apple Music link fields (RADIO)
     let radioItunesUrl = '';
@@ -6831,7 +6881,9 @@ app.get('/now-playing', async (req, res) => {
     // =========================
     if (isRadio && title) {
       const previousRadioPerformers = decodeHtmlEntities(String(radioPerformers || '').trim());
-      const split = splitTitlePerformersProgram(title);
+      const split = radioMetadataProfileName === 'davide-mimic'
+        ? (splitDavideMimicTitlePerformersProgram(title) || splitTitlePerformersProgram(title))
+        : splitTitlePerformersProgram(title);
       if (split) {
         title = split.work;
         const splitComposer = String(split.composer || '').trim();
@@ -7373,7 +7425,7 @@ app.get('/now-playing', async (req, res) => {
     // station name in its current-song payload.
     const radioHasItunesMatch = !!(radioItunesUrl || radioTrackUrl || radioAlbumUrl);
     const radioLogoProxyUrl = isRadio && file
-      ? `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-iheart-map1`
+      ? `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-radio-art2`
       : '';
     if (isRadio && !radioHasItunesMatch) {
       const fallbackLogoUrl = radioLogoProxyUrl || (streamStationName
@@ -7491,6 +7543,7 @@ app.get('/now-playing', async (req, res) => {
       shareUrl,
       radioLookupReason,
       radioLookupTerm,
+      radioMetadataProfile: radioMetadataProfileName,
 
       state: status.state || song.state,
       random: randomState,
@@ -7895,7 +7948,7 @@ async function resolveBestArtForCurrentSong(song, statusRaw) {
     } else {
       // Direct MPD streams may not include moOde's station name. Let the
       // file-aware route resolve configured URL aliases and fetch the logo.
-      best = `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-iheart-map1`;
+      best = `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-radio-art2`;
     }
   }
 

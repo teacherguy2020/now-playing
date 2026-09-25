@@ -2966,7 +2966,7 @@
             try { host = String(new URL(file).hostname || '').toLowerCase(); } catch {}
             resolvedRadioStation = decodeEntities(rawStation || String((k && radioByKey.get(k)) || (host && radioByHost.get(host)) || '').trim());
             resolvedRadioLogo = String(j?.stationLogoUrl || j?.radioLogoUrl || j?.logoUrl || (k && radioLogoByKey.get(k)) || (host && radioLogoByHost.get(host)) || '').trim();
-            if (!resolvedRadioLogo && file) resolvedRadioLogo = `${api}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-iheart-map1`;
+            if (!resolvedRadioLogo && file) resolvedRadioLogo = `${api}/art/radio-logo.jpg?file=${encodeURIComponent(file)}&v=20260924-radio-art2`;
             const streamTitle = decodeEntities(String(j?.streamTitle || j?.subline || '').trim());
             const hasCanonicalDisplay = !!String(j?.displayTitle || '').trim() || !!String(j?.displayArtist || '').trim();
             // Only force station fallback when canonical display fields are absent.

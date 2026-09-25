@@ -1553,7 +1553,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         const logoLooksHost = !!streamLogoName && /\./.test(streamLogoName) && !/\s/.test(streamLogoName);
         const stationLogo = (streamLogoName && !logoLooksHost)
           ? stationLogoUrlFromAlbum(streamLogoName)
-          : (f ? `/art/radio-logo.jpg?file=${encodeURIComponent(f)}&v=20260924-iheart-map1` : '');
+          : (f ? `/art/radio-logo.jpg?file=${encodeURIComponent(f)}&v=20260924-radio-art2` : '');
         const streamArtFallback = String(cleaned.artUrl || '').trim();
         const isHead = Number.isFinite(pos) && pos === headPos;
         const ytStream = !!(isStream && /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(f));
