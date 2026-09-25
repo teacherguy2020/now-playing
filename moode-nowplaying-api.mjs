@@ -4728,6 +4728,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     String(opts?.conductorHint || '').toLowerCase(),
     String(opts?.soloistHint || '').toLowerCase(),
     String(opts?.labelHint || '').toLowerCase(),
+    opts?.classicalAlbumSearch ? 'classical-album-profile2' : '',
   ].join('|');
   const cacheKey = `song|${cacheScope}|${termStr.toLowerCase()}`;
   const now = Date.now();
@@ -4834,6 +4835,8 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     let filteredEnsemble = 0;
     let filteredSoloist = 0;
     let filteredNoArt = 0;
+    let albumSearchTerms = [];
+    let albumSearchMatched = '';
 
     for (const item of results) {
       const matchedArtistCandidate = String(item?.artistName || '').trim();
@@ -4939,17 +4942,26 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
 
     // Album-tier fallback for classical-like radio misses:
     // performer/ensemble + program hint often works better than composer+movement song search.
-    if (!url && String(opts?.albumHint || '').trim() && String(a || '').trim()) {
+    // Some stations (notably MIMIC) provide a program/date instead of an
+    // Apple-searchable album title, so also allow a performer-only search.
+    const albumHintValue = String(opts?.albumHint || '').trim();
+    const classicalAlbumSearch = !!opts?.classicalAlbumSearch;
+    if (!url && String(a || '').trim() && (albumHintValue || classicalAlbumSearch)) {
       const shortComposer = String(opts?.composerShort || '').trim();
       const composer = String(opts?.composer || '').trim();
       const ensemble = String(opts?.ensembleHint || a || '').trim();
       const conductor = String(opts?.conductorHint || '').trim();
+      const soloist = String(opts?.soloistHint || '').trim();
       const albumTerms = [
-        [composer, opts.albumHint, ensemble, conductor].filter(Boolean).join(' '),
-        [ensemble, opts.albumHint, conductor].filter(Boolean).join(' '),
-        composer ? `${composer} ${opts.albumHint}` : '',
-        shortComposer ? `${shortComposer} ${opts.albumHint}` : '',
-      ].filter(Boolean);
+        [composer, t, albumHintValue, ensemble, conductor, soloist].filter(Boolean).join(' '),
+        [composer, t, albumHintValue, ensemble, conductor].filter(Boolean).join(' '),
+        [composer, t, ensemble, conductor, soloist].filter(Boolean).join(' '),
+        [composer, t, ensemble, conductor].filter(Boolean).join(' '),
+        [composer, t, ensemble, soloist].filter(Boolean).join(' '),
+        composer && albumHintValue ? `${composer} ${albumHintValue}` : '',
+        shortComposer && albumHintValue ? `${shortComposer} ${albumHintValue}` : '',
+      ].filter((term, index, all) => term && all.findIndex((candidate) => candidate.toLowerCase() === term.toLowerCase()) === index);
+      albumSearchTerms = albumTerms;
 
       for (const term of albumTerms) {
         const albumQueryUrl = `${ITUNES_SEARCH_URL}?term=${encodeURIComponent(term)}&entity=album&limit=8`;
@@ -4960,22 +4972,36 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
         for (const item of r2) {
           const cName = String(item?.collectionName || '').trim();
           const aName = String(item?.artistName || '').trim();
-          if (!albumHintMatches(String(opts.albumHint || ''), cName)) continue;
+          if (albumHintValue && !albumHintMatches(albumHintValue, cName)) continue;
+          if (classicalAlbumSearch) {
+            const candidateText = `${aName} ${cName}`;
+            const composerTokens = nameTokenSet(composer || a);
+            if (composerTokens.size && overlapCount(composerTokens, nameTokenSet(candidateText)) < 1) continue;
+            // An album-level match does not need the full movement title, but
+            // it must still identify the same work family (e.g. Piano +
+            // Concerto), preventing a generic Prokofiev album from winning.
+            if (tokenOverlapCount(t, cName) < 2) continue;
+          }
           if (a && !artistMatchStrict(a, aName) && !String(aName).toLowerCase().includes(String(a).toLowerCase())) continue;
           const ensembleHint = String(opts?.ensembleHint || '').trim();
           if (ensembleHint && !ensembleMatchesCandidate(ensembleHint, aName, cName)) continue;
           const conductorHint = String(opts?.conductorHint || '').trim();
           if (conductorHint) {
-            const condTok = ensembleTokenSet(conductorHint);
-            const candTok = ensembleTokenSet(`${aName} ${cName}`);
+            const condTok = nameTokenSet(conductorHint);
+            const candTok = nameTokenSet(`${aName} ${cName}`);
             if (condTok.size && overlapCount(condTok, candTok) === 0) continue;
+          }
+          if (classicalAlbumSearch && soloist) {
+            const soloistTok = nameTokenSet(soloist);
+            const candTok = nameTokenSet(`${aName} ${cName}`);
+            if (soloistTok.size && overlapCount(soloistTok, candTok) === 0) continue;
           }
           picked = item;
           break;
         }
 
-        if (!picked && r2.length) {
-          picked = r2.find((item) => albumHintMatches(String(opts.albumHint || ''), String(item?.collectionName || '').trim())) || null;
+        if (!picked && r2.length && !classicalAlbumSearch && albumHintValue) {
+          picked = r2.find((item) => albumHintMatches(albumHintValue, String(item?.collectionName || '').trim())) || null;
         }
 
         if (picked) {
@@ -4987,6 +5013,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
           trackUrl = '';
           matchedArtist = String(picked?.artistName || '').trim();
           matchedTitle = '';
+          albumSearchMatched = `${album} — ${matchedArtist}`.trim();
           break;
         }
       }
@@ -5053,6 +5080,8 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
           bestTrack: String(bestItem?.trackName || ''),
           bestArtist: String(bestItem?.artistName || ''),
           bestAlbum: String(bestItem?.collectionName || ''),
+          albumSearchTerms,
+          albumSearchMatched,
           webFallback,
         },
       };
@@ -7072,6 +7101,7 @@ app.get('/now-playing', async (req, res) => {
               labelHint,
               soloistHint: lookupCtx.soloistHint || soloistHintRaw || '',
               composer: lookupCtx.composer || '',
+              classicalAlbumSearch: radioMetadataProfileName === 'davide-mimic',
               strictArtist: !likelyClassical,
               strictTitle: likelyClassical,
             });
@@ -7099,6 +7129,7 @@ app.get('/now-playing', async (req, res) => {
               labelHint,
               soloistHint: lookupCtx.soloistHint || soloistHintRaw || '',
               composer: lookupCtx.composer || '',
+              classicalAlbumSearch: radioMetadataProfileName === 'davide-mimic',
               strictArtist: false,
             });
             if (String(swapped?.url || swapped?.trackUrl || swapped?.albumUrl || '').trim()) {
@@ -7271,6 +7302,7 @@ app.get('/now-playing', async (req, res) => {
               labelHint: labelHint2,
               soloistHint: String(s3.soloistHint || soloistHint2 || '').trim(),
               composer: String(s3.composer || '').trim(),
+              classicalAlbumSearch: radioMetadataProfileName === 'davide-mimic',
               strictArtist: !likelyClassical3,
               strictTitle: likelyClassical3,
             });
