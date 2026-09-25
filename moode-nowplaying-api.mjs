@@ -2076,6 +2076,21 @@ function radioMetadataProfile(stationName, file) {
   return 'generic';
 }
 
+// Brian-confirmed Apple album for the MIMIC Prokofiev Piano Concerto No. 2
+// broadcast. The stream's credited performers differ from Apple's release
+// metadata, so this must remain an explicit, work-scoped curation rather than
+// weakening classical performer validation globally.
+function curatedRadioAppleAlbum(profile, composer, title) {
+  const p = String(profile || '').trim();
+  const c = String(composer || '').trim();
+  const t = String(title || '').trim();
+  if (p !== 'davide-mimic') return null;
+  if (!/\bprokofiev\b/i.test(c)) return null;
+  if (!/\bpiano\s+concerto\s+no\.?\s*2\b/i.test(t)) return null;
+  if (!/\bop\.?\s*16\b/i.test(t)) return null;
+  return { collectionId: '1452523035' };
+}
+
 function clampRating(v) {
   // Accept number or numeric string; return integer 0..5, or null if invalid
   if (v === null || v === undefined) return null;
@@ -4733,6 +4748,7 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
     String(opts?.labelHint || '').toLowerCase(),
     opts?.classicalAlbumSearch ? 'classical-album-profile2' : '',
     String(opts?.programHint || '').toLowerCase(),
+    String(opts?.curatedCollectionId || ''),
   ].join('|');
   const cacheKey = `song|${cacheScope}|${termStr.toLowerCase()}`;
   const now = Date.now();
@@ -4772,6 +4788,57 @@ async function lookupItunesFirst(artist, title, debug = false, opts = {}) {
       };
     }
     itunesArtCache.delete(cacheKey);
+  }
+
+  // Some curated station/work matches are known to Apple by album ID but do
+  // not survive a performer-heavy Search API query. Resolve the canonical
+  // album once, select the matching movement when possible, and cache the
+  // result like an ordinary iTunes hit.
+  const curatedCollectionId = String(opts?.curatedCollectionId || '').trim();
+  if (curatedCollectionId) {
+    const lookupBase = String(ITUNES_SEARCH_URL).replace(/\/search\/?$/i, '/lookup');
+    const curatedQueryUrl = `${lookupBase}?id=${encodeURIComponent(curatedCollectionId)}&entity=song`;
+    try {
+      await waitForItunesSlot();
+      const curatedData = await fetchJsonWithTimeout(curatedQueryUrl, ITUNES_TIMEOUT_MS);
+      const curatedItems = Array.isArray(curatedData?.results) ? curatedData.results : [];
+      const curatedTracks = curatedItems.filter((item) => String(item?.wrapperType || '') === 'track');
+      const movementTrack = curatedTracks.find((item) => shouldAcceptMatchedTitle(t, String(item?.trackName || '').trim())) || null;
+      const item = movementTrack || curatedItems.find((entry) => String(entry?.wrapperType || '') === 'collection') || curatedTracks[0] || null;
+      const art = pickArtFromItunesItem(item);
+      if (item && art) {
+        const picked = pickAlbumAndYearFromItunesItem(item) || {};
+        const curatedResult = {
+          url: art,
+          album: String(picked.album || '').trim(),
+          year: String(picked.year || '').trim(),
+          trackUrl: String(item?.trackViewUrl || '').trim(),
+          albumUrl: String(item?.collectionViewUrl || '').trim(),
+          matchedArtist: String(item?.artistName || '').trim(),
+          matchedTitle: String(item?.trackName || '').trim(),
+          ts: now,
+        };
+        itunesArtCache.set(cacheKey, curatedResult);
+        if (debug) {
+          return {
+            ...curatedResult,
+            reason: 'ok:curated-album',
+            queryUrl: curatedQueryUrl,
+            term: termStr,
+            termDebug,
+            resultDebug: {
+              totalResults: curatedItems.length,
+              curatedCollectionId,
+              curatedTrack: String(item?.trackName || ''),
+              curatedArtist: String(item?.artistName || ''),
+            },
+          };
+        }
+        return { ...curatedResult, reason: 'ok:curated-album' };
+      }
+    } catch (e) {
+      if (debug) dlog('[itunes] curated album lookup failed:', e?.message || String(e));
+    }
   }
 
   const queryUrl =
@@ -7101,6 +7168,11 @@ app.get('/now-playing', async (req, res) => {
         ? (lookupCtx.lookupTitleFull || lookupCtx.lookupTitle)
         : lookupCtx.lookupTitle;
       lookupTitle = String(exactLookupTitle || lookupTitle || '').trim();
+      const curatedAlbum = curatedRadioAppleAlbum(
+        radioMetadataProfileName,
+        lookupCtx.composer,
+        lookupTitle,
+      );
 
       if (lookupArtist && lookupTitle) {
         const likelyClassical = /\b(op\.?|concerto|symphony|quartet|sonata|andante|allegro|adagio|lento|presto)\b/i.test(`${lookupTitle} ${title}`);
@@ -7118,6 +7190,7 @@ app.get('/now-playing', async (req, res) => {
               composer: lookupCtx.composer || '',
               preserveTitle: radioMetadataProfileName === 'davide-mimic',
               programHint,
+              curatedCollectionId: curatedAlbum?.collectionId || '',
               classicalAlbumSearch: radioMetadataProfileName === 'davide-mimic',
               strictArtist: !likelyClassical,
               strictTitle: likelyClassical,
@@ -7148,6 +7221,7 @@ app.get('/now-playing', async (req, res) => {
               composer: lookupCtx.composer || '',
               preserveTitle: radioMetadataProfileName === 'davide-mimic',
               programHint,
+              curatedCollectionId: curatedAlbum?.collectionId || '',
               classicalAlbumSearch: radioMetadataProfileName === 'davide-mimic',
               strictArtist: false,
             });
