@@ -55,7 +55,7 @@ Enable moOde's **HTTP Server** MPD output:
 - tags enabled
 - always on enabled
 
-Verify from the Now Playing host:
+Verify from the Sonuvi host:
 
 ```sh
 curl --max-time 3 -D - -o /dev/null http://<now-playing-host>/stream

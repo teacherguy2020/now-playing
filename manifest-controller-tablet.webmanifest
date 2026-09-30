@@ -1,7 +1,7 @@
 {
-  "name": "Now Playing Controller (iPad)",
+  "name": "Sonuvi Controller (iPad)",
   "short_name": "Controller",
-  "description": "iPad controller for Now Playing for moOde",
+  "description": "iPad controller for Sonuvi — moOde enhancement platform",
   "id": "/controller-ipad",
   "start_url": "/controller-tablet.html?devicePreset=ipadpro11-landscape",
   "scope": "/",

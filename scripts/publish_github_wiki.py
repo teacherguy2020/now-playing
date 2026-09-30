@@ -100,7 +100,7 @@ def source_pages() -> list[Path]:
 
 
 def home_text() -> str:
-    return """# Now Playing documentation
+    return """# Sonuvi documentation
 
 This Wiki is a published view of the canonical Markdown in
 [`docs/wiki-source/`](https://github.com/teacherguy2020/now-playing/tree/main/docs/wiki-source).
@@ -111,7 +111,7 @@ the Wiki.
 ## Start here
 
 - [Getting Started](getting-started)
-- [Using Now Playing](using-now-playing)
+- [Using Sonuvi](using-now-playing)
 - [Displays](displays)
 - [Integrations](integrations)
 - [Configuration and Administration](configuration-and-administration)

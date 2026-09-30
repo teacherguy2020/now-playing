@@ -220,7 +220,7 @@ leading `in the theater` form:
 - “In the theater, play John Mayer.”
 
 These requests build or replace the normal moOde/MPD queue and start playback
-on moOde. The Echo does not stream the selected music. Now Playing should
+on moOde. The Echo does not stream the selected music. Sonuvi should
 display the normal moOde playback state; this is not Echo/Alexa playback
 mode.
 

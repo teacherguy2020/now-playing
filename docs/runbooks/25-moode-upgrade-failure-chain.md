@@ -1,6 +1,6 @@
 # moOde upgrade failure chain and recovery map
 
-This page records the September 2026 recovery of the Now Playing installation
+This page records the September 2026 recovery of the Sonuvi installation
 after a moOde upgrade. It exists because several independent-looking symptoms
 were actually consequences of the same operational problem: working local
 customizations were stored in mutable moOde files, while the upgrade restored
@@ -27,7 +27,7 @@ The durable solution is now split correctly:
 - version-sensitive moOde core patches remain documented and must be checked
   after each upgrade;
 - systemd timers supervise the worker and AirPlay receiver;
-- a separate boot/upgrade restore service re-applies the Now Playing Peppy
+- a separate boot/upgrade restore service re-applies the Sonuvi Peppy
   targets and FIFO paths;
 - live verification checks processes, config, and fresh data rather than only
   checking whether a unit is loaded.
@@ -82,7 +82,7 @@ grep -- '--app=' /home/moode/.xinitrc
 
 The external Target URL does not itself implement the blanking countdown.
 On the affected moOde release, the stock worker entered its display-blanking
-loop only when `peppy_display=1`. An external Now Playing/Kiosk page uses
+loop only when `peppy_display=1`. An external Sonuvi/Kiosk page uses
 `local_display=1`, so the worker needed the version-specific extension
 documented in [`15-moode-remote-display-blanking-fix.md`](15-moode-remote-display-blanking-fix.md).
 
@@ -94,7 +94,7 @@ http://nowplaying.local:3101/now-playing
 
 and regard `state=play`, `isAirplay=true`, and `isUpnp=true` as active. The
 watchdog must use the same authority. The old stock probe of
-`/command/?cmd=get_output_format` returns 404 for Now Playing and can create
+`/command/?cmd=get_output_format` returns 404 for Sonuvi and can create
 false wake behavior.
 
 If the worker process is dead, neither the correct Target URL nor the correct
@@ -153,10 +153,10 @@ The final installation-specific values are:
 
 | Function | Correct value | Why it matters |
 | --- | --- | --- |
-| VU HTTP target | `http://nowplaying.local:3101/peppy/vumeter` | Sends VU data to the Now Playing API |
+| VU HTTP target | `http://nowplaying.local:3101/peppy/vumeter` | Sends VU data to the Sonuvi API |
 | VU HTTP output | `output.http = True` | A correct target is useless when output is disabled |
 | VU input FIFO | `[data.source] pipe.name = /tmp/peppymeter` | This is the FIFO produced by moOde's `peppyalsa` scope |
-| Spectrum HTTP target | `http://nowplaying.local:3101/peppy/spectrum` | Sends spectrum data to the Now Playing API |
+| Spectrum HTTP target | `http://nowplaying.local:3101/peppy/spectrum` | Sends spectrum data to the Sonuvi API |
 | Spectrum FIFO | `[current] pipe.name = /tmp/peppyspectrum` | This is the shared FIFO used by moOde and the bridge |
 | Spectrum update period | `0.05` | Keeps the visualizer responsive |
 

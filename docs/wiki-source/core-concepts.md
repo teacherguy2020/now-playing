@@ -16,7 +16,7 @@ together rather than how to operate one screen.
 
 ## The system boundary
 
-Now Playing is a web UI and API enhancement stack around a moOde/MPD player.
+Sonuvi is a web UI and API enhancement platform around a moOde/MPD player.
 The app host owns normalized state, queue integration, display/controller
 surfaces, and integration routes. moOde/MPD remains the ordinary playback
 authority unless a documented external or physical mode owns the audio path.

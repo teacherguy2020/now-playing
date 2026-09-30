@@ -1,7 +1,7 @@
 {
-  "name": "Now Playing for moOde",
-  "short_name": "Now Playing",
-  "description": "Now Playing for moOde enhancement dashboard",
+  "name": "Sonuvi — moOde enhancement platform",
+  "short_name": "Sonuvi",
+  "description": "Sonuvi — moOde enhancement platform",
   "id": "/app",
   "start_url": "/app.html",
   "scope": "/",

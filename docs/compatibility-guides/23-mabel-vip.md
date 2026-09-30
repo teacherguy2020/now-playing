@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the boundary between the Now Playing API and Mabel, the
+This document defines the boundary between the Sonuvi API and Mabel, the
 Shyvers Multiphone operator. It records the current VIP music behavior and the
 planned path for room automation such as lighting and Harmony Hub activities.
 
@@ -13,7 +13,7 @@ iPad voice/text handset
         ↓
 Mac Mabel bridge
         ↓ bounded, authenticated API calls
-Now Playing :3101
+Sonuvi API :3101
         ↓
 MPD/moOde and other approved integrations
 ```
@@ -86,7 +86,7 @@ letting Mabel manipulate individual bulbs or raw Harmony Hub endpoints.
 - Log action name, target, result, and duration without logging credentials.
 - Make disruptive actions—stopping playback, changing displays, or restoring a
   room scene—explicit and separately validated.
-- Keep Now Playing's MPD and queue authority separate from room-automation
+- Keep Sonuvi's MPD and queue authority separate from room-automation
   adapters.
 
 ## Related documentation

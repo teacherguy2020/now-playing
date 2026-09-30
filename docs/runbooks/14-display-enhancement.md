@@ -98,7 +98,7 @@ For example:
 Do not use `http://<WEB_HOST>:8101/display.html?kiosk=1` as the moOde Target
 URL. r1034's dual-display validation rejects an explicit port, while the
 standard LAN proxy serves this route on HTTP port 80 and forwards it to the
-Now-Playing web service. The `:8101` address may still be appropriate for
+Sonuvi web service. The `:8101` address may still be appropriate for
 direct service access and internal Chromium launch commands documented below.
 
 This is the recommended handoff URL for the display system in this project.

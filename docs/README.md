@@ -1,4 +1,4 @@
-# Now Playing documentation
+# Sonuvi documentation
 
 The canonical editable documentation source is [`wiki-source/`](./wiki-source/).
 It is organized by audience and concept rather than by the historical order of
@@ -7,7 +7,7 @@ application tabs.
 ## Start here
 
 - New installation/user → [Getting Started](./wiki-source/getting-started.md)
-- Feature use → [Using Now Playing](./wiki-source/using-now-playing.md)
+- Feature use → [Using Sonuvi](./wiki-source/using-now-playing.md)
 - Displays and kiosk → [Displays](./wiki-source/displays.md)
 - Integrations → [Integrations](./wiki-source/integrations.md)
 - Configuration/operations → [Configuration and Administration](./wiki-source/configuration-and-administration.md)
@@ -38,7 +38,7 @@ The source relationship and migration decisions are recorded in
 The wiki landing page links the full branch map. The main entry points are:
 
 1. [Getting Started](./wiki-source/getting-started.md)
-2. [Using Now Playing](./wiki-source/using-now-playing.md)
+2. [Using Sonuvi](./wiki-source/using-now-playing.md)
 3. [Displays](./wiki-source/displays.md)
 4. [Integrations](./wiki-source/integrations.md)
 5. [Configuration and Administration](./wiki-source/configuration-and-administration.md)

@@ -24,7 +24,7 @@ iPhone + Tailscale
         |
         | HTTPS /v1/mobile
         v
-Now Playing app host
+Sonuvi app host
         |
         | server-side opaque-ID resolution
         v
@@ -73,7 +73,7 @@ catalog IDs and therefore requires the client’s catalog cache to be rebuilt.
 
 ## Live tailnet transport
 
-The remote mobile path is deployed on the Now Playing host through Tailscale.
+The remote mobile path is deployed on the Sonuvi host through Tailscale.
 The installation-specific MagicDNS hostname is deliberately kept in the
 private host environment rather than committed to the repository.
 
@@ -84,16 +84,16 @@ iPhone/iPad with Tailscale connected
         |
         | HTTPS, tailnet only, TCP 443
         v
-Tailscale Serve on the Now Playing host
+Tailscale Serve on the Sonuvi host
         |
         | proxy to http://127.0.0.1:3101
         v
-Now Playing mobile API
+Sonuvi mobile API
 ```
 
 Operational requirements and boundaries:
 
-- `tailscaled` is enabled and running on the Now Playing host.
+- `tailscaled` is enabled and running on the Sonuvi host.
 - Tailscale HTTPS/Serve provides the trusted certificate and maps the
   tailnet-only HTTPS hostname to the local API port.
 - `MOBILE_PUBLIC_BASE_URL` is set to the HTTPS Tailscale hostname without a
@@ -342,7 +342,7 @@ and `/queue` remain the Home moOde operations.
 - All route errors returned to the client are generic; internal logs must not
   include tokens or signed URLs.
 - Tailscale Serve is tailnet-only; do not enable Funnel for the mobile API.
-- The tailnet transport terminates at the Now Playing host. Do not give the
+- The tailnet transport terminates at the Sonuvi host. Do not give the
   native app direct access to the moOde host, CIFS/SMB, MPD, or the library
   filesystem.
 
@@ -379,13 +379,13 @@ The server/display pairing flow and Tailscale transport were deployed and
 verified on the live installation on 2026-09-27. The completed transport
 checks were:
 
-1. Tailscale was installed and authenticated on the Now Playing host.
+1. Tailscale was installed and authenticated on the Sonuvi host.
 2. The host received a stable tailnet identity and MagicDNS name.
 3. Tailscale Serve was configured as a tailnet-only HTTPS proxy to local API
    port `3101`; Funnel remains disabled.
 4. Tailscale issued a trusted certificate for the MagicDNS hostname.
-5. `MOBILE_PUBLIC_BASE_URL` was changed to that HTTPS hostname and the Now
-   Playing service was restarted successfully.
+5. `MOBILE_PUBLIC_BASE_URL` was changed to that HTTPS hostname and the Sonuvi
+   service was restarted successfully.
 6. The pairing flow was tested from the Config and Controller Settings
    displays, and the native app completed pairing and catalog browsing.
 

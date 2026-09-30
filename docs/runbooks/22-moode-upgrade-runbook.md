@@ -1,7 +1,7 @@
-# moOde Upgrade Runbook for Now Playing
+# moOde Upgrade Runbook for Sonuvi
 
 This is the post-upgrade checklist for an installation where moOde drives a
-Now-Playing display and uses Now-Playing for playback metadata, ratings, or
+Sonuvi display and uses Sonuvi for playback metadata, ratings, or
 AirPlay integration. moOde upgrades can replace files under `/var/www`, reset
 database content, and regenerate the local-display launch command.
 
@@ -51,7 +51,7 @@ display route on HTTP port 80.
 
 ### 2. Restore sticker ratings
 
-Use the Now-Playing Config ratings controls when available:
+Use the Sonuvi Config ratings controls when available:
 
 1. Open Config → Ratings.
 2. Check the sticker database status.
@@ -65,7 +65,7 @@ and a sample rating; do not overwrite an unknown live database blindly.
 ### 3. Restore generalized attached-display blanking
 
 The moOde worker's stock screen-blank loop is gated only by
-`peppy_display=1`. That means a local WebUI/Player or Now-Playing/Kiosk
+`peppy_display=1`. That means a local WebUI/Player or Sonuvi/Kiosk
 display can remain on indefinitely when the player is paused, even though
 the configured blank timeout is set. Extend the worker so the blanking loop
 runs when either `local_display` or `peppy_display` is enabled.
@@ -73,7 +73,7 @@ runs when either `local_display` or `peppy_display` is enabled.
 The blanking decision must use the authoritative playback source:
 
 - local Player/Peppy: MPD `state=play` means active playback;
-- external Now-Playing/Kiosk: query `/now-playing` on port `3101`;
+- external Sonuvi/Kiosk: query `/now-playing` on port `3101`;
 - `state=play`, `isAirplay=true`, or `isUpnp=true` means active playback;
 - paused/stopped means the attached display may blank.
 
@@ -96,7 +96,7 @@ Peppy-specific branch merely to obtain blanking for Player or Kiosk.
 ### 4. Reapply the external-display watchdog patch
 
 The stock r1034 watchdog probes moOde’s `/command/` endpoint on the target
-host. Now-Playing does not provide that endpoint, so the probe returns 404 and
+host. Sonuvi does not provide that endpoint, so the probe returns 404 and
 can falsely wake the display while paused or stopped.
 
 Apply the version-appropriate patch from:
@@ -170,9 +170,9 @@ only on `systemctl is-active`.
 Test each state, allowing the configured screen-blank interval to elapse:
 
 - Start local playback: display wakes and LED indicates playing.
-- Pause playback: Now-Playing reports `pause`; display eventually sleeps and
+- Pause playback: Sonuvi reports `pause`; display eventually sleeps and
   watchdog does not wake it repeatedly.
-- Stop playback: Now-Playing reports `stop`; display sleeps and the physical
+- Stop playback: Sonuvi reports `stop`; display sleeps and the physical
   LED shows the stopped/idle indication.
 - Resume playback: display wakes again.
 - Start AirPlay: metadata, artwork, and playback controls remain healthy.
@@ -191,7 +191,7 @@ If the upgrade cannot be made healthy:
 
 1. Stop testing and preserve current logs/config for diagnosis.
 2. Restore the verified SD-card image.
-3. Confirm sticker ratings and Now-Playing behavior from the restored image.
+3. Confirm sticker ratings and Sonuvi behavior from the restored image.
 4. Keep the native ZIP, SQL export, override inventory, and upgrade notes
    together for the next attempt.
 

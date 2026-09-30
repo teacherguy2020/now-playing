@@ -1,7 +1,7 @@
 {
-  "name": "Now Playing Controller (iPhone)",
+  "name": "Sonuvi Controller (iPhone)",
   "short_name": "Controller",
-  "description": "iPhone controller for Now Playing for moOde",
+  "description": "iPhone controller for Sonuvi — moOde enhancement platform",
   "id": "/controller-iphone",
   "start_url": "/controller-mobile.html?devicePreset=mobile",
   "scope": "/",

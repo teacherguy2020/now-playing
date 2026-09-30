@@ -10,7 +10,7 @@ installation that reset:
 - /etc/peppyspectrum/config.txt without an HTTP target;
 - the spectrum FIFO to the obsolete /home/pi/myfifosa path.
 
-The result is a running VU process with no Now Playing feed and a failed
+The result is a running VU process with no Sonuvi feed and a failed
 spectrum HTTP bridge.
 
 ## Tracked restore

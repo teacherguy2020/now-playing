@@ -15,7 +15,7 @@ confidence: medium
 
 ## Purpose and authority
 
-This page documents the integration between the 1939 Mills Throne of Music jukebox and Now-Playing/moOde. The original Mills mechanism remains completely authoritative: software observes the machine and makes the modern display/playback system follow what the mechanism physically does.
+This page documents the integration between the 1939 Mills Throne of Music jukebox and Sonuvi/moOde. The original Mills mechanism remains completely authoritative: software observes the machine and makes the modern display/playback system follow what the mechanism physically does.
 
 Source basis: Brian's Mills Throne integration-flow specification and bench-test results, 2026-09-15. The physical selector shaft has not yet been mounted, measured, or calibrated; all angles, tolerances, timing, and final state rules remain experimental.
 
@@ -27,10 +27,10 @@ The project repository is `/projects/mills-throne` (Mac workspace path: `mills-t
 Mills mechanism       selects, queues, loads, plays, and returns records
 AS5600 + Pico 2 W     observes shaft angle, movement, and settled positions
 Shelly 1PM Gen4       switches/measures jukebox power; confirms activity
-Now-Playing           owns MPD, Harmony/Denon, metadata, and display behavior
+Sonuvi               owns MPD, Harmony/Denon, metadata, and display behavior
 ```
 
-The Pico must not select records, reproduce the Mills queue, or control the mechanism. Harmony/Denon orchestration belongs in Now-Playing, not in Pico firmware.
+The Pico must not select records, reproduce the Mills queue, or control the mechanism. Harmony/Denon orchestration belongs in Sonuvi, not in Pico firmware.
 
 ## Physical selector behavior
 
@@ -83,7 +83,7 @@ If the mechanism passes through or rests at 20 more than once during reset/searc
 
 ## Intended session flow
 
-When the selector leaves REST and a genuine search/play cycle is established, the Pico reports `MILLS ACTIVE` to Now-Playing. This begins one Mills session that remains active across multiple records.
+When the selector leaves REST and a genuine search/play cycle is established, the Pico reports `MILLS ACTIVE` to Sonuvi. This begins one Mills session that remains active across multiple records.
 
 During a search, transient angles are ignored. Once the wheel stops inside a calibrated position window for the settle interval, the Pico will report a physical slot, for example:
 
@@ -91,7 +91,7 @@ During a search, transient angles are ignored. Once the wheel stops inside a cal
 {"slot": 7}
 ```
 
-Now-Playing accepts that report at the authenticated endpoint:
+Sonuvi accepts that report at the authenticated endpoint:
 
 ```text
 POST /integrations/mills/selection
@@ -108,7 +108,7 @@ The API maps each slot to the matching entry in the exact `Mills Playlist`
 playlist, briefly reads that file's MPD tags, and removes the temporary MPD
 entry immediately. The digital file is never played or left in the queue.
 
-While Mills is active, Now-Playing exposes the selected record's
+While Mills is active, Sonuvi exposes the selected record's
 artist/title/album/artwork to every display in a display-only `mills` mode. The
 normal layout remains unchanged, but the progress bar and time are hidden. The
 moOde hardware LED uses a slow-pulsing white indication; it remains visible
@@ -174,6 +174,6 @@ The updater stages `main.new.py`, validates syntax, preserves `main.backup.py`, 
 5. Log Shelly power alongside AS5600 data for single- and multiple-record sessions.
 6. Decide whether AS5600 alone or AS5600 plus Shelly confirms session start/end.
 7. Implement calibrated Pico-side slot detection and send slots 1–20 to the
-   Now-Playing selection endpoint.
+   Sonuvi selection endpoint.
 
 <!-- Last updated: 2026-09-18 -->

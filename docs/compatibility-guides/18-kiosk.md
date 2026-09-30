@@ -18,7 +18,7 @@ For this installation, the URL is:
 
 Do not use `http://<WEB_HOST>:8101/kiosk.html` in moOde's Target URL field.
 The LAN proxy serves the public display route on HTTP port 80 and forwards it
-to the Now-Playing web service.
+to the Sonuvi web service.
 
 Path in moOde:
 

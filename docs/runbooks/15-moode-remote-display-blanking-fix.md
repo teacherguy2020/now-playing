@@ -9,7 +9,7 @@ can break:
 - With `wake_display=1`, display can be forced back on repeatedly.
 
 This applies to all attached-display presentations: Player, Peppy, and the
-Now-Playing/Kiosk display. Kiosk is a presentation mode, but it still uses
+Sonuvi/Kiosk display. Kiosk is a presentation mode, but it still uses
 the local display path and must not be excluded from blanking.
 
 ## Root Cause
@@ -43,7 +43,7 @@ This preserves wake-on-play while using external target URL control and keeps th
 The external watchdog controls wake-on-play, but it does not start the
 blanking countdown. In r1034, `worker.php` invokes the blanking routine only
 when `peppy_display=1`. If the attached display is Player or an external
-Now-Playing/Kiosk page (`local_display=1`, `peppy_display=0`), paused playback
+Sonuvi/Kiosk page (`local_display=1`, `peppy_display=0`), paused playback
 therefore never reaches the blanking routine.
 
 Extend the worker's display condition to include `local_display`, and make

@@ -228,9 +228,9 @@ Important operational note from live code tracing:
 The tablet controller's Live Queue surface also supports an **Endless Vibe** toggle in the queue header. This is a continuous queue-extension mode built on the seeded Vibe route rather than a separate Last.fm integration.
 
 Current behavior:
-- the shared Now-Playing setting is off by default and persists server-side in `data/endless-vibe.json`; legacy browser-local values are migrated when the queue surface first loads
-- the toggle is shared across controllers that use the same Now-Playing instance
-- the Now-Playing backend polls MPD while the setting is enabled and triggers only when a local music track is playing as the final queue item
+- the shared Sonuvi setting is off by default and persists server-side in `data/endless-vibe.json`; legacy browser-local values are migrated when the queue surface first loads
+- the toggle is shared across controllers that use the same Sonuvi instance
+- the Sonuvi backend polls MPD while the setting is enabled and triggers only when a local music track is playing as the final queue item
 - controller surfaces only read and change the shared setting; an open controller page is not required for monitoring or queue extension
 - radio, podcast, and stream entries are excluded
 - the current track's artist, title, and file become the next seed

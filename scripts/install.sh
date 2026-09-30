@@ -210,7 +210,7 @@ WEB_SERVICE_PATH="/etc/systemd/system/${WEB_SERVICE_NAME}"
 log "Writing systemd unit: ${SERVICE_PATH}"
 cat <<EOF | ${SUDO} tee "${SERVICE_PATH}" >/dev/null
 [Unit]
-Description=Now Playing API
+Description=Sonuvi API
 After=network.target
 
 [Service]
@@ -229,7 +229,7 @@ EOF
 log "Writing systemd unit: ${WEB_SERVICE_PATH}"
 cat <<EOF | ${SUDO} tee "${WEB_SERVICE_PATH}" >/dev/null
 [Unit]
-Description=Now Playing Web UI
+Description=Sonuvi Web UI
 After=network.target
 
 [Service]

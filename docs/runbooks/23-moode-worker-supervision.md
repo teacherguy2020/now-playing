@@ -3,7 +3,7 @@
 ## Problem
 
 moOde's `/var/www/daemon/worker.php` owns the attached-display blanking loop.
-For an external Now Playing Target URL, that loop is also where the
+For an external Sonuvi Target URL, that loop is also where the
 authoritative `:3101/now-playing` state is evaluated. If the worker dies, the
 display remains awake indefinitely even though the Target URL and the
 worker-side TargetURL workaround are correct.

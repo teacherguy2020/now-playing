@@ -1,5 +1,5 @@
 [Unit]
-Description=Restore Now Playing Peppy HTTP targets
+Description=Restore Sonuvi Peppy HTTP targets
 After=network-online.target
 Wants=network-online.target
 Before=peppy-spectrum-bridge.service

@@ -13,19 +13,19 @@ confidence: high
 # Mobile Tailnet Deployment
 
 This runbook describes the network boundary for native iPhone/iPad playback
-from the Now Playing mobile API. It does not expose the home music share,
+from the Sonuvi mobile API. It does not expose the home music share,
 MPD, or moOde directly to a mobile device.
 
 ## Intended topology
 
 ```text
-iPhone/iPad -- Tailscale + HTTPS --> Now Playing host -- existing LAN mount --> moOde library
+iPhone/iPad -- Tailscale + HTTPS --> Sonuvi host -- existing LAN mount --> moOde library
                                       |
                                       +-- local mobile API on TCP 3101
                                       +-- Tailscale Serve on tailnet TCP 443
 ```
 
-The Now Playing host is the only server that needs to be reachable by the
+The Sonuvi host is the only server that needs to be reachable by the
 native app. It already resolves opaque track IDs and reads the local mount of
 the moOde library. The moOde player host does not need Tailscale for this
 path.
@@ -49,7 +49,7 @@ filesystem address.
 
 ## Tailscale Serve
 
-On the Now Playing host, after the node has been authenticated into the
+On the Sonuvi host, after the node has been authenticated into the
 intended tailnet:
 
 ```sh
@@ -69,7 +69,7 @@ Serve must remain **tailnet only**. Do not enable `tailscale funnel` for this
 service. Tailscale manages the trusted HTTPS certificate for the MagicDNS
 hostname; no certificate or private key belongs in this repository.
 
-After changing the private environment, restart the Now Playing service using
+After changing the private environment, restart the Sonuvi service using
 the normal deployment procedure and verify:
 
 ```sh
@@ -85,10 +85,10 @@ The iPhone/iPad must:
 
 1. Have the Tailscale app installed and connected to the same tailnet.
 2. Use the HTTPS base URL supplied in the pairing QR.
-3. Complete Now Playing’s pairing approval flow.
+3. Complete Sonuvi’s pairing approval flow.
 4. Store the resulting mobile bearer session in iOS Keychain.
 
-Tailscale connectivity does not replace Now Playing authentication. The app
+Tailscale connectivity does not replace Sonuvi authentication. The app
 still uses opaque catalog IDs, bearer sessions, and short-lived media tickets.
 
 ## Re-pairing after the transport change
@@ -130,7 +130,7 @@ trust, Serve, and the local API proxy without revealing a bearer token.
 - **Pairing waits indefinitely:** check that the display and native app use
   the same current QR, and that the server’s mobile API and Track Key are
   configured.
-- **Media authorization succeeds but audio fails:** inspect the Now Playing
+- **Media authorization succeeds but audio fails:** inspect the Sonuvi
   host’s local library mount and media-ticket logs; do not work around the
   problem by exposing the moOde share.
 

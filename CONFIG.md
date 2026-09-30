@@ -1,4 +1,4 @@
-# Master Config (Now Playing)
+# Master Config (Sonuvi)
 
 Use a single config file for user-specific setup.
 

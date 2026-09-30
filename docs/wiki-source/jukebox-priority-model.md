@@ -12,7 +12,7 @@ confidence: high
 
 Seeburg wallbox and Multiphone selections share a customer-request priority
 segment. Mills is intentionally different because the physical mechanism is
-already playing the record and Now Playing supplies only a display surrogate.
+already playing the record and Sonuvi supplies only a display surrogate.
 
 ## Shared Seeburg/Multiphone behavior
 
@@ -31,13 +31,13 @@ segment; it does not replace MPD queue state.
 ## Mills distinction
 
 Mills accepts physical slots only during an active session. The mechanism owns
-selection and audio; Now Playing resolves the selected slot for metadata,
+selection and audio; Sonuvi resolves the selected slot for metadata,
 artwork, display state, and Denon/Harmony orchestration. Mills does not add a
 digital track to the shared priority queue.
 
 ## Ownership
 
-Now Playing owns the validated selection endpoints and queue/playback behavior.
+Sonuvi owns the validated selection endpoints and queue/playback behavior.
 Seeburg firmware and Multiphone/Mabel conversation/hardware remain in their
 separate projects. See [integrations.md](integrations.md) and
 [mills-throne-integration.md](mills-throne-integration.md).

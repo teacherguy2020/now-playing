@@ -44,7 +44,7 @@ This is the most important page in the family.
 ### What it actually is
 Direct file inspection shows that `displays.html` is a small operator console with two card groups:
 
-#### Now Playing Displays
+#### Sonuvi Displays
 - Player
 - Peppy
 - Visualizer

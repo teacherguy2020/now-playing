@@ -259,7 +259,7 @@ Two especially important clarifications encoded in the page are:
 Alexa request origin and playback mode are separate concepts. A request
 beginning with `in the theater`, or ending with `locally`, targets moOde/MPD
 and uses normal queue and display semantics. The remembered Alexa/Echo track is cleared or marked
-inactive so Now Playing does not overlay stale Echo state or show Alexa Mode.
+inactive so Sonuvi does not overlay stale Echo state or show Alexa Mode.
 Ordinary requests that stream through an Echo retain Alexa queue behavior.
 
 That is valuable operational documentation, not just UI filler.

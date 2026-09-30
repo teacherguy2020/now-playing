@@ -1,6 +1,6 @@
 # Seeburg, Multiphone, and Mills priority selections
 
-Now Playing treats Seeburg wallbox selections and Multiphone selections as one
+Sonuvi treats Seeburg wallbox selections and Multiphone selections as one
 shared customer-request queue. Both integration routes mark inserted tracks as
 `source`-specific entries with `priority: "jukebox"` and a monotonic sequence.
 

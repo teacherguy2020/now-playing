@@ -10,26 +10,26 @@ confidence: high
 
 # Getting Started
 
-This is the shortest path for a new Now Playing installation. Now Playing is
-a moOde-focused enhancement stack: it runs a web UI and API on an app host and
+This is the shortest path for a new Sonuvi installation. Sonuvi is a
+moOde-focused enhancement platform: it runs a web UI and API on an app host and
 uses MPD, moOde, SSH, and HTTP integrations to provide richer playback,
 metadata, queue, display, and controller experiences.
 
 ## Recommended topology
 
-Run Now Playing on a separate Linux/Raspberry Pi host from the moOde player.
+Run Sonuvi on a separate Linux/Raspberry Pi host from the moOde player.
 The split keeps UI/API work independent from the audio host while allowing the
 API host to reach moOde over the LAN.
 
 | Role | Typical service | Default port |
 | --- | --- | --- |
-| Now Playing UI | static HTML/CSS/JavaScript | `8101` |
-| Now Playing API | Node/Express service | `3101` |
+| Sonuvi UI | static HTML/CSS/JavaScript | `8101` |
+| Sonuvi API | Node/Express service | `3101` |
 | moOde MPD | MPD on the player host | `6600` |
 
 ## Install
 
-On the Now Playing host, install Node.js, npm, `mpc`, and PM2, then use the
+On the Sonuvi host, install Node.js, npm, `mpc`, and PM2, then use the
 repository installer:
 
 ```sh
@@ -41,7 +41,7 @@ rollback checks are in [install-and-validation.md](install-and-validation.md).
 
 ## Configure the first connection
 
-1. Open `config.html` on the Now Playing UI host.
+1. Open `config.html` on the Sonuvi UI host.
 2. Set the moOde/MPD host and port.
 3. Set a strong `trackKey` for protected API actions.
 4. Configure the optional moOde SSH host/user and required paths.
@@ -61,7 +61,7 @@ Check these in order:
 2. `GET /next-up` returns the current queue view.
 3. `app.html` or a controller page loads from the UI host.
 4. MPD transport changes from the controller reach moOde.
-5. The display route loads if moOde is configured to use Now Playing.
+5. The display route loads if moOde is configured to use Sonuvi.
 
 The operator-facing checks are collected in
 [configuration-and-administration.md](configuration-and-administration.md) and

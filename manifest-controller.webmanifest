@@ -1,7 +1,7 @@
 {
-  "name": "Now Playing Controller",
+  "name": "Sonuvi Controller",
   "short_name": "Controller",
-  "description": "Mobile controller for Now Playing for moOde",
+  "description": "Mobile controller for Sonuvi — moOde enhancement platform",
   "start_url": "/controller.html",
   "scope": "/",
   "id": "/controller",

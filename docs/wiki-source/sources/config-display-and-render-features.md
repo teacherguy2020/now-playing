@@ -71,7 +71,7 @@ Observed UI includes:
 - `displayTakeoverTargetHint`
 
 The UI describes this as:
-- enabling Now Playing display enhancement on moOde
+- enabling Sonuvi display enhancement on moOde
 - making Peppy/Player display tools available
 - allowing moOde target URL to be set to this server
 

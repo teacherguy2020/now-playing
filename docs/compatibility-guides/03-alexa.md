@@ -124,7 +124,7 @@ Next button
   → Mood Box AMAZON.NextIntent
 ```
 
-Now Playing exposes these through the authenticated diagnostics relay using
+Sonuvi exposes these through the authenticated diagnostics relay using
 `pausealexa`, `resumealexa`, and `nextalexa`. Their URLs are derived from the
 configured `alexa-start` Homebridge URL, so a start URL such as
 `http://10.0.0.5:8787/api/v1/actions/alexa-start` automatically maps to the
@@ -166,7 +166,7 @@ PlaybackFinished
 ```
 
 `POST /alexa/natural-finish` requires the track key and relays to the
-Homebridge `alexa-finished` action. Now Playing clears its remembered Alexa
+Homebridge `alexa-finished` action. Sonuvi clears its remembered Alexa
 state only after Homebridge returns HTTP 2xx. The Homebridge action is
 idempotent, does not invoke the Alexa Stop Trigger, and does not start, stop,
 or change the MPD queue. Turning Alexa Mode off also re-enables the local ALSA

@@ -22,7 +22,7 @@ SEARCH = "search-index.js?v=20260922"
 
 
 NAV_GROUPS = [
-    ("Start", [("README", "README"), ("Getting Started", "getting-started"), ("Using Now Playing", "using-now-playing"), ("Core Concepts", "core-concepts")]),
+    ("Start", [("README", "README"), ("Getting Started", "getting-started"), ("Using Sonuvi", "using-now-playing"), ("Core Concepts", "core-concepts")]),
     ("Displays", [("Displays", "displays"), ("User Interfaces", "user-interfaces"), ("Kiosk", "kiosk-interface"), ("Visualizer", "visualizer-in-embedded-mode")]),
     ("Playback and Library", [("Playback Features", "playback-features"), ("Queue and Playback", "queue-and-playback-model"), ("Queue Wizard", "queue-wizard-internals"), ("Media Library", "media-library"), ("Listen on Device", "listen-on-device")]),
     ("Integrations", [("Integrations", "integrations"), ("Alexa", "alexa-interface"), ("YouTube", "youtube-interface"), ("Radio", "radio-interface"), ("Mabel", "mabel-integration"), ("Jukebox Priority", "jukebox-priority-model")]),
@@ -167,7 +167,7 @@ def nav_html() -> str:
     for title, pages in NAV_GROUPS:
         links = "".join(f'<li><a href="{slug}.html">{html.escape(label)}</a></li>' for label, slug in pages)
         groups.append(f"<details><summary><strong>{html.escape(title)}</strong></summary><ul>{links}</ul></details>")
-    return '<nav><h1><a href="README.html">now-playing documentation</a></h1><div class="meta">Canonical source: <code>docs/wiki-source/</code></div>' + "".join(groups) + "</nav>"
+    return '<nav><h1><a href="README.html">Sonuvi documentation</a></h1><div class="meta">Canonical source: <code>docs/wiki-source/</code></div>' + "".join(groups) + "</nav>"
 
 
 def shell(article: str, title: str) -> str:

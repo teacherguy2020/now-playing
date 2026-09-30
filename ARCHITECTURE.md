@@ -89,7 +89,7 @@ These are configurable via runtime config (`ports.api`, `ports.ui`).
 
 The Multiphone project's Mabel agent is an external client of this API. Its
 normal numbered requests use the dedicated Multiphone integration and jukebox
-priority rules. Its VIP/off-script music requests reuse bounded Now Playing
+priority rules. Its VIP/off-script music requests reuse bounded Sonuvi API
 actions such as album, artist, playlist, mix, and now-playing operations.
 
 The Mac-side Mabel bridge is the orchestration and credential boundary. Mabel

@@ -11,7 +11,7 @@ confidence: high
 
 # Developer Reference
 
-Use this branch when maintaining Now Playing or tracing behavior from a
+Use this branch when maintaining Sonuvi or tracing behavior from a
 visible symptom into source code, routes, runtime state, or host integration.
 
 ## Architecture and ownership

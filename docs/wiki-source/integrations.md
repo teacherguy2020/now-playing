@@ -104,7 +104,7 @@ Best companion pages:
 
 The Seeburg wallbox is a hardware client of the app-host API. The Pico firmware
 decodes the wallbox selection and sends only the numeric selection, while the
-Now Playing API resolves that number against moOde's saved MPD playlist:
+Sonuvi API resolves that number against moOde's saved MPD playlist:
 - `POST /integrations/seeburg/selection` accepts a number from `1` through `100`
 - the number selects that position in the saved `Seeburg Playlist` by default
 - selected tracks are classified as `source: "seeburg"` / `priority: "jukebox"`
@@ -140,7 +140,7 @@ The Mills Throne integration is an observation-first bridge for a 1939 mechanica
 - an AS5600 on a Pico 2 W observes the selector shaft and will eventually report calibrated physical slots 1–20
 - the Mills REST gap between positions 20 and 1 must be distinguished from an actual slot-20 selection using movement/phase context
 - a Shelly 1PM Gen4 provides power measurement, activity/idle confirmation, and local webhooks
-- Now-Playing owns the Mills session, MPD display surrogate, Harmony/Denon source switching, and restoration of the pre-Mills playback state
+- Sonuvi owns the Mills session, MPD display surrogate, Harmony/Denon source switching, and restoration of the pre-Mills playback state
 - the Pico has authenticated local OTA updating so a mounted/calibrated sensor assembly need not be disturbed for firmware changes
 
 See [mills-throne-integration.md](mills-throne-integration.md) for the current architecture, observed power profile, wiring, OTA workflow, and open calibration work.
@@ -166,7 +166,7 @@ changes. A drop from mechanism power to the approximate record-playing level
 is not a stop; idle means the whole Mills session has returned to its true idle
 power range.
 
-On Mills start, the Denon switches to Phono and Now-Playing opens an active
+On Mills start, the Denon switches to Phono and Sonuvi opens an active
 session, but it does not start a default surrogate. It waits for the Pico's
 first settled physical slot report, then adds the corresponding entry from the
 MPD playlist `Mills Playlist` through the shared jukebox-priority insertion and
@@ -190,7 +190,7 @@ AS5600 selection mapping, exact pre-Mills MPD snapshot/restoration, and final
 session-end confirmation remain later phases.
 
 Harmony configuration is installation-specific and supplied to the
-Now-Playing service through `HARMONY_HOST`, `HARMONY_PORT`,
+Sonuvi service through `HARMONY_HOST`, `HARMONY_PORT`,
 `HARMONY_DOMAIN`, `HARMONY_HUB_ID`, and `HARMONY_DENON_DEVICE_ID`. The IR
 command names default to `InputPhono` and `InputAux1`.
 

@@ -1,6 +1,6 @@
-# Now Playing art surface contract
+# Sonuvi art surface contract
 
-This runbook records the shared artwork rules for every Now Playing display.
+This runbook records the shared artwork rules for every Sonuvi display.
 It exists because artwork fixes that were made in one surface previously did
 not always reach the other surfaces. The controller was the most reliable
 reference implementation; the `NPArt` browser helper now makes its resolution

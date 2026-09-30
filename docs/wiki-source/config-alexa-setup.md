@@ -130,7 +130,7 @@ When `PlaybackNearlyFinished` finds no successor, the skill persists the
 current token as a final-track candidate. A matching `PlaybackFinished` event
 then calls the authenticated `POST /alexa/natural-finish` endpoint. This
 endpoint derives the sibling `/api/v1/actions/alexa-finished` URL from the
-configured Alexa start webhook and clears Now Playing Alexa state only after
+configured Alexa start webhook and clears Sonuvi Alexa state only after
 the Homebridge action succeeds.
 
 ## 4. Domain reachability check

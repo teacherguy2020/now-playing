@@ -109,7 +109,7 @@ http://<WEB_HOST>/display.html?kiosk=1
 ```
 
 For moOde r1034 and later, this Target URL must be portless. The LAN proxy
-serves the display route on HTTP port 80 and forwards it to the Now-Playing
+serves the display route on HTTP port 80 and forwards it to the Sonuvi
 web service; do not use `:8101` in moOde's Target URL field.
 
 Why this matters:

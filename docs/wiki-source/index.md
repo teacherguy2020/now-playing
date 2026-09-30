@@ -41,7 +41,7 @@ The documentation is organized by audience and concept rather than historical
 feature/tab order:
 
 - [Getting Started](getting-started.md) — installation, first configuration, and verification
-- [Using Now Playing](using-now-playing.md) — user-facing playback, queue, library, and integration features
+- [Using Sonuvi](using-now-playing.md) — user-facing playback, queue, library, and integration features
 - [Displays](displays.md) — display, kiosk, Peppy, Player, Visualizer, and installed controller presentation
 - [Integrations](integrations.md) — moOde/MPD, Alexa, radio, YouTube, Last.fm, jukebox, and external boundaries
 - [Configuration and Administration](configuration-and-administration.md) — config, diagnostics, deployment, updates, and rollback

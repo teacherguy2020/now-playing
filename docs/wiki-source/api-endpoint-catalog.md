@@ -196,7 +196,7 @@ curl -H 'x-track-key: YOUR_TRACK_KEY' \\
   http://10.0.0.4:3101/integrations/seeburg/selection
 ```
 
-The endpoint was deployed to the local Now Playing Pi at `10.0.0.4` and its
+The endpoint was deployed to the local Sonuvi Pi at `10.0.0.4` and its
 `now-playing.service` was restarted and verified active on 2026-08-28. The live
 playlist endpoint reported 36 tracks; selection 36 resolved successfully in dry-run
 mode. A real append was also tested and then removed, leaving the queue unchanged.

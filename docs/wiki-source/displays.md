@@ -11,12 +11,12 @@ confidence: high
 
 # Displays
 
-Now Playing has several display and presentation paths. They share playback
+Sonuvi has several display and presentation paths. They share playback
 truth, but they do not share identical layout, routing, or lifecycle behavior.
 
 ## Display families
 
-- **Now Playing display** — `index.html` and related render variants.
+- **Sonuvi display** — `index.html` and related render variants.
 - **Player/Peppy display** — room-facing views routed through `display.html`.
 - **Visualizer** — visualizer scenes and presets, including embedded and
   fullscreen behavior.

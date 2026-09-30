@@ -1,5 +1,5 @@
 ---
-title: Now Playing documentation
+title: Sonuvi documentation
 page_type: hub
 topics:
   - metadata
@@ -9,10 +9,10 @@ topics:
 confidence: high
 ---
 
-# Now Playing documentation
+# Sonuvi documentation
 
 This is the canonical editable documentation source for the `now-playing`
-project. Now Playing is a moOde-centered enhancement stack for playback state,
+project. Sonuvi is a moOde-centered enhancement platform for playback state,
 metadata, queue control, displays, controllers, integrations, and operations.
 
 ## Start by audience
@@ -20,13 +20,13 @@ metadata, queue control, displays, controllers, integrations, and operations.
 ### New user
 
 1. [Getting Started](getting-started.md)
-2. [Using Now Playing](using-now-playing.md)
+2. [Using Sonuvi](using-now-playing.md)
 3. [Displays](displays.md)
 4. [Integrations](integrations.md)
 
 ### Existing user
 
-- Playback, queue, library, radio, podcasts, YouTube, Alexa, and Listen on Device → [Using Now Playing](using-now-playing.md)
+- Playback, queue, library, radio, podcasts, YouTube, Alexa, and Listen on Device → [Using Sonuvi](using-now-playing.md)
 - Controller/tablet/phone surfaces → [User Interfaces](user-interfaces.md)
 - Displays, kiosk, Peppy, Player, and Visualizer → [Displays](displays.md)
 - Configuration and maintenance → [Configuration and Administration](configuration-and-administration.md)
@@ -46,7 +46,7 @@ metadata, queue control, displays, controllers, integrations, and operations.
 | Category | Entry page | What it answers |
 | --- | --- | --- |
 | Getting Started | [getting-started.md](getting-started.md) | What is it, how do I install it, and how do I verify first run? |
-| Using Now Playing | [using-now-playing.md](using-now-playing.md) | How do I use playback, queues, browsing, radio, podcasts, YouTube, Alexa, and webstream listening? |
+| Using Sonuvi | [using-now-playing.md](using-now-playing.md) | How do I use playback, queues, browsing, radio, podcasts, YouTube, Alexa, and webstream listening? |
 | Displays | [displays.md](displays.md) | Which display/router/kiosk path should I configure or debug? |
 | Integrations | [integrations.md](integrations.md) | What owns moOde/MPD, Alexa, Mabel, jukebox, Last.fm, AirPlay, and other boundaries? |
 | Configuration and Administration | [configuration-and-administration.md](configuration-and-administration.md) | How do I configure, inspect, deploy, update, back up, and validate the system? |
@@ -81,7 +81,7 @@ metadata, queue control, displays, controllers, integrations, and operations.
 ## Documentation source and publication rules
 
 Edit `docs/wiki-source/`. It is the only authoritative editable source for
-substantive Now Playing documentation.
+substantive Sonuvi documentation.
 
 - `docs/wiki-site/` is generated browseable HTML. Do not hand-edit it.
 - The GitHub Wiki is a published copy. Do not author feature documentation directly there; use `scripts/publish_github_wiki.py`. The publisher intentionally excludes installation-local host maps such as `local-environment.md` and redacts known installation-specific host/path values in public operational copies.

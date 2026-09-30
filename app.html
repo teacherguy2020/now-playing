@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Now Playing for moOde" />
+  <meta name="apple-mobile-web-app-title" content="Sonuvi" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0c1526" />
   <link rel="manifest" href="/manifest.webmanifest?v=20260922-manifest2" />
@@ -16,7 +16,7 @@
   <link rel="shortcut icon" href="/icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/app-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="/icons/app-512.png" />
-  <title>Now Playing</title>
+  <title>Sonuvi</title>
   <link rel="stylesheet" href="styles/podcasts.css?v=20260224-no-rail-before" />
   <link rel="stylesheet" href="styles/podcasts2.css?v=20260224-no-rail-before" />
   <link rel="stylesheet" href="styles/hero.css?v=20260830-current-playlist2" />
@@ -302,7 +302,7 @@
     <div class="heroWrap">
       <header>
         <div class="brand" style="display:block;">
-          <h1 id="heroNowPlayingTitle" title="Open moOde web UI" style="margin:0;line-height:1.05;white-space:nowrap;font-size:18px;font-weight:620;letter-spacing:-0.012em;cursor:pointer;user-select:none;">Now Playing <span style="font-size:13px;font-weight:520;opacity:.86;letter-spacing:0;">moOde enhancement dashboard</span></h1>
+          <h1 id="heroNowPlayingTitle" title="Open moOde web UI" style="margin:0;line-height:1.05;white-space:nowrap;font-size:18px;font-weight:620;letter-spacing:-0.012em;cursor:pointer;user-select:none;">Sonuvi <span style="font-size:13px;font-weight:520;opacity:.86;letter-spacing:0;">— moOde enhancement platform</span></h1>
         </div>
         <div class="quickThemeWrap">
           <div class="heroQuickSearchWrap">
@@ -422,7 +422,7 @@
         <div id="peppyTechPillsRow" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;"></div>
       </div>
     </div>
-    <iframe id="appFrame" title="Now Playing view" src="about:blank" scrolling="yes" allow="web-share; clipboard-write" style="width:100%;display:block;"></iframe>
+    <iframe id="appFrame" title="Sonuvi view" src="about:blank" scrolling="yes" allow="web-share; clipboard-write" style="width:100%;display:block;"></iframe>
   </div>
 
   <div id="queueAlbumModal" class="queueAlbumModal" aria-hidden="true">
@@ -4485,10 +4485,10 @@
                 try {
                   const file = new File([json], fileName, { type: 'application/json' });
                   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({ title:'Now Playing Theme', text:'Theme export JSON', files:[file] });
+                    await navigator.share({ title:'Sonuvi Theme', text:'Theme export JSON', files:[file] });
                     return;
                   }
-                  await navigator.share({ title:'Now Playing Theme', text: json });
+                  await navigator.share({ title:'Sonuvi Theme', text: json });
                   return;
                 } catch (e) {
                   if (String(e?.name || '') === 'AbortError') return;

@@ -1,5 +1,5 @@
 ---
-title: using now playing
+title: using Sonuvi
 page_type: hub
 topics:
   - controller
@@ -9,7 +9,7 @@ topics:
 confidence: high
 ---
 
-# Using Now Playing
+# Using Sonuvi
 
 This is the user-facing map of the system. Start here when the question is
 “how do I use this feature?” rather than “which file owns this behavior?”
@@ -24,7 +24,7 @@ shells, and integration ownership, see [Core Concepts](core-concepts.md).
 - **Controllers** — `controller.html`, `controller-tablet.html`, and
   `controller-mobile.html` for direct playback, queue, browse, and display
   control.
-- **Now Playing displays** — `index.html`, player, Peppy, and display-router
+- **Sonuvi displays** — `index.html`, player, Peppy, and display-router
   surfaces for room-facing playback state.
 - **Kiosk** — a presentation and browsing mode described in
   [kiosk-interface.md](kiosk-interface.md).

@@ -1,13 +1,13 @@
-# Now Playing for moOde
+# Sonuvi — moOde enhancement platform
 
-Now Playing is a moOde-focused enhancement stack for richer playback state,
+Sonuvi is a moOde-focused enhancement platform for richer playback state,
 metadata, queue control, displays, controllers, and integrations. It runs a
 web UI and API on an app host and communicates with a moOde/MPD player over the
 LAN.
 
-![Now Playing index view](./docs/images/readme-index.jpg)
-![Now Playing controller](./docs/images/controller.jpeg)
-![Now Playing iPad controller](./docs/images/readme-ipadcontroller.png)
+![Sonuvi index view](./docs/images/readme-index.jpg)
+![Sonuvi controller](./docs/images/controller.jpeg)
+![Sonuvi iPad controller](./docs/images/readme-ipadcontroller.png)
 
 ## What it provides
 
@@ -20,23 +20,23 @@ LAN.
 
 ## Architecture at a glance
 
-The recommended topology runs Now Playing on a separate host from moOde:
+The recommended topology runs Sonuvi on a separate host from moOde:
 
 ```text
 Browser / display clients
           ↓
-Now Playing UI :8101  ↔  Now Playing API :3101
+Sonuvi UI :8101  ↔  Sonuvi API :3101
                               ↓ MPD / SSH / HTTP
                          moOde player host
 ```
 
-The API host owns Now Playing state normalization, routes, queue integration,
+The API host owns Sonuvi state normalization, routes, queue integration,
 display/control bridges, and the web UI. MPD/moOde remains the playback
 authority unless a documented physical or external mode owns the audio path.
 
 ## Quick start
 
-1. Install Node.js, npm, `mpc`, and PM2 on the Now Playing host.
+1. Install Node.js, npm, `mpc`, and PM2 on the Sonuvi host.
 2. Install the project:
 
    ```sh
@@ -59,7 +59,7 @@ Start with the canonical documentation landing page:
 Audience entry points:
 
 - [Getting Started](./docs/wiki-source/getting-started.md)
-- [Using Now Playing](./docs/wiki-source/using-now-playing.md)
+- [Using Sonuvi](./docs/wiki-source/using-now-playing.md)
 - [Displays](./docs/wiki-source/displays.md)
 - [Integrations](./docs/wiki-source/integrations.md)
 - [Configuration and Administration](./docs/wiki-source/configuration-and-administration.md)
