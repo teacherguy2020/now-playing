@@ -113,7 +113,7 @@
     { name: '/config/moode/display/status', method: 'GET', path: '/config/moode/display/status' },
     { name: '/config/moode/display', method: 'POST', path: '/config/moode/display', body: { mode: "on" } },
     { name: '/config/moode/browser-url/status', method: 'GET', path: '/config/moode/browser-url/status' },
-    { name: '/config/moode/browser-url', method: 'POST', path: '/config/moode/browser-url', body: { url: "http://nowplaying.local:8101/display.html" } },
+    { name: '/config/moode/browser-url', method: 'POST', path: '/config/moode/browser-url', body: { url: "http://sonuvi.local:8101/display.html" } },
     { name: '/peppy/last-profile', method: 'GET', path: '/peppy/last-profile' },
     { name: '/peppy/last-profile', method: 'POST', path: '/peppy/last-profile', body: { displayMode: "peppy" } },
     { name: '/queue/advance', method: 'POST', path: '/queue/advance', body: { count: 1 } },
@@ -224,7 +224,7 @@
   }
 
   function apiBaseDefault(){
-    const host = location.hostname || 'nowplaying.local';
+    const host = location.hostname || 'sonuvi.local';
     return `${location.protocol}//${host}:3101`;
   }
 
@@ -275,7 +275,7 @@
 
   function refreshPreviewFrame({ name, frameId, linkId, page, uiPort = 8101, applyZoom }){
     dbg(`refresh${name}Frame(uiPort=${uiPort})`);
-    const host = location.hostname || 'nowplaying.local';
+    const host = location.hostname || 'sonuvi.local';
     const proto = location.protocol || 'http:';
     const sameOriginUrl = new URL(page, location.href).toString();
     const fallbackUrl = `${proto}//${host}:${uiPort}/${String(page || '').replace(/^\/+/, '')}`;
@@ -329,7 +329,7 @@
   }
 
   async function loadRuntime(){
-    const host = location.hostname || 'nowplaying.local';
+    const host = location.hostname || 'sonuvi.local';
     dbg('loadRuntime start');
     try {
       const r = await fetch(`${apiBaseDefault()}/config/runtime`, { cache: 'no-store' });

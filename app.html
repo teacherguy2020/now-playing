@@ -1111,7 +1111,7 @@
       syncMatrixFx();
 
       async function sendHeroPlayback(action, extra = null){
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = (!location.port || location.port === '80' || location.port === '443')
           ? location.origin
           : `${location.protocol}//${host}:3101`;
@@ -1205,7 +1205,7 @@
 
         // Primary: persist server-side for reliability across browser/profile restarts.
         try {
-          const host = location.hostname || 'nowplaying.local';
+          const host = location.hostname || 'sonuvi.local';
           const base = `${location.protocol}//${host}:3101`;
           if (!runtimeTrackKey) {
             const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
@@ -1245,7 +1245,7 @@
 
         try {
           if (document.hidden) return;
-          const host = location.hostname || 'nowplaying.local';
+          const host = location.hostname || 'sonuvi.local';
           const base = `${location.protocol}//${host}:3101`;
           const wrap = document.getElementById('heroQueueWrap');
           if (!wrap) return;
@@ -1919,7 +1919,7 @@
         const nextEnabled = !notifyEnabled;
         const ok = window.confirm(nextEnabled ? 'Resume Pushover notifications?' : 'Pause Pushover notifications?');
         if (!ok) return;
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         const hint = document.getElementById('notifyHint');
         setNotifyBusy(true);
@@ -1957,7 +1957,7 @@
 
       async function refreshPeppyPill(baseOverride = ''){
         const hint = document.getElementById('peppyHint');
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = baseOverride || `${location.protocol}//${host}:3101`;
         try {
           if (!runtimeTrackKey) {
@@ -1981,7 +1981,7 @@
 
       async function refreshPeppyAlsaPill(baseOverride = ''){
         const hint = document.getElementById('peppyAlsaHint');
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = baseOverride || `${location.protocol}//${host}:3101`;
         try {
           if (!runtimeTrackKey) {
@@ -2030,7 +2030,7 @@
       }
 
       async function ensurePeppyAlsa(baseOverride = '', reason = 'peppy-tab-open'){
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = baseOverride || `${location.protocol}//${host}:3101`;
         try {
           if (!runtimeTrackKey) {
@@ -2053,7 +2053,7 @@
           ? 'Exit full-screen Peppymeter?'
           : 'Switch to full-screen Peppymeter?');
         if (!ok) return;
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         setPeppyBusy(true);
         try {
@@ -2106,7 +2106,7 @@
 
       async function toggleScreenFromPill(){
         const next = String(screenModeState || 'nowplaying') === 'webui' ? 'nowplaying' : 'webui';
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         setScreenBusy(true);
         try {
@@ -2133,7 +2133,7 @@
       }
 
       async function hydratePeppyProfileFromLastPush(){
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         try {
           const { r, j } = await fetchJsonWithTimeout(`${base}/peppy/last-profile`, { cache:'no-store' }, 6000);
@@ -2173,7 +2173,7 @@
       }
 
       async function pushPeppyToMoode(profileOverride = null){
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
         const refreshUrl = `${targetUrl}&sw=${Date.now()}`;
@@ -2368,7 +2368,7 @@
       }
 
       async function checkMoodeTargetUrl(){
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         const expected = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
         const hint = document.getElementById('targetUrlHint');
@@ -2414,7 +2414,7 @@
       }
 
       async function setDisplayModeAndRefresh(mode = 'peppy'){
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         const targetUrl = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
         const refreshUrl = `${targetUrl}&sw=${Date.now()}`;
@@ -2457,7 +2457,7 @@
       async function restartApiFromPill(){
         const ok = window.confirm('Restart API?');
         if (!ok) return;
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         setApiBusy(true);
         try {
@@ -2486,7 +2486,7 @@
         const turningOn = !alexaEnabledState;
         const ok = window.confirm(turningOn ? 'Enable Alexa feature?' : 'Pause Alexa feature?');
         if (!ok) return;
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         setAlexaBusy(true);
         try {
@@ -2523,7 +2523,7 @@
       async function restartMoodeFromPill(){
         const ok = window.confirm('Restart moOde now?');
         if (!ok) return;
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         setMoodeBusy(true);
         try {
@@ -2553,7 +2553,7 @@
       async function restartWebFromPill(){
         const ok = window.confirm('Restart Web?');
         if (!ok) return;
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         setWebBusy(true);
         try {
@@ -2583,7 +2583,7 @@
         const desired = (scrobbleRunning === true) ? 'stop' : 'start';
         const ok = window.confirm(desired === 'start' ? 'Start scrobbling?' : 'Stop scrobbling?');
         if (!ok) return;
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         const hint = document.getElementById('scrobbleHint');
         const label = document.getElementById('scrobbleLabel');
@@ -2622,7 +2622,7 @@
 
       async function syncPills(){
         try {
-          const host = location.hostname || 'nowplaying.local';
+          const host = location.hostname || 'sonuvi.local';
           const base = `${location.protocol}//${host}:3101`;
           const r = await fetch(`${base}/config/runtime`, { cache:'no-store' });
           const j = await r.json().catch(() => ({}));
@@ -2812,7 +2812,7 @@
       async function loadHeroQuickIndex(force = false) {
         const now = Date.now();
         if (!force && heroQuickIndex.length && (now - heroQuickLoadedAt) < 5 * 60 * 1000) return;
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         try {
           if (!runtimeTrackKey) {
@@ -2946,7 +2946,7 @@
       }
 
       async function resolveHeroQuickTracks(type, value) {
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         if (!runtimeTrackKey) {
           const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
@@ -2973,7 +2973,7 @@
       }
 
       async function runHeroQuickAction(type, value, action = 'add') {
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         try {
           if (!runtimeTrackKey) {
@@ -3036,7 +3036,7 @@
         const playlistName = String(name || '').trim();
         if (!playlistName || !tracks.length) return;
         status.textContent = `Adding ${tracks.length} track${tracks.length === 1 ? '' : 's'}…`;
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         try {
           const r = await fetch(`${base}/config/queue-wizard/add-to-playlist`, { method:'POST', headers:{'Content-Type':'application/json', ...(runtimeTrackKey ? {'x-track-key':runtimeTrackKey} : {})}, body:JSON.stringify({ playlistName, tracks }) });
@@ -3384,7 +3384,7 @@
       });
       document.getElementById('nativePeppyBtn')?.addEventListener('click', async (ev) => {
         ev.preventDefault();
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         try {
           if (!runtimeTrackKey) {
@@ -3483,7 +3483,7 @@
         if (!queueAlbumModal || !queueAlbumBody) return;
         const artistTxt = String(artist || '').trim();
         if (!artistTxt) return;
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
 
         queueAlbumBody.innerHTML = `<div class="queueAlbumMeta" style="grid-column:1 / -1;">`
@@ -3638,7 +3638,7 @@
 
       async function openQueueAlbumModal({ album = '', artist = '', title = '', art = '' } = {}){
         if (!queueAlbumModal || !queueAlbumBody) return;
-        const host = location.hostname || 'nowplaying.local';
+        const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
         const albumTxt = String(album || '').trim() || '(unknown album)';
         const artistTxt = String(artist || '').trim();
@@ -3930,7 +3930,7 @@
           hqSavePlaylist.classList.add('isLoading');
           setHeroQueueBusy(true, 'Saving queue playlist…');
           try {
-            const host = location.hostname || 'nowplaying.local';
+            const host = location.hostname || 'sonuvi.local';
             const base = `${location.protocol}//${host}:3101`;
             const key = await ensureTrackKey(base);
             const r = await fetch(`${base}/config/diagnostics/queue/save-playlist`, {
@@ -4045,7 +4045,7 @@
             favBtn.title = want ? 'Remove from Favorites' : 'Add to Favorites';
             favBtn.disabled = true;
             try {
-              const host = location.hostname || 'nowplaying.local';
+              const host = location.hostname || 'sonuvi.local';
               const base = `${location.protocol}//${host}:3101`;
               const r = await fetch(`${base}/favorites/toggle`, {
                 method: 'POST',
@@ -4296,7 +4296,7 @@
       async function syncCrossfadeControl(){
         if (!crossfadeEl) return;
         try {
-          const host = location.hostname || 'nowplaying.local';
+          const host = location.hostname || 'sonuvi.local';
           const base = `${location.protocol}//${host}:3101`;
           if (!runtimeTrackKey) {
             const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });

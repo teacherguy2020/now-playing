@@ -27,7 +27,7 @@ export const MOODE_BASE_URL = normalizeMoodeBaseUrl(
   MOODE_SSH_HOST,
 );
 
-export const LOCAL_ADDRESS = process.env.LOCAL_ADDRESS || apiIp || 'nowplaying.local';
+export const LOCAL_ADDRESS = process.env.LOCAL_ADDRESS || apiIp || 'sonuvi.local';
 
 export const PUBLIC_BASE_URL =
   process.env.PUBLIC_BASE_URL ||

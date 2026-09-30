@@ -44,7 +44,7 @@
     // pages served from :8101 still need to address the API on :3101.
     const controlOrigin = (!location.port || location.port === '80' || location.port === '443')
       ? location.origin
-      : `${location.protocol}//${location.hostname || 'nowplaying.local'}:3101`;
+      : `${location.protocol}//${location.hostname || 'sonuvi.local'}:3101`;
     let alexaModeActive = false;
     let alexaControlBusy = false;
     let autoMutedLocalOutput = false;

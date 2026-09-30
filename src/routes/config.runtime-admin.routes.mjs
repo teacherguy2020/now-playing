@@ -572,7 +572,7 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
         prev = JSON.parse(rawPrev || '{}') || {};
       } catch {}
       const merged = {
-        url: incoming.url || String(prev?.url || '').trim() || 'http://nowplaying.local:8101/display.html?kiosk=1',
+        url: incoming.url || String(prev?.url || '').trim() || 'http://sonuvi.local:8101/display.html?kiosk=1',
         skin: incoming.skin || String(prev?.skin || '').trim() || 'blue-1280',
         theme: incoming.theme || String(prev?.theme || '').trim() || 'midnight-blue',
         meterType: incoming.meterType || String(prev?.meterType || '').trim() || 'circular',

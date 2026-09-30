@@ -1294,7 +1294,7 @@
     r.style.setProperty("--np-blur-overlay", isLight ? "linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.42))" : "linear-gradient(180deg, rgba(7,12,20,.36), rgba(7,12,20,.52))");
     r.style.setProperty("--np-blur-overlay-strong", isLight ? "linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,.78))" : "linear-gradient(180deg, rgba(7,12,20,.74), rgba(7,12,20,.86))");
   }
-  const base = "".concat(location.protocol, "//").concat(location.hostname || "nowplaying.local", ":3101");
+  const base = "".concat(location.protocol, "//").concat(location.hostname || "sonuvi.local", ":3101");
   let runtimeTrackKey = "";
   let runtimeMoodeHost = "moode.local";
   var recentLastfmPrefCache = { ts: 0, enabled: false, mode: "toptracks" };
@@ -1389,7 +1389,7 @@
         relUrl.searchParams.delete("designer");
         if (IS_KIOSK_1280) relUrl.searchParams.set("kiosk", "1");
         const rel = "".concat(relUrl.pathname.replace(/^\//, "")).concat(relUrl.search);
-        const webHost = String(location.hostname || "nowplaying.local").trim();
+        const webHost = String(location.hostname || "sonuvi.local").trim();
         const url = "http://".concat(webHost, ":8101/").concat(rel);
         const r = await fetch("".concat(base, "/config/moode/browser-url"), {
           method: "POST",
@@ -4083,7 +4083,7 @@
       try {
         await ensureKey();
         const m = String(mode || "player").toLowerCase() === "peppy" ? "peppy" : "player";
-        const host = String(location.hostname || "nowplaying.local").trim();
+        const host = String(location.hostname || "sonuvi.local").trim();
         const targetUrl = "".concat(location.protocol, "//").concat(host, ":8101/display.html?kiosk=1");
         const refreshUrl = "".concat(targetUrl, "&sw=").concat(Date.now());
         await fetch("".concat(base, "/config/moode/display-mode"), {

@@ -24,7 +24,7 @@
     if (String(root.NP_API_BASE || '').trim()) return String(root.NP_API_BASE).trim().replace(/\/+$/, '');
 
     const protocol = location.protocol || 'http:';
-    const host = location.hostname || 'nowplaying.local';
+    const host = location.hostname || 'sonuvi.local';
     const port = String(location.port || '');
     if (port === '3101') return location.origin.replace(/\/+$/, '');
     if (port === '8101') return `${protocol}//${host}:3101`;

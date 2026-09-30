@@ -194,9 +194,9 @@ allow-listed VIP adapters rather than arbitrary Alexa/API endpoint access. See
 Alexa cloud requests must reach your public domain (example: `moode.YOURDOMAIN.com`) and then be reverse-proxied to local services.
 
 ### Required network forwards (router/eero)
-Forward these ports to the host running Caddy (current primary: `nowplaying.local`):
-- **TCP 80** -> `nowplaying.local:80`
-- **TCP 443** -> `nowplaying.local:443`
+Forward these ports to the host running Caddy (current primary: `sonuvi.local`):
+- **TCP 80** -> `sonuvi.local:80`
+- **TCP 443** -> `sonuvi.local:443`
 
 If these are missing or pointed at an old host, domain checks fail and Alexa cannot connect.
 

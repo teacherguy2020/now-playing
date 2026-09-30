@@ -70,7 +70,7 @@
 <script>
 (()=>{
   const qp=new URLSearchParams(location.search);
-  const host=location.hostname||'nowplaying.local';
+  const host=location.hostname||'sonuvi.local';
   const api=`${location.protocol}//${host}:3101`;
   const c=document.getElementById('c'),x=c.getContext('2d');
   const tEl=document.getElementById('t'),aEl=document.getElementById('a'),mEl=document.getElementById('m');
@@ -193,7 +193,7 @@
       if (tappedBack) return;
       tappedBack = true;
       try {
-        const hostPart = location.host || 'nowplaying.local:8101';
+        const hostPart = location.host || 'sonuvi.local:8101';
         const p = encodeURIComponent(String(presetKey || 'classic'));
         const e = encodeURIComponent(String(Math.round(energyLevel || 6)));
         const m = encodeURIComponent(String(Math.round(motionLevel || 6)));

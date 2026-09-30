@@ -192,8 +192,8 @@ Why this matters:
 For WebUI/bridge mode, the moOde-side targets should resolve to the app-host API.
 
 Expected targets:
-- Peppy VU target -> `http://nowplaying.local:3101/peppy/vumeter`
-- Peppy Spectrum target -> `http://nowplaying.local:3101/peppy/spectrum`
+- Peppy VU target -> `http://sonuvi.local:3101/peppy/vumeter`
+- Peppy Spectrum target -> `http://sonuvi.local:3101/peppy/spectrum`
 - Spectrum update period -> `0.05`
 
 The exact host may vary by environment, but the operational point stays the same:

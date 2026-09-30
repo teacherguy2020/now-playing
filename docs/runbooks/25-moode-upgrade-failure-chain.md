@@ -61,13 +61,13 @@ For moOde r1034 and later, the local display Target URL is the portless LAN
 proxy URL:
 
 ```text
-http://nowplaying.local/display.html?kiosk=1
+http://sonuvi.local/display.html?kiosk=1
 ```
 
 The Now Playing playback-state API remains a separate endpoint:
 
 ```text
-http://nowplaying.local:3101/now-playing
+http://sonuvi.local:3101/now-playing
 ```
 
 Check both the moOde database and Chromium launch command after an upgrade:
@@ -89,7 +89,7 @@ documented in [`15-moode-remote-display-blanking-fix.md`](15-moode-remote-displa
 The worker-side external-display decision must query:
 
 ```text
-http://nowplaying.local:3101/now-playing
+http://sonuvi.local:3101/now-playing
 ```
 
 and regard `state=play`, `isAirplay=true`, and `isUpnp=true` as active. The
@@ -146,17 +146,17 @@ The Peppy designer warning was the useful clue:
 
 ```text
 found: http://localhost:8000/vumeter
-expected: http://nowplaying.local:3101/peppy/vumeter
+expected: http://sonuvi.local:3101/peppy/vumeter
 ```
 
 The final installation-specific values are:
 
 | Function | Correct value | Why it matters |
 | --- | --- | --- |
-| VU HTTP target | `http://nowplaying.local:3101/peppy/vumeter` | Sends VU data to the Sonuvi API |
+| VU HTTP target | `http://sonuvi.local:3101/peppy/vumeter` | Sends VU data to the Sonuvi API |
 | VU HTTP output | `output.http = True` | A correct target is useless when output is disabled |
 | VU input FIFO | `[data.source] pipe.name = /tmp/peppymeter` | This is the FIFO produced by moOde's `peppyalsa` scope |
-| Spectrum HTTP target | `http://nowplaying.local:3101/peppy/spectrum` | Sends spectrum data to the Sonuvi API |
+| Spectrum HTTP target | `http://sonuvi.local:3101/peppy/spectrum` | Sends spectrum data to the Sonuvi API |
 | Spectrum FIFO | `[current] pipe.name = /tmp/peppyspectrum` | This is the shared FIFO used by moOde and the bridge |
 | Spectrum update period | `0.05` | Keeps the visualizer responsive |
 
@@ -220,8 +220,8 @@ ps -p "$(cat /run/worker.pid)" -o pid,lstart,args
 grep -nE 'target.url|update.period|output.http|pipe.name' \
   /etc/peppymeter/config.txt /etc/peppyspectrum/config.txt
 
-curl -s http://nowplaying.local:3101/peppy/vumeter
-curl -s http://nowplaying.local:3101/peppy/spectrum
+curl -s http://sonuvi.local:3101/peppy/vumeter
+curl -s http://sonuvi.local:3101/peppy/spectrum
 ```
 
 Perform the `curl` checks while audio is active. VU should be fresh and

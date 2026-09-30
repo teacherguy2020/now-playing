@@ -14,7 +14,7 @@
   <script>
     (async () => {
       const f = document.getElementById('v');
-      const host = location.hostname || 'nowplaying.local';
+      const host = location.hostname || 'sonuvi.local';
       const api = `${location.protocol}//${host}:3101`;
       const fallback = 'peppy';
       const forcedMode = String(new URLSearchParams(location.search).get('mode') || '').trim().toLowerCase();

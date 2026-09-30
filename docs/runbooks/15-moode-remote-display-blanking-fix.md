@@ -2,7 +2,7 @@
 
 ## Problem
 When moOde local display target URL is set to an external page (for example
-`http://nowplaying.local/display.html?kiosk=1`), screen blanking/wake behavior
+`http://sonuvi.local/display.html?kiosk=1`), screen blanking/wake behavior
 can break:
 
 - Blanking appears inconsistent or immediately wakes.
@@ -21,7 +21,7 @@ was checking playback via:
 
 - `http://<local_display_host>/command/?cmd=get_output_format`
 
-For host `nowplaying.local:8101`, that endpoint does not exist (`404`), causing false-positive wake decisions.
+For host `sonuvi.local:8101`, that endpoint does not exist (`404`), causing false-positive wake decisions.
 
 ## Fix Applied (2026-03-02)
 Patched `/var/www/daemon/watchdog.sh` remote branch to query:
@@ -121,7 +121,7 @@ fi
 
 ## Live Environment Details (example)
 - moOde host: `moode@moode.local`
-- External UI host: `nowplaying.local` (or your API host/IP)
+- External UI host: `sonuvi.local` (or your API host/IP)
 - Display page: `:8101/display.html`
 - Playback API: `:3101/now-playing`
 

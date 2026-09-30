@@ -24,8 +24,8 @@ The service is idempotent and runs at boot before the enabled
 peppy-spectrum-bridge.service. It enforces:
 
 ~~~text
-VU:      http://nowplaying.local:3101/peppy/vumeter
-Spectrum http://nowplaying.local:3101/peppy/spectrum
+VU:      http://sonuvi.local:3101/peppy/vumeter
+Spectrum http://sonuvi.local:3101/peppy/spectrum
 FIFO:    /tmp/peppyspectrum
 ~~~
 
@@ -59,8 +59,8 @@ systemctl is-active peppymeter.service
 systemctl is-active peppy-spectrum-bridge.service
 grep -nE 'target.url|update.period|pipe.name' \
   /etc/peppymeter/config.txt /etc/peppyspectrum/config.txt
-curl -s http://nowplaying.local:3101/peppy/vumeter
-curl -s http://nowplaying.local:3101/peppy/spectrum
+curl -s http://sonuvi.local:3101/peppy/vumeter
+curl -s http://sonuvi.local:3101/peppy/spectrum
 ~~~
 
 The API responses should become fresh while audio is active. Spectrum should

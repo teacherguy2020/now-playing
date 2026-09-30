@@ -14,7 +14,7 @@ Target URL validation rejects an explicit port:
 
 For this installation, the URL is:
 
-- `http://nowplaying.local/kiosk.html`
+- `http://sonuvi.local/kiosk.html`
 
 Do not use `http://<WEB_HOST>:8101/kiosk.html` in moOde's Target URL field.
 The LAN proxy serves the public display route on HTTP port 80 and forwards it

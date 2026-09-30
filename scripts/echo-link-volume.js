@@ -6,7 +6,7 @@
 
   const apiOrigin = (!location.port || location.port === '80' || location.port === '443')
     ? location.origin
-    : `${location.protocol}//${location.hostname || 'nowplaying.local'}:${location.port === '8101' ? '3101' : '3000'}`;
+    : `${location.protocol}//${location.hostname || 'sonuvi.local'}:${location.port === '8101' ? '3101' : '3000'}`;
   let trackKey = '';
   let modeActive = false;
   let state = null;

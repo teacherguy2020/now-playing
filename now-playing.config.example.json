@@ -5,7 +5,7 @@
   "nodes": [
     {
       "name": "pi-main",
-      "ip": "nowplaying.local",
+      "ip": "sonuvi.local",
       "role": "both",
       "sshUser": "brianwis"
     }
