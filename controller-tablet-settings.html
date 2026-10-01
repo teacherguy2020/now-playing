@@ -91,6 +91,32 @@
 
   </div>
 
+  <div class="card" data-mobile-pairing>
+    <h1>Pair Mobile Device</h1>
+    <p class="sub">Approve the native Sonuvi iPhone/CarPlay app from this authenticated controller.</p>
+    <div class="hint npMobilePairingIntro">The QR code contains only a short-lived pairing challenge and the visible server address. It never contains API secrets or access tokens.</div>
+    <div class="npMobilePairingActions">
+      <button class="applyBtn" type="button" data-pair-start>Pair new device</button>
+      <button class="applyBtn" type="button" data-pair-cancel hidden>Cancel pairing</button>
+    </div>
+    <div class="hint npMobilePairingStatus" data-pair-status role="status" aria-live="polite">Pairing requires the configured Track Key.</div>
+    <div data-pair-qr-wrap hidden>
+      <div class="npMobilePairingGrid">
+        <div><img class="npMobilePairingQr" data-pair-qr alt="Pairing QR code" /></div>
+        <div class="npMobilePairingMeta">
+          <div><strong>Server:</strong> <code data-pair-base-url></code></div>
+          <div><strong>Challenge expires:</strong> <span data-pair-expires></span></div>
+          <div class="hint">Scan this code from the native app, then approve the device below.</div>
+          <details>
+            <summary>QR payload (safe to inspect)</summary>
+            <pre class="npMobilePairingPayload" data-pair-payload></pre>
+          </details>
+        </div>
+      </div>
+      <div class="npMobilePairingRequests" data-pair-requests></div>
+    </div>
+  </div>
+
   <script src="/scripts/client-preferences.js?v=20260922-preferences2"></script>
   <script>
   (() => {
@@ -123,7 +149,11 @@
       ['lastfm-topalbums','Top Albums'],
       ['lastfm-topartists','Top Artists'],
       ['lastfm-toptracks','Top Tracks'],
-      ['lastfm-recenttracks','Recently Played']
+      ['lastfm-recenttracks','Recently Played'],
+      ['local-topalbums','Local Top Albums'],
+      ['local-topartists','Local Top Artists'],
+      ['local-toptracks','Local Top Tracks'],
+      ['local-recenttracks','Local Recently Played']
     ];
     const VIZ_PRESETS = [
       ['classic','Particle Classical'],['particle-rock','Particle Rock'],['aurora','Aurora'],['aeon','Hello'],['fireworks','Fireworks'],
@@ -305,5 +335,6 @@
     });
   })();
   </script>
+  <script src="/scripts/mobile-pairing-ui.js?v=20260925-pairing1"></script>
 </body>
 </html>

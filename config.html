@@ -251,6 +251,31 @@
                 <div id="runtimeCheckDetails" class="cfgHint" style="margin-top:6px;"></div>
               </div>
 
+              <div class="cfgCard" id="mobilePairingCard" data-mobile-pairing style="grid-column: 1 / -1;">
+                <h3>Mobile Device Pairing</h3>
+                <div class="cfgHint npMobilePairingIntro">Approve a Sonuvi iPhone/CarPlay app from this authenticated display. The QR code contains only a short-lived pairing challenge and the configured server address; it does not contain API secrets or access tokens.</div>
+                <div class="npMobilePairingActions">
+                  <button class="btn btnPrimary" type="button" data-pair-start>Pair new device</button>
+                  <button class="btn" type="button" data-pair-cancel hidden>Cancel pairing</button>
+                </div>
+                <div class="cfgHint npMobilePairingStatus" data-pair-status role="status" aria-live="polite">Pairing requires the Track Key configured above.</div>
+                <div data-pair-qr-wrap hidden>
+                  <div class="npMobilePairingGrid">
+                    <div><img class="npMobilePairingQr" data-pair-qr alt="Pairing QR code" /></div>
+                    <div class="npMobilePairingMeta">
+                      <div><strong>Server:</strong> <code data-pair-base-url></code></div>
+                      <div><strong>Challenge expires:</strong> <span data-pair-expires></span></div>
+                      <div class="cfgHint">Scan this code from the native app, then approve the device below. Keep this page open until approval is complete.</div>
+                      <details>
+                        <summary>QR payload (safe to inspect)</summary>
+                        <pre class="npMobilePairingPayload" data-pair-payload></pre>
+                      </details>
+                    </div>
+                  </div>
+                  <div class="npMobilePairingRequests" data-pair-requests></div>
+                </div>
+              </div>
+
               <div class="tripleCards">
                 <div class="cfgCard" id="podcastsCard">
                   <h3>Podcasts</h3>
@@ -293,20 +318,22 @@
                   <div class="cfgHint">Shown on the physical player display when playback is stopped and the queue is empty. Leave either field blank to use its default.</div>
                 </div>
 
-                <div class="cfgCard gateCard" id="mpdscribbleCard">
-                  <h3>mpdscribble</h3>
-                  <div class="cfgField"><label><input id="featureMpdscribbleControl" type="checkbox" /> Enable controls</label></div>
-                  <div class="cfgHint">Shows scrobble control in hero and enables start/stop actions.</div>
-                  <div class="cfgHint" id="mpdscribbleStatus" style="margin-top:8px;">Status: unknown</div>
+                <div class="cfgCard gateCard" id="sonuviLastfmCard">
+                  <h3>Sonuvi Last.fm scrobbling</h3>
+                  <div class="cfgHint">Sonuvi now handles scrobbling for device and moOde playback. Enter the Sonuvi Last.fm application credentials here; they are stored only on the API server.</div>
+                  <div class="cfgField"><label for="sonuviLastfmApiKey">Sonuvi API key</label><input id="sonuviLastfmApiKey" type="password" placeholder="Enter Sonuvi Last.fm API key" autocomplete="new-password" /></div>
+                  <div class="cfgField"><label for="sonuviLastfmApiSecret">Sonuvi API secret</label><input id="sonuviLastfmApiSecret" type="password" placeholder="Enter Sonuvi Last.fm API secret" autocomplete="new-password" /></div>
+                  <div class="cfgHint" id="sonuviLastfmStatus" style="margin-top:8px;">Status: checking…</div>
                   <div class="cfgActions" style="margin-top:8px;">
-                    <button class="btn" id="mpdscribbleRefreshBtn" type="button">Refresh</button>
-                    <button class="btn" id="mpdscribbleStartBtn" type="button">Start</button>
-                    <button class="btn" id="mpdscribbleStopBtn" type="button">Stop</button>
+                    <button class="btn" id="sonuviLastfmSaveBtn" type="button">Save credentials</button>
+                    <button class="btn" id="sonuviLastfmAuthorizeBtn" type="button">Authorize Sonuvi</button>
+                    <button class="btn" id="sonuviLastfmCompleteBtn" type="button">Complete authorization</button>
+                    <button class="btn" id="sonuviLastfmRefreshBtn" type="button">Refresh</button>
                   </div>
                 </div>
 
                 <div class="cfgCard gateCard" id="lastfmCard">
-                  <h3>Last.fm (Vibe)</h3>
+                  <h3>Last.fm (Vibe metadata)</h3>
                   <div class="cfgField"><label><input id="featureLastfm" type="checkbox" /> Enabled</label></div>
                   <div class="cfgField">
                     <label for="lastfmApiKey">Last.fm API key</label>
@@ -327,7 +354,7 @@
                     </select>
                   </div>
                   <div class="cfgHint">When enabled/configured, Vibe tools are available in Queue Wizard.</div>
-                  <div class="cfgHint">Last.fm row relies on your scrobble history (typically via mpdscribble, but any scrobble source works).</div>
+                  <div class="cfgHint">Vibe uses this existing API key for metadata and recommendations. It is separate from Sonuvi scrobbling credentials above.</div>
                   <div class="cfgHint">Required on API host for Vibe: <code>python3-mpd</code>, <code>python3-requests</code>, <code>python3-mutagen</code>. Install (Debian/Ubuntu): <code>sudo apt install -y python3-mpd python3-requests python3-mutagen</code>.</div>
                 </div>
               </div>
@@ -975,51 +1002,43 @@ function syncRatingsCardVisibility(){
   });
 }
 
-let mpdscribbleLastStatus = null;
-function syncMpdscribbleUi(){
-  const enabled = !!document.getElementById('featureMpdscribbleControl')?.checked;
-  ['mpdscribbleRefreshBtn','mpdscribbleStartBtn','mpdscribbleStopBtn'].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.disabled = !enabled;
-  });
-  const statusEl = document.getElementById('mpdscribbleStatus');
-  if (statusEl && !enabled) statusEl.textContent = 'Status: controls disabled';
-}
-
-async function refreshMpdscribbleStatus(){
-  const statusEl = document.getElementById('mpdscribbleStatus');
-  if (statusEl) statusEl.textContent = 'Status: checking…';
+async function refreshSonuviLastfmStatus(){
+  const el = document.getElementById('sonuviLastfmStatus');
+  if (el) el.textContent = 'Status: checking…';
   try {
-    const r = await fetch(`${API_BASE}/config/services/mpdscribble/status`, { cache: 'no-store' });
+    const r = await fetch(`${API_BASE}/config/lastfm/status`, { headers: { 'x-track-key': getTrackKey() }, cache: 'no-store' });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-    mpdscribbleLastStatus = j;
-    if (statusEl) {
-      const marker = j.installed ? (j.running ? 'running' : 'stopped') : 'not installed';
-      statusEl.textContent = `Status: ${marker}${j.host ? ` (${j.host})` : ''}`;
-    }
-  } catch (e) {
-    if (statusEl) statusEl.textContent = `Status: ${String(e?.message || e)}`;
-  }
+    if (el) el.textContent = j.authorized ? `Status: authorized${j.username ? ` as ${j.username}` : ''} · mode ${j.mpdMode}` : `Status: credentials ${j.apiKeyConfigured && j.apiSecretConfigured ? 'saved; authorization required' : 'not configured'}`;
+  } catch (e) { if (el) el.textContent = `Status: ${String(e?.message || e)}`; }
 }
 
-async function runMpdscribbleAction(action){
+async function saveSonuviLastfmCredentials(){
   const key = getTrackKey();
-  if (!key) return log('Track key is required for mpdscribble actions.');
-  const statusEl = document.getElementById('mpdscribbleStatus');
-  if (statusEl) statusEl.textContent = `Status: ${action}…`;
-  try {
-    const r = await fetch(`${API_BASE}/config/services/mpdscribble/action`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-track-key': key },
-      body: JSON.stringify({ action }),
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-    await refreshMpdscribbleStatus();
-  } catch (e) {
-    if (statusEl) statusEl.textContent = `Status: action failed (${String(e?.message || e)})`;
-  }
+  const apiKey = String(document.getElementById('sonuviLastfmApiKey')?.value || '');
+  const apiSecret = String(document.getElementById('sonuviLastfmApiSecret')?.value || '');
+  const r = await fetch(`${API_BASE}/config/lastfm/credentials`, { method:'POST', headers:{'Content-Type':'application/json','x-track-key':key}, body:JSON.stringify({apiKey,apiSecret}) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+  document.getElementById('sonuviLastfmApiKey').value = '';
+  document.getElementById('sonuviLastfmApiSecret').value = '';
+  await refreshSonuviLastfmStatus();
+}
+
+async function startSonuviLastfmAuthorization(){
+  const r = await fetch(`${API_BASE}/config/lastfm/authorize/start`, { method:'POST', headers:{'x-track-key':getTrackKey()} });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+  window.open(j.authorizationUrl, '_blank', 'noopener,noreferrer');
+  const el = document.getElementById('sonuviLastfmStatus');
+  if (el) el.textContent = 'Status: approve Sonuvi in the new Last.fm tab, then choose Complete authorization.';
+}
+
+async function completeSonuviLastfmAuthorization(){
+  const r = await fetch(`${API_BASE}/config/lastfm/authorize/complete`, { method:'POST', headers:{'x-track-key':getTrackKey()} });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+  await refreshSonuviLastfmStatus();
 }
 
 let runtimeReady = false;
@@ -1164,12 +1183,11 @@ async function loadCfg(){
   document.getElementById('featureRatings').checked = !!c.features?.ratings;
   document.getElementById('featureRadio').checked = !!c.features?.radio;
   document.getElementById('featureAlbumPersonnel').checked = !!(c.features?.albumPersonnel ?? true);
-  document.getElementById('featureMpdscribbleControl').checked = !!(c.features?.mpdscribbleControl ?? false);
   document.getElementById('featureMoodeDisplayTakeover').checked = !!(c.features?.moodeDisplayTakeover ?? true);
   document.getElementById('idleBrandLine').value = String(c.display?.idleBrandLine || full.display?.idleBrandLine || 'Clem’s Place');
   document.getElementById('idleMessageLine').value = String(c.display?.idleMessageLine || full.display?.idleMessageLine || 'The record room is quiet');
   syncRatingsCardVisibility();
-  syncMpdscribbleUi();
+  refreshSonuviLastfmStatus().catch(() => {});
   const lastfmKey = String(full.lastfm?.apiKey || localStorage.getItem('nowplaying.secret.lastfmApiKey') || '');
   const lastfmUsername = String(full.lastfm?.username || '');
   document.getElementById('featureLastfm').checked = !!(c.features?.lastfm ?? lastfmKey);
@@ -1258,9 +1276,6 @@ async function loadCfg(){
   log({ ok:true, configPath:j.configPath, loadedAt:new Date().toISOString() });
   await loadRatingsBackups();
   await checkRuntimeEnv(true).catch(() => {});
-  if (document.getElementById('featureMpdscribbleControl')?.checked) {
-    await refreshMpdscribbleStatus().catch(() => {});
-  }
   markConfigSaved();
 }
 
@@ -1365,7 +1380,6 @@ async function saveCfg(){
         ratings: document.getElementById('featureRatings').checked,
         radio: document.getElementById('featureRadio').checked,
         albumPersonnel: document.getElementById('featureAlbumPersonnel').checked,
-        mpdscribbleControl: document.getElementById('featureMpdscribbleControl').checked,
         moodeDisplayTakeover: document.getElementById('featureMoodeDisplayTakeover').checked,
         lastfm: document.getElementById('featureLastfm').checked,
       },
@@ -2045,10 +2059,6 @@ document.getElementById('featureRatings')?.addEventListener('change', () => {
   syncRatingsCardVisibility();
   if (document.getElementById('featureRatings')?.checked) loadRatingsBackups().catch(() => {});
 });
-document.getElementById('featureMpdscribbleControl')?.addEventListener('change', () => {
-  syncMpdscribbleUi();
-  if (document.getElementById('featureMpdscribbleControl')?.checked) refreshMpdscribbleStatus().catch(() => {});
-});
 
 async function checkDisplayTakeoverTargetNow(){
   const hint = document.getElementById('displayTakeoverTargetHint');
@@ -2094,9 +2104,10 @@ document.getElementById('alexaDomain')?.addEventListener('input', () => {
   syncAlexaDomainUi();
 });
 document.getElementById('checkRuntimeBtn')?.addEventListener('click', () => checkRuntimeEnv().catch(e => log(String(e))));
-document.getElementById('mpdscribbleRefreshBtn')?.addEventListener('click', () => refreshMpdscribbleStatus().catch(e => log(String(e))));
-document.getElementById('mpdscribbleStartBtn')?.addEventListener('click', () => runMpdscribbleAction('start').catch(e => log(String(e))));
-document.getElementById('mpdscribbleStopBtn')?.addEventListener('click', () => runMpdscribbleAction('stop').catch(e => log(String(e))));
+document.getElementById('sonuviLastfmSaveBtn')?.addEventListener('click', () => saveSonuviLastfmCredentials().catch(e => log(String(e))));
+document.getElementById('sonuviLastfmAuthorizeBtn')?.addEventListener('click', () => startSonuviLastfmAuthorization().catch(e => log(String(e))));
+document.getElementById('sonuviLastfmCompleteBtn')?.addEventListener('click', () => completeSonuviLastfmAuthorization().catch(e => log(String(e))));
+document.getElementById('sonuviLastfmRefreshBtn')?.addEventListener('click', () => refreshSonuviLastfmStatus().catch(e => log(String(e))));
 document.getElementById('pathMoodeUsbMount')?.addEventListener('input', derivePathsFromMoode);
 document.getElementById('pathMoodeUsbMount')?.addEventListener('change', derivePathsFromMoode);
 // derivePathsBtn removed; auto-derive runs on input/change.
@@ -2149,7 +2160,6 @@ syncLastfmCardVisibility();
 syncPodcastsUi();
 syncPushoverCardVisibility();
 syncRatingsCardVisibility();
-syncMpdscribbleUi();
 applyRuntimeGate();
 refreshSshSetupHelp();
 applyInitialNetworkPrefills();
@@ -2169,6 +2179,7 @@ const MOTION_ART_STORAGE_KEY = 'nowplaying.ui.motionArtEnabled';
   });
 })();
 </script>
+<script src="scripts/mobile-pairing-ui.js?v=20260925-pairing1"></script>
 <script src="scripts/theme-toggle.js?v=20260216-1"></script>
 
 

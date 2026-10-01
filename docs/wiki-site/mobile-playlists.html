@@ -1,0 +1,59 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>mobile-playlists</title><link rel="stylesheet" href="style.css?v=20260922"><script src="search-index.js?v=20260922"></script></head><body><nav><h1><a href="README.html">Sonuvi documentation</a></h1><div class="meta">Canonical source: <code>docs/wiki-source/</code></div><details><summary><strong>Start</strong></summary><ul><li><a href="README.html">README</a></li><li><a href="getting-started.html">Getting Started</a></li><li><a href="using-now-playing.html">Using Sonuvi</a></li><li><a href="core-concepts.html">Core Concepts</a></li></ul></details><details><summary><strong>Displays</strong></summary><ul><li><a href="displays.html">Displays</a></li><li><a href="user-interfaces.html">User Interfaces</a></li><li><a href="kiosk-interface.html">Kiosk</a></li><li><a href="visualizer-in-embedded-mode.html">Visualizer</a></li></ul></details><details><summary><strong>Playback and Library</strong></summary><ul><li><a href="playback-features.html">Playback Features</a></li><li><a href="queue-and-playback-model.html">Queue and Playback</a></li><li><a href="queue-wizard-internals.html">Queue Wizard</a></li><li><a href="media-library.html">Media Library</a></li><li><a href="listen-on-device.html">Listen on Device</a></li></ul></details><details><summary><strong>Integrations</strong></summary><ul><li><a href="integrations.html">Integrations</a></li><li><a href="alexa-interface.html">Alexa</a></li><li><a href="youtube-interface.html">YouTube</a></li><li><a href="radio-interface.html">Radio</a></li><li><a href="mabel-integration.html">Mabel</a></li><li><a href="jukebox-priority-model.html">Jukebox Priority</a></li></ul></details><details><summary><strong>Administration</strong></summary><ul><li><a href="configuration-and-administration.html">Configuration and Administration</a></li><li><a href="config-interface.html">Config</a></li><li><a href="diagnostics-interface.html">Diagnostics</a></li><li><a href="deployment-and-ops.html">Deployment and Ops</a></li></ul></details><details><summary><strong>Developer Reference</strong></summary><ul><li><a href="developer-reference.html">Developer Reference</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="api-service-overview.html">API Overview</a></li><li><a href="api-endpoint-catalog.html">API Catalog</a></li><li><a href="source-map.html">Source Map</a></li></ul></details><details><summary><strong>Troubleshooting and Maintenance</strong></summary><ul><li><a href="troubleshooting-and-technical-notes.html">Troubleshooting</a></li><li><a href="playback-issue-triage-runbook.html">Playback Triage</a></li><li><a href="display-surface-troubleshooting.html">Display Triage</a></li><li><a href="documentation-sources-audit.html">Documentation Audit</a></li><li><a href="wiki-operations.html">Wiki Operations</a></li></ul></details></nav><article><h1 id="mobile-playlist-api">Mobile Playlist API</h1><p>The mobile playlist API is the bearer-authenticated playlist contract used by the paired native client. It lets the app browse ordered playlists and use the scoped Add to Playlist action without receiving the Track Key, raw MPD paths, or access to the browser/admin queue routes.</p><h2 id="routes">Routes</h2><p>Every route below requires:</p><pre><code>Authorization: Bearer &lt;mobile-session-token&gt;</code></pre><p>The token must have the <code>mobile-api</code> scope and is issued by the existing pairing or temporary enrollment flow. A Track Key header by itself is not a mobile authorization.</p><h3 id="list-playlists">List playlists</h3><pre><code>GET /v1/mobile/playlists?limit=50&amp;offset=0</code></pre><p>Response:</p><pre><code>{
+  &quot;ok&quot;: true,
+  &quot;offset&quot;: 0,
+  &quot;limit&quot;: 50,
+  &quot;total&quot;: 1,
+  &quot;count&quot;: 1,
+  &quot;nextCursor&quot;: null,
+  &quot;items&quot;: [
+    {
+      &quot;id&quot;: &quot;pl_opaque_id&quot;,
+      &quot;name&quot;: &quot;Road Trip&quot;,
+      &quot;trackCount&quot;: 24,
+      &quot;revision&quot;: &quot;rev_opaque_revision&quot;,
+      &quot;updatedAt&quot;: null,
+      &quot;artworkUrl&quot;: null
+    }
+  ]
+}</code></pre><p><code>limit</code> is bounded by the common mobile API page limit. Playlist IDs and revisions are HMAC-backed opaque values derived from the server-side playlist identity and ordered membership. The client must send the ID, never the display name or an MPD path.</p><p><code>artworkUrl</code> points to the bearer-protected <code>/v1/mobile/playlists/:playlistId/artwork</code> route. The server resolves the opaque playlist ID, finds the existing custom moOde playlist cover/collage, and proxies that image without returning the moOde URL or filesystem path to the client. It does not substitute the first track&#x27;s album art. <code>updatedAt</code> remains <code>null</code> when the MPD playlist provider has no safe timestamp.</p><p>The ordinary playlist list intentionally excludes podcast playlists. This uses the same classification as the working web Queue Wizard controller: a name containing <code>podcast</code> is excluded, and a playlist whose entries are all under a <code>podcast</code>/<code>podcasts</code> path is also excluded. Podcast shows and episodes belong to the separate Podcasts surface rather than this music-playlist contract.</p><h3 id="fetch-ordered-entries">Fetch ordered entries</h3><pre><code>GET /v1/mobile/playlists/pl_opaque_id</code></pre><p>Response:</p><pre><code>{
+  &quot;ok&quot;: true,
+  &quot;playlist&quot;: {
+    &quot;id&quot;: &quot;pl_opaque_id&quot;,
+    &quot;name&quot;: &quot;Road Trip&quot;,
+    &quot;trackCount&quot;: 2,
+    &quot;revision&quot;: &quot;rev_opaque_revision&quot;,
+    &quot;updatedAt&quot;: null,
+    &quot;artworkUrl&quot;: null
+  },
+  &quot;entries&quot;: [
+    {
+      &quot;position&quot;: 1,
+      &quot;available&quot;: true,
+      &quot;track&quot;: {
+        &quot;id&quot;: &quot;trk_opaque_id&quot;,
+        &quot;title&quot;: &quot;Example Track&quot;,
+        &quot;artist&quot;: &quot;Example Artist&quot;,
+        &quot;albumArtist&quot;: &quot;Example Artist&quot;,
+        &quot;album&quot;: &quot;Example Album&quot;,
+        &quot;albumId&quot;: &quot;alb_opaque_id&quot;,
+        &quot;artistId&quot;: &quot;art_opaque_id&quot;,
+        &quot;trackNumber&quot;: 1,
+        &quot;genre&quot;: &quot;&quot;,
+        &quot;durationSec&quot;: 214.2,
+        &quot;format&quot;: &quot;flac&quot;,
+        &quot;musicBrainz&quot;: {
+          &quot;trackId&quot;: &quot;&quot;,
+          &quot;albumId&quot;: &quot;&quot;,
+          &quot;artistId&quot;: &quot;&quot;
+        },
+        &quot;availability&quot;: { &quot;remote&quot;: true, &quot;local&quot;: false },
+        &quot;artworkUrl&quot;: &quot;https://host/v1/mobile/artwork/trk_opaque_id&quot;
+      },
+      &quot;unavailableReason&quot;: null
+    }
+  ]
+}</code></pre><p>Entries are not deduplicated. Repeated playlist references retain their positions and point to the same opaque catalog track when resolvable. An entry that is not present in the server’s mobile catalog is returned with <code>available: false</code>, <code>track: null</code>, and a generic reason. Its raw server value is never included in the response.</p><h2 id="server-side-resolution">Server-side resolution</h2><p>The route registration receives a server-only <code>getMobilePlaylists</code> provider. The current provider reads playlist names and ordered <code>%file%</code> values through <code>mpc</code> on the Now Playing host. Those values remain inside the server process. The route then resolves each value through the existing <code>buildMobileCatalog()</code> identity map (<code>catalog.byFile</code>) and serializes the existing <code>publicMobileTrack()</code> shape. Swift does not reproduce MPD parsing, playlist identity, metadata normalization, or duplicate-edition handling.</p><p>The browser routes remain separate:</p><ul><li><code>/config/queue-wizard/playlists</code> requires the Track Key;</li><li><code>/config/queue-wizard/playlist-preview</code> exposes raw MPD file values;</li><li><code>/config/queue-wizard/load-playlist</code> mutates the home MPD queue.</li></ul><p>The native client must not call those routes. Playlist browsing and playback remain opaque-ID based; the scoped write path used by native action pickers is instead:</p><pre><code>POST /v1/mobile/queue-wizard/add-to-playlist
+Authorization: Bearer &lt;mobile-session-token&gt;
+Content-Type: application/json
+
+{&quot;playlistName&quot;:&quot;Road Trip&quot;,&quot;trackIds&quot;:[&quot;trk_opaque_id&quot;]}</code></pre><p>The server resolves every track ID before forwarding the write to the existing playlist service. A user-created playlist name is allowed by the same route; the response returns only the sanitized playlist name and count added. This keeps the native picker useful without exposing playlist files or allowing arbitrary MPD paths.</p><h3 id="playlist-cover-artwork">Playlist cover artwork</h3><p>Playlist covers are the custom images generated and stored by Now Playing&#x27;s moOde playlist-cover workflow. The mobile list and detail DTOs use the same opaque playlist artwork URL, so the collage is also used by Quick Search, playlist pages, and configured home/recent rows. If no stored cover exists, the route returns an unavailable image response and the native UI shows its normal artwork placeholder; it silently falls back to neither a raw path nor the first track&#x27;s art.</p><h2 id="shared-mobile-api-security-pattern">Shared mobile API security pattern</h2><p>Mobile-safe Genres, Queue Wizard, Radio, Podcasts, favorites, and ratings routes follow the same rules:</p><ol><li>Require a verified <code>mobile-api</code> bearer session before resolving resources.</li><li>Accept opaque IDs and validated JSON, not raw MPD commands or filesystem</li></ol><p>paths.</p><ol><li>Reuse server-side library/domain logic and return sanitized public models.</li><li>Define playback target and authorization scope explicitly for every mutating</li></ol><p>capability. The current Genres, Queue Wizard, Radio, and Podcasts surfaces document that target split in <a href="mobile-feature-surfaces.html">Native Mobile Feature Surfaces</a>.</p><ol><li>Keep Track-Key/admin routes and server secrets outside the native client.</li></ol><h2 id="verification">Verification</h2><p>Server tests cover:</p><ul><li>missing, malformed, or Track-Key-only authorization is rejected with HTTP</li></ul><p>401;</p><ul><li>valid bearer sessions can list and open playlists;</li><li>raw playlist names are not accepted as detail identifiers;</li><li>opaque playlist IDs and revisions are returned;</li><li>entry order and duplicate occurrences are preserved;</li><li>unavailable entries are explicit without leaking their source value; and</li><li>unknown opaque IDs return HTTP 404 after bearer authentication.</li></ul><p>The focused mobile API/pairing tests and the full Node test suite pass in the development checkout.</p><p><em>Last reviewed: 2026-09-30 America/Chicago</em></p></article><script>(function(){var p=(location.pathname.split("/").pop()||"README.html");document.querySelectorAll("nav a[href]").forEach(function(a){if(a.getAttribute("href")===p){a.classList.add("nav-current");var d=a.closest("details");if(d)d.open=true;}});})();</script><script>(function(){var i=document.getElementById("nav-search");if(!i)return;})();</script></body></html>

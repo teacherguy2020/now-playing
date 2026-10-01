@@ -33,7 +33,11 @@ function sanitizeProfile(input = {}) {
     primaryTextColor: hex(ccIn.primaryTextColor, DEFAULT_PROFILE.customColors.primaryTextColor),
     secondaryTextColor: hex(ccIn.secondaryTextColor, DEFAULT_PROFILE.customColors.secondaryTextColor),
   };
-  const allowedRows = ['albums','playlists','podcasts','radio','lastfm-topalbums','lastfm-topartists','lastfm-toptracks','lastfm-recenttracks'];
+  const allowedRows = [
+    'albums', 'playlists', 'podcasts', 'radio',
+    'lastfm-topalbums', 'lastfm-topartists', 'lastfm-toptracks', 'lastfm-recenttracks',
+    'local-topalbums', 'local-topartists', 'local-toptracks', 'local-recenttracks',
+  ];
   const inRows = Array.isArray(p.recentRows) ? p.recentRows.map((x) => String(x || '').toLowerCase().trim()) : [];
   const dedup = [];
   for (const r of inRows) {

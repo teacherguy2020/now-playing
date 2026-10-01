@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { execFile } from 'node:child_process';
@@ -6,8 +7,57 @@ import { promisify } from 'node:util';
 import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
 import { createLastfmIndexResolver } from '../lib/lastfm-library-match.mjs';
 import { normalizeMoodeBaseUrl } from '../lib/moode-url.mjs';
+import { exchangeLastfmToken, lastfmAuthorizationUrl, requestLastfmToken } from '../../scripts/lastfm-authorize.mjs';
 
 const execFileP = promisify(execFile);
+let pendingLastfmAuthorization = null;
+
+function lastfmFingerprint(value) {
+  const raw = String(value || '');
+  return raw ? crypto.createHash('sha256').update(raw).digest('hex').slice(0, 12) : '';
+}
+
+async function readEnvFileValues(envPath) {
+  const raw = await fs.readFile(envPath, 'utf8').catch(() => '');
+  const values = {};
+  for (const line of raw.split(/\r?\n/)) {
+    const match = line.match(/^\s*(LASTFM_API_KEY|LASTFM_API_SECRET|LASTFM_SESSION_KEY)\s*=\s*(.*)\s*$/);
+    if (!match) continue;
+    let value = match[2];
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+    values[match[1]] = value;
+  }
+  return values;
+}
+
+async function writeEnvValues(envPath, updates) {
+  const original = await fs.readFile(envPath, 'utf8').catch(() => '');
+  const keys = new Set(Object.keys(updates));
+  const seen = new Set();
+  const lines = original.split(/\r?\n/).filter((line) => {
+    const match = line.match(/^\s*(LASTFM_API_KEY|LASTFM_API_SECRET|LASTFM_SESSION_KEY)\s*=/);
+    if (!match || !keys.has(match[1])) return true;
+    if (seen.has(match[1])) return false;
+    seen.add(match[1]);
+    return false;
+  });
+  for (const [key, value] of Object.entries(updates)) {
+    if (value !== null) lines.push(`${key}=${String(value)}`);
+  }
+  const next = `${lines.filter((line, index, all) => !(index === all.length - 1 && line === '')).join('\n')}\n`;
+  const tmp = `${envPath}.tmp-${process.pid}`;
+  await fs.writeFile(tmp, next, { mode: 0o600 });
+  await fs.rename(tmp, envPath);
+  await fs.chmod(envPath, 0o600).catch(() => {});
+}
+
+function currentLastfmCredentials(envValues) {
+  return {
+    apiKey: String(process.env.LASTFM_API_KEY || envValues.LASTFM_API_KEY || '').trim(),
+    apiSecret: String(process.env.LASTFM_API_SECRET || envValues.LASTFM_API_SECRET || '').trim(),
+    sessionKey: String(process.env.LASTFM_SESSION_KEY || envValues.LASTFM_SESSION_KEY || '').trim(),
+  };
+}
 
 function pickPublicConfig(cfg) {
   const c = cfg || {};
@@ -208,9 +258,29 @@ async function getMpdscribbleStatus({ user, host }) {
 }
 
 export function registerConfigRuntimeAdminRoutes(app, deps) {
-  const { requireTrackKey, log } = deps;
+  const { requireTrackKey, log, getLocalHistoryItems, trackKey = '' } = deps;
   const configPath = process.env.NOW_PLAYING_CONFIG_PATH || path.resolve(process.cwd(), 'config/now-playing.config.json');
   const peppyLastPushPath = path.resolve(process.cwd(), 'data/peppy-last-push.json');
+
+  async function localHistoryFallback(req, { kind, limit, period = 'overall', windowDays = 0 } = {}) {
+    if (typeof getLocalHistoryItems !== 'function') return null;
+    const items = await getLocalHistoryItems({
+      kind,
+      limit,
+      period,
+      windowDays,
+      baseUrl: `${req?.protocol || 'http'}://${String(req?.get?.('host') || '').trim()}`,
+      trackKey,
+    });
+    return {
+      ok: true,
+      source: 'local-history',
+      provider: 'local-history',
+      username: '',
+      period,
+      items: Array.isArray(items) ? items : [],
+    };
+  }
 
   app.get('/config/runtime', async (req, res) => {
     try {
@@ -222,6 +292,66 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
     }
   });
 
+  const lastfmEnvPath = () => process.env.LASTFM_ENV_FILE || path.resolve(process.cwd(), '.env');
+  const lastfmStatus = async () => {
+    const values = await readEnvFileValues(lastfmEnvPath());
+    const creds = currentLastfmCredentials(values);
+    let cfg = {};
+    try { cfg = JSON.parse(await fs.readFile(configPath, 'utf8')); } catch {}
+    const vibeKey = String(cfg?.lastfm?.apiKey || '').trim();
+    return {
+      apiKeyConfigured: Boolean(creds.apiKey), apiSecretConfigured: Boolean(creds.apiSecret),
+      sessionConfigured: Boolean(creds.sessionKey), authorized: Boolean(creds.apiKey && creds.apiSecret && creds.sessionKey),
+      apiKeyLength: creds.apiKey.length, apiSecretLength: creds.apiSecret.length,
+      credentialsDistinct: Boolean(creds.apiKey && creds.apiSecret && creds.apiKey !== creds.apiSecret),
+      apiKeyFingerprint: lastfmFingerprint(creds.apiKey), vibeApiKeyConfigured: Boolean(vibeKey),
+      vibeApiKeyFingerprint: lastfmFingerprint(vibeKey), sameAsVibeKey: Boolean(creds.apiKey && vibeKey && creds.apiKey === vibeKey),
+      mpdMode: String(process.env.LASTFM_MPD_MODE || 'shadow'),
+    };
+  };
+
+  app.get('/config/lastfm/status', async (req, res) => {
+    try { if (!requireTrackKey(req, res)) return; return res.json({ ok: true, ...(await lastfmStatus()) }); }
+    catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+  });
+
+  app.post('/config/lastfm/credentials', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const apiKey = String(req.body?.apiKey || ''), apiSecret = String(req.body?.apiSecret || '');
+      if (!apiKey || !apiSecret) return res.status(400).json({ ok: false, error: 'API key and API secret are required' });
+      if (/\s|["']/.test(apiKey) || /\s|["']/.test(apiSecret)) return res.status(400).json({ ok: false, error: 'Credentials must not contain whitespace or quote characters' });
+      if (apiKey === apiSecret) return res.status(400).json({ ok: false, error: 'API key and API secret must differ' });
+      await writeEnvValues(lastfmEnvPath(), { LASTFM_API_KEY: apiKey, LASTFM_API_SECRET: apiSecret, LASTFM_SESSION_KEY: null });
+      process.env.LASTFM_API_KEY = apiKey; process.env.LASTFM_API_SECRET = apiSecret; delete process.env.LASTFM_SESSION_KEY;
+      pendingLastfmAuthorization = null;
+      return res.json({ ok: true, ...(await lastfmStatus()) });
+    } catch (e) { return res.status(500).json({ ok: false, error: e?.message || String(e) }); }
+  });
+
+  app.post('/config/lastfm/authorize/start', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      const creds = currentLastfmCredentials(await readEnvFileValues(lastfmEnvPath()));
+      if (!creds.apiKey || !creds.apiSecret) return res.status(400).json({ ok: false, error: 'Sonuvi Last.fm API key and secret are not configured' });
+      const token = await requestLastfmToken({ apiKey: creds.apiKey, apiSecret: creds.apiSecret });
+      pendingLastfmAuthorization = { token, expiresAt: Date.now() + 600000 };
+      return res.json({ ok: true, authorizationUrl: lastfmAuthorizationUrl(creds.apiKey, token), expiresInSeconds: 600 });
+    } catch (e) { return res.status(502).json({ ok: false, error: e?.message || String(e) }); }
+  });
+
+  app.post('/config/lastfm/authorize/complete', async (req, res) => {
+    try {
+      if (!requireTrackKey(req, res)) return;
+      if (!pendingLastfmAuthorization || pendingLastfmAuthorization.expiresAt < Date.now()) { pendingLastfmAuthorization = null; return res.status(400).json({ ok: false, error: 'No pending Last.fm authorization; start a new authorization' }); }
+      const creds = currentLastfmCredentials(await readEnvFileValues(lastfmEnvPath()));
+      const session = await exchangeLastfmToken({ apiKey: creds.apiKey, apiSecret: creds.apiSecret, token: pendingLastfmAuthorization.token });
+      await writeEnvValues(lastfmEnvPath(), { LASTFM_SESSION_KEY: session.sessionKey });
+      process.env.LASTFM_SESSION_KEY = session.sessionKey; pendingLastfmAuthorization = null;
+      return res.json({ ok: true, authorized: true, username: session.username, ...(await lastfmStatus()) });
+    } catch (e) { return res.status(502).json({ ok: false, error: e?.message || String(e) }); }
+  });
+
   app.get('/config/lastfm/top-tracks', async (req, res) => {
     try {
       if (!requireTrackKey(req, res)) return;
@@ -229,6 +359,15 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const cfg = JSON.parse(raw || '{}');
       const apiKey = String(process.env.LASTFM_API_KEY || cfg?.lastfm?.apiKey || '').trim();
       const username = String(cfg?.lastfm?.username || '').trim();
+      if (!apiKey || !username) {
+        const fallback = await localHistoryFallback(req, {
+          kind: 'top-tracks',
+          limit: Math.max(1, Math.min(50, Number(req.query?.limit || 18) || 18)),
+          period: String(req.query?.period || cfg?.lastfm?.period || 'overall').trim().toLowerCase(),
+          windowDays: Number(req.query?.windowDays || cfg?.lastfm?.topTracksWindowDays || 0) || 0,
+        });
+        if (fallback) return res.json(fallback);
+      }
       if (!apiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
       if (!username) return res.status(400).json({ ok: false, error: 'Last.fm username is not configured' });
 
@@ -348,6 +487,13 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const cfg = JSON.parse(raw || '{}');
       const apiKey = String(process.env.LASTFM_API_KEY || cfg?.lastfm?.apiKey || '').trim();
       const username = String(cfg?.lastfm?.username || '').trim();
+      if (!apiKey || !username) {
+        const fallback = await localHistoryFallback(req, {
+          kind: 'recent-tracks',
+          limit: Math.max(1, Math.min(50, Number(req.query?.limit || 18) || 18)),
+        });
+        if (fallback) return res.json(fallback);
+      }
       if (!apiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
       if (!username) return res.status(400).json({ ok: false, error: 'Last.fm username is not configured' });
 
@@ -404,6 +550,14 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const cfg = JSON.parse(raw || '{}');
       const apiKey = String(process.env.LASTFM_API_KEY || cfg?.lastfm?.apiKey || '').trim();
       const username = String(cfg?.lastfm?.username || '').trim();
+      if (!apiKey || !username) {
+        const fallback = await localHistoryFallback(req, {
+          kind: 'top-artists',
+          limit: Math.max(1, Math.min(50, Number(req.query?.limit || 18) || 18)),
+          period: String(req.query?.period || cfg?.lastfm?.period || 'overall').trim().toLowerCase(),
+        });
+        if (fallback) return res.json(fallback);
+      }
       if (!apiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
       if (!username) return res.status(400).json({ ok: false, error: 'Last.fm username is not configured' });
 
@@ -458,6 +612,14 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
       const cfg = JSON.parse(raw || '{}');
       const apiKey = String(process.env.LASTFM_API_KEY || cfg?.lastfm?.apiKey || '').trim();
       const username = String(cfg?.lastfm?.username || '').trim();
+      if (!apiKey || !username) {
+        const fallback = await localHistoryFallback(req, {
+          kind: 'top-albums',
+          limit: Math.max(1, Math.min(50, Number(req.query?.limit || 18) || 18)),
+          period: String(req.query?.period || cfg?.lastfm?.period || 'overall').trim().toLowerCase(),
+        });
+        if (fallback) return res.json(fallback);
+      }
       if (!apiKey) return res.status(400).json({ ok: false, error: 'Last.fm API key is not configured' });
       if (!username) return res.status(400).json({ ok: false, error: 'Last.fm username is not configured' });
 

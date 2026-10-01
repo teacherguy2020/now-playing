@@ -5,4 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+# The watchdog starts the stock worker, which daemonizes into a child
+# process. Do not let systemd's default control-group cleanup kill that
+# worker when this oneshot check exits.
+KillMode=process
 ExecStart=/usr/local/bin/moode-worker-watchdog.sh

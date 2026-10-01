@@ -1,0 +1,231 @@
+import path from 'node:path';
+import { createMobileTrackId } from './mobile-auth.mjs';
+
+function norm(value) {
+  return String(value || '').trim().toLocaleLowerCase();
+}
+
+function clean(value) {
+  return String(value || '').trim();
+}
+
+function parseTrackNumber(value) {
+  const match = String(value || '').match(/^\s*(\d+)/);
+  return match ? Number(match[1]) : 0;
+}
+
+function extension(file) {
+  return path.extname(String(file || '')).replace(/^\./, '').toLowerCase();
+}
+
+function isRemoteOrPseudoFile(file) {
+  const value = clean(file).toLowerCase();
+  return !value
+    || /^https?:\/\//.test(value)
+    || /^rtmp:|^rtsp:|^mms:|^spotify:|^airplay:|^upnp:/.test(value);
+}
+
+function albumIdentity(track) {
+  const mbAlbumId = clean(track?.mbAlbumId);
+  const file = clean(track?.file);
+  const folder = file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : file;
+  if (mbAlbumId) return `mbalbum:${mbAlbumId}|folder:${norm(folder)}`;
+
+  // The parent folder remains server-side and differentiates duplicate
+  // masterings/editions that share artist and album tags.
+  return [
+    'album',
+    norm(track?.albumArtist || track?.artist),
+    norm(track?.album),
+    norm(folder),
+  ].join('|');
+}
+
+function artistIdentity(track) {
+  const mbArtistId = clean(track?.mbArtistId);
+  if (mbArtistId) return `mbartist:${mbArtistId}`;
+  return `artist:${norm(track?.albumArtist || track?.artist)}`;
+}
+
+function trackIdentity(track) {
+  const mbTrackId = clean(track?.mbTrackId);
+  if (mbTrackId) return `mbtrack:${mbTrackId}|album:${albumIdentity(track)}`;
+
+  return [
+    'track',
+    clean(track?.file),
+    norm(track?.artist),
+    norm(track?.albumArtist),
+    norm(track?.album),
+    norm(track?.title),
+    parseTrackNumber(track?.track),
+  ].join('|');
+}
+
+function trackSort(a, b) {
+  const album = `${norm(a?.albumArtist || a?.artist)}|${norm(a?.album)}`
+    .localeCompare(`${norm(b?.albumArtist || b?.artist)}|${norm(b?.album)}`);
+  if (album) return album;
+  const trackNo = parseTrackNumber(a?.track) - parseTrackNumber(b?.track);
+  if (trackNo) return trackNo;
+  return norm(a?.title).localeCompare(norm(b?.title));
+}
+
+export function buildMobileCatalog(index, { trackIdSecret } = {}) {
+  const secret = String(trackIdSecret || '');
+  if (!secret) throw new Error('mobile track ID secret is not configured');
+
+  const rows = Array.isArray(index?.tracks) ? index.tracks : [];
+  const tracks = [];
+  const byTrackId = new Map();
+  const byFile = new Map();
+  const albumsById = new Map();
+  const artistsById = new Map();
+
+  for (const source of rows) {
+    const file = clean(source?.file);
+    if (isRemoteOrPseudoFile(file)) continue;
+
+    const trackId = createMobileTrackId({ secret, trackIdentity: trackIdentity(source) });
+    const albumId = createMobileTrackId({ secret, trackIdentity: albumIdentity(source) }).replace(/^trk_/, 'alb_');
+    const artistId = createMobileTrackId({ secret, trackIdentity: artistIdentity(source) }).replace(/^trk_/, 'art_');
+    const record = {
+      id: trackId,
+      albumId,
+      artistId,
+      title: clean(source?.title),
+      artist: clean(source?.artist || source?.albumArtist),
+      albumArtist: clean(source?.albumArtist || source?.artist),
+      album: clean(source?.album),
+      trackNumber: parseTrackNumber(source?.track),
+      track: clean(source?.track),
+      genre: clean(source?.genre),
+      durationSec: Number(source?.durationSec || 0) || 0,
+      format: extension(file),
+      musicBrainz: {
+        trackId: clean(source?.mbTrackId),
+        albumId: clean(source?.mbAlbumId),
+        artistId: clean(source?.mbArtistId),
+      },
+      file,
+    };
+
+    tracks.push(record);
+    byTrackId.set(trackId, record);
+    byFile.set(file, record);
+
+    if (!albumsById.has(albumId)) {
+      albumsById.set(albumId, {
+        id: albumId,
+        album: record.album,
+        artist: record.albumArtist || record.artist,
+        artistId,
+        genre: record.genre,
+        durationSec: 0,
+        trackIds: [],
+      });
+    }
+    const album = albumsById.get(albumId);
+    album.durationSec += record.durationSec;
+    album.trackIds.push(trackId);
+
+    if (!artistsById.has(artistId)) {
+      artistsById.set(artistId, {
+        id: artistId,
+        artist: record.albumArtist || record.artist,
+        albumIds: new Set(),
+        trackCount: 0,
+      });
+    }
+    const artist = artistsById.get(artistId);
+    artist.albumIds.add(albumId);
+    artist.trackCount += 1;
+  }
+
+  tracks.sort(trackSort);
+
+  const albums = Array.from(albumsById.values())
+    .map((album) => ({
+      ...album,
+      trackIds: album.trackIds.sort((a, b) => (byTrackId.get(a)?.trackNumber || 0) - (byTrackId.get(b)?.trackNumber || 0)),
+      trackCount: album.trackIds.length,
+    }))
+    .sort((a, b) => `${a.artist}|${a.album}`.localeCompare(`${b.artist}|${b.album}`));
+
+  const artists = Array.from(artistsById.values())
+    .map((artist) => ({ ...artist, albumIds: Array.from(artist.albumIds).sort() }))
+    .sort((a, b) => norm(a.artist).localeCompare(norm(b.artist)));
+
+  return {
+    builtAt: String(index?.builtAt || ''),
+    counts: { tracks: tracks.length, albums: albums.length, artists: artists.length },
+    tracks,
+    albums,
+    artists,
+    byTrackId,
+    byFile,
+    byAlbumId: new Map(albums.map((album) => [album.id, album])),
+    byArtistId: new Map(artists.map((artist) => [artist.id, artist])),
+  };
+}
+
+export function publicMobileTrack(record, { baseUrl = '' } = {}) {
+  if (!record) return null;
+  const root = String(baseUrl || '').replace(/\/+$/, '');
+  return {
+    id: record.id,
+    title: record.title,
+    artist: record.artist,
+    albumArtist: record.albumArtist,
+    album: record.album,
+    albumId: record.albumId,
+    artistId: record.artistId,
+    trackNumber: record.trackNumber,
+    genre: record.genre,
+    durationSec: record.durationSec,
+    format: record.format,
+    musicBrainz: record.musicBrainz,
+    availability: { remote: true, local: false },
+    artworkUrl: `${root}/v1/mobile/artwork/${encodeURIComponent(record.id)}`,
+  };
+}
+
+export function publicMobileAlbum(album, catalog, { baseUrl = '' } = {}) {
+  if (!album) return null;
+  const firstTrack = catalog?.byTrackId?.get(album.trackIds?.[0]);
+  return {
+    id: album.id,
+    album: album.album,
+    artist: album.artist,
+    artistId: album.artistId,
+    genre: album.genre,
+    durationSec: album.durationSec,
+    trackCount: album.trackCount,
+    addedAt: Number.isFinite(Number(album.addedAt)) && Number(album.addedAt) > 0
+      ? Number(album.addedAt)
+      : null,
+    artworkUrl: firstTrack
+      ? `${String(baseUrl || '').replace(/\/+$/, '')}/v1/mobile/artwork/${encodeURIComponent(firstTrack.id)}`
+      : '',
+  };
+}
+
+export function publicMobileArtist(artist) {
+  if (!artist) return null;
+  return {
+    id: artist.id,
+    artist: artist.artist,
+    albumCount: artist.albumIds?.length || 0,
+    trackCount: artist.trackCount || 0,
+  };
+}
+
+// Queue positions and MPD song IDs are mutable/server-side details. The
+// native client gets an opaque handle for the current queue snapshot and
+// sends that handle back for mutations; it never receives the MPD file path.
+export function createMobileQueueItemId({ secret, file, songId, position } = {}) {
+  const normalizedSongId = Number.isSafeInteger(Number(songId)) ? Number(songId) : 0;
+  const normalizedPosition = Number.isSafeInteger(Number(position)) ? Number(position) : 0;
+  const identity = `queue:${normalizedSongId}:${normalizedPosition}:${String(file || '')}`;
+  return createMobileTrackId({ secret, trackIdentity: identity }).replace(/^trk_/, 'que_');
+}

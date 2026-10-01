@@ -50,12 +50,33 @@ export const PODCAST_ROOT = process.env.PODCAST_ROOT || MASTER_CONFIG?.paths?.po
 export const METAFLAC = process.env.METAFLAC || '/usr/bin/metaflac';
 
 export const TRACK_KEY = process.env.TRACK_KEY || MASTER_CONFIG?.trackKey || '1029384756';
+export const LASTFM_API_KEY = String(process.env.LASTFM_API_KEY || MASTER_CONFIG?.lastfm?.apiKey || '').trim();
+// Last.fm write credentials are deliberately environment-only. They must not
+// be placed in now-playing.config.json, API responses, diagnostics, or Git.
+export const LASTFM_API_SECRET = String(process.env.LASTFM_API_SECRET || '').trim();
+export const LASTFM_SESSION_KEY = String(process.env.LASTFM_SESSION_KEY || '').trim();
+export const LASTFM_MPD_MODE = ['disabled', 'shadow', 'active'].includes(String(process.env.LASTFM_MPD_MODE || '').trim().toLowerCase())
+  ? String(process.env.LASTFM_MPD_MODE).trim().toLowerCase()
+  : 'shadow';
 export const ENABLE_ALEXA =
   process.env.ENABLE_ALEXA != null
     ? String(process.env.ENABLE_ALEXA).trim() === '1'
     : Boolean(alexaEnabledFromConfig ?? true);
 export const TRANSCODE_TRACKS = String(process.env.TRANSCODE_TRACKS || '0').trim() === '1';
 export const TRACK_CACHE_DIR = process.env.TRACK_CACHE_DIR || runtimeCfg?.trackCacheDir || '/tmp/moode-track-cache';
+
+// Native iPhone/CarPlay POC surface. Disabled unless explicitly configured;
+// these credentials are intentionally separate from the Alexa TRACK_KEY.
+export const MOBILE_API_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.MOBILE_API_ENABLED || '').trim());
+export const MOBILE_API_SECRET = String(process.env.MOBILE_API_SECRET || '').trim();
+export const MOBILE_TRACK_ID_SECRET = String(process.env.MOBILE_TRACK_ID_SECRET || '').trim();
+export const MOBILE_API_ENROLLMENT_CODE = String(process.env.MOBILE_API_ENROLLMENT_CODE || '').trim();
+export const MOBILE_PUBLIC_BASE_URL = String(process.env.MOBILE_PUBLIC_BASE_URL || '').trim();
+export const MOBILE_TRACK_CACHE_DIR = process.env.MOBILE_TRACK_CACHE_DIR || '/tmp/now-playing/mobile-track-cache';
+export const MOBILE_TRANSCODE_TRACKS =
+  process.env.MOBILE_TRANSCODE_TRACKS != null
+    ? /^(1|true|yes|on)$/i.test(String(process.env.MOBILE_TRANSCODE_TRACKS).trim())
+    : true;
 
 export const FAVORITES_PLAYLIST_NAME = process.env.FAVORITES_PLAYLIST_NAME || 'Favorites';
 export const FAVORITES_REFRESH_MS = Number(process.env.FAVORITES_REFRESH_MS || '3000');

@@ -33,6 +33,10 @@ The broader upgrade failure chain and recovery order are documented in
   AirPlay receiver every 30s. It recovers a dead worker even when inherited
   helper locks remain, and uses moOde's renderer restart path for a failed
   `shairport-sync` service.
+- `moode-worker-watchdog.service` uses `KillMode=process` because the stock
+  worker daemonizes into a child process. The default systemd control-group
+  cleanup would otherwise kill the recovered worker as soon as the oneshot
+  watchdog exits.
 - `nowplaying-peppy-targets.service` restores the VU target, spectrum
   target, and shared spectrum FIFO after moOde boot or upgrade.
 
@@ -44,6 +48,9 @@ scp ops/moode-overrides/etc/systemd/system/airplay-json-watchdog.service moode@1
 scp ops/moode-overrides/etc/systemd/system/airplay-json-watchdog.timer moode@10.0.0.254:/tmp/
 scp ops/moode-overrides/usr/local/bin/airplay-json-watchdog.sh moode@10.0.0.254:/tmp/
 scp ops/moode-overrides/var/www/daemon/aplmeta-reader.sh moode@10.0.0.254:/tmp/
+scp ops/moode-overrides/etc/systemd/system/moode-worker-watchdog.service moode@10.0.0.254:/tmp/
+scp ops/moode-overrides/etc/systemd/system/moode-worker-watchdog.timer moode@10.0.0.254:/tmp/
+scp ops/moode-overrides/usr/local/bin/moode-worker-watchdog.sh moode@10.0.0.254:/tmp/
 scp ops/moode-overrides/etc/systemd/system/nowplaying-peppy-targets.service moode@10.0.0.254:/tmp/
 scp ops/moode-overrides/usr/local/bin/nowplaying-peppy-targets.sh moode@10.0.0.254:/tmp/
 

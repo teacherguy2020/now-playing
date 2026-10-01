@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH, MPD_PLAYLIST_DIR } from '../config.mjs';
 import { getBrowseIndex } from '../lib/browse-index.mjs';
 import { radioDisplayName } from '../lib/radio-display.mjs';
+import { isPodcastPlaylist } from '../lib/playlist-classification.mjs';
 
 const execFileP = promisify(execFile);
 const RADIO_DB_SEP = '__NPSEP__';
@@ -530,12 +531,6 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       playlistsCache.host = mpdHost;
       playlistsCache.inflight = (async () => {
         const { stdout } = await execFileP('mpc', ['-h', mpdHost, 'lsplaylists']);
-        const isPodcastName = (name) => /podcast/i.test(String(name || ''));
-        const isPodcastFile = (f) => {
-          const s = String(f || '').toLowerCase();
-          return /\/podcasts?\//.test(s) || /\bpodcast\b/.test(s);
-        };
-
         const names = String(stdout || '')
           .split(/\r?\n/)
           .map((x) => String(x || '').trim())
@@ -543,12 +538,12 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
 
         const kept = [];
         for (const name of names) {
-          if (isPodcastName(name)) continue;
+          if (isPodcastPlaylist(name)) continue;
           let skip = false;
           try {
             const r = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'playlist', name], { maxBuffer: 8 * 1024 * 1024 });
             const files = String(r?.stdout || '').split(/\r?\n/).map((x) => String(x || '').trim()).filter(Boolean);
-            if (files.length && files.every((f) => isPodcastFile(f))) skip = true;
+            if (isPodcastPlaylist(name, files)) skip = true;
           } catch (_) {
             // if inspection fails, keep name rather than hiding unexpectedly
           }
@@ -1149,13 +1144,18 @@ export function registerConfigQueueWizardBasicRoutes(app, deps) {
       const out = await queryMoodeRadioDb(sql);
       const tracks = String(out || '').split(/\r?\n/).map((ln)=>String(ln||'').trim()).filter(Boolean).map((ln)=>{
         const [station='', name='', genre='', bitrate='', format='', type=''] = ln.split(RADIO_DB_SEP);
-        const stationName = radioDisplayName(name) || 'Radio Station';
+        const logoName = String(name || '').trim();
+        const stationName = radioDisplayName(logoName) || 'Radio Station';
         const file = String(station || '').trim();
         return {
           artist: stationName,
           title: '',
           album: stationName,
           stationName,
+          // Keep the provider/catalog spelling for logo lookup. The display
+          // name intentionally strips prefixes such as "iHeart", but moOde
+          // stores those prefixes in the corresponding logo filename.
+          logoName: logoName || stationName,
           genre: String(genre || '').trim(),
           bitrate: String(bitrate || '').trim(),
           format: String(format || '').trim(),

@@ -65,7 +65,7 @@ That is an important architectural fact.
 Repo-visible structure shows that `config.html` includes a large number of operator-facing areas, including:
 - network & runtime configuration
 - podcasts controls
-- mpdscribble service controls
+- Sonuvi Last.fm credential and authorization controls
 - Alexa configuration and alias/correction management
 - ratings DB maintenance
 - full raw JSON editing
@@ -83,9 +83,10 @@ Important operator-facing elements include:
 - `#saveFullBtn`
 - `#reloadBtn`
 - `#modalRestartBtn`
-- `#mpdscribbleRefreshBtn`
-- `#mpdscribbleStartBtn`
-- `#mpdscribbleStopBtn`
+- `#sonuviLastfmSaveBtn`
+- `#sonuviLastfmAuthorizeBtn`
+- `#sonuviLastfmCompleteBtn`
+- `#sonuviLastfmRefreshBtn`
 - `#checkAlexaDomainBtn`
 - `#checkRatingsDbBtn`
 - `#backupRatingsDbBtn`
@@ -192,12 +193,28 @@ Observed behavior includes:
 
 This is connected to the save/restart modal flow and shows that `config.html` crosses directly into operational service control.
 
-## `refreshMpdscribbleStatus()` and mpdscribble actions
-Observed endpoints include:
-- `GET /config/services/mpdscribble/status`
-- `POST /config/services/mpdscribble/action`
+## Sonuvi Last.fm authorization
 
-This means the page includes direct service-management actions for mpdscribble.
+The Config page keeps Sonuvi scrobbling credentials separate from the existing
+Vibe metadata key. Operators enter the Sonuvi API key and secret, save them to
+the protected server environment, authorize the Sonuvi Last.fm application,
+and complete the one-time session exchange from the page.
+
+The protected endpoints are:
+- `GET /config/lastfm/status`
+- `POST /config/lastfm/credentials`
+- `POST /config/lastfm/authorize/start`
+- `POST /config/lastfm/authorize/complete`
+
+These routes require the Track Key and return only safe status information.
+Secrets, tokens, signatures, and session keys remain server-side. The Vibe
+API key and username continue to be saved through the normal Last.fm metadata
+configuration path and are never used as Sonuvi credential fallbacks.
+
+The former mpdscribble service-control card and hero pill are no longer part
+of the user-facing configuration workflow. The legacy service endpoints may
+remain for compatibility, but mpdscribble is disabled in the current Sonuvi
+deployment.
 
 ## `checkAlexaDomain()`
 Observed behavior includes:

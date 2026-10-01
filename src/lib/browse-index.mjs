@@ -6,6 +6,17 @@ import { promisify } from 'node:util';
 const execFileP = promisify(execFile);
 const INDEX_PATH = process.env.BROWSE_INDEX_PATH || path.resolve(process.cwd(), 'data/library-browse-index.json');
 
+export function parseMpdDuration(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return 0;
+  if (/^\d+(?:\.\d+)?$/.test(raw)) return Number(raw) || 0;
+  const parts = raw.split(':').map((part) => Number(part));
+  if (parts.some((part) => !Number.isFinite(part) || part < 0)) return 0;
+  if (parts.length === 2) return (parts[0] * 60) + parts[1];
+  if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+  return 0;
+}
+
 let mem = { ts: 0, host: '', index: null, inflight: null, dbCheckTs: 0, dbUpdateIso: '' };
 
 function norm(s = '') {
@@ -60,7 +71,7 @@ export async function buildBrowseIndex(mpdHost = 'moode.local') {
     const title = String(titleRaw || '').trim() || (filePath.split('/').pop() || '').replace(/\.[a-z0-9]+$/i, '');
     const track = String(trackRaw || '').trim();
     const genre = String(genreRaw || '').trim();
-    const durationSec = Number(timeRaw || 0) || 0;
+    const durationSec = parseMpdDuration(timeRaw);
 
     const artistKey = norm(artist || albumArtist);
     const albumKey = `${norm(albumArtist || artist)}|${norm(album)}`;

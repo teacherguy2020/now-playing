@@ -64,8 +64,32 @@ Current allowed values are:
 - `lastfm-topartists`
 - `lastfm-toptracks`
 - `lastfm-recenttracks`
+- `local-topalbums`
+- `local-topartists`
+- `local-toptracks`
+- `local-recenttracks`
 
 These values should be treated as the current supported contract.
+
+## Native shelf action mapping
+
+The native iPad client consumes the same row-source IDs and does not infer
+behavior from display labels. Its artwork retains the normal navigation tap;
+the upper-left ellipsis flips the item to a compact action face:
+
+- album rows: **Play**, **Add**, **Add to Playlist**;
+- artist rows: **Shuffle**, **Play**, **Add to Playlist**;
+- track rows, including both Last.fm and local Recently Played: **Play**,
+  **Add**, **Add to Playlist**;
+- playlists: **Play**, **Shuffle**, **View**;
+- radio: **Play** at the front of queue, **Add**, **Unfavorite**; and
+- podcasts: **Play Newest**, **Load** downloaded episodes oldest-to-newest,
+  **Open**.
+
+Radio and podcast rows carry opaque server IDs for these mutations. The local
+Top Tracks row uses the same flip face as Last.fm Top Tracks and no longer
+renders its former under-art action row. The server-side contract and payload
+security are documented in [Mobile Home Discovery Rows](mobile-home-rows.md).
 
 ## Structural rules
 
@@ -94,8 +118,15 @@ Current endpoint mapping:
 - `lastfm-topartists` -> `/config/lastfm/top-artists`
 - `lastfm-topalbums` -> `/config/lastfm/top-albums`
 
+Explicit local-history row-source mapping:
+- `local-toptracks` -> `/config/listening-history/top-tracks`
+- `local-recenttracks` -> `/config/listening-history/recent-tracks`
+- `local-topartists` -> `/config/listening-history/top-artists`
+- `local-topalbums` -> `/config/listening-history/top-albums`
+
 Practical meaning:
 - when a `lastfm-*` row source is selected, the tablet recents row should fetch from the matching endpoint and render using the standard recents-card model
+- when a `local-*` row source is selected, the tablet recents row should bypass Last.fm and fetch from the authenticated local-history endpoint
 
 This is important because Last.fm rows are integrated into the same display system rather than treated as a totally separate visual component.
 
@@ -210,3 +241,5 @@ The key truths it preserves are:
 - URL seeding is one-time and self-cleaning
 - Last.fm rows map into specific endpoint families
 - recents stability guardrails are intentional and should not be casually broken
+
+*Last reviewed: 2026-09-30 America/Chicago*

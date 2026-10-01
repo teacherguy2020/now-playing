@@ -857,6 +857,35 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
     return { ok: true, jobId, targetQueue, seedArtist, seedTitle, job };
   }
 
+  // Bearer-authenticated mobile adapter. The mobile queue surface must not
+  // receive the Track Key or call this admin route over HTTP. Reuse the same
+  // server-side Vibe builder, but derive the seed from MPD here and return
+  // only the opaque job handle needed for progress polling by a future client.
+  async function startMobileVibe(body = {}) {
+    const mpdHost = String(MPD_HOST || 'moode.local');
+    const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%artist%\t%title%', 'current']);
+    const [artistRaw = '', titleRaw = ''] = String(stdout || '').trim().split('\t');
+    const seedArtist = String(artistRaw || '').trim();
+    const seedTitle = String(titleRaw || '').trim();
+    if (!seedArtist || !seedTitle) throw new Error('No current track (artist/title empty)');
+
+    const result = await startSeededVibeJob({
+      targetQueue: body?.targetQueue,
+      playNow: body?.playNow === true,
+      keepPlaying: body?.keepPlaying === true,
+      seedArtist,
+      seedTitle,
+    });
+    if (!result?.ok) throw new Error(result?.error || 'Vibe could not be started');
+    return {
+      accepted: true,
+      jobId: result.jobId,
+      targetQueue: result.targetQueue,
+      seedArtist: result.seedArtist,
+      seedTitle: result.seedTitle,
+    };
+  }
+
   // Fire-and-forget seeded start for Alexa "vibe here" mode and backend Endless Vibe.
   // Returns immediately after spawning the builder process, but also registers a
   // status/debug job so controller UI can surface progress and failures.
@@ -975,4 +1004,6 @@ export function registerConfigQueueWizardVibeRoutes(app, deps) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
   });
+
+  return { startMobileVibe };
 }

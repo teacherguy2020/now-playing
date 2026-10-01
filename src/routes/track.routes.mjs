@@ -27,7 +27,7 @@ function parseRange(rangeHeader, size) {
   return { start, end };
 }
 
-function serveFileWithRange(req, res, absPath, contentType) {
+export function serveFileWithRange(req, res, absPath, contentType) {
   const stat = fs.statSync(absPath);
   const size = stat.size;
 
@@ -65,12 +65,12 @@ function ensureDirSync(p) {
   try { fs.mkdirSync(p, { recursive: true }); } catch {}
 }
 
-function cacheKeyFor(mpdFile, startSec) {
+export function cacheKeyFor(mpdFile, startSec) {
   const raw = `${mpdFile}||t=${Math.floor(startSec || 0)}`;
   return Buffer.from(raw, 'utf8').toString('base64').replace(/[/+=]/g, '_');
 }
 
-async function transcodeToMp3File({ inputPath, outputPath, startSec }) {
+export async function transcodeToMp3File({ inputPath, outputPath, startSec }) {
   const tmp = outputPath + '.part';
   try { fs.unlinkSync(tmp); } catch {}
 
@@ -101,6 +101,19 @@ async function transcodeToMp3File({ inputPath, outputPath, startSec }) {
   });
 
   fs.renameSync(tmp, outputPath);
+}
+
+export function audioContentTypeForPath(filePath) {
+  const ext = String(filePath || '').toLowerCase();
+  if (ext.endsWith('.flac')) return 'audio/flac';
+  if (ext.endsWith('.wav')) return 'audio/wav';
+  if (ext.endsWith('.aiff') || ext.endsWith('.aif')) return 'audio/aiff';
+  if (ext.endsWith('.aac')) return 'audio/aac';
+  if (ext.endsWith('.m4a') || ext.endsWith('.mp4')) return 'audio/mp4';
+  if (ext.endsWith('.ogg') || ext.endsWith('.oga')) return 'audio/ogg';
+  if (ext.endsWith('.opus')) return 'audio/opus';
+  if (ext.endsWith('.mp3')) return 'audio/mpeg';
+  return 'application/octet-stream';
 }
 
 export function registerTrackRoutes(app, deps) {
@@ -143,14 +156,7 @@ export function registerTrackRoutes(app, deps) {
       if (!TRANSCODE_TRACKS) {
         if (startSec > 0) return res.status(400).send('Seek requires transcoding');
 
-        const ext = localPath.toLowerCase();
-        const ct =
-          ext.endsWith('.flac') ? 'audio/flac' :
-          ext.endsWith('.wav') ? 'audio/wav' :
-          ext.endsWith('.aac') ? 'audio/aac' :
-          ext.endsWith('.m4a') ? 'audio/mp4' :
-          ext.endsWith('.mp3') ? 'audio/mpeg' :
-          'application/octet-stream';
+        const ct = audioContentTypeForPath(localPath);
 
         return serveFileWithRange(req, res, localPath, ct);
       }

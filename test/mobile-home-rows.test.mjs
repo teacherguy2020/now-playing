@@ -1,0 +1,105 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import { buildMobileCatalog } from '../src/lib/mobile-track-identity.mjs';
+import {
+  buildMobileHomeRows,
+  mobileHomeSourcePath,
+  sanitizeMobileHomeProfile,
+} from '../src/lib/mobile-home-rows.mjs';
+
+const secret = 'home-row-test-secret';
+
+function catalog() {
+  return buildMobileCatalog({
+    builtAt: '2026-09-26T00:00:00.000Z',
+    tracks: [{
+      file: 'USB/Music/Artist/Album/01 - Track.mp3',
+      artist: 'Artist',
+      albumArtist: 'Artist',
+      album: 'Album',
+      title: 'Track',
+      track: '1',
+      genre: 'Rock',
+      durationSec: 210,
+    }],
+  }, { trackIdSecret: secret });
+}
+
+test('mobile home profile preserves configured rows and safe defaults', () => {
+  const profile = sanitizeMobileHomeProfile({
+    recentRows: ['local-toptracks', 'local-toptracks', 'not-a-row', 'radio', 'podcasts', 'albums'],
+    recentCount: 99,
+    theme: 'dark',
+    showRecent: true,
+  });
+
+  assert.deepEqual(profile.recentRows, ['local-toptracks', 'radio', 'podcasts', 'albums']);
+  assert.equal(profile.recentCount, 30);
+  assert.equal(profile.theme, 'dark');
+  assert.equal(mobileHomeSourcePath('local-toptracks', 18), '/config/listening-history/top-tracks?limit=18');
+});
+
+test('mobile home rows normalize local track and playlist art through mobile DTOs', () => {
+  const built = catalog();
+  const playlist = {
+    id: 'pl_test',
+    name: 'Favorites',
+    trackCount: 1,
+    revision: 'rev_test',
+    updatedAt: null,
+    artworkUrl: 'http://nowplaying.local:3101/v1/mobile/artwork/track-art',
+  };
+  const result = buildMobileHomeRows({
+    profile: { recentRows: ['local-toptracks', 'playlists', 'radio', 'podcasts'] },
+    catalog: built,
+    playlistSummaries: [playlist],
+    baseUrl: 'http://nowplaying.local:3101',
+    makeItemId: ({ source, kind, identity }) => `itm_${source}_${kind}_${identity}`,
+    artworkUrlFor: ({ kind, reference }) => `http://nowplaying.local:3101/v1/mobile/home/artwork/${kind}-${encodeURIComponent(reference)}`,
+    podcastIdFor: (rss) => `pod_${rss}`,
+    radioStationIdFor: (file) => `rad_${file}`,
+    sourcePayloads: new Map([
+      ['local-toptracks', {
+        ok: true,
+        payload: { items: [{ title: 'Track', artist: 'Artist', album: 'Album', file: 'USB/Music/Artist/Album/01 - Track.mp3' }] },
+      }],
+      ['playlists', { ok: true, payload: { items: [{ title: 'Favorites', playlist: 'Favorites' }] } }],
+      ['radio', { ok: true, payload: { items: [{ stationName: 'Jazz FM', file: 'https://radio.example/jazz' }] } }],
+      ['podcasts', { ok: true, payload: { items: [{ title: 'A Show', rss: 'https://example.com/feed.xml', imageUrl: 'https://example.com/cover.jpg' }] } }],
+    ]),
+  });
+
+  assert.equal(result.rows.length, 4);
+  assert.equal(result.rows[0].items[0].track.title, 'Track');
+  assert.equal(result.rows[0].items[0].albumItem.album, 'Album');
+  assert.match(result.rows[0].items[0].artworkUrl, /\/v1\/mobile\/artwork\//);
+  assert.equal(result.rows[1].items[0].playlist.name, 'Favorites');
+  assert.match(result.rows[2].items[0].artworkUrl, /home\/artwork\/radio-/);
+  assert.equal(result.rows[2].items[0].radioStationId, 'rad_https://radio.example/jazz');
+  assert.equal(result.rows[3].items[0].podcastId, 'pod_https://example.com/feed.xml');
+  assert.match(result.rows[3].items[0].artworkUrl, /home\/artwork\/remote-/);
+  assert.doesNotMatch(JSON.stringify(result), /USB\/Music/);
+});
+
+test('mobile home rows resolve album and artist destinations without source file matches', () => {
+  const built = catalog();
+  const result = buildMobileHomeRows({
+    profile: { recentRows: ['albums', 'local-topartists', 'lastfm-toptracks', 'radio'] },
+    catalog: built,
+    baseUrl: 'http://nowplaying.local:3101',
+    makeItemId: ({ source, kind, identity }) => `itm_${source}_${kind}_${identity}`,
+    artworkUrlFor: ({ kind, reference }) => `http://nowplaying.local:3101/v1/mobile/home/artwork/${kind}-${encodeURIComponent(reference)}`,
+    sourcePayloads: new Map([
+      ['albums', { ok: true, payload: { items: [{ title: 'Album', album: 'Album', artist: 'Artist' }] } }],
+      ['local-topartists', { ok: true, payload: { items: [{ title: 'Artist', artist: 'Artist' }] } }],
+      ['lastfm-toptracks', { ok: true, payload: { items: [{ title: 'Track', track: 'Track', artist: 'Artist', album: 'Album' }] } }],
+      ['radio', { ok: true, payload: { items: [] } }],
+    ]),
+  });
+
+  assert.equal(result.rows[0].items[0].albumItem.album, 'Album');
+  assert.equal(result.rows[1].items[0].artistItem.artist, 'Artist');
+  assert.equal(result.rows[2].items[0].albumItem.album, 'Album');
+  assert.equal(result.rows[2].items[0].track.title, 'Track');
+});

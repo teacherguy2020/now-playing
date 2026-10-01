@@ -58,6 +58,10 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       const shuffle = Boolean(req.body?.shuffle);
       const forceRandomOff = Boolean(req.body?.forceRandomOff);
       const fastStart = req.body?.fastStart !== false;
+      const shouldPlay = !(
+        req.body?.play === false
+        || String(req.body?.play || '').trim().toLowerCase() === 'false'
+      );
       const generateCollage = Boolean(req.body?.generateCollage);
       const previewCoverBase64 = String(req.body?.previewCoverBase64 || '').trim();
       const previewCoverMimeType = String(req.body?.previewCoverMimeType || 'image/jpeg').trim().toLowerCase();
@@ -115,7 +119,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
         }
 
         let startIdx = 0;
-        if (mode === 'replace' && !didCrop && fastStart && tracks.length) {
+        if (mode === 'replace' && !didCrop && shouldPlay && fastStart && tracks.length) {
           const first = String(tracks[0] || '').trim();
           if (first) {
             try {
@@ -167,7 +171,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
       } catch {}
 
       // Only auto-play when we replaced the queue and did NOT crop (crop keeps playing).
-      if (!saveOnly && mode === 'replace' && !didCrop && added > 0 && !playStarted) {
+      if (!saveOnly && shouldPlay && mode === 'replace' && !didCrop && added > 0 && !playStarted) {
         try {
           await execFileP('mpc', ['-h', mpdHost, 'play']);
           playStarted = true;

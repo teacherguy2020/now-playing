@@ -6,6 +6,7 @@ import { registerConfigQueueWizardVibeRoutes } from './config.queue-wizard-vibe.
 import { registerConfigDiagnosticsRoutes } from './config.diagnostics.routes.mjs';
 import { registerConfigRatingsStickerRoutes } from './config.ratings-sticker.routes.mjs';
 import { registerConfigRuntimeAdminRoutes } from './config.runtime-admin.routes.mjs';
+import { registerConfigListeningHistoryRoutes } from './config.listening-history.routes.mjs';
 import { registerConfigAlexaAliasRoutes } from './config.alexa-alias.routes.mjs';
 import { registerConfigLibraryHealthArtRoutes } from './config.library-health-art.routes.mjs';
 import { registerConfigLibraryHealthGenreRoutes } from './config.library-health-genre.routes.mjs';
@@ -42,7 +43,7 @@ export function registerAllConfigRoutes(app, deps) {
     requireTrackKey: deps.requireTrackKey,
   });
 
-  registerConfigQueueWizardVibeRoutes(app, {
+  const queueWizardVibe = registerConfigQueueWizardVibeRoutes(app, {
     requireTrackKey: deps.requireTrackKey,
     getRatingForFile: deps.getRatingForFile,
     mpdQueryRaw: deps.mpdQueryRaw,
@@ -70,6 +71,15 @@ export function registerAllConfigRoutes(app, deps) {
   registerConfigRuntimeAdminRoutes(app, {
     requireTrackKey: deps.requireTrackKey,
     log: deps.log,
+    getLocalHistoryItems: deps.getLocalHistoryItems,
+    trackKey: deps.trackKey,
+  });
+
+  registerConfigListeningHistoryRoutes(app, {
+    requireTrackKey: deps.requireTrackKey,
+    getItems: deps.getLocalHistoryItems,
+    getEvents: deps.getLocalHistoryEvents,
+    trackKey: deps.trackKey,
   });
 
   registerConfigAlexaAliasRoutes(app, {
@@ -130,4 +140,8 @@ export function registerAllConfigRoutes(app, deps) {
     setRatingForFile: deps.setRatingForFile,
     mpdStickerGetSong: deps.mpdStickerGetSong,
   });
+
+  return {
+    startMobileVibe: queueWizardVibe?.startMobileVibe,
+  };
 }

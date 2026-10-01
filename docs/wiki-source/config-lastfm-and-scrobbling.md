@@ -4,9 +4,29 @@
 
 This page documents the Last.fm and scrobbling-related portions of `now-playing/config.html`.
 
-It exists because the Config page contains two tightly related but distinct clusters:
-- `mpdscribble` service control
-- Last.fm / Vibe configuration
+## Current Sonuvi model
+
+The former mpdscribble control card and hero scrobble controls have been
+removed from the user-facing UI. Sonuvi now owns the centralized Last.fm
+submission path for both MPD/moOde and non-MPD playback. The live deployment
+uses `LASTFM_MPD_MODE=active`; `mpdscribble.service` is disabled and is not
+part of the setup workflow.
+
+The Config page has two intentionally separate Last.fm areas:
+
+- **Sonuvi Last.fm scrobbling**: server-only Sonuvi API key, API secret, and
+  one-time account authorization/session setup.
+- **Last.fm (Vibe metadata)**: the existing Vibe API key, username, and row
+  presentation settings in `now-playing.config.json`.
+
+The Sonuvi secret and session key are stored only in the protected server
+environment (`.env`). They must not be placed in browser storage, the Vibe
+config JSON, logs, diagnostics, API responses, or Git.
+
+It exists because the Config page contains two tightly related but distinct
+clusters:
+- Sonuvi Last.fm scrobbling authorization
+- Last.fm / Vibe metadata configuration
 
 These should be documented together because they are operationally connected, but they should not be collapsed into one indistinguishable feature.
 
@@ -38,63 +58,45 @@ Related pages:
 ## High-level model
 
 A good current interpretation is:
-- `mpdscribble` is the scrobble/runtime-service side
-- Last.fm is the discovery/integration side
-- Vibe depends on the Last.fm side being configured meaningfully
-- scrobble history often comes from mpdscribble, but the UI explicitly notes that other scrobble sources could also work
+- Sonuvi is the scrobble/runtime-service side
+- Last.fm is the external account and discovery/integration side
+- Vibe depends on its separate Last.fm metadata settings being configured
+- playback clients report activity; the backend applies qualification,
+  deduplication, local-history, and Last.fm policy
 
 That distinction is one of the main points this page should preserve.
 
-## 1. mpdscribble controls
+## 1. Sonuvi Last.fm scrobbling
 
 Observed UI elements include:
-- `featureMpdscribbleControl`
-- `mpdscribbleStatus`
-- `mpdscribbleRefreshBtn`
-- `mpdscribbleStartBtn`
-- `mpdscribbleStopBtn`
+- `sonuviLastfmApiKey`
+- `sonuviLastfmApiSecret`
+- `sonuviLastfmStatus`
+- `sonuviLastfmSaveBtn`
+- `sonuviLastfmAuthorizeBtn`
+- `sonuviLastfmCompleteBtn`
+- `sonuviLastfmRefreshBtn`
 
-### Purpose of this block
-This block appears to govern whether mpdscribble controls are exposed and gives operators direct runtime control over the service.
+### Purpose and workflow
+The Sonuvi card lets an operator configure and authorize the server-side
+Last.fm application without exposing credentials to playback clients:
 
-The UI explicitly says:
-- it shows scrobble control in hero UI
-- it enables start/stop actions
+1. Enter the Sonuvi API key and API secret.
+2. Choose **Save credentials**. This replaces the server-side Sonuvi values
+   and clears any old session key so reauthorization is explicit.
+3. Choose **Authorize Sonuvi** and approve the application in Last.fm.
+4. Return to Config and choose **Complete authorization**.
+5. Refresh the status and confirm the account is authorized.
 
-So this is not just a passive status display.
+The corresponding protected endpoints are:
+- `GET /config/lastfm/status`
+- `POST /config/lastfm/credentials`
+- `POST /config/lastfm/authorize/start`
+- `POST /config/lastfm/authorize/complete`
 
-### Status refresh behavior
-Observed code includes `refreshMpdscribbleStatus()`.
-
-Observed behavior includes:
-- update `mpdscribbleStatus`
-- fetch:
-  - `GET /config/services/mpdscribble/status`
-- cache the returned status in local state
-- update UI accordingly
-
-This makes mpdscribble a live runtime-managed service from the Config page’s perspective.
-
-### Start/stop action behavior
-Observed code includes `runMpdscribbleAction(action)`.
-
-Observed behavior includes:
-- require track key
-- update status text while running
-- POST to:
-  - `/config/services/mpdscribble/action`
-- include action such as:
-  - `start`
-  - `stop`
-
-This is a clear example of Config being an operational service-control surface, not just a form.
-
-### Visibility/gating
-Observed code includes `syncMpdscribbleUi()`.
-
-Working interpretation:
-- the visibility/usability of mpdscribble controls is tied to the `featureMpdscribbleControl` flag
-- the page conditionally exposes live control affordances based on that setting
+All four require the existing Track Key. Status responses contain only safe
+configuration state, lengths, and short fingerprints; they never return a
+secret, session key, token, or signature.
 
 ## 2. Last.fm / Vibe configuration
 
@@ -147,7 +149,7 @@ That makes this section both a feature setup surface and a documentation surface
 
 ## Save/load behavior
 
-Observed config-load behavior includes:
+Observed Vibe config-load behavior includes:
 - feature state from `c.features?.lastfm`
 - API key from runtime/full config or local secret cache
 - username from runtime/full config
@@ -155,7 +157,7 @@ Observed config-load behavior includes:
 - recents mode from full config
 - localStorage caching of Last.fm API key
 
-Observed config-save behavior includes:
+Observed Vibe config-save behavior includes:
 - `features.lastfm`
 - `lastfm.apiKey`
 - `lastfm.username`
@@ -168,12 +170,9 @@ This shows a split between:
 
 ## Secret handling
 
-Observed secret caching includes:
-- `lastfmApiKey` cached in localStorage under:
-  - `nowplaying.secret.lastfmApiKey`
-
-### Why it matters
-This indicates the Config page tries to preserve operator convenience for API credentials while still treating them as secret-like inputs.
+Sonuvi credentials are deliberately **not** cached in localStorage. The Vibe
+API key remains part of the existing metadata configuration path; it is not
+used as a fallback for Sonuvi authorization or scrobbling.
 
 ## Visibility / gating behavior
 
@@ -185,18 +184,20 @@ Working interpretation:
 
 ## Important relationships
 
-## mpdscribble versus Last.fm
-These are related but not identical.
+## Sonuvi scrobbling versus Vibe metadata
+These are related but not identical:
 
-A good current distinction is:
-- `mpdscribble` = service that may generate scrobble history
-- Last.fm = external service/account + Vibe/discovery feature consumer
+- Sonuvi scrobbling uses `LASTFM_API_KEY`, `LASTFM_API_SECRET`, and
+  `LASTFM_SESSION_KEY` from the server environment.
+- Vibe metadata uses the existing `lastfm.apiKey` and `lastfm.username` from
+  `config/now-playing.config.json`.
+- The two API keys must not be silently substituted for one another.
+- mpdscribble is not part of the active setup or control workflow.
 
-So when something breaks, the questions are different:
-- Is the scrobble service running?
-- Are Last.fm credentials configured?
-- Is there enough scrobble history for the desired row/mode?
-- Are Vibe prerequisites installed on the API host?
+When something breaks, check the appropriate side:
+- Is Sonuvi authorization complete and is `LASTFM_MPD_MODE` correct?
+- Is the backend receiving qualified playback events?
+- Are Vibe username/key and its host dependencies configured?
 
 ## Last.fm versus UI row behavior
 `lastfmRecentsReplaceRadio` and `lastfmRecentsMode` show that Last.fm is not just a backend integration.
@@ -208,21 +209,21 @@ So this is both:
 
 ## Important endpoints / action surfaces
 
-Based on current inspection, the most explicit mpdscribble endpoints are:
-- `GET /config/services/mpdscribble/status`
-- `POST /config/services/mpdscribble/action`
-
-The Last.fm side in this page appears to be primarily runtime config load/save driven rather than exposed here through dedicated feature-specific action endpoints.
+The Sonuvi setup endpoints are listed above. The legacy mpdscribble service
+endpoints may remain for compatibility and diagnostics, but they are not
+linked from the Config page and must not be used as the active scrobbling
+workflow.
 
 ## User/operator workflow model
 
 A useful current workflow model is:
 
-### Service-control workflow
-1. enable mpdscribble controls
-2. refresh status
-3. start or stop mpdscribble as needed
-4. confirm service state in status display
+### Sonuvi authorization workflow
+1. enter the Sonuvi API key and secret
+2. save the credentials
+3. authorize Sonuvi in Last.fm
+4. complete authorization in Config
+5. confirm the authorized status
 
 ### Last.fm/Vibe setup workflow
 1. enable Last.fm
@@ -233,10 +234,11 @@ A useful current workflow model is:
 6. verify Vibe behavior or homepage/row behavior afterward
 
 ### Troubleshooting workflow
-1. verify mpdscribble service state
-2. verify Last.fm credentials
-3. verify scrobble history actually exists
-4. verify required Python dependencies for Vibe are installed
+1. verify Sonuvi authorization status and server environment values
+2. verify the playback event appears in local history with its source and
+   qualification state
+3. verify the Last.fm submission state and Last.fm account history
+4. verify Vibe's separate username/key and required Python dependencies
 5. check whether row behavior matches the configured mode
 
 ## Architectural interpretation

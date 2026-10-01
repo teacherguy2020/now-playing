@@ -57,6 +57,7 @@ metadata, queue control, displays, controllers, integrations, and operations.
 ## Important feature pages
 
 - [Listen on Device](listen-on-device.md)
+- [Centralized Playback History and Scrobbling](centralized-playback-history-and-scrobbling.md)
 - [Radio Interface](radio-interface.md)
 - [Podcasts Interface](podcasts-interface.md)
 - [Mabel Integration](mabel-integration.md)
@@ -69,6 +70,11 @@ metadata, queue control, displays, controllers, integrations, and operations.
 - [Core Concepts](core-concepts.md)
 - [Theme Interface](theme-interface.md)
 - [Alexa Interface](alexa-interface.md)
+- [Native iPhone/CarPlay Phase 1](mobile-carplay-phase1.md)
+- [Mobile Playlist API](mobile-playlists.md)
+- [Mobile Home Discovery Rows](mobile-home-rows.md)
+- [Mobile Live Queue](mobile-live-queue.md)
+- [Native Mobile Feature Surfaces](mobile-feature-surfaces.md)
 - [YouTube Interface](youtube-interface.md)
 
 ## Developer and operator branches
@@ -103,4 +109,4 @@ source comparison and secondary-guide disposition.
 - [Gotchas and lessons](gotchas-and-lessons.md)
 - [Open questions](open-questions.md)
 
-*Last reviewed: 2026-09-22 America/Chicago*
+*Last reviewed: 2026-09-30 America/Chicago*

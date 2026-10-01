@@ -251,6 +251,7 @@ This page should stay linked with:
 - `config-lastfm-and-scrobbling.md`
 - `youtube-interface.md`
 - `queue-interface-vs-queue-wizard.md`
+- `mobile-feature-surfaces.md`
 
 ## Current status
 
@@ -259,6 +260,10 @@ This page now gives the wiki a sharper internal model of Queue Wizard:
 - it uses preview/apply semantics
 - it is called by substantive controller/now-playing surfaces
 - it intersects with discovery/curation features like Last.fm / Vibe
-- its exact route/file contract is the next deeper proofing target, not a vague open question about what Queue Wizard is
+- its bearer mobile wrapper resolves opaque canonical IDs and applies to the
+  selected target: Home moOde/ Alexa use the server queue, while This
+  iPhone/This iPad receives the previewed tracks in the native device queue
+- Add to Playlist, collage, and Vibe remain explicit server-side operations;
+  the native client does not receive raw MPD paths or Track Keys
 
-_Last updated: 2026-09-22 10:18 CDT (America/Chicago)_
+_Last updated: 2026-09-30 America/Chicago_

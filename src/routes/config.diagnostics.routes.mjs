@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
 import { getBrowseIndex } from '../lib/browse-index.mjs';
 import { radioDisplayName } from '../lib/radio-display.mjs';
+import { isMoodeTransportError, moodeDirectTransportCommand } from '../lib/moode-transport.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -1359,26 +1360,21 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
 
       // Fast path for core transport controls: hit moOde command endpoint directly,
       // then fall back to mpc if direct command is unavailable.
-      const directCmdMap = {
-        play: 'play',
-        pause: 'pause',
-        toggle: 'toggle',
-        next: 'next',
-        prev: 'previous',
-        previous: 'previous',
-        stop: 'stop',
-      };
-      const directCmd = directCmdMap[action];
+      const directCmd = moodeDirectTransportCommand(action);
       if (directCmd) {
         try {
           const ac = new AbortController();
           const t = setTimeout(() => ac.abort(), 1200);
           try {
-            await fetch(`http://${mpdHost}/command/?cmd=${encodeURIComponent(directCmd)}`, {
+            const response = await fetch(`http://${mpdHost}/command/?cmd=${encodeURIComponent(directCmd)}`, {
               method: 'GET',
               cache: 'no-store',
               signal: ac.signal,
             });
+            const body = await response.text();
+            if (!response.ok || isMoodeTransportError(body)) {
+              throw new Error(`moOde command failed with HTTP ${response.status}`);
+            }
           } finally {
             clearTimeout(t);
           }
@@ -1388,7 +1384,13 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
         }
       }
 
-      await execFileP('mpc', ['-h', mpdHost, cmd]);
+      if (action === 'toggle') {
+        const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const fallbackCommand = /\[playing\]/i.test(String(beforeStatus || '')) ? 'pause' : 'play';
+        await execFileP('mpc', ['-h', mpdHost, fallbackCommand]);
+      } else {
+        await execFileP('mpc', ['-h', mpdHost, cmd]);
+      }
       const { stdout } = await execFileP('mpc', ['-h', mpdHost, 'status']);
       const randomOn = /random:\s*on/i.test(String(stdout || ''));
       return res.json({ ok: true, action, randomOn, status: String(stdout || '') });

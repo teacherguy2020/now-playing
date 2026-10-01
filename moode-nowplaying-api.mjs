@@ -31,6 +31,7 @@ import { exec, execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { XMLParser } from 'fast-xml-parser';
 import os from "node:os";
+import { isPodcastPlaylist } from './src/lib/playlist-classification.mjs';
 
 
 
@@ -200,12 +201,15 @@ import { ProxyAgent, setGlobalDispatcher, Agent } from 'undici';
 import {
   FFMPEG, CURL, MPD_PLAYLIST_DIR, FAVORITES_PATH, MOODE_SSH_USER, MOODE_SSH_HOST, PORT,
   MOODE_BASE_URL, PUBLIC_BASE_URL, LOCAL_ADDRESS, MPD_HOST, MPD_PORT, MOODE_USB_PREFIX,
-  PI4_MOUNT_BASE, METAFLAC, TRACK_KEY, ENABLE_ALEXA, TRANSCODE_TRACKS, TRACK_CACHE_DIR,
+  PI4_MOUNT_BASE, METAFLAC, TRACK_KEY, LASTFM_API_KEY, LASTFM_API_SECRET, LASTFM_SESSION_KEY, LASTFM_MPD_MODE,
+  ENABLE_ALEXA, TRANSCODE_TRACKS, TRACK_CACHE_DIR,
   FAVORITES_PLAYLIST_NAME, FAVORITES_REFRESH_MS, ITUNES_SEARCH_URL, ITUNES_COUNTRY,
   ITUNES_TIMEOUT_MS, ITUNES_TTL_HIT_MS, ITUNES_TTL_MISS_MS, ART_CACHE_DIR, ART_CACHE_LIMIT,
   ART_640_PATH, ART_BG_PATH, PODCAST_DL_LOG, MOODE_SSH, FAVORITES_M3U, MUSIC_LIBRARY_ROOT, PODCAST_ROOT,
   TRACK_NOTIFY_ENABLED, TRACK_NOTIFY_POLL_MS, TRACK_NOTIFY_DEDUPE_MS, TRACK_NOTIFY_ALEXA_MAX_AGE_MS,
   SEEBURG_PLAYLIST_NAME, MULTIPHONE_PLAYLIST_NAME, MILLS_PLAYLIST_NAME,
+  MOBILE_API_ENABLED, MOBILE_API_SECRET, MOBILE_TRACK_ID_SECRET, MOBILE_API_ENROLLMENT_CODE,
+  MOBILE_PUBLIC_BASE_URL, MOBILE_TRACK_CACHE_DIR, MOBILE_TRANSCODE_TRACKS,
   PUSHOVER_TOKEN, PUSHOVER_USER_KEY,
   HARMONY_HOST, HARMONY_PORT, HARMONY_DOMAIN, HARMONY_HUB_ID,
   HARMONY_DENON_DEVICE_ID, HARMONY_INPUT_PHONO, HARMONY_INPUT_AUX1
@@ -220,7 +224,12 @@ import {
 import { registerRatingRoutes } from './src/routes/rating.routes.mjs';
 import { registerQueueRoutes } from './src/routes/queue.routes.mjs';
 import { registerTrackRoutes } from './src/routes/track.routes.mjs';
-import { registerArtRoutes } from './src/routes/art.routes.mjs';
+import { registerArtRoutes, serveTrackArtwork } from './src/routes/art.routes.mjs';
+import { registerMobileRoutes } from './src/routes/mobile.routes.mjs';
+import { getBrowseIndex } from './src/lib/browse-index.mjs';
+import { buildMobileCatalog } from './src/lib/mobile-track-identity.mjs';
+import { createListeningHistoryStore } from './src/lib/listening-history.mjs';
+import { createLastfmScrobbler } from './src/lib/lastfm-scrobbler.mjs';
 import { registerAllConfigRoutes } from './src/routes/config.routes.index.mjs';
 import { registerPodcastSubscriptionRoutes } from './src/routes/podcasts-subscriptions.routes.mjs';
 import { registerPodcastRefreshRoutes } from './src/routes/podcasts-refresh.routes.mjs';
@@ -241,6 +250,32 @@ const millsHarmonyClient = new HarmonyHubClient({
   port: HARMONY_PORT,
   domain: HARMONY_DOMAIN,
   hubId: HARMONY_HUB_ID,
+});
+
+const nonMpdScrobbler = createLastfmScrobbler({
+  apiKey: LASTFM_API_KEY,
+  apiSecret: LASTFM_API_SECRET,
+  sessionKey: LASTFM_SESSION_KEY,
+  log,
+});
+const listeningHistory = createListeningHistoryStore({
+  log,
+  onQualified: async (event, { updateEvent }) => {
+    if (event.source === 'mpd' && LASTFM_MPD_MODE === 'shadow') {
+      await updateEvent(event.sessionId, {
+        lastfmEligible: true,
+        lastfmScrobbleState: 'mpd-shadow-qualified',
+        lastfmScrobbleError: '',
+      });
+      return;
+    }
+    await updateEvent(event.sessionId, { lastfmScrobbleState: 'submitting' });
+    const result = await nonMpdScrobbler.submit(event);
+    await updateEvent(event.sessionId, {
+      lastfmScrobbleState: result.state,
+      lastfmScrobbleError: result.error || '',
+    });
+  },
 });
 
 const HARMONY_SOURCE_RETRY_DELAY_MS = 900;
@@ -3064,10 +3099,16 @@ app.get('/alexa/next-up', async (req, res) => {
   const currentToken = String(wp.token || '').trim();
   const queuedForToken = String(wp.queuedNextForToken || '').trim();
   const queuedNextToken = String(wp.queuedNextToken || '').trim();
-  const successor = (
+  const alexaPlaybackAuthority = Boolean(
     alexaModeActive
+      || wp.modeActive
+      || wp.alexaMode
+      || String(wp.playbackMode || '').trim().toLowerCase() === 'alexa'
+      || String(wp.playbackTarget || '').trim().toLowerCase() === 'echo'
+  );
+  const successor = (
+    alexaPlaybackAuthority
     && !!wp.active
-    && !!wp.modeActive
     && currentToken
     && queuedForToken === currentToken
     && queuedNextToken
@@ -3202,8 +3243,24 @@ function buildArtUrlForFile(file) {
 }
 
 function sanitizeNotifyMeta(rawArtist, rawTitle) {
-  let artist = decodeHtmlEntities(String(rawArtist || '').trim());
-  let title = decodeHtmlEntities(String(rawTitle || '').trim());
+  const unwrapStreamTitle = (value) => {
+    let result = decodeHtmlEntities(String(value || '').trim());
+    if (/^streamtitle\s*=/i.test(result)) {
+      result = result.replace(/^streamtitle\s*=\s*/i, '').trim();
+    }
+    // AVPlayer may preserve the ICY wrapper's surrounding single quotes and
+    // semicolon. Remove only that outer wrapper; quoted iHeart attributes
+    // inside the value must remain intact for parseIheartTitleBlob.
+    if (result.startsWith("'") && /';?$/.test(result)) {
+      result = result.slice(1).replace(/';?$/, '').trim();
+    } else if (result.startsWith('"') && /";?$/.test(result)) {
+      result = result.slice(1).replace(/";?$/, '').trim();
+    }
+    return result;
+  };
+
+  let artist = unwrapStreamTitle(rawArtist);
+  let title = unwrapStreamTitle(rawTitle);
 
   // iHeart blob cleanup (e.g., text="..." song_spot="..." TPID="...")
   const blobish = /(\btext="[^"]+"|\bsong_spot="[^"]+"|\bTPID="\d+"|\bamgArtworkURL="[^"]+")/i;
@@ -6240,6 +6297,67 @@ async function favoriteHandler(req, res) {
 app.post('/favorites/toggle', favoriteHandler);
 app.post('/favorite/current', favoriteHandler); // alias
 
+async function lookupMobileRadioMetadata({ artist = '', title = '', album = '', stationName = '', file = '' } = {}) {
+  // Native AVPlayer receives the stream's raw ICY value. Some stations
+  // publish a normal pair, while iHeart publishes a StreamTitle blob such as
+  // `Chet Baker - text="Almost Blue" ... TPID="..."`. The web Now Playing
+  // path already owns the station-specific cleanup; use that same helper
+  // here before applying the shared iTunes matcher.
+  const normalized = sanitizeNotifyMeta(artist, title);
+  const rawArtist = String(normalized.artist || '').trim();
+  const rawTitle = String(normalized.title || '').trim();
+  const rawAlbum = String(album || '').trim();
+  const empty = (reason) => ({
+    matched: false,
+    title: rawTitle,
+    artist: rawArtist,
+    album: rawAlbum,
+    year: '',
+    artworkUrl: '',
+    trackUrl: '',
+    albumUrl: '',
+    itunesUrl: '',
+    reason,
+  });
+
+  if (!rawTitle) return empty('empty-title');
+  if (!rawArtist) return empty('empty-artist');
+
+  const blob = `${rawArtist} | ${rawTitle} | ${rawAlbum}`.toLowerCase();
+  if (/(^|\W)(talk|news|sports?|espn|npr|podcast|weather|traffic|headline|commentary|interview)(\W|$)|sportstalk|play-by-play/i.test(blob)) {
+    return empty('talk-news-sports');
+  }
+  if (/^radio\s*station$|^unknown$|^stream$/i.test(rawArtist) || /^\d{1,3}$/.test(rawArtist)) {
+    return empty('generic-artist');
+  }
+
+  const lookupArtist = sanitizeLookupArtistForItunes(rawArtist);
+  const result = await lookupItunesFirst(lookupArtist, rawTitle, false, {
+    strictArtist: true,
+    // Keep station identity available to this shared lookup contract; the
+    // native client should not invent a separate station strategy.
+    stationName: String(stationName || '').trim(),
+    file: String(file || '').trim(),
+  });
+  const matchedTitle = String(result?.matchedTitle || '').trim();
+  const verified = !!String(result?.url || result?.trackUrl || result?.albumUrl || '').trim()
+    && (!matchedTitle || shouldAcceptMatchedTitle(rawTitle, matchedTitle));
+  if (!verified) return empty(result?.reason || 'no-match');
+
+  return {
+    matched: true,
+    title: matchedTitle || rawTitle,
+    artist: String(result?.matchedArtist || rawArtist).trim(),
+    album: String(result?.album || rawAlbum).trim(),
+    year: String(result?.year || '').trim(),
+    artworkUrl: String(result?.url || '').trim(),
+    trackUrl: String(result?.trackUrl || '').trim(),
+    albumUrl: String(result?.albumUrl || '').trim(),
+    itunesUrl: String(result?.albumUrl || result?.trackUrl || '').trim(),
+    reason: String(result?.reason || 'matched').trim(),
+  };
+}
+
 
 app.get('/now-playing', async (req, res) => {
   const debug = req.query.debug === '1';
@@ -8150,6 +8268,166 @@ registerArtRoutes(app, {
   agentForUrl,
 });
 
+let mobileVibeStarter = null;
+
+registerMobileRoutes(app, {
+  enabled: MOBILE_API_ENABLED,
+  apiSecret: MOBILE_API_SECRET,
+  trackIdSecret: MOBILE_TRACK_ID_SECRET,
+  enrollmentCode: MOBILE_API_ENROLLMENT_CODE,
+  mobileBaseUrl: MOBILE_PUBLIC_BASE_URL,
+  mobileTrackCacheDir: MOBILE_TRACK_CACHE_DIR,
+  transcodeTracks: MOBILE_TRANSCODE_TRACKS,
+  musicLibraryRoot: PI4_MOUNT_BASE,
+  listeningHistory,
+  mpdHost: MPD_HOST,
+  getBrowseIndex,
+  fetchInternalJson: async (pathname) => {
+    const routePath = String(pathname || '').startsWith('/') ? String(pathname) : `/${String(pathname || '')}`;
+    const url = `http://127.0.0.1:${Number(PORT || 3101)}${routePath}`;
+    const response = await fetch(url, {
+      cache: 'no-store',
+      headers: TRACK_KEY ? { 'x-track-key': String(TRACK_KEY) } : {},
+    });
+    return {
+      ok: response.ok,
+      status: Number(response.status || 0) || 0,
+      json: await response.json().catch(() => ({})),
+    };
+  },
+  fetchInternalRequest: async (pathname, options = {}) => {
+    const routePath = String(pathname || '').startsWith('/') ? String(pathname) : `/${String(pathname || '')}`;
+    const method = String(options?.method || 'GET').toUpperCase();
+    const headers = {
+      ...(TRACK_KEY ? { 'x-track-key': String(TRACK_KEY) } : {}),
+      ...(options?.body !== undefined ? { 'content-type': 'application/json' } : {}),
+    };
+    const url = `http://127.0.0.1:${Number(PORT || 3101)}${routePath}`;
+    const response = await fetch(url, {
+      cache: 'no-store',
+      method,
+      headers,
+      body: options?.body === undefined ? undefined : JSON.stringify(options.body),
+    });
+    return {
+      ok: response.ok,
+      status: Number(response.status || 0) || 0,
+      json: await response.json().catch(() => ({})),
+    };
+  },
+  enrichRadioMetadata: lookupMobileRadioMetadata,
+  getMobilePlaylists: async () => {
+    const host = String(MPD_HOST || '127.0.0.1');
+    const port = String(MPD_PORT || '6600');
+    const { stdout } = await execFileP('mpc', ['-h', host, '-p', port, 'lsplaylists'], {
+      timeout: 15000,
+      maxBuffer: 1024 * 1024,
+    });
+    const names = String(stdout || '').split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+    const rows = await Promise.all(names.map(async (name) => {
+      const result = await execFileP('mpc', ['-h', host, '-p', port, '-f', '%file%', 'playlist', name], {
+        timeout: 15000,
+        maxBuffer: 8 * 1024 * 1024,
+      });
+      return {
+        name,
+        files: String(result.stdout || '').split(/\r?\n/).map((value) => value.trim()).filter(Boolean),
+      };
+    }));
+    return rows.filter((row) => !isPodcastPlaylist(row.name, row.files));
+  },
+  mpdQueryRaw,
+  getRatingForFile,
+  ratingsEnabled: async () => {
+    try {
+      const cfg = JSON.parse(await fsp.readFile(RUNTIME_CONFIG_PATH, 'utf8'));
+      return Boolean(cfg?.features?.ratings ?? true);
+    } catch {
+      return true;
+    }
+  },
+  getCurrentFile: async () => {
+    const song = await fetchCurrentSong();
+    return String(song?.file || '').trim();
+  },
+  isStreamPath,
+  isAirplayFile,
+  startMobileVibe: (body) => {
+    if (typeof mobileVibeStarter !== 'function') {
+      throw new Error('mobile Vibe control is not configured');
+    }
+    return mobileVibeStarter(body);
+  },
+  mpdFileToLocalPath,
+  safeIsFile,
+  requireTrackKey,
+  trackKeyConfigured: Boolean(TRACK_KEY),
+  serveArtworkForTrack: (res, file) => serveTrackArtwork(res, file, {
+    MOODE_BASE_URL,
+    normalizeCoverUrl,
+    dispatcherForUrl,
+    agentForUrl,
+    normalizeArtKey,
+    updateArtCacheIfNeeded,
+    artPath640ForKey,
+    safeIsFile,
+  }),
+  servePlaylistArtwork: async (res, playlistName) => {
+    const name = String(playlistName || '').trim();
+    if (!name) return res.status(404).end();
+    const safeName = name
+      .replace(/[^A-Za-z0-9 _.-]/g, '')
+      .trim()
+      .replace(/\s+/g, '_');
+    const candidates = [...new Set([name, safeName].filter(Boolean))];
+    for (const candidate of candidates) {
+      const url = `${String(MOODE_BASE_URL || '').replace(/\/+$/, '')}/imagesw/playlist-covers/${encodeURIComponent(candidate)}.jpg`;
+      try {
+        const response = await fetch(url, {
+          dispatcher: dispatcherForUrl(url),
+          cache: 'no-store',
+        });
+        if (!response.ok) continue;
+        const bytes = Buffer.from(await response.arrayBuffer());
+        if (bytes.length > 8 * 1024 * 1024) return res.status(413).end();
+        const contentType = String(response.headers.get('content-type') || 'image/jpeg').toLowerCase();
+        res.set('Content-Type', contentType.startsWith('image/') ? contentType : 'image/jpeg');
+        res.set('Cache-Control', 'private, max-age=3600');
+        return res.status(200).send(bytes);
+      } catch {}
+    }
+    return res.status(404).end();
+  },
+  serveHomeArtwork: async (res, descriptor) => {
+    try {
+      const kind = String(descriptor?.kind || '').trim().toLowerCase();
+      const reference = String(descriptor?.reference || '').trim();
+      let url = reference;
+      if (kind === 'background') {
+        url = `http://127.0.0.1:${Number(PORT || 3101)}/art/current_bg_640_blur.jpg`;
+      } else if (kind === 'radio-file') {
+        url = `http://127.0.0.1:${Number(PORT || 3101)}/art/radio-logo.jpg?file=${encodeURIComponent(reference)}`;
+      } else if (kind === 'radio') {
+        url = `http://127.0.0.1:${Number(PORT || 3101)}/art/radio-logo.jpg?name=${encodeURIComponent(reference)}`;
+      }
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+        return res.status(404).end();
+      }
+      const response = await fetch(parsed.toString(), { cache: 'no-store', redirect: 'follow' });
+      if (!response.ok) return res.status(404).end();
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (bytes.length > 8 * 1024 * 1024) return res.status(413).end();
+      const contentType = String(response.headers.get('content-type') || 'image/jpeg').toLowerCase();
+      res.set('Content-Type', contentType.startsWith('image/') ? contentType : 'image/jpeg');
+      res.set('Cache-Control', 'private, max-age=3600');
+      return res.status(200).send(bytes);
+    } catch {
+      return res.status(404).end();
+    }
+  },
+});
+
 registerRatingRoutes(app, {
   clampRating,
   isStreamPath,
@@ -8270,9 +8548,89 @@ async function priorityCompletionTick() {
 
 setInterval(() => { priorityCompletionTick().catch(() => {}); }, PRIORITY_COMPLETION_POLL_MS);
 
-registerAllConfigRoutes(app, {
+// Keep a server-side listening history independent of browser/controller
+// polling.  Last.fm remains an optional enrichment provider; this local
+// history is the fallback for users who do not have a Last.fm account.
+const LISTENING_HISTORY_POLL_MS = Math.max(2500, Number(process.env.LISTENING_HISTORY_POLL_MS || 5000) || 5000);
+let listeningHistoryBusy = false;
+let mpdMobileCatalogIndex = null;
+let mpdMobileCatalog = null;
+
+async function canonicalMobileTrackForFile(file) {
+  if (!MOBILE_TRACK_ID_SECRET || !file) return null;
+  const index = await getBrowseIndex(MPD_HOST);
+  if (mpdMobileCatalogIndex !== index) {
+    mpdMobileCatalogIndex = index;
+    mpdMobileCatalog = buildMobileCatalog(index, { trackIdSecret: MOBILE_TRACK_ID_SECRET });
+  }
+  return mpdMobileCatalog?.byFile?.get(file) || null;
+}
+
+async function listeningHistoryTick() {
+  if (listeningHistoryBusy) return;
+  listeningHistoryBusy = true;
+  try {
+    const [statusRaw, songRaw] = await Promise.all([
+      mpdQueryRaw('status'),
+      mpdQueryRaw('currentsong'),
+    ]);
+    if (!statusRaw || !songRaw || mpdHasACK(statusRaw) || mpdHasACK(songRaw)) return;
+
+    const status = parseMpdKeyVals(statusRaw);
+    const song = parseMpdFirstBlock(songRaw);
+    const file = String(song.file || '').trim();
+    const canonicalTrack = await canonicalMobileTrackForFile(file);
+    const localFile = !!file && !!mpdFileToLocalPath(file);
+    const eligible = localFile
+      && !isStreamPath(file)
+      && !isAirplayFile(file)
+      && !isLocalPodcastFile(file)
+      && !alexaModeActive;
+
+    await listeningHistory.observe({
+      status: {
+        state: String(status.state || '').trim().toLowerCase(),
+        songid: String(status.songid || '').trim(),
+        elapsedSec: Number(status.elapsed || 0) || 0,
+      },
+      song: {
+        file,
+        artist: song.artist,
+        albumArtist: song.albumartist,
+        album: song.album,
+        title: song.title,
+        track: song.track,
+        genre: song.genre,
+        time: song.time,
+        durationSec: song.time || status.duration || canonicalTrack?.durationSec || '',
+        trackKey: canonicalTrack?.id || '',
+      },
+      eligible,
+      source: 'mpd',
+      lastfmMode: LASTFM_MPD_MODE,
+    });
+  } catch (error) {
+    log.debug('[listening-history] poll failed', error?.message || String(error));
+  } finally {
+    listeningHistoryBusy = false;
+  }
+}
+
+setInterval(() => { listeningHistoryTick().catch(() => {}); }, LISTENING_HISTORY_POLL_MS);
+listeningHistoryTick().catch(() => {});
+
+const configRouteHandles = registerAllConfigRoutes(app, {
   requireTrackKey,
   log,
+  trackKey: TRACK_KEY,
+  getLocalHistoryItems: ({ kind, limit, period, windowDays, baseUrl, trackKey } = {}) => listeningHistory.getItems(kind, {
+    limit,
+    period,
+    windowDays,
+    baseUrl,
+    trackKey: trackKey || TRACK_KEY,
+  }),
+  getLocalHistoryEvents: ({ limit } = {}) => listeningHistory.getEvents({ limit }),
   mpdQueryRaw,
   mpdHasACK,
   parseMpdKeyVals,
@@ -8286,6 +8644,8 @@ registerAllConfigRoutes(app, {
   getYoutubeNowPlayingHint: () => youtubeNowPlayingHint,
   getYoutubeQueueHint,
 });
+
+mobileVibeStarter = configRouteHandles?.startMobileVibe || null;
 
 
 /* =========================

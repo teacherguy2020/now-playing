@@ -413,7 +413,6 @@
           <button class="pill" id="peppyAlsaPill" type="button" title="PeppyALSA driver status" style="cursor:default;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>PeppyALSA<span class="hint" id="peppyAlsaHint">unknown</span></button>
           <button class="pill" id="moodePill" type="button" title="Restart moOde" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>moOde<span class="hint" id="moodeHint">unknown</span></button>
           <button class="pill" id="notifyPill" type="button" title="Pushover track notifications" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="notifyLabel">Notify</span><span class="hint" id="notifyHint">off</span></button>
-          <button class="pill" id="scrobblePill" type="button" title="mpdscribble scrobble service" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="scrobbleLabel">Scrobble</span><span class="hint" id="scrobbleHint">off</span></button>
 
         </div>
       </div>
@@ -759,8 +758,6 @@
       }
 
       let runtimeTrackKey = '';
-      let scrobbleControlsEnabled = false;
-      let scrobbleRunning = null;
       let notifyConfigured = false;
       let notifyEnabled = null;
       let peppyModeState = String(readAppPreference('playerMode', 'webui') || 'webui');
@@ -1782,13 +1779,6 @@
         }
       }
 
-      function setScrobbleBusy(on){
-        const pill = document.getElementById('scrobblePill');
-        if (!pill) return;
-        pill.classList.toggle('busy', !!on);
-        pill.disabled = !!on;
-      }
-
       function setNotifyBusy(on){
         const pill = document.getElementById('notifyPill');
         if (!pill) return;
@@ -1855,33 +1845,6 @@
           return { r, j };
         } finally {
           clearTimeout(t);
-        }
-      }
-
-      async function refreshScrobblePill(base){
-        const hint = document.getElementById('scrobbleHint');
-        const label = document.getElementById('scrobbleLabel');
-        const pill = document.getElementById('scrobblePill');
-        if (pill) pill.style.display = scrobbleControlsEnabled ? '' : 'none';
-        if (!scrobbleControlsEnabled) {
-          if (hint) hint.textContent = 'off';
-          if (label) label.textContent = 'Scrobble';
-          setPillState('scrobblePill', 'off');
-          return;
-        }
-        try {
-          const { r, j } = await fetchJsonWithTimeout(`${base}/config/services/mpdscribble/status`, { cache: 'no-store' }, 7000);
-          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-          const running = !!j?.running;
-          scrobbleRunning = running;
-          if (hint) hint.textContent = running ? 'on' : 'off';
-          if (label) label.textContent = running ? 'Scrobbling' : 'Scrobble';
-          setPillState('scrobblePill', running ? 'ok' : 'warn');
-        } catch {
-          if (hint) hint.textContent = 'err';
-          if (label) label.textContent = 'Scrobble';
-          scrobbleRunning = null;
-          setPillState('scrobblePill', 'bad');
         }
       }
 
@@ -2578,48 +2541,6 @@
         }
       }
 
-      async function toggleScrobbleFromHero(){
-        if (!scrobbleControlsEnabled) return;
-        const desired = (scrobbleRunning === true) ? 'stop' : 'start';
-        const ok = window.confirm(desired === 'start' ? 'Start scrobbling?' : 'Stop scrobbling?');
-        if (!ok) return;
-        const host = location.hostname || 'nowplaying.local';
-        const base = `${location.protocol}//${host}:3101`;
-        const hint = document.getElementById('scrobbleHint');
-        const label = document.getElementById('scrobbleLabel');
-        setScrobbleBusy(true);
-        if (hint) hint.textContent = desired === 'start' ? 'starting…' : 'stopping…';
-        try {
-          if (!runtimeTrackKey) {
-            const rr = await fetch(`${base}/config/runtime`, { cache:'no-store' });
-            const rj = await rr.json().catch(() => ({}));
-            runtimeTrackKey = String(rj?.config?.trackKey || '').trim();
-          }
-          const { r, j } = await fetchJsonWithTimeout(`${base}/config/services/mpdscribble/action`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...(runtimeTrackKey ? { 'x-track-key': runtimeTrackKey } : {}) },
-            body: JSON.stringify({ action: desired }),
-          }, 10000);
-          if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-          // Apply immediate result from action response, then verify after a short delay.
-          if (typeof j?.running === 'boolean') {
-            scrobbleRunning = !!j.running;
-            if (hint) hint.textContent = scrobbleRunning ? 'on' : 'off';
-            if (label) label.textContent = scrobbleRunning ? 'Scrobbling' : 'Scrobble';
-            setPillState('scrobblePill', scrobbleRunning ? 'ok' : 'warn');
-          }
-          setTimeout(() => { refreshScrobblePill(base).catch(() => {}); }, 1200);
-        } catch (e) {
-          console.warn('scrobble toggle failed', e?.message || e);
-          if (hint) hint.textContent = 'err';
-          if (label) label.textContent = 'Scrobble';
-          setPillState('scrobblePill', 'bad');
-          setTimeout(() => { refreshScrobblePill(base).catch(() => {}); }, 1200);
-        } finally {
-          setScrobbleBusy(false);
-        }
-      }
-
       async function syncPills(){
         try {
           const host = location.hostname || 'nowplaying.local';
@@ -2636,7 +2557,6 @@
           alexaEnabledState = axEnabled;
           alexaDomainState = axDomain;
           const moodeHost = String(cfg?.moode?.sshHost || cfg?.mpd?.host || cfg?.mpdHost || '').trim();
-          scrobbleControlsEnabled = !!cfg?.features?.mpdscribbleControl;
           moodeDisplayTakeoverEnabled = !!(cfg?.features?.moodeDisplayTakeover ?? true);
 
           const $ = (id) => document.getElementById(id);
@@ -2676,9 +2596,6 @@
           await refreshPeppyPill();
           await refreshPeppyAlsaPill();
           refreshScreenPill();
-          scrobbleControlsEnabled = false;
-          const sp = document.getElementById('scrobblePill');
-          if (sp) sp.style.display = 'none';
           const np = document.getElementById('notifyPill');
           if (np) np.style.display = 'none';
         }
@@ -3347,11 +3264,6 @@
       document.getElementById('notifyPill')?.addEventListener('click', (ev) => {
         ev.preventDefault();
         toggleNotifyPause();
-      });
-
-      document.getElementById('scrobblePill')?.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        toggleScrobbleFromHero();
       });
 
 

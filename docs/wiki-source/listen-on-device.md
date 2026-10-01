@@ -99,6 +99,24 @@ that Alexa Mode mute; output 0 is re-enabled when Alexa Mode is turned off.
 The HTTP Server output remains enabled for the browser stream. The non-editor
 1280×400 kiosk display intentionally hides these controller actions.
 
+## Relationship to native iPhone/iPad playback
+
+The browser listener and native device playback are intentionally different:
+
+- **Listen on Device** mirrors moOde's current MPD HTTP output. The current
+  moOde configuration encodes that output as LAME MP3 at 320 kbps, so a local
+  FLAC is not delivered as FLAC. It is useful for hearing whatever moOde is
+  already playing, including radio, and for compatibility with arbitrary
+  moOde sources.
+- The native iPhone/iPad app streams catalog music from the Sonuvi API,
+  preserving the original FLAC/native format when the quality preference is
+  enabled, or requesting MP3 when lower transfer size is preferred. Its
+  playlist Download & Play path begins remote playback immediately and caches
+  the file separately in the background.
+- Native radio uses a separate ticketed API proxy for the station URL stored in
+  moOde. It does not replace the browser listener and does not change moOde's
+  queue or current playback.
+
 ## Related pages
 
 - [using-now-playing.md](using-now-playing.md)
@@ -106,4 +124,4 @@ The HTTP Server output remains enabled for the browser stream. The non-editor
 - [api-playback-and-queue-endpoints.md](api-playback-and-queue-endpoints.md)
 - [playback-mode-troubleshooting.md](playback-mode-troubleshooting.md)
 
-*Last reviewed: 2026-09-22 America/Chicago*
+*Last reviewed: 2026-09-27 America/Chicago*

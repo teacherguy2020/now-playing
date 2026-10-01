@@ -9,18 +9,19 @@ topics:
 confidence: medium
 ---
 
-# Native iPhone/CarPlay Phase 1
+# Native iPhone/iPad/CarPlay Phase 1
 
-This page documents the first gated server/client foundation for the native
-iPhone and CarPlay project. It is separate from the existing browser/PWA
-controller and does not control the home MPD queue.
+This page documents the current gated server/client foundation for the native
+iPhone, iPad, and CarPlay project. It is separate from the existing browser/
+PWA controller. Device playback is local to the selected Apple device;
+Home moOde and Alexa remain explicit server-managed targets.
 
 ## Phase 1 boundary
 
-The first proof of concept is remote-only:
+The canonical flow is:
 
 ```text
-iPhone + Tailscale
+iPhone/iPad + Tailscale
         |
         | HTTPS /v1/mobile
         v
@@ -28,12 +29,16 @@ Sonuvi app host
         |
         | server-side opaque-ID resolution
         v
-authorized local library file -> iPhone AVFoundation playback
+canonical track -> SSD/cache/server byte resolution -> native playback
 ```
 
-The external SSD is a separate Phase 1A document-provider experiment. Local
-SSD playback must eventually produce the same source-neutral track and queue
-model, but it must not be allowed to change the remote API security boundary.
+The attached SSD is a local audio source/cache below the same canonical track
+and queue model. It does not become a second library or offline mode. The
+first source-resolution slice uses the authenticated local-source manifest,
+checks exact canonical IDs and file size, and falls back to the existing media
+authorization when the SSD is disconnected, missing a track, or stale. The
+manifest's `contentPath` is relative to the folder selected on the portable
+volume, so that folder's name does not have to match the moOde library root.
 
 ## Server implementation
 
@@ -47,6 +52,10 @@ Source files:
 - `src/routes/art.routes.mjs` — shared authorized artwork resolver/cache.
 - `src/lib/mobile-pairing.mjs` — ephemeral single-use pairing challenges,
   device proof verification, approval state, and app completion.
+- `src/lib/listening-history.mjs` — shared server-side history qualification
+  used by MPD observation and native device playback events.
+- `Sources/NowPlayingCarPlayCore/LocalSourceResolver.swift` — canonical-ID
+  local byte resolution without a local catalog or queue.
 - `scripts/mobile-pairing-ui.js` — shared display-side pairing widget used by
   Config and Controller Settings.
 
@@ -270,11 +279,12 @@ path is never returned to the client.
 
 ### Playlists
 
-The first read-only playlist contract is documented in
-[Mobile Playlist API](mobile-playlists.md). It provides bearer-authenticated
-playlist summaries and ordered entries using opaque playlist and track IDs.
-Playlist membership is resolved through the server’s existing MPD/catalog
-logic; raw playlist files and Track-Key/admin routes remain server-only.
+The playlist contract is documented in [Mobile Playlist API](mobile-playlists.md).
+It provides bearer-authenticated playlist summaries and ordered entries using
+opaque playlist and track IDs, plus the scoped Add to Playlist wrapper used by
+native action pickers. Playlist membership is resolved through the server’s
+existing MPD/catalog logic; raw playlist files and Track-Key/admin routes
+remain server-only.
 
 ### Media
 
@@ -300,6 +310,34 @@ local file. Cache eviction is a Phase 1 hardening item.
 
 The ticket is the only credential accepted by the media route. The server
 re-resolves the opaque ID and verifies the local file before serving it.
+
+### Portable SSD path roots
+
+The local-source manifest retains `relativePath` for server-side compatibility
+and also supplies `contentPath`, which omits the server-only top-level music
+directory. The iOS resolver uses `contentPath` relative to the user-selected
+SSD folder, then checks containment, file type, format, and exact byte size.
+Renaming the SSD's top-level folder is therefore unnecessary; only the content
+below the selected root must match the manifest. Manifest requests are
+revalidated and the server response is not cacheable so a changed SSD layout or
+server mapping is observed without reinstalling the app.
+
+### Native playback history
+
+Native device playback reports canonical progress to:
+
+```http
+POST /v1/mobile/playback/events
+Authorization: Bearer <session-token>
+Content-Type: application/json
+
+{"trackId":"trk_...","sessionId":"device-session","state":"progress","elapsedSec":78,"durationSec":214}
+```
+
+The server resolves the ID and feeds the existing listening-history store; the
+client cannot submit a server file path. Local bytes and remote bytes therefore
+share the same metadata, controls, queue identity, history, and future
+scrobble path.
 
 ### Native radio streaming
 
@@ -358,20 +396,19 @@ poll token, and store the completed session token in Keychain. This session
 intentionally does not modify that sibling project or deploy this
 server/display work.
 
-## Client scaffold
+## Current client boundary
 
-The separate Apple client project is `../now-playing-ios` in the workspace.
-It contains:
+The separate Apple client project is `../now-playing-ios` in the workspace. It
+contains the shared Swift catalog/session/media models, bearer API client,
+Keychain pairing, adaptive iPhone/iPad shell, canonical device Live Queue,
+AVFoundation playback, Application Support cache, attached-SSD resolver,
+native playback-history reporter, Siri/App Intents, and the standard CarPlay
+template coordinator. See the native repository's
+`docs/native-feature-surfaces.md` for the user-facing feature matrix.
 
-- shared Swift catalog/session/media models;
-- a URLSession mobile API client;
-- an app-owned queue model;
-- a minimal SwiftUI shell;
-- a minimal standard CarPlay list-template coordinator.
-
-AVFoundation playback, Keychain persistence, lock-screen metadata, SSD
-security-scoped bookmarks, and production CarPlay entitlement configuration
-remain device/Xcode work.
+The server remains authoritative for catalog identity, metadata, playlists,
+artwork, Home moOde/Alexa queue state, and history qualification. The client
+never receives raw MPD/file paths, Track Keys, or Alexa credentials.
 
 ## Deployment and verification status
 
@@ -389,7 +426,7 @@ checks were:
 6. The pairing flow was tested from the Config and Controller Settings
    displays, and the native app completed pairing and catalog browsing.
 
-Remaining native-client verification:
+Remaining native-client verification and hardening:
 
 1. With Tailscale connected, confirm the controller-profile URL above from
    the iPhone and iPad.
@@ -399,13 +436,20 @@ Remaining native-client verification:
 5. Test the same media URL from AVFoundation while the phone is locked.
 6. Confirm remote playback leaves the home MPD queue, Alexa playback, and
    moOde configuration unchanged.
-7. For pairing, retain coverage for the QR payload, public-key proof, display
+7. With an attached SSD, verify the cache-miss matrix: disconnected source,
+   absent canonical track, stale size entry, and reconnect. Each case must
+   preserve the canonical track ID and fall back to remote media when needed.
+8. Exercise all twelve Home shelf actions, target handoff, Siri collection
+   intents, and the playback-diagnostics toggle on unlocked devices.
+9. For pairing, retain coverage for the QR payload, public-key proof, display
    approval, wrong code, replay/expiry, restart invalidation, and confirmation
    that the display never receives the session token.
 
-The external SSD, production refresh-token/revocation lifecycle, and final
-CarPlay entitlement/distribution work remain separate client-side phases.
+Full SSD synchronization, production refresh-token/revocation lifecycle,
+remaining Siri/Alexa physical acceptance, and CarPlay vehicle validation remain
+separate client-side follow-ups. The CarPlay Audio entitlement itself is
+approved and configured in the signed native target.
 
 ## Timestamp
 
-Last updated: 2026-09-27 America/Chicago
+Last updated: 2026-09-30 America/Chicago

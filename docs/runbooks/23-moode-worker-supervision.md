@@ -40,6 +40,12 @@ The timer runs every 30 seconds. The script:
 It does not replace moOde's worker or watchdog logic, and it does not alter
 the external Target URL workaround.
 
+The watchdog service is a `Type=oneshot` unit, while the stock worker
+daemonizes into a child process. Its tracked unit therefore sets
+`KillMode=process`; without that override, systemd's default control-group
+cleanup kills the worker when the recovery check exits, causing the timer to
+report a recovery every 30 seconds and leaving the attached display awake.
+
 ## Install or restore
 
 Install the tracked files from the repository's `ops/moode-overrides/` tree,

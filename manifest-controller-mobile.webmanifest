@@ -3,7 +3,7 @@
   "short_name": "Controller",
   "description": "iPhone controller for Sonuvi — moOde enhancement platform",
   "id": "/controller-mobile",
-  "start_url": "/controller-mobile.html?devicePreset=mobile",
+  "start_url": "/controller-mobile.html?devicePreset=mobile&rev=20260925-settings2",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0c1526",

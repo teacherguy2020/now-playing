@@ -582,6 +582,58 @@ Recent/browse helpers in `src/routes/config.browse.routes.mjs`:
 - `GET /recent/playlists`
 - `GET /recent/radio-favorites`
 
+## Family: bearer mobile API (`/v1/mobile`)
+
+The native Sonuvi iPhone/iPad/CarPlay client uses the bearer mobile family,
+not the browser Track-Key/admin routes. The route owner is primarily
+`src/routes/mobile.routes.mjs`; helper ownership is split into
+`src/lib/mobile-auth.mjs`, `src/lib/mobile-home-rows.mjs`,
+`src/lib/mobile-track-identity.mjs`, `src/lib/mobile-playlists.mjs`,
+`src/lib/listening-history.mjs`, and the mobile pairing helpers.
+
+Core families currently used by the native client:
+
+- pairing/session, catalog/search, artwork, media authorization, and
+  ticketed native radio streams;
+- `GET /v1/mobile/now-playing`, `GET /v1/mobile/next-up`,
+  `GET /v1/mobile/audio-info`, and bearer current-track favorite/rating writes;
+- `GET /v1/mobile/home/rows` and `POST /v1/mobile/home/profile` for the
+  twelve ordered Home discovery sources;
+- playlists, ordered entries, playlist artwork, and
+  `POST /v1/mobile/queue-wizard/add-to-playlist` for scoped native playlist
+  writes;
+- queue list/item/action/Vibe routes, Endless Vibe, and target-aware Queue
+  Wizard options/preview/collage/apply/Vibe;
+- Podcasts subscription/episode/download/media/play/queue routes, including
+  `play-newest` and `load` used by the Recent Podcasts shelf;
+- Radio station/options/preset/favorite/queue routes, native metadata, and
+  `play-front` used by the Favorite Radio Stations shelf;
+- `POST /v1/mobile/alexa/actions`, `POST /v1/mobile/alexa/queue`, and the
+  Alexa queue-item play wrapper; and
+- `GET /v1/mobile/local-source/manifest` and
+  `POST /v1/mobile/playback/events` for canonical SSD/cache resolution and
+  native listening-history observation.
+
+Every route requires a verified `mobile-api` bearer session unless it is a
+short-lived media/radio ticket delivery route. Opaque track, album, artist,
+playlist, station, podcast, and queue IDs are resolved server-side. Raw MPD
+paths, MPD song IDs, filesystem paths, Track Keys, provider credentials, and
+Alexa secrets are not mobile response fields.
+
+Feature references:
+
+- `mobile-carplay-phase1.md` — pairing, transport, media, local source, and
+  history contracts;
+- `mobile-home-rows.md` — row vocabulary, profile persistence, and flip-face
+  action semantics;
+- `mobile-live-queue.md` — target-owned queue and handoff behavior;
+- `mobile-now-playing.md` — current state, Audio Info, ratings, and radio
+  metadata; and
+- `mobile-feature-surfaces.md` — Genres, Podcasts, Radio, Queue Wizard, and
+  Alexa target boundaries; and
+- `centralized-playback-history-and-scrobbling.md` — shared MPD, native,
+  Listen on Device, and non-MPD history/scrobble qualification.
+
 ## Relationships to existing API pages
 
 Use this page together with:
@@ -607,4 +659,4 @@ That should make the API branch more useful for onboarding, debugging, and safer
 
 ## Timestamp
 
-Last updated: 2026-08-29 America/Chicago
+Last updated: 2026-09-30 America/Chicago

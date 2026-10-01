@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b111c" />
+  <title>Phone Controller Settings</title>
+  <style>
+    :root{color-scheme:dark;--accent:#4aa8ff;--surface:#0b111c;--surface-2:#1f2a3d;--line:#1f2a3d;--text:#f3f6ff;--muted:#9eb3d6;--page-bg:#0b111c}
+    *{box-sizing:border-box}
+    html,body{min-height:100%;background:var(--page-bg)}
+    body{margin:0;padding:calc(10px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));font:14px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--text)}
+    .top{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+    .backBtn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);display:grid;place-items:center;cursor:pointer}
+    .backBtn svg{width:19px;height:19px;display:block;fill:currentColor}
+    .topTitle{font-size:17px;font-weight:650}
+    .card{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:14px;margin:0 0 12px}
+    h1{margin:0 0 4px;font-size:20px;line-height:1.15}
+    .sub{margin:0 0 10px;color:var(--muted);font-size:13px}
+    .hint{margin-top:8px;color:var(--muted);font-size:12px}
+    .applyBtn{border:1px solid var(--line);border-radius:10px;padding:10px 13px;background:var(--surface-2);color:var(--text);font:inherit;font-weight:650;cursor:pointer}
+    .applyBtn:focus-visible,.backBtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    @media (min-width:680px){body{max-width:720px;margin:0 auto}.npMobilePairingGrid{grid-template-columns:minmax(220px,280px) minmax(0,1fr)}}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <button id="backBtn" class="backBtn" type="button" aria-label="Back">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+    </button>
+    <div class="topTitle">Settings</div>
+  </div>
+
+  <div class="card">
+    <h1>Phone Controller</h1>
+    <p class="sub">Settings for this mobile controller.</p>
+    <div class="hint">Use the pairing panel below to connect the native Now Playing iPhone or iPad app. The QR code is short-lived and contains no API secrets or access tokens.</div>
+  </div>
+
+  <div class="card" data-mobile-pairing>
+    <h1>Pair Mobile Device</h1>
+    <p class="sub">Approve the native Now Playing iPhone/iPad/CarPlay app from this authenticated controller.</p>
+    <div class="hint npMobilePairingIntro">The QR code contains only a short-lived pairing challenge and the visible server address. It never contains API secrets or access tokens.</div>
+    <div class="npMobilePairingActions">
+      <button class="applyBtn" type="button" data-pair-start>Pair new device</button>
+      <button class="applyBtn" type="button" data-pair-cancel hidden>Cancel pairing</button>
+    </div>
+    <div class="hint npMobilePairingStatus" data-pair-status role="status" aria-live="polite">Pairing requires the configured Track Key.</div>
+    <div data-pair-qr-wrap hidden>
+      <div class="npMobilePairingGrid">
+        <div><img class="npMobilePairingQr" data-pair-qr alt="Pairing QR code" /></div>
+        <div class="npMobilePairingMeta">
+          <div><strong>Server:</strong> <code data-pair-base-url></code></div>
+          <div><strong>Challenge expires:</strong> <span data-pair-expires></span></div>
+          <div class="hint">Scan this code from the native app, then approve the device below.</div>
+          <details><summary>QR payload (safe to inspect)</summary><pre class="npMobilePairingPayload" data-pair-payload></pre></details>
+        </div>
+      </div>
+      <div class="npMobilePairingRequests" data-pair-requests></div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('backBtn')?.addEventListener('click', () => {
+      if (history.length > 1) history.back();
+      else location.href = 'controller-mobile.html';
+    });
+  </script>
+  <script src="/scripts/mobile-pairing-ui.js?v=20260925-pairing1"></script>
+</body>
+</html>

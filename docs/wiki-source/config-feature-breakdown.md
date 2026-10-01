@@ -101,21 +101,18 @@ When enabled, Peppy/Player display tools can point moOde’s browser target at t
 
 This is a strong example of Config affecting live display-routing behavior, not just local UI preferences.
 
-## 5. mpdscribble controls
+## 5. Sonuvi Last.fm scrobbling
 
 Observed elements include:
-- `featureMpdscribbleControl`
-- status display
-- refresh/start/stop controls
+- Sonuvi API key and API secret fields
+- authorization status
+- save, authorize, complete, and refresh controls
 
 ### Why it matters
-This makes mpdscribble both a configuration concern and a service-control concern.
-
-Observed wording suggests:
-- controls can appear in hero UI
-- start/stop actions are available from Config
-
-So this module bridges scrobble-related runtime service behavior into the config surface.
+This makes Sonuvi Last.fm both a credential-configuration concern and an
+authorization concern. Credentials are written to the protected server
+environment, never browser storage or the Vibe config JSON. The former
+mpdscribble card and hero controls are no longer exposed.
 
 ## 6. Last.fm / Vibe
 

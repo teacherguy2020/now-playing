@@ -12,7 +12,7 @@ shared customer-request queue. Both integration routes mark inserted tracks as
 | Multiphone | `POST /integrations/multiphone/selection` | `Multiphone Playlist` |
 | Mills | `POST /integrations/mills/selection` | `Mills Playlist` |
 
-Seeburg and Multiphone routes require the Now Playing track key and accept a
+Seeburg and Multiphone routes require the Sonuvi track key and accept a
 numbered selection. They also expose a read-only playlist mapping endpoint for
 commissioning and verification. The Mills route requires the same track key,
 but accepts only physical selections during an active Mills session.

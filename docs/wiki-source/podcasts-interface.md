@@ -30,6 +30,15 @@ Episode parsing, local indexes, playlists, artwork, and now-playing
 enrichment are implementation concerns documented there and in the API/source
 maps.
 
+The native iPhone/iPad controller mirrors the same subscription and episode
+workflow through bearer-authenticated mobile routes. See
+[Native Mobile Feature Surfaces](mobile-feature-surfaces.md) for the safe DTO
+and playback-target split. The Home **Recent Podcasts** shelf uses an opaque
+subscription ID and a flip face with **Play Newest** (front of queue), **Load**
+(replace with downloaded episodes oldest-to-newest), and **Open**. These
+actions are backed by the mobile podcast routes and never expose the podcast
+media path to the app.
+
 ## Related pages
 
 - [using-now-playing.md](using-now-playing.md)
@@ -37,4 +46,4 @@ maps.
 - [media-library.md](media-library.md)
 - [configuration-and-administration.md](configuration-and-administration.md)
 
-*Last reviewed: 2026-09-22 America/Chicago*
+*Last reviewed: 2026-09-30 America/Chicago*

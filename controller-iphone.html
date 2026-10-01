@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Redirecting…</title>
-  <meta http-equiv="refresh" content="0; url=/controller-mobile.html?devicePreset=mobile" />
+  <meta http-equiv="refresh" content="0; url=/controller-mobile.html?devicePreset=mobile&rev=20260925-settings2" />
   <script>
     (function(){
       try {
@@ -12,9 +12,10 @@
         var to = new URL('/controller-mobile.html', u.origin);
         u.searchParams.forEach(function(v,k){ to.searchParams.set(k,v); });
         if (!to.searchParams.get('devicePreset')) to.searchParams.set('devicePreset','mobile');
+        to.searchParams.set('rev','20260925-settings2');
         window.location.replace(to.toString());
       } catch (e) {
-        window.location.replace('/controller-mobile.html?devicePreset=mobile');
+        window.location.replace('/controller-mobile.html?devicePreset=mobile&rev=20260925-settings2');
       }
     })();
   </script>

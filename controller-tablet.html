@@ -963,7 +963,7 @@
     if (qColor) profile.colorPreset = qColor;
     if (qRecent) profile.recentSource = qRecent;
     if (qRecentRowsRaw) {
-      const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks"];
+      const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks", "local-topalbums", "local-topartists", "local-toptracks", "local-recenttracks"];
       const rows = [];
       qRecentRowsRaw.split(",").map((x) => String(x || "").trim().toLowerCase()).forEach((s) => {
         if (!s || !allowed.includes(s) || rows.includes(s)) return;
@@ -1108,7 +1108,7 @@
         return;
       }
       if ((d == null ? void 0 : d.type) === "np-controller-settings") {
-        const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks"];
+        const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks", "local-topalbums", "local-topartists", "local-toptracks", "local-recenttracks"];
         const prevPreset = String((profile == null ? void 0 : profile.colorPreset) || "ocean").toLowerCase();
         const prevRowsRaw = Array.isArray(profile == null ? void 0 : profile.recentRows) ? profile.recentRows : ["albums", "playlists", "podcasts", "radio"];
         const prevRows = prevRowsRaw.map((x) => String(x || "").toLowerCase());
@@ -2345,7 +2345,7 @@
     }
   }
   function getRecentRowsConfig() {
-    const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks"];
+    const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks", "local-topalbums", "local-topartists", "local-toptracks", "local-recenttracks"];
     const inRows = Array.isArray(profile == null ? void 0 : profile.recentRows) ? profile.recentRows : [];
     const out = [];
     for (const r of inRows) {
@@ -2367,33 +2367,40 @@
       playlists: "Recent Playlists",
       podcasts: "Recent Podcasts",
       radio: "Favorite Radio Stations",
-      "lastfm-topalbums": "Last.fm Top Albums",
-      "lastfm-topartists": "Last.fm Top Artists",
-      "lastfm-toptracks": "Last.fm Top Tracks",
-      "lastfm-recenttracks": "Last.fm Recently Played"
+      "lastfm-topalbums": "Top Albums",
+      "lastfm-topartists": "Top Artists",
+      "lastfm-toptracks": "Top Tracks",
+      "lastfm-recenttracks": "Recently Played",
+      "local-topalbums": "Local Top Albums",
+      "local-topartists": "Local Top Artists",
+      "local-toptracks": "Local Top Tracks",
+      "local-recenttracks": "Local Recently Played"
     };
     return m[String(src || "").toLowerCase()] || "Recently Added";
   }
-  async function fetchLastfmItemsForSource(source, limit) {
+  async function fetchHistoryItemsForSource(source, limit) {
     await ensureKey();
     const src = String(source || "").toLowerCase();
-    const mode = src === "lastfm-topartists" ? "top-artists" : src === "lastfm-topalbums" ? "top-albums" : src === "lastfm-recenttracks" ? "recent-tracks" : "top-tracks";
-    const modeKey = src.replace(/^lastfm-/, "") || "toptracks";
-    const cacheKey = "np.recent.lastfm.".concat(modeKey, ".v3");
+    const local = src.startsWith("local-");
+    const mode = src.endsWith("topartists") ? "top-artists" : src.endsWith("topalbums") ? "top-albums" : src.endsWith("recenttracks") ? "recent-tracks" : "top-tracks";
+    const modeKey = src.replace(/^(?:lastfm|local)-/, "") || "toptracks";
+    const providerKey = local ? "local-history" : "lastfm";
+    const cacheKey = "np.recent.".concat(providerKey, ".").concat(modeKey, ".v3");
     const cached = loadRecentCache(cacheKey);
-    const maxAge = src === "lastfm-recenttracks" ? 5 * 60 * 1e3 : 30 * 60 * 1e3;
+    const maxAge = src.endsWith("recenttracks") ? (local ? 60 * 1e3 : 5 * 60 * 1e3) : (local ? 5 * 60 * 1e3 : 30 * 60 * 1e3);
     const cacheHasTrackFile = Array.isArray(cached.items) && cached.items.every((it) => !["lastfm-track", "lastfm-album", "lastfm-artist"].includes(String((it == null ? void 0 : it.kind) || "")) || !!String((it == null ? void 0 : it.file) || "").trim());
     if (cacheHasTrackFile && Array.isArray(cached.items) && cached.items.length && Date.now() - Number(cached.ts || 0) < maxAge) {
       return cached.items.slice(0, limit);
     }
     try {
-      const timeout = src === "lastfm-topalbums" ? 12e3 : 6e3;
-      const lr = await fetchJsonWithTimeout("".concat(base, "/config/lastfm/").concat(mode, "?limit=").concat(limit), { cache: "no-store", headers: reqHeaders(false) }, timeout);
+      const timeout = src.endsWith("topalbums") ? 12e3 : 6e3;
+      const routeBase = local ? "/config/listening-history/" : "/config/lastfm/";
+      const lr = await fetchJsonWithTimeout("".concat(base, routeBase).concat(mode, "?limit=").concat(limit), { cache: "no-store", headers: reqHeaders(false) }, timeout);
       const rows = lr.ok && (lr == null ? void 0 : lr.json) && (lr.json == null ? void 0 : lr.json.ok) && Array.isArray(lr.json.items) ? lr.json.items : [];
       if (!rows.length) return cacheHasTrackFile ? (cached.items || []).slice(0, limit) : [];
       const items = rows.slice(0, limit).map((x) => ({
         kind: String((x == null ? void 0 : x.kind) || "lastfm-track"),
-        title: String((x == null ? void 0 : x.title) || "(Last.fm)").trim(),
+        title: String((x == null ? void 0 : x.title) || (local ? "(Local history)" : "(Last.fm)")).trim(),
         artist: String((x == null ? void 0 : x.artist) || "").trim(),
         album: String((x == null ? void 0 : x.album) || "").trim(),
         track: String((x == null ? void 0 : x.track) || "").trim(),
@@ -2416,7 +2423,7 @@
       if (src === "podcasts") return { src, items: (ipadRecentItems.podcasts || []).slice(0, limit) };
       if (src === "playlists") return { src, items: (ipadRecentItems.playlists || []).slice(0, limit) };
       if (src === "radio") return { src, items: (ipadRecentItems.radio || []).slice(0, limit) };
-      if (src.startsWith("lastfm-")) return { src, items: await fetchLastfmItemsForSource(src, limit) };
+      if (src.startsWith("lastfm-") || src.startsWith("local-")) return { src, items: await fetchHistoryItemsForSource(src, limit) };
       return { src: "albums", items: (ipadRecentItems.albums || []).slice(0, limit) };
     });
     const resolved = await Promise.all(jobs);
@@ -2908,7 +2915,7 @@
   }
   async function sendPlaybackDirect(action) {
     const a = String(action || "").toLowerCase();
-    const map = { prev: "previous", previous: "previous", next: "next", play: "play", pause: "pause", toggle: "toggle", stop: "stop" };
+    const map = { prev: "previous", previous: "previous", next: "next", play: "play", pause: "pause", toggle: "toggle_play_pause", stop: "stop" };
     const cmd = map[a];
     if (!cmd) return false;
     await ensureKey();

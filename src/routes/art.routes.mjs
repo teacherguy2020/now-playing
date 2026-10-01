@@ -84,6 +84,22 @@ async function serveCachedOrBlurredBg(res, best, size, cacheBgPathForKey, deps) 
   return res.status(200).send(out);
 }
 
+// Mobile clients identify tracks with opaque IDs. This helper keeps the
+// MPD-relative file path inside the server while reusing the existing cover
+// resolver/cache for an already-authorized local track.
+export async function serveTrackArtwork(res, file, deps, size = 640) {
+  const sourceFile = String(file || '').trim();
+  if (!sourceFile) return res.status(404).end();
+  const source = `/coverart.php/${encodeURIComponent(sourceFile)}`;
+  return serveCachedOrResizedSquare(
+    res,
+    source,
+    Math.max(64, Math.min(1024, Number(size) || 640)),
+    deps.artPath640ForKey,
+    deps,
+  );
+}
+
 export function registerArtRoutes(app, deps) {
   const {
     MOODE_BASE_URL,
