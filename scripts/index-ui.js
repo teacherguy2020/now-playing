@@ -70,7 +70,7 @@ function bindAlbumArtAppleLinkOnce() {
     try {
       const key = await ensureRuntimeTrackKey();
       const headers = { 'Content-Type': 'application/json', ...(key ? { 'x-track-key': key } : {}) };
-      const host = (location.hostname || 'nowplaying.local');
+      const host = (location.hostname || 'sonuvi.local');
       const targetUrl = `${location.protocol}//${host}:8101/kiosk.html`;
       await fetch(`${API_BASE}/config/moode/browser-url`, {
         method: 'POST', headers, body: JSON.stringify({ url: targetUrl, reason:'player-art-to-kiosk' })
@@ -273,10 +273,10 @@ function updatePhoneArtBottomVar() {
  *
  * Rules:
  * - When UI is served from https://moode.brianwis.com:
- *     • NEVER fetch http://nowplaying.local (mixed content will be blocked)
+ *     • NEVER fetch http://sonuvi.local (mixed content will be blocked)
  *     • Use public HTTPS endpoints only
  *
- * - When UI is served on LAN (e.g. http://nowplaying.local:8000):
+ * - When UI is served on LAN (e.g. http://sonuvi.local:8000):
  *     • Use direct LAN endpoints for lowest latency
  */
 

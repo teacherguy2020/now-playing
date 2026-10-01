@@ -243,8 +243,8 @@
         <span id="peppyReadiness" class="setupTxt" style="color:#fbbf24;">Checking Peppy readiness…</span>
         <button id="applyVuTargetBtn" class="skinBtn" type="button" title="Show instructions to fix /etc/peppymeter/config.txt on moOde">How to fix VU target</button>
         <button id="applySpectrumTargetBtn" class="skinBtn" type="button" title="Show instructions to fix /etc/peppyspectrum/config.txt on moOde">How to fix Spectrum target</button>
-        <span class="setupTxt" id="vuTargetHintWrap" style="display:none;">VU target should be <code id="vuTargetHint">http://nowplaying.local:3101/peppy/vumeter</code>.</span>
-        <span class="setupTxt" id="spectrumTargetHintWrap" style="display:none;">Spectrum target should be <code id="spectrumTargetHint">http://nowplaying.local:3101/peppy/spectrum</code>.</span>
+        <span class="setupTxt" id="vuTargetHintWrap" style="display:none;">VU target should be <code id="vuTargetHint">http://sonuvi.local:3101/peppy/vumeter</code>.</span>
+        <span class="setupTxt" id="spectrumTargetHintWrap" style="display:none;">Spectrum target should be <code id="spectrumTargetHint">http://sonuvi.local:3101/peppy/spectrum</code>.</span>
       </div>
 
       <div id="skinOps" class="skinOps" aria-label="Skin operations">
@@ -403,7 +403,7 @@
   <script src="scripts/now-playing-art.js?v=20260924-art-contract4"></script>
   <script>
     (() => {
-      const API_FALLBACK_HOST = 'nowplaying.local';
+      const API_FALLBACK_HOST = 'sonuvi.local';
       const candidates = [
         `${location.protocol}//${location.hostname || API_FALLBACK_HOST}:3101`,
         `http://${location.hostname || API_FALLBACK_HOST}:3101`,

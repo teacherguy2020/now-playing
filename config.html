@@ -172,7 +172,7 @@
                 <div class="cfgRow" style="grid-template-columns: fit-content(220px) fit-content(130px) fit-content(130px); align-items:start; justify-content:start;">
                   <div class="cfgField">
                     <label for="apiNodeIp">API host (hostname or IP) <span id="apiNodeIpLight" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span></label>
-                    <input id="apiNodeIp" class="ipField" type="text" placeholder="ex. nowplaying.local" />
+                    <input id="apiNodeIp" class="ipField" type="text" placeholder="ex. sonuvi.local" />
                     <div class="cfgHint" id="apiNodeIpHint"></div>
                   </div>
                   <div class="cfgField narrow">
@@ -184,7 +184,7 @@
                     <input id="uiPort" type="number" min="1" max="65535" placeholder="ex. 8101" />
                   </div>
                 </div>
-                <div class="cfgHint">Defaults are API <code>3101</code>, UI <code>8101</code>, MPD port <code>6600</code>, and music library root <code>/var/lib/mpd/music</code>. API host can be hostname (recommended: <code>nowplaying.local</code>) or IP. Host fields are auto-prefilled conservatively and never overwrite saved values.</div>
+                <div class="cfgHint">Defaults are API <code>3101</code>, UI <code>8101</code>, MPD port <code>6600</code>, and music library root <code>/var/lib/mpd/music</code>. API host can be hostname (recommended: <code>sonuvi.local</code>) or IP. Host fields are auto-prefilled conservatively and never overwrite saved values.</div>
                 <div class="cfgRow" style="grid-template-columns: fit-content(220px) fit-content(130px) fit-content(220px) fit-content(130px); align-items:start; justify-content:start;">
                   <div class="cfgField">
                     <label for="mpdHost">MPD host <span id="mpdHostLight" title="MPD host verification" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#7dd3fc;box-shadow:0 0 0 3px rgba(125,211,252,.2);margin-left:6px;vertical-align:middle;"></span> <span id="mpdHostVerifyText" class="cfgHint" style="display:inline;color:#9fb3c8;">not verified</span></label>
@@ -587,7 +587,7 @@ async function applyInitialNetworkPrefills(){
   if (apiPortEl && !String(apiPortEl.value || '').trim()) apiPortEl.value = '3101';
   if (uiPortEl && !String(uiPortEl.value || '').trim()) uiPortEl.value = '8101';
   if (apiNodeIpEl && !String(apiNodeIpEl.value || '').trim()) {
-    const pref = (await probeApiHostReachable('nowplaying.local', Number(apiPortEl?.value || 3101))) ? 'nowplaying.local' : host;
+    const pref = (await probeApiHostReachable('sonuvi.local', Number(apiPortEl?.value || 3101))) ? 'sonuvi.local' : host;
     apiNodeIpEl.value = pref;
   }
   if (mpdHostEl && !String(mpdHostEl.value || '').trim()) mpdHostEl.value = '';
@@ -596,8 +596,8 @@ async function applyInitialNetworkPrefills(){
 
   if (apiNodeIpHint) {
     const chosen = String(apiNodeIpEl?.value || host);
-    apiNodeIpHint.textContent = (chosen === 'nowplaying.local')
-      ? 'Auto-defaulted to mDNS host: nowplaying.local'
+    apiNodeIpHint.textContent = (chosen === 'sonuvi.local')
+      ? 'Auto-defaulted to mDNS host: sonuvi.local'
       : `Auto-defaulted from page host: ${chosen}`;
   }
   if (mpdHostHint) mpdHostHint.textContent = 'Enter moOde player IP/hostname (example: moode.local).';
@@ -1121,7 +1121,7 @@ async function loadCfg(){
 
   const c = j.config || {};
   const full = j.fullConfig || {};
-  const host = location.hostname || 'nowplaying.local';
+  const host = location.hostname || 'sonuvi.local';
   const apiPortHint = Number(c.ports?.api || 3101);
   const uiPortHint = Number(c.ports?.ui || 8101);
   const apiHint = document.getElementById('apiHint');
@@ -1206,18 +1206,18 @@ async function loadCfg(){
   loadedNodes = Array.isArray(full.nodes) ? full.nodes.slice() : [];
   const node0 = loadedNodes.length ? loadedNodes[0] : {};
   const configuredApiHost = String(full.apiHost || c.apiHost || node0.ip || '').trim();
-  const apiNodeAuto = (!configuredApiHost || configuredApiHost === 'nowplaying.local');
+  const apiNodeAuto = (!configuredApiHost || configuredApiHost === 'sonuvi.local');
   let apiNodePrefill = configuredApiHost;
   if (apiNodeAuto) {
-    const prefersMdns = await probeApiHostReachable('nowplaying.local', apiPortHint);
-    apiNodePrefill = prefersMdns ? 'nowplaying.local' : host;
+    const prefersMdns = await probeApiHostReachable('sonuvi.local', apiPortHint);
+    apiNodePrefill = prefersMdns ? 'sonuvi.local' : host;
   }
   document.getElementById('apiNodeIp').value = apiNodePrefill;
   const apiNodeIpHint = document.getElementById('apiNodeIpHint');
   if (apiNodeIpHint) {
     if (!apiNodeAuto) apiNodeIpHint.textContent = `Loaded from config: ${apiNodePrefill}`;
-    else apiNodeIpHint.textContent = (apiNodePrefill === 'nowplaying.local')
-      ? 'Auto-defaulted to mDNS host: nowplaying.local'
+    else apiNodeIpHint.textContent = (apiNodePrefill === 'sonuvi.local')
+      ? 'Auto-defaulted to mDNS host: sonuvi.local'
       : `Auto-defaulted from page host: ${apiNodePrefill}`;
   }
 
@@ -2066,7 +2066,7 @@ async function checkDisplayTakeoverTargetNow(){
   if (!hint) return;
   if (!enabled) { hint.textContent = ''; return; }
 
-  const host = location.hostname || 'nowplaying.local';
+  const host = location.hostname || 'sonuvi.local';
   const expected = `${location.protocol}//${host}:8101/display.html?kiosk=1`;
   const key = getTrackKey();
   if (!key) {

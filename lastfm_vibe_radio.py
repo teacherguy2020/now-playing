@@ -127,7 +127,7 @@ def mpd_to_abs(mpd_file: str) -> str:
     """
     Convert MPD-visible paths to a local filesystem path for Mutagen reads.
 
-    On the API host (nowplaying.local), the library is typically mounted at:
+    On the API host (sonuvi.local), the library is typically mounted at:
       - /mnt/SamsungMoode/...
       - /mnt/OSDISK/...
 

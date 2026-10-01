@@ -75,7 +75,7 @@ That means `displays.html` is effectively a curated jump surface into the design
 
 ### Runtime host model
 The page computes:
-- `host = location.hostname || 'nowplaying.local'`
+- `host = location.hostname || 'sonuvi.local'`
 - `base = ${location.protocol}//${host}:3101`
 
 So its control-plane API target is always the app-host on port `3101` for the current hostname.

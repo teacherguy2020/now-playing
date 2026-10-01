@@ -58,7 +58,7 @@
       const searchEl=$('ytSearch'), searchBtn=$('ytSearchBtn'), resultsEl=$('results');
       const playlistsOnlyEl=$('ytPlaylistsOnly');
       const playlistRowsEl=$('playlistRows'), selectAllEl=$('ytSelectAll');
-      const base=`${location.protocol}//${location.hostname||'nowplaying.local'}:3101`;
+      const base=`${location.protocol}//${location.hostname||'sonuvi.local'}:3101`;
       let key='';
       let lastResolved=null;
       const esc=(s)=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));

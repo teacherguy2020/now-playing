@@ -101,7 +101,7 @@ Observed helper logic includes `applyInitialNetworkPrefills()`.
 Observed behavior includes:
 - default API port to `3101`
 - default UI port to `8101`
-- attempt to prefer `nowplaying.local` when reachable
+- attempt to prefer `sonuvi.local` when reachable
 - otherwise fall back to the current page host
 - annotate the hints accordingly
 
@@ -365,7 +365,7 @@ Future deeper verification should clarify:
 - exactly how `applyRuntimeGate()` blocks/unblocks downstream cards
 - what full payload the `check-env` endpoint returns in all scenarios
 - whether there are additional runtime-fix endpoints beyond podcast-root creation
-- how often Brian’s current deployment relies on `nowplaying.local` auto-prefill vs explicit configured hosts
+- how often Brian’s current deployment relies on `sonuvi.local` auto-prefill vs explicit configured hosts
 
 ## Current status
 

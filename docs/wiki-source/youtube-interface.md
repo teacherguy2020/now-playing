@@ -85,7 +85,7 @@ This means the page supports several distinct operator actions, not just one “
 ## Core supporting state
 
 The page builds an app-host API base as:
-- `${location.protocol}//${location.hostname||'nowplaying.local'}:3101`
+- `${location.protocol}//${location.hostname||'sonuvi.local'}:3101`
 
 It also caches the runtime track key in local state via:
 - `key`

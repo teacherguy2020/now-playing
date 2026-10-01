@@ -41,9 +41,9 @@ Important runtime note:
   - **Native fullscreen spectrum:** bridge OFF, native spectrum ON
 - Required HTTP targets for WebUI/bridge mode:
   - Peppy VU (`/etc/peppymeter/config.txt`):
-    - `[http.interface] target.url = http://nowplaying.local:3101/peppy/vumeter`
+    - `[http.interface] target.url = http://sonuvi.local:3101/peppy/vumeter`
   - Peppy Spectrum (`/etc/peppyspectrum/config.txt`):
-    - `[http.interface] target.url = http://nowplaying.local:3101/peppy/spectrum`
+    - `[http.interface] target.url = http://sonuvi.local:3101/peppy/spectrum`
     - `[http.interface] update.period = 0.05`
 
 ## Why this is different (builder-first display design)
@@ -93,7 +93,7 @@ For moOde r1034 and later, set it to the portless LAN-proxy URL:
 
 For example:
 
-- `http://nowplaying.local/display.html?kiosk=1`
+- `http://sonuvi.local/display.html?kiosk=1`
 
 Do not use `http://<WEB_HOST>:8101/display.html?kiosk=1` as the moOde Target
 URL. r1034's dual-display validation rejects an explicit port, while the
@@ -130,10 +130,10 @@ Use moOde's startup hook (`/var/local/www/commandw/ready-script.sh`) to run an i
 ### What the restore script should enforce
 
 - `/etc/peppyspectrum/config.txt`
-  - `[http.interface] target.url = http://nowplaying.local:3101/peppy/spectrum`
+  - `[http.interface] target.url = http://sonuvi.local:3101/peppy/spectrum`
   - `[http.interface] update.period = 0.05`
 - `/etc/peppymeter/config.txt`
-  - `[http.interface] target.url = http://nowplaying.local:3101/peppy/vumeter`
+  - `[http.interface] target.url = http://sonuvi.local:3101/peppy/vumeter`
 - Ensure `/opt/peppyspectrum/config.txt` points to `/etc/peppyspectrum/config.txt`
 - Start `peppy-spectrum-bridge.service`
 
