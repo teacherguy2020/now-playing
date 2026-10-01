@@ -4087,9 +4087,13 @@
       let heroAlexaPendingTarget = null;
       let heroAlexaPendingTimer = 0;
       function isAlexaModeConfirmed(value){
-        return !!value && (
-          value.modeActive === true
-        );
+        if (!value) return false;
+        if (value.modeActive === true) return true;
+
+        // Recover the visible mode after an API restart or missed Homebridge
+        // state POST while an Alexa track is still actively playing.
+        return value.active === true
+          && String(value.playbackMode || '').trim().toLowerCase() === 'alexa';
       }
       function paintHeroAlexaButton(active, busy = false){
         heroAlexaActive = !!active;

@@ -391,6 +391,7 @@
       let alexaPendingTimer = 0;
       const isAlexaModeConfirmed = (value) => !!value && (
         value.modeActive === true
+        || (value.active === true && String(value.playbackMode || '').trim().toLowerCase() === 'alexa')
       );
       const paintAlexa = (active, busy = false) => {
         alexaActive = !!active;

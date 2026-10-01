@@ -962,6 +962,7 @@
     const routeAlexaButton = document.getElementById('routeAlexaBtn');
     const isAlexaModeConfirmed = (value) => !!value && (
       value.modeActive === true
+      || (value.active === true && String(value.playbackMode || '').trim().toLowerCase() === 'alexa')
     );
     function paintAlexaButton(active, busy = false){
       alexaActive = !!active;

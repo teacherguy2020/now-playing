@@ -614,9 +614,17 @@ async function fetchAlexaPayload() {
 
     const wpHas = !!(wp && (wp.file || wp.title || wp.artist));
     const npHas = !!(np && (np.file || np.title || np.artist));
-    const isActiveAlexaState = (state) => (
-      state?.modeActive === true
-    );
+    const isActiveAlexaState = (state) => {
+      if (!state) return false;
+      if (state.modeActive === true) return true;
+
+      // Recover web awareness after an API restart or missed Homebridge
+      // state POST. The Alexa endpoint still retains an active Alexa track,
+      // while the in-memory mode marker may have been cleared. A normal
+      // playback state cannot satisfy this combination.
+      return state.active === true
+        && String(state.playbackMode || '').trim().toLowerCase() === 'alexa';
+    };
     const activeState = isActiveAlexaState(wp) ? wp : (isActiveAlexaState(np) ? np : null);
 
     // Homebridge's Alexa Mode state is authoritative even before Alexa has

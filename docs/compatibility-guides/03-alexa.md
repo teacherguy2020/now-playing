@@ -42,6 +42,26 @@ change the MPD queue. They synchronize the local MPD ALSA output: Alexa Mode
 `off` enables it again. The HTTP Server output used by Listen on Device
 remains enabled.
 
+### Controller reload recovery
+
+The controller surfaces are designed to recover Alexa awareness on page load
+without interrupting Echo playback. They read `/alexa/was-playing` and treat
+an active payload with `playbackMode: "alexa"` as Alexa playback even if the
+in-memory `modeActive` flag was lost during an API restart or a missed
+Homebridge state POST. An ordinary local playback payload does not satisfy
+that fallback.
+
+For the local controller, use:
+
+```text
+http://sonuvi.local:8101/controller-tablet.html
+```
+
+The controller loads the shared Alexa button logic with a versioned asset URL
+so browser caches do not retain an older state detector. After a frontend
+update, reload the controller page; playback on the Echo is not stopped or
+restarted.
+
 ## What this page is for
 - Managing correction maps (artist/album/playlist spellings)
 - Reviewing recent Alexa command outcomes
