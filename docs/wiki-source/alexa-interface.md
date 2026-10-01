@@ -250,7 +250,8 @@ Examples documented in the page include:
 - transport/control phrases
 
 Two especially important clarifications encoded in the page are:
-- invocation name is `sonuvi music`
+- the product/display name is `Sonuvi` and the Alexa invocation is `sonuvi audio`
+- the Alexa Developer Console **Audio Player** interface must be enabled for Echo playback and `AudioPlayer.Play` directives
 - `here` means local moOde playback, not playback on Echo speakers
 - `locally` means the same thing and may be used at the end of a play request
 

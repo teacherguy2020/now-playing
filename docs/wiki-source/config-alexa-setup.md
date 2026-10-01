@@ -11,7 +11,22 @@ This page is about the setup layer:
 - public domain
 - Homebridge start/stop action webhook URLs
 - domain reachability checks
+- Alexa Developer Console skill and interface requirements
 - setup-state visual feedback
+
+## Alexa Developer Console requirements
+
+The repository-side skill is branded **Sonuvi**. In the Alexa Developer
+Console, use:
+
+- **Skill display name:** `Sonuvi`
+- **Invocation name:** `sonuvi audio`
+- **Build → Interfaces:** enable **Audio Player**
+
+The Audio Player interface is required for Echo playback and for the skill's
+`AudioPlayer.Play`, `AudioPlayer.Stop`, and playback lifecycle events. This is
+separate from the interaction model JSON and from the Lambda ZIP. Keep the
+existing intent names, API contracts, and playback behavior unchanged.
 
 ## Why this page matters
 

@@ -54,15 +54,17 @@ If you are starting from scratch, do this once before uploading code:
    - **Provision your own** if you are wiring your own Lambda.
 5. Create the skill.
 6. In **Build** tab:
-   - Set invocation name to `sonuvi music`.
+   - Set the skill display name to `Sonuvi` and invocation name to `sonuvi audio`.
+   - Under **Interfaces**, enable **Audio Player**. This is required for Echo playback and `AudioPlayer.Play`/playback lifecycle events.
    - Import/paste `alexa/interaction-model.v2.json` in JSON editor.
+   - After importing, verify the Console's invocation setting remains `sonuvi audio`; the invocation is Console skill metadata and must match the skill you created.
    - Save model, then **Build Model**.
 7. In **Code** tab:
    - Upload the zip package (steps below), then click **Deploy**.
 8. In **Code** → **Environment variables** (or Lambda env vars), set:
    - `API_BASE=https://<your-public-domain>`
    - `TRACK_KEY=<same track key as your API/config.html>`
-9. Test in **Test** tab (development stage) with: “open Sonuvi Music” and “what’s playing”.
+9. Test in **Test** tab (development stage) with: “open Sonuvi Audio” and “what’s playing”.
 
 ## Public HTTPS with Caddy (recommended)
 
@@ -265,7 +267,7 @@ Direct request behavior (no prepped queue required):
 
 - Multi-artist phrasing using **plus** is supported (for example: “play a mix of artist Miles Davis plus John Coltrane”).
 - Best reliability is usually a two-step flow:
-  1. “Alexa, open Sonuvi Music.”
+  1. “Alexa, open Sonuvi Audio.”
   2. “Play a mix of artist Miles Davis plus John Coltrane.”
 - One-shot phrasing (`ask <skill> to ...`) may sometimes launch the skill without passing the tail request, depending on Alexa parsing.
 - Parsed artist sets are sent to API queue-building routes, which produce the combined queue/mix.
