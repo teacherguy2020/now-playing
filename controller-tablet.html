@@ -4074,14 +4074,9 @@
     }
     try {
       if (act === "shuffle") {
-        const wasOn = btn.classList.contains("on");
-        const optimistic = !wasOn;
-        document.querySelectorAll('#npCtrls .ctl[data-np-act="shuffle"]').forEach((b) => b.classList.toggle("on", optimistic));
-        const out = await sendPlaybackChecked(act);
+        // Shuffle is a physical upcoming-queue reorder, not MPD random mode.
+        const out = await sendPlaybackChecked("shufflequeue");
         if (out.ok) {
-          if (typeof (out == null ? void 0 : out.data.randomOn) === "boolean") {
-            document.querySelectorAll('#npCtrls .ctl[data-np-act="shuffle"]').forEach((b) => b.classList.toggle("on", !!out.data.randomOn));
-          }
           btn.classList.add("confirm");
           setTimeout(() => {
             try {
@@ -4089,8 +4084,8 @@
             } catch {
             }
           }, 560);
-        } else {
-          document.querySelectorAll('#npCtrls .ctl[data-np-act="shuffle"]').forEach((b) => b.classList.toggle("on", wasOn));
+          window.dispatchEvent(new CustomEvent("np-live-queue-changed"));
+          setTimeout(() => refreshNowPlayingCard().catch(() => null), 120);
         }
       } else {
         const useSpinner = act !== "repeat";

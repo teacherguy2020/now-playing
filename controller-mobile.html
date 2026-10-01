@@ -2253,7 +2253,9 @@
       const act = String(btn.getAttribute('data-np-act') || '').trim().toLowerCase();
       if (!act) return;
       btn.disabled = true;
-      try { await sendPlayback(act); } catch {}
+      // Shuffle reorders the physical upcoming queue; it never enables MPD
+      // random mode. Keep this aligned with the tablet transport control.
+      try { await sendPlayback(act === 'shuffle' ? 'shufflequeue' : act); } catch {}
       finally { btn.disabled = false; }
       refreshNowPlayingCard().catch(()=>null);
     });
