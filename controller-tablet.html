@@ -1072,7 +1072,7 @@
   function renderPeekRow(step = 1) {
     if (!peekRail) return;
     const target = nextRecentSource(step);
-    const label = { albums: "Albums", podcasts: "Podcasts", playlists: "Playlists", radio: "Radio" }[target] || "Next";
+    const label = { albums: "Albums", podcasts: "Podcasts", playlists: "Playlists", radio: "Radio", queue: "Live Queue" }[target] || "Next";
     peekRail.innerHTML = "";
     for (let i = 0; i < Math.min(recentLimit(), 6); i++) {
       const d = document.createElement("div");
@@ -1086,6 +1086,11 @@
   window.addEventListener("message", (ev) => {
     try {
       const d = (ev == null ? void 0 : ev.data) || {};
+      if ((d == null ? void 0 : d.type) === "np-live-queue-changed") {
+        const rows = Array.isArray(profile && profile.recentRows) ? profile.recentRows : [];
+        if (String(profile && profile.recentSource || "").toLowerCase() === "queue" || rows.includes("queue")) loadRecentlyAdded().catch(() => null);
+        return;
+      }
       if ((d == null ? void 0 : d.type) === "np-controller-wake-lock") {
         setKeepDisplayAwake(!!(d == null ? void 0 : d.enabled));
         return;
@@ -1108,7 +1113,7 @@
         return;
       }
       if ((d == null ? void 0 : d.type) === "np-controller-settings") {
-        const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks", "local-topalbums", "local-topartists", "local-toptracks", "local-recenttracks"];
+        const allowed = ["albums", "playlists", "podcasts", "radio", "queue", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks", "local-topalbums", "local-topartists", "local-toptracks", "local-recenttracks"];
         const prevPreset = String((profile == null ? void 0 : profile.colorPreset) || "ocean").toLowerCase();
         const prevRowsRaw = Array.isArray(profile == null ? void 0 : profile.recentRows) ? profile.recentRows : ["albums", "playlists", "podcasts", "radio"];
         const prevRows = prevRowsRaw.map((x) => String(x || "").toLowerCase());
@@ -2111,6 +2116,9 @@
   }
   function railFlipButtonsHtml(rowKey, i) {
     const row = String(rowKey || "albums").trim().toLowerCase();
+    if (row === "queue") {
+      return "<button type='button' data-ra-flip-act='open' data-ra-row='".concat(row, "' data-ra-idx='").concat(i, "'>Open Queue</button>");
+    }
     if (row === "radio") {
       return "<button type='button' data-ra-flip-act='play' data-ra-row='".concat(row, "' data-ra-idx='").concat(i, "'>Play</button><button type='button' data-ra-flip-act='add' data-ra-row='").concat(row, "' data-ra-idx='").concat(i, "'>Add</button><button type='button' data-ra-flip-act='replace' data-ra-row='").concat(row, "' data-ra-idx='").concat(i, "'>Replace</button>");
     }
@@ -2345,7 +2353,7 @@
     }
   }
   function getRecentRowsConfig() {
-    const allowed = ["albums", "playlists", "podcasts", "radio", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks", "local-topalbums", "local-topartists", "local-toptracks", "local-recenttracks"];
+    const allowed = ["albums", "playlists", "podcasts", "radio", "queue", "lastfm-topalbums", "lastfm-topartists", "lastfm-toptracks", "lastfm-recenttracks", "local-topalbums", "local-topartists", "local-toptracks", "local-recenttracks"];
     const inRows = Array.isArray(profile == null ? void 0 : profile.recentRows) ? profile.recentRows : [];
     const out = [];
     for (const r of inRows) {
@@ -2367,6 +2375,7 @@
       playlists: "Recent Playlists",
       podcasts: "Recent Podcasts",
       radio: "Favorite Radio Stations",
+      queue: "Live Queue",
       "lastfm-topalbums": "Top Albums",
       "lastfm-topartists": "Top Artists",
       "lastfm-toptracks": "Top Tracks",
@@ -2423,6 +2432,22 @@
       if (src === "podcasts") return { src, items: (ipadRecentItems.podcasts || []).slice(0, limit) };
       if (src === "playlists") return { src, items: (ipadRecentItems.playlists || []).slice(0, limit) };
       if (src === "radio") return { src, items: (ipadRecentItems.radio || []).slice(0, limit) };
+      if (src === "queue") {
+        const qr = await fetchJsonWithTimeout("".concat(base, "/config/diagnostics/queue"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
+        const payload = qr.ok && (qr == null ? void 0 : qr.json) && qr.json.ok ? qr.json : null;
+        const headPos = Number((payload == null ? void 0 : payload.headPos) || -1);
+        const items = (Array.isArray(payload == null ? void 0 : payload.items) ? payload.items : [])
+          .filter((x) => headPos < 0 || Number((x == null ? void 0 : x.position) || 0) > headPos)
+          .slice(0, limit)
+          .map((x) => ({
+            kind: "queue",
+            title: String((x == null ? void 0 : x.title) || (x == null ? void 0 : x.stationName) || (x == null ? void 0 : x.file) || "(upcoming track)").trim(),
+            artist: String((x == null ? void 0 : x.artist) || "").trim(),
+            file: String((x == null ? void 0 : x.file) || "").trim(),
+            art: String((x == null ? void 0 : x.thumbUrl) || "").trim() || "".concat(base, "/art/current.jpg")
+          }));
+        return { src, items };
+      }
       if (src.startsWith("lastfm-") || src.startsWith("local-")) return { src, items: await fetchHistoryItemsForSource(src, limit) };
       return { src: "albums", items: (ipadRecentItems.albums || []).slice(0, limit) };
     });
@@ -2485,6 +2510,33 @@
       return;
     }
     try {
+      if (src === "queue") {
+        const qr = await fetchJsonWithTimeout("".concat(base, "/config/diagnostics/queue"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
+        const payload = qr.ok && (qr == null ? void 0 : qr.json) && qr.json.ok ? qr.json : null;
+        const headPos = Number((payload == null ? void 0 : payload.headPos) || -1);
+        const rows = Array.isArray(payload == null ? void 0 : payload.items) ? payload.items : [];
+        recentItems = rows.filter((x) => headPos < 0 || Number((x == null ? void 0 : x.position) || 0) > headPos).slice(0, 20).map((x) => ({
+          kind: "queue",
+          title: String((x == null ? void 0 : x.title) || (x == null ? void 0 : x.stationName) || (x == null ? void 0 : x.file) || "(upcoming track)").trim(),
+          artist: String((x == null ? void 0 : x.artist) || "").trim(),
+          file: String((x == null ? void 0 : x.file) || "").trim(),
+          art: String((x == null ? void 0 : x.thumbUrl) || "").trim() || "".concat(base, "/art/current.jpg")
+        }));
+        rail.innerHTML = "";
+        if (!recentItems.length) {
+          rail.innerHTML = "<div class='thumb'><div class='thumbWrap'><div class='ph'></div></div><div class='cap'>Queue is empty</div></div>";
+        } else {
+          recentItems.forEach((it, i) => {
+            const d = document.createElement("div");
+            d.className = "thumb";
+            d.setAttribute("data-ra-idx", String(i));
+            d.innerHTML = "<div class='thumbWrap'><img src='".concat(escAttr(normalizeThumbUrl(it.art)), "' alt=''><button type='button' class='thumbMore' data-ra-more='1' data-ra-idx='").concat(i, "'>•••</button></div><div class='cap' title='").concat(escAttr(it.title), "'>").concat(escHtml(it.title), "</div>");
+            rail.appendChild(d);
+          });
+        }
+        recentRenderedSource = "queue";
+        return;
+      }
       if (src === "podcasts") {
         const pr = await fetchJsonWithTimeout("".concat(base, "/podcasts"), { cache: "no-store", headers: reqHeaders(false) }, 3200);
         const shows = pr.ok && ((_a6 = pr.json) == null ? void 0 : _a6.ok) && Array.isArray(pr.json.items) ? pr.json.items : [];
@@ -4572,6 +4624,10 @@
       const i2 = Number(more.getAttribute("data-ra-idx"));
       const a2 = recentItems[i2];
       if (!a2) return;
+      if (a2.kind === "queue") {
+        openPage("kiosk-queue.html");
+        return;
+      }
       recentMenuCtx = { ...a2 };
       const m = openRecentMenuFor(a2);
       const r = more.getBoundingClientRect();
@@ -4585,6 +4641,10 @@
     const i = Number(cell.getAttribute("data-ra-idx"));
     const a = recentItems[i];
     if (!a) return;
+    if (a.kind === "queue") {
+      openPage("kiosk-queue.html");
+      return;
+    }
     setThumbBusy(cell, true);
     try {
     if (a.kind === "lastfm-track") {
@@ -4665,6 +4725,10 @@
       const arr2 = Array.isArray(ipadRecentItems == null ? void 0 : ipadRecentItems[row2]) ? ipadRecentItems[row2] : [];
       const a2 = arr2[i2];
       if (!a2) return;
+      if (a2.kind === "queue") {
+        openPage("kiosk-queue.html");
+        return;
+      }
       recentMenuCtx = { ...a2 };
       closeIpadRecentFlips();
       const kind = String((recentMenuCtx == null ? void 0 : recentMenuCtx.kind) || "album");
@@ -4812,6 +4876,10 @@
     const arr = Array.isArray(ipadRecentItems == null ? void 0 : ipadRecentItems[row]) ? ipadRecentItems[row] : [];
     const a = arr[i];
     if (!a) return;
+    if (a.kind === "queue") {
+      openPage("kiosk-queue.html");
+      return;
+    }
     setThumbBusy(cell, true);
     try {
     if (a.kind === "lastfm-track") {
@@ -5510,6 +5578,11 @@
     refreshTabletNextUp().catch(() => null);
     refreshTabletQueuePos().catch(() => null);
     setInterval(refreshNowPlayingCard, 3500);
+    setInterval(() => {
+      const rows = Array.isArray(profile && profile.recentRows) ? profile.recentRows : [];
+      if (document.hidden || (String(profile && profile.recentSource || "").toLowerCase() !== "queue" && !rows.includes("queue"))) return;
+      loadRecentlyAdded().catch(() => null);
+    }, 5000);
     setInterval(() => {
       refreshTabletNextUp().catch(() => null);
       refreshTabletQueuePos().catch(() => null);

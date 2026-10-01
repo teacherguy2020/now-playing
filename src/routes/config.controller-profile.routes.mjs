@@ -34,7 +34,7 @@ function sanitizeProfile(input = {}) {
     secondaryTextColor: hex(ccIn.secondaryTextColor, DEFAULT_PROFILE.customColors.secondaryTextColor),
   };
   const allowedRows = [
-    'albums', 'playlists', 'podcasts', 'radio',
+    'albums', 'playlists', 'podcasts', 'radio', 'queue',
     'lastfm-topalbums', 'lastfm-topartists', 'lastfm-toptracks', 'lastfm-recenttracks',
     'local-topalbums', 'local-topartists', 'local-toptracks', 'local-recenttracks',
   ];
