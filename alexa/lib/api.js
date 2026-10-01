@@ -219,11 +219,14 @@ function createApiClient(config) {
   }
 
   async function apiMpdShuffle() {
-    const url = API_BASE + '/mpd/shuffle';
+    // Alexa's Shuffle command follows the user-visible queue model: reorder
+    // the physical upcoming queue and disable MPD random mode. Keep the
+    // helper name for Lambda compatibility, but do not toggle random.
+    const url = API_BASE + '/config/diagnostics/playback';
     const headers = TRACK_KEY ? { 'x-track-key': TRACK_KEY } : {};
     return httpRequestJson('POST', url, {
       headers,
-      bodyObj: {},
+      bodyObj: { action: 'shufflequeue' },
       timeoutMs: HTTP_TIMEOUT_MS,
     });
   }

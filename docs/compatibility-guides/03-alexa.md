@@ -86,6 +86,13 @@ restarted.
 ## Behavior note
 In Alexa mode, queue behavior is different from normal playback. The UI treats queue head as queued-next.
 
+Alexa `ShuffleIntent` follows the same physical-queue model as the web and
+mobile controllers. It reorders the upcoming queue, leaves the current and
+already-played portion fixed, and turns MPD random mode off so the visible
+queue remains the playback order. It does not merely toggle MPD's random
+flag. The Alexa skill's intent name and interaction model remain unchanged;
+the Lambda API helper delegates to the server's `shufflequeue` action.
+
 ### Alexa as a moOde controller
 
 Use a leading destination phrase when Alexa should control moOde instead of

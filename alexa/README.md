@@ -239,7 +239,7 @@ High-level flow:
 - Alexa responses are conversational wrappers around those API outcomes.
 - Alexa playback is intended for use while in a different room than your moOde pi. Therefore moOde (MPD) does not play when the skill is in use.
 - You can make changes to the queue while Alexa is playing.
-- Alexa will respect shuffle setting (on or off). It tries to faithfully replicate how moOde would behave.
+- Alexa Shuffle reorders the physical upcoming queue, matching the web and mobile controllers; it does not enable MPD random mode.
 
 
 Queue-first behavior (prepped queue):
