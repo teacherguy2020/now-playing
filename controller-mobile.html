@@ -450,7 +450,7 @@
 
   <div class="recentWrap">
     <button type="button" class="railModeBtn" id="railModeBtn" aria-label="Switch recent rail source">
-      <span class="railModeDots" aria-hidden="true"><b data-rdot="albums"></b><b data-rdot="podcasts"></b><b data-rdot="playlists"></b><b data-rdot="radio"></b></span>
+      <span class="railModeDots" aria-hidden="true"><b data-rdot="albums"></b><b data-rdot="podcasts"></b><b data-rdot="playlists"></b><b data-rdot="radio"></b><b data-rdot="queue"></b></span>
     </button>
     <div class="recentTitle" id="recentTitle">Recently Added <span id="railTitleSpin" class="titleSpin" hidden></span></div>
     <div class="rail" id="recentRail"></div>
@@ -609,7 +609,7 @@
       applyDevicePresetUi();
       const show = profile.showRecent !== false;
       const src = String(profile.recentSource || 'albums').toLowerCase();
-      const titleBySrc = { albums:'Recently Added', podcasts:'Recent Podcasts', playlists:'Recent Playlists', radio:'Favorite Radio Stations' };
+      const titleBySrc = { albums:'Recently Added', podcasts:'Recent Podcasts', playlists:'Recent Playlists', radio:'Favorite Radio Stations', queue:'Live Queue' };
       const rt = document.getElementById('recentTitle');
       if (rt) rt.innerHTML = `${titleBySrc[src] || 'Recently Added'} <span id="railTitleSpin" class="titleSpin" hidden></span>`;
       const isIpad11 = document.body.classList.contains('ipad11');
@@ -640,7 +640,7 @@
     }
 
     function nextRecentSource(step=1){
-      const order = ['albums','podcasts','playlists','radio'];
+      const order = ['albums','podcasts','playlists','radio','queue'];
       const cur = String(profile?.recentSource || 'albums').toLowerCase();
       const idx = Math.max(0, order.indexOf(cur));
       return order[(idx + (step>=0?1:-1) + order.length) % order.length];
@@ -655,7 +655,7 @@
     function renderPeekRow(step=1){
       if (!peekRail) return;
       const target = nextRecentSource(step);
-      const label = ({albums:'Albums',podcasts:'Podcasts',playlists:'Playlists',radio:'Radio'})[target] || 'Next';
+      const label = ({albums:'Albums',podcasts:'Podcasts',playlists:'Playlists',radio:'Radio',queue:'Live Queue'})[target] || 'Next';
       peekRail.innerHTML = '';
       for (let i=0;i<Math.min(recentLimit(),6);i++) {
         const d=document.createElement('div'); d.className='thumb';
@@ -1186,6 +1186,7 @@
 
     function recentFlipButtonsHtml(kind, idx){
       const k = String(kind || 'album').trim().toLowerCase();
+      if (k === 'queue') return `<button type='button' data-ra-flip-act='open' data-ra-idx='${idx}'>Open Queue</button>`;
       if (k === 'radio') {
         return `<button type='button' data-ra-flip-act='play' data-ra-idx='${idx}'>Play</button><button type='button' data-ra-flip-act='add' data-ra-idx='${idx}'>Add</button><button type='button' data-ra-flip-act='replace' data-ra-idx='${idx}'>Replace</button>`;
       }
@@ -1332,6 +1333,37 @@
         return;
       }
       try {
+        if (src === 'queue') {
+          const qr = await fetchJsonWithTimeout(`${base}/config/diagnostics/queue`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
+          const payload = qr.ok && qr.json?.ok ? qr.json : null;
+          const rows = Array.isArray(payload?.items) ? payload.items : [];
+          const headPos = Number(payload?.headPos || -1);
+          const upcoming = rows
+            .filter((x)=>headPos < 0 || Number(x?.position || 0) > headPos)
+            .slice(0, 20);
+          recentItems = upcoming.map((x)=>{
+            const title = String(x?.title || x?.stationName || x?.file || '(upcoming track)').trim();
+            const artist = String(x?.artist || '').trim();
+            return {
+              kind:'queue',
+              title: artist ? `${title} • ${artist}` : title,
+              file: String(x?.file || '').trim(),
+              art: String(x?.thumbUrl || '').trim() || `${base}/art/current.jpg`,
+            };
+          });
+          rail.innerHTML = '';
+          if (!recentItems.length) {
+            rail.innerHTML = `<div class='thumb'><div class='thumbWrap'><div class='ph'></div></div><div class='cap'>Queue is empty</div></div>`;
+          } else {
+            recentItems.forEach((it,i)=>{
+              const d=document.createElement('div'); d.className='thumb'; d.setAttribute('data-ra-idx', String(i));
+              d.innerHTML = railThumbHtml(it, i);
+              rail.appendChild(d);
+            });
+          }
+          recentRenderedSource = 'queue';
+          return;
+        }
         if (src === 'podcasts') {
           const pr = await fetchJsonWithTimeout(`${base}/podcasts`, { cache:'no-store', headers:reqHeaders(false) }, 3200);
           const shows = (pr.ok && pr.json?.ok && Array.isArray(pr.json.items)) ? pr.json.items : [];
@@ -2473,6 +2505,10 @@
           if (act === 'add') { await playOrAddRadio(a.url, 'append'); return; }
           return;
         }
+        if (a.kind === 'queue') {
+          if (act === 'open') window.location.href = 'controller-queue.html';
+          return;
+        }
         if (a.kind === 'playlist') {
           if (act === 'open') { await openRecentPlaylistFrom(a); return; }
           if (act === 'play') { await fetch(`${base}/config/queue-wizard/load-playlist`,{method:'POST',headers:reqHeaders(true),body:JSON.stringify({playlist:a.playlist,mode:'replace',play:true})}).catch(()=>null); return; }
@@ -2519,6 +2555,7 @@
         await playOrAddRadio(a.url, 'replace');
         return;
       }
+      if (a.kind === 'queue') { window.location.href = 'controller-queue.html'; return; }
       if (a.kind === 'album') { await openRecentAlbumFrom(a); return; }
     });
 

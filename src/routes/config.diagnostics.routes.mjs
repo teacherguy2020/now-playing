@@ -8,6 +8,75 @@ import { isMoodeTransportError, moodeDirectTransportCommand } from '../lib/moode
 
 const execFileP = promisify(execFile);
 
+// One-level, guarded undo for the Live Queue's physical shuffle. The snapshot
+// is intentionally process-local: undo is a convenience action, not a second
+// queue store, and it must never restore over intervening queue mutations.
+let liveQueueShuffleUndo = null;
+
+function queueFingerprint(files = []) {
+  return JSON.stringify(Array.isArray(files) ? files.map((f) => String(f || '')) : []);
+}
+
+function parseMpdHeadPosition(statusText = '') {
+  const m = String(statusText || '').match(/#(\d+)\/\d+/);
+  const n = m ? Number(m[1] || 0) : 0;
+  return Number.isFinite(n) && n > 0 ? n - 1 : -1;
+}
+
+async function readMpdQueueFiles(mpdHost) {
+  const { stdout } = await execFileP('mpc', ['-h', mpdHost, '-f', '%file%', 'playlist']);
+  return String(stdout || '').split(/\r?\n/).map((line) => String(line || '').trim()).filter(Boolean);
+}
+
+async function moveMpdQueueToOrder(mpdHost, currentFiles, targetFiles) {
+  const working = [...currentFiles];
+  for (let targetIndex = 0; targetIndex < targetFiles.length; targetIndex += 1) {
+    if (working[targetIndex] === targetFiles[targetIndex]) continue;
+    let sourceIndex = targetIndex + 1;
+    while (sourceIndex < working.length && working[sourceIndex] !== targetFiles[targetIndex]) sourceIndex += 1;
+    if (sourceIndex >= working.length) throw new Error('Queue changed while applying shuffle order');
+    await execFileP('mpc', ['-h', mpdHost, 'move', String(sourceIndex), String(targetIndex)]);
+    const [moved] = working.splice(sourceIndex, 1);
+    working.splice(targetIndex, 0, moved);
+  }
+  return working;
+}
+
+function shuffleArray(input = []) {
+  const output = [...input];
+  for (let i = output.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [output[i], output[j]] = [output[j], output[i]];
+  }
+  return output;
+}
+
+function reconcileShuffleUndo(currentFiles = []) {
+  if (!liveQueueShuffleUndo) return false;
+  const current = Array.isArray(currentFiles) ? currentFiles.map((f) => String(f || '')) : [];
+  const shuffled = liveQueueShuffleUndo.shuffledFiles.map((f) => String(f || ''));
+  const original = liveQueueShuffleUndo.originalFiles.map((f) => String(f || ''));
+  const keptIndices = [];
+  let cursor = 0;
+  for (const file of current) {
+    while (cursor < shuffled.length && shuffled[cursor] !== file) cursor += 1;
+    if (cursor >= shuffled.length) {
+      liveQueueShuffleUndo = null;
+      return false;
+    }
+    keptIndices.push(cursor);
+    cursor += 1;
+  }
+  // Deletions are safe to absorb: retain the surviving entries in their
+  // shuffled order and remove the same entries from the undo target. A reorder
+  // cannot match this subsequence and therefore intentionally invalidates Undo.
+  if (keptIndices.length !== shuffled.length) {
+    liveQueueShuffleUndo.shuffledFiles = keptIndices.map((i) => shuffled[i]);
+    liveQueueShuffleUndo.originalFiles = keptIndices.map((i) => original[i]);
+  }
+  return true;
+}
+
 function cleanIheartQueueMeta(artistRaw, titleRaw) {
   const artist = String(artistRaw || '').trim();
   const title = String(titleRaw || '').trim();
@@ -774,13 +843,63 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
 
       if (action === 'shufflequeue') {
         const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
-        const wasOn = /random:\s*on/i.test(String(beforeStatus || ''));
-        if (wasOn) await execFileP('mpc', ['-h', mpdHost, 'random', 'off']);
-        await execFileP('mpc', ['-h', mpdHost, 'shuffle']);
+        const beforeFiles = await readMpdQueueFiles(mpdHost);
+        if (beforeFiles.length < 2) {
+          return res.status(400).json({ ok: false, error: 'Not enough queued tracks to shuffle.' });
+        }
+
+        // Physical queue order is the user-visible source for Live Queue. Keep
+        // the current track and any already-played entries fixed; only the
+        // upcoming portion is randomized. MPD random mode would make the
+        // visible queue disagree with actual playback, so disable it here.
+        const headIndex = parseMpdHeadPosition(beforeStatus);
+        const upcomingStart = headIndex >= 0 ? Math.min(beforeFiles.length, headIndex + 1) : 0;
+        const targetFiles = [
+          ...beforeFiles.slice(0, upcomingStart),
+          ...shuffleArray(beforeFiles.slice(upcomingStart)),
+        ];
+        const randomWasOn = /random:\s*on/i.test(String(beforeStatus || ''));
+        if (randomWasOn) await execFileP('mpc', ['-h', mpdHost, 'random', 'off']);
+        await moveMpdQueueToOrder(mpdHost, beforeFiles, targetFiles);
         const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const afterFiles = await readMpdQueueFiles(mpdHost);
+        liveQueueShuffleUndo = {
+          originalFiles: beforeFiles,
+          shuffledFiles: afterFiles,
+          originalRandomOn: randomWasOn,
+          createdAt: Date.now(),
+        };
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
         const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
-        return res.json({ ok: true, action, randomOn, repeatOn, status: String(afterStatus || '') });
+        return res.json({
+          ok: true,
+          action,
+          randomOn,
+          repeatOn,
+          undoAvailable: queueFingerprint(afterFiles) === queueFingerprint(targetFiles),
+          shuffledUpcoming: Math.max(0, beforeFiles.length - upcomingStart),
+          status: String(afterStatus || ''),
+        });
+      }
+
+      if (action === 'undoshuffle') {
+        if (!liveQueueShuffleUndo) {
+          return res.status(409).json({ ok: false, error: 'No reversible shuffle is available.' });
+        }
+        const currentFiles = await readMpdQueueFiles(mpdHost);
+        if (!reconcileShuffleUndo(currentFiles)
+          || queueFingerprint(currentFiles) !== queueFingerprint(liveQueueShuffleUndo?.shuffledFiles || [])) {
+          return res.status(409).json({ ok: false, error: 'The queue changed after shuffle; undo is no longer available.' });
+        }
+        await moveMpdQueueToOrder(mpdHost, currentFiles, liveQueueShuffleUndo.originalFiles);
+        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const afterFiles = await readMpdQueueFiles(mpdHost);
+        const restored = queueFingerprint(afterFiles) === queueFingerprint(liveQueueShuffleUndo.originalFiles);
+        liveQueueShuffleUndo = null;
+        if (!restored) return res.status(409).json({ ok: false, error: 'Queue changed while undoing shuffle.' });
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, randomOn, repeatOn, undoAvailable: false, status: String(afterStatus || '') });
       }
 
       if (action === 'repeat') {
@@ -1590,7 +1709,11 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           thumbUrl,
         });
       }
-      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, consumeOn, crossfadeSec, playbackState, ratingsEnabled, items });
+      const queueFiles = items.map((item) => String(item?.file || '').trim());
+      reconcileShuffleUndo(queueFiles);
+      const undoAvailable = !!liveQueueShuffleUndo
+        && queueFingerprint(queueFiles) === queueFingerprint(liveQueueShuffleUndo.shuffledFiles);
+      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, consumeOn, crossfadeSec, playbackState, ratingsEnabled, undoAvailable, items });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

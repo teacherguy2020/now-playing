@@ -129,7 +129,7 @@
   <link rel="stylesheet" href="styles/controller-modals.css?v=20260310-modal-contrast1" />
 </head>
 <body>
-  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="routeAlexaBtn" type="button" title="Start playback on Alexa" aria-pressed="false">Start on Alexa</button><button id="saveQueuePlaylistBtn" class="iconBtn" type="button" title="Add entire Live Queue to a playlist" aria-label="Add entire Live Queue to a playlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button><button id="endlessVibeBtn" type="button" aria-pressed="false" title="Automatically extend the queue with Vibe">Endless Vibe: Off</button><button id="shuffleQueueBtn" type="button" title="Turn random off and shuffle queue">Shuffle</button><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
+  <div class="top"><button class="back" id="backBtn" aria-label="Back">‹</button><h1>Live Queue</h1><span id="meta" class="meta"><span class="miniSpin" aria-label="Loading"></span></span><span class="grow"></span><div class="queueTopActions"><button id="routeAlexaBtn" type="button" title="Start playback on Alexa" aria-pressed="false">Start on Alexa</button><button id="saveQueuePlaylistBtn" class="iconBtn" type="button" title="Add entire Live Queue to a playlist" aria-label="Add entire Live Queue to a playlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v2H4V5zm0 6h16v2H4v-2zm0 6h10v2H4v-2zm13-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2h3z"/></svg></button><button id="endlessVibeBtn" type="button" aria-pressed="false" title="Automatically extend the queue with Vibe">Endless Vibe: Off</button><button id="shuffleQueueBtn" type="button" title="Turn random off and shuffle upcoming queue">Shuffle</button><button id="undoShuffleQueueBtn" type="button" title="Restore the queue order from before the last shuffle" disabled>Undo Shuffle</button><button id="cropQueueBtn" type="button" title="Keep only currently playing track">Crop</button><button id="clearQueueBtn" class="warn" type="button" title="Remove all tracks from queue">Clear</button></div></div>
   <ul class="list" id="list"><li id="dropLine" aria-hidden="true"></li></ul>
   <div class="vibeBusy" id="vibeBusy"><span class="miniSpin" aria-hidden="true"></span><span id="vibeBusyText">Building vibe queue…</span></div>
 
@@ -763,6 +763,13 @@
         try { clearTimeout(queueAutoRetryTimer); } catch {}
         const items = Array.isArray(j.items) ? j.items : [];
         liveQueueItems = items;
+        const undoShuffleBtn = document.getElementById('undoShuffleQueueBtn');
+        if (undoShuffleBtn) {
+          undoShuffleBtn.disabled = j.undoAvailable !== true;
+          undoShuffleBtn.title = j.undoAvailable === true
+            ? 'Restore the queue order from before the last shuffle'
+            : 'Undo is available only until the queue changes';
+        }
         const headPos = Number(j.headPos || -1);
         if (meta) meta.textContent = `${items.length} tracks`;
         const radioMap = {
@@ -1052,6 +1059,25 @@
         await loadQueue();
       } finally {
         btn.disabled = false;
+        btn.textContent = prev;
+      }
+    });
+
+    document.getElementById('undoShuffleQueueBtn')?.addEventListener('click', async (ev)=>{
+      const btn = ev.currentTarget;
+      if (!(btn instanceof HTMLButtonElement) || btn.disabled) return;
+      const prev = btn.textContent || 'Undo Shuffle';
+      btn.disabled = true;
+      btn.textContent = 'Undoing…';
+      try {
+        await sendPlayback('undoshuffle');
+        await loadQueue();
+      } catch (e) {
+        const meta = document.getElementById('meta');
+        const detail = String(e?.message || e || 'Undo unavailable').replace(/\s+/g, ' ').trim().slice(0, 140);
+        if (meta) meta.textContent = `Undo unavailable: ${detail}`;
+        await loadQueue().catch(()=>null);
+      } finally {
         btn.textContent = prev;
       }
     });
