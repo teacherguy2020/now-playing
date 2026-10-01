@@ -47,14 +47,14 @@ Use `alexa/interaction-model.v2.json` as the current model source.
 If you are starting from scratch, do this once before uploading code:
 
 1. Go to <https://developer.amazon.com/alexa/console/ask> and click **Create Skill**.
-2. Choose a skill name (example: `Moode Audio`) and default language (usually `English (US)`).
+2. Choose a skill name (example: `Sonuvi`) and default language (usually `English (US)`).
 3. Choose **Custom** model.
 4. Choose provisioning method:
    - **Alexa-hosted (Node.js)** (recommended easiest path), or
    - **Provision your own** if you are wiring your own Lambda.
 5. Create the skill.
 6. In **Build** tab:
-   - Set invocation name (example: `mood audio`).
+   - Set invocation name to `sonuvi music`.
    - Import/paste `alexa/interaction-model.v2.json` in JSON editor.
    - Save model, then **Build Model**.
 7. In **Code** tab:
@@ -62,7 +62,7 @@ If you are starting from scratch, do this once before uploading code:
 8. In **Code** → **Environment variables** (or Lambda env vars), set:
    - `API_BASE=https://<your-public-domain>`
    - `TRACK_KEY=<same track key as your API/config.html>`
-9. Test in **Test** tab (development stage) with: “open mood audio” and “what’s playing”.
+9. Test in **Test** tab (development stage) with: “open Sonuvi Music” and “what’s playing”.
 
 ## Public HTTPS with Caddy (recommended)
 
@@ -265,7 +265,7 @@ Direct request behavior (no prepped queue required):
 
 - Multi-artist phrasing using **plus** is supported (for example: “play a mix of artist Miles Davis plus John Coltrane”).
 - Best reliability is usually a two-step flow:
-  1. “Alexa, open Mood Audio.”
+  1. “Alexa, open Sonuvi Music.”
   2. “Play a mix of artist Miles Davis plus John Coltrane.”
 - One-shot phrasing (`ask <skill> to ...`) may sometimes launch the skill without passing the tail request, depending on Alexa parsing.
 - Parsed artist sets are sent to API queue-building routes, which produce the combined queue/mix.

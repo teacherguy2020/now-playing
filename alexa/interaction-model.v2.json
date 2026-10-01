@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "mood audio",
+      "invocationName": "sonuvi music",
       "intents": [
         {
           "name": "AMAZON.CancelIntent",

@@ -269,7 +269,7 @@ Examples documented in the page include:
 - transport/control phrases
 
 Two especially important clarifications encoded in the page are:
-- invocation name is `mood audio`
+- invocation name is `sonuvi music`
 - `here` means local moOde playback, not playback on Echo speakers
 
 That is valuable operational documentation, not just UI filler.
