@@ -1057,6 +1057,7 @@
       try {
         await sendPlayback('shufflequeue');
         await loadQueue();
+        try { window.parent?.postMessage({ type:'np-live-queue-changed' }, '*'); } catch {}
       } finally {
         btn.disabled = false;
         btn.textContent = prev;
@@ -1072,6 +1073,7 @@
       try {
         await sendPlayback('undoshuffle');
         await loadQueue();
+        try { window.parent?.postMessage({ type:'np-live-queue-changed' }, '*'); } catch {}
       } catch (e) {
         const meta = document.getElementById('meta');
         const detail = String(e?.message || e || 'Undo unavailable').replace(/\s+/g, ' ').trim().slice(0, 140);

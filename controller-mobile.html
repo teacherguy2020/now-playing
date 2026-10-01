@@ -668,6 +668,10 @@
     window.addEventListener('message', (ev)=>{
       try {
         const d = ev?.data || {};
+        if (d?.type === 'np-live-queue-changed') {
+          if (String(profile?.recentSource || '').toLowerCase() === 'queue') loadRecentlyAdded().catch(()=>null);
+          return;
+        }
         if (d?.type !== 'np-live-theme-update') return;
         const cc = d?.customColors && typeof d.customColors === 'object' ? d.customColors : null;
         if (!cc) return;
@@ -2851,6 +2855,10 @@
       // Prioritize Now Playing first so banner paints immediately.
       refreshNowPlayingCard();
       setInterval(refreshNowPlayingCard, 3500);
+      setInterval(()=>{
+        if (document.hidden || String(profile?.recentSource || '').toLowerCase() !== 'queue') return;
+        loadRecentlyAdded().catch(()=>null);
+      }, 5000);
 
       // Run remaining startup work in background without blocking NP render.
       loadServerProfile().catch(()=>null);
