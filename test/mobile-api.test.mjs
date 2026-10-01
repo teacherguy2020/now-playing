@@ -124,6 +124,67 @@ test('mobile session enrollment uses its own credential and issues a scoped toke
   assert.equal(authorized.statusCode, 200);
 });
 
+test('mobile APNs registration is bearer-scoped and stores only the session device identity', async () => {
+  const registrations = [];
+  const removals = [];
+  const app = registerFixture({
+    pushTokenStore: {
+      async upsert(record) {
+        registrations.push(record);
+      },
+      async remove(record) {
+        removals.push(record);
+        return { removed: 1 };
+      },
+    },
+    apnsConfigured: true,
+    apnsTopic: 'com.brianwis.sonuvi',
+  });
+  const sessionRes = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: {
+      'x-mobile-enrollment-code': 'one-time-code',
+    },
+    body: { deviceId: 'ipad-brian' },
+  }), sessionRes);
+  const token = sessionRes.body.accessToken;
+  const authHeaders = { authorization: `Bearer ${token}` };
+  const deviceToken = 'ab'.repeat(32);
+
+  const invalidRes = createResponse();
+  await app.routes.get('POST /v1/mobile/push-tokens')?.(request({
+    headers: authHeaders,
+    body: { token: 'not-a-device-token', environment: 'development' },
+  }), invalidRes);
+  assert.equal(invalidRes.statusCode, 400);
+
+  const registerRes = createResponse();
+  await app.routes.get('POST /v1/mobile/push-tokens')?.(request({
+    headers: authHeaders,
+    body: {
+      token: deviceToken,
+      environment: 'development',
+      topic: 'com.brianwis.sonuvi',
+      deviceId: 'attacker-device-id',
+    },
+  }), registerRes);
+  assert.equal(registerRes.statusCode, 200);
+  assert.deepEqual(registrations, [{
+    token: deviceToken,
+    deviceId: 'ipad-brian',
+    environment: 'development',
+    topic: 'com.brianwis.sonuvi',
+  }]);
+
+  const deleteRes = createResponse();
+  await app.routes.get('DELETE /v1/mobile/push-tokens')?.(request({
+    headers: authHeaders,
+    body: {},
+  }), deleteRes);
+  assert.equal(deleteRes.statusCode, 200);
+  assert.deepEqual(removals, [{ token: '', deviceId: 'ipad-brian' }]);
+});
+
 test('mobile catalog returns opaque IDs and never returns the MPD file path', async () => {
   const app = registerFixture();
   const sessionRes = createResponse();
@@ -369,6 +430,132 @@ test('native playback events reject unknown canonical IDs instead of creating lo
 
   assert.equal(res.statusCode, 404);
   assert.match(res.body.error, /track not found/);
+});
+
+test('native playback start invokes the APNs bridge with the canonical track', async () => {
+  let notified = null;
+  const app = registerFixture({
+    listeningHistory: { observe: async () => ({ recorded: true, reason: 'recorded' }) },
+    notifyNativePlayback: async (event) => {
+      notified = event;
+    },
+  });
+  const sessionRes = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'ipad-brian' },
+  }), sessionRes);
+
+  const searchRes = createResponse();
+  await app.routes.get('GET /v1/mobile/search')?.(request({
+    headers: { authorization: `Bearer ${sessionRes.body.accessToken}` },
+    query: { q: 'First' },
+  }), searchRes);
+  const trackId = searchRes.body.items[0].id;
+
+  const res = createResponse();
+  await app.routes.get('POST /v1/mobile/playback/events')?.(request({
+    headers: { authorization: `Bearer ${sessionRes.body.accessToken}` },
+    body: {
+      trackId,
+      sessionId: 'device-session-apns',
+      state: 'start',
+      elapsedSec: 0,
+      durationSec: 123,
+    },
+  }), res);
+
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(res.statusCode, 200);
+  assert.equal(notified.track.id, trackId);
+  assert.equal(notified.track.file, 'USB/SamsungMoode/Test Album/01 - First.mp3');
+  assert.equal(notified.sessionId, 'device-session-apns');
+});
+
+test('native radio playback defers APNs until enriched metadata is available', async () => {
+  const notifications = [];
+  const streamFile = 'https://radio.example.test/live.mp3';
+  const app = registerFixture({
+    listeningHistory: { observe: async () => ({ recorded: true, reason: 'recorded' }) },
+    fetchInternalRequest: async (pathname) => pathname === '/config/queue-wizard/radio-preview'
+      ? {
+        ok: true,
+        json: {
+          tracks: [{
+            file: streamFile,
+            stationName: 'Example Radio',
+            logoName: 'Example Radio',
+            genre: 'Jazz',
+            format: 'mp3',
+            bitrate: '128',
+          }],
+        },
+      }
+      : { ok: true, json: {} },
+    enrichRadioMetadata: async ({ artist, title }) => ({
+      matched: true,
+      artist: 'Miles Davis',
+      title: 'Blue in Green',
+      album: 'Kind of Blue',
+      year: '1959',
+      artworkUrl: 'https://images.example.test/kind-of-blue.jpg',
+      trackUrl: 'https://music.apple.com/us/song/blue-in-green/268443106',
+      reason: 'matched',
+    }),
+    notifyNativePlayback: async (event) => {
+      notifications.push(event);
+    },
+  });
+
+  const sessionRes = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'ipad-brian' },
+  }), sessionRes);
+  const sessionToken = sessionRes.body.accessToken;
+  const authHeaders = { authorization: `Bearer ${sessionToken}` };
+
+  const stationsRes = createResponse();
+  await app.routes.get('GET /v1/mobile/radio')?.(request({ headers: authHeaders }), stationsRes);
+  const stationId = stationsRes.body.items[0].id;
+  const radioTrackId = `radio-${stationId}`;
+
+  const playbackRes = createResponse();
+  await app.routes.get('POST /v1/mobile/playback/events')?.(request({
+    headers: authHeaders,
+    body: {
+      trackId: radioTrackId,
+      sessionId: 'device-session-radio',
+      state: 'start',
+    },
+  }), playbackRes);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(playbackRes.statusCode, 200);
+  assert.equal(notifications.length, 0);
+
+  const metadataRes = createResponse();
+  await app.routes.get('POST /v1/mobile/radio/metadata')?.(request({
+    headers: authHeaders,
+    body: {
+      stationId,
+      artist: 'Miles Davis',
+      title: 'Blue in Green',
+    },
+  }), metadataRes);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(metadataRes.statusCode, 200);
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0].track.id, radioTrackId);
+  assert.equal(notifications[0].track.file, streamFile);
+  assert.equal(notifications[0].track.title, 'Blue in Green');
+  assert.equal(notifications[0].track.artist, 'Miles Davis');
+  assert.equal(notifications[0].track.album, 'Kind of Blue');
+  assert.equal(notifications[0].track.artworkMatched, true);
+  assert.equal(notifications[0].track.artworkUrl, 'https://images.example.test/kind-of-blue.jpg');
+  assert.doesNotMatch(notifications[0].track.artworkUrl, /\/v1\/mobile\/home\/artwork\//);
+  assert.equal(notifications[0].track.appleMusicUrl, 'https://music.apple.com/us/song/blue-in-green/268443106');
+  assert.equal(notifications[0].sessionId, 'ipad-brian');
 });
 
 test('mobile radio stream authorization keeps the station URL behind a scoped ticket', async () => {

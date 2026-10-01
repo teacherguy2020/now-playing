@@ -53,6 +53,16 @@ item belongs to the mobile catalog. It is null for streams or other items
 that do not have a catalog identity. `available: false` is a valid empty or
 temporarily unavailable state and is not an API error.
 
+`queueTrack` and `queueTotal` describe the queue only when that information is
+authoritative. During ordinary Home moOde playback, both fields identify the
+current position and total MPD queue length. During fresh Alexa playback,
+`queueTrack` is null because Alexa's AudioPlayer position is not an MPD
+position, but `queueTotal` remains the full logical server queue length used by
+Live Queue. If that queue read is temporarily unavailable, it falls back to
+the known Alexa buffer count: one for the current item, or two when the
+recorded ENQUEUE successor is present. The native iPad summary therefore shows
+the full count without pretending to know an Alexa track position.
+
 For a music-bearing radio stream, the ordinary `title`, `artist`, `album`, and
 `artworkUrl` fields reflect the existing conservative server-side metadata
 pipeline. That pipeline cleans station metadata, rejects likely talk/news/
@@ -104,6 +114,31 @@ no-op responses with `disabled: true`. A Track Key without a mobile bearer
 session receives HTTP 401. The mobile response never passes through the
 canonical `file` or `ratingFile` fields.
 
+## Native device track favorites
+
+When the iPhone or iPad is the playback target, the native client can read and
+change favorite state for a canonical catalog track without controlling the
+Home moOde queue:
+
+```http
+GET /v1/mobile/catalog/tracks/:trackId/favorite
+Authorization: Bearer <mobile-session-token>
+
+POST /v1/mobile/catalog/tracks/:trackId/favorite
+Authorization: Bearer <mobile-session-token>
+Content-Type: application/json
+
+{"favorite":true}
+```
+
+The server resolves the opaque canonical `trackId` to its catalog record and
+keeps the source file private. It reuses the existing Favorites playlist
+mutation internally and returns only `{ "ok": true, "isFavorite": true,
+"disabled": false }`-style state. Stream, radio, podcast, and unavailable
+items return a successful disabled response. The native client uses this
+contract for the Like heart beside the device rating stars and applies the
+same optimistic-update/rollback behavior.
+
 ## Direct device radio metadata
 
 When the native client plays a station on the iPhone/iPad, it listens for the
@@ -124,6 +159,16 @@ applies the same conservative radio guard and iTunes matcher used by
 `album`, `year`, and a validated `appleMusicUrl`. A miss returns the normalized
 metadata with `matched: false`, so the native player can still show the
 station's song title without presenting misleading music artwork or links.
+
+For native track-change notifications, the corresponding radio playback event
+is accepted by the shared history route but its APNs send is intentionally
+deferred. Once this metadata response completes, the server sends one APNs
+notification for the enriched song. The native UI continues to use protected
+album artwork, while APNs receives the safe external artwork source because
+the notification extension has no bearer session; unmatched streams use a
+public station-art fallback. The validated Apple Music URL is included in the
+APNs payload. This prevents a premature station-only alert and avoids a
+duplicate notification for the same radio title.
 
 ### Silent Home moOde stream rows
 
@@ -201,6 +246,11 @@ The favorite heart and rating controls use the `isFavorite`, `rating`, and
 routes above. They must remain hidden or disabled when `ratingDisabled` is
 true, and must not attempt to target the home MPD queue directly.
 
+Native artwork keeps the last successful image visible while a track-specific
+artwork URL is fetched. Same-album transitions are album-scoped for animated
+artwork lookup and do not reset the existing cover/action face merely because
+the next track has a different canonical artwork URL.
+
 ## Native Home summary shelf
 
 The iPad Home summary shelf uses the following bearer-authenticated contracts:
@@ -217,6 +267,11 @@ Authorization: Bearer <mobile-session-token>
 iPad presents it as **Next Playing** and opens the shared Live Queue when
 tapped. The shelf also shows the current queue position/length from the
 now-playing payload or the durable device queue.
+
+When Live Queue is selected as a Home discovery row, the native remote poll
+also reads the complete upcoming queue and reconciles that row. This covers
+queue additions made by another controller; local playback uses the device
+queue directly.
 
 `/v1/mobile/audio-info` invokes the existing Track-Key-protected moOde reader
 server-side and returns only sanitized `section`, `key`, and `value` rows plus
@@ -256,4 +311,4 @@ The server resolves the track ID and feeds the shared listening-history
 qualification/idempotency path. The client never submits a filesystem path,
 synthetic SSD ID, or alternate queue identity.
 
-*Last reviewed: 2026-09-30 America/Chicago*
+*Last reviewed: 2026-10-01 13:15 America/Chicago*

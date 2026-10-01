@@ -48,6 +48,11 @@
     "pushover": {
       "token": "",
       "userKey": ""
+    },
+    "apns": {
+      "topic": "com.brianwis.sonuvi",
+      "environment": "auto",
+      "tokensPath": "var/mobile-push-tokens.json"
     }
   }
 }

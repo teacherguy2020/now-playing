@@ -135,6 +135,29 @@ export const TRACK_NOTIFY_ALEXA_MAX_AGE_MS = Number(
   process.env.TRACK_NOTIFY_ALEXA_MAX_AGE_MS || notificationsCfg?.trackNotify?.alexaMaxAgeMs || 21600000
 );
 
+// APNs provider credentials are deliberately environment/file-only. The
+// runtime JSON may describe the topic/environment, but the Apple private key
+// must never be returned by config routes or committed to the repository.
+const apnsCfg = notificationsCfg?.apns || {};
+export const APNS_KEY_ID = String(process.env.APNS_KEY_ID || '').trim();
+export const APNS_TEAM_ID = String(process.env.APNS_TEAM_ID || '').trim();
+export const APNS_PRIVATE_KEY_PATH = String(process.env.APNS_PRIVATE_KEY_PATH || '').trim();
+export const APNS_PRIVATE_KEY = String(process.env.APNS_PRIVATE_KEY || '').trim();
+export const APNS_TOPIC = String(
+  process.env.APNS_TOPIC || apnsCfg?.topic || 'com.brianwis.sonuvi'
+).trim();
+export const APNS_ENVIRONMENT = String(
+  process.env.APNS_ENVIRONMENT || apnsCfg?.environment || 'auto'
+).trim().toLowerCase();
+const mobilePushTokensPath = String(
+  process.env.MOBILE_PUSH_TOKENS_PATH
+    || apnsCfg?.tokensPath
+    || path.join(process.cwd(), 'var', 'mobile-push-tokens.json')
+).trim();
+export const MOBILE_PUSH_TOKENS_PATH = path.isAbsolute(mobilePushTokensPath)
+  ? mobilePushTokensPath
+  : path.resolve(process.cwd(), mobilePushTokensPath);
+
 export const PUSHOVER_TOKEN = String(
   process.env.PUSHOVER_TOKEN || notificationsCfg?.pushover?.token || ''
 ).trim();

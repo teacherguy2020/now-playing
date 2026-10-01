@@ -48,6 +48,10 @@ import {
   MobilePairingStore,
   MOBILE_PAIRING_PROTOCOL_VERSION,
 } from '../lib/mobile-pairing.mjs';
+import {
+  normalizeMobilePushEnvironment,
+  normalizeMobilePushToken,
+} from '../lib/mobile-push-store.mjs';
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const MEDIA_TICKET_TTL_MS = 60 * 60 * 1000;
@@ -200,8 +204,20 @@ export function registerMobileRoutes(app, deps = {}) {
   const listeningHistory = deps.listeningHistory && typeof deps.listeningHistory.observe === 'function'
     ? deps.listeningHistory
     : null;
+  const pushTokenStore = deps.pushTokenStore && typeof deps.pushTokenStore.upsert === 'function'
+    ? deps.pushTokenStore
+    : null;
+  const apnsTopic = text(deps.apnsTopic) || 'com.brianwis.sonuvi';
+  const apnsConfigured = Boolean(deps.apnsConfigured);
+  const notifyNativePlayback = typeof deps.notifyNativePlayback === 'function'
+    ? deps.notifyNativePlayback
+    : null;
   const requireTrackKey = typeof deps.requireTrackKey === 'function' ? deps.requireTrackKey : null;
-  const pairingAuthConfigured = deps.trackKeyConfigured === true;
+  // The browser pairing widget authenticates with the existing Track Key.
+  // An already-paired native device has an equivalent trusted credential in
+  // its bearer session, so it can host the same QR/approval flow without
+  // requiring the user to copy the Track Key into that device first.
+  const pairingAuthConfigured = Boolean(apiSecret && trackIdSecret && apiSecret !== trackIdSecret);
   const pairingStore = new MobilePairingStore();
   const getIndex = typeof deps.getBrowseIndex === 'function'
     ? deps.getBrowseIndex
@@ -1346,6 +1362,27 @@ export function registerMobileRoutes(app, deps = {}) {
     return match ? radioEntries.get(match.id) : '';
   };
 
+  const radioPlaybackTrack = ({ stationId, file, station } = {}) => {
+    const resolvedStationId = text(stationId);
+    const resolvedFile = text(file);
+    if (!resolvedStationId || !resolvedFile) return null;
+    const stationName = text(station?.name) || 'Radio Station';
+    return {
+      id: `radio-${resolvedStationId}`,
+      file: resolvedFile,
+      title: stationName,
+      artist: stationName,
+      albumArtist: stationName,
+      album: 'Radio',
+      track: '',
+      genre: text(station?.genre),
+      durationSec: 0,
+      format: text(station?.format) || 'stream',
+      stationName,
+      stationLogoUrl: text(station?.artworkUrl),
+    };
+  };
+
   const queueWizardOptions = async (req) => {
     const catalog = await loadCatalog();
     const artists = Array.from(new Set(catalog.artists.map((artist) => text(artist.artist)).filter(Boolean)))
@@ -1649,6 +1686,53 @@ export function registerMobileRoutes(app, deps = {}) {
       expiresAt: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
       deviceId,
     });
+  }));
+
+  app.post('/v1/mobile/push-tokens', asyncRoute(async (req, res) => {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!pushTokenStore) return errorResponse(res, 503, 'mobile push registration is not configured');
+
+    const body = req?.body && typeof req.body === 'object' ? req.body : {};
+    const token = normalizeMobilePushToken(body.token);
+    if (!token) return errorResponse(res, 400, 'a valid APNs device token is required');
+
+    const environment = normalizeMobilePushEnvironment(body.environment);
+    if (!environment) return errorResponse(res, 400, 'APNs environment must be development or production');
+
+    const topic = text(body.topic || body.bundleId) || apnsTopic;
+    if (topic !== apnsTopic) return errorResponse(res, 400, 'APNs topic does not match this app');
+
+    await pushTokenStore.upsert({
+      token,
+      deviceId: text(session.deviceId),
+      environment,
+      topic,
+    });
+    return res.json({
+      ok: true,
+      registered: true,
+      apnsConfigured,
+      environment,
+      topic,
+    });
+  }));
+
+  app.delete('/v1/mobile/push-tokens', asyncRoute(async (req, res) => {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!pushTokenStore || typeof pushTokenStore.remove !== 'function') {
+      return errorResponse(res, 503, 'mobile push registration is not configured');
+    }
+
+    const body = req?.body && typeof req.body === 'object' ? req.body : {};
+    const token = body.token ? normalizeMobilePushToken(body.token) : '';
+    if (body.token && !token) return errorResponse(res, 400, 'invalid APNs device token');
+    const result = await pushTokenStore.remove({
+      token,
+      deviceId: text(session.deviceId),
+    });
+    return res.json({ ok: true, removed: Number(result?.removed || 0) });
   }));
 
   // Feature surfaces below reuse the existing controller services through
@@ -2036,6 +2120,33 @@ export function registerMobileRoutes(app, deps = {}) {
     const artworkUrl = artworkReference
       ? artworkUrlFor(req, { kind: 'url', reference: artworkReference })
       : null;
+    const appleMusicUrl = safeAppleMusicUrl(
+      result?.trackUrl
+      || result?.itunesUrl
+      || result?.albumUrl
+    );
+    const notificationTrack = radioPlaybackTrack({ stationId, file, station });
+    if (notifyNativePlayback && notificationTrack) {
+      const enrichedTrack = {
+        ...notificationTrack,
+        title: text(result?.title || title) || notificationTrack.title,
+        artist: text(result?.artist || artist) || notificationTrack.artist,
+        album: text(result?.album || album) || notificationTrack.album,
+        // Keep the protected URL for the mobile response below, but give the
+        // APNs sender the original safe external artwork URL. The iOS
+        // notification-service extension cannot attach the app bearer token.
+        artworkUrl: artworkReference || '',
+        artworkMatched: Boolean(result?.matched && artworkReference),
+        appleMusicUrl: appleMusicUrl || '',
+      };
+      Promise.resolve()
+        .then(() => notifyNativePlayback({
+          track: enrichedTrack,
+          trackId: notificationTrack.id,
+          sessionId: session.deviceId,
+        }))
+        .catch(() => {});
+    }
 
     return res.json({
       ok: true,
@@ -2046,11 +2157,7 @@ export function registerMobileRoutes(app, deps = {}) {
       album: text(result?.album || album) || null,
       year: text(result?.year) || null,
       artworkUrl,
-      appleMusicUrl: safeAppleMusicUrl(
-        result?.trackUrl
-        || result?.itunesUrl
-        || result?.albumUrl
-      ),
+      appleMusicUrl,
       reason: text(result?.reason) || null,
     });
   }));
@@ -3016,7 +3123,17 @@ export function registerMobileRoutes(app, deps = {}) {
     if (!allowedStates.has(state)) return errorResponse(res, 400, 'unsupported playback state');
 
     const catalog = await loadCatalog();
-    const track = catalog.byTrackId.get(trackId);
+    let track = catalog.byTrackId.get(trackId);
+    const isRadioTrack = trackId.startsWith('radio-');
+    if (!track && isRadioTrack) {
+      const stationId = trackId.slice('radio-'.length);
+      const file = await resolveRadioFile(req, stationId);
+      if (file) {
+        const stations = await loadRadioStations(req).catch(() => []);
+        const station = stations.find((row) => row.id === stationId);
+        track = radioPlaybackTrack({ stationId, file, station });
+      }
+    }
     if (!track) return errorResponse(res, 404, 'track not found');
 
     const elapsedSec = Math.max(0, Number(body.elapsedSec) || 0);
@@ -3049,6 +3166,15 @@ export function registerMobileRoutes(app, deps = {}) {
       source: 'ios-device',
       atMs: nowMs,
     });
+
+    // Native radio sends a second request after the server-side iTunes/art
+    // enrichment completes. Defer its APNs notification until that response
+    // so the alert carries the verified song metadata and album artwork.
+    if (state === 'start' && notifyNativePlayback && !isStreamFile(track.file)) {
+      Promise.resolve()
+        .then(() => notifyNativePlayback({ track, trackId, sessionId }))
+        .catch(() => {});
+    }
 
     return res.json({
       ok: true,

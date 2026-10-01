@@ -2,244 +2,203 @@
 
 ## Purpose
 
-This page documents the track-notification portion of `now-playing/config.html`.
+This page documents the track-notification portion of `now-playing/config.html`
+and the delivery paths used by the Now Playing monitor.
 
-It exists because the Config page contains a specific notification feature cluster built around:
-- track notifications
-- a background monitor
-- Pushover credentials
-- timing/deduplication tuning
-- Alexa-age-related filtering
+The monitor can deliver the same track-change event through:
 
-This is the current notifications-focused config surface visible in `config.html`.
+- **Apple Push Notifications (APNs)** to paired Sonuvi iPhone/iPad devices
+- **Pushover** for the web/operator workflow
 
-## Why this page matters
+APNs is the native-app path. Pushover remains available for the existing web
+app and does not need to be installed on a Sonuvi device. Sonuvi no longer
+generates a separate local track-change notification; the Settings switch
+controls APNs permission and token registration.
 
-Notifications are not represented here as a broad generic provider framework.
-Instead, the current Config surface is a focused, operational notification module centered on track-change monitoring and Pushover delivery.
+## Important files
 
-That matters because it combines:
-- feature enablement
-- credential setup
-- background monitoring behavior
-- rate/deduplication tuning
-- cross-feature interaction with Alexa recency
+Primary files:
 
-## Important file
-
-Primary file:
-- `now-playing/config.html`
+- `config.html`
+- `src/config.mjs`
+- `src/lib/apns.mjs`
+- `src/lib/mobile-push-store.mjs`
+- `src/routes/mobile.routes.mjs`
+- `moode-nowplaying-api.mjs`
 
 Related pages:
+
 - `config-interface.md`
 - `config-feature-breakdown.md`
 - `integrations.md`
-- future messaging/notification pages if they are added later
+- `native-app.md`
 
 ## High-level role
 
-A good current interpretation is:
-- this Config block is the track-notification control panel
-- it is currently Pushover-oriented
-- it governs both whether notifications are available and how the track-monitor loop behaves
+The Config block is the operator control panel for the background track-change
+monitor. It controls:
+
+- whether the monitor runs
+- polling and deduplication timing
+- Alexa recency filtering
+- optional Pushover credentials
+
+Paired Sonuvi devices register their APNs device tokens through the authenticated
+mobile API. APNs provider credentials are deliberately not entered in the web
+Config form.
 
 ## Main visible controls
 
-Observed UI elements include:
-- `featurePushover`
-- `notifyEnabled`
+The current UI includes:
+
+- `featurePushover` — the track-notification feature gate
+- `notifyEnabled` — whether the background monitor runs
 - `pollMs`
 - `dedupeMs`
 - `alexaMaxAgeMs`
 - `pushoverToken`
 - `pushoverUser`
 
-These controls define the current notification feature cluster.
+The legacy element IDs retain `Pushover` in their names for compatibility with
+existing saved settings and scripts. The visible card is now labeled
+**Track Notifications (Apple Push + Pushover)**.
 
 ## 1. Feature enablement
 
-Observed behavior includes:
-- Config computes `hasPushover` based on whether any of the following exist:
-  - Pushover token
-  - Pushover user key
-  - track-notify enabled state
-- `featurePushover` is checked accordingly when config loads
+The feature gate is considered enabled when the runtime config has an active
+track monitor, Pushover credentials, or a configured APNs provider.
 
-### Why it matters
-This is slightly richer than a simple stored boolean.
-The UI treats actual notification configuration/state as evidence that the feature is effectively enabled.
+This gate controls the existing monitor form behavior. It does not disable APNs
+registration in the Sonuvi app; a paired app can register its token whenever the
+user enables native playback notifications.
 
-## 2. Background monitor running
+## 2. Background monitor
 
-Observed UI includes:
-- `notifyEnabled`
-- label: `Background monitor running`
+`notifications.trackNotify.enabled` controls whether the server monitor runs.
+The monitor reads this at process startup, so changing it requires the normal
+API restart path before the new state is active.
 
-Observed save behavior maps this to:
-- `notifications.trackNotify.enabled`
+The monitor:
 
-### Why it matters
-This is an important distinction:
-- `featurePushover` = notification feature/provider enablement layer
-- `notifyEnabled` = whether the actual background monitoring loop is running
+1. observes the authoritative current track, including fresh Alexa playback
+2. waits briefly for radio metadata enrichment when needed
+3. deduplicates repeated track observations
+4. sends APNs and/or Pushover independently
 
-That means the notifications cluster already distinguishes configuration from active monitoring behavior.
+A failed delivery through one provider does not prevent the other provider from
+being attempted. A successful delivery through either provider satisfies the
+monitor's deduplication decision.
 
-## 3. Polling and deduplication tuning
+## 3. Polling, deduplication, and Alexa age
 
-Observed fields include:
-- `pollMs`
-- `dedupeMs`
+The visible tuning fields map to:
 
-Observed load defaults include:
-- `pollMs` default `3000`
-- `dedupeMs` default `15000`
-
-Observed save behavior maps these to:
-- `notifications.trackNotify.pollMs`
-- `notifications.trackNotify.dedupeMs`
-
-### Why it matters
-This shows the notification system has a real polling/deduplication model, not just fire-and-forget pushes.
-
-These are operator-facing tuning knobs for balancing:
-- responsiveness
-- repeat suppression
-- noisy/duplicate notifications
-
-## 4. Alexa max age ms
-
-Observed field includes:
-- `alexaMaxAgeMs`
-
-Observed load default includes:
-- `21600000`
-
-Observed save behavior maps this to:
-- `notifications.trackNotify.alexaMaxAgeMs`
-
-### Why it matters
-This is one of the more interesting fields in the module.
-It indicates that track notifications are not isolated from Alexa-related behavior.
-
-A good current interpretation is:
-- the notification monitor includes logic that considers how old Alexa-related activity/data is allowed to be
-- Alexa recency is therefore part of notification filtering or eligibility logic
-
-That is a meaningful cross-feature dependency.
-
-## 5. Pushover credentials
-
-Observed fields include:
-- `pushoverToken`
-- `pushoverUser`
-
-Observed save behavior maps these to:
-- `notifications.pushover.token`
-- `notifications.pushover.userKey`
-
-### Secret handling
-Observed local secret caching includes:
-- `nowplaying.secret.pushoverToken`
-- `nowplaying.secret.pushoverUser`
-
-### Why it matters
-This mirrors the pattern used for other secret-like config values.
-The page tries to preserve operator convenience while keeping credentials tied to the notification feature cluster.
-
-## Visibility / gating behavior
-
-Observed code includes `syncPushoverCardVisibility()`.
-
-Observed behavior includes:
-- drive card state from `featurePushover`
-- disable `notifyEnabled` when notifications are off
-- auto-check `notifyEnabled` when notifications are enabled and the monitor was previously off
-- backfill token/user from local secret cache when appropriate
-
-### Working interpretation
-A good current interpretation is:
-- turning on the feature is treated as intent to actually run the background monitor
-- the UI tries to reduce half-configured states by nudging the monitor into the “on” state when notifications are enabled
-
-That is a subtle but important product behavior.
-
-## Save/load behavior summary
-
-Observed config-load behavior includes:
-- derive feature state from existing config values
-- populate monitor/timing values from `notifications.trackNotify`
-- populate credentials from `notifications.pushover` or local secret cache
-
-Observed config-save behavior includes:
-- `notifications.trackNotify.enabled`
 - `notifications.trackNotify.pollMs`
 - `notifications.trackNotify.dedupeMs`
 - `notifications.trackNotify.alexaMaxAgeMs`
-- `notifications.pushover.token`
-- `notifications.pushover.userKey`
 
-## Important distinction: current scope is Pushover
+`alexaMaxAgeMs` prevents an old Alexa event from overriding a newer
+Home/moOde or native playback observation.
 
-Based on current repo-visible evidence, this Config module is specifically a **Pushover-backed** notification configuration surface.
+## 4. APNs provider configuration
 
-That means the wiki should be careful not to overstate it as:
-- a generic push provider abstraction
-- a multi-provider notifications matrix
+APNs credentials are server-side secrets. Configure them through the service
+environment or a protected environment file:
 
-At least in the current visible Config implementation, the notification provider explicitly exposed here is Pushover.
+- `APNS_KEY_ID`
+- `APNS_TEAM_ID`
+- `APNS_PRIVATE_KEY_PATH` — preferred; points to the Apple `.p8` file
+- `APNS_PRIVATE_KEY` — supported for deployments that inject the key directly
+- `APNS_TOPIC` — defaults to `com.brianwis.sonuvi`
+- `APNS_ENVIRONMENT` — `development`, `production`, or `auto`
+- `MOBILE_PUSH_TOKENS_PATH` — optional protected token-registry path
 
-## User/operator workflow model
+The default token registry is:
 
-A useful current workflow model is:
+`var/mobile-push-tokens.json`
 
-### Initial setup workflow
-1. enable notifications
-2. enter Pushover token and user key
-3. ensure background monitor is running
-4. save config
+The registry contains only APNs device tokens, device IDs, environment, topic,
+and timestamps. It is written atomically with restrictive file permissions.
+Private Apple credentials are never returned by the public runtime-config API.
 
-### Tuning workflow
-1. adjust poll interval
-2. adjust dedupe interval
-3. adjust Alexa max age threshold
-4. save config
-5. observe whether notifications are too noisy, too sparse, or too stale
+The app's Debug entitlement/environment is development. A production-signed
+distribution build must use the production APNs entitlement/environment.
 
-### Credential maintenance workflow
-1. update token/user key as needed
-2. save config
-3. rely on cached secret convenience where applicable
+## 5. Mobile registration API
 
-## Architectural interpretation
+After authenticated mobile session enrollment, Sonuvi registers its APNs token:
 
-A good current interpretation is:
-- this module is a background track-notify subsystem with Pushover delivery
-- it is not just a credential form
-- it exposes important runtime behavior knobs that shape how often and under what conditions notifications are generated
+- `POST /v1/mobile/push-tokens`
+- `DELETE /v1/mobile/push-tokens`
 
-## Relationship to other pages
+The server scopes registration to the bearer session's device ID and ignores a
+caller-supplied device ID. Re-registering the same device/topic replaces its
+old token. Invalid or rejected tokens are removed after APNs reports them as
+unregistered.
 
-This page should stay linked with:
-- `config-interface.md`
-- `config-feature-breakdown.md`
-- `integrations.md`
-- future notification/messaging pages if they appear
+## 6. Notification payload and artwork
 
-## Things still to verify
+The payload contains a normal alert with title, artist subtitle, and album/body
+metadata plus a stable track identifier. For artwork, the server includes
+`media-url` and marks the notification mutable. The Sonuvi notification service
+extension downloads that image and attaches it before presentation.
 
-Future deeper verification should clarify:
-- what exact backend process or route family consumes `notifications.trackNotify.*`
-- how `alexaMaxAgeMs` is applied in notification filtering logic
-- whether any notification testing or send-now action exists elsewhere in the repo
-- whether additional notification providers exist outside the visible Config page
+Artwork delivery works best when the configured public artwork URL is reachable
+from Apple's notification service over HTTPS. If artwork cannot be fetched, the
+text notification still arrives.
+
+Home/moOde radio notifications retain the station-logo preference used by the
+server monitor and avoid playing a notification sound. Direct native radio
+playback is different: the initial radio event is accepted for shared history,
+then APNs waits for `/v1/mobile/radio/metadata`. A verified iTunes/Apple Music
+match sends the matched external album artwork, song metadata, and safe Apple
+Music URL; a miss falls back to a public station-art route. The Sonuvi UI still
+receives its bearer-protected artwork URL. Music notifications use the normal
+default sound.
+
+## 7. Pushover delivery
+
+Pushover fields remain optional and are labeled as web/operator delivery in the
+Config page. Existing Pushover behavior, credentials, and deduplication remain
+supported for users who want notifications outside the native app.
+
+## User/operator workflow
+
+### Native Sonuvi setup
+
+1. Configure the APNs provider environment on the server.
+2. Enable native playback notifications in Sonuvi.
+3. Allow iOS notification permission.
+4. Keep the app paired/enrolled; it registers or refreshes its APNs token.
+5. Enable the background monitor in Config.
+
+### Web/operator setup
+
+1. Enter the Pushover token and user key if desired.
+2. Enable the track-notification feature.
+3. Ensure the background monitor is running.
+4. Save and restart the API when prompted.
+
+## Security boundaries
+
+- Apple `.p8` material stays in protected server configuration.
+- APNs tokens are bearer-like device identifiers and are stored only in the
+  server-side registry.
+- Mobile token registration is bearer-session scoped.
+- The public runtime-config response exposes APNs configured/topic/environment
+  status, never the key ID, team ID, private key, or token registry contents.
 
 ## Current status
 
-At the moment, this page gives the notifications block in Config an honest scope:
-- Pushover-backed
-- monitor-driven
-- timing-tunable
-- cross-wired with Alexa recency
+The notification subsystem is dual-delivery:
 
-That is already enough to treat it as a meaningful subsystem rather than a tiny optional settings card.
+- APNs for native Sonuvi devices
+- Pushover for the existing web/operator workflow
+
+The providers share monitor selection, radio enrichment, and deduplication, but
+each delivery attempt is isolated so one provider can be unavailable without
+blocking the other. Native radio enrichment also uses the APNs provider
+directly, after the verified metadata response is available, so the native
+notification does not race the station's initial ICY title.
+
+Last reviewed: 2026-10-01 13:15 America/Chicago

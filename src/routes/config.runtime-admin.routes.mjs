@@ -4,7 +4,17 @@ import path from 'node:path';
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { MPD_HOST, MOODE_SSH_HOST, MOODE_SSH_USER } from '../config.mjs';
+import {
+  APNS_ENVIRONMENT,
+  APNS_KEY_ID,
+  APNS_PRIVATE_KEY,
+  APNS_PRIVATE_KEY_PATH,
+  APNS_TEAM_ID,
+  APNS_TOPIC,
+  MPD_HOST,
+  MOODE_SSH_HOST,
+  MOODE_SSH_USER,
+} from '../config.mjs';
 import { createLastfmIndexResolver } from '../lib/lastfm-library-match.mjs';
 import { normalizeMoodeBaseUrl } from '../lib/moode-url.mjs';
 import { exchangeLastfmToken, lastfmAuthorizationUrl, requestLastfmToken } from '../../scripts/lastfm-authorize.mjs';
@@ -64,6 +74,15 @@ function pickPublicConfig(cfg) {
   const n = c.notifications || {};
   const tn = n.trackNotify || {};
   const po = n.pushover || {};
+  const apns = n.apns || {};
+  const apnsTopic = String(apns.topic || APNS_TOPIC || 'com.brianwis.sonuvi').trim();
+  const apnsEnvironment = String(apns.environment || APNS_ENVIRONMENT || 'auto').trim().toLowerCase();
+  const apnsConfigured = Boolean(
+    APNS_KEY_ID
+    && APNS_TEAM_ID
+    && (APNS_PRIVATE_KEY || APNS_PRIVATE_KEY_PATH)
+    && apnsTopic
+  );
 
   const cfgLastfm = String(c.lastfm?.apiKey || '').trim();
   const envLastfm = String(process.env.LASTFM_API_KEY || '').trim();
@@ -106,6 +125,11 @@ function pickPublicConfig(cfg) {
       pushover: {
         token: String(po.token || ''),
         userKey: String(po.userKey || ''),
+      },
+      apns: {
+        configured: apnsConfigured,
+        topic: apnsTopic,
+        environment: apnsEnvironment,
       },
     },
     paths: c.paths || {},
@@ -1000,6 +1024,10 @@ export function registerConfigRuntimeAdminRoutes(app, deps) {
               pushover: {
                 ...((current.notifications || {}).pushover || {}),
                 ...((incoming.notifications || {}).pushover || {}),
+              },
+              apns: {
+                ...((current.notifications || {}).apns || {}),
+                ...((incoming.notifications || {}).apns || {}),
               },
             },
           };

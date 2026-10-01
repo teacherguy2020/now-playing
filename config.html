@@ -427,8 +427,8 @@
                   </div>
 
                   <div class="cfgCard gateCard" id="pushoverCard">
-                    <h3>Track Notifications (Pushover)</h3>
-                    <div class="cfgField"><label><input id="featurePushover" type="checkbox" /> Enabled</label></div>
+                    <h3>Track Notifications (Apple Push + Pushover)</h3>
+                    <div class="cfgField"><label><input id="featurePushover" type="checkbox" /> Track notifications enabled</label></div>
                     <div class="cfgField">
                       <label><input id="notifyEnabled" type="checkbox" /> Background monitor running</label>
                     </div>
@@ -448,13 +448,16 @@
                     </div>
                     <div class="cfgRow">
                       <div class="cfgField">
-                        <label for="pushoverToken">Pushover token</label>
+                        <label for="pushoverToken">Pushover token (optional web delivery)</label>
                         <input id="pushoverToken" type="text" autocomplete="off" />
                       </div>
                       <div class="cfgField">
-                        <label for="pushoverUser">Pushover user key</label>
+                        <label for="pushoverUser">Pushover user key (optional web delivery)</label>
                         <input id="pushoverUser" type="text" autocomplete="off" />
                       </div>
+                    </div>
+                    <div class="cfgHint" id="apnsStatus" style="margin-top:8px;">
+                      Paired Sonuvi devices use Apple Push Notifications. Provider credentials stay server-side; Pushover is optional for web/operator delivery.
                     </div>
                   </div>
 
@@ -1170,12 +1173,24 @@ async function loadCfg(){
   }
   syncPodcastsUi();
 
-  const hasPushover = !!(String(c.notifications?.pushover?.token || '').trim() || String(c.notifications?.pushover?.userKey || '').trim() || c.notifications?.trackNotify?.enabled);
-  document.getElementById('featurePushover').checked = hasPushover;
+  const hasTrackNotifications = !!(
+    String(c.notifications?.pushover?.token || '').trim()
+    || String(c.notifications?.pushover?.userKey || '').trim()
+    || c.notifications?.trackNotify?.enabled
+    || c.notifications?.apns?.configured
+  );
+  document.getElementById('featurePushover').checked = hasTrackNotifications;
   document.getElementById('notifyEnabled').checked = !!c.notifications?.trackNotify?.enabled;
   document.getElementById('pollMs').value = c.notifications?.trackNotify?.pollMs ?? 3000;
   document.getElementById('dedupeMs').value = c.notifications?.trackNotify?.dedupeMs ?? 15000;
   document.getElementById('alexaMaxAgeMs').value = c.notifications?.trackNotify?.alexaMaxAgeMs ?? 21600000;
+  const apnsStatus = document.getElementById('apnsStatus');
+  if (apnsStatus) {
+    const apns = c.notifications?.apns || {};
+    apnsStatus.textContent = apns.configured
+      ? 'Apple Push is configured for ' + String(apns.topic || 'Sonuvi') + ' (' + String(apns.environment || 'auto') + '). Paired devices register automatically.'
+      : 'Apple Push is not configured yet. Set APNS_KEY_ID, APNS_TEAM_ID, and APNS_PRIVATE_KEY_PATH on the server; paired devices will register automatically.';
+  }
   syncPushoverCardVisibility();
 
   document.getElementById('featurePodcasts').checked = !!c.features?.podcasts;

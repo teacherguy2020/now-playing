@@ -210,6 +210,8 @@ import {
   SEEBURG_PLAYLIST_NAME, MULTIPHONE_PLAYLIST_NAME, MILLS_PLAYLIST_NAME,
   MOBILE_API_ENABLED, MOBILE_API_SECRET, MOBILE_TRACK_ID_SECRET, MOBILE_API_ENROLLMENT_CODE,
   MOBILE_PUBLIC_BASE_URL, MOBILE_TRACK_CACHE_DIR, MOBILE_TRANSCODE_TRACKS,
+  APNS_KEY_ID, APNS_TEAM_ID, APNS_PRIVATE_KEY_PATH, APNS_PRIVATE_KEY, APNS_TOPIC,
+  APNS_ENVIRONMENT, MOBILE_PUSH_TOKENS_PATH,
   PUSHOVER_TOKEN, PUSHOVER_USER_KEY,
   HARMONY_HOST, HARMONY_PORT, HARMONY_DOMAIN, HARMONY_HUB_ID,
   HARMONY_DENON_DEVICE_ID, HARMONY_INPUT_PHONO, HARMONY_INPUT_AUX1
@@ -230,6 +232,9 @@ import { getBrowseIndex } from './src/lib/browse-index.mjs';
 import { buildMobileCatalog } from './src/lib/mobile-track-identity.mjs';
 import { createListeningHistoryStore } from './src/lib/listening-history.mjs';
 import { createLastfmScrobbler } from './src/lib/lastfm-scrobbler.mjs';
+import { createApnsProvider } from './src/lib/apns.mjs';
+import { resolveApnsMediaUrl } from './src/lib/apns-artwork.mjs';
+import { createMobilePushTokenStore } from './src/lib/mobile-push-store.mjs';
 import { registerAllConfigRoutes } from './src/routes/config.routes.index.mjs';
 import { registerPodcastSubscriptionRoutes } from './src/routes/podcasts-subscriptions.routes.mjs';
 import { registerPodcastRefreshRoutes } from './src/routes/podcasts-refresh.routes.mjs';
@@ -276,6 +281,18 @@ const listeningHistory = createListeningHistoryStore({
       lastfmScrobbleError: result.error || '',
     });
   },
+});
+
+const mobilePushTokenStore = createMobilePushTokenStore({
+  filePath: MOBILE_PUSH_TOKENS_PATH,
+});
+const apnsProvider = createApnsProvider({
+  keyId: APNS_KEY_ID,
+  teamId: APNS_TEAM_ID,
+  privateKeyPath: APNS_PRIVATE_KEY_PATH,
+  privateKey: APNS_PRIVATE_KEY,
+  topic: APNS_TOPIC,
+  environment: APNS_ENVIRONMENT,
 });
 
 const HARMONY_SOURCE_RETRY_DELAY_MS = 900;
@@ -3225,7 +3242,9 @@ app.post('/alexa/was-playing', async (req, res) => {
 });
 
 // =========================
-// Optional iOS push notifications (Pushover)
+// Optional track notifications. Pushover remains available for the web/app
+// host, while APNs delivers to paired Sonuvi devices when the app is
+// suspended or not currently open.
 // =========================
 const TRACK_NOTIFY_POLL_MS_SAFE = Math.max(1500, Number(TRACK_NOTIFY_POLL_MS || 3000));
 const TRACK_NOTIFY_DEDUPE_MS_SAFE = Math.max(5000, Number(TRACK_NOTIFY_DEDUPE_MS || 15000));
@@ -3240,6 +3259,12 @@ function buildArtUrlForFile(file) {
   const f = String(file || '').trim();
   if (!f) return '';
   return `${PUBLIC_BASE_URL}/art/track_640.jpg?file=${encodeURIComponent(f)}${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}`;
+}
+
+function buildRadioLogoUrlForFile(file) {
+  const f = String(file || '').trim();
+  if (!f) return '';
+  return `${PUBLIC_BASE_URL}/art/radio-logo.jpg?file=${encodeURIComponent(f)}&v=20260924-radio-art2${TRACK_KEY ? `&k=${encodeURIComponent(TRACK_KEY)}` : ''}`;
 }
 
 function sanitizeNotifyMeta(rawArtist, rawTitle) {
@@ -3396,9 +3421,126 @@ async function sendPushoverTrackNotification(track) {
   return resp.ok;
 }
 
+function apnsPayloadForTrack(track) {
+  const title = String(track?.title || '').trim() || 'Now Playing';
+  const artist = String(track?.artist || '').trim();
+  const album = String(track?.album || '').trim();
+  const trackID = String(track?.key || title).trim();
+  const isRadio = track?.isRadio === true || /^https?:\/\//i.test(String(track?.file || ''));
+  const artworkMatched = track?.artworkMatched === true;
+  const rawMediaURL = String(
+    (isRadio
+      ? (artworkMatched ? track?.artUrl : track?.stationLogoUrl || track?.artUrl)
+      : track?.artUrl) || track?.stationLogoUrl || ''
+  ).trim();
+  const mediaURL = resolveApnsMediaUrl(rawMediaURL, {
+    publicBaseUrl: PUBLIC_BASE_URL,
+    mobileBaseUrl: MOBILE_PUBLIC_BASE_URL,
+  });
+  const alert = {
+    title,
+    ...(artist ? { subtitle: artist } : {}),
+    body: album || (artist ? 'Now playing' : 'Now playing on Sonuvi'),
+  };
+
+  return {
+    aps: {
+      alert,
+      ...(isRadio ? {} : { sound: 'default' }),
+      'mutable-content': mediaURL ? 1 : 0,
+      'thread-id': 'sonuvi-playback',
+    },
+    trackID,
+    source: String(track?.source || 'now-playing'),
+    ...(artist ? { artist } : {}),
+    ...(album ? { album } : {}),
+    ...(mediaURL ? { 'media-url': mediaURL } : {}),
+    ...(String(track?.appleMusicUrl || '').trim()
+      ? { appleMusicUrl: String(track.appleMusicUrl).trim() }
+      : {}),
+  };
+}
+
+async function sendApnsTrackNotification(track) {
+  if (!apnsProvider.isConfigured() || !track?.file) {
+    return { attempted: 0, sent: 0 };
+  }
+
+  const records = await mobilePushTokenStore.list();
+  if (!records.length) return { attempted: 0, sent: 0 };
+
+  const payload = apnsPayloadForTrack(track);
+  let sent = 0;
+  await Promise.all(records.map(async (record) => {
+    try {
+      const result = await apnsProvider.send({
+        deviceToken: record.token,
+        environment: record.environment,
+        payload,
+      });
+      if (result.invalidToken) {
+        await mobilePushTokenStore.remove({ token: record.token });
+      }
+      if (result.ok) sent += 1;
+    } catch (error) {
+      log.debug('[apns] track notification failed', error?.message || String(error));
+    }
+  }));
+  return { attempted: records.length, sent };
+}
+
+const nativeApnsNotificationDedupe = new Map();
+const NATIVE_APNS_DEDUPE_LIMIT = 128;
+
+async function notifyNativePlaybackWithApns({ track, trackId, sessionId } = {}) {
+  if (!TRACK_NOTIFY_ENABLED || !track?.file) {
+    return { attempted: 0, sent: 0 };
+  }
+
+  const nativeIdentity = [
+    String(trackId || track.id || track.file).trim(),
+    String(track.title || '').trim(),
+    String(track.artist || '').trim(),
+    String(track.album || '').trim(),
+  ].join('|');
+  const nativeKey = `ios-device|${String(sessionId || '').trim()}|${nativeIdentity}`;
+  const now = Date.now();
+  const previousAt = nativeApnsNotificationDedupe.get(nativeKey) || 0;
+  if (previousAt > 0 && now - previousAt < TRACK_NOTIFY_DEDUPE_MS_SAFE) {
+    return { attempted: 0, sent: 0, deduped: true };
+  }
+
+  const result = await sendApnsTrackNotification({
+    source: 'ios-device',
+    file: track.file,
+    title: track.title,
+    artist: track.artist,
+    album: track.album,
+    isRadio: track.isRadio === true || /^https?:\/\//i.test(String(track.file || '')),
+    artUrl: String(track.artUrl || track.artworkUrl || '').trim()
+      || (track.isRadio === true || /^https?:\/\//i.test(String(track.file || ''))
+        ? ''
+        : buildArtUrlForFile(track.file)),
+    stationLogoUrl: track.isRadio === true || /^https?:\/\//i.test(String(track.file || ''))
+      ? (buildRadioLogoUrlForFile(track.file) || String(track.stationLogoUrl || '').trim())
+      : String(track.stationLogoUrl || '').trim(),
+    artworkMatched: track.artworkMatched === true,
+    appleMusicUrl: String(track.appleMusicUrl || '').trim(),
+    key: nativeKey,
+  });
+  if (Number(result?.sent || 0) > 0) {
+    nativeApnsNotificationDedupe.set(nativeKey, now);
+    while (nativeApnsNotificationDedupe.size > NATIVE_APNS_DEDUPE_LIMIT) {
+      const oldestKey = nativeApnsNotificationDedupe.keys().next().value;
+      if (!oldestKey) break;
+      nativeApnsNotificationDedupe.delete(oldestKey);
+    }
+  }
+  return result;
+}
+
 async function trackNotificationTick() {
   if (!TRACK_NOTIFY_ENABLED) return;
-  if (!PUSHOVER_TOKEN || !PUSHOVER_USER_KEY) return;
   if (_trackNotifyBusy) return;
 
   _trackNotifyBusy = true;
@@ -3421,11 +3563,22 @@ async function trackNotificationTick() {
       track = refreshed;
     }
 
-    const ok = await sendPushoverTrackNotification(track);
-    if (ok) {
+    const [pushoverResult, apnsResult] = await Promise.allSettled([
+      sendPushoverTrackNotification(track),
+      sendApnsTrackNotification(track),
+    ]);
+    const pushoverSent = pushoverResult.status === 'fulfilled' && pushoverResult.value === true;
+    const apnsSent = apnsResult.status === 'fulfilled' && Number(apnsResult.value?.sent || 0) > 0;
+    if (pushoverSent || apnsSent) {
       _lastTrackNotifyKey = track.key;
       _lastTrackNotifyAt = now;
-      log.debug('[notify] sent', { source: track.source, title: track.title, artist: track.artist });
+      log.debug('[notify] sent', {
+        source: track.source,
+        title: track.title,
+        artist: track.artist,
+        pushover: pushoverSent,
+        apns: apnsSent,
+      });
     }
   } catch (e) {
     log.debug('[notify] failed', e?.message || String(e));
@@ -8280,6 +8433,10 @@ registerMobileRoutes(app, {
   transcodeTracks: MOBILE_TRANSCODE_TRACKS,
   musicLibraryRoot: PI4_MOUNT_BASE,
   listeningHistory,
+  pushTokenStore: mobilePushTokenStore,
+  apnsConfigured: apnsProvider.isConfigured(),
+  apnsTopic: APNS_TOPIC,
+  notifyNativePlayback: notifyNativePlaybackWithApns,
   mpdHost: MPD_HOST,
   getBrowseIndex,
   fetchInternalJson: async (pathname) => {
