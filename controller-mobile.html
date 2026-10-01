@@ -1352,7 +1352,7 @@
               kind:'queue',
               title: artist ? `${title} • ${artist}` : title,
               file: String(x?.file || '').trim(),
-              art: String(x?.thumbUrl || '').trim() || `${base}/art/current.jpg`,
+              art: (()=>{ const raw=String(x?.thumbUrl||'').trim(); return raw ? (raw.startsWith('http') ? raw : `${base}${raw}`) : `${base}/art/current.jpg`; })(),
             };
           });
           rail.innerHTML = '';

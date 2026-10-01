@@ -2444,7 +2444,7 @@
             title: String((x == null ? void 0 : x.title) || (x == null ? void 0 : x.stationName) || (x == null ? void 0 : x.file) || "(upcoming track)").trim(),
             artist: String((x == null ? void 0 : x.artist) || "").trim(),
             file: String((x == null ? void 0 : x.file) || "").trim(),
-            art: String((x == null ? void 0 : x.thumbUrl) || "").trim() || "".concat(base, "/art/current.jpg")
+            art: (() => { const raw = String((x == null ? void 0 : x.thumbUrl) || "").trim(); return raw ? (raw.startsWith("http") ? raw : "".concat(base, raw)) : "".concat(base, "/art/current.jpg"); })()
           }));
         return { src, items };
       }
@@ -2520,7 +2520,7 @@
           title: String((x == null ? void 0 : x.title) || (x == null ? void 0 : x.stationName) || (x == null ? void 0 : x.file) || "(upcoming track)").trim(),
           artist: String((x == null ? void 0 : x.artist) || "").trim(),
           file: String((x == null ? void 0 : x.file) || "").trim(),
-          art: String((x == null ? void 0 : x.thumbUrl) || "").trim() || "".concat(base, "/art/current.jpg")
+          art: (() => { const raw = String((x == null ? void 0 : x.thumbUrl) || "").trim(); return raw ? (raw.startsWith("http") ? raw : "".concat(base, raw)) : "".concat(base, "/art/current.jpg"); })()
         }));
         rail.innerHTML = "";
         if (!recentItems.length) {
