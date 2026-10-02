@@ -59,7 +59,7 @@ function fixtureIndex() {
   };
 }
 
-function registerFixture(fetchInternalJson) {
+function registerFixture(fetchInternalJson, overrides = {}) {
   const app = createApp();
   registerMobileRoutes(app, {
     enabled: true,
@@ -69,6 +69,7 @@ function registerFixture(fetchInternalJson) {
     getBrowseIndex: async () => fixtureIndex(),
     fetchInternalJson,
     serveArtworkForTrack: async () => {},
+    ...overrides,
   });
   return app;
 }
@@ -162,6 +163,75 @@ test('mobile Next Up follows the Alexa successor contract while Alexa Mode is ac
   assert.equal(response.body.next.isStream, true);
   assert.match(response.body.next.artworkUrl, /\/v1\/mobile\/home\/artwork\//);
   assert.doesNotMatch(JSON.stringify(response.body), /stream\.example\.test/);
+});
+
+test('mobile Next Up renders a normal radio successor as station-only metadata', async () => {
+  const currentFile = 'https://knkx-live-a.edge.audiocdn.com/6285_256k';
+  const nextFile = 'https://absolut-musicxl.live-sm.absolutradio.de/absolut-musicxl/stream/mp3';
+  const app = registerFixture(async (pathname) => {
+    if (pathname === '/now-playing') {
+      return { ok: true, json: { modeActive: false } };
+    }
+    if (pathname === '/alexa/was-playing') {
+      return { ok: true, json: { wasPlaying: { modeActive: false } } };
+    }
+    if (pathname === '/alexa/now-playing?maxAgeMs=21600000') {
+      return { ok: true, json: { fresh: false, nowPlaying: { modeActive: false } } };
+    }
+    if (pathname === '/next-up') {
+      return {
+        ok: true,
+        json: {
+          ok: true,
+          source: 'mpd-next',
+          next: {
+            title: 'James - Laid',
+            artist: '',
+            album: '',
+            file: nextFile,
+            artUrl: 'https://now-playing.tailnet.test/art/current.jpg',
+            isStream: true,
+            isRadio: true,
+          },
+        },
+      };
+    }
+    if (pathname === '/config/diagnostics/queue') {
+      return {
+        ok: true,
+        json: {
+          items: [
+            { position: 1, file: currentFile, stationName: 'Jazz24' },
+            { position: 2, file: nextFile, stationName: 'Absolut musicXL' },
+          ],
+        },
+      };
+    }
+    throw new Error(`unexpected internal route ${pathname}`);
+  }, {
+    mpdQueryRaw: async (command) => {
+      if (command === 'playlistinfo') {
+        return `OK MPD 0.23.15\nfile: ${currentFile}\nname: Radio\ntitle: Happy Belated\npos: 0\nid: 44\nfile: ${nextFile}\nname: Radio\ntitle: James - Laid\nartist: James\npos: 1\nid: 45\nOK\n`;
+      }
+      if (command === 'status') {
+        return 'state: play\nsong: 0\nsongid: 44\nplaylistlength: 2\nOK\n';
+      }
+      return 'OK\n';
+    },
+  });
+  const headers = await sessionHeaders(app);
+  const response = createResponse();
+  await app.routes.get('GET /v1/mobile/next-up')?.(request({ headers }), response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.next.title, 'Absolut musicXL');
+  assert.equal(response.body.next.artist, null);
+  assert.equal(response.body.next.album, null);
+  assert.equal(response.body.next.stationName, 'Absolut musicXL');
+  assert.equal(response.body.next.isRadio, true);
+  assert.match(response.body.next.artworkUrl, /\/v1\/mobile\/home\/artwork\//);
+  assert.equal(response.body.next.stationLogoUrl, response.body.next.artworkUrl);
+  assert.doesNotMatch(JSON.stringify(response.body), /James - Laid|absolut-musicxl/);
 });
 
 test('mobile Next Up requires the bearer mobile session', async () => {

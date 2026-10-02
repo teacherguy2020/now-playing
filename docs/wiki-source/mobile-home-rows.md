@@ -135,7 +135,9 @@ The `queue` row is the upcoming portion of the current Live Queue. The server
 filters the current item when it has a reliable queue head, while the full
 queue remains available from the dedicated Live Queue destination. Queue
 artwork and catalog identities use the same bearer-safe DTO boundary as other
-track rows.
+track rows. Radio rows are station cards: the station logo and resolved
+station name are shown, while stale stream-song `artist`/`album` metadata is
+discarded. The current matched radio song remains in the Now Playing card.
 
 The native client keeps this shelf tied to the same authority after the first
 response: remote queue polling replaces only the queue row when tracks are
@@ -218,4 +220,4 @@ opaque IDs, artwork proxy URLs, and the absence of MPD paths in serialized
 JSON. The iOS project’s Swift tests and signed device build must remain green
 when this endpoint changes.
 
-*Last reviewed: 2026-10-01 08:33 America/Chicago*
+*Last reviewed: 2026-10-02 18:45 America/Chicago*

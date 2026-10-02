@@ -1424,6 +1424,7 @@ test('mobile now-playing replaces a generic radio fallback with the resolved que
   assert.equal(response.body.stationName, '670 The Score');
   assert.equal(response.body.artist, '670 The Score');
   assert.match(response.body.artworkUrl, /\/v1\/mobile\/home\/artwork\/har_/);
+  assert.equal(response.body.stationLogoUrl, response.body.artworkUrl);
   assert.doesNotMatch(JSON.stringify(response.body), /amperwave|audacy-wscr|serverSongId|songid/i);
 });
 
@@ -1450,6 +1451,7 @@ test('mobile now-playing prefers canonical matched radio artwork over the queue 
             displayTitle: 'Fragile',
             displayArtist: 'Sting',
             displayLine3: '...Nothing Like the Sun',
+            radioStationName: '670 The Score',
             displayArtUrl: matchedArtwork,
             radioTrackUrl: 'https://music.apple.com/us/song/fragile/123456',
             isStream: true,
@@ -1465,7 +1467,6 @@ test('mobile now-playing prefers canonical matched radio artwork over the queue 
           items: [{
             position: 1,
             file: streamFile,
-            stationName: '670 The Score',
             thumbUrl: 'https://images.example.test/670-score-logo.jpg',
           }],
         },
@@ -1487,6 +1488,8 @@ test('mobile now-playing prefers canonical matched radio artwork over the queue 
 
   assert.equal(response.statusCode, 200);
   assert.equal(response.body.appleMusicUrl, 'https://music.apple.com/us/song/fragile/123456');
+  assert.match(response.body.stationLogoUrl, /\/v1\/mobile\/home\/artwork\/har_/);
+  assert.notEqual(response.body.stationLogoUrl, response.body.artworkUrl);
   const artworkId = response.body.artworkUrl.split('/').at(-1);
   const artworkResponse = createResponse();
   await app.routes.get('GET /v1/mobile/home/artwork/:artworkId')?.(request({
@@ -1495,6 +1498,64 @@ test('mobile now-playing prefers canonical matched radio artwork over the queue 
   }), artworkResponse);
   assert.equal(artworkResponse.statusCode, 200);
   assert.equal(artworkResponse.body.descriptor.reference, matchedArtwork);
+});
+
+test('mobile now-playing preserves an aliased station when iTunes payload has no station name', async () => {
+  const streamFile = 'https://knkx-live-a.edge.audiocdn.com/6285_256k';
+  const app = registerFixture({
+    mpdQueryRaw: async (command) => {
+      if (command === 'playlistinfo') {
+        return `file: ${streamFile}\npos: 0\nid: 44\nOK\n`;
+      }
+      if (command === 'status') {
+        return 'state: play\nsong: 0\nsongid: 44\nplaylistlength: 1\nOK\n';
+      }
+      return 'OK\n';
+    },
+    fetchInternalJson: async (pathname) => {
+      if (pathname === '/now-playing') {
+        return {
+          ok: true,
+          status: 200,
+          json: {
+            state: 'play',
+            displayTitle: 'Fiddler On the Roof (1991 Remaster)',
+            displayArtist: 'Cannonball Adderley',
+            displayLine3: 'Fiddler On the Roof',
+            displayArtUrl: 'https://images.example.test/matched.jpg',
+            radioItunesUrl: 'https://music.apple.com/us/song/fiddler-on-the-roof/123456',
+            isStream: true,
+            isRadio: true,
+            file: streamFile,
+          },
+        };
+      }
+      assert.equal(pathname, '/config/diagnostics/queue');
+      return {
+        ok: true,
+        status: 200,
+        json: {
+          items: [{ position: 1, file: streamFile }],
+        },
+      };
+    },
+  });
+
+  const sessionRes = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'ipad-brian' },
+  }), sessionRes);
+
+  const sessionToken = sessionRes.body.accessToken;
+  const response = createResponse();
+  await app.routes.get('GET /v1/mobile/now-playing')?.(request({
+    headers: { authorization: 'Bearer ' + sessionToken },
+  }), response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.stationName, 'Jazz24');
+  assert.equal(response.body.isRadio, true);
 });
 
 test('mobile now-playing exposes only safe Apple Music radio matches', async () => {

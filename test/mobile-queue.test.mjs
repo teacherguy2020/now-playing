@@ -540,6 +540,8 @@ test('mobile queue fills silent radio rows from the web diagnostics metadata', a
   assert.equal(response.statusCode, 200);
   const item = response.body.queue.items[0];
   assert.equal(item.title, '670 The Score');
+  assert.equal(item.artist, '');
+  assert.equal(item.album, '');
   assert.equal(item.stationName, '670 The Score');
   assert.equal(item.isStream, true);
   assert.match(item.artworkUrl, /\/v1\/mobile\/home\/artwork\/har_/);

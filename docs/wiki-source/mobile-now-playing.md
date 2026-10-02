@@ -33,6 +33,7 @@ must receive HTTP 401. The native client never calls `/now-playing` directly.
   "queueTrack": 3,
   "queueTotal": 171,
   "stationName": null,
+  "stationLogoUrl": null,
   "isStream": false,
   "isPodcast": false,
   "isRadio": false,
@@ -74,6 +75,21 @@ match exists, `radioYear` is populated when available and `appleMusicUrl`
 contains the exact matched track URL (falling back to the matched album URL).
 The mobile route only emits HTTPS URLs on Apple-controlled `music.apple.com`
 or `itunes.apple.com` hosts; untrusted or non-Apple links become `null`.
+
+For radio streams, `stationName` and `stationLogoUrl` identify the live
+station independently of the current song. `artworkUrl` may therefore be
+matched song artwork while `stationLogoUrl` remains the protected station
+logo. The mobile route accepts the canonical station aliases
+`stationName`, `radioStationName`, and `displayStationName`, preserving the
+station identity even when the current payload has been replaced with a
+matched iTunes title, artist, album, and artwork. Native clients should
+present the station identity below the album metadata and must not substitute
+song artwork for the station logo.
+
+When the stream does not publish a station name, the canonical and mobile
+routes resolve the current stream URL through the configured radio-logo alias
+map before falling back to the stream host. This keeps stations such as Jazz24
+visible even when iTunes supplies the current song and album metadata.
 
 When editorial data is available, `about` contains the normalized server-owned
 editorial object and `aboutStatus` is `available`; `aboutProvider` identifies
@@ -338,4 +354,4 @@ invoking the native APNs bridge. This keeps podcast paths out of the client
 while allowing podcast starts to receive the same track-change notification
 behavior as music.
 
-*Last reviewed: 2026-10-02 09:56 America/Chicago*
+*Last reviewed: 2026-10-02 16:55 America/Chicago*

@@ -115,6 +115,13 @@ opens the full player/Live Queue; CarPlay uses the platform's official
 **Next Up** button to open the Live Queue list; the iPad Home **Next Playing**
 summary shelf opens the same shared Live Queue destination.
 
+Radio successors are deliberately station-only on this contract. The route
+does not promote stale ICY/MPD song fields from a queued stream into **Next
+Up**; it returns the resolved station name as `title`, clears `artist` and
+`album`, and uses the station logo for `artworkUrl`. The current matched song
+continues to appear in the Now Playing card, where its verified song artwork
+and metadata belong.
+
 The native Home Live Queue shelf reuses the same full queue authority after
 initial load. Remote polling replaces only that shelf row when the server queue
 changes, and local playback derives it from the persisted device queue.
@@ -141,7 +148,9 @@ Queue artwork comes from the Now Playing artwork resolver/cache, not moOde's
 `coverart.php` or filesystem paths. For local catalog tracks the queue item
 uses the same bearer-protected `/v1/mobile/artwork/:trackId` route used by
 albums, artists, playlists, and playback metadata. Radio/stream rows use the
-server's station-logo fallback. The native app passes the bearer token when it
+server's station-logo fallback. Radio rows also collapse `title` to the
+station name and leave `artist`/`album` empty so a previous stream song cannot
+appear as the queued station. The native app passes the bearer token when it
 loads these URLs.
 
 The queue reader accepts the MPD protocol greeting before parsing playlist
@@ -298,4 +307,4 @@ playlist revision reconciliation, and richer per-row saved-data management
 remain follow-up work; any new mutation must retain the same bearer, opaque-ID,
 and explicit-target boundary.
 
-*Last reviewed: 2026-10-02 06:10 America/Chicago*
+*Last reviewed: 2026-10-02 18:45 America/Chicago*

@@ -220,7 +220,7 @@ import {
 } from './src/config.mjs';
 import { log } from './src/lib/log.mjs';
 import { execFileStrict } from './src/lib/exec.mjs';
-import { radioDisplayName } from './src/lib/radio-display.mjs';
+import { radioDisplayName, radioStationNameForFile } from './src/lib/radio-display.mjs';
 import {
   mpdEscapeValue, mpdHasACK, parseMpdFirstBlock, parseMpdKeyVals,
   mpdGetStatus, mpdPlay, mpdPlayId, mpdPause, mpdStop, mpdQueryRaw
@@ -7043,7 +7043,11 @@ app.get('/now-playing', async (req, res) => {
 
     let stationLogoUrl = '';
     let primaryArtUrl = '';
-    let streamStationName = String(song?.name || song?.album || '').trim();
+    // Keep station identity tied to the stream URL. iTunes enrichment may
+    // replace the song/album fields, but it must never erase the station.
+    let streamStationName = isRadio
+      ? await radioStationNameForFile(file, String(song?.name || song?.album || '').trim())
+      : String(song?.name || song?.album || '').trim();
     const radioMetadataProfileName = isRadio ? sharedRadioMetadataProfile(streamStationName, file) : 'generic';
 
     // ✅ Apple Music link fields (RADIO)

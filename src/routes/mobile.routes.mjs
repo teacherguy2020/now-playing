@@ -53,6 +53,7 @@ import {
   normalizeMobilePushEnvironment,
   normalizeMobilePushToken,
 } from '../lib/mobile-push-store.mjs';
+import { radioStationNameForFile } from '../lib/radio-display.mjs';
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const MEDIA_TICKET_TTL_MS = 60 * 60 * 1000;
@@ -660,13 +661,17 @@ export function registerMobileRoutes(app, deps = {}) {
       const rowMeta = `${row.file} ${row.name || ''} ${row.artist || ''} ${row.title || ''} ${row.album || ''}`;
       const isYoutube = /youtube|youtu\.be/i.test(rowMeta);
       const isPodcast = /\bpodcast\b|\/podcasts?\//i.test(rowMeta);
+      const isRadio = isStream && !isYoutube && !isPodcast;
       const diagnostic = isStream
         ? (diagnosticsByFile.get(text(row.file)) || diagnosticsByPosition.get(position) || null)
         : null;
       const reportedStationName = text(row.name || row.station || row.streamtitle);
-      const stationName = genericRadioText(reportedStationName)
+      const preferredStationName = genericRadioText(reportedStationName)
         ? text(diagnostic?.stationName || reportedStationName)
         : text(reportedStationName || diagnostic?.stationName);
+      const stationName = isRadio
+        ? await radioStationNameForFile(row.file, preferredStationName)
+        : preferredStationName;
       const queueItemId = createMobileQueueItemId({
         secret: trackIdSecret,
         file: row.file,
@@ -684,28 +689,37 @@ export function registerMobileRoutes(app, deps = {}) {
               : null)));
       const ratingState = await queueRating(row.file, track, { isStream, isYoutube, isPodcast });
       const favoriteState = await queueFavorite(row.file, track, { isStream, isYoutube, isPodcast });
-      items.push({
-        id: queueItemId,
-        position,
-        isCurrent: (Number.isFinite(currentSongId) && currentSongId === songId)
-          || (Number.isFinite(currentPosition) && currentPosition + 1 === position),
-        title: text(
+      const title = isRadio
+        ? stationName
+        : text(
           track?.title
           || (genericRadioText(row.title) ? '' : row.title)
           || diagnostic?.title
           || (genericRadioText(row.name) ? '' : row.name)
           || stationName
-        ),
-        artist: text(
+        );
+      const artist = isRadio
+        ? ''
+        : text(
           track?.artist
           || (genericRadioText(row.artist) ? '' : row.artist)
           || diagnostic?.artist
-        ),
-        album: text(
+        );
+      const album = isRadio
+        ? ''
+        : text(
           track?.album
           || (genericRadioText(row.album) ? '' : row.album)
           || diagnostic?.album
-        ),
+        );
+      items.push({
+        id: queueItemId,
+        position,
+        isCurrent: (Number.isFinite(currentSongId) && currentSongId === songId)
+          || (Number.isFinite(currentPosition) && currentPosition + 1 === position),
+        title,
+        artist,
+        album,
         stationName: stationName || null,
         isStream,
         isYoutube,
@@ -787,6 +801,33 @@ export function registerMobileRoutes(app, deps = {}) {
     const isStream = Boolean(candidate?.isStream) || Boolean(file && isStreamFile(file));
     const isYoutube = Boolean(candidate?.isYoutube);
     const isPodcast = Boolean(candidate?.isPodcast);
+    // A normal MPD successor that is an HTTP stream is a radio/station row,
+    // not a reliable song row. Alexa can also supply streams, but only treat
+    // those as station rows when its payload identifies them explicitly; this
+    // preserves ordinary Alexa stream candidates that still carry valid title
+    // metadata.
+    const isRadio = Boolean(candidate?.isRadio)
+      || (isStream && !isYoutube && !isPodcast && !alexaMode);
+    let queueItem = null;
+    if (isRadio && mpdQueryRaw) {
+      const queue = await loadMobileQueue(req).catch(() => null);
+      queueItem = queue?.items?.find((item) => text(item?.file) === file) || null;
+    }
+    const stationCandidates = [
+      queueItem?.stationName,
+      candidate?.stationName,
+      candidate?.radioStationName,
+      candidate?.displayStationName,
+      candidate?.station,
+    ];
+    const rawStationName = stationCandidates
+      .map(text)
+      .find((value) => value && !genericRadioText(value))
+      || stationCandidates.map(text).find(Boolean)
+      || '';
+    const stationName = isRadio
+      ? await radioStationNameForFile(file, rawStationName)
+      : '';
     const baseUrl = requestBaseUrl(req, mobileBaseUrl);
     const rawArtwork = [
       candidate?.artUrl,
@@ -798,12 +839,21 @@ export function registerMobileRoutes(app, deps = {}) {
     ]
       .map((value) => safeArtworkReference(req, value))
       .find(Boolean);
+    const stationArtwork = isRadio
+      ? (queueItem?.artworkUrl || (file
+        ? artworkUrlFor(req, { kind: 'radio-file', reference: file })
+        : null))
+      : null;
     const artworkUrl = track
       ? `${baseUrl}/v1/mobile/artwork/${encodeURIComponent(track.id)}`
-      : (rawArtwork ? artworkUrlFor(req, { kind: 'url', reference: rawArtwork }) : null);
-    const title = text(track?.title || candidate?.title || (file ? file.split('/').at(-1) : ''));
-    const artist = text(track?.artist || candidate?.artist);
-    const album = text(track?.album || candidate?.album);
+      : (isRadio
+        ? (stationArtwork || (rawArtwork ? artworkUrlFor(req, { kind: 'url', reference: rawArtwork }) : null))
+        : (rawArtwork ? artworkUrlFor(req, { kind: 'url', reference: rawArtwork }) : null));
+    const title = isRadio
+      ? text(stationName)
+      : text(track?.title || candidate?.title || (file ? file.split('/').at(-1) : ''));
+    const artist = isRadio ? '' : text(track?.artist || candidate?.artist);
+    const album = isRadio ? '' : text(track?.album || candidate?.album);
     const available = Boolean(title || artist || artworkUrl);
 
     return {
@@ -819,7 +869,10 @@ export function registerMobileRoutes(app, deps = {}) {
           artist: artist || null,
           album: album || null,
           artworkUrl,
+          stationName: stationName || null,
+          stationLogoUrl: stationArtwork || null,
           isStream: Boolean(isStream),
+          isRadio,
           isYoutube,
           isPodcast,
           track: track ? publicMobileTrack(track, { baseUrl }) : null,
@@ -985,17 +1038,37 @@ export function registerMobileRoutes(app, deps = {}) {
     const payloadTitle = text(payload.displayTitle || payload.title);
     const payloadArtist = text(payload.displayArtist || payload.artist);
     const payloadAlbum = text(payload.displayLine3 || payload.album);
+    const candidateFile = text(payload.file) || text(currentItem?.file);
     const shouldUseQueueStreamMetadata = Boolean(currentItem?.isStream)
       && (payload.displayConfidence === 'fallback'
         || genericRadioText(payloadTitle)
         || genericRadioText(payloadArtist));
     const nonGenericPayloadArtist = genericRadioText(payloadArtist) ? '' : payloadArtist;
     const nonGenericPayloadAlbum = genericRadioText(payloadAlbum) ? '' : payloadAlbum;
-    const stationName = text(
-      shouldUseQueueStreamMetadata
-        ? (currentItem?.stationName || payload.stationName || payload.station)
-        : (payload.stationName || payload.station || currentItem?.stationName)
-    ) || null;
+    const stationCandidates = shouldUseQueueStreamMetadata
+      ? [
+        currentItem?.stationName,
+        payload.stationName,
+        payload.radioStationName,
+        payload.displayStationName,
+        payload.station,
+      ]
+      : [
+        payload.stationName,
+        payload.radioStationName,
+        payload.displayStationName,
+        payload.station,
+        currentItem?.stationName,
+      ];
+    const rawStationName = stationCandidates.map(text).find((value) => value && !genericRadioText(value))
+      || stationCandidates.map(text).find(Boolean)
+      || '';
+    const isStream = Boolean(payload.isStream) || Boolean(currentItem?.isStream);
+    const isPodcast = Boolean(payload.isPodcast) || Boolean(currentItem?.isPodcast);
+    const isRadio = Boolean(payload.isRadio) || (isStream && !isPodcast);
+    const stationName = isRadio
+      ? (await radioStationNameForFile(candidateFile, rawStationName)) || null
+      : null;
     const title = text(shouldUseQueueStreamMetadata
       ? (genericRadioText(payloadTitle) || !payloadTitle ? 'Live Radio' : payloadTitle)
       : (payloadTitle || currentItem?.title));
@@ -1006,9 +1079,6 @@ export function registerMobileRoutes(app, deps = {}) {
       ? (currentItem?.album || nonGenericPayloadAlbum)
       : (payloadAlbum || currentItem?.album));
 
-    const isStream = Boolean(payload.isStream) || Boolean(currentItem?.isStream);
-    const isPodcast = Boolean(payload.isPodcast) || Boolean(currentItem?.isPodcast);
-    const isRadio = Boolean(payload.isRadio) || (isStream && !isPodcast);
     const appleMusicUrl = isRadio
       ? safeAppleMusicUrl(
         payload.radioTrackUrl
@@ -1053,6 +1123,25 @@ export function registerMobileRoutes(app, deps = {}) {
           : null);
     }
 
+    // Keep the station logo separate from matched radio artwork. Queue
+    // entries already carry the opaque station-logo URL; when the queue is
+    // unavailable, derive the same safe URL from the canonical payload or
+    // station identity instead of asking the native client to guess it.
+    const stationLogoUrl = isRadio
+      ? (currentItem?.artworkUrl
+        || (() => {
+          const rawStationLogo = safeArtworkReference(req, payload.stationLogoUrl);
+          if (rawStationLogo) {
+            return artworkUrlFor(req, { kind: 'url', reference: rawStationLogo });
+          }
+          if (!stationName) return null;
+          return artworkUrlFor(req, {
+            kind: text(payload.file) || text(currentItem?.file) ? 'radio-file' : 'radio',
+            reference: text(payload.file) || text(currentItem?.file) || stationName,
+          });
+        })())
+      : null;
+
     const durationSec = finiteNumberOrNull(payload.durationSec ?? payload.duration);
     const elapsedSec = finiteNumberOrNull(payload.elapsedSec ?? payload.elapsed);
     const queueTrack = useAlexaNowPlaying
@@ -1075,7 +1164,7 @@ export function registerMobileRoutes(app, deps = {}) {
       reference: 'current',
     });
     const isPlaying = Boolean(payload.isPlaying) || state === 'play';
-    const currentMobileTrack = await resolveMobileCurrentTrack(text(payload.file) || currentItem?.file);
+    const currentMobileTrack = await resolveMobileCurrentTrack(candidateFile);
     const currentItemIsLocal = !payload.isAirplay
       && !currentMobileTrack.disabled
       && Boolean(currentMobileTrack.track);
@@ -1112,6 +1201,7 @@ export function registerMobileRoutes(app, deps = {}) {
       queueTrack,
       queueTotal,
       stationName,
+      stationLogoUrl,
       isStream,
       isPodcast,
       isRadio,
