@@ -160,18 +160,22 @@ repository. It is available from:
 
 - the authenticated **Config** page in `app.html` (`config.html`); and
 - **Controller → Settings** (`controller-tablet-settings.html`).
+- an already-paired native iPhone/iPad in **Settings → Add another device**.
 
-Both surfaces use the same API and shared browser widget. The controller page
-is a convenience entry point; it is not a second pairing implementation.
+The browser surfaces use the same API and shared browser widget. The native
+display uses those same pairing endpoints and QR protocol; it is not a second
+pairing implementation.
 
-Pairing is disabled unless `MOBILE_API_ENABLED=1`, both mobile signing secrets
-are configured, and a real Now Playing Track Key is configured. The existing
-Track Key check is the display authorization/CSRF-equivalent for this project’s
-header-authenticated browser surfaces; no cookie session is introduced.
+Pairing is disabled unless `MOBILE_API_ENABLED=1` and both mobile signing
+secrets are configured. Browser displays continue to require a real Now
+Playing Track Key as their display authorization/CSRF-equivalent; an already-
+authenticated native device uses its existing bearer session instead. No
+cookie session is introduced.
 
 #### Protocol
 
-1. An authorized display calls `POST /v1/mobile/pairing/challenges`.
+1. An authorized web display (Track Key) or already-paired native display
+   (bearer session) calls `POST /v1/mobile/pairing/challenges`.
 2. The server creates an in-memory challenge with a 90-second lifetime and a
    separate in-memory display approval token. It returns a QR image and safe
    display state.
@@ -228,12 +232,12 @@ Pairing endpoints:
 
 | Method | Route | Credential | Purpose |
 | --- | --- | --- | --- |
-| POST | `/v1/mobile/pairing/challenges` | Track Key | Create challenge and QR data |
-| GET | `/v1/mobile/pairing/requests` | Track Key + display token | List pending requests |
+| POST | `/v1/mobile/pairing/challenges` | Track Key (web) or bearer session (native) | Create challenge and QR data |
+| GET | `/v1/mobile/pairing/requests` | Track Key/bearer session + display token | List pending requests |
 | POST | `/v1/mobile/pairing/requests` | QR challenge + public-key proof | Submit app request |
-| POST | `/v1/mobile/pairing/requests/:requestId/approve` | Track Key + display token + code | Approve one request |
-| POST | `/v1/mobile/pairing/requests/:requestId/reject` | Track Key + display token + code | Reject one request |
-| POST | `/v1/mobile/pairing/challenges/cancel` | Track Key + display token | Cancel the display challenge |
+| POST | `/v1/mobile/pairing/requests/:requestId/approve` | Track Key/bearer session + display token + code | Approve one request |
+| POST | `/v1/mobile/pairing/requests/:requestId/reject` | Track Key/bearer session + display token + code | Reject one request |
+| POST | `/v1/mobile/pairing/challenges/cancel` | Track Key/bearer session + display token | Cancel the display challenge |
 | GET | `/v1/mobile/pairing/requests/:requestId/complete` | App poll token | Complete approved pairing and receive session |
 
 Pairing state is intentionally memory-only in this server/display phase. A
@@ -245,8 +249,8 @@ token is written to logs.
 
 The pre-existing `POST /v1/mobile/session` enrollment endpoint is unchanged
 for backward compatibility. The native app may use pairing instead of the
-manual enrollment code, but the two paths remain separate until the companion
-client implements the new protocol.
+manual enrollment code; both the web and native display sides now use the same
+pairing protocol.
 
 ### Catalog
 
@@ -439,7 +443,7 @@ Remaining native-client verification and hardening:
 7. With an attached SSD, verify the cache-miss matrix: disconnected source,
    absent canonical track, stale size entry, and reconnect. Each case must
    preserve the canonical track ID and fall back to remote media when needed.
-8. Exercise all twelve Home shelf actions, target handoff, Siri collection
+8. Exercise all thirteen Home shelf sources and their actions, target handoff, Siri collection
    intents, and the playback-diagnostics toggle on unlocked devices.
 9. For pairing, retain coverage for the QR payload, public-key proof, display
    approval, wrong code, replay/expiry, restart invalidation, and confirmation
@@ -452,4 +456,4 @@ approved and configured in the signed native target.
 
 ## Timestamp
 
-Last updated: 2026-09-30 America/Chicago
+Last updated: 2026-10-01 America/Chicago

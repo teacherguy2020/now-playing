@@ -28,16 +28,63 @@ function catalog() {
 
 test('mobile home profile preserves configured rows and safe defaults', () => {
   const profile = sanitizeMobileHomeProfile({
-    recentRows: ['local-toptracks', 'local-toptracks', 'not-a-row', 'radio', 'podcasts', 'albums'],
+    recentRows: ['local-toptracks', 'local-toptracks', 'not-a-row', 'queue', 'radio', 'podcasts', 'albums'],
     recentCount: 99,
     theme: 'dark',
     showRecent: true,
   });
 
-  assert.deepEqual(profile.recentRows, ['local-toptracks', 'radio', 'podcasts', 'albums']);
+  assert.deepEqual(profile.recentRows, ['local-toptracks', 'queue', 'radio', 'podcasts']);
   assert.equal(profile.recentCount, 30);
   assert.equal(profile.theme, 'dark');
   assert.equal(mobileHomeSourcePath('local-toptracks', 18), '/config/listening-history/top-tracks?limit=18');
+});
+
+test('mobile home queue row exposes upcoming queue tracks without raw MPD paths', () => {
+  const built = catalog();
+  const result = buildMobileHomeRows({
+    profile: { recentRows: ['queue'] },
+    catalog: built,
+    baseUrl: 'http://nowplaying.local:3101',
+    makeItemId: ({ source, kind, identity }) => `itm_${source}_${kind}_${identity}`,
+    artworkUrlFor: ({ kind, reference }) => `http://nowplaying.local:3101/v1/mobile/home/artwork/${kind}-${encodeURIComponent(reference)}`,
+    sourcePayloads: new Map([
+      ['queue', {
+        ok: true,
+        payload: {
+          headPos: 1,
+          items: [
+            {
+              id: 'queue_current',
+              position: 1,
+              isCurrent: true,
+              title: 'Current',
+              artist: 'Artist',
+              album: 'Album',
+              file: 'USB/Music/Artist/Album/01 - Track.mp3',
+            },
+            {
+              id: 'queue_next',
+              position: 2,
+              isCurrent: false,
+              title: 'Track',
+              artist: 'Artist',
+              album: 'Album',
+              file: 'USB/Music/Artist/Album/01 - Track.mp3',
+            },
+          ],
+        },
+      }],
+    ]),
+  });
+
+  assert.equal(result.rows[0].id, 'queue');
+  assert.equal(result.rows[0].title, 'Live Queue');
+  assert.equal(result.rows[0].items.length, 1);
+  assert.equal(result.rows[0].items[0].id, 'itm_queue_track_queue_next');
+  assert.equal(result.rows[0].items[0].queueItemId, 'queue_next');
+  assert.equal(result.rows[0].items[0].track.title, 'Track');
+  assert.doesNotMatch(JSON.stringify(result), /USB\/Music/);
 });
 
 test('mobile home rows normalize local track and playlist art through mobile DTOs', () => {

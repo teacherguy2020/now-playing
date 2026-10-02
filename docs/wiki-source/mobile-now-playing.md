@@ -39,6 +39,9 @@ must receive HTTP 401. The native client never calls `/now-playing` directly.
   "isAirplay": false,
   "isUpnp": false,
   "isYoutube": false,
+  "about": null,
+  "aboutStatus": "no-data",
+  "aboutProvider": null,
   "appleMusicUrl": null,
   "radioYear": null,
   "track": null,
@@ -71,6 +74,12 @@ match exists, `radioYear` is populated when available and `appleMusicUrl`
 contains the exact matched track URL (falling back to the matched album URL).
 The mobile route only emits HTTPS URLs on Apple-controlled `music.apple.com`
 or `itunes.apple.com` hosts; untrusted or non-Apple links become `null`.
+
+When editorial data is available, `about` contains the normalized server-owned
+editorial object and `aboutStatus` is `available`; `aboutProvider` identifies
+the provider without exposing provider credentials. An explicit non-available
+status tells native clients not to show stale text. Older servers may omit the
+status/provider siblings, in which case a non-empty `about.text` remains usable.
 
 ## Current-track controls
 
@@ -156,9 +165,19 @@ The server validates the station, runs the station-specific normalization
 already used by Now Playing (including iHeart `StreamTitle` blobs), then
 applies the same conservative radio guard and iTunes matcher used by
 `/now-playing`. It returns protected matched artwork plus `title`, `artist`,
-`album`, `year`, and a validated `appleMusicUrl`. A miss returns the normalized
-metadata with `matched: false`, so the native player can still show the
-station's song title without presenting misleading music artwork or links.
+`album`, `year`, and a validated `appleMusicUrl`. When the canonical Now
+Playing snapshot is the same radio song, it also returns its normalized
+`about`, `aboutStatus`, and `aboutProvider` fields so direct native radio
+playback receives the same editorial content as Home moOde/web playback. A
+miss returns the normalized metadata with `matched: false`, so the native
+player can still show the station's song title without presenting misleading
+music artwork, links, or About text.
+
+The canonical About fallback is attempted whenever the direct enrichment
+response does not already contain About, including partial or timing-sensitive
+Apple lookups. The server still requires the submitted song to match the
+current canonical radio snapshot by verified Apple URL or normalized
+artist/title/album before copying that editorial text.
 
 For native track-change notifications, the corresponding radio playback event
 is accepted by the shared history route but its APNs send is intentionally
@@ -311,4 +330,12 @@ The server resolves the track ID and feeds the shared listening-history
 qualification/idempotency path. The client never submits a filesystem path,
 synthetic SSD ID, or alternate queue identity.
 
-*Last reviewed: 2026-10-01 13:15 America/Chicago*
+Native podcast playback is the feature-specific exception to the catalog ID
+shape: the client uses an opaque `podcast-...` episode identity for its local
+device queue, and the bearer route resolves that identity to the downloaded
+episode's server-owned MPD path and metadata before recording history or
+invoking the native APNs bridge. This keeps podcast paths out of the client
+while allowing podcast starts to receive the same track-change notification
+behavior as music.
+
+*Last reviewed: 2026-10-02 09:56 America/Chicago*

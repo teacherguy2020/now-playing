@@ -129,6 +129,7 @@
     .heroQueueBtn,
     .heroQueueActions button{padding:4px 8px;border-radius:7px;border:1px solid #334;background:#0a1222;color:#eef;cursor:pointer;transition:all .12s ease}
     .heroQueueBtn{padding:6px 10px;border-radius:8px}
+    .heroQueueBtn.shufflePending{border-color:#22c55e !important;background:#14532d !important;color:#dcfce7 !important;box-shadow:0 0 0 1px rgba(34,197,94,.34) inset}
     .heroQueueBtn.alexa-active{border-color:#55c98a !important;background:#153d2b !important;color:#b9ffd8 !important;box-shadow:0 0 0 1px rgba(85,201,138,.28) inset}
     .heroQueueBtn.isLoading{position:relative;padding-left:30px;pointer-events:none;opacity:.9}
     .heroQueueBtn.isLoading::before{content:'';position:absolute;left:10px;top:50%;width:12px;height:12px;margin-top:-7px;border:2px solid rgba(191,219,254,.35);border-top-color:#bfdbfe;border-radius:50%;animation:hqSpin .75s linear infinite}
@@ -412,7 +413,7 @@
           <button class="pill" id="peppyPill" type="button" title="moOde display mode" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>Peppy<span class="hint" id="peppyHint">off</span></button>
           <button class="pill" id="peppyAlsaPill" type="button" title="PeppyALSA driver status" style="cursor:default;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>PeppyALSA<span class="hint" id="peppyAlsaHint">unknown</span></button>
           <button class="pill" id="moodePill" type="button" title="Restart moOde" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span>moOde<span class="hint" id="moodeHint">unknown</span></button>
-          <button class="pill" id="notifyPill" type="button" title="Pushover track notifications" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="notifyLabel">Notify</span><span class="hint" id="notifyHint">off</span></button>
+          <button class="pill" id="notifyPill" type="button" title="Track notifications" style="cursor:pointer;"><span class="dot" aria-hidden="true"></span><span class="miniSpin" aria-hidden="true"></span><span id="notifyLabel">Notify</span><span class="hint" id="notifyHint">off</span></button>
 
         </div>
       </div>
@@ -1853,7 +1854,13 @@
           const n = cfg?.notifications || {};
           const track = n?.trackNotify || {};
           const po = n?.pushover || {};
-          notifyConfigured = !!(String(po?.token || '').trim() && String(po?.userKey || '').trim());
+          const apns = n?.apns || {};
+          const pushoverConfigured = !!(String(po?.token || '').trim() && String(po?.userKey || '').trim());
+          const apnsConfigured = !!apns?.configured;
+          notifyConfigured = pushoverConfigured || apnsConfigured;
+          const deliveryLabel = apnsConfigured && pushoverConfigured
+            ? 'APNs + Pushover'
+            : (apnsConfigured ? 'APNs' : 'Pushover');
           notifyEnabled = !!track?.enabled;
 
           const hint = document.getElementById('notifyHint');
@@ -1870,7 +1877,7 @@
           }
 
           if (hint) hint.textContent = notifyEnabled ? 'on' : 'paused';
-          if (label) label.textContent = notifyEnabled ? 'Pushover' : 'Pushover';
+          if (label) label.textContent = deliveryLabel;
           setPillState('notifyPill', notifyEnabled ? 'ok' : 'warn');
         } catch {
           setPillState('notifyPill', 'bad');
@@ -1880,7 +1887,7 @@
       async function toggleNotifyPause(){
         if (!notifyConfigured) return;
         const nextEnabled = !notifyEnabled;
-        const ok = window.confirm(nextEnabled ? 'Resume Pushover notifications?' : 'Pause Pushover notifications?');
+        const ok = window.confirm(nextEnabled ? 'Resume track notifications?' : 'Pause track notifications?');
         if (!ok) return;
         const host = location.hostname || 'sonuvi.local';
         const base = `${location.protocol}//${host}:3101`;
@@ -3812,9 +3819,16 @@
         hqShuffle?.addEventListener('click', async () => {
           hqShuffle.disabled = true;
           const prev = hqShuffle.textContent || 'Shuffle';
+          hqShuffle.classList.add('isLoading', 'shufflePending');
           hqShuffle.textContent = 'Shuffling…';
-          try { await sendHeroPlayback('shufflequeue'); } catch (_) {}
-          finally { hqShuffle.disabled = false; hqShuffle.textContent = prev; await syncHeroQueue(); }
+          try { await sendHeroPlayback('shufflequeue'); await syncHeroQueue(); }
+          catch (_) {}
+          finally {
+            hqShuffle.classList.remove('isLoading', 'shufflePending');
+            hqShuffle.disabled = false;
+            hqShuffle.textContent = prev;
+            await syncHeroQueue();
+          }
         });
 
         hqClear?.addEventListener('click', async () => {

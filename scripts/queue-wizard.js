@@ -2812,7 +2812,7 @@ async function maybeGenerateCollagePreview(reason = '', opts = {}) {
       const statusMsg =
         `Added to moOde queue: ${j.added}/${j.requested}` +
         (mode === 'replace' ? ` · ${replaceModeMsg}` : ' · appended') +
-        (j.randomTurnedOff ? ' · random off' : '') +
+        (j.shuffled ? ' · queue shuffled' : (j.randomTurnedOff ? ' · deterministic playback' : '')) +
         (j.playStarted ? (j.fastStart ? ' · playing (fast start)' : ' · playing') : '') +
         (j.playlistSaved ? ' · playlist saved' : '') +
         (j.collageGenerated ? ' · collage generated' : '') +

@@ -323,6 +323,57 @@ test('mobile canonical track rating is bearer-scoped and never exposes the sourc
   assert.doesNotMatch(JSON.stringify(writeRes.body), /SamsungMoode|First\.mp3/);
 });
 
+test('mobile canonical track favorite is bearer-scoped and never exposes the source file', async () => {
+  const calls = [];
+  const app = registerFixture({
+    getFavoriteForFile: async (file) => file.endsWith('First.mp3'),
+    fetchInternalRequest: async (pathname, options = {}) => {
+      calls.push({ pathname, options });
+      return {
+        ok: true,
+        status: 200,
+        json: { ok: true, isFavorite: Boolean(options.body?.favorite), disabled: false },
+      };
+    },
+  });
+
+  const sessionRes = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'iphone-brian' },
+  }), sessionRes);
+  const authHeaders = { authorization: `Bearer ${sessionRes.body.accessToken}` };
+
+  const searchRes = createResponse();
+  await app.routes.get('GET /v1/mobile/search')?.(request({
+    headers: authHeaders,
+    query: { q: 'First' },
+  }), searchRes);
+  const trackId = searchRes.body.items[0].id;
+
+  const readRes = createResponse();
+  await app.routes.get('GET /v1/mobile/catalog/tracks/:trackId/favorite')?.(request({
+    headers: authHeaders,
+    params: { trackId },
+  }), readRes);
+  assert.deepEqual(readRes.body, { ok: true, isFavorite: true, disabled: false });
+
+  const writeRes = createResponse();
+  await app.routes.get('POST /v1/mobile/catalog/tracks/:trackId/favorite')?.(request({
+    headers: authHeaders,
+    params: { trackId },
+    body: { favorite: false },
+  }), writeRes);
+  assert.deepEqual(writeRes.body, { ok: true, isFavorite: false, disabled: false });
+  assert.deepEqual(calls.map((call) => call.pathname), ['/favorites/toggle']);
+  assert.deepEqual(calls[0].options.body, {
+    file: 'USB/SamsungMoode/Test Album/01 - First.mp3',
+    favorite: false,
+  });
+  assert.doesNotMatch(JSON.stringify(readRes.body), /SamsungMoode|First\.mp3/);
+  assert.doesNotMatch(JSON.stringify(writeRes.body), /SamsungMoode|First\.mp3/);
+});
+
 test('local-source manifest maps canonical track IDs without exposing absolute server paths', async () => {
   const manifestIndex = fixtureIndex();
   manifestIndex.tracks = manifestIndex.tracks.map((track) => ({
@@ -470,6 +521,83 @@ test('native playback start invokes the APNs bridge with the canonical track', a
   assert.equal(notified.track.id, trackId);
   assert.equal(notified.track.file, 'USB/SamsungMoode/Test Album/01 - First.mp3');
   assert.equal(notified.sessionId, 'device-session-apns');
+  assert.equal(notified.deviceId, 'ipad-brian');
+});
+
+test('native podcast playback resolves its opaque episode ID for the APNs bridge', async () => {
+  const notifications = [];
+  const rss = 'https://feeds.example.test/show.rss';
+  const app = registerFixture({
+    fetchInternalRequest: async (pathname) => {
+      if (pathname === '/podcasts') {
+        return {
+          ok: true,
+          json: {
+            items: [{
+              title: 'Example Show',
+              rss,
+              dir: '/tmp/Example Show',
+              mpdPrefix: 'USB/SamsungMoode/Podcasts/Example Show',
+            }],
+          },
+        };
+      }
+      if (pathname === '/podcasts/episodes/list') {
+        return {
+          ok: true,
+          json: {
+            episodes: [{
+              id: 'episode-1',
+              title: 'Episode One',
+              downloaded: true,
+              filename: 'episode-1.mp3',
+              mpdPath: 'USB/SamsungMoode/Podcasts/Example Show/episode-1.mp3',
+              imageUrl: 'https://images.example.test/episode-one.jpg',
+            }],
+          },
+        };
+      }
+      throw new Error(`unexpected internal route: ${pathname}`);
+    },
+    listeningHistory: { observe: async () => ({ recorded: true, reason: 'recorded' }) },
+    notifyNativePlayback: async (event) => {
+      notifications.push(event);
+    },
+  });
+
+  const sessionRes = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'ipad-brian' },
+  }), sessionRes);
+  const authHeaders = { authorization: `Bearer ${sessionRes.body.accessToken}` };
+
+  const podcastsRes = createResponse();
+  await app.routes.get('GET /v1/mobile/podcasts')?.(request({ headers: authHeaders }), podcastsRes);
+  const podcastId = podcastsRes.body.items[0].id;
+  const trackId = `podcast-${podcastId}-episode-1`;
+
+  const playbackRes = createResponse();
+  await app.routes.get('POST /v1/mobile/playback/events')?.(request({
+    headers: authHeaders,
+    body: {
+      trackId,
+      sessionId: 'device-session-podcast',
+      state: 'start',
+      elapsedSec: 0,
+      durationSec: 0,
+    },
+  }), playbackRes);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(playbackRes.statusCode, 200);
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0].track.id, trackId);
+  assert.equal(notifications[0].track.file, 'USB/SamsungMoode/Podcasts/Example Show/episode-1.mp3');
+  assert.equal(notifications[0].track.title, 'Episode One');
+  assert.equal(notifications[0].track.artist, 'Example Show');
+  assert.equal(notifications[0].track.artworkUrl, 'https://images.example.test/episode-one.jpg');
+  assert.equal(notifications[0].deviceId, 'ipad-brian');
 });
 
 test('native radio playback defers APNs until enriched metadata is available', async () => {
@@ -556,6 +684,7 @@ test('native radio playback defers APNs until enriched metadata is available', a
   assert.doesNotMatch(notifications[0].track.artworkUrl, /\/v1\/mobile\/home\/artwork\//);
   assert.equal(notifications[0].track.appleMusicUrl, 'https://music.apple.com/us/song/blue-in-green/268443106');
   assert.equal(notifications[0].sessionId, 'ipad-brian');
+  assert.equal(notifications[0].deviceId, 'ipad-brian');
 });
 
 test('mobile radio stream authorization keeps the station URL behind a scoped ticket', async () => {
@@ -661,6 +790,27 @@ test('mobile radio station artwork uses the catalog logo name behind an opaque U
 
 test('mobile direct radio metadata returns enriched art and a safe Apple Music link', async () => {
   const app = registerFixture({
+    fetchInternalJson: async (pathname) => pathname === '/now-playing'
+      ? {
+        ok: true,
+        json: {
+          isRadio: true,
+          isStream: true,
+          artist: 'Miles Davis',
+          title: 'Blue in Green',
+          album: 'Kind of Blue',
+          radioTrackUrl: 'https://music.apple.com/us/song/blue-in-green/268443106',
+          about: {
+            type: 'album',
+            text: 'The canonical album editorial note.',
+            source: 'apple',
+            sourceId: 'album-268443106',
+          },
+          aboutStatus: 'available',
+          aboutProvider: 'apple',
+        },
+      }
+      : { ok: true, json: {} },
     fetchInternalRequest: async (pathname) => pathname === '/config/queue-wizard/radio-preview'
       ? {
         ok: true,
@@ -715,7 +865,83 @@ test('mobile direct radio metadata returns enriched art and a safe Apple Music l
   assert.equal(response.body.album, 'Kind of Blue');
   assert.equal(response.body.year, '1959');
   assert.equal(response.body.appleMusicUrl, 'https://music.apple.com/us/song/blue-in-green/268443106');
+  assert.equal(response.body.about?.type, 'album');
+  assert.equal(response.body.about?.text, 'The canonical album editorial note.');
+  assert.equal(response.body.aboutStatus, 'available');
+  assert.equal(response.body.aboutProvider, 'apple');
   assert.match(response.body.artworkUrl, /\/v1\/mobile\/home\/artwork\/har_/);
+});
+
+test('mobile direct radio metadata reuses canonical About when enrichment is partial', async () => {
+  const app = registerFixture({
+    fetchInternalJson: async (pathname) => pathname === '/now-playing'
+      ? {
+        ok: true,
+        json: {
+          isStream: true,
+          displayArtist: 'Tom Petty',
+          displayTitle: 'American Girl',
+          displayLine3: 'Tom Petty and the Heartbreakers',
+          about: {
+            type: 'album',
+            text: 'The canonical moOde editorial note.',
+            source: 'apple',
+          },
+          aboutStatus: 'available',
+          aboutProvider: 'apple',
+        },
+      }
+      : { ok: true, json: {} },
+    fetchInternalRequest: async (pathname) => pathname === '/config/queue-wizard/radio-preview'
+      ? {
+        ok: true,
+        json: {
+          tracks: [{
+            file: 'https://radio.example.test/live.mp3',
+            stationName: 'Example Radio',
+            genre: 'Rock',
+            format: 'mp3',
+            bitrate: '128',
+          }],
+        },
+      }
+      : { ok: true, json: {} },
+    enrichRadioMetadata: async () => ({
+      matched: false,
+      reason: 'metadata arrived between Apple lookups',
+    }),
+  });
+
+  const sessionRes = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'ipad-brian' },
+  }), sessionRes);
+  const sessionToken = sessionRes.body.accessToken;
+
+  const stationsRes = createResponse();
+  await app.routes.get('GET /v1/mobile/radio')?.(request({
+    headers: { authorization: `Bearer ${sessionToken}` },
+  }), stationsRes);
+  const stationId = stationsRes.body.items[0].id;
+
+  const response = createResponse();
+  await app.routes.get('POST /v1/mobile/radio/metadata')?.(request({
+    headers: { authorization: `Bearer ${sessionToken}` },
+    body: {
+      stationId,
+      artist: 'Tom Petty',
+      title: 'American Girl',
+      album: 'Tom Petty and the Heartbreakers',
+    },
+  }), response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.matched, false);
+  assert.equal(response.body.about?.type, 'album');
+  assert.equal(response.body.about?.text, 'The canonical moOde editorial note.');
+  assert.equal(response.body.aboutStatus, 'available');
+  assert.equal(response.body.aboutProvider, 'apple');
 });
 
 test('mobile animated-art lookup reuses the server cache without exposing admin paths', async () => {
@@ -901,12 +1127,12 @@ test('mobile home shelf settings save ordered row sources through the bearer bou
   const response = createResponse();
   await app.routes.get('POST /v1/mobile/home/profile')?.(request({
     headers: { authorization: "Bearer " + sessionRes.body.accessToken },
-    body: { recentRows: ['lastfm-toptracks', 'lastfm-topartists', 'albums', 'radio'] },
+    body: { recentRows: ['queue', 'lastfm-topartists', 'albums', 'radio'] },
   }), response);
 
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.body.profile.recentRows, [
-    'lastfm-toptracks',
+    'queue',
     'lastfm-topartists',
     'albums',
     'radio',
@@ -940,6 +1166,13 @@ test('mobile now-playing returns safe metadata and proxies raw artwork behind be
           isPodcast: false,
           isRadio: false,
           personnel: ['Test Musician (piano)', 'Test Ensemble'],
+          about: {
+            type: 'album',
+            text: 'Canonical About text survives the mobile projection.',
+            source: 'apple',
+          },
+          aboutStatus: 'available',
+          aboutProvider: 'apple',
         },
       };
     },
@@ -969,6 +1202,10 @@ test('mobile now-playing returns safe metadata and proxies raw artwork behind be
   assert.equal(response.body.queueTrack, 3);
   assert.equal(response.body.queueTotal, 9);
   assert.deepEqual(response.body.personnel, ['Test Musician (piano)', 'Test Ensemble']);
+  assert.equal(response.body.about?.type, 'album');
+  assert.equal(response.body.about?.text, 'Canonical About text survives the mobile projection.');
+  assert.equal(response.body.aboutStatus, 'available');
+  assert.equal(response.body.aboutProvider, 'apple');
   assert.equal(response.body.appleMusicUrl, null);
   assert.equal(response.body.radioYear, null);
   assert.match(response.body.artworkUrl, /\/v1\/mobile\/home\/artwork\/har_/);
@@ -978,6 +1215,35 @@ test('mobile now-playing returns safe metadata and proxies raw artwork behind be
 
 test('mobile now-playing follows the fresh Alexa current-track authority', async () => {
   const app = registerFixture({
+    mpdQueryRaw: async (command) => {
+      if (command === 'playlistinfo') {
+        return [
+          'file: USB/SamsungMoode/Test Album/01 - First.mp3',
+          'pos: 0',
+          'id: 41',
+          '',
+          'file: USB/SamsungMoode/Test Album/02 - Second.flac',
+          'pos: 1',
+          'id: 42',
+          '',
+          'file: USB/SamsungMoode/Test Album/01 - First.mp3',
+          'pos: 2',
+          'id: 43',
+          'OK',
+        ].join(String.fromCharCode(10));
+      }
+      if (command === 'status') {
+        return [
+          'state: play',
+          'song: 0',
+          'songid: 41',
+          'playlistlength: 3',
+          'random: 0',
+          'OK',
+        ].join(String.fromCharCode(10));
+      }
+      return 'OK' + String.fromCharCode(10);
+    },
     fetchInternalJson: async (pathname) => {
       if (pathname === '/now-playing') {
         return {
@@ -1018,6 +1284,8 @@ test('mobile now-playing follows the fresh Alexa current-track authority', async
               albumArtUrl: 'http://moode.local/coverart.php/secret-alexa.jpg',
               rating: 4,
               ratingDisabled: false,
+              queuedNextToken: 'successor-token',
+              queuedNextForToken: 'current-token',
             },
           },
         };
@@ -1044,7 +1312,7 @@ test('mobile now-playing follows the fresh Alexa current-track authority', async
   assert.equal(response.body.state, 'play');
   assert.equal(response.body.isPlaying, true);
   assert.equal(response.body.queueTrack, null);
-  assert.equal(response.body.queueTotal, null);
+  assert.equal(response.body.queueTotal, 3);
   assert.equal(response.body.rating, 4);
   assert.match(response.body.artworkUrl, /\/v1\/mobile\/home\/artwork\/har_/);
   assert.doesNotMatch(JSON.stringify(response.body), /secret-alexa|SamsungMoode/);
@@ -1505,4 +1773,66 @@ test('mobile now-playing controls are disabled for an unsupported local item', a
     body: { favorite: true },
   }), res);
   assert.deepEqual(res.body, { ok: true, isFavorite: false, disabled: true });
+});
+
+test('mobile podcast playback falls back to the subscription MPD prefix', async () => {
+  const calls = [];
+  const rss = 'https://feeds.example.test/show.rss';
+  const app = registerFixture({
+    fetchInternalRequest: async (pathname, options = {}) => {
+      calls.push({ pathname, options });
+      if (pathname === '/podcasts') {
+        return {
+          ok: true,
+          json: {
+            items: [{
+              title: 'Example Show',
+              rss,
+              dir: '/mnt/SamsungMoode/Podcasts/Example Show',
+              mpdPrefix: 'USB/SamsungMoode/Podcasts/Example Show',
+            }],
+          },
+        };
+      }
+      if (pathname === '/podcasts/episodes/list') {
+        return {
+          ok: true,
+          json: {
+            episodes: [{
+              id: 'episode-1',
+              title: 'Episode One',
+              date: '2026-10-02',
+              downloaded: true,
+              filename: 'episode-1.mp3',
+            }],
+          },
+        };
+      }
+      if (pathname === '/config/diagnostics/playback') {
+        return { ok: true, json: { ok: true } };
+      }
+      throw new Error(`unexpected internal route: ${pathname}`);
+    },
+  });
+
+  const sessionRes = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'iphone-brian' },
+  }), sessionRes);
+  const authHeaders = { authorization: `Bearer ${sessionRes.body.accessToken}` };
+
+  const podcastsRes = createResponse();
+  await app.routes.get('GET /v1/mobile/podcasts')?.(request({ headers: authHeaders }), podcastsRes);
+  const podcastId = podcastsRes.body.items[0].id;
+
+  const playRes = createResponse();
+  await app.routes.get('POST /v1/mobile/podcasts/:podcastId/episodes/:episodeId/play')?.(request({
+    headers: authHeaders,
+    params: { podcastId, episodeId: 'episode-1' },
+  }), playRes);
+
+  assert.equal(playRes.statusCode, 200);
+  const playbackCall = calls.find((call) => call.pathname === '/config/diagnostics/playback');
+  assert.equal(playbackCall?.options?.body?.file, 'USB/SamsungMoode/Podcasts/Example Show/episode-1.mp3');
 });

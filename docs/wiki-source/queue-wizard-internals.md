@@ -241,6 +241,24 @@ Current behavior:
 
 Endless Vibe intentionally differs from a one-shot seeded Vibe start. It uses the chained builder path, permits resilient same-artist fallback matching for sparse Last.fm metadata, and avoids treating an empty Last.fm/local-library match as permission to discard the active seed.
 
+## Native-device Endless Vibe
+
+This is intentionally a separate mode from the server-global setting above.
+The iPhone/iPad Live Queue stores its own `mobileDeviceEndlessVibeEnabled`
+preference locally. When the selected target is This iPhone or This iPad, the
+native model watches the current canonical device queue and begins a seeded
+Vibe preview when five or fewer successors remain. The current track stays
+playing; only future native queue items are replaced after the returned
+artist/title candidates are resolved through the canonical mobile catalog.
+
+The native watcher does not call `GET` or `POST /v1/mobile/endless-vibe`, so
+turning it on cannot enable or disable the shared Home moOde/MPD watcher. It
+currently reuses the existing Track-Key-protected seeded Vibe preview for
+recommendations;
+the server remains the Last.fm/index and catalog authority while playback and
+queue ownership remain native. Last.fm write credentials are not copied into
+the app.
+
 ## Relationship to other pages
 
 This page should stay linked with:
@@ -266,4 +284,4 @@ This page now gives the wiki a sharper internal model of Queue Wizard:
 - Add to Playlist, collage, and Vibe remain explicit server-side operations;
   the native client does not receive raw MPD paths or Track Keys
 
-_Last updated: 2026-09-30 America/Chicago_
+_Last updated: 2026-10-01 10:16 America/Chicago_

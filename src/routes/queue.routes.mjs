@@ -280,8 +280,10 @@ export function registerQueueRoutes(app, deps) {
 
       const excludeHoliday = req?.body?.excludeHoliday !== false;
       const clearFirst = req?.body?.clearFirst !== false;
-      const randomOn = req?.body?.random !== false;
-      const shuffleQueue = req?.body?.shuffle === true;
+      // `shuffle` is now the physical queue-ordering operation. Accept the
+      // legacy `random: true` request as an alias during migration, but never
+      // never leave legacy MPD random mode enabled.
+      const shuffleQueue = req?.body?.shuffle === true || req?.body?.random === true;
       const startPlayback = req?.body?.startPlayback === true;
       const maxTracks = Math.max(1, Math.min(5000, Number(req?.body?.maxTracks || 300)));
 
@@ -402,12 +404,10 @@ export function registerQueueRoutes(app, deps) {
         };
       }
 
-      // `random` changes MPD's playback selection mode; it does not reorder
-      // the queue.  A mix may explicitly request a physical shuffle so the
-      // requested artists are interleaved and then played sequentially.
-      await mpdCmdOk(`random ${shuffleQueue ? 0 : (randomOn ? 1 : 0)}`);
+      // Keep playback deterministic and make the visible queue the playback
+      // order. A requested shuffle physically reorders the complete mix.
+      await mpdCmdOk('random 0');
 
-      let randomizedHeadFromPos = null;
       let shuffled = false;
       if (shuffleQueue && added > 1) {
         try {
@@ -415,16 +415,6 @@ export function registerQueueRoutes(app, deps) {
           shuffled = true;
         } catch (e) {
           log.debug('[queue/mix] queue shuffle failed:', e?.message || String(e));
-        }
-      } else if (randomOn && added > 1) {
-        try {
-          const fromPos = Math.floor(Math.random() * added);
-          if (fromPos > 0) {
-            await mpdCmdOk(`move ${fromPos} 0`);
-            randomizedHeadFromPos = fromPos;
-          }
-        } catch (e) {
-          log.debug('[queue/mix] random head move failed:', e?.message || String(e));
         }
       }
 
@@ -438,8 +428,6 @@ export function registerQueueRoutes(app, deps) {
 
       const statusRaw = await mpdCmdOk('status');
       const status = parseMpdKeyVals(statusRaw || '');
-      const random = String(status.random || '').trim();
-
       let nowPlaying = null;
       try {
         nowPlaying = await resolveHeadFast();
@@ -469,9 +457,8 @@ export function registerQueueRoutes(app, deps) {
         artists,
         excludeHoliday,
         clearFirst,
-        random: random === '1',
+        random: false,
         shuffle: shuffled,
-        randomizedHeadFromPos,
         startPlayback,
         startedPlayback,
         maxTracks,

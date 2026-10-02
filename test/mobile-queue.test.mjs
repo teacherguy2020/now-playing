@@ -147,6 +147,92 @@ test('Alexa mobile actions require a bearer session and reuse the server diagnos
   }]);
 });
 
+test('mobile Shuffle physically reorders the queue through the server diagnostics route', async () => {
+  const calls = [];
+  const commands = [];
+  const app = registerFixture(async (command) => {
+    commands.push(command);
+    if (command === 'status') {
+      return 'state: play\nsong: 0\nsongid: 77\nplaylistlength: 1\nrandom: off\nrepeat: off\nOK\n';
+    }
+    if (command === 'playlistinfo') {
+      return 'file: USB/SamsungMoode/Test Album/01 - First.mp3\nartist: Test Artist\nalbum: Test Album\ntitle: First\npos: 0\nid: 77\nOK\n';
+    }
+    return 'OK\n';
+  }, {
+    fetchInternalRequest: async (pathname, options = {}) => {
+      calls.push({ pathname, options });
+      return { ok: true, status: 200, json: { ok: true, action: 'shufflequeue', randomOn: false } };
+    },
+  });
+
+  const response = createResponse();
+  await app.routes.get('POST /v1/mobile/queue/actions')?.(request({
+    headers: sessionHeaders(),
+    body: { action: 'shuffle' },
+  }), response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.ok, true);
+  assert.equal(response.body.action, 'shuffle');
+  assert.deepEqual(calls, [{
+    pathname: '/config/diagnostics/playback',
+    options: { method: 'POST', body: { action: 'shufflequeue' } },
+  }]);
+  assert.equal(commands.includes('shuffle'), false);
+  assert.doesNotMatch(JSON.stringify(response.body), /SamsungMoode|First\.mp3|serverSongId|songid/i);
+});
+
+test('mobile physical queue shuffle delegates to the diagnostics queue reorder path', async () => {
+  const calls = [];
+  const commands = [];
+  const app = registerFixture(async (command) => {
+    commands.push(command);
+    if (command === 'status') {
+      return 'state: stop\nsong: -1\nplaylistlength: 2\nrandom: off\nrepeat: off\nOK\n';
+    }
+    if (command === 'playlistinfo') {
+      return [
+        'file: USB/SamsungMoode/Test Album/01 - First.mp3',
+        'artist: Test Artist',
+        'album: Test Album',
+        'title: First',
+        'pos: 0',
+        'id: 77',
+        'file: USB/SamsungMoode/Test Album/02 - Second.mp3',
+        'artist: Test Artist',
+        'album: Test Album',
+        'title: Second',
+        'pos: 1',
+        'id: 78',
+        'OK',
+      ].join('\n');
+    }
+    return 'OK\n';
+  }, {
+    fetchInternalRequest: async (pathname, options = {}) => {
+      calls.push({ pathname, options });
+      return { ok: true, status: 200, json: { ok: true, action: 'shufflequeue' } };
+    },
+  });
+
+  const response = createResponse();
+  await app.routes.get('POST /v1/mobile/queue/actions')?.(request({
+    headers: sessionHeaders(),
+    body: { action: 'shufflequeue' },
+  }), response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.ok, true);
+  assert.equal(response.body.action, 'shuffle');
+  assert.deepEqual(calls, [{
+    pathname: '/config/diagnostics/playback',
+    options: { method: 'POST', body: { action: 'shufflequeue' } },
+  }]);
+  assert.equal(commands.includes('shuffle'), false);
+  assert.doesNotMatch(JSON.stringify(response.body), /SamsungMoode|First\.mp3|serverSongId|songid/i);
+});
+
 test('Alexa mobile Play action invokes the skill-start bridge', async () => {
   const calls = [];
   const app = registerFixture(async () => 'OK\n', {
@@ -302,6 +388,7 @@ test('mobile queue includes canonical per-item ratings without exposing MPD iden
   const streamFile = 'https://radio.example.test/live.mp3';
   const youtubeFile = 'https://www.youtube.com/watch?v=example';
   const ratingCalls = [];
+  const favoriteCalls = [];
   const queueRows = [
     { file: fragileFile, artist: 'Sting', album: '...All This Time', title: 'Fragile', pos: '0', id: '77' },
     { file: unratedFile, artist: 'Test Artist', album: 'Test Album', title: 'First', pos: '1', id: '78' },
@@ -359,6 +446,10 @@ test('mobile queue includes canonical per-item ratings without exposing MPD iden
       ratingCalls.push(file);
       return file === fragileFile ? 5 : 0;
     },
+    getFavoriteForFile: async (file) => {
+      favoriteCalls.push(file);
+      return file === fragileFile;
+    },
   });
 
   const response = createResponse();
@@ -369,15 +460,22 @@ test('mobile queue includes canonical per-item ratings without exposing MPD iden
   assert.equal(items.length, queueRows.length);
   assert.equal(items[0].rating, 5);
   assert.equal(items[0].ratingDisabled, false);
+  assert.equal(items[0].isFavorite, true);
+  assert.equal(items[0].favoriteDisabled, false);
   assert.equal(items[1].rating, 0);
   assert.equal(items[1].ratingDisabled, false);
+  assert.equal(items[1].isFavorite, false);
+  assert.equal(items[1].favoriteDisabled, false);
   for (const item of items.slice(2)) {
     assert.equal(item.rating, 0);
     assert.equal(item.ratingDisabled, true);
+    assert.equal(item.isFavorite, false);
+    assert.equal(item.favoriteDisabled, true);
   }
   assert.equal(items[2].isPodcast, true);
   assert.equal(items[4].isYoutube, true);
   assert.deepEqual(ratingCalls, [fragileFile, unratedFile]);
+  assert.deepEqual(favoriteCalls, [fragileFile, unratedFile]);
   assert.doesNotMatch(JSON.stringify(response.body), /SamsungMoode|Fragile\.flac|serverSongId|songid/i);
 });
 

@@ -9,6 +9,7 @@ export const MOBILE_HOME_ROW_IDS = Object.freeze([
   'playlists',
   'podcasts',
   'radio',
+  'queue',
   'lastfm-topalbums',
   'lastfm-topartists',
   'lastfm-toptracks',
@@ -26,6 +27,7 @@ const ROW_DEFINITIONS = Object.freeze({
   playlists: { title: 'Recent Playlists', provider: 'now-playing', kind: 'playlist' },
   podcasts: { title: 'Recent Podcasts', provider: 'now-playing', kind: 'podcast' },
   radio: { title: 'Favorite Radio Stations', provider: 'now-playing', kind: 'radio' },
+  queue: { title: 'Live Queue', provider: 'now-playing', kind: 'track' },
   'lastfm-topalbums': { title: 'Top Albums', provider: 'lastfm', kind: 'album' },
   'lastfm-topartists': { title: 'Top Artists', provider: 'lastfm', kind: 'artist' },
   'lastfm-toptracks': { title: 'Top Tracks', provider: 'lastfm', kind: 'track' },
@@ -101,10 +103,21 @@ export function mobileHomeSourcePath(source, limit = 18) {
   return paths[row] || '';
 }
 
-function sourceItems(payload) {
-  if (Array.isArray(payload?.items)) return payload.items;
-  if (Array.isArray(payload?.favorites)) return payload.favorites;
-  return [];
+function sourceItems(payload, source) {
+  const items = Array.isArray(payload?.items)
+    ? payload.items
+    : (Array.isArray(payload?.favorites) ? payload.favorites : []);
+  if (source !== 'queue') return items;
+
+  // The Home shelf is the upcoming portion of Live Queue. The full queue
+  // remains available from the dedicated Live Queue destination.
+  return items.filter((item) => {
+    if (item?.isCurrent === true) return false;
+    if (Number.isFinite(payload?.headPos) && Number.isFinite(item?.position)) {
+      return item.position > payload.headPos;
+    }
+    return true;
+  });
 }
 
 function remoteArtwork(raw, { baseUrl, artworkUrlFor }) {
@@ -198,8 +211,10 @@ function trackItem({ source, provider, raw, catalog, baseUrl, makeItemId, artwor
   });
   const albumItem = albumRecord ? publicMobileAlbum(albumRecord, catalog, { baseUrl }) : null;
   const title = text(catalogTrack?.title || sourceTitle) || '(track)';
-  const art = track?.artworkUrl || remoteArtwork(raw?.art, { baseUrl, artworkUrlFor });
-  const identity = catalogTrack?.id || `${artist}|${title}|${album}|${file}`;
+  const art = track?.artworkUrl
+    || text(raw?.artworkUrl)
+    || remoteArtwork(raw?.art, { baseUrl, artworkUrlFor });
+  const identity = text(raw?.id) || catalogTrack?.id || `${artist}|${title}|${album}|${file}`;
   return {
     id: itemId(makeItemId, source, 'track', identity, index),
     kind: 'track',
@@ -209,6 +224,10 @@ function trackItem({ source, provider, raw, catalog, baseUrl, makeItemId, artwor
     album,
     provider,
     source,
+    // The Home row ID is a display/navigation identity. Queue rows also
+    // carry the server-issued queue handle so native actions can mutate the
+    // exact queued instance without guessing from the catalog track ID.
+    queueItemId: source === 'queue' ? (text(raw?.id) || null) : null,
     artworkUrl: art,
     track,
     albumItem,
@@ -406,7 +425,7 @@ export function buildMobileHomeRows({
     ? safeProfile.recentRows.map((source) => {
       const definition = mobileHomeRowDefinition(source);
       const result = sourcePayloads.get(source) || {};
-      const items = sourceItems(result.payload)
+      const items = sourceItems(result.payload, source)
         .map((raw, index) => mapItem(source, raw, context, index))
         .filter(Boolean);
       return {

@@ -794,54 +794,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const mpdHost = String(MPD_HOST || 'moode.local');
       const map = { play: 'play', pause: 'pause', toggle: 'toggle', next: 'next', prev: 'prev', previous: 'prev', stop: 'stop' };
 
-      if (action === 'shuffle') {
-        const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
-        const wasOn = /random:\s*on/i.test(String(beforeStatus || ''));
-        const setTo = wasOn ? 'off' : 'on';
-        await execFileP('mpc', ['-h', mpdHost, 'random', setTo]);
-        let { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
-        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
-        const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
-
-        // Alexa continuity anchor: when turning random OFF while Alexa-mode lifecycle is active,
-        // prime MPD current position to the remembered removed position (without leaving local playback running).
-        let primedPos = null;
-        let primeSkipped = '';
-        try {
-          const wp = (typeof getAlexaWasPlaying === 'function') ? (getAlexaWasPlaying() || null) : null;
-          const alexaActive = !!wp?.active;
-          if (setTo === 'off' && alexaActive) {
-            const fromField = Number(wp?.removedPos0);
-            const fromToken = pos0FromAlexaToken(wp?.token);
-            const anchorPos0 = Number.isFinite(fromField) ? Math.max(0, Math.floor(fromField)) : fromToken;
-            const anchorPos1Raw = Number.isFinite(anchorPos0) ? (anchorPos0 + 1) : null;
-
-            const statusText = String(afterStatus || '');
-            const isLocallyPlaying = /\[(playing|paused)\]/i.test(statusText);
-            const mTot = statusText.match(/#\d+\/(\d+)/);
-            const total = mTot ? Number(mTot[1] || 0) : 0;
-
-            if (!Number.isFinite(anchorPos1Raw) || (anchorPos1Raw || 0) <= 0) {
-              primeSkipped = 'no-anchor';
-            } else if (isLocallyPlaying) {
-              primeSkipped = 'local-playing';
-            } else {
-              const targetPos = total > 0 ? Math.max(1, Math.min(total, Math.floor(anchorPos1Raw))) : Math.max(1, Math.floor(anchorPos1Raw));
-              await execFileP('mpc', ['-h', mpdHost, 'play', String(targetPos)]);
-              await execFileP('mpc', ['-h', mpdHost, 'stop']);
-              primedPos = targetPos;
-              const refreshed = await execFileP('mpc', ['-h', mpdHost, 'status']);
-              afterStatus = refreshed?.stdout || afterStatus;
-            }
-          }
-        } catch (e) {
-          primeSkipped = `prime-error:${e?.message || String(e)}`;
-        }
-
-        return res.json({ ok: true, action, randomOn, repeatOn, primedPos, primeSkipped, status: String(afterStatus || '') });
-      }
-
-      if (action === 'shufflequeue') {
+      if (action === 'shuffle' || action === 'shufflequeue') {
         const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
         const beforeFiles = await readMpdQueueFiles(mpdHost);
         if (beforeFiles.length < 2) {
@@ -1713,7 +1666,14 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       reconcileShuffleUndo(queueFiles);
       const undoAvailable = !!liveQueueShuffleUndo
         && queueFingerprint(queueFiles) === queueFingerprint(liveQueueShuffleUndo.shuffledFiles);
-      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, consumeOn, crossfadeSec, playbackState, ratingsEnabled, undoAvailable, items });
+      // Present the active track as the logical first queue item. MPD keeps
+      // its real positions unchanged so remove/move actions remain safe; the
+      // client still receives each item's original `position` for mutations.
+      const currentIndex = items.findIndex((item) => item?.isHead === true);
+      const displayItems = currentIndex > 0
+        ? [items[currentIndex], ...items.slice(currentIndex + 1), ...items.slice(0, currentIndex)]
+        : items;
+      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, consumeOn, crossfadeSec, playbackState, ratingsEnabled, undoAvailable, items: displayItems });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }

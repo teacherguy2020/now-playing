@@ -26,3 +26,8 @@ npm-debug.log*
 /var/podcasts/
 
 .DS_Store
+
+# Local tooling/runtime artifacts
+.deploy-staging/
+__pycache__/
+*.pyc

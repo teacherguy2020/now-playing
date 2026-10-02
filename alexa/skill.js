@@ -7,7 +7,7 @@
 const Alexa = require('ask-sdk-core');
 const config = require('./config');
 const { createApiClient } = require('./lib/api');
-const { createIntentHandlers } = require('./handlers/intents');
+const { createIntentHandlers, sanitizeAlexaResponseForLog } = require('./handlers/intents');
 const { createAudioHandlers } = require('./handlers/audio');
 const { createMiscHandlers } = require('./handlers/misc');
 const {
@@ -546,4 +546,23 @@ const skillHandler = Alexa.SkillBuilders.custom()
   .addErrorHandlers(ErrorHandler)
   .lambda();
 
-exports.handler = skillHandler;
+const lambdaHandler = (event, context, callback) => {
+  skillHandler(event, context, (error, response) => {
+    const intentName = event
+      && event.request
+      && event.request.type === 'IntentRequest'
+      && event.request.intent
+      ? event.request.intent.name
+      : '';
+    if (!error && intentName === 'PlayQueueIntent') {
+      console.log('[PlayQueueIntent] final Lambda response envelope (sanitized):', JSON.stringify(
+        sanitizeAlexaResponseForLog(response),
+        null,
+        2,
+      ));
+    }
+    callback(error, response);
+  });
+};
+
+exports.handler = lambdaHandler;

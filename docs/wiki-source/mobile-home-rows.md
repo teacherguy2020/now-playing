@@ -115,6 +115,7 @@ The source vocabulary follows the tablet controller:
 | `playlists` | Recent Playlists | Now Playing | `/recent/playlists` |
 | `podcasts` | Recent Podcasts | Now Playing | `/recent/podcasts` |
 | `radio` | Favorite Radio Stations | Now Playing | radio favorites |
+| `queue` | Live Queue | Now Playing | authenticated MPD queue snapshot |
 | `lastfm-topalbums` | Top Albums | Last.fm | `/config/lastfm/top-albums` |
 | `lastfm-topartists` | Top Artists | Last.fm | `/config/lastfm/top-artists` |
 | `lastfm-toptracks` | Top Tracks | Last.fm | `/config/lastfm/top-tracks` |
@@ -129,6 +130,18 @@ remain local-history rows even when Last.fm is configured; Swift must use the
 returned `provider` and `source` values rather than guessing from the title.
 An unavailable or empty source is a valid row state and is returned with
 `available: false` or an empty `items` array, not as a fabricated result.
+
+The `queue` row is the upcoming portion of the current Live Queue. The server
+filters the current item when it has a reliable queue head, while the full
+queue remains available from the dedicated Live Queue destination. Queue
+artwork and catalog identities use the same bearer-safe DTO boundary as other
+track rows.
+
+The native client keeps this shelf tied to the same authority after the first
+response: remote queue polling replaces only the queue row when tracks are
+added or removed elsewhere, while a local device target derives the row from
+the persisted native queue. Other discovery shelves are not reloaded for this
+reconciliation.
 
 Podcast playlists remain distinct from ordinary music playlists through the
 shared server playlist classification. The mobile home row does not flatten
@@ -182,9 +195,15 @@ Home shelf action faces use the row source ID rather than the display title:
 - `podcasts` exposes **Play Newest** (front of Live Queue), **Load** (replace
   the queue with downloaded episodes oldest-to-newest), and **Open**. Podcast
   items include an opaque `podcastId` for the subscription contract.
+- `queue` exposes the upcoming queue as catalog-backed track items. Each queue
+  item includes a separate opaque `queueItemId` for the exact current queue
+  snapshot; the native artwork ellipsis flips to **Play now**, **Play next**,
+  and **Remove**. The dedicated Live Queue destination remains the place for
+  full queue browsing, drag/reorder, crop, clear, and shuffle operations.
 
 The artwork remains the original destination/play action; only the upper-left
-ellipsis control flips to the action face. The radio and podcast queue
+ellipsis control flips to the action face. Live Queue shelf cards do not render
+the ordinary inline track action icon row. The radio and podcast queue
 operations are backed by `POST /v1/mobile/radio/play-front`,
 `POST /v1/mobile/podcasts/:podcastId/play-newest`, and
 `POST /v1/mobile/podcasts/:podcastId/load`. The existing append/favorite and
@@ -199,4 +218,4 @@ opaque IDs, artwork proxy URLs, and the absence of MPD paths in serialized
 JSON. The iOS project’s Swift tests and signed device build must remain green
 when this endpoint changes.
 
-*Last reviewed: 2026-09-30 America/Chicago*
+*Last reviewed: 2026-10-01 08:33 America/Chicago*

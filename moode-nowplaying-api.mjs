@@ -204,7 +204,10 @@ import {
   PI4_MOUNT_BASE, METAFLAC, TRACK_KEY, LASTFM_API_KEY, LASTFM_API_SECRET, LASTFM_SESSION_KEY, LASTFM_MPD_MODE,
   ENABLE_ALEXA, TRANSCODE_TRACKS, TRACK_CACHE_DIR,
   FAVORITES_PLAYLIST_NAME, FAVORITES_REFRESH_MS, ITUNES_SEARCH_URL, ITUNES_COUNTRY,
-  ITUNES_TIMEOUT_MS, ITUNES_TTL_HIT_MS, ITUNES_TTL_MISS_MS, ART_CACHE_DIR, ART_CACHE_LIMIT,
+  ITUNES_TIMEOUT_MS, ITUNES_TTL_HIT_MS, ITUNES_TTL_MISS_MS,
+  APPLE_MUSIC_DEVELOPER_TOKEN, APPLE_MUSIC_COUNTRY, APPLE_MUSIC_TIMEOUT_MS,
+  APPLE_MUSIC_KEY_ID, APPLE_MUSIC_TEAM_ID, APPLE_MUSIC_PRIVATE_KEY_PATH,
+  ART_CACHE_DIR, ART_CACHE_LIMIT,
   ART_640_PATH, ART_BG_PATH, PODCAST_DL_LOG, MOODE_SSH, FAVORITES_M3U, MUSIC_LIBRARY_ROOT, PODCAST_ROOT,
   TRACK_NOTIFY_ENABLED, TRACK_NOTIFY_POLL_MS, TRACK_NOTIFY_DEDUPE_MS, TRACK_NOTIFY_ALEXA_MAX_AGE_MS,
   SEEBURG_PLAYLIST_NAME, MULTIPHONE_PLAYLIST_NAME, MILLS_PLAYLIST_NAME,
@@ -249,6 +252,26 @@ import {
 import { registerMultiphoneRoutes } from './src/routes/multiphone.routes.mjs';
 import { getMillsIntegrationState, registerMillsRoutes } from './src/routes/mills.routes.mjs';
 import { HarmonyHubClient, sendHarmonyIrCommand } from './src/services/harmony.service.mjs';
+import { createAppleAboutService } from './src/services/apple-about.service.mjs';
+import { createAppleMusicTokenProvider } from './src/lib/apple-music-token.mjs';
+
+const appleMusicTokenProvider = APPLE_MUSIC_KEY_ID && APPLE_MUSIC_TEAM_ID && APPLE_MUSIC_PRIVATE_KEY_PATH
+  ? createAppleMusicTokenProvider({
+    keyId: APPLE_MUSIC_KEY_ID,
+    teamId: APPLE_MUSIC_TEAM_ID,
+    privateKeyPath: APPLE_MUSIC_PRIVATE_KEY_PATH,
+  })
+  : null;
+
+const appleAboutService = createAppleAboutService({
+  // A protected Media Services key is the production authority. The legacy
+  // pasted token remains a fallback only when automatic credentials are not
+  // configured (useful for development/testing).
+  developerToken: appleMusicTokenProvider ? '' : APPLE_MUSIC_DEVELOPER_TOKEN,
+  tokenProvider: appleMusicTokenProvider ? () => appleMusicTokenProvider.getToken() : null,
+  storefront: APPLE_MUSIC_COUNTRY,
+  timeoutMs: APPLE_MUSIC_TIMEOUT_MS,
+});
 
 const millsHarmonyClient = new HarmonyHubClient({
   host: HARMONY_HOST,
@@ -293,6 +316,14 @@ const apnsProvider = createApnsProvider({
   privateKey: APNS_PRIVATE_KEY,
   topic: APNS_TOPIC,
   environment: APNS_ENVIRONMENT,
+});
+
+log.info('[apns] provider initialized', {
+  configured: apnsProvider.isConfigured(),
+  topic: APNS_TOPIC,
+  environment: APNS_ENVIRONMENT,
+  trackNotificationsEnabled: TRACK_NOTIFY_ENABLED,
+  tokenStoreConfigured: Boolean(MOBILE_PUSH_TOKENS_PATH),
 });
 
 const HARMONY_SOURCE_RETRY_DELAY_MS = 900;
@@ -3461,16 +3492,36 @@ function apnsPayloadForTrack(track) {
   };
 }
 
-async function sendApnsTrackNotification(track) {
-  if (!apnsProvider.isConfigured() || !track?.file) {
+async function sendApnsTrackNotification(track, { deviceId = '' } = {}) {
+  const providerConfigured = apnsProvider.isConfigured();
+  if (!providerConfigured || !track?.file) {
+    log.warn('[apns] delivery skipped', {
+      providerConfigured,
+      filePresent: Boolean(track?.file),
+      source: String(track?.source || 'unknown'),
+      title: String(track?.title || '').trim() || 'unknown',
+    });
     return { attempted: 0, sent: 0 };
   }
 
-  const records = await mobilePushTokenStore.list();
-  if (!records.length) return { attempted: 0, sent: 0 };
+  const targetDeviceId = String(deviceId || '').trim();
+  const allRecords = await mobilePushTokenStore.list();
+  const records = allRecords.filter((record) => (
+    !targetDeviceId || record.deviceId === targetDeviceId
+  ));
+  if (!records.length) {
+    log.warn('[apns] no registered device tokens', {
+      source: String(track?.source || 'unknown'),
+      title: String(track?.title || '').trim() || 'unknown',
+      registeredCount: allRecords.length,
+      targetDevice: Boolean(targetDeviceId),
+    });
+    return { attempted: 0, sent: 0 };
+  }
 
   const payload = apnsPayloadForTrack(track);
   let sent = 0;
+  const outcomes = [];
   await Promise.all(records.map(async (record) => {
     try {
       const result = await apnsProvider.send({
@@ -3478,22 +3529,56 @@ async function sendApnsTrackNotification(track) {
         environment: record.environment,
         payload,
       });
+      outcomes.push({
+        environment: record.environment,
+        status: result.status,
+        reason: result.reason || '',
+        ok: result.ok === true,
+      });
       if (result.invalidToken) {
         await mobilePushTokenStore.remove({ token: record.token });
+        log.warn('[apns] removed invalid device token', {
+          environment: record.environment,
+          reason: result.reason || 'invalid token',
+        });
       }
       if (result.ok) sent += 1;
     } catch (error) {
-      log.debug('[apns] track notification failed', error?.message || String(error));
+      outcomes.push({
+        environment: record.environment,
+        status: 0,
+        reason: error?.message || String(error),
+        ok: false,
+      });
+      log.error('[apns] track notification failed', {
+        environment: record.environment,
+        error: error?.message || String(error),
+      });
     }
   }));
+  log.info('[apns] delivery completed', {
+    source: String(track?.source || 'unknown'),
+    title: String(track?.title || '').trim() || 'unknown',
+    attempted: records.length,
+    sent,
+    outcomes,
+  });
   return { attempted: records.length, sent };
 }
 
 const nativeApnsNotificationDedupe = new Map();
 const NATIVE_APNS_DEDUPE_LIMIT = 128;
 
-async function notifyNativePlaybackWithApns({ track, trackId, sessionId } = {}) {
+async function notifyNativePlaybackWithApns({ track, trackId, sessionId, deviceId } = {}) {
   if (!TRACK_NOTIFY_ENABLED || !track?.file) {
+    log.warn('[apns/native] notification skipped', {
+      trackNotificationsEnabled: TRACK_NOTIFY_ENABLED,
+      filePresent: Boolean(track?.file),
+      trackKind: String(trackId || '').startsWith('podcast-')
+        ? 'podcast'
+        : (String(trackId || '').startsWith('radio-') ? 'radio' : 'catalog'),
+      title: String(track?.title || '').trim() || 'unknown',
+    });
     return { attempted: 0, sent: 0 };
   }
 
@@ -3507,8 +3592,23 @@ async function notifyNativePlaybackWithApns({ track, trackId, sessionId } = {}) 
   const now = Date.now();
   const previousAt = nativeApnsNotificationDedupe.get(nativeKey) || 0;
   if (previousAt > 0 && now - previousAt < TRACK_NOTIFY_DEDUPE_MS_SAFE) {
+    log.info('[apns/native] notification deduplicated', {
+      trackKind: String(trackId || '').startsWith('podcast-')
+        ? 'podcast'
+        : (String(trackId || '').startsWith('radio-') ? 'radio' : 'catalog'),
+      title: String(track.title || '').trim() || 'unknown',
+    });
     return { attempted: 0, sent: 0, deduped: true };
   }
+
+  log.info('[apns/native] notification requested', {
+    trackKind: String(trackId || '').startsWith('podcast-')
+      ? 'podcast'
+      : (String(trackId || '').startsWith('radio-') ? 'radio' : 'catalog'),
+    title: String(track.title || '').trim() || 'unknown',
+    filePresent: Boolean(track.file),
+    targetDevice: Boolean(String(deviceId || '').trim()),
+  });
 
   const result = await sendApnsTrackNotification({
     source: 'ios-device',
@@ -3527,7 +3627,7 @@ async function notifyNativePlaybackWithApns({ track, trackId, sessionId } = {}) 
     artworkMatched: track.artworkMatched === true,
     appleMusicUrl: String(track.appleMusicUrl || '').trim(),
     key: nativeKey,
-  });
+  }, { deviceId });
   if (Number(result?.sent || 0) > 0) {
     nativeApnsNotificationDedupe.set(nativeKey, now);
     while (nativeApnsNotificationDedupe.size > NATIVE_APNS_DEDUPE_LIMIT) {
@@ -3682,18 +3782,25 @@ async function mpdPrimeIfIdle() {
     return { primed: false, skipped: true, reason: 'empty_playlist', state: state };
   }
 
-  // 4) When MPD random mode is enabled, physically shuffle the remaining
-  // queue before choosing its head. `playid` intentionally selects an exact
-  // ID, so it would otherwise bypass MPD's random-selection behavior.
+  // 4) Legacy random mode is no longer a playback policy. Turn it off and
+  // physically shuffle the queue before choosing its head. `playid`
+  // intentionally selects an exact ID, so leaving random enabled would be
+  // misleading and would make later playback semantics inconsistent.
   const statusRaw = await mpdQueryRaw('status');
   const randomOn = String(parseMpdKeyVals(statusRaw)?.random || '0').trim() === '1';
   let shuffled = false;
-  if (randomOn && playlistlength > 1) {
-    const shuffleRaw = await mpdQueryRaw('shuffle');
-    if (mpdHasACK(shuffleRaw)) {
-      throw new Error('MPD rejected queue shuffle during prime');
+  if (randomOn) {
+    const randomOffRaw = await mpdQueryRaw('random 0');
+    if (mpdHasACK(randomOffRaw)) {
+      throw new Error('MPD rejected disabling random mode during prime');
     }
-    shuffled = true;
+    if (playlistlength > 1) {
+      const shuffleRaw = await mpdQueryRaw('shuffle');
+      if (mpdHasACK(shuffleRaw)) {
+        throw new Error('MPD rejected queue shuffle during prime');
+      }
+      shuffled = true;
+    }
   }
 
   // 5) Select the queue head by stable MPD song ID, not by position. A
@@ -5843,10 +5950,9 @@ app.post('/mpd/play-artist', async (req, res) => {
 
     let added = finalFiles.length;
 
-    // Shuffle behavior for artist queues:
-    // - Explicit request body { shuffle:true } always shuffles (preferred for Alexa)
-    // - Otherwise preserve prior behavior: if MPD random is enabled, randomize head only.
-    let randomizedHeadFromPos = null;
+    // Shuffle behavior for artist queues: an explicit shuffle physically
+    // reorders the queue. Legacy MPD random mode is disabled and never used
+    // to choose a random head.
     let shuffledQueue = false;
     const shuffleRequested = String(req.body?.shuffle ?? '').toLowerCase() === 'true'
       || req.body?.shuffle === true
@@ -5856,6 +5962,10 @@ app.post('/mpd/play-artist', async (req, res) => {
     const randomOn = String(stPrime.random || '0').trim() === '1';
     const hasPodcastGenre = finalFiles.some((r) => isPodcastLikeGenre([r.genre, r.genresort].filter(Boolean).join(' | ')));
 
+    if (randomOn) {
+      try { await mpdQueryRaw('random 0'); } catch (_) {}
+    }
+
     if (added > 1 && !hasPodcastGenre) {
       if (shuffleRequested) {
         try {
@@ -5864,16 +5974,6 @@ app.post('/mpd/play-artist', async (req, res) => {
           shuffledQueue = true;
         } catch (e) {
           log.warn('[play-artist] shuffle failed or timed out', { artist, msg: e?.message || String(e) });
-        }
-      } else if (randomOn) {
-        try {
-          const fromPos = Math.floor(Math.random() * added);
-          if (fromPos > 0) {
-            await mpdQueryRaw(`move ${fromPos} 0`);
-            randomizedHeadFromPos = fromPos;
-          }
-        } catch (e) {
-          log.debug('[play-artist] random head move failed', { artist, msg: e?.message || String(e) });
         }
       }
     }
@@ -5915,7 +6015,6 @@ app.post('/mpd/play-artist', async (req, res) => {
       removedRating1,
       hasPodcastGenre,
       shuffledQueue,
-      randomizedHeadFromPos,
       playbackStarted: startPlayback,
       nowPlaying: {
         file: head.file || '',
@@ -6025,15 +6124,14 @@ app.post('/mpd/play-album', async (req, res) => {
       });
     }
 
-    // Prime queue. With random on, MPD starts at head on first play, so hop once.
+    // Prime the deterministic queue head; MPD random mode is not part of the
+    // playback model anymore.
     const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
-    const randomOn = String(stPrime.random || '0').trim() === '1';
+    if (String(stPrime.random || '0').trim() === '1') {
+      try { await mpdQueryRaw('random 0'); } catch (_) {}
+    }
     await mpdQueryRaw('play 0');
     await sleep(170);
-    if (randomOn) {
-      try { await mpdQueryRaw('next'); } catch (e) {}
-      await sleep(220);
-    }
     await mpdPause(true);
 
     const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
@@ -6081,15 +6179,14 @@ app.post('/mpd/play-track', async (req, res) => {
 
     if (added <= 0) return res.status(404).json({ ok: false, error: 'No matches for track', track });
 
-    // Prime queue. With random on, MPD starts at head on first play, so hop once.
+    // Prime the deterministic queue head; MPD random mode is not part of the
+    // playback model anymore.
     const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
-    const randomOn = String(stPrime.random || '0').trim() === '1';
+    if (String(stPrime.random || '0').trim() === '1') {
+      try { await mpdQueryRaw('random 0'); } catch (_) {}
+    }
     await mpdQueryRaw('play 0');
     await sleep(170);
-    if (randomOn) {
-      try { await mpdQueryRaw('next'); } catch (e) {}
-      await sleep(220);
-    }
     await mpdPause(true);
 
     const song = await fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`);
@@ -6188,27 +6285,19 @@ app.post('/mpd/play-playlist', async (req, res) => {
       }
     }
 
-    // If random is enabled, randomize queue head without starting local playback.
-    let randomizedHeadFromPos = null;
+    // Keep playlist playback deterministic. Legacy MPD random mode is
+    // disabled instead of selecting a random queue head.
     const stPrime = parseMpdKeyVals(await mpdQueryRaw('status'));
     const randomOn = String(stPrime.random || '0').trim() === '1';
+    if (randomOn) {
+      try { await mpdQueryRaw('random 0'); } catch (_) {}
+    }
     const playlistBlocks = parseMpdPlaylistBlocks(await mpdQueryRaw('playlistinfo'));
     const hasPodcastGenre = playlistBlocks.some((b) => isPodcastLikeGenre([b.genre, b.genresort].filter(Boolean).join(' | ')));
-    if (randomOn && added > 1 && !hasPodcastGenre) {
-      try {
-        const fromPos = Math.floor(Math.random() * added);
-        if (fromPos > 0) {
-          await mpdQueryRaw(`move ${fromPos} 0`);
-          randomizedHeadFromPos = fromPos;
-        }
-      } catch (e) {
-        log.debug('[play-playlist] random head move failed', { playlist: chosen, msg: e?.message || String(e) });
-      }
-    }
 
     const head = parseMpdFirstBlock(await mpdQueryRaw('playlistinfo 0:1'));
 
-    return res.json({ ok: true, playlist, playlistInput, chosen, added, hasPodcastGenre, randomizedHeadFromPos,
+    return res.json({ ok: true, playlist, playlistInput, chosen, added, hasPodcastGenre,
       ...(excludeRating1 ? { excludeRating1: true, removedRating1 } : {}), nowPlaying: {
       file: head.file || '', title: decodeHtmlEntities(head.title || ''), artist: decodeHtmlEntities(head.artist || ''), album: decodeHtmlEntities(head.album || ''),
       songpos: String(head.pos || '0').trim(), songid: String(head.id || '').trim(),
@@ -6220,15 +6309,12 @@ app.post('/mpd/play-playlist', async (req, res) => {
 app.post('/mpd/shuffle', async (req, res) => {
   try {
     if (!requireTrackKey(req, res)) return;
-    const rawState = String(req.body?.state || req.query?.state || '').trim().toLowerCase();
-    const on = ['on','1','true','enable','enabled'].includes(rawState);
-    const off = ['off','0','false','disable','disabled'].includes(rawState);
-    if (!on && !off) {
-      return res.status(400).json({ ok: false, error: 'state must be on/off' });
-    }
-    await mpdQueryRaw(`random ${on ? 1 : 0}`);
+    // Retain the legacy route name, but make its operation match the current
+    // product semantics: physical queue shuffle, never MPD random mode.
+    await mpdQueryRaw('random 0');
+    await mpdQueryRaw('shuffle');
     const st = await mpdGetStatus();
-    return res.json({ ok: true, shuffle: on, state: st?.state || '' });
+    return res.json({ ok: true, shuffle: true, randomOn: false, state: st?.state || '' });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e?.message || String(e) });
   }
@@ -6511,6 +6597,36 @@ async function lookupMobileRadioMetadata({ artist = '', title = '', album = '', 
   };
 }
 
+
+async function enrichNowPlayingAbout({ artist = '', title = '', album = '', trackUrl = '', albumUrl = '', file = '', displayOnly = false } = {}) {
+  if (!APPLE_MUSIC_DEVELOPER_TOKEN || displayOnly || !String(artist || '').trim() || !String(title || '').trim()) return null;
+
+  let acceptedTrackUrl = String(trackUrl || '').trim();
+  let acceptedAlbumUrl = String(albumUrl || '').trim();
+  if (!acceptedTrackUrl && !acceptedAlbumUrl) {
+    const match = await lookupItunesFirst(artist, title, false, {
+      strictArtist: true,
+      albumHint: album,
+    });
+    acceptedTrackUrl = String(match?.trackUrl || '').trim();
+    acceptedAlbumUrl = String(match?.albumUrl || '').trim();
+  }
+  if (!acceptedTrackUrl && !acceptedAlbumUrl) return null;
+
+  const request = appleAboutService.getAbout({
+    trackUrl: acceptedTrackUrl,
+    albumUrl: acceptedAlbumUrl,
+    identityKey: file || `${artist}|${title}|${album}`,
+  });
+  try {
+    return await Promise.race([
+      request,
+      new Promise((resolve) => setTimeout(() => resolve(null), Math.max(250, APPLE_MUSIC_TIMEOUT_MS + 100))),
+    ]);
+  } catch {
+    return null;
+  }
+}
 
 app.get('/now-playing', async (req, res) => {
   const debug = req.query.debug === '1';
@@ -8104,6 +8220,20 @@ app.get('/now-playing', async (req, res) => {
       }).catch(() => {});
     }
 
+    // Editorial About metadata is optional and non-critical. It is resolved
+    // from the final track payload so a refresh can never retain the prior
+    // track's text, and a provider timeout cannot affect playback state.
+    const about = await enrichNowPlayingAbout({
+      artist: payload.artist,
+      title: payload.title,
+      album: payload.album,
+      trackUrl: payload.radioTrackUrl,
+      albumUrl: payload.radioAlbumUrl,
+      file: payload.file,
+      displayOnly: payload.displayOnly,
+    });
+    if (about) payload.about = about;
+
     lastNowPlayingOk = payload;
     lastNowPlayingTs = Date.now();
     return res.json(payload);
@@ -8495,6 +8625,7 @@ registerMobileRoutes(app, {
   },
   mpdQueryRaw,
   getRatingForFile,
+  getFavoriteForFile: async (file) => isFavoriteInPlaylist(file),
   ratingsEnabled: async () => {
     try {
       const cfg = JSON.parse(await fsp.readFile(RUNTIME_CONFIG_PATH, 'utf8'));

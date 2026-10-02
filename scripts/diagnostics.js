@@ -373,16 +373,11 @@
     }
   }
 
-  function updateShuffleBtn(randomOn){
+  function updateShuffleBtn(){
     const btn = $('shuffleBtn');
     if (!btn) return;
-    if (typeof randomOn === 'boolean') {
-      btn.textContent = `Shuffle: ${randomOn ? 'On' : 'Off'}`;
-      btn.style.borderColor = randomOn ? '#22c55e' : '';
-    } else {
-      btn.textContent = 'Shuffle: ?';
-      btn.style.borderColor = '';
-    }
+    btn.textContent = 'Shuffle queue';
+    btn.style.borderColor = '';
   }
 
   async function sendPlayback(action, extra = null, opts = null){
@@ -397,7 +392,7 @@
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-    if (typeof j?.randomOn === 'boolean') updateShuffleBtn(j.randomOn);
+    updateShuffleBtn();
     $('status').textContent = `Playback: ${action}`;
     if (refreshQueue) await loadQueue();
     return j;
@@ -450,7 +445,7 @@
       const r = await fetch(`${base}/config/diagnostics/queue`, { headers: { 'x-track-key': key } });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-      if (typeof j?.randomOn === 'boolean') updateShuffleBtn(j.randomOn);
+      updateShuffleBtn();
       if (typeof j?.ratingsEnabled === 'boolean') ratingsEnabled = j.ratingsEnabled;
       const items = Array.isArray(j.items) ? j.items : [];
 

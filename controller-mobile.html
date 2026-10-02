@@ -2255,8 +2255,14 @@
       btn.disabled = true;
       // Shuffle reorders the physical upcoming queue; it never enables MPD
       // random mode. Keep this aligned with the tablet transport control.
-      try { await sendPlayback(act === 'shuffle' ? 'shufflequeue' : act); } catch {}
-      finally { btn.disabled = false; }
+      const isShuffle = act === 'shuffle';
+      if (isShuffle) btn.classList.add('loading', 'on');
+      try { await sendPlayback(isShuffle ? 'shufflequeue' : act); }
+      catch { if (isShuffle) btn.classList.remove('on'); }
+      finally {
+        if (isShuffle) btn.classList.remove('loading');
+        btn.disabled = false;
+      }
       refreshNowPlayingCard().catch(()=>null);
     });
     wakeNpCtrls(1400);

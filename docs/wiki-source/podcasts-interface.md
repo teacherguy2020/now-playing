@@ -37,7 +37,14 @@ and playback-target split. The Home **Recent Podcasts** shelf uses an opaque
 subscription ID and a flip face with **Play Newest** (front of queue), **Load**
 (replace with downloaded episodes oldest-to-newest), and **Open**. These
 actions are backed by the mobile podcast routes and never expose the podcast
-media path to the app.
+media path to the app. For playback, the server keeps the episode's canonical
+`mpdPath` as the source of truth for moOde and resolves that same path through
+the configured podcast mount for native-device media downloads; it does not
+assume podcasts live in the general music directory. Both native-device and
+Home moOde podcast transport surfaces expose the same relative seek actions as
+the web controller: **Back 15 seconds** and **Forward 30 seconds**. Native
+playback seeks the AVPlayer item directly; Home moOde sends the existing
+Track-Key-protected `seekrel` action.
 
 ## Related pages
 
@@ -46,4 +53,4 @@ media path to the app.
 - [media-library.md](media-library.md)
 - [configuration-and-administration.md](configuration-and-administration.md)
 
-*Last reviewed: 2026-09-30 America/Chicago*
+*Last reviewed: 2026-10-02 06:12 America/Chicago*

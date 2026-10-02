@@ -38,7 +38,7 @@
     .artWrap.is-flipped .artFlip{transform:rotateY(180deg)}
     .artFace{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:10px;overflow:hidden;transform:translateZ(0);-webkit-transform:translateZ(0)}
     .artFaceBack{transform:rotateY(180deg);background:linear-gradient(180deg,#111a2d,#0b1425);border:1px solid rgba(138,177,235,.32);display:flex;align-items:stretch}
-    .artHint{position:absolute;top:7px;left:7px;width:22px;height:22px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1;user-select:none;z-index:7;cursor:pointer;padding:0}
+    .artHint{position:absolute;top:6px;left:6px;width:25.3px;height:25.3px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:13.8px;font-weight:700;line-height:1;user-select:none;z-index:7;cursor:pointer;padding:0;pointer-events:auto;touch-action:manipulation;box-shadow:0 1px 5px rgba(0,0,0,.38)}
     .artHintInfo{background:rgba(9,18,32,.68);border:1px solid rgba(184,207,240,.52);color:#eaf3ff}
     .artWrap.is-flipped .artHintInfo{display:none}
     .personnelCard{width:100%;height:100%;padding:8px 9px;display:flex;flex-direction:column;gap:5px}
@@ -465,7 +465,7 @@
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .personnelCard{padding:14px}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .personnelTitle{font-size:12px}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .personnelBody{font-size:14px;line-height:1.3}
-    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .artHint{top:10px;left:10px;width:28px;height:28px;font-size:15px}
+    :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .artHint{top:9px;left:9px;width:32.2px;height:32.2px;font-size:17.25px}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .np > div:last-child{max-width:100%}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npTap .title{display:none !important}
     :is(body.ipad11.ipad11Landscape, body.tablet.tabletLandscape) .npMeta{width:100%;padding-top:4px;margin-top:0}
@@ -643,7 +643,7 @@
             <div class="artFace artFaceFront">
               <img id="art" src="" alt="" />
               <video id="npArtMotion" class="npArtMotion" autoplay muted loop playsinline preload="metadata"></video>
-              <button type="button" class="artHint artHintInfo" id="npFlipInfoBtn" aria-label="Show personnel">i</button>
+              <button type="button" class="artHint artHintInfo" id="npFlipInfoBtn" aria-label="Show track information">i</button>
               <span class="artSpin" id="npArtSpin" aria-hidden="true"></span>
               <span class="eq" id="eqOverlay" aria-hidden="true">♥</span>
             </div>
@@ -4075,6 +4075,7 @@
     try {
       if (act === "shuffle") {
         // Shuffle is a physical upcoming-queue reorder, not MPD random mode.
+        btn.classList.add("loading", "on");
         const out = await sendPlaybackChecked("shufflequeue");
         if (out.ok) {
           btn.classList.add("confirm");
@@ -4086,7 +4087,10 @@
           }, 560);
           window.dispatchEvent(new CustomEvent("np-live-queue-changed"));
           setTimeout(() => refreshNowPlayingCard().catch(() => null), 120);
+        } else {
+          btn.classList.remove("on");
         }
+        btn.classList.remove("loading");
       } else {
         const useSpinner = act !== "repeat";
         if (useSpinner) btn.classList.add("loading");

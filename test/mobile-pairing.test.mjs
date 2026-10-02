@@ -11,7 +11,10 @@ import {
   MobilePairingStore,
   pairingProofMessage,
 } from '../src/lib/mobile-pairing.mjs';
-import { verifyMobileToken } from '../src/lib/mobile-auth.mjs';
+import {
+  createMobileSessionToken,
+  verifyMobileToken,
+} from '../src/lib/mobile-auth.mjs';
 
 function createApp() {
   const routes = new Map();
@@ -120,6 +123,49 @@ test('pairing challenge is admin-protected and QR payload contains no long-lived
   assert.equal(body.qrPayload.baseUrl, 'https://nowplaying.local:3101');
   assert.doesNotMatch(JSON.stringify(body.qrPayload), /pairing-api-secret|pairing-track-secret|manual-enrollment-code|accessToken/i);
   assert.ok(body.displayToken);
+});
+
+test('an authenticated native device can host the same pairing flow without a Track Key header', async () => {
+  const app = registerPairingFixture();
+  const hostToken = createMobileSessionToken({
+    secret: 'pairing-api-secret',
+    deviceId: 'ipad-host',
+  });
+  const hostHeaders = { authorization: `Bearer ${hostToken}` };
+
+  const challengeResponse = createResponse();
+  await app.routes.get('POST /v1/mobile/pairing/challenges')?.(request({
+    headers: hostHeaders,
+  }), challengeResponse);
+  assert.equal(challengeResponse.statusCode, 200);
+  assert.ok(challengeResponse.body.displayToken);
+
+  const submitted = await submitDevice(app, challengeResponse.body.challenge, {
+    deviceId: 'iphone-from-ipad',
+  });
+  assert.equal(submitted.res.statusCode, 202);
+
+  const pending = createResponse();
+  await app.routes.get('GET /v1/mobile/pairing/requests')?.(request({
+    headers: {
+      ...hostHeaders,
+      'x-mobile-pairing-display-token': challengeResponse.body.displayToken,
+    },
+  }), pending);
+  assert.equal(pending.statusCode, 200);
+  assert.equal(pending.body.requests[0].deviceId, 'iphone-from-ipad');
+
+  const approved = createResponse();
+  await app.routes.get('POST /v1/mobile/pairing/requests/:requestId/approve')?.(request({
+    headers: {
+      ...hostHeaders,
+      'x-mobile-pairing-display-token': challengeResponse.body.displayToken,
+    },
+    params: { requestId: submitted.res.body.requestId },
+    body: { verificationCode: submitted.res.body.verificationCode },
+  }), approved);
+  assert.equal(approved.statusCode, 200);
+  assert.equal(approved.body.status, 'approved');
 });
 
 test('device proof, display approval, and app completion keep tokens on their intended side', async () => {

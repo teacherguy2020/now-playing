@@ -49,7 +49,7 @@ routes and does not call raw `/mpd/*` or `/config/*` queue endpoints.
 | GET | `/v1/mobile/vibe/jobs/:jobId` | Read sanitized progress for a mobile-started Vibe job |
 | DELETE | `/v1/mobile/queue/items/:queueItemId` | Remove one item |
 | POST | `/v1/mobile/queue/items/:queueItemId/move` | Move one item to a 1-based position |
-| POST | `/v1/mobile/queue/actions` | `shuffle`, `crop`, `clear`, or `vibe` |
+| POST | `/v1/mobile/queue/actions` | `shuffle`, `shufflequeue`, `crop`, `clear`, or `vibe` |
 | GET | `/v1/mobile/endless-vibe` | Read the shared Endless Vibe setting and safe job state |
 | POST | `/v1/mobile/endless-vibe` | Enable or disable the shared Endless Vibe setting |
 
@@ -57,6 +57,13 @@ The mobile `crop` action reuses the web controller's reliable diagnostics
 playback path rather than issuing raw MPD `crop` directly. If the queue still
 has items but MPD has no current song, that path keeps the queue head instead
 of returning the raw MPD rejection seen after a stop or Alexa handoff.
+
+The Alexa transport Shuffle action uses `shufflequeue`, which delegates to the
+web physical upcoming-only shuffle path. It keeps the current/played prefix
+fixed, disables MPD random mode, and returns the reordered queue so Alexa's
+next-track order and the native Live Queue display remain aligned. The ordinary
+`shuffle` action is the same physical queue operation; it is retained as the
+normal mobile/action name, while `shufflequeue` remains a compatibility alias.
 
 Queue item IDs are opaque, signed handles for a current queue snapshot. MPD
 song IDs, positions used internally, file names, filesystem paths, and secrets
@@ -77,6 +84,8 @@ The response includes safe display fields only:
   "isPodcast": false,
   "rating": 0,
   "ratingDisabled": false,
+  "isFavorite": true,
+  "favoriteDisabled": false,
   "artworkUrl": "https://host/v1/mobile/artwork/trk_opaque_id"
 }
 ```
@@ -96,7 +105,8 @@ controller:
   falling back to the current queue head when Alexa has not recorded a
   successor yet.
 - This iPhone/iPad derives Next Up from the current native device queue,
-  including the device's repeat and shuffle settings.
+  including the device's repeat setting and the physically reordered upcoming
+  queue after a native shuffle.
 
 The route converts catalog-backed rows to canonical `MobileTrack` data and
 bearer-protected artwork URLs. Stream/unsupported rows may remain display-only
@@ -104,6 +114,10 @@ and never expose MPD file paths or Alexa credentials. Tapping the iPhone row
 opens the full player/Live Queue; CarPlay uses the platform's official
 **Next Up** button to open the Live Queue list; the iPad Home **Next Playing**
 summary shelf opens the same shared Live Queue destination.
+
+The native Home Live Queue shelf reuses the same full queue authority after
+initial load. Remote polling replaces only that shelf row when the server queue
+changes, and local playback derives it from the persisted device queue.
 
 Each catalog-backed local track receives its authoritative MPD sticker rating
 through `rating` (`0..5`) and `ratingDisabled: false`. The reader is the same
@@ -113,6 +127,13 @@ enabled. Streams, YouTube, podcasts, unsupported items, and queues where the
 ratings feature is disabled return `rating: 0` and `ratingDisabled: true`.
 The mobile route never calls `/rating/current`, never derives the value from
 catalog metadata, and never exposes a file path or MPD song ID.
+
+Catalog-backed local tracks also receive `isFavorite` and
+`favoriteDisabled` from the same server-side Favorites playlist reader. The
+native client renders the heart and five-star row directly below the queue
+track title and writes changes through the bearer catalog-track favorite and
+rating routes. Streams, YouTube, podcasts, unsupported items, and unavailable
+favorite readers return `isFavorite: false` and `favoriteDisabled: true`.
 
 ## Artwork
 
@@ -146,9 +167,11 @@ follows the app's selected playback target:
   plays on the device without changing the home queue. **Play Queue** starts
   the first playable catalog row; finite items then advance automatically
   through the app-managed local queue.
-- Stream, podcast, or otherwise unrecognized queue rows do not have native
-  media authorization and remain unavailable for device playback; select Home
-  moOde for those items.
+- Streams and otherwise unrecognized queue rows do not have native media
+  authorization and remain unavailable for device playback. Downloaded
+  podcast episodes added from the native Podcasts surface carry their
+  authenticated episode media route and are playable on the selected device;
+  undownloaded podcast episodes still require download first.
 
 Queue Wizard uses the same target ownership rule. Its filtered preview returns
 canonical catalog tracks, and Apply replaces, appends, or crops the selected
@@ -165,6 +188,14 @@ restored tracks go through the normal local-source or authenticated-server
 resolution path when played. Signing out clears the device queue as part of
 the account-state reset.
 
+Native device **Shuffle** mirrors the web queue contract rather than MPD
+random mode: it physically reorders only the upcoming tracks, keeps the
+currently playing and already-played prefix fixed, and leaves random mode out
+of the path. The app exposes a one-level **Undo Shuffle**. Deletions after a
+shuffle are reconciled into that snapshot; a manual reorder or addition
+invalidates Undo. The undo snapshot is process-local and is intentionally not a
+second persisted queue store.
+
 ## Current native implementation
 
 The phone and tablet surfaces now provide:
@@ -177,6 +208,8 @@ The phone and tablet surfaces now provide:
   device shuffle/repeat behavior;
 - swipe/menu removal;
 - Refresh, Shuffle, Crop, and Clear actions; and
+- physical upcoming-only Shuffle with one-level Undo Shuffle for the local
+  device target; and
 - immediate queue refresh after a whole-playlist Home moOde action; and
 - Vibe start through the same server-side Vibe builder used by the web Queue
   controller, without exposing its Track Key route to the app.
@@ -201,6 +234,15 @@ not supply a seed or need to keep a controller page open. Its optional job
 object is an allowlisted status summary and does not include seed internals,
 logs, file paths, or MPD identifiers.
 
+The native device target has a separate local Endless Vibe preference. It does
+not use the server-global Endless Vibe setting or mutate the Home moOde queue.
+The iOS model starts the existing Track-Key-protected seeded preview before the
+native queue reaches exhaustion, resolves candidates back to canonical mobile
+track IDs, and replaces only future This iPhone/This iPad queue items. The
+device preference is stored in iOS local settings; the current implementation
+does not store Last.fm credentials or run the server's Python Vibe script on
+the device.
+
 ## Home moOde transport detail
 
 The native Home moOde play/pause control sends the named action `toggle` to
@@ -224,7 +266,8 @@ target boundary:
   native queue items that have canonical server track IDs and replaces the
   server queue through the existing bearer queue contracts. Device-only radio
   and podcast rows are reported as skipped rather than synthesized into the
-  server catalog.
+  server catalog. Directly added native podcast rows remain device-target
+  items and are not transferred as catalog tracks.
 - **Alexa ↔ Home moOde:** both targets use the same server-authoritative queue,
   so the queue is refreshed and retained while the app stops the old output and
   starts or stops the new output to match the prior play/pause state.
@@ -255,4 +298,4 @@ playlist revision reconciliation, and richer per-row saved-data management
 remain follow-up work; any new mutation must retain the same bearer, opaque-ID,
 and explicit-target boundary.
 
-*Last reviewed: 2026-09-30 America/Chicago*
+*Last reviewed: 2026-10-02 06:10 America/Chicago*

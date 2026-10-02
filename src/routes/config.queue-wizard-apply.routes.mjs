@@ -178,11 +178,17 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
         } catch (_) {}
       }
 
-      let randomEnabled = false;
+      let shuffled = false;
       if (!saveOnly && shuffle) {
         try {
-          await execFileP('mpc', ['-h', mpdHost, 'random', 'on']);
-          randomEnabled = true;
+          // Shuffle is a physical queue operation. Never enable MPD random
+          // mode, which would make the visible queue disagree with playback.
+          if (!randomTurnedOff) {
+            await execFileP('mpc', ['-h', mpdHost, 'random', 'off']);
+            randomTurnedOff = true;
+          }
+          await execFileP('mpc', ['-h', mpdHost, 'shuffle']);
+          shuffled = true;
         } catch (_) {}
       }
 
@@ -309,7 +315,7 @@ export function registerConfigQueueWizardApplyRoute(app, deps) {
         forceRandomOff,
         fastStart,
         randomTurnedOff,
-        randomEnabled,
+        shuffled,
         generateCollage,
         requested: tracks.length,
         added,

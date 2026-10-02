@@ -106,6 +106,14 @@ export const ITUNES_COUNTRY = 'us';
 export const ITUNES_TIMEOUT_MS = Number(process.env.ITUNES_TIMEOUT_MS || '2500');
 export const ITUNES_TTL_HIT_MS = 1000 * 60 * 60 * 12;
 export const ITUNES_TTL_MISS_MS = 1000 * 60 * 10;
+// Optional Apple Music Catalog API credentials. Editorial About metadata is
+// disabled unless this developer token is explicitly configured.
+export const APPLE_MUSIC_DEVELOPER_TOKEN = String(process.env.APPLE_MUSIC_DEVELOPER_TOKEN || '').trim();
+export const APPLE_MUSIC_COUNTRY = String(process.env.APPLE_MUSIC_COUNTRY || ITUNES_COUNTRY || 'us').trim().toLowerCase();
+export const APPLE_MUSIC_TIMEOUT_MS = Number(process.env.APPLE_MUSIC_TIMEOUT_MS || '1200');
+export const APPLE_MUSIC_KEY_ID = String(process.env.APPLE_MUSIC_KEY_ID || '').trim();
+export const APPLE_MUSIC_TEAM_ID = String(process.env.APPLE_MUSIC_TEAM_ID || '').trim();
+export const APPLE_MUSIC_PRIVATE_KEY_PATH = String(process.env.APPLE_MUSIC_PRIVATE_KEY_PATH || '').trim();
 
 export const ART_CACHE_DIR = process.env.ART_CACHE_DIR || runtimeCfg?.artCacheDir || '/tmp/now-playing/art-cache';
 export const ART_CACHE_LIMIT = Number(process.env.ART_CACHE_LIMIT || runtimeCfg?.artCacheLimit || '250');

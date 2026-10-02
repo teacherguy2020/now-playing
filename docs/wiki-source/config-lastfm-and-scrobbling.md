@@ -147,6 +147,13 @@ The mode is deliberately more resilient than a one-shot Vibe action: it uses cha
 
 That makes this section both a feature setup surface and a documentation surface for prerequisites.
 
+The native iPhone/iPad Endless Vibe toggle is intentionally separate from this
+server setting. The device currently reuses the existing Track-Key-protected
+seeded Vibe preview and canonical catalog resolution; it does not run `lastfm_vibe_radio.py`
+or store Last.fm API/session credentials. This keeps the server as the shared
+Last.fm/index authority while allowing the device queue and playback to remain
+local.
+
 ## Save/load behavior
 
 Observed Vibe config-load behavior includes:
@@ -275,3 +282,5 @@ It is:
 - discovery/Vibe setup
 - row-behavior shaping
 - prerequisite-aware integration config
+
+*Last reviewed: 2026-10-01 10:16 America/Chicago*

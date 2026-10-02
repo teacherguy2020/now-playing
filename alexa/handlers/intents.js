@@ -59,6 +59,31 @@ function audioItemMetadataChecks(audioItem) {
   };
 }
 
+function sanitizeAlexaResponseForLog(response) {
+  const redact = (value, key = '') => {
+    if (Array.isArray(value)) return value.map((item) => redact(item, key));
+    if (!value || typeof value !== 'object') {
+      const lowerKey = String(key || '').toLowerCase();
+      if (lowerKey === 'token' || lowerKey === 'expectedprevioustoken') {
+        return value ? '[sha256:' + shortSha256(value) + ']' : value;
+      }
+      if (lowerKey === 'url') return sanitizeUrlForAlexaLog(value);
+      if (lowerKey === 'k' || lowerKey === 'key' || lowerKey === 'track_key' || lowerKey === 'trackkey') {
+        return value ? '[redacted]' : value;
+      }
+      return value;
+    }
+
+    const out = {};
+    for (const [childKey, childValue] of Object.entries(value)) {
+      out[childKey] = redact(childValue, childKey);
+    }
+    return out;
+  };
+
+  return redact(JSON.parse(JSON.stringify(response || {})));
+}
+
 function createIntentHandlers(deps) {
   const {
     safeStr,
@@ -480,11 +505,17 @@ function createIntentHandlers(deps) {
         console.log('[PlayQueueIntent] AudioPlayer.Play metadata checks:', JSON.stringify(
           audioItemMetadataChecks(directive.audioItem),
         ));
-        return handlerInput.responseBuilder
+        const response = handlerInput.responseBuilder
           .speak('Starting your queue.')
           .withShouldEndSession(true)
           .addDirective(directive)
           .getResponse();
+        console.log('[PlayQueueIntent] response body before Lambda envelope (sanitized):', JSON.stringify(
+          sanitizeAlexaResponseForLog(response),
+          null,
+          2,
+        ));
+        return response;
       } catch (e) {
         return speak(handlerInput, 'I could not start your queue right now.', false);
       }
@@ -1083,4 +1114,4 @@ function createIntentHandlers(deps) {
   };
 }
 
-module.exports = { createIntentHandlers };
+module.exports = { createIntentHandlers, sanitizeAlexaResponseForLog };

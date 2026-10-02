@@ -346,7 +346,7 @@
     const alexaPlaying = np?.active !== false;
     const alexaAction = alexaPlaying ? 'pause' : 'play';
     return '<div class="heroTransportControls alexaTransportControls" style="margin-top:4px;">' +
-      '<button class="tbtn tbtnFar ' + (randomOn ? 'on' : '') + '" data-a="shuffle" title="Random">' + icon('shuffle') + '</button>' +
+      '<button class="tbtn tbtnFar" data-a="shuffle" title="Shuffle queue">' + icon('shuffle') + '</button>' +
       '<button class="tbtn tbtnBig ' + (alexaPlaying ? 'on' : '') + '" data-a="' + alexaAction + '" title="' + alexaAction + '">' + icon(alexaAction) + '</button>' +
       '<button class="tbtn tbtnNear" data-a="next" title="Next">' + icon('next') + '</button>' +
       '</div>';
@@ -514,7 +514,7 @@
                 `<button class="tbtn tbtnNear" data-a="previous" title="Previous">${icon('prev')}</button>` +
                 `<button class="tbtn tbtnBig ${state === 'playing' ? 'on' : ''}" data-a="${pp}" title="${pp}"${spinDelayStyle}>${icon(pp)}</button>` +
                 `<button class="tbtn tbtnNear" data-a="next" title="Next">${icon('next')}</button>` +
-                (!isRadioOrStream ? `<button class="tbtn tbtnFar ${randomOn ? 'on' : ''}" data-a="shuffle" title="Random">${icon('shuffle')}</button>` : '') +
+                (!isRadioOrStream ? `<button class="tbtn tbtnFar" data-a="shuffle" title="Shuffle queue">${icon('shuffle')}</button>` : '') +
                 (isPodcast ? `<button class="tbtn tbtnSeek" data-a="seekfwd30" title="Forward 30 seconds"><span style="font-size:13px;font-weight:700;">30↻</span></button>` : '') +
               `</div>` )}` +
           `<div class="progress-bar-wrapper${showProgress ? '' : ' is-hidden'}" data-seekable="${showProgress ? '1' : '0'}"><div class="progress-fill" style="transform:scaleX(${progressPct / 100})"></div><div class="progress-handle" style="left:${progressPct}%;"></div><div class="progress-tip" style="left:${progressPct}%">Drag to seek</div></div>` +
@@ -1425,7 +1425,7 @@
             `<button class="tbtn" disabled title="Previous">${icon('prev')}</button>` +
             `<button class="tbtn tbtnBig" disabled title="Play">${icon('play')}</button>` +
             `<button class="tbtn" disabled title="Next">${icon('next')}</button>` +
-            `<button class="tbtn" disabled title="Random">${icon('shuffle')}</button>` +
+            `<button class="tbtn" disabled title="Shuffle queue">${icon('shuffle')}</button>` +
           `</div>` +
           `<div class="progress-bar-wrapper is-hidden"><div class="progress-fill" style="transform:scaleX(0)"></div></div>` +
         `</div>` +
@@ -1487,7 +1487,7 @@
       const a = String(action || '').toLowerCase();
       if (a === 'play') q.playbackState = 'playing';
       else if (a === 'pause') q.playbackState = 'paused';
-      else if (a === 'shuffle') q.randomOn = !q.randomOn;
+      else if (a === 'shuffle') q.randomOn = false;
       else if (a === 'repeat') q.repeatOn = !q.repeatOn;
       else if (a === 'seekback15') {
         const e = Number(np?.elapsed ?? q?.elapsed ?? 0) || 0;

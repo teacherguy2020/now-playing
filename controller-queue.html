@@ -21,6 +21,8 @@
     .queueTopActions button.iconBtn{width:30px;height:28px;padding:5px;display:inline-flex;align-items:center;justify-content:center}
     .queueTopActions button.iconBtn svg{width:16px;height:16px;display:block;fill:currentColor}
     .queueTopActions button.endlessVibeOn{border-color:#5b3df0;background:#5b3df0;color:#fff}
+    .queueTopActions button.shuffleBusy{border-color:#22c55e;background:#14532d;color:#dcfce7;cursor:wait}
+    .queueTopActions button.shuffleBusy::before{content:'';display:inline-block;width:11px;height:11px;margin-right:6px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-2px;animation:queueAlexaSpin .7s linear infinite}
     .queueTopActions button.alexa-active{border-color:#55c98a;background:#153d2b;color:#b9ffd8;box-shadow:0 0 0 1px rgba(85,201,138,.28) inset}
     .queueTopActions button.alexa-busy{opacity:.72;cursor:wait}
     .queueTopActions button.alexa-busy::before{content:'';display:inline-block;width:11px;height:11px;margin-right:6px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-2px;animation:queueAlexaSpin .7s linear infinite}
@@ -1054,12 +1056,14 @@
       if (!(btn instanceof HTMLButtonElement)) return;
       const prev = btn.textContent || 'Shuffle';
       btn.disabled = true;
+      btn.classList.add('shuffleBusy');
       btn.textContent = 'Shuffling…';
       try {
         await sendPlayback('shufflequeue');
         await loadQueue();
         try { window.parent?.postMessage({ type:'np-live-queue-changed' }, '*'); } catch {}
       } finally {
+        btn.classList.remove('shuffleBusy');
         btn.disabled = false;
         btn.textContent = prev;
       }

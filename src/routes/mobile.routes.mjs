@@ -4,6 +4,7 @@ import { Readable } from 'node:stream';
 import QRCode from 'qrcode';
 
 import { getBrowseIndex } from '../lib/browse-index.mjs';
+import { log } from '../lib/log.mjs';
 import {
   createMobileMediaTicket,
   createMobileRadioTicket,
@@ -83,6 +84,58 @@ function safeAppleMusicUrl(value) {
   } catch {
     return null;
   }
+}
+
+function normalizeMobileAbout(rawAbout) {
+  if (!rawAbout || typeof rawAbout !== 'object') return null;
+  const aboutText = text(rawAbout.text);
+  if (!aboutText) return null;
+  return {
+    type: text(rawAbout.type) === 'album' ? 'album' : 'track',
+    text: aboutText,
+    ...(text(rawAbout.shortText) ? { shortText: text(rawAbout.shortText) } : {}),
+    ...(text(rawAbout.tagline) ? { tagline: text(rawAbout.tagline) } : {}),
+    source: text(rawAbout.source) || 'apple',
+    ...(text(rawAbout.sourceId) ? { sourceId: text(rawAbout.sourceId) } : {}),
+    match: { confidence: text(rawAbout.match?.confidence) || 'strong' },
+  };
+}
+
+function comparableRadioText(value) {
+  return text(value)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function radioPayloadMatches(payload, {
+  artist = '',
+  title = '',
+  album = '',
+  trackUrl = '',
+  albumUrl = '',
+} = {}) {
+  if (!payload || (!Boolean(payload.isRadio) && !Boolean(payload.isStream))) return false;
+
+  const payloadURLs = [payload.radioTrackUrl, payload.radioAlbumUrl, payload.radioItunesUrl]
+    .map(safeAppleMusicUrl)
+    .filter(Boolean);
+  const candidateURLs = [trackUrl, albumUrl]
+    .map(safeAppleMusicUrl)
+    .filter(Boolean);
+  if (payloadURLs.some((url) => candidateURLs.includes(url))) return true;
+
+  const payloadArtist = comparableRadioText(payload.displayArtist || payload.artist);
+  const payloadTitle = comparableRadioText(payload.displayTitle || payload.title);
+  const payloadAlbum = comparableRadioText(payload.displayLine3 || payload.album);
+  const candidateArtist = comparableRadioText(artist);
+  const candidateTitle = comparableRadioText(title);
+  const candidateAlbum = comparableRadioText(album);
+  if (!payloadArtist || !payloadTitle || !candidateArtist || !candidateTitle) return false;
+  if (payloadArtist !== candidateArtist || payloadTitle !== candidateTitle) return false;
+  return !payloadAlbum || !candidateAlbum || payloadAlbum === candidateAlbum;
 }
 
 function parseMpdId(raw) {
@@ -258,6 +311,9 @@ export function registerMobileRoutes(app, deps = {}) {
     : null;
   const getRatingForFile = typeof deps.getRatingForFile === 'function'
     ? deps.getRatingForFile
+    : null;
+  const getFavoriteForFile = typeof deps.getFavoriteForFile === 'function'
+    ? deps.getFavoriteForFile
     : null;
   const ratingsEnabled = typeof deps.ratingsEnabled === 'function'
     ? deps.ratingsEnabled
@@ -457,6 +513,14 @@ export function registerMobileRoutes(app, deps = {}) {
     const baseUrl = requestBaseUrl(req, mobileBaseUrl);
     const sourcePayloads = new Map();
     await Promise.all(profile.recentRows.map(async (source) => {
+      if (source === 'queue') {
+        const queue = await loadMobileQueue(req).catch(() => null);
+        sourcePayloads.set(source, {
+          ok: Boolean(queue),
+          payload: queue || {},
+        });
+        return;
+      }
       const pathname = mobileHomeSourcePath(source, profile.recentCount);
       const result = pathname && fetchInternalJson
         ? await fetchInternalJson(pathname).catch(() => null)
@@ -519,6 +583,7 @@ export function registerMobileRoutes(app, deps = {}) {
       }
     }
     const ratingByFile = new Map();
+    const favoriteByFile = new Map();
     const queueRating = async (file, track, { isStream, isYoutube, isPodcast } = {}) => {
       const key = text(file);
       const disabled = !canReadRatings
@@ -542,6 +607,30 @@ export function registerMobileRoutes(app, deps = {}) {
         ratingDisabled: false,
       };
       ratingByFile.set(key, result);
+      return result;
+    };
+    const queueFavorite = async (file, track, { isStream, isYoutube, isPodcast } = {}) => {
+      const key = text(file);
+      const disabled = !getFavoriteForFile
+        || !track
+        || !key
+        || isStream
+        || isYoutube
+        || isPodcast
+        || isAirplayFile(key);
+      if (disabled) return { isFavorite: false, favoriteDisabled: true };
+      if (favoriteByFile.has(key)) return favoriteByFile.get(key);
+
+      let isFavorite = false;
+      try {
+        isFavorite = Boolean(await getFavoriteForFile(key));
+      } catch {
+        const result = { isFavorite: false, favoriteDisabled: true };
+        favoriteByFile.set(key, result);
+        return result;
+      }
+      const result = { isFavorite, favoriteDisabled: false };
+      favoriteByFile.set(key, result);
       return result;
     };
     const playlistRows = parseMpdBlocks(playlistRaw);
@@ -594,6 +683,7 @@ export function registerMobileRoutes(app, deps = {}) {
               ? artworkUrlFor(req, { kind: 'url', reference: diagnostic.thumbUrl })
               : null)));
       const ratingState = await queueRating(row.file, track, { isStream, isYoutube, isPodcast });
+      const favoriteState = await queueFavorite(row.file, track, { isStream, isYoutube, isPodcast });
       items.push({
         id: queueItemId,
         position,
@@ -621,6 +711,7 @@ export function registerMobileRoutes(app, deps = {}) {
         isYoutube,
         isPodcast,
         ...ratingState,
+        ...favoriteState,
         artworkUrl,
         track: track ? publicMobileTrack(track, { baseUrl }) : null,
         serverSongId: songId,
@@ -628,6 +719,10 @@ export function registerMobileRoutes(app, deps = {}) {
         file: row.file,
       });
     }
+    const currentIndex = items.findIndex((item) => item?.isCurrent === true);
+    const displayItems = currentIndex > 0
+      ? [items[currentIndex], ...items.slice(currentIndex + 1), ...items.slice(0, currentIndex)]
+      : items;
     return {
       headPos: Number.isFinite(currentPosition) ? currentPosition + 1 : null,
       playbackState: text(status.state),
@@ -635,7 +730,7 @@ export function registerMobileRoutes(app, deps = {}) {
       repeatOn: mpdBoolean(status.repeat),
       consumeOn: mpdBoolean(status.consume),
       crossfadeSec: Number(status.crossfade || 0) || 0,
-      items,
+      items: displayItems,
     };
   };
 
@@ -963,8 +1058,17 @@ export function registerMobileRoutes(app, deps = {}) {
     const queueTrack = useAlexaNowPlaying
       ? null
       : (finiteNumberOrNull(payload.queueTrack) ?? currentItem?.position ?? null);
+    // Alexa does not expose a reliable MPD position, but the logical Sonuvi
+    // queue remains the source of truth for its count. Prefer the full queue
+    // read used by Live Queue; fall back to Alexa's known current/enqueue
+    // buffer only when that queue read is unavailable.
+    const alexaQueueTotal = useAlexaNowPlaying
+      ? (Array.isArray(queue?.items) && queue.items.length > 0
+        ? queue.items.length
+        : (text(payload.queuedNextToken) && text(payload.queuedNextForToken) ? 2 : 1))
+      : null;
     const queueTotal = useAlexaNowPlaying
-      ? null
+      ? alexaQueueTotal
       : (finiteNumberOrNull(payload.queueTotal) ?? queue?.items?.length ?? null);
     const backgroundArtworkUrl = artworkUrlFor(req, {
       kind: 'background',
@@ -989,6 +1093,7 @@ export function registerMobileRoutes(app, deps = {}) {
     const personnel = Array.isArray(payload.personnel)
       ? payload.personnel.map((value) => text(value)).filter(Boolean)
       : [];
+    const about = normalizeMobileAbout(payload.about);
 
     return {
       ok: true,
@@ -1001,6 +1106,7 @@ export function registerMobileRoutes(app, deps = {}) {
       backgroundArtworkUrl,
       state,
       isPlaying,
+      randomOn: queue?.randomOn ?? false,
       durationSec,
       elapsedSec,
       queueTrack,
@@ -1013,6 +1119,9 @@ export function registerMobileRoutes(app, deps = {}) {
       isUpnp: Boolean(payload.isUpnp),
       isYoutube: Boolean(payload.isYoutube) || Boolean(currentItem?.isYoutube),
       personnel,
+      about,
+      aboutStatus: text(payload.aboutStatus) || null,
+      aboutProvider: text(payload.aboutProvider) || null,
       appleMusicUrl,
       radioYear,
       track: currentMobileTrack.track
@@ -1021,6 +1130,26 @@ export function registerMobileRoutes(app, deps = {}) {
       isFavorite,
       rating,
       ratingDisabled,
+    };
+  };
+
+  const matchingCanonicalRadioAbout = async ({
+    artist = '',
+    title = '',
+    album = '',
+    trackUrl = '',
+    albumUrl = '',
+  } = {}) => {
+    if (!fetchInternalJson) return { about: null, aboutStatus: null, aboutProvider: null };
+    const result = await fetchInternalJson('/now-playing').catch(() => null);
+    const payload = result?.json && typeof result.json === 'object' ? result.json : null;
+    if (!radioPayloadMatches(payload, { artist, title, album, trackUrl, albumUrl })) {
+      return { about: null, aboutStatus: null, aboutProvider: null };
+    }
+    return {
+      about: normalizeMobileAbout(payload.about),
+      aboutStatus: text(payload.aboutStatus) || null,
+      aboutProvider: text(payload.aboutProvider) || null,
     };
   };
 
@@ -1050,6 +1179,27 @@ export function registerMobileRoutes(app, deps = {}) {
       ratingDisabled: false,
       disabled: false,
     };
+  };
+
+  const readMobileTrackFavorite = async (track) => {
+    const file = text(track?.file);
+    const unsupported = !track
+      || typeof getFavoriteForFile !== 'function'
+      || !file
+      || isStreamFile(file)
+      || isAirplayFile(file)
+      || text(track?.id).startsWith('radio-')
+      || text(track?.id).startsWith('podcast-');
+    if (unsupported) return { isFavorite: false, disabled: true };
+
+    try {
+      return {
+        isFavorite: Boolean(await getFavoriteForFile(file)),
+        disabled: false,
+      };
+    } catch {
+      return { isFavorite: false, disabled: true };
+    }
   };
 
   const internalFeatureRequest = async (pathname, options = {}) => {
@@ -1497,7 +1647,11 @@ export function registerMobileRoutes(app, deps = {}) {
     try {
       return await handler(req, res);
     } catch (error) {
-      console.error('[mobile-api] request failed');
+      log.error('[mobile-api] request failed', {
+        method: text(req?.method) || 'UNKNOWN',
+        path: text(req?.originalUrl || req?.url) || '/',
+        error: error?.message || String(error),
+      });
       return errorResponse(res, 500, 'mobile API request failed');
     }
   };
@@ -1551,16 +1705,35 @@ export function registerMobileRoutes(app, deps = {}) {
     }
   };
 
-  const requirePairingDisplay = (req, res) => {
-    if (!pairingAuthConfigured || !requireTrackKey) {
+  const requirePairingCredential = (req, res) => {
+    if (!pairingAuthConfigured) {
       errorResponse(res, 503, 'pairing display authorization is not configured');
-      return null;
+      return false;
     }
-    if (!text(req?.headers?.['x-track-key'])) {
+
+    const suppliedTrackKey = text(req?.headers?.['x-track-key']);
+    if (suppliedTrackKey) {
+      if (!requireTrackKey) {
+        errorResponse(res, 503, 'pairing display authorization is not configured');
+        return false;
+      }
+      if (!requireTrackKey(req, res)) return false;
+      return true;
+    }
+
+    const claims = verifyMobileToken(readBearerToken(req), {
+      secret: apiSecret,
+      scope: 'mobile-api',
+    });
+    if (!claims) {
       errorResponse(res, 403, 'Forbidden');
-      return null;
+      return false;
     }
-    if (!requireTrackKey(req, res)) return null;
+    return true;
+  };
+
+  const requirePairingDisplay = (req, res) => {
+    if (!requirePairingCredential(req, res)) return null;
     const displayToken = text(req?.headers?.['x-mobile-pairing-display-token']);
     if (!displayToken) {
       errorResponse(res, 401, 'pairing display authorization is required');
@@ -1570,15 +1743,7 @@ export function registerMobileRoutes(app, deps = {}) {
   };
 
   const requirePairingAdmin = (req, res) => {
-    if (!pairingAuthConfigured || !requireTrackKey) {
-      errorResponse(res, 503, 'pairing display authorization is not configured');
-      return false;
-    }
-    if (!text(req?.headers?.['x-track-key'])) {
-      errorResponse(res, 403, 'Forbidden');
-      return false;
-    }
-    return requireTrackKey(req, res);
+    return requirePairingCredential(req, res);
   };
 
   app.post('/v1/mobile/pairing/challenges', pairingRoute(async (req, res) => {
@@ -1709,6 +1874,13 @@ export function registerMobileRoutes(app, deps = {}) {
       environment,
       topic,
     });
+    log.info('[mobile/push] token registered', {
+      deviceIdPresent: Boolean(text(session.deviceId)),
+      tokenLength: token.length,
+      environment,
+      topic,
+      apnsConfigured,
+    });
     return res.json({
       ok: true,
       registered: true,
@@ -1830,6 +2002,12 @@ export function registerMobileRoutes(app, deps = {}) {
     return rawEpisode && safeEpisode ? { ...payload, rawEpisode, safeEpisode } : null;
   };
 
+  const podcastSubscriptionFor = async (rss) => {
+    const result = await internalFeatureRequest('/podcasts');
+    return (Array.isArray(result?.json?.items) ? result.json.items : [])
+      .find((candidate) => text(candidate?.rss) === text(rss)) || null;
+  };
+
   app.post('/v1/mobile/podcasts/:podcastId/episodes/:episodeId/download', asyncRoute(async (req, res) => {
     if (!requireSession(req, res)) return;
     const found = await resolvePodcastEpisode(req, req?.params?.podcastId, req?.params?.episodeId);
@@ -1865,23 +2043,77 @@ export function registerMobileRoutes(app, deps = {}) {
 
   app.get('/v1/mobile/podcasts/:podcastId/episodes/:episodeId/media', asyncRoute(async (req, res) => {
     if (!requireSession(req, res)) return;
-    const found = await resolvePodcastEpisode(req, req?.params?.podcastId, req?.params?.episodeId);
-    if (!found || !found.safeEpisode.downloaded) return errorResponse(res, 404, 'downloaded podcast episode not found');
-    const subscriptionsResult = await internalFeatureRequest('/podcasts');
-    const row = (Array.isArray(subscriptionsResult?.json?.items) ? subscriptionsResult.json.items : [])
-      .find((candidate) => text(candidate?.rss) === found.rss);
-    const dir = text(row?.dir);
-    const filename = path.basename(text(found.rawEpisode?.filename));
-    if (!dir || !filename || filename === '.' || filename === '..') return errorResponse(res, 404, 'podcast media is unavailable');
-    const mediaPath = path.join(dir, filename);
-    if (!safeIsFile(mediaPath)) return errorResponse(res, 404, 'podcast media is unavailable');
+    const found = await podcastEpisodeFile(req, req?.params?.podcastId, req?.params?.episodeId);
+    if (!found) return errorResponse(res, 404, 'downloaded podcast episode not found');
+
+    // The web player and moOde both treat the episode's MPD path as the
+    // authority. Resolve that same path locally for native playback instead
+    // of reconstructing it from a possibly stale subscription directory.
+    const row = await podcastSubscriptionFor(found.rss);
+    const filename = path.basename(text(found.rawEpisode?.filename) || path.basename(found.file));
+    const candidates = [
+      mpdFileToLocalPath(found.file),
+      row?.dir && filename && filename !== '.' && filename !== '..'
+        ? path.join(text(row.dir), filename)
+        : '',
+    ].filter(Boolean);
+    const mediaPath = candidates.find((candidate) => safeIsFile(candidate)) || '';
+    if (!mediaPath) return errorResponse(res, 404, 'podcast media is unavailable');
     return serveFileWithRange(req, res, mediaPath, audioContentTypeForPath(mediaPath));
   }));
 
   const podcastEpisodeFile = async (req, podcastId, episodeId) => {
     const found = await resolvePodcastEpisode(req, podcastId, episodeId);
-    if (!found || !found.safeEpisode.downloaded || !text(found.rawEpisode?.mpdPath)) return null;
-    return { ...found, file: text(found.rawEpisode.mpdPath) };
+    if (!found || !found.safeEpisode.downloaded) return null;
+    const row = await podcastSubscriptionFor(found.rss);
+    const filename = path.basename(text(found.rawEpisode?.filename));
+    const file = text(found.rawEpisode?.mpdPath)
+      || (text(row?.mpdPrefix) && filename && filename !== '.' && filename !== '..'
+        ? `${String(row.mpdPrefix).replace(/\/+$/, '')}/${filename}`
+        : '');
+    if (!file) return null;
+    return { ...found, file };
+  };
+
+  // Native podcast playback keeps an opaque device-queue identity because a
+  // podcast episode is not a music-catalog track. Resolve that identity back
+  // to the server-owned downloaded episode before recording history or
+  // sending the APNs track notification.
+  const podcastPlaybackTrackForId = async (req, trackId) => {
+    const value = text(trackId);
+    const prefix = 'podcast-';
+    if (!value.startsWith(prefix)) return null;
+
+    const suffix = value.slice(prefix.length);
+    const subscriptions = await loadPodcastSubscriptions(req);
+    const podcast = subscriptions
+      .filter((row) => suffix.startsWith(`${row.id}-`))
+      .sort((left, right) => right.id.length - left.id.length)[0];
+    if (!podcast) return null;
+
+    const episodeId = suffix.slice(`${podcast.id}-`.length);
+    if (!episodeId) return null;
+    const found = await podcastEpisodeFile(req, podcast.id, episodeId);
+    if (!found) return null;
+
+    const showTitle = text(found.podcast?.title || podcast.title) || 'Podcast';
+    const title = text(found.safeEpisode?.title || found.rawEpisode?.title) || `Episode ${episodeId}`;
+    const format = path.extname(found.file).replace(/^\./, '').toLowerCase() || 'mp3';
+    return {
+      id: value,
+      file: found.file,
+      title,
+      artist: showTitle,
+      albumArtist: showTitle,
+      album: showTitle,
+      track: '',
+      genre: 'Podcast',
+      durationSec: Number(found.rawEpisode?.durationSec || found.safeEpisode?.durationSec || 0) || 0,
+      format,
+      // Prefer the original feed artwork for APNs. The protected mobile
+      // artwork URL cannot be fetched by Apple's notification extension.
+      artworkUrl: safeArtworkReference(req, found.rawEpisode?.imageUrl) || '',
+    };
   };
 
   const playMpdFileAtFront = async (file) => {
@@ -2125,13 +2357,36 @@ export function registerMobileRoutes(app, deps = {}) {
       || result?.itunesUrl
       || result?.albumUrl
     );
+    const matchedTitle = text(result?.title || title) || null;
+    const matchedArtist = text(result?.artist || artist) || null;
+    const matchedAlbum = text(result?.album || album) || null;
+    const directAbout = normalizeMobileAbout(result?.about);
+    // The native player and moOde can report the same radio item at slightly
+    // different moments. Apple enrichment may therefore be partial (or mark
+    // a lookup as unmatched) even while the canonical /now-playing payload
+    // already has verified About text. Ask the canonical path whenever the
+    // direct lookup did not provide About; its title/artist/album or Apple URL
+    // comparison is the safety boundary against copying unrelated text.
+    const canonicalAbout = directAbout
+      ? {
+        about: directAbout,
+        aboutStatus: text(result?.aboutStatus) || null,
+        aboutProvider: text(result?.aboutProvider) || null,
+      }
+      : await matchingCanonicalRadioAbout({
+        artist: matchedArtist || artist,
+        title: matchedTitle || title,
+        album: matchedAlbum || album,
+        trackUrl: result?.trackUrl,
+        albumUrl: result?.albumUrl,
+      });
     const notificationTrack = radioPlaybackTrack({ stationId, file, station });
     if (notifyNativePlayback && notificationTrack) {
       const enrichedTrack = {
         ...notificationTrack,
-        title: text(result?.title || title) || notificationTrack.title,
-        artist: text(result?.artist || artist) || notificationTrack.artist,
-        album: text(result?.album || album) || notificationTrack.album,
+        title: matchedTitle || notificationTrack.title,
+        artist: matchedArtist || notificationTrack.artist,
+        album: matchedAlbum || notificationTrack.album,
         // Keep the protected URL for the mobile response below, but give the
         // APNs sender the original safe external artwork URL. The iOS
         // notification-service extension cannot attach the app bearer token.
@@ -2144,6 +2399,7 @@ export function registerMobileRoutes(app, deps = {}) {
           track: enrichedTrack,
           trackId: notificationTrack.id,
           sessionId: session.deviceId,
+          deviceId: session.deviceId,
         }))
         .catch(() => {});
     }
@@ -2152,12 +2408,15 @@ export function registerMobileRoutes(app, deps = {}) {
       ok: true,
       stationId,
       matched: Boolean(result?.matched),
-      title: text(result?.title || title) || null,
-      artist: text(result?.artist || artist) || null,
-      album: text(result?.album || album) || null,
+      title: matchedTitle,
+      artist: matchedArtist,
+      album: matchedAlbum,
       year: text(result?.year) || null,
       artworkUrl,
       appleMusicUrl,
+      about: canonicalAbout.about,
+      aboutStatus: canonicalAbout.aboutStatus,
+      aboutProvider: canonicalAbout.aboutProvider,
       reason: text(result?.reason) || null,
     });
   }));
@@ -2698,7 +2957,7 @@ export function registerMobileRoutes(app, deps = {}) {
       return res.json({ ok: true, action, ...result });
     }
 
-    if (!['clear', 'crop', 'shuffle'].includes(action)) {
+    if (!['clear', 'crop', 'shuffle', 'shufflequeue'].includes(action)) {
       return errorResponse(res, 400, 'unsupported queue action');
     }
 
@@ -2719,6 +2978,25 @@ export function registerMobileRoutes(app, deps = {}) {
         );
       }
       return queueResponse(res, action, await loadMobileQueue(req));
+    }
+
+    // Shuffle always means a physical upcoming-queue reorder. This keeps the
+    // visible queue and Alexa's next-track order aligned and never enables
+    // Physical queue shuffle. Keep shufflequeue as a compatibility alias.
+    if (action === 'shuffle' || action === 'shufflequeue') {
+      if (!fetchInternalRequest) return errorResponse(res, 503, 'mobile queue shuffle is not configured');
+      const reliableShuffle = await internalFeatureRequest('/config/diagnostics/playback', {
+        method: 'POST',
+        body: { action: 'shufflequeue' },
+      });
+      if (!reliableShuffle?.ok) {
+        return errorResponse(
+          res,
+          Number(reliableShuffle?.status) || 502,
+          text(reliableShuffle?.json?.error) || 'MPD rejected queue action: shufflequeue',
+        );
+      }
+      return queueResponse(res, 'shuffle', await loadMobileQueue(req));
     }
 
     const result = await mpdQueryRaw(action);
@@ -3048,6 +3326,46 @@ export function registerMobileRoutes(app, deps = {}) {
     });
   }));
 
+  app.get('/v1/mobile/catalog/tracks/:trackId/favorite', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    const catalog = await loadCatalog();
+    const track = catalog.byTrackId.get(text(req?.params?.trackId));
+    if (!track) return errorResponse(res, 404, 'track not found');
+    return res.json({ ok: true, ...(await readMobileTrackFavorite(track)) });
+  }));
+
+  app.post('/v1/mobile/catalog/tracks/:trackId/favorite', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (typeof req?.body?.favorite !== 'boolean') {
+      return errorResponse(res, 400, 'favorite must be boolean');
+    }
+
+    const catalog = await loadCatalog();
+    const track = catalog.byTrackId.get(text(req?.params?.trackId));
+    if (!track) return errorResponse(res, 404, 'track not found');
+
+    const current = await readMobileTrackFavorite(track);
+    if (current.disabled) return res.json({ ok: true, ...current });
+    if (!fetchInternalRequest) return errorResponse(res, 503, 'mobile favorite control is not configured');
+
+    const result = await internalFeatureRequest('/favorites/toggle', {
+      method: 'POST',
+      body: { file: track.file, favorite: req.body.favorite },
+    });
+    if (!result?.ok) return errorResponse(res, 502, 'favorite update failed');
+    if (result.json?.disabled) {
+      return res.json({ ok: true, isFavorite: false, disabled: true });
+    }
+
+    return res.json({
+      ok: true,
+      isFavorite: typeof result.json?.isFavorite === 'boolean'
+        ? result.json.isFavorite
+        : req.body.favorite,
+      disabled: false,
+    });
+  }));
+
   app.get('/v1/mobile/search', asyncRoute(async (req, res) => {
     if (!requireSession(req, res)) return;
     const catalog = await loadCatalog();
@@ -3134,7 +3452,27 @@ export function registerMobileRoutes(app, deps = {}) {
         track = radioPlaybackTrack({ stationId, file, station });
       }
     }
+    if (!track && trackId.startsWith('podcast-')) {
+      track = await podcastPlaybackTrackForId(req, trackId);
+    }
     if (!track) return errorResponse(res, 404, 'track not found');
+
+    const trackKind = trackId.startsWith('podcast-')
+      ? 'podcast'
+      : (trackId.startsWith('radio-') ? 'radio' : 'catalog');
+    const playbackLog = {
+      state,
+      trackKind,
+      sessionIdPresent: Boolean(sessionId),
+      deviceIdPresent: Boolean(text(session.deviceId)),
+      title: text(track.title) || 'unknown',
+      filePresent: Boolean(text(track.file)),
+    };
+    if (state === 'start') {
+      log.info('[mobile/playback] start accepted', playbackLog);
+    } else {
+      log.debug('[mobile/playback] event accepted', playbackLog);
+    }
 
     const elapsedSec = Math.max(0, Number(body.elapsedSec) || 0);
     const durationSec = Math.max(0, Number(body.durationSec) || Number(track.durationSec) || 0);
@@ -3171,9 +3509,31 @@ export function registerMobileRoutes(app, deps = {}) {
     // enrichment completes. Defer its APNs notification until that response
     // so the alert carries the verified song metadata and album artwork.
     if (state === 'start' && notifyNativePlayback && !isStreamFile(track.file)) {
+      log.info('[mobile/playback] APNs bridge queued', {
+        trackKind,
+        title: text(track.title) || 'unknown',
+        filePresent: Boolean(text(track.file)),
+      });
       Promise.resolve()
-        .then(() => notifyNativePlayback({ track, trackId, sessionId }))
-        .catch(() => {});
+        .then(() => notifyNativePlayback({
+          track,
+          trackId,
+          sessionId,
+          deviceId: session.deviceId,
+        }))
+        .catch((error) => {
+          log.error('[mobile/playback] APNs bridge failed', {
+            trackKind,
+            title: text(track.title) || 'unknown',
+            error: error?.message || String(error),
+          });
+        });
+    } else if (state === 'start') {
+      log.info('[mobile/playback] APNs bridge skipped', {
+        reason: notifyNativePlayback ? 'stream_track' : 'bridge_unavailable',
+        trackKind,
+        title: text(track.title) || 'unknown',
+      });
     }
 
     return res.json({

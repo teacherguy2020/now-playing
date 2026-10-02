@@ -27,7 +27,8 @@ Also ensure `moode_library_index.json` is present on the API host (project root 
 ## What the main controls do
 - **Replace Queue / Add to Queue**: choose how to send results.
 - **Crop Queue**: trim existing queue before sending.
-- **Random**: random playback mode behavior (does not reorder items).
+- **Shuffle**: physically reorder the queue before playback; this does not
+  enable legacy MPD random mode.
 - **Send queue to moOde**: applies current selection.
 - **Save playlist**: stores generated set as playlist.
 
