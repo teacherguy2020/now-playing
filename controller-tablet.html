@@ -804,6 +804,7 @@
 
   <script src="/scripts/client-preferences.js?v=20260922-preferences2"></script>
   <script src="/scripts/now-playing-art.js?v=20260924-art-contract4"></script>
+  <script src="/scripts/about-card.js?v=20261002-about3"></script>
   <script>
 (() => {
   const NP_PREFS = window.NPClientPreferences;
@@ -1549,38 +1550,6 @@
       return npRadioFavCache.set || /* @__PURE__ */ new Set();
     }
   }
-  async function renderRadioFavoritesBack() {
-    const el = document.getElementById("npPersonnelBody");
-    if (!el) return;
-    const titleEl = document.querySelector("#npArtBack .personnelTitle");
-    if (titleEl) titleEl.style.display = "none";
-    const now = Date.now();
-    if (npRadioGridCache.html && now - Number(npRadioGridCache.ts || 0) < 2e4) {
-      el.innerHTML = npRadioGridCache.html;
-      return;
-    }
-    try {
-      await ensureKey();
-      const rr = await fetch("".concat(base, "/config/queue-wizard/radio-favorites"), { cache: "no-store", headers: reqHeaders(false) });
-      const rj = await rr.json().catch(() => ({}));
-      const rows = rr.ok && (rj == null ? void 0 : rj.ok) && Array.isArray(rj.favorites) ? rj.favorites.slice(0, 9) : [];
-      if (!rows.length) {
-        el.textContent = "No favorite stations.";
-        return;
-      }
-      const html = "<div class='radioGrid'>".concat(rows.map((s) => {
-        const t = String((s == null ? void 0 : s.stationName) || (s == null ? void 0 : s.file) || "(station)").trim();
-        const u = String((s == null ? void 0 : s.file) || "").trim();
-        const esc = t.replace(/'/g, "&#39;");
-        const src = "".concat(base, "/art/radio-logo.jpg?name=").concat(encodeURIComponent(t));
-        return "<button type='button' class='radioCellBtn' data-radio-url='".concat(encodeURIComponent(u), "' title='Play ").concat(esc, "'><img src='").concat(src, "' alt='").concat(esc, "' title='").concat(esc, "'></button>");
-      }).join(""), "</div>");
-      npRadioGridCache = { ts: now, html };
-      el.innerHTML = html;
-    } catch {
-      el.textContent = "No favorite stations.";
-    }
-  }
   async function waitForRadioTune(expectedUrl = "", timeoutMs = 18e3) {
     const want = String(expectedUrl || "").trim();
     const started = Date.now();
@@ -1741,8 +1710,11 @@
         } catch {
         }
         setArtFlip(false);
-        if (isRadio) renderRadioFavoritesBack().catch(() => renderPersonnelBack(npPersonnelText));
-        else renderPersonnelBack(npPersonnelText);
+        if (window.NPAboutCard?.renderBack) {
+          window.NPAboutCard.renderBack({ data: j, personnelText: npPersonnelText, aboutOnly: isRadio });
+        } else {
+          renderPersonnelBack(npPersonnelText);
+        }
         const artEl = document.getElementById("art");
         const spinEl = document.getElementById("npArtSpin");
         if (artEl) {

@@ -488,6 +488,7 @@
 
   <script src="/scripts/client-preferences.js?v=20260922-preferences2"></script>
   <script src="/scripts/now-playing-art.js?v=20260924-art-contract4"></script>
+  <script src="/scripts/about-card.js?v=20261002-about3"></script>
   <script>
     const MOBILE_PROFILE_KEY='nowplaying.mobile.profile.v1';
     const NP_PREFS = window.NPClientPreferences;
@@ -1013,7 +1014,7 @@
         if (sig !== npSig) {
           npSig = sig;
           setArtFlip(false);
-          renderPersonnelBack(npPersonnelText);
+          if (window.NPAboutCard?.renderBack) window.NPAboutCard.renderBack({ data: j, personnelText: npPersonnelText, aboutOnly: isRadio }); else renderPersonnelBack(npPersonnelText);
           const artEl = document.getElementById('art');
           const spinEl = document.getElementById('npArtSpin');
           if (artEl) {

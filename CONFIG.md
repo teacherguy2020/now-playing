@@ -48,3 +48,17 @@ cp config/now-playing.config.example.json config/now-playing.config.json
 - Do not commit secrets in config.
 - Keep keys/tokens in environment variables or private config files.
 - After config changes, restart API process (`pm2 restart api --update-env` or systemd equivalent).
+
+## Optional editorial About metadata
+
+Editorial About enrichment is optional. A clean GitHub installation works
+normally without Apple credentials and without any About provider configured.
+
+Apple Music is one optional provider. If enabled, supply installer-owned Media
+Services credentials outside the repository. Generated developer tokens are
+created and cached in memory only. `APPLE_MUSIC_DEVELOPER_TOKEN` is an
+optional development/testing fallback, not required for production.
+
+The API exposes provider-neutral `aboutStatus` values: `unconfigured`,
+`no-data`, and `available`; `aboutProvider` identifies the provider when data
+is available.

@@ -254,6 +254,7 @@ import { getMillsIntegrationState, registerMillsRoutes } from './src/routes/mill
 import { HarmonyHubClient, sendHarmonyIrCommand } from './src/services/harmony.service.mjs';
 import { createAppleAboutService } from './src/services/apple-about.service.mjs';
 import { createAppleMusicTokenProvider } from './src/lib/apple-music-token.mjs';
+import { ABOUT_STATUS, createAboutResolver } from './src/services/about.service.mjs';
 
 const appleMusicTokenProvider = APPLE_MUSIC_KEY_ID && APPLE_MUSIC_TEAM_ID && APPLE_MUSIC_PRIVATE_KEY_PATH
   ? createAppleMusicTokenProvider({
@@ -271,6 +272,15 @@ const appleAboutService = createAppleAboutService({
   tokenProvider: appleMusicTokenProvider ? () => appleMusicTokenProvider.getToken() : null,
   storefront: APPLE_MUSIC_COUNTRY,
   timeoutMs: APPLE_MUSIC_TIMEOUT_MS,
+});
+
+const appleMusicAboutConfigured = Boolean(appleMusicTokenProvider || APPLE_MUSIC_DEVELOPER_TOKEN);
+const aboutResolver = createAboutResolver({
+  providers: [{
+    name: 'apple',
+    configured: appleMusicAboutConfigured,
+    getAbout: (input) => appleAboutService.getAbout(input),
+  }],
 });
 
 const millsHarmonyClient = new HarmonyHubClient({
@@ -6599,7 +6609,10 @@ async function lookupMobileRadioMetadata({ artist = '', title = '', album = '', 
 
 
 async function enrichNowPlayingAbout({ artist = '', title = '', album = '', trackUrl = '', albumUrl = '', file = '', displayOnly = false } = {}) {
-  if (!APPLE_MUSIC_DEVELOPER_TOKEN || displayOnly || !String(artist || '').trim() || !String(title || '').trim()) return null;
+  if (displayOnly) return { status: ABOUT_STATUS.NOT_REQUESTED, data: null, provider: null };
+  if (!String(artist || '').trim() || !String(title || '').trim()) {
+    return { status: ABOUT_STATUS.NO_DATA, data: null, provider: null };
+  }
 
   let acceptedTrackUrl = String(trackUrl || '').trim();
   let acceptedAlbumUrl = String(albumUrl || '').trim();
@@ -6611,9 +6624,9 @@ async function enrichNowPlayingAbout({ artist = '', title = '', album = '', trac
     acceptedTrackUrl = String(match?.trackUrl || '').trim();
     acceptedAlbumUrl = String(match?.albumUrl || '').trim();
   }
-  if (!acceptedTrackUrl && !acceptedAlbumUrl) return null;
+  if (!acceptedTrackUrl && !acceptedAlbumUrl) return { status: ABOUT_STATUS.NO_DATA, data: null, provider: null };
 
-  const request = appleAboutService.getAbout({
+  const request = aboutResolver.resolve({
     trackUrl: acceptedTrackUrl,
     albumUrl: acceptedAlbumUrl,
     identityKey: file || `${artist}|${title}|${album}`,
@@ -6621,10 +6634,10 @@ async function enrichNowPlayingAbout({ artist = '', title = '', album = '', trac
   try {
     return await Promise.race([
       request,
-      new Promise((resolve) => setTimeout(() => resolve(null), Math.max(250, APPLE_MUSIC_TIMEOUT_MS + 100))),
+      new Promise((resolve) => setTimeout(() => resolve({ status: ABOUT_STATUS.NO_DATA, data: null, provider: null }), Math.max(250, APPLE_MUSIC_TIMEOUT_MS + 100))),
     ]);
   } catch {
-    return null;
+    return { status: ABOUT_STATUS.NO_DATA, data: null, provider: null };
   }
 }
 
@@ -8223,7 +8236,7 @@ app.get('/now-playing', async (req, res) => {
     // Editorial About metadata is optional and non-critical. It is resolved
     // from the final track payload so a refresh can never retain the prior
     // track's text, and a provider timeout cannot affect playback state.
-    const about = await enrichNowPlayingAbout({
+    const aboutResult = await enrichNowPlayingAbout({
       artist: payload.artist,
       title: payload.title,
       album: payload.album,
@@ -8232,7 +8245,9 @@ app.get('/now-playing', async (req, res) => {
       file: payload.file,
       displayOnly: payload.displayOnly,
     });
-    if (about) payload.about = about;
+    payload.aboutStatus = aboutResult?.status || ABOUT_STATUS.NO_DATA;
+    if (aboutResult?.provider) payload.aboutProvider = aboutResult.provider;
+    if (aboutResult?.data) payload.about = aboutResult.data;
 
     lastNowPlayingOk = payload;
     lastNowPlayingTs = Date.now();

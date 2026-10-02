@@ -3337,6 +3337,7 @@ if (titleEl) {
         : '';
       personnelEl.style.display = '';
     }
+    try { window.NPAboutCard?.renderInline({ data, element: personnelEl, aboutOnly: isRadio }); } catch {}
     try { requestAnimationFrame(() => fitPersonnelForWaveshare()); } catch {}
   }
 

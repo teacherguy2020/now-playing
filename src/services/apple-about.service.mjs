@@ -22,7 +22,9 @@ function firstText(...values) {
 export function extractAppleCatalogId(url, kind = 'track') {
   const raw = text(url);
   if (!raw) return '';
-  const query = raw.match(/[?&](?:i|id)=(\d+)/i);
+  const query = raw.match(kind === 'album'
+    ? /[?&]id=([0-9]+)/i
+    : /[?&](?:i|id)=([0-9]+)/i);
   if (query) return query[1];
   const path = raw.match(new RegExp(`/${kind === 'album' ? 'album' : 'song'}/[^/?#]+/(\\d+)(?:[/?#]|$)`, 'i'));
   return path?.[1] || '';

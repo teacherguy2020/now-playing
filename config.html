@@ -473,6 +473,8 @@
                     <h3>Album Personnel</h3>
                     <div class="cfgField"><label><input id="featureAlbumPersonnel" type="checkbox" /> Enabled</label></div>
                     <div class="cfgHint">When disabled, the personnel block is hidden on the Now Playing page. Note: personnel extraction requires <code>metaflac</code> installed on the player host (<code>apt install flac</code>).</div>
+                    <div class="cfgField"><label><input id="featureShowAboutWhenNoPersonnel" type="checkbox" checked /> Show About when credits are not available</label></div>
+                    <div class="cfgHint">Uses any configured About provider. With no provider configured, this remains enabled but the card keeps its normal fallback; that is not an error.</div>
                   </div>
                 </div>
               </div>
@@ -1198,6 +1200,7 @@ async function loadCfg(){
   document.getElementById('featureRatings').checked = !!c.features?.ratings;
   document.getElementById('featureRadio').checked = !!c.features?.radio;
   document.getElementById('featureAlbumPersonnel').checked = !!(c.features?.albumPersonnel ?? true);
+  document.getElementById('featureShowAboutWhenNoPersonnel').checked = !!(c.features?.showAboutWhenNoPersonnel ?? true);
   document.getElementById('featureMoodeDisplayTakeover').checked = !!(c.features?.moodeDisplayTakeover ?? true);
   document.getElementById('idleBrandLine').value = String(c.display?.idleBrandLine || full.display?.idleBrandLine || 'Clem’s Place');
   document.getElementById('idleMessageLine').value = String(c.display?.idleMessageLine || full.display?.idleMessageLine || 'The record room is quiet');
@@ -1395,6 +1398,7 @@ async function saveCfg(){
         ratings: document.getElementById('featureRatings').checked,
         radio: document.getElementById('featureRadio').checked,
         albumPersonnel: document.getElementById('featureAlbumPersonnel').checked,
+        showAboutWhenNoPersonnel: document.getElementById('featureShowAboutWhenNoPersonnel').checked,
         moodeDisplayTakeover: document.getElementById('featureMoodeDisplayTakeover').checked,
         lastfm: document.getElementById('featureLastfm').checked,
       },
