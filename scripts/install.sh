@@ -173,6 +173,19 @@ fi
 
 ${SUDO} chown -R "${INSTALL_USER}":"${INSTALL_USER}" "${INSTALL_DIR}"
 
+CONFIG_FILE="${INSTALL_DIR}/config/now-playing.config.json"
+CONFIG_TEMPLATE="${INSTALL_DIR}/config/now-playing.config.example.json"
+if [[ ! -e "${CONFIG_FILE}" ]]; then
+  if [[ ! -f "${CONFIG_TEMPLATE}" ]]; then
+    err "Required configuration template is missing: ${CONFIG_TEMPLATE}"
+    exit 1
+  fi
+  log "Creating default configuration at ${CONFIG_FILE}"
+  ${SUDO} cp "${CONFIG_TEMPLATE}" "${CONFIG_FILE}"
+  ${SUDO} chown "${INSTALL_USER}":"${INSTALL_USER}" "${CONFIG_FILE}"
+  ${SUDO} chmod 600 "${CONFIG_FILE}"
+fi
+
 log "Installing dependencies"
 if [[ -f "${INSTALL_DIR}/package-lock.json" ]]; then
   npm --prefix "${INSTALL_DIR}" ci
