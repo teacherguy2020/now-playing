@@ -97,8 +97,8 @@
     body.screen-1280x400 .meters{width:min(900px, calc(100% - 12px));left:50%;right:auto;transform:translateX(-50%)}
     body.screen-1280x400.linear-meter .meters{bottom:42px;left:0;right:0;width:100%;max-width:none;transform:none}
     body.screen-1280x400 .needleWrap{height:220px}
-    body.screen-1280x400 .meta{padding:15px 8px 0;gap:0}
-    body.screen-1280x400 .dotline.title{height:52px}
+    body.screen-1280x400 .meta{padding:15px 8px 0;gap:4px}
+    body.screen-1280x400 .dotline.title{height:60px}
     body.screen-1280x400:not(.font-dot) .meta .dotline.title{width:calc(100% - 30px);margin-left:15px}
     body.screen-1280x400:not(.font-dot) #albumYearCanvas{height:58px}
     .fmtItem{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:color-mix(in oklab, var(--fg, #e6efff) 78%, transparent);letter-spacing:.3px}
@@ -110,7 +110,10 @@
     .fmtItem[data-fmt="hq"].on .fmtLed,.fmtItem[data-fmt="lossless"].on .fmtLed{background:#f4c84a;border-color:#ffe08c;box-shadow:0 0 6px rgba(244,200,74,.85),0 0 12px rgba(244,200,74,.4)}
     .fmtItem[data-fmt="sr44"].on .fmtLed,.fmtItem[data-fmt="sr48"].on .fmtLed,.fmtItem[data-fmt="sr96"].on .fmtLed,.fmtItem[data-fmt="b16"].on .fmtLed,.fmtItem[data-fmt="b24"].on .fmtLed{background:#3fa9e6;border-color:#89cdef;box-shadow:0 0 6px rgba(63,169,230,.8),0 0 12px rgba(63,169,230,.34)}
     @keyframes livePulseSlow{0%{opacity:.62;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}100%{opacity:.62;transform:scale(1)}}
+    @keyframes liveBadgePulse{0%,100%{opacity:.78}50%{opacity:1}}
+    .fmtItem[data-fmt="live"].on{animation:liveBadgePulse 3.6s ease-in-out infinite}
     .fmtItem[data-fmt="live"].on .fmtLed{background:#f05a5a;border-color:#ffaaaa;box-shadow:0 0 6px rgba(240,90,90,.78),0 0 12px rgba(240,90,90,.36);animation:livePulseSlow 3.6s ease-in-out infinite}
+    @media (prefers-reduced-motion: reduce){.fmtItem[data-fmt="live"].on,.fmtItem[data-fmt="live"].on .fmtLed{animation:none}}
     .fmtRate{margin-left:auto;font-size:10px;color:color-mix(in oklab, var(--fg, #e6efff) 72%, transparent)}
     body:not(.font-dot) .fmtItem,
     body:not(.font-dot) .fmtRate,
