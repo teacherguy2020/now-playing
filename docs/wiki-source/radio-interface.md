@@ -33,6 +33,32 @@ holdback, cleanup, and enrichment decisions are covered by
 [radio-metadata-eval-interface.md](radio-metadata-eval-interface.md) and the
 playback troubleshooting branch.
 
+### Shared server metadata contract
+
+The server-side normalization boundary is
+`src/lib/radio-metadata.mjs` (`RADIO_METADATA_CONTRACT_VERSION` 1). It is
+shared by canonical `/now-playing` processing and
+`POST /v1/mobile/radio/metadata`; it returns the raw source fields, normalized
+artist/title/album, explicit station profile, classification, confidence,
+reason codes, conservative lookup decision, classical composer/work/program
+and personnel fields, and source artwork hints. Current profiles include
+WFMT/classical, Davide/MIMIC, and generic fallback, with aliases kept in one
+profile table rather than route-specific URL tests.
+
+Provider enrichment remains behind the existing Apple/iTunes/About safety
+gates. Canonical web payloads expose the contract summary as
+`radioMetadataContract`; mobile responses expose compatible `radioProfile`,
+`radioClassification`, `radioConfidence`, `radioReasonCodes`, and
+`radioLookup` fields while preserving the existing match/artwork/link/About
+fields. Sponsor/ad and talk/news/sports classifications suppress music lookup
+without changing the canonical Sponsor Ad versus native/mobile projection
+distinction. Artwork sent to APNs remains an external safe reference, never a
+bearer-only URL.
+
+The browser radio helper now treats the server result as authoritative when
+present. Its remaining logic is presentation de-jitter and compatibility
+fallback for older or incomplete responses, not a second metadata parser.
+
 The native iPhone/iPad controller uses a bearer-authenticated radio surface
 with the same search, genre, favorites, bulk queue, and preset concepts. Its
 server boundary and Home moOde target behavior are documented in
@@ -69,4 +95,4 @@ stream ticket and does not mutate the Home moOde queue.
 - [playback-mode-troubleshooting.md](playback-mode-troubleshooting.md)
 - [api-youtube-radio-and-integration-endpoints.md](api-youtube-radio-and-integration-endpoints.md)
 
-*Last reviewed: 2026-09-30 America/Chicago*
+*Last reviewed: 2026-10-02 America/Chicago*

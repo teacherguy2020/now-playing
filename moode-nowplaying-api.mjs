@@ -32,6 +32,12 @@ import { promisify } from 'node:util';
 import { XMLParser } from 'fast-xml-parser';
 import os from "node:os";
 import { isPodcastPlaylist } from './src/lib/playlist-classification.mjs';
+import {
+  deriveRadioLookupContext,
+  normalizeRadioMetadata,
+  radioMetadataProfile as sharedRadioMetadataProfile,
+  radioHoldbackPolicy as sharedRadioHoldbackPolicy,
+} from './src/lib/radio-metadata.mjs';
 
 
 
@@ -59,18 +65,11 @@ function toNum(v, fallback = 0) {
 }
 
 function radioHoldbackPolicy(stationName = '', stationKey = '') {
-  const s = `${String(stationName || '')} ${String(stationKey || '')}`.toLowerCase();
-  const wfmt = /\bwfmt\b/.test(s);
-  const strictPatterns = [
-    /\bwfmt\b/, /\bclassical\b/, /\bking\s*fm\b/, /\bkusc\b/, /\bkdfc\b/, /\bbc\s*radio\s*3\b/,
-  ];
-  const strict = strictPatterns.some((re) => re.test(s));
-  return {
-    mode: strict ? 'strict' : 'normal',
-    holdbackMs: strict
-      ? (wfmt ? RADIO_META_HOLDBACK_MS_WFMT : RADIO_META_HOLDBACK_MS)
-      : RADIO_META_HOLDBACK_MS_NORMAL,
-  };
+  return sharedRadioHoldbackPolicy(stationName, stationKey, {
+    defaultMs: RADIO_META_HOLDBACK_MS,
+    wfmtMs: RADIO_META_HOLDBACK_MS_WFMT,
+    normalMs: RADIO_META_HOLDBACK_MS_NORMAL,
+  });
 }
 
 function applyRadioMetadataHoldback({ stationKey = '', stationName = '', artist = '', title = '', album = '', radioPerformers = '', elapsedSec = 0 }) {
@@ -2161,12 +2160,6 @@ function splitDavideMimicTitlePerformersProgram(titleLine) {
   const program = parts.slice(performerIndex + 1).map(normalize).filter(Boolean).join(' - ');
 
   return { composer, work, personnel, program };
-}
-
-function radioMetadataProfile(stationName, file) {
-  const s = `${String(stationName || '')} ${String(file || '')}`.toLowerCase();
-  if (/\bdavide(?:\s+of)?\b|\bmimic\b|liveboxstream\.uk\/proxy\/davideof/i.test(s)) return 'davide-mimic';
-  return 'generic';
 }
 
 // Brian-confirmed Apple album for the MIMIC Prokofiev Piano Concerto No. 2
@@ -6552,10 +6545,16 @@ async function lookupMobileRadioMetadata({ artist = '', title = '', album = '', 
   // `Chet Baker - text="Almost Blue" ... TPID="..."`. The web Now Playing
   // path already owns the station-specific cleanup; use that same helper
   // here before applying the shared iTunes matcher.
-  const normalized = sanitizeNotifyMeta(artist, title);
-  const rawArtist = String(normalized.artist || '').trim();
+  const normalized = normalizeRadioMetadata({ artist, title, album, stationName, file });
+  const lookupContext = deriveRadioLookupContext({
+    artist: normalized.artist,
+    title: normalized.title,
+    album: normalized.album,
+    profile: normalized.profile,
+  });
+  const rawArtist = String(normalized.artist || lookupContext.composer || '').trim();
   const rawTitle = String(normalized.title || '').trim();
-  const rawAlbum = String(album || '').trim();
+  const rawAlbum = String(normalized.album || '').trim();
   const empty = (reason) => ({
     matched: false,
     title: rawTitle,
@@ -6567,35 +6566,52 @@ async function lookupMobileRadioMetadata({ artist = '', title = '', album = '', 
     albumUrl: '',
     itunesUrl: '',
     reason,
+    profile: normalized.profile,
+    classification: normalized.classification,
+    confidence: normalized.confidence,
+    reasonCodes: normalized.reasonCodes,
+    lookup: normalized.lookup,
   });
 
   if (!rawTitle) return empty('empty-title');
   if (!rawArtist) return empty('empty-artist');
 
-  const blob = `${rawArtist} | ${rawTitle} | ${rawAlbum}`.toLowerCase();
-  if (/(^|\W)(talk|news|sports?|espn|npr|podcast|weather|traffic|headline|commentary|interview)(\W|$)|sportstalk|play-by-play/i.test(blob)) {
-    return empty('talk-news-sports');
-  }
-  if (/^radio\s*station$|^unknown$|^stream$/i.test(rawArtist) || /^\d{1,3}$/.test(rawArtist)) {
-    return empty('generic-artist');
-  }
+  if (!normalized.lookup.allow) return empty(normalized.lookup.reason);
 
-  const lookupArtist = sanitizeLookupArtistForItunes(rawArtist);
-  const result = await lookupItunesFirst(lookupArtist, rawTitle, false, {
-    strictArtist: true,
-    // Keep station identity available to this shared lookup contract; the
-    // native client should not invent a separate station strategy.
+  const classical = normalized.classification === 'classical';
+  const lookupArtist = sanitizeLookupArtistForItunes(lookupContext.lookupArtist || rawArtist);
+  const lookupTitle = String(lookupContext.lookupTitle || rawTitle).trim();
+  const curatedAlbum = curatedRadioAppleAlbum(
+    normalized.profile,
+    lookupContext.composer,
+    lookupTitle,
+  );
+  const result = await lookupItunesFirst(lookupArtist, lookupTitle, false, {
+    strictArtist: !classical,
+    strictTitle: classical,
+    radioAlbum: lookupContext.lookupAlbumHint,
+    albumHint: lookupContext.lookupAlbumHint,
+    composer: lookupContext.composer,
+    composerShort: lookupContext.composerShort,
+    ensembleHint: lookupContext.ensembleHint,
+    conductorHint: lookupContext.conductorHint,
+    soloistHint: lookupContext.soloistHint,
+    labelHint: lookupContext.labelHint,
+    programHint: lookupContext.programHint,
+    preserveTitle: normalized.profile === 'davide-mimic',
+    classicalAlbumSearch: normalized.profile === 'davide-mimic',
+    curatedCollectionId: curatedAlbum?.collectionId || '',
     stationName: String(stationName || '').trim(),
     file: String(file || '').trim(),
   });
   const matchedTitle = String(result?.matchedTitle || '').trim();
   const verified = !!String(result?.url || result?.trackUrl || result?.albumUrl || '').trim()
-    && (!matchedTitle || shouldAcceptMatchedTitle(rawTitle, matchedTitle));
+    && (!matchedTitle || shouldAcceptMatchedTitle(classical ? lookupTitle : rawTitle, matchedTitle));
   if (!verified) return empty(result?.reason || 'no-match');
 
   return {
     matched: true,
-    title: matchedTitle || rawTitle,
+    title: matchedTitle || lookupTitle || rawTitle,
     artist: String(result?.matchedArtist || rawArtist).trim(),
     album: String(result?.album || rawAlbum).trim(),
     year: String(result?.year || '').trim(),
@@ -6604,6 +6620,11 @@ async function lookupMobileRadioMetadata({ artist = '', title = '', album = '', 
     albumUrl: String(result?.albumUrl || '').trim(),
     itunesUrl: String(result?.albumUrl || result?.trackUrl || '').trim(),
     reason: String(result?.reason || 'matched').trim(),
+    profile: normalized.profile,
+    classification: normalized.classification,
+    confidence: normalized.confidence,
+    reasonCodes: normalized.reasonCodes,
+    lookup: normalized.lookup,
   };
 }
 
@@ -7023,7 +7044,7 @@ app.get('/now-playing', async (req, res) => {
     let stationLogoUrl = '';
     let primaryArtUrl = '';
     let streamStationName = String(song?.name || song?.album || '').trim();
-    const radioMetadataProfileName = isRadio ? radioMetadataProfile(streamStationName, file) : 'generic';
+    const radioMetadataProfileName = isRadio ? sharedRadioMetadataProfile(streamStationName, file) : 'generic';
 
     // ✅ Apple Music link fields (RADIO)
     let radioItunesUrl = '';
@@ -7032,6 +7053,10 @@ app.get('/now-playing', async (req, res) => {
     let shareUrl = '';
     let radioLookupReason = '';
     let radioLookupTerm = '';
+    let radioClassification = '';
+    let radioConfidence = '';
+    let radioReasonCodes = [];
+    let radioMetadataContract = null;
 
     // Default art scaffolding
     if (stream) {
@@ -7082,6 +7107,31 @@ app.get('/now-playing', async (req, res) => {
             });
         }
     }
+
+    // Shared contract: preserve the existing enrichment/matching pipeline
+    // below, while making one normalized source record authoritative for
+    // profile, classification, conservative lookup gating, and radio fields.
+    if (isRadio) {
+      radioMetadataContract = normalizeRadioMetadata({
+        artist: song?.artist || artist,
+        title: song?.title || title,
+        album: song?.album || album,
+        stationName: streamStationName,
+        file,
+      });
+      artist = radioMetadataContract.artist || artist;
+      title = radioMetadataContract.title || title;
+      radioClassification = radioMetadataContract.classification;
+      radioConfidence = radioMetadataContract.confidence;
+      radioReasonCodes = radioMetadataContract.reasonCodes;
+      if (radioMetadataContract.composer && !radioComposer) radioComposer = radioMetadataContract.composer;
+      if (radioMetadataContract.work && !radioWork) radioWork = radioMetadataContract.work;
+      if (radioMetadataContract.program && !radioAlbum) radioAlbum = radioMetadataContract.program;
+      if (radioMetadataContract.personnel.length && !radioPerformers) {
+        radioPerformers = radioMetadataContract.personnel.join(', ');
+      }
+    }
+
     // --- per-request flag (do NOT keep podcast state globally)
     // Primary truth: local file path indicates "podcast mode" even if enrichment misses.
     let isPodcast = isLocalPodcast;
@@ -7517,7 +7567,7 @@ app.get('/now-playing', async (req, res) => {
       personnel = Array.from(merged);
     }
 
-    const radioLookupGuard = isRadio
+    const existingRadioLookupGuard = isRadio
       ? getRadioLookupGuard({
           artist,
           title,
@@ -7526,6 +7576,9 @@ app.get('/now-playing', async (req, res) => {
           stationName: streamStationName || song.name || '',
         })
       : { allow: true, reason: 'not-radio' };
+    const radioLookupGuard = isRadio && radioMetadataContract?.lookup?.allow === false
+      ? radioMetadataContract.lookup
+      : existingRadioLookupGuard;
 
     // =========================
     // STREAM: iTunes art + album/year fallback (RADIO ONLY)
@@ -8072,6 +8125,19 @@ app.get('/now-playing', async (req, res) => {
       radioLookupReason,
       radioLookupTerm,
       radioMetadataProfile: radioMetadataProfileName,
+      radioClassification,
+      radioConfidence,
+      radioReasonCodes,
+      radioMetadataContract: radioMetadataContract
+        ? {
+          version: radioMetadataContract.contractVersion,
+          profile: radioMetadataContract.profile,
+          classification: radioMetadataContract.classification,
+          confidence: radioMetadataContract.confidence,
+          reasonCodes: radioMetadataContract.reasonCodes,
+          lookup: radioMetadataContract.lookup,
+        }
+        : null,
 
       state: status.state || song.state,
       random: randomState,
@@ -8222,6 +8288,11 @@ app.get('/now-playing', async (req, res) => {
           lookupArtist: String(lookupArtist || '').trim(),
           lookupTitle: String(lookupTitle || '').trim(),
         },
+        profile: String(radioMetadataContract?.profile || radioMetadataProfileName || 'generic').trim(),
+        classification: String(radioClassification || '').trim(),
+        confidence: String(radioConfidence || '').trim(),
+        reasonCodes: Array.isArray(radioReasonCodes) ? radioReasonCodes : [],
+        lookupDecision: radioMetadataContract?.lookup || null,
         itunes: {
           reason: String(radioLookupReason || debugItunesReason || '').trim(),
           term: String(radioLookupTerm || '').trim(),

@@ -2595,6 +2595,15 @@ function stabilizeRadioDisplay(data) {
     const stationKey = `${data.file}|${data.album || ''}`;
     const incomingRaw = decodeHtmlEntities(String(data.title || '').trim());
     const apiArtist = String(data.artist || '').trim();
+    // The server radio contract owns parsing/classification now. Keep this
+    // function only as a transient de-jitter fallback for older payloads or
+    // refresh gaps; never re-parse a current contract payload in the browser.
+    if (data?.radioMetadataContract?.version && (data.displayArtist || data.displayTitle)) {
+        return {
+            artist: String(data.displayArtist || data.artist || '').trim(),
+            title: String(data.displayTitle || data.title || '').trim(),
+        };
+    }
     const apiArtistGeneric = !apiArtist || /^\d{1,3}$/.test(apiArtist) || /radio|stream|wfmt|mimic|station/i.test(apiArtist);
     const attrs = parseQuotedAttrs(incomingRaw);
     if (attrs) {

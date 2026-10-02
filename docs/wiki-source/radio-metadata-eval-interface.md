@@ -248,6 +248,12 @@ That is the right framing for now:
 - it helps judge whether radio metadata is usable, questionable, or broken
 - it preserves the original operational purpose of checking iTunes lookup success/problems during live radio listening
 
+The evaluation rows now also record the shared server contract context:
+profile, classification, confidence, reason codes, and the conservative
+lookup decision. This makes station-specific parsing, suppression, and
+holdback decisions inspectable without requiring the evaluator to reconstruct
+them from the final artwork or provider URL.
+
 ## Timestamp
 
-Last updated: 2026-04-06 08:32 America/Chicago
+Last updated: 2026-10-02 America/Chicago

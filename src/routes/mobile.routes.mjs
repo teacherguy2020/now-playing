@@ -2417,6 +2417,11 @@ export function registerMobileRoutes(app, deps = {}) {
       about: canonicalAbout.about,
       aboutStatus: canonicalAbout.aboutStatus,
       aboutProvider: canonicalAbout.aboutProvider,
+      radioProfile: text(result?.profile) || null,
+      radioClassification: text(result?.classification) || null,
+      radioConfidence: text(result?.confidence) || null,
+      radioReasonCodes: Array.isArray(result?.reasonCodes) ? result.reasonCodes : [],
+      radioLookup: result?.lookup || null,
       reason: text(result?.reason) || null,
     });
   }));
