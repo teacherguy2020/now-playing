@@ -48,6 +48,7 @@ routes and does not call raw `/mpd/*` or `/config/*` queue endpoints.
 | POST | `/v1/mobile/queue/items/:queueItemId/vibe` | Start a seeded Vibe from one eligible local queue item |
 | GET | `/v1/mobile/vibe/jobs/:jobId` | Read sanitized progress for a mobile-started Vibe job |
 | DELETE | `/v1/mobile/queue/items/:queueItemId` | Remove one item |
+| POST | `/v1/mobile/queue/items/:queueItemId/delete-below` | Keep the selected item and remove every later Home moOde queue item |
 | POST | `/v1/mobile/queue/items/:queueItemId/move` | Move one item to a 1-based position |
 | POST | `/v1/mobile/queue/actions` | `shuffle`, `shufflequeue`, `crop`, `clear`, or `vibe` |
 | GET | `/v1/mobile/endless-vibe` | Read the shared Endless Vibe setting and safe job state |
@@ -69,6 +70,17 @@ Queue item IDs are opaque, signed handles for a current queue snapshot. MPD
 song IDs, positions used internally, file names, filesystem paths, and secrets
 are resolved and stripped on the server. A client must refresh the queue after
 each mutation because positions and opaque handles can change.
+
+`POST /v1/mobile/queue/items/:queueItemId/delete-below` resolves the opaque
+handle against a fresh queue snapshot, keeps that item, and issues the MPD
+range delete beginning at the selected item's zero-based successor position.
+The selected item is therefore retained and a selected last item is a
+successful no-op. A stale or unknown handle returns `404` without mutation.
+If the current item would be removed, the server returns `409` without
+mutation so playback and position are preserved. Sending `target: "alexa"`
+is explicitly rejected with `409`: Alexa's enqueue/stream state is not a
+safe alias for this Home MPD range mutation. This action never changes the
+native This iPhone/This iPad queue.
 
 The response includes safe display fields only:
 

@@ -621,6 +621,98 @@ test('mobile Live Queue is bearer-authorized and mutates by opaque queue ID', as
   assert.equal(commands.at(-3), 'deleteid 78');
 });
 
+test('mobile delete-below keeps the selected current item and emits the exact MPD range delete', async () => {
+  const commands = [];
+  let rows = [0, 1, 2, 3].map((position) => ({
+    file: `USB/Test/${position}.mp3`, artist: 'Test Artist', album: 'Test Album',
+    title: `Track ${position}`, pos: String(position), id: String(100 + position),
+  }));
+  const mpdQueryRaw = async (command) => {
+    commands.push(command);
+    if (command === 'playlistinfo') return `${rows.map((row) => Object.entries(row)
+      .map(([key, value]) => `${key}: ${value}`).join('\n')).join('\n')}\nOK\n`;
+    if (command === 'status') return `state: play\nsong: 0\nsongid: 100\nplaylistlength: ${rows.length}\nOK\n`;
+    if (command === 'delete 1') { rows = rows.slice(0, 1); return 'OK\n'; }
+    return 'OK\n';
+  };
+  const app = registerFixture(mpdQueryRaw);
+  const listed = createResponse();
+  await app.routes.get('GET /v1/mobile/queue')?.(request({ headers: sessionHeaders() }), listed);
+  const selected = listed.body.queue.items.find((item) => item.isCurrent === true);
+  assert.ok(selected);
+  const response = createResponse();
+  await app.routes.get('POST /v1/mobile/queue/items/:queueItemId/delete-below')?.(request({
+    headers: sessionHeaders(), params: { queueItemId: selected.id },
+  }), response);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.action, 'delete-below');
+  assert.deepEqual(commands.filter((command) => command.startsWith('delete ')), ['delete 1']);
+  assert.deepEqual(rows.map((row) => row.id), ['100']);
+  assert.equal(response.body.queue.items.some((item) => item.isCurrent === true), true);
+
+  const last = response.body.queue.items.find((item) => item.position === 1);
+  const noOp = createResponse();
+  await app.routes.get('POST /v1/mobile/queue/items/:queueItemId/delete-below')?.(request({
+    headers: sessionHeaders(), params: { queueItemId: last.id },
+  }), noOp);
+  assert.equal(noOp.statusCode, 200);
+  assert.deepEqual(commands.filter((command) => command.startsWith('delete ')), ['delete 1']);
+});
+
+test('mobile delete-below rejects unauthorized, stale, current-removing, Alexa, and empty-queue requests', async () => {
+  const commands = [];
+  let rows = [0, 1, 2].map((position) => ({
+    file: `USB/Test/${position}.mp3`, artist: 'Test Artist', album: 'Test Album',
+    title: `Track ${position}`, pos: String(position), id: String(200 + position),
+  }));
+  let currentSongId = '200';
+  const mpdQueryRaw = async (command) => {
+    commands.push(command);
+    if (command === 'playlistinfo') return `${rows.map((row) => Object.entries(row)
+      .map(([key, value]) => `${key}: ${value}`).join('\n')).join('\n')}\nOK\n`;
+    if (command === 'status') return `state: play\nsong: ${rows.findIndex((row) => row.id === currentSongId)}\nsongid: ${currentSongId}\nOK\n`;
+    return 'OK\n';
+  };
+  const app = registerFixture(mpdQueryRaw);
+  const listed = createResponse();
+  await app.routes.get('GET /v1/mobile/queue')?.(request({ headers: sessionHeaders() }), listed);
+  const selected = listed.body.queue.items.find((item) => item.position === 1);
+
+  const unauthorized = createResponse();
+  await app.routes.get('POST /v1/mobile/queue/items/:queueItemId/delete-below')?.(request({ params: { queueItemId: selected.id } }), unauthorized);
+  assert.equal(unauthorized.statusCode, 401);
+
+  rows.reverse().forEach((row, index) => { row.pos = String(index); });
+  const stale = createResponse();
+  await app.routes.get('POST /v1/mobile/queue/items/:queueItemId/delete-below')?.(request({
+    headers: sessionHeaders(), params: { queueItemId: selected.id },
+  }), stale);
+  assert.equal(stale.statusCode, 404);
+
+  const fresh = createResponse();
+  await app.routes.get('GET /v1/mobile/queue')?.(request({ headers: sessionHeaders() }), fresh);
+  const beforeCurrent = fresh.body.queue.items.find((item) => item.position === 1);
+  currentSongId = '201';
+  const conflict = createResponse();
+  await app.routes.get('POST /v1/mobile/queue/items/:queueItemId/delete-below')?.(request({
+    headers: sessionHeaders(), params: { queueItemId: beforeCurrent.id },
+  }), conflict);
+  assert.equal(conflict.statusCode, 409);
+  const alexa = createResponse();
+  await app.routes.get('POST /v1/mobile/queue/items/:queueItemId/delete-below')?.(request({
+    headers: sessionHeaders(), params: { queueItemId: beforeCurrent.id }, body: { target: 'alexa' },
+  }), alexa);
+  assert.equal(alexa.statusCode, 409);
+  assert.equal(commands.some((command) => command.startsWith('delete ')), false);
+
+  rows = [];
+  const empty = createResponse();
+  await app.routes.get('POST /v1/mobile/queue/items/:queueItemId/delete-below')?.(request({
+    headers: sessionHeaders(), params: { queueItemId: 'que_unknown' },
+  }), empty);
+  assert.equal(empty.statusCode, 404);
+});
+
 test('mobile Crop reuses the reliable web crop path instead of raw MPD crop', async () => {
   const commands = [];
   const internalCalls = [];

@@ -3022,6 +3022,38 @@ export function registerMobileRoutes(app, deps = {}) {
     return queueResponse(res, 'remove', await loadMobileQueue(req));
   }));
 
+  app.post('/v1/mobile/queue/items/:queueItemId/delete-below', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!mpdQueryRaw) return errorResponse(res, 503, 'mobile queue is not configured');
+    const requestedTarget = text(req?.body?.target).toLocaleLowerCase();
+    if (requestedTarget && requestedTarget !== 'home' && requestedTarget !== 'moode') {
+      return errorResponse(res, 409, 'delete-below is supported only for the Home moOde queue');
+    }
+
+    // Resolve the signed handle against one fresh authoritative snapshot. The
+    // handle includes the MPD position, so a reorder between snapshots is a
+    // safe stale-handle failure rather than an accidental delete at a new
+    // position.
+    const { queue, item } = await resolveQueueItem(req, req?.params?.queueItemId);
+    if (!item) return errorResponse(res, 404, 'queue item not found');
+    if (!Number.isSafeInteger(item.serverPosition) || item.serverPosition < 1) {
+      return errorResponse(res, 409, 'queue item cannot be truncated');
+    }
+
+    const currentItem = queue.items.find((candidate) => candidate.isCurrent === true);
+    if (currentItem && currentItem.serverPosition > item.serverPosition) {
+      return errorResponse(res, 409, 'delete-below would remove the currently playing item');
+    }
+
+    // MPD positions are zero-based for ranged delete. The mobile DTO exposes
+    // one-based positions, so the selected position is the first item removed.
+    if (item.serverPosition < queue.items.length) {
+      const result = await mpdQueryRaw(`delete ${item.serverPosition}`);
+      if (!result || mpdHasACK(result)) return errorResponse(res, 502, 'MPD rejected queue truncation');
+    }
+    return queueResponse(res, 'delete-below', await loadMobileQueue(req));
+  }));
+
   app.post('/v1/mobile/queue/items/:queueItemId/move', asyncRoute(async (req, res) => {
     if (!requireSession(req, res)) return;
     const { queue, item } = await resolveQueueItem(req, req?.params?.queueItemId);
