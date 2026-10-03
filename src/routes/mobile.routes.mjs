@@ -3641,6 +3641,44 @@ export function registerMobileRoutes(app, deps = {}) {
     });
   }));
 
+  // The native client uses this only to seed an empty display queue. It must
+  // never be treated as a queue mutation or as the current playback state.
+  app.get('/v1/mobile/history/recent', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!listeningHistory || typeof listeningHistory.getEvents !== 'function') {
+      return errorResponse(res, 503, 'mobile playback history is not configured');
+    }
+
+    const catalog = await loadCatalog();
+    const events = await listeningHistory.getEvents({ limit: 25 });
+    const baseUrl = requestBaseUrl(req, mobileBaseUrl);
+    for (const event of events) {
+      const eventTrackID = text(event.trackKey);
+      let track = eventTrackID ? catalog.byTrackId.get(eventTrackID) : null;
+      if (!track && text(event.file)) {
+        track = catalog.tracks.find((candidate) => candidate.file === event.file) || null;
+      }
+      if (!track && eventTrackID.startsWith('radio-')) {
+        const stationId = eventTrackID.slice('radio-'.length);
+        const file = await resolveRadioFile(req, stationId);
+        if (file) {
+          const stations = await loadRadioStations(req).catch(() => []);
+          const station = stations.find((row) => row.id === stationId);
+          track = radioPlaybackTrack({ stationId, file, station });
+        }
+      }
+      if (!track) continue;
+
+      return res.json({
+        ok: true,
+        track: publicMobileTrack(track, { baseUrl }),
+        playedAt: event.playedAt || null,
+      });
+    }
+
+    return res.json({ ok: true, track: null, playedAt: null });
+  }));
+
   app.get('/v1/mobile/artwork/:trackId', asyncRoute(async (req, res) => {
     if (!requireSession(req, res)) return;
     const catalog = await loadCatalog();
