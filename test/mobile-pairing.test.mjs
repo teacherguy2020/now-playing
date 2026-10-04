@@ -122,6 +122,7 @@ test('pairing challenge is admin-protected and QR payload contains no long-lived
   assert.equal(body.qrPayload.version, 1);
   assert.equal(body.qrPayload.baseUrl, 'https://nowplaying.local:3101');
   assert.doesNotMatch(JSON.stringify(body.qrPayload), /pairing-api-secret|pairing-track-secret|manual-enrollment-code|accessToken/i);
+  assert.doesNotMatch(JSON.stringify(body), /refreshToken/i);
   assert.ok(body.displayToken);
 });
 
@@ -190,6 +191,7 @@ test('device proof, display approval, and app completion keep tokens on their in
   assert.equal(list.body.requests[0].deviceId, 'iphone-brian');
   assert.equal('pollToken' in list.body.requests[0], false);
   assert.equal('publicKey' in list.body.requests[0], false);
+  assert.equal('refreshToken' in list.body.requests[0], false);
 
   const wrongCode = createResponse();
   await app.routes.get('POST /v1/mobile/pairing/requests/:requestId/approve')?.(request({
@@ -223,11 +225,16 @@ test('device proof, display approval, and app completion keep tokens on their in
   assert.equal(completed.statusCode, 200);
   assert.equal(completed.body.status, 'approved');
   assert.ok(completed.body.accessToken);
+  assert.ok(completed.body.refreshToken);
   const claims = verifyMobileToken(completed.body.accessToken, {
     secret: 'pairing-api-secret',
     scope: 'mobile-api',
   });
   assert.equal(claims.deviceId, 'iphone-brian');
+  assert.equal(verifyMobileToken(completed.body.refreshToken, {
+    secret: 'pairing-api-secret',
+    scope: 'mobile-refresh',
+  }).deviceId, 'iphone-brian');
 });
 
 test('first approval wins and later requests cannot complete', async () => {

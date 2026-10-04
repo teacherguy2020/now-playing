@@ -54,6 +54,18 @@ export function createMobileSessionToken({ secret, deviceId, ttlMs = 12 * 60 * 6
   });
 }
 
+export function createMobileRefreshToken({ secret, deviceId, ttlMs = 365 * 24 * 60 * 60 * 1000, now } = {}) {
+  const normalizedDeviceId = String(deviceId || '').trim();
+  if (!normalizedDeviceId) throw new Error('deviceId is required');
+  return createSignedToken({
+    secret,
+    scope: 'mobile-refresh',
+    claims: { deviceId: normalizedDeviceId },
+    ttlMs,
+    now,
+  });
+}
+
 export function createMobileMediaTicket({ secret, deviceId, trackId, ttlMs = 5 * 60 * 1000, format = 'mp3', now } = {}) {
   const normalizedDeviceId = String(deviceId || '').trim();
   const normalizedTrackId = String(trackId || '').trim();
@@ -93,7 +105,7 @@ export function readBearerToken(req) {
   return String(match?.[1] || '').trim();
 }
 
-export function verifyMobileToken(token, { secret, scope, now = Date.now() } = {}) {
+export function verifyMobileToken(token, { secret, scope, now = Date.now(), allowExpired = false } = {}) {
   const key = String(secret || '');
   const raw = String(token || '').trim();
   if (!key || !raw) return null;
@@ -120,7 +132,7 @@ export function verifyMobileToken(token, { secret, scope, now = Date.now() } = {
   const nowSec = Math.floor(Number(now) / 1000);
   const exp = Number(payload?.exp || 0);
   const iat = Number(payload?.iat || 0);
-  if (!Number.isFinite(exp) || !Number.isFinite(iat) || exp <= nowSec || iat > nowSec + 60) return null;
+  if (!Number.isFinite(exp) || !Number.isFinite(iat) || exp <= 0 || (!allowExpired && exp <= nowSec) || iat > nowSec + 60) return null;
 
   return payload;
 }

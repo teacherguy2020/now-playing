@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { registerMobileRoutes } from '../src/routes/mobile.routes.mjs';
-import { verifyMobileToken } from '../src/lib/mobile-auth.mjs';
+import { createMobileRefreshToken, createMobileSessionToken, verifyMobileToken } from '../src/lib/mobile-auth.mjs';
 
 function createApp() {
   const routes = new Map();
@@ -122,6 +122,98 @@ test('mobile session enrollment uses its own credential and issues a scoped toke
   }), authorized);
   // The fake app stores routes under the method-qualified key.
   assert.equal(authorized.statusCode, 200);
+  assert.ok(authorized.body.accessToken);
+  assert.ok(authorized.body.refreshToken);
+  assert.equal(verifyMobileToken(authorized.body.refreshToken, {
+    secret: 'api-secret-for-test',
+    scope: 'mobile-refresh',
+  }).deviceId, 'iphone-brian');
+});
+
+test('mobile session refresh silently replaces an expired access token', async () => {
+  const app = registerFixture();
+  const enrolled = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'ipad-brian' },
+  }), enrolled);
+
+  const refreshed = createResponse();
+  await app.routes.get('POST /v1/mobile/session/refresh')?.(request({
+    headers: { 'x-mobile-refresh-token': enrolled.body.refreshToken },
+  }), refreshed);
+
+  assert.equal(refreshed.statusCode, 200);
+  assert.ok(refreshed.body.accessToken);
+  assert.equal(refreshed.body.refreshToken, enrolled.body.refreshToken);
+  assert.equal(verifyMobileToken(refreshed.body.accessToken, {
+    secret: 'api-secret-for-test',
+    scope: 'mobile-api',
+  }).deviceId, 'ipad-brian');
+
+  const invalid = createResponse();
+  await app.routes.get('POST /v1/mobile/session/refresh')?.(request({
+    headers: { 'x-mobile-refresh-token': 'not-a-refresh-token' },
+  }), invalid);
+  assert.equal(invalid.statusCode, 401);
+});
+
+test('mobile session refresh rejects expired refresh tokens and ordinary routes reject expired access tokens', async () => {
+  const app = registerFixture();
+  const issuedAt = Date.now() - (2 * 365 * 24 * 60 * 60 * 1_000);
+  const expiredRefreshToken = createMobileRefreshToken({
+    secret: 'api-secret-for-test',
+    deviceId: 'ipad-brian',
+    ttlMs: 365 * 24 * 60 * 60 * 1_000,
+    now: issuedAt,
+  });
+  const refreshResponse = createResponse();
+  await app.routes.get('POST /v1/mobile/session/refresh')?.(request({
+    headers: { 'x-mobile-refresh-token': expiredRefreshToken },
+  }), refreshResponse);
+  assert.equal(refreshResponse.statusCode, 401);
+
+  const expiredAccessToken = createMobileSessionToken({
+    secret: 'api-secret-for-test',
+    deviceId: 'ipad-brian',
+    ttlMs: 12 * 60 * 60 * 1_000,
+    now: issuedAt,
+  });
+  const ordinaryResponse = createResponse();
+  await app.routes.get('GET /v1/mobile/catalog/stats')?.(request({
+    headers: { authorization: `Bearer ${expiredAccessToken}` },
+  }), ordinaryResponse);
+  assert.equal(ordinaryResponse.statusCode, 401);
+});
+
+test('mobile session refresh migrates a legacy expired access token once', async () => {
+  const app = registerFixture();
+  const legacyToken = createMobileSessionToken({
+    secret: 'api-secret-for-test',
+    deviceId: 'legacy-iphone',
+    ttlMs: 1_000,
+    now: Date.now() - (24 * 60 * 60 * 1_000),
+  });
+  const migrated = createResponse();
+  const withoutMigrationHeader = createResponse();
+  await app.routes.get('POST /v1/mobile/session/refresh')?.(request({
+    headers: { authorization: `Bearer ${legacyToken}` },
+  }), withoutMigrationHeader);
+  assert.equal(withoutMigrationHeader.statusCode, 401);
+
+  await app.routes.get('POST /v1/mobile/session/refresh')?.(request({
+    headers: {
+      authorization: `Bearer ${legacyToken}`,
+      'x-mobile-session-migration': '1',
+    },
+  }), migrated);
+
+  assert.equal(migrated.statusCode, 200);
+  assert.ok(migrated.body.refreshToken);
+  assert.equal(verifyMobileToken(migrated.body.refreshToken, {
+    secret: 'api-secret-for-test',
+    scope: 'mobile-refresh',
+  }).deviceId, 'legacy-iphone');
 });
 
 test('mobile APNs registration is bearer-scoped and stores only the session device identity', async () => {

@@ -453,6 +453,7 @@ export class MobilePairingStore {
       requestId: request.requestId,
       deviceId: request.deviceId,
       accessToken: request.session.accessToken,
+      ...(request.session.refreshToken ? { refreshToken: request.session.refreshToken } : {}),
       expiresAt: request.session.expiresAt,
     };
   }

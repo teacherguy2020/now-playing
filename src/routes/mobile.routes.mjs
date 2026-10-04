@@ -8,6 +8,7 @@ import { log } from '../lib/log.mjs';
 import {
   createMobileMediaTicket,
   createMobileRadioTicket,
+  createMobileRefreshToken,
   createMobileSessionToken,
   createMobileTrackId,
   readBearerToken,
@@ -56,6 +57,7 @@ import {
 import { radioStationNameForFile } from '../lib/radio-display.mjs';
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const REFRESH_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 const MEDIA_TICKET_TTL_MS = 60 * 60 * 1000;
 const RADIO_TICKET_TTL_MS = 30 * 60 * 1000;
 const MAX_PAGE_SIZE = 100;
@@ -1732,6 +1734,16 @@ export function registerMobileRoutes(app, deps = {}) {
     return false;
   };
 
+  const issueMobileSession = (deviceId) => {
+    const issuedAt = Date.now();
+    return {
+      accessToken: createMobileSessionToken({ secret: apiSecret, deviceId, ttlMs: SESSION_TTL_MS, now: issuedAt }),
+      refreshToken: createMobileRefreshToken({ secret: apiSecret, deviceId, ttlMs: REFRESH_TTL_MS, now: issuedAt }),
+      expiresAt: new Date(issuedAt + SESSION_TTL_MS).toISOString(),
+      deviceId,
+    };
+  };
+
   const asyncRoute = (handler) => async (req, res) => {
     if (!requireEnabled(res)) return;
     try {
@@ -1916,10 +1928,7 @@ export function registerMobileRoutes(app, deps = {}) {
     const result = pairingStore.complete({
       requestId: req?.params?.requestId,
       pollToken,
-      issueSession: ({ deviceId }) => ({
-        accessToken: createMobileSessionToken({ secret: apiSecret, deviceId, ttlMs: SESSION_TTL_MS }),
-        expiresAt: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
-      }),
+      issueSession: ({ deviceId }) => issueMobileSession(deviceId),
     });
     return res.json({ ok: true, ...result });
   }));
@@ -1933,13 +1942,28 @@ export function registerMobileRoutes(app, deps = {}) {
     const deviceId = requestDeviceId(req?.body || {});
     if (!deviceId) return errorResponse(res, 400, 'deviceId is required');
 
-    const accessToken = createMobileSessionToken({ secret: apiSecret, deviceId, ttlMs: SESSION_TTL_MS });
+    return res.json({ ok: true, tokenType: 'Bearer', ...issueMobileSession(deviceId) });
+  }));
+
+  app.post('/v1/mobile/session/refresh', asyncRoute(async (req, res) => {
+    const refreshToken = text(req?.headers?.['x-mobile-refresh-token']);
+    let claims = verifyMobileToken(refreshToken, { secret: apiSecret, scope: 'mobile-refresh' });
+    if (!claims
+      && !refreshToken
+      && text(req?.headers?.['x-mobile-session-migration']) === '1') {
+      claims = verifyMobileToken(readBearerToken(req), {
+        secret: apiSecret,
+        scope: 'mobile-api',
+        allowExpired: true,
+      });
+    }
+    const deviceId = text(claims?.deviceId);
+    if (!deviceId) return errorResponse(res, 401, 'mobile refresh session is missing or expired');
     return res.json({
       ok: true,
       tokenType: 'Bearer',
-      accessToken,
-      expiresAt: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
-      deviceId,
+      ...issueMobileSession(deviceId),
+      ...(refreshToken ? { refreshToken } : {}),
     });
   }));
 

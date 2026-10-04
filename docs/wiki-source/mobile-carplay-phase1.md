@@ -45,7 +45,7 @@ volume, so that folder's name does not have to match the moOde library root.
 Source files:
 
 - `src/routes/mobile.routes.mjs` — versioned mobile API routes.
-- `src/lib/mobile-auth.mjs` — signed session and media-ticket tokens.
+- `src/lib/mobile-auth.mjs` — signed access, refresh-session, and media-ticket tokens.
 - `src/lib/mobile-track-identity.mjs` — opaque IDs and sanitized catalog views.
 - `src/routes/track.routes.mjs` — shared byte-range and MP3-transcode helpers;
   the existing `/track` behavior remains unchanged.
@@ -61,6 +61,21 @@ Source files:
 
 The route registration is always present in source but is disabled unless
 `MOBILE_API_ENABLED=1` and both mobile secrets are configured.
+
+### Mobile session lifetime
+
+The native app receives a short-lived 12-hour bearer access token plus a
+separate one-year refresh credential during enrollment or device pairing. The
+refresh credential is stored in the iOS Keychain, never placed in the QR
+payload, and is used automatically after an authenticated request receives a
+401. The app retries that request once with the renewed access token, so normal
+use does not require signing in every 12 hours. A new pairing is only needed
+when the refresh credential expires or the mobile API signing secret is
+rotated. The refresh route is `POST /v1/mobile/session/refresh` with the
+credential in `X-Mobile-Refresh-Token`. During the rollout, an updated app can
+also migrate an existing signed-but-expired legacy access token once, so
+current installations do not need to pair again merely to receive the new
+refresh credential.
 
 ## Environment configuration
 
@@ -147,11 +162,34 @@ Content-Type: application/json
 {"deviceId":"iphone-brian"}
 ```
 
-The response contains a short-lived bearer access token. The app must store
-it in the iOS Keychain. The current Phase 1 implementation intentionally uses
-an operator-managed temporary code that must be rotated after enrollment,
-rather than pretending to provide a production refresh-token/revocation
-system.
+The response contains a short-lived 12-hour bearer access token and a separate
+one-year refresh token. The native app must store both in the iOS Keychain and
+must never place the refresh token in a QR payload or display-side response.
+The enrollment code remains an operator-managed bootstrap credential; it is not
+used as a bearer token.
+
+### Silent session renewal
+
+```http
+POST /v1/mobile/session/refresh
+X-Mobile-Refresh-Token: <refresh token>
+```
+
+The refresh route verifies the HMAC signature, `mobile-refresh` scope,
+expiration, and device ID using `MOBILE_API_SECRET`. It returns a fresh
+12-hour `accessToken`, its `expiresAt`, the device ID, and the refresh token.
+It does not require a Track Key. Native clients should call it after a normal
+mobile request receives `401 mobile session is missing or expired`, update the
+Keychain access token, and retry the original request once.
+
+During migration, an existing installation may send its old signed access
+token as `Authorization: Bearer ...` together with
+`X-Mobile-Session-Migration: 1` to receive the new token pair. Expired access
+tokens are accepted only on this migration route; ordinary mobile routes still
+reject them. A rotated `MOBILE_API_SECRET` invalidates both refresh tokens and
+this migration path. The current implementation is stateless, so there is no
+per-device refresh-token revocation store; secret rotation is the revocation
+mechanism.
 
 ### Local-device pairing
 
@@ -225,8 +263,8 @@ cookie session is introduced.
    requests on that challenge are rejected.
 8. The app polls
    `GET /v1/mobile/pairing/requests/:requestId/complete` with its poll token.
-   Only that app-held poll token can receive the normal mobile session bearer
-   token. The display never receives or displays that token.
+   Only that app-held poll token can receive the normal mobile access and
+   refresh tokens. The display never receives or displays those tokens.
 
 Pairing endpoints:
 
@@ -247,10 +285,10 @@ timer. Replays, use-after-approval, wrong display credentials, wrong codes,
 expired challenges, and malformed proofs are rejected. No pairing secret or
 token is written to logs.
 
-The pre-existing `POST /v1/mobile/session` enrollment endpoint is unchanged
-for backward compatibility. The native app may use pairing instead of the
-manual enrollment code; both the web and native display sides now use the same
-pairing protocol.
+The pre-existing `POST /v1/mobile/session` enrollment endpoint remains
+backward-compatible while now returning the access/refresh token pair. The
+native app may use pairing instead of the manual enrollment code; both the web
+and native display sides now use the same pairing protocol.
 
 ### Catalog
 
@@ -449,11 +487,11 @@ Remaining native-client verification and hardening:
    approval, wrong code, replay/expiry, restart invalidation, and confirmation
    that the display never receives the session token.
 
-Full SSD synchronization, production refresh-token/revocation lifecycle,
-remaining Siri/Alexa physical acceptance, and CarPlay vehicle validation remain
-separate client-side follow-ups. The CarPlay Audio entitlement itself is
+Full SSD synchronization, server-side refresh-token revocation, remaining
+Siri/Alexa physical acceptance, and CarPlay vehicle validation remain separate
+follow-ups. The CarPlay Audio entitlement itself is
 approved and configured in the signed native target.
 
 ## Timestamp
 
-Last updated: 2026-10-01 America/Chicago
+Last updated: 2026-10-03 America/Chicago
