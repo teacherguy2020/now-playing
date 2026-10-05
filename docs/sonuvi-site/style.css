@@ -1,0 +1,43 @@
+:root {
+  color-scheme: dark;
+  --ink: #f5f7ff;
+  --muted: #aeb8d4;
+  --line: rgba(255, 255, 255, .12);
+  --panel: rgba(20, 28, 58, .72);
+  --accent: #8d9cff;
+  --accent-2: #67e8d2;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background: radial-gradient(circle at 15% 0%, #24306b 0, #11172f 42%, #080b18 100%);
+  font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+a { color: var(--accent-2); }
+.wrap { width: min(1080px, calc(100% - 40px)); margin: 0 auto; }
+header { padding: 28px 0; border-bottom: 1px solid var(--line); }
+nav { display: flex; gap: 22px; align-items: center; justify-content: space-between; }
+.brand { color: var(--ink); text-decoration: none; font-weight: 750; letter-spacing: .02em; }
+nav .links { display: flex; gap: 18px; flex-wrap: wrap; }
+nav .links a { text-decoration: none; color: var(--muted); }
+main { padding: 72px 0 90px; }
+.hero { max-width: 760px; }
+.eyebrow { color: var(--accent-2); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: .78rem; }
+h1 { margin: 12px 0 18px; font-size: clamp(2.8rem, 8vw, 5.8rem); line-height: .98; letter-spacing: -.06em; }
+h2 { margin-top: 2.2rem; line-height: 1.2; }
+.lead { color: var(--muted); font-size: clamp(1.15rem, 2vw, 1.45rem); max-width: 650px; }
+.actions { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 30px; }
+.button { display: inline-block; padding: 11px 17px; border-radius: 999px; background: var(--accent); color: #0b1026; font-weight: 700; text-decoration: none; }
+.button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-top: 54px; }
+.card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); }
+.card h3 { margin: 0 0 8px; }
+.card p { margin: 0; color: var(--muted); }
+.prose { max-width: 780px; }
+.prose p, .prose li { color: var(--muted); }
+.prose h1 { font-size: clamp(2.4rem, 6vw, 4.5rem); }
+footer { padding: 25px 0 45px; color: var(--muted); border-top: 1px solid var(--line); font-size: .92rem; }
+@media (max-width: 620px) { nav { align-items: flex-start; flex-direction: column; } main { padding-top: 48px; } }
