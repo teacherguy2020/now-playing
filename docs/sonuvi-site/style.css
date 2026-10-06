@@ -20,11 +20,13 @@ a { color: var(--accent-2); }
 .wrap { width: min(1080px, calc(100% - 40px)); margin: 0 auto; }
 header { padding: 28px 0; border-bottom: 1px solid var(--line); }
 nav { display: flex; gap: 22px; align-items: center; justify-content: space-between; }
-.brand { color: var(--ink); text-decoration: none; font-weight: 750; letter-spacing: .02em; }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-weight: 750; letter-spacing: .02em; }
+.brand img { width: 34px; height: 34px; border-radius: 9px; box-shadow: 0 6px 18px rgba(0, 0, 0, .24); }
 nav .links { display: flex; gap: 18px; flex-wrap: wrap; }
 nav .links a { text-decoration: none; color: var(--muted); }
 main { padding: 72px 0 90px; }
 .hero { max-width: 760px; }
+.hero-icon { display: block; width: 88px; height: 88px; margin-bottom: 26px; border-radius: 22px; box-shadow: 0 18px 42px rgba(0, 0, 0, .28); }
 .eyebrow { color: var(--accent-2); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: .78rem; }
 h1 { margin: 12px 0 18px; font-size: clamp(2.8rem, 8vw, 5.8rem); line-height: .98; letter-spacing: -.06em; }
 h2 { margin-top: 2.2rem; line-height: 1.2; }
