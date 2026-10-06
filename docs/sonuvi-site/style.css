@@ -33,8 +33,10 @@ h2 { margin-top: 2.2rem; line-height: 1.2; }
 .actions { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 30px; }
 .button { display: inline-block; padding: 11px 17px; border-radius: 999px; background: var(--accent); color: #0b1026; font-weight: 700; text-decoration: none; }
 .button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.app-store-placeholder { opacity: .78; cursor: default; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; margin-top: 54px; }
-.card { position: relative; isolation: isolate; overflow: hidden; min-height: 174px; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); }
+.card { position: relative; isolation: isolate; overflow: hidden; min-height: 174px; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); color: var(--ink); text-decoration: none; transition: transform .18s ease, border-color .18s ease; }
+.card:hover, .card:focus-visible { transform: translateY(-3px); border-color: rgba(141, 156, 255, .75); }
 .card::before { position: absolute; z-index: -2; inset: 0; content: ""; opacity: .9; }
 .card::after { position: absolute; z-index: -1; inset: 0; content: ""; background: linear-gradient(135deg, rgba(8, 11, 24, .82), rgba(8, 11, 24, .42)); }
 .card.sonuvi-server::before { background: url("assets/sonuvi-app-icon.png") center / cover no-repeat; }
@@ -43,6 +45,7 @@ h2 { margin-top: 2.2rem; line-height: 1.2; }
 .card.google-drive::before { background: conic-gradient(from 215deg at 78% 20%, #34a853 0 28%, #fbbc04 28% 54%, #4285f4 54% 78%, #34a853 78%); }
 .card h3 { margin: 0 0 8px; }
 .card p { margin: 0; color: var(--muted); }
+.card-more { display: block; margin-top: 22px; color: var(--accent-2); font-size: .9rem; font-weight: 700; }
 .prose { max-width: 780px; }
 .prose p, .prose li { color: var(--muted); }
 .prose h1 { font-size: clamp(2.4rem, 6vw, 4.5rem); }
