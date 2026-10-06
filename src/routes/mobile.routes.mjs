@@ -3078,6 +3078,40 @@ export function registerMobileRoutes(app, deps = {}) {
     return queueResponse(res, 'delete-below', await loadMobileQueue(req));
   }));
 
+  app.post('/v1/mobile/queue/items/:queueItemId/delete-above', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!mpdQueryRaw) return errorResponse(res, 503, 'mobile queue is not configured');
+    const requestedTarget = text(req?.body?.target).toLocaleLowerCase();
+    if (requestedTarget && requestedTarget !== 'home' && requestedTarget !== 'moode') {
+      return errorResponse(res, 409, 'delete-above is supported only for the Home moOde queue');
+    }
+
+    const { queue, item } = await resolveQueueItem(req, req?.params?.queueItemId);
+    if (!item) return errorResponse(res, 404, 'queue item not found');
+    if (!Number.isSafeInteger(item.serverPosition) || item.serverPosition < 1) {
+      return errorResponse(res, 409, 'queue item cannot be truncated');
+    }
+
+    const currentItem = queue.items.find((candidate) => candidate.isCurrent === true);
+    if (currentItem && currentItem.serverPosition < item.serverPosition) {
+      return errorResponse(res, 409, 'delete-above would remove the currently playing item');
+    }
+
+    // Delete by stable MPD song IDs rather than a range because deleting from
+    // the front shifts every later position. The selected item and everything
+    // after it remain untouched.
+    for (const candidate of queue.items
+      .filter((candidate) => candidate.serverPosition < item.serverPosition)
+      .sort((a, b) => a.serverPosition - b.serverPosition)) {
+      if (!Number.isSafeInteger(candidate.serverSongId) || candidate.serverSongId < 0) {
+        return errorResponse(res, 409, 'queue item cannot be truncated');
+      }
+      const result = await mpdQueryRaw(`deleteid ${candidate.serverSongId}`);
+      if (!result || mpdHasACK(result)) return errorResponse(res, 502, 'MPD rejected queue truncation');
+    }
+    return queueResponse(res, 'delete-above', await loadMobileQueue(req));
+  }));
+
   app.post('/v1/mobile/queue/items/:queueItemId/move', asyncRoute(async (req, res) => {
     if (!requireSession(req, res)) return;
     const { queue, item } = await resolveQueueItem(req, req?.params?.queueItemId);

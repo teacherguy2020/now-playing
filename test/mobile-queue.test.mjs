@@ -713,6 +713,41 @@ test('mobile delete-below rejects unauthorized, stale, current-removing, Alexa, 
   assert.equal(empty.statusCode, 404);
 });
 
+test('mobile delete-above removes stable preceding MPD IDs without removing the current item', async () => {
+  const commands = [];
+  let rows = [0, 1, 2, 3].map((position) => ({
+    file: `USB/Test/${position}.mp3`, artist: 'Test Artist', album: 'Test Album',
+    title: `Track ${position}`, pos: String(position), id: String(300 + position),
+  }));
+  const mpdQueryRaw = async (command) => {
+    commands.push(command);
+    if (command === 'playlistinfo') return `${rows.map((row) => Object.entries(row)
+      .map(([key, value]) => `${key}: ${value}`).join('\n')).join('\n')}\nOK\n`;
+    if (command === 'status') return `state: play\nsong: 2\nsongid: 302\nplaylistlength: ${rows.length}\nOK\n`;
+    if (command.startsWith('deleteid ')) {
+      const id = command.slice('deleteid '.length);
+      rows = rows.filter((row) => row.id !== id);
+      rows.forEach((row, index) => { row.pos = String(index); });
+    }
+    return 'OK\n';
+  };
+  const app = registerFixture(mpdQueryRaw);
+  const listed = createResponse();
+  await app.routes.get('GET /v1/mobile/queue')?.(request({ headers: sessionHeaders() }), listed);
+  const selected = listed.body.queue.items.find((item) => item.position === 3);
+  assert.ok(selected);
+
+  const response = createResponse();
+  await app.routes.get('POST /v1/mobile/queue/items/:queueItemId/delete-above')?.(request({
+    headers: sessionHeaders(), params: { queueItemId: selected.id },
+  }), response);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.action, 'delete-above');
+  assert.deepEqual(commands.filter((command) => command.startsWith('deleteid ')), ['deleteid 300', 'deleteid 301']);
+  assert.deepEqual(rows.map((row) => row.id), ['302', '303']);
+  assert.equal(response.body.queue.items[0].isCurrent, true);
+});
+
 test('mobile Crop reuses the reliable web crop path instead of raw MPD crop', async () => {
   const commands = [];
   const internalCalls = [];
