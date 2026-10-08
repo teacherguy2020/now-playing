@@ -4,7 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=moode
+# aplmeta.py atomically replaces /var/local/www/aplmeta.txt and writes
+# AirPlay cover files; keep one root-owned reader for those paths.
+User=root
 Restart=always
 RestartSec=2
 ExecStart=/var/www/daemon/aplmeta-reader.sh

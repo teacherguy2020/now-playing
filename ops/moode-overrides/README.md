@@ -40,6 +40,18 @@ The broader upgrade failure chain and recovery order are documented in
 - `nowplaying-peppy-targets.service` restores the VU target, spectrum
   target, and shared spectrum FIFO after moOde boot or upgrade.
 
+## Reader ownership after upgrades
+
+The reader runs as root because aplmeta.py atomically replaces
+/var/local/www/aplmeta.txt and writes AirPlay cover files. Keep exactly one
+reader service active. If an upgrade or manual repair left
+aplmeta-reader.service installed, disable it before enabling airplay-json.service:
+
+    sudo systemctl disable --now aplmeta-reader.service
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now airplay-json-watchdog.timer
+    sudo systemctl enable --now airplay-json.service
+
 ## Deploy from repo to moOde
 
 ```bash

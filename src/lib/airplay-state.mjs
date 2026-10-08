@@ -15,3 +15,10 @@ export function mergeMoodeAirplaySong(mpdSong = {}, moodeSong = {}) {
     encoded: 'AirPlay',
   };
 }
+
+export function isFreshAirplayMetadata(lastModified, sessionStartedAt, now = Date.now()) {
+  const modifiedAt = Date.parse(String(lastModified || ''));
+  const sessionAt = Number(sessionStartedAt);
+  if (!Number.isFinite(modifiedAt) || !Number.isFinite(sessionAt) || sessionAt <= 0) return false;
+  return modifiedAt >= sessionAt - 5000 && modifiedAt <= Number(now) + 5000;
+}

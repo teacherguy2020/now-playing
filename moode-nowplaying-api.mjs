@@ -221,7 +221,11 @@ import {
 import { log } from './src/lib/log.mjs';
 import { execFileStrict } from './src/lib/exec.mjs';
 import { radioDisplayName, radioStationNameForFile } from './src/lib/radio-display.mjs';
-import { isAirplayCurrentSong, mergeMoodeAirplaySong } from './src/lib/airplay-state.mjs';
+import {
+  isAirplayCurrentSong,
+  isFreshAirplayMetadata,
+  mergeMoodeAirplaySong,
+} from './src/lib/airplay-state.mjs';
 import {
   mpdEscapeValue, mpdHasACK, parseMpdFirstBlock, parseMpdKeyVals,
   mpdGetStatus, mpdPlay, mpdPlayId, mpdPause, mpdStop, mpdQueryRaw
@@ -2240,6 +2244,10 @@ async function fetchCurrentSong() {
 
   const song = parseMpdFirstBlock(raw);
   if (!String(song?.file || '').trim()) throw new Error('mpd currentsong returned no file');
+  if (!isAirplayCurrentSong(song)) {
+    const moodeAirplaySong = await fetchMoodeAirplaySong();
+    if (moodeAirplaySong) return mergeMoodeAirplaySong(song, moodeAirplaySong);
+  }
   return song;
 }
 
@@ -5553,6 +5561,8 @@ function parseAplmeta(txt) {
 
 let lastNowPlayingOk = null;
 let lastNowPlayingTs = 0;
+let airplaySessionStartedAt = 0;
+let airplaySessionWasActive = false;
 
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
@@ -6989,13 +6999,6 @@ app.get('/now-playing', async (req, res) => {
     }
 
     const status = normalizeMoodeStatus(statusRaw);
-    if (!isAirplayCurrentSong(song)) {
-      const moodeAirplaySong = await fetchMoodeAirplaySong();
-      if (moodeAirplaySong) {
-        song = mergeMoodeAirplaySong(song, moodeAirplaySong);
-      }
-    }
-
     const songpos = String(moodeValByKey(statusRaw, 'song') || '').trim();
     const songid  = String(moodeValByKey(statusRaw, 'songid') || '').trim();
     const currentJukeboxEntry = jukeboxEntries.get(Number(songid));
@@ -7009,6 +7012,9 @@ app.get('/now-playing', async (req, res) => {
     const stream = isStreamPath(file);
     const airplay =
       isAirplayFile(file) || (String(song.encoded || '').toLowerCase() === 'airplay');
+    if (airplay && !airplaySessionWasActive) airplaySessionStartedAt = Date.now();
+    if (!airplay) airplaySessionStartedAt = 0;
+    airplaySessionWasActive = airplay;
 
     const streamKind = stream ? String(getStreamKind(file) || '').trim() : '';
     const isYouTubeStream = !!(stream && (/googlevideo\.com|youtube\.com|youtu\.be/i.test(file) || /\/youtube\/proxy\//i.test(file)));
@@ -7261,8 +7267,19 @@ app.get('/now-playing', async (req, res) => {
     if (airplay) {
       let airplayInfoLine = 'AirPlay';
       try {
-        const aplText = await fetchText(`${MOODE_BASE_URL}/aplmeta.txt`, 'text/plain');
-        const ap = parseAplmeta(aplText);
+        const aplUrl = String(MOODE_BASE_URL).replace(/\/+$/, '') + '/aplmeta.txt';
+        const aplResponse = await fetch(aplUrl, {
+          headers: { Accept: 'text/plain' },
+          agent: agentForUrl(aplUrl),
+          cache: 'no-store',
+        });
+        if (!aplResponse.ok) throw new Error('aplmeta.txt HTTP ' + aplResponse.status);
+        const lastModified = aplResponse.headers.get('last-modified') || '';
+        if (!isFreshAirplayMetadata(lastModified, airplaySessionStartedAt)) {
+          if (debug) dlog('[airplay] ignoring stale aplmeta.txt', { lastModified, airplaySessionStartedAt });
+          throw new Error('stale aplmeta.txt');
+        }
+        const ap = parseAplmeta(await aplResponse.text());
 
         artist = ap.artist || artist || '';
         title  = ap.title  || title  || '';
