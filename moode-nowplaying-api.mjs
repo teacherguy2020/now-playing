@@ -221,6 +221,7 @@ import {
 import { log } from './src/lib/log.mjs';
 import { execFileStrict } from './src/lib/exec.mjs';
 import { radioDisplayName, radioStationNameForFile } from './src/lib/radio-display.mjs';
+import { isAirplayCurrentSong, mergeMoodeAirplaySong } from './src/lib/airplay-state.mjs';
 import {
   mpdEscapeValue, mpdHasACK, parseMpdFirstBlock, parseMpdKeyVals,
   mpdGetStatus, mpdPlay, mpdPlayId, mpdPause, mpdStop, mpdQueryRaw
@@ -2240,6 +2241,15 @@ async function fetchCurrentSong() {
   const song = parseMpdFirstBlock(raw);
   if (!String(song?.file || '').trim()) throw new Error('mpd currentsong returned no file');
   return song;
+}
+
+async function fetchMoodeAirplaySong() {
+  try {
+    const song = await fetchJsonWithTimeout(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`, 1500);
+    return isAirplayCurrentSong(song) ? song : null;
+  } catch {
+    return null;
+  }
 }
 
 async function fetchCurrentStatus() {
@@ -6979,6 +6989,12 @@ app.get('/now-playing', async (req, res) => {
     }
 
     const status = normalizeMoodeStatus(statusRaw);
+    if (!isAirplayCurrentSong(song)) {
+      const moodeAirplaySong = await fetchMoodeAirplaySong();
+      if (moodeAirplaySong) {
+        song = mergeMoodeAirplaySong(song, moodeAirplaySong);
+      }
+    }
 
     const songpos = String(moodeValByKey(statusRaw, 'song') || '').trim();
     const songid  = String(moodeValByKey(statusRaw, 'songid') || '').trim();
@@ -7328,7 +7344,7 @@ app.get('/now-playing', async (req, res) => {
         radioLookupReason: '',
         radioLookupTerm: '',
 
-        state: status.state || song.state,
+        state: airplay ? 'play' : (status.state || song.state),
         elapsed: status.elapsed,
         duration: status.duration,
         percent: status.percent,
