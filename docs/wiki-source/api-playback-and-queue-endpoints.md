@@ -55,6 +55,14 @@ A good current interpretation is:
 - this route family accepts direct transport-style playback commands from controller/now-playing surfaces
 - it is part of the app-host control plane for transport behavior
 
+The current Track-Key protected playback route also exposes queue playback
+modes. `action: "consume"` toggles MPD consume and accepts an optional `setTo`
+of `on` or `off`. `action: "repeat-mode"` accepts `mode: "off"`, `"one"`, or
+`"all"`; the server sets MPD repeat and single together (`one` means repeat
+on/single on, while `all` means repeat on/single off). Responses include the
+observed `repeatOn`, `singleOn`, and `consumeOn` values. The mobile queue and
+Now Playing state responses expose the same mode flags for synchronized UI.
+
 ### Why it matters
 This is one of the clearest examples of controller-side UI actions mapping directly into a route family that changes active playback behavior.
 
@@ -199,3 +207,5 @@ That is the right tradeoff for now:
 - real route families
 - explicit known endpoints
 - honest gaps called out for later deeper mapping
+
+*Last updated: 2026-10-09 America/Chicago*

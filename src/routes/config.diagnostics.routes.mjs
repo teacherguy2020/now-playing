@@ -792,6 +792,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       if (!requireTrackKey(req, res)) return;
       const action = String(req.body?.action || '').trim().toLowerCase();
       const mpdHost = String(MPD_HOST || 'moode.local');
+      const runMpdCommand = deps.runMpdCommand || ((...args) => execFileP('mpc', ['-h', mpdHost, ...args]));
       const map = { play: 'play', pause: 'pause', toggle: 'toggle', next: 'next', prev: 'prev', previous: 'prev', stop: 'stop' };
 
       if (action === 'shuffle' || action === 'shufflequeue') {
@@ -856,27 +857,52 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       }
 
       if (action === 'repeat') {
-        const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const { stdout: beforeStatus } = await runMpdCommand('status');
         const wasOn = /repeat:\s*on/i.test(String(beforeStatus || ''));
         const setTo = wasOn ? 'off' : 'on';
-        await execFileP('mpc', ['-h', mpdHost, 'repeat', setTo]);
-        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        await runMpdCommand('single', 'off');
+        await runMpdCommand('repeat', setTo);
+        const { stdout: afterStatus } = await runMpdCommand('status');
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
         const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
-        return res.json({ ok: true, action, randomOn, repeatOn, status: String(afterStatus || '') });
+        const singleOn = /single:\s*(?:on|1)/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, randomOn, repeatOn, singleOn, status: String(afterStatus || '') });
+      }
+
+      if (action === 'repeat-mode') {
+        const mode = String(req.body?.mode || '').trim().toLowerCase();
+        if (!['off', 'one', 'all'].includes(mode)) {
+          return res.status(400).json({ ok: false, error: 'mode must be off, one, or all' });
+        }
+        if (mode === 'one') {
+          await runMpdCommand('repeat', 'on');
+          await runMpdCommand('single', 'on');
+        } else if (mode === 'all') {
+          await runMpdCommand('single', 'off');
+          await runMpdCommand('repeat', 'on');
+        } else {
+          await runMpdCommand('single', 'off');
+          await runMpdCommand('repeat', 'off');
+        }
+        const { stdout: afterStatus } = await runMpdCommand('status');
+        const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
+        const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
+        const singleOn = /single:\s*(?:on|1)/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, mode, randomOn, repeatOn, singleOn, status: String(afterStatus || '') });
       }
 
       if (action === 'consume') {
-        const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        const { stdout: beforeStatus } = await runMpdCommand('status');
         const wasOn = /consume:\s*on/i.test(String(beforeStatus || ''));
         const setToRaw = String(req.body?.setTo || '').trim().toLowerCase();
         const setTo = (setToRaw === 'on' || setToRaw === 'off') ? setToRaw : (wasOn ? 'off' : 'on');
-        await execFileP('mpc', ['-h', mpdHost, 'consume', setTo]);
-        const { stdout: afterStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
+        await runMpdCommand('consume', setTo);
+        const { stdout: afterStatus } = await runMpdCommand('status');
         const consumeOn = /consume:\s*on/i.test(String(afterStatus || ''));
         const randomOn = /random:\s*on/i.test(String(afterStatus || ''));
         const repeatOn = /repeat:\s*on/i.test(String(afterStatus || ''));
-        return res.json({ ok: true, action, consumeOn, randomOn, repeatOn, status: String(afterStatus || '') });
+        const singleOn = /single:\s*(?:on|1)/i.test(String(afterStatus || ''));
+        return res.json({ ok: true, action, consumeOn, randomOn, repeatOn, singleOn, status: String(afterStatus || '') });
       }
 
       if (action === 'crossfade') {
@@ -1548,6 +1574,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const headPos = m ? Number(m[1] || 0) : -1;
       const randomOn = /random:\s*on/i.test(st);
       const repeatOn = /repeat:\s*on/i.test(st);
+      const singleOn = /single:\s*(?:on|1)/i.test(st);
       const consumeOn = /consume:\s*on/i.test(st);
       const cfText = String(cfOut || '').trim();
       const mCf = cfText.match(/crossfade:\s*([0-9]+(?:\.[0-9]+)?)/i);
@@ -1673,7 +1700,7 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const displayItems = currentIndex > 0
         ? [items[currentIndex], ...items.slice(currentIndex + 1), ...items.slice(0, currentIndex)]
         : items;
-      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, consumeOn, crossfadeSec, playbackState, ratingsEnabled, undoAvailable, items: displayItems });
+      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, singleOn, consumeOn, crossfadeSec, playbackState, ratingsEnabled, undoAvailable, items: displayItems });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
