@@ -42,6 +42,7 @@ h2 { margin-top: 2.2rem; line-height: 1.2; }
 .card.sonuvi-server::before { background: url("assets/sonuvi-app-icon.png") center / cover no-repeat; }
 .card.files-drive::before { background: radial-gradient(circle at 78% 18%, #dff7ff 0 7%, transparent 28%), linear-gradient(135deg, #2563eb, #38bdf8 52%, #dbeafe); }
 .card.apple-music::before { background: radial-gradient(circle at 75% 22%, #ffb4df 0 8%, transparent 27%), linear-gradient(135deg, #fa233b, #a855f7 54%, #5b21b6); }
+.card.carplay::before { background: radial-gradient(circle at 78% 18%, #67e8d2 0 8%, transparent 27%), linear-gradient(135deg, #172554, #4338ca 56%, #0f766e); }
 .card.google-drive::before { background: conic-gradient(from 215deg at 78% 20%, #34a853 0 28%, #fbbc04 28% 54%, #4285f4 54% 78%, #34a853 78%); }
 .card h3 { margin: 0 0 8px; }
 .card p { margin: 0; color: var(--muted); }
