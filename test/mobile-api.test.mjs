@@ -1305,6 +1305,33 @@ test('mobile now-playing returns safe metadata and proxies raw artwork behind be
   assert.doesNotMatch(JSON.stringify(response.body), /coverart|secret-file|SamsungMoode/);
 });
 
+test('mobile now-playing reports MPD repeat, single, random, and consume state', async () => {
+  const app = registerFixture({
+    mpdQueryRaw: async (command) => command === 'status'
+      ? 'state: play\nrepeat: on\nsingle: on\nrandom: off\nconsume: on\nsong: 0\nsongid: 1\n'
+      : 'file: USB/SamsungMoode/Test Album/01 - First.mp3\nPos: 0\nId: 1\n',
+    fetchInternalJson: async () => ({
+      ok: true,
+      status: 200,
+      json: { state: 'play', title: 'First', file: 'USB/SamsungMoode/Test Album/01 - First.mp3' },
+    }),
+  });
+  const sessionRes = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'iphone-brian' },
+  }), sessionRes);
+  const response = createResponse();
+  await app.routes.get('GET /v1/mobile/now-playing')?.(request({
+    headers: { authorization: `Bearer ${sessionRes.body.accessToken}` },
+  }), response);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.randomOn, false);
+  assert.equal(response.body.repeatOn, true);
+  assert.equal(response.body.singleOn, true);
+  assert.equal(response.body.consumeOn, true);
+});
+
 test('mobile now-playing follows the fresh Alexa current-track authority', async () => {
   const app = registerFixture({
     mpdQueryRaw: async (command) => {
