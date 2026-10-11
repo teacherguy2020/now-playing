@@ -196,6 +196,51 @@ function page(items, { limit, offset }) {
   };
 }
 
+function decodeVideoCursor(value) {
+  const raw = text(value);
+  if (!raw) return 0;
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+    const offset = Number(parsed?.offset);
+    if (!Number.isInteger(offset) || offset < 0 || parsed?.version !== 1) return null;
+    return offset;
+  } catch {
+    return null;
+  }
+}
+
+function encodeVideoCursor(offset) {
+  return Buffer.from(JSON.stringify({ version: 1, offset }), 'utf8').toString('base64url');
+}
+
+function publicMobileVideo(item, baseUrl) {
+  const root = String(baseUrl || '').replace(/\/+$/, '');
+  const videoID = text(item?.videoID);
+  const playbackAvailable = Boolean(item?.playback?.available);
+  return {
+    videoID,
+    title: text(item?.title),
+    filename: text(item?.filename),
+    folderID: text(item?.folderID) || null,
+    folderName: text(item?.folderName) || null,
+    mimeType: text(item?.mimeType),
+    format: text(item?.format),
+    sizeBytes: Math.max(0, Number(item?.sizeBytes) || 0),
+    durationSec: Number.isFinite(Number(item?.durationSec)) ? Math.max(0, Number(item.durationSec)) : null,
+    modifiedAt: text(item?.modifiedAt) || null,
+    metadata: item?.metadata && typeof item.metadata === 'object' ? item.metadata : {},
+    thumbnailAvailable: Boolean(item?.thumbnailAvailable),
+    thumbnailURL: videoID ? `${root}/v1/mobile/catalog/videos/${encodeURIComponent(videoID)}/thumbnail` : null,
+    playback: {
+      available: playbackAvailable,
+      reason: text(item?.playback?.reason) || null,
+    },
+    mediaURL: playbackAvailable
+      ? `${root}/v1/mobile/catalog/videos/${encodeURIComponent(videoID)}/media`
+      : null,
+  };
+}
+
 function contentRelativePath(relativePath) {
   const normalized = String(relativePath || '')
     .split(path.sep)
@@ -257,6 +302,12 @@ export function registerMobileRoutes(app, deps = {}) {
   const mobileTrackCacheDir = text(deps.mobileTrackCacheDir) || '/tmp/now-playing/mobile-track-cache';
   const transcodeTracks = deps.transcodeTracks !== false;
   const musicLibraryRoot = text(deps.musicLibraryRoot) ? path.resolve(text(deps.musicLibraryRoot)) : '';
+  const videoCatalog = deps.videoCatalog
+    && typeof deps.videoCatalog.list === 'function'
+    && typeof deps.videoCatalog.resolve === 'function'
+    && typeof deps.videoCatalog.thumbnail === 'function'
+    ? deps.videoCatalog
+    : null;
   const listeningHistory = deps.listeningHistory && typeof deps.listeningHistory.observe === 'function'
     ? deps.listeningHistory
     : null;
@@ -3560,6 +3611,81 @@ export function registerMobileRoutes(app, deps = {}) {
       .filter((track) => `${track.title} ${track.artist} ${track.album}`.toLocaleLowerCase().includes(q))
       .map((track) => publicMobileTrack(track, { baseUrl: requestBaseUrl(req, mobileBaseUrl) }));
     return res.json({ ok: true, ...page(tracks, pageArgs(req.query)) });
+  }));
+
+  app.get('/v1/mobile/catalog/videos', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!videoCatalog) return errorResponse(res, 503, 'video catalog is not configured');
+
+    const cursor = decodeVideoCursor(req?.query?.cursor);
+    if (cursor === null) return errorResponse(res, 400, 'cursor is invalid');
+    const limit = Math.max(1, Math.min(MAX_PAGE_SIZE, Number(req?.query?.limit || 50) || 50));
+    const folderID = text(req?.query?.folderID || req?.query?.folderId);
+    let result;
+    try {
+      result = await videoCatalog.list({ folderId: folderID });
+    } catch (error) {
+      if (error?.code === 'VIDEO_STORAGE_UNAVAILABLE') return errorResponse(res, 503, 'video storage is unavailable');
+      throw error;
+    }
+
+    const baseUrl = requestBaseUrl(req, mobileBaseUrl);
+    const rows = Array.isArray(result?.items) ? result.items : [];
+    const items = rows.slice(cursor, cursor + limit).map((item) => publicMobileVideo(item, baseUrl));
+    const nextOffset = cursor + items.length;
+    const folders = [...new Map(rows
+      .filter((item) => text(item?.folderID))
+      .map((item) => [item.folderID, { folderID: item.folderID, folderName: text(item.folderName) }])).values()]
+      .sort((a, b) => a.folderName.localeCompare(b.folderName));
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      ok: true,
+      schema: 'sonuvi.mobile-video-catalog.v1',
+      version: 1,
+      storageAvailable: result?.storageAvailable !== false,
+      folderID: folderID || null,
+      folders,
+      count: items.length,
+      total: rows.length,
+      items,
+      nextCursor: nextOffset < rows.length ? encodeVideoCursor(nextOffset) : null,
+    });
+  }));
+
+  app.get('/v1/mobile/catalog/videos/:videoID/thumbnail', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!videoCatalog) return errorResponse(res, 503, 'video catalog is not configured');
+    let result;
+    try {
+      result = await videoCatalog.thumbnail(text(req?.params?.videoID));
+    } catch (error) {
+      if (error?.code === 'VIDEO_STORAGE_UNAVAILABLE') return errorResponse(res, 503, 'video storage is unavailable');
+      throw error;
+    }
+    if (result?.status === 'not_found') return errorResponse(res, 404, 'video not found');
+    if (result?.status === 'too_large') return errorResponse(res, 413, 'video thumbnail is too large');
+    if (result?.status !== 'ok' || !Buffer.isBuffer(result.buffer)) return errorResponse(res, 503, 'video thumbnail is unavailable');
+    res.set('Content-Type', text(result.contentType) || 'image/jpeg');
+    res.set('Cache-Control', 'private, max-age=3600');
+    return res.send(result.buffer);
+  }));
+
+  app.get('/v1/mobile/catalog/videos/:videoID/media', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!videoCatalog) return errorResponse(res, 503, 'video catalog is not configured');
+    let result;
+    try {
+      result = await videoCatalog.resolve(text(req?.params?.videoID));
+    } catch (error) {
+      if (error?.code === 'VIDEO_STORAGE_UNAVAILABLE') return errorResponse(res, 503, 'video storage is unavailable');
+      throw error;
+    }
+    if (result?.status === 'not_found') return errorResponse(res, 404, 'video not found');
+    if (result?.status !== 'ok' || !result.item) return errorResponse(res, 503, 'video is unavailable');
+    if (!result.item.playback?.available) return errorResponse(res, 415, 'video format is unsupported');
+    res.set('Content-Disposition', 'inline');
+    return serveFileWithRange(req, res, result.item._absolutePath, result.item.mimeType);
   }));
 
   // This is deliberately a resolver manifest rather than another catalog.

@@ -212,6 +212,7 @@ import {
   SEEBURG_PLAYLIST_NAME, MULTIPHONE_PLAYLIST_NAME, MILLS_PLAYLIST_NAME,
   MOBILE_API_ENABLED, MOBILE_API_SECRET, MOBILE_TRACK_ID_SECRET, MOBILE_API_ENROLLMENT_CODE,
   MOBILE_PUBLIC_BASE_URL, MOBILE_TRACK_CACHE_DIR, MOBILE_TRANSCODE_TRACKS,
+  MOBILE_VIDEO_ROOT, MOBILE_VIDEO_CATALOG_PATH,
   APNS_KEY_ID, APNS_TEAM_ID, APNS_PRIVATE_KEY_PATH, APNS_PRIVATE_KEY, APNS_TOPIC,
   APNS_ENVIRONMENT, MOBILE_PUSH_TOKENS_PATH,
   PUSHOVER_TOKEN, PUSHOVER_USER_KEY,
@@ -242,6 +243,7 @@ import { createLastfmScrobbler } from './src/lib/lastfm-scrobbler.mjs';
 import { createApnsProvider } from './src/lib/apns.mjs';
 import { resolveApnsMediaUrl } from './src/lib/apns-artwork.mjs';
 import { createMobilePushTokenStore } from './src/lib/mobile-push-store.mjs';
+import { createMobileVideoCatalog } from './src/lib/mobile-video-catalog.mjs';
 import { registerAllConfigRoutes } from './src/routes/config.routes.index.mjs';
 import { registerPodcastSubscriptionRoutes } from './src/routes/podcasts-subscriptions.routes.mjs';
 import { registerPodcastRefreshRoutes } from './src/routes/podcasts-refresh.routes.mjs';
@@ -322,6 +324,10 @@ const listeningHistory = createListeningHistoryStore({
 
 const mobilePushTokenStore = createMobilePushTokenStore({
   filePath: MOBILE_PUSH_TOKENS_PATH,
+});
+const mobileVideoCatalog = createMobileVideoCatalog({
+  root: MOBILE_VIDEO_ROOT,
+  registryPath: MOBILE_VIDEO_CATALOG_PATH,
 });
 const apnsProvider = createApnsProvider({
   keyId: APNS_KEY_ID,
@@ -8685,6 +8691,7 @@ registerMobileRoutes(app, {
   mobileTrackCacheDir: MOBILE_TRACK_CACHE_DIR,
   transcodeTracks: MOBILE_TRANSCODE_TRACKS,
   musicLibraryRoot: PI4_MOUNT_BASE,
+  videoCatalog: mobileVideoCatalog,
   listeningHistory,
   pushTokenStore: mobilePushTokenStore,
   apnsConfigured: apnsProvider.isConfigured(),

@@ -77,6 +77,15 @@ export const MOBILE_TRANSCODE_TRACKS =
   process.env.MOBILE_TRANSCODE_TRACKS != null
     ? /^(1|true|yes|on)$/i.test(String(process.env.MOBILE_TRANSCODE_TRACKS).trim())
     : true;
+export const MOBILE_VIDEO_ROOT = path.resolve(
+  process.env.MOBILE_VIDEO_ROOT || PI4_MOUNT_BASE
+);
+const mobileVideoCatalogPath = String(
+  process.env.MOBILE_VIDEO_CATALOG_PATH || path.join(process.cwd(), 'var', 'mobile-video-catalog.json')
+).trim();
+export const MOBILE_VIDEO_CATALOG_PATH = path.isAbsolute(mobileVideoCatalogPath)
+  ? mobileVideoCatalogPath
+  : path.resolve(process.cwd(), mobileVideoCatalogPath);
 
 export const FAVORITES_PLAYLIST_NAME = process.env.FAVORITES_PLAYLIST_NAME || 'Favorites';
 export const FAVORITES_REFRESH_MS = Number(process.env.FAVORITES_REFRESH_MS || '3000');
