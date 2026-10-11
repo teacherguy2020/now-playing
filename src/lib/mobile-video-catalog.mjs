@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 const execFileP = promisify(execFile);
 const REGISTRY_VERSION = 1;
 const MAX_THUMBNAIL_BYTES = 8 * 1024 * 1024;
+const DEFAULT_THUMBNAIL_TIME_SEC = 10;
 
 const VIDEO_FORMATS = Object.freeze({
   '.mp4': { format: 'mp4', mimeType: 'video/mp4', supported: true },
@@ -136,6 +137,33 @@ export function createMobileVideoCatalog({
     }
   };
 
+  const thumbnailTimeSec = (durationSec) => {
+    const duration = Number(durationSec);
+    if (!Number.isFinite(duration) || duration <= 0) return DEFAULT_THUMBNAIL_TIME_SEC;
+    return Math.min(DEFAULT_THUMBNAIL_TIME_SEC, Math.max(1, duration * 0.05));
+  };
+
+  const renderThumbnail = async (filePath, durationSec) => {
+    if (typeof runThumbnail === 'function') {
+      return runThumbnail(filePath, thumbnailTimeSec(durationSec));
+    }
+    const result = await execFileP(ffmpegPath, [
+      '-hide_banner', '-loglevel', 'error', '-ss', String(thumbnailTimeSec(durationSec)), '-i', filePath,
+      '-frames:v', '1', '-vf', 'scale=640:360:force_original_aspect_ratio=decrease',
+      '-f', 'image2pipe', '-vcodec', 'mjpeg', 'pipe:1',
+    ], { timeout: 30_000, maxBuffer: MAX_THUMBNAIL_BYTES, encoding: 'buffer' });
+    return Buffer.from(result.stdout || '');
+  };
+
+  const thumbnailProbe = async (filePath, durationSec) => {
+    try {
+      const buffer = await renderThumbnail(filePath, durationSec);
+      return Buffer.isBuffer(buffer) && buffer.length > 0 && buffer.length <= MAX_THUMBNAIL_BYTES;
+    } catch {
+      return false;
+    }
+  };
+
   const scan = async (directory, relative = '', output = []) => {
     let entries;
     try {
@@ -218,6 +246,11 @@ export function createMobileVideoCatalog({
         registry.videos[safeRelative] = current;
         changed.value = true;
       }
+      if (!unchanged || typeof current.thumbnailAvailable !== 'boolean') {
+        current.thumbnailAvailable = await thumbnailProbe(absolutePath, current.durationSec);
+        registry.videos[safeRelative] = current;
+        changed.value = true;
+      }
       const folderIdValue = folderIdFor(folderRelative, changed);
       const folder = folderRelative ? path.posix.basename(folderRelative) : null;
       const requestedFolder = String(folderId || '').trim();
@@ -234,7 +267,7 @@ export function createMobileVideoCatalog({
         durationSec: current.durationSec,
         modifiedAt: new Date(Number(current.modifiedMs)).toISOString(),
         metadata: current.metadata || {},
-        thumbnailAvailable: true,
+        thumbnailAvailable: current.thumbnailAvailable === true,
         playback: {
           available: descriptor.supported,
           reason: descriptor.supported ? null : 'format is not supported for native playback',
@@ -262,20 +295,11 @@ export function createMobileVideoCatalog({
     if (resolved.status !== 'ok') return resolved;
     const { item } = resolved;
     let buffer;
-    if (typeof runThumbnail === 'function') {
-      buffer = await runThumbnail(item._absolutePath);
-    } else {
-      try {
-        const result = await execFileP(ffmpegPath, [
-          '-hide_banner', '-loglevel', 'error', '-ss', '0', '-i', item._absolutePath,
-          '-frames:v', '1', '-vf', 'scale=640:360:force_original_aspect_ratio=decrease',
-          '-f', 'image2pipe', '-vcodec', 'mjpeg', 'pipe:1',
-        ], { timeout: 30_000, maxBuffer: MAX_THUMBNAIL_BYTES, encoding: 'buffer' });
-        buffer = Buffer.from(result.stdout || '');
-      } catch (error) {
-        if (error?.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') return { status: 'too_large' };
-        return { status: 'unavailable' };
-      }
+    try {
+      buffer = await renderThumbnail(item._absolutePath, item.durationSec);
+    } catch (error) {
+      if (error?.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') return { status: 'too_large' };
+      return { status: 'unavailable' };
     }
     if (!Buffer.isBuffer(buffer) || buffer.length === 0) return { status: 'unavailable' };
     if (buffer.length > MAX_THUMBNAIL_BYTES) return { status: 'too_large' };

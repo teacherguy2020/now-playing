@@ -55,6 +55,7 @@ function token() {
 
 async function setup() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'sonuvi-videos-'));
+  const thumbnailTimes = [];
   await mkdir(path.join(root, 'Clips'), { recursive: true });
   await writeFile(path.join(root, 'Clips', 'one.mp4'), Buffer.from('0123456789'));
   await writeFile(path.join(root, 'Clips', '._one.mp4'), Buffer.from('sidecar'));
@@ -70,7 +71,10 @@ async function setup() {
       durationSec: filePath.endsWith('one.mp4') ? 12.5 : null,
       metadata: filePath.endsWith('one.mp4') ? { title: 'One Clip' } : {},
     }),
-    runThumbnail: async () => Buffer.from('jpeg-bytes'),
+    runThumbnail: async (_filePath, timeSec) => {
+      thumbnailTimes.push(timeSec);
+      return Buffer.from('jpeg-bytes');
+    },
   });
   const app = createApp();
   registerMobileRoutes(app, {
@@ -79,7 +83,7 @@ async function setup() {
     trackIdSecret: 'video-track-secret',
     videoCatalog: catalog,
   });
-  return { root, outside, catalog, app, token: token() };
+  return { root, outside, catalog, app, token: token(), thumbnailTimes };
 }
 
 test('video catalog requires a paired mobile session and paginates opaque IDs', async () => {
@@ -156,6 +160,28 @@ test('video thumbnail endpoint enforces the size bound', async () => {
     }), response);
     assert.equal(response.statusCode, 413);
     fixture.catalog.thumbnail = original;
+  } finally {
+    await rm(fixture.outside, { force: true });
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('video thumbnails advertise availability and use a representative frame time', async () => {
+  const fixture = await setup();
+  try {
+    const listing = new ResponseStream();
+    await fixture.app.routes.get('GET /v1/mobile/catalog/videos')?.(request(fixture.token), listing);
+    const video = listing.body.items.find((item) => item.title === 'One Clip');
+    assert.equal(video.thumbnailAvailable, true);
+    assert.ok(fixture.thumbnailTimes.includes(1));
+
+    const response = new ResponseStream();
+    await fixture.app.routes.get('GET /v1/mobile/catalog/videos/:videoID/thumbnail')?.(request(fixture.token, {
+      params: { videoID: video.videoID },
+    }), response);
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers['Content-Type'], 'image/jpeg');
+    assert.deepEqual(response.body, Buffer.from('jpeg-bytes'));
   } finally {
     await rm(fixture.outside, { force: true });
     await rm(fixture.root, { recursive: true, force: true });
