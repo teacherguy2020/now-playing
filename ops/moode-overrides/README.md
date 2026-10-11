@@ -40,6 +40,10 @@ The broader upgrade failure chain and recovery order are documented in
 - `nowplaying-peppy-targets.service` restores the VU target, spectrum
   target, and shared spectrum FIFO after moOde boot or upgrade.
 
+The read-only verification helper is tracked at
+`integrations/moode/health-check.sh`. Run it from the admin machine; it is not
+a moOde service and must not be installed as a second reader.
+
 ## Reader ownership after upgrades
 
 The reader runs as root because aplmeta.py atomically replaces
@@ -51,6 +55,17 @@ aplmeta-reader.service installed, disable it before enabling airplay-json.servic
     sudo systemctl daemon-reload
     sudo systemctl enable --now airplay-json-watchdog.timer
     sudo systemctl enable --now airplay-json.service
+
+Do not use a second reader merely for verification. From the repository root,
+run the non-destructive check while a newly played AirPlay track is active:
+
+    ./integrations/moode/health-check.sh moode-pi http://sonuvi.local:3101
+
+It verifies the active service and watchdog, rejects an active legacy reader,
+counts exactly one `shairport-sync-metadata-reader` process, checks that
+`/tmp/shairport-sync-metadata` is a FIFO, and compares fresh `aplmeta.txt`
+metadata with Sonuvi's `/now-playing` response. It never changes services,
+Shairport configuration, or metadata files.
 
 ## Deploy from repo to moOde
 

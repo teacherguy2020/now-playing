@@ -27,6 +27,8 @@ The durable solution is now split correctly:
 - version-sensitive moOde core patches remain documented and must be checked
   after each upgrade;
 - systemd timers supervise the worker and AirPlay receiver;
+- the AirPlay metadata path has one tracked reader, one expected FIFO, and a
+  read-only end-to-end health check;
 - a separate boot/upgrade restore service re-applies the Sonuvi Peppy
   targets and FIFO paths;
 - live verification checks processes, config, and fresh data rather than only
@@ -176,6 +178,37 @@ The tracked persistence layer is:
 It runs at boot, before `peppy-spectrum-bridge.service`, is idempotent, and
 preserves first-run backups as `*.bak.nowplaying-peppy`.
 
+## AirPlay metadata persistence and post-upgrade check
+
+The metadata path is separate from AirPlay audio playback:
+
+```text
+/tmp/shairport-sync-metadata
+  -> airplay-json.service
+  -> /var/www/daemon/aplmeta-reader.sh
+  -> one shairport-sync-metadata-reader
+  -> /var/www/util/aplmeta.py
+  -> /var/local/www/aplmeta.txt + AirPlay covers
+```
+
+Keep exactly one reader owner. The known duplicate `aplmeta-reader.service`
+must be disabled/inactive; do not create another reader to test recovery.
+`airplay-json-watchdog.timer` supervises reader CPU only and does not change
+Shairport's audio configuration.
+
+After playing or changing to a new AirPlay track, run this read-only check from
+the repository/admin machine:
+
+```bash
+./integrations/moode/health-check.sh moode-pi http://sonuvi.local:3101
+```
+
+It verifies the active reader service and watchdog, the absence of the
+duplicate unit, exactly one reader process, the named FIFO, a fresh
+`aplmeta.txt`, and matching AirPlay metadata/artwork in Sonuvi's
+`/now-playing` response. An old `aplmeta.txt` or a reachable but mismatched
+Sonuvi payload fails the check.
+
 ## Recovery procedure after a future moOde upgrade
 
 Run this in order. Do not start by changing application code on the Pi5.
@@ -223,6 +256,16 @@ grep -nE 'target.url|update.period|output.http|pipe.name' \
 curl -s http://sonuvi.local:3101/peppy/vumeter
 curl -s http://sonuvi.local:3101/peppy/spectrum
 ```
+
+For AirPlay metadata, use the dedicated check after a new AirPlay track:
+
+```bash
+./integrations/moode/health-check.sh moode-pi http://sonuvi.local:3101
+```
+
+Do not treat `systemctl is-active` alone as proof of metadata health. The
+FIFO, reader count, timestamp, and Sonuvi payload must all agree. This check
+is non-destructive and does not restart Shairport or add a reader.
 
 Perform the `curl` checks while audio is active. VU should be fresh and
 nonzero; spectrum should be fresh with a populated `bins` array. A service

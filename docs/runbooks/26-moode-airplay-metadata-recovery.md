@@ -58,6 +58,25 @@ The metadata timestamp must be from the current AirPlay session, and its
 title, artist, album, duration, and cover path must change for a newly played
 track. A reachable aplmeta.txt with an old timestamp is not success.
 
+From the repository/admin machine, run the non-destructive end-to-end check:
+
+    ./integrations/moode/health-check.sh moode-pi http://sonuvi.local:3101
+
+Use the configured SSH host and Sonuvi API URL when those names differ. The
+check verifies all of the following without changing the host:
+
+- `airplay-json.service` and `airplay-json-watchdog.timer` are active;
+- the known duplicate `aplmeta-reader.service` is not active;
+- exactly one `shairport-sync-metadata-reader` process is active;
+- `/tmp/shairport-sync-metadata` exists as a named pipe;
+- `/var/local/www/aplmeta.txt` is fresh;
+- Sonuvi `/now-playing` reports `isAirplay: true`, `state: play`, matching
+  metadata, and an artwork URL.
+
+It performs no enable/disable, restart, stop, write, or Shairport audio
+configuration operation. Run it after playing or changing to a fresh AirPlay
+track; an idle session cannot prove that new metadata reaches Sonuvi.
+
 The Sonuvi API records the AirPlay-session boundary and rejects an aplmeta.txt
 response whose Last-Modified predates the current session. That prevents
 stale moOde metadata from being displayed if the host pipeline fails again.

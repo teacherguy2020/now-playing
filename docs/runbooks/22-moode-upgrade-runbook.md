@@ -22,7 +22,9 @@ Create and verify all of these recovery layers:
    - `/var/www/daemon/watchdog.sh`
    - `/var/www/daemon/worker.php`
    - `/var/www/daemon/aplmeta-reader.sh` (if present)
+   - `/etc/systemd/system/airplay-json.service`
    - `/etc/systemd/system/airplay-json-watchdog.*` (if present)
+   - `/tmp/shairport-sync-metadata` (runtime FIFO; record whether it exists)
    - `/home/moode/.xinitrc`
    - Peppy configuration files under `/etc/peppymeter/` and
      `/etc/peppyspectrum/`
@@ -156,8 +158,27 @@ grep -n 'target.url' /etc/peppymeter/config.txt /etc/peppyspectrum/config.txt
 ```
 
 Restore the hardened AirPlay metadata wrapper/watchdog and Peppy HTTP targets
-from the matching repository references when absent. Confirm AirPlay starts,
-metadata remains stable, and CPU does not run away before declaring success.
+from the matching repository references when absent. For AirPlay, preserve the
+single-reader contract:
+
+- `airplay-json.service` owns `/var/www/daemon/aplmeta-reader.sh`;
+- `/tmp/shairport-sync-metadata` is the expected Shairport metadata FIFO;
+- exactly one `shairport-sync-metadata-reader` process may be active;
+- any `aplmeta-reader.service` left by an older repair must be inactive;
+- `airplay-json-watchdog.timer` must be active.
+
+Do not edit Shairport's audio configuration or start a second reader as part
+of this checklist. After starting a new AirPlay track, run the read-only
+end-to-end check:
+
+```bash
+./integrations/moode/health-check.sh moode-pi http://sonuvi.local:3101
+```
+
+The check confirms that fresh `aplmeta.txt` metadata reaches Sonuvi's
+`/now-playing` response, including AirPlay state and artwork. A service being
+`active` while the FIFO is absent, the record is stale, or Sonuvi shows a
+different track is not a successful post-upgrade result.
 
 The current Peppy restoration is automated by
 `nowplaying-peppy-targets.service`; the current worker/AirPlay process

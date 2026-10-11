@@ -24,6 +24,26 @@ Use this page when the question is:
 - what files/services/timers implement the current mitigation?
 - how should the current override be verified or restored?
 
+## Current metadata ownership contract
+
+AirPlay audio and AirPlay metadata are separate paths. The current moOde
+metadata path is:
+
+```text
+/tmp/shairport-sync-metadata
+  -> airplay-json.service
+  -> /var/www/daemon/aplmeta-reader.sh
+  -> one shairport-sync-metadata-reader
+  -> /var/www/util/aplmeta.py
+  -> /var/local/www/aplmeta.txt + AirPlay covers
+```
+
+Keep exactly one reader owner: `airplay-json.service`. The runtime FIFO is
+`/tmp/shairport-sync-metadata`, and `airplay-json-watchdog.timer` runs every
+30 seconds. A legacy or manually created `aplmeta-reader.service` must be
+absent or inactive. Do not add a second reader and do not change Shairport's
+audio configuration to verify metadata health.
+
 ## Why this page matters
 
 The key lesson in this branch is:
@@ -96,6 +116,19 @@ systemctl is-active airplay-json-watchdog.timer
 journalctl -u airplay-json-watchdog.service -n 20 --no-pager
 tail -n 50 /tmp/airplay-json-watchdog.log
 ```
+
+For a non-destructive post-upgrade end-to-end check, run from the repository
+or admin machine while a newly played AirPlay track is active:
+
+```bash
+./integrations/moode/health-check.sh moode-pi http://sonuvi.local:3101
+```
+
+The helper verifies the active reader and watchdog, rejects the known duplicate
+unit, counts exactly one metadata-reader process, checks the named FIFO and a
+fresh `aplmeta.txt`, and compares the metadata/artwork in Sonuvi's
+`/now-playing` response. It performs no service restart, enable/disable,
+write, or Shairport audio-configuration operation.
 
 What these checks tell you:
 - whether the primary service is active
