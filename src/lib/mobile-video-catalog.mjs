@@ -145,6 +145,9 @@ export function createMobileVideoCatalog({
     }
     for (const entry of entries) {
       if (entry.isSymbolicLink()) continue;
+      // macOS Finder resource-fork sidecars such as ._Movie.mp4 are not
+      // videos and must not become catalog entries.
+      if (entry.name.startsWith('.')) continue;
       const childRelative = normalizedRelative(path.posix.join(posixRelative(relative), entry.name));
       if (!childRelative) continue;
       const childPath = path.join(directory, entry.name);

@@ -57,6 +57,7 @@ async function setup() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'sonuvi-videos-'));
   await mkdir(path.join(root, 'Clips'), { recursive: true });
   await writeFile(path.join(root, 'Clips', 'one.mp4'), Buffer.from('0123456789'));
+  await writeFile(path.join(root, 'Clips', '._one.mp4'), Buffer.from('sidecar'));
   await writeFile(path.join(root, 'Clips', 'unsupported.mkv'), Buffer.from('mkv'));
   await writeFile(path.join(root, 'root.mov'), Buffer.from('abcdefghij'));
   const outside = path.join(root, '..', `outside-${path.basename(root)}.mp4`);
