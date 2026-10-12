@@ -411,20 +411,15 @@ export function registerMobileRoutes(app, deps = {}) {
         builtAt,
         catalog: buildMobileCatalog(index, { trackIdSecret }),
       };
-      if (getSourceAudio && Array.isArray(catalogCache.catalog?.tracks)) {
-        const tracks = catalogCache.catalog.tracks;
-        let next = 0;
-        const worker = async () => {
-          while (next < tracks.length) {
-            const track = tracks[next++];
-            const sourceAudio = await getSourceAudio(track.file).catch(() => null);
-            if (sourceAudio) track.sourceAudio = sourceAudio;
-          }
-        };
-        await Promise.all(Array.from({ length: Math.min(4, tracks.length) }, () => worker()));
-      }
     }
     return catalogCache.catalog;
+  };
+
+  const enrichSourceAudio = async (track) => {
+    if (!track || track.sourceAudio || !getSourceAudio) return track;
+    const sourceAudio = await getSourceAudio(track.file).catch(() => null);
+    if (sourceAudio) track.sourceAudio = sourceAudio;
+    return track;
   };
 
   const albumMetadataKey = (artist, album) => (
@@ -1234,6 +1229,7 @@ export function registerMobileRoutes(app, deps = {}) {
     });
     const isPlaying = Boolean(payload.isPlaying) || state === 'play';
     const currentMobileTrack = await resolveMobileCurrentTrack(candidateFile);
+    await enrichSourceAudio(currentMobileTrack.track);
     const currentItemIsLocal = !payload.isAirplay
       && !currentMobileTrack.disabled
       && Boolean(currentMobileTrack.track);
@@ -3522,9 +3518,10 @@ export function registerMobileRoutes(app, deps = {}) {
     return res.json({
       ok: true,
       album: publicMobileAlbum(album, catalog, { baseUrl }),
-      tracks: album.trackIds
+      tracks: (await Promise.all(album.trackIds
         .map((trackId) => catalog.byTrackId.get(trackId))
         .filter(Boolean)
+        .map((track) => enrichSourceAudio(track))))
         .map((track) => publicMobileTrack(track, { baseUrl })),
     });
   }));
@@ -3534,6 +3531,7 @@ export function registerMobileRoutes(app, deps = {}) {
     const catalog = await loadCatalog();
     const track = catalog.byTrackId.get(text(req?.params?.trackId));
     if (!track) return errorResponse(res, 404, 'track not found');
+    await enrichSourceAudio(track);
     return res.json({ ok: true, track: publicMobileTrack(track, { baseUrl: requestBaseUrl(req, mobileBaseUrl) }) });
   }));
 
@@ -3628,8 +3626,8 @@ export function registerMobileRoutes(app, deps = {}) {
     if (!q) return errorResponse(res, 400, 'q is required');
     const tracks = catalog.tracks
       .filter((track) => `${track.title} ${track.artist} ${track.album}`.toLocaleLowerCase().includes(q))
-      .map((track) => publicMobileTrack(track, { baseUrl: requestBaseUrl(req, mobileBaseUrl) }));
-    return res.json({ ok: true, ...page(tracks, pageArgs(req.query)) });
+    const enriched = await Promise.all(tracks.map((track) => enrichSourceAudio(track)));
+    return res.json({ ok: true, ...page(enriched.map((track) => publicMobileTrack(track, { baseUrl: requestBaseUrl(req, mobileBaseUrl) })), pageArgs(req.query)) });
   }));
 
   app.get('/v1/mobile/catalog/videos', asyncRoute(async (req, res) => {
