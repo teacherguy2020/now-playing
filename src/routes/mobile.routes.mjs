@@ -329,6 +329,9 @@ export function registerMobileRoutes(app, deps = {}) {
   const getIndex = typeof deps.getBrowseIndex === 'function'
     ? deps.getBrowseIndex
     : (host) => getBrowseIndex(host);
+  const getSourceAudio = typeof deps.getSourceAudio === 'function'
+    ? deps.getSourceAudio
+    : null;
   const mpdFileToLocalPath = typeof deps.mpdFileToLocalPath === 'function'
     ? deps.mpdFileToLocalPath
     : () => '';
@@ -408,6 +411,18 @@ export function registerMobileRoutes(app, deps = {}) {
         builtAt,
         catalog: buildMobileCatalog(index, { trackIdSecret }),
       };
+      if (getSourceAudio && Array.isArray(catalogCache.catalog?.tracks)) {
+        const tracks = catalogCache.catalog.tracks;
+        let next = 0;
+        const worker = async () => {
+          while (next < tracks.length) {
+            const track = tracks[next++];
+            const sourceAudio = await getSourceAudio(track.file).catch(() => null);
+            if (sourceAudio) track.sourceAudio = sourceAudio;
+          }
+        };
+        await Promise.all(Array.from({ length: Math.min(4, tracks.length) }, () => worker()));
+      }
     }
     return catalogCache.catalog;
   };

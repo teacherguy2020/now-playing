@@ -101,6 +101,9 @@ export function buildMobileCatalog(index, { trackIdSecret } = {}) {
       track: clean(source?.track),
       genre: clean(source?.genre),
       durationSec: Number(source?.durationSec || 0) || 0,
+      ...(source?.sourceAudio && typeof source.sourceAudio === 'object'
+        ? { sourceAudio: source.sourceAudio }
+        : {}),
       format: extension(file),
       musicBrainz: {
         trackId: clean(source?.mbTrackId),
@@ -183,6 +186,7 @@ export function publicMobileTrack(record, { baseUrl = '' } = {}) {
     trackNumber: record.trackNumber,
     genre: record.genre,
     durationSec: record.durationSec,
+    ...(record.sourceAudio ? { sourceAudio: record.sourceAudio } : {}),
     format: record.format,
     musicBrainz: record.musicBrainz,
     availability: { remote: true, local: false },

@@ -298,6 +298,56 @@ test('mobile catalog returns opaque IDs and never returns the MPD file path', as
   assert.doesNotMatch(JSON.stringify(res.body), /SamsungMoode|01 - First|\.flac/);
 });
 
+test('mobile catalog includes verified source audio properties when available', async () => {
+  const app = registerFixture({
+    getSourceAudio: async (file) => file.endsWith('First.mp3')
+      ? { sampleRateHz: 96000, bitDepth: 24, channels: 2 }
+      : null,
+  });
+  const sessionRes = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'iphone-brian' },
+  }), sessionRes);
+  const res = createResponse();
+  await app.routes.get('GET /v1/mobile/search')?.(request({
+    headers: { authorization: `Bearer ${sessionRes.body.accessToken}` },
+    query: { q: 'First' },
+  }), res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body.items[0].sourceAudio, {
+    sampleRateHz: 96000,
+    bitDepth: 24,
+    channels: 2,
+  });
+
+  const nowPlayingApp = registerFixture({
+    getSourceAudio: async () => ({ sampleRateHz: 96000, bitDepth: 24, channels: 2 }),
+    mpdQueryRaw: async (command) => command === 'status'
+      ? 'state: play\nsong: 0\nsongid: 1\n'
+      : 'file: USB/SamsungMoode/Test Album/01 - First.mp3\nPos: 0\nId: 1\n',
+    fetchInternalJson: async () => ({
+      ok: true,
+      status: 200,
+      json: { state: 'play', title: 'First', file: 'USB/SamsungMoode/Test Album/01 - First.mp3' },
+    }),
+  });
+  const nowSession = createResponse();
+  await nowPlayingApp.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'ipad-brian' },
+  }), nowSession);
+  const nowResponse = createResponse();
+  await nowPlayingApp.routes.get('GET /v1/mobile/now-playing')?.(request({
+    headers: { authorization: `Bearer ${nowSession.body.accessToken}` },
+  }), nowResponse);
+  assert.deepEqual(nowResponse.body.track.sourceAudio, {
+    sampleRateHz: 96000,
+    bitDepth: 24,
+    channels: 2,
+  });
+});
+
 test('mobile album catalog exposes safe added timestamps from the existing library metadata', async () => {
   const app = registerFixture({
     fetchInternalJson: async (pathname) => pathname === '/config/library-health/albums'

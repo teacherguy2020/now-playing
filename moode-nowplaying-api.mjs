@@ -238,6 +238,7 @@ import { registerArtRoutes, serveTrackArtwork } from './src/routes/art.routes.mj
 import { registerMobileRoutes } from './src/routes/mobile.routes.mjs';
 import { getBrowseIndex } from './src/lib/browse-index.mjs';
 import { buildMobileCatalog } from './src/lib/mobile-track-identity.mjs';
+import { createSourceAudioProbe } from './src/lib/source-audio.mjs';
 import { createListeningHistoryStore } from './src/lib/listening-history.mjs';
 import { createLastfmScrobbler } from './src/lib/lastfm-scrobbler.mjs';
 import { createApnsProvider } from './src/lib/apns.mjs';
@@ -4028,6 +4029,14 @@ function mpdFileToLocalPath(mpdFile) {
 function safeIsFile(p) {
   try { return fs.statSync(p).isFile(); } catch { return false; }
 }
+
+const sourceAudioProbe = createSourceAudioProbe({
+  resolveFile: async (file) => {
+    const localPath = mpdFileToLocalPath(file);
+    return localPath && safeIsFile(localPath) ? localPath : '';
+  },
+  cachePath: path.join(process.cwd(), 'var', 'mobile-source-audio.json'),
+});
 
 async function runCmdQuiet(cmd, args) {
   try {
@@ -8699,6 +8708,7 @@ registerMobileRoutes(app, {
   notifyNativePlayback: notifyNativePlaybackWithApns,
   mpdHost: MPD_HOST,
   getBrowseIndex,
+  getSourceAudio: sourceAudioProbe.get,
   fetchInternalJson: async (pathname) => {
     const routePath = String(pathname || '').startsWith('/') ? String(pathname) : `/${String(pathname || '')}`;
     const url = `http://127.0.0.1:${Number(PORT || 3101)}${routePath}`;
