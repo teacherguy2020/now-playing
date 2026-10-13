@@ -259,6 +259,27 @@ Based on current inspection, important API endpoints used by `config.html` inclu
 ### Podcast maintenance
 - `GET /podcasts/nightly-status`
 
+## Qobuz Account status
+
+The Music Services area includes a Qobuz Account card. Phase 1 exposes the
+authenticated, read-only endpoint:
+
+- `GET /config/qobuz/account/status`
+
+The card reports whether the trusted LAN currently exposes the Qobuz
+MediaServer and whether account authorization has been verified. Discovery of
+the Qobuz ContentDirectory is not treated as a connected account. The Connect
+Qobuz button is intentionally disabled until Sonuvi has an approved
+authorization mechanism; the page never collects a Qobuz password or token.
+
+Unauthenticated Qobuz ContentDirectory browsing is bounded and returns a
+sanitized account-authorization message when the Qobuz namespace times out.
+Generic UPnP failures remain generic. Future browser-login, pending-attempt,
+cancel, and disconnect endpoints are design-only; account credentials remain
+on moOde and are never returned to the browser.
+
+Last reviewed: 2026-10-13.
+
 This is a lot of operational surface area for one page, which is precisely why documenting it matters.
 
 ## Track key handling

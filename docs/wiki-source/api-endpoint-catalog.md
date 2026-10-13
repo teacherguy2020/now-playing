@@ -334,6 +334,17 @@ Observed request-shape examples with high confidence:
 - `GET /config/diagnostics/artist-albums`
   - diagnostics catalog query example:
     - `artist`
+- `GET /config/diagnostics/queue`
+  - track-key protected
+  - local-file items may include optional verified `sourceAudio` properties:
+    - `sampleRateHz`
+    - `bitDepth`
+    - `channels`
+  - `sourceAudio` comes from the existing source-file metadata probe; stream,
+    missing, and unprobeable items omit it
+  - clients must not infer source quality from file format, extension, or
+    catalog metadata; Home's lossless badge requires `sampleRateHz >= 48000`
+    and `bitDepth >= 24`
 
 Additional debug family from `moode-nowplaying-api.mjs`:
 - `GET /debug/radio-metadata-log`

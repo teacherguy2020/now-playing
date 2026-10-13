@@ -452,6 +452,12 @@ It is a multi-region orchestration shell with:
 
 Quick Search track results retain artist and album metadata in the result title tooltip and accessible label, which helps distinguish duplicate track titles without expanding the compact result row.
 
+During Qobuz Connect ownership, the now-playing transport controls remain
+visible but are disabled with an explicit unavailable tooltip. They are MPD
+controls and cannot safely pause, seek, shuffle, or stop the Pibuz renderer;
+the server-side diagnostics playback route enforces the same boundary for
+clients that bypass this shell.
+
 ## Timestamp
 
 Last updated: 2026-09-22 America/Chicago

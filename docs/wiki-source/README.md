@@ -38,8 +38,9 @@ metadata, queue control, displays, controllers, integrations, and operations.
 2. [Core Concepts](core-concepts.md)
 3. [Architecture](architecture.md)
 4. [API Service Overview](api-service-overview.md)
-5. [Source Map](source-map.md)
-6. [Workflows](workflows.md)
+5. [UPnP/DLNA Control Point](upnp-control-point.md)
+6. [Source Map](source-map.md)
+7. [Workflows](workflows.md)
 
 ## Canonical documentation categories
 

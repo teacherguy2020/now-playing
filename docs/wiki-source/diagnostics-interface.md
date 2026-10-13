@@ -257,3 +257,26 @@ Future deeper verification should clarify:
 At the moment, this page already has enough evidence to be treated as one of the project's core operator/debugging surfaces.
 
 It is not just a diagnostics readout. It is a live API console plus multi-surface inspection dashboard, which makes it especially valuable for real troubleshooting work.
+
+## Qobuz Audio Info interpretation
+
+The `GET /config/moode/audio-info?view=rows` surface is source-aware when
+Qobuz Connect owns the renderer. The Qobuz source format and decoded PCM are
+reported by the existing Pibuz/moOde `get_qbzmeta` cache. The hardware output
+is separate: Sonuvi reads ALSA playback `hw_params`/`status` files over the
+existing read-only moOde SSH path and reports `Not measured` when no open
+stream exposes parameters. It does not treat MPD being stopped as proof that
+the DAC is idle.
+
+The endpoint labels the moOde `audioinfo.php` ALSA mode and audio chain as
+configured moOde/MPD path information, not verified Qobuz signal-path facts.
+MPD-only volume diagnostics are represented as unavailable for Qobuz, so raw
+`Unknown MPD volume type` or ALSA mixer-control errors do not leak into the
+Qobuz panel. The authenticated mobile audio-info contract forwards the safe
+`audio` object and row provenance without exposing moOde URLs, file paths, or
+renderer credentials.
+
+The main controller shells disable MPD transport/shuffle/repeat/seek controls
+while Qobuz owns playback; the server route also rejects those MPD commands
+with a source-aware unavailable response. No Qobuz remote-control API is
+implied by the metadata integration.

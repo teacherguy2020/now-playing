@@ -127,6 +127,7 @@ Feature entry pages:
 - `api-config-and-runtime-endpoints.md` — config/runtime route families
 - `api-youtube-radio-and-integration-endpoints.md` — YouTube/radio/integration route families
 - `api-playback-and-queue-endpoints.md` — playback and queue route families documented so far
+- `upnp-control-point.md` — generic UPnP/DLNA discovery, browsing, renderer inspection, and playback boundary
 
 ### Retrieval helpers in this branch
 
