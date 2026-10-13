@@ -239,13 +239,22 @@ import { registerMobileRoutes } from './src/routes/mobile.routes.mjs';
 import { getBrowseIndex } from './src/lib/browse-index.mjs';
 import { buildMobileCatalog } from './src/lib/mobile-track-identity.mjs';
 import { createSourceAudioProbe } from './src/lib/source-audio.mjs';
+import {
+  buildQobuzNowPlayingPayload,
+  createQobuzConnectSource,
+  qobuzConnectDefaults,
+} from './src/lib/qobuz-connect.mjs';
 import { createListeningHistoryStore } from './src/lib/listening-history.mjs';
 import { createLastfmScrobbler } from './src/lib/lastfm-scrobbler.mjs';
 import { createApnsProvider } from './src/lib/apns.mjs';
 import { resolveApnsMediaUrl } from './src/lib/apns-artwork.mjs';
 import { createMobilePushTokenStore } from './src/lib/mobile-push-store.mjs';
 import { createMobileVideoCatalog } from './src/lib/mobile-video-catalog.mjs';
+import { UpnpControlPoint } from './src/lib/upnp-control-point.mjs';
+import { createUpnpPlaybackSessionManager } from './src/lib/upnp-playback-session.mjs';
+import { createUpnpPlaybackQueueManager } from './src/lib/upnp-playback-queue.mjs';
 import { registerAllConfigRoutes } from './src/routes/config.routes.index.mjs';
+import { registerUpnpRoutes } from './src/routes/upnp.routes.mjs';
 import { registerPodcastSubscriptionRoutes } from './src/routes/podcasts-subscriptions.routes.mjs';
 import { registerPodcastRefreshRoutes } from './src/routes/podcasts-refresh.routes.mjs';
 import { registerPodcastEpisodeRoutes } from './src/routes/podcasts-episodes.routes.mjs';
@@ -262,6 +271,22 @@ import { HarmonyHubClient, sendHarmonyIrCommand } from './src/services/harmony.s
 import { createAppleAboutService } from './src/services/apple-about.service.mjs';
 import { createAppleMusicTokenProvider } from './src/lib/apple-music-token.mjs';
 import { ABOUT_STATUS, createAboutResolver } from './src/services/about.service.mjs';
+
+const qobuzConnect = createQobuzConnectSource({
+  metaUrl: String(
+    process.env.QOBUZ_META_URL
+      || `${String(MOODE_BASE_URL || '').replace(/\/+$/, '')}/command/renderer.php?cmd=get_qbzmeta`
+  ).trim(),
+  timeoutMs: process.env.QOBUZ_META_TIMEOUT_MS || qobuzConnectDefaults.metaTimeoutMs,
+  staleMs: process.env.QOBUZ_META_STALE_MS || qobuzConnectDefaults.staleMs,
+});
+
+// UPnP discovery/browsing and the separately gated single-track session layer.
+// The session layer still stops before live playback unless its authenticated
+// mutation routes are explicitly used after an operator preflight approval.
+const upnpControlPoint = new UpnpControlPoint();
+let upnpPlaybackSession = null;
+let upnpPlaybackQueue = null;
 
 const appleMusicTokenProvider = APPLE_MUSIC_KEY_ID && APPLE_MUSIC_TEAM_ID && APPLE_MUSIC_PRIVATE_KEY_PATH
   ? createAppleMusicTokenProvider({
@@ -2330,6 +2355,24 @@ function requireTrackKey(req, res) {
     return false;
   }
   return true;
+}
+
+// A Sonuvi-owned UPnP session uses moOde's MPD internally. Reject the
+// server's other playback/queue mutation surfaces while that ownership is
+// active so a controller cannot silently take the renderer back over.
+function rejectMpdMutationDuringUpnp(req, res, next) {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(req.method || '').toUpperCase())) return next();
+  if (!upnpPlaybackSession?.hasActiveSession?.()) return next();
+  return res.status(409).json({
+    ok: false,
+    unavailable: true,
+    source: 'upnp-sonuvi',
+    error: 'MPD playback and queue controls are unavailable while Sonuvi UPnP owns the renderer',
+  });
+}
+
+for (const prefix of ['/mpd', '/queue', '/config/diagnostics/playback', '/youtube/queue']) {
+  app.use(prefix, rejectMpdMutationDuringUpnp);
 }
 
 function isLikelyYouTubeUrl(raw) {
@@ -6700,8 +6743,21 @@ async function enrichNowPlayingAbout({ artist = '', title = '', album = '', trac
 app.get('/now-playing', async (req, res) => {
   const debug = req.query.debug === '1';
   const dlog = (...args) => { if (debug) log.debug(...args); };
+  let currentQobuzState = null;
 
   function serveCached(reason, errMsg = '') {
+    if (lastNowPlayingOk?.source === 'qobuz-connect' && !currentQobuzState?.active) {
+      return res.status(503).json({
+        error: 'now-playing unavailable',
+        ...(debug ? { reason, err: errMsg } : {}),
+      });
+    }
+    if (lastNowPlayingOk?.source === 'upnp-sonuvi' && !upnpPlaybackSession?.hasActiveSession?.()) {
+      return res.status(503).json({
+        error: 'now-playing unavailable',
+        ...(debug ? { reason, err: errMsg } : {}),
+      });
+    }
     if (lastNowPlayingOk) {
       const ageMs = Date.now() - lastNowPlayingTs;
       return res.status(200).json({
@@ -6999,6 +7055,56 @@ app.get('/now-playing', async (req, res) => {
   }
 
   try {
+    currentQobuzState = await qobuzConnect.get();
+    if (currentQobuzState.active) {
+      // MPD is still useful for the queue position and receiver volume, but
+      // Qobuz owns the visible track while its metadata session is active.
+      let qobuzSong = {};
+      let qobuzStatus = {};
+      try { qobuzSong = await fetchCurrentSong(); } catch {}
+      try { qobuzStatus = await fetchCurrentStatus(); } catch {}
+
+      const payload = buildQobuzNowPlayingPayload({
+        qobuz: currentQobuzState,
+        mpdSong: qobuzSong,
+        mpdStatus: qobuzStatus,
+        publicBaseUrl: PUBLIC_BASE_URL,
+      });
+      payload.aboutStatus = ABOUT_STATUS.NOT_REQUESTED;
+      lastNowPlayingOk = payload;
+      lastNowPlayingTs = Date.now();
+      return res.json(payload);
+    }
+    if (currentQobuzState.suppressMpdHistory) {
+      return res.status(503).json({
+        error: 'qobuz metadata unavailable',
+        ...(debug ? { reason: currentQobuzState.reason || 'transport-error' } : {}),
+      });
+    }
+
+    let upnpNowPlaying = null;
+    if (upnpPlaybackSession) {
+      try { upnpNowPlaying = await upnpPlaybackSession.getNowPlaying(); } catch {}
+    }
+    if (upnpNowPlaying) {
+      const rawArtUrl = String(upnpNowPlaying.artworkSourceUrl || '').trim();
+      if (rawArtUrl) {
+        const cached = await updateArtCacheIfNeeded(rawArtUrl);
+        if (cached) upnpNowPlaying.albumArtUrl = `${PUBLIC_BASE_URL}/art/current.jpg`;
+        // Keep the source-specific artwork identity in the canonical display
+        // field. Clients proxy this through /art/current.jpg?v=..., so using
+        // only the generic current-art URL here can re-key the request to an
+        // older Qobuz/MPD cache entry after an UPnP track transition.
+        upnpNowPlaying.displayArtUrl = rawArtUrl;
+      }
+      delete upnpNowPlaying.artworkSourceUrl;
+      upnpNowPlaying.aplArtUrl = `${PUBLIC_BASE_URL}/art/current.jpg`;
+      upnpNowPlaying.aboutStatus = ABOUT_STATUS.NOT_REQUESTED;
+      lastNowPlayingOk = upnpNowPlaying;
+      lastNowPlayingTs = Date.now();
+      return res.json(upnpNowPlaying);
+    }
+
     // 1) Fetch moOde/MPD snapshots
     let song, statusRaw;
     try {
@@ -8513,6 +8619,10 @@ app.get('/next-up', async (req, res) => {
 // ------------------------------
 
 async function resolveBestArtForCurrentSong(song, statusRaw) {
+  const qobuz = await qobuzConnect.get().catch(() => null);
+  if (qobuz?.active && qobuz.artworkUrl) return qobuz.artworkUrl;
+  if (qobuz?.suppressMpdHistory) return '';
+
   const file = String(song?.file || '').trim();
   if (!file) return '';
 
@@ -8678,6 +8788,7 @@ registerArtRoutes(app, {
   fetchJson,
   fetchCurrentSong,
   fetchCurrentStatus,
+  getQobuzNowPlaying: () => qobuzConnect.get(),
   resolveBestArtForCurrentSong,
   normalizeArtKey,
   updateArtCacheIfNeeded,
@@ -8789,6 +8900,10 @@ registerMobileRoutes(app, {
   mpdFileToLocalPath,
   safeIsFile,
   requireTrackKey,
+  getUpnpControlPoint: () => upnpControlPoint,
+  getUpnpPlaybackSession: () => upnpPlaybackSession,
+  getUpnpPlaybackQueue: () => upnpPlaybackQueue,
+  expectedRendererHost: process.env.UPNP_MOODE_RENDERER_HOST || '10.0.0.254',
   trackKeyConfigured: Boolean(TRACK_KEY),
   serveArtworkForTrack: (res, file) => serveTrackArtwork(res, file, {
     MOODE_BASE_URL,
@@ -8915,6 +9030,56 @@ registerMillsRoutes(app, {
   millsPlaylistName: MILLS_PLAYLIST_NAME,
 });
 
+async function readUpnpMpdSnapshot() {
+  const [statusRaw, songRaw, queueRaw] = await Promise.all([
+    mpdQueryRaw('status'),
+    mpdQueryRaw('currentsong'),
+    mpdQueryRaw('playlistinfo'),
+  ]);
+  if ([statusRaw, songRaw, queueRaw].some((raw) => !raw || mpdHasACK(raw))) {
+    throw new Error('MPD snapshot returned an error');
+  }
+  return {
+    status: parseMpdKeyVals(statusRaw),
+    song: parseMpdFirstBlock(songRaw),
+    queue: parseMpdPlaylistBlocks(queueRaw),
+  };
+}
+
+upnpPlaybackSession = createUpnpPlaybackSessionManager({
+  controlPoint: upnpControlPoint,
+  readMpdSnapshot: readUpnpMpdSnapshot,
+  getQobuzState: () => qobuzConnect.get(),
+  stopMpd: async () => {
+    const raw = await mpdQueryRaw('stop');
+    if (!raw || mpdHasACK(raw)) throw new Error('MPD rejected the explicit UPnP takeover stop');
+    return { ok: true };
+  },
+  expectedRendererHost: process.env.UPNP_MOODE_RENDERER_HOST || '10.0.0.254',
+  log,
+});
+
+upnpPlaybackQueue = createUpnpPlaybackQueueManager({
+  controlPoint: upnpControlPoint,
+  playbackSession: upnpPlaybackSession,
+  log,
+});
+
+registerUpnpRoutes(app, {
+  requireTrackKey,
+  controlPoint: upnpControlPoint,
+  playbackSession: upnpPlaybackSession,
+  playbackQueue: upnpPlaybackQueue,
+});
+
+const UPNP_QUEUE_POLL_MS = Math.max(500, Number(process.env.UPNP_QUEUE_POLL_MS || 1000) || 1000);
+const upnpQueuePoller = setInterval(() => {
+  upnpPlaybackQueue.tick().catch((error) => {
+    log.debug?.('[upnp] queue poll failed:', error?.message || String(error));
+  });
+}, UPNP_QUEUE_POLL_MS);
+upnpQueuePoller.unref?.();
+
 // MPD normally keeps completed playlist items unless `consume` is enabled.
 // Do not enable consume globally: house queues should retain their existing
 // behavior. Instead, consume only paid Seeburg/Multiphone items when MPD
@@ -8998,6 +9163,23 @@ async function listeningHistoryTick() {
   if (listeningHistoryBusy) return;
   listeningHistoryBusy = true;
   try {
+    const qobuz = await qobuzConnect.get();
+    if (qobuz.suppressMpdHistory) {
+      // Qobuz owns the audible session. Clear any MPD event that was left
+      // selected when qbzevent.sh stopped MPD, so it cannot qualify or
+      // scrobble while Qobuz is active (or while its transport is stale).
+      await listeningHistory.observe({ song: { file: '' } });
+      return;
+    }
+
+    if (upnpPlaybackSession?.shouldSuppressMpdHistory?.()) {
+      // upmpdcli feeds the selected network resource through MPD internally.
+      // Do not let the ordinary MPD observer create a second Sonuvi history
+      // event or Last.fm session for the same UPnP-controlled playback.
+      await listeningHistory.observe({ song: { file: '' } });
+      return;
+    }
+
     const [statusRaw, songRaw] = await Promise.all([
       mpdQueryRaw('status'),
       mpdQueryRaw('currentsong'),
@@ -9071,6 +9253,9 @@ const configRouteHandles = registerAllConfigRoutes(app, {
   setAlexaModeState,
   getYoutubeNowPlayingHint: () => youtubeNowPlayingHint,
   getYoutubeQueueHint,
+  getSourceAudio: sourceAudioProbe.get,
+  getQobuzNowPlaying: () => qobuzConnect.get(),
+  controlPoint: upnpControlPoint,
 });
 
 mobileVibeStarter = configRouteHandles?.startMobileVibe || null;

@@ -106,6 +106,7 @@ export function registerArtRoutes(app, deps) {
     fetchJson,
     fetchCurrentSong,
     fetchCurrentStatus,
+    getQobuzNowPlaying,
     resolveBestArtForCurrentSong,
     normalizeArtKey,
     updateArtCacheIfNeeded,
@@ -115,6 +116,12 @@ export function registerArtRoutes(app, deps) {
   } = deps;
 
   const resolveCurrentBestArt = async () => {
+    try {
+      const qobuz = await getQobuzNowPlaying?.();
+      if (qobuz?.active && qobuz.artworkUrl) return qobuz.artworkUrl;
+      if (qobuz?.suppressMpdHistory) return '';
+    } catch {}
+
     const song = await (typeof fetchCurrentSong === 'function'
       ? fetchCurrentSong()
       : fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`));
@@ -233,13 +240,7 @@ export function registerArtRoutes(app, deps) {
         return sendJpeg(res, buf, 640);
       }
 
-      const song = await (typeof fetchCurrentSong === 'function'
-        ? fetchCurrentSong()
-        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`));
-      const statusRaw = await (typeof fetchCurrentStatus === 'function'
-        ? fetchCurrentStatus()
-        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`));
-      const best = await resolveBestArtForCurrentSong(song, statusRaw);
+      const best = await resolveCurrentBestArt();
       if (!best) return res.status(404).end();
 
       return await serveCachedOrResizedSquare(res, best, 640, artPath640ForKey, deps);
@@ -254,13 +255,7 @@ export function registerArtRoutes(app, deps) {
 
   app.get('/art/current_640.jpg', async (req, res) => {
     try {
-      const song = await (typeof fetchCurrentSong === 'function'
-        ? fetchCurrentSong()
-        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`));
-      const statusRaw = await (typeof fetchCurrentStatus === 'function'
-        ? fetchCurrentStatus()
-        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`));
-      const best = await resolveBestArtForCurrentSong(song, statusRaw);
+      const best = await resolveCurrentBestArt();
       if (!best) return res.status(404).end();
 
       const key = normalizeArtKey(best);
@@ -316,13 +311,7 @@ export function registerArtRoutes(app, deps) {
         return await serveCachedOrBlurredBg(res, key, 640, artPathBgForKey, deps);
       }
 
-      const song = await (typeof fetchCurrentSong === 'function'
-        ? fetchCurrentSong()
-        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=get_currentsong`));
-      const statusRaw = await (typeof fetchCurrentStatus === 'function'
-        ? fetchCurrentStatus()
-        : fetchJson(`${MOODE_BASE_URL}/command/?cmd=status`));
-      const best = await resolveBestArtForCurrentSong(song, statusRaw);
+      const best = await resolveCurrentBestArt();
       if (!best) return res.status(404).end();
 
       return await serveCachedOrBlurredBg(res, best, 640, artPathBgForKey, deps);

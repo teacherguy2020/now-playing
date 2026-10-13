@@ -55,6 +55,8 @@ import {
   normalizeMobilePushToken,
 } from '../lib/mobile-push-store.mjs';
 import { radioStationNameForFile } from '../lib/radio-display.mjs';
+import { sanitizeMobileNowPlaying } from '../lib/mobile-upnp-sanitize.mjs';
+import { registerMobileUpnpRoutes } from './mobile-upnp.routes.mjs';
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const REFRESH_TTL_MS = 365 * 24 * 60 * 60 * 1000;
@@ -320,6 +322,16 @@ export function registerMobileRoutes(app, deps = {}) {
     ? deps.notifyNativePlayback
     : null;
   const requireTrackKey = typeof deps.requireTrackKey === 'function' ? deps.requireTrackKey : null;
+  const getUpnpControlPoint = typeof deps.getUpnpControlPoint === 'function'
+    ? deps.getUpnpControlPoint
+    : () => deps.upnpControlPoint || null;
+  const getUpnpPlaybackSession = typeof deps.getUpnpPlaybackSession === 'function'
+    ? deps.getUpnpPlaybackSession
+    : () => deps.upnpPlaybackSession || null;
+  const getUpnpPlaybackQueue = typeof deps.getUpnpPlaybackQueue === 'function'
+    ? deps.getUpnpPlaybackQueue
+    : () => deps.upnpPlaybackQueue || null;
+  const expectedRendererHost = text(deps.expectedRendererHost) || '10.0.0.254';
   // The browser pairing widget authenticates with the existing Track Key.
   // An already-paired native device has an equivalent trusted credential in
   // its bearer session, so it can host the same QR/approval flow without
@@ -1275,6 +1287,7 @@ export function registerMobileRoutes(app, deps = {}) {
       isRadio,
       isAirplay: Boolean(payload.isAirplay),
       isUpnp: Boolean(payload.isUpnp),
+      ...sanitizeMobileNowPlaying(payload),
       isYoutube: Boolean(payload.isYoutube) || Boolean(currentItem?.isYoutube),
       personnel,
       about,
@@ -1823,6 +1836,15 @@ export function registerMobileRoutes(app, deps = {}) {
       return errorResponse(res, 500, 'mobile API request failed');
     }
   };
+
+  registerMobileUpnpRoutes(app, {
+    requireEnabled,
+    requireSession,
+    getControlPoint: getUpnpControlPoint,
+    getPlaybackSession: getUpnpPlaybackSession,
+    getPlaybackQueue: getUpnpPlaybackQueue,
+    expectedRendererHost,
+  });
 
   app.get('/v1/mobile/animated-art', asyncRoute(async (req, res) => {
     if (!requireSession(req, res)) return;
@@ -3288,19 +3310,36 @@ export function registerMobileRoutes(app, deps = {}) {
 
     const rows = Array.isArray(result.json?.rows)
       ? result.json.rows
-        .map((row) => ({
-          section: text(row?.section) || 'General',
-          key: text(row?.key),
-          value: text(row?.value) || '—',
-        }))
+        .map((row) => {
+          const safe = {
+            section: text(row?.section) || 'General',
+            key: text(row?.key),
+            value: text(row?.value) || '—',
+          };
+          for (const field of ['provenance', 'valueType']) {
+            const value = text(row?.[field]);
+            if (value) safe[field] = value;
+          }
+          for (const field of ['live', 'measured', 'configured']) {
+            if (typeof row?.[field] === 'boolean') safe[field] = row[field];
+          }
+          return safe;
+        })
         .filter((row) => row.key)
       : [];
 
-    return res.json({
+    const payload = {
       ok: true,
       rows,
       fetchedAt: text(result.json?.fetchedAt) || null,
-    });
+    };
+    if (result.json?.audio && typeof result.json.audio === 'object' && !Array.isArray(result.json.audio)) {
+      payload.audio = result.json.audio;
+    }
+    if (result.json?.playback && typeof result.json.playback === 'object' && !Array.isArray(result.json.playback)) {
+      payload.playback = result.json.playback;
+    }
+    return res.json(payload);
   }));
 
   app.post('/v1/mobile/now-playing/favorite', asyncRoute(async (req, res) => {

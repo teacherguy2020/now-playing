@@ -19,6 +19,7 @@ import { registerConfigControllerProfileRoutes } from './config.controller-profi
 import { registerConfigEndlessVibeRoutes } from './config.endless-vibe.routes.mjs';
 import { registerConfigBrowseRoutes } from './config.browse.routes.mjs';
 import { registerConfigMoodeAudioInfoRoutes } from './config.moode-audio-info.routes.mjs';
+import { registerConfigQobuzAccountRoutes } from './config.qobuz-account.routes.mjs';
 import { registerEchoLinkRoutes } from './echo-link.routes.mjs';
 
 export function registerAllConfigRoutes(app, deps) {
@@ -62,6 +63,8 @@ export function registerAllConfigRoutes(app, deps) {
     setAlexaModeState: deps.setAlexaModeState,
     getYoutubeNowPlayingHint: deps.getYoutubeNowPlayingHint,
     getYoutubeQueueHint: deps.getYoutubeQueueHint,
+    getSourceAudio: deps.getSourceAudio,
+    getQobuzNowPlaying: deps.getQobuzNowPlaying,
   });
 
   registerConfigRatingsStickerRoutes(app, {
@@ -129,7 +132,16 @@ export function registerAllConfigRoutes(app, deps) {
 
   registerConfigMoodeAudioInfoRoutes(app, {
     requireTrackKey: deps.requireTrackKey,
+    getQobuzNowPlaying: deps.getQobuzNowPlaying,
+    probeAlsaHardware: deps.probeAlsaHardware,
   });
+
+  if (deps.controlPoint) {
+    registerConfigQobuzAccountRoutes(app, {
+      requireTrackKey: deps.requireTrackKey,
+      controlPoint: deps.controlPoint,
+    });
+  }
 
   // compatibility no-op
   registerConfigRoutes(app, {

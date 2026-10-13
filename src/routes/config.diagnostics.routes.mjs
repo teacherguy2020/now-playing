@@ -77,6 +77,25 @@ function reconcileShuffleUndo(currentFiles = []) {
   return true;
 }
 
+export async function enrichQueueSourceAudio(items, getSourceAudio) {
+  const rows = Array.isArray(items) ? items : [];
+  if (typeof getSourceAudio !== 'function') return rows;
+  return Promise.all(rows.map(async (item) => {
+    const file = String(item?.file || '').trim();
+    if (!item || item.isStream || item.sourceAudio || !file) return item;
+    try {
+      const sourceAudio = await getSourceAudio(file);
+      if (!sourceAudio
+        || typeof sourceAudio !== 'object'
+        || Array.isArray(sourceAudio)
+        || Object.keys(sourceAudio).length === 0) return item;
+      return { ...item, sourceAudio };
+    } catch {
+      return item;
+    }
+  }));
+}
+
 function cleanIheartQueueMeta(artistRaw, titleRaw) {
   const artist = String(artistRaw || '').trim();
   const title = String(titleRaw || '').trim();
@@ -240,7 +259,18 @@ function splitArtistDashTitle(line) {
 }
 
 export function registerConfigDiagnosticsRoutes(app, deps) {
-  const { requireTrackKey, getRatingForFile, setRatingForFile, getAlexaWasPlaying, clearAlexaWasPlayingState, setAlexaModeState, getYoutubeNowPlayingHint, getYoutubeQueueHint } = deps;
+  const {
+    requireTrackKey,
+    getRatingForFile,
+    setRatingForFile,
+    getAlexaWasPlaying,
+    clearAlexaWasPlayingState,
+    setAlexaModeState,
+    getYoutubeNowPlayingHint,
+    getYoutubeQueueHint,
+    getSourceAudio,
+    getQobuzNowPlaying,
+  } = deps;
   const configPath = process.env.NOW_PLAYING_CONFIG_PATH || `${process.cwd()}/config/now-playing.config.json`;
 
   function pos0FromAlexaToken(tokenRaw) {
@@ -793,6 +823,24 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
       const action = String(req.body?.action || '').trim().toLowerCase();
       const mpdHost = String(MPD_HOST || 'moode.local');
       const map = { play: 'play', pause: 'pause', toggle: 'toggle', next: 'next', prev: 'prev', previous: 'prev', stop: 'stop' };
+      const qobuzUnavailableActions = new Set([
+        'play', 'pause', 'toggle', 'toggle_play_pause', 'next', 'prev', 'previous', 'stop',
+        'seek', 'seekcur', 'seekpct', 'shuffle', 'shufflequeue', 'undoshuffle',
+        'repeat', 'consume', 'crossfade',
+      ]);
+
+      if (qobuzUnavailableActions.has(action) && typeof getQobuzNowPlaying === 'function') {
+        let qobuz = null;
+        try { qobuz = await getQobuzNowPlaying(); } catch {}
+        if (qobuz?.active) {
+          return res.status(409).json({
+            ok: false,
+            unavailable: true,
+            source: 'qobuz-connect',
+            error: 'MPD playback controls are unavailable while Qobuz Connect owns playback',
+          });
+        }
+      }
 
       if (action === 'shuffle' || action === 'shufflequeue') {
         const { stdout: beforeStatus } = await execFileP('mpc', ['-h', mpdHost, 'status']);
@@ -1662,18 +1710,19 @@ export function registerConfigDiagnosticsRoutes(app, deps) {
           thumbUrl,
         });
       }
-      const queueFiles = items.map((item) => String(item?.file || '').trim());
+      const queueItems = await enrichQueueSourceAudio(items, getSourceAudio);
+      const queueFiles = queueItems.map((item) => String(item?.file || '').trim());
       reconcileShuffleUndo(queueFiles);
       const undoAvailable = !!liveQueueShuffleUndo
         && queueFingerprint(queueFiles) === queueFingerprint(liveQueueShuffleUndo.shuffledFiles);
       // Present the active track as the logical first queue item. MPD keeps
       // its real positions unchanged so remove/move actions remain safe; the
       // client still receives each item's original `position` for mutations.
-      const currentIndex = items.findIndex((item) => item?.isHead === true);
+      const currentIndex = queueItems.findIndex((item) => item?.isHead === true);
       const displayItems = currentIndex > 0
-        ? [items[currentIndex], ...items.slice(currentIndex + 1), ...items.slice(0, currentIndex)]
-        : items;
-      return res.json({ ok: true, count: items.length, headPos, randomOn, repeatOn, consumeOn, crossfadeSec, playbackState, ratingsEnabled, undoAvailable, items: displayItems });
+        ? [queueItems[currentIndex], ...queueItems.slice(currentIndex + 1), ...queueItems.slice(0, currentIndex)]
+        : queueItems;
+      return res.json({ ok: true, count: queueItems.length, headPos, randomOn, repeatOn, consumeOn, crossfadeSec, playbackState, ratingsEnabled, undoAvailable, items: displayItems });
     } catch (e) {
       return res.status(500).json({ ok: false, error: e?.message || String(e) });
     }
