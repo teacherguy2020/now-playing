@@ -1,0 +1,116 @@
+--- /usr/share/upmpdcli/cdplugins/qobuz/qobuz-app.py.orig
++++ /usr/share/upmpdcli/cdplugins/qobuz/qobuz-app.py
+@@ -157,9 +157,25 @@
+     return {"appid": appid, "token": token}
+ 
+ 
++def oauth_response(success):
++    if success:
++        heading = "Upmpdcli qobuz plugin initialisation successful"
++        detail = "You can close this tab and return to your terminal."
++    else:
++        heading = "Upmpdcli qobuz plugin initialisation failed"
++        detail = "No Qobuz session was saved. Review the service log without sharing authorization data."
++    return {"method": "Respond",
++            "media_url": "<html><body style='font-family:system-ui;text-align:center'>"
++            f"<h3>{heading}</h3>"
++            f"<p>{detail}</p></body></html>"
++            }
++
++
+ @dispatcher.record("trackuri")
+ def trackuri(a):
+-    msgproc.log(f"trackuri: [{a}]")
++    # Do not log the full request: OAuth callbacks carry the authorization
++    # code in the query field.
++    msgproc.log(f"trackuri: path={a.get('path', '')}")
+     maybelogin()
+ 
+     if "path" not in a:
+@@ -170,25 +186,26 @@
+     if path.split("/")[2] == "oauth":
+         msgproc.log("Qobuz: trackuri: OAuth initialisation")
+         if "query" not in a:
+-            msgproc.log("Oauth init: no query values ??")
+-            return {}
+-        #msgproc.log(f"OAuth: got query: {a['query']}")
+-        querymap = json.loads(a["query"])
+-        auth_code = None
++            msgproc.log("Qobuz OAuth callback missing a query")
++            return oauth_response(False)
++
+         try:
+-            auth_code = querymap["code"]
+-        except:
+-            auth_code = querymap["code_autorisation"]
+-        msgproc.log(f"OAuth: got auth_code: {auth_code}")
+-        # Use the code  and
+-        session.init_oauth(auth_code)
++            querymap = json.loads(a["query"])
++            auth_code = querymap.get("code") or querymap.get("code_autorisation")
++        except (TypeError, ValueError):
++            auth_code = None
+ 
+-        # And return page data to display to the user.
+-        return {"method": "Respond",
+-                "media_url": "<html><body style='font-family:system-ui;text-align:center'>"
+-                "<h3>Upmpdcli qobuz plugin initialisation successful</h3>"
+-                "<p>You can close this tab and return to your terminal.</p></body></html>"
+-                }
++        if not auth_code:
++            msgproc.log("Qobuz OAuth callback did not contain an authorization code")
++            return oauth_response(False)
++
++        # Keep the authorization code out of logs and report the real result.
++        try:
++            initialized = bool(session.init_oauth(auth_code))
++        except Exception:
++            msgproc.log("Qobuz OAuth initialization failed")
++            initialized = False
++        return oauth_response(initialized)
+     
+ 
+     trackid = trackid_from_urlpath(pathprefix, a)
+--- /usr/share/upmpdcli/cdplugins/qobuz/session.py.orig
++++ /usr/share/upmpdcli/cdplugins/qobuz/session.py
+@@ -33,15 +33,23 @@
+         self.config = ConfSimple(os.path.join(getcachedir("qobuz"), "config"), readonly = False)
+ 
+     def init_oauth(self, auth_code):
+-        uplog(f"session: init_oauth: auth_code {auth_code}")
++        uplog("session: init_oauth: authorization code received")
+         if not self.api:
+             self.api = raw.RawApi()
+         usr_info = self.api.login_with_oauth_code(auth_code)
+-        if usr_info:
+-            oauth_user_id = usr_info.get("user", {}).get("id")
+-            oauth_user_auth_token = usr_info.get("user_auth_token")
+-            self.config.set("user_auth_token", oauth_user_auth_token)
+-            self.config.set("user_id", str(oauth_user_id))
++        if not isinstance(usr_info, dict):
++            return False
++
++        user_info = usr_info.get("user") or {}
++        oauth_user_id = user_info.get("id") if isinstance(user_info, dict) else None
++        oauth_user_auth_token = usr_info.get("user_auth_token")
++        if oauth_user_id is None or not oauth_user_auth_token:
++            uplog("Qobuz OAuth exchange returned incomplete account data")
++            return False
++
++        self.config.set("user_auth_token", oauth_user_auth_token)
++        self.config.set("user_id", str(oauth_user_id))
++        return True
+     
+ 
+     def login(self):
+--- /usr/share/upmpdcli/cdplugins/qobuz/api/raw.py.orig
++++ /usr/share/upmpdcli/cdplugins/qobuz/api/raw.py
+@@ -220,7 +220,7 @@
+         self.user_auth_token = token
+ 
+         # Step 2: GET /user/login with X-User-Auth-Token to fetch full profile
+-        debug(f"login_with_oauth_code: got user token {self.user_auth_token}")
++        debug("login_with_oauth_code: user token received")
+         self.session.headers.update(
+             {
+                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0",

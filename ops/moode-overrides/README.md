@@ -14,6 +14,9 @@ These files are live-system overrides on `moode@10.0.0.254` and are mirrored her
 - `usr/local/bin/moode-worker-watchdog.sh`
 - `etc/systemd/system/nowplaying-peppy-targets.service`
 - `usr/local/bin/nowplaying-peppy-targets.sh`
+- `etc/systemd/system/upmpdcli.service.d/10-qobuz-session-permissions.conf`
+- `upmpdcli-qobuz-oauth.patch`
+- `test-upmpdcli-qobuz-oauth-hardening.py`
 
 ## Why
 
@@ -23,6 +26,37 @@ These files are live-system overrides on `moode@10.0.0.254` and are mirrored her
 
 The broader upgrade failure chain and recovery order are documented in
 [`docs/runbooks/25-moode-upgrade-failure-chain.md`](../../docs/runbooks/25-moode-upgrade-failure-chain.md).
+
+## Qobuz plugin security override
+
+The installed moOde `upmpdcli-qobuz 1.9.17-1moode1` package contains a small
+local security patch. The tracked
+[`upmpdcli-qobuz-oauth.patch`](./upmpdcli-qobuz-oauth.patch) removes raw OAuth
+request/code/token values from plugin logs, requires a real token and user ID
+before saving the session, and makes the callback page report the actual
+success/failure result. It does not change Qobuz endpoints, request
+parameters, or token exchange behavior.
+
+The systemd drop-in sets `UMask=0077`, and the Qobuz cache directory must be
+mode `0700`. The regression harness verifies source syntax, log redaction,
+success/failure responses, incomplete-exchange handling, and live cache/umask
+metadata without reading cache contents or contacting Qobuz.
+
+After a moOde/upmpdcli package upgrade, do not blindly reapply the patch:
+record the new package version and hashes, back up the exact three source
+files, inspect the diff context, apply only if it matches, then run:
+
+```bash
+sudo python3 ops/moode-overrides/test-upmpdcli-qobuz-oauth-hardening.py \
+  --source-root /usr/share/upmpdcli/cdplugins/qobuz \
+  --cache-dir /var/cache/upmpdcli/qobuz \
+  --check-live-permissions
+```
+
+If the patch does not apply cleanly, stop and review the new package source.
+Never print the Qobuz cache or paste authorization material into a terminal
+log or chat. Keep Qobuz authorization/policy review separate from this local
+security override.
 
 ## Current behavior
 

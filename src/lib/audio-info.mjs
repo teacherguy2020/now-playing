@@ -359,3 +359,4 @@ export function buildQobuzAudioInfo({ moodeRows = [], qobuz = {}, alsa = null } 
     },
   };
 }
+

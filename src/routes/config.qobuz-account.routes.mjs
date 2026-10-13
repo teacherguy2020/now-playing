@@ -133,3 +133,4 @@ export function registerConfigQobuzAccountRoutes(app, {
 
   return { paths: ['/config/qobuz/account/status'] };
 }
+
