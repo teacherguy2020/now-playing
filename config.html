@@ -292,6 +292,19 @@
                   </div>
                 </div>
 
+                <div class="cfgCard gateCard" id="qobuzAccountSection">
+                  <h3>Qobuz Account</h3>
+                  <div class="cfgHint">Connect your Qobuz account to browse albums, favorites, and playlists through Sonuvi Music Sources.</div>
+                  <div class="cfgHint" id="qobuzAccountStatus" role="status" aria-live="polite" style="margin-top:8px;">Status: checking…</div>
+                  <div class="cfgHint" id="qobuzAccountReason" style="margin-top:6px;"></div>
+                  <div class="cfgHint" id="qobuzAccountMediaServer" style="margin-top:6px;"></div>
+                  <div class="cfgActions" style="margin-top:8px;">
+                    <button class="btn btnPrimary" id="qobuzAccountConnectBtn" type="button" disabled title="Qobuz account authorization is not available yet.">Connect Qobuz</button>
+                    <button class="btn" id="qobuzAccountRefreshBtn" type="button">Refresh status</button>
+                  </div>
+                  <div class="cfgHint" style="margin-top:8px;">Account linking is intentionally unavailable until Sonuvi has an approved authorization mechanism. Do not enter a Qobuz password or token here.</div>
+                </div>
+
                 <div class="cfgCard gateCard">
                   <h3>Radio Artwork</h3>
                   <div class="cfgField"><label><input id="featureRadio" type="checkbox" /> Enabled</label></div>
@@ -1018,6 +1031,56 @@ async function refreshSonuviLastfmStatus(){
   } catch (e) { if (el) el.textContent = `Status: ${String(e?.message || e)}`; }
 }
 
+async function refreshQobuzAccountStatus(){
+  const statusEl = document.getElementById('qobuzAccountStatus');
+  const reasonEl = document.getElementById('qobuzAccountReason');
+  const mediaServerEl = document.getElementById('qobuzAccountMediaServer');
+  const connectEl = document.getElementById('qobuzAccountConnectBtn');
+  if (statusEl) statusEl.textContent = 'Status: checking…';
+  if (reasonEl) reasonEl.textContent = '';
+  if (mediaServerEl) mediaServerEl.textContent = '';
+  if (connectEl) {
+    connectEl.disabled = true;
+    connectEl.title = 'Qobuz account authorization is not available yet.';
+  }
+  if (!getTrackKey()) {
+    if (statusEl) statusEl.textContent = 'Status: Track Key required';
+    if (reasonEl) reasonEl.textContent = 'Enter or load the Track Key above, then refresh this status.';
+    return;
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const r = await fetch(`${API_BASE}/config/qobuz/account/status`, {
+      headers: { 'x-track-key': getTrackKey() },
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error('status endpoint unavailable');
+    const labels = {
+      not_connected: 'Not connected',
+      connection_unavailable: 'Connection unavailable',
+      connected: 'Connected',
+      session_expired: 'Session expired',
+      configuration_error: 'Configuration error',
+    };
+    const state = String(j.state || '').trim().toLowerCase();
+    if (statusEl) statusEl.textContent = `Status: ${labels[state] || 'Not verified'}`;
+    if (reasonEl) reasonEl.textContent = String(j.reason || 'Qobuz account status is not verified.');
+    const server = j.mediaServer || {};
+    if (mediaServerEl) mediaServerEl.textContent = server.discovered
+      ? `MediaServer: ${String(server.friendlyName || 'Qobuz MediaServer')} · ContentDirectory advertised`
+      : 'MediaServer: not discovered';
+  } catch {
+    if (statusEl) statusEl.textContent = 'Status: unavailable';
+    if (reasonEl) reasonEl.textContent = 'Sonuvi could not verify Qobuz account status right now.';
+    if (mediaServerEl) mediaServerEl.textContent = '';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function saveSonuviLastfmCredentials(){
   const key = getTrackKey();
   const apiKey = String(document.getElementById('sonuviLastfmApiKey')?.value || '');
@@ -1206,6 +1269,7 @@ async function loadCfg(){
   document.getElementById('idleMessageLine').value = String(c.display?.idleMessageLine || full.display?.idleMessageLine || 'The record room is quiet');
   syncRatingsCardVisibility();
   refreshSonuviLastfmStatus().catch(() => {});
+  refreshQobuzAccountStatus().catch(() => {});
   const lastfmKey = String(full.lastfm?.apiKey || localStorage.getItem('nowplaying.secret.lastfmApiKey') || '');
   const lastfmUsername = String(full.lastfm?.username || '');
   document.getElementById('featureLastfm').checked = !!(c.features?.lastfm ?? lastfmKey);
@@ -2127,6 +2191,7 @@ document.getElementById('sonuviLastfmSaveBtn')?.addEventListener('click', () => 
 document.getElementById('sonuviLastfmAuthorizeBtn')?.addEventListener('click', () => startSonuviLastfmAuthorization().catch(e => log(String(e))));
 document.getElementById('sonuviLastfmCompleteBtn')?.addEventListener('click', () => completeSonuviLastfmAuthorization().catch(e => log(String(e))));
 document.getElementById('sonuviLastfmRefreshBtn')?.addEventListener('click', () => refreshSonuviLastfmStatus().catch(e => log(String(e))));
+document.getElementById('qobuzAccountRefreshBtn')?.addEventListener('click', () => refreshQobuzAccountStatus().catch(() => {}));
 document.getElementById('pathMoodeUsbMount')?.addEventListener('input', derivePathsFromMoode);
 document.getElementById('pathMoodeUsbMount')?.addEventListener('change', derivePathsFromMoode);
 // derivePathsBtn removed; auto-derive runs on input/change.

@@ -722,6 +722,7 @@
     <li class="row" data-page="kiosk-genres.html"><span class="ico ico-genre" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10V4h6l12 12l-6 6L3 10zm4-2.5A1.5 1.5 0 1 0 7 10.5A1.5 1.5 0 0 0 7 7.5z"/></svg></span><span class="lbl">Genres</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-podcasts.html"><span class="ico ico-podcast"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11.5a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 0 0 0-3.4zm0-4.7a6.4 6.4 0 0 0-6.4 6.4h2.2a4.2 4.2 0 1 1 8.4 0h2.2A6.4 6.4 0 0 0 12 6.8zm0-3.6A10 10 0 0 0 2 13.2h2.2a7.8 7.8 0 0 1 15.6 0H22A10 10 0 0 0 12 3.2zM11 17h2v3h-2z"/></svg></span><span class="lbl">Podcasts</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-radio.html"><span class="ico ico-radio" aria-hidden="true"></span><span class="lbl">Radio</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-upnp.html"><span class="ico" aria-hidden="true">⇄</span><span class="lbl">Music Sources</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-queue-wizard.html"><span class="ico ico-queuewiz" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19l10.6-10.6l1.4 1.4L6.4 20.4L5 19zm9.8-13.2l1.1-2.8l1.1 2.8l2.8 1.1l-2.8 1.1l-1.1 2.8l-1.1-2.8L12 6.9l2.8-1.1zM20 12l.8-2l.8 2l2 .8l-2 .8l-.8 2l-.8-2l-2-.8l2-.8zM10 3l.6-1.5L11.2 3l1.5.6l-1.5.6L10.6 5.8L10 4.2L8.5 3.6L10 3z"/></svg></span><span class="lbl">Queue Wizard</span><span class="chev">›</span></li>
     <li class="rowWrap" data-row-wrap="live-queue">
       <div class="row" data-page="kiosk-queue.html"><span class="ico">☰</span><span class="lbl">Live Queue<span class="tabletQueuePosAfterLive" id="tabletQueuePos">Track — of —</span></span><span class="chev">›</span></div>
@@ -1300,7 +1301,9 @@
     r.style.setProperty("--np-blur-overlay", isLight ? "linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,.42))" : "linear-gradient(180deg, rgba(7,12,20,.36), rgba(7,12,20,.52))");
     r.style.setProperty("--np-blur-overlay-strong", isLight ? "linear-gradient(180deg, rgba(255,255,255,.62), rgba(255,255,255,.78))" : "linear-gradient(180deg, rgba(7,12,20,.74), rgba(7,12,20,.86))");
   }
-  const base = "".concat(location.protocol, "//").concat(location.hostname || "sonuvi.local", ":3101");
+  const base = !location.port || location.port === "80" || location.port === "443"
+    ? location.origin
+    : "".concat(location.protocol, "//").concat(location.hostname || "sonuvi.local", ":3101");
   let runtimeTrackKey = "";
   let runtimeMoodeHost = "moode.local";
   var recentLastfmPrefCache = { ts: 0, enabled: false, mode: "toptracks" };
@@ -1485,6 +1488,7 @@
   let npCurrentIsRadio = false;
   let npCurrentRadioFile = "";
   let npCurrentRadioFavorite = false;
+  let npQobuzActive = false;
   let npMotionReqToken = 0;
   let npRadioGridCache = { ts: 0, html: "" };
   let npRadioFavCache = { ts: 0, set: /* @__PURE__ */ new Set() };
@@ -1640,6 +1644,9 @@
       const album = decodeHtmlEntities(String((j == null ? void 0 : j.album) || "")).trim();
       const file = String((j == null ? void 0 : j.file) || "").trim();
       const st = String((j == null ? void 0 : j.state) || "").toLowerCase();
+      npQobuzActive = String((j == null ? void 0 : j.source) || "").toLowerCase() === "qobuz-connect"
+        || (j == null ? void 0 : j.isQobuz) === true
+        || (j == null ? void 0 : j.qobuzConnect) === true;
       const hasTrack = !!(title || artist || file);
       let dispArtist = decodeHtmlEntities(String((j == null ? void 0 : j.displayArtist) || artist || "")).trim();
       let dispTitle = decodeHtmlEntities(String((j == null ? void 0 : j.displayTitle) || title || "")).trim();
@@ -1687,7 +1694,14 @@
       npAlbumUrl = hasTrack ? appleMusicUrl || fallbackUrl : "";
       const npSeekInlineEl2 = document.getElementById("npSeekInline");
       const isAirplay = !!(j == null ? void 0 : j.isAirplay);
-      const isUpnp = !!(j == null ? void 0 : j.isUpnp);
+      const isUpnp = !!(j == null ? void 0 : j.isUpnp)
+        || String((j == null ? void 0 : j.source) || '').trim().toLowerCase() === 'upnp-sonuvi'
+        || String((j == null ? void 0 : j.transport) || '').trim().toLowerCase() === 'upnp' && String((j == null ? void 0 : j.controller) || '').trim().toLowerCase() === 'sonuvi';
+      // The shared UPnP bridge also consults the logical queue when a
+      // transient /now-playing response is unavailable. Reuse its body
+      // marker so this page's own refresh cannot re-enable unsupported
+      // controls between bridge polls.
+      const upnpControlsActive = isUpnp || document.body.classList.contains('upnp-sonuvi-active');
       const isStream = !!(j == null ? void 0 : j.isStream);
       npCurrentAlbum = String(album || "").trim();
       npCurrentArtist = String(artist || "").trim();
@@ -1859,10 +1873,16 @@
       document.querySelectorAll("#npCtrls .ctlPause").forEach((b) => b.classList.toggle("is-active", !isPlaying));
       document.querySelectorAll("#npCtrls .ctl[data-np-act]").forEach((b) => {
         const act = String(b.getAttribute("data-np-act") || "").toLowerCase();
-        const allow = !isAlexaMode || ["shuffle", "toggle", "play", "pause", "next"].includes(act);
+        const upnpUnsupported = ["shuffle", "repeat", "seek"].includes(act);
+        const allow = !npQobuzActive
+          && (!isAlexaMode || ["shuffle", "toggle", "play", "pause", "next"].includes(act))
+          && (!upnpControlsActive || !upnpUnsupported);
         b.disabled = !allow;
         b.style.opacity = allow ? "" : "0.35";
         b.style.pointerEvents = allow ? "" : "none";
+        if (npQobuzActive) b.title = "Unavailable while Qobuz Connect owns playback";
+        else if (upnpControlsActive && upnpUnsupported) b.title = "Not supported for the Sonuvi UPnP queue";
+        else if (b.title === "Unavailable while Qobuz Connect owns playback") b.title = b.getAttribute("aria-label") || "";
       });
     } catch {
     }
@@ -2942,6 +2962,7 @@
     }
   }
   async function sendPlaybackDirect(action) {
+    if (npQobuzActive) return false;
     const a = String(action || "").toLowerCase();
     const map = { prev: "previous", previous: "previous", next: "next", play: "play", pause: "pause", toggle: "toggle_play_pause", stop: "stop" };
     const cmd = map[a];
@@ -3379,6 +3400,7 @@
         "kiosk-genres.html": "controller-genres.html",
         "kiosk-podcasts.html": "controller-podcasts.html",
         "kiosk-radio.html": "controller-radio.html",
+        "kiosk-upnp.html": "controller-upnp.html",
         "kiosk-queue-wizard.html": "controller-queue-wizard.html",
         "kiosk-queue.html": "controller-queue.html",
         "kiosk-settings.html": "controller-tablet-settings.html",
@@ -4159,6 +4181,7 @@
         if (IS_KIOSK_1280) {
           return;
         }
+        if (npQobuzActive) return;
         try {
           await sendPlayback("toggle");
         } catch {
@@ -5420,6 +5443,7 @@
         "kiosk-genres.html": "controller-genres.html",
         "kiosk-podcasts.html": "controller-podcasts.html",
         "kiosk-radio.html": "controller-radio.html",
+        "kiosk-upnp.html": "controller-upnp.html",
         "kiosk-queue.html": "controller-queue.html"
       };
       const target = map[String(page || "").trim()];
@@ -5617,6 +5641,7 @@
 })();
 
   </script>
+    <script src="/scripts/upnp-now-playing.js?v=20261013-upnp-controller4"></script>
   <script src="/scripts/web-stream.js?v=20261001-alexa-state-recovery1"></script>
   <script src="/scripts/echo-link-volume.js?v=20260921-echo-link9"></script>
 </body>

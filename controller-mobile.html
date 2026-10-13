@@ -436,6 +436,7 @@
     <li class="row" data-page="kiosk-genres.html"><span class="ico ico-genre" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10V4h6l12 12l-6 6L3 10zm4-2.5A1.5 1.5 0 1 0 7 10.5A1.5 1.5 0 0 0 7 7.5z"/></svg></span><span class="lbl">Genres</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-podcasts.html"><span class="ico ico-podcast"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11.5a1.7 1.7 0 1 0 0 3.4a1.7 1.7 0 0 0 0-3.4zm0-4.7a6.4 6.4 0 0 0-6.4 6.4h2.2a4.2 4.2 0 1 1 8.4 0h2.2A6.4 6.4 0 0 0 12 6.8zm0-3.6A10 10 0 0 0 2 13.2h2.2a7.8 7.8 0 0 1 15.6 0H22A10 10 0 0 0 12 3.2zM11 17h2v3h-2z"/></svg></span><span class="lbl">Podcasts</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-radio.html"><span class="ico ico-radio" aria-hidden="true"></span><span class="lbl">Radio</span><span class="chev">›</span></li>
+    <li class="row" data-page="kiosk-upnp.html"><span class="ico" aria-hidden="true">⇄</span><span class="lbl">Music Sources</span><span class="chev">›</span></li>
     <li class="row settingsRow" data-page="controller-mobile-settings.html"><span class="ico" aria-hidden="true">⚙︎</span><span class="lbl">Settings</span><span class="chev">›</span></li>
     <li class="row" data-page="kiosk-queue-wizard.html"><span class="ico ico-queuewiz" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19l10.6-10.6l1.4 1.4L6.4 20.4L5 19zm9.8-13.2l1.1-2.8l1.1 2.8l2.8 1.1l-2.8 1.1l-1.1 2.8l-1.1-2.8L12 6.9l2.8-1.1zM20 12l.8-2l.8 2l2 .8l-2 .8l-.8 2l-.8-2l-2-.8l2-.8zM10 3l.6-1.5L11.2 3l1.5.6l-1.5.6L10.6 5.8L10 4.2L8.5 3.6L10 3z"/></svg></span><span class="lbl">Queue Wizard</span><span class="chev">›</span></li>
     <li class="rowWrap" data-row-wrap="live-queue">
@@ -761,7 +762,9 @@
       r.style.setProperty('--quick-line', cSecondary || t.line || '#2a3a58');
       r.style.setProperty('--quick-bg-menu', t.quickBgMenu || 'rgba(10,16,28,.94)');
     }
-    const base=`${location.protocol}//${location.hostname||'sonuvi.local'}:3101`;
+    const base=(!location.port || location.port==='80' || location.port==='443')
+      ? location.origin
+      : `${location.protocol}//${location.hostname||'sonuvi.local'}:3101`;
     let runtimeTrackKey='';
     let runtimeMoodeHost='moode.local';
     let quickIndex=[];
@@ -865,6 +868,7 @@
     let npCurrentFile = '';
     let npCurrentArtist = '';
     let npPersonnelText = '';
+    let npQobuzActive = false;
     const setArtFlip = (flipped = false)=>{
       const wrap = document.getElementById('npArtWrap');
       if (!wrap) return;
@@ -945,6 +949,9 @@
         const album = decodeHtmlEntities(String(j?.album || '')).trim();
         const file = String(j?.file || '').trim();
         const st = String(j?.state || '').toLowerCase();
+        npQobuzActive = String(j?.source || '').toLowerCase() === 'qobuz-connect'
+          || j?.isQobuz === true
+          || j?.qobuzConnect === true;
         const hasTrack = !!(title || artist || file);
 
         let dispArtist = decodeHtmlEntities(String(j?.displayArtist || artist || '')).trim();
@@ -998,7 +1005,15 @@
         const isPodcast = !!j?.isPodcast || genreLc.includes('podcast') || /\/podcasts?\//.test(fileLc);
         const isRadio = !!j?.isRadio || String(j?.service || '').toLowerCase().includes('radio') || !!j?.radioTrackUrl;
         const isAirplay = !!j?.isAirplay;
-        const isUpnp = !!j?.isUpnp;
+        const isUpnp = !!j?.isUpnp
+          || String(j?.source || '').trim().toLowerCase() === 'upnp-sonuvi'
+          || (String(j?.transport || '').trim().toLowerCase() === 'upnp'
+            && String(j?.controller || '').trim().toLowerCase() === 'sonuvi');
+        // The shared UPnP bridge also consults the logical queue when a
+        // transient /now-playing response is unavailable. Reuse its body
+        // marker so this page's own refresh cannot re-enable unsupported
+        // controls between bridge polls.
+        const upnpControlsActive = isUpnp || document.body.classList.contains('upnp-sonuvi-active');
         const isStream = !!j?.isStream;
         const isLocalTrack = !!(hasTrack && file && !isPodcast && !isRadio && !isAirplay && !isUpnp && !isStream);
         npCurrentFile = isLocalTrack ? file : '';
@@ -1047,10 +1062,16 @@
         document.querySelectorAll('#npCtrls .ctlPause').forEach((b)=>b.classList.toggle('is-active', !isPlaying));
         document.querySelectorAll('#npCtrls .ctl[data-np-act]').forEach((b)=>{
           const act = String(b.getAttribute('data-np-act') || '').toLowerCase();
-          const allow = !isAlexaMode || ['shuffle','toggle','play','pause','next'].includes(act);
+          const upnpUnsupported = ['shuffle', 'repeat', 'seek'].includes(act);
+          const allow = !npQobuzActive
+            && (!isAlexaMode || ['shuffle','toggle','play','pause','next'].includes(act))
+            && (!upnpControlsActive || !upnpUnsupported);
           b.disabled = !allow;
           b.style.opacity = allow ? '' : '0.35';
           b.style.pointerEvents = allow ? '' : 'none';
+          if (npQobuzActive) b.title = 'Unavailable while Qobuz Connect owns playback';
+          else if (upnpControlsActive && upnpUnsupported) b.title = 'Not supported for the Sonuvi UPnP queue';
+          else if (b.title === 'Unavailable while Qobuz Connect owns playback') b.title = b.getAttribute('aria-label') || '';
         });
       } catch {}
     }
@@ -1984,6 +2005,7 @@
           'kiosk-genres.html':'controller-genres.html',
           'kiosk-podcasts.html':'controller-podcasts.html',
           'kiosk-radio.html':'controller-radio.html',
+          'kiosk-upnp.html':'controller-upnp.html',
           'kiosk-queue-wizard.html':'controller-queue-wizard.html',
           'kiosk-queue.html':'controller-queue.html',
           'visualizer.html':'visualizer.html',
@@ -2333,6 +2355,7 @@
             // Kiosk mode uses tap/double-tap only (avoid long-press image-select quirks).
             return;
           }
+          if (npQobuzActive) return;
           try { await sendPlayback('toggle'); } catch {}
         }, NP_LONG_MS);
       };
@@ -2925,6 +2948,7 @@
       }, { passive: true });
     })();
 </script>
+  <script src="/scripts/upnp-now-playing.js?v=20261013-upnp-controller4"></script>
   <script src="/scripts/web-stream.js?v=20261001-alexa-state-recovery1"></script>
   <script src="/scripts/echo-link-volume.js?v=20260921-echo-link9"></script>
 </body>

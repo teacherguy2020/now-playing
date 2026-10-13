@@ -65,7 +65,9 @@
   <script>
   (async()=>{
     const host=location.hostname||'10.0.0.4';
-    const api=`${location.protocol}//${host}:3101`;
+    const api=(!location.port || location.port==='80' || location.port==='443')
+      ? location.origin
+      : `${location.protocol}//${host}:3101`;
     let key='';
     let currentSrc='library';
 
