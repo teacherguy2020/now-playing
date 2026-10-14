@@ -97,6 +97,9 @@ art:
   a fallback if transcoding fails;
 - podcasts, AirPlay, UPnP, and other stream-only items do not request local
   motion art;
+- an empty motion result is an explicit clear operation: the shared player
+  path must pause/remove the prior video source, hide the video, and reveal the
+  resolved static foreground rather than treating the empty result as a no-op;
 - motion lookups are coalesced and cached on the Pi and in each browser, with
   a short retry window for transient misses;
 - local H.264 motion files share a bounded cache (250 files / 2 GiB by

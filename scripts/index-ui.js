@@ -538,7 +538,10 @@ function setMotionArtVideo(mp4Url, posterUrl = '', trackKey = '') {
   if (!videoEl || !artEl) return;
 
   const src = String(mp4Url || '').trim();
-  if (!src) return;
+  if (!src) {
+    clearMotionArtVideo();
+    return;
+  }
 
   if (posterUrl) videoEl.setAttribute('poster', posterUrl);
   const oldSrc = String(videoEl.getAttribute('src') || '').trim();
