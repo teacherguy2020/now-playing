@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
+import { isQobuzCurrentArtReference } from '../lib/qobuz-connect.mjs';
 
 async function fetchMoodeCoverBytes(ref, deps) {
   const { agentForUrl, normalizeCoverUrl, MOODE_BASE_URL, dispatcherForUrl } = deps;
@@ -214,6 +215,16 @@ export function registerArtRoutes(app, deps) {
     try {
       const v = String(req.query.v || '').trim();
       if (v) {
+        // Qobuz payloads use an opaque fingerprint on the mediated current-art
+        // URL so browsers repaint when albums change. Resolve that reference
+        // through the live source; never treat the public current-art URL as
+        // the image source itself (which would re-cache the first Qobuz cover).
+        if (isQobuzCurrentArtReference(v)) {
+          const best = await resolveCurrentBestArt();
+          if (!best) return res.status(404).end();
+          return await serveCachedOrResizedSquare(res, best, 640, artPath640ForKey, deps);
+        }
+
         const key = normalizeArtKey(v);
         if (!key) return res.status(404).end();
 
@@ -289,6 +300,12 @@ export function registerArtRoutes(app, deps) {
     try {
       const v = String(req.query.v || '').trim();
       if (v) {
+        if (isQobuzCurrentArtReference(v)) {
+          const best = await resolveCurrentBestArt();
+          if (!best) return res.status(404).end();
+          return await serveCachedOrBlurredBg(res, best, 640, artPathBgForKey, deps);
+        }
+
         const key = normalizeArtKey(v);
         if (!key) return res.status(404).end();
 

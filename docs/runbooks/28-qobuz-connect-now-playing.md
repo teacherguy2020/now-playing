@@ -53,8 +53,12 @@ fields plus these additive source fields:
 }
 ```
 
-Artwork is served through Sonuvi's existing `/art/current.jpg` cache path.
-Qobuz's raw artwork URL is not serialized into the response. Duration is
+Artwork is served through Sonuvi's existing `/art/current.jpg` cache path. The
+Qobuz payload carries only an opaque `qobuz=<sha256-prefix>` artwork marker on
+that mediated URL, so clients repaint when the cover changes without exposing
+the provider URL. The art route resolves the marker back through the active
+Qobuz metadata source rather than fetching the mediated current-art URL as an
+image source. Qobuz's raw artwork URL is not serialized into the response. Duration is
 reported when present. The Pibuz cache does not provide authoritative elapsed
 position, so `elapsed` and `percent` remain `null` and `progressAvailable` is
 `false` unless a future metadata contract supplies a position.

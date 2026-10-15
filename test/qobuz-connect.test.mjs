@@ -173,10 +173,28 @@ test('Qobuz Now Playing payload identifies source and does not invent progress',
   assert.equal(payload.artist, 'Norah Jones');
   assert.equal(payload.encoded, 'FLAC 24/192 kHz');
   assert.equal(payload.outrate, 'PCM 32/192 kHz, 2ch');
-  assert.equal(payload.albumArtUrl, 'http://sonuvi.local:3101/art/current.jpg');
+  assert.match(payload.albumArtUrl, /^http:\/\/sonuvi\.local:3101\/art\/current\.jpg\?qobuz=[a-f0-9]{16}$/);
   assert.equal(payload.elapsed, null);
   assert.equal(payload.percent, null);
   assert.equal(payload.progressAvailable, false);
   assert.equal(JSON.stringify(payload).includes('private-token'), false);
   assert.equal(JSON.stringify(payload).includes('stream_url'), false);
+});
+
+test('Qobuz artwork fingerprint changes when the cover changes without exposing the provider URL', () => {
+  const first = buildQobuzNowPlayingPayload({
+    qobuz: normalizeQobuzMeta(playingMeta),
+    publicBaseUrl: 'http://sonuvi.local:3101',
+  });
+  const second = buildQobuzNowPlayingPayload({
+    qobuz: normalizeQobuzMeta({
+      ...playingMeta,
+      cover_url: 'https://static.qobuz.com/images/covers/other-cover_600.jpg?private-token=***',
+    }),
+    publicBaseUrl: 'http://sonuvi.local:3101',
+  });
+
+  assert.notEqual(first.albumArtUrl, second.albumArtUrl);
+  assert.doesNotMatch(first.albumArtUrl, /static\.qobuz\.com|private-token/);
+  assert.doesNotMatch(second.albumArtUrl, /static\.qobuz\.com|private-token/);
 });

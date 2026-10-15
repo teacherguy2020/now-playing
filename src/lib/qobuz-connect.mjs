@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 const DEFAULT_META_TIMEOUT_MS = 1200;
 const DEFAULT_STALE_MS = 15000;
 
@@ -51,6 +53,22 @@ function safeArtworkUrl(value) {
     return url.toString();
   } catch {
     return '';
+  }
+}
+
+function artworkVersion(value) {
+  const normalized = text(value);
+  if (!normalized) return '';
+  return createHash('sha256').update(normalized).digest('hex').slice(0, 16);
+}
+
+export function isQobuzCurrentArtReference(value) {
+  try {
+    const url = new URL(String(value || '').trim(), 'http://sonuvi.invalid');
+    return /^\/art\/current(?:_320)?\.jpg$/i.test(url.pathname) &&
+      /^[a-f0-9]{16}$/i.test(url.searchParams.get('qobuz') || '');
+  } catch {
+    return false;
   }
 }
 
@@ -253,7 +271,8 @@ export function buildQobuzNowPlayingPayload({
 } = {}) {
   const q = qobuz && typeof qobuz === 'object' ? qobuz : {};
   const base = baseUrl(publicBaseUrl);
-  const currentArtUrl = `${base}/art/current.jpg` || '/art/current.jpg';
+  const artVersion = artworkVersion(q.artworkUrl);
+  const currentArtUrl = `${base}/art/current.jpg${artVersion ? `?qobuz=${artVersion}` : ''}` || '/art/current.jpg';
   const songpos = text(mpdStatus.song);
   const songid = text(mpdStatus.songid);
   const queueTotal = Math.max(0, Math.floor(positiveNumber(mpdStatus.playlistlength, 0)));

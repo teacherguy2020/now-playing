@@ -1171,13 +1171,17 @@ export function registerMobileRoutes(app, deps = {}) {
     // A verified radio match is the exception to the queue-row preference:
     // the queue only knows the station logo, while canonical /now-playing
     // carries the matched iTunes artwork in displayArtUrl.
-    const canonicalRadioArtwork = isRadio && appleMusicUrl
+    const isQobuz = payload.isQobuz === true
+      || text(payload.source).toLowerCase() === 'qobuz-connect'
+      || text(payload.streamKind).toLowerCase() === 'qobuz-connect';
+    const prefersCanonicalArtwork = (isRadio && appleMusicUrl) || isQobuz;
+    const canonicalArtwork = prefersCanonicalArtwork
       ? [payload.displayArtUrl, payload.albumArtUrl, payload.altArtUrl]
         .map((value) => safeArtworkReference(req, value))
         .find(Boolean)
       : '';
-    let artworkUrl = canonicalRadioArtwork
-      ? artworkUrlFor(req, { kind: 'url', reference: canonicalRadioArtwork })
+    let artworkUrl = canonicalArtwork
+      ? artworkUrlFor(req, { kind: 'url', reference: canonicalArtwork })
       : currentItem?.artworkUrl || null;
     if (!artworkUrl) {
       const rawArtwork = [

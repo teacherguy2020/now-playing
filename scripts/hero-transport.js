@@ -82,7 +82,7 @@
     // Normalizing it here would strip the query and lose the Alexa image.
     const artKey = (isAlexaMode && source)
       ? source
-      : (canonicalMediaSrc(source) || String(trackKey || '').trim() || String(Date.now()));
+      : (artworkMediaIdentity(source) || String(trackKey || '').trim() || String(Date.now()));
     // Use the supplied art key for both normal and Alexa playback. The API
     // blurs that source server-side; this keeps Alexa's background artwork
     // correct without losing the hero's softened treatment.
@@ -210,6 +210,35 @@
       return `${u.origin}${u.pathname}`;
     } catch {
       return clean;
+    }
+  }
+
+  // Qobuz artwork is served through the current-art proxy with an opaque
+  // fingerprint. Preserve that marker in display identity checks so a new
+  // cover triggers a repaint even when the proxy path and MPD song id stay
+  // the same.
+  function artworkMediaIdentity(source) {
+    const value = String(source || '').trim();
+    if (!value) return '';
+    try {
+      const outer = new URL(value, window.location.href);
+      const isCurrentArt = (url) => /^\/art\/current(?:_320)?\.jpg$/i.test(url.pathname);
+      const marker = (url) => {
+        if (!isCurrentArt(url)) return '';
+        const version = String(url.searchParams.get('qobuz') || '').trim();
+        return /^[a-f0-9]{16}$/i.test(version) ? version.toLowerCase() : '';
+      };
+      let qobuzVersion = marker(outer);
+      if (!qobuzVersion && isCurrentArt(outer)) {
+        const nestedReference = outer.searchParams.get('v');
+        if (nestedReference) {
+          qobuzVersion = marker(new URL(nestedReference, outer.origin));
+        }
+      }
+      const base = canonicalMediaSrc(value);
+      return qobuzVersion ? `${base}?qobuz=${qobuzVersion}` : base;
+    } catch {
+      return canonicalMediaSrc(value);
     }
   }
 
@@ -358,7 +387,7 @@
     const prevVidTime = prevVid ? Number(prevVid.currentTime || 0) : 0;
     const prevArtNode = el.querySelector('.heroArt');
     const prevArtMedia = prevArtNode?.querySelector?.('video.heroArtVid, img:not(.heroArtFallback)');
-    const prevArtSrc = prevArtMedia ? canonicalMediaSrc(String(prevArtMedia.currentSrc || prevArtMedia.src || '').trim()) : '';
+    const prevArtSrc = prevArtMedia ? artworkMediaIdentity(String(prevArtMedia.currentSrc || prevArtMedia.src || '').trim()) : '';
     const prevArtTrackKey = String(prevArtNode?.getAttribute?.('data-track-key') || '').trim();
     const prevArtAlbumKey = String(prevArtNode?.getAttribute?.('data-album-key') || '').trim();
 
@@ -530,7 +559,7 @@
     try {
       const nextArtNode = el.querySelector('.heroArt');
       const nextArtMedia = nextArtNode?.querySelector?.('video.heroArtVid, img:not(.heroArtFallback)');
-      const nextArtSrc = nextArtMedia ? canonicalMediaSrc(String(nextArtMedia.currentSrc || nextArtMedia.src || '').trim()) : '';
+      const nextArtSrc = nextArtMedia ? artworkMediaIdentity(String(nextArtMedia.currentSrc || nextArtMedia.src || '').trim()) : '';
       const nextArtTrackKey = String(nextArtNode?.getAttribute?.('data-track-key') || '').trim();
       const nextArtAlbumKey = String(nextArtNode?.getAttribute?.('data-album-key') || '').trim();
       const prevHasMotion = !!prevArtNode?.querySelector?.('.heroArtVid');
@@ -1619,7 +1648,7 @@
           t: sigIsRadio ? String(np?.title || np?.radioTitle || head?.title || '') : '',
           a: sigIsRadio ? String(np?.artist || np?.radioArtist || head?.artist || '') : '',
           al: sigIsRadio ? String(np?.album || np?.radioAlbum || '') : '',
-          art: canonicalMediaSrc(String(motionLockedForTrack ? '' : (globalThis.NPArt?.source(np, { head }) || np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || head?.thumbUrl || ''))),
+          art: artworkMediaIdentity(String(motionLockedForTrack ? '' : (globalThis.NPArt?.source(np, { head }) || np?.albumArtUrl || np?.altArtUrl || np?.stationLogoUrl || head?.thumbUrl || ''))),
           m: String(motionMp4 || ''),
           r: sigIsRadio,
           p: !!np?.isPodcast,
@@ -1712,7 +1741,7 @@
           t: sig2IsRadio ? String(npResolved?.title || npResolved?.radioTitle || head2?.title || '') : '',
           a: sig2IsRadio ? String(npResolved?.artist || npResolved?.radioArtist || head2?.artist || '') : '',
           al: sig2IsRadio ? String(npResolved?.album || npResolved?.radioAlbum || '') : '',
-          art: canonicalMediaSrc(String(globalThis.NPArt?.source(npResolved, { head: head2 }) || npResolved?.albumArtUrl || npResolved?.altArtUrl || npResolved?.stationLogoUrl || head2?.thumbUrl || '')),
+          art: artworkMediaIdentity(String(globalThis.NPArt?.source(npResolved, { head: head2 }) || npResolved?.albumArtUrl || npResolved?.altArtUrl || npResolved?.stationLogoUrl || head2?.thumbUrl || '')),
           m: String(resolved || ''),
           r: sig2IsRadio,
           p: !!npResolved?.isPodcast,
