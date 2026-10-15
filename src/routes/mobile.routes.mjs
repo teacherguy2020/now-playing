@@ -68,6 +68,143 @@ function text(value) {
   return String(value || '').trim();
 }
 
+function positiveAudioInfoInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function sanitizeMobileAudioSource(value) {
+  const raw = text(value);
+  if (!raw || raw === '—') return 'Unknown';
+  if (/^[a-z][a-z\d+.-]*:\/\//i.test(raw)) return 'Network stream';
+  if (raw.includes('/') || raw.includes('\\')) return 'Local file';
+  return raw;
+}
+
+function sanitizeMobileAudioFormat(value) {
+  const raw = text(value);
+  if (!raw || raw === '—') return 'Unknown';
+  if (/^[a-z][a-z\d+.-]*:\/\//i.test(raw)) return 'Unknown';
+  if (/(?:^|[\\/])(?:Users|home|var|mnt|media|USB|SD|NAS)(?:[\\/]|$)/i.test(raw)) return 'Unknown';
+  return raw;
+}
+
+function sanitizeMobileAudioFormatObject(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const safe = {
+    format: sanitizeMobileAudioFormat(value.format),
+    codec: text(value.codec),
+    bitDepth: positiveAudioInfoInteger(value.bitDepth),
+    sampleRateHz: positiveAudioInfoInteger(value.sampleRateHz),
+    channels: positiveAudioInfoInteger(value.channels),
+    provenance: text(value.provenance) || 'unknown',
+    valueType: text(value.valueType) || 'unknown',
+    live: Boolean(value.live),
+    measured: Boolean(value.measured),
+  };
+  if (typeof value.configured === 'boolean') safe.configured = value.configured;
+  return safe;
+}
+
+function sanitizeMobileAudioDiagnostics(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const safe = {
+    version: text(value.version) || 'audio-info.v1',
+    capturedAt: text(value.capturedAt) || null,
+    freshness: {
+      mode: text(value.freshness?.mode) || 'on-demand',
+      capturedAt: text(value.freshness?.capturedAt) || null,
+      hardwareMeasuredAt: text(value.freshness?.hardwareMeasuredAt) || null,
+    },
+    renderer: text(value.renderer) || 'unknown',
+    sourceFormat: sanitizeMobileAudioFormatObject(value.sourceFormat),
+    decodedPcm: sanitizeMobileAudioFormatObject(value.decodedPcm),
+  };
+
+  if (value.configuredOutput && typeof value.configuredOutput === 'object') {
+    safe.configuredOutput = {
+      alsaMode: text(value.configuredOutput.alsaMode) || 'Unknown',
+      audioChain: text(value.configuredOutput.audioChain) || 'Unknown',
+      provenance: text(value.configuredOutput.provenance) || 'unknown',
+      valueType: text(value.configuredOutput.valueType) || 'configured',
+      live: Boolean(value.configuredOutput.live),
+      measured: Boolean(value.configuredOutput.measured),
+      configured: value.configuredOutput.configured !== false,
+    };
+  }
+
+  if (value.hardwareOutput && typeof value.hardwareOutput === 'object') {
+    const hardware = value.hardwareOutput;
+    safe.hardwareOutput = {
+      value: sanitizeMobileAudioFormat(hardware.value),
+      state: text(hardware.state) || 'unknown',
+      device: text(hardware.device) || null,
+      interface: text(hardware.interface) || null,
+      card: text(hardware.card) || null,
+      format: text(hardware.format) || null,
+      bitDepth: positiveAudioInfoInteger(hardware.bitDepth),
+      sampleRateHz: positiveAudioInfoInteger(hardware.sampleRateHz),
+      channels: positiveAudioInfoInteger(hardware.channels),
+      provenance: text(hardware.provenance) || 'unknown',
+      valueType: text(hardware.valueType) || 'unknown',
+      live: Boolean(hardware.live),
+      measured: Boolean(hardware.measured),
+      configured: Boolean(hardware.configured),
+      measuredAt: text(hardware.measuredAt) || null,
+      reason: text(hardware.reason) || null,
+    };
+  }
+
+  if (value.processing && typeof value.processing === 'object') {
+    const processing = value.processing;
+    safe.processing = {
+      resampling: text(processing.resampling) || 'Unknown',
+      quality: text(processing.quality) || 'Unknown',
+      selective: text(processing.selective) || 'Unknown',
+      polarityInversion: text(processing.polarityInversion) || 'Unknown',
+      crossfade: text(processing.crossfade) || 'Unknown',
+      crossfeed: text(processing.crossfeed) || 'Unknown',
+      parametricEq: text(processing.parametricEq) || 'Unknown',
+      graphicEq: text(processing.graphicEq) || 'Unknown',
+      camillaDsp: text(processing.camillaDsp) || 'Unknown',
+      replayGain: text(processing.replayGain) || 'Unknown',
+      normalization: text(processing.normalization) || 'Unknown',
+      chipOptions: text(processing.chipOptions) || 'Unknown',
+      provenance: text(processing.provenance) || 'unknown',
+      valueType: text(processing.valueType) || 'configured',
+      live: Boolean(processing.live),
+      measured: Boolean(processing.measured),
+      configured: processing.configured !== false,
+    };
+  }
+
+  if (value.volume && typeof value.volume === 'object') {
+    safe.volume = {
+      type: text(value.volume.type) || 'Unknown',
+      levels: text(value.volume.levels) || 'Unknown',
+      provenance: text(value.volume.provenance) || 'unknown',
+      valueType: text(value.volume.valueType) || 'configured',
+      live: Boolean(value.volume.live),
+      measured: Boolean(value.volume.measured),
+      configured: value.volume.configured !== false,
+    };
+  }
+
+  if (value.conversion && typeof value.conversion === 'object') {
+    safe.conversion = {
+      status: text(value.conversion.status) || 'unknown',
+      reason: text(value.conversion.reason) || null,
+      provenance: text(value.conversion.provenance) || 'unknown',
+      valueType: text(value.conversion.valueType) || 'not-measured',
+      live: Boolean(value.conversion.live),
+      measured: Boolean(value.conversion.measured),
+      configured: Boolean(value.conversion.configured),
+    };
+  }
+
+  return safe;
+}
+
 function genericRadioText(value) {
   return /^(?:radio|live radio|radio station|live stream|stream|unknown)$/i.test(text(value));
 }
@@ -3303,7 +3440,7 @@ export function registerMobileRoutes(app, deps = {}) {
     // Keep the native client on the bearer-authenticated mobile contract. The
     // existing web route is Track-Key protected and may include internal
     // source metadata, so only forward its sanitized section/key/value rows.
-    const result = await fetchInternalJson('/config/moode/audio-info?view=rows').catch(() => null);
+    const result = await fetchInternalJson('/config/moode/audio-info?view=rows&diagnostics=1').catch(() => null);
     if (!result?.ok) {
       return errorResponse(
         res,
@@ -3320,6 +3457,9 @@ export function registerMobileRoutes(app, deps = {}) {
             key: text(row?.key),
             value: text(row?.value) || '—',
           };
+          if (/^(?:source|file path|playable url)$/i.test(safe.key)) {
+            safe.value = sanitizeMobileAudioSource(safe.value);
+          }
           for (const field of ['provenance', 'valueType']) {
             const value = text(row?.[field]);
             if (value) safe[field] = value;
@@ -3340,6 +3480,8 @@ export function registerMobileRoutes(app, deps = {}) {
     if (result.json?.audio && typeof result.json.audio === 'object' && !Array.isArray(result.json.audio)) {
       payload.audio = result.json.audio;
     }
+    const diagnostics = sanitizeMobileAudioDiagnostics(result.json?.diagnostics);
+    if (diagnostics) payload.diagnostics = diagnostics;
     if (result.json?.playback && typeof result.json.playback === 'object' && !Array.isArray(result.json.playback)) {
       payload.playback = result.json.playback;
     }

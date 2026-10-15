@@ -1490,7 +1490,7 @@ test('mobile now-playing follows the fresh Alexa current-track authority', async
 test('mobile audio info requires bearer auth and strips internal source metadata', async () => {
   const app = registerFixture({
     fetchInternalJson: async (pathname) => {
-      assert.equal(pathname, '/config/moode/audio-info?view=rows');
+      assert.equal(pathname, '/config/moode/audio-info?view=rows&diagnostics=1');
       return {
         ok: true,
         status: 200,
@@ -1498,10 +1498,107 @@ test('mobile audio info requires bearer auth and strips internal source metadata
           sourceUrl: 'http://moode.local/audioinfo.php',
           fetchedAt: '2026-09-30T12:00:00.000Z',
           rows: [
+            { section: 'Input / Output', key: 'Source', value: 'USB/SamsungMoode/Album/01 - Track.flac' },
             { section: 'Audio Device', key: 'Device', value: 'Test DAC' },
             { section: 'Audio Device', key: 'Sample rate', value: '192 kHz' },
             { section: '', key: '', value: 'discarded' },
           ],
+          diagnostics: {
+            version: 'audio-info.v1',
+            capturedAt: '2026-09-30T12:00:00.000Z',
+            freshness: {
+              mode: 'on-demand',
+              capturedAt: '2026-09-30T12:00:00.000Z',
+              hardwareMeasuredAt: '2026-09-30T12:00:00.000Z',
+            },
+            renderer: 'mpd',
+            sourceFormat: {
+              format: 'FLAC 24 bit 96 kHz, Stereo',
+              codec: 'FLAC',
+              bitDepth: 24,
+              sampleRateHz: 96000,
+              channels: 2,
+              provenance: 'moode-audioinfo.php',
+              valueType: 'source-reported',
+              live: true,
+              measured: false,
+            },
+            decodedPcm: {
+              format: 'PCM 24 bit 96 kHz, Stereo',
+              codec: 'PCM',
+              bitDepth: 24,
+              sampleRateHz: 96000,
+              channels: 2,
+              provenance: 'moode-audioinfo.php',
+              valueType: 'decoded-reported',
+              live: true,
+              measured: false,
+            },
+            configuredOutput: {
+              alsaMode: 'plughw',
+              audioChain: 'MPD → plughw → Device',
+              provenance: 'moode-audioinfo.php',
+              valueType: 'configured',
+              live: false,
+              measured: false,
+              configured: true,
+            },
+            hardwareOutput: {
+              value: 'PCM S32_LE 96 kHz 2ch',
+              state: 'running',
+              device: 'DAC / USB Audio',
+              interface: 'USB Audio',
+              card: 'DAC',
+              format: 'S32_LE',
+              bitDepth: 32,
+              sampleRateHz: 96000,
+              channels: 2,
+              provenance: 'alsa-procfs',
+              valueType: 'hardware-measured',
+              live: true,
+              measured: true,
+              configured: false,
+              measuredAt: '2026-09-30T12:00:00.000Z',
+              reason: 'Read from the active ALSA playback hw_params/status files',
+            },
+            processing: {
+              resampling: 'Off',
+              quality: 'Off',
+              selective: 'Off',
+              polarityInversion: 'Off',
+              crossfade: 'Off',
+              crossfeed: 'Off',
+              parametricEq: 'Off',
+              graphicEq: 'Off',
+              camillaDsp: 'Off',
+              replayGain: 'off',
+              normalization: 'off',
+              chipOptions: 'None',
+              provenance: 'moode-audioinfo.php',
+              valueType: 'configured',
+              live: false,
+              measured: false,
+              configured: true,
+            },
+            volume: {
+              type: 'Fixed (0dB output)',
+              levels: 'Knob 0, ALSA none, CDSP 0dB',
+              provenance: 'moode-audioinfo.php',
+              valueType: 'configured',
+              live: false,
+              measured: false,
+              configured: true,
+            },
+            conversion: {
+              status: 'unknown',
+              reason: 'Read-only ALSA hw_params reports the negotiated endpoint format, not every transformation before it',
+              provenance: 'alsa-procfs+moode-audioinfo.php',
+              valueType: 'not-measured',
+              live: false,
+              measured: false,
+              configured: false,
+            },
+          },
         },
       };
     },
@@ -1524,11 +1621,16 @@ test('mobile audio info requires bearer auth and strips internal source metadata
 
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.body.rows, [
+    { section: 'Input / Output', key: 'Source', value: 'Local file' },
     { section: 'Audio Device', key: 'Device', value: 'Test DAC' },
     { section: 'Audio Device', key: 'Sample rate', value: '192 kHz' },
   ]);
   assert.equal(response.body.fetchedAt, '2026-09-30T12:00:00.000Z');
   assert.equal(response.body.sourceUrl, undefined);
+  assert.equal(response.body.diagnostics.version, 'audio-info.v1');
+  assert.equal(response.body.diagnostics.sourceFormat.bitDepth, 24);
+  assert.equal(response.body.diagnostics.hardwareOutput.format, 'S32_LE');
+  assert.doesNotMatch(JSON.stringify(response.body), /USB\/SamsungMoode|moode\.local|PHPSESSID|stored-moode-session/);
 });
 
 test('mobile now-playing replaces a generic radio fallback with the resolved queue station', async () => {

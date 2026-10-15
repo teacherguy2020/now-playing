@@ -168,6 +168,46 @@ function rateLabel(sampleRateHz) {
   return `${Number.isInteger(khz) ? khz : khz.toFixed(1)} kHz`;
 }
 
+function sampleRateHzFromFormat(value) {
+  const raw = text(value);
+  const match = raw.match(/\b(?:\d+)\s*\/\s*(\d+(?:\.\d+)?)\s*kHz\b/i)
+    || raw.match(/\b(\d+(?:\.\d+)?)\s*kHz\b/i);
+  if (!match) return null;
+  const rate = Number(match[1]);
+  return Number.isFinite(rate) && rate > 0 ? Math.round(rate * 1000) : null;
+}
+
+export function parseAudioFormatDetails(value = '') {
+  const raw = text(value);
+  const usable = raw && !/^(?:not playing|unknown|—)$/i.test(raw);
+  if (!usable) {
+    return {
+      format: 'Unknown',
+      codec: '',
+      bitDepth: null,
+      sampleRateHz: null,
+      channels: null,
+    };
+  }
+
+  const codec = raw.match(/\b(FLAC|PCM|DSD|MP3|AAC|ALAC|WAV|OGG|OPUS)\b/i)?.[1] || '';
+  const bitDepthMatch = raw.match(/\bS(8|16|24|32|64)_(?:LE|BE)\b/i)
+    || raw.match(/\b(8|16|24|32|64)\s*bit\b/i)
+    || raw.match(/\b(8|16|24|32|64)\s*\/\s*\d/i);
+  const channelsMatch = raw.match(/\b(\d+)\s*ch(?:annels?)?\b/i);
+  const channels = channelsMatch
+    ? positiveInt(channelsMatch[1])
+    : (/\bstereo\b/i.test(raw) ? 2 : (/\bmono\b/i.test(raw) ? 1 : null));
+
+  return {
+    format: raw,
+    codec: text(codec).toUpperCase(),
+    bitDepth: bitDepthMatch ? positiveInt(bitDepthMatch[1]) : null,
+    sampleRateHz: sampleRateHzFromFormat(raw),
+    channels,
+  };
+}
+
 export function formatAlsaHardwareOutput(probe) {
   const device = probe?.activeDevice || null;
   const state = text(probe?.state || device?.state).toLowerCase() || 'not-measured';
@@ -247,16 +287,141 @@ function withConfiguredLabel(value) {
 }
 
 function formatDetailObject(format, details = {}, provenance, valueType) {
+  const parsed = parseAudioFormatDetails(format);
   return {
-    format: text(format) || 'Unknown',
-    codec: text(details?.codec) || '',
-    bitDepth: positiveInt(details?.bitDepth),
-    sampleRateHz: positiveInt(details?.sampleRateHz),
-    channels: positiveInt(details?.channels),
+    format: parsed.format,
+    codec: text(details?.codec) || parsed.codec,
+    bitDepth: details?.bitDepth == null ? parsed.bitDepth : positiveInt(details.bitDepth),
+    sampleRateHz: details?.sampleRateHz == null ? parsed.sampleRateHz : positiveInt(details.sampleRateHz),
+    channels: details?.channels == null ? parsed.channels : positiveInt(details.channels),
     provenance,
     valueType,
     live: true,
     measured: false,
+  };
+}
+
+function configuredDiagnosticValue(value) {
+  const normalized = text(value);
+  return normalized && normalized !== '—' ? normalized : 'Unknown';
+}
+
+function reportedFormatDetail(format, details, provenance, valueType) {
+  return {
+    ...formatDetailObject(format, details, provenance, valueType),
+    configured: false,
+  };
+}
+
+export function buildAudioInfoDiagnostics({
+  moodeRows = [],
+  alsa = null,
+  qobuz = null,
+  capturedAt = new Date().toISOString(),
+} = {}) {
+  const rows = Array.isArray(moodeRows) ? moodeRows : [];
+  const qobuzActive = Boolean(qobuz?.active);
+  const sourceFormat = qobuzActive
+    ? text(qobuz?.sourceFormat)
+    : rowValue(rows, 'Source format', 'Input / Output');
+  const decodedFormat = qobuzActive
+    ? text(qobuz?.outputFormat)
+    : rowValue(rows, 'Decoded to', 'Input / Output');
+  const formatProvenance = qobuzActive ? 'pibuz-qobuz-metadata' : 'moode-audioinfo.php';
+  const sourceValueType = 'source-reported';
+  const decodedValueType = 'decoded-reported';
+  const hardwareOutput = formatAlsaHardwareOutput(alsa);
+  const activeDevice = alsa?.activeDevice || null;
+  const measured = Boolean(hardwareOutput.measured);
+  const configuredOutput = {
+    alsaMode: configuredAlsaMode(rowValue(rows, 'ALSA mode', 'Input / Output')) || 'Unknown',
+    audioChain: configuredDiagnosticValue(rowValue(rows, 'Audio chain', 'Input / Output')),
+    provenance: 'moode-audioinfo.php',
+    valueType: 'configured',
+    live: false,
+    measured: false,
+    configured: true,
+  };
+  const processing = {
+    resampling: configuredDiagnosticValue(rowValue(rows, 'Resampling', 'DSP operations')),
+    quality: configuredDiagnosticValue(rowValue(rows, 'Quality', 'DSP operations')),
+    selective: configuredDiagnosticValue(rowValue(rows, 'Selective', 'DSP operations')),
+    polarityInversion: configuredDiagnosticValue(rowValue(rows, 'Polarity invert', 'DSP operations')),
+    crossfade: configuredDiagnosticValue(rowValue(rows, 'Crossfade', 'DSP operations')),
+    crossfeed: configuredDiagnosticValue(rowValue(rows, 'Crossfeed', 'DSP operations')),
+    parametricEq: configuredDiagnosticValue(rowValue(rows, 'Parametric EQ', 'DSP operations')),
+    graphicEq: configuredDiagnosticValue(rowValue(rows, 'Graphic EQ', 'DSP operations')),
+    camillaDsp: configuredDiagnosticValue(rowValue(rows, 'CamillaDSP', 'DSP operations')),
+    replayGain: configuredDiagnosticValue(rowValue(rows, 'Replaygain', 'DSP operations')),
+    normalization: configuredDiagnosticValue(rowValue(rows, 'Normalize vol', 'DSP operations')),
+    chipOptions: configuredDiagnosticValue(rowValue(rows, 'Chip options', 'DSP operations')),
+    provenance: 'moode-audioinfo.php',
+    valueType: 'configured',
+    live: false,
+    measured: false,
+    configured: true,
+  };
+  const volume = {
+    type: configuredDiagnosticValue(rowValue(rows, 'Volume type', 'DSP operations')),
+    levels: configuredDiagnosticValue(rowValue(rows, 'Volume levels', 'DSP operations')),
+    provenance: 'moode-audioinfo.php',
+    valueType: 'configured',
+    live: false,
+    measured: false,
+    configured: true,
+  };
+
+  return {
+    version: 'audio-info.v1',
+    capturedAt,
+    freshness: {
+      mode: 'on-demand',
+      capturedAt,
+      hardwareMeasuredAt: measured ? capturedAt : null,
+    },
+    renderer: qobuzActive ? 'qobuz-connect' : 'mpd',
+    sourceFormat: reportedFormatDetail(
+      sourceFormat,
+      qobuzActive ? qobuz?.sourceFormatDetails : null,
+      formatProvenance,
+      sourceValueType,
+    ),
+    decodedPcm: reportedFormatDetail(
+      decodedFormat,
+      qobuzActive ? qobuz?.outputFormatDetails : null,
+      formatProvenance,
+      decodedValueType,
+    ),
+    configuredOutput,
+    hardwareOutput: {
+      value: hardwareOutput.value,
+      state: hardwareOutput.state,
+      device: hardwareOutput.device || null,
+      interface: text(activeDevice?.name) || null,
+      card: text(activeDevice?.cardLabel || activeDevice?.cardId || activeDevice?.card) || null,
+      format: hardwareOutput.format || null,
+      bitDepth: hardwareOutput.bitDepth || null,
+      sampleRateHz: hardwareOutput.sampleRateHz || null,
+      channels: hardwareOutput.channels || null,
+      provenance: hardwareOutput.provenance,
+      valueType: measured ? 'hardware-measured' : 'unavailable',
+      live: true,
+      measured,
+      configured: false,
+      measuredAt: measured ? capturedAt : null,
+      reason: hardwareOutput.reason,
+    },
+    processing,
+    volume,
+    conversion: {
+      status: 'unknown',
+      reason: 'Read-only ALSA hw_params reports the negotiated endpoint format, not every transformation before it',
+      provenance: 'alsa-procfs+moode-audioinfo.php',
+      valueType: 'not-measured',
+      live: false,
+      measured: false,
+      configured: false,
+    },
   };
 }
 

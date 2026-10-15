@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildAudioInfoDiagnostics,
   buildQobuzAudioInfo,
   formatAlsaHardwareOutput,
   normalizeAlsaHardwareProbe,
+  parseAudioFormatDetails,
   parseAudioInfoHtml,
 } from '../src/lib/audio-info.mjs';
 import { registerConfigMoodeAudioInfoRoutes } from '../src/routes/config.moode-audio-info.routes.mjs';
@@ -39,6 +41,30 @@ const moodeHtml = `
 <li><span class="left">Crossfeed</span><span class="right"> Hz  dB</span></li>
 <li><span class="left">Volume type</span><span class="right">Error: Unknow MPD volume type</span></li>
 <li><span class="left">Volume levels</span><span class="right">Knob, ALSA Wrong scontrol identifier:, CDSP 0dB</span></li>
+`;
+
+const normalMoodeHtml = `
+<div class="h5">Input / Output</div>
+<li><span class="left">Source</span><span class="right">USB/SamsungMoode/Album/01 - Track.flac</span></li>
+<li><span class="left">Source format</span><span class="right">FLAC 24 bit 96 kHz, Stereo</span></li>
+<li><span class="left">Decoded to</span><span class="right">PCM 24 bit 96 kHz, Stereo, 4.608 Mbps</span></li>
+<li><span class="left">Output format</span><span class="right">PCM 32 bit 96 kHz, Stereo, 6.144 Mbps</span></li>
+<li><span class="left">ALSA mode</span><span class="right">(plughw)</span></li>
+<li><span class="left">Audio chain</span><span class="right">MPD &rarr; plughw &rarr; Device</span></li>
+<div class="h5">DSP operations</div>
+<li><span class="left">Resampling</span><span class="right">Off</span></li>
+<li><span class="left">Quality</span><span class="right">Off</span></li>
+<li><span class="left">Selective</span><span class="right">Off</span></li>
+<li><span class="left">Polarity invert</span><span class="right">Off</span></li>
+<li><span class="left">Crossfade</span><span class="right">Off</span></li>
+<li><span class="left">Crossfeed</span><span class="right">Off</span></li>
+<li><span class="left">Parametric EQ</span><span class="right">Off</span></li>
+<li><span class="left">Graphic EQ</span><span class="right">Off</span></li>
+<li><span class="left">CamillaDSP</span><span class="right">Off</span></li>
+<li><span class="left">Replaygain</span><span class="right">off</span></li>
+<li><span class="left">Normalize vol</span><span class="right">off</span></li>
+<li><span class="left">Volume type</span><span class="right">Fixed (0dB output)</span></li>
+<li><span class="left">Volume levels</span><span class="right">Knob 0, ALSA none, CDSP 0dB</span></li>
 `;
 
 const qobuz = {
@@ -88,6 +114,49 @@ test('ALSA probe parser reports measured hardware parameters independently of MP
   });
 });
 
+test('Audio format parser separates source resolution from container details', () => {
+  assert.deepEqual(parseAudioFormatDetails('FLAC 24 bit 96 kHz, Stereo'), {
+    format: 'FLAC 24 bit 96 kHz, Stereo',
+    codec: 'FLAC',
+    bitDepth: 24,
+    sampleRateHz: 96000,
+    channels: 2,
+  });
+  assert.deepEqual(parseAudioFormatDetails('PCM S32_LE 96 kHz 2ch'), {
+    format: 'PCM S32_LE 96 kHz 2ch',
+    codec: 'PCM',
+    bitDepth: 32,
+    sampleRateHz: 96000,
+    channels: 2,
+  });
+});
+
+test('normal MPD diagnostics separate configured values from measured ALSA output', () => {
+  const diagnostics = buildAudioInfoDiagnostics({
+    moodeRows: parseAudioInfoHtml(normalMoodeHtml),
+    alsa,
+    capturedAt: '2026-10-15T18:00:00.000Z',
+  });
+
+  assert.equal(diagnostics.version, 'audio-info.v1');
+  assert.equal(diagnostics.renderer, 'mpd');
+  assert.equal(diagnostics.sourceFormat.bitDepth, 24);
+  assert.equal(diagnostics.sourceFormat.sampleRateHz, 96000);
+  assert.equal(diagnostics.decodedPcm.bitDepth, 24);
+  assert.equal(diagnostics.configuredOutput.alsaMode, 'plughw');
+  assert.equal(diagnostics.configuredOutput.measured, false);
+  assert.equal(diagnostics.hardwareOutput.format, 'S32_LE');
+  assert.equal(diagnostics.hardwareOutput.interface, 'USB Audio');
+  assert.equal(diagnostics.hardwareOutput.sampleRateHz, 96000);
+  assert.equal(diagnostics.hardwareOutput.measured, true);
+  assert.equal(diagnostics.hardwareOutput.measuredAt, '2026-10-15T18:00:00.000Z');
+  assert.equal(diagnostics.processing.polarityInversion, 'Off');
+  assert.equal(diagnostics.processing.measured, false);
+  assert.equal(diagnostics.volume.type, 'Fixed (0dB output)');
+  assert.equal(diagnostics.conversion.status, 'unknown');
+  assert.doesNotMatch(JSON.stringify(diagnostics), /USB\/SamsungMoode|Track\.flac/);
+});
+
 test('Qobuz Audio Info separates reported formats, configured path, and measured output', () => {
   const built = buildQobuzAudioInfo({ moodeRows: parseAudioInfoHtml(moodeHtml), qobuz, alsa });
   const row = (section, key) => built.rows.find((item) => item.section === section && item.key === key);
@@ -119,15 +188,23 @@ test('Qobuz Audio Info does not claim hardware output when ALSA is closed', () =
 
 test('Audio Info route adds Qobuz diagnostics without changing its MPD fallback shape', async () => {
   const app = createApp();
+  let fetchOptions;
   registerConfigMoodeAudioInfoRoutes(app, {
     requireTrackKey: () => true,
     getQobuzNowPlaying: async () => qobuz,
     probeAlsaHardware: async () => alsa,
-    fetchMoodeDeviceMeta: async () => ({ deviceName: 'CAVALLI DAC', piModel: 'Raspberry Pi 5' }),
+    fetchMoodeDeviceMeta: async () => ({
+      deviceName: 'CAVALLI DAC',
+      piModel: 'Raspberry Pi 5',
+      sessionId: 'stored-moode-session',
+    }),
   });
 
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () => new Response(moodeHtml, { status: 200 });
+  globalThis.fetch = async (_url, options) => {
+    fetchOptions = options;
+    return new Response(moodeHtml, { status: 200 });
+  };
   try {
     const response = createResponse();
     await app.routes.get('GET /config/moode/audio-info')?.({ query: { view: 'rows' } }, response);
@@ -136,6 +213,52 @@ test('Audio Info route adds Qobuz diagnostics without changing its MPD fallback 
     assert.equal(response.body.audio.sourceFormat.provenance, 'pibuz-qobuz-metadata');
     assert.equal(response.body.rows.find((row) => row.key === 'Output format').value, 'PCM S32_LE 96 kHz 2ch');
     assert.equal(response.body.sections, undefined);
+    assert.equal(fetchOptions.headers.cookie, 'PHPSESSID=stored-moode-session');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Audio Info route reuses the ALSA probe for normal MPD only when diagnostics are requested', async () => {
+  const app = createApp();
+  let probeCount = 0;
+  let fetchOptions;
+  registerConfigMoodeAudioInfoRoutes(app, {
+    requireTrackKey: () => true,
+    getQobuzNowPlaying: async () => null,
+    probeAlsaHardware: async () => {
+      probeCount += 1;
+      return alsa;
+    },
+    fetchMoodeDeviceMeta: async () => ({
+      deviceName: 'CAVALLI DAC',
+      piModel: 'Raspberry Pi 5',
+      sessionId: 'stored-moode-session',
+    }),
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_url, options) => {
+    fetchOptions = options;
+    return new Response(normalMoodeHtml, { status: 200 });
+  };
+  try {
+    const legacyResponse = createResponse();
+    await app.routes.get('GET /config/moode/audio-info')?.({ query: { view: 'rows' } }, legacyResponse);
+    assert.equal(legacyResponse.statusCode, 200);
+    assert.equal(legacyResponse.body.diagnostics, undefined);
+    assert.equal(probeCount, 0);
+
+    const diagnosticResponse = createResponse();
+    await app.routes.get('GET /config/moode/audio-info')?.({
+      query: { view: 'rows', diagnostics: '1' },
+    }, diagnosticResponse);
+    assert.equal(diagnosticResponse.statusCode, 200);
+    assert.equal(probeCount, 1);
+    assert.equal(diagnosticResponse.body.diagnostics.version, 'audio-info.v1');
+    assert.equal(diagnosticResponse.body.diagnostics.hardwareOutput.format, 'S32_LE');
+    assert.equal(fetchOptions.headers.cookie, 'PHPSESSID=stored-moode-session');
+    assert.doesNotMatch(JSON.stringify(diagnosticResponse.body.diagnostics), /stored-moode-session/);
   } finally {
     globalThis.fetch = originalFetch;
   }

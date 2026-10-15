@@ -273,10 +273,41 @@ configured moOde/MPD path information, not verified Qobuz signal-path facts.
 MPD-only volume diagnostics are represented as unavailable for Qobuz, so raw
 `Unknown MPD volume type` or ALSA mixer-control errors do not leak into the
 Qobuz panel. The authenticated mobile audio-info contract forwards the safe
-`audio` object and row provenance without exposing moOde URLs, file paths, or
-renderer credentials.
+`audio` object and optional diagnostics/provenance without exposing moOde URLs,
+file paths, PHP session identifiers, or renderer credentials.
+
+## Audio Info diagnostics contract
+
+`GET /config/moode/audio-info?view=rows&diagnostics=1` reuses the existing
+bounded, read-only ALSA probe on demand. It reads active playback
+`hw_params`/`status` from `/proc/asound` over the configured moOde SSH path; it
+does not open an ALSA device, seize playback, or restart a service. The legacy
+rows remain available and unchanged when `diagnostics=1` is omitted.
+
+The optional `diagnostics` object is versioned as `audio-info.v1`. The bearer
+`GET /v1/mobile/audio-info` route requests this view when Audio Info is opened
+and forwards the safe object alongside the existing rows. Its main fields are:
+
+- `sourceFormat`: source-file or renderer-reported codec, bit depth, rate, and
+  channels;
+- `decodedPcm`: MPD/renderer-reported decoded format, not a DAC measurement;
+- `configuredOutput`: moOde's configured ALSA mode and chain, marked
+  `valueType: "configured"` and `measured: false`;
+- `hardwareOutput`: the current ALSA playback format, rate, channels, state,
+  and device label when procfs exposes them, marked
+  `valueType: "hardware-measured"`;
+- `processing` and `volume`: configured moOde/MPD state, never represented as
+  current hardware measurements;
+- `conversion`: deliberately `status: "unknown"`, because ALSA endpoint
+  parameters cannot prove every conversion before the endpoint;
+- `freshness`: request-time capture and hardware-measurement timestamps.
+
+The mobile response redacts local source paths and network URLs from legacy
+rows and never forwards the internal moOde URL, Track Key, or PHP session ID.
 
 The main controller shells disable MPD transport/shuffle/repeat/seek controls
 while Qobuz owns playback; the server route also rejects those MPD commands
 with a source-aware unavailable response. No Qobuz remote-control API is
 implied by the metadata integration.
+
+*Last reviewed: 2026-10-15 13:58 America/Chicago*

@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { MOODE_BASE_URL, MOODE_SSH } from '../config.mjs';
 import {
+  buildAudioInfoDiagnostics,
   buildQobuzAudioInfo,
   normalizeAlsaHardwareProbe,
   parseAudioInfoHtml,
@@ -10,13 +11,20 @@ import {
 const execFileP = promisify(execFile);
 
 async function fetchMoodeDeviceMeta() {
-  const out = { deviceName: '', piModel: '' };
+  const out = { deviceName: '', piModel: '', sessionId: '' };
   const ssh = String(MOODE_SSH || '').trim();
   if (!ssh) return out;
   try {
-    const cmd = "bash -lc 'sqlite3 /var/local/www/db/moode-sqlite3.db \"select value from cfg_system where param=\\\"adevname\\\" limit 1;\" 2>/dev/null || true'";
+    const cmd = "bash -lc 'sqlite3 /var/local/www/db/moode-sqlite3.db \"select param || char(9) || value from cfg_system where param in (\\\"adevname\\\",\\\"sessionid\\\") limit 2;\" 2>/dev/null || true'";
     const r = await execFileP('ssh', ['-o', 'BatchMode=yes', ssh, cmd], { timeout: 2200, maxBuffer: 128 * 1024 });
-    out.deviceName = String(r?.stdout || '').trim();
+    for (const line of String(r?.stdout || '').split(/\r?\n/)) {
+      const separator = line.indexOf('\t');
+      if (separator <= 0) continue;
+      const key = line.slice(0, separator).trim();
+      const value = line.slice(separator + 1).trim();
+      if (key === 'adevname') out.deviceName = value;
+      if (key === 'sessionid') out.sessionId = value;
+    }
   } catch {}
   try {
     const cmd = "bash -lc 'tr -d \\\"\\0\\\" </proc/device-tree/model 2>/dev/null || cat /proc/device-tree/model 2>/dev/null || true'";
@@ -82,16 +90,33 @@ export function registerConfigMoodeAudioInfoRoutes(app, deps = {}) {
       const base = String(MOODE_BASE_URL || '').trim().replace(/\/+$/, '');
       const url = `${base}/audioinfo.php`;
 
+      let meta = { deviceName: '', piModel: '', sessionId: '' };
+      try {
+        meta = await getDeviceMeta();
+      } catch {}
+
+      const sessionId = String(meta?.sessionId || '').trim();
+      const headers = /^[A-Za-z0-9._-]+$/.test(sessionId)
+        ? { cookie: `PHPSESSID=${sessionId}` }
+        : undefined;
+
       let qobuz = null;
       try {
         qobuz = typeof getQobuzNowPlaying === 'function' ? await getQobuzNowPlaying() : null;
       } catch {}
+      const diagnosticsRequested = /^(?:1|true|yes|on)$/i.test(String(
+        req.query?.diagnostics || req.query?.includeDiagnostics || '',
+      ).trim());
 
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 4500);
       let r;
       try {
-        r = await fetch(url, { cache: 'no-store', signal: controller.signal });
+        r = await fetch(url, {
+          cache: 'no-store',
+          ...(headers ? { headers } : {}),
+          signal: controller.signal,
+        });
       } finally {
         clearTimeout(t);
       }
@@ -106,7 +131,6 @@ export function registerConfigMoodeAudioInfoRoutes(app, deps = {}) {
 
       // Enrich fields that are often blank in audioinfo.php depending on moOde session context.
       try {
-        const meta = await getDeviceMeta();
         for (const row of rows) {
           const sec = String(row?.section || '').trim();
           const key = String(row?.key || '').trim();
@@ -117,13 +141,17 @@ export function registerConfigMoodeAudioInfoRoutes(app, deps = {}) {
       } catch {}
 
       let audio = null;
+      let alsa = null;
+      if (qobuz?.active || diagnosticsRequested) {
+        alsa = await readAlsaHardware().catch(() => null);
+      }
       if (qobuz?.active) {
-        const alsa = await readAlsaHardware().catch(() => null);
         const enriched = buildQobuzAudioInfo({ moodeRows: rows, qobuz, alsa });
         rows = enriched.rows;
         audio = enriched.audio;
       }
 
+      const fetchedAt = new Date().toISOString();
       const sections = rows.reduce((acc, row) => {
         if (!acc[row.section]) acc[row.section] = [];
         const { section: _section, ...rest } = row;
@@ -136,7 +164,7 @@ export function registerConfigMoodeAudioInfoRoutes(app, deps = {}) {
         ok: true,
         sourceUrl: url,
         rowCount: rows.length,
-        fetchedAt: new Date().toISOString(),
+        fetchedAt,
         view,
       };
       if (audio) {
@@ -147,6 +175,14 @@ export function registerConfigMoodeAudioInfoRoutes(app, deps = {}) {
           active: true,
         };
         payload.audio = audio;
+      }
+      if (diagnosticsRequested) {
+        payload.diagnostics = buildAudioInfoDiagnostics({
+          moodeRows: rows,
+          alsa,
+          qobuz,
+          capturedAt: fetchedAt,
+        });
       }
       if (view === 'rows') {
         payload.rows = rows;

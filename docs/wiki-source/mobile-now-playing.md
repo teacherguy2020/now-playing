@@ -309,9 +309,43 @@ queue additions made by another controller; local playback uses the device
 queue directly.
 
 `/v1/mobile/audio-info` invokes the existing Track-Key-protected moOde reader
-server-side and returns only sanitized `section`, `key`, and `value` rows plus
-an optional fetch timestamp. It never exposes the moOde source URL, Track Key,
-MPD file path, or raw admin response to the native client.
+server-side and returns sanitized `section`, `key`, and `value` rows plus an
+optional fetch timestamp. Source/file-path rows are reduced to a source class
+such as `Local file` or `Network stream`; the response never exposes the moOde
+source URL, Track Key, MPD file path, raw admin response, or moOde PHP session
+identifier to the native client.
+
+When this route is opened, the Server requests the optional on-demand
+diagnostics view from the Track-Key route. The response may include the
+backward-compatible, versioned `diagnostics` object:
+
+```json
+{
+  "version": "audio-info.v1",
+  "capturedAt": "2026-10-15T18:00:00.000Z",
+  "freshness": {
+    "mode": "on-demand",
+    "capturedAt": "2026-10-15T18:00:00.000Z",
+    "hardwareMeasuredAt": "2026-10-15T18:00:00.000Z"
+  },
+  "renderer": "mpd",
+  "sourceFormat": { "format": "FLAC 24 bit 96 kHz, Stereo", "bitDepth": 24, "sampleRateHz": 96000, "channels": 2 },
+  "decodedPcm": { "format": "PCM 24 bit 96 kHz, Stereo", "bitDepth": 24, "sampleRateHz": 96000, "channels": 2 },
+  "configuredOutput": { "alsaMode": "plughw", "audioChain": "MPD → plughw → Device", "valueType": "configured", "measured": false },
+  "hardwareOutput": { "format": "S32_LE", "bitDepth": 32, "sampleRateHz": 96000, "channels": 2, "valueType": "hardware-measured", "measured": true },
+  "processing": { "resampling": "Off", "replayGain": "off", "normalization": "off", "valueType": "configured", "measured": false },
+  "volume": { "type": "Fixed (0dB output)", "valueType": "configured", "measured": false },
+  "conversion": { "status": "unknown", "valueType": "not-measured", "measured": false }
+}
+```
+
+`sourceFormat` and `decodedPcm` are moOde/renderer-reported values. The
+`configuredOutput`, `processing`, and `volume` sections describe configured
+state and are never presented as hardware measurements. `hardwareOutput` is
+the bounded, read-only ALSA `/proc/asound` observation; it is absent or marked
+unavailable when no playback stream exposes parameters. `conversion` remains
+unknown because ALSA `hw_params` cannot prove every transformation before the
+hardware endpoint.
 
 ## Local audio source/cache
 
@@ -354,4 +388,4 @@ invoking the native APNs bridge. This keeps podcast paths out of the client
 while allowing podcast starts to receive the same track-change notification
 behavior as music.
 
-*Last reviewed: 2026-10-02 16:55 America/Chicago*
+*Last reviewed: 2026-10-15 13:58 America/Chicago*
