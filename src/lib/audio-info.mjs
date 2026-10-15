@@ -82,6 +82,51 @@ function bitDepthFromFormat(value) {
   return match ? positiveInt(match[1]) : null;
 }
 
+const LOSSY_AUDIO_CODECS = new Set([
+  'aac', 'ac3', 'amr_nb', 'amr_wb', 'eac3', 'mp2', 'mp3', 'nellymoser',
+  'opus', 'vorbis', 'speex', 'wmav1', 'wmav2', 'wmavoice',
+]);
+
+const LOSSLESS_AUDIO_CODECS = new Set([
+  'alac', 'ape', 'flac', 'mlp', 'tta', 'tak', 'truehd', 'wavpack',
+]);
+
+function normalizeCodecToken(value) {
+  return text(value).toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '');
+}
+
+function audioCodecKind(value) {
+  const codec = normalizeCodecToken(value);
+  if (!codec) return 'unknown';
+  if (codec.startsWith('pcm_') || LOSSLESS_AUDIO_CODECS.has(codec)) return 'lossless';
+  if (LOSSY_AUDIO_CODECS.has(codec) || codec.startsWith('aac')) return 'lossy';
+  return 'unknown';
+}
+
+function parseBitrateBps(value) {
+  const match = text(value).match(/\b(\d+(?:\.\d+)?)\s*(bps|kbps|mbps)\b/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const unit = match[2].toLowerCase();
+  const multiplier = unit === 'mbps' ? 1_000_000 : unit === 'kbps' ? 1_000 : 1;
+  return Math.round(amount * multiplier);
+}
+
+function containerFromFormat(value) {
+  const match = text(value).match(/\b(M4A|MP4|FLAC|WAV|AIFF|AIF|OGG|OPUS|DSF|DFF|WV)\b/i);
+  if (!match) return '';
+  return match[1].toUpperCase() === 'AIF' ? 'AIFF' : match[1].toUpperCase();
+}
+
+function nominalPcmBitrateBps({ sampleRateHz, bitDepth, channels } = {}) {
+  const rate = positiveInt(sampleRateHz);
+  const depth = positiveInt(bitDepth);
+  const count = positiveInt(channels);
+  if (!rate || !depth || !count) return null;
+  return rate * depth * count;
+}
+
 function stateRank(state = '') {
   const normalized = text(state).toLowerCase();
   if (normalized === 'running') return 4;
@@ -190,7 +235,7 @@ export function parseAudioFormatDetails(value = '') {
     };
   }
 
-  const codec = raw.match(/\b(FLAC|PCM|DSD|MP3|AAC|ALAC|WAV|OGG|OPUS)\b/i)?.[1] || '';
+  const codec = raw.match(/\b(FLAC|PCM|DSD|MP3|AAC|ALAC|OPUS|VORBIS|WAVPACK|APE|TTA|TAK|AC-?3|E-?AC-?3|DTS|TRUEHD)\b/i)?.[1] || '';
   const bitDepthMatch = raw.match(/\bS(8|16|24|32|64)_(?:LE|BE)\b/i)
     || raw.match(/\b(8|16|24|32|64)\s*bit\b/i)
     || raw.match(/\b(8|16|24|32|64)\s*\/\s*\d/i);
@@ -205,6 +250,16 @@ export function parseAudioFormatDetails(value = '') {
     bitDepth: bitDepthMatch ? positiveInt(bitDepthMatch[1]) : null,
     sampleRateHz: sampleRateHzFromFormat(raw),
     channels,
+  };
+}
+
+export function parseAudioFormatMetadata(value = '') {
+  const details = parseAudioFormatDetails(value);
+  return {
+    ...details,
+    container: containerFromFormat(value),
+    reportedBitrateBps: parseBitrateBps(value),
+    codecKind: audioCodecKind(details.codec),
   };
 }
 
@@ -313,10 +368,125 @@ function reportedFormatDetail(format, details, provenance, valueType) {
   };
 }
 
+function buildSourceFileMetadata({
+  sourceFormat,
+  decodedFormat,
+  sourceAudio,
+  qobuzActive,
+  qobuz,
+} = {}) {
+  const parsedSource = parseAudioFormatMetadata(sourceFormat);
+  const parsedDecoded = parseAudioFormatMetadata(decodedFormat);
+  const probe = sourceAudio && typeof sourceAudio === 'object' && !Array.isArray(sourceAudio)
+    ? sourceAudio
+    : null;
+  const reportedDetails = qobuzActive && qobuz?.sourceFormatDetails
+    ? qobuz.sourceFormatDetails
+    : {};
+  const codec = text(probe?.codec) || text(reportedDetails.codec) || parsedSource.codec;
+  const codecKind = text(probe?.codecKind) || audioCodecKind(codec);
+  const bitDepth = positiveInt(probe?.bitDepth)
+    || (codecKind === 'lossless'
+      ? positiveInt(reportedDetails.bitDepth) || positiveInt(parsedSource.bitDepth)
+      : null);
+  const bitDepthStatus = text(probe?.bitDepthStatus)
+    || (bitDepth ? 'reported' : (codecKind === 'lossy' ? 'not-applicable' : 'unavailable'));
+  const encodedBitrateBps = positiveInt(probe?.encodedBitrateBps)
+    || (codecKind === 'lossy' ? parsedSource.reportedBitrateBps || parsedDecoded.reportedBitrateBps : null);
+  const encodedBitrateProvenance = text(probe?.encodedBitrateProvenance)
+    || (encodedBitrateBps
+      ? (qobuzActive ? 'pibuz-qobuz-metadata' : 'moode-audioinfo.php:mpd-status-bitrate')
+      : '');
+  const provenance = probe
+    ? 'ffprobe.source-file'
+    : (qobuzActive ? 'pibuz-qobuz-metadata' : 'moode-audioinfo.php');
+
+  return {
+    format: text(sourceFormat) || 'Unknown',
+    container: text(probe?.container) || parsedSource.container || 'Unknown',
+    codec: codec || 'Unknown',
+    codecKind,
+    bitDepth,
+    bitDepthStatus,
+    bitDepthKind: text(probe?.bitDepthKind) || (bitDepth ? 'integer' : null),
+    sampleRateHz: positiveInt(probe?.sampleRateHz)
+      || positiveInt(reportedDetails.sampleRateHz)
+      || parsedSource.sampleRateHz,
+    channels: positiveInt(probe?.channels)
+      || positiveInt(reportedDetails.channels)
+      || parsedSource.channels,
+    encodedBitrateBps,
+    encodedBitrateKbps: encodedBitrateBps ? Math.round(encodedBitrateBps / 1000) : null,
+    encodedBitrateStatus: encodedBitrateBps ? 'reported' : 'unavailable',
+    encodedBitrateProvenance: encodedBitrateProvenance || null,
+    provenance,
+    valueType: qobuzActive ? 'source-reported' : 'source-file',
+    live: true,
+    measured: false,
+    verified: probe?.bitDepthStatus === 'verified',
+    configured: false,
+  };
+}
+
+function buildDecodedAudioMetadata({ decodedFormat, qobuzActive, qobuz } = {}) {
+  const parsed = parseAudioFormatMetadata(decodedFormat);
+  const reportedDetails = qobuzActive && qobuz?.outputFormatDetails
+    ? qobuz.outputFormatDetails
+    : {};
+  const codec = text(reportedDetails.codec) || parsed.codec || (/^PCM\b/i.test(parsed.format) ? 'PCM' : '');
+  const isPcm = /^PCM$/i.test(codec) || /^PCM\b/i.test(parsed.format);
+  const bitDepth = positiveInt(reportedDetails.bitDepth) || parsed.bitDepth;
+  const sampleRateHz = positiveInt(reportedDetails.sampleRateHz) || parsed.sampleRateHz;
+  const channels = positiveInt(reportedDetails.channels) || parsed.channels;
+  const pcmBitrateBps = isPcm ? nominalPcmBitrateBps({ sampleRateHz, bitDepth, channels }) : null;
+  const bitDepthKind = /\bfloat\b/i.test(parsed.format)
+    ? 'float'
+    : /\bS(?:8|16|24|32|64)_(?:LE|BE)\b/i.test(parsed.format) ? 'integer' : null;
+
+  return {
+    format: isPcm ? 'PCM' : (parsed.format || 'Unknown'),
+    codec: codec || 'Unknown',
+    bitDepth,
+    bitDepthKind,
+    sampleRateHz,
+    channels,
+    pcmBitrateBps,
+    pcmBitrateStatus: pcmBitrateBps ? 'calculated' : 'unavailable',
+    provenance: qobuzActive ? 'pibuz-qobuz-metadata' : 'moode-audioinfo.php',
+    valueType: 'decoded-reported',
+    live: true,
+    measured: false,
+    configured: false,
+  };
+}
+
+function buildOutputMetadata({ hardwareOutput, activeDevice, capturedAt } = {}) {
+  const measured = Boolean(hardwareOutput?.measured);
+  return {
+    value: hardwareOutput?.value || 'Not measured',
+    state: hardwareOutput?.state || 'unknown',
+    device: hardwareOutput?.device || null,
+    interface: text(activeDevice?.name) || null,
+    card: text(activeDevice?.cardLabel || activeDevice?.cardId || activeDevice?.card) || null,
+    format: hardwareOutput?.format || null,
+    bitDepth: hardwareOutput?.bitDepth || null,
+    sampleRateHz: hardwareOutput?.sampleRateHz || null,
+    channels: hardwareOutput?.channels || null,
+    provenance: hardwareOutput?.provenance || 'alsa-procfs',
+    valueType: measured ? 'hardware-measured' : 'unavailable',
+    live: true,
+    measured,
+    configured: false,
+    measuredAt: measured ? capturedAt : null,
+    reason: hardwareOutput?.reason || null,
+  };
+}
+
 export function buildAudioInfoDiagnostics({
   moodeRows = [],
   alsa = null,
   qobuz = null,
+  sourceAudio = null,
   capturedAt = new Date().toISOString(),
 } = {}) {
   const rows = Array.isArray(moodeRows) ? moodeRows : [];
@@ -333,6 +503,21 @@ export function buildAudioInfoDiagnostics({
   const hardwareOutput = formatAlsaHardwareOutput(alsa);
   const activeDevice = alsa?.activeDevice || null;
   const measured = Boolean(hardwareOutput.measured);
+  const sourceFile = buildSourceFileMetadata({
+    sourceFormat,
+    decodedFormat,
+    sourceAudio,
+    qobuzActive,
+    qobuz,
+  });
+  const decodedAudio = buildDecodedAudioMetadata({ decodedFormat, qobuzActive, qobuz });
+  const legacySourceFormat = reportedFormatDetail(
+    sourceFormat,
+    qobuzActive ? qobuz?.sourceFormatDetails : null,
+    formatProvenance,
+    sourceValueType,
+  );
+  if (sourceFile.codecKind === 'lossy') legacySourceFormat.bitDepth = null;
   const configuredOutput = {
     alsaMode: configuredAlsaMode(rowValue(rows, 'ALSA mode', 'Input / Output')) || 'Unknown',
     audioChain: configuredDiagnosticValue(rowValue(rows, 'Audio chain', 'Input / Output')),
@@ -380,37 +565,18 @@ export function buildAudioInfoDiagnostics({
       hardwareMeasuredAt: measured ? capturedAt : null,
     },
     renderer: qobuzActive ? 'qobuz-connect' : 'mpd',
-    sourceFormat: reportedFormatDetail(
-      sourceFormat,
-      qobuzActive ? qobuz?.sourceFormatDetails : null,
-      formatProvenance,
-      sourceValueType,
-    ),
+    sourceFormat: legacySourceFormat,
     decodedPcm: reportedFormatDetail(
       decodedFormat,
       qobuzActive ? qobuz?.outputFormatDetails : null,
       formatProvenance,
       decodedValueType,
     ),
+    sourceFile,
+    decodedAudio,
     configuredOutput,
-    hardwareOutput: {
-      value: hardwareOutput.value,
-      state: hardwareOutput.state,
-      device: hardwareOutput.device || null,
-      interface: text(activeDevice?.name) || null,
-      card: text(activeDevice?.cardLabel || activeDevice?.cardId || activeDevice?.card) || null,
-      format: hardwareOutput.format || null,
-      bitDepth: hardwareOutput.bitDepth || null,
-      sampleRateHz: hardwareOutput.sampleRateHz || null,
-      channels: hardwareOutput.channels || null,
-      provenance: hardwareOutput.provenance,
-      valueType: measured ? 'hardware-measured' : 'unavailable',
-      live: true,
-      measured,
-      configured: false,
-      measuredAt: measured ? capturedAt : null,
-      reason: hardwareOutput.reason,
-    },
+    hardwareOutput: buildOutputMetadata({ hardwareOutput, activeDevice, capturedAt }),
+    output: buildOutputMetadata({ hardwareOutput, activeDevice, capturedAt }),
     processing,
     volume,
     conversion: {

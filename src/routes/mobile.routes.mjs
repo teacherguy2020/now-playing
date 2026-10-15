@@ -95,16 +95,42 @@ function sanitizeMobileAudioFormatObject(value) {
   const safe = {
     format: sanitizeMobileAudioFormat(value.format),
     codec: text(value.codec),
+    container: text(value.container) || null,
+    codecKind: text(value.codecKind) || null,
     bitDepth: positiveAudioInfoInteger(value.bitDepth),
+    bitDepthStatus: text(value.bitDepthStatus) || null,
+    bitDepthKind: text(value.bitDepthKind) || null,
     sampleRateHz: positiveAudioInfoInteger(value.sampleRateHz),
     channels: positiveAudioInfoInteger(value.channels),
+    encodedBitrateBps: positiveAudioInfoInteger(value.encodedBitrateBps),
+    encodedBitrateKbps: positiveAudioInfoInteger(value.encodedBitrateKbps),
+    encodedBitrateStatus: text(value.encodedBitrateStatus) || null,
+    encodedBitrateProvenance: text(value.encodedBitrateProvenance) || null,
+    pcmBitrateBps: positiveAudioInfoInteger(value.pcmBitrateBps),
+    pcmBitrateStatus: text(value.pcmBitrateStatus) || null,
     provenance: text(value.provenance) || 'unknown',
     valueType: text(value.valueType) || 'unknown',
     live: Boolean(value.live),
     measured: Boolean(value.measured),
   };
   if (typeof value.configured === 'boolean') safe.configured = value.configured;
+  if (typeof value.verified === 'boolean') safe.verified = value.verified;
   return safe;
+}
+
+function sanitizeMobileAudioOutput(value) {
+  const safe = sanitizeMobileAudioFormatObject(value);
+  if (!safe) return null;
+  return {
+    ...safe,
+    value: sanitizeMobileAudioFormat(value.value),
+    state: text(value.state) || 'unknown',
+    device: text(value.device) || null,
+    interface: text(value.interface) || null,
+    card: text(value.card) || null,
+    measuredAt: text(value.measuredAt) || null,
+    reason: text(value.reason) || null,
+  };
 }
 
 function sanitizeMobileAudioDiagnostics(value) {
@@ -120,6 +146,8 @@ function sanitizeMobileAudioDiagnostics(value) {
     renderer: text(value.renderer) || 'unknown',
     sourceFormat: sanitizeMobileAudioFormatObject(value.sourceFormat),
     decodedPcm: sanitizeMobileAudioFormatObject(value.decodedPcm),
+    sourceFile: sanitizeMobileAudioFormatObject(value.sourceFile),
+    decodedAudio: sanitizeMobileAudioFormatObject(value.decodedAudio),
   };
 
   if (value.configuredOutput && typeof value.configuredOutput === 'object') {
@@ -136,24 +164,11 @@ function sanitizeMobileAudioDiagnostics(value) {
 
   if (value.hardwareOutput && typeof value.hardwareOutput === 'object') {
     const hardware = value.hardwareOutput;
-    safe.hardwareOutput = {
-      value: sanitizeMobileAudioFormat(hardware.value),
-      state: text(hardware.state) || 'unknown',
-      device: text(hardware.device) || null,
-      interface: text(hardware.interface) || null,
-      card: text(hardware.card) || null,
-      format: text(hardware.format) || null,
-      bitDepth: positiveAudioInfoInteger(hardware.bitDepth),
-      sampleRateHz: positiveAudioInfoInteger(hardware.sampleRateHz),
-      channels: positiveAudioInfoInteger(hardware.channels),
-      provenance: text(hardware.provenance) || 'unknown',
-      valueType: text(hardware.valueType) || 'unknown',
-      live: Boolean(hardware.live),
-      measured: Boolean(hardware.measured),
-      configured: Boolean(hardware.configured),
-      measuredAt: text(hardware.measuredAt) || null,
-      reason: text(hardware.reason) || null,
-    };
+    safe.hardwareOutput = sanitizeMobileAudioOutput(hardware);
+  }
+
+  if (value.output && typeof value.output === 'object') {
+    safe.output = sanitizeMobileAudioOutput(value.output);
   }
 
   if (value.processing && typeof value.processing === 'object') {

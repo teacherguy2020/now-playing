@@ -7,6 +7,7 @@ import {
   formatAlsaHardwareOutput,
   normalizeAlsaHardwareProbe,
   parseAudioFormatDetails,
+  parseAudioFormatMetadata,
   parseAudioInfoHtml,
 } from '../src/lib/audio-info.mjs';
 import { registerConfigMoodeAudioInfoRoutes } from '../src/routes/config.moode-audio-info.routes.mjs';
@@ -131,6 +132,21 @@ test('Audio format parser separates source resolution from container details', (
   });
 });
 
+test('Audio format metadata parses container and reported bitrate without assigning bitrate to PCM', () => {
+  assert.deepEqual(parseAudioFormatMetadata('M4A 44.1 kHz, Stereo'), {
+    format: 'M4A 44.1 kHz, Stereo',
+    codec: '',
+    bitDepth: null,
+    sampleRateHz: 44100,
+    channels: 2,
+    container: 'M4A',
+    reportedBitrateBps: null,
+    codecKind: 'unknown',
+  });
+  assert.equal(parseAudioFormatMetadata('PCM 24 bit 44.1 kHz, Stereo, 270 kbps').reportedBitrateBps, 270000);
+  assert.equal(parseAudioFormatMetadata('PCM 24 bit 44.1 kHz, Stereo, 270 kbps').codecKind, 'unknown');
+});
+
 test('normal MPD diagnostics separate configured values from measured ALSA output', () => {
   const diagnostics = buildAudioInfoDiagnostics({
     moodeRows: parseAudioInfoHtml(normalMoodeHtml),
@@ -143,6 +159,12 @@ test('normal MPD diagnostics separate configured values from measured ALSA outpu
   assert.equal(diagnostics.sourceFormat.bitDepth, 24);
   assert.equal(diagnostics.sourceFormat.sampleRateHz, 96000);
   assert.equal(diagnostics.decodedPcm.bitDepth, 24);
+  assert.equal(diagnostics.sourceFile.container, 'FLAC');
+  assert.equal(diagnostics.sourceFile.codec, 'FLAC');
+  assert.equal(diagnostics.sourceFile.bitDepthStatus, 'reported');
+  assert.equal(diagnostics.sourceFile.encodedBitrateBps, null);
+  assert.equal(diagnostics.decodedAudio.format, 'PCM');
+  assert.equal(diagnostics.decodedAudio.pcmBitrateBps, 4608000);
   assert.equal(diagnostics.configuredOutput.alsaMode, 'plughw');
   assert.equal(diagnostics.configuredOutput.measured, false);
   assert.equal(diagnostics.hardwareOutput.format, 'S32_LE');
@@ -155,6 +177,41 @@ test('normal MPD diagnostics separate configured values from measured ALSA outpu
   assert.equal(diagnostics.volume.type, 'Fixed (0dB output)');
   assert.equal(diagnostics.conversion.status, 'unknown');
   assert.doesNotMatch(JSON.stringify(diagnostics), /USB\/SamsungMoode|Track\.flac/);
+});
+
+test('lossy source metadata keeps encoded bitrate separate from decoded PCM precision', () => {
+  const rows = parseAudioInfoHtml(`
+<div class="h5">Input / Output</div>
+<li><span class="left">Source</span><span class="right">USB/SamsungMoode/Album/01 - Track.m4a</span></li>
+<li><span class="left">Source format</span><span class="right">M4A 44.1 kHz, Stereo</span></li>
+<li><span class="left">Decoded to</span><span class="right">PCM 24 bit 44.1 kHz, Stereo, 270 kbps</span></li>
+<li><span class="left">Output format</span><span class="right">PCM 32 bit 96 kHz, Stereo, 6.144 Mbps</span></li>`);
+  const diagnostics = buildAudioInfoDiagnostics({
+    moodeRows: rows,
+    sourceAudio: {
+      codec: 'AAC-LC',
+      codecKind: 'lossy',
+      container: 'M4A',
+      sampleRateHz: 44100,
+      channels: 2,
+      encodedBitrateBps: 270000,
+      encodedBitrateStatus: 'reported',
+      encodedBitrateProvenance: 'ffprobe.stream',
+      bitDepthStatus: 'not-applicable',
+    },
+    alsa,
+  });
+
+  assert.equal(diagnostics.sourceFile.container, 'M4A');
+  assert.equal(diagnostics.sourceFile.codec, 'AAC-LC');
+  assert.equal(diagnostics.sourceFile.bitDepth, null);
+  assert.equal(diagnostics.sourceFile.bitDepthStatus, 'not-applicable');
+  assert.equal(diagnostics.sourceFile.encodedBitrateBps, 270000);
+  assert.equal(diagnostics.decodedAudio.bitDepth, 24);
+  assert.equal(diagnostics.decodedAudio.bitDepthKind, null);
+  assert.equal(diagnostics.decodedAudio.pcmBitrateBps, 2116800);
+  assert.equal(diagnostics.hardwareOutput.sampleRateHz, 96000);
+  assert.equal(diagnostics.sourceFormat.bitDepth, null);
 });
 
 test('Qobuz Audio Info separates reported formats, configured path, and measured output', () => {
@@ -222,6 +279,7 @@ test('Audio Info route adds Qobuz diagnostics without changing its MPD fallback 
 test('Audio Info route reuses the ALSA probe for normal MPD only when diagnostics are requested', async () => {
   const app = createApp();
   let probeCount = 0;
+  let sourceProbeInput = '';
   let fetchOptions;
   registerConfigMoodeAudioInfoRoutes(app, {
     requireTrackKey: () => true,
@@ -229,6 +287,18 @@ test('Audio Info route reuses the ALSA probe for normal MPD only when diagnostic
     probeAlsaHardware: async () => {
       probeCount += 1;
       return alsa;
+    },
+    getSourceAudio: async (file) => {
+      sourceProbeInput = file;
+      return {
+        codec: 'FLAC',
+        codecKind: 'lossless',
+        container: 'FLAC',
+        bitDepth: 24,
+        bitDepthStatus: 'verified',
+        sampleRateHz: 96000,
+        channels: 2,
+      };
     },
     fetchMoodeDeviceMeta: async () => ({
       deviceName: 'CAVALLI DAC',
@@ -257,6 +327,8 @@ test('Audio Info route reuses the ALSA probe for normal MPD only when diagnostic
     assert.equal(probeCount, 1);
     assert.equal(diagnosticResponse.body.diagnostics.version, 'audio-info.v1');
     assert.equal(diagnosticResponse.body.diagnostics.hardwareOutput.format, 'S32_LE');
+    assert.equal(diagnosticResponse.body.diagnostics.sourceFile.bitDepthStatus, 'verified');
+    assert.equal(sourceProbeInput, 'USB/SamsungMoode/Album/01 - Track.flac');
     assert.equal(fetchOptions.headers.cookie, 'PHPSESSID=stored-moode-session');
     assert.doesNotMatch(JSON.stringify(diagnosticResponse.body.diagnostics), /stored-moode-session/);
   } finally {

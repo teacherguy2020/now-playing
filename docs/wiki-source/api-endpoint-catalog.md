@@ -340,8 +340,14 @@ Observed request-shape examples with high confidence:
     - `sampleRateHz`
     - `bitDepth`
     - `channels`
+    - `container`, `codec`, and `codecKind`
+    - `bitDepthStatus` and `bitDepthKind`
+    - `encodedBitrateBps`, `encodedBitrateStatus`, and
+      `encodedBitrateProvenance`
   - `sourceAudio` comes from the existing source-file metadata probe; stream,
     missing, and unprobeable items omit it
+  - lossy codecs expose encoded bitrate but do not expose decoder precision as
+    source `bitDepth`; clients should honor `bitDepthStatus: "not-applicable"`
   - clients must not infer source quality from file format, extension, or
     catalog metadata; Home's lossless badge requires `sampleRateHz >= 48000`
     and `bitDepth >= 24`

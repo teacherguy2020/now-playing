@@ -302,6 +302,29 @@ and forwards the safe object alongside the existing rows. Its main fields are:
   parameters cannot prove every conversion before the endpoint;
 - `freshness`: request-time capture and hardware-measurement timestamps.
 
+The diagnostics object also has additive normalized fields for metadata
+accuracy:
+
+- `sourceFile`: container, codec, source bit depth, source sample rate,
+  channels, and encoded bitrate. Lossy codecs report
+  `bitDepthStatus: "not-applicable"`; decoder precision is never copied into
+  this object. Local files use the existing bounded `ffprobe` source probe
+  when available, with stat-keyed cache invalidation.
+- `decodedAudio`: decoder-reported PCM precision, rate, and channels. Its
+  `pcmBitrateBps` is a nominal value calculated from those PCM parameters and
+  is labeled `pcmBitrateStatus: "calculated"`; an encoded bitrate is not shown
+  as decoded throughput.
+- `output`: the same actual ALSA observation as `hardwareOutput`, with device,
+  interface, format, rate, and channels grouped under the output role.
+
+This distinction is required because moOde's `audioinfo.php` builds its
+`Decoded to` string from MPD's decoder fields but appends MPD's `bitrate`
+field to that same string. For AAC, moOde also maps MPD's floating-point
+precision marker (`f`) to a displayed 24-bit decoder value. Therefore a row
+such as `PCM 24 bit 44.1 kHz, Stereo, 270 kbps` means decoder-reported PCM
+parameters plus an encoded-source bitrate; it does not establish a 24-bit AAC
+source. The normalized fields keep those meanings separate.
+
 The mobile response redacts local source paths and network URLs from legacy
 rows and never forwards the internal moOde URL, Track Key, or PHP session ID.
 
@@ -310,4 +333,4 @@ while Qobuz owns playback; the server route also rejects those MPD commands
 with a source-aware unavailable response. No Qobuz remote-control API is
 implied by the metadata integration.
 
-*Last reviewed: 2026-10-15 13:58 America/Chicago*
+*Last reviewed: 2026-10-15 15:45 America/Chicago*

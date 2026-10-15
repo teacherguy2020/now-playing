@@ -331,8 +331,11 @@ backward-compatible, versioned `diagnostics` object:
   "renderer": "mpd",
   "sourceFormat": { "format": "FLAC 24 bit 96 kHz, Stereo", "bitDepth": 24, "sampleRateHz": 96000, "channels": 2 },
   "decodedPcm": { "format": "PCM 24 bit 96 kHz, Stereo", "bitDepth": 24, "sampleRateHz": 96000, "channels": 2 },
+  "sourceFile": { "container": "FLAC", "codec": "FLAC", "codecKind": "lossless", "bitDepth": 24, "bitDepthStatus": "verified", "sampleRateHz": 96000, "channels": 2, "encodedBitrateBps": 4200000, "encodedBitrateStatus": "reported", "valueType": "source-file" },
+  "decodedAudio": { "format": "PCM", "codec": "PCM", "bitDepth": 24, "sampleRateHz": 96000, "channels": 2, "pcmBitrateBps": 4608000, "pcmBitrateStatus": "calculated", "valueType": "decoded-reported" },
   "configuredOutput": { "alsaMode": "plughw", "audioChain": "MPD → plughw → Device", "valueType": "configured", "measured": false },
   "hardwareOutput": { "format": "S32_LE", "bitDepth": 32, "sampleRateHz": 96000, "channels": 2, "valueType": "hardware-measured", "measured": true },
+  "output": { "format": "S32_LE", "bitDepth": 32, "sampleRateHz": 96000, "channels": 2, "valueType": "hardware-measured", "measured": true },
   "processing": { "resampling": "Off", "replayGain": "off", "normalization": "off", "valueType": "configured", "measured": false },
   "volume": { "type": "Fixed (0dB output)", "valueType": "configured", "measured": false },
   "conversion": { "status": "unknown", "valueType": "not-measured", "measured": false }
@@ -340,6 +343,13 @@ backward-compatible, versioned `diagnostics` object:
 ```
 
 `sourceFormat` and `decodedPcm` are moOde/renderer-reported values. The
+additive `sourceFile` object is the authoritative normalized source view:
+lossless PCM-based files may expose verified encoded bit depth, while AAC,
+MP3, Opus, Vorbis, and other perceptual codecs expose encoded bitrate but
+report source bit depth as `not-applicable`. `decodedAudio` describes decoder
+PCM precision and a calculated nominal PCM throughput; it does not reuse the
+encoded bitrate shown by moOde. `output` is the measured ALSA endpoint view.
+The
 `configuredOutput`, `processing`, and `volume` sections describe configured
 state and are never presented as hardware measurements. `hardwareOutput` is
 the bounded, read-only ALSA `/proc/asound` observation; it is absent or marked
@@ -388,4 +398,4 @@ invoking the native APNs bridge. This keeps podcast paths out of the client
 while allowing podcast starts to receive the same track-change notification
 behavior as music.
 
-*Last reviewed: 2026-10-15 13:58 America/Chicago*
+*Last reviewed: 2026-10-15 15:45 America/Chicago*

@@ -4509,7 +4509,7 @@
     if (meta) meta.textContent = "moOde playback chain";
     try {
       await ensureKey();
-      const r = await fetch(`${base}/config/moode/audio-info?view=rows`, { cache: "no-store", headers: reqHeaders(false) });
+      const r = await fetch(`${base}/config/moode/audio-info?view=rows&diagnostics=1`, { cache: "no-store", headers: reqHeaders(false) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !(j == null ? void 0 : j.ok)) throw new Error(String((j == null ? void 0 : j.error) || `HTTP ${r.status}`));
       const rows = Array.isArray(j == null ? void 0 : j.rows) ? j.rows : [];
@@ -4533,15 +4533,75 @@
         const prev = best.get(k);
         if (!prev || scoreVal(val) > scoreVal(prev.value || "")) best.set(k, { section: sec, key, value: val });
       });
-      const finalRows = Array.from(best.values());
+      const diagnostics = j == null ? void 0 : j.diagnostics;
+      const normalizedRows = [];
+      const addNormalized = (section, key, value) => {
+        const normalized = String(value == null ? "" : value).trim();
+        normalizedRows.push({ section, key, value: normalized || "Unavailable" });
+      };
+      const rateLabel = (value) => {
+        const hz = Number(value || 0);
+        if (!Number.isFinite(hz) || hz <= 0) return "Unavailable";
+        const khz = hz / 1000;
+        return `${Number.isInteger(khz) ? khz : khz.toFixed(1)} kHz`;
+      };
+      const bitrateLabel = (value) => {
+        const bps = Number(value || 0);
+        if (!Number.isFinite(bps) || bps <= 0) return "Unavailable";
+        if (bps >= 1000000) return `${(bps / 1000000).toFixed(3)} Mbps`;
+        return `${Math.round(bps / 1000)} kbps`;
+      };
+      const bitDepthLabel = (value) => {
+        if (String(value?.bitDepthStatus || "").toLowerCase() === "not-applicable") return "Not applicable";
+        const bits = Number(value?.bitDepth || 0);
+        if (!Number.isInteger(bits) || bits <= 0) return "Unavailable";
+        return `${bits}-bit${String(value?.bitDepthKind || "").toLowerCase() === "float" ? " floating-point" : ""}`;
+      };
+      const sourceFile = diagnostics?.sourceFile;
+      if (sourceFile && typeof sourceFile === "object") {
+        addNormalized("Source File", "Container", sourceFile.container || sourceFile.format);
+        addNormalized("Source File", "Codec", sourceFile.codec);
+        addNormalized("Source File", "Bit depth", bitDepthLabel(sourceFile));
+        addNormalized("Source File", "Encoded bitrate", bitrateLabel(sourceFile.encodedBitrateBps));
+        addNormalized("Source File", "Sample rate", rateLabel(sourceFile.sampleRateHz));
+        addNormalized("Source File", "Channels", sourceFile.channels ? `${sourceFile.channels}${sourceFile.channels === 1 ? " (Mono)" : " (Stereo)"}` : "Unavailable");
+      }
+      const decodedAudio = diagnostics?.decodedAudio;
+      if (decodedAudio && typeof decodedAudio === "object") {
+        addNormalized("Decoded Audio", "Format", decodedAudio.format || decodedAudio.codec);
+        addNormalized("Decoded Audio", "Precision", bitDepthLabel(decodedAudio));
+        addNormalized("Decoded Audio", "Sample rate", rateLabel(decodedAudio.sampleRateHz));
+        addNormalized("Decoded Audio", "Channels", decodedAudio.channels ? `${decodedAudio.channels}${decodedAudio.channels === 1 ? " (Mono)" : " (Stereo)"}` : "Unavailable");
+        addNormalized("Decoded Audio", "PCM throughput (calculated)", decodedAudio.pcmBitrateStatus === "calculated"
+          ? bitrateLabel(decodedAudio.pcmBitrateBps)
+          : "Unavailable");
+      }
+      const output = diagnostics?.output;
+      if (output && typeof output === "object") {
+        addNormalized("Output", "Format", output.format || output.value);
+        addNormalized("Output", "Device", output.device);
+        addNormalized("Output", "Interface", output.interface);
+        addNormalized("Output", "Sample rate", rateLabel(output.sampleRateHz));
+        addNormalized("Output", "Channels", output.channels ? `${output.channels}${output.channels === 1 ? " (Mono)" : " (Stereo)"}` : "Unavailable");
+        addNormalized("Output", "State", output.state);
+      }
+      const normalizedKeys = new Set(["Source format", "Decoded to", "Output format"]);
+      const legacyRows = Array.from(best.values()).filter((row) => !normalizedKeys.has(row.key));
+      const finalRows = normalizedRows.length ? [...normalizedRows, ...legacyRows] : Array.from(best.values());
       const grouped = new Map();
       finalRows.forEach((r) => {
         if (!grouped.has(r.section)) grouped.set(r.section, []);
         grouped.get(r.section).push(r);
       });
+      const escapeHtml = (value) => String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
       const html = Array.from(grouped.entries()).map(([section, items]) => {
-        const rowsHtml = items.map((x) => `<div class='aiRow'><span class='aiKey'>${x.key}</span><span class='aiVal'>${x.value}</span></div>`).join("");
-        return `<div class='aiSection'><div class='aiSectionTitle'>${section}</div>${rowsHtml}</div>`;
+        const rowsHtml = items.map((x) => `<div class='aiRow'><span class='aiKey'>${escapeHtml(x.key)}</span><span class='aiVal'>${escapeHtml(x.value)}</span></div>`).join("");
+        return `<div class='aiSection'><div class='aiSectionTitle'>${escapeHtml(section)}</div>${rowsHtml}</div>`;
       }).join("");
       list.innerHTML = html;
       if (meta) meta.textContent = `${finalRows.length} fields · ${grouped.size} sections`;

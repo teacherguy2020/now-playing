@@ -83,6 +83,7 @@ export function registerConfigMoodeAudioInfoRoutes(app, deps = {}) {
   const getQobuzNowPlaying = deps.getQobuzNowPlaying;
   const readAlsaHardware = deps.probeAlsaHardware || (() => probeAlsaHardware());
   const getDeviceMeta = deps.fetchMoodeDeviceMeta || fetchMoodeDeviceMeta;
+  const getSourceAudio = deps.getSourceAudio;
 
   app.get('/config/moode/audio-info', async (req, res) => {
     try {
@@ -142,8 +143,21 @@ export function registerConfigMoodeAudioInfoRoutes(app, deps = {}) {
 
       let audio = null;
       let alsa = null;
+      let sourceAudio = null;
       if (qobuz?.active || diagnosticsRequested) {
         alsa = await readAlsaHardware().catch(() => null);
+      }
+      if (diagnosticsRequested && !qobuz?.active && typeof getSourceAudio === 'function') {
+        const source = rows.find((row) => (
+          String(row?.section || '').trim() === 'Input / Output'
+            && String(row?.key || '').trim().toLowerCase() === 'source'
+        ))?.value;
+        const sourceValue = String(source || '').trim();
+        if (sourceValue
+          && !/^(?:not playing|unknown|—)$/i.test(sourceValue)
+          && !/^[a-z][a-z\d+.-]*:\/\//i.test(sourceValue)) {
+          sourceAudio = await getSourceAudio(sourceValue).catch(() => null);
+        }
       }
       if (qobuz?.active) {
         const enriched = buildQobuzAudioInfo({ moodeRows: rows, qobuz, alsa });
@@ -181,6 +195,7 @@ export function registerConfigMoodeAudioInfoRoutes(app, deps = {}) {
           moodeRows: rows,
           alsa,
           qobuz,
+          sourceAudio,
           capturedAt: fetchedAt,
         });
       }

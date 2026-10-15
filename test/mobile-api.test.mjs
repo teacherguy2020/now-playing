@@ -1585,6 +1585,41 @@ test('mobile audio info requires bearer auth and strips internal source metadata
               live: true,
               measured: false,
             },
+            sourceFile: {
+              format: 'M4A 44.1 kHz, Stereo',
+              container: 'M4A',
+              codec: 'AAC-LC',
+              codecKind: 'lossy',
+              bitDepth: null,
+              bitDepthStatus: 'not-applicable',
+              bitDepthKind: null,
+              sampleRateHz: 44100,
+              channels: 2,
+              encodedBitrateBps: 270000,
+              encodedBitrateKbps: 270,
+              encodedBitrateStatus: 'reported',
+              encodedBitrateProvenance: 'ffprobe.stream',
+              provenance: 'ffprobe.source-file',
+              valueType: 'source-file',
+              live: true,
+              measured: false,
+              verified: true,
+            },
+            decodedAudio: {
+              format: 'PCM',
+              codec: 'PCM',
+              bitDepth: 24,
+              bitDepthKind: 'integer',
+              sampleRateHz: 44100,
+              channels: 2,
+              pcmBitrateBps: 2116800,
+              pcmBitrateStatus: 'calculated',
+              provenance: 'moode-audioinfo.php',
+              valueType: 'decoded-reported',
+              live: true,
+              measured: false,
+              configured: false,
+            },
             configuredOutput: {
               alsaMode: 'plughw',
               audioChain: 'MPD → plughw → Device',
@@ -1595,6 +1630,24 @@ test('mobile audio info requires bearer auth and strips internal source metadata
               configured: true,
             },
             hardwareOutput: {
+              value: 'PCM S32_LE 96 kHz 2ch',
+              state: 'running',
+              device: 'DAC / USB Audio',
+              interface: 'USB Audio',
+              card: 'DAC',
+              format: 'S32_LE',
+              bitDepth: 32,
+              sampleRateHz: 96000,
+              channels: 2,
+              provenance: 'alsa-procfs',
+              valueType: 'hardware-measured',
+              live: true,
+              measured: true,
+              configured: false,
+              measuredAt: '2026-09-30T12:00:00.000Z',
+              reason: 'Read from the active ALSA playback hw_params/status files',
+            },
+            output: {
               value: 'PCM S32_LE 96 kHz 2ch',
               state: 'running',
               device: 'DAC / USB Audio',
@@ -1680,6 +1733,11 @@ test('mobile audio info requires bearer auth and strips internal source metadata
   assert.equal(response.body.sourceUrl, undefined);
   assert.equal(response.body.diagnostics.version, 'audio-info.v1');
   assert.equal(response.body.diagnostics.sourceFormat.bitDepth, 24);
+  assert.equal(response.body.diagnostics.sourceFile.codec, 'AAC-LC');
+  assert.equal(response.body.diagnostics.sourceFile.bitDepth, null);
+  assert.equal(response.body.diagnostics.sourceFile.encodedBitrateBps, 270000);
+  assert.equal(response.body.diagnostics.decodedAudio.pcmBitrateBps, 2116800);
+  assert.equal(response.body.diagnostics.output.format, 'S32_LE');
   assert.equal(response.body.diagnostics.hardwareOutput.format, 'S32_LE');
   assert.doesNotMatch(JSON.stringify(response.body), /USB\/SamsungMoode|moode\.local|PHPSESSID|stored-moode-session/);
 });

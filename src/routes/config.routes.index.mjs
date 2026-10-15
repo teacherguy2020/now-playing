@@ -134,6 +134,7 @@ export function registerAllConfigRoutes(app, deps) {
     requireTrackKey: deps.requireTrackKey,
     getQobuzNowPlaying: deps.getQobuzNowPlaying,
     probeAlsaHardware: deps.probeAlsaHardware,
+    getSourceAudio: deps.getSourceAudio,
   });
 
   if (deps.controlPoint) {
