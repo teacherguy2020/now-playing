@@ -6,6 +6,7 @@ import {
   buildQobuzAudioInfo,
   formatAlsaHardwareOutput,
   normalizeAlsaHardwareProbe,
+  normalizeLegacyAudioInfoRows,
   parseAudioFormatDetails,
   parseAudioFormatMetadata,
   parseAudioInfoHtml,
@@ -66,6 +67,18 @@ const normalMoodeHtml = `
 <li><span class="left">Normalize vol</span><span class="right">off</span></li>
 <li><span class="left">Volume type</span><span class="right">Fixed (0dB output)</span></li>
 <li><span class="left">Volume levels</span><span class="right">Knob 0, ALSA none, CDSP 0dB</span></li>
+`;
+
+const lossyMoodeHtml = `
+<div class="h5">Input / Output</div>
+<li><span class="left">Source</span><span class="right">USB/SamsungMoode/Album/01 - Track.m4a</span></li>
+<li><span class="left">Source format</span><span class="right">M4A 44.1 kHz, Stereo</span></li>
+<li><span class="left">Decoded to</span><span class="right">PCM 24 bit 44.1 kHz, Stereo, 270 kbps</span></li>
+<li><span class="left">Output format</span><span class="right">PCM 32 bit 44.1 kHz, Stereo, 2.822 Mbps</span></li>
+<li><span class="left">ALSA mode</span><span class="right">(plughw)</span></li>
+<li><span class="left">Audio chain</span><span class="right">MPD &rarr; plughw &rarr; Device</span></li>
+<div class="h5">DSP operations</div>
+<li><span class="left">Resampling</span><span class="right">Off</span></li>
 `;
 
 const qobuz = {
@@ -204,6 +217,7 @@ test('lossy source metadata keeps encoded bitrate separate from decoded PCM prec
 
   assert.equal(diagnostics.sourceFile.container, 'M4A');
   assert.equal(diagnostics.sourceFile.codec, 'AAC-LC');
+  assert.equal(diagnostics.sourceFile.codecStatus, 'verified');
   assert.equal(diagnostics.sourceFile.bitDepth, null);
   assert.equal(diagnostics.sourceFile.bitDepthStatus, 'not-applicable');
   assert.equal(diagnostics.sourceFile.encodedBitrateBps, 270000);
@@ -212,6 +226,23 @@ test('lossy source metadata keeps encoded bitrate separate from decoded PCM prec
   assert.equal(diagnostics.decodedAudio.pcmBitrateBps, 2116800);
   assert.equal(diagnostics.hardwareOutput.sampleRateHz, 96000);
   assert.equal(diagnostics.sourceFormat.bitDepth, null);
+});
+
+test('lossy diagnostics remove encoded bitrate from the legacy decoded row', () => {
+  const rows = parseAudioInfoHtml(lossyMoodeHtml);
+  const sourceFile = { codec: 'AAC-LC', codecKind: 'lossy' };
+  const corrected = normalizeLegacyAudioInfoRows(rows, { sourceFile });
+  const decoded = corrected.find((row) => row.key === 'Decoded to');
+
+  assert.equal(decoded.value, 'PCM 24 bit 44.1 kHz, Stereo');
+  assert.equal(decoded.provenance, 'moode-audioinfo.php:mpd-decoder-fields');
+  assert.equal(decoded.valueType, 'decoded-reported');
+  assert.equal(decoded.measured, false);
+  assert.equal(
+    normalizeLegacyAudioInfoRows(rows, { sourceFile: { codecKind: 'lossless' } })
+      .find((row) => row.key === 'Decoded to').value,
+    'PCM 24 bit 44.1 kHz, Stereo, 270 kbps',
+  );
 });
 
 test('Qobuz Audio Info separates reported formats, configured path, and measured output', () => {
@@ -331,6 +362,45 @@ test('Audio Info route reuses the ALSA probe for normal MPD only when diagnostic
     assert.equal(sourceProbeInput, 'USB/SamsungMoode/Album/01 - Track.flac');
     assert.equal(fetchOptions.headers.cookie, 'PHPSESSID=stored-moode-session');
     assert.doesNotMatch(JSON.stringify(diagnosticResponse.body.diagnostics), /stored-moode-session/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('Audio Info diagnostics route verifies M4A codec and corrects only its user-facing legacy row', async () => {
+  const app = createApp();
+  registerConfigMoodeAudioInfoRoutes(app, {
+    requireTrackKey: () => true,
+    getQobuzNowPlaying: async () => null,
+    probeAlsaHardware: async () => alsa,
+    getSourceAudio: async () => ({
+      codec: 'AAC-LC',
+      codecKind: 'lossy',
+      container: 'M4A',
+      sampleRateHz: 44100,
+      channels: 2,
+      encodedBitrateBps: 270000,
+      encodedBitrateStatus: 'reported',
+      encodedBitrateProvenance: 'ffprobe.stream',
+      bitDepthStatus: 'not-applicable',
+    }),
+    fetchMoodeDeviceMeta: async () => ({ sessionId: 'stored-moode-session' }),
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(lossyMoodeHtml, { status: 200 });
+  try {
+    const legacyResponse = createResponse();
+    await app.routes.get('GET /config/moode/audio-info')?.({ query: { view: 'rows' } }, legacyResponse);
+    assert.equal(legacyResponse.body.rows.find((row) => row.key === 'Decoded to').value, 'PCM 24 bit 44.1 kHz, Stereo, 270 kbps');
+
+    const diagnosticResponse = createResponse();
+    await app.routes.get('GET /config/moode/audio-info')?.({ query: { view: 'rows', diagnostics: '1' } }, diagnosticResponse);
+    assert.equal(diagnosticResponse.body.diagnostics.sourceFile.codec, 'AAC-LC');
+    assert.equal(diagnosticResponse.body.diagnostics.sourceFile.codecStatus, 'verified');
+    assert.equal(diagnosticResponse.body.diagnostics.sourceFile.bitDepthStatus, 'not-applicable');
+    assert.equal(diagnosticResponse.body.diagnostics.decodedAudio.pcmBitrateBps, 2116800);
+    assert.equal(diagnosticResponse.body.rows.find((row) => row.key === 'Decoded to').value, 'PCM 24 bit 44.1 kHz, Stereo');
   } finally {
     globalThis.fetch = originalFetch;
   }

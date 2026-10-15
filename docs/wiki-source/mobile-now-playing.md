@@ -331,7 +331,7 @@ backward-compatible, versioned `diagnostics` object:
   "renderer": "mpd",
   "sourceFormat": { "format": "FLAC 24 bit 96 kHz, Stereo", "bitDepth": 24, "sampleRateHz": 96000, "channels": 2 },
   "decodedPcm": { "format": "PCM 24 bit 96 kHz, Stereo", "bitDepth": 24, "sampleRateHz": 96000, "channels": 2 },
-  "sourceFile": { "container": "FLAC", "codec": "FLAC", "codecKind": "lossless", "bitDepth": 24, "bitDepthStatus": "verified", "sampleRateHz": 96000, "channels": 2, "encodedBitrateBps": 4200000, "encodedBitrateStatus": "reported", "valueType": "source-file" },
+  "sourceFile": { "container": "FLAC", "codec": "FLAC", "codecStatus": "verified", "codecKind": "lossless", "bitDepth": 24, "bitDepthStatus": "verified", "sampleRateHz": 96000, "channels": 2, "encodedBitrateBps": 4200000, "encodedBitrateStatus": "reported", "valueType": "source-file" },
   "decodedAudio": { "format": "PCM", "codec": "PCM", "bitDepth": 24, "sampleRateHz": 96000, "channels": 2, "pcmBitrateBps": 4608000, "pcmBitrateStatus": "calculated", "valueType": "decoded-reported" },
   "configuredOutput": { "alsaMode": "plughw", "audioChain": "MPD → plughw → Device", "valueType": "configured", "measured": false },
   "hardwareOutput": { "format": "S32_LE", "bitDepth": 32, "sampleRateHz": 96000, "channels": 2, "valueType": "hardware-measured", "measured": true },
@@ -346,7 +346,10 @@ backward-compatible, versioned `diagnostics` object:
 additive `sourceFile` object is the authoritative normalized source view:
 lossless PCM-based files may expose verified encoded bit depth, while AAC,
 MP3, Opus, Vorbis, and other perceptual codecs expose encoded bitrate but
-report source bit depth as `not-applicable`. `decodedAudio` describes decoder
+report source bit depth as `not-applicable`. `sourceFile.codecStatus` is
+`verified` when the bounded local-file probe identified the codec, `reported`
+when provider metadata supplied it, and `unavailable` otherwise.
+`decodedAudio` describes decoder
 PCM precision and a calculated nominal PCM throughput; it does not reuse the
 encoded bitrate shown by moOde. `output` is the measured ALSA endpoint view.
 The
@@ -356,6 +359,11 @@ the bounded, read-only ALSA `/proc/asound` observation; it is absent or marked
 unavailable when no playback stream exposes parameters. `conversion` remains
 unknown because ALSA `hw_params` cannot prove every transformation before the
 hardware endpoint.
+
+When diagnostics are requested, the legacy mobile `Decoded to` row is also
+corrected for verified lossy sources so an encoded bitrate is not displayed
+as decoded PCM throughput. The ordinary non-diagnostics legacy response is
+unchanged for compatibility.
 
 ## Local audio source/cache
 

@@ -63,6 +63,29 @@ test('normalizes codec-aware source semantics without treating lossy decoder pre
   });
 
   assert.deepEqual(normalizeSourceAudioProbe({
+    streams: [{
+      codec_name: 'alac',
+      sample_rate: '96000',
+      channels: 2,
+      bits_per_raw_sample: '24',
+      bit_rate: '4200000',
+    }],
+    format: { format_name: 'mov,mp4,m4a' },
+  }), {
+    sampleRateHz: 96000,
+    bitDepth: 24,
+    channels: 2,
+    codec: 'ALAC',
+    codecKind: 'lossless',
+    bitDepthStatus: 'verified',
+    bitDepthKind: 'integer',
+    container: 'M4A',
+    encodedBitrateBps: 4200000,
+    encodedBitrateStatus: 'reported',
+    encodedBitrateProvenance: 'ffprobe.stream',
+  });
+
+  assert.deepEqual(normalizeSourceAudioProbe({
     streams: [{ codec_name: 'pcm_s24le', sample_rate: '48000', channels: 2 }],
     format: { format_name: 'aiff' },
   }), {
@@ -105,6 +128,29 @@ test('probes a source file once and reuses the stat-keyed cache', async () => {
     const expected = { sampleRateHz: 96000, bitDepth: 24, channels: 2 };
     assert.deepEqual(await probe.get('America Undefined.flac'), expected);
     assert.deepEqual(await probe.get('America Undefined.flac'), expected);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('source probe fails closed for inaccessible files and ffprobe failures', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'sonuvi-source-audio-failure-'));
+  try {
+    const media = path.join(root, 'track.m4a');
+    await writeFile(media, 'test source');
+
+    const inaccessible = createSourceAudioProbe({
+      resolveFile: async () => '',
+      cachePath: path.join(root, 'inaccessible-cache.json'),
+    });
+    assert.equal(await inaccessible.get('track.m4a'), null);
+
+    const ffprobeFailure = createSourceAudioProbe({
+      resolveFile: async () => media,
+      cachePath: path.join(root, 'failure-cache.json'),
+      ffprobePath: path.join(root, 'missing-ffprobe'),
+    });
+    assert.equal(await ffprobeFailure.get('track.m4a'), null);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

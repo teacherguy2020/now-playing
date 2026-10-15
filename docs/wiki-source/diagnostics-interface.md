@@ -306,7 +306,10 @@ The diagnostics object also has additive normalized fields for metadata
 accuracy:
 
 - `sourceFile`: container, codec, source bit depth, source sample rate,
-  channels, and encoded bitrate. Lossy codecs report
+  channels, and encoded bitrate. `codecStatus: "verified"` means the
+  bounded local-file `ffprobe` supplied the codec; `reported` means the value
+  came from provider metadata, and `unavailable` means no codec evidence was
+  available. Lossy codecs report
   `bitDepthStatus: "not-applicable"`; decoder precision is never copied into
   this object. Local files use the existing bounded `ffprobe` source probe
   when available, with stat-keyed cache invalidation.
@@ -323,7 +326,10 @@ field to that same string. For AAC, moOde also maps MPD's floating-point
 precision marker (`f`) to a displayed 24-bit decoder value. Therefore a row
 such as `PCM 24 bit 44.1 kHz, Stereo, 270 kbps` means decoder-reported PCM
 parameters plus an encoded-source bitrate; it does not establish a 24-bit AAC
-source. The normalized fields keep those meanings separate.
+source. The normalized fields keep those meanings separate. When diagnostics
+are requested and the verified source codec is lossy, the returned legacy
+`Decoded to` row omits the trailing encoded bitrate; the compatibility view
+without diagnostics remains unchanged.
 
 The mobile response redacts local source paths and network URLs from legacy
 rows and never forwards the internal moOde URL, Track Key, or PHP session ID.
@@ -333,4 +339,4 @@ while Qobuz owns playback; the server route also rejects those MPD commands
 with a source-aware unavailable response. No Qobuz remote-control API is
 implied by the metadata integration.
 
-*Last reviewed: 2026-10-15 15:45 America/Chicago*
+*Last reviewed: 2026-10-15 16:13 America/Chicago*

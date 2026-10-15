@@ -1550,6 +1550,7 @@ test('mobile audio info requires bearer auth and strips internal source metadata
           fetchedAt: '2026-09-30T12:00:00.000Z',
           rows: [
             { section: 'Input / Output', key: 'Source', value: 'USB/SamsungMoode/Album/01 - Track.flac' },
+            { section: 'Input / Output', key: 'Decoded to', value: 'PCM 24 bit 44.1 kHz, Stereo' },
             { section: 'Audio Device', key: 'Device', value: 'Test DAC' },
             { section: 'Audio Device', key: 'Sample rate', value: '192 kHz' },
             { section: '', key: '', value: 'discarded' },
@@ -1589,6 +1590,7 @@ test('mobile audio info requires bearer auth and strips internal source metadata
               format: 'M4A 44.1 kHz, Stereo',
               container: 'M4A',
               codec: 'AAC-LC',
+              codecStatus: 'verified',
               codecKind: 'lossy',
               bitDepth: null,
               bitDepthStatus: 'not-applicable',
@@ -1726,6 +1728,7 @@ test('mobile audio info requires bearer auth and strips internal source metadata
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.body.rows, [
     { section: 'Input / Output', key: 'Source', value: 'Local file' },
+    { section: 'Input / Output', key: 'Decoded to', value: 'PCM 24 bit 44.1 kHz, Stereo' },
     { section: 'Audio Device', key: 'Device', value: 'Test DAC' },
     { section: 'Audio Device', key: 'Sample rate', value: '192 kHz' },
   ]);
@@ -1734,6 +1737,7 @@ test('mobile audio info requires bearer auth and strips internal source metadata
   assert.equal(response.body.diagnostics.version, 'audio-info.v1');
   assert.equal(response.body.diagnostics.sourceFormat.bitDepth, 24);
   assert.equal(response.body.diagnostics.sourceFile.codec, 'AAC-LC');
+  assert.equal(response.body.diagnostics.sourceFile.codecStatus, 'verified');
   assert.equal(response.body.diagnostics.sourceFile.bitDepth, null);
   assert.equal(response.body.diagnostics.sourceFile.encodedBitrateBps, 270000);
   assert.equal(response.body.diagnostics.decodedAudio.pcmBitrateBps, 2116800);

@@ -5,6 +5,7 @@ import {
   buildAudioInfoDiagnostics,
   buildQobuzAudioInfo,
   normalizeAlsaHardwareProbe,
+  normalizeLegacyAudioInfoRows,
   parseAudioInfoHtml,
 } from '../lib/audio-info.mjs';
 
@@ -166,6 +167,19 @@ export function registerConfigMoodeAudioInfoRoutes(app, deps = {}) {
       }
 
       const fetchedAt = new Date().toISOString();
+      let diagnostics = null;
+      if (diagnosticsRequested) {
+        diagnostics = buildAudioInfoDiagnostics({
+          moodeRows: rows,
+          alsa,
+          qobuz,
+          sourceAudio,
+          capturedAt: fetchedAt,
+        });
+        rows = normalizeLegacyAudioInfoRows(rows, {
+          sourceFile: diagnostics.sourceFile,
+        });
+      }
       const sections = rows.reduce((acc, row) => {
         if (!acc[row.section]) acc[row.section] = [];
         const { section: _section, ...rest } = row;
@@ -190,15 +204,7 @@ export function registerConfigMoodeAudioInfoRoutes(app, deps = {}) {
         };
         payload.audio = audio;
       }
-      if (diagnosticsRequested) {
-        payload.diagnostics = buildAudioInfoDiagnostics({
-          moodeRows: rows,
-          alsa,
-          qobuz,
-          sourceAudio,
-          capturedAt: fetchedAt,
-        });
-      }
+      if (diagnostics) payload.diagnostics = diagnostics;
       if (view === 'rows') {
         payload.rows = rows;
       } else if (view === 'both' || view === 'all') {

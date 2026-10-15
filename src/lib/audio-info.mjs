@@ -368,6 +368,37 @@ function reportedFormatDetail(format, details, provenance, valueType) {
   };
 }
 
+/**
+ * moOde appends MPD's bitrate field to the legacy `Decoded to` row. For a
+ * lossy source that value is the encoded stream bitrate, not decoded PCM
+ * throughput. Keep the legacy row untouched unless the diagnostics view has
+ * verified a lossy source; the normalized sourceFile/decodedAudio fields are
+ * the authoritative locations for the two separate values.
+ */
+export function normalizeLegacyAudioInfoRows(rows = [], { sourceFile = null } = {}) {
+  const input = Array.isArray(rows) ? rows : [];
+  if (text(sourceFile?.codecKind).toLowerCase() !== 'lossy') return input;
+
+  return input.map((row) => {
+    const section = text(row?.section);
+    const key = text(row?.key);
+    if (!/^input \/ output$/i.test(section) || !/^decoded to$/i.test(key)) return row;
+
+    const value = text(row?.value);
+    const corrected = value.replace(/,\s*\d+(?:\.\d+)?\s*(?:k|m)bps\s*$/i, '').trim();
+    if (!corrected || corrected === value) return row;
+
+    return {
+      ...row,
+      value: corrected,
+      provenance: text(row?.provenance) || 'moode-audioinfo.php:mpd-decoder-fields',
+      valueType: text(row?.valueType) || 'decoded-reported',
+      live: typeof row?.live === 'boolean' ? row.live : true,
+      measured: false,
+    };
+  });
+}
+
 function buildSourceFileMetadata({
   sourceFormat,
   decodedFormat,
@@ -383,8 +414,10 @@ function buildSourceFileMetadata({
   const reportedDetails = qobuzActive && qobuz?.sourceFormatDetails
     ? qobuz.sourceFormatDetails
     : {};
-  const codec = text(probe?.codec) || text(reportedDetails.codec) || parsedSource.codec;
+  const probedCodec = text(probe?.codec);
+  const codec = probedCodec || text(reportedDetails.codec) || parsedSource.codec;
   const codecKind = text(probe?.codecKind) || audioCodecKind(codec);
+  const codecStatus = probedCodec ? 'verified' : (codec ? 'reported' : 'unavailable');
   const bitDepth = positiveInt(probe?.bitDepth)
     || (codecKind === 'lossless'
       ? positiveInt(reportedDetails.bitDepth) || positiveInt(parsedSource.bitDepth)
@@ -405,6 +438,7 @@ function buildSourceFileMetadata({
     format: text(sourceFormat) || 'Unknown',
     container: text(probe?.container) || parsedSource.container || 'Unknown',
     codec: codec || 'Unknown',
+    codecStatus,
     codecKind,
     bitDepth,
     bitDepthStatus,
@@ -423,7 +457,7 @@ function buildSourceFileMetadata({
     valueType: qobuzActive ? 'source-reported' : 'source-file',
     live: true,
     measured: false,
-    verified: probe?.bitDepthStatus === 'verified',
+    verified: Boolean(probe && (probedCodec || probe?.container || probe?.bitDepthStatus === 'verified')),
     configured: false,
   };
 }

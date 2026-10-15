@@ -95,6 +95,7 @@ function sanitizeMobileAudioFormatObject(value) {
   const safe = {
     format: sanitizeMobileAudioFormat(value.format),
     codec: text(value.codec),
+    codecStatus: text(value.codecStatus) || null,
     container: text(value.container) || null,
     codecKind: text(value.codecKind) || null,
     bitDepth: positiveAudioInfoInteger(value.bitDepth),
