@@ -1,7 +1,7 @@
 # Sonuvi Server → Native iOS UPnP / Qobuz Integration Handoff
 
-**Status:** Server-side reference for Codex; bearer mobile UPnP bridge and explicit confirmed renderer takeover deployed; no native iOS changes included
-**Verified:** 2026-10-13, America/Chicago
+**Status:** Server-side reference for Codex; bearer mobile UPnP bridge, explicit confirmed renderer takeover, and source-independent approved-renderer transport control deployed; no native iOS changes included
+**Verified:** 2026-10-14, America/Chicago
 **Server:** Sonuvi on 10.0.0.4 (sonuvi.local), deployed at /opt/now-playing
 **Native target:** /Users/brianwis/.openclaw/workspace/now-playing-ios
 
@@ -32,7 +32,13 @@ SOAP, or native iOS implementation.
    JSON boolean `takeover:true` on an explicit Play Now request to
    `POST /v1/mobile/upnp/queues/:queueId/play`; ordinary queue play remains
    fail-closed when another source owns the renderer.
-6. Keep separate identities for canonical/native catalog tracks, UPnP provider
+6. When an approved renderer is already playing an external UPnP queue, first
+   call `GET /v1/mobile/upnp/renderers/:deviceId/transport`. Use its explicit
+   capability booleans and then the matching `POST .../transport/*` route for
+   Pause, Resume, Stop, Seek, Next, or Previous. Do not use the renderer
+   transport route for Sonuvi-owned queue playback; use the queue routes so
+   revisions and session generations remain authoritative.
+7. Keep separate identities for canonical/native catalog tracks, UPnP provider
    items, selection references, queue items, playback sessions/generations,
    Track Key credentials, and mobile bearer credentials.
 
@@ -83,27 +89,23 @@ identities. A UPnP item ID is not a canonical recording identity.
 
 ## 2. Deployment and Live Evidence
 
-The current branch is main at:
+The current Server branch is `main` at the previously committed checkpoint:
 
-    3d01ab8 fix: lazily resolve mobile source audio metadata
+    3b969f6 fix: clear stale motion art on UPnP playback
 
-Deployed and local hashes match for the core UPnP implementation files:
+The source-independent renderer transport patch remains an intentional
+uncommitted working-tree change; no commit or push was performed for this
+deployment.
 
-    src/routes/upnp.routes.mjs     343c4f1708e7cb9786bd24637af93ab308328649a22228ae6302ca08fde9e591
-    src/lib/upnp-control-point.mjs 8b6e45ae3954a3a3ae3938a7765f4f2c2d932c756c924682425de287bd1a66a3
-    src/lib/upnp-playback-queue.mjs
-                                   39cd66d0e4048e6a6ad707a3bc2c3b9dea8faaf95f2c1a167aa986f48276ec38
+The deployed transport files and verified hashes are:
+
+    src/lib/upnp-control-point.mjs 538d9fbd55308990d1ad1d59536ee1f76ae530e7ccc740fa9be6f652e8dedc9d
     src/lib/upnp-playback-session.mjs
-                                   4fd9c4c81c8a6015757f0145da886a5ba9aecee7b0cfa4384f5e3da500b08550
-
-Takeover runtime and bearer bridge deployment hashes (local and
-`/opt/now-playing` match):
-
-    moode-nowplaying-api.mjs       d001f2a04f6e96102405507dd84e64c13549f45bf6fd81a6afcde9767e81fe5b
+                                   fc10cfa79e5f75ebd53b1c6d680f4cb5bcc5bc3223523ed903dcbf5a9690652e
     src/lib/mobile-upnp-sanitize.mjs
-                                   54aed918b50e0ba7b333d552ab68861e578d677fb3c4948df9cd07f9d3c42113
+                                   1e2faee41307549a8148d1b347b6ac5d23f542ded157f15c5a6bca0fb8e30518
     src/routes/mobile-upnp.routes.mjs
-                                   b14979dcbab79742b1a5f548f4b67a8c285c1fcbbca4b900c9ca6c4597bfdad2
+                                   23e959bcea82af466b75f6251a56addfbea2beda62c2d790374905d53c8f6561
 
 Before deployment, the exact previous deployed files were backed up at:
 
@@ -121,6 +123,20 @@ The exact pre-compatibility-fix mobile route was also backed up at:
 
     /var/backups/sonuvi-upnp-play-now-20261013T201124Z/
 
+The exact pre-transport files were additionally backed up at:
+
+    /var/backups/sonuvi-upnp-renderer-transport-20261014T204331Z/
+
+The verified backup hashes were:
+
+    src/lib/upnp-control-point.mjs 8b6e45ae3954a3a3ae3938a7765f4f2c2d932c756c924682425de287bd1a66a3
+    src/lib/upnp-playback-session.mjs
+                                   4fd9c4c81c8a6015757f0145da886a5ba9aecee7b0cfa4384f5e3da500b08550
+    src/lib/mobile-upnp-sanitize.mjs
+                                   54aed918b50e0ba7b333d552ab68861e578d677fb3c4948df9cd07f9d3c42113
+    src/routes/mobile-upnp.routes.mjs
+                                   b14979dcbab79742b1a5f548f4b67a8c285c1fcbbca4b900c9ca6c4597bfdad2
+
 The backup hashes were the previous deployed entrypoint
 `f6fc2a9f64395d0b4b0dd016cc1bf924a4aa1bf35bcab2e23de78a0538eff8fa` and
 mobile route
@@ -131,6 +147,15 @@ check reported active with `ExecMainStatus=0`. Read-only post-deployment
 probes returned 401 for `/v1/mobile/upnp/devices` and an unauthenticated
 `/play` request, and 403 for the unchanged Track-Key web `/upnp` route. No
 authenticated operation, playback, or queue mutation was performed.
+
+For the 2026-10-14 source-independent transport deployment, the service
+restart again reported `active` with `ExecMainStatus=0`; the four deployed
+hashes above matched their local files. The new bearer transport route
+returned HTTP 401 without a mobile session, and the unchanged Track-Key web
+route returned HTTP 403. Before restart, the read-only Now Playing response
+reported active Sonuvi UPnP playback for Pat Metheny / *Bright Size Life*.
+After verification, the moOde read-only `mpc` check was idle/current-empty;
+no stop or other playback command was issued by this deployment.
 
 now-playing.service is active. Read-only discovery returned six responses with
 no failures. Relevant devices:
@@ -160,8 +185,10 @@ Moode renderer responding with STOPPED and 15 advertised/read-only AVTransport
 actions. A direct browse of `0$qobuz$` still timed out (`UPNP_TIMEOUT`, HTTP
 502 at the control-point boundary), which is consistent with the documented
 unfinished Qobuz catalog authorization; no authenticated Qobuz request was
-made. The separate M1 UMS library was not present in this host's SSDP results,
-so no UMS identity or endpoint is recorded here.
+made. The current live MPD/Now Playing payload did identify the M1 UMS media
+resource family at `10.0.0.68:5001/ums/...`; it is observed media, not an
+approved Sonuvi renderer target. No separate UMS device identity was present
+in the Server's SSDP discovery result.
 
 ## 3. Authentication Boundaries
 
@@ -251,6 +278,7 @@ after mobile route registration during Server startup.
 | `GET /v1/mobile/upnp/devices/:deviceId` | Opaque device ID | Describes a MediaServer or the approved renderer. Other device roles return HTTP 400 `UPNP_WRONG_DEVICE_ROLE`. |
 | `GET /v1/mobile/upnp/media-servers/:deviceId/capabilities` | Opaque MediaServer ID | Returns ContentDirectory action/capability flags and sanitized service identity. |
 | `GET /v1/mobile/upnp/renderers/:deviceId/capabilities` | Opaque approved renderer ID | Returns read-only renderer/protocol/AVTransport capability state. It does not grant playback ownership. |
+| `GET /v1/mobile/upnp/renderers/:deviceId/transport` | Opaque approved renderer ID | Returns source-aware, read-only transport capabilities for the approved renderer. It does not mutate playback. |
 | `GET /v1/mobile/upnp/preflight` | Required `rendererId` | Performs the existing read-only MPD, Qobuz Connect, renderer, and ownership preflight. `mutationExecuted` is always `false`. |
 
 Discovery response example (URLs intentionally absent):
@@ -305,6 +333,95 @@ Renderer preflight preserves safe ownership facts only:
 The response never contains `location`, `scpdUrl`, `controlUrl`,
 `eventSubUrl`, current media URIs, MPD file paths, queue hashes, or raw
 renderer XML.
+
+#### Source-independent approved-renderer transport
+
+These routes are the separate transport authority for the configured and
+approved moOde renderer. They require the same bearer session as the rest of
+the mobile UPnP bridge. They do not adopt, replace, or mutate Sonuvi's logical
+UPnP queue.
+
+| Method and path | Request | Semantics |
+|---|---|---|
+| `GET /v1/mobile/upnp/renderers/:deviceId/transport` | None | Re-reads the approved renderer and Qobuz ownership state. Returns `source`, `owner`, `queueAuthority`, transport state, and capability booleans. |
+| `POST /v1/mobile/upnp/renderers/:deviceId/transport/pause` | Empty JSON body | Pauses an externally controlled active UPnP renderer session when the renderer advertises Pause. |
+| `POST /v1/mobile/upnp/renderers/:deviceId/transport/resume` | Empty JSON body | Resumes an externally controlled paused UPnP renderer session through AVTransport Play at speed 1. |
+| `POST /v1/mobile/upnp/renderers/:deviceId/transport/stop` | Empty JSON body | Stops an externally controlled active UPnP renderer session. |
+| `POST /v1/mobile/upnp/renderers/:deviceId/transport/seek` | `{\"positionSeconds\": number}` | Seeks an active external track with a known duration through `REL_TIME`. The value must be finite, non-negative, no more than 24 hours, and no greater than the advertised duration. |
+| `POST /v1/mobile/upnp/renderers/:deviceId/transport/next` | Empty JSON body | Advances an external renderer queue only when `GetMediaInfo` reports more than one track and the renderer advertises Next. |
+| `POST /v1/mobile/upnp/renderers/:deviceId/transport/previous` | Empty JSON body | Moves backward under the same renderer-queue authority conditions as Next. |
+
+Example external capability response:
+
+    {
+      "ok": true,
+      "renderer": {
+        "id": "<approved-renderer-id>",
+        "udn": "uuid:<renderer-udn>",
+        "friendlyName": "Moode UPNP"
+      },
+      "source": "external-upnp",
+      "owner": "external",
+      "queueAuthority": "renderer",
+      "queueRouteRequired": false,
+      "capabilities": {
+        "pause": true,
+        "resume": false,
+        "stop": true,
+        "seek": true,
+        "next": true,
+        "previous": true,
+        "queueEdit": false
+      },
+      "controlsAllowed": ["pause", "stop", "seek", "next", "previous"],
+      "transport": {
+        "state": "PLAYING",
+        "status": "OK",
+        "speed": "1",
+        "relativeTime": "00:00:12",
+        "trackDuration": "00:03:21",
+        "positionSeconds": 12,
+        "durationSeconds": 201,
+        "trackNumber": 1,
+        "numberOfTracks": 8,
+        "currentMediaPresent": true
+      },
+      "approved": true,
+      "verified": true,
+      "mutationExecuted": false
+    }
+
+Mutation responses repeat the source-aware state and add `action`,
+`mutation`, and `mutationExecuted:true`. The server confirms the resulting
+renderer state before returning success. For Seek, confirmation is within
+three seconds of the requested position; for Next/Previous, the track number
+or current media identity must change. A command that the renderer accepts but
+does not confirm returns HTTP 409 `UPNP_TRANSPORT_UNCONFIRMED`.
+
+`source` and `queueAuthority` have these meanings:
+
+- `external-upnp` / `renderer`: the approved renderer has a current UPnP
+  media URI and its renderer-reported queue has more than one track. Basic
+  transport is allowed according to the capability booleans; queue editing is
+  never exposed by these routes.
+- `upnp-sonuvi` / `sonuvi`: the current URI matches Sonuvi's owned session.
+  Renderer transport mutation returns `UPNP_QUEUE_AUTHORITY_REQUIRED`; use
+  `/v1/mobile/upnp/queues/:queueId/*` with its revision and generation.
+- `qobuz-connect` / `unavailable`: Qobuz Connect is active or its history
+  suppression state is active. No renderer transport mutation is sent.
+- `unknown`: the renderer is transitioning, in error, or otherwise cannot be
+  classified safely. No mutation is sent.
+- `external-upnp` / `unavailable` or `unknown`: the renderer queue cannot be
+  proven to contain multiple controllable tracks, so Next/Previous fail with
+  `UPNP_EXTERNAL_QUEUE_UNAVAILABLE`.
+
+All renderer transport mutations are serialized by the existing UPnP session
+mutation lock. They use only the bounded AVTransport actions Pause, Play,
+Stop, Seek, Next, and Previous with instance 0. No arbitrary SOAP action,
+media URL, Qobuz credential, signed resource, or MPD queue mutation is exposed.
+An active ordinary MPD file or AirPlay marker that does not match the
+renderer-reported media URI makes ownership `unknown`, so no renderer command
+is sent.
 
 #### ContentDirectory browse, search, and artwork
 
@@ -476,7 +593,7 @@ The bridge preserves these important status/code combinations:
 |---:|---|---|
 | 400 | `UPNP_BAD_REQUEST`, `UPNP_WRONG_DEVICE_ROLE`, `UPNP_INVALID_MEDIA_ITEM` | Invalid request or unsupported device/item role. |
 | 404 | `UPNP_QUEUE_ITEM_NOT_FOUND`, device/session errors | Opaque handle is unavailable. |
-| 409 | `UPNP_QUEUE_REVISION_CONFLICT`, `UPNP_QUEUE_STALE`, `UPNP_STALE_MEDIA_ITEM`, `UPNP_SESSION_GENERATION_CONFLICT`, `UPNP_OWNERSHIP_LOST`, `UPNP_OWNERSHIP_UNCERTAIN`, `UPNP_QOBUZ_ACTIVE`, `UPNP_QOBUZ_TAKEOVER_UNSUPPORTED`, `UPNP_MPD_ACTIVE`, `UPNP_MPD_TAKEOVER_UNSUPPORTED`, `UPNP_RENDERER_ACTIVE`, `UPNP_RENDERER_TAKEOVER_UNSUPPORTED`, `UPNP_TAKEOVER_ACTIVE_SESSION`, `UPNP_TAKEOVER_STOP_FAILED`, `UPNP_TAKEOVER_STATE_CHANGED` | Refresh state, resolve ownership, or wait for the source to release the renderer. |
+| 409 | `UPNP_QUEUE_REVISION_CONFLICT`, `UPNP_QUEUE_STALE`, `UPNP_STALE_MEDIA_ITEM`, `UPNP_SESSION_GENERATION_CONFLICT`, `UPNP_OWNERSHIP_LOST`, `UPNP_OWNERSHIP_UNCERTAIN`, `UPNP_QOBUZ_ACTIVE`, `UPNP_QOBUZ_TAKEOVER_UNSUPPORTED`, `UPNP_MPD_ACTIVE`, `UPNP_MPD_TAKEOVER_UNSUPPORTED`, `UPNP_RENDERER_ACTIVE`, `UPNP_RENDERER_TAKEOVER_UNSUPPORTED`, `UPNP_TAKEOVER_ACTIVE_SESSION`, `UPNP_TAKEOVER_STOP_FAILED`, `UPNP_TAKEOVER_STATE_CHANGED`, `UPNP_QUEUE_AUTHORITY_REQUIRED`, `UPNP_TRANSPORT_BAD_STATE`, `UPNP_TRANSPORT_UNSUPPORTED`, `UPNP_EXTERNAL_QUEUE_UNAVAILABLE`, `UPNP_TRANSPORT_UNCONFIRMED` | Refresh state, resolve ownership, use the authoritative queue route, or wait for the source/renderer to reach a safe state. |
 | 424 | `QOBUZ_AUTH_REQUIRED` | Qobuz container was reached but catalog authentication is required. |
 | 428 | `UPNP_QUEUE_REVISION_REQUIRED` | A destructive queue mutation omitted its revision. |
 | 502 | `UPNP_TAKEOVER_START_FAILED` | The prior owner was released but the selected trusted item did not start. |
@@ -782,11 +899,12 @@ advance the queue.
 
 The AVTransport allowlist is:
 
-    SetAVTransportURI, Play, Pause, Stop, GetTransportInfo,
-    GetPositionInfo, GetCurrentTransportActions, GetMediaInfo
+    SetAVTransportURI, Play, Pause, Stop, Seek, Next, Previous,
+    GetTransportInfo, GetPositionInfo, GetCurrentTransportActions, GetMediaInfo
 
-Seek, Next, Previous, and SetPlayMode may be advertised by a renderer but are
-not current Sonuvi UPnP semantics. Repeat, shuffle, and seek are unavailable.
+SetPlayMode, repeat, and shuffle remain unavailable. Seek is exposed only for
+an active external track with a known duration and an advertised Seek action;
+Next/Previous are exposed only when the renderer reports a multi-track queue.
 
 ## 7. Now Playing and Source Arbitration
 
@@ -836,9 +954,14 @@ Home MPD queue, not the Sonuvi UPnP queue.
 
 The Server may observe an MPD/stream item with streamKind upnp and isUpnp true,
 but that alone does not mean Sonuvi owns it. There is no separate guaranteed
-source value external-upnp today. Native code must treat only
-source upnp-sonuvi plus the Sonuvi controller/queue state as Sonuvi-owned.
-External renderer/URI state is read-only.
+source value external-upnp in the generic `/v1/mobile/now-playing` payload.
+Native code must treat only source upnp-sonuvi plus the Sonuvi
+controller/queue state as Sonuvi-owned. For an approved renderer, the new
+bearer `GET /v1/mobile/upnp/renderers/:deviceId/transport` contract is the
+authoritative source-independent classification and capability check. It may
+report external-upnp even when the generic Now Playing DTO's `controls.allowed`
+array is empty; the native client must not infer renderer capabilities from
+that generic array.
 
 ### Control matrix
 
@@ -847,7 +970,7 @@ External renderer/URI state is read-only.
 | Local MPD/Home | Existing MPD/Home source | Existing bearer Home-queue contracts; do not route to UPnP |
 | upnp-sonuvi | Sonuvi owns approved Moode renderer | `/v1/mobile/upnp/queues/*` controls only while `ownsAudio` is true |
 | Qobuz Connect | Pibuz/Connect observation | Display only unless a separate control contract is approved |
-| External UPnP on approved renderer | Not Sonuvi-owned | Display only by default; only the dedicated confirmed takeover route or explicit Play Now `takeover:true` may stop the approved renderer |
+| External UPnP on approved renderer | Not Sonuvi-owned | Use the bearer renderer transport routes for confirmed Pause/Resume/Stop/Seek/Next/Previous when their capability response allows it; queue edits remain disabled |
 | Unknown/uncertain | Unsafe ownership | Disable unsafe transport and refresh |
 
 The current web reference bridge is scripts/upnp-now-playing.js. It polls
@@ -870,13 +993,13 @@ The bearer `GET /v1/mobile/now-playing` DTO now adds sanitized source fields:
     controls: {allowed: [String], unsupported: [String]}
 
 Only `upnp-sonuvi` with `controller: sonuvi` and `ownsAudio: true` enables
-owned UPnP transport controls. For that source the allowed set is `play`,
+owned UPnP queue controls. For that source the allowed set is `play`,
 `pause`, `resume`, `stop`, `next`, and `previous`; `seek`, `repeat`, and
 `shuffle` are explicitly unsupported. MPD/Home controls remain on the
 existing mobile Home queue contracts. Qobuz Connect and unknown ownership
-are read-only. External playback on the approved renderer is read-only until
-the user explicitly confirms the dedicated takeover operation; no ordinary
-queue or play request can trigger it.
+remain read-only. External playback on the approved renderer has a separate
+source-independent transport contract; it never grants queue edit authority
+and never implicitly triggers takeover.
 
 An owned UPnP session suppresses duplicate MPD history through
 shouldSuppressMpdHistory(). The native event route records ios-device
@@ -957,6 +1080,13 @@ methods:
 
     discover(force:)
     capabilities(for:)
+    rendererTransportCapabilities(for:)
+    rendererPause(for:)
+    rendererResume(for:)
+    rendererStop(for:)
+    rendererSeek(for:positionSeconds:)
+    rendererNext(for:)
+    rendererPrevious(for:)
     browse(server:object:page:)
     search(server:container:criteria:page:)
     artwork(forSelection:)
@@ -981,7 +1111,11 @@ UI guidance:
 
 - Keep Music Sources provider-neutral and UDN-backed.
 - Keep UPnP and Home MPD queues separate.
-- Enable transport only for Server-reported upnp-sonuvi ownership.
+- For upnp-sonuvi, use the logical queue routes and preserve revision and
+  session-generation checks.
+- For external playback on the approved renderer, fetch the separate renderer
+  transport capability response and enable only the returned actions. Queue
+  editing remains disabled.
 - Disable unsupported seek/repeat/shuffle rather than simulating them.
 - Use Server-proxied artwork and show unavailable states.
 - Preserve the source while navigating and avoid SSDP on every screen.
@@ -1020,6 +1154,15 @@ guards, and logical queue retention.
 
 Do not initiate Qobuz authentication in the DLNA stage.
 
+### Stage 3a: Source-independent renderer transport
+
+With an externally initiated multi-track UPnP session already present, read the
+renderer transport capability endpoint; verify source classification, bearer
+authentication, Pause/Resume/Stop, bounded Seek, Next/Previous confirmation,
+and the no-queue/uncertain/Qobuz conflict responses. Verify that no Sonuvi
+queue revision, session generation, MPD queue, history, or Last.fm state is
+created or changed by these operations.
+
 ### Stage 4: Source regression
 
 Test local MPD, owned UPnP, Qobuz Connect observation, external UPnP
@@ -1040,6 +1183,7 @@ Server coverage:
 - test/upnp-control-point.test.mjs
 - test/upnp-playback-queue.test.mjs
 - test/upnp-playback-session.test.mjs
+- test/upnp-renderer-transport.test.mjs
 - test/upnp-web-controller.test.mjs
 - test/mobile-upnp.routes.test.mjs
 - test/config.qobuz-account.routes.test.mjs
@@ -1061,15 +1205,22 @@ browse/search normalization, selection references, bounded artwork,
 preflight/session sanitization, queue revision forwarding, safe Qobuz errors,
 source-aware Now Playing control classification, and explicit takeover
 confirmation/redaction. The complete verification for this handoff passed
-238/238 tests, including active, paused, and idle MPD Play Now takeover,
+248/248 tests, including active, paused, and idle MPD Play Now takeover,
 literal mobile `takeover:true` forwarding, repeated Play Now behavior, Qobuz
 refusal, release-failure cleanup, start-failure cleanup, ordinary-play gating,
-and queue revision/session-generation/concurrency conflicts.
+and queue revision/session-generation/concurrency conflicts. The additional
+renderer-transport coverage verifies bearer route enforcement, external
+Pause/Resume/Stop/Seek/Next/Previous confirmation, renderer-queue authority,
+uncertain-state rejection, Qobuz protection, unconfirmed actions, and
+serialized commands.
 
 ## 13. Known Limitations
 
-1. UPnP seek, repeat, and shuffle are unavailable even if advertised by a
-   renderer.
+1. Sonuvi logical-queue repeat and shuffle remain unavailable. Seek is not a
+   Sonuvi queue operation; source-independent Seek is conditional on an active
+   external track with a known duration and renderer-advertised Seek action.
+   Source-independent Next/Previous likewise require a renderer-reported
+   multi-track queue.
 2. The logical UPnP queue is process-memory only and is not fully persisted
    across Server restarts.
 3. UPnP playback can replace or affect the MPD queue baseline. The session
@@ -1080,8 +1231,9 @@ and queue revision/session-generation/concurrency conflicts.
 5. Qobuz MediaServer discovery is complete, but catalog authentication is not.
    The Qobuz Account UI is present and Connect remains disabled pending an
    approved authorization mechanism.
-6. The bearer mobile bridge is now implemented, but native iOS still needs to
-   consume and acceptance-test these routes.
+6. The bearer mobile bridge and source-independent renderer transport bridge
+   are implemented, but native iOS still needs to consume and acceptance-test
+   these routes.
 7. Explicit renderer takeover is Server-side only; native iOS must provide a
    clear confirmation UI and send a fresh queue revision (and current session
    generation when present). The dedicated takeover route requires
@@ -1090,14 +1242,17 @@ and queue revision/session-generation/concurrency conflicts.
 
 ## 14. API Gaps Before Native Implementation
 
-1. Native iOS must integrate and acceptance-test the deployed bearer routes;
+1. Native iOS must integrate and acceptance-test the deployed bearer routes,
+   including the separate renderer transport capability and mutation routes;
    no native changes are included in this Server task.
 2. UPnP history decision: define event identity/deduplication if UPnP playback
    should contribute to shared history; do not overload ios-device events.
 3. Qobuz catalog authentication and policy approval remain unresolved. The
    bridge deliberately reports `QOBUZ_AUTH_REQUIRED` without starting login.
-4. Queue persistence, seek/repeat/shuffle, and any additional mobile-safe
-   source controls remain outside this milestone.
+4. Queue persistence, repeat/shuffle, and any additional mobile-safe source
+   controls remain outside this milestone. Source-independent renderer Seek,
+   Next, and Previous are available only under the conditional contract in
+   section 4.0.
 
 Until the native acceptance stage is complete, Codex should not reuse Track-Key
 web routes or send direct UPnP traffic from the iOS app.
