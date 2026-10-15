@@ -174,6 +174,9 @@
     .queueAlbumSub{font-size:14px;color:color-mix(in oklab, var(--theme-text) 72%, transparent)}
     .queueAlbumLineBtn{border:0;background:transparent;color:color-mix(in oklab, var(--theme-text) 72%, transparent);padding:0;cursor:pointer;font:inherit;text-align:left;text-decoration:underline;text-underline-offset:2px}
     .queueTrackLineBtn{border:0;background:transparent;color:var(--theme-text);padding:0;cursor:pointer;font:inherit;text-align:left;text-decoration:underline;text-underline-offset:2px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .queueTrackLineBtn{display:inline-flex;align-items:center;gap:5px;max-width:100%}
+    .heroQueueTrackTitleText{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .heroQueueLosslessBadge{display:block;flex:0 0 auto;width:auto;height:.82em;filter:drop-shadow(0 0 2px rgba(212,175,55,.45))}
     .queueAlbumTracks{grid-column:1 / -1;margin-top:8px;max-height:48vh;overflow:auto;border-top:1px solid color-mix(in oklab, var(--theme-hero-card-border) 85%, transparent);padding-top:8px}
     .queueAlbumTrackRow{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:10px;padding:6px 4px;border-bottom:1px dashed color-mix(in oklab, var(--theme-hero-card-border) 75%, transparent)}
     .queueAlbumTrackNum{color:color-mix(in oklab, var(--theme-text) 65%, transparent);font-weight:600;text-align:right}
@@ -439,6 +442,7 @@
     <script src="scripts/now-playing-art.js?v=20260924-art-contract4"></script>
     <script src="scripts/hero-transport.js?v=20261014-qobuz-art-identity1"></script>
   <script src="scripts/echo-link-volume.js?v=20260921-echo-link9"></script>
+  <script src="scripts/source-audio.js?v=20261012-source-audio1"></script>
   <script>
     (() => {
       const NP_PREFS = window.NPClientPreferences;
@@ -1545,6 +1549,7 @@
               String(x?.file || ''),
               String(x?.album || ''),
               !!x?.isPodcast,
+              x?.sourceAudio || null,
             ])
           });
           const queueRatingSig = JSON.stringify(items.map((x) => [
@@ -1722,9 +1727,16 @@
             const line1 = isStreamish
               ? (isYoutubeStream ? (title || artist || 'YouTube Audio Stream') : (artist || '(station)'))
               : (title || '(unknown title)');
+            const qualifiesForHiResBadge = globalThis.SonuviSourceAudio?.qualifiesForHiResBadge;
+            const hasHiResSourceAudio = !isStreamish
+              && typeof qualifiesForHiResBadge === 'function'
+              && qualifiesForHiResBadge(x?.sourceAudio);
+            const sourceAudioBadge = hasHiResSourceAudio
+              ? '<img class="heroQueueLosslessBadge" src="assets/apple-lossless-logo.svg" alt="Verified 24-bit / 48 kHz or higher source audio" title="Verified 24-bit / 48 kHz or higher source audio" />'
+              : '';
             const line1Html = isStreamish
               ? line1
-              : `<button type="button" class="queueTrackLineBtn" data-open-track-meta="1" data-track-title="${encodeURIComponent(line1)}" data-track-artist="${encodeURIComponent(artist)}" data-track-album="${encodeURIComponent(albumTxt)}" data-track-art="${encodeURIComponent(thumb || '')}" data-track-file="${encodeURIComponent(fileRaw)}" data-track-genre="${encodeURIComponent(String(x?.genre || ''))}" data-track-date="${encodeURIComponent(String(x?.date || x?.year || ''))}" data-track-num="${encodeURIComponent(String(x?.track || ''))}" data-track-time="${encodeURIComponent(String(x?.time || x?.duration || ''))}" data-track-rating="${encodeURIComponent(String(rating || 0))}" data-track-personnel="${encodeURIComponent(String(x?.personnelText || x?.performers || x?.personnel || ''))}" data-track-bitrate="${encodeURIComponent(String(x?.bitrate || x?.kbps || ''))}" data-track-samplerate="${encodeURIComponent(String(x?.sampleRate || x?.samplerate || ''))}" data-track-bitdepth="${encodeURIComponent(String(x?.bits || x?.bitDepth || ''))}" data-track-codec="${encodeURIComponent(String(x?.codec || x?.format || ''))}">${line1}</button>`;
+              : `<button type="button" class="queueTrackLineBtn" data-open-track-meta="1" data-track-title="${encodeURIComponent(line1)}" data-track-artist="${encodeURIComponent(artist)}" data-track-album="${encodeURIComponent(albumTxt)}" data-track-art="${encodeURIComponent(thumb || '')}" data-track-file="${encodeURIComponent(fileRaw)}" data-track-genre="${encodeURIComponent(String(x?.genre || ''))}" data-track-date="${encodeURIComponent(String(x?.date || x?.year || ''))}" data-track-num="${encodeURIComponent(String(x?.track || ''))}" data-track-time="${encodeURIComponent(String(x?.time || x?.duration || ''))}" data-track-rating="${encodeURIComponent(String(rating || 0))}" data-track-personnel="${encodeURIComponent(String(x?.personnelText || x?.performers || x?.personnel || ''))}" data-track-bitrate="${encodeURIComponent(String(x?.bitrate || x?.kbps || ''))}" data-track-samplerate="${encodeURIComponent(String(x?.sampleRate || x?.samplerate || ''))}" data-track-bitdepth="${encodeURIComponent(String(x?.bits || x?.bitDepth || ''))}" data-track-codec="${encodeURIComponent(String(x?.codec || x?.format || ''))}"><span class="heroQueueTrackTitleText">${line1}</span>${sourceAudioBadge}</button>`;
             const line2 = isStreamish
               ? (isYoutubeStream ? `<div class="heroQueueMeta">${artist || 'YouTube'}</div>` : '')
               : (isPodcastItem
