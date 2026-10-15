@@ -29,8 +29,10 @@ This is intentionally separate from:
 - native iOS playback; and
 - the Sonuvi catalog.
 
-The UPnP layer does **not** authenticate Qobuz, install Docker, control Pibuz,
-or share state with `qobuz-connect`. Playback mutations remain narrow,
+The UPnP layer does **not** authenticate Qobuz, install Docker, or control
+Pibuz through its queue/takeover API; the separate authenticated Qobuz Config
+release route may invoke moOde's fixed renderer-disconnect path. UPnP playback
+mutations remain narrow,
 Track-Key-authenticated operations over trusted Browse/Search references; there
 is no raw-URL or generic-SOAP interface.
 

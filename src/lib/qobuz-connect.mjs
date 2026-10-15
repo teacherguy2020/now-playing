@@ -33,6 +33,10 @@ function normalizeState(value) {
   }
 }
 
+function isRenderableState(value) {
+  return value === 'play' || value === 'pause';
+}
+
 function safeArtworkUrl(value) {
   const raw = text(value);
   if (!/^https?:\/\//i.test(raw)) return '';
@@ -181,6 +185,17 @@ export function createQobuzConnectSource({
         lastGood = null;
         lastSuccessAt = 0;
         return inactive('stopped');
+      }
+
+      // moOde's qbzmeta cache can retain the last track after the Qobuz app
+      // hands the renderer back to the device. In that state Pibuz reports
+      // an empty playstate and an output such as "Not playing". A metadata
+      // record without an explicit playing/paused state is therefore not
+      // sufficient to claim renderer ownership.
+      if (!isRenderableState(normalized.state)) {
+        lastGood = null;
+        lastSuccessAt = 0;
+        return inactive('not-rendering');
       }
 
       lastGood = normalized;

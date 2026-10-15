@@ -244,6 +244,7 @@ import {
   createQobuzConnectSource,
   qobuzConnectDefaults,
 } from './src/lib/qobuz-connect.mjs';
+import { createQobuzConnectController } from './src/lib/qobuz-connect-control.mjs';
 import { createListeningHistoryStore } from './src/lib/listening-history.mjs';
 import { createLastfmScrobbler } from './src/lib/lastfm-scrobbler.mjs';
 import { createApnsProvider } from './src/lib/apns.mjs';
@@ -279,6 +280,12 @@ const qobuzConnect = createQobuzConnectSource({
   ).trim(),
   timeoutMs: process.env.QOBUZ_META_TIMEOUT_MS || qobuzConnectDefaults.metaTimeoutMs,
   staleMs: process.env.QOBUZ_META_STALE_MS || qobuzConnectDefaults.staleMs,
+});
+
+const qobuzConnectController = createQobuzConnectController({
+  sshUser: MOODE_SSH_USER,
+  sshHost: MOODE_SSH_HOST,
+  runCommand: execFileP,
 });
 
 // UPnP discovery/browsing and the separately gated single-track session layer.
@@ -9255,6 +9262,7 @@ const configRouteHandles = registerAllConfigRoutes(app, {
   getYoutubeQueueHint,
   getSourceAudio: sourceAudioProbe.get,
   getQobuzNowPlaying: () => qobuzConnect.get(),
+  releaseQobuzConnect: () => qobuzConnectController.release(),
   controlPoint: upnpControlPoint,
 });
 

@@ -427,8 +427,10 @@ Takeover support is intentionally narrow:
   adapter, then UPnP ownership is established.
 - An active transport on the approved Moode renderer may be stopped when the
   renderer advertises a current safe `Stop` action.
-- Qobuz Connect cannot be released by this API. It returns
-  `UPNP_QOBUZ_TAKEOVER_UNSUPPORTED` without stopping or changing Qobuz.
+- The UPnP takeover API cannot release Qobuz Connect. It returns
+  `UPNP_QOBUZ_TAKEOVER_UNSUPPORTED` without stopping or changing Qobuz. The
+  separate authenticated Config action `POST /config/qobuz/session/release`
+  now provides the explicit Qobuz renderer-release path.
 - Transitioning, error, unavailable, or uncertain renderer state is rejected.
 - An active Sonuvi session is rejected; takeover never force-replaces a
   Sonuvi-owned session.

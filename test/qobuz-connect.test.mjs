@@ -99,6 +99,22 @@ test('Qobuz stop records release ownership and a later renderer reconnect starts
   assert.equal(recovered.stale, false);
 });
 
+test('Qobuz metadata without an explicit renderer state does not retain ownership', async () => {
+  const source = createQobuzConnectSource({
+    metaUrl: 'http://moode.local/command/renderer.php?cmd=get_qbzmeta',
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ...playingMeta, oformat: 'Not playing', playstate: '' }),
+    }),
+  });
+
+  const current = await source.get();
+  assert.equal(current.active, false);
+  assert.equal(current.suppressMpdHistory, false);
+  assert.equal(current.reason, 'not-rendering');
+});
+
 test('Qobuz metadata preserves elapsed position only when the bridge supplies it', () => {
   const withPosition = normalizeQobuzMeta({
     ...playingMeta,

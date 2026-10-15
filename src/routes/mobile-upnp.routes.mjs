@@ -43,7 +43,7 @@ const SAFE_ERROR_MESSAGES = new Map([
   ['UPNP_SESSION_ACTIVE', 'Another UPnP playback session is active.'],
   ['UPNP_TAKEOVER_ACTIVE_SESSION', 'Sonuvi already owns an active UPnP playback session.'],
   ['UPNP_TAKEOVER_CONFIRMATION_REQUIRED', 'Confirm the explicit renderer takeover before continuing.'],
-  ['UPNP_QOBUZ_TAKEOVER_UNSUPPORTED', 'Stop Qobuz Connect first; Sonuvi cannot release that session safely.'],
+  ['UPNP_QOBUZ_TAKEOVER_UNSUPPORTED', 'Release Qobuz Connect from the Sonuvi Config page first; UPnP takeover does not release that session automatically.'],
   ['UPNP_TAKEOVER_STOP_FAILED', 'The active playback owner could not be released safely.'],
   ['UPNP_TAKEOVER_STATE_CHANGED', 'Playback ownership changed; refresh state before trying takeover again.'],
   ['UPNP_TAKEOVER_START_FAILED', 'The current owner was released, but the selected UPnP item could not start.'],

@@ -1,5 +1,7 @@
 const QOBUZ_ROOT_ID = '0$qobuz$';
 const DEFAULT_STATUS_PROBE_TIMEOUT_MS = 5200;
+const DEFAULT_RELEASE_TIMEOUT_MS = 12000;
+const DEFAULT_RELEASE_POLL_MS = 250;
 
 function boolQuery(value, fallback = false) {
   if (value == null || value === '') return fallback;
@@ -24,6 +26,34 @@ function publicQobuzMediaServer(device) {
     contentDirectory: true,
     rootBrowse: true,
   };
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function qobuzOwnershipActive(result) {
+  return Boolean(result?.active || result?.suppressMpdHistory);
+}
+
+async function waitForQobuzRelease(getQobuzNowPlaying, {
+  timeoutMs = DEFAULT_RELEASE_TIMEOUT_MS,
+  pollMs = DEFAULT_RELEASE_POLL_MS,
+} = {}) {
+  if (typeof getQobuzNowPlaying !== 'function') return false;
+  const deadline = Date.now() + Math.max(0, Number(timeoutMs) || DEFAULT_RELEASE_TIMEOUT_MS);
+  const interval = Math.max(25, Number(pollMs) || DEFAULT_RELEASE_POLL_MS);
+
+  while (true) {
+    try {
+      const current = await getQobuzNowPlaying();
+      if (!qobuzOwnershipActive(current)) return true;
+    } catch {
+      // A failed read is not proof that the renderer was released.
+    }
+    if (Date.now() >= deadline) return false;
+    await delay(interval);
+  }
 }
 
 /**
@@ -114,6 +144,10 @@ export function registerConfigQobuzAccountRoutes(app, {
   controlPoint,
   requireTrackKey,
   statusProbeTimeoutMs = Number(process.env.QOBUZ_STATUS_PROBE_TIMEOUT_MS || DEFAULT_STATUS_PROBE_TIMEOUT_MS),
+  releaseQobuzConnect,
+  getQobuzNowPlaying,
+  releaseTimeoutMs = Number(process.env.QOBUZ_RELEASE_TIMEOUT_MS || DEFAULT_RELEASE_TIMEOUT_MS),
+  releasePollMs = Number(process.env.QOBUZ_RELEASE_POLL_MS || DEFAULT_RELEASE_POLL_MS),
 } = {}) {
   if (!app || !controlPoint) throw new Error('Qobuz account routes require an app and UPnP control point');
 
@@ -131,6 +165,51 @@ export function registerConfigQobuzAccountRoutes(app, {
     }
   });
 
-  return { paths: ['/config/qobuz/account/status'] };
+  app.post('/config/qobuz/session/release', async (req, res) => {
+    if (typeof requireTrackKey === 'function' && !requireTrackKey(req, res)) return;
+    if (typeof releaseQobuzConnect !== 'function') {
+      return res.status(503).json({
+        ok: false,
+        error: 'Qobuz session release is unavailable.',
+        code: 'QOBUZ_RELEASE_UNAVAILABLE',
+      });
+    }
+
+    try {
+      const result = await releaseQobuzConnect();
+      if (result?.accepted !== true) throw new Error('release was not accepted');
+    } catch {
+      return res.status(502).json({
+        ok: false,
+        error: 'The Qobuz session could not be released.',
+        code: 'QOBUZ_RELEASE_FAILED',
+      });
+    }
+
+    const released = await waitForQobuzRelease(getQobuzNowPlaying, {
+      timeoutMs: releaseTimeoutMs,
+      pollMs: releasePollMs,
+    });
+    if (!released) {
+      return res.status(409).json({
+        ok: false,
+        error: 'The Qobuz session release was not confirmed.',
+        code: 'QOBUZ_RELEASE_UNCONFIRMED',
+      });
+    }
+
+    return res.json({
+      ok: true,
+      state: 'released',
+      mutationExecuted: true,
+    });
+  });
+
+  return {
+    paths: [
+      '/config/qobuz/account/status',
+      '/config/qobuz/session/release',
+    ],
+  };
 }
 

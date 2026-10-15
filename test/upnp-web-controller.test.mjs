@@ -65,8 +65,11 @@ test('Config exposes a disabled Qobuz Account action and safe status endpoint', 
   assert.match(page, /id="qobuzAccountSection"/);
   assert.match(page, /id="qobuzAccountConnectBtn"[^>]*disabled/);
   assert.match(page, /config\/qobuz\/account\/status/);
+  assert.match(page, /qobuzSessionReleaseBtn/);
+  assert.match(page, /config\/qobuz\/session\/release/);
   assert.match(page, /Do not enter a Qobuz password or token/);
   assert.match(routes, /lastVerifiedAt: null/);
+  assert.match(routes, /QOBUZ_RELEASE_UNCONFIRMED/);
   assert.doesNotMatch(routes, /user_auth_token/);
 });
 

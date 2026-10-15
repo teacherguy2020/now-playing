@@ -2,10 +2,11 @@
 
 ## Scope
 
-Sonuvi reads the existing moOde/Pibuz read-only metadata cache and exposes
-active Qobuz Connect playback through the existing `/now-playing` and artwork
-surfaces. This integration does not control Pibuz, MPD, ALSA, AirPlay,
-listening history, or Last.fm.
+Sonuvi reads the existing moOde/Pibuz metadata cache and exposes active Qobuz
+Connect playback through the existing `/now-playing` and artwork surfaces. A
+separate authenticated release action is available for an idle or unwanted
+Qobuz Connect session; it does not authenticate Qobuz or control ordinary
+MPD, ALSA, AirPlay, listening history, or Last.fm playback.
 
 ## Transport
 
@@ -19,8 +20,11 @@ This is moOde's existing renderer metadata command, backed by
 `/var/local/www/qbzmeta.json` and populated by the installed
 `/var/local/www/commandw/qbzevent.sh`. The response contains only normalized
 track metadata, artwork, play state, source format, and output format. Sonuvi
-does not call or expose Pibuz's loopback control API, and it never returns
-Qobuz stream URLs, credentials, or tokens.
+does not expose Pibuz's loopback control API, and it never returns Qobuz stream
+URLs, credentials, or tokens. The release action uses a fixed, backend-only
+SSH command to submit moOde's existing
+`renderer.php?cmd=disconnect_renderer` operation with `job=qobuzsvc`; the
+browser cannot supply a host, shell command, Pibuz argument, or session ID.
 
 The live Pibuz APIs were inspected during implementation:
 
@@ -70,24 +74,45 @@ position, so `elapsed` and `percent` remain `null` and `progressAvailable` is
   scrobbled. MPD resumes ownership once the existing Qobuz cache explicitly
   becomes empty/stopped.
 
+Records with no explicit `Play`/`Pause` renderer state are treated as
+non-rendering and cannot retain Qobuz ownership. This covers the moOde cache
+state produced when the Qobuz app moves output back to the iPad without
+emitting a final stopped event.
+
 Qobuz playback itself is never passed to `listeningHistory` and cannot invoke
 the existing Last.fm hook.
+
+## Explicit session release
+
+The authenticated `POST /config/qobuz/session/release` route is the supported
+escape hatch when Qobuz Connect remains connected or leaves a stale cache
+record. It submits moOde's existing `qobuzsvc` renderer-disconnect worker job,
+waits for the Qobuz source read to become inactive, and returns success only
+after that ownership release is confirmed. The action stops current Qobuz
+renderer playback if present; it does not sign out the account or expose
+Pibuz's loopback API.
 
 ## Files and services
 
 Changed server files:
 
 - `src/lib/qobuz-connect.mjs` — metadata normalization, bounded freshness,
-  source payload construction.
+  source payload construction, and fail-closed non-rendering release.
+- `src/lib/qobuz-connect-control.mjs` — fixed backend adapter for moOde's
+  supported Qobuz renderer-disconnect action.
 - `moode-nowplaying-api.mjs` — source arbitration, artwork integration, and
   MPD-history suppression while Qobuz owns playback.
 - `src/routes/art.routes.mjs` — current-art routes prefer active Qobuz art
   while continuing to use the shared cache and resize pipeline.
 - `test/qobuz-connect.test.mjs` — unit coverage for metadata, lifecycle,
   freshness, format resolution, artwork privacy, and payload compatibility.
+- `src/routes/config.qobuz-account.routes.mjs` — Track-Key-protected release
+  route with post-action ownership confirmation.
+- `config.html` — the Qobuz Account card's explicit session-release action.
 
-Only `now-playing.service` requires restart after deployment. No moOde,
-Pibuz, MPD, or worker service restart is part of this integration.
+Only `now-playing.service` requires restart after deployment. The explicit
+release action may restart the Qobuz renderer through moOde's existing worker
+path; it does not modify moOde, Pibuz, MPD, or worker configuration.
 
 ## Validation
 
@@ -107,7 +132,9 @@ Live validation should be coordinated with the listener:
 2. Verify the reference track metadata and artwork on `/art/current.jpg`.
 3. Pause and resume without changing the track; verify state and metadata.
 4. Change tracks; verify artwork and formats change together.
-5. Stop or disconnect Qobuz; verify MPD resumes ownership.
+5. Use the authenticated Config action `POST /config/qobuz/session/release`
+   when the Qobuz session must be shut down; verify Pibuz reports no active
+   session and Sonuvi no longer reports `source: "qobuz-connect"`.
 6. Confirm no new Qobuz event appears in listening-history or Last.fm state.
 
 ## Deployment and rollback
@@ -115,9 +142,9 @@ Live validation should be coordinated with the listener:
 Deploy the changed relative paths with the pinned Pi5 helper, then verify the
 service and endpoint. Do not commit or push as part of this task.
 
-Rollback is the normal file restore of the four changed server files followed
-by `sudo systemctl restart now-playing.service` on `10.0.0.4`. The moOde/Pibuz
-installation is unchanged, so no Pi-side rollback is required.
+Rollback is the normal file restore of the changed server files followed by
+`sudo systemctl restart now-playing.service` on `10.0.0.4`. The moOde/Pibuz
+installation is unchanged; no Pi-side rollback is required.
 
 ## Known limitations
 

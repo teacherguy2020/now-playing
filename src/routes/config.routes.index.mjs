@@ -140,6 +140,8 @@ export function registerAllConfigRoutes(app, deps) {
     registerConfigQobuzAccountRoutes(app, {
       requireTrackKey: deps.requireTrackKey,
       controlPoint: deps.controlPoint,
+      releaseQobuzConnect: deps.releaseQobuzConnect,
+      getQobuzNowPlaying: deps.getQobuzNowPlaying,
     });
   }
 

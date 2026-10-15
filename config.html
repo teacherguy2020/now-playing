@@ -298,10 +298,13 @@
                   <div class="cfgHint" id="qobuzAccountStatus" role="status" aria-live="polite" style="margin-top:8px;">Status: checking…</div>
                   <div class="cfgHint" id="qobuzAccountReason" style="margin-top:6px;"></div>
                   <div class="cfgHint" id="qobuzAccountMediaServer" style="margin-top:6px;"></div>
+                  <div class="cfgHint" id="qobuzSessionStatus" role="status" aria-live="polite" style="margin-top:8px;">Qobuz Connect session: not checked</div>
                   <div class="cfgActions" style="margin-top:8px;">
                     <button class="btn btnPrimary" id="qobuzAccountConnectBtn" type="button" disabled title="Qobuz account authorization is not available yet.">Connect Qobuz</button>
                     <button class="btn" id="qobuzAccountRefreshBtn" type="button">Refresh status</button>
+                    <button class="btn" id="qobuzSessionReleaseBtn" type="button" disabled title="Enter the Track Key to release the Qobuz renderer session.">Release Qobuz session</button>
                   </div>
+                  <div class="cfgHint" style="margin-top:8px;">Release stops the current Qobuz Connect renderer session and returns ownership to Sonuvi/MPD. It does not sign out the Qobuz account.</div>
                   <div class="cfgHint" style="margin-top:8px;">Account linking is intentionally unavailable until Sonuvi has an approved authorization mechanism. Do not enter a Qobuz password or token here.</div>
                 </div>
 
@@ -1036,12 +1039,19 @@ async function refreshQobuzAccountStatus(){
   const reasonEl = document.getElementById('qobuzAccountReason');
   const mediaServerEl = document.getElementById('qobuzAccountMediaServer');
   const connectEl = document.getElementById('qobuzAccountConnectBtn');
+  const releaseEl = document.getElementById('qobuzSessionReleaseBtn');
   if (statusEl) statusEl.textContent = 'Status: checking…';
   if (reasonEl) reasonEl.textContent = '';
   if (mediaServerEl) mediaServerEl.textContent = '';
   if (connectEl) {
     connectEl.disabled = true;
     connectEl.title = 'Qobuz account authorization is not available yet.';
+  }
+  if (releaseEl) {
+    releaseEl.disabled = !getTrackKey();
+    releaseEl.title = getTrackKey()
+      ? 'Stop and release the current Qobuz Connect renderer session.'
+      : 'Enter the Track Key to release the Qobuz renderer session.';
   }
   if (!getTrackKey()) {
     if (statusEl) statusEl.textContent = 'Status: Track Key required';
@@ -1078,6 +1088,35 @@ async function refreshQobuzAccountStatus(){
     if (mediaServerEl) mediaServerEl.textContent = '';
   } finally {
     clearTimeout(timer);
+  }
+}
+
+async function releaseQobuzSession(){
+  const key = getTrackKey();
+  const statusEl = document.getElementById('qobuzSessionStatus');
+  const btn = document.getElementById('qobuzSessionReleaseBtn');
+  if (!key) {
+    if (statusEl) statusEl.textContent = 'Qobuz Connect session: Track Key required';
+    return;
+  }
+  if (!window.confirm('Stop and release the current Qobuz Connect renderer session?')) return;
+
+  if (btn) btn.disabled = true;
+  if (statusEl) statusEl.textContent = 'Qobuz Connect session: releasing…';
+  try {
+    const r = await fetch(`${API_BASE}/config/qobuz/session/release`, {
+      method: 'POST',
+      headers: { 'x-track-key': key },
+      cache: 'no-store',
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+    if (statusEl) statusEl.textContent = 'Qobuz Connect session: released; Sonuvi can take ownership.';
+    await refreshQobuzAccountStatus();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = `Qobuz Connect session: ${String(e?.message || e)}`;
+  } finally {
+    if (btn) btn.disabled = !getTrackKey();
   }
 }
 
@@ -2192,6 +2231,7 @@ document.getElementById('sonuviLastfmAuthorizeBtn')?.addEventListener('click', (
 document.getElementById('sonuviLastfmCompleteBtn')?.addEventListener('click', () => completeSonuviLastfmAuthorization().catch(e => log(String(e))));
 document.getElementById('sonuviLastfmRefreshBtn')?.addEventListener('click', () => refreshSonuviLastfmStatus().catch(e => log(String(e))));
 document.getElementById('qobuzAccountRefreshBtn')?.addEventListener('click', () => refreshQobuzAccountStatus().catch(() => {}));
+document.getElementById('qobuzSessionReleaseBtn')?.addEventListener('click', () => releaseQobuzSession().catch((e) => log(String(e))));
 document.getElementById('pathMoodeUsbMount')?.addEventListener('input', derivePathsFromMoode);
 document.getElementById('pathMoodeUsbMount')?.addEventListener('change', derivePathsFromMoode);
 // derivePathsBtn removed; auto-derive runs on input/change.

@@ -91,6 +91,53 @@ test('Qobuz account status requires the existing Track Key', async () => {
   assert.equal(browsed, false);
 });
 
+test('Qobuz session release requires the Track Key and confirms inactive ownership', async () => {
+  const app = appFixture();
+  let releaseCalls = 0;
+  let stateReads = 0;
+  registerConfigQobuzAccountRoutes(app, {
+    requireTrackKey: () => true,
+    controlPoint: { discover: async () => ({ devices: [] }) },
+    releaseQobuzConnect: async () => {
+      releaseCalls += 1;
+      return { accepted: true };
+    },
+    getQobuzNowPlaying: async () => {
+      stateReads += 1;
+      return stateReads === 1
+        ? { active: true, suppressMpdHistory: true }
+        : { active: false, suppressMpdHistory: false };
+    },
+    releaseTimeoutMs: 500,
+    releasePollMs: 25,
+  });
+
+  const res = response();
+  await app.routes.get('POST /config/qobuz/session/release')(request(), res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { ok: true, state: 'released', mutationExecuted: true });
+  assert.equal(releaseCalls, 1);
+  assert.equal(stateReads, 2);
+});
+
+test('Qobuz session release never reports success when inactive state cannot be confirmed', async () => {
+  const app = appFixture();
+  registerConfigQobuzAccountRoutes(app, {
+    requireTrackKey: () => true,
+    controlPoint: { discover: async () => ({ devices: [] }) },
+    releaseQobuzConnect: async () => ({ accepted: true }),
+    getQobuzNowPlaying: async () => ({ active: true, suppressMpdHistory: true }),
+    releaseTimeoutMs: 25,
+    releasePollMs: 25,
+  });
+
+  const res = response();
+  await app.routes.get('POST /config/qobuz/session/release')(request(), res);
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.code, 'QOBUZ_RELEASE_UNCONFIRMED');
+  assert.doesNotMatch(JSON.stringify(res.body), /ssh|token|secret|sessionid/i);
+});
+
 test('only a timed-out Qobuz browse is classified as account authorization required', async () => {
   const app = appFixture();
   registerUpnpRoutes(app, {
