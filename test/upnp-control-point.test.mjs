@@ -118,6 +118,7 @@ const DIDL_XML = `<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/
     <dc:creator>Artist One</dc:creator>
     <upnp:artist role="AlbumArtist">Artist One</upnp:artist>
     <upnp:album>Album One</upnp:album>
+    <upnp:genre>Jazz &amp; Blues</upnp:genre>
     <upnp:originalTrackNumber>1</upnp:originalTrackNumber>
     <upnp:class>object.item.audioItem.musicTrack</upnp:class>
     <res protocolInfo="http-get:*:audio/flac:*" duration="00:03:21.500" sampleFrequency="192000" bitsPerSample="24" nrAudioChannels="2">http://10.0.0.254:8200/track.flac?token=secret</res>
@@ -192,12 +193,51 @@ test('device, service, and DIDL parsers normalize relative URLs and metadata', (
   assert.equal(items[0].title, 'Albums & More');
   assert.equal(items[1].title, 'Track & One');
   assert.equal(items[1].artist, 'Artist One');
+  assert.equal(items[1].genre, 'Jazz & Blues');
   assert.equal(items[1].trackNumber, 1);
   assert.equal(items[1].durationSeconds, 201.5);
   assert.equal(items[1].resources[0].mimeType, 'audio/flac');
   assert.equal(items[1].resources[0].bitsPerSample, 24);
   assert.equal(items[1].resources[0].sampleFrequency, 192000);
   assert.equal(items[1].resources[0].uri, 'http://10.0.0.254:8200/track.flac?token=secret');
+});
+
+test('DIDL genre metadata is normalized without losing repeated values or existing fields', () => {
+  const items = parseDidlLite(`<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"
+      xmlns:dc="http://purl.org/dc/elements/1.1/"
+      xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">
+    <item id="multi-genre" parentID="albums" restricted="1">
+      <dc:title>Genre &amp; Fixture</dc:title>
+      <dc:creator>Artist &amp; One</dc:creator>
+      <upnp:artist>Artist &amp; One</upnp:artist>
+      <upnp:album>Album One</upnp:album>
+      <upnp:genre> Jazz </upnp:genre>
+      <upnp:genre></upnp:genre>
+      <upnp:genre>Jazz</upnp:genre>
+      <upnp:genre>Jazz &amp; Blues</upnp:genre>
+      <upnp:genre><unexpected>ignored</unexpected></upnp:genre>
+      <upnp:genre>Rock &amp; Roll</upnp:genre>
+      <upnp:originalTrackNumber>2</upnp:originalTrackNumber>
+      <upnp:class>object.item.audioItem.musicTrack</upnp:class>
+      <res protocolInfo="http-get:*:audio/flac:*" duration="00:02:03.250">http://10.0.0.254/genre.flac</res>
+    </item>
+    <item id="missing-genre" parentID="albums" restricted="1">
+      <dc:title>No Genre</dc:title>
+      <upnp:class>object.item.audioItem.musicTrack</upnp:class>
+      <res protocolInfo="http-get:*:audio/flac:*">http://10.0.0.254/no-genre.flac</res>
+    </item>
+  </DIDL-Lite>`);
+
+  assert.equal(items.length, 2);
+  assert.equal(items[0].genre, 'Jazz | Jazz & Blues | Rock & Roll');
+  assert.equal(items[0].title, 'Genre & Fixture');
+  assert.equal(items[0].creator, 'Artist & One');
+  assert.equal(items[0].artist, 'Artist & One');
+  assert.equal(items[0].album, 'Album One');
+  assert.equal(items[0].trackNumber, 2);
+  assert.equal(items[0].durationSeconds, 123.25);
+  assert.equal(items[1].genre, '');
+  assert.equal(items[1].title, 'No Genre');
 });
 
 test('SOAP envelopes and responses are escaped, parsed, and faulted safely', () => {

@@ -4,6 +4,7 @@ import {
   UpnpError,
   sameUpnpResourceUri,
 } from './upnp-control-point.mjs';
+import { buildAnimatedArtContext } from './animated-art-context.mjs';
 
 const ACTIVE_TRANSPORT_STATES = new Set([
   'PLAYING',
@@ -1284,6 +1285,9 @@ export class UpnpPlaybackSessionManager {
       ?? parseDuration(position.trackDuration)
       ?? 0;
     const artworkUrl = String(this.session.item.artworkUrl || '').trim();
+    const artist = String(this.session.item.artist || this.session.item.creator || '');
+    const title = String(this.session.item.title || '');
+    const album = String(this.session.item.album || '');
     return {
       source: 'upnp-sonuvi',
       transport: 'upnp',
@@ -1296,9 +1300,9 @@ export class UpnpPlaybackSessionManager {
         udn: this.session.renderer.udn,
         friendlyName: this.session.renderer.friendlyName,
       },
-      artist: String(this.session.item.artist || this.session.item.creator || ''),
-      title: String(this.session.item.title || ''),
-      album: String(this.session.item.album || ''),
+      artist,
+      title,
+      album,
       file: 'upnp-sonuvi',
       albumArtUrl: artworkUrl,
       artworkSourceUrl: artworkUrl,
@@ -1318,6 +1322,13 @@ export class UpnpPlaybackSessionManager {
       rating: 0,
       ratingDisabled: true,
       ratingFile: '',
+      animatedArt: buildAnimatedArtContext({
+        source: 'upnp-sonuvi',
+        artist,
+        title,
+        album,
+        trackIdentity: `${this.session.generation}:${this.session.item.id}`,
+      }),
       upnpItem: publicItem(this.session.item, this.session.resource),
       upnpFormat: publicResource(this.session.resource),
       queueChanged: Boolean(this.session.queueChanged),

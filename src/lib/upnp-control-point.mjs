@@ -558,6 +558,18 @@ function firstTextChild(node, names) {
   return '';
 }
 
+function normalizedGenres(node) {
+  const values = [];
+  const seen = new Set();
+  for (const value of directNamed(node, 'genre').map(textValue)) {
+    const normalized = String(value || '').trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    values.push(normalized);
+  }
+  return values.join(' | ');
+}
+
 export function parseDidlLite(xml) {
   const parsed = parseXml(xml, 'DIDL-Lite metadata');
   const didl = firstNamed(parsed, 'DIDL-Lite') || parsed;
@@ -582,6 +594,7 @@ export function parseDidlLite(xml) {
       artists,
       albumArtist: firstTextChild(node, ['albumArtist']),
       album: firstTextChild(node, ['album']),
+      genre: normalizedGenres(node),
       trackNumber: parseInteger(firstTextChild(node, ['originalTrackNumber'])),
       class: firstTextChild(node, ['class']),
       artworkUrl,

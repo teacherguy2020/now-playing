@@ -79,6 +79,7 @@ export function sanitizeMobileUpnpItem(item = {}) {
     artists: safeStrings(item.artists, 512),
     albumArtist: text(item.albumArtist, 512),
     album: text(item.album, 512),
+    genre: text(item.genre, 512),
     trackNumber: Number.isSafeInteger(item.trackNumber) ? item.trackNumber : null,
     class: text(item.class, 256),
     duration: text(item.duration, 64),

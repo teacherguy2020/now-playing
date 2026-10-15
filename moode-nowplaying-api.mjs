@@ -251,6 +251,7 @@ import { createApnsProvider } from './src/lib/apns.mjs';
 import { resolveApnsMediaUrl } from './src/lib/apns-artwork.mjs';
 import { createMobilePushTokenStore } from './src/lib/mobile-push-store.mjs';
 import { createMobileVideoCatalog } from './src/lib/mobile-video-catalog.mjs';
+import { buildAnimatedArtContext } from './src/lib/animated-art-context.mjs';
 import { UpnpControlPoint } from './src/lib/upnp-control-point.mjs';
 import { createUpnpPlaybackSessionManager } from './src/lib/upnp-playback-session.mjs';
 import { createUpnpPlaybackQueueManager } from './src/lib/upnp-playback-queue.mjs';
@@ -8330,6 +8331,19 @@ app.get('/now-playing', async (req, res) => {
       isPodcast,
       streamKind: effectiveStreamKind,
       isUpnp,
+      ...(isUpnp
+        ? {
+          animatedArt: buildAnimatedArtContext({
+            source: 'external-upnp',
+            isUpnp: true,
+            streamKind: effectiveStreamKind,
+            artist,
+            title,
+            album,
+            trackIdentity: `${file}|${songid}|${songpos}`,
+          }),
+        }
+        : {}),
 
       isFavorite,
 

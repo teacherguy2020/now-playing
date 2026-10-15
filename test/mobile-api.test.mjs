@@ -1355,6 +1355,57 @@ test('mobile now-playing returns safe metadata and proxies raw artwork behind be
   assert.doesNotMatch(JSON.stringify(response.body), /coverart|secret-file|SamsungMoode/);
 });
 
+test('mobile now-playing keeps managed UPnP as a track source and exposes animated-art context', async () => {
+  const app = registerFixture({
+    fetchInternalJson: async () => ({
+      ok: true,
+      status: 200,
+      json: {
+        source: 'upnp-sonuvi',
+        controller: 'sonuvi',
+        state: 'play',
+        title: 'Remote Track',
+        artist: 'Remote Artist',
+        album: 'Remote Album',
+        file: 'upnp-sonuvi',
+        albumArtUrl: 'http://10.0.0.254:8200/art/album.jpg',
+        isStream: true,
+        isUpnp: true,
+        animatedArt: {
+          version: 'now-playing-animated-art.v1',
+          source: 'upnp-sonuvi',
+          eligible: true,
+          identity: 'sha256:0123456789abcdef0123456789abcdef0123456789abcdef',
+          artist: 'Remote Artist',
+          album: 'Remote Album',
+          title: 'Remote Track',
+        },
+      },
+    }),
+  });
+
+  const sessionRes = createResponse();
+  await app.routes.get('POST /v1/mobile/session')?.(request({
+    headers: { 'x-mobile-enrollment-code': 'one-time-code' },
+    body: { deviceId: 'upnp-iphone' },
+  }), sessionRes);
+
+  const response = createResponse();
+  await app.routes.get('GET /v1/mobile/now-playing')?.(request({
+    headers: { authorization: `Bearer ${sessionRes.body.accessToken}` },
+  }), response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.isUpnp, true);
+  assert.equal(response.body.isRadio, false);
+  assert.equal(response.body.source, 'upnp-sonuvi');
+  assert.equal(response.body.animatedArt.source, 'upnp-sonuvi');
+  assert.equal(response.body.animatedArt.eligible, true);
+  assert.match(response.body.animatedArt.identity, /^sha256:[a-f0-9]{24}$/);
+  assert.match(response.body.artworkUrl, /\/v1\/mobile\/home\/artwork\//);
+  assert.doesNotMatch(JSON.stringify(response.body), /10\.0\.0\.254|album\.jpg/);
+});
+
 test('mobile now-playing reports MPD repeat, single, random, and consume state', async () => {
   const app = registerFixture({
     mpdQueryRaw: async (command) => command === 'status'

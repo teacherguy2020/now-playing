@@ -55,6 +55,7 @@ import {
   normalizeMobilePushToken,
 } from '../lib/mobile-push-store.mjs';
 import { radioStationNameForFile } from '../lib/radio-display.mjs';
+import { buildAnimatedArtContext } from '../lib/animated-art-context.mjs';
 import { sanitizeMobileNowPlaying } from '../lib/mobile-upnp-sanitize.mjs';
 import { registerMobileUpnpRoutes } from './mobile-upnp.routes.mjs';
 
@@ -1278,7 +1279,14 @@ export function registerMobileRoutes(app, deps = {}) {
       || '';
     const isStream = Boolean(payload.isStream) || Boolean(currentItem?.isStream);
     const isPodcast = Boolean(payload.isPodcast) || Boolean(currentItem?.isPodcast);
-    const isRadio = Boolean(payload.isRadio) || (isStream && !isPodcast);
+    const isUpnp = Boolean(payload.isUpnp)
+      || text(payload.source).toLowerCase() === 'upnp-sonuvi'
+      || text(payload.source).toLowerCase() === 'external-upnp'
+      || text(payload.streamKind).toLowerCase() === 'upnp';
+    // UPnP is a track source with album metadata, not a generic radio
+    // stream. Keep it eligible for the provider-neutral album matcher and
+    // preserve its source artwork as the static fallback.
+    const isRadio = !isUpnp && (Boolean(payload.isRadio) || (isStream && !isPodcast));
     const stationName = isRadio
       ? (await radioStationNameForFile(candidateFile, rawStationName)) || null
       : null;
@@ -1401,6 +1409,17 @@ export function registerMobileRoutes(app, deps = {}) {
       ? payload.personnel.map((value) => text(value)).filter(Boolean)
       : [];
     const about = normalizeMobileAbout(payload.about);
+    const animatedArt = buildAnimatedArtContext(payload, {
+      source: isUpnp
+        ? (text(payload.source).toLowerCase() === 'upnp-sonuvi' ? 'upnp-sonuvi' : 'external-upnp')
+        : (isRadio ? 'radio' : text(payload.source).toLowerCase() || 'mpd'),
+      artist,
+      album,
+      title,
+      identity: payload.animatedArt?.identity,
+      trackIdentity: payload.file || currentItem?.id || payload.songid,
+      confirmedAppleMusicUrl: isRadio ? appleMusicUrl : '',
+    });
 
     return {
       ok: true,
@@ -1427,7 +1446,8 @@ export function registerMobileRoutes(app, deps = {}) {
       isPodcast,
       isRadio,
       isAirplay: Boolean(payload.isAirplay),
-      isUpnp: Boolean(payload.isUpnp),
+      isUpnp,
+      animatedArt,
       ...sanitizeMobileNowPlaying(payload),
       isYoutube: Boolean(payload.isYoutube) || Boolean(currentItem?.isYoutube),
       personnel,

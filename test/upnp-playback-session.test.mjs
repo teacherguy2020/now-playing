@@ -195,7 +195,9 @@ test('single-track session selects without mutation and gates every transport co
   assert.equal(nowPlaying.source, 'upnp-sonuvi');
   assert.equal(nowPlaying.ownsAudio, true);
   assert.equal(nowPlaying.generation, selected.generation);
-
+  assert.equal(nowPlaying.animatedArt.source, 'upnp-sonuvi');
+  assert.equal(nowPlaying.animatedArt.eligible, true);
+  assert.match(nowPlaying.animatedArt.identity, /^sha256:[a-f0-9]{24}$/);
   const paused = await harness.manager.pause(selected.sessionId);
   assert.equal(paused.state, 'paused');
   assert.equal(harness.actions[2].action, 'Pause');
@@ -217,6 +219,8 @@ test('next-track preparation is confirmed and committed without a second load/pl
   });
   await harness.manager.load(selected.sessionId);
   await harness.manager.play(selected.sessionId);
+  const firstNowPlaying = await harness.manager.getNowPlaying();
+  const firstAnimatedArtIdentity = firstNowPlaying.animatedArt.identity;
 
   const armed = await harness.manager.prepareNext(selected.sessionId, {
     itemRef: ITEM2.selectionRef,
@@ -250,6 +254,10 @@ test('next-track preparation is confirmed and committed without a second load/pl
   });
   assert.equal(committed.item.id, ITEM2.id);
   assert.equal(committed.transitionedNext, false);
+  const nextNowPlaying = await harness.manager.getNowPlaying();
+  assert.equal(nextNowPlaying.title, 'Track Two');
+  assert.equal(nextNowPlaying.animatedArt.eligible, true);
+  assert.notEqual(nextNowPlaying.animatedArt.identity, firstAnimatedArtIdentity);
   assert.deepEqual(harness.actions.map((entry) => entry.action), [
     'SetAVTransportURI',
     'Play',

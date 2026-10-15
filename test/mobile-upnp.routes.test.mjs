@@ -105,6 +105,7 @@ const browseItem = {
   title: 'Fixture Track',
   artist: 'Fixture Artist',
   album: 'Fixture Album',
+  genre: 'Jazz | Jazz & Blues',
   class: 'object.item.audioItem.musicTrack',
   selectionRef: 'selection-1',
   mediaServerId: mediaServer.id,
@@ -416,6 +417,7 @@ test('mobile browse and search redact resource and artwork URLs while preserving
   assert.equal(browse.statusCode, 200);
   assert.equal(browse.body.items[0].selectionRef, 'selection-1');
   assert.equal(browse.body.items[0].artworkAvailable, true);
+  assert.equal(browse.body.items[0].genre, 'Jazz | Jazz & Blues');
   assert.equal(browse.body.items[0].resources[0].mimeType, 'audio/flac');
   const serialized = JSON.stringify(browse.body);
   assert.doesNotMatch(serialized, /artworkUrl|"uri"|token=secret|location|controlUrl/);
@@ -427,6 +429,7 @@ test('mobile browse and search redact resource and artwork URLs while preserving
   });
   assert.equal(search.statusCode, 200);
   assert.equal(search.body.items.length, 1);
+  assert.equal(search.body.items[0].genre, 'Jazz | Jazz & Blues');
 });
 
 test('mobile renderer, preflight, and session responses omit raw renderer and MPD details', async () => {

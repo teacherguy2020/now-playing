@@ -89,14 +89,20 @@ art:
   `/config/library-health/animated-art/lookup?artist=&album=`; the Pi
   persists the album match and can serve a local H.264 copy from
   `data/animated-art-h264/`;
+- UPnP tracks use the same local matcher through the normalized
+  `animatedArt` context. Managed Sonuvi UPnP playback and externally observed
+  UPnP playback are both eligible when trustworthy artist and album metadata
+  are present; no local MPD-library match is required. The source-provided
+  mediated static artwork remains the fallback;
 - radio tracks use the verified Apple/iTunes URL through the Pi-owned
   `/config/library-health/animated-art/radio-lookup?url=...` route; the Pi
   persists the resolved source in `data/animated-art-cache.json`, asks
   `api.aritra.ovh` only on a cache miss, and transcodes the motion video into
   the Pi's local `data/animated-art-h264/` cache. A remote URL is retained as
   a fallback if transcoding fails;
-- podcasts, AirPlay, UPnP, and other stream-only items do not request local
-  motion art;
+- podcasts, AirPlay, and other stream-only items do not request local motion
+  art. UPnP is the exception because normalized album metadata makes it a
+  provider-neutral track source;
 - an empty motion result is an explicit clear operation: the shared player
   path must pause/remove the prior video source, hide the video, and reveal the
   resolved static foreground rather than treating the empty result as a no-op;
@@ -109,6 +115,37 @@ art:
 If motion art is unavailable, the resolved static foreground and blur must
 still render. A motion lookup must never replace the station-logo fallback or
 leave the current art blank.
+
+### UPnP normalized context
+
+The Server adds this presentation-only object to the existing Now Playing
+payload for managed (`upnp-sonuvi`) and external (`external-upnp`) UPnP:
+
+```json
+{
+  "version": "now-playing-animated-art.v1",
+  "source": "upnp-sonuvi",
+  "eligible": true,
+  "identity": "sha256:<24 lowercase hex characters>",
+  "artist": "…",
+  "album": "…",
+  "title": "…"
+}
+```
+
+`identity` is an opaque, per-source-track transition key. It is not a catalog
+identity and does not expose a provider URL. The browser passes the normalized
+artist/album to the existing matcher asynchronously, keeps the static
+`albumArtUrl`/`artworkUrl` mediation in place, and rejects late results when
+the source track or session has changed. Missing or ambiguous metadata leaves
+static artwork visible.
+
+Native iOS receives the same fields through the existing bearer
+`GET /v1/mobile/now-playing` contract and can continue using
+`GET /v1/mobile/animated-art`. The current iOS session still needs a separate
+client change to allow the existing animated-art lookup path for
+`isUpnp == true` (while keeping its source/identity guard); this Server task
+does not modify the iOS repository.
 
 ## Radio matching and fallback
 
@@ -128,6 +165,7 @@ policy instead of repairing each page separately.
 For any artwork change:
 
 1. Inspect `/now-playing?debug=1` and confirm the art fields and stream kind.
+   For UPnP, also confirm `isUpnp` and `animatedArt.source`/`eligible`.
 2. Request both `/art/current.jpg` and `/art/current_bg_640_blur.jpg`.
 3. Check a matched radio track and an unmatched radio track; the latter must
    show station art everywhere.

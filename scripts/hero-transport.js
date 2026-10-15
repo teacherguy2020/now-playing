@@ -252,7 +252,9 @@
     }
   }
 
-  function motionTrackKey(file = '', songid = '') {
+  function motionTrackKey(file = '', songid = '', identity = '') {
+    const explicit = String(identity || '').trim();
+    if (explicit) return `a:${explicit}`;
     const f = String(file || '').trim();
     if (f) return `f:${f}`;
     const s = String(songid || '').trim();
@@ -271,7 +273,8 @@
     if (localMotionCache.has(k)) return String(localMotionCache.get(k) || '');
     try {
       const url = `${apiBase}/config/library-health/animated-art/lookup?artist=${encodeURIComponent(a)}&album=${encodeURIComponent(b)}`;
-      const r = await fetch(url, { headers: key ? { 'x-track-key': key } : {} });
+      const requestKey = currentKey();
+      const r = await fetch(url, { headers: requestKey ? { 'x-track-key': requestKey } : {} });
       const j = await r.json().catch(() => ({}));
       const mp4 = String(j?.hit?.mp4 || '').trim();
       // Cache only positive hits so transient misses/auth races can retry on next refresh.
@@ -1590,21 +1593,32 @@
         const head = (Array.isArray(q?.items) ? (q.items.find((x) => !!x?.isHead) || q.items[0]) : null) || null;
         const isYoutube = !!(np?.isYoutube || head?.isYoutube || /googlevideo\.com|youtube\.com|youtu\.be|\/youtube\/proxy\//i.test(String(np?.file || head?.file || '')));
         const isRadioOrStream = !!np?.isRadio || (!!np?.isStream && !isYoutube) || (!!head?.isStream && !isYoutube);
+        const isUpnp = !!np?.isUpnp
+          || String(np?.source || np?.animatedArt?.source || '').trim().toLowerCase() === 'upnp-sonuvi'
+          || String(np?.source || np?.animatedArt?.source || '').trim().toLowerCase() === 'external-upnp'
+          || String(np?.streamKind || '').trim().toLowerCase() === 'upnp';
+        const isMotionRadioOrStream = !!np?.isRadio
+          || (!!np?.isStream && !isYoutube && !isUpnp)
+          || (!!head?.isStream && !isYoutube && !head?.isUpnp);
         const artist = String(np?.artist || '').trim();
         const album = String(np?.album || '').trim();
         const radioTitle = String(np?.title || np?.radioTitle || head?.title || '').trim();
-        const motionIdentity = `${isRadioOrStream ? 'r' : 'l'}|${appleUrl || ''}|${artist}|${album}|${isRadioOrStream ? radioTitle : ''}`;
+        const motionIdentity = `${isMotionRadioOrStream ? 'r' : 'l'}|${appleUrl || ''}|${artist}|${album}|${isMotionRadioOrStream ? radioTitle : ''}`;
         const currentFile = String(np?.file || head?.file || '').trim();
         const currentSongId = String(np?.songid || head?.songid || '').trim();
         if (currentFile) lastKnownNowFile = currentFile;
         if (currentSongId) lastKnownSongId = currentSongId;
         const effectiveFile = currentFile || lastKnownNowFile;
         const effectiveSongId = currentSongId || lastKnownSongId;
-        const baseTrackKey = motionTrackKey(effectiveFile, effectiveSongId);
-        const localAlbumContinuityKey = (!isRadioOrStream && album)
+        const baseTrackKey = motionTrackKey(
+          effectiveFile,
+          effectiveSongId,
+          np?.animatedArt?.identity || np?.upnpItem?.id || np?.generation,
+        );
+        const localAlbumContinuityKey = (!isMotionRadioOrStream && album)
           ? `album|${artist.toLowerCase()}|${album.toLowerCase()}`
           : '';
-        const effectiveTrackKey = isRadioOrStream
+        const effectiveTrackKey = isMotionRadioOrStream
           ? `radio|${String(appleUrl || '').trim().toLowerCase()}|${artist.toLowerCase()}|${album.toLowerCase()}|${radioTitle.toLowerCase()}`
           : (localAlbumContinuityKey || baseTrackKey);
 
@@ -1681,7 +1695,7 @@
 
         // Background motion resolution (non-blocking)
         if (!motionEnabled) return;
-        const shouldTryRemoteMotion = !!appleUrl && isRadioOrStream;
+        const shouldTryRemoteMotion = !!appleUrl && isMotionRadioOrStream;
         if (motionMp4) {
           heroMotionLog('skip motion resolve (already have motion)', { trackKey: effectiveTrackKey, src: canonicalMediaSrc(motionMp4) });
           return;
@@ -1689,7 +1703,9 @@
 
         const resolved = shouldTryRemoteMotion
           ? await resolveMotionMp4(appleUrl).catch(() => '')
-          : await resolveLocalMotionMp4(artist, album, currentKey()).catch(() => '');
+          : await (globalThis.NPArt?.resolveMotionFor
+            ? globalThis.NPArt.resolveMotionFor(np, { base: apiBase })
+            : resolveLocalMotionMp4(artist, album, currentKey())).catch(() => '');
 
         if (seq !== refreshSeq) {
           const stillSameTrack = !!(effectiveTrackKey && effectiveTrackKey === lastRenderedTrackKey);

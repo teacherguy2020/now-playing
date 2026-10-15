@@ -3376,7 +3376,7 @@ if (titleEl) {
 
   const continuityArtist = String(data.albumartist || data.artist || '').trim().toLowerCase();
   const continuityAlbum  = String(data.album || '').trim().toLowerCase();
-  const continuityKey = (!isRadio && !isAirplay && !isUpnp && !podcastTrack && continuityAlbum)
+  const continuityKey = (!isRadio && !isAirplay && !isYouTubeStreamMode(data) && !podcastTrack && continuityAlbum)
     ? `${continuityArtist}|${continuityAlbum}`
     : '';
   const sameAlbumRun = !!(continuityKey && continuityKey === lastAlbumContinuityKey && lastAlbumArtKey && lastAlbumArtUrl);
@@ -3414,10 +3414,20 @@ if (titleEl) {
     : bgArtUrl;
 
   setAlbumArtAppleLink((isRadio && appleUrl) ? appleUrl : '');
+  const sourceTrackKey = isUpnp
+    ? String(
+      data?.animatedArt?.identity
+      || data?.upnpItem?.id
+      || data?.generation
+      || [data?.file, data?.songid, data?.title, data?.artist, data?.album].filter(Boolean).join('|'),
+    ).trim()
+    : String(data.file || data.songid || '').trim();
   const trackKey = (isRadio)
     ? `radio|${String(appleUrl || '').trim().toLowerCase()}|${String(data.artist || '').trim().toLowerCase()}|${String(data.album || '').trim().toLowerCase()}|${String(data.title || data.radioTitle || '').trim().toLowerCase()}`
-    : String(data.file || data.songid || '').trim();
-  const motionKey = (!isRadio && !isAirplay && !isUpnp && !podcastTrack && continuityKey) ? continuityKey : trackKey;
+    : sourceTrackKey;
+  const motionKey = (!isRadio && !isAirplay && !isYouTubeStreamMode(data) && !podcastTrack && continuityKey)
+    ? continuityKey
+    : trackKey;
   const motionToken = ++motionReqToken;
 
   const trackChangedForMotion = !!motionKey && (motionKey !== lastMotionAppliedTrackKey);
@@ -3452,8 +3462,11 @@ if (titleEl) {
             setMotionArtVideo('', effectiveFgUrl || rawArtUrl, motionKey);
           }
         });
-    } else if (!isRadio && !isAirplay) {
-      resolveLocalMotionMp4(String(data.artist || ''), String(data.album || ''))
+    } else if (!isRadio && !isAirplay && (!isStream || isUpnp)) {
+      const resolveCurrentMotion = globalThis.NPArt?.resolveMotionFor
+        ? globalThis.NPArt.resolveMotionFor(data, { base: API_BASE })
+        : resolveLocalMotionMp4(String(data.artist || ''), String(data.album || ''));
+      Promise.resolve(resolveCurrentMotion)
         .then((mp4) => {
           if (motionToken !== motionReqToken) return;
           const resolved = String(mp4 || '').trim();

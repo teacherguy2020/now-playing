@@ -45,6 +45,15 @@
     return data?.isRadio === true || kind === 'radio' || kind === 'stream-radio';
   }
 
+  function isUpnp(data = {}) {
+    const kind = String(data?.streamKind || '').trim().toLowerCase();
+    const source = String(data?.source || data?.animatedArt?.source || '').trim().toLowerCase();
+    return data?.isUpnp === true
+      || kind === 'upnp'
+      || source === 'upnp-sonuvi'
+      || source === 'external-upnp';
+  }
+
   function source(data = {}, options = {}) {
     const head = options.head || data?.__queueHead || null;
     const podcast = !!data?.isPodcast || /\/podcasts?\//i.test(String(data?.file || ''));
@@ -96,6 +105,7 @@
       data?.radioTrackUrl ||
       data?.radioItunesUrl ||
       data?.itunesUrl ||
+      data?.animatedArt?.appleMusicUrl ||
       data?.appleMusicUrl ||
       data?.appleUrl ||
       ''
@@ -281,10 +291,17 @@
   async function resolveMotionFor(data = {}, options = {}) {
     if (!motionArtEnabled()) return '';
     const radio = isRadio(data);
+    const upnp = isUpnp(data);
     const podcast = !!data?.isPodcast || /\/podcasts?\//i.test(String(data?.file || ''));
+    const confirmedAppleUrl = String(data?.animatedArt?.appleMusicUrl || '').trim();
+    if (confirmedAppleUrl) return resolveMotionMp4(confirmedAppleUrl, options.base);
     if (radio) return resolveMotionMp4(appleMusicUrl(data), options.base);
-    if (podcast || data?.isAirplay || data?.isUpnp || data?.isStream) return '';
-    return resolveLocalMotionMp4(data?.artist || data?.displayArtist, data?.album, options.base);
+    if (podcast || data?.isAirplay || (data?.isStream && !upnp)) return '';
+    return resolveLocalMotionMp4(
+      data?.animatedArt?.artist || data?.artist || data?.displayArtist,
+      data?.animatedArt?.album || data?.album,
+      options.base,
+    );
   }
 
   root.NPArt = Object.assign(root.NPArt || {}, {
@@ -294,6 +311,7 @@
     background,
     foreground,
     isRadio,
+    isUpnp,
     motionArtEnabled,
     normalizeAppleMusicUrl,
     titleCaseArtist,
