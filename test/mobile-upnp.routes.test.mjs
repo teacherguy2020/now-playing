@@ -174,7 +174,7 @@ function queueSnapshot() {
 
 function configuredApp(overrides = {}) {
   const app = appFixture();
-  const calls = { revisions: [], takeovers: [] };
+  const calls = { revisions: [], takeovers: [], transports: [] };
   const controlPoint = {
     discover: async () => ({
       discoveredAt: new Date().toISOString(),
@@ -222,6 +222,72 @@ function configuredApp(overrides = {}) {
       avTransportActions: ['Play', 'Pause', 'Stop'],
       connectionManagerActions: ['GetProtocolInfo'],
     }),
+    rendererTransportCapabilities: async () => ({
+      renderer,
+      source: 'external-upnp',
+      owner: 'external',
+      queueAuthority: 'renderer',
+      queueRouteRequired: false,
+      capabilities: {
+        pause: true,
+        resume: false,
+        stop: true,
+        seek: true,
+        next: true,
+        previous: true,
+        queueEdit: false,
+      },
+      transport: {
+        state: 'PLAYING',
+        status: 'OK',
+        speed: '1',
+        relativeTime: '0:00:12',
+        trackDuration: '0:03:21',
+        positionSeconds: 12,
+        durationSeconds: 201,
+        trackNumber: 1,
+        numberOfTracks: 8,
+        currentMediaPresent: true,
+      },
+      approved: true,
+      verified: true,
+      mutationExecuted: false,
+    }),
+    rendererTransport: async (args) => {
+      calls.transports.push({ ...args });
+      return {
+        renderer,
+        source: 'external-upnp',
+        owner: 'external',
+        queueAuthority: 'renderer',
+        queueRouteRequired: false,
+        capabilities: {
+          pause: false,
+          resume: true,
+          stop: true,
+          seek: true,
+          next: true,
+          previous: true,
+          queueEdit: false,
+        },
+        transport: {
+          state: args.action === 'stop' ? 'STOPPED' : args.action === 'pause' ? 'PAUSED_PLAYBACK' : 'PLAYING',
+          status: 'OK',
+          speed: '1',
+          relativeTime: '0:00:12',
+          trackDuration: '0:03:21',
+          positionSeconds: args.positionSeconds ?? 12,
+          durationSeconds: 201,
+          trackNumber: 1,
+          numberOfTracks: 8,
+          currentMediaPresent: args.action !== 'stop',
+        },
+        action: args.action,
+        approved: true,
+        verified: true,
+        mutationExecuted: true,
+      };
+    },
     preflight: async () => ({
       ok: true,
       qobuz: { active: false, suppressMpdHistory: false },
@@ -383,6 +449,38 @@ test('mobile renderer, preflight, and session responses omit raw renderer and MP
   }
   assert.equal(preflight.body.mutationExecuted, false);
   assert.equal(session.body.generation, 'generation-1');
+});
+
+test('mobile renderer transport is bearer-authenticated, source-aware, and separate from queue control', async () => {
+  const { app, calls } = configuredApp();
+  const capabilities = await call(app, 'GET', '/v1/mobile/upnp/renderers/:deviceId/transport', {
+    headers: auth,
+    params: { deviceId: renderer.id },
+  });
+  assert.equal(capabilities.statusCode, 200);
+  assert.equal(capabilities.body.source, 'external-upnp');
+  assert.equal(capabilities.body.queueAuthority, 'renderer');
+  assert.deepEqual(capabilities.body.controlsAllowed, ['pause', 'stop', 'seek', 'next', 'previous']);
+  assert.equal(capabilities.body.transport.numberOfTracks, 8);
+  assert.doesNotMatch(JSON.stringify(capabilities.body), /currentUri|location|scpdUrl|controlUrl/);
+
+  const seek = await call(app, 'POST', '/v1/mobile/upnp/renderers/:deviceId/transport/seek', {
+    headers: auth,
+    params: { deviceId: renderer.id },
+    body: { positionSeconds: 42 },
+  });
+  assert.equal(seek.statusCode, 200);
+  assert.equal(seek.body.mutation, 'RendererSeek');
+  assert.equal(seek.body.action, 'seek');
+  assert.equal(seek.body.mutationExecuted, true);
+  assert.equal(calls.transports[0].rendererId, renderer.id);
+  assert.equal(calls.transports[0].positionSeconds, 42);
+
+  const unauthorized = await call(app, 'POST', '/v1/mobile/upnp/renderers/:deviceId/transport/stop', {
+    params: { deviceId: renderer.id },
+  });
+  assert.equal(unauthorized.statusCode, 401);
+  assert.equal(calls.transports.length, 1);
 });
 
 test('mobile queue preserves revision and session identity while redacting queue item URLs', async () => {

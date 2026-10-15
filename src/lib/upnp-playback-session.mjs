@@ -27,6 +27,15 @@ const SESSION_STATES = new Set([
   'stopped',
 ]);
 
+const SOURCE_INDEPENDENT_TRANSPORT_ACTIONS = new Set([
+  'pause',
+  'resume',
+  'stop',
+  'seek',
+  'next',
+  'previous',
+]);
+
 function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
@@ -137,6 +146,47 @@ function currentActionsAllow(inspection, action) {
 
 function currentTransport(inspection) {
   return normalizedState(inspection?.readOnlyState?.transport?.state);
+}
+
+function currentMedia(inspection) {
+  return inspection?.readOnlyState?.media && typeof inspection.readOnlyState.media === 'object'
+    ? inspection.readOnlyState.media
+    : {};
+}
+
+function currentPosition(inspection) {
+  return inspection?.readOnlyState?.position && typeof inspection.readOnlyState.position === 'object'
+    ? inspection.readOnlyState.position
+    : {};
+}
+
+function activeTransportState(state) {
+  return state === 'PLAYING' || state === 'PAUSED_PLAYBACK';
+}
+
+function formatSeekTarget(seconds) {
+  const totalMilliseconds = Math.round(Number(seconds) * 1000);
+  const hours = Math.floor(totalMilliseconds / 3_600_000);
+  const minutes = Math.floor((totalMilliseconds % 3_600_000) / 60_000);
+  const wholeSeconds = Math.floor((totalMilliseconds % 60_000) / 1000);
+  const milliseconds = totalMilliseconds % 1000;
+  const suffix = milliseconds ? `.${String(milliseconds).padStart(3, '0')}` : '';
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(wholeSeconds).padStart(2, '0')}${suffix}`;
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function mpdBlocksExternalRendererControl(mpd, currentUri) {
+  const state = String(mpd?.state || '').trim().toLowerCase();
+  if (!['play', 'pause'].includes(state)) return false;
+  const song = mpd?.currentSong && typeof mpd.currentSong === 'object' ? mpd.currentSong : {};
+  const file = String(song.file || '').trim();
+  const encoded = String(song.encoded || '').trim().toLowerCase();
+  if (file.toLowerCase() === 'airplay active' || encoded === 'airplay') return true;
+  if (!file || !currentUri) return true;
+  return !sameUpnpResourceUri(file, currentUri);
 }
 
 export class UpnpPlaybackSessionManager {
@@ -328,6 +378,229 @@ export class UpnpPlaybackSessionManager {
     });
   }
 
+  _rendererTransportView({ rendererId, qobuz, mpd, renderer } = {}) {
+    const id = String(rendererId || '').trim();
+    const inspection = renderer?.inspection || {};
+    const transport = inspection.readOnlyState?.transport || {};
+    const media = currentMedia(inspection);
+    const position = currentPosition(inspection);
+    const state = currentTransport(inspection);
+    const currentUri = String(media.currentUri || '').trim();
+    const durationSeconds = parseDuration(position.trackDuration) ?? parseDuration(media.mediaDuration);
+    const positionSeconds = parseDuration(position.relativeTime);
+    const trackNumber = numberOrNull(position.track);
+    const numberOfTracks = numberOrNull(media.numberOfTracks);
+    const currentActions = Array.isArray(inspection.readOnlyState?.currentActions)
+      ? inspection.readOnlyState.currentActions.map((action) => String(action || '')).filter(Boolean)
+      : [];
+    const ownsCurrentRenderer = Boolean(
+      this.session?.ownsAudio
+      && this.session.rendererId === id
+      && currentUri
+      && sameUpnpResourceUri(currentUri, this.session.resource?.uri),
+    );
+    const qobuzActive = Boolean(qobuz?.active || qobuz?.suppressMpdHistory);
+
+    let source = 'unknown';
+    let owner = 'unknown';
+    let queueAuthority = 'unknown';
+    if (qobuzActive) {
+      source = 'qobuz-connect';
+      owner = 'qobuz-connect';
+      queueAuthority = 'unavailable';
+    } else if (ownsCurrentRenderer) {
+      source = 'upnp-sonuvi';
+      owner = 'sonuvi';
+      queueAuthority = 'sonuvi';
+    } else if (currentUri
+      && !mpdBlocksExternalRendererControl(mpd, currentUri)
+      && ['PLAYING', 'PAUSED_PLAYBACK', 'STOPPED', 'NO_MEDIA_PRESENT', ''].includes(state)) {
+      source = 'external-upnp';
+      owner = 'external';
+      queueAuthority = numberOfTracks == null
+        ? 'unknown'
+        : numberOfTracks > 1 ? 'renderer' : 'unavailable';
+    } else if (['STOPPED', 'NO_MEDIA_PRESENT', ''].includes(state)) {
+      source = 'idle';
+      owner = 'none';
+      queueAuthority = 'none';
+    }
+
+    const externalActive = source === 'external-upnp' && activeTransportState(state);
+    const rendererQueueAvailable = queueAuthority === 'renderer';
+    const capabilities = {
+      pause: externalActive && state === 'PLAYING' && currentActionsAllow(inspection, 'Pause'),
+      resume: externalActive && state === 'PAUSED_PLAYBACK' && currentActionsAllow(inspection, 'Play'),
+      stop: externalActive && currentActionsAllow(inspection, 'Stop'),
+      seek: externalActive
+        && Boolean(currentUri)
+        && durationSeconds != null
+        && currentActionsAllow(inspection, 'Seek'),
+      next: externalActive && rendererQueueAvailable && currentActionsAllow(inspection, 'Next'),
+      previous: externalActive && rendererQueueAvailable && currentActionsAllow(inspection, 'Previous'),
+      queueEdit: source === 'upnp-sonuvi',
+    };
+
+    return {
+      rendererId: id,
+      renderer: renderer?.device || null,
+      source,
+      owner,
+      queueAuthority,
+      queueRouteRequired: source === 'upnp-sonuvi',
+      capabilities,
+      controlsAllowed: Object.entries(capabilities)
+        .filter(([, allowed]) => allowed)
+        .map(([name]) => name),
+      transport: {
+        state: String(transport.state || ''),
+        status: String(transport.status || ''),
+        speed: String(transport.speed || ''),
+        relativeTime: String(position.relativeTime || ''),
+        trackDuration: String(position.trackDuration || ''),
+        positionSeconds,
+        durationSeconds,
+        trackNumber,
+        numberOfTracks,
+        currentMediaPresent: Boolean(currentUri),
+      },
+      // This is intentionally retained only for post-command verification.
+      // The mobile sanitizer never returns it to clients.
+      _currentMediaUri: currentUri,
+      currentActions,
+      approved: true,
+      verified: true,
+      mutationExecuted: false,
+    };
+  }
+
+  async rendererTransportCapabilities({ rendererId } = {}) {
+    const id = String(rendererId || '').trim();
+    if (!id) {
+      throw new UpnpError('An approved renderer ID is required', {
+        code: 'UPNP_BAD_REQUEST',
+        status: 400,
+      });
+    }
+    const [qobuz, mpd, renderer] = await Promise.all([
+      this._readQobuzState(),
+      this._readQueueBaseline(),
+      this.approvedRendererCapabilities({ rendererId: id }),
+    ]);
+    return this._rendererTransportView({ rendererId: id, qobuz, mpd, renderer });
+  }
+
+  async _confirmRendererTransport(rendererId, action, before, requestedPosition = null) {
+    let latest = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      latest = await this.rendererTransportCapabilities({ rendererId });
+      const state = normalizedState(latest.transport?.state);
+      const position = numberOrNull(latest.transport?.positionSeconds);
+      const trackChanged = latest._currentMediaUri !== before._currentMediaUri
+        || (latest.transport?.trackNumber != null
+          && before.transport?.trackNumber != null
+          && latest.transport.trackNumber !== before.transport.trackNumber);
+      const confirmed = action === 'pause'
+        ? state === 'PAUSED_PLAYBACK'
+        : action === 'resume'
+          ? state === 'PLAYING'
+          : action === 'stop'
+            ? ['STOPPED', 'NO_MEDIA_PRESENT'].includes(state)
+            : action === 'seek'
+              ? position != null && requestedPosition != null && Math.abs(position - requestedPosition) <= 3
+              : trackChanged;
+      if (confirmed) {
+        return {
+          ...latest,
+          action,
+          verified: true,
+          mutationExecuted: true,
+        };
+      }
+      if (attempt < 2) await delay(100);
+    }
+    throw new UpnpError('The renderer did not confirm the requested transport change', {
+      code: 'UPNP_TRANSPORT_UNCONFIRMED',
+      status: 409,
+      details: { action },
+    });
+  }
+
+  async rendererTransport({ rendererId, action, positionSeconds } = {}) {
+    const requestedAction = String(action || '').trim().toLowerCase();
+    if (!SOURCE_INDEPENDENT_TRANSPORT_ACTIONS.has(requestedAction)) {
+      throw new UpnpError('Renderer transport action is not supported by this endpoint', {
+        code: 'UPNP_BAD_REQUEST',
+        status: 400,
+      });
+    }
+
+    return this._withMutationLock(async () => {
+      const before = await this.rendererTransportCapabilities({ rendererId });
+      if (before.source === 'qobuz-connect') {
+        throw new UpnpError('Qobuz Connect currently owns or may own the renderer', {
+          code: 'UPNP_QOBUZ_ACTIVE',
+          status: 409,
+        });
+      }
+      if (before.source === 'upnp-sonuvi') {
+        throw new UpnpError('Use the Sonuvi UPnP queue control for this playback session', {
+          code: 'UPNP_QUEUE_AUTHORITY_REQUIRED',
+          status: 409,
+        });
+      }
+      if (before.source !== 'external-upnp') {
+        throw new UpnpError('Renderer transport ownership is not safe to control in the current state', {
+          code: 'UPNP_TRANSPORT_BAD_STATE',
+          status: 409,
+        });
+      }
+      if (!before.capabilities[requestedAction]) {
+        if (['next', 'previous'].includes(requestedAction) && before.queueAuthority !== 'renderer') {
+          throw new UpnpError('The current renderer queue is not available for this action', {
+            code: 'UPNP_EXTERNAL_QUEUE_UNAVAILABLE',
+            status: 409,
+          });
+        }
+        throw new UpnpError('The approved renderer does not support that transport action in the current state', {
+          code: 'UPNP_TRANSPORT_UNSUPPORTED',
+          status: 409,
+        });
+      }
+
+      let soapAction;
+      let args;
+      let requestedSeekSeconds = null;
+      if (requestedAction === 'resume') {
+        soapAction = 'Play';
+        args = { InstanceID: 0, Speed: '1' };
+      } else if (requestedAction === 'seek') {
+        requestedSeekSeconds = Number(positionSeconds);
+        const duration = numberOrNull(before.transport?.durationSeconds);
+        if (!Number.isFinite(requestedSeekSeconds) || requestedSeekSeconds < 0
+          || requestedSeekSeconds > 24 * 60 * 60
+          || (duration != null && requestedSeekSeconds > duration)) {
+          throw new UpnpError('Seek position is outside the current track', {
+            code: 'UPNP_BAD_REQUEST',
+            status: 400,
+          });
+        }
+        soapAction = 'Seek';
+        args = {
+          InstanceID: 0,
+          Unit: 'REL_TIME',
+          Target: formatSeekTarget(requestedSeekSeconds),
+        };
+      } else {
+        soapAction = requestedAction[0].toUpperCase() + requestedAction.slice(1);
+        args = { InstanceID: 0 };
+      }
+
+      await this.controlPoint.transportAction(String(rendererId), soapAction, args);
+      return this._confirmRendererTransport(String(rendererId), requestedAction, before, requestedSeekSeconds);
+    });
+  }
+
   _assertNoActiveSession({ takeover = false } = {}) {
     if (this.session && !['stopped', 'ownership-lost', 'renderer-unavailable'].includes(this.session.state)) {
       throw new UpnpError(
@@ -366,6 +639,8 @@ export class UpnpPlaybackSessionManager {
       ownsAudio: false,
       mutationCount: 0,
       queueChanged: false,
+      preparedNext: null,
+      transitionedNext: null,
       lastInspection: prepared.renderer.inspection,
       lastError: '',
     };
@@ -591,13 +866,24 @@ export class UpnpPlaybackSessionManager {
     const currentUri = String(inspection?.readOnlyState?.media?.currentUri || '').trim();
     if (invalidateOnConflict && session.ownsAudio) {
       if (!currentUri || !sameUpnpResourceUri(currentUri, session.resource.uri)) {
-        session.state = 'ownership-lost';
-        session.ownsAudio = false;
-        session.lastError = 'renderer-media-changed';
-        throw new UpnpError('Renderer ownership changed outside this Sonuvi session', {
-          code: 'UPNP_OWNERSHIP_LOST',
-          status: 409,
-        });
+        if (session.preparedNext?.armed
+          && currentUri
+          && sameUpnpResourceUri(currentUri, session.preparedNext.resource?.uri)) {
+          // SetNextAVTransportURI has taken effect and the renderer has moved
+          // to the prepared resource. Keep ownership until the queue manager
+          // commits the logical transition against its revision/generation.
+          session.transitionedNext = session.preparedNext;
+        } else {
+          session.preparedNext = null;
+          session.transitionedNext = null;
+          session.state = 'ownership-lost';
+          session.ownsAudio = false;
+          session.lastError = 'renderer-media-changed';
+          throw new UpnpError('Renderer ownership changed outside this Sonuvi session', {
+            code: 'UPNP_OWNERSHIP_LOST',
+            status: 409,
+          });
+        }
       }
       if (state === 'ERROR') {
         session.state = 'ownership-lost';
@@ -642,6 +928,226 @@ export class UpnpPlaybackSessionManager {
       this.log.warn?.('[upnp] renderer mutation changed the MPD queue; queue was not restored');
     }
     return mpd;
+  }
+
+  async _confirmNextUri(rendererId, expectedUri, { cleared = false } = {}) {
+    let latest = null;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      latest = await this.controlPoint.inspectRenderer(rendererId, { probeState: true });
+      const actualUri = String(currentMedia(latest).nextUri || '').trim();
+      const confirmed = cleared
+        ? !actualUri
+        : Boolean(actualUri) && sameUpnpResourceUri(actualUri, expectedUri);
+      if (confirmed) return latest;
+      if (attempt < 3) await delay(100);
+    }
+    throw new UpnpError(
+      cleared
+        ? 'The renderer did not confirm clearing its prepared next resource'
+        : 'The renderer did not confirm the prepared next resource',
+      {
+        code: cleared ? 'UPNP_NEXT_CLEAR_UNCONFIRMED' : 'UPNP_NEXT_UNCONFIRMED',
+        status: 409,
+      },
+    );
+  }
+
+  async _clearPreparedNextUnlocked(session, { allowTransitioned = false } = {}) {
+    if (!session?.preparedNext && !session?.transitionedNext) return false;
+    if (session.transitionedNext && !allowTransitioned) {
+      throw new UpnpError('The prepared resource has already transitioned and must be adopted first', {
+        code: 'UPNP_NEXT_ALREADY_TRANSITIONED',
+        status: 409,
+      });
+    }
+    if (session.transitionedNext) {
+      session.preparedNext = null;
+      session.transitionedNext = null;
+      return true;
+    }
+
+    const inspection = await this.controlPoint.inspectRenderer(session.rendererId, { probeState: true });
+    const currentUri = String(currentMedia(inspection).currentUri || '').trim();
+    if (currentUri && !sameUpnpResourceUri(currentUri, session.resource?.uri)) {
+      throw new UpnpError('Renderer ownership changed before the prepared next resource could be cleared', {
+        code: 'UPNP_OWNERSHIP_LOST',
+        status: 409,
+      });
+    }
+    if (!serviceHasAction(inspection, 'SetNextAVTransportURI')) {
+      throw new UpnpError('Renderer no longer advertises SetNextAVTransportURI', {
+        code: 'UPNP_UNSUPPORTED',
+        status: 409,
+      });
+    }
+    await this.controlPoint.transportAction(session.rendererId, 'SetNextAVTransportURI', {
+      InstanceID: 0,
+      NextURI: '',
+      NextURIMetaData: '',
+    });
+    const confirmed = await this._confirmNextUri(session.rendererId, '', { cleared: true });
+    session.lastInspection = confirmed;
+    session.preparedNext = null;
+    session.transitionedNext = null;
+    return true;
+  }
+
+  async prepareNext(sessionId, {
+    itemRef,
+    queueRevision = null,
+    sessionGeneration = '',
+    currentItemId = '',
+  } = {}) {
+    return this._withMutationLock(async () => {
+      const session = this._assertSession(sessionId);
+      if (!session.ownsAudio || !['playing', 'paused'].includes(session.state)) {
+        throw new UpnpError('UPnP session is not actively playing a track', {
+          code: 'UPNP_BAD_STATE',
+          status: 409,
+        });
+      }
+      if (sessionGeneration && String(sessionGeneration) !== String(session.generation)) {
+        throw new UpnpError('UPnP playback session generation is stale', {
+          code: 'UPNP_SESSION_GENERATION_CONFLICT',
+          status: 409,
+        });
+      }
+      if (currentItemId && String(currentItemId) !== String(session.item?.id || '')) {
+        throw new UpnpError('The current UPnP item changed before preparation', {
+          code: 'UPNP_QUEUE_REVISION_CONFLICT',
+          status: 409,
+        });
+      }
+
+      const before = await this._assertOwned(session);
+      if (!serviceHasAction(before, 'SetNextAVTransportURI')) {
+        throw new UpnpError('Renderer does not advertise SetNextAVTransportURI', {
+          code: 'UPNP_UNSUPPORTED',
+          status: 409,
+        });
+      }
+      if (session.preparedNext) {
+        return {
+          armed: true,
+          reused: true,
+          sessionId: session.id,
+          generation: session.generation,
+          rendererId: session.rendererId,
+          queueRevision,
+          currentItemId: String(currentItemId || ''),
+          nextItemId: String(session.preparedNext.item?.id || ''),
+          nextSelectionRef: String(session.preparedNext.item?.selectionRef || ''),
+        };
+      }
+
+      const item = this.controlPoint.getTrustedMediaItem(itemRef);
+      const prepared = await this.controlPoint.prepareMediaItemForPlayback(item, session.rendererId, {
+        expectedRendererHost: this.expectedRendererHost,
+      });
+      const after = await this._assertOwned(session);
+      const currentBefore = String(currentMedia(before).currentUri || '').trim();
+      const currentAfter = String(currentMedia(after).currentUri || '').trim();
+      if (!currentBefore || !currentAfter || !sameUpnpResourceUri(currentBefore, currentAfter)) {
+        throw new UpnpError('The current renderer resource changed during next-track preparation', {
+          code: 'UPNP_OWNERSHIP_LOST',
+          status: 409,
+        });
+      }
+
+      session.preparedNext = {
+        item: prepared.item,
+        resource: prepared.resource,
+        metadata: prepared.metadata,
+        mediaServer: prepared.mediaServer,
+        queueRevision,
+        sessionGeneration: String(session.generation),
+        currentItemId: String(currentItemId || session.item?.id || ''),
+        preparedAt: this.now(),
+        armed: false,
+      };
+      try {
+        await this.controlPoint.transportAction(session.rendererId, 'SetNextAVTransportURI', {
+          InstanceID: 0,
+          NextURI: prepared.resource.uri,
+          NextURIMetaData: prepared.metadata,
+        });
+        const confirmed = await this._confirmNextUri(session.rendererId, prepared.resource.uri);
+        session.lastInspection = confirmed;
+        session.preparedNext.armed = true;
+      } catch (error) {
+        try {
+          await this._clearPreparedNextUnlocked(session);
+        } catch (clearError) {
+          throw new UpnpError('Prepared next resource could not be confirmed or safely cleared', {
+            code: 'UPNP_NEXT_UNSAFE',
+            status: 409,
+            cause: clearError,
+          });
+        }
+        throw error;
+      }
+      return {
+        armed: true,
+        reused: false,
+        sessionId: session.id,
+        generation: session.generation,
+        rendererId: session.rendererId,
+        queueRevision,
+        currentItemId: String(currentItemId || session.item?.id || ''),
+        nextItemId: String(prepared.item?.id || ''),
+        nextSelectionRef: String(prepared.item?.selectionRef || ''),
+      };
+    });
+  }
+
+  async clearPreparedNext(sessionId) {
+    return this._withMutationLock(async () => {
+      const session = this._assertSession(sessionId, { allowStopped: true });
+      await this._clearPreparedNextUnlocked(session);
+      return this.snapshot();
+    });
+  }
+
+  async commitPreparedNext(sessionId, {
+    queueRevision = null,
+    sessionGeneration = '',
+    currentItemId = '',
+    nextItemId = '',
+  } = {}) {
+    return this._withMutationLock(async () => {
+      const session = this._assertSession(sessionId, { allowStopped: true });
+      const prepared = session.preparedNext;
+      if (!session.transitionedNext || !prepared?.armed) {
+        throw new UpnpError('The renderer has not confirmed a prepared next-track transition', {
+          code: 'UPNP_NEXT_NOT_TRANSITIONED',
+          status: 409,
+        });
+      }
+      if ((sessionGeneration && String(sessionGeneration) !== String(session.generation))
+        || (prepared.sessionGeneration && String(prepared.sessionGeneration) !== String(sessionGeneration || session.generation))
+        || (prepared.queueRevision != null && queueRevision != null
+          && Number(prepared.queueRevision) !== Number(queueRevision))
+        || (currentItemId && String(prepared.currentItemId) !== String(currentItemId))
+        || (nextItemId && String(prepared.item?.id) !== String(nextItemId))) {
+        throw new UpnpError('The prepared next-track transition is stale', {
+          code: 'UPNP_QUEUE_REVISION_CONFLICT',
+          status: 409,
+        });
+      }
+      session.item = prepared.item;
+      session.resource = prepared.resource;
+      session.metadata = prepared.metadata;
+      session.mediaServer = prepared.mediaServer;
+      session.preparedNext = null;
+      session.transitionedNext = null;
+      const state = currentTransport(session.lastInspection);
+      session.ownsAudio = ['PLAYING', 'PAUSED_PLAYBACK'].includes(state);
+      session.state = state === 'PAUSED_PLAYBACK'
+        ? 'paused'
+        : state === 'PLAYING' ? 'playing' : 'stopped';
+      session.lastError = '';
+      return this.snapshot();
+    });
   }
 
   async _loadUnlocked(sessionId) {
@@ -712,6 +1218,9 @@ export class UpnpPlaybackSessionManager {
         session.state = 'stopped';
         return this.snapshot();
       }
+      if (session.preparedNext && !session.transitionedNext) {
+        await this._clearPreparedNextUnlocked(session);
+      }
       const inspection = await this._assertOwned(session);
       if (!currentActionsAllow(inspection, 'Stop')) {
         throw new UpnpError('Renderer does not currently allow Stop', { code: 'UPNP_UNSUPPORTED', status: 409 });
@@ -726,6 +1235,8 @@ export class UpnpPlaybackSessionManager {
       } catch {}
       session.ownsAudio = false;
       session.state = 'stopped';
+      session.preparedNext = null;
+      session.transitionedNext = null;
       session.lastError = '';
       return this.snapshot();
     });
@@ -777,6 +1288,8 @@ export class UpnpPlaybackSessionManager {
       source: 'upnp-sonuvi',
       transport: 'upnp',
       controller: 'sonuvi',
+      ownsAudio: true,
+      generation: this.session.generation,
       provider: '',
       renderer: {
         id: this.session.rendererId,
@@ -857,6 +1370,7 @@ export class UpnpPlaybackSessionManager {
         entries: clone(session.baseline?.queue || []),
       },
       queueChanged: Boolean(session.queueChanged),
+      transitionedNext: Boolean(session.transitionedNext),
       mutationCount: Number(session.mutationCount || 0),
       lastError: String(session.lastError || ''),
     };

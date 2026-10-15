@@ -8,6 +8,7 @@ const MAX_QUEUE_ITEMS = 500;
 const MAX_ADD_ITEMS = 100;
 
 const ACTIVE_QUEUE_STATES = new Set(['loaded', 'playing', 'paused']);
+const DEFAULT_GAPLESS_PREPARE_LEAD_SECONDS = 8;
 
 function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
@@ -140,6 +141,9 @@ export class UpnpPlaybackQueueManager {
     playbackSession,
     now = () => Date.now(),
     maxItems = MAX_QUEUE_ITEMS,
+    gaplessEnabled = process.env.UPNP_GAPLESS_ENABLED === '1',
+    gaplessPrepareLeadSeconds = process.env.UPNP_GAPLESS_PREPARE_LEAD_SECONDS
+      || DEFAULT_GAPLESS_PREPARE_LEAD_SECONDS,
     log = console,
   } = {}) {
     if (!controlPoint) throw new Error('UPnP playback queues require a control point');
@@ -148,6 +152,11 @@ export class UpnpPlaybackQueueManager {
     this.playbackSession = playbackSession;
     this.now = now;
     this.maxItems = Math.max(1, Math.min(MAX_QUEUE_ITEMS, Number(maxItems) || MAX_QUEUE_ITEMS));
+    this.gaplessEnabled = gaplessEnabled === true || gaplessEnabled === '1';
+    this.gaplessPrepareLeadSeconds = Math.max(
+      1,
+      Math.min(60, Number(gaplessPrepareLeadSeconds) || DEFAULT_GAPLESS_PREPARE_LEAD_SECONDS),
+    );
     this.log = log;
     this.queue = null;
     this.mutation = Promise.resolve();
@@ -207,6 +216,19 @@ export class UpnpPlaybackQueueManager {
   _bumpRevision(queue) {
     queue.revision += 1;
     queue.updatedAt = this.now();
+    queue.gaplessAttempted = null;
+  }
+
+  async _invalidatePreparedNext(queue) {
+    if (!queue?.preparedNext) return;
+    if (typeof this.playbackSession.clearPreparedNext !== 'function') {
+      throw new UpnpError('Prepared next-track state cannot be invalidated safely', {
+        code: 'UPNP_NEXT_UNSAFE',
+        status: 409,
+      });
+    }
+    await this.playbackSession.clearPreparedNext(queue.sessionId);
+    queue.preparedNext = null;
   }
 
   _trustedQueueItems(itemRefs) {
@@ -284,6 +306,8 @@ export class UpnpPlaybackQueueManager {
         lastError: '',
         createdAt: this.now(),
         updatedAt: this.now(),
+        preparedNext: null,
+        gaplessAttempted: null,
       };
       return queueSnapshot(this.queue);
     });
@@ -321,6 +345,7 @@ export class UpnpPlaybackQueueManager {
           status: 413,
         });
       }
+      await this._invalidatePreparedNext(queue);
       queue.items.push(...items);
       this._bumpRevision(queue);
       return queueSnapshot(queue);
@@ -351,6 +376,7 @@ export class UpnpPlaybackQueueManager {
           status: 409,
         });
       }
+      await this._invalidatePreparedNext(queue);
       queue.items.splice(index, 1);
       if (!queue.items.length) queue.currentIndex = -1;
       else if (queue.currentIndex > index) queue.currentIndex -= 1;
@@ -393,6 +419,7 @@ export class UpnpPlaybackQueueManager {
           status: 404,
         });
       }
+      await this._invalidatePreparedNext(queue);
       const currentId = currentItem(queue)?.id || '';
       const [item] = queue.items.splice(from, 1);
       queue.items.splice(target, 0, item);
@@ -450,6 +477,7 @@ export class UpnpPlaybackQueueManager {
       return null;
     }
     const result = await this.playbackSession.stop(queue.sessionId);
+    queue.preparedNext = null;
     queue.lastConfirmedRendererState = transportState(result);
     queue.playbackState = 'stopped';
     queue.sessionId = '';
@@ -504,6 +532,7 @@ export class UpnpPlaybackQueueManager {
       this._assertRevision(queue, revision);
       const target = this._targetIndex(queue, { itemId, index });
       if (target !== queue.currentIndex) {
+        await this._invalidatePreparedNext(queue);
         queue.currentIndex = target;
         this._bumpRevision(queue);
       }
@@ -531,6 +560,8 @@ export class UpnpPlaybackQueueManager {
       this._assertSessionGeneration(queue, sessionGeneration);
       const target = this._targetIndex(queue, { itemId, index });
       const item = queue.items[target];
+
+      await this._invalidatePreparedNext(queue);
 
       try {
         const playback = await this.playbackSession.takeover({
@@ -646,6 +677,92 @@ export class UpnpPlaybackQueueManager {
     return elapsed != null && duration != null && duration > 0 && elapsed >= Math.max(0, duration - 2);
   }
 
+  async _maybePrepareNext(queue, observed) {
+    if (!this.gaplessEnabled || queue.preparedNext || !queue.sessionId) return;
+    if (queue.currentIndex < 0 || queue.currentIndex + 1 >= queue.items.length) return;
+    if (sessionState(observed) !== 'playing') return;
+
+    const current = currentItem(queue);
+    const next = queue.items[queue.currentIndex + 1];
+    if (!current || !next) return;
+    const attemptKey = `${queue.revision}:${queue.currentIndex}:${queue.sessionGeneration}`;
+    if (queue.gaplessAttempted === attemptKey) return;
+
+    const elapsed = parseDuration(observed?.transport?.relativeTime);
+    const duration = parseDuration(observed?.transport?.trackDuration) ?? numberOrNull(current.durationSeconds);
+    if (elapsed == null || duration == null || duration <= 0) return;
+    if (duration - elapsed > this.gaplessPrepareLeadSeconds) return;
+
+    queue.gaplessAttempted = attemptKey;
+    try {
+      const result = await this.playbackSession.prepareNext(queue.sessionId, {
+        itemRef: next.selectionRef,
+        queueRevision: queue.revision,
+        sessionGeneration: queue.sessionGeneration,
+        currentItemId: current.mediaItemId,
+      });
+      if (!result?.armed || String(result.nextItemId || '') !== String(next.mediaItemId || '')) {
+        throw new UpnpError('Renderer preparation did not return the expected next queue item', {
+          code: 'UPNP_NEXT_UNSAFE',
+          status: 409,
+        });
+      }
+      queue.preparedNext = {
+        sessionId: queue.sessionId,
+        sessionGeneration: queue.sessionGeneration,
+        queueRevision: queue.revision,
+        currentItemId: current.mediaItemId,
+        nextItemId: next.mediaItemId,
+      };
+      queue.lastError = '';
+    } catch (error) {
+      // Unsupported or failed preparation leaves ordinary completion-driven
+      // advancement in charge. A confirmed-but-unsafe state is still fail
+      // closed; it must never be treated as armed.
+      queue.preparedNext = null;
+      queue.lastError = String(error?.code || 'UPNP_NEXT_PREPARE_FAILED');
+      if (['UPNP_NEXT_UNSAFE', 'UPNP_NEXT_CLEAR_UNCONFIRMED'].includes(error?.code)) throw error;
+      this.log.warn?.('[upnp] next-track preparation unavailable; using normal advancement', {
+        code: queue.lastError,
+      });
+    }
+  }
+
+  async _commitPreparedTransition(queue, observed) {
+    const prepared = queue.preparedNext;
+    const next = queue.items[queue.currentIndex + 1];
+    const current = currentItem(queue);
+    if (!prepared || !observed?.transitionedNext || !next || !current
+      || prepared.sessionId !== queue.sessionId
+      || prepared.sessionGeneration !== queue.sessionGeneration
+      || prepared.queueRevision !== queue.revision
+      || prepared.currentItemId !== current.mediaItemId
+      || prepared.nextItemId !== next.mediaItemId) {
+      throw new UpnpError('The renderer transitioned with stale or inconsistent prepared queue state', {
+        code: 'UPNP_NEXT_UNSAFE',
+        status: 409,
+      });
+    }
+    const committed = await this.playbackSession.commitPreparedNext(queue.sessionId, {
+      queueRevision: queue.revision,
+      sessionGeneration: queue.sessionGeneration,
+      currentItemId: current.mediaItemId,
+      nextItemId: next.mediaItemId,
+    });
+    queue.currentIndex += 1;
+    queue.preparedNext = null;
+    this._bumpRevision(queue);
+    const committedState = sessionState(committed);
+    if (committed.ownsAudio && ['playing', 'paused', 'loaded'].includes(committedState)) {
+      this._rememberSession(queue, committed, committedState);
+    } else {
+      queue.playbackState = 'stopped';
+      queue.sessionId = '';
+      queue.sessionGeneration = '';
+    }
+    return committed;
+  }
+
   async tick() {
     return this._withMutationLock(async () => {
       const queue = this.queue;
@@ -665,13 +782,53 @@ export class UpnpPlaybackQueueManager {
       }
 
       queue.lastConfirmedRendererState = transportState(observed);
+      if (observed.transitionedNext) {
+        try {
+          await this._commitPreparedTransition(queue, observed);
+        } catch (error) {
+          queue.playbackState = 'ownership-lost';
+          queue.lastError = String(error?.code || 'UPNP_NEXT_UNSAFE');
+          queue.sessionId = '';
+          queue.sessionGeneration = '';
+          queue.preparedNext = null;
+        }
+        return queueSnapshot(queue);
+      }
       if (observed.ownsAudio && ['playing', 'paused', 'loaded'].includes(sessionState(observed))) {
+        try {
+          await this._maybePrepareNext(queue, observed);
+        } catch (error) {
+          queue.lastError = String(error?.code || 'UPNP_NEXT_PREPARE_FAILED');
+          if (['UPNP_NEXT_UNSAFE', 'UPNP_NEXT_CLEAR_UNCONFIRMED'].includes(error?.code)) {
+            try {
+              await this._stopSessionUnlocked(queue);
+            } catch {}
+            queue.playbackState = 'ownership-lost';
+            queue.sessionId = '';
+            queue.sessionGeneration = '';
+            queue.preparedNext = null;
+            return queueSnapshot(queue);
+          }
+        }
         queue.playbackState = sessionState(observed);
-        queue.lastError = '';
+        if (!queue.preparedNext && !queue.lastError.startsWith('UPNP_NEXT_')) queue.lastError = '';
         return queueSnapshot(queue);
       }
 
       if (previousState === 'playing' && sessionState(observed) === 'stopped' && this._trackComplete(queue, observed)) {
+        if (queue.preparedNext) {
+          try {
+            await this.playbackSession.clearPreparedNext(queue.sessionId);
+            queue.preparedNext = null;
+          } catch (error) {
+            queue.playbackState = 'ownership-lost';
+            queue.lastError = String(error?.code || 'UPNP_NEXT_UNSAFE');
+            queue.sessionId = '';
+            queue.sessionGeneration = '';
+            queue.preparedNext = null;
+            return queueSnapshot(queue);
+          }
+        }
         if (queue.currentIndex + 1 < queue.items.length) {
           queue.sessionId = '';
           queue.sessionGeneration = '';

@@ -40,9 +40,13 @@ const READ_ONLY_RENDERER_ACTIONS = new Set([
 
 const ALLOWED_AVTRANSPORT_ACTIONS = new Set([
   'SetAVTransportURI',
+  'SetNextAVTransportURI',
   'Play',
   'Pause',
   'Stop',
+  'Seek',
+  'Next',
+  'Previous',
   'GetTransportInfo',
   'GetPositionInfo',
   'GetCurrentTransportActions',
@@ -51,9 +55,13 @@ const ALLOWED_AVTRANSPORT_ACTIONS = new Set([
 
 const MUTATING_AVTRANSPORT_ACTIONS = new Set([
   'SetAVTransportURI',
+  'SetNextAVTransportURI',
   'Play',
   'Pause',
   'Stop',
+  'Seek',
+  'Next',
+  'Previous',
 ]);
 
 const DEFAULT_MEDIA_ITEM_TTL_MS = 15 * 60 * 1000;
@@ -1587,9 +1595,13 @@ export class UpnpControlPoint {
     const keys = Object.keys(input);
     const expectedKeys = {
       SetAVTransportURI: ['InstanceID', 'CurrentURI', 'CurrentURIMetaData'],
+      SetNextAVTransportURI: ['InstanceID', 'NextURI', 'NextURIMetaData'],
       Play: ['InstanceID', 'Speed'],
       Pause: ['InstanceID'],
       Stop: ['InstanceID'],
+      Seek: ['InstanceID', 'Unit', 'Target'],
+      Next: ['InstanceID'],
+      Previous: ['InstanceID'],
       GetTransportInfo: ['InstanceID'],
       GetPositionInfo: ['InstanceID'],
       GetCurrentTransportActions: ['InstanceID'],
@@ -1608,9 +1620,32 @@ export class UpnpControlPoint {
           status: 400,
         });
       }
+    } else if (name === 'SetNextAVTransportURI') {
+      const nextUri = String(input.NextURI || '').trim();
+      const nextMetadata = String(input.NextURIMetaData || '').trim();
+      // An empty pair is the narrowly-scoped internal clear operation. A
+      // non-empty next resource must carry DIDL metadata just like the
+      // current-resource operation; callers never provide a raw URL through
+      // an HTTP route.
+      if (keys.length !== 3 || (Boolean(nextUri) !== Boolean(nextMetadata))) {
+        throw new UpnpError('SetNextAVTransportURI requires a complete media resource or an empty clear pair', {
+          code: 'UPNP_BAD_REQUEST',
+          status: 400,
+        });
+      }
     } else if (name === 'Play') {
       if (keys.length !== 2 || String(input.Speed || '') !== '1') {
         throw new UpnpError('Play requires the normal speed argument', {
+          code: 'UPNP_BAD_REQUEST',
+          status: 400,
+        });
+      }
+    } else if (name === 'Seek') {
+      const target = String(input.Target || '').trim();
+      if (keys.length !== 3
+        || String(input.Unit || '').trim() !== 'REL_TIME'
+        || !/^\d{1,5}:[0-5]\d:[0-5]\d(?:\.\d{1,3})?$/.test(target)) {
+        throw new UpnpError('Seek requires a bounded REL_TIME target', {
           code: 'UPNP_BAD_REQUEST',
           status: 400,
         });

@@ -101,6 +101,7 @@ const AV_SCPD_XML = `<scpd xmlns="urn:schemas-upnp-org:service-1-0">
     <action><name>Stop</name></action>
     <action><name>Seek</name></action>
     <action><name>SetAVTransportURI</name></action>
+    <action><name>SetNextAVTransportURI</name></action>
   </actionList>
 </scpd>`;
 
@@ -335,7 +336,7 @@ test('control point discovers, browses, inspects capabilities, and never mutates
   }
 });
 
-test('AVTransport exposes only the bounded single-track allowlist', async () => {
+test('AVTransport exposes only the bounded renderer transport allowlist', async () => {
   const requests = [];
   const point = new UpnpControlPoint({
     validateUrl: async (url) => new URL(url),
@@ -377,9 +378,34 @@ test('AVTransport exposes only the bounded single-track allowlist', async () => 
   assert.equal(requests.length, 2);
   assert.match(requests[0], /#SetAVTransportURI/);
   assert.match(requests[1], /#Play/);
+  await point.transportAction('renderer-1', 'SetNextAVTransportURI', {
+    InstanceID: 0,
+    NextURI: 'http://10.0.0.254:8200/next.flac?token=***',
+    NextURIMetaData: '<DIDL-Lite/>',
+  });
+  assert.equal(requests.length, 3);
+  assert.match(requests[2], /#SetNextAVTransportURI/);
+  await point.transportAction('renderer-1', 'SetNextAVTransportURI', {
+    InstanceID: 0,
+    NextURI: '',
+    NextURIMetaData: '',
+  });
+  assert.equal(requests.length, 4);
+  assert.match(requests[3], /#SetNextAVTransportURI/);
+  await point.transportAction('renderer-1', 'Seek', {
+    InstanceID: 0,
+    Unit: 'REL_TIME',
+    Target: '00:00:01',
+  });
+  assert.equal(requests.length, 5);
+  assert.match(requests[4], /#Seek/);
   await assert.rejects(
-    () => point.transportAction('renderer-1', 'Seek', { InstanceID: 0, Unit: 'REL_TIME', Target: '00:00:01' }),
-    (error) => error.code === 'UPNP_ACTION_NOT_ALLOWED',
+    () => point.transportAction('renderer-1', 'Seek', { InstanceID: 0, Unit: 'TRACK_NR', Target: '2' }),
+    (error) => error.code === 'UPNP_BAD_REQUEST',
+  );
+  await assert.rejects(
+    () => point.transportAction('renderer-1', 'Next', { InstanceID: 0 }),
+    (error) => error.code === 'UPNP_UNSUPPORTED',
   );
   await assert.rejects(
     () => point.transportAction('renderer-1', 'Play', { InstanceID: 0, Speed: '2' }),

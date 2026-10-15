@@ -7,6 +7,7 @@ import {
   sanitizeMobileUpnpPreflight,
   sanitizeMobileUpnpQueue,
   sanitizeMobileUpnpRendererCapabilities,
+  sanitizeMobileUpnpRendererTransport,
   sanitizeMobileUpnpSearch,
   sanitizeMobileUpnpSession,
 } from '../lib/mobile-upnp-sanitize.mjs';
@@ -36,6 +37,11 @@ const SAFE_ERROR_MESSAGES = new Map([
   ['UPNP_OWNERSHIP_LOST', 'Sonuvi no longer owns this UPnP playback session.'],
   ['UPNP_OWNERSHIP_UNCERTAIN', 'UPnP playback ownership could not be verified safely.'],
   ['UPNP_QOBUZ_ACTIVE', 'Qobuz Connect currently owns the renderer.'],
+  ['UPNP_QUEUE_AUTHORITY_REQUIRED', 'Use the Sonuvi UPnP queue control for this playback session.'],
+  ['UPNP_TRANSPORT_BAD_STATE', 'Renderer transport ownership is not safe to control in the current state.'],
+  ['UPNP_TRANSPORT_UNSUPPORTED', 'The approved renderer does not support that transport action in the current state.'],
+  ['UPNP_EXTERNAL_QUEUE_UNAVAILABLE', 'The current renderer queue is not available for this action.'],
+  ['UPNP_TRANSPORT_UNCONFIRMED', 'The renderer did not confirm the requested transport change.'],
   ['UPNP_MPD_ACTIVE', 'MPD is active; UPnP playback takeover was rejected.'],
   ['UPNP_MPD_TAKEOVER_UNSUPPORTED', 'MPD is active but cannot be released safely by this operation.'],
   ['UPNP_RENDERER_ACTIVE', 'The approved renderer is already active.'],
@@ -300,6 +306,32 @@ export function registerMobileUpnpRoutes(app, {
     return res.json({ ok: true, ...sanitizeMobileUpnpRendererCapabilities({ ...result, approved: true }) });
   }));
 
+  app.get('/v1/mobile/upnp/renderers/:deviceId/transport', authorized(async (req, res) => {
+    const result = await getSession().rendererTransportCapabilities({ rendererId: req.params.deviceId });
+    return res.json({ ok: true, ...sanitizeMobileUpnpRendererTransport(result), mutationExecuted: false });
+  }));
+
+  const rendererTransportMutation = (action, mutation) => authorized(async (req, res) => {
+    const result = await getSession().rendererTransport({
+      rendererId: req.params.deviceId,
+      action,
+      positionSeconds: req.body?.positionSeconds,
+    });
+    return res.json({
+      ok: true,
+      ...sanitizeMobileUpnpRendererTransport(result),
+      mutationExecuted: true,
+      mutation,
+    });
+  });
+
+  app.post('/v1/mobile/upnp/renderers/:deviceId/transport/pause', rendererTransportMutation('pause', 'RendererPause'));
+  app.post('/v1/mobile/upnp/renderers/:deviceId/transport/resume', rendererTransportMutation('resume', 'RendererResume'));
+  app.post('/v1/mobile/upnp/renderers/:deviceId/transport/stop', rendererTransportMutation('stop', 'RendererStop'));
+  app.post('/v1/mobile/upnp/renderers/:deviceId/transport/seek', rendererTransportMutation('seek', 'RendererSeek'));
+  app.post('/v1/mobile/upnp/renderers/:deviceId/transport/next', rendererTransportMutation('next', 'RendererNext'));
+  app.post('/v1/mobile/upnp/renderers/:deviceId/transport/previous', rendererTransportMutation('previous', 'RendererPrevious'));
+
   app.get('/v1/mobile/upnp/preflight', authorized(async (req, res) => {
     const result = await getSession().preflight({ rendererId: req.query?.rendererId });
     return res.json({
@@ -459,6 +491,13 @@ export function registerMobileUpnpRoutes(app, {
       '/v1/mobile/upnp/media-servers/:deviceId/search',
       '/v1/mobile/upnp/media-items/:selectionRef/artwork',
       '/v1/mobile/upnp/renderers/:deviceId/capabilities',
+      '/v1/mobile/upnp/renderers/:deviceId/transport',
+      '/v1/mobile/upnp/renderers/:deviceId/transport/pause',
+      '/v1/mobile/upnp/renderers/:deviceId/transport/resume',
+      '/v1/mobile/upnp/renderers/:deviceId/transport/stop',
+      '/v1/mobile/upnp/renderers/:deviceId/transport/seek',
+      '/v1/mobile/upnp/renderers/:deviceId/transport/next',
+      '/v1/mobile/upnp/renderers/:deviceId/transport/previous',
       '/v1/mobile/upnp/preflight',
       '/v1/mobile/upnp/sessions/:sessionId',
       '/v1/mobile/upnp/sessions/:sessionId/transport',

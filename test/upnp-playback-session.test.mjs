@@ -18,6 +18,17 @@ const RESOURCE = {
   audioChannels: 2,
 };
 
+const RESOURCE2 = {
+  uri: 'http://10.0.0.254:8200/music/track-2.flac?token=***',
+  protocolInfo: 'http-get:*:audio/flac:*',
+  mimeType: 'audio/flac',
+  duration: '00:04:02.000',
+  durationSeconds: 242,
+  sampleFrequency: 192000,
+  bitsPerSample: 24,
+  audioChannels: 2,
+};
+
 const ITEM = {
   kind: 'item',
   selectionRef: 'fixture-selection-reference-123456',
@@ -37,7 +48,18 @@ const ITEM = {
   resources: [RESOURCE],
 };
 
-function makeInspection({ state = 'STOPPED', uri = '', actions = ['Play', 'Pause', 'Stop'] } = {}) {
+const ITEM2 = {
+  ...ITEM,
+  selectionRef: 'fixture-selection-reference-2',
+  id: 'track-2',
+  title: 'Track Two',
+  trackNumber: 2,
+  duration: RESOURCE2.duration,
+  durationSeconds: RESOURCE2.durationSeconds,
+  resources: [RESOURCE2],
+};
+
+function makeInspection({ state = 'STOPPED', uri = '', nextUri = '', actions = ['Play', 'Pause', 'Stop'] } = {}) {
   return {
     device: {
       id: 'renderer-1',
@@ -46,13 +68,13 @@ function makeInspection({ state = 'STOPPED', uri = '', actions = ['Play', 'Pause
     },
     services: [{
       serviceType: 'urn:schemas-upnp-org:service:AVTransport:1',
-      actions: ['SetAVTransportURI', 'Play', 'Pause', 'Stop', 'GetTransportInfo'],
+      actions: ['SetAVTransportURI', 'SetNextAVTransportURI', 'Play', 'Pause', 'Stop', 'GetTransportInfo'],
     }],
     protocolInfo: { available: true, source: [], sink: ['http-get:*:audio/flac:*'] },
     readOnlyState: {
       transport: { state, status: 'OK', speed: '1' },
       position: { relativeTime: '00:00:04', trackDuration: RESOURCE.duration },
-      media: { currentUri: uri },
+      media: { currentUri: uri, nextUri },
       currentActions: actions,
     },
   };
@@ -65,21 +87,23 @@ function makeHarness({ mpdState = 'stop', qobuz = {}, queue = [], renderer = {},
   const stopMpdCalls = [];
   const controlPoint = {
     getTrustedMediaItem(ref) {
-      assert.equal(ref, ITEM.selectionRef);
-      return structuredClone(ITEM);
+      const item = [ITEM, ITEM2].find((candidate) => candidate.selectionRef === ref);
+      assert.ok(item, `unknown fixture item ${ref}`);
+      return structuredClone(item);
     },
     async rendererPlaybackCapabilities() {
       return {
         device: inspection.device,
         inspection: structuredClone(inspection),
-        avTransportActions: ['SetAVTransportURI', 'Play', 'Pause', 'Stop'],
+        avTransportActions: ['SetAVTransportURI', 'SetNextAVTransportURI', 'Play', 'Pause', 'Stop'],
       };
     },
     async prepareMediaItemForPlayback(item) {
+      const resource = item.id === ITEM2.id ? RESOURCE2 : RESOURCE;
       return {
         item: structuredClone(item),
-        resource: structuredClone(RESOURCE),
-        metadata: buildDidlLiteMetadata(item, RESOURCE),
+        resource: structuredClone(resource),
+        metadata: buildDidlLiteMetadata(item, resource),
         mediaServer: { id: 'server-1', location: 'http://10.0.0.254:8200/root.xml' },
         renderer: structuredClone(inspection),
       };
@@ -92,6 +116,8 @@ function makeHarness({ mpdState = 'stop', qobuz = {}, queue = [], renderer = {},
       if (action === 'SetAVTransportURI') {
         inspection.readOnlyState.media.currentUri = RESOURCE.uri.split('?')[0];
         inspection.readOnlyState.transport.state = 'STOPPED';
+      } else if (action === 'SetNextAVTransportURI') {
+        inspection.readOnlyState.media.nextUri = args.NextURI;
       } else if (action === 'Play') {
         inspection.readOnlyState.transport.state = 'PLAYING';
       } else if (action === 'Pause') {
@@ -165,6 +191,10 @@ test('single-track session selects without mutation and gates every transport co
   assert.equal(playing.state, 'playing');
   assert.equal(harness.actions[1].action, 'Play');
   assert.equal(harness.manager.shouldSuppressMpdHistory(), true);
+  const nowPlaying = await harness.manager.getNowPlaying();
+  assert.equal(nowPlaying.source, 'upnp-sonuvi');
+  assert.equal(nowPlaying.ownsAudio, true);
+  assert.equal(nowPlaying.generation, selected.generation);
 
   const paused = await harness.manager.pause(selected.sessionId);
   assert.equal(paused.state, 'paused');
@@ -177,6 +207,54 @@ test('single-track session selects without mutation and gates every transport co
   assert.equal(harness.manager.shouldSuppressMpdHistory(), false);
   assert.equal(harness.actions[3].action, 'Stop');
   await assert.rejects(() => harness.manager.play(selected.sessionId), (error) => error.code === 'UPNP_OWNERSHIP_LOST');
+});
+
+test('next-track preparation is confirmed and committed without a second load/play sequence', async () => {
+  const harness = makeHarness();
+  const selected = await harness.manager.select({
+    itemRef: ITEM.selectionRef,
+    rendererId: 'renderer-1',
+  });
+  await harness.manager.load(selected.sessionId);
+  await harness.manager.play(selected.sessionId);
+
+  const armed = await harness.manager.prepareNext(selected.sessionId, {
+    itemRef: ITEM2.selectionRef,
+    queueRevision: 4,
+    sessionGeneration: selected.generation,
+    currentItemId: ITEM.id,
+  });
+  assert.equal(armed.armed, true);
+  assert.equal(armed.nextItemId, ITEM2.id);
+  assert.deepEqual(harness.actions.map((entry) => entry.action), [
+    'SetAVTransportURI',
+    'Play',
+    'SetNextAVTransportURI',
+  ]);
+
+  harness.setInspection(makeInspection({
+    state: 'PLAYING',
+    uri: RESOURCE2.uri,
+    nextUri: '',
+    actions: ['Play', 'Pause', 'Stop'],
+  }));
+  const transitioned = await harness.manager.state(selected.sessionId);
+  assert.equal(transitioned.ownsAudio, true);
+  assert.equal(transitioned.transitionedNext, true);
+
+  const committed = await harness.manager.commitPreparedNext(selected.sessionId, {
+    queueRevision: 4,
+    sessionGeneration: selected.generation,
+    currentItemId: ITEM.id,
+    nextItemId: ITEM2.id,
+  });
+  assert.equal(committed.item.id, ITEM2.id);
+  assert.equal(committed.transitionedNext, false);
+  assert.deepEqual(harness.actions.map((entry) => entry.action), [
+    'SetAVTransportURI',
+    'Play',
+    'SetNextAVTransportURI',
+  ]);
 });
 
 test('approved renderer inspection enforces the configured renderer host', async () => {

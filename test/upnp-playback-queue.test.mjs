@@ -36,7 +36,7 @@ function makeItem(number, { durationSeconds = 180 } = {}) {
   };
 }
 
-function makeHarness() {
+function makeHarness({ gaplessEnabled = false } = {}) {
   const items = new Map([1, 2, 3, 4].map((number) => {
     const item = makeItem(number);
     return [item.selectionRef, item];
@@ -64,6 +64,7 @@ function makeHarness() {
     renderer: { id: session.rendererId },
     item: session.item,
     transport: session.transport,
+    transitionedNext: Boolean(session.transitionedNext),
     lastError: session.lastError,
   }) : { active: false, session: null };
 
@@ -157,8 +158,40 @@ function makeHarness() {
       const current = requireSession(sessionId);
       current.state = 'stopped';
       current.ownsAudio = false;
+      current.preparedNext = null;
+      current.transitionedNext = false;
       current.transport.state = 'STOPPED';
       actions.push({ action: 'stop', sessionId });
+      return copySession();
+    },
+    async prepareNext(sessionId, { itemRef, sessionGeneration, currentItemId }) {
+      const current = requireSession(sessionId);
+      const next = controlPoint.getTrustedMediaItem(itemRef);
+      assert.equal(sessionGeneration, current.generation);
+      assert.equal(currentItemId, current.item.id);
+      current.preparedNext = { next };
+      actions.push({ action: 'prepareNext', sessionId, itemRef });
+      return { armed: true, nextItemId: next.id };
+    },
+    async clearPreparedNext(sessionId) {
+      const current = requireSession(sessionId);
+      current.preparedNext = null;
+      current.transitionedNext = false;
+      actions.push({ action: 'clearPreparedNext', sessionId });
+      return copySession();
+    },
+    async commitPreparedNext(sessionId, { currentItemId, nextItemId }) {
+      const current = requireSession(sessionId);
+      assert.equal(current.transitionedNext, true);
+      assert.equal(current.item.id, currentItemId);
+      assert.equal(current.preparedNext.next.id, nextItemId);
+      current.item = current.preparedNext.next;
+      current.preparedNext = null;
+      current.transitionedNext = false;
+      current.state = 'playing';
+      current.ownsAudio = true;
+      current.transport.state = 'PLAYING';
+      actions.push({ action: 'commitPreparedNext', sessionId });
       return copySession();
     },
     async state(sessionId) {
@@ -174,6 +207,7 @@ function makeHarness() {
       let value = 1_700_000_000_000;
       return () => ++value;
     })(),
+    gaplessEnabled,
     log: { debug() {}, warn() {} },
   });
 
@@ -374,6 +408,57 @@ test('tick advances exactly once after a confirmed end-of-track observation', as
   const stable = await harness.manager.tick();
   assert.equal(stable.queue.currentIndex, 1);
   assert.equal(harness.actions.filter((entry) => entry.action === 'select').length, 2);
+});
+
+test('feature-flagged gapless preparation commits the renderer transition exactly once', async () => {
+  const harness = makeHarness({ gaplessEnabled: true });
+  const created = await createQueue(harness, [1, 2]);
+  const playing = await harness.manager.play(created.queue.queueId, { revision: created.queue.revision });
+
+  const session = harness.getSession();
+  session.transport.relativeTime = '00:02:55';
+  const armed = await harness.manager.tick();
+  assert.equal(armed.queue.currentIndex, 0);
+  assert.equal(armed.queue.playbackState, 'playing');
+  assert.deepEqual(harness.actions.map((entry) => entry.action), [
+    'select',
+    'load',
+    'play',
+    'prepareNext',
+  ]);
+
+  session.transitionedNext = true;
+  session.transport.relativeTime = '00:00:01';
+  const advanced = await harness.manager.tick();
+  assert.equal(advanced.queue.currentIndex, 1);
+  assert.equal(advanced.queue.currentItemId, advanced.queue.items[1].id);
+  assert.equal(advanced.queue.playbackState, 'playing');
+  assert.deepEqual(harness.actions.map((entry) => entry.action), [
+    'select',
+    'load',
+    'play',
+    'prepareNext',
+    'commitPreparedNext',
+  ]);
+
+  const stable = await harness.manager.tick();
+  assert.equal(stable.queue.currentIndex, 1);
+  assert.equal(harness.actions.filter((entry) => entry.action === 'commitPreparedNext').length, 1);
+});
+
+test('queue edits clear an armed next resource before changing the logical revision', async () => {
+  const harness = makeHarness({ gaplessEnabled: true });
+  const created = await createQueue(harness, [1, 2]);
+  const playing = await harness.manager.play(created.queue.queueId, { revision: created.queue.revision });
+  harness.getSession().transport.relativeTime = '00:02:55';
+  await harness.manager.tick();
+
+  const added = await harness.manager.addItems(created.queue.queueId, {
+    itemRefs: ['fixture-selection-reference-3'],
+    revision: playing.queue.revision,
+  });
+  assert.equal(added.queue.items.length, 3);
+  assert.equal(harness.actions.at(-1).action, 'clearPreparedNext');
 });
 
 test('tick fails closed when the renderer session is taken over externally', async () => {

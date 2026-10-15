@@ -182,6 +182,38 @@ export function sanitizeMobileUpnpRendererCapabilities(result = {}) {
   };
 }
 
+export function sanitizeMobileUpnpRendererTransport(result = {}) {
+  const allowedActions = ['pause', 'resume', 'stop', 'seek', 'next', 'previous', 'queueEdit'];
+  const capabilities = result.capabilities && typeof result.capabilities === 'object'
+    ? result.capabilities
+    : {};
+  return {
+    renderer: sanitizeRendererIdentity(result.renderer),
+    source: text(result.source, 64) || 'unknown',
+    owner: text(result.owner, 64) || 'unknown',
+    queueAuthority: text(result.queueAuthority, 64) || 'unknown',
+    queueRouteRequired: result.queueRouteRequired === true,
+    capabilities: Object.fromEntries(allowedActions.map((action) => [action, capabilities[action] === true])),
+    controlsAllowed: allowedActions.filter((action) => capabilities[action] === true),
+    transport: {
+      state: text(result.transport?.state, 64),
+      status: text(result.transport?.status, 64),
+      speed: text(result.transport?.speed, 32),
+      relativeTime: text(result.transport?.relativeTime, 64),
+      trackDuration: text(result.transport?.trackDuration, 64),
+      positionSeconds: numberOrNull(result.transport?.positionSeconds),
+      durationSeconds: numberOrNull(result.transport?.durationSeconds),
+      trackNumber: numberOrNull(result.transport?.trackNumber),
+      numberOfTracks: numberOrNull(result.transport?.numberOfTracks),
+      currentMediaPresent: result.transport?.currentMediaPresent === true,
+    },
+    ...(text(result.action, 32) ? { action: text(result.action, 32) } : {}),
+    approved: result.approved === true,
+    verified: result.verified === true,
+    mutationExecuted: result.mutationExecuted === true,
+  };
+}
+
 export function sanitizeMobileUpnpPreflight(result = {}) {
   const renderer = result.renderer || {};
   const mpd = result.mpd || {};
