@@ -57,10 +57,6 @@ import {
 import { radioStationNameForFile } from '../lib/radio-display.mjs';
 import { buildAnimatedArtContext } from '../lib/animated-art-context.mjs';
 import { sanitizeMobileNowPlaying } from '../lib/mobile-upnp-sanitize.mjs';
-import {
-  sanitizeMobilePibuzQueue,
-  sanitizeMobilePibuzSnapshot,
-} from '../lib/mobile-pibuz-qobuz.mjs';
 import { registerMobileUpnpRoutes } from './mobile-upnp.routes.mjs';
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
@@ -557,12 +553,6 @@ export function registerMobileRoutes(app, deps = {}) {
   const fetchRadioStream = typeof deps.fetchRadioStream === 'function'
     ? deps.fetchRadioStream
     : (...args) => globalThis.fetch(...args);
-  const getPibuzQobuzSnapshot = typeof deps.getPibuzQobuzSnapshot === 'function'
-    ? deps.getPibuzQobuzSnapshot
-    : null;
-  const fetchPibuzQobuzArtwork = typeof deps.fetchPibuzQobuzArtwork === 'function'
-    ? deps.fetchPibuzQobuzArtwork
-    : null;
   const enrichRadioMetadata = typeof deps.enrichRadioMetadata === 'function'
     ? deps.enrichRadioMetadata
     : null;
@@ -3532,42 +3522,6 @@ export function registerMobileRoutes(app, deps = {}) {
       payload.playback = result.json.playback;
     }
     return res.json(payload);
-  }));
-
-  app.get('/v1/mobile/qobuz-connect', asyncRoute(async (req, res) => {
-    if (!requireSession(req, res)) return;
-    if (!getPibuzQobuzSnapshot) return errorResponse(res, 503, 'PiBuZ Qobuz Connect is not configured');
-    const snapshot = await getPibuzQobuzSnapshot({ includeQueue: false });
-    const baseUrl = requestBaseUrl(req, mobileBaseUrl);
-    res.set('Cache-Control', 'no-store');
-    return res.json({
-      ok: true,
-      ...sanitizeMobilePibuzSnapshot(snapshot, { baseUrl, includeQueue: false }),
-    });
-  }));
-
-  app.get('/v1/mobile/qobuz-connect/queue', asyncRoute(async (req, res) => {
-    if (!requireSession(req, res)) return;
-    if (!getPibuzQobuzSnapshot) return errorResponse(res, 503, 'PiBuZ Qobuz Connect is not configured');
-    const snapshot = await getPibuzQobuzSnapshot({ includeQueue: true });
-    const baseUrl = requestBaseUrl(req, mobileBaseUrl);
-    res.set('Cache-Control', 'no-store');
-    return res.json({
-      ok: true,
-      ...sanitizeMobilePibuzQueue(snapshot, { baseUrl }),
-    });
-  }));
-
-  app.get('/v1/mobile/qobuz-connect/artwork/:artworkRef', asyncRoute(async (req, res) => {
-    if (!requireSession(req, res)) return;
-    if (!fetchPibuzQobuzArtwork) return errorResponse(res, 503, 'PiBuZ Qobuz artwork is not configured');
-    const artworkRef = text(req?.params?.artworkRef, 80);
-    if (!/^qobuz-[a-f0-9]{24}$/i.test(artworkRef)) return errorResponse(res, 404, 'artwork not found');
-    const artwork = await fetchPibuzQobuzArtwork(artworkRef).catch(() => null);
-    if (!artwork?.body || !artwork?.contentType) return errorResponse(res, 404, 'artwork not found');
-    res.set('Cache-Control', 'private, max-age=3600');
-    res.type(artwork.contentType);
-    return res.send(artwork.body);
   }));
 
   app.post('/v1/mobile/now-playing/favorite', asyncRoute(async (req, res) => {

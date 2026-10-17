@@ -244,10 +244,6 @@ import {
   createQobuzConnectSource,
   qobuzConnectDefaults,
 } from './src/lib/qobuz-connect.mjs';
-import {
-  createPibuzQobuzAdapter,
-  pibuzQobuzDefaults,
-} from './src/lib/pibuz-qobuz.mjs';
 import { createQobuzConnectController } from './src/lib/qobuz-connect-control.mjs';
 import { createListeningHistoryStore } from './src/lib/listening-history.mjs';
 import { createLastfmScrobbler } from './src/lib/lastfm-scrobbler.mjs';
@@ -278,7 +274,7 @@ import { createAppleAboutService } from './src/services/apple-about.service.mjs'
 import { createAppleMusicTokenProvider } from './src/lib/apple-music-token.mjs';
 import { ABOUT_STATUS, createAboutResolver } from './src/services/about.service.mjs';
 
-const qobuzCacheConnect = createQobuzConnectSource({
+const qobuzConnect = createQobuzConnectSource({
   metaUrl: String(
     process.env.QOBUZ_META_URL
       || `${String(MOODE_BASE_URL || '').replace(/\/+$/, '')}/command/renderer.php?cmd=get_qbzmeta`
@@ -286,34 +282,6 @@ const qobuzCacheConnect = createQobuzConnectSource({
   timeoutMs: process.env.QOBUZ_META_TIMEOUT_MS || qobuzConnectDefaults.metaTimeoutMs,
   staleMs: process.env.QOBUZ_META_STALE_MS || qobuzConnectDefaults.staleMs,
 });
-
-// PiBuZ is the authoritative read-only source while the receiver owns an
-// active Qobuz Connect session. The existing moOde qbzmeta cache remains a
-// compatibility fallback only when PiBuZ cannot be reached; an explicit
-// inactive PiBuZ session must never be replaced by stale cache data.
-const pibuzQobuz = createPibuzQobuzAdapter({
-  host: process.env.PIBUZ_HOST || MOODE_SSH_HOST,
-  port: process.env.PIBUZ_PORT || 8182,
-  timeoutMs: process.env.PIBUZ_TIMEOUT_MS || pibuzQobuzDefaults.timeoutMs,
-  staleMs: process.env.PIBUZ_STALE_MS || pibuzQobuzDefaults.staleMs,
-});
-
-const qobuzConnect = {
-  async get() {
-    const native = await pibuzQobuz.getNowPlaying();
-    if (native?.authoritative) return native;
-    return qobuzCacheConnect.get();
-  },
-  getQueue: () => pibuzQobuz.getQueue(),
-  getSnapshot: (options) => pibuzQobuz.getSnapshot(options),
-  fetchArtwork: (ref) => pibuzQobuz.fetchArtwork(ref),
-  getEventState: () => pibuzQobuz.getEventState(),
-};
-
-// The event stream is a bounded, read-only cache invalidation/observability
-// channel. Normal API reads still fetch the current PiBuZ snapshot, so an SSE
-// outage cannot make playback state appear fresher than it is.
-pibuzQobuz.startEvents();
 
 const qobuzConnectController = createQobuzConnectController({
   sshUser: MOODE_SSH_USER,
@@ -8886,8 +8854,6 @@ registerMobileRoutes(app, {
       json: await response.json().catch(() => ({})),
     };
   },
-  getPibuzQobuzSnapshot: (options) => pibuzQobuz.getSnapshot(options),
-  fetchPibuzQobuzArtwork: (artworkRef) => pibuzQobuz.fetchArtwork(artworkRef),
   fetchInternalRequest: async (pathname, options = {}) => {
     const routePath = String(pathname || '').startsWith('/') ? String(pathname) : `/${String(pathname || '')}`;
     const method = String(options?.method || 'GET').toUpperCase();
