@@ -242,8 +242,18 @@ import { createSourceAudioProbe } from './src/lib/source-audio.mjs';
 import {
   buildQobuzNowPlayingPayload,
   createQobuzConnectSource,
+  hasVerifiedMpdPlaybackEvidence,
   qobuzConnectDefaults,
 } from './src/lib/qobuz-connect.mjs';
+import {
+  createPibuzQobuzAdapter,
+  pibuzQobuzDefaults,
+} from './src/lib/pibuz-qobuz.mjs';
+import { createPibuzQobuzControlAdapter } from './src/lib/pibuz-qobuz-control.mjs';
+import { createSavedQobuzQueueStore } from './src/lib/saved-qobuz-queues.mjs';
+import { createNamedQobuzQueueService } from './src/lib/named-qobuz-queue-service.mjs';
+import { createLocalPibuzBridgeClient } from './src/local-client.mjs';
+import { createSavedQueuePlayService } from './src/saved-queue-play-service.mjs';
 import { createQobuzConnectController } from './src/lib/qobuz-connect-control.mjs';
 import { createListeningHistoryStore } from './src/lib/listening-history.mjs';
 import { createLastfmScrobbler } from './src/lib/lastfm-scrobbler.mjs';
@@ -274,7 +284,7 @@ import { createAppleAboutService } from './src/services/apple-about.service.mjs'
 import { createAppleMusicTokenProvider } from './src/lib/apple-music-token.mjs';
 import { ABOUT_STATUS, createAboutResolver } from './src/services/about.service.mjs';
 
-const qobuzConnect = createQobuzConnectSource({
+const qobuzCacheConnect = createQobuzConnectSource({
   metaUrl: String(
     process.env.QOBUZ_META_URL
       || `${String(MOODE_BASE_URL || '').replace(/\/+$/, '')}/command/renderer.php?cmd=get_qbzmeta`
@@ -282,6 +292,91 @@ const qobuzConnect = createQobuzConnectSource({
   timeoutMs: process.env.QOBUZ_META_TIMEOUT_MS || qobuzConnectDefaults.metaTimeoutMs,
   staleMs: process.env.QOBUZ_META_STALE_MS || qobuzConnectDefaults.staleMs,
 });
+
+// PiBuZ is the authoritative read-only source while the receiver owns an
+// active Qobuz Connect session. The existing moOde qbzmeta cache remains a
+// compatibility fallback only when PiBuZ cannot be reached; an explicit
+// inactive PiBuZ session must never be replaced by stale cache data.
+const pibuzQobuzReadOnly = createPibuzQobuzAdapter({
+  host: process.env.PIBUZ_HOST || MOODE_SSH_HOST,
+  port: process.env.PIBUZ_PORT || 8182,
+  timeoutMs: process.env.PIBUZ_TIMEOUT_MS || pibuzQobuzDefaults.timeoutMs,
+  staleMs: process.env.PIBUZ_STALE_MS || pibuzQobuzDefaults.staleMs,
+});
+
+const pibuzQobuz = createPibuzQobuzControlAdapter({
+  adapter: pibuzQobuzReadOnly,
+  timeoutMs: process.env.PIBUZ_CONTROL_TIMEOUT_MS || 1200,
+  verifyMs: process.env.PIBUZ_CONTROL_VERIFY_MS || 4000,
+  pollMs: process.env.PIBUZ_CONTROL_POLL_MS || 150,
+});
+
+const savedQobuzQueueStore = createSavedQobuzQueueStore({
+  directory: process.env.SAVED_QOBUZ_QUEUE_DIR || '/var/lib/sonuvi/saved-qobuz-queues',
+});
+const savedQobuzQueueService = createNamedQobuzQueueService({
+  store: savedQobuzQueueStore,
+  getQobuzSnapshot: (options) => pibuzQobuz.getSnapshot(options),
+});
+const savedQobuzBridge = createLocalPibuzBridgeClient();
+const savedQobuzQueuePlayService = createSavedQueuePlayService({
+  savedQueueStore: savedQobuzQueueStore,
+  adapter: savedQobuzBridge,
+  getFreshQobuzOwnership: async () => {
+    const ownership = await savedQobuzBridge.getOwnership();
+    if (!ownership?.active) return { active: false };
+    return {
+      active: true,
+      ownershipState: 'confirmed-active',
+      receiverActive: true,
+      fresh: true,
+      sessionUuid: ownership.session_uuid,
+      queueVersion: ownership.queue_version,
+    };
+  },
+});
+
+const qobuzConnect = {
+  async get() {
+    const native = await pibuzQobuz.getNowPlaying();
+    if (native?.authoritative) return native;
+    return qobuzCacheConnect.get();
+  },
+  getQueue: () => pibuzQobuz.getQueue(),
+  getSnapshot: (options) => pibuzQobuz.getSnapshot(options),
+  fetchArtwork: (ref) => pibuzQobuz.fetchArtwork(ref),
+  getEventState: () => pibuzQobuz.getEventState(),
+};
+
+// The event stream is a bounded, read-only cache invalidation/observability
+// channel. Normal API reads still fetch the current PiBuZ snapshot, so an SSE
+// outage cannot make playback state appear fresher than it is.
+pibuzQobuz.startEvents();
+
+let pibuzShutdownPromise = null;
+async function stopPibuzEventsForShutdown(signal) {
+  if (pibuzShutdownPromise) return pibuzShutdownPromise;
+  pibuzShutdownPromise = (async () => {
+    try {
+      await pibuzQobuz.stopEvents();
+    } catch (error) {
+      log.debug('[pibuz-qobuz] shutdown cleanup failed', {
+        signal,
+        error: error?.message || String(error),
+      });
+    }
+  })();
+  return pibuzShutdownPromise;
+}
+
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.once(signal, () => {
+    stopPibuzEventsForShutdown(signal).then(
+      () => process.exit(0),
+      () => process.exit(1),
+    );
+  });
+}
 
 const qobuzConnectController = createQobuzConnectController({
   sshUser: MOODE_SSH_USER,
@@ -7083,7 +7178,8 @@ app.get('/now-playing', async (req, res) => {
       lastNowPlayingTs = Date.now();
       return res.json(payload);
     }
-    if (currentQobuzState.suppressMpdHistory) {
+    const qobuzOwnershipUnknown = currentQobuzState?.ownershipState === 'unknown';
+    if (currentQobuzState.suppressMpdHistory && !qobuzOwnershipUnknown) {
       return res.status(503).json({
         error: 'qobuz metadata unavailable',
         ...(debug ? { reason: currentQobuzState.reason || 'transport-error' } : {}),
@@ -7118,13 +7214,35 @@ app.get('/now-playing', async (req, res) => {
     try {
       song = await fetchCurrentSong();
     } catch (e) {
+      if (qobuzOwnershipUnknown) {
+        return res.status(503).json({
+          error: 'playback ownership unknown',
+          ...(debug ? { reason: 'mpd-evidence-unavailable' } : {}),
+        });
+      }
       return serveCached('mpd_currentsong_failed', e?.message || String(e));
     }
 
     try {
       statusRaw = await fetchCurrentStatus();
     } catch (e) {
+      if (qobuzOwnershipUnknown) {
+        return res.status(503).json({
+          error: 'playback ownership unknown',
+          ...(debug ? { reason: 'mpd-evidence-unavailable' } : {}),
+        });
+      }
       return serveCached('status_failed', e?.message || String(e));
+    }
+
+    if (qobuzOwnershipUnknown && !hasVerifiedMpdPlaybackEvidence({
+      state: moodeValByKey(statusRaw, 'state'),
+      file: song?.file,
+    })) {
+      return res.status(503).json({
+        error: 'playback ownership unknown',
+        ...(debug ? { reason: 'mpd-playback-not-confirmed' } : {}),
+      });
     }
 
     const status = normalizeMoodeStatus(statusRaw);
@@ -8642,10 +8760,14 @@ app.get('/next-up', async (req, res) => {
 async function resolveBestArtForCurrentSong(song, statusRaw) {
   const qobuz = await qobuzConnect.get().catch(() => null);
   if (qobuz?.active && qobuz.artworkUrl) return qobuz.artworkUrl;
-  if (qobuz?.suppressMpdHistory) return '';
+  if (qobuz?.suppressMpdHistory && qobuz?.ownershipState !== 'unknown') return '';
 
   const file = String(song?.file || '').trim();
   if (!file) return '';
+  if (qobuz?.ownershipState === 'unknown' && !hasVerifiedMpdPlaybackEvidence({
+    state: moodeValByKey(statusRaw, 'state'),
+    file,
+  })) return '';
 
   const stream = isStreamPath(file);
   const airplay =
@@ -8809,7 +8931,15 @@ registerArtRoutes(app, {
   fetchJson,
   fetchCurrentSong,
   fetchCurrentStatus,
-  getQobuzNowPlaying: () => qobuzConnect.get(),
+  getQobuzNowPlaying: async () => {
+    const state = await qobuzConnect.get();
+    // The art resolver may fall back to independently verified MPD playback
+    // while ownership is unknown; other consumers retain fail-closed history
+    // and release semantics through the original state.
+    return state?.ownershipState === 'unknown'
+      ? { ...state, suppressMpdHistory: false }
+      : state;
+  },
   resolveBestArtForCurrentSong,
   normalizeArtKey,
   updateArtCacheIfNeeded,
@@ -8854,6 +8984,11 @@ registerMobileRoutes(app, {
       json: await response.json().catch(() => ({})),
     };
   },
+  getPibuzQobuzSnapshot: (options) => pibuzQobuz.getSnapshot(options),
+  controlPibuzQobuz: (action, options) => pibuzQobuz.control(action, options),
+  fetchPibuzQobuzArtwork: (artworkRef) => pibuzQobuz.fetchArtwork(artworkRef),
+  savedQobuzQueueService,
+  savedQobuzQueuePlayService,
   fetchInternalRequest: async (pathname, options = {}) => {
     const routePath = String(pathname || '').startsWith('/') ? String(pathname) : `/${String(pathname || '')}`;
     const method = String(options?.method || 'GET').toUpperCase();
@@ -9185,7 +9320,8 @@ async function listeningHistoryTick() {
   listeningHistoryBusy = true;
   try {
     const qobuz = await qobuzConnect.get();
-    if (qobuz.suppressMpdHistory) {
+    const qobuzOwnershipUnknown = qobuz?.ownershipState === 'unknown';
+    if (qobuz.suppressMpdHistory && !qobuzOwnershipUnknown) {
       // Qobuz owns the audible session. Clear any MPD event that was left
       // selected when qbzevent.sh stopped MPD, so it cannot qualify or
       // scrobble while Qobuz is active (or while its transport is stale).
@@ -9210,6 +9346,16 @@ async function listeningHistoryTick() {
     const status = parseMpdKeyVals(statusRaw);
     const song = parseMpdFirstBlock(songRaw);
     const file = String(song.file || '').trim();
+    if (qobuzOwnershipUnknown && !hasVerifiedMpdPlaybackEvidence({
+      state: status.state,
+      file,
+    })) {
+      // An MPD stopped/paused state is not proof that Qobuz released the
+      // receiver. Keep history neutral until MPD independently demonstrates
+      // that ordinary playback has resumed.
+      await listeningHistory.observe({ song: { file: '' } });
+      return;
+    }
     const canonicalTrack = await canonicalMobileTrackForFile(file);
     const localFile = !!file && !!mpdFileToLocalPath(file);
     const eligible = localFile

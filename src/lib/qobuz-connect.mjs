@@ -72,6 +72,13 @@ export function isQobuzCurrentArtReference(value) {
   }
 }
 
+// A stopped or paused MPD session cannot prove that Qobuz ownership ended.
+// Playing state plus a current file is the minimum independent evidence that
+// ordinary MPD playback has resumed after an unknown Qobuz receiver state.
+export function hasVerifiedMpdPlaybackEvidence({ state, file } = {}) {
+  return text(state).toLowerCase() === 'play' && Boolean(text(file));
+}
+
 export function parseQobuzFormat(value) {
   const format = text(value);
   if (!format) return { format: '', codec: '', bitDepth: null, sampleRateHz: null, channels: null };
@@ -275,12 +282,21 @@ export function buildQobuzNowPlayingPayload({
   const currentArtUrl = `${base}/art/current.jpg${artVersion ? `?qobuz=${artVersion}` : ''}` || '/art/current.jpg';
   const songpos = text(mpdStatus.song);
   const songid = text(mpdStatus.songid);
-  const queueTotal = Math.max(0, Math.floor(positiveNumber(mpdStatus.playlistlength, 0)));
+  const nativeQueueTotal = positiveNumber(q.queueLength);
+  const queueTotal = Math.max(0, Math.floor(nativeQueueTotal || positiveNumber(mpdStatus.playlistlength, 0)));
   const queuePosition = Number(songpos);
-  const queueTrack = Number.isFinite(queuePosition) && queuePosition >= 0 ? queuePosition + 1 : 0;
+  const nativeQueuePosition = Number.isInteger(Number(q.currentIndex)) && Number(q.currentIndex) >= 0
+    ? Number(q.currentIndex)
+    : null;
+  const queueTrack = nativeQueuePosition !== null
+    ? nativeQueuePosition + 1
+    : (Number.isFinite(queuePosition) && queuePosition >= 0 ? queuePosition + 1 : 0);
   const sourceFormat = text(q.sourceFormat);
   const outputFormat = text(q.outputFormat);
   const state = text(q.state);
+  const volume = q.volume === null || q.volume === undefined || q.volume === ''
+    ? text(mpdSong.volume || '0')
+    : text(q.volume);
 
   return {
     artist: text(q.artist),
@@ -326,12 +342,26 @@ export function buildQobuzNowPlayingPayload({
     source: 'qobuz-connect',
     isQobuz: true,
     qobuzConnect: true,
+    qobuzOwnershipState: text(q.ownershipState),
+    playbackOwner: text(q.owner || 'moode-qbzmeta'),
+    outputDevice: text(q.output || 'moode'),
+    qobuzSessionActive: typeof q.sessionActive === 'boolean' ? q.sessionActive : null,
+    qobuzReceiverActive: typeof q.receiverActive === 'boolean' ? q.receiverActive : null,
+    qobuzConnectionState: text(q.connectionState),
+    qobuzTrackId: text(q.qobuzTrackId),
+    qobuzAlbumId: text(q.qobuzAlbumId),
+    qobuzArtistId: text(q.qobuzArtistId),
+    qobuzVersion: text(q.qobuzVersion),
     sourceFormat,
     outputFormat,
+    sourceFormatDetails: q.sourceFormatDetails || null,
+    outputFormatDetails: q.outputFormatDetails || null,
+    outputSampleRateHz: q.outputSampleRateHz ?? null,
+    bitPerfectMode: q.bitPerfectMode ?? null,
     format: sourceFormat,
     state,
-    random: text(mpdStatus.random),
-    repeat: text(mpdStatus.repeat),
+    random: q.shuffle === null || q.shuffle === undefined ? text(mpdStatus.random) : (q.shuffle ? '1' : '0'),
+    repeat: text(q.repeat || mpdStatus.repeat),
     elapsed: q.elapsedSec ?? null,
     duration: q.durationSec > 0 ? q.durationSec : null,
     percent: q.elapsedSec !== undefined && q.durationSec > 0
@@ -348,7 +378,7 @@ export function buildQobuzNowPlayingPayload({
     encoded: sourceFormat,
     bitrate: '',
     outrate: outputFormat,
-    volume: text(mpdSong.volume || '0'),
+    volume,
     mute: text(mpdSong.mute || '0'),
     track: '',
     date: '',
