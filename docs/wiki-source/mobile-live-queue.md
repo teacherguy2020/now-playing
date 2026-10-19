@@ -138,6 +138,22 @@ The native Home Live Queue shelf reuses the same full queue authority after
 initial load. Remote polling replaces only that shelf row when the server queue
 changes, and local playback derives it from the persisted device queue.
 
+## Qobuz Connect live queue semantics
+
+Qobuz Connect is a separate remote playback target exposed through the
+bearer-authenticated `/v1/mobile/qobuz-connect/queue` contract. Its
+`currentIndex` addresses the current queue together with `upcoming`; the
+`history` array is recent-first playback context and may include entries
+retained from before a queue replacement. Therefore `history.count` may be
+greater than `currentIndex` and is not a valid reason to discard the current
+queue projection or report that PiBuZ ownership is unavailable.
+
+Saved Qobuz queues use the same mobile session and are server-owned. List and
+detail are available without an active Connect session; capture requires a
+fresh `confirmed-active` ownership proof and a stable cursor; play requires
+explicit confirmation and status-only polling through the typed operation
+route. The server preserves ordered occurrences and duplicate positions.
+
 Each catalog-backed local track receives its authoritative MPD sticker rating
 through `rating` (`0..5`) and `ratingDisabled: false`. The reader is the same
 server-side `getRatingForFile()` path used by the web diagnostics queue. An
@@ -319,4 +335,4 @@ playlist revision reconciliation, and richer per-row saved-data management
 remain follow-up work; any new mutation must retain the same bearer, opaque-ID,
 and explicit-target boundary.
 
-*Last reviewed: 2026-10-02 18:45 America/Chicago*
+*Last reviewed: 2026-10-19 08:54 America/Chicago*

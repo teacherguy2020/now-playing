@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   buildQobuzNowPlayingPayload,
   createQobuzConnectSource,
+  hasVerifiedMpdPlaybackEvidence,
   normalizeQobuzMeta,
   parseQobuzFormat,
 } from '../src/lib/qobuz-connect.mjs';
@@ -34,6 +35,13 @@ test('Qobuz format parsing preserves source and output resolution', () => {
     sampleRateHz: 192000,
     channels: 2,
   });
+});
+
+test('MPD play plus a current file is the only ownership-recovery evidence', () => {
+  assert.equal(hasVerifiedMpdPlaybackEvidence({ state: 'play', file: 'Music/track.flac' }), true);
+  assert.equal(hasVerifiedMpdPlaybackEvidence({ state: 'pause', file: 'Music/track.flac' }), false);
+  assert.equal(hasVerifiedMpdPlaybackEvidence({ state: 'stop', file: 'Music/track.flac' }), false);
+  assert.equal(hasVerifiedMpdPlaybackEvidence({ state: 'play', file: '' }), false);
 });
 
 test('Qobuz metadata is normalized without exposing cover query tokens', () => {
@@ -197,4 +205,42 @@ test('Qobuz artwork fingerprint changes when the cover changes without exposing 
   assert.notEqual(first.albumArtUrl, second.albumArtUrl);
   assert.doesNotMatch(first.albumArtUrl, /static\.qobuz\.com|private-token/);
   assert.doesNotMatch(second.albumArtUrl, /static\.qobuz\.com|private-token/);
+});
+
+test('Qobuz Now Playing payload preserves native PiBuZ ownership and queue facts', () => {
+  const payload = buildQobuzNowPlayingPayload({
+    qobuz: {
+      active: true,
+      state: 'play',
+      title: 'Native Track',
+      artist: 'Native Artist',
+      album: 'Native Album',
+      sourceFormat: 'Qobuz 24-bit / 96 kHz',
+      outputFormat: 'PCM / 96 kHz',
+      qobuzTrackId: '123',
+      qobuzAlbumId: '456',
+      qobuzArtistId: '789',
+      owner: 'pibuz',
+      output: 'moode',
+      sessionActive: true,
+      receiverActive: true,
+      currentIndex: 2,
+      queueLength: 30,
+      elapsedSec: 12,
+      durationSec: 298,
+      shuffle: false,
+      repeat: 'off',
+      outputSampleRateHz: 96000,
+      outputFormatDetails: { bitDepth: null },
+    },
+    mpdStatus: { song: '0', playlistlength: '1' },
+  });
+
+  assert.equal(payload.playbackOwner, 'pibuz');
+  assert.equal(payload.qobuzTrackId, '123');
+  assert.equal(payload.qobuzSessionActive, true);
+  assert.equal(payload.qobuzReceiverActive, true);
+  assert.equal(payload.queueTrack, 3);
+  assert.equal(payload.queueTotal, 30);
+  assert.equal(payload.outputSampleRateHz, 96000);
 });

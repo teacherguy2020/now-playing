@@ -57,6 +57,10 @@ import {
 import { radioStationNameForFile } from '../lib/radio-display.mjs';
 import { buildAnimatedArtContext } from '../lib/animated-art-context.mjs';
 import { sanitizeMobileNowPlaying } from '../lib/mobile-upnp-sanitize.mjs';
+import {
+  sanitizeMobilePibuzQueue,
+  sanitizeMobilePibuzSnapshot,
+} from '../lib/mobile-pibuz-qobuz.mjs';
 import { registerMobileUpnpRoutes } from './mobile-upnp.routes.mjs';
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
@@ -329,8 +333,99 @@ function mpdBoolean(value) {
   return ['1', 'true', 'on', 'yes'].includes(String(value || '').trim().toLowerCase());
 }
 
-function errorResponse(res, status, error) {
-  return res.status(status).json({ ok: false, error: String(error || 'request failed') });
+function errorResponse(res, status, error, code = null) {
+  return res.status(status).json({
+    ok: false,
+    error: String(error || 'request failed'),
+    ...(code ? { code: String(code) } : {}),
+  });
+}
+
+const SAVED_QOBUZ_QUEUE_CAPABILITIES = Object.freeze({
+  capture: true,
+  list: true,
+  open: true,
+  rename: true,
+  delete: true,
+  restore: true,
+  play: true,
+});
+
+const SAVED_QOBUZ_QUEUE_RESTORATION = Object.freeze({
+  available: true,
+  reason: 'requires an active Qobuz Connect session on the PiBuZ receiver',
+});
+
+function publicSavedQobuzQueue(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return {
+    ...value,
+    capabilities: { ...SAVED_QOBUZ_QUEUE_CAPABILITIES },
+    restoration: { ...SAVED_QOBUZ_QUEUE_RESTORATION },
+  };
+}
+
+function validSavedQobuzQueueTitle(value) {
+  return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= 200;
+}
+
+function savedQobuzQueueErrorResponse(res, error, { capture = false } = {}) {
+  const code = String(error?.code || '');
+  if (code === 'SAVED_QOBUZ_QUEUE_NOT_FOUND') {
+    return errorResponse(res, 404, 'saved Qobuz queue not found', 'SAVED_QOBUZ_QUEUE_NOT_FOUND');
+  }
+  if (code === 'SAVED_QOBUZ_QUEUE_EXISTS') {
+    return errorResponse(res, 409, 'saved Qobuz queue already exists', 'SAVED_QOBUZ_QUEUE_EXISTS');
+  }
+  if (code === 'SAVED_QOBUZ_QUEUE_STORAGE_LIMIT') {
+    return errorResponse(res, 507, 'saved Qobuz queue storage limit reached', 'SAVED_QOBUZ_QUEUE_STORAGE_LIMIT');
+  }
+
+  const message = String(error?.message || '');
+  if (/saved (?:Qobuz )?queue title|savedQueueId|snapshot schema|snapshotId|queue title/i.test(message)) {
+    return errorResponse(res, 400, 'saved Qobuz queue request is invalid', 'SAVED_QOBUZ_QUEUE_INVALID_REQUEST');
+  }
+  if (capture && /confirmed-active|timing|authoritative Qobuz queue|queue cursor|playback identity/i.test(message)) {
+    return errorResponse(res, 409, 'the current Qobuz queue cannot be captured safely', 'QOBUZ_QUEUE_CAPTURE_REJECTED');
+  }
+  return errorResponse(
+    res,
+    500,
+    capture ? 'saved Qobuz queue capture failed' : 'saved Qobuz queue operation failed',
+    capture ? 'QOBUZ_QUEUE_CAPTURE_FAILED' : 'SAVED_QOBUZ_QUEUE_OPERATION_FAILED',
+  );
+}
+
+function savedQobuzQueuePlayResponse(res, result) {
+  if (!result || !Number.isInteger(result.status)) {
+    return errorResponse(res, 502, 'saved Qobuz queue playback returned an invalid result', 'SAVED_QUEUE_PLAY_INVALID_RESULT');
+  }
+  if (result.status >= 400) {
+    const messages = {
+      SAVED_QUEUE_NOT_FOUND: 'saved Qobuz queue not found',
+      SAVED_QUEUE_REQUEST_INVALID: 'saved Qobuz queue play request is invalid',
+      SAVED_QUEUE_START_INVALID: 'saved Qobuz queue start position is invalid',
+      SAVED_QOBUZ_QUEUE_INVALID_REQUEST: 'saved Qobuz queue play request is invalid',
+      SAVED_QOBUZ_QUEUE_STORAGE_UNAVAILABLE: 'saved Qobuz queue storage is unavailable',
+      SAVED_QOBUZ_QUEUE_SNAPSHOT_INVALID: 'saved Qobuz queue snapshot is invalid',
+      QOBUZ_CONNECT_OWNERSHIP_UNAVAILABLE: 'an active Qobuz Connect session owned by PiBuZ is required',
+      QOBUZ_QUEUE_VERSION_CONFLICT: 'the Qobuz Connect queue changed; refresh and try again',
+      QOBUZ_QUEUE_LOAD_REJECTED: 'PiBuZ rejected the saved queue load',
+      QOBUZ_QUEUE_LOAD_TIMED_OUT: 'PiBuZ did not finish the saved queue load in time',
+      SAVED_QUEUE_OPERATION_IN_FLIGHT: 'another saved Qobuz queue operation is in progress',
+      QOBUZ_OPERATION_ID_UNAVAILABLE: 'a safe saved queue operation ID could not be created',
+      BRIDGE_UNAVAILABLE: 'the authenticated PiBuZ bridge is unavailable; check operation status before retrying',
+      BRIDGE_PROTOCOL_INVALID: 'the authenticated PiBuZ bridge returned an invalid result',
+    };
+    return res.status(result.status).json({
+      ok: false,
+      error: messages[result.errorCode] || 'saved Qobuz queue playback failed',
+      code: result.errorCode || 'SAVED_QUEUE_PLAY_FAILED',
+      ...(result.operationId ? { operationId: result.operationId } : {}),
+      ...(result.state ? { state: result.state } : {}),
+    });
+  }
+  return res.status(result.status).json({ ok: true, ...result });
 }
 
 function pageArgs(query = {}) {
@@ -553,6 +648,28 @@ export function registerMobileRoutes(app, deps = {}) {
   const fetchRadioStream = typeof deps.fetchRadioStream === 'function'
     ? deps.fetchRadioStream
     : (...args) => globalThis.fetch(...args);
+  const getPibuzQobuzSnapshot = typeof deps.getPibuzQobuzSnapshot === 'function'
+    ? deps.getPibuzQobuzSnapshot
+    : null;
+  const fetchPibuzQobuzArtwork = typeof deps.fetchPibuzQobuzArtwork === 'function'
+    ? deps.fetchPibuzQobuzArtwork
+    : null;
+  const savedQobuzQueueService = deps.savedQobuzQueueService
+    && typeof deps.savedQobuzQueueService.capture === 'function'
+    && typeof deps.savedQobuzQueueService.list === 'function'
+    && typeof deps.savedQobuzQueueService.load === 'function'
+    && typeof deps.savedQobuzQueueService.rename === 'function'
+    && typeof deps.savedQobuzQueueService.delete === 'function'
+    ? deps.savedQobuzQueueService
+    : null;
+  const savedQobuzQueuePlayService = deps.savedQobuzQueuePlayService
+    && typeof deps.savedQobuzQueuePlayService.play === 'function'
+    && typeof deps.savedQobuzQueuePlayService.status === 'function'
+    ? deps.savedQobuzQueuePlayService
+    : null;
+  const controlPibuzQobuz = typeof deps.controlPibuzQobuz === 'function'
+    ? deps.controlPibuzQobuz
+    : null;
   const enrichRadioMetadata = typeof deps.enrichRadioMetadata === 'function'
     ? deps.enrichRadioMetadata
     : null;
@@ -3522,6 +3639,250 @@ export function registerMobileRoutes(app, deps = {}) {
       payload.playback = result.json.playback;
     }
     return res.json(payload);
+  }));
+
+  app.get('/v1/mobile/qobuz-connect', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!getPibuzQobuzSnapshot) return errorResponse(res, 503, 'PiBuZ Qobuz Connect is not configured');
+    const snapshot = await getPibuzQobuzSnapshot({ includeQueue: false });
+    const baseUrl = requestBaseUrl(req, mobileBaseUrl);
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      ok: true,
+      ...sanitizeMobilePibuzSnapshot(snapshot, { baseUrl, includeQueue: false }),
+    });
+  }));
+
+  app.get('/v1/mobile/qobuz-connect/queue', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!getPibuzQobuzSnapshot) return errorResponse(res, 503, 'PiBuZ Qobuz Connect is not configured');
+    const snapshot = await getPibuzQobuzSnapshot({ includeQueue: true });
+    const baseUrl = requestBaseUrl(req, mobileBaseUrl);
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      ok: true,
+      ...sanitizeMobilePibuzQueue(snapshot, { baseUrl }),
+    });
+  }));
+
+  app.post('/v1/mobile/qobuz-connect/saved-queues', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!savedQobuzQueueService) {
+      return errorResponse(res, 503, 'saved Qobuz queues are not configured', 'SAVED_QOBUZ_QUEUES_UNAVAILABLE');
+    }
+    const body = req?.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? req.body
+      : {};
+    if (!validSavedQobuzQueueTitle(body.title)) {
+      return errorResponse(res, 400, 'saved Qobuz queue request is invalid', 'SAVED_QOBUZ_QUEUE_INVALID_REQUEST');
+    }
+    try {
+      const savedQueue = await savedQobuzQueueService.capture({ title: body.title });
+      res.set('Cache-Control', 'no-store');
+      return res.status(201).json({
+        ok: true,
+        savedQueue: publicSavedQobuzQueue(savedQueue),
+      });
+    } catch (error) {
+      return savedQobuzQueueErrorResponse(res, error, { capture: true });
+    }
+  }));
+
+  app.get('/v1/mobile/qobuz-connect/saved-queues', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!savedQobuzQueueService) {
+      return errorResponse(res, 503, 'saved Qobuz queues are not configured', 'SAVED_QOBUZ_QUEUES_UNAVAILABLE');
+    }
+    try {
+      const savedQueues = await savedQobuzQueueService.list();
+      res.set('Cache-Control', 'no-store');
+      return res.json({
+        ok: true,
+        savedQueues: savedQueues.map(publicSavedQobuzQueue),
+        capabilities: { ...SAVED_QOBUZ_QUEUE_CAPABILITIES },
+        restoration: { ...SAVED_QOBUZ_QUEUE_RESTORATION },
+      });
+    } catch (error) {
+      return savedQobuzQueueErrorResponse(res, error);
+    }
+  }));
+
+  // Keep the operation-status route ahead of the generic saved-queue detail
+  // route below. Express matches routes in registration order, so otherwise
+  // `/saved-queues/operations/:operationId` is interpreted as a request for a
+  // saved queue whose ID is `operations`.
+  app.get('/v1/mobile/qobuz-connect/saved-queues/operations/:operationId', asyncRoute(async (req, res) => {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!savedQobuzQueuePlayService) {
+      return errorResponse(res, 503, 'saved Qobuz queue playback is not configured', 'SAVED_QUEUE_PLAY_UNAVAILABLE');
+    }
+    const result = await savedQobuzQueuePlayService.status({
+      userId: session.deviceId,
+      operationId: req?.params?.operationId,
+    });
+    return savedQobuzQueuePlayResponse(res, result);
+  }));
+
+  app.get('/v1/mobile/qobuz-connect/saved-queues/:savedQueueId', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!savedQobuzQueueService) {
+      return errorResponse(res, 503, 'saved Qobuz queues are not configured', 'SAVED_QOBUZ_QUEUES_UNAVAILABLE');
+    }
+    try {
+      const savedQueue = await savedQobuzQueueService.load(req?.params?.savedQueueId);
+      res.set('Cache-Control', 'no-store');
+      return res.json({
+        ok: true,
+        savedQueue: publicSavedQobuzQueue(savedQueue),
+      });
+    } catch (error) {
+      return savedQobuzQueueErrorResponse(res, error);
+    }
+  }));
+
+  app.post('/v1/mobile/qobuz-connect/saved-queues/:savedQueueId/play', asyncRoute(async (req, res) => {
+    const session = requireSession(req, res);
+    if (!session) return;
+    if (!savedQobuzQueuePlayService) {
+      return errorResponse(res, 503, 'saved Qobuz queue playback is not configured', 'SAVED_QUEUE_PLAY_UNAVAILABLE');
+    }
+    const body = req?.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? req.body
+      : {};
+    if (Object.keys(body).some((key) => !new Set(['confirm', 'startIndex']).has(key))) {
+      return errorResponse(res, 400, 'saved Qobuz queue play request is invalid', 'SAVED_QUEUE_REQUEST_INVALID');
+    }
+    const result = await savedQobuzQueuePlayService.play({
+      userId: session.deviceId,
+      input: {
+        savedQueueId: req?.params?.savedQueueId,
+        confirm: body.confirm,
+        ...(body.startIndex === undefined ? {} : { startIndex: body.startIndex }),
+      },
+    });
+    return savedQobuzQueuePlayResponse(res, result);
+  }));
+
+  if (typeof app.patch === 'function') app.patch('/v1/mobile/qobuz-connect/saved-queues/:savedQueueId', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!savedQobuzQueueService) {
+      return errorResponse(res, 503, 'saved Qobuz queues are not configured', 'SAVED_QOBUZ_QUEUES_UNAVAILABLE');
+    }
+    const body = req?.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? req.body
+      : {};
+    if (!validSavedQobuzQueueTitle(body.title)) {
+      return errorResponse(res, 400, 'saved Qobuz queue request is invalid', 'SAVED_QOBUZ_QUEUE_INVALID_REQUEST');
+    }
+    try {
+      const savedQueue = await savedQobuzQueueService.rename({
+        savedQueueId: req?.params?.savedQueueId,
+        title: body.title,
+      });
+      res.set('Cache-Control', 'no-store');
+      return res.json({
+        ok: true,
+        savedQueue: publicSavedQobuzQueue(savedQueue),
+      });
+    } catch (error) {
+      return savedQobuzQueueErrorResponse(res, error);
+    }
+  }));
+
+  app.delete('/v1/mobile/qobuz-connect/saved-queues/:savedQueueId', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!savedQobuzQueueService) {
+      return errorResponse(res, 503, 'saved Qobuz queues are not configured', 'SAVED_QOBUZ_QUEUES_UNAVAILABLE');
+    }
+    try {
+      const result = await savedQobuzQueueService.delete({
+        savedQueueId: req?.params?.savedQueueId,
+      });
+      res.set('Cache-Control', 'no-store');
+      return res.json({
+        ok: true,
+        ...result,
+        capabilities: { ...SAVED_QOBUZ_QUEUE_CAPABILITIES },
+        restoration: { ...SAVED_QOBUZ_QUEUE_RESTORATION },
+      });
+    } catch (error) {
+      return savedQobuzQueueErrorResponse(res, error);
+    }
+  }));
+
+  const handlePibuzQobuzControl = async (req, res, action) => {
+    if (!requireSession(req, res)) return;
+    if (!controlPibuzQobuz) {
+      return errorResponse(res, 503, 'PiBuZ Qobuz Connect control is not configured');
+    }
+
+    const body = req?.body && typeof req.body === 'object' && !Array.isArray(req.body)
+      ? req.body
+      : {};
+    const currentQobuzTrackId = text(
+      action === 'queue-jump' ? body.currentQobuzTrackId : body.qobuzTrackId,
+    );
+    if (!/^\d{1,32}$/.test(currentQobuzTrackId)) {
+      return errorResponse(res, 400, 'qobuzTrackId is required');
+    }
+
+    const options = {
+      expectedQobuzTrackId: currentQobuzTrackId,
+    };
+    if (body.currentIndex !== undefined) options.expectedCurrentIndex = body.currentIndex;
+    if (action === 'seek') options.positionSec = body.positionSec;
+    if (action === 'queue-jump') {
+      options.index = body.index;
+      options.targetQobuzTrackId = body.targetQobuzTrackId;
+      options.queueFingerprint = body.queueFingerprint;
+      options.expectedTotalTracks = body.totalTracks;
+      options.expectedShuffle = body.shuffle;
+    }
+
+    const controlAction = action === 'resume' ? 'play' : action;
+    const result = await controlPibuzQobuz(controlAction, options);
+    const status = Number(result?.status);
+    const responseStatus = status >= 200 && status < 600 ? status : (result?.ok ? 200 : 502);
+    const baseUrl = requestBaseUrl(req, mobileBaseUrl);
+    const response = {
+      ok: result?.ok === true,
+      action,
+      accepted: result?.accepted ?? false,
+      confirmed: result?.confirmed === true,
+      verification: text(result?.verification) || 'not-started',
+    };
+    if (result?.errorCode) response.error = text(result.errorCode);
+    if (result?.message) response.message = text(result.message);
+    if (result?.snapshot) {
+      response.snapshot = sanitizeMobilePibuzSnapshot(result.snapshot, {
+        baseUrl,
+        includeQueue: true,
+      });
+    }
+    res.set('Cache-Control', 'no-store');
+    return res.status(responseStatus).json(response);
+  };
+
+  for (const action of ['play', 'resume', 'pause', 'next', 'previous', 'seek']) {
+    app.post(`/v1/mobile/qobuz-connect/${action}`, asyncRoute(async (req, res) => (
+      handlePibuzQobuzControl(req, res, action)
+    )));
+  }
+  app.post('/v1/mobile/qobuz-connect/queue/jump', asyncRoute(async (req, res) => (
+    handlePibuzQobuzControl(req, res, 'queue-jump')
+  )));
+
+  app.get('/v1/mobile/qobuz-connect/artwork/:artworkRef', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!fetchPibuzQobuzArtwork) return errorResponse(res, 503, 'PiBuZ Qobuz artwork is not configured');
+    const artworkRef = text(req?.params?.artworkRef, 80);
+    if (!/^qobuz-[a-f0-9]{24}$/i.test(artworkRef)) return errorResponse(res, 404, 'artwork not found');
+    const artwork = await fetchPibuzQobuzArtwork(artworkRef).catch(() => null);
+    if (!artwork?.body || !artwork?.contentType) return errorResponse(res, 404, 'artwork not found');
+    res.set('Cache-Control', 'private, max-age=3600');
+    res.type(artwork.contentType);
+    return res.send(artwork.body);
   }));
 
   app.post('/v1/mobile/now-playing/favorite', asyncRoute(async (req, res) => {
