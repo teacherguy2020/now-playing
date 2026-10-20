@@ -1,62 +1,152 @@
-# Sonuvi — moOde enhancement platform
+# Sonuvi
 
-Sonuvi is a moOde-focused enhancement platform for richer playback state,
-metadata, queue control, displays, controllers, and integrations. It runs a
-web UI and API on an app host and communicates with a moOde/MPD player over the
-LAN.
+**Your music. Your libraries. Your listening experience.**
 
-![Sonuvi index view](./docs/images/readme-index.jpg)
+*Sonuvi chooses the music. You choose the renderer.*
+
+Sonuvi is a music platform that began as an enhancement layer for [moOde audio](https://moodeaudio.org/) and MPD. It combines richer playback controls, library tools, metadata, intelligent queues, displays, and integrations with web and native Apple-device experiences.
+
+moOde remains a core, dependable playback engine for Sonuvi. The wider goal is to make the listening experience less dependent on any one music library, controller, or output device.
+
+![Sonuvi dashboard](./docs/images/readme-index.jpg)
+
 ![Sonuvi controller](./docs/images/controller.jpeg)
+
 ![Sonuvi iPad controller](./docs/images/readme-ipadcontroller.png)
 
-## What it provides
+## What Sonuvi provides
 
-- Browser dashboard and phone/tablet/computer controllers
-- Now Playing, Player, Peppy, Visualizer, and Kiosk display paths
-- Queue management, Queue Wizard/Vibe Radio, playlists, ratings, and library health
-- Radio, podcasts, YouTube audio, and Listen on Device webstream playback
-- Alexa control and validated Seeburg, Multiphone/Mabel, and Mills integrations
-- Theme/customization tools and operator diagnostics
+### Music libraries and listening tools
 
-## Architecture at a glance
+- moOde/MPD library browsing, queue control, playlists, favorites, ratings, and library diagnostics.
+- Queue Wizard and Last.fm-assisted Vibe Radio for building listening sessions.
+- Listening history, play counts, and scrobbling for supported playback paths.
+- Internet radio, podcasts, YouTube audio, and supported webstream playback.
+- Device-local music import and catalog features in the native iOS app, including music on external storage.
+- Apple Music integrations and sharing features in the native app.
+- Qobuz Connect observation, playback controls, and saved-queue capture and restoration through the Sonuvi Server and an enhanced PiBuZ receiver.
 
-The recommended topology runs Sonuvi on a separate host from moOde:
+Sources differ in authentication, catalog access, and playback support; not every source can play through every renderer.
+
+### Controllers, displays, and apps
+
+- Responsive web dashboard and phone, tablet, and computer controllers.
+- Now Playing, Player, Peppy, Visualizer, and Kiosk display experiences.
+- Installable browser-based controller interfaces.
+- Native iPhone and iPad application with supported server-connected and standalone workflows.
+- Themes, layouts, artwork and metadata views, customization, and diagnostics.
+
+The native iOS application lives in a separate repository. CarPlay integration is a development goal, subject to Apple's entitlements and distribution requirements; it is not presented here as a generally available feature.
+
+## Choose your music. Choose where it plays.
+
+Sonuvi separates **music selection** from **playback destination** wherever the underlying source and transport allow it.
+
+| Playback path | Role |
+| --- | --- |
+| **moOde / MPD** | Plays the local and network music library; Sonuvi adds controls, displays, and integrations. |
+| **Qobuz Connect / PiBuZ** | Plays Qobuz streams on the receiver while Sonuvi observes and controls the active session. |
+| **Listen on Device** | Plays supported audio sources directly on a compatible device. |
+| **UPnP / OpenHome** | Network-renderer discovery and playback capabilities under active development; support varies by renderer and source. |
+
+**Sonuvi chooses the music. You choose the renderer.** This is the product direction, not a claim that every source-to-renderer combination already works.
+
+## Qobuz Connect
+
+Sonuvi Server integrates with a Sonuvi-enhanced [PiBuZ receiver](https://github.com/teacherguy2020/sonuvi-pibuz) to provide:
+
+- Live Qobuz Connect status, track metadata, queue, and playback position.
+- Play/pause, next/previous, seek, and queue-occurrence navigation.
+- Capture, browse, rename, and delete saved Qobuz Connect queues.
+- Restore a saved queue with ordered tracks, duplicate occurrences, and a selected start position.
+- Restricted Server-to-PiBuZ bridge operations, operation-status readback, and SSE connection-lifecycle improvements.
+
+The saved-queue workflow has been tested end to end on the development receiver, including native iPad playback. Exact receiver and deployment requirements are documented separately.
+
+**Qobuz Connect is not an independently authenticated Qobuz library.** Browsing personal Qobuz favorites, playlists, and catalog search as a native Sonuvi source remains under investigation and depends on appropriate API access and authorization.
+
+## Architecture
+
+The recommended moOde setup runs Sonuvi Server on a separate LAN host:
 
 ```text
-Browser / display clients
-          ↓
-Sonuvi UI :8101  ↔  Sonuvi API :3101
-                              ↓ MPD / SSH / HTTP
-                         moOde player host
+Web / PWA / display clients             Native iPhone / iPad
+              |                                  |
+              +-------------+--------------------+
+                            |
+                  Sonuvi UI :8101
+                  Sonuvi API :3101
+                            |
+              +-------------+-------------+
+              |                           |
+         moOde / MPD                Enhanced PiBuZ
+     music playback, UPnP       Qobuz Connect playback
 ```
 
-The API host owns Sonuvi state normalization, routes, queue integration,
-display/control bridges, and the web UI. MPD/moOde remains the playback
-authority unless a documented physical or external mode owns the audio path.
+The Sonuvi API host handles state normalization, web routes, metadata, queue tools, integrations, and UI delivery. **MPD/moOde remains the authority for MPD playback**; Qobuz Connect and device-local players have their own playback state and control boundaries.
 
-## Quick start
+The native iOS app also supports selected device-local workflows without an active Sonuvi Server. Supported sources and playback destinations vary by configuration.
 
-1. Install Node.js, npm, `mpc`, and PM2 on the Sonuvi host.
-2. Install the project:
+## Quick start: Sonuvi Server with moOde
+
+1. Have a working moOde/MPD player reachable on your LAN.
+2. Prepare the application host with Node.js, npm, `mpc`, and the process-management dependencies specified by the installer.
+3. Install Sonuvi Server:
 
    ```sh
    curl -fsSL https://raw.githubusercontent.com/teacherguy2020/now-playing/main/scripts/install.sh | bash -s -- --ref main
    ```
 
-3. Open `config.html`, set the moOde/MPD connection, paths, SSH access, and a
-   strong `trackKey`.
-4. Run **Check SSH + Paths**, save, and verify `/now-playing` and a controller
-   page.
+4. Open `config.html` and configure moOde/MPD connectivity, paths, SSH access, and a strong `trackKey`.
+5. Run **Check SSH + Paths**, save the configuration, and verify `/now-playing` and a controller page.
 
-The full first-run path is in [Getting Started](./docs/wiki-source/getting-started.md).
+For complete prerequisites, first-run steps, and troubleshooting, see [Getting Started](./docs/wiki-source/getting-started.md).
+
+> **Repository-path note:** The installer URL retains the historical `now-playing` repository path. Verify that this remains the canonical installation location before changing it purely for branding.
+
+## moOde display integration
+
+For moOde's local display target, current supported configurations use the LAN proxy URL without an explicit `:8101` port:
+
+```text
+http://<sonuvi-host>/display.html?kiosk=1
+```
+
+The display guides cover Peppy, Player, and Visualizer setup; display URLs; blanking and wake behavior; and upgrade rollback:
+
+- [Displays](./docs/wiki-source/displays.md)
+- [Display enhancement flow](./docs/wiki-source/display-enhancement-peppy-player-flow.md)
+- [moOde upgrade runbook](./docs/runbooks/22-moode-upgrade-runbook.md)
+
+## Integrations
+
+Sonuvi bridges software playback with smart-home and physical music systems:
+
+- **Alexa / Homebridge / Matter** — voice control and supported automation integrations.
+- **Last.fm** — listening-history scrobbling and music-discovery enrichment.
+- **Seeburg wallbox** — Pico-based physical selection interface using Sonuvi's integration API.
+- **Shyvers Multiphone / Mabel** — telephone-inspired music selection and operator integration maintained in a separate project.
+- **Mills Throne of Music** — physical jukebox observation, display, and control integration.
+
+See [Integrations](./docs/wiki-source/integrations.md) for ownership and control boundaries.
+
+## Where Sonuvi is headed
+
+Active development and investigation include:
+
+- First-class library providers for streaming, local, and cloud music.
+- Independent Qobuz favorites, playlists, and catalog browsing, subject to Qobuz API authorization.
+- Unified music identities with multiple provider-specific source locations.
+- Mixed-source shelves and playlists, with source-aware playback resolution.
+- Broader UPnP/OpenHome renderer support.
+- Device-local and cloud-synchronized personal music metadata.
+- Expanded native iOS and CarPlay experiences.
+
+These are **development directions**, not claims of general availability.
 
 ## Documentation
 
-Start with the canonical documentation landing page:
-
-**[docs/wiki-source/README.md](./docs/wiki-source/README.md)**
-
-Audience entry points:
+The editable documentation source is [`docs/wiki-source/`](./docs/wiki-source/README.md). `docs/wiki-site/` and the GitHub Wiki are generated/published outputs and should not be edited directly.
 
 - [Getting Started](./docs/wiki-source/getting-started.md)
 - [Using Sonuvi](./docs/wiki-source/using-now-playing.md)
@@ -66,43 +156,20 @@ Audience entry points:
 - [Developer Reference](./docs/wiki-source/developer-reference.md)
 - [Troubleshooting and Technical Notes](./docs/wiki-source/troubleshooting-and-technical-notes.md)
 
-The editable source is `docs/wiki-source/`. `docs/wiki-site/` and the
-GitHub-hosted Wiki are published outputs; do not edit those copies directly.
+## Related projects
 
-## moOde display integration
-
-For moOde's local display target, use the LAN proxy URL without an explicit
-`:8101` port on current moOde releases:
-
-```text
-http://<now-playing-host>/display.html?kiosk=1
-```
-
-The display and upgrade runbooks cover Peppy/Player/Visualizer setup, target
-URL persistence, blanking/wake compatibility, and rollback:
-
-- [Displays](./docs/wiki-source/displays.md)
-- [Display enhancement flow](./docs/wiki-source/display-enhancement-peppy-player-flow.md)
-- [moOde upgrade runbook](./docs/runbooks/22-moode-upgrade-runbook.md)
-
-## Supported integration boundaries
-
-- **moOde/MPD** — primary playback runtime
-- **Alexa** — custom skill plus Homebridge/Matter lifecycle bridge
-- **Last.fm** — scrobbling and Vibe/queue enrichment
-- **Seeburg wallbox** — separate Pico project with Now Playing selection API
-- **Shyvers Multiphone/Mabel** — separate repository for conversation/hardware;
-  this repository owns bounded integration endpoints
-- **Mills Throne of Music** — physical jukebox observation/display bridge
-
-See [Integrations](./docs/wiki-source/integrations.md) for ownership and
-authority boundaries.
-
-## Related projects and licensing
-
+- [Sonuvi-enhanced PiBuZ](https://github.com/teacherguy2020/sonuvi-pibuz)
 - [Seeburg Now Playing Pico](https://github.com/teacherguy2020/seeburg-nowplaying-pico)
-- [Shyvers Multiphone/Mabel](https://github.com/teacherguy2020/shyvers-multiphone-mabel)
-- [Unlicense](./LICENSE), with third-party notices in
-  [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)
+- [Shyvers Multiphone / Mabel](https://github.com/teacherguy2020/shyvers-multiphone-mabel)
 
-`integrations/moode/aplmeta.py` remains GPL-3.0-or-later per its file header.
+The native Sonuvi iOS application is maintained separately.
+
+## Licensing
+
+Sonuvi Server is released under the [Unlicense](./LICENSE), subject to the third-party notices in [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md).
+
+`integrations/moode/aplmeta.py` remains GPL-3.0-or-later under its file header. Other related projects and third-party services retain their respective licenses and terms.
+
+---
+
+*Built for people who love their music and want more control over how they experience it.*
