@@ -138,6 +138,26 @@ test('Qobuz session release never reports success when inactive state cannot be 
   assert.doesNotMatch(JSON.stringify(res.body), /ssh|token|secret|sessionid/i);
 });
 
+test('Qobuz session release accepts explicit backend process-stop confirmation', async () => {
+  const app = appFixture();
+  let stateReads = 0;
+  registerConfigQobuzAccountRoutes(app, {
+    requireTrackKey: () => true,
+    controlPoint: { discover: async () => ({ devices: [] }) },
+    releaseQobuzConnect: async () => ({ accepted: true, confirmed: true }),
+    getQobuzNowPlaying: async () => {
+      stateReads += 1;
+      throw new Error('PiBuZ is stopped');
+    },
+  });
+
+  const res = response();
+  await app.routes.get('POST /config/qobuz/session/release')(request(), res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { ok: true, state: 'released', mutationExecuted: true });
+  assert.equal(stateReads, 0);
+});
+
 test('only a timed-out Qobuz browse is classified as account authorization required', async () => {
   const app = appFixture();
   registerUpnpRoutes(app, {

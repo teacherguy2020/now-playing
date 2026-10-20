@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const execFileP = promisify(execFile);
-const DEFAULT_TIMEOUT_MS = 20_000;
+const DEFAULT_TIMEOUT_MS = 35_000;
 
 function text(value) {
   return String(value ?? '').trim();
@@ -29,7 +29,33 @@ const RELEASE_SCRIPT = [
   'test -n "$sid"',
   'result=$(curl -fsS --max-time 8 -b "PHPSESSID=$sid" -X POST --data "job=qobuzsvc" "http://127.0.0.1/command/renderer.php?cmd=disconnect_renderer")',
   'case "$result" in *"job submitted"*) ;; *) exit 4 ;; esac',
-  'printf "submitted\\n"',
+  'released=0',
+  'for attempt in $(seq 1 40); do',
+  '  if ! pgrep -x pibuz >/dev/null 2>&1; then',
+  '    released=1',
+  '    break',
+  '  fi',
+  '  sleep 0.25',
+  'done',
+  'if [ "$released" -eq 1 ]; then',
+  '  sleep 0.5',
+  '  sudo -n /usr/bin/systemd-run --unit=sonuvi-pibuz-b3-dev.service --collect --no-block --property=Type=simple --property=Restart=no --property=NoNewPrivileges=yes --property=LimitRTPRIO=20 /usr/bin/pibuz run >/dev/null',
+  '  ready=0',
+  '  for attempt in $(seq 1 40); do',
+  '    if pgrep -x pibuz >/dev/null 2>&1 && ss -ltn | grep -q ":8182 " && ss -ltn | grep -q ":8183 " && pgrep -f "[/]avahi-publish-service .*_qobuz-connect.*_tcp 8183" >/dev/null 2>&1; then',
+  '      ready=1',
+  '      break',
+  '    fi',
+  '    sleep 0.25',
+  '  done',
+  '  if [ "$ready" -eq 1 ]; then',
+  '    printf "submitted\\nreleased\\nrestarted\\nready\\n"',
+  '  else',
+  '    printf "submitted\\nreleased\\nrestarted\\n"',
+  '  fi',
+  'else',
+  '  printf "submitted\\n"',
+  'fi',
 ].join('\n');
 
 function defaultRunCommand(command, args, options) {
@@ -42,6 +68,10 @@ function defaultRunCommand(command, args, options) {
  * The browser never receives a shell, SSH, or Pibuz surface. The fixed
  * backend operation reuses moOde's own renderer-disconnect path, which stops
  * the current Pibuz session and lets moOde restore its normal audio state.
+ * The remote script then recreates the established enhanced development
+ * receiver through systemd-run and reports confirmation only after its
+ * process and control listeners are ready again. The API ownership probe
+ * remains the fallback for installations that keep the daemon running.
  */
 export function createQobuzConnectController({
   sshUser = 'moode',
@@ -65,14 +95,28 @@ export function createQobuzConnectController({
           timeout: maxTimeMs,
           maxBuffer: 64 * 1024,
         });
-      } catch {
-        throw new Error('The moOde Qobuz disconnect action failed');
+      } catch (error) {
+        // Some SSH/systemd combinations can return status 1 after the remote
+        // script has already printed its explicit process-stop proof. Treat
+        // that proof as authoritative; otherwise preserve fail-closed behavior.
+        const stdout = text(error?.stdout);
+        if (!/submitted/i.test(stdout) || !/(?:^|\n)released(?:\n|$)/i.test(stdout)) {
+          throw new Error('The moOde Qobuz disconnect action failed');
+        }
+        result = { stdout };
       }
 
-      if (!/submitted/i.test(text(result?.stdout))) {
+      const stdout = text(result?.stdout);
+      if (!/submitted/i.test(stdout)) {
         throw new Error('The moOde Qobuz disconnect action was not accepted');
       }
-      return { accepted: true };
+      const released = /(?:^|\n)released(?:\n|$)/i.test(stdout);
+      const restarted = /(?:^|\n)restarted(?:\n|$)/i.test(stdout);
+      const ready = /(?:^|\n)ready(?:\n|$)/i.test(stdout);
+      return {
+        accepted: true,
+        confirmed: released && restarted && ready,
+      };
     })().finally(() => {
       inFlight = null;
     });

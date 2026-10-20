@@ -1,7 +1,12 @@
+import {
+  qobuzConnectReleaseDefaults,
+  waitForQobuzRelease,
+} from '../lib/qobuz-connect-release.mjs';
+
 const QOBUZ_ROOT_ID = '0$qobuz$';
 const DEFAULT_STATUS_PROBE_TIMEOUT_MS = 5200;
-const DEFAULT_RELEASE_TIMEOUT_MS = 12000;
-const DEFAULT_RELEASE_POLL_MS = 250;
+const DEFAULT_RELEASE_TIMEOUT_MS = qobuzConnectReleaseDefaults.timeoutMs;
+const DEFAULT_RELEASE_POLL_MS = qobuzConnectReleaseDefaults.pollMs;
 
 function boolQuery(value, fallback = false) {
   if (value == null || value === '') return fallback;
@@ -26,34 +31,6 @@ function publicQobuzMediaServer(device) {
     contentDirectory: true,
     rootBrowse: true,
   };
-}
-
-function delay(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-function qobuzOwnershipActive(result) {
-  return Boolean(result?.active || result?.suppressMpdHistory);
-}
-
-async function waitForQobuzRelease(getQobuzNowPlaying, {
-  timeoutMs = DEFAULT_RELEASE_TIMEOUT_MS,
-  pollMs = DEFAULT_RELEASE_POLL_MS,
-} = {}) {
-  if (typeof getQobuzNowPlaying !== 'function') return false;
-  const deadline = Date.now() + Math.max(0, Number(timeoutMs) || DEFAULT_RELEASE_TIMEOUT_MS);
-  const interval = Math.max(25, Number(pollMs) || DEFAULT_RELEASE_POLL_MS);
-
-  while (true) {
-    try {
-      const current = await getQobuzNowPlaying();
-      if (!qobuzOwnershipActive(current)) return true;
-    } catch {
-      // A failed read is not proof that the renderer was released.
-    }
-    if (Date.now() >= deadline) return false;
-    await delay(interval);
-  }
 }
 
 /**
@@ -175,9 +152,10 @@ export function registerConfigQobuzAccountRoutes(app, {
       });
     }
 
+    let releaseResult;
     try {
-      const result = await releaseQobuzConnect();
-      if (result?.accepted !== true) throw new Error('release was not accepted');
+      releaseResult = await releaseQobuzConnect();
+      if (releaseResult?.accepted !== true) throw new Error('release was not accepted');
     } catch {
       return res.status(502).json({
         ok: false,
@@ -186,10 +164,12 @@ export function registerConfigQobuzAccountRoutes(app, {
       });
     }
 
-    const released = await waitForQobuzRelease(getQobuzNowPlaying, {
-      timeoutMs: releaseTimeoutMs,
-      pollMs: releasePollMs,
-    });
+    const released = releaseResult?.confirmed === true
+      ? true
+      : await waitForQobuzRelease(getQobuzNowPlaying, {
+        timeoutMs: releaseTimeoutMs,
+        pollMs: releasePollMs,
+      });
     if (!released) {
       return res.status(409).json({
         ok: false,

@@ -6,8 +6,10 @@ Phase 1 adds a read-only native PiBuZ adapter while retaining the existing
 moOde renderer metadata cache as a compatibility fallback. It exposes active
 Qobuz Connect playback through `/now-playing`, preserves the existing artwork
 surface, and adds authenticated mobile snapshot and queue contracts. It does
-not authenticate Qobuz, issue PiBuZ playback or queue commands, or control
-ordinary MPD, ALSA, AirPlay, listening history, or Last.fm playback.
+not authenticate Qobuz or issue PiBuZ playback/queue commands. The sole
+mutation is the explicit renderer-disconnect handoff documented below; it does
+not control ordinary MPD, ALSA, AirPlay, listening history, or Last.fm
+playback.
 
 ## Native PiBuZ transport
 
@@ -90,6 +92,7 @@ Both endpoints require the existing `mobile-api` bearer session:
 ```text
 GET /v1/mobile/qobuz-connect
 GET /v1/mobile/qobuz-connect/queue
+POST /v1/mobile/qobuz-connect/release
 ```
 
 The response is versioned as `qobuz-connect.v1` and separates ownership from
@@ -189,9 +192,35 @@ The authenticated `POST /config/qobuz/session/release` route is the supported
 escape hatch when Qobuz Connect remains connected or leaves a stale cache
 record. It submits moOde's existing `qobuzsvc` renderer-disconnect worker job,
 waits for the Qobuz source read to become inactive, and returns success only
-after that ownership release is confirmed. The action stops current Qobuz
-renderer playback if present; it does not sign out the account or expose
-Pibuz's loopback API.
+after that ownership release is confirmed. On the enhanced development
+receiver, moOde's worker stops the PiBuZ process as part of this operation;
+the fixed backend adapter therefore also accepts an explicit confirmation
+after it observes that the PiBuZ process has exited. This avoids treating a
+known renderer shutdown as an ambiguous transport failure. The action stops
+current Qobuz renderer playback if present; it does not sign out the account,
+and does not expose PiBuZ's loopback API. The fixed adapter restores the
+enhanced development receiver before reporting the handoff complete.
+
+The fixed release adapter emits `submitted`, `released`, `restarted`, and
+`ready` as its final remote output rather than using an explicit successful
+`exit 0`. Some Pi5-to-moOde SSH/systemd invocations can otherwise return
+status 1 after the remote script has already printed its proof. The
+controller accepts a release only when the enhanced receiver has returned
+through the established systemd-managed lifecycle, with PiBuZ, ports 8182 and
+8183, and the Qobuz Connect Avahi publisher ready. It remains fail-closed for
+every other transport, worker, or restart result. No raw `pibuz run` command
+is used.
+
+Native iOS uses the equivalent bearer-authenticated
+`POST /v1/mobile/qobuz-connect/release` route. It has no Track-Key or Qobuz
+credential in the client. When an iOS Home moOde catalog, queue, radio,
+podcast, genre, search, or Queue Wizard action is about to mutate the Home
+renderer, the app calls this route first and sends the requested Home action
+only after the Server confirms inactive Qobuz ownership and receiver
+readiness. A failed or unconfirmed release fails the Home action closed rather
+than allowing the two playback owners to race. The release route restores the
+receiver through its established systemd-managed development lifecycle before
+returning; it never issues a raw `pibuz run` command.
 
 ## Files and services
 
@@ -210,7 +239,9 @@ Changed server files:
 - `src/lib/mobile-pibuz-qobuz.mjs` — versioned mobile sanitization with
   mediated artwork references and read-only capabilities.
 - `src/routes/mobile.routes.mjs` — authenticated Qobuz Connect snapshot,
-  queue, and artwork routes.
+  queue, artwork, and bearer-authenticated release routes.
+- `src/lib/qobuz-connect-release.mjs` — shared post-disconnect ownership
+  confirmation used by Track-Key and mobile release routes.
 - `src/routes/art.routes.mjs` — current-art routes prefer active Qobuz art
   while continuing to use the shared cache and resize pipeline.
 - `test/qobuz-connect.test.mjs` — unit coverage for metadata, lifecycle,
@@ -220,6 +251,10 @@ Changed server files:
   mobile authentication, sanitization, and mediated artwork coverage.
 - `src/routes/config.qobuz-account.routes.mjs` — Track-Key-protected release
   route with post-action ownership confirmation.
+- `moode-nowplaying-api.mjs` — injects the fixed release controller and
+  authoritative ownership probe into the mobile route registration.
+- `test/mobile-pibuz-qobuz.test.mjs` — bearer release success, fail-closed
+  confirmation, and dependency-boundary coverage.
 - `config.html` — the Qobuz Account card's explicit session-release action.
 
 Only `now-playing.service` requires restart after a Server deployment. The
@@ -250,9 +285,11 @@ Live validation should be coordinated with the listener:
 3. Verify the reference track metadata and artwork on `/art/current.jpg`.
 4. Pause and resume without changing the track; verify state and metadata.
 5. Change tracks; verify artwork and formats change together.
-6. Use the authenticated Config action `POST /config/qobuz/session/release`
-   when the Qobuz session must be shut down; verify Pibuz reports no active
-   session and Sonuvi no longer reports `source: "qobuz-connect"`.
+6. Use either the authenticated Config action
+   `POST /config/qobuz/session/release` or the paired-mobile action
+   `POST /v1/mobile/qobuz-connect/release` when the Qobuz session must be
+   shut down; verify PiBuZ reports no active session and Sonuvi no longer
+   reports `source: "qobuz-connect"`.
 7. Confirm no new Qobuz event appears in listening-history or Last.fm state.
 
 ## Deployment and rollback
@@ -269,8 +306,9 @@ installation is unchanged; no Pi-side rollback is required.
 
 ## Known limitations
 
-- The Phase 1 adapter is read-only. PiBuZ transport and queue mutation are
-  deliberately not exposed in the mobile capabilities.
+- The Phase 1 adapter is read-only for PiBuZ transport and queue control. The
+  explicit renderer-disconnect handoff is the only mobile mutation and is
+  deliberately not represented as a Qobuz play/pause/queue capability.
 - PiBuZ's event stream is consumed for bounded freshness/diagnostics; current
   API reads remain authoritative, and no event payload history is retained.
 - Qobuz artwork is refreshed through the cache when the normalized artwork

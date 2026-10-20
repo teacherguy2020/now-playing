@@ -240,3 +240,74 @@ test('Qobuz control route preserves the fail-closed 503 when the control depende
   assert.equal(res.statusCode, 503);
   assert.equal(res.body.error, 'PiBuZ Qobuz Connect control is not configured');
 });
+
+test('Qobuz release route uses the mobile bearer session and confirms inactive ownership', async () => {
+  let releaseCalls = 0;
+  let stateReads = 0;
+  const app = registerFixture({}, {
+    releaseQobuzConnect: async () => {
+      releaseCalls += 1;
+      return { accepted: true };
+    },
+    getQobuzNowPlaying: async () => {
+      stateReads += 1;
+      return stateReads === 1
+        ? { active: true, suppressMpdHistory: true }
+        : { active: false, suppressMpdHistory: false };
+    },
+    qobuzReleasePollMs: 25,
+    qobuzReleaseTimeoutMs: 500,
+  });
+  const res = createResponse();
+
+  await app.routes.get('POST /v1/mobile/qobuz-connect/release')?.(request(token()), res);
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { ok: true, state: 'released', mutationExecuted: true });
+  assert.equal(res.headers['Cache-Control'], 'no-store');
+  assert.equal(releaseCalls, 1);
+  assert.equal(stateReads, 2);
+});
+
+test('Qobuz release route accepts explicit backend process-stop confirmation', async () => {
+  let stateReads = 0;
+  const app = registerFixture({}, {
+    releaseQobuzConnect: async () => ({ accepted: true, confirmed: true }),
+    getQobuzNowPlaying: async () => {
+      stateReads += 1;
+      throw new Error('PiBuZ is stopped');
+    },
+  });
+  const res = createResponse();
+
+  await app.routes.get('POST /v1/mobile/qobuz-connect/release')?.(request(token()), res);
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { ok: true, state: 'released', mutationExecuted: true });
+  assert.equal(stateReads, 0);
+});
+
+test('Qobuz release route fails closed when inactive ownership cannot be confirmed', async () => {
+  const app = registerFixture({}, {
+    releaseQobuzConnect: async () => ({ accepted: true }),
+    getQobuzNowPlaying: async () => ({ active: true, suppressMpdHistory: true }),
+    qobuzReleasePollMs: 25,
+    qobuzReleaseTimeoutMs: 50,
+  });
+  const res = createResponse();
+
+  await app.routes.get('POST /v1/mobile/qobuz-connect/release')?.(request(token()), res);
+
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.code, 'QOBUZ_RELEASE_UNCONFIRMED');
+});
+
+test('Qobuz release route requires its configured release dependencies', async () => {
+  const app = registerFixture();
+  const res = createResponse();
+
+  await app.routes.get('POST /v1/mobile/qobuz-connect/release')?.(request(token()), res);
+
+  assert.equal(res.statusCode, 503);
+  assert.equal(res.body.code, 'QOBUZ_RELEASE_UNAVAILABLE');
+});

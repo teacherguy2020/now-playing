@@ -61,6 +61,10 @@ import {
   sanitizeMobilePibuzQueue,
   sanitizeMobilePibuzSnapshot,
 } from '../lib/mobile-pibuz-qobuz.mjs';
+import {
+  qobuzConnectReleaseDefaults,
+  waitForQobuzRelease,
+} from '../lib/qobuz-connect-release.mjs';
 import { registerMobileUpnpRoutes } from './mobile-upnp.routes.mjs';
 
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
@@ -670,6 +674,16 @@ export function registerMobileRoutes(app, deps = {}) {
   const controlPibuzQobuz = typeof deps.controlPibuzQobuz === 'function'
     ? deps.controlPibuzQobuz
     : null;
+  const releaseQobuzConnect = typeof deps.releaseQobuzConnect === 'function'
+    ? deps.releaseQobuzConnect
+    : null;
+  const getQobuzNowPlaying = typeof deps.getQobuzNowPlaying === 'function'
+    ? deps.getQobuzNowPlaying
+    : null;
+  const qobuzReleaseTimeoutMs = Number(deps.qobuzReleaseTimeoutMs)
+    || qobuzConnectReleaseDefaults.timeoutMs;
+  const qobuzReleasePollMs = Number(deps.qobuzReleasePollMs)
+    || qobuzConnectReleaseDefaults.pollMs;
   const enrichRadioMetadata = typeof deps.enrichRadioMetadata === 'function'
     ? deps.enrichRadioMetadata
     : null;
@@ -3809,6 +3823,53 @@ export function registerMobileRoutes(app, deps = {}) {
     } catch (error) {
       return savedQobuzQueueErrorResponse(res, error);
     }
+  }));
+
+  app.post('/v1/mobile/qobuz-connect/release', asyncRoute(async (req, res) => {
+    if (!requireSession(req, res)) return;
+    if (!releaseQobuzConnect || !getQobuzNowPlaying) {
+      return errorResponse(
+        res,
+        503,
+        'PiBuZ Qobuz Connect release is not configured',
+        'QOBUZ_RELEASE_UNAVAILABLE',
+      );
+    }
+
+    let releaseResult;
+    try {
+      releaseResult = await releaseQobuzConnect();
+      if (releaseResult?.accepted !== true) throw new Error('release was not accepted');
+    } catch {
+      return errorResponse(
+        res,
+        502,
+        'The Qobuz session could not be released',
+        'QOBUZ_RELEASE_FAILED',
+      );
+    }
+
+    const released = releaseResult?.confirmed === true
+      ? true
+      : await waitForQobuzRelease(getQobuzNowPlaying, {
+        timeoutMs: qobuzReleaseTimeoutMs,
+        pollMs: qobuzReleasePollMs,
+      });
+    if (!released) {
+      return errorResponse(
+        res,
+        409,
+        'The Qobuz session release was not confirmed',
+        'QOBUZ_RELEASE_UNCONFIRMED',
+      );
+    }
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      ok: true,
+      state: 'released',
+      mutationExecuted: true,
+    });
   }));
 
   const handlePibuzQobuzControl = async (req, res, action) => {

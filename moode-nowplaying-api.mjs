@@ -8986,6 +8986,8 @@ registerMobileRoutes(app, {
   },
   getPibuzQobuzSnapshot: (options) => pibuzQobuz.getSnapshot(options),
   controlPibuzQobuz: (action, options) => pibuzQobuz.control(action, options),
+  getQobuzNowPlaying: () => qobuzConnect.get(),
+  releaseQobuzConnect: () => qobuzConnectController.release(),
   fetchPibuzQobuzArtwork: (artworkRef) => pibuzQobuz.fetchArtwork(artworkRef),
   savedQobuzQueueService,
   savedQobuzQueuePlayService,
