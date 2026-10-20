@@ -18,8 +18,28 @@ test('shared player clears stale animated art when a track has no motion source'
     /const src = String\(mp4Url \|\| ''\)\.trim\(\);\s*if \(!src\) \{\s*clearMotionArtVideo\(\);\s*return;\s*\}/,
   );
   assert.match(player, /id="album-art-video"/);
-  assert.match(player, /scripts\/index-ui\.js\?v=20261014-upnp-motion1/);
+  assert.match(player, /scripts\/index-ui\.js\?v=20261017-qobuz-art1/);
   assert.match(contract, /an empty motion result is an explicit clear operation/);
+});
+
+test('player preserves Qobuz current-art fingerprints while ignoring ordinary cache-busters', async () => {
+  const script = await read('scripts/index-ui.js');
+  const start = script.indexOf('function normalizeArtKey');
+  const end = script.indexOf('\nfunction normalizeDashSpacing', start);
+  assert.ok(start >= 0 && end > start, 'normalizeArtKey function should be present');
+
+  const normalizeArtKey = new Function(
+    `${script.slice(start, end)}; return normalizeArtKey;`,
+  )();
+  const first = 'https://moode.brianwis.com/art/current.jpg?qobuz=0123456789abcdef';
+  const second = 'https://moode.brianwis.com/art/current.jpg?qobuz=fedcba9876543210';
+
+  assert.equal(normalizeArtKey(first), first);
+  assert.notEqual(normalizeArtKey(first), normalizeArtKey(second));
+  assert.equal(
+    normalizeArtKey('https://moode.brianwis.com/art/current.jpg?t=1792023772382'),
+    'https://moode.brianwis.com/art/current.jpg',
+  );
 });
 
 test('UPnP uses the existing provider-neutral matcher with static-art fallback and stale guards', async () => {

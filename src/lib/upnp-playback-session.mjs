@@ -12,6 +12,12 @@ const ACTIVE_TRANSPORT_STATES = new Set([
   'TRANSITIONING',
 ]);
 
+const KNOWN_TRANSPORT_STATES = new Set([
+  'PLAYING',
+  'PAUSED_PLAYBACK',
+  'STOPPED',
+]);
+
 const TAKEOVER_STOPPABLE_TRANSPORT_STATES = new Set([
   'PLAYING',
   'PAUSED_PLAYBACK',
@@ -179,6 +185,16 @@ function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+const DEFAULT_STARTUP_URI_READY_TIMEOUT_MS = 3_000;
+const DEFAULT_STARTUP_POLL_INTERVAL_MS = 150;
+const DEFAULT_STARTUP_SETTLE_MS = 150;
+
+function boundedMilliseconds(value, fallback, { minimum = 0, maximum = 10_000 } = {}) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(minimum, Math.min(maximum, Math.trunc(parsed)));
+}
+
 function mpdBlocksExternalRendererControl(mpd, currentUri) {
   const state = String(mpd?.state || '').trim().toLowerCase();
   if (!['play', 'pause'].includes(state)) return false;
@@ -197,6 +213,10 @@ export class UpnpPlaybackSessionManager {
     getQobuzState,
     stopMpd,
     expectedRendererHost = process.env.UPNP_MOODE_RENDERER_HOST || '10.0.0.254',
+    startupUriReadyTimeoutMs = process.env.UPNP_STARTUP_URI_READY_TIMEOUT_MS,
+    startupPollIntervalMs = process.env.UPNP_STARTUP_POLL_INTERVAL_MS,
+    startupSettleMs = process.env.UPNP_STARTUP_SETTLE_MS,
+    wait = delay,
     now = () => Date.now(),
     sessionTtlMs = 30 * 60 * 1000,
     log = console,
@@ -211,6 +231,18 @@ export class UpnpPlaybackSessionManager {
       : async () => ({ active: false, suppressMpdHistory: false });
     this.stopMpd = typeof stopMpd === 'function' ? stopMpd : null;
     this.expectedRendererHost = expectedRendererHost;
+    this.startupUriReadyTimeoutMs = boundedMilliseconds(
+      startupUriReadyTimeoutMs,
+      DEFAULT_STARTUP_URI_READY_TIMEOUT_MS,
+    );
+    this.startupPollIntervalMs = boundedMilliseconds(startupPollIntervalMs, DEFAULT_STARTUP_POLL_INTERVAL_MS, {
+      minimum: 50,
+      maximum: 1_000,
+    });
+    this.startupSettleMs = boundedMilliseconds(startupSettleMs, DEFAULT_STARTUP_SETTLE_MS, {
+      maximum: 1_000,
+    });
+    this.wait = typeof wait === 'function' ? wait : delay;
     this.now = now;
     this.sessionTtlMs = Math.max(60_000, Number(sessionTtlMs) || 30 * 60 * 1000);
     this.log = log;
@@ -836,6 +868,171 @@ export class UpnpPlaybackSessionManager {
     return String(snapshot.queueHash || '') !== String(session.baseline.queueHash || '');
   }
 
+  _logStartupTiming(session, event, details = {}) {
+    const trace = session?.startupDiagnostics;
+    if (!trace) return;
+    const timestamp = this.now();
+    this.log.info?.('[upnp] playback startup timing', {
+      event,
+      traceId: trace.traceId,
+      elapsedMs: Math.max(0, timestamp - trace.startedAt),
+      ...(trace.playSentAt == null ? {} : {
+        sincePlaySentMs: Math.max(0, timestamp - trace.playSentAt),
+      }),
+      ...details,
+    });
+  }
+
+  async _waitForStartupUriReady(session) {
+    const trace = session.startupDiagnostics;
+    const inspection = session.lastInspection;
+    const hasMediaInfo = serviceHasAction(inspection, 'GetMediaInfo');
+    const deadline = Date.now() + this.startupUriReadyTimeoutMs;
+    const maxAttempts = Math.max(1, Math.min(200,
+      Math.ceil(this.startupUriReadyTimeoutMs / this.startupPollIntervalMs) + 1));
+    let attempts = 0;
+    let ready = false;
+    let lastUriMatched = false;
+    let reason = hasMediaInfo ? 'uri_not_confirmed' : 'get_media_info_not_advertised';
+
+    const probe = async (action) => {
+      const timeoutMs = Math.max(1, deadline - Date.now());
+      let timeoutId;
+      const timeout = new Promise((resolve) => {
+        timeoutId = setTimeout(() => resolve({ timedOut: true }), timeoutMs);
+      });
+      const request = Promise.resolve()
+        .then(() => this.controlPoint.transportAction(session.rendererId, action, { InstanceID: 0 }))
+        .then((value) => ({ value }), (error) => ({ error }));
+      const result = await Promise.race([request, timeout]);
+      clearTimeout(timeoutId);
+      return result;
+    };
+
+    if (hasMediaInfo) {
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        attempts = attempt;
+        const mediaProbe = await probe('GetMediaInfo');
+        if (mediaProbe.timedOut) {
+          reason = 'get_media_info_timeout';
+          this._logStartupTiming(session, 'uri_readiness_probe_timeout', { attempt, action: 'GetMediaInfo' });
+          break;
+        }
+        if (mediaProbe.error) {
+          const error = mediaProbe.error;
+          reason = error?.code === 'UPNP_UNSUPPORTED'
+            ? 'get_media_info_unavailable'
+            : 'get_media_info_failed';
+          this._logStartupTiming(session, 'uri_readiness_probe_failed', {
+            attempt,
+            code: String(error?.code || 'UPNP_PROBE_FAILED'),
+          });
+          break;
+        }
+
+        const uriMatches = sameUpnpResourceUri(mediaProbe.value?.CurrentURI, session.resource.uri);
+        lastUriMatched = uriMatches;
+        let transportState = '';
+        let transportStateObservable = false;
+        if (serviceHasAction(inspection, 'GetTransportInfo')) {
+          const transportProbe = await probe('GetTransportInfo');
+          if (!transportProbe.timedOut && !transportProbe.error) {
+            transportState = normalizedState(transportProbe.value?.CurrentTransportState);
+            transportStateObservable = KNOWN_TRANSPORT_STATES.has(transportState);
+          } else {
+            this._logStartupTiming(session, transportProbe.timedOut
+              ? 'transport_readiness_probe_timeout'
+              : 'transport_readiness_probe_failed', {
+              attempt,
+              action: 'GetTransportInfo',
+              code: String(transportProbe.error?.code || ''),
+            });
+          }
+        }
+
+        let positionDurationAvailable = false;
+        if (uriMatches && serviceHasAction(inspection, 'GetPositionInfo')) {
+          const positionProbe = await probe('GetPositionInfo');
+          if (!positionProbe.timedOut && !positionProbe.error) {
+            positionDurationAvailable = (parseDuration(positionProbe.value?.TrackDuration) || 0) > 0;
+          }
+        }
+
+        if (uriMatches && transportState !== 'ERROR' && transportState !== 'TRANSITIONING') {
+          ready = true;
+          reason = transportStateObservable ? 'expected_uri_and_stable_state' : 'expected_uri_state_unavailable';
+          trace.uriReadyAt = this.now();
+          this._logStartupTiming(session, 'renderer_uri_ready', {
+            attempt,
+            uriMatched: true,
+            transportState: transportState || 'unavailable',
+            positionDurationAvailable,
+            reason,
+          });
+          break;
+        }
+
+        if (transportState === 'ERROR') {
+          reason = 'renderer_reported_error';
+          break;
+        }
+        if (uriMatches && transportState === 'TRANSITIONING') reason = 'renderer_transitioning';
+
+        const remainingMs = deadline - Date.now();
+        if (attempt >= maxAttempts || remainingMs <= 0) break;
+        await this.wait(Math.min(this.startupPollIntervalMs, remainingMs));
+      }
+    }
+
+    if (!ready) {
+      trace.readinessFallback = reason;
+      this._logStartupTiming(session, 'renderer_uri_readiness_fallback', {
+        attempts,
+        uriMatched: lastUriMatched,
+        reason,
+        fallback: 'retain_existing_play_flow',
+      });
+    }
+
+    if (ready && this.startupSettleMs > 0) {
+      await this.wait(this.startupSettleMs);
+      this._logStartupTiming(session, 'renderer_startup_settle_completed', {
+        settleMs: this.startupSettleMs,
+        uriReady: true,
+      });
+    }
+    return { ready, attempts, reason };
+  }
+
+  _recordStartupObservation(session, inspection) {
+    const trace = session?.startupDiagnostics;
+    if (!trace
+      || trace.sessionGeneration !== session.generation
+      || this.session !== session
+      || trace.playAttempts < 1) return;
+
+    const state = currentTransport(inspection);
+    if (state && state !== trace.lastTransportState) {
+      const previousState = trace.lastTransportState || 'unavailable';
+      trace.lastTransportState = state;
+      if (trace.firstTransportStateChangeAt == null) {
+        trace.firstTransportStateChangeAt = this.now();
+        this._logStartupTiming(session, 'first_transport_state_change', {
+          previousState,
+          transportState: state,
+        });
+      }
+    }
+
+    const positionSeconds = parseDuration(currentPosition(inspection).relativeTime);
+    if (positionSeconds != null && positionSeconds > 0 && trace.firstNonzeroPositionAt == null) {
+      trace.firstNonzeroPositionAt = this.now();
+      this._logStartupTiming(session, 'first_nonzero_playback_position', {
+        positionSeconds,
+      });
+    }
+  }
+
   async _refreshActive(session, { invalidateOnConflict = true } = {}) {
     let inspection;
     try {
@@ -896,6 +1093,7 @@ export class UpnpPlaybackSessionManager {
         });
       }
     }
+    this._recordStartupObservation(session, inspection);
     return inspection;
   }
 
@@ -1157,15 +1355,52 @@ export class UpnpPlaybackSessionManager {
       throw new UpnpError('UPnP session is not ready to load', { code: 'UPNP_BAD_STATE', status: 409 });
     }
     await this._mutationPreflight(session);
-    await this.controlPoint.transportAction(session.rendererId, 'SetAVTransportURI', {
-      InstanceID: 0,
-      CurrentURI: session.resource.uri,
-      CurrentURIMetaData: session.metadata,
+    const startedAt = this.now();
+    session.startupDiagnostics = {
+      traceId: randomBytes(9).toString('hex'),
+      sessionGeneration: session.generation,
+      startedAt,
+      uriSetSentAt: startedAt,
+      uriSetCompletedAt: null,
+      uriReadyAt: null,
+      playSentAt: null,
+      playCompletedAt: null,
+      currentPlaySentAt: null,
+      playAttempts: 0,
+      playAttemptUncertain: false,
+      firstTransportStateChangeAt: null,
+      firstNonzeroPositionAt: null,
+      lastTransportState: '',
+      mediaHttpRequestObservable: false,
+      firstMediaHttpRequestAt: null,
+    };
+    this._logStartupTiming(session, 'set_av_transport_uri_sent');
+    try {
+      await this.controlPoint.transportAction(session.rendererId, 'SetAVTransportURI', {
+        InstanceID: 0,
+        CurrentURI: session.resource.uri,
+        CurrentURIMetaData: session.metadata,
+      });
+    } catch (error) {
+      this._logStartupTiming(session, 'set_av_transport_uri_failed', {
+        code: String(error?.code || 'UPNP_TRANSPORT_FAILED'),
+      });
+      throw error;
+    }
+    session.startupDiagnostics.uriSetCompletedAt = this.now();
+    this._logStartupTiming(session, 'set_av_transport_uri_completed', {
+      commandDurationMs: Math.max(0, session.startupDiagnostics.uriSetCompletedAt - startedAt),
+    });
+    this._logStartupTiming(session, 'media_http_request_not_observable', {
+      observable: false,
+      reason: 'renderer_fetches_resource_directly_from_media_server',
+      firstRequestAtMs: null,
     });
     await this._postMutation(session);
     session.ownsAudio = true;
     session.state = 'loaded';
     session.lastError = '';
+    await this._waitForStartupUriReady(session);
     return this.snapshot();
   }
 
@@ -1182,7 +1417,76 @@ export class UpnpPlaybackSessionManager {
     if (!currentActionsAllow(inspection, 'Play')) {
       throw new UpnpError('Renderer does not currently allow Play', { code: 'UPNP_UNSUPPORTED', status: 409 });
     }
-    await this.controlPoint.transportAction(session.rendererId, 'Play', { InstanceID: 0, Speed: '1' });
+    const transportState = currentTransport(inspection);
+    const trace = session.startupDiagnostics;
+    if (session.state === 'loaded' && trace?.playAttemptUncertain) {
+      if (ACTIVE_TRANSPORT_STATES.has(transportState)) {
+        session.ownsAudio = true;
+        session.state = transportState === 'PAUSED_PLAYBACK' ? 'paused' : 'playing';
+        session.lastError = '';
+        trace.playAttemptUncertain = false;
+        trace.playCompletedAt = trace.playCompletedAt ?? this.now();
+        this._logStartupTiming(session, 'play_not_resent_renderer_already_active', {
+          transportState,
+        });
+        return this.snapshot();
+      }
+
+      this._logStartupTiming(session, 'play_not_resent_renderer_state_uncertain', {
+        transportState: transportState || 'unavailable',
+      });
+      throw new UpnpError('The renderer Play result is uncertain; refusing to send a duplicate Play command', {
+        code: 'UPNP_PLAYBACK_UNCERTAIN',
+        status: 409,
+      });
+    }
+
+    if (session.state === 'loaded' && transportState === 'PLAYING') {
+      session.ownsAudio = true;
+      session.state = 'playing';
+      session.lastError = '';
+      this._logStartupTiming(session, 'play_not_resent_renderer_already_active', {
+        transportState,
+      });
+      return this.snapshot();
+    }
+
+    if (session.state === 'loaded' && trace) {
+      trace.lastTransportState = transportState;
+      trace.playSentAt = trace.playSentAt ?? this.now();
+      trace.currentPlaySentAt = this.now();
+      trace.playAttempts += 1;
+      trace.playAttemptUncertain = false;
+      this._logStartupTiming(session, 'play_sent', {
+        attempt: trace.playAttempts,
+        transportStateBeforePlay: transportState || 'unavailable',
+      });
+    }
+    try {
+      await this.controlPoint.transportAction(session.rendererId, 'Play', { InstanceID: 0, Speed: '1' });
+    } catch (error) {
+      if (session.state === 'loaded' && trace) {
+        const definitiveRejection = [
+          'UPNP_SOAP_FAULT',
+          'UPNP_UNSUPPORTED',
+          'UPNP_BAD_REQUEST',
+          'UPNP_ACTION_NOT_ALLOWED',
+        ].includes(String(error?.code || ''));
+        trace.playAttemptUncertain = !definitiveRejection;
+        this._logStartupTiming(session, definitiveRejection ? 'play_rejected' : 'play_failed_response_uncertain', {
+          attempt: trace.playAttempts,
+          code: String(error?.code || 'UPNP_TRANSPORT_FAILED'),
+        });
+      }
+      throw error;
+    }
+    if (session.state === 'loaded' && trace) {
+      trace.playCompletedAt = this.now();
+      this._logStartupTiming(session, 'play_completed', {
+        attempt: trace.playAttempts,
+        commandDurationMs: Math.max(0, trace.playCompletedAt - trace.currentPlaySentAt),
+      });
+    }
     await this._postMutation(session);
     session.ownsAudio = true;
     session.state = 'playing';

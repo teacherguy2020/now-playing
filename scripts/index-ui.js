@@ -2418,6 +2418,20 @@ function normalizeArtKey(url) {
   // The file query is part of the identity for the station-logo resolver;
   // dropping it makes every station look like the same cached image.
   if (/\/art\/radio-logo\.jpg(?:\?|$)/i.test(withoutFragment)) return withoutFragment;
+  // Qobuz Connect uses a stable artwork fingerprint on current-art URLs so
+  // the display can repaint when the remote album changes. Preserve only
+  // that meaningful query-bearing identity; ordinary cache-busters below
+  // should still be ignored.
+  try {
+    const parsed = new URL(withoutFragment, 'http://sonuvi.invalid');
+    const qobuzFingerprint = parsed.searchParams.get('qobuz') || '';
+    if (
+      /\/art\/current(?:_320)?\.jpg$/i.test(parsed.pathname) &&
+      /^[a-f0-9]{16}$/i.test(qobuzFingerprint)
+    ) {
+      return withoutFragment;
+    }
+  } catch {}
   // Ignore ordinary cache-busters and fragments so equality is stable.
   return withoutFragment.split('?')[0];
 }

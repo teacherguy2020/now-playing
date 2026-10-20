@@ -44,8 +44,9 @@ The control point is implemented in:
   device/service/SCPD parsing, DIDL-Lite normalization, trusted browse-item
   references, bounded AVTransport actions, and capability inspection.
 - `src/lib/upnp-playback-session.mjs` — single-track selection, renderer
-  ownership, MPD queue baselines, Qobuz/MPD takeover gates, transport state,
-  and source-neutral Now Playing normalization.
+  ownership, MPD queue baselines, Qobuz/MPD takeover gates, bounded startup
+  readiness, transport timing diagnostics, and source-neutral Now Playing
+  normalization.
 - `src/lib/upnp-playback-queue.mjs` — bounded, in-memory Sonuvi queue state,
   revision-checked mutations, session-generation binding, manual navigation,
   and confirmed end-of-track advancement.
@@ -272,6 +273,45 @@ URI query strings are removed from the returned current/next URI diagnostics,
 and the API reports whether current metadata exists without returning raw
 metadata that could contain a session URL. No renderer ownership is changed.
 
+### Single-track startup readiness
+
+For a Sonuvi-owned track, the session waits for `SetAVTransportURI` to return,
+then polls `GetMediaInfo` until the renderer reports the expected resource URI.
+When available, `GetTransportInfo` is polled as well; `TRANSITIONING` delays
+`Play`, while a stable state or an unavailable state probe allows startup to
+continue once the expected URI is confirmed. `GetPositionInfo` is supplementary
+and records whether the renderer has exposed a duration. A bounded timeout or
+an unsupported/incomplete `GetMediaInfo` response falls back to the existing
+ownership check and `Play` flow. A short settle interval follows confirmed
+readiness only.
+
+If a `Play` SOAP response is ambiguous, the session re-reads renderer state
+before responding. An already active renderer is adopted without another
+`Play`; if no active state can be confirmed, Sonuvi refuses to resend because
+`STOPPED` could also mean a very short track already finished. A definite SOAP
+fault remains retryable. Startup polling is session-bound, and late
+observations from a replaced session are ignored. This startup handshake does
+not change the separate `SetNextAVTransportURI` gapless preparation path.
+
+The renderer-compatible DIDL resource URI is fetched directly by the renderer
+from the registered MediaServer. Sonuvi validates the resource origin and
+matches its advertised `protocolInfo`/MIME type to the renderer sink, then
+passes it to `SetAVTransportURI`; it does not proxy the media response. The
+server therefore cannot observe the Denon's first media GET or verify that
+server's redirect chain, HTTP response MIME type, `Content-Length`, byte-range
+responses, or transcoding behavior. The normalized DIDL `size` and MIME fields
+are advertised metadata, not measurements of the media HTTP response. The
+first renderer request is explicitly logged as unobservable, without recording
+the resource URL. A packet capture or Jellyfin/MediaServer access log is still
+needed to distinguish renderer startup delay from a slow or unsuitable media
+response. No Jellyfin-specific media or transcoding route is present in this
+UPnP playback path.
+
+Timing logs include Set URI send/completion, URI readiness/fallback, Play
+send/completion or ambiguous failure, the first observed post-Play transport
+state change, and the first non-zero position. They include elapsed durations
+and a per-start trace ID, but never the resource URI or its query token.
+
 ## Relationship to moOde and future playback
 
 The intended future path is:
@@ -308,6 +348,12 @@ Optional environment controls are:
 - `UPNP_MAX_XML_BYTES` — device/SCPD body limit;
 - `UPNP_MAX_SOAP_BYTES` — SOAP response body limit; and
 - `UPNP_DISCOVERY_COOLDOWN_MS` — minimum cached-discovery interval; and
+- `UPNP_STARTUP_URI_READY_TIMEOUT_MS` — maximum URI-readiness polling window
+  (default 3000 ms);
+- `UPNP_STARTUP_POLL_INTERVAL_MS` — interval between readiness probes
+  (default 150 ms); and
+- `UPNP_STARTUP_SETTLE_MS` — short delay after confirmed URI readiness
+  (default 150 ms); and
 - `UPNP_MOODE_RENDERER_HOST` — approved renderer discovery host (defaults to
   `10.0.0.254`).
 
@@ -323,6 +369,10 @@ SSDP, relative URL resolution, malformed/unsafe XML, response limits, SOAP
 faults, DIDL-Lite metadata, ContentDirectory browsing, renderer capability
 probes, bounded AVTransport actions, selection/session ownership, queue
 protection, lifecycle failures, and a no-playback-mutation assertion.
+Startup-session fixtures also cover expected URI readiness before `Play`,
+delayed renderer readiness, timeout fallback, incomplete state probes,
+ambiguous-Play duplicate prevention, stale observations, and timing-log URL
+redaction.
 
 The live verification records the devices and capabilities found on the
 trusted LAN and captures a read-only MPD queue baseline. It must not be
@@ -331,4 +381,4 @@ read-only route checks do not send `SetAVTransportURI`, `Play`, `Pause`, or
 `Stop`; a multi-track queue acceptance test remains separately approved and
 must be coordinated step by step.
 
-Last reviewed: 2026-10-13.
+Last reviewed: 2026-10-17.

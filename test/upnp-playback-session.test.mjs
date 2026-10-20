@@ -59,7 +59,13 @@ const ITEM2 = {
   resources: [RESOURCE2],
 };
 
-function makeInspection({ state = 'STOPPED', uri = '', nextUri = '', actions = ['Play', 'Pause', 'Stop'] } = {}) {
+function makeInspection({
+  state = 'STOPPED',
+  uri = '',
+  nextUri = '',
+  actions = ['Play', 'Pause', 'Stop'],
+  serviceActions = ['GetTransportInfo'],
+} = {}) {
   return {
     device: {
       id: 'renderer-1',
@@ -68,7 +74,10 @@ function makeInspection({ state = 'STOPPED', uri = '', nextUri = '', actions = [
     },
     services: [{
       serviceType: 'urn:schemas-upnp-org:service:AVTransport:1',
-      actions: ['SetAVTransportURI', 'SetNextAVTransportURI', 'Play', 'Pause', 'Stop', 'GetTransportInfo'],
+      actions: [
+        'SetAVTransportURI', 'SetNextAVTransportURI', 'Play', 'Pause', 'Stop',
+        ...serviceActions,
+      ],
     }],
     protocolInfo: { available: true, source: [], sink: ['http-get:*:audio/flac:*'] },
     readOnlyState: {
@@ -80,10 +89,23 @@ function makeInspection({ state = 'STOPPED', uri = '', nextUri = '', actions = [
   };
 }
 
-function makeHarness({ mpdState = 'stop', qobuz = {}, queue = [], renderer = {}, stopMpdFailure = false } = {}) {
+function makeHarness({
+  mpdState = 'stop',
+  qobuz = {},
+  queue = [],
+  renderer = {},
+  stopMpdFailure = false,
+  startupResponses = {},
+  startupUriReadyTimeoutMs,
+  startupPollIntervalMs,
+  startupSettleMs = 0,
+  wait,
+} = {}) {
   let inspection = makeInspection(renderer);
   let currentMpdState = mpdState;
   const actions = [];
+  const logs = [];
+  const probeResponses = structuredClone(startupResponses);
   const stopMpdCalls = [];
   const controlPoint = {
     getTrustedMediaItem(ref) {
@@ -105,7 +127,11 @@ function makeHarness({ mpdState = 'stop', qobuz = {}, queue = [], renderer = {},
         resource: structuredClone(resource),
         metadata: buildDidlLiteMetadata(item, resource),
         mediaServer: { id: 'server-1', location: 'http://10.0.0.254:8200/root.xml' },
-        renderer: structuredClone(inspection),
+        renderer: {
+          device: structuredClone(inspection.device),
+          inspection: structuredClone(inspection),
+          avTransportActions: inspection.services[0].actions,
+        },
       };
     },
     async inspectRenderer() {
@@ -113,6 +139,24 @@ function makeHarness({ mpdState = 'stop', qobuz = {}, queue = [], renderer = {},
     },
     async transportAction(_rendererId, action, args) {
       actions.push({ action, args: structuredClone(args) });
+      if (['GetMediaInfo', 'GetTransportInfo', 'GetPositionInfo'].includes(action)) {
+        const queued = probeResponses[action];
+        if (Array.isArray(queued) && queued.length) {
+          const result = queued.shift();
+          if (result instanceof Error) throw result;
+          return structuredClone(result);
+        }
+        if (action === 'GetMediaInfo') {
+          return { CurrentURI: inspection.readOnlyState.media.currentUri };
+        }
+        if (action === 'GetTransportInfo') {
+          return { CurrentTransportState: inspection.readOnlyState.transport.state };
+        }
+        return {
+          TrackDuration: inspection.readOnlyState.position.trackDuration,
+          RelTime: inspection.readOnlyState.position.relativeTime,
+        };
+      }
       if (action === 'SetAVTransportURI') {
         inspection.readOnlyState.media.currentUri = RESOURCE.uri.split('?')[0];
         inspection.readOnlyState.transport.state = 'STOPPED';
@@ -143,13 +187,21 @@ function makeHarness({ mpdState = 'stop', qobuz = {}, queue = [], renderer = {},
       return { ok: true };
     },
     expectedRendererHost: '10.0.0.254',
+    startupUriReadyTimeoutMs,
+    startupPollIntervalMs,
+    startupSettleMs,
+    wait,
     sessionTtlMs: 60_000,
     now: () => 1_700_000_000_000,
-    log: { warn() {} },
+    log: {
+      info(message, details) { logs.push({ message, details }); },
+      warn() {},
+    },
   });
   return {
     manager,
     actions,
+    logs,
     stopMpdCalls,
     snapshot,
     controlPoint,
@@ -209,6 +261,182 @@ test('single-track session selects without mutation and gates every transport co
   assert.equal(harness.manager.shouldSuppressMpdHistory(), false);
   assert.equal(harness.actions[3].action, 'Stop');
   await assert.rejects(() => harness.manager.play(selected.sessionId), (error) => error.code === 'UPNP_OWNERSHIP_LOST');
+});
+
+test('startup confirms the expected renderer URI before sending Play', async () => {
+  const harness = makeHarness({
+    renderer: { serviceActions: ['GetMediaInfo', 'GetTransportInfo', 'GetPositionInfo'] },
+    startupResponses: {
+      GetMediaInfo: [{ CurrentURI: RESOURCE.uri }],
+      GetTransportInfo: [{ CurrentTransportState: 'STOPPED' }],
+      GetPositionInfo: [{ TrackDuration: RESOURCE.duration }],
+    },
+  });
+  const selected = await harness.manager.select({ itemRef: ITEM.selectionRef, rendererId: 'renderer-1' });
+
+  await harness.manager.load(selected.sessionId);
+  const playBeforeExplicitRequest = harness.actions.some((entry) => entry.action === 'Play');
+  assert.equal(playBeforeExplicitRequest, false);
+  assert.ok(harness.logs.some((entry) => entry.details.event === 'renderer_uri_ready'));
+
+  await harness.manager.play(selected.sessionId);
+  const setUriIndex = harness.actions.findIndex((entry) => entry.action === 'SetAVTransportURI');
+  const readyProbeIndex = harness.actions.findIndex((entry) => entry.action === 'GetMediaInfo');
+  const playIndex = harness.actions.findIndex((entry) => entry.action === 'Play');
+  assert.ok(setUriIndex < readyProbeIndex);
+  assert.ok(readyProbeIndex < playIndex);
+});
+
+test('startup polls through delayed URI and transport readiness', async () => {
+  const harness = makeHarness({
+    renderer: { serviceActions: ['GetMediaInfo', 'GetTransportInfo', 'GetPositionInfo'] },
+    startupUriReadyTimeoutMs: 1_000,
+    startupPollIntervalMs: 50,
+    wait: async () => {},
+    startupResponses: {
+      GetMediaInfo: [
+        { CurrentURI: 'http://10.0.0.254:8200/previous.flac' },
+        { CurrentURI: RESOURCE.uri },
+      ],
+      GetTransportInfo: [
+        { CurrentTransportState: 'TRANSITIONING' },
+        { CurrentTransportState: 'STOPPED' },
+      ],
+      GetPositionInfo: [{ TrackDuration: RESOURCE.duration }],
+    },
+  });
+  const selected = await harness.manager.select({ itemRef: ITEM.selectionRef, rendererId: 'renderer-1' });
+
+  await harness.manager.load(selected.sessionId);
+
+  assert.equal(harness.actions.filter((entry) => entry.action === 'GetMediaInfo').length, 2);
+  const ready = harness.logs.find((entry) => entry.details.event === 'renderer_uri_ready');
+  assert.equal(ready.details.attempt, 2);
+  assert.equal(ready.details.transportState, 'STOPPED');
+  assert.equal(harness.logs.some((entry) => entry.details.event === 'renderer_uri_readiness_fallback'), false);
+});
+
+test('startup readiness timeout falls back to the existing Play flow', async () => {
+  const harness = makeHarness({
+    renderer: { serviceActions: ['GetMediaInfo'] },
+    startupUriReadyTimeoutMs: 100,
+    startupPollIntervalMs: 50,
+    wait: async () => {},
+    startupResponses: {
+      GetMediaInfo: Array(3).fill({ CurrentURI: 'http://10.0.0.254:8200/previous.flac' }),
+    },
+  });
+  const selected = await harness.manager.select({ itemRef: ITEM.selectionRef, rendererId: 'renderer-1' });
+
+  await harness.manager.load(selected.sessionId);
+  const fallback = harness.logs.find((entry) => entry.details.event === 'renderer_uri_readiness_fallback');
+  assert.equal(fallback.details.reason, 'uri_not_confirmed');
+  assert.equal(fallback.details.uriMatched, false);
+
+  const playing = await harness.manager.play(selected.sessionId);
+  assert.equal(playing.state, 'playing');
+  assert.equal(harness.actions.filter((entry) => entry.action === 'Play').length, 1);
+});
+
+test('incomplete transport probes do not block playback after the URI is confirmed', async () => {
+  const harness = makeHarness({
+    renderer: { serviceActions: ['GetMediaInfo', 'GetTransportInfo'] },
+    startupResponses: {
+      GetMediaInfo: [{ CurrentURI: RESOURCE.uri }],
+      GetTransportInfo: [{ CurrentTransportState: 'UNKNOWN' }],
+    },
+  });
+  const selected = await harness.manager.select({ itemRef: ITEM.selectionRef, rendererId: 'renderer-1' });
+
+  await harness.manager.load(selected.sessionId);
+  const ready = harness.logs.find((entry) => entry.details.event === 'renderer_uri_ready');
+  assert.equal(ready.details.reason, 'expected_uri_state_unavailable');
+  assert.equal(harness.actions.some((entry) => entry.action === 'GetTransportInfo'), true);
+  assert.equal((await harness.manager.play(selected.sessionId)).state, 'playing');
+});
+
+test('ambiguous Play response does not issue a duplicate command when the renderer is active', async () => {
+  const harness = makeHarness();
+  const selected = await harness.manager.select({ itemRef: ITEM.selectionRef, rendererId: 'renderer-1' });
+  await harness.manager.load(selected.sessionId);
+  const transportAction = harness.controlPoint.transportAction.bind(harness.controlPoint);
+  harness.controlPoint.transportAction = async (rendererId, action, args) => {
+    if (action === 'Play') {
+      await transportAction(rendererId, action, args);
+      const error = new Error('fixture SOAP response timed out');
+      error.code = 'ETIMEDOUT';
+      throw error;
+    }
+    return transportAction(rendererId, action, args);
+  };
+
+  await assert.rejects(() => harness.manager.play(selected.sessionId), (error) => error.code === 'ETIMEDOUT');
+  const retry = await harness.manager.play(selected.sessionId);
+
+  assert.equal(retry.state, 'playing');
+  assert.equal(harness.actions.filter((entry) => entry.action === 'Play').length, 1);
+  assert.ok(harness.logs.some((entry) => entry.details.event === 'play_not_resent_renderer_already_active'));
+});
+
+test('ambiguous Play response is not retried when the renderer reports STOPPED', async () => {
+  const harness = makeHarness();
+  const selected = await harness.manager.select({ itemRef: ITEM.selectionRef, rendererId: 'renderer-1' });
+  await harness.manager.load(selected.sessionId);
+  const transportAction = harness.controlPoint.transportAction.bind(harness.controlPoint);
+  harness.controlPoint.transportAction = async (rendererId, action, args) => {
+    if (action === 'Play') {
+      harness.actions.push({ action, args: structuredClone(args) });
+      const error = new Error('fixture SOAP response timed out before state changed');
+      error.code = 'ETIMEDOUT';
+      throw error;
+    }
+    return transportAction(rendererId, action, args);
+  };
+
+  await assert.rejects(() => harness.manager.play(selected.sessionId), (error) => error.code === 'ETIMEDOUT');
+  await assert.rejects(
+    () => harness.manager.play(selected.sessionId),
+    (error) => error.code === 'UPNP_PLAYBACK_UNCERTAIN',
+  );
+
+  assert.equal(harness.actions.filter((entry) => entry.action === 'Play').length, 1);
+});
+
+test('startup timing diagnostics record first transport change and position without media URLs', async () => {
+  const harness = makeHarness();
+  const selected = await harness.manager.select({ itemRef: ITEM.selectionRef, rendererId: 'renderer-1' });
+  await harness.manager.load(selected.sessionId);
+  await harness.manager.play(selected.sessionId);
+  await harness.manager.state(selected.sessionId);
+
+  const events = harness.logs.map((entry) => entry.details.event);
+  assert.ok(events.includes('set_av_transport_uri_sent'));
+  assert.ok(events.includes('set_av_transport_uri_completed'));
+  assert.ok(events.includes('media_http_request_not_observable'));
+  assert.ok(events.includes('play_sent'));
+  assert.ok(events.includes('play_completed'));
+  assert.ok(events.includes('first_transport_state_change'));
+  assert.ok(events.includes('first_nonzero_playback_position'));
+  assert.doesNotMatch(JSON.stringify(harness.logs), /http:|token=fixture/);
+});
+
+test('late startup observations from an old session are ignored', async () => {
+  const harness = makeHarness();
+  const first = await harness.manager.select({ itemRef: ITEM.selectionRef, rendererId: 'renderer-1' });
+  await harness.manager.load(first.sessionId);
+  await harness.manager.play(first.sessionId);
+  const oldSession = harness.manager.session;
+  await harness.manager.stop(first.sessionId);
+  const replacement = await harness.manager.select({ itemRef: ITEM2.selectionRef, rendererId: 'renderer-1' });
+  const eventCountBefore = harness.logs.filter((entry) => entry.details.event === 'first_transport_state_change').length;
+
+  harness.manager._recordStartupObservation(oldSession, makeInspection({
+    state: 'PLAYING',
+    uri: RESOURCE.uri,
+  }));
+
+  assert.equal(harness.manager.snapshot().generation, replacement.generation);
+  assert.equal(harness.logs.filter((entry) => entry.details.event === 'first_transport_state_change').length, eventCountBefore);
 });
 
 test('next-track preparation is confirmed and committed without a second load/play sequence', async () => {
