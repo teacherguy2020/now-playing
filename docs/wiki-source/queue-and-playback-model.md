@@ -169,6 +169,20 @@ The wiki already shows enough to say:
 ### 4. Visible surfaces re-render from resulting state
 After the action, now-playing/controller/display surfaces reflect the updated playback and queue state, often through route-backed derived state rather than a direct raw MPD dump alone.
 
+## Current queue and playback ownership matrix
+
+| Target or queue | Queue owner | Transport owner | Mutation boundary |
+| --- | --- | --- | --- |
+| Home moOde / Alexa | Sonuvi Server's MPD-backed queue | moOde/MPD, with Alexa as a request origin when Echo-targeted | Bearer mobile queue routes or the existing Track-Key web routes; Alexa is not a second Home queue |
+| Qobuz Connect | PiBuZ remote queue | PiBuZ/Qobuz Connect receiver | Read through the versioned mobile snapshot; guarded controls use fresh ownership, current-track/queue CAS fields, and read-after-write verification |
+| UPnP | Sonuvi process-local logical queue | Selected UPnP renderer/session | Queue revision and renderer/session generation are required; renderer MPD queue and resource URLs are not client contracts |
+| This iPhone/iPad | Native device queue for current playback surfaces | Native player for authorized local/server media | Device queue actions stay device-local; Server history events and existing opaque `MobileTrack` identities remain shared contracts |
+| Saved Qobuz queue | Server-owned ordered occurrences | Played later through the Qobuz Connect target | Capture requires stable confirmed ownership; play uses explicit confirmation and typed operation status |
+
+This matrix separates queue ownership from playback authority. A controller
+can display a queue without owning the renderer, and an integration such as
+Alexa can originate a request without becoming the queue authority.
+
 ## Current known playback/queue route families
 
 This page is not yet the final route catalog, but we already know enough to identify major families.
@@ -291,13 +305,13 @@ This is already enough to show that queue behavior is multi-layered.
 
 ## What this page does not yet claim
 
-This page is intentionally foundational, not fully exhaustive.
+This page is intentionally foundational, not a replacement for the endpoint
+catalog. It now records the current high-value route families and ownership
+rules, but it is not a generated inventory of every route or request field.
 
-It does **not yet** claim:
-- the exact full queue route inventory
-- the exact queue-wizard route list
-- the exact implementation ownership of embedded queue backend routes
-- the exact MPD/helper/service flow for every queue mutation path
+It does not attempt to reproduce every queue-wizard route, embedded UI helper,
+or MPD command sequence. Those details belong in the endpoint catalog and
+source-specific pages linked below.
 
 Those are the next-level proofing tasks.
 
@@ -328,7 +342,7 @@ Those would turn this conceptual model into a much stronger engineering map.
 
 ## Timestamp
 
-Last updated: 2026-04-06 06:21 America/Chicago
+Last updated: 2026-10-20 18:54 America/Chicago
 
 ## Current status
 

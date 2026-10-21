@@ -14,7 +14,8 @@ Use this page to test endpoints and see live JSON/output quickly.
 - **Run request**: executes the request.
 - **Copy as curl**: copies a terminal-ready curl command.
 - **Copy response**: copies the latest JSON result.
-- **send x-track-key**: includes auth key on requests that need it.
+- **send x-track-key**: includes the web/admin auth key on requests that need
+  it. This retained diagnostics page is not the native mobile API client.
 
 ## Common tasks
 ### Check now-playing quickly
@@ -29,3 +30,12 @@ Use this page to test endpoints and see live JSON/output quickly.
 
 ## Tip
 This is the best page for troubleshooting before changing code.
+
+## Native mobile Audio Info
+
+The native iPhone/iPad contract is the separate bearer-authenticated
+`GET /v1/mobile/audio-info` route. It is a sanitized wrapper around the
+Track-Key-protected server diagnostics route and deliberately distinguishes
+configured values, source/decoded reports, and measured ALSA hardware output.
+Native code must use its mobile bearer session and must not copy or transmit a
+Track Key.

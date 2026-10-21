@@ -16,6 +16,14 @@ for an isolated Qobuz UPnP MediaServer experiment. It does not authorize a
 Qobuz login, Docker installation, image pull, container start, or new playback
 mutation.
 
+> **Status:** historical proof-of-concept and deployment record. It is not the
+> current Qobuz Connect playback path. Current working Connect behavior uses
+> the enhanced PiBuZ receiver and the guarded
+> `/v1/mobile/qobuz-connect/*` contracts; current account/session status is
+> documented by the Server's Qobuz account routes. The Docker/media-server
+> restrictions and no-execution statements below remain in force for this
+> historical experiment.
+
 ## 1. Current result
 
 ### Sonuvi queue

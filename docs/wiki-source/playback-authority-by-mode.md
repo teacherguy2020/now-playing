@@ -63,6 +63,30 @@ normal queue semantics:
 Only Echo-targeted Alexa playback should use Alexa remembered-track state,
 synthetic queue handling, or Alexa-specific display treatment.
 
+## Qobuz Connect authority overlay
+
+Qobuz Connect is a distinct remote playback owner, not an alternate MPD
+metadata label. The current Server contract normalizes PiBuZ state as
+`source: "qobuz-connect"`, `owner: "pibuz"`, and `output: "moode"`. A session
+being available or connected is not sufficient to call it active: transport
+control requires a fresh snapshot with confirmed-active ownership, an active
+receiver, and no stale state.
+
+The guarded bearer routes are:
+
+- `GET /v1/mobile/qobuz-connect` and `/queue` for the snapshot and ordered
+  remote queue;
+- `POST /v1/mobile/qobuz-connect/{play,resume,pause,next,previous,seek}` and
+  `/queue/jump` for the supported transport operations; and
+- `POST /v1/mobile/qobuz-connect/release` for the explicit handoff back to
+  Home moOde.
+
+Controls use current-track and opaque queue-fingerprint compare-and-swap
+fields where applicable, then perform read-after-write verification. The
+Server does not expose Qobuz credentials or claim to provide Qobuz catalog
+authentication. A Home queue mutation must release and confirm Qobuz
+ownership inactive before it starts competing MPD playback.
+
 ## Mode 1: local file playback
 
 ## Authority model
@@ -126,6 +150,14 @@ When the active mode is UPnP, first verify:
 - moOde current-song/status for the active UPnP item
 - whether the system is resolving the item back to a known local-file/library identity
 - whether art is coming from UPnP item metadata versus a recovered local-file truth path
+
+For playback authority, the current UPnP implementation adds a stricter
+boundary: Sonuvi owns the logical queue and playback session, while the
+selected renderer executes transport. The renderer's MPD queue is an
+implementation detail. Queue mutations require the current revision, and
+transport is bound to the renderer/session generation. A normal session will
+not silently take over active MPD, Qobuz, or uncertain renderer playback;
+explicit takeover requires confirmation and the current generation.
 
 ## Common failure shapes
 - art not matching what a user expects because the resolution path did or did not successfully map back to local-file truth
@@ -235,6 +267,12 @@ Check:
 - UPnP-specific resolution logic
 - whether fallback to local-file truth is expected/succeeding
 
+### If Qobuz Connect
+Check:
+- the normalized snapshot's `ownershipState`, `receiverActive`, and `stale` fields
+- whether the requested control was allowed by the fresh-active guard
+- whether a Home action first completed the explicit release/handoff
+
 ### If radio/stream
 Check:
 - raw metadata quality
@@ -259,6 +297,10 @@ This page should stay linked with:
 - `integrations.md`
 - `gotchas-and-lessons.md`
 - `local-environment.md`
+
+## Timestamp
+
+Last updated: 2026-10-20 18:54 America/Chicago
 
 ## Current status
 

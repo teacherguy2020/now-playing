@@ -59,6 +59,23 @@ If you only need the compressed structural model, use this:
 - **Primary runtime split**: app host versus moOde host
 - **Reality modifier**: local overrides and host-side patch material can materially change live behavior
 
+## Current authority and ownership matrix
+
+The following matrix is the current Server implementation, not the proposed
+native-catalog architecture:
+
+| Concern | Current owner or authority | Boundary to preserve |
+| --- | --- | --- |
+| Home moOde playback | Sonuvi Server mediates MPD/moOde transport and queue state | Web and bearer-mobile callers use opaque queue handles; MPD paths and Track Keys stay server-side |
+| Qobuz Connect | PiBuZ owns the remote receiver/session and queue; Sonuvi exposes a guarded normalized view | Controls require fresh confirmed ownership and read-after-write verification; release is the handoff before Home mutations |
+| UPnP | Sonuvi owns the logical queue/session while the selected renderer owns transport execution | Renderer MPD queues and signed resource URLs are implementation details; explicit takeover and revision/session-generation checks are required |
+| Native iPhone/iPad playback | The current app can play authorized server/local media on the device while using existing Server `MobileTrack` identities and mobile contracts | The device-owned canonical catalog, provider aggregation, and server-independent identity/sync model are approved target architecture, not current implementation |
+| Listening history and Last.fm | Sonuvi Server owns qualification, deduplication, local history, and server-side Last.fm submission | Native clients report progress only; they never submit credentials or invent catalog identity |
+
+Authentication is also split by boundary: browser/admin and legacy integration
+routes commonly use Track Key, while `/v1/mobile/*` uses a scoped bearer
+session. These credentials are not interchangeable.
+
 ## The current structural shape
 
 A useful current structural summary is:
@@ -223,7 +240,7 @@ Use:
 
 ## Timestamp
 
-Last updated: 2026-04-06 05:46 America/Chicago
+Last updated: 2026-10-20 18:54 America/Chicago
 
 ## Relationship to other pages
 

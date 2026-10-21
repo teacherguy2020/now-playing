@@ -22,7 +22,7 @@ moOde remains a core, dependable playback engine for Sonuvi. The wider goal is t
 - Queue Wizard and Last.fm-assisted Vibe Radio for building listening sessions.
 - Listening history, play counts, and scrobbling for supported playback paths.
 - Internet radio, podcasts, YouTube audio, and supported webstream playback.
-- Device-local music import and catalog features in the native iOS app, including music on external storage.
+- Device-local playback/import surfaces in the native iOS app, including music on external storage; the approved device-owned canonical catalog and provider-merge model remain future architecture.
 - Apple Music integrations and sharing features in the native app.
 - Qobuz Connect observation, playback controls, and saved-queue capture and restoration through the Sonuvi Server and an enhanced PiBuZ receiver.
 

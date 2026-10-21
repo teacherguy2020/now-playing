@@ -9,6 +9,14 @@ Distributed now-playing system for moOde with clear separation of concerns.
 
 In most installs these are on the same host, but they can be split.
 
+## Authority scope
+
+moOde/MPD remains authoritative for the Home/local/radio playback paths that
+actually use MPD. It is not a universal authority for every Sonuvi playback
+source. Qobuz Connect, Sonuvi-owned UPnP playback, and native device playback
+have separate state, queue, and control boundaries; the API host arbitrates
+those boundaries and exposes source-aware normalized state.
+
 ## Default ports (current)
 
 - **API:** `3101`
@@ -18,7 +26,7 @@ These are configurable via runtime config (`ports.api`, `ports.ui`).
 
 ## Topology
 
-1. **moOde Player (audio authority)**
+1. **moOde Player (MPD-domain authority)**
    - MPD/moOde playback + library
    - `/command/?cmd=get_currentsong`
    - `/command/?cmd=status`
@@ -27,7 +35,7 @@ These are configurable via runtime config (`ports.api`, `ports.ui`).
 2. **API + Web Host (brains + UI host)**
    - Node API server (`moode-nowplaying-api.mjs`)
    - Route modules under `src/routes/*`
-   - Metadata normalization (local/radio/UPnP/AirPlay)
+   - Metadata and state normalization (local/radio/UPnP/AirPlay/Qobuz/mobile)
    - Artwork resolution/caching
    - JSON API on `:3101` (default)
    - Web UI on `:8101` (default)
@@ -64,12 +72,30 @@ These are configurable via runtime config (`ports.api`, `ports.ui`).
 - Queue/rating/control routes under route modules (for example `src/routes/queue.routes.mjs`, `src/routes/rating.routes.mjs`, `src/routes/config.routes.mjs`)
 - Config/maintenance endpoints generally require `x-track-key`
 
+### Bearer-authenticated native mobile
+
+- Native clients use scoped `Authorization: Bearer <mobile-session-token>`
+  under `/v1/mobile/*`; they do not receive the Track Key.
+- `POST /v1/mobile/session` enrolls a device with the configured
+  `X-Mobile-Enrollment-Code`; access tokens last 12 hours and refresh tokens
+  use a separate 365-day `mobile-refresh` scope.
+- Current shared contracts include mobile now-playing/queue, Qobuz Connect,
+  UPnP, Audio Info, local-source availability, playback events, and recent
+  history. Responses use opaque IDs and sanitized server-owned data.
+
 ## Playback mode behavior
 
 - **Local files:** full metadata, ratings/progress shown
 - **Radio:** iTunes enrichment when possible; graceful fallback to station/moOde metadata
-- **UPnP:** stream-like behavior, metadata can be limited
+- **Qobuz Connect:** PiBuZ owns the remote receiver/session and queue while
+  Sonuvi observes and exposes guarded controls; Qobuz is not an MPD queue.
+- **UPnP:** Sonuvi owns a guarded logical queue/session for its playback path;
+  the renderer's MPD queue is an implementation detail and is not silently
+  restored.
 - **AirPlay:** uses `aplmeta.txt` + LAN/public art fallbacks
+- **Native iOS:** the device may play through its own queue, while current
+  Server-backed MobileTrack identity, local-source resolution, and shared
+  history contracts remain authoritative during the transition.
 
 ## Guardrails
 
@@ -82,7 +108,7 @@ These are configurable via runtime config (`ports.api`, `ports.ui`).
 
 - Alexa never talks directly to moOde
 - API host mediates queue coordination
-- MPD remains authoritative
+- MPD remains authoritative for the Alexa Home/moOde path
 - Queue alignment and metadata consistency are preserved
 
 ## Mabel and VIP integration boundary

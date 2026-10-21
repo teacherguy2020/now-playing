@@ -15,6 +15,15 @@ Authorization: Bearer <mobile-session-token>
 The route requires the existing `mobile-api` bearer scope. A Track Key alone
 must receive HTTP 401. The native client never calls `/now-playing` directly.
 
+This is a Server-backed current-state contract. It does not make the current
+Server catalog permanent: the approved native target is an iOS-device-owned
+canonical catalog with provider observations and server-independent native
+playback, but identity merging, enrichment conflict rules, and synchronization
+contracts for that target are not implemented here. Until those contracts are
+approved, the client must treat the Server's opaque `MobileTrack` identity and
+the routes in this page as authoritative for Home playback, metadata, artwork,
+and history handoff.
+
 ## Response
 
 ```json
@@ -406,4 +415,4 @@ invoking the native APNs bridge. This keeps podcast paths out of the client
 while allowing podcast starts to receive the same track-change notification
 behavior as music.
 
-*Last reviewed: 2026-10-15 15:45 America/Chicago*
+*Last reviewed: 2026-10-20 18:54 America/Chicago*

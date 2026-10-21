@@ -6,10 +6,10 @@
 - **DeepWiki entry point:** [Sonuvi Server overview](https://deepwiki.com/teacherguy2020/now-playing/1-overview)
 - **DeepWiki publication timestamp shown by the mirror:** 2026-10-20T12:20:14.694701
 - **DeepWiki source revision:** dee06724c3549b9ab87fc70412ce1043572befab
-- **Current repository revision:** 8c194c2f2ec2f90fe858b79529d8fbce3460f7b4
+- **Repository revision audited (review baseline):** 8c194c2f2ec2f90fe858b79529d8fbce3460f7b4
 - **Current branch:** main
 - **Repository state at review start:** clean; local main and origin/main were identical
-- **Review artifact:** this document only; it is uncommitted in an isolated detached worktree
+- **Review artifact:** this report is preserved in canonical `docs/wiki-source/`; the follow-up code-first reconciliation edits remain uncommitted in an isolated detached worktree until approval
 
 This is an analysis-first audit. No production code, API contract, service,
 deployment, iOS repository, or current main worktree was changed.
@@ -165,7 +165,7 @@ with the scope qualifications noted below:
 
 1. **The application has a moOde/MPD foundation, an app-host API/web tier,
    and browser/display surfaces.** The current root
-   [ARCHITECTURE.md](../../ARCHITECTURE.md) and
+   [architecture.md](architecture.md) and
    [architecture.md](architecture.md) describe this same split.
 
 2. **The API and static web service are normally separate listeners.** The
@@ -230,7 +230,7 @@ with the scope qualifications noted below:
    Track Key remains primary for the classic web/controller routes. Native
    mobile routes use signed bearer sessions and scoped media/radio tickets.
    Mobile routes must not be described as raw Track-Key or raw MPD access.
-   The current [mobile-auth.mjs](../../src/lib/mobile-auth.mjs) and
+   The current [mobile-auth.mjs](https://github.com/teacherguy2020/now-playing/blob/main/src/lib/mobile-auth.mjs) and
    [api-endpoint-catalog.md](api-endpoint-catalog.md) establish the split.
 
 4. **“UPnP is a stream-like playback mode.”**
@@ -442,13 +442,13 @@ with separate observation and guarded control responsibilities:
 - Qobuz queue occurrences and duplicates must be preserved
 
 Relevant source includes
-[pibuz-qobuz-control.mjs](../../src/lib/pibuz-qobuz-control.mjs),
-[qobuz-connect-control.mjs](../../src/lib/qobuz-connect-control.mjs),
-[qobuz-connect-release.mjs](../../src/lib/qobuz-connect-release.mjs), and
-[mobile.routes.mjs](../../src/routes/mobile.routes.mjs).
+[pibuz-qobuz-control.mjs](https://github.com/teacherguy2020/now-playing/blob/main/src/lib/pibuz-qobuz-control.mjs),
+[qobuz-connect-control.mjs](https://github.com/teacherguy2020/now-playing/blob/main/src/lib/qobuz-connect-control.mjs),
+[qobuz-connect-release.mjs](https://github.com/teacherguy2020/now-playing/blob/main/src/lib/qobuz-connect-release.mjs), and
+[mobile.routes.mjs](https://github.com/teacherguy2020/now-playing/blob/main/src/routes/mobile.routes.mjs).
 
 The existing
-[28-qobuz-connect-now-playing.md](../runbooks/28-qobuz-connect-now-playing.md)
+[`docs/runbooks/28-qobuz-connect-now-playing.md`](https://github.com/teacherguy2020/now-playing/blob/main/docs/runbooks/28-qobuz-connect-now-playing.md)
 contains useful provenance and release material, but parts of its Phase 1
 description are now stale: it still describes the adapter as read-only and
 the earlier worktree as intentionally undeployed, while current main exposes
@@ -457,7 +457,7 @@ language should be separated from the current implementation before that
 runbook is used as an agent instruction.
 
 The Qobuz media-server experiment in
-[29-upnp-queue-and-qobuz-media-server-poc.md](../runbooks/29-upnp-queue-and-qobuz-media-server-poc.md)
+[`docs/runbooks/29-upnp-queue-and-qobuz-media-server-poc.md`](https://github.com/teacherguy2020/now-playing/blob/main/docs/runbooks/29-upnp-queue-and-qobuz-media-server-poc.md)
 must remain clearly separate from the working PiBuZ/Qobuz Connect path.
 
 ### UPnP and renderer control
@@ -747,3 +747,79 @@ Those questions require separate, explicitly authorized runtime or repository
 audits. They do not weaken the main conclusion: DeepWiki accurately captures
 the older Sonuvi foundation, but current architectural continuity depends on
 the source-backed boundaries documented above.
+
+## 12. Code-first repository documentation accuracy pass
+
+The reconciliation follow-up was performed against current main at
+`673e5037731443db17b82df6b293733fb030efa9` and the implementation currently
+present in `src/`, `moode-nowplaying-api.mjs`, `scripts/`, and the retained
+operational documents. The comparison order was source code first, then
+canonical `docs/wiki-source/`, then root documentation and runbooks, with
+DeepWiki treated as derived evidence. This pass did not change application
+code, API behavior, configuration, deployment, or the iOS repository.
+
+### Classification ledger
+
+| Area | Code-first result | Repository documentation classification | DeepWiki relationship |
+| --- | --- | --- | --- |
+| Playback authority | MPD owns Home/local/radio MPD playback; PiBuZ owns active Qobuz Connect state; Sonuvi owns the UPnP logical queue/session; native devices report through current Server contracts | Canonical architecture/playback pages now agree. Root `ARCHITECTURE.md` was incomplete because it implied a universal MPD authority; it now scopes MPD to its domain | DeepWiki is outdated/incomplete when its MPD-centered description is read as the whole system |
+| Qobuz Connect and handoff | `pibuz-qobuz-control.mjs` guards play/pause/next/previous/seek/queue-jump with current-track/queue evidence and read-after-write verification; release requires confirmed inactive ownership | Runbook 28 and mobile/API pages now distinguish read-only snapshot from guarded control and explicit release. The earlier runbook wording was outdated | DeepWiki independently predates the control/release lifecycle and repeats the older read-only boundary |
+| UPnP queue and renderer | `mobile-upnp.routes.mjs`, `upnp-playback-session.mjs`, and `upnp-playback-queue.mjs` implement bearer-safe routes, revisions, session generations, explicit takeover, and renderer transport | Canonical UPnP/API pages now agree. The UPnP page's implemented AVTransport path was incorrectly labeled future and is corrected; root architecture was incomplete | DeepWiki page 7.9 is useful but revision-stale on readiness and current control details |
+| Mobile API and Server/iOS boundary | Mobile sessions are signed scoped bearers; current routes cover now-playing, queue, Audio Info, Qobuz, UPnP, local-source, playback events, and recent history; Track Key remains server/web-only | Canonical mobile/API pages and the new Server→iOS handoff agree. Root docs were incomplete about the mobile credential/contract boundary and are corrected | DeepWiki is incomplete relative to the current bearer route family and target/current iOS split |
+| History and Last.fm | MPD polling excludes stream/AirPlay/podcast/Alexa paths; native event routes accept supported catalog/radio/podcast observations; Server owns threshold, deduplication, local history, and Last.fm submission; Qobuz ownership suppresses MPD attribution | Canonical history page agreed; retained compatibility guide was incomplete/outdated about the exact formula and native non-MPD events and is corrected | DeepWiki page 6.6 is independently mislabeled and does not document the current history pipeline |
+| Audio diagnostics | Track-Key `/config/moode/audio-info` gathers moOde rows and optional ALSA/source diagnostics; bearer `/v1/mobile/audio-info` sanitizes rows and `audio-info.v1` provenance | Canonical diagnostics/API pages agree; retained diagnostics guide was incomplete about the separate mobile boundary and is corrected | DeepWiki page 9.7 has a sound foundation but is incomplete/stale on the mobile wrapper and measured-vs-configured distinction |
+| Deployment and recovery | The repository helper and ops docs define the Pi5 target, path-sensitive restart boundary, and post-deploy verification; live runtime state was not asserted | Canonical deployment/ops docs agree; no live-service claim was added from source inspection alone | DeepWiki is operationally incomplete; its installer view is not evidence of live deployment state |
+| Historical documentation layers | `docs/wiki-source/sources/` is explicitly tooling support; compatibility guides and runbooks are retained secondary references; runbook 28/29 now label historical phases | Current-vs-historical boundaries are now explicit in the affected pages rather than deleting useful history | DeepWiki remains a derived historical snapshot, not a second authoring hierarchy |
+
+The requested classification labels resolve as follows:
+
+- **Code and documentation agree:** canonical playback-authority, API,
+  diagnostics, deployment, and history pages now match the inspected source;
+  live service state remains a separate question.
+- **Documentation is outdated:** the retained history guide, UPnP future-path
+  wording, and older Qobuz runbook control description were corrected.
+- **Documentation is incomplete:** root architecture/config and the retained
+  diagnostics guide omitted current authority or mobile-contract boundaries;
+  those omissions were corrected.
+- **Documentation contradicts another document:** the historical read-only
+  wording in Runbook 28 conflicted with current control code and the current
+  canonical API pages; the runbook now labels the historical layer and current
+  control surface separately.
+- **DeepWiki is outdated despite accurate repository documentation:** its
+  Qobuz read-only boundary and current UPnP readiness/control omissions are
+  revision-stale while the source-backed repository pages describe the newer
+  implementation.
+- **Implementation behavior is ambiguous or insufficiently verified:** live
+  Pi5 service state, external renderer media-response behavior, provider-side
+  Qobuz account behavior, and the future iOS catalog/synchronization contract
+  were not inferred from source or DeepWiki.
+
+### Repository documentation errors versus independent DeepWiki inaccuracies
+
+The following were **repository documentation defects corrected in this
+reconciliation**: the root architecture's universal-sounding MPD authority and
+omission of Qobuz/UPnP/mobile boundaries; the retained history guide's
+imprecise threshold and blanket exclusion wording; the UPnP page's future
+label for implemented AVTransport/session behavior; the mobile diagnostics
+omission in the retained diagnostics guide; and the Qobuz runbook's ambiguous
+description of the snapshot adapter as the complete control surface.
+
+The following are **independent DeepWiki inaccuracies or revision limits**:
+the indexed revision predates the current Qobuz control/release and expanded
+mobile/UPnP contracts; page 6.6 is mislabeled for history/scrobbling while its
+body discusses About/Apple metadata; and page 7.9 describes the older
+read-only Qobuz boundary and lacks current readiness/control details. DeepWiki
+also cannot establish live service state, external renderer behavior, or the
+approved future iOS catalog contracts from its page text.
+
+### Current versus planned architecture
+
+The current Server-backed opaque `MobileTrack` and mobile queue/history
+contracts remain the implementation boundary. The approved iOS-device-owned
+canonical Catalog, provider aggregation, identity merging, metadata-conflict
+rules, and server-independent playback remain planned and intentionally
+unresolved. The retained history and compatibility material is useful only
+when read with its current/legacy labels; it is not a substitute for source
+verification.
+
+*Code-first pass reviewed: 2026-10-20 America/Chicago.*

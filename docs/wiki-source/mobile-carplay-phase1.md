@@ -448,9 +448,34 @@ native playback-history reporter, Siri/App Intents, and the standard CarPlay
 template coordinator. See the native repository's
 `docs/native-feature-surfaces.md` for the user-facing feature matrix.
 
-The server remains authoritative for catalog identity, metadata, playlists,
-artwork, Home moOde/Alexa queue state, and history qualification. The client
-never receives raw MPD/file paths, Track Keys, or Alexa credentials.
+### Current Server contract
+
+The current Server remains authoritative for the existing opaque `MobileTrack`
+identities, metadata, playlists, artwork, Home moOde/Alexa queue state, and
+history qualification. A native device queue may hold those identities and
+play authorized local/server media, but the Server still owns the shared
+mobile contracts and the history/scrobble decision. The client never receives
+raw MPD/file paths, Track Keys, Qobuz credentials, or Alexa credentials.
+
+The concise contract checklist for the separate native-client audit is the
+[Server → iOS contract handoff](https://github.com/teacherguy2020/now-playing/blob/main/docs/ios/server-to-ios-contract-handoff-2026-10.md).
+
+The two contracts that connect local native playback back to the Server are:
+
+- `GET /v1/mobile/local-source/manifest`, which reports canonical-ID to
+  relative-file availability; a missing or stale local copy is a cache miss,
+  not a new track identity; and
+- `POST /v1/mobile/playback/events`, which accepts canonical progress events
+  and lets the Server qualify history and Last.fm submission.
+
+### Approved target, not current behavior
+
+The approved future architecture is an iOS-device-owned canonical Catalog that
+aggregates provider observations and can support server-independent native
+playback. That target does **not** yet define or implement identity merging,
+metadata-conflict resolution, provider synchronization, or the final
+server-independent playback contract. This page must not turn those open
+design questions into a claimed current API.
 
 ## Deployment and verification status
 
@@ -494,4 +519,4 @@ approved and configured in the signed native target.
 
 ## Timestamp
 
-Last updated: 2026-10-03 America/Chicago
+Last updated: 2026-10-20 18:54 America/Chicago

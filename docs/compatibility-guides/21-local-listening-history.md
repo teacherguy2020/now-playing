@@ -6,15 +6,20 @@ when Last.fm is not configured.
 
 ## Collection
 
-The API polls MPD independently of browser/controller requests. A local music
-file becomes a listening event after the same conservative scrobble-style
-threshold used by the project: the track must be at least 30 seconds long and
-play for at least 30 seconds and 50% of its duration, capped at four minutes.
-The event is recorded once per playback instance.
+The API polls MPD independently of browser/controller requests. For an MPD
+local file, a track shorter than 30 seconds never qualifies. Otherwise the
+required played time is exactly
+`max(30s, min(50% of duration, 240s))`; an unknown-duration track requires
+240 seconds. The event is recorded once per playback instance.
 
-Radio/stream entries, podcasts, AirPlay, and Alexa-mode playback are excluded
-from the local music statistics. The store is local to the Now Playing host;
-it is not sent to Last.fm or any other service.
+The MPD polling path excludes radio/stream entries, podcasts, AirPlay, and
+Alexa-mode playback. Native clients may also report supported catalog, radio,
+or podcast observations through `POST /v1/mobile/playback/events`; those use
+the same Server-side qualification and deduplication path and are recorded as
+source `ios-device` when they qualify. Qobuz Connect is excluded while PiBuZ
+owns the renderer, and UPnP playback suppresses the duplicate MPD observer.
+The store is local to the Now Playing host; Last.fm submission is a separate
+server-side hook.
 
 ## Storage
 

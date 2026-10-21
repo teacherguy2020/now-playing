@@ -126,6 +126,21 @@ The API service should be understood as having two broad classes of routes:
 
 That security distinction is one of the key things future API pages should keep explicit.
 
+## Authentication domains and the Server/iOS boundary
+
+Current route families use more than one credential domain:
+
+| Domain | Typical routes | Client boundary |
+| --- | --- | --- |
+| Track Key | `/config/*`, `/upnp/*`, browser/admin integration routes | Web/operator tooling; never sent by the native app |
+| Mobile bearer | `/v1/mobile/*` | Native iPhone/iPad/CarPlay contracts; tokens carry the `mobile-api` scope |
+| Short-lived media/radio tickets | `/v1/mobile/media/...`, `/v1/mobile/radio/stream/...` | Only the authorized player request; not a replacement for the bearer session |
+
+The Server resolves opaque mobile IDs and owns playback-target guards,
+history qualification, and provider credentials. Native clients report intent
+and playback observations; they do not receive raw paths, MPD identifiers,
+Track Keys, Qobuz credentials, or Last.fm credentials.
+
 ## Current route-family map
 
 This is a working route-family map, not yet the final exhaustive inventory.
@@ -175,6 +190,27 @@ Current config work already shows:
 - `/podcasts/nightly-run`
 
 This appears to be a small automation-focused route family.
+
+### Native mobile contract family
+
+The current shared Server/iOS surface is the bearer family under
+`/v1/mobile`. Its high-value contracts include:
+
+- now-playing, next-up, Audio Info, catalog, artwork, playlists, and the
+  Home moOde queue;
+- Qobuz Connect snapshot, queue, guarded transport, saved queues, and
+  explicit release/handoff;
+- UPnP discovery, sanitized browse/search, renderer/session transport, and
+  revision/session-generation-bound logical queues;
+- `GET /v1/mobile/local-source/manifest` for canonical-ID-to-local-byte
+  availability; and
+- `POST /v1/mobile/playback/events` plus
+  `GET /v1/mobile/history/recent` for native observation and recent history.
+
+The approved device-owned canonical catalog is a future architecture. The
+current Server-backed `MobileTrack` and these route contracts remain the
+implementation boundary until identity and synchronization rules are designed
+and approved.
 
 ## Architectural interpretation
 
@@ -253,4 +289,4 @@ It is also an API-driven app-host service whose route families are one of the ma
 
 ## Timestamp
 
-Last updated: 2026-04-06 06:37 America/Chicago
+Last updated: 2026-10-20 18:54 America/Chicago

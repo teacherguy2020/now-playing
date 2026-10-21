@@ -269,7 +269,45 @@ Best companion pages:
 - [api-config-and-runtime-endpoints.md](api-config-and-runtime-endpoints.md)
 - [api-endpoint-catalog.md](api-endpoint-catalog.md)
 
-## 7. Podcasts
+## 7. Qobuz Connect / PiBuZ
+
+Qobuz Connect is a remote playback integration with its own owner and queue.
+PiBuZ owns the remote receiver/session; Sonuvi normalizes state, mediates
+guarded transport, stores saved queue definitions, and owns the explicit
+release/handoff back to Home moOde. The current contract is not Qobuz account
+authentication or catalog browsing from iOS.
+
+Use [`docs/runbooks/28-qobuz-connect-now-playing.md`](https://github.com/teacherguy2020/now-playing/blob/main/docs/runbooks/28-qobuz-connect-now-playing.md)
+for lifecycle and recovery details and [playback-authority-by-mode.md](playback-authority-by-mode.md)
+for the authority rules. The bearer routes under
+`/v1/mobile/qobuz-connect/*` and the Track-Key account-status/release routes
+are distinct client boundaries.
+
+## 8. UPnP
+
+UPnP has three separate responsibilities: discovery/media-server resolution,
+renderer transport, and Sonuvi's logical playback queue/session. The selected
+renderer executes transport, but the Server owns the logical queue, revision,
+and session-generation guards. It will not silently take over active MPD,
+Qobuz, or uncertain renderer playback. Mobile access uses sanitized bearer
+routes under `/v1/mobile/upnp/*`; browser/admin access uses the Track-Key
+`/upnp/*` family.
+
+See [upnp-control-point.md](upnp-control-point.md) for the source-backed
+session and queue contract. The historical media-server experiment is not the
+current Qobuz Connect path.
+
+## 9. Native iOS / CarPlay
+
+The Server is currently the contract authority for opaque `MobileTrack`
+identity, Home queue state, metadata/artwork, target-aware mobile APIs, and
+history qualification. Native playback can resolve local bytes through the
+canonical-ID manifest and reports progress through the bearer event route.
+The approved device-owned canonical catalog/provider-aggregation architecture
+is future work; its identity, conflict, and synchronization rules are not
+invented by this Server documentation.
+
+## 10. Podcasts
 
 Podcast support is a real integration/runtime family with concrete routes and operational paths.
 
@@ -342,4 +380,4 @@ The current wiki already supports a stronger truth:
 
 ## Timestamp
 
-Last updated: 2026-09-22 America/Chicago
+Last updated: 2026-10-20 18:54 America/Chicago

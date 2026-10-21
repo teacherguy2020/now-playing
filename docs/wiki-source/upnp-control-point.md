@@ -22,6 +22,10 @@ Milestone 3 adds a separately authenticated logical queue above that session;
 the queue is authoritative for Sonuvi-controlled UPnP playback, while the
 renderer-owned MPD queue remains an implementation detail.
 
+These milestone labels describe the implementation sequence; the discovery,
+session, and logical-queue behaviors described below are present in current
+main. They are not an unimplemented roadmap.
+
 This is intentionally separate from:
 
 - the `qobuz-connect`/Pibuz metadata path;
@@ -120,6 +124,37 @@ bit depth. A transport mutation accepts only an opaque selection reference
 returned by the server's recent Browse/Search state; it never accepts a raw
 URL from a browser.
 
+## Native mobile UPnP contract
+
+`src/routes/mobile-upnp.routes.mjs` exposes the same Server-owned UPnP engine
+through a bearer-safe `/v1/mobile/upnp/*` bridge. Native iPhone/iPad/CarPlay
+clients must use this family rather than sending the Track Key to `/upnp/*`.
+
+The bridge covers:
+
+- discovery and safe device details;
+- media-server capabilities, browse/search, and mediated item artwork;
+- renderer capabilities and read-only transport;
+- preflight and session/transport reads; and
+- logical queue create/read/add/remove/clear/reorder, explicit takeover, and
+  play/resume/pause/stop/next/previous mutations.
+
+Mobile responses are sanitized: they expose opaque device, selection, queue,
+revision, session, and generation values plus allowlisted capabilities and
+last-confirmed renderer state. They do not expose device-advertised LAN URLs,
+MPD paths/IDs, SOAP, or signed resource URLs.
+
+Queue mutations require the current integer `revision`. Transport remains
+bound to the renderer/session generation. The dedicated
+`POST /v1/mobile/upnp/queues/:queueId/takeover` route requires literal
+`confirm: true` and the current `sessionGeneration`; an explicit
+`takeover: true` on Play Now is the compatibility equivalent. Ordinary Play
+does not silently take over active MPD, Qobuz, or uncertain renderer state.
+
+This mobile bridge does not create a second queue or a second UPnP engine. The
+Server remains the authority for the logical Sonuvi queue and playback
+ownership; native iOS is a caller of that contract.
+
 ## Web controller integration
 
 The three controller shells expose one `Music Sources` navigation entry:
@@ -150,10 +185,11 @@ Qobuz gates.
 
 ## Qobuz account status and unauthenticated browsing
 
-The Sonuvi-only Phase 1 Qobuz integration adds the authenticated read-only
-route `GET /config/qobuz/account/status`. It probes discovered MediaServer
-roots and identifies the Qobuz provider only when the root contains its
-`0$qobuz$` namespace. That proves MediaServer discovery, not account login;
+The separate Qobuz account-status surface (not the Qobuz Connect transport
+surface) adds the authenticated read-only route
+`GET /config/qobuz/account/status`. It probes discovered MediaServer roots and
+identifies the Qobuz provider only when the root contains its `0$qobuz$`
+namespace. That proves MediaServer discovery, not account login;
 the response therefore reports `not_connected` with authentication
 `not_verified` until an approved authorization mechanism exists. The response
 contains no Qobuz password, token, application material, authorization code,
@@ -312,31 +348,31 @@ send/completion or ambiguous failure, the first observed post-Play transport
 state change, and the first non-zero position. They include elapsed durations
 and a per-start trace ID, but never the resource URI or its query token.
 
-## Relationship to moOde and future playback
+## Relationship to moOde and current playback
 
-The intended future path is:
+The implemented path is:
 
 ```text
 UPnP MediaServer ContentDirectory
         | Browse/Search
         v
 Sonuvi control point and queue
-        | AVTransport (future milestone)
+        | guarded AVTransport/session control
         v
 moOde UPnP renderer -> MPD -> ALSA -> CAVALLI DAC
 ```
 
-Milestone 2 uses the existing moOde renderer by discovered UDN/device ID and
-the expected moOde host; it does not select a renderer by friendly name. It
-rejects selection while Qobuz Connect is active/stale, MPD is playing/paused,
-or the renderer is loaded/active/uncertain. It captures the MPD queue hash and
-never restores a queue automatically. While a Sonuvi UPnP session owns the
-renderer, the normal MPD/queue mutation surfaces are rejected and the
-listening-history observer is suppressed so the same MPD-backed playback is
-not recorded a second time. External renderer URI changes invalidate the
-session. Milestone 3 wraps this session in the logical queue described above;
-Qobuz Connect remains a separate source and Sonuvi never routes queue commands
-through Pibuz.
+The current Server path uses the existing moOde renderer by discovered UDN/
+device ID and the expected moOde host; it does not select a renderer by
+friendly name. It rejects selection while Qobuz Connect is active/stale, MPD
+is playing/paused, or the renderer is loaded/active/uncertain. It captures the
+MPD queue hash and never restores a queue automatically. While a Sonuvi UPnP
+session owns the renderer, the normal MPD/queue mutation surfaces are
+rejected and the listening-history observer is suppressed so the same
+MPD-backed playback is not recorded a second time. External renderer URI
+changes invalidate the session. The logical queue wraps this session as
+described above; Qobuz Connect remains a separate source and Sonuvi never
+routes queue commands through Pibuz.
 
 ## Configuration and operations
 
@@ -381,4 +417,4 @@ read-only route checks do not send `SetAVTransportURI`, `Play`, `Pause`, or
 `Stop`; a multi-track queue acceptance test remains separately approved and
 must be coordinated step by step.
 
-Last reviewed: 2026-10-17.
+Last reviewed: 2026-10-20 18:54 America/Chicago.

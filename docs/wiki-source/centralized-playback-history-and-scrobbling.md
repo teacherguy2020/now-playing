@@ -26,8 +26,9 @@ history store as source "mpd".
 MPD local history uses the existing conservative rule:
 
 - the track must be at least 30 seconds long;
-- at least 30 seconds must be played; and
-- at least 50% must be played, capped at four minutes.
+- the required played time is `max(30 seconds, min(50% of duration, 240
+  seconds))`; and
+- an unknown-duration track requires 240 seconds.
 
 MPD Last.fm submission is now owned by Sonuvi in the live deployment.
 `LASTFM_MPD_MODE=active` enables the backend hook, and `mpdscribble.service`
@@ -37,11 +38,14 @@ state.
 
 ### iOS / CarPlay
 
-The bearer-authenticated POST /v1/mobile/playback/events route resolves the
-opaque mobile track ID against the canonical Sonuvi catalog. It passes the
-resolved catalog track key, metadata, session ID, source "ios-device", elapsed
-time, duration, and start time to the shared history store. The client never
-supplies a filesystem identity for recording and never contacts Last.fm.
+The bearer-authenticated `POST /v1/mobile/playback/events` route resolves the
+opaque mobile track ID against the current Server catalog. Its body requires
+`trackId`, a valid `sessionId`, and one of `start`, `playing`, `progress`,
+`pause`, `stop`, or `ended`; `elapsedSec`, `durationSec`, and `startedAt` are
+optional progress fields. The Server records the resolved catalog identity
+with source `ios-device`, session identity `mobile:<sessionId>`, and the
+shared qualification rules. The client never supplies a filesystem identity
+for recording and never contacts Last.fm.
 
 Repeated progress, pause, resume, and ended events use the same
 mobile:<sessionId> identity. A qualifying session creates at most one local
@@ -89,8 +93,8 @@ clients.
 For non-MPD sources, Sonuvi uses Last.fm's scrobble-style threshold:
 
 - the track must be at least 30 seconds long;
-- at least 30 seconds and 50% of the track must be played, whichever comes
-  first, capped at four minutes; and
+- the required played time is `max(30 seconds, min(50% of duration, 240
+  seconds))`; and
 - if duration is unknown, 240 seconds of playback is required.
 
 The backend submits track.scrobble asynchronously using server-side
@@ -130,6 +134,12 @@ The migration has been completed after non-MPD submission, shadow comparison,
 and duplicate-submission validation. If rollback is required, stop or disable
 Sonuvi MPD submission before re-enabling mpdscribble.
 
+Qobuz Connect is intentionally excluded from this history path while PiBuZ
+owns the renderer. UPnP Sonuvi playback suppresses the duplicate MPD-history
+observation and records only through an explicit supported source event when
+one exists. A remote source must not be attributed to MPD merely because the
+renderer exposes an MPD-compatible transport.
+
 ## Canonical identity and unresolved events
 
 Mobile events must resolve their opaque track ID against the server catalog.
@@ -152,4 +162,4 @@ produce one local play and at most one Last.fm scrobble. If a rollback is ever
 needed, stop Sonuvi MPD submission before re-enabling mpdscribble to avoid
 double submissions.
 
-*Last reviewed: 2026-09-30 America/Chicago*
+*Last reviewed: 2026-10-20 18:54 America/Chicago*

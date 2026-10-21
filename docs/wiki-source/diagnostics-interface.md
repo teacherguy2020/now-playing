@@ -286,7 +286,9 @@ rows remain available and unchanged when `diagnostics=1` is omitted.
 
 The optional `diagnostics` object is versioned as `audio-info.v1`. The bearer
 `GET /v1/mobile/audio-info` route requests this view when Audio Info is opened
-and forwards the safe object alongside the existing rows. Its main fields are:
+and forwards the safe object alongside the existing rows. It is the shared
+Server/iOS diagnostic contract; native clients do not call the Track-Key
+`/config` route directly. Its main fields are:
 
 - `sourceFormat`: source-file or renderer-reported codec, bit depth, rate, and
   channels;
@@ -339,4 +341,4 @@ while Qobuz owns playback; the server route also rejects those MPD commands
 with a source-aware unavailable response. No Qobuz remote-control API is
 implied by the metadata integration.
 
-*Last reviewed: 2026-10-15 16:13 America/Chicago*
+*Last reviewed: 2026-10-20 18:54 America/Chicago*

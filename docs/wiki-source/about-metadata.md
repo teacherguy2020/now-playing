@@ -5,6 +5,12 @@ track through the server's canonical Now Playing payload. This is a server
 capability only; the Now Playing card and its personnel flip behavior are not
 changed by Phase 1.
 
+About metadata is optional provider enrichment, not playback identity,
+history, scrobbling, or queue authority. A missing or ambiguous provider
+match must leave playback and source-specific authority unchanged. The current
+mobile DTO may carry the same sanitized About object, but provider lookup,
+credentials, caching, and attribution obligations remain Server-side.
+
 ## Provider and identity
 
 The existing public iTunes Search/Lookup path remains the identity and artwork
@@ -82,3 +88,15 @@ including its Apple Music API badge/attribution guidance, and the applicable
 Phase 2 must review those requirements before displaying the text, including
 any required Apple Music attribution or link treatment. This server phase
 intentionally does not add UI presentation.
+
+## Current versus planned boundary
+
+The existing Server contract is provider-neutral at the payload boundary and
+currently has an Apple Music adapter. It does not define a native iOS catalog
+merge or provider-conflict policy. The approved device-owned Catalog is a
+separate future architecture; About enrichment must not be treated as evidence
+that that catalog or its synchronization contract exists.
+
+## Timestamp
+
+Last updated: 2026-10-20 18:54 America/Chicago

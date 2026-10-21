@@ -1,0 +1,133 @@
+# Sonuvi Server → Native iOS contract handoff
+
+**Status:** Server-side audit input; no iOS repository changes included
+**Verified:** 2026-10-20, America/Chicago
+**Server target:** Sonuvi Server deployment target (installation-specific host
+and path intentionally omitted)
+
+This is the concise contract handoff for the separate iOS integration audit.
+It describes current Server behavior and calls out the approved future catalog
+architecture without presenting that future as implemented.
+
+## Authentication boundary
+
+- Native callers use `Authorization: Bearer <mobile-api access token>` for
+  `/v1/mobile/*`. The access token currently lasts 12 hours; the refresh token
+  uses the separate `mobile-refresh` scope and lasts up to 365 days.
+- `POST /v1/mobile/session` accepts `{ "deviceId": "..." }` with
+  `X-Mobile-Enrollment-Code`. `POST /v1/mobile/session/refresh` uses
+  `X-Mobile-Refresh-Token`; the explicit legacy migration header is
+  `X-Mobile-Session-Migration: 1`. Pairing routes provide the approved
+  display/request flow. A Track Key is never a native credential.
+- Media and radio playback use short-lived, device/track- or station-scoped
+  tickets. They are not catalog identities or replacements for the bearer
+  session.
+- Native clients must not receive or send Track Keys, raw MPD/file paths,
+  renderer URLs, Qobuz credentials, Last.fm credentials, or Alexa secrets.
+
+## Current API contracts to verify
+
+| Contract | Request | Current Server boundary |
+| --- | --- | --- |
+| Current state | `GET /v1/mobile/now-playing` | Source-aware sanitized Home state; inspect `source`, `isUpnp`, `isStream`, `isPodcast`, queue fields, and `track` rather than calling `/now-playing` directly |
+| Next Up | `GET /v1/mobile/next-up` | Target-aware successor; Home moOde/Alexa and native-device queues do not share one inferred position |
+| Home queue | `GET /v1/mobile/queue` plus `/queue/items/:queueItemId/*` and `/queue/actions` | Bearer queue handles are opaque and current-snapshot scoped; mutations affect Home moOde/MPD only and require refresh after mutation |
+| Audio diagnostics | `GET /v1/mobile/audio-info` | Safe `audio-info.v1` rows/provenance; configured output, decoded PCM, and measured ALSA hardware output are distinct |
+| Local bytes | `GET /v1/mobile/local-source/manifest` | Maps canonical IDs to relative local availability (`relativePath`/`contentPath` where present); stale/disconnected bytes are cache misses, not identity changes |
+| Native history | `POST /v1/mobile/playback/events` | Body requires canonical `trackId`, valid `sessionId`, and `state` in `start`, `playing`, `progress`, `pause`, `stop`, `ended`; progress fields are optional |
+| Recent history | `GET /v1/mobile/history/recent` | Server-owned recent-history projection; native code does not scrobble directly |
+
+Native playback events are resolved by the Server and recorded with source
+`ios-device` and session identity `mobile:<sessionId>`. The Server decides
+qualification, deduplication, local history, and Last.fm submission.
+
+### Qobuz Connect
+
+- Read `GET /v1/mobile/qobuz-connect` and
+  `GET /v1/mobile/qobuz-connect/queue`. The snapshot is versioned as
+  `qobuz-connect.v1` and includes source/owner, connection and receiver
+  state, freshness, playback, current track, capabilities, and queue data.
+- Supported guarded controls are `POST` routes for `play`, `resume`, `pause`,
+  `next`, `previous`, `seek`, and `queue/jump` under
+  `/v1/mobile/qobuz-connect/`.
+- Seek requires the current `qobuzTrackId` and `positionSec`. Queue jump
+  requires the target index/ID, opaque `queueFingerprint`, expected current
+  index/count, and a non-shuffled queue. The fingerprint is a concurrency
+  token, not a catalog identity.
+- `POST /v1/mobile/qobuz-connect/release` is the explicit handoff to Home
+  moOde. Treat success as authoritative only after the Server confirms
+  inactive Qobuz ownership and enhanced receiver readiness. A failed or
+  unconfirmed release must fail the Home action closed.
+- Saved Qobuz queues are Server-owned ordered occurrences. Capture requires a
+  stable confirmed-active cursor; play requires explicit confirmation and
+  typed operation-status polling.
+
+The Server does not authenticate a Qobuz account or expose Qobuz credentials
+to iOS. The working Connect receiver/control boundary is PiBuZ.
+
+### UPnP
+
+Use the bearer bridge under `/v1/mobile/upnp/*`, not the Track-Key web/admin
+`/upnp/*` routes. The bridge covers discovery, media-server capabilities and
+browse/search, mediated artwork, renderer capabilities/transport, preflight,
+sessions, and logical queues.
+
+- Sonuvi owns the logical queue, queue `revision`, playback session, and
+  renderer/session generation. The selected renderer executes transport.
+- Queue mutations carry the current `revision`; transport is bound to the
+  renderer/session generation. Responses expose `queueAuthority`, allowlisted
+  capabilities, and last confirmed renderer state rather than raw device
+  URLs.
+- `POST /v1/mobile/upnp/queues/:queueId/takeover` requires explicit
+  `confirm: true` and the current `sessionGeneration`. An explicit `takeover:
+  true` on a Play Now request is the compatibility equivalent. Ordinary play
+  does not silently take over active MPD, Qobuz, or uncertain renderer
+  playback.
+- Use queue routes for Sonuvi-owned playback so revision and generation
+  guards remain authoritative. Use renderer transport routes only for the
+  explicitly supported external-renderer transport case.
+
+## Playback-authority rules
+
+1. **Home moOde / Alexa:** Sonuvi's Server/MPD queue and moOde transport are
+   authoritative. Alexa is a request origin for Echo playback, not a second
+   Home queue. Before a Home mutation from Qobuz, release Qobuz first.
+2. **Qobuz Connect:** PiBuZ owns the remote receiver/session and remote queue.
+   `available` or `connected` is not enough; only fresh confirmed-active
+   ownership permits guarded control. Qobuz playback is excluded from MPD
+   history/scrobble attribution while PiBuZ owns the renderer.
+3. **UPnP:** Sonuvi's logical queue/session is authoritative for Sonuvi-owned
+   UPnP playback; the renderer's MPD queue is an implementation detail. Do not
+   infer ownership from the renderer alone, and do not silently take over.
+4. **This iPhone/iPad:** the current app may maintain a native device queue
+   and play authorized local/server media, but current shared identities and
+   metadata remain the Server's opaque `MobileTrack`/mobile contracts.
+5. **History:** native code reports observations. The Server owns identity
+   resolution, qualification, deduplication, local history, and Last.fm.
+
+## Approved future boundary
+
+The target architecture is an iOS-device-owned canonical Catalog with
+provider observations, canonical enrichment, and server-independent native
+playback. It is not implemented by these Server routes. Identity merging,
+metadata-conflict rules, provider synchronization, and the final offline/
+server-independent playback contract remain open design work and must be read
+from `now-playing-ios/AGENTS.md`, `docs/architecture.md`, and
+`docs/decisions.md` during the separate iOS audit.
+
+## iOS audit checklist
+
+- Confirm every native request uses the mobile bearer boundary and never a
+  Track Key or raw integration URL.
+- Confirm the client treats `source`/ownership fields as authority signals,
+  not titles/artwork/paths.
+- Confirm Qobuz control uses the required current-track/CAS fields and release
+  confirmation before Home mutations.
+- Confirm UPnP queue revisions, session generations, and explicit takeover
+  confirmation are preserved through the client model.
+- Confirm SSD disconnect, stale manifests, and cache misses retain canonical
+  track and queue identity.
+- Confirm native progress events use stable session IDs and do not submit
+  Last.fm credentials or duplicate scrobbles.
+
+*Prepared: 2026-10-20 18:54 America/Chicago*

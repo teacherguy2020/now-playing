@@ -68,3 +68,14 @@ fallback, but its coverage and licensing/attribution obligations require a
 separate design decision.
 
 No alternative provider is enabled by this change.
+
+## Current boundary
+
+Apple editorial text is optional Server-side enrichment for an already accepted
+track/album identity. It does not own playback, queue, native catalog
+identity, or history. The mobile contract exposes only the normalized safe
+payload; Apple credentials, raw responses, and developer tokens remain on the
+Server. Any future device-owned catalog/provider aggregation must define its
+own identity and attribution rules rather than reusing this adapter implicitly.
+
+*Last reviewed: 2026-10-20 18:54 America/Chicago*

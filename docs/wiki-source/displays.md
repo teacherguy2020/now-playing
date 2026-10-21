@@ -47,6 +47,12 @@ Screen app. Its safe-area geometry remains `viewport-fit=cover`; its opaque
 `black-translucent`. Distinct manifest identities and icon families are
 documented in [user-interfaces.md](user-interfaces.md).
 
+Display surfaces consume normalized, source-aware Server state. They must not
+infer playback ownership from MPD alone: Qobuz Connect, UPnP, AirPlay, and
+Alexa can change the source/queue interpretation while the same display shell
+remains visible. Use `/now-playing`, `/next-up`, and the authority matrix
+before treating a renderer or display mismatch as a CSS/layout problem.
+
 ## When a display is wrong
 
 1. Determine whether the URL is a router, wrapper, controller, or final render
@@ -59,4 +65,4 @@ Use [display-surface-troubleshooting.md](display-surface-troubleshooting.md),
 [display-issue-triage-runbook.md](display-issue-triage-runbook.md), and
 [local-environment.md](local-environment.md) for the operational path.
 
-*Last reviewed: 2026-09-22 America/Chicago*
+*Last reviewed: 2026-10-20 18:54 America/Chicago*

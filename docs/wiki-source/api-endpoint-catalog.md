@@ -631,6 +631,56 @@ Core families currently used by the native client:
   `POST /v1/mobile/playback/events` for canonical SSD/cache resolution and
   native listening-history observation.
 
+### Qobuz Connect contract
+
+All Qobuz Connect mobile routes require a `mobile-api` bearer session. The
+read-only snapshot is versioned as `qobuz-connect.v1` and reports source,
+owner, connection/receiver state, freshness, playback, current-track,
+capabilities, and (when requested) queue data. It does not expose PiBuZ URLs,
+Qobuz credentials, or local paths.
+
+| Method | Route family | Contract |
+| --- | --- | --- |
+| GET | `/v1/mobile/qobuz-connect` and `/queue` | Read normalized ownership/snapshot and ordered remote queue; inactive/unavailable does not get represented as a fabricated empty queue |
+| POST | `/v1/mobile/qobuz-connect/{play,resume,pause,next,previous}` | Guarded transport; current `qobuzTrackId` is required where the action needs a compare-and-swap cursor |
+| POST | `/v1/mobile/qobuz-connect/seek` | `{ "qobuzTrackId": "...", "positionSec": 42 }`; the current track must still match |
+| POST | `/v1/mobile/qobuz-connect/queue/jump` | Requires index, target ID, opaque `queueFingerprint`, expected current index/count, and non-shuffled queue |
+| POST | `/v1/mobile/qobuz-connect/release` | Explicit handoff; success is returned only after inactive ownership and enhanced receiver readiness are confirmed |
+
+Transport controls are allowed only for a fresh confirmed-active snapshot and
+use read-after-write verification. Queue fingerprints are concurrency tokens,
+not catalog identities. Saved queue capture/restore is server-owned; capture
+requires a stable active cursor and play requires explicit confirmation plus
+typed operation-status polling.
+
+### UPnP mobile contract
+
+`src/routes/mobile-upnp.routes.mjs` exposes bearer-safe discovery, media-server
+browse/search/artwork, renderer capabilities/transport, preflight, sessions,
+and logical queue routes under `/v1/mobile/upnp/*`. Responses sanitize device
+URLs and report source, owner, `queueAuthority`, allowlisted controls,
+revision, renderer/session generation, and last confirmed renderer state.
+
+Queue mutations use the current queue `revision`; transport is bound to the
+selected renderer/session generation. `POST .../takeover` requires explicit
+`confirm: true` and the current `sessionGeneration`. Ordinary play does not
+silently take over active MPD, Qobuz, or uncertain renderer playback.
+
+### Native history and diagnostics contracts
+
+- `GET /v1/mobile/audio-info` returns safe rows plus optional `audio-info.v1`
+  provenance. Configured output, decoded PCM, and measured ALSA hardware
+  output remain distinct; internal moOde URLs, paths, Track Keys, and PHP
+  session IDs are redacted.
+- `GET /v1/mobile/local-source/manifest` maps canonical IDs to relative
+  availability. Disconnect or stale entries are cache misses and do not alter
+  canonical identity or queue identity.
+- `POST /v1/mobile/playback/events` accepts canonical `trackId`, `sessionId`,
+  an allowed playback state, and optional progress fields. The Server resolves
+  identity and owns local-history/Last.fm qualification.
+- `GET /v1/mobile/history/recent` returns the recent Server history projection;
+  it is not a client-side scrobble store.
+
 Every route requires a verified `mobile-api` bearer session unless it is a
 short-lived media/radio ticket delivery route. Opaque track, album, artist,
 playlist, station, podcast, and queue IDs are resolved server-side. Raw MPD
@@ -676,4 +726,4 @@ That should make the API branch more useful for onboarding, debugging, and safer
 
 ## Timestamp
 
-Last updated: 2026-09-30 America/Chicago
+Last updated: 2026-10-20 18:54 America/Chicago

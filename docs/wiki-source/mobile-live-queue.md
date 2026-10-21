@@ -154,6 +154,21 @@ fresh `confirmed-active` ownership proof and a stable cursor; play requires
 explicit confirmation and status-only polling through the typed operation
 route. The server preserves ordered occurrences and duplicate positions.
 
+The current Qobuz control and handoff contract is:
+
+| Method | Route | Required optimistic/confirmation data |
+| --- | --- | --- |
+| GET | `/v1/mobile/qobuz-connect` or `/queue` | bearer session; snapshot/queue is read-only and source-aware |
+| POST | `/v1/mobile/qobuz-connect/{play,resume,pause,next,previous}` | `qobuzTrackId` for the current track where required; the server rejects stale or unconfirmed ownership |
+| POST | `/v1/mobile/qobuz-connect/seek` | current `qobuzTrackId` and `positionSec` |
+| POST | `/v1/mobile/qobuz-connect/queue/jump` | `index`, `targetQobuzTrackId`, `queueFingerprint`, expected current index/count, and `shuffle: false` |
+| POST | `/v1/mobile/qobuz-connect/release` | no Qobuz credential; returns success only after inactive ownership and receiver readiness are confirmed |
+
+The mobile app must not infer Qobuz identity from title, artwork, or a local
+path. `queueFingerprint` is an opaque compare-and-swap token, not a track or
+catalog identity. A failed or unconfirmed release must stop a Home mutation
+from racing the remote receiver.
+
 Each catalog-backed local track receives its authoritative MPD sticker rating
 through `rating` (`0..5`) and `ratingDisabled: false`. The reader is the same
 server-side `getRatingForFile()` path used by the web diagnostics queue. An
@@ -335,4 +350,4 @@ playlist revision reconciliation, and richer per-row saved-data management
 remain follow-up work; any new mutation must retain the same bearer, opaque-ID,
 and explicit-target boundary.
 
-*Last reviewed: 2026-10-19 08:54 America/Chicago*
+*Last reviewed: 2026-10-20 18:54 America/Chicago*

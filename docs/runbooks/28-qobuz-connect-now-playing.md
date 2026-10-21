@@ -2,14 +2,21 @@
 
 ## Scope
 
-Phase 1 adds a read-only native PiBuZ adapter while retaining the existing
-moOde renderer metadata cache as a compatibility fallback. It exposes active
-Qobuz Connect playback through `/now-playing`, preserves the existing artwork
-surface, and adds authenticated mobile snapshot and queue contracts. It does
-not authenticate Qobuz or issue PiBuZ playback/queue commands. The sole
-mutation is the explicit renderer-disconnect handoff documented below; it does
+The historical Phase 1 adapter was read-only, but current main now includes
+guarded PiBuZ transport controls, queue-jump compare-and-swap checks, saved
+Qobuz queue capture/restore, and an explicit renderer release/handoff. It
+exposes active Qobuz Connect playback through `/now-playing`, preserves the
+existing artwork surface, and adds authenticated mobile snapshot, queue, and
+control contracts.
+
+The Server still does not authenticate a Qobuz account or provide Qobuz
+catalog browsing; the working Connect control path is the enhanced PiBuZ
+receiver. Every mutation is fail-closed: transport requires a fresh
+confirmed-active ownership snapshot, queue-jump uses an opaque queue
+fingerprint and expected cursor, and release reports success only after
+inactive ownership and receiver readiness are confirmed. The integration does
 not control ordinary MPD, ALSA, AirPlay, listening history, or Last.fm
-playback.
+playback on behalf of Qobuz.
 
 ## Native PiBuZ transport
 
@@ -226,20 +233,24 @@ returning; it never issues a raw `pibuz run` command.
 
 Changed server files:
 
-- `src/lib/pibuz-qobuz.mjs` — fixed-host, read-only PiBuZ status, now-playing,
-  queue, artwork, and bounded SSE adapter.
+- `src/lib/pibuz-qobuz.mjs` — fixed-host, read-only PiBuZ snapshot/metadata,
+  queue, artwork, and bounded SSE adapter. Control mutations live in the
+  separate guarded adapter below.
 - `src/lib/qobuz-connect.mjs` — metadata normalization, bounded freshness,
   source payload construction, native quality/position fields, and fail-closed
   non-rendering release.
 - `src/lib/qobuz-connect-control.mjs` — fixed backend adapter for moOde's
   supported Qobuz renderer-disconnect action.
+- `src/lib/pibuz-qobuz-control.mjs` — guarded PiBuZ play/pause/next/previous,
+  seek, and queue-jump control with ownership and read-after-write checks.
 - `moode-nowplaying-api.mjs` — source arbitration, artwork integration, and
   MPD-history suppression while Qobuz owns playback; native PiBuZ is preferred
   over the qbzmeta compatibility fallback.
 - `src/lib/mobile-pibuz-qobuz.mjs` — versioned mobile sanitization with
   mediated artwork references and read-only capabilities.
 - `src/routes/mobile.routes.mjs` — authenticated Qobuz Connect snapshot,
-  queue, artwork, and bearer-authenticated release routes.
+  queue, guarded transport, saved-queue, artwork, and bearer-authenticated
+  release routes.
 - `src/lib/qobuz-connect-release.mjs` — shared post-disconnect ownership
   confirmation used by Track-Key and mobile release routes.
 - `src/routes/art.routes.mjs` — current-art routes prefer active Qobuz art
@@ -292,13 +303,16 @@ Live validation should be coordinated with the listener:
    reports `source: "qobuz-connect"`.
 7. Confirm no new Qobuz event appears in listening-history or Last.fm state.
 
-## Deployment and rollback
+## Historical Phase 1 deployment note
 
-This Phase 1 worktree is intentionally not deployed by the implementation
-task. A later approved deployment must include the adapter, mobile sanitizer,
-route wiring, and Qobuz payload files together, then restart only
+The original Phase 1 worktree was intentionally not deployed by its
+implementation task. For current deployment behavior, use
+`docs/wiki-source/deployment-and-ops.md` and the repository deployment helper.
+Any approved Server deployment must include the adapter, mobile sanitizer,
+control, route wiring, and Qobuz payload files together, then restart only
 `now-playing.service` and verify the authenticated endpoints. It must not
-change PiBuZ, moOde, MPD, ALSA, Qobuz credentials, or playback state.
+change PiBuZ, moOde, MPD, ALSA, Qobuz credentials, or playback state unless an
+explicit release/handoff action is requested.
 
 Rollback is the normal file restore of the changed server files followed by
 `sudo systemctl restart now-playing.service` on `10.0.0.4`. The moOde/Pibuz
@@ -306,9 +320,14 @@ installation is unchanged; no Pi-side rollback is required.
 
 ## Known limitations
 
-- The Phase 1 adapter is read-only for PiBuZ transport and queue control. The
-  explicit renderer-disconnect handoff is the only mobile mutation and is
-  deliberately not represented as a Qobuz play/pause/queue capability.
+- The Server does not authenticate Qobuz accounts, browse the Qobuz catalog,
+  or expose a direct Qobuz credential to web/mobile clients. PiBuZ remains the
+  supported remote receiver/control boundary.
+- The guarded mobile transport and queue controls are intentionally narrower
+  than a full remote player: queue editing, stop/repeat/shuffle, and volume
+  are not exposed as general capabilities. The explicit release/handoff is a
+  separate mutation and is not represented as a normal Qobuz play/pause
+  command.
 - PiBuZ's event stream is consumed for bounded freshness/diagnostics; current
   API reads remain authoritative, and no event payload history is retained.
 - Qobuz artwork is refreshed through the cache when the normalized artwork

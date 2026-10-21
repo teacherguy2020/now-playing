@@ -76,6 +76,28 @@ Typical examples:
 
 This is separate from normal app-file deployment and should not be mentally collapsed into it.
 
+## Current Server deployment boundary
+
+The primary live app target is the configured Pi5 Server installation. From
+the repository, use `scripts/deploy-pi5-files.sh` for approved file deployment; it pins the
+verified host key, stages through `/tmp`, installs with passwordless sudo, and
+restarts `now-playing.service` only when a backend path requires it.
+
+- Frontend-only files can normally be deployed without an API restart, but
+  still require browser/controller/display verification.
+- Route, service, or server-code files require the helper's restart behavior;
+  verify service readiness and the affected endpoint afterward.
+- Verify the live `/now-playing`, `/next-up`, and relevant authenticated mobile
+  route rather than relying on a successful copy or HTTP response alone.
+- An alternate deployment checkout is not an active target and must not be used
+  unless Brian explicitly requests that deployment target.
+
+The moOde host is a separate operational plane. Qobuz release/handoff may use
+the established guarded moOde/PiBuZ lifecycle, while UPnP renderer state and
+Peppy/display overrides have their own recovery checks. A Server deployment,
+a docs-only change, and an explicit live release action are different events;
+do not claim one from evidence of another.
+
 ## Change type → effect → verify
 
 This is the most useful part of the page.
@@ -384,3 +406,5 @@ Its job is to help an agent decide:
 - which machine/process should actually be affected
 - what must be checked next
 - and why a “successful” result at one layer may still not mean the system changed in the way you intended.
+
+*Last reviewed: 2026-10-20 18:54 America/Chicago*
